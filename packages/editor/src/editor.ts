@@ -658,6 +658,11 @@ export class BpmnEditor {
 		this._viewport.set({ tx, ty, scale });
 	}
 
+	/** The host element that receives the `data-theme` attribute. */
+	get container(): HTMLElement {
+		return this._host;
+	}
+
 	getTheme(): "light" | "dark" {
 		return this._host.getAttribute("data-theme") === "dark" ? "dark" : "light";
 	}

@@ -198,7 +198,12 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 
 	// ── Theme ──────────────────────────────────────────────────────────────────
 
-	document.body.dataset.bpmnHudTheme = editor.getTheme();
+	const syncHudTheme = (): void => {
+		document.body.dataset.bpmnHudTheme = editor.getTheme();
+	};
+	syncHudTheme();
+	const themeObs = new MutationObserver(syncHudTheme);
+	themeObs.observe(editor.container, { attributes: true, attributeFilter: ["data-theme"] });
 
 	// ── Closure state ──────────────────────────────────────────────────────────
 

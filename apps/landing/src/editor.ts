@@ -767,10 +767,13 @@ document.addEventListener("keydown", (e) => {
 
 // ── Editor ────────────────────────────────────────────────────────────────────
 
+const _savedTheme = localStorage.getItem("bpmn-theme");
+const _initialTheme = _savedTheme === "dark" || _savedTheme === "light" ? _savedTheme : "light";
+
 const editor = new BpmnEditor({
 	container: editorContainer,
 	xml: SAMPLE_XML,
-	theme: "light",
+	theme: _initialTheme,
 	grid: true,
 	fit: "center",
 	plugins: [
@@ -789,6 +792,11 @@ const editor = new BpmnEditor({
 	],
 });
 editorRef = editor;
+
+// Persist theme selection to localStorage
+new MutationObserver(() => {
+	localStorage.setItem("bpmn-theme", editor.container.getAttribute("data-theme") ?? "light");
+}).observe(editor.container, { attributes: true, attributeFilter: ["data-theme"] });
 
 initEditorHud(editor, {
 	openProcess: (processId) => tabsPlugin.api.navigateToProcess(processId),

@@ -1,5 +1,54 @@
 # Progress
 
+## 2026-03-02 — Dark mode: full propagation fix + localStorage theme persistence
+
+### Fix: menus and config panel not themed after theme switch
+Three root causes, three targeted fixes:
+
+1. **`packages/editor/src/editor.ts`** — Added `get container(): HTMLElement` getter returning the host element (`bpmn-canvas-host` div), so external code can observe `data-theme` attribute changes without relying on internal fields.
+
+2. **`packages/editor/src/hud.ts`** — `document.body.dataset.bpmnHudTheme` was set once at HUD init (always the initial theme) and never updated. Added a `MutationObserver` on `editor.container` that calls `syncHudTheme()` whenever `data-theme` changes. This keeps the HUD toolbars and config panel (which use `[data-bpmn-hud-theme]` selectors on body) in sync with the active theme.
+
+3. **`canvas-plugins/main-menu/src/css.ts`** — The main menu dropdown is `position: fixed` and appended directly to `document.body`, outside the `.bpmn-canvas-host` element. The CSS custom properties (`--bpmn-overlay-bg`, `--bpmn-text`, `--bpmn-overlay-border`, `--bpmn-highlight`) are defined on `.bpmn-canvas-host[data-theme="dark"]` and do not cascade to body-level elements. Added `[data-bpmn-hud-theme="dark"]` overrides for all dropdown elements with explicit Catppuccin dark palette colors.
+
+### Feature: theme preference persisted to localStorage
+- **`apps/landing/src/editor.ts`** — Reads `"bpmn-theme"` from `localStorage` on startup (defaults to `"light"`) and passes it as the initial `theme` option to `BpmnEditor`. A `MutationObserver` on `editor.container` watches for `data-theme` changes and writes the resolved theme back to `localStorage`, so the preference survives page reloads.
+
+## 2026-03-02 — DMN DRD canvas: snap alignment + quick-add connected elements
+
+### Feature: snap/magnet alignment during node drag
+When dragging a node, its left/center/right edges and top/center/bottom edges are compared against all other nodes (threshold: 8 px / scale). On a match the drag position snaps to the aligned anchor and a dashed blue guide line is rendered across the canvas in diagram space. Guide lines clear on mouse-up.
+
+### Feature: quick-add connected elements from contextual toolbar
+The contextual toolbar now shows icon buttons for every node type that can be connected FROM the current selection, based on DMN connection rules:
+- **Decision / InputData** → Decision, Annotation
+- **KnowledgeSource** → Decision, KnowledgeSource, BKM, Annotation
+- **BKM** → Decision, BKM, Annotation
+- **TextAnnotation** → (none)
+
+Clicking a quick-add button uses smart placement (tries right → below → above, gap ×1–6) to find a non-overlapping position, creates the new node, auto-connects it with the correct edge type, and selects it.
+
+**Files:** `canvas-plugins/dmn-editor/src/drd-canvas.ts`, `canvas-plugins/dmn-editor/src/css.ts`
+
+## 2026-03-02 — DMN DRD canvas: dot grid, floating toolbars, contextual toolbar
+
+### Feature: dot-grid background
+SVG `<pattern>` with 20×20 tile, synced to the viewport transform on every pan/zoom/drag. Matches the BPMN editor look.
+
+### Feature: bottom-center floating toolbar (glass panel)
+The old top-bar with text buttons is replaced by an absolute-positioned floating glass panel at the bottom-center of the canvas. Contains SVG mini-shape icon buttons for each DRG element type (Decision, InputData, KnowledgeSource, BKM | TextAnnotation).
+
+### Feature: contextual toolbar below selected node
+When a node is selected, a floating glass panel appears 8px below it. Contents:
+- Decision nodes: **Edit Table** | Connect → | Delete
+- Other nodes: Connect → | Delete
+The panel follows the node during drag and repositions on pan/zoom.
+
+### Feature: connect mode from contextual toolbar
+Removed the global "Connect" toggle. Connect mode is now initiated from the Connect button in the contextual toolbar, with the source node pre-set. Clicking a target creates the connection; clicking empty space or pressing Escape cancels.
+
+**Files:** `canvas-plugins/dmn-editor/src/drd-canvas.ts`, `canvas-plugins/dmn-editor/src/css.ts`
+
 ## 2026-03-01 — DMN DRD (Decision Requirements Diagram) support
 
 ### Feature: full DRG element model in `@bpmn-sdk/core`

@@ -1,21 +1,29 @@
 /**
  * SVG-based interactive DRD (Decision Requirements Diagram) canvas.
  *
+ * Visual style matches the BPMN editor: dot-grid background, floating
+ * bottom-center toolbar for adding nodes, contextual toolbar below each
+ * selected node.
+ *
  * Features:
+ *   - Dot-grid background that scrolls with the viewport
  *   - Pan (drag on empty canvas) + zoom (mouse wheel)
  *   - 5 node shapes: Decision, InputData, KnowledgeSource, BKM, TextAnnotation
  *   - 4 edge types: InformationRequirement, KnowledgeRequirement, AuthorityRequirement, Association
  *   - Node selection and movement
- *   - Keyboard delete of selected elements
- *   - Connect mode for creating edges
+ *   - Keyboard delete / Escape
+ *   - Contextual toolbar below selected node: Edit Table (Decision), Connect, Delete
+ *   - Bottom-center floating toolbar for adding new nodes
  *   - Double-click Decision → open decision table
- *   - Toolbar for adding new nodes
+ *   - Inline label editing on double-click (non-decision nodes)
  */
 import type { DmnDefinitions, DmnWaypoint } from "@bpmn-sdk/core";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const GRID_SIZE = 20;
+let _instanceCounter = 0;
 
 const NODE_SIZE = {
 	decision: { width: 180, height: 80 },
@@ -24,6 +32,19 @@ const NODE_SIZE = {
 	businessKnowledgeModel: { width: 135, height: 46 },
 	textAnnotation: { width: 100, height: 80 },
 } as const;
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+const IC = {
+	decision: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="26" height="16" rx="1.5"/></svg>`,
+	inputData: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="1" width="26" height="14" rx="7"/></svg>`,
+	knowledgeSource: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1,1 L23,1 L23,15 C18,21 6,11 1,17 Z"/></svg>`,
+	businessKnowledgeModel: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6,1 L25,1 L25,17 L1,17 L1,6 Z"/></svg>`,
+	textAnnotation: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8,1 L1,1 L1,17 L8,17"/></svg>`,
+	connect: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2,7 L16,7 M12,3 L16,7 L12,11"/></svg>`,
+	editTable: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="18" height="14" rx="1"/><line x1="1" y1="6" x2="19" y2="6"/><line x1="8" y1="6" x2="8" y2="15"/></svg>`,
+	trash: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,4 15,4"/><path d="M3,4 L3,15 L13,15 L13,4"/><path d="M6,1 L10,1"/></svg>`,
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,6 +79,23 @@ export interface DrdCanvasOptions {
 	onChange?: () => void;
 	onDecisionOpen?: (decisionId: string) => void;
 }
+
+// ── Connection rules for quick-add ────────────────────────────────────────────
+
+const QUICK_ADD_TARGETS: Partial<Record<NodeType, NodeType[]>> = {
+	decision: ["decision", "textAnnotation"],
+	inputData: ["decision", "textAnnotation"],
+	knowledgeSource: ["decision", "knowledgeSource", "businessKnowledgeModel", "textAnnotation"],
+	businessKnowledgeModel: ["decision", "businessKnowledgeModel", "textAnnotation"],
+};
+
+const QUICK_ADD_LABELS: Partial<Record<NodeType, string>> = {
+	decision: "Decision",
+	inputData: "Input Data",
+	knowledgeSource: "Knowledge Source",
+	businessKnowledgeModel: "BKM",
+	textAnnotation: "Annotation",
+};
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -100,7 +138,7 @@ function computeEdgePath(src: NodeInfo, tgt: NodeInfo, waypoints: DmnWaypoint[])
 	return `M ${start.x},${start.y} L ${end.x},${end.y}`;
 }
 
-// ── SVG creation helpers ──────────────────────────────────────────────────────
+// ── SVG helpers ───────────────────────────────────────────────────────────────
 
 function svgEl<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
 	return document.createElementNS(SVG_NS, tag) as SVGElementTagNameMap[K];
@@ -128,6 +166,12 @@ export class DrdCanvas {
 	private readonly _edgesLayer: SVGGElement;
 	private readonly _nodesLayer: SVGGElement;
 	private readonly _svgDefsEl: SVGDefsElement;
+	private _gridPattern: SVGPatternElement | null = null;
+	private readonly _guidesLayer: SVGGElement;
+
+	private readonly _bottomBar: HTMLDivElement;
+	private readonly _ctxBar: HTMLDivElement;
+	private _ctxBarNodeId: string | null = null;
 
 	private _vpX = 40;
 	private _vpY = 40;
@@ -150,22 +194,27 @@ export class DrdCanvas {
 	private readonly _cleanups: Array<() => void> = [];
 
 	constructor(options: DrdCanvasOptions) {
+		_instanceCounter++;
 		this._defs = options.defs;
 		this._onChange = options.onChange ?? (() => undefined);
 		this._onDecisionOpen = options.onDecisionOpen ?? (() => undefined);
 
+		// Root — position: relative so absolute children are positioned inside
 		this._root = document.createElement("div");
 		this._root.className = "drd-root";
-		this._root.appendChild(this._buildToolbar());
 
+		// SVG — fills root absolutely
 		this._svg = svgEl("svg");
 		cls(this._svg, "drd-svg");
 		this._root.appendChild(this._svg);
 
+		// Defs (markers + grid pattern)
 		this._svgDefsEl = svgEl("defs");
 		this._svg.appendChild(this._svgDefsEl);
 		this._buildMarkers();
+		this._buildGrid();
 
+		// Viewport group (contains edges + nodes)
 		this._vpGroup = svgEl("g");
 		this._svg.appendChild(this._vpGroup);
 
@@ -176,6 +225,19 @@ export class DrdCanvas {
 		this._nodesLayer = svgEl("g");
 		cls(this._nodesLayer, "drd-nodes");
 		this._vpGroup.appendChild(this._nodesLayer);
+
+		this._guidesLayer = svgEl("g");
+		cls(this._guidesLayer, "drd-guides");
+		this._vpGroup.appendChild(this._guidesLayer);
+
+		// Floating toolbars
+		this._bottomBar = this._buildBottomBar();
+		this._root.appendChild(this._bottomBar);
+
+		this._ctxBar = document.createElement("div");
+		this._ctxBar.className = "drd-bar drd-ctx-bar";
+		this._ctxBar.style.display = "none";
+		this._root.appendChild(this._ctxBar);
 
 		options.container.appendChild(this._root);
 		this._bindEvents();
@@ -195,7 +257,32 @@ export class DrdCanvas {
 		this._root.remove();
 	}
 
-	// ── Layout ──────────────────────────────────────────────────────────────
+	// ── Dot-grid background ────────────────────────────────────────────────────
+
+	private _buildGrid(): void {
+		const patternId = `drd-grid-${_instanceCounter}`;
+
+		const pattern = svgEl("pattern");
+		setAttrs(pattern, {
+			id: patternId,
+			width: GRID_SIZE,
+			height: GRID_SIZE,
+			patternUnits: "userSpaceOnUse",
+		});
+		const dot = svgEl("circle");
+		setAttrs(dot, { cx: 1, cy: 1, r: 1, fill: "var(--drd-grid, rgba(0,0,0,0.12))" });
+		pattern.appendChild(dot);
+		this._svgDefsEl.appendChild(pattern);
+		this._gridPattern = pattern;
+
+		// Background rect filled with the pattern (before vpGroup so it's behind nodes)
+		const bg = svgEl("rect");
+		setAttrs(bg, { width: "100%", height: "100%", fill: `url(#${patternId})` });
+		bg.setAttribute("pointer-events", "none");
+		this._svg.insertBefore(bg, this._vpGroup);
+	}
+
+	// ── Auto-layout for nodes without diagram positions ────────────────────────
 
 	private _ensureLayout(): void {
 		const defs = this._defs;
@@ -225,7 +312,7 @@ export class DrdCanvas {
 		});
 	}
 
-	// ── Data extraction ──────────────────────────────────────────────────────
+	// ── Data extraction ────────────────────────────────────────────────────────
 
 	private _buildNodes(): NodeInfo[] {
 		const defs = this._defs;
@@ -357,6 +444,9 @@ export class DrdCanvas {
 		this._nodesLayer.innerHTML = "";
 		this._updateTransform();
 
+		// Toggle crosshair cursor when in connect mode
+		this._root.classList.toggle("drd-connect-mode", this._connectMode);
+
 		const nodes = this._buildNodes();
 		const nodeMap = new Map<string, NodeInfo>(nodes.map((n) => [n.id, n]));
 		const edges = this._buildEdges();
@@ -367,6 +457,19 @@ export class DrdCanvas {
 			if (src && tgt) this._edgesLayer.appendChild(this._renderEdge(edge, src, tgt));
 		}
 		for (const node of nodes) this._nodesLayer.appendChild(this._renderNode(node));
+
+		// Update contextual toolbar
+		if (this._selectedIds.size === 1) {
+			const id = [...this._selectedIds][0];
+			const n = id ? nodeMap.get(id) : undefined;
+			if (n) {
+				this._showCtxBar(n);
+			} else {
+				this._hideCtxBar();
+			}
+		} else {
+			this._hideCtxBar();
+		}
 	}
 
 	private _renderNode(n: NodeInfo): SVGGElement {
@@ -488,54 +591,218 @@ export class DrdCanvas {
 	}
 
 	private _updateTransform(): void {
-		this._vpGroup.setAttribute(
-			"transform",
-			`translate(${this._vpX},${this._vpY}) scale(${this._scale})`,
-		);
+		const t = `translate(${this._vpX},${this._vpY}) scale(${this._scale})`;
+		this._vpGroup.setAttribute("transform", t);
+		if (this._gridPattern) {
+			this._gridPattern.setAttribute("patternTransform", t);
+		}
+		this._updateCtxBarPosition();
 	}
 
-	// ── Toolbar ────────────────────────────────────────────────────────────────
+	// ── Snap alignment ─────────────────────────────────────────────────────────
 
-	private _buildToolbar(): HTMLDivElement {
+	private _computeSnap(
+		cx: number,
+		cy: number,
+		w: number,
+		h: number,
+		dragId: string,
+	): { adjX: number; adjY: number; guides: Array<{ type: "h" | "v"; pos: number }> } {
+		const thr = 8 / this._scale;
+		const shapes = (this._defs.diagram?.shapes ?? []).filter((s) => s.dmnElementRef !== dragId);
+
+		const dxs = [cx, cx + w / 2, cx + w];
+		const dys = [cy, cy + h / 2, cy + h];
+
+		let bestX: { delta: number; guidePos: number } | null = null;
+		let bestY: { delta: number; guidePos: number } | null = null;
+
+		for (const s of shapes) {
+			const { x, y, width, height } = s.bounds;
+			const sxs = [x, x + width / 2, x + width];
+			const sys = [y, y + height / 2, y + height];
+
+			for (const da of dxs) {
+				for (const sa of sxs) {
+					const d = sa - da;
+					if (Math.abs(d) < thr && (bestX === null || Math.abs(d) < Math.abs(bestX.delta))) {
+						bestX = { delta: d, guidePos: sa };
+					}
+				}
+			}
+			for (const da of dys) {
+				for (const sa of sys) {
+					const d = sa - da;
+					if (Math.abs(d) < thr && (bestY === null || Math.abs(d) < Math.abs(bestY.delta))) {
+						bestY = { delta: d, guidePos: sa };
+					}
+				}
+			}
+		}
+
+		const guides: Array<{ type: "h" | "v"; pos: number }> = [];
+		if (bestX) guides.push({ type: "v", pos: bestX.guidePos });
+		if (bestY) guides.push({ type: "h", pos: bestY.guidePos });
+		return { adjX: bestX?.delta ?? 0, adjY: bestY?.delta ?? 0, guides };
+	}
+
+	private _renderGuides(guides: Array<{ type: "h" | "v"; pos: number }>): void {
+		this._guidesLayer.innerHTML = "";
+		for (const g of guides) {
+			const line = svgEl("line");
+			cls(line, "drd-align-guide");
+			if (g.type === "v") {
+				setAttrs(line, { x1: g.pos, y1: -2000, x2: g.pos, y2: 2000 });
+			} else {
+				setAttrs(line, { x1: -2000, y1: g.pos, x2: 2000, y2: g.pos });
+			}
+			this._guidesLayer.appendChild(line);
+		}
+	}
+
+	private _clearGuides(): void {
+		this._guidesLayer.innerHTML = "";
+	}
+
+	// ── Bottom toolbar ─────────────────────────────────────────────────────────
+
+	private _buildBottomBar(): HTMLDivElement {
 		const bar = document.createElement("div");
-		bar.className = "drd-toolbar";
+		bar.className = "drd-bar drd-bottom-bar";
 
-		const btn = (label: string, title: string, onClick: () => void): HTMLButtonElement => {
+		const btn = (icon: string, title: string, onClick: () => void): HTMLButtonElement => {
 			const b = document.createElement("button");
 			b.type = "button";
-			b.className = "drd-toolbar-btn";
-			b.textContent = label;
+			b.className = "drd-bar-btn";
+			b.innerHTML = icon;
 			b.title = title;
 			b.addEventListener("click", onClick);
 			return b;
 		};
 
+		const sep = (): HTMLDivElement => {
+			const d = document.createElement("div");
+			d.className = "drd-bar-sep";
+			return d;
+		};
+
 		bar.append(
-			btn("+ Decision", "Add Decision", () => this._addNode("decision")),
-			btn("+ Input", "Add Input Data", () => this._addNode("inputData")),
-			btn("+ KS", "Add Knowledge Source", () => this._addNode("knowledgeSource")),
-			btn("+ BKM", "Add Business Knowledge Model", () => this._addNode("businessKnowledgeModel")),
-			btn("+ Note", "Add Text Annotation", () => this._addNode("textAnnotation")),
-		);
-
-		const sep = document.createElement("div");
-		sep.className = "drd-toolbar-sep";
-		bar.appendChild(sep);
-
-		const connectBtn = btn("Connect", "Connect mode: click source then target node", () => {
-			this._connectMode = !this._connectMode;
-			this._connectSourceId = null;
-			connectBtn.classList.toggle("drd-toolbar-btn--active", this._connectMode);
-			this._render();
-		});
-		connectBtn.id = "drd-connect-btn";
-		bar.appendChild(connectBtn);
-
-		bar.appendChild(
-			btn("Delete", "Delete selected (or press Delete key)", () => this._deleteSelected()),
+			btn(IC.decision, "Add Decision", () => this._addNode("decision")),
+			btn(IC.inputData, "Add Input Data", () => this._addNode("inputData")),
+			btn(IC.knowledgeSource, "Add Knowledge Source", () => this._addNode("knowledgeSource")),
+			btn(IC.businessKnowledgeModel, "Add Business Knowledge Model", () =>
+				this._addNode("businessKnowledgeModel"),
+			),
+			sep(),
+			btn(IC.textAnnotation, "Add Text Annotation", () => this._addNode("textAnnotation")),
 		);
 
 		return bar;
+	}
+
+	// ── Contextual toolbar ─────────────────────────────────────────────────────
+
+	private _showCtxBar(n: NodeInfo): void {
+		this._ctxBarNodeId = n.id;
+		this._ctxBar.innerHTML = "";
+
+		const barBtn = (
+			icon: string,
+			title: string,
+			onClick: () => void,
+			active = false,
+		): HTMLButtonElement => {
+			const b = document.createElement("button");
+			b.type = "button";
+			b.className = active ? "drd-bar-btn active" : "drd-bar-btn";
+			b.innerHTML = icon;
+			b.title = title;
+			b.addEventListener("click", (e) => {
+				e.stopPropagation();
+				onClick();
+			});
+			return b;
+		};
+
+		const sep = (): HTMLDivElement => {
+			const d = document.createElement("div");
+			d.className = "drd-bar-sep";
+			return d;
+		};
+
+		// "Edit Table" — Decision nodes only
+		if (n.type === "decision") {
+			this._ctxBar.append(
+				barBtn(IC.editTable, "Edit decision table (double-click)", () =>
+					this._onDecisionOpen(n.id),
+				),
+				sep(),
+			);
+		}
+
+		// "Connect" — start connect mode from this node
+		const isConnectSrc = this._connectMode && this._connectSourceId === n.id;
+		this._ctxBar.appendChild(
+			barBtn(
+				IC.connect,
+				isConnectSrc ? "Cancel connect (Escape)" : "Connect to another element",
+				() => {
+					if (this._connectMode && this._connectSourceId === n.id) {
+						this._connectMode = false;
+						this._connectSourceId = null;
+					} else {
+						this._connectMode = true;
+						this._connectSourceId = n.id;
+					}
+					this._render();
+				},
+				isConnectSrc,
+			),
+		);
+
+		// Quick-add connected nodes
+		const quickTargets = QUICK_ADD_TARGETS[n.type];
+		if (quickTargets && quickTargets.length > 0) {
+			this._ctxBar.appendChild(sep());
+			for (const targetType of quickTargets) {
+				const label = QUICK_ADD_LABELS[targetType] ?? targetType;
+				this._ctxBar.appendChild(
+					barBtn(IC[targetType], `Add connected ${label}`, () =>
+						this._addConnectedNode(n.id, targetType),
+					),
+				);
+			}
+		}
+
+		// "Delete"
+		this._ctxBar.append(
+			sep(),
+			barBtn(IC.trash, "Delete element (Delete key)", () => {
+				this._deleteElement(n.id);
+				this._selectedIds.clear();
+				this._render();
+				this._onChange();
+			}),
+		);
+
+		this._updateCtxBarPosition();
+		this._ctxBar.style.display = "flex";
+	}
+
+	private _hideCtxBar(): void {
+		this._ctxBarNodeId = null;
+		this._ctxBar.style.display = "none";
+	}
+
+	private _updateCtxBarPosition(): void {
+		if (!this._ctxBarNodeId) return;
+		const shape = this._defs.diagram?.shapes.find((s) => s.dmnElementRef === this._ctxBarNodeId);
+		if (!shape) return;
+		const { x, y, width, height } = shape.bounds;
+		const cx = (x + width / 2) * this._scale + this._vpX;
+		const top = (y + height) * this._scale + this._vpY + 8;
+		this._ctxBar.style.left = `${cx}px`;
+		this._ctxBar.style.top = `${top}px`;
 	}
 
 	// ── Node creation ──────────────────────────────────────────────────────────
@@ -592,6 +859,93 @@ export class DrdCanvas {
 		this._selectedIds.add(id);
 		this._render();
 		this._onChange();
+	}
+
+	// ── Smart placement + quick-add ───────────────────────────────────────────
+
+	private _smartPlace(sourceId: string, targetType: NodeType): { x: number; y: number } {
+		const GAP = 60;
+		const tSize = NODE_SIZE[targetType];
+		const srcShape = this._defs.diagram?.shapes.find((s) => s.dmnElementRef === sourceId);
+		if (!srcShape) return { x: 80, y: 80 };
+
+		const { x: sx, y: sy, width: sw, height: sh } = srcShape.bounds;
+		const allBounds = (this._defs.diagram?.shapes ?? []).map((s) => s.bounds);
+
+		const overlaps = (px: number, py: number): boolean => {
+			const m = 10;
+			for (const b of allBounds) {
+				if (
+					px + tSize.width + m > b.x &&
+					px - m < b.x + b.width &&
+					py + tSize.height + m > b.y &&
+					py - m < b.y + b.height
+				) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		for (let mult = 1; mult <= 6; mult++) {
+			const gap = GAP * mult;
+			const candidates = [
+				{ x: sx + sw + gap, y: sy + sh / 2 - tSize.height / 2 },
+				{ x: sx + sw / 2 - tSize.width / 2, y: sy + sh + gap },
+				{ x: sx + sw / 2 - tSize.width / 2, y: sy - tSize.height - gap },
+			];
+			for (const c of candidates) {
+				if (!overlaps(c.x, c.y)) return c;
+			}
+		}
+
+		return { x: sx + sw + GAP * 7, y: sy };
+	}
+
+	private _addConnectedNode(sourceId: string, targetType: NodeType): void {
+		const id = `${targetType}_${uid()}`;
+		const size = NODE_SIZE[targetType];
+		const pos = this._smartPlace(sourceId, targetType);
+		const defs = this._defs;
+		if (!defs.diagram) defs.diagram = { shapes: [], edges: [] };
+
+		defs.diagram.shapes.push({
+			dmnElementRef: id,
+			bounds: { x: pos.x, y: pos.y, width: size.width, height: size.height },
+		});
+
+		switch (targetType) {
+			case "decision":
+				defs.decisions.push({
+					id,
+					name: "Decision",
+					informationRequirements: [],
+					knowledgeRequirements: [],
+					authorityRequirements: [],
+				});
+				break;
+			case "inputData":
+				defs.inputData.push({ id, name: "Input Data" });
+				break;
+			case "knowledgeSource":
+				defs.knowledgeSources.push({ id, name: "Knowledge Source", authorityRequirements: [] });
+				break;
+			case "businessKnowledgeModel":
+				defs.businessKnowledgeModels.push({
+					id,
+					name: "BKM",
+					knowledgeRequirements: [],
+					authorityRequirements: [],
+				});
+				break;
+			case "textAnnotation":
+				defs.textAnnotations.push({ id, text: "Note" });
+				break;
+		}
+
+		this._selectedIds.clear();
+		this._selectedIds.add(id);
+		this._connectNodes(sourceId, id);
 	}
 
 	// ── Edge creation ──────────────────────────────────────────────────────────
@@ -761,7 +1115,7 @@ export class DrdCanvas {
 		}
 	}
 
-	// ── Events ────────────────────────────────────────────────────────────────
+	// ── Events ─────────────────────────────────────────────────────────────────
 
 	private _bindEvents(): void {
 		const svg = this._svg;
@@ -785,13 +1139,15 @@ export class DrdCanvas {
 			const t = e.target as Node;
 			if (t !== svg && t !== this._vpGroup && t !== this._edgesLayer && t !== this._nodesLayer)
 				return;
+
 			if (this._connectMode) {
+				// Clicking empty space cancels connect mode but keeps selection
 				this._connectMode = false;
 				this._connectSourceId = null;
-				this._root.querySelector("#drd-connect-btn")?.classList.remove("drd-toolbar-btn--active");
 				this._render();
 				return;
 			}
+
 			this._selectedIds.clear();
 			this._render();
 			this._panStart = { mx: e.clientX, my: e.clientY, vpX: this._vpX, vpY: this._vpY };
@@ -805,14 +1161,24 @@ export class DrdCanvas {
 				this._vpY = this._panStart.vpY + (e.clientY - this._panStart.my);
 				this._updateTransform();
 			} else if (this._dragNode) {
-				const dx = (e.clientX - this._dragNode.startMx) / this._scale;
-				const dy = (e.clientY - this._dragNode.startMy) / this._scale;
+				const rawDx = (e.clientX - this._dragNode.startMx) / this._scale;
+				const rawDy = (e.clientY - this._dragNode.startMy) / this._scale;
 				const shape = this._defs.diagram?.shapes.find(
 					(s) => s.dmnElementRef === this._dragNode?.id,
 				);
 				if (shape) {
-					shape.bounds.x = this._dragNode.startX + dx;
-					shape.bounds.y = this._dragNode.startY + dy;
+					const candidateX = this._dragNode.startX + rawDx;
+					const candidateY = this._dragNode.startY + rawDy;
+					const { adjX, adjY, guides } = this._computeSnap(
+						candidateX,
+						candidateY,
+						shape.bounds.width,
+						shape.bounds.height,
+						this._dragNode.id,
+					);
+					shape.bounds.x = candidateX + adjX;
+					shape.bounds.y = candidateY + adjY;
+					this._renderGuides(guides);
 					const nodeEl = this._nodesLayer.querySelector(
 						`[data-id="${this._dragNode.id}"]`,
 					) as SVGGElement | null;
@@ -825,6 +1191,7 @@ export class DrdCanvas {
 						const tgt = nodeMap.get(edge.targetId);
 						if (src && tgt) this._edgesLayer.appendChild(this._renderEdge(edge, src, tgt));
 					}
+					this._updateCtxBarPosition();
 				}
 			}
 		};
@@ -832,7 +1199,10 @@ export class DrdCanvas {
 		this._cleanups.push(() => document.removeEventListener("mousemove", onMouseMove));
 
 		const onMouseUp = (): void => {
-			if (this._dragNode) this._onChange();
+			if (this._dragNode) {
+				this._clearGuides();
+				this._onChange();
+			}
 			this._panStart = null;
 			this._dragNode = null;
 		};
@@ -840,6 +1210,14 @@ export class DrdCanvas {
 		this._cleanups.push(() => document.removeEventListener("mouseup", onMouseUp));
 
 		const onKeyDown = (e: KeyboardEvent): void => {
+			if (e.key === "Escape") {
+				if (this._connectMode) {
+					this._connectMode = false;
+					this._connectSourceId = null;
+					this._render();
+				}
+				return;
+			}
 			if (e.key !== "Delete" && e.key !== "Backspace") return;
 			const active = document.activeElement;
 			if (
@@ -865,7 +1243,6 @@ export class DrdCanvas {
 				const src = this._connectSourceId;
 				this._connectSourceId = null;
 				this._connectMode = false;
-				this._root.querySelector("#drd-connect-btn")?.classList.remove("drd-toolbar-btn--active");
 				this._connectNodes(src, n.id);
 			}
 			return;
@@ -950,9 +1327,9 @@ export class DrdCanvas {
 			d.name = label;
 			return;
 		}
-		const i = defs.inputData.find((x) => x.id === id);
-		if (i) {
-			i.name = label;
+		const inp = defs.inputData.find((x) => x.id === id);
+		if (inp) {
+			inp.name = label;
 			return;
 		}
 		const ks = defs.knowledgeSources.find((x) => x.id === id);

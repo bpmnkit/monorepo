@@ -205,6 +205,33 @@ export const MAIN_MENU_CSS = `
   background: var(--bpmn-overlay-border, rgba(0,0,0,0.1));
   margin: 3px 4px;
 }
+[data-bpmn-hud-theme="dark"] .bpmn-menu-dropdown {
+  background: rgba(30, 30, 46, 0.96);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+[data-bpmn-hud-theme="dark"] .bpmn-menu-item,
+[data-bpmn-hud-theme="dark"] .bpmn-menu-back-btn,
+[data-bpmn-hud-theme="dark"] .bpmn-menu-level-title,
+[data-bpmn-hud-theme="dark"] .bpmn-menu-info-row,
+[data-bpmn-hud-theme="dark"] .bpmn-menu-info-action,
+[data-bpmn-hud-theme="dark"] .bpmn-menu-drop-label {
+  color: rgba(205, 214, 244, 0.9);
+}
+[data-bpmn-hud-theme="dark"] .bpmn-menu-item:hover,
+[data-bpmn-hud-theme="dark"] .bpmn-menu-back-btn:hover,
+[data-bpmn-hud-theme="dark"] .bpmn-menu-info-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-bpmn-hud-theme="dark"] .bpmn-menu-info-action {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+[data-bpmn-hud-theme="dark"] .bpmn-menu-drop-sep {
+  background: rgba(255, 255, 255, 0.1);
+}
+[data-bpmn-hud-theme="dark"] .bpmn-menu-item-check {
+  color: #89b4fa;
+}
 `;
 
 export function injectMainMenuStyles(): void {

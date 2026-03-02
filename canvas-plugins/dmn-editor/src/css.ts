@@ -98,54 +98,146 @@ export const DMN_EDITOR_CSS = `
 
 /* ── DRD Canvas ── */
 .drd-root {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   height: 100%;
   width: 100%;
   overflow: hidden;
 }
 
-.drd-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--dme-border);
-  background: var(--dme-bg);
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.drd-toolbar-btn {
-  background: var(--dme-btn-bg);
-  color: var(--dme-btn-fg);
-  border: 1px solid transparent;
-  border-radius: 4px;
-  font-size: 12px;
-  padding: 4px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.drd-toolbar-btn:hover {
-  background: var(--dme-btn-hover);
-}
-
-.drd-toolbar-btn--active {
-  background: var(--dme-accent) !important;
-  color: #fff !important;
-  border-color: var(--dme-accent) !important;
-}
-
-.drd-toolbar-sep {
-  flex: 1;
+/* Crosshair cursor during connect mode */
+.drd-root.drd-connect-mode .drd-svg {
+  cursor: crosshair;
 }
 
 .drd-svg {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
   cursor: default;
-  background: var(--drd-canvas-bg, #f8f8fa);
+  background: var(--drd-canvas-bg, #f8f8f5);
+}
+
+/* Dark theme DRD variables */
+.dmn-editor.dark {
+  --drd-canvas-bg: #1a1a24;
+  --drd-grid: rgba(255, 255, 255, 0.07);
+  --drd-node-fill: #252535;
+  --drd-node-stroke: #9ca3af;
+  --drd-decision-fill: #1e2a42;
+  --drd-decision-stroke: #60a5fa;
+  --drd-input-fill: #1a2e22;
+  --drd-input-stroke: #4ade80;
+  --drd-ks-fill: #2d1f10;
+  --drd-ks-stroke: #fb923c;
+  --drd-bkm-fill: #261a38;
+  --drd-bkm-stroke: #c084fc;
+  --drd-ann-stroke: #9ca3af;
+  --drd-edge: #9ca3af;
+  --drd-assoc: #6b7280;
+}
+
+/* ── Floating bar (shared base for bottom-bar and ctx-bar) ── */
+.drd-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.93);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+  pointer-events: all;
+}
+
+.dmn-editor.dark .drd-bar {
+  background: rgba(22, 22, 30, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Bottom-center palette */
+.drd-bottom-bar {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Contextual toolbar below selected node */
+.drd-ctx-bar {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+/* Bar icon buttons */
+.drd-bar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #374151;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+
+.drd-bar-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.drd-bar-btn.active {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.drd-bar-btn svg {
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.dmn-editor.dark .drd-bar-btn {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.dmn-editor.dark .drd-bar-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.dmn-editor.dark .drd-bar-btn.active {
+  background: rgba(139, 180, 250, 0.15);
+  color: #89b4fa;
+  border-color: rgba(139, 180, 250, 0.3);
+}
+
+.drd-bar-sep {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.dmn-editor.dark .drd-bar-sep {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Snap alignment guide lines */
+.drd-align-guide {
+  stroke: #4c8ef7;
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+  pointer-events: none;
 }
 
 /* ── DRD Node shapes ── */
