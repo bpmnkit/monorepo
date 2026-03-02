@@ -1,5 +1,77 @@
 # Progress
 
+## 2026-03-02 — AI chat backend selector + bug fixes
+
+### `canvas-plugin-ai-bridge` — backend selector
+
+- Added `<select>` dropdown (Auto / Claude / Copilot) to the AI panel header
+- Selection persisted in `localStorage` (`bpmn-sdk-ai-backend`); passed as `backend` field in POST body
+- Added `.ai-backend-select` CSS (dark + light theme)
+
+### `ai-server` — multi-backend detection
+
+- `/status` now detects **all** available adapters in parallel and returns `{ ready, backend, available: string[] }`
+- `/chat` accepts optional `backend` field in body; picks requested adapter, falls back to first available
+
+### Bug fixes
+
+- Fixed SSE error field mismatch: server sends `{ type: "error", message: "..." }` but client was reading `event.text` → now reads `event.message ?? event.text ?? "AI error"`
+- Fixed double "Error:" prefix in error display: `err instanceof Error ? err.message : String(err)` instead of `` `Error: ${String(err)}` ``
+
+## 2026-03-02 — AI integration
+
+### Compact BPMN format in `@bpmn-sdk/core`
+
+New token-efficient representation for AI contexts (5-10x smaller than raw XML):
+
+- **Created** `packages/bpmn-sdk/src/bpmn/compact.ts` — `compactify(defs): CompactDiagram` and `expand(compact): BpmnDefinitions`
+- `CompactDiagram` → `{ id, processes: [{ id, name?, elements, flows }] }`
+- `CompactElement` → `{ id, type, name?, jobType?, calledProcess?, formId?, decisionId?, eventType?, attachedTo? }`
+- `CompactFlow` → `{ id, from, to, name?, condition? }`
+- `expand()` auto-lays-out the process via `layoutProcess()` and builds a full `BpmnDefinitions` with DI
+- Exported from `@bpmn-sdk/core` main index
+
+### Layout + ELEMENT_SIZES exported from `@bpmn-sdk/core`
+
+- Added `layoutProcess`, `layoutFlowNodes`, `ELEMENT_SIZES`, and layout types (`Bounds`, `LayoutNode`, `LayoutEdge`, `LayoutResult`, `Waypoint`) to main `packages/bpmn-sdk/src/index.ts`
+
+### `StorageApi.getCurrentContext()`
+
+- **Modified** `canvas-plugins/storage/src/storage-api.ts` — new `getCurrentContext(): { projectId: string; fileId: string } | null` public method
+
+### New `apps/ai-server`
+
+Local HTTP server bridging the editor to CLI-based AI tools:
+
+- **Created** `apps/ai-server/` — private Node.js ESM package
+- `GET /status` → `{ ready: boolean, backend: "claude" | "copilot" | null }`
+- `POST /chat` → SSE stream: `{"type":"token","text":"..."}` events → `{"type":"done"}`
+- Claude adapter: spawns `claude -p "..." --output-format stream-json`, parses streaming JSON events
+- Copilot adapter: spawns `gh copilot explain` (best-effort fallback)
+- Auto-detects available CLI at request time
+- `pnpm ai-server` root script to start it (port 3033 or `AI_SERVER_PORT` env var)
+- Added `@types/node: ^22.0.0` to root devDependencies
+
+### New `@bpmn-sdk/canvas-plugin-ai-bridge`
+
+Canvas plugin providing AI chat panel in the editor:
+
+- **Created** `canvas-plugins/ai-bridge/` — `createAiBridgePlugin(options)` returns `{ name, install(), button }`
+- AI panel fixed to right side, toggles open/closed via HUD button
+- Chat UI: message history, streaming tokens, code block rendering
+- Extracts `CompactDiagram` from AI responses (```json block) → "Apply to diagram" button
+- Apply: auto-saves checkpoint → `expand(compact)` → `Bpmn.export()` → `loadXml()`
+- IndexedDB checkpoint system (`bpmn-sdk-ai` database, max 50 per project+file)
+- History modal: lists checkpoints with timestamps, restore-on-click
+- Server status indicator (shows startup instructions when server not running)
+- Dark/light theme via `[data-bpmn-hud-theme]`
+
+### Wired in landing app
+
+- **Modified** `packages/editor/src/hud.ts` — added `aiButton?: HTMLButtonElement | null` to `HudOptions`
+- **Modified** `apps/landing/src/editor.ts` — imports `createAiBridgePlugin`, creates plugin, passes `aiButton` to `initEditorHud`
+- **Modified** `apps/landing/package.json` — added `@bpmn-sdk/canvas-plugin-ai-bridge: workspace:*`
+
 ## 2026-03-02 — Three-part editor refactor
 
 ### Task 1 — Optimize dialog extracted to `@bpmn-sdk/canvas-plugin-optimize`

@@ -1,5 +1,15 @@
 # Features
 
+## AI integration (2026-03-02) — `apps/ai-server` + `@bpmn-sdk/canvas-plugin-ai-bridge`
+
+Local AI assistant for BPMN diagram creation and modification:
+
+- **AI panel** in the editor (right-side slide-in) with streaming chat interface
+- **Auto-apply**: AI responses containing a `CompactDiagram` JSON block get an "Apply to diagram" button; applies via `expand()` + auto-layout
+- **Checkpoints**: IndexedDB stores up to 50 checkpoints per project/file; "History" button shows list with restore
+- **Local server** (`pnpm ai-server`, port 3033): bridges browser to CLI-based AI — Claude CLI (`--output-format stream-json`) and GitHub Copilot CLI
+- **Compact format** (`compactify`/`expand`): 5-10x token reduction vs raw XML; exported from `@bpmn-sdk/core`
+
 ## Reference navigation in element toolbar (2026-03-02) — `@bpmn-sdk/editor` HUD
 
 When a BPMN element with a linked reference is selected, the cfg toolbar shows navigation buttons:

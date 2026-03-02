@@ -1,3 +1,4 @@
+import { createAiBridgePlugin } from "@bpmn-sdk/canvas-plugin-ai-bridge";
 import { createCommandPalettePlugin } from "@bpmn-sdk/canvas-plugin-command-palette";
 import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/canvas-plugin-command-palette-editor";
 import { createConfigPanelPlugin } from "@bpmn-sdk/canvas-plugin-config-panel";
@@ -160,6 +161,14 @@ const optimizePlugin = createOptimizePlugin({
 	openTab: (xml, name) => bridge.tabsPlugin.api.openTab({ type: "bpmn", xml, name }),
 });
 
+const aiBridgePlugin = createAiBridgePlugin({
+	getDefinitions: () => editorRef?.getDefinitions() ?? null,
+	loadXml: (xml) => {
+		editorRef?.load(xml);
+	},
+	getCurrentContext: () => bridge.storagePlugin.api.getCurrentContext(),
+});
+
 palette.addCommands([
 	{
 		id: "feel-playground",
@@ -208,4 +217,5 @@ initEditorHud(editor, {
 	getAvailableForms: () => bridge.tabsPlugin.api.getAvailableForms(),
 	rawModeButton: bridge.tabsPlugin.api.rawModeButton,
 	optimizeButton: optimizePlugin.button,
+	aiButton: aiBridgePlugin.button,
 });

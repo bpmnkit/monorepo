@@ -17,6 +17,9 @@ importers:
       '@changesets/cli':
         specifier: ^2.29.8
         version: 2.29.8(@types/node@22.19.11)
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.11
       happy-dom:
         specifier: ^20.7.0
         version: 20.7.0
@@ -32,6 +35,8 @@ importers:
       vitest:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.11)(happy-dom@20.7.0)(tsx@4.21.0)
+
+  apps/ai-server: {}
 
   apps/examples:
     dependencies:
@@ -51,6 +56,9 @@ importers:
       '@bpmn-sdk/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
+      '@bpmn-sdk/canvas-plugin-ai-bridge':
+        specifier: workspace:*
+        version: link:../../canvas-plugins/ai-bridge
       '@bpmn-sdk/canvas-plugin-command-palette':
         specifier: workspace:*
         version: link:../../canvas-plugins/command-palette
@@ -90,6 +98,12 @@ importers:
       '@bpmn-sdk/editor':
         specifier: workspace:*
         version: link:../../packages/editor
+
+  canvas-plugins/ai-bridge:
+    dependencies:
+      '@bpmn-sdk/core':
+        specifier: workspace:*
+        version: link:../../packages/bpmn-sdk
 
   canvas-plugins/command-palette:
     dependencies:

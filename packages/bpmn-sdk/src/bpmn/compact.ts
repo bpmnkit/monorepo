@@ -1,0 +1,347 @@
+import { layoutProcess } from "../layout/index.js";
+import type { XmlElement } from "../types/xml-element.js";
+import type {
+	BpmnAssociation,
+	BpmnDefinitions,
+	BpmnDiEdge,
+	BpmnDiShape,
+	BpmnDiagram,
+	BpmnElementType,
+	BpmnEventDefinition,
+	BpmnFlowElement,
+	BpmnProcess,
+	BpmnSequenceFlow,
+	BpmnTextAnnotation,
+} from "./bpmn-model.js";
+
+// ── Types ───────────────────────────────────────────────────────────────────
+
+export interface CompactElement {
+	id: string;
+	type: BpmnElementType;
+	name?: string;
+	/** Zeebe job type (serviceTask: zeebe:taskDefinition.type) */
+	jobType?: string;
+	/** Called process ID (callActivity: zeebe:calledElement.processId) */
+	calledProcess?: string;
+	/** Linked form ID (userTask: zeebe:formDefinition.formId) */
+	formId?: string;
+	/** Linked decision ID (businessRuleTask: zeebe:calledDecision.decisionId) */
+	decisionId?: string;
+	/** Variable receiving decision result */
+	resultVariable?: string;
+	/** Event definition type (timer, error, message, signal, …) */
+	eventType?: string;
+	/** Boundary event: host element ID */
+	attachedTo?: string;
+	/** Boundary event: false = non-interrupting */
+	interrupting?: boolean;
+}
+
+export interface CompactFlow {
+	id: string;
+	from: string;
+	to: string;
+	name?: string;
+	/** FEEL condition expression */
+	condition?: string;
+}
+
+export interface CompactProcess {
+	id: string;
+	name?: string;
+	elements: CompactElement[];
+	flows: CompactFlow[];
+}
+
+export interface CompactDiagram {
+	id: string;
+	processes: CompactProcess[];
+}
+
+// ── Compactify ───────────────────────────────────────────────────────────────
+
+function findAttr(ext: XmlElement[], name: string, attr: string): string | undefined {
+	return ext.find((e) => e.name === name)?.attributes[attr];
+}
+
+function compactifyElement(el: BpmnFlowElement): CompactElement {
+	const ext = el.extensionElements;
+	const result: CompactElement = { id: el.id, type: el.type };
+	if (el.name) result.name = el.name;
+
+	const jobType = findAttr(ext, "zeebe:taskDefinition", "type");
+	if (jobType) result.jobType = jobType;
+
+	const calledProcess = findAttr(ext, "zeebe:calledElement", "processId");
+	if (calledProcess) result.calledProcess = calledProcess;
+
+	const formId = findAttr(ext, "zeebe:formDefinition", "formId");
+	if (formId) result.formId = formId;
+
+	const decisionId = findAttr(ext, "zeebe:calledDecision", "decisionId");
+	if (decisionId) {
+		result.decisionId = decisionId;
+		const rv = findAttr(ext, "zeebe:calledDecision", "resultVariable");
+		if (rv) result.resultVariable = rv;
+	}
+
+	if ("eventDefinitions" in el && el.eventDefinitions.length > 0) {
+		result.eventType = el.eventDefinitions[0]?.type;
+	}
+
+	if (el.type === "boundaryEvent") {
+		result.attachedTo = el.attachedToRef;
+		if (el.cancelActivity === false) result.interrupting = false;
+	}
+
+	return result;
+}
+
+export function compactify(defs: BpmnDefinitions): CompactDiagram {
+	return {
+		id: defs.id,
+		processes: defs.processes.map((process) => ({
+			id: process.id,
+			name: process.name,
+			elements: process.flowElements.map(compactifyElement),
+			flows: process.sequenceFlows.map((sf) => {
+				const f: CompactFlow = { id: sf.id, from: sf.sourceRef, to: sf.targetRef };
+				if (sf.name) f.name = sf.name;
+				if (sf.conditionExpression) f.condition = sf.conditionExpression.text;
+				return f;
+			}),
+		})),
+	};
+}
+
+// ── Expand ───────────────────────────────────────────────────────────────────
+
+function makeEventDef(eventType: string): BpmnEventDefinition | undefined {
+	switch (eventType) {
+		case "timer":
+			return { type: "timer" };
+		case "error":
+			return { type: "error" };
+		case "message":
+			return { type: "message" };
+		case "signal":
+			return { type: "signal" };
+		case "escalation":
+			return { type: "escalation" };
+		case "cancel":
+			return { type: "cancel" };
+		case "terminate":
+			return { type: "terminate" };
+		case "conditional":
+			return { type: "conditional" };
+		case "link":
+			return { type: "link" };
+		case "compensate":
+			return { type: "compensate" };
+		default:
+			return undefined;
+	}
+}
+
+function makeExtensions(el: CompactElement): XmlElement[] {
+	const ext: XmlElement[] = [];
+	if (el.jobType) {
+		ext.push({ name: "zeebe:taskDefinition", attributes: { type: el.jobType }, children: [] });
+	}
+	if (el.calledProcess) {
+		ext.push({
+			name: "zeebe:calledElement",
+			attributes: { processId: el.calledProcess },
+			children: [],
+		});
+	}
+	if (el.formId) {
+		ext.push({ name: "zeebe:formDefinition", attributes: { formId: el.formId }, children: [] });
+	}
+	if (el.decisionId) {
+		ext.push({
+			name: "zeebe:calledDecision",
+			attributes: {
+				decisionId: el.decisionId,
+				resultVariable: el.resultVariable ?? "result",
+			},
+			children: [],
+		});
+	}
+	return ext;
+}
+
+function buildFlowElement(
+	el: CompactElement,
+	incoming: string[],
+	outgoing: string[],
+): BpmnFlowElement {
+	const base = {
+		id: el.id,
+		name: el.name,
+		incoming,
+		outgoing,
+		extensionElements: makeExtensions(el),
+		unknownAttributes: {} as Record<string, string>,
+	};
+	const eventDef = el.eventType ? makeEventDef(el.eventType) : undefined;
+	const eventDefs: BpmnEventDefinition[] = eventDef ? [eventDef] : [];
+	const subContent = {
+		flowElements: [] as BpmnFlowElement[],
+		sequenceFlows: [] as BpmnSequenceFlow[],
+		textAnnotations: [] as BpmnTextAnnotation[],
+		associations: [] as BpmnAssociation[],
+	};
+
+	switch (el.type) {
+		case "startEvent":
+			return { ...base, type: "startEvent", eventDefinitions: eventDefs };
+		case "endEvent":
+			return { ...base, type: "endEvent", eventDefinitions: eventDefs };
+		case "intermediateCatchEvent":
+			return { ...base, type: "intermediateCatchEvent", eventDefinitions: eventDefs };
+		case "intermediateThrowEvent":
+			return { ...base, type: "intermediateThrowEvent", eventDefinitions: eventDefs };
+		case "boundaryEvent":
+			return {
+				...base,
+				type: "boundaryEvent",
+				attachedToRef: el.attachedTo ?? "",
+				cancelActivity: el.interrupting !== false,
+				eventDefinitions: eventDefs,
+			};
+		case "serviceTask":
+			return { ...base, type: "serviceTask" };
+		case "scriptTask":
+			return { ...base, type: "scriptTask" };
+		case "userTask":
+			return { ...base, type: "userTask" };
+		case "businessRuleTask":
+			return { ...base, type: "businessRuleTask" };
+		case "callActivity":
+			return { ...base, type: "callActivity" };
+		case "sendTask":
+			return { ...base, type: "sendTask" };
+		case "receiveTask":
+			return { ...base, type: "receiveTask" };
+		case "manualTask":
+			return { ...base, type: "manualTask" };
+		case "task":
+			return { ...base, type: "task" };
+		case "subProcess":
+			return { ...base, type: "subProcess", ...subContent };
+		case "adHocSubProcess":
+			return { ...base, type: "adHocSubProcess", ...subContent };
+		case "eventSubProcess":
+			return { ...base, type: "eventSubProcess", ...subContent };
+		case "transaction":
+			return { ...base, type: "transaction", ...subContent };
+		case "exclusiveGateway":
+			return { ...base, type: "exclusiveGateway" };
+		case "parallelGateway":
+			return { ...base, type: "parallelGateway" };
+		case "inclusiveGateway":
+			return { ...base, type: "inclusiveGateway" };
+		case "eventBasedGateway":
+			return { ...base, type: "eventBasedGateway" };
+		case "complexGateway":
+			return { ...base, type: "complexGateway" };
+	}
+}
+
+function buildDiagram(processId: string, process: BpmnProcess): BpmnDiagram {
+	const layout = layoutProcess(process);
+	const shapes: BpmnDiShape[] = layout.nodes.map((n) => ({
+		id: `${n.id}_di`,
+		bpmnElement: n.id,
+		isExpanded: n.isExpanded,
+		bounds: n.bounds,
+		label: n.labelBounds ? { bounds: n.labelBounds } : undefined,
+		unknownAttributes: {},
+	}));
+	const edges: BpmnDiEdge[] = layout.edges.map((e) => ({
+		id: `${e.id}_di`,
+		bpmnElement: e.id,
+		waypoints: e.waypoints,
+		unknownAttributes: {},
+	}));
+	return {
+		id: `BPMNDiagram_${processId}`,
+		plane: {
+			id: `BPMNPlane_${processId}`,
+			bpmnElement: processId,
+			shapes,
+			edges,
+		},
+	};
+}
+
+function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram: BpmnDiagram } {
+	const incoming = new Map<string, string[]>();
+	const outgoing = new Map<string, string[]>();
+	for (const f of compact.flows) {
+		const out = outgoing.get(f.from) ?? [];
+		out.push(f.id);
+		outgoing.set(f.from, out);
+		const inc = incoming.get(f.to) ?? [];
+		inc.push(f.id);
+		incoming.set(f.to, inc);
+	}
+
+	const flowElements: BpmnFlowElement[] = compact.elements.map((el) =>
+		buildFlowElement(el, incoming.get(el.id) ?? [], outgoing.get(el.id) ?? []),
+	);
+
+	const sequenceFlows: BpmnSequenceFlow[] = compact.flows.map((f) => ({
+		id: f.id,
+		name: f.name,
+		sourceRef: f.from,
+		targetRef: f.to,
+		conditionExpression: f.condition ? { text: f.condition, attributes: {} } : undefined,
+		extensionElements: [],
+		unknownAttributes: {},
+	}));
+
+	const process: BpmnProcess = {
+		id: compact.id,
+		name: compact.name,
+		isExecutable: true,
+		extensionElements: [],
+		flowElements,
+		sequenceFlows,
+		textAnnotations: [],
+		associations: [],
+		unknownAttributes: {},
+	};
+
+	return { process, diagram: buildDiagram(compact.id, process) };
+}
+
+export function expand(compact: CompactDiagram): BpmnDefinitions {
+	const processes: BpmnProcess[] = [];
+	const diagrams: BpmnDiagram[] = [];
+	for (const cp of compact.processes) {
+		const { process, diagram } = expandProcess(cp);
+		processes.push(process);
+		diagrams.push(diagram);
+	}
+	return {
+		id: compact.id,
+		targetNamespace: "http://bpmn.io/schema/bpmn",
+		namespaces: {
+			bpmn: "http://www.omg.org/spec/BPMN/20100524/MODEL",
+			bpmndi: "http://www.omg.org/spec/BPMN/20100524/DI",
+			dc: "http://www.omg.org/spec/DD/20100524/DC",
+			di: "http://www.omg.org/spec/DD/20100524/DI",
+			zeebe: "http://camunda.org/schema/zeebe/1.0",
+		},
+		unknownAttributes: {},
+		errors: [],
+		escalations: [],
+		messages: [],
+		collaborations: [],
+		processes,
+		diagrams,
+	};
+}

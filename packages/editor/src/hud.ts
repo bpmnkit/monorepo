@@ -95,6 +95,11 @@ export interface HudOptions {
 	 * When provided, it is styled as a HUD button and placed in the action bar.
 	 */
 	optimizeButton?: HTMLButtonElement | null;
+	/**
+	 * Optional AI assistant button (from `createAiBridgePlugin(...).button`).
+	 * When provided, it is styled as a HUD button and placed in the action bar.
+	 */
+	aiButton?: HTMLButtonElement | null;
 }
 
 export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): void {
@@ -131,6 +136,11 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 	if (options.optimizeButton) {
 		options.optimizeButton.className = "hud-btn";
 		hudTopCenter.append(hudSep(), options.optimizeButton);
+	}
+
+	if (options.aiButton) {
+		options.aiButton.className = "hud-btn";
+		hudTopCenter.append(hudSep(), options.aiButton);
 	}
 
 	// Mobile collapse toggle — top center (hidden on desktop via CSS)

@@ -307,6 +307,11 @@ export class StorageApi {
 		this._currentFileId = id;
 	}
 
+	getCurrentContext(): { projectId: string; fileId: string } | null {
+		if (this._currentProjectId === null || this._currentFileId === null) return null;
+		return { projectId: this._currentProjectId, fileId: this._currentFileId };
+	}
+
 	// ─── Auto-save ───────────────────────────────────────────────────────────────
 
 	scheduleSave(fileId: string, content: string): void {

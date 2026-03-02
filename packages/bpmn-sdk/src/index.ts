@@ -184,3 +184,13 @@ export type {
 	ApplyFixResult,
 	OptimizeOptions,
 } from "./bpmn/optimize/types.js";
+export { layoutProcess, layoutFlowNodes } from "./layout/index.js";
+export type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from "./layout/index.js";
+export { ELEMENT_SIZES } from "./layout/index.js";
+export { compactify, expand } from "./bpmn/compact.js";
+export type {
+	CompactDiagram,
+	CompactElement,
+	CompactFlow,
+	CompactProcess,
+} from "./bpmn/compact.js";

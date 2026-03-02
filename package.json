@@ -14,10 +14,12 @@
 		"changeset": "changeset",
 		"version-packages": "changeset version",
 		"release": "pnpm turbo build && changeset publish",
-		"update-connectors": "node scripts/update-connectors.mjs"
+		"update-connectors": "node scripts/update-connectors.mjs",
+		"ai-server": "pnpm --filter @bpmn-sdk/ai-server start"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@types/node": "^22.0.0",
 		"@changesets/changelog-github": "^0.5.2",
 		"@changesets/cli": "^2.29.8",
 		"happy-dom": "^20.7.0",
