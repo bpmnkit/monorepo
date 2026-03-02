@@ -10,6 +10,10 @@ export interface AiBridgePluginOptions {
 	loadXml(xml: string): void;
 	/** Returns the current storage context for checkpoint saving, if available. */
 	getCurrentContext?(): { projectId: string; fileId: string } | null;
+	/** Dock AI pane to mount into instead of document.body. */
+	container?: HTMLElement;
+	/** Called when the button is clicked in docked mode. */
+	onOpen?: () => void;
 }
 
 const AI_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M5.5 6.5C5.5 5.4 6.4 4.5 7.5 4.5h1C9.6 4.5 10.5 5.4 10.5 6.5S9.6 8.5 8.5 8.5H8V10"/><circle cx="8" cy="12" r="0.5" fill="currentColor" stroke="none"/></svg>`;
@@ -39,7 +43,12 @@ export function createAiBridgePlugin(options: AiBridgePluginOptions): {
 				loadXml: options.loadXml,
 				getCurrentContext: options.getCurrentContext,
 			});
-			document.body.append(panelInstance.panel);
+			if (options.container) {
+				panelInstance.panel.classList.add("ai-panel--docked");
+				options.container.append(panelInstance.panel);
+			} else {
+				document.body.append(panelInstance.panel);
+			}
 		}
 		return panelInstance;
 	}
@@ -50,7 +59,10 @@ export function createAiBridgePlugin(options: AiBridgePluginOptions): {
 
 	button.addEventListener("click", () => {
 		const p = getOrCreatePanel();
-		if (panelOpen) {
+		if (options.container) {
+			options.onOpen?.();
+			p.open();
+		} else if (panelOpen) {
 			p.close();
 			panelOpen = false;
 		} else {

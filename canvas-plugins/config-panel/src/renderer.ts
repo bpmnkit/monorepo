@@ -51,6 +51,9 @@ export class ConfigPanelRenderer {
 	private readonly _applyChange: (fn: (d: BpmnDefinitions) => BpmnDefinitions) => void;
 	private readonly _getSvgViewport: (() => SVGGElement | null) | null;
 	private readonly _getShapes: (() => RenderedShape[]) | null;
+	private readonly _container: HTMLElement | null;
+	private readonly _onPanelShow: (() => void) | null;
+	private readonly _onPanelHide: (() => void) | null;
 
 	private _panelEl: HTMLElement | null = null;
 	/** SVG group appended to the canvas viewport; holds all validation badges. */
@@ -89,21 +92,27 @@ export class ConfigPanelRenderer {
 		applyChange: (fn: (d: BpmnDefinitions) => BpmnDefinitions) => void,
 		getSvgViewport?: () => SVGGElement | null,
 		getShapes?: () => RenderedShape[],
+		opts?: { container?: HTMLElement; onPanelShow?: () => void; onPanelHide?: () => void },
 	) {
 		this._schemas = schemas;
 		this._getDefinitions = getDefinitions;
 		this._applyChange = applyChange;
 		this._getSvgViewport = getSvgViewport ?? null;
 		this._getShapes = getShapes ?? null;
+		this._container = opts?.container ?? null;
+		this._onPanelShow = opts?.onPanelShow ?? null;
+		this._onPanelHide = opts?.onPanelHide ?? null;
 
-		// Restore persisted panel width
-		try {
-			const saved = Number(localStorage.getItem(STORAGE_KEY_WIDTH));
-			if (Number.isFinite(saved) && saved >= 240 && saved <= 600) {
-				this._panelWidth = saved;
+		// Restore persisted panel width (only used in standalone mode)
+		if (!this._container) {
+			try {
+				const saved = Number(localStorage.getItem(STORAGE_KEY_WIDTH));
+				if (Number.isFinite(saved) && saved >= 240 && saved <= 600) {
+					this._panelWidth = saved;
+				}
+			} catch {
+				// localStorage unavailable (e.g. sandboxed iframe) — use default
 			}
-		} catch {
-			// localStorage unavailable (e.g. sandboxed iframe) — use default
 		}
 	}
 
@@ -249,6 +258,7 @@ export class ConfigPanelRenderer {
 		this._guideBarEl = null;
 		this._guideTextEl = null;
 		this._guideBtnEl = null;
+		this._onPanelHide?.();
 	}
 
 	/** Update all input values in-place without re-rendering (preserves focus). */
@@ -640,38 +650,42 @@ export class ConfigPanelRenderer {
 
 		const panel = document.createElement("div");
 		panel.className = "bpmn-cfg-full";
-		if (this._collapsed) {
+		if (this._container) {
+			panel.classList.add("bpmn-cfg-full--hosted");
+		} else if (this._collapsed) {
 			panel.classList.add("bpmn-cfg-full--collapsed");
 		} else {
 			panel.style.width = `${this._panelWidth}px`;
 		}
 
-		// Resize handle — dragging the left edge changes panel width
-		const resizeHandle = document.createElement("div");
-		resizeHandle.className = "bpmn-cfg-resize-handle";
-		resizeHandle.addEventListener("mousedown", (e) => {
-			if (this._collapsed) return;
-			e.preventDefault();
-			const startX = e.clientX;
-			const startWidth = this._panelWidth;
-			const onMove = (ev: MouseEvent) => {
-				const dx = startX - ev.clientX;
-				this._panelWidth = Math.max(240, Math.min(600, startWidth + dx));
-				panel.style.width = `${this._panelWidth}px`;
-				try {
-					localStorage.setItem(STORAGE_KEY_WIDTH, String(this._panelWidth));
-				} catch {
-					// ignore
-				}
-			};
-			const onUp = () => {
-				document.removeEventListener("mousemove", onMove);
-				document.removeEventListener("mouseup", onUp);
-			};
-			document.addEventListener("mousemove", onMove);
-			document.addEventListener("mouseup", onUp);
-		});
-		panel.appendChild(resizeHandle);
+		// Resize handle — only in standalone mode; dock provides its own resize
+		if (!this._container) {
+			const resizeHandle = document.createElement("div");
+			resizeHandle.className = "bpmn-cfg-resize-handle";
+			resizeHandle.addEventListener("mousedown", (e) => {
+				if (this._collapsed) return;
+				e.preventDefault();
+				const startX = e.clientX;
+				const startWidth = this._panelWidth;
+				const onMove = (ev: MouseEvent) => {
+					const dx = startX - ev.clientX;
+					this._panelWidth = Math.max(240, Math.min(600, startWidth + dx));
+					panel.style.width = `${this._panelWidth}px`;
+					try {
+						localStorage.setItem(STORAGE_KEY_WIDTH, String(this._panelWidth));
+					} catch {
+						// ignore
+					}
+				};
+				const onUp = () => {
+					document.removeEventListener("mousemove", onMove);
+					document.removeEventListener("mouseup", onUp);
+				};
+				document.addEventListener("mousemove", onMove);
+				document.addEventListener("mouseup", onUp);
+			});
+			panel.appendChild(resizeHandle);
+		}
 
 		// Header
 		const header = document.createElement("div");
@@ -712,21 +726,25 @@ export class ConfigPanelRenderer {
 			header.appendChild(docsLink);
 		}
 
-		const collapseBtn = document.createElement("button");
-		collapseBtn.className = "bpmn-cfg-collapse-btn";
-		collapseBtn.setAttribute("title", this._collapsed ? "Expand" : "Collapse");
-		collapseBtn.textContent = this._collapsed ? "›" : "‹";
-		collapseBtn.addEventListener("click", () => {
-			this._collapsed = !this._collapsed;
-			panel.classList.toggle("bpmn-cfg-full--collapsed", this._collapsed);
-			if (this._collapsed) {
-				panel.style.width = "";
-			} else {
-				panel.style.width = `${this._panelWidth}px`;
-			}
-			collapseBtn.textContent = this._collapsed ? "›" : "‹";
+		// Collapse button — only in standalone mode; dock provides its own collapse
+		if (!this._container) {
+			const collapseBtn = document.createElement("button");
+			collapseBtn.className = "bpmn-cfg-collapse-btn";
 			collapseBtn.setAttribute("title", this._collapsed ? "Expand" : "Collapse");
-		});
+			collapseBtn.textContent = this._collapsed ? "›" : "‹";
+			collapseBtn.addEventListener("click", () => {
+				this._collapsed = !this._collapsed;
+				panel.classList.toggle("bpmn-cfg-full--collapsed", this._collapsed);
+				if (this._collapsed) {
+					panel.style.width = "";
+				} else {
+					panel.style.width = `${this._panelWidth}px`;
+				}
+				collapseBtn.textContent = this._collapsed ? "›" : "‹";
+				collapseBtn.setAttribute("title", this._collapsed ? "Expand" : "Collapse");
+			});
+			header.appendChild(collapseBtn);
+		}
 
 		const closeBtn = document.createElement("button");
 		closeBtn.className = "bpmn-cfg-full-close";
@@ -734,7 +752,6 @@ export class ConfigPanelRenderer {
 		closeBtn.textContent = "×";
 		closeBtn.addEventListener("click", () => this._close());
 
-		header.appendChild(collapseBtn);
 		header.appendChild(closeBtn);
 
 		// Search bar
@@ -915,8 +932,9 @@ export class ConfigPanelRenderer {
 		panel.appendChild(tabsArea);
 		panel.appendChild(body);
 		panel.appendChild(searchResults);
-		document.body.appendChild(panel);
+		(this._container ?? document.body).appendChild(panel);
 		this._panelEl = panel;
+		this._onPanelShow?.();
 
 		// Defer layout-dependent checks until the panel is in the DOM
 		requestAnimationFrame(() => {

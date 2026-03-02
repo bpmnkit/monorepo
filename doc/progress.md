@@ -1,5 +1,56 @@
 # Progress
 
+## 2026-03-02 — Side dock refinements
+
+### `packages/editor` — dock moved + redesigned
+
+- Moved `dock.ts` from `apps/landing/src/` to `packages/editor/src/`; exported `createSideDock` + `SideDock` from `@bpmn-sdk/editor`
+- **Collapse handle redesign**: replaced tab-strip button with a 20×52px pill handle anchored at `left: -20px; top: 50%` on the dock's left edge — always visible and accessible
+- **Collapse fix**: set `el.style.width` directly in `collapse()`/`expand()` to override inline style; `--collapsed` CSS class now only hides tab-strip + panes
+- **Resize fix**: disable `transition: width` on mousedown, restore on mouseup — instantaneous drag feedback
+- **Watermark fix**: set `--bpmn-dock-width` CSS variable on `document.body`; dock CSS overrides `.bpmn-watermark { right: calc(var(--bpmn-dock-width) + 8px) }` so watermark always stays left of dock
+- **Empty state info**: Properties pane shows File and Process name rows when no element is selected; `dock.setDiagramInfo(processName, fileName)` updates them; `dock.showPanel()`/`hidePanel()` replace direct `propertiesEmptyState` manipulation
+- `SideDock` API: removed `propertiesEmptyState`; added `showPanel()`, `hidePanel()`, `setDiagramInfo()`
+
+### `apps/landing/src/editor.ts`
+
+- Import `createSideDock` from `@bpmn-sdk/editor` (no longer local file)
+- Use `dock.showPanel()`/`dock.hidePanel()` in config panel callbacks
+- Track `currentFileName` from `onTabActivate`; update `dock.setDiagramInfo()` on tab change and `diagram:change`
+
+## 2026-03-02 — Unified right sidebar dock
+
+### `apps/landing` — `dock.ts` new module
+
+- Added `createSideDock()` factory returning a `SideDock` with Properties and AI tabs
+- Width-based collapse (38px strip when collapsed; full width when expanded) with smooth `transition: width 0.22s ease`
+- Resize handle on left edge: drag to resize 280–700px; persists to `localStorage` (`bpmn-side-dock-width`)
+- Collapsed state persisted to `localStorage` (`bpmn-side-dock-collapsed`); restored on page load
+- Collapse button stays visible in the 38px strip so the dock can always be re-expanded manually
+- Dark default + `[data-bpmn-hud-theme="light"]` overrides
+
+### `@bpmn-sdk/canvas-plugin-config-panel` — hosted mode
+
+- `ConfigPanelOptions` gains `container?`, `onPanelShow?`, `onPanelHide?` optional fields
+- `ConfigPanelRenderer` constructor gains `opts?` bag for the three new fields
+- In hosted mode (`container` set): adds `bpmn-cfg-full--hosted` class, skips standalone resize handle and collapse button, appends to `container` instead of `document.body`
+- `onPanelShow` called after panel is appended; `onPanelHide` called after panel is removed
+- CSS: `.bpmn-cfg-full--hosted` overrides `position: static`, suppresses standalone controls
+
+### `@bpmn-sdk/canvas-plugin-ai-bridge` — docked mode
+
+- `AiBridgePluginOptions` gains `container?` and `onOpen?` optional fields
+- In docked mode: panel gets `ai-panel--docked` class, appended to `container`; button click calls `onOpen?.()` then `p.open()` (no toggle)
+- CSS: `.ai-panel--docked` overrides `position: static` + `transform: none`, always `display: flex`; hides standalone close button
+
+### `apps/landing/src/editor.ts`
+
+- Imports and creates `SideDock`; appends to `document.body`
+- `configPanel` wired with `container: dock.propertiesPane` + `onPanelShow` / `onPanelHide` callbacks
+- `aiBridgePlugin` wired with `container: dock.aiPane` + `onOpen` callback
+- Element selected → dock expands, Properties tab active, empty state hidden
+- AI button clicked → dock expands, AI tab active
+
 ## 2026-03-02 — AI chat backend selector + bug fixes
 
 ### `canvas-plugin-ai-bridge` — backend selector

@@ -1,5 +1,17 @@
 # Features
 
+## Unified right sidebar dock (2026-03-02) — `apps/landing` + plugins
+
+VS Code / Figma style dock that unifies the Properties config panel and the AI chat panel:
+
+- **Single right dock** with Properties and AI tabs; no overlap, no z-index fighting
+- **Properties tab**: shows config panel for selected element; "Select an element…" empty state when nothing selected
+- **AI tab**: shows full AI chat panel (SSE streaming, Apply button, checkpoint history)
+- **Collapse/expand**: width-based collapse (38px strip) — button always accessible; state persisted to `localStorage`
+- **Resize**: left-edge drag; width 280–700px, persisted to `localStorage`
+- **Auto-expand**: selecting an element expands dock to Properties tab; clicking AI button expands to AI tab
+- **Backward compatible**: both plugins work without `container` (standalone/body mode unchanged)
+
 ## AI integration (2026-03-02) — `apps/ai-server` + `@bpmn-sdk/canvas-plugin-ai-bridge`
 
 Local AI assistant for BPMN diagram creation and modification:

@@ -97,4 +97,10 @@ export interface ConfigPanelPlugin extends CanvasPlugin {
 export interface ConfigPanelOptions {
 	getDefinitions: () => BpmnDefinitions | null;
 	applyChange: (fn: (defs: BpmnDefinitions) => BpmnDefinitions) => void;
+	/** Render into this element instead of document.body. */
+	container?: HTMLElement;
+	/** Called when an element is selected and the panel appears. */
+	onPanelShow?: () => void;
+	/** Called when the panel is hidden (element deselected). */
+	onPanelHide?: () => void;
 }

@@ -42,6 +42,18 @@ export const CONFIG_PANEL_CSS = `
   padding: 14px 0;
 }
 
+/* Hosted mode — renders inside a dock pane instead of as a fixed overlay */
+.bpmn-cfg-full--hosted {
+  position: static !important;
+  width: auto !important;
+  top: auto; right: auto; bottom: auto;
+  box-shadow: none; border-left: none; backdrop-filter: none;
+  flex: 1; min-height: 0;
+}
+/* suppress controls that the dock replaces */
+.bpmn-cfg-full--hosted .bpmn-cfg-resize-handle,
+.bpmn-cfg-full--hosted .bpmn-cfg-collapse-btn { display: none; }
+
 /* Resize handle — a thin grab zone along the left edge */
 .bpmn-cfg-resize-handle {
   position: absolute;

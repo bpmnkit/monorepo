@@ -147,6 +147,20 @@ export function injectAiBridgeStyles(): void {
 .ai-hist-empty {
   padding: 24px; text-align: center; color: rgba(255,255,255,0.35); font-size: 12px;
 }
+/* Docked mode — renders inside a dock pane instead of as a fixed overlay */
+.ai-panel--docked {
+  position: static !important;
+  transform: none !important;
+  width: auto !important;
+  right: auto; top: auto; bottom: auto;
+  flex: 1; min-height: 0;
+  box-shadow: none; border-left: none;
+}
+/* always visible — tab strip controls which pane shows */
+.ai-panel--docked, .ai-panel--docked.ai-panel-open { display: flex; }
+/* hide the standalone close button; dock tab strip fills that role */
+.ai-panel--docked .ai-hdr-btn[title="Close"] { display: none; }
+
 /* Light theme */
 [data-bpmn-hud-theme="light"] .ai-panel {
   background: rgba(252,252,254,0.98);

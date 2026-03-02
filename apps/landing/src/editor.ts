@@ -12,7 +12,7 @@ import {
 import { createWatermarkPlugin } from "@bpmn-sdk/canvas-plugin-watermark";
 import { createZoomControlsPlugin } from "@bpmn-sdk/canvas-plugin-zoom-controls";
 import { Bpmn, Dmn } from "@bpmn-sdk/core";
-import { BpmnEditor, initEditorHud } from "@bpmn-sdk/editor";
+import { BpmnEditor, createSideDock, initEditorHud } from "@bpmn-sdk/editor";
 import type { Tool } from "@bpmn-sdk/editor";
 import { makeExamples } from "./examples.js";
 
@@ -36,6 +36,7 @@ if (!editorContainer) throw new Error("missing #editor-container");
 const resolver = new InMemoryFileResolver();
 
 let editorRef: BpmnEditor | null = null;
+let currentFileName: string | null = null;
 
 const BPMN_ONLY_HUD = ["hud-top-center", "hud-bottom-left", "hud-bottom-center"];
 
@@ -46,6 +47,11 @@ function setHudVisible(visible: boolean): void {
 	const menuPanel = document.querySelector<HTMLElement>(".bpmn-main-menu-panel");
 	if (menuPanel) menuPanel.style.display = visible ? "" : "none";
 }
+
+// ── Side dock ─────────────────────────────────────────────────────────────────
+
+const dock = createSideDock();
+document.body.appendChild(dock.el);
 
 // ── Main menu ─────────────────────────────────────────────────────────────────
 
@@ -119,6 +125,15 @@ const configPanel = createConfigPanelPlugin({
 	applyChange: (fn) => {
 		editorRef?.applyChange(fn);
 	},
+	container: dock.propertiesPane,
+	onPanelShow: () => {
+		if (dock.collapsed) dock.expand();
+		dock.switchTab("properties");
+		dock.showPanel();
+	},
+	onPanelHide: () => {
+		dock.hidePanel();
+	},
 });
 
 // ── Storage + Tabs bridge ─────────────────────────────────────────────────────
@@ -144,6 +159,11 @@ const bridge = createStorageTabsBridge({
 		if (!isBpmn) {
 			editorRef?.setSelection([]);
 		}
+		currentFileName = isBpmn ? (config.name ?? null) : null;
+		dock.setDiagramInfo(
+			isBpmn ? (editorRef?.getDefinitions()?.processes[0]?.name ?? null) : null,
+			currentFileName,
+		);
 	},
 });
 
@@ -167,6 +187,11 @@ const aiBridgePlugin = createAiBridgePlugin({
 		editorRef?.load(xml);
 	},
 	getCurrentContext: () => bridge.storagePlugin.api.getCurrentContext(),
+	container: dock.aiPane,
+	onOpen: () => {
+		if (dock.collapsed) dock.expand();
+		dock.switchTab("ai");
+	},
 });
 
 palette.addCommands([
@@ -202,6 +227,13 @@ const editor = new BpmnEditor({
 	],
 });
 editorRef = editor;
+
+// Keep dock diagram info up-to-date on diagram changes
+type AnyOn = (event: string, handler: (...args: unknown[]) => void) => () => void;
+const editorOn = (editor as unknown as { on: AnyOn }).on.bind(editor);
+editorOn("diagram:change", () => {
+	dock.setDiagramInfo(editorRef?.getDefinitions()?.processes[0]?.name ?? null, currentFileName);
+});
 
 initEditorHud(editor, {
 	openProcess: (processId) => bridge.tabsPlugin.api.navigateToProcess(processId),

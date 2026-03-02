@@ -70,6 +70,11 @@ export function createConfigPanelPlugin(options: ConfigPanelOptions): ConfigPane
 				applyChange,
 				() => api.viewportEl,
 				() => api.getShapes(),
+				{
+					container: options.container,
+					onPanelShow: options.onPanelShow,
+					onPanelHide: options.onPanelHide,
+				},
 			);
 
 			// BpmnEditor routes EditorEvents through api.on at runtime.

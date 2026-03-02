@@ -20,3 +20,5 @@ export {
 export type { ElementGroup } from "./element-groups.js";
 export { initEditorHud } from "./hud.js";
 export type { HudOptions } from "./hud.js";
+export { createSideDock } from "./dock.js";
+export type { SideDock } from "./dock.js";
