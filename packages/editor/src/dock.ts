@@ -124,6 +124,8 @@ export interface SideDock {
 	showPanel(): void;
 	/** Restore the empty state when the config panel is dismissed. */
 	hidePanel(): void;
+	/** Show or hide the entire dock (e.g. hide on welcome screen, show on tab open). */
+	setVisible(visible: boolean): void;
 }
 
 export function createSideDock(): SideDock {
@@ -236,6 +238,10 @@ export function createSideDock(): SideDock {
 		setDocWidth(_width);
 	}
 
+	// Start hidden — the bridge shows it when the first tab is activated.
+	el.style.display = "none";
+	document.body.style.setProperty("--bpmn-dock-width", "0px");
+
 	// ── Tab switching ──
 	function switchTab(tab: "properties" | "ai"): void {
 		if (tab === "properties") {
@@ -292,6 +298,16 @@ export function createSideDock(): SideDock {
 		processValue.textContent = processName ?? "\u2014";
 	}
 
+	function setVisible(visible: boolean): void {
+		if (visible) {
+			el.style.display = "";
+			setDocWidth(_collapsed ? 0 : _width);
+		} else {
+			el.style.display = "none";
+			document.body.style.setProperty("--bpmn-dock-width", "0px");
+		}
+	}
+
 	// ── Event wiring ──
 	propertiesTab.addEventListener("click", () => switchTab("properties"));
 	aiTab.addEventListener("click", () => switchTab("ai"));
@@ -337,6 +353,7 @@ export function createSideDock(): SideDock {
 		showPanel,
 		hidePanel,
 		setDiagramInfo,
+		setVisible,
 		get collapsed() {
 			return _collapsed;
 		},

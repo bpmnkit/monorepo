@@ -75,6 +75,11 @@ export interface StorageTabsBridgeOptions {
 	onDownloadTab?: (config: TabConfig) => void;
 	/** When true, enables built-in file import (file picker + drag-and-drop). */
 	enableFileImport?: boolean;
+	/**
+	 * Side dock to manage automatically. When provided, the dock is hidden on the
+	 * welcome screen and shown whenever a tab is activated — no manual wiring needed.
+	 */
+	sideDock?: { setVisible(visible: boolean): void };
 }
 
 // ── Result ────────────────────────────────────────────────────────────────────
@@ -174,7 +179,10 @@ export function createStorageTabsBridge(
 				tabsPlugin.api.openTab({ type: "bpmn", xml: Bpmn.SAMPLE_XML, name: "New Diagram" });
 			}
 		},
-		onWelcomeShow: options.onWelcomeShow,
+		onWelcomeShow: () => {
+			options.sideDock?.setVisible(false);
+			options.onWelcomeShow?.();
+		},
 		enableFileImport: options.enableFileImport,
 		onTabActivate(id, config) {
 			// Update storage current-file pointer
@@ -188,6 +196,7 @@ export function createStorageTabsBridge(
 					void storageRef?.api.pushMruFile(projectId, fileId);
 				}
 			}
+			options.sideDock?.setVisible(true);
 			options.onTabActivate?.(id, config);
 		},
 		onTabChange(tabId) {

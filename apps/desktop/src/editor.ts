@@ -145,6 +145,7 @@ const bridge = createStorageTabsBridge({
 	initialTitle: "BPMN SDK",
 	palette,
 	enableFileImport: true,
+	sideDock: dock,
 	onWelcomeShow: () => setHudVisible(false),
 	onTabActivate(id, config) {
 		const isBpmn = config.type === "bpmn";
