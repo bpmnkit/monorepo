@@ -150,11 +150,12 @@ export function createMainMenuPlugin(
 		isOpen = false;
 	}
 
-	function renderLevel(dropdown: HTMLDivElement): void {
-		dropdown.textContent = "";
+	function buildLevelContent(dropdown: HTMLDivElement): HTMLDivElement {
+		const slot = document.createElement("div");
+		slot.className = "bpmn-menu-level";
 
 		const level = navStack[navStack.length - 1];
-		if (!level) return;
+		if (!level) return slot;
 
 		if (navStack.length > 1) {
 			const backRow = document.createElement("div");
@@ -166,25 +167,61 @@ export function createMainMenuPlugin(
 			backBtn.innerHTML = BACK_ICON;
 			backBtn.addEventListener("click", () => {
 				navStack.pop();
-				renderLevel(dropdown);
+				renderLevel(dropdown, "back");
 			});
 
 			const levelTitle = document.createElement("span");
 			levelTitle.className = "bpmn-menu-level-title";
 			levelTitle.textContent = level.title ?? "";
 
-			backRow.appendChild(backBtn);
-			backRow.appendChild(levelTitle);
-			dropdown.appendChild(backRow);
+			backRow.append(backBtn, levelTitle);
+			slot.appendChild(backRow);
 
 			const sep = document.createElement("div");
 			sep.className = "bpmn-menu-drop-sep";
-			dropdown.appendChild(sep);
+			slot.appendChild(sep);
 		}
 
 		for (const item of level.items) {
-			dropdown.appendChild(buildItemEl(item, dropdown));
+			slot.appendChild(buildItemEl(item, dropdown));
 		}
+
+		return slot;
+	}
+
+	function renderLevel(dropdown: HTMLDivElement, direction: "forward" | "back" | "initial"): void {
+		const newSlot = buildLevelContent(dropdown);
+
+		if (direction === "initial") {
+			dropdown.textContent = "";
+			dropdown.appendChild(newSlot);
+			return;
+		}
+
+		const oldSlot = dropdown.querySelector<HTMLElement>(".bpmn-menu-level");
+
+		// Freeze width so the dropdown doesn't shrink/grow during animation
+		dropdown.style.minWidth = `${dropdown.offsetWidth}px`;
+
+		// Exit: absolutely positioned so it doesn't affect layout
+		if (oldSlot) {
+			oldSlot.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:0;";
+			oldSlot.classList.add(
+				direction === "forward" ? "bpmn-menu-level--out-left" : "bpmn-menu-level--out-right",
+			);
+		}
+
+		// Enter: on top, drives height
+		newSlot.classList.add(
+			direction === "forward" ? "bpmn-menu-level--in-right" : "bpmn-menu-level--in-left",
+		);
+		dropdown.appendChild(newSlot);
+
+		setTimeout(() => {
+			oldSlot?.remove();
+			newSlot.classList.remove("bpmn-menu-level--in-right", "bpmn-menu-level--in-left");
+			dropdown.style.minWidth = "";
+		}, 200);
 	}
 
 	function buildItemEl(item: MenuItem, dropdown: HTMLDivElement): HTMLElement {
@@ -245,7 +282,7 @@ export function createMainMenuPlugin(
 			const drillItems = item.items;
 			btn.addEventListener("click", () => {
 				navStack.push({ title: item.label, items: resolveItems(drillItems) });
-				renderLevel(dropdown);
+				renderLevel(dropdown, "forward");
 			});
 			return btn;
 		}
@@ -333,7 +370,7 @@ export function createMainMenuPlugin(
 					closeDropdown();
 				} else {
 					navStack = [{ items: buildRootItems() }];
-					renderLevel(dropdown);
+					renderLevel(dropdown, "initial");
 					const rect = menuBtn.getBoundingClientRect();
 					dropdown.style.top = `${rect.bottom + 6}px`;
 					dropdown.style.right = `${window.innerWidth - rect.right}px`;

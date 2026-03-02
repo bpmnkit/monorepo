@@ -67,16 +67,43 @@ export const MAIN_MENU_CSS = `
   position: fixed;
   display: none;
   flex-direction: column;
-  gap: 1px;
-  padding: 4px;
   background: var(--bpmn-overlay-bg, rgba(248, 249, 250, 0.96));
   border: 1px solid var(--bpmn-overlay-border, rgba(0, 0, 0, 0.12));
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   min-width: 220px;
+  overflow: hidden;
 }
 .bpmn-menu-dropdown.open { display: flex; }
+.bpmn-menu-level {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  position: relative;
+  z-index: 1;
+}
+@keyframes bpmn-menu-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes bpmn-menu-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes bpmn-menu-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-20px); }
+}
+@keyframes bpmn-menu-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
+}
+.bpmn-menu-level--in-right  { animation: bpmn-menu-in-right  180ms ease-out forwards; }
+.bpmn-menu-level--in-left   { animation: bpmn-menu-in-left   180ms ease-out forwards; }
+.bpmn-menu-level--out-left  { animation: bpmn-menu-out-left  150ms ease-in  forwards; }
+.bpmn-menu-level--out-right { animation: bpmn-menu-out-right 150ms ease-in  forwards; }
 .bpmn-menu-drop-label {
   padding: 3px 8px 1px;
   font-size: 10px;

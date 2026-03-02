@@ -102,8 +102,11 @@ describe("createMainMenuPlugin", () => {
 		);
 		if (!themeBtn) throw new Error("Theme drill button not found");
 		themeBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-		// After drilling: three theme action items
-		const items = document.querySelectorAll(".bpmn-menu-item");
+		// After drilling: three theme action items (query the active level — during animation
+		// the exiting level may still be in the DOM as a sibling)
+		const activeLevel = document.querySelector(".bpmn-menu-dropdown .bpmn-menu-level:last-child");
+		if (!activeLevel) throw new Error("active level not found");
+		const items = activeLevel.querySelectorAll(".bpmn-menu-item");
 		expect(items.length).toBe(3);
 	});
 
