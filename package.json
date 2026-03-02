@@ -15,13 +15,17 @@
 		"version-packages": "changeset version",
 		"release": "pnpm turbo build && changeset publish",
 		"update-connectors": "node scripts/update-connectors.mjs",
-		"ai-server": "pnpm --filter @bpmn-sdk/ai-server start"
+		"ai-server": "pnpm --filter @bpmn-sdk/ai-server start",
+		"desktop:dev": "pnpm --filter @bpmn-sdk/desktop tauri:dev",
+		"desktop:build": "pnpm --filter @bpmn-sdk/desktop tauri:build"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@tauri-apps/cli": "^2",
 		"@types/node": "^22.0.0",
 		"@changesets/changelog-github": "^0.5.2",
 		"@changesets/cli": "^2.29.8",
+		"esbuild": "^0.25.0",
 		"happy-dom": "^20.7.0",
 		"turbo": "^2.4.4",
 		"typescript": "^5.7.3",

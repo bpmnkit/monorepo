@@ -21,6 +21,6 @@
 		}
 	},
 	"files": {
-		"ignore": ["node_modules", "dist", ".turbo", ".swarm", "**/templates/generated.ts"]
+		"ignore": ["node_modules", "dist", ".turbo", ".swarm", "**/templates/generated.ts", "**/src-tauri/**"]
 	}
 }

@@ -1,0 +1,30 @@
+{
+	"name": "@bpmn-sdk/desktop",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite --port 1420 --strictPort",
+		"build": "vite build",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"tauri:dev": "pnpm --filter @bpmn-sdk/ai-server run bundle && tauri dev",
+		"tauri:build": "pnpm --filter @bpmn-sdk/ai-server run bundle && tauri build"
+	},
+	"dependencies": {
+		"@bpmn-sdk/canvas": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-ai-bridge": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-command-palette": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-command-palette-editor": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-config-panel": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-config-panel-bpmn": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-main-menu": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-optimize": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-storage-tabs-bridge": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-tabs": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-watermark": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-zoom-controls": "workspace:*",
+		"@bpmn-sdk/core": "workspace:*",
+		"@bpmn-sdk/editor": "workspace:*"
+	}
+}

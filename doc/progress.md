@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-03-02 — Tauri desktop app
+
+### `apps/desktop` — new Tauri v2 desktop application
+
+- New `@bpmn-sdk/desktop` package: Vite frontend (same editor as landing) wrapped in a Tauri v2 native window
+- **Tauri Rust backend** (`src-tauri/`): minimal setup — no plugins, just `std::process::Command` to spawn the AI server
+- **AI server auto-start**: on launch, spawns `node ai-server.cjs` from the bundled resource directory; silently skipped if Node.js is unavailable or resource not present (dev mode)
+- **Minimal binary**: `opt-level = "s"`, `lto = true`, `panic = "abort"`, `strip = true` — target ~3–5 MB installer vs 85+ MB for Electron
+- **Vite config**: `port: 1420`, `clearScreen: false`, `src-tauri/**` excluded from watch
+- **Icon generation**: `scripts/gen-icons.mjs` generates placeholder 32×128×256px PNGs using pure Node.js built-ins (`zlib.deflateSync`); replace with `pnpm tauri icon icon.png` for production
+- **AI server bundling** (`@bpmn-sdk/ai-server`): new `bundle` script using `esbuild` produces `dist/bundle.cjs` — single-file CJS bundle with only Node.js built-in dependencies
+- **Root scripts**: `desktop:dev` and `desktop:build` shortcuts; `@tauri-apps/cli` and `esbuild` added to root devDeps
+- Tauri `src-tauri/` excluded from Biome linting via `biome.json`
+
+### Run commands
+
+- `pnpm desktop:dev` — open editor in a native window with hot-reload
+- `pnpm desktop:build` — bundle ai-server + compile Rust + produce installer
+
 ## 2026-03-02 — Side dock refinements
 
 ### `packages/editor` — dock moved + redesigned

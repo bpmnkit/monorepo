@@ -1,5 +1,16 @@
 # Features
 
+## Tauri desktop app (2026-03-02) — `apps/desktop`
+
+Native desktop application wrapping the BPMN SDK editor using Tauri v2:
+
+- **Identical editor** to the browser version — same plugins, sidebar dock, AI integration
+- **AI server auto-start** — on launch, spawns the bundled Node.js AI server automatically; no manual `pnpm ai-server` required
+- **Small binary** — ~3–5 MB installer (vs 85+ MB Electron) via minimal Tauri features + release profile optimizations (`lto`, `opt-level = "s"`, `strip`)
+- **Hot-reload dev** — `pnpm desktop:dev` opens a native window with Vite HMR
+- **Cross-platform** — targets Linux/macOS/Windows via native OS WebView (WebKitGTK / WKWebView / Edge WebView2)
+- **Placeholder icons** generated via `scripts/gen-icons.mjs`; replace with `pnpm tauri icon icon.png`
+
 ## Unified right sidebar dock (2026-03-02) — `apps/landing` + plugins
 
 VS Code / Figma style dock that unifies the Properties config panel and the AI chat panel:
