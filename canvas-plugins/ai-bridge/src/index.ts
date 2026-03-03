@@ -1,7 +1,5 @@
 import type { BpmnDefinitions } from "@bpmn-sdk/core";
 import { DEFAULT_SERVER, createAiPanel } from "./panel.js";
-export { createHistoryPanel } from "./history-panel.js";
-export type { HistoryPanelOptions } from "./history-panel.js";
 
 export interface AiBridgePluginOptions {
 	/** URL of the local AI server. Defaults to http://localhost:3033 */

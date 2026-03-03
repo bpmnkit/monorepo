@@ -1,8 +1,9 @@
-import { createAiBridgePlugin, createHistoryPanel } from "@bpmn-sdk/canvas-plugin-ai-bridge";
+import { createAiBridgePlugin } from "@bpmn-sdk/canvas-plugin-ai-bridge";
 import { createCommandPalettePlugin } from "@bpmn-sdk/canvas-plugin-command-palette";
 import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/canvas-plugin-command-palette-editor";
 import { createConfigPanelPlugin } from "@bpmn-sdk/canvas-plugin-config-panel";
 import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/canvas-plugin-config-panel-bpmn";
+import { createHistoryPanel, saveCheckpoint } from "@bpmn-sdk/canvas-plugin-history";
 import { createMainMenuPlugin } from "@bpmn-sdk/canvas-plugin-main-menu";
 import { createOptimizePlugin } from "@bpmn-sdk/canvas-plugin-optimize";
 import {
@@ -168,8 +169,12 @@ const bridge = createStorageTabsBridge({
 			isBpmn ? (editorRef?.getDefinitions()?.processes[0]?.name ?? null) : null,
 			currentFileName,
 		);
-		const hasStorageCtx = isBpmn && bridge.storagePlugin.api.getCurrentContext() !== null;
-		dock.setHistoryTabEnabled(hasStorageCtx);
+		// Defer: the bridge sets the storage file ID synchronously after openTab() returns,
+		// which is after this callback fires. A microtask runs after all sync code settles.
+		void Promise.resolve().then(() => {
+			const hasStorageCtx = isBpmn && bridge.storagePlugin.api.getCurrentContext() !== null;
+			dock.setHistoryTabEnabled(hasStorageCtx);
+		});
 	},
 });
 
@@ -252,11 +257,25 @@ const editor = new BpmnEditor({
 });
 editorRef = editor;
 
-// Keep dock diagram info up-to-date on diagram changes
+// Keep dock diagram info up-to-date on diagram changes; save checkpoints on auto-save cadence
 type AnyOn = (event: string, handler: (...args: unknown[]) => void) => () => void;
 const editorOn = (editor as unknown as { on: AnyOn }).on.bind(editor);
+
+let _checkpointTimer: ReturnType<typeof setTimeout> | null = null;
 editorOn("diagram:change", () => {
 	dock.setDiagramInfo(editorRef?.getDefinitions()?.processes[0]?.name ?? null, currentFileName);
+
+	// Save a checkpoint ~600 ms after the last change (auto-save runs at 500 ms).
+	// Only for files that are persisted in storage (context must be available).
+	if (_checkpointTimer !== null) clearTimeout(_checkpointTimer);
+	_checkpointTimer = setTimeout(() => {
+		_checkpointTimer = null;
+		const ctx = bridge.storagePlugin.api.getCurrentContext();
+		if (!ctx) return;
+		const defs = editorRef?.getDefinitions();
+		if (!defs) return;
+		void saveCheckpoint(ctx.projectId, ctx.fileId, Bpmn.export(defs));
+	}, 600);
 });
 
 initEditorHud(editor, {

@@ -1,6 +1,6 @@
 # Features
 
-## History tab in sidebar dock (2026-03-03) — `canvas-plugins/ai-bridge`, `packages/editor`
+## History tab in sidebar dock (2026-03-03) — `canvas-plugins/history`, `packages/editor`
 
 A dedicated "History" tab sits between Properties and AI in the right sidebar. It shows a chronological list of AI checkpoints for the currently open file with one-click restore (confirm dialog). The tab is disabled for in-memory files that have no storage context.
 

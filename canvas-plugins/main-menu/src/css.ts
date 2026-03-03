@@ -15,7 +15,7 @@ export const MAIN_MENU_CSS = `
   border-left: 1px solid #d0d0d0;
   border-radius: 0;
   box-shadow: none;
-  z-index: 110;
+  z-index: 10000;
 }
 [data-theme="dark"] .bpmn-main-menu-panel {
   background: #181825;
@@ -71,7 +71,7 @@ export const MAIN_MENU_CSS = `
   border: 1px solid var(--bpmn-overlay-border, rgba(0, 0, 0, 0.12));
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: 10001;
   min-width: 220px;
   overflow: hidden;
 }

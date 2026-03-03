@@ -1,7 +1,6 @@
+import { saveCheckpoint } from "@bpmn-sdk/canvas-plugin-history";
 import { Bpmn, compactify } from "@bpmn-sdk/core";
 import type { BpmnDefinitions } from "@bpmn-sdk/core";
-import type { Checkpoint } from "./checkpoint.js";
-import { listCheckpoints, saveCheckpoint } from "./checkpoint.js";
 import { injectAiBridgeStyles } from "./css.js";
 
 const DEFAULT_SERVER = "http://localhost:3033";
@@ -76,69 +75,6 @@ async function* streamChat(
 	}
 }
 
-// ── History modal ─────────────────────────────────────────────────────────────
-
-function showHistoryModal(
-	checkpoints: Checkpoint[],
-	onRestore: (xml: string) => void,
-	noContext: boolean,
-): void {
-	const overlay = document.createElement("div");
-	overlay.className = "ai-hist-overlay";
-	overlay.addEventListener("click", (e) => {
-		if (e.target === overlay) overlay.remove();
-	});
-
-	const panel = document.createElement("div");
-	panel.className = "ai-hist-panel";
-
-	const header = document.createElement("div");
-	header.className = "ai-hist-header";
-	const title = document.createElement("span");
-	title.textContent = "Checkpoint History";
-	const closeBtn = document.createElement("button");
-	closeBtn.className = "ai-hdr-btn";
-	closeBtn.textContent = "×";
-	closeBtn.addEventListener("click", () => overlay.remove());
-	header.append(title, closeBtn);
-
-	const list = document.createElement("div");
-	list.className = "ai-hist-list";
-
-	if (noContext || checkpoints.length === 0) {
-		const empty = document.createElement("div");
-		empty.className = "ai-hist-empty";
-		empty.textContent = noContext
-			? "History is only available for saved files. Open a file from storage to see checkpoints."
-			: "No checkpoints saved yet. Checkpoints are created when you apply AI changes.";
-		list.append(empty);
-	} else {
-		for (const cp of checkpoints) {
-			const item = document.createElement("div");
-			item.className = "ai-hist-item";
-
-			const timeEl = document.createElement("span");
-			timeEl.className = "ai-hist-time";
-			timeEl.textContent = new Date(cp.timestamp).toLocaleString();
-
-			const restoreBtn = document.createElement("button");
-			restoreBtn.className = "ai-hist-restore";
-			restoreBtn.textContent = "Restore";
-			restoreBtn.addEventListener("click", () => {
-				onRestore(cp.xml);
-				overlay.remove();
-			});
-
-			item.append(timeEl, restoreBtn);
-			list.append(item);
-		}
-	}
-
-	panel.append(header, list);
-	overlay.append(panel);
-	document.body.append(overlay);
-}
-
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
 export function createAiPanel(options: PanelOptions): {
@@ -180,18 +116,13 @@ export function createAiPanel(options: PanelOptions): {
 		localStorage.setItem("bpmn-sdk-ai-backend", backendSelect.value);
 	});
 
-	const histBtn = document.createElement("button");
-	histBtn.className = "ai-hdr-btn";
-	histBtn.title = "Checkpoint history";
-	histBtn.textContent = "History";
-
 	const closeBtn = document.createElement("button");
 	closeBtn.className = "ai-hdr-btn";
 	closeBtn.title = "Close";
 	closeBtn.textContent = "×";
 	closeBtn.addEventListener("click", () => close());
 
-	actions.append(backendSelect, histBtn, closeBtn);
+	actions.append(backendSelect, closeBtn);
 	header.append(titleEl, actions);
 
 	// ── Status bar ──
@@ -449,17 +380,6 @@ export function createAiPanel(options: PanelOptions): {
 			e.preventDefault();
 			void send();
 		}
-	});
-
-	// ── History button ──
-	histBtn.addEventListener("click", async () => {
-		const ctx = options.getCurrentContext?.();
-		if (!ctx) {
-			showHistoryModal([], options.loadXml, true);
-			return;
-		}
-		const checkpoints = await listCheckpoints(ctx.projectId, ctx.fileId);
-		showHistoryModal(checkpoints, options.loadXml, false);
 	});
 
 	// ── Open/close ──

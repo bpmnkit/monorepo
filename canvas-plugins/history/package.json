@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/canvas-plugin-ai-bridge",
+	"name": "@bpmn-sdk/canvas-plugin-history",
 	"version": "0.0.1",
 	"private": false,
 	"type": "module",
@@ -17,8 +17,5 @@
 		"check": "biome check .",
 		"test": "vitest run"
 	},
-	"dependencies": {
-		"@bpmn-sdk/canvas-plugin-history": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*"
-	}
+	"dependencies": {}
 }

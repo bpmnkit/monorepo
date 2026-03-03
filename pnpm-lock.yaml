@@ -126,6 +126,9 @@ importers:
       '@bpmn-sdk/canvas-plugin-config-panel-bpmn':
         specifier: workspace:*
         version: link:../../canvas-plugins/config-panel-bpmn
+      '@bpmn-sdk/canvas-plugin-history':
+        specifier: workspace:*
+        version: link:../../canvas-plugins/history
       '@bpmn-sdk/canvas-plugin-main-menu':
         specifier: workspace:*
         version: link:../../canvas-plugins/main-menu
@@ -156,6 +159,9 @@ importers:
 
   canvas-plugins/ai-bridge:
     dependencies:
+      '@bpmn-sdk/canvas-plugin-history':
+        specifier: workspace:*
+        version: link:../history
       '@bpmn-sdk/core':
         specifier: workspace:*
         version: link:../../packages/bpmn-sdk
@@ -240,6 +246,8 @@ importers:
       '@bpmn-sdk/core':
         specifier: workspace:*
         version: link:../../packages/bpmn-sdk
+
+  canvas-plugins/history: {}
 
   canvas-plugins/main-menu:
     dependencies:

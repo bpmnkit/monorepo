@@ -1,5 +1,60 @@
 # Progress
 
+## 2026-03-03 — Extract history into dedicated canvas-plugin; polish History tab; remove AI History button
+
+### New package: `canvas-plugins/history` → `@bpmn-sdk/canvas-plugin-history`
+- `src/checkpoint.ts` — IndexedDB checkpoint storage (moved from ai-bridge, unchanged)
+- `src/history-panel.ts` — redesigned History tab pane with date grouping, time-only display,
+  custom in-editor confirm dialog; calls `injectHistoryStyles()` on first mount
+- `src/css.ts` — full `bpmn-hist-*` design: pane chrome, date group labels, item rows, restore
+  button, custom confirm dialog, light-theme overrides; injected lazily once per page
+- `src/index.ts` — exports: `saveCheckpoint`, `listCheckpoints`, `Checkpoint`,
+  `createHistoryPanel`, `HistoryPanelOptions`
+
+### `canvas-plugins/ai-bridge`
+- Removed `checkpoint.ts` and `history-panel.ts` (both now in the history package)
+- Removed all `ai-hist-*` and `bpmn-hist-*` CSS from `css.ts`
+- Removed History button (`histBtn`) and `showHistoryModal()` from `panel.ts`
+- `panel.ts` now imports `saveCheckpoint` from `@bpmn-sdk/canvas-plugin-history`
+- `index.ts` no longer re-exports history types
+- Added `@bpmn-sdk/canvas-plugin-history: workspace:*` dependency
+
+### `apps/landing/src/editor.ts`
+- Imports `createHistoryPanel`, `saveCheckpoint` from `@bpmn-sdk/canvas-plugin-history`
+- Import of `createAiBridgePlugin` remains from `@bpmn-sdk/canvas-plugin-ai-bridge`
+
+## 2026-03-03 — History panel redesign + custom confirm dialog
+
+### `canvas-plugins/ai-bridge/src/history-panel.ts`
+- Full redesign with new `bpmn-hist-*` class namespace
+- Checkpoints grouped by date with "Today" / "Yesterday" / long-form labels
+- Each item shows time only (HH:MM:SS) instead of full locale string
+- `window.confirm` replaced with a custom in-editor dialog (`showConfirm`) that matches
+  the dark editor aesthetic
+
+### `canvas-plugins/ai-bridge/src/css.ts`
+- Replaced the two stub `.ai-hist-pane*` rules with a full `.bpmn-hist-*` design system:
+  - `.bpmn-hist-pane/header/header-title/refresh` — panel chrome
+  - `.bpmn-hist-group-label` — uppercase date section headers
+  - `.bpmn-hist-item/item-time/restore` — row layout, tabular-nums time, blue accent restore button
+  - `.bpmn-hist-empty` — centered empty state
+  - `.bpmn-hist-confirm-overlay/panel/title/body/actions/cancel/ok` — custom confirm dialog
+  - Full light-theme overrides for all new classes
+
+## 2026-03-03 — Fix: main menu z-index + checkpoint on every change
+
+### `canvas-plugins/main-menu/src/css.ts`
+- `.bpmn-main-menu-panel` z-index bumped from 110 → 10000 (above dock at 9999)
+- `.bpmn-menu-dropdown` z-index bumped from 1000 → 10001 (above dock)
+
+### `canvas-plugins/ai-bridge/src/index.ts`
+- `saveCheckpoint` is now exported from the package
+
+### `apps/landing/src/editor.ts`
+- `diagram:change` handler saves a checkpoint 600 ms after the last change (auto-save fires at 500 ms).
+  Only fires when a storage context is available (`getCurrentContext()` non-null). The existing
+  day-based retention (50 today, 1/day × 10 days) applies automatically.
+
 ## 2026-03-03 — Fix: 6 editor bugs (drag-drop, AI tab, history button, History tab, optimize false positive)
 
 ### Bug 1 — `packages/editor/src/editor.ts`
