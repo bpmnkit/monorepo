@@ -1,6 +1,6 @@
 import type { BpmnDefinitions, BpmnProcess } from "../bpmn-model.js";
 import type { OptimizationFinding, ResolvedOptions } from "./types.js";
-import { buildFlowIndex, findProcess, readZeebeIoMapping } from "./utils.js";
+import { buildFlowIndex, findProcess, readZeebeIoMapping, readZeebeTaskType } from "./utils.js";
 
 // ---------------------------------------------------------------------------
 // FEEL complexity scoring
@@ -167,8 +167,12 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 	}
 
 	// Check service tasks: complex IO mapping
+	// Skip connector tasks — their ioMapping inputs are structured connector parameters
+	// (url, method, headers, body), not user-authored FEEL expressions.
+	const REST_CONNECTOR_TYPE = "io.camunda:http-json:1";
 	for (const el of p.flowElements) {
 		if (el.type !== "serviceTask") continue;
+		if (readZeebeTaskType(el.extensionElements) === REST_CONNECTOR_TYPE) continue;
 		const ioMapping = readZeebeIoMapping(el.extensionElements);
 		if (!ioMapping) continue;
 		for (const input of ioMapping.inputs) {

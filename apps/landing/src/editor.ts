@@ -1,4 +1,4 @@
-import { createAiBridgePlugin } from "@bpmn-sdk/canvas-plugin-ai-bridge";
+import { createAiBridgePlugin, createHistoryPanel } from "@bpmn-sdk/canvas-plugin-ai-bridge";
 import { createCommandPalettePlugin } from "@bpmn-sdk/canvas-plugin-command-palette";
 import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/canvas-plugin-command-palette-editor";
 import { createConfigPanelPlugin } from "@bpmn-sdk/canvas-plugin-config-panel";
@@ -146,7 +146,10 @@ const bridge = createStorageTabsBridge({
 	palette,
 	enableFileImport: true,
 	sideDock: dock,
-	onWelcomeShow: () => setHudVisible(false),
+	onWelcomeShow: () => {
+		setHudVisible(false);
+		dock.setHistoryTabEnabled(false);
+	},
 	onTabActivate(id, config) {
 		const isBpmn = config.type === "bpmn";
 		setHudVisible(true);
@@ -165,6 +168,8 @@ const bridge = createStorageTabsBridge({
 			isBpmn ? (editorRef?.getDefinitions()?.processes[0]?.name ?? null) : null,
 			currentFileName,
 		);
+		const hasStorageCtx = isBpmn && bridge.storagePlugin.api.getCurrentContext() !== null;
+		dock.setHistoryTabEnabled(hasStorageCtx);
 	},
 });
 
@@ -193,6 +198,24 @@ const aiBridgePlugin = createAiBridgePlugin({
 		if (dock.collapsed) dock.expand();
 		dock.switchTab("ai");
 	},
+});
+
+// Wire AI tab click to initialize+open the panel (it's lazily created on first use)
+dock.setAiTabClickHandler(() => {
+	if (dock.collapsed) dock.expand();
+	aiBridgePlugin.openPanel();
+});
+
+// History pane
+const historyPanel = createHistoryPanel({
+	getCurrentContext: () => bridge.storagePlugin.api.getCurrentContext(),
+	loadXml: (xml) => {
+		editorRef?.load(xml);
+	},
+});
+dock.historyPane.appendChild(historyPanel.el);
+dock.setHistoryTabClickHandler(() => {
+	void historyPanel.refresh();
 });
 
 palette.addCommands([

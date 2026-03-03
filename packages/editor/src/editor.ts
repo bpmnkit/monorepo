@@ -949,6 +949,8 @@ export class BpmnEditor {
 	}
 
 	private _doCreate(type: CreateShapeType, diagPoint: DiagPoint): void {
+		// Read edge drop target BEFORE clearing it — _setCreateEdgeDropHighlight(null) zeroes it out.
+		const pendingEdgeDrop = this._createEdgeDropTarget;
 		this._overlay.setGhostCreate(null);
 		this._overlay.setAlignmentGuides([]);
 		const actualCenter = this._ghostSnapCenter ?? diagPoint;
@@ -990,12 +992,10 @@ export class BpmnEditor {
 			}
 		}
 
-		const edgeDropId = this._createEdgeDropTarget;
-		this._setCreateEdgeDropHighlight(null);
 		const result = createShape(this._defs, type, bounds);
 		this._selectedIds = [result.id];
-		const finalDefs = edgeDropId
-			? insertShapeOnEdge(result.defs, edgeDropId, result.id)
+		const finalDefs = pendingEdgeDrop
+			? insertShapeOnEdge(result.defs, pendingEdgeDrop, result.id)
 			: result.defs;
 		this._commandStack.push(finalDefs);
 		this._renderDefs(finalDefs);

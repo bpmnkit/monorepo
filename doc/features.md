@@ -1,5 +1,11 @@
 # Features
 
+## History tab in sidebar dock (2026-03-03) — `canvas-plugins/ai-bridge`, `packages/editor`
+
+A dedicated "History" tab sits between Properties and AI in the right sidebar. It shows a chronological list of AI checkpoints for the currently open file with one-click restore (confirm dialog). The tab is disabled for in-memory files that have no storage context.
+
+Day-based checkpoint retention: up to 50 checkpoints from today + 1 (latest) per day for the last 10 days. Older entries are pruned automatically on each save.
+
 ## MCP-based AI diagram editing (2026-03-03) — `apps/ai-server`
 
 The AI server exposes a minimal stdio MCP server (`mcp-server.ts`) that gives the LLM structured tools to read and modify BPMN diagrams. Zero external dependencies — pure Node.js built-ins + `@bpmn-sdk/core`.

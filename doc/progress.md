@@ -1,5 +1,44 @@
 # Progress
 
+## 2026-03-03 — Fix: 6 editor bugs (drag-drop, AI tab, history button, History tab, optimize false positive)
+
+### Bug 1 — `packages/editor/src/editor.ts`
+- Fixed drag-drop: `_doCreate` now reads `_createEdgeDropTarget` into `pendingEdgeDrop` before calling
+  `_setCreateEdgeDropHighlight(null)` which zeroed it out. First drop now connects correctly.
+
+### Bug 2 + 3 — AI tab activation + server-not-running message
+- `packages/editor/src/dock.ts`: Added `setAiTabClickHandler(fn)` — called when AI tab is clicked;
+  added `setHistoryTabClickHandler(fn)` and `setHistoryTabEnabled(enabled)` for new History tab.
+- `canvas-plugins/ai-bridge/src/index.ts`: Added `openPanel()` to returned object — lazily initializes
+  the panel on first call. The AI tab click handler calls `openPanel()` so the panel is created even
+  when the AI toolbar button was never clicked.
+- `canvas-plugins/ai-bridge/src/css.ts`: Fixed `.ai-panel-status-err code` color from
+  `rgba(255,255,255,0.6)` to `rgba(255,255,255,0.9)` — error message was nearly invisible.
+- `canvas-plugins/ai-bridge/src/panel.ts`: `showNotRunning()` now removes any existing `<code>`
+  element before appending a new one (prevented duplicate elements on repeated calls).
+
+### Bug 4 — History button no-context message
+- `canvas-plugins/ai-bridge/src/panel.ts`: When `getCurrentContext()` returns null, the History modal
+  now shows "History is only available for saved files…" instead of the confusing "No checkpoints yet".
+
+### Bug 5 — New History tab in sidebar
+- `packages/editor/src/dock.ts`: Added "History" tab between Properties and AI; `historyPane` div;
+  `setHistoryTabEnabled(enabled)` disables the tab (and switches to Properties if it was active);
+  disabled tab CSS; `switchTab` updated to `"properties" | "history" | "ai"`.
+- `canvas-plugins/ai-bridge/src/history-panel.ts` (new): `createHistoryPanel(options)` returns a
+  persistent pane `{ el, refresh() }` — list of checkpoints with timestamp + Restore button (confirm
+  dialog). Empty state distinguishes "no context" from "no checkpoints yet".
+- `canvas-plugins/ai-bridge/src/checkpoint.ts`: Day-based retention — keeps last 50 checkpoints from
+  today + 1 (latest) per day for the last 10 days. Anything older is pruned automatically.
+- `canvas-plugins/ai-bridge/src/css.ts`: Added `.ai-hist-pane` and `.ai-hist-pane-header` styles.
+- `canvas-plugins/ai-bridge/src/index.ts`: Exports `createHistoryPanel` and `HistoryPanelOptions`.
+- `apps/landing/src/editor.ts`: Wires history panel into `dock.historyPane`; refreshes on tab click;
+  enables/disables History tab based on `getCurrentContext()` after each tab activation.
+
+### Bug 6 — `packages/bpmn-sdk/src/bpmn/optimize/feel.ts`
+- REST connector tasks (`io.camunda:http-json:1`) are now skipped in the IO mapping complexity check.
+  Their auto-generated `zeebe:ioMapping inputs` (url, method, headers) are not user-authored FEEL.
+
 ## 2026-03-03 — Fix: MCP server uses correct Camunda HTTP connector XML structure
 
 Root cause: `mcp-server.ts` stored state as `CompactDiagram` (JSON). When `add_http_call` ran, it

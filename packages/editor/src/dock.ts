@@ -7,6 +7,7 @@ const DEFAULT_WIDTH = 360;
 
 const DOCK_CSS = `
 /* ── Side Dock ──────────────────────────────────────────────────────────── */
+.bpmn-side-dock__tab:disabled { opacity: 0.3; cursor: default; }
 .bpmn-side-dock {
   position: fixed; right: 0; top: 36px; bottom: 0;
   z-index: 9999; display: flex; flex-direction: column;
@@ -113,8 +114,9 @@ function injectDockStyles(): void {
 export interface SideDock {
 	el: HTMLDivElement;
 	propertiesPane: HTMLDivElement;
+	historyPane: HTMLDivElement;
 	aiPane: HTMLDivElement;
-	switchTab(tab: "properties" | "ai"): void;
+	switchTab(tab: "properties" | "history" | "ai"): void;
 	expand(): void;
 	collapse(): void;
 	get collapsed(): boolean;
@@ -126,6 +128,12 @@ export interface SideDock {
 	hidePanel(): void;
 	/** Show or hide the entire dock (e.g. hide on welcome screen, show on tab open). */
 	setVisible(visible: boolean): void;
+	/** Register a callback invoked when the AI tab is clicked (after switching to it). */
+	setAiTabClickHandler(fn: () => void): void;
+	/** Register a callback invoked when the History tab is clicked (after switching to it). */
+	setHistoryTabClickHandler(fn: () => void): void;
+	/** Enable or disable the History tab (disable when no storage context is available). */
+	setHistoryTabEnabled(enabled: boolean): void;
 }
 
 export function createSideDock(): SideDock {
@@ -153,11 +161,17 @@ export function createSideDock(): SideDock {
 	propertiesTab.className = "bpmn-side-dock__tab active";
 	propertiesTab.textContent = "Properties";
 
+	const historyTab = document.createElement("button");
+	historyTab.className = "bpmn-side-dock__tab";
+	historyTab.textContent = "History";
+	historyTab.disabled = true;
+
 	const aiTab = document.createElement("button");
 	aiTab.className = "bpmn-side-dock__tab";
 	aiTab.textContent = "AI";
 
 	tabStrip.appendChild(propertiesTab);
+	tabStrip.appendChild(historyTab);
 	tabStrip.appendChild(aiTab);
 
 	// Properties pane — contains the info empty state
@@ -199,6 +213,10 @@ export function createSideDock(): SideDock {
 	emptyEl.appendChild(hint);
 	propertiesPane.appendChild(emptyEl);
 
+	// History pane
+	const historyPane = document.createElement("div");
+	historyPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden";
+
 	// AI pane
 	const aiPane = document.createElement("div");
 	aiPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden";
@@ -207,11 +225,14 @@ export function createSideDock(): SideDock {
 	el.appendChild(resizeHandle);
 	el.appendChild(tabStrip);
 	el.appendChild(propertiesPane);
+	el.appendChild(historyPane);
 	el.appendChild(aiPane);
 
 	// ── State ──
 	let _collapsed = false;
 	let _width = DEFAULT_WIDTH;
+	let _aiTabHandler: (() => void) | null = null;
+	let _historyTabHandler: (() => void) | null = null;
 
 	function setDocWidth(w: number): void {
 		el.style.width = `${w}px`;
@@ -243,18 +264,13 @@ export function createSideDock(): SideDock {
 	document.body.style.setProperty("--bpmn-dock-width", "0px");
 
 	// ── Tab switching ──
-	function switchTab(tab: "properties" | "ai"): void {
-		if (tab === "properties") {
-			propertiesTab.classList.add("active");
-			aiTab.classList.remove("active");
-			propertiesPane.classList.remove("bpmn-side-dock__pane--hidden");
-			aiPane.classList.add("bpmn-side-dock__pane--hidden");
-		} else {
-			aiTab.classList.add("active");
-			propertiesTab.classList.remove("active");
-			aiPane.classList.remove("bpmn-side-dock__pane--hidden");
-			propertiesPane.classList.add("bpmn-side-dock__pane--hidden");
-		}
+	function switchTab(tab: "properties" | "history" | "ai"): void {
+		propertiesTab.classList.toggle("active", tab === "properties");
+		historyTab.classList.toggle("active", tab === "history");
+		aiTab.classList.toggle("active", tab === "ai");
+		propertiesPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "properties");
+		historyPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "history");
+		aiPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "ai");
 	}
 
 	// ── Expand / collapse ──
@@ -298,6 +314,22 @@ export function createSideDock(): SideDock {
 		processValue.textContent = processName ?? "\u2014";
 	}
 
+	function setAiTabClickHandler(fn: () => void): void {
+		_aiTabHandler = fn;
+	}
+
+	function setHistoryTabClickHandler(fn: () => void): void {
+		_historyTabHandler = fn;
+	}
+
+	function setHistoryTabEnabled(enabled: boolean): void {
+		historyTab.disabled = !enabled;
+		// If history tab is active and gets disabled, fall back to properties
+		if (!enabled && historyTab.classList.contains("active")) {
+			switchTab("properties");
+		}
+	}
+
 	function setVisible(visible: boolean): void {
 		if (visible) {
 			el.style.display = "";
@@ -310,7 +342,14 @@ export function createSideDock(): SideDock {
 
 	// ── Event wiring ──
 	propertiesTab.addEventListener("click", () => switchTab("properties"));
-	aiTab.addEventListener("click", () => switchTab("ai"));
+	historyTab.addEventListener("click", () => {
+		switchTab("history");
+		_historyTabHandler?.();
+	});
+	aiTab.addEventListener("click", () => {
+		switchTab("ai");
+		_aiTabHandler?.();
+	});
 	collapseHandle.addEventListener("click", () => {
 		if (_collapsed) expand();
 		else collapse();
@@ -346,6 +385,7 @@ export function createSideDock(): SideDock {
 	return {
 		el,
 		propertiesPane,
+		historyPane,
 		aiPane,
 		switchTab,
 		expand,
@@ -354,6 +394,9 @@ export function createSideDock(): SideDock {
 		hidePanel,
 		setDiagramInfo,
 		setVisible,
+		setAiTabClickHandler,
+		setHistoryTabClickHandler,
+		setHistoryTabEnabled,
 		get collapsed() {
 			return _collapsed;
 		},

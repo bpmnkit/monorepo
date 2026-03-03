@@ -78,7 +78,11 @@ async function* streamChat(
 
 // ── History modal ─────────────────────────────────────────────────────────────
 
-function showHistoryModal(checkpoints: Checkpoint[], onRestore: (xml: string) => void): void {
+function showHistoryModal(
+	checkpoints: Checkpoint[],
+	onRestore: (xml: string) => void,
+	noContext: boolean,
+): void {
 	const overlay = document.createElement("div");
 	overlay.className = "ai-hist-overlay";
 	overlay.addEventListener("click", (e) => {
@@ -101,11 +105,12 @@ function showHistoryModal(checkpoints: Checkpoint[], onRestore: (xml: string) =>
 	const list = document.createElement("div");
 	list.className = "ai-hist-list";
 
-	if (checkpoints.length === 0) {
+	if (noContext || checkpoints.length === 0) {
 		const empty = document.createElement("div");
 		empty.className = "ai-hist-empty";
-		empty.textContent =
-			"No checkpoints saved yet. Checkpoints are created when you apply AI changes.";
+		empty.textContent = noContext
+			? "History is only available for saved files. Open a file from storage to see checkpoints."
+			: "No checkpoints saved yet. Checkpoints are created when you apply AI changes.";
 		list.append(empty);
 	} else {
 		for (const cp of checkpoints) {
@@ -250,6 +255,8 @@ export function createAiPanel(options: PanelOptions): {
 	function showNotRunning(): void {
 		statusBar.className = "ai-panel-status ai-panel-status-err";
 		statusEl.textContent = "AI server not running. Start with:";
+		// Remove any previously appended code element before adding a new one
+		statusBar.querySelector("code")?.remove();
 		const code = document.createElement("code");
 		code.textContent = "pnpm ai-server";
 		statusBar.append(code);
@@ -448,11 +455,11 @@ export function createAiPanel(options: PanelOptions): {
 	histBtn.addEventListener("click", async () => {
 		const ctx = options.getCurrentContext?.();
 		if (!ctx) {
-			showHistoryModal([], options.loadXml);
+			showHistoryModal([], options.loadXml, true);
 			return;
 		}
 		const checkpoints = await listCheckpoints(ctx.projectId, ctx.fileId);
-		showHistoryModal(checkpoints, options.loadXml);
+		showHistoryModal(checkpoints, options.loadXml, false);
 	});
 
 	// ── Open/close ──

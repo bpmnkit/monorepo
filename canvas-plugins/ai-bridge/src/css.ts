@@ -38,7 +38,7 @@ export function injectAiBridgeStyles(): void {
 .ai-panel-status-err code {
   display: block; margin-top: 4px;
   background: rgba(255,255,255,0.05); border-radius: 4px;
-  padding: 4px 8px; font-size: 11px; color: rgba(255,255,255,0.6);
+  padding: 4px 8px; font-size: 11px; color: rgba(255,255,255,0.9);
   user-select: all;
 }
 .ai-messages {
@@ -161,6 +161,18 @@ export function injectAiBridgeStyles(): void {
 }
 .ai-hist-empty {
   padding: 24px; text-align: center; color: rgba(255,255,255,0.35); font-size: 12px;
+}
+/* History pane — persistent list mounted in the History dock tab */
+.ai-hist-pane { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.ai-hist-pane-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-weight: 600; font-size: 13px; color: rgba(255,255,255,0.85);
+}
+.ai-hist-pane .ai-hist-list { flex: 1; overflow-y: auto; }
+[data-bpmn-hud-theme="light"] .ai-hist-pane-header {
+  color: rgba(0,0,0,0.8); border-bottom-color: rgba(0,0,0,0.08);
 }
 /* Docked mode — renders inside a dock pane instead of as a fixed overlay */
 .ai-panel--docked {

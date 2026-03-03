@@ -56,8 +56,7 @@ const definitions = Bpmn.createProcess("InvoiceProcessing")
 				})
 				.scriptTask("runMatch", {
 					name: "Run Three-Way Match",
-					expression:
-						"=invoiceTotal = purchaseOrder.total and goodsReceipt.status = \"received\"",
+					expression: '=invoiceTotal = purchaseOrder.total and goodsReceipt.status = "received"',
 					resultVariable: "matchPassed",
 				})
 				.endEvent("matchEnd");
@@ -78,9 +77,7 @@ const definitions = Bpmn.createProcess("InvoiceProcessing")
 			.connectTo("calculateTotals"),
 	)
 
-	.branch("match-passed", (b) =>
-		b.condition("=matchPassed = true").connectTo("calculateTotals"),
-	)
+	.branch("match-passed", (b) => b.condition("=matchPassed = true").connectTo("calculateTotals"))
 
 	// Calculate tax and final payment amount
 	.scriptTask("calculateTotals", {
@@ -114,9 +111,7 @@ const definitions = Bpmn.createProcess("InvoiceProcessing")
 			.connectTo("approvalJoin"),
 	)
 
-	.branch("auto-approval", (b) =>
-		b.condition("=paymentAmount <= 1000").connectTo("approvalJoin"),
-	)
+	.branch("auto-approval", (b) => b.condition("=paymentAmount <= 1000").connectTo("approvalJoin"))
 
 	.inclusiveGateway("approvalJoin", { name: "All Approvals Received" })
 

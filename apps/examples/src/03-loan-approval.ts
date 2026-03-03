@@ -70,8 +70,7 @@ const definitions = Bpmn.createProcess("LoanApproval")
 			.condition('=riskAssessment.tier = "low"')
 			.scriptTask("calculateRate", {
 				name: "Calculate Interest Rate",
-				expression:
-					"=if riskAssessment.score < 30 then baseRate + 0.5 else baseRate + 1.0",
+				expression: "=if riskAssessment.score < 30 then baseRate + 0.5 else baseRate + 1.0",
 				resultVariable: "interestRate",
 			})
 			.serviceTask("generateOffer", {

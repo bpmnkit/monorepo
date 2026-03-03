@@ -168,8 +168,7 @@ const definitions = Bpmn.createProcess("AiCodeReviewAgent")
 			},
 			// Collect all tool-call results so the agent can reference prior tool outputs
 			outputCollection: "toolCallResults",
-			outputElement:
-				"={id: toolCall._meta.id, name: toolCall._meta.name, content: toolCallResult}",
+			outputElement: "={id: toolCall._meta.id, name: toolCall._meta.name, content: toolCallResult}",
 			modelerTemplate: "io.camunda.connectors.agenticai.aiagent.jobworker.v1",
 			modelerTemplateVersion: "5",
 			modelerTemplateIcon: AI_AGENT_ICON,
