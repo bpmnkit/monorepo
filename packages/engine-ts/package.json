@@ -1,0 +1,15 @@
+{
+  "name": "@camunda/engine-ts",
+  "version": "0.1.0",
+  "description": "TypeScript BPMN process engine for browser environments",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {},
+  "license": "Apache-2.0"
+}

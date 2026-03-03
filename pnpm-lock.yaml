@@ -350,6 +350,8 @@ importers:
         specifier: workspace:*
         version: link:../bpmn-sdk
 
+  packages/engine-ts: {}
+
   packages/feel: {}
 
 packages:
