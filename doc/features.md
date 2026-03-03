@@ -1,5 +1,18 @@
 # Features
 
+## BPMN Simulation Engine (2026-03-03) — `packages/engine` (`@bpmn-sdk/engine`)
+
+Lightweight, zero-external-dependency BPMN simulation engine for browser and Node.js.
+
+- **`Engine`** — Deploy BPMN/DMN/Form definitions; start process instances with optional input variables; register job workers by type.
+- **`ProcessInstance`** — Token-based execution; `onChange(callback)` → real-time `ProcessEvent` stream; `cancel()`; `activeElements` / `state` / `variables_snapshot`.
+- **Job workers** — Register handlers for service/user tasks. Auto-completes in simulation mode when no handler is registered.
+- **Gateways** — Exclusive (condition eval), Parallel (split+join), Inclusive (all matching flows).
+- **Timers** — ISO 8601 durations/dates/cycles via `setTimeout`.
+- **DMN** — Business rule tasks evaluate decision tables via `@bpmn-sdk/feel`; supports all major hit policies.
+- **Sub-processes** — Isolated child scope; completes when all tokens in sub-scope are consumed.
+- **Error propagation** — Error end events propagate through scope chain to the nearest error boundary event.
+
 ## Native Rust AI server with embedded QuickJS (2026-03-03) — `apps/ai-server-rs`
 
 The Tauri desktop app now bundles two native Rust binaries instead of a Node.js bundle:

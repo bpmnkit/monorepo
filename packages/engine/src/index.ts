@@ -1,0 +1,8 @@
+export { Engine } from "./engine.js";
+export { ProcessInstance } from "./instance.js";
+export type { ProcessEvent, Job, JobHandler } from "./types.js";
+export { VariableStore } from "./variables.js";
+export { evaluateDecision } from "./dmn.js";
+export { scheduleTimer, parseDurationMs } from "./timers.js";
+export { parseZeebeExt } from "./zeebe.js";
+export type { ParsedZeebeExt } from "./zeebe.js";

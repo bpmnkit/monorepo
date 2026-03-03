@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-03-03 — `@bpmn-sdk/engine` — Lightweight BPMN Simulation Engine (`packages/engine`)
+
+New `packages/engine` package providing a zero-dependency, browser+Node compatible BPMN simulation engine.
+
+### Architecture
+- **`variables.ts`** — Hierarchical scope chain (`VariableStore`); reads walk up to parent, writes update nearest owning scope or fall back to local.
+- **`dmn.ts`** — DMN decision table evaluator using `@bpmn-sdk/feel`; supports UNIQUE, FIRST, ANY, COLLECT (SUM/MIN/MAX/COUNT), RULE ORDER, OUTPUT ORDER, PRIORITY hit policies.
+- **`zeebe.ts`** — `parseZeebeExt(XmlElement[])` parses Zeebe extension elements into a typed `ParsedZeebeExt` struct.
+- **`timers.ts`** — `scheduleTimer()` supports ISO 8601 durations (PT2M), dates, and cycles (R3/PT5S); returns a cancel function.
+- **`types.ts`** — Public `ProcessEvent` discriminated union, `Job` interface, `JobHandler` type.
+- **`instance.ts`** — `ProcessInstance` — token-based executor; per-scope `ScopeCtx` maps; async dispatch by element type; parallel gateway join tracking; boundary timer cancellation; error propagation through scope chain.
+- **`engine.ts`** — `Engine` — deployment registry for processes/decisions/forms; `start()` factory; `registerJobWorker()` with unsubscribe.
+
+### Element coverage (v1)
+StartEvent, EndEvent (none/terminate/error), Task, ManualTask, ServiceTask (job workers or auto-complete), UserTask, ScriptTask (FEEL expression), BusinessRuleTask (DMN), ExclusiveGateway, ParallelGateway (split+join), InclusiveGateway, IntermediateCatchEvent (timer/message), BoundaryEvent (timer/error), SubProcess.
+
+### Package
+- `pnpm --filter @bpmn-sdk/engine run build` — zero TS errors
+- 30 tests passing (variables, DMN, engine integration)
+
 ## 2026-03-03 — Rust AI server with embedded QuickJS core bridge (`apps/ai-server-rs`)
 
 New standalone Rust package (`bpmn-ai-server`) replacing the Node.js `ai-server.cjs` bundle in the Tauri desktop app. Eliminates the Node.js runtime dependency from the desktop distribution.
