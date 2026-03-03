@@ -1,5 +1,15 @@
 # Features
 
+## Token Highlight Canvas Plugin (2026-03-03) — `canvas-plugins/token-highlight`
+
+Visualizes live process execution state on the BPMN canvas when paired with `@bpmn-sdk/engine`.
+
+- **Active elements** — amber glow pulse; marks nodes where a token is currently present.
+- **Visited elements** — green tint; marks nodes the token has already left.
+- **Active/visited edges** — colored and animated sequence flows; only highlights edges whose source has been visited, so untaken gateway branches stay neutral.
+- **`trackInstance(instance)`** — one call auto-wires to any `ProcessInstance` via structural typing (no engine dependency required).
+- **Manual API** — `setActive()`, `addVisited()`, `clear()` for custom control.
+
 ## BPMN Simulation Engine (2026-03-03) — `packages/engine` (`@bpmn-sdk/engine`)
 
 Lightweight, zero-external-dependency BPMN simulation engine for browser and Node.js.

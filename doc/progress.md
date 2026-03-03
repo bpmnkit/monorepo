@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-03-03 — `@bpmn-sdk/canvas-plugin-token-highlight` (`canvas-plugins/token-highlight`)
+
+New canvas plugin that highlights the current and past token positions when used alongside `@bpmn-sdk/engine`.
+
+### Visual design
+- **Active elements** (token currently here): amber/orange stroke (`#f59e0b`), translucent amber fill, animated glow pulse on the `<g>` group via CSS `drop-shadow` keyframes.
+- **Visited elements** (token has passed through): emerald green stroke (`#10b981`), translucent green fill.
+- **Active edges** (token is about to traverse this flow): amber animated dashed stroke with a flowing dash animation.
+- **Visited edges**: emerald green stroke. Arrowhead fill is also recolored via `.bpmn-arrow-fill`.
+
+### Edge highlight logic
+An edge is highlighted only when its source element has been visited, eliminating false positives on branches not taken by an exclusive gateway. Active edge = source visited + target active; visited edge = source visited + target visited. Sub-process flows are also indexed.
+
+### API
+- `createTokenHighlightPlugin()` → `CanvasPlugin & { api: TokenHighlightApi }`
+- `api.trackInstance(instance)` — structural interface (no engine dep), returns unsubscribe
+- `api.setActive(ids)` / `api.addVisited(ids)` / `api.clear()` — manual control
+
 ## 2026-03-03 — `@bpmn-sdk/engine` — Lightweight BPMN Simulation Engine (`packages/engine`)
 
 New `packages/engine` package providing a zero-dependency, browser+Node compatible BPMN simulation engine.

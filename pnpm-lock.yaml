@@ -321,6 +321,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/bpmn-sdk
 
+  canvas-plugins/token-highlight:
+    dependencies:
+      '@bpmn-sdk/canvas':
+        specifier: workspace:*
+        version: link:../../packages/canvas
+      '@bpmn-sdk/core':
+        specifier: workspace:*
+        version: link:../../packages/bpmn-sdk
+
   canvas-plugins/watermark:
     dependencies:
       '@bpmn-sdk/canvas':
