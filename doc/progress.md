@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-03-04 — Config panel: FEEL support for connector template fields
+
+`canvas-plugins/config-panel-bpmn/src/template-engine.ts` — `propToFieldSchema` now reads the `feel` property from `TemplateProperty`:
+- `feel: "optional"` → `type: "feel-expression"` (FEEL/string toggle shown; user can switch modes)
+- `feel: "required"` → `type: "feel-expression"` with `feelFixed: true` (static "FEEL" badge, always FEEL)
+- `feel: "static"` or absent → unchanged (plain `text` / `textarea`)
+
+Applies to both `String` and `Text` property types. Fixes all Camunda connector template fields that declare FEEL support not having the FEEL/string toggle or validation.
+
+## 2026-03-04 — Config panel: fixed-FEEL fields and hidden = prefix
+
+Added `feelFixed?: boolean` to `FieldSchema`. When set:
+- The FEEL/string toggle is replaced by a static non-interactive "FEEL" badge.
+- The `=` prefix is never shown in the textarea — it's managed automatically. The user types just the expression body.
+- On save, `=` is always prepended if the body is non-empty.
+- `_refreshInputs` strips `=` from display for all `data-feel-field` textareas (works for both fixed and toggled FEEL fields).
+
+Set `feelFixed: true` on: `conditionExpression` (sequence flows and conditional events), `expression` (script tasks). These are always FEEL expressions and must not be switched to plain strings.
+
+The FEEL/string toggle (non-fixed fields) also now hides the `=` — toggling only changes whether `=` is stored; the textarea content appears identical in both modes.
+
 ## 2026-03-04 — Config panel: FEEL validation, JSON validation, FEEL/string toggle
 
 **`canvas-plugins/config-panel`**:

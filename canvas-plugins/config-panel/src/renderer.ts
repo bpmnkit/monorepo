@@ -260,7 +260,13 @@ export class ConfigPanelRenderer {
 				if (el instanceof HTMLInputElement && el.type === "checkbox") {
 					el.checked = value === true || value === "true";
 				} else {
-					el.value = typeof value === "string" ? value : "";
+					const rawVal = typeof value === "string" ? value : "";
+					// FEEL-expression textareas display the value without the leading "="
+					if (el instanceof HTMLTextAreaElement && el.getAttribute("data-feel-field") === "true") {
+						el.value = rawVal.startsWith("=") ? rawVal.slice(1) : rawVal;
+					} else {
+						el.value = rawVal;
+					}
 				}
 			}
 			// Keep FEEL mode toggle in sync with the current value
@@ -1001,31 +1007,49 @@ export class ConfigPanelRenderer {
 				labelRow.appendChild(link);
 			}
 
-			// FEEL/string mode toggle — shown for all feel-expression fields
+			// FEEL/string mode indicator/toggle
 			if (field.type === "feel-expression") {
-				const isFeelMode = typeof value === "string" && value.startsWith("=");
-				const modeBtn = document.createElement("button");
-				modeBtn.type = "button";
-				modeBtn.className = "bpmn-cfg-feel-mode-btn";
-				if (isFeelMode) modeBtn.classList.add("bpmn-cfg-feel-mode-btn--active");
-				modeBtn.setAttribute("data-feel-toggle", field.key);
-				modeBtn.setAttribute(
-					"title",
-					isFeelMode ? "Switch to plain string" : "Switch to FEEL expression",
-				);
-				modeBtn.textContent = isFeelMode ? "FEEL" : "string";
-				modeBtn.addEventListener("click", () => {
-					const cur = this._values[field.key];
-					const curStr = typeof cur === "string" ? cur : "";
-					const newVal = curStr.startsWith("=") ? curStr.slice(1) : `=${curStr}`;
-					this._applyField(field.key, newVal);
-					// Update textarea immediately (diagram:change arrives async)
-					const ta = this._panelEl?.querySelector<HTMLTextAreaElement>(
-						`[data-field-key="${field.key}"]`,
+				if (field.feelFixed) {
+					// Static "FEEL" badge — this field is always a FEEL expression
+					const badge = document.createElement("span");
+					badge.className = "bpmn-cfg-feel-mode-btn bpmn-cfg-feel-mode-btn--active";
+					badge.setAttribute("aria-label", "Always a FEEL expression");
+					badge.textContent = "FEEL";
+					labelRow.appendChild(badge);
+				} else {
+					// Clickable FEEL/string toggle
+					const isFeelMode = typeof value === "string" && value.startsWith("=");
+					const modeBtn = document.createElement("button");
+					modeBtn.type = "button";
+					modeBtn.className = "bpmn-cfg-feel-mode-btn";
+					if (isFeelMode) modeBtn.classList.add("bpmn-cfg-feel-mode-btn--active");
+					modeBtn.setAttribute("data-feel-toggle", field.key);
+					modeBtn.setAttribute(
+						"title",
+						isFeelMode ? "Switch to plain string" : "Switch to FEEL expression",
 					);
-					if (ta && document.activeElement !== ta) ta.value = newVal;
-				});
-				labelRow.appendChild(modeBtn);
+					modeBtn.textContent = isFeelMode ? "FEEL" : "string";
+					modeBtn.addEventListener("click", () => {
+						const cur = this._values[field.key];
+						const curStr = typeof cur === "string" ? cur : "";
+						const newVal = curStr.startsWith("=") ? curStr.slice(1) : `=${curStr}`;
+						this._applyField(field.key, newVal);
+						// Update textarea display immediately (diagram:change arrives async)
+						const ta = this._panelEl?.querySelector<HTMLTextAreaElement>(
+							`[data-field-key="${field.key}"]`,
+						);
+						if (ta && document.activeElement !== ta) {
+							ta.value = newVal.startsWith("=") ? newVal.slice(1) : newVal;
+							// Sync placeholder with new mode
+							const rawPh = field.placeholder ?? "";
+							ta.placeholder =
+								newVal.startsWith("=") && rawPh.startsWith("=")
+									? rawPh.slice(1).trimStart()
+									: rawPh;
+						}
+					});
+					labelRow.appendChild(modeBtn);
+				}
 			}
 
 			wrapper.appendChild(labelRow);
@@ -1067,17 +1091,39 @@ export class ConfigPanelRenderer {
 
 	private _renderFeelExpression(field: FieldSchema, value: FieldValue): HTMLElement {
 		const text = typeof value === "string" ? value : "";
+		// In FEEL mode (value starts with "=" or field is always FEEL), strip "=" for display.
+		const isFeelMode = field.feelFixed === true || text.startsWith("=");
+		const displayText = isFeelMode && text.startsWith("=") ? text.slice(1) : text;
+		// Strip leading "= " from placeholder when in FEEL mode so it matches the display.
+		const rawPlaceholder = field.placeholder ?? "";
+		const displayPlaceholder =
+			isFeelMode && rawPlaceholder.startsWith("=")
+				? rawPlaceholder.slice(1).trimStart()
+				: rawPlaceholder;
 
 		const wrap = document.createElement("div");
 		wrap.className = "bpmn-cfg-feel-wrap";
 
 		const ta = document.createElement("textarea");
 		ta.className = "bpmn-cfg-feel-ta bpmn-cfg-textarea";
-		ta.placeholder = field.placeholder ?? "";
-		ta.value = text;
+		ta.placeholder = displayPlaceholder;
+		ta.value = displayText;
 		ta.setAttribute("data-field-key", field.key);
+		ta.setAttribute("data-feel-field", "true");
 		ta.setAttribute("spellcheck", "false");
-		ta.addEventListener("change", () => this._applyField(field.key, ta.value));
+		ta.addEventListener("change", () => {
+			const raw = ta.value;
+			const curVal = this._values[field.key];
+			const inFeelMode =
+				field.feelFixed === true || (typeof curVal === "string" && curVal.startsWith("="));
+			if (inFeelMode) {
+				// Strip any stray leading "=" the user might have typed, then prepend "=".
+				const body = raw.startsWith("=") ? raw.slice(1) : raw;
+				this._applyField(field.key, body !== "" ? `=${body}` : "");
+			} else {
+				this._applyField(field.key, raw);
+			}
+		});
 		wrap.appendChild(ta);
 
 		if (field.openInPlayground) {

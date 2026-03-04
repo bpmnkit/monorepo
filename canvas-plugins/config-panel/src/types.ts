@@ -40,6 +40,12 @@ export interface FieldSchema {
 		setValue: (key: string, val: FieldValue) => void,
 	) => void;
 	/**
+	 * For `type: "feel-expression"` fields — when true, the field is always a
+	 * FEEL expression. The FEEL/string toggle is hidden and the `=` prefix is
+	 * managed automatically (not shown in the input).
+	 */
+	feelFixed?: boolean;
+	/**
 	 * For `type: "feel-expression"` fields — optional callback to open the
 	 * expression in an external playground/editor.
 	 */

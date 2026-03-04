@@ -611,6 +611,7 @@ function makeScriptTaskSchema(onOpenFeelPlayground?: (expression: string) => voi
 						key: "expression",
 						label: "FEEL expression",
 						type: "feel-expression",
+						feelFixed: true,
 						placeholder: "= someVariable",
 						hint: "FEEL expression evaluated by the script engine.",
 						...(onOpenFeelPlayground
@@ -777,6 +778,7 @@ function makeSequenceFlowSchema(onOpenFeelPlayground?: (expression: string) => v
 						key: "conditionExpression",
 						label: "Condition expression (FEEL)",
 						type: "feel-expression",
+						feelFixed: true,
 						placeholder: '= someVariable = "value"',
 						hint: "FEEL expression that must evaluate to true for this path to be taken.",
 						condition: (values) => values._sourceType === "exclusiveGateway",
@@ -1239,6 +1241,7 @@ const CONDITIONAL_EVENT_SCHEMA: PanelSchema = {
 					key: "conditionExpression",
 					label: "Condition expression",
 					type: "feel-expression",
+					feelFixed: true,
 					placeholder: "= someVariable = true",
 					hint: "FEEL expression that must evaluate to true for this event to trigger.",
 				},
