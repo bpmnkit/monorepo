@@ -114,4 +114,11 @@ export interface ConfigPanelOptions {
 	onPanelShow?: () => void;
 	/** Called when the panel is hidden (element deselected). */
 	onPanelHide?: () => void;
+	/**
+	 * Called when the user clicks "Open in FEEL Playground ↗" on any
+	 * `feel-expression` field that is currently in FEEL mode and does not have
+	 * its own `field.openInPlayground` override.
+	 * Receives the expression body (without the leading `=`).
+	 */
+	openInPlayground?: (expression: string) => void;
 }

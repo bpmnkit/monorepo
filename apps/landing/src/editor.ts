@@ -138,6 +138,9 @@ const configPanel = createConfigPanelPlugin({
 	onPanelHide: () => {
 		dock.hidePanel();
 	},
+	openInPlayground: (expression) => {
+		bridge.tabsPlugin.api.openTab({ type: "feel", name: "FEEL Playground", expression });
+	},
 });
 
 // ── Process runner ────────────────────────────────────────────────────────────

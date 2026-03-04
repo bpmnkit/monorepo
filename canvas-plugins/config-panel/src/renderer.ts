@@ -40,6 +40,7 @@ export class ConfigPanelRenderer {
 	private readonly _container: HTMLElement | null;
 	private readonly _onPanelShow: (() => void) | null;
 	private readonly _onPanelHide: (() => void) | null;
+	private readonly _openInPlayground: ((expression: string) => void) | null;
 
 	private _panelEl: HTMLElement | null = null;
 	/** SVG group appended to the canvas viewport; holds all validation badges. */
@@ -78,7 +79,12 @@ export class ConfigPanelRenderer {
 		applyChange: (fn: (d: BpmnDefinitions) => BpmnDefinitions) => void,
 		getSvgViewport?: () => SVGGElement | null,
 		getShapes?: () => RenderedShape[],
-		opts?: { container?: HTMLElement; onPanelShow?: () => void; onPanelHide?: () => void },
+		opts?: {
+			container?: HTMLElement;
+			onPanelShow?: () => void;
+			onPanelHide?: () => void;
+			openInPlayground?: (expression: string) => void;
+		},
 	) {
 		this._schemas = schemas;
 		this._getDefinitions = getDefinitions;
@@ -88,6 +94,7 @@ export class ConfigPanelRenderer {
 		this._container = opts?.container ?? null;
 		this._onPanelShow = opts?.onPanelShow ?? null;
 		this._onPanelHide = opts?.onPanelHide ?? null;
+		this._openInPlayground = opts?.openInPlayground ?? null;
 
 		// Restore persisted panel width (only used in standalone mode)
 		if (!this._container) {
@@ -269,12 +276,17 @@ export class ConfigPanelRenderer {
 					}
 				}
 			}
-			// Keep FEEL mode toggle in sync with the current value
+			// Keep FEEL mode toggle and playground button in sync with the current value
+			const isFeelMode = typeof value === "string" && value.startsWith("=");
 			const toggleBtn = container.querySelector<HTMLButtonElement>(`[data-feel-toggle="${key}"]`);
 			if (toggleBtn) {
-				const isFeelMode = typeof value === "string" && value.startsWith("=");
 				toggleBtn.textContent = isFeelMode ? "FEEL" : "string";
 				toggleBtn.classList.toggle("bpmn-cfg-feel-mode-btn--active", isFeelMode);
+			}
+			// Show playground button only when in FEEL mode (fixed-FEEL buttons are always visible)
+			const playBtn = container.querySelector<HTMLButtonElement>(`[data-feel-playground="${key}"]`);
+			if (playBtn && !playBtn.hasAttribute("data-feel-playground-fixed")) {
+				playBtn.style.display = isFeelMode ? "" : "none";
 			}
 		}
 	}
@@ -1126,12 +1138,25 @@ export class ConfigPanelRenderer {
 		});
 		wrap.appendChild(ta);
 
-		if (field.openInPlayground) {
+		if (field.openInPlayground ?? this._openInPlayground) {
 			const btn = document.createElement("button");
 			btn.type = "button";
 			btn.className = "bpmn-cfg-feel-playground-btn";
 			btn.textContent = "Open in FEEL Playground ↗";
-			btn.addEventListener("click", () => field.openInPlayground?.(this._values));
+			btn.setAttribute("data-feel-playground", field.key);
+			if (field.feelFixed) btn.setAttribute("data-feel-playground-fixed", "true");
+			// Fixed-FEEL fields are always in FEEL mode — always show.
+			// Togglable fields: show only when currently in FEEL mode.
+			if (!field.feelFixed && !isFeelMode) btn.style.display = "none";
+			btn.addEventListener("click", () => {
+				if (field.openInPlayground) {
+					field.openInPlayground(this._values);
+				} else {
+					const val = this._values[field.key];
+					const expr = typeof val === "string" && val.startsWith("=") ? val.slice(1).trim() : "";
+					this._openInPlayground?.(expr);
+				}
+			});
 			wrap.appendChild(btn);
 		}
 

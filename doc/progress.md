@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-03-04 — Config panel: FEEL playground link for toggled FEEL fields
+
+`ConfigPanelOptions` now accepts `openInPlayground?: (expression: string) => void` — a renderer-level fallback callback that applies to all `feel-expression` fields.
+
+The "Open in FEEL Playground ↗" button now appears on any `feel-expression` field when the field is in FEEL mode (value starts with `=`). For `feelFixed: true` fields (always FEEL) the button is always visible. For togglable fields the button appears/disappears when the user toggles the FEEL/string mode.
+
+The per-field `field.openInPlayground` override still takes precedence (used for fixed-FEEL fields like `conditionExpression` that need to pass the full values map). The renderer-level fallback is used for all other `feel-expression` fields.
+
+`apps/landing/src/editor.ts` wired `openInPlayground` on `createConfigPanelPlugin` to open the FEEL Playground tab with the current expression.
+
 ## 2026-03-04 — FEEL parser: report error for trailing unconsumed tokens
 
 `packages/feel/src/parser.ts` — the top-level `parseExpression` function previously silently ignored any tokens that remained after a successful parse. For example, `foo bar` would parse as the name `foo` with `bar` silently dropped, yielding no errors.
