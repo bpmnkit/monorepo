@@ -1,5 +1,6 @@
 import type { RenderedEdge, RenderedShape } from "@bpmn-sdk/canvas";
 import type { BpmnDefinitions } from "@bpmn-sdk/core";
+import { parseExpression } from "@bpmn-sdk/feel";
 import type { FieldSchema, FieldValue, GroupSchema, PanelAdapter, PanelSchema } from "./types.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -10,34 +11,19 @@ const FIELD_WRAPPER_ATTR = "data-field-wrapper";
 const STORAGE_KEY_WIDTH = "bpmn-cfg-panel-width";
 
 /**
- * Returns true when a FEEL expression value (starting with "=") has obvious
- * structural errors: empty body, trailing binary operator, or unbalanced
- * string/bracket delimiters.
+ * Validates a `feel-expression` field value using the real FEEL parser.
+ * Returns null when the value is empty or is a valid FEEL expression (or a plain string).
+ * Returns an error message string when the FEEL body is syntactically invalid.
  */
-function hasFEELSyntaxError(val: string): boolean {
-	const body = val.startsWith("=") ? val.slice(1).trim() : val.trim();
-	if (body === "") return true;
-
-	// Trailing characters that indicate an incomplete binary expression
-	if (/[+\-*/^,([{]$/.test(body)) return true;
-
-	// Scan for unbalanced strings and structural delimiters
-	let depth = 0;
-	let inString = false;
-	for (let i = 0; i < body.length; i++) {
-		const ch = body[i];
-		if (inString) {
-			if (ch === '"') inString = false;
-		} else {
-			if (ch === '"') inString = true;
-			else if (ch === "(" || ch === "[" || ch === "{") depth++;
-			else if (ch === ")" || ch === "]" || ch === "}") {
-				depth--;
-				if (depth < 0) return true;
-			}
-		}
+function validateFeelExpression(val: FieldValue): string | null {
+	if (typeof val !== "string" || !val.startsWith("=")) return null;
+	const body = val.slice(1).trim();
+	if (body === "") return null; // empty body — required check handles this separately
+	const result = parseExpression(body);
+	if (result.errors.length > 0) {
+		return result.errors[0]?.message ?? "Invalid FEEL expression";
 	}
-	return inString || depth !== 0;
+	return null;
 }
 
 interface Registration {
@@ -54,6 +40,7 @@ export class ConfigPanelRenderer {
 	private readonly _container: HTMLElement | null;
 	private readonly _onPanelShow: (() => void) | null;
 	private readonly _onPanelHide: (() => void) | null;
+	private readonly _openInPlayground: ((expression: string) => void) | null;
 
 	private _panelEl: HTMLElement | null = null;
 	/** SVG group appended to the canvas viewport; holds all validation badges. */
@@ -92,7 +79,12 @@ export class ConfigPanelRenderer {
 		applyChange: (fn: (d: BpmnDefinitions) => BpmnDefinitions) => void,
 		getSvgViewport?: () => SVGGElement | null,
 		getShapes?: () => RenderedShape[],
-		opts?: { container?: HTMLElement; onPanelShow?: () => void; onPanelHide?: () => void },
+		opts?: {
+			container?: HTMLElement;
+			onPanelShow?: () => void;
+			onPanelHide?: () => void;
+			openInPlayground?: (expression: string) => void;
+		},
 	) {
 		this._schemas = schemas;
 		this._getDefinitions = getDefinitions;
@@ -102,6 +94,7 @@ export class ConfigPanelRenderer {
 		this._container = opts?.container ?? null;
 		this._onPanelShow = opts?.onPanelShow ?? null;
 		this._onPanelHide = opts?.onPanelHide ?? null;
+		this._openInPlayground = opts?.openInPlayground ?? null;
 
 		// Restore persisted panel width (only used in standalone mode)
 		if (!this._container) {
@@ -274,8 +267,26 @@ export class ConfigPanelRenderer {
 				if (el instanceof HTMLInputElement && el.type === "checkbox") {
 					el.checked = value === true || value === "true";
 				} else {
-					el.value = typeof value === "string" ? value : "";
+					const rawVal = typeof value === "string" ? value : "";
+					// FEEL-expression textareas display the value without the leading "="
+					if (el instanceof HTMLTextAreaElement && el.getAttribute("data-feel-field") === "true") {
+						el.value = rawVal.startsWith("=") ? rawVal.slice(1) : rawVal;
+					} else {
+						el.value = rawVal;
+					}
 				}
+			}
+			// Keep FEEL mode toggle and playground button in sync with the current value
+			const isFeelMode = typeof value === "string" && value.startsWith("=");
+			const toggleBtn = container.querySelector<HTMLButtonElement>(`[data-feel-toggle="${key}"]`);
+			if (toggleBtn) {
+				toggleBtn.textContent = isFeelMode ? "FEEL" : "string";
+				toggleBtn.classList.toggle("bpmn-cfg-feel-mode-btn--active", isFeelMode);
+			}
+			// Show playground button only when in FEEL mode (fixed-FEEL buttons are always visible)
+			const playBtn = container.querySelector<HTMLButtonElement>(`[data-feel-playground="${key}"]`);
+			if (playBtn && !playBtn.hasAttribute("data-feel-playground-fixed")) {
+				playBtn.style.display = isFeelMode ? "" : "none";
 			}
 		}
 	}
@@ -315,14 +326,25 @@ export class ConfigPanelRenderer {
 	}
 
 	/**
-	 * Returns true when a field value has any error:
-	 * - required field with an effectively-empty value, OR
-	 * - value is a FEEL expression (starts with "=") with structural syntax errors.
+	 * Returns an error message string when the field has a validation error, or
+	 * null when the value is valid. Checks (in order):
+	 * 1. Required + empty → "Required"
+	 * 2. feel-expression type with FEEL parse error → error from parser
+	 * 3. Custom `field.validate` callback → its return value
 	 */
+	private _fieldError(field: FieldSchema, val: FieldValue): string | null {
+		if (field.required && this._isEffectivelyEmpty(field, val)) return "Required";
+		if (field.type === "feel-expression") {
+			const err = validateFeelExpression(val);
+			if (err !== null) return err;
+		}
+		if (field.validate) return field.validate(val);
+		return null;
+	}
+
+	/** Returns true when a field has any validation error. */
 	private _fieldHasError(field: FieldSchema, val: FieldValue): boolean {
-		if (field.required && this._isEffectivelyEmpty(field, val)) return true;
-		if (typeof val === "string" && val.startsWith("=") && hasFEELSyntaxError(val)) return true;
-		return false;
+		return this._fieldError(field, val) !== null;
 	}
 
 	/**
@@ -349,10 +371,14 @@ export class ConfigPanelRenderer {
 					`[${FIELD_WRAPPER_ATTR}="${field.key}"]`,
 				);
 				if (!wrapper) continue;
-				wrapper.classList.toggle(
-					"bpmn-cfg-field--invalid",
-					this._fieldHasError(field, this._values[field.key]),
-				);
+				const err = this._fieldError(field, this._values[field.key]);
+				wrapper.classList.toggle("bpmn-cfg-field--invalid", err !== null);
+				// Update error message text
+				const errEl = wrapper.querySelector<HTMLElement>(".bpmn-cfg-field-error");
+				if (errEl) {
+					errEl.style.display = err !== null ? "" : "none";
+					if (err !== null) errEl.textContent = err;
+				}
 			}
 			// Update tab error dot
 			const tabBtn = container.querySelector<HTMLElement>(`[data-tab-id="${group.id}"]`);
@@ -992,6 +1018,52 @@ export class ConfigPanelRenderer {
 				link.rel = "noopener noreferrer";
 				labelRow.appendChild(link);
 			}
+
+			// FEEL/string mode indicator/toggle
+			if (field.type === "feel-expression") {
+				if (field.feelFixed) {
+					// Static "FEEL" badge — this field is always a FEEL expression
+					const badge = document.createElement("span");
+					badge.className = "bpmn-cfg-feel-mode-btn bpmn-cfg-feel-mode-btn--active";
+					badge.setAttribute("aria-label", "Always a FEEL expression");
+					badge.textContent = "FEEL";
+					labelRow.appendChild(badge);
+				} else {
+					// Clickable FEEL/string toggle
+					const isFeelMode = typeof value === "string" && value.startsWith("=");
+					const modeBtn = document.createElement("button");
+					modeBtn.type = "button";
+					modeBtn.className = "bpmn-cfg-feel-mode-btn";
+					if (isFeelMode) modeBtn.classList.add("bpmn-cfg-feel-mode-btn--active");
+					modeBtn.setAttribute("data-feel-toggle", field.key);
+					modeBtn.setAttribute(
+						"title",
+						isFeelMode ? "Switch to plain string" : "Switch to FEEL expression",
+					);
+					modeBtn.textContent = isFeelMode ? "FEEL" : "string";
+					modeBtn.addEventListener("click", () => {
+						const cur = this._values[field.key];
+						const curStr = typeof cur === "string" ? cur : "";
+						const newVal = curStr.startsWith("=") ? curStr.slice(1) : `=${curStr}`;
+						this._applyField(field.key, newVal);
+						// Update textarea display immediately (diagram:change arrives async)
+						const ta = this._panelEl?.querySelector<HTMLTextAreaElement>(
+							`[data-field-key="${field.key}"]`,
+						);
+						if (ta && document.activeElement !== ta) {
+							ta.value = newVal.startsWith("=") ? newVal.slice(1) : newVal;
+							// Sync placeholder with new mode
+							const rawPh = field.placeholder ?? "";
+							ta.placeholder =
+								newVal.startsWith("=") && rawPh.startsWith("=")
+									? rawPh.slice(1).trimStart()
+									: rawPh;
+						}
+					});
+					labelRow.appendChild(modeBtn);
+				}
+			}
+
 			wrapper.appendChild(labelRow);
 
 			if (field.type === "select") {
@@ -1013,30 +1085,78 @@ export class ConfigPanelRenderer {
 			wrapper.appendChild(hint);
 		}
 
+		// Error message — shown when field has a validation error
+		if (field.type !== "action" && field.type !== "toggle") {
+			const initialErr = this._fieldError(field, value);
+			const errDiv = document.createElement("div");
+			errDiv.className = "bpmn-cfg-field-error";
+			if (initialErr !== null) {
+				errDiv.textContent = initialErr;
+			} else {
+				errDiv.style.display = "none";
+			}
+			wrapper.appendChild(errDiv);
+		}
+
 		return wrapper;
 	}
 
 	private _renderFeelExpression(field: FieldSchema, value: FieldValue): HTMLElement {
 		const text = typeof value === "string" ? value : "";
+		// In FEEL mode (value starts with "=" or field is always FEEL), strip "=" for display.
+		const isFeelMode = field.feelFixed === true || text.startsWith("=");
+		const displayText = isFeelMode && text.startsWith("=") ? text.slice(1) : text;
+		// Strip leading "= " from placeholder when in FEEL mode so it matches the display.
+		const rawPlaceholder = field.placeholder ?? "";
+		const displayPlaceholder =
+			isFeelMode && rawPlaceholder.startsWith("=")
+				? rawPlaceholder.slice(1).trimStart()
+				: rawPlaceholder;
 
 		const wrap = document.createElement("div");
 		wrap.className = "bpmn-cfg-feel-wrap";
 
 		const ta = document.createElement("textarea");
 		ta.className = "bpmn-cfg-feel-ta bpmn-cfg-textarea";
-		ta.placeholder = field.placeholder ?? "";
-		ta.value = text;
+		ta.placeholder = displayPlaceholder;
+		ta.value = displayText;
 		ta.setAttribute("data-field-key", field.key);
+		ta.setAttribute("data-feel-field", "true");
 		ta.setAttribute("spellcheck", "false");
-		ta.addEventListener("change", () => this._applyField(field.key, ta.value));
+		ta.addEventListener("change", () => {
+			const raw = ta.value;
+			const curVal = this._values[field.key];
+			const inFeelMode =
+				field.feelFixed === true || (typeof curVal === "string" && curVal.startsWith("="));
+			if (inFeelMode) {
+				// Strip any stray leading "=" the user might have typed, then prepend "=".
+				const body = raw.startsWith("=") ? raw.slice(1) : raw;
+				this._applyField(field.key, body !== "" ? `=${body}` : "");
+			} else {
+				this._applyField(field.key, raw);
+			}
+		});
 		wrap.appendChild(ta);
 
-		if (field.openInPlayground) {
+		if (field.openInPlayground ?? this._openInPlayground) {
 			const btn = document.createElement("button");
 			btn.type = "button";
 			btn.className = "bpmn-cfg-feel-playground-btn";
 			btn.textContent = "Open in FEEL Playground ↗";
-			btn.addEventListener("click", () => field.openInPlayground?.(this._values));
+			btn.setAttribute("data-feel-playground", field.key);
+			if (field.feelFixed) btn.setAttribute("data-feel-playground-fixed", "true");
+			// Fixed-FEEL fields are always in FEEL mode — always show.
+			// Togglable fields: show only when currently in FEEL mode.
+			if (!field.feelFixed && !isFeelMode) btn.style.display = "none";
+			btn.addEventListener("click", () => {
+				if (field.openInPlayground) {
+					field.openInPlayground(this._values);
+				} else {
+					const val = this._values[field.key];
+					const expr = typeof val === "string" && val.startsWith("=") ? val.slice(1).trim() : "";
+					this._openInPlayground?.(expr);
+				}
+			});
 			wrap.appendChild(btn);
 		}
 

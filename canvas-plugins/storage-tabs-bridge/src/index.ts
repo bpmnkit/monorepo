@@ -80,6 +80,11 @@ export interface StorageTabsBridgeOptions {
 	 * welcome screen and shown whenever a tab is activated — no manual wiring needed.
 	 */
 	sideDock?: { setVisible(visible: boolean): void };
+	/**
+	 * Optional element to place in the center of the tabs bar.
+	 * Passed through to the tabs plugin's `centerSlot` option.
+	 */
+	centerSlot?: HTMLElement;
 }
 
 // ── Result ────────────────────────────────────────────────────────────────────
@@ -184,6 +189,7 @@ export function createStorageTabsBridge(
 			options.onWelcomeShow?.();
 		},
 		enableFileImport: options.enableFileImport,
+		centerSlot: options.centerSlot,
 		onTabActivate(id, config) {
 			// Update storage current-file pointer
 			storageRef?.api.setCurrentFileId(tabIdToStorageFileId.get(id) ?? null);

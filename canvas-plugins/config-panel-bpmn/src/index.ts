@@ -48,8 +48,10 @@ import { CAMUNDA_CONNECTOR_TEMPLATES } from "./templates/generated.js";
 export { CAMUNDA_CONNECTOR_TEMPLATES } from "./templates/generated.js";
 export { templateToServiceTaskOptions } from "./template-to-service-task.js";
 import {
+	buildPropertiesWithExampleOutput,
 	findFlowElement,
 	findSequenceFlow,
+	getExampleOutputJson,
 	getIoInput,
 	getTaskHeader,
 	parseCalledElement,
@@ -63,6 +65,17 @@ import {
 	updateSequenceFlow,
 	xmlLocalName,
 } from "./util.js";
+
+/** Validates that a field value is valid JSON, or returns an error message. */
+function validateJson(value: FieldValue): string | null {
+	if (typeof value !== "string" || value.trim() === "") return null;
+	try {
+		JSON.parse(value);
+		return null;
+	} catch (e) {
+		return e instanceof SyntaxError ? e.message : "Invalid JSON";
+	}
+}
 
 // ── Built-in template registry ────────────────────────────────────────────────
 
@@ -194,6 +207,14 @@ const GENERIC_SERVICE_TASK_SCHEMA: PanelSchema = {
 				},
 				{ key: "retries", label: "Retries", type: "text", placeholder: "3" },
 				{
+					key: "exampleOutputJson",
+					label: "Example output (JSON)",
+					type: "textarea",
+					placeholder: '{"myVariable": "value"}',
+					hint: "Mock output written to process variables in play mode when no job worker is registered.",
+					validate: validateJson,
+				},
+				{
 					key: "documentation",
 					label: "Documentation",
 					type: "textarea",
@@ -223,6 +244,7 @@ const SERVICE_TASK_ADAPTER: PanelAdapter = {
 			connector,
 			taskType: connector === CUSTOM_TASK_TYPE ? definitionType : "",
 			retries: ext.taskDefinition?.retries ?? "",
+			exampleOutputJson: getExampleOutputJson(ext),
 		};
 	},
 
@@ -261,12 +283,17 @@ const SERVICE_TASK_ADAPTER: PanelAdapter = {
 					: el.documentation;
 			const taskType = strVal(values.taskType);
 			const retries = strVal(values.retries);
+			const exampleOutputJson = strVal(values.exampleOutputJson);
 
-			const ZEEBE_EXTS = new Set(["taskDefinition", "ioMapping", "taskHeaders"]);
+			const currentExt = parseZeebeExtensions(el.extensionElements);
+			const newProperties = buildPropertiesWithExampleOutput(currentExt, exampleOutputJson);
+
+			const ZEEBE_EXTS = new Set(["taskDefinition", "ioMapping", "taskHeaders", "properties"]);
 			const otherExts = el.extensionElements.filter((x) => !ZEEBE_EXTS.has(xmlLocalName(x.name)));
 
 			const newZeebeExts = zeebeExtensionsToXmlElements({
 				taskDefinition: taskType ? { type: taskType, retries: retries || undefined } : undefined,
+				properties: newProperties,
 			});
 
 			// Remove modelerTemplate attribute when switching to custom
@@ -438,6 +465,14 @@ function makeUserTaskSchema(): PanelSchema {
 						hint: "ID of the Camunda Form linked to this user task.",
 					},
 					{
+						key: "exampleOutputJson",
+						label: "Example output (JSON)",
+						type: "textarea",
+						placeholder: '{"myVariable": "value"}',
+						hint: "Mock output written to process variables in play mode when no job worker is registered.",
+						validate: validateJson,
+					},
+					{
 						key: "documentation",
 						label: "Documentation",
 						type: "textarea",
@@ -458,16 +493,23 @@ const USER_TASK_ADAPTER: PanelAdapter = {
 			name: el.name ?? "",
 			documentation: el.documentation ?? "",
 			formId: ext.formDefinition?.formId ?? "",
+			exampleOutputJson: getExampleOutputJson(ext),
 		};
 	},
 	write(defs: BpmnDefinitions, id: string, values: Record<string, FieldValue>): BpmnDefinitions {
 		return updateFlowElement(defs, id, (el) => {
 			const formId = strVal(values.formId);
-			const ZEEBE_FORM_NAMES = new Set(["userTask", "formDefinition"]);
+			const exampleOutputJson = strVal(values.exampleOutputJson);
+			const currentExt = parseZeebeExtensions(el.extensionElements);
+			const newProperties = buildPropertiesWithExampleOutput(currentExt, exampleOutputJson);
+			const ZEEBE_FORM_NAMES = new Set(["userTask", "formDefinition", "properties"]);
 			const otherExts = el.extensionElements.filter(
 				(x) => !ZEEBE_FORM_NAMES.has(xmlLocalName(x.name)),
 			);
-			const formExts = formId ? zeebeExtensionsToXmlElements({ formDefinition: { formId } }) : [];
+			const formExts = zeebeExtensionsToXmlElements({
+				formDefinition: formId ? { formId } : undefined,
+				properties: newProperties,
+			});
 			return {
 				...el,
 				name: typeof values.name === "string" ? values.name : el.name,
@@ -569,6 +611,7 @@ function makeScriptTaskSchema(onOpenFeelPlayground?: (expression: string) => voi
 						key: "expression",
 						label: "FEEL expression",
 						type: "feel-expression",
+						feelFixed: true,
 						placeholder: "= someVariable",
 						hint: "FEEL expression evaluated by the script engine.",
 						...(onOpenFeelPlayground
@@ -722,6 +765,7 @@ function makeSequenceFlowSchema(onOpenFeelPlayground?: (expression: string) => v
 				label: "Condition",
 				type: "text",
 				placeholder: "= expression",
+				condition: (values) => values._sourceType === "exclusiveGateway",
 			},
 		],
 		groups: [
@@ -734,8 +778,10 @@ function makeSequenceFlowSchema(onOpenFeelPlayground?: (expression: string) => v
 						key: "conditionExpression",
 						label: "Condition expression (FEEL)",
 						type: "feel-expression",
+						feelFixed: true,
 						placeholder: '= someVariable = "value"',
 						hint: "FEEL expression that must evaluate to true for this path to be taken.",
+						condition: (values) => values._sourceType === "exclusiveGateway",
 						...(onOpenFeelPlayground
 							? {
 									openInPlayground: (v) => {
@@ -750,6 +796,7 @@ function makeSequenceFlowSchema(onOpenFeelPlayground?: (expression: string) => v
 						label: "Default flow",
 						type: "toggle",
 						hint: "Mark as default path taken when no other condition evaluates to true.",
+						condition: (values) => values._sourceType === "exclusiveGateway",
 					},
 				],
 			},
@@ -773,15 +820,20 @@ const SEQUENCE_FLOW_ADAPTER: PanelAdapter = {
 			name: sf.name ?? "",
 			conditionExpression: sf.conditionExpression?.text ?? "",
 			isDefault: isDefault ?? false,
+			_sourceType: sourceEl?.type ?? "",
 		};
 	},
 	write(defs: BpmnDefinitions, id: string, values: Record<string, FieldValue>): BpmnDefinitions {
 		const sf = findSequenceFlow(defs, id);
 		const sourceRef = sf?.sourceRef;
 
+		// Condition expressions are only valid on outgoing flows of exclusive gateways
+		const sourceEl = sf ? findFlowElement(defs, sf.sourceRef) : undefined;
+		const isExclusiveGateway = sourceEl?.type === "exclusiveGateway";
+
 		// Update the sequence flow itself
 		let result = updateSequenceFlow(defs, id, (flow) => {
-			const expr = strVal(values.conditionExpression);
+			const expr = isExclusiveGateway ? strVal(values.conditionExpression) : undefined;
 			return {
 				...flow,
 				name: typeof values.name === "string" ? values.name || undefined : flow.name,
@@ -1189,6 +1241,7 @@ const CONDITIONAL_EVENT_SCHEMA: PanelSchema = {
 					key: "conditionExpression",
 					label: "Condition expression",
 					type: "feel-expression",
+					feelFixed: true,
 					placeholder: "= someVariable = true",
 					hint: "FEEL expression that must evaluate to true for this event to trigger.",
 				},

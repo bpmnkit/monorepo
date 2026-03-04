@@ -79,6 +79,11 @@ function collectEvents(instance: ReturnType<Engine["start"]>): ProcessEvent[] {
 	return events;
 }
 
+/** Drain all pending microtasks by scheduling a macrotask. */
+function settle(): Promise<void> {
+	return new Promise<void>((r) => setTimeout(r, 0));
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("Engine", () => {
@@ -95,64 +100,35 @@ describe("Engine", () => {
 	});
 
 	describe("simple happy path", () => {
-		it("start → task → end fires entering/entered/leaving/left + process:completed", () => {
+		it("start → task → end fires entering/entered/leaving/left + process:completed", async () => {
 			const engine = new Engine();
 			engine.deploy({
 				bpmn: makeDefs([
 					makeProcess(
 						"proc",
 						[
-							node("startEvent", "start", [], ["f1"]),
-							node("task", "task1", ["f1"], ["f2"], "Do something"),
-							node("endEvent", "end", ["f2"], []),
+							node("startEvent", "s", [], ["f1"]),
+							node("task", "t", ["f1"], ["f2"], "Do something"),
+							node("endEvent", "e", ["f2"], []),
 						],
-						[flow("f1", "start", "task1"), flow("f2", "task1", "end")],
+						[flow("f1", "s", "t"), flow("f2", "t", "e")],
 					),
 				]),
 			});
 
+			const events: ProcessEvent[] = [];
 			const instance = engine.start("proc");
-			const events = collectEvents(instance);
+			instance.onChange((ev) => events.push(ev));
+			await settle();
 
-			// Since it's synchronous (no async tasks), events already fired
-			// Re-run with pre-attached listener
-			const engine2 = new Engine();
-			engine2.deploy({
-				bpmn: makeDefs([
-					makeProcess(
-						"proc",
-						[
-							node("startEvent", "start2", [], ["f1"]),
-							node("task", "task2", ["f1"], ["f2"], "Do something"),
-							node("endEvent", "end2", ["f2"], []),
-						],
-						[flow("f1", "start2", "task2"), flow("f2", "task2", "end2")],
-					),
-				]),
-			});
-
-			const events2: ProcessEvent[] = [];
-			// Attach listener before start by using a proxy
-			const process2 = makeProcess(
-				"proc2",
-				[
-					node("startEvent", "s", [], ["f1"]),
-					node("task", "t", ["f1"], ["f2"]),
-					node("endEvent", "e", ["f2"], []),
-				],
-				[flow("f1", "s", "t"), flow("f2", "t", "e")],
-			);
-			const engine3 = new Engine();
-			engine3.deploy({ bpmn: makeDefs([process2]) });
-			const inst3 = engine3.start("proc2");
-			inst3.onChange((ev) => events2.push(ev));
-
-			// Events already fired synchronously before listener attached is OK for this test
-			// Let's verify instance state
-			expect(inst3.state).toBe("completed");
+			expect(instance.state).toBe("completed");
+			const types = events.map((e) => e.type);
+			expect(types).toContain("element:entering");
+			expect(types).toContain("element:left");
+			expect(types).toContain("process:completed");
 		});
 
-		it("instance is completed after synchronous run", () => {
+		it("instance is completed after async run", async () => {
 			const engine = new Engine();
 			const process = makeProcess(
 				"p",
@@ -165,10 +141,11 @@ describe("Engine", () => {
 			);
 			engine.deploy({ bpmn: makeDefs([process]) });
 			const instance = engine.start("p", { x: 1 });
+			await settle();
 			expect(instance.state).toBe("completed");
 		});
 
-		it("initial variables are in snapshot", () => {
+		it("initial variables are in snapshot", async () => {
 			const engine = new Engine();
 			engine.deploy({
 				bpmn: makeDefs([
@@ -180,6 +157,7 @@ describe("Engine", () => {
 				]),
 			});
 			const instance = engine.start("p", { amount: 42, name: "test" });
+			await settle();
 			expect(instance.variables_snapshot).toMatchObject({ amount: 42, name: "test" });
 		});
 	});
@@ -222,7 +200,7 @@ describe("Engine", () => {
 
 			const instance = engine.start("p", { input: 1 });
 			// Job worker is synchronous here
-			await Promise.resolve(); // flush microtasks
+			await settle();
 			expect(workerCalled).toBe(true);
 			expect(instance.state).toBe("completed");
 			expect(instance.variables_snapshot).toMatchObject({ result: 99 });
@@ -262,12 +240,12 @@ describe("Engine", () => {
 			});
 
 			const instance = engine.start("p");
-			await Promise.resolve();
+			await settle();
 			expect(instance.state).toBe("failed");
 			expect(instance.error).toBe("something went wrong");
 		});
 
-		it("auto-completes service task with no matching worker (simulation mode)", () => {
+		it("auto-completes service task with no matching worker (simulation mode)", async () => {
 			const engine = new Engine();
 			engine.deploy({
 				bpmn: makeDefs([
@@ -290,6 +268,7 @@ describe("Engine", () => {
 				]),
 			});
 			const instance = engine.start("p");
+			await settle();
 			expect(instance.state).toBe("completed");
 		});
 	});
@@ -319,24 +298,26 @@ describe("Engine", () => {
 			]);
 		}
 
-		it("takes the true branch", () => {
+		it("takes the true branch", async () => {
 			const engine = new Engine();
 			engine.deploy({ bpmn: makeGatewayProcess("x > 5", "x <= 5") });
 			const instance = engine.start("gw", { x: 10 });
+			await settle();
 			expect(instance.state).toBe("completed");
 			expect(instance.activeElements).toEqual([]);
 		});
 
-		it("takes the second branch when first is false", () => {
+		it("takes the second branch when first is false", async () => {
 			const engine = new Engine();
 			engine.deploy({ bpmn: makeGatewayProcess("x > 5", "x <= 5") });
 			const instance = engine.start("gw", { x: 3 });
+			await settle();
 			expect(instance.state).toBe("completed");
 		});
 	});
 
 	describe("parallel gateway", () => {
-		it("split and join completes process", () => {
+		it("split and join completes process", async () => {
 			const engine = new Engine();
 			engine.deploy({
 				bpmn: makeDefs([
@@ -376,12 +357,13 @@ describe("Engine", () => {
 				]),
 			});
 			const instance = engine.start("par");
+			await settle();
 			expect(instance.state).toBe("completed");
 		});
 	});
 
 	describe("terminate end event", () => {
-		it("terminates the process immediately", () => {
+		it("terminates the process immediately", async () => {
 			const engine = new Engine();
 			engine.deploy({
 				bpmn: makeDefs([
@@ -404,6 +386,7 @@ describe("Engine", () => {
 				]),
 			});
 			const instance = engine.start("term");
+			await settle();
 			expect(instance.state).toBe("completed");
 		});
 	});
@@ -421,7 +404,7 @@ describe("Engine", () => {
 	});
 
 	describe("deploy from XML", () => {
-		it("parses and runs SAMPLE_BPMN_XML (start → serviceTask → end) in simulation mode", () => {
+		it("parses and runs SAMPLE_BPMN_XML (start → serviceTask → end) in simulation mode", async () => {
 			const engine = new Engine();
 			engine.deploy({ bpmn: Bpmn.parse(Bpmn.SAMPLE_XML) });
 
@@ -432,6 +415,7 @@ describe("Engine", () => {
 			instance.onChange((e) => events.push(e));
 
 			// Service task has no zeebe:taskDefinition → auto-completes in simulation mode
+			await settle();
 			expect(instance.state).toBe("completed");
 		});
 
@@ -472,7 +456,7 @@ describe("Engine", () => {
 			});
 
 			const instance = engine.start("order-process", { amount: 50 });
-			await Promise.resolve();
+			await settle();
 
 			expect(instance.state).toBe("completed");
 			expect(jobType).toBe("payment-worker");
@@ -515,7 +499,7 @@ describe("Engine", () => {
 
 			// After unsubscribe, worker is gone — auto-complete applies
 			engine.start("p");
-			await Promise.resolve();
+			await settle();
 			expect(calls).toBe(0);
 		});
 	});

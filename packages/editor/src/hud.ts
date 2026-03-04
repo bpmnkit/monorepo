@@ -100,6 +100,11 @@ export interface HudOptions {
 	 * When provided, it is styled as a HUD button and placed in the action bar.
 	 */
 	aiButton?: HTMLButtonElement | null;
+	/**
+	 * Optional play mode button (from `createProcessRunnerPlugin(...).playButton`).
+	 * When provided, it is styled as a HUD button and placed in the action bar.
+	 */
+	playButton?: HTMLButtonElement | null;
 }
 
 export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): void {
@@ -141,6 +146,11 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 	if (options.aiButton) {
 		options.aiButton.className = "hud-btn";
 		hudTopCenter.append(hudSep(), options.aiButton);
+	}
+
+	if (options.playButton) {
+		options.playButton.className = "hud-btn";
+		hudTopCenter.append(hudSep(), options.playButton);
 	}
 
 	// Mobile collapse toggle — top center (hidden on desktop via CSS)

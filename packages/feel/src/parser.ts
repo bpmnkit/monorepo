@@ -824,11 +824,24 @@ class Parser {
 		}
 		return tests;
 	}
+
+	/** Push an error if there are unconsumed tokens remaining. */
+	checkDone(): void {
+		const tok = this.tokens[this.pos];
+		if (tok) {
+			this.errors.push({
+				message: `Unexpected token '${tok.value}'`,
+				start: tok.start,
+				end: tok.end,
+			});
+		}
+	}
 }
 
 export function parseExpression(input: string): ParseResult {
 	const p = new Parser(input);
 	const ast = p.parseExpression(0);
+	p.checkDone();
 	return { ast, errors: p.errors };
 }
 

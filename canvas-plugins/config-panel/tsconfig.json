@@ -9,5 +9,9 @@
 		"lib": ["ES2022", "DOM", "DOM.Iterable"]
 	},
 	"include": ["src"],
-	"references": [{ "path": "../../packages/canvas" }, { "path": "../../packages/bpmn-sdk" }]
+	"references": [
+		{ "path": "../../packages/canvas" },
+		{ "path": "../../packages/bpmn-sdk" },
+		{ "path": "../../packages/feel" }
+	]
 }

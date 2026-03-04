@@ -52,6 +52,30 @@ export const TABS_CSS = `
   --tab-type-form: #a6e3a1;
 }
 
+/* ── Play mode: hide tab groups, show only center slot ───────────────── */
+
+.bpmn-tabs.bpmn-play-mode .bpmn-tab {
+  display: none;
+}
+
+/* ── Center slot (e.g. process runner buttons) ───────────────────────── */
+
+.bpmn-tabs-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bpmn-tabs-center > * {
+  pointer-events: all;
+}
+
 .bpmn-tab {
   display: flex;
   align-items: center;

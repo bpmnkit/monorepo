@@ -8,117 +8,249 @@
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <!-- Hero -->
+
+  <!-- Scroll progress (pure CSS) -->
+  <div class="scroll-bar" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" aria-label="BPMN SDK">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="4.5" cy="12" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="8" y1="12" x2="10.5" y2="12" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="10.5" y="8.5" width="5" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="15.5" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="21.5" cy="12" r="3.5" stroke="currentColor" stroke-width="2.5"/>
+        </svg>
+        <span>bpmn-sdk</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#examples" class="nav-link">Examples</a>
+        <a href="/monorepo/editor" class="nav-link">Editor</a>
+        <a href="https://github.com/bpmn-sdk/monorepo" class="nav-cta" target="_blank" rel="noopener">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ──────────────────────────────────────────────────────────────── -->
   <section class="hero">
-    <div class="container">
-      <div class="badge">Zero dependencies · TypeScript · Auto-layout</div>
-      <h1>BPMN diagrams<br/><span class="gradient">from code, not clicks</span></h1>
-      <p class="subtitle">
-        A fluent TypeScript API that generates production-ready BPMN 2.0 diagrams with auto-layout.
-        Built for <strong>AI agents</strong>, automation platforms, and workflow builders.
-      </p>
-      <div class="hero-actions">
-        <a href="https://www.npmjs.com/package/@bpmn-sdk/core" class="btn btn-primary">npm install @bpmn-sdk/core</a>
-        <a href="/monorepo/editor" class="btn btn-editor">Try the Editor →</a>
-        <a href="https://github.com/bpmn-sdk/monorepo" class="btn btn-secondary">GitHub →</a>
+    <div class="aurora" aria-hidden="true">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+    <div class="dots" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="hero-body">
+      <div class="hero-text">
+        <div class="pill">
+          <span class="pill-dot"></span>
+          AI-Native · TypeScript · Zero Dependencies
+        </div>
+        <h1 class="hero-h1">
+          BPMN diagrams<br>
+          <span class="shimmer-text">from code, not clicks</span>
+        </h1>
+        <p class="hero-p">
+          A fluent TypeScript API that generates production-ready BPMN&nbsp;2.0 diagrams
+          with auto-layout. Built for <strong>AI&nbsp;agents</strong>, automation platforms,
+          and workflow builders.
+        </p>
+        <div class="hero-ctas">
+          <button class="install-btn" id="install-btn" title="Click to copy">
+            <svg class="install-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4.5" y="4.5" width="9" height="9" rx="1.5"/><path d="M2.5 11.5H1.5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/></svg>
+            <code>npm install @bpmn-sdk/core</code>
+            <span class="install-copied" aria-hidden="true">Copied!</span>
+          </button>
+          <a href="/monorepo/editor" class="btn-primary">
+            Try the Editor
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+          </a>
+          <a href="https://github.com/bpmn-sdk/monorepo" class="btn-ghost" target="_blank" rel="noopener">GitHub →</a>
+        </div>
       </div>
+
+      <!-- Live BPMN diagram preview (rendered by @bpmn-sdk/canvas) -->
+      <div class="hero-diagram" aria-hidden="true">
+        <div class="diagram-card">
+          <div class="diagram-topbar">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="tb-title">order-flow.bpmn</span>
+          </div>
+          <div id="diagram-hero" class="diagram-canvas-wrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scroll hint -->
+    <div class="scroll-hint" aria-hidden="true">
+      <div class="scroll-hint-dot"></div>
     </div>
   </section>
 
-  <!-- Why -->
-  <section class="why">
-    <div class="container">
-      <h2>Why this SDK?</h2>
-      <div class="cards">
-        <div class="card">
-          <div class="card-icon">🤖</div>
-          <h3>AI-Native</h3>
-          <p>LLMs can call a simple fluent API instead of wrestling with raw XML. Generate correct BPMN from natural language prompts — no XML knowledge required.</p>
+  <!-- ── Features Bento ───────────────────────────────────────────────────── -->
+  <section class="features" id="features">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Why BPMN SDK</div>
+      <h2 class="section-h2">Everything you need,<br>nothing you don't</h2>
+      <div class="bento" id="bento">
+        <!-- Large: AI-Native -->
+        <div class="bcard bcard-lg">
+          <div class="bcard-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div class="bcard-body">
+            <h3>AI-Native Design</h3>
+            <p>LLMs call a fluent API instead of wrestling with raw XML. A compact intermediate format makes the entire diagram fit in a single prompt — AI generates it, the SDK validates and renders it.</p>
+          </div>
+          <div class="bcard-chip">
+            <span class="kw">const</span> compact = <span class="fn">compactify</span>(defs)<br>
+            <span class="kw">const</span> xml = Bpmn.<span class="fn">export</span>(<span class="fn">expand</span>(compact))
+          </div>
         </div>
-        <div class="card">
-          <div class="card-icon">📐</div>
+
+        <!-- Tall: Zero Deps -->
+        <div class="bcard bcard-tall">
+          <div class="bcard-icon bcard-icon--teal">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>Zero<br>Dependencies</h3>
+          <p>Pure ESM, tree-shakeable. Runs in browsers, Node, Deno, Bun, and edge runtimes.</p>
+          <div class="deps-ring">
+            <div class="deps-center">0</div>
+            <div class="deps-label">runtime deps</div>
+          </div>
+        </div>
+
+        <!-- Normal: Auto-Layout -->
+        <div class="bcard">
+          <div class="bcard-icon bcard-icon--pink">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
           <h3>Auto-Layout</h3>
-          <p>Built-in Sugiyama layout engine produces clean, readable diagrams with orthogonal edge routing. No manual coordinate math.</p>
+          <p>Sugiyama layout engine produces clean, readable diagrams with orthogonal edge routing. No coordinate math.</p>
         </div>
-        <div class="card">
-          <div class="card-icon">🔒</div>
+
+        <!-- Normal: Type-Safe -->
+        <div class="bcard">
+          <div class="bcard-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
           <h3>Type-Safe</h3>
-          <p>Full TypeScript strict mode with discriminated unions. Invalid processes fail at compile time, not runtime.</p>
+          <p>Strict TypeScript throughout. Every element, attribute, and Zeebe extension is fully typed. Invalid processes fail at compile time.</p>
         </div>
-        <div class="card">
-          <div class="card-icon">🪶</div>
-          <h3>Zero Dependencies</h3>
-          <p>No runtime dependencies. Lightweight, tree-shakeable ESM. Works in Node.js, Deno, Bun, and edge runtimes.</p>
+
+        <!-- Wide: Roundtrip -->
+        <div class="bcard bcard-wide">
+          <div class="bcard-icon bcard-icon--teal">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+          <div>
+            <h3>Roundtrip Fidelity</h3>
+            <p>Parse → modify → export without data loss. All Zeebe extensions, custom namespaces, and diagram info preserved perfectly.</p>
+          </div>
+          <div class="roundtrip-flow">
+            <span class="rt-step">Parse</span>
+            <svg width="18" height="10" viewBox="0 0 18 10" fill="none" aria-hidden="true"><path d="M1 5h14M11 1l4 4-4 4" stroke="oklch(65% 0.28 280 / 0.7)" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span class="rt-step">Modify</span>
+            <svg width="18" height="10" viewBox="0 0 18 10" fill="none" aria-hidden="true"><path d="M1 5h14M11 1l4 4-4 4" stroke="oklch(65% 0.28 280 / 0.7)" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span class="rt-step">Export</span>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-icon">🔄</div>
-          <h3>Roundtrip Fidelity</h3>
-          <p>Parse → modify → export preserves Zeebe extensions, diagram info, and custom namespaces. Tested on 34 production files.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">⚡</div>
-          <h3>Camunda 8 Ready</h3>
-          <p>Native Zeebe task definitions, IO mappings, connectors, forms, and modeler templates. Deploy directly to Camunda Cloud.</p>
+
+        <!-- Wide: Camunda 8 -->
+        <div class="bcard bcard-wide">
+          <div class="bcard-icon bcard-icon--pink">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <h3>Camunda&nbsp;8 Ready</h3>
+            <p>Native Zeebe task definitions, IO mappings, connectors, forms, and modeler templates. Deploy directly to Camunda Cloud.</p>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- AI Section -->
-  <section class="ai-section">
-    <div class="container">
-      <h2>Built for AI agents</h2>
-      <p class="section-subtitle">LLMs struggle with raw BPMN XML — thousands of lines, complex namespaces, coordinate geometry. This SDK gives AI a simple, chainable API that produces valid diagrams every time.</p>
-      <div class="ai-comparison">
-        <div class="comparison-col comparison-bad">
-          <div class="comparison-label">❌ What AI has to generate without the SDK</div>
-          <pre><code>&lt;bpmn:definitions xmlns:bpmn="http://..."
-  xmlns:bpmndi="http://..." xmlns:dc="..."
-  xmlns:di="..." xmlns:zeebe="..."&gt;
-  &lt;bpmn:process id="p" isExecutable="true"&gt;
-    &lt;bpmn:startEvent id="s"&gt;
-      &lt;bpmn:outgoing&gt;Flow_1&lt;/bpmn:outgoing&gt;
-    &lt;/bpmn:startEvent&gt;
-    &lt;bpmn:serviceTask id="t"&gt;
-      &lt;bpmn:extensionElements&gt;
-        &lt;zeebe:taskDefinition type="..."/&gt;
-      &lt;/bpmn:extensionElements&gt;
-      &lt;bpmn:incoming&gt;Flow_1&lt;/bpmn:incoming&gt;
-      &lt;bpmn:outgoing&gt;Flow_2&lt;/bpmn:outgoing&gt;
-    &lt;/bpmn:serviceTask&gt;
-    &lt;!-- ... 200+ more lines of XML ... --&gt;
-  &lt;/bpmn:process&gt;
-  &lt;bpmndi:BPMNDiagram&gt;
-    &lt;!-- ... manual coordinates ... --&gt;
-  &lt;/bpmndi:BPMNDiagram&gt;
-&lt;/bpmn:definitions&gt;</code></pre>
+  <!-- ── Code Comparison ──────────────────────────────────────────────────── -->
+  <section class="compare-section">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Developer Experience</div>
+      <h2 class="section-h2">Stop writing XML.<br>Start building workflows.</h2>
+      <div class="compare-grid">
+        <div class="cmp-panel cmp-bad">
+          <div class="cmp-header">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="cmp-label cmp-label-bad">Without SDK</span>
+          </div>
+          <pre class="cmp-code"><code>&lt;<span class="xml-tag">bpmn:definitions</span>
+  <span class="xml-attr">xmlns:bpmn</span>=<span class="str">"http://www.omg.org/spec/BPMN/20100524/MODEL"</span>
+  <span class="xml-attr">xmlns:bpmndi</span>=<span class="str">"http://www.omg.org/spec/BPMN/20100524/DI"</span>
+  <span class="xml-attr">xmlns:zeebe</span>=<span class="str">"http://camunda.org/schema/zeebe/1.0"</span>&gt;
+  &lt;<span class="xml-tag">bpmn:process</span> <span class="xml-attr">id</span>=<span class="str">"p"</span> <span class="xml-attr">isExecutable</span>=<span class="str">"true"</span>&gt;
+    &lt;<span class="xml-tag">bpmn:startEvent</span> <span class="xml-attr">id</span>=<span class="str">"s"</span>&gt;
+      &lt;<span class="xml-tag">bpmn:outgoing</span>&gt;Flow_1&lt;/<span class="xml-tag">bpmn:outgoing</span>&gt;
+    &lt;/<span class="xml-tag">bpmn:startEvent</span>&gt;
+    &lt;<span class="xml-tag">bpmn:serviceTask</span> <span class="xml-attr">id</span>=<span class="str">"t"</span>&gt;
+      &lt;<span class="xml-tag">bpmn:extensionElements</span>&gt;
+        &lt;<span class="xml-tag">zeebe:taskDefinition</span> <span class="xml-attr">type</span>=<span class="str">"worker"</span>/&gt;
+      &lt;/<span class="xml-tag">bpmn:extensionElements</span>&gt;
+    &lt;/<span class="xml-tag">bpmn:serviceTask</span>&gt;
+    <span class="comment">&lt;!-- ...200+ more lines... --&gt;</span>
+  &lt;/<span class="xml-tag">bpmn:process</span>&gt;
+  &lt;<span class="xml-tag">bpmndi:BPMNDiagram</span>&gt;
+    <span class="comment">&lt;!-- ...manual coordinates... --&gt;</span>
+  &lt;/<span class="xml-tag">bpmndi:BPMNDiagram</span>&gt;
+&lt;/<span class="xml-tag">bpmn:definitions</span>&gt;</code></pre>
         </div>
-        <div class="comparison-col comparison-good">
-          <div class="comparison-label">✅ What AI generates with the SDK</div>
-          <pre><code>import { Bpmn } from "@bpmn-sdk/core";
+        <div class="cmp-arrow" aria-hidden="true">
+          <div class="cmp-arrow-inner">→</div>
+        </div>
+        <div class="cmp-panel cmp-good">
+          <div class="cmp-header">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="cmp-label cmp-label-good">With BPMN SDK</span>
+          </div>
+          <pre class="cmp-code"><code><span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
 
-const defs = Bpmn.createProcess("my-flow")
-  .startEvent("start")
-  .serviceTask("task", {
-    name: "Do Something",
-    taskType: "my-worker",
-  })
-  .endEvent("end")
-  .withAutoLayout()
-  .build();
+<span class="kw">const</span> xml = Bpmn.export(
+  Bpmn.createProcess(<span class="str">"my-flow"</span>)
+    .startEvent(<span class="str">"start"</span>)
+    .serviceTask(<span class="str">"task"</span>, {
+      name: <span class="str">"Do Something"</span>,
+      taskType: <span class="str">"my-worker"</span>,
+    })
+    .endEvent(<span class="str">"end"</span>)
+    .withAutoLayout()
+    .build()
+);
 
-const xml = Bpmn.export(defs);
-// → valid BPMN 2.0 XML with full diagram</code></pre>
+<span class="comment">// ✓ Valid BPMN 2.0 XML</span>
+<span class="comment">// ✓ Auto-layout applied</span>
+<span class="comment">// ✓ Zeebe extensions set</span></code></pre>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Examples -->
-  <section class="examples">
-    <div class="container">
-      <h2>See it in action</h2>
-      <p class="section-subtitle">Each code snippet below generates a complete, renderable BPMN diagram. Click the tabs to see different examples.</p>
+  <!-- ── Interactive Examples ─────────────────────────────────────────────── -->
+  <section class="examples" id="examples">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Interactive Examples</div>
+      <h2 class="section-h2">See it in action</h2>
+      <p class="section-sub">Each snippet generates a complete, renderable BPMN diagram. Explore the output live.</p>
 
       <div class="example-tabs">
         <button class="tab active" data-example="simple">Simple Process</button>
@@ -128,10 +260,17 @@ const xml = Bpmn.export(defs);
       </div>
 
       <div class="example-panels">
-        <!-- Simple Process -->
+        <!-- Simple -->
         <div class="example-panel active" data-example="simple">
-          <div class="example-code">
-            <pre><code><span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+          <div class="example-layout">
+            <div class="ex-code">
+              <div class="code-topbar">
+                <span class="tb-dot tb-red"></span>
+                <span class="tb-dot tb-yellow"></span>
+                <span class="tb-dot tb-green"></span>
+                <span class="tb-title">order-validation.ts</span>
+              </div>
+              <pre><code><span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
 
 <span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"order-validation"</span>)
   .name(<span class="str">"Order Validation"</span>)
@@ -149,21 +288,29 @@ const xml = Bpmn.export(defs);
   .build();
 
 <span class="kw">const</span> xml = Bpmn.export(defs);</code></pre>
-          </div>
-          <div class="example-output">
-            <div class="output-tabs">
-              <button class="output-tab active" data-view="diagram">Diagram</button>
-              <button class="output-tab" data-view="xml">XML Output</button>
             </div>
-            <div class="example-diagram output-view active" data-view="diagram" id="diagram-simple"></div>
-            <div class="example-xml output-view" data-view="xml" data-example="simple"></div>
+            <div class="example-output">
+              <div class="output-tabs">
+                <button class="output-tab active" data-view="diagram">Diagram</button>
+                <button class="output-tab" data-view="xml">XML Output</button>
+              </div>
+              <div class="example-diagram output-view active" data-view="diagram" id="diagram-simple"></div>
+              <div class="example-xml output-view" data-view="xml" data-example="simple"></div>
+            </div>
           </div>
         </div>
 
-        <!-- Decision Gateway -->
+        <!-- Gateway -->
         <div class="example-panel" data-example="gateway">
-          <div class="example-code">
-            <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"approval-flow"</span>)
+          <div class="example-layout">
+            <div class="ex-code">
+              <div class="code-topbar">
+                <span class="tb-dot tb-red"></span>
+                <span class="tb-dot tb-yellow"></span>
+                <span class="tb-dot tb-green"></span>
+                <span class="tb-title">approval-flow.ts</span>
+              </div>
+              <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"approval-flow"</span>)
   .name(<span class="str">"Approval Workflow"</span>)
   .startEvent(<span class="str">"start"</span>, { name: <span class="str">"Request Submitted"</span> })
   .serviceTask(<span class="str">"review"</span>, {
@@ -189,21 +336,29 @@ const xml = Bpmn.export(defs);
     )
   .withAutoLayout()
   .build();</code></pre>
-          </div>
-          <div class="example-output">
-            <div class="output-tabs">
-              <button class="output-tab active" data-view="diagram">Diagram</button>
-              <button class="output-tab" data-view="xml">XML Output</button>
             </div>
-            <div class="example-diagram output-view active" data-view="diagram" id="diagram-gateway"></div>
-            <div class="example-xml output-view" data-view="xml" data-example="gateway"></div>
+            <div class="example-output">
+              <div class="output-tabs">
+                <button class="output-tab active" data-view="diagram">Diagram</button>
+                <button class="output-tab" data-view="xml">XML Output</button>
+              </div>
+              <div class="example-diagram output-view active" data-view="diagram" id="diagram-gateway"></div>
+              <div class="example-xml output-view" data-view="xml" data-example="gateway"></div>
+            </div>
           </div>
         </div>
 
         <!-- Parallel -->
         <div class="example-panel" data-example="parallel">
-          <div class="example-code">
-            <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"order-fulfillment"</span>)
+          <div class="example-layout">
+            <div class="ex-code">
+              <div class="code-topbar">
+                <span class="tb-dot tb-red"></span>
+                <span class="tb-dot tb-yellow"></span>
+                <span class="tb-dot tb-green"></span>
+                <span class="tb-title">fulfillment.ts</span>
+              </div>
+              <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"order-fulfillment"</span>)
   .name(<span class="str">"Order Fulfillment"</span>)
   .startEvent(<span class="str">"start"</span>, { name: <span class="str">"Order Placed"</span> })
   .parallelGateway(<span class="str">"fork"</span>)
@@ -232,21 +387,29 @@ const xml = Bpmn.export(defs);
   .endEvent(<span class="str">"end"</span>, { name: <span class="str">"Order Complete"</span> })
   .withAutoLayout()
   .build();</code></pre>
-          </div>
-          <div class="example-output">
-            <div class="output-tabs">
-              <button class="output-tab active" data-view="diagram">Diagram</button>
-              <button class="output-tab" data-view="xml">XML Output</button>
             </div>
-            <div class="example-diagram output-view active" data-view="diagram" id="diagram-parallel"></div>
-            <div class="example-xml output-view" data-view="xml" data-example="parallel"></div>
+            <div class="example-output">
+              <div class="output-tabs">
+                <button class="output-tab active" data-view="diagram">Diagram</button>
+                <button class="output-tab" data-view="xml">XML Output</button>
+              </div>
+              <div class="example-diagram output-view active" data-view="diagram" id="diagram-parallel"></div>
+              <div class="example-xml output-view" data-view="xml" data-example="parallel"></div>
+            </div>
           </div>
         </div>
 
         <!-- AI Agent -->
         <div class="example-panel" data-example="ai-agent">
-          <div class="example-code">
-            <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"ai-support-agent"</span>)
+          <div class="example-layout">
+            <div class="ex-code">
+              <div class="code-topbar">
+                <span class="tb-dot tb-red"></span>
+                <span class="tb-dot tb-yellow"></span>
+                <span class="tb-dot tb-green"></span>
+                <span class="tb-title">ai-support-agent.ts</span>
+              </div>
+              <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"ai-support-agent"</span>)
   .name(<span class="str">"AI Support Agent"</span>)
   .startEvent(<span class="str">"start"</span>, { name: <span class="str">"Ticket Created"</span> })
   .serviceTask(<span class="str">"enrich"</span>, {
@@ -263,67 +426,62 @@ const xml = Bpmn.export(defs);
         name: <span class="str">"Draft Response"</span>,
         taskType: <span class="str">"draft-reply"</span>,
       });
-  }, {
-    name: <span class="str">"AI Agent"</span>,
-    taskDefinition: {
-      type: <span class="str">"io.camunda:ai-agent:1"</span>,
-    },
-  })
+  }, { name: <span class="str">"AI Agent"</span>,
+       taskDefinition: { type: <span class="str">"io.camunda:ai-agent:1"</span> } })
   .exclusiveGateway(<span class="str">"check"</span>, { name: <span class="str">"Confidence?"</span> })
     .branch(<span class="str">"high"</span>, (b) =&gt;
       b.condition(<span class="str">"= confidence > 0.9"</span>)
-        .serviceTask(<span class="str">"send"</span>, {
-          name: <span class="str">"Auto-Reply"</span>,
-          taskType: <span class="str">"send-reply"</span>,
-        })
+        .serviceTask(<span class="str">"send"</span>, { name: <span class="str">"Auto-Reply"</span>,
+          taskType: <span class="str">"send-reply"</span> })
         .endEvent(<span class="str">"resolved"</span>, { name: <span class="str">"Resolved"</span> })
     )
     .branch(<span class="str">"low"</span>, (b) =&gt;
       b.defaultFlow()
-        .userTask(<span class="str">"escalate"</span>, {
-          name: <span class="str">"Human Review"</span>,
-          formId: <span class="str">"review-form"</span>,
-        })
+        .userTask(<span class="str">"escalate"</span>, { name: <span class="str">"Human Review"</span>,
+          formId: <span class="str">"review-form"</span> })
         .endEvent(<span class="str">"escalated"</span>, { name: <span class="str">"Escalated"</span> })
     )
   .withAutoLayout()
   .build();</code></pre>
-          </div>
-          <div class="example-output">
-            <div class="output-tabs">
-              <button class="output-tab active" data-view="diagram">Diagram</button>
-              <button class="output-tab" data-view="xml">XML Output</button>
             </div>
-            <div class="example-diagram output-view active" data-view="diagram" id="diagram-ai-agent"></div>
-            <div class="example-xml output-view" data-view="xml" data-example="ai-agent"></div>
+            <div class="example-output">
+              <div class="output-tabs">
+                <button class="output-tab active" data-view="diagram">Diagram</button>
+                <button class="output-tab" data-view="xml">XML Output</button>
+              </div>
+              <div class="example-diagram output-view active" data-view="diagram" id="diagram-ai-agent"></div>
+              <div class="example-xml output-view" data-view="xml" data-example="ai-agent"></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Getting Started -->
-  <section class="getting-started">
-    <div class="container">
-      <h2>Get started in 30 seconds</h2>
-      <div class="steps">
+  <!-- ── Getting Started ──────────────────────────────────────────────────── -->
+  <section class="start-section" id="start">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Quickstart</div>
+      <h2 class="section-h2">Up and running<br>in 3 steps</h2>
+      <div class="steps-grid">
         <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-content">
-            <div class="pkg-tabs">
-              <button class="pkg-tab active" data-pkg="npm">npm</button>
-              <button class="pkg-tab" data-pkg="yarn">yarn</button>
-              <button class="pkg-tab" data-pkg="pnpm">pnpm</button>
-              <button class="pkg-tab" data-pkg="bun">bun</button>
-            </div>
-            <pre data-pkg="npm" class="pkg-cmd active"><code>npm install @bpmn-sdk/core</code></pre>
-            <pre data-pkg="yarn" class="pkg-cmd"><code>yarn add @bpmn-sdk/core</code></pre>
-            <pre data-pkg="pnpm" class="pkg-cmd"><code>pnpm add @bpmn-sdk/core</code></pre>
-            <pre data-pkg="bun" class="pkg-cmd"><code>bun add @bpmn-sdk/core</code></pre>
+          <div class="step-num">01</div>
+          <h3>Install</h3>
+          <div class="pkg-tabs">
+            <button class="pkg-tab active" data-pkg="npm">npm</button>
+            <button class="pkg-tab" data-pkg="yarn">yarn</button>
+            <button class="pkg-tab" data-pkg="pnpm">pnpm</button>
+            <button class="pkg-tab" data-pkg="bun">bun</button>
           </div>
+          <pre class="pkg-cmd active" data-pkg="npm"><code>npm install @bpmn-sdk/core</code></pre>
+          <pre class="pkg-cmd" data-pkg="yarn"><code>yarn add @bpmn-sdk/core</code></pre>
+          <pre class="pkg-cmd" data-pkg="pnpm"><code>pnpm add @bpmn-sdk/core</code></pre>
+          <pre class="pkg-cmd" data-pkg="bun"><code>bun add @bpmn-sdk/core</code></pre>
         </div>
+
         <div class="step">
-          <div class="step-num">2</div>
+          <div class="step-num">02</div>
+          <h3>Create a process</h3>
           <pre><code><span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
 
 <span class="kw">const</span> xml = Bpmn.export(
@@ -338,24 +496,50 @@ const xml = Bpmn.export(defs);
     .build()
 );</code></pre>
         </div>
+
         <div class="step">
-          <div class="step-num">3</div>
-          <pre><code>console.log(xml);
-<span class="comment">// → Complete BPMN 2.0 XML with diagram</span></code></pre>
+          <div class="step-num">03</div>
+          <h3>Deploy &amp; run</h3>
+          <pre><code><span class="kw">import</span> { Engine } <span class="kw">from</span> <span class="str">"@bpmn-sdk/engine"</span>;
+
+<span class="kw">const</span> engine = <span class="kw">new</span> Engine();
+<span class="kw">await</span> engine.deploy({ bpmn: xml });
+
+engine.registerJobWorker(
+  <span class="str">"greet"</span>,
+  <span class="kw">async</span> (job) => {
+    console.log(<span class="str">"Hello!"</span>);
+    <span class="kw">await</span> job.complete();
+  }
+);
+engine.start(<span class="str">"hello"</span>);</code></pre>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Footer -->
-  <footer>
-    <div class="container">
-      <p>
-        <a href="/monorepo/editor">Editor</a> ·
-        <a href="https://github.com/bpmn-sdk/monorepo">GitHub</a> ·
-        <a href="https://www.npmjs.com/package/@bpmn-sdk/core">npm</a> ·
-        MIT License
-      </p>
+  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <a href="#" class="nav-logo" aria-label="BPMN SDK home">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="4.5" cy="12" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="8" y1="12" x2="10.5" y2="12" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="10.5" y="8.5" width="5" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="15.5" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="21.5" cy="12" r="3.5" stroke="currentColor" stroke-width="2.5"/>
+          </svg>
+          <span>bpmn-sdk</span>
+        </a>
+        <span class="footer-dot">·</span>
+        <span class="footer-license">MIT License</span>
+      </div>
+      <div class="footer-links">
+        <a href="/monorepo/editor" class="footer-link">Editor</a>
+        <a href="https://github.com/bpmn-sdk/monorepo" class="footer-link" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.npmjs.com/package/@bpmn-sdk/core" class="footer-link" target="_blank" rel="noopener">npm</a>
+      </div>
     </div>
   </footer>
 

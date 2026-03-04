@@ -6,15 +6,18 @@ import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/canvas-plugin-config-pane
 import { createHistoryPanel, saveCheckpoint } from "@bpmn-sdk/canvas-plugin-history";
 import { createMainMenuPlugin } from "@bpmn-sdk/canvas-plugin-main-menu";
 import { createOptimizePlugin } from "@bpmn-sdk/canvas-plugin-optimize";
+import { createProcessRunnerPlugin } from "@bpmn-sdk/canvas-plugin-process-runner";
 import {
 	InMemoryFileResolver,
 	createStorageTabsBridge,
 } from "@bpmn-sdk/canvas-plugin-storage-tabs-bridge";
+import { createTokenHighlightPlugin } from "@bpmn-sdk/canvas-plugin-token-highlight";
 import { createWatermarkPlugin } from "@bpmn-sdk/canvas-plugin-watermark";
 import { createZoomControlsPlugin } from "@bpmn-sdk/canvas-plugin-zoom-controls";
 import { Bpmn, Dmn } from "@bpmn-sdk/core";
 import { BpmnEditor, createSideDock, initEditorHud } from "@bpmn-sdk/editor";
 import type { Tool } from "@bpmn-sdk/editor";
+import { Engine } from "@bpmn-sdk/engine";
 import { makeExamples } from "./examples.js";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -135,7 +138,47 @@ const configPanel = createConfigPanelPlugin({
 	onPanelHide: () => {
 		dock.hidePanel();
 	},
+	openInPlayground: (expression) => {
+		bridge.tabsPlugin.api.openTab({ type: "feel", name: "FEEL Playground", expression });
+	},
 });
+
+// ── Process runner ────────────────────────────────────────────────────────────
+
+const tokenHighlightPlugin = createTokenHighlightPlugin();
+const processRunnerPlugin = createProcessRunnerPlugin({
+	engine: new Engine(),
+	tokenHighlight: tokenHighlightPlugin,
+	playContainer: dock.playPane,
+	onShowPlayTab() {
+		dock.setPlayTabVisible(true);
+		if (dock.collapsed) dock.expand();
+		dock.switchTab("play");
+	},
+	onHidePlayTab() {
+		dock.setPlayTabVisible(false);
+	},
+	onEnterPlayMode() {
+		const el = document.getElementById("hud-bottom-center");
+		if (el) el.style.display = "none";
+		processRunnerPlugin.toolbar.style.display = "";
+		dock.propertiesPane.classList.add("bpmn-props-readonly");
+		bridge.tabsPlugin.api.setPlayMode(true);
+	},
+	onExitPlayMode() {
+		const el = document.getElementById("hud-bottom-center");
+		if (el) el.style.display = currentFileName !== null ? "" : "none";
+		processRunnerPlugin.toolbar.style.display = "none";
+		dock.propertiesPane.classList.remove("bpmn-props-readonly");
+		bridge.tabsPlugin.api.setPlayMode(false);
+	},
+	getProjectId: () => bridge.storagePlugin.api.getCurrentContext()?.projectId ?? null,
+});
+
+// Position runner toolbar at bottom center, hidden until play mode activates
+processRunnerPlugin.toolbar.classList.add("bpmn-runner-toolbar--hud-bottom");
+processRunnerPlugin.toolbar.style.display = "none";
+document.body.appendChild(processRunnerPlugin.toolbar);
 
 // ── Storage + Tabs bridge ─────────────────────────────────────────────────────
 
@@ -253,6 +296,8 @@ const editor = new BpmnEditor({
 		paletteEditor,
 		configPanel,
 		configPanelBpmn,
+		tokenHighlightPlugin,
+		processRunnerPlugin,
 	],
 });
 editorRef = editor;
@@ -292,5 +337,5 @@ initEditorHud(editor, {
 	getAvailableForms: () => bridge.tabsPlugin.api.getAvailableForms(),
 	rawModeButton: bridge.tabsPlugin.api.rawModeButton,
 	optimizeButton: optimizePlugin.button,
-	aiButton: aiBridgePlugin.button,
+	playButton: processRunnerPlugin.playButton,
 });

@@ -185,6 +185,32 @@ export const EDITOR_CSS = `
   pointer-events: none;
   opacity: 0.7;
 }
+
+/* Duplicate-ID warning banner */
+.bpmn-editor-warning-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  max-width: calc(100% - 32px);
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bpmn-canvas-host[data-theme="dark"] .bpmn-editor-warning-banner {
+  background: #451a03;
+  border-color: #d97706;
+  color: #fde68a;
+}
 `;
 
 /** Injects the editor stylesheet into `<head>` if not already present. */
@@ -229,6 +255,11 @@ export const HUD_CSS = `
   border-radius: 0;
   box-shadow: none;
   padding: 0 2px;
+  /* Pass clicks through the transparent background to the tab bar center slot. */
+  pointer-events: none;
+}
+#hud-top-center.panel > * {
+  pointer-events: auto;
 }
 
 /* ── Icon buttons ────────────────────────────────────────────────── */

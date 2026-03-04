@@ -460,7 +460,58 @@ export const CONFIG_PANEL_CSS = `
   line-height: 1.4;
 }
 
+/* ── Field error message ──────────────────────────────────────────────────── */
+.bpmn-cfg-field-error {
+  font-size: 11px;
+  color: #f87171;
+  margin-top: 3px;
+  line-height: 1.3;
+}
+[data-bpmn-hud-theme="light"] .bpmn-cfg-field-error { color: #dc2626; }
+
 /* ── FEEL expression field ────────────────────────────────────────────────── */
+/* FEEL/string mode toggle — appears at the right end of a feel-expression label row */
+.bpmn-cfg-feel-mode-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: none;
+  color: rgba(255,255,255,0.3);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.bpmn-cfg-feel-mode-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.55);
+}
+.bpmn-cfg-feel-mode-btn--active {
+  border-color: rgba(76,142,247,0.35);
+  background: rgba(76,142,247,0.1);
+  color: #4c8ef7;
+}
+.bpmn-cfg-feel-mode-btn--active:hover { background: rgba(76,142,247,0.18); }
+
+[data-bpmn-hud-theme="light"] .bpmn-cfg-feel-mode-btn {
+  border-color: rgba(0,0,0,0.12);
+  color: rgba(0,0,0,0.3);
+}
+[data-bpmn-hud-theme="light"] .bpmn-cfg-feel-mode-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.55);
+}
+[data-bpmn-hud-theme="light"] .bpmn-cfg-feel-mode-btn--active {
+  border-color: rgba(26,86,219,0.3);
+  background: rgba(26,86,219,0.07);
+  color: #1a56db;
+}
+[data-bpmn-hud-theme="light"] .bpmn-cfg-feel-mode-btn--active:hover { background: rgba(26,86,219,0.12); }
+
 .bpmn-cfg-feel-ta {
   width: 100%;
   min-height: 68px;

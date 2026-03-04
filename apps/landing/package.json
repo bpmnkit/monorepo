@@ -22,9 +22,12 @@
 		"@bpmn-sdk/canvas-plugin-ai-bridge": "workspace:*",
 		"@bpmn-sdk/canvas-plugin-history": "workspace:*",
 		"@bpmn-sdk/canvas-plugin-optimize": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-process-runner": "workspace:*",
 		"@bpmn-sdk/canvas-plugin-storage-tabs-bridge": "workspace:*",
+		"@bpmn-sdk/canvas-plugin-token-highlight": "workspace:*",
 		"@bpmn-sdk/canvas-plugin-watermark": "workspace:*",
 		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/editor": "workspace:*"
+		"@bpmn-sdk/editor": "workspace:*",
+		"@bpmn-sdk/engine": "workspace:*"
 	}
 }

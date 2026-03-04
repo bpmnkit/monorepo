@@ -11,6 +11,8 @@ export interface ParsedZeebeExt {
 	calledDecision?: { decisionId: string; resultVariable: string };
 	formDefinition?: { formId: string };
 	scriptTask?: { expression: string; resultVariable: string };
+	/** JSON string from `camundaModeler:exampleOutputJson` zeebe:property — used in play mode. */
+	exampleOutputJson?: string;
 }
 
 /** Parse extensionElements XmlElement array into a typed Zeebe extension object. */
@@ -71,6 +73,17 @@ export function parseZeebeExt(extensionElements: XmlElement[]): ParsedZeebeExt {
 				const expression = el.attributes.expression ?? "";
 				const resultVariable = el.attributes.resultVariable ?? "";
 				result.scriptTask = { expression, resultVariable };
+				break;
+			}
+			case "zeebe:properties": {
+				for (const child of el.children) {
+					if (
+						child.name === "zeebe:property" &&
+						child.attributes.name === "camundaModeler:exampleOutputJson"
+					) {
+						result.exampleOutputJson = child.attributes.value;
+					}
+				}
 				break;
 			}
 		}

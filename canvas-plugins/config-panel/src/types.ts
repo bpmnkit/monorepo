@@ -40,10 +40,21 @@ export interface FieldSchema {
 		setValue: (key: string, val: FieldValue) => void,
 	) => void;
 	/**
+	 * For `type: "feel-expression"` fields — when true, the field is always a
+	 * FEEL expression. The FEEL/string toggle is hidden and the `=` prefix is
+	 * managed automatically (not shown in the input).
+	 */
+	feelFixed?: boolean;
+	/**
 	 * For `type: "feel-expression"` fields — optional callback to open the
 	 * expression in an external playground/editor.
 	 */
 	openInPlayground?: (values: Record<string, FieldValue>) => void;
+	/**
+	 * Custom validation function. Called after the built-in required/FEEL checks.
+	 * Return `null` when the value is valid, or an error message string when invalid.
+	 */
+	validate?: (value: FieldValue) => string | null;
 }
 
 /** A named group of fields shown as a section in the full editor. */
@@ -103,4 +114,11 @@ export interface ConfigPanelOptions {
 	onPanelShow?: () => void;
 	/** Called when the panel is hidden (element deselected). */
 	onPanelHide?: () => void;
+	/**
+	 * Called when the user clicks "Open in FEEL Playground ↗" on any
+	 * `feel-expression` field that is currently in FEEL mode and does not have
+	 * its own `field.openInPlayground` override.
+	 * Receives the expression body (without the leading `=`).
+	 */
+	openInPlayground?: (expression: string) => void;
 }

@@ -120,6 +120,12 @@ export interface TabsPluginOptions {
 	 * (e.g. from a menu item). The `resolver` option must be set to register DMN/Form files.
 	 */
 	enableFileImport?: boolean;
+	/**
+	 * Optional element to place in the center of the tabs bar.
+	 * The element is wrapped in an absolutely-centered slot so it does not
+	 * interfere with tab scrolling. Typical use: process runner toolbar.
+	 */
+	centerSlot?: HTMLElement;
 }
 
 /** A single example entry shown on the welcome screen. */
@@ -222,6 +228,11 @@ export interface TabsApi {
 	 * No-op otherwise.
 	 */
 	openFilePicker(): void;
+	/**
+	 * Enter or exit play mode. In play mode the tab groups are hidden so only
+	 * the center slot (process runner controls) is visible in the tab bar.
+	 */
+	setPlayMode(enabled: boolean): void;
 }
 
 let _tabCounter = 0;
@@ -271,6 +282,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 	let rawModeBtn: HTMLButtonElement | null = null;
 
 	let isProjectMode = false;
+	let centerSlotEl: HTMLDivElement | null = null;
 	let fileInputEl: HTMLInputElement | null = null;
 	let dndDragoverHandler: ((e: DragEvent) => void) | null = null;
 	let dndDropHandler: ((e: DragEvent) => void) | null = null;
@@ -768,6 +780,9 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			createGroupTabEl(type, group, isGroupActive);
 		}
 
+		// Center slot must be re-appended after innerHTML clear
+		if (centerSlotEl) tabBar.appendChild(centerSlotEl);
+
 		updateRawModeBtn();
 	}
 
@@ -1152,6 +1167,15 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			fileInputEl?.click();
 		},
 
+		setPlayMode(enabled: boolean): void {
+			if (tabBar === null) return;
+			if (enabled) {
+				tabBar.classList.add("bpmn-play-mode");
+			} else {
+				tabBar.classList.remove("bpmn-play-mode");
+			}
+		},
+
 		openDecision(decisionId: string): void {
 			// Check if already open
 			const existing = tabs.find(
@@ -1239,6 +1263,13 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			tabBar.className = "bpmn-tabs";
 			tabBar.dataset.theme = theme;
 			container.appendChild(tabBar);
+
+			if (options.centerSlot) {
+				centerSlotEl = document.createElement("div");
+				centerSlotEl.className = "bpmn-tabs-center";
+				centerSlotEl.appendChild(options.centerSlot);
+				tabBar.appendChild(centerSlotEl);
+			}
 
 			// Create content area (below tab bar)
 			contentArea = document.createElement("div");
@@ -1398,6 +1429,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			contentArea?.remove();
 			tabBar = null;
 			contentArea = null;
+			centerSlotEl = null;
 			canvasApi = null;
 		},
 	};

@@ -1,5 +1,255 @@
 # Progress
 
+## 2026-03-04 — Landing hero: live BPMN diagram with neon theme
+
+Replaced the hand-crafted hero SVG with a real `BpmnCanvas` rendering.
+
+- `apps/landing/src/neon-plugin.ts` — new `createNeonThemePlugin(): CanvasPlugin` that overrides CSS variables (`--bpmn-bg: transparent`, neon purple shape stroke, teal flow stroke) directly as inline styles on the `.bpmn-canvas-host` element, winning over any `[data-theme]` CSS rules.
+- `apps/landing/index.html` — replaced static `<svg>` in hero with `<div id="diagram-hero" class="diagram-canvas-wrap">`.
+- `apps/landing/src/main.ts` — added `setupHeroDiagram()`: creates a BPMN approval flow programmatically via `Bpmn.createProcess().startEvent().serviceTask().exclusiveGateway().branch()…withAutoLayout().build()`, then renders it with `BpmnCanvas` + `createNeonThemePlugin()`.
+- `apps/landing/src/style.css` — `.diagram-canvas-wrap { height: 200px }` for the hero canvas.
+
+## 2026-03-04 — Landing page redesign
+
+Complete visual overhaul of `apps/landing` to a modern, high-impact design:
+
+- **Aurora hero**: three animated radial-gradient orbs behind a dot-grid and grain texture overlay. The hero uses a two-column layout (text + animated SVG diagram preview) on desktop, stacking to single-column on mobile.
+- **Shimmer text**: animated gradient background-position sweep on the hero headline.
+- **Pill badge** with a pulsing teal dot.
+- **Install button**: click-to-copy with a "Copied!" overlay using CSS opacity transition.
+- **Bento feature grid**: 12-column CSS Grid with `bcard-lg`, `bcard-tall`, `bcard-wide`, and default cards. Cards animate into view using `animation-timeline: view()` (scroll-driven). Hover shows a spinning `conic-gradient` border via `@property --angle`. A mouse-spotlight radial gradient follows cursor position via JS `--mx`/`--my` CSS variables.
+- **Code comparison**: terminal-style panels with traffic-light dots showing XML vs SDK approach.
+- **Terminal topbars**: `.code-topbar` with `.tb-dot` coloured dots throughout examples and comparison panels.
+- **Getting started**: 3-column step grid replacing the old vertical list.
+- **Pure-CSS scroll progress bar** via `animation-timeline: scroll(root)`.
+- **Sticky nav** with `backdrop-filter: blur` glassmorphism.
+- **oklch design tokens**: perceptually-uniform color system throughout.
+- `@supports not (animation-timeline: view())` fallback hides scroll bar and disables card entrance on older browsers.
+- `prefers-reduced-motion` disables all animations and restores plain color for shimmer text.
+
+`main.ts` additions: `setupInstallButton()` (copy on click) and `setupBentoSpotlight()` (pointermove → CSS vars). All existing tab/copy/pkg/diagram JS hooks preserved.
+
+## 2026-03-04 — Config panel: FEEL playground link for toggled FEEL fields
+
+`ConfigPanelOptions` now accepts `openInPlayground?: (expression: string) => void` — a renderer-level fallback callback that applies to all `feel-expression` fields.
+
+The "Open in FEEL Playground ↗" button now appears on any `feel-expression` field when the field is in FEEL mode (value starts with `=`). For `feelFixed: true` fields (always FEEL) the button is always visible. For togglable fields the button appears/disappears when the user toggles the FEEL/string mode.
+
+The per-field `field.openInPlayground` override still takes precedence (used for fixed-FEEL fields like `conditionExpression` that need to pass the full values map). The renderer-level fallback is used for all other `feel-expression` fields.
+
+`apps/landing/src/editor.ts` wired `openInPlayground` on `createConfigPanelPlugin` to open the FEEL Playground tab with the current expression.
+
+## 2026-03-04 — FEEL parser: report error for trailing unconsumed tokens
+
+`packages/feel/src/parser.ts` — the top-level `parseExpression` function previously silently ignored any tokens that remained after a successful parse. For example, `foo bar` would parse as the name `foo` with `bar` silently dropped, yielding no errors.
+
+Added a `checkDone()` method to the `Parser` class that pushes an `Unexpected token` error when unconsumed tokens remain. Called at the end of the module-level `parseExpression` function. This ensures that inputs like `foo bar`, `1 2`, `a + b c` all correctly report a parse error.
+
+This fixes FEEL validation in the config panel: when a FEEL-mode field contains text that isn't a valid complete expression (e.g. two unconnected identifiers), the field now shows as invalid. Regression tests added to `packages/feel/tests/parser.test.ts`.
+
+## 2026-03-04 — Config panel: FEEL support for connector template fields
+
+`canvas-plugins/config-panel-bpmn/src/template-engine.ts` — `propToFieldSchema` now reads the `feel` property from `TemplateProperty`:
+- `feel: "optional"` → `type: "feel-expression"` (FEEL/string toggle shown; user can switch modes)
+- `feel: "required"` → `type: "feel-expression"` with `feelFixed: true` (static "FEEL" badge, always FEEL)
+- `feel: "static"` or absent → unchanged (plain `text` / `textarea`)
+
+Applies to both `String` and `Text` property types. Fixes all Camunda connector template fields that declare FEEL support not having the FEEL/string toggle or validation.
+
+## 2026-03-04 — Config panel: fixed-FEEL fields and hidden = prefix
+
+Added `feelFixed?: boolean` to `FieldSchema`. When set:
+- The FEEL/string toggle is replaced by a static non-interactive "FEEL" badge.
+- The `=` prefix is never shown in the textarea — it's managed automatically. The user types just the expression body.
+- On save, `=` is always prepended if the body is non-empty.
+- `_refreshInputs` strips `=` from display for all `data-feel-field` textareas (works for both fixed and toggled FEEL fields).
+
+Set `feelFixed: true` on: `conditionExpression` (sequence flows and conditional events), `expression` (script tasks). These are always FEEL expressions and must not be switched to plain strings.
+
+The FEEL/string toggle (non-fixed fields) also now hides the `=` — toggling only changes whether `=` is stored; the textarea content appears identical in both modes.
+
+## 2026-03-04 — Config panel: FEEL validation, JSON validation, FEEL/string toggle
+
+**`canvas-plugins/config-panel`**:
+- Added `validate?: (value: FieldValue) => string | null` to `FieldSchema` — custom per-field validation returning an error message or null.
+- Added `@bpmn-sdk/feel` dependency; replaced heuristic `hasFEELSyntaxError` with `validateFeelExpression` using the real FEEL parser (`parseExpression`). Invalid FEEL expressions now show the parser's error message.
+- Added `_fieldError()` method returning the error message string (used by `_fieldHasError()`, `_refreshValidation`, and `_renderField`).
+- All `feel-expression` fields now show a **FEEL/string mode toggle** pill next to the label. Clicking it adds/removes the `=` prefix and updates validation accordingly.
+- Added `.bpmn-cfg-field-error` div below each field (hidden when valid) that shows the validation error message. Updated `_refreshValidation` to keep it in sync.
+- `_refreshInputs` also updates the FEEL mode toggle button state when values change externally.
+
+**`canvas-plugins/config-panel-bpmn`**:
+- Added `validateJson` helper; wired as `validate: validateJson` on `exampleOutputJson` fields for both service tasks and user tasks — invalid JSON now shows a parse error.
+
+## 2026-03-04 — exampleOutputJson: play-mode mock output support
+
+Implements `camundaModeler:exampleOutputJson` — a JSON string stored as a `zeebe:property` on task elements that provides mock output data for play-mode simulation.
+
+**Core** (`packages/bpmn-sdk`): Types (`ZeebePropertyEntry`, `ZeebeProperties`) and serialization (`zeebeExtensionsToXmlElements`) already existed. No change needed.
+
+**Engine** (`packages/engine/src/zeebe.ts`):
+- Added `exampleOutputJson?: string` to `ParsedZeebeExt`
+- `parseZeebeExt` now handles `zeebe:properties` children, extracting the `camundaModeler:exampleOutputJson` property value
+
+**Engine** (`packages/engine/src/instance.ts`):
+- `handleJobTask`: when no registered job worker is found (play mode), if `ext.exampleOutputJson` is set, parses it as JSON and writes each top-level key as a process variable before completing. Invalid JSON is silently ignored.
+
+**Config panel** (`canvas-plugins/config-panel-bpmn/src/util.ts`):
+- `parseZeebeExtensions` now parses `zeebe:properties` → `ZeebePropertyEntry[]` → `ext.properties`
+- Added `getExampleOutputJson(ext)` — reads the property value from parsed extensions
+- Added `buildPropertiesWithExampleOutput(ext, json)` — returns updated properties preserving other entries
+
+**Config panel** (`canvas-plugins/config-panel-bpmn/src/index.ts`):
+- Added "Example output (JSON)" textarea field to `GENERIC_SERVICE_TASK_SCHEMA` and `makeUserTaskSchema()`
+- `SERVICE_TASK_ADAPTER.read()`: includes `exampleOutputJson`; `write()`: rebuilds `zeebe:properties` via `buildPropertiesWithExampleOutput`, adds `"properties"` to the ZEEBE_EXTS exclusion set to prevent duplication
+- `USER_TASK_ADAPTER.read()`: includes `exampleOutputJson`; `write()`: same pattern
+
+## 2026-03-04 — Editor: unique IDs and duplicate-ID warning banner
+
+- **`packages/editor/src/id.ts`** (`genId`): Replaced sequential counter (`_seq++`) with `Math.random().toString(36).slice(2, 9)` random suffix. The counter reset to 0 on every page reload, causing ID collisions with previously-saved diagrams that already contained `Flow_1`, `task_2`, etc.
+- **`packages/editor/src/editor.ts`**:
+  - `loadDefinitions`: calls `_getDuplicateIds(defs)` after loading and shows/hides a warning banner.
+  - `_getDuplicateIds`: walks the full definitions tree (processes → flow elements → sub-processes → DI shapes/edges) and returns any IDs that appear more than once.
+  - `_setDuplicateIdWarning`: creates/removes a `<div class="bpmn-editor-warning-banner">` inside the host element listing the duplicate IDs.
+- **`packages/editor/src/css.ts`** (`EDITOR_CSS`): Added `.bpmn-editor-warning-banner` styles — amber-tinted banner centered at the top of the canvas, with dark-mode variant.
+
+## 2026-03-04 — Editor: fix wrong edge selected when clicking a sequence flow
+
+- **`packages/editor/src/editor.ts`** (`_hitTest`, `_nearestSegment` → `_nearestEdgeSegment`): When a click lands on any edge hit-area (detected via `document.elementFromPoint`), the SVG z-order could return the topmost hit-area in DOM order rather than the one the user visually clicked. Fixed by replacing the single-edge `_nearestSegment(edgeId, diag)` lookup with `_nearestEdgeSegment(diag)`, which iterates **all edges** and finds the geometrically nearest segment to the click point. The edge-hit detection still guards entry (so only fires when near an edge), but the final ID is geometry-based rather than DOM-order-based.
+
+## 2026-03-04 — Config panel: restrict default-flow toggle to exclusive gateway outgoing flows
+
+- **`canvas-plugins/config-panel-bpmn/src/index.ts`**: Added `condition: (values) => values._sourceType === "exclusiveGateway"` to the `isDefault` toggle field — the toggle is now hidden for flows that do not originate from an exclusive gateway.
+
+## 2026-03-04 — Config panel: restrict condition expression field to exclusive gateway outgoing flows
+
+- **`canvas-plugins/config-panel-bpmn/src/index.ts`**:
+  - `SEQUENCE_FLOW_ADAPTER.read()` now includes `_sourceType` (the source element's BPMN type) in the returned values.
+  - `makeSequenceFlowSchema()` adds `condition: (values) => values._sourceType === "exclusiveGateway"` to both the compact and full `conditionExpression` fields — the field is hidden for all non-exclusive-gateway outgoing flows.
+  - `SEQUENCE_FLOW_ADAPTER.write()` guards condition expression persistence: only saves `conditionExpression` when the source element is an exclusive gateway; clears it otherwise.
+
+## 2026-03-04 — Engine: restrict condition evaluation to gateway handlers
+
+- **`packages/engine/src/instance.ts`** (`getOutgoingFlows`): removed condition expression evaluation from general-purpose flow routing. Conditions are now only evaluated inside `handleExclusiveGateway` and `handleInclusiveGateway`. Non-gateway elements (tasks, events, …) take all outgoing flows unconditionally. This fixes spurious FEEL evaluation on paths where conditions are not meaningful, and aligns with the BPMN rule that FEEL conditions belong only on exclusive/inclusive gateway outgoing flows.
+- Also made the exclusive gateway's last-resort default-flow path explicit: any `conditionExpression` on the default flow is intentionally ignored — the default flow is unconditional by definition.
+
+## 2026-03-04 — Engine: loop detection + timer bypass in controlled mode
+
+- **`packages/engine/src/instance.ts`** — two fixes:
+  1. **Infinite-loop guard**: `activate()` now counts activations per element. If the same element is activated more than 100 times in one instance (indicating an unbreakable loop), the process fails with `element:failed` + `process:failed` ("Infinite loop detected at element …"). This stops runaway loops from spinning forever in play mode.
+  2. **Timer bypass in controlled mode**: `handleIntermediateCatchEvent` no longer waits for the real timer when `this.beforeComplete` is set (step / auto-play mode). The real `scheduleTimer` wait is skipped; `complete()` is called immediately, putting the process at the `beforeComplete` pause point so the user can advance with "One Step".
+
+## 2026-03-04 — Engine: exclusive gateway default-path priority fix
+
+- **`packages/engine/src/instance.ts`** (`handleExclusiveGateway`): unconditioned non-default flows were previously taken immediately (first match), overriding any conditioned flows that came later. Fixed by splitting into two passes: (1) evaluate conditioned flows first; (2) fall back to unconditioned flows; (3) fall back to explicit `default` flow. This means a flow without a condition expression now behaves as an implicit "else" branch rather than unconditionally winning.
+
+## 2026-03-04 — FEEL `==` alias + input vars per project
+
+- **`packages/feel/src/lexer.ts`**: tokenize `==` (JS-style equality) as `=` (FEEL equality). Users can now write `asd == true` or `= asd == true` on gateway paths; the parser handles it as standard FEEL equality.
+- **`canvas-plugins/process-runner/src/index.ts`**: input variables are now stored per-project in IndexedDB. Key is `input-vars:<projectId>` when a project is active, or `input-vars` for unsaved diagrams. Added `getProjectId?: () => string | null` to `ProcessRunnerOptions`; vars reload on `diagram:load` when the project changes.
+- **`apps/landing/src/editor.ts`**: passes `getProjectId: () => bridge.storagePlugin.api.getCurrentContext()?.projectId ?? null` to the process-runner plugin.
+
+## 2026-03-04 — Engine: strip Camunda FEEL `=` prefix on condition expressions
+
+- **`packages/engine/src/instance.ts`** (`evalFeel`): normalize expressions before parsing by stripping a leading `= ` (Camunda FEEL type-indicator prefix, e.g. `= amount > 50` → `amount > 50`). Without this, `parseExpression` returned `ast: null`, causing all gateway conditions to silently fail with "No condition matched".
+- All 32 engine tests pass.
+
+## 2026-03-04 — Play tab: Errors tab, Input Variables tab, toolbar fixes, light theme
+
+- **Errors sub-tab**: new "Errors" tab in the Play panel; `element:failed` events are shown with element ID + message in red; `process:failed` adds a message only if not already covered by an element error (deduplication by message).
+- **Input Variables sub-tab**: new "Input" tab with an add/delete variable list. Each variable has a name and value (JSON-parsed on run, falls back to string). Persisted in IndexedDB (`bpmn-process-runner-v1` / `data` / key `input-vars`). Variables are passed to `engine.start()` on Run and One Step.
+- **Toolbar button ordering**: unified 4-button toolbar (Run, One Step, Cancel, Exit) always present; state changes instead of re-rendering with different buttons: idle → Cancel disabled; running auto → Run + One Step disabled; step mode paused → Run disabled, One Step enabled; step mode mid-execution → Run + One Step disabled.
+- **Light theme**: added `[data-bpmn-hud-theme="light"]` overrides for the play panel tabs, text colors, variable/FEEL/error/input-var rows, and the bottom-center toolbar container (white background, dark shadow, adjusted Exit button color).
+- **`canvas-plugins/process-runner/src/index.ts`**: 4 sub-tabs (Variables, FEEL, Errors, Input); IndexedDB helpers; `renderErrors()`, `renderInputVars()`, `buildInputVars()`; `clearRunState()` clears all three data sets; `updateToolbar()` unified to 4 fixed buttons.
+- **`canvas-plugins/process-runner/src/css.ts`**: light theme variants for all play panel elements and toolbar.
+
+## 2026-03-04 — Exclusive gateway error, FEEL evaluation tracking, Play tab
+
+Three related features added together:
+
+**Exclusive gateway error handling**: when no outgoing condition matches and no default flow is set, the process now stops with an explicit error. The failing gateway element is highlighted red with a pulsing animation.
+
+**FEEL evaluation tracking**: every FEEL expression evaluated during a run now emits a `feel:evaluated` event with the element ID, property name, expression text, result value, and current variables. All call sites (`ioMapping inputs/outputs`, `scriptTask`, `conditionExpression` on exclusive/inclusive gateways and flows) have been updated to pass emit context.
+
+**Play tab in sidebar**: when play mode is entered, a "Play" tab appears in the side dock. It contains two sub-tabs:
+- **Variables** — live-updating list of all `variable:set` events showing current variable state
+- **FEEL** — per-element groups listing every evaluated FEEL expression, its text, and its result
+
+Changed files:
+- **`packages/engine/src/types.ts`**: Added `feel:evaluated` and `element:failed` variants to `ProcessEvent` union.
+- **`packages/engine/src/instance.ts`**: `evalFeel`/`evalCondition` accept optional `emitCtx: { elementId, property }` and emit `feel:evaluated` events. Fixed exclusive gateway: when no path is taken, emits `element:failed` + `process:failed` (previously called `complete()` with an empty list, which incorrectly completed the process).
+- **`canvas-plugins/token-highlight/src/css.ts`**: Added `.bpmn-token-error` class (red glow pulse, 3 iterations) and `.bpmn-token-error .bpmn-gw-body` stroke/fill overrides.
+- **`canvas-plugins/token-highlight/src/index.ts`**: Added `setError(elementId)` to `TokenHighlightApi` and implementation; `clear()` now also clears `errorIds`.
+- **`packages/editor/src/dock.ts`**: Added `playPane` and Play tab to `SideDock`; `setPlayTabVisible()` shows/hides the tab; `setPlayTabClickHandler()` wires a click callback; `switchTab()` extended for `"play"`.
+- **`canvas-plugins/process-runner/src/index.ts`**: New options `playContainer`, `onShowPlayTab`, `onHidePlayTab`. Play panel DOM (Variables + FEEL sub-tabs) mounted into `playContainer`. `instance.onChange` now handles `feel:evaluated`, `variable:set`, and `element:failed`. `TokenHighlightLike` interface updated to include `setError`.
+- **`canvas-plugins/process-runner/src/css.ts`**: Added CSS for play panel (`.bpmn-runner-play-panel`, `.bpmn-runner-play-tabs`, sub-panes, variable rows, FEEL eval groups).
+- **`apps/landing/src/editor.ts`**: Process runner wired with `playContainer: dock.playPane`, `onShowPlayTab` (show tab, expand dock, switch to play), `onHidePlayTab` (hide tab).
+
+## 2026-03-04 — Fix process runner using wrong process in multi-tab scenarios
+
+Root cause: `getPrimaryProcessId()` returned `engine.getDeployedProcesses()[0]`, which is the insertion-order first process in the engine's Map. When multiple diagrams are deployed (one per tab), the engine accumulates all process IDs. `[0]` always returned the first-ever deployed process (the initial SAMPLE_XML "proc"), not the currently displayed diagram's process. This caused the engine to run a stale/wrong process: events were emitted for old element IDs, the gateway logic evaluated old flows, and highlights only appeared on elements whose IDs happened to match the old process.
+
+Fix: track `currentProcessId` directly from the `defs` passed to `diagram:load` and `diagram:change` events (extracted as `defs.processes[0]?.id`). `getPrimaryProcessId()` now returns this variable instead of calling `engine.getDeployedProcesses()[0]`.
+
+- **`canvas-plugins/process-runner/src/index.ts`**: Added `currentProcessId` state variable. Updated `diagram:load`, `diagram:clear`, and `diagram:change` handlers to maintain it. `getPrimaryProcessId()` now returns `currentProcessId`.
+
+## 2026-03-04 — Fix token highlighting and step count for edited diagrams
+
+Root cause: both the engine and the token-highlight plugin only reacted to `diagram:load` but not `diagram:change`. When a user edited a diagram after loading (adding/removing elements), the engine continued running the stale deployment with old element IDs. This caused start/end events (whose IDs stayed the same) to be highlighted but new service tasks (with fresh IDs) to be invisible, and the step count to reflect the old process structure instead of the new one.
+
+Fix: added `diagram:change` listeners (via `(api.on as unknown as AnyOn)`) to both plugins so they stay in sync with every edit.
+
+- **`canvas-plugins/token-highlight/src/index.ts`**: Re-indexes flows on `diagram:change` so edge highlighting stays correct after edits.
+- **`canvas-plugins/process-runner/src/index.ts`**: Redeploys the engine on `diagram:change` so subsequent runs execute the current process definition with the current element IDs.
+
+## 2026-03-04 — Fix process runner: token highlighting now works for both auto-play and step modes
+
+Root cause: `instance.start()` fired all element events synchronously before `engine.start()` returned, so no `onChange` listeners were attached yet. Fixed by deferring activation via `Promise.resolve().then(...)`. Added a 600ms `beforeComplete` delay for auto-play mode so each active element is visible before the token advances.
+
+- **`packages/engine/src/instance.ts`**: `start()` now defers activation via `void Promise.resolve().then(...)`. `activate()` already guards `if (this._state !== "active") return` so cancelled instances are safe.
+- **`packages/engine/tests/engine.test.ts`**: All tests updated to be `async` with `await settle()` (macrotask drain) after `engine.start()`. Added `settle()` helper: `new Promise<void>(r => setTimeout(r, 0))`.
+- **`canvas-plugins/process-runner/src/index.ts`**: Auto-play mode now passes a `beforeComplete` hook with a 600ms delay, making each active element visible in the token highlight before the token moves on. Step mode still uses the queue-based pause.
+
+## 2026-03-04 — Play controls positioned at bottom center (replace tool selector in play mode)
+
+Moved the process runner running controls out of the tabs center slot and into a floating panel at `bottom: 10px; left: 50%` — the same position as `#hud-bottom-center`. In play mode, `#hud-bottom-center` is hidden and the runner toolbar takes its place. On exit, positions are restored.
+
+- **`canvas-plugins/process-runner`**: Added `.bpmn-runner-toolbar--hud-bottom` CSS class (fixed position, bottom center, HUD-like background/border/blur).
+- **`apps/landing`**: Removed `centerSlot` from bridge options. Toolbar appended to `document.body` with the new class and `display:none`. `onEnterPlayMode`/`onExitPlayMode` toggle its visibility alongside `#hud-bottom-center`.
+
+## 2026-03-04 — Play button moved to HUD action bar
+
+Moved the play mode entry button from the tabs center slot into the HUD top-center action bar, matching the `optimizeButton`/`aiButton` pattern. The running controls (Run/Step/Cancel/Exit) remain in the tabs center slot and only appear when play mode is active.
+
+- **`canvas-plugins/process-runner`**: Exposed `playButton: HTMLButtonElement` with a play-triangle SVG icon. Removed `renderTriggerButton()` — the toolbar is now empty when not in play mode. `playButton` is hidden (via `display: none`) while play mode is active.
+- **`packages/editor`**: Added `playButton?: HTMLButtonElement | null` to `HudOptions`; wired in `initEditorHud` same as `optimizeButton` (sets `className = "hud-btn"`, appends with separator).
+- **`apps/landing`**: Passed `processRunnerPlugin.playButton` to `initEditorHud`.
+
+## 2026-03-04 — Play mode for process runner
+
+Introduced a modal play mode: a single **▶ Play** button sits in the tabs bar center slot. Clicking it enters play mode, hiding the tab groups, the bottom-center editing toolbar, and making the properties panel read-only. In play mode the buttons change to **▶ Run**, **⤆ One Step**, **■ Cancel**, and **Exit**. Clicking Exit restores everything.
+
+- **`canvas-plugins/process-runner`**: Added `onEnterPlayMode?` / `onExitPlayMode?` callbacks to `ProcessRunnerOptions`. Added `playModeActive` boolean state. Replaced the always-visible split-play + step toolbar with a two-phase design: trigger button (not in play mode) → full run controls + Exit (in play mode). Removed the dropdown and payload modal (dead code after the redesign). Added `.bpmn-runner-btn--exit` CSS class.
+- **`canvas-plugins/tabs`**: Added `setPlayMode(enabled: boolean)` to `TabsApi` interface and implementation — toggles `.bpmn-play-mode` class on the tab bar. Added CSS rule `.bpmn-tabs.bpmn-play-mode .bpmn-tab { display: none }` to hide tab groups in play mode.
+- **`apps/landing`**: Wired `onEnterPlayMode` / `onExitPlayMode` in the process runner options to hide/show `hud-bottom-center`, toggle `.bpmn-props-readonly` on the properties pane, and call `bridge.tabsPlugin.api.setPlayMode()`. Added `.bpmn-props-readonly` CSS rule to `style.css`.
+
+## 2026-03-04 — Process runner buttons integrated into tabs bar center; AI button removed from HUD
+
+Moved the process runner toolbar out of the canvas overlay and into the tabs bar center slot. Removed the AI Assistant button from the HUD action bar.
+
+- **`canvas-plugins/process-runner`**: `toolbarEl` is now created at construction time and exposed as `plugin.toolbar`. The dropdown uses `position:fixed` + `document.body` (so it escapes the tabs bar's `overflow-y:hidden`). `install()` no longer appends the toolbar — the caller is responsible for placement.
+- **`canvas-plugins/tabs`**: New `centerSlot?: HTMLElement` option on `TabsPluginOptions`. When provided, the element is wrapped in `.bpmn-tabs-center` (absolute-centered inside the tabs bar) and appended to the tab bar. New `.bpmn-tabs-center` CSS class handles the centering.
+- **`canvas-plugins/storage-tabs-bridge`**: `centerSlot` threaded through from `StorageTabsBridgeOptions` to the internal tabs plugin.
+- **`apps/landing`**: Process runner created before the bridge; its `.toolbar` element passed as `centerSlot`. `aiButton` removed from `initEditorHud`.
+
+## 2026-03-04 — Integrate token-highlight and process-runner into landing editor
+
+Wired `@bpmn-sdk/canvas-plugin-token-highlight` and `@bpmn-sdk/canvas-plugin-process-runner` into `apps/landing`.
+
+- Added `@bpmn-sdk/canvas-plugin-process-runner`, `@bpmn-sdk/canvas-plugin-token-highlight`, and `@bpmn-sdk/engine` to `apps/landing/package.json`
+- Created `tokenHighlightPlugin` and `processRunnerPlugin` (with a shared `Engine` instance) in `apps/landing/src/editor.ts` and registered both in the editor's plugins array
+- Fixed `EngineLike.deploy` in process-runner to accept `bpmn?: unknown` (optional) so the concrete `Engine` class is structurally compatible
+
 ## 2026-03-03 — `@bpmn-sdk/canvas-plugin-process-runner` (`canvas-plugins/process-runner`)
 
 New canvas plugin that embeds a process execution toolbar directly on the canvas, wiring `@bpmn-sdk/engine` and (optionally) `@bpmn-sdk/canvas-plugin-token-highlight` together.

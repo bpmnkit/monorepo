@@ -91,8 +91,16 @@ function propToFieldSchema(prop: TemplateProperty): FieldSchema {
 		...(prop.constraints?.notEmpty === true ? { required: true } : {}),
 	};
 
+	// FEEL mode: "optional" → toggle, "required" → fixed (always FEEL, no toggle)
+	const feelOptional = prop.feel === "optional";
+	const feelRequired = prop.feel === "required";
+	const hasFeel = feelOptional || feelRequired;
+
 	switch (prop.type) {
 		case "Text":
+			if (hasFeel) {
+				return { ...base, type: "feel-expression", ...(feelRequired ? { feelFixed: true } : {}) };
+			}
 			return { ...base, type: "textarea" };
 
 		case "Dropdown":
@@ -114,6 +122,9 @@ function propToFieldSchema(prop: TemplateProperty): FieldSchema {
 
 		default:
 			// String
+			if (hasFeel) {
+				return { ...base, type: "feel-expression", ...(feelRequired ? { feelFixed: true } : {}) };
+			}
 			return base;
 	}
 }

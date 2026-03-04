@@ -74,6 +74,7 @@ export function createConfigPanelPlugin(options: ConfigPanelOptions): ConfigPane
 					container: options.container,
 					onPanelShow: options.onPanelShow,
 					onPanelHide: options.onPanelHide,
+					openInPlayground: options.openInPlayground,
 				},
 			);
 

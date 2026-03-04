@@ -4,7 +4,12 @@ import type {
 	BpmnSequenceFlow,
 	XmlElement,
 } from "@bpmn-sdk/core";
-import type { ZeebeExtensions, ZeebeIoMappingEntry, ZeebeTaskHeaderEntry } from "@bpmn-sdk/core";
+import type {
+	ZeebeExtensions,
+	ZeebeIoMappingEntry,
+	ZeebePropertyEntry,
+	ZeebeTaskHeaderEntry,
+} from "@bpmn-sdk/core";
 
 // ── XML helpers ───────────────────────────────────────────────────────────────
 
@@ -95,10 +100,41 @@ export function parseZeebeExtensions(extensionElements: XmlElement[]): ZeebeExte
 			const decisionId = el.attributes.decisionId ?? "";
 			const resultVariable = el.attributes.resultVariable ?? "result";
 			ext.calledDecision = { decisionId, resultVariable };
+		} else if (ln === "properties") {
+			const properties: ZeebePropertyEntry[] = [];
+			for (const child of el.children) {
+				if (xmlLocalName(child.name) === "property") {
+					properties.push({
+						name: child.attributes.name ?? "",
+						value: child.attributes.value ?? "",
+					});
+				}
+			}
+			ext.properties = { properties };
 		}
 	}
 
 	return ext;
+}
+
+const EXAMPLE_OUTPUT_JSON_KEY = "camundaModeler:exampleOutputJson";
+
+/** Read the example output JSON string from parsed zeebe extensions. */
+export function getExampleOutputJson(ext: ZeebeExtensions): string {
+	return ext.properties?.properties.find((p) => p.name === EXAMPLE_OUTPUT_JSON_KEY)?.value ?? "";
+}
+
+/**
+ * Return new properties list with the example output JSON set (or removed if empty).
+ * Other existing zeebe:property entries are preserved.
+ */
+export function buildPropertiesWithExampleOutput(
+	ext: ZeebeExtensions,
+	json: string,
+): ZeebeExtensions["properties"] {
+	const others = ext.properties?.properties.filter((p) => p.name !== EXAMPLE_OUTPUT_JSON_KEY) ?? [];
+	const entries = json ? [...others, { name: EXAMPLE_OUTPUT_JSON_KEY, value: json }] : others;
+	return entries.length > 0 ? { properties: entries } : undefined;
 }
 
 /** Get the value of a zeebe:ioMapping input by target name. */

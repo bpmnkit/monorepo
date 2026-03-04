@@ -19,6 +19,7 @@
 	},
 	"dependencies": {
 		"@bpmn-sdk/canvas": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*"
+		"@bpmn-sdk/core": "workspace:*",
+		"@bpmn-sdk/feel": "workspace:*"
 	}
 }

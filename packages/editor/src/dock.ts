@@ -116,7 +116,8 @@ export interface SideDock {
 	propertiesPane: HTMLDivElement;
 	historyPane: HTMLDivElement;
 	aiPane: HTMLDivElement;
-	switchTab(tab: "properties" | "history" | "ai"): void;
+	playPane: HTMLDivElement;
+	switchTab(tab: "properties" | "history" | "ai" | "play"): void;
 	expand(): void;
 	collapse(): void;
 	get collapsed(): boolean;
@@ -134,6 +135,10 @@ export interface SideDock {
 	setHistoryTabClickHandler(fn: () => void): void;
 	/** Enable or disable the History tab (disable when no storage context is available). */
 	setHistoryTabEnabled(enabled: boolean): void;
+	/** Show or hide the Play tab (shown when process runner enters play mode). */
+	setPlayTabVisible(visible: boolean): void;
+	/** Register a callback invoked when the Play tab is clicked. */
+	setPlayTabClickHandler(fn: () => void): void;
 }
 
 export function createSideDock(): SideDock {
@@ -170,9 +175,15 @@ export function createSideDock(): SideDock {
 	aiTab.className = "bpmn-side-dock__tab";
 	aiTab.textContent = "AI";
 
+	const playTab = document.createElement("button");
+	playTab.className = "bpmn-side-dock__tab";
+	playTab.textContent = "Play";
+	playTab.style.display = "none";
+
 	tabStrip.appendChild(propertiesTab);
 	tabStrip.appendChild(historyTab);
 	tabStrip.appendChild(aiTab);
+	tabStrip.appendChild(playTab);
 
 	// Properties pane — contains the info empty state
 	const propertiesPane = document.createElement("div");
@@ -221,18 +232,24 @@ export function createSideDock(): SideDock {
 	const aiPane = document.createElement("div");
 	aiPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden";
 
+	// Play pane
+	const playPane = document.createElement("div");
+	playPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden";
+
 	el.appendChild(collapseHandle);
 	el.appendChild(resizeHandle);
 	el.appendChild(tabStrip);
 	el.appendChild(propertiesPane);
 	el.appendChild(historyPane);
 	el.appendChild(aiPane);
+	el.appendChild(playPane);
 
 	// ── State ──
 	let _collapsed = false;
 	let _width = DEFAULT_WIDTH;
 	let _aiTabHandler: (() => void) | null = null;
 	let _historyTabHandler: (() => void) | null = null;
+	let _playTabHandler: (() => void) | null = null;
 
 	function setDocWidth(w: number): void {
 		el.style.width = `${w}px`;
@@ -264,13 +281,15 @@ export function createSideDock(): SideDock {
 	document.body.style.setProperty("--bpmn-dock-width", "0px");
 
 	// ── Tab switching ──
-	function switchTab(tab: "properties" | "history" | "ai"): void {
+	function switchTab(tab: "properties" | "history" | "ai" | "play"): void {
 		propertiesTab.classList.toggle("active", tab === "properties");
 		historyTab.classList.toggle("active", tab === "history");
 		aiTab.classList.toggle("active", tab === "ai");
+		playTab.classList.toggle("active", tab === "play");
 		propertiesPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "properties");
 		historyPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "history");
 		aiPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "ai");
+		playPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "play");
 	}
 
 	// ── Expand / collapse ──
@@ -330,6 +349,18 @@ export function createSideDock(): SideDock {
 		}
 	}
 
+	function setPlayTabVisible(visible: boolean): void {
+		playTab.style.display = visible ? "" : "none";
+		// If play tab is hidden while active, fall back to properties
+		if (!visible && playTab.classList.contains("active")) {
+			switchTab("properties");
+		}
+	}
+
+	function setPlayTabClickHandler(fn: () => void): void {
+		_playTabHandler = fn;
+	}
+
 	function setVisible(visible: boolean): void {
 		if (visible) {
 			el.style.display = "";
@@ -349,6 +380,10 @@ export function createSideDock(): SideDock {
 	aiTab.addEventListener("click", () => {
 		switchTab("ai");
 		_aiTabHandler?.();
+	});
+	playTab.addEventListener("click", () => {
+		switchTab("play");
+		_playTabHandler?.();
 	});
 	collapseHandle.addEventListener("click", () => {
 		if (_collapsed) expand();
@@ -387,6 +422,7 @@ export function createSideDock(): SideDock {
 		propertiesPane,
 		historyPane,
 		aiPane,
+		playPane,
 		switchTab,
 		expand,
 		collapse,
@@ -397,6 +433,8 @@ export function createSideDock(): SideDock {
 		setAiTabClickHandler,
 		setHistoryTabClickHandler,
 		setHistoryTabEnabled,
+		setPlayTabVisible,
+		setPlayTabClickHandler,
 		get collapsed() {
 			return _collapsed;
 		},

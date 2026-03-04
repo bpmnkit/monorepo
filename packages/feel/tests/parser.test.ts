@@ -206,9 +206,17 @@ describe("parseExpression", () => {
 
 	describe("error recovery", () => {
 		it("reports errors but returns partial AST", () => {
-			const { ast: a, errors } = parseExpression("1 + ");
+			const { errors } = parseExpression("1 + ");
 			expect(errors.length).toBeGreaterThan(0);
-			// partial parse: the 1 node or null
+		});
+		it("reports error for trailing unconsumed tokens", () => {
+			const { errors } = parseExpression("foo bar");
+			expect(errors.length).toBeGreaterThan(0);
+		});
+		it("reports no errors for valid complete expression", () => {
+			expect(parseExpression("foo + bar").errors).toHaveLength(0);
+			expect(parseExpression("contains(a, b)").errors).toHaveLength(0);
+			expect(parseExpression("x > 5 and y < 10").errors).toHaveLength(0);
 		});
 	});
 });
