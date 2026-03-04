@@ -1,5 +1,28 @@
 # Progress
 
+## 2026-03-04 — exampleOutputJson: play-mode mock output support
+
+Implements `camundaModeler:exampleOutputJson` — a JSON string stored as a `zeebe:property` on task elements that provides mock output data for play-mode simulation.
+
+**Core** (`packages/bpmn-sdk`): Types (`ZeebePropertyEntry`, `ZeebeProperties`) and serialization (`zeebeExtensionsToXmlElements`) already existed. No change needed.
+
+**Engine** (`packages/engine/src/zeebe.ts`):
+- Added `exampleOutputJson?: string` to `ParsedZeebeExt`
+- `parseZeebeExt` now handles `zeebe:properties` children, extracting the `camundaModeler:exampleOutputJson` property value
+
+**Engine** (`packages/engine/src/instance.ts`):
+- `handleJobTask`: when no registered job worker is found (play mode), if `ext.exampleOutputJson` is set, parses it as JSON and writes each top-level key as a process variable before completing. Invalid JSON is silently ignored.
+
+**Config panel** (`canvas-plugins/config-panel-bpmn/src/util.ts`):
+- `parseZeebeExtensions` now parses `zeebe:properties` → `ZeebePropertyEntry[]` → `ext.properties`
+- Added `getExampleOutputJson(ext)` — reads the property value from parsed extensions
+- Added `buildPropertiesWithExampleOutput(ext, json)` — returns updated properties preserving other entries
+
+**Config panel** (`canvas-plugins/config-panel-bpmn/src/index.ts`):
+- Added "Example output (JSON)" textarea field to `GENERIC_SERVICE_TASK_SCHEMA` and `makeUserTaskSchema()`
+- `SERVICE_TASK_ADAPTER.read()`: includes `exampleOutputJson`; `write()`: rebuilds `zeebe:properties` via `buildPropertiesWithExampleOutput`, adds `"properties"` to the ZEEBE_EXTS exclusion set to prevent duplication
+- `USER_TASK_ADAPTER.read()`: includes `exampleOutputJson`; `write()`: same pattern
+
 ## 2026-03-04 — Editor: unique IDs and duplicate-ID warning banner
 
 - **`packages/editor/src/id.ts`** (`genId`): Replaced sequential counter (`_seq++`) with `Math.random().toString(36).slice(2, 9)` random suffix. The counter reset to 0 on every page reload, causing ID collisions with previously-saved diagrams that already contained `Flow_1`, `task_2`, etc.

@@ -48,8 +48,10 @@ import { CAMUNDA_CONNECTOR_TEMPLATES } from "./templates/generated.js";
 export { CAMUNDA_CONNECTOR_TEMPLATES } from "./templates/generated.js";
 export { templateToServiceTaskOptions } from "./template-to-service-task.js";
 import {
+	buildPropertiesWithExampleOutput,
 	findFlowElement,
 	findSequenceFlow,
+	getExampleOutputJson,
 	getIoInput,
 	getTaskHeader,
 	parseCalledElement,
@@ -194,6 +196,13 @@ const GENERIC_SERVICE_TASK_SCHEMA: PanelSchema = {
 				},
 				{ key: "retries", label: "Retries", type: "text", placeholder: "3" },
 				{
+					key: "exampleOutputJson",
+					label: "Example output (JSON)",
+					type: "textarea",
+					placeholder: '{"myVariable": "value"}',
+					hint: "Mock output written to process variables in play mode when no job worker is registered.",
+				},
+				{
 					key: "documentation",
 					label: "Documentation",
 					type: "textarea",
@@ -223,6 +232,7 @@ const SERVICE_TASK_ADAPTER: PanelAdapter = {
 			connector,
 			taskType: connector === CUSTOM_TASK_TYPE ? definitionType : "",
 			retries: ext.taskDefinition?.retries ?? "",
+			exampleOutputJson: getExampleOutputJson(ext),
 		};
 	},
 
@@ -261,12 +271,17 @@ const SERVICE_TASK_ADAPTER: PanelAdapter = {
 					: el.documentation;
 			const taskType = strVal(values.taskType);
 			const retries = strVal(values.retries);
+			const exampleOutputJson = strVal(values.exampleOutputJson);
 
-			const ZEEBE_EXTS = new Set(["taskDefinition", "ioMapping", "taskHeaders"]);
+			const currentExt = parseZeebeExtensions(el.extensionElements);
+			const newProperties = buildPropertiesWithExampleOutput(currentExt, exampleOutputJson);
+
+			const ZEEBE_EXTS = new Set(["taskDefinition", "ioMapping", "taskHeaders", "properties"]);
 			const otherExts = el.extensionElements.filter((x) => !ZEEBE_EXTS.has(xmlLocalName(x.name)));
 
 			const newZeebeExts = zeebeExtensionsToXmlElements({
 				taskDefinition: taskType ? { type: taskType, retries: retries || undefined } : undefined,
+				properties: newProperties,
 			});
 
 			// Remove modelerTemplate attribute when switching to custom
@@ -438,6 +453,13 @@ function makeUserTaskSchema(): PanelSchema {
 						hint: "ID of the Camunda Form linked to this user task.",
 					},
 					{
+						key: "exampleOutputJson",
+						label: "Example output (JSON)",
+						type: "textarea",
+						placeholder: '{"myVariable": "value"}',
+						hint: "Mock output written to process variables in play mode when no job worker is registered.",
+					},
+					{
 						key: "documentation",
 						label: "Documentation",
 						type: "textarea",
@@ -458,16 +480,23 @@ const USER_TASK_ADAPTER: PanelAdapter = {
 			name: el.name ?? "",
 			documentation: el.documentation ?? "",
 			formId: ext.formDefinition?.formId ?? "",
+			exampleOutputJson: getExampleOutputJson(ext),
 		};
 	},
 	write(defs: BpmnDefinitions, id: string, values: Record<string, FieldValue>): BpmnDefinitions {
 		return updateFlowElement(defs, id, (el) => {
 			const formId = strVal(values.formId);
-			const ZEEBE_FORM_NAMES = new Set(["userTask", "formDefinition"]);
+			const exampleOutputJson = strVal(values.exampleOutputJson);
+			const currentExt = parseZeebeExtensions(el.extensionElements);
+			const newProperties = buildPropertiesWithExampleOutput(currentExt, exampleOutputJson);
+			const ZEEBE_FORM_NAMES = new Set(["userTask", "formDefinition", "properties"]);
 			const otherExts = el.extensionElements.filter(
 				(x) => !ZEEBE_FORM_NAMES.has(xmlLocalName(x.name)),
 			);
-			const formExts = formId ? zeebeExtensionsToXmlElements({ formDefinition: { formId } }) : [];
+			const formExts = zeebeExtensionsToXmlElements({
+				formDefinition: formId ? { formId } : undefined,
+				properties: newProperties,
+			});
 			return {
 				...el,
 				name: typeof values.name === "string" ? values.name : el.name,

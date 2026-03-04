@@ -428,6 +428,18 @@ export class ProcessInstance {
 		const handler = this.jobWorkers.get(jobType);
 
 		if (handler === undefined) {
+			// No real worker — apply example output JSON if configured (play mode simulation)
+			if (ext.exampleOutputJson) {
+				try {
+					const example = JSON.parse(ext.exampleOutputJson) as Record<string, unknown>;
+					for (const [k, v] of Object.entries(example)) {
+						this.variables.set(ctx.scopeId, k, v);
+						this.emit({ type: "variable:set", name: k, value: v, scopeId: ctx.scopeId });
+					}
+				} catch {
+					// Invalid JSON — skip silently
+				}
+			}
 			await this.complete(token, ctx);
 			return;
 		}
