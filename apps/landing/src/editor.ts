@@ -146,6 +146,15 @@ const tokenHighlightPlugin = createTokenHighlightPlugin();
 const processRunnerPlugin = createProcessRunnerPlugin({
 	engine: new Engine(),
 	tokenHighlight: tokenHighlightPlugin,
+	playContainer: dock.playPane,
+	onShowPlayTab() {
+		dock.setPlayTabVisible(true);
+		if (dock.collapsed) dock.expand();
+		dock.switchTab("play");
+	},
+	onHidePlayTab() {
+		dock.setPlayTabVisible(false);
+	},
 	onEnterPlayMode() {
 		const el = document.getElementById("hud-bottom-center");
 		if (el) el.style.display = "none";
@@ -160,6 +169,7 @@ const processRunnerPlugin = createProcessRunnerPlugin({
 		dock.propertiesPane.classList.remove("bpmn-props-readonly");
 		bridge.tabsPlugin.api.setPlayMode(false);
 	},
+	getProjectId: () => bridge.storagePlugin.api.getCurrentContext()?.projectId ?? null,
 });
 
 // Position runner toolbar at bottom center, hidden until play mode activates

@@ -7,6 +7,15 @@ export type ProcessEvent =
 	| { type: "element:left"; elementId: string; elementName?: string; elementType: string }
 	| { type: "variable:set"; name: string; value: unknown; scopeId: string }
 	| { type: "job:created"; job: Job }
+	| {
+			type: "feel:evaluated";
+			elementId: string;
+			property: string;
+			expression: string;
+			result: unknown;
+			variables: Record<string, unknown>;
+	  }
+	| { type: "element:failed"; elementId: string; error: string }
 	| { type: "process:completed"; variables: Record<string, unknown> }
 	| { type: "process:failed"; error: string };
 

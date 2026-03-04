@@ -1,5 +1,3 @@
-let _seq = 0;
-
 export function genId(prefix: string): string {
-	return `${prefix}_${(++_seq).toString(36)}`;
+	return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
 }

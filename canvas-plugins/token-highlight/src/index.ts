@@ -44,6 +44,9 @@ export interface TokenHighlightApi {
 	 */
 	addVisited(elementIds: string[]): void;
 
+	/** Mark an element as failed (e.g. exclusive gateway with no matching condition). Shown in red. */
+	setError(elementId: string): void;
+
 	/** Remove all token highlights from the canvas. */
 	clear(): void;
 }
@@ -57,6 +60,8 @@ export function createTokenHighlightPlugin(): CanvasPlugin & { api: TokenHighlig
 	const activeIds = new Set<string>();
 	/** Element IDs that a token has already passed through. */
 	const visitedIds = new Set<string>();
+	/** Element IDs that have failed (e.g. unmatched gateway condition). */
+	const errorIds = new Set<string>();
 	/** flowId → { sourceRef, targetRef } — populated from diagram:load/change. */
 	const flowIndex = new Map<string, { sourceRef: string; targetRef: string }>();
 
@@ -78,7 +83,7 @@ export function createTokenHighlightPlugin(): CanvasPlugin & { api: TokenHighlig
 
 		// Strip all plugin classes
 		for (const s of api.getShapes()) {
-			s.element.classList.remove("bpmn-token-active", "bpmn-token-visited");
+			s.element.classList.remove("bpmn-token-active", "bpmn-token-visited", "bpmn-token-error");
 		}
 		for (const e of api.getEdges()) {
 			e.element.classList.remove("bpmn-token-edge-active", "bpmn-token-edge-visited");
@@ -95,6 +100,15 @@ export function createTokenHighlightPlugin(): CanvasPlugin & { api: TokenHighlig
 			if (el !== undefined) {
 				el.classList.remove("bpmn-token-visited");
 				el.classList.add("bpmn-token-active");
+			}
+		}
+
+		// Error shapes (highest priority — override active/visited)
+		for (const id of errorIds) {
+			const el = shapeEl(id);
+			if (el !== undefined) {
+				el.classList.remove("bpmn-token-active", "bpmn-token-visited");
+				el.classList.add("bpmn-token-error");
 			}
 		}
 
@@ -172,9 +186,15 @@ export function createTokenHighlightPlugin(): CanvasPlugin & { api: TokenHighlig
 			applyHighlights();
 		},
 
+		setError(elementId) {
+			errorIds.add(elementId);
+			applyHighlights();
+		},
+
 		clear() {
 			activeIds.clear();
 			visitedIds.clear();
+			errorIds.clear();
 			applyHighlights();
 		},
 	};

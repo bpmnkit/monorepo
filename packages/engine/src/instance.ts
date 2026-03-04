@@ -64,6 +64,10 @@ export class ProcessInstance {
 	/** Timer cancel functions keyed by tokenId */
 	private readonly timerCancels = new Map<string, () => void>();
 
+	/** Activation count per elementId — used to detect infinite loops. */
+	private readonly activationCount = new Map<string, number>();
+	private static readonly MAX_ACTIVATIONS = 100;
+
 	/** Active boundary timer cancels, keyed by elementId */
 	private readonly boundaryTimerCancels = new Map<string, () => void>();
 
@@ -155,6 +159,10 @@ export class ProcessInstance {
 		);
 		// Defer activation so callers can attach onChange listeners before events fire.
 		void Promise.resolve().then(() => {
+			// Emit variable:set for initial variables so listeners (e.g. play panel) see them.
+			for (const [name, value] of Object.entries(this.variables.getAll(this.rootScopeId))) {
+				this.emit({ type: "variable:set", name, value, scopeId: this.rootScopeId });
+			}
 			for (const s of starts) {
 				void this.activate(s.id, this.rootScopeId, undefined);
 			}
@@ -247,6 +255,18 @@ export class ProcessInstance {
 		const el = ctx.elements.get(elementId);
 		if (el === undefined) return;
 
+		// ── Infinite-loop guard ────────────────────────────────────────────────
+		const activations = (this.activationCount.get(elementId) ?? 0) + 1;
+		this.activationCount.set(elementId, activations);
+		if (activations > ProcessInstance.MAX_ACTIVATIONS) {
+			const error = `Infinite loop detected at element "${elementId}" (activated ${activations} times)`;
+			this.emit({ type: "element:failed", elementId, error });
+			this._state = "failed";
+			this._error = error;
+			this.emit({ type: "process:failed", error });
+			return;
+		}
+
 		// ── Parallel gateway join ──────────────────────────────────────────────
 		if (el.type === "parallelGateway" && el.incoming.length > 1) {
 			const seen = this.joins.get(elementId) ?? new Set<string>();
@@ -262,7 +282,10 @@ export class ProcessInstance {
 		const ext = parseZeebeExt(el.extensionElements);
 		if (ext.ioMapping) {
 			for (const inp of ext.ioMapping.inputs) {
-				const val = this.evalFeel(inp.source, scopeId);
+				const val = this.evalFeel(inp.source, scopeId, {
+					elementId: el.id,
+					property: `input:${inp.target}`,
+				});
 				this.variables.setLocal(scopeId, inp.target, val);
 				this.emit({ type: "variable:set", name: inp.target, value: val, scopeId });
 			}
@@ -467,7 +490,10 @@ export class ProcessInstance {
 	): void {
 		const script = ext.scriptTask;
 		if (script === undefined || script.expression.trim() === "") return;
-		const result = this.evalFeel(script.expression, scopeId);
+		const result = this.evalFeel(script.expression, scopeId, {
+			elementId: el.id,
+			property: "script",
+		});
 		if (script.resultVariable !== "") {
 			this.variables.set(scopeId, script.resultVariable, result);
 			this.emit({ type: "variable:set", name: script.resultVariable, value: result, scopeId });
@@ -496,24 +522,53 @@ export class ProcessInstance {
 		const outflows = ctx.outgoing.get(el.id) ?? [];
 		const defaultFlowId = el.default;
 
+		// First pass: conditioned flows (the default flow is always skipped here).
 		let taken: BpmnSequenceFlow | undefined;
 		for (const flow of outflows) {
 			if (flow.id === defaultFlowId) continue;
-			if (flow.conditionExpression === undefined) {
-				taken = flow;
-				break;
-			}
-			if (this.evalCondition(flow.conditionExpression.text, ctx.scopeId)) {
+			if (flow.conditionExpression === undefined) continue;
+			if (
+				this.evalCondition(flow.conditionExpression.text, ctx.scopeId, {
+					elementId: el.id,
+					property: `flow:${flow.id}`,
+				})
+			) {
 				taken = flow;
 				break;
 			}
 		}
 
+		// Second pass: unconditioned non-default flows act as fallback (lower priority than
+		// conditioned flows so they behave like an implicit "else" branch).
+		if (taken === undefined) {
+			for (const flow of outflows) {
+				if (flow.id === defaultFlowId) continue;
+				if (flow.conditionExpression === undefined) {
+					taken = flow;
+					break;
+				}
+			}
+		}
+
+		// Last resort: explicit default flow. Its conditionExpression (if any) is intentionally
+		// ignored — the default flow is unconditional by definition.
 		if (taken === undefined && defaultFlowId !== undefined) {
 			taken = ctx.flows.get(defaultFlowId);
 		}
 
-		await this.complete(token, ctx, taken !== undefined ? [taken] : []);
+		if (taken === undefined) {
+			const error =
+				outflows.length === 0
+					? `Gateway "${el.id}" has no outgoing flows`
+					: `No condition matched at gateway "${el.id}" — add conditions to flows or mark one as the default`;
+			this.emit({ type: "element:failed", elementId: el.id, error });
+			this._state = "failed";
+			this._error = error;
+			this.emit({ type: "process:failed", error });
+			return;
+		}
+
+		await this.complete(token, ctx, [taken]);
 	}
 
 	private async handleInclusiveGateway(
@@ -527,7 +582,10 @@ export class ProcessInstance {
 		const matching = outflows.filter((f) => {
 			if (f.id === defaultFlowId) return false;
 			if (f.conditionExpression === undefined) return true;
-			return this.evalCondition(f.conditionExpression.text, ctx.scopeId);
+			return this.evalCondition(f.conditionExpression.text, ctx.scopeId, {
+				elementId: el.id,
+				property: `flow:${f.id}`,
+			});
 		});
 
 		const flows =
@@ -548,11 +606,16 @@ export class ProcessInstance {
 		const eventDef = el.eventDefinitions[0];
 
 		if (eventDef?.type === "timer") {
-			await new Promise<void>((resolve) => {
-				const cancel = scheduleTimer(eventDef, resolve);
-				this.timerCancels.set(token.id, cancel);
-			});
-			this.timerCancels.delete(token.id);
+			if (this.beforeComplete === undefined) {
+				// Normal mode: honour the real timer duration.
+				await new Promise<void>((resolve) => {
+					const cancel = scheduleTimer(eventDef, resolve);
+					this.timerCancels.set(token.id, cancel);
+				});
+				this.timerCancels.delete(token.id);
+			}
+			// Controlled mode (step / auto-play): skip the real wait — the
+			// beforeComplete hook in complete() is the user-visible pause point.
 		} else if (eventDef?.type === "message") {
 			const msgRef = eventDef.messageRef ?? el.id;
 			await new Promise<void>((resolve) => {
@@ -681,7 +744,10 @@ export class ProcessInstance {
 		// Apply ioMapping outputs
 		if (ext.ioMapping) {
 			for (const out of ext.ioMapping.outputs) {
-				const val = this.evalFeel(out.source, ctx.scopeId);
+				const val = this.evalFeel(out.source, ctx.scopeId, {
+					elementId: el.id,
+					property: `output:${out.target}`,
+				});
 				this.variables.set(ctx.scopeId, out.target, val);
 				this.emit({ type: "variable:set", name: out.target, value: val, scopeId: ctx.scopeId });
 			}
@@ -723,10 +789,9 @@ export class ProcessInstance {
 	}
 
 	private getOutgoingFlows(elementId: string, ctx: ScopeCtx): BpmnSequenceFlow[] {
-		return (ctx.outgoing.get(elementId) ?? []).filter((f) => {
-			if (f.conditionExpression === undefined) return true;
-			return this.evalCondition(f.conditionExpression.text, ctx.scopeId);
-		});
+		// Condition expressions are only meaningful on exclusive/inclusive gateway outgoing flows
+		// (handled by their dedicated handlers). For all other elements, take every outgoing flow.
+		return ctx.outgoing.get(elementId) ?? [];
 	}
 
 	private finishProcess(): void {
@@ -747,15 +812,36 @@ export class ProcessInstance {
 
 	// ── FEEL helpers ───────────────────────────────────────────────────────────
 
-	private evalFeel(expr: string, scopeId: string): unknown {
+	private evalFeel(
+		expr: string,
+		scopeId: string,
+		emitCtx?: { elementId: string; property: string },
+	): unknown {
 		const vars = this.variables.getAll(scopeId);
-		const parsed = parseExpression(expr.trim());
+		// Strip Camunda FEEL prefix ("= expr") — the leading "=" is a type indicator, not part of the expression.
+		const normalized = expr.trim().replace(/^=\s*/, "");
+		const parsed = parseExpression(normalized);
 		if (parsed.ast === null) return undefined;
-		return evaluate(parsed.ast, { vars: vars as Record<string, FeelValue> });
+		const result = evaluate(parsed.ast, { vars: vars as Record<string, FeelValue> });
+		if (emitCtx !== undefined) {
+			this.emit({
+				type: "feel:evaluated",
+				elementId: emitCtx.elementId,
+				property: emitCtx.property,
+				expression: expr.trim(),
+				result,
+				variables: { ...vars },
+			});
+		}
+		return result;
 	}
 
-	private evalCondition(expr: string, scopeId: string): boolean {
-		return this.evalFeel(expr, scopeId) === true;
+	private evalCondition(
+		expr: string,
+		scopeId: string,
+		emitCtx?: { elementId: string; property: string },
+	): boolean {
+		return this.evalFeel(expr, scopeId, emitCtx) === true;
 	}
 
 	// ── Emit ───────────────────────────────────────────────────────────────────

@@ -128,6 +128,12 @@ export function tokenize(input: string): FeelToken[] {
 			i += 2;
 			continue;
 		}
+		// "==" is not standard FEEL but users familiar with JS/Java write it; treat as "=".
+		if (two === "==") {
+			tokens.push({ kind: "op", value: "=", start, end: i + 2 });
+			i += 2;
+			continue;
+		}
 
 		// Single-char operators
 		if ("+-*/=<>?".includes(ch())) {

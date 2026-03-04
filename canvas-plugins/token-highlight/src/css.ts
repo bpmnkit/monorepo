@@ -51,6 +51,23 @@ const CSS = `
 .bpmn-token-edge-visited .bpmn-arrow-fill {
   fill: #10b981 !important;
 }
+
+/* ── Error shapes (gateway with no matching condition) ───────────────────── */
+@keyframes bpmn-token-error-pulse {
+  0%, 100% { filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.95)); }
+  50%       { filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.3)); }
+}
+.bpmn-token-error {
+  animation: bpmn-token-error-pulse 0.9s ease-in-out 3;
+}
+.bpmn-token-error .bpmn-shape-body,
+.bpmn-token-error .bpmn-event-body,
+.bpmn-token-error .bpmn-end-body,
+.bpmn-token-error .bpmn-gw-body {
+  stroke: #ef4444 !important;
+  stroke-width: 2.5 !important;
+  fill: rgba(239, 68, 68, 0.12) !important;
+}
 `;
 
 export function injectTokenHighlightStyles(): void {

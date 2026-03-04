@@ -17,7 +17,13 @@ import type {
 	Theme,
 } from "@bpmn-sdk/canvas";
 import { Bpmn } from "@bpmn-sdk/core";
-import type { BpmnBounds, BpmnDefinitions, DiColor } from "@bpmn-sdk/core";
+import type {
+	BpmnBounds,
+	BpmnDefinitions,
+	BpmnFlowElement,
+	BpmnSequenceFlow,
+	DiColor,
+} from "@bpmn-sdk/core";
 import { CommandStack } from "./command-stack.js";
 import { injectEditorStyles } from "./css.js";
 import {
@@ -294,6 +300,7 @@ export class BpmnEditor {
 	private _createEdgeDropTarget: string | null = null;
 	private _readOnly = false;
 	private _boundaryHostId: string | null = null;
+	private _warningBanner: HTMLElement | null = null;
 
 	// ── Events ─────────────────────────────────────────────────────────
 	private readonly _listeners = new Map<string, Set<(...args: unknown[]) => void>>();
@@ -571,6 +578,7 @@ export class BpmnEditor {
 		if (this._fit !== "none") {
 			requestAnimationFrame(() => this.fitView());
 		}
+		this._setDuplicateIdWarning(this._getDuplicateIds(defs));
 	}
 
 	exportXml(): string {
@@ -748,6 +756,55 @@ export class BpmnEditor {
 	}
 
 	// ── Private helpers ────────────────────────────────────────────────
+
+	private _getDuplicateIds(defs: BpmnDefinitions): string[] {
+		const seen = new Map<string, number>();
+		const track = (id: string) => seen.set(id, (seen.get(id) ?? 0) + 1);
+
+		const walkElements = (elements: BpmnFlowElement[], flows: BpmnSequenceFlow[]) => {
+			for (const el of elements) {
+				track(el.id);
+				const nested = el as {
+					flowElements?: BpmnFlowElement[];
+					sequenceFlows?: BpmnSequenceFlow[];
+				};
+				if (nested.flowElements && nested.sequenceFlows) {
+					walkElements(nested.flowElements, nested.sequenceFlows);
+				}
+			}
+			for (const sf of flows) track(sf.id);
+		};
+
+		track(defs.id);
+		for (const process of defs.processes) {
+			track(process.id);
+			walkElements(process.flowElements, process.sequenceFlows);
+			for (const ann of process.textAnnotations) track(ann.id);
+			for (const assoc of process.associations) track(assoc.id);
+		}
+		for (const diagram of defs.diagrams) {
+			track(diagram.id);
+			track(diagram.plane.id);
+			for (const shape of diagram.plane.shapes) track(shape.id);
+			for (const edge of diagram.plane.edges) track(edge.id);
+		}
+
+		return [...seen.entries()].filter(([, count]) => count > 1).map(([id]) => id);
+	}
+
+	private _setDuplicateIdWarning(duplicateIds: string[]): void {
+		if (duplicateIds.length === 0) {
+			this._warningBanner?.remove();
+			this._warningBanner = null;
+			return;
+		}
+		if (!this._warningBanner) {
+			this._warningBanner = document.createElement("div");
+			this._warningBanner.className = "bpmn-editor-warning-banner";
+			this._host.appendChild(this._warningBanner);
+		}
+		this._warningBanner.textContent = `⚠ Duplicate element IDs: ${duplicateIds.join(", ")}. Editing may produce unexpected results.`;
+	}
 
 	private _renderDefs(defs: BpmnDefinitions): void {
 		this._edgesG.innerHTML = "";
@@ -1929,14 +1986,20 @@ export class BpmnEditor {
 
 		const edgeHitEl = el.closest("[data-bpmn-edge-hit]");
 		if (edgeHitEl) {
-			const id = edgeHitEl.getAttribute("data-bpmn-edge-hit");
-			if (id) {
-				const rect = this._svg.getBoundingClientRect();
-				const diag = screenToDiagram(clientX, clientY, this._viewport.state, rect);
-				const seg = this._nearestSegment(id, diag);
-				if (seg) return { type: "edge-segment", id, ...seg };
-				return { type: "edge", id };
-			}
+			const rect = this._svg.getBoundingClientRect();
+			const diag = screenToDiagram(clientX, clientY, this._viewport.state, rect);
+			// Use geometry to find the nearest edge across all edges — DOM z-order
+			// can cause elementFromPoint to return the wrong edge's hit area when
+			// edges are close together.
+			const seg = this._nearestEdgeSegment(diag);
+			if (seg)
+				return {
+					type: "edge-segment",
+					id: seg.edgeId,
+					segIdx: seg.segIdx,
+					isHoriz: seg.isHoriz,
+					projPt: seg.projPt,
+				};
 		}
 
 		const shapeEl = el.closest("[data-bpmn-id]");
@@ -1948,45 +2011,50 @@ export class BpmnEditor {
 		return { type: "canvas" };
 	}
 
-	/** Returns the nearest segment info for the given edge and diagram point. */
-	private _nearestSegment(
-		edgeId: string,
-		diag: DiagPoint,
-	): { segIdx: number; isHoriz: boolean; projPt: DiagPoint } | null {
-		const edge = this._edges.find((e) => e.id === edgeId);
-		if (!edge) return null;
-		const wps = edge.edge.waypoints;
-		if (wps.length < 2) return null;
-
-		let bestIdx = 0;
+	/** Returns the nearest edge segment across all edges for the given diagram point. */
+	private _nearestEdgeSegment(diag: DiagPoint): {
+		edgeId: string;
+		segIdx: number;
+		isHoriz: boolean;
+		projPt: DiagPoint;
+	} | null {
 		let bestDist = Number.POSITIVE_INFINITY;
+		let bestEdgeId = "";
+		let bestIdx = 0;
 		let bestProj: DiagPoint = { x: 0, y: 0 };
 		let bestHoriz = true;
+		let found = false;
 
-		for (let i = 0; i < wps.length - 1; i++) {
-			const a = wps[i];
-			const b = wps[i + 1];
-			if (!a || !b) continue;
-			const dx = b.x - a.x;
-			const dy = b.y - a.y;
-			const lenSq = dx * dx + dy * dy;
-			let proj: DiagPoint;
-			if (lenSq < 0.001) {
-				proj = { x: a.x, y: a.y };
-			} else {
-				const t = Math.max(0, Math.min(1, ((diag.x - a.x) * dx + (diag.y - a.y) * dy) / lenSq));
-				proj = { x: a.x + t * dx, y: a.y + t * dy };
-			}
-			const dist = Math.hypot(diag.x - proj.x, diag.y - proj.y);
-			if (dist < bestDist) {
-				bestDist = dist;
-				bestIdx = i;
-				bestProj = proj;
-				bestHoriz = Math.abs(dy) <= Math.abs(dx);
+		for (const edge of this._edges) {
+			const wps = edge.edge.waypoints;
+			for (let i = 0; i < wps.length - 1; i++) {
+				const a = wps[i];
+				const b = wps[i + 1];
+				if (!a || !b) continue;
+				const dx = b.x - a.x;
+				const dy = b.y - a.y;
+				const lenSq = dx * dx + dy * dy;
+				let proj: DiagPoint;
+				if (lenSq < 0.001) {
+					proj = { x: a.x, y: a.y };
+				} else {
+					const t = Math.max(0, Math.min(1, ((diag.x - a.x) * dx + (diag.y - a.y) * dy) / lenSq));
+					proj = { x: a.x + t * dx, y: a.y + t * dy };
+				}
+				const dist = Math.hypot(diag.x - proj.x, diag.y - proj.y);
+				if (dist < bestDist) {
+					bestDist = dist;
+					bestEdgeId = edge.id;
+					bestIdx = i;
+					bestProj = proj;
+					bestHoriz = Math.abs(dy) <= Math.abs(dx);
+					found = true;
+				}
 			}
 		}
 
-		return { segIdx: bestIdx, isHoriz: bestHoriz, projPt: bestProj };
+		if (!found) return null;
+		return { edgeId: bestEdgeId, segIdx: bestIdx, isHoriz: bestHoriz, projPt: bestProj };
 	}
 
 	/** Snaps a diagram point to nearby shape/waypoint positions and returns guide lines. */

@@ -722,6 +722,7 @@ function makeSequenceFlowSchema(onOpenFeelPlayground?: (expression: string) => v
 				label: "Condition",
 				type: "text",
 				placeholder: "= expression",
+				condition: (values) => values._sourceType === "exclusiveGateway",
 			},
 		],
 		groups: [
@@ -736,6 +737,7 @@ function makeSequenceFlowSchema(onOpenFeelPlayground?: (expression: string) => v
 						type: "feel-expression",
 						placeholder: '= someVariable = "value"',
 						hint: "FEEL expression that must evaluate to true for this path to be taken.",
+						condition: (values) => values._sourceType === "exclusiveGateway",
 						...(onOpenFeelPlayground
 							? {
 									openInPlayground: (v) => {
@@ -750,6 +752,7 @@ function makeSequenceFlowSchema(onOpenFeelPlayground?: (expression: string) => v
 						label: "Default flow",
 						type: "toggle",
 						hint: "Mark as default path taken when no other condition evaluates to true.",
+						condition: (values) => values._sourceType === "exclusiveGateway",
 					},
 				],
 			},
@@ -773,15 +776,20 @@ const SEQUENCE_FLOW_ADAPTER: PanelAdapter = {
 			name: sf.name ?? "",
 			conditionExpression: sf.conditionExpression?.text ?? "",
 			isDefault: isDefault ?? false,
+			_sourceType: sourceEl?.type ?? "",
 		};
 	},
 	write(defs: BpmnDefinitions, id: string, values: Record<string, FieldValue>): BpmnDefinitions {
 		const sf = findSequenceFlow(defs, id);
 		const sourceRef = sf?.sourceRef;
 
+		// Condition expressions are only valid on outgoing flows of exclusive gateways
+		const sourceEl = sf ? findFlowElement(defs, sf.sourceRef) : undefined;
+		const isExclusiveGateway = sourceEl?.type === "exclusiveGateway";
+
 		// Update the sequence flow itself
 		let result = updateSequenceFlow(defs, id, (flow) => {
-			const expr = strVal(values.conditionExpression);
+			const expr = isExclusiveGateway ? strVal(values.conditionExpression) : undefined;
 			return {
 				...flow,
 				name: typeof values.name === "string" ? values.name || undefined : flow.name,
