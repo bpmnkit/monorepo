@@ -1,5 +1,34 @@
 # Progress
 
+## 2026-03-04 — Landing hero: live BPMN diagram with neon theme
+
+Replaced the hand-crafted hero SVG with a real `BpmnCanvas` rendering.
+
+- `apps/landing/src/neon-plugin.ts` — new `createNeonThemePlugin(): CanvasPlugin` that overrides CSS variables (`--bpmn-bg: transparent`, neon purple shape stroke, teal flow stroke) directly as inline styles on the `.bpmn-canvas-host` element, winning over any `[data-theme]` CSS rules.
+- `apps/landing/index.html` — replaced static `<svg>` in hero with `<div id="diagram-hero" class="diagram-canvas-wrap">`.
+- `apps/landing/src/main.ts` — added `setupHeroDiagram()`: creates a BPMN approval flow programmatically via `Bpmn.createProcess().startEvent().serviceTask().exclusiveGateway().branch()…withAutoLayout().build()`, then renders it with `BpmnCanvas` + `createNeonThemePlugin()`.
+- `apps/landing/src/style.css` — `.diagram-canvas-wrap { height: 200px }` for the hero canvas.
+
+## 2026-03-04 — Landing page redesign
+
+Complete visual overhaul of `apps/landing` to a modern, high-impact design:
+
+- **Aurora hero**: three animated radial-gradient orbs behind a dot-grid and grain texture overlay. The hero uses a two-column layout (text + animated SVG diagram preview) on desktop, stacking to single-column on mobile.
+- **Shimmer text**: animated gradient background-position sweep on the hero headline.
+- **Pill badge** with a pulsing teal dot.
+- **Install button**: click-to-copy with a "Copied!" overlay using CSS opacity transition.
+- **Bento feature grid**: 12-column CSS Grid with `bcard-lg`, `bcard-tall`, `bcard-wide`, and default cards. Cards animate into view using `animation-timeline: view()` (scroll-driven). Hover shows a spinning `conic-gradient` border via `@property --angle`. A mouse-spotlight radial gradient follows cursor position via JS `--mx`/`--my` CSS variables.
+- **Code comparison**: terminal-style panels with traffic-light dots showing XML vs SDK approach.
+- **Terminal topbars**: `.code-topbar` with `.tb-dot` coloured dots throughout examples and comparison panels.
+- **Getting started**: 3-column step grid replacing the old vertical list.
+- **Pure-CSS scroll progress bar** via `animation-timeline: scroll(root)`.
+- **Sticky nav** with `backdrop-filter: blur` glassmorphism.
+- **oklch design tokens**: perceptually-uniform color system throughout.
+- `@supports not (animation-timeline: view())` fallback hides scroll bar and disables card entrance on older browsers.
+- `prefers-reduced-motion` disables all animations and restores plain color for shimmer text.
+
+`main.ts` additions: `setupInstallButton()` (copy on click) and `setupBentoSpotlight()` (pointermove → CSS vars). All existing tab/copy/pkg/diagram JS hooks preserved.
+
 ## 2026-03-04 — Config panel: FEEL playground link for toggled FEEL fields
 
 `ConfigPanelOptions` now accepts `openInPlayground?: (expression: string) => void` — a renderer-level fallback callback that applies to all `feel-expression` fields.

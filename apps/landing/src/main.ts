@@ -1,6 +1,8 @@
 import { BpmnCanvas } from "@bpmn-sdk/canvas";
 import { createMinimapPlugin } from "@bpmn-sdk/canvas-plugin-minimap";
+import { Bpmn } from "@bpmn-sdk/core";
 import { examples } from "./examples.js";
+import { createNeonThemePlugin } from "./neon-plugin.js";
 
 const canvases = new Map<string, BpmnCanvas>();
 
@@ -141,10 +143,67 @@ function setupCopyButtons(): void {
 	}
 }
 
+function setupHeroDiagram(): void {
+	const container = document.getElementById("diagram-hero");
+	if (!container) return;
+
+	const xml = Bpmn.export(
+		Bpmn.createProcess("order-flow")
+			.name("Order Flow")
+			.startEvent("start", { name: "Order Received" })
+			.serviceTask("validate", { name: "Validate Order", taskType: "validate-order" })
+			.exclusiveGateway("gw", { name: "Valid?" })
+			.branch("yes", (b) =>
+				b
+					.condition("= valid")
+					.serviceTask("process", { name: "Process Order", taskType: "process-order" })
+					.endEvent("end-ok", { name: "Done" }),
+			)
+			.branch("no", (b) => b.defaultFlow().endEvent("end-rejected", { name: "Rejected" }))
+			.withAutoLayout()
+			.build(),
+	);
+
+	new BpmnCanvas({
+		container,
+		xml,
+		theme: "dark",
+		grid: true,
+		fit: "contain",
+		plugins: [createNeonThemePlugin()],
+	});
+}
+
+function setupInstallButton(): void {
+	const btn = document.getElementById("install-btn");
+	if (!btn) return;
+	btn.addEventListener("click", () => {
+		const code = btn.querySelector("code");
+		const text = code?.textContent?.trim() ?? "";
+		navigator.clipboard.writeText(text).then(() => {
+			btn.classList.add("copied");
+			setTimeout(() => btn.classList.remove("copied"), 1500);
+		});
+	});
+}
+
+function setupBentoSpotlight(): void {
+	const bento = document.getElementById("bento");
+	if (!bento) return;
+	bento.addEventListener("pointermove", (e: PointerEvent) => {
+		const rect = bento.getBoundingClientRect();
+		bento.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+		bento.style.setProperty("--my", `${e.clientY - rect.top}px`);
+	});
+}
+
 // Init
+setupHeroDiagram();
 setupCopyButtons();
 populateXmlPanels();
 setupTabs();
 setupOutputTabs();
 setupPkgTabs();
+setupInstallButton();
+setupBentoSpotlight();
 renderDiagram("simple");
