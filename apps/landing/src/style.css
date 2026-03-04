@@ -524,6 +524,86 @@ a:hover {
 	background: var(--bg);
 }
 
+/* ── Neon diagram loader ─────────────────────────────────────────── */
+.bpmn-neon-loader {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--bg);
+	z-index: 10;
+	transition: opacity 0.4s ease;
+	pointer-events: none;
+}
+
+.neon-loader-svg {
+	width: 100%;
+	max-width: 300px;
+	height: auto;
+	overflow: visible;
+}
+
+.neon-loader-start,
+.neon-loader-shape,
+.neon-loader-gw {
+	fill: oklch(6% 0.03 270 / 0.8);
+	stroke: oklch(65% 0.28 280);
+	stroke-width: 1.5;
+	animation: neon-shape-pulse 1.6s ease-in-out infinite;
+}
+
+.neon-loader-end {
+	fill: oklch(6% 0.03 270 / 0.8);
+	stroke: oklch(72% 0.18 185);
+	stroke-width: 3;
+	animation: neon-end-pulse 1.6s ease-in-out infinite;
+}
+
+.neon-loader-edge {
+	stroke: oklch(72% 0.18 185);
+	stroke-width: 1.5;
+	stroke-dasharray: 5 4;
+	animation: neon-flow 0.7s linear infinite;
+}
+
+.neon-loader-arrow {
+	fill: oklch(72% 0.18 185);
+}
+
+@keyframes neon-shape-pulse {
+	0%,
+	100% {
+		opacity: 0.3;
+		filter: drop-shadow(0 0 2px oklch(65% 0.28 280 / 0.4));
+	}
+	50% {
+		opacity: 0.85;
+		filter: drop-shadow(0 0 7px oklch(65% 0.28 280 / 0.75));
+	}
+}
+
+@keyframes neon-end-pulse {
+	0%,
+	100% {
+		opacity: 0.3;
+		filter: drop-shadow(0 0 2px oklch(72% 0.18 185 / 0.4));
+	}
+	50% {
+		opacity: 0.85;
+		filter: drop-shadow(0 0 7px oklch(72% 0.18 185 / 0.75));
+	}
+}
+
+@keyframes neon-flow {
+	from {
+		stroke-dashoffset: 9;
+	}
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
 /* Scroll hint */
 .scroll-hint {
 	position: absolute;
