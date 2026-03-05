@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-03-05 — packages/api: Camunda v2 REST API SDK
+
+New package `@bpmn-sdk/api` — auto-generated TypeScript SDK for the Camunda 8 Orchestration Cluster REST API (v2).
+
+**Generator** (`scripts/generate.mjs`, pure Node.js ESM, zero dependencies):
+- Downloads 42 OpenAPI YAML files from the Camunda GitHub repository into `swagger/`
+- Custom YAML parser handles all OpenAPI 3.x patterns (block/flow mappings, sequences, scalars, anchors/aliases, multi-line strings)
+- Resolves all cross-file `$ref` pointers with correct per-file context
+- Generates `src/generated/types.ts` — 502 TypeScript interfaces/types from OpenAPI schemas
+- Generates `src/generated/resources.ts` — 180 typed API methods across 30+ resource classes, plus `CamundaClient`
+
+**Runtime** (`src/runtime/`, no external dependencies):
+- `CamundaClient` — main entry point, extends `TypedEventEmitter<ClientEventMap>`
+- `HttpClient` — fetch-based HTTP layer: auth header injection, timeout, retry, caching, logging, event emission
+- `AuthProvider` — bearer token, Basic, OAuth2 (with token refresh + deduplication), or none
+- `Cache` — LRU + TTL in-memory cache; automatically applied to `x-eventually-consistent` endpoints
+- `withRetry` — exponential backoff + jitter, configurable retryOn status codes
+- `TypedEventEmitter` — browser/Node-compatible typed events (`request`, `response`, `error`, `retry`, `tokenRefresh`, `cacheHit`, `cacheMiss`)
+- Error hierarchy: `CamundaError` → `CamundaHttpError` → `CamundaValidationError`, `CamundaAuthError`, `CamundaForbiddenError`, `CamundaNotFoundError`, `CamundaConflictError`, `CamundaRateLimitError`, `CamundaServerError`, `CamundaNetworkError`, `CamundaTimeoutError`
+
+**Tests**: 25 unit tests covering events, cache (with fake timers), retry logic, and error building.
+
 ## 2026-03-04 — Landing hero: live BPMN diagram with neon theme
 
 Replaced the hand-crafted hero SVG with a real `BpmnCanvas` rendering.

@@ -1,0 +1,23 @@
+{
+	"name": "@bpmn-sdk/api",
+	"version": "0.0.1",
+	"private": false,
+	"type": "module",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": ["dist"],
+	"scripts": {
+		"generate": "node scripts/generate.mjs",
+		"build": "node scripts/generate.mjs && tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {}
+}

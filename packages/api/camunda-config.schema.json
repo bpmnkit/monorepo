@@ -1,0 +1,243 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://bpmn-sdk.github.io/api/camunda-config.schema.json",
+	"title": "Camunda Client Configuration",
+	"description": "YAML configuration file for the @bpmn-sdk/api Camunda client. Loaded via the configFile option or CAMUNDA_CONFIG_FILE env var.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"baseUrl": {
+			"type": "string",
+			"description": "Base URL of the Camunda REST API, e.g. https://your-cluster.camunda.io/v2",
+			"examples": [
+				"http://localhost:8080/v2",
+				"https://bru-2.connectors.camunda.io/your-cluster-id/v2"
+			]
+		},
+		"timeout": {
+			"type": "integer",
+			"description": "Request timeout in milliseconds.",
+			"default": 30000,
+			"minimum": 0,
+			"examples": [10000, 30000, 60000]
+		},
+		"auth": {
+			"description": "Authentication configuration. Pick one type.",
+			"oneOf": [
+				{
+					"title": "Bearer token",
+					"description": "Static bearer token (for self-managed / development).",
+					"type": "object",
+					"required": ["type", "token"],
+					"additionalProperties": false,
+					"properties": {
+						"type": { "const": "bearer" },
+						"token": {
+							"type": "string",
+							"description": "The bearer token value.",
+							"examples": ["eyJhbGci..."]
+						}
+					}
+				},
+				{
+					"title": "OAuth2 client credentials",
+					"description": "OAuth2 client credentials flow — recommended for Camunda SaaS / production.",
+					"type": "object",
+					"required": ["type", "clientId", "clientSecret", "tokenUrl"],
+					"additionalProperties": false,
+					"properties": {
+						"type": { "const": "oauth2" },
+						"clientId": {
+							"type": "string",
+							"description": "OAuth2 client ID.",
+							"examples": ["my-client"]
+						},
+						"clientSecret": {
+							"type": "string",
+							"description": "OAuth2 client secret.",
+							"examples": ["my-secret"]
+						},
+						"tokenUrl": {
+							"type": "string",
+							"description": "Token endpoint URL.",
+							"examples": ["https://login.cloud.camunda.io/oauth/token"]
+						},
+						"scope": {
+							"type": "string",
+							"description": "Space-separated OAuth2 scopes to request.",
+							"examples": ["api", "openid profile"]
+						},
+						"tokenCache": {
+							"title": "Token cache",
+							"description": "Controls how the OAuth2 access token is persisted between process restarts.",
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"disabled": {
+									"type": "boolean",
+									"description": "Set to true to disable persistent token caching entirely.",
+									"default": false
+								},
+								"filePath": {
+									"type": "string",
+									"description": "Path to the JSON file used as the token cache. Defaults to the OS config directory (e.g. ~/.config/camunda-api/token-cache.json on Linux).",
+									"examples": ["/tmp/camunda-token-cache.json", "/etc/myapp/token-cache.json"]
+								}
+							}
+						}
+					}
+				},
+				{
+					"title": "HTTP Basic",
+					"description": "HTTP Basic authentication.",
+					"type": "object",
+					"required": ["type", "username", "password"],
+					"additionalProperties": false,
+					"properties": {
+						"type": { "const": "basic" },
+						"username": {
+							"type": "string",
+							"description": "Basic auth username.",
+							"examples": ["admin"]
+						},
+						"password": {
+							"type": "string",
+							"description": "Basic auth password.",
+							"examples": ["s3cr3t"]
+						}
+					}
+				},
+				{
+					"title": "No authentication",
+					"description": "Disable authentication (for open / pre-authenticated environments).",
+					"type": "object",
+					"required": ["type"],
+					"additionalProperties": false,
+					"properties": {
+						"type": { "const": "none" }
+					}
+				}
+			]
+		},
+		"retry": {
+			"description": "Automatic retry configuration with exponential backoff.",
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"maxAttempts": {
+					"type": "integer",
+					"description": "Total number of attempts (1 = no retries).",
+					"default": 3,
+					"minimum": 1,
+					"examples": [3, 5]
+				},
+				"initialDelay": {
+					"type": "integer",
+					"description": "Delay before the first retry in milliseconds.",
+					"default": 100,
+					"minimum": 0,
+					"examples": [100, 500]
+				},
+				"maxDelay": {
+					"type": "integer",
+					"description": "Maximum delay between retries in milliseconds.",
+					"default": 30000,
+					"minimum": 0,
+					"examples": [5000, 30000]
+				},
+				"backoffFactor": {
+					"type": "number",
+					"description": "Exponential backoff multiplier applied after each retry.",
+					"default": 2,
+					"minimum": 1,
+					"examples": [2, 1.5]
+				},
+				"retryOn": {
+					"type": "array",
+					"description": "HTTP status codes that trigger a retry.",
+					"default": [429, 500, 502, 503, 504],
+					"items": {
+						"type": "integer",
+						"minimum": 100,
+						"maximum": 599
+					},
+					"examples": [[429, 500, 502, 503, 504]]
+				}
+			}
+		},
+		"cache": {
+			"description": "In-memory LRU response cache for eventually-consistent endpoints.",
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"enabled": {
+					"type": "boolean",
+					"description": "Enable or disable the response cache.",
+					"default": false
+				},
+				"ttl": {
+					"type": "integer",
+					"description": "Time-to-live for cached responses in milliseconds.",
+					"default": 30000,
+					"minimum": 0,
+					"examples": [10000, 30000]
+				},
+				"maxSize": {
+					"type": "integer",
+					"description": "Maximum number of entries to keep in the cache (LRU eviction).",
+					"default": 500,
+					"minimum": 1,
+					"examples": [100, 500, 1000]
+				}
+			}
+		},
+		"logger": {
+			"description": "Structured logging configuration.",
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"level": {
+					"type": "string",
+					"description": "Minimum log level to emit.",
+					"enum": ["debug", "info", "warn", "error", "none"],
+					"default": "none",
+					"examples": ["info", "debug"]
+				}
+			}
+		}
+	},
+	"examples": [
+		{
+			"baseUrl": "http://localhost:8080/v2",
+			"auth": {
+				"type": "bearer",
+				"token": "eyJhbGci..."
+			}
+		},
+		{
+			"baseUrl": "https://bru-2.connectors.camunda.io/your-cluster-id/v2",
+			"auth": {
+				"type": "oauth2",
+				"clientId": "my-client",
+				"clientSecret": "my-secret",
+				"tokenUrl": "https://login.cloud.camunda.io/oauth/token",
+				"tokenCache": {
+					"filePath": "/etc/myapp/token-cache.json"
+				}
+			},
+			"retry": {
+				"maxAttempts": 3,
+				"initialDelay": 100,
+				"retryOn": [429, 500, 502, 503, 504]
+			},
+			"cache": {
+				"enabled": true,
+				"ttl": 30000
+			},
+			"logger": {
+				"level": "info"
+			},
+			"timeout": 10000
+		}
+	]
+}
