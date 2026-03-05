@@ -1318,6 +1318,344 @@ function generateResources(operations, allTags) {
 	return lines.join("\n");
 }
 
+// ─── CLI COMMAND GENERATION ───────────────────────────────────────────────────
+
+const CLI_GENERATED_DIR = join(ROOT, "..", "..", "apps", "cli", "src", "generated");
+
+/** Aliases for common group names shown in CLI help. */
+const CLI_GROUP_ALIASES = {
+	"process-instance": ["pi"],
+	"process-definition": ["pd"],
+	"user-task": ["ut"],
+	variable: ["var"],
+	authorization: ["auth"],
+	"batch-operation": ["batch"],
+	"element-instance": ["element"],
+	"mapping-rule": ["mapping"],
+	"decision-definition": ["dd"],
+};
+
+/** Verb remapping: OpenAPI verb → CLI command name. */
+const VERB_REMAP = { search: "list" };
+
+/** Convert a tag name to a CLI group name (kebab-case). */
+function tagToCliGroupName(tag) {
+	return tag.toLowerCase().replace(/[\s_]+/g, "-");
+}
+
+/**
+ * Try to strip the entity PascalCase name from an operationId.
+ * Returns the CLI command name or null if no match.
+ */
+function tryStripEntity(operationId, entityPascal) {
+	const escaped = entityPascal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const regex = new RegExp(escaped + "s?");
+	if (!regex.test(operationId)) return null;
+
+	const withMarker = operationId.replace(regex, "\x00");
+	const [before, after] = withMarker.split("\x00");
+	const verb = before || "";
+	const suffix = after || "";
+
+	const subKebab = suffix.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
+	const verbLower = verb.toLowerCase();
+	const mappedVerb = VERB_REMAP[verbLower] || verbLower;
+
+	if (!mappedVerb && !subKebab) return null;
+	return subKebab ? `${mappedVerb}-${subKebab}` : mappedVerb;
+}
+
+/** Derive the CLI command name from an operationId and its tag. */
+function operationToCliCommandName(operationId, tag) {
+	const tagWords = tag.split(/[\s\-_]+/);
+	const fullEntity = tagWords
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+		.join("");
+
+	// Try full entity name first
+	let name = tryStripEntity(operationId, fullEntity);
+
+	// Try with just the first word of the entity name
+	if (name === null && tagWords.length > 1) {
+		const firstWord =
+			tagWords[0].charAt(0).toUpperCase() + tagWords[0].slice(1).toLowerCase();
+		name = tryStripEntity(operationId, firstWord);
+	}
+
+	// Fall back to full operationId converted to kebab-case
+	if (name === null) {
+		name = operationId.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
+	}
+
+	return name;
+}
+
+/** Classify an operation into a CLI command type. */
+function detectCmdType(op) {
+	const pathParams = op.parameters.filter((p) => p?.in === "path");
+	// List: POST /…/search with no path params (sub-resource searches are actions)
+	if (op.method === "POST" && op.path.endsWith("/search") && pathParams.length === 0)
+		return "list";
+	// Get: exactly 1 path param, no body — multi-param GETs are actions
+	if (op.method === "GET" && pathParams.length === 1) return "get";
+	// Create: POST to base path, no path params, no body schema needed (may be multipart)
+	if (op.method === "POST" && pathParams.length === 0 && !op.path.endsWith("/search"))
+		return "create";
+	// Update: exactly 1 path param
+	if ((op.method === "PATCH" || op.method === "PUT") && pathParams.length === 1) return "update";
+	// Delete: exactly 1 path param
+	if (op.method === "DELETE" && pathParams.length === 1) return "delete";
+	return "action";
+}
+
+/**
+ * Derive column definitions from a list-operation response schema.
+ * Resolves the response type → items array → item properties.
+ */
+function deriveColumns(responseSchema, schemas) {
+	if (!responseSchema) return [];
+	const typeName =
+		typeof responseSchema.$ref === "string"
+			? responseSchema.$ref.split("/").pop()
+			: null;
+	if (!typeName) return [];
+
+	const responseResolved = schemas.get(typeName);
+	if (!responseResolved || typeof responseResolved !== "object") return [];
+
+	const props = responseResolved.properties;
+	if (!props || typeof props !== "object") return [];
+
+	const itemsProp = props.items;
+	if (!itemsProp || typeof itemsProp !== "object") return [];
+
+	let itemProperties = null;
+	if (itemsProp.type === "array" && itemsProp.items && typeof itemsProp.items === "object") {
+		itemProperties = itemsProp.items.properties || null;
+	}
+	if (!itemProperties || Object.keys(itemProperties).length === 0) return [];
+
+	const columns = [];
+	for (const [propName, propSchema] of Object.entries(itemProperties)) {
+		if (!propSchema || typeof propSchema !== "object") continue;
+		const isDate =
+			/[Dd]ate$|[Tt]ime$/.test(propName) || propSchema.format === "date-time";
+		const isKeyOrId = /[Kk]ey$|Id$/.test(propName);
+		const isString = propSchema.type === "string";
+		columns.push({
+			key: propName,
+			header: propName.replace(/([A-Z])/g, " $1").trim().toUpperCase(),
+			dateTransform: isDate,
+			maxWidth: isString && !isDate && !isKeyOrId ? 30 : null,
+		});
+	}
+
+	columns.sort((a, b) => {
+		const score = (k) => {
+			const lo = k.toLowerCase();
+			if (lo.endsWith("key")) return 0;
+			if (lo === "state" || lo === "status") return 1;
+			if (lo.endsWith("id")) return 2;
+			if (lo.includes("name")) return 3;
+			if (lo.includes("date") || lo.includes("time")) return 9;
+			return 5;
+		};
+		return score(a.key) - score(b.key);
+	});
+
+	return columns.slice(0, 7);
+}
+
+/** Generate the full contents of apps/cli/src/generated/commands.ts. */
+function generateCliCommandsContent(operations, schemas, tagDescriptions) {
+	const byTag = new Map();
+	for (const op of operations) {
+		const tag = op.tags[0] ?? "Default";
+		if (!byTag.has(tag)) byTag.set(tag, []);
+		byTag.get(tag).push(op);
+	}
+
+	const lines = [
+		"// This file is auto-generated by packages/api/scripts/generate.mjs",
+		"// Do not edit manually.",
+		"",
+		'import type { CommandGroup } from "../types.js";',
+		'import { dateTransform } from "../output.js";',
+		"import {",
+		"  DATA_FLAG,",
+		"  DATA_OPT_FLAG,",
+		"  makeListCmd,",
+		"  makeGetCmd,",
+		"  makeCreateCmd,",
+		"  makeUpdateCmd,",
+		"  makeDeleteCmd,",
+		"  parseJson,",
+		'} from "../commands/shared.js";',
+		"",
+	];
+
+	const groupVarNames = [];
+
+	for (const [tag, ops] of byTag) {
+		const groupName = tagToCliGroupName(tag);
+		const clientProp = tagToPropertyName(tag);
+		const aliases = CLI_GROUP_ALIASES[groupName] || [];
+		const description = tagDescriptions[tag] || tag;
+		const varName = `${clientProp}Group`;
+		groupVarNames.push(varName);
+
+		const usedNames = new Set();
+		lines.push(`// ── ${tag} ──`);
+		lines.push(`export const ${varName}: CommandGroup = {`);
+		lines.push(`  name: "${groupName}",`);
+		if (aliases.length > 0) lines.push(`  aliases: ${JSON.stringify(aliases)},`);
+		lines.push(`  description: ${JSON.stringify(description)},`);
+		lines.push("  commands: [");
+
+		for (const op of ops) {
+			// Derive and deduplicate command name
+			let cmdName = operationToCliCommandName(op.operationId, tag);
+			if (usedNames.has(cmdName)) {
+				let n = 2;
+				while (usedNames.has(`${cmdName}-${n}`)) n++;
+				cmdName = `${cmdName}-${n}`;
+			}
+			usedNames.add(cmdName);
+
+			const methodName = operationToMethodName(op.operationId);
+			const pathParams = op.parameters.filter((p) => p?.in === "path");
+			const keyParam = pathParams[0]?.name || "key";
+			const desc =
+				op.summary ||
+				(typeof op.description === "string" ? op.description.split("\n")[0] : "") ||
+				cmdName;
+			const cmdType = detectCmdType(op);
+
+			if (cmdType === "list") {
+				const columns = deriveColumns(op.responseSchema, schemas);
+				lines.push("    makeListCmd({");
+				if (cmdName !== "list") lines.push(`      name: ${JSON.stringify(cmdName)},`);
+				lines.push(`      description: ${JSON.stringify(desc)},`);
+				lines.push("      columns: [");
+				for (const col of columns) {
+					let colStr = `{ key: "${col.key}", header: "${col.header}"`;
+					if (col.maxWidth) colStr += `, maxWidth: ${col.maxWidth}`;
+					if (col.dateTransform) colStr += ", transform: dateTransform";
+					colStr += " }";
+					lines.push(`        ${colStr},`);
+				}
+				lines.push("      ],");
+				lines.push(
+					`      search: (client, body) => client.${clientProp}.${methodName}(body as never),`,
+				);
+				lines.push("    }),");
+			} else if (cmdType === "get") {
+				lines.push("    makeGetCmd({");
+				if (cmdName !== "get") lines.push(`      name: ${JSON.stringify(cmdName)},`);
+				lines.push(`      description: ${JSON.stringify(desc)},`);
+				lines.push(`      argName: "${keyParam}",`);
+				lines.push(
+					`      get: (client, key) => client.${clientProp}.${methodName}(key),`,
+				);
+				lines.push("    }),");
+			} else if (cmdType === "create") {
+				lines.push("    makeCreateCmd({");
+				if (cmdName !== "create") lines.push(`      name: ${JSON.stringify(cmdName)},`);
+				lines.push(`      description: ${JSON.stringify(desc)},`);
+				// Only pass body if the API method actually accepts one
+				const createBodyArg = op.requestBodySchema ? "body as never" : "";
+				lines.push(
+					`      create: (client, body) => client.${clientProp}.${methodName}(${createBodyArg}),`,
+				);
+				lines.push("    }),");
+			} else if (cmdType === "update") {
+				lines.push("    makeUpdateCmd({");
+				if (cmdName !== "update") lines.push(`      name: ${JSON.stringify(cmdName)},`);
+				lines.push(`      description: ${JSON.stringify(desc)},`);
+				lines.push(`      argName: "${keyParam}",`);
+				lines.push(
+					`      update: (client, key, body) => client.${clientProp}.${methodName}(key, body as never),`,
+				);
+				lines.push("    }),");
+			} else if (cmdType === "delete") {
+				lines.push("    makeDeleteCmd({");
+				if (cmdName !== "delete") lines.push(`      name: ${JSON.stringify(cmdName)},`);
+				lines.push(`      description: ${JSON.stringify(desc)},`);
+				lines.push(`      argName: "${keyParam}",`);
+				if (op.requestBodySchema) {
+					lines.push("      extraFlags: [],");
+					lines.push(
+						`      delete: (client, key, body) => client.${clientProp}.${methodName}(key, body as never),`,
+					);
+				} else {
+					lines.push(
+						`      delete: (client, key) => client.${clientProp}.${methodName}(key),`,
+					);
+				}
+				lines.push("    }),");
+			} else {
+				// Generic action command
+				const hasBody = !!op.requestBodySchema;
+				const bodyRequired = op.requestBodyRequired;
+				lines.push("    {");
+				lines.push(`      name: ${JSON.stringify(cmdName)},`);
+				lines.push(`      description: ${JSON.stringify(desc)},`);
+				if (pathParams.length > 0) {
+					const argsStr = pathParams
+						.map((p) => `{ name: "${p.name}", description: "${p.name}", required: true }`)
+						.join(", ");
+					lines.push(`      args: [${argsStr}],`);
+				}
+				if (hasBody) {
+					lines.push(`      flags: [${bodyRequired ? "DATA_FLAG" : "DATA_OPT_FLAG"}],`);
+				}
+				lines.push("      async run(ctx) {");
+				for (let i = 0; i < pathParams.length; i++) {
+					const p = pathParams[i];
+					lines.push(`        const ${p.name} = ctx.positional[${i}];`);
+					lines.push(
+						`        if (!${p.name}) throw new Error("Missing required argument: <${p.name}>");`,
+					);
+				}
+				if (hasBody) {
+					lines.push(
+						'        const body = parseJson(ctx.flags.data as string | undefined, "data");',
+					);
+				}
+				lines.push("        const client = await ctx.getClient();");
+				const callArgs = [
+					...pathParams.map((p) => p.name),
+					...(hasBody ? ["body as never"] : []),
+				].join(", ");
+				if (op.responseSchema) {
+					lines.push(
+						`        const result = await client.${clientProp}.${methodName}(${callArgs});`,
+					);
+					lines.push("        ctx.output.printItem(result);");
+				} else {
+					lines.push(`        await client.${clientProp}.${methodName}(${callArgs});`);
+					lines.push(`        ctx.output.ok(${JSON.stringify(`${cmdName} completed.`)});`);
+				}
+				lines.push("      },");
+				lines.push("    },");
+			}
+		}
+
+		lines.push("  ],");
+		lines.push("};");
+		lines.push("");
+	}
+
+	lines.push("export const generatedCommandGroups: CommandGroup[] = [");
+	for (const varName of groupVarNames) {
+		lines.push(`  ${varName},`);
+	}
+	lines.push("];");
+	lines.push("");
+
+	return lines.join("\n");
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -1366,6 +1704,19 @@ async function main() {
 	const resourcesPath = join(GENERATED_DIR, "resources.ts");
 	await writeFile(resourcesPath, resourcesContent, "utf8");
 	console.log("   Written: src/generated/resources.ts");
+
+	// 7. Generate CLI commands
+	console.log("\n7. Generating CLI commands...");
+	await mkdir(CLI_GENERATED_DIR, { recursive: true });
+	const tagDescriptions = {};
+	if (Array.isArray(entryDoc?.tags)) {
+		for (const t of entryDoc.tags) {
+			if (t?.name) tagDescriptions[t.name] = t.description || t.name;
+		}
+	}
+	const cliContent = generateCliCommandsContent(operations, schemas, tagDescriptions);
+	await writeFile(join(CLI_GENERATED_DIR, "commands.ts"), cliContent, "utf8");
+	console.log("   Written: apps/cli/src/generated/commands.ts");
 
 	console.log("\nDone.");
 }
