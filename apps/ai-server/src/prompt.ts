@@ -31,8 +31,11 @@ export function buildMcpSystemPrompt(): string {
 		"Use the available bpmn MCP tools to read and modify the diagram.",
 		"Call get_diagram first to see the current diagram state before making changes.",
 		"",
+		"PREFER execute_code for any operation involving multiple steps, building a process from scratch,",
+		"batch modifications, or logic — it completes the work in one call instead of many.",
+		"",
 		"HTTP/REST RULE: Any time the user asks for an HTTP request, API call, webhook, or external service",
-		"integration — you MUST call add_http_call. Never use add_elements for this.",
+		"integration — use add_http_call (or Bridge.mcpAddHttpCall inside execute_code).",
 		"add_http_call sets jobType: io.camunda:http-json:1 and the correct taskHeaders automatically.",
 		"Use your knowledge of the target API to supply the real endpoint URL.",
 	].join("\n");

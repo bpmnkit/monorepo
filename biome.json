@@ -27,7 +27,8 @@
 			".turbo",
 			".swarm",
 			"**/templates/generated.ts",
-			"**/src-tauri/**"
+			"**/src-tauri/**",
+			"**/src/generated/**"
 		]
 	}
 }

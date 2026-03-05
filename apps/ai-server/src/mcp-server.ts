@@ -11,6 +11,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
+import vm from "node:vm";
 import {
 	Bpmn,
 	type BpmnDefinitions,
@@ -183,6 +184,36 @@ const TOOLS = [
 		name: "get_diagram",
 		description: "Return the current BPMN diagram. Call this first before making any changes.",
 		inputSchema: { type: "object", properties: {} },
+	},
+	{
+		name: "execute_code",
+		description:
+			"Execute JavaScript to make complex multi-step diagram changes in a single call.\n" +
+			"Prefer this over multiple separate tool calls when building a process from scratch,\n" +
+			"doing batch edits, or applying conditional logic.\n" +
+			"\n" +
+			"Bridge API (all JSON args are strings — use JSON.stringify/JSON.parse):\n" +
+			"  Bridge.mcpGetDiagram() → CompactDiagram JSON string\n" +
+			"  Bridge.mcpAddElements(processId, elementsJson, flowsJson) → result string\n" +
+			"  Bridge.mcpRemoveElements(processId, elementIdsJson, flowIdsJson) → result string\n" +
+			"  Bridge.mcpUpdateElement(processId, elementId, changesJson) → result string\n" +
+			"  Bridge.mcpSetCondition(processId, flowId, conditionJson) → result string\n" +
+			"  Bridge.mcpReplaceDiagram(compactJson) → result string\n" +
+			"  Bridge.mcpAddHttpCall(processId, configJson) → result string\n" +
+			"    configJson fields: {id, name, method, url, headers?, body?, resultVariable?}\n" +
+			"  Bridge.mcpExportXml() → BPMN XML string\n" +
+			"\n" +
+			"Use `return` to return the final result string.\n" +
+			"Example: const d=JSON.parse(Bridge.mcpGetDiagram()); " +
+			"Bridge.mcpAddElements(d.processes[0].id, JSON.stringify([{id:'t1',type:'serviceTask',name:'Do Work'}]), JSON.stringify([{id:'f1',from:'start',to:'t1'}])); " +
+			"return 'done';",
+		inputSchema: {
+			type: "object",
+			properties: {
+				code: { type: "string", description: "JavaScript code to execute against the Bridge API" },
+			},
+			required: ["code"],
+		},
 	},
 	{
 		name: "add_http_call",
@@ -425,6 +456,58 @@ function callTool(name: string, args: Record<string, unknown>): string {
 			state = expand(args.diagram as CompactDiagram);
 			saveState();
 			return "Diagram replaced.";
+		}
+
+		case "execute_code": {
+			const code = args.code as string;
+			// Build a Bridge object that mirrors bridge.ts Bridge API, delegating to callTool.
+			// Runs in a vm context: no fs, no net, no process — only Bridge and ECMAScript builtins.
+			const bridge = {
+				mcpGetDiagram: () => callTool("get_diagram", {}),
+				mcpAddElements: (processId: string, elementsJson: string, flowsJson: string) =>
+					callTool("add_elements", {
+						processId,
+						elements: JSON.parse(elementsJson),
+						flows: JSON.parse(flowsJson),
+					}),
+				mcpRemoveElements: (processId: string, elementIdsJson: string, flowIdsJson: string) =>
+					callTool("remove_elements", {
+						processId,
+						elementIds: JSON.parse(elementIdsJson),
+						flowIds: JSON.parse(flowIdsJson),
+					}),
+				mcpUpdateElement: (processId: string, elementId: string, changesJson: string) =>
+					callTool("update_element", {
+						processId,
+						elementId,
+						changes: JSON.parse(changesJson),
+					}),
+				mcpSetCondition: (processId: string, flowId: string, conditionJson: string) =>
+					callTool("set_condition", {
+						processId,
+						flowId,
+						condition: JSON.parse(conditionJson),
+					}),
+				mcpReplaceDiagram: (compactJson: string) =>
+					callTool("replace_diagram", { diagram: JSON.parse(compactJson) }),
+				mcpAddHttpCall: (processId: string, configJson: string) => {
+					const cfg = JSON.parse(configJson) as Record<string, unknown>;
+					return callTool("add_http_call", { processId, ...cfg });
+				},
+				mcpExportXml: () => {
+					state.diagrams = state.processes.map((proc) => buildDiagram(proc));
+					return Bpmn.export(state);
+				},
+			};
+			const ctx = vm.createContext({ Bridge: bridge });
+			try {
+				const result = vm.runInContext(`(function(){\n${code}\n})()`, ctx, { timeout: 5000 });
+				return typeof result === "string" ? result : JSON.stringify(result ?? null);
+			} catch (err) {
+				throw new Error(
+					`Code execution failed: ${err instanceof Error ? err.message : String(err)}`,
+				);
+			}
 		}
 
 		default:

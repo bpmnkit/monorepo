@@ -65,6 +65,10 @@ enum BridgeCmd {
         config_json: String,
         reply: Reply<String>,
     },
+    McpExecuteCode {
+        code: String,
+        reply: Reply<String>,
+    },
 }
 
 // ── JS evaluation helpers ──────────────────────────────────────────────────────
@@ -187,6 +191,15 @@ fn dispatch(ctx: &rquickjs::Ctx<'_>, cmd: BridgeCmd) {
                 .and_then(|_| {
                     js_call_str(ctx, "Bridge.mcpAddHttpCall(__a, JSON.stringify(__b))")
                 });
+            let _ = reply.send(result);
+        }
+
+        BridgeCmd::McpExecuteCode { code, reply } => {
+            // Pass the code as a JSON-quoted string to Bridge.mcpExecuteCode().
+            // Bridge.mcpExecuteCode evals it inside the QuickJS closure, giving the LLM
+            // access to Bridge.*, __state, Bpmn, expand, compactify, etc.
+            let quoted = serde_json::to_string(&code).unwrap_or_default();
+            let result = js_call_str(ctx, &format!("Bridge.mcpExecuteCode({quoted})"));
             let _ = reply.send(result);
         }
     }
@@ -322,5 +335,9 @@ impl CoreBridge {
         config_json: String,
     ) -> anyhow::Result<String> {
         self.send_sync(|reply| BridgeCmd::McpAddHttpCall { process_id, config_json, reply })
+    }
+
+    pub fn mcp_execute_code_sync(&self, code: String) -> anyhow::Result<String> {
+        self.send_sync(|reply| BridgeCmd::McpExecuteCode { code, reply })
     }
 }

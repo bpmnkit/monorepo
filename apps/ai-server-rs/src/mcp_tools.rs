@@ -47,6 +47,17 @@ pub fn tool_list() -> Value {
                 "inputSchema": { "type": "object", "properties": {} }
             },
             {
+                "name": "execute_code",
+                "description": "Execute JavaScript to make complex multi-step diagram changes in a single call.\nPrefer this over multiple separate tool calls when building a process from scratch,\ndoing batch edits, or applying conditional logic.\n\nBridge API (all JSON args are strings — use JSON.stringify/JSON.parse):\n  Bridge.mcpGetDiagram() → CompactDiagram JSON string\n  Bridge.mcpAddElements(processId, elementsJson, flowsJson) → result string\n  Bridge.mcpRemoveElements(processId, elementIdsJson, flowIdsJson) → result string\n  Bridge.mcpUpdateElement(processId, elementId, changesJson) → result string\n  Bridge.mcpSetCondition(processId, flowId, conditionJson) → result string\n  Bridge.mcpReplaceDiagram(compactJson) → result string\n  Bridge.mcpAddHttpCall(processId, configJson) → result string\n    configJson fields: {id, name, method, url, headers?, body?, resultVariable?}\n  Bridge.mcpExportXml() → BPMN XML string\n\nUse `return` to return the final result string.\nExample: const d=JSON.parse(Bridge.mcpGetDiagram()); Bridge.mcpAddElements(d.processes[0].id, JSON.stringify([{id:'t1',type:'serviceTask',name:'Do Work'}]), JSON.stringify([{id:'f1',from:'start',to:'t1'}])); return 'done';",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "code": { "type": "string", "description": "JavaScript code to execute against the Bridge API" }
+                    },
+                    "required": ["code"]
+                }
+            },
+            {
                 "name": "add_http_call",
                 "description": "⚠️ ALWAYS use this tool — not add_elements — for any HTTP/REST API call, webhook, or external service integration.\nAdds a Camunda HTTP connector service task (jobType: io.camunda:http-json:1) with the correct zeebe:ioMapping inputs.\nUse your knowledge of the target API to provide a real endpoint URL, not a placeholder.",
                 "inputSchema": {
@@ -229,6 +240,15 @@ pub fn call_tool(
         "replace_diagram" => {
             let diagram = args.get("diagram").cloned().unwrap_or(json!({}));
             let r = bridge.mcp_replace_diagram_sync(diagram.to_string());
+            if r.is_ok() {
+                save_state(bridge, output_path);
+            }
+            r
+        }
+
+        "execute_code" => {
+            let code = args["code"].as_str().unwrap_or("").to_string();
+            let r = bridge.mcp_execute_code_sync(code);
             if r.is_ok() {
                 save_state(bridge, output_path);
             }

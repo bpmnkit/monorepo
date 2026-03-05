@@ -217,6 +217,17 @@ function ensureProcess(processId: string): BpmnProcess {
 		return "Diagram replaced.";
 	},
 
+	/**
+	 * Execute arbitrary JavaScript in this context (code mode).
+	 * The code has access to Bridge.*, __state, Bpmn, expand, compactify, etc.
+	 * Wrap multi-statement code with return; the last expression value is the result.
+	 */
+	mcpExecuteCode(code: string): string {
+		// biome-ignore lint/security/noGlobalEval: intentional — code mode runs LLM-generated JS in sandboxed QuickJS/vm context
+		const result = eval(`(function(){\n${code}\n})()`);
+		return typeof result === "string" ? result : JSON.stringify(result ?? null);
+	},
+
 	/** Add an HTTP connector task. Returns result message. */
 	mcpAddHttpCall(processId: string, configJson: string): string {
 		const proc = ensureProcess(processId);
