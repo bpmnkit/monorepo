@@ -474,9 +474,8 @@ a:hover {
 
 .diagram-card {
 	width: 100%;
-	max-width: 420px;
 	background: oklch(7% 0.025 270 / 0.9);
-	border: 1px solid oklch(15% 0.03 270);
+	border: 1px solid oklch(55% 0.22 280 / 0.2);
 	border-radius: var(--radius);
 	overflow: hidden;
 	box-shadow: 0 0 0 1px oklch(55% 0.22 280 / 0.1), 0 20px 60px oklch(0% 0 0 / 0.5);
@@ -519,7 +518,7 @@ a:hover {
 }
 
 .diagram-canvas-wrap {
-	height: 200px;
+	height: 320px;
 	position: relative;
 	background: var(--bg);
 }
@@ -700,11 +699,12 @@ a:hover {
 	opacity: 1;
 }
 
-/* Bento card */
+/* Bento card — all variants are uniform 1:1 squares in a 3-column grid */
 .bcard {
 	position: relative;
 	z-index: 1;
 	grid-column: span 4;
+	aspect-ratio: 1;
 	background: var(--bg-card);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
@@ -766,19 +766,11 @@ a:hover {
 	}
 }
 
-.bcard-lg {
-	grid-column: span 7;
-	min-height: 260px;
-}
-
-.bcard-tall {
-	grid-column: span 5;
-	min-height: 260px;
-	justify-content: space-between;
-}
-
+/* All bcard variants are uniform squares — same grid-column as base .bcard */
+.bcard-lg,
+.bcard-tall,
 .bcard-wide {
-	grid-column: span 6;
+	grid-column: span 4;
 }
 
 .bcard-icon {
@@ -998,93 +990,7 @@ a:hover {
 	padding: 100px 0;
 }
 
-.example-tabs {
-	display: flex;
-	gap: 4px;
-	justify-content: center;
-	margin-bottom: 32px;
-	flex-wrap: wrap;
-}
-
-.tab {
-	background: transparent;
-	border: 1px solid var(--border);
-	color: var(--text-muted);
-	font-family: var(--font-sans);
-	font-size: 13px;
-	font-weight: 500;
-	padding: 8px 18px;
-	border-radius: 8px;
-	cursor: pointer;
-	transition: all 0.2s;
-}
-
-.tab:hover {
-	color: var(--text);
-	border-color: var(--text-muted);
-}
-
-.tab.active {
-	background: var(--accent);
-	color: #fff;
-	border-color: var(--accent);
-}
-
-.example-panels {
-	position: relative;
-}
-
-.example-panel {
-	display: none;
-}
-
-.example-panel.active {
-	display: block;
-}
-
-.example-layout {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 20px;
-	min-height: 420px;
-}
-
-.ex-code {
-	background: var(--bg-code);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
-}
-
-.ex-code pre {
-	margin: 0;
-	padding: 20px;
-	font-family: var(--font-mono);
-	font-size: 13px;
-	line-height: 1.7;
-	overflow-x: auto;
-	flex: 1;
-}
-
-.ex-code .kw {
-	color: #c792ea;
-}
-
-.ex-code .str {
-	color: #c3e88d;
-}
-
-.ex-code .fn {
-	color: var(--accent-bright);
-}
-
-.ex-code .comment {
-	color: #546e7a;
-}
-
-/* Terminal-style topbar */
+/* Terminal-style topbar (shared by code panel and diagram topbar) */
 .code-topbar {
 	display: flex;
 	align-items: center;
@@ -1095,72 +1001,129 @@ a:hover {
 	flex-shrink: 0;
 }
 
-/* Output pane */
-.example-output {
-	display: flex;
-	flex-direction: column;
+/* ── Animated demo layout ────────────────────────────────────────── */
+.anim-demo {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	min-height: 480px;
+}
+
+/* Left: code panel */
+.anim-code-panel {
+	background: var(--bg-code);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
 	overflow: hidden;
-}
-
-.output-tabs {
 	display: flex;
-	background: var(--bg-card);
-	border-bottom: 1px solid var(--border);
-	flex-shrink: 0;
+	flex-direction: column;
+	box-shadow: 0 0 0 1px oklch(55% 0.22 280 / 0.08), 0 20px 60px oklch(0% 0 0 / 0.4);
 }
 
-.output-tab {
-	flex: 1;
-	background: transparent;
-	border: none;
-	color: var(--text-muted);
-	font-family: var(--font-sans);
-	font-size: 13px;
-	font-weight: 500;
-	padding: 10px 16px;
-	cursor: pointer;
-	transition: all 0.2s;
-	border-bottom: 2px solid transparent;
-}
-
-.output-tab:hover {
-	color: var(--text);
-}
-
-.output-tab.active {
-	color: var(--accent-bright);
-	border-bottom-color: var(--accent-bright);
-}
-
-.output-view {
-	display: none;
-}
-
-.output-view.active {
-	display: block;
-	flex: 1;
-}
-
-.example-diagram {
-	min-height: 360px;
-	position: relative;
-}
-
-.example-xml {
-	background: var(--bg-code);
-	overflow: auto;
-	max-height: 520px;
-}
-
-.example-xml pre {
-	margin: 0;
-	padding: 16px;
+.anim-code-body {
+	padding: 24px;
 	font-family: var(--font-mono);
-	font-size: 12px;
-	line-height: 1.6;
+	font-size: 13px;
+	line-height: 1.75;
+	flex: 1;
+	overflow: hidden;
+}
+
+/* Animated lines container */
+.anim-code-lines {
+	/* opacity is set inline during the reset fade-out */
+}
+
+/* Each line slides in from the left */
+.anim-line {
 	color: var(--text-muted);
+	white-space: pre;
+	opacity: 1;
+	transform: translateX(0);
+	transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+/* Initial "about to appear" state */
+.anim-line-entering {
+	opacity: 0;
+	transform: translateX(-14px);
+}
+
+/* Syntax colours inside animated lines */
+.anim-code-body .kw {
+	color: #c792ea;
+}
+
+.anim-code-body .str {
+	color: #c3e88d;
+}
+
+.anim-code-body .fn {
+	color: var(--accent-bright);
+}
+
+/* Blinking cursor — a narrow teal bar */
+.anim-cursor {
+	display: inline-block;
+	width: 2px;
+	height: 1em;
+	background: var(--teal);
+	border-radius: 1px;
+	margin-left: 2px;
+	vertical-align: text-bottom;
+	animation: anim-cursor-blink 1s step-end infinite;
+	box-shadow: 0 0 8px var(--teal);
+}
+
+@keyframes anim-cursor-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+
+/* Right: live diagram panel */
+.anim-diagram-panel {
+	background: oklch(7% 0.025 270 / 0.9);
+	border: 1px solid oklch(55% 0.22 280 / 0.18);
+	border-radius: var(--radius);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 0 0 1px oklch(55% 0.22 280 / 0.08), 0 0 40px oklch(55% 0.22 280 / 0.08), 0 20px 60px
+		oklch(0% 0 0 / 0.4);
+}
+
+.anim-diagram-inner {
+	flex: 1;
+	position: relative;
+	min-height: 380px;
+}
+
+/* Live badge in the topbar */
+.anim-live-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	margin-left: auto;
+	font-size: 10px;
+	font-weight: 700;
+	font-family: var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--teal);
+}
+
+.anim-live-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--teal);
+	box-shadow: 0 0 6px var(--teal);
+	animation: pulse-dot 2s ease-in-out infinite;
 }
 
 /* ── Getting Started ────────────────────────────────────────────── */
@@ -1170,10 +1133,18 @@ a:hover {
 
 .steps-grid {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
+	grid-template-columns: repeat(2, 380px);
+	grid-auto-rows: 380px;
 	gap: 20px;
-	max-width: 960px;
+	width: fit-content;
 	margin: 0 auto;
+}
+
+/* 3rd tile spans both columns and self-centers via justify-self */
+.step:last-child {
+	grid-column: 1 / -1;
+	width: 380px;
+	justify-self: center;
 }
 
 .step {
@@ -1185,6 +1156,7 @@ a:hover {
 	flex-direction: column;
 	gap: 16px;
 	transition: border-color 0.2s;
+	overflow: hidden;
 }
 
 .step:hover {
@@ -1202,6 +1174,38 @@ a:hover {
 	border-radius: 6px;
 	padding: 4px 10px;
 	width: fit-content;
+	animation: step-num-pulse 3s ease-in-out infinite;
+	transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+/* Step 01 fires first, 02 one second later, 03 two seconds later */
+.step:nth-child(1) .step-num {
+	animation-delay: 0s;
+}
+
+.step:nth-child(2) .step-num {
+	animation-delay: -2s;
+}
+
+.step:nth-child(3) .step-num {
+	animation-delay: -1s;
+}
+
+@keyframes step-num-pulse {
+	0%,
+	30%,
+	100% {
+		background: oklch(55% 0.22 280 / 0.1);
+		border-color: oklch(55% 0.22 280 / 0.25);
+		box-shadow: none;
+	}
+
+	8%,
+	22% {
+		background: oklch(55% 0.22 280 / 0.28);
+		border-color: oklch(55% 0.22 280 / 0.7);
+		box-shadow: 0 0 14px oklch(55% 0.22 280 / 0.45);
+	}
 }
 
 .step h3 {
@@ -1216,10 +1220,13 @@ a:hover {
 	font-size: 12.5px;
 	line-height: 1.7;
 	overflow-x: auto;
+	overflow-y: auto;
 	background: var(--bg-code);
 	border: 1px solid var(--border);
 	border-radius: 8px;
 	padding: 12px 16px;
+	/* Grow to fill remaining step height so all tiles look equally full */
+	flex: 1;
 }
 
 .step .kw {
@@ -1369,6 +1376,8 @@ a:hover {
 	.hero-body {
 		grid-template-columns: 1fr;
 		text-align: center;
+		gap: 32px;
+		padding: 0 16px;
 	}
 
 	.hero-text {
@@ -1385,7 +1394,13 @@ a:hover {
 	}
 
 	.hero-diagram {
-		display: none;
+		width: 100%;
+		max-width: 480px;
+		margin: 0 auto;
+	}
+
+	.diagram-canvas-wrap {
+		height: 220px;
 	}
 
 	.bcard,
@@ -1393,6 +1408,7 @@ a:hover {
 	.bcard-tall,
 	.bcard-wide {
 		grid-column: span 12;
+		aspect-ratio: unset;
 	}
 
 	.compare-grid {
@@ -1404,12 +1420,41 @@ a:hover {
 		display: none;
 	}
 
-	.example-layout {
+	.anim-demo {
 		grid-template-columns: 1fr;
+		min-height: auto;
+	}
+
+	.anim-code-body {
+		max-height: 240px;
+		overflow-x: auto;
+		overflow-y: auto;
+	}
+
+	.anim-line {
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+
+	.anim-diagram-inner {
+		min-height: 260px;
 	}
 
 	.steps-grid {
 		grid-template-columns: 1fr;
+		grid-auto-rows: auto;
+		width: auto;
+		max-width: 480px;
+	}
+
+	.step {
+		overflow: visible;
+	}
+
+	.step:last-child {
+		grid-column: auto;
+		width: auto;
+		justify-self: auto;
 	}
 
 	.footer-inner {
@@ -1433,6 +1478,10 @@ a:hover {
 	.examples,
 	.start-section {
 		padding: 72px 0;
+	}
+
+	.step {
+		aspect-ratio: unset;
 	}
 }
 

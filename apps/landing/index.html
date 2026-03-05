@@ -65,7 +65,7 @@
         <div class="hero-ctas">
           <button class="install-btn" id="install-btn" title="Click to copy">
             <svg class="install-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4.5" y="4.5" width="9" height="9" rx="1.5"/><path d="M2.5 11.5H1.5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/></svg>
-            <code>npm install @bpmn-sdk/core</code>
+            <code>pnpm add @bpmn-sdk/core</code>
             <span class="install-copied" aria-hidden="true">Copied!</span>
           </button>
           <a href="/monorepo/editor" class="btn-primary">
@@ -250,209 +250,36 @@
     <div class="section-wrap">
       <div class="section-eyebrow">Interactive Examples</div>
       <h2 class="section-h2">See it in action</h2>
-      <p class="section-sub">Each snippet generates a complete, renderable BPMN diagram. Explore the output live.</p>
+      <p class="section-sub">Watch TypeScript code generate a live BPMN diagram in real time — every method call updates the preview.</p>
 
-      <div class="example-tabs">
-        <button class="tab active" data-example="simple">Simple Process</button>
-        <button class="tab" data-example="gateway">Decision Gateway</button>
-        <button class="tab" data-example="parallel">Parallel Execution</button>
-        <button class="tab" data-example="ai-agent">AI Agent</button>
-      </div>
-
-      <div class="example-panels">
-        <!-- Simple -->
-        <div class="example-panel active" data-example="simple">
-          <div class="example-layout">
-            <div class="ex-code">
-              <div class="code-topbar">
-                <span class="tb-dot tb-red"></span>
-                <span class="tb-dot tb-yellow"></span>
-                <span class="tb-dot tb-green"></span>
-                <span class="tb-title">order-validation.ts</span>
-              </div>
-              <pre><code><span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
-
-<span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"order-validation"</span>)
-  .name(<span class="str">"Order Validation"</span>)
-  .startEvent(<span class="str">"start"</span>, { name: <span class="str">"Order Received"</span> })
-  .serviceTask(<span class="str">"validate"</span>, {
-    name: <span class="str">"Validate Order"</span>,
-    taskType: <span class="str">"validate-order"</span>,
-  })
-  .serviceTask(<span class="str">"notify"</span>, {
-    name: <span class="str">"Send Confirmation"</span>,
-    taskType: <span class="str">"send-email"</span>,
-  })
-  .endEvent(<span class="str">"end"</span>, { name: <span class="str">"Done"</span> })
-  .withAutoLayout()
-  .build();
-
-<span class="kw">const</span> xml = Bpmn.export(defs);</code></pre>
-            </div>
-            <div class="example-output">
-              <div class="output-tabs">
-                <button class="output-tab active" data-view="diagram">Diagram</button>
-                <button class="output-tab" data-view="xml">XML Output</button>
-              </div>
-              <div class="example-diagram output-view active" data-view="diagram" id="diagram-simple"></div>
-              <div class="example-xml output-view" data-view="xml" data-example="simple"></div>
-            </div>
+      <!-- Animated demo: code grows on left, diagram updates on right -->
+      <div class="anim-demo" id="anim-demo" aria-hidden="true">
+        <!-- Left: animated code panel -->
+        <div class="anim-code-panel">
+          <div class="code-topbar">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="tb-title" id="anim-filename">order-validation.ts</span>
+          </div>
+          <div class="anim-code-body">
+            <div id="anim-code-lines" class="anim-code-lines"></div>
           </div>
         </div>
 
-        <!-- Gateway -->
-        <div class="example-panel" data-example="gateway">
-          <div class="example-layout">
-            <div class="ex-code">
-              <div class="code-topbar">
-                <span class="tb-dot tb-red"></span>
-                <span class="tb-dot tb-yellow"></span>
-                <span class="tb-dot tb-green"></span>
-                <span class="tb-title">approval-flow.ts</span>
-              </div>
-              <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"approval-flow"</span>)
-  .name(<span class="str">"Approval Workflow"</span>)
-  .startEvent(<span class="str">"start"</span>, { name: <span class="str">"Request Submitted"</span> })
-  .serviceTask(<span class="str">"review"</span>, {
-    name: <span class="str">"Auto Review"</span>,
-    taskType: <span class="str">"auto-review"</span>,
-  })
-  .exclusiveGateway(<span class="str">"decision"</span>, { name: <span class="str">"Approved?"</span> })
-    .branch(<span class="str">"approved"</span>, (b) =&gt;
-      b.condition(<span class="str">"= approved = true"</span>)
-        .serviceTask(<span class="str">"process"</span>, {
-          name: <span class="str">"Process Request"</span>,
-          taskType: <span class="str">"process"</span>,
-        })
-        .endEvent(<span class="str">"done"</span>, { name: <span class="str">"Completed"</span> })
-    )
-    .branch(<span class="str">"rejected"</span>, (b) =&gt;
-      b.defaultFlow()
-        .serviceTask(<span class="str">"reject"</span>, {
-          name: <span class="str">"Send Rejection"</span>,
-          taskType: <span class="str">"reject"</span>,
-        })
-        .endEvent(<span class="str">"rejected"</span>, { name: <span class="str">"Rejected"</span> })
-    )
-  .withAutoLayout()
-  .build();</code></pre>
-            </div>
-            <div class="example-output">
-              <div class="output-tabs">
-                <button class="output-tab active" data-view="diagram">Diagram</button>
-                <button class="output-tab" data-view="xml">XML Output</button>
-              </div>
-              <div class="example-diagram output-view active" data-view="diagram" id="diagram-gateway"></div>
-              <div class="example-xml output-view" data-view="xml" data-example="gateway"></div>
+        <!-- Right: live diagram preview -->
+        <div class="anim-diagram-panel">
+          <div class="diagram-topbar">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="tb-title">Live Preview</span>
+            <div class="anim-live-badge" aria-hidden="true">
+              <span class="anim-live-dot"></span>
+              live
             </div>
           </div>
-        </div>
-
-        <!-- Parallel -->
-        <div class="example-panel" data-example="parallel">
-          <div class="example-layout">
-            <div class="ex-code">
-              <div class="code-topbar">
-                <span class="tb-dot tb-red"></span>
-                <span class="tb-dot tb-yellow"></span>
-                <span class="tb-dot tb-green"></span>
-                <span class="tb-title">fulfillment.ts</span>
-              </div>
-              <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"order-fulfillment"</span>)
-  .name(<span class="str">"Order Fulfillment"</span>)
-  .startEvent(<span class="str">"start"</span>, { name: <span class="str">"Order Placed"</span> })
-  .parallelGateway(<span class="str">"fork"</span>)
-    .branch(<span class="str">"payment"</span>, (b) =&gt;
-      b.serviceTask(<span class="str">"pay"</span>, {
-        name: <span class="str">"Process Payment"</span>,
-        taskType: <span class="str">"payment-service"</span>,
-      })
-    )
-    .branch(<span class="str">"inventory"</span>, (b) =&gt;
-      b.serviceTask(<span class="str">"stock"</span>, {
-        name: <span class="str">"Reserve Inventory"</span>,
-        taskType: <span class="str">"inventory-service"</span>,
-      })
-    )
-    .branch(<span class="str">"notifications"</span>, (b) =&gt;
-      b.serviceTask(<span class="str">"email"</span>, {
-        name: <span class="str">"Send Confirmation"</span>,
-        taskType: <span class="str">"email-service"</span>,
-      })
-    )
-  .serviceTask(<span class="str">"ship"</span>, {
-    name: <span class="str">"Ship Order"</span>,
-    taskType: <span class="str">"shipping-service"</span>,
-  })
-  .endEvent(<span class="str">"end"</span>, { name: <span class="str">"Order Complete"</span> })
-  .withAutoLayout()
-  .build();</code></pre>
-            </div>
-            <div class="example-output">
-              <div class="output-tabs">
-                <button class="output-tab active" data-view="diagram">Diagram</button>
-                <button class="output-tab" data-view="xml">XML Output</button>
-              </div>
-              <div class="example-diagram output-view active" data-view="diagram" id="diagram-parallel"></div>
-              <div class="example-xml output-view" data-view="xml" data-example="parallel"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- AI Agent -->
-        <div class="example-panel" data-example="ai-agent">
-          <div class="example-layout">
-            <div class="ex-code">
-              <div class="code-topbar">
-                <span class="tb-dot tb-red"></span>
-                <span class="tb-dot tb-yellow"></span>
-                <span class="tb-dot tb-green"></span>
-                <span class="tb-title">ai-support-agent.ts</span>
-              </div>
-              <pre><code><span class="kw">const</span> defs = Bpmn.createProcess(<span class="str">"ai-support-agent"</span>)
-  .name(<span class="str">"AI Support Agent"</span>)
-  .startEvent(<span class="str">"start"</span>, { name: <span class="str">"Ticket Created"</span> })
-  .serviceTask(<span class="str">"enrich"</span>, {
-    name: <span class="str">"Fetch Context"</span>,
-    taskType: <span class="str">"fetch-customer-data"</span>,
-  })
-  .adHocSubProcess(<span class="str">"agent"</span>, (sub) =&gt; {
-    sub
-      .serviceTask(<span class="str">"search"</span>, {
-        name: <span class="str">"Search KB"</span>,
-        taskType: <span class="str">"knowledge-search"</span>,
-      })
-      .serviceTask(<span class="str">"draft"</span>, {
-        name: <span class="str">"Draft Response"</span>,
-        taskType: <span class="str">"draft-reply"</span>,
-      });
-  }, { name: <span class="str">"AI Agent"</span>,
-       taskDefinition: { type: <span class="str">"io.camunda:ai-agent:1"</span> } })
-  .exclusiveGateway(<span class="str">"check"</span>, { name: <span class="str">"Confidence?"</span> })
-    .branch(<span class="str">"high"</span>, (b) =&gt;
-      b.condition(<span class="str">"= confidence > 0.9"</span>)
-        .serviceTask(<span class="str">"send"</span>, { name: <span class="str">"Auto-Reply"</span>,
-          taskType: <span class="str">"send-reply"</span> })
-        .endEvent(<span class="str">"resolved"</span>, { name: <span class="str">"Resolved"</span> })
-    )
-    .branch(<span class="str">"low"</span>, (b) =&gt;
-      b.defaultFlow()
-        .userTask(<span class="str">"escalate"</span>, { name: <span class="str">"Human Review"</span>,
-          formId: <span class="str">"review-form"</span> })
-        .endEvent(<span class="str">"escalated"</span>, { name: <span class="str">"Escalated"</span> })
-    )
-  .withAutoLayout()
-  .build();</code></pre>
-            </div>
-            <div class="example-output">
-              <div class="output-tabs">
-                <button class="output-tab active" data-view="diagram">Diagram</button>
-                <button class="output-tab" data-view="xml">XML Output</button>
-              </div>
-              <div class="example-diagram output-view active" data-view="diagram" id="diagram-ai-agent"></div>
-              <div class="example-xml output-view" data-view="xml" data-example="ai-agent"></div>
-            </div>
-          </div>
+          <div id="anim-diagram" class="anim-diagram-inner"></div>
         </div>
       </div>
     </div>
@@ -468,15 +295,15 @@
           <div class="step-num">01</div>
           <h3>Install</h3>
           <div class="pkg-tabs">
-            <button class="pkg-tab active" data-pkg="npm">npm</button>
-            <button class="pkg-tab" data-pkg="yarn">yarn</button>
-            <button class="pkg-tab" data-pkg="pnpm">pnpm</button>
+            <button class="pkg-tab active" data-pkg="pnpm">pnpm</button>
             <button class="pkg-tab" data-pkg="bun">bun</button>
+            <button class="pkg-tab" data-pkg="npm">npm</button>
+            <button class="pkg-tab" data-pkg="yarn">yarn</button>
           </div>
-          <pre class="pkg-cmd active" data-pkg="npm"><code>npm install @bpmn-sdk/core</code></pre>
-          <pre class="pkg-cmd" data-pkg="yarn"><code>yarn add @bpmn-sdk/core</code></pre>
-          <pre class="pkg-cmd" data-pkg="pnpm"><code>pnpm add @bpmn-sdk/core</code></pre>
+          <pre class="pkg-cmd active" data-pkg="pnpm"><code>pnpm add @bpmn-sdk/core</code></pre>
           <pre class="pkg-cmd" data-pkg="bun"><code>bun add @bpmn-sdk/core</code></pre>
+          <pre class="pkg-cmd" data-pkg="npm"><code>npm install @bpmn-sdk/core</code></pre>
+          <pre class="pkg-cmd" data-pkg="yarn"><code>yarn add @bpmn-sdk/core</code></pre>
         </div>
 
         <div class="step">

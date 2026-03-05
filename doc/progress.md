@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-03-05 — Landing page: 5 cycling animation examples + zoom fix
+
+- **5 cycling animation examples** — replaced the single `order-validation` sequence with 5 distinct examples that cycle one after another: `order-validation.ts` (linear), `approval-flow.ts` (exclusive gateway with branches), `ai-support-agent.ts` (ad-hoc subprocess with LLM think/act/observe loop), `order-fulfillment.ts` (parallel gateway with 3 branches), `payment-processing.ts` (linear with payment steps). Each example shows 2 diagram snapshots building the process progressively.
+- **Zoom fix** — first diagram shown in each example always has ≥2 nodes (start event + at least one task), preventing a single start event from filling the entire canvas. `maxZoom: 1.4` in the neon plugin clamps overly-zoomed small diagrams.
+- **Dynamic filename** — code panel topbar filename (`id="anim-filename"`) updates between examples via JS.
+- **`AnimExample` type** — new `{ filename: string; stages: AnimStage[] }` structure replaces flat `AnimStage[]`; loop uses modulo index to cycle through examples indefinitely.
+
+## 2026-03-05 — Landing page: animated "See it in action" + neon on all diagrams
+
+Enhanced the landing page with two improvements:
+
+- **Neon theme on all diagrams** — `createNeonThemePlugin()` is now applied to every `BpmnCanvas` instance on the landing page (hero + animated demo), giving consistent neon glow, teal edges, and the skeleton loader transition.
+- **Animated "See it in action" section** — replaced the static tab-based example code/diagram panels with a looping animation: TypeScript code builds line-by-line on the left (slide-in animation with blinking teal cursor), and the BPMN diagram on the right updates live via `BpmnCanvas` destroy/recreate with the neon plugin handling the fade-in. Five stages reveal the `order-validation` process incrementally (import → startEvent → serviceTask → serviceTask+endEvent → build+export). Triggered by `IntersectionObserver` on first scroll-into-view; respects `prefers-reduced-motion`.
+- Removed: static example tabs (simple/gateway/parallel/ai-agent) and all related JS/CSS (`renderDiagram`, `setupTabs`, `setupOutputTabs`, `populateXmlPanels`, `.ex-code`, `.example-tabs`, `.output-view`, etc.).
+- Added: `.anim-demo`, `.anim-code-panel`, `.anim-diagram-panel`, `.anim-cursor`, `.anim-live-badge` styles; `buildAnimStages`, `appendAnimLine`, `updateAnimDiagram`, `runAnimCycle`, `runAnimLoop`, `setupAnimation` functions.
+
 ## 2026-03-04 — Landing hero: live BPMN diagram with neon theme
 
 Replaced the hand-crafted hero SVG with a real `BpmnCanvas` rendering.
