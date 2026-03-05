@@ -412,6 +412,10 @@ function buildAnimExamples(): AnimExample[] {
 
 let animCanvas: BpmnCanvas | null = null;
 let animActive = false;
+let animHovered = false;
+let animCancelled = false;
+let animResumeIndex: number | null = null;
+let animHoverIndex = 0;
 
 // Persistent cursor element moved between lines
 const animCursor = document.createElement("span");
@@ -470,6 +474,53 @@ async function updateAnimDiagram(xml: string): Promise<void> {
 	});
 }
 
+// Show the final state of an example instantly (no animation) — used on hover.
+function showExampleInstant(
+	example: AnimExample,
+	linesContainer: HTMLElement,
+	filenameEl: HTMLElement,
+): void {
+	filenameEl.textContent = example.filename;
+	linesContainer.style.transition = "";
+	linesContainer.style.opacity = "1";
+	linesContainer.innerHTML = "";
+	animCursor.remove();
+
+	for (const stage of example.stages) {
+		for (const html of stage.lines) {
+			const line = document.createElement("div");
+			line.className = "anim-line";
+			if (html === "") {
+				line.innerHTML = "\u00a0";
+				line.classList.add("anim-line--empty");
+			} else {
+				line.innerHTML = html;
+			}
+			linesContainer.appendChild(line);
+		}
+	}
+
+	// Show the final diagram instantly (no fade)
+	const finalXml = [...example.stages].reverse().find((s) => s.xml !== null)?.xml ?? null;
+	if (finalXml) {
+		const container = document.getElementById("anim-diagram");
+		if (container) {
+			animCanvas?.destroy();
+			animCanvas = null;
+			container.innerHTML = "";
+			container.style.transition = "";
+			container.style.opacity = "1";
+			animCanvas = new BpmnCanvas({
+				container,
+				xml: finalXml,
+				theme: "dark",
+				fit: "contain",
+				plugins: [createNeonThemePlugin({ maxZoom: 1.4 })],
+			});
+		}
+	}
+}
+
 async function runAnimCycle(
 	linesContainer: HTMLElement,
 	filenameEl: HTMLElement,
@@ -482,21 +533,27 @@ async function runAnimCycle(
 
 	for (const stage of example.stages) {
 		for (const line of stage.lines) {
+			if (animCancelled) return;
 			appendAnimLine(linesContainer, line);
 			await delay(115);
 		}
+		if (animCancelled) return;
 
 		if (stage.xml !== null) {
 			await delay(420);
+			if (animCancelled) return;
 			await updateAnimDiagram(stage.xml);
 			await delay(800);
+			if (animCancelled) return;
 		} else {
 			await delay(300);
+			if (animCancelled) return;
 		}
 	}
 
 	// Hold on the completed diagram before switching to next example
 	await delay(2000);
+	if (animCancelled) return;
 
 	// Fade out code lines
 	linesContainer.style.transition = "opacity 0.45s ease";
@@ -506,18 +563,84 @@ async function runAnimCycle(
 	linesContainer.style.opacity = "1";
 }
 
+// Returns the ms a cycle takes up to (and including) the hold — i.e. how long
+// the progress bar should take to fill from 0 → 100%.
+function computeExampleDuration(example: AnimExample): number {
+	let ms = 0;
+	for (const stage of example.stages) {
+		ms += stage.lines.length * 115;
+		if (stage.xml !== null) {
+			// delay before diagram + fade-out inside updateAnimDiagram + post-diagram delay
+			ms += 420 + 280 + 800;
+		} else {
+			ms += 300;
+		}
+	}
+	ms += 2000; // hold at end
+	return ms;
+}
+
 async function runAnimLoop(
 	linesContainer: HTMLElement,
 	filenameEl: HTMLElement,
 	examples: AnimExample[],
 ): Promise<void> {
+	const progressEl = document.getElementById("anim-progress");
+	const barFills = progressEl
+		? Array.from(progressEl.querySelectorAll<HTMLElement>(".anim-bar-fill"))
+		: [];
+
 	let i = 0;
 	while (animActive) {
-		const example = examples[i % examples.length];
-		if (example) {
-			await runAnimCycle(linesContainer, filenameEl, example);
+		// Pause here while the user is hovering a bar
+		if (animHovered) {
+			await delay(50);
+			continue;
 		}
-		i += 1;
+
+		// Resume from the example the user last hovered
+		if (animResumeIndex !== null) {
+			i = animResumeIndex;
+			animResumeIndex = null;
+		}
+
+		const idx = i % examples.length;
+		const example = examples[idx];
+		if (!example) {
+			i += 1;
+			continue;
+		}
+
+		// Reset previous bar, start filling current bar
+		const prevIdx = (idx - 1 + barFills.length) % barFills.length;
+		const prevFill = barFills[prevIdx];
+		const currFill = barFills[idx];
+
+		if (prevFill) {
+			prevFill.style.transition = "none";
+			prevFill.style.width = "0%";
+		}
+		if (currFill) {
+			currFill.style.transition = "none";
+			currFill.style.width = "0%";
+			currFill.getBoundingClientRect();
+			currFill.style.transition = `width ${computeExampleDuration(example)}ms linear`;
+			currFill.style.width = "100%";
+		}
+
+		animCancelled = false;
+		await runAnimCycle(linesContainer, filenameEl, example);
+
+		// Only advance if the cycle completed naturally (not cancelled by hover)
+		if (!animCancelled) {
+			i += 1;
+		}
+	}
+
+	// Reset all bars when animation stops
+	for (const fill of barFills) {
+		fill.style.transition = "none";
+		fill.style.width = "0%";
 	}
 }
 
@@ -531,7 +654,47 @@ function setupAnimation(): void {
 
 	const examples = buildAnimExamples();
 
-	// Start the animation the first time the section scrolls into view
+	// ── Bar hover: show example instantly, pause animation ─────────────
+	const progressEl = document.getElementById("anim-progress");
+	if (progressEl) {
+		const bars = Array.from(progressEl.querySelectorAll<HTMLElement>(".anim-bar"));
+		const fills = Array.from(progressEl.querySelectorAll<HTMLElement>(".anim-bar-fill"));
+
+		for (const [idx, bar] of bars.entries()) {
+			bar.addEventListener("mouseenter", () => {
+				if (!animActive) return;
+				animCancelled = true;
+				animHovered = true;
+				animHoverIndex = idx;
+
+				// Freeze all fills at their current visual width
+				for (const fill of fills) {
+					const w = window.getComputedStyle(fill).width;
+					fill.style.transition = "none";
+					fill.style.width = w;
+				}
+
+				// Highlight hovered bar
+				for (const [j, b] of bars.entries()) {
+					b.classList.toggle("anim-bar--active", j === idx);
+				}
+
+				const example = examples[idx];
+				if (example) showExampleInstant(example, linesContainer, filenameEl);
+			});
+		}
+
+		// Use the container's mouseleave (not individual bars) so moving between
+		// bars doesn't briefly unpause the animation.
+		progressEl.addEventListener("mouseleave", () => {
+			animHovered = false;
+			animCancelled = false;
+			animResumeIndex = animHoverIndex;
+			for (const b of bars) b.classList.remove("anim-bar--active");
+		});
+	}
+
+	// ── Start animation on first scroll into view ───────────────────────
 	const observer = new IntersectionObserver(
 		(entries) => {
 			for (const entry of entries) {

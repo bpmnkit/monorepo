@@ -1001,6 +1001,34 @@ a:hover {
 	flex-shrink: 0;
 }
 
+/* ── Example progress bars ───────────────────────────────────────── */
+.anim-progress {
+	display: flex;
+	gap: 6px;
+	margin-bottom: 16px;
+}
+
+.anim-bar {
+	flex: 1;
+	height: 3px;
+	background: oklch(55% 0.22 280 / 0.15);
+	border-radius: 2px;
+	overflow: hidden;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.anim-bar--active {
+	background: oklch(55% 0.22 280 / 0.35);
+}
+
+.anim-bar-fill {
+	height: 100%;
+	width: 0%;
+	background: linear-gradient(90deg, var(--accent), var(--teal));
+	border-radius: 2px;
+}
+
 /* ── Animated demo layout ────────────────────────────────────────── */
 .anim-demo {
 	display: grid;
