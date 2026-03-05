@@ -4,6 +4,7 @@ import { commandGroups } from "./commands/index.js";
 import { getRuntimeCompletions } from "./completion.js";
 import { printCommandHelp, printGlobalHelp, printGroupHelp, printVersion } from "./help.js";
 import { createOutputWriter } from "./output.js";
+import { runProfileManager } from "./profile-tui.js";
 import type { OutputFormat, RunContext } from "./types.js";
 
 // ─── Error display ────────────────────────────────────────────────────────────
@@ -61,6 +62,12 @@ export async function run(argv: string[]): Promise<void> {
 			colors,
 		);
 		process.exitCode = 1;
+		return;
+	}
+
+	// ── Profile TUI (no subcommand, no --help) ───────────────────────────────
+	if (positional.length === 1 && group.name === "profile" && !wantHelp) {
+		await runProfileManager();
 		return;
 	}
 

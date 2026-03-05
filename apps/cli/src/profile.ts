@@ -8,11 +8,13 @@ import type { CamundaClientInput } from "@bpmn-sdk/api";
 export interface Profile {
 	name: string;
 	config: CamundaClientInput;
+	createdAt: string | null;
 }
 
 interface ConfigStore {
 	profiles: Record<string, CamundaClientInput>;
 	active: string | null;
+	meta: Record<string, { createdAt: string }>;
 }
 
 // ─── Config directory ─────────────────────────────────────────────────────────
@@ -33,9 +35,11 @@ function configFilePath(): string {
 function readStore(): ConfigStore {
 	try {
 		const raw = readFileSync(configFilePath(), "utf8");
-		return JSON.parse(raw) as ConfigStore;
+		const store = JSON.parse(raw) as ConfigStore;
+		if (!store.meta) store.meta = {};
+		return store;
 	} catch {
-		return { profiles: {}, active: null };
+		return { profiles: {}, active: null, meta: {} };
 	}
 }
 
@@ -49,14 +53,18 @@ function writeStore(store: ConfigStore): void {
 
 export function listProfiles(): Profile[] {
 	const store = readStore();
-	return Object.entries(store.profiles).map(([name, config]) => ({ name, config }));
+	return Object.entries(store.profiles).map(([name, config]) => ({
+		name,
+		config,
+		createdAt: store.meta[name]?.createdAt ?? null,
+	}));
 }
 
 export function getProfile(name: string): Profile | undefined {
 	const store = readStore();
 	const config = store.profiles[name];
 	if (!config) return undefined;
-	return { name, config };
+	return { name, config, createdAt: store.meta[name]?.createdAt ?? null };
 }
 
 export function getActiveProfile(): Profile | undefined {
@@ -72,6 +80,7 @@ export function getActiveName(): string | null {
 export function saveProfile(name: string, config: CamundaClientInput): void {
 	const store = readStore();
 	store.profiles[name] = config;
+	if (!store.meta[name]) store.meta[name] = { createdAt: new Date().toISOString() };
 	// Auto-activate if this is the first profile
 	if (store.active === null) store.active = name;
 	writeStore(store);
