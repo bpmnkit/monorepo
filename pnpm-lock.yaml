@@ -368,6 +368,12 @@ importers:
 
   packages/api: {}
 
+  packages/ascii:
+    dependencies:
+      '@bpmn-sdk/core':
+        specifier: workspace:*
+        version: link:../bpmn-sdk
+
   packages/bpmn-sdk: {}
 
   packages/canvas:

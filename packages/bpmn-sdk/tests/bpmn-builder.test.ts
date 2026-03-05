@@ -425,6 +425,29 @@ describe("BpmnProcessBuilder", () => {
 			expect(process.flowElements).toHaveLength(7); // s, fork, t1, t2, t3, join, e
 			expect(process.sequenceFlows).toHaveLength(8); // s→fork, 3*(fork→t + t→join), join→e
 		});
+
+		it("auto-connects branch ends to join gateway without explicit connectTo()", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.parallelGateway("fork")
+					.branch("1", (b) => b.serviceTask("t1", { taskType: "w1" }))
+					.branch("2", (b) => b.serviceTask("t2", { taskType: "w2" }))
+					.branch("3", (b) => b.serviceTask("t3", { taskType: "w3" }))
+					.parallelGateway("join")
+					.endEvent("e")
+					.build(),
+			);
+
+			expect(process.flowElements).toHaveLength(7); // s, fork, t1, t2, t3, join, e
+			expect(process.sequenceFlows).toHaveLength(8); // s→fork, 3*(fork→t + t→join), join→e
+
+			const joinEl = defined(process.flowElements.find((n) => n.id === "join"));
+			expect(joinEl.incoming).toHaveLength(3);
+
+			const forkEl = defined(process.flowElements.find((n) => n.id === "fork"));
+			expect(forkEl.outgoing).toHaveLength(3);
+		});
 	});
 
 	// -----------------------------------------------------------------------

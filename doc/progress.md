@@ -22,6 +22,43 @@ New package `@bpmn-sdk/api` — auto-generated TypeScript SDK for the Camunda 8 
 
 **Tests**: 25 unit tests covering events, cache (with fake timers), retry logic, and error building.
 
+## 2026-03-05 — New package: @bpmn-sdk/ascii
+
+Added `packages/ascii` — a zero-dependency BPMN ASCII art renderer.
+
+- **`renderBpmnAscii(xml, options?): string`** — parses BPMN XML, runs the Sugiyama layout engine, and renders the process as a Unicode box-drawing diagram.
+- Uses the same `layoutProcess()` engine as `@bpmn-sdk/canvas`; element layer/position data drives fixed-cell ASCII placement.
+- **Element shapes**: tasks → square box `┌──┐│└──┘` with `[svc]`/`[usr]`/`[scr]` type tags; events/gateways → rounded box `╭──╮│╰──╯` with Unicode markers (`○ ● × + ◇`).
+- **Edge routing**: orthogonal lines with box-drawing corners (`┐ └ ┌ ┘`); T-junctions merged with `mergeBoxChars()` (`┤ ├ ┬ ┴ ┼`); backward/loop edges routed above the diagram at row 0.
+- **`RenderOptions.title`**: process name header above diagram (default), `false` to suppress, or a custom string.
+- 23 tests covering grid merge logic, element markers, edge routing, and complex parallel/gateway diagrams.
+
+## 2026-03-05 — Core: fix joining gateway auto-connect after branch()
+
+Fixed a bug in `ProcessBuilder` where calling `.parallelGateway("join")` (or any element) after `.branch()` calls without explicit `.connectTo()` produced a join gateway with no incoming flows from the branches.
+
+- **Root cause** — `branch()` set `this.lastNodeId = undefined` after merging branch elements, so `addFlowElement()` skipped creating the incoming sequence flow to the join element.
+- **Fix** — `ProcessBuilder` now tracks "open branch ends" (`openBranchEnds: string[]`). When a branch doesn't call `.connectTo()` and its last element is not an end event, its terminal node ID is pushed to `openBranchEnds`. The next `addFlowElement()` call auto-creates sequence flows from all open branch ends to the new element, then clears the list.
+- End-event branches are excluded (those are intentional dead-ends, e.g. early-error branches).
+- `BranchBuilder` gains `_connected: boolean` flag (set by `connectTo()`) and `_lastNodeId` getter to support this tracking.
+- Added regression test: "auto-connects branch ends to join gateway without explicit connectTo()".
+
+## 2026-03-05 — Landing page: 5 cycling animation examples + zoom fix
+
+- **5 cycling animation examples** — replaced the single `order-validation` sequence with 5 distinct examples that cycle one after another: `order-validation.ts` (linear), `approval-flow.ts` (exclusive gateway with branches), `ai-support-agent.ts` (ad-hoc subprocess with LLM think/act/observe loop), `order-fulfillment.ts` (parallel gateway with 3 branches), `payment-processing.ts` (linear with payment steps). Each example shows 2 diagram snapshots building the process progressively.
+- **Zoom fix** — first diagram shown in each example always has ≥2 nodes (start event + at least one task), preventing a single start event from filling the entire canvas. `maxZoom: 1.4` in the neon plugin clamps overly-zoomed small diagrams.
+- **Dynamic filename** — code panel topbar filename (`id="anim-filename"`) updates between examples via JS.
+- **`AnimExample` type** — new `{ filename: string; stages: AnimStage[] }` structure replaces flat `AnimStage[]`; loop uses modulo index to cycle through examples indefinitely.
+
+## 2026-03-05 — Landing page: animated "See it in action" + neon on all diagrams
+
+Enhanced the landing page with two improvements:
+
+- **Neon theme on all diagrams** — `createNeonThemePlugin()` is now applied to every `BpmnCanvas` instance on the landing page (hero + animated demo), giving consistent neon glow, teal edges, and the skeleton loader transition.
+- **Animated "See it in action" section** — replaced the static tab-based example code/diagram panels with a looping animation: TypeScript code builds line-by-line on the left (slide-in animation with blinking teal cursor), and the BPMN diagram on the right updates live via `BpmnCanvas` destroy/recreate with the neon plugin handling the fade-in. Five stages reveal the `order-validation` process incrementally (import → startEvent → serviceTask → serviceTask+endEvent → build+export). Triggered by `IntersectionObserver` on first scroll-into-view; respects `prefers-reduced-motion`.
+- Removed: static example tabs (simple/gateway/parallel/ai-agent) and all related JS/CSS (`renderDiagram`, `setupTabs`, `setupOutputTabs`, `populateXmlPanels`, `.ex-code`, `.example-tabs`, `.output-view`, etc.).
+- Added: `.anim-demo`, `.anim-code-panel`, `.anim-diagram-panel`, `.anim-cursor`, `.anim-live-badge` styles; `buildAnimStages`, `appendAnimLine`, `updateAnimDiagram`, `runAnimCycle`, `runAnimLoop`, `setupAnimation` functions.
+
 ## 2026-03-04 — Landing hero: live BPMN diagram with neon theme
 
 Replaced the hand-crafted hero SVG with a real `BpmnCanvas` rendering.

@@ -18,7 +18,7 @@ const LOADER_SVG = `<svg class="neon-loader-svg" viewBox="-10 -12 350 104" aria-
   <circle cx="308" cy="40" r="16" class="neon-loader-end" style="animation-delay:-1.4s"/>
 </svg>`;
 
-export function createNeonThemePlugin(): CanvasPlugin {
+export function createNeonThemePlugin(options?: { maxZoom?: number }): CanvasPlugin {
 	let _loader: HTMLElement | null = null;
 	const _unsubs: Array<() => void> = [];
 
@@ -57,6 +57,21 @@ export function createNeonThemePlugin(): CanvasPlugin {
 			_unsubs.push(
 				api.on("diagram:load", () => {
 					requestAnimationFrame(() => {
+						// Clamp zoom: if the diagram is very small (e.g. a single start event),
+						// fitView may produce an excessively large scale. Cap it and re-center.
+						if (options?.maxZoom !== undefined) {
+							const vp = api.getViewport();
+							if (vp.scale > options.maxZoom) {
+								const svgW = api.svg.clientWidth;
+								const svgH = api.svg.clientHeight;
+								const ratio = options.maxZoom / vp.scale;
+								api.setViewport({
+									scale: options.maxZoom,
+									tx: svgW / 2 + (vp.tx - svgW / 2) * ratio,
+									ty: svgH / 2 + (vp.ty - svgH / 2) * ratio,
+								});
+							}
+						}
 						loader.style.opacity = "0";
 						host.style.opacity = "1";
 						_loader = null;
