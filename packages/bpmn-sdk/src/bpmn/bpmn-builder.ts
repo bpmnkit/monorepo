@@ -509,6 +509,8 @@ export class BranchBuilder {
 	private isFirstElement = true;
 	private pendingCondition: string | undefined;
 	private pendingDefault = false;
+	/** @internal – true once connectTo() has been called, meaning the branch end is already wired */
+	_connected = false;
 
 	/** @internal */
 	constructor(gatewayId: string, branchName: string) {
@@ -581,7 +583,13 @@ export class BranchBuilder {
 
 		this.isFirstElement = false;
 		this.lastNodeId = targetId;
+		this._connected = true;
 		return this;
+	}
+
+	/** @internal – ID of the last element added (or the gateway if branch is empty) */
+	get _lastNodeId(): string {
+		return this.lastNodeId;
 	}
 
 	// ---- Flow-node methods (mirror ProcessBuilder) ----
@@ -888,6 +896,7 @@ export class ProcessBuilder {
 	private readonly rootMessages: BpmnMessage[] = [];
 	private lastNodeId: string | undefined;
 	private currentGatewayId: string | undefined;
+	private openBranchEnds: string[] = [];
 	private _autoLayout = false;
 
 	constructor(processId: string) {
@@ -1246,6 +1255,15 @@ export class ProcessBuilder {
 			}
 		}
 
+		// Track the branch's open end so the next element auto-connects from it.
+		// Skip branches that terminated at an end event (those are intentional dead-ends).
+		if (!b._connected && b._elements.length > 0) {
+			const lastEl = b._elements[b._elements.length - 1];
+			if (lastEl && lastEl.type !== "endEvent") {
+				this.openBranchEnds.push(b._lastNodeId);
+			}
+		}
+
 		this.lastNodeId = undefined;
 		return this;
 	}
@@ -1592,6 +1610,19 @@ export class ProcessBuilder {
 				unknownAttributes: {},
 			});
 		}
+
+		// Auto-connect any open branch ends (from branch() calls without .connectTo())
+		for (const branchEnd of this.openBranchEnds) {
+			const flowId = generateId("Flow");
+			this.sequenceFlows.push({
+				id: flowId,
+				sourceRef: branchEnd,
+				targetRef: element.id,
+				extensionElements: [],
+				unknownAttributes: {},
+			});
+		}
+		this.openBranchEnds = [];
 
 		this.lastNodeId = element.id;
 	}

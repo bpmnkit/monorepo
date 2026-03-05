@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-03-05 — Core: fix joining gateway auto-connect after branch()
+
+Fixed a bug in `ProcessBuilder` where calling `.parallelGateway("join")` (or any element) after `.branch()` calls without explicit `.connectTo()` produced a join gateway with no incoming flows from the branches.
+
+- **Root cause** — `branch()` set `this.lastNodeId = undefined` after merging branch elements, so `addFlowElement()` skipped creating the incoming sequence flow to the join element.
+- **Fix** — `ProcessBuilder` now tracks "open branch ends" (`openBranchEnds: string[]`). When a branch doesn't call `.connectTo()` and its last element is not an end event, its terminal node ID is pushed to `openBranchEnds`. The next `addFlowElement()` call auto-creates sequence flows from all open branch ends to the new element, then clears the list.
+- End-event branches are excluded (those are intentional dead-ends, e.g. early-error branches).
+- `BranchBuilder` gains `_connected: boolean` flag (set by `connectTo()`) and `_lastNodeId` getter to support this tracking.
+- Added regression test: "auto-connects branch ends to join gateway without explicit connectTo()".
+
 ## 2026-03-05 — Landing page: 5 cycling animation examples + zoom fix
 
 - **5 cycling animation examples** — replaced the single `order-validation` sequence with 5 distinct examples that cycle one after another: `order-validation.ts` (linear), `approval-flow.ts` (exclusive gateway with branches), `ai-support-agent.ts` (ad-hoc subprocess with LLM think/act/observe loop), `order-fulfillment.ts` (parallel gateway with 3 branches), `payment-processing.ts` (linear with payment steps). Each example shows 2 diagram snapshots building the process progressively.
