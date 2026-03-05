@@ -6,6 +6,12 @@
 	"bin": {
 		"casen": "./dist/index.js"
 	},
+	"files": [
+		"dist"
+	],
+	"engines": {
+		"node": ">=20"
+	},
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -14,5 +20,8 @@
 	},
 	"dependencies": {
 		"@bpmn-sdk/api": "workspace:*"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }
