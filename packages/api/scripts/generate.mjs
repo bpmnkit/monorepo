@@ -1349,7 +1349,7 @@ function tagToCliGroupName(tag) {
  */
 function tryStripEntity(operationId, entityPascal) {
 	const escaped = entityPascal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-	const regex = new RegExp(escaped + "s?");
+	const regex = new RegExp(`${escaped}s?`);
 	if (!regex.test(operationId)) return null;
 
 	const withMarker = operationId.replace(regex, "\x00");
@@ -1357,7 +1357,10 @@ function tryStripEntity(operationId, entityPascal) {
 	const verb = before || "";
 	const suffix = after || "";
 
-	const subKebab = suffix.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
+	const subKebab = suffix
+		.replace(/([A-Z])/g, "-$1")
+		.toLowerCase()
+		.replace(/^-/, "");
 	const verbLower = verb.toLowerCase();
 	const mappedVerb = VERB_REMAP[verbLower] || verbLower;
 
@@ -1377,14 +1380,16 @@ function operationToCliCommandName(operationId, tag) {
 
 	// Try with just the first word of the entity name
 	if (name === null && tagWords.length > 1) {
-		const firstWord =
-			tagWords[0].charAt(0).toUpperCase() + tagWords[0].slice(1).toLowerCase();
+		const firstWord = tagWords[0].charAt(0).toUpperCase() + tagWords[0].slice(1).toLowerCase();
 		name = tryStripEntity(operationId, firstWord);
 	}
 
 	// Fall back to full operationId converted to kebab-case
 	if (name === null) {
-		name = operationId.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
+		name = operationId
+			.replace(/([A-Z])/g, "-$1")
+			.toLowerCase()
+			.replace(/^-/, "");
 	}
 
 	return name;
@@ -1394,8 +1399,7 @@ function operationToCliCommandName(operationId, tag) {
 function detectCmdType(op) {
 	const pathParams = op.parameters.filter((p) => p?.in === "path");
 	// List: POST /…/search with no path params (sub-resource searches are actions)
-	if (op.method === "POST" && op.path.endsWith("/search") && pathParams.length === 0)
-		return "list";
+	if (op.method === "POST" && op.path.endsWith("/search") && pathParams.length === 0) return "list";
 	// Get: exactly 1 path param, no body — multi-param GETs are actions
 	if (op.method === "GET" && pathParams.length === 1) return "get";
 	// Create: POST to base path, no path params, no body schema needed (may be multipart)
@@ -1415,9 +1419,7 @@ function detectCmdType(op) {
 function deriveColumns(responseSchema, schemas) {
 	if (!responseSchema) return [];
 	const typeName =
-		typeof responseSchema.$ref === "string"
-			? responseSchema.$ref.split("/").pop()
-			: null;
+		typeof responseSchema.$ref === "string" ? responseSchema.$ref.split("/").pop() : null;
 	if (!typeName) return [];
 
 	const responseResolved = schemas.get(typeName);
@@ -1438,13 +1440,15 @@ function deriveColumns(responseSchema, schemas) {
 	const columns = [];
 	for (const [propName, propSchema] of Object.entries(itemProperties)) {
 		if (!propSchema || typeof propSchema !== "object") continue;
-		const isDate =
-			/[Dd]ate$|[Tt]ime$/.test(propName) || propSchema.format === "date-time";
+		const isDate = /[Dd]ate$|[Tt]ime$/.test(propName) || propSchema.format === "date-time";
 		const isKeyOrId = /[Kk]ey$|Id$/.test(propName);
 		const isString = propSchema.type === "string";
 		columns.push({
 			key: propName,
-			header: propName.replace(/([A-Z])/g, " $1").trim().toUpperCase(),
+			header: propName
+				.replace(/([A-Z])/g, " $1")
+				.trim()
+				.toUpperCase(),
 			dateTransform: isDate,
 			maxWidth: isString && !isDate && !isKeyOrId ? 30 : null,
 		});
@@ -1554,9 +1558,7 @@ function generateCliCommandsContent(operations, schemas, tagDescriptions) {
 				if (cmdName !== "get") lines.push(`      name: ${JSON.stringify(cmdName)},`);
 				lines.push(`      description: ${JSON.stringify(desc)},`);
 				lines.push(`      argName: "${keyParam}",`);
-				lines.push(
-					`      get: (client, key) => client.${clientProp}.${methodName}(key),`,
-				);
+				lines.push(`      get: (client, key) => client.${clientProp}.${methodName}(key),`);
 				lines.push("    }),");
 			} else if (cmdType === "create") {
 				lines.push("    makeCreateCmd({");
@@ -1588,9 +1590,7 @@ function generateCliCommandsContent(operations, schemas, tagDescriptions) {
 						`      delete: (client, key, body) => client.${clientProp}.${methodName}(key, body as never),`,
 					);
 				} else {
-					lines.push(
-						`      delete: (client, key) => client.${clientProp}.${methodName}(key),`,
-					);
+					lines.push(`      delete: (client, key) => client.${clientProp}.${methodName}(key),`);
 				}
 				lines.push("    }),");
 			} else {
