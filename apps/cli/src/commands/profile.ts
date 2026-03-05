@@ -1,5 +1,5 @@
-import type { CamundaClientInput } from "@bpmn-sdk/api";
-import type { AuthConfig } from "@bpmn-sdk/api";
+import { readFileSync } from "node:fs";
+import type { AuthConfig, CamundaClientInput } from "@bpmn-sdk/api";
 import {
 	deleteProfile,
 	getActiveName,
@@ -49,6 +49,71 @@ const AUTH_FLAGS: FlagSpec[] = [
 	{ name: "username", description: "Basic auth username", type: "string", placeholder: "USER" },
 	{ name: "password", description: "Basic auth password", type: "string", placeholder: "PASS" },
 ];
+
+// ─── Camunda Cloud credentials file parser ────────────────────────────────────
+
+/** Parse a shell file of `export KEY='VALUE'` lines into a key-value map. */
+function parseEnvFile(content: string): Record<string, string> {
+	const result: Record<string, string> = {};
+	for (const line of content.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed || trimmed.startsWith("#")) continue;
+		const match = trimmed.match(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.*)/);
+		if (!match) continue;
+		const key = match[1] ?? "";
+		let value = (match[2] ?? "").trim();
+		if (
+			(value.startsWith("'") && value.endsWith("'")) ||
+			(value.startsWith('"') && value.endsWith('"'))
+		) {
+			value = value.slice(1, -1);
+		}
+		result[key] = value;
+	}
+	return result;
+}
+
+/** Build a CamundaClientInput from a parsed Camunda Cloud credentials env map. */
+function configFromCloudEnv(env: Record<string, string>): CamundaClientInput {
+	const restAddress = env.ZEEBE_REST_ADDRESS;
+	if (!restAddress) {
+		throw new Error(
+			"ZEEBE_REST_ADDRESS not found in credentials file. " +
+				"Make sure you are using a Camunda Cloud credentials export.",
+		);
+	}
+	const baseUrl = restAddress.endsWith("/v2") ? restAddress : `${restAddress}/v2`;
+
+	const clientId = env.CAMUNDA_CLIENT_ID ?? env.ZEEBE_CLIENT_ID ?? "";
+	const clientSecret = env.CAMUNDA_CLIENT_SECRET ?? env.ZEEBE_CLIENT_SECRET ?? "";
+	const tokenUrl = env.CAMUNDA_OAUTH_URL ?? env.ZEEBE_AUTHORIZATION_SERVER_URL ?? "";
+
+	if (!clientId || !clientSecret || !tokenUrl) {
+		throw new Error(
+			"Missing required credentials. Expected: " +
+				"CAMUNDA_CLIENT_ID (or ZEEBE_CLIENT_ID), " +
+				"CAMUNDA_CLIENT_SECRET (or ZEEBE_CLIENT_SECRET), " +
+				"CAMUNDA_OAUTH_URL (or ZEEBE_AUTHORIZATION_SERVER_URL).",
+		);
+	}
+
+	return { baseUrl, auth: { type: "oauth2", clientId, clientSecret, tokenUrl } };
+}
+
+/** Read all of stdin as a string. */
+function readStdin(): Promise<string> {
+	return new Promise((resolve, reject) => {
+		let data = "";
+		process.stdin.setEncoding("utf8");
+		process.stdin.on("data", (chunk: string) => {
+			data += chunk;
+		});
+		process.stdin.on("end", () => resolve(data));
+		process.stdin.on("error", reject);
+	});
+}
+
+// ─── Auth builder ─────────────────────────────────────────────────────────────
 
 function buildAuth(flags: Record<string, string | boolean | number>): AuthConfig {
 	const type = flags["auth-type"] as string;
@@ -185,6 +250,41 @@ export const profileGroup: CommandGroup = {
 				const isActive = profile.name === active;
 				ctx.output.info(`Profile: ${profile.name}${isActive ? " (active)" : ""}`);
 				ctx.output.printItem(profile.config);
+			},
+		},
+		{
+			name: "import",
+			description: "Import a profile from a Camunda Cloud credentials file",
+			args: [
+				{ name: "name", description: "Profile name", required: true },
+				{
+					name: "file",
+					description: "Path to credentials file (use - for stdin)",
+					required: true,
+				},
+			],
+			examples: [
+				{
+					description: "Import from credentials file",
+					command: "casen profile import prod ./camunda-credentials.sh",
+				},
+				{
+					description: "Import from stdin",
+					command: "cat credentials.sh | casen profile import prod -",
+				},
+			],
+			async run(ctx) {
+				const name = ctx.positional[0];
+				if (!name) throw new Error("Missing required argument: <name>");
+				const filePath = ctx.positional[1];
+				if (!filePath) throw new Error("Missing required argument: <file>");
+				const content =
+					filePath === "-" ? await readStdin() : readFileSync(filePath, "utf8");
+				const env = parseEnvFile(content);
+				const config = configFromCloudEnv(env);
+				saveProfile(name, config);
+				ctx.output.ok(`Profile "${name}" imported (${getConfigFilePath()})`);
+				ctx.output.info(`baseUrl: ${config.baseUrl ?? ""}`);
 			},
 		},
 		{
