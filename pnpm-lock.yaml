@@ -48,6 +48,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/bpmn-sdk
 
+  apps/cli:
+    dependencies:
+      '@bpmn-sdk/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+
   apps/desktop:
     dependencies:
       '@bpmn-sdk/canvas':
@@ -359,6 +365,8 @@ importers:
       '@bpmn-sdk/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
+
+  packages/api: {}
 
   packages/bpmn-sdk: {}
 

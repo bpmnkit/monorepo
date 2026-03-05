@@ -1,0 +1,18 @@
+{
+	"name": "@bpmn-sdk/cli",
+	"version": "0.0.1",
+	"description": "Camunda v2 REST API command-line interface",
+	"type": "module",
+	"bin": {
+		"casen": "./dist/index.js"
+	},
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@bpmn-sdk/api": "workspace:*"
+	}
+}
