@@ -132,7 +132,6 @@ const configPanel = createConfigPanelPlugin({
 	container: dock.propertiesPane,
 	onPanelShow: () => {
 		if (dock.collapsed) dock.expand();
-		dock.switchTab("properties");
 		dock.showPanel();
 	},
 	onPanelHide: () => {
@@ -298,6 +297,7 @@ const editor = new BpmnEditor({
 		configPanelBpmn,
 		tokenHighlightPlugin,
 		processRunnerPlugin,
+		aiBridgePlugin,
 	],
 });
 editorRef = editor;

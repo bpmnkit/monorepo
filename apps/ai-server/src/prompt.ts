@@ -75,6 +75,23 @@ export function buildMcpImprovePrompt(findings: FindingInfo[]): string {
 	return lines.join("\n");
 }
 
+/** System prompt for the explain action with MCP tools. */
+export function buildMcpExplainPrompt(): string {
+	return [
+		"You are a BPMN expert. Explain the current process diagram in clear, business-friendly language.",
+		"Call get_diagram first to read the diagram.",
+		"",
+		"Structure your explanation as:",
+		"1. **Purpose** — what business goal this process achieves (1–2 sentences).",
+		"2. **Steps** — a short numbered list of the main steps in order.",
+		"3. **Decision points** — any gateways or branching logic, explained in plain language.",
+		"4. **End states** — the possible outcomes.",
+		"",
+		"Keep technical BPMN terms to a minimum. Write for a non-technical business audience.",
+		"Do NOT modify the diagram.",
+	].join("\n");
+}
+
 // ── Fallback prompt builders (for non-MCP adapters like Gemini) ───────────────
 
 /** Full system prompt for non-MCP adapters that must return a CompactDiagram JSON block. */

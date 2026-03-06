@@ -128,7 +128,6 @@ const configPanel = createConfigPanelPlugin({
 	container: dock.propertiesPane,
 	onPanelShow: () => {
 		if (dock.collapsed) dock.expand();
-		dock.switchTab("properties");
 		dock.showPanel();
 	},
 	onPanelHide: () => {
@@ -225,6 +224,7 @@ const editor = new BpmnEditor({
 		paletteEditor,
 		configPanel,
 		configPanelBpmn,
+		aiBridgePlugin,
 	],
 });
 editorRef = editor;
@@ -232,6 +232,7 @@ editorRef = editor;
 // Keep dock diagram info up-to-date on diagram changes
 type AnyOn = (event: string, handler: (...args: unknown[]) => void) => () => void;
 const editorOn = (editor as unknown as { on: AnyOn }).on.bind(editor);
+
 editorOn("diagram:change", () => {
 	dock.setDiagramInfo(editorRef?.getDefinitions()?.processes[0]?.name ?? null, currentFileName);
 });

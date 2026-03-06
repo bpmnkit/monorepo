@@ -121,6 +121,7 @@ export interface SideDock {
 	expand(): void;
 	collapse(): void;
 	get collapsed(): boolean;
+	get activeTab(): "properties" | "history" | "ai" | "play";
 	/** Update the info shown in the Properties empty state. */
 	setDiagramInfo(processName: string | null, fileName: string | null): void;
 	/** Hide the empty state when a config panel is displayed. */
@@ -247,6 +248,7 @@ export function createSideDock(): SideDock {
 	// ── State ──
 	let _collapsed = false;
 	let _width = DEFAULT_WIDTH;
+	let _activeTab: "properties" | "history" | "ai" | "play" = "properties";
 	let _aiTabHandler: (() => void) | null = null;
 	let _historyTabHandler: (() => void) | null = null;
 	let _playTabHandler: (() => void) | null = null;
@@ -282,6 +284,7 @@ export function createSideDock(): SideDock {
 
 	// ── Tab switching ──
 	function switchTab(tab: "properties" | "history" | "ai" | "play"): void {
+		_activeTab = tab;
 		propertiesTab.classList.toggle("active", tab === "properties");
 		historyTab.classList.toggle("active", tab === "history");
 		aiTab.classList.toggle("active", tab === "ai");
@@ -437,6 +440,9 @@ export function createSideDock(): SideDock {
 		setPlayTabClickHandler,
 		get collapsed() {
 			return _collapsed;
+		},
+		get activeTab() {
+			return _activeTab;
 		},
 	};
 }

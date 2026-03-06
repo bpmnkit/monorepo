@@ -1,5 +1,44 @@
 import type { BpmnDefinitions } from "@bpmn-sdk/core";
 import { DEFAULT_SERVER, createAiPanel } from "./panel.js";
+import type { NodeContext } from "./panel.js";
+
+export type { NodeContext };
+
+// ── Element lookup helpers ────────────────────────────────────────────────────
+
+type Container = {
+	flowElements: Array<{ id: string; type: string; name?: string; flowElements?: unknown[] }>;
+	sequenceFlows: Array<{ id: string; name?: string }>;
+	textAnnotations: Array<{ id: string; text?: string }>;
+};
+
+function searchContainer(container: Container, id: string): NodeContext | null {
+	for (const el of container.flowElements) {
+		if (el.id === id) return { id: el.id, type: el.type, name: el.name };
+		if (el.flowElements) {
+			const nested = searchContainer(el as unknown as Container, id);
+			if (nested) return nested;
+		}
+	}
+	for (const sf of container.sequenceFlows) {
+		if (sf.id === id) return { id: sf.id, type: "sequenceFlow", name: sf.name };
+	}
+	for (const ann of container.textAnnotations) {
+		if (ann.id === id) return { id: ann.id, type: "textAnnotation", name: ann.text };
+	}
+	return null;
+}
+
+function findElementById(defs: BpmnDefinitions | null, id: string): NodeContext | null {
+	if (!defs) return null;
+	for (const proc of defs.processes) {
+		const found = searchContainer(proc, id);
+		if (found) return found;
+	}
+	return null;
+}
+
+// ── Plugin ────────────────────────────────────────────────────────────────────
 
 export interface AiBridgePluginOptions {
 	/** URL of the local AI server. Defaults to http://localhost:3033 */
@@ -27,15 +66,18 @@ const AI_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stro
  */
 export function createAiBridgePlugin(options: AiBridgePluginOptions): {
 	name: string;
-	install(): void;
+	install(api: unknown): void;
 	button: HTMLButtonElement;
 	/** Initialize the panel (if not yet created) and open it. */
 	openPanel(): void;
+	/** Set the node context shown as a badge above the chat input. Pass null to clear. */
+	setContext(node: NodeContext | null): void;
 } {
 	const serverUrl = options.serverUrl ?? DEFAULT_SERVER;
 
 	let panelInstance: ReturnType<typeof createAiPanel> | null = null;
 	let panelOpen = false;
+	let _pendingContext: NodeContext | null = null;
 
 	function getOrCreatePanel(): ReturnType<typeof createAiPanel> {
 		if (!panelInstance) {
@@ -45,6 +87,9 @@ export function createAiBridgePlugin(options: AiBridgePluginOptions): {
 				loadXml: options.loadXml,
 				getCurrentContext: options.getCurrentContext,
 			});
+			if (_pendingContext !== null) {
+				panelInstance.setContext(_pendingContext);
+			}
 			if (options.container) {
 				panelInstance.panel.classList.add("ai-panel--docked");
 				options.container.append(panelInstance.panel);
@@ -84,10 +129,31 @@ export function createAiBridgePlugin(options: AiBridgePluginOptions): {
 		}
 	}
 
+	function setContext(node: NodeContext | null): void {
+		_pendingContext = node;
+		panelInstance?.setContext(node);
+	}
+
+	function install(api: unknown): void {
+		type AnyOn = (event: string, handler: (...args: unknown[]) => void) => () => void;
+		const on = (api as { on: AnyOn }).on.bind(api as { on: AnyOn });
+		on("editor:select", (rawIds) => {
+			const ids = rawIds as string[];
+			if (ids.length !== 1) {
+				setContext(null);
+				return;
+			}
+			const id = ids[0];
+			if (!id) return;
+			setContext(findElementById(options.getDefinitions(), id));
+		});
+	}
+
 	return {
 		name: "ai-bridge",
-		install(): void {},
+		install,
 		button,
 		openPanel,
+		setContext,
 	};
 }

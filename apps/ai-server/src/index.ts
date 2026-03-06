@@ -9,7 +9,12 @@ import * as claude from "./adapters/claude.js";
 import * as copilot from "./adapters/copilot.js";
 import * as gemini from "./adapters/gemini.js";
 import type { FindingInfo } from "./prompt.js";
-import { buildMcpImprovePrompt, buildMcpSystemPrompt, buildSystemPrompt } from "./prompt.js";
+import {
+	buildMcpExplainPrompt,
+	buildMcpImprovePrompt,
+	buildMcpSystemPrompt,
+	buildSystemPrompt,
+} from "./prompt.js";
 
 const PORT = process.env.AI_SERVER_PORT ? Number(process.env.AI_SERVER_PORT) : 3033;
 
@@ -172,7 +177,11 @@ const server = http.createServer(async (req, res) => {
 		let systemPrompt: string;
 		if (detected.adapter.supportsMcp) {
 			systemPrompt =
-				action === "improve" ? buildMcpImprovePrompt(findings) : buildMcpSystemPrompt();
+				action === "improve"
+					? buildMcpImprovePrompt(findings)
+					: action === "explain"
+						? buildMcpExplainPrompt()
+						: buildMcpSystemPrompt();
 		} else {
 			// Fallback for non-MCP adapters: full prompt with format instructions
 			systemPrompt = buildSystemPrompt(context);
