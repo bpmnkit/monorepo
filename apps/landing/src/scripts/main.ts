@@ -706,6 +706,37 @@ function setupAnimation(): void {
 	observer.observe(demo);
 }
 
+// ── Before/After compare slider ─────────────────────────────────────────
+
+function setupCompareSlider(): void {
+	const slider = document.getElementById("compare-slider");
+	if (!slider) return;
+
+	let dragging = false;
+
+	const setPos = (clientX: number) => {
+		const rect = slider.getBoundingClientRect();
+		const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+		slider.style.setProperty("--split", `${pct}%`);
+	};
+
+	slider.addEventListener("pointerdown", (e) => {
+		dragging = true;
+		slider.setPointerCapture(e.pointerId);
+		setPos(e.clientX);
+	});
+
+	slider.addEventListener("pointermove", (e) => {
+		if (dragging) setPos(e.clientX);
+	});
+
+	const stop = () => {
+		dragging = false;
+	};
+	slider.addEventListener("pointerup", stop);
+	slider.addEventListener("pointercancel", stop);
+}
+
 // ── Init ───────────────────────────────────────────────────────────────
 
 setupHeroDiagram();
@@ -714,3 +745,4 @@ setupPkgTabs();
 setupInstallButton();
 setupBentoSpotlight();
 setupAnimation();
+setupCompareSlider();

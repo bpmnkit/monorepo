@@ -1,5 +1,20 @@
 # Progress
 
+## 2026-03-06 — landing: UX polish — before/after slider, CLI animation, syntax colors
+
+- **Before/after slider** replaces side-by-side compare panels: both panels absolutely fill the container, `clip-path: inset(...)` controlled by `--split` CSS variable, draggable knob with pointer capture; responsive height
+- **CLI animation improvements**: cursor ↓ key uses `transition: "instant"` (no fade — just the highlighted row swaps), enter key flashes selected row (`.cli-row-pressed`) before fading to new screen
+- **Syntax highlighting**: added `.api-code-body .kw/.str/.fn/.comment` tokens (API section was unstyled)
+- **Responsive**: compare section stacks at 900px/600px; API/CLI two-column collapses to single column
+
+## 2026-03-06 — landing: API SDK + CLI sections with terminal animation
+
+- Added `#api` section showcasing `@bpmn-sdk/api` with a code panel (CamundaClient usage), 4 stat tiles (180 methods, 30+ classes, 3 auth modes, retry), and feature chips
+- Added `#cli` section showcasing `casen` CLI with feature list cards and an animated terminal window
+- Created `apps/landing/src/scripts/cli-anim.ts` — IntersectionObserver-triggered terminal animation cycling 6 frames (shell → main menu → navigate → process commands → list form → results table)
+- CSS: terminal window styles (`.tl`, `.ti`, `.tb`, `.td`, `.tc`, `.tp`, `.tcur`, `.cli-key-badge`), API section styles, responsive grid collapses at 900px
+- Nav links added for `#api` and `#cli`
+
 ## 2026-03-06 — landing: migrate to Astro, deploy to Cloudflare Pages
 
 - Replaced Vite + plain HTML with Astro 5 static site generator
