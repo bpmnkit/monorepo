@@ -28,6 +28,7 @@
 			".swarm",
 			"**/templates/generated.ts",
 			"**/src-tauri/**",
+		"**/.astro/**",
 			"**/src/generated/**"
 		]
 	}

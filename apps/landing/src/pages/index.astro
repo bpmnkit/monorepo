@@ -1,3 +1,13 @@
+---
+import "../styles/global.css";
+import { CODE_HTML } from "../data/content";
+
+const withSdkCode = CODE_HTML.withSdk;
+const createProcessCode = CODE_HTML.createProcess;
+const deployRunCode = CODE_HTML.deployRun;
+const apiCode = CODE_HTML.apiClient;
+---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +15,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BPMN SDK — Generate BPMN diagrams with code</title>
   <meta name="description" content="A TypeScript SDK for generating production-ready BPMN diagrams programmatically. Built for AI agents, automation platforms, and workflow builders." />
-  <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
 
@@ -28,7 +37,10 @@
       <div class="nav-links">
         <a href="#features" class="nav-link">Features</a>
         <a href="#examples" class="nav-link">Examples</a>
-        <a href="/monorepo/editor" class="nav-link">Editor</a>
+        <a href="#api" class="nav-link">API</a>
+        <a href="#cli" class="nav-link">CLI</a>
+        <a href="https://bpmn-sdk-docs.pages.dev" class="nav-link">Docs</a>
+        <a href="/editor" class="nav-link">Editor</a>
         <a href="https://github.com/bpmn-sdk/monorepo" class="nav-cta" target="_blank" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
           GitHub
@@ -68,10 +80,11 @@
             <code>pnpm add @bpmn-sdk/core</code>
             <span class="install-copied" aria-hidden="true">Copied!</span>
           </button>
-          <a href="/monorepo/editor" class="btn-primary">
-            Try the Editor
+          <a href="https://bpmn-sdk-docs.pages.dev" class="btn-primary">
+            Get Started
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
           </a>
+          <a href="/editor" class="btn-ghost">Try the Editor</a>
           <a href="https://github.com/bpmn-sdk/monorepo" class="btn-ghost" target="_blank" rel="noopener">GitHub →</a>
         </div>
       </div>
@@ -185,8 +198,12 @@
     <div class="section-wrap">
       <div class="section-eyebrow">Developer Experience</div>
       <h2 class="section-h2">Stop writing XML.<br>Start building workflows.</h2>
-      <div class="compare-grid">
-        <div class="cmp-panel cmp-bad">
+      <p class="section-sub" style="text-align:center; margin-top: -16px; margin-bottom: 28px;">Drag the divider to compare</p>
+
+      <div class="compare-slider" id="compare-slider">
+        <div class="compare-panels">
+        <!-- Left: raw XML (without SDK) -->
+        <div class="cmp-panel cmp-bad cmp-left">
           <div class="cmp-header">
             <span class="tb-dot tb-red"></span>
             <span class="tb-dot tb-yellow"></span>
@@ -203,43 +220,54 @@
     &lt;/<span class="xml-tag">bpmn:startEvent</span>&gt;
     &lt;<span class="xml-tag">bpmn:serviceTask</span> <span class="xml-attr">id</span>=<span class="str">"t"</span>&gt;
       &lt;<span class="xml-tag">bpmn:extensionElements</span>&gt;
-        &lt;<span class="xml-tag">zeebe:taskDefinition</span> <span class="xml-attr">type</span>=<span class="str">"worker"</span>/&gt;
+        &lt;<span class="xml-tag">zeebe:taskDefinition</span>
+          <span class="xml-attr">type</span>=<span class="str">"worker"</span>/&gt;
       &lt;/<span class="xml-tag">bpmn:extensionElements</span>&gt;
+      &lt;<span class="xml-tag">bpmn:incoming</span>&gt;Flow_1&lt;/<span class="xml-tag">bpmn:incoming</span>&gt;
+      &lt;<span class="xml-tag">bpmn:outgoing</span>&gt;Flow_2&lt;/<span class="xml-tag">bpmn:outgoing</span>&gt;
     &lt;/<span class="xml-tag">bpmn:serviceTask</span>&gt;
-    <span class="comment">&lt;!-- ...200+ more lines... --&gt;</span>
+    &lt;<span class="xml-tag">bpmn:endEvent</span> <span class="xml-attr">id</span>=<span class="str">"e"</span>&gt;
+      &lt;<span class="xml-tag">bpmn:incoming</span>&gt;Flow_2&lt;/<span class="xml-tag">bpmn:incoming</span>&gt;
+    &lt;/<span class="xml-tag">bpmn:endEvent</span>&gt;
+    &lt;<span class="xml-tag">bpmn:sequenceFlow</span> <span class="xml-attr">id</span>=<span class="str">"Flow_1"</span>
+      <span class="xml-attr">sourceRef</span>=<span class="str">"s"</span> <span class="xml-attr">targetRef</span>=<span class="str">"t"</span>/&gt;
+    &lt;<span class="xml-tag">bpmn:sequenceFlow</span> <span class="xml-attr">id</span>=<span class="str">"Flow_2"</span>
+      <span class="xml-attr">sourceRef</span>=<span class="str">"t"</span> <span class="xml-attr">targetRef</span>=<span class="str">"e"</span>/&gt;
   &lt;/<span class="xml-tag">bpmn:process</span>&gt;
   &lt;<span class="xml-tag">bpmndi:BPMNDiagram</span>&gt;
-    <span class="comment">&lt;!-- ...manual coordinates... --&gt;</span>
+    &lt;<span class="xml-tag">bpmndi:BPMNPlane</span>&gt;
+      &lt;<span class="xml-tag">bpmndi:BPMNShape</span>
+        <span class="xml-attr">bpmnElement</span>=<span class="str">"s"</span>&gt;
+        &lt;<span class="xml-tag">dc:Bounds</span> <span class="xml-attr">x</span>=<span class="str">"152"</span> <span class="xml-attr">y</span>=<span class="str">"82"</span>
+          <span class="xml-attr">width</span>=<span class="str">"36"</span> <span class="xml-attr">height</span>=<span class="str">"36"</span>/&gt;
+      &lt;/<span class="xml-tag">bpmndi:BPMNShape</span>&gt;
+      <span class="comment">&lt;!-- ...more shapes + edges... --&gt;</span>
+    &lt;/<span class="xml-tag">bpmndi:BPMNPlane</span>&gt;
   &lt;/<span class="xml-tag">bpmndi:BPMNDiagram</span>&gt;
 &lt;/<span class="xml-tag">bpmn:definitions</span>&gt;</code></pre>
         </div>
-        <div class="cmp-arrow" aria-hidden="true">
-          <div class="cmp-arrow-inner">→</div>
-        </div>
-        <div class="cmp-panel cmp-good">
+
+        <!-- Right: with BPMN SDK -->
+        <div class="cmp-panel cmp-good cmp-right">
           <div class="cmp-header">
             <span class="tb-dot tb-red"></span>
             <span class="tb-dot tb-yellow"></span>
             <span class="tb-dot tb-green"></span>
             <span class="cmp-label cmp-label-good">With BPMN SDK</span>
           </div>
-          <pre class="cmp-code"><code><span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+          <pre class="cmp-code"><code set:html={withSdkCode}></code></pre>
+        </div>
 
-<span class="kw">const</span> xml = Bpmn.export(
-  Bpmn.createProcess(<span class="str">"my-flow"</span>)
-    .startEvent(<span class="str">"start"</span>)
-    .serviceTask(<span class="str">"task"</span>, {
-      name: <span class="str">"Do Something"</span>,
-      taskType: <span class="str">"my-worker"</span>,
-    })
-    .endEvent(<span class="str">"end"</span>)
-    .withAutoLayout()
-    .build()
-);
+        </div><!-- /.compare-panels -->
 
-<span class="comment">// ✓ Valid BPMN 2.0 XML</span>
-<span class="comment">// ✓ Auto-layout applied</span>
-<span class="comment">// ✓ Zeebe extensions set</span></code></pre>
+        <!-- Drag handle — outside compare-panels so the knob isn't clipped -->
+        <div class="cmp-divider" aria-hidden="true">
+          <div class="cmp-divider-line"></div>
+          <div class="cmp-divider-knob">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5L3 12l5 7V5zM16 5l5 7-5 7V5z"/>
+            </svg>
+          </div>
         </div>
       </div>
     </div>
@@ -294,6 +322,130 @@
     </div>
   </section>
 
+  <!-- ── API SDK ──────────────────────────────────────────────────────────── -->
+  <section class="api-section" id="api">
+    <div class="section-wrap">
+      <div class="section-eyebrow">REST API Client</div>
+      <h2 class="section-h2">Camunda&nbsp;8 API,<br>fully typed</h2>
+      <div class="api-layout">
+        <!-- Code panel -->
+        <div class="api-code-panel">
+          <div class="diagram-topbar">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="tb-title">client.ts</span>
+          </div>
+          <div class="api-code-body">
+            <pre><code set:html={apiCode}></code></pre>
+          </div>
+        </div>
+
+        <!-- Right: stats + feature chips -->
+        <div>
+          <div class="api-stats">
+            <div class="api-stat">
+              <div class="api-stat-num">180</div>
+              <div class="api-stat-label">typed methods</div>
+            </div>
+            <div class="api-stat">
+              <div class="api-stat-num">30+</div>
+              <div class="api-stat-label">resource classes</div>
+            </div>
+            <div class="api-stat">
+              <div class="api-stat-num">3</div>
+              <div class="api-stat-label">auth modes</div>
+            </div>
+            <div class="api-stat">
+              <div class="api-stat-num">∞</div>
+              <div class="api-stat-label">retry & backoff</div>
+            </div>
+          </div>
+          <p class="section-sub" style="margin-bottom: 24px; margin-top: 0;">
+            A complete TypeScript client for the Camunda 8 REST API. Every endpoint is typed end-to-end — from request body to response shape. Drop it into any Node.js or edge runtime.
+          </p>
+          <div class="api-chips">
+            <span class="api-chip">OAuth2 / Bearer / Basic</span>
+            <span class="api-chip">LRU + TTL cache</span>
+            <span class="api-chip">Exponential backoff</span>
+            <span class="api-chip">TypedEventEmitter</span>
+            <span class="api-chip">ESM tree-shakeable</span>
+            <span class="api-chip">Processes</span>
+            <span class="api-chip">Jobs &amp; Workers</span>
+            <span class="api-chip">Decisions</span>
+            <span class="api-chip">Messages</span>
+            <span class="api-chip">Incidents</span>
+            <span class="api-chip">Variables</span>
+            <span class="api-chip">Signals</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CLI ──────────────────────────────────────────────────────────────── -->
+  <section class="cli-section" id="cli">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Command-Line Interface</div>
+      <h2 class="section-h2">Manage Camunda&nbsp;8<br>from your terminal</h2>
+      <div class="cli-layout">
+        <!-- Left: features -->
+        <div class="cli-features">
+          <div class="cli-feature">
+            <div class="cli-feature-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <div>
+              <h4>Interactive TUI</h4>
+              <p>Arrow-key navigation through menus, commands, and input forms. No flags to memorize.</p>
+            </div>
+          </div>
+          <div class="cli-feature">
+            <div class="cli-feature-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div>
+              <h4>Connection Profiles</h4>
+              <p>Store multiple Camunda clusters. Switch between dev, staging, and prod in one keystroke.</p>
+            </div>
+          </div>
+          <div class="cli-feature">
+            <div class="cli-feature-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div>
+              <h4>Full API Coverage</h4>
+              <p>Processes, jobs, incidents, decisions, variables, messages — all accessible from the terminal.</p>
+            </div>
+          </div>
+          <div class="cli-feature">
+            <div class="cli-feature-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </div>
+            <div>
+              <h4>Tabular Results</h4>
+              <p>Query results rendered as scrollable tables with detail view on enter. Copy-friendly output.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: animated terminal -->
+        <div class="cli-terminal-wrap">
+          <div id="cli-terminal">
+            <div class="cli-topbar">
+              <span class="tb-dot tb-red"></span>
+              <span class="tb-dot tb-yellow"></span>
+              <span class="tb-dot tb-green"></span>
+              <span class="cli-topbar-title">casen</span>
+            </div>
+            <div class="cli-content"></div>
+          </div>
+          <div id="cli-key-badge"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── Getting Started ──────────────────────────────────────────────────── -->
   <section class="start-section" id="start">
     <div class="section-wrap">
@@ -318,37 +470,13 @@
         <div class="step">
           <div class="step-num">02</div>
           <h3>Create a process</h3>
-          <pre><code><span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
-
-<span class="kw">const</span> xml = Bpmn.export(
-  Bpmn.createProcess(<span class="str">"hello"</span>)
-    .startEvent(<span class="str">"start"</span>)
-    .serviceTask(<span class="str">"task"</span>, {
-      name: <span class="str">"Hello World"</span>,
-      taskType: <span class="str">"greet"</span>,
-    })
-    .endEvent(<span class="str">"end"</span>)
-    .withAutoLayout()
-    .build()
-);</code></pre>
+          <pre><code set:html={createProcessCode}></code></pre>
         </div>
 
         <div class="step">
           <div class="step-num">03</div>
           <h3>Deploy &amp; run</h3>
-          <pre><code><span class="kw">import</span> { Engine } <span class="kw">from</span> <span class="str">"@bpmn-sdk/engine"</span>;
-
-<span class="kw">const</span> engine = <span class="kw">new</span> Engine();
-<span class="kw">await</span> engine.deploy({ bpmn: xml });
-
-engine.registerJobWorker(
-  <span class="str">"greet"</span>,
-  <span class="kw">async</span> (job) => {
-    console.log(<span class="str">"Hello!"</span>);
-    <span class="kw">await</span> job.complete();
-  }
-);
-engine.start(<span class="str">"hello"</span>);</code></pre>
+          <pre><code set:html={deployRunCode}></code></pre>
         </div>
       </div>
     </div>
@@ -372,13 +500,16 @@ engine.start(<span class="str">"hello"</span>);</code></pre>
         <span class="footer-license">MIT License</span>
       </div>
       <div class="footer-links">
-        <a href="/monorepo/editor" class="footer-link">Editor</a>
+        <a href="/editor" class="footer-link">Editor</a>
         <a href="https://github.com/bpmn-sdk/monorepo" class="footer-link" target="_blank" rel="noopener">GitHub</a>
         <a href="https://www.npmjs.com/package/@bpmn-sdk/core" class="footer-link" target="_blank" rel="noopener">npm</a>
       </div>
     </div>
   </footer>
 
-  <script type="module" src="/src/main.ts"></script>
+  <script>
+    import "../scripts/main.ts";
+    import "../scripts/cli-anim.ts";
+  </script>
 </body>
 </html>

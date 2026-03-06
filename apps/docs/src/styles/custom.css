@@ -1,0 +1,583 @@
+/* ── Starlight color overrides ───────────────────────────────────────────── */
+
+:root {
+	--sl-color-accent-low: oklch(20% 0.08 280);
+	--sl-color-accent: oklch(60% 0.2 280);
+	--sl-color-accent-high: oklch(80% 0.15 280);
+	--sl-color-bg: oklch(5.5% 0.025 270);
+	--sl-color-bg-nav: oklch(7% 0.025 270);
+	--sl-color-bg-sidebar: oklch(6.5% 0.025 270);
+	--sl-color-bg-inline-code: oklch(12% 0.03 270);
+	--sl-color-hairline-light: oklch(14% 0.03 270);
+	--sl-color-hairline-shade: oklch(10% 0.025 270);
+
+	/* tokens used in custom components */
+	--h-accent: oklch(55% 0.22 280);
+	--h-accent-bright: oklch(73% 0.16 280);
+	--h-teal: oklch(72% 0.18 185);
+	--h-pink: oklch(68% 0.22 340);
+	--h-bg-card: oklch(9% 0.025 270);
+	--h-border: oklch(15% 0.03 270);
+	--h-text: oklch(88% 0.02 270);
+	--h-text-muted: oklch(58% 0.03 270);
+}
+
+:root[data-theme="light"] {
+	--sl-color-accent-low: oklch(93% 0.04 280);
+	--sl-color-accent: oklch(48% 0.2 280);
+	--sl-color-accent-high: oklch(30% 0.18 280);
+	--sl-color-bg: oklch(98% 0.005 270);
+	--sl-color-bg-nav: oklch(100% 0 0);
+	--sl-color-bg-sidebar: oklch(97% 0.005 270);
+
+	--h-accent: oklch(48% 0.2 280);
+	--h-accent-bright: oklch(40% 0.2 280);
+	--h-bg-card: oklch(97% 0.005 270);
+	--h-border: oklch(86% 0.01 270);
+	--h-text: oklch(12% 0.02 270);
+	--h-text-muted: oklch(45% 0.02 270);
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+/* ── Expressive Code ─────────────────────────────────────────────────────── */
+
+.expressive-code .frame {
+	border-radius: 8px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   FULL-PAGE BACKGROUND LAYER (splash pages only)
+   The orbs use position:fixed so they cover the entire page, not just the
+   hero fold. z-index:-1 keeps them behind all content.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.sl-bg-layer {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 0;
+	overflow: hidden;
+}
+
+/* ── Aurora orbs ─────────────────────────────────────────────────────────── */
+
+.sl-orb {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(80px);
+	opacity: 0.55;
+}
+
+.sl-orb-1 {
+	width: 700px;
+	height: 700px;
+	top: -220px;
+	left: -120px;
+	background: radial-gradient(circle, oklch(55% 0.22 280 / 0.7), transparent 70%);
+	animation: sl-drift1 14s ease-in-out infinite alternate;
+}
+
+.sl-orb-2 {
+	width: 550px;
+	height: 550px;
+	top: -100px;
+	right: -100px;
+	background: radial-gradient(circle, oklch(72% 0.18 185 / 0.5), transparent 70%);
+	animation: sl-drift2 18s ease-in-out infinite alternate;
+}
+
+.sl-orb-3 {
+	width: 500px;
+	height: 500px;
+	bottom: 10%;
+	left: 35%;
+	background: radial-gradient(circle, oklch(68% 0.22 340 / 0.35), transparent 70%);
+	animation: sl-drift3 22s ease-in-out infinite alternate;
+}
+
+@keyframes sl-drift1 {
+	from {
+		transform: translate(0, 0) scale(1);
+	}
+	to {
+		transform: translate(60px, 40px) scale(1.1);
+	}
+}
+
+@keyframes sl-drift2 {
+	from {
+		transform: translate(0, 0) scale(1.05);
+	}
+	to {
+		transform: translate(-50px, 60px) scale(0.95);
+	}
+}
+
+@keyframes sl-drift3 {
+	from {
+		transform: translate(0, 0) scale(0.9);
+	}
+	to {
+		transform: translate(40px, -30px) scale(1.1);
+	}
+}
+
+/* ── Dot grid ────────────────────────────────────────────────────────────── */
+
+.sl-dots {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image: radial-gradient(oklch(55% 0.04 270 / 0.5) 1px, transparent 1px);
+	background-size: 28px 28px;
+	mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 10%, transparent 75%);
+	-webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 10%, transparent 75%);
+}
+
+/* ── Film grain ──────────────────────────────────────────────────────────── */
+
+.sl-grain {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	opacity: 0.03;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+	background-size: 256px;
+}
+
+/* ── Light theme: dim the orbs ───────────────────────────────────────────── */
+
+:root[data-theme="light"] .sl-orb {
+	opacity: 0.18;
+}
+
+:root[data-theme="light"] .sl-dots {
+	background-image: radial-gradient(oklch(45% 0.04 270 / 0.25) 1px, transparent 1px);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   HERO SECTION
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Starlight splash page: strip the default hero padding */
+[data-has-hero] > .hero {
+	padding: 0 !important;
+}
+
+/* Hero section sits above the fixed background layer */
+.sl-hero {
+	position: relative;
+	z-index: 1;
+	min-height: 88svh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 120px 24px 80px;
+}
+
+/* ── Hero body ───────────────────────────────────────────────────────────── */
+
+.sl-hero-body {
+	position: relative;
+	max-width: 720px;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: 20px;
+}
+
+/* ── Pill badge ──────────────────────────────────────────────────────────── */
+
+.sl-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: var(--h-accent-bright);
+	background: oklch(55% 0.22 280 / 0.12);
+	border: 1px solid oklch(55% 0.22 280 / 0.3);
+	border-radius: 100px;
+	padding: 5px 14px;
+}
+
+.sl-pill-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--h-accent-bright);
+	box-shadow: 0 0 6px var(--h-accent-bright);
+	animation: sl-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sl-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
+}
+
+/* ── Headline ────────────────────────────────────────────────────────────── */
+
+.sl-hero-h1 {
+	font-size: clamp(2.4rem, 6vw, 4rem) !important;
+	font-weight: 800 !important;
+	line-height: 1.1 !important;
+	letter-spacing: -0.03em !important;
+	color: oklch(93% 0.015 270) !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	border: none !important;
+}
+
+:root[data-theme="light"] .sl-hero-h1 {
+	color: oklch(10% 0.02 270) !important;
+}
+
+/* Shimmer gradient text */
+.sl-shimmer {
+	background: linear-gradient(
+		135deg,
+		oklch(73% 0.16 280) 0%,
+		oklch(72% 0.18 185) 40%,
+		oklch(68% 0.22 340) 70%,
+		oklch(73% 0.16 280) 100%
+	);
+	background-size: 200% auto;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: sl-shimmer 4s linear infinite;
+}
+
+@keyframes sl-shimmer {
+	from {
+		background-position: 0% center;
+	}
+	to {
+		background-position: 200% center;
+	}
+}
+
+/* ── Tagline ─────────────────────────────────────────────────────────────── */
+
+.sl-hero-tagline {
+	font-size: clamp(1rem, 2.2vw, 1.15rem) !important;
+	color: oklch(62% 0.03 270) !important;
+	line-height: 1.65 !important;
+	max-width: 560px !important;
+	margin: 0 !important;
+}
+
+:root[data-theme="light"] .sl-hero-tagline {
+	color: oklch(42% 0.03 270) !important;
+}
+
+/* ── CTA buttons ─────────────────────────────────────────────────────────── */
+
+.sl-hero-actions {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.sl-hero-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 15px;
+	font-weight: 600;
+	border-radius: 10px;
+	padding: 11px 22px;
+	transition: opacity 0.2s, transform 0.15s;
+	text-decoration: none !important;
+}
+
+.sl-hero-btn:hover {
+	transform: translateY(-1px);
+	opacity: 0.9;
+	text-decoration: none !important;
+}
+
+.sl-hero-btn--primary {
+	background: var(--h-accent);
+	color: #fff !important;
+	box-shadow: 0 0 20px oklch(55% 0.22 280 / 0.35);
+}
+
+.sl-hero-btn--minimal {
+	background: transparent;
+	color: oklch(62% 0.04 270) !important;
+	border: 1px solid oklch(18% 0.03 270);
+}
+
+:root[data-theme="light"] .sl-hero-btn--minimal {
+	border-color: oklch(80% 0.01 270);
+	color: oklch(40% 0.03 270) !important;
+}
+
+/* ── Install command ─────────────────────────────────────────────────────── */
+
+.sl-install-btn {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	background: oklch(9% 0.025 270);
+	border: 1px solid oklch(18% 0.03 270);
+	border-radius: 10px;
+	padding: 10px 18px;
+	cursor: pointer;
+	transition: border-color 0.2s;
+	color: oklch(62% 0.04 270);
+	font-size: 14px;
+}
+
+.sl-install-btn:hover {
+	border-color: oklch(35% 0.08 270);
+}
+
+.sl-install-btn code {
+	font-family: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+	font-size: 13px;
+	color: oklch(80% 0.04 270);
+	background: transparent !important;
+	padding: 0 !important;
+}
+
+.sl-install-icon {
+	flex-shrink: 0;
+}
+
+.sl-copied {
+	position: absolute;
+	right: 16px;
+	font-size: 12px;
+	font-weight: 600;
+	color: oklch(72% 0.18 185);
+	opacity: 0;
+	transition: opacity 0.2s;
+	pointer-events: none;
+}
+
+.sl-install-btn--copied .sl-copied {
+	opacity: 1;
+}
+
+.sl-install-btn--copied code {
+	opacity: 0;
+}
+
+:root[data-theme="light"] .sl-install-btn {
+	background: oklch(97% 0.005 270);
+	border-color: oklch(85% 0.01 270);
+}
+
+:root[data-theme="light"] .sl-install-btn code {
+	color: oklch(25% 0.04 270);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SPLASH PAGE CONTENT (below hero)
+   Position:relative + z-index:1 so content sits above the fixed bg layer.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+[data-has-hero] .sl-markdown-content {
+	position: relative;
+	z-index: 1;
+}
+
+/* ── Bento feature cards ─────────────────────────────────────────────────── */
+
+.home-cards {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16px;
+	margin: 2rem 0 3rem;
+}
+
+.home-card {
+	background: oklch(9% 0.025 270 / 0.7);
+	border: 1px solid oklch(15% 0.03 270);
+	border-radius: 14px;
+	padding: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	transition: border-color 0.2s, transform 0.2s;
+}
+
+.home-card:hover {
+	border-color: oklch(28% 0.06 280);
+	transform: translateY(-2px);
+}
+
+.home-card-icon {
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	background: oklch(55% 0.22 280 / 0.15);
+	border: 1px solid oklch(55% 0.22 280 / 0.25);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: oklch(73% 0.16 280);
+	flex-shrink: 0;
+}
+
+.home-card-icon--teal {
+	background: oklch(72% 0.18 185 / 0.12);
+	border-color: oklch(72% 0.18 185 / 0.25);
+	color: oklch(72% 0.18 185);
+}
+
+.home-card-icon--pink {
+	background: oklch(68% 0.22 340 / 0.12);
+	border-color: oklch(68% 0.22 340 / 0.25);
+	color: oklch(68% 0.22 340);
+}
+
+.home-card h3 {
+	font-size: 15px !important;
+	font-weight: 600 !important;
+	color: oklch(88% 0.02 270) !important;
+	margin: 0 !important;
+	border: none !important;
+	padding: 0 !important;
+}
+
+.home-card p {
+	font-size: 13.5px;
+	color: oklch(58% 0.03 270);
+	line-height: 1.55;
+	margin: 0;
+}
+
+/* Large card spans 2 columns */
+.home-card--wide {
+	grid-column: span 2;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 20px;
+}
+
+.home-card--wide .home-card-icon {
+	flex-shrink: 0;
+}
+
+/* Light theme adjustments */
+:root[data-theme="light"] .home-card {
+	background: oklch(99% 0.003 270 / 0.85);
+	border-color: oklch(88% 0.01 270);
+}
+
+:root[data-theme="light"] .home-card:hover {
+	border-color: oklch(70% 0.1 280);
+}
+
+:root[data-theme="light"] .home-card h3 {
+	color: oklch(12% 0.02 270) !important;
+}
+
+:root[data-theme="light"] .home-card p {
+	color: oklch(42% 0.02 270);
+}
+
+:root[data-theme="light"] .home-card-icon {
+	background: oklch(55% 0.22 280 / 0.1);
+}
+
+/* ── Packages table ──────────────────────────────────────────────────────── */
+
+[data-has-hero] .sl-markdown-content table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 1.5rem 0 2.5rem;
+	font-size: 14px;
+}
+
+[data-has-hero] .sl-markdown-content td,
+[data-has-hero] .sl-markdown-content th {
+	padding: 10px 14px;
+	border: 1px solid oklch(14% 0.03 270);
+	text-align: left;
+}
+
+[data-has-hero] .sl-markdown-content th {
+	background: oklch(9% 0.025 270);
+	font-weight: 600;
+	color: oklch(72% 0.03 270);
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+[data-has-hero] .sl-markdown-content tr:nth-child(even) td {
+	background: oklch(7.5% 0.02 270 / 0.5);
+}
+
+:root[data-theme="light"] [data-has-hero] .sl-markdown-content td,
+:root[data-theme="light"] [data-has-hero] .sl-markdown-content th {
+	border-color: oklch(88% 0.01 270);
+}
+
+:root[data-theme="light"] [data-has-hero] .sl-markdown-content th {
+	background: oklch(95% 0.005 270);
+}
+
+:root[data-theme="light"] [data-has-hero] .sl-markdown-content tr:nth-child(even) td {
+	background: oklch(97% 0.003 270);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+	.home-cards {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.home-card--wide {
+		grid-column: span 2;
+	}
+}
+
+@media (max-width: 600px) {
+	.sl-hero {
+		padding: 100px 20px 60px;
+	}
+
+	.sl-orb-1 {
+		width: 350px;
+		height: 350px;
+		top: -100px;
+		left: -80px;
+	}
+
+	.sl-orb-2 {
+		width: 280px;
+		height: 280px;
+		right: -60px;
+	}
+
+	.home-cards {
+		grid-template-columns: 1fr;
+	}
+
+	.home-card--wide {
+		grid-column: span 1;
+		flex-direction: column;
+	}
+}

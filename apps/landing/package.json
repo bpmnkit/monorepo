@@ -4,8 +4,9 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
-		"build": "vite build",
+		"dev": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
 		"typecheck": "tsc --noEmit",
 		"check": "biome check ."
 	},

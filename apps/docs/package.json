@@ -1,0 +1,17 @@
+{
+	"name": "@bpmn-sdk/docs",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check ."
+	},
+	"dependencies": {
+		"@astrojs/starlight": "^0.32.6",
+		"starlight-llms-txt": "^0.7.0"
+	}
+}

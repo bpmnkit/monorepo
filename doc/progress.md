@@ -1,5 +1,54 @@
 # Progress
 
+## 2026-03-06 — docs: new documentation site (apps/docs)
+
+- Created `apps/docs` — a separate Astro Starlight documentation site
+- **Framework**: Astro Starlight 0.32 (official Astro docs theme) — sidebar, search, dark/light mode, MDX, zero external JS beyond Pagefind
+- **Custom theme**: purple accent matching landing page, warm dark background
+- **Content** (15 pages):
+  - Getting Started: Installation, Quick Start, Core Concepts
+  - Guides: Building Processes, Gateways & Branching, Simulation, Camunda 8 Deployment, AI Integration
+  - Packages: @bpmn-sdk/core, engine, api, canvas, editor
+  - CLI: casen reference
+- **Deployment**: `.github/workflows/deploy-docs.yml` deploys to Cloudflare Pages (`bpmn-sdk-docs` project) on push to main
+- **Root scripts**: `pnpm docs:dev`, `pnpm docs:build`
+- Used `glob` loader (instead of `docsLoader`) due to Astro 5 content layer requiring explicit `.md` + `.mdx` discovery
+
+## 2026-03-06 — landing: AI-readable content (llms.txt / llms-full.txt)
+
+- Added `/llms.txt` — compact LLM index per llmstxt.org spec: H1 project name, blockquote summary, package list with descriptions, links (editor, GitHub, npm, llms-full.txt)
+- Added `/llms-full.txt` — full self-contained content: all features, real code examples (TypeScript, not HTML-encoded), API coverage, CLI usage, getting started steps
+- Both served as Astro static API routes (`src/pages/llms.txt.ts`, `src/pages/llms-full.txt.ts`) with `Content-Type: text/plain`
+- Adopted by Anthropic, Stripe, Cloudflare, Cursor, Perplexity — growing standard for AI crawlers at inference time
+
+## 2026-03-06 — landing: UX polish — before/after slider, CLI animation, syntax colors
+
+- **Before/after slider** replaces side-by-side compare panels: both panels absolutely fill the container, `clip-path: inset(...)` controlled by `--split` CSS variable, draggable knob with pointer capture; responsive height
+- **CLI animation improvements**: cursor ↓ key uses `transition: "instant"` (no fade — just the highlighted row swaps), enter key flashes selected row (`.cli-row-pressed`) before fading to new screen
+- **Syntax highlighting**: added `.api-code-body .kw/.str/.fn/.comment` tokens (API section was unstyled)
+- **Responsive**: compare section stacks at 900px/600px; API/CLI two-column collapses to single column
+
+## 2026-03-06 — landing: API SDK + CLI sections with terminal animation
+
+- Added `#api` section showcasing `@bpmn-sdk/api` with a code panel (CamundaClient usage), 4 stat tiles (180 methods, 30+ classes, 3 auth modes, retry), and feature chips
+- Added `#cli` section showcasing `casen` CLI with feature list cards and an animated terminal window
+- Created `apps/landing/src/scripts/cli-anim.ts` — IntersectionObserver-triggered terminal animation cycling 6 frames (shell → main menu → navigate → process commands → list form → results table)
+- CSS: terminal window styles (`.tl`, `.ti`, `.tb`, `.td`, `.tc`, `.tp`, `.tcur`, `.cli-key-badge`), API section styles, responsive grid collapses at 900px
+- Nav links added for `#api` and `#cli`
+
+## 2026-03-06 — landing: migrate to Astro, deploy to Cloudflare Pages
+
+- Replaced Vite + plain HTML with Astro 5 static site generator
+- Removed `base: "/monorepo/"` — site now served from root `/`
+- Pages: `src/pages/index.astro` (landing) + `src/pages/editor.astro` (editor)
+- Scripts moved to `src/scripts/`, CSS to `src/styles/global.css`
+- `{}` in code example blocks handled via Astro `set:html` directive
+- Astro `build.format: "file"` → generates `/index.html` + `/editor.html` (no trailing-slash dirs)
+- Added `**/.astro/**` to Biome ignore (Astro's generated type files)
+- Added `astro: "^5"` + `@astrojs/check: "^0.9"` to root devDependencies
+- GitHub Actions deploy workflow switched from GitHub Pages to Cloudflare Pages (wrangler v4)
+- `wrangler: "^4"` added to root devDependencies; action uses project-installed wrangler
+
 ## 2026-03-05 — packages/api: Camunda v2 REST API SDK
 
 New package `@bpmn-sdk/api` — auto-generated TypeScript SDK for the Camunda 8 Orchestration Cluster REST API (v2).

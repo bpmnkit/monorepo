@@ -1,12 +1,14 @@
-name: Deploy Landing Page
+name: Deploy Docs
 
 on:
   push:
     branches: [main]
+    paths:
+      - "apps/docs/**"
   workflow_dispatch:
 
 concurrency:
-  group: deploy-landing
+  group: deploy-docs
   cancel-in-progress: true
 
 jobs:
@@ -28,12 +30,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build landing page
-        run: pnpm turbo build --filter @bpmn-sdk/landing
+      - name: Build docs
+        run: pnpm turbo build --filter @bpmn-sdk/docs
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/landing/dist --project-name=bpmn-sdk-landing
+          command: pages deploy apps/docs/dist --project-name=bpmn-sdk-docs

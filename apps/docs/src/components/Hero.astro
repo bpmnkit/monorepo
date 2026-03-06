@@ -1,0 +1,75 @@
+---
+// Custom hero — aurora orbs are position:fixed so they cover the full start page.
+import type { Props } from "@astrojs/starlight/props";
+
+const hero = Astro.props.entry?.data?.hero;
+---
+
+<!-- Fixed background layer: fills the entire splash page, not just the hero fold -->
+<div class="sl-bg-layer" aria-hidden="true">
+	<div class="sl-orb sl-orb-1"></div>
+	<div class="sl-orb sl-orb-2"></div>
+	<div class="sl-orb sl-orb-3"></div>
+	<div class="sl-dots"></div>
+	<div class="sl-grain"></div>
+</div>
+
+<div class="sl-hero">
+	<div class="sl-hero-body">
+		<!-- Pill badge -->
+		<div class="sl-pill" aria-hidden="true">
+			<span class="sl-pill-dot"></span>
+			TypeScript · AI-Native · Zero Dependencies
+		</div>
+
+		<!-- Headline -->
+		<h1 class="sl-hero-h1">
+			BPMN diagrams<br />
+			<span class="sl-shimmer">from code, not clicks</span>
+		</h1>
+
+		<!-- Tagline from frontmatter -->
+		{hero?.tagline && <p class="sl-hero-tagline">{hero.tagline}</p>}
+
+		<!-- Copy-able install command -->
+		<button class="sl-install-btn" id="sl-install-btn" title="Click to copy">
+			<svg
+				class="sl-install-icon"
+				width="13"
+				height="13"
+				viewBox="0 0 16 16"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.5"
+				aria-hidden="true"
+			>
+				<rect x="4.5" y="4.5" width="9" height="9" rx="1.5"></rect>
+				<path d="M2.5 11.5H1.5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"
+				></path>
+			</svg>
+			<code>pnpm add @bpmn-sdk/core</code>
+			<span class="sl-copied" aria-hidden="true">Copied!</span>
+		</button>
+
+		<!-- CTA buttons -->
+		<div class="sl-hero-actions">
+			<a href="/getting-started/installation/" class="sl-hero-btn sl-hero-btn--primary">
+				Get Started
+				<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+			</a>
+			<a href="https://github.com/bpmn-sdk/monorepo" class="sl-hero-btn sl-hero-btn--minimal" target="_blank" rel="noopener">
+				GitHub →
+			</a>
+		</div>
+	</div>
+</div>
+
+<script>
+	const btn = document.getElementById("sl-install-btn");
+	btn?.addEventListener("click", () => {
+		navigator.clipboard.writeText("pnpm add @bpmn-sdk/core").then(() => {
+			btn.classList.add("sl-install-btn--copied");
+			setTimeout(() => btn.classList.remove("sl-install-btn--copied"), 1800);
+		});
+	});
+</script>

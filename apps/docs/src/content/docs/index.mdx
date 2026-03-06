@@ -1,0 +1,104 @@
+---
+title: BPMN SDK
+description: TypeScript SDK for generating, editing, and executing BPMN 2.0 diagrams programmatically.
+template: splash
+hero:
+  tagline: A fluent TypeScript API for BPMN 2.0 — with auto-layout, simulation, and Camunda 8 deployment. Built for AI agents and automation platforms.
+---
+
+<div class="home-cards">
+
+  {/* Large: AI-Native */}
+  <div class="home-card home-card--wide">
+    <div class="home-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <h3>AI-Native Design</h3>
+      <p>LLMs call a fluent API instead of wrestling with raw XML. A compact intermediate format makes the entire diagram fit in a single prompt — AI generates it, the SDK validates and renders it.</p>
+    </div>
+  </div>
+
+  {/* Zero deps */}
+  <div class="home-card home-card-icon--teal">
+    <div class="home-card-icon home-card-icon--teal">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <h3>Zero Dependencies</h3>
+    <p>Pure ESM, tree-shakeable. Runs in browsers, Node.js, Deno, Bun, and edge runtimes with no transitive deps.</p>
+  </div>
+
+  {/* Auto-Layout */}
+  <div class="home-card">
+    <div class="home-card-icon home-card-icon--pink">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    </div>
+    <h3>Auto-Layout</h3>
+    <p>Sugiyama algorithm produces clean, readable diagrams with orthogonal edge routing. No coordinate math.</p>
+  </div>
+
+  {/* Type-Safe */}
+  <div class="home-card">
+    <div class="home-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <h3>Type-Safe</h3>
+    <p>Strict TypeScript throughout. Every element, attribute, and Zeebe extension fully typed. Invalid processes fail at compile time.</p>
+  </div>
+
+  {/* Roundtrip */}
+  <div class="home-card">
+    <div class="home-card-icon home-card-icon--teal">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+    </div>
+    <h3>Roundtrip Fidelity</h3>
+    <p>Parse → modify → export without data loss. All Zeebe extensions, custom namespaces, and diagram info preserved.</p>
+  </div>
+
+  {/* Camunda 8 */}
+  <div class="home-card home-card--wide">
+    <div class="home-card-icon home-card-icon--pink">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </div>
+    <div>
+      <h3>Camunda 8 Ready</h3>
+      <p>Native Zeebe task definitions, IO mappings, connectors, and forms. Full REST API client with 180 typed methods, OAuth2, LRU cache, and exponential backoff. Deploy to Camunda Cloud in one call.</p>
+    </div>
+  </div>
+
+</div>
+
+## Packages
+
+| Package | Description |
+|---|---|
+| [`@bpmn-sdk/core`](/packages/core/) | Fluent builder, parser/serializer, auto-layout, AI-compact format |
+| [`@bpmn-sdk/engine`](/packages/engine/) | Zero-dep BPMN simulation engine (browser + Node.js) |
+| [`@bpmn-sdk/api`](/packages/api/) | Camunda 8 REST API client — 180 typed methods |
+| [`@bpmn-sdk/canvas`](/packages/canvas/) | SVG BPMN viewer with pan/zoom, dark/light theme |
+| [`@bpmn-sdk/editor`](/packages/editor/) | Full BPMN editor — canvas + properties panel + AI bridge |
+| [`casen` (CLI)](/cli/casen/) | Interactive TUI for managing Camunda 8 from the terminal |
+
+## Quick Example
+
+```typescript
+import { Bpmn } from "@bpmn-sdk/core";
+
+const xml = Bpmn.export(
+  Bpmn.createProcess("approval-flow")
+    .startEvent("start", { name: "Request Submitted" })
+    .userTask("review", { name: "Review Request" })
+    .exclusiveGateway("gw", { name: "Approved?" })
+    .branch("yes", (b) =>
+      b.condition("= approved")
+        .serviceTask("notify", { taskType: "send-email" })
+        .endEvent("done")
+    )
+    .branch("no", (b) =>
+      b.defaultFlow().endEvent("rejected")
+    )
+    .withAutoLayout()
+    .build()
+);
+// → valid BPMN 2.0 XML, auto-laid-out, Zeebe-ready
+```

@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"include": [".astro/types.d.ts", "**/*"],
+	"exclude": ["dist", "node_modules"],
+	"compilerOptions": {
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2022", "DOM"],
+		"types": ["astro/client"],
+		"baseUrl": "."
+	}
+}

@@ -15,6 +15,8 @@
 		"version-packages": "changeset version",
 		"release": "pnpm turbo build && changeset publish",
 		"update-connectors": "node scripts/update-connectors.mjs",
+		"docs:dev": "pnpm --filter @bpmn-sdk/docs dev",
+		"docs:build": "pnpm turbo build --filter @bpmn-sdk/docs",
 		"ai-server": "pnpm --filter @bpmn-sdk/ai-server start",
 		"ai-server-rs": "cargo build --manifest-path apps/ai-server-rs/Cargo.toml && apps/ai-server-rs/target/debug/ai-server",
 		"ai-server-rs:build": "cargo build --manifest-path apps/ai-server-rs/Cargo.toml --release",
@@ -32,6 +34,9 @@
 		"turbo": "^2.4.4",
 		"typescript": "^5.7.3",
 		"vite": "^7.3.1",
-		"vitest": "^3.0.5"
+		"vitest": "^3.0.5",
+		"wrangler": "^4",
+		"astro": "^5",
+		"@astrojs/check": "^0.9"
 	}
 }
