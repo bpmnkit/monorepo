@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-03-07 — landing: full-page aurora background (fixed/sticky)
+
+- Moved `.aurora`, `.dots`, `.grain` from inside `.hero` to direct children of `<body>` (above all sections)
+- Changed all three from `position: absolute` to `position: fixed; z-index: -1` — they now cover the entire viewport and stay in place while the user scrolls, giving every section the same ambient glow
+- Moved `background: var(--bg)` from `body` to `html` so the dark base sits below the fixed layer; `body` is now `background: transparent` so the aurora shines through all sections
+- Removed `overflow: hidden` from `.hero` (was preventing orb overflow from showing; no longer needed since aurora lives outside)
+- Removed solid `background: oklch(7% 0.02 270)` from `.compare-section` (it was the only section with a solid fill that would have blocked the aurora)
+
+## 2026-03-07 — landing: compare slider touch conflict fix (mobile)
+
+- Root cause identified: `.cmp-code { overflow: auto }` creates a child scroll container; mobile browsers give it precedence over the ancestor's `touch-action: pan-y` rule, so horizontal touch drags scroll the code block rather than moving the slider divider — `setPointerCapture` on `pointerdown` is already too late to stop the native scroll
+- Fix: add `.cmp-code { overflow: hidden }` in `@media (max-width: 900px)` — the code panels are already clipped by `.cmp-panel { overflow: hidden }`, so there is no visible difference; removing the scroll container eliminates the conflict entirely
+
+## 2026-03-07 — landing: mobile responsiveness fixes (slider + animation)
+
+- **Compare slider** (`Stop writing XML...` section): clamp split position to 5–95% so the knob is never pushed to the unreachable screen edge on mobile; set `touch-action: none` on `pointerdown` so the browser cannot cancel or steal the horizontal drag sequence mid-swipe, restoring `touch-action: ""` (CSS pan-y) on `pointerup`/`pointercancel`
+- **Animation layout shift** (`See it in action` section): set `height: 290px` on `.anim-code-panel` inside the `max-width: 900px` breakpoint — the panel previously grew from 0 to ~15 lines during animation, pushing all content below it up and down constantly; fixed height contains the growth inside the box; switched `.anim-code-body` to `overflow: scroll` (not `auto`) to avoid a reflow when the scrollbar appears
+- **Animation pause when off-screen**: replaced single-fire `IntersectionObserver` (which ran the animation forever once started) with a continuous observer that pauses (`animActive = false, animCancelled = true`) when the section leaves the viewport and resumes when it re-enters; added `loopRunning` guard to prevent double-starting the loop
+
 ## 2026-03-06 — docs: new documentation site (apps/docs)
 
 - Created `apps/docs` — a separate Astro Starlight documentation site

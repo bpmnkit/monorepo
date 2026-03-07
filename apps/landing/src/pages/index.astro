@@ -18,6 +18,17 @@ const apiCode = CODE_HTML.apiClient;
 </head>
 <body>
 
+  <!-- Fixed page background — aurora orbs, dot grid, grain texture.
+       position:fixed + z-index:-1 keeps them behind all content while
+       the user scrolls, giving the whole page a consistent ambient glow. -->
+  <div class="aurora" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
   <!-- Scroll progress (pure CSS) -->
   <div class="scroll-bar" aria-hidden="true"></div>
 
@@ -51,14 +62,6 @@ const apiCode = CODE_HTML.apiClient;
 
   <!-- ── Hero ──────────────────────────────────────────────────────────────── -->
   <section class="hero">
-    <div class="aurora" aria-hidden="true">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-    </div>
-    <div class="dots" aria-hidden="true"></div>
-    <div class="grain" aria-hidden="true"></div>
-
     <div class="hero-body">
       <div class="hero-text">
         <div class="pill">

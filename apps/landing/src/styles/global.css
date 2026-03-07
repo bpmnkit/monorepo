@@ -43,11 +43,15 @@
 
 html {
 	scroll-behavior: smooth;
+	/* Dark base sits at the very bottom of the stacking context, below the
+	   fixed aurora layer (z-index: -1) and all page content. */
+	background: var(--bg);
 }
 
 body {
 	font-family: var(--font-sans);
-	background: var(--bg);
+	/* Transparent so the fixed aurora/dots/grain show through all sections. */
+	background: transparent;
 	color: var(--text);
 	line-height: 1.6;
 	-webkit-font-smoothing: antialiased;
@@ -178,15 +182,15 @@ a:hover {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	overflow: hidden;
 }
 
-/* Aurora orb background */
+/* Aurora orb background — fixed so it covers the whole page viewport */
 .aurora {
-	position: absolute;
+	position: fixed;
 	inset: 0;
 	pointer-events: none;
 	overflow: hidden;
+	z-index: -1;
 }
 
 .orb {
@@ -252,9 +256,10 @@ a:hover {
 
 /* Dot grid */
 .dots {
-	position: absolute;
+	position: fixed;
 	inset: 0;
 	pointer-events: none;
+	z-index: -1;
 	background-image: radial-gradient(oklch(55% 0.04 270 / 0.5) 1px, transparent 1px);
 	background-size: 28px 28px;
 	mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 80%);
@@ -263,9 +268,10 @@ a:hover {
 
 /* Grain texture */
 .grain {
-	position: absolute;
+	position: fixed;
 	inset: 0;
 	pointer-events: none;
+	z-index: -1;
 	opacity: 0.035;
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 	background-size: 256px;
@@ -882,7 +888,6 @@ a:hover {
 /* ── Code comparison ────────────────────────────────────────────── */
 .compare-section {
 	padding: 100px 0;
-	background: oklch(7% 0.02 270);
 }
 
 /* Before/after slider container — no overflow:hidden so the knob isn't clipped */
@@ -1740,15 +1745,33 @@ a:hover {
 		aspect-ratio: unset;
 	}
 
+	/* The code panels are clipped by .cmp-panel { overflow: hidden } — they
+	   don't need to be independently scrollable on mobile. Removing the scroll
+	   container eliminates the conflict where the browser scrolls .cmp-code
+	   horizontally instead of routing the horizontal drag to the slider knob.
+	   (Mobile browsers give child scroll containers precedence over an
+	   ancestor's touch-action: pan-y, which is why the ancestor rule alone
+	   was not enough.) */
+	.cmp-code {
+		overflow: hidden;
+	}
+
 	.anim-demo {
 		grid-template-columns: 1fr;
 		min-height: auto;
 	}
 
+	/* Fixed height prevents layout shift as code lines are progressively added.
+	   Without this the panel grows from ~1 line to ~15 lines, constantly pushing
+	   content below it up and down — very jarring on mobile. */
+	.anim-code-panel {
+		height: 290px;
+	}
+
 	.anim-code-body {
-		max-height: 240px;
-		overflow-x: auto;
-		overflow-y: auto;
+		/* overflow: scroll (not auto) avoids a reflow when the scrollbar appears */
+		overflow-x: scroll;
+		overflow-y: scroll;
 	}
 
 	.anim-line {
