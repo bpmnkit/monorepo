@@ -32,9 +32,10 @@ export function drawEdge(
 		return;
 	}
 
-	// L-shaped route: go right to midCol, turn, continue to dstRow, then right
-	// Use midCol = one cell to the right of the source to keep bends tidy
-	const midCol = srcCol + Math.floor((dstCol - srcCol) / 2);
+	// L-shaped route: bend immediately after the source exit so that multiple
+	// outgoing edges from the same element diverge right at the exit point,
+	// producing clean ├ junctions rather than a shared horizontal segment.
+	const midCol = srcCol + 1;
 	const goingDown = dstRow > srcRow;
 
 	// Horizontal leg: srcCol → midCol-1
@@ -82,10 +83,10 @@ function drawHorizontal(
 }
 
 /** Fill `─` characters from col `a` to col `b` inclusive on the given row.
- *  Skips non-space cells so existing routing is not overwritten. */
+ *  Uses setLine so characters merge correctly at junctions (e.g. ─+┐→┬, ─+│→┼). */
 function drawHorizontalSegment(grid: AsciiGrid, a: number, b: number, row: number): void {
 	for (let c = a; c <= b; c++) {
-		if (grid.get(c, row) === " ") grid.set(c, row, "─");
+		grid.setLine(c, row, "─");
 	}
 }
 

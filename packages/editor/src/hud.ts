@@ -105,6 +105,11 @@ export interface HudOptions {
 	 * When provided, it is styled as a HUD button and placed in the action bar.
 	 */
 	playButton?: HTMLButtonElement | null;
+	/**
+	 * Optional ASCII view button (from `createAsciiViewPlugin(...).button`).
+	 * When provided, it is styled as a HUD button and placed in the bottom-left panel.
+	 */
+	asciiButton?: HTMLButtonElement | null;
 }
 
 export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): void {
@@ -185,6 +190,12 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 		btn.className = "hud-btn";
 		const sep = hudSep();
 		hudBottomLeft.append(sep, btn);
+	}
+
+	if (options.asciiButton) {
+		const btn = options.asciiButton;
+		btn.className = "hud-btn";
+		hudBottomLeft.append(hudSep(), btn);
 	}
 
 	// Tool selector — bottom center

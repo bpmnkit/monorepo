@@ -52,43 +52,39 @@ export class AsciiGrid {
 	}
 }
 
+// Directions each box-drawing char has connections in (L=left R=right U=up D=down)
+const CHAR_DIRS: Record<string, string> = {
+	"─": "LR",
+	"│": "UD",
+	"┌": "RD",
+	"┐": "LD",
+	"└": "RU",
+	"┘": "LU",
+	"├": "RUD",
+	"┤": "LUD",
+	"┬": "LRD",
+	"┴": "LRU",
+	"┼": "LRUD",
+};
+
+// Reverse map: sorted direction string → box-drawing char
+const DIRS_CHAR: Record<string, string> = {};
+for (const [ch, dirs] of Object.entries(CHAR_DIRS)) {
+	DIRS_CHAR[[...dirs].sort().join("")] = ch;
+}
+
 /**
- * Merge two box-drawing characters at a junction point.
- * Returns the combined character, or `next` when no merge rule applies.
+ * Merge two box-drawing characters at a junction point by taking the union of
+ * their connection directions. Returns `next` when no merge applies.
  */
 export function mergeBoxChars(existing: string, next: string): string {
 	if (existing === " " || existing === next) return next;
-	// Canonical key: sort the two chars so order doesn't matter
-	const key = [existing, next].sort().join("");
-	return MERGE_TABLE[key] ?? next;
+	// Arrows always win
+	if (next === "►" || next === "▼") return next;
+	if (existing === "►" || existing === "▼") return existing;
+	const eDirs = CHAR_DIRS[existing];
+	const nDirs = CHAR_DIRS[next];
+	if (!eDirs || !nDirs) return next;
+	const union = [...new Set([...eDirs, ...nDirs])].sort().join("");
+	return DIRS_CHAR[union] ?? next;
 }
-
-// Look-up table for common box-drawing junctions.
-// Keys are pairs of chars sorted by Unicode codepoint.
-const MERGE_TABLE: Record<string, string> = {
-	// Straight lines crossing
-	"─│": "┼",
-	// Horizontal line meeting a corner
-	"─┌": "┬",
-	"─┐": "┬",
-	"─└": "┴",
-	"─┘": "┴",
-	// Horizontal line meeting a T-junction
-	"─├": "┼",
-	"─┤": "┼",
-	"─┬": "┬",
-	"─┴": "┴",
-	// Vertical line meeting a corner
-	"│┌": "├",
-	"│└": "├",
-	"│┐": "┤",
-	"│┘": "┤",
-	// Two corners that form a T at the same point
-	"┌└": "├", // both open right, one going down, one going up → left T
-	"┐┘": "┤", // both open left, one going down, one going up → right T
-	"┌┐": "┬", // both open down, at same column → top T
-	"└┘": "┴", // both open up, at same column → bottom T
-	// Arrow overrides — arrows always win
-	"─►": "►",
-	"─▼": "▼",
-};

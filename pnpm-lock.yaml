@@ -138,6 +138,9 @@ importers:
       '@bpmn-sdk/canvas-plugin-ai-bridge':
         specifier: workspace:*
         version: link:../../canvas-plugins/ai-bridge
+      '@bpmn-sdk/canvas-plugin-ascii-view':
+        specifier: workspace:*
+        version: link:../../canvas-plugins/ascii-view
       '@bpmn-sdk/canvas-plugin-command-palette':
         specifier: workspace:*
         version: link:../../canvas-plugins/command-palette
@@ -198,6 +201,15 @@ importers:
       '@bpmn-sdk/core':
         specifier: workspace:*
         version: link:../../packages/bpmn-sdk
+
+  canvas-plugins/ascii-view:
+    dependencies:
+      '@bpmn-sdk/ascii':
+        specifier: workspace:*
+        version: link:../../packages/ascii
+      '@bpmn-sdk/canvas':
+        specifier: workspace:*
+        version: link:../../packages/canvas
 
   canvas-plugins/command-palette:
     dependencies:

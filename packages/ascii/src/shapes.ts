@@ -5,8 +5,17 @@ import { truncate } from "./util.js";
 
 /** Total character width of a task box (including the two │ borders). */
 export const TASK_W = 24;
-/** Total character width of an event or gateway box (including borders). */
+/** Total character width of an event compact box (including borders). */
 export const ELEM_W = 11;
+/**
+ * Total character width of a gateway box (including the two border chars).
+ * Narrower than event boxes; corners use / and \ to suggest a rotated square.
+ *
+ * /───────\
+ * │ × Lbl │
+ * \───────/
+ */
+export const GATEWAY_W = 9;
 /** Character width of one logical grid cell (one Sugiyama layer). */
 export const CELL_W = 28;
 /** Character height of one logical grid cell (one Sugiyama position). */
@@ -78,7 +87,7 @@ function taskTag(type: string): string {
 	}
 }
 
-/** Single Unicode marker shown inside an event or gateway box. */
+/** Single Unicode marker shown inside an event or gateway shape. */
 function elementMarker(type: string): string {
 	switch (type) {
 		case "startEvent":
@@ -110,7 +119,9 @@ function elementMarker(type: string): string {
 
 /** Width of the element drawn for this type. */
 function elemW(type: string): number {
-	return isTaskLike(type) ? TASK_W : ELEM_W;
+	if (isTaskLike(type)) return TASK_W;
+	if (isGateway(type)) return GATEWAY_W;
+	return ELEM_W;
 }
 
 /** Top-left column of an element within its cell. */
@@ -118,7 +129,7 @@ export function elemCol(type: string, layer: number): number {
 	return layer * CELL_W + Math.floor((CELL_W - elemW(type)) / 2);
 }
 
-/** Top-left row of an element within its cell. */
+/** Top-left row of a task or event element within its cell (3 rows tall). */
 export function elemRow(position: number): number {
 	// Centre the 3-row element vertically within the cell
 	return position * CELL_H + Math.floor((CELL_H - 3) / 2);
@@ -156,13 +167,14 @@ export function drawElement(
 	label: string | undefined,
 ): void {
 	const col = elemCol(type, layer);
-	const row = elemRow(position);
 	const name = label ?? "";
 
 	if (isTaskLike(type)) {
-		drawTaskBox(grid, col, row, name, type);
+		drawTaskBox(grid, col, elemRow(position), name, type);
+	} else if (isGateway(type)) {
+		drawGatewayBox(grid, col, elemRow(position), name, elementMarker(type));
 	} else {
-		drawCompactBox(grid, col, row, name, elementMarker(type));
+		drawCompactBox(grid, col, elemRow(position), name, elementMarker(type));
 	}
 }
 
@@ -195,10 +207,10 @@ function drawTaskBox(grid: AsciiGrid, col: number, row: number, label: string, t
 }
 
 /**
- * Compact rounded box for events and gateways — 3 rows tall, ELEM_W wide.
+ * Compact rounded box for events — 3 rows tall, ELEM_W wide.
  *
  * ╭─────────╮
- * │ × Label │
+ * │ ○ Label │
  * ╰─────────╯
  */
 function drawCompactBox(
@@ -217,7 +229,6 @@ function drawCompactBox(
 
 	// Middle row: marker + label
 	grid.set(col, row + 1, "│");
-	// Format: " M Label…" where M is the single-char marker
 	const content = truncate(`${marker} ${label}`, inner - 1); // -1 for leading space
 	grid.write(col + 1, row + 1, ` ${content}`);
 	grid.set(col + inner + 1, row + 1, "│");
@@ -226,4 +237,35 @@ function drawCompactBox(
 	grid.set(col, row + 2, "╰");
 	grid.write(col + 1, row + 2, "─".repeat(inner));
 	grid.set(col + inner + 1, row + 2, "╯");
+}
+
+/**
+ * Gateway box — 3 rows tall, GATEWAY_W wide. Diagonal / \ corners suggest a
+ * rotated square. Marker + label shown inside.
+ *
+ * /─────────\
+ * │ × Label │
+ * \─────────/
+ */
+function drawGatewayBox(
+	grid: AsciiGrid,
+	col: number,
+	row: number,
+	label: string,
+	marker: string,
+): void {
+	const inner = GATEWAY_W - 2;
+
+	grid.set(col, row, "/");
+	grid.write(col + 1, row, "─".repeat(inner));
+	grid.set(col + inner + 1, row, "\\");
+
+	grid.set(col, row + 1, "│");
+	const content = truncate(`${marker} ${label}`, inner - 1); // -1 for leading space
+	grid.write(col + 1, row + 1, ` ${content}`);
+	grid.set(col + inner + 1, row + 1, "│");
+
+	grid.set(col, row + 2, "\\");
+	grid.write(col + 1, row + 2, "─".repeat(inner));
+	grid.set(col + inner + 1, row + 2, "/");
 }
