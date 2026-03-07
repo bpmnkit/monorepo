@@ -1740,15 +1740,33 @@ a:hover {
 		aspect-ratio: unset;
 	}
 
+	/* The code panels are clipped by .cmp-panel { overflow: hidden } — they
+	   don't need to be independently scrollable on mobile. Removing the scroll
+	   container eliminates the conflict where the browser scrolls .cmp-code
+	   horizontally instead of routing the horizontal drag to the slider knob.
+	   (Mobile browsers give child scroll containers precedence over an
+	   ancestor's touch-action: pan-y, which is why the ancestor rule alone
+	   was not enough.) */
+	.cmp-code {
+		overflow: hidden;
+	}
+
 	.anim-demo {
 		grid-template-columns: 1fr;
 		min-height: auto;
 	}
 
+	/* Fixed height prevents layout shift as code lines are progressively added.
+	   Without this the panel grows from ~1 line to ~15 lines, constantly pushing
+	   content below it up and down — very jarring on mobile. */
+	.anim-code-panel {
+		height: 290px;
+	}
+
 	.anim-code-body {
-		max-height: 240px;
-		overflow-x: auto;
-		overflow-y: auto;
+		/* overflow: scroll (not auto) avoids a reflow when the scrollbar appears */
+		overflow-x: scroll;
+		overflow-y: scroll;
 	}
 
 	.anim-line {

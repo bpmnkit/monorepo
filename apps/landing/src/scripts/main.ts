@@ -689,18 +689,37 @@ function setupAnimation(): void {
 		});
 	}
 
-	// ── Start animation on first scroll into view ───────────────────────
+	// ── Start/pause animation based on viewport visibility ─────────────
+	// Pausing when out of view prevents layout shifts from happening while
+	// the user is reading other sections (especially important on mobile).
+	let loopRunning = false;
+
+	const startLoop = () => {
+		animActive = true;
+		animCancelled = false;
+		if (!loopRunning) {
+			loopRunning = true;
+			runAnimLoop(linesContainer, filenameEl, examples).finally(() => {
+				loopRunning = false;
+			});
+		}
+		// If the loop is already running mid-await, setting animActive = true
+		// is enough — it will continue when the current await resolves.
+	};
+
 	const observer = new IntersectionObserver(
 		(entries) => {
 			for (const entry of entries) {
-				if (entry.isIntersecting && !animActive) {
-					animActive = true;
-					observer.disconnect();
-					void runAnimLoop(linesContainer, filenameEl, examples);
+				if (entry.isIntersecting) {
+					startLoop();
+				} else {
+					// Signal the loop to stop at the next animCancelled check.
+					animActive = false;
+					animCancelled = true;
 				}
 			}
 		},
-		{ threshold: 0.2 },
+		{ threshold: 0.1 },
 	);
 
 	observer.observe(demo);
@@ -714,15 +733,20 @@ function setupCompareSlider(): void {
 
 	let dragging = false;
 
+	// Clamp to 5–95% so the knob is always reachable on mobile (never slides
+	// off the edge where fat-finger or OS edge-swipe gestures would steal it).
 	const setPos = (clientX: number) => {
 		const rect = slider.getBoundingClientRect();
-		const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+		const pct = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100));
 		slider.style.setProperty("--split", `${pct}%`);
 	};
 
 	slider.addEventListener("pointerdown", (e) => {
 		dragging = true;
 		slider.setPointerCapture(e.pointerId);
+		// Disable all browser touch handling during the drag so the browser
+		// cannot cancel or steal the pointer sequence mid-swipe on mobile.
+		slider.style.touchAction = "none";
 		setPos(e.clientX);
 	});
 
@@ -732,6 +756,9 @@ function setupCompareSlider(): void {
 
 	const stop = () => {
 		dragging = false;
+		// Restore the CSS-defined touch-action (pan-y) so vertical scrolling
+		// past the slider works normally when the user is not dragging.
+		slider.style.touchAction = "";
 	};
 	slider.addEventListener("pointerup", stop);
 	slider.addEventListener("pointercancel", stop);
