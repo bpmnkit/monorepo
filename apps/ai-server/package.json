@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/ai-server",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Local AI bridge server for @bpmn-sdk — HTTP SSE server and MCP server for BPMN diagram editing via Claude, Copilot, or Gemini",
 	"type": "module",
 	"bin": {

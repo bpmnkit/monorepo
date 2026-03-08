@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/cli",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Camunda v2 REST API command-line interface",
 	"type": "module",
 	"bin": {

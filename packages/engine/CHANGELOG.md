@@ -1,5 +1,15 @@
 # @bpmn-sdk/engine
 
+## 0.1.2
+
+### Patch Changes
+
+- [`ee1610b`](https://github.com/bpmn-sdk/monorepo/commit/ee1610b2c310e8ae9e063632a53479656309920a) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Fix package.json
+
+- Updated dependencies [[`ee1610b`](https://github.com/bpmn-sdk/monorepo/commit/ee1610b2c310e8ae9e063632a53479656309920a)]:
+  - @bpmn-sdk/core@0.0.3
+  - @bpmn-sdk/feel@0.0.3
+
 ## 0.1.1
 
 ### Patch Changes
