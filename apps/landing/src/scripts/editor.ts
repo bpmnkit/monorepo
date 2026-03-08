@@ -245,6 +245,9 @@ const bridge = createStorageTabsBridge({
 	palette,
 	enableFileImport: true,
 	sideDock: dock,
+	onNewDiagram: () => {
+		bridge.tabsPlugin.api.openTab({ type: "bpmn", xml: Bpmn.makeEmpty(), name: "New Diagram" });
+	},
 	onWelcomeShow: () => {
 		setHudVisible(false);
 		hudRef?.setActive(false);
@@ -252,21 +255,22 @@ const bridge = createStorageTabsBridge({
 	},
 	onTabActivate(id, config) {
 		const isBpmn = config.type === "bpmn";
+		const showOnboard = isBpmn && !!config.xml && isNewEmptyDiagram(config.xml);
 		setHudVisible(true);
 		hudRef?.setActive(isBpmn);
-		if (isBpmn && config.xml) {
-			if (isNewEmptyDiagram(config.xml)) {
-				// Don't load the diagram yet — show the onboarding overlay instead.
-				// The overlay's action buttons will load the chosen diagram.
-				hudRef?.showOnboarding();
-			} else {
-				hudRef?.hideOnboarding();
-				editorRef?.load(config.xml);
-			}
+		if (isBpmn && config.xml && !showOnboard) {
+			editorRef?.load(config.xml);
 		}
 		for (const hudId of BPMN_ONLY_HUD) {
 			const el = document.getElementById(hudId);
 			if (el) el.style.display = isBpmn ? "" : "none";
+		}
+		// showOnboarding/hideOnboarding must come AFTER the BPMN_ONLY_HUD loop
+		// because that loop resets display on the bottom toolbar.
+		if (showOnboard) {
+			hudRef?.showOnboarding();
+		} else {
+			hudRef?.hideOnboarding();
 		}
 		if (!isBpmn) {
 			editorRef?.setSelection([]);

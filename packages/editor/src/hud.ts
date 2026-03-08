@@ -1456,11 +1456,19 @@ export function initEditorHud(
 	function showOnboarding(): void {
 		_onboardingShown = true;
 		onboardEl.style.display = "flex";
+		hudBottomCenter.style.display = "none";
+		for (const btn of Array.from(hudTopCenter.querySelectorAll<HTMLButtonElement>("button"))) {
+			btn.disabled = true;
+		}
 	}
 
 	function hideOnboarding(): void {
 		_onboardingShown = false;
 		onboardEl.style.display = "none";
+		hudBottomCenter.style.display = "";
+		for (const btn of Array.from(hudTopCenter.querySelectorAll<HTMLButtonElement>("button"))) {
+			btn.disabled = false;
+		}
 	}
 
 	function autoHideOnboarding(): void {
