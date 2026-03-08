@@ -16,5 +16,5 @@ fn main() {
     std::fs::copy(&src, &dst).expect("failed to copy bridge.bundle.js to OUT_DIR");
 
     println!("cargo:rerun-if-changed=../ai-server/src/bridge.ts");
-    println!("cargo:rerun-if-changed=../../packages/bpmn-sdk/src");
+    println!("cargo:rerun-if-changed=../../packages/core/src");
 }

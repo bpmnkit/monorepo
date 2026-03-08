@@ -67,7 +67,7 @@ pnpm install
 pnpm build
 
 # Publish manually the first time
-cd packages/bpmn-sdk
+cd packages/core
 npm publish --access public
 ```
 
@@ -147,7 +147,7 @@ Or via the npm web UI on the package's **Code** tab.
 ## Troubleshooting
 
 **"Package not found" on publish**
-- The package name `@bpmn-sdk/core` must match the `name` field in `packages/bpmn-sdk/package.json`.
+- The package name `@bpmn-sdk/core` must match the `name` field in `packages/core/package.json`.
 - The npm org `bpmn-sdk` must exist and your token must have write access.
 
 **"You must be logged in" / 401 errors**

@@ -1,7 +1,7 @@
 {
 	"files": [],
 	"references": [
-		{ "path": "packages/bpmn-sdk" },
+		{ "path": "packages/core" },
 		{ "path": "packages/canvas" },
 		{ "path": "packages/editor" },
 		{ "path": "canvas-plugins/minimap" },

@@ -9,5 +9,5 @@
 		"lib": ["ES2022", "DOM"]
 	},
 	"include": ["src"],
-	"references": [{ "path": "../bpmn-sdk" }, { "path": "../canvas" }]
+	"references": [{ "path": "../core" }, { "path": "../canvas" }]
 }

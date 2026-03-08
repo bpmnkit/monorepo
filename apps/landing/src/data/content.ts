@@ -17,7 +17,7 @@ export const SITE = {
 export const PACKAGES = [
 	{
 		name: "@bpmn-sdk/core",
-		url: `${SITE.github}/tree/main/packages/bpmn-sdk`,
+		url: `${SITE.github}/tree/main/packages/core`,
 		description:
 			"Fluent process builder, BPMN 2.0 parser/serializer, DMN support, " +
 			"AI-compact format (compactify/expand), auto-layout (Sugiyama algorithm)",

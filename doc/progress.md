@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-03-08 — rename `packages/bpmn-sdk` → `packages/core`
+
+- Renamed directory to match the package name (`@bpmn-sdk/core`)
+- Updated references: root `tsconfig.json`, `packages/editor/tsconfig.json`, `apps/ai-server-rs/build.rs`, `apps/landing/src/data/content.ts`, `PUBLISHING.md`
+- `pnpm-lock.yaml` regenerated automatically by `pnpm install`
+- All 50 turbo tasks pass after the rename
+
 ## 2026-03-08 — consolidate all canvas plugins into `packages/plugins`
 
 - Merged all 22 packages from `canvas-plugins/*` into a single `packages/plugins` package (`@bpmn-sdk/plugins`)

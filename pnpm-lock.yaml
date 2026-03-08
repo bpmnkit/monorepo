@@ -55,7 +55,7 @@ importers:
     dependencies:
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../../packages/bpmn-sdk
+        version: link:../../packages/core
 
   apps/cli:
     dependencies:
@@ -70,7 +70,7 @@ importers:
         version: link:../../packages/canvas
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../../packages/bpmn-sdk
+        version: link:../../packages/core
       '@bpmn-sdk/editor':
         specifier: workspace:*
         version: link:../../packages/editor
@@ -91,7 +91,7 @@ importers:
     dependencies:
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../../packages/bpmn-sdk
+        version: link:../../packages/core
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -107,7 +107,7 @@ importers:
         version: link:../../packages/canvas
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../../packages/bpmn-sdk
+        version: link:../../packages/core
       '@bpmn-sdk/editor':
         specifier: workspace:*
         version: link:../../packages/editor
@@ -124,15 +124,15 @@ importers:
     dependencies:
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../bpmn-sdk
-
-  packages/bpmn-sdk: {}
+        version: link:../core
 
   packages/canvas:
     dependencies:
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../bpmn-sdk
+        version: link:../core
+
+  packages/core: {}
 
   packages/editor:
     dependencies:
@@ -141,13 +141,13 @@ importers:
         version: link:../canvas
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../bpmn-sdk
+        version: link:../core
 
   packages/engine:
     dependencies:
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../bpmn-sdk
+        version: link:../core
       '@bpmn-sdk/feel':
         specifier: workspace:*
         version: link:../feel
@@ -166,7 +166,7 @@ importers:
         version: link:../canvas
       '@bpmn-sdk/core':
         specifier: workspace:*
-        version: link:../bpmn-sdk
+        version: link:../core
       '@bpmn-sdk/editor':
         specifier: workspace:*
         version: link:../editor
