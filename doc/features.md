@@ -1,5 +1,12 @@
 # Features
 
+## AI-assisted diagram design UX (2026-03-08) — `packages/editor`, `apps/landing`
+
+- **New-diagram onboarding**: freshly-created diagrams show a full-coverage overlay instead of the canvas; three action cards let users choose "Start from scratch", "Generate example diagram", or "Ask AI"
+- **Element-level Ask AI**: sparkle button in the contextual toolbar below any selected BPMN element; opens the AI chat panel with the element already in context
+- `initEditorHud` returns `{ setActive, showOnboarding, hideOnboarding }` for lifecycle integration
+- `HudOptions`: `onStartFromScratch`, `onGenerateExample`, `onAskAi` callbacks
+
 ## Camunda Admin API (SaaS) SDK + CLI (2026-03-06) — `packages/api`, `apps/cli`
 
 Full support for the Camunda Console Admin API alongside the existing C8 REST API.

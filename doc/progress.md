@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-03-08 — editor: new-diagram onboarding overlay (full redesign)
+
+- Onboarding overlay completely replaces previous empty-state card
+- Solid opaque background covers the canvas — no BPMN diagram is rendered until the user picks an action
+- Three action cards: "Start from scratch" (loads `Bpmn.makeEmpty()`), "Generate example diagram" (loads `Bpmn.SAMPLE_XML`), "Ask AI" (loads empty diagram + opens AI panel)
+- Secondary links: bpmn.io, Camunda BPMN Reference, OMG Spec, BPMN Elements coverage docs
+- `showOnboarding()` / `hideOnboarding()` added to `initEditorHud` return value — caller triggers explicitly
+- `autoHideOnboarding()` in `diagram:change` — auto-hides overlay when diagram gains real content (e.g. AI adds elements)
+- New `HudOptions.onStartFromScratch` and `HudOptions.onGenerateExample` callbacks
+- `isNewEmptyDiagram(xml)` helper in landing app detects freshly-created diagrams without parsing XML
+- `onTabActivate` skips `editor.load()` for empty diagrams and calls `showOnboarding()` instead
+
+## 2026-03-08 — editor: Ask AI contextual button + empty-diagram state
+
+- **Ask AI button in element toolbar**: sparkle icon button added to the contextual toolbar (below selected element) for all non-annotation elements; calls `options.onAskAi?.()` so callers can open the AI panel with the element already in context
+- **Empty-diagram overlay**: when a BPMN diagram has only a start event and no sequence flows, an overlay card appears centered on the canvas with a title, subtitle, "Ask AI" button (if configured), and links to bpmn.io, Camunda BPMN Reference, and the OMG BPMN spec
+- `initEditorHud` now returns `{ setActive(active: boolean): void }` — callers use this to show/hide the empty state when switching between BPMN and non-BPMN tabs (or welcome screen)
+- `HudOptions.onAskAi?: () => void` — new option; controls both the element-toolbar AI button and the empty-state overlay AI button
+- Landing app (`apps/landing`): wires `onAskAi` to expand dock + switch to AI tab + open the AI panel; calls `hudRef.setActive(isBpmn)` in `onTabActivate` and `onWelcomeShow`
+- New diagrams (`Bpmn.makeEmpty()`) continue to produce a single start event — the empty state renders immediately when such a diagram is opened
+
 ## 2026-03-08 — prepare `apps/ai-server` for npm publishing
 
 - Removed `"private": true`; added `"description"`, `"bin"`, `"files"`, `"engines"`, `"publishConfig"` fields

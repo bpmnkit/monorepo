@@ -460,6 +460,99 @@ export const HUD_CSS = `
   background: rgba(200,50,50,0.65); border-radius: 1px;
 }
 
+/* ── Contextual Ask-AI button (tinted blue) ──────────────────────── */
+.ctx-ask-ai-btn { color: rgba(120, 170, 255, 0.8); }
+.ctx-ask-ai-btn:hover { background: rgba(76, 142, 247, 0.15); color: #a8c8ff; }
+[data-bpmn-hud-theme="light"] .ctx-ask-ai-btn { color: rgba(26, 86, 219, 0.7); }
+[data-bpmn-hud-theme="light"] .ctx-ask-ai-btn:hover { background: rgba(26, 86, 219, 0.08); color: #1a56db; }
+
+/* ── New-diagram onboarding overlay ──────────────────────────────── */
+#bpmn-empty-state {
+  position: fixed; z-index: 50;
+  top: 36px; left: 0; bottom: 0;
+  right: calc(var(--bpmn-dock-width, 0px));
+  display: flex; align-items: center; justify-content: center;
+  background: #13131f;
+}
+[data-bpmn-hud-theme="light"] #bpmn-empty-state { background: #eeeef6; }
+
+.bpmn-onboard-inner {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 28px; padding: 24px; max-width: 580px; width: 100%;
+}
+.bpmn-onboard-header { text-align: center; }
+.bpmn-onboard-title {
+  color: rgba(255,255,255,0.82); font-size: 16px; font-weight: 600; margin: 0 0 7px;
+}
+.bpmn-onboard-sub {
+  color: rgba(255,255,255,0.36); font-size: 13px; margin: 0;
+}
+[data-bpmn-hud-theme="light"] .bpmn-onboard-title { color: rgba(0,0,0,0.72); }
+[data-bpmn-hud-theme="light"] .bpmn-onboard-sub   { color: rgba(0,0,0,0.38); }
+
+.bpmn-onboard-actions { display: flex; gap: 10px; width: 100%; }
+
+.bpmn-onboard-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: flex-start;
+  gap: 10px; padding: 16px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; cursor: pointer; text-align: left;
+  color: inherit; transition: background 0.15s, border-color 0.15s;
+}
+.bpmn-onboard-btn:hover {
+  background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.14);
+}
+[data-bpmn-hud-theme="light"] .bpmn-onboard-btn {
+  background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08);
+}
+[data-bpmn-hud-theme="light"] .bpmn-onboard-btn:hover {
+  background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.14);
+}
+
+.bpmn-onboard-btn-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); flex-shrink: 0;
+}
+.bpmn-onboard-btn-icon svg { width: 16px; height: 16px; pointer-events: none; }
+[data-bpmn-hud-theme="light"] .bpmn-onboard-btn-icon {
+  background: rgba(0,0,0,0.07); color: rgba(0,0,0,0.55);
+}
+
+.bpmn-onboard-btn--ai .bpmn-onboard-btn-icon {
+  background: rgba(76,142,247,0.18); color: #8ab8ff;
+}
+.bpmn-onboard-btn--ai:hover { border-color: rgba(76,142,247,0.3); }
+[data-bpmn-hud-theme="light"] .bpmn-onboard-btn--ai .bpmn-onboard-btn-icon {
+  background: rgba(26,86,219,0.1); color: #1a56db;
+}
+[data-bpmn-hud-theme="light"] .bpmn-onboard-btn--ai:hover { border-color: rgba(26,86,219,0.28); }
+
+.bpmn-onboard-btn-label { display: flex; flex-direction: column; gap: 3px; }
+.bpmn-onboard-btn-title {
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8); margin: 0;
+}
+.bpmn-onboard-btn-desc {
+  font-size: 11px; color: rgba(255,255,255,0.32); margin: 0; line-height: 1.4;
+}
+[data-bpmn-hud-theme="light"] .bpmn-onboard-btn-title { color: rgba(0,0,0,0.72); }
+[data-bpmn-hud-theme="light"] .bpmn-onboard-btn-desc  { color: rgba(0,0,0,0.36); }
+
+.bpmn-onboard-links { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.bpmn-onboard-links a {
+  color: rgba(255,255,255,0.22); font-size: 11px; text-decoration: none; transition: color 0.1s;
+}
+.bpmn-onboard-links a:hover { color: rgba(255,255,255,0.55); }
+[data-bpmn-hud-theme="light"] .bpmn-onboard-links a { color: rgba(0,0,0,0.25); }
+[data-bpmn-hud-theme="light"] .bpmn-onboard-links a:hover { color: rgba(0,0,0,0.6); }
+
+@media (max-width: 520px) {
+  .bpmn-onboard-actions { flex-direction: column; }
+  .bpmn-onboard-btn { flex-direction: row; align-items: center; gap: 12px; }
+  .bpmn-onboard-btn-label { flex-direction: column; }
+}
+
 /* ── Mobile: collapsible center toolbars ─────────────────────────── */
 #btn-bc-toggle, #btn-tc-toggle { display: none; }
 

@@ -56,6 +56,25 @@ const resolver = new InMemoryFileResolver();
 
 let editorRef: BpmnEditor | null = null;
 let currentFileName: string | null = null;
+let hudRef: {
+	setActive(active: boolean): void;
+	showOnboarding(): void;
+	hideOnboarding(): void;
+} | null = null;
+
+/** Returns true when the XML is a freshly-created empty diagram (only a start event). */
+function isNewEmptyDiagram(xml: string): boolean {
+	return (
+		!xml.includes("sequenceFlow") &&
+		!xml.includes("endEvent") &&
+		!xml.includes(":task") &&
+		!xml.includes(":gateway") &&
+		!xml.includes("subProcess") &&
+		!xml.includes("callActivity") &&
+		!xml.includes("intermediateThrowEvent") &&
+		!xml.includes("intermediateCatchEvent")
+	);
+}
 
 const BPMN_ONLY_HUD = ["hud-top-center", "hud-bottom-left", "hud-bottom-center"];
 
@@ -228,13 +247,22 @@ const bridge = createStorageTabsBridge({
 	sideDock: dock,
 	onWelcomeShow: () => {
 		setHudVisible(false);
+		hudRef?.setActive(false);
 		dock.setHistoryTabEnabled(false);
 	},
 	onTabActivate(id, config) {
 		const isBpmn = config.type === "bpmn";
 		setHudVisible(true);
+		hudRef?.setActive(isBpmn);
 		if (isBpmn && config.xml) {
-			editorRef?.load(config.xml);
+			if (isNewEmptyDiagram(config.xml)) {
+				// Don't load the diagram yet — show the onboarding overlay instead.
+				// The overlay's action buttons will load the chosen diagram.
+				hudRef?.showOnboarding();
+			} else {
+				hudRef?.hideOnboarding();
+				editorRef?.load(config.xml);
+			}
 		}
 		for (const hudId of BPMN_ONLY_HUD) {
 			const el = document.getElementById(hudId);
@@ -368,7 +396,7 @@ editorOn("diagram:change", () => {
 	}, 600);
 });
 
-initEditorHud(editor, {
+hudRef = initEditorHud(editor, {
 	openProcess: (processId) => bridge.tabsPlugin.api.navigateToProcess(processId),
 	getAvailableProcesses: () => bridge.tabsPlugin.api.getAvailableProcesses(),
 	createProcess: (name, onCreated) => {
@@ -384,4 +412,15 @@ initEditorHud(editor, {
 	optimizeButton: optimizePlugin.button,
 	playButton: processRunnerPlugin.playButton,
 	asciiButton: asciiViewPlugin.button,
+	onStartFromScratch: () => {
+		editorRef?.load(Bpmn.makeEmpty());
+	},
+	onGenerateExample: () => {
+		editorRef?.load(Bpmn.SAMPLE_XML);
+	},
+	onAskAi: () => {
+		if (dock.collapsed) dock.expand();
+		dock.switchTab("ai");
+		aiBridgePlugin.openPanel();
+	},
 });

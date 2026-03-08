@@ -110,9 +110,27 @@ export interface HudOptions {
 	 * When provided, it is styled as a HUD button and placed in the bottom-left panel.
 	 */
 	asciiButton?: HTMLButtonElement | null;
+	/**
+	 * Called when the user clicks "Start from scratch" on the new-diagram overlay.
+	 * The caller should load an empty diagram into the editor.
+	 */
+	onStartFromScratch?: () => void;
+	/**
+	 * Called when the user clicks "Generate example" on the new-diagram overlay.
+	 * The caller should load a sample diagram into the editor.
+	 */
+	onGenerateExample?: () => void;
+	/**
+	 * Called when the user clicks "Ask AI" in the contextual element toolbar or
+	 * the new-diagram overlay.
+	 */
+	onAskAi?: () => void;
 }
 
-export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): void {
+export function initEditorHud(
+	editor: BpmnEditor,
+	options: HudOptions = {},
+): { setActive(active: boolean): void; showOnboarding(): void; hideOnboarding(): void } {
 	injectHudStyles();
 
 	// ── Create and inject HUD DOM ──────────────────────────────────────────────
@@ -871,6 +889,19 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 				hideCtxToolbar();
 			});
 			ctxToolbar.appendChild(annotBtn);
+
+			if (options.onAskAi) {
+				const aiSep = document.createElement("div");
+				aiSep.className = "hud-sep";
+				ctxToolbar.appendChild(aiSep);
+
+				const aiBtn = document.createElement("button");
+				aiBtn.className = "hud-btn ctx-ask-ai-btn";
+				aiBtn.innerHTML = IC.sparkle;
+				aiBtn.title = "Ask AI to continue from this element";
+				aiBtn.addEventListener("click", () => options.onAskAi?.());
+				ctxToolbar.appendChild(aiBtn);
+			}
 		}
 	}
 
@@ -1326,6 +1357,127 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 		cfgToolbar.style.display = "none";
 	}
 
+	// ── New-diagram onboarding overlay ─────────────────────────────────────────
+
+	function makeOnboardBtn(
+		iconHtml: string,
+		title: string,
+		desc: string,
+		extraClass?: string,
+		onClick?: () => void,
+	): HTMLButtonElement {
+		const btn = document.createElement("button");
+		btn.className = `bpmn-onboard-btn${extraClass ? ` ${extraClass}` : ""}`;
+
+		const iconEl = document.createElement("div");
+		iconEl.className = "bpmn-onboard-btn-icon";
+		iconEl.innerHTML = iconHtml;
+
+		const labelEl = document.createElement("div");
+		labelEl.className = "bpmn-onboard-btn-label";
+
+		const titleEl = document.createElement("p");
+		titleEl.className = "bpmn-onboard-btn-title";
+		titleEl.textContent = title;
+
+		const descEl = document.createElement("p");
+		descEl.className = "bpmn-onboard-btn-desc";
+		descEl.textContent = desc;
+
+		labelEl.append(titleEl, descEl);
+		btn.append(iconEl, labelEl);
+		if (onClick) btn.addEventListener("click", onClick);
+		return btn;
+	}
+
+	const onboardEl = document.createElement("div");
+	onboardEl.id = "bpmn-empty-state";
+	onboardEl.style.display = "none";
+
+	const onboardInner = document.createElement("div");
+	onboardInner.className = "bpmn-onboard-inner";
+
+	const onboardHeader = document.createElement("div");
+	onboardHeader.className = "bpmn-onboard-header";
+	onboardHeader.innerHTML = `<p class="bpmn-onboard-title">How do you want to start?</p><p class="bpmn-onboard-sub">Choose an option to begin designing your process</p>`;
+
+	const onboardActions = document.createElement("div");
+	onboardActions.className = "bpmn-onboard-actions";
+
+	const scratchBtn = makeOnboardBtn(
+		IC.startEvent,
+		"Start from scratch",
+		"Open an empty canvas with just a start event",
+		undefined,
+		() => {
+			hideOnboarding();
+			options.onStartFromScratch?.();
+		},
+	);
+
+	const DIAGRAM_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="2.5" cy="8" r="1.5"/><rect x="5.5" y="5.5" width="5" height="5" rx="1"/><circle cx="13.5" cy="8" r="1.5"/><line x1="4" y1="8" x2="5.5" y2="8"/><line x1="10.5" y1="8" x2="12" y2="8"/></svg>`;
+
+	const exampleBtn = makeOnboardBtn(
+		DIAGRAM_ICON,
+		"Generate example diagram",
+		"Load a simple start → task → end flow to explore",
+		undefined,
+		() => {
+			hideOnboarding();
+			options.onGenerateExample?.();
+		},
+	);
+
+	const aiBtn = makeOnboardBtn(
+		IC.sparkle,
+		"Ask AI",
+		"Describe your process and let AI build the diagram",
+		"bpmn-onboard-btn--ai",
+		() => {
+			hideOnboarding();
+			options.onStartFromScratch?.();
+			options.onAskAi?.();
+		},
+	);
+
+	onboardActions.append(scratchBtn, exampleBtn, aiBtn);
+
+	const onboardLinks = document.createElement("div");
+	onboardLinks.className = "bpmn-onboard-links";
+	onboardLinks.innerHTML = `<a href="https://bpmn.io" target="_blank" rel="noopener noreferrer">bpmn.io</a><a href="https://camunda.com/bpmn/reference/" target="_blank" rel="noopener noreferrer">BPMN Reference</a><a href="https://www.omg.org/bpmn/" target="_blank" rel="noopener noreferrer">OMG Spec</a><a href="https://docs.camunda.io/docs/components/modeler/bpmn/bpmn-coverage/" target="_blank" rel="noopener noreferrer">BPMN Elements</a>`;
+
+	onboardInner.append(onboardHeader, onboardActions, onboardLinks);
+	onboardEl.appendChild(onboardInner);
+	document.body.appendChild(onboardEl);
+
+	let _diagramActive = false;
+	let _onboardingShown = false;
+
+	function showOnboarding(): void {
+		_onboardingShown = true;
+		onboardEl.style.display = "flex";
+	}
+
+	function hideOnboarding(): void {
+		_onboardingShown = false;
+		onboardEl.style.display = "none";
+	}
+
+	function autoHideOnboarding(): void {
+		if (!_onboardingShown) return;
+		const defs = editor.getDefinitions();
+		if (!defs) return;
+		const proc = defs.processes[0];
+		if (!proc) return;
+		const isEmpty = proc.flowElements.length <= 1 && proc.sequenceFlows.length === 0;
+		if (!isEmpty) hideOnboarding();
+	}
+
+	function setActive(active: boolean): void {
+		_diagramActive = active;
+		if (!active) hideOnboarding();
+	}
+
 	// ── Editor event subscriptions ─────────────────────────────────────────────
 
 	editor.on("editor:select", (ids: string[]) => {
@@ -1358,6 +1510,7 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 
 	editor.on("diagram:change", () => {
 		updateActionBar();
+		autoHideOnboarding();
 		if (ctxSourceId) {
 			const elemType = editor.getElementType(ctxSourceId);
 			if (elemType) {
@@ -1391,4 +1544,6 @@ export function initEditorHud(editor: BpmnEditor, options: HudOptions = {}): voi
 			toggleZoomWidget();
 		}
 	});
+
+	return { setActive, showOnboarding, hideOnboarding };
 }

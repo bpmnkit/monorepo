@@ -78,4 +78,7 @@ export const IC = {
 	compensationThrowEvent: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="4.5"/><polygon points="8,6 5,8 8,10" fill="currentColor" stroke="none"/><polygon points="11,6 8,8 11,10" fill="currentColor" stroke="none"/></svg>`,
 	signalCatchEvent: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="4.5"/><polygon points="8,5 11.5,11 4.5,11" stroke-width="1"/></svg>`,
 	signalThrowEvent: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="4.5"/><polygon points="8,5 11.5,11 4.5,11" fill="currentColor" stroke="none"/></svg>`,
+
+	// ── AI / assistant ──────────────────────────────────────────────────
+	sparkle: `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 2L9.1 5.9 13 7l-3.9 1.1L8 12 6.9 8.1 3 7l3.9-1.1L8 2z"/><circle cx="12.5" cy="3" r="1" opacity="0.5"/><circle cx="3.5" cy="12.5" r="0.75" opacity="0.4"/></svg>`,
 };
