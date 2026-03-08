@@ -1,19 +1,19 @@
-import { createAiBridgePlugin } from "@bpmn-sdk/canvas-plugin-ai-bridge";
-import { createCommandPalettePlugin } from "@bpmn-sdk/canvas-plugin-command-palette";
-import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/canvas-plugin-command-palette-editor";
-import { createConfigPanelPlugin } from "@bpmn-sdk/canvas-plugin-config-panel";
-import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/canvas-plugin-config-panel-bpmn";
-import { createMainMenuPlugin } from "@bpmn-sdk/canvas-plugin-main-menu";
-import { createOptimizePlugin } from "@bpmn-sdk/canvas-plugin-optimize";
-import {
-	InMemoryFileResolver,
-	createStorageTabsBridge,
-} from "@bpmn-sdk/canvas-plugin-storage-tabs-bridge";
-import { createWatermarkPlugin } from "@bpmn-sdk/canvas-plugin-watermark";
-import { createZoomControlsPlugin } from "@bpmn-sdk/canvas-plugin-zoom-controls";
 import { Bpmn, Dmn } from "@bpmn-sdk/core";
 import { BpmnEditor, createSideDock, initEditorHud } from "@bpmn-sdk/editor";
 import type { Tool } from "@bpmn-sdk/editor";
+import { createAiBridgePlugin } from "@bpmn-sdk/plugins/ai-bridge";
+import { createCommandPalettePlugin } from "@bpmn-sdk/plugins/command-palette";
+import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/plugins/command-palette-editor";
+import { createConfigPanelPlugin } from "@bpmn-sdk/plugins/config-panel";
+import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/plugins/config-panel-bpmn";
+import { createMainMenuPlugin } from "@bpmn-sdk/plugins/main-menu";
+import { createOptimizePlugin } from "@bpmn-sdk/plugins/optimize";
+import {
+	InMemoryFileResolver,
+	createStorageTabsBridge,
+} from "@bpmn-sdk/plugins/storage-tabs-bridge";
+import { createWatermarkPlugin } from "@bpmn-sdk/plugins/watermark";
+import { createZoomControlsPlugin } from "@bpmn-sdk/plugins/zoom-controls";
 import { makeExamples } from "./examples.js";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

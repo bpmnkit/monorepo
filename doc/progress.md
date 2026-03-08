@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-03-08 — consolidate all canvas plugins into `packages/plugins`
+
+- Merged all 22 packages from `canvas-plugins/*` into a single `packages/plugins` package (`@bpmn-sdk/plugins`)
+- Each plugin is a subdirectory under `src/` with its own `index.ts`; all tests live under `tests/<plugin>/`
+- Package exposes 22 subpath exports (`@bpmn-sdk/plugins/minimap`, `@bpmn-sdk/plugins/tabs`, etc.) enabling tree-shaking per import
+- Updated all inter-plugin imports to relative paths within the unified package
+- Updated `apps/landing` and `apps/desktop` to import from `@bpmn-sdk/plugins/*`; simplified their `package.json` from 15+ plugin deps to one `@bpmn-sdk/plugins` dep
+- Removed `canvas-plugins/*` from `pnpm-workspace.yaml`
+- Added `DOM.Iterable` to the tsconfig lib (needed when compiling all plugins together)
+- All 94 tests pass; full turbo pipeline (50 tasks) passes
+
 ## 2026-03-07 — landing: full-page aurora background (fixed/sticky)
 
 - Moved `.aurora`, `.dots`, `.grain` from inside `.hero` to direct children of `<body>` (above all sections)

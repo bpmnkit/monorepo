@@ -1,0 +1,109 @@
+{
+	"name": "@bpmn-sdk/plugins",
+	"version": "0.0.1",
+	"private": false,
+	"type": "module",
+	"exports": {
+		"./ai-bridge": {
+			"import": "./dist/ai-bridge/index.js",
+			"types": "./dist/ai-bridge/index.d.ts"
+		},
+		"./ascii-view": {
+			"import": "./dist/ascii-view/index.js",
+			"types": "./dist/ascii-view/index.d.ts"
+		},
+		"./command-palette": {
+			"import": "./dist/command-palette/index.js",
+			"types": "./dist/command-palette/index.d.ts"
+		},
+		"./command-palette-editor": {
+			"import": "./dist/command-palette-editor/index.js",
+			"types": "./dist/command-palette-editor/index.d.ts"
+		},
+		"./config-panel": {
+			"import": "./dist/config-panel/index.js",
+			"types": "./dist/config-panel/index.d.ts"
+		},
+		"./config-panel-bpmn": {
+			"import": "./dist/config-panel-bpmn/index.js",
+			"types": "./dist/config-panel-bpmn/index.d.ts"
+		},
+		"./dmn-editor": {
+			"import": "./dist/dmn-editor/index.js",
+			"types": "./dist/dmn-editor/index.d.ts"
+		},
+		"./dmn-viewer": {
+			"import": "./dist/dmn-viewer/index.js",
+			"types": "./dist/dmn-viewer/index.d.ts"
+		},
+		"./feel-playground": {
+			"import": "./dist/feel-playground/index.js",
+			"types": "./dist/feel-playground/index.d.ts"
+		},
+		"./form-editor": {
+			"import": "./dist/form-editor/index.js",
+			"types": "./dist/form-editor/index.d.ts"
+		},
+		"./form-viewer": {
+			"import": "./dist/form-viewer/index.js",
+			"types": "./dist/form-viewer/index.d.ts"
+		},
+		"./history": {
+			"import": "./dist/history/index.js",
+			"types": "./dist/history/index.d.ts"
+		},
+		"./main-menu": {
+			"import": "./dist/main-menu/index.js",
+			"types": "./dist/main-menu/index.d.ts"
+		},
+		"./minimap": {
+			"import": "./dist/minimap/index.js",
+			"types": "./dist/minimap/index.d.ts"
+		},
+		"./optimize": {
+			"import": "./dist/optimize/index.js",
+			"types": "./dist/optimize/index.d.ts"
+		},
+		"./process-runner": {
+			"import": "./dist/process-runner/index.js",
+			"types": "./dist/process-runner/index.d.ts"
+		},
+		"./storage": {
+			"import": "./dist/storage/index.js",
+			"types": "./dist/storage/index.d.ts"
+		},
+		"./storage-tabs-bridge": {
+			"import": "./dist/storage-tabs-bridge/index.js",
+			"types": "./dist/storage-tabs-bridge/index.d.ts"
+		},
+		"./tabs": {
+			"import": "./dist/tabs/index.js",
+			"types": "./dist/tabs/index.d.ts"
+		},
+		"./token-highlight": {
+			"import": "./dist/token-highlight/index.js",
+			"types": "./dist/token-highlight/index.d.ts"
+		},
+		"./watermark": {
+			"import": "./dist/watermark/index.js",
+			"types": "./dist/watermark/index.d.ts"
+		},
+		"./zoom-controls": {
+			"import": "./dist/zoom-controls/index.js",
+			"types": "./dist/zoom-controls/index.d.ts"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@bpmn-sdk/ascii": "workspace:*",
+		"@bpmn-sdk/canvas": "workspace:*",
+		"@bpmn-sdk/core": "workspace:*",
+		"@bpmn-sdk/editor": "workspace:*",
+		"@bpmn-sdk/feel": "workspace:*"
+	}
+}

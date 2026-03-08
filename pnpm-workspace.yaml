@@ -1,4 +1,3 @@
 packages:
   - "packages/*"
-  - "canvas-plugins/*"
   - "apps/*"

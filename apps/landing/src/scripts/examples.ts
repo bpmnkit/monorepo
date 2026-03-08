@@ -1,6 +1,6 @@
-import type { InMemoryFileResolver, TabsApi, WelcomeExample } from "@bpmn-sdk/canvas-plugin-tabs";
 import type { DmnDefinitions } from "@bpmn-sdk/core";
 import type { FormDefinition } from "@bpmn-sdk/core";
+import type { InMemoryFileResolver, TabsApi, WelcomeExample } from "@bpmn-sdk/plugins/tabs";
 
 export const examples: Record<string, string> = {
 	simple: `<?xml version="1.0" encoding="UTF-8"?>
