@@ -78,6 +78,13 @@ export function injectAiBridgeStyles(): void {
   background: rgba(0,0,0,0.28); border-radius: 3px;
   padding: 1px 5px; font-family: monospace; font-size: 11.5px;
 }
+/* ── Diagram preview ── */
+.ai-msg-preview {
+  position: relative; height: 200px; margin: 8px 0;
+  border-radius: 6px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.ai-msg-preview .bpmn-canvas { width: 100%; height: 100%; }
 /* ── Message action row (copy + apply) ── */
 .ai-msg-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .ai-msg-copy {
@@ -95,6 +102,14 @@ export function injectAiBridgeStyles(): void {
   font-size: 11px; cursor: pointer; font-weight: 500; font-family: inherit;
 }
 .ai-msg-apply:hover { background: rgba(60,180,100,0.38); }
+.ai-msg-approve {
+  padding: 3px 12px;
+  background: rgba(200,150,30,0.25); border: 1px solid rgba(200,150,30,0.4);
+  border-radius: 5px; color: rgba(255,210,80,0.9);
+  font-size: 11px; cursor: pointer; font-weight: 500; font-family: inherit;
+}
+.ai-msg-approve:hover { background: rgba(200,150,30,0.38); }
+.ai-msg-approve:disabled { opacity: 0.4; cursor: default; }
 .ai-msg-code {
   background: rgba(0,0,0,0.3); border-radius: 5px;
   padding: 8px; margin: 6px 0;
@@ -261,7 +276,11 @@ export function injectAiBridgeStyles(): void {
 [data-bpmn-hud-theme="light"] .ai-msg-apply {
   background: rgba(0,150,60,0.1); border-color: rgba(0,150,60,0.25); color: #0a7030;
 }
+[data-bpmn-hud-theme="light"] .ai-msg-approve {
+  background: rgba(180,120,0,0.1); border-color: rgba(180,120,0,0.25); color: #7a5000;
+}
 [data-bpmn-hud-theme="light"] .ai-msg-code { background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.65); }
+[data-bpmn-hud-theme="light"] .ai-msg-preview { border-color: rgba(0,0,0,0.1); }
 [data-bpmn-hud-theme="light"] .ai-welcome-title { color: rgba(0,0,0,0.85); }
 [data-bpmn-hud-theme="light"] .ai-welcome-sub { color: rgba(0,0,0,0.4); }
 [data-bpmn-hud-theme="light"] .ai-welcome-example {

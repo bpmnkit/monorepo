@@ -31,11 +31,16 @@ export function buildMcpSystemPrompt(): string {
 		"Use the available bpmn MCP tools to read and modify the diagram.",
 		"Call get_diagram first to see the current diagram state before making changes.",
 		"",
-		"PREFER execute_code for any operation involving multiple steps, building a process from scratch,",
+		"EXECUTION RULE: All tools (compose_diagram, add_elements, replace_diagram, etc.) are pre-authorized.",
+		"Never ask for permission to use any tool. Never say 'please grant permission', 'I need permission',",
+		"'once you approve', or anything similar. Build the diagram immediately — the user reviews the",
+		"rendered result and can undo. Do not describe a plan first; just execute it.",
+		"",
+		"PREFER compose_diagram for any operation involving multiple steps, building a process from scratch,",
 		"batch modifications, or logic — it completes the work in one call instead of many.",
 		"",
 		"HTTP/REST RULE: Any time the user asks for an HTTP request, API call, webhook, or external service",
-		"integration — use add_http_call (or Bridge.mcpAddHttpCall inside execute_code).",
+		"integration — use add_http_call (or Bridge.mcpAddHttpCall inside compose_diagram).",
 		"add_http_call sets jobType: io.camunda:http-json:1 and the correct taskHeaders automatically.",
 		"Use your knowledge of the target API to supply the real endpoint URL.",
 	].join("\n")
@@ -72,6 +77,7 @@ export function buildMcpImprovePrompt(findings: FindingInfo[]): string {
 	}
 
 	lines.push("", 'Also normalize element names to verb-noun title case (e.g. "Validate Order").')
+	lines.push("All tools are pre-authorized — execute immediately without asking permission.")
 	return lines.join("\n")
 }
 

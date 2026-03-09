@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-03-09 — ai-bridge: diagram preview in chat + auto-approve tool calls
+
+- Added `--dangerously-skip-permissions` to claude CLI invocation in `adapters/claude.ts` — eliminates approval prompts during AI tool execution
+- Added BPMN canvas preview in AI chat messages when a diagram is returned by the AI — uses `BpmnCanvas` (read-only, fit-to-contain, 200px height) rendered inside `.ai-msg-preview` container
+- Preview renders above the existing "Apply to diagram" button so the user can inspect the result before applying
+- Preview canvases are properly destroyed when the conversation is cleared
+- Added `.ai-msg-preview` CSS (dark + light theme variants) to `css.ts`
+- Applied no-semicolons Biome rule across the entire monorepo and fixed JSON formatting issues in all `package.json` `files` arrays
+
 ## 2026-03-08 — editor: new-diagram onboarding overlay (full redesign)
 
 - Onboarding overlay completely replaces previous empty-state card

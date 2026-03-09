@@ -1,3 +1,4 @@
+import { BpmnCanvas } from "@bpmn-sdk/canvas"
 import { Bpmn, compactify } from "@bpmn-sdk/core"
 import type { BpmnDefinitions } from "@bpmn-sdk/core"
 import { saveCheckpoint } from "../history/index.js"
@@ -92,6 +93,30 @@ async function* streamChat(
 	} finally {
 		reader.releaseLock()
 	}
+}
+
+// ── Approval-request detection ────────────────────────────────────────────────
+
+const APPROVAL_PATTERNS = [
+	/\bapprove\b/i,
+	/\bapproval\b/i,
+	/\bready to apply\b/i,
+	/\bonce you confirm\b/i,
+	/\bshall I\b/i,
+	/\bwould you like me to\b/i,
+	/\bwant me to\b/i,
+	/\bproceed\?/i,
+	/\bgo ahead\?/i,
+	/\bconfirm\?/i,
+	/ready\?/i,
+	/\bgrant permission\b/i,
+	/\bneed permission\b/i,
+	/\bplease (?:grant|give|allow)\b/i,
+	/\bonce you (?:grant|give|allow)\b/i,
+]
+
+function looksLikeApprovalRequest(text: string): boolean {
+	return APPROVAL_PATTERNS.some((re) => re.test(text))
 }
 
 // ── Minimal markdown renderer ─────────────────────────────────────────────────
@@ -349,6 +374,7 @@ export function createAiPanel(options: PanelOptions): {
 
 	// ── State ──
 	const history: ChatMessage[] = []
+	const _previewCanvases: BpmnCanvas[] = []
 	let sending = false
 	let _refs: ContextRef[] = []
 	let _abortCtrl: AbortController | null = null
@@ -505,6 +531,21 @@ export function createAiPanel(options: PanelOptions): {
 		// Render as markdown
 		msgEl.append(renderMarkdown(fullText))
 
+		// Diagram preview + apply button when XML is available
+		if (directXml !== undefined) {
+			const previewEl = document.createElement("div")
+			previewEl.className = "ai-msg-preview"
+			const canvas = new BpmnCanvas({
+				container: previewEl,
+				xml: directXml,
+				grid: false,
+				fit: "contain",
+				theme: "auto",
+			})
+			_previewCanvases.push(canvas)
+			msgEl.append(previewEl)
+		}
+
 		// Action row: copy + optional apply
 		const actionRow = document.createElement("div")
 		actionRow.className = "ai-msg-actions"
@@ -553,6 +594,16 @@ export function createAiPanel(options: PanelOptions): {
 				}
 			})
 			actionRow.append(applyBtn)
+		} else if (looksLikeApprovalRequest(fullText)) {
+			const approveBtn = document.createElement("button")
+			approveBtn.className = "ai-msg-approve"
+			approveBtn.textContent = "✓ Approve"
+			approveBtn.addEventListener("click", () => {
+				approveBtn.disabled = true
+				textarea.value = "Approved, please proceed."
+				void send()
+			})
+			actionRow.append(approveBtn)
 		}
 
 		msgEl.append(actionRow)
@@ -567,6 +618,8 @@ export function createAiPanel(options: PanelOptions): {
 			if (child !== welcomeEl) child.remove()
 		}
 		welcomeEl.style.display = ""
+		for (const c of _previewCanvases) c.destroy()
+		_previewCanvases.length = 0
 	}
 
 	// ── Core streaming helper ──

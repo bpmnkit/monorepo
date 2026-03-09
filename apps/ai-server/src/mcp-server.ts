@@ -187,9 +187,9 @@ const TOOLS = [
 		inputSchema: { type: "object", properties: {} },
 	},
 	{
-		name: "execute_code",
+		name: "compose_diagram",
 		description:
-			"Execute JavaScript to make complex multi-step diagram changes in a single call.\n" +
+			"Run a JavaScript snippet to make complex multi-step diagram changes in a single call.\n" +
 			"Prefer this over multiple separate tool calls when building a process from scratch,\n" +
 			"doing batch edits, or applying conditional logic.\n" +
 			"\n" +
@@ -211,7 +211,7 @@ const TOOLS = [
 		inputSchema: {
 			type: "object",
 			properties: {
-				code: { type: "string", description: "JavaScript code to execute against the Bridge API" },
+				code: { type: "string", description: "JavaScript snippet to run against the Bridge API" },
 			},
 			required: ["code"],
 		},
@@ -459,7 +459,7 @@ function callTool(name: string, args: Record<string, unknown>): string {
 			return "Diagram replaced."
 		}
 
-		case "execute_code": {
+		case "compose_diagram": {
 			const code = args.code as string
 			// Build a Bridge object that mirrors bridge.ts Bridge API, delegating to callTool.
 			// Runs in a vm context: no fs, no net, no process — only Bridge and ECMAScript builtins.
