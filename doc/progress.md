@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-03-09 — editor + plugins: BPMN element docs sidebar tab
+
+- **`packages/plugins/src/element-docs/`** — New `element-docs` plugin (`@bpmn-sdk/plugins/element-docs`):
+  - `content.ts`: Comprehensive docs for 40+ BPMN elements across 8 categories (Start Events, End Events, Intermediate Events, Boundary Events, Tasks, Sub-Processes, Gateways, Connectors). Each entry has a title, subtitle, and markdown body covering _what it is_, _when to use_, _Camunda notes_, and _best practices_.
+  - `index.ts`: Plugin UI — searchable index view with category groups + detail view with inline SVG shape icons, fully rendered markdown (headings, bold/italic, code blocks, tables, blockquotes, bullet/numbered lists). Selecting a canvas element auto-navigates to its doc. Supports dark/light themes.
+- **`packages/editor/src/dock.ts`**: Added "Docs" tab and `docsPane` to `SideDock`. Updated `switchTab` union to include `"docs"`. Added `setDocsTabClickHandler`. Exported `docsPane` from the returned object.
+- **`packages/editor/src/hud.ts`**: Removed external links section (bpmn.io, Camunda docs, OMG Spec) from the empty-state onboarding overlay.
+- **`apps/landing/src/scripts/editor.ts`**: Wired up `createElementDocsPlugin` into `dock.docsPane`; added to editor plugins array.
+- **`packages/plugins/package.json`**: Added `./element-docs` subpath export.
+
 ## 2026-03-09 — layout + optimizer + AI: vertical centering, gateway insertion, auto-fix
 
 - **Layout** (`packages/core/src/layout/layout-engine.ts`): Added Phase 4h — re-run `alignBaselinePath` after `resolveLayerOverlaps`. Overlap resolution can push baseline nodes off-center when they share a layer with branch nodes; the second pass re-anchors them.

@@ -9,6 +9,7 @@ import { createCommandPalettePlugin } from "@bpmn-sdk/plugins/command-palette"
 import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/plugins/command-palette-editor"
 import { createConfigPanelPlugin } from "@bpmn-sdk/plugins/config-panel"
 import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/plugins/config-panel-bpmn"
+import { createElementDocsPlugin } from "@bpmn-sdk/plugins/element-docs"
 import { createHistoryPanel, saveCheckpoint } from "@bpmn-sdk/plugins/history"
 import { createMainMenuPlugin } from "@bpmn-sdk/plugins/main-menu"
 import { createOptimizePlugin } from "@bpmn-sdk/plugins/optimize"
@@ -369,6 +370,12 @@ dock.setAiTabClickHandler(() => {
 	aiBridgePlugin.openPanel()
 })
 
+// Docs plugin — mounted into the Docs pane
+const elementDocsPlugin = createElementDocsPlugin({ container: dock.docsPane })
+dock.setDocsTabClickHandler(() => {
+	if (dock.collapsed) dock.expand()
+})
+
 // History pane
 const historyPanel = createHistoryPanel({
 	getCurrentContext: () => bridge.storagePlugin.api.getCurrentContext(),
@@ -415,6 +422,7 @@ const editor = new BpmnEditor({
 		tokenHighlightPlugin,
 		processRunnerPlugin,
 		aiBridgePlugin,
+		elementDocsPlugin,
 	],
 })
 editorRef = editor

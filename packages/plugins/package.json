@@ -28,6 +28,10 @@
 			"import": "./dist/config-panel-bpmn/index.js",
 			"types": "./dist/config-panel-bpmn/index.d.ts"
 		},
+		"./element-docs": {
+			"import": "./dist/element-docs/index.js",
+			"types": "./dist/element-docs/index.d.ts"
+		},
 		"./dmn-editor": {
 			"import": "./dist/dmn-editor/index.js",
 			"types": "./dist/dmn-editor/index.d.ts"

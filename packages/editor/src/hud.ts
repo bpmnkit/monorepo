@@ -1442,11 +1442,7 @@ export function initEditorHud(
 
 	onboardActions.append(scratchBtn, exampleBtn, aiBtn)
 
-	const onboardLinks = document.createElement("div")
-	onboardLinks.className = "bpmn-onboard-links"
-	onboardLinks.innerHTML = `<a href="https://bpmn.io" target="_blank" rel="noopener noreferrer">bpmn.io</a><a href="https://camunda.com/bpmn/reference/" target="_blank" rel="noopener noreferrer">BPMN Reference</a><a href="https://www.omg.org/bpmn/" target="_blank" rel="noopener noreferrer">OMG Spec</a><a href="https://docs.camunda.io/docs/components/modeler/bpmn/bpmn-coverage/" target="_blank" rel="noopener noreferrer">BPMN Elements</a>`
-
-	onboardInner.append(onboardHeader, onboardActions, onboardLinks)
+	onboardInner.append(onboardHeader, onboardActions)
 	onboardEl.appendChild(onboardInner)
 	document.body.appendChild(onboardEl)
 
