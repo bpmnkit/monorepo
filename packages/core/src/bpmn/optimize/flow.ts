@@ -202,6 +202,43 @@ export function analyzeFlow(p: BpmnProcess, _opts: ResolvedOptions): Optimizatio
 					insertFlow(proc, joinFlow)
 					targetEl.incoming = [joinFlowId]
 
+					// Add DI shape for the new gateway, positioned just before the target
+					const plane = findDiPlane(defs, processId)
+					if (plane) {
+						const tgtShape = plane.shapes.find((s) => s.bpmnElement === elId)
+						if (tgtShape) {
+							const gwWidth = 50
+							const gwHeight = 50
+							const gwX = tgtShape.bounds.x - 100
+							const gwY = tgtShape.bounds.y + (tgtShape.bounds.height - gwHeight) / 2
+							plane.shapes.push({
+								id: `${gatewayId}_di`,
+								bpmnElement: gatewayId,
+								bounds: { x: gwX, y: gwY, width: gwWidth, height: gwHeight },
+								unknownAttributes: {},
+							})
+							for (const inFlowId of oldIncomingIds) {
+								const edge = plane.edges.find((e) => e.bpmnElement === inFlowId)
+								if (edge && edge.waypoints.length > 0) {
+									const last = edge.waypoints[edge.waypoints.length - 1]
+									if (last) {
+										last.x = gwX + gwWidth / 2
+										last.y = gwY + gwHeight / 2
+									}
+								}
+							}
+							plane.edges.push({
+								id: `${joinFlowId}_di`,
+								bpmnElement: joinFlowId,
+								waypoints: [
+									{ x: gwX + gwWidth, y: gwY + gwHeight / 2 },
+									{ x: tgtShape.bounds.x, y: tgtShape.bounds.y + tgtShape.bounds.height / 2 },
+								],
+								unknownAttributes: {},
+							})
+						}
+					}
+
 					return {
 						description: `Inserted exclusive gateway "${gatewayId}" before "${elId}" to join ${inflowCount} incoming flows`,
 					}

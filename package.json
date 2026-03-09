@@ -14,6 +14,7 @@
 		"changeset": "changeset",
 		"version-packages": "changeset version",
 		"release": "pnpm turbo build && changeset publish",
+		"fix-bpmn": "node scripts/fix-bpmn.mjs",
 		"update-connectors": "node scripts/update-connectors.mjs",
 		"docs:dev": "pnpm --filter @bpmn-sdk/docs dev",
 		"docs:build": "pnpm turbo build --filter @bpmn-sdk/docs",

@@ -153,24 +153,38 @@ const server = http.createServer(async (req, res) => {
 				? (context as CompactDiagram)
 				: null
 
-		// ── Collect findings for improve action ──────────────────────────────────
+		// ── Apply auto-fixes, then collect remaining findings for improve ─────────
 		const findings: FindingInfo[] = []
-		if (action === "improve" && currentCompact) {
+		// fixedDefs holds the auto-fixed diagram; used as input for the AI
+		const fixedDefs = currentCompact ? expand(currentCompact) : null
+		if (currentCompact && fixedDefs) {
 			try {
-				const defs = expand(currentCompact)
-				const report = optimize(defs)
-				for (const f of report.findings) {
-					findings.push({
-						category: f.category,
-						severity: f.severity,
-						message: f.message,
-						suggestion: f.suggestion,
-						elementIds: f.elementIds,
-					})
+				const report = optimize(fixedDefs)
+				const order: Record<string, number> = { error: 0, warning: 1, info: 2 }
+				const fixable = report.findings
+					.filter((f) => f.applyFix)
+					.sort((a, b) => (order[a.severity] ?? 2) - (order[b.severity] ?? 2))
+				for (const f of fixable) {
+					f.applyFix?.(fixedDefs)
 				}
-				console.log(`[server] improve → ${findings.length} findings from core optimize()`)
+				if (fixable.length > 0) {
+					console.log(`[server] auto-applied ${fixable.length} fix(es) from core optimize()`)
+				}
+				if (action === "improve") {
+					const remaining = optimize(fixedDefs)
+					for (const f of remaining.findings) {
+						findings.push({
+							category: f.category,
+							severity: f.severity,
+							message: f.message,
+							suggestion: f.suggestion,
+							elementIds: f.elementIds,
+						})
+					}
+					console.log(`[server] improve → ${findings.length} remaining findings after auto-fix`)
+				}
 			} catch (err) {
-				console.error("[server] improve → core analysis failed:", String(err))
+				console.error("[server] auto-fix failed:", String(err))
 			}
 		}
 
@@ -200,7 +214,9 @@ const server = http.createServer(async (req, res) => {
 			mcpConfigFile = join(tmpDir, "mcp.json")
 
 			// Write input as BPMN XML (mcp-server reads XML, not CompactDiagram JSON)
-			if (currentCompact) writeFileSync(inputFile, Bpmn.export(expand(currentCompact)))
+			// Use fixedDefs if available (auto-fixes already applied); fall back to raw expand
+			if (fixedDefs) writeFileSync(inputFile, Bpmn.export(fixedDefs))
+			else if (currentCompact) writeFileSync(inputFile, Bpmn.export(expand(currentCompact)))
 
 			const mcpConfig = {
 				mcpServers: {

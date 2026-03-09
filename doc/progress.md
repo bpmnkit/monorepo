@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-03-09 — layout + optimizer + AI: vertical centering, gateway insertion, auto-fix
+
+- **Layout** (`packages/core/src/layout/layout-engine.ts`): Added Phase 4h — re-run `alignBaselinePath` after `resolveLayerOverlaps`. Overlap resolution can push baseline nodes off-center when they share a layer with branch nodes; the second pass re-anchors them.
+- **Optimizer fix** (`packages/core/src/bpmn/optimize/flow.ts`): `flow/multi-incoming-task` `applyFix` now also adds a DI shape and edge for the inserted exclusive gateway, positioned just before the target element, so the output XML renders correctly without a full re-layout.
+- **AI server** (`apps/ai-server/src/index.ts`): All actions that receive a diagram now auto-apply every fixable `optimize()` finding (errors first, then warnings, then info) before writing the input file for the AI. The AI receives a structurally clean diagram and for the "improve" action only sees the remaining non-auto-fixable issues.
+
 ## 2026-03-09 — core + AI: Camunda BPMN best-practice rules and naming conventions
 
 - **New linter category `"naming"`** (`packages/core/src/bpmn/optimize/naming.ts`): based on [Camunda BPMN best practices](https://docs.camunda.io/docs/components/best-practices/modeling/naming-bpmn-elements/):
