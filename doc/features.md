@@ -1,5 +1,10 @@
 # Features
 
+## Layout + optimizer improvements (2026-03-09) — `packages/core`
+
+- **Back-edge loop alignment**: `alignBranchBaselines` and `findBaselinePath` now correctly handle nodes with multiple successors caused by back-edge reversal, keeping sequential tasks on the main path aligned to the same center-y baseline.
+- **`flow/multi-incoming-task` rule**: new optimizer rule detects non-gateway elements with more than 1 incoming flow and auto-fixes by inserting an exclusive gateway join.
+
 ## AI-assisted diagram design UX (2026-03-08) — `packages/editor`, `apps/landing`
 
 - **New-diagram onboarding**: freshly-created diagrams show a full-coverage overlay instead of the canvas; three action cards let users choose "Start from scratch", "Generate example diagram", or "Ask AI"

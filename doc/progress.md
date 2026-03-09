@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-03-09 — core: layout back-edge alignment fix + flow/multi-incoming-task linter rule
+
+- **Layout fix** (`packages/core/src/layout/coordinates.ts`): `alignBranchBaselines` backward walk no longer stops early on non-gateway nodes with multiple successors (back-edge reversal artifact) — breaks only when the predecessor is a gateway type. Forward walk uses `unique-predecessor` successor heuristic for non-gateway nodes with multiple outgoing edges. `findBaselinePath` applies the same heuristic: non-gateway nodes with multiple successors follow the unique-predecessor continuation instead of the gateway-split path, fixing misalignment between `task_collect_docs` and downstream sequential tasks in loops.
+- **Linter rule** (`packages/core/src/bpmn/optimize/flow.ts`): new `flow/multi-incoming-task` finding detects non-gateway, non-startEvent elements with more than 1 incoming sequence flow. Severity: error. Auto-fix inserts an exclusive gateway before the element and redirects all incoming flows through it.
+- Tests: 3 new optimize tests (reports finding for task, not for gateway, applyFix rewires correctly) and 1 new layout test (back-edge loop alignment).
+
 ## 2026-03-09 — ai-bridge: diagram preview in chat + auto-approve tool calls
 
 - Added `--dangerously-skip-permissions` to claude CLI invocation in `adapters/claude.ts` — eliminates approval prompts during AI tool execution

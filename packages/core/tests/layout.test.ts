@@ -1400,3 +1400,42 @@ describe("Baseline Y-alignment", () => {
 		expect(Math.abs(aCenterY - gw1CenterY) > 10 || Math.abs(bCenterY - gw1CenterY) > 10).toBe(true)
 	})
 })
+
+describe("Back-edge loop alignment", () => {
+	it("aligns sequential tasks on main path when a task has a back-edge loop", () => {
+		// Process: start → task_collect → task_screen → end
+		// With a loop: task_request → task_collect (back edge)
+		// After back-edge reversal, task_collect gets 2 incoming flows (f1 from start, f17 reversed)
+		// task_collect and task_screen should share the same center-y
+		const process = proc(
+			"p1",
+			[
+				{ ...node("start", "startEvent"), outgoing: ["f1"] },
+				{ ...node("task_collect"), incoming: ["f1", "f17"], outgoing: ["f2"] },
+				{ ...node("task_screen"), incoming: ["f2"], outgoing: ["f3", "f4"] },
+				{ ...node("task_request"), incoming: ["f4"], outgoing: ["f17"] },
+				{ ...node("end", "endEvent"), incoming: ["f3"] },
+			],
+			[
+				flow("f1", "start", "task_collect"),
+				flow("f2", "task_collect", "task_screen"),
+				flow("f3", "task_screen", "end"),
+				flow("f4", "task_screen", "task_request"),
+				flow("f17", "task_request", "task_collect"), // back edge (loop)
+			],
+		)
+
+		const result = layoutProcess(process)
+		const nodeMap = new Map(result.nodes.map((n) => [n.id, n]))
+
+		const collectNode = nodeMap.get("task_collect")
+		const screenNode = nodeMap.get("task_screen")
+		if (!collectNode || !screenNode) throw new Error("Nodes not found")
+
+		const collectCenterY = collectNode.bounds.y + collectNode.bounds.height / 2
+		const screenCenterY = screenNode.bounds.y + screenNode.bounds.height / 2
+
+		// Both tasks should be on the same baseline (within 1px tolerance)
+		expect(Math.abs(collectCenterY - screenCenterY)).toBeLessThan(1)
+	})
+})

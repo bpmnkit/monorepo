@@ -1,5 +1,11 @@
 import { generateId } from "../../types/id-generator.js"
-import type { BpmnDefinitions, BpmnEndEvent, BpmnProcess, BpmnSequenceFlow } from "../bpmn-model.js"
+import type {
+	BpmnDefinitions,
+	BpmnEndEvent,
+	BpmnExclusiveGateway,
+	BpmnProcess,
+	BpmnSequenceFlow,
+} from "../bpmn-model.js"
 import type { OptimizationFinding, ResolvedOptions } from "./types.js"
 import {
 	buildFlowIndex,
@@ -127,6 +133,64 @@ export function analyzeFlow(p: BpmnProcess, _opts: ResolvedOptions): Optimizatio
 					}
 
 					return { description: `Added end event "${endEventId}" connected from "${deadEndId}"` }
+				},
+			})
+		}
+
+		// flow/multi-incoming-task: non-gateway element with more than 1 incoming flow
+		const inflows = byTarget.get(el.id) ?? []
+		if (!isGateway(el.type) && !isStartEvent(el.type) && inflows.length > 1) {
+			const elId = el.id
+			const inflowCount = inflows.length
+			findings.push({
+				id: "flow/multi-incoming-task",
+				category: "flow",
+				severity: "error",
+				message: `Element "${el.id}" (${el.type}) has ${inflows.length} incoming flows. Non-gateway elements must have at most one incoming flow.`,
+				suggestion: "Add an exclusive gateway before this element to join the incoming flows.",
+				processId,
+				elementIds: [el.id],
+				applyFix: (defs: BpmnDefinitions) => {
+					const proc = findProcess(defs, processId)
+					if (!proc) return { description: "Process not found" }
+
+					const targetEl = proc.flowElements.find((e) => e.id === elId)
+					if (!targetEl) return { description: "Element not found" }
+
+					const oldIncomingIds = [...targetEl.incoming]
+					const gatewayId = generateId("Gateway")
+					const joinFlowId = generateId("Flow")
+
+					// Redirect all existing incoming flows to the new gateway
+					for (const flowId of oldIncomingIds) {
+						const f = proc.sequenceFlows.find((sf) => sf.id === flowId)
+						if (f) f.targetRef = gatewayId
+					}
+
+					const gateway: BpmnExclusiveGateway = {
+						type: "exclusiveGateway",
+						id: gatewayId,
+						incoming: oldIncomingIds,
+						outgoing: [joinFlowId],
+						extensionElements: [],
+						unknownAttributes: {},
+					}
+
+					const joinFlow: BpmnSequenceFlow = {
+						id: joinFlowId,
+						sourceRef: gatewayId,
+						targetRef: elId,
+						extensionElements: [],
+						unknownAttributes: {},
+					}
+
+					insertElement(proc, gateway)
+					insertFlow(proc, joinFlow)
+					targetEl.incoming = [joinFlowId]
+
+					return {
+						description: `Inserted exclusive gateway "${gatewayId}" before "${elId}" to join ${inflowCount} incoming flows`,
+					}
 				},
 			})
 		}

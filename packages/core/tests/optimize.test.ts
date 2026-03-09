@@ -383,6 +383,108 @@ describe("optimize()", () => {
 			).toBe(true)
 		})
 
+		it("reports flow/multi-incoming-task for task with 2 incoming flows", () => {
+			// task_a ──f1──┐
+			//               ├──> task_b
+			// task_c ──f2──┘
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					taskEl("task_a", ["f0"], ["f1"]),
+					taskEl("task_c", ["f0b"], ["f2"]),
+					taskEl("task_b", ["f1", "f2"], ["f3"]),
+					endEl("e", ["f3"]),
+				],
+				[
+					flow("f0", "s", "task_a"),
+					flow("f0b", "s", "task_c"),
+					flow("f1", "task_a", "task_b"),
+					flow("f2", "task_c", "task_b"),
+					flow("f3", "task_b", "e"),
+				],
+			)
+			const report = optimize(makeDefs(proc))
+			const finding = report.findings.find((f) => f.id === "flow/multi-incoming-task")
+			expect(finding).toBeDefined()
+			expect(finding?.elementIds).toContain("task_b")
+			expect(finding?.severity).toBe("error")
+		})
+
+		it("does NOT report flow/multi-incoming-task for gateway with 2 incoming flows", () => {
+			const gw = gwEl("gw1", ["f1", "f2"], ["f3"])
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					taskEl("task_a", ["f0"], ["f1"]),
+					taskEl("task_c", ["f0b"], ["f2"]),
+					gw,
+					endEl("e", ["f3"]),
+				],
+				[
+					flow("f0", "s", "task_a"),
+					flow("f0b", "s", "task_c"),
+					flow("f1", "task_a", "gw1"),
+					flow("f2", "task_c", "gw1"),
+					flow("f3", "gw1", "e"),
+				],
+			)
+			const report = optimize(makeDefs(proc))
+			expect(report.findings.some((f) => f.id === "flow/multi-incoming-task")).toBe(false)
+		})
+
+		it("applyFix for flow/multi-incoming-task inserts gateway and rewires flows", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					taskEl("task_a", ["f0"], ["f1"]),
+					taskEl("task_c", ["f0b"], ["f2"]),
+					taskEl("task_b", ["f1", "f2"], ["f3"]),
+					endEl("e", ["f3"]),
+				],
+				[
+					flow("f0", "s", "task_a"),
+					flow("f0b", "s", "task_c"),
+					flow("f1", "task_a", "task_b"),
+					flow("f2", "task_c", "task_b"),
+					flow("f3", "task_b", "e"),
+				],
+			)
+			const defs = makeDefs(proc)
+			const report = optimize(defs)
+			const finding = report.findings.find((f) => f.id === "flow/multi-incoming-task")
+			if (!finding || !finding.applyFix) throw new Error("Missing applyFix")
+
+			finding.applyFix(defs)
+
+			const updatedProc = defs.processes[0]
+			if (!updatedProc) throw new Error("Process not found")
+
+			// A new exclusive gateway should exist
+			expect(updatedProc.flowElements.some((e) => e.type === "exclusiveGateway")).toBe(true)
+
+			// task_b should now have exactly 1 incoming flow
+			const updatedTaskB = updatedProc.flowElements.find((e) => e.id === "task_b")
+			if (!updatedTaskB) throw new Error("task_b not found")
+			expect(updatedTaskB.incoming).toHaveLength(1)
+
+			// The original flows (f1, f2) should now point to the new gateway
+			const f1 = updatedProc.sequenceFlows.find((f) => f.id === "f1")
+			const f2 = updatedProc.sequenceFlows.find((f) => f.id === "f2")
+			if (!f1 || !f2) throw new Error("Flows not found")
+			expect(f1.targetRef).not.toBe("task_b")
+			expect(f2.targetRef).not.toBe("task_b")
+			expect(f1.targetRef).toBe(f2.targetRef) // both point to same gateway
+
+			// A new flow from gateway → task_b should exist
+			const joinFlow = updatedProc.sequenceFlows.find(
+				(f) => f.targetRef === "task_b" && f.sourceRef !== "task_a" && f.sourceRef !== "task_c",
+			)
+			expect(joinFlow).toBeDefined()
+		})
+
 		it("reports flow/empty-subprocess", () => {
 			const sub: BpmnFlowElement = {
 				type: "subProcess",

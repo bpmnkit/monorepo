@@ -258,7 +258,7 @@ export function alignBranchBaselines(layoutNodes: LayoutNode[], dag: DirectedGra
 			const predNode = nodeMap.get(pred)
 			if (!predNode || GATEWAY_TYPE_SET.has(predNode.type)) break
 			const predSuccs = dag.successors.get(pred) ?? []
-			if (predSuccs.length !== 1) break
+			if (predSuccs.length !== 1 && GATEWAY_TYPE_SET.has(predNode.type)) break
 			rootId = pred
 		}
 
@@ -283,8 +283,16 @@ export function alignBranchBaselines(layoutNodes: LayoutNode[], dag: DirectedGra
 			}
 
 			const succs: string[] = dag.successors.get(currentId) ?? []
-			if (succs.length !== 1) break
-			const nextId: string | undefined = succs[0]
+			let nextId: string | undefined
+			if (succs.length === 1) {
+				nextId = succs[0]
+			} else if (succs.length > 1 && !GATEWAY_TYPE_SET.has(current.type)) {
+				// Non-gateway with multiple successors (back-edge reversal artifact).
+				// Follow the unique-predecessor successor — the main flow continuation.
+				nextId = succs.find((s) => (dag.predecessors.get(s) ?? []).length === 1)
+			} else {
+				break
+			}
 			if (!nextId) break
 			const nextNode = nodeMap.get(nextId)
 			if (!nextNode || GATEWAY_TYPE_SET.has(nextNode.type)) break
@@ -500,14 +508,21 @@ export function findBaselinePath(layoutNodes: LayoutNode[], dag: DirectedGraph):
 		if (succs.length === 1) {
 			currentId = succs[0]
 		} else {
-			// Split gateway: find join and jump to it
-			const joinId = findJoinGateway(currentId, dag, nodeMap)
-			if (joinId) {
-				currentId = joinId
+			const currentNode = nodeMap.get(currentId)
+			if (currentNode && GATEWAY_TYPE_SET.has(currentNode.type)) {
+				// Gateway split: find join and jump to it
+				const joinId = findJoinGateway(currentId, dag, nodeMap)
+				if (joinId) {
+					currentId = joinId
+				} else {
+					currentId = findContinuationSuccessor(succs, dag, nodeMap, visited)
+				}
 			} else {
-				// No join found — follow the continuation branch (not the dead-end).
-				// Prefer a successor that is a gateway, or the one with the longest forward reach.
-				currentId = findContinuationSuccessor(succs, dag, nodeMap, visited)
+				// Non-gateway with multiple successors (back-edge reversal artifact).
+				// Follow the unique-predecessor successor — the main flow continuation.
+				currentId =
+					succs.find((s) => !visited.has(s) && (dag.predecessors.get(s) ?? []).length === 1) ??
+					succs.find((s) => !visited.has(s))
 			}
 		}
 	}

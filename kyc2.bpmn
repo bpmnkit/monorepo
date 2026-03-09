@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="kyc-process" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="kyc" name="Know Your Customer (KYC) Process" isExecutable="true">
+    <bpmn:startEvent id="start" name="Customer Application Received">
+      <bpmn:outgoing>f1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="collect_info" name="Collect Customer Information">
+      <bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="upload_docs" name="Upload Identity Documents">
+      <bpmn:incoming>f2</bpmn:incoming>
+      <bpmn:incoming>f6</bpmn:incoming>
+      <bpmn:outgoing>f3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="verify_docs" name="Verify Documents">
+      <bpmn:incoming>f3</bpmn:incoming>
+      <bpmn:outgoing>f4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="check_docs" name="Documents Valid?">
+      <bpmn:incoming>f4</bpmn:incoming>
+      <bpmn:outgoing>f5</bpmn:outgoing>
+      <bpmn:outgoing>f7</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="request_resubmit" name="Request Document Resubmission">
+      <bpmn:incoming>f5</bpmn:incoming>
+      <bpmn:outgoing>f6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="identity_check" name="Identity Verification Check">
+      <bpmn:incoming>f7</bpmn:incoming>
+      <bpmn:outgoing>f8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="aml_screening" name="AML / Sanctions Screening">
+      <bpmn:incoming>f8</bpmn:incoming>
+      <bpmn:outgoing>f9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:businessRuleTask id="risk_assessment" name="Risk Assessment">
+      <bpmn:incoming>f9</bpmn:incoming>
+      <bpmn:outgoing>f10</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:exclusiveGateway id="risk_gateway" name="Risk Level?">
+      <bpmn:incoming>f10</bpmn:incoming>
+      <bpmn:outgoing>f11</bpmn:outgoing>
+      <bpmn:outgoing>f12</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="manual_review" name="Manual Review by Compliance Officer">
+      <bpmn:incoming>f12</bpmn:incoming>
+      <bpmn:outgoing>f13</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="review_decision" name="Review Decision?">
+      <bpmn:incoming>f13</bpmn:incoming>
+      <bpmn:outgoing>f14</bpmn:outgoing>
+      <bpmn:outgoing>f15</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="approve_customer" name="Approve &amp; Onboard Customer">
+      <bpmn:incoming>f11</bpmn:incoming>
+      <bpmn:incoming>f14</bpmn:incoming>
+      <bpmn:outgoing>f16</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="notify_approved" name="Notify Customer - Approved">
+      <bpmn:incoming>f16</bpmn:incoming>
+      <bpmn:outgoing>f17</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="reject_customer" name="Reject Application">
+      <bpmn:incoming>f15</bpmn:incoming>
+      <bpmn:outgoing>f18</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="notify_rejected" name="Notify Customer - Rejected">
+      <bpmn:incoming>f18</bpmn:incoming>
+      <bpmn:outgoing>f19</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="end_approved" name="Customer Onboarded">
+      <bpmn:incoming>f17</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="end_rejected" name="Application Rejected">
+      <bpmn:incoming>f19</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="collect_info"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="collect_info" targetRef="upload_docs"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="upload_docs" targetRef="verify_docs"/>
+    <bpmn:sequenceFlow id="f4" sourceRef="verify_docs" targetRef="check_docs"/>
+    <bpmn:sequenceFlow id="f5" sourceRef="check_docs" targetRef="request_resubmit" name="No"/>
+    <bpmn:sequenceFlow id="f6" sourceRef="request_resubmit" targetRef="upload_docs"/>
+    <bpmn:sequenceFlow id="f7" sourceRef="check_docs" targetRef="identity_check" name="Yes"/>
+    <bpmn:sequenceFlow id="f8" sourceRef="identity_check" targetRef="aml_screening"/>
+    <bpmn:sequenceFlow id="f9" sourceRef="aml_screening" targetRef="risk_assessment"/>
+    <bpmn:sequenceFlow id="f10" sourceRef="risk_assessment" targetRef="risk_gateway"/>
+    <bpmn:sequenceFlow id="f11" sourceRef="risk_gateway" targetRef="approve_customer" name="Low Risk"/>
+    <bpmn:sequenceFlow id="f12" sourceRef="risk_gateway" targetRef="manual_review" name="Medium / High Risk"/>
+    <bpmn:sequenceFlow id="f13" sourceRef="manual_review" targetRef="review_decision"/>
+    <bpmn:sequenceFlow id="f14" sourceRef="review_decision" targetRef="approve_customer" name="Approve"/>
+    <bpmn:sequenceFlow id="f15" sourceRef="review_decision" targetRef="reject_customer" name="Reject"/>
+    <bpmn:sequenceFlow id="f16" sourceRef="approve_customer" targetRef="notify_approved"/>
+    <bpmn:sequenceFlow id="f17" sourceRef="notify_approved" targetRef="end_approved"/>
+    <bpmn:sequenceFlow id="f18" sourceRef="reject_customer" targetRef="notify_rejected"/>
+    <bpmn:sequenceFlow id="f19" sourceRef="notify_rejected" targetRef="end_rejected"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_kyc">
+    <bpmndi:BPMNPlane id="BPMNPlane_kyc" bpmnElement="kyc">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start">
+        <dc:Bounds x="82" y="164" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="-1.5" y="204" width="203" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="collect_info_di" bpmnElement="collect_info">
+        <dc:Bounds x="250" y="142" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="upload_docs_di" bpmnElement="upload_docs">
+        <dc:Bounds x="450" y="142" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="verify_docs_di" bpmnElement="verify_docs">
+        <dc:Bounds x="650" y="142" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="check_docs_di" bpmnElement="check_docs">
+        <dc:Bounds x="882" y="164" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="922" y="146" width="112" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="request_resubmit_di" bpmnElement="request_resubmit">
+        <dc:Bounds x="1050" y="62" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="identity_check_di" bpmnElement="identity_check">
+        <dc:Bounds x="1050" y="222" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="aml_screening_di" bpmnElement="aml_screening">
+        <dc:Bounds x="1250" y="222" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="risk_assessment_di" bpmnElement="risk_assessment">
+        <dc:Bounds x="1450" y="222" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="risk_gateway_di" bpmnElement="risk_gateway">
+        <dc:Bounds x="1682" y="186" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1722" y="168" width="77" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="manual_review_di" bpmnElement="manual_review">
+        <dc:Bounds x="1850" y="244" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="review_decision_di" bpmnElement="review_decision">
+        <dc:Bounds x="2082" y="288" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2122" y="270" width="112" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="approve_customer_di" bpmnElement="approve_customer">
+        <dc:Bounds x="2250" y="186" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="reject_customer_di" bpmnElement="reject_customer">
+        <dc:Bounds x="2250" y="346" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="notify_approved_di" bpmnElement="notify_approved">
+        <dc:Bounds x="2450" y="186" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="notify_rejected_di" bpmnElement="notify_rejected">
+        <dc:Bounds x="2450" y="346" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_approved_di" bpmnElement="end_approved">
+        <dc:Bounds x="2682" y="208" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2637" y="248" width="126" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_rejected_di" bpmnElement="end_rejected">
+        <dc:Bounds x="2682" y="368" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2630" y="408" width="140" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="f1_di" bpmnElement="f1">
+        <di:waypoint x="118" y="182"/>
+        <di:waypoint x="250" y="182"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f2_di" bpmnElement="f2">
+        <di:waypoint x="350" y="182"/>
+        <di:waypoint x="450" y="182"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f3_di" bpmnElement="f3">
+        <di:waypoint x="550" y="182"/>
+        <di:waypoint x="650" y="182"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f4_di" bpmnElement="f4">
+        <di:waypoint x="750" y="182"/>
+        <di:waypoint x="882" y="182"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f5_di" bpmnElement="f5">
+        <di:waypoint x="900" y="164"/>
+        <di:waypoint x="900" y="102"/>
+        <di:waypoint x="1050" y="102"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f6_di" bpmnElement="f6">
+        <di:waypoint x="1150" y="102"/>
+        <di:waypoint x="1170" y="102"/>
+        <di:waypoint x="1170" y="32"/>
+        <di:waypoint x="430" y="32"/>
+        <di:waypoint x="430" y="182"/>
+        <di:waypoint x="450" y="182"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f7_di" bpmnElement="f7">
+        <di:waypoint x="900" y="200"/>
+        <di:waypoint x="900" y="262"/>
+        <di:waypoint x="1050" y="262"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f8_di" bpmnElement="f8">
+        <di:waypoint x="1150" y="262"/>
+        <di:waypoint x="1250" y="262"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f9_di" bpmnElement="f9">
+        <di:waypoint x="1350" y="262"/>
+        <di:waypoint x="1450" y="262"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f10_di" bpmnElement="f10">
+        <di:waypoint x="1550" y="262"/>
+        <di:waypoint x="1682" y="262"/>
+        <di:waypoint x="1682" y="204"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f11_di" bpmnElement="f11">
+        <di:waypoint x="1700" y="186"/>
+        <di:waypoint x="1700" y="226"/>
+        <di:waypoint x="2250" y="226"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f12_di" bpmnElement="f12">
+        <di:waypoint x="1700" y="222"/>
+        <di:waypoint x="1700" y="284"/>
+        <di:waypoint x="1850" y="284"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f13_di" bpmnElement="f13">
+        <di:waypoint x="1950" y="284"/>
+        <di:waypoint x="2082" y="284"/>
+        <di:waypoint x="2082" y="306"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f14_di" bpmnElement="f14">
+        <di:waypoint x="2100" y="288"/>
+        <di:waypoint x="2100" y="226"/>
+        <di:waypoint x="2250" y="226"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f15_di" bpmnElement="f15">
+        <di:waypoint x="2100" y="324"/>
+        <di:waypoint x="2100" y="386"/>
+        <di:waypoint x="2250" y="386"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f16_di" bpmnElement="f16">
+        <di:waypoint x="2350" y="226"/>
+        <di:waypoint x="2450" y="226"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f17_di" bpmnElement="f17">
+        <di:waypoint x="2550" y="226"/>
+        <di:waypoint x="2682" y="226"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f18_di" bpmnElement="f18">
+        <di:waypoint x="2350" y="386"/>
+        <di:waypoint x="2450" y="386"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f19_di" bpmnElement="f19">
+        <di:waypoint x="2550" y="386"/>
+        <di:waypoint x="2682" y="386"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
+
