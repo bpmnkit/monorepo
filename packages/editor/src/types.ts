@@ -1,5 +1,5 @@
-import type { CanvasEvents, CanvasOptions } from "@bpmn-sdk/canvas";
-import type { BpmnDefinitions } from "@bpmn-sdk/core";
+import type { CanvasEvents, CanvasOptions } from "@bpmn-sdk/canvas"
+import type { BpmnDefinitions } from "@bpmn-sdk/core"
 
 export type CreateShapeType =
 	| "startEvent"
@@ -43,7 +43,7 @@ export type CreateShapeType =
 	| "inclusiveGateway"
 	| "eventBasedGateway"
 	| "complexGateway"
-	| "textAnnotation";
+	| "textAnnotation"
 
 /** Element types that support resize handles. */
 export const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
@@ -60,12 +60,12 @@ export const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
 	"adHocSubProcess",
 	"transaction",
 	"textAnnotation",
-]);
+])
 
-export type Tool = "select" | "pan" | "space" | `create:${CreateShapeType}`;
+export type Tool = "select" | "pan" | "space" | `create:${CreateShapeType}`
 
-export type HandleDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
-export type PortDir = "top" | "right" | "bottom" | "left";
+export type HandleDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w"
+export type PortDir = "top" | "right" | "bottom" | "left"
 
 export type EditorOptions = CanvasOptions & {
 	/**
@@ -73,13 +73,13 @@ export type EditorOptions = CanvasOptions & {
 	 * `localStorage.getItem("bpmn-theme")` and persists theme changes back to
 	 * localStorage automatically. The stored key is `"bpmn-theme"`.
 	 */
-	persistTheme?: boolean;
-};
+	persistTheme?: boolean
+}
 
 export interface EditorEvents extends CanvasEvents {
-	"diagram:change": (defs: BpmnDefinitions) => void;
-	"editor:select": (ids: string[]) => void;
-	"editor:tool": (tool: Tool) => void;
+	"diagram:change": (defs: BpmnDefinitions) => void
+	"editor:select": (ids: string[]) => void
+	"editor:tool": (tool: Tool) => void
 }
 
 /** Label position options for events and gateways (external labels). */
@@ -91,7 +91,7 @@ export type LabelPosition =
 	| "bottom-left"
 	| "bottom-right"
 	| "top-left"
-	| "top-right";
+	| "top-right"
 
 export type HitResult =
 	| { type: "canvas" }
@@ -101,9 +101,9 @@ export type HitResult =
 	| { type: "edge"; id: string }
 	| { type: "edge-endpoint"; edgeId: string; isStart: boolean }
 	| { type: "edge-segment"; id: string; segIdx: number; isHoriz: boolean; projPt: DiagPoint }
-	| { type: "edge-waypoint"; id: string; wpIdx: number; pt: DiagPoint };
+	| { type: "edge-waypoint"; id: string; wpIdx: number; pt: DiagPoint }
 
 export interface DiagPoint {
-	x: number;
-	y: number;
+	x: number
+	y: number
 }

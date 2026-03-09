@@ -1,4 +1,4 @@
-import { generateId } from "../types/id-generator.js";
+import { generateId } from "../types/id-generator.js"
 import type {
 	DmnDecision,
 	DmnDecisionTable,
@@ -11,77 +11,77 @@ import type {
 	DmnRule,
 	DmnTypeRef,
 	HitPolicy,
-} from "./dmn-model.js";
-import { serializeDmn } from "./dmn-serializer.js";
+} from "./dmn-model.js"
+import { serializeDmn } from "./dmn-serializer.js"
 
-const DMN_MODEL_NS = "https://www.omg.org/spec/DMN/20191111/MODEL/";
-const DMN_DI_NS = "https://www.omg.org/spec/DMN/20191111/DMNDI/";
-const DC_NS = "http://www.omg.org/spec/DMN/20180521/DC/";
-const MODELER_NS = "http://camunda.org/schema/modeler/1.0";
-const DEFAULT_NAMESPACE = "http://camunda.org/schema/1.0/dmn";
+const DMN_MODEL_NS = "https://www.omg.org/spec/DMN/20191111/MODEL/"
+const DMN_DI_NS = "https://www.omg.org/spec/DMN/20191111/DMNDI/"
+const DC_NS = "http://www.omg.org/spec/DMN/20180521/DC/"
+const MODELER_NS = "http://camunda.org/schema/modeler/1.0"
+const DEFAULT_NAMESPACE = "http://camunda.org/schema/1.0/dmn"
 
 /** Options for creating a decision table input column. */
 export interface InputOptions {
 	/** Display label for the input column. */
-	label?: string;
+	label?: string
 	/** FEEL expression for the input (e.g., variable name). */
-	expression: string;
+	expression: string
 	/** Data type of the input. */
-	typeRef?: DmnTypeRef;
+	typeRef?: DmnTypeRef
 }
 
 /** Options for creating a decision table output column. */
 export interface OutputOptions {
 	/** Display label for the output column. */
-	label?: string;
+	label?: string
 	/** Variable name for the output. */
-	name: string;
+	name: string
 	/** Data type of the output. */
-	typeRef?: DmnTypeRef;
+	typeRef?: DmnTypeRef
 }
 
 /** Options for creating a decision table rule (row). */
 export interface RuleOptions {
 	/** Human-readable description/annotation for this rule. */
-	description?: string;
+	description?: string
 	/** Input entry values (unary tests), one per input column. */
-	inputs: string[];
+	inputs: string[]
 	/** Output entry values (literal expressions), one per output column. */
-	outputs: string[];
+	outputs: string[]
 }
 
 /** Fluent builder for constructing DMN decision tables. */
 export class DecisionTableBuilder {
-	private readonly decisionId: string;
-	private decisionName: string;
-	private tableId: string;
-	private hitPolicyValue: HitPolicy = "UNIQUE";
-	private readonly inputColumns: DmnInput[] = [];
-	private readonly outputColumns: DmnOutput[] = [];
-	private readonly ruleRows: DmnRule[] = [];
+	private readonly decisionId: string
+	private decisionName: string
+	private tableId: string
+	private hitPolicyValue: HitPolicy = "UNIQUE"
+	private readonly inputColumns: DmnInput[] = []
+	private readonly outputColumns: DmnOutput[] = []
+	private readonly ruleRows: DmnRule[] = []
 
 	constructor(decisionId: string) {
-		this.decisionId = decisionId;
-		this.decisionName = decisionId;
-		this.tableId = generateId("DecisionTable");
+		this.decisionId = decisionId
+		this.decisionName = decisionId
+		this.tableId = generateId("DecisionTable")
 	}
 
 	/** Set the display name for this decision. */
 	name(name: string): this {
-		this.decisionName = name;
-		return this;
+		this.decisionName = name
+		return this
 	}
 
 	/** Set the hit policy for this decision table. */
 	hitPolicy(policy: HitPolicy): this {
-		this.hitPolicyValue = policy;
-		return this;
+		this.hitPolicyValue = policy
+		return this
 	}
 
 	/** Add an input column to the decision table. */
 	input(options: InputOptions): this {
-		const inputId = generateId("Input");
-		const exprId = generateId("InputExpression");
+		const inputId = generateId("Input")
+		const exprId = generateId("InputExpression")
 
 		this.inputColumns.push({
 			id: inputId,
@@ -91,23 +91,23 @@ export class DecisionTableBuilder {
 				typeRef: options.typeRef,
 				text: options.expression,
 			},
-		});
+		})
 
-		return this;
+		return this
 	}
 
 	/** Add an output column to the decision table. */
 	output(options: OutputOptions): this {
-		const outputId = generateId("Output");
+		const outputId = generateId("Output")
 
 		this.outputColumns.push({
 			id: outputId,
 			label: options.label,
 			name: options.name,
 			typeRef: options.typeRef,
-		});
+		})
 
-		return this;
+		return this
 	}
 
 	/** Add a rule (row) to the decision table. */
@@ -115,32 +115,32 @@ export class DecisionTableBuilder {
 		if (options.inputs.length !== this.inputColumns.length) {
 			throw new Error(
 				`Rule has ${options.inputs.length} inputs but table has ${this.inputColumns.length} input columns`,
-			);
+			)
 		}
 		if (options.outputs.length !== this.outputColumns.length) {
 			throw new Error(
 				`Rule has ${options.outputs.length} outputs but table has ${this.outputColumns.length} output columns`,
-			);
+			)
 		}
 
 		const inputEntries: DmnInputEntry[] = options.inputs.map((text) => ({
 			id: generateId("UnaryTests"),
 			text,
-		}));
+		}))
 
 		const outputEntries: DmnOutputEntry[] = options.outputs.map((text) => ({
 			id: generateId("LiteralExpression"),
 			text,
-		}));
+		}))
 
 		this.ruleRows.push({
 			id: generateId("DecisionRule"),
 			description: options.description,
 			inputEntries,
 			outputEntries,
-		});
+		})
 
-		return this;
+		return this
 	}
 
 	/** Build the DMN definitions model. */
@@ -151,7 +151,7 @@ export class DecisionTableBuilder {
 			inputs: this.inputColumns,
 			outputs: this.outputColumns,
 			rules: this.ruleRows,
-		};
+		}
 
 		const decision: DmnDecision = {
 			id: this.decisionId,
@@ -160,7 +160,7 @@ export class DecisionTableBuilder {
 			informationRequirements: [],
 			knowledgeRequirements: [],
 			authorityRequirements: [],
-		};
+		}
 
 		const diagram: DmnDiagram = {
 			shapes: [
@@ -170,7 +170,7 @@ export class DecisionTableBuilder {
 				},
 			],
 			edges: [],
-		};
+		}
 
 		return {
 			id: generateId("Definitions"),
@@ -195,11 +195,11 @@ export class DecisionTableBuilder {
 			textAnnotations: [],
 			associations: [],
 			diagram,
-		};
+		}
 	}
 
 	/** Build and export as DMN XML string. */
 	toXml(): string {
-		return serializeDmn(this.build());
+		return serializeDmn(this.build())
 	}
 }

@@ -1,9 +1,9 @@
-const STYLE_ID = "stor-dialog-styles";
+const STYLE_ID = "stor-dialog-styles"
 
 function injectStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
 	style.textContent = `
 .stor-dialog-overlay {
   position: fixed; inset: 0; z-index: 500;
@@ -93,139 +93,139 @@ function injectStyles(): void {
   color: #fff;
 }
 [data-bpmn-hud-theme="light"] .stor-dialog-btn--danger:hover { background: rgba(180,30,30,1); }
-`;
-	document.head.appendChild(style);
+`
+	document.head.appendChild(style)
 }
 
 /** Shows a modal input dialog. Returns the trimmed value or null if cancelled. */
 export function showInputDialog(opts: {
-	title: string;
-	defaultValue?: string;
-	placeholder?: string;
-	confirmLabel?: string;
+	title: string
+	defaultValue?: string
+	placeholder?: string
+	confirmLabel?: string
 }): Promise<string | null> {
 	return new Promise((resolve) => {
-		injectStyles();
+		injectStyles()
 
-		const overlay = document.createElement("div");
-		overlay.className = "stor-dialog-overlay";
+		const overlay = document.createElement("div")
+		overlay.className = "stor-dialog-overlay"
 
-		const dialog = document.createElement("div");
-		dialog.className = "stor-dialog";
+		const dialog = document.createElement("div")
+		dialog.className = "stor-dialog"
 
-		const titleEl = document.createElement("div");
-		titleEl.className = "stor-dialog-title";
-		titleEl.textContent = opts.title;
+		const titleEl = document.createElement("div")
+		titleEl.className = "stor-dialog-title"
+		titleEl.textContent = opts.title
 
-		const input = document.createElement("input");
-		input.type = "text";
-		input.className = "stor-dialog-input";
-		input.value = opts.defaultValue ?? "";
-		if (opts.placeholder) input.placeholder = opts.placeholder;
+		const input = document.createElement("input")
+		input.type = "text"
+		input.className = "stor-dialog-input"
+		input.value = opts.defaultValue ?? ""
+		if (opts.placeholder) input.placeholder = opts.placeholder
 
-		const actions = document.createElement("div");
-		actions.className = "stor-dialog-actions";
+		const actions = document.createElement("div")
+		actions.className = "stor-dialog-actions"
 
-		const cancelBtn = document.createElement("button");
-		cancelBtn.className = "stor-dialog-btn";
-		cancelBtn.textContent = "Cancel";
+		const cancelBtn = document.createElement("button")
+		cancelBtn.className = "stor-dialog-btn"
+		cancelBtn.textContent = "Cancel"
 
-		const confirmBtn = document.createElement("button");
-		confirmBtn.className = "stor-dialog-btn stor-dialog-btn--primary";
-		confirmBtn.textContent = opts.confirmLabel ?? "OK";
+		const confirmBtn = document.createElement("button")
+		confirmBtn.className = "stor-dialog-btn stor-dialog-btn--primary"
+		confirmBtn.textContent = opts.confirmLabel ?? "OK"
 
 		function close(value: string | null): void {
-			overlay.remove();
-			document.removeEventListener("keydown", handleKey);
-			resolve(value);
+			overlay.remove()
+			document.removeEventListener("keydown", handleKey)
+			resolve(value)
 		}
 
-		cancelBtn.addEventListener("click", () => close(null));
-		confirmBtn.addEventListener("click", () => close(input.value.trim() || null));
+		cancelBtn.addEventListener("click", () => close(null))
+		confirmBtn.addEventListener("click", () => close(input.value.trim() || null))
 
 		function handleKey(e: KeyboardEvent): void {
-			if (e.key === "Escape") close(null);
-			else if (e.key === "Enter") close(input.value.trim() || null);
+			if (e.key === "Escape") close(null)
+			else if (e.key === "Enter") close(input.value.trim() || null)
 		}
-		document.addEventListener("keydown", handleKey);
+		document.addEventListener("keydown", handleKey)
 
 		overlay.addEventListener("click", (e) => {
-			if (e.target === overlay) close(null);
-		});
+			if (e.target === overlay) close(null)
+		})
 
-		actions.append(cancelBtn, confirmBtn);
-		dialog.append(titleEl, input, actions);
-		overlay.append(dialog);
-		document.body.append(overlay);
+		actions.append(cancelBtn, confirmBtn)
+		dialog.append(titleEl, input, actions)
+		overlay.append(dialog)
+		document.body.append(overlay)
 
 		requestAnimationFrame(() => {
-			input.select();
-			input.focus();
-		});
-	});
+			input.select()
+			input.focus()
+		})
+	})
 }
 
 /** Shows a modal confirmation dialog. Returns true if confirmed, false if cancelled. */
 export function showConfirmDialog(opts: {
-	title: string;
-	message: string;
-	confirmLabel?: string;
-	danger?: boolean;
+	title: string
+	message: string
+	confirmLabel?: string
+	danger?: boolean
 }): Promise<boolean> {
 	return new Promise((resolve) => {
-		injectStyles();
+		injectStyles()
 
-		const overlay = document.createElement("div");
-		overlay.className = "stor-dialog-overlay";
+		const overlay = document.createElement("div")
+		overlay.className = "stor-dialog-overlay"
 
-		const dialog = document.createElement("div");
-		dialog.className = "stor-dialog";
+		const dialog = document.createElement("div")
+		dialog.className = "stor-dialog"
 
-		const titleEl = document.createElement("div");
-		titleEl.className = "stor-dialog-title";
-		titleEl.textContent = opts.title;
+		const titleEl = document.createElement("div")
+		titleEl.className = "stor-dialog-title"
+		titleEl.textContent = opts.title
 
-		const msgEl = document.createElement("div");
-		msgEl.className = "stor-dialog-msg";
-		msgEl.textContent = opts.message;
+		const msgEl = document.createElement("div")
+		msgEl.className = "stor-dialog-msg"
+		msgEl.textContent = opts.message
 
-		const actions = document.createElement("div");
-		actions.className = "stor-dialog-actions";
+		const actions = document.createElement("div")
+		actions.className = "stor-dialog-actions"
 
-		const cancelBtn = document.createElement("button");
-		cancelBtn.className = "stor-dialog-btn";
-		cancelBtn.textContent = "Cancel";
+		const cancelBtn = document.createElement("button")
+		cancelBtn.className = "stor-dialog-btn"
+		cancelBtn.textContent = "Cancel"
 
-		const confirmBtn = document.createElement("button");
+		const confirmBtn = document.createElement("button")
 		confirmBtn.className = opts.danger
 			? "stor-dialog-btn stor-dialog-btn--danger"
-			: "stor-dialog-btn stor-dialog-btn--primary";
-		confirmBtn.textContent = opts.confirmLabel ?? "Confirm";
+			: "stor-dialog-btn stor-dialog-btn--primary"
+		confirmBtn.textContent = opts.confirmLabel ?? "Confirm"
 
 		function close(result: boolean): void {
-			overlay.remove();
-			document.removeEventListener("keydown", handleKey);
-			resolve(result);
+			overlay.remove()
+			document.removeEventListener("keydown", handleKey)
+			resolve(result)
 		}
 
-		cancelBtn.addEventListener("click", () => close(false));
-		confirmBtn.addEventListener("click", () => close(true));
+		cancelBtn.addEventListener("click", () => close(false))
+		confirmBtn.addEventListener("click", () => close(true))
 
 		function handleKey(e: KeyboardEvent): void {
-			if (e.key === "Escape") close(false);
-			else if (e.key === "Enter") close(true);
+			if (e.key === "Escape") close(false)
+			else if (e.key === "Enter") close(true)
 		}
-		document.addEventListener("keydown", handleKey);
+		document.addEventListener("keydown", handleKey)
 
 		overlay.addEventListener("click", (e) => {
-			if (e.target === overlay) close(false);
-		});
+			if (e.target === overlay) close(false)
+		})
 
-		actions.append(cancelBtn, confirmBtn);
-		dialog.append(titleEl, msgEl, actions);
-		overlay.append(dialog);
-		document.body.append(overlay);
+		actions.append(cancelBtn, confirmBtn)
+		dialog.append(titleEl, msgEl, actions)
+		overlay.append(dialog)
+		document.body.append(overlay)
 
-		requestAnimationFrame(() => confirmBtn.focus());
-	});
+		requestAnimationFrame(() => confirmBtn.focus())
+	})
 }

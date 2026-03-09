@@ -1,5 +1,5 @@
 /** ID used to prevent duplicate style injection. */
-export const MINIMAP_STYLE_ID = "bpmn-minimap-styles-v1";
+export const MINIMAP_STYLE_ID = "bpmn-minimap-styles-v1"
 
 /** CSS for the minimap plugin, injected once into `<head>`. */
 export const MINIMAP_CSS = `
@@ -37,17 +37,17 @@ export const MINIMAP_CSS = `
   stroke: var(--bpmn-viewport-stroke, rgba(0, 102, 204, 0.5));
   stroke-width: 1;
 }
-`;
+`
 
 /**
  * Injects the minimap stylesheet into `<head>` if not already present.
  * Safe to call multiple times — only one `<style>` tag is ever inserted.
  */
 export function injectMinimapStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(MINIMAP_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = MINIMAP_STYLE_ID;
-	style.textContent = MINIMAP_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(MINIMAP_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = MINIMAP_STYLE_ID
+	style.textContent = MINIMAP_CSS
+	document.head.appendChild(style)
 }

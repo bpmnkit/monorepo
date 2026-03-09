@@ -22,10 +22,10 @@
  * @packageDocumentation
  */
 
-import type { BpmnDefinitions } from "@bpmn-sdk/core";
-import { injectConfigPanelStyles } from "./css.js";
-import { ConfigPanelRenderer } from "./renderer.js";
-import type { ConfigPanelOptions, ConfigPanelPlugin, PanelAdapter, PanelSchema } from "./types.js";
+import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import { injectConfigPanelStyles } from "./css.js"
+import { ConfigPanelRenderer } from "./renderer.js"
+import type { ConfigPanelOptions, ConfigPanelPlugin, PanelAdapter, PanelSchema } from "./types.js"
 
 export type {
 	ConfigPanelOptions,
@@ -37,9 +37,9 @@ export type {
 	PanelAdapter,
 	PanelSchema,
 	SelectOption,
-} from "./types.js";
+} from "./types.js"
 
-export { CONFIG_PANEL_CSS, CONFIG_PANEL_STYLE_ID, injectConfigPanelStyles } from "./css.js";
+export { CONFIG_PANEL_CSS, CONFIG_PANEL_STYLE_ID, injectConfigPanelStyles } from "./css.js"
 
 // ── Factory ───────────────────────────────────────────────────────────────────
 
@@ -52,18 +52,18 @@ export { CONFIG_PANEL_CSS, CONFIG_PANEL_STYLE_ID, injectConfigPanelStyles } from
  *   May reference the editor lazily via a captured reference.
  */
 export function createConfigPanelPlugin(options: ConfigPanelOptions): ConfigPanelPlugin {
-	const { getDefinitions, applyChange } = options;
+	const { getDefinitions, applyChange } = options
 
 	// Shared schema registry — populated before or after install via registerSchema
-	const _schemas = new Map<string, { schema: PanelSchema; adapter: PanelAdapter }>();
-	let _renderer: ConfigPanelRenderer | null = null;
-	const _unsubs: Array<() => void> = [];
+	const _schemas = new Map<string, { schema: PanelSchema; adapter: PanelAdapter }>()
+	let _renderer: ConfigPanelRenderer | null = null
+	const _unsubs: Array<() => void> = []
 
 	return {
 		name: "config-panel",
 
 		install(api) {
-			injectConfigPanelStyles();
+			injectConfigPanelStyles()
 			_renderer = new ConfigPanelRenderer(
 				_schemas,
 				getDefinitions,
@@ -76,34 +76,34 @@ export function createConfigPanelPlugin(options: ConfigPanelOptions): ConfigPane
 					onPanelHide: options.onPanelHide,
 					openInPlayground: options.openInPlayground,
 				},
-			);
+			)
 
 			// BpmnEditor routes EditorEvents through api.on at runtime.
 			// TypeScript only knows CanvasEvents here, so we cast for editor events.
-			type EvtFn = (event: string, handler: (...args: unknown[]) => void) => () => void;
-			const anyOn = api.on.bind(api) as unknown as EvtFn;
+			type EvtFn = (event: string, handler: (...args: unknown[]) => void) => () => void
+			const anyOn = api.on.bind(api) as unknown as EvtFn
 
 			_unsubs.push(
 				anyOn("editor:select", (rawIds) => {
-					_renderer?.onSelect(rawIds as string[], api.getShapes(), api.getEdges());
+					_renderer?.onSelect(rawIds as string[], api.getShapes(), api.getEdges())
 				}),
-			);
+			)
 			_unsubs.push(
 				anyOn("diagram:change", (rawDefs) => {
-					_renderer?.onDiagramChange(rawDefs as BpmnDefinitions);
+					_renderer?.onDiagramChange(rawDefs as BpmnDefinitions)
 				}),
-			);
+			)
 		},
 
 		uninstall() {
-			for (const unsub of _unsubs) unsub();
-			_unsubs.length = 0;
-			_renderer?.destroy();
-			_renderer = null;
+			for (const unsub of _unsubs) unsub()
+			_unsubs.length = 0
+			_renderer?.destroy()
+			_renderer = null
 		},
 
 		registerSchema(elementType: string, schema: PanelSchema, adapter: PanelAdapter): void {
-			_schemas.set(elementType, { schema, adapter });
+			_schemas.set(elementType, { schema, adapter })
 		},
-	};
+	}
 }

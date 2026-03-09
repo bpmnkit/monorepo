@@ -8,7 +8,7 @@
  * @packageDocumentation
  */
 
-export { createTabsPlugin } from "./tabs-plugin.js";
+export { createTabsPlugin } from "./tabs-plugin.js"
 export type {
 	TabConfig,
 	TabsPluginOptions,
@@ -18,7 +18,7 @@ export type {
 	WelcomeSectionItem,
 	WelcomeRecentItem,
 	TabContentSnapshot,
-} from "./tabs-plugin.js";
-export { InMemoryFileResolver } from "./file-resolver.js";
-export type { FileResolver, ResolvedFile } from "./file-resolver.js";
-export { TABS_CSS, injectTabsStyles } from "./css.js";
+} from "./tabs-plugin.js"
+export { InMemoryFileResolver } from "./file-resolver.js"
+export type { FileResolver, ResolvedFile } from "./file-resolver.js"
+export { TABS_CSS, injectTabsStyles } from "./css.js"

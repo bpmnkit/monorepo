@@ -1,9 +1,9 @@
-const STYLE_ID = "bpmn-history-styles";
+const STYLE_ID = "bpmn-history-styles"
 
 export function injectHistoryStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
 	style.textContent = `
 /* ── History pane ────────────────────────────────────────────────────────── */
 .bpmn-hist-pane {
@@ -124,6 +124,6 @@ export function injectHistoryStyles(): void {
 }
 [data-bpmn-hud-theme="light"] .bpmn-hist-confirm-ok { background: #1a56db; border-color: #1a56db; }
 [data-bpmn-hud-theme="light"] .bpmn-hist-confirm-ok:hover { background: #1648c2; }
-`;
-	document.head.appendChild(style);
+`
+	document.head.appendChild(style)
 }

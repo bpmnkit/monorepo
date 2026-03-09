@@ -5,26 +5,26 @@
  * Out-of-bounds writes are silently ignored.
  */
 export class AsciiGrid {
-	private readonly cells: string[][];
-	readonly cols: number;
-	readonly rows: number;
+	private readonly cells: string[][]
+	readonly cols: number
+	readonly rows: number
 
 	constructor(cols: number, rows: number) {
-		this.cols = cols;
-		this.rows = rows;
-		this.cells = Array.from({ length: rows }, () => Array<string>(cols).fill(" "));
+		this.cols = cols
+		this.rows = rows
+		this.cells = Array.from({ length: rows }, () => Array<string>(cols).fill(" "))
 	}
 
 	/** Overwrite a single cell. Out-of-bounds writes are silently ignored. */
 	set(col: number, row: number, ch: string): void {
-		if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return;
-		const r = this.cells[row];
-		if (r !== undefined) r[col] = ch[0] ?? " ";
+		if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return
+		const r = this.cells[row]
+		if (r !== undefined) r[col] = ch[0] ?? " "
 	}
 
 	get(col: number, row: number): string {
-		if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return " ";
-		return this.cells[row]?.[col] ?? " ";
+		if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return " "
+		return this.cells[row]?.[col] ?? " "
 	}
 
 	/**
@@ -33,7 +33,7 @@ export class AsciiGrid {
 	 */
 	write(col: number, row: number, text: string): void {
 		for (let i = 0; i < text.length; i++) {
-			this.set(col + i, row, text[i] ?? " ");
+			this.set(col + i, row, text[i] ?? " ")
 		}
 	}
 
@@ -42,13 +42,13 @@ export class AsciiGrid {
 	 * Used for edge junctions (e.g. two edges crossing at the same column).
 	 */
 	setLine(col: number, row: number, ch: string): void {
-		const existing = this.get(col, row);
-		this.set(col, row, mergeBoxChars(existing, ch));
+		const existing = this.get(col, row)
+		this.set(col, row, mergeBoxChars(existing, ch))
 	}
 
 	/** Serialise to a newline-separated string. Trailing spaces on each row are stripped. */
 	toString(): string {
-		return this.cells.map((row) => row.join("").trimEnd()).join("\n");
+		return this.cells.map((row) => row.join("").trimEnd()).join("\n")
 	}
 }
 
@@ -65,12 +65,12 @@ const CHAR_DIRS: Record<string, string> = {
 	"┬": "LRD",
 	"┴": "LRU",
 	"┼": "LRUD",
-};
+}
 
 // Reverse map: sorted direction string → box-drawing char
-const DIRS_CHAR: Record<string, string> = {};
+const DIRS_CHAR: Record<string, string> = {}
 for (const [ch, dirs] of Object.entries(CHAR_DIRS)) {
-	DIRS_CHAR[[...dirs].sort().join("")] = ch;
+	DIRS_CHAR[[...dirs].sort().join("")] = ch
 }
 
 /**
@@ -78,13 +78,13 @@ for (const [ch, dirs] of Object.entries(CHAR_DIRS)) {
  * their connection directions. Returns `next` when no merge applies.
  */
 export function mergeBoxChars(existing: string, next: string): string {
-	if (existing === " " || existing === next) return next;
+	if (existing === " " || existing === next) return next
 	// Arrows always win
-	if (next === "►" || next === "▼") return next;
-	if (existing === "►" || existing === "▼") return existing;
-	const eDirs = CHAR_DIRS[existing];
-	const nDirs = CHAR_DIRS[next];
-	if (!eDirs || !nDirs) return next;
-	const union = [...new Set([...eDirs, ...nDirs])].sort().join("");
-	return DIRS_CHAR[union] ?? next;
+	if (next === "►" || next === "▼") return next
+	if (existing === "►" || existing === "▼") return existing
+	const eDirs = CHAR_DIRS[existing]
+	const nDirs = CHAR_DIRS[next]
+	if (!eDirs || !nDirs) return next
+	const union = [...new Set([...eDirs, ...nDirs])].sort().join("")
+	return DIRS_CHAR[union] ?? next
 }

@@ -1,23 +1,23 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { Bpmn, resetIdCounter } from "../src/index.js";
+import { beforeEach, describe, expect, it } from "vitest"
+import { Bpmn, resetIdCounter } from "../src/index.js"
 
 /** Extracts the first process from BpmnDefinitions with a runtime assertion. */
 function firstProcess(defs: ReturnType<ReturnType<typeof Bpmn.createProcess>["build"]>) {
-	const p = defs.processes[0];
-	expect(p).toBeDefined();
-	return p as NonNullable<typeof p>;
+	const p = defs.processes[0]
+	expect(p).toBeDefined()
+	return p as NonNullable<typeof p>
 }
 
 /** Asserts a value is defined and returns it with narrowed type. */
 function defined<T>(value: T | undefined | null, msg?: string): T {
-	expect(value, msg).toBeDefined();
-	return value as T;
+	expect(value, msg).toBeDefined()
+	return value as T
 }
 
 describe("BpmnProcessBuilder", () => {
 	beforeEach(() => {
-		resetIdCounter();
-	});
+		resetIdCounter()
+	})
 
 	// -----------------------------------------------------------------------
 	// Linear flow
@@ -31,18 +31,18 @@ describe("BpmnProcessBuilder", () => {
 					.startEvent("start")
 					.endEvent("end")
 					.build(),
-			);
+			)
 
-			expect(process.id).toBe("proc1");
-			expect(process.name).toBe("Simple Process");
-			expect(process.isExecutable).toBe(true);
-			expect(process.flowElements).toHaveLength(2);
-			expect(process.sequenceFlows).toHaveLength(1);
+			expect(process.id).toBe("proc1")
+			expect(process.name).toBe("Simple Process")
+			expect(process.isExecutable).toBe(true)
+			expect(process.flowElements).toHaveLength(2)
+			expect(process.sequenceFlows).toHaveLength(1)
 
-			const flow = defined(process.sequenceFlows[0]);
-			expect(flow.sourceRef).toBe("start");
-			expect(flow.targetRef).toBe("end");
-		});
+			const flow = defined(process.sequenceFlows[0])
+			expect(flow.sourceRef).toBe("start")
+			expect(flow.targetRef).toBe("end")
+		})
 
 		it("auto-connects sequential elements", () => {
 			const process = firstProcess(
@@ -52,18 +52,18 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("t2", { taskType: "type-b" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			expect(process.flowElements).toHaveLength(4);
-			expect(process.sequenceFlows).toHaveLength(3);
+			expect(process.flowElements).toHaveLength(4)
+			expect(process.sequenceFlows).toHaveLength(3)
 
-			expect(process.sequenceFlows[0]?.sourceRef).toBe("s");
-			expect(process.sequenceFlows[0]?.targetRef).toBe("t1");
-			expect(process.sequenceFlows[1]?.sourceRef).toBe("t1");
-			expect(process.sequenceFlows[1]?.targetRef).toBe("t2");
-			expect(process.sequenceFlows[2]?.sourceRef).toBe("t2");
-			expect(process.sequenceFlows[2]?.targetRef).toBe("e");
-		});
+			expect(process.sequenceFlows[0]?.sourceRef).toBe("s")
+			expect(process.sequenceFlows[0]?.targetRef).toBe("t1")
+			expect(process.sequenceFlows[1]?.sourceRef).toBe("t1")
+			expect(process.sequenceFlows[1]?.targetRef).toBe("t2")
+			expect(process.sequenceFlows[2]?.sourceRef).toBe("t2")
+			expect(process.sequenceFlows[2]?.targetRef).toBe("e")
+		})
 
 		it("computes incoming/outgoing arrays from flows", () => {
 			const process = firstProcess(
@@ -72,36 +72,36 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("t1", { taskType: "x" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const start = defined(process.flowElements.find((el) => el.id === "s"));
-			const task = defined(process.flowElements.find((el) => el.id === "t1"));
-			const end = defined(process.flowElements.find((el) => el.id === "e"));
+			const start = defined(process.flowElements.find((el) => el.id === "s"))
+			const task = defined(process.flowElements.find((el) => el.id === "t1"))
+			const end = defined(process.flowElements.find((el) => el.id === "e"))
 
-			expect(start.outgoing).toHaveLength(1);
-			expect(start.incoming).toHaveLength(0);
-			expect(task.incoming).toHaveLength(1);
-			expect(task.outgoing).toHaveLength(1);
-			expect(end.incoming).toHaveLength(1);
-			expect(end.outgoing).toHaveLength(0);
-		});
+			expect(start.outgoing).toHaveLength(1)
+			expect(start.incoming).toHaveLength(0)
+			expect(task.incoming).toHaveLength(1)
+			expect(task.outgoing).toHaveLength(1)
+			expect(end.incoming).toHaveLength(1)
+			expect(end.outgoing).toHaveLength(0)
+		})
 
 		it("sets process as executable by default", () => {
-			const process = firstProcess(Bpmn.createProcess("proc").build());
-			expect(process.isExecutable).toBe(true);
-		});
+			const process = firstProcess(Bpmn.createProcess("proc").build())
+			expect(process.isExecutable).toBe(true)
+		})
 
 		it("allows setting executable to false", () => {
-			const process = firstProcess(Bpmn.createProcess("proc").executable(false).build());
-			expect(process.isExecutable).toBe(false);
-		});
+			const process = firstProcess(Bpmn.createProcess("proc").executable(false).build())
+			expect(process.isExecutable).toBe(false)
+		})
 
 		it("auto-generates start event ID when not provided", () => {
-			const process = firstProcess(Bpmn.createProcess("proc").startEvent().endEvent().build());
-			expect(process.flowElements).toHaveLength(2);
-			expect(process.flowElements[0]?.id).toMatch(/^StartEvent_/);
-		});
-	});
+			const process = firstProcess(Bpmn.createProcess("proc").startEvent().endEvent().build())
+			expect(process.flowElements).toHaveLength(2)
+			expect(process.flowElements[0]?.id).toMatch(/^StartEvent_/)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Element types (validated)
@@ -117,16 +117,16 @@ describe("BpmnProcessBuilder", () => {
 						retries: "5",
 					})
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "st1"));
-			expect(el.type).toBe("serviceTask");
-			expect(el.name).toBe("My Service");
+			const el = defined(process.flowElements.find((n) => n.id === "st1"))
+			expect(el.type).toBe("serviceTask")
+			expect(el.name).toBe("My Service")
 
-			const taskDef = defined(el.extensionElements.find((e) => e.name === "zeebe:taskDefinition"));
-			expect(taskDef.attributes.type).toBe("my-worker");
-			expect(taskDef.attributes.retries).toBe("5");
-		});
+			const taskDef = defined(el.extensionElements.find((e) => e.name === "zeebe:taskDefinition"))
+			expect(taskDef.attributes.type).toBe("my-worker")
+			expect(taskDef.attributes.retries).toBe("5")
+		})
 
 		it("creates a service task with task headers", () => {
 			const process = firstProcess(
@@ -136,27 +136,27 @@ describe("BpmnProcessBuilder", () => {
 						taskHeaders: { key1: "val1", key2: "val2" },
 					})
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "st1"));
-			const headerEl = defined(el.extensionElements.find((e) => e.name === "zeebe:taskHeaders"));
-			expect(headerEl.children).toHaveLength(2);
-			expect(headerEl.children[0]?.attributes.key).toBe("key1");
-			expect(headerEl.children[0]?.attributes.value).toBe("val1");
-		});
+			const el = defined(process.flowElements.find((n) => n.id === "st1"))
+			const headerEl = defined(el.extensionElements.find((e) => e.name === "zeebe:taskHeaders"))
+			expect(headerEl.children).toHaveLength(2)
+			expect(headerEl.children[0]?.attributes.key).toBe("key1")
+			expect(headerEl.children[0]?.attributes.value).toBe("val1")
+		})
 
 		it("creates a user task with form reference", () => {
 			const process = firstProcess(
 				Bpmn.createProcess("proc").userTask("ut1", { name: "Review", formId: "form-123" }).build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "ut1"));
-			expect(el.type).toBe("userTask");
-			expect(el.name).toBe("Review");
+			const el = defined(process.flowElements.find((n) => n.id === "ut1"))
+			expect(el.type).toBe("userTask")
+			expect(el.name).toBe("Review")
 
-			const formDef = defined(el.extensionElements.find((e) => e.name === "zeebe:formDefinition"));
-			expect(formDef.attributes.formId).toBe("form-123");
-		});
+			const formDef = defined(el.extensionElements.find((e) => e.name === "zeebe:formDefinition"))
+			expect(formDef.attributes.formId).toBe("form-123")
+		})
 
 		it("creates a script task with FEEL expression", () => {
 			const process = firstProcess(
@@ -167,16 +167,16 @@ describe("BpmnProcessBuilder", () => {
 						resultVariable: "result",
 					})
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "sc1"));
-			expect(el.type).toBe("scriptTask");
-			expect(el.name).toBe("Compute");
+			const el = defined(process.flowElements.find((n) => n.id === "sc1"))
+			expect(el.type).toBe("scriptTask")
+			expect(el.name).toBe("Compute")
 
-			const script = defined(el.extensionElements.find((e) => e.name === "zeebe:script"));
-			expect(script.attributes.expression).toBe("=x + 1");
-			expect(script.attributes.resultVariable).toBe("result");
-		});
+			const script = defined(el.extensionElements.find((e) => e.name === "zeebe:script"))
+			expect(script.attributes.expression).toBe("=x + 1")
+			expect(script.attributes.resultVariable).toBe("result")
+		})
 
 		it("creates a call activity with called process", () => {
 			const process = firstProcess(
@@ -186,15 +186,15 @@ describe("BpmnProcessBuilder", () => {
 						processId: "child-process",
 					})
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "ca1"));
-			expect(el.type).toBe("callActivity");
-			expect(el.name).toBe("Sub Flow");
+			const el = defined(process.flowElements.find((n) => n.id === "ca1"))
+			expect(el.type).toBe("callActivity")
+			expect(el.name).toBe("Sub Flow")
 
-			const calledEl = defined(el.extensionElements.find((e) => e.name === "zeebe:calledElement"));
-			expect(calledEl.attributes.processId).toBe("child-process");
-		});
+			const calledEl = defined(el.extensionElements.find((e) => e.name === "zeebe:calledElement"))
+			expect(calledEl.attributes.processId).toBe("child-process")
+		})
 
 		it("creates intermediate throw events", () => {
 			const process = firstProcess(
@@ -203,12 +203,12 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateThrowEvent("ite1", { name: "Signal" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "ite1"));
-			expect(el.type).toBe("intermediateThrowEvent");
-			expect(el.name).toBe("Signal");
-		});
+			const el = defined(process.flowElements.find((n) => n.id === "ite1"))
+			expect(el.type).toBe("intermediateThrowEvent")
+			expect(el.name).toBe("Signal")
+		})
 
 		it("creates intermediate catch events", () => {
 			const process = firstProcess(
@@ -217,13 +217,13 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateCatchEvent("ice1", { name: "Wait" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "ice1"));
-			expect(el.type).toBe("intermediateCatchEvent");
-			expect(el.name).toBe("Wait");
-		});
-	});
+			const el = defined(process.flowElements.find((n) => n.id === "ice1"))
+			expect(el.type).toBe("intermediateCatchEvent")
+			expect(el.name).toBe("Wait")
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Element types (aspirational)
@@ -233,22 +233,22 @@ describe("BpmnProcessBuilder", () => {
 		it("creates a send task", () => {
 			const process = firstProcess(
 				Bpmn.createProcess("proc").sendTask("send1", { name: "Send Message" }).build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "send1"));
-			expect(el.type).toBe("sendTask");
-			expect(el.name).toBe("Send Message");
-		});
+			const el = defined(process.flowElements.find((n) => n.id === "send1"))
+			expect(el.type).toBe("sendTask")
+			expect(el.name).toBe("Send Message")
+		})
 
 		it("creates a receive task", () => {
 			const process = firstProcess(
 				Bpmn.createProcess("proc").receiveTask("recv1", { name: "Wait for Message" }).build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "recv1"));
-			expect(el.type).toBe("receiveTask");
-			expect(el.name).toBe("Wait for Message");
-		});
+			const el = defined(process.flowElements.find((n) => n.id === "recv1"))
+			expect(el.type).toBe("receiveTask")
+			expect(el.name).toBe("Wait for Message")
+		})
 
 		it("creates a business rule task with decision reference", () => {
 			const process = firstProcess(
@@ -259,19 +259,19 @@ describe("BpmnProcessBuilder", () => {
 						resultVariable: "outcome",
 					})
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "brt1"));
-			expect(el.type).toBe("businessRuleTask");
-			expect(el.name).toBe("Evaluate Rules");
+			const el = defined(process.flowElements.find((n) => n.id === "brt1"))
+			expect(el.type).toBe("businessRuleTask")
+			expect(el.name).toBe("Evaluate Rules")
 
 			const calledDecision = defined(
 				el.extensionElements.find((e) => e.name === "zeebe:calledDecision"),
-			);
-			expect(calledDecision.attributes.decisionId).toBe("Decision_1");
-			expect(calledDecision.attributes.resultVariable).toBe("outcome");
-		});
-	});
+			)
+			expect(calledDecision.attributes.decisionId).toBe("Decision_1")
+			expect(calledDecision.attributes.resultVariable).toBe("outcome")
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Exclusive gateway
@@ -288,33 +288,33 @@ describe("BpmnProcessBuilder", () => {
 					.exclusiveGateway("merge", { name: "Merge" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
 			// 6 elements: s, gw1, t-yes, t-no, merge, e
-			expect(process.flowElements).toHaveLength(6);
+			expect(process.flowElements).toHaveLength(6)
 
 			// Flows: s→gw1, gw1→t-yes(Yes), gw1→t-no(No), t-yes→merge, t-no→merge, merge→e
-			expect(process.sequenceFlows).toHaveLength(6);
+			expect(process.sequenceFlows).toHaveLength(6)
 
 			// Check branch labels
 			const yesBranch = defined(
 				process.sequenceFlows.find((f) => f.sourceRef === "gw1" && f.targetRef === "t-yes"),
-			);
-			expect(yesBranch.name).toBe("Yes");
+			)
+			expect(yesBranch.name).toBe("Yes")
 
 			const noBranch = defined(
 				process.sequenceFlows.find((f) => f.sourceRef === "gw1" && f.targetRef === "t-no"),
-			);
-			expect(noBranch.name).toBe("No");
+			)
+			expect(noBranch.name).toBe("No")
 
 			// Check merge incoming
-			const mergeEl = defined(process.flowElements.find((n) => n.id === "merge"));
-			expect(mergeEl.incoming).toHaveLength(2);
+			const mergeEl = defined(process.flowElements.find((n) => n.id === "merge"))
+			expect(mergeEl.incoming).toHaveLength(2)
 
 			// Check gateway outgoing
-			const gwEl = defined(process.flowElements.find((n) => n.id === "gw1"));
-			expect(gwEl.outgoing).toHaveLength(2);
-		});
+			const gwEl = defined(process.flowElements.find((n) => n.id === "gw1"))
+			expect(gwEl.outgoing).toHaveLength(2)
+		})
 
 		it("fan-out with 9 branches (Handle PDP - Comment pattern)", () => {
 			const branchNames = [
@@ -327,40 +327,40 @@ describe("BpmnProcessBuilder", () => {
 				"Update Progress",
 				"Add to Channel",
 				"Assignment Changed",
-			];
+			]
 
 			let builder = Bpmn.createProcess("proc")
 				.startEvent("s")
-				.exclusiveGateway("gw9", { name: "Comment Action" });
+				.exclusiveGateway("gw9", { name: "Comment Action" })
 
 			for (const [i, name] of branchNames.entries()) {
 				builder = builder.branch(name, (b) =>
 					b.callActivity(`ca-${i}`, { processId: `Process_${i}`, name }).connectTo("gw-merge"),
-				);
+				)
 			}
 
-			const process = firstProcess(builder.exclusiveGateway("gw-merge").endEvent("e").build());
+			const process = firstProcess(builder.exclusiveGateway("gw-merge").endEvent("e").build())
 
 			// 2 gateways + 9 call activities + start + end = 13
-			expect(process.flowElements).toHaveLength(13);
+			expect(process.flowElements).toHaveLength(13)
 
 			// s→gw9 + 9*(gw9→ca + ca→merge) + merge→e = 1 + 18 + 1 = 20
-			expect(process.sequenceFlows).toHaveLength(20);
+			expect(process.sequenceFlows).toHaveLength(20)
 
 			// Verify merge gateway has 9 incoming flows
-			const mergeEl = defined(process.flowElements.find((n) => n.id === "gw-merge"));
-			expect(mergeEl.incoming).toHaveLength(9);
+			const mergeEl = defined(process.flowElements.find((n) => n.id === "gw-merge"))
+			expect(mergeEl.incoming).toHaveLength(9)
 
 			// Verify fork gateway has 9 outgoing flows
-			const gwEl = defined(process.flowElements.find((n) => n.id === "gw9"));
-			expect(gwEl.outgoing).toHaveLength(9);
+			const gwEl = defined(process.flowElements.find((n) => n.id === "gw9"))
+			expect(gwEl.outgoing).toHaveLength(9)
 
 			// Verify each branch label
 			for (const name of branchNames) {
-				const flow = process.sequenceFlows.find((f) => f.sourceRef === "gw9" && f.name === name);
-				expect(flow, `Expected branch flow labeled "${name}"`).toBeDefined();
+				const flow = process.sequenceFlows.find((f) => f.sourceRef === "gw9" && f.name === name)
+				expect(flow, `Expected branch flow labeled "${name}"`).toBeDefined()
 			}
-		});
+		})
 
 		it("supports nested exclusive gateways in branches", () => {
 			const process = firstProcess(
@@ -372,13 +372,13 @@ describe("BpmnProcessBuilder", () => {
 					.exclusiveGateway("merge")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
 			// Verify the structure is valid
-			expect(process.flowElements).toHaveLength(6);
-			expect(process.sequenceFlows).toHaveLength(6);
-		});
-	});
+			expect(process.flowElements).toHaveLength(6)
+			expect(process.sequenceFlows).toHaveLength(6)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Parallel gateway
@@ -395,19 +395,19 @@ describe("BpmnProcessBuilder", () => {
 					.parallelGateway("join")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			expect(process.flowElements).toHaveLength(6);
-			expect(process.sequenceFlows).toHaveLength(6);
+			expect(process.flowElements).toHaveLength(6)
+			expect(process.sequenceFlows).toHaveLength(6)
 
-			const joinEl = defined(process.flowElements.find((n) => n.id === "join"));
-			expect(joinEl.type).toBe("parallelGateway");
-			expect(joinEl.incoming).toHaveLength(2);
+			const joinEl = defined(process.flowElements.find((n) => n.id === "join"))
+			expect(joinEl.type).toBe("parallelGateway")
+			expect(joinEl.incoming).toHaveLength(2)
 
-			const forkEl = defined(process.flowElements.find((n) => n.id === "fork"));
-			expect(forkEl.type).toBe("parallelGateway");
-			expect(forkEl.outgoing).toHaveLength(2);
-		});
+			const forkEl = defined(process.flowElements.find((n) => n.id === "fork"))
+			expect(forkEl.type).toBe("parallelGateway")
+			expect(forkEl.outgoing).toHaveLength(2)
+		})
 
 		it("three parallel branches", () => {
 			const process = firstProcess(
@@ -420,11 +420,11 @@ describe("BpmnProcessBuilder", () => {
 					.parallelGateway("join")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			expect(process.flowElements).toHaveLength(7); // s, fork, t1, t2, t3, join, e
-			expect(process.sequenceFlows).toHaveLength(8); // s→fork, 3*(fork→t + t→join), join→e
-		});
+			expect(process.flowElements).toHaveLength(7) // s, fork, t1, t2, t3, join, e
+			expect(process.sequenceFlows).toHaveLength(8) // s→fork, 3*(fork→t + t→join), join→e
+		})
 
 		it("auto-connects branch ends to join gateway without explicit connectTo()", () => {
 			const process = firstProcess(
@@ -437,18 +437,18 @@ describe("BpmnProcessBuilder", () => {
 					.parallelGateway("join")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			expect(process.flowElements).toHaveLength(7); // s, fork, t1, t2, t3, join, e
-			expect(process.sequenceFlows).toHaveLength(8); // s→fork, 3*(fork→t + t→join), join→e
+			expect(process.flowElements).toHaveLength(7) // s, fork, t1, t2, t3, join, e
+			expect(process.sequenceFlows).toHaveLength(8) // s→fork, 3*(fork→t + t→join), join→e
 
-			const joinEl = defined(process.flowElements.find((n) => n.id === "join"));
-			expect(joinEl.incoming).toHaveLength(3);
+			const joinEl = defined(process.flowElements.find((n) => n.id === "join"))
+			expect(joinEl.incoming).toHaveLength(3)
 
-			const forkEl = defined(process.flowElements.find((n) => n.id === "fork"));
-			expect(forkEl.outgoing).toHaveLength(3);
-		});
-	});
+			const forkEl = defined(process.flowElements.find((n) => n.id === "fork"))
+			expect(forkEl.outgoing).toHaveLength(3)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Aspirational gateway types
@@ -465,13 +465,13 @@ describe("BpmnProcessBuilder", () => {
 					.inclusiveGateway("ig-merge")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ig = defined(process.flowElements.find((n) => n.id === "ig1"));
-			expect(ig.type).toBe("inclusiveGateway");
-			expect(ig.name).toBe("Inclusive");
-			expect(ig.outgoing).toHaveLength(2);
-		});
+			const ig = defined(process.flowElements.find((n) => n.id === "ig1"))
+			expect(ig.type).toBe("inclusiveGateway")
+			expect(ig.name).toBe("Inclusive")
+			expect(ig.outgoing).toHaveLength(2)
+		})
 
 		it("creates an event-based gateway", () => {
 			const process = firstProcess(
@@ -487,14 +487,14 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("after", { taskType: "continue" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ebg = defined(process.flowElements.find((n) => n.id === "ebg1"));
-			expect(ebg.type).toBe("eventBasedGateway");
-			expect(ebg.name).toBe("Wait For");
-			expect(ebg.outgoing).toHaveLength(2);
-		});
-	});
+			const ebg = defined(process.flowElements.find((n) => n.id === "ebg1"))
+			expect(ebg.type).toBe("eventBasedGateway")
+			expect(ebg.name).toBe("Wait For")
+			expect(ebg.outgoing).toHaveLength(2)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Loops via connectTo
@@ -512,18 +512,18 @@ describe("BpmnProcessBuilder", () => {
 					.branch("done", (b) => b.connectTo("end"))
 					.endEvent("end")
 					.build(),
-			);
+			)
 
 			// Verify loop flow: retry-task → check
 			const loopFlow = process.sequenceFlows.find(
 				(f) => f.sourceRef === "retry-task" && f.targetRef === "check",
-			);
-			expect(loopFlow).toBeDefined();
+			)
+			expect(loopFlow).toBeDefined()
 
 			// Check gateway has 2 incoming (from start and from retry)
-			const checkEl = defined(process.flowElements.find((n) => n.id === "check"));
-			expect(checkEl.incoming).toHaveLength(2);
-		});
+			const checkEl = defined(process.flowElements.find((n) => n.id === "check"))
+			expect(checkEl.incoming).toHaveLength(2)
+		})
 
 		it("creates a loop with intermediate processing", () => {
 			const process = firstProcess(
@@ -535,18 +535,18 @@ describe("BpmnProcessBuilder", () => {
 					.branch("valid", (b) => b.connectTo("done"))
 					.endEvent("done")
 					.build(),
-			);
+			)
 
 			const loopFlow = process.sequenceFlows.find(
 				(f) => f.sourceRef === "fix" && f.targetRef === "process",
-			);
-			expect(loopFlow).toBeDefined();
+			)
+			expect(loopFlow).toBeDefined()
 
 			// process should have 2 incoming: from start and from fix
-			const processEl = defined(process.flowElements.find((n) => n.id === "process"));
-			expect(processEl.incoming).toHaveLength(2);
-		});
-	});
+			const processEl = defined(process.flowElements.find((n) => n.id === "process"))
+			expect(processEl.incoming).toHaveLength(2)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Ad-hoc sub-process with multi-instance
@@ -563,26 +563,26 @@ describe("BpmnProcessBuilder", () => {
 							sub
 								.startEvent("sub-start")
 								.serviceTask("sub-task", { taskType: "sub-work" })
-								.endEvent("sub-end");
+								.endEvent("sub-end")
 						},
 						{ name: "Review Steps" },
 					)
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const adhoc = defined(process.flowElements.find((n) => n.id === "adhoc1"));
-			expect(adhoc.type).toBe("adHocSubProcess");
-			expect(adhoc.name).toBe("Review Steps");
+			const adhoc = defined(process.flowElements.find((n) => n.id === "adhoc1"))
+			expect(adhoc.type).toBe("adHocSubProcess")
+			expect(adhoc.name).toBe("Review Steps")
 
 			if (adhoc.type === "adHocSubProcess") {
-				expect(adhoc.flowElements).toHaveLength(3);
-				expect(adhoc.sequenceFlows).toHaveLength(2);
+				expect(adhoc.flowElements).toHaveLength(3)
+				expect(adhoc.sequenceFlows).toHaveLength(2)
 
-				const subTask = defined(adhoc.flowElements.find((n) => n.id === "sub-task"));
-				expect(subTask.type).toBe("serviceTask");
+				const subTask = defined(adhoc.flowElements.find((n) => n.id === "sub-task"))
+				expect(subTask.type).toBe("serviceTask")
 			}
-		});
+		})
 
 		it("creates an ad-hoc sub-process with parallel multi-instance", () => {
 			const process = firstProcess(
@@ -591,7 +591,7 @@ describe("BpmnProcessBuilder", () => {
 					.adHocSubProcess(
 						"adhoc-mi",
 						(sub) => {
-							sub.serviceTask("inner", { taskType: "review" });
+							sub.serviceTask("inner", { taskType: "review" })
 						},
 						{
 							name: "Review Bot",
@@ -604,19 +604,19 @@ describe("BpmnProcessBuilder", () => {
 					)
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const adhoc = defined(process.flowElements.find((n) => n.id === "adhoc-mi"));
-			expect(adhoc.type).toBe("adHocSubProcess");
+			const adhoc = defined(process.flowElements.find((n) => n.id === "adhoc-mi"))
+			expect(adhoc.type).toBe("adHocSubProcess")
 
 			if (adhoc.type === "adHocSubProcess") {
-				expect(adhoc.loopCharacteristics).toBeDefined();
-				const loopExt = defined(adhoc.loopCharacteristics?.extensionElements[0]);
-				expect(loopExt.name).toBe("zeebe:loopCharacteristics");
-				expect(loopExt.attributes.inputCollection).toBe("=items");
-				expect(loopExt.attributes.inputElement).toBe("item");
+				expect(adhoc.loopCharacteristics).toBeDefined()
+				const loopExt = defined(adhoc.loopCharacteristics?.extensionElements[0])
+				expect(loopExt.name).toBe("zeebe:loopCharacteristics")
+				expect(loopExt.attributes.inputCollection).toBe("=items")
+				expect(loopExt.attributes.inputElement).toBe("item")
 			}
-		});
+		})
 
 		it("creates an ad-hoc sub-process with sequential multi-instance", () => {
 			const process = firstProcess(
@@ -624,7 +624,7 @@ describe("BpmnProcessBuilder", () => {
 					.adHocSubProcess(
 						"seq-mi",
 						(sub) => {
-							sub.serviceTask("work", { taskType: "process" });
+							sub.serviceTask("work", { taskType: "process" })
 						},
 						{
 							multiInstance: {
@@ -634,14 +634,14 @@ describe("BpmnProcessBuilder", () => {
 						},
 					)
 					.build(),
-			);
+			)
 
-			const adhoc = defined(process.flowElements.find((n) => n.id === "seq-mi"));
+			const adhoc = defined(process.flowElements.find((n) => n.id === "seq-mi"))
 			if (adhoc.type === "adHocSubProcess") {
-				expect(adhoc.loopCharacteristics).toBeDefined();
+				expect(adhoc.loopCharacteristics).toBeDefined()
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Sub-process (aspirational)
@@ -655,23 +655,23 @@ describe("BpmnProcessBuilder", () => {
 					.subProcess(
 						"sub1",
 						(sub) => {
-							sub.startEvent("sub-s").serviceTask("sub-t", { taskType: "inner" }).endEvent("sub-e");
+							sub.startEvent("sub-s").serviceTask("sub-t", { taskType: "inner" }).endEvent("sub-e")
 						},
 						{ name: "Embedded Sub" },
 					)
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const sub = defined(process.flowElements.find((n) => n.id === "sub1"));
-			expect(sub.type).toBe("subProcess");
-			expect(sub.name).toBe("Embedded Sub");
+			const sub = defined(process.flowElements.find((n) => n.id === "sub1"))
+			expect(sub.type).toBe("subProcess")
+			expect(sub.name).toBe("Embedded Sub")
 
 			if (sub.type === "subProcess") {
-				expect(sub.flowElements).toHaveLength(3);
-				expect(sub.sequenceFlows).toHaveLength(2);
+				expect(sub.flowElements).toHaveLength(3)
+				expect(sub.sequenceFlows).toHaveLength(2)
 			}
-		});
+		})
 
 		it("creates a sub-process with multi-instance", () => {
 			const process = firstProcess(
@@ -679,7 +679,7 @@ describe("BpmnProcessBuilder", () => {
 					.subProcess(
 						"sub-mi",
 						(sub) => {
-							sub.serviceTask("batch", { taskType: "batch-work" });
+							sub.serviceTask("batch", { taskType: "batch-work" })
 						},
 						{
 							multiInstance: {
@@ -690,14 +690,14 @@ describe("BpmnProcessBuilder", () => {
 						},
 					)
 					.build(),
-			);
+			)
 
-			const sub = defined(process.flowElements.find((n) => n.id === "sub-mi"));
+			const sub = defined(process.flowElements.find((n) => n.id === "sub-mi"))
 			if (sub.type === "subProcess") {
-				expect(sub.loopCharacteristics).toBeDefined();
+				expect(sub.loopCharacteristics).toBeDefined()
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Event sub-process (aspirational)
@@ -714,24 +714,24 @@ describe("BpmnProcessBuilder", () => {
 							sub
 								.startEvent("err-start", { name: "Error Start" })
 								.serviceTask("handle-err", { taskType: "error-handler" })
-								.endEvent("err-end");
+								.endEvent("err-end")
 						},
 						{ name: "Error Handler" },
 					)
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const evtSub = defined(process.flowElements.find((n) => n.id === "evtsub1"));
-			expect(evtSub.type).toBe("eventSubProcess");
-			expect(evtSub.name).toBe("Error Handler");
+			const evtSub = defined(process.flowElements.find((n) => n.id === "evtsub1"))
+			expect(evtSub.type).toBe("eventSubProcess")
+			expect(evtSub.name).toBe("Error Handler")
 
 			if (evtSub.type === "eventSubProcess") {
-				expect(evtSub.flowElements).toHaveLength(3);
-				expect(evtSub.sequenceFlows).toHaveLength(2);
+				expect(evtSub.flowElements).toHaveLength(3)
+				expect(evtSub.sequenceFlows).toHaveLength(2)
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Error cases
@@ -741,17 +741,17 @@ describe("BpmnProcessBuilder", () => {
 		it("throws on duplicate element IDs", () => {
 			expect(() => Bpmn.createProcess("proc").startEvent("dup").endEvent("dup").build()).toThrow(
 				'Duplicate element ID "dup"',
-			);
-		});
+			)
+		})
 
 		it("throws when branch() called without a preceding gateway", () => {
 			expect(() =>
 				Bpmn.createProcess("proc")
 					.startEvent("s")
 					.branch("x", (b) => b.connectTo("end")),
-			).toThrow("branch() must be called after a gateway");
-		});
-	});
+			).toThrow("branch() must be called after a gateway")
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Element naming
@@ -765,13 +765,13 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("t1", { name: "Do Work", taskType: "work" })
 					.endEvent("e", { name: "Finish" })
 					.build(),
-			);
+			)
 
-			expect(process.flowElements.find((n) => n.id === "s")?.name).toBe("Begin");
-			expect(process.flowElements.find((n) => n.id === "t1")?.name).toBe("Do Work");
-			expect(process.flowElements.find((n) => n.id === "e")?.name).toBe("Finish");
-		});
-	});
+			expect(process.flowElements.find((n) => n.id === "s")?.name).toBe("Begin")
+			expect(process.flowElements.find((n) => n.id === "t1")?.name).toBe("Do Work")
+			expect(process.flowElements.find((n) => n.id === "e")?.name).toBe("Finish")
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// connectTo on process builder
@@ -785,15 +785,15 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("t1", { taskType: "first" })
 					.connectTo("s")
 					.build(),
-			);
+			)
 
 			// Should have a flow from t1 back to s
 			const backFlow = process.sequenceFlows.find(
 				(f) => f.sourceRef === "t1" && f.targetRef === "s",
-			);
-			expect(backFlow).toBeDefined();
-		});
-	});
+			)
+			expect(backFlow).toBeDefined()
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Complex patterns
@@ -810,11 +810,11 @@ describe("BpmnProcessBuilder", () => {
 					.parallelGateway("pjoin")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			expect(process.flowElements).toHaveLength(6);
-			expect(process.sequenceFlows).toHaveLength(6);
-		});
+			expect(process.flowElements).toHaveLength(6)
+			expect(process.sequenceFlows).toHaveLength(6)
+		})
 
 		it("multiple sequential gateways", () => {
 			const process = firstProcess(
@@ -830,11 +830,11 @@ describe("BpmnProcessBuilder", () => {
 					.exclusiveGateway("gw2-merge")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
 			// s, gw1, a, b, gw1-merge, gw2, c, d, gw2-merge, e = 10
-			expect(process.flowElements).toHaveLength(10);
-		});
+			expect(process.flowElements).toHaveLength(10)
+		})
 
 		it("branch with multiple tasks before connectTo", () => {
 			const process = firstProcess(
@@ -852,20 +852,20 @@ describe("BpmnProcessBuilder", () => {
 					.exclusiveGateway("merge")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
 			// Verify long path has sequential flows
 			expect(
 				process.sequenceFlows.find((f) => f.sourceRef === "t1" && f.targetRef === "t2"),
-			).toBeDefined();
+			).toBeDefined()
 			expect(
 				process.sequenceFlows.find((f) => f.sourceRef === "t2" && f.targetRef === "t3"),
-			).toBeDefined();
+			).toBeDefined()
 			expect(
 				process.sequenceFlows.find((f) => f.sourceRef === "t3" && f.targetRef === "merge"),
-			).toBeDefined();
-		});
-	});
+			).toBeDefined()
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Branch condition & defaultFlow
@@ -889,28 +889,28 @@ describe("BpmnProcessBuilder", () => {
 					.exclusiveGateway("merge")
 					.endEvent("e")
 					.build(),
-			);
+			)
 
 			const yesFlow = defined(
 				process.sequenceFlows.find((f) => f.sourceRef === "gw" && f.targetRef === "approve"),
-			);
-			expect(yesFlow.name).toBe("yes");
-			expect(yesFlow.conditionExpression).toBeDefined();
-			expect(yesFlow.conditionExpression?.text).toBe("= amount > 1000");
-			expect(yesFlow.conditionExpression?.attributes["xsi:type"]).toBe("bpmn:tFormalExpression");
+			)
+			expect(yesFlow.name).toBe("yes")
+			expect(yesFlow.conditionExpression).toBeDefined()
+			expect(yesFlow.conditionExpression?.text).toBe("= amount > 1000")
+			expect(yesFlow.conditionExpression?.attributes["xsi:type"]).toBe("bpmn:tFormalExpression")
 
 			const noFlow = defined(
 				process.sequenceFlows.find((f) => f.sourceRef === "gw" && f.targetRef === "reject"),
-			);
-			expect(noFlow.name).toBe("no");
-			expect(noFlow.conditionExpression).toBeUndefined();
+			)
+			expect(noFlow.name).toBe("no")
+			expect(noFlow.conditionExpression).toBeUndefined()
 
 			// The gateway should have the default flow set
-			const gw = defined(process.flowElements.find((n) => n.id === "gw"));
+			const gw = defined(process.flowElements.find((n) => n.id === "gw"))
 			if (gw.type === "exclusiveGateway") {
-				expect(gw.default).toBe(noFlow.id);
+				expect(gw.default).toBe(noFlow.id)
 			}
-		});
+		})
 
 		it("sets condition on a direct connectTo (no intermediate elements)", () => {
 			const process = firstProcess(
@@ -923,26 +923,26 @@ describe("BpmnProcessBuilder", () => {
 					)
 					.endEvent("end")
 					.build(),
-			);
+			)
 
 			// Auto-join inserts gw_join before end
-			const joinGw = process.flowElements.find((e) => e.id === "gw_join");
-			expect(joinGw).toBeDefined();
-			expect(joinGw?.type).toBe("exclusiveGateway");
+			const joinGw = process.flowElements.find((e) => e.id === "gw_join")
+			expect(joinGw).toBeDefined()
+			expect(joinGw?.type).toBe("exclusiveGateway")
 
 			const skipFlow = defined(
 				process.sequenceFlows.find((f) => f.sourceRef === "gw" && f.targetRef === "gw_join"),
-			);
-			expect(skipFlow.conditionExpression).toBeDefined();
-			expect(skipFlow.conditionExpression?.text).toBe("= skip");
+			)
+			expect(skipFlow.conditionExpression).toBeDefined()
+			expect(skipFlow.conditionExpression?.text).toBe("= skip")
 
 			// Verify join → end flow exists
 			const joinToEnd = process.sequenceFlows.find(
 				(f) => f.sourceRef === "gw_join" && f.targetRef === "end",
-			);
-			expect(joinToEnd).toBeDefined();
-		});
-	});
+			)
+			expect(joinToEnd).toBeDefined()
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// addStartEvent & element()
@@ -959,18 +959,18 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("t2", { taskType: "b" })
 					.endEvent("e2")
 					.build(),
-			);
+			)
 
-			expect(process.flowElements).toHaveLength(6);
+			expect(process.flowElements).toHaveLength(6)
 			// s1→t1, t1→e1, s2→t2, t2→e2
-			expect(process.sequenceFlows).toHaveLength(4);
+			expect(process.sequenceFlows).toHaveLength(4)
 
 			// s2 should NOT be connected to e1
 			const crossFlow = process.sequenceFlows.find(
 				(f) => f.sourceRef === "e1" && f.targetRef === "s2",
-			);
-			expect(crossFlow).toBeUndefined();
-		});
+			)
+			expect(crossFlow).toBeUndefined()
+		})
 
 		it("element() repositions the builder at an existing element", () => {
 			const process = firstProcess(
@@ -982,29 +982,25 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("t2", { taskType: "b" })
 					.endEvent("e2")
 					.build(),
-			);
+			)
 
 			// t1 should have 2 outgoing
-			const t1 = defined(process.flowElements.find((n) => n.id === "t1"));
-			expect(t1.outgoing).toHaveLength(2);
+			const t1 = defined(process.flowElements.find((n) => n.id === "t1"))
+			expect(t1.outgoing).toHaveLength(2)
 
-			const t1ToE1 = process.sequenceFlows.find(
-				(f) => f.sourceRef === "t1" && f.targetRef === "e1",
-			);
-			expect(t1ToE1).toBeDefined();
+			const t1ToE1 = process.sequenceFlows.find((f) => f.sourceRef === "t1" && f.targetRef === "e1")
+			expect(t1ToE1).toBeDefined()
 
-			const t1ToT2 = process.sequenceFlows.find(
-				(f) => f.sourceRef === "t1" && f.targetRef === "t2",
-			);
-			expect(t1ToT2).toBeDefined();
-		});
+			const t1ToT2 = process.sequenceFlows.find((f) => f.sourceRef === "t1" && f.targetRef === "t2")
+			expect(t1ToT2).toBeDefined()
+		})
 
 		it("element() throws for non-existent IDs", () => {
 			expect(() => Bpmn.createProcess("proc").startEvent("s").element("nonexistent")).toThrow(
 				'Element "nonexistent" not found',
-			);
-		});
-	});
+			)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Boundary events
@@ -1024,28 +1020,28 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("error-handler", { taskType: "handle" })
 					.endEvent("error-end")
 					.build(),
-			);
+			)
 
-			const boundary = defined(process.flowElements.find((n) => n.id === "boundary1"));
-			expect(boundary.type).toBe("boundaryEvent");
+			const boundary = defined(process.flowElements.find((n) => n.id === "boundary1"))
+			expect(boundary.type).toBe("boundaryEvent")
 			if (boundary.type === "boundaryEvent") {
-				expect(boundary.attachedToRef).toBe("task1");
-				expect(boundary.eventDefinitions).toHaveLength(1);
-				expect(boundary.eventDefinitions[0]?.type).toBe("error");
+				expect(boundary.attachedToRef).toBe("task1")
+				expect(boundary.eventDefinitions).toHaveLength(1)
+				expect(boundary.eventDefinitions[0]?.type).toBe("error")
 			}
 
 			// boundary → error-handler flow exists
 			const boundaryFlow = process.sequenceFlows.find(
 				(f) => f.sourceRef === "boundary1" && f.targetRef === "error-handler",
-			);
-			expect(boundaryFlow).toBeDefined();
+			)
+			expect(boundaryFlow).toBeDefined()
 
 			// No flow from main-end to boundary (boundary is disconnected)
 			const badFlow = process.sequenceFlows.find(
 				(f) => f.sourceRef === "main-end" && f.targetRef === "boundary1",
-			);
-			expect(badFlow).toBeUndefined();
-		});
+			)
+			expect(badFlow).toBeUndefined()
+		})
 
 		it("creates a non-interrupting timer boundary event", () => {
 			const process = firstProcess(
@@ -1058,16 +1054,16 @@ describe("BpmnProcessBuilder", () => {
 					})
 					.endEvent("timeout-end")
 					.build(),
-			);
+			)
 
-			const boundary = defined(process.flowElements.find((n) => n.id === "timer-boundary"));
+			const boundary = defined(process.flowElements.find((n) => n.id === "timer-boundary"))
 			if (boundary.type === "boundaryEvent") {
-				expect(boundary.cancelActivity).toBe(false);
-				expect(boundary.eventDefinitions).toHaveLength(1);
-				expect(boundary.eventDefinitions[0]?.type).toBe("timer");
+				expect(boundary.cancelActivity).toBe(false)
+				expect(boundary.eventDefinitions).toHaveLength(1)
+				expect(boundary.eventDefinitions[0]?.type).toBe("timer")
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Version tag
@@ -1075,14 +1071,14 @@ describe("BpmnProcessBuilder", () => {
 
 	describe("version tag", () => {
 		it("sets a version tag on the process", () => {
-			const process = firstProcess(Bpmn.createProcess("proc").versionTag("1.0.0").build());
+			const process = firstProcess(Bpmn.createProcess("proc").versionTag("1.0.0").build())
 
 			const versionExt = defined(
 				process.extensionElements.find((e) => e.name === "zeebe:versionTag"),
-			);
-			expect(versionExt.attributes.value).toBe("1.0.0");
-		});
-	});
+			)
+			expect(versionExt.attributes.value).toBe("1.0.0")
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Event definitions
@@ -1095,14 +1091,14 @@ describe("BpmnProcessBuilder", () => {
 					.startEvent("ts", { timerDuration: "PT5M" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const start = defined(process.flowElements.find((n) => n.id === "ts"));
+			const start = defined(process.flowElements.find((n) => n.id === "ts"))
 			if (start.type === "startEvent") {
-				expect(start.eventDefinitions).toHaveLength(1);
-				expect(start.eventDefinitions[0]?.type).toBe("timer");
+				expect(start.eventDefinitions).toHaveLength(1)
+				expect(start.eventDefinitions[0]?.type).toBe("timer")
 			}
-		});
+		})
 
 		it("creates intermediate catch with timer", () => {
 			const process = firstProcess(
@@ -1111,14 +1107,14 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateCatchEvent("wait", { timerDuration: "PT1H" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ice = defined(process.flowElements.find((n) => n.id === "wait"));
+			const ice = defined(process.flowElements.find((n) => n.id === "wait"))
 			if (ice.type === "intermediateCatchEvent") {
-				expect(ice.eventDefinitions).toHaveLength(1);
-				expect(ice.eventDefinitions[0]?.type).toBe("timer");
+				expect(ice.eventDefinitions).toHaveLength(1)
+				expect(ice.eventDefinitions[0]?.type).toBe("timer")
 			}
-		});
+		})
 
 		it("creates intermediate throw with message", () => {
 			const process = firstProcess(
@@ -1127,15 +1123,15 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateThrowEvent("msg", { messageName: "notify" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ite = defined(process.flowElements.find((n) => n.id === "msg"));
+			const ite = defined(process.flowElements.find((n) => n.id === "msg"))
 			if (ite.type === "intermediateThrowEvent") {
-				expect(ite.eventDefinitions).toHaveLength(1);
-				expect(ite.eventDefinitions[0]?.type).toBe("message");
+				expect(ite.eventDefinitions).toHaveLength(1)
+				expect(ite.eventDefinitions[0]?.type).toBe("message")
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// build() returns BpmnDefinitions
@@ -1147,16 +1143,16 @@ describe("BpmnProcessBuilder", () => {
 				.name("My Process")
 				.startEvent("s")
 				.endEvent("e")
-				.build();
+				.build()
 
-			expect(defs.id).toBe("Definitions_1");
-			expect(defs.targetNamespace).toBe("http://bpmn.io/schema/bpmn");
-			expect(defs.processes).toHaveLength(1);
-			expect(defs.processes[0]?.id).toBe("my-proc");
-			expect(defs.processes[0]?.name).toBe("My Process");
-			expect(defs.namespaces.zeebe).toBe("http://camunda.org/schema/zeebe/1.0");
-		});
-	});
+			expect(defs.id).toBe("Definitions_1")
+			expect(defs.targetNamespace).toBe("http://bpmn.io/schema/bpmn")
+			expect(defs.processes).toHaveLength(1)
+			expect(defs.processes[0]?.id).toBe("my-proc")
+			expect(defs.processes[0]?.name).toBe("My Process")
+			expect(defs.namespaces.zeebe).toBe("http://camunda.org/schema/zeebe/1.0")
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Modeler template attributes
@@ -1173,16 +1169,16 @@ describe("BpmnProcessBuilder", () => {
 						modelerTemplateIcon: "data:image/svg+xml;base64,abc",
 					})
 					.build(),
-			);
+			)
 
-			const el = defined(process.flowElements.find((n) => n.id === "st1"));
-			expect(el.unknownAttributes["zeebe:modelerTemplate"]).toBe("template-id");
-			expect(el.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("2");
+			const el = defined(process.flowElements.find((n) => n.id === "st1"))
+			expect(el.unknownAttributes["zeebe:modelerTemplate"]).toBe("template-id")
+			expect(el.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("2")
 			expect(el.unknownAttributes["zeebe:modelerTemplateIcon"]).toBe(
 				"data:image/svg+xml;base64,abc",
-			);
-		});
-	});
+			)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Ad-hoc sub-process with loop characteristics
@@ -1195,7 +1191,7 @@ describe("BpmnProcessBuilder", () => {
 					.adHocSubProcess(
 						"adhoc-lc",
 						(sub) => {
-							sub.serviceTask("inner", { taskType: "review" });
+							sub.serviceTask("inner", { taskType: "review" })
 						},
 						{
 							activeElementsCollection: "=elements",
@@ -1208,24 +1204,24 @@ describe("BpmnProcessBuilder", () => {
 						},
 					)
 					.build(),
-			);
+			)
 
-			const adhoc = defined(process.flowElements.find((n) => n.id === "adhoc-lc"));
+			const adhoc = defined(process.flowElements.find((n) => n.id === "adhoc-lc"))
 			if (adhoc.type === "adHocSubProcess") {
 				// Check activeElementsCollection via extension elements
-				const adHocExt = defined(adhoc.extensionElements.find((e) => e.name === "zeebe:adHoc"));
-				expect(adHocExt.attributes.activeElementsCollection).toBe("=elements");
+				const adHocExt = defined(adhoc.extensionElements.find((e) => e.name === "zeebe:adHoc"))
+				expect(adHocExt.attributes.activeElementsCollection).toBe("=elements")
 
 				// Check loop characteristics
-				expect(adhoc.loopCharacteristics).toBeDefined();
-				const loopExt = defined(adhoc.loopCharacteristics?.extensionElements[0]);
-				expect(loopExt.attributes.inputCollection).toBe("=items");
-				expect(loopExt.attributes.inputElement).toBe("item");
-				expect(loopExt.attributes.outputCollection).toBe("=results");
-				expect(loopExt.attributes.outputElement).toBe("result");
+				expect(adhoc.loopCharacteristics).toBeDefined()
+				const loopExt = defined(adhoc.loopCharacteristics?.extensionElements[0])
+				expect(loopExt.attributes.inputCollection).toBe("=items")
+				expect(loopExt.attributes.inputElement).toBe("item")
+				expect(loopExt.attributes.outputCollection).toBe("=results")
+				expect(loopExt.attributes.outputElement).toBe("result")
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Regression: timerDate / timeCycle preserved
@@ -1238,19 +1234,19 @@ describe("BpmnProcessBuilder", () => {
 					.startEvent("ts", { timerDate: "2026-01-01T00:00:00Z" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const start = defined(process.flowElements.find((n) => n.id === "ts"));
+			const start = defined(process.flowElements.find((n) => n.id === "ts"))
 			if (start.type === "startEvent") {
-				expect(start.eventDefinitions).toHaveLength(1);
-				const td = defined(start.eventDefinitions[0]);
-				expect(td.type).toBe("timer");
+				expect(start.eventDefinitions).toHaveLength(1)
+				const td = defined(start.eventDefinitions[0])
+				expect(td.type).toBe("timer")
 				if (td.type === "timer") {
-					expect(td.timeDate).toBe("2026-01-01T00:00:00Z");
-					expect(td.timeDuration).toBeUndefined();
+					expect(td.timeDate).toBe("2026-01-01T00:00:00Z")
+					expect(td.timeDuration).toBeUndefined()
 				}
 			}
-		});
+		})
 
 		it("preserves timerCycle on start event", () => {
 			const process = firstProcess(
@@ -1258,17 +1254,17 @@ describe("BpmnProcessBuilder", () => {
 					.startEvent("ts", { timerCycle: "R3/PT10M" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const start = defined(process.flowElements.find((n) => n.id === "ts"));
+			const start = defined(process.flowElements.find((n) => n.id === "ts"))
 			if (start.type === "startEvent") {
-				const td = defined(start.eventDefinitions[0]);
+				const td = defined(start.eventDefinitions[0])
 				if (td.type === "timer") {
-					expect(td.timeCycle).toBe("R3/PT10M");
-					expect(td.timeDuration).toBeUndefined();
+					expect(td.timeCycle).toBe("R3/PT10M")
+					expect(td.timeDuration).toBeUndefined()
 				}
 			}
-		});
+		})
 
 		it("preserves timerDate on intermediate catch event", () => {
 			const process = firstProcess(
@@ -1277,19 +1273,19 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateCatchEvent("ice", { timerDate: "2026-06-01T12:00:00Z" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ice = defined(process.flowElements.find((n) => n.id === "ice"));
+			const ice = defined(process.flowElements.find((n) => n.id === "ice"))
 			if (ice.type === "intermediateCatchEvent") {
-				expect(ice.eventDefinitions).toHaveLength(1);
-				const td = defined(ice.eventDefinitions[0]);
-				expect(td.type).toBe("timer");
+				expect(ice.eventDefinitions).toHaveLength(1)
+				const td = defined(ice.eventDefinitions[0])
+				expect(td.type).toBe("timer")
 				if (td.type === "timer") {
-					expect(td.timeDate).toBe("2026-06-01T12:00:00Z");
-					expect(td.timeDuration).toBeUndefined();
+					expect(td.timeDate).toBe("2026-06-01T12:00:00Z")
+					expect(td.timeDuration).toBeUndefined()
 				}
 			}
-		});
+		})
 
 		it("preserves timerCycle on intermediate catch event", () => {
 			const process = firstProcess(
@@ -1298,18 +1294,18 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateCatchEvent("ice", { timerCycle: "R5/PT30M" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ice = defined(process.flowElements.find((n) => n.id === "ice"));
+			const ice = defined(process.flowElements.find((n) => n.id === "ice"))
 			if (ice.type === "intermediateCatchEvent") {
-				const td = defined(ice.eventDefinitions[0]);
-				expect(td.type).toBe("timer");
+				const td = defined(ice.eventDefinitions[0])
+				expect(td.type).toBe("timer")
 				if (td.type === "timer") {
-					expect(td.timeCycle).toBe("R5/PT30M");
-					expect(td.timeDuration).toBeUndefined();
+					expect(td.timeCycle).toBe("R5/PT30M")
+					expect(td.timeDuration).toBeUndefined()
 				}
 			}
-		});
+		})
 
 		it("preserves timerDate on boundary event", () => {
 			const process = firstProcess(
@@ -1324,19 +1320,19 @@ describe("BpmnProcessBuilder", () => {
 					})
 					.endEvent("e2")
 					.build(),
-			);
+			)
 
-			const bd = defined(process.flowElements.find((n) => n.id === "bd"));
+			const bd = defined(process.flowElements.find((n) => n.id === "bd"))
 			if (bd.type === "boundaryEvent") {
-				expect(bd.eventDefinitions).toHaveLength(1);
-				const td = defined(bd.eventDefinitions[0]);
-				expect(td.type).toBe("timer");
+				expect(bd.eventDefinitions).toHaveLength(1)
+				const td = defined(bd.eventDefinitions[0])
+				expect(td.type).toBe("timer")
 				if (td.type === "timer") {
-					expect(td.timeDate).toBe("2026-12-25T00:00:00Z");
-					expect(td.timeDuration).toBeUndefined();
+					expect(td.timeDate).toBe("2026-12-25T00:00:00Z")
+					expect(td.timeDuration).toBeUndefined()
 				}
 			}
-		});
+		})
 
 		it("preserves timerCycle on boundary event", () => {
 			const process = firstProcess(
@@ -1351,19 +1347,19 @@ describe("BpmnProcessBuilder", () => {
 					})
 					.endEvent("e2")
 					.build(),
-			);
+			)
 
-			const bd = defined(process.flowElements.find((n) => n.id === "bd"));
+			const bd = defined(process.flowElements.find((n) => n.id === "bd"))
 			if (bd.type === "boundaryEvent") {
-				const td = defined(bd.eventDefinitions[0]);
-				expect(td.type).toBe("timer");
+				const td = defined(bd.eventDefinitions[0])
+				expect(td.type).toBe("timer")
 				if (td.type === "timer") {
-					expect(td.timeCycle).toBe("R/PT15M");
-					expect(td.timeDuration).toBeUndefined();
+					expect(td.timeCycle).toBe("R/PT15M")
+					expect(td.timeDuration).toBeUndefined()
 				}
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Regression: event definition values stored
@@ -1377,17 +1373,17 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateThrowEvent("msg", { messageName: "order-placed" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ite = defined(process.flowElements.find((n) => n.id === "msg"));
+			const ite = defined(process.flowElements.find((n) => n.id === "msg"))
 			if (ite.type === "intermediateThrowEvent") {
-				const def = defined(ite.eventDefinitions[0]);
-				expect(def.type).toBe("message");
+				const def = defined(ite.eventDefinitions[0])
+				expect(def.type).toBe("message")
 				if (def.type === "message") {
-					expect(def.messageRef).toBe("order-placed");
+					expect(def.messageRef).toBe("order-placed")
 				}
 			}
-		});
+		})
 
 		it("stores signalName as signalRef", () => {
 			const process = firstProcess(
@@ -1396,17 +1392,17 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateCatchEvent("sig", { signalName: "data-ready" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ice = defined(process.flowElements.find((n) => n.id === "sig"));
+			const ice = defined(process.flowElements.find((n) => n.id === "sig"))
 			if (ice.type === "intermediateCatchEvent") {
-				const def = defined(ice.eventDefinitions[0]);
-				expect(def.type).toBe("signal");
+				const def = defined(ice.eventDefinitions[0])
+				expect(def.type).toBe("signal")
 				if (def.type === "signal") {
-					expect(def.signalRef).toBe("data-ready");
+					expect(def.signalRef).toBe("data-ready")
 				}
 			}
-		});
+		})
 
 		it("stores escalationCode as escalationRef", () => {
 			const process = firstProcess(
@@ -1415,18 +1411,18 @@ describe("BpmnProcessBuilder", () => {
 					.intermediateThrowEvent("esc", { escalationCode: "ESC_001" })
 					.endEvent("e")
 					.build(),
-			);
+			)
 
-			const ite = defined(process.flowElements.find((n) => n.id === "esc"));
+			const ite = defined(process.flowElements.find((n) => n.id === "esc"))
 			if (ite.type === "intermediateThrowEvent") {
-				const def = defined(ite.eventDefinitions[0]);
-				expect(def.type).toBe("escalation");
+				const def = defined(ite.eventDefinitions[0])
+				expect(def.type).toBe("escalation")
 				if (def.type === "escalation") {
-					expect(def.escalationRef).toBe("ESC_001");
+					expect(def.escalationRef).toBe("ESC_001")
 				}
 			}
-		});
-	});
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Regression: duplicate ID in branch
@@ -1443,9 +1439,9 @@ describe("BpmnProcessBuilder", () => {
 					.exclusiveGateway("merge")
 					.endEvent("e")
 					.build(),
-			).toThrow('Duplicate element ID "dup"');
-		});
-	});
+			).toThrow('Duplicate element ID "dup"')
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Auto-layout
@@ -1453,9 +1449,9 @@ describe("BpmnProcessBuilder", () => {
 
 	describe("withAutoLayout", () => {
 		it("produces empty diagrams by default", () => {
-			const defs = Bpmn.createProcess("proc1").startEvent("s").endEvent("e").build();
-			expect(defs.diagrams).toHaveLength(0);
-		});
+			const defs = Bpmn.createProcess("proc1").startEvent("s").endEvent("e").build()
+			expect(defs.diagrams).toHaveLength(0)
+		})
 
 		it("produces DI shapes and edges for a linear flow", () => {
 			const defs = Bpmn.createProcess("proc1")
@@ -1463,31 +1459,31 @@ describe("BpmnProcessBuilder", () => {
 				.startEvent("s")
 				.serviceTask("t", { name: "Task", taskType: "job" })
 				.endEvent("e")
-				.build();
+				.build()
 
-			expect(defs.diagrams).toHaveLength(1);
-			const diagram = defined(defs.diagrams[0]);
-			expect(diagram.plane.bpmnElement).toBe("proc1");
+			expect(defs.diagrams).toHaveLength(1)
+			const diagram = defined(defs.diagrams[0])
+			expect(diagram.plane.bpmnElement).toBe("proc1")
 
 			// 3 elements → 3 shapes
-			expect(diagram.plane.shapes).toHaveLength(3);
-			const shapeElements = diagram.plane.shapes.map((s) => s.bpmnElement);
-			expect(shapeElements).toContain("s");
-			expect(shapeElements).toContain("t");
-			expect(shapeElements).toContain("e");
+			expect(diagram.plane.shapes).toHaveLength(3)
+			const shapeElements = diagram.plane.shapes.map((s) => s.bpmnElement)
+			expect(shapeElements).toContain("s")
+			expect(shapeElements).toContain("t")
+			expect(shapeElements).toContain("e")
 
 			// All shapes have valid bounds
 			for (const shape of diagram.plane.shapes) {
-				expect(shape.bounds.width).toBeGreaterThan(0);
-				expect(shape.bounds.height).toBeGreaterThan(0);
+				expect(shape.bounds.width).toBeGreaterThan(0)
+				expect(shape.bounds.height).toBeGreaterThan(0)
 			}
 
 			// 2 sequence flows → 2 edges
-			expect(diagram.plane.edges).toHaveLength(2);
+			expect(diagram.plane.edges).toHaveLength(2)
 			for (const edge of diagram.plane.edges) {
-				expect(edge.waypoints.length).toBeGreaterThanOrEqual(2);
+				expect(edge.waypoints.length).toBeGreaterThanOrEqual(2)
 			}
-		});
+		})
 
 		it("produces DI for gateway branches", () => {
 			const defs = Bpmn.createProcess("proc1")
@@ -1498,13 +1494,13 @@ describe("BpmnProcessBuilder", () => {
 				.branch("b", (b) => b.serviceTask("t2", { name: "B", taskType: "b" }))
 				.exclusiveGateway("merge")
 				.endEvent("e")
-				.build();
+				.build()
 
-			const diagram = defined(defs.diagrams[0]);
+			const diagram = defined(defs.diagrams[0])
 			// s, gw, t1, t2, merge, e = 6 shapes
-			expect(diagram.plane.shapes.length).toBeGreaterThanOrEqual(6);
-			expect(diagram.plane.edges.length).toBeGreaterThanOrEqual(4);
-		});
+			expect(diagram.plane.shapes.length).toBeGreaterThanOrEqual(6)
+			expect(diagram.plane.edges.length).toBeGreaterThanOrEqual(4)
+		})
 
 		it("survives roundtrip: export → parse preserves DI", () => {
 			const defs = Bpmn.createProcess("proc1")
@@ -1512,16 +1508,16 @@ describe("BpmnProcessBuilder", () => {
 				.startEvent("s")
 				.serviceTask("t", { name: "Task", taskType: "job" })
 				.endEvent("e")
-				.build();
+				.build()
 
-			const xml = Bpmn.export(defs);
-			const parsed = Bpmn.parse(xml);
+			const xml = Bpmn.export(defs)
+			const parsed = Bpmn.parse(xml)
 
-			expect(parsed.diagrams).toHaveLength(1);
-			const diagram = defined(parsed.diagrams[0]);
-			expect(diagram.plane.shapes).toHaveLength(3);
-			expect(diagram.plane.edges).toHaveLength(2);
-		});
+			expect(parsed.diagrams).toHaveLength(1)
+			const diagram = defined(parsed.diagrams[0])
+			expect(diagram.plane.shapes).toHaveLength(3)
+			expect(diagram.plane.edges).toHaveLength(2)
+		})
 
 		it("positions survive full export → parse → export round-trip", () => {
 			const defs = Bpmn.createProcess("proc1")
@@ -1533,51 +1529,51 @@ describe("BpmnProcessBuilder", () => {
 				.branch("b", (b) => b.serviceTask("t3", { name: "B", taskType: "b" }))
 				.exclusiveGateway("merge")
 				.endEvent("e")
-				.build();
+				.build()
 
 			// First cycle: export → parse
-			const xml1 = Bpmn.export(defs);
-			const parsed1 = Bpmn.parse(xml1);
+			const xml1 = Bpmn.export(defs)
+			const parsed1 = Bpmn.parse(xml1)
 
 			// Second cycle: re-export → re-parse
-			const xml2 = Bpmn.export(parsed1);
-			const parsed2 = Bpmn.parse(xml2);
+			const xml2 = Bpmn.export(parsed1)
+			const parsed2 = Bpmn.parse(xml2)
 
-			const diag1 = defined(parsed1.diagrams[0]);
-			const diag2 = defined(parsed2.diagrams[0]);
+			const diag1 = defined(parsed1.diagrams[0])
+			const diag2 = defined(parsed2.diagrams[0])
 
 			// Same number of shapes and edges
-			expect(diag2.plane.shapes).toHaveLength(diag1.plane.shapes.length);
-			expect(diag2.plane.edges).toHaveLength(diag1.plane.edges.length);
+			expect(diag2.plane.shapes).toHaveLength(diag1.plane.shapes.length)
+			expect(diag2.plane.edges).toHaveLength(diag1.plane.edges.length)
 
 			// Shape bounds are identical across cycles
 			const sortedShapes1 = [...diag1.plane.shapes].sort((a, b) =>
 				a.bpmnElement.localeCompare(b.bpmnElement),
-			);
+			)
 			const sortedShapes2 = [...diag2.plane.shapes].sort((a, b) =>
 				a.bpmnElement.localeCompare(b.bpmnElement),
-			);
+			)
 			for (let i = 0; i < sortedShapes1.length; i++) {
-				expect(sortedShapes2[i]?.bpmnElement).toBe(sortedShapes1[i]?.bpmnElement);
-				expect(sortedShapes2[i]?.bounds).toEqual(sortedShapes1[i]?.bounds);
+				expect(sortedShapes2[i]?.bpmnElement).toBe(sortedShapes1[i]?.bpmnElement)
+				expect(sortedShapes2[i]?.bounds).toEqual(sortedShapes1[i]?.bounds)
 			}
 
 			// Edge waypoints are identical across cycles
 			const sortedEdges1 = [...diag1.plane.edges].sort((a, b) =>
 				a.bpmnElement.localeCompare(b.bpmnElement),
-			);
+			)
 			const sortedEdges2 = [...diag2.plane.edges].sort((a, b) =>
 				a.bpmnElement.localeCompare(b.bpmnElement),
-			);
+			)
 			for (let i = 0; i < sortedEdges1.length; i++) {
-				expect(sortedEdges2[i]?.bpmnElement).toBe(sortedEdges1[i]?.bpmnElement);
-				expect(sortedEdges2[i]?.waypoints).toEqual(sortedEdges1[i]?.waypoints);
+				expect(sortedEdges2[i]?.bpmnElement).toBe(sortedEdges1[i]?.bpmnElement)
+				expect(sortedEdges2[i]?.waypoints).toEqual(sortedEdges1[i]?.waypoints)
 			}
 
 			// XML output is stable (idempotent serialization)
-			expect(xml2).toBe(xml1);
-		});
-	});
+			expect(xml2).toBe(xml1)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Message start event with root bpmn:message
@@ -1588,24 +1584,24 @@ describe("BpmnProcessBuilder", () => {
 			const defs = Bpmn.createProcess("proc")
 				.startEvent("s", { name: "Webhook", messageName: "webhook-trigger" })
 				.endEvent("e")
-				.build();
+				.build()
 
-			expect(defs.messages).toHaveLength(1);
-			const msg = defs.messages[0];
-			expect(msg).toBeDefined();
-			expect(msg?.name).toBe("webhook-trigger");
+			expect(defs.messages).toHaveLength(1)
+			const msg = defs.messages[0]
+			expect(msg).toBeDefined()
+			expect(msg?.name).toBe("webhook-trigger")
 
-			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s");
-			expect(start).toBeDefined();
+			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s")
+			expect(start).toBeDefined()
 			if (start?.type === "startEvent") {
-				expect(start.eventDefinitions).toHaveLength(1);
-				const msgDef = start.eventDefinitions[0];
-				expect(msgDef?.type).toBe("message");
+				expect(start.eventDefinitions).toHaveLength(1)
+				const msgDef = start.eventDefinitions[0]
+				expect(msgDef?.type).toBe("message")
 				if (msgDef?.type === "message") {
-					expect(msgDef.messageRef).toBe(msg?.id);
+					expect(msgDef.messageRef).toBe(msg?.id)
 				}
 			}
-		});
+		})
 
 		it("supports zeebe:properties on start events", () => {
 			const defs = Bpmn.createProcess("proc")
@@ -1618,16 +1614,16 @@ describe("BpmnProcessBuilder", () => {
 					],
 				})
 				.endEvent("e")
-				.build();
+				.build()
 
-			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s");
-			expect(start).toBeDefined();
-			const propsExt = start?.extensionElements.find((e) => e.name === "zeebe:properties");
-			expect(propsExt).toBeDefined();
-			expect(propsExt?.children).toHaveLength(2);
-			expect(propsExt?.children[0]?.attributes.name).toBe("inbound.type");
-			expect(propsExt?.children[0]?.attributes.value).toBe("io.camunda:webhook:1");
-		});
+			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s")
+			expect(start).toBeDefined()
+			const propsExt = start?.extensionElements.find((e) => e.name === "zeebe:properties")
+			expect(propsExt).toBeDefined()
+			expect(propsExt?.children).toHaveLength(2)
+			expect(propsExt?.children[0]?.attributes.name).toBe("inbound.type")
+			expect(propsExt?.children[0]?.attributes.value).toBe("io.camunda:webhook:1")
+		})
 
 		it("supports modeler template attributes on start events", () => {
 			const defs = Bpmn.createProcess("proc")
@@ -1637,16 +1633,16 @@ describe("BpmnProcessBuilder", () => {
 					modelerTemplateVersion: "13",
 				})
 				.endEvent("e")
-				.build();
+				.build()
 
-			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s");
-			expect(start).toBeDefined();
+			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s")
+			expect(start).toBeDefined()
 			expect(start?.unknownAttributes["zeebe:modelerTemplate"]).toBe(
 				"io.camunda.connectors.webhook.v1",
-			);
-			expect(start?.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("13");
-		});
-	});
+			)
+			expect(start?.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("13")
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Enhanced ad-hoc sub-process (agentic AI pattern)
@@ -1659,8 +1655,8 @@ describe("BpmnProcessBuilder", () => {
 				.adHocSubProcess(
 					"agent",
 					(b) => {
-						b.serviceTask("tool1", { name: "Tool 1", taskType: "http:1" });
-						b.serviceTask("tool2", { name: "Tool 2", taskType: "slack:1" });
+						b.serviceTask("tool1", { name: "Tool 1", taskType: "http:1" })
+						b.serviceTask("tool2", { name: "Tool 2", taskType: "slack:1" })
 					},
 					{
 						name: "AI Agent",
@@ -1681,41 +1677,41 @@ describe("BpmnProcessBuilder", () => {
 					},
 				)
 				.endEvent("e")
-				.build();
+				.build()
 
-			const process = firstProcess(defs);
-			const agent = defined(process.flowElements.find((n) => n.id === "agent"));
-			expect(agent.type).toBe("adHocSubProcess");
+			const process = firstProcess(defs)
+			const agent = defined(process.flowElements.find((n) => n.id === "agent"))
+			expect(agent.type).toBe("adHocSubProcess")
 
 			// Check zeebe:taskDefinition
-			const taskDef = agent.extensionElements.find((e) => e.name === "zeebe:taskDefinition");
-			expect(taskDef).toBeDefined();
-			expect(taskDef?.attributes.type).toBe("io.camunda.agenticai:aiagent-job-worker:1");
+			const taskDef = agent.extensionElements.find((e) => e.name === "zeebe:taskDefinition")
+			expect(taskDef).toBeDefined()
+			expect(taskDef?.attributes.type).toBe("io.camunda.agenticai:aiagent-job-worker:1")
 
 			// Check zeebe:ioMapping
-			const ioMapping = agent.extensionElements.find((e) => e.name === "zeebe:ioMapping");
-			expect(ioMapping).toBeDefined();
-			expect(ioMapping?.children.filter((c) => c.name === "zeebe:input")).toHaveLength(2);
-			expect(ioMapping?.children.filter((c) => c.name === "zeebe:output")).toHaveLength(1);
+			const ioMapping = agent.extensionElements.find((e) => e.name === "zeebe:ioMapping")
+			expect(ioMapping).toBeDefined()
+			expect(ioMapping?.children.filter((c) => c.name === "zeebe:input")).toHaveLength(2)
+			expect(ioMapping?.children.filter((c) => c.name === "zeebe:output")).toHaveLength(1)
 
 			// Check zeebe:taskHeaders
-			const headers = agent.extensionElements.find((e) => e.name === "zeebe:taskHeaders");
-			expect(headers).toBeDefined();
-			expect(headers?.children).toHaveLength(2);
+			const headers = agent.extensionElements.find((e) => e.name === "zeebe:taskHeaders")
+			expect(headers).toBeDefined()
+			expect(headers?.children).toHaveLength(2)
 
 			// Check zeebe:adHoc
-			const adHoc = agent.extensionElements.find((e) => e.name === "zeebe:adHoc");
-			expect(adHoc).toBeDefined();
-			expect(adHoc?.attributes.outputCollection).toBe("toolCallResults");
+			const adHoc = agent.extensionElements.find((e) => e.name === "zeebe:adHoc")
+			expect(adHoc).toBeDefined()
+			expect(adHoc?.attributes.outputCollection).toBe("toolCallResults")
 			expect(adHoc?.attributes.outputElement).toBe(
 				"={id: toolCall._meta.id, name: toolCall._meta.name}",
-			);
+			)
 
 			// Check child elements
 			if (agent.type === "adHocSubProcess") {
-				expect(agent.flowElements).toHaveLength(2);
+				expect(agent.flowElements).toHaveLength(2)
 			}
-		});
+		})
 
 		it("supports modeler template attributes on ad-hoc sub-process", () => {
 			const defs = Bpmn.createProcess("proc")
@@ -1723,7 +1719,7 @@ describe("BpmnProcessBuilder", () => {
 				.adHocSubProcess(
 					"agent",
 					(b) => {
-						b.serviceTask("tool1", { name: "Tool", taskType: "test:1" });
+						b.serviceTask("tool1", { name: "Tool", taskType: "test:1" })
 					},
 					{
 						name: "Agent",
@@ -1733,18 +1729,18 @@ describe("BpmnProcessBuilder", () => {
 					},
 				)
 				.endEvent("e")
-				.build();
+				.build()
 
-			const agent = defined(firstProcess(defs).flowElements.find((n) => n.id === "agent"));
+			const agent = defined(firstProcess(defs).flowElements.find((n) => n.id === "agent"))
 			expect(agent.unknownAttributes["zeebe:modelerTemplate"]).toBe(
 				"io.camunda.connectors.agenticai.v1",
-			);
-			expect(agent.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("5");
+			)
+			expect(agent.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("5")
 			expect(agent.unknownAttributes["zeebe:modelerTemplateIcon"]).toBe(
 				"data:image/svg+xml;base64,abc",
-			);
-		});
-	});
+			)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// zeebe:properties round-trip
@@ -1762,22 +1758,22 @@ describe("BpmnProcessBuilder", () => {
 					],
 				})
 				.endEvent("e")
-				.build();
+				.build()
 
-			const xml = Bpmn.export(defs);
-			const parsed = Bpmn.parse(xml);
+			const xml = Bpmn.export(defs)
+			const parsed = Bpmn.parse(xml)
 
 			// Message should round-trip
-			expect(parsed.messages).toHaveLength(1);
-			expect(parsed.messages[0]?.name).toBe("wh-123");
+			expect(parsed.messages).toHaveLength(1)
+			expect(parsed.messages[0]?.name).toBe("wh-123")
 
 			// zeebe:properties should round-trip
-			const start = parsed.processes[0]?.flowElements.find((n) => n.id === "s");
-			const propsExt = start?.extensionElements.find((e) => e.name === "zeebe:properties");
-			expect(propsExt).toBeDefined();
-			expect(propsExt?.children).toHaveLength(2);
-		});
-	});
+			const start = parsed.processes[0]?.flowElements.find((n) => n.id === "s")
+			const propsExt = start?.extensionElements.find((e) => e.name === "zeebe:properties")
+			expect(propsExt).toBeDefined()
+			expect(propsExt?.children).toHaveLength(2)
+		})
+	})
 
 	// -----------------------------------------------------------------------
 	// Auto-join gateways
@@ -1795,25 +1791,25 @@ describe("BpmnProcessBuilder", () => {
 					.branch("b", (b) => b.defaultFlow().connectTo("end"))
 					.endEvent("end")
 					.build(),
-			);
+			)
 
-			const join = process.flowElements.find((e) => e.id === "gw_join");
-			expect(join).toBeDefined();
-			expect(join?.type).toBe("exclusiveGateway");
+			const join = process.flowElements.find((e) => e.id === "gw_join")
+			expect(join).toBeDefined()
+			expect(join?.type).toBe("exclusiveGateway")
 
 			// Both branches should target the join
 			expect(
 				process.sequenceFlows.some((f) => f.sourceRef === "t1" && f.targetRef === "gw_join"),
-			).toBe(true);
+			).toBe(true)
 			expect(
 				process.sequenceFlows.some((f) => f.sourceRef === "gw" && f.targetRef === "gw_join"),
-			).toBe(true);
+			).toBe(true)
 
 			// Join should flow to end
 			expect(
 				process.sequenceFlows.some((f) => f.sourceRef === "gw_join" && f.targetRef === "end"),
-			).toBe(true);
-		});
+			).toBe(true)
+		})
 
 		it("does not insert a join if one already exists with matching type", () => {
 			const process = firstProcess(
@@ -1825,11 +1821,11 @@ describe("BpmnProcessBuilder", () => {
 					.parallelGateway("join")
 					.endEvent("end")
 					.build(),
-			);
+			)
 
 			// No auto-join should be created since "join" is already a parallelGateway
-			expect(process.flowElements.find((e) => e.id === "split_join")).toBeUndefined();
-		});
+			expect(process.flowElements.find((e) => e.id === "split_join")).toBeUndefined()
+		})
 
 		it("does not insert a join for early-return branches with different targets", () => {
 			const process = firstProcess(
@@ -1841,10 +1837,10 @@ describe("BpmnProcessBuilder", () => {
 					.serviceTask("next", { name: "Next", taskType: "x" })
 					.endEvent("end")
 					.build(),
-			);
+			)
 
 			// No auto-join needed since branches go to different targets
-			expect(process.flowElements.find((e) => e.id === "gw_join")).toBeUndefined();
-		});
-	});
-});
+			expect(process.flowElements.find((e) => e.id === "gw_join")).toBeUndefined()
+		})
+	})
+})

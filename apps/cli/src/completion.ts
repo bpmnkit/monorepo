@@ -1,4 +1,4 @@
-import type { CommandGroup } from "./types.js";
+import type { CommandGroup } from "./types.js"
 
 // ─── Runtime completion ────────────────────────────────────────────────────────
 
@@ -14,40 +14,40 @@ export function getRuntimeCompletions(
 	words: string[],
 ): string[] {
 	// words[0] is the binary itself; strip it
-	const tokens = words.slice(1);
-	const pos = cursorIdx - 1; // adjust for stripped binary
-	const partial = tokens[pos] ?? "";
+	const tokens = words.slice(1)
+	const pos = cursorIdx - 1 // adjust for stripped binary
+	const partial = tokens[pos] ?? ""
 
 	// Position 0: completing the resource group name
 	if (pos === 0) {
-		const names = groups.flatMap((g) => [g.name, ...(g.aliases ?? [])]);
-		return names.filter((n) => n.startsWith(partial));
+		const names = groups.flatMap((g) => [g.name, ...(g.aliases ?? [])])
+		return names.filter((n) => n.startsWith(partial))
 	}
 
 	// Find which group is selected
-	const groupToken = tokens[0] ?? "";
-	const group = groups.find((g) => g.name === groupToken || g.aliases?.includes(groupToken));
-	if (!group) return [];
+	const groupToken = tokens[0] ?? ""
+	const group = groups.find((g) => g.name === groupToken || g.aliases?.includes(groupToken))
+	if (!group) return []
 
 	// Position 1: completing the command name
 	if (pos === 1) {
-		const names = group.commands.flatMap((c) => [c.name, ...(c.aliases ?? [])]);
-		return names.filter((n) => n.startsWith(partial));
+		const names = group.commands.flatMap((c) => [c.name, ...(c.aliases ?? [])])
+		return names.filter((n) => n.startsWith(partial))
 	}
 
 	// Position 2+: completing flags for the active command
-	const cmdToken = tokens[1] ?? "";
-	const cmd = group.commands.find((c) => c.name === cmdToken || c.aliases?.includes(cmdToken));
-	if (!cmd) return [];
+	const cmdToken = tokens[1] ?? ""
+	const cmd = group.commands.find((c) => c.name === cmdToken || c.aliases?.includes(cmdToken))
+	if (!cmd) return []
 
 	// Suggest flags
 	if (partial.startsWith("--") || partial === "") {
-		const flagNames = (cmd.flags ?? []).map((f) => `--${f.name}`);
-		const globalFlags = ["--profile", "--output", "--no-color", "--debug", "--help"];
-		return [...flagNames, ...globalFlags].filter((f) => f.startsWith(partial));
+		const flagNames = (cmd.flags ?? []).map((f) => `--${f.name}`)
+		const globalFlags = ["--profile", "--output", "--no-color", "--debug", "--help"]
+		return [...flagNames, ...globalFlags].filter((f) => f.startsWith(partial))
 	}
 
-	return [];
+	return []
 }
 
 // ─── Shell scripts ────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ _casen_complete() {
   COMPREPLY=($(compgen -W "$completions" -- "$cur_word"))
 }
 complete -F _casen_complete casen
-`;
+`
 }
 
 export function getZshScript(): string {
@@ -84,7 +84,7 @@ _casen() {
 }
 
 _casen
-`;
+`
 }
 
 export function getFishScript(): string {
@@ -99,5 +99,5 @@ function __casen_complete
 end
 
 complete -c casen -f -a '(__casen_complete)'
-`;
+`
 }

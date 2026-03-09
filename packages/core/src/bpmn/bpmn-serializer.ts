@@ -1,5 +1,5 @@
-import type { XmlElement } from "../types/xml-element.js";
-import { serializeXml } from "../xml/xml-parser.js";
+import type { XmlElement } from "../types/xml-element.js"
+import { serializeXml } from "../xml/xml-parser.js"
 import type {
 	BpmnAdHocSubProcess,
 	BpmnAssociation,
@@ -22,7 +22,7 @@ import type {
 	BpmnProcess,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
-} from "./bpmn-model.js";
+} from "./bpmn-model.js"
 
 // ---------------------------------------------------------------------------
 // Namespace prefix resolution
@@ -30,25 +30,25 @@ import type {
 
 function nsPrefix(namespaces: Record<string, string>, uri: string): string | undefined {
 	for (const [prefix, u] of Object.entries(namespaces)) {
-		if (u === uri) return prefix;
+		if (u === uri) return prefix
 	}
-	return undefined;
+	return undefined
 }
 
 function bpmnPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/BPMN/20100524/MODEL") ?? "bpmn";
+	return nsPrefix(ns, "http://www.omg.org/spec/BPMN/20100524/MODEL") ?? "bpmn"
 }
 
 function bpmndiPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/BPMN/20100524/DI") ?? "bpmndi";
+	return nsPrefix(ns, "http://www.omg.org/spec/BPMN/20100524/DI") ?? "bpmndi"
 }
 
 function dcPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/DD/20100524/DC") ?? "dc";
+	return nsPrefix(ns, "http://www.omg.org/spec/DD/20100524/DC") ?? "dc"
 }
 
 function diPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/DD/20100524/DI") ?? "di";
+	return nsPrefix(ns, "http://www.omg.org/spec/DD/20100524/DI") ?? "di"
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ function el(
 	children: XmlElement[],
 	text?: string,
 ): XmlElement {
-	return { name, attributes, children, text };
+	return { name, attributes, children, text }
 }
 
 // ---------------------------------------------------------------------------
@@ -72,83 +72,83 @@ function serializeEventDefinitions(defs: BpmnEventDefinition[], bp: string): Xml
 	return defs.map((d): XmlElement => {
 		switch (d.type) {
 			case "timer": {
-				const children: XmlElement[] = [];
+				const children: XmlElement[] = []
 				if (d.timeDuration !== undefined) {
 					children.push(
 						el(`${bp}:timeDuration`, d.timeDurationAttributes ?? {}, [], d.timeDuration),
-					);
+					)
 				}
 				if (d.timeDate !== undefined) {
-					children.push(el(`${bp}:timeDate`, d.timeDateAttributes ?? {}, [], d.timeDate));
+					children.push(el(`${bp}:timeDate`, d.timeDateAttributes ?? {}, [], d.timeDate))
 				}
 				if (d.timeCycle !== undefined) {
-					children.push(el(`${bp}:timeCycle`, d.timeCycleAttributes ?? {}, [], d.timeCycle));
+					children.push(el(`${bp}:timeCycle`, d.timeCycleAttributes ?? {}, [], d.timeCycle))
 				}
-				return el(`${bp}:timerEventDefinition`, d.id ? { id: d.id } : {}, children);
+				return el(`${bp}:timerEventDefinition`, d.id ? { id: d.id } : {}, children)
 			}
 			case "error": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				if (d.errorRef) attrs.errorRef = d.errorRef;
-				return el(`${bp}:errorEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				if (d.errorRef) attrs.errorRef = d.errorRef
+				return el(`${bp}:errorEventDefinition`, attrs, [])
 			}
 			case "escalation": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				if (d.escalationRef) attrs.escalationRef = d.escalationRef;
-				return el(`${bp}:escalationEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				if (d.escalationRef) attrs.escalationRef = d.escalationRef
+				return el(`${bp}:escalationEventDefinition`, attrs, [])
 			}
 			case "message": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				if (d.messageRef) attrs.messageRef = d.messageRef;
-				return el(`${bp}:messageEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				if (d.messageRef) attrs.messageRef = d.messageRef
+				return el(`${bp}:messageEventDefinition`, attrs, [])
 			}
 			case "signal": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				if (d.signalRef) attrs.signalRef = d.signalRef;
-				return el(`${bp}:signalEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				if (d.signalRef) attrs.signalRef = d.signalRef
+				return el(`${bp}:signalEventDefinition`, attrs, [])
 			}
 			case "conditional": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				const condChildren: XmlElement[] = [];
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				const condChildren: XmlElement[] = []
 				if (d.condition !== undefined) {
-					condChildren.push(el(`${bp}:condition`, {}, [], d.condition));
+					condChildren.push(el(`${bp}:condition`, {}, [], d.condition))
 				}
-				return el(`${bp}:conditionalEventDefinition`, attrs, condChildren);
+				return el(`${bp}:conditionalEventDefinition`, attrs, condChildren)
 			}
 			case "link": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				if (d.name) attrs.name = d.name;
-				return el(`${bp}:linkEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				if (d.name) attrs.name = d.name
+				return el(`${bp}:linkEventDefinition`, attrs, [])
 			}
 			case "cancel": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				return el(`${bp}:cancelEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				return el(`${bp}:cancelEventDefinition`, attrs, [])
 			}
 			case "terminate": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				return el(`${bp}:terminateEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				return el(`${bp}:terminateEventDefinition`, attrs, [])
 			}
 			case "compensate": {
-				const attrs: Record<string, string> = {};
-				if (d.id) attrs.id = d.id;
-				if (d.activityRef) attrs.activityRef = d.activityRef;
-				return el(`${bp}:compensateEventDefinition`, attrs, []);
+				const attrs: Record<string, string> = {}
+				if (d.id) attrs.id = d.id
+				if (d.activityRef) attrs.activityRef = d.activityRef
+				return el(`${bp}:compensateEventDefinition`, attrs, [])
 			}
 			default: {
-				const _exhaustive: never = d;
+				const _exhaustive: never = d
 				throw new Error(
 					`Unknown event definition type: ${(_exhaustive as BpmnEventDefinition).type}`,
-				);
+				)
 			}
 		}
-	});
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -156,8 +156,8 @@ function serializeEventDefinitions(defs: BpmnEventDefinition[], bp: string): Xml
 // ---------------------------------------------------------------------------
 
 function serializeExtensionElements(extensions: XmlElement[], bp: string): XmlElement[] {
-	if (extensions.length === 0) return [];
-	return [el(`${bp}:extensionElements`, {}, extensions)];
+	if (extensions.length === 0) return []
+	return [el(`${bp}:extensionElements`, {}, extensions)]
 }
 
 // ---------------------------------------------------------------------------
@@ -168,12 +168,12 @@ function serializeLoopCharacteristics(
 	lc: BpmnMultiInstanceLoopCharacteristics | undefined,
 	bp: string,
 ): XmlElement[] {
-	if (!lc) return [];
+	if (!lc) return []
 	return [
 		el(`${bp}:multiInstanceLoopCharacteristics`, {}, [
 			...serializeExtensionElements(lc.extensionElements, bp),
 		]),
-	];
+	]
 }
 
 // ---------------------------------------------------------------------------
@@ -181,41 +181,41 @@ function serializeLoopCharacteristics(
 // ---------------------------------------------------------------------------
 
 function flowRefs(refs: string[], tag: string, bp: string): XmlElement[] {
-	return refs.map((r) => el(`${bp}:${tag}`, {}, [], r));
+	return refs.map((r) => el(`${bp}:${tag}`, {}, [], r))
 }
 
 function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): XmlElement {
-	const bp = bpmnPrefix(ns);
-	const attrs: Record<string, string> = { id: fe.id, ...fe.unknownAttributes };
-	if (fe.name !== undefined) attrs.name = fe.name;
+	const bp = bpmnPrefix(ns)
+	const attrs: Record<string, string> = { id: fe.id, ...fe.unknownAttributes }
+	if (fe.name !== undefined) attrs.name = fe.name
 
-	const children: XmlElement[] = [];
+	const children: XmlElement[] = []
 
 	// Documentation
 	if (fe.documentation !== undefined) {
-		children.push(el(`${bp}:documentation`, {}, [], fe.documentation));
+		children.push(el(`${bp}:documentation`, {}, [], fe.documentation))
 	}
 
 	// Extension elements
-	children.push(...serializeExtensionElements(fe.extensionElements, bp));
+	children.push(...serializeExtensionElements(fe.extensionElements, bp))
 
 	// Incoming / outgoing
-	children.push(...flowRefs(fe.incoming, "incoming", bp));
-	children.push(...flowRefs(fe.outgoing, "outgoing", bp));
+	children.push(...flowRefs(fe.incoming, "incoming", bp))
+	children.push(...flowRefs(fe.outgoing, "outgoing", bp))
 
 	switch (fe.type) {
 		case "startEvent":
 		case "endEvent":
 		case "intermediateCatchEvent":
 		case "intermediateThrowEvent":
-			children.push(...serializeEventDefinitions(fe.eventDefinitions, bp));
-			break;
+			children.push(...serializeEventDefinitions(fe.eventDefinitions, bp))
+			break
 
 		case "boundaryEvent":
-			attrs.attachedToRef = fe.attachedToRef;
-			if (fe.cancelActivity !== undefined) attrs.cancelActivity = String(fe.cancelActivity);
-			children.push(...serializeEventDefinitions(fe.eventDefinitions, bp));
-			break;
+			attrs.attachedToRef = fe.attachedToRef
+			if (fe.cancelActivity !== undefined) attrs.cancelActivity = String(fe.cancelActivity)
+			children.push(...serializeEventDefinitions(fe.eventDefinitions, bp))
+			break
 
 		case "task":
 		case "serviceTask":
@@ -226,47 +226,47 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 		case "businessRuleTask":
 		case "manualTask":
 		case "callActivity":
-			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp));
-			break;
+			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp))
+			break
 
 		case "adHocSubProcess":
-			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp));
-			children.push(...serializeProcessContents(fe, ns));
-			break;
+			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp))
+			children.push(...serializeProcessContents(fe, ns))
+			break
 
 		case "subProcess":
-			if (fe.triggeredByEvent !== undefined) attrs.triggeredByEvent = String(fe.triggeredByEvent);
-			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp));
-			children.push(...serializeProcessContents(fe, ns));
-			break;
+			if (fe.triggeredByEvent !== undefined) attrs.triggeredByEvent = String(fe.triggeredByEvent)
+			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp))
+			children.push(...serializeProcessContents(fe, ns))
+			break
 
 		case "eventSubProcess":
-			children.push(...serializeProcessContents(fe, ns));
-			break;
+			children.push(...serializeProcessContents(fe, ns))
+			break
 
 		case "transaction":
-			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp));
-			children.push(...serializeProcessContents(fe, ns));
-			break;
+			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp))
+			children.push(...serializeProcessContents(fe, ns))
+			break
 
 		case "exclusiveGateway":
-			if (fe.default !== undefined) attrs.default = fe.default;
-			break;
+			if (fe.default !== undefined) attrs.default = fe.default
+			break
 
 		case "inclusiveGateway":
-			if (fe.default !== undefined) attrs.default = fe.default;
-			break;
+			if (fe.default !== undefined) attrs.default = fe.default
+			break
 
 		case "complexGateway":
-			if (fe.default !== undefined) attrs.default = fe.default;
-			break;
+			if (fe.default !== undefined) attrs.default = fe.default
+			break
 
 		case "parallelGateway":
 		case "eventBasedGateway":
-			break;
+			break
 	}
 
-	return el(`${bp}:${fe.type}`, attrs, children);
+	return el(`${bp}:${fe.type}`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -279,11 +279,11 @@ function serializeSequenceFlow(sf: BpmnSequenceFlow, bp: string): XmlElement {
 		sourceRef: sf.sourceRef,
 		targetRef: sf.targetRef,
 		...sf.unknownAttributes,
-	};
-	if (sf.name !== undefined) attrs.name = sf.name;
+	}
+	if (sf.name !== undefined) attrs.name = sf.name
 
-	const children: XmlElement[] = [];
-	children.push(...serializeExtensionElements(sf.extensionElements, bp));
+	const children: XmlElement[] = []
+	children.push(...serializeExtensionElements(sf.extensionElements, bp))
 
 	if (sf.conditionExpression) {
 		children.push(
@@ -293,10 +293,10 @@ function serializeSequenceFlow(sf: BpmnSequenceFlow, bp: string): XmlElement {
 				[],
 				sf.conditionExpression.text,
 			),
-		);
+		)
 	}
 
-	return el(`${bp}:sequenceFlow`, attrs, children);
+	return el(`${bp}:sequenceFlow`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -304,11 +304,11 @@ function serializeSequenceFlow(sf: BpmnSequenceFlow, bp: string): XmlElement {
 // ---------------------------------------------------------------------------
 
 function serializeTextAnnotation(ta: BpmnTextAnnotation, bp: string): XmlElement {
-	const children: XmlElement[] = [];
+	const children: XmlElement[] = []
 	if (ta.text !== undefined) {
-		children.push(el(`${bp}:text`, {}, [], ta.text));
+		children.push(el(`${bp}:text`, {}, [], ta.text))
 	}
-	return el(`${bp}:textAnnotation`, { id: ta.id, ...ta.unknownAttributes }, children);
+	return el(`${bp}:textAnnotation`, { id: ta.id, ...ta.unknownAttributes }, children)
 }
 
 function serializeAssociation(a: BpmnAssociation, bp: string): XmlElement {
@@ -317,9 +317,9 @@ function serializeAssociation(a: BpmnAssociation, bp: string): XmlElement {
 		sourceRef: a.sourceRef,
 		targetRef: a.targetRef,
 		...a.unknownAttributes,
-	};
-	if (a.associationDirection !== undefined) attrs.associationDirection = a.associationDirection;
-	return el(`${bp}:association`, attrs, []);
+	}
+	if (a.associationDirection !== undefined) attrs.associationDirection = a.associationDirection
+	return el(`${bp}:association`, attrs, [])
 }
 
 // ---------------------------------------------------------------------------
@@ -328,30 +328,30 @@ function serializeAssociation(a: BpmnAssociation, bp: string): XmlElement {
 
 function serializeProcessContents(
 	p: {
-		flowElements: BpmnFlowElement[];
-		sequenceFlows: BpmnSequenceFlow[];
-		textAnnotations: BpmnTextAnnotation[];
-		associations: BpmnAssociation[];
+		flowElements: BpmnFlowElement[]
+		sequenceFlows: BpmnSequenceFlow[]
+		textAnnotations: BpmnTextAnnotation[]
+		associations: BpmnAssociation[]
 	},
 	ns: Record<string, string>,
 ): XmlElement[] {
-	const bp = bpmnPrefix(ns);
-	const children: XmlElement[] = [];
+	const bp = bpmnPrefix(ns)
+	const children: XmlElement[] = []
 
 	for (const fe of p.flowElements) {
-		children.push(serializeFlowElement(fe, ns));
+		children.push(serializeFlowElement(fe, ns))
 	}
 	for (const sf of p.sequenceFlows) {
-		children.push(serializeSequenceFlow(sf, bp));
+		children.push(serializeSequenceFlow(sf, bp))
 	}
 	for (const ta of p.textAnnotations) {
-		children.push(serializeTextAnnotation(ta, bp));
+		children.push(serializeTextAnnotation(ta, bp))
 	}
 	for (const a of p.associations) {
-		children.push(serializeAssociation(a, bp));
+		children.push(serializeAssociation(a, bp))
 	}
 
-	return children;
+	return children
 }
 
 // ---------------------------------------------------------------------------
@@ -359,25 +359,25 @@ function serializeProcessContents(
 // ---------------------------------------------------------------------------
 
 function serializeLane(lane: BpmnLane, bp: string): XmlElement {
-	const attrs: Record<string, string> = { id: lane.id, ...lane.unknownAttributes };
-	if (lane.name !== undefined) attrs.name = lane.name;
+	const attrs: Record<string, string> = { id: lane.id, ...lane.unknownAttributes }
+	if (lane.name !== undefined) attrs.name = lane.name
 	const children: XmlElement[] = lane.flowNodeRefs.map((ref) =>
 		el(`${bp}:flowNodeRef`, {}, [], ref),
-	);
+	)
 	if (lane.childLaneSet) {
-		children.push(serializeLaneSet(lane.childLaneSet, bp));
+		children.push(serializeLaneSet(lane.childLaneSet, bp))
 	}
-	return el(`${bp}:lane`, attrs, children);
+	return el(`${bp}:lane`, attrs, children)
 }
 
 function serializeLaneSet(laneSet: BpmnLaneSet, bp: string): XmlElement {
-	const attrs: Record<string, string> = {};
-	if (laneSet.id) attrs.id = laneSet.id;
+	const attrs: Record<string, string> = {}
+	if (laneSet.id) attrs.id = laneSet.id
 	return el(
 		`${bp}:laneSet`,
 		attrs,
 		laneSet.lanes.map((l) => serializeLane(l, bp)),
-	);
+	)
 }
 
 // ---------------------------------------------------------------------------
@@ -385,19 +385,19 @@ function serializeLaneSet(laneSet: BpmnLaneSet, bp: string): XmlElement {
 // ---------------------------------------------------------------------------
 
 function serializeProcess(process: BpmnProcess, ns: Record<string, string>): XmlElement {
-	const bp = bpmnPrefix(ns);
-	const attrs: Record<string, string> = { id: process.id, ...process.unknownAttributes };
-	if (process.name !== undefined) attrs.name = process.name;
-	if (process.isExecutable) attrs.isExecutable = "true";
+	const bp = bpmnPrefix(ns)
+	const attrs: Record<string, string> = { id: process.id, ...process.unknownAttributes }
+	if (process.name !== undefined) attrs.name = process.name
+	if (process.isExecutable) attrs.isExecutable = "true"
 
-	const children: XmlElement[] = [];
-	children.push(...serializeExtensionElements(process.extensionElements, bp));
+	const children: XmlElement[] = []
+	children.push(...serializeExtensionElements(process.extensionElements, bp))
 	if (process.laneSet) {
-		children.push(serializeLaneSet(process.laneSet, bp));
+		children.push(serializeLaneSet(process.laneSet, bp))
 	}
-	children.push(...serializeProcessContents(process, ns));
+	children.push(...serializeProcessContents(process, ns))
 
-	return el(`${bp}:process`, attrs, children);
+	return el(`${bp}:process`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -405,10 +405,10 @@ function serializeProcess(process: BpmnProcess, ns: Record<string, string>): Xml
 // ---------------------------------------------------------------------------
 
 function serializeParticipant(p: BpmnParticipant, bp: string): XmlElement {
-	const attrs: Record<string, string> = { id: p.id, ...p.unknownAttributes };
-	if (p.name !== undefined) attrs.name = p.name;
-	if (p.processRef !== undefined) attrs.processRef = p.processRef;
-	return el(`${bp}:participant`, attrs, []);
+	const attrs: Record<string, string> = { id: p.id, ...p.unknownAttributes }
+	if (p.name !== undefined) attrs.name = p.name
+	if (p.processRef !== undefined) attrs.processRef = p.processRef
+	return el(`${bp}:participant`, attrs, [])
 }
 
 function serializeMessageFlow(mf: BpmnMessageFlow, bp: string): XmlElement {
@@ -417,29 +417,29 @@ function serializeMessageFlow(mf: BpmnMessageFlow, bp: string): XmlElement {
 		sourceRef: mf.sourceRef,
 		targetRef: mf.targetRef,
 		...mf.unknownAttributes,
-	};
-	if (mf.name !== undefined) attrs.name = mf.name;
-	return el(`${bp}:messageFlow`, attrs, []);
+	}
+	if (mf.name !== undefined) attrs.name = mf.name
+	return el(`${bp}:messageFlow`, attrs, [])
 }
 
 function serializeCollaboration(c: BpmnCollaboration, ns: Record<string, string>): XmlElement {
-	const bp = bpmnPrefix(ns);
-	const children: XmlElement[] = [];
+	const bp = bpmnPrefix(ns)
+	const children: XmlElement[] = []
 
 	for (const p of c.participants) {
-		children.push(serializeParticipant(p, bp));
+		children.push(serializeParticipant(p, bp))
 	}
 	for (const mf of c.messageFlows) {
-		children.push(serializeMessageFlow(mf, bp));
+		children.push(serializeMessageFlow(mf, bp))
 	}
 	for (const ta of c.textAnnotations) {
-		children.push(serializeTextAnnotation(ta, bp));
+		children.push(serializeTextAnnotation(ta, bp))
 	}
 	for (const a of c.associations) {
-		children.push(serializeAssociation(a, bp));
+		children.push(serializeAssociation(a, bp))
 	}
 
-	return el(`${bp}:collaboration`, { id: c.id, ...c.unknownAttributes }, children);
+	return el(`${bp}:collaboration`, { id: c.id, ...c.unknownAttributes }, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -447,23 +447,23 @@ function serializeCollaboration(c: BpmnCollaboration, ns: Record<string, string>
 // ---------------------------------------------------------------------------
 
 function serializeError(e: BpmnError, bp: string): XmlElement {
-	const attrs: Record<string, string> = { id: e.id };
-	if (e.name !== undefined) attrs.name = e.name;
-	if (e.errorCode !== undefined) attrs.errorCode = e.errorCode;
-	return el(`${bp}:error`, attrs, []);
+	const attrs: Record<string, string> = { id: e.id }
+	if (e.name !== undefined) attrs.name = e.name
+	if (e.errorCode !== undefined) attrs.errorCode = e.errorCode
+	return el(`${bp}:error`, attrs, [])
 }
 
 function serializeEscalation(e: BpmnEscalation, bp: string): XmlElement {
-	const attrs: Record<string, string> = { id: e.id };
-	if (e.name !== undefined) attrs.name = e.name;
-	if (e.escalationCode !== undefined) attrs.escalationCode = e.escalationCode;
-	return el(`${bp}:escalation`, attrs, []);
+	const attrs: Record<string, string> = { id: e.id }
+	if (e.name !== undefined) attrs.name = e.name
+	if (e.escalationCode !== undefined) attrs.escalationCode = e.escalationCode
+	return el(`${bp}:escalation`, attrs, [])
 }
 
 function serializeMessage(m: BpmnMessage, bp: string): XmlElement {
-	const attrs: Record<string, string> = { id: m.id, ...m.unknownAttributes };
-	if (m.name !== undefined) attrs.name = m.name;
-	return el(`${bp}:message`, attrs, []);
+	const attrs: Record<string, string> = { id: m.id, ...m.unknownAttributes }
+	if (m.name !== undefined) attrs.name = m.name
+	return el(`${bp}:message`, attrs, [])
 }
 
 // ---------------------------------------------------------------------------
@@ -475,9 +475,9 @@ function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlEleme
 		id: shape.id,
 		bpmnElement: shape.bpmnElement,
 		...shape.unknownAttributes,
-	};
-	if (shape.isMarkerVisible !== undefined) attrs.isMarkerVisible = String(shape.isMarkerVisible);
-	if (shape.isExpanded !== undefined) attrs.isExpanded = String(shape.isExpanded);
+	}
+	if (shape.isMarkerVisible !== undefined) attrs.isMarkerVisible = String(shape.isMarkerVisible)
+	if (shape.isExpanded !== undefined) attrs.isExpanded = String(shape.isExpanded)
 
 	const children: XmlElement[] = [
 		el(
@@ -490,10 +490,10 @@ function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlEleme
 			},
 			[],
 		),
-	];
+	]
 
 	if (shape.label) {
-		const labelChildren: XmlElement[] = [];
+		const labelChildren: XmlElement[] = []
 		if (shape.label.bounds) {
 			labelChildren.push(
 				el(
@@ -506,12 +506,12 @@ function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlEleme
 					},
 					[],
 				),
-			);
+			)
 		}
-		children.push(el(`${bdi}:BPMNLabel`, {}, labelChildren));
+		children.push(el(`${bdi}:BPMNLabel`, {}, labelChildren))
 	}
 
-	return el(`${bdi}:BPMNShape`, attrs, children);
+	return el(`${bdi}:BPMNShape`, attrs, children)
 }
 
 function serializeDiEdge(edge: BpmnDiEdge, bdi: string, dc: string, dip: string): XmlElement {
@@ -519,14 +519,14 @@ function serializeDiEdge(edge: BpmnDiEdge, bdi: string, dc: string, dip: string)
 		id: edge.id,
 		bpmnElement: edge.bpmnElement,
 		...edge.unknownAttributes,
-	};
+	}
 
 	const children: XmlElement[] = edge.waypoints.map((w) =>
 		el(`${dip}:waypoint`, { x: String(w.x), y: String(w.y) }, []),
-	);
+	)
 
 	if (edge.label) {
-		const labelChildren: XmlElement[] = [];
+		const labelChildren: XmlElement[] = []
 		if (edge.label.bounds) {
 			labelChildren.push(
 				el(
@@ -539,25 +539,25 @@ function serializeDiEdge(edge: BpmnDiEdge, bdi: string, dc: string, dip: string)
 					},
 					[],
 				),
-			);
+			)
 		}
-		children.push(el(`${bdi}:BPMNLabel`, {}, labelChildren));
+		children.push(el(`${bdi}:BPMNLabel`, {}, labelChildren))
 	}
 
-	return el(`${bdi}:BPMNEdge`, attrs, children);
+	return el(`${bdi}:BPMNEdge`, attrs, children)
 }
 
 function serializeDiagram(diagram: BpmnDiagram, ns: Record<string, string>): XmlElement {
-	const bdi = bpmndiPrefix(ns);
-	const dc = dcPrefix(ns);
-	const dip = diPrefix(ns);
+	const bdi = bpmndiPrefix(ns)
+	const dc = dcPrefix(ns)
+	const dip = diPrefix(ns)
 
-	const planeChildren: XmlElement[] = [];
+	const planeChildren: XmlElement[] = []
 	for (const s of diagram.plane.shapes) {
-		planeChildren.push(serializeDiShape(s, bdi, dc));
+		planeChildren.push(serializeDiShape(s, bdi, dc))
 	}
 	for (const e of diagram.plane.edges) {
-		planeChildren.push(serializeDiEdge(e, bdi, dc, dip));
+		planeChildren.push(serializeDiEdge(e, bdi, dc, dip))
 	}
 
 	const plane = el(
@@ -567,9 +567,9 @@ function serializeDiagram(diagram: BpmnDiagram, ns: Record<string, string>): Xml
 			bpmnElement: diagram.plane.bpmnElement,
 		},
 		planeChildren,
-	);
+	)
 
-	return el(`${bdi}:BPMNDiagram`, { id: diagram.id }, [plane]);
+	return el(`${bdi}:BPMNDiagram`, { id: diagram.id }, [plane])
 }
 
 // ---------------------------------------------------------------------------
@@ -578,59 +578,58 @@ function serializeDiagram(diagram: BpmnDiagram, ns: Record<string, string>): Xml
 
 /** Serialize a BpmnDefinitions model to a BPMN XML string. */
 export function serializeBpmn(definitions: BpmnDefinitions): string {
-	const ns = definitions.namespaces;
-	const bp = bpmnPrefix(ns);
+	const ns = definitions.namespaces
+	const bp = bpmnPrefix(ns)
 
-	const attrs: Record<string, string> = {};
+	const attrs: Record<string, string> = {}
 
 	// Namespace declarations
 	for (const [prefix, uri] of Object.entries(ns)) {
 		if (prefix === "") {
-			attrs.xmlns = uri;
+			attrs.xmlns = uri
 		} else {
-			attrs[`xmlns:${prefix}`] = uri;
+			attrs[`xmlns:${prefix}`] = uri
 		}
 	}
 
-	attrs.id = definitions.id;
-	attrs.targetNamespace = definitions.targetNamespace;
-	if (definitions.exporter !== undefined) attrs.exporter = definitions.exporter;
-	if (definitions.exporterVersion !== undefined)
-		attrs.exporterVersion = definitions.exporterVersion;
+	attrs.id = definitions.id
+	attrs.targetNamespace = definitions.targetNamespace
+	if (definitions.exporter !== undefined) attrs.exporter = definitions.exporter
+	if (definitions.exporterVersion !== undefined) attrs.exporterVersion = definitions.exporterVersion
 
 	// Unknown attributes (modeler:*, camunda:*, etc.)
 	for (const [key, value] of Object.entries(definitions.unknownAttributes)) {
-		attrs[key] = value;
+		attrs[key] = value
 	}
 
-	const children: XmlElement[] = [];
+	const children: XmlElement[] = []
 
 	// Root elements: errors, escalations, messages first
 	for (const e of definitions.escalations) {
-		children.push(serializeEscalation(e, bp));
+		children.push(serializeEscalation(e, bp))
 	}
 	for (const e of definitions.errors) {
-		children.push(serializeError(e, bp));
+		children.push(serializeError(e, bp))
 	}
 	for (const m of definitions.messages) {
-		children.push(serializeMessage(m, bp));
+		children.push(serializeMessage(m, bp))
 	}
 
 	// Collaborations
 	for (const c of definitions.collaborations) {
-		children.push(serializeCollaboration(c, ns));
+		children.push(serializeCollaboration(c, ns))
 	}
 
 	// Processes
 	for (const p of definitions.processes) {
-		children.push(serializeProcess(p, ns));
+		children.push(serializeProcess(p, ns))
 	}
 
 	// Diagrams
 	for (const d of definitions.diagrams) {
-		children.push(serializeDiagram(d, ns));
+		children.push(serializeDiagram(d, ns))
 	}
 
-	const root = el(`${bp}:definitions`, attrs, children);
-	return serializeXml(root);
+	const root = el(`${bp}:definitions`, attrs, children)
+	return serializeXml(root)
 }

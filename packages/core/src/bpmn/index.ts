@@ -1,7 +1,7 @@
-import { ProcessBuilder } from "./bpmn-builder.js";
-import type { BpmnDefinitions } from "./bpmn-model.js";
-import { parseBpmn } from "./bpmn-parser.js";
-import { serializeBpmn } from "./bpmn-serializer.js";
+import { ProcessBuilder } from "./bpmn-builder.js"
+import type { BpmnDefinitions } from "./bpmn-model.js"
+import { parseBpmn } from "./bpmn-parser.js"
+import { serializeBpmn } from "./bpmn-serializer.js"
 
 /** A minimal 3-element BPMN diagram useful for first-launch or "New Diagram" defaults. */
 export const SAMPLE_BPMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -45,23 +45,23 @@ export const SAMPLE_BPMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
-</bpmn:definitions>`;
+</bpmn:definitions>`
 
 /** Entry point for BPMN process operations. */
 export const Bpmn = {
 	/** Create a new BPMN process using the fluent builder API. */
 	createProcess(processId: string): ProcessBuilder {
-		return new ProcessBuilder(processId);
+		return new ProcessBuilder(processId)
 	},
 
 	/** Parse a BPMN XML string into a typed model. */
 	parse(xml: string): BpmnDefinitions {
-		return parseBpmn(xml);
+		return parseBpmn(xml)
 	},
 
 	/** Export a typed BPMN model to XML string. */
 	export(definitions: BpmnDefinitions): string {
-		return serializeBpmn(definitions);
+		return serializeBpmn(definitions)
 	},
 
 	/**
@@ -72,7 +72,7 @@ export const Bpmn = {
 		processId = `Process_${Math.random().toString(36).slice(2, 9)}`,
 		processName = "New Process",
 	): string {
-		const startId = `StartEvent_${processId}`;
+		const startId = `StartEvent_${processId}`
 		return `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
@@ -88,9 +88,9 @@ export const Bpmn = {
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
-</bpmn:definitions>`;
+</bpmn:definitions>`
 	},
 
 	/** A minimal 3-element sample diagram. Re-exported for convenience. */
 	SAMPLE_XML: SAMPLE_BPMN_XML,
-} as const;
+} as const

@@ -21,9 +21,9 @@
  * @packageDocumentation
  */
 
-import type { CanvasPlugin } from "@bpmn-sdk/canvas";
-import { ELEMENT_GROUPS, ELEMENT_TYPE_LABELS } from "@bpmn-sdk/editor";
-import type { CommandPalettePlugin } from "../command-palette/index.js";
+import type { CanvasPlugin } from "@bpmn-sdk/canvas"
+import { ELEMENT_GROUPS, ELEMENT_TYPE_LABELS } from "@bpmn-sdk/editor"
+import type { CommandPalettePlugin } from "../command-palette/index.js"
 
 // ── Element catalogue ─────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ const ELEMENT_COMMANDS = ELEMENT_GROUPS.flatMap((group) =>
 		title: `Add ${ELEMENT_TYPE_LABELS[type]}`,
 		description: group.title,
 	})),
-);
+)
 
 // ── Factory ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ export function createCommandPaletteEditorPlugin(
 	palette: CommandPalettePlugin,
 	setTool: (tool: string) => void,
 ): CanvasPlugin {
-	let _deregister: (() => void) | null = null;
+	let _deregister: (() => void) | null = null
 
 	return {
 		name: "command-palette-editor",
@@ -62,15 +62,15 @@ export function createCommandPaletteEditorPlugin(
 					title: cmd.title,
 					description: cmd.description,
 					action() {
-						setTool(`create:${cmd.type}`);
+						setTool(`create:${cmd.type}`)
 					},
 				})),
-			);
+			)
 		},
 
 		uninstall() {
-			_deregister?.();
-			_deregister = null;
+			_deregister?.()
+			_deregister = null
 		},
-	};
+	}
 }

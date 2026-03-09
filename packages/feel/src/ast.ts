@@ -11,9 +11,9 @@ export type BinaryOp =
 	| ">"
 	| ">="
 	| "and"
-	| "or";
+	| "or"
 
-export type FeelNode = { start: number; end: number } & FeelNodeKind;
+export type FeelNode = { start: number; end: number } & FeelNodeKind
 
 type FeelNodeKind =
 	// Literals
@@ -29,11 +29,11 @@ type FeelNodeKind =
 	| { kind: "context"; entries: Array<{ key: string; value: FeelNode }> }
 	// Range (low/high are the bound expressions; start/end are position fields on the outer type)
 	| {
-			kind: "range";
-			startIncluded: boolean;
-			low: FeelNode;
-			high: FeelNode;
-			endIncluded: boolean;
+			kind: "range"
+			startIncluded: boolean
+			low: FeelNode
+			high: FeelNode
+			endIncluded: boolean
 	  }
 	// Operators
 	| { kind: "unary-minus"; operand: FeelNode }
@@ -47,14 +47,14 @@ type FeelNodeKind =
 	// Control flow
 	| { kind: "if"; condition: FeelNode; then: FeelNode; else: FeelNode }
 	| {
-			kind: "for";
-			bindings: Array<{ name: string; domain: FeelNode }>;
-			body: FeelNode;
+			kind: "for"
+			bindings: Array<{ name: string; domain: FeelNode }>
+			body: FeelNode
 	  }
 	| {
-			kind: "some" | "every";
-			bindings: Array<{ name: string; domain: FeelNode }>;
-			satisfies: FeelNode;
+			kind: "some" | "every"
+			bindings: Array<{ name: string; domain: FeelNode }>
+			satisfies: FeelNode
 	  }
 	// Tests
 	| { kind: "between"; value: FeelNode; low: FeelNode; high: FeelNode }
@@ -65,4 +65,4 @@ type FeelNodeKind =
 	// Unary-test mode
 	| { kind: "unary-test-list"; tests: FeelNode[] }
 	| { kind: "unary-not"; tests: FeelNode[] }
-	| { kind: "any-input" };
+	| { kind: "any-input" }

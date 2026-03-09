@@ -8,27 +8,27 @@ export type ProcessEvent =
 	| { type: "variable:set"; name: string; value: unknown; scopeId: string }
 	| { type: "job:created"; job: Job }
 	| {
-			type: "feel:evaluated";
-			elementId: string;
-			property: string;
-			expression: string;
-			result: unknown;
-			variables: Record<string, unknown>;
+			type: "feel:evaluated"
+			elementId: string
+			property: string
+			expression: string
+			result: unknown
+			variables: Record<string, unknown>
 	  }
 	| { type: "element:failed"; elementId: string; error: string }
 	| { type: "process:completed"; variables: Record<string, unknown> }
-	| { type: "process:failed"; error: string };
+	| { type: "process:failed"; error: string }
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────
 
 export interface Job {
-	readonly id: string;
-	readonly type: string;
-	readonly headers: Record<string, string>;
-	readonly variables: Record<string, unknown>;
-	complete(variables?: Record<string, unknown>): void;
-	fail(error: string): void;
-	throwError(code: string, message: string): void;
+	readonly id: string
+	readonly type: string
+	readonly headers: Record<string, string>
+	readonly variables: Record<string, unknown>
+	complete(variables?: Record<string, unknown>): void
+	fail(error: string): void
+	throwError(code: string, message: string): void
 }
 
-export type JobHandler = (job: Job) => void | Promise<void>;
+export type JobHandler = (job: Job) => void | Promise<void>

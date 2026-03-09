@@ -10,7 +10,7 @@ export const SITE = {
 	url: "https://bpmn-sdk-landing.pages.dev",
 	github: "https://github.com/bpmn-sdk/monorepo",
 	npm: "https://www.npmjs.com/package/@bpmn-sdk/core",
-};
+}
 
 // ── Packages ───────────────────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ export const PACKAGES = [
 			"Interactive TUI for managing Camunda 8 from the terminal: processes, " +
 			"jobs, incidents, decisions, variables, messages",
 	},
-] as const;
+] as const
 
 // ── Feature bullets (for llms.txt) ────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ export const FEATURES = [
 	"Simulation engine: deploy and run processes locally, register job workers, evaluate DMN",
 	"REST API client: full Camunda 8 Orchestration Cluster API coverage",
 	"CLI: arrow-key TUI, connection profiles, tabular results",
-] as const;
+] as const
 
 // ── Code examples — plain text (for llms-full.txt) ────────────────────────────
 
@@ -178,7 +178,7 @@ const xml = Bpmn.export(
     .withAutoLayout()
     .build()
 );`,
-} as const;
+} as const
 
 // ── Code examples — HTML-highlighted (for index.astro) ────────────────────────
 // When you change a code example above, update the matching HTML version here.
@@ -254,4 +254,4 @@ engine.start(<span class="str">"hello"</span>);`,
 <span class="comment">// React to lifecycle events</span>
 client.<span class="fn">on</span>(<span class="str">"request"</span>, (e) => console.log(e.method, e.url));
 client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => metrics.<span class="fn">inc</span>(<span class="str">"api.error"</span>));`,
-} as const;
+} as const

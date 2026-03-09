@@ -1,5 +1,5 @@
-import { getBashScript, getFishScript, getZshScript } from "../completion.js";
-import type { CommandGroup } from "../types.js";
+import { getBashScript, getFishScript, getZshScript } from "../completion.js"
+import type { CommandGroup } from "../types.js"
 
 export const completionGroup: CommandGroup = {
 	name: "completion",
@@ -16,7 +16,7 @@ export const completionGroup: CommandGroup = {
 				},
 			],
 			async run(ctx) {
-				ctx.output.print(getBashScript());
+				ctx.output.print(getBashScript())
 			},
 		},
 		{
@@ -33,7 +33,7 @@ export const completionGroup: CommandGroup = {
 				},
 			],
 			async run(ctx) {
-				ctx.output.print(getZshScript());
+				ctx.output.print(getZshScript())
 			},
 		},
 		{
@@ -46,8 +46,8 @@ export const completionGroup: CommandGroup = {
 				},
 			],
 			async run(ctx) {
-				ctx.output.print(getFishScript());
+				ctx.output.print(getFishScript())
 			},
 		},
 	],
-};
+}

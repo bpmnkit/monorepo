@@ -7,8 +7,8 @@
  * @packageDocumentation
  */
 
-export { DmnViewer } from "./dmn-viewer.js";
-export type { DmnViewerOptions } from "./dmn-viewer.js";
-export { tokenizeFeel, highlightFeel } from "./feel.js";
-export type { FeelToken, FeelTokenType } from "./feel.js";
-export { DMN_VIEWER_CSS, injectDmnViewerStyles } from "./css.js";
+export { DmnViewer } from "./dmn-viewer.js"
+export type { DmnViewerOptions } from "./dmn-viewer.js"
+export { tokenizeFeel, highlightFeel } from "./feel.js"
+export type { FeelToken, FeelTokenType } from "./feel.js"
+export { DMN_VIEWER_CSS, injectDmnViewerStyles } from "./css.js"

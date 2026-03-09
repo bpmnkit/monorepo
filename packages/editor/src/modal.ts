@@ -1,9 +1,9 @@
-const MODAL_STYLE_ID = "bpmn-hud-modal-styles";
+const MODAL_STYLE_ID = "bpmn-hud-modal-styles"
 
 function injectModalStyles(): void {
-	if (document.getElementById(MODAL_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = MODAL_STYLE_ID;
+	if (document.getElementById(MODAL_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = MODAL_STYLE_ID
 	style.textContent = `
 .bpmn-hud-modal-overlay {
   position: fixed; inset: 0; z-index: 300;
@@ -77,8 +77,8 @@ function injectModalStyles(): void {
   color: #fff;
 }
 [data-bpmn-hud-theme="light"] .bpmn-hud-modal-btn--primary:hover { background: rgba(0,80,200,1); }
-`;
-	document.head.appendChild(style);
+`
+	document.head.appendChild(style)
 }
 
 /**
@@ -90,66 +90,66 @@ export function showHudInputModal(
 	defaultValue: string,
 	onConfirm: (value: string) => void,
 ): void {
-	injectModalStyles();
+	injectModalStyles()
 
-	const overlay = document.createElement("div");
-	overlay.className = "bpmn-hud-modal-overlay";
+	const overlay = document.createElement("div")
+	overlay.className = "bpmn-hud-modal-overlay"
 
-	const dialog = document.createElement("div");
-	dialog.className = "bpmn-hud-modal";
+	const dialog = document.createElement("div")
+	dialog.className = "bpmn-hud-modal"
 
-	const titleEl = document.createElement("div");
-	titleEl.className = "bpmn-hud-modal-title";
-	titleEl.textContent = title;
+	const titleEl = document.createElement("div")
+	titleEl.className = "bpmn-hud-modal-title"
+	titleEl.textContent = title
 
-	const input = document.createElement("input");
-	input.type = "text";
-	input.className = "bpmn-hud-modal-input";
-	input.value = defaultValue;
+	const input = document.createElement("input")
+	input.type = "text"
+	input.className = "bpmn-hud-modal-input"
+	input.value = defaultValue
 
-	const actions = document.createElement("div");
-	actions.className = "bpmn-hud-modal-actions";
+	const actions = document.createElement("div")
+	actions.className = "bpmn-hud-modal-actions"
 
-	const cancelBtn = document.createElement("button");
-	cancelBtn.className = "bpmn-hud-modal-btn";
-	cancelBtn.textContent = "Cancel";
+	const cancelBtn = document.createElement("button")
+	cancelBtn.className = "bpmn-hud-modal-btn"
+	cancelBtn.textContent = "Cancel"
 
-	const confirmBtn = document.createElement("button");
-	confirmBtn.className = "bpmn-hud-modal-btn bpmn-hud-modal-btn--primary";
-	confirmBtn.textContent = "Confirm";
+	const confirmBtn = document.createElement("button")
+	confirmBtn.className = "bpmn-hud-modal-btn bpmn-hud-modal-btn--primary"
+	confirmBtn.textContent = "Confirm"
 
 	function close(): void {
-		overlay.remove();
-		document.removeEventListener("keydown", handleKey);
+		overlay.remove()
+		document.removeEventListener("keydown", handleKey)
 	}
 
 	function confirm(): void {
-		const value = input.value.trim();
-		if (!value) return;
-		close();
-		onConfirm(value);
+		const value = input.value.trim()
+		if (!value) return
+		close()
+		onConfirm(value)
 	}
 
-	cancelBtn.addEventListener("click", close);
-	confirmBtn.addEventListener("click", confirm);
+	cancelBtn.addEventListener("click", close)
+	confirmBtn.addEventListener("click", confirm)
 
 	function handleKey(e: KeyboardEvent): void {
-		if (e.key === "Escape") close();
-		else if (e.key === "Enter") confirm();
+		if (e.key === "Escape") close()
+		else if (e.key === "Enter") confirm()
 	}
-	document.addEventListener("keydown", handleKey);
+	document.addEventListener("keydown", handleKey)
 
 	overlay.addEventListener("click", (e) => {
-		if (e.target === overlay) close();
-	});
+		if (e.target === overlay) close()
+	})
 
-	actions.append(cancelBtn, confirmBtn);
-	dialog.append(titleEl, input, actions);
-	overlay.append(dialog);
-	document.body.append(overlay);
+	actions.append(cancelBtn, confirmBtn)
+	dialog.append(titleEl, input, actions)
+	overlay.append(dialog)
+	document.body.append(overlay)
 
 	requestAnimationFrame(() => {
-		input.select();
-		input.focus();
-	});
+		input.select()
+		input.focus()
+	})
 }

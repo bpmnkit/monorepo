@@ -17,7 +17,7 @@
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double",
-			"semicolons": "always"
+			"semicolons": "asNeeded"
 		}
 	},
 	"files": {
@@ -30,7 +30,8 @@
 			"**/src-tauri/**",
 			"**/.astro/**",
 			"**/src/generated/**",
-			"**/swagger/**"
+			"**/swagger/**",
+			"apps/ai-server-rs/target/**"
 		]
 	}
 }

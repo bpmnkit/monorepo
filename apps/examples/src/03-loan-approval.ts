@@ -10,8 +10,8 @@
  * - connectTo() for merging paths from multiple branches
  */
 
-import { writeFileSync } from "node:fs";
-import { Bpmn } from "@bpmn-sdk/core";
+import { writeFileSync } from "node:fs"
+import { Bpmn } from "@bpmn-sdk/core"
 
 const definitions = Bpmn.createProcess("LoanApproval")
 	.withAutoLayout()
@@ -142,8 +142,8 @@ const definitions = Bpmn.createProcess("LoanApproval")
 	})
 
 	.endEvent("endApproved", { name: "Loan Approved" })
-	.build();
+	.build()
 
-const xml = Bpmn.export(definitions);
-writeFileSync("output/03-loan-approval.bpmn", xml);
-console.log("✓ 03-loan-approval.bpmn");
+const xml = Bpmn.export(definitions)
+writeFileSync("output/03-loan-approval.bpmn", xml)
+console.log("✓ 03-loan-approval.bpmn")

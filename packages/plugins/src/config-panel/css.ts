@@ -1,4 +1,4 @@
-export const CONFIG_PANEL_STYLE_ID = "bpmn-config-panel-styles-v1";
+export const CONFIG_PANEL_STYLE_ID = "bpmn-config-panel-styles-v1"
 
 export const CONFIG_PANEL_CSS = `
 /* ── Inspector panel ─────────────────────────────────────────────────────── */
@@ -706,13 +706,13 @@ export const CONFIG_PANEL_CSS = `
   background: rgba(220, 38, 38, 0.14);
   border-color: rgba(220, 38, 38, 0.5);
 }
-`;
+`
 
 export function injectConfigPanelStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(CONFIG_PANEL_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = CONFIG_PANEL_STYLE_ID;
-	style.textContent = CONFIG_PANEL_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(CONFIG_PANEL_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = CONFIG_PANEL_STYLE_ID
+	style.textContent = CONFIG_PANEL_CSS
+	document.head.appendChild(style)
 }

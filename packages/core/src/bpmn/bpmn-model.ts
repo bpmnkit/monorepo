@@ -1,4 +1,4 @@
-import type { XmlElement } from "../types/xml-element.js";
+import type { XmlElement } from "../types/xml-element.js"
 
 // ---------------------------------------------------------------------------
 // Element type union (used by layout for sizing)
@@ -27,22 +27,22 @@ export type BpmnElementType =
 	| "subProcess"
 	| "adHocSubProcess"
 	| "eventSubProcess"
-	| "transaction";
+	| "transaction"
 
 // ---------------------------------------------------------------------------
 // Geometry
 // ---------------------------------------------------------------------------
 
 export interface BpmnBounds {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
+	x: number
+	y: number
+	width: number
+	height: number
 }
 
 export interface BpmnWaypoint {
-	x: number;
-	y: number;
+	x: number
+	y: number
 }
 
 // ---------------------------------------------------------------------------
@@ -50,66 +50,66 @@ export interface BpmnWaypoint {
 // ---------------------------------------------------------------------------
 
 export interface BpmnTimerEventDefinition {
-	type: "timer";
-	id?: string;
-	timeDuration?: string;
-	timeDurationAttributes?: Record<string, string>;
-	timeDate?: string;
-	timeDateAttributes?: Record<string, string>;
-	timeCycle?: string;
-	timeCycleAttributes?: Record<string, string>;
+	type: "timer"
+	id?: string
+	timeDuration?: string
+	timeDurationAttributes?: Record<string, string>
+	timeDate?: string
+	timeDateAttributes?: Record<string, string>
+	timeCycle?: string
+	timeCycleAttributes?: Record<string, string>
 }
 
 export interface BpmnErrorEventDefinition {
-	type: "error";
-	id?: string;
-	errorRef?: string;
+	type: "error"
+	id?: string
+	errorRef?: string
 }
 
 export interface BpmnEscalationEventDefinition {
-	type: "escalation";
-	id?: string;
-	escalationRef?: string;
+	type: "escalation"
+	id?: string
+	escalationRef?: string
 }
 
 export interface BpmnMessageEventDefinition {
-	type: "message";
-	id?: string;
-	messageRef?: string;
+	type: "message"
+	id?: string
+	messageRef?: string
 }
 
 export interface BpmnSignalEventDefinition {
-	type: "signal";
-	id?: string;
-	signalRef?: string;
+	type: "signal"
+	id?: string
+	signalRef?: string
 }
 
 export interface BpmnConditionalEventDefinition {
-	type: "conditional";
-	id?: string;
-	condition?: string;
+	type: "conditional"
+	id?: string
+	condition?: string
 }
 
 export interface BpmnLinkEventDefinition {
-	type: "link";
-	id?: string;
-	name?: string;
+	type: "link"
+	id?: string
+	name?: string
 }
 
 export interface BpmnCancelEventDefinition {
-	type: "cancel";
-	id?: string;
+	type: "cancel"
+	id?: string
 }
 
 export interface BpmnTerminateEventDefinition {
-	type: "terminate";
-	id?: string;
+	type: "terminate"
+	id?: string
 }
 
 export interface BpmnCompensateEventDefinition {
-	type: "compensate";
-	id?: string;
-	activityRef?: string;
+	type: "compensate"
+	id?: string
+	activityRef?: string
 }
 
 export type BpmnEventDefinition =
@@ -122,14 +122,14 @@ export type BpmnEventDefinition =
 	| BpmnLinkEventDefinition
 	| BpmnCancelEventDefinition
 	| BpmnTerminateEventDefinition
-	| BpmnCompensateEventDefinition;
+	| BpmnCompensateEventDefinition
 
 // ---------------------------------------------------------------------------
 // Multi-instance loop
 // ---------------------------------------------------------------------------
 
 export interface BpmnMultiInstanceLoopCharacteristics {
-	extensionElements: XmlElement[];
+	extensionElements: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
@@ -137,8 +137,8 @@ export interface BpmnMultiInstanceLoopCharacteristics {
 // ---------------------------------------------------------------------------
 
 export interface BpmnConditionExpression {
-	text: string;
-	attributes: Record<string, string>;
+	text: string
+	attributes: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -146,13 +146,13 @@ export interface BpmnConditionExpression {
 // ---------------------------------------------------------------------------
 
 interface BpmnFlowNodeBase {
-	id: string;
-	name?: string;
-	incoming: string[];
-	outgoing: string[];
-	documentation?: string;
-	extensionElements: XmlElement[];
-	unknownAttributes: Record<string, string>;
+	id: string
+	name?: string
+	incoming: string[]
+	outgoing: string[]
+	documentation?: string
+	extensionElements: XmlElement[]
+	unknownAttributes: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -160,30 +160,30 @@ interface BpmnFlowNodeBase {
 // ---------------------------------------------------------------------------
 
 export interface BpmnStartEvent extends BpmnFlowNodeBase {
-	type: "startEvent";
-	eventDefinitions: BpmnEventDefinition[];
+	type: "startEvent"
+	eventDefinitions: BpmnEventDefinition[]
 }
 
 export interface BpmnEndEvent extends BpmnFlowNodeBase {
-	type: "endEvent";
-	eventDefinitions: BpmnEventDefinition[];
+	type: "endEvent"
+	eventDefinitions: BpmnEventDefinition[]
 }
 
 export interface BpmnIntermediateCatchEvent extends BpmnFlowNodeBase {
-	type: "intermediateCatchEvent";
-	eventDefinitions: BpmnEventDefinition[];
+	type: "intermediateCatchEvent"
+	eventDefinitions: BpmnEventDefinition[]
 }
 
 export interface BpmnIntermediateThrowEvent extends BpmnFlowNodeBase {
-	type: "intermediateThrowEvent";
-	eventDefinitions: BpmnEventDefinition[];
+	type: "intermediateThrowEvent"
+	eventDefinitions: BpmnEventDefinition[]
 }
 
 export interface BpmnBoundaryEvent extends BpmnFlowNodeBase {
-	type: "boundaryEvent";
-	attachedToRef: string;
-	cancelActivity?: boolean;
-	eventDefinitions: BpmnEventDefinition[];
+	type: "boundaryEvent"
+	attachedToRef: string
+	cancelActivity?: boolean
+	eventDefinitions: BpmnEventDefinition[]
 }
 
 // ---------------------------------------------------------------------------
@@ -191,65 +191,65 @@ export interface BpmnBoundaryEvent extends BpmnFlowNodeBase {
 // ---------------------------------------------------------------------------
 
 export interface BpmnServiceTask extends BpmnFlowNodeBase {
-	type: "serviceTask";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "serviceTask"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnScriptTask extends BpmnFlowNodeBase {
-	type: "scriptTask";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "scriptTask"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnUserTask extends BpmnFlowNodeBase {
-	type: "userTask";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "userTask"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnBusinessRuleTask extends BpmnFlowNodeBase {
-	type: "businessRuleTask";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "businessRuleTask"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnCallActivity extends BpmnFlowNodeBase {
-	type: "callActivity";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "callActivity"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnSendTask extends BpmnFlowNodeBase {
-	type: "sendTask";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "sendTask"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnReceiveTask extends BpmnFlowNodeBase {
-	type: "receiveTask";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "receiveTask"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnAdHocSubProcess extends BpmnFlowNodeBase {
-	type: "adHocSubProcess";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
-	flowElements: BpmnFlowElement[];
-	sequenceFlows: BpmnSequenceFlow[];
-	textAnnotations: BpmnTextAnnotation[];
-	associations: BpmnAssociation[];
+	type: "adHocSubProcess"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
+	flowElements: BpmnFlowElement[]
+	sequenceFlows: BpmnSequenceFlow[]
+	textAnnotations: BpmnTextAnnotation[]
+	associations: BpmnAssociation[]
 }
 
 export interface BpmnSubProcess extends BpmnFlowNodeBase {
-	type: "subProcess";
-	triggeredByEvent?: boolean;
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
-	flowElements: BpmnFlowElement[];
-	sequenceFlows: BpmnSequenceFlow[];
-	textAnnotations: BpmnTextAnnotation[];
-	associations: BpmnAssociation[];
+	type: "subProcess"
+	triggeredByEvent?: boolean
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
+	flowElements: BpmnFlowElement[]
+	sequenceFlows: BpmnSequenceFlow[]
+	textAnnotations: BpmnTextAnnotation[]
+	associations: BpmnAssociation[]
 }
 
 export interface BpmnEventSubProcess extends BpmnFlowNodeBase {
-	type: "eventSubProcess";
-	flowElements: BpmnFlowElement[];
-	sequenceFlows: BpmnSequenceFlow[];
-	textAnnotations: BpmnTextAnnotation[];
-	associations: BpmnAssociation[];
+	type: "eventSubProcess"
+	flowElements: BpmnFlowElement[]
+	sequenceFlows: BpmnSequenceFlow[]
+	textAnnotations: BpmnTextAnnotation[]
+	associations: BpmnAssociation[]
 }
 
 // ---------------------------------------------------------------------------
@@ -257,26 +257,26 @@ export interface BpmnEventSubProcess extends BpmnFlowNodeBase {
 // ---------------------------------------------------------------------------
 
 export interface BpmnExclusiveGateway extends BpmnFlowNodeBase {
-	type: "exclusiveGateway";
-	default?: string;
+	type: "exclusiveGateway"
+	default?: string
 }
 
 export interface BpmnParallelGateway extends BpmnFlowNodeBase {
-	type: "parallelGateway";
+	type: "parallelGateway"
 }
 
 export interface BpmnInclusiveGateway extends BpmnFlowNodeBase {
-	type: "inclusiveGateway";
-	default?: string;
+	type: "inclusiveGateway"
+	default?: string
 }
 
 export interface BpmnEventBasedGateway extends BpmnFlowNodeBase {
-	type: "eventBasedGateway";
+	type: "eventBasedGateway"
 }
 
 export interface BpmnComplexGateway extends BpmnFlowNodeBase {
-	type: "complexGateway";
-	default?: string;
+	type: "complexGateway"
+	default?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -284,22 +284,22 @@ export interface BpmnComplexGateway extends BpmnFlowNodeBase {
 // ---------------------------------------------------------------------------
 
 export interface BpmnTask extends BpmnFlowNodeBase {
-	type: "task";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "task"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnManualTask extends BpmnFlowNodeBase {
-	type: "manualTask";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
+	type: "manualTask"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnTransaction extends BpmnFlowNodeBase {
-	type: "transaction";
-	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics;
-	flowElements: BpmnFlowElement[];
-	sequenceFlows: BpmnSequenceFlow[];
-	textAnnotations: BpmnTextAnnotation[];
-	associations: BpmnAssociation[];
+	type: "transaction"
+	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
+	flowElements: BpmnFlowElement[]
+	sequenceFlows: BpmnSequenceFlow[]
+	textAnnotations: BpmnTextAnnotation[]
+	associations: BpmnAssociation[]
 }
 
 // ---------------------------------------------------------------------------
@@ -329,23 +329,23 @@ export type BpmnFlowElement =
 	| BpmnParallelGateway
 	| BpmnInclusiveGateway
 	| BpmnEventBasedGateway
-	| BpmnComplexGateway;
+	| BpmnComplexGateway
 
 /** Backward-compat alias used by the layout module. */
-export type BpmnFlowNode = BpmnFlowElement;
+export type BpmnFlowNode = BpmnFlowElement
 
 // ---------------------------------------------------------------------------
 // Sequence flows
 // ---------------------------------------------------------------------------
 
 export interface BpmnSequenceFlow {
-	id: string;
-	name?: string;
-	sourceRef: string;
-	targetRef: string;
-	conditionExpression?: BpmnConditionExpression;
-	extensionElements: XmlElement[];
-	unknownAttributes: Record<string, string>;
+	id: string
+	name?: string
+	sourceRef: string
+	targetRef: string
+	conditionExpression?: BpmnConditionExpression
+	extensionElements: XmlElement[]
+	unknownAttributes: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -353,17 +353,17 @@ export interface BpmnSequenceFlow {
 // ---------------------------------------------------------------------------
 
 export interface BpmnTextAnnotation {
-	id: string;
-	text?: string;
-	unknownAttributes: Record<string, string>;
+	id: string
+	text?: string
+	unknownAttributes: Record<string, string>
 }
 
 export interface BpmnAssociation {
-	id: string;
-	sourceRef: string;
-	targetRef: string;
-	associationDirection?: string;
-	unknownAttributes: Record<string, string>;
+	id: string
+	sourceRef: string
+	targetRef: string
+	associationDirection?: string
+	unknownAttributes: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -371,16 +371,16 @@ export interface BpmnAssociation {
 // ---------------------------------------------------------------------------
 
 export interface BpmnLane {
-	id: string;
-	name?: string;
-	flowNodeRefs: string[];
-	childLaneSet?: BpmnLaneSet;
-	unknownAttributes: Record<string, string>;
+	id: string
+	name?: string
+	flowNodeRefs: string[]
+	childLaneSet?: BpmnLaneSet
+	unknownAttributes: Record<string, string>
 }
 
 export interface BpmnLaneSet {
-	id?: string;
-	lanes: BpmnLane[];
+	id?: string
+	lanes: BpmnLane[]
 }
 
 // ---------------------------------------------------------------------------
@@ -388,16 +388,16 @@ export interface BpmnLaneSet {
 // ---------------------------------------------------------------------------
 
 export interface BpmnProcess {
-	id: string;
-	name?: string;
-	isExecutable?: boolean;
-	extensionElements: XmlElement[];
-	flowElements: BpmnFlowElement[];
-	sequenceFlows: BpmnSequenceFlow[];
-	textAnnotations: BpmnTextAnnotation[];
-	associations: BpmnAssociation[];
-	laneSet?: BpmnLaneSet;
-	unknownAttributes: Record<string, string>;
+	id: string
+	name?: string
+	isExecutable?: boolean
+	extensionElements: XmlElement[]
+	flowElements: BpmnFlowElement[]
+	sequenceFlows: BpmnSequenceFlow[]
+	textAnnotations: BpmnTextAnnotation[]
+	associations: BpmnAssociation[]
+	laneSet?: BpmnLaneSet
+	unknownAttributes: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -405,28 +405,28 @@ export interface BpmnProcess {
 // ---------------------------------------------------------------------------
 
 export interface BpmnParticipant {
-	id: string;
-	name?: string;
-	processRef?: string;
-	unknownAttributes: Record<string, string>;
+	id: string
+	name?: string
+	processRef?: string
+	unknownAttributes: Record<string, string>
 }
 
 export interface BpmnMessageFlow {
-	id: string;
-	name?: string;
-	sourceRef: string;
-	targetRef: string;
-	unknownAttributes: Record<string, string>;
+	id: string
+	name?: string
+	sourceRef: string
+	targetRef: string
+	unknownAttributes: Record<string, string>
 }
 
 export interface BpmnCollaboration {
-	id: string;
-	participants: BpmnParticipant[];
-	messageFlows: BpmnMessageFlow[];
-	textAnnotations: BpmnTextAnnotation[];
-	associations: BpmnAssociation[];
-	extensionElements: XmlElement[];
-	unknownAttributes: Record<string, string>;
+	id: string
+	participants: BpmnParticipant[]
+	messageFlows: BpmnMessageFlow[]
+	textAnnotations: BpmnTextAnnotation[]
+	associations: BpmnAssociation[]
+	extensionElements: XmlElement[]
+	unknownAttributes: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -434,21 +434,21 @@ export interface BpmnCollaboration {
 // ---------------------------------------------------------------------------
 
 export interface BpmnError {
-	id: string;
-	name?: string;
-	errorCode?: string;
+	id: string
+	name?: string
+	errorCode?: string
 }
 
 export interface BpmnEscalation {
-	id: string;
-	name?: string;
-	escalationCode?: string;
+	id: string
+	name?: string
+	escalationCode?: string
 }
 
 export interface BpmnMessage {
-	id: string;
-	name?: string;
-	unknownAttributes: Record<string, string>;
+	id: string
+	name?: string
+	unknownAttributes: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -456,37 +456,37 @@ export interface BpmnMessage {
 // ---------------------------------------------------------------------------
 
 export interface BpmnDiLabel {
-	bounds?: BpmnBounds;
+	bounds?: BpmnBounds
 }
 
 export interface BpmnDiShape {
-	id: string;
-	bpmnElement: string;
-	isMarkerVisible?: boolean;
-	isExpanded?: boolean;
-	bounds: BpmnBounds;
-	label?: BpmnDiLabel;
-	unknownAttributes: Record<string, string>;
+	id: string
+	bpmnElement: string
+	isMarkerVisible?: boolean
+	isExpanded?: boolean
+	bounds: BpmnBounds
+	label?: BpmnDiLabel
+	unknownAttributes: Record<string, string>
 }
 
 export interface BpmnDiEdge {
-	id: string;
-	bpmnElement: string;
-	waypoints: BpmnWaypoint[];
-	label?: BpmnDiLabel;
-	unknownAttributes: Record<string, string>;
+	id: string
+	bpmnElement: string
+	waypoints: BpmnWaypoint[]
+	label?: BpmnDiLabel
+	unknownAttributes: Record<string, string>
 }
 
 export interface BpmnDiPlane {
-	id: string;
-	bpmnElement: string;
-	shapes: BpmnDiShape[];
-	edges: BpmnDiEdge[];
+	id: string
+	bpmnElement: string
+	shapes: BpmnDiShape[]
+	edges: BpmnDiEdge[]
 }
 
 export interface BpmnDiagram {
-	id: string;
-	plane: BpmnDiPlane;
+	id: string
+	plane: BpmnDiPlane
 }
 
 // ---------------------------------------------------------------------------
@@ -494,18 +494,18 @@ export interface BpmnDiagram {
 // ---------------------------------------------------------------------------
 
 export interface BpmnDefinitions {
-	id: string;
-	targetNamespace: string;
-	exporter?: string;
-	exporterVersion?: string;
+	id: string
+	targetNamespace: string
+	exporter?: string
+	exporterVersion?: string
 	/** Namespace prefix → URI declarations (e.g. "bpmn" → "http://...") */
-	namespaces: Record<string, string>;
+	namespaces: Record<string, string>
 	/** Namespace-qualified attributes not directly modeled */
-	unknownAttributes: Record<string, string>;
-	errors: BpmnError[];
-	escalations: BpmnEscalation[];
-	messages: BpmnMessage[];
-	collaborations: BpmnCollaboration[];
-	processes: BpmnProcess[];
-	diagrams: BpmnDiagram[];
+	unknownAttributes: Record<string, string>
+	errors: BpmnError[]
+	escalations: BpmnEscalation[]
+	messages: BpmnMessage[]
+	collaborations: BpmnCollaboration[]
+	processes: BpmnProcess[]
+	diagrams: BpmnDiagram[]
 }

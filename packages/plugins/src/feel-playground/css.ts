@@ -1,4 +1,4 @@
-export const FEEL_PLAYGROUND_STYLE_ID = "feel-playground-styles";
+export const FEEL_PLAYGROUND_STYLE_ID = "feel-playground-styles"
 
 export const FEEL_PLAYGROUND_CSS = `
 /* ── Light-theme defaults ─────────────────────────────────────────── */
@@ -281,12 +281,12 @@ export const FEEL_PLAYGROUND_CSS = `
 [data-theme="dark"] .feel-variable         { color: #9cdcfe; }
 [data-theme="dark"] .feel-comment          { color: #6a9955; font-style: italic; }
 [data-theme="dark"] .feel-punctuation      { color: #d4d4d4; }
-`;
+`
 
 export function injectPlaygroundStyles(): void {
-	if (document.getElementById(FEEL_PLAYGROUND_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = FEEL_PLAYGROUND_STYLE_ID;
-	style.textContent = FEEL_PLAYGROUND_CSS;
-	document.head.appendChild(style);
+	if (document.getElementById(FEEL_PLAYGROUND_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = FEEL_PLAYGROUND_STYLE_ID
+	style.textContent = FEEL_PLAYGROUND_CSS
+	document.head.appendChild(style)
 }

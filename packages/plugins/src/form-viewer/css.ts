@@ -290,14 +290,14 @@ export const FORM_VIEWER_CSS = `
 .fv-datetime-inputs .fv-input {
   flex: 1;
 }
-`.trim();
+`.trim()
 
-const STYLE_ID = "bpmn-sdk-form-viewer-css";
+const STYLE_ID = "bpmn-sdk-form-viewer-css"
 
 export function injectFormViewerStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = FORM_VIEWER_CSS;
-	document.head.appendChild(style);
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = FORM_VIEWER_CSS
+	document.head.appendChild(style)
 }

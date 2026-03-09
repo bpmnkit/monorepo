@@ -5,5 +5,5 @@ export interface RenderOptions {
 	 * Pass `false` to suppress the header entirely.
 	 * Defaults to the process name from the BPMN XML.
 	 */
-	title?: string | false;
+	title?: string | false
 }

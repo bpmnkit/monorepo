@@ -8,8 +8,8 @@
  * - Multiple end events for different outcomes
  */
 
-import { writeFileSync } from "node:fs";
-import { Bpmn } from "@bpmn-sdk/core";
+import { writeFileSync } from "node:fs"
+import { Bpmn } from "@bpmn-sdk/core"
 
 const definitions = Bpmn.createProcess("IncidentResponse")
 	.withAutoLayout()
@@ -92,7 +92,7 @@ const definitions = Bpmn.createProcess("IncidentResponse")
 						outputs: [{ source: "=healthy", target: "systemHealthy" }],
 					},
 				})
-				.endEvent("resEnd");
+				.endEvent("resEnd")
 		},
 		{ name: "Resolve Incident" },
 	)
@@ -120,8 +120,8 @@ const definitions = Bpmn.createProcess("IncidentResponse")
 			.endEvent("endEscalated", { name: "Escalated" }),
 	)
 
-	.build();
+	.build()
 
-const xml = Bpmn.export(definitions);
-writeFileSync("output/02-incident-response.bpmn", xml);
-console.log("✓ 02-incident-response.bpmn");
+const xml = Bpmn.export(definitions)
+writeFileSync("output/02-incident-response.bpmn", xml)
+console.log("✓ 02-incident-response.bpmn")

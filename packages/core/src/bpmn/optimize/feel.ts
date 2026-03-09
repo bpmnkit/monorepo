@@ -1,6 +1,6 @@
-import type { BpmnDefinitions, BpmnProcess } from "../bpmn-model.js";
-import type { OptimizationFinding, ResolvedOptions } from "./types.js";
-import { buildFlowIndex, findProcess, readZeebeIoMapping, readZeebeTaskType } from "./utils.js";
+import type { BpmnDefinitions, BpmnProcess } from "../bpmn-model.js"
+import type { OptimizationFinding, ResolvedOptions } from "./types.js"
+import { buildFlowIndex, findProcess, readZeebeIoMapping, readZeebeTaskType } from "./utils.js"
 
 // ---------------------------------------------------------------------------
 // FEEL complexity scoring
@@ -19,55 +19,55 @@ const FEEL_KEYWORD_OPERATORS = new Set([
 	"every",
 	"satisfies",
 	"function",
-]);
+])
 
 interface FeelScore {
-	length: number;
-	nestingDepth: number;
-	operatorCount: number;
-	variableCount: number;
-	isComplex: boolean;
+	length: number
+	nestingDepth: number
+	operatorCount: number
+	variableCount: number
+	isComplex: boolean
 }
 
 function scoreFeelExpression(expr: string, opts: ResolvedOptions): FeelScore {
-	const length = expr.length;
+	const length = expr.length
 
 	// Nesting depth: track max depth of parentheses/brackets
-	let depth = 0;
-	let nestingDepth = 0;
+	let depth = 0
+	let nestingDepth = 0
 	for (const ch of expr) {
 		if (ch === "(" || ch === "[") {
-			depth++;
-			if (depth > nestingDepth) nestingDepth = depth;
+			depth++
+			if (depth > nestingDepth) nestingDepth = depth
 		} else if (ch === ")" || ch === "]") {
-			depth--;
+			depth--
 		}
 	}
 
 	// Tokenize on non-word boundaries; collect keywords and identifiers
-	const wordTokens = expr.split(/\W+/).filter(Boolean);
-	let operatorCount = 0;
-	const variables = new Set<string>();
+	const wordTokens = expr.split(/\W+/).filter(Boolean)
+	let operatorCount = 0
+	const variables = new Set<string>()
 	for (const token of wordTokens) {
 		if (FEEL_KEYWORD_OPERATORS.has(token)) {
-			operatorCount++;
+			operatorCount++
 		} else if (!/^\d/.test(token)) {
-			variables.add(token);
+			variables.add(token)
 		}
 	}
 
 	// Count symbol operators (order matters: longer patterns first)
-	const symbolMatches = expr.match(/!=|<=|>=|[+\-*/=<>]/g) ?? [];
-	operatorCount += symbolMatches.length;
+	const symbolMatches = expr.match(/!=|<=|>=|[+\-*/=<>]/g) ?? []
+	operatorCount += symbolMatches.length
 
-	const variableCount = variables.size;
+	const variableCount = variables.size
 	const isComplex =
 		length > opts.feelLengthThreshold ||
 		nestingDepth > opts.feelNestingThreshold ||
 		operatorCount > opts.feelOperatorThreshold ||
-		variableCount > opts.feelVariableThreshold;
+		variableCount > opts.feelVariableThreshold
 
-	return { length, nestingDepth, operatorCount, variableCount, isComplex };
+	return { length, nestingDepth, operatorCount, variableCount, isComplex }
 }
 
 // ---------------------------------------------------------------------------
@@ -75,25 +75,25 @@ function scoreFeelExpression(expr: string, opts: ResolvedOptions): FeelScore {
 // ---------------------------------------------------------------------------
 
 export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): OptimizationFinding[] {
-	const findings: OptimizationFinding[] = [];
-	const { bySource } = buildFlowIndex(p);
-	const processId = p.id;
+	const findings: OptimizationFinding[] = []
+	const { bySource } = buildFlowIndex(p)
+	const processId = p.id
 
 	// Track FEEL expressions across all sequence flows for duplicate detection
-	const exprToFlowIds = new Map<string, string[]>();
+	const exprToFlowIds = new Map<string, string[]>()
 
 	for (const flow of p.sequenceFlows) {
 		// Determine if source is an exclusive/inclusive gateway
-		const srcEl = p.flowElements.find((e) => e.id === flow.sourceRef);
+		const srcEl = p.flowElements.find((e) => e.id === flow.sourceRef)
 		const srcIsDecisionGateway =
 			srcEl !== undefined &&
-			(srcEl.type === "exclusiveGateway" || srcEl.type === "inclusiveGateway");
+			(srcEl.type === "exclusiveGateway" || srcEl.type === "inclusiveGateway")
 
 		if (srcIsDecisionGateway && srcEl !== undefined) {
 			const defaultFlowId =
 				srcEl.type === "exclusiveGateway" || srcEl.type === "inclusiveGateway"
 					? srcEl.default
-					: undefined;
+					: undefined
 
 			if (!flow.conditionExpression && flow.id !== defaultFlowId) {
 				findings.push({
@@ -104,21 +104,21 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 					suggestion: "Add a FEEL condition expression or mark this flow as the default.",
 					processId,
 					elementIds: [flow.id],
-				});
+				})
 			}
 		}
 
 		// Track FEEL expression for duplicate detection
 		if (flow.conditionExpression) {
-			const expr = flow.conditionExpression.text.trim();
+			const expr = flow.conditionExpression.text.trim()
 			if (expr.length > 0) {
-				const list = exprToFlowIds.get(expr) ?? [];
-				list.push(flow.id);
-				exprToFlowIds.set(expr, list);
+				const list = exprToFlowIds.get(expr) ?? []
+				list.push(flow.id)
+				exprToFlowIds.set(expr, list)
 			}
 
 			// Check complexity
-			const score = scoreFeelExpression(flow.conditionExpression.text, opts);
+			const score = scoreFeelExpression(flow.conditionExpression.text, opts)
 			if (score.isComplex) {
 				findings.push({
 					id: "feel/complex-condition",
@@ -129,21 +129,21 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 						"Consider extracting complex FEEL expressions into named variables or decision tables.",
 					processId,
 					elementIds: [flow.id],
-				});
+				})
 			}
 		}
 	}
 
 	// Check gateways: missing default flow
 	for (const el of p.flowElements) {
-		if (el.type !== "exclusiveGateway" && el.type !== "inclusiveGateway") continue;
+		if (el.type !== "exclusiveGateway" && el.type !== "inclusiveGateway") continue
 
-		const outflows = bySource.get(el.id) ?? [];
-		if (outflows.length < 2) continue;
+		const outflows = bySource.get(el.id) ?? []
+		if (outflows.length < 2) continue
 
 		if (!el.default) {
-			const lastFlowId = outflows[outflows.length - 1]?.id ?? "";
-			const gwId = el.id;
+			const lastFlowId = outflows[outflows.length - 1]?.id ?? ""
+			const gwId = el.id
 			findings.push({
 				id: "feel/missing-default-flow",
 				category: "feel",
@@ -153,30 +153,30 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 				processId,
 				elementIds: [el.id],
 				applyFix: (defs: BpmnDefinitions) => {
-					const proc = findProcess(defs, processId);
-					if (!proc) return { description: "Process not found" };
-					const gw = proc.flowElements.find((e) => e.id === gwId);
-					if (!gw) return { description: "Gateway not found" };
+					const proc = findProcess(defs, processId)
+					if (!proc) return { description: "Process not found" }
+					const gw = proc.flowElements.find((e) => e.id === gwId)
+					if (!gw) return { description: "Gateway not found" }
 					if (gw.type === "exclusiveGateway" || gw.type === "inclusiveGateway") {
-						gw.default = lastFlowId;
+						gw.default = lastFlowId
 					}
-					return { description: `Set default flow to "${lastFlowId}" on gateway "${gwId}"` };
+					return { description: `Set default flow to "${lastFlowId}" on gateway "${gwId}"` }
 				},
-			});
+			})
 		}
 	}
 
 	// Check service tasks: complex IO mapping
 	// Skip connector tasks — their ioMapping inputs are structured connector parameters
 	// (url, method, headers, body), not user-authored FEEL expressions.
-	const REST_CONNECTOR_TYPE = "io.camunda:http-json:1";
+	const REST_CONNECTOR_TYPE = "io.camunda:http-json:1"
 	for (const el of p.flowElements) {
-		if (el.type !== "serviceTask") continue;
-		if (readZeebeTaskType(el.extensionElements) === REST_CONNECTOR_TYPE) continue;
-		const ioMapping = readZeebeIoMapping(el.extensionElements);
-		if (!ioMapping) continue;
+		if (el.type !== "serviceTask") continue
+		if (readZeebeTaskType(el.extensionElements) === REST_CONNECTOR_TYPE) continue
+		const ioMapping = readZeebeIoMapping(el.extensionElements)
+		if (!ioMapping) continue
 		for (const input of ioMapping.inputs) {
-			const score = scoreFeelExpression(input.source, opts);
+			const score = scoreFeelExpression(input.source, opts)
 			if (score.isComplex) {
 				findings.push({
 					id: "feel/complex-io-mapping",
@@ -186,8 +186,8 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 					suggestion: "Consider extracting complex FEEL expressions into intermediate variables.",
 					processId,
 					elementIds: [el.id],
-				});
-				break; // One finding per task
+				})
+				break // One finding per task
 			}
 		}
 	}
@@ -204,9 +204,9 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 					"Consider extracting repeated FEEL expressions into a shared variable or decision table.",
 				processId,
 				elementIds: flowIds,
-			});
+			})
 		}
 	}
 
-	return findings;
+	return findings
 }

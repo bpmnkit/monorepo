@@ -1,4 +1,4 @@
-export const ASCII_VIEW_STYLE_ID = "bpmn-ascii-view-styles-v1";
+export const ASCII_VIEW_STYLE_ID = "bpmn-ascii-view-styles-v1"
 
 export const ASCII_VIEW_CSS = `
 .bpmn-ascii-overlay {
@@ -70,13 +70,13 @@ export const ASCII_VIEW_CSS = `
 [data-bpmn-hud-theme="light"] .bpmn-ascii-btn:hover { background: rgba(0,0,0,0.08); }
 [data-bpmn-hud-theme="light"] .bpmn-ascii-body { background: rgba(0,0,0,0.03); }
 [data-bpmn-hud-theme="light"] .bpmn-ascii-pre { color: #1a3050; }
-`;
+`
 
 export function injectAsciiViewStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(ASCII_VIEW_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = ASCII_VIEW_STYLE_ID;
-	style.textContent = ASCII_VIEW_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(ASCII_VIEW_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = ASCII_VIEW_STYLE_ID
+	style.textContent = ASCII_VIEW_CSS
+	document.head.appendChild(style)
 }

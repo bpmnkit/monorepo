@@ -1,4 +1,4 @@
-import type { BpmnTimerEventDefinition } from "@bpmn-sdk/core";
+import type { BpmnTimerEventDefinition } from "@bpmn-sdk/core"
 
 /**
  * Schedule a timer from a BPMN timer event definition.
@@ -8,62 +8,62 @@ import type { BpmnTimerEventDefinition } from "@bpmn-sdk/core";
  */
 export function scheduleTimer(def: BpmnTimerEventDefinition, callback: () => void): () => void {
 	if (def.timeDuration !== undefined) {
-		return scheduleAfterDuration(def.timeDuration, callback);
+		return scheduleAfterDuration(def.timeDuration, callback)
 	}
 	if (def.timeDate !== undefined) {
-		return scheduleAtDate(def.timeDate, callback);
+		return scheduleAtDate(def.timeDate, callback)
 	}
 	if (def.timeCycle !== undefined) {
-		return scheduleCycle(def.timeCycle, callback);
+		return scheduleCycle(def.timeCycle, callback)
 	}
 	// No timer definition — fire immediately
-	const id = setTimeout(callback, 0);
-	return () => clearTimeout(id);
+	const id = setTimeout(callback, 0)
+	return () => clearTimeout(id)
 }
 
 function scheduleAfterDuration(duration: string, cb: () => void): () => void {
-	const ms = parseDurationMs(duration);
-	const id = setTimeout(cb, ms);
-	return () => clearTimeout(id);
+	const ms = parseDurationMs(duration)
+	const id = setTimeout(cb, ms)
+	return () => clearTimeout(id)
 }
 
 function scheduleAtDate(dateStr: string, cb: () => void): () => void {
-	const target = new Date(dateStr).getTime();
-	const ms = Math.max(0, target - Date.now());
-	const id = setTimeout(cb, ms);
-	return () => clearTimeout(id);
+	const target = new Date(dateStr).getTime()
+	const ms = Math.max(0, target - Date.now())
+	const id = setTimeout(cb, ms)
+	return () => clearTimeout(id)
 }
 
 function scheduleCycle(cycle: string, cb: () => void): () => void {
 	// Format: R<n>/<duration> or R/<duration> (infinite) or just <duration>
-	const cycleMatch = /^R(\d*)\/(.+)$/.exec(cycle);
+	const cycleMatch = /^R(\d*)\/(.+)$/.exec(cycle)
 	if (cycleMatch === null) {
-		return scheduleAfterDuration(cycle, cb);
+		return scheduleAfterDuration(cycle, cb)
 	}
-	const countStr = cycleMatch[1];
-	const durationStr = cycleMatch[2] ?? "";
+	const countStr = cycleMatch[1]
+	const durationStr = cycleMatch[2] ?? ""
 	const maxFires =
-		countStr === "" || countStr === undefined ? Number.POSITIVE_INFINITY : Number(countStr);
-	const ms = parseDurationMs(durationStr);
+		countStr === "" || countStr === undefined ? Number.POSITIVE_INFINITY : Number(countStr)
+	const ms = parseDurationMs(durationStr)
 
-	let fired = 0;
-	let cancelled = false;
-	let timerId: ReturnType<typeof setTimeout> | undefined;
+	let fired = 0
+	let cancelled = false
+	let timerId: ReturnType<typeof setTimeout> | undefined
 
 	const fire = (): void => {
-		if (cancelled) return;
-		cb();
-		fired++;
+		if (cancelled) return
+		cb()
+		fired++
 		if (fired < maxFires) {
-			timerId = setTimeout(fire, ms);
+			timerId = setTimeout(fire, ms)
 		}
-	};
+	}
 
-	timerId = setTimeout(fire, ms);
+	timerId = setTimeout(fire, ms)
 	return () => {
-		cancelled = true;
-		if (timerId !== undefined) clearTimeout(timerId);
-	};
+		cancelled = true
+		if (timerId !== undefined) clearTimeout(timerId)
+	}
 }
 
 /**
@@ -72,17 +72,17 @@ function scheduleCycle(cycle: string, cb: () => void): () => void {
  */
 export function parseDurationMs(duration: string): number {
 	const re =
-		/^P(?:(\d+(?:\.\d+)?)Y)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)W)?(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
-	const m = re.exec(duration.trim());
-	if (m === null) return 0;
+		/^P(?:(\d+(?:\.\d+)?)Y)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)W)?(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/
+	const m = re.exec(duration.trim())
+	if (m === null) return 0
 
-	const years = Number(m[1] ?? 0);
-	const months = Number(m[2] ?? 0);
-	const weeks = Number(m[3] ?? 0);
-	const days = Number(m[4] ?? 0);
-	const hours = Number(m[5] ?? 0);
-	const minutes = Number(m[6] ?? 0);
-	const seconds = Number(m[7] ?? 0);
+	const years = Number(m[1] ?? 0)
+	const months = Number(m[2] ?? 0)
+	const weeks = Number(m[3] ?? 0)
+	const days = Number(m[4] ?? 0)
+	const hours = Number(m[5] ?? 0)
+	const minutes = Number(m[6] ?? 0)
+	const seconds = Number(m[7] ?? 0)
 
 	return (
 		years * 365.25 * 24 * 3600 * 1000 +
@@ -92,5 +92,5 @@ export function parseDurationMs(duration: string): number {
 		hours * 3600 * 1000 +
 		minutes * 60 * 1000 +
 		seconds * 1000
-	);
+	)
 }

@@ -1,4 +1,4 @@
-export const COMMAND_PALETTE_STYLE_ID = "bpmn-command-palette-styles-v1";
+export const COMMAND_PALETTE_STYLE_ID = "bpmn-command-palette-styles-v1"
 
 export const COMMAND_PALETTE_CSS = `
 /* ── Overlay backdrop ─────────────────────────────────────────────────────── */
@@ -144,13 +144,13 @@ export const COMMAND_PALETTE_CSS = `
 .bpmn-zen-mode .bpmn-main-menu-panel {
   display: none !important;
 }
-`;
+`
 
 export function injectCommandPaletteStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(COMMAND_PALETTE_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = COMMAND_PALETTE_STYLE_ID;
-	style.textContent = COMMAND_PALETTE_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(COMMAND_PALETTE_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = COMMAND_PALETTE_STYLE_ID
+	style.textContent = COMMAND_PALETTE_CSS
+	document.head.appendChild(style)
 }

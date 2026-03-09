@@ -1,6 +1,6 @@
-import type { DmnDecision } from "@bpmn-sdk/core";
-import { describe, expect, it } from "vitest";
-import { evaluateDecision } from "../src/dmn.js";
+import type { DmnDecision } from "@bpmn-sdk/core"
+import { describe, expect, it } from "vitest"
+import { evaluateDecision } from "../src/dmn.js"
 
 function makeDecision(
 	hitPolicy: import("@bpmn-sdk/core").HitPolicy,
@@ -33,7 +33,7 @@ function makeDecision(
 		informationRequirements: [],
 		knowledgeRequirements: [],
 		authorityRequirements: [],
-	};
+	}
 }
 
 describe("evaluateDecision", () => {
@@ -46,10 +46,10 @@ describe("evaluateDecision", () => {
 				{ inputEntries: ["< 18"], outputEntries: ['"minor"'] },
 				{ inputEntries: [">= 18"], outputEntries: ['"adult"'] },
 			],
-		);
-		expect(evaluateDecision(d, { age: 25 })).toBe("adult");
-		expect(evaluateDecision(d, { age: 12 })).toBe("minor");
-	});
+		)
+		expect(evaluateDecision(d, { age: 25 })).toBe("adult")
+		expect(evaluateDecision(d, { age: 12 })).toBe("minor")
+	})
 
 	it("UNIQUE — returns null when no rule matches", () => {
 		const d = makeDecision(
@@ -57,9 +57,9 @@ describe("evaluateDecision", () => {
 			[{ label: "x", expression: "x" }],
 			[{ name: "out" }],
 			[{ inputEntries: ["1"], outputEntries: ['"one"'] }],
-		);
-		expect(evaluateDecision(d, { x: 99 })).toBeNull();
-	});
+		)
+		expect(evaluateDecision(d, { x: 99 })).toBeNull()
+	})
 
 	it("FIRST — stops at first match", () => {
 		const d = makeDecision(
@@ -70,9 +70,9 @@ describe("evaluateDecision", () => {
 				{ inputEntries: ["> 0"], outputEntries: ['"positive"'] },
 				{ inputEntries: ["> 5"], outputEntries: ['"big"'] },
 			],
-		);
-		expect(evaluateDecision(d, { x: 10 })).toBe("positive");
-	});
+		)
+		expect(evaluateDecision(d, { x: 10 })).toBe("positive")
+	})
 
 	it("COLLECT SUM aggregation", () => {
 		const d = makeDecision(
@@ -84,9 +84,9 @@ describe("evaluateDecision", () => {
 				{ inputEntries: ['"A"'], outputEntries: ["5"] },
 			],
 			"SUM",
-		);
-		expect(evaluateDecision(d, { category: "A" })).toBe(15);
-	});
+		)
+		expect(evaluateDecision(d, { category: "A" })).toBe(15)
+	})
 
 	it("COLLECT COUNT aggregation", () => {
 		const d = makeDecision(
@@ -99,9 +99,9 @@ describe("evaluateDecision", () => {
 				{ inputEntries: ["> 0"], outputEntries: ["1"] },
 			],
 			"COUNT",
-		);
-		expect(evaluateDecision(d, { v: 5 })).toBe(3);
-	});
+		)
+		expect(evaluateDecision(d, { v: 5 })).toBe(3)
+	})
 
 	it("RULE ORDER — returns list of matches", () => {
 		const d = makeDecision(
@@ -112,9 +112,9 @@ describe("evaluateDecision", () => {
 				{ inputEntries: ["> 0"], outputEntries: ['"pos"'] },
 				{ inputEntries: ["> 10"], outputEntries: ['"big"'] },
 			],
-		);
-		expect(evaluateDecision(d, { x: 20 })).toEqual(["pos", "big"]);
-	});
+		)
+		expect(evaluateDecision(d, { x: 20 })).toEqual(["pos", "big"])
+	})
 
 	it("empty input entry matches any value", () => {
 		const d = makeDecision(
@@ -122,9 +122,9 @@ describe("evaluateDecision", () => {
 			[{ label: "x", expression: "x" }],
 			[{ name: "out" }],
 			[{ inputEntries: [""], outputEntries: ['"always"'] }],
-		);
-		expect(evaluateDecision(d, { x: "anything" })).toBe("always");
-	});
+		)
+		expect(evaluateDecision(d, { x: "anything" })).toBe("always")
+	})
 
 	it("returns null when decisionTable is undefined", () => {
 		const d: DmnDecision = {
@@ -132,7 +132,7 @@ describe("evaluateDecision", () => {
 			informationRequirements: [],
 			knowledgeRequirements: [],
 			authorityRequirements: [],
-		};
-		expect(evaluateDecision(d, {})).toBeNull();
-	});
-});
+		}
+		expect(evaluateDecision(d, {})).toBeNull()
+	})
+})

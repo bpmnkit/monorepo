@@ -1,8 +1,8 @@
 /** ID used to prevent duplicate style injection. */
-export const EDITOR_STYLE_ID = "bpmn-editor-styles-v1";
+export const EDITOR_STYLE_ID = "bpmn-editor-styles-v1"
 
 /** ID used to prevent duplicate HUD style injection. */
-export const HUD_STYLE_ID = "bpmn-editor-hud-styles-v1";
+export const HUD_STYLE_ID = "bpmn-editor-hud-styles-v1"
 
 /** CSS for editor-specific overlays injected once into `<head>`. */
 export const EDITOR_CSS = `
@@ -211,16 +211,16 @@ export const EDITOR_CSS = `
   border-color: #d97706;
   color: #fde68a;
 }
-`;
+`
 
 /** Injects the editor stylesheet into `<head>` if not already present. */
 export function injectEditorStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(EDITOR_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = EDITOR_STYLE_ID;
-	style.textContent = EDITOR_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(EDITOR_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = EDITOR_STYLE_ID
+	style.textContent = EDITOR_CSS
+	document.head.appendChild(style)
 }
 
 /** CSS for the editor HUD — panels, buttons, dropdowns, group picker.
@@ -573,14 +573,14 @@ export const HUD_CSS = `
     background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.9);
   }
 }
-`;
+`
 
 /** Injects the HUD stylesheet into `<head>` if not already present. */
 export function injectHudStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(HUD_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = HUD_STYLE_ID;
-	style.textContent = HUD_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(HUD_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = HUD_STYLE_ID
+	style.textContent = HUD_CSS
+	document.head.appendChild(style)
 }

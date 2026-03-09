@@ -690,14 +690,14 @@ export const FORM_EDITOR_CSS = `
   padding: 3px;
   border-radius: 3px;
 }
-`.trim();
+`.trim()
 
-const STYLE_ID = "bpmn-sdk-form-editor-css";
+const STYLE_ID = "bpmn-sdk-form-editor-css"
 
 export function injectFormEditorStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = FORM_EDITOR_CSS;
-	document.head.appendChild(style);
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = FORM_EDITOR_CSS
+	document.head.appendChild(style)
 }

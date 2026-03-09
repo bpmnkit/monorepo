@@ -654,14 +654,14 @@ export const DMN_EDITOR_CSS = `
   border-top: 1px solid var(--dme-border);
   margin: 3px 0;
 }
-`.trim();
+`.trim()
 
-const STYLE_ID = "bpmn-sdk-dmn-editor-css";
+const STYLE_ID = "bpmn-sdk-dmn-editor-css"
 
 export function injectDmnEditorStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = DMN_EDITOR_CSS;
-	document.head.appendChild(style);
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = DMN_EDITOR_CSS
+	document.head.appendChild(style)
 }

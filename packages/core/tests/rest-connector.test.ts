@@ -1,35 +1,35 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import type { BpmnProcess } from "../src/bpmn/bpmn-model.js";
-import { Bpmn, resetIdCounter } from "../src/index.js";
-import type { XmlElement } from "../src/types/xml-element.js";
+import { beforeEach, describe, expect, it } from "vitest"
+import type { BpmnProcess } from "../src/bpmn/bpmn-model.js"
+import { Bpmn, resetIdCounter } from "../src/index.js"
+import type { XmlElement } from "../src/types/xml-element.js"
 
 function findExtension(extensions: XmlElement[], name: string): XmlElement | undefined {
-	return extensions.find((e) => e.name === name);
+	return extensions.find((e) => e.name === name)
 }
 
 function findInput(ioMapping: XmlElement, target: string): XmlElement | undefined {
-	return ioMapping.children.find((c) => c.name === "zeebe:input" && c.attributes.target === target);
+	return ioMapping.children.find((c) => c.name === "zeebe:input" && c.attributes.target === target)
 }
 
 function findHeader(taskHeaders: XmlElement, key: string): XmlElement | undefined {
-	return taskHeaders.children.find((c) => c.name === "zeebe:header" && c.attributes.key === key);
+	return taskHeaders.children.find((c) => c.name === "zeebe:header" && c.attributes.key === key)
 }
 
 function defined<T>(value: T | undefined, message?: string): T {
-	expect(value, message).toBeDefined();
-	return value as T;
+	expect(value, message).toBeDefined()
+	return value as T
 }
 
 /** Extract the first process from build() result. */
 function buildProcess(builder: ReturnType<typeof Bpmn.createProcess>): BpmnProcess {
-	const defs = builder.build();
-	return defined(defs.processes[0], "Expected at least one process");
+	const defs = builder.build()
+	return defined(defs.processes[0], "Expected at least one process")
 }
 
 describe("REST connector builder", () => {
 	beforeEach(() => {
-		resetIdCounter();
-	});
+		resetIdCounter()
+	})
 
 	it("creates a minimal GET request with default values", () => {
 		const process = buildProcess(
@@ -40,30 +40,30 @@ describe("REST connector builder", () => {
 					url: "https://api.example.com/data",
 				})
 				.endEvent("end"),
-		);
+		)
 
-		expect(process.flowElements).toHaveLength(3);
-		const task = defined(process.flowElements[1]);
-		expect(task.type).toBe("serviceTask");
+		expect(process.flowElements).toHaveLength(3)
+		const task = defined(process.flowElements[1])
+		expect(task.type).toBe("serviceTask")
 
-		const taskDef = defined(findExtension(task.extensionElements, "zeebe:taskDefinition"));
-		expect(taskDef.attributes.type).toBe("io.camunda:http-json:1");
-		expect(taskDef.attributes.retries).toBe("3");
+		const taskDef = defined(findExtension(task.extensionElements, "zeebe:taskDefinition"))
+		expect(taskDef.attributes.type).toBe("io.camunda:http-json:1")
+		expect(taskDef.attributes.retries).toBe("3")
 
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
-		const authType = defined(findInput(ioMapping, "authentication.type"));
-		expect(authType.attributes.source).toBe("noAuth");
+		const authType = defined(findInput(ioMapping, "authentication.type"))
+		expect(authType.attributes.source).toBe("noAuth")
 
-		expect(findInput(ioMapping, "method")?.attributes.source).toBe("GET");
-		expect(findInput(ioMapping, "url")?.attributes.source).toBe("https://api.example.com/data");
+		expect(findInput(ioMapping, "method")?.attributes.source).toBe("GET")
+		expect(findInput(ioMapping, "url")?.attributes.source).toBe("https://api.example.com/data")
 
-		expect(findInput(ioMapping, "connectionTimeoutInSeconds")?.attributes.source).toBe("20");
-		expect(findInput(ioMapping, "readTimeoutInSeconds")?.attributes.source).toBe("20");
+		expect(findInput(ioMapping, "connectionTimeoutInSeconds")?.attributes.source).toBe("20")
+		expect(findInput(ioMapping, "readTimeoutInSeconds")?.attributes.source).toBe("20")
 
-		expect(findInput(ioMapping, "authentication.token")).toBeUndefined();
-		expect(findExtension(task.extensionElements, "zeebe:taskHeaders")).toBeUndefined();
-	});
+		expect(findInput(ioMapping, "authentication.token")).toBeUndefined()
+		expect(findExtension(task.extensionElements, "zeebe:taskHeaders")).toBeUndefined()
+	})
 
 	it("creates a POST request with bearer auth and body", () => {
 		const process = buildProcess(
@@ -78,22 +78,22 @@ describe("REST connector builder", () => {
 					retryBackoff: "PT0S",
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
-		expect(findInput(ioMapping, "authentication.type")?.attributes.source).toBe("bearer");
+		expect(findInput(ioMapping, "authentication.type")?.attributes.source).toBe("bearer")
 		expect(findInput(ioMapping, "authentication.token")?.attributes.source).toBe(
 			"{{secrets.API_TOKEN}}",
-		);
-		expect(findInput(ioMapping, "method")?.attributes.source).toBe("POST");
-		expect(findInput(ioMapping, "body")?.attributes.source).toBe('={"name": itemName}');
+		)
+		expect(findInput(ioMapping, "method")?.attributes.source).toBe("POST")
+		expect(findInput(ioMapping, "body")?.attributes.source).toBe('={"name": itemName}')
 
-		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"));
-		expect(findHeader(taskHeaders, "resultVariable")?.attributes.value).toBe("createResponse");
-		expect(findHeader(taskHeaders, "retryBackoff")?.attributes.value).toBe("PT0S");
-	});
+		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"))
+		expect(findHeader(taskHeaders, "resultVariable")?.attributes.value).toBe("createResponse")
+		expect(findHeader(taskHeaders, "retryBackoff")?.attributes.value).toBe("PT0S")
+	})
 
 	it("creates a GET request with query parameters as FEEL expression", () => {
 		const process = buildProcess(
@@ -107,20 +107,20 @@ describe("REST connector builder", () => {
 					resultExpression: "={totalCount: count(response.body)}",
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
 		expect(findInput(ioMapping, "queryParameters")?.attributes.source).toBe(
 			"={per_page: 100, page: currentPage}",
-		);
+		)
 
-		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"));
+		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"))
 		expect(findHeader(taskHeaders, "resultExpression")?.attributes.value).toBe(
 			"={totalCount: count(response.body)}",
-		);
-	});
+		)
+	})
 
 	it("creates a request with query parameters as Record", () => {
 		const process = buildProcess(
@@ -132,15 +132,15 @@ describe("REST connector builder", () => {
 					queryParameters: { q: "test", limit: "10" },
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
 		expect(findInput(ioMapping, "queryParameters")?.attributes.source).toBe(
 			'={"q":"test", "limit":"10"}',
-		);
-	});
+		)
+	})
 
 	it("creates a request with custom HTTP headers", () => {
 		const process = buildProcess(
@@ -155,15 +155,15 @@ describe("REST connector builder", () => {
 					},
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
 		expect(findInput(ioMapping, "headers")?.attributes.source).toBe(
 			'={"Content-Type":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"}',
-		);
-	});
+		)
+	})
 
 	it("creates a request with string headers", () => {
 		const process = buildProcess(
@@ -176,15 +176,15 @@ describe("REST connector builder", () => {
 						'={"Content-Type":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"}',
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
 		expect(findInput(ioMapping, "headers")?.attributes.source).toBe(
 			'={"Content-Type":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"}',
-		);
-	});
+		)
+	})
 
 	it("supports PATCH method", () => {
 		const process = buildProcess(
@@ -196,14 +196,14 @@ describe("REST connector builder", () => {
 					body: '={state: "closed"}',
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
-		expect(findInput(ioMapping, "method")?.attributes.source).toBe("PATCH");
-		expect(findInput(ioMapping, "body")?.attributes.source).toBe('={state: "closed"}');
-	});
+		expect(findInput(ioMapping, "method")?.attributes.source).toBe("PATCH")
+		expect(findInput(ioMapping, "body")?.attributes.source).toBe('={state: "closed"}')
+	})
 
 	it("supports custom timeout values", () => {
 		const process = buildProcess(
@@ -216,14 +216,14 @@ describe("REST connector builder", () => {
 					readTimeoutInSeconds: 120,
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
-		expect(findInput(ioMapping, "connectionTimeoutInSeconds")?.attributes.source).toBe("60");
-		expect(findInput(ioMapping, "readTimeoutInSeconds")?.attributes.source).toBe("120");
-	});
+		expect(findInput(ioMapping, "connectionTimeoutInSeconds")?.attributes.source).toBe("60")
+		expect(findInput(ioMapping, "readTimeoutInSeconds")?.attributes.source).toBe("120")
+	})
 
 	it("supports custom retries", () => {
 		const process = buildProcess(
@@ -235,12 +235,12 @@ describe("REST connector builder", () => {
 					retries: "5",
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const taskDef = defined(findExtension(task.extensionElements, "zeebe:taskDefinition"));
-		expect(taskDef.attributes.retries).toBe("5");
-	});
+		const task = defined(process.flowElements[1])
+		const taskDef = defined(findExtension(task.extensionElements, "zeebe:taskDefinition"))
+		expect(taskDef.attributes.retries).toBe("5")
+	})
 
 	it("generates resultVariable and resultExpression together", () => {
 		const process = buildProcess(
@@ -254,18 +254,18 @@ describe("REST connector builder", () => {
 					retryBackoff: "PT5S",
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"));
+		const task = defined(process.flowElements[1])
+		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"))
 
-		expect(taskHeaders.children).toHaveLength(3);
-		expect(findHeader(taskHeaders, "resultVariable")?.attributes.value).toBe("rawResponse");
+		expect(taskHeaders.children).toHaveLength(3)
+		expect(findHeader(taskHeaders, "resultVariable")?.attributes.value).toBe("rawResponse")
 		expect(findHeader(taskHeaders, "resultExpression")?.attributes.value).toBe(
 			"={data: response.body}",
-		);
-		expect(findHeader(taskHeaders, "retryBackoff")?.attributes.value).toBe("PT5S");
-	});
+		)
+		expect(findHeader(taskHeaders, "retryBackoff")?.attributes.value).toBe("PT5S")
+	})
 
 	it("chains correctly in a process flow", () => {
 		const process = buildProcess(
@@ -283,21 +283,21 @@ describe("REST connector builder", () => {
 					resultVariable: "step2Result",
 				})
 				.endEvent("end"),
-		);
+		)
 
-		expect(process.flowElements).toHaveLength(4);
-		expect(process.sequenceFlows).toHaveLength(3);
+		expect(process.flowElements).toHaveLength(4)
+		expect(process.sequenceFlows).toHaveLength(3)
 
-		expect(process.sequenceFlows[0]?.sourceRef).toBe("start");
-		expect(process.sequenceFlows[0]?.targetRef).toBe("step1");
-		expect(process.sequenceFlows[1]?.sourceRef).toBe("step1");
-		expect(process.sequenceFlows[1]?.targetRef).toBe("step2");
-		expect(process.sequenceFlows[2]?.sourceRef).toBe("step2");
-		expect(process.sequenceFlows[2]?.targetRef).toBe("end");
-	});
+		expect(process.sequenceFlows[0]?.sourceRef).toBe("start")
+		expect(process.sequenceFlows[0]?.targetRef).toBe("step1")
+		expect(process.sequenceFlows[1]?.sourceRef).toBe("step1")
+		expect(process.sequenceFlows[1]?.targetRef).toBe("step2")
+		expect(process.sequenceFlows[2]?.sourceRef).toBe("step2")
+		expect(process.sequenceFlows[2]?.targetRef).toBe("end")
+	})
 
 	it("produces equivalent output to manual serviceTask construction", () => {
-		resetIdCounter();
+		resetIdCounter()
 		const restDefs = Bpmn.createProcess("rest-test")
 			.startEvent("s")
 			.restConnector("task", {
@@ -308,10 +308,10 @@ describe("REST connector builder", () => {
 				retryBackoff: "PT0S",
 			})
 			.endEvent("e")
-			.build();
-		const restProcess = defined(restDefs.processes[0]);
+			.build()
+		const restProcess = defined(restDefs.processes[0])
 
-		resetIdCounter();
+		resetIdCounter()
 		const manualDefs = Bpmn.createProcess("manual-test")
 			.startEvent("s")
 			.serviceTask("task", {
@@ -333,41 +333,41 @@ describe("REST connector builder", () => {
 				},
 			})
 			.endEvent("e")
-			.build();
-		const manualProcess = defined(manualDefs.processes[0]);
+			.build()
+		const manualProcess = defined(manualDefs.processes[0])
 
-		const restTask = defined(restProcess.flowElements[1]);
-		const manualTask = defined(manualProcess.flowElements[1]);
+		const restTask = defined(restProcess.flowElements[1])
+		const manualTask = defined(manualProcess.flowElements[1])
 
-		const restTaskDef = defined(findExtension(restTask.extensionElements, "zeebe:taskDefinition"));
+		const restTaskDef = defined(findExtension(restTask.extensionElements, "zeebe:taskDefinition"))
 		const manualTaskDef = defined(
 			findExtension(manualTask.extensionElements, "zeebe:taskDefinition"),
-		);
-		expect(restTaskDef.attributes).toEqual(manualTaskDef.attributes);
+		)
+		expect(restTaskDef.attributes).toEqual(manualTaskDef.attributes)
 
-		const restIo = defined(findExtension(restTask.extensionElements, "zeebe:ioMapping"));
-		const manualIo = defined(findExtension(manualTask.extensionElements, "zeebe:ioMapping"));
+		const restIo = defined(findExtension(restTask.extensionElements, "zeebe:ioMapping"))
+		const manualIo = defined(findExtension(manualTask.extensionElements, "zeebe:ioMapping"))
 
 		const restInputTargets = restIo.children
 			.filter((c) => c.name === "zeebe:input")
-			.map((c) => c.attributes.target);
+			.map((c) => c.attributes.target)
 		const manualInputTargets = manualIo.children
 			.filter((c) => c.name === "zeebe:input")
-			.map((c) => c.attributes.target);
-		expect(restInputTargets).toEqual(manualInputTargets);
+			.map((c) => c.attributes.target)
+		expect(restInputTargets).toEqual(manualInputTargets)
 
-		const restHeaders = defined(findExtension(restTask.extensionElements, "zeebe:taskHeaders"));
-		const manualHeaders = defined(findExtension(manualTask.extensionElements, "zeebe:taskHeaders"));
-		expect(restHeaders.children.length).toBe(manualHeaders.children.length);
-	});
+		const restHeaders = defined(findExtension(restTask.extensionElements, "zeebe:taskHeaders"))
+		const manualHeaders = defined(findExtension(manualTask.extensionElements, "zeebe:taskHeaders"))
+		expect(restHeaders.children.length).toBe(manualHeaders.children.length)
+	})
 
 	it("throws on duplicate element IDs", () => {
 		expect(() =>
 			Bpmn.createProcess("test")
 				.startEvent("dup")
 				.restConnector("dup", { method: "GET", url: "http://x.com" }),
-		).toThrow('Duplicate element ID "dup"');
-	});
+		).toThrow('Duplicate element ID "dup"')
+	})
 
 	it("omits body, headers, queryParameters when not specified", () => {
 		const process = buildProcess(
@@ -378,31 +378,31 @@ describe("REST connector builder", () => {
 					url: "https://example.com",
 				})
 				.endEvent(),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
+		const task = defined(process.flowElements[1])
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
 
-		expect(findInput(ioMapping, "body")).toBeUndefined();
-		expect(findInput(ioMapping, "headers")).toBeUndefined();
-		expect(findInput(ioMapping, "queryParameters")).toBeUndefined();
-	});
+		expect(findInput(ioMapping, "body")).toBeUndefined()
+		expect(findInput(ioMapping, "headers")).toBeUndefined()
+		expect(findInput(ioMapping, "queryParameters")).toBeUndefined()
+	})
 
 	it("supports PUT and DELETE methods", () => {
 		for (const method of ["PUT", "DELETE"] as const) {
-			resetIdCounter();
+			resetIdCounter()
 			const process = buildProcess(
 				Bpmn.createProcess("test")
 					.startEvent()
 					.restConnector("task", { method, url: "https://example.com" })
 					.endEvent(),
-			);
+			)
 
-			const task = defined(process.flowElements[1]);
-			const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
-			expect(findInput(ioMapping, "method")?.attributes.source).toBe(method);
+			const task = defined(process.flowElements[1])
+			const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
+			expect(findInput(ioMapping, "method")?.attributes.source).toBe(method)
 		}
-	});
+	})
 
 	it("matches real-world pattern: GitHub API with query params", () => {
 		const process = buildProcess(
@@ -420,35 +420,35 @@ describe("REST connector builder", () => {
 					retryBackoff: "PT0S",
 				})
 				.endEvent("end"),
-		);
+		)
 
-		const task = defined(process.flowElements[1]);
-		expect(task.type).toBe("serviceTask");
+		const task = defined(process.flowElements[1])
+		expect(task.type).toBe("serviceTask")
 
-		const taskDef = defined(findExtension(task.extensionElements, "zeebe:taskDefinition"));
-		expect(taskDef.attributes.type).toBe("io.camunda:http-json:1");
-		expect(taskDef.attributes.retries).toBe("3");
+		const taskDef = defined(findExtension(task.extensionElements, "zeebe:taskDefinition"))
+		expect(taskDef.attributes.type).toBe("io.camunda:http-json:1")
+		expect(taskDef.attributes.retries).toBe("3")
 
-		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"));
-		expect(findInput(ioMapping, "authentication.type")?.attributes.source).toBe("bearer");
+		const ioMapping = defined(findExtension(task.extensionElements, "zeebe:ioMapping"))
+		expect(findInput(ioMapping, "authentication.type")?.attributes.source).toBe("bearer")
 		expect(findInput(ioMapping, "authentication.token")?.attributes.source).toBe(
 			"{{secrets.PDP_GITHUB_PAT}}",
-		);
-		expect(findInput(ioMapping, "method")?.attributes.source).toBe("GET");
+		)
+		expect(findInput(ioMapping, "method")?.attributes.source).toBe("GET")
 		expect(findInput(ioMapping, "url")?.attributes.source).toBe(
 			'="https://api.github.com/repos/" + repoName + "/collaborators"',
-		);
+		)
 		expect(findInput(ioMapping, "queryParameters")?.attributes.source).toBe(
 			"={per_page: 100, page: collCurrentPage}",
-		);
+		)
 
-		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"));
+		const taskHeaders = defined(findExtension(task.extensionElements, "zeebe:taskHeaders"))
 		expect(findHeader(taskHeaders, "resultVariable")?.attributes.value).toBe(
 			"githubCollaboratorsResponse",
-		);
+		)
 		expect(findHeader(taskHeaders, "resultExpression")?.attributes.value).toBe(
 			"={currentRepoCollaboratorsCount: count(response.body)}",
-		);
-		expect(findHeader(taskHeaders, "retryBackoff")?.attributes.value).toBe("PT0S");
-	});
-});
+		)
+		expect(findHeader(taskHeaders, "retryBackoff")?.attributes.value).toBe("PT0S")
+	})
+})

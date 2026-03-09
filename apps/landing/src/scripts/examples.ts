@@ -1,6 +1,6 @@
-import type { DmnDefinitions } from "@bpmn-sdk/core";
-import type { FormDefinition } from "@bpmn-sdk/core";
-import type { InMemoryFileResolver, TabsApi, WelcomeExample } from "@bpmn-sdk/plugins/tabs";
+import type { DmnDefinitions } from "@bpmn-sdk/core"
+import type { FormDefinition } from "@bpmn-sdk/core"
+import type { InMemoryFileResolver, TabsApi, WelcomeExample } from "@bpmn-sdk/plugins/tabs"
 
 export const examples: Record<string, string> = {
 	simple: `<?xml version="1.0" encoding="UTF-8"?>
@@ -448,7 +448,7 @@ export const examples: Record<string, string> = {
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>`,
-};
+}
 
 // ── DMN example: Shipping Cost ─────────────────────────────────────────────────
 
@@ -547,7 +547,7 @@ const DMN_SHIPPING_COST: DmnDefinitions = {
 	businessKnowledgeModels: [],
 	textAnnotations: [],
 	associations: [],
-};
+}
 
 // ── Form example: Support Ticket ───────────────────────────────────────────────
 
@@ -604,7 +604,7 @@ const FORM_SUPPORT_TICKET: FormDefinition = {
 		{ id: "f-sep", type: "separator" },
 		{ id: "f-submit", type: "button", label: "Submit Ticket", action: "submit" },
 	],
-};
+}
 
 // ── Multi-file example: Loan Application ───────────────────────────────────────
 
@@ -718,7 +718,7 @@ export const LOAN_APPLICATION_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
-</bpmn:definitions>`;
+</bpmn:definitions>`
 
 export const LOAN_DMN: DmnDefinitions = {
 	id: "credit-risk-defs",
@@ -819,7 +819,7 @@ export const LOAN_DMN: DmnDefinitions = {
 	businessKnowledgeModels: [],
 	textAnnotations: [],
 	associations: [],
-};
+}
 
 export const LOAN_FORM: FormDefinition = {
 	id: "form-loan-application",
@@ -892,7 +892,7 @@ export const LOAN_FORM: FormDefinition = {
 		{ id: "lf-sep", type: "separator" },
 		{ id: "lf-submit", type: "button", label: "Submit Application", action: "submit" },
 	],
-};
+}
 
 // ── Optimizable example ─────────────────────────────────────────────────────────
 // This diagram intentionally contains issues surfaced by optimize():
@@ -985,7 +985,7 @@ const CUSTOMER_NOTIFICATION_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
-</bpmn:definitions>`;
+</bpmn:definitions>`
 
 // ── Welcome screen example entries ─────────────────────────────────────────────
 
@@ -996,7 +996,7 @@ export function makeExamples(api: TabsApi, resolver: InMemoryFileResolver): Welc
 			description: "Linear service-task flow with start, validate, notify, and end events",
 			badge: "BPMN",
 			onOpen() {
-				api.openTab({ type: "bpmn", xml: examples.simple ?? "", name: "Order Validation" });
+				api.openTab({ type: "bpmn", xml: examples.simple ?? "", name: "Order Validation" })
 			},
 		},
 		{
@@ -1005,7 +1005,7 @@ export function makeExamples(api: TabsApi, resolver: InMemoryFileResolver): Welc
 				"Decision table: package weight × destination → cost and carrier (FIRST hit policy)",
 			badge: "DMN",
 			onOpen() {
-				api.openTab({ type: "dmn", defs: DMN_SHIPPING_COST, name: "Shipping Cost" });
+				api.openTab({ type: "dmn", defs: DMN_SHIPPING_COST, name: "Shipping Cost" })
 			},
 		},
 		{
@@ -1014,7 +1014,7 @@ export function makeExamples(api: TabsApi, resolver: InMemoryFileResolver): Welc
 				"Support request form with subject, category, priority, description, and file upload",
 			badge: "FORM",
 			onOpen() {
-				api.openTab({ type: "form", form: FORM_SUPPORT_TICKET, name: "Support Ticket" });
+				api.openTab({ type: "form", form: FORM_SUPPORT_TICKET, name: "Support Ticket" })
 			},
 		},
 		{
@@ -1022,11 +1022,11 @@ export function makeExamples(api: TabsApi, resolver: InMemoryFileResolver): Welc
 			description: "BPMN process linked to a Credit Risk DMN table and an Application Form",
 			badge: "MULTI",
 			onOpen() {
-				resolver.registerDmn(LOAN_DMN);
-				resolver.registerForm(LOAN_FORM);
-				api.openTab({ type: "form", form: LOAN_FORM, name: "Loan Application Form" });
-				api.openTab({ type: "dmn", defs: LOAN_DMN, name: "Credit Risk Assessment" });
-				api.openTab({ type: "bpmn", xml: LOAN_APPLICATION_BPMN, name: "Loan Application Flow" });
+				resolver.registerDmn(LOAN_DMN)
+				resolver.registerForm(LOAN_FORM)
+				api.openTab({ type: "form", form: LOAN_FORM, name: "Loan Application Form" })
+				api.openTab({ type: "dmn", defs: LOAN_DMN, name: "Credit Risk Assessment" })
+				api.openTab({ type: "bpmn", xml: LOAN_APPLICATION_BPMN, name: "Loan Application Flow" })
 			},
 		},
 		{
@@ -1034,7 +1034,7 @@ export function makeExamples(api: TabsApi, resolver: InMemoryFileResolver): Welc
 			description: "Interactive FEEL expression evaluator with syntax highlighting",
 			badge: "FEEL",
 			onOpen() {
-				api.openTab({ type: "feel", name: "FEEL Playground" });
+				api.openTab({ type: "feel", name: "FEEL Playground" })
 			},
 		},
 		{
@@ -1047,8 +1047,8 @@ export function makeExamples(api: TabsApi, resolver: InMemoryFileResolver): Welc
 					type: "bpmn",
 					xml: CUSTOMER_NOTIFICATION_BPMN,
 					name: "Customer Notification Flow",
-				});
+				})
 			},
 		},
-	];
+	]
 }

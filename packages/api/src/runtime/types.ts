@@ -1,40 +1,40 @@
-export type LogLevel = "debug" | "info" | "warn" | "error" | "none";
+export type LogLevel = "debug" | "info" | "warn" | "error" | "none"
 
 export interface LoggerConfig {
-	level?: LogLevel;
+	level?: LogLevel
 	/** Custom sink. Defaults to console. */
-	sink?: (level: LogLevel, message: string, data?: unknown) => void;
+	sink?: (level: LogLevel, message: string, data?: unknown) => void
 }
 
 export interface RetryConfig {
 	/** Maximum number of attempts (including the first). Default: 3. */
-	maxAttempts?: number;
+	maxAttempts?: number
 	/** Initial delay in ms. Default: 100. */
-	initialDelay?: number;
+	initialDelay?: number
 	/** Maximum delay cap in ms. Default: 30_000. */
-	maxDelay?: number;
+	maxDelay?: number
 	/** Multiplier applied to delay after each failure. Default: 2. */
-	backoffFactor?: number;
+	backoffFactor?: number
 	/** HTTP status codes that trigger a retry. Default: [429, 500, 502, 503, 504]. */
-	retryOn?: number[];
+	retryOn?: number[]
 }
 
 export interface CacheConfig {
 	/** Enable response caching for eventually-consistent GET/POST-search endpoints. Default: false. */
-	enabled?: boolean;
+	enabled?: boolean
 	/** Time-to-live in ms. Default: 30_000. */
-	ttl?: number;
+	ttl?: number
 	/** Maximum number of cached entries. Default: 500. */
-	maxSize?: number;
+	maxSize?: number
 }
 
 // ---- OAuth2 token persistence ----
 
 /** A cached OAuth2 access token. */
 export interface CachedToken {
-	accessToken: string;
+	accessToken: string
 	/** Unix timestamp (ms) when the token expires. */
-	expiresAt: number;
+	expiresAt: number
 }
 
 /**
@@ -56,8 +56,8 @@ export interface CachedToken {
  * ```
  */
 export interface TokenStore {
-	get(key: string): Promise<CachedToken | null>;
-	set(key: string, token: CachedToken): Promise<void>;
+	get(key: string): Promise<CachedToken | null>
+	set(key: string, token: CachedToken): Promise<void>
 }
 
 export interface TokenCacheConfig {
@@ -66,17 +66,17 @@ export interface TokenCacheConfig {
 	 * The token will only be held in memory for the lifetime of the client instance.
 	 * Default: false.
 	 */
-	disabled?: boolean;
+	disabled?: boolean
 	/**
 	 * Absolute path to the token cache JSON file.
 	 * Defaults to `{osConfigDir}/camunda-api/token-cache.json`.
 	 */
-	filePath?: string;
+	filePath?: string
 	/**
 	 * Custom token store. When provided, overrides the default file-based cache.
 	 * Use this to store tokens in Redis, a database, or any other backend.
 	 */
-	store?: TokenStore;
+	store?: TokenStore
 }
 
 // ---- Authentication ----
@@ -84,39 +84,39 @@ export interface TokenCacheConfig {
 export type AuthConfig =
 	| { type: "bearer"; token: string }
 	| {
-			type: "oauth2";
-			clientId: string;
-			clientSecret: string;
+			type: "oauth2"
+			clientId: string
+			clientSecret: string
 			/** Token endpoint URL. */
-			tokenUrl: string;
-			scope?: string;
+			tokenUrl: string
+			scope?: string
 			/** OAuth2 audience parameter. Required by Camunda Cloud (default: "zeebe.camunda.io"). */
-			audience?: string;
+			audience?: string
 			/**
 			 * Persistent token cache configuration.
 			 * Enabled by default — tokens survive process restarts.
 			 */
-			tokenCache?: TokenCacheConfig;
+			tokenCache?: TokenCacheConfig
 	  }
 	| { type: "basic"; username: string; password: string }
-	| { type: "none" };
+	| { type: "none" }
 
 // ---- Client config ----
 
 export interface CamundaClientConfig {
 	/** Base URL of the Camunda cluster, e.g. http://localhost:8080/v2 */
-	baseUrl: string;
-	auth: AuthConfig;
+	baseUrl: string
+	auth: AuthConfig
 	/**
 	 * Path to a YAML config file. Fields from the file are merged with lower
 	 * priority than values passed directly to the constructor.
 	 */
-	configFile?: string;
-	retry?: RetryConfig;
-	cache?: CacheConfig;
-	logger?: LoggerConfig;
+	configFile?: string
+	retry?: RetryConfig
+	cache?: CacheConfig
+	logger?: LoggerConfig
 	/** Request timeout in ms. Default: 30_000. */
-	timeout?: number;
+	timeout?: number
 }
 
 /**
@@ -124,75 +124,75 @@ export interface CamundaClientConfig {
  * or environment variables. Useful when config is fully provided via env/file.
  */
 export type CamundaClientInput = {
-	baseUrl?: string;
-	auth?: AuthConfig;
-	configFile?: string;
-	retry?: RetryConfig;
-	cache?: CacheConfig;
-	logger?: LoggerConfig;
-	timeout?: number;
-};
+	baseUrl?: string
+	auth?: AuthConfig
+	configFile?: string
+	retry?: RetryConfig
+	cache?: CacheConfig
+	logger?: LoggerConfig
+	timeout?: number
+}
 
 // ---- Event map ----
 
 export interface RequestEvent {
-	method: string;
-	url: string;
-	headers: Record<string, string>;
-	body?: unknown;
+	method: string
+	url: string
+	headers: Record<string, string>
+	body?: unknown
 }
 
 export interface ResponseEvent {
-	method: string;
-	url: string;
-	status: number;
-	durationMs: number;
-	cached: boolean;
+	method: string
+	url: string
+	status: number
+	durationMs: number
+	cached: boolean
 }
 
 export interface ErrorEvent {
-	method: string;
-	url: string;
-	error: Error;
+	method: string
+	url: string
+	error: Error
 }
 
 export interface RetryEvent {
-	method: string;
-	url: string;
-	attempt: number;
-	maxAttempts: number;
-	delayMs: number;
-	reason: string;
+	method: string
+	url: string
+	attempt: number
+	maxAttempts: number
+	delayMs: number
+	reason: string
 }
 
 export interface TokenRefreshEvent {
-	tokenUrl: string;
+	tokenUrl: string
 }
 
 export interface CacheEvent {
-	url: string;
+	url: string
 }
 
 export type ClientEventMap = {
-	request: RequestEvent;
-	response: ResponseEvent;
-	error: ErrorEvent;
-	retry: RetryEvent;
-	tokenRefresh: TokenRefreshEvent;
-	cacheHit: CacheEvent;
-	cacheMiss: CacheEvent;
-};
+	request: RequestEvent
+	response: ResponseEvent
+	error: ErrorEvent
+	retry: RetryEvent
+	tokenRefresh: TokenRefreshEvent
+	cacheHit: CacheEvent
+	cacheMiss: CacheEvent
+}
 
 // ---- Internal request options ----
 
 export interface RequestOptions {
-	method: string;
-	path: string;
-	pathParams?: Record<string, string | number>;
-	query?: Record<string, unknown>;
-	body?: unknown;
+	method: string
+	path: string
+	pathParams?: Record<string, string | number>
+	query?: Record<string, unknown>
+	body?: unknown
 	/** Whether this response may be served from cache. */
-	cacheable?: boolean;
+	cacheable?: boolean
 	/** Override timeout for this request. */
-	timeout?: number;
+	timeout?: number
 }

@@ -1,14 +1,14 @@
-import { Bpmn, optimize } from "@bpmn-sdk/core";
-import type { BpmnDefinitions, OptimizationFinding } from "@bpmn-sdk/core";
+import { Bpmn, optimize } from "@bpmn-sdk/core"
+import type { BpmnDefinitions, OptimizationFinding } from "@bpmn-sdk/core"
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const STYLE_ID = "opt-dialog-styles";
+const STYLE_ID = "opt-dialog-styles"
 
 function injectStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
 	style.textContent = `
 .opt-overlay {
   position: fixed; inset: 0; z-index: 200;
@@ -136,37 +136,37 @@ function injectStyles(): void {
   background: rgba(0,80,200,0.85); border-color: rgba(0,80,200,0.9); color: #fff;
 }
 [data-bpmn-hud-theme="light"] .opt-btn-primary:hover:not(:disabled) { background: rgba(0,80,200,1); }
-`;
-	document.head.appendChild(style);
+`
+	document.head.appendChild(style)
 }
 
 // ── Dialog helpers ────────────────────────────────────────────────────────────
 
 function makeHeader(title: string, subtitle: string): HTMLElement {
-	const header = document.createElement("div");
-	header.className = "opt-header";
-	const h = document.createElement("div");
-	h.className = "opt-title";
-	h.textContent = title;
-	const s = document.createElement("div");
-	s.className = "opt-subtitle";
-	s.textContent = subtitle;
-	header.append(h, s);
-	return header;
+	const header = document.createElement("div")
+	header.className = "opt-header"
+	const h = document.createElement("div")
+	h.className = "opt-title"
+	h.textContent = title
+	const s = document.createElement("div")
+	s.className = "opt-subtitle"
+	s.textContent = subtitle
+	header.append(h, s)
+	return header
 }
 
 function makeFooter(...buttons: HTMLButtonElement[]): HTMLElement {
-	const footer = document.createElement("div");
-	footer.className = "opt-footer";
-	footer.append(...buttons);
-	return footer;
+	const footer = document.createElement("div")
+	footer.className = "opt-footer"
+	footer.append(...buttons)
+	return footer
 }
 
 function makeBtn(label: string, primary = false): HTMLButtonElement {
-	const btn = document.createElement("button");
-	btn.className = primary ? "opt-btn opt-btn-primary" : "opt-btn";
-	btn.textContent = label;
-	return btn;
+	const btn = document.createElement("button")
+	btn.className = primary ? "opt-btn opt-btn-primary" : "opt-btn"
+	btn.textContent = label
+	return btn
 }
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
@@ -176,162 +176,162 @@ function showOptimizeDialog(
 	reload: (xml: string) => void,
 	openTab: (xml: string, name: string) => void,
 ): void {
-	injectStyles();
+	injectStyles()
 
-	const report = optimize(defs);
-	const findings = report.findings;
+	const report = optimize(defs)
+	const findings = report.findings
 
-	const overlay = document.createElement("div");
-	overlay.className = "opt-overlay";
+	const overlay = document.createElement("div")
+	overlay.className = "opt-overlay"
 	overlay.addEventListener("click", (e) => {
-		if (e.target === overlay) overlay.remove();
-	});
+		if (e.target === overlay) overlay.remove()
+	})
 
-	const panel = document.createElement("div");
-	panel.className = "opt-panel";
+	const panel = document.createElement("div")
+	panel.className = "opt-panel"
 
 	function showPhase1(): void {
-		panel.innerHTML = "";
+		panel.innerHTML = ""
 
-		const fixableCount = findings.filter((f) => f.applyFix !== undefined).length;
+		const fixableCount = findings.filter((f) => f.applyFix !== undefined).length
 		const subtitleText =
 			findings.length === 0
 				? "No issues found"
-				: `${findings.length} finding${findings.length !== 1 ? "s" : ""} · ${fixableCount} auto-fixable`;
+				: `${findings.length} finding${findings.length !== 1 ? "s" : ""} · ${fixableCount} auto-fixable`
 
-		panel.append(makeHeader("Optimize Diagram", subtitleText));
+		panel.append(makeHeader("Optimize Diagram", subtitleText))
 
-		const body = document.createElement("div");
-		body.className = "opt-body";
+		const body = document.createElement("div")
+		body.className = "opt-body"
 
-		const checkboxes = new Map<OptimizationFinding, HTMLInputElement>();
+		const checkboxes = new Map<OptimizationFinding, HTMLInputElement>()
 
 		if (findings.length === 0) {
-			const empty = document.createElement("div");
-			empty.className = "opt-empty";
-			empty.textContent = "✓ No optimization opportunities found.";
-			body.append(empty);
+			const empty = document.createElement("div")
+			empty.className = "opt-empty"
+			empty.textContent = "✓ No optimization opportunities found."
+			body.append(empty)
 		} else {
 			for (const finding of findings) {
-				const row = document.createElement("div");
-				row.className = "opt-finding";
+				const row = document.createElement("div")
+				row.className = "opt-finding"
 
-				const cb = document.createElement("input");
-				cb.type = "checkbox";
-				cb.className = "opt-finding-cb";
-				cb.checked = finding.applyFix !== undefined;
-				cb.disabled = finding.applyFix === undefined;
-				checkboxes.set(finding, cb);
+				const cb = document.createElement("input")
+				cb.type = "checkbox"
+				cb.className = "opt-finding-cb"
+				cb.checked = finding.applyFix !== undefined
+				cb.disabled = finding.applyFix === undefined
+				checkboxes.set(finding, cb)
 
-				const badge = document.createElement("span");
-				badge.className = `opt-badge opt-badge-${finding.severity}`;
-				badge.textContent = finding.severity;
+				const badge = document.createElement("span")
+				badge.className = `opt-badge opt-badge-${finding.severity}`
+				badge.textContent = finding.severity
 
-				const fbody = document.createElement("div");
-				fbody.className = "opt-finding-body";
+				const fbody = document.createElement("div")
+				fbody.className = "opt-finding-body"
 
-				const msg = document.createElement("div");
-				msg.className = "opt-finding-msg";
-				msg.textContent = finding.message;
+				const msg = document.createElement("div")
+				msg.className = "opt-finding-msg"
+				msg.textContent = finding.message
 
-				const sug = document.createElement("div");
-				sug.className = "opt-finding-sug";
-				sug.textContent = finding.suggestion;
+				const sug = document.createElement("div")
+				sug.className = "opt-finding-sug"
+				sug.textContent = finding.suggestion
 
-				fbody.append(msg, sug);
-				row.append(cb, badge, fbody);
-				body.append(row);
+				fbody.append(msg, sug)
+				row.append(cb, badge, fbody)
+				body.append(row)
 			}
 		}
 
-		const btnClose = makeBtn("Close");
-		btnClose.addEventListener("click", () => overlay.remove());
+		const btnClose = makeBtn("Close")
+		btnClose.addEventListener("click", () => overlay.remove())
 
-		const btnApply = makeBtn(`Apply ${fixableCount} Fix${fixableCount !== 1 ? "es" : ""}`, true);
-		btnApply.disabled = fixableCount === 0;
+		const btnApply = makeBtn(`Apply ${fixableCount} Fix${fixableCount !== 1 ? "es" : ""}`, true)
+		btnApply.disabled = fixableCount === 0
 
 		btnApply.addEventListener("click", () => {
 			const selected = findings.filter((f) => {
-				const cb = checkboxes.get(f);
-				return f.applyFix !== undefined && cb?.checked === true;
-			});
-			if (selected.length === 0) return;
+				const cb = checkboxes.get(f)
+				return f.applyFix !== undefined && cb?.checked === true
+			})
+			if (selected.length === 0) return
 
-			const results: Array<{ description: string; generated?: BpmnDefinitions }> = [];
+			const results: Array<{ description: string; generated?: BpmnDefinitions }> = []
 			for (const finding of selected) {
-				if (!finding.applyFix) continue;
-				results.push(finding.applyFix(defs));
+				if (!finding.applyFix) continue
+				results.push(finding.applyFix(defs))
 			}
 
-			reload(Bpmn.export(defs));
-			showPhase2(results);
-		});
+			reload(Bpmn.export(defs))
+			showPhase2(results)
+		})
 
-		panel.append(body, makeFooter(btnClose, btnApply));
+		panel.append(body, makeFooter(btnClose, btnApply))
 	}
 
 	function showPhase2(results: Array<{ description: string; generated?: BpmnDefinitions }>): void {
-		panel.innerHTML = "";
+		panel.innerHTML = ""
 
-		const subtitle = `${results.length} fix${results.length !== 1 ? "es" : ""} applied successfully`;
-		panel.append(makeHeader("Fixes Applied", subtitle));
+		const subtitle = `${results.length} fix${results.length !== 1 ? "es" : ""} applied successfully`
+		panel.append(makeHeader("Fixes Applied", subtitle))
 
-		const body = document.createElement("div");
-		body.className = "opt-body";
+		const body = document.createElement("div")
+		body.className = "opt-body"
 
 		for (const result of results) {
-			const row = document.createElement("div");
-			row.className = "opt-result";
+			const row = document.createElement("div")
+			row.className = "opt-result"
 
-			const icon = document.createElement("div");
-			icon.className = "opt-result-icon";
-			icon.textContent = "✓";
+			const icon = document.createElement("div")
+			icon.className = "opt-result-icon"
+			icon.textContent = "✓"
 
-			const rbody = document.createElement("div");
-			rbody.className = "opt-result-body";
+			const rbody = document.createElement("div")
+			rbody.className = "opt-result-body"
 
-			const desc = document.createElement("div");
-			desc.className = "opt-result-desc";
-			desc.textContent = result.description;
-			rbody.append(desc);
+			const desc = document.createElement("div")
+			desc.className = "opt-result-desc"
+			desc.textContent = result.description
+			rbody.append(desc)
 
 			if (result.generated) {
-				const gen = result.generated;
-				const openBtn = document.createElement("button");
-				openBtn.className = "opt-result-open";
-				openBtn.textContent = "Open generated process in new tab";
+				const gen = result.generated
+				const openBtn = document.createElement("button")
+				openBtn.className = "opt-result-open"
+				openBtn.textContent = "Open generated process in new tab"
 				openBtn.addEventListener("click", () => {
-					openTab(Bpmn.export(gen), "Extracted Process");
-				});
-				rbody.append(openBtn);
+					openTab(Bpmn.export(gen), "Extracted Process")
+				})
+				rbody.append(openBtn)
 			}
 
-			row.append(icon, rbody);
-			body.append(row);
+			row.append(icon, rbody)
+			body.append(row)
 		}
 
-		const btnDone = makeBtn("Done", true);
-		btnDone.addEventListener("click", () => overlay.remove());
+		const btnDone = makeBtn("Done", true)
+		btnDone.addEventListener("click", () => overlay.remove())
 
-		panel.append(body, makeFooter(btnDone));
+		panel.append(body, makeFooter(btnDone))
 	}
 
-	showPhase1();
-	overlay.append(panel);
-	document.body.append(overlay);
+	showPhase1()
+	overlay.append(panel)
+	document.body.append(overlay)
 }
 
 // ── Plugin ────────────────────────────────────────────────────────────────────
 
-const OPTIMIZE_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14L8 7"/><path d="M11 2l.75 2.25L14 5l-2.25.75L11 8l-.75-2.25L8 5l2.25-.75z"/></svg>`;
+const OPTIMIZE_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14L8 7"/><path d="M11 2l.75 2.25L14 5l-2.25.75L11 8l-.75-2.25L8 5l2.25-.75z"/></svg>`
 
 export interface OptimizePluginOptions {
 	/** Returns the current diagram definitions, or null if no diagram is loaded. */
-	getDefinitions: () => BpmnDefinitions | null;
+	getDefinitions: () => BpmnDefinitions | null
 	/** Reloads the editor with the given XML. */
-	reload: (xml: string) => void;
+	reload: (xml: string) => void
 	/** Opens a new BPMN tab with the given XML and name. */
-	openTab: (xml: string, name: string) => void;
+	openTab: (xml: string, name: string) => void
 }
 
 /**
@@ -341,23 +341,23 @@ export interface OptimizePluginOptions {
  * The returned `button` should be passed to `initEditorHud` as `optimizeButton`.
  */
 export function createOptimizePlugin(options: OptimizePluginOptions): {
-	name: string;
-	install(): void;
-	button: HTMLButtonElement;
+	name: string
+	install(): void
+	button: HTMLButtonElement
 } {
-	const button = document.createElement("button");
-	button.title = "Optimize";
-	button.innerHTML = OPTIMIZE_ICON;
+	const button = document.createElement("button")
+	button.title = "Optimize"
+	button.innerHTML = OPTIMIZE_ICON
 
 	button.addEventListener("click", () => {
-		const defs = options.getDefinitions();
-		if (!defs) return;
-		showOptimizeDialog(defs, options.reload, options.openTab);
-	});
+		const defs = options.getDefinitions()
+		if (!defs) return
+		showOptimizeDialog(defs, options.reload, options.openTab)
+	})
 
 	return {
 		name: "optimize",
 		install(): void {},
 		button,
-	};
+	}
 }

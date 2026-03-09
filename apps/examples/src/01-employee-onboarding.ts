@@ -8,8 +8,8 @@
  * - Service task with IO mapping
  */
 
-import { writeFileSync } from "node:fs";
-import { Bpmn } from "@bpmn-sdk/core";
+import { writeFileSync } from "node:fs"
+import { Bpmn } from "@bpmn-sdk/core"
 
 const definitions = Bpmn.createProcess("EmployeeOnboarding")
 	.withAutoLayout()
@@ -83,8 +83,8 @@ const definitions = Bpmn.createProcess("EmployeeOnboarding")
 	})
 
 	.endEvent("end", { name: "Onboarding Complete" })
-	.build();
+	.build()
 
-const xml = Bpmn.export(definitions);
-writeFileSync("output/01-employee-onboarding.bpmn", xml);
-console.log("✓ 01-employee-onboarding.bpmn");
+const xml = Bpmn.export(definitions)
+writeFileSync("output/01-employee-onboarding.bpmn", xml)
+console.log("✓ 01-employee-onboarding.bpmn")

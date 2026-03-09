@@ -1,9 +1,9 @@
-const DOCK_STYLE_ID = "bpmn-side-dock-styles-v1";
-const STORAGE_KEY_WIDTH = "bpmn-side-dock-width";
-const STORAGE_KEY_COLLAPSED = "bpmn-side-dock-collapsed";
-const MIN_WIDTH = 280;
-const MAX_WIDTH = 700;
-const DEFAULT_WIDTH = 360;
+const DOCK_STYLE_ID = "bpmn-side-dock-styles-v1"
+const STORAGE_KEY_WIDTH = "bpmn-side-dock-width"
+const STORAGE_KEY_COLLAPSED = "bpmn-side-dock-collapsed"
+const MIN_WIDTH = 280
+const MAX_WIDTH = 700
+const DEFAULT_WIDTH = 360
 
 const DOCK_CSS = `
 /* ── Side Dock ──────────────────────────────────────────────────────────── */
@@ -101,222 +101,222 @@ const DOCK_CSS = `
 [data-bpmn-hud-theme="light"] .bpmn-side-dock__info-value { color: rgba(0,0,0,0.75); }
 [data-bpmn-hud-theme="light"] .bpmn-side-dock__info-row { border-bottom-color: rgba(0,0,0,0.06); }
 [data-bpmn-hud-theme="light"] .bpmn-side-dock__empty-hint { color: rgba(0,0,0,0.25); }
-`;
+`
 
 function injectDockStyles(): void {
-	if (document.getElementById(DOCK_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = DOCK_STYLE_ID;
-	style.textContent = DOCK_CSS;
-	document.head.appendChild(style);
+	if (document.getElementById(DOCK_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = DOCK_STYLE_ID
+	style.textContent = DOCK_CSS
+	document.head.appendChild(style)
 }
 
 export interface SideDock {
-	el: HTMLDivElement;
-	propertiesPane: HTMLDivElement;
-	historyPane: HTMLDivElement;
-	aiPane: HTMLDivElement;
-	playPane: HTMLDivElement;
-	switchTab(tab: "properties" | "history" | "ai" | "play"): void;
-	expand(): void;
-	collapse(): void;
-	get collapsed(): boolean;
-	get activeTab(): "properties" | "history" | "ai" | "play";
+	el: HTMLDivElement
+	propertiesPane: HTMLDivElement
+	historyPane: HTMLDivElement
+	aiPane: HTMLDivElement
+	playPane: HTMLDivElement
+	switchTab(tab: "properties" | "history" | "ai" | "play"): void
+	expand(): void
+	collapse(): void
+	get collapsed(): boolean
+	get activeTab(): "properties" | "history" | "ai" | "play"
 	/** Update the info shown in the Properties empty state. */
-	setDiagramInfo(processName: string | null, fileName: string | null): void;
+	setDiagramInfo(processName: string | null, fileName: string | null): void
 	/** Hide the empty state when a config panel is displayed. */
-	showPanel(): void;
+	showPanel(): void
 	/** Restore the empty state when the config panel is dismissed. */
-	hidePanel(): void;
+	hidePanel(): void
 	/** Show or hide the entire dock (e.g. hide on welcome screen, show on tab open). */
-	setVisible(visible: boolean): void;
+	setVisible(visible: boolean): void
 	/** Register a callback invoked when the AI tab is clicked (after switching to it). */
-	setAiTabClickHandler(fn: () => void): void;
+	setAiTabClickHandler(fn: () => void): void
 	/** Register a callback invoked when the History tab is clicked (after switching to it). */
-	setHistoryTabClickHandler(fn: () => void): void;
+	setHistoryTabClickHandler(fn: () => void): void
 	/** Enable or disable the History tab (disable when no storage context is available). */
-	setHistoryTabEnabled(enabled: boolean): void;
+	setHistoryTabEnabled(enabled: boolean): void
 	/** Show or hide the Play tab (shown when process runner enters play mode). */
-	setPlayTabVisible(visible: boolean): void;
+	setPlayTabVisible(visible: boolean): void
 	/** Register a callback invoked when the Play tab is clicked. */
-	setPlayTabClickHandler(fn: () => void): void;
+	setPlayTabClickHandler(fn: () => void): void
 }
 
 export function createSideDock(): SideDock {
-	injectDockStyles();
+	injectDockStyles()
 
-	const el = document.createElement("div");
-	el.className = "bpmn-side-dock";
+	const el = document.createElement("div")
+	el.className = "bpmn-side-dock"
 
 	// Pill-shaped collapse handle on the left edge
-	const collapseHandle = document.createElement("div");
-	collapseHandle.className = "bpmn-side-dock__collapse-handle";
-	collapseHandle.setAttribute("role", "button");
-	collapseHandle.setAttribute("title", "Collapse panel");
-	collapseHandle.textContent = "›";
+	const collapseHandle = document.createElement("div")
+	collapseHandle.className = "bpmn-side-dock__collapse-handle"
+	collapseHandle.setAttribute("role", "button")
+	collapseHandle.setAttribute("title", "Collapse panel")
+	collapseHandle.textContent = "›"
 
 	// Resize handle — 5px drag zone on the left edge
-	const resizeHandle = document.createElement("div");
-	resizeHandle.className = "bpmn-side-dock__resize-handle";
+	const resizeHandle = document.createElement("div")
+	resizeHandle.className = "bpmn-side-dock__resize-handle"
 
 	// Tab strip
-	const tabStrip = document.createElement("div");
-	tabStrip.className = "bpmn-side-dock__tab-strip";
+	const tabStrip = document.createElement("div")
+	tabStrip.className = "bpmn-side-dock__tab-strip"
 
-	const propertiesTab = document.createElement("button");
-	propertiesTab.className = "bpmn-side-dock__tab active";
-	propertiesTab.textContent = "Properties";
+	const propertiesTab = document.createElement("button")
+	propertiesTab.className = "bpmn-side-dock__tab active"
+	propertiesTab.textContent = "Properties"
 
-	const historyTab = document.createElement("button");
-	historyTab.className = "bpmn-side-dock__tab";
-	historyTab.textContent = "History";
-	historyTab.disabled = true;
+	const historyTab = document.createElement("button")
+	historyTab.className = "bpmn-side-dock__tab"
+	historyTab.textContent = "History"
+	historyTab.disabled = true
 
-	const aiTab = document.createElement("button");
-	aiTab.className = "bpmn-side-dock__tab";
-	aiTab.textContent = "AI";
+	const aiTab = document.createElement("button")
+	aiTab.className = "bpmn-side-dock__tab"
+	aiTab.textContent = "AI"
 
-	const playTab = document.createElement("button");
-	playTab.className = "bpmn-side-dock__tab";
-	playTab.textContent = "Play";
-	playTab.style.display = "none";
+	const playTab = document.createElement("button")
+	playTab.className = "bpmn-side-dock__tab"
+	playTab.textContent = "Play"
+	playTab.style.display = "none"
 
-	tabStrip.appendChild(propertiesTab);
-	tabStrip.appendChild(historyTab);
-	tabStrip.appendChild(aiTab);
-	tabStrip.appendChild(playTab);
+	tabStrip.appendChild(propertiesTab)
+	tabStrip.appendChild(historyTab)
+	tabStrip.appendChild(aiTab)
+	tabStrip.appendChild(playTab)
 
 	// Properties pane — contains the info empty state
-	const propertiesPane = document.createElement("div");
-	propertiesPane.className = "bpmn-side-dock__pane";
+	const propertiesPane = document.createElement("div")
+	propertiesPane.className = "bpmn-side-dock__pane"
 
-	const emptyEl = document.createElement("div");
-	emptyEl.className = "bpmn-side-dock__empty";
+	const emptyEl = document.createElement("div")
+	emptyEl.className = "bpmn-side-dock__empty"
 
 	// Info rows (file name + process name)
-	const fileRow = document.createElement("div");
-	fileRow.className = "bpmn-side-dock__info-row";
-	const fileLabel = document.createElement("span");
-	fileLabel.className = "bpmn-side-dock__info-label";
-	fileLabel.textContent = "File";
-	const fileValue = document.createElement("span");
-	fileValue.className = "bpmn-side-dock__info-value";
-	fileValue.textContent = "\u2014";
-	fileRow.appendChild(fileLabel);
-	fileRow.appendChild(fileValue);
+	const fileRow = document.createElement("div")
+	fileRow.className = "bpmn-side-dock__info-row"
+	const fileLabel = document.createElement("span")
+	fileLabel.className = "bpmn-side-dock__info-label"
+	fileLabel.textContent = "File"
+	const fileValue = document.createElement("span")
+	fileValue.className = "bpmn-side-dock__info-value"
+	fileValue.textContent = "\u2014"
+	fileRow.appendChild(fileLabel)
+	fileRow.appendChild(fileValue)
 
-	const processRow = document.createElement("div");
-	processRow.className = "bpmn-side-dock__info-row";
-	const processLabel = document.createElement("span");
-	processLabel.className = "bpmn-side-dock__info-label";
-	processLabel.textContent = "Process";
-	const processValue = document.createElement("span");
-	processValue.className = "bpmn-side-dock__info-value";
-	processValue.textContent = "\u2014";
-	processRow.appendChild(processLabel);
-	processRow.appendChild(processValue);
+	const processRow = document.createElement("div")
+	processRow.className = "bpmn-side-dock__info-row"
+	const processLabel = document.createElement("span")
+	processLabel.className = "bpmn-side-dock__info-label"
+	processLabel.textContent = "Process"
+	const processValue = document.createElement("span")
+	processValue.className = "bpmn-side-dock__info-value"
+	processValue.textContent = "\u2014"
+	processRow.appendChild(processLabel)
+	processRow.appendChild(processValue)
 
-	const hint = document.createElement("div");
-	hint.className = "bpmn-side-dock__empty-hint";
-	hint.textContent = "Select an element to edit its properties";
+	const hint = document.createElement("div")
+	hint.className = "bpmn-side-dock__empty-hint"
+	hint.textContent = "Select an element to edit its properties"
 
-	emptyEl.appendChild(fileRow);
-	emptyEl.appendChild(processRow);
-	emptyEl.appendChild(hint);
-	propertiesPane.appendChild(emptyEl);
+	emptyEl.appendChild(fileRow)
+	emptyEl.appendChild(processRow)
+	emptyEl.appendChild(hint)
+	propertiesPane.appendChild(emptyEl)
 
 	// History pane
-	const historyPane = document.createElement("div");
-	historyPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden";
+	const historyPane = document.createElement("div")
+	historyPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden"
 
 	// AI pane
-	const aiPane = document.createElement("div");
-	aiPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden";
+	const aiPane = document.createElement("div")
+	aiPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden"
 
 	// Play pane
-	const playPane = document.createElement("div");
-	playPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden";
+	const playPane = document.createElement("div")
+	playPane.className = "bpmn-side-dock__pane bpmn-side-dock__pane--hidden"
 
-	el.appendChild(collapseHandle);
-	el.appendChild(resizeHandle);
-	el.appendChild(tabStrip);
-	el.appendChild(propertiesPane);
-	el.appendChild(historyPane);
-	el.appendChild(aiPane);
-	el.appendChild(playPane);
+	el.appendChild(collapseHandle)
+	el.appendChild(resizeHandle)
+	el.appendChild(tabStrip)
+	el.appendChild(propertiesPane)
+	el.appendChild(historyPane)
+	el.appendChild(aiPane)
+	el.appendChild(playPane)
 
 	// ── State ──
-	let _collapsed = false;
-	let _width = DEFAULT_WIDTH;
-	let _activeTab: "properties" | "history" | "ai" | "play" = "properties";
-	let _aiTabHandler: (() => void) | null = null;
-	let _historyTabHandler: (() => void) | null = null;
-	let _playTabHandler: (() => void) | null = null;
+	let _collapsed = false
+	let _width = DEFAULT_WIDTH
+	let _activeTab: "properties" | "history" | "ai" | "play" = "properties"
+	let _aiTabHandler: (() => void) | null = null
+	let _historyTabHandler: (() => void) | null = null
+	let _playTabHandler: (() => void) | null = null
 
 	function setDocWidth(w: number): void {
-		el.style.width = `${w}px`;
-		document.body.style.setProperty("--bpmn-dock-width", `${w}px`);
+		el.style.width = `${w}px`
+		document.body.style.setProperty("--bpmn-dock-width", `${w}px`)
 	}
 
 	// Restore from localStorage
 	try {
-		const savedWidth = Number(localStorage.getItem(STORAGE_KEY_WIDTH));
+		const savedWidth = Number(localStorage.getItem(STORAGE_KEY_WIDTH))
 		if (Number.isFinite(savedWidth) && savedWidth >= MIN_WIDTH && savedWidth <= MAX_WIDTH) {
-			_width = savedWidth;
+			_width = savedWidth
 		}
-		_collapsed = localStorage.getItem(STORAGE_KEY_COLLAPSED) === "true";
+		_collapsed = localStorage.getItem(STORAGE_KEY_COLLAPSED) === "true"
 	} catch {
 		// localStorage unavailable — use defaults
 	}
 
 	if (_collapsed) {
-		el.classList.add("bpmn-side-dock--collapsed");
-		setDocWidth(0);
-		collapseHandle.textContent = "‹";
-		collapseHandle.setAttribute("title", "Expand panel");
+		el.classList.add("bpmn-side-dock--collapsed")
+		setDocWidth(0)
+		collapseHandle.textContent = "‹"
+		collapseHandle.setAttribute("title", "Expand panel")
 	} else {
-		setDocWidth(_width);
+		setDocWidth(_width)
 	}
 
 	// Start hidden — the bridge shows it when the first tab is activated.
-	el.style.display = "none";
-	document.body.style.setProperty("--bpmn-dock-width", "0px");
+	el.style.display = "none"
+	document.body.style.setProperty("--bpmn-dock-width", "0px")
 
 	// ── Tab switching ──
 	function switchTab(tab: "properties" | "history" | "ai" | "play"): void {
-		_activeTab = tab;
-		propertiesTab.classList.toggle("active", tab === "properties");
-		historyTab.classList.toggle("active", tab === "history");
-		aiTab.classList.toggle("active", tab === "ai");
-		playTab.classList.toggle("active", tab === "play");
-		propertiesPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "properties");
-		historyPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "history");
-		aiPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "ai");
-		playPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "play");
+		_activeTab = tab
+		propertiesTab.classList.toggle("active", tab === "properties")
+		historyTab.classList.toggle("active", tab === "history")
+		aiTab.classList.toggle("active", tab === "ai")
+		playTab.classList.toggle("active", tab === "play")
+		propertiesPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "properties")
+		historyPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "history")
+		aiPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "ai")
+		playPane.classList.toggle("bpmn-side-dock__pane--hidden", tab !== "play")
 	}
 
 	// ── Expand / collapse ──
 	function expand(): void {
-		_collapsed = false;
-		el.classList.remove("bpmn-side-dock--collapsed");
-		setDocWidth(_width);
-		collapseHandle.textContent = "›";
-		collapseHandle.setAttribute("title", "Collapse panel");
+		_collapsed = false
+		el.classList.remove("bpmn-side-dock--collapsed")
+		setDocWidth(_width)
+		collapseHandle.textContent = "›"
+		collapseHandle.setAttribute("title", "Collapse panel")
 		try {
-			localStorage.setItem(STORAGE_KEY_COLLAPSED, "false");
+			localStorage.setItem(STORAGE_KEY_COLLAPSED, "false")
 		} catch {
 			// ignore
 		}
 	}
 
 	function collapse(): void {
-		_collapsed = true;
-		el.classList.add("bpmn-side-dock--collapsed");
-		setDocWidth(0);
-		collapseHandle.textContent = "‹";
-		collapseHandle.setAttribute("title", "Expand panel");
+		_collapsed = true
+		el.classList.add("bpmn-side-dock--collapsed")
+		setDocWidth(0)
+		collapseHandle.textContent = "‹"
+		collapseHandle.setAttribute("title", "Expand panel")
 		try {
-			localStorage.setItem(STORAGE_KEY_COLLAPSED, "true");
+			localStorage.setItem(STORAGE_KEY_COLLAPSED, "true")
 		} catch {
 			// ignore
 		}
@@ -324,101 +324,101 @@ export function createSideDock(): SideDock {
 
 	// ── Empty state / panel visibility ──
 	function showPanel(): void {
-		emptyEl.style.display = "none";
+		emptyEl.style.display = "none"
 	}
 
 	function hidePanel(): void {
-		emptyEl.style.display = "";
+		emptyEl.style.display = ""
 	}
 
 	function setDiagramInfo(processName: string | null, fileName: string | null): void {
-		fileValue.textContent = fileName ?? "\u2014";
-		processValue.textContent = processName ?? "\u2014";
+		fileValue.textContent = fileName ?? "\u2014"
+		processValue.textContent = processName ?? "\u2014"
 	}
 
 	function setAiTabClickHandler(fn: () => void): void {
-		_aiTabHandler = fn;
+		_aiTabHandler = fn
 	}
 
 	function setHistoryTabClickHandler(fn: () => void): void {
-		_historyTabHandler = fn;
+		_historyTabHandler = fn
 	}
 
 	function setHistoryTabEnabled(enabled: boolean): void {
-		historyTab.disabled = !enabled;
+		historyTab.disabled = !enabled
 		// If history tab is active and gets disabled, fall back to properties
 		if (!enabled && historyTab.classList.contains("active")) {
-			switchTab("properties");
+			switchTab("properties")
 		}
 	}
 
 	function setPlayTabVisible(visible: boolean): void {
-		playTab.style.display = visible ? "" : "none";
+		playTab.style.display = visible ? "" : "none"
 		// If play tab is hidden while active, fall back to properties
 		if (!visible && playTab.classList.contains("active")) {
-			switchTab("properties");
+			switchTab("properties")
 		}
 	}
 
 	function setPlayTabClickHandler(fn: () => void): void {
-		_playTabHandler = fn;
+		_playTabHandler = fn
 	}
 
 	function setVisible(visible: boolean): void {
 		if (visible) {
-			el.style.display = "";
-			setDocWidth(_collapsed ? 0 : _width);
+			el.style.display = ""
+			setDocWidth(_collapsed ? 0 : _width)
 		} else {
-			el.style.display = "none";
-			document.body.style.setProperty("--bpmn-dock-width", "0px");
+			el.style.display = "none"
+			document.body.style.setProperty("--bpmn-dock-width", "0px")
 		}
 	}
 
 	// ── Event wiring ──
-	propertiesTab.addEventListener("click", () => switchTab("properties"));
+	propertiesTab.addEventListener("click", () => switchTab("properties"))
 	historyTab.addEventListener("click", () => {
-		switchTab("history");
-		_historyTabHandler?.();
-	});
+		switchTab("history")
+		_historyTabHandler?.()
+	})
 	aiTab.addEventListener("click", () => {
-		switchTab("ai");
-		_aiTabHandler?.();
-	});
+		switchTab("ai")
+		_aiTabHandler?.()
+	})
 	playTab.addEventListener("click", () => {
-		switchTab("play");
-		_playTabHandler?.();
-	});
+		switchTab("play")
+		_playTabHandler?.()
+	})
 	collapseHandle.addEventListener("click", () => {
-		if (_collapsed) expand();
-		else collapse();
-	});
+		if (_collapsed) expand()
+		else collapse()
+	})
 
 	resizeHandle.addEventListener("mousedown", (e) => {
-		if (_collapsed) return;
-		e.preventDefault();
+		if (_collapsed) return
+		e.preventDefault()
 		// Disable CSS transition during drag for instant feedback
-		el.style.transition = "none";
-		const startX = e.clientX;
-		const startWidth = _width;
+		el.style.transition = "none"
+		const startX = e.clientX
+		const startWidth = _width
 		const onMove = (ev: MouseEvent) => {
-			const dx = startX - ev.clientX;
-			_width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + dx));
-			setDocWidth(_width);
+			const dx = startX - ev.clientX
+			_width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + dx))
+			setDocWidth(_width)
 			try {
-				localStorage.setItem(STORAGE_KEY_WIDTH, String(_width));
+				localStorage.setItem(STORAGE_KEY_WIDTH, String(_width))
 			} catch {
 				// ignore
 			}
-		};
+		}
 		const onUp = () => {
 			// Re-enable CSS transition after drag
-			el.style.transition = "";
-			document.removeEventListener("mousemove", onMove);
-			document.removeEventListener("mouseup", onUp);
-		};
-		document.addEventListener("mousemove", onMove);
-		document.addEventListener("mouseup", onUp);
-	});
+			el.style.transition = ""
+			document.removeEventListener("mousemove", onMove)
+			document.removeEventListener("mouseup", onUp)
+		}
+		document.addEventListener("mousemove", onMove)
+		document.addEventListener("mouseup", onUp)
+	})
 
 	return {
 		el,
@@ -439,10 +439,10 @@ export function createSideDock(): SideDock {
 		setPlayTabVisible,
 		setPlayTabClickHandler,
 		get collapsed() {
-			return _collapsed;
+			return _collapsed
 		},
 		get activeTab() {
-			return _activeTab;
+			return _activeTab
 		},
-	};
+	}
 }

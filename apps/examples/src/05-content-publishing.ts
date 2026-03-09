@@ -9,8 +9,8 @@
  * - Multiple terminal outcomes
  */
 
-import { writeFileSync } from "node:fs";
-import { Bpmn } from "@bpmn-sdk/core";
+import { writeFileSync } from "node:fs"
+import { Bpmn } from "@bpmn-sdk/core"
 
 const definitions = Bpmn.createProcess("ContentPublishing")
 	.withAutoLayout()
@@ -171,8 +171,8 @@ const definitions = Bpmn.createProcess("ContentPublishing")
 	.parallelGateway("joinPostPublish", { name: "Done" })
 
 	.endEvent("end", { name: "Content Published" })
-	.build();
+	.build()
 
-const xml = Bpmn.export(definitions);
-writeFileSync("output/05-content-publishing.bpmn", xml);
-console.log("✓ 05-content-publishing.bpmn");
+const xml = Bpmn.export(definitions)
+writeFileSync("output/05-content-publishing.bpmn", xml)
+console.log("✓ 05-content-publishing.bpmn")

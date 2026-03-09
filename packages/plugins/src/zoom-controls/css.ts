@@ -1,4 +1,4 @@
-export const ZOOM_CONTROLS_STYLE_ID = "bpmn-zoom-controls-styles-v1";
+export const ZOOM_CONTROLS_STYLE_ID = "bpmn-zoom-controls-styles-v1"
 
 export const ZOOM_CONTROLS_CSS = `
 .bpmn-controls {
@@ -35,13 +35,13 @@ export const ZOOM_CONTROLS_CSS = `
   outline: 2px solid var(--bpmn-focus, #0066cc);
   outline-offset: 1px;
 }
-`;
+`
 
 export function injectZoomControlsStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(ZOOM_CONTROLS_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = ZOOM_CONTROLS_STYLE_ID;
-	style.textContent = ZOOM_CONTROLS_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(ZOOM_CONTROLS_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = ZOOM_CONTROLS_STYLE_ID
+	style.textContent = ZOOM_CONTROLS_CSS
+	document.head.appendChild(style)
 }

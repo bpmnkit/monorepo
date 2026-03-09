@@ -1,7 +1,7 @@
-import { defineConfig } from "astro/config";
+import { defineConfig } from "astro/config"
 
 export default defineConfig({
 	build: {
 		format: "file",
 	},
-});
+})

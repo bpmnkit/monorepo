@@ -606,14 +606,14 @@ export const TABS_CSS = `
 
 .bpmn-raw-pane[data-theme="light"] .bpmn-raw-content { --raw-fg: #374151; }
 
-`.trim();
+`.trim()
 
-const STYLE_ID = "bpmn-sdk-tabs-css";
+const STYLE_ID = "bpmn-sdk-tabs-css"
 
 export function injectTabsStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = TABS_CSS;
-	document.head.appendChild(style);
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = TABS_CSS
+	document.head.appendChild(style)
 }

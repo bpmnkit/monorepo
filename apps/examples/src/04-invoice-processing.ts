@@ -8,8 +8,8 @@
  * - Call activity to reuse the payment process
  */
 
-import { writeFileSync } from "node:fs";
-import { Bpmn } from "@bpmn-sdk/core";
+import { writeFileSync } from "node:fs"
+import { Bpmn } from "@bpmn-sdk/core"
 
 const definitions = Bpmn.createProcess("InvoiceProcessing")
 	.withAutoLayout()
@@ -59,7 +59,7 @@ const definitions = Bpmn.createProcess("InvoiceProcessing")
 					expression: '=invoiceTotal = purchaseOrder.total and goodsReceipt.status = "received"',
 					resultVariable: "matchPassed",
 				})
-				.endEvent("matchEnd");
+				.endEvent("matchEnd")
 		},
 		{ name: "Three-Way Match Validation" },
 	)
@@ -142,8 +142,8 @@ const definitions = Bpmn.createProcess("InvoiceProcessing")
 	})
 
 	.endEvent("end", { name: "Invoice Processed" })
-	.build();
+	.build()
 
-const xml = Bpmn.export(definitions);
-writeFileSync("output/04-invoice-processing.bpmn", xml);
-console.log("✓ 04-invoice-processing.bpmn");
+const xml = Bpmn.export(definitions)
+writeFileSync("output/04-invoice-processing.bpmn", xml)
+console.log("✓ 04-invoice-processing.bpmn")

@@ -138,14 +138,14 @@ export const DMN_VIEWER_CSS = `
   padding: 32px;
   color: var(--feel-empty);
 }
-`.trim();
+`.trim()
 
-const STYLE_ID = "bpmn-sdk-dmn-viewer-css";
+const STYLE_ID = "bpmn-sdk-dmn-viewer-css"
 
 export function injectDmnViewerStyles(): void {
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = DMN_VIEWER_CSS;
-	document.head.appendChild(style);
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = DMN_VIEWER_CSS
+	document.head.appendChild(style)
 }

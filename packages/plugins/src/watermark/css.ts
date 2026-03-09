@@ -1,5 +1,5 @@
 /** ID used to prevent duplicate style injection. */
-export const WATERMARK_STYLE_ID = "bpmn-watermark-styles-v1";
+export const WATERMARK_STYLE_ID = "bpmn-watermark-styles-v1"
 
 /** CSS for the watermark plugin, injected once into `<head>`. */
 export const WATERMARK_CSS = `
@@ -37,17 +37,17 @@ export const WATERMARK_CSS = `
   height: 100%;
   display: block;
 }
-`;
+`
 
 /**
  * Injects the watermark stylesheet into `<head>` if not already present.
  * Safe to call multiple times — only one `<style>` tag is ever inserted.
  */
 export function injectWatermarkStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(WATERMARK_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = WATERMARK_STYLE_ID;
-	style.textContent = WATERMARK_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(WATERMARK_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = WATERMARK_STYLE_ID
+	style.textContent = WATERMARK_CSS
+	document.head.appendChild(style)
 }

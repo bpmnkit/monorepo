@@ -1,5 +1,5 @@
 /** ID used to prevent duplicate style injection. */
-export const STYLE_ID = "bpmn-canvas-styles-v1";
+export const STYLE_ID = "bpmn-canvas-styles-v1"
 
 /** Complete CSS for the BpmnCanvas component, injected once into `<head>`. */
 export const CANVAS_CSS = `
@@ -203,17 +203,17 @@ export const CANVAS_CSS = `
   --bpmn-overlay-bg: rgba(30, 30, 46, 0.92);
   --bpmn-overlay-border: rgba(255, 255, 255, 0.1);
 }
-`;
+`
 
 /**
  * Injects the canvas stylesheet into `<head>` if not already present.
  * Safe to call multiple times — only one `<style>` tag is ever inserted.
  */
 export function injectStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = CANVAS_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = CANVAS_CSS
+	document.head.appendChild(style)
 }

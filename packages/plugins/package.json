@@ -93,10 +93,7 @@
 			"types": "./dist/zoom-controls/index.d.ts"
 		}
 	},
-	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",

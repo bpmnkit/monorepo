@@ -1,6 +1,6 @@
-import starlight from "@astrojs/starlight";
-import { defineConfig } from "astro/config";
-import starlightLlmsTxt from "starlight-llms-txt";
+import starlight from "@astrojs/starlight"
+import { defineConfig } from "astro/config"
+import starlightLlmsTxt from "starlight-llms-txt"
 
 export default defineConfig({
 	site: "https://bpmn-sdk-docs.pages.dev",
@@ -72,4 +72,4 @@ export default defineConfig({
 			],
 		}),
 	],
-});
+})

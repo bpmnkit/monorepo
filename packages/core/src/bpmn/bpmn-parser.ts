@@ -1,5 +1,5 @@
-import type { XmlElement } from "../types/xml-element.js";
-import { parseXml } from "../xml/xml-parser.js";
+import type { XmlElement } from "../types/xml-element.js"
+import { parseXml } from "../xml/xml-parser.js"
 import type {
 	BpmnAssociation,
 	BpmnBoundaryEvent,
@@ -25,46 +25,46 @@ import type {
 	BpmnProcess,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
-} from "./bpmn-model.js";
+} from "./bpmn-model.js"
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function localName(name: string): string {
-	const idx = name.indexOf(":");
-	return idx >= 0 ? name.slice(idx + 1) : name;
+	const idx = name.indexOf(":")
+	return idx >= 0 ? name.slice(idx + 1) : name
 }
 
 function findChildren(element: XmlElement, tagLocalName: string): XmlElement[] {
-	return element.children.filter((c) => localName(c.name) === tagLocalName);
+	return element.children.filter((c) => localName(c.name) === tagLocalName)
 }
 
 function findChild(element: XmlElement, tagLocalName: string): XmlElement | undefined {
-	return element.children.find((c) => localName(c.name) === tagLocalName);
+	return element.children.find((c) => localName(c.name) === tagLocalName)
 }
 
 function attr(element: XmlElement, name: string): string | undefined {
-	if (element.attributes[name] !== undefined) return element.attributes[name];
+	if (element.attributes[name] !== undefined) return element.attributes[name]
 	for (const [key, value] of Object.entries(element.attributes)) {
-		if (localName(key) === name) return value;
+		if (localName(key) === name) return value
 	}
-	return undefined;
+	return undefined
 }
 
 function requiredAttr(element: XmlElement, name: string): string {
-	const value = attr(element, name);
+	const value = attr(element, name)
 	if (value === undefined) {
-		throw new Error(`Missing required attribute "${name}" on <${element.name}>`);
+		throw new Error(`Missing required attribute "${name}" on <${element.name}>`)
 	}
-	return value;
+	return value
 }
 
 /** Collect text from child <bpmn:incoming> / <bpmn:outgoing> elements. */
 function collectFlowRefs(element: XmlElement, tag: string): string[] {
 	return findChildren(element, tag)
 		.map((c) => c.text?.trim())
-		.filter((t): t is string => !!t);
+		.filter((t): t is string => !!t)
 }
 
 /** Known attribute names on flow nodes — everything else goes to unknownAttributes. */
@@ -89,18 +89,18 @@ const KNOWN_ATTRS = new Set([
 	"exporter",
 	"exporterVersion",
 	"processRef",
-]);
+])
 
 /** Extract unknown (namespace-qualified) attributes from an element. */
 function unknownAttrs(element: XmlElement): Record<string, string> {
-	const result: Record<string, string> = {};
+	const result: Record<string, string> = {}
 	for (const [key, value] of Object.entries(element.attributes)) {
-		if (key.startsWith("xmlns:") || key === "xmlns") continue;
-		if (KNOWN_ATTRS.has(key)) continue;
-		if (KNOWN_ATTRS.has(localName(key))) continue;
-		result[key] = value;
+		if (key.startsWith("xmlns:") || key === "xmlns") continue
+		if (KNOWN_ATTRS.has(key)) continue
+		if (KNOWN_ATTRS.has(localName(key))) continue
+		result[key] = value
 	}
-	return result;
+	return result
 }
 
 /** Known child local names for flow nodes — anything else is an extension. */
@@ -122,7 +122,7 @@ const KNOWN_FLOW_CHILDREN = new Set([
 	"compensateEventDefinition",
 	"multiInstanceLoopCharacteristics",
 	// Sub-process children are handled separately
-]);
+])
 
 const KNOWN_PROCESS_CHILDREN = new Set([
 	"startEvent",
@@ -153,15 +153,15 @@ const KNOWN_PROCESS_CHILDREN = new Set([
 	"association",
 	"laneSet",
 	"extensionElements",
-]);
+])
 
 // ---------------------------------------------------------------------------
 // Extension elements
 // ---------------------------------------------------------------------------
 
 function parseExtensionElements(element: XmlElement): XmlElement[] {
-	const ext = findChild(element, "extensionElements");
-	return ext ? ext.children : [];
+	const ext = findChild(element, "extensionElements")
+	return ext ? ext.children : []
 }
 
 // ---------------------------------------------------------------------------
@@ -169,14 +169,14 @@ function parseExtensionElements(element: XmlElement): XmlElement[] {
 // ---------------------------------------------------------------------------
 
 function parseEventDefinitions(element: XmlElement): BpmnEventDefinition[] {
-	const defs: BpmnEventDefinition[] = [];
+	const defs: BpmnEventDefinition[] = []
 
 	for (const child of element.children) {
-		const ln = localName(child.name);
+		const ln = localName(child.name)
 		if (ln === "timerEventDefinition") {
-			const durationEl = findChild(child, "timeDuration");
-			const dateEl = findChild(child, "timeDate");
-			const cycleEl = findChild(child, "timeCycle");
+			const durationEl = findChild(child, "timeDuration")
+			const dateEl = findChild(child, "timeDate")
+			const cycleEl = findChild(child, "timeCycle")
 			defs.push({
 				type: "timer",
 				id: attr(child, "id"),
@@ -198,58 +198,58 @@ function parseEventDefinitions(element: XmlElement): BpmnEventDefinition[] {
 						? { ...cycleEl.attributes }
 						: undefined
 					: undefined,
-			});
+			})
 		} else if (ln === "errorEventDefinition") {
 			defs.push({
 				type: "error",
 				id: attr(child, "id"),
 				errorRef: attr(child, "errorRef"),
-			});
+			})
 		} else if (ln === "escalationEventDefinition") {
 			defs.push({
 				type: "escalation",
 				id: attr(child, "id"),
 				escalationRef: attr(child, "escalationRef"),
-			});
+			})
 		} else if (ln === "messageEventDefinition") {
 			defs.push({
 				type: "message",
 				id: attr(child, "id"),
 				messageRef: attr(child, "messageRef"),
-			});
+			})
 		} else if (ln === "signalEventDefinition") {
 			defs.push({
 				type: "signal",
 				id: attr(child, "id"),
 				signalRef: attr(child, "signalRef"),
-			});
+			})
 		} else if (ln === "conditionalEventDefinition") {
-			const condEl = findChild(child, "condition");
+			const condEl = findChild(child, "condition")
 			defs.push({
 				type: "conditional",
 				id: attr(child, "id"),
 				condition: condEl?.text?.trim(),
-			});
+			})
 		} else if (ln === "linkEventDefinition") {
 			defs.push({
 				type: "link",
 				id: attr(child, "id"),
 				name: attr(child, "name"),
-			});
+			})
 		} else if (ln === "cancelEventDefinition") {
-			defs.push({ type: "cancel", id: attr(child, "id") });
+			defs.push({ type: "cancel", id: attr(child, "id") })
 		} else if (ln === "terminateEventDefinition") {
-			defs.push({ type: "terminate", id: attr(child, "id") });
+			defs.push({ type: "terminate", id: attr(child, "id") })
 		} else if (ln === "compensateEventDefinition") {
 			defs.push({
 				type: "compensate",
 				id: attr(child, "id"),
 				activityRef: attr(child, "activityRef"),
-			});
+			})
 		}
 	}
 
-	return defs;
+	return defs
 }
 
 // ---------------------------------------------------------------------------
@@ -259,9 +259,9 @@ function parseEventDefinitions(element: XmlElement): BpmnEventDefinition[] {
 function parseLoopCharacteristics(
 	element: XmlElement,
 ): BpmnMultiInstanceLoopCharacteristics | undefined {
-	const loopEl = findChild(element, "multiInstanceLoopCharacteristics");
-	if (!loopEl) return undefined;
-	return { extensionElements: parseExtensionElements(loopEl) };
+	const loopEl = findChild(element, "multiInstanceLoopCharacteristics")
+	if (!loopEl) return undefined
+	return { extensionElements: parseExtensionElements(loopEl) }
 }
 
 // ---------------------------------------------------------------------------
@@ -292,11 +292,11 @@ const FLOW_ELEMENT_TYPES = new Set<string>([
 	"inclusiveGateway",
 	"eventBasedGateway",
 	"complexGateway",
-]);
+])
 
 function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
-	const ln = localName(element.name) as BpmnElementType;
-	if (!FLOW_ELEMENT_TYPES.has(ln)) return undefined;
+	const ln = localName(element.name) as BpmnElementType
+	if (!FLOW_ELEMENT_TYPES.has(ln)) return undefined
 
 	const base = {
 		id: requiredAttr(element, "id"),
@@ -306,14 +306,14 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 		documentation: findChild(element, "documentation")?.text,
 		extensionElements: parseExtensionElements(element),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 
 	switch (ln) {
 		case "startEvent":
 		case "endEvent":
 		case "intermediateCatchEvent":
 		case "intermediateThrowEvent":
-			return { ...base, type: ln, eventDefinitions: parseEventDefinitions(element) };
+			return { ...base, type: ln, eventDefinitions: parseEventDefinitions(element) }
 
 		case "boundaryEvent":
 			return {
@@ -325,7 +325,7 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 						? attr(element, "cancelActivity") === "true"
 						: undefined,
 				eventDefinitions: parseEventDefinitions(element),
-			} satisfies BpmnBoundaryEvent;
+			} satisfies BpmnBoundaryEvent
 
 		case "task":
 		case "serviceTask":
@@ -336,7 +336,7 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 		case "businessRuleTask":
 		case "manualTask":
 		case "callActivity":
-			return { ...base, type: ln, loopCharacteristics: parseLoopCharacteristics(element) };
+			return { ...base, type: ln, loopCharacteristics: parseLoopCharacteristics(element) }
 
 		case "adHocSubProcess":
 			return {
@@ -344,7 +344,7 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 				type: "adHocSubProcess",
 				loopCharacteristics: parseLoopCharacteristics(element),
 				...parseProcessContents(element),
-			};
+			}
 
 		case "subProcess":
 			return {
@@ -356,14 +356,14 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 						: undefined,
 				loopCharacteristics: parseLoopCharacteristics(element),
 				...parseProcessContents(element),
-			};
+			}
 
 		case "eventSubProcess":
 			return {
 				...base,
 				type: "eventSubProcess",
 				...parseProcessContents(element),
-			};
+			}
 
 		case "transaction":
 			return {
@@ -371,25 +371,25 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 				type: "transaction",
 				loopCharacteristics: parseLoopCharacteristics(element),
 				...parseProcessContents(element),
-			};
+			}
 
 		case "exclusiveGateway":
-			return { ...base, type: "exclusiveGateway", default: attr(element, "default") };
+			return { ...base, type: "exclusiveGateway", default: attr(element, "default") }
 
 		case "parallelGateway":
-			return { ...base, type: "parallelGateway" };
+			return { ...base, type: "parallelGateway" }
 
 		case "inclusiveGateway":
-			return { ...base, type: "inclusiveGateway", default: attr(element, "default") };
+			return { ...base, type: "inclusiveGateway", default: attr(element, "default") }
 
 		case "eventBasedGateway":
-			return { ...base, type: "eventBasedGateway" };
+			return { ...base, type: "eventBasedGateway" }
 
 		case "complexGateway":
-			return { ...base, type: "complexGateway", default: attr(element, "default") };
+			return { ...base, type: "complexGateway", default: attr(element, "default") }
 
 		default:
-			return undefined;
+			return undefined
 	}
 }
 
@@ -398,13 +398,13 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 // ---------------------------------------------------------------------------
 
 function parseSequenceFlow(element: XmlElement): BpmnSequenceFlow {
-	const condEl = findChild(element, "conditionExpression");
-	let conditionExpression: BpmnConditionExpression | undefined;
+	const condEl = findChild(element, "conditionExpression")
+	let conditionExpression: BpmnConditionExpression | undefined
 	if (condEl) {
 		conditionExpression = {
 			text: condEl.text ?? "",
 			attributes: { ...condEl.attributes },
-		};
+		}
 	}
 
 	return {
@@ -415,7 +415,7 @@ function parseSequenceFlow(element: XmlElement): BpmnSequenceFlow {
 		conditionExpression,
 		extensionElements: parseExtensionElements(element),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -423,12 +423,12 @@ function parseSequenceFlow(element: XmlElement): BpmnSequenceFlow {
 // ---------------------------------------------------------------------------
 
 function parseTextAnnotation(element: XmlElement): BpmnTextAnnotation {
-	const textEl = findChild(element, "text");
+	const textEl = findChild(element, "text")
 	return {
 		id: requiredAttr(element, "id"),
 		text: textEl?.text,
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 function parseAssociation(element: XmlElement): BpmnAssociation {
@@ -438,7 +438,7 @@ function parseAssociation(element: XmlElement): BpmnAssociation {
 		targetRef: requiredAttr(element, "targetRef"),
 		associationDirection: attr(element, "associationDirection"),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -446,32 +446,32 @@ function parseAssociation(element: XmlElement): BpmnAssociation {
 // ---------------------------------------------------------------------------
 
 function parseProcessContents(element: XmlElement): {
-	flowElements: BpmnFlowElement[];
-	sequenceFlows: BpmnSequenceFlow[];
-	textAnnotations: BpmnTextAnnotation[];
-	associations: BpmnAssociation[];
+	flowElements: BpmnFlowElement[]
+	sequenceFlows: BpmnSequenceFlow[]
+	textAnnotations: BpmnTextAnnotation[]
+	associations: BpmnAssociation[]
 } {
-	const flowElements: BpmnFlowElement[] = [];
-	const sequenceFlows: BpmnSequenceFlow[] = [];
-	const textAnnotations: BpmnTextAnnotation[] = [];
-	const associations: BpmnAssociation[] = [];
+	const flowElements: BpmnFlowElement[] = []
+	const sequenceFlows: BpmnSequenceFlow[] = []
+	const textAnnotations: BpmnTextAnnotation[] = []
+	const associations: BpmnAssociation[] = []
 
 	for (const child of element.children) {
-		const ln = localName(child.name);
+		const ln = localName(child.name)
 
 		if (FLOW_ELEMENT_TYPES.has(ln)) {
-			const fe = parseFlowElement(child);
-			if (fe) flowElements.push(fe);
+			const fe = parseFlowElement(child)
+			if (fe) flowElements.push(fe)
 		} else if (ln === "sequenceFlow") {
-			sequenceFlows.push(parseSequenceFlow(child));
+			sequenceFlows.push(parseSequenceFlow(child))
 		} else if (ln === "textAnnotation") {
-			textAnnotations.push(parseTextAnnotation(child));
+			textAnnotations.push(parseTextAnnotation(child))
 		} else if (ln === "association") {
-			associations.push(parseAssociation(child));
+			associations.push(parseAssociation(child))
 		}
 	}
 
-	return { flowElements, sequenceFlows, textAnnotations, associations };
+	return { flowElements, sequenceFlows, textAnnotations, associations }
 }
 
 // ---------------------------------------------------------------------------
@@ -481,22 +481,22 @@ function parseProcessContents(element: XmlElement): {
 function parseLane(element: XmlElement): BpmnLane {
 	const flowNodeRefs = findChildren(element, "flowNodeRef")
 		.map((c) => c.text?.trim())
-		.filter((t): t is string => !!t);
-	const childLaneSetEl = findChild(element, "childLaneSet");
+		.filter((t): t is string => !!t)
+	const childLaneSetEl = findChild(element, "childLaneSet")
 	return {
 		id: requiredAttr(element, "id"),
 		name: attr(element, "name"),
 		flowNodeRefs,
 		childLaneSet: childLaneSetEl ? parseLaneSet(childLaneSetEl) : undefined,
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 function parseLaneSet(element: XmlElement): BpmnLaneSet {
 	return {
 		id: attr(element, "id"),
 		lanes: findChildren(element, "lane").map(parseLane),
-	};
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -504,7 +504,7 @@ function parseLaneSet(element: XmlElement): BpmnLaneSet {
 // ---------------------------------------------------------------------------
 
 function parseProcess(element: XmlElement): BpmnProcess {
-	const laneSetEl = findChild(element, "laneSet");
+	const laneSetEl = findChild(element, "laneSet")
 	return {
 		id: requiredAttr(element, "id"),
 		name: attr(element, "name"),
@@ -513,7 +513,7 @@ function parseProcess(element: XmlElement): BpmnProcess {
 		unknownAttributes: unknownAttrs(element),
 		laneSet: laneSetEl ? parseLaneSet(laneSetEl) : undefined,
 		...parseProcessContents(element),
-	};
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -526,7 +526,7 @@ function parseParticipant(element: XmlElement): BpmnParticipant {
 		name: attr(element, "name"),
 		processRef: attr(element, "processRef"),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 function parseMessageFlow(element: XmlElement): BpmnMessageFlow {
@@ -536,7 +536,7 @@ function parseMessageFlow(element: XmlElement): BpmnMessageFlow {
 		sourceRef: requiredAttr(element, "sourceRef"),
 		targetRef: requiredAttr(element, "targetRef"),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 function parseCollaboration(element: XmlElement): BpmnCollaboration {
@@ -548,7 +548,7 @@ function parseCollaboration(element: XmlElement): BpmnCollaboration {
 		associations: findChildren(element, "association").map(parseAssociation),
 		extensionElements: parseExtensionElements(element),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -560,7 +560,7 @@ function parseError(element: XmlElement): BpmnError {
 		id: requiredAttr(element, "id"),
 		name: attr(element, "name"),
 		errorCode: attr(element, "errorCode"),
-	};
+	}
 }
 
 function parseEscalation(element: XmlElement): BpmnEscalation {
@@ -568,7 +568,7 @@ function parseEscalation(element: XmlElement): BpmnEscalation {
 		id: requiredAttr(element, "id"),
 		name: attr(element, "name"),
 		escalationCode: attr(element, "escalationCode"),
-	};
+	}
 }
 
 function parseMessage(element: XmlElement): BpmnMessage {
@@ -576,7 +576,7 @@ function parseMessage(element: XmlElement): BpmnMessage {
 		id: requiredAttr(element, "id"),
 		name: attr(element, "name"),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -584,30 +584,30 @@ function parseMessage(element: XmlElement): BpmnMessage {
 // ---------------------------------------------------------------------------
 
 function parseBounds(element: XmlElement): {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
+	x: number
+	y: number
+	width: number
+	height: number
 } {
 	return {
 		x: Number(attr(element, "x") ?? "0"),
 		y: Number(attr(element, "y") ?? "0"),
 		width: Number(attr(element, "width") ?? "0"),
 		height: Number(attr(element, "height") ?? "0"),
-	};
+	}
 }
 
 function parseLabel(element: XmlElement): BpmnDiLabel | undefined {
-	const labelEl = findChild(element, "BPMNLabel");
-	if (!labelEl) return undefined;
+	const labelEl = findChild(element, "BPMNLabel")
+	if (!labelEl) return undefined
 
-	const boundsEl = findChild(labelEl, "Bounds");
-	return { bounds: boundsEl ? parseBounds(boundsEl) : undefined };
+	const boundsEl = findChild(labelEl, "Bounds")
+	return { bounds: boundsEl ? parseBounds(boundsEl) : undefined }
 }
 
 function parseDiShape(element: XmlElement): BpmnDiShape {
-	const boundsEl = findChild(element, "Bounds");
-	if (!boundsEl) throw new Error(`Missing <dc:Bounds> in shape "${attr(element, "id")}"`);
+	const boundsEl = findChild(element, "Bounds")
+	if (!boundsEl) throw new Error(`Missing <dc:Bounds> in shape "${attr(element, "id")}"`)
 
 	return {
 		id: requiredAttr(element, "id"),
@@ -623,14 +623,14 @@ function parseDiShape(element: XmlElement): BpmnDiShape {
 		bounds: parseBounds(boundsEl),
 		label: parseLabel(element),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 function parseDiEdge(element: XmlElement): BpmnDiEdge {
 	const waypoints = findChildren(element, "waypoint").map((w) => ({
 		x: Number(attr(w, "x") ?? "0"),
 		y: Number(attr(w, "y") ?? "0"),
-	}));
+	}))
 
 	return {
 		id: requiredAttr(element, "id"),
@@ -638,20 +638,20 @@ function parseDiEdge(element: XmlElement): BpmnDiEdge {
 		waypoints,
 		label: parseLabel(element),
 		unknownAttributes: unknownAttrs(element),
-	};
+	}
 }
 
 function parseDiagram(element: XmlElement): BpmnDiagram {
-	const planeEl = findChild(element, "BPMNPlane");
-	if (!planeEl) throw new Error("Missing <bpmndi:BPMNPlane> in diagram");
+	const planeEl = findChild(element, "BPMNPlane")
+	if (!planeEl) throw new Error("Missing <bpmndi:BPMNPlane> in diagram")
 
-	const shapes: BpmnDiShape[] = [];
-	const edges: BpmnDiEdge[] = [];
+	const shapes: BpmnDiShape[] = []
+	const edges: BpmnDiEdge[] = []
 
 	for (const child of planeEl.children) {
-		const ln = localName(child.name);
-		if (ln === "BPMNShape") shapes.push(parseDiShape(child));
-		else if (ln === "BPMNEdge") edges.push(parseDiEdge(child));
+		const ln = localName(child.name)
+		if (ln === "BPMNShape") shapes.push(parseDiShape(child))
+		else if (ln === "BPMNEdge") edges.push(parseDiEdge(child))
 	}
 
 	return {
@@ -662,7 +662,7 @@ function parseDiagram(element: XmlElement): BpmnDiagram {
 			shapes,
 			edges,
 		},
-	};
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -671,41 +671,41 @@ function parseDiagram(element: XmlElement): BpmnDiagram {
 
 /** Parse a BPMN XML string into a typed BpmnDefinitions model. */
 export function parseBpmn(xml: string): BpmnDefinitions {
-	const root = parseXml(xml);
+	const root = parseXml(xml)
 
 	if (localName(root.name) !== "definitions") {
-		throw new Error(`Expected <definitions> root element, got <${root.name}>`);
+		throw new Error(`Expected <definitions> root element, got <${root.name}>`)
 	}
 
-	const namespaces: Record<string, string> = {};
-	const unknownAttributes: Record<string, string> = {};
+	const namespaces: Record<string, string> = {}
+	const unknownAttributes: Record<string, string> = {}
 
 	for (const [key, value] of Object.entries(root.attributes)) {
 		if (key.startsWith("xmlns:")) {
-			namespaces[key.slice(6)] = value;
+			namespaces[key.slice(6)] = value
 		} else if (key === "xmlns") {
-			namespaces[""] = value;
+			namespaces[""] = value
 		} else if (KNOWN_ATTRS.has(key)) {
 		} else {
-			unknownAttributes[key] = value;
+			unknownAttributes[key] = value
 		}
 	}
 
-	const errors: BpmnError[] = [];
-	const escalations: BpmnEscalation[] = [];
-	const messages: BpmnMessage[] = [];
-	const collaborations: BpmnCollaboration[] = [];
-	const processes: BpmnProcess[] = [];
-	const diagrams: BpmnDiagram[] = [];
+	const errors: BpmnError[] = []
+	const escalations: BpmnEscalation[] = []
+	const messages: BpmnMessage[] = []
+	const collaborations: BpmnCollaboration[] = []
+	const processes: BpmnProcess[] = []
+	const diagrams: BpmnDiagram[] = []
 
 	for (const child of root.children) {
-		const ln = localName(child.name);
-		if (ln === "error") errors.push(parseError(child));
-		else if (ln === "escalation") escalations.push(parseEscalation(child));
-		else if (ln === "message") messages.push(parseMessage(child));
-		else if (ln === "collaboration") collaborations.push(parseCollaboration(child));
-		else if (ln === "process") processes.push(parseProcess(child));
-		else if (ln === "BPMNDiagram") diagrams.push(parseDiagram(child));
+		const ln = localName(child.name)
+		if (ln === "error") errors.push(parseError(child))
+		else if (ln === "escalation") escalations.push(parseEscalation(child))
+		else if (ln === "message") messages.push(parseMessage(child))
+		else if (ln === "collaboration") collaborations.push(parseCollaboration(child))
+		else if (ln === "process") processes.push(parseProcess(child))
+		else if (ln === "BPMNDiagram") diagrams.push(parseDiagram(child))
 	}
 
 	return {
@@ -721,5 +721,5 @@ export function parseBpmn(xml: string): BpmnDefinitions {
 		collaborations,
 		processes,
 		diagrams,
-	};
+	}
 }

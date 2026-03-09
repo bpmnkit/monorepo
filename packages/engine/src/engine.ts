@@ -1,6 +1,6 @@
-import type { BpmnDefinitions, DmnDecision, DmnDefinitions, FormDefinition } from "@bpmn-sdk/core";
-import { ProcessInstance } from "./instance.js";
-import type { JobHandler } from "./types.js";
+import type { BpmnDefinitions, DmnDecision, DmnDefinitions, FormDefinition } from "@bpmn-sdk/core"
+import { ProcessInstance } from "./instance.js"
+import type { JobHandler } from "./types.js"
 
 /** Options for {@link Engine.start}. */
 export interface StartOptions {
@@ -8,47 +8,47 @@ export interface StartOptions {
 	 * Hook called just before each element completes. Return a Promise to pause
 	 * execution at that point — useful for step-by-step simulation.
 	 */
-	beforeComplete?: (elementId: string) => Promise<void>;
+	beforeComplete?: (elementId: string) => Promise<void>
 }
 
 export class Engine {
-	private readonly processes = new Map<string, import("@bpmn-sdk/core").BpmnProcess>();
-	private readonly decisions = new Map<string, DmnDecision>();
-	private readonly forms = new Map<string, FormDefinition>();
-	private readonly workers = new Map<string, JobHandler>();
+	private readonly processes = new Map<string, import("@bpmn-sdk/core").BpmnProcess>()
+	private readonly decisions = new Map<string, DmnDecision>()
+	private readonly forms = new Map<string, FormDefinition>()
+	private readonly workers = new Map<string, JobHandler>()
 
 	/**
 	 * Deploy BPMN processes, DMN decisions, and form definitions.
 	 * Calling deploy multiple times merges into the registry.
 	 */
 	deploy(d: {
-		bpmn?: BpmnDefinitions | BpmnDefinitions[];
-		forms?: FormDefinition | FormDefinition[];
-		decisions?: DmnDefinitions | DmnDefinitions[];
+		bpmn?: BpmnDefinitions | BpmnDefinitions[]
+		forms?: FormDefinition | FormDefinition[]
+		decisions?: DmnDefinitions | DmnDefinitions[]
 	}): void {
 		if (d.bpmn !== undefined) {
-			const defs = Array.isArray(d.bpmn) ? d.bpmn : [d.bpmn];
+			const defs = Array.isArray(d.bpmn) ? d.bpmn : [d.bpmn]
 			for (const def of defs) {
 				for (const process of def.processes) {
-					this.processes.set(process.id, process);
+					this.processes.set(process.id, process)
 				}
 			}
 		}
 
 		if (d.decisions !== undefined) {
-			const defs = Array.isArray(d.decisions) ? d.decisions : [d.decisions];
+			const defs = Array.isArray(d.decisions) ? d.decisions : [d.decisions]
 			for (const def of defs) {
 				for (const decision of def.decisions) {
-					this.decisions.set(decision.id, decision);
+					this.decisions.set(decision.id, decision)
 				}
 			}
 		}
 
 		if (d.forms !== undefined) {
-			const defs = Array.isArray(d.forms) ? d.forms : [d.forms];
+			const defs = Array.isArray(d.forms) ? d.forms : [d.forms]
 			for (const form of defs) {
-				const id = (form as { id?: string }).id;
-				if (id !== undefined) this.forms.set(id, form);
+				const id = (form as { id?: string }).id
+				if (id !== undefined) this.forms.set(id, form)
 			}
 		}
 	}
@@ -59,9 +59,9 @@ export class Engine {
 		variables?: Record<string, unknown>,
 		options?: StartOptions,
 	): ProcessInstance {
-		const process = this.processes.get(processId);
+		const process = this.processes.get(processId)
 		if (process === undefined) {
-			throw new Error(`Process "${processId}" is not deployed`);
+			throw new Error(`Process "${processId}" is not deployed`)
 		}
 
 		const instance = new ProcessInstance(
@@ -70,12 +70,12 @@ export class Engine {
 			this.forms,
 			this.workers,
 			variables ?? {},
-		);
+		)
 		if (options?.beforeComplete !== undefined) {
-			instance.beforeComplete = options.beforeComplete;
+			instance.beforeComplete = options.beforeComplete
 		}
-		instance.start();
-		return instance;
+		instance.start()
+		return instance
 	}
 
 	/**
@@ -83,14 +83,14 @@ export class Engine {
 	 * Returns an unsubscribe function.
 	 */
 	registerJobWorker(type: string, handler: JobHandler): () => void {
-		this.workers.set(type, handler);
+		this.workers.set(type, handler)
 		return () => {
-			if (this.workers.get(type) === handler) this.workers.delete(type);
-		};
+			if (this.workers.get(type) === handler) this.workers.delete(type)
+		}
 	}
 
 	/** Return all deployed process IDs. */
 	getDeployedProcesses(): string[] {
-		return [...this.processes.keys()];
+		return [...this.processes.keys()]
 	}
 }

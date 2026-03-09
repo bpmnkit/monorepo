@@ -11,18 +11,18 @@ import type {
 	BpmnTextAnnotation,
 	BpmnWaypoint,
 	DiColor,
-} from "@bpmn-sdk/core";
-import { BIOC_NS, COLOR_NS, writeDiColor } from "@bpmn-sdk/core";
-import { computeWaypoints, computeWaypointsWithPorts, portFromWaypoint } from "./geometry.js";
-import { genId } from "./id.js";
-import type { CreateShapeType, PortDir } from "./types.js";
+} from "@bpmn-sdk/core"
+import { BIOC_NS, COLOR_NS, writeDiColor } from "@bpmn-sdk/core"
+import { computeWaypoints, computeWaypointsWithPorts, portFromWaypoint } from "./geometry.js"
+import { genId } from "./id.js"
+import type { CreateShapeType, PortDir } from "./types.js"
 
 // ── Empty definitions ─────────────────────────────────────────────────────────
 
 /** Creates a minimal valid BpmnDefinitions with one process and one diagram. */
 export function createEmptyDefinitions(): BpmnDefinitions {
-	const processId = genId("Process");
-	const planeId = genId("BPMNPlane");
+	const processId = genId("Process")
+	const planeId = genId("BPMNPlane")
 	return {
 		id: genId("Definitions"),
 		targetNamespace: "http://bpmn.io/schema/bpmn",
@@ -59,7 +59,7 @@ export function createEmptyDefinitions(): BpmnDefinitions {
 				},
 			},
 		],
-	};
+	}
 }
 
 // ── Helper: build a new flow element ─────────────────────────────────────────
@@ -72,87 +72,87 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 		outgoing: [] as string[],
 		extensionElements: [] as never[],
 		unknownAttributes: {} as Record<string, string>,
-	};
+	}
 
 	switch (type) {
 		case "startEvent":
-			return { ...base, type: "startEvent", eventDefinitions: [] };
+			return { ...base, type: "startEvent", eventDefinitions: [] }
 		case "messageStartEvent":
-			return { ...base, type: "startEvent", eventDefinitions: [{ type: "message" }] };
+			return { ...base, type: "startEvent", eventDefinitions: [{ type: "message" }] }
 		case "timerStartEvent":
-			return { ...base, type: "startEvent", eventDefinitions: [{ type: "timer" }] };
+			return { ...base, type: "startEvent", eventDefinitions: [{ type: "timer" }] }
 		case "conditionalStartEvent":
-			return { ...base, type: "startEvent", eventDefinitions: [{ type: "conditional" }] };
+			return { ...base, type: "startEvent", eventDefinitions: [{ type: "conditional" }] }
 		case "signalStartEvent":
-			return { ...base, type: "startEvent", eventDefinitions: [{ type: "signal" }] };
+			return { ...base, type: "startEvent", eventDefinitions: [{ type: "signal" }] }
 		case "endEvent":
-			return { ...base, type: "endEvent", eventDefinitions: [] };
+			return { ...base, type: "endEvent", eventDefinitions: [] }
 		case "messageEndEvent":
-			return { ...base, type: "endEvent", eventDefinitions: [{ type: "message" }] };
+			return { ...base, type: "endEvent", eventDefinitions: [{ type: "message" }] }
 		case "escalationEndEvent":
-			return { ...base, type: "endEvent", eventDefinitions: [{ type: "escalation" }] };
+			return { ...base, type: "endEvent", eventDefinitions: [{ type: "escalation" }] }
 		case "errorEndEvent":
-			return { ...base, type: "endEvent", eventDefinitions: [{ type: "error" }] };
+			return { ...base, type: "endEvent", eventDefinitions: [{ type: "error" }] }
 		case "compensationEndEvent":
-			return { ...base, type: "endEvent", eventDefinitions: [{ type: "compensate" }] };
+			return { ...base, type: "endEvent", eventDefinitions: [{ type: "compensate" }] }
 		case "signalEndEvent":
-			return { ...base, type: "endEvent", eventDefinitions: [{ type: "signal" }] };
+			return { ...base, type: "endEvent", eventDefinitions: [{ type: "signal" }] }
 		case "terminateEndEvent":
-			return { ...base, type: "endEvent", eventDefinitions: [{ type: "terminate" }] };
+			return { ...base, type: "endEvent", eventDefinitions: [{ type: "terminate" }] }
 		case "intermediateThrowEvent":
-			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [] };
+			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [] }
 		case "intermediateCatchEvent":
-			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [] };
+			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [] }
 		case "messageCatchEvent":
-			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "message" }] };
+			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "message" }] }
 		case "messageThrowEvent":
-			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "message" }] };
+			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "message" }] }
 		case "timerCatchEvent":
-			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "timer" }] };
+			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "timer" }] }
 		case "escalationThrowEvent":
 			return {
 				...base,
 				type: "intermediateThrowEvent",
 				eventDefinitions: [{ type: "escalation" }],
-			};
+			}
 		case "conditionalCatchEvent":
 			return {
 				...base,
 				type: "intermediateCatchEvent",
 				eventDefinitions: [{ type: "conditional" }],
-			};
+			}
 		case "linkCatchEvent":
-			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "link" }] };
+			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "link" }] }
 		case "linkThrowEvent":
-			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "link" }] };
+			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "link" }] }
 		case "compensationThrowEvent":
 			return {
 				...base,
 				type: "intermediateThrowEvent",
 				eventDefinitions: [{ type: "compensate" }],
-			};
+			}
 		case "signalCatchEvent":
-			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "signal" }] };
+			return { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "signal" }] }
 		case "signalThrowEvent":
-			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "signal" }] };
+			return { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "signal" }] }
 		case "task":
-			return { ...base, type: "task" };
+			return { ...base, type: "task" }
 		case "serviceTask":
-			return { ...base, type: "serviceTask" };
+			return { ...base, type: "serviceTask" }
 		case "userTask":
-			return { ...base, type: "userTask" };
+			return { ...base, type: "userTask" }
 		case "scriptTask":
-			return { ...base, type: "scriptTask" };
+			return { ...base, type: "scriptTask" }
 		case "sendTask":
-			return { ...base, type: "sendTask" };
+			return { ...base, type: "sendTask" }
 		case "receiveTask":
-			return { ...base, type: "receiveTask" };
+			return { ...base, type: "receiveTask" }
 		case "businessRuleTask":
-			return { ...base, type: "businessRuleTask" };
+			return { ...base, type: "businessRuleTask" }
 		case "manualTask":
-			return { ...base, type: "manualTask" };
+			return { ...base, type: "manualTask" }
 		case "callActivity":
-			return { ...base, type: "callActivity" };
+			return { ...base, type: "callActivity" }
 		case "subProcess":
 			return {
 				...base,
@@ -161,7 +161,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
-			};
+			}
 		case "adHocSubProcess":
 			return {
 				...base,
@@ -170,7 +170,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
-			};
+			}
 		case "transaction":
 			return {
 				...base,
@@ -179,19 +179,19 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
-			};
+			}
 		case "exclusiveGateway":
-			return { ...base, type: "exclusiveGateway" };
+			return { ...base, type: "exclusiveGateway" }
 		case "parallelGateway":
-			return { ...base, type: "parallelGateway" };
+			return { ...base, type: "parallelGateway" }
 		case "inclusiveGateway":
-			return { ...base, type: "inclusiveGateway" };
+			return { ...base, type: "inclusiveGateway" }
 		case "eventBasedGateway":
-			return { ...base, type: "eventBasedGateway" };
+			return { ...base, type: "eventBasedGateway" }
 		case "complexGateway":
-			return { ...base, type: "complexGateway" };
+			return { ...base, type: "complexGateway" }
 		case "textAnnotation":
-			throw new Error("textAnnotation is not a flow element — use createAnnotation()");
+			throw new Error("textAnnotation is not a flow element — use createAnnotation()")
 	}
 }
 
@@ -205,13 +205,13 @@ function collectDescendantIds(el: BpmnFlowElement, out: Set<string>): void {
 		el.type !== "eventSubProcess" &&
 		el.type !== "transaction"
 	)
-		return;
+		return
 	for (const child of el.flowElements) {
-		out.add(child.id);
-		collectDescendantIds(child, out);
+		out.add(child.id)
+		collectDescendantIds(child, out)
 	}
 	for (const sf of el.sequenceFlows) {
-		out.add(sf.id);
+		out.add(sf.id)
 	}
 }
 
@@ -222,7 +222,7 @@ function collectAllSequenceFlows(
 	out: Map<string, BpmnSequenceFlow>,
 ): void {
 	for (const sf of sequenceFlows) {
-		out.set(sf.id, sf);
+		out.set(sf.id, sf)
 	}
 	for (const el of flowElements) {
 		if (
@@ -231,18 +231,18 @@ function collectAllSequenceFlows(
 			el.type === "eventSubProcess" ||
 			el.type === "transaction"
 		) {
-			collectAllSequenceFlows(el.flowElements, el.sequenceFlows, out);
+			collectAllSequenceFlows(el.flowElements, el.sequenceFlows, out)
 		}
 	}
 }
 
 /** Returns the innermost container element ID whose bounds contain (cx, cy), or null. */
 function findContainerForPoint(defs: BpmnDefinitions, cx: number, cy: number): string | null {
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
-	if (!process || !diagram) return null;
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
+	if (!process || !diagram) return null
 
-	const containerIds = new Set<string>();
+	const containerIds = new Set<string>()
 	const gatherContainers = (elements: BpmnFlowElement[]): void => {
 		for (const el of elements) {
 			if (
@@ -251,27 +251,27 @@ function findContainerForPoint(defs: BpmnDefinitions, cx: number, cy: number): s
 				el.type === "eventSubProcess" ||
 				el.type === "transaction"
 			) {
-				containerIds.add(el.id);
-				gatherContainers(el.flowElements);
-			}
-		}
-	};
-	gatherContainers(process.flowElements);
-
-	let bestId: string | null = null;
-	let bestArea = Number.POSITIVE_INFINITY;
-	for (const shape of diagram.plane.shapes) {
-		if (!containerIds.has(shape.bpmnElement)) continue;
-		const { x, y, width, height } = shape.bounds;
-		if (cx >= x && cx <= x + width && cy >= y && cy <= y + height) {
-			const area = width * height;
-			if (area < bestArea) {
-				bestArea = area;
-				bestId = shape.bpmnElement;
+				containerIds.add(el.id)
+				gatherContainers(el.flowElements)
 			}
 		}
 	}
-	return bestId;
+	gatherContainers(process.flowElements)
+
+	let bestId: string | null = null
+	let bestArea = Number.POSITIVE_INFINITY
+	for (const shape of diagram.plane.shapes) {
+		if (!containerIds.has(shape.bpmnElement)) continue
+		const { x, y, width, height } = shape.bounds
+		if (cx >= x && cx <= x + width && cy >= y && cy <= y + height) {
+			const area = width * height
+			if (area < bestArea) {
+				bestArea = area
+				bestId = shape.bpmnElement
+			}
+		}
+	}
+	return bestId
 }
 
 /** Recursively finds the container by ID and appends newElement to its flowElements. */
@@ -287,12 +287,12 @@ function addToContainer(
 			el.type !== "eventSubProcess" &&
 			el.type !== "transaction"
 		)
-			return el;
+			return el
 		if (el.id === containerId) {
-			return { ...el, flowElements: [...el.flowElements, newElement] };
+			return { ...el, flowElements: [...el.flowElements, newElement] }
 		}
-		return { ...el, flowElements: addToContainer(el.flowElements, containerId, newElement) };
-	});
+		return { ...el, flowElements: addToContainer(el.flowElements, containerId, newElement) }
+	})
 }
 
 /** Recursively searches all levels for an element/flow by ID and updates its name. */
@@ -302,24 +302,24 @@ function updateNameInElements(
 	id: string,
 	name: string,
 ): { elements: BpmnFlowElement[]; flows: BpmnSequenceFlow[]; updated: boolean } {
-	const elIndex = flowElements.findIndex((el) => el.id === id);
+	const elIndex = flowElements.findIndex((el) => el.id === id)
 	if (elIndex >= 0) {
-		const newElements = [...flowElements];
-		const el = newElements[elIndex];
-		if (el) newElements[elIndex] = { ...el, name };
-		return { elements: newElements, flows: sequenceFlows, updated: true };
+		const newElements = [...flowElements]
+		const el = newElements[elIndex]
+		if (el) newElements[elIndex] = { ...el, name }
+		return { elements: newElements, flows: sequenceFlows, updated: true }
 	}
 
-	const sfIndex = sequenceFlows.findIndex((sf) => sf.id === id);
+	const sfIndex = sequenceFlows.findIndex((sf) => sf.id === id)
 	if (sfIndex >= 0) {
-		const newFlows = [...sequenceFlows];
-		const sf = newFlows[sfIndex];
-		if (sf) newFlows[sfIndex] = { ...sf, name };
-		return { elements: flowElements, flows: newFlows, updated: true };
+		const newFlows = [...sequenceFlows]
+		const sf = newFlows[sfIndex]
+		if (sf) newFlows[sfIndex] = { ...sf, name }
+		return { elements: flowElements, flows: newFlows, updated: true }
 	}
 
 	for (let i = 0; i < flowElements.length; i++) {
-		const el = flowElements[i];
+		const el = flowElements[i]
 		if (
 			el &&
 			(el.type === "subProcess" ||
@@ -327,16 +327,16 @@ function updateNameInElements(
 				el.type === "eventSubProcess" ||
 				el.type === "transaction")
 		) {
-			const r = updateNameInElements(el.flowElements, el.sequenceFlows, id, name);
+			const r = updateNameInElements(el.flowElements, el.sequenceFlows, id, name)
 			if (r.updated) {
-				const newElements = [...flowElements];
-				newElements[i] = { ...el, flowElements: r.elements, sequenceFlows: r.flows };
-				return { elements: newElements, flows: sequenceFlows, updated: true };
+				const newElements = [...flowElements]
+				newElements[i] = { ...el, flowElements: r.elements, sequenceFlows: r.flows }
+				return { elements: newElements, flows: sequenceFlows, updated: true }
 			}
 		}
 	}
 
-	return { elements: flowElements, flows: sequenceFlows, updated: false };
+	return { elements: flowElements, flows: sequenceFlows, updated: false }
 }
 
 /**
@@ -353,10 +353,10 @@ function removeFromContainers(
 		sequenceFlows
 			.filter((sf) => idSet.has(sf.id) || idSet.has(sf.sourceRef) || idSet.has(sf.targetRef))
 			.map((sf) => sf.id),
-	);
-	for (const fid of flowsToRemove) allRemovedIds.add(fid);
+	)
+	for (const fid of flowsToRemove) allRemovedIds.add(fid)
 
-	const newSequenceFlows = sequenceFlows.filter((sf) => !flowsToRemove.has(sf.id));
+	const newSequenceFlows = sequenceFlows.filter((sf) => !flowsToRemove.has(sf.id))
 	const newFlowElements = flowElements
 		.filter((el) => !idSet.has(el.id))
 		.map((el): BpmnFlowElement => {
@@ -364,7 +364,7 @@ function removeFromContainers(
 				...el,
 				incoming: el.incoming.filter((ref) => !allRemovedIds.has(ref)),
 				outgoing: el.outgoing.filter((ref) => !allRemovedIds.has(ref)),
-			} as BpmnFlowElement;
+			} as BpmnFlowElement
 			if (
 				cleaned.type === "subProcess" ||
 				cleaned.type === "adHocSubProcess" ||
@@ -376,13 +376,13 @@ function removeFromContainers(
 					cleaned.sequenceFlows,
 					idSet,
 					allRemovedIds,
-				);
-				return { ...cleaned, flowElements: r.flowElements, sequenceFlows: r.sequenceFlows };
+				)
+				return { ...cleaned, flowElements: r.flowElements, sequenceFlows: r.sequenceFlows }
 			}
-			return cleaned;
-		});
+			return cleaned
+		})
 
-	return { flowElements: newFlowElements, sequenceFlows: newSequenceFlows };
+	return { flowElements: newFlowElements, sequenceFlows: newSequenceFlows }
 }
 
 /** Recursively finds element by ID and applies updateFn to it. */
@@ -392,17 +392,17 @@ function updateRefInElements(
 	updateFn: (el: BpmnFlowElement) => BpmnFlowElement,
 ): BpmnFlowElement[] {
 	return flowElements.map((el) => {
-		if (el.id === id) return updateFn(el);
+		if (el.id === id) return updateFn(el)
 		if (
 			el.type === "subProcess" ||
 			el.type === "adHocSubProcess" ||
 			el.type === "eventSubProcess" ||
 			el.type === "transaction"
 		) {
-			return { ...el, flowElements: updateRefInElements(el.flowElements, id, updateFn) };
+			return { ...el, flowElements: updateRefInElements(el.flowElements, id, updateFn) }
 		}
-		return el;
-	});
+		return el
+	})
 }
 
 // ── Create shape ─────────────────────────────────────────────────────────────
@@ -413,26 +413,26 @@ export function createShape(
 	bounds: BpmnBounds,
 	name?: string,
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId(type);
-	const shapeId = genId(`${type}_di`);
-	const flowElement = makeFlowElement(type, id, name);
+	const id = genId(type)
+	const shapeId = genId(`${type}_di`)
+	const flowElement = makeFlowElement(type, id, name)
 
-	const process = defs.processes[0];
-	if (!process) return { defs, id };
+	const process = defs.processes[0]
+	if (!process) return { defs, id }
 
-	const diagram = defs.diagrams[0];
-	if (!diagram) return { defs, id };
+	const diagram = defs.diagrams[0]
+	if (!diagram) return { defs, id }
 
 	const diShape: BpmnDiShape = {
 		id: shapeId,
 		bpmnElement: id,
 		bounds,
 		unknownAttributes: {},
-	};
+	}
 
-	const cx = bounds.x + bounds.width / 2;
-	const cy = bounds.y + bounds.height / 2;
-	const containerId = findContainerForPoint(defs, cx, cy);
+	const cx = bounds.x + bounds.width / 2
+	const cy = bounds.y + bounds.height / 2
+	const containerId = findContainerForPoint(defs, cx, cy)
 
 	const newDefs: BpmnDefinitions = {
 		...defs,
@@ -456,9 +456,9 @@ export function createShape(
 			},
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 
-	return { defs: newDefs, id };
+	return { defs: newDefs, id }
 }
 
 // ── Create boundary event ─────────────────────────────────────────────────────
@@ -470,15 +470,15 @@ export function createBoundaryEvent(
 	bounds: BpmnBounds,
 	cancelActivity = true,
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId("BoundaryEvent");
-	const shapeId = genId("BoundaryEvent_di");
+	const id = genId("BoundaryEvent")
+	const shapeId = genId("BoundaryEvent_di")
 
-	const process = defs.processes[0];
-	if (!process) return { defs, id };
-	const diagram = defs.diagrams[0];
-	if (!diagram) return { defs, id };
+	const process = defs.processes[0]
+	if (!process) return { defs, id }
+	const diagram = defs.diagrams[0]
+	if (!diagram) return { defs, id }
 
-	const eventDefs = eventDefType ? [{ type: eventDefType } as BpmnEventDefinition] : [];
+	const eventDefs = eventDefType ? [{ type: eventDefType } as BpmnEventDefinition] : []
 	const boundaryEvent: BpmnBoundaryEvent = {
 		type: "boundaryEvent",
 		id,
@@ -489,14 +489,14 @@ export function createBoundaryEvent(
 		outgoing: [],
 		extensionElements: [],
 		unknownAttributes: {},
-	};
+	}
 
 	const diShape: BpmnDiShape = {
 		id: shapeId,
 		bpmnElement: id,
 		bounds,
 		unknownAttributes: {},
-	};
+	}
 
 	return {
 		defs: {
@@ -520,7 +520,7 @@ export function createBoundaryEvent(
 			],
 		},
 		id,
-	};
+	}
 }
 
 // ── Create connection ─────────────────────────────────────────────────────────
@@ -531,14 +531,14 @@ export function createConnection(
 	targetId: string,
 	waypoints: BpmnWaypoint[],
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId("Flow");
-	const edgeId = genId("Flow_di");
+	const id = genId("Flow")
+	const edgeId = genId("Flow_di")
 
-	const process = defs.processes[0];
-	if (!process) return { defs, id };
+	const process = defs.processes[0]
+	if (!process) return { defs, id }
 
-	const diagram = defs.diagrams[0];
-	if (!diagram) return { defs, id };
+	const diagram = defs.diagrams[0]
+	if (!diagram) return { defs, id }
 
 	const sf: BpmnSequenceFlow = {
 		id,
@@ -546,26 +546,26 @@ export function createConnection(
 		targetRef: targetId,
 		extensionElements: [],
 		unknownAttributes: {},
-	};
+	}
 
 	const edge: BpmnDiEdge = {
 		id: edgeId,
 		bpmnElement: id,
 		waypoints,
 		unknownAttributes: {},
-	};
+	}
 
 	// Update source.outgoing and target.incoming (recursive — handles subprocess children)
 	let updatedElements = updateRefInElements(
 		process.flowElements,
 		sourceId,
 		(el) => ({ ...el, outgoing: [...el.outgoing, id] }) as BpmnFlowElement,
-	);
+	)
 	updatedElements = updateRefInElements(
 		updatedElements,
 		targetId,
 		(el) => ({ ...el, incoming: [...el.incoming, id] }) as BpmnFlowElement,
-	);
+	)
 
 	const newDefs: BpmnDefinitions = {
 		...defs,
@@ -587,54 +587,54 @@ export function createConnection(
 			},
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 
-	return { defs: newDefs, id };
+	return { defs: newDefs, id }
 }
 
 // ── Move shapes ───────────────────────────────────────────────────────────────
 
 /** Returns true if the boundary event center is within the host bounds (with a margin). */
 function isOnHostBoundary(eventBounds: BpmnBounds, hostBounds: BpmnBounds): boolean {
-	const margin = 24;
-	const cx = eventBounds.x + eventBounds.width / 2;
-	const cy = eventBounds.y + eventBounds.height / 2;
+	const margin = 24
+	const cx = eventBounds.x + eventBounds.width / 2
+	const cy = eventBounds.y + eventBounds.height / 2
 	return (
 		cx >= hostBounds.x - margin &&
 		cx <= hostBounds.x + hostBounds.width + margin &&
 		cy >= hostBounds.y - margin &&
 		cy <= hostBounds.y + hostBounds.height + margin
-	);
+	)
 }
 
 export function moveShapes(
 	defs: BpmnDefinitions,
 	moves: Array<{ id: string; dx: number; dy: number }>,
 ): BpmnDefinitions {
-	if (moves.length === 0) return defs;
+	if (moves.length === 0) return defs
 
-	const moveMap = new Map(moves.map((m) => [m.id, m]));
+	const moveMap = new Map(moves.map((m) => [m.id, m]))
 
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
-	if (!process || !diagram) return defs;
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
+	if (!process || !diagram) return defs
 
 	// Cascade: boundary events attached to moved shapes also move, but only if they
 	// are currently positioned on/near the host boundary (not moved away by the user).
-	const extendedMoves = [...moves];
+	const extendedMoves = [...moves]
 	for (const el of process.flowElements) {
 		if (el.type === "boundaryEvent" && moveMap.has(el.attachedToRef) && !moveMap.has(el.id)) {
-			const hostShape = diagram.plane.shapes.find((s) => s.bpmnElement === el.attachedToRef);
-			const eventShape = diagram.plane.shapes.find((s) => s.bpmnElement === el.id);
+			const hostShape = diagram.plane.shapes.find((s) => s.bpmnElement === el.attachedToRef)
+			const eventShape = diagram.plane.shapes.find((s) => s.bpmnElement === el.id)
 			if (hostShape && eventShape && isOnHostBoundary(eventShape.bounds, hostShape.bounds)) {
-				const hostMove = moveMap.get(el.attachedToRef);
-				if (hostMove) extendedMoves.push({ id: el.id, dx: hostMove.dx, dy: hostMove.dy });
+				const hostMove = moveMap.get(el.attachedToRef)
+				if (hostMove) extendedMoves.push({ id: el.id, dx: hostMove.dx, dy: hostMove.dy })
 			}
 		}
 	}
 
 	// Cascade: descendants of moving container elements (subprocesses) also move.
-	const seenIds = new Set(extendedMoves.map((m) => m.id));
+	const seenIds = new Set(extendedMoves.map((m) => m.id))
 	const cascadeDescendants = (elements: BpmnFlowElement[]): void => {
 		for (const el of elements) {
 			if (
@@ -644,30 +644,30 @@ export function moveShapes(
 				el.type === "transaction"
 			) {
 				if (moveMap.has(el.id)) {
-					const move = moveMap.get(el.id);
+					const move = moveMap.get(el.id)
 					if (move) {
-						const descIds = new Set<string>();
-						collectDescendantIds(el, descIds);
+						const descIds = new Set<string>()
+						collectDescendantIds(el, descIds)
 						for (const descId of descIds) {
 							if (!seenIds.has(descId)) {
-								seenIds.add(descId);
-								extendedMoves.push({ id: descId, dx: move.dx, dy: move.dy });
+								seenIds.add(descId)
+								extendedMoves.push({ id: descId, dx: move.dx, dy: move.dy })
 							}
 						}
 					}
 				}
-				cascadeDescendants(el.flowElements);
+				cascadeDescendants(el.flowElements)
 			}
 		}
-	};
-	cascadeDescendants(process.flowElements);
+	}
+	cascadeDescendants(process.flowElements)
 
-	const extendedMoveMap = new Map(extendedMoves.map((m) => [m.id, m]));
+	const extendedMoveMap = new Map(extendedMoves.map((m) => [m.id, m]))
 
 	// Update DI shape bounds (and label bounds, if present)
 	const newShapes = diagram.plane.shapes.map((s) => {
-		const m = extendedMoveMap.get(s.bpmnElement);
-		if (!m) return s;
+		const m = extendedMoveMap.get(s.bpmnElement)
+		if (!m) return s
 		return {
 			...s,
 			bounds: {
@@ -687,40 +687,40 @@ export function moveShapes(
 							},
 						}
 					: s.label,
-		};
-	});
+		}
+	})
 
 	// Update edge waypoints
 	// - If both source and target are moving: translate all waypoints by a consistent delta
 	// - If only source is moving: translate first waypoint
 	// - If only target is moving: translate last waypoint
-	const allFlows = new Map<string, BpmnSequenceFlow>();
-	collectAllSequenceFlows(process.flowElements, process.sequenceFlows, allFlows);
+	const allFlows = new Map<string, BpmnSequenceFlow>()
+	collectAllSequenceFlows(process.flowElements, process.sequenceFlows, allFlows)
 
 	const newEdges = diagram.plane.edges.map((edge) => {
 		// Handle sequence flows (search all nesting levels)
-		const flow = allFlows.get(edge.bpmnElement);
+		const flow = allFlows.get(edge.bpmnElement)
 		if (flow) {
-			const srcMove = extendedMoveMap.get(flow.sourceRef);
-			const tgtMove = extendedMoveMap.get(flow.targetRef);
+			const srcMove = extendedMoveMap.get(flow.sourceRef)
+			const tgtMove = extendedMoveMap.get(flow.targetRef)
 
-			if (!srcMove && !tgtMove) return edge;
-			if (edge.waypoints.length < 2) return edge;
+			if (!srcMove && !tgtMove) return edge
+			if (edge.waypoints.length < 2) return edge
 
-			const newWps = [...edge.waypoints];
+			const newWps = [...edge.waypoints]
 			if (srcMove && tgtMove) {
 				// Both endpoints moving — translate all waypoints together
 				return {
 					...edge,
 					waypoints: newWps.map((wp) => ({ x: wp.x + srcMove.dx, y: wp.y + srcMove.dy })),
-				};
+				}
 			}
 			// Only one endpoint moves — preserve user-adjusted ports, recompute route
-			const srcShape = newShapes.find((s) => s.bpmnElement === flow.sourceRef);
-			const tgtShape = newShapes.find((s) => s.bpmnElement === flow.targetRef);
+			const srcShape = newShapes.find((s) => s.bpmnElement === flow.sourceRef)
+			const tgtShape = newShapes.find((s) => s.bpmnElement === flow.targetRef)
 			if (srcShape && tgtShape) {
-				const firstWp = newWps[0];
-				const lastWp = newWps[newWps.length - 1];
+				const firstWp = newWps[0]
+				const lastWp = newWps[newWps.length - 1]
 				// Derive ports from pre-move bounds so user-adjusted exit/entry points are preserved
 				const srcOldBounds = srcMove
 					? {
@@ -728,46 +728,46 @@ export function moveShapes(
 							x: srcShape.bounds.x - srcMove.dx,
 							y: srcShape.bounds.y - srcMove.dy,
 						}
-					: srcShape.bounds;
+					: srcShape.bounds
 				const tgtOldBounds = tgtMove
 					? {
 							...tgtShape.bounds,
 							x: tgtShape.bounds.x - tgtMove.dx,
 							y: tgtShape.bounds.y - tgtMove.dy,
 						}
-					: tgtShape.bounds;
-				const srcPort = firstWp ? portFromWaypoint(firstWp, srcOldBounds) : "right";
-				const tgtPort = lastWp ? portFromWaypoint(lastWp, tgtOldBounds) : "left";
+					: tgtShape.bounds
+				const srcPort = firstWp ? portFromWaypoint(firstWp, srcOldBounds) : "right"
+				const tgtPort = lastWp ? portFromWaypoint(lastWp, tgtOldBounds) : "left"
 				return {
 					...edge,
 					waypoints: computeWaypointsWithPorts(srcShape.bounds, srcPort, tgtShape.bounds, tgtPort),
-				};
+				}
 			}
-			return edge;
+			return edge
 		}
 
 		// Handle association edges
-		const assoc = process.associations.find((a) => a.id === edge.bpmnElement);
+		const assoc = process.associations.find((a) => a.id === edge.bpmnElement)
 		if (assoc) {
-			const srcMove = extendedMoveMap.get(assoc.sourceRef);
-			const tgtMove = extendedMoveMap.get(assoc.targetRef);
-			if (!srcMove && !tgtMove) return edge;
+			const srcMove = extendedMoveMap.get(assoc.sourceRef)
+			const tgtMove = extendedMoveMap.get(assoc.targetRef)
+			if (!srcMove && !tgtMove) return edge
 
 			if (srcMove && tgtMove) {
 				return {
 					...edge,
 					waypoints: edge.waypoints.map((wp) => ({ x: wp.x + srcMove.dx, y: wp.y + srcMove.dy })),
-				};
+				}
 			}
-			const srcShape = newShapes.find((s) => s.bpmnElement === assoc.sourceRef);
-			const tgtShape = newShapes.find((s) => s.bpmnElement === assoc.targetRef);
+			const srcShape = newShapes.find((s) => s.bpmnElement === assoc.sourceRef)
+			const tgtShape = newShapes.find((s) => s.bpmnElement === assoc.targetRef)
 			if (srcShape && tgtShape) {
-				return { ...edge, waypoints: computeWaypoints(srcShape.bounds, tgtShape.bounds) };
+				return { ...edge, waypoints: computeWaypoints(srcShape.bounds, tgtShape.bounds) }
 			}
 		}
 
-		return edge;
-	});
+		return edge
+	})
 
 	return {
 		...defs,
@@ -778,7 +778,7 @@ export function moveShapes(
 			},
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 // ── Resize shape ──────────────────────────────────────────────────────────────
@@ -788,34 +788,34 @@ export function resizeShape(
 	id: string,
 	newBounds: BpmnBounds,
 ): BpmnDefinitions {
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
-	if (!process || !diagram) return defs;
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
+	if (!process || !diagram) return defs
 
 	const newShapes = diagram.plane.shapes.map((s) =>
 		s.bpmnElement === id ? { ...s, bounds: newBounds } : s,
-	);
+	)
 
 	// Recompute terminal waypoints for connected edges
 	const newEdges = diagram.plane.edges.map((edge) => {
-		const flow = process.sequenceFlows.find((sf) => sf.id === edge.bpmnElement);
-		if (!flow) return edge;
+		const flow = process.sequenceFlows.find((sf) => sf.id === edge.bpmnElement)
+		if (!flow) return edge
 
-		const isSource = flow.sourceRef === id;
-		const isTarget = flow.targetRef === id;
-		if (!isSource && !isTarget) return edge;
+		const isSource = flow.sourceRef === id
+		const isTarget = flow.targetRef === id
+		if (!isSource && !isTarget) return edge
 
 		// Find the other shape's bounds
-		const otherId = isSource ? flow.targetRef : flow.sourceRef;
-		const otherShape = diagram.plane.shapes.find((s) => s.bpmnElement === otherId);
-		if (!otherShape) return edge;
+		const otherId = isSource ? flow.targetRef : flow.sourceRef
+		const otherShape = diagram.plane.shapes.find((s) => s.bpmnElement === otherId)
+		if (!otherShape) return edge
 
 		const wps = isSource
 			? computeWaypoints(newBounds, otherShape.bounds)
-			: computeWaypoints(otherShape.bounds, newBounds);
+			: computeWaypoints(otherShape.bounds, newBounds)
 
-		return { ...edge, waypoints: wps };
-	});
+		return { ...edge, waypoints: wps }
+	})
 
 	return {
 		...defs,
@@ -826,22 +826,22 @@ export function resizeShape(
 			},
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 // ── Delete elements ───────────────────────────────────────────────────────────
 
 export function deleteElements(defs: BpmnDefinitions, ids: string[]): BpmnDefinitions {
-	if (ids.length === 0) return defs;
+	if (ids.length === 0) return defs
 
-	const idSet = new Set(ids);
+	const idSet = new Set(ids)
 
 	// Cascade: boundary events whose host is deleted are also deleted
-	const process0 = defs.processes[0];
+	const process0 = defs.processes[0]
 	if (process0) {
 		for (const el of process0.flowElements) {
 			if (el.type === "boundaryEvent" && idSet.has(el.attachedToRef)) {
-				idSet.add(el.id);
+				idSet.add(el.id)
 			}
 		}
 	}
@@ -849,40 +849,40 @@ export function deleteElements(defs: BpmnDefinitions, ids: string[]): BpmnDefini
 	// Cascade: descendants of deleted container elements are also deleted
 	if (process0) {
 		for (const el of process0.flowElements) {
-			if (idSet.has(el.id)) collectDescendantIds(el, idSet);
+			if (idSet.has(el.id)) collectDescendantIds(el, idSet)
 		}
 	}
 
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
-	if (!process || !diagram) return defs;
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
+	if (!process || !diagram) return defs
 
 	// Find associations to remove (directly specified, or whose source/target is deleted)
 	const assocsToRemove = new Set(
 		process.associations
 			.filter((a) => idSet.has(a.id) || idSet.has(a.sourceRef) || idSet.has(a.targetRef))
 			.map((a) => a.id),
-	);
+	)
 
 	// Recursively remove elements and collect all removed flow IDs into allRemovedIds
-	const allRemovedIds = new Set<string>(idSet);
+	const allRemovedIds = new Set<string>(idSet)
 	const { flowElements: newFlowElements, sequenceFlows: newSequenceFlows } = removeFromContainers(
 		process.flowElements,
 		process.sequenceFlows,
 		idSet,
 		allRemovedIds,
-	);
+	)
 
 	// Add association IDs for DI edge cleanup
-	for (const aid of assocsToRemove) allRemovedIds.add(aid);
+	for (const aid of assocsToRemove) allRemovedIds.add(aid)
 
 	// Remove text annotations and associations
-	const newTextAnnotations = process.textAnnotations.filter((ta) => !idSet.has(ta.id));
-	const newAssociations = process.associations.filter((a) => !assocsToRemove.has(a.id));
+	const newTextAnnotations = process.textAnnotations.filter((ta) => !idSet.has(ta.id))
+	const newAssociations = process.associations.filter((a) => !assocsToRemove.has(a.id))
 
 	// Remove DI shapes and edges
-	const newDiShapes = diagram.plane.shapes.filter((s) => !idSet.has(s.bpmnElement));
-	const newDiEdges = diagram.plane.edges.filter((e) => !allRemovedIds.has(e.bpmnElement));
+	const newDiShapes = diagram.plane.shapes.filter((s) => !idSet.has(s.bpmnElement))
+	const newDiEdges = diagram.plane.edges.filter((e) => !allRemovedIds.has(e.bpmnElement))
 
 	return {
 		...defs,
@@ -903,17 +903,17 @@ export function deleteElements(defs: BpmnDefinitions, ids: string[]): BpmnDefini
 			},
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 // ── Update label ──────────────────────────────────────────────────────────────
 
 export function updateLabel(defs: BpmnDefinitions, id: string, name: string): BpmnDefinitions {
-	const process = defs.processes[0];
-	if (!process) return defs;
+	const process = defs.processes[0]
+	if (!process) return defs
 
 	// Check flow elements and sequence flows (recursive — handles subprocess children)
-	const r = updateNameInElements(process.flowElements, process.sequenceFlows, id, name);
+	const r = updateNameInElements(process.flowElements, process.sequenceFlows, id, name)
 	if (r.updated) {
 		return {
 			...defs,
@@ -921,24 +921,24 @@ export function updateLabel(defs: BpmnDefinitions, id: string, name: string): Bp
 				{ ...process, flowElements: r.elements, sequenceFlows: r.flows },
 				...defs.processes.slice(1),
 			],
-		};
+		}
 	}
 
 	// Check text annotations (text field, not name)
-	const taIndex = process.textAnnotations.findIndex((ta) => ta.id === id);
+	const taIndex = process.textAnnotations.findIndex((ta) => ta.id === id)
 	if (taIndex >= 0) {
-		const newAnnotations = [...process.textAnnotations];
-		const ta = newAnnotations[taIndex];
+		const newAnnotations = [...process.textAnnotations]
+		const ta = newAnnotations[taIndex]
 		if (ta) {
-			newAnnotations[taIndex] = { ...ta, text: name };
+			newAnnotations[taIndex] = { ...ta, text: name }
 		}
 		return {
 			...defs,
 			processes: [{ ...process, textAnnotations: newAnnotations }, ...defs.processes.slice(1)],
-		};
+		}
 	}
 
-	return defs;
+	return defs
 }
 
 // ── Update label position ─────────────────────────────────────────────────────
@@ -949,12 +949,12 @@ export function updateLabelPosition(
 	shapeId: string,
 	labelBounds: BpmnBounds,
 ): BpmnDefinitions {
-	const diagram = defs.diagrams[0];
-	if (!diagram) return defs;
+	const diagram = defs.diagrams[0]
+	if (!diagram) return defs
 
 	const newShapes = diagram.plane.shapes.map((s) =>
 		s.bpmnElement === shapeId ? { ...s, label: { bounds: labelBounds } } : s,
-	);
+	)
 
 	return {
 		...defs,
@@ -962,7 +962,7 @@ export function updateLabelPosition(
 			{ ...diagram, plane: { ...diagram.plane, shapes: newShapes } },
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 // ── Update edge endpoint ──────────────────────────────────────────────────────
@@ -977,37 +977,32 @@ export function updateEdgeEndpoint(
 	isStart: boolean,
 	newPort: PortDir,
 ): BpmnDefinitions {
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
-	if (!process || !diagram) return defs;
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
+	if (!process || !diagram) return defs
 
-	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId);
-	if (!edge || edge.waypoints.length < 2) return defs;
+	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId)
+	if (!edge || edge.waypoints.length < 2) return defs
 
-	const flow = process.sequenceFlows.find((sf) => sf.id === edgeId);
-	if (!flow) return defs;
+	const flow = process.sequenceFlows.find((sf) => sf.id === edgeId)
+	if (!flow) return defs
 
-	const srcShape = diagram.plane.shapes.find((s) => s.bpmnElement === flow.sourceRef);
-	const tgtShape = diagram.plane.shapes.find((s) => s.bpmnElement === flow.targetRef);
-	if (!srcShape || !tgtShape) return defs;
+	const srcShape = diagram.plane.shapes.find((s) => s.bpmnElement === flow.sourceRef)
+	const tgtShape = diagram.plane.shapes.find((s) => s.bpmnElement === flow.targetRef)
+	if (!srcShape || !tgtShape) return defs
 
-	const first = edge.waypoints[0];
-	const last = edge.waypoints[edge.waypoints.length - 1];
-	if (!first || !last) return defs;
+	const first = edge.waypoints[0]
+	const last = edge.waypoints[edge.waypoints.length - 1]
+	if (!first || !last) return defs
 
-	const srcPort = isStart ? newPort : portFromWaypoint(first, srcShape.bounds);
-	const tgtPort = isStart ? portFromWaypoint(last, tgtShape.bounds) : newPort;
+	const srcPort = isStart ? newPort : portFromWaypoint(first, srcShape.bounds)
+	const tgtPort = isStart ? portFromWaypoint(last, tgtShape.bounds) : newPort
 
-	const newWaypoints = computeWaypointsWithPorts(
-		srcShape.bounds,
-		srcPort,
-		tgtShape.bounds,
-		tgtPort,
-	);
+	const newWaypoints = computeWaypointsWithPorts(srcShape.bounds, srcPort, tgtShape.bounds, tgtPort)
 
 	const newEdges = diagram.plane.edges.map((e) =>
 		e.bpmnElement === edgeId ? { ...e, waypoints: newWaypoints } : e,
-	);
+	)
 
 	return {
 		...defs,
@@ -1015,7 +1010,7 @@ export function updateEdgeEndpoint(
 			{ ...diagram, plane: { ...diagram.plane, edges: newEdges } },
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 // ── Edge segment / waypoint manipulation ──────────────────────────────────────
@@ -1032,26 +1027,26 @@ export function moveEdgeSegment(
 	isHoriz: boolean,
 	delta: number,
 ): BpmnDefinitions {
-	const diagram = defs.diagrams[0];
-	if (!diagram) return defs;
-	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId);
-	if (!edge || segIdx >= edge.waypoints.length - 1) return defs;
+	const diagram = defs.diagrams[0]
+	if (!diagram) return defs
+	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId)
+	if (!edge || segIdx >= edge.waypoints.length - 1) return defs
 	const newWaypoints = edge.waypoints.map((wp, i) => {
 		if (i === segIdx || i === segIdx + 1) {
-			return isHoriz ? { ...wp, y: wp.y + delta } : { ...wp, x: wp.x + delta };
+			return isHoriz ? { ...wp, y: wp.y + delta } : { ...wp, x: wp.x + delta }
 		}
-		return wp;
-	});
+		return wp
+	})
 	const newEdges = diagram.plane.edges.map((e) =>
 		e.bpmnElement === edgeId ? { ...e, waypoints: newWaypoints } : e,
-	);
+	)
 	return {
 		...defs,
 		diagrams: [
 			{ ...diagram, plane: { ...diagram.plane, edges: newEdges } },
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 /**
@@ -1064,25 +1059,25 @@ export function insertEdgeWaypoint(
 	segIdx: number,
 	pt: { x: number; y: number },
 ): BpmnDefinitions {
-	const diagram = defs.diagrams[0];
-	if (!diagram) return defs;
-	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId);
-	if (!edge) return defs;
+	const diagram = defs.diagrams[0]
+	if (!diagram) return defs
+	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId)
+	if (!edge) return defs
 	const newWaypoints = [
 		...edge.waypoints.slice(0, segIdx + 1),
 		pt,
 		...edge.waypoints.slice(segIdx + 1),
-	];
+	]
 	const newEdges = diagram.plane.edges.map((e) =>
 		e.bpmnElement === edgeId ? { ...e, waypoints: newWaypoints } : e,
-	);
+	)
 	return {
 		...defs,
 		diagrams: [
 			{ ...diagram, plane: { ...diagram.plane, edges: newEdges } },
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 /**
@@ -1095,21 +1090,21 @@ export function moveEdgeWaypoint(
 	wpIdx: number,
 	pt: { x: number; y: number },
 ): BpmnDefinitions {
-	const diagram = defs.diagrams[0];
-	if (!diagram) return defs;
-	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId);
-	if (!edge || wpIdx <= 0 || wpIdx >= edge.waypoints.length - 1) return defs;
-	const newWaypoints = edge.waypoints.map((wp, i) => (i === wpIdx ? { ...pt } : wp));
+	const diagram = defs.diagrams[0]
+	if (!diagram) return defs
+	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId)
+	if (!edge || wpIdx <= 0 || wpIdx >= edge.waypoints.length - 1) return defs
+	const newWaypoints = edge.waypoints.map((wp, i) => (i === wpIdx ? { ...pt } : wp))
 	const newEdges = diagram.plane.edges.map((e) =>
 		e.bpmnElement === edgeId ? { ...e, waypoints: newWaypoints } : e,
-	);
+	)
 	return {
 		...defs,
 		diagrams: [
 			{ ...diagram, plane: { ...diagram.plane, edges: newEdges } },
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 /**
@@ -1117,42 +1112,42 @@ export function moveEdgeWaypoint(
  * their neighbours. Runs iteratively until no more collinear waypoints remain.
  */
 export function removeCollinearWaypoints(defs: BpmnDefinitions, edgeId: string): BpmnDefinitions {
-	const diagram = defs.diagrams[0];
-	if (!diagram) return defs;
-	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId);
-	if (!edge || edge.waypoints.length < 3) return defs;
+	const diagram = defs.diagrams[0]
+	if (!diagram) return defs
+	const edge = diagram.plane.edges.find((e) => e.bpmnElement === edgeId)
+	if (!edge || edge.waypoints.length < 3) return defs
 
-	const EPS = 1.0;
-	let waypoints = [...edge.waypoints];
-	let changed = true;
+	const EPS = 1.0
+	let waypoints = [...edge.waypoints]
+	let changed = true
 	while (changed) {
-		changed = false;
-		const filtered: BpmnWaypoint[] = [waypoints[0] as BpmnWaypoint];
+		changed = false
+		const filtered: BpmnWaypoint[] = [waypoints[0] as BpmnWaypoint]
 		for (let i = 1; i < waypoints.length - 1; i++) {
-			const a = waypoints[i - 1] as BpmnWaypoint;
-			const b = waypoints[i] as BpmnWaypoint;
-			const c = waypoints[i + 1] as BpmnWaypoint;
-			const cross = Math.abs((c.x - a.x) * (b.y - a.y) - (b.x - a.x) * (c.y - a.y));
+			const a = waypoints[i - 1] as BpmnWaypoint
+			const b = waypoints[i] as BpmnWaypoint
+			const c = waypoints[i + 1] as BpmnWaypoint
+			const cross = Math.abs((c.x - a.x) * (b.y - a.y) - (b.x - a.x) * (c.y - a.y))
 			if (cross < EPS) {
-				changed = true;
+				changed = true
 			} else {
-				filtered.push(b);
+				filtered.push(b)
 			}
 		}
-		filtered.push(waypoints[waypoints.length - 1] as BpmnWaypoint);
-		waypoints = filtered;
+		filtered.push(waypoints[waypoints.length - 1] as BpmnWaypoint)
+		waypoints = filtered
 	}
 
 	const newEdges = diagram.plane.edges.map((e) =>
 		e.bpmnElement === edgeId ? { ...e, waypoints } : e,
-	);
+	)
 	return {
 		...defs,
 		diagrams: [
 			{ ...diagram, plane: { ...diagram.plane, edges: newEdges } },
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }
 
 // ── Change element type ───────────────────────────────────────────────────────
@@ -1166,13 +1161,13 @@ export function changeElementType(
 	id: string,
 	newType: CreateShapeType,
 ): BpmnDefinitions {
-	const process = defs.processes[0];
-	if (!process) return defs;
+	const process = defs.processes[0]
+	if (!process) return defs
 
-	const elIndex = process.flowElements.findIndex((el) => el.id === id);
-	if (elIndex < 0) return defs;
-	const el = process.flowElements[elIndex];
-	if (!el) return defs;
+	const elIndex = process.flowElements.findIndex((el) => el.id === id)
+	if (elIndex < 0) return defs
+	const el = process.flowElements[elIndex]
+	if (!el) return defs
 
 	const base = {
 		id: el.id,
@@ -1181,121 +1176,121 @@ export function changeElementType(
 		outgoing: el.outgoing,
 		extensionElements: el.extensionElements,
 		unknownAttributes: el.unknownAttributes,
-	};
+	}
 
-	let newEl: BpmnFlowElement;
+	let newEl: BpmnFlowElement
 	switch (newType) {
 		case "startEvent":
-			newEl = { ...base, type: "startEvent", eventDefinitions: [] };
-			break;
+			newEl = { ...base, type: "startEvent", eventDefinitions: [] }
+			break
 		case "messageStartEvent":
-			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "message" }] };
-			break;
+			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "message" }] }
+			break
 		case "timerStartEvent":
-			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "timer" }] };
-			break;
+			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "timer" }] }
+			break
 		case "conditionalStartEvent":
-			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "conditional" }] };
-			break;
+			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "conditional" }] }
+			break
 		case "signalStartEvent":
-			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "signal" }] };
-			break;
+			newEl = { ...base, type: "startEvent", eventDefinitions: [{ type: "signal" }] }
+			break
 		case "endEvent":
-			newEl = { ...base, type: "endEvent", eventDefinitions: [] };
-			break;
+			newEl = { ...base, type: "endEvent", eventDefinitions: [] }
+			break
 		case "messageEndEvent":
-			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "message" }] };
-			break;
+			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "message" }] }
+			break
 		case "escalationEndEvent":
-			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "escalation" }] };
-			break;
+			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "escalation" }] }
+			break
 		case "errorEndEvent":
-			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "error" }] };
-			break;
+			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "error" }] }
+			break
 		case "compensationEndEvent":
-			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "compensate" }] };
-			break;
+			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "compensate" }] }
+			break
 		case "signalEndEvent":
-			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "signal" }] };
-			break;
+			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "signal" }] }
+			break
 		case "terminateEndEvent":
-			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "terminate" }] };
-			break;
+			newEl = { ...base, type: "endEvent", eventDefinitions: [{ type: "terminate" }] }
+			break
 		case "intermediateThrowEvent":
-			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [] };
-			break;
+			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [] }
+			break
 		case "intermediateCatchEvent":
-			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [] };
-			break;
+			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [] }
+			break
 		case "messageCatchEvent":
-			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "message" }] };
-			break;
+			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "message" }] }
+			break
 		case "messageThrowEvent":
-			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "message" }] };
-			break;
+			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "message" }] }
+			break
 		case "timerCatchEvent":
-			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "timer" }] };
-			break;
+			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "timer" }] }
+			break
 		case "escalationThrowEvent":
 			newEl = {
 				...base,
 				type: "intermediateThrowEvent",
 				eventDefinitions: [{ type: "escalation" }],
-			};
-			break;
+			}
+			break
 		case "conditionalCatchEvent":
 			newEl = {
 				...base,
 				type: "intermediateCatchEvent",
 				eventDefinitions: [{ type: "conditional" }],
-			};
-			break;
+			}
+			break
 		case "linkCatchEvent":
-			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "link" }] };
-			break;
+			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "link" }] }
+			break
 		case "linkThrowEvent":
-			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "link" }] };
-			break;
+			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "link" }] }
+			break
 		case "compensationThrowEvent":
 			newEl = {
 				...base,
 				type: "intermediateThrowEvent",
 				eventDefinitions: [{ type: "compensate" }],
-			};
-			break;
+			}
+			break
 		case "signalCatchEvent":
-			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "signal" }] };
-			break;
+			newEl = { ...base, type: "intermediateCatchEvent", eventDefinitions: [{ type: "signal" }] }
+			break
 		case "signalThrowEvent":
-			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "signal" }] };
-			break;
+			newEl = { ...base, type: "intermediateThrowEvent", eventDefinitions: [{ type: "signal" }] }
+			break
 		case "task":
-			newEl = { ...base, type: "task" };
-			break;
+			newEl = { ...base, type: "task" }
+			break
 		case "serviceTask":
-			newEl = { ...base, type: "serviceTask" };
-			break;
+			newEl = { ...base, type: "serviceTask" }
+			break
 		case "userTask":
-			newEl = { ...base, type: "userTask" };
-			break;
+			newEl = { ...base, type: "userTask" }
+			break
 		case "scriptTask":
-			newEl = { ...base, type: "scriptTask" };
-			break;
+			newEl = { ...base, type: "scriptTask" }
+			break
 		case "sendTask":
-			newEl = { ...base, type: "sendTask" };
-			break;
+			newEl = { ...base, type: "sendTask" }
+			break
 		case "receiveTask":
-			newEl = { ...base, type: "receiveTask" };
-			break;
+			newEl = { ...base, type: "receiveTask" }
+			break
 		case "businessRuleTask":
-			newEl = { ...base, type: "businessRuleTask" };
-			break;
+			newEl = { ...base, type: "businessRuleTask" }
+			break
 		case "manualTask":
-			newEl = { ...base, type: "manualTask" };
-			break;
+			newEl = { ...base, type: "manualTask" }
+			break
 		case "callActivity":
-			newEl = { ...base, type: "callActivity" };
-			break;
+			newEl = { ...base, type: "callActivity" }
+			break
 		case "subProcess":
 			newEl = {
 				...base,
@@ -1304,8 +1299,8 @@ export function changeElementType(
 				sequenceFlows: el.type === "subProcess" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "subProcess" ? el.textAnnotations : [],
 				associations: el.type === "subProcess" ? el.associations : [],
-			};
-			break;
+			}
+			break
 		case "adHocSubProcess":
 			newEl = {
 				...base,
@@ -1314,8 +1309,8 @@ export function changeElementType(
 				sequenceFlows: el.type === "adHocSubProcess" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "adHocSubProcess" ? el.textAnnotations : [],
 				associations: el.type === "adHocSubProcess" ? el.associations : [],
-			};
-			break;
+			}
+			break
 		case "transaction":
 			newEl = {
 				...base,
@@ -1324,34 +1319,34 @@ export function changeElementType(
 				sequenceFlows: el.type === "transaction" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "transaction" ? el.textAnnotations : [],
 				associations: el.type === "transaction" ? el.associations : [],
-			};
-			break;
+			}
+			break
 		case "exclusiveGateway":
-			newEl = { ...base, type: "exclusiveGateway" };
-			break;
+			newEl = { ...base, type: "exclusiveGateway" }
+			break
 		case "parallelGateway":
-			newEl = { ...base, type: "parallelGateway" };
-			break;
+			newEl = { ...base, type: "parallelGateway" }
+			break
 		case "inclusiveGateway":
-			newEl = { ...base, type: "inclusiveGateway" };
-			break;
+			newEl = { ...base, type: "inclusiveGateway" }
+			break
 		case "eventBasedGateway":
-			newEl = { ...base, type: "eventBasedGateway" };
-			break;
+			newEl = { ...base, type: "eventBasedGateway" }
+			break
 		case "complexGateway":
-			newEl = { ...base, type: "complexGateway" };
-			break;
+			newEl = { ...base, type: "complexGateway" }
+			break
 		case "textAnnotation":
-			throw new Error("textAnnotation is not a flow element — use createAnnotation()");
+			throw new Error("textAnnotation is not a flow element — use createAnnotation()")
 	}
 
-	const newElements = [...process.flowElements];
-	newElements[elIndex] = newEl;
+	const newElements = [...process.flowElements]
+	newElements[elIndex] = newEl
 
 	return {
 		...defs,
 		processes: [{ ...process, flowElements: newElements }, ...defs.processes.slice(1)],
-	};
+	}
 }
 
 // ── Insert shape on edge ──────────────────────────────────────────────────────
@@ -1366,61 +1361,61 @@ export function insertShapeOnEdge(
 	edgeId: string,
 	shapeId: string,
 ): BpmnDefinitions {
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
-	if (!process || !diagram) return defs;
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
+	if (!process || !diagram) return defs
 
-	const flow = process.sequenceFlows.find((sf) => sf.id === edgeId);
-	if (!flow) return defs;
+	const flow = process.sequenceFlows.find((sf) => sf.id === edgeId)
+	if (!flow) return defs
 
-	const srcDi = diagram.plane.shapes.find((s) => s.bpmnElement === flow.sourceRef);
-	const tgtDi = diagram.plane.shapes.find((s) => s.bpmnElement === flow.targetRef);
-	const newDi = diagram.plane.shapes.find((s) => s.bpmnElement === shapeId);
-	if (!srcDi || !tgtDi || !newDi) return defs;
+	const srcDi = diagram.plane.shapes.find((s) => s.bpmnElement === flow.sourceRef)
+	const tgtDi = diagram.plane.shapes.find((s) => s.bpmnElement === flow.targetRef)
+	const newDi = diagram.plane.shapes.find((s) => s.bpmnElement === shapeId)
+	if (!srcDi || !tgtDi || !newDi) return defs
 
-	const withoutEdge = deleteElements(defs, [edgeId]);
+	const withoutEdge = deleteElements(defs, [edgeId])
 	const r1 = createConnection(
 		withoutEdge,
 		flow.sourceRef,
 		shapeId,
 		computeWaypoints(srcDi.bounds, newDi.bounds),
-	);
+	)
 	const r2 = createConnection(
 		r1.defs,
 		shapeId,
 		flow.targetRef,
 		computeWaypoints(newDi.bounds, tgtDi.bounds),
-	);
-	return r2.defs;
+	)
+	return r2.defs
 }
 
 // ── Copy / paste ──────────────────────────────────────────────────────────────
 
 export interface Clipboard {
-	elements: BpmnFlowElement[];
-	flows: BpmnSequenceFlow[];
-	shapes: BpmnDiShape[];
-	edges: BpmnDiEdge[];
+	elements: BpmnFlowElement[]
+	flows: BpmnSequenceFlow[]
+	shapes: BpmnDiShape[]
+	edges: BpmnDiEdge[]
 }
 
 export function copyElements(defs: BpmnDefinitions, ids: string[]): Clipboard {
-	const idSet = new Set(ids);
+	const idSet = new Set(ids)
 
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
 	if (!process || !diagram) {
-		return { elements: [], flows: [], shapes: [], edges: [] };
+		return { elements: [], flows: [], shapes: [], edges: [] }
 	}
 
-	const elements = process.flowElements.filter((el) => idSet.has(el.id));
+	const elements = process.flowElements.filter((el) => idSet.has(el.id))
 	const flows = process.sequenceFlows.filter(
 		(sf) => idSet.has(sf.sourceRef) && idSet.has(sf.targetRef),
-	);
-	const flowIds = new Set(flows.map((sf) => sf.id));
-	const shapes = diagram.plane.shapes.filter((s) => idSet.has(s.bpmnElement));
-	const edges = diagram.plane.edges.filter((e) => flowIds.has(e.bpmnElement));
+	)
+	const flowIds = new Set(flows.map((sf) => sf.id))
+	const shapes = diagram.plane.shapes.filter((s) => idSet.has(s.bpmnElement))
+	const edges = diagram.plane.edges.filter((e) => flowIds.has(e.bpmnElement))
 
-	return { elements, flows, shapes, edges };
+	return { elements, flows, shapes, edges }
 }
 
 export function pasteElements(
@@ -1429,43 +1424,43 @@ export function pasteElements(
 	offsetX: number,
 	offsetY: number,
 ): { defs: BpmnDefinitions; newIds: Map<string, string> } {
-	const newIds = new Map<string, string>();
+	const newIds = new Map<string, string>()
 
 	// Generate new IDs for elements
 	for (const el of clipboard.elements) {
-		newIds.set(el.id, genId(el.type));
+		newIds.set(el.id, genId(el.type))
 	}
 	for (const sf of clipboard.flows) {
-		newIds.set(sf.id, genId("Flow"));
+		newIds.set(sf.id, genId("Flow"))
 	}
 
-	const process = defs.processes[0];
-	const diagram = defs.diagrams[0];
-	if (!process || !diagram) return { defs, newIds };
+	const process = defs.processes[0]
+	const diagram = defs.diagrams[0]
+	if (!process || !diagram) return { defs, newIds }
 
 	// Create new flow elements with new IDs, offset positions handled via DI
 	const newElements: BpmnFlowElement[] = clipboard.elements.map((el) => {
-		const newId = newIds.get(el.id) ?? genId(el.type);
+		const newId = newIds.get(el.id) ?? genId(el.type)
 		const newIncoming = el.incoming
 			.map((ref) => newIds.get(ref))
-			.filter((r): r is string => r !== undefined);
+			.filter((r): r is string => r !== undefined)
 		const newOutgoing = el.outgoing
 			.map((ref) => newIds.get(ref))
-			.filter((r): r is string => r !== undefined);
-		return { ...el, id: newId, incoming: newIncoming, outgoing: newOutgoing };
-	});
+			.filter((r): r is string => r !== undefined)
+		return { ...el, id: newId, incoming: newIncoming, outgoing: newOutgoing }
+	})
 
 	// Create new sequence flows
 	const newFlows: BpmnSequenceFlow[] = clipboard.flows.map((sf) => {
-		const newId = newIds.get(sf.id) ?? genId("Flow");
-		const newSrc = newIds.get(sf.sourceRef) ?? sf.sourceRef;
-		const newTgt = newIds.get(sf.targetRef) ?? sf.targetRef;
-		return { ...sf, id: newId, sourceRef: newSrc, targetRef: newTgt };
-	});
+		const newId = newIds.get(sf.id) ?? genId("Flow")
+		const newSrc = newIds.get(sf.sourceRef) ?? sf.sourceRef
+		const newTgt = newIds.get(sf.targetRef) ?? sf.targetRef
+		return { ...sf, id: newId, sourceRef: newSrc, targetRef: newTgt }
+	})
 
 	// Create new DI shapes with offset
 	const newDiShapes: BpmnDiShape[] = clipboard.shapes.map((s) => {
-		const newElId = newIds.get(s.bpmnElement) ?? s.bpmnElement;
+		const newElId = newIds.get(s.bpmnElement) ?? s.bpmnElement
 		return {
 			...s,
 			id: genId(`${newElId}_di`),
@@ -1475,12 +1470,12 @@ export function pasteElements(
 				x: s.bounds.x + offsetX,
 				y: s.bounds.y + offsetY,
 			},
-		};
-	});
+		}
+	})
 
 	// Create new DI edges with offset waypoints
 	const newDiEdges: BpmnDiEdge[] = clipboard.edges.map((e) => {
-		const newFlowId = newIds.get(e.bpmnElement) ?? e.bpmnElement;
+		const newFlowId = newIds.get(e.bpmnElement) ?? e.bpmnElement
 		return {
 			...e,
 			id: genId(`${newFlowId}_di`),
@@ -1489,8 +1484,8 @@ export function pasteElements(
 				x: wp.x + offsetX,
 				y: wp.y + offsetY,
 			})),
-		};
-	});
+		}
+	})
 
 	const newDefs: BpmnDefinitions = {
 		...defs,
@@ -1513,9 +1508,9 @@ export function pasteElements(
 			},
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 
-	return { defs: newDefs, newIds };
+	return { defs: newDefs, newIds }
 }
 
 // ── Create text annotation ────────────────────────────────────────────────────
@@ -1525,16 +1520,16 @@ export function createAnnotation(
 	bounds: BpmnBounds,
 	text?: string,
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId("TextAnnotation");
-	const shapeId = genId("TextAnnotation_di");
+	const id = genId("TextAnnotation")
+	const shapeId = genId("TextAnnotation_di")
 
-	const annotation: BpmnTextAnnotation = { id, text, unknownAttributes: {} };
-	const diShape: BpmnDiShape = { id: shapeId, bpmnElement: id, bounds, unknownAttributes: {} };
+	const annotation: BpmnTextAnnotation = { id, text, unknownAttributes: {} }
+	const diShape: BpmnDiShape = { id: shapeId, bpmnElement: id, bounds, unknownAttributes: {} }
 
-	const process = defs.processes[0];
-	if (!process) return { defs, id };
-	const diagram = defs.diagrams[0];
-	if (!diagram) return { defs, id };
+	const process = defs.processes[0]
+	if (!process) return { defs, id }
+	const diagram = defs.diagrams[0]
+	if (!diagram) return { defs, id }
 
 	return {
 		defs: {
@@ -1552,7 +1547,7 @@ export function createAnnotation(
 			],
 		},
 		id,
-	};
+	}
 }
 
 export function createAnnotationWithLink(
@@ -1562,10 +1557,10 @@ export function createAnnotationWithLink(
 	sourceBounds: BpmnBounds,
 	text?: string,
 ): { defs: BpmnDefinitions; annotationId: string; associationId: string } {
-	const annotResult = createAnnotation(defs, bounds, text);
-	const annotationId = annotResult.id;
-	const assocId = genId("Association");
-	const edgeId = genId("Association_di");
+	const annotResult = createAnnotation(defs, bounds, text)
+	const annotationId = annotResult.id
+	const assocId = genId("Association")
+	const edgeId = genId("Association_di")
 
 	const assoc: BpmnAssociation = {
 		id: assocId,
@@ -1573,14 +1568,14 @@ export function createAnnotationWithLink(
 		targetRef: annotationId,
 		associationDirection: "None",
 		unknownAttributes: {},
-	};
-	const waypoints = computeWaypoints(sourceBounds, bounds);
-	const edge: BpmnDiEdge = { id: edgeId, bpmnElement: assocId, waypoints, unknownAttributes: {} };
+	}
+	const waypoints = computeWaypoints(sourceBounds, bounds)
+	const edge: BpmnDiEdge = { id: edgeId, bpmnElement: assocId, waypoints, unknownAttributes: {} }
 
-	const d = annotResult.defs;
-	const process = d.processes[0];
-	const diagram = d.diagrams[0];
-	if (!process || !diagram) return { defs: d, annotationId, associationId: assocId };
+	const d = annotResult.defs
+	const process = d.processes[0]
+	const diagram = d.diagrams[0]
+	if (!process || !diagram) return { defs: d, annotationId, associationId: assocId }
 
 	return {
 		defs: {
@@ -1599,7 +1594,7 @@ export function createAnnotationWithLink(
 		},
 		annotationId,
 		associationId: assocId,
-	};
+	}
 }
 
 // ── Update shape color ────────────────────────────────────────────────────────
@@ -1609,20 +1604,20 @@ export function updateShapeColor(
 	id: string,
 	color: DiColor,
 ): BpmnDefinitions {
-	const diagram = defs.diagrams[0];
-	if (!diagram) return defs;
+	const diagram = defs.diagrams[0]
+	if (!diagram) return defs
 
 	const newShapes = diagram.plane.shapes.map((s) =>
 		s.bpmnElement === id
 			? { ...s, unknownAttributes: writeDiColor(s.unknownAttributes, color) }
 			: s,
-	);
+	)
 
 	// Add color namespaces when any color is set
-	const needsNs = !!(color.fill ?? color.stroke);
+	const needsNs = !!(color.fill ?? color.stroke)
 	const newNamespaces = needsNs
 		? { ...defs.namespaces, bioc: BIOC_NS, color: COLOR_NS }
-		: defs.namespaces;
+		: defs.namespaces
 
 	return {
 		...defs,
@@ -1631,5 +1626,5 @@ export function updateShapeColor(
 			{ ...diagram, plane: { ...diagram.plane, shapes: newShapes } },
 			...defs.diagrams.slice(1),
 		],
-	};
+	}
 }

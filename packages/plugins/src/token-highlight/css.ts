@@ -1,4 +1,4 @@
-const STYLE_ID = "bpmn-token-highlight-v1";
+const STYLE_ID = "bpmn-token-highlight-v1"
 
 const CSS = `
 @keyframes bpmn-token-pulse {
@@ -68,13 +68,13 @@ const CSS = `
   stroke-width: 2.5 !important;
   fill: rgba(239, 68, 68, 0.12) !important;
 }
-`;
+`
 
 export function injectTokenHighlightStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(STYLE_ID) !== null) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(STYLE_ID) !== null) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = CSS
+	document.head.appendChild(style)
 }

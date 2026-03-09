@@ -19,12 +19,12 @@
  * @packageDocumentation
  */
 
-import type { CanvasPlugin } from "@bpmn-sdk/canvas";
-import { injectMinimapStyles } from "./css.js";
-import { Minimap } from "./minimap.js";
+import type { CanvasPlugin } from "@bpmn-sdk/canvas"
+import { injectMinimapStyles } from "./css.js"
+import { Minimap } from "./minimap.js"
 
-export { Minimap } from "./minimap.js";
-export { MINIMAP_CSS, MINIMAP_STYLE_ID, injectMinimapStyles } from "./css.js";
+export { Minimap } from "./minimap.js"
+export { MINIMAP_CSS, MINIMAP_STYLE_ID, injectMinimapStyles } from "./css.js"
 
 /**
  * Creates a minimap plugin instance.
@@ -40,41 +40,41 @@ export { MINIMAP_CSS, MINIMAP_STYLE_ID, injectMinimapStyles } from "./css.js";
  * ```
  */
 export function createMinimapPlugin(): CanvasPlugin {
-	let minimap: Minimap | null = null;
-	const unsubs: Array<() => void> = [];
+	let minimap: Minimap | null = null
+	const unsubs: Array<() => void> = []
 
 	return {
 		name: "minimap",
 
 		install(api) {
-			injectMinimapStyles();
+			injectMinimapStyles()
 
 			minimap = new Minimap(api.container, (diagX, diagY) => {
-				const { scale } = api.getViewport();
+				const { scale } = api.getViewport()
 				api.setViewport({
 					tx: api.svg.clientWidth / 2 - diagX * scale,
 					ty: api.svg.clientHeight / 2 - diagY * scale,
-				});
-			});
+				})
+			})
 
 			unsubs.push(
 				api.on("diagram:load", (defs) => {
-					minimap?.update(defs);
+					minimap?.update(defs)
 				}),
 				api.on("viewport:change", (state) => {
-					minimap?.syncViewport(state, api.svg.clientWidth, api.svg.clientHeight);
+					minimap?.syncViewport(state, api.svg.clientWidth, api.svg.clientHeight)
 				}),
 				api.on("diagram:clear", () => {
-					minimap?.clear();
+					minimap?.clear()
 				}),
-			);
+			)
 		},
 
 		uninstall() {
-			for (const off of unsubs) off();
-			unsubs.length = 0;
-			minimap?.destroy();
-			minimap = null;
+			for (const off of unsubs) off()
+			unsubs.length = 0
+			minimap?.destroy()
+			minimap = null
 		},
-	};
+	}
 }

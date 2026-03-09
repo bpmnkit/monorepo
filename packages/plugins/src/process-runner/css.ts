@@ -1,4 +1,4 @@
-const STYLE_ID = "bpmn-process-runner-v1";
+const STYLE_ID = "bpmn-process-runner-v1"
 
 const CSS = `
 /* ── Toolbar ──────────────────────────────────────────────────────────── */
@@ -454,13 +454,13 @@ const CSS = `
   color: rgba(0,0,0,0.4);
 }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-add:hover { border-color: #1a56db; color: #1a56db; }
-`;
+`
 
 export function injectProcessRunnerStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(STYLE_ID) !== null) return;
-	const style = document.createElement("style");
-	style.id = STYLE_ID;
-	style.textContent = CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(STYLE_ID) !== null) return
+	const style = document.createElement("style")
+	style.id = STYLE_ID
+	style.textContent = CSS
+	document.head.appendChild(style)
 }

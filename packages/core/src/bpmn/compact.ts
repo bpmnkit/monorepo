@@ -1,5 +1,5 @@
-import { layoutProcess } from "../layout/index.js";
-import type { XmlElement } from "../types/xml-element.js";
+import { layoutProcess } from "../layout/index.js"
+import type { XmlElement } from "../types/xml-element.js"
 import type {
 	BpmnAssociation,
 	BpmnDefinitions,
@@ -12,122 +12,122 @@ import type {
 	BpmnProcess,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
-} from "./bpmn-model.js";
+} from "./bpmn-model.js"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface CompactElement {
-	id: string;
-	type: BpmnElementType;
-	name?: string;
+	id: string
+	type: BpmnElementType
+	name?: string
 	/** Zeebe job type (serviceTask: zeebe:taskDefinition.type) */
-	jobType?: string;
+	jobType?: string
 	/**
 	 * Zeebe task headers (key→value).
 	 * For the Camunda HTTP connector use jobType "io.camunda:http-json:1" and set:
 	 *   url, method, and optionally headers/body/connectionTimeoutInSeconds.
 	 */
-	taskHeaders?: Record<string, string>;
+	taskHeaders?: Record<string, string>
 	/** Called process ID (callActivity: zeebe:calledElement.processId) */
-	calledProcess?: string;
+	calledProcess?: string
 	/** Linked form ID (userTask: zeebe:formDefinition.formId) */
-	formId?: string;
+	formId?: string
 	/** Linked decision ID (businessRuleTask: zeebe:calledDecision.decisionId) */
-	decisionId?: string;
+	decisionId?: string
 	/**
 	 * Primary output variable.
 	 * - For businessRuleTask: stored in zeebe:calledDecision.resultVariable.
 	 * - For serviceTask with jobType: stored as a zeebe:ioMapping output (source "= response").
 	 */
-	resultVariable?: string;
+	resultVariable?: string
 	/** Event definition type (timer, error, message, signal, …) */
-	eventType?: string;
+	eventType?: string
 	/** Boundary event: host element ID */
-	attachedTo?: string;
+	attachedTo?: string
 	/** Boundary event: false = non-interrupting */
-	interrupting?: boolean;
+	interrupting?: boolean
 }
 
 export interface CompactFlow {
-	id: string;
-	from: string;
-	to: string;
-	name?: string;
+	id: string
+	from: string
+	to: string
+	name?: string
 	/** FEEL condition expression */
-	condition?: string;
+	condition?: string
 }
 
 export interface CompactProcess {
-	id: string;
-	name?: string;
-	elements: CompactElement[];
-	flows: CompactFlow[];
+	id: string
+	name?: string
+	elements: CompactElement[]
+	flows: CompactFlow[]
 }
 
 export interface CompactDiagram {
-	id: string;
-	processes: CompactProcess[];
+	id: string
+	processes: CompactProcess[]
 }
 
 // ── Compactify ───────────────────────────────────────────────────────────────
 
 function findAttr(ext: XmlElement[], name: string, attr: string): string | undefined {
-	return ext.find((e) => e.name === name)?.attributes[attr];
+	return ext.find((e) => e.name === name)?.attributes[attr]
 }
 
 function compactifyElement(el: BpmnFlowElement): CompactElement {
-	const ext = el.extensionElements;
-	const result: CompactElement = { id: el.id, type: el.type };
-	if (el.name) result.name = el.name;
+	const ext = el.extensionElements
+	const result: CompactElement = { id: el.id, type: el.type }
+	if (el.name) result.name = el.name
 
-	const jobType = findAttr(ext, "zeebe:taskDefinition", "type");
-	if (jobType) result.jobType = jobType;
+	const jobType = findAttr(ext, "zeebe:taskDefinition", "type")
+	if (jobType) result.jobType = jobType
 
 	// Extract task headers (key→value map from zeebe:taskHeaders children)
-	const taskHeadersEl = ext.find((e) => e.name === "zeebe:taskHeaders");
+	const taskHeadersEl = ext.find((e) => e.name === "zeebe:taskHeaders")
 	if (taskHeadersEl && taskHeadersEl.children.length > 0) {
-		const headers: Record<string, string> = {};
+		const headers: Record<string, string> = {}
 		for (const child of taskHeadersEl.children) {
-			const key = child.attributes.key;
-			const value = child.attributes.value;
-			if (key !== undefined && value !== undefined) headers[key] = value;
+			const key = child.attributes.key
+			const value = child.attributes.value
+			if (key !== undefined && value !== undefined) headers[key] = value
 		}
-		if (Object.keys(headers).length > 0) result.taskHeaders = headers;
+		if (Object.keys(headers).length > 0) result.taskHeaders = headers
 	}
 
-	const calledProcess = findAttr(ext, "zeebe:calledElement", "processId");
-	if (calledProcess) result.calledProcess = calledProcess;
+	const calledProcess = findAttr(ext, "zeebe:calledElement", "processId")
+	if (calledProcess) result.calledProcess = calledProcess
 
-	const formId = findAttr(ext, "zeebe:formDefinition", "formId");
-	if (formId) result.formId = formId;
+	const formId = findAttr(ext, "zeebe:formDefinition", "formId")
+	if (formId) result.formId = formId
 
-	const decisionId = findAttr(ext, "zeebe:calledDecision", "decisionId");
+	const decisionId = findAttr(ext, "zeebe:calledDecision", "decisionId")
 	if (decisionId) {
-		result.decisionId = decisionId;
-		const rv = findAttr(ext, "zeebe:calledDecision", "resultVariable");
-		if (rv) result.resultVariable = rv;
+		result.decisionId = decisionId
+		const rv = findAttr(ext, "zeebe:calledDecision", "resultVariable")
+		if (rv) result.resultVariable = rv
 	} else {
 		// For service tasks: extract the primary output variable from ioMapping
-		const ioMappingEl = ext.find((e) => e.name === "zeebe:ioMapping");
+		const ioMappingEl = ext.find((e) => e.name === "zeebe:ioMapping")
 		if (ioMappingEl) {
-			const outputs = ioMappingEl.children.filter((c) => c.name === "zeebe:output");
+			const outputs = ioMappingEl.children.filter((c) => c.name === "zeebe:output")
 			if (outputs.length === 1) {
-				const target = outputs[0]?.attributes.target;
-				if (target) result.resultVariable = target;
+				const target = outputs[0]?.attributes.target
+				if (target) result.resultVariable = target
 			}
 		}
 	}
 
 	if ("eventDefinitions" in el && el.eventDefinitions.length > 0) {
-		result.eventType = el.eventDefinitions[0]?.type;
+		result.eventType = el.eventDefinitions[0]?.type
 	}
 
 	if (el.type === "boundaryEvent") {
-		result.attachedTo = el.attachedToRef;
-		if (el.cancelActivity === false) result.interrupting = false;
+		result.attachedTo = el.attachedToRef
+		if (el.cancelActivity === false) result.interrupting = false
 	}
 
-	return result;
+	return result
 }
 
 export function compactify(defs: BpmnDefinitions): CompactDiagram {
@@ -138,13 +138,13 @@ export function compactify(defs: BpmnDefinitions): CompactDiagram {
 			name: process.name,
 			elements: process.flowElements.map(compactifyElement),
 			flows: process.sequenceFlows.map((sf) => {
-				const f: CompactFlow = { id: sf.id, from: sf.sourceRef, to: sf.targetRef };
-				if (sf.name) f.name = sf.name;
-				if (sf.conditionExpression) f.condition = sf.conditionExpression.text;
-				return f;
+				const f: CompactFlow = { id: sf.id, from: sf.sourceRef, to: sf.targetRef }
+				if (sf.name) f.name = sf.name
+				if (sf.conditionExpression) f.condition = sf.conditionExpression.text
+				return f
 			}),
 		})),
-	};
+	}
 }
 
 // ── Expand ───────────────────────────────────────────────────────────────────
@@ -152,34 +152,34 @@ export function compactify(defs: BpmnDefinitions): CompactDiagram {
 function makeEventDef(eventType: string): BpmnEventDefinition | undefined {
 	switch (eventType) {
 		case "timer":
-			return { type: "timer" };
+			return { type: "timer" }
 		case "error":
-			return { type: "error" };
+			return { type: "error" }
 		case "message":
-			return { type: "message" };
+			return { type: "message" }
 		case "signal":
-			return { type: "signal" };
+			return { type: "signal" }
 		case "escalation":
-			return { type: "escalation" };
+			return { type: "escalation" }
 		case "cancel":
-			return { type: "cancel" };
+			return { type: "cancel" }
 		case "terminate":
-			return { type: "terminate" };
+			return { type: "terminate" }
 		case "conditional":
-			return { type: "conditional" };
+			return { type: "conditional" }
 		case "link":
-			return { type: "link" };
+			return { type: "link" }
 		case "compensate":
-			return { type: "compensate" };
+			return { type: "compensate" }
 		default:
-			return undefined;
+			return undefined
 	}
 }
 
 function makeExtensions(el: CompactElement): XmlElement[] {
-	const ext: XmlElement[] = [];
+	const ext: XmlElement[] = []
 	if (el.jobType) {
-		ext.push({ name: "zeebe:taskDefinition", attributes: { type: el.jobType }, children: [] });
+		ext.push({ name: "zeebe:taskDefinition", attributes: { type: el.jobType }, children: [] })
 	}
 	if (el.taskHeaders && Object.keys(el.taskHeaders).length > 0) {
 		ext.push({
@@ -190,17 +190,17 @@ function makeExtensions(el: CompactElement): XmlElement[] {
 				attributes: { key, value },
 				children: [],
 			})),
-		});
+		})
 	}
 	if (el.calledProcess) {
 		ext.push({
 			name: "zeebe:calledElement",
 			attributes: { processId: el.calledProcess },
 			children: [],
-		});
+		})
 	}
 	if (el.formId) {
-		ext.push({ name: "zeebe:formDefinition", attributes: { formId: el.formId }, children: [] });
+		ext.push({ name: "zeebe:formDefinition", attributes: { formId: el.formId }, children: [] })
 	}
 	if (el.decisionId) {
 		ext.push({
@@ -210,7 +210,7 @@ function makeExtensions(el: CompactElement): XmlElement[] {
 				resultVariable: el.resultVariable ?? "result",
 			},
 			children: [],
-		});
+		})
 	} else if (el.resultVariable && el.jobType) {
 		// Service task with a result variable: map the connector response to the variable
 		ext.push({
@@ -223,9 +223,9 @@ function makeExtensions(el: CompactElement): XmlElement[] {
 					children: [],
 				},
 			],
-		});
+		})
 	}
-	return ext;
+	return ext
 }
 
 function buildFlowElement(
@@ -240,25 +240,25 @@ function buildFlowElement(
 		outgoing,
 		extensionElements: makeExtensions(el),
 		unknownAttributes: {} as Record<string, string>,
-	};
-	const eventDef = el.eventType ? makeEventDef(el.eventType) : undefined;
-	const eventDefs: BpmnEventDefinition[] = eventDef ? [eventDef] : [];
+	}
+	const eventDef = el.eventType ? makeEventDef(el.eventType) : undefined
+	const eventDefs: BpmnEventDefinition[] = eventDef ? [eventDef] : []
 	const subContent = {
 		flowElements: [] as BpmnFlowElement[],
 		sequenceFlows: [] as BpmnSequenceFlow[],
 		textAnnotations: [] as BpmnTextAnnotation[],
 		associations: [] as BpmnAssociation[],
-	};
+	}
 
 	switch (el.type) {
 		case "startEvent":
-			return { ...base, type: "startEvent", eventDefinitions: eventDefs };
+			return { ...base, type: "startEvent", eventDefinitions: eventDefs }
 		case "endEvent":
-			return { ...base, type: "endEvent", eventDefinitions: eventDefs };
+			return { ...base, type: "endEvent", eventDefinitions: eventDefs }
 		case "intermediateCatchEvent":
-			return { ...base, type: "intermediateCatchEvent", eventDefinitions: eventDefs };
+			return { ...base, type: "intermediateCatchEvent", eventDefinitions: eventDefs }
 		case "intermediateThrowEvent":
-			return { ...base, type: "intermediateThrowEvent", eventDefinitions: eventDefs };
+			return { ...base, type: "intermediateThrowEvent", eventDefinitions: eventDefs }
 		case "boundaryEvent":
 			return {
 				...base,
@@ -266,48 +266,48 @@ function buildFlowElement(
 				attachedToRef: el.attachedTo ?? "",
 				cancelActivity: el.interrupting !== false,
 				eventDefinitions: eventDefs,
-			};
+			}
 		case "serviceTask":
-			return { ...base, type: "serviceTask" };
+			return { ...base, type: "serviceTask" }
 		case "scriptTask":
-			return { ...base, type: "scriptTask" };
+			return { ...base, type: "scriptTask" }
 		case "userTask":
-			return { ...base, type: "userTask" };
+			return { ...base, type: "userTask" }
 		case "businessRuleTask":
-			return { ...base, type: "businessRuleTask" };
+			return { ...base, type: "businessRuleTask" }
 		case "callActivity":
-			return { ...base, type: "callActivity" };
+			return { ...base, type: "callActivity" }
 		case "sendTask":
-			return { ...base, type: "sendTask" };
+			return { ...base, type: "sendTask" }
 		case "receiveTask":
-			return { ...base, type: "receiveTask" };
+			return { ...base, type: "receiveTask" }
 		case "manualTask":
-			return { ...base, type: "manualTask" };
+			return { ...base, type: "manualTask" }
 		case "task":
-			return { ...base, type: "task" };
+			return { ...base, type: "task" }
 		case "subProcess":
-			return { ...base, type: "subProcess", ...subContent };
+			return { ...base, type: "subProcess", ...subContent }
 		case "adHocSubProcess":
-			return { ...base, type: "adHocSubProcess", ...subContent };
+			return { ...base, type: "adHocSubProcess", ...subContent }
 		case "eventSubProcess":
-			return { ...base, type: "eventSubProcess", ...subContent };
+			return { ...base, type: "eventSubProcess", ...subContent }
 		case "transaction":
-			return { ...base, type: "transaction", ...subContent };
+			return { ...base, type: "transaction", ...subContent }
 		case "exclusiveGateway":
-			return { ...base, type: "exclusiveGateway" };
+			return { ...base, type: "exclusiveGateway" }
 		case "parallelGateway":
-			return { ...base, type: "parallelGateway" };
+			return { ...base, type: "parallelGateway" }
 		case "inclusiveGateway":
-			return { ...base, type: "inclusiveGateway" };
+			return { ...base, type: "inclusiveGateway" }
 		case "eventBasedGateway":
-			return { ...base, type: "eventBasedGateway" };
+			return { ...base, type: "eventBasedGateway" }
 		case "complexGateway":
-			return { ...base, type: "complexGateway" };
+			return { ...base, type: "complexGateway" }
 	}
 }
 
 function buildDiagram(processId: string, process: BpmnProcess): BpmnDiagram {
-	const layout = layoutProcess(process);
+	const layout = layoutProcess(process)
 	const shapes: BpmnDiShape[] = layout.nodes.map((n) => ({
 		id: `${n.id}_di`,
 		bpmnElement: n.id,
@@ -315,13 +315,13 @@ function buildDiagram(processId: string, process: BpmnProcess): BpmnDiagram {
 		bounds: n.bounds,
 		label: n.labelBounds ? { bounds: n.labelBounds } : undefined,
 		unknownAttributes: {},
-	}));
+	}))
 	const edges: BpmnDiEdge[] = layout.edges.map((e) => ({
 		id: `${e.id}_di`,
 		bpmnElement: e.id,
 		waypoints: e.waypoints,
 		unknownAttributes: {},
-	}));
+	}))
 	return {
 		id: `BPMNDiagram_${processId}`,
 		plane: {
@@ -330,24 +330,24 @@ function buildDiagram(processId: string, process: BpmnProcess): BpmnDiagram {
 			shapes,
 			edges,
 		},
-	};
+	}
 }
 
 function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram: BpmnDiagram } {
-	const incoming = new Map<string, string[]>();
-	const outgoing = new Map<string, string[]>();
+	const incoming = new Map<string, string[]>()
+	const outgoing = new Map<string, string[]>()
 	for (const f of compact.flows) {
-		const out = outgoing.get(f.from) ?? [];
-		out.push(f.id);
-		outgoing.set(f.from, out);
-		const inc = incoming.get(f.to) ?? [];
-		inc.push(f.id);
-		incoming.set(f.to, inc);
+		const out = outgoing.get(f.from) ?? []
+		out.push(f.id)
+		outgoing.set(f.from, out)
+		const inc = incoming.get(f.to) ?? []
+		inc.push(f.id)
+		incoming.set(f.to, inc)
 	}
 
 	const flowElements: BpmnFlowElement[] = compact.elements.map((el) =>
 		buildFlowElement(el, incoming.get(el.id) ?? [], outgoing.get(el.id) ?? []),
-	);
+	)
 
 	const sequenceFlows: BpmnSequenceFlow[] = compact.flows.map((f) => ({
 		id: f.id,
@@ -357,7 +357,7 @@ function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram
 		conditionExpression: f.condition ? { text: f.condition, attributes: {} } : undefined,
 		extensionElements: [],
 		unknownAttributes: {},
-	}));
+	}))
 
 	const process: BpmnProcess = {
 		id: compact.id,
@@ -369,18 +369,18 @@ function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram
 		textAnnotations: [],
 		associations: [],
 		unknownAttributes: {},
-	};
+	}
 
-	return { process, diagram: buildDiagram(compact.id, process) };
+	return { process, diagram: buildDiagram(compact.id, process) }
 }
 
 export function expand(compact: CompactDiagram): BpmnDefinitions {
-	const processes: BpmnProcess[] = [];
-	const diagrams: BpmnDiagram[] = [];
+	const processes: BpmnProcess[] = []
+	const diagrams: BpmnDiagram[] = []
 	for (const cp of compact.processes) {
-		const { process, diagram } = expandProcess(cp);
-		processes.push(process);
-		diagrams.push(diagram);
+		const { process, diagram } = expandProcess(cp)
+		processes.push(process)
+		diagrams.push(diagram)
 	}
 	return {
 		id: compact.id,
@@ -399,5 +399,5 @@ export function expand(compact: CompactDiagram): BpmnDefinitions {
 		collaborations: [],
 		processes,
 		diagrams,
-	};
+	}
 }

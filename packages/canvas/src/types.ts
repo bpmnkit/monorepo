@@ -4,10 +4,10 @@ import type {
 	BpmnDiShape,
 	BpmnFlowElement,
 	BpmnTextAnnotation,
-} from "@bpmn-sdk/core";
+} from "@bpmn-sdk/core"
 
 /** The color theme applied to the canvas. */
-export type Theme = "light" | "dark" | "auto";
+export type Theme = "light" | "dark" | "auto"
 
 /**
  * Controls how the diagram is initially positioned in the viewport.
@@ -15,90 +15,90 @@ export type Theme = "light" | "dark" | "auto";
  * - `"center"` — center without scaling
  * - `"none"` — use the diagram's raw coordinates unchanged
  */
-export type FitMode = "contain" | "center" | "none";
+export type FitMode = "contain" | "center" | "none"
 
 /** Configuration options for {@link BpmnCanvas}. */
 export interface CanvasOptions {
 	/** The DOM element to mount the canvas into. */
-	container: HTMLElement;
+	container: HTMLElement
 
 	/** BPMN 2.0 XML to render immediately. Can also be provided later via {@link BpmnCanvas.load}. */
-	xml?: string;
+	xml?: string
 
 	/**
 	 * Color theme. Use `"auto"` to follow the OS preference (prefers-color-scheme).
 	 * @default "auto"
 	 */
-	theme?: Theme;
+	theme?: Theme
 
 	/**
 	 * Show a dot-grid background on the infinite canvas.
 	 * @default true
 	 */
-	grid?: boolean;
+	grid?: boolean
 
 	/**
 	 * How to position the diagram when first rendered.
 	 * @default "contain"
 	 */
-	fit?: FitMode;
+	fit?: FitMode
 
 	/**
 	 * Plugins to install. Each plugin receives a {@link CanvasApi} handle and
 	 * can extend the canvas with editing, overlays, tooltips, or custom shapes.
 	 * @see {@link CanvasPlugin}
 	 */
-	plugins?: CanvasPlugin[];
+	plugins?: CanvasPlugin[]
 }
 
 /** The current pan/zoom state of the canvas viewport. */
 export interface ViewportState {
 	/** Horizontal translation in screen pixels. */
-	tx: number;
+	tx: number
 	/** Vertical translation in screen pixels. */
-	ty: number;
+	ty: number
 	/** Zoom scale factor. `1.0` = 100%, `0.5` = 50%, `2.0` = 200%. */
-	scale: number;
+	scale: number
 }
 
 /** A rendered BPMN shape with its SVG element and source model data. */
 export interface RenderedShape {
 	/** The BPMN element ID. */
-	readonly id: string;
+	readonly id: string
 	/** The SVG `<g>` element. */
-	readonly element: SVGGElement;
+	readonly element: SVGGElement
 	/** DI shape data — contains position and size. */
-	readonly shape: BpmnDiShape;
+	readonly shape: BpmnDiShape
 	/** The matching BPMN flow element from the process model, if found. */
-	readonly flowElement: BpmnFlowElement | undefined;
+	readonly flowElement: BpmnFlowElement | undefined
 	/** Set if this shape represents a text annotation. */
-	readonly annotation?: BpmnTextAnnotation;
+	readonly annotation?: BpmnTextAnnotation
 }
 
 /** A rendered BPMN edge (sequence flow or association) with its SVG element. */
 export interface RenderedEdge {
 	/** The BPMN element ID. */
-	readonly id: string;
+	readonly id: string
 	/** The SVG `<g>` element. */
-	readonly element: SVGGElement;
+	readonly element: SVGGElement
 	/** DI edge data — contains waypoints and optional label bounds. */
-	readonly edge: BpmnDiEdge;
+	readonly edge: BpmnDiEdge
 }
 
 /** Events emitted by {@link BpmnCanvas}. */
 export interface CanvasEvents {
 	/** Fired whenever the viewport is panned or zoomed. */
-	"viewport:change": (state: ViewportState) => void;
+	"viewport:change": (state: ViewportState) => void
 	/** Fired when a BPMN element is clicked. */
-	"element:click": (id: string, event: PointerEvent) => void;
+	"element:click": (id: string, event: PointerEvent) => void
 	/** Fired when keyboard focus moves to a BPMN element. */
-	"element:focus": (id: string) => void;
+	"element:focus": (id: string) => void
 	/** Fired when keyboard focus leaves all BPMN elements. */
-	"element:blur": () => void;
+	"element:blur": () => void
 	/** Fired after a BPMN diagram is loaded and rendered. */
-	"diagram:load": (defs: BpmnDefinitions) => void;
+	"diagram:load": (defs: BpmnDefinitions) => void
 	/** Fired when the canvas is cleared. */
-	"diagram:clear": () => void;
+	"diagram:clear": () => void
 }
 
 /**
@@ -122,29 +122,29 @@ export interface CanvasEvents {
  */
 export interface CanvasApi {
 	/** The host element passed to {@link CanvasOptions.container}. */
-	readonly container: HTMLElement;
+	readonly container: HTMLElement
 	/** The root `<svg>` element. */
-	readonly svg: SVGSVGElement;
+	readonly svg: SVGSVGElement
 	/** The viewport `<g>` element. All diagram content lives inside this group. */
-	readonly viewportEl: SVGGElement;
+	readonly viewportEl: SVGGElement
 
 	/** Returns the current viewport state (pan + zoom). */
-	getViewport(): ViewportState;
+	getViewport(): ViewportState
 
 	/** Programmatically updates viewport. Missing fields are preserved. */
-	setViewport(state: Partial<ViewportState>): void;
+	setViewport(state: Partial<ViewportState>): void
 
 	/** Returns all currently rendered shapes. */
-	getShapes(): RenderedShape[];
+	getShapes(): RenderedShape[]
 
 	/** Returns all currently rendered edges. */
-	getEdges(): RenderedEdge[];
+	getEdges(): RenderedEdge[]
 
 	/** Returns the current color theme. */
-	getTheme(): Theme;
+	getTheme(): Theme
 
 	/** Sets the color theme. Pass `"auto"` to follow the OS preference. */
-	setTheme(theme: Theme): void;
+	setTheme(theme: Theme): void
 
 	/**
 	 * Subscribes to a canvas event. Returns an unsubscribe function.
@@ -155,10 +155,10 @@ export interface CanvasApi {
 	 * off(); // unsubscribe
 	 * ```
 	 */
-	on<K extends keyof CanvasEvents>(event: K, handler: CanvasEvents[K]): () => void;
+	on<K extends keyof CanvasEvents>(event: K, handler: CanvasEvents[K]): () => void
 
 	/** Emits a canvas event. Intended for use by plugins and internal code. */
-	emit<K extends keyof CanvasEvents>(event: K, ...args: Parameters<CanvasEvents[K]>): void;
+	emit<K extends keyof CanvasEvents>(event: K, ...args: Parameters<CanvasEvents[K]>): void
 }
 
 /**
@@ -190,17 +190,17 @@ export interface CanvasApi {
  */
 export interface CanvasPlugin {
 	/** A unique name that identifies this plugin. */
-	readonly name: string;
+	readonly name: string
 
 	/**
 	 * Called once when the plugin is installed. Hook into canvas events here.
 	 * @param api — The canvas API handle.
 	 */
-	install(api: CanvasApi): void;
+	install(api: CanvasApi): void
 
 	/**
 	 * Called when the canvas is destroyed.
 	 * Clean up any resources your plugin allocated (DOM nodes, timers, etc.).
 	 */
-	uninstall?(): void;
+	uninstall?(): void
 }

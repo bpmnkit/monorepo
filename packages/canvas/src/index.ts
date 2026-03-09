@@ -64,7 +64,7 @@
  * @packageDocumentation
  */
 
-export { BpmnCanvas } from "./canvas.js";
+export { BpmnCanvas } from "./canvas.js"
 export type {
 	CanvasApi,
 	CanvasEvents,
@@ -75,10 +75,10 @@ export type {
 	RenderedShape,
 	Theme,
 	ViewportState,
-} from "./types.js";
+} from "./types.js"
 
 // Internal exports for use by @bpmn-sdk/editor
-export { ViewportController } from "./viewport.js";
-export { render, computeDiagramBounds, createDefs, createGrid } from "./renderer.js";
-export { KeyboardHandler } from "./keyboard.js";
-export { injectStyles, CANVAS_CSS, STYLE_ID } from "./css.js";
+export { ViewportController } from "./viewport.js"
+export { render, computeDiagramBounds, createDefs, createGrid } from "./renderer.js"
+export { KeyboardHandler } from "./keyboard.js"
+export { injectStyles, CANVAS_CSS, STYLE_ID } from "./css.js"

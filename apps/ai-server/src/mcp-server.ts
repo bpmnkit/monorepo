@@ -10,9 +10,9 @@
  *   node dist/mcp-server.js [--input <diagram.bpmn>] [--output <result.bpmn>]
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
-import { createInterface } from "node:readline";
-import vm from "node:vm";
+import { readFileSync, writeFileSync } from "node:fs"
+import { createInterface } from "node:readline"
+import vm from "node:vm"
 import {
 	Bpmn,
 	type BpmnDefinitions,
@@ -28,33 +28,33 @@ import {
 	compactify,
 	expand,
 	layoutProcess,
-} from "@bpmn-sdk/core";
+} from "@bpmn-sdk/core"
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
 function getArg(flag: string): string | undefined {
-	const idx = process.argv.indexOf(flag);
-	return idx !== -1 ? process.argv[idx + 1] : undefined;
+	const idx = process.argv.indexOf(flag)
+	return idx !== -1 ? process.argv[idx + 1] : undefined
 }
 
-const inputFile = getArg("--input");
-const outputFile = getArg("--output");
+const inputFile = getArg("--input")
+const outputFile = getArg("--output")
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let state: BpmnDefinitions = Bpmn.parse(Bpmn.makeEmpty("Process_1", "New Process"));
+let state: BpmnDefinitions = Bpmn.parse(Bpmn.makeEmpty("Process_1", "New Process"))
 
 if (inputFile) {
 	try {
 		// Input is BPMN XML written by index.ts (expand + Bpmn.export)
-		state = Bpmn.parse(readFileSync(inputFile, "utf8"));
+		state = Bpmn.parse(readFileSync(inputFile, "utf8"))
 	} catch {
 		/* start with empty diagram if file is unreadable */
 	}
 }
 
 function buildDiagram(proc: BpmnProcess): BpmnDiagram {
-	const layout = layoutProcess(proc);
+	const layout = layoutProcess(proc)
 	const shapes: BpmnDiShape[] = layout.nodes.map((n) => ({
 		id: `${n.id}_di`,
 		bpmnElement: n.id,
@@ -62,13 +62,13 @@ function buildDiagram(proc: BpmnProcess): BpmnDiagram {
 		bounds: n.bounds,
 		label: n.labelBounds ? { bounds: n.labelBounds } : undefined,
 		unknownAttributes: {},
-	}));
+	}))
 	const edges: BpmnDiEdge[] = layout.edges.map((e) => ({
 		id: `${e.id}_di`,
 		bpmnElement: e.id,
 		waypoints: e.waypoints,
 		unknownAttributes: {},
-	}));
+	}))
 	return {
 		id: `BPMNDiagram_${proc.id}`,
 		plane: {
@@ -77,36 +77,36 @@ function buildDiagram(proc: BpmnProcess): BpmnDiagram {
 			shapes,
 			edges,
 		},
-	};
+	}
 }
 
 function saveState(): void {
-	if (!outputFile) return;
-	state.diagrams = state.processes.map((proc) => buildDiagram(proc));
-	writeFileSync(outputFile, Bpmn.export(state));
+	if (!outputFile) return
+	state.diagrams = state.processes.map((proc) => buildDiagram(proc))
+	writeFileSync(outputFile, Bpmn.export(state))
 }
 
 function recomputeIncomingOutgoing(proc: BpmnProcess): void {
-	const elementMap = new Map<string, BpmnFlowElement>();
+	const elementMap = new Map<string, BpmnFlowElement>()
 	for (const el of proc.flowElements) {
-		el.incoming = [];
-		el.outgoing = [];
-		elementMap.set(el.id, el);
+		el.incoming = []
+		el.outgoing = []
+		elementMap.set(el.id, el)
 	}
 	for (const sf of proc.sequenceFlows) {
-		const src = elementMap.get(sf.sourceRef);
-		const tgt = elementMap.get(sf.targetRef);
-		if (src) src.outgoing.push(sf.id);
-		if (tgt) tgt.incoming.push(sf.id);
+		const src = elementMap.get(sf.sourceRef)
+		const tgt = elementMap.get(sf.targetRef)
+		if (src) src.outgoing.push(sf.id)
+		if (tgt) tgt.incoming.push(sf.id)
 	}
 }
 
 function findProcess(processId: string): BpmnProcess | undefined {
-	return state.processes.find((p) => p.id === processId);
+	return state.processes.find((p) => p.id === processId)
 }
 
 function ensureProcess(processId: string): BpmnProcess {
-	let proc = state.processes.find((p) => p.id === processId);
+	let proc = state.processes.find((p) => p.id === processId)
 	if (!proc) {
 		proc = {
 			id: processId,
@@ -117,10 +117,10 @@ function ensureProcess(processId: string): BpmnProcess {
 			textAnnotations: [],
 			associations: [],
 			unknownAttributes: {},
-		};
-		state.processes.push(proc);
+		}
+		state.processes.push(proc)
 	}
-	return proc;
+	return proc
 }
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ const ELEMENT_SCHEMA = {
 		},
 	},
 	required: ["id", "type"],
-};
+}
 
 const FLOW_SCHEMA = {
 	type: "object",
@@ -178,7 +178,7 @@ const FLOW_SCHEMA = {
 		condition: { type: "string", description: "FEEL condition expression" },
 	},
 	required: ["id", "from", "to"],
-};
+}
 
 const TOOLS = [
 	{
@@ -336,131 +336,131 @@ const TOOLS = [
 			required: ["diagram"],
 		},
 	},
-];
+]
 
 // ── Tool execution ────────────────────────────────────────────────────────────
 
 function callTool(name: string, args: Record<string, unknown>): string {
-	process.stderr.write(`[mcp] tool: ${name} args: ${JSON.stringify(args)}\n`);
+	process.stderr.write(`[mcp] tool: ${name} args: ${JSON.stringify(args)}\n`)
 	switch (name) {
 		case "get_diagram":
-			return JSON.stringify(compactify(state), null, 2);
+			return JSON.stringify(compactify(state), null, 2)
 
 		case "add_elements": {
-			const proc = ensureProcess(args.processId as string);
-			const elements = (args.elements as CompactElement[] | undefined) ?? [];
-			const flows = (args.flows as CompactFlow[] | undefined) ?? [];
+			const proc = ensureProcess(args.processId as string)
+			const elements = (args.elements as CompactElement[] | undefined) ?? []
+			const flows = (args.flows as CompactFlow[] | undefined) ?? []
 
 			// Use expand() to create properly structured BpmnFlowElement objects
 			const miniCompact: CompactDiagram = {
 				id: "__temp__",
 				processes: [{ id: proc.id, elements, flows }],
-			};
-			const tempDefs = expand(miniCompact);
-			const tempProc = tempDefs.processes[0];
-			if (!tempProc) return "Failed to expand elements.";
+			}
+			const tempDefs = expand(miniCompact)
+			const tempProc = tempDefs.processes[0]
+			if (!tempProc) return "Failed to expand elements."
 
-			let addedEls = 0;
-			let addedFlows = 0;
+			let addedEls = 0
+			let addedFlows = 0
 			for (const el of tempProc.flowElements) {
 				if (!proc.flowElements.some((e) => e.id === el.id)) {
-					proc.flowElements.push(el);
-					addedEls++;
+					proc.flowElements.push(el)
+					addedEls++
 				}
 			}
 			for (const sf of tempProc.sequenceFlows) {
 				if (!proc.sequenceFlows.some((f) => f.id === sf.id)) {
-					proc.sequenceFlows.push(sf);
-					addedFlows++;
+					proc.sequenceFlows.push(sf)
+					addedFlows++
 				}
 			}
-			recomputeIncomingOutgoing(proc);
-			saveState();
-			return `Added ${addedEls} element(s) and ${addedFlows} flow(s) to ${args.processId as string}.`;
+			recomputeIncomingOutgoing(proc)
+			saveState()
+			return `Added ${addedEls} element(s) and ${addedFlows} flow(s) to ${args.processId as string}.`
 		}
 
 		case "remove_elements": {
-			const proc = findProcess(args.processId as string);
-			if (!proc) return `Process ${args.processId as string} not found.`;
-			const dropEls = new Set((args.elementIds as string[] | undefined) ?? []);
-			const dropFlows = new Set((args.flowIds as string[] | undefined) ?? []);
-			const removedEls = proc.flowElements.filter((e) => dropEls.has(e.id)).length;
-			proc.flowElements = proc.flowElements.filter((e) => !dropEls.has(e.id));
+			const proc = findProcess(args.processId as string)
+			if (!proc) return `Process ${args.processId as string} not found.`
+			const dropEls = new Set((args.elementIds as string[] | undefined) ?? [])
+			const dropFlows = new Set((args.flowIds as string[] | undefined) ?? [])
+			const removedEls = proc.flowElements.filter((e) => dropEls.has(e.id)).length
+			proc.flowElements = proc.flowElements.filter((e) => !dropEls.has(e.id))
 			const removedFlows = proc.sequenceFlows.filter(
 				(f) => dropFlows.has(f.id) || dropEls.has(f.sourceRef) || dropEls.has(f.targetRef),
-			).length;
+			).length
 			proc.sequenceFlows = proc.sequenceFlows.filter(
 				(f) => !dropFlows.has(f.id) && !dropEls.has(f.sourceRef) && !dropEls.has(f.targetRef),
-			);
-			recomputeIncomingOutgoing(proc);
-			saveState();
-			return `Removed ${removedEls} element(s) and ${removedFlows} flow(s).`;
+			)
+			recomputeIncomingOutgoing(proc)
+			saveState()
+			return `Removed ${removedEls} element(s) and ${removedFlows} flow(s).`
 		}
 
 		case "update_element": {
-			const proc = findProcess(args.processId as string);
-			if (!proc) return `Process ${args.processId as string} not found.`;
-			const el = proc.flowElements.find((e) => e.id === (args.elementId as string));
+			const proc = findProcess(args.processId as string)
+			if (!proc) return `Process ${args.processId as string} not found.`
+			const el = proc.flowElements.find((e) => e.id === (args.elementId as string))
 			if (!el)
-				return `Element ${args.elementId as string} not found in ${args.processId as string}.`;
-			const changes = args.changes as Record<string, unknown>;
-			if (changes.name !== undefined) el.name = changes.name as string;
-			saveState();
-			return `Updated element ${args.elementId as string}.`;
+				return `Element ${args.elementId as string} not found in ${args.processId as string}.`
+			const changes = args.changes as Record<string, unknown>
+			if (changes.name !== undefined) el.name = changes.name as string
+			saveState()
+			return `Updated element ${args.elementId as string}.`
 		}
 
 		case "set_condition": {
-			const proc = findProcess(args.processId as string);
-			if (!proc) return `Process ${args.processId as string} not found.`;
-			const sf = proc.sequenceFlows.find((f) => f.id === (args.flowId as string));
-			if (!sf) return `Flow ${args.flowId as string} not found in ${args.processId as string}.`;
+			const proc = findProcess(args.processId as string)
+			if (!proc) return `Process ${args.processId as string} not found.`
+			const sf = proc.sequenceFlows.find((f) => f.id === (args.flowId as string))
+			if (!sf) return `Flow ${args.flowId as string} not found in ${args.processId as string}.`
 			if (args.condition === null) {
-				sf.conditionExpression = undefined;
+				sf.conditionExpression = undefined
 			} else {
-				sf.conditionExpression = { text: args.condition as string, attributes: {} };
+				sf.conditionExpression = { text: args.condition as string, attributes: {} }
 			}
-			saveState();
-			return `Condition set on flow ${args.flowId as string}.`;
+			saveState()
+			return `Condition set on flow ${args.flowId as string}.`
 		}
 
 		case "add_http_call": {
-			const proc = ensureProcess(args.processId as string);
+			const proc = ensureProcess(args.processId as string)
 			const config: RestConnectorConfig = {
 				name: args.name as string,
 				method: args.method as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
 				url: args.url as string,
-			};
-			if (args.headers) config.headers = args.headers as string;
-			if (args.body) config.body = args.body as string;
-			if (args.resultVariable) config.resultVariable = args.resultVariable as string;
+			}
+			if (args.headers) config.headers = args.headers as string
+			if (args.body) config.body = args.body as string
+			if (args.resultVariable) config.resultVariable = args.resultVariable as string
 
 			// Use ProcessBuilder.restConnector() to create the correct zeebe:ioMapping structure.
 			// This is essential: compact.ts creates zeebe:taskHeaders, but the Camunda HTTP
 			// connector reads from zeebe:ioMapping inputs — these are completely different.
 			const tempDefs = Bpmn.createProcess("__temp__")
 				.restConnector(args.id as string, config)
-				.build();
-			const tempProc = tempDefs.processes[0];
-			const el = tempProc?.flowElements.find((e) => e.id === (args.id as string));
-			if (!el) return "Failed to create REST connector element.";
+				.build()
+			const tempProc = tempDefs.processes[0]
+			const el = tempProc?.flowElements.find((e) => e.id === (args.id as string))
+			if (!el) return "Failed to create REST connector element."
 
 			if (!proc.flowElements.some((e) => e.id === el.id)) {
-				el.incoming = [];
-				el.outgoing = [];
-				proc.flowElements.push(el);
+				el.incoming = []
+				el.outgoing = []
+				proc.flowElements.push(el)
 			}
-			saveState();
-			return `Added HTTP task "${args.name as string}" (${args.method as string} ${args.url as string}).`;
+			saveState()
+			return `Added HTTP task "${args.name as string}" (${args.method as string} ${args.url as string}).`
 		}
 
 		case "replace_diagram": {
-			state = expand(args.diagram as CompactDiagram);
-			saveState();
-			return "Diagram replaced.";
+			state = expand(args.diagram as CompactDiagram)
+			saveState()
+			return "Diagram replaced."
 		}
 
 		case "execute_code": {
-			const code = args.code as string;
+			const code = args.code as string
 			// Build a Bridge object that mirrors bridge.ts Bridge API, delegating to callTool.
 			// Runs in a vm context: no fs, no net, no process — only Bridge and ECMAScript builtins.
 			const bridge = {
@@ -492,64 +492,64 @@ function callTool(name: string, args: Record<string, unknown>): string {
 				mcpReplaceDiagram: (compactJson: string) =>
 					callTool("replace_diagram", { diagram: JSON.parse(compactJson) }),
 				mcpAddHttpCall: (processId: string, configJson: string) => {
-					const cfg = JSON.parse(configJson) as Record<string, unknown>;
-					return callTool("add_http_call", { processId, ...cfg });
+					const cfg = JSON.parse(configJson) as Record<string, unknown>
+					return callTool("add_http_call", { processId, ...cfg })
 				},
 				mcpExportXml: () => {
-					state.diagrams = state.processes.map((proc) => buildDiagram(proc));
-					return Bpmn.export(state);
+					state.diagrams = state.processes.map((proc) => buildDiagram(proc))
+					return Bpmn.export(state)
 				},
-			};
-			const ctx = vm.createContext({ Bridge: bridge });
+			}
+			const ctx = vm.createContext({ Bridge: bridge })
 			try {
-				const result = vm.runInContext(`(function(){\n${code}\n})()`, ctx, { timeout: 5000 });
-				return typeof result === "string" ? result : JSON.stringify(result ?? null);
+				const result = vm.runInContext(`(function(){\n${code}\n})()`, ctx, { timeout: 5000 })
+				return typeof result === "string" ? result : JSON.stringify(result ?? null)
 			} catch (err) {
 				throw new Error(
 					`Code execution failed: ${err instanceof Error ? err.message : String(err)}`,
-				);
+				)
 			}
 		}
 
 		default:
-			throw new Error(`Unknown tool: ${name}`);
+			throw new Error(`Unknown tool: ${name}`)
 	}
 }
 
 // ── JSON-RPC 2.0 stdio loop ───────────────────────────────────────────────────
 
 interface JsonRpcRequest {
-	jsonrpc: string;
-	id?: number | string;
-	method: string;
-	params?: unknown;
+	jsonrpc: string
+	id?: number | string
+	method: string
+	params?: unknown
 }
 
 interface JsonRpcResponse {
-	jsonrpc: "2.0";
-	id: number | string | undefined;
-	result?: unknown;
-	error?: { code: number; message: string };
+	jsonrpc: "2.0"
+	id: number | string | undefined
+	result?: unknown
+	error?: { code: number; message: string }
 }
 
-const rl = createInterface({ input: process.stdin, crlfDelay: Number.POSITIVE_INFINITY });
+const rl = createInterface({ input: process.stdin, crlfDelay: Number.POSITIVE_INFINITY })
 
 rl.on("line", (line) => {
-	const trimmed = line.trim();
-	if (!trimmed) return;
+	const trimmed = line.trim()
+	if (!trimmed) return
 
-	let req: JsonRpcRequest;
+	let req: JsonRpcRequest
 	try {
-		req = JSON.parse(trimmed) as JsonRpcRequest;
+		req = JSON.parse(trimmed) as JsonRpcRequest
 	} catch {
-		return;
+		return
 	}
 
 	// Notifications have no id — ignore them (no response needed)
-	if (!("id" in req)) return;
+	if (!("id" in req)) return
 
-	let result: unknown;
-	let error: { code: number; message: string } | undefined;
+	let result: unknown
+	let error: { code: number; message: string } | undefined
 
 	try {
 		switch (req.method) {
@@ -558,38 +558,38 @@ rl.on("line", (line) => {
 					protocolVersion: "2024-11-05",
 					capabilities: { tools: {} },
 					serverInfo: { name: "bpmn-mcp", version: "1.0.0" },
-				};
-				break;
+				}
+				break
 
 			case "tools/list":
-				result = { tools: TOOLS };
-				break;
+				result = { tools: TOOLS }
+				break
 
 			case "tools/call": {
-				const params = req.params as { name: string; arguments?: Record<string, unknown> };
-				const text = callTool(params.name, params.arguments ?? {});
-				result = { content: [{ type: "text", text }], isError: false };
-				break;
+				const params = req.params as { name: string; arguments?: Record<string, unknown> }
+				const text = callTool(params.name, params.arguments ?? {})
+				result = { content: [{ type: "text", text }], isError: false }
+				break
 			}
 
 			case "ping":
-				result = {};
-				break;
+				result = {}
+				break
 
 			default:
-				error = { code: -32601, message: "Method not found" };
+				error = { code: -32601, message: "Method not found" }
 		}
 	} catch (err) {
 		if (req.method === "tools/call") {
-			result = { content: [{ type: "text", text: String(err) }], isError: true };
+			result = { content: [{ type: "text", text: String(err) }], isError: true }
 		} else {
-			error = { code: -32603, message: String(err) };
+			error = { code: -32603, message: String(err) }
 		}
 	}
 
 	const response: JsonRpcResponse = error
 		? { jsonrpc: "2.0", id: req.id, error }
-		: { jsonrpc: "2.0", id: req.id, result };
+		: { jsonrpc: "2.0", id: req.id, result }
 
-	process.stdout.write(`${JSON.stringify(response)}\n`);
-});
+	process.stdout.write(`${JSON.stringify(response)}\n`)
+})

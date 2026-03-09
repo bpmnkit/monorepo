@@ -1,11 +1,11 @@
-const STYLE_ID = "ai-bridge-styles";
+const STYLE_ID = "ai-bridge-styles"
 
 export function injectAiBridgeStyles(): void {
-	const existing = document.getElementById(STYLE_ID);
-	const style = existing instanceof HTMLStyleElement ? existing : document.createElement("style");
+	const existing = document.getElementById(STYLE_ID)
+	const style = existing instanceof HTMLStyleElement ? existing : document.createElement("style")
 	if (!existing) {
-		style.id = STYLE_ID;
-		document.head.appendChild(style);
+		style.id = STYLE_ID
+		document.head.appendChild(style)
 	}
 	style.textContent = `
 .ai-panel {
@@ -304,6 +304,6 @@ export function injectAiBridgeStyles(): void {
 [data-bpmn-hud-theme="light"] .ai-hist-item { border-bottom-color: rgba(0,0,0,0.05); }
 [data-bpmn-hud-theme="light"] .ai-hist-item:hover { background: rgba(0,0,0,0.03); }
 [data-bpmn-hud-theme="light"] .ai-hist-empty { color: rgba(0,0,0,0.35); }
-`;
-	document.head.appendChild(style);
+`
+	document.head.appendChild(style)
 }

@@ -1,4 +1,4 @@
-import { generateId } from "../types/id-generator.js";
+import { generateId } from "../types/id-generator.js"
 import type {
 	FormCheckboxComponent,
 	FormChecklistComponent,
@@ -14,57 +14,57 @@ import type {
 	FormTextFieldComponent,
 	FormValidation,
 	FormValueOption,
-} from "./form-model.js";
+} from "./form-model.js"
 
 /** Builder for constructing Camunda Forms programmatically. */
 export class FormBuilder {
-	private _id: string;
-	private _type = "default";
-	private _executionPlatform = "Camunda Cloud";
-	private _executionPlatformVersion = "8.7.0";
-	private _exporter?: FormExporter;
-	private _schemaVersion?: number;
-	private _generated?: boolean;
-	private readonly _components: FormComponent[] = [];
+	private _id: string
+	private _type = "default"
+	private _executionPlatform = "Camunda Cloud"
+	private _executionPlatformVersion = "8.7.0"
+	private _exporter?: FormExporter
+	private _schemaVersion?: number
+	private _generated?: boolean
+	private readonly _components: FormComponent[] = []
 
 	constructor(id?: string) {
-		this._id = id ?? generateId("Form");
+		this._id = id ?? generateId("Form")
 	}
 
 	/** Sets the form ID. */
 	id(id: string): this {
-		this._id = id;
-		return this;
+		this._id = id
+		return this
 	}
 
 	/** Sets the execution platform. */
 	executionPlatform(platform: string): this {
-		this._executionPlatform = platform;
-		return this;
+		this._executionPlatform = platform
+		return this
 	}
 
 	/** Sets the execution platform version. */
 	executionPlatformVersion(version: string): this {
-		this._executionPlatformVersion = version;
-		return this;
+		this._executionPlatformVersion = version
+		return this
 	}
 
 	/** Sets the exporter metadata. */
 	exporter(name: string, version: string): this {
-		this._exporter = { name, version };
-		return this;
+		this._exporter = { name, version }
+		return this
 	}
 
 	/** Sets the schema version. */
 	schemaVersion(version: number): this {
-		this._schemaVersion = version;
-		return this;
+		this._schemaVersion = version
+		return this
 	}
 
 	/** Marks this form as generated. */
 	generated(value: boolean): this {
-		this._generated = value;
-		return this;
+		this._generated = value
+		return this
 	}
 
 	/** Adds a static text component. */
@@ -73,11 +73,11 @@ export class FormBuilder {
 			type: "text",
 			id: options?.id ?? generateId("Field"),
 			text,
-		};
-		if (options?.label !== undefined) component.label = options.label;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.label !== undefined) component.label = options.label
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Adds a text field component. */
@@ -87,12 +87,12 @@ export class FormBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Adds a textarea component. */
@@ -102,12 +102,12 @@ export class FormBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Adds a select dropdown component. */
@@ -117,15 +117,15 @@ export class FormBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.values !== undefined) component.values = options.values;
-		if (options?.valuesKey !== undefined) component.valuesKey = options.valuesKey;
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.searchable !== undefined) component.searchable = options.searchable;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.values !== undefined) component.values = options.values
+		if (options?.valuesKey !== undefined) component.valuesKey = options.valuesKey
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.searchable !== undefined) component.searchable = options.searchable
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Adds a radio button group component. */
@@ -136,12 +136,12 @@ export class FormBuilder {
 			label,
 			key,
 			values,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Adds a checkbox component. */
@@ -151,12 +151,12 @@ export class FormBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Adds a checklist component. */
@@ -172,27 +172,27 @@ export class FormBuilder {
 			label,
 			key,
 			values,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Adds a group component with nested children built via a callback. */
 	group(label: string, builder: (group: GroupBuilder) => void, options?: GroupOptions): this {
-		const groupBuilder = new GroupBuilder(options?.id);
-		builder(groupBuilder);
+		const groupBuilder = new GroupBuilder(options?.id)
+		builder(groupBuilder)
 		const component: FormGroupComponent = {
 			type: "group",
 			id: groupBuilder._id,
 			label,
 			components: groupBuilder._components,
-		};
-		if (options?.showOutline !== undefined) component.showOutline = options.showOutline;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.showOutline !== undefined) component.showOutline = options.showOutline
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	/** Builds the final FormDefinition. */
@@ -201,29 +201,29 @@ export class FormBuilder {
 			id: this._id,
 			type: this._type,
 			components: this._components,
-		};
+		}
 		if (this._executionPlatform !== undefined) {
-			definition.executionPlatform = this._executionPlatform;
+			definition.executionPlatform = this._executionPlatform
 		}
 		if (this._executionPlatformVersion !== undefined) {
-			definition.executionPlatformVersion = this._executionPlatformVersion;
+			definition.executionPlatformVersion = this._executionPlatformVersion
 		}
-		if (this._exporter !== undefined) definition.exporter = this._exporter;
-		if (this._schemaVersion !== undefined) definition.schemaVersion = this._schemaVersion;
-		if (this._generated !== undefined) definition.generated = this._generated;
-		return definition;
+		if (this._exporter !== undefined) definition.exporter = this._exporter
+		if (this._schemaVersion !== undefined) definition.schemaVersion = this._schemaVersion
+		if (this._generated !== undefined) definition.generated = this._generated
+		return definition
 	}
 }
 
 /** Sub-builder for group components. Supports the same component methods as FormBuilder. */
 export class GroupBuilder {
 	/** @internal */
-	readonly _id: string;
+	readonly _id: string
 	/** @internal */
-	readonly _components: FormComponent[] = [];
+	readonly _components: FormComponent[] = []
 
 	constructor(id?: string) {
-		this._id = id ?? generateId("Field");
+		this._id = id ?? generateId("Field")
 	}
 
 	text(text: string, options?: { id?: string; label?: string; layout?: FormLayout }): this {
@@ -231,11 +231,11 @@ export class GroupBuilder {
 			type: "text",
 			id: options?.id ?? generateId("Field"),
 			text,
-		};
-		if (options?.label !== undefined) component.label = options.label;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.label !== undefined) component.label = options.label
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	textfield(label: string, key: string, options?: TextFieldOptions): this {
@@ -244,12 +244,12 @@ export class GroupBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	textarea(label: string, key: string, options?: TextFieldOptions): this {
@@ -258,12 +258,12 @@ export class GroupBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	select(label: string, key: string, options?: SelectOptions): this {
@@ -272,15 +272,15 @@ export class GroupBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.values !== undefined) component.values = options.values;
-		if (options?.valuesKey !== undefined) component.valuesKey = options.valuesKey;
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.searchable !== undefined) component.searchable = options.searchable;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.values !== undefined) component.values = options.values
+		if (options?.valuesKey !== undefined) component.valuesKey = options.valuesKey
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.searchable !== undefined) component.searchable = options.searchable
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	radio(label: string, key: string, values: FormValueOption[], options?: RadioOptions): this {
@@ -290,12 +290,12 @@ export class GroupBuilder {
 			label,
 			key,
 			values,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	checkbox(label: string, key: string, options?: CheckboxOptions): this {
@@ -304,12 +304,12 @@ export class GroupBuilder {
 			id: options?.id ?? generateId("Field"),
 			label,
 			key,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	checklist(
@@ -324,74 +324,74 @@ export class GroupBuilder {
 			label,
 			key,
 			values,
-		};
-		if (options?.validate !== undefined) component.validate = options.validate;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.validate !== undefined) component.validate = options.validate
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 
 	group(label: string, builder: (group: GroupBuilder) => void, options?: GroupOptions): this {
-		const groupBuilder = new GroupBuilder(options?.id);
-		builder(groupBuilder);
+		const groupBuilder = new GroupBuilder(options?.id)
+		builder(groupBuilder)
 		const component: FormGroupComponent = {
 			type: "group",
 			id: groupBuilder._id,
 			label,
 			components: groupBuilder._components,
-		};
-		if (options?.showOutline !== undefined) component.showOutline = options.showOutline;
-		if (options?.layout !== undefined) component.layout = options.layout;
-		this._components.push(component);
-		return this;
+		}
+		if (options?.showOutline !== undefined) component.showOutline = options.showOutline
+		if (options?.layout !== undefined) component.layout = options.layout
+		this._components.push(component)
+		return this
 	}
 }
 
 /** Options for textfield/textarea components. */
 export interface TextFieldOptions {
-	id?: string;
-	validate?: FormValidation;
-	defaultValue?: string;
-	layout?: FormLayout;
+	id?: string
+	validate?: FormValidation
+	defaultValue?: string
+	layout?: FormLayout
 }
 
 /** Options for select components. */
 export interface SelectOptions {
-	id?: string;
-	values?: FormValueOption[];
-	valuesKey?: string;
-	validate?: FormValidation;
-	searchable?: boolean;
-	defaultValue?: string;
-	layout?: FormLayout;
+	id?: string
+	values?: FormValueOption[]
+	valuesKey?: string
+	validate?: FormValidation
+	searchable?: boolean
+	defaultValue?: string
+	layout?: FormLayout
 }
 
 /** Options for radio components. */
 export interface RadioOptions {
-	id?: string;
-	validate?: FormValidation;
-	defaultValue?: string;
-	layout?: FormLayout;
+	id?: string
+	validate?: FormValidation
+	defaultValue?: string
+	layout?: FormLayout
 }
 
 /** Options for checkbox components. */
 export interface CheckboxOptions {
-	id?: string;
-	validate?: FormValidation;
-	defaultValue?: boolean;
-	layout?: FormLayout;
+	id?: string
+	validate?: FormValidation
+	defaultValue?: boolean
+	layout?: FormLayout
 }
 
 /** Options for checklist components. */
 export interface ChecklistOptions {
-	id?: string;
-	validate?: FormValidation;
-	layout?: FormLayout;
+	id?: string
+	validate?: FormValidation
+	layout?: FormLayout
 }
 
 /** Options for group components. */
 export interface GroupOptions {
-	id?: string;
-	showOutline?: boolean;
-	layout?: FormLayout;
+	id?: string
+	showOutline?: boolean
+	layout?: FormLayout
 }

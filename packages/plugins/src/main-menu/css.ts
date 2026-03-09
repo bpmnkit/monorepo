@@ -1,4 +1,4 @@
-export const MAIN_MENU_STYLE_ID = "bpmn-main-menu-styles-v2";
+export const MAIN_MENU_STYLE_ID = "bpmn-main-menu-styles-v2"
 
 export const MAIN_MENU_CSS = `
 .bpmn-main-menu-panel {
@@ -259,13 +259,13 @@ export const MAIN_MENU_CSS = `
 [data-bpmn-hud-theme="dark"] .bpmn-menu-item-check {
   color: #89b4fa;
 }
-`;
+`
 
 export function injectMainMenuStyles(): void {
-	if (typeof document === "undefined") return;
-	if (document.getElementById(MAIN_MENU_STYLE_ID)) return;
-	const style = document.createElement("style");
-	style.id = MAIN_MENU_STYLE_ID;
-	style.textContent = MAIN_MENU_CSS;
-	document.head.appendChild(style);
+	if (typeof document === "undefined") return
+	if (document.getElementById(MAIN_MENU_STYLE_ID)) return
+	const style = document.createElement("style")
+	style.id = MAIN_MENU_STYLE_ID
+	style.textContent = MAIN_MENU_CSS
+	document.head.appendChild(style)
 }

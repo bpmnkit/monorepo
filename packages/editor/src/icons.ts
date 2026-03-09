@@ -81,4 +81,4 @@ export const IC = {
 
 	// ── AI / assistant ──────────────────────────────────────────────────
 	sparkle: `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 2L9.1 5.9 13 7l-3.9 1.1L8 12 6.9 8.1 3 7l3.9-1.1L8 2z"/><circle cx="12.5" cy="3" r="1" opacity="0.5"/><circle cx="3.5" cy="12.5" r="0.75" opacity="0.4"/></svg>`,
-};
+}

@@ -1,8 +1,8 @@
-import type { APIRoute } from "astro";
-import { CODE, FEATURES, PACKAGES, SITE } from "../data/content";
+import type { APIRoute } from "astro"
+import { CODE, FEATURES, PACKAGES, SITE } from "../data/content"
 
-const packageList = PACKAGES.map((p) => `- [${p.name}](${p.url}): ${p.description}`).join("\n");
-const featureList = FEATURES.map((f) => `- ${f}`).join("\n");
+const packageList = PACKAGES.map((p) => `- [${p.name}](${p.url}): ${p.description}`).join("\n")
+const featureList = FEATURES.map((f) => `- ${f}`).join("\n")
 
 const content = `\
 # ${SITE.name} — Full Content
@@ -139,9 +139,9 @@ ${CODE.deployRun}
 - GitHub: ${SITE.github}
 - npm: ${SITE.npm}
 - Compact index (llms.txt): ${SITE.url}/llms.txt
-`;
+`
 
 export const GET: APIRoute = () =>
 	new Response(content, {
 		headers: { "Content-Type": "text/plain; charset=utf-8" },
-	});
+	})
