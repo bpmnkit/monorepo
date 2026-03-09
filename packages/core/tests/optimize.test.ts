@@ -746,3 +746,262 @@ describe("optimize()", () => {
 		})
 	})
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Naming rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+function namedEl(
+	id: string,
+	type: string,
+	name: string,
+	incoming: string[] = [],
+	outgoing: string[] = [],
+): BpmnFlowElement {
+	return {
+		type: type as BpmnFlowElement["type"],
+		id,
+		name,
+		incoming,
+		outgoing,
+		extensionElements: [],
+		unknownAttributes: {},
+	}
+}
+
+function namedFlow(id: string, src: string, tgt: string, name?: string): BpmnSequenceFlow {
+	return { id, sourceRef: src, targetRef: tgt, name, extensionElements: [], unknownAttributes: {} }
+}
+
+describe("naming rules", () => {
+	// ── naming/unlabeled-task ────────────────────────────────────────────────
+	describe("naming/unlabeled-task", () => {
+		it("reports a task without a name", () => {
+			const proc = makeProcess(
+				"proc",
+				[startEl("s"), taskEl("t", ["f1"], ["f2"]), endEl("e", ["f2"])],
+				[flow("f1", "s", "t"), flow("f2", "t", "e")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/unlabeled-task")).toBe(true)
+		})
+
+		it("does not report a task that has a name", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					namedEl("t", "serviceTask", "Verify Invoice", ["f1"], ["f2"]),
+					endEl("e", ["f2"]),
+				],
+				[flow("f1", "s", "t"), flow("f2", "t", "e")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/unlabeled-task")).toBe(false)
+		})
+	})
+
+	// ── naming/unlabeled-start-event / end-event ─────────────────────────────
+	describe("naming/unlabeled-start-event", () => {
+		it("reports a start event without a name", () => {
+			const proc = makeProcess(
+				"proc",
+				[startEl("s"), taskEl("t", ["f1"], ["f2"]), endEl("e", ["f2"])],
+				[flow("f1", "s", "t"), flow("f2", "t", "e")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/unlabeled-start-event")).toBe(true)
+		})
+
+		it("does not report a named start event", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					namedEl("s", "startEvent", "Order Received"),
+					namedEl("t", "serviceTask", "Process Order", ["f1"], ["f2"]),
+					namedEl("e", "endEvent", "Order Fulfilled", ["f2"]),
+				],
+				[flow("f1", "s", "t"), flow("f2", "t", "e")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/unlabeled-start-event")).toBe(false)
+			expect(report.findings.some((f) => f.id === "naming/unlabeled-end-event")).toBe(false)
+		})
+	})
+
+	// ── naming/split-gateway-no-label ────────────────────────────────────────
+	describe("naming/split-gateway-no-label", () => {
+		it("reports an XOR split gateway without a name", () => {
+			const proc = makeProcess(
+				"proc",
+				[startEl("s"), gwEl("gw", ["f1"], ["f2", "f3"]), endEl("e1", ["f2"]), endEl("e2", ["f3"])],
+				[
+					flow("f1", "s", "gw"),
+					namedFlow("f2", "gw", "e1", "Yes"),
+					namedFlow("f3", "gw", "e2", "No"),
+				],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/split-gateway-no-label")).toBe(true)
+		})
+
+		it("does not report when split gateway has a question-mark name", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					namedEl("gw", "exclusiveGateway", "Invoice valid?", ["f1"], ["f2", "f3"]),
+					endEl("e1", ["f2"]),
+					endEl("e2", ["f3"]),
+				],
+				[
+					flow("f1", "s", "gw"),
+					namedFlow("f2", "gw", "e1", "Yes"),
+					namedFlow("f3", "gw", "e2", "No"),
+				],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/split-gateway-no-label")).toBe(false)
+			expect(report.findings.some((f) => f.id === "naming/gateway-not-a-question")).toBe(false)
+		})
+	})
+
+	// ── naming/gateway-not-a-question ────────────────────────────────────────
+	describe("naming/gateway-not-a-question", () => {
+		it("reports an XOR split named without a question mark", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					namedEl("gw", "exclusiveGateway", "Invoice valid", ["f1"], ["f2", "f3"]),
+					endEl("e1", ["f2"]),
+					endEl("e2", ["f3"]),
+				],
+				[
+					flow("f1", "s", "gw"),
+					namedFlow("f2", "gw", "e1", "Yes"),
+					namedFlow("f3", "gw", "e2", "No"),
+				],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/gateway-not-a-question")).toBe(true)
+		})
+	})
+
+	// ── naming/missing-flow-condition ────────────────────────────────────────
+	describe("naming/missing-flow-condition", () => {
+		it("reports outgoing flows from split gateway without labels", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					namedEl("gw", "exclusiveGateway", "Invoice valid?", ["f1"], ["f2", "f3"]),
+					endEl("e1", ["f2"]),
+					endEl("e2", ["f3"]),
+				],
+				[flow("f1", "s", "gw"), flow("f2", "gw", "e1"), flow("f3", "gw", "e2")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			const condFindings = report.findings.filter((f) => f.id === "naming/missing-flow-condition")
+			expect(condFindings.length).toBe(2)
+		})
+
+		it("does not report when all outgoing flows are labeled", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					namedEl("gw", "exclusiveGateway", "Invoice valid?", ["f1"], ["f2", "f3"]),
+					endEl("e1", ["f2"]),
+					endEl("e2", ["f3"]),
+				],
+				[
+					flow("f1", "s", "gw"),
+					namedFlow("f2", "gw", "e1", "Yes"),
+					namedFlow("f3", "gw", "e2", "No"),
+				],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/missing-flow-condition")).toBe(false)
+		})
+	})
+
+	// ── naming/join-gateway-labeled ──────────────────────────────────────────
+	describe("naming/join-gateway-labeled", () => {
+		it("reports a join-only gateway that has a label", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					namedEl("gw", "exclusiveGateway", "Join here", ["f1", "f2"], ["f3"]),
+					endEl("e", ["f3"]),
+				],
+				[flow("f1", "s", "gw"), flow("f2", "s", "gw"), flow("f3", "gw", "e")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/join-gateway-labeled")).toBe(true)
+		})
+
+		it("does not report a join-only gateway without a label", () => {
+			const proc = makeProcess(
+				"proc",
+				[startEl("s"), gwEl("gw", ["f1", "f2"], ["f3"]), endEl("e", ["f3"])],
+				[flow("f1", "s", "gw"), flow("f2", "s", "gw"), flow("f3", "gw", "e")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["naming"] })
+			expect(report.findings.some((f) => f.id === "naming/join-gateway-labeled")).toBe(false)
+		})
+	})
+
+	// ── flow/no-start-event ──────────────────────────────────────────────────
+	describe("flow/no-start-event", () => {
+		it("reports a process with no start event", () => {
+			const proc = makeProcess(
+				"proc",
+				[taskEl("t", [], ["f1"]), endEl("e", ["f1"])],
+				[flow("f1", "t", "e")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["flow"] })
+			expect(report.findings.some((f) => f.id === "flow/no-start-event")).toBe(true)
+		})
+
+		it("does not report when a start event exists", () => {
+			const proc = makeProcess("proc", [startEl("s"), endEl("e", ["f1"])], [flow("f1", "s", "e")])
+			const report = optimize(makeDefs(proc), { categories: ["flow"] })
+			expect(report.findings.some((f) => f.id === "flow/no-start-event")).toBe(false)
+		})
+	})
+
+	// ── flow/mixed-gateway ───────────────────────────────────────────────────
+	describe("flow/mixed-gateway", () => {
+		it("reports a gateway with 2+ incoming AND 2+ outgoing", () => {
+			const proc = makeProcess(
+				"proc",
+				[
+					startEl("s"),
+					gwEl("gw", ["f1", "f2"], ["f3", "f4"]),
+					endEl("e1", ["f3"]),
+					endEl("e2", ["f4"]),
+				],
+				[
+					flow("f1", "s", "gw"),
+					flow("f2", "s", "gw"),
+					flow("f3", "gw", "e1"),
+					flow("f4", "gw", "e2"),
+				],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["flow"] })
+			expect(report.findings.some((f) => f.id === "flow/mixed-gateway")).toBe(true)
+		})
+
+		it("does not report a gateway with 1 incoming and 2 outgoing (pure split)", () => {
+			const proc = makeProcess(
+				"proc",
+				[startEl("s"), gwEl("gw", ["f1"], ["f2", "f3"]), endEl("e1", ["f2"]), endEl("e2", ["f3"])],
+				[flow("f1", "s", "gw"), flow("f2", "gw", "e1"), flow("f3", "gw", "e2")],
+			)
+			const report = optimize(makeDefs(proc), { categories: ["flow"] })
+			expect(report.findings.some((f) => f.id === "flow/mixed-gateway")).toBe(false)
+		})
+	})
+})

@@ -1,6 +1,7 @@
 import type { BpmnDefinitions } from "../bpmn-model.js"
 import { analyzeFeel } from "./feel.js"
 import { analyzeFlow } from "./flow.js"
+import { analyzeNaming } from "./naming.js"
 import { analyzeTasks } from "./tasks.js"
 import type {
 	OptimizationCategory,
@@ -11,7 +12,7 @@ import type {
 	ResolvedOptions,
 } from "./types.js"
 
-const ALL_CATEGORIES: OptimizationCategory[] = ["feel", "flow", "task-reuse", "extract"]
+const ALL_CATEGORIES: OptimizationCategory[] = ["feel", "flow", "naming", "task-reuse", "extract"]
 
 function resolveOptions(opts?: OptimizeOptions): ResolvedOptions {
 	return {
@@ -36,13 +37,16 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 		if (resolved.categories.includes("flow")) {
 			findings.push(...analyzeFlow(process, resolved))
 		}
+		if (resolved.categories.includes("naming")) {
+			findings.push(...analyzeNaming(process, resolved))
+		}
 		if (resolved.categories.includes("task-reuse")) {
 			findings.push(...analyzeTasks(process, resolved))
 		}
 	}
 
 	const byCategory = Object.fromEntries(
-		(["feel", "flow", "task-reuse", "extract"] as OptimizationCategory[]).map((c) => [
+		(["feel", "flow", "naming", "task-reuse", "extract"] as OptimizationCategory[]).map((c) => [
 			c,
 			findings.filter((f) => f.category === c).length,
 		]),

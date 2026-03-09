@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-03-09 — core + AI: Camunda BPMN best-practice rules and naming conventions
+
+- **New linter category `"naming"`** (`packages/core/src/bpmn/optimize/naming.ts`): based on [Camunda BPMN best practices](https://docs.camunda.io/docs/components/best-practices/modeling/naming-bpmn-elements/):
+  - `naming/unlabeled-task` (warning) — task/activity without a name
+  - `naming/unlabeled-subprocess` (info) — sub-process without a name
+  - `naming/unlabeled-start-event` (info) — start event without a name
+  - `naming/unlabeled-end-event` (info) — end event without a name
+  - `naming/split-gateway-no-label` (warning) — XOR/inclusive split gateway without a name
+  - `naming/gateway-not-a-question` (info) — split gateway name doesn't end with "?"
+  - `naming/missing-flow-condition` (warning) — outgoing flow from split gateway has no condition label
+  - `naming/join-gateway-labeled` (info) — join-only gateway has a label (should be unlabeled)
+- **New flow rules** (`packages/core/src/bpmn/optimize/flow.ts`):
+  - `flow/no-start-event` (error) — process has no start event
+  - `flow/mixed-gateway` (warning) — gateway acts as both join AND split (2+ incoming AND 2+ outgoing)
+- **AI system prompt** (`apps/ai-server/src/prompt.ts`): added comprehensive "CAMUNDA BPMN BEST PRACTICES" section covering task/event/gateway naming conventions, structural rules (separate split/join, no mixed gateways, happy path on center line), and flow quality rules. Also improved `buildMcpImprovePrompt` with naming best-practice instructions.
+- **Tests**: 15 new tests in `optimize.test.ts` covering all new rules.
+
 ## 2026-03-09 — core: layout positioning fix for join gateways with back-edge loops
 
 - **Root cause**: join gateways (1 real outgoing flow) that are the target of a back edge (e.g. the merge point of a loop like `upload_docs` ← `request_resubmit`) had the reversed back-edge added as an extra DAG successor, making them look like split gateways. This caused `findBaselinePath` to terminate early, `distributeSplitBranches` to distribute wrong branches, and `alignSplitJoinPairs`/`ensureEarlyReturnOffBaseline` to misalign gateways.

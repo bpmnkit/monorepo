@@ -1,7 +1,7 @@
 import type { BpmnDefinitions } from "../bpmn-model.js"
 
 export type OptimizationSeverity = "info" | "warning" | "error"
-export type OptimizationCategory = "feel" | "flow" | "task-reuse" | "extract"
+export type OptimizationCategory = "feel" | "flow" | "naming" | "task-reuse" | "extract"
 
 export interface ApplyFixResult {
 	description: string

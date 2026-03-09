@@ -29,6 +29,20 @@ export function analyzeFlow(p: BpmnProcess, _opts: ResolvedOptions): Optimizatio
 	// Start IDs for BFS reachability
 	const startIds = p.flowElements.filter((e) => isStartEvent(e.type)).map((e) => e.id)
 
+	// flow/no-start-event
+	const startEvents = p.flowElements.filter((e) => isStartEvent(e.type))
+	if (startEvents.length === 0) {
+		findings.push({
+			id: "flow/no-start-event",
+			category: "flow",
+			severity: "error",
+			message: `Process "${processId}" has no start event.`,
+			suggestion: "Add a start event to define where the process begins.",
+			processId,
+			elementIds: [],
+		})
+	}
+
 	// flow/no-end-event
 	const endEvents = p.flowElements.filter((e) => isEndEvent(e.type))
 	if (endEvents.length === 0) {
@@ -283,6 +297,24 @@ export function analyzeFlow(p: BpmnProcess, _opts: ResolvedOptions): Optimizatio
 							description: `Removed redundant gateway "${gwId}" and connected "${srcId}" → "${tgtId}"`,
 						}
 					},
+				})
+			}
+		}
+
+		// flow/mixed-gateway: gateway acting as both split AND join simultaneously
+		if (isGateway(el.type)) {
+			const gwInflows = byTarget.get(el.id) ?? []
+			const gwOutflows = bySource.get(el.id) ?? []
+			if (gwInflows.length >= 2 && gwOutflows.length >= 2) {
+				findings.push({
+					id: "flow/mixed-gateway",
+					category: "flow",
+					severity: "warning",
+					message: `Gateway "${el.id}" (${el.type}) has ${gwInflows.length} incoming and ${gwOutflows.length} outgoing flows — it acts as both a join and a split simultaneously.`,
+					suggestion:
+						"Separate into two gateways: one join (merging incoming flows) followed by one split (branching outgoing flows).",
+					processId,
+					elementIds: [el.id],
 				})
 			}
 		}
