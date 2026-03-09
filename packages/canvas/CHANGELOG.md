@@ -1,5 +1,14 @@
 # @bpmn-sdk/canvas
 
+## 0.0.4
+
+### Patch Changes
+
+- [#26](https://github.com/bpmn-sdk/monorepo/pull/26) [`454f119`](https://github.com/bpmn-sdk/monorepo/commit/454f1192d919ad0397f2e1d2f24de5acb1a38156) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Docs, Logo, AI improvements
+
+- Updated dependencies [[`454f119`](https://github.com/bpmn-sdk/monorepo/commit/454f1192d919ad0397f2e1d2f24de5acb1a38156)]:
+  - @bpmn-sdk/core@0.0.4
+
 ## 0.0.3
 
 ### Patch Changes

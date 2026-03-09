@@ -1,5 +1,15 @@
 # @bpmn-sdk/desktop
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [[`454f119`](https://github.com/bpmn-sdk/monorepo/commit/454f1192d919ad0397f2e1d2f24de5acb1a38156)]:
+  - @bpmn-sdk/plugins@0.0.4
+  - @bpmn-sdk/canvas@0.0.4
+  - @bpmn-sdk/editor@0.0.4
+  - @bpmn-sdk/core@0.0.4
+
 ## 0.1.2
 
 ### Patch Changes
