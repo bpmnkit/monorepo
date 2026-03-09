@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/plugins",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -97,7 +97,10 @@
 			"types": "./dist/zoom-controls/index.d.ts"
 		}
 	},
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
