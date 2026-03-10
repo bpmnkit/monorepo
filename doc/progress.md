@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-03-10 — editor11: always re-validate all edges on element move
+
+Previously, the "neither endpoint moved" branch in `moveShapes` only checked whether a *moved* shape intersected the path — so pre-existing invalid paths (e.g. imported BPMN with bad waypoints) were left broken after moving an unrelated element.  Fix:
+
+- **`packages/editor/src/geometry.ts`**: Exported `routeEntersShape` so modeling can reuse the same validity check.
+- **`packages/editor/src/modeling.ts`** `moveShapes`: Replaced the narrow "moved-obstacles-only" check with a full validity check — `waypointsIntersectObstacles(wps, allObstacles) || routeEntersShape(wps, srcBounds) || routeEntersShape(wps, tgtBounds)`.  Any edge whose existing waypoints fail this check (obstacle intersection *or* interior traversal of src/tgt) is now re-routed on every move, regardless of whether its endpoints moved.  Removed the now-unused `movingIds` set.
+
+## 2026-03-10 — editor11: fix sequence flow routing through target/source shape interior
+
+Root cause: `computeWaypointsAvoiding` excluded the source and target shapes from the obstacle list (correct — so their connection ports aren't flagged), but this meant a path that entered the target shape's interior before reaching the port went undetected.  Example: start event directly above a service task, default route bottom→left produced a vertical segment passing through the task before entering from the left.
+
+- **`packages/editor/src/geometry.ts`**: Added `routeEntersShape(wps, shape)` — returns true if any intermediate waypoint (not first/last) lies strictly inside the shape's bounding box. `computeWaypointsAvoiding` now uses `isBlocked = waypointsIntersectObstacles || routeEntersShape(wps, src) || routeEntersShape(wps, tgt)` to reject routes that enter either endpoint shape's interior.
+- **`packages/editor/src/geometry.ts`**: Replaced the `ALL_PORTS` double-loop with a prioritised `PORT_PAIRS` list that tries straight-through pairs (`right→left`, `bottom→top`, etc.) before L-routes and U-routes.  For the reported case, `bottom→top` is now tried 3rd and found clean, producing a visually natural downward arc instead of a wide U-route around the right side.
+
+## 2026-03-10 — editor11: further improved sequence flow routing (centering + obstacle-free guarantee)
+
+- **`packages/editor/src/geometry.ts`** `computeWaypointsAvoiding`: After all 16 port-midpoint combos fail, now tries explicit bypass corridors around each blocking obstacle (above/below at `obs.y ± 30`, left/right at `obs.x ± 30`), trying all 16 port combos for each corridor lane. This makes it extremely unlikely a route falls back to the obstacle-intersecting default.
+- **`packages/editor/src/modeling.ts`** `moveShapes`: Removed the "both endpoints move → translate" optimisation. All edges where at least one endpoint moved are now always re-routed via `computeWaypointsAvoiding`, so connection points are always at the side midpoint (centered) after every move.
+- **`packages/editor/src/modeling.ts`** `deconflictPorts`: After computing the spread route with `routeOrthogonal`, now validates it against per-edge obstacles. If the spread path would pass behind a shape, falls back to `computeWaypointsAvoiding` (obstacle-free, midpoint-centered) instead of using the broken path.
+
 ## 2026-03-10 — editor11: improved sequence flow routing after element moves
 
 - **`packages/editor/src/geometry.ts`**: Extracted routing logic from `computeWaypointsWithPorts` into a new exported `routeOrthogonal(E, srcPort, P, tgtPort)` function (explicit point + direction routing). Exported `waypointsIntersectObstacles` for use in modeling. `computeWaypointsWithPorts` is now a thin wrapper over `routeOrthogonal`.

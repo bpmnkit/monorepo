@@ -18,6 +18,7 @@ import {
 	computeWaypointsAvoiding,
 	computeWaypointsWithPorts,
 	portFromWaypoint,
+	routeEntersShape,
 	routeOrthogonal,
 	waypointsIntersectObstacles,
 } from "./geometry.js"
@@ -710,8 +711,6 @@ export function moveShapes(
 		shapeBoundsMap.set(s.bpmnElement, s.bounds)
 	}
 
-	const movingIds = new Set(extendedMoveMap.keys())
-
 	const newEdges = diagram.plane.edges.map((edge) => {
 		// Handle sequence flows (search all nesting levels)
 		const flow = allFlows.get(edge.bpmnElement)
@@ -729,41 +728,23 @@ export function moveShapes(
 				.filter((s) => s.bpmnElement !== flow.sourceRef && s.bpmnElement !== flow.targetRef)
 				.map((s) => s.bounds)
 
-			if (srcMove && tgtMove) {
-				// Both endpoints moving — translate first, then re-route if an obstacle is hit
-				const translated = edge.waypoints.map((wp) => ({
-					x: wp.x + srcMove.dx,
-					y: wp.y + srcMove.dy,
-				}))
-				if (!waypointsIntersectObstacles(translated, obstacles)) {
-					return { ...edge, waypoints: translated }
-				}
-				return {
-					...edge,
-					waypoints: computeWaypointsAvoiding(srcShape.bounds, tgtShape.bounds, obstacles),
-				}
-			}
-
 			if (srcMove || tgtMove) {
-				// One endpoint moves — route avoiding obstacles
+				// At least one endpoint moved — always re-route from port midpoints so that
+				// connection points are centered on the side and obstacles are avoided.
 				return {
 					...edge,
 					waypoints: computeWaypointsAvoiding(srcShape.bounds, tgtShape.bounds, obstacles),
 				}
 			}
 
-			// Neither endpoint moves — check if a moved shape now blocks this edge
-			const movedObstacles = newShapes
-				.filter(
-					(s) =>
-						movingIds.has(s.bpmnElement) &&
-						s.bpmnElement !== flow.sourceRef &&
-						s.bpmnElement !== flow.targetRef,
-				)
-				.map((s) => s.bounds)
+			// Neither endpoint moves — validate the existing waypoints fully.
+			// This catches both: (a) a moved shape now blocking the path, and
+			// (b) pre-existing invalid paths loaded from XML that pass through
+			// a shape's interior.  Any invalid path is re-routed.
 			if (
-				movedObstacles.length > 0 &&
-				waypointsIntersectObstacles(edge.waypoints, movedObstacles)
+				waypointsIntersectObstacles(edge.waypoints, obstacles) ||
+				routeEntersShape(edge.waypoints, srcShape.bounds) ||
+				routeEntersShape(edge.waypoints, tgtShape.bounds)
 			) {
 				return {
 					...edge,
@@ -927,7 +908,23 @@ function deconflictPorts(
 		const srcPort = newSrcPorts.get(i) ?? portFromWaypoint(srcPt, srcBounds)
 		const tgtPort = newTgtPorts.get(i) ?? portFromWaypoint(tgtPt, tgtBounds)
 
-		result[i] = { ...edge, waypoints: routeOrthogonal(srcPt, srcPort, tgtPt, tgtPort) }
+		// Compute obstacles for this edge (all shapes except its src and tgt)
+		const obstacles: BpmnBounds[] = []
+		for (const [shapeId, bounds] of shapeBoundsMap) {
+			if (shapeId !== flow.sourceRef && shapeId !== flow.targetRef) {
+				obstacles.push(bounds)
+			}
+		}
+
+		const candidate = routeOrthogonal(srcPt, srcPort, tgtPt, tgtPort)
+		// If the spread route passes through an obstacle, fall back to the obstacle-avoiding
+		// route (which exits from the port midpoint, but never goes behind an element).
+		result[i] = {
+			...edge,
+			waypoints: waypointsIntersectObstacles(candidate, obstacles)
+				? computeWaypointsAvoiding(srcBounds, tgtBounds, obstacles)
+				: candidate,
+		}
 	}
 
 	return result
