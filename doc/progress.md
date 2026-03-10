@@ -1,5 +1,34 @@
 # Progress
 
+## 2026-03-10 — editor11: Landing page playground robustness fix
+
+### `apps/landing/src/scripts/playground.ts`
+- Wrapped `new BpmnCanvas()` in try/catch inside `run()` — render errors now show in `#playground-error` instead of propagating to module level and skipping example-button setup.
+
+---
+
+## 2026-03-10 — editor11: Landing page DMN/Form examples and live playground
+
+### `apps/landing/src/data/content.ts`
+- Added `CODE.dmnTable` — `Dmn.createDecisionTable()` example with inputs, outputs, and rules for a loan eligibility decision.
+- Added `CODE.formExample` — `Form.makeEmpty()` scaffold example with annotated field types.
+- Added `CODE.bpmnWithCompanions` — Full BPMN process showing `userTask` (formId) + `businessRuleTask` (decisionId + resultVariable) referencing companion files.
+- Added matching `CODE_HTML.*` highlighted versions for all three.
+
+### `apps/landing/src/pages/index.astro`
+- New **DMN & Forms** section (`#dmn-forms`): 3-tab switcher showing the DMN builder, Form scaffold, and BPMN-with-companions code examples. The BPMN tab includes a live rendered preview.
+- New **Playground** section (`#playground`): live textarea for writing `Bpmn`/`Dmn`/`Form` builder code. `Ctrl+Enter` runs and renders the resulting BPMN. 4 example presets.
+- Added nav links: DMN & Forms, Playground.
+
+### `apps/landing/src/scripts/playground.ts` (new)
+- `setupDmnTabs()` — wires the 3 tab buttons for the DMN/Forms section; lazily renders the BPMN preview on first activation.
+- `setupPlayground()` — initializes the live code playground: `new Function('Bpmn', 'Dmn', 'Form', code)` evaluation, `BpmnCanvas` rendering, error display, Tab-key indent, Ctrl+Enter shortcut, example preset buttons.
+- Both called at module load (top-level).
+
+### `apps/landing/src/styles/global.css`
+- Added styles for `.dmn-section`, `.dmn-tabs`, `.dmn-panel`, `.dmn-layout`, `.dmn-desc`, `.dmn-bpmn-preview`.
+- Added styles for `.playground-section`, `.playground-wrap`, `.pg-editor-panel`, `.pg-diagram-panel`, `#playground-code`, `#playground-error`, `.pg-example-btn`.
+
 ## 2026-03-10 — editor11: AI chat companion file generation
 
 After the AI generates and applies a BPMN diagram, the chat panel now detects referenced DMN decision tables (`businessRuleTask` with `decisionId`) and Forms (`userTask` with `formId`) and offers to scaffold and create those files as companions in the current project.

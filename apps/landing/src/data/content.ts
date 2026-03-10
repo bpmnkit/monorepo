@@ -178,6 +178,79 @@ const xml = Bpmn.export(
     .withAutoLayout()
     .build()
 );`,
+
+	dmnTable: `\
+import { Dmn } from "@bpmn-sdk/core";
+
+// Build a DMN decision table
+const dmnDefs = Dmn.createDecisionTable("Eligibility")
+  .name("Loan Eligibility")
+  .input({ label: "Credit Score", expression: "creditScore", typeRef: "integer" })
+  .input({ label: "Income", expression: "income", typeRef: "number" })
+  .output({ label: "Eligible", name: "eligible", typeRef: "boolean" })
+  .output({ label: "Max Amount", name: "maxAmount", typeRef: "number" })
+  .rule({ inputs: [">= 700", ">= 50000"], outputs: ["true", "500000"] })
+  .rule({ inputs: [">= 600", ">= 30000"], outputs: ["true", "200000"] })
+  .rule({ inputs: ["-",       "-"],       outputs: ["false", "0"] })
+  .build();
+
+const xml = Dmn.export(dmnDefs); // ✓ valid DMN 2.0 XML`,
+
+	formExample: `\
+import { Form } from "@bpmn-sdk/core";
+
+// Build a Camunda form from code
+const form = Form.makeEmpty("ApplicationForm");
+// Forms are JSON-based; extend with fields:
+// { type: "textfield", key: "applicantName", label: "Applicant Name" }
+// { type: "number",    key: "requestAmount", label: "Requested Amount" }
+// { type: "select",    key: "loanType",      label: "Loan Type",
+//     values: [{ label: "Personal", value: "personal" },
+//              { label: "Business", value: "business" }] }
+// { type: "submit",    label: "Submit Application" }
+
+const json = Form.export(form); // ✓ valid Camunda form JSON`,
+
+	bpmnWithCompanions: `\
+import { Bpmn } from "@bpmn-sdk/core";
+
+// BPMN process referencing a DMN decision and a Camunda Form
+const defs = Bpmn.createProcess("loan-application")
+  .name("Loan Application")
+  .startEvent("start", { name: "Application Received" })
+
+  // User task linked to a Camunda Form by ID
+  .userTask("collect-data", {
+    name: "Collect Applicant Data",
+    formId: "ApplicationForm",
+  })
+
+  // Business rule task evaluated by a DMN table
+  .businessRuleTask("check-eligibility", {
+    name: "Check Eligibility",
+    decisionId: "Eligibility",
+    resultVariable: "eligibilityResult",
+  })
+
+  .exclusiveGateway("gw", { name: "Eligible?" })
+  .branch("approved", (b) =>
+    b.condition("= eligibilityResult.eligible")
+      .serviceTask("disburse", {
+        name: "Disburse Loan",
+        taskType: "disburse-loan",
+      })
+      .endEvent("end-ok", { name: "Loan Approved" }),
+  )
+  .branch("rejected", (b) =>
+    b.defaultFlow()
+      .serviceTask("notify", {
+        name: "Notify Applicant",
+        taskType: "send-rejection-email",
+      })
+      .endEvent("end-rejected", { name: "Rejected" }),
+  )
+  .withAutoLayout()
+  .build();`,
 } as const
 
 // ── Code examples — HTML-highlighted (for index.astro) ────────────────────────
@@ -254,4 +327,59 @@ engine.start(<span class="str">"hello"</span>);`,
 <span class="comment">// React to lifecycle events</span>
 client.<span class="fn">on</span>(<span class="str">"request"</span>, (e) => console.log(e.method, e.url));
 client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => metrics.<span class="fn">inc</span>(<span class="str">"api.error"</span>));`,
+
+	dmnTable: `<span class="kw">import</span> { Dmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+
+<span class="comment">// Build a DMN decision table</span>
+<span class="kw">const</span> dmnDefs = Dmn.<span class="fn">createDecisionTable</span>(<span class="str">"Eligibility"</span>)
+  .<span class="fn">name</span>(<span class="str">"Loan Eligibility"</span>)
+  .<span class="fn">input</span>({ label: <span class="str">"Credit Score"</span>, expression: <span class="str">"creditScore"</span>, typeRef: <span class="str">"integer"</span> })
+  .<span class="fn">input</span>({ label: <span class="str">"Income"</span>, expression: <span class="str">"income"</span>, typeRef: <span class="str">"number"</span> })
+  .<span class="fn">output</span>({ label: <span class="str">"Eligible"</span>, name: <span class="str">"eligible"</span>, typeRef: <span class="str">"boolean"</span> })
+  .<span class="fn">output</span>({ label: <span class="str">"Max Amount"</span>, name: <span class="str">"maxAmount"</span>, typeRef: <span class="str">"number"</span> })
+  .<span class="fn">rule</span>({ inputs: [<span class="str">"&gt;= 700"</span>, <span class="str">"&gt;= 50000"</span>], outputs: [<span class="str">"true"</span>, <span class="str">"500000"</span>] })
+  .<span class="fn">rule</span>({ inputs: [<span class="str">"&gt;= 600"</span>, <span class="str">"&gt;= 30000"</span>], outputs: [<span class="str">"true"</span>, <span class="str">"200000"</span>] })
+  .<span class="fn">rule</span>({ inputs: [<span class="str">"-"</span>,       <span class="str">"-"</span>],       outputs: [<span class="str">"false"</span>, <span class="str">"0"</span>] })
+  .<span class="fn">build</span>();
+
+<span class="kw">const</span> xml = Dmn.<span class="fn">export</span>(dmnDefs); <span class="comment">// ✓ valid DMN 2.0 XML</span>`,
+
+	formExample: `<span class="kw">import</span> { Form } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+
+<span class="comment">// Scaffold a Camunda form with a specific ID</span>
+<span class="kw">const</span> form = Form.<span class="fn">makeEmpty</span>(<span class="str">"ApplicationForm"</span>);
+<span class="comment">// extend components array with typed fields:</span>
+<span class="comment">// { type: "textfield", key: "applicantName", label: "Applicant Name" }</span>
+<span class="comment">// { type: "number",    key: "requestAmount", label: "Requested Amount" }</span>
+<span class="comment">// { type: "select",    key: "loanType", label: "Loan Type",</span>
+<span class="comment">//   values: [{ label: "Personal", value: "personal" }] }</span>
+<span class="comment">// { type: "submit",    label: "Submit Application" }</span>
+
+<span class="kw">const</span> json = Form.<span class="fn">export</span>(form); <span class="comment">// ✓ valid Camunda form JSON</span>`,
+
+	bpmnWithCompanions: `<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+
+<span class="comment">// Process referencing a DMN table and a Camunda Form</span>
+<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"loan-application"</span>)
+  .<span class="fn">name</span>(<span class="str">"Loan Application"</span>)
+  .<span class="fn">startEvent</span>(<span class="str">"start"</span>, { name: <span class="str">"Application Received"</span> })
+  .<span class="fn">userTask</span>(<span class="str">"collect-data"</span>, {
+    name: <span class="str">"Collect Applicant Data"</span>,
+    formId: <span class="str">"ApplicationForm"</span>,   <span class="comment">// ← links Camunda Form</span>
+  })
+  .<span class="fn">businessRuleTask</span>(<span class="str">"check-eligibility"</span>, {
+    name: <span class="str">"Check Eligibility"</span>,
+    decisionId: <span class="str">"Eligibility"</span>,    <span class="comment">// ← links DMN table</span>
+    resultVariable: <span class="str">"eligibilityResult"</span>,
+  })
+  .<span class="fn">exclusiveGateway</span>(<span class="str">"gw"</span>, { name: <span class="str">"Eligible?"</span> })
+  .<span class="fn">branch</span>(<span class="str">"approved"</span>, b =>
+    b.<span class="fn">condition</span>(<span class="str">"= eligibilityResult.eligible"</span>)
+     .<span class="fn">serviceTask</span>(<span class="str">"disburse"</span>, { taskType: <span class="str">"disburse-loan"</span> })
+     .<span class="fn">endEvent</span>(<span class="str">"end-ok"</span>, { name: <span class="str">"Loan Approved"</span> }))
+  .<span class="fn">branch</span>(<span class="str">"rejected"</span>, b =>
+    b.<span class="fn">defaultFlow</span>()
+     .<span class="fn">serviceTask</span>(<span class="str">"notify"</span>, { taskType: <span class="str">"send-rejection-email"</span> })
+     .<span class="fn">endEvent</span>(<span class="str">"end-rejected"</span>, { name: <span class="str">"Rejected"</span> }))
+  .<span class="fn">withAutoLayout</span>().<span class="fn">build</span>();`,
 } as const

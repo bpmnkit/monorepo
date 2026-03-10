@@ -6,6 +6,9 @@ const withSdkCode = CODE_HTML.withSdk
 const createProcessCode = CODE_HTML.createProcess
 const deployRunCode = CODE_HTML.deployRun
 const apiCode = CODE_HTML.apiClient
+const dmnTableCode = CODE_HTML.dmnTable
+const formExampleCode = CODE_HTML.formExample
+const bpmnWithCompanionsCode = CODE_HTML.bpmnWithCompanions
 ---
 
 <!DOCTYPE html>
@@ -47,6 +50,8 @@ const apiCode = CODE_HTML.apiClient
       <div class="nav-links">
         <a href="#features" class="nav-link">Features</a>
         <a href="#examples" class="nav-link">Examples</a>
+        <a href="#dmn-forms" class="nav-link">DMN &amp; Forms</a>
+        <a href="#playground" class="nav-link">Playground</a>
         <a href="#api" class="nav-link">API</a>
         <a href="#cli" class="nav-link">CLI</a>
         <a href="https://bpmn-sdk-docs.pages.dev" class="nav-link">Docs</a>
@@ -484,6 +489,175 @@ const apiCode = CODE_HTML.apiClient
     </div>
   </section>
 
+  <!-- ── DMN & Forms ─────────────────────────────────────────────────────── -->
+  <section class="dmn-section" id="dmn-forms">
+    <div class="section-wrap">
+      <div class="section-eyebrow">DMN &amp; Forms</div>
+      <h2 class="section-h2">Beyond BPMN — decisions<br>and forms, too</h2>
+      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
+        The same fluent builder pattern works for DMN decision tables and Camunda Forms.
+        Reference them directly from your BPMN process.
+      </p>
+
+      <!-- Tab buttons -->
+      <div class="dmn-tabs" role="tablist">
+        <button class="dmn-tab active" data-tab="dmn" role="tab">DMN Decision Table</button>
+        <button class="dmn-tab" data-tab="form" role="tab">Camunda Form</button>
+        <button class="dmn-tab" data-tab="bpmn" role="tab">BPMN with DMN + Form</button>
+      </div>
+
+      <div class="dmn-panels">
+
+        <!-- DMN panel -->
+        <div class="dmn-panel active" data-panel="dmn">
+          <div class="dmn-layout">
+            <div class="dmn-code-panel">
+              <div class="diagram-topbar">
+                <span class="tb-dot tb-red"></span>
+                <span class="tb-dot tb-yellow"></span>
+                <span class="tb-dot tb-green"></span>
+                <span class="tb-title">eligibility.ts</span>
+              </div>
+              <div class="dmn-code-body">
+                <pre><code set:html={dmnTableCode}></code></pre>
+              </div>
+            </div>
+            <div class="dmn-desc">
+              <h3>DMN Decision Tables</h3>
+              <p>Build DMN decision tables with a fluent API. Define inputs, outputs, and rules —
+              the SDK generates valid DMN 2.0 XML with auto-computed DMNDI layout.</p>
+              <div class="dmn-chips">
+                <span class="dmn-chip">Fluent builder</span>
+                <span class="dmn-chip">DMN 2.0 XML export</span>
+                <span class="dmn-chip">Auto-layout DMNDI</span>
+                <span class="dmn-chip">Hit policies</span>
+                <span class="dmn-chip">FEEL type refs</span>
+                <span class="dmn-chip">Compact AI format</span>
+              </div>
+              <p style="font-size:13px; color:oklch(52% 0.06 280);">
+                Use <code>Dmn.createDecisionTable(id)</code> to build decision tables,
+                <code>Dmn.export(defs)</code> to serialize to XML, and
+                <code>Dmn.layout(defs)</code> to assign diagram positions automatically.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form panel -->
+        <div class="dmn-panel" data-panel="form">
+          <div class="dmn-layout">
+            <div class="dmn-code-panel">
+              <div class="diagram-topbar">
+                <span class="tb-dot tb-red"></span>
+                <span class="tb-dot tb-yellow"></span>
+                <span class="tb-dot tb-green"></span>
+                <span class="tb-title">application-form.ts</span>
+              </div>
+              <div class="dmn-code-body">
+                <pre><code set:html={formExampleCode}></code></pre>
+              </div>
+            </div>
+            <div class="dmn-desc">
+              <h3>Camunda Forms</h3>
+              <p>Scaffold Camunda form JSON from code. Use <code>Form.makeEmpty(id)</code>
+              to get a baseline form structure, then extend it with typed fields for
+              text inputs, numbers, dropdowns, and more.</p>
+              <div class="dmn-chips">
+                <span class="dmn-chip">Form JSON export</span>
+                <span class="dmn-chip">textfield / number / select</span>
+                <span class="dmn-chip">Schema version 16</span>
+                <span class="dmn-chip">Compact AI format</span>
+                <span class="dmn-chip">Round-trip fidelity</span>
+              </div>
+              <p style="font-size:13px; color:oklch(52% 0.06 280);">
+                After applying a BPMN from the AI chat, the editor automatically detects
+                referenced forms and DMN tables and offers to scaffold them as companion files.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- BPMN with companions panel -->
+        <div class="dmn-panel" data-panel="bpmn">
+          <div class="dmn-layout">
+            <div class="dmn-code-panel">
+              <div class="diagram-topbar">
+                <span class="tb-dot tb-red"></span>
+                <span class="tb-dot tb-yellow"></span>
+                <span class="tb-dot tb-green"></span>
+                <span class="tb-title">loan-application.ts</span>
+              </div>
+              <div class="dmn-code-body">
+                <pre><code set:html={bpmnWithCompanionsCode}></code></pre>
+              </div>
+            </div>
+            <div class="dmn-desc">
+              <h3>BPMN with DMN &amp; Form references</h3>
+              <p>Link your BPMN process to a DMN decision table via
+              <code>businessRuleTask</code> and to a Camunda Form via
+              <code>userTask</code>. Both use Zeebe extension attributes
+              so the process is immediately deployable to Camunda 8.</p>
+              <div class="dmn-chips">
+                <span class="dmn-chip">userTask → formId</span>
+                <span class="dmn-chip">businessRuleTask → decisionId</span>
+                <span class="dmn-chip">resultVariable</span>
+                <span class="dmn-chip">Camunda 8 / Zeebe</span>
+                <span class="dmn-chip">Auto-layout</span>
+              </div>
+              <div id="dmn-bpmn-preview" class="dmn-bpmn-preview"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /.dmn-panels -->
+    </div>
+  </section>
+
+  <!-- ── Playground ───────────────────────────────────────────────────────── -->
+  <section class="playground-section" id="playground">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Playground</div>
+      <h2 class="section-h2">Try the builder API<br>live in your browser</h2>
+      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
+        Write <code>Bpmn</code>, <code>Dmn</code>, and <code>Form</code> builder expressions.
+        Press <kbd>Ctrl+Enter</kbd> (or <kbd>⌘ Enter</kbd>) to render.
+      </p>
+
+      <div class="playground-wrap">
+        <!-- Editor -->
+        <div class="pg-editor-panel">
+          <div class="pg-topbar">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="pg-topbar-title">playground.ts</span>
+            <span class="pg-shortcut">Ctrl+Enter to run</span>
+            <button class="pg-run-btn" id="playground-run">▶ Run</button>
+          </div>
+          <textarea id="playground-code" spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
+          <div id="playground-error"></div>
+        </div>
+
+        <!-- Preview -->
+        <div class="pg-diagram-panel">
+          <div class="diagram-topbar">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="tb-title">Live Preview</span>
+          </div>
+          <div id="playground-diagram"></div>
+        </div>
+      </div>
+
+      <!-- Example presets -->
+      <div class="pg-examples">
+        <div class="pg-examples-label">Examples</div>
+        <div id="playground-examples"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── Footer ───────────────────────────────────────────────────────────── -->
   <footer class="footer">
     <div class="footer-inner">
@@ -510,6 +684,7 @@ const apiCode = CODE_HTML.apiClient
   <script>
     import "../scripts/main.ts";
     import "../scripts/cli-anim.ts";
+    import "../scripts/playground.ts";
   </script>
 </body>
 </html>

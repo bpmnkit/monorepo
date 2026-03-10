@@ -1,12 +1,22 @@
 # Features
 
+## Landing page DMN/Form examples and live playground (2026-03-10) — `apps/landing`
+
+- **DMN & Forms section**: New landing page section with 3-tab showcase — DMN decision table builder, Camunda Form scaffold, and a full BPMN process referencing both (userTask → formId, businessRuleTask → decisionId).
+- **Live playground**: New interactive section where visitors write `Bpmn` / `Dmn` / `Form` builder code in a textarea and see the rendered BPMN diagram update instantly. `Ctrl+Enter` to run. Tab key inserts spaces. 4 example presets (linear flow, approval flow, DMN+Form, parallel gateway). Renders via `BpmnCanvas`.
+- **AI companion file offer**: After applying an AI-generated BPMN with `businessRuleTask` or `userTask` references, the chat offers to scaffold the referenced DMN / Form files and open them as new tabs.
+
 ## DMN/Form layout, compact format, and MCP multi-type support (2026-03-10) — `packages/core`, `apps/ai-server`
 
+- **DMN fluent builder**: `Dmn.createDecisionTable(id)` → `.name()` → `.input({ label, expression, typeRef })` → `.output({ label, name, typeRef })` → `.rule({ inputs, outputs })` → `.hitPolicy()` → `.build()`. Produces a `DmnDefinitions` object serializable via `Dmn.export(defs)`.
 - **DMN auto-layout**: `layoutDmn(defs)` assigns DMNDI positions to all DRG elements using a left-to-right layered layout based on the requirement DAG. Sizes: decision=180×80, inputData=125×45, knowledgeSource=100×63, BKM=160×80. Exposed as `Dmn.layout()`.
+- **DMN parse/export**: `Dmn.parse(xml)` → `DmnDefinitions`; `Dmn.export(defs)` → XML string. `Dmn.makeEmpty()` creates a minimal DmnDefinitions with one empty decision table.
 - **DMN benchmark**: `benchmarkDmnLayout(xml, fileName)` compares auto-layout vs reference DMNDI. Exported from `@bpmn-sdk/core`.
 - **DMN compact format**: `compactifyDmn(defs) → CompactDmn` / `expandDmn(compact) → DmnDefinitions` — token-efficient AI format. Exposed as `Dmn.compactify()` / `Dmn.expand()`.
+- **Form scaffold**: `Form.makeEmpty(id?)` creates a minimal `FormDefinition` (schemaVersion 16, submit button). Extend `components` array with typed field objects.
 - **Form compact format**: `compactifyForm(def) → CompactForm` / `expandForm(compact) → FormDefinition`. Exposed as `Form.compactify()` / `Form.expand()`.
-- **Form.makeEmpty()**: creates a minimal valid FormDefinition (analogous to `Bpmn.makeEmpty()` / `Dmn.makeEmpty()`).
+- **Form parse/export**: `Form.parse(json)` → `FormDefinition`; `Form.export(def)` → JSON string.
+- **BPMN cross-references**: `Bpmn.createProcess()` builder supports `userTask(id, { formId })` (links Camunda Form via zeebe:formDefinition) and `businessRuleTask(id, { decisionId, resultVariable })` (links DMN via zeebe:calledDecision).
 - **MCP server multi-type**: `mcp-server.ts` now detects file type from content (BPMN/DMN/Form), exposes type-appropriate tool sets, and saves in the correct format. `compose_diagram` Bridge API works for all three types.
 - **Bench script extended**: `scripts/bench-layout.mjs` processes `.bpmn`, `.dmn`, and `.form` files with type-specific reporting and summary.
 
