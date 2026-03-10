@@ -727,6 +727,23 @@ export class BpmnEditor {
 		this._setSelection(this._shapes.map((s) => s.id))
 	}
 
+	paste(): void {
+		this._doPaste()
+	}
+
+	/** Pans the viewport to center on the element with the given id (preserves zoom). */
+	scrollToElement(id: string): void {
+		const shape = this._shapes.find((s) => s.id === id)
+		if (!shape) return
+		const { x, y, width, height } = shape.shape.bounds
+		const cx = x + width / 2
+		const cy = y + height / 2
+		const svgW = this._svg.clientWidth
+		const svgH = this._svg.clientHeight
+		const { scale } = this._viewport.state
+		this._viewport.set({ tx: svgW / 2 - cx * scale, ty: svgH / 2 - cy * scale, scale })
+	}
+
 	on<K extends keyof EditorEvents>(event: K, handler: EditorEvents[K]): () => void {
 		let set = this._listeners.get(event)
 		if (!set) {

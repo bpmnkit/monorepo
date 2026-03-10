@@ -1655,6 +1655,7 @@ export function initEditorHud(
 
 	function setSimulationActive(active: boolean): void {
 		simBannerEl.classList.toggle("hidden", !active)
+		document.body.classList.toggle("bpmn-sim-active", active)
 	}
 
 	// ── Editor event subscriptions ─────────────────────────────────────────────
@@ -1730,53 +1731,81 @@ export function initEditorHud(
 
 	// ── Right-click context menu ────────────────────────────────────────────────
 
+	function makeCtxItem(icon: string, label: string, onClick: () => void): HTMLButtonElement {
+		const btn = document.createElement("button")
+		btn.className = "drop-item"
+		btn.innerHTML = `<span class="di-check"></span><span class="di-icon">${icon}</span><span>${label}</span>`
+		btn.addEventListener("click", onClick)
+		return btn
+	}
+
+	function openCtxMenu(x: number, y: number): void {
+		ctxMenuEl.style.top = `${y}px`
+		ctxMenuEl.style.left = `${x}px`
+		ctxMenuEl.style.right = "auto"
+		ctxMenuEl.style.bottom = "auto"
+		ctxMenuEl.classList.add("open")
+		openDropdown = ctxMenuEl
+		// Clamp to viewport after render
+		requestAnimationFrame(() => {
+			const r = ctxMenuEl.getBoundingClientRect()
+			if (r.right > window.innerWidth - 4) ctxMenuEl.style.left = `${x - r.width}px`
+			if (r.bottom > window.innerHeight - 4) ctxMenuEl.style.top = `${y - r.height}px`
+		})
+	}
+
 	editor.container.addEventListener("contextmenu", (e) => {
 		e.preventDefault()
+		ctxMenuEl.innerHTML = ""
+
 		const id = selectedIds[0]
-		if (!id) return
+		if (!id) {
+			// Empty canvas — show canvas-level actions
+			ctxMenuEl.appendChild(
+				makeCtxItem(IC.select, "Select all", () => {
+					editor.selectAll()
+					closeAllDropdowns()
+				}),
+			)
+			ctxMenuEl.appendChild(
+				makeCtxItem(IC.duplicate, "Paste", () => {
+					editor.paste()
+					closeAllDropdowns()
+				}),
+			)
+			openCtxMenu(e.clientX, e.clientY)
+			return
+		}
+
 		const elemType = editor.getElementType(id)
 		if (!elemType) return
 
-		ctxMenuEl.innerHTML = ""
-
 		if (elemType !== "sequenceFlow") {
-			const editLabelBtn = document.createElement("button")
-			editLabelBtn.className = "drop-item"
-			editLabelBtn.innerHTML = `<span class="di-check"></span><span class="di-icon">${IC.labelPos}</span><span>Edit label</span>`
-			editLabelBtn.addEventListener("click", () => {
-				editor.editLabel(id)
-				closeAllDropdowns()
-			})
-			ctxMenuEl.appendChild(editLabelBtn)
+			ctxMenuEl.appendChild(
+				makeCtxItem(IC.labelPos, "Edit label", () => {
+					editor.editLabel(id)
+					closeAllDropdowns()
+				}),
+			)
 			const sep = document.createElement("div")
 			sep.className = "drop-sep"
 			ctxMenuEl.appendChild(sep)
 		}
 
-		const dupCtxBtn = document.createElement("button")
-		dupCtxBtn.className = "drop-item"
-		dupCtxBtn.innerHTML = `<span class="di-check"></span><span class="di-icon">${IC.duplicate}</span><span>Duplicate</span>`
-		dupCtxBtn.addEventListener("click", () => {
-			editor.duplicate()
-			closeAllDropdowns()
-		})
-		ctxMenuEl.appendChild(dupCtxBtn)
+		ctxMenuEl.appendChild(
+			makeCtxItem(IC.duplicate, "Duplicate", () => {
+				editor.duplicate()
+				closeAllDropdowns()
+			}),
+		)
+		ctxMenuEl.appendChild(
+			makeCtxItem(IC.trash, "Delete", () => {
+				editor.deleteSelected()
+				closeAllDropdowns()
+			}),
+		)
 
-		const delCtxBtn = document.createElement("button")
-		delCtxBtn.className = "drop-item"
-		delCtxBtn.innerHTML = `<span class="di-check"></span><span class="di-icon">${IC.trash}</span><span>Delete</span>`
-		delCtxBtn.addEventListener("click", () => {
-			editor.deleteSelected()
-			closeAllDropdowns()
-		})
-		ctxMenuEl.appendChild(delCtxBtn)
-
-		ctxMenuEl.style.top = `${e.clientY}px`
-		ctxMenuEl.style.left = `${e.clientX}px`
-		ctxMenuEl.style.right = "auto"
-		ctxMenuEl.style.bottom = "auto"
-		ctxMenuEl.classList.add("open")
-		openDropdown = ctxMenuEl
+		openCtxMenu(e.clientX, e.clientY)
 	})
 
 	// ── Element search (Ctrl+F) ─────────────────────────────────────────────────
@@ -1800,6 +1829,19 @@ export function initEditorHud(
 		editor.setSelection([])
 	}
 
+	function selectSearchMatch(id: string): void {
+		editor.setSelection([id])
+		editor.scrollToElement(id)
+	}
+
+	function updateSearchCount(): void {
+		if (searchMatches.length === 0) {
+			searchCount.textContent = searchInput.value.trim() ? "No matches" : ""
+		} else {
+			searchCount.textContent = `${searchMatchIdx + 1} of ${searchMatches.length}`
+		}
+	}
+
 	function runSearch(): void {
 		const q = searchInput.value.trim().toLowerCase()
 		if (!q) {
@@ -1821,11 +1863,10 @@ export function initEditorHud(
 		}
 		searchMatches = ids
 		searchMatchIdx = 0
-		searchCount.textContent =
-			ids.length > 0 ? `${ids.length} match${ids.length === 1 ? "" : "es"}` : "No matches"
-		if (ids.length > 0) {
-			const firstId = ids[0]
-			if (firstId) editor.setSelection([firstId])
+		updateSearchCount()
+		const firstId = ids[0]
+		if (firstId) {
+			selectSearchMatch(firstId)
 		} else {
 			editor.setSelection([])
 		}
@@ -1842,13 +1883,14 @@ export function initEditorHud(
 			if (searchMatches.length > 0) {
 				searchMatchIdx = (searchMatchIdx + 1) % searchMatches.length
 				const nextId = searchMatches[searchMatchIdx]
-				if (nextId) editor.setSelection([nextId])
+				updateSearchCount()
+				if (nextId) selectSearchMatch(nextId)
 			}
 		}
 	})
 	searchClose.addEventListener("click", closeSearch)
 
-	// ── Keyboard shortcut: Ctrl+D to duplicate, Ctrl+F to search ───────────────
+	// ── Keyboard shortcuts: Ctrl+D duplicate, Ctrl+F search, Ctrl+Shift+? shortcuts ──
 
 	document.addEventListener("keydown", (e) => {
 		if ((e.ctrlKey || e.metaKey) && e.key === "d") {
@@ -1862,6 +1904,10 @@ export function initEditorHud(
 			} else {
 				closeSearch()
 			}
+		}
+		if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "?") {
+			e.preventDefault()
+			shortcutsModal.classList.remove("hidden")
 		}
 	})
 

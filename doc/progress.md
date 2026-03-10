@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-03-10 — editor11: Editor UX/UI follow-up fixes
+
+### `packages/editor/src/editor.ts`
+- Added `paste()` public method (calls internal `_doPaste`).
+- Added `scrollToElement(id)` public method — pans viewport to center element at current zoom.
+
+### `packages/editor/src/hud.ts`
+- Context menu: viewport clamping via `requestAnimationFrame` — no more off-screen overflow at right/bottom edges.
+- Context menu: right-clicking empty canvas now shows "Select All" and "Paste" options.
+- Context menu: refactored into `makeCtxItem` helper and `openCtxMenu` helper.
+- Element search: shows "N of M" counter during Enter navigation (was showing total count only).
+- Element search: calls `editor.scrollToElement(id)` so canvas pans to matched element.
+- Keyboard shortcuts: added `Ctrl+Shift+?` handler to open the shortcuts modal.
+- Simulation banner: toggles `bpmn-sim-active` class on `document.body`.
+
+### `packages/editor/src/css.ts`
+- Added `body.bpmn-sim-active #hud-top-center { top: 36px }` — top toolbar shifts down when simulation banner is visible.
+
+---
+
 ## 2026-03-10 — editor11: Editor UX/UI improvements
 
 ### `packages/editor/src/state-machine.ts`

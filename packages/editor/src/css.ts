@@ -561,6 +561,9 @@ export const HUD_CSS = `
 }
 #hud-top-center::-webkit-scrollbar { display: none; }
 
+/* ── Push HUD toolbar down when simulation banner is visible ─────── */
+body.bpmn-sim-active #hud-top-center { top: 36px; }
+
 /* ── Simulation active banner ────────────────────────────────────── */
 #bpmn-sim-banner {
   position: fixed;
