@@ -158,6 +158,111 @@ const EXAMPLE_SNIPPETS: Array<{ label: string; code: string }> = [
 	},
 ]
 
+// ── Syntax highlighting ──────────────────────────────────────────────────────
+
+function esc(s: string): string {
+	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
+function isAlpha(c: string): boolean {
+	return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_" || c === "$"
+}
+
+function isAlphaNum(c: string): boolean {
+	return isAlpha(c) || (c >= "0" && c <= "9")
+}
+
+const KEYWORDS = new Set([
+	"import",
+	"export",
+	"const",
+	"let",
+	"var",
+	"return",
+	"new",
+	"from",
+	"function",
+	"if",
+	"else",
+	"for",
+	"of",
+	"in",
+	"true",
+	"false",
+	"null",
+	"undefined",
+	"class",
+	"extends",
+	"async",
+	"await",
+	"type",
+	"interface",
+])
+
+function tokenize(raw: string): string {
+	let out = ""
+	let i = 0
+	const len = raw.length
+
+	while (i < len) {
+		const c = raw.charAt(i)
+
+		// Line comment
+		if (c === "/" && raw.charAt(i + 1) === "/") {
+			let j = i
+			while (j < len && raw.charAt(j) !== "\n") j++
+			out += `<span class="comment">${esc(raw.slice(i, j))}</span>`
+			i = j
+			continue
+		}
+
+		// String literals: " ' `
+		if (c === '"' || c === "'" || c === "`") {
+			const quote = c
+			let j = i + 1
+			while (j < len) {
+				const qc = raw.charAt(j)
+				if (qc === "\\") {
+					j += 2
+					continue
+				}
+				if (qc === quote) {
+					j++
+					break
+				}
+				j++
+			}
+			out += `<span class="str">${esc(raw.slice(i, j))}</span>`
+			i = j
+			continue
+		}
+
+		// Identifier, keyword, or method call
+		if (isAlpha(c)) {
+			let j = i + 1
+			while (j < len && isAlphaNum(raw.charAt(j))) j++
+			const word = raw.slice(i, j)
+			// Peek past whitespace — method call if followed by "("
+			let k = j
+			while (k < len && raw.charAt(k) === " ") k++
+			if (!KEYWORDS.has(word) && raw.charAt(k) === "(") {
+				out += `<span class="fn">${esc(word)}</span>`
+			} else if (KEYWORDS.has(word)) {
+				out += `<span class="kw">${esc(word)}</span>`
+			} else {
+				out += esc(word)
+			}
+			i = j
+			continue
+		}
+
+		out += esc(c)
+		i++
+	}
+
+	return out
+}
+
 // ── Playground setup ────────────────────────────────────────────────────────
 
 function setupPlayground(): void {
@@ -169,7 +274,15 @@ function setupPlayground(): void {
 	const errEl = section.querySelector<HTMLElement>("#playground-error")
 	const diagramEl = section.querySelector<HTMLElement>("#playground-diagram")
 	const examplesEl = section.querySelector<HTMLElement>("#playground-examples")
+	const highlightEl = section.querySelector<HTMLElement>("#pg-highlight")
 	if (!textarea || !runBtn || !errEl || !diagramEl || !examplesEl) return
+
+	function highlight(): void {
+		if (!highlightEl || !textarea) return
+		highlightEl.innerHTML = `${tokenize(textarea.value)}\n`
+		highlightEl.scrollTop = textarea.scrollTop
+		highlightEl.scrollLeft = textarea.scrollLeft
+	}
 
 	let canvas: BpmnCanvas | null = null
 
@@ -226,7 +339,15 @@ function setupPlayground(): void {
 
 	// Pre-fill and run starter code
 	textarea.value = STARTER_CODE
+	highlight()
 	run()
+
+	textarea.addEventListener("input", highlight)
+	textarea.addEventListener("scroll", () => {
+		if (!highlightEl || !textarea) return
+		highlightEl.scrollTop = textarea.scrollTop
+		highlightEl.scrollLeft = textarea.scrollLeft
+	})
 
 	runBtn.addEventListener("click", run)
 	textarea.addEventListener("keydown", (e) => {
@@ -253,6 +374,7 @@ function setupPlayground(): void {
 		btn.textContent = example.label
 		btn.addEventListener("click", () => {
 			textarea.value = example.code
+			highlight()
 			run()
 		})
 		examplesEl.append(btn)

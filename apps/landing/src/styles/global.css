@@ -1928,6 +1928,18 @@ a:hover {
 .dmn-code-body code {
 	font-family: "JetBrains Mono", "Fira Code", monospace;
 }
+.dmn-code-body .kw {
+	color: #c792ea;
+}
+.dmn-code-body .str {
+	color: #c3e88d;
+}
+.dmn-code-body .fn {
+	color: var(--accent-bright);
+}
+.dmn-code-body .comment {
+	color: oklch(50% 0.05 280);
+}
 
 .dmn-desc {
 	display: flex;
@@ -1991,7 +2003,7 @@ a:hover {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: 20px;
-	align-items: start;
+	align-items: stretch;
 }
 
 .pg-editor-panel {
@@ -2037,6 +2049,39 @@ a:hover {
 	color: oklch(45% 0.05 280);
 }
 
+.pg-code-wrap {
+	flex: 1;
+	position: relative;
+	overflow: hidden;
+	min-height: 380px;
+}
+
+#pg-highlight {
+	position: absolute;
+	inset: 0;
+	padding: 16px;
+	font-family: "JetBrains Mono", "Fira Code", monospace;
+	font-size: 12.5px;
+	line-height: 1.65;
+	white-space: pre-wrap;
+	word-break: break-all;
+	pointer-events: none;
+	overflow: hidden;
+	tab-size: 2;
+}
+#pg-highlight .kw {
+	color: #c792ea;
+}
+#pg-highlight .str {
+	color: #c3e88d;
+}
+#pg-highlight .fn {
+	color: var(--accent-bright);
+}
+#pg-highlight .comment {
+	color: oklch(50% 0.05 280);
+}
+
 #playground-code {
 	font-family: "JetBrains Mono", "Fira Code", monospace;
 	font-size: 12.5px;
@@ -2046,11 +2091,15 @@ a:hover {
 	border: none;
 	outline: none;
 	resize: none;
-	color: var(--text);
+	color: transparent;
+	caret-color: var(--text);
+	position: absolute;
+	inset: 0;
 	width: 100%;
-	min-height: 380px;
+	height: 100%;
 	box-sizing: border-box;
 	tab-size: 2;
+	z-index: 1;
 }
 
 #playground-error {
@@ -2118,7 +2167,7 @@ a:hover {
 	#playground-diagram {
 		height: 300px;
 	}
-	#playground-code {
+	.pg-code-wrap {
 		min-height: 280px;
 	}
 }

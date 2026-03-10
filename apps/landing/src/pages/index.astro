@@ -634,7 +634,10 @@ const bpmnWithCompanionsCode = CODE_HTML.bpmnWithCompanions
             <span class="pg-shortcut">Ctrl+Enter to run</span>
             <button class="pg-run-btn" id="playground-run">▶ Run</button>
           </div>
-          <textarea id="playground-code" spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
+          <div class="pg-code-wrap">
+            <div id="pg-highlight" aria-hidden="true"></div>
+            <textarea id="playground-code" spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
+          </div>
           <div id="playground-error"></div>
         </div>
 

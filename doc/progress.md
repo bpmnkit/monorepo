@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-03-10 — editor11: Landing page syntax highlighting
+
+### `apps/landing/src/styles/global.css`
+- Added `.dmn-code-body .kw/.str/.fn/.comment` color rules (same palette as animated code blocks).
+- Changed `.playground-wrap { align-items: stretch }` so both panels fill equal height.
+- Added `.pg-code-wrap` (flex: 1, position: relative, overflow: hidden, min-height: 380px) — container for mirror-div highlighting.
+- Added `#pg-highlight` (position: absolute, inset: 0, pointer-events: none) with token color rules.
+- Updated `#playground-code` to `color: transparent; caret-color: var(--text); position: absolute; inset: 0; z-index: 1` so it overlays the highlight div.
+- Updated mobile media query to target `.pg-code-wrap` for min-height instead of `#playground-code`.
+
+### `apps/landing/src/pages/index.astro`
+- Wrapped `<textarea id="playground-code">` in `<div class="pg-code-wrap">` with sibling `<div id="pg-highlight" aria-hidden="true">` for mirror-div technique.
+
+### `apps/landing/src/scripts/playground.ts`
+- Added `esc()`, `isAlpha()`, `isAlphaNum()` helpers.
+- Added `tokenize(raw)` one-pass tokenizer: handles line comments, string literals (`"'``), keywords, and method calls (identifier followed by `(`).
+- Wired `highlight()` function (updates `#pg-highlight` innerHTML + syncs scroll) on `input` and `scroll` events, on initial load, and when example buttons are clicked.
+
+---
+
 ## 2026-03-10 — editor11: Fix layout overlap crash for adHocSubProcess
 
 ### `packages/core/src/layout/types.ts`
