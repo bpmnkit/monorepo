@@ -1,5 +1,17 @@
 # @bpmn-sdk/landing
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [[`42455c0`](https://github.com/bpmn-sdk/monorepo/commit/42455c00033f3526a5cffdd0f68b973a5d556fec)]:
+  - @bpmn-sdk/plugins@0.0.5
+  - @bpmn-sdk/canvas@0.0.5
+  - @bpmn-sdk/editor@0.0.5
+  - @bpmn-sdk/engine@0.1.4
+  - @bpmn-sdk/core@0.0.5
+  - @bpmn-sdk/operate@0.0.2
+
 ## 0.0.4
 
 ### Patch Changes
