@@ -4,4 +4,7 @@ export default defineConfig({
 	build: {
 		format: "file",
 	},
+	devToolbar: {
+		enabled: false,
+	},
 })
