@@ -1505,6 +1505,7 @@ a:hover {
 .cli-terminal-wrap {
 	position: relative;
 	padding-bottom: 24px;
+	min-width: 0;
 }
 
 #cli-terminal {
@@ -1832,6 +1833,10 @@ a:hover {
 	.api-section,
 	.cli-section {
 		padding: 72px 0;
+	}
+
+	#cli-terminal {
+		font-size: 10px;
 	}
 
 	.step {

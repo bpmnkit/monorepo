@@ -11,10 +11,7 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -22,6 +19,9 @@
 		"test": "vitest run"
 	},
 	"dependencies": {},
+	"description": "Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",
+	"keywords": ["feel", "dmn", "expression", "camunda", "bpmn", "typescript"],
+	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmn-sdk/monorepo"

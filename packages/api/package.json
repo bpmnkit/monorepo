@@ -11,10 +11,7 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"generate": "node scripts/generate.mjs",
 		"generate:admin": "node scripts/generate.mjs --api admin",
@@ -24,6 +21,9 @@
 		"test": "vitest run"
 	},
 	"dependencies": {},
+	"description": "TypeScript client for the Camunda 8 REST API — 180 typed operations, OAuth2, retries, and caching",
+	"keywords": ["camunda", "zeebe", "bpmn", "api", "client", "rest", "typescript"],
+	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmn-sdk/monorepo"

@@ -224,8 +224,8 @@ export const TABS_CSS = `
 }
 
 .bpmn-welcome-icon svg {
-  width: 80px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
 }
 
 .bpmn-welcome-title {

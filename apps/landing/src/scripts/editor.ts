@@ -24,13 +24,11 @@ import { createZoomControlsPlugin } from "@bpmn-sdk/plugins/zoom-controls"
 import { makeExamples } from "./examples.js"
 import { savePng, saveSvg } from "./export.js"
 
-const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <rect width="24" height="24" rx="4" fill="#0062ff"/>
-  <circle cx="5" cy="12" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
-  <line x1="7.5" y1="12" x2="9" y2="12" stroke="white" stroke-width="1.5"/>
-  <rect x="9" y="9.5" width="6" height="5" rx="1" fill="none" stroke="white" stroke-width="1.5"/>
-  <line x1="15" y1="12" x2="16.5" y2="12" stroke="white" stroke-width="1.5"/>
-  <circle cx="19" cy="12" r="2.5" fill="none" stroke="white" stroke-width="2.5"/>
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="oklch(9% 0.025 270)"/>
+  <polygon points="50,10 90,50 50,90 10,50" fill="oklch(55% 0.22 280)"/>
+  <line x1="50" y1="27" x2="50" y2="73" stroke="oklch(9% 0.025 270)" stroke-width="7.5" stroke-linecap="round"/>
+  <line x1="27" y1="50" x2="73" y2="50" stroke="oklch(9% 0.025 270)" stroke-width="7.5" stroke-linecap="round"/>
 </svg>`
 
 const IMPORT_ICON =

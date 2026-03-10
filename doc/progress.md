@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-03-10 — editor11: logo, mobile CLI fix, npm metadata
+
+- **Logo — welcome screen** (`packages/plugins/src/tabs/tabs-plugin.ts`): Replaced the old horizontal BPMN process illustration with the new gateway diamond logo (matching the favicon). Updated icon CSS from 80×40px to 48×48px (`css.ts`).
+- **Logo — watermark** (`apps/landing/src/scripts/editor.ts`): Replaced the old blue-box BPMN diagram `LOGO_SVG` with the new gateway diamond (inlined `oklch` colors matching `logo-2-gateway.svg`).
+- **Mobile CLI fix** (`apps/landing/src/styles/global.css`): Added `min-width: 0` to `.cli-terminal-wrap` to prevent CSS Grid from blowing out the viewport width due to `white-space: pre` terminal content. Added `font-size: 10px` for `#cli-terminal` at `max-width: 600px` so the 54-char lines fit narrow screens.
+- **npm metadata** (all 8 `packages/*/package.json`): Added `description`, `keywords`, and `license: "MIT"` to prevent npm search from showing raw README HTML snippets.
+- **README links** (all 8 `packages/*/README.md`): Added `[Website](https://bpmnsdk.u11g.com)` link; updated docs URL to `https://bpmnsdkdocs.u11g.com`.
+
 ## 2026-03-09 — editor + plugins: BPMN element docs sidebar tab
 
 - **`packages/plugins/src/element-docs/`** — New `element-docs` plugin (`@bpmn-sdk/plugins/element-docs`):

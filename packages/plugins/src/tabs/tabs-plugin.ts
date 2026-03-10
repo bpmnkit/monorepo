@@ -430,12 +430,10 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		const iconEl = document.createElement("div")
 		iconEl.className = "bpmn-welcome-icon"
 		iconEl.innerHTML =
-			'<svg viewBox="0 0 64 32" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-			'<circle cx="8" cy="16" r="7" fill="none" stroke="currentColor" stroke-width="2"/>' +
-			'<rect x="22" y="8" width="20" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>' +
-			'<circle cx="56" cy="16" r="7" fill="none" stroke="currentColor" stroke-width="3"/>' +
-			'<line x1="15" y1="16" x2="22" y2="16" stroke="currentColor" stroke-width="2"/>' +
-			'<line x1="42" y1="16" x2="49" y2="16" stroke="currentColor" stroke-width="2"/>' +
+			'<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
+			'<polygon points="50,10 90,50 50,90 10,50" fill="currentColor"/>' +
+			'<line x1="50" y1="27" x2="50" y2="73" style="stroke: var(--welcome-bg, #1e1e2e)" stroke-width="7.5" stroke-linecap="round"/>' +
+			'<line x1="27" y1="50" x2="73" y2="50" style="stroke: var(--welcome-bg, #1e1e2e)" stroke-width="7.5" stroke-linecap="round"/>' +
 			"</svg>"
 		inner.appendChild(iconEl)
 
