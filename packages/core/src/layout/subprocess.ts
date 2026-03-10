@@ -84,7 +84,12 @@ export function layoutSubProcesses(
 			}
 		}
 
-		childResults.push({ parentId: layoutNode.id, result: childResult })
+		childResults.push({
+			parentId: layoutNode.id,
+			result: childResult,
+			parentX: layoutNode.bounds.x,
+			parentY: layoutNode.bounds.y,
+		})
 	}
 
 	return childResults

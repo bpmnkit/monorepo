@@ -88,6 +88,9 @@ export interface LayoutEdge {
 export interface SubProcessChildResult {
 	parentId: string
 	result: LayoutResult
+	/** Subprocess position at the time children were translated to absolute coordinates. */
+	parentX: number
+	parentY: number
 }
 
 /** Complete layout result for a process. */

@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-03-10 — editor11: Fix layout overlap crash for adHocSubProcess
+
+### `packages/core/src/layout/types.ts`
+- Added `parentX: number; parentY: number` to `SubProcessChildResult` to track subprocess position when children were translated.
+
+### `packages/core/src/layout/subprocess.ts`
+- Record `parentX`/`parentY` in each `SubProcessChildResult`.
+
+### `packages/core/src/layout/layout-engine.ts`
+- Added Phase 5c: `syncSubProcessChildren` — after `resolveLayerOverlaps` (which normalizes negative Y and may shift subprocess containers), shift their children by the same delta so they remain inside the container.
+- Root cause: `resolveLayerOverlaps` normalizes negative Y on `layoutNodes` (including expanded subprocess containers), but children are stored in `childResults` and are not shifted. `assertNoOverlap` then detects that children are outside their parent.
+
+### `packages/core/tests/layout.test.ts`
+- Added regression test: adHocSubProcess with 3 disconnected children after classify task; asserts `layoutProcess` does not throw and children are inside the container.
+
+---
+
 ## 2026-03-10 — editor11: Landing page playground robustness fix
 
 ### `apps/landing/src/scripts/playground.ts`

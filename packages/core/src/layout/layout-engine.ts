@@ -14,7 +14,7 @@ import { assignLayers, groupByLayer } from "./layers.js"
 import { assertNoOverlap } from "./overlap.js"
 import { routeEdges } from "./routing.js"
 import { layoutSubProcesses } from "./subprocess.js"
-import type { LayoutNode, LayoutResult } from "./types.js"
+import type { LayoutNode, LayoutResult, SubProcessChildResult } from "./types.js"
 /**
  * Auto-layout a BPMN process using the Sugiyama/layered algorithm.
  *
@@ -102,6 +102,12 @@ export function layoutFlowNodes(
 	// Expanded subprocesses grow in-place and can overlap same-layer siblings.
 	resolveLayerOverlaps(layoutNodes)
 
+	// Phase 5c: Sync child positions to their subprocess containers.
+	// resolveLayerOverlaps (including its Y-normalization pass) may have shifted
+	// subprocess containers after their children were already translated to
+	// absolute coordinates — children must follow.
+	syncSubProcessChildren(childResults, layoutNodes)
+
 	// Phase 6: Edge routing (uses original back-edges for routing, not reversed)
 	const nodeMap = new Map<string, LayoutNode>()
 	for (const node of layoutNodes) {
@@ -176,6 +182,48 @@ function resolveSubProcessOverlaps(nodes: LayoutNode[]): void {
 				if (n.labelBounds) {
 					n.labelBounds.x += dx
 				}
+			}
+		}
+	}
+}
+
+/**
+ * After post-expansion adjustments (resolveSubProcessOverlaps, resolveLayerOverlaps),
+ * subprocess containers may have been shifted. Translate their children by the same
+ * delta so that children remain correctly positioned inside their parent.
+ */
+function syncSubProcessChildren(
+	childResults: SubProcessChildResult[],
+	layoutNodes: LayoutNode[],
+): void {
+	if (childResults.length === 0) return
+
+	const nodeMap = new Map<string, LayoutNode>()
+	for (const n of layoutNodes) nodeMap.set(n.id, n)
+
+	for (const cr of childResults) {
+		const parent = nodeMap.get(cr.parentId)
+		if (!parent) continue
+		const dx = parent.bounds.x - cr.parentX
+		const dy = parent.bounds.y - cr.parentY
+		if (dx === 0 && dy === 0) continue
+
+		for (const child of cr.result.nodes) {
+			child.bounds.x += dx
+			child.bounds.y += dy
+			if (child.labelBounds) {
+				child.labelBounds.x += dx
+				child.labelBounds.y += dy
+			}
+		}
+		for (const edge of cr.result.edges) {
+			for (const wp of edge.waypoints) {
+				wp.x += dx
+				wp.y += dy
+			}
+			if (edge.labelBounds) {
+				edge.labelBounds.x += dx
+				edge.labelBounds.y += dy
 			}
 		}
 	}

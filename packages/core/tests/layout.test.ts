@@ -806,6 +806,57 @@ describe("Layout engine (integration)", () => {
 		expect(result.nodes).toHaveLength(2)
 		expect(() => assertNoOverlap(result)).not.toThrow()
 	})
+
+	it("does not throw overlap when subprocess children shift with container after Y-normalization", () => {
+		// Regression: resolveLayerOverlaps normalizes negative Y coordinates on layoutNodes
+		// (e.g. when a tall expanded subprocess grows upward past y=0). Previously the
+		// subprocess container was shifted but its children were not, causing assertNoOverlap
+		// to report element "agent-loop" overlaps with element "think".
+		const subproc = node("agent-loop", "adHocSubProcess") as BpmnFlowElement & {
+			flowElements: BpmnFlowElement[]
+			sequenceFlows: BpmnSequenceFlow[]
+		}
+		subproc.flowElements = [
+			node("think", "serviceTask"),
+			node("act", "serviceTask"),
+			node("observe", "serviceTask"),
+		]
+		subproc.sequenceFlows = []
+
+		const process = proc(
+			"ai-support-agent",
+			[
+				node("start", "startEvent"),
+				node("classify", "serviceTask"),
+				subproc,
+				node("end", "endEvent"),
+			],
+			[
+				flow("f1", "start", "classify"),
+				flow("f2", "classify", "agent-loop"),
+				flow("f3", "agent-loop", "end"),
+			],
+		)
+
+		expect(() => layoutProcess(process)).not.toThrow()
+		const result = layoutProcess(process)
+		expect(() => assertNoOverlap(result)).not.toThrow()
+
+		// Children must be inside the container
+		const container = result.nodes.find((n) => n.id === "agent-loop")
+		const think = result.nodes.find((n) => n.id === "think")
+		expect(container).toBeDefined()
+		expect(think).toBeDefined()
+		if (!container || !think) return
+		expect(think.bounds.x).toBeGreaterThanOrEqual(container.bounds.x)
+		expect(think.bounds.y).toBeGreaterThanOrEqual(container.bounds.y)
+		expect(think.bounds.x + think.bounds.width).toBeLessThanOrEqual(
+			container.bounds.x + container.bounds.width,
+		)
+		expect(think.bounds.y + think.bounds.height).toBeLessThanOrEqual(
+			container.bounds.y + container.bounds.height,
+		)
+	})
 })
 
 describe("Branch baseline alignment", () => {
