@@ -1,3 +1,4 @@
+import { ParseError } from "../errors.js"
 import type { XmlElement } from "../types/xml-element.js"
 import { parseXml } from "../xml/xml-parser.js"
 import type {
@@ -55,7 +56,7 @@ function attr(element: XmlElement, name: string): string | undefined {
 function requiredAttr(element: XmlElement, name: string): string {
 	const value = attr(element, name)
 	if (value === undefined) {
-		throw new Error(`Missing required attribute "${name}" on <${element.name}>`)
+		throw new ParseError(`Missing required attribute "${name}" on <${element.name}>`)
 	}
 	return value
 }

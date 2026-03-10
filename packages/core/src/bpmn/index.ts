@@ -47,26 +47,99 @@ export const SAMPLE_BPMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>`
 
-/** Entry point for BPMN process operations. */
+/**
+ * Entry point for all BPMN operations — parsing, building, exporting, and
+ * creating empty diagrams.
+ *
+ * @example
+ * ```typescript
+ * import { Bpmn } from "@bpmn-sdk/core"
+ *
+ * // Parse existing XML
+ * const defs = Bpmn.parse(xml)
+ *
+ * // Build a new process
+ * const defs2 = Bpmn.createProcess("order")
+ *   .startEvent("start")
+ *   .serviceTask("task", { name: "Process", taskType: "process" })
+ *   .endEvent("end")
+ *   .withAutoLayout()
+ *   .build()
+ *
+ * const xml2 = Bpmn.export(defs2)
+ * ```
+ */
 export const Bpmn = {
-	/** Create a new BPMN process using the fluent builder API. */
+	/**
+	 * Create a new BPMN process using the fluent builder API.
+	 *
+	 * @param processId - Unique identifier for the process (used as the XML `id` attribute).
+	 *
+	 * @example
+	 * ```typescript
+	 * const defs = Bpmn.createProcess("order-process")
+	 *   .startEvent("start", { name: "Order received" })
+	 *   .serviceTask("validate", { name: "Validate", taskType: "validate-order" })
+	 *   .endEvent("end")
+	 *   .withAutoLayout()
+	 *   .build()
+	 * ```
+	 */
 	createProcess(processId: string): ProcessBuilder {
 		return new ProcessBuilder(processId)
 	},
 
-	/** Parse a BPMN XML string into a typed model. */
+	/**
+	 * Parse a BPMN 2.0 XML string into a typed {@link BpmnDefinitions} model.
+	 *
+	 * @param xml - BPMN 2.0 XML string (must contain a `<bpmn:definitions>` root).
+	 * @returns Typed definitions object.
+	 * @throws {ParseError} If the XML is malformed or a required attribute is missing.
+	 *
+	 * @example
+	 * ```typescript
+	 * import { Bpmn, ParseError } from "@bpmn-sdk/core"
+	 *
+	 * try {
+	 *   const defs = Bpmn.parse(xmlString)
+	 *   console.log(defs.processes[0].id)
+	 * } catch (err) {
+	 *   if (err instanceof ParseError) console.error(err.message)
+	 * }
+	 * ```
+	 */
 	parse(xml: string): BpmnDefinitions {
 		return parseBpmn(xml)
 	},
 
-	/** Export a typed BPMN model to XML string. */
+	/**
+	 * Serialise a {@link BpmnDefinitions} model back to BPMN 2.0 XML.
+	 *
+	 * @param definitions - The typed BPMN model to export.
+	 * @returns A BPMN 2.0 XML string.
+	 *
+	 * @example
+	 * ```typescript
+	 * const xml = Bpmn.export(defs)
+	 * fs.writeFileSync("diagram.bpmn", xml, "utf-8")
+	 * ```
+	 */
 	export(definitions: BpmnDefinitions): string {
 		return serializeBpmn(definitions)
 	},
 
 	/**
 	 * Returns a minimal valid BPMN XML string containing one process with a
-	 * single start event. Useful for "New Diagram" actions.
+	 * single start event. Useful for "New Diagram" / empty-canvas actions.
+	 *
+	 * @param processId - Process id (defaults to a random string).
+	 * @param processName - Human-readable process name (defaults to `"New Process"`).
+	 *
+	 * @example
+	 * ```typescript
+	 * const xml = Bpmn.makeEmpty("order-process", "Order Process")
+	 * editor.loadXml(xml)
+	 * ```
 	 */
 	makeEmpty(
 		processId = `Process_${Math.random().toString(36).slice(2, 9)}`,

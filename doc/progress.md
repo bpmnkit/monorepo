@@ -1,5 +1,48 @@
 # Progress
 
+## 2026-03-10 — editor11: @bpmn-sdk/core SDK improvements
+
+### `packages/core/src/errors.ts` (new)
+- Added typed error hierarchy: `BpmnSdkError` (base), `ParseError`, `ValidationError`.
+- Exported `ErrorCode` type (`"parse-error" | "validation-error"`).
+- Consumers can now `instanceof ParseError` / `instanceof ValidationError` to distinguish errors.
+
+### `packages/core/src/bpmn/type-guards.ts` (new)
+- Exported 22 type predicate functions for narrowing `BpmnFlowElement` discriminated union.
+- Group predicates: `isBpmnEvent`, `isBpmnActivity`, `isBpmnGateway`.
+- Specific predicates: `isBpmnServiceTask`, `isBpmnUserTask`, `isBpmnStartEvent`, `isBpmnExclusiveGateway`, etc.
+- All follow the pattern `(el: BpmnFlowElement): el is SpecificType`.
+
+### `packages/core/src/bpmn/utils.ts` (new)
+- Exported `findElement(defs, id)` — cross-process element lookup with sub-process recursion.
+- Exported `findElementInProcess(proc, id)` — single-process search.
+- Exported `findProcess(defs, id)` — find process by id.
+- Exported `findSequenceFlow(proc, id)` — find edge by id.
+- Exported `getElementType(defs, id)` — returns `BpmnElementType | "sequenceFlow" | undefined`.
+- Exported `getAllElements(defs)` — all top-level flow elements across all processes.
+- Exported `getZeebeExtensions(extensionElements)` — inverse of `zeebeExtensionsToXmlElements`; extracts task definition, IO mapping, task headers, properties, form definition, called decision.
+
+### `packages/core/src/bpmn/bpmn-model.ts`
+- Added JSDoc to all 30+ interface and type declarations: `BpmnDefinitions`, `BpmnProcess`, `BpmnFlowElement`, `BpmnSequenceFlow`, `BpmnElementType`, all event definition types, geometry types, DI types, root elements.
+
+### `packages/core/src/bpmn/bpmn-parser.ts`
+- `requiredAttr()` now throws `ParseError` instead of bare `Error`.
+
+### `packages/core/src/dmn/dmn-builder.ts`
+- `.rule()` now throws `ValidationError` (with `@throws` JSDoc) instead of bare `Error`.
+
+### `packages/core/src/bpmn/compact.ts`
+- Added detailed JSDoc with `@example` blocks to `compactify()` and `expand()`.
+- Added single-line JSDoc to `CompactDiagram`, `CompactProcess`, `CompactElement`, `CompactFlow`.
+
+### `packages/core/src/bpmn/index.ts`
+- Rewrote JSDoc for the `Bpmn` namespace object and all four methods (`createProcess`, `parse`, `export`, `makeEmpty`) with `@param`, `@returns`, `@throws`, and `@example` blocks.
+
+### `packages/core/src/index.ts`
+- Re-exported all new APIs: error classes, all type guards, all utility functions.
+
+---
+
 ## 2026-03-10 — editor11: Editor UX/UI follow-up fixes
 
 ### `packages/editor/src/editor.ts`

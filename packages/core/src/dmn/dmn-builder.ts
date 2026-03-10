@@ -1,3 +1,4 @@
+import { ValidationError } from "../errors.js"
 import { generateId } from "../types/id-generator.js"
 import type {
 	DmnDecision,
@@ -110,15 +111,20 @@ export class DecisionTableBuilder {
 		return this
 	}
 
-	/** Add a rule (row) to the decision table. */
+	/**
+	 * Add a rule (row) to the decision table.
+	 *
+	 * @throws {ValidationError} If the number of input or output values does not
+	 *   match the number of columns declared with `.input()` / `.output()`.
+	 */
 	rule(options: RuleOptions): this {
 		if (options.inputs.length !== this.inputColumns.length) {
-			throw new Error(
+			throw new ValidationError(
 				`Rule has ${options.inputs.length} inputs but table has ${this.inputColumns.length} input columns`,
 			)
 		}
 		if (options.outputs.length !== this.outputColumns.length) {
-			throw new Error(
+			throw new ValidationError(
 				`Rule has ${options.outputs.length} outputs but table has ${this.outputColumns.length} output columns`,
 			)
 		}

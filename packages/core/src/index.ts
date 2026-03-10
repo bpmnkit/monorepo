@@ -1,3 +1,42 @@
+export { BpmnSdkError, ParseError, ValidationError } from "./errors.js"
+export type { ErrorCode } from "./errors.js"
+export {
+	isBpmnActivity,
+	isBpmnAdHocSubProcess,
+	isBpmnBoundaryEvent,
+	isBpmnBusinessRuleTask,
+	isBpmnCallActivity,
+	isBpmnComplexGateway,
+	isBpmnEndEvent,
+	isBpmnEvent,
+	isBpmnEventBasedGateway,
+	isBpmnEventSubProcess,
+	isBpmnExclusiveGateway,
+	isBpmnGateway,
+	isBpmnInclusiveGateway,
+	isBpmnIntermediateCatchEvent,
+	isBpmnIntermediateThrowEvent,
+	isBpmnManualTask,
+	isBpmnParallelGateway,
+	isBpmnReceiveTask,
+	isBpmnScriptTask,
+	isBpmnSendTask,
+	isBpmnServiceTask,
+	isBpmnStartEvent,
+	isBpmnSubProcess,
+	isBpmnTask,
+	isBpmnTransaction,
+	isBpmnUserTask,
+} from "./bpmn/type-guards.js"
+export {
+	findElement,
+	findElementInProcess,
+	findProcess,
+	findSequenceFlow,
+	getAllElements,
+	getElementType,
+	getZeebeExtensions,
+} from "./bpmn/utils.js"
 export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export type {
 	ProcessBuilder,

@@ -16,6 +16,7 @@ import type {
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+/** A single BPMN flow node in compact form. */
 export interface CompactElement {
 	id: string
 	type: BpmnElementType
@@ -48,6 +49,7 @@ export interface CompactElement {
 	interrupting?: boolean
 }
 
+/** A sequence flow in compact form. */
 export interface CompactFlow {
 	id: string
 	from: string
@@ -57,6 +59,7 @@ export interface CompactFlow {
 	condition?: string
 }
 
+/** A single process in compact form. */
 export interface CompactProcess {
 	id: string
 	name?: string
@@ -64,6 +67,10 @@ export interface CompactProcess {
 	flows: CompactFlow[]
 }
 
+/**
+ * Token-efficient representation of a {@link BpmnDefinitions} document.
+ * Produced by {@link compactify}; restored to full form by {@link expand}.
+ */
 export interface CompactDiagram {
 	id: string
 	processes: CompactProcess[]
@@ -130,6 +137,25 @@ function compactifyElement(el: BpmnFlowElement): CompactElement {
 	return result
 }
 
+/**
+ * Converts a {@link BpmnDefinitions} model into a token-efficient
+ * {@link CompactDiagram} representation suitable for AI contexts (LLM prompts,
+ * MCP tool calls, etc.). The compact format is typically 5–15× smaller than
+ * raw BPMN XML.
+ *
+ * Use {@link expand} to restore a compact diagram back to a full model with
+ * auto-generated layout.
+ *
+ * @example
+ * ```typescript
+ * import { Bpmn, compactify, expand } from "@bpmn-sdk/core"
+ *
+ * const defs    = Bpmn.parse(xml)
+ * const compact = compactify(defs)   // send to AI
+ * const restored = expand(compact)   // get back BpmnDefinitions
+ * const xml2    = Bpmn.export(restored)
+ * ```
+ */
 export function compactify(defs: BpmnDefinitions): CompactDiagram {
 	return {
 		id: defs.id,
@@ -374,6 +400,18 @@ function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram
 	return { process, diagram: buildDiagram(compact.id, process) }
 }
 
+/**
+ * Restores a {@link CompactDiagram} (produced by {@link compactify} or an AI
+ * model) back to a full {@link BpmnDefinitions} with auto-generated layout.
+ *
+ * @example
+ * ```typescript
+ * const compact = await askAI(prompt)   // AI returns CompactDiagram JSON
+ * const defs    = expand(compact)
+ * const xml     = Bpmn.export(defs)
+ * editor.loadXml(xml)
+ * ```
+ */
 export function expand(compact: CompactDiagram): BpmnDefinitions {
 	const processes: BpmnProcess[] = []
 	const diagrams: BpmnDiagram[] = []
