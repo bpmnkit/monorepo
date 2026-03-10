@@ -124,6 +124,11 @@ export class OverlayRenderer {
 		}
 	}
 
+	/** Hide the selection indicator group while dragging; restore it after. */
+	setDragging(isDragging: boolean): void {
+		this._selectionG.style.display = isDragging ? "none" : ""
+	}
+
 	// ── Hover ports ───────────────────────────────────────────────────
 
 	setHovered(_id: string | null, _shapes: RenderedShape[]): void {

@@ -80,6 +80,7 @@ export interface EditorEvents extends CanvasEvents {
 	"diagram:change": (defs: BpmnDefinitions) => void
 	"editor:select": (ids: string[]) => void
 	"editor:tool": (tool: Tool) => void
+	"editor:drag": (dragging: boolean) => void
 }
 
 /** Label position options for events and gateways (external labels). */

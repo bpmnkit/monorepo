@@ -287,6 +287,7 @@ export function initEditorHud(
 	let currentScale = 1
 	let selectedIds: string[] = []
 	let ctxSourceId: string | null = null
+	let dragActive = false
 	let openGroupPicker: HTMLElement | null = null
 	let openDropdown: HTMLElement | null = null
 	let zoomOpen = false
@@ -1311,7 +1312,7 @@ export function initEditorHud(
 	}
 
 	function positionCfgToolbar(): void {
-		if (!ctxSourceId) {
+		if (dragActive || !ctxSourceId) {
 			cfgToolbar.style.display = "none"
 			return
 		}
@@ -1327,7 +1328,7 @@ export function initEditorHud(
 	}
 
 	function positionCtxToolbar(): void {
-		if (!ctxSourceId) {
+		if (dragActive || !ctxSourceId) {
 			ctxToolbar.style.display = "none"
 			return
 		}
@@ -1530,6 +1531,17 @@ export function initEditorHud(
 
 	editor.on("editor:tool", (tool: Tool) => {
 		updateToolActiveState(tool)
+	})
+
+	editor.on("editor:drag", (dragging: boolean) => {
+		dragActive = dragging
+		if (dragging) {
+			cfgToolbar.style.display = "none"
+			ctxToolbar.style.display = "none"
+		} else {
+			positionCfgToolbar()
+			positionCtxToolbar()
+		}
 	})
 
 	// ── Keyboard shortcut: Ctrl+D to duplicate ─────────────────────────────────

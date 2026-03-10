@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-03-10 — editor11: hide toolbars and selection border during element drag
+
+- **`packages/editor/src/types.ts`**: Added `"editor:drag": (dragging: boolean) => void` to `EditorEvents`.
+- **`packages/editor/src/overlay.ts`**: Added `setDragging(isDragging)` — hides/shows `_selectionG` (the blue selection border) during drag.
+- **`packages/editor/src/editor.ts`**: Added `_isDragging` flag. `_previewTranslate()` now fires `editor:drag true` and hides the selection overlay on first call. `_commitTranslate()` and `_cancelTranslate()` fire `editor:drag false` and restore the selection overlay after the move completes.
+- **`packages/editor/src/hud.ts`**: Added `dragActive` flag; subscribed to `"editor:drag"` to immediately hide cfg/ctx toolbars on drag start and reposition them on drag end. Guards added to `positionCfgToolbar()` and `positionCtxToolbar()` so the `diagram:change` handler cannot un-hide them mid-drag.
+
 ## 2026-03-10 — editor11: logo, mobile CLI fix, npm metadata
 
 - **Logo — welcome screen** (`packages/plugins/src/tabs/tabs-plugin.ts`): Replaced the old horizontal BPMN process illustration with the new gateway diamond logo (matching the favicon). Updated icon CSS from 80×40px to 48×48px (`css.ts`).

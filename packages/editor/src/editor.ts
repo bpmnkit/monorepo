@@ -299,6 +299,7 @@ export class BpmnEditor {
 	private _ghostSnapCenter: DiagPoint | null = null
 	private _createEdgeDropTarget: string | null = null
 	private _readOnly = false
+	private _isDragging = false
 	private _boundaryHostId: string | null = null
 	private _warningBanner: HTMLElement | null = null
 
@@ -871,6 +872,11 @@ export class BpmnEditor {
 	}
 
 	private _previewTranslate(dx: number, dy: number): void {
+		if (!this._isDragging) {
+			this._isDragging = true
+			this._overlay.setDragging(true)
+			this._emit("editor:drag", true)
+		}
 		const alignSnap = this._computeSnap(dx, dy)
 		const spacingResult = this._computeSpacingSnap(dx, dy)
 
@@ -913,6 +919,12 @@ export class BpmnEditor {
 			const { x, y } = shape.shape.bounds
 			shape.element.setAttribute("transform", `translate(${x} ${y})`)
 		}
+		if (this._isDragging) {
+			this._isDragging = false
+			this._overlay.setDragging(false)
+			this._overlay.setSelection(this._selectedIds, this._shapes, this._getResizableIds())
+			this._emit("editor:drag", false)
+		}
 	}
 
 	private _commitTranslate(dx: number, dy: number): void {
@@ -928,6 +940,11 @@ export class BpmnEditor {
 			this._executeCommand((d) => insertShapeOnEdge(moveShapes(d, moves), edgeDropId, shapeId))
 		} else {
 			this._executeCommand((d) => moveShapes(d, moves))
+		}
+		if (this._isDragging) {
+			this._isDragging = false
+			this._overlay.setDragging(false)
+			this._emit("editor:drag", false)
 		}
 	}
 
