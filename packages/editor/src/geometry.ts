@@ -305,15 +305,16 @@ export function portFromWaypoint(wp: BpmnWaypoint, bounds: BpmnBounds): PortDir 
  * Computes orthogonal waypoints connecting two shapes via explicit exit/entry
  * ports.  All segments are horizontal or vertical.
  */
-export function computeWaypointsWithPorts(
-	src: BpmnBounds,
+/**
+ * Routes orthogonal waypoints between two explicit points given their exit/entry directions.
+ * All segments are horizontal or vertical.
+ */
+export function routeOrthogonal(
+	E: DiagPoint,
 	srcPort: PortDir,
-	tgt: BpmnBounds,
+	P: DiagPoint,
 	tgtPort: PortDir,
 ): BpmnWaypoint[] {
-	const E = portPoint(src, srcPort)
-	const P = portPoint(tgt, tgtPort)
-
 	if (Math.hypot(E.x - P.x, E.y - P.y) < 2) return [E, P]
 
 	const srcH = srcPort === "left" || srcPort === "right"
@@ -348,6 +349,15 @@ export function computeWaypointsWithPorts(
 	return [E, { x: E.x, y: P.y }, P]
 }
 
+export function computeWaypointsWithPorts(
+	src: BpmnBounds,
+	srcPort: PortDir,
+	tgt: BpmnBounds,
+	tgtPort: PortDir,
+): BpmnWaypoint[] {
+	return routeOrthogonal(portPoint(src, srcPort), srcPort, portPoint(tgt, tgtPort), tgtPort)
+}
+
 // ── Obstacle-avoiding routing ─────────────────────────────────────────────────
 
 const ALL_PORTS: PortDir[] = ["right", "bottom", "left", "top"]
@@ -362,7 +372,7 @@ function vSegIntersectsRect(y1: number, y2: number, x: number, r: BpmnBounds, m:
 	return Math.max(y1, y2) > r.y + m && Math.min(y1, y2) < r.y + r.height - m
 }
 
-function waypointsIntersectObstacles(wps: BpmnWaypoint[], obstacles: BpmnBounds[]): boolean {
+export function waypointsIntersectObstacles(wps: BpmnWaypoint[], obstacles: BpmnBounds[]): boolean {
 	const m = 2
 	for (let i = 0; i < wps.length - 1; i++) {
 		const a = wps[i]

@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-03-10 — editor11: improved sequence flow routing after element moves
+
+- **`packages/editor/src/geometry.ts`**: Extracted routing logic from `computeWaypointsWithPorts` into a new exported `routeOrthogonal(E, srcPort, P, tgtPort)` function (explicit point + direction routing). Exported `waypointsIntersectObstacles` for use in modeling. `computeWaypointsWithPorts` is now a thin wrapper over `routeOrthogonal`.
+- **`packages/editor/src/modeling.ts`**: Rewrote edge waypoint recomputation in `moveShapes` to enforce two invariants after any element move:
+  1. **Obstacle avoidance** — uses `computeWaypointsAvoiding` for all cases where at least one endpoint moved. When both endpoints move, translates the path first and only re-routes if the translated path intersects an obstacle. Also re-routes edges whose endpoints did *not* move but whose waypoints now pass through a moved shape.
+  2. **Port deconfliction** — new `deconflictPorts` post-pass groups all edges by `(shapeId, port-side)` and spreads connection points evenly along the side (25 px spacing) when multiple flows share the same midpoint, then re-routes each affected edge via `routeOrthogonal`.
+
 ## 2026-03-10 — editor11: hide toolbars and selection border during element drag
 
 - **`packages/editor/src/types.ts`**: Added `"editor:drag": (dragging: boolean) => void` to `EditorEvents`.
