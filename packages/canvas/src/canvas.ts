@@ -72,6 +72,7 @@ export class BpmnCanvas {
 	private readonly _host: HTMLElement
 	private readonly _svg: SVGSVGElement
 	private readonly _viewportG: SVGGElement
+	private readonly _containersG: SVGGElement
 	private readonly _edgesG: SVGGElement
 	private readonly _shapesG: SVGGElement
 	private readonly _labelsG: SVGGElement
@@ -129,10 +130,12 @@ export class BpmnCanvas {
 		this._viewportG = document.createElementNS(NS, "g") as SVGGElement
 		this._svg.appendChild(this._viewportG)
 
-		// Layer order: edges under shapes, labels on top
+		// Layer order: containers (pools/lanes) → edges → shapes → labels
+		this._containersG = document.createElementNS(NS, "g") as SVGGElement
 		this._edgesG = document.createElementNS(NS, "g") as SVGGElement
 		this._shapesG = document.createElementNS(NS, "g") as SVGGElement
 		this._labelsG = document.createElementNS(NS, "g") as SVGGElement
+		this._viewportG.appendChild(this._containersG)
 		this._viewportG.appendChild(this._edgesG)
 		this._viewportG.appendChild(this._shapesG)
 		this._viewportG.appendChild(this._labelsG)
@@ -212,6 +215,7 @@ export class BpmnCanvas {
 	 */
 	loadDefinitions(defs: BpmnDefinitions): void {
 		// Clear previous content
+		this._containersG.innerHTML = ""
 		this._edgesG.innerHTML = ""
 		this._shapesG.innerHTML = ""
 		this._labelsG.innerHTML = ""
@@ -222,6 +226,7 @@ export class BpmnCanvas {
 
 		const result = render(
 			defs,
+			this._containersG,
 			this._edgesG,
 			this._shapesG,
 			this._labelsG,
@@ -243,6 +248,7 @@ export class BpmnCanvas {
 
 	/** Clears the canvas and fires `diagram:clear`. */
 	clear(): void {
+		this._containersG.innerHTML = ""
 		this._edgesG.innerHTML = ""
 		this._shapesG.innerHTML = ""
 		this._labelsG.innerHTML = ""

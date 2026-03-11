@@ -1,5 +1,31 @@
 # Progress
 
+## 2026-03-11 — editor12: Pool and lane rendering support
+
+### `packages/canvas/src/canvas.ts`
+- Added `_containersG: SVGGElement` layer below `_edgesG`; layer order is now: containers → edges → shapes → labels
+- Pass `_containersG` to `render()`; clear it in `loadDefinitions()` and `clear()`
+
+### `packages/canvas/src/renderer.ts`
+- Added `containersLayer: SVGGElement` parameter to `render()`
+- Pool (participant) and lane shapes now render into `containersLayer` instead of `shapesLayer`, fixing the critical bug where opaque pool/lane bodies covered all edges inside them
+- Added `aria-label` attribute to pool and lane `<g>` elements
+
+### `packages/canvas/src/css.ts`
+- Extended `:focus` and `.bpmn-selected` CSS selectors to include `.bpmn-pool-body` and `.bpmn-lane-body` (focus/selection highlighting was previously missing for pool and lane shapes)
+
+### `packages/editor/src/editor.ts`
+- Applied matching `_containersG` layer changes (same architecture as canvas)
+- Updated hit-test at `_renderHit` to check `_containersG.contains(shapeEl)` so pool/lane clicks are detected
+
+## 2026-03-11 — editor12 (cont): operate instance-detail fix
+
+### `packages/operate/src/views/instance-detail.ts`
+- Fixed broken `instUnsub`/`startXmlFetch` scope: restructured mock vs. live branches so the subscription correctly calls `startXmlFetch` when store data arrives
+
+### `packages/operate/src/operate.ts`
+- Fixed Biome line-length errors in `reconnectCurrent` arrow function bodies
+
 ## 2026-03-11 — editor12 (cont): CLI spec-driven JSON editor
 
 ### `apps/cli/src/types.ts`

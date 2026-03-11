@@ -577,6 +577,7 @@ function renderPool(
 		class: "bpmn-shape bpmn-pool",
 		tabindex: "-1",
 		role: "region",
+		"aria-label": participant?.name ?? "Pool",
 		"data-bpmn-id": shape.bpmnElement,
 		"data-bpmn-instance": instanceId,
 	})
@@ -616,6 +617,7 @@ function renderLane(
 		class: "bpmn-shape bpmn-lane",
 		tabindex: "-1",
 		role: "region",
+		"aria-label": lane?.name ?? "Lane",
 		"data-bpmn-id": shape.bpmnElement,
 		"data-bpmn-instance": instanceId,
 	})
@@ -830,6 +832,7 @@ export interface RenderResult {
  */
 export function render(
 	defs: BpmnDefinitions,
+	containersLayer: SVGGElement,
 	edgesLayer: SVGGElement,
 	shapesLayer: SVGGElement,
 	labelsLayer: SVGGElement,
@@ -908,17 +911,25 @@ export function render(
 			}
 			if (index.participants.has(shape.bpmnElement)) {
 				g = renderPool(shape, index.participants.get(shape.bpmnElement), instanceId)
-			} else if (index.lanes.has(shape.bpmnElement)) {
-				g = renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId)
-			} else {
-				// Unknown shape — invisible placeholder
-				g = svgEl("g")
-				attr(g, { "data-bpmn-id": shape.bpmnElement, "data-bpmn-instance": instanceId })
 				attr(g, { transform: `translate(${x} ${y})` })
-				shapesLayer.appendChild(g)
+				containersLayer.appendChild(g)
 				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
 				continue
 			}
+			if (index.lanes.has(shape.bpmnElement)) {
+				g = renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId)
+				attr(g, { transform: `translate(${x} ${y})` })
+				containersLayer.appendChild(g)
+				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
+				continue
+			}
+			// Unknown shape — invisible placeholder
+			g = svgEl("g")
+			attr(g, { "data-bpmn-id": shape.bpmnElement, "data-bpmn-instance": instanceId })
+			attr(g, { transform: `translate(${x} ${y})` })
+			shapesLayer.appendChild(g)
+			shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
+			continue
 		} else {
 			g = renderTask(shape, el, instanceId)
 		}

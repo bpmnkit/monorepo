@@ -269,6 +269,7 @@ export class BpmnEditor {
 	private readonly _host: HTMLElement
 	private readonly _svg: SVGSVGElement
 	private readonly _viewportG: SVGGElement
+	private readonly _containersG: SVGGElement
 	private readonly _edgesG: SVGGElement
 	private readonly _shapesG: SVGGElement
 	private readonly _labelsG: SVGGElement
@@ -355,10 +356,12 @@ export class BpmnEditor {
 		this._viewportG = document.createElementNS(NS, "g") as SVGGElement
 		this._svg.appendChild(this._viewportG)
 
+		this._containersG = document.createElementNS(NS, "g") as SVGGElement
 		this._edgesG = document.createElementNS(NS, "g") as SVGGElement
 		this._shapesG = document.createElementNS(NS, "g") as SVGGElement
 		this._labelsG = document.createElementNS(NS, "g") as SVGGElement
 		this._overlayG = document.createElementNS(NS, "g") as SVGGElement
+		this._viewportG.appendChild(this._containersG)
 		this._viewportG.appendChild(this._edgesG)
 		this._viewportG.appendChild(this._shapesG)
 		this._viewportG.appendChild(this._labelsG)
@@ -825,11 +828,13 @@ export class BpmnEditor {
 	}
 
 	private _renderDefs(defs: BpmnDefinitions): void {
+		this._containersG.innerHTML = ""
 		this._edgesG.innerHTML = ""
 		this._shapesG.innerHTML = ""
 		this._labelsG.innerHTML = ""
 		const result = render(
 			defs,
+			this._containersG,
 			this._edgesG,
 			this._shapesG,
 			this._labelsG,
@@ -2042,7 +2047,7 @@ export class BpmnEditor {
 		}
 
 		const shapeEl = el.closest("[data-bpmn-id]")
-		if (shapeEl && this._shapesG.contains(shapeEl)) {
+		if (shapeEl && (this._shapesG.contains(shapeEl) || this._containersG.contains(shapeEl))) {
 			const id = shapeEl.getAttribute("data-bpmn-id")
 			if (id) return { type: "shape", id }
 		}

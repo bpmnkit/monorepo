@@ -1,0 +1,2136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+  xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0"
+  xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0"
+  xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_0o87biy"
+  targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Web Modeler"
+  exporterVersion="d9f6ce8" modeler:executionPlatform="Camunda Cloud"
+  modeler:executionPlatformVersion="8.0.0"
+  camunda:diagramRelationId="c3dfa14f-62b5-469a-99c2-eea2474361c4">
+  <bpmn:collaboration id="Collaboration_03svvle">
+    <bpmn:participant id="Participant_19296tk" name="Camunda" processRef="optimizeRelease" />
+    <bpmn:group id="Group_1d29am1" categoryValueRef="CategoryValue_0peezk4" />
+    <bpmn:group id="Group_17vnh0h" categoryValueRef="CategoryValue_10tgdqb" />
+    <bpmn:group id="Group_1o82fey" categoryValueRef="CategoryValue_0xbrpvp" />
+    <bpmn:group id="Group_167m16m" categoryValueRef="CategoryValue_1axdg7g" />
+    <bpmn:textAnnotation id="TextAnnotation_0t6z7zw">
+      <bpmn:text>Phase 4: Publish the Release</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_08oqxov" sourceRef="Group_167m16m"
+      targetRef="TextAnnotation_0t6z7zw" />
+    <bpmn:association id="Association_1jo0o1t" sourceRef="Group_1d29am1"
+      targetRef="TextAnnotation_1ymrhxp" />
+    <bpmn:group id="Group_1frzwac" categoryValueRef="CategoryValue_0uo5rby" />
+    <bpmn:textAnnotation id="TextAnnotation_09d5piu">
+      <bpmn:text>Phase 5: After the Release</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_17rvzm9" sourceRef="Group_1frzwac"
+      targetRef="TextAnnotation_09d5piu" />
+  </bpmn:collaboration>
+  <bpmn:process id="optimizeRelease" name="Optimize Release Process" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:userTaskForm id="userTaskForm_3dnphbf">
+        {"schemaVersion":2,"components":[{"text":"#
+        Write Blog Post\n[View
+        Template](https://docs.google.com/document/d/1fR-slgJ-_fHNaABDPRLQV07l6im_EST_H6LnEWo9h4M/edit#)","type":"text","id":"Field_0a0y92i"}],"type":"default","id":"default1","path":[]}</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_09hbfsn">
+        {"schemaVersion":2,"components":[{"text":"#
+        Update Enterprise Announcement\n[Camunda Optimize
+        Announcements](https://docs.camunda.org/enterprise/announcement/#camunda-optimize-announcements)\n*
+        List the next Optimize Minor Release\n* Update the Supported Environments for the current
+        release\n(HOW?)","type":"text","id":"Field_1hi5qaj"}],"type":"default","id":"default1","path":[]}</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_13n48dc">{
+        "components": [
+        {
+        "text": "# Come up with a Release Name\nIn the beginning of the month you should think of a
+        name for the new release. The name has the following requirements:\n\nIt should be named
+        after a superhero.\n\nThe name should represent the new power Optimize gained by this
+        release.\n\nCheckout the list of the names that were already picked: [List of old
+        Releases](https://confluence.camunda.com/display/CO/Optimize+Release+Overview)\n\nAdd the
+        new release to the overview\n\nThis is the most important step, so treat it with
+        care!\n\n[Documentation](https://confluence.camunda.com/display/CO/Come+up+with+a+release+name)",
+        "type": "text",
+        "id": "Field_04nbngm"
+        },
+        {
+        "label": "Release Name",
+        "type": "textfield",
+        "id": "Field_1lipcjp",
+        "key": "releaseName",
+        "validate": {
+        "required": true
+        }
+        },
+        {
+        "values": [
+        {
+        "label": "Minor",
+        "value": "minor"
+        },
+        {
+        "label": "Alpha",
+        "value": "alpha"
+        },
+        {
+        "label": "Patch",
+        "value": "patch"
+        }
+        ],
+        "label": "Release Type",
+        "type": "radio",
+        "id": "Field_0out4bk",
+        "key": "field_18lgspx",
+        "validate": {
+        "required": true
+        }
+        },
+        {
+        "label": "Release Version",
+        "type": "textfield",
+        "id": "Field_0gm2fvm",
+        "key": "releaseVersion",
+        "validate": {
+        "required": true
+        }
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "Form_7e9db25a-a49d-4200-b05b-e2af036b7891",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_0nbf1ge">{
+        "components": [
+        {
+        "text": "# Add Cat Pic of the Month\n\nYou have the honor of picking a cat of the month.
+        Why? Because cats are cool, which is proven by the internet (you can just find them
+        everywhere). Also this keeps your colleagues motivated, is a symbol for endurance and acts
+        as reminder of our responsibility as a software developer and why it's important that we do
+        our job. So take this task with care and pride. The quality of the whole release might
+        depend on it! (no pressure)\n\nTo get an overview, which cats have already been selected,
+        checkout our [Optimize Release
+        Overview](https://confluence.camunda.com/display/CO/Optimize+Release+Overview).\n\nOnce you
+        are done with finding a new cat:\n\nNext to the Optimize team table, you'll find the
+        Optimize Cat Board. This cork board is containing all prestigious cat picture of the month
+        pics. Add your choice to it by printing it out and pinning it to the cork board.\nAdd the
+        new cat to the [Optimize Release Overview](Optimize Release Overview).",
+        "type": "text",
+        "id": "Field_0ah92qu"
+        },
+        {
+        "label": "Add cat to Optimize Cat Board",
+        "type": "checkbox",
+        "id": "Field_1puiaxz",
+        "key": "field_103cvfr"
+        },
+        {
+        "label": "Add new cat to Optimize Release Overview",
+        "type": "checkbox",
+        "id": "Field_00vxrdo",
+        "key": "field_156qpt4"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "add-cat-pic",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_1b6iph6">{
+        "components": [
+        {
+        "text": "# Add Optimize to Release Presentation List\nAdd the Optimize release to the
+        \"Upcoming release presentations\" table on [this
+        page](https://confluence.camunda.com/display/HAN/Release+Presentation+Process), this ensures
+        we are included in the release presentation invite agenda",
+        "type": "text",
+        "id": "Field_01pnkv7"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "Form_9d1890bf-a9b5-4339-9825-20f9623ea7a7",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3n880kv">{
+        "components": [
+        {
+        "text": "# Set a Calendar
+        Appointment\n\n[Documentation](https://confluence.camunda.com/display/CO/Set+a+calendar+appointment)",
+        "type": "text",
+        "id": "Field_1s8ui1r"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "Form_46707b14-7977-45fd-8d87-bc7f85b66c0a",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_21r2e0l">{
+        "components": [
+        {
+        "text": "# Sync with QA Engineer about upcoming release test activities\n",
+        "type": "text",
+        "id": "Field_0v7tm4t"
+        },
+        {
+        "label": "Discuss the timeline for the release (code freeze, availability of the release
+        candidate, release testing, release date)",
+        "type": "checkbox",
+        "id": "Field_03p169g",
+        "key": "field_1ov635a"
+        },
+        {
+        "label": "Define the features, bug fixes that should be covered in the release test",
+        "type": "checkbox",
+        "id": "Field_1d0xzc7",
+        "key": "field_0v66jn8"
+        },
+        {
+        "label": "Make the developers aware of the release date and until when they are expected to
+        have pushed their code / close their tickets so that the new code can make it into the
+        release. This could be done in the e.g. weekly status meeting or the optimize internal slack
+        channel",
+        "type": "checkbox",
+        "id": "Field_0cgjoyx",
+        "key": "field_0lcvk3t"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "initial-QA-sync",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_29o0otu">{
+        "components": [
+        {
+        "text": "# Remind PM of their tasks\nShare this with the PM on slack:\n\n\"Hey, it's release
+        time again! Ready to get started? [PM
+        Tasks](https://confluence.camunda.com/display/CO/Release+Tasks+For+Product+Manager)\"",
+        "type": "text",
+        "id": "Field_0lnlplg"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "remind-PM",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_251m0c0">{
+        "components": [
+        {
+        "text": "# Remind teammates to wrap up development\n\nIn the daily stand-up mention to your
+        teammates that:\n1. You would appreciate it if they could finish their reviews and merge
+        PR's that should be in the release\n2. If there's still stuff in development that needs to
+        be added to the release they should come to you to discuss the details (e.g. when it's
+        probably finished, who's reviewing it, etc.) so you can have an estimate by when this is
+        finished.\n3. That once done you will be creating the release branch",
+        "type": "text",
+        "id": "Field_0v2na2g"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "remind-devs-wrapup",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3mieg50">{
+        "components": [
+        {
+        "text": "# Check Preconditions\nMake sure that:\n\n1. There are no code problems ([check
+        ci](https://ci.optimize.camunda.cloud/view/all/job/camunda-optimize/job/master/))\n2. All
+        other [ci jobs](https://ci.optimize.camunda.cloud/view/all/) are green and don't show any
+        problems.\n3. There are no code tickets in Ready, In Development or Review (see
+        [here](https://app.camunda.com/jira/secure/RapidBoard.jspa?rapidView=49&amp;selectedIssue=OPT-165))
+        of the \"current release\" lane. If there are tickets left, ask the assigned people to
+        finish them or postpone them to the next release. In order to defer those tickets to the
+        next release, just remove the label \"current release\" from those Jira Tickets and add the
+        label \"next release\". \nTip: After doing the release, you can relabel these tickets in
+        bulk by using this [Jira Filter](https://jira.camunda.com/issues/?filter=17863)",
+        "type": "text",
+        "id": "Field_1147i3d"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "check-preconditions",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_0lbqrif">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "create-release-branch",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_2mgegi1">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "trigger-rc-build",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_04fc72e">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "create-cloud-gen",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_1fqk5lk">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "share-download-link",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_2do1uk0">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "test-release",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_1aldtk3">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "trigger-final-build",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_1l9jivd">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "release-jira",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3s6ldkq">{
+        "components": [
+        {
+        "text": "# Merge the changes of the release branch back to master",
+        "type": "text",
+        "id": "Field_1qsy7gt"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "merge-release-to-master",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_2a0jmiv">{
+        "components": [
+        {
+        "text": "# Update Third Party library Documentation\n\n1. Go to the root directory of
+        camunda-optimize and check out the release branch. Then execute mvn clean install
+        -DskipTests -Dskip.docker\n2. Then, go to the [dependency creation
+        project](https://github.com/camunda/camunda-optimize/tree/master/util/dependency-doc-creation),
+        change into the respective folder and execute the containing script (check that you have the
+        [right node
+        version](https://github.com/camunda/camunda-optimize/blob/master/client/README.md)
+        installed):\n\ncd util/dependency-doc-creation/\n\n./createOptimizeDependencyFiles.sh\n3.
+        Now the files backend-dependencies.md and frontend-dependencies.md should have been
+        created.\n4. Copy the files to dedicated Optimize
+        [frontend](https://github.com/camunda/camunda-platform-docs/blob/master/docs/reference/dependencies.md#optimize-dependencies-front-end)
+        and
+        [backend](https://github.com/camunda/camunda-platform-docs/blob/master/docs/reference/dependencies.md#optimize-dependencies-back-end)
+        sections of the
+        [dependencies](https://github.com/camunda/camunda-platform-docs/blob/master/docs/reference/dependencies.md)
+        page in the [platform docs](https://github.com/camunda/camunda-platform-docs)",
+        "type": "text",
+        "id": "Field_1b2evp6"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "update-library-documentation",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_1cbf4h7">{
+        "schemaVersion": 2,
+        "components": [
+        {
+        "text": "# Update Enterprise Announcement\n[Camunda Optimize
+        Announcements](https://docs.camunda.org/enterprise/announcement/#camunda-optimize-announcements)\n*
+        List the next Optimize Minor Release\n* Update the Supported Environments for the current
+        release\n(HOW?)",
+        "type": "text",
+        "id": "Field_1hi5qaj"
+        }
+        ],
+        "type": "default",
+        "id": "default1",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_212rons">{
+        "components": [
+        {
+        "text": "# Update Whatsnew\nUpdate the \"What's new\" dialog \n\nNote: This should be done
+        at least 4 days before the release! Even better would be the week before.\n\nCheck out all
+        the new features that will be added for the upcoming release. Once you have an overview make
+        sure that:\n\n1. all the features are included in the What's new dialog\n2. same goes for
+        the german version\n3. polish the dialog by proofreading it together with the product
+        marketing/product design team\n4. create a ticket (clone
+        https://jira.camunda.com/browse/OPT-5638)\n5. create a PR for the necessary changes in the
+        dialog and assign it to one of the developers.",
+        "type": "text",
+        "id": "Field_15rosh7"
+        },
+        {
+        "label": "Whatsnew Ticket URL",
+        "type": "textfield",
+        "id": "Field_1ogpqvc",
+        "key": "whatsnew-ticket-url",
+        "description": "e.g. https://jira.camunda.com/browse/OPT-5638",
+        "validate": {
+        "required": true
+        }
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "update-whatsnew",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="UserTaskForm_28mdt1t">{
+        "components": [
+        {
+        "text": "# Remind PM of their tasks\nShare this with the PM on slack:\n\n\"Hey, it's release
+        time again! Ready to get started? [PM
+        Tasks](https://confluence.camunda.com/display/CO/Release+Tasks+For+Product+Manager)\"",
+        "type": "text",
+        "id": "Field_0lnlplg"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "remind-PM",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_268ieai">{
+        "components": [
+        {
+        "text": "# Update the current release ticket list\nCheck the tickets in the [Jira
+        filter](https://jira.camunda.com/issues/?filter=17864) and find out which tickets will be
+        part of the release.\n\nRemove the \"current release\" label from tickets that won't make
+        it.",
+        "type": "text",
+        "id": "Field_1s5rpnh"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "update-current_release",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_390mro6">{
+        "components": [
+        {
+        "text": "# PM Release Preparation\nReview [Confirmed
+        Blog](https://jira.camunda.com/issues/?filter=17518)\n\nReview [Potential
+        Blog](https://jira.camunda.com/issues/?filter=17519)",
+        "type": "text",
+        "id": "Field_1nnegby"
+        },
+        {
+        "label": "What are the main takeaways from the release?",
+        "type": "textfield",
+        "id": "Field_0agbrwv",
+        "key": "mainTakeaways"
+        },
+        {
+        "text": "# Due Dates \nAll due dates are measured in work days\n* What's New dialog (minor
+        only): 4 days before release\n* Blog Post: 3 days before release\n* Release Presentation
+        Slides: 1 day before release\n\n[Product Manager
+        Instructions](https://confluence.camunda.com/display/CO/Release+Tasks+For+Product+Manager)",
+        "type": "text",
+        "id": "Field_19wzklp"
+        }
+        ],
+        "schemaVersion": 4,
+        "type": "default",
+        "id": "pm-release-prep",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3",
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        }
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_06fen59">{
+        "components": [
+        {
+        "text": "# Share Blog Post with Marketing\nPing the Marketing POC via the draft blogpost
+        that it's ready for editing and follow up via Slack",
+        "type": "text",
+        "id": "Field_17h7nqc"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "share-blogpost",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_0ifka4n">{
+        "components": [
+        {
+        "text": "# Fix Bugs\nAddress all bugs discovered during release testing",
+        "type": "text",
+        "id": "Field_1n194tc"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "fix-bugs",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3grmdl1">{
+        "components": [
+        {
+        "text": "# Confirm Bugs Fixed\nAre all bugs fixed?\nIf so, complete this user task.",
+        "type": "text",
+        "id": "Field_1x9ss8n"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "Form_bb593cfc-226e-42f0-9ae9-7e289aab6f26",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3s501b7">{
+        "components": [
+        {
+        "text": "# Proofread Blog Post\nFollow Marketing's documentation on how to proofread a blog
+        post (contact Eric if you want to adjust this message)",
+        "type": "text",
+        "id": "Field_0y14qts"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "proofread-blogpost",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_0mjra98">{
+        "components": [
+        {
+        "text": "# Schedule Blog Post for Publishing\nFollow Marketing's documentation on how to
+        publish a blog post (contact Eric if you want to adjust this message)",
+        "type": "text",
+        "id": "Field_0y14qts"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "schedule-blogpost-publishing",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_2g80aao">{
+        "components": [
+        {
+        "text": "# Notify PM / Prod Ops of Blog Post\n1. Share the blog post URL with the Product
+        Manager\n2. Share the blog post URL with the Product Operations",
+        "type": "text",
+        "id": "Field_0y14qts"
+        },
+        {
+        "label": "Blog Post URL",
+        "type": "textfield",
+        "id": "Field_1kadtzl",
+        "key": "blogpost-url"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "notify-of-blogpost",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_0uce7gn">{
+        "components": [
+        {
+        "text": "# Add Links to the Release Notification E-Mail Template\nAll release managers are
+        requested to share information about their release to the Release Notification Email
+        Template for the upcoming release in the Drive Google Drive folder [Release
+        Notifications](https://drive.google.com/drive/folders/1hziaQOP3vzshJicigEY5ME4BFj--ObYV?usp=sharing)\n\n\n1.
+        Blog post links as soon as they are available\n2. Release notes aka Change Log \n\n",
+        "type": "text",
+        "id": "Field_0y14qts"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "add-links-to-email",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_2doapka">{
+        "components": [],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "type": "default",
+        "id": "release-download-page",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3nralv7">{
+        "components": [
+        {
+        "text": "# Update List of Old Releases and Last Release\nIf you have not done so already in
+        Phase 1, add your Release to the [List of old
+        Releases](https://confluence.camunda.com/display/CO/Optimize+Release+Overview). Also, update
+        the Last releases done by developer section with your release.",
+        "type": "text",
+        "id": "Field_0y14qts"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "update-release-list",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3ghn0p2">{
+        "components": [
+        {
+        "text": "# Hand the Release Token\n1. Hand the [Release
+        Token](https://vignette.wikia.nocookie.net/marvelcinematicuniverse/images/2/25/Mjolnir.png/revision/latest/scale-to-width-down/1000?cb=20140129001244)
+        to the next Release Manager,\n2. [Assign the new release
+        manager](https://confluence.camunda.com/display/CO/Update+the+Optimize+Release+Manager+Role+in+Slack)
+        to the optimize-release-manager user group on Slack. The next release manager can be found
+        by checking out the [last releases done by developer
+        section](https://confluence.camunda.com/display/CO/Optimize+Release+Overview) and picking
+        the developer that has done the release procedure the longest time ago.",
+        "type": "text",
+        "id": "Field_0y14qts"
+        }
+        ],
+        "schemaVersion": 4,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "e73c95f"
+        },
+        "type": "default",
+        "id": "token-handover",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_0663ssp">{
+        "schemaVersion": 2,
+        "exporter": {
+        "name": "Camunda Web Modeler",
+        "version": "24b59bc"
+        },
+        "components": [],
+        "type": "default",
+        "id": "Form_41e87bf0-d320-4ef6-8940-a339b1d017a2",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+      <zeebe:userTaskForm id="userTaskForm_3d5qoob">{
+        "schemaVersion": 2,
+        "components": [
+        {
+        "text": "# Prepare Release Slides\n* Add list of blog features\n* Practice presentation 2x",
+        "type": "text",
+        "id": "Field_13s0v4h"
+        }
+        ],
+        "type": "default",
+        "id": "default1",
+        "executionPlatform": "Camunda Cloud",
+        "executionPlatformVersion": "1.3"
+        }</zeebe:userTaskForm>
+    </bpmn:extensionElements>
+    <bpmn:laneSet id="LaneSet_0vxjmiv">
+      <bpmn:lane id="other-lane" name="Other">
+        <bpmn:flowNodeRef>test-release</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_10ievv4</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0ibnc1s</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>proofread-blogpost</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>notify-of-blogpost</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>schedule-blogpost-publishing</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_11eo5yo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_1ai2l9w</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="release-manager-lane" name="Release Manager">
+        <bpmn:flowNodeRef>gateway-phase1-open</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>name-release</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>add-cat-pic</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>gateway-phase-1-close</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>gateway-phase2-open</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>wait-release-2w</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>add-release-presentation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>wait-release-3d</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>gateway-phase2-close</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fix-bugs</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>check-preconditions</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>create-release-branch</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>trigger-rc-build</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>create-cloud-gen</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>share-download-link</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>gateway-phase3-open</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>update-current_release</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>remind-devs-wrapup</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>trigger-final-build</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>calendar-appointment</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>release-jira</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>merge-release-to-master</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>update-library-documentation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0omp8bf</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>update-download-page</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>add-links-to-email</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_1tjjogc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_09p4ria</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_07vku7s</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>update-release-list</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>token-handover</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>release-survey</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_14w2go1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0erd2bl</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_06fvesm</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_12u7t9g</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>remind-PM</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>initial-QA-sync</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>confirm-bugs-fixed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_1gbdoql</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>release-download-page</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Start_1</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="product-manager-lane" name="Product Manager">
+        <bpmn:flowNodeRef>review-download-page</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>share-blogpost</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_0f26zpe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_1md5qtk</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_04yulyn</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>update-whatsnew</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>pm-release-prep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>prepare-slides</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_00tb2fy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_15sg53s</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_1qweev3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>write-blog-post</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:sequenceFlow id="Flow_1gho1fi" sourceRef="share-download-link" targetRef="test-release" />
+    <bpmn:sequenceFlow id="Flow_1kku83e" sourceRef="gateway-phase3-open"
+      targetRef="remind-devs-wrapup" />
+    <bpmn:sequenceFlow id="Flow_0lt1ve6" sourceRef="wait-release-3d" targetRef="gateway-phase3-open" />
+    <bpmn:sequenceFlow id="Flow_0k2b9hy" sourceRef="gateway-phase2-open" targetRef="initial-QA-sync" />
+    <bpmn:sequenceFlow id="Flow_05fds9a" sourceRef="wait-release-2w" targetRef="gateway-phase2-open" />
+    <bpmn:sequenceFlow id="Flow_0bj0p83" sourceRef="add-cat-pic" targetRef="gateway-phase-1-close" />
+    <bpmn:sequenceFlow id="Flow_0yxh2rd" sourceRef="add-release-presentation"
+      targetRef="gateway-phase-1-close" />
+    <bpmn:sequenceFlow id="Flow_197n6m6" sourceRef="gateway-phase2-open" targetRef="remind-PM" />
+    <bpmn:sequenceFlow id="Flow_0gftc1w" sourceRef="calendar-appointment"
+      targetRef="gateway-phase-1-close" />
+    <bpmn:sequenceFlow id="Flow_12qwcfp" sourceRef="name-release" targetRef="calendar-appointment" />
+    <bpmn:sequenceFlow id="Flow_14yezak" sourceRef="test-release" targetRef="Gateway_10ievv4" />
+    <bpmn:sequenceFlow id="Flow_1huqmqj" name="Bugs Found" sourceRef="Gateway_10ievv4"
+      targetRef="fix-bugs">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=fixes-required&gt;0</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0asdtus" sourceRef="fix-bugs" targetRef="confirm-bugs-fixed" />
+    <bpmn:sequenceFlow id="Flow_1da6dxx" name="No Bugs" sourceRef="Gateway_10ievv4"
+      targetRef="trigger-final-build">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=fixes-required=0</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0z8wlpx" name="Minor Release" sourceRef="Gateway_1qweev3"
+      targetRef="update-whatsnew">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=releaseType = "minor"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0kpccf8" sourceRef="check-preconditions"
+      targetRef="create-release-branch" />
+    <bpmn:sequenceFlow id="Flow_1ksdloa" sourceRef="create-release-branch"
+      targetRef="trigger-rc-build" />
+    <bpmn:sequenceFlow id="Flow_1ymntu4" sourceRef="trigger-rc-build" targetRef="create-cloud-gen" />
+    <bpmn:sequenceFlow id="Flow_09rkztl" sourceRef="create-cloud-gen"
+      targetRef="share-download-link" />
+    <bpmn:sequenceFlow id="Flow_0l6glim" sourceRef="remind-devs-wrapup"
+      targetRef="update-current_release" />
+    <bpmn:sequenceFlow id="Flow_171255m" sourceRef="update-current_release"
+      targetRef="Gateway_12u7t9g" />
+    <bpmn:sequenceFlow id="Flow_1qhftki" sourceRef="share-blogpost" targetRef="proofread-blogpost" />
+    <bpmn:sequenceFlow id="Flow_1rjifys" name="Input Needed" sourceRef="Gateway_0ibnc1s"
+      targetRef="write-blog-post">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=blogpost-status = "reject"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0yguq9f" sourceRef="schedule-blogpost-publishing"
+      targetRef="Gateway_1ai2l9w" />
+    <bpmn:sequenceFlow id="Flow_1b64yzc" sourceRef="Event_11eo5yo" targetRef="notify-of-blogpost" />
+    <bpmn:userTask id="name-release" name="Come up with a release name">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_13n48dc" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1h2tz7c</bpmn:incoming>
+      <bpmn:outgoing>Flow_12qwcfp</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="add-cat-pic" name="Add cat pic of the month">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_0nbf1ge" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0wo4gsf</bpmn:incoming>
+      <bpmn:outgoing>Flow_0bj0p83</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:parallelGateway id="gateway-phase-1-close">
+      <bpmn:incoming>Flow_0gftc1w</bpmn:incoming>
+      <bpmn:incoming>Flow_0yxh2rd</bpmn:incoming>
+      <bpmn:incoming>Flow_0bj0p83</bpmn:incoming>
+      <bpmn:outgoing>Flow_1vocufm</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:parallelGateway id="gateway-phase2-open">
+      <bpmn:incoming>Flow_05fds9a</bpmn:incoming>
+      <bpmn:outgoing>Flow_0k2b9hy</bpmn:outgoing>
+      <bpmn:outgoing>Flow_197n6m6</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:intermediateCatchEvent id="wait-release-2w" name="2 weeks before release">
+      <bpmn:incoming>Flow_1vocufm</bpmn:incoming>
+      <bpmn:outgoing>Flow_05fds9a</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_100g46p">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_18tz2wd" sourceRef="notify-of-blogpost" targetRef="Gateway_0erd2bl" />
+    <bpmn:sequenceFlow id="Flow_14a8m20" sourceRef="update-download-page"
+      targetRef="review-download-page" />
+    <bpmn:userTask id="add-release-presentation" name="Add Optimize to Release Presentation list">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_1b6iph6" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_16yijfz</bpmn:incoming>
+      <bpmn:outgoing>Flow_0yxh2rd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_0g7okb9" sourceRef="initial-QA-sync"
+      targetRef="gateway-phase2-close" />
+    <bpmn:intermediateCatchEvent id="wait-release-3d" name="3 working days before release">
+      <bpmn:incoming>Flow_0dsm6uc</bpmn:incoming>
+      <bpmn:outgoing>Flow_0lt1ve6</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_1ukf058">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:parallelGateway id="gateway-phase2-close">
+      <bpmn:incoming>Flow_0g7okb9</bpmn:incoming>
+      <bpmn:incoming>Flow_1qbjnfv</bpmn:incoming>
+      <bpmn:outgoing>Flow_0dsm6uc</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_0dsm6uc" sourceRef="gateway-phase2-close"
+      targetRef="wait-release-3d" />
+    <bpmn:sequenceFlow id="Flow_1qbjnfv" sourceRef="remind-PM" targetRef="gateway-phase2-close" />
+    <bpmn:sequenceFlow id="Flow_0mp1nmb" sourceRef="release-jira"
+      targetRef="update-library-documentation" />
+    <bpmn:sequenceFlow id="Flow_01xeazr" sourceRef="update-library-documentation"
+      targetRef="merge-release-to-master" />
+    <bpmn:sequenceFlow id="Flow_1h0kkko" sourceRef="merge-release-to-master"
+      targetRef="Gateway_0omp8bf" />
+    <bpmn:sequenceFlow id="Flow_18vox6s" name="Minor Only" sourceRef="Gateway_0omp8bf"
+      targetRef="update-download-page">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=releaseType = "minor"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0u3hw09" name="Not Minor" sourceRef="Gateway_0omp8bf"
+      targetRef="Event_1tjjogc">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=releaseType != "minor"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0nc8bry" sourceRef="Event_1tjjogc" targetRef="add-links-to-email" />
+    <bpmn:sequenceFlow id="Flow_0vpqbck" sourceRef="add-links-to-email" targetRef="Event_09p4ria" />
+    <bpmn:sequenceFlow id="Flow_04zxdqw" sourceRef="Event_09p4ria" targetRef="release-download-page" />
+    <bpmn:sequenceFlow id="Flow_1jx7mf4" sourceRef="release-download-page"
+      targetRef="Gateway_1gbdoql" />
+    <bpmn:sequenceFlow id="Flow_1imkjxa" sourceRef="update-release-list" targetRef="token-handover" />
+    <bpmn:sequenceFlow id="Flow_0xesobe" sourceRef="token-handover" targetRef="release-survey" />
+    <bpmn:sequenceFlow id="Flow_1p7wkz2" sourceRef="release-survey" targetRef="Gateway_0erd2bl" />
+    <bpmn:sequenceFlow id="Flow_0dvico4" sourceRef="Gateway_0erd2bl" targetRef="Event_14w2go1" />
+    <bpmn:sequenceFlow id="Flow_1jf0f0w" sourceRef="write-blog-post" targetRef="share-blogpost" />
+    <bpmn:sequenceFlow id="Flow_1n4kdyh" name="No PM input required" sourceRef="Gateway_0ibnc1s"
+      targetRef="schedule-blogpost-publishing">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=blogpost-status = "approve"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0pgkknb" sourceRef="proofread-blogpost" targetRef="Gateway_0ibnc1s" />
+    <bpmn:sequenceFlow id="Flow_1alxxku" sourceRef="trigger-final-build" targetRef="Gateway_06fvesm" />
+    <bpmn:userTask id="fix-bugs" name="Fix Bugs">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_0ifka4n" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1huqmqj</bpmn:incoming>
+      <bpmn:outgoing>Flow_0asdtus</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="check-preconditions" name="Check Preconditions">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3mieg50" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_15pzr2r</bpmn:incoming>
+      <bpmn:incoming>Flow_1qn0x25</bpmn:incoming>
+      <bpmn:outgoing>Flow_0kpccf8</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="create-release-branch" name="Create the release branch">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_0lbqrif" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0kpccf8</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ksdloa</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="trigger-rc-build" name="Trigger the release candidate (RC) build">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_2mgegi1" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1ksdloa</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ymntu4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="create-cloud-gen" name="Create a Cloud Generation for Testing">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_04fc72e" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1ymntu4</bpmn:incoming>
+      <bpmn:outgoing>Flow_09rkztl</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="share-download-link" name="Share the link to download the RC with the team">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_1fqk5lk" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_09rkztl</bpmn:incoming>
+      <bpmn:outgoing>Flow_1gho1fi</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:parallelGateway id="gateway-phase3-open">
+      <bpmn:incoming>Flow_0lt1ve6</bpmn:incoming>
+      <bpmn:outgoing>Flow_1kku83e</bpmn:outgoing>
+      <bpmn:outgoing>Flow_15pzr2r</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:userTask id="update-current_release" name="Update current_release ticket list">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_268ieai" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0l6glim</bpmn:incoming>
+      <bpmn:outgoing>Flow_171255m</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="remind-devs-wrapup" name="Remind teammates to wrap up development">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_251m0c0" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1kku83e</bpmn:incoming>
+      <bpmn:outgoing>Flow_0l6glim</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="test-release" name="Test the Release">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_2do1uk0" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1gho1fi</bpmn:incoming>
+      <bpmn:outgoing>Flow_14yezak</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_10ievv4" name="Bugs Found">
+      <bpmn:incoming>Flow_14yezak</bpmn:incoming>
+      <bpmn:outgoing>Flow_1huqmqj</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1da6dxx</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="trigger-final-build" name="Trigger the final release build">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_1aldtk3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1da6dxx</bpmn:incoming>
+      <bpmn:outgoing>Flow_1alxxku</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="calendar-appointment" name="Set a calendar appointment">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3n880kv" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_12qwcfp</bpmn:incoming>
+      <bpmn:outgoing>Flow_0gftc1w</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="release-jira" name="Release Jira">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_1l9jivd" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1wr2yzy</bpmn:incoming>
+      <bpmn:outgoing>Flow_0mp1nmb</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="merge-release-to-master"
+      name="Merge the changes of the release branch back to master">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3s6ldkq" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_01xeazr</bpmn:incoming>
+      <bpmn:outgoing>Flow_1h0kkko</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="update-library-documentation" name="Update Third Party library Documentation">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_2a0jmiv" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0mp1nmb</bpmn:incoming>
+      <bpmn:outgoing>Flow_01xeazr</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_0omp8bf">
+      <bpmn:incoming>Flow_1h0kkko</bpmn:incoming>
+      <bpmn:outgoing>Flow_18vox6s</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0u3hw09</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="update-download-page" name="Update Enterprise Download Page on Stage">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_1cbf4h7" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_18vox6s</bpmn:incoming>
+      <bpmn:outgoing>Flow_14a8m20</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0wu7qh8</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="add-links-to-email"
+      name="Add Links to the Release Notification E-Mail Template">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_0uce7gn" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0nc8bry</bpmn:incoming>
+      <bpmn:outgoing>Flow_0vpqbck</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:intermediateCatchEvent id="Event_1tjjogc" name="1-2 days before release">
+      <bpmn:incoming>Flow_0u3hw09</bpmn:incoming>
+      <bpmn:incoming>Flow_0wu7qh8</bpmn:incoming>
+      <bpmn:outgoing>Flow_0nc8bry</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_08s9g3y">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="Event_09p4ria" name="Release Day">
+      <bpmn:incoming>Flow_0vpqbck</bpmn:incoming>
+      <bpmn:outgoing>Flow_04zxdqw</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_0jr4fqh">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="Event_07vku7s" name="After Release">
+      <bpmn:incoming>Flow_0vkl3xw</bpmn:incoming>
+      <bpmn:outgoing>Flow_1qdj5xl</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_0mdy0ks">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:userTask id="update-release-list" name="Update List of Old Releases and Last Release">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3nralv7" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1qdj5xl</bpmn:incoming>
+      <bpmn:outgoing>Flow_1imkjxa</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="token-handover" name="Hand the Release Token">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3ghn0p2" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1imkjxa</bpmn:incoming>
+      <bpmn:outgoing>Flow_0xesobe</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="release-survey" name="Complete the survey on the release">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_0663ssp" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0xesobe</bpmn:incoming>
+      <bpmn:outgoing>Flow_1p7wkz2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="Event_14w2go1" name="Release done!">
+      <bpmn:incoming>Flow_0dvico4</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:parallelGateway id="Gateway_0erd2bl">
+      <bpmn:incoming>Flow_1p7wkz2</bpmn:incoming>
+      <bpmn:incoming>Flow_18tz2wd</bpmn:incoming>
+      <bpmn:outgoing>Flow_0dvico4</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:userTask id="review-download-page" name="Review Enterprise Announcement">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_09hbfsn" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_14a8m20</bpmn:incoming>
+      <bpmn:outgoing>Flow_0au5sm6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_0ibnc1s" name="PM Input Needed?">
+      <bpmn:incoming>Flow_0pgkknb</bpmn:incoming>
+      <bpmn:outgoing>Flow_1rjifys</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1n4kdyh</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="proofread-blogpost" name="Proofread Blog Post">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3s501b7" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1qhftki</bpmn:incoming>
+      <bpmn:outgoing>Flow_0pgkknb</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="share-blogpost" name="Share Blog Post with Marketing">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="eric.lundberg@camunda.com" />
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_06fen59" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1jf0f0w</bpmn:incoming>
+      <bpmn:outgoing>Flow_1qhftki</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_1wr2yzy" sourceRef="Gateway_06fvesm" targetRef="release-jira" />
+    <bpmn:parallelGateway id="Gateway_06fvesm">
+      <bpmn:incoming>Flow_1alxxku</bpmn:incoming>
+      <bpmn:incoming>Flow_0935jxt</bpmn:incoming>
+      <bpmn:outgoing>Flow_1wr2yzy</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_0935jxt" sourceRef="Gateway_12u7t9g" targetRef="Gateway_06fvesm" />
+    <bpmn:parallelGateway id="Gateway_12u7t9g">
+      <bpmn:incoming>Flow_171255m</bpmn:incoming>
+      <bpmn:outgoing>Flow_0935jxt</bpmn:outgoing>
+      <bpmn:outgoing>Flow_00tseyk</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_00tseyk" sourceRef="Gateway_12u7t9g" targetRef="pm-release-prep" />
+    <bpmn:sequenceFlow id="Flow_1fe1sz8" name="Minor Release" sourceRef="Gateway_0f26zpe"
+      targetRef="Gateway_04yulyn">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=releaseType = "minor"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:userTask id="remind-PM" name="Remind PM of their tasks">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_29o0otu" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_197n6m6</bpmn:incoming>
+      <bpmn:outgoing>Flow_1qbjnfv</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="initial-QA-sync"
+      name="Sync with QA Engineer about upcoming release activities">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_21r2e0l" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0k2b9hy</bpmn:incoming>
+      <bpmn:outgoing>Flow_0g7okb9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_15pzr2r" sourceRef="gateway-phase3-open"
+      targetRef="check-preconditions" />
+    <bpmn:sequenceFlow id="Flow_1qn0x25" sourceRef="confirm-bugs-fixed"
+      targetRef="check-preconditions" />
+    <bpmn:userTask id="confirm-bugs-fixed" name="Confirm bugs are fixed">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3grmdl1" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0asdtus</bpmn:incoming>
+      <bpmn:outgoing>Flow_1qn0x25</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_05lsakf" sourceRef="Gateway_04yulyn" targetRef="Gateway_1md5qtk" />
+    <bpmn:sequenceFlow id="Flow_1al93gg" name="Alpha" sourceRef="Gateway_0f26zpe"
+      targetRef="Gateway_1md5qtk">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=releaseType != "minor"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:parallelGateway id="Gateway_1gbdoql" name="PM Tasks Completed">
+      <bpmn:incoming>Flow_00iky0z</bpmn:incoming>
+      <bpmn:incoming>Flow_1jx7mf4</bpmn:incoming>
+      <bpmn:incoming>Flow_0d0ghsx</bpmn:incoming>
+      <bpmn:outgoing>Flow_0vkl3xw</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_00iky0z" name="PM Tasks Completed" sourceRef="Gateway_1md5qtk"
+      targetRef="Gateway_1gbdoql" />
+    <bpmn:sequenceFlow id="Flow_1vf79ac" sourceRef="pm-release-prep" targetRef="Gateway_15sg53s" />
+    <bpmn:sequenceFlow id="Flow_0ncak3w" sourceRef="Gateway_15sg53s" targetRef="write-blog-post" />
+    <bpmn:parallelGateway id="gateway-phase1-open">
+      <bpmn:incoming>Flow_1yoohwu</bpmn:incoming>
+      <bpmn:outgoing>Flow_0wo4gsf</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1h2tz7c</bpmn:outgoing>
+      <bpmn:outgoing>Flow_16yijfz</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_0wo4gsf" sourceRef="gateway-phase1-open" targetRef="add-cat-pic" />
+    <bpmn:sequenceFlow id="Flow_1h2tz7c" sourceRef="gateway-phase1-open" targetRef="name-release" />
+    <bpmn:sequenceFlow id="Flow_16yijfz" sourceRef="gateway-phase1-open"
+      targetRef="add-release-presentation" />
+    <bpmn:sequenceFlow id="Flow_1yoohwu" sourceRef="Start_1" targetRef="gateway-phase1-open" />
+    <bpmn:sequenceFlow id="Flow_1xgfmb1" name="Whatsnew PR merged" sourceRef="Gateway_00tb2fy"
+      targetRef="Gateway_04yulyn" />
+    <bpmn:sequenceFlow id="Flow_0au5sm6" name="Enterprise Announcement reviewed"
+      sourceRef="review-download-page" targetRef="Gateway_04yulyn" />
+    <bpmn:sequenceFlow id="Flow_1qm6gt4" name="Slides Prepared" sourceRef="prepare-slides"
+      targetRef="Gateway_0f26zpe" />
+    <bpmn:exclusiveGateway id="Gateway_0f26zpe">
+      <bpmn:incoming>Flow_1qm6gt4</bpmn:incoming>
+      <bpmn:outgoing>Flow_1fe1sz8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1al93gg</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_1md5qtk">
+      <bpmn:incoming>Flow_05lsakf</bpmn:incoming>
+      <bpmn:incoming>Flow_1al93gg</bpmn:incoming>
+      <bpmn:outgoing>Flow_00iky0z</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:parallelGateway id="Gateway_04yulyn">
+      <bpmn:incoming>Flow_1fe1sz8</bpmn:incoming>
+      <bpmn:incoming>Flow_1xgfmb1</bpmn:incoming>
+      <bpmn:incoming>Flow_0au5sm6</bpmn:incoming>
+      <bpmn:outgoing>Flow_05lsakf</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:userTask id="update-whatsnew" name="Update Whatsnew">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="eric.lundberg@camunda.com" />
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_212rons" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0z8wlpx</bpmn:incoming>
+      <bpmn:outgoing>Flow_097cwy1</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_0wu7qh8" sourceRef="update-download-page" targetRef="Event_1tjjogc" />
+    <bpmn:userTask id="release-download-page" name="Release the Enterprise Download Page">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_2doapka" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_04zxdqw</bpmn:incoming>
+      <bpmn:outgoing>Flow_1jx7mf4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_0vkl3xw" sourceRef="Gateway_1gbdoql" targetRef="Event_07vku7s" />
+    <bpmn:sequenceFlow id="Flow_1qdj5xl" sourceRef="Event_07vku7s" targetRef="update-release-list" />
+    <bpmn:userTask id="notify-of-blogpost" name="Notify PM / Prod Ops of Blog Post">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_2g80aao" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1b64yzc</bpmn:incoming>
+      <bpmn:outgoing>Flow_18tz2wd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="schedule-blogpost-publishing" name="Schedule Blog Post for Publishing">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_0mjra98" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1n4kdyh</bpmn:incoming>
+      <bpmn:outgoing>Flow_0yguq9f</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:intermediateCatchEvent id="Event_11eo5yo" name="Release Day">
+      <bpmn:incoming>Flow_1353rxi</bpmn:incoming>
+      <bpmn:outgoing>Flow_1b64yzc</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_1vyad5t">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_1vocufm" sourceRef="gateway-phase-1-close"
+      targetRef="wait-release-2w" />
+    <bpmn:startEvent id="Start_1" name="At beginning of release month">
+      <bpmn:outgoing>Flow_1yoohwu</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_0d0ghsx" name="Blog post complete" sourceRef="Gateway_1ai2l9w"
+      targetRef="Gateway_1gbdoql" />
+    <bpmn:sequenceFlow id="Flow_1353rxi" sourceRef="Gateway_1ai2l9w" targetRef="Event_11eo5yo" />
+    <bpmn:parallelGateway id="Gateway_1ai2l9w">
+      <bpmn:incoming>Flow_0yguq9f</bpmn:incoming>
+      <bpmn:outgoing>Flow_1353rxi</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0d0ghsx</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_1jnq46f" sourceRef="Gateway_00tb2fy" targetRef="prepare-slides" />
+    <bpmn:userTask id="pm-release-prep" name="PM Release Preparation">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="eric.lundberg@camunda.com" />
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_390mro6" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_00tseyk</bpmn:incoming>
+      <bpmn:outgoing>Flow_1vf79ac</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="prepare-slides" name="Prepare release slides">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="eric.lundberg@camunda.com" />
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3d5qoob" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1jnq46f</bpmn:incoming>
+      <bpmn:incoming>Flow_0h2qpoh</bpmn:incoming>
+      <bpmn:outgoing>Flow_1qm6gt4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_097cwy1" sourceRef="update-whatsnew" targetRef="Gateway_00tb2fy" />
+    <bpmn:parallelGateway id="Gateway_00tb2fy">
+      <bpmn:incoming>Flow_097cwy1</bpmn:incoming>
+      <bpmn:outgoing>Flow_1xgfmb1</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1jnq46f</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_0jbp9cu" sourceRef="Gateway_15sg53s" targetRef="Gateway_1qweev3" />
+    <bpmn:parallelGateway id="Gateway_15sg53s">
+      <bpmn:incoming>Flow_1vf79ac</bpmn:incoming>
+      <bpmn:outgoing>Flow_0jbp9cu</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0ncak3w</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:exclusiveGateway id="Gateway_1qweev3">
+      <bpmn:incoming>Flow_0jbp9cu</bpmn:incoming>
+      <bpmn:outgoing>Flow_0h2qpoh</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0z8wlpx</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_0h2qpoh" name="Alpha Release" sourceRef="Gateway_1qweev3"
+      targetRef="prepare-slides">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=releaseType != "minor"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:userTask id="write-blog-post" name="Write the Blog Post">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formKey="camunda-forms:bpmn:userTaskForm_3dnphbf" />
+        <zeebe:assignmentDefinition assignee="eric.lundberg@camunda.com" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1rjifys</bpmn:incoming>
+      <bpmn:incoming>Flow_0ncak3w</bpmn:incoming>
+      <bpmn:outgoing>Flow_1jf0f0w</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:textAnnotation id="TextAnnotation_1m4hg8y">
+      <bpmn:text>Configure timer cycle</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_1ymrhxp">
+      <bpmn:text>Phase 1: Setup Tasks</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1srpwa7" sourceRef="Start_1"
+      targetRef="TextAnnotation_1m4hg8y" />
+    <bpmn:textAnnotation id="TextAnnotation_1q8of3o">
+      <bpmn:text>Phase 2: Administrative Preparation</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0wlvzg0" sourceRef="TextAnnotation_1q8of3o"
+      targetRef="Group_17vnh0h" />
+    <bpmn:textAnnotation id="TextAnnotation_1mn8lda">
+      <bpmn:text>Convert to SendGrid connector</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1v40ef7" sourceRef="share-blogpost"
+      targetRef="TextAnnotation_1mn8lda" />
+    <bpmn:textAnnotation id="TextAnnotation_0zinpyn">
+      <bpmn:text>Phase 3: Build the Release</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0dfsnsc" sourceRef="Group_1o82fey"
+      targetRef="TextAnnotation_0zinpyn" />
+  </bpmn:process>
+  <bpmn:category id="Category_0f4rgns">
+    <bpmn:categoryValue id="CategoryValue_0peezk4" />
+  </bpmn:category>
+  <bpmn:category id="Category_0454hdo">
+    <bpmn:categoryValue id="CategoryValue_10tgdqb" />
+  </bpmn:category>
+  <bpmn:category id="Category_0rfo36q">
+    <bpmn:categoryValue id="CategoryValue_0xbrpvp" />
+  </bpmn:category>
+  <bpmn:category id="Category_1qqn6vp">
+    <bpmn:categoryValue id="CategoryValue_1axdg7g" />
+  </bpmn:category>
+  <bpmn:category id="Category_1a7v35v">
+    <bpmn:categoryValue id="CategoryValue_0uo5rby" />
+  </bpmn:category>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_03svvle">
+      <bpmndi:BPMNShape id="Participant_19296tk_di" bpmnElement="Participant_19296tk"
+        isHorizontal="true">
+        <dc:Bounds x="175" y="45" width="4310" height="1085" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1hg66tj_di" bpmnElement="product-manager-lane" isHorizontal="true">
+        <dc:Bounds x="205" y="700" width="4280" height="430" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_0rtbkp2_di" bpmnElement="release-manager-lane" isHorizontal="true">
+        <dc:Bounds x="205" y="295" width="4280" height="405" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1i9ntug_di" bpmnElement="other-lane" isHorizontal="true">
+        <dc:Bounds x="205" y="45" width="4280" height="250" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0h2qpoh_di" bpmnElement="Flow_0h2qpoh">
+        <di:waypoint x="2015" y="910" />
+        <di:waypoint x="2300" y="910" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2122" y="892" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0jbp9cu_di" bpmnElement="Flow_0jbp9cu">
+        <di:waypoint x="1935" y="910" />
+        <di:waypoint x="1965" y="910" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_097cwy1_di" bpmnElement="Flow_097cwy1">
+        <di:waypoint x="2210" y="1060" />
+        <di:waypoint x="2325" y="1060" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1jnq46f_di" bpmnElement="Flow_1jnq46f">
+        <di:waypoint x="2350" y="1035" />
+        <di:waypoint x="2350" y="950" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1353rxi_di" bpmnElement="Flow_1353rxi">
+        <di:waypoint x="3225" y="175" />
+        <di:waypoint x="3357" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0d0ghsx_di" bpmnElement="Flow_0d0ghsx">
+        <di:waypoint x="3200" y="200" />
+        <di:waypoint x="3200" y="350" />
+        <di:waypoint x="3750" y="350" />
+        <di:waypoint x="3750" y="470" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3452" y="313" width="46" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vocufm_di" bpmnElement="Flow_1vocufm">
+        <di:waypoint x="760" y="625" />
+        <di:waypoint x="817" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1qdj5xl_di" bpmnElement="Flow_1qdj5xl">
+        <di:waypoint x="3858" y="495" />
+        <di:waypoint x="3910" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0vkl3xw_di" bpmnElement="Flow_0vkl3xw">
+        <di:waypoint x="3775" y="495" />
+        <di:waypoint x="3822" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0wu7qh8_di" bpmnElement="Flow_0wu7qh8">
+        <di:waypoint x="3060" y="605" />
+        <di:waypoint x="3115" y="605" />
+        <di:waypoint x="3115" y="513" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1qm6gt4_di" bpmnElement="Flow_1qm6gt4">
+        <di:waypoint x="2400" y="910" />
+        <di:waypoint x="3495" y="910" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2909" y="892" width="79" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0au5sm6_di" bpmnElement="Flow_0au5sm6">
+        <di:waypoint x="3010" y="790" />
+        <di:waypoint x="3010" y="1010" />
+        <di:waypoint x="3495" y="1010" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3393" y="970" width="74" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xgfmb1_di" bpmnElement="Flow_1xgfmb1">
+        <di:waypoint x="2375" y="1060" />
+        <di:waypoint x="3520" y="1060" />
+        <di:waypoint x="3520" y="1035" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3432" y="1031" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1yoohwu_di" bpmnElement="Flow_1yoohwu">
+        <di:waypoint x="273" y="625" />
+        <di:waypoint x="309" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16yijfz_di" bpmnElement="Flow_16yijfz">
+        <di:waypoint x="334" y="600" />
+        <di:waypoint x="334" y="393" />
+        <di:waypoint x="395" y="393" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1h2tz7c_di" bpmnElement="Flow_1h2tz7c">
+        <di:waypoint x="334" y="600" />
+        <di:waypoint x="334" y="515" />
+        <di:waypoint x="395" y="515" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0wo4gsf_di" bpmnElement="Flow_0wo4gsf">
+        <di:waypoint x="359" y="625" />
+        <di:waypoint x="395" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ncak3w_di" bpmnElement="Flow_0ncak3w">
+        <di:waypoint x="1910" y="885" />
+        <di:waypoint x="1910" y="750" />
+        <di:waypoint x="2200" y="750" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vf79ac_di" bpmnElement="Flow_1vf79ac">
+        <di:waypoint x="1850" y="910" />
+        <di:waypoint x="1885" y="910" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00iky0z_di" bpmnElement="Flow_00iky0z">
+        <di:waypoint x="3750" y="885" />
+        <di:waypoint x="3750" y="520" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3763" y="706" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1al93gg_di" bpmnElement="Flow_1al93gg">
+        <di:waypoint x="3545" y="910" />
+        <di:waypoint x="3725" y="910" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3615" y="892" width="29" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05lsakf_di" bpmnElement="Flow_05lsakf">
+        <di:waypoint x="3545" y="1010" />
+        <di:waypoint x="3750" y="1010" />
+        <di:waypoint x="3750" y="935" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1qn0x25_di" bpmnElement="Flow_1qn0x25">
+        <di:waypoint x="1495" y="415" />
+        <di:waypoint x="1495" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_15pzr2r_di" bpmnElement="Flow_15pzr2r">
+        <di:waypoint x="1365" y="600" />
+        <di:waypoint x="1365" y="495" />
+        <di:waypoint x="1445" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1fe1sz8_di" bpmnElement="Flow_1fe1sz8">
+        <di:waypoint x="3520" y="935" />
+        <di:waypoint x="3520" y="985" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3534" y="953" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_00tseyk_di" bpmnElement="Flow_00tseyk">
+        <di:waypoint x="1800" y="650" />
+        <di:waypoint x="1800" y="870" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0935jxt_di" bpmnElement="Flow_0935jxt">
+        <di:waypoint x="1825" y="625" />
+        <di:waypoint x="2470" y="625" />
+        <di:waypoint x="2470" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1wr2yzy_di" bpmnElement="Flow_1wr2yzy">
+        <di:waypoint x="2495" y="495" />
+        <di:waypoint x="2525" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1alxxku_di" bpmnElement="Flow_1alxxku">
+        <di:waypoint x="2415" y="495" />
+        <di:waypoint x="2445" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0pgkknb_di" bpmnElement="Flow_0pgkknb">
+        <di:waypoint x="2700" y="175" />
+        <di:waypoint x="2735" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1n4kdyh_di" bpmnElement="Flow_1n4kdyh" bioc:stroke="#43a047"
+        color:border-color="#43a047">
+        <di:waypoint x="2785" y="175" />
+        <di:waypoint x="2960" y="175" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2842" y="146" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1jf0f0w_di" bpmnElement="Flow_1jf0f0w">
+        <di:waypoint x="2300" y="750" />
+        <di:waypoint x="2600" y="750" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0dvico4_di" bpmnElement="Flow_0dvico4">
+        <di:waypoint x="4375" y="495" />
+        <di:waypoint x="4412" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1p7wkz2_di" bpmnElement="Flow_1p7wkz2">
+        <di:waypoint x="4300" y="495" />
+        <di:waypoint x="4325" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0xesobe_di" bpmnElement="Flow_0xesobe">
+        <di:waypoint x="4160" y="495" />
+        <di:waypoint x="4200" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1imkjxa_di" bpmnElement="Flow_1imkjxa">
+        <di:waypoint x="4010" y="495" />
+        <di:waypoint x="4060" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1jx7mf4_di" bpmnElement="Flow_1jx7mf4">
+        <di:waypoint x="3630" y="495" />
+        <di:waypoint x="3725" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_04zxdqw_di" bpmnElement="Flow_04zxdqw">
+        <di:waypoint x="3393" y="495" />
+        <di:waypoint x="3530" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0vpqbck_di" bpmnElement="Flow_0vpqbck">
+        <di:waypoint x="3295" y="495" />
+        <di:waypoint x="3357" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0nc8bry_di" bpmnElement="Flow_0nc8bry">
+        <di:waypoint x="3133" y="495" />
+        <di:waypoint x="3195" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0u3hw09_di" bpmnElement="Flow_0u3hw09">
+        <di:waypoint x="3035" y="495" />
+        <di:waypoint x="3097" y="495" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3036" y="473" width="48" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18vox6s_di" bpmnElement="Flow_18vox6s">
+        <di:waypoint x="3010" y="520" />
+        <di:waypoint x="3010" y="565" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2943" y="527" width="54" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1h0kkko_di" bpmnElement="Flow_1h0kkko">
+        <di:waypoint x="2925" y="495" />
+        <di:waypoint x="2985" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_01xeazr_di" bpmnElement="Flow_01xeazr">
+        <di:waypoint x="2780" y="495" />
+        <di:waypoint x="2825" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0mp1nmb_di" bpmnElement="Flow_0mp1nmb">
+        <di:waypoint x="2625" y="495" />
+        <di:waypoint x="2680" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1qbjnfv_di" bpmnElement="Flow_1qbjnfv">
+        <di:waypoint x="1115" y="625" />
+        <di:waypoint x="1135" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0dsm6uc_di" bpmnElement="Flow_0dsm6uc">
+        <di:waypoint x="1185" y="625" />
+        <di:waypoint x="1227" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0g7okb9_di" bpmnElement="Flow_0g7okb9">
+        <di:waypoint x="1115" y="510" />
+        <di:waypoint x="1160" y="510" />
+        <di:waypoint x="1160" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_14a8m20_di" bpmnElement="Flow_14a8m20">
+        <di:waypoint x="3010" y="645" />
+        <di:waypoint x="3010" y="710" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18tz2wd_di" bpmnElement="Flow_18tz2wd">
+        <di:waypoint x="3630" y="175" />
+        <di:waypoint x="4350" y="175" />
+        <di:waypoint x="4350" y="470" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1b64yzc_di" bpmnElement="Flow_1b64yzc">
+        <di:waypoint x="3393" y="175" />
+        <di:waypoint x="3530" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0yguq9f_di" bpmnElement="Flow_0yguq9f">
+        <di:waypoint x="3060" y="175" />
+        <di:waypoint x="3175" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1rjifys_di" bpmnElement="Flow_1rjifys" bioc:stroke="#e53935"
+        color:border-color="#e53935">
+        <di:waypoint x="2760" y="200" />
+        <di:waypoint x="2760" y="420" />
+        <di:waypoint x="2250" y="420" />
+        <di:waypoint x="2250" y="710" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2686" y="243" width="67" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1qhftki_di" bpmnElement="Flow_1qhftki">
+        <di:waypoint x="2650" y="710" />
+        <di:waypoint x="2650" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_171255m_di" bpmnElement="Flow_171255m">
+        <di:waypoint x="1705" y="625" />
+        <di:waypoint x="1775" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0l6glim_di" bpmnElement="Flow_0l6glim">
+        <di:waypoint x="1545" y="625" />
+        <di:waypoint x="1605" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_09rkztl_di" bpmnElement="Flow_09rkztl">
+        <di:waypoint x="2025" y="495" />
+        <di:waypoint x="2085" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ymntu4_di" bpmnElement="Flow_1ymntu4">
+        <di:waypoint x="1865" y="495" />
+        <di:waypoint x="1925" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ksdloa_di" bpmnElement="Flow_1ksdloa">
+        <di:waypoint x="1705" y="495" />
+        <di:waypoint x="1765" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0kpccf8_di" bpmnElement="Flow_0kpccf8">
+        <di:waypoint x="1545" y="495" />
+        <di:waypoint x="1605" y="495" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0z8wlpx_di" bpmnElement="Flow_0z8wlpx" bioc:stroke="#000"
+        bioc:fill="#fff">
+        <di:waypoint x="1990" y="935" />
+        <di:waypoint x="1990" y="1060" />
+        <di:waypoint x="2110" y="1060" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1970" y="987" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1da6dxx_di" bpmnElement="Flow_1da6dxx" bioc:stroke="#43a047"
+        color:border-color="#43a047">
+        <di:waypoint x="2310" y="175" />
+        <di:waypoint x="2366" y="175" />
+        <di:waypoint x="2366" y="455" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2316" y="256" width="43" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0asdtus_di" bpmnElement="Flow_0asdtus">
+        <di:waypoint x="1605" y="375" />
+        <di:waypoint x="1545" y="375" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1huqmqj_di" bpmnElement="Flow_1huqmqj" bioc:stroke="#e53935"
+        color:border-color="#e53935">
+        <di:waypoint x="2285" y="200" />
+        <di:waypoint x="2285" y="375" />
+        <di:waypoint x="1705" y="375" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2370" y="263" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_14yezak_di" bpmnElement="Flow_14yezak">
+        <di:waypoint x="2185" y="175" />
+        <di:waypoint x="2260" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12qwcfp_di" bpmnElement="Flow_12qwcfp">
+        <di:waypoint x="495" y="515" />
+        <di:waypoint x="600" y="515" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0gftc1w_di" bpmnElement="Flow_0gftc1w">
+        <di:waypoint x="700" y="515" />
+        <di:waypoint x="735" y="515" />
+        <di:waypoint x="735" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_197n6m6_di" bpmnElement="Flow_197n6m6">
+        <di:waypoint x="960" y="625" />
+        <di:waypoint x="1015" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0yxh2rd_di" bpmnElement="Flow_0yxh2rd">
+        <di:waypoint x="495" y="393" />
+        <di:waypoint x="735" y="393" />
+        <di:waypoint x="735" y="600" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0bj0p83_di" bpmnElement="Flow_0bj0p83">
+        <di:waypoint x="495" y="625" />
+        <di:waypoint x="710" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05fds9a_di" bpmnElement="Flow_05fds9a">
+        <di:waypoint x="853" y="625" />
+        <di:waypoint x="910" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0k2b9hy_di" bpmnElement="Flow_0k2b9hy">
+        <di:waypoint x="935" y="600" />
+        <di:waypoint x="935" y="510" />
+        <di:waypoint x="1015" y="510" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0lt1ve6_di" bpmnElement="Flow_0lt1ve6">
+        <di:waypoint x="1263" y="625" />
+        <di:waypoint x="1340" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1kku83e_di" bpmnElement="Flow_1kku83e">
+        <di:waypoint x="1390" y="625" />
+        <di:waypoint x="1445" y="625" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1gho1fi_di" bpmnElement="Flow_1gho1fi">
+        <di:waypoint x="2135" y="455" />
+        <di:waypoint x="2135" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Activity_0ukyg0z_di" bpmnElement="name-release">
+        <dc:Bounds x="395" y="475" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0g714tt_di" bpmnElement="add-cat-pic">
+        <dc:Bounds x="395" y="585" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0sewf10" bpmnElement="gateway-phase-1-close">
+        <dc:Bounds x="710" y="600" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0asbcx1_di" bpmnElement="gateway-phase2-open">
+        <dc:Bounds x="910" y="600" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0udgzbt_di" bpmnElement="wait-release-2w">
+        <dc:Bounds x="817" y="607" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="797" y="650" width="75" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_14erp00_di" bpmnElement="add-release-presentation">
+        <dc:Bounds x="395" y="353" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_02jljdk_di" bpmnElement="wait-release-3d">
+        <dc:Bounds x="1227" y="607" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1208" y="650" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_13qjjoy_di" bpmnElement="gateway-phase2-close">
+        <dc:Bounds x="1135" y="600" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0xxeuf4_di" bpmnElement="fix-bugs">
+        <dc:Bounds x="1605" y="335" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1isizzh_di" bpmnElement="check-preconditions">
+        <dc:Bounds x="1445" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1uacwah_di" bpmnElement="create-release-branch">
+        <dc:Bounds x="1605" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_02o95k7_di" bpmnElement="trigger-rc-build">
+        <dc:Bounds x="1765" y="455" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_11c91t1_di" bpmnElement="create-cloud-gen">
+        <dc:Bounds x="1925" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1r0qgu4_di" bpmnElement="share-download-link">
+        <dc:Bounds x="2085" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1qbpgja" bpmnElement="gateway-phase3-open">
+        <dc:Bounds x="1340" y="600" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ojuf1o_di" bpmnElement="update-current_release"
+        bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9"
+        color:border-color="#43a047">
+        <dc:Bounds x="1605" y="585" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0g8zlla_di" bpmnElement="remind-devs-wrapup">
+        <dc:Bounds x="1445" y="585" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1b5j0tn_di" bpmnElement="test-release">
+        <dc:Bounds x="2085" y="135" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_10ievv4_di" bpmnElement="Gateway_10ievv4" isMarkerVisible="true">
+        <dc:Bounds x="2260" y="150" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2255" y="126" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0jwnnmr_di" bpmnElement="trigger-final-build">
+        <dc:Bounds x="2315" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1ks5ftm_di" bpmnElement="calendar-appointment">
+        <dc:Bounds x="600" y="475" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1qc5nqy_di" bpmnElement="release-jira">
+        <dc:Bounds x="2525" y="455" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0w8bww4_di" bpmnElement="merge-release-to-master">
+        <dc:Bounds x="2825" y="455" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1ne0t9g_di" bpmnElement="update-library-documentation">
+        <dc:Bounds x="2680" y="455" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0omp8bf_di" bpmnElement="Gateway_0omp8bf" isMarkerVisible="true">
+        <dc:Bounds x="2985" y="470" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1h0b52w_di" bpmnElement="update-download-page">
+        <dc:Bounds x="2960" y="565" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0uhcwz0_di" bpmnElement="add-links-to-email">
+        <dc:Bounds x="3195" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0yz3g78_di" bpmnElement="Event_1tjjogc">
+        <dc:Bounds x="3097" y="477" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3076" y="446" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0g72grm_di" bpmnElement="Event_09p4ria">
+        <dc:Bounds x="3357" y="477" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3344" y="520" width="63" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0voqp9l" bpmnElement="Event_07vku7s">
+        <dc:Bounds x="3822" y="477" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3787" y="520" width="67" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_07kf0j1_di" bpmnElement="update-release-list">
+        <dc:Bounds x="3910" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_00bsjgs_di" bpmnElement="token-handover">
+        <dc:Bounds x="4060" y="455" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_104wu01_di" bpmnElement="release-survey">
+        <dc:Bounds x="4200" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_14w2go1_di" bpmnElement="Event_14w2go1">
+        <dc:Bounds x="4412" y="477" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4375" y="520" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_10s6m1i_di" bpmnElement="Gateway_0erd2bl">
+        <dc:Bounds x="4325" y="470" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1rihgqj_di" bpmnElement="review-download-page">
+        <dc:Bounds x="2960" y="710" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0ibnc1s_di" bpmnElement="Gateway_0ibnc1s" isMarkerVisible="true">
+        <dc:Bounds x="2735" y="150" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2737" y="113" width="45" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1lufnzz_di" bpmnElement="proofread-blogpost">
+        <dc:Bounds x="2600" y="135" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1v7q2xt_di" bpmnElement="share-blogpost">
+        <dc:Bounds x="2600" y="710" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_05ybrsd_di" bpmnElement="Gateway_06fvesm">
+        <dc:Bounds x="2445" y="470" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1bq3otp_di" bpmnElement="Gateway_12u7t9g">
+        <dc:Bounds x="1775" y="600" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1nghcdh_di" bpmnElement="remind-PM" bioc:stroke="#e53935"
+        bioc:fill="#ffcdd2" color:background-color="#ffcdd2" color:border-color="#e53935">
+        <dc:Bounds x="1015" y="585" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_17wskt9" bpmnElement="initial-QA-sync">
+        <dc:Bounds x="1015" y="470" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0r9bpvl_di" bpmnElement="confirm-bugs-fixed">
+        <dc:Bounds x="1445" y="335" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1h4a8vf_di" bpmnElement="Gateway_1gbdoql">
+        <dc:Bounds x="3725" y="470" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3693" y="516" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0l1c635_di" bpmnElement="gateway-phase1-open">
+        <dc:Bounds x="309" y="600" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="299" y="657" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0f26zpe_di" bpmnElement="Gateway_0f26zpe" isMarkerVisible="true">
+        <dc:Bounds x="3495" y="885" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1md5qtk_di" bpmnElement="Gateway_1md5qtk" isMarkerVisible="true">
+        <dc:Bounds x="3725" y="885" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_08bon1p_di" bpmnElement="Gateway_04yulyn">
+        <dc:Bounds x="3495" y="985" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_01w6vej_di" bpmnElement="update-whatsnew">
+        <dc:Bounds x="2110" y="1020" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ul18eb_di" bpmnElement="release-download-page">
+        <dc:Bounds x="3530" y="455" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1q0dlr9_di" bpmnElement="notify-of-blogpost">
+        <dc:Bounds x="3530" y="135" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0uwqmcs_di" bpmnElement="schedule-blogpost-publishing">
+        <dc:Bounds x="2960" y="135" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_009pqes_di" bpmnElement="Event_11eo5yo">
+        <dc:Bounds x="3357" y="157" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3344" y="200" width="63" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_06qyu4n_di" bpmnElement="Start_1">
+        <dc:Bounds x="237" y="607" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="219" y="650" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0p2kv07_di" bpmnElement="Gateway_1ai2l9w">
+        <dc:Bounds x="3175" y="150" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0qm0k72_di" bpmnElement="pm-release-prep">
+        <dc:Bounds x="1750" y="870" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1jhzdsh_di" bpmnElement="prepare-slides">
+        <dc:Bounds x="2300" y="870" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_18cmm6j_di" bpmnElement="Gateway_00tb2fy">
+        <dc:Bounds x="2325" y="1035" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0h64u1a_di" bpmnElement="Gateway_15sg53s">
+        <dc:Bounds x="1885" y="885" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1qweev3_di" bpmnElement="Gateway_1qweev3" isMarkerVisible="true">
+        <dc:Bounds x="1965" y="885" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1qcutba_di" bpmnElement="write-blog-post">
+        <dc:Bounds x="2200" y="710" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1m4hg8y_di" bpmnElement="TextAnnotation_1m4hg8y">
+        <dc:Bounds x="225" y="525" width="100" height="39" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1ymrhxp_di" bpmnElement="TextAnnotation_1ymrhxp">
+        <dc:Bounds x="800" y="365" width="109.9726775956284" height="40.072859744990886" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_17fzfbn" bpmnElement="TextAnnotation_1q8of3o">
+        <dc:Bounds x="1185" y="365" width="120" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1mn8lda_di" bpmnElement="TextAnnotation_1mn8lda">
+        <dc:Bounds x="2710" y="720" width="220" height="29" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0zinpyn_di" bpmnElement="TextAnnotation_0zinpyn">
+        <dc:Bounds x="3355" y="70" width="105" height="42" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_1srpwa7_di" bpmnElement="Association_1srpwa7">
+        <di:waypoint x="259" y="608" />
+        <di:waypoint x="269" y="564" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0wlvzg0_di" bpmnElement="Association_0wlvzg0">
+        <di:waypoint x="1185" y="420" />
+        <di:waypoint x="1185" y="430" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1v40ef7_di" bpmnElement="Association_1v40ef7">
+        <di:waypoint x="2700" y="751" />
+        <di:waypoint x="2716" y="749" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0dfsnsc_di" bpmnElement="Association_0dfsnsc">
+        <di:waypoint x="3320" y="114" />
+        <di:waypoint x="3355" y="103" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Group_1d29am1_di" bpmnElement="Group_1d29am1">
+        <dc:Bounds x="350" y="335" width="420" height="370" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1tjpf19" bpmnElement="Group_17vnh0h">
+        <dc:Bounds x="965" y="430" width="220" height="280" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0tv1ky4" bpmnElement="Group_1o82fey">
+        <dc:Bounds x="1290" y="100" width="2030" height="700" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0up8vil" bpmnElement="Group_167m16m">
+        <dc:Bounds x="3430" y="380" width="360" height="270" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0t6z7zw_di" bpmnElement="TextAnnotation_0t6z7zw">
+        <dc:Bounds x="3790" y="300" width="100" height="54" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1yg7tex" bpmnElement="Group_1frzwac">
+        <dc:Bounds x="3895" y="380" width="421" height="270" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_09d5piu_di" bpmnElement="TextAnnotation_09d5piu">
+        <dc:Bounds x="4320" y="300" width="120" height="41" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_08oqxov_di" bpmnElement="Association_08oqxov">
+        <di:waypoint x="3771" y="380" />
+        <di:waypoint x="3790" y="352" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1jo0o1t_di" bpmnElement="Association_1jo0o1t">
+        <di:waypoint x="770" y="429" />
+        <di:waypoint x="813" y="405" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_17rvzm9_di" bpmnElement="Association_17rvzm9">
+        <di:waypoint x="4286" y="380" />
+        <di:waypoint x="4336" y="341" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

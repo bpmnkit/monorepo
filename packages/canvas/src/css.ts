@@ -39,13 +39,17 @@ export const CANVAS_CSS = `
 }
 .bpmn-shape:focus .bpmn-shape-body,
 .bpmn-shape:focus .bpmn-event-body,
-.bpmn-shape:focus .bpmn-gw-body {
+.bpmn-shape:focus .bpmn-gw-body,
+.bpmn-shape:focus .bpmn-pool-body,
+.bpmn-shape:focus .bpmn-lane-body {
   stroke: var(--bpmn-focus, #0066cc);
   stroke-width: 2.5;
 }
 .bpmn-shape.bpmn-selected .bpmn-shape-body,
 .bpmn-shape.bpmn-selected .bpmn-event-body,
-.bpmn-shape.bpmn-selected .bpmn-gw-body {
+.bpmn-shape.bpmn-selected .bpmn-gw-body,
+.bpmn-shape.bpmn-selected .bpmn-pool-body,
+.bpmn-shape.bpmn-selected .bpmn-lane-body {
   stroke: var(--bpmn-highlight, #0066cc);
   stroke-width: 2.5;
 }
