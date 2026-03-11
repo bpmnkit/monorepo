@@ -56,6 +56,9 @@ importers:
       '@bpmn-sdk/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@bpmn-sdk/ascii':
+        specifier: workspace:*
+        version: link:../../packages/ascii
       '@bpmn-sdk/profiles':
         specifier: workspace:*
         version: link:../../packages/profiles

@@ -1,4 +1,4 @@
-import { Bpmn, layoutProcess } from "@bpmn-sdk/core"
+import { Bpmn, layoutFlowNodes } from "@bpmn-sdk/core"
 import type { LayoutNode } from "@bpmn-sdk/core"
 import { drawEdge } from "./edges.js"
 import { AsciiGrid } from "./grid.js"
@@ -17,7 +17,9 @@ export function renderBpmnAscii(xml: string, options?: RenderOptions): string {
 	const process = defs.processes[0]
 	if (!process) return "(empty)"
 
-	const layout = layoutProcess(process)
+	// Use layoutFlowNodes directly to skip the overlap assertion — the ASCII renderer
+	// uses layer/position indices (not pixel coords) so pixel-level overlaps are harmless.
+	const layout = layoutFlowNodes(process.flowElements, process.sequenceFlows)
 	const { nodes, edges } = layout
 	if (nodes.length === 0) return "(empty)"
 

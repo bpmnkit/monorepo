@@ -57,8 +57,8 @@ type CapturedOutput =
 // Each screen that belongs to a group carries the group reference so the TUI
 // can show the correct title and navigate back regardless of entry point.
 type Screen =
-	| { kind: "main"; cursor: number; scroll: number }
-	| { kind: "commands"; group: CommandGroup; cursor: number }
+	| { kind: "main"; cursor: number; scroll: number; search: string }
+	| { kind: "commands"; group: CommandGroup; cursor: number; search: string }
 	| {
 			kind: "input"
 			group: CommandGroup
@@ -80,7 +80,26 @@ type Screen =
 			cursor: number
 			scroll: number
 	  }
-	| { kind: "detail"; group: CommandGroup; item: unknown; scroll: number }
+	| {
+			kind: "detail"
+			group: CommandGroup
+			item: unknown
+			label: string
+			cursor: number
+			scroll: number
+	  }
+	| {
+			kind: "followup"
+			sourceGroup: CommandGroup
+			item: Record<string, unknown>
+			relations: Array<{
+				group: CommandGroup
+				cmd: Command
+				params: Array<{ field: string; param: string }>
+			}>
+			cursor: number
+			scroll: number
+	  }
 
 interface TuiState {
 	/** All command groups — shown in the main menu. */
@@ -127,7 +146,10 @@ function makeCapturingWriter(): { writer: OutputWriter; get: () => CapturedOutpu
 		},
 		print(data) {
 			if (captured.type === "messages") {
-				captured.lines.push(typeof data === "string" ? data : JSON.stringify(data, null, 2))
+				const str = typeof data === "string" ? data : JSON.stringify(data, null, 2)
+				for (const line of str.split("\n")) {
+					captured.lines.push(line)
+				}
 			}
 		},
 		ok(msg) {
@@ -237,12 +259,42 @@ function calcColWidths(
 	return natural.map((w) => Math.max(5, Math.round(w * scale)))
 }
 
+/** Sentinel for arrays of objects — displayed as "[N items]", Space to drill down. */
+class ArrayValue {
+	constructor(public readonly items: unknown[]) {}
+	toString() {
+		return `[${this.items.length} item${this.items.length !== 1 ? "s" : ""}]`
+	}
+}
+
 function flattenObj(obj: unknown, prefix = ""): Record<string, unknown> {
+	// Top-level array (from drill-down): expand each element with [i] prefix
+	if (Array.isArray(obj)) {
+		const result: Record<string, unknown> = {}
+		for (let i = 0; i < obj.length; i++) {
+			const elem = obj[i]
+			if (typeof elem === "object" && elem !== null) {
+				Object.assign(result, flattenObj(elem, `[${i}]`))
+			} else {
+				result[`[${i}]`] = elem
+			}
+		}
+		return result
+	}
 	if (typeof obj !== "object" || obj === null) return { value: obj }
 	const result: Record<string, unknown> = {}
 	for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
 		const key = prefix ? `${prefix}.${k}` : k
-		if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+		if (Array.isArray(v)) {
+			if (v.length === 0) {
+				result[key] = "[]"
+			} else if (v.every((item) => typeof item !== "object" || item === null)) {
+				result[key] = v.join(", ")
+			} else {
+				// Arrays of objects: show as collapsed summary; Space to expand
+				result[key] = new ArrayValue(v)
+			}
+		} else if (typeof v === "object" && v !== null) {
 			Object.assign(result, flattenObj(v, key))
 		} else {
 			result[key] = v
@@ -284,13 +336,34 @@ function popToMain(state: TuiState): void {
 
 // ─── Screen renderers ─────────────────────────────────────────────────────────
 
+function filterGroups(groups: CommandGroup[], search: string): CommandGroup[] {
+	if (!search) return groups
+	const q = search.toLowerCase()
+	return groups.filter(
+		(g) => g.name.toLowerCase().includes(q) || g.description.toLowerCase().includes(q),
+	)
+}
+
+function filterCommands(cmds: Command[], search: string): Command[] {
+	if (!search) return cmds
+	const q = search.toLowerCase()
+	return cmds.filter(
+		(c) => c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q),
+	)
+}
+
 function renderMain(state: TuiState, screen: Extract<Screen, { kind: "main" }>): string[] {
 	const { cols, rows } = termSize()
-	const viewH = Math.max(3, rows - 7)
-	const groups = state.groups
-	const nameW = groups.reduce((m, g) => Math.max(m, g.name.length), 0)
+	const searching = screen.search.length > 0
+	const viewH = Math.max(3, rows - (searching ? 9 : 7))
+	const groups = filterGroups(state.groups, screen.search)
+	const nameW = state.groups.reduce((m, g) => Math.max(m, g.name.length), 0)
 
 	const lines = [renderHeader(["casen"], cols), ""]
+
+	if (searching) {
+		lines.push(`  ${dim("/")} ${screen.search}█\n`)
+	}
 
 	const visible = groups.slice(screen.scroll, screen.scroll + viewH)
 	for (let vi = 0; vi < visible.length; vi++) {
@@ -308,17 +381,26 @@ function renderMain(state: TuiState, screen: Extract<Screen, { kind: "main" }>):
 		const hi = Math.min(screen.scroll + viewH, groups.length)
 		lines.push(`\n  ${dim(`${screen.scroll + 1}–${hi} of ${groups.length}`)}`)
 	}
-	lines.push(`\n  ${dim("↑↓")} navigate  ${cyan("enter")} open  ${cyan("q")} quit`)
+	const hint = searching
+		? `  ${dim("↑↓")} navigate  ${cyan("enter")} open  ${cyan("esc")} clear  ${dim("bksp")} delete`
+		: `  ${dim("↑↓")} navigate  ${cyan("enter")} open  ${dim("type")} search  ${cyan("q")} quit`
+	lines.push(`\n${hint}`)
 	return lines
 }
 
 function renderCommands(state: TuiState, screen: Extract<Screen, { kind: "commands" }>): string[] {
-	const { cols } = termSize()
-	const cmds = screen.group.commands
-	const nameW = cmds.reduce((m, c) => Math.max(m, c.name.length), 0)
+	const { cols, rows } = termSize()
+	const searching = screen.search.length > 0
+	const viewH = Math.max(3, rows - (searching ? 11 : 9))
+	const cmds = filterCommands(screen.group.commands, screen.search)
+	const nameW = screen.group.commands.reduce((m, c) => Math.max(m, c.name.length), 0)
 	const hasMain = state.stack[0]?.kind === "main"
 
 	const lines = [renderHeader([screen.group.name], cols), `\n  ${dim(screen.group.description)}\n`]
+
+	if (searching) {
+		lines.push(`  ${dim("/")} ${screen.search}█\n`)
+	}
 
 	for (let i = 0; i < cmds.length; i++) {
 		const cmd = cmds[i]
@@ -330,10 +412,16 @@ function renderCommands(state: TuiState, screen: Extract<Screen, { kind: "comman
 		lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
 	}
 
-	const mHint = hasMain ? `  ${cyan("m")} main menu` : ""
-	lines.push(
-		`\n  ${dim("↑↓")} navigate  ${cyan("enter")} select  ${cyan("esc")} back${mHint}  ${cyan("q")} quit`,
-	)
+	if (searching) {
+		lines.push(
+			`\n  ${dim("↑↓")} navigate  ${cyan("enter")} select  ${cyan("esc")} clear  ${dim("bksp")} delete`,
+		)
+	} else {
+		const mHint = hasMain ? `  ${cyan("m")} main menu` : ""
+		lines.push(
+			`\n  ${dim("↑↓")} navigate  ${cyan("enter")} select  ${cyan("esc")} back${mHint}  ${dim("type")} search  ${cyan("q")} quit`,
+		)
+	}
 	return lines
 }
 
@@ -478,26 +566,53 @@ function renderResults(state: TuiState, screen: Extract<Screen, { kind: "results
 			const hi = Math.min(screen.scroll + viewH, out.total)
 			lines.push(`  ${dim(`${screen.scroll + 1}–${hi} of ${out.total}`)}`)
 		}
+		const followupHint = screen.cmd.relations ? `  ${cyan("f")} follow-up` : ""
 		lines.push(
-			`  ${dim("↑↓")} navigate  ${cyan("enter")} detail  ${dim("pgup/pgdn")} page${rawToggle}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
+			`  ${dim("↑↓")} navigate  ${cyan("enter")} detail${followupHint}  ${dim("pgup/pgdn")} page${rawToggle}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
 		)
 	} else if (out.type === "item") {
 		lines.push(renderHeader([screen.group.name, screen.cmd.name], cols))
 		lines.push(statusBadge ? `\n${statusBadge}` : "")
 		const flat = flattenObj(out.data)
-		const kw = Object.keys(flat).reduce((m, k) => Math.max(m, k.length), 0)
-		for (const [k, v] of Object.entries(flat)) {
-			lines.push(
-				`  ${padEnd(cyan(k), kw + 2)}  ${v === null || v === undefined ? dim("—") : String(v)}`,
-			)
+		const entries = Object.entries(flat)
+		const kw = entries.reduce((m, [k]) => Math.max(m, k.length), 0)
+		for (let i = 0; i < entries.length; i++) {
+			const entry = entries[i]
+			if (!entry) continue
+			const [k, v] = entry
+			const isCursor = i === screen.cursor
+			const isArr = v instanceof ArrayValue
+			const valueStr = v === null || v === undefined ? dim("—") : String(v)
+			const hint = isArr && isCursor ? `  ${dim("[space] expand")}` : ""
+			const line = `  ${padEnd(cyan(k), kw + 2)}  ${valueStr}${hint}`
+			lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
 		}
-		lines.push(`\n${rawToggle}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`)
+		const spaceHint = entries.some(([, v]) => v instanceof ArrayValue)
+			? `  ${cyan("space")} expand array`
+			: ""
+		lines.push(
+			`\n${rawToggle}${spaceHint}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
+		)
 	} else {
 		lines.push(renderHeader([screen.group.name, screen.cmd.name], cols))
 		lines.push(statusBadge ? `\n${statusBadge}` : "")
-		if (out.lines.length === 0) lines.push(`  ${dim("(no output)")}`)
-		for (const line of out.lines) lines.push(`  ${line}`)
-		lines.push(`\n${rawToggle}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`)
+		if (out.lines.length === 0) {
+			lines.push(`  ${dim("(no output)")}`)
+		} else {
+			const hOff = screen.cursor
+			const visible = out.lines.slice(screen.scroll, screen.scroll + viewH)
+			for (const line of visible) {
+				lines.push(`  ${fit(line.slice(hOff), cols - 4)}`)
+			}
+			if (out.lines.length > viewH || hOff > 0) {
+				const hi = Math.min(screen.scroll + viewH, out.lines.length)
+				const panHint = hOff > 0 ? `  col +${hOff}` : ""
+				lines.push(`  ${dim(`${screen.scroll + 1}–${hi} of ${out.lines.length}${panHint}`)}`)
+			}
+		}
+		lines.push(
+			`\n  ${dim("↑↓←→")} scroll/pan${rawToggle}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
+		)
 	}
 	return lines
 }
@@ -509,20 +624,69 @@ function renderDetail(state: TuiState, screen: Extract<Screen, { kind: "detail" 
 	const entries = Object.entries(flat)
 	const kw = entries.reduce((m, [k]) => Math.max(m, k.length), 0)
 
-	const lines = [renderHeader([screen.group.name, "detail"], cols), ""]
+	const lines = [renderHeader([screen.group.name, screen.label], cols), ""]
 	const visible = entries.slice(screen.scroll, screen.scroll + viewH)
-	for (const [k, v] of visible) {
-		lines.push(
-			`  ${padEnd(cyan(k), kw + 2)}  ${v === null || v === undefined ? dim("—") : String(v)}`,
-		)
+	for (let vi = 0; vi < visible.length; vi++) {
+		const entry = visible[vi]
+		if (!entry) continue
+		const [k, v] = entry
+		const isCursor = screen.scroll + vi === screen.cursor
+		const isArr = v instanceof ArrayValue
+		const valueStr = v === null || v === undefined ? dim("—") : String(v)
+		const hint = isArr && isCursor ? `  ${dim("[space] expand")}` : ""
+		const line = `  ${padEnd(cyan(k), kw + 2)}  ${valueStr}${hint}`
+		lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
 	}
 	lines.push("")
 	if (entries.length > viewH) {
 		const hi = Math.min(screen.scroll + viewH, entries.length)
 		lines.push(`  ${dim(`${screen.scroll + 1}–${hi} of ${entries.length} fields`)}`)
 	}
+	const spaceHint = entries.some(([, v]) => v instanceof ArrayValue)
+		? `  ${cyan("space/→")} expand  ${cyan("←")} back`
+		: `  ${cyan("←")} back`
 	lines.push(
-		`  ${dim("↑↓")} scroll  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
+		`  ${dim("↑↓")} navigate${spaceHint}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
+	)
+	return lines
+}
+
+function renderFollowup(state: TuiState, screen: Extract<Screen, { kind: "followup" }>): string[] {
+	const { cols, rows } = termSize()
+	const viewH = Math.max(3, rows - 8)
+	const lines = [renderHeader([screen.sourceGroup.name, "follow-up actions"], cols), ""]
+
+	// Show the fields that will be pre-filled
+	const usedFields = new Set<string>()
+	for (const rel of screen.relations) {
+		for (const p of rel.params) usedFields.add(p.field)
+	}
+	const summary = [...usedFields]
+		.map((f) => `${dim(f)}: ${String(screen.item[f] ?? "")}`)
+		.join("   ")
+	if (summary) {
+		lines.push(`  ${summary}`)
+		lines.push("")
+	}
+
+	const visible = screen.relations.slice(screen.scroll, screen.scroll + viewH)
+	for (let vi = 0; vi < visible.length; vi++) {
+		const rel = visible[vi]
+		if (!rel) continue
+		const isCursor = screen.scroll + vi === screen.cursor
+		const gName = padEnd(cyan(rel.group.name), 22)
+		const cName = rel.cmd.name.padEnd(26)
+		const line = `  ${gName}  ${cName}  ${dim(fit(rel.cmd.description, cols - 56))}`
+		lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
+	}
+
+	lines.push("")
+	if (screen.relations.length > viewH) {
+		const hi = Math.min(screen.scroll + viewH, screen.relations.length)
+		lines.push(`  ${dim(`${screen.scroll + 1}–${hi} of ${screen.relations.length}`)}`)
+	}
+	lines.push(
+		`  ${dim("↑↓")} navigate  ${cyan("enter")} run pre-filled  ${cyan("esc")} back  ${cyan("q")} quit`,
 	)
 	return lines
 }
@@ -548,6 +712,9 @@ function render(state: TuiState): void {
 		case "detail":
 			lines = renderDetail(state, screen)
 			break
+		case "followup":
+			lines = renderFollowup(state, screen)
+			break
 	}
 	process.stdout.write(`${CLEAR}${lines.join("\n")}\n`)
 }
@@ -561,8 +728,32 @@ function handleMainKey(
 	done: () => void,
 ): void {
 	const { rows } = termSize()
-	const viewH = Math.max(3, rows - 7)
-	const groups = state.groups
+	const searching = screen.search.length > 0
+	const viewH = Math.max(3, rows - (searching ? 9 : 7))
+	const groups = filterGroups(state.groups, screen.search)
+
+	// Backspace removes last search char
+	if (key === "\x7f" || key === "\x08") {
+		screen.search = screen.search.slice(0, -1)
+		screen.cursor = 0
+		screen.scroll = 0
+		render(state)
+		return
+	}
+
+	// ESC clears search; quits only when search is already empty
+	if (key === "\x1b") {
+		if (searching) {
+			screen.search = ""
+			screen.cursor = 0
+			screen.scroll = 0
+		} else {
+			done()
+			return
+		}
+		render(state)
+		return
+	}
 
 	switch (key) {
 		case "\x1b[A": // up
@@ -588,18 +779,22 @@ function handleMainKey(
 		case "\r":
 		case "\n": {
 			const group = groups[screen.cursor]
-			if (group) state.stack.push({ kind: "commands", group, cursor: 0 })
+			if (group) state.stack.push({ kind: "commands", group, cursor: 0, search: "" })
 			break
 		}
-		case "m":
-		case "M":
-			// already at main, no-op
-			break
-		case "q":
-		case "Q":
-		case "\x1b":
-			done()
-			return
+		default:
+			// Any printable char starts/extends search; q/Q only quit when not searching
+			if (key === "q" || key === "Q") {
+				if (!searching) {
+					done()
+					return
+				}
+			}
+			if (key.length === 1 && key >= " ") {
+				screen.search += key
+				screen.cursor = 0
+				screen.scroll = 0
+			}
 	}
 	render(state)
 }
@@ -610,13 +805,35 @@ function handleCommandsKey(
 	state: TuiState,
 	done: () => void,
 ): void {
-	const cmds = screen.group.commands
+	const searching = screen.search.length > 0
+	const cmds = filterCommands(screen.group.commands, screen.search)
+
+	// Backspace removes last search char
+	if (key === "\x7f" || key === "\x08") {
+		screen.search = screen.search.slice(0, -1)
+		screen.cursor = 0
+		render(state)
+		return
+	}
+
+	// ESC clears search; goes back when search already empty
+	if (key === "\x1b") {
+		if (searching) {
+			screen.search = ""
+			screen.cursor = 0
+		} else {
+			state.stack.pop()
+		}
+		render(state)
+		return
+	}
+
 	switch (key) {
 		case "\x1b[A":
-			screen.cursor = (screen.cursor - 1 + cmds.length) % cmds.length
+			if (screen.cursor > 0) screen.cursor--
 			break
 		case "\x1b[B":
-			screen.cursor = (screen.cursor + 1) % cmds.length
+			if (screen.cursor < cmds.length - 1) screen.cursor++
 			break
 		case "\r":
 		case "\n": {
@@ -636,17 +853,23 @@ function handleCommandsKey(
 			}
 			break
 		}
-		case "m":
-		case "M":
-			popToMain(state)
-			break
-		case "q":
-		case "Q":
-			done()
-			return
-		case "\x1b":
-			state.stack.pop()
-			break
+		default:
+			if (key === "q" || key === "Q") {
+				if (!searching) {
+					done()
+					return
+				}
+			}
+			if (key === "m" || key === "M") {
+				if (!searching) {
+					popToMain(state)
+					break
+				}
+			}
+			if (key.length === 1 && key >= " ") {
+				screen.search += key
+				screen.cursor = 0
+			}
 	}
 	render(state)
 }
@@ -756,11 +979,15 @@ async function handleInputKey(
 				field.value = ""
 				field.cursor = 0
 				break
-			default:
-				if (key.length === 1 && key >= " ") {
-					field.value = field.value.slice(0, field.cursor) + key + field.value.slice(field.cursor)
-					field.cursor++
+			default: {
+				// Filter printable chars to support both single keypresses and pasted text
+				const printable = [...key].filter((ch) => ch >= " ").join("")
+				if (printable) {
+					field.value =
+						field.value.slice(0, field.cursor) + printable + field.value.slice(field.cursor)
+					field.cursor += printable.length
 				}
+			}
 		}
 		render(state)
 		return
@@ -847,11 +1074,69 @@ function handleResultsKey(
 	}
 
 	if (screen.output.type !== "list") {
-		if (key === "\x1b") state.stack.pop()
-		else if (key === "m" || key === "M") popToMain(state)
-		else if (key === "q" || key === "Q") {
-			done()
-			return
+		if (screen.output.type === "item") {
+			const entries = Object.entries(flattenObj(screen.output.data))
+			const expandArray = () => {
+				const entry = entries[screen.cursor]
+				if (entry) {
+					const [fieldKey, v] = entry
+					if (v instanceof ArrayValue) {
+						state.stack.push({
+							kind: "detail",
+							group: screen.group,
+							item: v.items,
+							label: `${fieldKey} (${v.items.length})`,
+							cursor: 0,
+							scroll: 0,
+						})
+					}
+				}
+			}
+			if (key === "\x1b[A" && screen.cursor > 0) screen.cursor--
+			else if (key === "\x1b[B" && screen.cursor < entries.length - 1) screen.cursor++
+			else if (key === " " || key === "\x1b[C") expandArray()
+			else if (key === "\x1b[D") state.stack.pop()
+			else if (key === "\x1b") state.stack.pop()
+			else if (key === "m" || key === "M") popToMain(state)
+			else if (key === "q" || key === "Q") {
+				done()
+				return
+			}
+		} else {
+			// messages type — scrollable + horizontal pan (screen.cursor = hOff)
+			switch (key) {
+				case "\x1b[A":
+					if (screen.scroll > 0) screen.scroll--
+					break
+				case "\x1b[B":
+					screen.scroll = Math.min(
+						Math.max(0, screen.output.lines.length - viewH),
+						screen.scroll + 1,
+					)
+					break
+				case "\x1b[C":
+					screen.cursor++
+					break
+				case "\x1b[D":
+					screen.cursor = Math.max(0, screen.cursor - 1)
+					break
+				case "\x1b[5~":
+					screen.scroll = Math.max(0, screen.scroll - viewH)
+					break
+				case "\x1b[6~":
+					screen.scroll = Math.min(
+						Math.max(0, screen.output.lines.length - viewH),
+						screen.scroll + viewH,
+					)
+					break
+				default:
+					if (key === "\x1b") state.stack.pop()
+					else if (key === "m" || key === "M") popToMain(state)
+					else if (key === "q" || key === "Q") {
+						done()
+						return
+					}
+			}
 		}
 		render(state)
 		return
@@ -882,7 +1167,45 @@ function handleResultsKey(
 		case "\r":
 		case "\n": {
 			const item = screen.output.items[screen.cursor]
-			if (item) state.stack.push({ kind: "detail", group: screen.group, item, scroll: 0 })
+			if (item) {
+				state.stack.push({
+					kind: "detail",
+					group: screen.group,
+					item,
+					label: "detail",
+					cursor: 0,
+					scroll: 0,
+				})
+			}
+			break
+		}
+		case "f":
+		case "F": {
+			const item = screen.output.items[screen.cursor]
+			if (item && screen.cmd.relations) {
+				const resolved: Array<{
+					group: CommandGroup
+					cmd: Command
+					params: Array<{ field: string; param: string }>
+				}> = []
+				for (const rel of screen.cmd.relations) {
+					const tGroup = state.groups.find((g) => g.name === rel.groupName)
+					if (!tGroup) continue
+					const tCmd = tGroup.commands.find((c) => c.name === rel.commandName)
+					if (!tCmd) continue
+					resolved.push({ group: tGroup, cmd: tCmd, params: rel.params })
+				}
+				if (resolved.length > 0) {
+					state.stack.push({
+						kind: "followup",
+						sourceGroup: screen.group,
+						item: item as Record<string, unknown>,
+						relations: resolved,
+						cursor: 0,
+						scroll: 0,
+					})
+				}
+			}
 			break
 		}
 		case "m":
@@ -908,21 +1231,118 @@ function handleDetailKey(
 ): void {
 	const { rows } = termSize()
 	const viewH = Math.max(3, rows - 7)
-	const entryCount = Object.keys(flattenObj(screen.item)).length
+	const entries = Object.entries(flattenObj(screen.item))
+	const entryCount = entries.length
 
 	switch (key) {
 		case "\x1b[A":
-			if (screen.scroll > 0) screen.scroll--
+			if (screen.cursor > 0) {
+				screen.cursor--
+				if (screen.cursor < screen.scroll) screen.scroll--
+			}
 			break
 		case "\x1b[B":
-			if (screen.scroll + viewH < entryCount) screen.scroll++
+			if (screen.cursor < entryCount - 1) {
+				screen.cursor++
+				if (screen.cursor >= screen.scroll + viewH) screen.scroll++
+			}
 			break
 		case "\x1b[5~":
+			screen.cursor = Math.max(0, screen.cursor - viewH)
 			screen.scroll = Math.max(0, screen.scroll - viewH)
 			break
 		case "\x1b[6~":
+			screen.cursor = Math.min(entryCount - 1, screen.cursor + viewH)
 			screen.scroll = Math.min(Math.max(0, entryCount - viewH), screen.scroll + viewH)
 			break
+		case " ":
+		case "\x1b[C": {
+			const entry = entries[screen.cursor]
+			if (entry) {
+				const [fieldKey, v] = entry
+				if (v instanceof ArrayValue) {
+					state.stack.push({
+						kind: "detail",
+						group: screen.group,
+						item: v.items,
+						label: `${fieldKey} (${v.items.length})`,
+						cursor: 0,
+						scroll: 0,
+					})
+				}
+			}
+			break
+		}
+		case "\x1b[D":
+			state.stack.pop()
+			break
+		case "m":
+		case "M":
+			popToMain(state)
+			break
+		case "\x1b":
+			state.stack.pop()
+			break
+		case "q":
+		case "Q":
+			done()
+			return
+	}
+	render(state)
+}
+
+function handleFollowupKey(
+	key: string,
+	screen: Extract<Screen, { kind: "followup" }>,
+	state: TuiState,
+	done: () => void,
+): void {
+	const { rows } = termSize()
+	const viewH = Math.max(3, rows - 8)
+
+	switch (key) {
+		case "\x1b[A":
+			if (screen.cursor > 0) {
+				screen.cursor--
+				if (screen.cursor < screen.scroll) screen.scroll--
+			}
+			break
+		case "\x1b[B":
+			if (screen.cursor < screen.relations.length - 1) {
+				screen.cursor++
+				if (screen.cursor >= screen.scroll + viewH) screen.scroll++
+			}
+			break
+		case "\r":
+		case "\n": {
+			const rel = screen.relations[screen.cursor]
+			if (rel) {
+				const fields = buildFields(rel.cmd)
+				// Pre-fill args from the source item
+				for (const p of rel.params) {
+					const val = String(screen.item[p.field] ?? "")
+					const field = fields.find((f) => f.kind === "arg" && f.label === p.param)
+					if (field) {
+						field.value = val
+						field.cursor = val.length
+					}
+				}
+				const allFilled = fields.filter((f) => f.required).every((f) => f.value)
+				const runIdx = fields.findIndex((f) => f.kind === "run")
+				state.stack.push({
+					kind: "input",
+					group: rel.group,
+					cmd: rel.cmd,
+					fields,
+					cursor: allFilled && runIdx >= 0 ? runIdx : 0,
+					scroll: 0,
+					editing: false,
+					error: "",
+					running: false,
+				})
+			}
+			break
+		}
 		case "m":
 		case "M":
 			popToMain(state)
@@ -961,6 +1381,9 @@ async function handleKey(key: string, state: TuiState, done: () => void): Promis
 			break
 		case "detail":
 			handleDetailKey(key, screen, state, done)
+			break
+		case "followup":
+			handleFollowupKey(key, screen, state, done)
 			break
 	}
 }
@@ -1028,7 +1451,7 @@ export async function runMainTui(
 ): Promise<void> {
 	return startTui({
 		groups,
-		stack: [{ kind: "main", cursor: 0, scroll: 0 }],
+		stack: [{ kind: "main", cursor: 0, scroll: 0, search: "" }],
 		getClient,
 		getAdminClient: getAdminClient ?? (() => Promise.reject(new Error("No admin client"))),
 		quitting: false,
@@ -1049,8 +1472,8 @@ export async function runGroupTui(
 	return startTui({
 		groups,
 		stack: [
-			{ kind: "main", cursor: Math.max(0, cursor), scroll: 0 },
-			{ kind: "commands", group, cursor: 0 },
+			{ kind: "main", cursor: Math.max(0, cursor), scroll: 0, search: "" },
+			{ kind: "commands", group, cursor: 0, search: "" },
 		],
 		getClient,
 		getAdminClient: getAdminClient ?? (() => Promise.reject(new Error("No admin client"))),

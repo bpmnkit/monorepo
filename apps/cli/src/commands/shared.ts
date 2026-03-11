@@ -98,6 +98,7 @@ export function makeListCmd(opts: {
 		name: opts.name ?? "list",
 		aliases: opts.aliases,
 		description: opts.description,
+		columns: opts.columns,
 		flags: [FILTER_FLAG, LIMIT_FLAG, SORT_FLAG, SORT_ORDER_FLAG, ...(opts.extraFlags ?? [])],
 		examples: opts.examples,
 		async run(ctx) {

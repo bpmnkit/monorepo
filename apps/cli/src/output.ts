@@ -123,17 +123,31 @@ function printKV(obj: Record<string, unknown>, colors: boolean): void {
 	}
 }
 
-/** Flatten one level of nesting for display in KV pairs. */
-function flattenForDisplay(obj: unknown): Record<string, unknown> {
+/** Recursively flatten an object for KV display. Arrays of objects are expanded with [i] keys. */
+function flattenForDisplay(obj: unknown, prefix = ""): Record<string, unknown> {
 	if (typeof obj !== "object" || obj === null) return { value: obj }
 	const result: Record<string, unknown> = {}
 	for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-		if (typeof v === "object" && v !== null && !Array.isArray(v)) {
-			for (const [nk, nv] of Object.entries(v as Record<string, unknown>)) {
-				result[`${k}.${nk}`] = nv
+		const key = prefix ? `${prefix}.${k}` : k
+		if (Array.isArray(v)) {
+			if (v.length === 0) {
+				result[key] = "[]"
+			} else if (v.every((item) => typeof item !== "object" || item === null)) {
+				result[key] = v.join(", ")
+			} else {
+				for (let i = 0; i < v.length; i++) {
+					const elem = v[i]
+					if (typeof elem === "object" && elem !== null) {
+						Object.assign(result, flattenForDisplay(elem, `${key}[${i}]`))
+					} else {
+						result[`${key}[${i}]`] = elem
+					}
+				}
 			}
+		} else if (typeof v === "object" && v !== null) {
+			Object.assign(result, flattenForDisplay(v, key))
 		} else {
-			result[k] = v
+			result[key] = v
 		}
 	}
 	return result

@@ -1,5 +1,82 @@
 # Progress
 
+## 2026-03-11 — editor12 (cont): CLI ASCII scrolling, arrow keys, follow-up relations
+
+### `apps/cli` — scrollable ASCII diagram view
+- `makeCapturingWriter.print()` now splits multi-line strings by `\n` before storing (enables line-level scrolling).
+- `renderResults` messages branch: `↑↓` scroll lines, `←→` pan horizontally; pagination counter shows current visible range.
+- `handleResultsKey` messages branch: full `↑↓←→` navigation plus `pgup/pgdn` for large diagrams.
+
+### `apps/cli` — arrow key navigation for array drill-down
+- In detail and item views: `→` expands an `[N items]` array field (same as Space).
+- In detail view: `←` navigates back (same as ESC).
+- Footer hint updated to `space/→ expand  ← back`.
+
+### `apps/cli` — follow-up action suggestions (relations)
+- New `Relation` interface in `types.ts`: links a result field to a target command arg.
+- `Command` type gains `columns?: ColumnDef[]` (stored by `makeListCmd`) and `relations?: Relation[]`.
+- New `commands/relations.ts`: `computeRelations(groups)` — auto-detects relations by matching list column keys to arg names across all commands; called on startup in `commands/index.ts`.
+- TUI: pressing `f` on a list item opens a new `followup` screen listing all related commands.
+- The followup screen shows which field values will be pre-filled and lets the user pick a command to run.
+- Selecting a command pushes an input screen with args already populated from the current item.
+- Example: `process-definition list` → select item → `f` → see `get`, `get-xml`, `render`, etc. pre-filled with `processDefinitionKey`.
+
+## 2026-03-11 — editor12 (cont): CLI array drill-down + layout overlap fix
+
+### `apps/cli` — array fields collapsed with Space to expand
+- Arrays of objects in item/detail views now render as `[N items]` summary on one line (using `ArrayValue` sentinel class).
+- Cursor navigation added to `detail` screen (↑↓) and `item` result view (↑↓).
+- Pressing Space on a highlighted `[N items]` field pushes a new `detail` drill-down screen showing the array expanded with `[i].key` notation.
+- `detail` screen carries `label` (used as breadcrumb header) and `cursor` fields.
+- Arrays of primitives continue to render as comma-separated values unchanged.
+
+### `packages/ascii` — fix layout overlap error
+- `renderBpmnAscii` now calls `layoutFlowNodes` directly instead of `layoutProcess`.
+- `layoutProcess` runs `assertNoOverlap` after layout, which throws for certain real-world BPMN files where event labels (centered below small event circles) produce pixel-level cross-layer overlaps.
+- The ASCII renderer uses `layer`/`position` indices (not pixel coords), so pixel overlaps have no effect on the rendered output. Skipping the assertion removes the crash without affecting correctness.
+
+---
+
+## 2026-03-11 — editor12 (cont): CLI TUI improvements
+
+### `apps/cli` — main menu sorted alphabetically
+- `commands/index.ts`: all groups (generated + admin + custom) sorted by `name.localeCompare` at assembly time.
+
+### `apps/cli` — live search on main menu and commands list
+- `main` and `commands` TUI screens carry a `search: string` field.
+- Typing any printable character starts search; the list filters immediately (name + description match).
+- Search bar `/ term█` shown above the list when active.
+- Backspace removes the last search character. ESC clears search (if non-empty) or navigates back.
+- `q`/`Q` and `m`/`M` only act as hotkeys when search is empty; otherwise they extend the search string.
+- Cursor resets to 0 on every search change.
+
+### `apps/cli` — paste support in input fields
+- Edit mode `default` case now iterates `[...key]` and filters printable chars (`ch >= " "`).
+- Pasted multi-character strings are inserted at the cursor in one go.
+
+### `apps/cli` + `packages/api` — fix `get-x-m-l` (XML endpoint)
+- Added `accept?: string` and `responseType?: "json" | "text"` to `RequestOptions`.
+- `HttpClient` uses `options.accept` for the `Accept` header (default `"application/json"`) and calls `response.text()` when `responseType === "text"`.
+- Generated `get-x-m-l` command removed; replaced with `get-xml` that requests `Accept: text/xml`, receives the XML as text, and renders it as ASCII art via `@bpmn-sdk/ascii`.
+
+---
+
+## 2026-03-11 — editor12 (cont): CLI object rendering + BPMN ASCII
+
+### `apps/cli` — nested object display
+- Fixed `[object Object]` rendering in `printItem` (output.ts) and the TUI detail/item views (tui.ts).
+- Arrays of primitives now display as comma-separated values: `"a, b, c"`.
+- Arrays of objects are expanded with indexed keys: `brokers[0].host`, `brokers[0].port`, `brokers[1].host`, etc.
+- Deeply nested plain objects continue to be flattened with dot notation.
+
+### `apps/cli` — BPMN ASCII render command
+- Added `process-definition render <processDefinitionKey>` command (alias: `pd render`).
+- Fetches the process definition's BPMN XML and renders it as Unicode ASCII art via `@bpmn-sdk/ascii`.
+- Command injected into the generated group in `commands/index.ts` without modifying generated files.
+- Added `@bpmn-sdk/ascii: workspace:*` dependency to the CLI package.
+
+---
+
 ## 2026-03-11 — editor12 (cont): CLI raw mode + HTTP status code
 
 ### `apps/cli` — raw mode and HTTP status visibility

@@ -61,6 +61,17 @@ export interface Example {
 	command: string
 }
 
+export interface Relation {
+	/** Name of the group containing the target command */
+	groupName: string
+	/** Name of the target command */
+	commandName: string
+	/** Human-readable description of the follow-up action */
+	description: string
+	/** How to map fields from the source item to target command parameters */
+	params: Array<{ field: string; param: string }>
+}
+
 /** Context passed to every command's run function. */
 export interface RunContext {
 	positional: string[]
@@ -82,6 +93,10 @@ export interface Command {
 	args?: ArgSpec[]
 	flags?: FlagSpec[]
 	examples?: Example[]
+	/** Column definitions — stored on list commands for display and relation detection. */
+	columns?: ColumnDef[]
+	/** Follow-up commands whose args can be pre-filled from this command's result fields. */
+	relations?: Relation[]
 	run(ctx: RunContext): Promise<void>
 }
 

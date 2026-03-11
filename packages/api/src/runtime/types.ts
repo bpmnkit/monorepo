@@ -204,4 +204,8 @@ export interface RequestOptions {
 	cacheable?: boolean
 	/** Override timeout for this request. */
 	timeout?: number
+	/** Custom Accept header. Defaults to "application/json". */
+	accept?: string
+	/** How to parse the response body. Defaults to "json". */
+	responseType?: "json" | "text"
 }

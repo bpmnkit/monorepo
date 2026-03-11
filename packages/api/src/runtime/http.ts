@@ -85,7 +85,7 @@ export class HttpClient {
 		const authHeader = await this.#auth.getAuthorizationHeader()
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
-			Accept: "application/json",
+			Accept: options.accept ?? "application/json",
 		}
 		if (authHeader) {
 			headers.Authorization = authHeader
@@ -188,7 +188,9 @@ export class HttpClient {
 			return undefined as T
 		}
 
-		const data = (await response.json()) as T
+		const data = (
+			options.responseType === "text" ? await response.text() : await response.json()
+		) as T
 
 		// Store in cache if applicable
 		if (options.cacheable && this.#cache) {

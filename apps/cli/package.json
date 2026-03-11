@@ -18,6 +18,7 @@
 	},
 	"dependencies": {
 		"@bpmn-sdk/api": "workspace:*",
+		"@bpmn-sdk/ascii": "workspace:*",
 		"@bpmn-sdk/profiles": "workspace:*"
 	},
 	"publishConfig": {
