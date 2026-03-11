@@ -64,16 +64,22 @@ export function createOperate(options: OperateOptions): OperateApi {
 	const jobStore = new JobsStore()
 	const taskStore = new TasksStore()
 
-	function connectAll(): void {
-		dashStore.connect(proxyUrl, profile, pollInterval, mock)
-		defStore.connect(proxyUrl, profile, pollInterval, mock)
-		instStore.connect(proxyUrl, profile, pollInterval, mock)
-		incStore.connect(proxyUrl, profile, pollInterval, mock)
-		jobStore.connect(proxyUrl, profile, pollInterval, mock)
-		taskStore.connect(proxyUrl, profile, pollInterval, mock)
+	// Disconnect every store to free all HTTP connection slots.
+	function disconnectAll(): void {
+		dashStore.disconnect()
+		defStore.disconnect()
+		instStore.disconnect()
+		incStore.disconnect()
+		jobStore.disconnect()
+		taskStore.disconnect()
 	}
 
-	connectAll()
+	// Called when profile changes — reconnects only the currently active stores.
+	let reconnectCurrent: (() => void) | null = null
+
+	function connectAll(): void {
+		reconnectCurrent?.()
+	}
 
 	// ── Profiles ──────────────────────────────────────────────────────────────
 
@@ -146,6 +152,11 @@ export function createOperate(options: OperateOptions): OperateApi {
 	}
 
 	router.on("/", () => {
+		reconnectCurrent = () => {
+			disconnectAll()
+			dashStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
 		header.setTitle("Dashboard")
 		nav.setActive("/")
 		const { el: vEl, destroy } = createDashboardView(dashStore, (path) => router.navigate(path))
@@ -153,6 +164,11 @@ export function createOperate(options: OperateOptions): OperateApi {
 	})
 
 	router.on("/definitions", () => {
+		reconnectCurrent = () => {
+			disconnectAll()
+			defStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
 		header.setTitle("Processes")
 		nav.setActive("/definitions")
 		const { el: vEl, destroy } = createDefinitionsView(defStore, (def) => {
@@ -162,6 +178,11 @@ export function createOperate(options: OperateOptions): OperateApi {
 	})
 
 	router.on("/definitions/:key", (params) => {
+		// Disconnect all stores: no polling while the XML fetch is in-flight.
+		disconnectAll()
+		reconnectCurrent = () => {
+			disconnectAll()
+		}
 		header.setTitle("Process Definition")
 		nav.setActive("/definitions")
 		const { el: vEl, destroy } = createDefinitionDetailView(
@@ -179,9 +200,13 @@ export function createOperate(options: OperateOptions): OperateApi {
 	})
 
 	router.on("/instances", () => {
+		reconnectCurrent = () => {
+			disconnectAll()
+			instStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
 		header.setTitle("Instances")
 		nav.setActive("/instances")
-		instStore.connect(proxyUrl, profile, pollInterval, mock)
 		const { el: vEl, destroy } = createInstancesView(
 			instStore,
 			(inst) => router.navigate(`/instances/${inst.processInstanceKey}`),
@@ -193,6 +218,12 @@ export function createOperate(options: OperateOptions): OperateApi {
 	})
 
 	router.on("/instances/:key", (params) => {
+		// Keep only instStore connected (needed to look up processDefinitionKey for the XML fetch).
+		reconnectCurrent = () => {
+			disconnectAll()
+			instStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
 		const instanceKey = params.key ?? ""
 		header.setTitle(`Instance ${instanceKey}`)
 		nav.setActive("/instances")
@@ -212,6 +243,11 @@ export function createOperate(options: OperateOptions): OperateApi {
 	})
 
 	router.on("/incidents", () => {
+		reconnectCurrent = () => {
+			disconnectAll()
+			incStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
 		header.setTitle("Incidents")
 		nav.setActive("/incidents")
 		const { el: vEl, destroy } = createIncidentsView(incStore)
@@ -219,6 +255,11 @@ export function createOperate(options: OperateOptions): OperateApi {
 	})
 
 	router.on("/jobs", () => {
+		reconnectCurrent = () => {
+			disconnectAll()
+			jobStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
 		header.setTitle("Jobs")
 		nav.setActive("/jobs")
 		const { el: vEl, destroy } = createJobsView(jobStore)
@@ -226,6 +267,11 @@ export function createOperate(options: OperateOptions): OperateApi {
 	})
 
 	router.on("/tasks", () => {
+		reconnectCurrent = () => {
+			disconnectAll()
+			taskStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
 		header.setTitle("Tasks")
 		nav.setActive("/tasks")
 		const { el: vEl, destroy } = createTasksView(taskStore)

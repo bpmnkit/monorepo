@@ -30,6 +30,12 @@ export class Store<T> {
 		this._unsub = unsub
 	}
 
+	/** Stop polling without clearing data or listeners. Safe to reconnect later. */
+	disconnect(): void {
+		this._unsub?.()
+		this._unsub = null
+	}
+
 	destroy(): void {
 		this._unsub?.()
 		this._unsub = null

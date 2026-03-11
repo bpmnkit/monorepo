@@ -316,7 +316,9 @@ const server = http.createServer(async (req, res) => {
 		return
 	}
 
-	// ── GET /operate/stream — SSE polling stream for monitoring data ───────────
+	// ── GET /operate/stream — polling stream for monitoring data ─────────────
+	// Supports both SSE (Accept: text/event-stream) and one-shot JSON polling.
+	// The operate UI uses one-shot JSON polling to avoid holding HTTP connections.
 	if (url.pathname === "/operate/stream" && req.method === "GET") {
 		const topicParam = url.searchParams.get("topic") ?? "dashboard"
 		const profileParam =
@@ -347,80 +349,91 @@ const server = http.createServer(async (req, res) => {
 		// The query types also don't declare `filter` in TS, but the API accepts it.
 		type AnyQuery = Record<string, unknown>
 
+		// Fetch the payload for a given topic once, returning plain data.
+		async function fetchPayload(): Promise<unknown> {
+			switch (topicParam) {
+				case "dashboard": {
+					const [inst, inc, jobs, tasks, defs] = await Promise.all([
+						client.processInstance.searchProcessInstances({
+							filter: { state: "ACTIVE" },
+						} as AnyQuery),
+						client.incident.searchIncidents({ filter: { state: "ACTIVE" } } as AnyQuery),
+						client.job.searchJobs({ filter: { state: "CREATED" } } as AnyQuery),
+						client.userTask.searchUserTasks({ filter: { state: "CREATED" } } as AnyQuery),
+						client.processDefinition.searchProcessDefinitions({}),
+					])
+					return {
+						activeInstances: inst.page.totalItems,
+						openIncidents: inc.page.totalItems,
+						activeJobs: jobs.page.totalItems,
+						pendingTasks: tasks.page.totalItems,
+						definitions: defs.page.totalItems,
+					}
+				}
+				case "definitions": {
+					const result = await client.processDefinition.searchProcessDefinitions({
+						page: { limit: 1000 },
+					} as AnyQuery)
+					return { items: items(result) }
+				}
+				case "instances": {
+					const stateFilter = url.searchParams.get("state")
+					const pdKey = url.searchParams.get("processDefinitionKey")
+					const filter: AnyQuery = {}
+					if (stateFilter) filter.state = stateFilter
+					if (pdKey) filter.processDefinitionKey = pdKey
+					const result = await client.processInstance.searchProcessInstances({
+						filter,
+					} as AnyQuery)
+					return { items: items(result), total: total(result) }
+				}
+				case "incidents": {
+					const piKey = url.searchParams.get("processInstanceKey")
+					const filter: AnyQuery = {}
+					if (piKey) filter.processInstanceKey = piKey
+					const result = await client.incident.searchIncidents({ filter } as AnyQuery)
+					return { items: items(result), total: total(result) }
+				}
+				case "jobs": {
+					const result = await client.job.searchJobs({})
+					return { items: items(result), total: total(result) }
+				}
+				case "tasks": {
+					const result = await client.userTask.searchUserTasks({})
+					return { items: items(result), total: total(result) }
+				}
+				default:
+					throw new Error(`Unknown topic: ${topicParam}`)
+			}
+		}
+
+		// One-shot JSON polling mode (used by the operate UI via fetch()).
+		// EventSource sends Accept: text/event-stream; plain fetch does not.
+		const wantsSSE =
+			(req.headers.accept as string | undefined)?.includes("text/event-stream") ?? false
+		if (!wantsSSE) {
+			try {
+				const payload = await fetchPayload()
+				res.writeHead(200, { "Content-Type": "application/json" })
+				res.end(JSON.stringify(payload))
+			} catch (err) {
+				res.writeHead(500, { "Content-Type": "application/json" })
+				res.end(JSON.stringify({ error: String(err) }))
+			}
+			return
+		}
+
+		// SSE streaming mode (legacy / external clients).
 		res.writeHead(200, {
 			"Content-Type": "text/event-stream",
 			"Cache-Control": "no-cache",
 			Connection: "keep-alive",
 		})
 
-		function send(payload: unknown): void {
-			res.write(`data: ${JSON.stringify({ type: "data", topic: topicParam, payload })}\n\n`)
-		}
-
 		async function poll(): Promise<void> {
 			try {
-				switch (topicParam) {
-					case "dashboard": {
-						const [inst, inc, jobs, tasks, defs] = await Promise.all([
-							client.processInstance.searchProcessInstances({
-								filter: { state: "ACTIVE" },
-							} as AnyQuery),
-							client.incident.searchIncidents({ filter: { state: "ACTIVE" } } as AnyQuery),
-							client.job.searchJobs({ filter: { state: "CREATED" } } as AnyQuery),
-							client.userTask.searchUserTasks({ filter: { state: "CREATED" } } as AnyQuery),
-							client.processDefinition.searchProcessDefinitions({}),
-						])
-						send({
-							activeInstances: inst.page.totalItems,
-							openIncidents: inc.page.totalItems,
-							activeJobs: jobs.page.totalItems,
-							pendingTasks: tasks.page.totalItems,
-							definitions: defs.page.totalItems,
-						})
-						break
-					}
-					case "definitions": {
-						const result = await client.processDefinition.searchProcessDefinitions({
-							page: { limit: 1000 },
-						} as AnyQuery)
-						send({ items: items(result) })
-						break
-					}
-					case "instances": {
-						const stateFilter = url.searchParams.get("state")
-						const pdKey = url.searchParams.get("processDefinitionKey")
-						const filter: AnyQuery = {}
-						if (stateFilter) filter.state = stateFilter
-						if (pdKey) filter.processDefinitionKey = pdKey
-						const result = await client.processInstance.searchProcessInstances({
-							filter,
-						} as AnyQuery)
-						send({ items: items(result), total: total(result) })
-						break
-					}
-					case "incidents": {
-						const piKey = url.searchParams.get("processInstanceKey")
-						const filter: AnyQuery = {}
-						if (piKey) filter.processInstanceKey = piKey
-						const result = await client.incident.searchIncidents({ filter } as AnyQuery)
-						send({ items: items(result), total: total(result) })
-						break
-					}
-					case "jobs": {
-						const result = await client.job.searchJobs({})
-						send({ items: items(result), total: total(result) })
-						break
-					}
-					case "tasks": {
-						const result = await client.userTask.searchUserTasks({})
-						send({ items: items(result), total: total(result) })
-						break
-					}
-					default:
-						res.write(
-							`data: ${JSON.stringify({ type: "error", message: `Unknown topic: ${topicParam}` })}\n\n`,
-						)
-				}
+				const payload = await fetchPayload()
+				res.write(`data: ${JSON.stringify({ type: "data", topic: topicParam, payload })}\n\n`)
 			} catch (err) {
 				res.write(`data: ${JSON.stringify({ type: "error", message: String(err) })}\n\n`)
 			}

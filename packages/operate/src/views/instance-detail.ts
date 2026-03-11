@@ -209,16 +209,32 @@ export function createInstanceDetailView(
 
 	const incUnsub = incStore.subscribe(renderIncidents)
 
+	let instUnsub: () => void
+
 	if (cfg.mock) {
 		loadCanvas(MOCK_BPMN_XML)
 		applyTokens(MOCK_ACTIVE_ELEMENTS, MOCK_VISITED_ELEMENTS)
 		renderVariables(MOCK_VARIABLES.filter((v) => v.processInstanceKey === instanceKey))
-		// For mock, update tokens to show active state
 		setTimeout(() => applyTokens(MOCK_ACTIVE_ELEMENTS, MOCK_VISITED_ELEMENTS), 100)
+		const mockInst = {
+			processInstanceKey: instanceKey,
+			processDefinitionKey: "pd-1",
+			processDefinitionId: "order-process",
+			processDefinitionName: "Order Processing",
+			state: "ACTIVE",
+			hasIncident: false,
+			businessId: "ORD-10042",
+			startDate: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+			endDate: null,
+		} as ProcessInstanceResult
+		renderMeta(mockInst)
+		instUnsub = instancesStore.subscribe(() => renderMeta(getInstance()))
 	} else {
-		// Fetch BPMN XML and live data from proxy
-		const inst = getInstance()
-		if (inst) {
+		let xmlStarted = false
+
+		function startXmlFetch(inst: ProcessInstanceResult): void {
+			if (xmlStarted) return
+			xmlStarted = true
 			renderMeta(inst)
 			const pdKey = inst.processDefinitionKey
 			fetch(`${cfg.proxyUrl}/api/process-definitions/${pdKey}/xml`, {
@@ -230,7 +246,6 @@ export function createInstanceDetailView(
 				.then((r) => r.text())
 				.then((xml) => {
 					loadCanvas(xml)
-					// Fetch element instances for token highlight
 					return fetch(`${cfg.proxyUrl}/api/element-instances/search`, {
 						method: "POST",
 						headers: {
@@ -251,40 +266,29 @@ export function createInstanceDetailView(
 				.catch(() => {
 					// canvas still shows without tokens
 				})
+
+			fetch(`${cfg.proxyUrl}/api/variables/search`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...(cfg.profile ? { "x-profile": cfg.profile } : {}),
+				},
+				body: JSON.stringify({ filter: { processInstanceKey: instanceKey } }),
+			})
+				.then((r) => r.json())
+				.then((result: { items: VariableResult[] }) => renderVariables(result.items))
+				.catch(() => renderVariables([]))
 		}
 
-		// Fetch variables
-		fetch(`${cfg.proxyUrl}/api/variables/search`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				...(cfg.profile ? { "x-profile": cfg.profile } : {}),
-			},
-			body: JSON.stringify({ filter: { processInstanceKey: instanceKey } }),
+		// Try immediately if store already has data; otherwise wait for first poll.
+		const existing = getInstance()
+		if (existing) startXmlFetch(existing)
+
+		instUnsub = instancesStore.subscribe(() => {
+			const inst = getInstance()
+			if (inst) startXmlFetch(inst)
+			renderMeta(inst)
 		})
-			.then((r) => r.json())
-			.then((result: { items: VariableResult[] }) => renderVariables(result.items))
-			.catch(() => renderVariables([]))
-	}
-
-	const instUnsub = instancesStore.subscribe(() => {
-		const inst = getInstance()
-		renderMeta(inst)
-	})
-
-	if (cfg.mock) {
-		const mockInst = {
-			processInstanceKey: instanceKey,
-			processDefinitionKey: "pd-1",
-			processDefinitionId: "order-process",
-			processDefinitionName: "Order Processing",
-			state: "ACTIVE",
-			hasIncident: false,
-			businessId: "ORD-10042",
-			startDate: new Date(Date.now() - 2 * 3_600_000).toISOString(),
-			endDate: null,
-		} as ProcessInstanceResult
-		renderMeta(mockInst)
 	}
 
 	renderIncidents()

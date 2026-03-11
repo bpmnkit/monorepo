@@ -1,33 +1,38 @@
-import type { StreamEvent } from "./types.js"
-
 type Unsub = () => void
 
-/** Opens an SSE stream to the proxy's /operate/stream endpoint. Returns unsubscribe. */
+/**
+ * Polls the proxy's /operate/stream endpoint via plain fetch (one-shot JSON).
+ * Using fetch instead of EventSource releases the HTTP connection after each
+ * response, preventing connection-pool exhaustion when multiple stores poll
+ * the same origin concurrently.
+ */
 export function createStream<T>(
 	url: string,
 	onData: (payload: T) => void,
 	onError: (msg: string) => void,
 ): Unsub {
-	const es = new EventSource(url)
+	const interval = Math.max(5_000, Number(new URL(url).searchParams.get("interval") ?? "30000"))
+	let aborted = false
 
-	es.onmessage = (e: MessageEvent) => {
+	async function poll(): Promise<void> {
+		if (aborted) return
 		try {
-			const event = JSON.parse(e.data as string) as StreamEvent<T>
-			if (event.type === "data" && event.payload !== undefined) {
-				onData(event.payload)
-			} else if (event.type === "error") {
-				onError(event.message ?? "Stream error")
-			}
+			const r = await fetch(url)
+			if (aborted) return
+			if (!r.ok) throw new Error(`HTTP ${r.status}`)
+			const data = (await r.json()) as T
+			onData(data)
 		} catch {
-			// ignore malformed events
+			if (!aborted) onError("Connection error. Retrying…")
 		}
 	}
 
-	es.onerror = () => {
-		onError("Connection lost. Retrying…")
+	void poll()
+	const id = setInterval(() => void poll(), interval)
+	return () => {
+		aborted = true
+		clearInterval(id)
 	}
-
-	return () => es.close()
 }
 
 /** Simulates an SSE stream using mock data. Calls onData immediately and then on interval. */
