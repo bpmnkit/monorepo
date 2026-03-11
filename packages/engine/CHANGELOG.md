@@ -1,5 +1,15 @@
 # @bpmn-sdk/engine
 
+## 0.1.5
+
+### Patch Changes
+
+- [#30](https://github.com/bpmn-sdk/monorepo/pull/30) [`42ddd02`](https://github.com/bpmn-sdk/monorepo/commit/42ddd0255759ce35a14533cbc7667542ba9dac2e) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Operate, CLI, api
+
+- Updated dependencies [[`42ddd02`](https://github.com/bpmn-sdk/monorepo/commit/42ddd0255759ce35a14533cbc7667542ba9dac2e)]:
+  - @bpmn-sdk/core@0.0.6
+  - @bpmn-sdk/feel@0.0.6
+
 ## 0.1.4
 
 ### Patch Changes

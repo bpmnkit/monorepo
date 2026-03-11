@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/profiles",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Shared profile storage and auth client factory for @bpmn-sdk CLI and proxy server",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -11,7 +11,10 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"engines": {
 		"node": ">=20"
 	},
@@ -23,7 +26,15 @@
 	"dependencies": {
 		"@bpmn-sdk/api": "workspace:*"
 	},
-	"keywords": ["bpmn", "camunda", "profiles", "authentication", "oauth2", "cli", "typescript"],
+	"keywords": [
+		"bpmn",
+		"camunda",
+		"profiles",
+		"authentication",
+		"oauth2",
+		"cli",
+		"typescript"
+	],
 	"publishConfig": {
 		"access": "public"
 	},

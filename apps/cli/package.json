@@ -1,12 +1,14 @@
 {
 	"name": "@bpmn-sdk/cli",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "Camunda v2 REST API command-line interface",
 	"type": "module",
 	"bin": {
 		"casen": "./dist/index.js"
 	},
-	"files": ["dist/**/*.js"],
+	"files": [
+		"dist/**/*.js"
+	],
 	"engines": {
 		"node": ">=20"
 	},

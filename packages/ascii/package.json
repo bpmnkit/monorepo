@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/ascii",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -10,7 +10,10 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -21,7 +24,13 @@
 		"@bpmn-sdk/core": "workspace:*"
 	},
 	"description": "Render BPMN diagrams as Unicode box-drawing ASCII art — perfect for terminals and docs",
-	"keywords": ["bpmn", "ascii", "terminal", "diagram", "typescript"],
+	"keywords": [
+		"bpmn",
+		"ascii",
+		"terminal",
+		"diagram",
+		"typescript"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
