@@ -478,6 +478,7 @@ function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlEleme
 	}
 	if (shape.isMarkerVisible !== undefined) attrs.isMarkerVisible = String(shape.isMarkerVisible)
 	if (shape.isExpanded !== undefined) attrs.isExpanded = String(shape.isExpanded)
+	if (shape.isHorizontal !== undefined) attrs.isHorizontal = String(shape.isHorizontal)
 
 	const children: XmlElement[] = [
 		el(

@@ -1,5 +1,38 @@
 # Progress
 
+## 2026-03-11 — editor12 (cont): Auto-layout improvements
+
+### `packages/core/src/bpmn/bpmn-model.ts`
+- Added `isHorizontal?: boolean` to `BpmnDiShape` interface (after `isExpanded`)
+
+### `packages/core/src/bpmn/bpmn-parser.ts`
+- Added `"isHorizontal"` to `KNOWN_ATTRS` set
+- Added `isHorizontal` parsing in `parseDiShape` (same pattern as `isMarkerVisible`/`isExpanded`)
+
+### `packages/core/src/bpmn/bpmn-serializer.ts`
+- Added `isHorizontal` serialization in `serializeDiShape`
+
+### `packages/core/src/bpmn/auto-layout.ts` (new)
+- `applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions` — replaces all BPMNDi with freshly computed layout
+- Handles plain processes and collaborations with pools/lanes
+- Pool and lane shapes get `isHorizontal: true`; lane tiles sorted by mean-Y of their members
+- `contentBbox`, `nodeToShape`, `edgeToShape`, `buildLaneShapes` helpers
+
+### `packages/core/src/bpmn/index.ts`
+- Imported `applyAutoLayout` from `./auto-layout.js`
+- Added `Bpmn.autoLayout(xml: string): string` — parse → layout → serialize
+
+### `packages/core/src/index.ts`
+- Exported `applyAutoLayout` from `./bpmn/auto-layout.js`
+
+### `packages/editor/src/editor.ts`
+- Imported `applyAutoLayout` from `@bpmn-sdk/core`
+- Added `BpmnEditor.autoLayout(): void` — executes applyAutoLayout as undoable command, then fitView
+
+### `packages/editor/src/hud.ts`
+- Added `btnAutoLayout` button with layout SVG icon to `hudTopCenter` action bar
+- Wired click event to `editor.autoLayout()`
+
 ## 2026-03-11 — editor12 (cont): CLI DMN/Form ASCII rendering
 
 ### `apps/cli/src/commands/bpmn.ts`

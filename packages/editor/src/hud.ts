@@ -195,10 +195,23 @@ export function initEditorHud(
 	const btnDuplicate = hudBtn("btn-duplicate", "Duplicate (Ctrl+D)")
 	const btnTopMore = hudBtn("btn-top-more", "More actions")
 
+	const btnAutoLayout = hudBtn("btn-auto-layout", "Auto-layout diagram (arrange all elements)")
+	btnAutoLayout.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><rect x="1" y="1" width="6" height="4" rx="1"/><rect x="9" y="1" width="6" height="4" rx="1"/><rect x="1" y="7" width="6" height="4" rx="1"/><rect x="9" y="7" width="6" height="4" rx="1"/><rect x="1" y="13" width="14" height="2" rx="1"/></svg>`
+
 	const hudTopCenter = document.createElement("div")
 	hudTopCenter.id = "hud-top-center"
 	hudTopCenter.className = "hud panel"
-	hudTopCenter.append(btnUndo, btnRedo, hudSep(), btnDelete, btnDuplicate, hudSep(), btnTopMore)
+	hudTopCenter.append(
+		btnUndo,
+		btnRedo,
+		hudSep(),
+		btnDelete,
+		btnDuplicate,
+		hudSep(),
+		btnTopMore,
+		hudSep(),
+		btnAutoLayout,
+	)
 
 	if (options.optimizeButton) {
 		options.optimizeButton.className = "hud-btn"
@@ -931,6 +944,11 @@ export function initEditorHud(
 	})
 	btnDuplicate.addEventListener("click", () => {
 		editor.duplicate()
+		collapseOnMobile(hudTopCenter)
+	})
+
+	btnAutoLayout.addEventListener("click", () => {
+		editor.autoLayout()
 		collapseOnMobile(hudTopCenter)
 	})
 

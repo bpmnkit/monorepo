@@ -1,5 +1,13 @@
 # Features
 
+## Auto-layout (2026-03-11) — `packages/core`, `packages/editor`
+
+- **`Bpmn.autoLayout(xml)`**: applies the Sugiyama layered layout to all processes in a BPMN XML string and returns updated XML with replaced BPMNDi positions.
+- **`applyAutoLayout(defs)`**: exported from `@bpmn-sdk/core` — operates on `BpmnDefinitions` directly; handles plain processes and collaborations with pools/lanes; pool and lane shapes carry `isHorizontal: true`.
+- **`BpmnEditor.autoLayout()`**: undoable auto-layout command in the editor; triggers `fitView` after layout.
+- **Auto-layout button**: HUD action bar now has an auto-layout button (grid icon) between `btnTopMore` and optional inject buttons.
+- **`BpmnDiShape.isHorizontal`**: new optional field parsed and serialized round-trip by parser/serializer.
+
 ## ASCII rendering for DMN and Forms (2026-03-11) — `packages/ascii`
 
 - **`renderDmnAscii(xml, options?)`**: renders DMN decision tables as double-line box-drawing ASCII grids. Column widths auto-fit to content; hit policy in header; multiple decisions separated by blank lines.

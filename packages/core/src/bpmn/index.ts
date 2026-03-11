@@ -1,3 +1,4 @@
+import { applyAutoLayout } from "./auto-layout.js"
 import { ProcessBuilder } from "./bpmn-builder.js"
 import type { BpmnDefinitions } from "./bpmn-model.js"
 import { parseBpmn } from "./bpmn-parser.js"
@@ -166,4 +167,20 @@ export const Bpmn = {
 
 	/** A minimal 3-element sample diagram. Re-exported for convenience. */
 	SAMPLE_XML: SAMPLE_BPMN_XML,
+
+	/**
+	 * Apply auto-layout to a BPMN XML string.
+	 *
+	 * Parses the XML, runs the Sugiyama layered layout algorithm on every process,
+	 * replaces all BPMNDi positions with the computed layout, and returns the
+	 * updated XML.  Works for plain processes and collaborations with pools/lanes.
+	 *
+	 * @param xml - BPMN 2.0 XML string
+	 * @returns BPMN 2.0 XML string with updated diagram interchange
+	 */
+	autoLayout(xml: string): string {
+		const defs = parseBpmn(xml)
+		const laid = applyAutoLayout(defs)
+		return serializeBpmn(laid)
+	},
 } as const

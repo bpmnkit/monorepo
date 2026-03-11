@@ -16,7 +16,7 @@ import type {
 	RenderedShape,
 	Theme,
 } from "@bpmn-sdk/canvas"
-import { Bpmn } from "@bpmn-sdk/core"
+import { Bpmn, applyAutoLayout } from "@bpmn-sdk/core"
 import type {
 	BpmnBounds,
 	BpmnDefinitions,
@@ -572,6 +572,16 @@ export class BpmnEditor {
 	load(xml: string): void {
 		const defs = Bpmn.parse(xml)
 		this.loadDefinitions(defs)
+	}
+
+	/**
+	 * Apply auto-layout to the current diagram.
+	 * Replaces all DI positions with freshly computed layout.
+	 * The operation is undoable.
+	 */
+	autoLayout(): void {
+		this._executeCommand(applyAutoLayout)
+		this.fitView()
 	}
 
 	loadDefinitions(defs: BpmnDefinitions): void {

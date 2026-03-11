@@ -38,6 +38,7 @@ export {
 	getZeebeExtensions,
 } from "./bpmn/utils.js"
 export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
+export { applyAutoLayout } from "./bpmn/auto-layout.js"
 export type {
 	ProcessBuilder,
 	BranchBuilder,

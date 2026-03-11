@@ -528,6 +528,7 @@ export interface BpmnDiShape {
 	bpmnElement: string
 	isMarkerVisible?: boolean
 	isExpanded?: boolean
+	isHorizontal?: boolean
 	bounds: BpmnBounds
 	label?: BpmnDiLabel
 	unknownAttributes: Record<string, string>

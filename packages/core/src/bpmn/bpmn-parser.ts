@@ -81,6 +81,7 @@ const KNOWN_ATTRS = new Set([
 	"isExecutable",
 	"isMarkerVisible",
 	"isExpanded",
+	"isHorizontal",
 	"bpmnElement",
 	"errorRef",
 	"escalationRef",
@@ -620,6 +621,10 @@ function parseDiShape(element: XmlElement): BpmnDiShape {
 		isExpanded:
 			attr(element, "isExpanded") !== undefined
 				? attr(element, "isExpanded") === "true"
+				: undefined,
+		isHorizontal:
+			attr(element, "isHorizontal") !== undefined
+				? attr(element, "isHorizontal") === "true"
 				: undefined,
 		bounds: parseBounds(boundsEl),
 		label: parseLabel(element),
