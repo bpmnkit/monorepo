@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { bold, cyan, dim, green } from "./color.js"
 import type { Command, CommandGroup, FlagSpec } from "./types.js"
 
@@ -22,7 +23,15 @@ const GLOBAL_FLAGS: FlagSpec[] = [
 	{ name: "help", short: "h", description: "Show help for this command", type: "boolean" },
 ]
 
-const VERSION = "0.0.1"
+const VERSION: string = (() => {
+	try {
+		const url = new URL("../package.json", import.meta.url)
+		const pkg = JSON.parse(readFileSync(url, "utf8")) as { version?: string }
+		return pkg.version ?? "unknown"
+	} catch {
+		return "unknown"
+	}
+})()
 const BINARY = "casen"
 
 export function printVersion(): void {

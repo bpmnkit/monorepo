@@ -151,7 +151,7 @@ function renderComponent(c: FormComponent, parent: HTMLElement): void {
 		}
 		case "radio": {
 			const r = c as FormRadioComponent
-			renderChoices(r.label, r.values, "radio", parent)
+			renderChoices(r.label, r.values ?? [], "radio", parent)
 			break
 		}
 		case "checkbox":
@@ -159,7 +159,7 @@ function renderComponent(c: FormComponent, parent: HTMLElement): void {
 			break
 		case "checklist": {
 			const cl = c as FormChecklistComponent
-			renderChoices(cl.label, cl.values, "checklist", parent)
+			renderChoices(cl.label, cl.values ?? [], "checklist", parent)
 			break
 		}
 		case "taglist": {

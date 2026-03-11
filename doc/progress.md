@@ -1,5 +1,38 @@
 # Progress
 
+## 2026-03-11 — editor12 (cont): CLI DMN/Form ASCII rendering
+
+### `apps/cli/src/commands/bpmn.ts`
+- Added `getDmnXmlCmd`: replaces `get-x-m-l` on `decision-definition` — fetches DMN XML and renders as ASCII art via `renderDmnAscii`
+- Added `getDmnReqsXmlCmd`: replaces `get-x-m-l` on `decision-requirements` — same for requirements XML
+- Added `getStartFormCmd`: replaces `getstart-form` on `process-definition` — fetches start form, extracts `schema`, renders as ASCII art via `renderFormAscii`
+- Added `getUserTaskFormCmd`: replaces `get-form` on `user-task` — fetches user task form schema and renders as ASCII art
+
+### `apps/cli/src/commands/index.ts`
+- Imported and wired new commands into `decision-definition`, `decision-requirements`, `process-definition`, and `user-task` groups, filtering out the old generated command names
+
+## 2026-03-11 — editor12 (cont): ASCII DMN/Forms, CLI version fix, form type exports
+
+### `packages/ascii/src/dmn.ts` (new)
+- `renderDmnAscii(xml, options?)`: parses DMN XML via `Dmn.parse()`, renders each decision table as a double-line box-drawing ASCII table (`╔═╦╗║╠╬╣╚╩╝`)
+- Column widths auto-fit to header label and longest entry text (minimum 4)
+- Hit policy shown in header; multiple decisions separated by blank lines
+- Optional title header from `DmnDefinitions.name` (controlled via `RenderOptions.title`)
+
+### `packages/ascii/src/form.ts` (new)
+- `renderFormAscii(json, options?)`: parses Camunda Form JSON via `Form.parse()`, renders each component as ASCII mock-up
+- Supported: text, textfield, textarea, number, datetime, select, taglist, radio, checkbox, checklist, button, separator, spacer, group (box), dynamiclist (box + add item), table (grid), image, iframe, html, expression, filepicker, documentPreview
+- Required field indicator (`*`) shown next to labels where applicable
+
+### `packages/ascii/src/index.ts`
+- Exported `renderDmnAscii` and `renderFormAscii`
+
+### `packages/core/src/form/index.ts`
+- Exported all previously-internal form component types: `FormButtonComponent`, `FormDatetimeComponent`, `FormDocumentPreviewComponent`, `FormDynamicListComponent`, `FormExpressionComponent`, `FormFilepickerComponent`, `FormHtmlComponent`, `FormIframeComponent`, `FormImageComponent`, `FormNumberComponent`, `FormSeparatorComponent`, `FormSpacerComponent`, `FormTableComponent`, `FormTaglistComponent`, `FormUnknownComponent`
+
+### `apps/cli/src/help.ts`
+- Fixed `--version` output: was hardcoded `"0.0.1"`, now reads dynamically from `package.json` via `new URL("../package.json", import.meta.url)` + `readFileSync`
+
 ## 2026-03-11 — editor12: Pool and lane rendering support
 
 ### `packages/canvas/src/canvas.ts`

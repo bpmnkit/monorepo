@@ -66,7 +66,8 @@ export interface FormRadioComponent extends FormComponentBase {
 	type: "radio"
 	label: string
 	key: string
-	values: FormValueOption[]
+	values?: FormValueOption[]
+	valuesExpression?: string
 	validate?: FormValidation
 	defaultValue?: string
 }
@@ -85,7 +86,8 @@ export interface FormChecklistComponent extends FormComponentBase {
 	type: "checklist"
 	label: string
 	key: string
-	values: FormValueOption[]
+	values?: FormValueOption[]
+	valuesExpression?: string
 	validate?: FormValidation
 }
 

@@ -277,10 +277,7 @@ function parseValuesComponent(
 	if (typeof obj.key !== "string") {
 		throw new Error(`${path}: ${type} must have a 'key' string`)
 	}
-	if (!Array.isArray(obj.values)) {
-		throw new Error(`${path}: ${type} must have a 'values' array`)
-	}
-	const values = parseValues(obj.values, path)
+	const values = Array.isArray(obj.values) ? parseValues(obj.values, path) : undefined
 
 	if (type === "radio") {
 		const c: FormComponent = {
@@ -288,8 +285,9 @@ function parseValuesComponent(
 			id: obj.id as string,
 			label: obj.label,
 			key: obj.key,
-			values,
 		}
+		if (values) c.values = values
+		if (typeof obj.valuesExpression === "string") c.valuesExpression = obj.valuesExpression
 		const validate = parseValidation(obj.validate, path)
 		if (validate) c.validate = validate
 		if (typeof obj.defaultValue === "string") c.defaultValue = obj.defaultValue
@@ -302,8 +300,9 @@ function parseValuesComponent(
 		id: obj.id as string,
 		label: obj.label,
 		key: obj.key,
-		values,
 	}
+	if (values) c.values = values
+	if (typeof obj.valuesExpression === "string") c.valuesExpression = obj.valuesExpression
 	const validate = parseValidation(obj.validate, path)
 	if (validate) c.validate = validate
 	if (layout) c.layout = layout

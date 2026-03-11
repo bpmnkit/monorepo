@@ -1,5 +1,11 @@
 # Features
 
+## ASCII rendering for DMN and Forms (2026-03-11) — `packages/ascii`
+
+- **`renderDmnAscii(xml, options?)`**: renders DMN decision tables as double-line box-drawing ASCII grids. Column widths auto-fit to content; hit policy in header; multiple decisions separated by blank lines.
+- **`renderFormAscii(json, options?)`**: renders Camunda Form JSON as text-mode mock-up. Supports all component types: inputs, selects, radios, checkboxes, buttons, groups, dynamic lists, tables, and display components.
+- **`RenderOptions.title`**: control whether a title header is prepended (`false` to suppress, string to override, default uses file/definition name).
+
 ## Shared design system (2026-03-11) — `packages/ui`
 
 - **`@bpmn-sdk/ui`**: Shared design tokens, theme management, and primitive UI components for all bpmn-sdk frontends.
