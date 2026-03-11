@@ -180,6 +180,9 @@ importers:
       '@bpmn-sdk/plugins':
         specifier: workspace:*
         version: link:../plugins
+      '@bpmn-sdk/ui':
+        specifier: workspace:*
+        version: link:../ui
 
   packages/plugins:
     dependencies:
@@ -204,6 +207,8 @@ importers:
       '@bpmn-sdk/api':
         specifier: workspace:*
         version: link:../api
+
+  packages/ui: {}
 
 packages:
 

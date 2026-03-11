@@ -25,7 +25,7 @@ export function createDashboardView(
 		const d = store.state.data
 
 		instanceCard = createStatsCard("Active Instances", d?.activeInstances ?? "—")
-		instanceCard.classList.add("op-card--clickable")
+		instanceCard.classList.add("bpmn-card--clickable")
 		instanceCard.addEventListener("click", () => onNavigate("/instances"))
 		grid.appendChild(instanceCard)
 
@@ -34,22 +34,22 @@ export function createDashboardView(
 			d?.openIncidents ?? "—",
 			d?.openIncidents ? "warn" : undefined,
 		)
-		incidentCard.classList.add("op-card--clickable")
+		incidentCard.classList.add("bpmn-card--clickable")
 		incidentCard.addEventListener("click", () => onNavigate("/incidents"))
 		grid.appendChild(incidentCard)
 
 		jobCard = createStatsCard("Active Jobs", d?.activeJobs ?? "—")
-		jobCard.classList.add("op-card--clickable")
+		jobCard.classList.add("bpmn-card--clickable")
 		jobCard.addEventListener("click", () => onNavigate("/jobs"))
 		grid.appendChild(jobCard)
 
 		taskCard = createStatsCard("Pending Tasks", d?.pendingTasks ?? "—")
-		taskCard.classList.add("op-card--clickable")
+		taskCard.classList.add("bpmn-card--clickable")
 		taskCard.addEventListener("click", () => onNavigate("/tasks"))
 		grid.appendChild(taskCard)
 
 		const defCard = createStatsCard("Deployed Processes", d?.definitions ?? "—")
-		defCard.classList.add("op-card--clickable")
+		defCard.classList.add("bpmn-card--clickable")
 		defCard.addEventListener("click", () => onNavigate("/definitions"))
 		grid.appendChild(defCard)
 

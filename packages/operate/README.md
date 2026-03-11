@@ -33,7 +33,7 @@ A **mock mode** (`mock: true`) ships fixture data without any running proxy or c
 - **Mock/demo mode** — fully self-contained fixture data, no cluster required
 - **SSE architecture** — proxy polls server-side; frontend opens one `EventSource` per view, gets pushed updates
 - **Hash router** — `#/`, `#/instances`, `#/instances/:key`, `#/definitions`, etc.
-- **Themeable** — light / dark / auto via CSS custom properties; `--op-*` variables
+- **Themeable** — light / dark / auto via `--bpmn-*` CSS custom properties from `@bpmn-sdk/ui`; theme choice persisted to `localStorage`
 
 ## Installation
 

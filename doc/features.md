@@ -1,5 +1,16 @@
 # Features
 
+## Shared design system (2026-03-11) — `packages/ui`
+
+- **`@bpmn-sdk/ui`**: Shared design tokens, theme management, and primitive UI components for all bpmn-sdk frontends.
+- **Design tokens**: `--bpmn-bg`, `--bpmn-surface`, `--bpmn-surface-2`, `--bpmn-border`, `--bpmn-fg`, `--bpmn-fg-muted`, `--bpmn-accent` (blue), `--bpmn-success/warn/danger`, `--bpmn-radius`, `--bpmn-nav-bg/fg`. Light default, dark via `[data-theme="dark"]`.
+- **Theme management**: `resolveTheme` (auto→light|dark), `persistTheme`/`loadPersistedTheme` (localStorage), `applyTheme` (sets `data-theme` on element).
+- **Theme switcher component**: `createThemeSwitcher({ initial, onChange, persist })` — button+dropdown with Dark/Light/System options, icon updates to reflect selection.
+- **Shared components**: `badge(state)`, `cell(text)`, `createStatsCard(label, value, mod)`, `createTable<T>(options)` — generic, use `--bpmn-*` tokens.
+- **Icon library**: `IC_UI` — SVG icons for theme (moon/sun/auto/check) and navigation (dashboard/processes/instances/incidents/jobs/tasks).
+
+
+
 ## Monitoring & Operations frontend (2026-03-10) — `packages/operate`
 
 - **`@bpmn-sdk/operate`**: Zero-dependency monitoring frontend. `createOperate({ container, mock?, proxyUrl?, profile?, theme? })` mounts full monitoring UI.

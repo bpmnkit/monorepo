@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-03-11 — editor12: packages/ui — shared design system; operate visual unification
+
+### `packages/ui` (new package — `@bpmn-sdk/ui`)
+- New shared design-system package consumed by all frontends (operate, editor, canvas).
+- **Design tokens** (`UI_TOKENS_CSS`): CSS custom properties on `:root` (light default) + `[data-theme="dark"]` override. Namespace `--bpmn-*` for surfaces, typography, accent, semantic, radius, nav, header.
+- **Unified blue accent**: `#1a56db` (light) / `#4c8ef7` (dark) — replaces operate's purple `#7b61ff`.
+- **`injectUiStyles()`**: single call injects tokens + component CSS into `<head>`.
+- **`theme.ts`**: `resolveTheme`, `persistTheme`, `loadPersistedTheme`, `applyTheme` — shared logic for all frontends. Persists to `localStorage["bpmn-theme"]`.
+- **`createThemeSwitcher(options)`**: standalone Dark/Light/System button+dropdown. Used in operate header. Mirrors resolved theme onto dropdown element for correct dark CSS.
+- **Shared components**: `badge`, `cell`, `createStatsCard`, `createTable` — moved from operate into ui with `bpmn-*` class names.
+- **`IC_UI` icons**: SVG icon set for theme switcher (moon/sun/auto/check) and navigation (dashboard/processes/instances/incidents/jobs/tasks).
+
+### `packages/operate` — visual unification with editor
+- Replaced all `--op-*` CSS variables with shared `--bpmn-*` tokens from `@bpmn-sdk/ui`.
+- Theme switcher button added to header (next to profile picker). Persists selection across sessions.
+- Theme persistence: `loadPersistedTheme()` on init — user choice survives page reload.
+- Nav icons: replaced emoji (`⊞ ◈ ▷ ⚠ ⚙ ☑`) with clean SVG icons from `IC_UI`.
+- Active nav item: blue tint `rgba(76,142,247,0.18)` (was purple `rgba(123,97,255,0.18)`).
+- Component CSS (badge, card, table) moved to `@bpmn-sdk/ui`; operate components are now thin re-exports.
+- `injectUiStyles()` called before `injectOperateStyles()` — tokens always available.
+
 ## 2026-03-10 — editor11: packages/operate — monitoring frontend
 
 ### `packages/operate` (new package — `@bpmn-sdk/operate`)

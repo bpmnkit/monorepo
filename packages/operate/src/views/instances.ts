@@ -74,11 +74,11 @@ export function createInstancesView(
 				width: "120px",
 				render: (row) => {
 					const wrap = document.createElement("div")
-					wrap.className = "op-badge-wrap"
+					wrap.className = "bpmn-badge-wrap"
 					wrap.appendChild(badge(row.state))
 					if (row.hasIncident) {
 						const inc = document.createElement("span")
-						inc.className = "op-badge op-badge--incident-dot"
+						inc.className = "bpmn-badge bpmn-badge--incident-dot"
 						inc.title = "Has incident"
 						inc.textContent = "⚠"
 						wrap.appendChild(inc)

@@ -1,6 +1,7 @@
 {
-	"name": "@bpmn-sdk/core",
-	"version": "0.0.5",
+	"name": "@bpmn-sdk/ui",
+	"version": "0.0.1",
+	"description": "Shared design tokens, theme management, and UI components for bpmn-sdk frontends",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -14,23 +15,13 @@
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
-		"check": "biome check .",
-		"test": "vitest run"
+		"check": "biome check ."
 	},
-	"dependencies": {},
-	"description": "TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
-	"keywords": [
-		"bpmn",
-		"bpmn2",
-		"camunda",
-		"zeebe",
-		"workflow",
-		"process",
-		"dmn",
-		"typescript",
-		"sdk"
-	],
+	"keywords": ["bpmn", "ui", "design-tokens", "theme", "components", "css-variables", "typescript"],
 	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmn-sdk/monorepo"

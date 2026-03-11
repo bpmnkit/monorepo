@@ -39,7 +39,7 @@ export function createDefinitionsView(
 				width: "120px",
 				render: (row) => {
 					const b = badge(row.tenantId ?? "default")
-					b.className = "op-badge op-badge--tenant"
+					b.className = "bpmn-badge bpmn-badge--tenant"
 					return b
 				},
 			},

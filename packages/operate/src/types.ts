@@ -6,8 +6,9 @@ import type {
 	UserTaskResult,
 	VariableResult,
 } from "@bpmn-sdk/api"
+import type { Theme } from "@bpmn-sdk/ui"
 
-export type Theme = "light" | "dark" | "auto"
+export type { Theme }
 
 export interface OperateOptions {
 	container: HTMLElement

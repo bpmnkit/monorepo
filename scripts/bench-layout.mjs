@@ -272,11 +272,12 @@ if (bpmnResults.length > 0) {
 	const totalElements = bpmnResults.reduce((s, r) => s + r.elementCount, 0)
 	const totalFlows = bpmnResults.reduce((s, r) => s + r.flowCount, 0)
 	const totalViolations = bpmnResults.reduce((s, r) => s + r.orderViolations.length, 0)
-	const globalAvgDist =
-		bpmnResults.reduce((s, r) => s + r.avgDistance, 0) / bpmnResults.length
+	const globalAvgDist = bpmnResults.reduce((s, r) => s + r.avgDistance, 0) / bpmnResults.length
 	const globalP90 = bpmnResults.reduce((s, r) => s + r.p90Distance, 0) / bpmnResults.length
 
-	console.log(`  BPMN files:          ${bpmnResults.length} / ${files.filter((f) => f.endsWith(".bpmn")).length}`)
+	console.log(
+		`  BPMN files:          ${bpmnResults.length} / ${files.filter((f) => f.endsWith(".bpmn")).length}`,
+	)
 	console.log(`  Total BPMN elements: ${totalElements}  flows: ${totalFlows}`)
 	console.log(`  Order violations:    ${totalViolations} ${badge(totalViolations === 0)}`)
 	console.log(`  Global avg dist:     ${globalAvgDist.toFixed(1)}px`)
@@ -302,7 +303,9 @@ if (dmnResults.length > 0) {
 	const globalAvgDist = dmnResults.reduce((s, r) => s + r.avgDistance, 0) / dmnResults.length
 	const globalP90 = dmnResults.reduce((s, r) => s + r.p90Distance, 0) / dmnResults.length
 
-	console.log(`  DMN files:           ${dmnResults.length} / ${files.filter((f) => f.endsWith(".dmn")).length}`)
+	console.log(
+		`  DMN files:           ${dmnResults.length} / ${files.filter((f) => f.endsWith(".dmn")).length}`,
+	)
 	console.log(`  Total DMN elements:  ${totalElements}`)
 	console.log(`  Global avg dist:     ${globalAvgDist.toFixed(1)}px`)
 	console.log(`  Global P90 dist:     ${globalP90.toFixed(1)}px`)
@@ -324,7 +327,9 @@ if (formResults.length > 0) {
 	const ok = formResults.filter((r) => r.roundtripOk).length
 	const fail = formResults.length - ok
 
-	console.log(`  Form files:          ${formResults.length} / ${files.filter((f) => f.endsWith(".form")).length}`)
+	console.log(
+		`  Form files:          ${formResults.length} / ${files.filter((f) => f.endsWith(".form")).length}`,
+	)
 	console.log(`  Roundtrip pass:      ${ok} ${badge(fail === 0)}`)
 	if (fail > 0) {
 		console.log(`  Roundtrip fail:      ${fail} ✗`)

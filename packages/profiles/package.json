@@ -11,10 +11,7 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
-	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
 	"engines": {
 		"node": ">=20"
 	},
@@ -26,15 +23,7 @@
 	"dependencies": {
 		"@bpmn-sdk/api": "workspace:*"
 	},
-	"keywords": [
-		"bpmn",
-		"camunda",
-		"profiles",
-		"authentication",
-		"oauth2",
-		"cli",
-		"typescript"
-	],
+	"keywords": ["bpmn", "camunda", "profiles", "authentication", "oauth2", "cli", "typescript"],
 	"publishConfig": {
 		"access": "public"
 	},

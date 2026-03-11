@@ -11,10 +11,7 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -24,7 +21,8 @@
 		"@bpmn-sdk/api": "workspace:*",
 		"@bpmn-sdk/canvas": "workspace:*",
 		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/plugins": "workspace:*"
+		"@bpmn-sdk/plugins": "workspace:*",
+		"@bpmn-sdk/ui": "workspace:*"
 	},
 	"keywords": [
 		"bpmn",

@@ -1,9 +1,15 @@
+import { type Theme, createThemeSwitcher } from "@bpmn-sdk/ui"
 import type { ProfileInfo } from "../types.js"
 
-export function createHeader(onProfileChange: (name: string) => void): {
+export function createHeader(
+	onProfileChange: (name: string) => void,
+	onThemeChange: (theme: Theme, resolved: "light" | "dark") => void,
+	initialTheme: Theme = "auto",
+): {
 	el: HTMLElement
 	setTitle(title: string): void
 	setProfiles(profiles: ProfileInfo[], active: string | null): void
+	setTheme(t: Theme): void
 } {
 	const el = document.createElement("header")
 	el.className = "op-header"
@@ -23,6 +29,14 @@ export function createHeader(onProfileChange: (name: string) => void): {
 		if (select.value) onProfileChange(select.value)
 	})
 	right.appendChild(select)
+
+	const themeSwitcher = createThemeSwitcher({
+		initial: initialTheme,
+		persist: true,
+		onChange: onThemeChange,
+	})
+	right.appendChild(themeSwitcher.el)
+
 	el.appendChild(right)
 
 	function setTitle(t: string): void {
@@ -47,5 +61,5 @@ export function createHeader(onProfileChange: (name: string) => void): {
 		}
 	}
 
-	return { el, setTitle, setProfiles }
+	return { el, setTitle, setProfiles, setTheme: themeSwitcher.setTheme }
 }

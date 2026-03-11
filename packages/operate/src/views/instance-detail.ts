@@ -17,7 +17,7 @@ interface Config {
 	profile: string | null
 	interval: number
 	mock: boolean
-	theme: "light" | "dark" | "auto"
+	theme: "light" | "dark"
 }
 
 function relTime(iso: string | null | undefined): string {
