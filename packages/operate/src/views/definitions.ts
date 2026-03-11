@@ -90,7 +90,7 @@ export function createDefinitionsView(
 		groupsEl.appendChild(header)
 
 		for (const [id, versions] of groups) {
-			const isCollapsed = collapsed.get(id) ?? false
+			const isCollapsed = collapsed.get(id) ?? true
 			const latest = versions[0]
 			if (!latest) continue
 			const name = latest.name ?? id

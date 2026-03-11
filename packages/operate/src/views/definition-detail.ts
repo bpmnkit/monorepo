@@ -88,7 +88,10 @@ export function createDefinitionDetailView(
 		const def = getDef()
 		renderMeta(def)
 		fetch(`${cfg.proxyUrl}/api/process-definitions/${definitionKey}/xml`, {
-			headers: cfg.profile ? { "x-profile": cfg.profile } : {},
+			headers: {
+				accept: "text/xml",
+				...(cfg.profile ? { "x-profile": cfg.profile } : {}),
+			},
 		})
 			.then((r) => r.text())
 			.then((xml) => loadCanvas(xml))

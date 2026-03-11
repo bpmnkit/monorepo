@@ -380,7 +380,9 @@ const server = http.createServer(async (req, res) => {
 						break
 					}
 					case "definitions": {
-						const result = await client.processDefinition.searchProcessDefinitions({})
+						const result = await client.processDefinition.searchProcessDefinitions({
+							page: { limit: 1000 },
+						} as AnyQuery)
 						send({ items: items(result) })
 						break
 					}

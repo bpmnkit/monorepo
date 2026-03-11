@@ -222,7 +222,10 @@ export function createInstanceDetailView(
 			renderMeta(inst)
 			const pdKey = inst.processDefinitionKey
 			fetch(`${cfg.proxyUrl}/api/process-definitions/${pdKey}/xml`, {
-				headers: cfg.profile ? { "x-profile": cfg.profile } : {},
+				headers: {
+					accept: "text/xml",
+					...(cfg.profile ? { "x-profile": cfg.profile } : {}),
+				},
 			})
 				.then((r) => r.text())
 				.then((xml) => {
