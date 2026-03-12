@@ -14,7 +14,10 @@ function relTime(iso: string | null | undefined): string {
 	return `${Math.floor(h / 24)}d ago`
 }
 
-export function createIncidentsView(store: IncidentsStore): {
+export function createIncidentsView(
+	store: IncidentsStore,
+	onSelect?: (inc: IncidentResult) => void,
+): {
 	el: HTMLElement
 	destroy(): void
 } {
@@ -68,6 +71,7 @@ export function createIncidentsView(store: IncidentsStore): {
 			[row.errorType, row.errorMessage, row.processDefinitionId, row.processInstanceKey, row.state]
 				.filter(Boolean)
 				.join(" "),
+		onRowClick: onSelect,
 		emptyText: "No incidents",
 	})
 	el.appendChild(tableEl)

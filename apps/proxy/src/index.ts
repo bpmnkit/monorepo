@@ -19,6 +19,8 @@ import * as copilot from "./adapters/copilot.js"
 import * as gemini from "./adapters/gemini.js"
 import type { FindingInfo } from "./prompt.js"
 import {
+	buildIncidentSystemPrompt,
+	buildIncidentUserMessage,
 	buildMcpExplainPrompt,
 	buildMcpImprovePrompt,
 	buildMcpSystemPrompt,
@@ -478,6 +480,158 @@ const server = http.createServer(async (req, res) => {
 		})
 
 		console.log(`[operate/stream] connected (topic: ${topicParam}, interval: ${intervalMs}ms)`)
+		return
+	}
+
+	// ── POST /operate/incident-assist ─────────────────────────────────────────
+	if (url.pathname === "/operate/incident-assist" && req.method === "POST") {
+		const body = await readBody(req)
+		let incidentKey: string
+		try {
+			incidentKey = (JSON.parse(body) as { incidentKey: string }).incidentKey
+		} catch {
+			res.writeHead(400)
+			res.end("Bad Request")
+			return
+		}
+
+		const profileName = req.headers["x-profile"] as string | undefined
+		const profile = profileName ? getProfile(profileName) : getActiveProfile()
+		if (!profile?.config.baseUrl) {
+			res.writeHead(401, { "Content-Type": "application/json" })
+			res.end(JSON.stringify({ error: "No active profile" }))
+			return
+		}
+
+		const available = await detectAll()
+		const detected = available[0]
+		if (!detected) {
+			res.writeHead(503)
+			res.end("No AI adapter available")
+			return
+		}
+
+		res.writeHead(200, {
+			"Content-Type": "text/event-stream",
+			"Cache-Control": "no-cache",
+			Connection: "keep-alive",
+		})
+
+		let authHeader: string
+		try {
+			authHeader = await getAuthHeader(profile.config)
+		} catch (err) {
+			res.write(`data: ${JSON.stringify({ type: "error", message: String(err) })}\n\n`)
+			res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`)
+			res.end()
+			return
+		}
+
+		const baseUrl = profile.config.baseUrl.replace(/\/$/, "")
+		const apiHeaders: Record<string, string> = {
+			authorization: authHeader,
+			"content-type": "application/json",
+			accept: "application/json",
+		}
+
+		// Fetch incident
+		type RawIncident = {
+			errorType?: string
+			errorMessage?: string
+			elementId?: string
+			processDefinitionId?: string
+			processDefinitionKey?: string
+			processInstanceKey?: string
+			state?: string
+			creationTime?: string
+			jobKey?: string
+			incidentKey?: string
+		}
+		let incident: RawIncident | null = null
+		try {
+			const r = await fetch(`${baseUrl}/incidents/${incidentKey}`, { headers: apiHeaders })
+			if (r.ok) incident = (await r.json()) as RawIncident
+		} catch {
+			/* ignore */
+		}
+
+		if (!incident) {
+			res.write(
+				`data: ${JSON.stringify({ type: "error", message: "Could not fetch incident" })}\n\n`,
+			)
+			res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`)
+			res.end()
+			return
+		}
+
+		// Fetch process XML
+		let processXml: string | null = null
+		if (incident.processDefinitionKey) {
+			try {
+				const r = await fetch(
+					`${baseUrl}/process-definitions/${incident.processDefinitionKey}/xml`,
+					{ headers: { ...apiHeaders, accept: "text/xml" } },
+				)
+				if (r.ok) processXml = await r.text()
+			} catch {
+				/* ignore */
+			}
+		}
+
+		// Fetch variables
+		type RawVar = { name: string; value?: string }
+		let variables: RawVar[] = []
+		if (incident.processInstanceKey) {
+			try {
+				const r = await fetch(`${baseUrl}/variables/search`, {
+					method: "POST",
+					headers: apiHeaders,
+					body: JSON.stringify({ filter: { processInstanceKey: incident.processInstanceKey } }),
+				})
+				if (r.ok) {
+					const result = (await r.json()) as { items?: RawVar[] }
+					variables = result.items ?? []
+				}
+			} catch {
+				/* ignore */
+			}
+		}
+
+		const systemPrompt = buildIncidentSystemPrompt()
+		const userMessage = buildIncidentUserMessage(
+			{
+				errorType: incident.errorType ?? "UNKNOWN",
+				errorMessage: incident.errorMessage ?? "",
+				elementId: incident.elementId ?? "",
+				processDefinitionId: incident.processDefinitionId ?? "",
+				processInstanceKey: incident.processInstanceKey ?? "",
+				state: incident.state ?? "",
+				creationTime: incident.creationTime,
+				jobKey: incident.jobKey,
+			},
+			variables,
+			processXml,
+		)
+
+		console.log(
+			`[server] /operate/incident-assist → adapter: ${detected.name}, incident: ${incidentKey}`,
+		)
+
+		try {
+			await detected.adapter.stream(
+				[{ role: "user", content: userMessage }],
+				systemPrompt,
+				null,
+				(token) => {
+					res.write(`data: ${JSON.stringify({ type: "token", text: token })}\n\n`)
+				},
+			)
+		} catch (err) {
+			res.write(`data: ${JSON.stringify({ type: "error", message: String(err) })}\n\n`)
+		}
+
+		res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`)
+		res.end()
 		return
 	}
 

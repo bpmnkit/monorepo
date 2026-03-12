@@ -146,6 +146,75 @@ export function buildMcpExplainPrompt(): string {
 	].join("\n")
 }
 
+// ── Incident assist prompt builders ───────────────────────────────────────────
+
+export function buildIncidentSystemPrompt(): string {
+	return [
+		"You are an expert in Camunda 8 BPMN process operations and incident management.",
+		"Analyze the provided incident and give a clear, actionable response.",
+		"",
+		"Structure your response as:",
+		"## Root Cause",
+		"What caused this incident (be specific, reference variable values or error message details).",
+		"",
+		"## Impact",
+		"What is blocked or affected while this incident is active.",
+		"",
+		"## Remediation Steps",
+		"Numbered list of concrete steps to fix this incident (e.g., retry job, fix input data, deploy missing resource, update process).",
+		"",
+		"## Prevention",
+		"How to prevent this class of error going forward.",
+		"",
+		"Be concise and practical. Use markdown formatting.",
+	].join("\n")
+}
+
+export interface IncidentContext {
+	errorType: string
+	errorMessage: string
+	elementId: string
+	processDefinitionId: string
+	processInstanceKey: string
+	state: string
+	creationTime?: string
+	jobKey?: string
+}
+
+export function buildIncidentUserMessage(
+	incident: IncidentContext,
+	variables: Array<{ name: string; value?: string }>,
+	processXml: string | null,
+): string {
+	const lines: string[] = [
+		"## Incident",
+		`- **Type:** ${incident.errorType}`,
+		`- **Message:** ${incident.errorMessage}`,
+		`- **Element:** \`${incident.elementId}\``,
+		`- **Process:** ${incident.processDefinitionId}`,
+		`- **Instance:** ${incident.processInstanceKey}`,
+		`- **State:** ${incident.state}`,
+	]
+	if (incident.creationTime) lines.push(`- **Created:** ${incident.creationTime}`)
+	if (incident.jobKey) lines.push(`- **Job:** ${incident.jobKey}`)
+
+	if (variables.length > 0) {
+		lines.push("", "## Process Variables")
+		for (const v of variables.slice(0, 30)) {
+			lines.push(`- \`${v.name}\`: ${v.value ?? "null"}`)
+		}
+	}
+
+	if (processXml) {
+		const MAX_XML = 6000
+		const xml =
+			processXml.length > MAX_XML ? `${processXml.slice(0, MAX_XML)}\n...truncated` : processXml
+		lines.push("", "## Process Definition (BPMN XML)", "```xml", xml, "```")
+	}
+
+	return lines.join("\n")
+}
+
 // ── Fallback prompt builders (for non-MCP adapters like Gemini) ───────────────
 
 /** Full system prompt for non-MCP adapters that must return a CompactDiagram JSON block. */

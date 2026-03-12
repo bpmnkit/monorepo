@@ -857,6 +857,128 @@ const OPERATE_CSS = `
   overflow: hidden;
   min-height: 0;
 }
+
+/* ── Incident detail — action buttons ────────────────────────────────────── */
+.op-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--bpmn-surface-2);
+  border: 1px solid var(--bpmn-border);
+  border-radius: var(--bpmn-radius-sm);
+  font-size: 12px;
+  font-family: var(--bpmn-font);
+  color: var(--bpmn-fg);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.op-action-btn:hover { background: var(--bpmn-border); }
+.op-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.op-action-btn--primary {
+  background: var(--bpmn-accent);
+  border-color: var(--bpmn-accent);
+  color: #fff;
+}
+.op-action-btn--primary:hover { opacity: 0.88; background: var(--bpmn-accent); }
+.op-action-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bpmn-border);
+}
+.op-action-feedback {
+  font-size: 12px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: var(--bpmn-radius-sm);
+}
+.op-action-feedback--ok { background: color-mix(in srgb, var(--op-c-green) 12%, transparent); color: var(--op-c-green); }
+.op-action-feedback--err { background: color-mix(in srgb, var(--op-c-amber) 12%, transparent); color: var(--op-c-amber); }
+
+/* ── Process chain breadcrumb ────────────────────────────────────────────── */
+.op-process-chain {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--bpmn-fg-muted);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.op-process-chain-sep { color: var(--bpmn-border); }
+.op-process-chain-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--bpmn-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.op-process-chain-link:hover { opacity: 0.75; }
+.op-process-chain-link:disabled { color: var(--bpmn-fg-muted); text-decoration: none; cursor: default; }
+
+/* ── Job details section ──────────────────────────────────────────────────── */
+.op-job-section {
+  margin-top: 16px;
+  border-top: 1px solid var(--bpmn-border);
+  padding-top: 12px;
+}
+.op-job-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bpmn-fg-muted);
+  margin-bottom: 8px;
+}
+.op-job-headers {
+  font-size: 12px;
+  font-family: monospace;
+  background: var(--bpmn-surface-2);
+  border: 1px solid var(--bpmn-border);
+  border-radius: var(--bpmn-radius-sm);
+  padding: 8px 10px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.6;
+  color: var(--bpmn-fg);
+}
+
+/* ── AI Assist panel ─────────────────────────────────────────────────────── */
+.op-ai-assist-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+.op-ai-assist-intro {
+  font-size: 12px;
+  color: var(--bpmn-fg-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+.op-ai-response {
+  flex: 1;
+  font-size: 12px;
+  font-family: var(--bpmn-font);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bpmn-surface-2);
+  border: 1px solid var(--bpmn-border);
+  border-radius: var(--bpmn-radius-sm);
+  padding: 10px 12px;
+  overflow-y: auto;
+  min-height: 200px;
+  margin: 0;
+}
 `
 
 export function injectOperateStyles(): void {

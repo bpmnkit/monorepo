@@ -15,6 +15,7 @@ import { createDecisionsView } from "./views/decisions.js"
 import { createDefinitionDetailView } from "./views/definition-detail.js"
 import { createDefinitionsView } from "./views/definitions.js"
 import { createHeader } from "./views/header.js"
+import { createIncidentDetailView } from "./views/incident-detail.js"
 import { createIncidentsView } from "./views/incidents.js"
 import { createInstanceDetailView } from "./views/instance-detail.js"
 import { createInstancesView } from "./views/instances.js"
@@ -24,7 +25,6 @@ import { createTaskDetailView } from "./views/task-detail.js"
 import { createTasksView } from "./views/tasks.js"
 
 export function createOperate(options: OperateOptions): OperateApi {
-	// Inject shared tokens first, then operate-specific layout CSS
 	injectUiStyles()
 	injectOperateStyles()
 
@@ -36,8 +36,6 @@ export function createOperate(options: OperateOptions): OperateApi {
 	} = options
 
 	let profile: string | null = options.profile ?? null
-
-	// Resolve initial theme: persisted preference > option > auto
 	const initialTheme: Theme = loadPersistedTheme() ?? options.theme ?? "auto"
 
 	// ── Root element ──────────────────────────────────────────────────────────
@@ -92,9 +90,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 				if (!profile && active) profile = active.name
 				header.setProfiles(profiles, profile)
 			})
-			.catch(() => {
-				// proxy not running — silently ignore
-			})
+			.catch(() => {})
 	}
 
 	// ── Layout ────────────────────────────────────────────────────────────────
@@ -104,7 +100,6 @@ export function createOperate(options: OperateOptions): OperateApi {
 	el.appendChild(layout)
 
 	const router = createRouter()
-
 	const nav = createNav((path) => router.navigate(path))
 	layout.appendChild(nav.el)
 
@@ -250,13 +245,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 		const { el: vEl, destroy } = createInstanceDetailView(
 			instanceKey,
 			instStore,
-			{
-				proxyUrl,
-				profile,
-				interval: pollInterval,
-				mock,
-				theme: getTheme(),
-			},
+			{ proxyUrl, profile, interval: pollInterval, mock, theme: getTheme() },
 			() => router.navigate("/instances"),
 		)
 		showView(vEl, destroy)
@@ -270,7 +259,27 @@ export function createOperate(options: OperateOptions): OperateApi {
 		reconnectCurrent()
 		header.setTitle("Incidents")
 		nav.setActive("/incidents")
-		const { el: vEl, destroy } = createIncidentsView(incStore)
+		const { el: vEl, destroy } = createIncidentsView(incStore, (inc) => {
+			router.navigate(`/incidents/${inc.incidentKey ?? ""}`)
+		})
+		showView(vEl, destroy)
+	})
+
+	router.on("/incidents/:key", (params) => {
+		reconnectCurrent = () => {
+			disconnectAll()
+			incStore.connect(proxyUrl, profile, pollInterval, mock)
+		}
+		reconnectCurrent()
+		const incidentKey = params.key ?? ""
+		header.setTitle(`Incident ${incidentKey}`)
+		nav.setActive("/incidents")
+		const { el: vEl, destroy } = createIncidentDetailView(
+			incidentKey,
+			incStore,
+			{ proxyUrl, profile, mock, theme: getTheme(), navigate: (path) => router.navigate(path) },
+			() => router.navigate("/incidents"),
+		)
 		showView(vEl, destroy)
 	})
 

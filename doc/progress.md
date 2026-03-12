@@ -1,5 +1,32 @@
 # Progress
 
+## 2026-03-12 — operate: incident detail view + AI incident assist
+
+### Incidents: click to open detail
+- Incidents table rows are now clickable; clicking navigates to `/incidents/{key}`
+- `packages/operate/src/views/incidents.ts`: added `onSelect` callback passed as `onRowClick`
+
+### Incident detail view (new)
+- `packages/operate/src/views/incident-detail.ts`: full detail view with breadcrumb, metadata, split layout
+- Left pane: `BpmnCanvas` renders the process BPMN; the failing element is highlighted in amber via `createTokenHighlightPlugin().api.setActive([elementId])`
+- Right pane sidebar with two tabs: **Details** (all incident fields) and **AI Assist**
+- Action buttons: "Retry Job" (`PATCH /api/jobs/{jobKey}/retries` with `{ retries: 3 }`) and "Resolve" (`POST /api/incidents/{key}/resolution`)
+- Mock mode: resolves from `MOCK_INCIDENTS`, highlights element on `MOCK_BPMN_XML`; deep-link fallback fetches `GET /api/incidents/{key}` directly
+
+### AI Incident Assist
+- **AI Assist tab** in incident detail streams AI analysis from `POST /operate/incident-assist`
+- Streams tokens as SSE, renders markdown-formatted Root Cause / Impact / Remediation Steps / Prevention analysis
+- `apps/proxy/src/index.ts`: new `POST /operate/incident-assist` endpoint — fetches incident + process XML + variables from Camunda, builds context-rich prompt, streams AI response
+- `apps/proxy/src/prompt.ts`: `buildIncidentSystemPrompt()`, `buildIncidentUserMessage()`, `IncidentContext` interface
+
+### Dashboard chart simplified
+- Removed time-series accumulation; chart now shows 4 current-value bars (one per metric)
+- `DashboardStore` no longer maintains `history[]`; just stores current `DashboardData` snapshot
+
+### Task detail: form schema fix
+- `FormResult.schema` from Camunda REST API is a JSON string; `task-detail.ts` now `JSON.parse`s it before passing to `loadForm`
+- `form-editor.ts`: `loadSchema` normalizes schema (injects `id`/`type` defaults), wraps `Form.parse` in try/catch so malformed schemas still render the empty state
+
 ## 2026-03-12 — form-editor: readonly mode; task-detail: fix mock form rendering
 
 ### `packages/plugins/src/form-editor/form-editor.ts`
