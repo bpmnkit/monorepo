@@ -5,7 +5,6 @@ import type {
 	JobSearchResult,
 	ProcessDefinitionResult,
 	ProcessInstanceResult,
-	TimePoint,
 	UserTaskResult,
 	VariableResult,
 } from "./types.js"
@@ -76,37 +75,6 @@ export function getMockDashboard(): DashboardData {
 		pendingTasks: 5,
 		definitions: 4,
 	}
-}
-
-/**
- * Generate 20 synthetic time points spanning the last 30 minutes.
- * Uses sine waves with different phases to produce realistic-looking variation.
- */
-export function getMockHistory(): TimePoint[] {
-	const now = Date.now()
-	const n = 20
-	const step = 90_000 // 90 s between points → ~30 min window
-	const pts: TimePoint[] = []
-	for (let i = 0; i < n; i++) {
-		const t = i / (n - 1) // 0..1
-		pts.push({
-			ts: now - (n - 1 - i) * step,
-			data: {
-				activeInstances: Math.max(
-					0,
-					Math.round(20 + 8 * Math.sin(t * Math.PI * 2.4 + 0.5) + 3 * Math.sin(t * Math.PI * 6)),
-				),
-				openIncidents: Math.max(0, Math.round(2 + 1.5 * Math.sin(t * Math.PI * 1.8 + 1.2))),
-				activeJobs: Math.max(
-					0,
-					Math.round(7 + 5 * Math.sin(t * Math.PI * 3.1 + 0.3) + 2 * Math.sin(t * Math.PI * 8)),
-				),
-				pendingTasks: Math.max(0, Math.round(4 + 2.5 * Math.sin(t * Math.PI * 2.1 + 2.0))),
-				definitions: 4,
-			},
-		})
-	}
-	return pts
 }
 
 export const MOCK_DEFINITIONS: ProcessDefinitionResult[] = [

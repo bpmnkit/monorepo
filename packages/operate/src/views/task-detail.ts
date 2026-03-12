@@ -118,7 +118,7 @@ export function createTaskDetailView(
 		const formContainer = document.createElement("div")
 		formContainer.className = "op-task-form-container"
 		formWrap.appendChild(formContainer)
-		editor = new FormEditor({ container: formContainer, theme: cfg.theme })
+		editor = new FormEditor({ container: formContainer, theme: cfg.theme, readonly: true })
 		editor.loadSchema(schema).catch(() => {})
 	}
 
@@ -131,13 +131,7 @@ export function createTaskDetailView(
 	}
 
 	function fetchForm(task: UserTaskResult): void {
-		if (!task.formKey && !task.externalFormReference) {
-			showNoForm()
-			return
-		}
-
 		if (cfg.mock) {
-			// Show a minimal mock form
 			loadForm({
 				type: "default",
 				id: "mock-form",
@@ -150,14 +144,28 @@ export function createTaskDetailView(
 			return
 		}
 
+		if (!task.formKey && !task.externalFormReference) {
+			showNoForm()
+			return
+		}
+
 		const headers: Record<string, string> = {}
 		if (cfg.profile) headers["x-profile"] = cfg.profile
 
 		fetch(`${cfg.proxyUrl}/api/user-tasks/${task.userTaskKey}/form`, { headers })
 			.then((r) => (r.ok ? r.json() : null))
-			.then((result: { schema?: Record<string, unknown> } | null) => {
-				if (result?.schema) {
-					loadForm(result.schema)
+			.then((result: { schema?: unknown } | null) => {
+				let schema = result?.schema
+				// The API returns schema as a JSON string, not an object
+				if (typeof schema === "string") {
+					try {
+						schema = JSON.parse(schema) as Record<string, unknown>
+					} catch {
+						schema = undefined
+					}
+				}
+				if (schema && typeof schema === "object") {
+					loadForm(schema as Record<string, unknown>)
 				} else {
 					showNoForm()
 				}

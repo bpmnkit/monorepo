@@ -166,7 +166,7 @@ export function createDashboardView(
 			usageGrid.appendChild(createUsageCard("Active Assignees", d?.usageAssignees))
 		}
 
-		chart.update(store.history)
+		chart.update(store.state.data ?? null)
 	}
 
 	const unsub = store.subscribe(render)

@@ -550,68 +550,6 @@ const OPERATE_CSS = `
   border-radius: var(--bpmn-radius);
   padding: 12px 14px 10px;
 }
-.op-chart-legend-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.op-chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.op-chart-live {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--bpmn-fg-muted);
-  opacity: 0.6;
-  cursor: default;
-  user-select: none;
-}
-.op-chart-live::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--op-c-green);
-  margin-right: 5px;
-  vertical-align: middle;
-  animation: op-chart-pulse 2s ease-in-out infinite;
-}
-.op-chart-legend-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px 3px 8px;
-  background: transparent;
-  border: 1px solid var(--bpmn-border);
-  border-radius: 20px;
-  font-size: 11px;
-  color: var(--bpmn-fg-muted);
-  cursor: pointer;
-  font-family: var(--bpmn-font);
-  transition: color 0.15s, border-color 0.15s, opacity 0.15s;
-  opacity: 0.55;
-}
-.op-chart-legend-btn:hover { opacity: 0.8; }
-.op-chart-legend-btn--active {
-  color: var(--bpmn-fg);
-  border-color: var(--dot);
-  opacity: 1;
-}
-.op-chart-legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--dot);
-  flex-shrink: 0;
-}
 .op-chart-svg {
   display: block;
   width: 100%;

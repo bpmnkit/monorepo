@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-03-12 — form-editor: readonly mode; task-detail: fix mock form rendering
+
+### `packages/plugins/src/form-editor/form-editor.ts`
+- Added `readonly?: boolean` to `FormEditorOptions`; when true: no palette, no properties panel, no drag handles, no delete buttons, no drag/drop event handlers on cards
+- Empty state shows "No form" / "This task has no form schema." instead of design instructions in readonly mode
+
+### `packages/operate/src/views/task-detail.ts`
+- Pass `readonly: true` to `FormEditor` so tasks show view-only form
+- Fixed mock mode: check `cfg.mock` before the `formKey` guard so mock tasks always show a sample form
+
 ## 2026-03-12 — operate: decisions nav, task detail, bar chart, usage metrics
 
 ### Dashboard

@@ -10,6 +10,8 @@ import { injectFormEditorStyles } from "./css.js"
 export interface FormEditorOptions {
 	container: HTMLElement
 	theme?: "dark" | "light"
+	/** When true, renders a read-only preview: no palette, no properties panel, no drag/delete. */
+	readonly?: boolean
 }
 
 type DragSource = { kind: "palette"; fieldType: string } | { kind: "canvas"; compId: string }
@@ -343,16 +345,21 @@ export class FormEditor {
 	private readonly _canvas: HTMLDivElement
 	private readonly _props: HTMLDivElement
 	private readonly _handlers: Array<() => void> = []
+	private readonly _readonly: boolean
 	private _destroyed = false
 
 	constructor(options: FormEditorOptions) {
 		injectFormEditorStyles()
 
-		this._root = document.createElement("div")
-		this._root.className = `form-editor ${options.theme ?? "light"}`
+		this._readonly = options.readonly ?? false
 
-		const palette = this._buildPalette()
-		this._root.appendChild(palette)
+		this._root = document.createElement("div")
+		this._root.className = `form-editor ${options.theme ?? "light"}${this._readonly ? " form-editor--readonly" : ""}`
+
+		if (!this._readonly) {
+			const palette = this._buildPalette()
+			this._root.appendChild(palette)
+		}
 
 		this._canvas = document.createElement("div")
 		this._canvas.className = "fe-canvas"
@@ -360,19 +367,38 @@ export class FormEditor {
 
 		this._props = document.createElement("div")
 		this._props.className = "fe-props"
-		this._root.appendChild(this._props)
+		if (!this._readonly) {
+			this._root.appendChild(this._props)
+		}
 
 		options.container.appendChild(this._root)
 
 		this._renderCanvas()
-		this._renderProps()
+		if (!this._readonly) {
+			this._renderProps()
+		}
 	}
 
 	async loadSchema(schema: Record<string, unknown>): Promise<void> {
-		this._form = Form.parse(JSON.stringify(schema))
+		// Normalize: ensure `id` and `type` are present (real API may omit them)
+		const normalized: Record<string, unknown> = {
+			id: uid(),
+			type: "default",
+			...schema,
+		}
+		if (typeof normalized.id !== "string" || normalized.id.length === 0) {
+			normalized.id = uid()
+		}
+		try {
+			this._form = Form.parse(JSON.stringify(normalized))
+		} catch {
+			this._form = null
+		}
 		this._selectedId = null
 		this._renderCanvas()
-		this._renderProps()
+		if (!this._readonly) {
+			this._renderProps()
+		}
 	}
 
 	getSchema(): Record<string, unknown> {
@@ -515,12 +541,16 @@ export class FormEditor {
 
 		const inner = document.createElement("div")
 		inner.className = "fe-canvas-inner"
-		this._appendDropZone(inner, 0, null)
+		if (!this._readonly) {
+			this._appendDropZone(inner, 0, null)
+		}
 		for (let i = 0; i < this._form.components.length; i++) {
 			const comp = this._form.components[i]
 			if (!comp) continue
 			this._appendCard(inner, comp)
-			this._appendDropZone(inner, i + 1, null)
+			if (!this._readonly) {
+				this._appendDropZone(inner, i + 1, null)
+			}
 		}
 		this._canvas.appendChild(inner)
 	}
@@ -536,13 +566,17 @@ export class FormEditor {
 
 		const heading = document.createElement("div")
 		heading.className = "fe-canvas-empty-heading"
-		heading.textContent = "Build your form"
+		heading.textContent = this._readonly ? "No form" : "Build your form"
 		empty.appendChild(heading)
 
 		const hint = document.createElement("div")
 		hint.className = "fe-canvas-empty-hint"
-		hint.textContent = "Drag and drop components here to start designing."
+		hint.textContent = this._readonly
+			? "This task has no form schema."
+			: "Drag and drop components here to start designing."
 		empty.appendChild(hint)
+
+		if (this._readonly) return empty
 
 		empty.addEventListener("dragover", (e) => {
 			if (!this._dragSource) return
@@ -600,13 +634,15 @@ export class FormEditor {
 	private _appendCard(parent: HTMLElement, comp: FormComponent): void {
 		const card = document.createElement("div")
 		card.className = `fe-canvas-card${comp.id === this._selectedId ? " selected" : ""}`
-		card.draggable = true
 		card.dataset.compId = comp.id
 
-		const handle = document.createElement("div")
-		handle.className = "fe-card-drag-handle"
-		handle.textContent = "⠿"
-		card.appendChild(handle)
+		if (!this._readonly) {
+			card.draggable = true
+			const handle = document.createElement("div")
+			handle.className = "fe-card-drag-handle"
+			handle.textContent = "⠿"
+			card.appendChild(handle)
+		}
 
 		const content = document.createElement("div")
 		content.className = "fe-card-content"
@@ -619,15 +655,19 @@ export class FormEditor {
 			const containerCanvas = document.createElement("div")
 			containerCanvas.className = "fe-container-canvas"
 
-			if (children.length === 0) {
+			if (children.length === 0 && !this._readonly) {
 				containerCanvas.appendChild(this._buildContainerEmpty(comp.id))
 			} else {
-				this._appendDropZone(containerCanvas, 0, comp.id)
+				if (!this._readonly) {
+					this._appendDropZone(containerCanvas, 0, comp.id)
+				}
 				for (let i = 0; i < children.length; i++) {
 					const child = children[i]
 					if (!child) continue
 					this._appendCard(containerCanvas, child)
-					this._appendDropZone(containerCanvas, i + 1, comp.id)
+					if (!this._readonly) {
+						this._appendDropZone(containerCanvas, i + 1, comp.id)
+					}
 				}
 			}
 
@@ -636,42 +676,44 @@ export class FormEditor {
 
 		card.appendChild(content)
 
-		const delBtn = document.createElement("button")
-		delBtn.type = "button"
-		delBtn.className = "fe-card-delete"
-		delBtn.textContent = "✕"
-		delBtn.addEventListener("click", (e) => {
-			e.stopPropagation()
-			this._deleteComp(comp.id)
-		})
-		card.appendChild(delBtn)
-
-		// Select on click
-		card.addEventListener("click", (e) => {
-			e.stopPropagation()
-			this._selectedId = comp.id
-			this._renderCanvas()
-			this._renderProps()
-		})
-
-		// Drag from canvas
-		card.addEventListener("dragstart", (e) => {
-			e.stopPropagation()
-			this._dragSource = { kind: "canvas", compId: comp.id }
-			if (e.dataTransfer) {
-				e.dataTransfer.effectAllowed = "move"
-				e.dataTransfer.setData("text/plain", comp.id)
-			}
-			this._canvas.classList.add("fe-dragging")
-			requestAnimationFrame(() => {
-				card.classList.add("fe-card-dragging")
+		if (!this._readonly) {
+			const delBtn = document.createElement("button")
+			delBtn.type = "button"
+			delBtn.className = "fe-card-delete"
+			delBtn.textContent = "✕"
+			delBtn.addEventListener("click", (e) => {
+				e.stopPropagation()
+				this._deleteComp(comp.id)
 			})
-		})
+			card.appendChild(delBtn)
 
-		card.addEventListener("dragend", () => {
-			card.classList.remove("fe-card-dragging")
-			this._endDrag()
-		})
+			// Select on click
+			card.addEventListener("click", (e) => {
+				e.stopPropagation()
+				this._selectedId = comp.id
+				this._renderCanvas()
+				this._renderProps()
+			})
+
+			// Drag from canvas
+			card.addEventListener("dragstart", (e) => {
+				e.stopPropagation()
+				this._dragSource = { kind: "canvas", compId: comp.id }
+				if (e.dataTransfer) {
+					e.dataTransfer.effectAllowed = "move"
+					e.dataTransfer.setData("text/plain", comp.id)
+				}
+				this._canvas.classList.add("fe-dragging")
+				requestAnimationFrame(() => {
+					card.classList.add("fe-card-dragging")
+				})
+			})
+
+			card.addEventListener("dragend", () => {
+				card.classList.remove("fe-card-dragging")
+				this._endDrag()
+			})
+		}
 
 		parent.appendChild(card)
 	}

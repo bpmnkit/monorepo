@@ -65,12 +65,6 @@ export interface DashboardData {
 	usageAssignees?: number
 }
 
-export interface TimePoint {
-	/** Unix timestamp in ms. */
-	ts: number
-	data: DashboardData
-}
-
 // ── Re-export API result types for consumer convenience ───────────────────────
 
 export type {
