@@ -1,5 +1,18 @@
 # @bpmn-sdk/operate
 
+## 0.0.4
+
+### Patch Changes
+
+- [#32](https://github.com/bpmn-sdk/monorepo/pull/32) [`1120205`](https://github.com/bpmn-sdk/monorepo/commit/11202057baaf25f9a29c9a3a90b1f1f1fc002b64) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Operate and CLI improvements
+
+- Updated dependencies [[`1120205`](https://github.com/bpmn-sdk/monorepo/commit/11202057baaf25f9a29c9a3a90b1f1f1fc002b64)]:
+  - @bpmn-sdk/plugins@0.0.7
+  - @bpmn-sdk/canvas@0.0.7
+  - @bpmn-sdk/core@0.0.7
+  - @bpmn-sdk/api@0.0.7
+  - @bpmn-sdk/ui@0.0.3
+
 ## 0.0.3
 
 ### Patch Changes
