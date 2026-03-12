@@ -1,5 +1,12 @@
 # @bpmn-sdk/examples
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [[`1120205`](https://github.com/bpmn-sdk/monorepo/commit/11202057baaf25f9a29c9a3a90b1f1f1fc002b64)]:
+  - @bpmn-sdk/core@0.0.7
+
 ## 0.0.6
 
 ### Patch Changes
