@@ -228,7 +228,7 @@ export function injectEditorStyles(): void {
  *  `data-bpmn-hud-theme="light"` on `document.body`. */
 export const HUD_CSS = `
 /* ── HUD base ────────────────────────────────────────────────────── */
-.hud { position: fixed; z-index: 100; }
+.hud { position: absolute; z-index: 100; }
 
 /* ── Dark theme (default) ────────────────────────────────────────── */
 .panel {
@@ -323,7 +323,7 @@ export const HUD_CSS = `
 
 /* ── Dropdown menus ──────────────────────────────────────────────── */
 .dropdown {
-  position: fixed; display: none; flex-direction: column;
+  position: absolute; display: none; flex-direction: column;
   gap: 1px; padding: 4px;
   background: rgba(20, 20, 28, 0.96);
   backdrop-filter: blur(12px);
@@ -355,7 +355,7 @@ export const HUD_CSS = `
 
 /* ── Group element picker ────────────────────────────────────────── */
 .group-picker {
-  position: fixed;
+  position: absolute;
   display: flex; flex-direction: row;
   gap: 2px; padding: 4px;
   background: rgba(20, 20, 28, 0.96);
@@ -468,9 +468,8 @@ export const HUD_CSS = `
 
 /* ── New-diagram onboarding overlay ──────────────────────────────── */
 #bpmn-empty-state {
-  position: fixed; z-index: 50;
-  top: 36px; left: 0; bottom: 0;
-  right: calc(var(--bpmn-dock-width, 0px));
+  position: absolute; z-index: 50;
+  top: 36px; left: 0; bottom: 0; right: 0;
   display: flex; align-items: center; justify-content: center;
   background: #13131f;
 }
@@ -555,18 +554,18 @@ export const HUD_CSS = `
 
 /* ── Top-center overflow guard ───────────────────────────────────── */
 #hud-top-center {
-  max-width: calc(100vw - var(--bpmn-dock-width, 0px) - 24px);
+  max-width: calc(100% - 24px);
   overflow-x: auto; overflow-y: visible;
   scrollbar-width: none;
 }
 #hud-top-center::-webkit-scrollbar { display: none; }
 
 /* ── Push HUD toolbar down when simulation banner is visible ─────── */
-body.bpmn-sim-active #hud-top-center { top: 36px; }
+.bpmn-sim-active #hud-top-center { top: 36px; }
 
 /* ── Simulation active banner ────────────────────────────────────── */
 #bpmn-sim-banner {
-  position: fixed;
+  position: absolute;
   top: 0; left: 0; right: 0;
   z-index: 150;
   display: flex; align-items: center; justify-content: center; gap: 12px;
@@ -601,7 +600,7 @@ body.bpmn-sim-active #hud-top-center { top: 36px; }
 
 /* ── Element search bar ──────────────────────────────────────────── */
 #bpmn-search-bar {
-  position: fixed;
+  position: absolute;
   top: 44px; left: 50%; transform: translateX(-50%);
   z-index: 120;
   display: flex; align-items: center; gap: 6px;
@@ -640,7 +639,7 @@ body.bpmn-sim-active #hud-top-center { top: 36px; }
 
 /* ── Keyboard shortcuts modal ────────────────────────────────────── */
 #bpmn-shortcuts-modal {
-  position: fixed; inset: 0; z-index: 200;
+  position: absolute; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;
   background: rgba(0,0,0,0.55);
   backdrop-filter: blur(4px);

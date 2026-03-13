@@ -1,0 +1,76 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+import { tutorials } from "../tutorials/index.js"
+
+const firstTutorial = tutorials[0]
+---
+
+<BaseLayout title="Tutorials">
+  <section class="catalog-hero">
+    <h1>Learn BPMN, one step at a time</h1>
+    <p>Hands-on tutorials that teach you BPMN by doing — no theory, just practice in your browser.</p>
+    {firstTutorial && (
+      <a href={`/${firstTutorial.id}`} class="catalog-hero-cta">
+        Start learning →
+      </a>
+    )}
+  </section>
+
+  <section class="catalog-section">
+    <h2>All tutorials</h2>
+    <div class="catalog-grid">
+      {tutorials.map((t) => (
+        <a href={`/${t.id}`} class="tutorial-card" data-tutorial-id={t.id} data-total-steps={t.steps.length}>
+          <div class="card-header">
+            <span class="card-title">{t.title}</span>
+            <span class="status-badge status-new" data-status-badge>New</span>
+          </div>
+          <div class="card-body">
+            <p class="card-tagline">{t.tagline}</p>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <div class="difficulty-dots" data-level={t.difficulty}>
+                <span class="difficulty-dot"></span>
+                <span class="difficulty-dot"></span>
+                <span class="difficulty-dot"></span>
+              </div>
+              <span class="card-time">~{t.estimatedMinutes} min</span>
+            </div>
+            <div class="mode-badges">
+              {t.tags.includes("no-install") && (
+                <span class="mode-badge badge-no-install">no install</span>
+              )}
+              {t.tags.includes("bpmn") && (
+                <span class="mode-badge badge-web">web</span>
+              )}
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getTutorialStatus } from "../lib/progress.js"
+
+  const cards = document.querySelectorAll<HTMLElement>(".tutorial-card[data-tutorial-id]")
+  for (const card of cards) {
+    const id = card.dataset.tutorialId
+    const totalSteps = Number(card.dataset.totalSteps)
+    if (!id || !totalSteps) continue
+
+    const status = getTutorialStatus(id, totalSteps)
+    const badge = card.querySelector<HTMLElement>("[data-status-badge]")
+    if (!badge) continue
+
+    if (status === "in-progress") {
+      badge.textContent = "In progress"
+      badge.className = "status-badge status-in-progress"
+    } else if (status === "completed") {
+      badge.textContent = "Completed"
+      badge.className = "status-badge status-completed"
+    }
+  }
+</script>

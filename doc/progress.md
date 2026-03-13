@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-03-13 — apps/learn: fix JSON parse error in step page
+
+- Fixed `Uncaught SyntaxError: Expected property name or '}' in JSON at position 1` on first tutorial step
+- Root cause: Astro's `set:text` HTML-escapes content (`"` → `&quot;`), but browsers don't decode HTML entities inside `<script>` CDATA blocks, so `JSON.parse` received malformed input
+- Fix: pre-escape `<`, `>`, `&` as `\u003c` / `\u003e` / `\u0026` (valid JSON Unicode escapes) before embedding, and changed `set:text` → `set:html` to prevent double-escaping
+
+## 2026-03-13 — apps/learn: interactive learning center + packages/astro-shared
+
+- Added `packages/astro-shared` — shared CSS design tokens (`tokens.css`), aurora background (`background.css`), and site metadata (`site.ts`) for use across all Astro apps
+- Added `apps/learn` — Astro v6 interactive learning center at port 4322
+  - Tutorial catalog index page with card grid and status badges (new/in-progress/completed) read from localStorage
+  - Tutorial overview page with step list, progress indicators, and continue/restart support
+  - Step page with split-pane layout: markdown content + hint system (left 38%) and BpmnEditor/CLI pane (right 62%)
+  - `BpmnEditor` + `Engine` + `createProcessRunnerPlugin` + `createTokenHighlightPlugin` wired into the editor pane
+  - Progressive hint reveal, "Check my work" validation, completion overlay with CSS confetti
+  - Progress persisted to localStorage (`bpmn_learn_progress`)
+  - Tutorial 1 "Getting started": 5 steps covering run, add task, connect, rename, re-run
+  - Fully typed (`lib/types.ts`, `lib/progress.ts`, `lib/validation.ts`)
+  - Passes `biome check` and `astro check` with zero errors
+
 ## 2026-03-13 — operate: live theme switching for canvas/DMN views
 
 - Added `setTheme(t: "light" | "dark"): void` to the return types of `createDefinitionDetailView`, `createInstanceDetailView`, and `createDecisionDetailView`

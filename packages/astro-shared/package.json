@@ -1,0 +1,19 @@
+{
+	"name": "@bpmn-sdk/astro-shared",
+	"version": "0.0.1",
+	"private": false,
+	"type": "module",
+	"exports": {
+		"./tokens.css": "./src/tokens.css",
+		"./background.css": "./src/background.css",
+		".": "./src/site.ts"
+	},
+	"files": ["src/*.css", "src/site.ts"],
+	"scripts": {
+		"check": "biome check ."
+	},
+	"keywords": ["bpmn", "astro", "design-tokens", "shared"],
+	"license": "MIT",
+	"publishConfig": { "access": "public" },
+	"repository": { "type": "git", "url": "https://github.com/bpmn-sdk/monorepo" }
+}
