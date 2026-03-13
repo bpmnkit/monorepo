@@ -7,8 +7,8 @@ export const ASCII_VIEW_CSS = `
   display: flex; align-items: center; justify-content: center;
 }
 .bpmn-ascii-panel {
-  background: rgba(13, 13, 20, 0.98);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bpmn-panel-bg, rgba(13,13,22,0.92));
+  border: 1px solid var(--bpmn-panel-border, rgba(255,255,255,0.08));
   border-radius: 10px;
   width: 80vw; max-width: 900px; max-height: 80vh;
   display: flex; flex-direction: column;
@@ -55,11 +55,11 @@ export const ASCII_VIEW_CSS = `
 /* Light theme */
 [data-bpmn-hud-theme="light"] .bpmn-ascii-panel {
   background: rgba(252,252,254,0.98);
-  border-color: rgba(0,0,0,0.1);
+  border-color: var(--bpmn-panel-border, rgba(0,0,0,0.08));
   box-shadow: 0 8px 32px rgba(0,0,0,0.15);
 }
 [data-bpmn-hud-theme="light"] .bpmn-ascii-header {
-  border-bottom-color: rgba(0,0,0,0.08);
+  border-bottom-color: var(--bpmn-panel-border, rgba(0,0,0,0.08));
 }
 [data-bpmn-hud-theme="light"] .bpmn-ascii-title { color: rgba(0,0,0,0.88); }
 [data-bpmn-hud-theme="light"] .bpmn-ascii-btn {

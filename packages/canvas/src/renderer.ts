@@ -708,6 +708,17 @@ function renderEdge(
 	})
 	g.appendChild(path)
 
+	// Wide transparent stroke so the edge is easy to click
+	const hitPath = svgEl("path")
+	attr(hitPath, {
+		d: waypointsToRoundedPath(edge.waypoints),
+		fill: "none",
+		stroke: "transparent",
+		"stroke-width": "12",
+		"pointer-events": "stroke",
+	})
+	g.appendChild(hitPath)
+
 	// Default-flow slash mark near the source end
 	if (isDefault) {
 		const wp0 = edge.waypoints[0]

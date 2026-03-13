@@ -1,0 +1,169 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro"
+import type { TutorialManifest } from "../../lib/types.js"
+import { tutorials } from "../../tutorials/index.js"
+
+export async function getStaticPaths() {
+	return tutorials.map((t) => ({
+		params: { id: t.id },
+		props: { tutorial: t },
+	}))
+}
+
+interface Props {
+	tutorial: TutorialManifest
+}
+
+const { tutorial } = Astro.props
+
+const difficultyLabel = tutorial.difficulty.charAt(0).toUpperCase() + tutorial.difficulty.slice(1)
+
+const totalSeconds = tutorial.steps.reduce((sum, s) => sum + (s.estimatedSeconds ?? 60), 0)
+const totalMin = Math.ceil(totalSeconds / 60)
+
+const firstStepUrl = `/${tutorial.id}/1`
+---
+
+<BaseLayout title={tutorial.title} description={tutorial.description}>
+  <div class="overview-page">
+    <div class="breadcrumb">
+      <a href="/">← All Tutorials</a>
+    </div>
+
+    <div class="overview-hero">
+      <div class="overview-difficulty">
+        <div class="difficulty-dots" data-level={tutorial.difficulty}>
+          <span class="difficulty-dot"></span>
+          <span class="difficulty-dot"></span>
+          <span class="difficulty-dot"></span>
+        </div>
+        <span class="overview-difficulty-label">{difficultyLabel}</span>
+      </div>
+
+      <h1>{tutorial.title}</h1>
+      <p class="overview-tagline">{tutorial.tagline}</p>
+
+      <div class="overview-meta">
+        <div class="overview-meta-item">
+          <span>Estimated time:</span>
+          <strong>~{totalMin} min</strong>
+        </div>
+        <div class="overview-meta-item">
+          <span>Steps:</span>
+          <strong>{tutorial.steps.length}</strong>
+        </div>
+      </div>
+
+      <div class="tag-list">
+        {tutorial.tags.map((tag) => (
+          <span class="tag">{tag}</span>
+        ))}
+      </div>
+    </div>
+
+    {tutorial.prerequisites.length > 0 && (
+      <div class="prereq-section">
+        <h2>Prerequisites</h2>
+        <div class="prereq-list">
+          {tutorial.prerequisites.map((prereq) => (
+            <div class="prereq-item" data-prereq-id={prereq.id}>
+              <div class="prereq-status checking" data-prereq-status>?</div>
+              <div class="prereq-info">
+                <div class="prereq-label">{prereq.label}</div>
+                <div class="prereq-description">{prereq.description}</div>
+                {prereq.fix.command && (
+                  <div class="prereq-fix">{prereq.fix.command}</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <div class="overview-steps-section">
+      <h2>What you'll do</h2>
+      <ol class="overview-steps-list">
+        {tutorial.steps.map((step, i) => (
+          <li class="overview-step-item" data-step-index={i}>
+            <div class="step-num-circle" data-step-circle={i}>{i + 1}</div>
+            <div class="overview-step-info">
+              <div class="overview-step-title">{step.title}</div>
+              {step.estimatedSeconds && (
+                <div class="overview-step-time">~{Math.ceil(step.estimatedSeconds / 60)} min</div>
+              )}
+            </div>
+            <span class="overview-step-mode">{step.mode}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <div class="overview-cta">
+      <a
+        href={firstStepUrl}
+        id="start-btn"
+        class="btn-primary"
+      >
+        Start Tutorial →
+      </a>
+      <button
+        id="reset-btn"
+        class="btn-secondary"
+        style="display:none"
+        data-tutorial-id={tutorial.id}
+      >
+        Restart from scratch
+      </button>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { loadProgress, resetProgress, getTutorialStatus } from "../../lib/progress.js"
+
+  const tutorialId = document.querySelector<HTMLElement>("[data-tutorial-id]")?.dataset.tutorialId
+  if (!tutorialId) throw new Error("Missing tutorial id")
+
+  const startBtn = document.getElementById("start-btn") as HTMLAnchorElement | null
+  const resetBtn = document.getElementById("reset-btn") as HTMLButtonElement | null
+
+  const progress = loadProgress(tutorialId)
+  const stepCircles = document.querySelectorAll<HTMLElement>("[data-step-circle]")
+
+  if (progress) {
+    // Mark completed steps
+    for (const circle of stepCircles) {
+      const idx = Number(circle.dataset.stepCircle)
+      if (progress.completedSteps.includes(idx)) {
+        circle.classList.add("completed")
+        circle.textContent = "✓"
+      }
+    }
+
+    // Update start button text
+    if (startBtn) {
+      const status = getTutorialStatus(tutorialId, stepCircles.length)
+      if (status === "in-progress") {
+        const nextStep = progress.currentStep + 1
+        startBtn.href = `/${tutorialId}/${nextStep}`
+        startBtn.textContent = "Continue where you left off →"
+      } else if (status === "completed") {
+        startBtn.textContent = "Review Tutorial →"
+      }
+    }
+
+    // Show reset button
+    if (resetBtn) {
+      resetBtn.style.display = "inline-flex"
+    }
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("Reset all progress for this tutorial?")) return
+      resetProgress(tutorialId)
+      window.location.reload()
+    })
+  }
+</script>

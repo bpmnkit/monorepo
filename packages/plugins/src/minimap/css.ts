@@ -33,8 +33,8 @@ export const MINIMAP_CSS = `
   opacity: 0.35;
 }
 .bpmn-minimap-viewport {
-  fill: var(--bpmn-viewport-fill, rgba(0, 102, 204, 0.1));
-  stroke: var(--bpmn-viewport-stroke, rgba(0, 102, 204, 0.5));
+  fill: var(--bpmn-viewport-fill, var(--bpmn-accent-subtle, rgba(26,86,219,0.12)));
+  stroke: var(--bpmn-viewport-stroke, var(--bpmn-accent, #1a56db));
   stroke-width: 1;
 }
 `

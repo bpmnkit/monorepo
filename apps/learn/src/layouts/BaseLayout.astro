@@ -1,0 +1,57 @@
+---
+import "@bpmn-sdk/astro-shared/tokens.css"
+import "@bpmn-sdk/astro-shared/background.css"
+import "../styles/learn.css"
+
+interface Props {
+	title: string
+	description?: string
+}
+const { title, description = "Interactive BPMN tutorials — learn by doing" } = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} — BPMN SDK Learn</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+    <div class="dots" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <nav class="learn-nav">
+      <div class="learn-nav-inner">
+        <a href="/" class="learn-logo">
+          <span class="logo-icon">⬡</span>
+          <span>BPMN SDK <span class="logo-learn">Learn</span></span>
+        </a>
+        <div class="learn-nav-links">
+          <a href="/">Tutorials</a>
+          <a href="https://bpmn-sdk-docs.pages.dev" target="_blank" rel="noopener">Docs ↗</a>
+          <a href="https://github.com/bpmn-sdk/monorepo" target="_blank" rel="noopener">GitHub ↗</a>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="learn-footer">
+      <div class="footer-inner">
+        <span>© 2026 BPMN SDK</span>
+        <a href="https://github.com/bpmn-sdk/monorepo">GitHub</a>
+        <a href="https://bpmn-sdk-docs.pages.dev">Docs</a>
+      </div>
+    </footer>
+  </body>
+</html>

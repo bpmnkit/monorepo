@@ -38,13 +38,13 @@ export const DMN_EDITOR_CSS = `
   --dme-btn-hover: #cbd5e1;
   --dme-input-cell-bg: transparent;
   --dme-input-cell-fg: #1c1c1c;
-  --dme-accent: #3b82f6;
+  --dme-accent: var(--bpmn-accent, #1a56db);
   --dme-divider: 3px double #aaa;
 }
 
 /* ── Dark theme ── */
 .dmn-editor.dark {
-  --dme-bg: #1e1e2e;
+  --dme-bg: var(--bpmn-surface-2, #1e1e2e);
   --dme-fg: #cdd6f4;
   --dme-border: #313244;
   --dme-hp-bg: #1e1e3a;
@@ -60,7 +60,7 @@ export const DMN_EDITOR_CSS = `
   --dme-btn-hover: #45475a;
   --dme-input-cell-bg: transparent;
   --dme-input-cell-fg: #cdd6f4;
-  --dme-accent: #89b4fa;
+  --dme-accent: var(--bpmn-accent-bright, #89b4fa);
   --dme-divider: 3px double #444;
 }
 
@@ -145,7 +145,7 @@ export const DMN_EDITOR_CSS = `
   padding: 4px;
   background: rgba(255, 255, 255, 0.93);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--bpmn-panel-border, rgba(0,0,0,0.08));
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   z-index: 10;
@@ -153,8 +153,8 @@ export const DMN_EDITOR_CSS = `
 }
 
 .dmn-editor.dark .drd-bar {
-  background: rgba(22, 22, 30, 0.9);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--bpmn-panel-bg, rgba(13,13,22,0.92));
+  border-color: var(--bpmn-panel-border, rgba(255,255,255,0.08));
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
@@ -194,9 +194,9 @@ export const DMN_EDITOR_CSS = `
 }
 
 .drd-bar-btn.active {
-  background: rgba(59, 130, 246, 0.12);
-  color: #2563eb;
-  border-color: rgba(59, 130, 246, 0.3);
+  background: var(--bpmn-accent-subtle, rgba(26,86,219,0.12));
+  color: var(--bpmn-accent, #1a56db);
+  border-color: var(--bpmn-accent-subtle, rgba(26,86,219,0.12));
 }
 
 .drd-bar-btn svg {
@@ -215,9 +215,9 @@ export const DMN_EDITOR_CSS = `
 }
 
 .dmn-editor.dark .drd-bar-btn.active {
-  background: rgba(139, 180, 250, 0.15);
-  color: #89b4fa;
-  border-color: rgba(139, 180, 250, 0.3);
+  background: var(--bpmn-accent-subtle, rgba(107,157,247,0.15));
+  color: var(--bpmn-accent-bright, #89b4fa);
+  border-color: var(--bpmn-accent-subtle, rgba(107,157,247,0.15));
 }
 
 .drd-bar-sep {
@@ -234,7 +234,7 @@ export const DMN_EDITOR_CSS = `
 
 /* Snap alignment guide lines */
 .drd-align-guide {
-  stroke: #4c8ef7;
+  stroke: var(--bpmn-accent, #6b9df7);
   stroke-width: 1;
   stroke-dasharray: 4 2;
   pointer-events: none;
@@ -289,7 +289,7 @@ export const DMN_EDITOR_CSS = `
 /* Connect mode hover highlight */
 .drd-connect-hi {
   fill: none;
-  stroke: #3b82f6;
+  stroke: var(--bpmn-accent-bright, #3b82f6);
   stroke-width: 2;
   stroke-dasharray: 4,3;
   opacity: 0;
@@ -328,7 +328,7 @@ export const DMN_EDITOR_CSS = `
 }
 
 .drd-edge--selected .drd-edge-line {
-  stroke: #3b82f6;
+  stroke: var(--bpmn-accent-bright, #3b82f6);
   stroke-width: 2.5;
 }
 

@@ -675,6 +675,8 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 
 	function showWelcomeScreen(): void {
 		if (welcomeEl) welcomeEl.style.display = ""
+		if (tabBar) tabBar.style.display = "none"
+		canvasApi?.container.classList.add("bpmn-welcome-active")
 		renderDynamicSections()
 		renderRecentProjects()
 		// Defer so the callback runs after all synchronous plugin/HUD initialization
@@ -685,6 +687,8 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 
 	function hideWelcomeScreen(): void {
 		if (welcomeEl) welcomeEl.style.display = "none"
+		if (tabBar) tabBar.style.display = ""
+		canvasApi?.container.classList.remove("bpmn-welcome-active")
 	}
 
 	// --- Group dropdown ---

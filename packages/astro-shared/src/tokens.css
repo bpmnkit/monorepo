@@ -1,0 +1,33 @@
+/* ── BPMN SDK brand tokens (Astro apps) ─────────────────────────────────────
+ * Imports the canonical --bpmn-* token set, then maps them to the shorter
+ * --* names used by the landing / learn / docs layouts so those templates
+ * don't need updating.  Aurora / layout tokens live here too.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+@import "@bpmn-sdk/ui/tokens.css";
+
+/* Map --bpmn-* → short names used in Astro layout templates */
+:root {
+	--bg: var(--bpmn-bg);
+	--bg-card: var(--bpmn-surface);
+	--surface: var(--bpmn-surface);
+	--bg-code: var(--bpmn-surface-2);
+	--border: var(--bpmn-border);
+	--text: var(--bpmn-fg);
+	--text-muted: var(--bpmn-fg-muted);
+	--accent: var(--bpmn-accent);
+	--accent-bright: var(--bpmn-accent-bright);
+	--accent-glow: var(--bpmn-accent-subtle);
+	--teal: var(--bpmn-teal);
+	--success: var(--bpmn-success);
+	--warn: var(--bpmn-warn);
+	--danger: var(--bpmn-danger);
+
+	/* Astro-specific layout tokens */
+	--pink: oklch(68% 0.22 340);
+	--font-mono: var(--bpmn-font-mono);
+	--font-sans: var(--bpmn-font);
+	--max-width: 1120px;
+	--nav-h: 60px;
+	--radius: 14px;
+}

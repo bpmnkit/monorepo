@@ -27,12 +27,12 @@ export const ZOOM_CONTROLS_CSS = `
   transition: background 0.1s, color 0.1s;
 }
 .bpmn-control-btn:hover {
-  background: var(--bpmn-highlight, #0066cc);
+  background: var(--bpmn-highlight, var(--bpmn-accent, #1a56db));
   color: #fff;
   border-color: transparent;
 }
 .bpmn-control-btn:focus {
-  outline: 2px solid var(--bpmn-focus, #0066cc);
+  outline: 2px solid var(--bpmn-focus, var(--bpmn-accent, #1a56db));
   outline-offset: 1px;
 }
 `

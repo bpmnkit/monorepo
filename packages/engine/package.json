@@ -10,10 +10,7 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -25,14 +22,7 @@
 		"@bpmn-sdk/feel": "workspace:*"
 	},
 	"description": "Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
-	"keywords": [
-		"bpmn",
-		"engine",
-		"simulation",
-		"workflow",
-		"typescript",
-		"dmn"
-	],
+	"keywords": ["bpmn", "engine", "simulation", "workflow", "typescript", "dmn"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",

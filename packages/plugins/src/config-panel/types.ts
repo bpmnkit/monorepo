@@ -118,4 +118,9 @@ export interface ConfigPanelOptions {
 	 * Receives the expression body (without the leading `=`).
 	 */
 	openInPlayground?: (expression: string) => void
+	/**
+	 * When true, all form fields are rendered in read-only / disabled state.
+	 * Use this when the panel is shown purely for inspection (e.g. operate views).
+	 */
+	readonly?: boolean
 }

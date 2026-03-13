@@ -49,7 +49,7 @@ export function injectHistoryStyles(): void {
 }
 .bpmn-hist-restore {
   flex-shrink: 0; font-size: 11px; padding: 3px 9px;
-  background: rgba(76,142,247,0.14); border: 1px solid rgba(76,142,247,0.3);
+  background: var(--bpmn-accent-subtle, rgba(107,157,247,0.15)); border: 1px solid rgba(76,142,247,0.3);
   border-radius: 4px; color: rgba(140,185,255,0.85);
   cursor: pointer; font-family: inherit;
   transition: background 0.1s, border-color 0.1s, color 0.1s;
@@ -69,7 +69,7 @@ export function injectHistoryStyles(): void {
   display: flex; align-items: center; justify-content: center;
 }
 .bpmn-hist-confirm-panel {
-  background: rgba(22,22,32,0.98); border: 1px solid rgba(255,255,255,0.12);
+  background: var(--bpmn-panel-bg, rgba(13,13,22,0.92)); border: 1px solid rgba(255,255,255,0.12);
   border-radius: 10px; padding: 20px 22px; width: 300px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.7);
   font-family: system-ui, -apple-system, sans-serif;
@@ -89,14 +89,14 @@ export function injectHistoryStyles(): void {
 }
 .bpmn-hist-confirm-cancel:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
 .bpmn-hist-confirm-ok {
-  padding: 5px 13px; background: rgba(76,142,247,0.9);
-  border: 1px solid rgba(76,142,247,1); border-radius: 6px;
+  padding: 5px 13px; background: var(--bpmn-accent, #6b9df7);
+  border: 1px solid var(--bpmn-accent, #6b9df7); border-radius: 6px;
   color: #fff; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;
   transition: background 0.1s;
 }
-.bpmn-hist-confirm-ok:hover { background: #4c8ef7; }
+.bpmn-hist-confirm-ok:hover { background: var(--bpmn-accent, #6b9df7); }
 /* ── Light theme ─────────────────────────────────────────────────────────── */
-[data-bpmn-hud-theme="light"] .bpmn-hist-header { border-bottom-color: rgba(0,0,0,0.08); }
+[data-bpmn-hud-theme="light"] .bpmn-hist-header { border-bottom-color: var(--bpmn-panel-border, rgba(0,0,0,0.08)); }
 [data-bpmn-hud-theme="light"] .bpmn-hist-header-title { color: rgba(0,0,0,0.3); }
 [data-bpmn-hud-theme="light"] .bpmn-hist-refresh { color: rgba(0,0,0,0.35); }
 [data-bpmn-hud-theme="light"] .bpmn-hist-refresh:hover { color: rgba(0,0,0,0.75); background: rgba(0,0,0,0.06); }
@@ -104,7 +104,7 @@ export function injectHistoryStyles(): void {
 [data-bpmn-hud-theme="light"] .bpmn-hist-item:hover { background: rgba(0,0,0,0.035); }
 [data-bpmn-hud-theme="light"] .bpmn-hist-item-time { color: rgba(0,0,0,0.65); }
 [data-bpmn-hud-theme="light"] .bpmn-hist-restore {
-  background: rgba(26,86,219,0.08); border-color: rgba(26,86,219,0.25); color: rgba(26,86,219,0.9);
+  background: var(--bpmn-accent-subtle, rgba(26,86,219,0.12)); border-color: rgba(26,86,219,0.25); color: rgba(26,86,219,0.9);
 }
 [data-bpmn-hud-theme="light"] .bpmn-hist-restore:hover {
   background: rgba(26,86,219,0.16); border-color: rgba(26,86,219,0.45); color: rgba(26,86,219,1);
@@ -122,7 +122,7 @@ export function injectHistoryStyles(): void {
 [data-bpmn-hud-theme="light"] .bpmn-hist-confirm-cancel:hover {
   background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.8);
 }
-[data-bpmn-hud-theme="light"] .bpmn-hist-confirm-ok { background: #1a56db; border-color: #1a56db; }
+[data-bpmn-hud-theme="light"] .bpmn-hist-confirm-ok { background: var(--bpmn-accent, #1a56db); border-color: var(--bpmn-accent, #1a56db); }
 [data-bpmn-hud-theme="light"] .bpmn-hist-confirm-ok:hover { background: #1648c2; }
 `
 	document.head.appendChild(style)

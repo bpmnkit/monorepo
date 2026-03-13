@@ -377,7 +377,7 @@ export function initEditorHud(
 	shortcutsInner.appendChild(shortcutsClose)
 	shortcutsModal.appendChild(shortcutsInner)
 
-	document.body.append(
+	editor.container.append(
 		hudTopCenter,
 		hudBottomLeft,
 		hudBottomCenter,
@@ -501,16 +501,21 @@ export function initEditorHud(
 			picker.appendChild(btn)
 		}
 
-		document.body.appendChild(picker)
+		editor.container.appendChild(picker)
 		openGroupPicker = picker
 
+		const containerRect = editor.container.getBoundingClientRect()
 		const rect = anchor.getBoundingClientRect()
 		const pickerW = group.items.length * 36 + 80
+		const containerWidth = editor.container.offsetWidth
 		const left = Math.max(
 			4,
-			Math.min(rect.left + rect.width / 2 - pickerW / 2, window.innerWidth - pickerW - 4),
+			Math.min(
+				rect.left - containerRect.left + rect.width / 2 - pickerW / 2,
+				containerWidth - pickerW - 4,
+			),
 		)
-		picker.style.bottom = `${window.innerHeight - rect.top + 6}px`
+		picker.style.bottom = `${containerRect.bottom - rect.top + 6}px`
 		picker.style.left = `${left}px`
 
 		const onOutside = (e: PointerEvent) => {
@@ -554,16 +559,21 @@ export function initEditorHud(
 			picker.appendChild(btn)
 		}
 
-		document.body.appendChild(picker)
+		editor.container.appendChild(picker)
 		openGroupPicker = picker
 
+		const containerRect = editor.container.getBoundingClientRect()
 		const rect = anchor.getBoundingClientRect()
 		const pickerW = group.items.length * 36 + 80
+		const containerWidth = editor.container.offsetWidth
 		const left = Math.max(
 			4,
-			Math.min(rect.left + rect.width / 2 - pickerW / 2, window.innerWidth - pickerW - 4),
+			Math.min(
+				rect.left - containerRect.left + rect.width / 2 - pickerW / 2,
+				containerWidth - pickerW - 4,
+			),
 		)
-		picker.style.bottom = `${window.innerHeight - rect.top + 6}px`
+		picker.style.bottom = `${containerRect.bottom - rect.top + 6}px`
 		picker.style.left = `${left}px`
 
 		const onOutside = (e: PointerEvent) => {
@@ -617,16 +627,21 @@ export function initEditorHud(
 			picker.appendChild(swatch)
 		}
 
-		document.body.appendChild(picker)
+		editor.container.appendChild(picker)
 		openGroupPicker = picker
 
+		const containerRect = editor.container.getBoundingClientRect()
 		const rect = anchor.getBoundingClientRect()
 		const pickerW = (COLOR_PALETTE.length + 1) * 30 + 20
+		const containerWidth = editor.container.offsetWidth
 		const left = Math.max(
 			4,
-			Math.min(rect.left + rect.width / 2 - pickerW / 2, window.innerWidth - pickerW - 4),
+			Math.min(
+				rect.left - containerRect.left + rect.width / 2 - pickerW / 2,
+				containerWidth - pickerW - 4,
+			),
 		)
-		picker.style.top = `${rect.bottom + 6}px`
+		picker.style.top = `${rect.bottom - containerRect.top + 6}px`
 		picker.style.bottom = "auto"
 		picker.style.left = `${left}px`
 
@@ -747,15 +762,16 @@ export function initEditorHud(
 		align: "right" | "above" = "right",
 	): void {
 		closeAllDropdowns()
+		const containerRect = editor.container.getBoundingClientRect()
 		const rect = anchor.getBoundingClientRect()
 		if (align === "right") {
-			menu.style.top = `${rect.bottom + 6}px`
-			menu.style.right = `${window.innerWidth - rect.right}px`
+			menu.style.top = `${rect.bottom - containerRect.top + 6}px`
+			menu.style.right = `${containerRect.right - rect.right}px`
 			menu.style.left = "auto"
 			menu.style.bottom = "auto"
 		} else {
-			menu.style.bottom = `${window.innerHeight - rect.top + 6}px`
-			menu.style.left = `${rect.left}px`
+			menu.style.bottom = `${containerRect.bottom - rect.top + 6}px`
+			menu.style.left = `${rect.left - containerRect.left}px`
 			menu.style.top = "auto"
 			menu.style.right = "auto"
 		}
@@ -1509,9 +1525,10 @@ export function initEditorHud(
 			cfgToolbar.style.display = "none"
 			return
 		}
-		const cx = bounds.x + bounds.width / 2
+		const containerRect = editor.container.getBoundingClientRect()
+		const cx = bounds.x + bounds.width / 2 - containerRect.left
 		cfgToolbar.style.left = `${cx}px`
-		cfgToolbar.style.top = `${bounds.y - 10}px`
+		cfgToolbar.style.top = `${bounds.y - 10 - containerRect.top}px`
 		cfgToolbar.style.display = cfgToolbar.children.length > 0 ? "flex" : "none"
 	}
 
@@ -1525,8 +1542,9 @@ export function initEditorHud(
 			ctxToolbar.style.display = "none"
 			return
 		}
-		const cx = bounds.x + bounds.width / 2
-		const top = bounds.y + bounds.height + 10
+		const containerRect = editor.container.getBoundingClientRect()
+		const cx = bounds.x + bounds.width / 2 - containerRect.left
+		const top = bounds.y + bounds.height + 10 - containerRect.top
 		ctxToolbar.style.left = `${cx}px`
 		ctxToolbar.style.top = `${top}px`
 		ctxToolbar.style.display = ctxToolbar.children.length > 0 ? "flex" : "none"
@@ -1633,7 +1651,7 @@ export function initEditorHud(
 
 	onboardInner.append(onboardHeader, onboardActions)
 	onboardEl.appendChild(onboardInner)
-	document.body.appendChild(onboardEl)
+	editor.container.appendChild(onboardEl)
 
 	let _diagramActive = false
 	let _onboardingShown = false
@@ -1673,7 +1691,7 @@ export function initEditorHud(
 
 	function setSimulationActive(active: boolean): void {
 		simBannerEl.classList.toggle("hidden", !active)
-		document.body.classList.toggle("bpmn-sim-active", active)
+		editor.container.classList.toggle("bpmn-sim-active", active)
 	}
 
 	// ── Editor event subscriptions ─────────────────────────────────────────────
@@ -1758,17 +1776,21 @@ export function initEditorHud(
 	}
 
 	function openCtxMenu(x: number, y: number): void {
-		ctxMenuEl.style.top = `${y}px`
-		ctxMenuEl.style.left = `${x}px`
+		const containerRect = editor.container.getBoundingClientRect()
+		const relX = x - containerRect.left
+		const relY = y - containerRect.top
+		ctxMenuEl.style.top = `${relY}px`
+		ctxMenuEl.style.left = `${relX}px`
 		ctxMenuEl.style.right = "auto"
 		ctxMenuEl.style.bottom = "auto"
 		ctxMenuEl.classList.add("open")
 		openDropdown = ctxMenuEl
-		// Clamp to viewport after render
+		// Clamp to container after render
 		requestAnimationFrame(() => {
 			const r = ctxMenuEl.getBoundingClientRect()
-			if (r.right > window.innerWidth - 4) ctxMenuEl.style.left = `${x - r.width}px`
-			if (r.bottom > window.innerHeight - 4) ctxMenuEl.style.top = `${y - r.height}px`
+			const cr = editor.container.getBoundingClientRect()
+			if (r.right > cr.right - 4) ctxMenuEl.style.left = `${relX - r.width}px`
+			if (r.bottom > cr.bottom - 4) ctxMenuEl.style.top = `${relY - r.height}px`
 		})
 	}
 

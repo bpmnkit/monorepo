@@ -121,6 +121,27 @@ importers:
         specifier: workspace:*
         version: link:../../packages/plugins
 
+  apps/learn:
+    dependencies:
+      '@bpmn-sdk/astro-shared':
+        specifier: workspace:*
+        version: link:../../packages/astro-shared
+      '@bpmn-sdk/canvas':
+        specifier: workspace:*
+        version: link:../../packages/canvas
+      '@bpmn-sdk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@bpmn-sdk/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
+      '@bpmn-sdk/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
+      '@bpmn-sdk/plugins':
+        specifier: workspace:*
+        version: link:../../packages/plugins
+
   apps/proxy:
     dependencies:
       '@bpmn-sdk/api':
@@ -140,6 +161,12 @@ importers:
       '@bpmn-sdk/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/astro-shared:
+    dependencies:
+      '@bpmn-sdk/ui':
+        specifier: workspace:*
+        version: link:../ui
 
   packages/canvas:
     dependencies:

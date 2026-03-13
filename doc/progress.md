@@ -1,5 +1,205 @@
 # Progress
 
+## 2026-03-13 — Welcome screen: hide tab bar and bottom toolbar
+
+- `packages/plugins/src/tabs/tabs-plugin.ts`: `showWelcomeScreen` now hides `tabBar` and adds `bpmn-welcome-active` class to container; `hideWelcomeScreen` restores both
+- `packages/editor/src/css.ts`: added `.bpmn-welcome-active #hud-bottom-center { display: none !important; }` — hides bottom center HUD toolbar on welcome screen
+- `CLAUDE.md`: added Brand Tokens section documenting `packages/ui` as token authority, all `--bpmn-*` tokens with light/dark values, and usage rules
+
+## 2026-03-13 — Brand token system: full build verified, formatting fix
+
+- All 52 tasks pass (`pnpm turbo build typecheck check`) after brand token migration
+- Fixed Biome formatting in `packages/astro-shared/src/tokens.css` (whitespace alignment)
+
+## 2026-03-13 — HUD container scoping + brand token system
+
+### HUD container scoping (`packages/editor`)
+- All 13 HUD elements moved from `document.body` to `editor.container` (`.bpmn-canvas-host`, `position: relative`)
+- All position calculations converted from viewport-relative to container-relative (subtract `getBoundingClientRect()` left/top)
+- `position: fixed` → `position: absolute` for `.hud`, `.dropdown`, `.group-picker`, `#bpmn-empty-state`, `#bpmn-sim-banner`, `#bpmn-search-bar`, `#bpmn-shortcuts-modal`
+- `bpmn-sim-active` class moved from `document.body` to `editor.container`; `data-bpmn-hud-theme` kept on `document.body` for external elements (dock, modal)
+
+### Brand token system (`packages/ui`, `packages/astro-shared`, `packages/canvas`, `packages/editor`, `packages/plugins`)
+- **`packages/ui`**: expanded as brand token authority; new neon dark palette, new tokens (`--bpmn-accent-bright`, `--bpmn-accent-subtle`, `--bpmn-teal`, `--bpmn-panel-bg`, `--bpmn-panel-border`, `--bpmn-font-mono`); added `./tokens.css` CSS file export for Astro `@import` usage
+- **`packages/astro-shared`**: `tokens.css` now delegates to `@bpmn-sdk/ui/tokens.css` instead of duplicating palette; only adds Astro-specific layout tokens and `--* → --bpmn-*` alias mappings
+- **`packages/canvas`**: hardcoded highlight/accent/text colors replaced with `var(--bpmn-accent)`, `var(--bpmn-fg)` tokens
+- **`packages/editor`**: all hardcoded panel/accent colors in HUD_CSS and EDITOR_CSS replaced with `var(--bpmn-*)` tokens
+- **18 plugin CSS files** migrated: ai-bridge, tabs, config-panel, command-palette, history, main-menu, ascii-view, process-runner, dmn-editor, dmn-viewer, form-editor, form-viewer, minimap, zoom-controls; semantic colors (token-highlight amber/green, feel-playground syntax) unchanged
+
+### Learn app fix
+- `apps/learn`: added `initEditorHud` call and `fit: "center"` to `BpmnEditor` to restore HUD toolbar and correct zoom
+
+## 2026-03-13 — packages/plugins: CSS brand token migration (round 2)
+
+- Migrated hardcoded accent and panel colors to `var(--bpmn-*)` CSS custom properties in the remaining 7 plugin CSS files
+- `ai-bridge/css.ts`: `rgba(20,20,28,0.97)` → `var(--bpmn-panel-bg)`, border `rgba(255,255,255,0.1)` → `var(--bpmn-panel-border)`, preview border and light `border-bottom` also tokenized
+- `tabs/css.ts`: tab bar `--tabs-bg` default and theme values → `var(--bpmn-surface-2)`, active-tab border → `var(--bpmn-accent-bright)`, welcome icon/buttons, badge colors → corresponding `var(--bpmn-*)` tokens; dropdown bg/border → `var(--bpmn-surface-2)` / `var(--bpmn-border)`; close-dialog colors → `var(--bpmn-accent)` / `var(--bpmn-surface-2)`; raw-pane bg → `var(--bpmn-surface-2)`
+- `config-panel/css.ts`: `rgba(18,18,26,0.98)` → `var(--bpmn-panel-bg)`, all `#4c8ef7` → `var(--bpmn-accent)`, all `#1a56db` → `var(--bpmn-accent)`, `#f87171`/`#dc2626` → `var(--bpmn-danger)`, textarea/FEEL font → `var(--bpmn-font-mono)`, feel-mode-btn active states → `var(--bpmn-accent-subtle)` / `var(--bpmn-accent)`, toggle track checked → `var(--bpmn-accent)`, light panel bg → `var(--bpmn-panel-bg)` / `var(--bpmn-panel-border)`
+- `command-palette/css.ts`: panel bg `rgba(22,22,30,0.97)` → `var(--bpmn-panel-bg)`, border → `var(--bpmn-panel-border)`, caret `#4c8ef7` → `var(--bpmn-accent)`, light caret `#0066cc` → `var(--bpmn-accent)`, light border → `var(--bpmn-panel-border)`
+- `history/css.ts`: confirm panel `rgba(22,22,32,0.98)` → `var(--bpmn-panel-bg)`, restore button tints → `var(--bpmn-accent-subtle)`, confirm-ok button → `var(--bpmn-accent)`, light header border → `var(--bpmn-panel-border)`, light restore colors → `var(--bpmn-accent-subtle)` / `var(--bpmn-accent)`
+- `main-menu/css.ts`: dark panel bg `rgba(30,30,46,0.96)` → `var(--bpmn-panel-bg)`, dark border → `var(--bpmn-panel-border)`, dark sep → `var(--bpmn-panel-border)`, dark check color `#89b4fa` → `var(--bpmn-accent-bright)`, `#0066cc` → `var(--bpmn-accent)`, dark `#181825` bg → `var(--bpmn-surface-2)`
+- `ascii-view/css.ts`: panel bg `rgba(13,13,20,0.98)` → `var(--bpmn-panel-bg)`, border → `var(--bpmn-panel-border)`, light border overrides → `var(--bpmn-panel-border)`
+- typecheck and biome check pass with zero errors/warnings
+
+## 2026-03-13 — packages/plugins: CSS brand token migration
+
+- Migrated hardcoded accent and panel colors to `var(--bpmn-*)` CSS custom properties across 8 plugin CSS files
+- `process-runner/css.ts`: `rgba(22,22,30,0.88)` → `var(--bpmn-panel-bg)`, `#4c8ef7` → `var(--bpmn-accent)`, `#1a56db` → `var(--bpmn-accent)`, `#dc2626`/`#f87171` → `var(--bpmn-danger)`
+- `dmn-editor/css.ts`: `--dme-accent` light → `var(--bpmn-accent, #1a56db)`, dark → `var(--bpmn-accent-bright, #89b4fa)`; `--dme-bg` dark → `var(--bpmn-surface-2, #1e1e2e)`; DRD bar/active-button colors migrated to `var(--bpmn-panel-bg)`, `var(--bpmn-accent-subtle)`, `var(--bpmn-panel-border)`; align guide and edge selection stroke → `var(--bpmn-accent)`
+- `dmn-viewer/css.ts`: `--dmn-bg` dark → `var(--bpmn-surface-2, #1e1e2e)`, `--dmn-header-bg` dark → `var(--bpmn-surface-2, #1e1e2e)` (syntax highlight colors left unchanged)
+- `form-editor/css.ts`: `--fe-accent` light → `var(--bpmn-accent, #1a56db)`, dark → `var(--bpmn-accent-bright, #89b4fa)`; `--fe-bg` dark → `var(--bpmn-surface-2, #1e1e2e)`; `--fe-panel-bg` dark → `var(--bpmn-surface-2, #1e1e2e)`
+- `form-viewer/css.ts`: `--fv-accent` and `--fv-btn-bg` light → `var(--bpmn-accent, #1a56db)`, dark → `var(--bpmn-accent, #6b9df7)`; `--fv-bg`/`--fv-input-bg`/`--fv-group-bg` dark → `var(--bpmn-surface-2, #1e1e2e)`; `--fv-tag-fg` dark → `var(--bpmn-accent)`
+- `minimap/css.ts`: viewport fill/stroke fallbacks replaced with `var(--bpmn-accent-subtle)` / `var(--bpmn-accent)`
+- `zoom-controls/css.ts`: `--bpmn-highlight` and `--bpmn-focus` fallbacks → `var(--bpmn-accent, #1a56db)`
+- `token-highlight/css.ts`: no changes (amber/green/red are semantic BPMN simulation state colors)
+- `feel-playground/css.ts`: no changes needed (all `--fp-*` vars, no substitution targets in UI chrome)
+- `watermark/css.ts`: no changes needed
+- typecheck and biome check pass with zero errors/warnings
+
+## 2026-03-13 — packages/canvas, packages/editor: CSS brand token migration
+
+- Updated `packages/canvas/src/css.ts`: aligned dark theme `--bpmn-bg` to `#0d0d16`, `--bpmn-shape-fill` to `#1e1e2e`; switched `--bpmn-highlight` and `--bpmn-text` to use `var(--bpmn-accent*)` / `var(--bpmn-fg)` with fallbacks; added dark theme edge hover dot and waypoint ball rules using `var(--bpmn-accent)`
+- Updated `packages/editor/src/css.ts` (EDITOR_CSS): replaced all hardcoded accent colors (`#0066cc`, `#0052a3`, `#2563eb`, `#4c8ef7`) with `var(--bpmn-accent*)` vars; migrated `--bpmn-success` for edge split highlight, `--bpmn-warn` for dist/space guides
+- Updated `packages/editor/src/css.ts` (HUD_CSS): panel/dropdown/group-picker backgrounds and borders now use `var(--bpmn-panel-bg)` / `var(--bpmn-panel-border)`; HUD button colors use `var(--bpmn-fg)` / `var(--bpmn-fg-muted)`; search bar, onboarding overlay, shortcuts modal, drop separators, and ref-link buttons all migrated to brand tokens; ctx-ask-ai-btn uses `var(--bpmn-accent-bright)` / `var(--bpmn-accent-subtle)`
+
+## 2026-03-13 — apps/learn: fix JSON parse error in step page
+
+- Fixed `Uncaught SyntaxError: Expected property name or '}' in JSON at position 1` on first tutorial step
+- Root cause: Astro's `set:text` HTML-escapes content (`"` → `&quot;`), but browsers don't decode HTML entities inside `<script>` CDATA blocks, so `JSON.parse` received malformed input
+- Fix: pre-escape `<`, `>`, `&` as `\u003c` / `\u003e` / `\u0026` (valid JSON Unicode escapes) before embedding, and changed `set:text` → `set:html` to prevent double-escaping
+
+## 2026-03-13 — apps/learn: interactive learning center + packages/astro-shared
+
+- Added `packages/astro-shared` — shared CSS design tokens (`tokens.css`), aurora background (`background.css`), and site metadata (`site.ts`) for use across all Astro apps
+- Added `apps/learn` — Astro v6 interactive learning center at port 4322
+  - Tutorial catalog index page with card grid and status badges (new/in-progress/completed) read from localStorage
+  - Tutorial overview page with step list, progress indicators, and continue/restart support
+  - Step page with split-pane layout: markdown content + hint system (left 38%) and BpmnEditor/CLI pane (right 62%)
+  - `BpmnEditor` + `Engine` + `createProcessRunnerPlugin` + `createTokenHighlightPlugin` wired into the editor pane
+  - Progressive hint reveal, "Check my work" validation, completion overlay with CSS confetti
+  - Progress persisted to localStorage (`bpmn_learn_progress`)
+  - Tutorial 1 "Getting started": 5 steps covering run, add task, connect, rename, re-run
+  - Fully typed (`lib/types.ts`, `lib/progress.ts`, `lib/validation.ts`)
+  - Passes `biome check` and `astro check` with zero errors
+
+## 2026-03-13 — operate: live theme switching for canvas/DMN views
+
+- Added `setTheme(t: "light" | "dark"): void` to the return types of `createDefinitionDetailView`, `createInstanceDetailView`, and `createDecisionDetailView`
+- Each view's `setTheme` forwards to `BpmnCanvas.setTheme()` / `DmnEditor.setTheme()` and updates the sidebar `data-bpmn-hud-theme` attribute
+- `operate.ts`: extended `showView` to accept an optional `setTheme` callback; stored as `currentViewSetTheme`
+- Theme header callback now calls `currentViewSetTheme?.(resolved)` so switching the theme in the header immediately updates the canvas and properties panel of the current view
+
+## 2026-03-13 — canvas/plugins: sequence flow selection + subprocess token highlight fix
+
+### canvas — edge hit area
+- Added a 12px transparent `pointer-events: stroke` hit path to every rendered sequence flow so edges are easy to click without requiring pixel-perfect aim on a 1.5px line
+- Changed `.bpmn-edge { cursor: pointer }` (was `default`) to indicate edges are interactive
+
+### operate / config-panel — sequence flow properties
+- `BpmnCanvas` click handler already emits `element:click` for edges; the config panel renderer already has a `sequenceFlow` schema branch
+- Extended the sequence flow lookup in `ConfigPanelRenderer.onSelect` to also search subprocess sequence flows (previously only checked top-level `process.sequenceFlows`)
+
+### token-highlight — subprocess element highlighting
+- `shapeEl` and `edgeEl` now use `viewportEl.querySelector('[data-bpmn-id="..."]')` instead of searching `getShapes()`/`getEdges()` arrays; this finds subprocess child elements which are rendered with `data-bpmn-id` but not included in the top-level shape array
+- `applyHighlights` cleanup now queries the viewport for elements with highlight CSS classes instead of iterating the shape/edge arrays, so classes are correctly removed from subprocess children on the next update
+
+## 2026-03-13 — canvas: fix element:click hit-testing; operate: properties panel in definition-detail
+
+### canvas — fix element:click in flex/scroll containers
+- `BpmnCanvas` click handler now uses `document.elementFromPoint(clientX, clientY)` to resolve the
+  hit element instead of relying on `e.target`, which native SVG hit-testing was returning as the
+  root `<svg>` when the canvas is hosted inside a flex/scroll container (e.g. `@bpmn-sdk/operate`)
+- Falls back to `e.target.closest("[data-bpmn-id]")` so existing tests (happy-dom, dispatched events)
+  continue to pass
+
+### operate — definition-detail: Properties panel now works
+- Clicking a BPMN element in a process definition detail view now correctly fires `element:click`,
+  which the bridge plugin translates to `editor:select`, causing the config panel to populate
+
+## 2026-03-13 — operate: view UX improvements
+
+### Incidents view — state filter
+- Added a state filter bar above the incidents table (All / Active / Resolved / Migrated / Pending)
+- Client-side filtering: buttons call `applyFilter()` which passes filtered items to `setRows()`
+
+### Messages view — filter table + click-to-detail
+- Replaced custom `renderSubList` with `createFilterTable<MessageSubscriptionResult>` (same component as Tasks/Jobs)
+- Added click handler: clicking a subscription row opens a compact modal showing State, Correlation Key, Process, Instance Key, Element ID, Last Updated, Tenant
+- Removed orphaned CSS: `.op-msg-sub-list`, `.op-msg-sub-row`, `.op-msg-sub-header`, `.op-msg-name`, `.op-msg-key`
+- Added new CSS: `.op-kv-body`, `.op-kv-row`, `.op-kv-key`, `.op-kv-value` for the detail modal
+
+### Processes view — flat filter table (replaces expandable groups)
+- Replaced expandable-group layout with `createFilterTable<DefRow>` showing one row per process definition (latest version)
+- Columns: Name, ID, Versions, Latest; clicking a row opens the latest version's detail view
+- Removed orphaned CSS: op-def-group*, op-def-chevron*, op-def-name, op-def-count, op-def-versions, op-def-version-row*, op-def-version-key, op-def-version-tag
+
+### Decisions view — flat filter table (replaces expandable groups)
+- Replaced expandable-group layout with `createFilterTable<DecRow>` showing one row per decision definition (latest version)
+- Columns: Name, ID, DRG, Versions, Latest; clicking opens the latest version's detail view
+- Removed orphaned CSS: op-dec-def-header
+
+### Version dropdown in definition-detail and decision-detail
+- When multiple versions of the same process/decision definition exist in the store, a `<select>` version dropdown replaces the static version badge in the meta bar
+- Selecting a different version navigates to that version's detail page (via `cfg.navigate`)
+- Added `navigate?: (path: string) => void` to decision-detail Config; operate.ts passes the router navigate function
+- Added `.op-version-select` CSS (compact select styled like op-profile-select)
+
+### Properties panel theme fix
+- All three canvas detail views (definition-detail, instance-detail, incident-detail) now set `sidebar.dataset.bpmnHudTheme = cfg.theme`
+- This propagates the `data-bpmn-hud-theme` attribute that the config panel CSS uses for light-mode overrides
+- Fixes the "Properties tab always appears empty" visual bug (panel was rendering with dark styling in light mode)
+
+## 2026-03-13 — operate: properties panel + process chain breadcrumb
+
+### Config panel Properties tab (instance-detail, definition-detail, incident-detail)
+- Added a read-only "Properties" tab to the sidebar of all three canvas detail views
+- Uses `createConfigPanelPlugin` + `createConfigPanelBpmnPlugin` from `@bpmn-sdk/plugins`
+- A bridge plugin converts `element:click` → `editor:select` so the config panel responds to canvas element clicks
+- `getDefinitions` closure captures `BpmnDefinitions` from the canvas `diagram:load` event
+- `applyChange` is a no-op — all editing is disabled in Operate
+- Container-hosted mode renders the panel inside the sidebar pane (not as a floating overlay)
+- Read-only CSS: inputs/textareas/selects get `pointer-events: none; opacity: 0.75`; edit buttons (`bpmn-cfg-field-edit-btn`, `bpmn-cfg-overlay-trigger`) are hidden
+- Placeholder "Click an element to view its properties" shown when no element is selected
+
+### Process chain breadcrumb (instance-detail)
+- Added `op-process-chain` div showing the full parent-to-child process hierarchy for sub-process instances
+- `fetchProcessChain` walks up `parentProcessInstanceKey` to the root, building a clickable breadcrumb
+- Chain only shown when there are 2+ levels (i.e. the instance has a parent)
+- Clicking a breadcrumb segment navigates to that process instance
+- Added `navigate?: (path: string) => void` to instance-detail Config; operate.ts passes the router navigate function
+
+### definition-detail layout change
+- Changed from full-width canvas to canvas + 320px sidebar layout (same `op-detail-layout` flex row used by instance-detail and incident-detail)
+- Sidebar has a single "Properties" tab with the read-only config panel
+
+## 2026-03-13 — operate: new views + actions
+
+### Start Instance (definition-detail)
+- Added "▶ Start Instance" button to the definition detail meta bar
+- Opens a modal with optional Business ID + Variables JSON fields
+- POSTs to `/api/process-instances`; on success shows the new instance key with a "View Instance →" link
+
+### Cancel Instance (instance-detail)
+- Added "✕ Cancel" button in instance meta bar when state === `ACTIVE`
+- Two-step confirm pattern: first click → "Confirm Cancel?", second click → POST `/api/process-instances/{key}/cancellation`
+
+### Messages & Signals view (new)
+- New `/messages` route and nav item ("Messages")
+- Three action cards: **Correlate Message** (POST `/api/messages/correlation`), **Publish Message** (POST `/api/messages/publication`), **Broadcast Signal** (POST `/api/signals/broadcast`)
+- Each card opens a typed form modal with validation and success/error feedback
+- Active message subscriptions list loaded from `/api/message-subscriptions/search`
+- Mock mode shows fixture subscriptions and gives "Mock mode" feedback on actions
+
+### Supporting changes
+- Added `messages` envelope icon to `@bpmn-sdk/ui` `IC_UI`
+- Added `MessageSubscriptionResult` to operate types re-exports
+- Added mock message subscription fixtures to `mock-data.ts`
+- New CSS: form modal styles (`.op-modal--form`, `.op-form-*`), messages view (`.op-msg-*`), danger button (`.op-action-btn--danger`)
+
+## 2026-03-13 — operate: deduplicate variables by name
+
+- `packages/operate/src/views/instance-detail.ts`: added `deduplicateVars()` — groups variables by name, keeps the entry with the highest `variableKey` (BigInt comparison) to handle loops that write the same variable multiple times
+
 ## 2026-03-12 — operate: incident detail view + AI incident assist
 
 ### Incidents: click to open detail

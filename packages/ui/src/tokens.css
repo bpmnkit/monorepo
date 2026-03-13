@@ -1,0 +1,69 @@
+/* ── BPMN SDK brand tokens ───────────────────────────────────────────────────
+ * Light-first. Dark override via [data-theme="dark"] on any ancestor.
+ * All --bpmn-* variables are public API — safe to override for white-labeling.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+	--bpmn-bg: #f4f4f8;
+	--bpmn-surface: #ffffff;
+	--bpmn-surface-2: #eeeef8;
+	--bpmn-border: #d0d0e8;
+	--bpmn-fg: #1a1a2e;
+	--bpmn-fg-muted: #6666a0;
+	--bpmn-font: system-ui, -apple-system, sans-serif;
+	--bpmn-font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", monospace;
+
+	/* Brand accent — purple-blue */
+	--bpmn-accent: #1a56db;
+	--bpmn-accent-bright: #3b82f6;
+	--bpmn-accent-subtle: rgba(26, 86, 219, 0.12);
+	--bpmn-accent-fg: #ffffff;
+
+	/* Secondary accent */
+	--bpmn-teal: #0d9488;
+
+	/* Status */
+	--bpmn-success: #16a34a;
+	--bpmn-warn: #d97706;
+	--bpmn-danger: #dc2626;
+
+	/* Floating panels (HUD, dropdowns, pickers) */
+	--bpmn-panel-bg: rgba(255, 255, 255, 0.92);
+	--bpmn-panel-border: rgba(0, 0, 0, 0.08);
+
+	/* Spacing / shape */
+	--bpmn-radius: 6px;
+	--bpmn-radius-sm: 4px;
+	--bpmn-radius-lg: 10px;
+
+	/* Nav sidebar — always dark regardless of theme */
+	--bpmn-nav-bg: #1a1a2e;
+	--bpmn-nav-fg: #9090b4;
+	--bpmn-nav-fg-active: #ffffff;
+	--bpmn-nav-width: 220px;
+	--bpmn-header-height: 52px;
+}
+
+[data-theme="dark"] {
+	--bpmn-bg: #0d0d16;
+	--bpmn-surface: #161626;
+	--bpmn-surface-2: #1e1e2e;
+	--bpmn-border: #2a2a42;
+	--bpmn-fg: #cdd6f4;
+	--bpmn-fg-muted: #8888a8;
+
+	--bpmn-accent: #6b9df7;
+	--bpmn-accent-bright: #89b4fa;
+	--bpmn-accent-subtle: rgba(107, 157, 247, 0.15);
+
+	--bpmn-teal: #2dd4bf;
+	--bpmn-success: #22c55e;
+	--bpmn-warn: #f59e0b;
+	--bpmn-danger: #f87171;
+
+	--bpmn-panel-bg: rgba(13, 13, 22, 0.92);
+	--bpmn-panel-border: rgba(255, 255, 255, 0.08);
+
+	--bpmn-nav-bg: #0a0a14;
+	--bpmn-nav-fg: #8888a8;
+}

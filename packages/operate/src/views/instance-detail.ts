@@ -1,4 +1,8 @@
+import type { CanvasPlugin } from "@bpmn-sdk/canvas"
 import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import { createConfigPanelPlugin } from "@bpmn-sdk/plugins/config-panel"
+import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/plugins/config-panel-bpmn"
 import { createTokenHighlightPlugin } from "@bpmn-sdk/plugins/token-highlight"
 import { badge } from "../components/badge.js"
 import {
@@ -20,6 +24,7 @@ interface Config {
 	interval: number
 	mock: boolean
 	theme: "light" | "dark"
+	navigate?: (path: string) => void
 }
 
 function relTime(iso: string | null | undefined): string {
@@ -139,6 +144,7 @@ export function createInstanceDetailView(
 	onBack: () => void,
 ): {
 	el: HTMLElement
+	setTheme(t: "light" | "dark"): void
 	destroy(): void
 } {
 	const el = document.createElement("div")
@@ -154,10 +160,20 @@ export function createInstanceDetailView(
 	breadcrumb.appendChild(backBtn)
 	el.appendChild(breadcrumb)
 
+	// Process hierarchy chain (shown for sub-process instances)
+	const processChainEl = document.createElement("div")
+	processChainEl.className = "op-process-chain"
+	el.appendChild(processChainEl)
+
 	// Meta row
 	const meta = document.createElement("div")
 	meta.className = "op-instance-meta"
 	el.appendChild(meta)
+
+	const cancelFeedback = document.createElement("div")
+	cancelFeedback.className = "op-action-feedback"
+	cancelFeedback.style.display = "none"
+	el.appendChild(cancelFeedback)
 
 	// Canvas + sidebar layout
 	const layout = document.createElement("div")
@@ -172,10 +188,11 @@ export function createInstanceDetailView(
 	// Sidebar pane
 	const sidebar = document.createElement("div")
 	sidebar.className = "op-detail-sidebar"
+	sidebar.dataset.bpmnHudTheme = cfg.theme
 	layout.appendChild(sidebar)
 
 	// Tabs in sidebar
-	const tabs = ["Variables", "Incidents"]
+	const tabs = ["Variables", "Incidents", "Properties"]
 	const tabBar = document.createElement("div")
 	tabBar.className = "op-detail-tabs"
 	const tabPanels: HTMLElement[] = []
@@ -215,6 +232,44 @@ export function createInstanceDetailView(
 	tabPanels.push(incPanel)
 	sidebar.appendChild(incPanel)
 
+	const propsPane = document.createElement("div")
+	propsPane.className = "op-detail-panel op-props-pane"
+	propsPane.style.display = "none"
+	tabPanels.push(propsPane)
+	sidebar.appendChild(propsPane)
+
+	const propsPlaceholder = document.createElement("div")
+	propsPlaceholder.className = "op-props-placeholder"
+	propsPlaceholder.textContent = "Click an element to view its properties"
+	propsPane.appendChild(propsPlaceholder)
+
+	// Config panel (read-only: applyChange is a no-op)
+	let latestDefs: BpmnDefinitions | null = null
+	const configPanel = createConfigPanelPlugin({
+		getDefinitions: () => latestDefs,
+		applyChange: () => {},
+		container: propsPane,
+		readonly: true,
+		onPanelShow: () => {
+			propsPlaceholder.style.display = "none"
+		},
+		onPanelHide: () => {
+			propsPlaceholder.style.display = ""
+		},
+	})
+	const configPanelBpmn = createConfigPanelBpmnPlugin(configPanel)
+	const bridgePlugin: CanvasPlugin = {
+		name: "op-select-bridge",
+		install(api) {
+			type AnyEmit = (event: string, ...args: unknown[]) => void
+			const emit = api.emit.bind(api) as unknown as AnyEmit
+			api.on("element:click", (id) => emit("editor:select", [id]))
+			api.on("diagram:load", (defs) => {
+				latestDefs = defs
+			})
+		},
+	}
+
 	// Token-highlight plugin + canvas
 	const tokenHighlight = createTokenHighlightPlugin()
 	let canvas: BpmnCanvas | null = null
@@ -226,7 +281,7 @@ export function createInstanceDetailView(
 			container: canvasWrap,
 			xml,
 			theme: cfg.theme,
-			plugins: [tokenHighlight],
+			plugins: [tokenHighlight, bridgePlugin, configPanel, configPanelBpmn],
 		})
 	}
 
@@ -244,6 +299,7 @@ export function createInstanceDetailView(
 
 	function renderMeta(inst: ProcessInstanceResult | null): void {
 		meta.innerHTML = ""
+		cancelFeedback.style.display = "none"
 		if (!inst) return
 		const key = document.createElement("span")
 		key.className = "op-instance-key"
@@ -260,6 +316,113 @@ export function createInstanceDetailView(
 		started.className = "op-instance-time"
 		started.textContent = `Started ${relTime(inst.startDate)}`
 		meta.appendChild(started)
+
+		if (inst.state === "ACTIVE") {
+			const cancelBtn = document.createElement("button")
+			cancelBtn.className = "op-action-btn op-action-btn--danger"
+			cancelBtn.textContent = "✕ Cancel"
+			cancelBtn.style.marginLeft = "auto"
+			cancelBtn.addEventListener("click", () => {
+				if (cancelBtn.dataset.confirm !== "true") {
+					cancelBtn.dataset.confirm = "true"
+					cancelBtn.textContent = "Confirm Cancel?"
+					cancelBtn.style.fontWeight = "700"
+					setTimeout(() => {
+						if (cancelBtn.dataset.confirm === "true") {
+							cancelBtn.dataset.confirm = ""
+							cancelBtn.textContent = "✕ Cancel"
+							cancelBtn.style.fontWeight = ""
+						}
+					}, 4000)
+					return
+				}
+				cancelBtn.disabled = true
+				cancelBtn.textContent = "Cancelling…"
+				if (cfg.mock) {
+					cancelFeedback.textContent = "Mock mode — cancel not sent to server."
+					cancelFeedback.className = "op-action-feedback op-action-feedback--ok"
+					cancelFeedback.style.display = ""
+					return
+				}
+				const headers: Record<string, string> = { "Content-Type": "application/json" }
+				if (cfg.profile) headers["x-profile"] = cfg.profile
+				fetch(`${cfg.proxyUrl}/api/process-instances/${instanceKey}/cancellation`, {
+					method: "POST",
+					headers,
+					body: JSON.stringify({}),
+				})
+					.then((r) => {
+						if (r.ok || r.status === 204) {
+							cancelFeedback.textContent = "Instance cancelled."
+							cancelFeedback.className = "op-action-feedback op-action-feedback--ok"
+						} else {
+							cancelFeedback.textContent = `Error: ${r.status}`
+							cancelFeedback.className = "op-action-feedback op-action-feedback--err"
+							cancelBtn.disabled = false
+							cancelBtn.textContent = "✕ Cancel"
+						}
+						cancelFeedback.style.display = ""
+					})
+					.catch((err: unknown) => {
+						cancelFeedback.textContent = String(err)
+						cancelFeedback.className = "op-action-feedback op-action-feedback--err"
+						cancelFeedback.style.display = ""
+						cancelBtn.disabled = false
+						cancelBtn.textContent = "✕ Cancel"
+					})
+			})
+			meta.appendChild(cancelBtn)
+		}
+	}
+
+	// ── Process chain ────────────────────────────────────────────────────────
+
+	function renderProcessChain(segments: Array<{ name: string; instanceKey: string }>): void {
+		processChainEl.innerHTML = ""
+		for (let i = 0; i < segments.length; i++) {
+			const seg = segments[i]
+			if (!seg) continue
+			if (i > 0) {
+				const sep = document.createElement("span")
+				sep.className = "op-process-chain-sep"
+				sep.textContent = " / "
+				processChainEl.appendChild(sep)
+			}
+			const btn = document.createElement("button")
+			btn.className = "op-process-chain-link"
+			btn.textContent = seg.name
+			if (cfg.navigate) {
+				const key = seg.instanceKey
+				btn.addEventListener("click", () => cfg.navigate?.(`/instances/${key}`))
+			} else {
+				btn.disabled = true
+			}
+			processChainEl.appendChild(btn)
+		}
+	}
+
+	async function fetchProcessChain(startKey: string): Promise<void> {
+		const headers: Record<string, string> = { accept: "application/json" }
+		if (cfg.profile) headers["x-profile"] = cfg.profile
+		const chain: Array<{ name: string; instanceKey: string }> = []
+		let key: string | null = startKey
+		const seen = new Set<string>()
+		while (key && !seen.has(key)) {
+			seen.add(key)
+			try {
+				const r = await fetch(`${cfg.proxyUrl}/api/process-instances/${key}`, { headers })
+				if (!r.ok) break
+				const inst = (await r.json()) as ProcessInstanceResult
+				chain.unshift({
+					name: inst.processDefinitionName ?? inst.processDefinitionId,
+					instanceKey: inst.processInstanceKey,
+				})
+				key = inst.parentProcessInstanceKey || null
+			} catch {
+				break
+			}
+		}
+		if (chain.length > 1) renderProcessChain(chain)
 	}
 
 	// ── Variables panel ──────────────────────────────────────────────────────
@@ -458,8 +621,19 @@ export function createInstanceDetailView(
 		varPanel.appendChild(list)
 	}
 
+	function deduplicateVars(vars: VarItem[]): VarItem[] {
+		const map = new Map<string, VarItem>()
+		for (const v of vars) {
+			const existing = map.get(v.name)
+			if (!existing || BigInt(v.variableKey) > BigInt(existing.variableKey)) {
+				map.set(v.name, v)
+			}
+		}
+		return Array.from(map.values())
+	}
+
 	function renderVariables(vars: VarItem[]): void {
-		allVars = vars
+		allVars = deduplicateVars(vars)
 		if (!varPanelBuilt) {
 			varPanel.innerHTML = ""
 			if (vars.length === 0) {
@@ -534,6 +708,7 @@ export function createInstanceDetailView(
 			if (xmlStarted) return
 			xmlStarted = true
 			renderMeta(inst)
+			fetchProcessChain(inst.processInstanceKey).catch(() => {})
 			const pdKey = inst.processDefinitionKey
 			fetch(`${cfg.proxyUrl}/api/process-definitions/${pdKey}/xml`, {
 				headers: {
@@ -605,6 +780,10 @@ export function createInstanceDetailView(
 
 	return {
 		el,
+		setTheme(t: "light" | "dark"): void {
+			canvas?.setTheme(t)
+			sidebar.dataset.bpmnHudTheme = t
+		},
 		destroy(): void {
 			canvas?.destroy()
 			instUnsub()

@@ -35,10 +35,10 @@ export const DMN_VIEWER_CSS = `
 }
 
 .dmn-viewer.dark {
-  --dmn-bg: #1e1e2e;
+  --dmn-bg: var(--bpmn-surface-2, #1e1e2e);
   --dmn-fg: #cdd6f4;
   --dmn-border: #313244;
-  --dmn-header-bg: #181825;
+  --dmn-header-bg: var(--bpmn-surface-2, #1e1e2e);
   --dmn-input-bg: #1e1e3a;
   --dmn-output-bg: #1a2e1a;
   --dmn-row-hover: #2a2a3e;

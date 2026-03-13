@@ -22,7 +22,7 @@ export const FORM_EDITOR_CSS = `
   --fe-input-bg: #ffffff;
   --fe-input-border: #d1d5db;
   --fe-label: #6b7280;
-  --fe-accent: #3d5afe;
+  --fe-accent: var(--bpmn-accent, #1a56db);
   --fe-danger: #dc2626;
   --fe-section-fg: #9ca3af;
   --fe-card-selected-bg: #eff3ff;
@@ -37,10 +37,10 @@ export const FORM_EDITOR_CSS = `
 }
 
 .form-editor.dark {
-  --fe-bg: #1e1e2e;
+  --fe-bg: var(--bpmn-surface-2, #1e1e2e);
   --fe-fg: #cdd6f4;
   --fe-border: #313244;
-  --fe-panel-bg: #181825;
+  --fe-panel-bg: var(--bpmn-surface-2, #1e1e2e);
   --fe-row-hover: #2a2a3e;
   --fe-badge-bg: #313244;
   --fe-badge-fg: #bac2de;
@@ -50,7 +50,7 @@ export const FORM_EDITOR_CSS = `
   --fe-input-bg: #1e1e2e;
   --fe-input-border: #45475a;
   --fe-label: #bac2de;
-  --fe-accent: #89b4fa;
+  --fe-accent: var(--bpmn-accent-bright, #89b4fa);
   --fe-danger: #f38ba8;
   --fe-section-fg: #6c7086;
   --fe-card-selected-bg: #1e1e3a;

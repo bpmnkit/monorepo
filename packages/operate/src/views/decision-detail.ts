@@ -7,6 +7,7 @@ interface Config {
 	profile: string | null
 	mock: boolean
 	theme: "light" | "dark"
+	navigate?: (path: string) => void
 }
 
 const MOCK_DMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -38,6 +39,7 @@ export function createDecisionDetailView(
 	onBack: () => void,
 ): {
 	el: HTMLElement
+	setTheme(t: "light" | "dark"): void
 	destroy(): void
 } {
 	const el = document.createElement("div")
@@ -69,6 +71,15 @@ export function createDecisionDetailView(
 		return store.state.data?.items.find((d) => d.decisionDefinitionKey === definitionKey) ?? null
 	}
 
+	function getVersions(): DecisionDefinitionResult[] {
+		const def = getDef()
+		if (!def) return []
+		const id = def.decisionDefinitionId
+		return (store.state.data?.items ?? [])
+			.filter((d) => d.decisionDefinitionId === id)
+			.sort((a, b) => (b.version ?? 0) - (a.version ?? 0))
+	}
+
 	function renderMeta(def: DecisionDefinitionResult | null): void {
 		meta.innerHTML = ""
 		if (!def) return
@@ -76,10 +87,29 @@ export function createDecisionDetailView(
 		name.className = "op-def-meta-name"
 		name.textContent = def.name ?? def.decisionDefinitionId
 		meta.appendChild(name)
-		const ver = document.createElement("span")
-		ver.className = "op-def-meta-version"
-		ver.textContent = `v${def.version ?? "?"}`
-		meta.appendChild(ver)
+
+		const versions = getVersions()
+		if (versions.length > 1 && cfg.navigate) {
+			const select = document.createElement("select")
+			select.className = "op-version-select"
+			for (const v of versions) {
+				const opt = document.createElement("option")
+				opt.value = v.decisionDefinitionKey
+				opt.textContent = `v${v.version ?? "?"}`
+				opt.selected = v.decisionDefinitionKey === definitionKey
+				select.appendChild(opt)
+			}
+			select.addEventListener("change", () => {
+				cfg.navigate?.(`/decisions/${select.value}`)
+			})
+			meta.appendChild(select)
+		} else {
+			const ver = document.createElement("span")
+			ver.className = "op-def-meta-version"
+			ver.textContent = `v${def.version ?? "?"}`
+			meta.appendChild(ver)
+		}
+
 		if (def.decisionRequirementsName) {
 			const drg = document.createElement("span")
 			drg.className = "op-def-meta-version"
@@ -153,6 +183,9 @@ export function createDecisionDetailView(
 
 	return {
 		el,
+		setTheme(t: "light" | "dark"): void {
+			editor?.setTheme(t)
+		},
 		destroy(): void {
 			unsub()
 			editor?.destroy()

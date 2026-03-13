@@ -144,7 +144,7 @@ export const CANVAS_CSS = `
 
 /* ── Edges ───────────────────────────────────────────────────────── */
 .bpmn-edge {
-  cursor: default;
+  cursor: pointer;
 }
 .bpmn-edge-path {
   fill: none;
@@ -187,8 +187,8 @@ export const CANVAS_CSS = `
   --bpmn-shape-fill: #ffffff;
   --bpmn-shape-stroke: #404040;
   --bpmn-flow-stroke: #404040;
-  --bpmn-text: #333333;
-  --bpmn-highlight: #0066cc;
+  --bpmn-text: var(--bpmn-fg, #333333);
+  --bpmn-highlight: var(--bpmn-accent, #1a56db);
   --bpmn-focus: #0066cc;
   --bpmn-overlay-bg: rgba(248, 249, 250, 0.92);
   --bpmn-overlay-border: rgba(0, 0, 0, 0.12);
@@ -196,17 +196,19 @@ export const CANVAS_CSS = `
 
 /* ── Dark theme ──────────────────────────────────────────────────── */
 .bpmn-canvas-host[data-theme="dark"] {
-  --bpmn-bg: #1e1e2e;
+  --bpmn-bg: #0d0d16;
   --bpmn-grid: rgba(255, 255, 255, 0.07);
-  --bpmn-shape-fill: #2a2a3e;
+  --bpmn-shape-fill: #1e1e2e;
   --bpmn-shape-stroke: #8888bb;
   --bpmn-flow-stroke: #7777aa;
-  --bpmn-text: #cdd6f4;
-  --bpmn-highlight: #89b4fa;
+  --bpmn-text: var(--bpmn-fg, #cdd6f4);
+  --bpmn-highlight: var(--bpmn-accent-bright, #89b4fa);
   --bpmn-focus: #89b4fa;
   --bpmn-overlay-bg: rgba(30, 30, 46, 0.92);
   --bpmn-overlay-border: rgba(255, 255, 255, 0.1);
 }
+.bpmn-canvas-host[data-theme="dark"] .bpmn-edge-hover-dot { fill: var(--bpmn-accent, #6b9df7); }
+.bpmn-canvas-host[data-theme="dark"] .bpmn-edge-waypoint-ball { fill: var(--bpmn-accent, #6b9df7); }
 `
 
 /**

@@ -24,6 +24,9 @@ export function createIncidentsView(
 	const el = document.createElement("div")
 	el.className = "op-view"
 
+	let activeState = ""
+	let allItems: IncidentResult[] = []
+
 	const { el: tableEl, setRows } = createFilterTable<IncidentResult>({
 		columns: [
 			{
@@ -74,10 +77,40 @@ export function createIncidentsView(
 		onRowClick: onSelect,
 		emptyText: "No incidents",
 	})
+	function applyFilter(): void {
+		const rows = activeState ? allItems.filter((i) => i.state === activeState) : allItems
+		setRows(rows)
+	}
+
+	const filterBar = document.createElement("div")
+	filterBar.className = "op-filter-bar"
+	const stateFilters = [
+		{ label: "All", value: "" },
+		{ label: "Active", value: "ACTIVE" },
+		{ label: "Resolved", value: "RESOLVED" },
+		{ label: "Migrated", value: "MIGRATED" },
+		{ label: "Pending", value: "PENDING" },
+	]
+	for (const f of stateFilters) {
+		const btn = document.createElement("button")
+		btn.className = `op-filter-btn${f.value === activeState ? " op-filter-btn--active" : ""}`
+		btn.textContent = f.label
+		btn.addEventListener("click", () => {
+			activeState = f.value
+			for (const b of Array.from(filterBar.querySelectorAll(".op-filter-btn"))) {
+				b.classList.remove("op-filter-btn--active")
+			}
+			btn.classList.add("op-filter-btn--active")
+			applyFilter()
+		})
+		filterBar.appendChild(btn)
+	}
+	el.appendChild(filterBar)
 	el.appendChild(tableEl)
 
 	function render(): void {
-		setRows(store.state.data?.items ?? [])
+		allItems = store.state.data?.items ?? []
+		applyFilter()
 	}
 
 	const unsub = store.subscribe(render)

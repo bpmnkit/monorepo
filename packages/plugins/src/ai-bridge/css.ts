@@ -12,8 +12,8 @@ export function injectAiBridgeStyles(): void {
   position: fixed; top: 0; right: 0; bottom: 0;
   width: 360px; z-index: 150;
   display: flex; flex-direction: column;
-  background: rgba(20, 20, 28, 0.97);
-  border-left: 1px solid rgba(255,255,255,0.1);
+  background: var(--bpmn-panel-bg, rgba(13,13,22,0.92));
+  border-left: 1px solid var(--bpmn-panel-border, rgba(255,255,255,0.08));
   color: rgba(255,255,255,0.85);
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 13px;
@@ -82,14 +82,14 @@ export function injectAiBridgeStyles(): void {
 .ai-msg-preview {
   position: relative; height: 200px; margin: 8px 0;
   border-radius: 6px; overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--bpmn-panel-border, rgba(255,255,255,0.08));
 }
 .ai-msg-preview .bpmn-canvas { width: 100%; height: 100%; }
 /* ── Message action row (copy + apply) ── */
 .ai-msg-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .ai-msg-copy {
   padding: 3px 10px; border-radius: 5px;
-  background: none; border: 1px solid rgba(255,255,255,0.1);
+  background: none; border: 1px solid var(--bpmn-panel-border, rgba(255,255,255,0.08));
   color: rgba(255,255,255,0.35); font-size: 11px; cursor: pointer;
   font-family: inherit;
   transition: color 0.15s, border-color 0.15s;
@@ -255,11 +255,11 @@ export function injectAiBridgeStyles(): void {
 /* ── Light theme ── */
 [data-bpmn-hud-theme="light"] .ai-panel {
   background: rgba(252,252,254,0.98);
-  border-left-color: rgba(0,0,0,0.1);
+  border-left-color: var(--bpmn-panel-border, rgba(0,0,0,0.08));
   color: rgba(0,0,0,0.8);
   box-shadow: -4px 0 20px rgba(0,0,0,0.12);
 }
-[data-bpmn-hud-theme="light"] .ai-panel-header { border-bottom-color: rgba(0,0,0,0.08); }
+[data-bpmn-hud-theme="light"] .ai-panel-header { border-bottom-color: var(--bpmn-panel-border, rgba(0,0,0,0.08)); }
 [data-bpmn-hud-theme="light"] .ai-panel-title { color: rgba(0,0,0,0.88); }
 [data-bpmn-hud-theme="light"] .ai-panel-status { border-bottom-color: rgba(0,0,0,0.06); }
 [data-bpmn-hud-theme="light"] .ai-panel-status-err { color: rgba(180,40,20,0.9); }
@@ -270,7 +270,7 @@ export function injectAiBridgeStyles(): void {
   background: rgba(0,80,200,0.1); border-color: rgba(0,80,200,0.2);
 }
 [data-bpmn-hud-theme="light"] .ai-msg-ai {
-  background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.03); border-color: var(--bpmn-panel-border, rgba(0,0,0,0.08));
 }
 [data-bpmn-hud-theme="light"] .ai-md-code { background: rgba(0,0,0,0.06); }
 [data-bpmn-hud-theme="light"] .ai-msg-copy {
@@ -305,7 +305,7 @@ export function injectAiBridgeStyles(): void {
 [data-bpmn-hud-theme="light"] .ai-msg-context-chip {
   background: rgba(0,80,200,0.08); border-color: rgba(0,80,200,0.2); color: rgba(0,60,180,0.85);
 }
-[data-bpmn-hud-theme="light"] .ai-input-area { border-top-color: rgba(0,0,0,0.08); }
+[data-bpmn-hud-theme="light"] .ai-input-area { border-top-color: var(--bpmn-panel-border, rgba(0,0,0,0.08)); }
 [data-bpmn-hud-theme="light"] .ai-textarea {
   background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.12); color: rgba(0,0,0,0.8);
 }
@@ -322,7 +322,7 @@ export function injectAiBridgeStyles(): void {
   background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); color: rgba(0,0,0,0.55);
 }
 [data-bpmn-hud-theme="light"] .ai-hist-panel { background: rgba(252,252,254,0.98); border-color: rgba(0,0,0,0.1); }
-[data-bpmn-hud-theme="light"] .ai-hist-header { color: rgba(0,0,0,0.88); border-bottom-color: rgba(0,0,0,0.08); }
+[data-bpmn-hud-theme="light"] .ai-hist-header { color: rgba(0,0,0,0.88); border-bottom-color: var(--bpmn-panel-border, rgba(0,0,0,0.08)); }
 [data-bpmn-hud-theme="light"] .ai-hist-time { color: rgba(0,0,0,0.45); }
 [data-bpmn-hud-theme="light"] .ai-hist-item { border-bottom-color: rgba(0,0,0,0.05); }
 [data-bpmn-hud-theme="light"] .ai-hist-item:hover { background: rgba(0,0,0,0.03); }

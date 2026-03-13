@@ -168,9 +168,18 @@ export class BpmnCanvas {
 		)
 
 		// ── Click detection ───────────────────────────────────────────
+		// Use elementFromPoint rather than e.target because native SVG hit-testing
+		// can return the root <svg> element even when a shape is visually under the
+		// cursor (reproducible when the canvas is inside a flex/scroll container).
+		// elementFromPoint correctly resolves the topmost painted element.
 		this._svg.addEventListener("click", (e: MouseEvent) => {
 			if (this._viewport.didPan) return
-			const target = (e.target as Element).closest("[data-bpmn-id]")
+			// elementFromPoint resolves the correct element when native SVG hit-testing
+			// returns the root <svg> (reproducible in flex/scroll containers). Fall back
+			// to e.target for test environments where elementFromPoint isn't reliable.
+			const fromPoint = document.elementFromPoint(e.clientX, e.clientY)
+			const target =
+				fromPoint?.closest("[data-bpmn-id]") ?? (e.target as Element).closest("[data-bpmn-id]")
 			const id = target?.getAttribute("data-bpmn-id")
 			if (id) this._emit("element:click", id, e as unknown as PointerEvent)
 		})

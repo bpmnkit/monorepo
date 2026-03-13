@@ -70,23 +70,28 @@ export function createTokenHighlightPlugin(): CanvasPlugin & { api: TokenHighlig
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	function shapeEl(id: string): SVGGElement | undefined {
-		return canvasApi?.getShapes().find((s) => s.id === id)?.element
+		const el = canvasApi?.viewportEl.querySelector(`[data-bpmn-id="${id}"]`)
+		return el instanceof SVGGElement ? el : undefined
 	}
 
 	function edgeEl(id: string): SVGGElement | undefined {
-		return canvasApi?.getEdges().find((e) => e.id === id)?.element
+		const el = canvasApi?.viewportEl.querySelector(`[data-bpmn-id="${id}"]`)
+		return el instanceof SVGGElement ? el : undefined
 	}
 
 	function applyHighlights(): void {
 		const api = canvasApi
 		if (api === null) return
 
-		// Strip all plugin classes
-		for (const s of api.getShapes()) {
-			s.element.classList.remove("bpmn-token-active", "bpmn-token-visited", "bpmn-token-error")
+		// Strip all plugin classes — query the viewport so subprocess children are included
+		const vp = api.viewportEl
+		for (const el of vp.querySelectorAll(
+			".bpmn-token-active,.bpmn-token-visited,.bpmn-token-error",
+		)) {
+			el.classList.remove("bpmn-token-active", "bpmn-token-visited", "bpmn-token-error")
 		}
-		for (const e of api.getEdges()) {
-			e.element.classList.remove("bpmn-token-edge-active", "bpmn-token-edge-visited")
+		for (const el of vp.querySelectorAll(".bpmn-token-edge-active,.bpmn-token-edge-visited")) {
+			el.classList.remove("bpmn-token-edge-active", "bpmn-token-edge-visited")
 		}
 
 		// Visited shapes

@@ -20,6 +20,7 @@ import { createIncidentsView } from "./views/incidents.js"
 import { createInstanceDetailView } from "./views/instance-detail.js"
 import { createInstancesView } from "./views/instances.js"
 import { createJobsView } from "./views/jobs.js"
+import { createMessagesView } from "./views/messages.js"
 import { createNav } from "./views/nav.js"
 import { createTaskDetailView } from "./views/task-detail.js"
 import { createTasksView } from "./views/tasks.js"
@@ -115,6 +116,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 		(theme, resolved) => {
 			el.setAttribute("data-theme", resolved)
 			currentTheme = theme
+			currentViewSetTheme?.(resolved as "light" | "dark")
 		},
 		initialTheme,
 	)
@@ -129,10 +131,16 @@ export function createOperate(options: OperateOptions): OperateApi {
 
 	let destroyView: (() => void) | null = null
 	let currentTheme: Theme = initialTheme
+	let currentViewSetTheme: ((t: "light" | "dark") => void) | null = null
 
-	function showView(viewEl: HTMLElement, destroy: () => void): void {
+	function showView(
+		viewEl: HTMLElement,
+		destroy: () => void,
+		setTheme?: (t: "light" | "dark") => void,
+	): void {
 		destroyView?.()
 		destroyView = destroy
+		currentViewSetTheme = setTheme ?? null
 		content.innerHTML = ""
 		content.appendChild(viewEl)
 	}
@@ -174,13 +182,17 @@ export function createOperate(options: OperateOptions): OperateApi {
 		}
 		header.setTitle("Process Definition")
 		nav.setActive("/definitions")
-		const { el: vEl, destroy } = createDefinitionDetailView(
+		const {
+			el: vEl,
+			destroy,
+			setTheme,
+		} = createDefinitionDetailView(
 			params.key ?? "",
 			defStore,
-			{ proxyUrl, profile, mock, theme: getTheme() },
+			{ proxyUrl, profile, mock, theme: getTheme(), navigate: (path) => router.navigate(path) },
 			() => router.navigate("/definitions"),
 		)
-		showView(vEl, destroy)
+		showView(vEl, destroy, setTheme)
 	})
 
 	router.on("/decisions", () => {
@@ -206,13 +218,17 @@ export function createOperate(options: OperateOptions): OperateApi {
 		reconnectCurrent()
 		header.setTitle("Decision Definition")
 		nav.setActive("/decisions")
-		const { el: vEl, destroy } = createDecisionDetailView(
+		const {
+			el: vEl,
+			destroy,
+			setTheme,
+		} = createDecisionDetailView(
 			params.key ?? "",
 			decStore,
-			{ proxyUrl, profile, mock, theme: getTheme() },
+			{ proxyUrl, profile, mock, theme: getTheme(), navigate: (path) => router.navigate(path) },
 			() => router.navigate("/decisions"),
 		)
-		showView(vEl, destroy)
+		showView(vEl, destroy, setTheme)
 	})
 
 	router.on("/instances", () => {
@@ -242,13 +258,24 @@ export function createOperate(options: OperateOptions): OperateApi {
 		const instanceKey = params.key ?? ""
 		header.setTitle(`Instance ${instanceKey}`)
 		nav.setActive("/instances")
-		const { el: vEl, destroy } = createInstanceDetailView(
+		const {
+			el: vEl,
+			destroy,
+			setTheme,
+		} = createInstanceDetailView(
 			instanceKey,
 			instStore,
-			{ proxyUrl, profile, interval: pollInterval, mock, theme: getTheme() },
+			{
+				proxyUrl,
+				profile,
+				interval: pollInterval,
+				mock,
+				theme: getTheme(),
+				navigate: (path) => router.navigate(path),
+			},
 			() => router.navigate("/instances"),
 		)
-		showView(vEl, destroy)
+		showView(vEl, destroy, setTheme)
 	})
 
 	router.on("/incidents", () => {
@@ -324,6 +351,17 @@ export function createOperate(options: OperateOptions): OperateApi {
 			{ proxyUrl, profile, mock, theme: getTheme() },
 			() => router.navigate("/tasks"),
 		)
+		showView(vEl, destroy)
+	})
+
+	router.on("/messages", () => {
+		reconnectCurrent = () => {
+			disconnectAll()
+		}
+		reconnectCurrent()
+		header.setTitle("Messages & Signals")
+		nav.setActive("/messages")
+		const { el: vEl, destroy } = createMessagesView({ proxyUrl, profile, mock })
 		showView(vEl, destroy)
 	})
 

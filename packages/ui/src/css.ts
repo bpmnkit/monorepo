@@ -14,37 +14,51 @@ export const UI_TOKENS_CSS = `
 :root {
   --bpmn-bg: #f4f4f8;
   --bpmn-surface: #ffffff;
-  --bpmn-surface-2: #f0f0f8;
-  --bpmn-border: #d8d8e8;
+  --bpmn-surface-2: #eeeef8;
+  --bpmn-border: #d0d0e8;
   --bpmn-fg: #1a1a2e;
   --bpmn-fg-muted: #6666a0;
   --bpmn-font: system-ui, -apple-system, sans-serif;
+  --bpmn-font-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', monospace;
   --bpmn-accent: #1a56db;
+  --bpmn-accent-bright: #3b82f6;
+  --bpmn-accent-subtle: rgba(26, 86, 219, 0.12);
   --bpmn-accent-fg: #ffffff;
-  --bpmn-success: #22c55e;
-  --bpmn-warn: #f59e0b;
-  --bpmn-danger: #ef4444;
+  --bpmn-teal: #0d9488;
+  --bpmn-success: #16a34a;
+  --bpmn-warn: #d97706;
+  --bpmn-danger: #dc2626;
+  --bpmn-panel-bg: rgba(255, 255, 255, 0.92);
+  --bpmn-panel-border: rgba(0, 0, 0, 0.08);
   --bpmn-radius: 6px;
   --bpmn-radius-sm: 4px;
   --bpmn-radius-lg: 10px;
   /* Nav sidebar — always dark-navy regardless of theme */
-  --bpmn-nav-bg: #1e2030;
-  --bpmn-nav-fg: #9898b8;
+  --bpmn-nav-bg: #1a1a2e;
+  --bpmn-nav-fg: #9090b4;
   --bpmn-nav-fg-active: #ffffff;
   --bpmn-nav-width: 220px;
   --bpmn-header-height: 52px;
 }
 
 [data-theme="dark"] {
-  --bpmn-bg: #0f0f1a;
-  --bpmn-surface: #1a1a2e;
-  --bpmn-surface-2: #222240;
-  --bpmn-border: #2e2e4e;
-  --bpmn-fg: #e0e0f0;
+  --bpmn-bg: #0d0d16;
+  --bpmn-surface: #161626;
+  --bpmn-surface-2: #1e1e2e;
+  --bpmn-border: #2a2a42;
+  --bpmn-fg: #cdd6f4;
   --bpmn-fg-muted: #8888a8;
-  --bpmn-accent: #4c8ef7;
-  --bpmn-nav-bg: #14141f;
-  --bpmn-nav-fg: #8888aa;
+  --bpmn-accent: #6b9df7;
+  --bpmn-accent-bright: #89b4fa;
+  --bpmn-accent-subtle: rgba(107, 157, 247, 0.15);
+  --bpmn-teal: #2dd4bf;
+  --bpmn-success: #22c55e;
+  --bpmn-warn: #f59e0b;
+  --bpmn-danger: #f87171;
+  --bpmn-panel-bg: rgba(13, 13, 22, 0.92);
+  --bpmn-panel-border: rgba(255, 255, 255, 0.08);
+  --bpmn-nav-bg: #0a0a14;
+  --bpmn-nav-fg: #8888a8;
 }
 `
 
@@ -131,7 +145,6 @@ export const UI_COMPONENTS_CSS = `
 .bpmn-table-th[style*="width"] { flex: none; }
 .bpmn-table-body {
   overflow-y: auto;
-  max-height: calc(100vh - 240px);
 }
 .bpmn-table-row {
   display: flex;
@@ -143,7 +156,7 @@ export const UI_COMPONENTS_CSS = `
 .bpmn-table-row--clickable { cursor: pointer; }
 .bpmn-table-row--clickable:hover { background: var(--bpmn-surface-2); }
 .bpmn-table-td {
-  padding: 10px 14px;
+  padding: 7px 14px;
   font-size: 13px;
   flex: 1;
   overflow: hidden;
@@ -182,17 +195,15 @@ export const UI_COMPONENTS_CSS = `
   position: fixed;
   display: flex; flex-direction: column;
   gap: 1px; padding: 4px;
-  background: var(--bpmn-surface);
-  border: 1px solid var(--bpmn-border);
+  background: var(--bpmn-panel-bg, rgba(255, 255, 255, 0.92));
+  border: 1px solid var(--bpmn-panel-border, rgba(0, 0, 0, 0.08));
   border-radius: var(--bpmn-radius-lg, 10px);
   box-shadow: 0 6px 24px rgba(0,0,0,0.15);
   z-index: 10000; min-width: 140px;
+  backdrop-filter: blur(12px);
 }
 .bpmn-theme-dropdown[data-theme="dark"] {
-  background: rgba(20, 20, 28, 0.96);
-  border-color: rgba(255,255,255,0.1);
   box-shadow: 0 6px 24px rgba(0,0,0,0.5);
-  backdrop-filter: blur(12px);
 }
 .bpmn-theme-item {
   display: flex; align-items: center; gap: 8px;
@@ -213,7 +224,7 @@ export const UI_COMPONENTS_CSS = `
   color: var(--bpmn-accent, #1a56db);
   display: flex; align-items: center;
 }
-.bpmn-theme-dropdown[data-theme="dark"] .bpmn-theme-item-check { color: #4c8ef7; }
+.bpmn-theme-dropdown[data-theme="dark"] .bpmn-theme-item-check { color: var(--bpmn-accent, #6b9df7); }
 .bpmn-theme-item-icon {
   width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7;
   display: flex; align-items: center;

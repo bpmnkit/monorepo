@@ -1,4 +1,8 @@
+import type { CanvasPlugin } from "@bpmn-sdk/canvas"
 import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import { createConfigPanelPlugin } from "@bpmn-sdk/plugins/config-panel"
+import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/plugins/config-panel-bpmn"
 import { createTokenHighlightPlugin } from "@bpmn-sdk/plugins/token-highlight"
 import { badge } from "../components/badge.js"
 import { MOCK_BPMN_XML, MOCK_INCIDENTS } from "../mock-data.js"
@@ -89,10 +93,11 @@ export function createIncidentDetailView(
 	// Sidebar pane
 	const sidebar = document.createElement("div")
 	sidebar.className = "op-detail-sidebar"
+	sidebar.dataset.bpmnHudTheme = cfg.theme
 	layout.appendChild(sidebar)
 
 	// Tabs
-	const tabNames = ["Details", "AI Assist"]
+	const tabNames = ["Details", "Properties", "AI Assist"]
 	const tabBar = document.createElement("div")
 	tabBar.className = "op-detail-tabs"
 	const tabPanels: HTMLElement[] = []
@@ -125,6 +130,43 @@ export function createIncidentDetailView(
 	detailsPanel.className = "op-detail-panel"
 	tabPanels.push(detailsPanel)
 	sidebar.appendChild(detailsPanel)
+
+	const propsPane = document.createElement("div")
+	propsPane.className = "op-detail-panel op-props-pane"
+	propsPane.style.display = "none"
+	tabPanels.push(propsPane)
+	sidebar.appendChild(propsPane)
+
+	const propsPlaceholder = document.createElement("div")
+	propsPlaceholder.className = "op-props-placeholder"
+	propsPlaceholder.textContent = "Click an element to view its properties"
+	propsPane.appendChild(propsPlaceholder)
+
+	// Config panel (read-only: applyChange is a no-op)
+	let latestDefs: BpmnDefinitions | null = null
+	const configPanel = createConfigPanelPlugin({
+		getDefinitions: () => latestDefs,
+		applyChange: () => {},
+		container: propsPane,
+		onPanelShow: () => {
+			propsPlaceholder.style.display = "none"
+		},
+		onPanelHide: () => {
+			propsPlaceholder.style.display = ""
+		},
+	})
+	const configPanelBpmn = createConfigPanelBpmnPlugin(configPanel)
+	const bridgePlugin: CanvasPlugin = {
+		name: "op-select-bridge",
+		install(api) {
+			type AnyEmit = (event: string, ...args: unknown[]) => void
+			const emit = api.emit.bind(api) as unknown as AnyEmit
+			api.on("element:click", (id) => emit("editor:select", [id]))
+			api.on("diagram:load", (defs) => {
+				latestDefs = defs
+			})
+		},
+	}
 
 	const aiPanel = document.createElement("div")
 	aiPanel.className = "op-detail-panel"
@@ -229,7 +271,7 @@ export function createIncidentDetailView(
 			container: canvasWrap,
 			xml,
 			theme: cfg.theme,
-			plugins: [tokenHighlight],
+			plugins: [tokenHighlight, bridgePlugin, configPanel, configPanelBpmn],
 		})
 	}
 

@@ -1,0 +1,350 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro"
+import type { TutorialManifest, TutorialStep } from "../../lib/types.js"
+import { tutorials } from "../../tutorials/index.js"
+
+export async function getStaticPaths() {
+	const paths: {
+		params: { id: string; step: string }
+		props: { tutorial: TutorialManifest; step: TutorialStep; stepIndex: number }
+	}[] = []
+
+	for (const t of tutorials) {
+		for (let i = 0; i < t.steps.length; i++) {
+			const s = t.steps[i]
+			if (!s) continue
+			paths.push({
+				params: { id: t.id, step: String(i + 1) },
+				props: { tutorial: t, step: s, stepIndex: i },
+			})
+		}
+	}
+
+	return paths
+}
+
+const { tutorial, step, stepIndex } = Astro.props as {
+	tutorial: TutorialManifest
+	step: TutorialStep
+	stepIndex: number
+}
+
+const totalSteps = tutorial.steps.length
+const stepNum = stepIndex + 1
+const progressPct = Math.round((stepNum / totalSteps) * 100)
+
+const prevUrl = stepIndex > 0 ? `/${tutorial.id}/${stepNum - 1}` : `/${tutorial.id}`
+const nextUrl = stepIndex + 1 < totalSteps ? `/${tutorial.id}/${stepNum + 1}` : `/${tutorial.id}`
+
+const estimatedMin = step.estimatedSeconds ? Math.ceil(step.estimatedSeconds / 60) : 1
+
+const isWebEditor = step.mode === "web-editor"
+const isCli = step.mode === "cli"
+
+// Escape characters that would be mangled by HTML parsing when the JSON is
+// embedded in a <script> tag. \u003c / \u003e / \u0026 are valid JSON
+// Unicode escapes that JSON.parse decodes back to < > & correctly.
+const stepConfigJson = JSON.stringify({
+	tutorialId: tutorial.id,
+	stepIndex,
+	totalSteps,
+	step,
+})
+	.replace(/&/g, "\\u0026")
+	.replace(/</g, "\\u003c")
+	.replace(/>/g, "\\u003e")
+
+// Simple markdown → HTML renderer for the content pane
+function renderMarkdown(md: string): string {
+	return md
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/^## (.+)$/gm, "<h2>$1</h2>")
+		.replace(/^### (.+)$/gm, "<h3>$1</h3>")
+		.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+		.replace(/`([^`]+)`/g, "<code>$1</code>")
+		.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
+		.replace(/^- ✓ (.+)$/gm, "<li>✓ $1</li>")
+		.replace(/^- (.+)$/gm, "<li>$1</li>")
+		.replace(/^(\d+)\. (.+)$/gm, "<li>$2</li>")
+		.replace(/\n\n/g, "</p><p>")
+		.replace(/^(?!<[hbli])(.+)$/gm, "<p>$1</p>")
+		.replace(/<\/li>\n<li>/g, "</li><li>")
+		.replace(/(<li>.*<\/li>)/gs, "<ul>$1</ul>")
+}
+
+const contentHtml = renderMarkdown(step.content)
+---
+
+<BaseLayout title={`${step.title} — ${tutorial.title}`}>
+  <div class="step-page">
+    <!-- Step header bar -->
+    <div class="step-header">
+      <div class="step-breadcrumb">
+        <a href={`/${tutorial.id}`}>{tutorial.title}</a>
+      </div>
+      <span class="step-counter">Step {stepNum} of {totalSteps}</span>
+      <div class="step-title-bar">{step.title}</div>
+      <span class="step-time-badge">~{estimatedMin} min</span>
+      <a href={prevUrl} class="step-btn step-btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+        ← Back
+      </a>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-bar">
+      <div class="progress-fill" style={`width: ${progressPct}%`}></div>
+    </div>
+
+    <!-- Body: split pane -->
+    <div class="step-body">
+      <!-- Left: content pane -->
+      <div class="step-content-pane">
+        <div class="step-content-scroll">
+          <div class="step-prose" set:html={contentHtml} />
+        </div>
+
+        <div class="step-nav-area">
+          <!-- Hints -->
+          <div id="hints-container" class="hints-container"></div>
+          {step.hints.length > 0 && (
+            <button id="hint-btn" class="hint-reveal-btn">
+              💡 Show a hint ({step.hints.length} available)
+            </button>
+          )}
+
+          <!-- Validation banner -->
+          <div id="validation-banner" class="validation-banner" style="display:none"></div>
+
+          <!-- Action buttons -->
+          <div class="step-actions">
+            {step.validation.type === "manual" ? (
+              <button id="check-btn" class="step-btn step-btn-primary">
+                I did it! →
+              </button>
+            ) : (
+              <button id="check-btn" class="step-btn step-btn-primary">
+                Check my work
+              </button>
+            )}
+          </div>
+
+          <!-- Next section (shown after success) -->
+          <div id="next-section" class="next-section">
+            <a id="next-btn" href={nextUrl} class="step-btn step-btn-success">
+              {stepIndex + 1 < totalSteps ? "Next step →" : "Finish tutorial →"}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: interactive pane -->
+      <div class="step-interactive-pane">
+        {isWebEditor && (
+          <div class="canvas-pane">
+            <div class="canvas-pane-label">Interactive BPMN Editor</div>
+            <div id="learn-canvas"></div>
+          </div>
+        )}
+
+        {isCli && step.commands && (
+          <div class="cli-pane">
+            <h3>Run in your terminal</h3>
+            {step.commands.map((cmd) => (
+              <div class="cli-command-block">
+                <div class="cli-command-label">{cmd.label}</div>
+                <div class="cli-command-code">
+                  <span class="cli-command-text">{cmd.command}</span>
+                  <button class="cli-copy-btn" data-copy={cmd.command}>Copy</button>
+                </div>
+                {cmd.expectedOutput && (
+                  <div class="expected-output">
+                    <div class="expected-output-label">Expected output</div>
+                    {cmd.expectedOutput}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!isWebEditor && !isCli && (
+          <div class="reading-pane">
+            <div class="reading-pane-icon">📖</div>
+            <span>Read the content on the left and click when done.</span>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <!-- Completion overlay (shown on last step complete) -->
+  <div id="completion-overlay" class="completion-overlay">
+    <div class="completion-card">
+      <div class="confetti-container">
+        <div class="confetti-piece"></div>
+        <div class="confetti-piece"></div>
+        <div class="confetti-piece"></div>
+        <div class="confetti-piece"></div>
+        <div class="confetti-piece"></div>
+        <div class="confetti-piece"></div>
+        <div class="confetti-piece"></div>
+      </div>
+      <div class="completion-burst">🎉</div>
+      <h2>Tutorial complete!</h2>
+      <p>You finished <strong>{tutorial.title}</strong>. Great work — you've learned the fundamentals of BPMN modeling.</p>
+      <div class="completion-actions">
+        <a href="/" class="btn-primary">Browse more tutorials</a>
+        <a href={`/${tutorial.id}`} class="btn-secondary">Back to overview</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step config for client runtime -->
+  <script is:inline type="application/json" id="step-config" set:html={stepConfigJson}></script>
+</BaseLayout>
+
+<script>
+  import { BpmnEditor, initEditorHud } from "@bpmn-sdk/editor"
+  import { Engine } from "@bpmn-sdk/engine"
+  import { createProcessRunnerPlugin } from "@bpmn-sdk/plugins/process-runner"
+  import { createTokenHighlightPlugin } from "@bpmn-sdk/plugins/token-highlight"
+  import { markStepComplete, loadProgress, saveCanvasXml } from "../../lib/progress.js"
+  import { validateStep } from "../../lib/validation.js"
+  import type { TutorialStep } from "../../lib/types.js"
+
+  interface StepConfig {
+    tutorialId: string
+    stepIndex: number
+    totalSteps: number
+    step: TutorialStep
+  }
+
+  // Parse config
+  const configEl = document.getElementById("step-config")
+  if (!configEl) throw new Error("Missing step config")
+  const config = JSON.parse(configEl.textContent ?? "{}") as StepConfig
+  const { tutorialId, stepIndex, totalSteps, step } = config
+
+  // Restore saved XML or use initialXml
+  const savedProgress = loadProgress(tutorialId)
+  const xml = savedProgress?.savedXml ?? step.initialXml ?? ""
+
+  // Initialize interactive pane
+  const canvasContainer = document.getElementById("learn-canvas")
+
+  let editor: BpmnEditor | null = null
+
+  if (step.mode === "web-editor" && canvasContainer && xml) {
+    const engine = new Engine()
+    const tokenHighlight = createTokenHighlightPlugin()
+    const processRunner = createProcessRunnerPlugin({ engine, tokenHighlight })
+
+    editor = new BpmnEditor({
+      container: canvasContainer,
+      xml,
+      theme: "dark",
+      fit: "center",
+      plugins: [tokenHighlight, processRunner],
+    })
+
+    initEditorHud(editor, { playButton: processRunner.playButton })
+
+    // Save XML on every change
+    editor.on("diagram:change", () => {
+      const currentXml = editor?.exportXml()
+      if (currentXml) saveCanvasXml(tutorialId, currentXml)
+    })
+  }
+
+  // Hint system
+  let hintsShown = 0
+  const hintBtn = document.getElementById("hint-btn") as HTMLButtonElement | null
+  const hintsContainer = document.getElementById("hints-container")
+
+  if (hintBtn && hintsContainer) {
+    hintBtn.addEventListener("click", () => {
+      if (hintsShown < step.hints.length) {
+        const hintEl = document.createElement("div")
+        hintEl.className = `hint-item hint-level-${hintsShown + 1}`
+        hintEl.textContent = step.hints[hintsShown] ?? ""
+        hintsContainer.appendChild(hintEl)
+        hintsShown++
+        if (hintsShown >= step.hints.length) {
+          hintBtn.textContent = "No more hints"
+          hintBtn.disabled = true
+        } else {
+          hintBtn.textContent = `Show another hint (${step.hints.length - hintsShown} left)`
+        }
+      }
+    })
+  }
+
+  // Validation / "I'm done" button
+  const checkBtn = document.getElementById("check-btn") as HTMLButtonElement | null
+  const validationBanner = document.getElementById("validation-banner")
+  const nextSection = document.getElementById("next-section")
+  const nextBtn = document.getElementById("next-btn") as HTMLAnchorElement | null
+
+  function showValidationResult(passed: boolean, message: string): void {
+    if (!validationBanner) return
+    validationBanner.textContent = message
+    validationBanner.className = passed
+      ? "validation-banner validation-success"
+      : "validation-banner validation-error"
+    validationBanner.style.display = "block"
+  }
+
+  if (checkBtn) {
+    checkBtn.addEventListener("click", () => {
+      const result = validateStep(step.validation, canvasContainer)
+      showValidationResult(result.passed, result.message)
+      if (result.passed) {
+        markStepComplete(tutorialId, stepIndex, totalSteps)
+        checkBtn.style.display = "none"
+        if (nextSection) nextSection.style.display = "block"
+        if (stepIndex + 1 >= totalSteps) {
+          const overlay = document.getElementById("completion-overlay")
+          if (overlay) overlay.style.display = "flex"
+        }
+      }
+    })
+  }
+
+  // Update next button href (already set statically, but ensure it's correct)
+  if (nextBtn) {
+    const nextStepIndex = stepIndex + 1
+    if (nextStepIndex < totalSteps) {
+      nextBtn.href = `/${tutorialId}/${nextStepIndex + 1}`
+      nextBtn.textContent = "Next step →"
+    } else {
+      nextBtn.href = `/${tutorialId}`
+      nextBtn.textContent = "Back to overview →"
+    }
+  }
+
+  // CLI copy buttons
+  const copyBtns = document.querySelectorAll<HTMLButtonElement>(".cli-copy-btn[data-copy]")
+  for (const btn of copyBtns) {
+    btn.addEventListener("click", async () => {
+      const text = btn.dataset.copy
+      if (!text) return
+      try {
+        await navigator.clipboard.writeText(text)
+        btn.textContent = "Copied!"
+        setTimeout(() => { btn.textContent = "Copy" }, 1500)
+      } catch {
+        // ignore clipboard errors
+      }
+    })
+  }
+
+  // Close completion overlay on backdrop click
+  const overlay = document.getElementById("completion-overlay")
+  if (overlay) {
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.style.display = "none"
+    })
+  }
+</script>

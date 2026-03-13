@@ -41,6 +41,7 @@ export class ConfigPanelRenderer {
 	private readonly _onPanelShow: (() => void) | null
 	private readonly _onPanelHide: (() => void) | null
 	private readonly _openInPlayground: ((expression: string) => void) | null
+	private readonly _readonly: boolean
 
 	private _panelEl: HTMLElement | null = null
 	/** SVG group appended to the canvas viewport; holds all validation badges. */
@@ -84,6 +85,7 @@ export class ConfigPanelRenderer {
 			onPanelShow?: () => void
 			onPanelHide?: () => void
 			openInPlayground?: (expression: string) => void
+			readonly?: boolean
 		},
 	) {
 		this._schemas = schemas
@@ -95,6 +97,7 @@ export class ConfigPanelRenderer {
 		this._onPanelShow = opts?.onPanelShow ?? null
 		this._onPanelHide = opts?.onPanelHide ?? null
 		this._openInPlayground = opts?.openInPlayground ?? null
+		this._readonly = opts?.readonly ?? false
 
 		// Restore persisted panel width (only used in standalone mode)
 		if (!this._container) {
@@ -149,8 +152,15 @@ export class ConfigPanelRenderer {
 				return
 			}
 			const defs = this._getDefinitions()
-			const isSequenceFlow = defs?.processes.some((p) => p.sequenceFlows.some((f) => f.id === id))
-			if (!isSequenceFlow) {
+			// Check top-level and subprocess sequence flows
+			const allFlows = defs?.processes.flatMap((p) => [
+				...p.sequenceFlows,
+				...p.flowElements.flatMap((el) =>
+					"sequenceFlows" in el && Array.isArray(el.sequenceFlows) ? el.sequenceFlows : [],
+				),
+			])
+			const sf = allFlows?.find((f) => f.id === id)
+			if (!sf) {
 				this._close()
 				return
 			}
@@ -162,8 +172,7 @@ export class ConfigPanelRenderer {
 
 			this._selectedId = id
 			this._selectedType = "sequenceFlow"
-			const sf = defs?.processes.flatMap((p) => p.sequenceFlows).find((f) => f.id === id)
-			this._elementName = sf?.name ?? ""
+			this._elementName = sf.name ?? ""
 			this._effectiveReg = reg
 
 			this._refreshValues(reg)
@@ -1038,6 +1047,7 @@ export class ConfigPanelRenderer {
 						isFeelMode ? "Switch to plain string" : "Switch to FEEL expression",
 					)
 					modeBtn.textContent = isFeelMode ? "FEEL" : "string"
+					if (this._readonly) modeBtn.disabled = true
 					modeBtn.addEventListener("click", () => {
 						const cur = this._values[field.key]
 						const curStr = typeof cur === "string" ? cur : ""
@@ -1118,19 +1128,23 @@ export class ConfigPanelRenderer {
 		ta.setAttribute("data-field-key", field.key)
 		ta.setAttribute("data-feel-field", "true")
 		ta.setAttribute("spellcheck", "false")
-		ta.addEventListener("change", () => {
-			const raw = ta.value
-			const curVal = this._values[field.key]
-			const inFeelMode =
-				field.feelFixed === true || (typeof curVal === "string" && curVal.startsWith("="))
-			if (inFeelMode) {
-				// Strip any stray leading "=" the user might have typed, then prepend "=".
-				const body = raw.startsWith("=") ? raw.slice(1) : raw
-				this._applyField(field.key, body !== "" ? `=${body}` : "")
-			} else {
-				this._applyField(field.key, raw)
-			}
-		})
+		if (this._readonly) {
+			ta.readOnly = true
+		} else {
+			ta.addEventListener("change", () => {
+				const raw = ta.value
+				const curVal = this._values[field.key]
+				const inFeelMode =
+					field.feelFixed === true || (typeof curVal === "string" && curVal.startsWith("="))
+				if (inFeelMode) {
+					// Strip any stray leading "=" the user might have typed, then prepend "=".
+					const body = raw.startsWith("=") ? raw.slice(1) : raw
+					this._applyField(field.key, body !== "" ? `=${body}` : "")
+				} else {
+					this._applyField(field.key, raw)
+				}
+			})
+		}
 		wrap.appendChild(ta)
 
 		if (field.openInPlayground ?? this._openInPlayground) {
@@ -1165,7 +1179,11 @@ export class ConfigPanelRenderer {
 		input.placeholder = field.placeholder ?? ""
 		input.value = typeof value === "string" ? value : ""
 		input.setAttribute("data-field-key", field.key)
-		input.addEventListener("change", () => this._applyField(field.key, input.value))
+		if (this._readonly) {
+			input.readOnly = true
+		} else {
+			input.addEventListener("change", () => this._applyField(field.key, input.value))
+		}
 		return input
 	}
 
@@ -1175,7 +1193,11 @@ export class ConfigPanelRenderer {
 		ta.placeholder = field.placeholder ?? ""
 		ta.value = typeof value === "string" ? value : ""
 		ta.setAttribute("data-field-key", field.key)
-		ta.addEventListener("change", () => this._applyField(field.key, ta.value))
+		if (this._readonly) {
+			ta.readOnly = true
+		} else {
+			ta.addEventListener("change", () => this._applyField(field.key, ta.value))
+		}
 		return ta
 	}
 
@@ -1190,7 +1212,11 @@ export class ConfigPanelRenderer {
 			sel.appendChild(option)
 		}
 		sel.value = typeof value === "string" ? value : (field.options?.[0]?.value ?? "")
-		sel.addEventListener("change", () => this._applyField(field.key, sel.value))
+		if (this._readonly) {
+			sel.disabled = true
+		} else {
+			sel.addEventListener("change", () => this._applyField(field.key, sel.value))
+		}
 		return sel
 	}
 
@@ -1205,6 +1231,11 @@ export class ConfigPanelRenderer {
 		input.type = "checkbox"
 		input.checked = value === true || value === "true"
 		input.setAttribute("data-field-key", field.key)
+		if (this._readonly) {
+			input.disabled = true
+		} else {
+			input.addEventListener("change", () => this._applyField(field.key, input.checked))
+		}
 
 		const track = document.createElement("span")
 		track.className = "bpmn-cfg-toggle-track"
@@ -1221,8 +1252,6 @@ export class ConfigPanelRenderer {
 		labelText.textContent = field.label
 		if (field.tooltip) labelText.title = field.tooltip
 
-		input.addEventListener("change", () => this._applyField(field.key, input.checked))
-
 		row.appendChild(lbl)
 		row.appendChild(labelText)
 		return row
@@ -1234,9 +1263,13 @@ export class ConfigPanelRenderer {
 		btn.className = "bpmn-cfg-action-btn"
 		btn.textContent = field.label
 		if (field.tooltip) btn.title = field.tooltip
-		btn.addEventListener("click", () =>
-			field.onClick?.(this._values, (k, v) => this._applyField(k, v)),
-		)
+		if (this._readonly) {
+			btn.disabled = true
+		} else {
+			btn.addEventListener("click", () =>
+				field.onClick?.(this._values, (k, v) => this._applyField(k, v)),
+			)
+		}
 		return btn
 	}
 }

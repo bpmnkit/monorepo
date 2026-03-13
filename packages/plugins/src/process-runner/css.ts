@@ -15,7 +15,7 @@ const CSS = `
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(22, 22, 30, 0.88);
+  background: var(--bpmn-panel-bg, rgba(13,13,22,0.92));
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 8px;
   backdrop-filter: blur(12px);
@@ -208,7 +208,7 @@ const CSS = `
 }
 
 .bpmn-runner-modal-error {
-  color: #dc2626;
+  color: var(--bpmn-danger, #dc2626);
   font-size: 12px;
   margin-top: 6px;
   min-height: 18px;
@@ -280,7 +280,7 @@ const CSS = `
   transition: color 0.1s, border-color 0.1s;
 }
 .bpmn-runner-play-tab:hover { color: rgba(255,255,255,0.75); }
-.bpmn-runner-play-tab--active { color: #4c8ef7; border-bottom-color: #4c8ef7; }
+.bpmn-runner-play-tab--active { color: var(--bpmn-accent, #6b9df7); border-bottom-color: var(--bpmn-accent, #6b9df7); }
 
 .bpmn-runner-play-pane {
   flex: 1;
@@ -365,7 +365,7 @@ const CSS = `
 }
 .bpmn-runner-play-error-msg {
   font-size: 12px;
-  color: #f87171;
+  color: var(--bpmn-danger, #f87171);
 }
 
 /* ── Input variables tab ──────────────────────────────────────────────────── */
@@ -389,7 +389,7 @@ const CSS = `
 .bpmn-runner-play-ivar-name { width: 90px; flex-shrink: 0; }
 .bpmn-runner-play-ivar-value { flex: 1; min-width: 0; }
 .bpmn-runner-play-ivar-name:focus,
-.bpmn-runner-play-ivar-value:focus { outline: none; border-color: #4c8ef7; }
+.bpmn-runner-play-ivar-value:focus { outline: none; border-color: var(--bpmn-accent, #6b9df7); }
 .bpmn-runner-play-ivar-eq { color: rgba(255,255,255,0.3); font-size: 12px; flex-shrink: 0; }
 .bpmn-runner-play-ivar-del {
   background: none;
@@ -401,7 +401,7 @@ const CSS = `
   flex-shrink: 0;
   line-height: 1;
 }
-.bpmn-runner-play-ivar-del:hover { color: #f87171; }
+.bpmn-runner-play-ivar-del:hover { color: var(--bpmn-danger, #f87171); }
 .bpmn-runner-play-ivar-add {
   display: flex;
   align-items: center;
@@ -418,14 +418,14 @@ const CSS = `
   margin-top: 8px;
   box-sizing: border-box;
 }
-.bpmn-runner-play-ivar-add:hover { border-color: #4c8ef7; color: #4c8ef7; }
+.bpmn-runner-play-ivar-add:hover { border-color: var(--bpmn-accent, #6b9df7); color: var(--bpmn-accent, #6b9df7); }
 
 /* ── Light theme overrides ───────────────────────────────────────────────── */
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-panel { color: rgba(0,0,0,0.75); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-tabs { border-bottom-color: rgba(0,0,0,0.07); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-tab { color: rgba(0,0,0,0.4); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-tab:hover { color: rgba(0,0,0,0.7); }
-[data-bpmn-hud-theme="light"] .bpmn-runner-play-tab--active { color: #1a56db; border-bottom-color: #1a56db; }
+[data-bpmn-hud-theme="light"] .bpmn-runner-play-tab--active { color: var(--bpmn-accent, #1a56db); border-bottom-color: var(--bpmn-accent, #1a56db); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-empty { color: rgba(0,0,0,0.3); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-var-name { color: rgba(0,0,0,0.6); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-var-value { color: #0369a1; }
@@ -438,7 +438,7 @@ const CSS = `
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-feel-row { border-bottom-color: rgba(0,0,0,0.05); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-error-row { border-bottom-color: rgba(0,0,0,0.06); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-error-id { color: rgba(220,38,38,0.7); }
-[data-bpmn-hud-theme="light"] .bpmn-runner-play-error-msg { color: #dc2626; }
+[data-bpmn-hud-theme="light"] .bpmn-runner-play-error-msg { color: var(--bpmn-danger, #dc2626); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-row { border-bottom-color: rgba(0,0,0,0.06); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-name,
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-value {
@@ -448,12 +448,12 @@ const CSS = `
 }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-eq { color: rgba(0,0,0,0.3); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-del { color: rgba(0,0,0,0.3); }
-[data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-del:hover { color: #dc2626; }
+[data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-del:hover { color: var(--bpmn-danger, #dc2626); }
 [data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-add {
   border-color: rgba(0,0,0,0.2);
   color: rgba(0,0,0,0.4);
 }
-[data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-add:hover { border-color: #1a56db; color: #1a56db; }
+[data-bpmn-hud-theme="light"] .bpmn-runner-play-ivar-add:hover { border-color: var(--bpmn-accent, #1a56db); color: var(--bpmn-accent, #1a56db); }
 `
 
 export function injectProcessRunnerStyles(): void {

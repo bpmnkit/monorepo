@@ -1,5 +1,14 @@
 # Features
 
+## Interactive Learning Center (2026-03-13) — `apps/learn`, `packages/astro-shared`
+
+- **`apps/learn`**: Astro v6 app (port 4322) with interactive BPMN tutorials. Tutorial catalog, per-tutorial overview, and step-by-step pages with live BpmnEditor embedded in a split-pane layout.
+- **`packages/astro-shared`**: Shared CSS package (`@bpmn-sdk/astro-shared`) providing `tokens.css` (oklch design tokens), `background.css` (aurora orbs + dot grid + grain), and `site.ts` (SITE metadata).
+- **Tutorial 1 — "Getting started"**: 5-step no-install tutorial: run a process, add a task, connect it with a sequence flow, name it, then run again. Uses `BpmnEditor` + `Engine` + `ProcessRunnerPlugin`.
+- **Progress tracking**: localStorage-based progress (`bpmn_learn_progress`), including saved BPMN XML carried across steps, step completion state, and continue-from-last-step support.
+- **Hint system**: Progressive hint reveal with tiered styling; up to N hints per step.
+- **Validation**: `manual`, `bpmn-element-count`, `bpmn-has-connection`, `bpmn-element-labeled` validators; success/error banners; completion overlay with CSS confetti.
+
 ## Auto-layout (2026-03-11) — `packages/core`, `packages/editor`
 
 - **`Bpmn.autoLayout(xml)`**: applies the Sugiyama layered layout to all processes in a BPMN XML string and returns updated XML with replaced BPMNDi positions.

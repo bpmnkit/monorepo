@@ -7,9 +7,7 @@
 		"bpmn-ai-server": "./dist/index.js",
 		"bpmn-mcp": "./dist/mcp-server.js"
 	},
-	"files": [
-		"dist/**/*.js"
-	],
+	"files": ["dist/**/*.js"],
 	"engines": {
 		"node": ">=20"
 	},
