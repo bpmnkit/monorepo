@@ -1,5 +1,11 @@
 # @bpmn-sdk/feel
 
+## 0.0.8
+
+### Patch Changes
+
+- [#34](https://github.com/bpmn-sdk/monorepo/pull/34) [`a918a93`](https://github.com/bpmn-sdk/monorepo/commit/a918a93d3d57f69c93c963da1b2710a3467a1b19) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Design changes
+
 ## 0.0.7
 
 ### Patch Changes

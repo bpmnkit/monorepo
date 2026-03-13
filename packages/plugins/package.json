@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/plugins",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -97,7 +97,10 @@
 			"types": "./dist/zoom-controls/index.d.ts"
 		}
 	},
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -112,7 +115,15 @@
 		"@bpmn-sdk/feel": "workspace:*"
 	},
 	"description": "22 composable canvas plugins for BPMN editors and viewers — minimap, AI chat, process simulation, storage, and more",
-	"keywords": ["bpmn", "plugins", "canvas", "minimap", "workflow", "typescript", "camunda"],
+	"keywords": [
+		"bpmn",
+		"plugins",
+		"canvas",
+		"minimap",
+		"workflow",
+		"typescript",
+		"camunda"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",

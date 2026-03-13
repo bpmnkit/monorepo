@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/operate",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"description": "Monitoring and operations frontend for Camunda 8 clusters — real-time SSE, zero dependencies",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -11,7 +11,10 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
