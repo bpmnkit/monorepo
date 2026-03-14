@@ -1,6 +1,6 @@
 {
 	"name": "@bpmn-sdk/connector-gen",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -11,7 +11,10 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -22,7 +25,14 @@
 		"yaml": "^2.7.0"
 	},
 	"description": "Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
-	"keywords": ["camunda", "connector", "openapi", "swagger", "bpmn", "element-template"],
+	"keywords": [
+		"camunda",
+		"connector",
+		"openapi",
+		"swagger",
+		"bpmn",
+		"element-template"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
