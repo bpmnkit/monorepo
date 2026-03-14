@@ -16,10 +16,28 @@ export interface Profile {
 	source?: "modeler"
 }
 
+export interface AuditEntry {
+	timestamp: string
+	group: string
+	command: string
+	positional: string[]
+	flags: Record<string, string | boolean | number>
+	status: "ok" | "error"
+	error?: string
+}
+
+export interface Settings {
+	auditLogSize: number
+}
+
+const DEFAULT_AUDIT_LOG_SIZE = 15
+
 interface ConfigStore {
 	profiles: Record<string, CamundaClientInput>
 	active: string | null
 	meta: Record<string, { createdAt: string; apiType?: ApiType }>
+	settings?: Partial<Settings>
+	auditLog?: Record<string, AuditEntry[]>
 }
 
 // ─── Config directory ─────────────────────────────────────────────────────────
@@ -134,4 +152,51 @@ export function useProfile(name: string): boolean {
 
 export function getConfigFilePath(): string {
 	return configFilePath()
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
+export function getSettings(): Settings {
+	const store = readStore()
+	return { auditLogSize: store.settings?.auditLogSize ?? DEFAULT_AUDIT_LOG_SIZE }
+}
+
+export function saveSettings(settings: Partial<Settings>): void {
+	const store = readStore()
+	store.settings = { ...store.settings, ...settings }
+	writeStore(store)
+}
+
+// ─── Audit log ────────────────────────────────────────────────────────────────
+
+export function appendAuditEntry(profile: string, entry: Omit<AuditEntry, "timestamp">): void {
+	const store = readStore()
+	const size = store.settings?.auditLogSize ?? DEFAULT_AUDIT_LOG_SIZE
+	const log = store.auditLog ?? {}
+	const existing = log[profile] ?? []
+	const updated = [...existing, { ...entry, timestamp: new Date().toISOString() }]
+	log[profile] = updated.slice(-size)
+	store.auditLog = log
+	writeStore(store)
+}
+
+export function getAuditLog(profile?: string): AuditEntry[] {
+	const store = readStore()
+	if (!store.auditLog) return []
+	if (profile) return store.auditLog[profile] ?? []
+	return Object.values(store.auditLog)
+		.flat()
+		.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+}
+
+export function clearAuditLog(profile?: string): void {
+	const store = readStore()
+	if (!store.auditLog) return
+	if (profile) {
+		const { [profile]: _removed, ...rest } = store.auditLog
+		store.auditLog = rest
+	} else {
+		store.auditLog = {}
+	}
+	writeStore(store)
 }

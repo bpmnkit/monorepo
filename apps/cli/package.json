@@ -6,9 +6,7 @@
 	"bin": {
 		"casen": "./dist/index.js"
 	},
-	"files": [
-		"dist/**/*.js"
-	],
+	"files": ["dist/**/*.js"],
 	"engines": {
 		"node": ">=20"
 	},
@@ -21,6 +19,7 @@
 	"dependencies": {
 		"@bpmn-sdk/api": "workspace:*",
 		"@bpmn-sdk/ascii": "workspace:*",
+		"@bpmn-sdk/connector-gen": "workspace:*",
 		"@bpmn-sdk/profiles": "workspace:*"
 	},
 	"publishConfig": {

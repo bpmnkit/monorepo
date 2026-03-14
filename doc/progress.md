@@ -1,5 +1,43 @@
 # Progress
 
+## 2026-03-14 — `@bpmn-sdk/connector-gen` + `casen connector` command
+
+### New package: `packages/connector-gen` (`@bpmn-sdk/connector-gen`)
+- **`src/types.ts`**: Full OpenAPI 3.x type definitions (minimal subset); connector template types (`ConnectorTemplate`, `PropertyDef`, `Binding`, etc.); generator options
+- **`src/parse-openapi.ts`**: `parseOpenApi()` (auto-detects JSON/YAML), `getOperations()` (enumerate with merged params + body/response schema resolution), `detectDefaultAuth()` (infers from `securitySchemes`), `$ref` helpers
+- **`src/build-template.ts`**: Builds Camunda REST connector element templates per operation — URL field (Hidden or FEEL expression for path params), individual path param inputs, query params FEEL context, headers FEEL context, body (single Text or expanded properties with `--expand-body`), full 5-type auth block with conditions, timeout, output mapping, error expression, retries
+- **`src/write-templates.ts`**: `writeTemplates()` — one JSON file per operation or all in a single array file
+- **`src/catalog.ts`**: `CATALOG` with 6 entries: GitHub, Cloudflare, Stripe, Notion, Resend, OpenAI — each with download URL, suggested idPrefix, default auth type
+- **`src/index.ts`**: High-level `generate()`, `generateFromUrl()`, `generateFromCatalog()` convenience API; re-exports all types and primitives
+- **`tests/build-template.test.ts`**: 27 unit tests covering parsing, operation enumeration, auth detection, template building
+
+### CLI: `casen connector` command group (`apps/cli/src/commands/connector.ts`)
+- `casen connector generate --swagger <file>` — generate from a local OpenAPI/Swagger file (YAML or JSON)
+- `casen connector generate --api <id>` — generate from a catalog entry (downloads spec automatically)
+- `casen connector catalog` — list all catalog entries
+- Flags: `--output`, `--base-url`, `--id-prefix`, `--filter`, `--expand-body`, `--auth`, `--format`, `--dry-run`
+
+## 2026-03-14 — CLI: audit log + settings menu
+
+### Audit log (`packages/profiles`, `apps/cli`)
+- `packages/profiles/src/profile.ts`: added `AuditEntry`, `Settings` types; extended `ConfigStore` with `settings?` and `auditLog?` fields; added `getSettings()`, `saveSettings()`, `appendAuditEntry()`, `getAuditLog()`, `clearAuditLog()` functions
+- `packages/profiles/src/index.ts`: exported all new types and functions
+- `apps/cli/src/run.ts`: records audit entry (with secret redaction) after every CLI command execution (success + error)
+- `apps/cli/src/tui.ts`: records audit entry after every TUI command execution (success + error)
+- Audit log stored in `~/.config/casen/config.json` under `auditLog` key, keyed by profile name
+- Default size: 15 entries per profile; configurable via `settings.auditLogSize`
+
+### Settings command group (`apps/cli/src/commands/settings.ts`)
+- `casen settings` — opens interactive settings TUI
+- `casen settings show` — print current settings
+- `casen settings set <key> <value>` — change a setting (e.g. `audit-log-size`)
+- `casen settings audit-log [--profile] [--limit]` — view audit log
+- `casen settings audit-log-clear [--profile] [--all]` — clear audit log
+
+### Settings TUI (`apps/cli/src/settings-tui.ts`)
+- Interactive settings editor: arrow keys navigate, Enter edits a value inline, ESC cancels, q quits
+- Shows each setting with description; validates numeric input against min/max bounds
+
 ## 2026-03-13 — Welcome screen: hide tab bar and bottom toolbar
 
 - `packages/plugins/src/tabs/tabs-plugin.ts`: `showWelcomeScreen` now hides `tabBar` and adds `bpmn-welcome-active` class to container; `hideWelcomeScreen` restores both

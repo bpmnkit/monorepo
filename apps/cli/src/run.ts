@@ -1,5 +1,6 @@
 import type { RawResponseEvent } from "@bpmn-sdk/api"
 import {
+	appendAuditEntry,
 	createAdminClientFromProfile,
 	createClientFromProfile,
 	getActiveName,
@@ -11,6 +12,7 @@ import { getRuntimeCompletions } from "./completion.js"
 import { printCommandHelp, printGlobalHelp, printGroupHelp, printVersion } from "./help.js"
 import { createNullWriter, createOutputWriter, printRawResponse } from "./output.js"
 import { runProfileManager } from "./profile-tui.js"
+import { runSettingsManager } from "./settings-tui.js"
 import { runGroupTui, runMainTui } from "./tui.js"
 import type { OutputFormat, RunContext } from "./types.js"
 
@@ -122,6 +124,8 @@ export async function run(argv: string[]): Promise<void> {
 	if (positional.length === 1 && !wantHelp) {
 		if (group.name === "profile") {
 			await runProfileManager()
+		} else if (group.name === "settings") {
+			await runSettingsManager()
 		} else if (group.name !== "completion") {
 			const { name: pName, info: pInfo } = buildProfileInfo(profileName)
 			await runGroupTui(group, commandGroups, getClient, getAdminClient, {
@@ -161,6 +165,15 @@ export async function run(argv: string[]): Promise<void> {
 
 	// ── Execute ───────────────────────────────────────────────────────────────
 	const isRaw = flags.raw === true
+	const effectiveProfile = profileName ?? getActiveName() ?? "default"
+
+	// Redact secret-looking flag values before storing in audit log
+	const SECRET_FLAG_RE = /secret|password|token/i
+	const auditFlags: Record<string, string | boolean | number> = {}
+	for (const [k, v] of Object.entries(flags)) {
+		auditFlags[k] = SECRET_FLAG_RE.test(k) ? "***" : v
+	}
+	const auditPositional = positional.slice(2)
 
 	// Wrap client factories to capture the last raw HTTP response
 	// Typed as array to prevent TypeScript's control-flow narrowing from collapsing to never
@@ -182,7 +195,7 @@ export async function run(argv: string[]): Promise<void> {
 
 	const output = isRaw ? createNullWriter() : createOutputWriter(outputFormat, noColor)
 	const ctx: RunContext = {
-		positional: positional.slice(2),
+		positional: auditPositional,
 		flags,
 		output,
 		getClient: instrumentedGetClient,
@@ -191,6 +204,13 @@ export async function run(argv: string[]): Promise<void> {
 
 	try {
 		await cmd.run(ctx)
+		appendAuditEntry(effectiveProfile, {
+			group: group.name,
+			command: cmd.name,
+			positional: auditPositional,
+			flags: auditFlags,
+			status: "ok",
+		})
 		const capture = rawCaptureRef[0]
 		if (isRaw && capture) {
 			printRawResponse(capture, noColor)
@@ -209,6 +229,14 @@ export async function run(argv: string[]): Promise<void> {
 			printRawResponse(capture, noColor)
 		}
 		const msg = err instanceof Error ? err.message : String(err)
+		appendAuditEntry(effectiveProfile, {
+			group: group.name,
+			command: cmd.name,
+			positional: auditPositional,
+			flags: auditFlags,
+			status: "error",
+			error: msg,
+		})
 		printError(msg, colors)
 		if (flags.debug) {
 			process.stderr.write(`\n${String(err)}\n`)

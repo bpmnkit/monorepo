@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"
 import type { AdminApiClient, CamundaClient, RawResponseEvent } from "@bpmn-sdk/api"
 import { renderBpmnAscii } from "@bpmn-sdk/ascii"
+import { appendAuditEntry, getAuditLog, getSettings, saveSettings } from "@bpmn-sdk/profiles"
 import type {
 	ArgSpec,
 	ColumnDef,
@@ -108,6 +109,8 @@ type Screen =
 			scroll: number
 	  }
 	| { kind: "profile"; scroll: number }
+	| { kind: "settings"; cursor: number; editing: boolean; editValue: string; message: string }
+	| { kind: "audit-log"; scroll: number }
 	| {
 			kind: "worker"
 			group: CommandGroup
@@ -992,6 +995,125 @@ function renderProfile(state: TuiState, screen: Extract<Screen, { kind: "profile
 	return lines
 }
 
+// ─── Settings screen ──────────────────────────────────────────────────────────
+
+type SettingsRow =
+	| {
+			kind: "number"
+			key: "auditLogSize"
+			label: string
+			description: string
+			min: number
+			max: number
+	  }
+	| { kind: "action"; id: "show-audit-log"; label: string; description: string }
+
+const SETTINGS_ROWS: SettingsRow[] = [
+	{
+		kind: "number",
+		key: "auditLogSize",
+		label: "Audit Log Size",
+		description: "Number of actions to keep per profile  (0 = disabled)",
+		min: 0,
+		max: 1000,
+	},
+	{
+		kind: "action",
+		id: "show-audit-log",
+		label: "Show Audit Log",
+		description: "View recent commands executed for the active profile",
+	},
+]
+
+function renderSettings(state: TuiState, screen: Extract<Screen, { kind: "settings" }>): string[] {
+	const { cols } = termSize()
+	const settings = getSettings()
+	const labelW = SETTINGS_ROWS.reduce((m, r) => Math.max(m, r.label.length), 0) + 2
+
+	const lines = [renderHeader(["settings"], cols, state.profile), ""]
+
+	for (let i = 0; i < SETTINGS_ROWS.length; i++) {
+		const row = SETTINGS_ROWS[i]
+		if (!row) continue
+		const isCursor = i === screen.cursor
+
+		let valueStr: string
+		if (row.kind === "number") {
+			valueStr =
+				screen.editing && isCursor
+					? cyan(`[${screen.editValue}_]`)
+					: bold(String(settings[row.key]))
+		} else {
+			valueStr = dim("→")
+		}
+
+		const labelPart = padEnd(isCursor ? cyan(row.label) : row.label, labelW)
+		const content = `  ${labelPart}  ${valueStr}`
+		lines.push(isCursor ? inv(content.padEnd(cols - 1)) : content)
+	}
+
+	const row = SETTINGS_ROWS[screen.cursor]
+	if (row) {
+		lines.push("")
+		lines.push(`  ${dim(row.description)}`)
+	}
+
+	lines.push("")
+	if (screen.message) {
+		lines.push(`  ${screen.message}`)
+	} else if (screen.editing) {
+		lines.push(
+			`  ${dim("type")} new value  ${cyan("enter")} save  ${cyan("esc")} cancel  ${dim("bksp")} delete`,
+		)
+	} else {
+		lines.push(
+			`  ${dim("↑↓")} navigate  ${cyan("enter")} select  ${cyan("esc")} back  ${cyan("q")} quit`,
+		)
+	}
+	return lines
+}
+
+// ─── Audit log screen ─────────────────────────────────────────────────────────
+
+function renderAuditLog(state: TuiState, screen: Extract<Screen, { kind: "audit-log" }>): string[] {
+	const { cols, rows } = termSize()
+	const viewH = Math.max(3, rows - 8)
+	const entries = getAuditLog(state.profile || undefined)
+
+	const lines = [renderHeader(["settings", "audit log"], cols, state.profile), ""]
+
+	if (entries.length === 0) {
+		lines.push(`  ${dim(`No audit log entries for profile "${state.profile || "default"}".`)}`)
+	} else {
+		const tsW = 19
+		const stW = 5
+		const cmdW = Math.max(20, cols - tsW - stW - 8)
+		lines.push(
+			`  ${dim(padEnd("TIME", tsW + 2))}  ${dim(padEnd("COMMAND", cmdW))}  ${dim("STATUS")}`,
+		)
+		lines.push(`  ${dim("─".repeat(cols - 4))}`)
+
+		const visible = entries.slice(screen.scroll, screen.scroll + viewH)
+		for (const e of visible) {
+			const ts = dim(e.timestamp.replace("T", " ").slice(0, tsW))
+			const cmd = fit(
+				`${e.group} ${e.command}${e.positional.length ? ` ${e.positional.join(" ")}` : ""}`,
+				cmdW,
+			)
+			const status = e.status === "ok" ? green("ok") : red("err")
+			lines.push(`  ${ts}  ${padEnd(cmd, cmdW)}  ${status}`)
+		}
+
+		if (entries.length > viewH) {
+			const hi = Math.min(screen.scroll + viewH, entries.length)
+			lines.push(`\n  ${dim(`${screen.scroll + 1}–${hi} of ${entries.length}`)}`)
+		}
+	}
+
+	lines.push(`\n  ${dim("↑↓")} scroll  ${cyan("esc")} back  ${cyan("q")} quit`)
+	return lines
+}
+
 function renderWorker(state: TuiState, screen: Extract<Screen, { kind: "worker" }>): string[] {
 	const { cols, rows } = termSize()
 	const viewH = Math.max(3, rows - 13)
@@ -1369,6 +1491,12 @@ function render(state: TuiState): void {
 		case "profile":
 			lines = renderProfile(state, screen)
 			break
+		case "settings":
+			lines = renderSettings(state, screen)
+			break
+		case "audit-log":
+			lines = renderAuditLog(state, screen)
+			break
 		case "worker":
 			lines = renderWorker(state, screen)
 			break
@@ -1445,7 +1573,17 @@ function handleMainKey(
 		case "\r":
 		case "\n": {
 			const group = groups[screen.cursor]
-			if (group) state.stack.push({ kind: "commands", group, cursor: 0, search: "" })
+			if (group?.name === "settings") {
+				state.stack.push({
+					kind: "settings",
+					cursor: 0,
+					editing: false,
+					editValue: "",
+					message: "",
+				})
+			} else if (group) {
+				state.stack.push({ kind: "commands", group, cursor: 0, search: "" })
+			}
 			break
 		}
 		default:
@@ -1567,8 +1705,20 @@ async function executeCommand(
 		return client
 	}
 	const ctx = buildContext(screen.cmd, screen.fields, writer, getClient, getAdminClient)
+	const SECRET_FLAG_RE = /secret|password|token/i
+	const auditFlags: Record<string, string | boolean | number> = {}
+	for (const [k, v] of Object.entries(ctx.flags)) {
+		auditFlags[k] = SECRET_FLAG_RE.test(k) ? "***" : v
+	}
 	try {
 		await screen.cmd.run(ctx)
+		appendAuditEntry(state.profile || "default", {
+			group: screen.group.name,
+			command: screen.cmd.name,
+			positional: ctx.positional,
+			flags: auditFlags,
+			status: "ok",
+		})
 		const output = get()
 		// Try to generate ASCII art for BPMN XML output
 		if (output.type === "messages" && output.lines.length > 0) {
@@ -1595,7 +1745,16 @@ async function executeCommand(
 			scroll: 0,
 		})
 	} catch (err) {
-		screen.error = err instanceof Error ? err.message : String(err)
+		const msg = err instanceof Error ? err.message : String(err)
+		appendAuditEntry(state.profile || "default", {
+			group: screen.group.name,
+			command: screen.cmd.name,
+			positional: ctx.positional,
+			flags: auditFlags,
+			status: "error",
+			error: msg,
+		})
+		screen.error = msg
 	} finally {
 		screen.running = false
 	}
@@ -2414,6 +2573,97 @@ function handleProfileKey(
 	render(state)
 }
 
+function handleSettingsKey(
+	key: string,
+	screen: Extract<Screen, { kind: "settings" }>,
+	state: TuiState,
+	done: () => void,
+): void {
+	screen.message = ""
+
+	if (screen.editing) {
+		if (key === "\r" || key === "\n") {
+			const row = SETTINGS_ROWS[screen.cursor]
+			if (row?.kind === "number") {
+				const n = Number(screen.editValue)
+				if (!Number.isNaN(n) && n >= row.min && n <= row.max) {
+					saveSettings({ [row.key]: Math.floor(n) })
+					screen.message = green(`✓ Saved: ${row.label} = ${Math.floor(n)}`)
+				} else {
+					screen.message = red(`Invalid — must be a number between ${row.min} and ${row.max}`)
+				}
+			}
+			screen.editing = false
+			screen.editValue = ""
+		} else if (key === "\x1b") {
+			screen.editing = false
+			screen.editValue = ""
+		} else if (key === "\x7f" || key === "\x08") {
+			screen.editValue = screen.editValue.slice(0, -1)
+		} else if (key >= "0" && key <= "9") {
+			screen.editValue += key
+		}
+		render(state)
+		return
+	}
+
+	switch (key) {
+		case "\x1b[A":
+			if (screen.cursor > 0) screen.cursor--
+			break
+		case "\x1b[B":
+			if (screen.cursor < SETTINGS_ROWS.length - 1) screen.cursor++
+			break
+		case "\r":
+		case "\n": {
+			const row = SETTINGS_ROWS[screen.cursor]
+			if (row?.kind === "number") {
+				screen.editing = true
+				screen.editValue = String(getSettings()[row.key])
+			} else if (row?.kind === "action" && row.id === "show-audit-log") {
+				state.stack.push({ kind: "audit-log", scroll: 0 })
+			}
+			break
+		}
+		case "\x1b":
+			state.stack.pop()
+			break
+		case "q":
+		case "Q":
+			done()
+			return
+	}
+	render(state)
+}
+
+function handleAuditLogKey(
+	key: string,
+	screen: Extract<Screen, { kind: "audit-log" }>,
+	state: TuiState,
+	done: () => void,
+): void {
+	const { rows } = termSize()
+	const viewH = Math.max(3, rows - 8)
+	const total = getAuditLog(state.profile || undefined).length
+
+	switch (key) {
+		case "\x1b[A":
+			if (screen.scroll > 0) screen.scroll--
+			break
+		case "\x1b[B":
+			if (screen.scroll < Math.max(0, total - viewH)) screen.scroll++
+			break
+		case "\x1b":
+			state.stack.pop()
+			break
+		case "q":
+		case "Q":
+			done()
+			return
+	}
+	render(state)
+}
+
 function handleWorkerKey(
 	key: string,
 	screen: Extract<Screen, { kind: "worker" }>,
@@ -2487,7 +2737,8 @@ async function handleKey(key: string, state: TuiState, done: () => void): Promis
 	if (key === "p" || key === "P") {
 		const isEditing =
 			(screen.kind === "input" && screen.editing) ||
-			(screen.kind === "json-editor" && screen.editing)
+			(screen.kind === "json-editor" && screen.editing) ||
+			(screen.kind === "settings" && screen.editing)
 		const isProfile = screen.kind === "profile"
 		if (!isEditing && !isProfile) {
 			state.stack.push({ kind: "profile", scroll: 0 })
@@ -2517,6 +2768,12 @@ async function handleKey(key: string, state: TuiState, done: () => void): Promis
 			break
 		case "profile":
 			handleProfileKey(key, screen, state, done)
+			break
+		case "settings":
+			handleSettingsKey(key, screen, state, done)
+			break
+		case "audit-log":
+			handleAuditLogKey(key, screen, state, done)
 			break
 		case "worker":
 			handleWorkerKey(key, screen, state, done)

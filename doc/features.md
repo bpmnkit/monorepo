@@ -1,5 +1,16 @@
 # Features
 
+## OpenAPI → Camunda Connector Generator (2026-03-14) — `packages/connector-gen`, `apps/cli`
+
+- **`@bpmn-sdk/connector-gen`**: Zero-dep (+ `yaml`) library that converts OpenAPI 3.x specs to Camunda REST connector element templates.
+- **Strategy A**: one `.json` template per API operation; job type `io.camunda:http-json:1`.
+- **URL handling**: Hidden field for plain paths; FEEL expression (`="https://base/" + param + "/rest"`) for paths with `{param}` variables.
+- **Auth**: 5-type auth block (noAuth, API key, Basic, Bearer, OAuth2 Client Credentials) with conditions; auto-detected from `securitySchemes` or overrideable via `--auth`.
+- **Body expansion**: `--expand-body` decomposes top-level request body properties into individual typed fields (String / Number / Boolean).
+- **Catalog**: 6 built-in API entries — GitHub, Cloudflare, Stripe, Notion, Resend, OpenAI — with download URLs; `casen connector generate --api github`.
+- **Output**: one file per operation (default) or all in one array file (`--format array`); `--dry-run` prints to stdout.
+- **CLI commands**: `casen connector generate` + `casen connector catalog`.
+
 ## Interactive Learning Center (2026-03-13) — `apps/learn`, `packages/astro-shared`
 
 - **`apps/learn`**: Astro v6 app (port 4322) with interactive BPMN tutorials. Tutorial catalog, per-tutorial overview, and step-by-step pages with live BpmnEditor embedded in a split-pane layout.

@@ -10,10 +10,7 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -25,13 +22,7 @@
 		"@bpmn-sdk/core": "workspace:*"
 	},
 	"description": "Full-featured interactive BPMN editor with undo/redo, HUD, and side-dock UI",
-	"keywords": [
-		"bpmn",
-		"editor",
-		"workflow",
-		"typescript",
-		"canvas"
-	],
+	"keywords": ["bpmn", "editor", "workflow", "typescript", "canvas"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",

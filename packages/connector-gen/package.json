@@ -1,6 +1,6 @@
 {
-	"name": "@bpmn-sdk/feel",
-	"version": "0.0.8",
+	"name": "@bpmn-sdk/connector-gen",
+	"version": "0.0.1",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -18,9 +18,11 @@
 		"check": "biome check .",
 		"test": "vitest run"
 	},
-	"dependencies": {},
-	"description": "Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",
-	"keywords": ["feel", "dmn", "expression", "camunda", "bpmn", "typescript"],
+	"dependencies": {
+		"yaml": "^2.7.0"
+	},
+	"description": "Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
+	"keywords": ["camunda", "connector", "openapi", "swagger", "bpmn", "element-template"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",

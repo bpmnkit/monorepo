@@ -59,6 +59,9 @@ importers:
       '@bpmn-sdk/ascii':
         specifier: workspace:*
         version: link:../../packages/ascii
+      '@bpmn-sdk/connector-gen':
+        specifier: workspace:*
+        version: link:../../packages/connector-gen
       '@bpmn-sdk/profiles':
         specifier: workspace:*
         version: link:../../packages/profiles
@@ -173,6 +176,12 @@ importers:
       '@bpmn-sdk/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/connector-gen:
+    dependencies:
+      yaml:
+        specifier: ^2.7.0
+        version: 2.8.2
 
   packages/core: {}
 
