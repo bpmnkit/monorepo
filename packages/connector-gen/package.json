@@ -1,0 +1,31 @@
+{
+	"name": "@bpmn-sdk/connector-gen",
+	"version": "0.0.1",
+	"private": false,
+	"type": "module",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"yaml": "^2.7.0"
+	},
+	"description": "Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
+	"keywords": ["camunda", "connector", "openapi", "swagger", "bpmn", "element-template"],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmn-sdk/monorepo"
+	}
+}

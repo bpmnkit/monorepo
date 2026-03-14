@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-03-14 — `@bpmn-sdk/connector-gen` + `casen connector` command
+
+### New package: `packages/connector-gen` (`@bpmn-sdk/connector-gen`)
+- **`src/types.ts`**: Full OpenAPI 3.x type definitions (minimal subset); connector template types (`ConnectorTemplate`, `PropertyDef`, `Binding`, etc.); generator options
+- **`src/parse-openapi.ts`**: `parseOpenApi()` (auto-detects JSON/YAML), `getOperations()` (enumerate with merged params + body/response schema resolution), `detectDefaultAuth()` (infers from `securitySchemes`), `$ref` helpers
+- **`src/build-template.ts`**: Builds Camunda REST connector element templates per operation — URL field (Hidden or FEEL expression for path params), individual path param inputs, query params FEEL context, headers FEEL context, body (single Text or expanded properties with `--expand-body`), full 5-type auth block with conditions, timeout, output mapping, error expression, retries
+- **`src/write-templates.ts`**: `writeTemplates()` — one JSON file per operation or all in a single array file
+- **`src/catalog.ts`**: `CATALOG` with 6 entries: GitHub, Cloudflare, Stripe, Notion, Resend, OpenAI — each with download URL, suggested idPrefix, default auth type
+- **`src/index.ts`**: High-level `generate()`, `generateFromUrl()`, `generateFromCatalog()` convenience API; re-exports all types and primitives
+- **`tests/build-template.test.ts`**: 27 unit tests covering parsing, operation enumeration, auth detection, template building
+
+### CLI: `casen connector` command group (`apps/cli/src/commands/connector.ts`)
+- `casen connector generate --swagger <file>` — generate from a local OpenAPI/Swagger file (YAML or JSON)
+- `casen connector generate --api <id>` — generate from a catalog entry (downloads spec automatically)
+- `casen connector catalog` — list all catalog entries
+- Flags: `--output`, `--base-url`, `--id-prefix`, `--filter`, `--expand-body`, `--auth`, `--format`, `--dry-run`
+
 ## 2026-03-14 — CLI: audit log + settings menu
 
 ### Audit log (`packages/profiles`, `apps/cli`)
