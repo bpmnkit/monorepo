@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/canvas",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -10,7 +10,11 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": ["README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"README.md",
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -21,7 +25,14 @@
 		"@bpmnkit/core": "workspace:*"
 	},
 	"description": "Zero-dependency SVG BPMN viewer with pan/zoom, theming, and a plugin API",
-	"keywords": ["bpmn", "viewer", "svg", "canvas", "workflow", "typescript"],
+	"keywords": [
+		"bpmn",
+		"viewer",
+		"svg",
+		"canvas",
+		"workflow",
+		"typescript"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",

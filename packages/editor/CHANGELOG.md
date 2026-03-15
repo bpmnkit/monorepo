@@ -1,5 +1,15 @@
 # @bpmnkit/editor
 
+## 0.0.9
+
+### Patch Changes
+
+- [#39](https://github.com/bpmnkit/monorepo/pull/39) [`0b7e74b`](https://github.com/bpmnkit/monorepo/commit/0b7e74ba66e35ef5361ac35dccf695f4f0671d6a) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Renamed from @bpmn-sdk/_ to @bpmnkit/_. Update your imports.
+
+- Updated dependencies [[`0b7e74b`](https://github.com/bpmnkit/monorepo/commit/0b7e74ba66e35ef5361ac35dccf695f4f0671d6a)]:
+  - @bpmnkit/canvas@0.0.9
+  - @bpmnkit/core@0.0.9
+
 ## 0.0.8
 
 ### Patch Changes

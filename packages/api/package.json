@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/api",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -11,7 +11,11 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"files": ["README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"README.md",
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"generate": "node scripts/generate.mjs",
 		"generate:admin": "node scripts/generate.mjs --api admin",
@@ -22,7 +26,16 @@
 	},
 	"dependencies": {},
 	"description": "TypeScript client for the Camunda 8 REST API — 180 typed operations, OAuth2, retries, and caching",
-	"keywords": ["camunda", "zeebe", "bpmn", "api", "client", "rest", "typescript", "oauth2"],
+	"keywords": [
+		"camunda",
+		"zeebe",
+		"bpmn",
+		"api",
+		"client",
+		"rest",
+		"typescript",
+		"oauth2"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
