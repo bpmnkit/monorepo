@@ -10,12 +10,7 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": [
-		"LICENSE",
-		"README.md",
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -26,14 +21,7 @@
 		"@bpmnkit/core": "workspace:*"
 	},
 	"description": "Zero-dependency SVG BPMN viewer with pan/zoom, theming, and a plugin API",
-	"keywords": [
-		"bpmn",
-		"viewer",
-		"svg",
-		"canvas",
-		"workflow",
-		"typescript"
-	],
+	"keywords": ["bpmn", "viewer", "svg", "canvas", "workflow", "typescript"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",

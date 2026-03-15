@@ -6,11 +6,7 @@
 	"bin": {
 		"casen": "./dist/index.js"
 	},
-	"files": [
-		"LICENSE",
-		"README.md",
-		"dist/**/*.js"
-	],
+	"files": ["LICENSE", "README.md", "dist/**/*.js"],
 	"engines": {
 		"node": ">=20"
 	},
@@ -33,16 +29,7 @@
 		"type": "git",
 		"url": "https://github.com/bpmnkit/monorepo"
 	},
-	"keywords": [
-		"camunda",
-		"bpmn",
-		"cli",
-		"terminal",
-		"zeebe",
-		"workflow",
-		"typescript",
-		"casen"
-	],
+	"keywords": ["camunda", "bpmn", "cli", "terminal", "zeebe", "workflow", "typescript", "casen"],
 	"license": "MIT",
 	"homepage": "https://bpmnkit.com",
 	"bugs": {

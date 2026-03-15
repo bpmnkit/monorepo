@@ -8,23 +8,11 @@
 		"./background.css": "./src/background.css",
 		".": "./src/site.ts"
 	},
-	"files": [
-		"LICENSE",
-		"README.md",
-		"src/*.css",
-		"src/site.ts"
-	],
+	"files": ["LICENSE", "README.md", "src/*.css", "src/site.ts"],
 	"scripts": {
 		"check": "biome check ."
 	},
-	"keywords": [
-		"bpmn",
-		"astro",
-		"design-tokens",
-		"shared",
-		"css",
-		"typescript"
-	],
+	"keywords": ["bpmn", "astro", "design-tokens", "shared", "css", "typescript"],
 	"dependencies": {
 		"@bpmnkit/ui": "workspace:*"
 	},

@@ -10,12 +10,7 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": [
-		"LICENSE",
-		"README.md",
-		"dist/**/*.js",
-		"dist/**/*.d.ts"
-	],
+	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -26,14 +21,7 @@
 		"@bpmnkit/core": "workspace:*"
 	},
 	"description": "Render BPMN diagrams as Unicode box-drawing ASCII art — perfect for terminals and docs",
-	"keywords": [
-		"bpmn",
-		"ascii",
-		"terminal",
-		"diagram",
-		"typescript",
-		"unicode"
-	],
+	"keywords": ["bpmn", "ascii", "terminal", "diagram", "typescript", "unicode"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
