@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>bpmnkit — Logo Proposals</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0d0d16;
+    color: #cdd6f4;
+    padding: 48px 32px;
+  }
+  h1 { font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: #6b9df7; margin-bottom: 48px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 32px;
+  }
+  .card {
+    background: #161626;
+    border: 1px solid #2a2a42;
+    border-radius: 12px;
+    padding: 40px 24px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+  .card-light {
+    background: #f4f4f8;
+    border-color: #d0d0e8;
+  }
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6666a0;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .card-light .label { color: #9999b8; }
+  .num {
+    font-size: 10px;
+    color: #6b9df7;
+    letter-spacing: 0.14em;
+  }
+  .row { display: flex; gap: 32px; margin-bottom: 64px; }
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6666a0;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<h1>bpmnkit — Logo Proposals</h1>
+
+<!-- Dark versions -->
+<p class="section-label">Dark background</p>
+<div class="grid" style="margin-bottom: 48px;">
+
+  <!-- 1: Flow Node Lettermark -->
+  <div class="card">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- BPMN task rounded-rect as the "B" container -->
+      <rect x="10" y="10" width="72" height="60" rx="10" ry="10" fill="none" stroke="#6b9df7" stroke-width="3"/>
+      <!-- Letter B inside -->
+      <text x="46" y="54" font-family="system-ui,-apple-system,sans-serif" font-size="42" font-weight="800" fill="#6b9df7" text-anchor="middle" dominant-baseline="auto">B</text>
+      <!-- Flow arrow out right -->
+      <line x1="82" y1="40" x2="106" y2="40" stroke="#89b4fa" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="106,35 114,40 106,45" fill="#89b4fa"/>
+      <!-- Connection dot on rect -->
+      <circle cx="82" cy="40" r="3" fill="#6b9df7"/>
+    </svg>
+    <div>
+      <div class="num">01</div>
+      <div class="label">Task node lettermark<br>"B" as a BPMN task</div>
+    </div>
+  </div>
+
+  <!-- 2: Gateway Diamond -->
+  <div class="card">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Gateway diamond -->
+      <polygon points="60,6 112,40 60,74 8,40" fill="none" stroke="#6b9df7" stroke-width="3"/>
+      <!-- "bk" inside -->
+      <text x="60" y="51" font-family="system-ui,-apple-system,sans-serif" font-size="24" font-weight="800" fill="#6b9df7" text-anchor="middle">bk</text>
+    </svg>
+    <div>
+      <div class="num">02</div>
+      <div class="label">Gateway mark<br>"bk" in a diamond</div>
+    </div>
+  </div>
+
+  <!-- 3: Mini process flow -->
+  <div class="card">
+    <svg width="140" height="80" viewBox="0 0 140 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Start event: thin circle -->
+      <circle cx="18" cy="40" r="13" fill="none" stroke="#89b4fa" stroke-width="2.5"/>
+      <!-- Arrow 1 -->
+      <line x1="31" y1="40" x2="43" y2="40" stroke="#6b9df7" stroke-width="2" stroke-linecap="round"/>
+      <polygon points="43,36 50,40 43,44" fill="#6b9df7"/>
+      <!-- Task rect -->
+      <rect x="50" y="22" width="48" height="36" rx="6" fill="none" stroke="#6b9df7" stroke-width="2.5"/>
+      <text x="74" y="46" font-family="system-ui,-apple-system,sans-serif" font-size="17" font-weight="800" fill="#6b9df7" text-anchor="middle">bk</text>
+      <!-- Arrow 2 -->
+      <line x1="98" y1="40" x2="110" y2="40" stroke="#6b9df7" stroke-width="2" stroke-linecap="round"/>
+      <polygon points="110,36 117,40 110,44" fill="#6b9df7"/>
+      <!-- End event: thick circle -->
+      <circle cx="126" cy="40" r="13" fill="none" stroke="#89b4fa" stroke-width="4"/>
+    </svg>
+    <div>
+      <div class="num">03</div>
+      <div class="label">Mini flow<br>start → bk → end</div>
+    </div>
+  </div>
+
+  <!-- 4: Stacked BK monogram with arrow -->
+  <div class="card">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- B -->
+      <text x="28" y="52" font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="900" fill="#6b9df7" text-anchor="middle">b</text>
+      <!-- K with arrow-shaped diagonal -->
+      <text x="82" y="52" font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="900" fill="#89b4fa" text-anchor="middle">k</text>
+      <!-- underline / flow bar -->
+      <rect x="8" y="60" width="104" height="3" rx="1.5" fill="url(#grad1)"/>
+      <defs>
+        <linearGradient id="grad1" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#6b9df7"/>
+          <stop offset="100%" stop-color="#89b4fa" stop-opacity="0.3"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div>
+      <div class="num">04</div>
+      <div class="label">BK monogram<br>two-tone lettermark</div>
+    </div>
+  </div>
+
+  <!-- 5: Hexagon / toolkit icon -->
+  <div class="card">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Hexagon -->
+      <polygon points="60,4 97,23 97,57 60,76 23,57 23,23" fill="none" stroke="#6b9df7" stroke-width="3"/>
+      <!-- Inner flow: three nodes connected -->
+      <!-- node left -->
+      <circle cx="40" cy="40" r="7" fill="#6b9df7"/>
+      <!-- node right -->
+      <circle cx="80" cy="40" r="7" fill="#89b4fa"/>
+      <!-- node top -->
+      <circle cx="60" cy="24" r="5" fill="none" stroke="#6b9df7" stroke-width="2"/>
+      <!-- edges -->
+      <line x1="47" y1="40" x2="73" y2="40" stroke="#6b9df7" stroke-width="2"/>
+      <line x1="44" y1="34" x2="55" y2="28" stroke="#6b9df7" stroke-width="1.5"/>
+      <line x1="65" y1="28" x2="76" y2="34" stroke="#89b4fa" stroke-width="1.5"/>
+    </svg>
+    <div>
+      <div class="num">05</div>
+      <div class="label">Process hexagon<br>flow graph inside kit shape</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Light versions -->
+<p class="section-label">Light background</p>
+<div class="grid">
+
+  <div class="card card-light">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="10" width="72" height="60" rx="10" ry="10" fill="none" stroke="#1a56db" stroke-width="3"/>
+      <text x="46" y="54" font-family="system-ui,-apple-system,sans-serif" font-size="42" font-weight="800" fill="#1a56db" text-anchor="middle" dominant-baseline="auto">B</text>
+      <line x1="82" y1="40" x2="106" y2="40" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="106,35 114,40 106,45" fill="#3b82f6"/>
+      <circle cx="82" cy="40" r="3" fill="#1a56db"/>
+    </svg>
+    <div>
+      <div class="num" style="color:#1a56db">01</div>
+      <div class="label" style="color:#6666a0">Task node lettermark</div>
+    </div>
+  </div>
+
+  <div class="card card-light">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="60,6 112,40 60,74 8,40" fill="none" stroke="#1a56db" stroke-width="3"/>
+      <text x="60" y="51" font-family="system-ui,-apple-system,sans-serif" font-size="24" font-weight="800" fill="#1a56db" text-anchor="middle">bk</text>
+    </svg>
+    <div>
+      <div class="num" style="color:#1a56db">02</div>
+      <div class="label" style="color:#6666a0">Gateway mark</div>
+    </div>
+  </div>
+
+  <div class="card card-light">
+    <svg width="140" height="80" viewBox="0 0 140 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="18" cy="40" r="13" fill="none" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="31" y1="40" x2="43" y2="40" stroke="#1a56db" stroke-width="2" stroke-linecap="round"/>
+      <polygon points="43,36 50,40 43,44" fill="#1a56db"/>
+      <rect x="50" y="22" width="48" height="36" rx="6" fill="none" stroke="#1a56db" stroke-width="2.5"/>
+      <text x="74" y="46" font-family="system-ui,-apple-system,sans-serif" font-size="17" font-weight="800" fill="#1a56db" text-anchor="middle">bk</text>
+      <line x1="98" y1="40" x2="110" y2="40" stroke="#1a56db" stroke-width="2" stroke-linecap="round"/>
+      <polygon points="110,36 117,40 110,44" fill="#1a56db"/>
+      <circle cx="126" cy="40" r="13" fill="none" stroke="#3b82f6" stroke-width="4"/>
+    </svg>
+    <div>
+      <div class="num" style="color:#1a56db">03</div>
+      <div class="label" style="color:#6666a0">Mini flow</div>
+    </div>
+  </div>
+
+  <div class="card card-light">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="28" y="52" font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="900" fill="#1a56db" text-anchor="middle">b</text>
+      <text x="82" y="52" font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="900" fill="#3b82f6" text-anchor="middle">k</text>
+      <rect x="8" y="60" width="104" height="3" rx="1.5" fill="url(#grad2)"/>
+      <defs>
+        <linearGradient id="grad2" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#1a56db"/>
+          <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.2"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div>
+      <div class="num" style="color:#1a56db">04</div>
+      <div class="label" style="color:#6666a0">BK monogram</div>
+    </div>
+  </div>
+
+  <div class="card card-light">
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="60,4 97,23 97,57 60,76 23,57 23,23" fill="none" stroke="#1a56db" stroke-width="3"/>
+      <circle cx="40" cy="40" r="7" fill="#1a56db"/>
+      <circle cx="80" cy="40" r="7" fill="#3b82f6"/>
+      <circle cx="60" cy="24" r="5" fill="none" stroke="#1a56db" stroke-width="2"/>
+      <line x1="47" y1="40" x2="73" y2="40" stroke="#1a56db" stroke-width="2"/>
+      <line x1="44" y1="34" x2="55" y2="28" stroke="#1a56db" stroke-width="1.5"/>
+      <line x1="65" y1="28" x2="76" y2="34" stroke="#3b82f6" stroke-width="1.5"/>
+    </svg>
+    <div>
+      <div class="num" style="color:#1a56db">05</div>
+      <div class="label" style="color:#6666a0">Process hexagon</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

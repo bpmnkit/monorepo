@@ -25,7 +25,7 @@ function header({ name, description, extra = "", dir = "packages" }) {
   [![license](https://img.shields.io/npm/l/${name}?style=flat-square)](${GITHUB}/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](${GITHUB})
 
-  [Documentation](${DOCS}) · [GitHub](${GITHUB}) · [Changelog](${GITHUB}/blob/main/${changelogPath})
+  [Website](https://bpmnkit.com) · [Documentation](${DOCS}) · [GitHub](${GITHUB}) · [Changelog](${GITHUB}/blob/main/${changelogPath})
 </div>
 
 ---
@@ -67,7 +67,7 @@ ${rows}
 
 ## License
 
-[MIT](${GITHUB}/blob/main/LICENSE) © BPMN Kit
+[MIT](${GITHUB}/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
 `
 }
 
@@ -740,8 +740,7 @@ const ai = createAiBridgePlugin({
 	// ── ui ────────────────────────────────────────────────────────────────────
 	"packages/ui": {
 		name: "@bpmnkit/ui",
-		description:
-			"Shared design tokens, theme management, and UI components for BPMN Kit packages",
+		description: "Shared design tokens, theme management, and UI components for BPMN Kit packages",
 		content: `## Overview
 
 \`@bpmnkit/ui\` is the shared design system for the BPMN Kit. It provides CSS custom property tokens, theme management utilities, and ready-made UI components (badges, cards, tables, theme switcher) used across the editor, canvas, plugins, and operate packages.
@@ -1269,8 +1268,7 @@ console.log(SITE.docsUrl) // "https://docs.bpmnkit.com"
 	// ── connector-gen ─────────────────────────────────────────────────────────
 	"packages/connector-gen": {
 		name: "@bpmnkit/connector-gen",
-		description:
-			"Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
+		description: "Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
 		content: `## Overview
 
 \`@bpmnkit/connector-gen\` parses OpenAPI 3.x and Swagger 2.x specifications and generates Camunda REST connector element templates. Drop in your API spec and get a ready-to-import \`.json\` template that wires up request/response mappings automatically.

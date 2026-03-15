@@ -9,7 +9,7 @@
  *   node scripts/check-packages.mjs
  */
 
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "")
@@ -32,12 +32,7 @@ const PUBLISHED = [
 	"apps/proxy",
 ]
 
-const STALE_BRAND_PATTERNS = [
-	/@bpmn-sdk\//,
-	/bpmn-sdk frontends/,
-	/bpmn-sdk CLI/,
-	/for @bpmn-sdk/,
-]
+const STALE_BRAND_PATTERNS = [/@bpmn-sdk\//, /bpmn-sdk frontends/, /bpmn-sdk CLI/, /for @bpmn-sdk/]
 
 let errors = 0
 
@@ -53,7 +48,7 @@ function check(dir) {
 		pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
 	} catch {
 		console.error(`\n[${dir}]`)
-		error(dir, `Cannot read package.json`)
+		error(dir, "Cannot read package.json")
 		return
 	}
 
@@ -79,7 +74,9 @@ function check(dir) {
 
 	// keywords
 	if (!Array.isArray(pkg.keywords) || pkg.keywords.length < 3) {
-		issues.push(`"keywords" must be an array with at least 3 entries (got: ${JSON.stringify(pkg.keywords)})`)
+		issues.push(
+			`"keywords" must be an array with at least 3 entries (got: ${JSON.stringify(pkg.keywords)})`,
+		)
 	}
 
 	// license
@@ -99,17 +96,26 @@ function check(dir) {
 
 	// repository
 	if (!pkg.repository?.url?.includes("github.com/bpmnkit/monorepo")) {
-		issues.push(`"repository.url" must reference github.com/bpmnkit/monorepo (got: ${JSON.stringify(pkg.repository?.url)})`)
+		issues.push(
+			`"repository.url" must reference github.com/bpmnkit/monorepo (got: ${JSON.stringify(pkg.repository?.url)})`,
+		)
 	}
 
 	// publishConfig.access
 	if (pkg.publishConfig?.access !== "public") {
-		issues.push(`"publishConfig.access" must be "public" (got: ${JSON.stringify(pkg.publishConfig?.access)})`)
+		issues.push(
+			`"publishConfig.access" must be "public" (got: ${JSON.stringify(pkg.publishConfig?.access)})`,
+		)
 	}
 
 	// README.md in files[]
 	if (Array.isArray(pkg.files) && !pkg.files.includes("README.md")) {
 		issues.push('"README.md" not listed in "files[]" — it won\'t be included in the npm publish')
+	}
+
+	// LICENSE file exists on disk
+	if (!existsSync(resolve(ROOT, dir, "LICENSE"))) {
+		issues.push('missing LICENSE file — run "node scripts/sync-license.mjs"')
 	}
 
 	if (issues.length > 0) {
