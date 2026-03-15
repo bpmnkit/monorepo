@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
+  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/2026.svg" width="72" height="72" alt="BPMN Kit logo">
   <h1>@bpmnkit/feel</h1>
   <p>Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter</p>
 

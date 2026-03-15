@@ -7,6 +7,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: "BPMN SDK",
+			logo: { src: "./src/assets/logo.svg", alt: "BPMN Kit" },
 			description:
 				"TypeScript SDK for generating, editing, and executing BPMN 2.0 diagrams programmatically.",
 			favicon: "/favicon.svg",

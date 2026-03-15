@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
+  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/2026.svg" width="72" height="72" alt="BPMN Kit logo">
   <h1>@bpmnkit/api</h1>
   <p>TypeScript client for the Camunda 8 REST API — 180 typed operations, OAuth2, retries, and caching</p>
 
