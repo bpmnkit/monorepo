@@ -7,16 +7,17 @@ import { resolve } from "node:path"
 
 const ROOT = new URL("..", import.meta.url).pathname
 const LOGO_URL =
-	"https://raw.githubusercontent.com/bpmn-sdk/monorepo/main/doc/logos/logo-2-gateway.svg"
+	"https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/logo-2-gateway.svg"
 const GITHUB = "https://github.com/bpmnkit/monorepo"
-const DOCS = "https://bpmn-sdk-docs.pages.dev"
+const DOCS = "https://docs.bpmnkit.com"
 
 // ── Shared header / footer ────────────────────────────────────────────────────
 
-function header({ name, description, extra = "" }) {
+function header({ name, description, extra = "", dir = "packages" }) {
 	const pkg = name.replace("@bpmnkit/", "")
+	const changelogPath = `${dir}/${pkg}/CHANGELOG.md`
 	return `<div align="center">
-  <img src="${LOGO_URL}" width="72" height="72" alt="BPMN SDK logo">
+  <img src="${LOGO_URL}" width="72" height="72" alt="BPMN Kit logo">
   <h1>${name}</h1>
   <p>${description}</p>
 
@@ -24,7 +25,7 @@ function header({ name, description, extra = "" }) {
   [![license](https://img.shields.io/npm/l/${name}?style=flat-square)](${GITHUB}/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](${GITHUB})
 
-  [Documentation](${DOCS}) · [GitHub](${GITHUB}) · [Changelog](${GITHUB}/blob/main/packages/${pkg}/CHANGELOG.md)
+  [Documentation](${DOCS}) · [GitHub](${GITHUB}) · [Changelog](${GITHUB}/blob/main/${changelogPath})
 </div>
 
 ---
@@ -41,11 +42,15 @@ function footer(currentPkg) {
 		{ name: "@bpmnkit/plugins", desc: "22 composable canvas plugins" },
 		{ name: "@bpmnkit/api", desc: "Camunda 8 REST API TypeScript client" },
 		{ name: "@bpmnkit/ascii", desc: "Render BPMN diagrams as Unicode ASCII art" },
+		{ name: "@bpmnkit/ui", desc: "Shared design tokens and UI components" },
 		{
 			name: "@bpmnkit/profiles",
 			desc: "Shared auth, profile storage, and client factories for CLI & proxy",
 		},
 		{ name: "@bpmnkit/operate", desc: "Monitoring & operations frontend for Camunda clusters" },
+		{ name: "@bpmnkit/connector-gen", desc: "Generate connector templates from OpenAPI specs" },
+		{ name: "@bpmnkit/cli", desc: "Camunda 8 command-line interface (casen)" },
+		{ name: "@bpmnkit/proxy", desc: "Local AI bridge and Camunda API proxy server" },
 	].filter((p) => p.name !== currentPkg)
 
 	const rows = packages
@@ -62,7 +67,7 @@ ${rows}
 
 ## License
 
-[MIT](${GITHUB}/blob/main/LICENSE) © bpmn-sdk
+[MIT](${GITHUB}/blob/main/LICENSE) © BPMN Kit
 `
 }
 
@@ -75,7 +80,7 @@ const packages = {
 		description: "TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
 		content: `## Overview
 
-\`@bpmnkit/core\` is the foundation of the BPMN SDK. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.
+\`@bpmnkit/core\` is the foundation of the BPMN Kit. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.
 
 \`\`\`
 Parse → Modify → Validate → Export
@@ -478,13 +483,6 @@ instance.onChange((state) => {
   console.log("Active:", state.activeElements)
   console.log("Vars:", state.variables_snapshot)
 })
-
-// Wait for completion
-await new Promise((resolve) => {
-  instance.onChange((state) => {
-    if (state.state === "completed" || state.state === "terminated") resolve(undefined)
-  })
-})
 \`\`\`
 
 ## Step-by-step execution
@@ -739,6 +737,95 @@ const ai = createAiBridgePlugin({
 `,
 	},
 
+	// ── ui ────────────────────────────────────────────────────────────────────
+	"packages/ui": {
+		name: "@bpmnkit/ui",
+		description:
+			"Shared design tokens, theme management, and UI components for BPMN Kit packages",
+		content: `## Overview
+
+\`@bpmnkit/ui\` is the shared design system for the BPMN Kit. It provides CSS custom property tokens, theme management utilities, and ready-made UI components (badges, cards, tables, theme switcher) used across the editor, canvas, plugins, and operate packages.
+
+## Features
+
+- **CSS design tokens** — \`--bpmnkit-*\` custom properties for colors, spacing, typography, and borders
+- **Dark/light/auto theming** — persistent theme via \`localStorage\`, applies \`data-theme\` attribute
+- **\`injectUiStyles()\`** — programmatically inject all tokens + component CSS into the document
+- **UI components** — \`badge(state)\`, \`createStatsCard()\`, \`createTable()\`, theme switcher dropdown
+- **Icons** — built-in SVG icon set (\`IC_UI\`)
+
+## Installation
+
+\`\`\`sh
+npm install @bpmnkit/ui
+\`\`\`
+
+## Usage
+
+### Inject tokens at runtime (packages / apps)
+
+\`\`\`typescript
+import { injectUiStyles } from "@bpmnkit/ui"
+
+// Call once before mounting your UI
+injectUiStyles()
+\`\`\`
+
+### Import tokens in Astro/CSS
+
+\`\`\`css
+@import "@bpmnkit/ui/tokens.css";
+\`\`\`
+
+### Theme management
+
+\`\`\`typescript
+import { applyTheme, persistTheme, loadPersistedTheme } from "@bpmnkit/ui"
+
+// Restore from localStorage on startup
+const saved = loadPersistedTheme()  // "light" | "dark" | "auto"
+applyTheme(document.documentElement, saved)
+
+// Persist a user selection
+persistTheme("dark")
+applyTheme(document.documentElement, "dark")
+\`\`\`
+
+### Theme switcher dropdown
+
+\`\`\`typescript
+import { createThemeSwitcher } from "@bpmnkit/ui"
+
+const { el, setTheme } = createThemeSwitcher({
+  initial: "auto",
+  persist: true,
+  onChange: (theme) => applyTheme(document.body, theme),
+})
+document.querySelector(".toolbar")!.appendChild(el)
+\`\`\`
+
+## Design Tokens
+
+All tokens use the \`--bpmnkit-*\` prefix and are defined for both light and dark modes.
+
+| Token | Purpose |
+|-------|---------|
+| \`--bpmnkit-bg\` | Page background |
+| \`--bpmnkit-surface\` | Card / panel surface |
+| \`--bpmnkit-border\` | Borders |
+| \`--bpmnkit-fg\` | Primary text |
+| \`--bpmnkit-fg-muted\` | Secondary text |
+| \`--bpmnkit-accent\` | Primary accent / interactive |
+| \`--bpmnkit-accent-bright\` | Links / bright accent |
+| \`--bpmnkit-teal\` | Secondary accent |
+| \`--bpmnkit-success\` | Success state |
+| \`--bpmnkit-warn\` | Warning state |
+| \`--bpmnkit-danger\` | Error / danger state |
+| \`--bpmnkit-font\` | UI font stack |
+| \`--bpmnkit-font-mono\` | Monospace font stack |
+`,
+	},
+
 	// ── api ───────────────────────────────────────────────────────────────────
 	"packages/api": {
 		name: "@bpmnkit/api",
@@ -934,7 +1021,7 @@ interface RenderOptions {
 	"packages/profiles": {
 		name: "@bpmnkit/profiles",
 		description:
-			"Shared auth, profile storage, and client factories for the BPMN SDK CLI and proxy server",
+			"Shared auth, profile storage, and client factories for the BPMN Kit CLI and proxy server",
 		content: `## Overview
 
 \`@bpmnkit/profiles\` is the shared layer that connects the \`casen\` CLI with the local proxy server. It handles profile CRUD (read/write to \`~/.config/casen/config.json\`), creates typed \`CamundaClient\` instances from stored profiles, and resolves Authorization headers for any supported auth type.
@@ -1061,15 +1148,13 @@ A **mock mode** (\`mock: true\`) ships fixture data without any running proxy or
 - **Dashboard** — real-time stats: active instances, open incidents, active jobs, pending tasks
 - **Process Definitions** — deployed process list with name, version, and tenant
 - **Process Instances** — paginated list with state filter (Active / Completed / Terminated)
-- **Instance Detail** — BPMN canvas via \`@bpmnkit/canvas\` with live token-highlight overlay; active elements glow amber, visited elements show green tint
+- **Instance Detail** — BPMN canvas via \`@bpmnkit/canvas\` with live token-highlight overlay
 - **Incidents** — error type, message, process, and resolution state
 - **Jobs** — job type, worker, retries, state, error message
 - **User Tasks** — name, assignee, state, due date, priority
-- **Profile switcher** — header dropdown populated from the proxy \`/profiles\` endpoint; switches reconnect all SSE streams
+- **Profile switcher** — header dropdown that switches all SSE streams on change
 - **Mock/demo mode** — fully self-contained fixture data, no cluster required
-- **SSE architecture** — proxy polls server-side; frontend opens one \`EventSource\` per view, gets pushed updates
 - **Hash router** — \`#/\`, \`#/instances\`, \`#/instances/:key\`, \`#/definitions\`, etc.
-- **Themeable** — light / dark / auto via CSS custom properties; \`--op-*\` variables
 
 ## Installation
 
@@ -1105,20 +1190,6 @@ createOperate({
 })
 \`\`\`
 
-The proxy must be running (\`pnpm proxy\`) and have at least one profile configured via the \`casen\` CLI.
-
-## How it works
-
-\`\`\`
-Browser  ──── EventSource ────▶  @bpmnkit/proxy  ──── CamundaClient ────▶  Camunda cluster
-         ◀─── SSE events ──────  (polls on interval, pushes results)
-\`\`\`
-
-1. Each view opens an SSE connection to \`/operate/stream?topic=<view>&interval=<ms>\`.
-2. The proxy creates a \`CamundaClient\` using the configured profile's auth credentials.
-3. On each polling tick, the proxy fetches the relevant Camunda data and emits a \`{ type: "data", payload }\` SSE event.
-4. The store updates and the view re-renders.
-
 ## API Reference
 
 ### \`createOperate(options)\`
@@ -1147,12 +1218,266 @@ interface OperateApi {
 \`\`\`
 `,
 	},
+
+	// ── astro-shared ──────────────────────────────────────────────────────────
+	"packages/astro-shared": {
+		name: "@bpmnkit/astro-shared",
+		description:
+			"Shared CSS design tokens, aurora background, and site metadata for BPMN Kit Astro apps",
+		content: `## Overview
+
+\`@bpmnkit/astro-shared\` provides shared CSS imports and site metadata used across BPMN Kit's Astro-based apps (landing page, docs, learn). It re-exports the design tokens from \`@bpmnkit/ui\` and adds a global aurora background animation.
+
+This package is primarily intended for internal use by BPMN Kit's own Astro applications.
+
+## Installation
+
+\`\`\`sh
+npm install @bpmnkit/astro-shared
+\`\`\`
+
+## Usage
+
+### Import design tokens in Astro layouts
+
+\`\`\`astro
+---
+import "@bpmnkit/astro-shared/tokens.css"
+import "@bpmnkit/astro-shared/background.css"
+---
+\`\`\`
+
+### Access site metadata
+
+\`\`\`typescript
+import { SITE } from "@bpmnkit/astro-shared"
+
+console.log(SITE.name)    // "BPMN Kit"
+console.log(SITE.docsUrl) // "https://docs.bpmnkit.com"
+\`\`\`
+
+## Exports
+
+| Export | Description |
+|--------|-------------|
+| \`/tokens.css\` | All \`--bpmnkit-*\` CSS custom properties (re-exports \`@bpmnkit/ui/tokens.css\`) |
+| \`/background.css\` | Global aurora background animation styles |
+| \`.\` | \`SITE\` metadata object (name, url, github, docsUrl, learnUrl, npm) |
+`,
+	},
+
+	// ── connector-gen ─────────────────────────────────────────────────────────
+	"packages/connector-gen": {
+		name: "@bpmnkit/connector-gen",
+		description:
+			"Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
+		content: `## Overview
+
+\`@bpmnkit/connector-gen\` parses OpenAPI 3.x and Swagger 2.x specifications and generates Camunda REST connector element templates. Drop in your API spec and get a ready-to-import \`.json\` template that wires up request/response mappings automatically.
+
+## Features
+
+- **OpenAPI 3.x and Swagger 2.x** support
+- **Generates Camunda element templates** — REST connector format with input/output mappings
+- **Endpoint selection** — generate all endpoints or filter by path/method
+- **FEEL expressions** — pre-fills input bindings with \`=variable\` expressions
+- **Zero dependencies** beyond \`yaml\` for YAML parsing
+
+## Installation
+
+\`\`\`sh
+npm install @bpmnkit/connector-gen
+\`\`\`
+
+## Quick Start
+
+\`\`\`typescript
+import { generateConnectorTemplates } from "@bpmnkit/connector-gen"
+import { readFileSync, writeFileSync } from "node:fs"
+
+const spec = readFileSync("openapi.yaml", "utf8")
+const templates = generateConnectorTemplates(spec)
+
+for (const template of templates) {
+  writeFileSync(\`\${template.id}.json\`, JSON.stringify(template, null, 2))
+  console.log(\`Generated: \${template.name}\`)
+}
+\`\`\`
+
+## CLI usage (via \`@bpmnkit/cli\`)
+
+\`\`\`sh
+casen connector generate openapi.yaml --out ./templates/
+\`\`\`
+
+## API Reference
+
+\`\`\`typescript
+function generateConnectorTemplates(
+  spec: string,            // YAML or JSON OpenAPI/Swagger spec
+  options?: GenerateOptions
+): ConnectorTemplate[]
+
+interface GenerateOptions {
+  filter?: {
+    paths?: string[]       // include only these path prefixes
+    methods?: string[]     // e.g. ["get", "post"]
+  }
+}
+\`\`\`
+`,
+	},
+
+	// ── cli ───────────────────────────────────────────────────────────────────
+	"apps/cli": {
+		name: "@bpmnkit/cli",
+		dir: "apps",
+		description:
+			"Command-line interface for Camunda 8 — deploy, manage, and monitor processes from the terminal",
+		content: `## Overview
+
+\`@bpmnkit/cli\` provides the \`casen\` command-line tool for interacting with Camunda 8 clusters. Manage profiles, deploy processes, run queries, and generate connector templates — all from your terminal.
+
+## Installation
+
+\`\`\`sh
+npm install -g @bpmnkit/cli
+# or
+pnpm add -g @bpmnkit/cli
+\`\`\`
+
+## Quick Start
+
+### Configure a profile
+
+\`\`\`sh
+casen profile add my-cluster
+# Interactive prompts for base URL and auth type
+\`\`\`
+
+### Deploy a process
+
+\`\`\`sh
+casen deploy order-process.bpmn
+\`\`\`
+
+### List process instances
+
+\`\`\`sh
+casen instances list --state active
+\`\`\`
+
+## Commands
+
+### Profile management
+
+| Command | Description |
+|---------|-------------|
+| \`casen profile list\` | List all configured profiles |
+| \`casen profile add <name>\` | Add a new profile (interactive) |
+| \`casen profile use <name>\` | Switch the active profile |
+| \`casen profile remove <name>\` | Delete a profile |
+
+### Process & deployment
+
+| Command | Description |
+|---------|-------------|
+| \`casen deploy <file>\` | Deploy a BPMN, DMN, or form file |
+| \`casen processes list\` | List deployed process definitions |
+| \`casen instances list\` | List process instances (--state filter) |
+| \`casen instances cancel <key>\` | Cancel a running instance |
+
+### Incidents & jobs
+
+| Command | Description |
+|---------|-------------|
+| \`casen incidents list\` | List open incidents |
+| \`casen incidents resolve <key>\` | Resolve an incident |
+| \`casen jobs list\` | List active jobs |
+
+### Connector generation
+
+| Command | Description |
+|---------|-------------|
+| \`casen connector generate <spec>\` | Generate element templates from OpenAPI/Swagger |
+
+## Global options
+
+| Flag | Description |
+|------|-------------|
+| \`--profile <name>\` | Use a specific profile for this command |
+| \`--json\` | Output as JSON (machine-readable) |
+| \`--help\` | Show help |
+`,
+	},
+
+	// ── proxy ─────────────────────────────────────────────────────────────────
+	"apps/proxy": {
+		name: "@bpmnkit/proxy",
+		dir: "apps",
+		description:
+			"Local proxy server for BPMN Kit — AI bridge (SSE/MCP) and Camunda API proxy using stored CLI profiles",
+		content: `## Overview
+
+\`@bpmnkit/proxy\` is a local Node.js server that bridges the BPMN Kit editor with AI services and your Camunda cluster. It runs on port 3033 and provides:
+
+- **AI chat bridge** — SSE streaming endpoint for AI-assisted diagram editing; connects to any OpenAI-compatible LLM API
+- **MCP server** — Model Context Protocol server for AI agent integrations (\`stdio\` transport)
+- **Camunda API proxy** — transparent HTTP proxy that injects auth from your \`casen\` CLI profiles
+
+The proxy reads authentication from profiles stored by the \`@bpmnkit/cli\` (\`~/.config/casen/config.json\`), so you don't need to configure credentials separately.
+
+## Installation
+
+\`\`\`sh
+npm install -g @bpmnkit/proxy
+# or run from the monorepo:
+pnpm proxy
+\`\`\`
+
+## Quick Start
+
+\`\`\`sh
+# Start the proxy server (port 3033)
+bpmn-ai-server
+
+# Or start the MCP server (stdio)
+bpmn-mcp
+\`\`\`
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| \`GET\` | \`/status\` | Health check; returns server version and active profile |
+| \`POST\` | \`/chat\` | AI chat — SSE stream; sends \`data: { type, content }\` events |
+| \`GET\` | \`/profiles\` | List all configured \`casen\` profiles |
+| \`ALL\` | \`/api/*\` | Transparent proxy to your Camunda cluster (adds auth header) |
+| \`GET\` | \`/operate/stream\` | SSE stream for the \`@bpmnkit/operate\` monitoring frontend |
+
+## Configuration
+
+The proxy reads from the active \`casen\` CLI profile. Set an \`AI_API_KEY\` environment variable for the AI bridge:
+
+\`\`\`sh
+AI_API_KEY=sk-... bpmn-ai-server
+\`\`\`
+
+Or use the \`X-Profile\` request header to target a specific profile on the \`/api/*\` proxy:
+
+\`\`\`sh
+curl -H "X-Profile: production" http://localhost:3033/api/v2/process-definitions
+\`\`\`
+`,
+	},
 }
 
 // ── Write READMEs ────────────────────────────────────────────────────────────
 
-for (const [pkgPath, { name, description, content }] of Object.entries(packages)) {
-	const fullContent = [header({ name, description }), content, footer(name)].join("\n")
+for (const [pkgPath, { name, description, content, dir = "packages" }] of Object.entries(
+	packages,
+)) {
+	const fullContent = [header({ name, description, dir }), content, footer(name)].join("\n")
 
 	const outputPath = resolve(ROOT, pkgPath, "README.md")
 	writeFileSync(outputPath, fullContent, "utf8")

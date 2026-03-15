@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/bpmn-sdk/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
+  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
   <h1>@bpmnkit/engine</h1>
   <p>Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies</p>
 
@@ -7,7 +7,7 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/engine?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
 
-  [Documentation](https://bpmn-sdk-docs.pages.dev) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/engine/CHANGELOG.md)
+  [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/engine/CHANGELOG.md)
 </div>
 
 ---
@@ -63,13 +63,6 @@ instance.onChange((state) => {
   console.log("Active:", state.activeElements)
   console.log("Vars:", state.variables_snapshot)
 })
-
-// Wait for completion
-await new Promise((resolve) => {
-  instance.onChange((state) => {
-    if (state.state === "completed" || state.state === "terminated") resolve(undefined)
-  })
-})
 ```
 
 ## Step-by-step execution
@@ -122,9 +115,13 @@ const instance = engine.start("my-process", {}, {
 | [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
 | [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
 | [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
+| [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |
+| [`@bpmnkit/cli`](https://www.npmjs.com/package/@bpmnkit/cli) | Camunda 8 command-line interface (casen) |
+| [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |
 
 ## License
 
-[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © bpmn-sdk
+[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit

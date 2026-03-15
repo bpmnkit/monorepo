@@ -8,11 +8,11 @@
 		"./background.css": "./src/background.css",
 		".": "./src/site.ts"
 	},
-	"files": ["src/*.css", "src/site.ts"],
+	"files": ["README.md", "src/*.css", "src/site.ts"],
 	"scripts": {
 		"check": "biome check ."
 	},
-	"keywords": ["bpmn", "astro", "design-tokens", "shared"],
+	"keywords": ["bpmn", "astro", "design-tokens", "shared", "css", "typescript"],
 	"dependencies": {
 		"@bpmnkit/ui": "workspace:*"
 	},
@@ -23,5 +23,10 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"description": "Shared CSS design tokens, aurora background, and site metadata for BPMN Kit Astro apps",
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
 	}
 }

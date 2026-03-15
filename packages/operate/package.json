@@ -11,7 +11,7 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": ["README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -29,7 +29,6 @@
 		"camunda",
 		"operate",
 		"monitoring",
-		"operations",
 		"workflow",
 		"process-instances",
 		"incidents",
@@ -42,5 +41,9 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
 	}
 }

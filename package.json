@@ -4,7 +4,7 @@
 	"type": "module",
 	"packageManager": "pnpm@10.21.0",
 	"scripts": {
-		"build": "pnpm turbo build",
+		"build": "node scripts/check-packages.mjs && node scripts/generate-readmes.mjs && pnpm turbo build",
 		"typecheck": "pnpm turbo typecheck",
 		"lint": "biome check .",
 		"format": "biome check --write .",

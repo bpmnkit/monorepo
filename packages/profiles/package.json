@@ -1,7 +1,7 @@
 {
 	"name": "@bpmnkit/profiles",
 	"version": "0.0.5",
-	"description": "Shared profile storage and auth client factory for @bpmn-sdk CLI and proxy server",
+	"description": "Shared auth, profile storage, and client factories for the BPMN Kit CLI and proxy server",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -11,7 +11,7 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
-	"files": ["dist/**/*.js", "dist/**/*.d.ts"],
+	"files": ["README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"engines": {
 		"node": ">=20"
 	},
@@ -30,5 +30,10 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"license": "MIT",
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
 	}
 }

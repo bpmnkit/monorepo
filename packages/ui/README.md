@@ -1,39 +1,28 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/bpmn-sdk/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
+  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
   <h1>@bpmnkit/ui</h1>
-  <p>Shared design tokens, theme management, and UI components for bpmn-sdk frontends</p>
+  <p>Shared design tokens, theme management, and UI components for BPMN Kit packages</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/ui?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/ui)
   [![license](https://img.shields.io/npm/l/@bpmnkit/ui?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
 
-  [Documentation](https://bpmn-sdk-docs.pages.dev) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/ui/CHANGELOG.md)
+  [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/ui/CHANGELOG.md)
 </div>
 
 ---
 
 ## Overview
 
-`@bpmnkit/ui` is the shared design-system foundation for all bpmn-sdk frontends (`@bpmnkit/editor`, `@bpmnkit/operate`, `@bpmnkit/canvas`). It provides:
-
-- **CSS custom property tokens** — a single, consistent colour palette, spacing, radius, and typography scale shared across all packages
-- **Theme management** — resolve, persist, and apply `light` / `dark` / `auto` themes with zero boilerplate
-- **Primitive UI components** — badge, stats card, data table, and a theme-switcher button/dropdown, all built on plain DOM with no framework
-- **SVG icon library** — crisp 16 × 16 icons for navigation and theme controls
-
-No runtime dependencies. Works in any browser environment or bundler.
+`@bpmnkit/ui` is the shared design system for the BPMN Kit. It provides CSS custom property tokens, theme management utilities, and ready-made UI components (badges, cards, tables, theme switcher) used across the editor, canvas, plugins, and operate packages.
 
 ## Features
 
-- **Design tokens** — `--bpmnkit-*` CSS custom properties for surfaces, borders, typography, accent, semantic colours (success/warn/danger), radius, and navigation chrome
-- **Unified blue accent** — `#1a56db` (light) / `#4c8ef7` (dark), consistent across editor, canvas, and operate
-- **Light / dark / auto theming** — light defaults on `:root`; `[data-theme="dark"]` override matches any element with that attribute
-- **`createThemeSwitcher()`** — standalone Dark / Light / System button + dropdown; persists to `localStorage`
-- **`badge(state)`** — coloured status badge for process-instance and job states
-- **`createStatsCard()`** — dashboard metric card with value and label
-- **`createTable<T>()`** — generic, typed data table with clickable rows and empty state
-- **`IC_UI` icons** — moon, sun, auto, checkmark, dashboard, processes, instances, incidents, jobs, tasks
-- **`injectUiStyles()`** — single call injects tokens + component CSS into `<head>`, deduplicated
+- **CSS design tokens** — `--bpmnkit-*` custom properties for colors, spacing, typography, and borders
+- **Dark/light/auto theming** — persistent theme via `localStorage`, applies `data-theme` attribute
+- **`injectUiStyles()`** — programmatically inject all tokens + component CSS into the document
+- **UI components** — `badge(state)`, `createStatsCard()`, `createTable()`, theme switcher dropdown
+- **Icons** — built-in SVG icon set (`IC_UI`)
 
 ## Installation
 
@@ -41,140 +30,69 @@ No runtime dependencies. Works in any browser environment or bundler.
 npm install @bpmnkit/ui
 ```
 
-## Quick Start
+## Usage
 
-### Inject styles and apply a theme
+### Inject tokens at runtime (packages / apps)
 
 ```typescript
-import { injectUiStyles, applyTheme, loadPersistedTheme } from "@bpmnkit/ui"
+import { injectUiStyles } from "@bpmnkit/ui"
 
-// Inject CSS tokens and component styles once at app start
+// Call once before mounting your UI
 injectUiStyles()
-
-// Apply persisted or default theme to the app root element
-const root = document.getElementById("app")!
-applyTheme(root, loadPersistedTheme() ?? "auto")
 ```
 
-### Theme switcher button
+### Import tokens in Astro/CSS
+
+```css
+@import "@bpmnkit/ui/tokens.css";
+```
+
+### Theme management
+
+```typescript
+import { applyTheme, persistTheme, loadPersistedTheme } from "@bpmnkit/ui"
+
+// Restore from localStorage on startup
+const saved = loadPersistedTheme()  // "light" | "dark" | "auto"
+applyTheme(document.documentElement, saved)
+
+// Persist a user selection
+persistTheme("dark")
+applyTheme(document.documentElement, "dark")
+```
+
+### Theme switcher dropdown
 
 ```typescript
 import { createThemeSwitcher } from "@bpmnkit/ui"
 
-const switcher = createThemeSwitcher({
+const { el, setTheme } = createThemeSwitcher({
   initial: "auto",
-  persist: true,                               // saves to localStorage
-  onChange(theme, resolved) {
-    applyTheme(appRoot, theme)                 // update your root element
-  },
+  persist: true,
+  onChange: (theme) => applyTheme(document.body, theme),
 })
-
-toolbar.appendChild(switcher.el)
+document.querySelector(".toolbar")!.appendChild(el)
 ```
 
-### Badge
+## Design Tokens
 
-```typescript
-import { badge } from "@bpmnkit/ui"
+All tokens use the `--bpmnkit-*` prefix and are defined for both light and dark modes.
 
-const el = badge("ACTIVE")    // → <span class="bpmn-badge bpmn-badge--active">ACTIVE</span>
-container.appendChild(el)
-```
-
-### Stats card
-
-```typescript
-import { createStatsCard } from "@bpmnkit/ui"
-
-const card = createStatsCard("Active Instances", 42, "clickable")
-card.addEventListener("click", () => navigate("/instances"))
-grid.appendChild(card)
-```
-
-### Data table
-
-```typescript
-import { createTable } from "@bpmnkit/ui"
-
-const { el, setRows } = createTable({
-  columns: [
-    { label: "Name",  render: (row) => row.name },
-    { label: "State", render: (row) => badge(row.state), width: "100px" },
-  ],
-  onRowClick: (row) => openDetail(row.id),
-  emptyText: "No results",
-})
-
-container.appendChild(el)
-setRows(data)
-```
-
-## API Reference
-
-### Theme
-
-```typescript
-type Theme = "light" | "dark" | "auto"
-
-resolveTheme(theme: Theme): "light" | "dark"
-applyTheme(el: HTMLElement, theme: Theme): void    // sets data-theme on el
-persistTheme(theme: Theme): void                    // writes to localStorage
-loadPersistedTheme(): Theme | null                  // reads from localStorage
-```
-
-### `createThemeSwitcher(options)`
-
-```typescript
-interface ThemeSwitcherOptions {
-  initial?: Theme
-  onChange: (theme: Theme, resolved: "light" | "dark") => void
-  persist?: boolean   // default: false
-}
-
-createThemeSwitcher(options): { el: HTMLElement; setTheme(t: Theme): void }
-```
-
-### Components
-
-| Export | Signature | Description |
-|--------|-----------|-------------|
-| `badge` | `(state: string) → HTMLElement` | Coloured status badge |
-| `cell` | `(text: string \| null) → HTMLElement` | Plain text cell for use in tables |
-| `createStatsCard` | `(label, value, mod?) → HTMLElement` | Dashboard metric card; `mod`: `"clickable"` \| `"warn"` |
-| `createTable` | `<T>(options: TableOptions<T>) → { el, setRows }` | Generic typed data table |
-
-### CSS tokens
-
-| Token | Light | Dark |
-|-------|-------|------|
-| `--bpmnkit-bg` | `#f4f4f8` | `#0f0f1a` |
-| `--bpmnkit-surface` | `#ffffff` | `#1a1a2e` |
-| `--bpmnkit-surface-2` | `#f0f0f8` | `#222240` |
-| `--bpmnkit-border` | `#d8d8e8` | `#2e2e4e` |
-| `--bpmnkit-fg` | `#1a1a2e` | `#e0e0f0` |
-| `--bpmnkit-fg-muted` | `#6666a0` | `#8888a8` |
-| `--bpmnkit-accent` | `#1a56db` | `#4c8ef7` |
-| `--bpmnkit-success` | `#22c55e` | `#22c55e` |
-| `--bpmnkit-warn` | `#f59e0b` | `#f59e0b` |
-| `--bpmnkit-danger` | `#ef4444` | `#ef4444` |
-| `--bpmnkit-radius` | `6px` | `6px` |
-| `--bpmnkit-nav-bg` | `#1e2030` | `#14141f` |
-
-### Icons (`IC_UI`)
-
-```typescript
-import { IC_UI } from "@bpmnkit/ui"
-
-// Theme icons
-IC_UI.moon    // Dark theme
-IC_UI.sun     // Light theme
-IC_UI.auto    // System / auto theme
-IC_UI.check   // Checkmark (used inside dropdowns)
-
-// Navigation icons
-IC_UI.dashboard   IC_UI.processes   IC_UI.instances
-IC_UI.incidents   IC_UI.jobs        IC_UI.tasks
-```
+| Token | Purpose |
+|-------|---------|
+| `--bpmnkit-bg` | Page background |
+| `--bpmnkit-surface` | Card / panel surface |
+| `--bpmnkit-border` | Borders |
+| `--bpmnkit-fg` | Primary text |
+| `--bpmnkit-fg-muted` | Secondary text |
+| `--bpmnkit-accent` | Primary accent / interactive |
+| `--bpmnkit-accent-bright` | Links / bright accent |
+| `--bpmnkit-teal` | Secondary accent |
+| `--bpmnkit-success` | Success state |
+| `--bpmnkit-warn` | Warning state |
+| `--bpmnkit-danger` | Error / danger state |
+| `--bpmnkit-font` | UI font stack |
+| `--bpmnkit-font-mono` | Monospace font stack |
 
 ---
 
@@ -190,9 +108,12 @@ IC_UI.incidents   IC_UI.jobs        IC_UI.tasks
 | [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
-| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories |
+| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
 | [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
+| [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |
+| [`@bpmnkit/cli`](https://www.npmjs.com/package/@bpmnkit/cli) | Camunda 8 command-line interface (casen) |
+| [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |
 
 ## License
 
-[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © bpmn-sdk
+[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit

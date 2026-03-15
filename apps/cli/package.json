@@ -1,12 +1,12 @@
 {
 	"name": "@bpmnkit/cli",
 	"version": "0.0.9",
-	"description": "Camunda v2 REST API command-line interface",
+	"description": "Command-line interface for Camunda 8 — deploy, manage, and monitor processes from the terminal",
 	"type": "module",
 	"bin": {
 		"casen": "./dist/index.js"
 	},
-	"files": ["dist/**/*.js"],
+	"files": ["README.md", "dist/**/*.js"],
 	"engines": {
 		"node": ">=20"
 	},
@@ -28,5 +28,11 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"keywords": ["camunda", "bpmn", "cli", "terminal", "zeebe", "workflow", "typescript", "casen"],
+	"license": "MIT",
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
 	}
 }

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/bpmn-sdk/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
+  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
   <h1>@bpmnkit/operate</h1>
   <p>Monitoring and operations frontend for Camunda 8 clusters — real-time SSE, zero dependencies</p>
 
@@ -7,7 +7,7 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/operate?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
 
-  [Documentation](https://bpmn-sdk-docs.pages.dev) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/operate/CHANGELOG.md)
+  [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/operate/CHANGELOG.md)
 </div>
 
 ---
@@ -25,15 +25,13 @@ A **mock mode** (`mock: true`) ships fixture data without any running proxy or c
 - **Dashboard** — real-time stats: active instances, open incidents, active jobs, pending tasks
 - **Process Definitions** — deployed process list with name, version, and tenant
 - **Process Instances** — paginated list with state filter (Active / Completed / Terminated)
-- **Instance Detail** — BPMN canvas via `@bpmnkit/canvas` with live token-highlight overlay; active elements glow amber, visited elements show green tint
+- **Instance Detail** — BPMN canvas via `@bpmnkit/canvas` with live token-highlight overlay
 - **Incidents** — error type, message, process, and resolution state
 - **Jobs** — job type, worker, retries, state, error message
 - **User Tasks** — name, assignee, state, due date, priority
-- **Profile switcher** — header dropdown populated from the proxy `/profiles` endpoint; switches reconnect all SSE streams
+- **Profile switcher** — header dropdown that switches all SSE streams on change
 - **Mock/demo mode** — fully self-contained fixture data, no cluster required
-- **SSE architecture** — proxy polls server-side; frontend opens one `EventSource` per view, gets pushed updates
 - **Hash router** — `#/`, `#/instances`, `#/instances/:key`, `#/definitions`, etc.
-- **Themeable** — light / dark / auto via `--bpmnkit-*` CSS custom properties from `@bpmnkit/ui`; theme choice persisted to `localStorage`
 
 ## Installation
 
@@ -68,20 +66,6 @@ createOperate({
   theme: "dark",
 })
 ```
-
-The proxy must be running (`pnpm proxy`) and have at least one profile configured via the `casen` CLI.
-
-## How it works
-
-```
-Browser  ──── EventSource ────▶  @bpmnkit/proxy  ──── CamundaClient ────▶  Camunda cluster
-         ◀─── SSE events ──────  (polls on interval, pushes results)
-```
-
-1. Each view opens an SSE connection to `/operate/stream?topic=<view>&interval=<ms>`.
-2. The proxy creates a `CamundaClient` using the configured profile's auth credentials.
-3. On each polling tick, the proxy fetches the relevant Camunda data and emits a `{ type: "data", payload }` SSE event.
-4. The store updates and the view re-renders.
 
 ## API Reference
 
@@ -124,8 +108,12 @@ interface OperateApi {
 | [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
 | [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
+| [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |
+| [`@bpmnkit/cli`](https://www.npmjs.com/package/@bpmnkit/cli) | Camunda 8 command-line interface (casen) |
+| [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |
 
 ## License
 
-[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © bpmn-sdk
+[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit

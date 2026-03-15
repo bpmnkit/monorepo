@@ -1,113 +1,112 @@
-# casen
+<div align="center">
+  <img src="https://raw.githubusercontent.com/bpmnkit/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
+  <h1>@bpmnkit/cli</h1>
+  <p>Command-line interface for Camunda 8 — deploy, manage, and monitor processes from the terminal</p>
 
-CLI for the [Camunda 8 Orchestration Cluster REST API (v2)](https://docs.camunda.io/docs/apis-tools/orchestration-cluster-api-rest/orchestration-cluster-api-rest-overview/).
+  [![npm](https://img.shields.io/npm/v/@bpmnkit/cli?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/cli)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/cli?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
+  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
 
-Commands are auto-generated from the official OpenAPI specs — every resource and operation stays in sync automatically. See [DOCUMENTATION.md](./DOCUMENTATION.md) for the full command reference.
+  [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/apps/cli/CHANGELOG.md)
+</div>
 
-## Features
+---
 
-- **All API resources** — process instances, jobs, user tasks, decisions, users, groups, tenants, and more
-- **Multiple profiles** — store named connection configs and switch between them instantly
-- **Three output formats** — human-readable table (default), `--output json`, `--output yaml`
-- **Shell completions** — bash, zsh, and fish
-- **Zero dependencies** — no runtime requirements beyond Node.js
+## Overview
+
+`@bpmnkit/cli` provides the `casen` command-line tool for interacting with Camunda 8 clusters. Manage profiles, deploy processes, run queries, and generate connector templates — all from your terminal.
 
 ## Installation
 
-```bash
-# From the monorepo root
-pnpm build
-
-# Then link globally (optional)
-npm link ./apps/cli
+```sh
+npm install -g @bpmnkit/cli
+# or
+pnpm add -g @bpmnkit/cli
 ```
 
-## Quick start
+## Quick Start
 
-**1. Create a profile**
+### Configure a profile
 
-```bash
-# Bearer token (local / self-managed)
-casen profile create local \
-  --base-url http://localhost:8080/v2 \
-  --auth-type bearer \
-  --token my-token
-
-# OAuth2 (Camunda SaaS)
-casen profile create prod \
-  --base-url https://<cluster-id>.camunda.io/v2 \
-  --auth-type oauth2 \
-  --client-id <client-id> \
-  --client-secret <client-secret> \
-  --token-url https://login.cloud.camunda.io/oauth/token
+```sh
+casen profile add my-cluster
+# Interactive prompts for base URL and auth type
 ```
 
-The first profile created becomes the active profile automatically.
+### Deploy a process
 
-**Import from a Camunda Cloud credentials file**
-
-When you create a client in Camunda Cloud, you can download a credentials file containing `export KEY='VALUE'` declarations. Import it directly:
-
-```bash
-casen profile import prod ./camunda-credentials.sh
-
-# or pipe via stdin
-cat camunda-credentials.sh | casen profile import prod -
+```sh
+casen deploy order-process.bpmn
 ```
 
-The file must contain at least:
+### List process instances
 
-| Variable | Fallback |
-|----------|----------|
-| `ZEEBE_REST_ADDRESS` | _(required)_ |
-| `CAMUNDA_CLIENT_ID` | `ZEEBE_CLIENT_ID` |
-| `CAMUNDA_CLIENT_SECRET` | `ZEEBE_CLIENT_SECRET` |
-| `CAMUNDA_OAUTH_URL` | `ZEEBE_AUTHORIZATION_SERVER_URL` |
-
-**2. Run a command**
-
-```bash
-casen process-instance list --filter '{"state":"ACTIVE"}'
-casen user-task list --filter '{"assignee":"alice"}'
-casen process-instance create --data '{"processDefinitionId":"order-process"}'
+```sh
+casen instances list --state active
 ```
 
-## Profiles
+## Commands
 
-Profiles store connection configuration in the OS config directory:
+### Profile management
 
-| Platform | Location |
-|----------|----------|
-| Linux | `$XDG_CONFIG_HOME/casen/config.json` or `~/.config/casen/config.json` |
-| macOS | `~/Library/Application Support/casen/config.json` |
-| Windows | `%APPDATA%\casen\config.json` |
+| Command | Description |
+|---------|-------------|
+| `casen profile list` | List all configured profiles |
+| `casen profile add <name>` | Add a new profile (interactive) |
+| `casen profile use <name>` | Switch the active profile |
+| `casen profile remove <name>` | Delete a profile |
 
-Use `--profile <name>` on any command to temporarily override the active profile.
+### Process & deployment
 
-## Output formats
+| Command | Description |
+|---------|-------------|
+| `casen deploy <file>` | Deploy a BPMN, DMN, or form file |
+| `casen processes list` | List deployed process definitions |
+| `casen instances list` | List process instances (--state filter) |
+| `casen instances cancel <key>` | Cancel a running instance |
 
-Results can be printed as a table (default), JSON, or YAML via `--output json` / `--output yaml`. Colors and table formatting are automatically disabled when stdout is not a TTY or when `NO_COLOR` is set.
+### Incidents & jobs
 
-## Shell completions
+| Command | Description |
+|---------|-------------|
+| `casen incidents list` | List open incidents |
+| `casen incidents resolve <key>` | Resolve an incident |
+| `casen jobs list` | List active jobs |
 
-```bash
-# zsh
-mkdir -p ~/.zfunc && casen completion zsh > ~/.zfunc/_casen
-# add to ~/.zshrc: fpath=(~/.zfunc $fpath) && autoload -Uz compinit && compinit
+### Connector generation
 
-# bash
-casen completion bash >> ~/.bash_completion
+| Command | Description |
+|---------|-------------|
+| `casen connector generate <spec>` | Generate element templates from OpenAPI/Swagger |
 
-# fish
-casen completion fish > ~/.config/fish/completions/casen.fish
-```
+## Global options
 
-## Help
+| Flag | Description |
+|------|-------------|
+| `--profile <name>` | Use a specific profile for this command |
+| `--json` | Output as JSON (machine-readable) |
+| `--help` | Show help |
 
-```bash
-casen --help                       # Global help
-casen <resource> --help            # Resource-level help
-casen <resource> <command> --help  # Command-level help
-```
+---
 
-For all available resources and commands see [DOCUMENTATION.md](./DOCUMENTATION.md).
+## Related Packages
+
+| Package | Description |
+|---------|-------------|
+| [`@bpmnkit/core`](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine |
+| [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
+| [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
+| [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
+| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
+| [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
+| [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |
+| [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |
+
+## License
+
+[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit

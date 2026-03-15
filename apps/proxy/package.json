@@ -1,13 +1,13 @@
 {
 	"name": "@bpmnkit/proxy",
 	"version": "0.0.8",
-	"description": "Local proxy server for @bpmn-sdk — AI bridge (SSE/MCP) and Camunda API proxy using stored CLI profiles",
+	"description": "Local proxy server for BPMN Kit — AI bridge (SSE/MCP) and Camunda API proxy using stored CLI profiles",
 	"type": "module",
 	"bin": {
 		"bpmn-ai-server": "./dist/index.js",
 		"bpmn-mcp": "./dist/mcp-server.js"
 	},
-	"files": ["dist/**/*.js"],
+	"files": ["README.md", "dist/**/*.js"],
 	"engines": {
 		"node": ">=20"
 	},
@@ -31,5 +31,20 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"keywords": [
+		"bpmn",
+		"camunda",
+		"proxy",
+		"ai",
+		"mcp",
+		"server-sent-events",
+		"typescript",
+		"zeebe"
+	],
+	"license": "MIT",
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
 	}
 }
