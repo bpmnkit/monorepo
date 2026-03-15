@@ -1,5 +1,17 @@
 # @bpmnkit/cli
 
+## 0.0.11
+
+### Patch Changes
+
+- [#42](https://github.com/bpmnkit/monorepo/pull/42) [`adb60ed`](https://github.com/bpmnkit/monorepo/commit/adb60ed90f675b3565edb7d82d937acce518c837) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Proper README
+
+- Updated dependencies [[`adb60ed`](https://github.com/bpmnkit/monorepo/commit/adb60ed90f675b3565edb7d82d937acce518c837)]:
+  - @bpmnkit/connector-gen@0.0.4
+  - @bpmnkit/profiles@0.0.7
+  - @bpmnkit/ascii@0.0.10
+  - @bpmnkit/api@0.0.10
+
 ## 0.0.10
 
 ### Patch Changes

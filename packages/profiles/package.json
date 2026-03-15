@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/profiles",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"description": "Shared auth, profile storage, and client factories for the BPMN Kit CLI and proxy server",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -11,7 +11,12 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
-	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"LICENSE",
+		"README.md",
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"engines": {
 		"node": ">=20"
 	},
@@ -23,7 +28,15 @@
 	"dependencies": {
 		"@bpmnkit/api": "workspace:*"
 	},
-	"keywords": ["bpmn", "camunda", "profiles", "authentication", "oauth2", "cli", "typescript"],
+	"keywords": [
+		"bpmn",
+		"camunda",
+		"profiles",
+		"authentication",
+		"oauth2",
+		"cli",
+		"typescript"
+	],
 	"publishConfig": {
 		"access": "public"
 	},

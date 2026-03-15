@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/ui",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "Shared design tokens, theme management, and UI components for BPMN Kit packages",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -12,13 +12,27 @@
 		},
 		"./tokens.css": "./src/tokens.css"
 	},
-	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts", "src/tokens.css"],
+	"files": [
+		"LICENSE",
+		"README.md",
+		"dist/**/*.js",
+		"dist/**/*.d.ts",
+		"src/tokens.css"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
 		"check": "biome check ."
 	},
-	"keywords": ["bpmn", "ui", "design-tokens", "theme", "components", "css-variables", "typescript"],
+	"keywords": [
+		"bpmn",
+		"ui",
+		"design-tokens",
+		"theme",
+		"components",
+		"css-variables",
+		"typescript"
+	],
 	"license": "MIT",
 	"publishConfig": {
 		"access": "public"

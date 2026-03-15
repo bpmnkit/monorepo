@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/core",
-	"version": "0.0.9",
+	"version": "0.0.10",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -10,7 +10,12 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"LICENSE",
+		"README.md",
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -19,7 +24,16 @@
 	},
 	"dependencies": {},
 	"description": "TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
-	"keywords": ["bpmn", "bpmn2", "camunda", "zeebe", "workflow", "dmn", "typescript", "sdk"],
+	"keywords": [
+		"bpmn",
+		"bpmn2",
+		"camunda",
+		"zeebe",
+		"workflow",
+		"dmn",
+		"typescript",
+		"sdk"
+	],
 	"license": "MIT",
 	"repository": {
 		"type": "git",

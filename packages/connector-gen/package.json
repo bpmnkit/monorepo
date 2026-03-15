@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/connector-gen",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -11,7 +11,12 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"files": [
+		"LICENSE",
+		"README.md",
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",

@@ -1,5 +1,12 @@
 # @bpmnkit/examples
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [[`adb60ed`](https://github.com/bpmnkit/monorepo/commit/adb60ed90f675b3565edb7d82d937acce518c837)]:
+  - @bpmnkit/core@0.0.10
+
 ## 0.0.9
 
 ### Patch Changes

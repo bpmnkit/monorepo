@@ -1,5 +1,15 @@
 # @bpmnkit/desktop
 
+## 0.1.9
+
+### Patch Changes
+
+- Updated dependencies [[`adb60ed`](https://github.com/bpmnkit/monorepo/commit/adb60ed90f675b3565edb7d82d937acce518c837)]:
+  - @bpmnkit/plugins@0.0.10
+  - @bpmnkit/canvas@0.0.10
+  - @bpmnkit/editor@0.0.10
+  - @bpmnkit/core@0.0.10
+
 ## 0.1.8
 
 ### Patch Changes

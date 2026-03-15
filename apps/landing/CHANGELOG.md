@@ -1,5 +1,17 @@
 # @bpmnkit/landing
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [[`adb60ed`](https://github.com/bpmnkit/monorepo/commit/adb60ed90f675b3565edb7d82d937acce518c837)]:
+  - @bpmnkit/operate@0.0.7
+  - @bpmnkit/plugins@0.0.10
+  - @bpmnkit/canvas@0.0.10
+  - @bpmnkit/editor@0.0.10
+  - @bpmnkit/engine@0.1.9
+  - @bpmnkit/core@0.0.10
+
 ## 0.0.9
 
 ### Patch Changes

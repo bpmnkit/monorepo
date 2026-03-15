@@ -1,13 +1,17 @@
 {
 	"name": "@bpmnkit/proxy",
-	"version": "0.0.9",
+	"version": "0.0.10",
 	"description": "Local proxy server for BPMN Kit — AI bridge (SSE/MCP) and Camunda API proxy using stored CLI profiles",
 	"type": "module",
 	"bin": {
 		"bpmn-ai-server": "./dist/index.js",
 		"bpmn-mcp": "./dist/mcp-server.js"
 	},
-	"files": ["LICENSE", "README.md", "dist/**/*.js"],
+	"files": [
+		"LICENSE",
+		"README.md",
+		"dist/**/*.js"
+	],
 	"engines": {
 		"node": ">=20"
 	},

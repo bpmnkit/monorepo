@@ -1,5 +1,11 @@
 # @bpmnkit/core
 
+## 0.0.10
+
+### Patch Changes
+
+- [#42](https://github.com/bpmnkit/monorepo/pull/42) [`adb60ed`](https://github.com/bpmnkit/monorepo/commit/adb60ed90f675b3565edb7d82d937acce518c837) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Proper README
+
 ## 0.0.9
 
 ### Patch Changes
