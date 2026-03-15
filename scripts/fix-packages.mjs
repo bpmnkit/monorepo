@@ -30,8 +30,7 @@ const PACKAGES = [
 	[
 		"packages/core",
 		{
-			description:
-				"TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
+			description: "TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
 			keywords: ["bpmn", "bpmn2", "camunda", "zeebe", "workflow", "dmn", "typescript", "sdk"],
 		},
 	],
@@ -110,15 +109,7 @@ const PACKAGES = [
 		{
 			description:
 				"Shared auth, profile storage, and client factories for the BPMN Kit CLI and proxy server",
-			keywords: [
-				"bpmn",
-				"camunda",
-				"profiles",
-				"authentication",
-				"oauth2",
-				"cli",
-				"typescript",
-			],
+			keywords: ["bpmn", "camunda", "profiles", "authentication", "oauth2", "cli", "typescript"],
 		},
 	],
 	[
@@ -149,8 +140,7 @@ const PACKAGES = [
 	[
 		"packages/connector-gen",
 		{
-			description:
-				"Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
+			description: "Generate Camunda REST connector element templates from OpenAPI/Swagger specs",
 			keywords: [
 				"camunda",
 				"connector",
@@ -167,16 +157,7 @@ const PACKAGES = [
 		{
 			description:
 				"Command-line interface for Camunda 8 — deploy, manage, and monitor processes from the terminal",
-			keywords: [
-				"camunda",
-				"bpmn",
-				"cli",
-				"terminal",
-				"zeebe",
-				"workflow",
-				"typescript",
-				"casen",
-			],
+			keywords: ["camunda", "bpmn", "cli", "terminal", "zeebe", "workflow", "typescript", "casen"],
 		},
 	],
 	[
@@ -223,9 +204,10 @@ function fix(dir, overrides) {
 	// publishConfig
 	pkg.publishConfig = { access: "public" }
 
-	// README.md in files[]
-	if (Array.isArray(pkg.files) && !pkg.files.includes("README.md")) {
-		pkg.files = ["README.md", ...pkg.files]
+	// README.md and LICENSE in files[]
+	if (Array.isArray(pkg.files)) {
+		if (!pkg.files.includes("README.md")) pkg.files = ["README.md", ...pkg.files]
+		if (!pkg.files.includes("LICENSE")) pkg.files = ["LICENSE", ...pkg.files]
 	}
 
 	writeFileSync(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`, "utf8")
