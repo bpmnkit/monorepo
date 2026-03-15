@@ -12,7 +12,7 @@
 		"check": "pnpm turbo check",
 		"verify": "pnpm turbo build typecheck check test",
 		"changeset": "changeset",
-		"version-packages": "changeset version",
+		"version-packages": "changeset version && pnpm format",
 		"release": "pnpm turbo build && changeset publish",
 		"fix-bpmn": "node scripts/fix-bpmn.mjs",
 		"update-connectors": "node scripts/update-connectors.mjs",
