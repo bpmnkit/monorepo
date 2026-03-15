@@ -1,5 +1,15 @@
 # @bpmnkit/desktop
 
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies [[`da36cc5`](https://github.com/bpmnkit/monorepo/commit/da36cc54f36abaf0bebd686d4996d516037fd36b)]:
+  - @bpmnkit/plugins@0.0.11
+  - @bpmnkit/canvas@0.0.11
+  - @bpmnkit/editor@0.0.11
+  - @bpmnkit/core@0.0.11
+
 ## 0.1.9
 
 ### Patch Changes

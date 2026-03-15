@@ -1,5 +1,19 @@
 # @bpmnkit/learn
 
+## 0.0.5
+
+### Patch Changes
+
+- [#44](https://github.com/bpmnkit/monorepo/pull/44) [`da36cc5`](https://github.com/bpmnkit/monorepo/commit/da36cc54f36abaf0bebd686d4996d516037fd36b) Thanks [@urbanisierung](https://github.com/urbanisierung)! - New logo
+
+- Updated dependencies [[`da36cc5`](https://github.com/bpmnkit/monorepo/commit/da36cc54f36abaf0bebd686d4996d516037fd36b)]:
+  - @bpmnkit/astro-shared@0.0.5
+  - @bpmnkit/plugins@0.0.11
+  - @bpmnkit/canvas@0.0.11
+  - @bpmnkit/editor@0.0.11
+  - @bpmnkit/engine@0.1.10
+  - @bpmnkit/core@0.0.11
+
 ## 0.0.4
 
 ### Patch Changes
