@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/learn",
+	"name": "@bpmnkit/learn",
 	"private": true,
 	"version": "0.0.2",
 	"type": "module",
@@ -11,11 +11,11 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmn-sdk/astro-shared": "workspace:*",
-		"@bpmn-sdk/canvas": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/editor": "workspace:*",
-		"@bpmn-sdk/engine": "workspace:*",
-		"@bpmn-sdk/plugins": "workspace:*"
+		"@bpmnkit/astro-shared": "workspace:*",
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/editor": "workspace:*",
+		"@bpmnkit/engine": "workspace:*",
+		"@bpmnkit/plugins": "workspace:*"
 	}
 }

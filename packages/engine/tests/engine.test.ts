@@ -1,5 +1,5 @@
-import { Bpmn } from "@bpmn-sdk/core"
-import type { BpmnDefinitions, BpmnProcess } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
+import type { BpmnDefinitions, BpmnProcess } from "@bpmnkit/core"
 import { describe, expect, it } from "vitest"
 import { Engine } from "../src/engine.js"
 import type { ProcessEvent } from "../src/types.js"

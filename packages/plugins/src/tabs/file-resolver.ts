@@ -1,4 +1,4 @@
-import type { DmnDefinitions, FormDefinition } from "@bpmn-sdk/core"
+import type { DmnDefinitions, FormDefinition } from "@bpmnkit/core"
 
 /** A resolved file that can be opened in a tab. */
 export type ResolvedFile =

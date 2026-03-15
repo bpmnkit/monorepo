@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, platform } from "node:os"
 import { join } from "node:path"
-import type { CamundaClientInput } from "@bpmn-sdk/api"
+import type { CamundaClientInput } from "@bpmnkit/api"
 import { listModelerProfiles } from "./modeler.js"
 
 // ─── Types ────────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import type { CanvasApi } from "@bpmn-sdk/canvas"
+import type { CanvasApi } from "@bpmnkit/canvas"
 
 // ── Theme resolution ─────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 
 /**
  * Snapshot-based undo/redo history for the BPMN editor.

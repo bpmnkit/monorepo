@@ -1,11 +1,11 @@
 ---
-title: "@bpmn-sdk/canvas"
+title: "@bpmnkit/canvas"
 description: Zero-dependency SVG BPMN viewer with pan/zoom, dark/light theme, and plugin API.
 ---
 
 ## Overview
 
-`@bpmn-sdk/canvas` is a lightweight BPMN 2.0 diagram viewer that renders to SVG.
+`@bpmnkit/canvas` is a lightweight BPMN 2.0 diagram viewer that renders to SVG.
 It has no runtime dependencies and works in any browser environment.
 
 **Features:**
@@ -18,13 +18,13 @@ It has no runtime dependencies and works in any browser environment.
 ## Installation
 
 ```sh
-pnpm add @bpmn-sdk/canvas
+pnpm add @bpmnkit/canvas
 ```
 
 ## Basic Usage
 
 ```typescript
-import { BpmnCanvas } from "@bpmn-sdk/canvas";
+import { BpmnCanvas } from "@bpmnkit/canvas";
 
 const canvas = new BpmnCanvas({
   container: document.getElementById("canvas"),
@@ -72,9 +72,9 @@ canvas.on("diagram:change", () => {
 The canvas accepts an array of plugins that can extend its behavior:
 
 ```typescript
-import { BpmnCanvas } from "@bpmn-sdk/canvas";
-import { createMinimapPlugin } from "@bpmn-sdk/canvas-plugin-minimap";
-import { createZoomControlsPlugin } from "@bpmn-sdk/canvas-plugin-zoom-controls";
+import { BpmnCanvas } from "@bpmnkit/canvas";
+import { createMinimapPlugin } from "@bpmnkit/canvas-plugin-minimap";
+import { createZoomControlsPlugin } from "@bpmnkit/canvas-plugin-zoom-controls";
 
 const canvas = new BpmnCanvas({
   container: document.getElementById("canvas"),
@@ -99,11 +99,11 @@ type CanvasPlugin = {
 
 | Package | Description |
 |---|---|
-| `@bpmn-sdk/canvas-plugin-minimap` | Overview minimap |
-| `@bpmn-sdk/canvas-plugin-zoom-controls` | Zoom in/out buttons |
-| `@bpmn-sdk/canvas-plugin-command-palette` | Keyboard command palette |
-| `@bpmn-sdk/canvas-plugin-storage` | File persistence (IndexedDB) |
-| `@bpmn-sdk/canvas-plugin-tabs` | Multi-file tab bar |
-| `@bpmn-sdk/canvas-plugin-process-runner` | In-browser simulation controls |
-| `@bpmn-sdk/canvas-plugin-token-highlight` | Visual token tracking |
-| `@bpmn-sdk/canvas-plugin-ai-bridge` | AI chat integration |
+| `@bpmnkit/canvas-plugin-minimap` | Overview minimap |
+| `@bpmnkit/canvas-plugin-zoom-controls` | Zoom in/out buttons |
+| `@bpmnkit/canvas-plugin-command-palette` | Keyboard command palette |
+| `@bpmnkit/canvas-plugin-storage` | File persistence (IndexedDB) |
+| `@bpmnkit/canvas-plugin-tabs` | Multi-file tab bar |
+| `@bpmnkit/canvas-plugin-process-runner` | In-browser simulation controls |
+| `@bpmnkit/canvas-plugin-token-highlight` | Visual token tracking |
+| `@bpmnkit/canvas-plugin-ai-bridge` | AI chat integration |

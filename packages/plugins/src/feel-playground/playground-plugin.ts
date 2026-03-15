@@ -1,12 +1,12 @@
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
 import {
 	evaluate,
 	evaluateUnaryTests,
 	highlightToHtml,
 	parseExpression,
 	parseUnaryTests,
-} from "@bpmn-sdk/feel"
-import type { FeelValue } from "@bpmn-sdk/feel"
+} from "@bpmnkit/feel"
+import type { FeelValue } from "@bpmnkit/feel"
 import { injectPlaygroundStyles } from "./css.js"
 
 export interface FeelPlaygroundPlugin extends CanvasPlugin {

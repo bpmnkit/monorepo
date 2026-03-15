@@ -1,4 +1,4 @@
-# Publishing `@bpmn-sdk/core` to npm
+# Publishing `@bpmnkit/core` to npm
 
 This document covers the full publish lifecycle: one-time setup, the automated release flow, and how npm provenance (trusted publishing) works.
 
@@ -35,7 +35,7 @@ If `@bpmn-sdk` does not exist as an npm organization yet:
 
 1. Log in to [npmjs.com](https://www.npmjs.com)
 2. Go to **Organizations** → **Create Organization** → use `bpmn-sdk`
-3. The package `@bpmn-sdk/core` will publish under this org
+3. The package `@bpmnkit/core` will publish under this org
 
 ### 2. Create an npm Automation token
 
@@ -45,7 +45,7 @@ Provenance attestation requires authentication via a token even though the build
 2. Set:
    - **Token name:** `github-actions-bpmn-sdk`
    - **Expiration:** 365 days (or your org policy)
-   - **Packages and scopes:** Read and write access on `@bpmn-sdk/core`
+   - **Packages and scopes:** Read and write access on `@bpmnkit/core`
    - **Organizations:** no org permission needed
 3. Copy the token
 
@@ -86,7 +86,7 @@ pnpm changeset
 ```
 
 This interactive prompt asks:
-- Which packages changed (`@bpmn-sdk/core`)
+- Which packages changed (`@bpmnkit/core`)
 - Bump type: `patch` (bug fix), `minor` (new feature), `major` (breaking change)
 - A short summary of the change
 
@@ -110,7 +110,7 @@ The release workflow is configured for **npm provenance**, which cryptographical
 
 When `NPM_CONFIG_PROVENANCE=true` is set, npm publishes an [OIDC-based attestation](https://docs.npmjs.com/generating-provenance-statements) alongside the package. Consumers can verify:
 
-- The package was built from `github.com/bpmn-sdk/monorepo`
+- The package was built from `github.com/bpmnkit/monorepo`
 - The exact git commit and workflow run that produced it
 - The build was not tampered with between CI and the registry
 
@@ -127,7 +127,7 @@ Anyone can verify the provenance of a published package:
 ```bash
 npm audit signatures
 # or
-npm install --dry-run @bpmn-sdk/core
+npm install --dry-run @bpmnkit/core
 ```
 
 Or via the npm web UI on the package's **Code** tab.
@@ -147,12 +147,12 @@ Or via the npm web UI on the package's **Code** tab.
 ## Troubleshooting
 
 **"Package not found" on publish**
-- The package name `@bpmn-sdk/core` must match the `name` field in `packages/core/package.json`.
+- The package name `@bpmnkit/core` must match the `name` field in `packages/core/package.json`.
 - The npm org `bpmn-sdk` must exist and your token must have write access.
 
 **"You must be logged in" / 401 errors**
 - Check the `NPM_TOKEN` secret is set in the repository's Actions secrets.
-- Make sure the token has not expired and has write access to `@bpmn-sdk/core`.
+- Make sure the token has not expired and has write access to `@bpmnkit/core`.
 
 **Provenance attestation fails**
 - Ensure `permissions: id-token: write` is present in the workflow job.

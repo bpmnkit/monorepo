@@ -1,4 +1,4 @@
-import type { AuthConfig, CamundaClientInput } from "@bpmn-sdk/api"
+import type { AuthConfig, CamundaClientInput } from "@bpmnkit/api"
 
 // Simple in-memory token cache keyed by clientId
 const tokenCache = new Map<string, { token: string; expiresAt: number }>()

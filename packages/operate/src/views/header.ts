@@ -1,4 +1,4 @@
-import { type Theme, createThemeSwitcher } from "@bpmn-sdk/ui"
+import { type Theme, createThemeSwitcher } from "@bpmnkit/ui"
 import type { ProfileInfo } from "../types.js"
 
 export function createHeader(

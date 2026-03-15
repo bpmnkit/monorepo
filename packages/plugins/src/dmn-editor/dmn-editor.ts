@@ -1,4 +1,4 @@
-import { Dmn } from "@bpmn-sdk/core"
+import { Dmn } from "@bpmnkit/core"
 import type {
 	DmnAggregation,
 	DmnDecision,
@@ -11,7 +11,7 @@ import type {
 	DmnRule,
 	DmnTypeRef,
 	HitPolicy,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 import { injectDmnEditorStyles } from "./css.js"
 import { DrdCanvas } from "./drd-canvas.js"
 

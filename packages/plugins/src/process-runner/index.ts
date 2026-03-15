@@ -1,9 +1,9 @@
-import type { CanvasApi, CanvasPlugin } from "@bpmn-sdk/canvas"
+import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
 import { injectProcessRunnerStyles } from "./css.js"
 
 // ── Structural types — no hard deps on engine packages ─────────────────────
 
-/** Minimal interface satisfied by `ProcessInstance` from `@bpmn-sdk/engine`. */
+/** Minimal interface satisfied by `ProcessInstance` from `@bpmnkit/engine`. */
 interface InstanceLike {
 	get state(): string
 	onChange(callback: (event: Record<string, unknown>) => void): () => void
@@ -11,7 +11,7 @@ interface InstanceLike {
 	beforeComplete?: (elementId: string) => Promise<void>
 }
 
-/** Minimal interface satisfied by `Engine` from `@bpmn-sdk/engine`. */
+/** Minimal interface satisfied by `Engine` from `@bpmnkit/engine`. */
 interface EngineLike {
 	deploy(d: { bpmn?: unknown }): void
 	start(

@@ -8,15 +8,15 @@ export const SITE = {
 		"programmatically. Designed for AI agents, automation platforms, and Camunda 8 " +
 		"/ Zeebe workflow deployments. Zero runtime dependencies in the core packages.",
 	url: "https://bpmnkit.com",
-	github: "https://github.com/bpmn-sdk/monorepo",
-	npm: "https://www.npmjs.com/package/@bpmn-sdk/core",
+	github: "https://github.com/bpmnkit/monorepo",
+	npm: "https://www.npmjs.com/package/@bpmnkit/core",
 }
 
 // ── Packages ───────────────────────────────────────────────────────────────────
 
 export const PACKAGES = [
 	{
-		name: "@bpmn-sdk/core",
+		name: "@bpmnkit/core",
 		url: `${SITE.github}/tree/main/packages/core`,
 		description:
 			"Fluent process builder, BPMN 2.0 parser/serializer, DMN support, " +
@@ -27,26 +27,26 @@ export const PACKAGES = [
 			"and element lookup utilities (findElement, getZeebeExtensions, etc.)",
 	},
 	{
-		name: "@bpmn-sdk/engine",
+		name: "@bpmnkit/engine",
 		url: `${SITE.github}/tree/main/packages/engine`,
 		description:
 			"Zero-dependency BPMN simulation engine (browser + Node.js) — service tasks, " +
 			"user tasks, gateways, timers, message correlation, DMN evaluation",
 	},
 	{
-		name: "@bpmn-sdk/api",
+		name: "@bpmnkit/api",
 		url: `${SITE.github}/tree/main/packages/api`,
 		description:
 			"Camunda 8 REST API client — 180 typed methods, 30+ resource classes, " +
 			"OAuth2 / Bearer / Basic auth, LRU+TTL cache, exponential backoff, TypedEventEmitter",
 	},
 	{
-		name: "@bpmn-sdk/canvas",
+		name: "@bpmnkit/canvas",
 		url: `${SITE.github}/tree/main/packages/canvas`,
 		description: "Zero-dependency SVG BPMN viewer with pan/zoom, dark/light theme, plugin API",
 	},
 	{
-		name: "@bpmn-sdk/editor",
+		name: "@bpmnkit/editor",
 		url: `${SITE.github}/tree/main/packages/editor`,
 		description: "Full BPMN editor — canvas + properties panel + AI bridge + storage",
 	},
@@ -81,7 +81,7 @@ export const FEATURES = [
 
 export const CODE = {
 	withSdk: `\
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 const xml = Bpmn.export(
   Bpmn.createProcess("my-flow") // fluent API
@@ -100,7 +100,7 @@ const xml = Bpmn.export(
 // ✓ Zeebe extensions set`,
 
 	createProcess: `\
-import { Bpmn, exportSvg } from "@bpmn-sdk/core";
+import { Bpmn, exportSvg } from "@bpmnkit/core";
 
 const defs = Bpmn.createProcess("hello")
   .startEvent("start")
@@ -116,7 +116,7 @@ const xml = Bpmn.export(defs); // ✓ BPMN 2.0 XML
 const svg = exportSvg(defs);   // ✓ SVG image, zero deps`,
 
 	deployRun: `\
-import { Engine } from "@bpmn-sdk/engine";
+import { Engine } from "@bpmnkit/engine";
 
 const engine = new Engine();
 await engine.deploy({ bpmn: xml });
@@ -131,7 +131,7 @@ engine.registerJobWorker(
 engine.start("hello");`,
 
 	apiClient: `\
-import { CamundaClient } from "@bpmn-sdk/api";
+import { CamundaClient } from "@bpmnkit/api";
 
 const client = new CamundaClient({
   baseUrl: "https://api.cloud.camunda.io",
@@ -190,7 +190,7 @@ const xml = Bpmn.export(
 );`,
 
 	dmnTable: `\
-import { Dmn } from "@bpmn-sdk/core";
+import { Dmn } from "@bpmnkit/core";
 
 // Build a DMN decision table
 const dmnDefs = Dmn.createDecisionTable("Eligibility")
@@ -207,7 +207,7 @@ const dmnDefs = Dmn.createDecisionTable("Eligibility")
 const xml = Dmn.export(dmnDefs); // ✓ valid DMN 2.0 XML`,
 
 	formExample: `\
-import { Form } from "@bpmn-sdk/core";
+import { Form } from "@bpmnkit/core";
 
 // Build a Camunda form from code
 const form = Form.makeEmpty("ApplicationForm");
@@ -226,7 +226,7 @@ import {
   Bpmn, findElement, getZeebeExtensions,
   isBpmnServiceTask, isBpmnGateway,
   ParseError,
-} from "@bpmn-sdk/core";
+} from "@bpmnkit/core";
 
 try {
   const defs = Bpmn.parse(xml); // throws ParseError if invalid
@@ -249,7 +249,7 @@ try {
 }`,
 
 	bpmnWithCompanions: `\
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 // BPMN process referencing a DMN decision and a Camunda Form
 const defs = Bpmn.createProcess("loan-application")
@@ -294,7 +294,7 @@ const defs = Bpmn.createProcess("loan-application")
 // When you change a code example above, update the matching HTML version here.
 
 export const CODE_HTML = {
-	withSdk: `<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+	withSdk: `<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
 
 <span class="kw">const</span> xml = Bpmn.export(
   Bpmn.createProcess(<span class="str">"my-flow"</span>) <span class="comment">// fluent API</span>
@@ -312,7 +312,7 @@ export const CODE_HTML = {
 <span class="comment">// ✓ Auto-layout applied</span>
 <span class="comment">// ✓ Zeebe extensions set</span>`,
 
-	createProcess: `<span class="kw">import</span> { Bpmn, exportSvg } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+	createProcess: `<span class="kw">import</span> { Bpmn, exportSvg } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
 
 <span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"hello"</span>)
   .<span class="fn">startEvent</span>(<span class="str">"start"</span>)
@@ -327,7 +327,7 @@ export const CODE_HTML = {
 <span class="kw">const</span> xml = Bpmn.<span class="fn">export</span>(defs); <span class="comment">// ✓ BPMN 2.0 XML</span>
 <span class="kw">const</span> svg = <span class="fn">exportSvg</span>(defs);   <span class="comment">// ✓ SVG image, zero deps</span>`,
 
-	deployRun: `<span class="kw">import</span> { Engine } <span class="kw">from</span> <span class="str">"@bpmn-sdk/engine"</span>;
+	deployRun: `<span class="kw">import</span> { Engine } <span class="kw">from</span> <span class="str">"@bpmnkit/engine"</span>;
 
 <span class="kw">const</span> engine = <span class="kw">new</span> Engine();
 <span class="kw">await</span> engine.deploy({ bpmn: xml });
@@ -341,7 +341,7 @@ engine.registerJobWorker(
 );
 engine.start(<span class="str">"hello"</span>);`,
 
-	apiClient: `<span class="kw">import</span> { CamundaClient } <span class="kw">from</span> <span class="str">"@bpmn-sdk/api"</span>;
+	apiClient: `<span class="kw">import</span> { CamundaClient } <span class="kw">from</span> <span class="str">"@bpmnkit/api"</span>;
 
 <span class="kw">const</span> client = <span class="kw">new</span> CamundaClient({
   baseUrl: <span class="str">"https://api.cloud.camunda.io"</span>,
@@ -366,7 +366,7 @@ engine.start(<span class="str">"hello"</span>);`,
 client.<span class="fn">on</span>(<span class="str">"request"</span>, (e) => console.log(e.method, e.url));
 client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => metrics.<span class="fn">inc</span>(<span class="str">"api.error"</span>));`,
 
-	dmnTable: `<span class="kw">import</span> { Dmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+	dmnTable: `<span class="kw">import</span> { Dmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
 
 <span class="comment">// Build a DMN decision table</span>
 <span class="kw">const</span> dmnDefs = Dmn.<span class="fn">createDecisionTable</span>(<span class="str">"Eligibility"</span>)
@@ -382,7 +382,7 @@ client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => met
 
 <span class="kw">const</span> xml = Dmn.<span class="fn">export</span>(dmnDefs); <span class="comment">// ✓ valid DMN 2.0 XML</span>`,
 
-	formExample: `<span class="kw">import</span> { Form } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+	formExample: `<span class="kw">import</span> { Form } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
 
 <span class="comment">// Scaffold a Camunda form with a specific ID</span>
 <span class="kw">const</span> form = Form.<span class="fn">makeEmpty</span>(<span class="str">"ApplicationForm"</span>);
@@ -399,7 +399,7 @@ client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => met
   Bpmn, findElement, getZeebeExtensions,
   isBpmnServiceTask, isBpmnGateway,
   ParseError,
-} <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+} <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
 
 <span class="kw">try</span> {
   <span class="kw">const</span> defs = Bpmn.<span class="fn">parse</span>(xml); <span class="comment">// throws ParseError if invalid</span>
@@ -421,7 +421,7 @@ client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => met
   }
 }`,
 
-	bpmnWithCompanions: `<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;
+	bpmnWithCompanions: `<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
 
 <span class="comment">// Process referencing a DMN table and a Camunda Form</span>
 <span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"loan-application"</span>)

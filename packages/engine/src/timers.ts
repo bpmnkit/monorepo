@@ -1,4 +1,4 @@
-import type { BpmnTimerEventDefinition } from "@bpmn-sdk/core"
+import type { BpmnTimerEventDefinition } from "@bpmnkit/core"
 
 /**
  * Schedule a timer from a BPMN timer event definition.

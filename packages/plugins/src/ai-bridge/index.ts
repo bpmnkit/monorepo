@@ -1,4 +1,4 @@
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 import { DEFAULT_SERVER, createAiPanel } from "./panel.js"
 import type { NodeContext } from "./panel.js"
 

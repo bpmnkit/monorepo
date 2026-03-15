@@ -2,7 +2,7 @@
 
 ## OpenAPI → Camunda Connector Generator (2026-03-14) — `packages/connector-gen`, `apps/cli`
 
-- **`@bpmn-sdk/connector-gen`**: Zero-dep (+ `yaml`) library that converts OpenAPI 3.x specs to Camunda REST connector element templates.
+- **`@bpmnkit/connector-gen`**: Zero-dep (+ `yaml`) library that converts OpenAPI 3.x specs to Camunda REST connector element templates.
 - **Strategy A**: one `.json` template per API operation; job type `io.camunda:http-json:1`.
 - **URL handling**: Hidden field for plain paths; FEEL expression (`="https://base/" + param + "/rest"`) for paths with `{param}` variables.
 - **Auth**: 5-type auth block (noAuth, API key, Basic, Bearer, OAuth2 Client Credentials) with conditions; auto-detected from `securitySchemes` or overrideable via `--auth`.
@@ -14,7 +14,7 @@
 ## Interactive Learning Center (2026-03-13) — `apps/learn`, `packages/astro-shared`
 
 - **`apps/learn`**: Astro v6 app (port 4322) with interactive BPMN tutorials. Tutorial catalog, per-tutorial overview, and step-by-step pages with live BpmnEditor embedded in a split-pane layout.
-- **`packages/astro-shared`**: Shared CSS package (`@bpmn-sdk/astro-shared`) providing `tokens.css` (oklch design tokens), `background.css` (aurora orbs + dot grid + grain), and `site.ts` (SITE metadata).
+- **`packages/astro-shared`**: Shared CSS package (`@bpmnkit/astro-shared`) providing `tokens.css` (oklch design tokens), `background.css` (aurora orbs + dot grid + grain), and `site.ts` (SITE metadata).
 - **Tutorial 1 — "Getting started"**: 5-step no-install tutorial: run a process, add a task, connect it with a sequence flow, name it, then run again. Uses `BpmnEditor` + `Engine` + `ProcessRunnerPlugin`.
 - **Progress tracking**: localStorage-based progress (`bpmn_learn_progress`), including saved BPMN XML carried across steps, step completion state, and continue-from-last-step support.
 - **Hint system**: Progressive hint reveal with tiered styling; up to N hints per step.
@@ -23,7 +23,7 @@
 ## Auto-layout (2026-03-11) — `packages/core`, `packages/editor`
 
 - **`Bpmn.autoLayout(xml)`**: applies the Sugiyama layered layout to all processes in a BPMN XML string and returns updated XML with replaced BPMNDi positions.
-- **`applyAutoLayout(defs)`**: exported from `@bpmn-sdk/core` — operates on `BpmnDefinitions` directly; handles plain processes and collaborations with pools/lanes; pool and lane shapes carry `isHorizontal: true`.
+- **`applyAutoLayout(defs)`**: exported from `@bpmnkit/core` — operates on `BpmnDefinitions` directly; handles plain processes and collaborations with pools/lanes; pool and lane shapes carry `isHorizontal: true`.
 - **`BpmnEditor.autoLayout()`**: undoable auto-layout command in the editor; triggers `fitView` after layout.
 - **Auto-layout button**: HUD action bar now has an auto-layout button (grid icon) between `btnTopMore` and optional inject buttons.
 - **`BpmnDiShape.isHorizontal`**: new optional field parsed and serialized round-trip by parser/serializer.
@@ -36,7 +36,7 @@
 
 ## Shared design system (2026-03-11) — `packages/ui`
 
-- **`@bpmn-sdk/ui`**: Shared design tokens, theme management, and primitive UI components for all bpmn-sdk frontends.
+- **`@bpmnkit/ui`**: Shared design tokens, theme management, and primitive UI components for all bpmn-sdk frontends.
 - **Design tokens**: `--bpmnkit-bg`, `--bpmnkit-surface`, `--bpmnkit-surface-2`, `--bpmnkit-border`, `--bpmnkit-fg`, `--bpmnkit-fg-muted`, `--bpmnkit-accent` (blue), `--bpmnkit-success/warn/danger`, `--bpmnkit-radius`, `--bpmnkit-nav-bg/fg`. Light default, dark via `[data-theme="dark"]`.
 - **Theme management**: `resolveTheme` (auto→light|dark), `persistTheme`/`loadPersistedTheme` (localStorage), `applyTheme` (sets `data-theme` on element).
 - **Theme switcher component**: `createThemeSwitcher({ initial, onChange, persist })` — button+dropdown with Dark/Light/System options, icon updates to reflect selection.
@@ -47,7 +47,7 @@
 
 ## Monitoring & Operations frontend (2026-03-10) — `packages/operate`
 
-- **`@bpmn-sdk/operate`**: Zero-dependency monitoring frontend. `createOperate({ container, mock?, proxyUrl?, profile?, theme? })` mounts full monitoring UI.
+- **`@bpmnkit/operate`**: Zero-dependency monitoring frontend. `createOperate({ container, mock?, proxyUrl?, profile?, theme? })` mounts full monitoring UI.
 - **Dashboard**: Stats cards for active instances, open incidents, active jobs, pending tasks, deployed processes. Clickable cards navigate to respective views.
 - **Processes view**: Table of deployed process definitions with name, ID, version, tag, tenant.
 - **Instances view**: Paginated table with state filter bar (All / Active / Completed / Terminated). Incident warning indicator per row.
@@ -72,7 +72,7 @@
 - **DMN fluent builder**: `Dmn.createDecisionTable(id)` → `.name()` → `.input({ label, expression, typeRef })` → `.output({ label, name, typeRef })` → `.rule({ inputs, outputs })` → `.hitPolicy()` → `.build()`. Produces a `DmnDefinitions` object serializable via `Dmn.export(defs)`.
 - **DMN auto-layout**: `layoutDmn(defs)` assigns DMNDI positions to all DRG elements using a left-to-right layered layout based on the requirement DAG. Sizes: decision=180×80, inputData=125×45, knowledgeSource=100×63, BKM=160×80. Exposed as `Dmn.layout()`.
 - **DMN parse/export**: `Dmn.parse(xml)` → `DmnDefinitions`; `Dmn.export(defs)` → XML string. `Dmn.makeEmpty()` creates a minimal DmnDefinitions with one empty decision table.
-- **DMN benchmark**: `benchmarkDmnLayout(xml, fileName)` compares auto-layout vs reference DMNDI. Exported from `@bpmn-sdk/core`.
+- **DMN benchmark**: `benchmarkDmnLayout(xml, fileName)` compares auto-layout vs reference DMNDI. Exported from `@bpmnkit/core`.
 - **DMN compact format**: `compactifyDmn(defs) → CompactDmn` / `expandDmn(compact) → DmnDefinitions` — token-efficient AI format. Exposed as `Dmn.compactify()` / `Dmn.expand()`.
 - **Form scaffold**: `Form.makeEmpty(id?)` creates a minimal `FormDefinition` (schemaVersion 16, submit button). Extend `components` array with typed field objects.
 - **Form compact format**: `compactifyForm(def) → CompactForm` / `expandForm(compact) → FormDefinition`. Exposed as `Form.compactify()` / `Form.expand()`.
@@ -83,7 +83,7 @@
 
 ## Auto-layout benchmark + compactness improvements (2026-03-10) — `packages/core`
 
-- **`benchmarkLayout` API**: full pipeline to compare auto-generated positions against reference BPMN DI data — `benchmarkLayout`, `parseReferenceLayout`, `generateAutoLayout`, `compareLayouts`, `formatBenchmarkResult` exported from `@bpmn-sdk/core`.
+- **`benchmarkLayout` API**: full pipeline to compare auto-generated positions against reference BPMN DI data — `benchmarkLayout`, `parseReferenceLayout`, `generateAutoLayout`, `compareLayouts`, `formatBenchmarkResult` exported from `@bpmnkit/core`.
 - **Tighter spacing**: `GRID_CELL_WIDTH` reduced 200→130 (width ratio 1.51→1.0 vs bpmn.io reference), `GRID_CELL_HEIGHT` reduced 160→140 (140px parallel branch spacing matches bpmn.io).
 - **Gateway labels below**: gateway labels now render centered below the diamond (standard BPMN convention).
 - **`scripts/bench-layout.mjs`**: CLI benchmark script over any folder of `.bpmn` files; reports avg/p90/max distance, width/height ratio, order violations per file.
@@ -105,7 +105,7 @@
 
 Full support for the Camunda Console Admin API alongside the existing C8 REST API.
 
-- **`AdminApiClient`** — generated from the SaaS Console swagger (`console.cloud.camunda.io`), same runtime as `CamundaClient` (OAuth2, retry, cache, typed events). Exported from `@bpmn-sdk/api`.
+- **`AdminApiClient`** — generated from the SaaS Console swagger (`console.cloud.camunda.io`), same runtime as `CamundaClient` (OAuth2, retry, cache, typed events). Exported from `@bpmnkit/api`.
 - **Admin API resources**: `MetaResource`, `MembersResource`, `ClustersResource`, `ActivityResource` — typed methods for every Admin API endpoint.
 - **CLI command groups**: `casen meta`, `casen members`, `casen clusters`, `casen activity` — full list/get/create/delete/update support mirroring the C8 command structure.
 - **Per-profile `apiType`**: each saved profile is tagged as `"c8"` (default) or `"admin"`. The CLI routes `getClient()` vs `getAdminClient()` accordingly.
@@ -124,11 +124,11 @@ Interactive BPMN execution toolbar embedded directly on the canvas.
 - **Stop** — cancels the running instance at any point.
 - **Token-highlight integration** — pass `tokenHighlight: createTokenHighlightPlugin()` to see active/visited nodes and edges update in real-time.
 - **Auto-deploy** — subscribes to `diagram:load`; automatically deploys the loaded diagram into the engine so the toolbar is always ready.
-- **Structural typing** — depends only on `@bpmn-sdk/canvas`; engine and token-highlight are accepted via structural interfaces, no hard runtime coupling.
+- **Structural typing** — depends only on `@bpmnkit/canvas`; engine and token-highlight are accepted via structural interfaces, no hard runtime coupling.
 
 ## Token Highlight Canvas Plugin (2026-03-03) — `canvas-plugins/token-highlight`
 
-Visualizes live process execution state on the BPMN canvas when paired with `@bpmn-sdk/engine`.
+Visualizes live process execution state on the BPMN canvas when paired with `@bpmnkit/engine`.
 
 - **Active elements** — amber glow pulse; marks nodes where a token is currently present.
 - **Visited elements** — green tint; marks nodes the token has already left.
@@ -136,7 +136,7 @@ Visualizes live process execution state on the BPMN canvas when paired with `@bp
 - **`trackInstance(instance)`** — one call auto-wires to any `ProcessInstance` via structural typing (no engine dependency required).
 - **Manual API** — `setActive()`, `addVisited()`, `clear()` for custom control.
 
-## BPMN Simulation Engine (2026-03-03) — `packages/engine` (`@bpmn-sdk/engine`)
+## BPMN Simulation Engine (2026-03-03) — `packages/engine` (`@bpmnkit/engine`)
 
 Lightweight, zero-external-dependency BPMN simulation engine for browser and Node.js.
 
@@ -145,7 +145,7 @@ Lightweight, zero-external-dependency BPMN simulation engine for browser and Nod
 - **Job workers** — Register handlers for service/user tasks. Auto-completes in simulation mode when no handler is registered.
 - **Gateways** — Exclusive (condition eval), Parallel (split+join), Inclusive (all matching flows).
 - **Timers** — ISO 8601 durations/dates/cycles via `setTimeout`.
-- **DMN** — Business rule tasks evaluate decision tables via `@bpmn-sdk/feel`; supports all major hit policies.
+- **DMN** — Business rule tasks evaluate decision tables via `@bpmnkit/feel`; supports all major hit policies.
 - **Sub-processes** — Isolated child scope; completes when all tokens in sub-scope are consumed.
 - **Error propagation** — Error end events propagate through scope chain to the nearest error boundary event.
 
@@ -153,10 +153,10 @@ Lightweight, zero-external-dependency BPMN simulation engine for browser and Nod
 
 The Tauri desktop app now bundles two native Rust binaries instead of a Node.js bundle:
 
-- **`ai-server`** — HTTP server on port 3033 (axum, CORS, SSE). Detects and proxies Claude/Copilot/Gemini CLIs. Converts CompactDiagram ↔ BPMN XML via the embedded `@bpmn-sdk/core` bridge.
+- **`ai-server`** — HTTP server on port 3033 (axum, CORS, SSE). Detects and proxies Claude/Copilot/Gemini CLIs. Converts CompactDiagram ↔ BPMN XML via the embedded `@bpmnkit/core` bridge.
 - **`bpmn-mcp`** — stdio MCP server (JSON-RPC 2.0). Used as the LLM's tool executor when MCP is supported. Maintains stateful BPMN diagram in-memory via the bridge.
 
-**Core bridge** (`bridge.ts` → `bridge.bundle.js` → `include_str!`): `@bpmn-sdk/core` is compiled to an IIFE JS bundle at Rust build time and evaluated in a dedicated QuickJS (`rquickjs`) thread. When core changes, rebuilding the Rust package automatically picks up the update — no divergence between JS and Rust.
+**Core bridge** (`bridge.ts` → `bridge.bundle.js` → `include_str!`): `@bpmnkit/core` is compiled to an IIFE JS bundle at Rust build time and evaluated in a dedicated QuickJS (`rquickjs`) thread. When core changes, rebuilding the Rust package automatically picks up the update — no divergence between JS and Rust.
 
 No Node.js required on the user's machine for the desktop app.
 
@@ -168,7 +168,7 @@ Day-based checkpoint retention: up to 50 checkpoints from today + 1 (latest) per
 
 ## MCP-based AI diagram editing (2026-03-03) — `apps/ai-server`
 
-The AI server exposes a minimal stdio MCP server (`mcp-server.ts`) that gives the LLM structured tools to read and modify BPMN diagrams. Zero external dependencies — pure Node.js built-ins + `@bpmn-sdk/core`.
+The AI server exposes a minimal stdio MCP server (`mcp-server.ts`) that gives the LLM structured tools to read and modify BPMN diagrams. Zero external dependencies — pure Node.js built-ins + `@bpmnkit/core`.
 
 Tools: `get_diagram`, `add_elements`, `remove_elements`, `update_element`, `set_condition`, `add_http_call`, `replace_diagram`.
 
@@ -183,7 +183,7 @@ All diagram changes go through `expand()` + `Bpmn.export()` in core; the client 
 
 ## Core-mediated AI pipeline (2026-03-03) — `apps/ai-server`
 
-All AI chat requests now flow exclusively through the `@bpmn-sdk/core` package on the server:
+All AI chat requests now flow exclusively through the `@bpmnkit/core` package on the server:
 
 1. **Operations format** — LLM outputs targeted ops (`add`, `remove`, `update`, `condition`) instead of re-generating the entire diagram for small changes. This is much more efficient for common tasks (add a node, rename, set a condition, add a REST connector task type).
 2. **Fallback full diagram** — LLM can still output a full `CompactDiagram` for new diagrams or structural rewrites.
@@ -226,7 +226,7 @@ VS Code / Figma style dock that unifies the Properties config panel and the AI c
 - **Auto-expand**: selecting an element expands dock to Properties tab; clicking AI button expands to AI tab
 - **Backward compatible**: both plugins work without `container` (standalone/body mode unchanged)
 
-## AI integration (2026-03-02) — `apps/ai-server` + `@bpmn-sdk/canvas-plugin-ai-bridge`
+## AI integration (2026-03-02) — `apps/ai-server` + `@bpmnkit/canvas-plugin-ai-bridge`
 
 Local AI assistant for BPMN diagram creation and modification:
 
@@ -234,9 +234,9 @@ Local AI assistant for BPMN diagram creation and modification:
 - **Auto-apply**: AI responses containing a `CompactDiagram` JSON block get an "Apply to diagram" button; applies via `expand()` + auto-layout
 - **Checkpoints**: IndexedDB stores up to 50 checkpoints per project/file; "History" button shows list with restore
 - **Local server** (`pnpm ai-server`, port 3033): bridges browser to CLI-based AI — Claude CLI (`--output-format stream-json`) and GitHub Copilot CLI
-- **Compact format** (`compactify`/`expand`): 5-10x token reduction vs raw XML; exported from `@bpmn-sdk/core`
+- **Compact format** (`compactify`/`expand`): 5-10x token reduction vs raw XML; exported from `@bpmnkit/core`
 
-## Reference navigation in element toolbar (2026-03-02) — `@bpmn-sdk/editor` HUD
+## Reference navigation in element toolbar (2026-03-02) — `@bpmnkit/editor` HUD
 
 When a BPMN element with a linked reference is selected, the cfg toolbar shows navigation buttons:
 
@@ -245,20 +245,20 @@ When a BPMN element with a linked reference is selected, the cfg toolbar shows n
 - **Business rule task**: if `decisionId` set → "DecisionId ↗" navigate button; else → "Link decision ▾" dropdown
 - Reference action buttons removed from config panel; process/form/decision text fields remain for manual editing
 
-## Optimize plugin (2026-03-02) — `@bpmn-sdk/canvas-plugin-optimize`
+## Optimize plugin (2026-03-02) — `@bpmnkit/canvas-plugin-optimize`
 
 New self-contained canvas plugin encapsulating the two-phase optimize dialog:
 
 - `createOptimizePlugin(options)` returns `{ name, install(), button }` — button is injected into the HUD as `optimizeButton`
 - Dialog logic (styles, phase 1 findings list, phase 2 results) fully self-contained in the plugin
 
-## Custom storage dialogs (2026-03-02) — `@bpmn-sdk/canvas-plugin-storage`
+## Custom storage dialogs (2026-03-02) — `@bpmnkit/canvas-plugin-storage`
 
 All browser `prompt()`/`confirm()` calls replaced with themed custom modals:
 
 - `showInputDialog(opts): Promise<string | null>` — text input modal with title, placeholder, default value
 - `showConfirmDialog(opts): Promise<boolean>` — confirmation modal with optional `danger` styling
-- Both exported from `@bpmn-sdk/canvas-plugin-storage`; used in storage and storage-tabs-bridge
+- Both exported from `@bpmnkit/canvas-plugin-storage`; used in storage and storage-tabs-bridge
 
 ## Optimize button (2026-03-02) — editor HUD + landing app
 
@@ -269,9 +269,9 @@ All browser `prompt()`/`confirm()` calls replaced with themed custom modals:
 - Supports dark and light HUD themes
 - Example diagram "Customer Notification Flow" on the welcome screen demonstrates 4 finding types
 
-## `optimize()` — Static BPMN Optimization Analyzer (2026-03-02) — `@bpmn-sdk/core`
+## `optimize()` — Static BPMN Optimization Analyzer (2026-03-02) — `@bpmnkit/core`
 
-New `optimize(defs, options?)` function exported from `@bpmn-sdk/core`:
+New `optimize(defs, options?)` function exported from `@bpmnkit/core`:
 
 - **11 finding types** across 3 categories: `feel`, `flow`, `task-reuse`
 - **FEEL analysis**: detects empty conditions, missing default flows, complex expressions (length/nesting/operators/variables), complex IO mappings, duplicate expressions
@@ -280,7 +280,7 @@ New `optimize(defs, options?)` function exported from `@bpmn-sdk/core`:
 - **`applyFix`** on each applicable finding mutates `defs` in-place; task reuse fix returns a generated `BpmnDefinitions` for the extracted sub-process
 - **Configurable thresholds** via `OptimizeOptions`: FEEL length/nesting/operator/variable thresholds, reuse group minimum size, category filter
 
-## Storage-tabs integration bridge (2026-03-02) — `@bpmn-sdk/canvas-plugin-storage-tabs-bridge`
+## Storage-tabs integration bridge (2026-03-02) — `@bpmnkit/canvas-plugin-storage-tabs-bridge`
 
 New package that wires storage and tabs together so client apps don't need to manually manage the cross-plugin state:
 
@@ -294,10 +294,10 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Built-in recent projects** — maps `storageApi.getRecentProjects()` to welcome screen dropdown
 - **`persistTheme`** on `BpmnEditor` — reads/writes `localStorage "bpmn-theme"` automatically
 - **`enableFileImport`** on `createTabsPlugin` — built-in hidden file input + drag-and-drop; `api.openFilePicker()` to trigger programmatically
-- **`Bpmn.makeEmpty()` / `Bpmn.SAMPLE_XML`** — convenience factories in `@bpmn-sdk/core`
+- **`Bpmn.makeEmpty()` / `Bpmn.SAMPLE_XML`** — convenience factories in `@bpmnkit/core`
 - **`Dmn.makeEmpty()`** — returns minimal `DmnDefinitions` with one empty decision table
 
-## DMN DRD Canvas (2026-03-01) — `@bpmn-sdk/canvas-plugin-dmn-editor` + `@bpmn-sdk/core`
+## DMN DRD Canvas (2026-03-01) — `@bpmnkit/canvas-plugin-dmn-editor` + `@bpmnkit/core`
 
 - **Full DRG element model** — `DmnInputData`, `DmnKnowledgeSource`, `DmnBusinessKnowledgeModel`, `DmnTextAnnotation`, `DmnAssociation`, all three requirement types (`DmnInformationRequirement`, `DmnKnowledgeRequirement`, `DmnAuthorityRequirement`), waypoints, and diagram edges
 - **Parser/serializer roundtrip** — all DRG elements, requirement child elements, and DMNDI edges (with `di:waypoint`) are parsed and serialized; `decisionTable` is now optional on decisions
@@ -308,7 +308,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **DRD as primary view** — opening a DMN file shows the DRD canvas; double-click a Decision → decision table; "← DRD" back button returns to DRD
 - **Zero external dependencies** — pure TypeScript/DOM SVG rendering
 
-## Form Editor drag-and-drop redesign (2026-02-28) — `@bpmn-sdk/canvas-plugin-form-editor`
+## Form Editor drag-and-drop redesign (2026-02-28) — `@bpmnkit/canvas-plugin-form-editor`
 
 - Three-panel layout: Palette (260px fixed) | Canvas (flex, scrollable) | Properties (300px fixed)
 - **Palette**: 5 groups (Input, Selection, Presentation, Containers, Action); icon grid; live search; click or drag to add
@@ -318,7 +318,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Properties panel**: colored icon header; label/key/required/text/expression/options inputs; label updates preview live without refocusing
 - **CSS**: light theme by default; dark via `.dark` class; `--fe-*` CSS variables
 
-## DMN Editor feature parity (2026-02-28) — `@bpmn-sdk/canvas-plugin-dmn-editor`
+## DMN Editor feature parity (2026-02-28) — `@bpmnkit/canvas-plugin-dmn-editor`
 
 - Single-row column headers with "When"/"And" (inputs) and "Then"/"And" (outputs) clause labels
 - Hit policy in table corner — abbreviated (U/F/A/P/C/C+/C</C>/C#/R/O); select overlay to change
@@ -328,11 +328,11 @@ New package that wires storage and tabs together so client apps don't need to ma
 - Context menu — right-click row number: add above/below/remove; right-click column header: add left/right/remove
 - Double border separating input from output sections
 - Light theme as default; dark theme via `.dark` class
-- `DmnAggregation` type added to `@bpmn-sdk/core`; parsed and serialized in `aggregation` XML attribute
+- `DmnAggregation` type added to `@bpmnkit/core`; parsed and serialized in `aggregation` XML attribute
 
-## DMN Editor + Form Editor (2026-02-27) — `@bpmn-sdk/canvas-plugin-dmn-editor` + `@bpmn-sdk/canvas-plugin-form-editor`
+## DMN Editor + Form Editor (2026-02-27) — `@bpmnkit/canvas-plugin-dmn-editor` + `@bpmnkit/canvas-plugin-form-editor`
 
-- **`@bpmn-sdk/canvas-plugin-dmn-editor`** — native editable decision table; zero external dependencies
+- **`@bpmnkit/canvas-plugin-dmn-editor`** — native editable decision table; zero external dependencies
   - **`DmnEditor`** class with `loadXML(xml)`, `getXML()`, `onChange(handler)`, `destroy()` API
   - Parses XML via `Dmn.parse`; serializes on demand via `Dmn.export`; model kept in memory
   - Editable decision name + hit policy dropdown per decision
@@ -340,7 +340,7 @@ New package that wires storage and tabs together so client apps don't need to ma
   - Each cell is a `<textarea>` bound directly to the model; structural changes trigger full re-render from model
   - CSS injected via `injectDmnEditorStyles()` — `--dme-*` CSS variables; dark default / `.light` override pattern
 
-- **`@bpmn-sdk/canvas-plugin-form-editor`** — native two-panel form component editor; zero external dependencies
+- **`@bpmnkit/canvas-plugin-form-editor`** — native two-panel form component editor; zero external dependencies
   - **`FormEditor`** class with `loadSchema(schema)`, `getSchema()`, `onChange(handler)`, `destroy()` API
   - Parses schema via `Form.parse`; exports via `Form.export`
   - Left panel: component list with type badge, label, up/down reorder, delete; nested containers shown indented
@@ -348,15 +348,15 @@ New package that wires storage and tabs together so client apps don't need to ma
   - "Add" dropdown grouped by Fields / Display / Advanced / Layout; all standard form component types supported
   - CSS injected via `injectFormEditorStyles()` — `--fe-*` CSS variables; dark default / `.light` override pattern
 
-- **Tabs plugin wired for editing** — `@bpmn-sdk/canvas-plugin-tabs` mounts `DmnEditor` / `FormEditor`; `tab.config` kept in sync on every change
+- **Tabs plugin wired for editing** — `@bpmnkit/canvas-plugin-tabs` mounts `DmnEditor` / `FormEditor`; `tab.config` kept in sync on every change
   - **`onTabChange(tabId, config)`** callback — fires whenever a DMN or Form tab's content changes; used for auto-save
   - Cleanup on tab close / `destroy()`
 
 - **Auto-save wired in landing app** — `onTabChange` triggers `storagePlugin.api.scheduleSave()` for DMN and Form tabs
 
-## IndexedDB Storage Plugin (2026-02-26, overhauled 2026-02-27) — `@bpmn-sdk/canvas-plugin-storage`
+## IndexedDB Storage Plugin (2026-02-26, overhauled 2026-02-27) — `@bpmnkit/canvas-plugin-storage`
 
-- **`@bpmn-sdk/canvas-plugin-storage`** — persists BPMN / DMN / Form files in the browser's IndexedDB in a `workspace → project → files` hierarchy
+- **`@bpmnkit/canvas-plugin-storage`** — persists BPMN / DMN / Form files in the browser's IndexedDB in a `workspace → project → files` hierarchy
   - **Native IndexedDB** — zero-dependency wrapper; supports `get/add/update/delete`, `orderBy`, `where().equals()` with `toArray/sortBy/delete`, and `filter`
   - **6 record types**: `WorkspaceRecord`, `ProjectRecord`, `FileRecord` (with `isShared` and `gitPath`), `FileContentRecord`, `ProjectMruRecord` (per-project Ctrl+Tab history)
   - **Auto-save** — 500 ms debounce triggered by `diagram:change`; forced flush on page hide / `beforeunload`; multi-tab safe; bumps project `updatedAt` on each save
@@ -370,7 +370,7 @@ New package that wires storage and tabs together so client apps don't need to ma
   - **Project mode** — when a project is open: tabs cannot be closed by the user; all project files are always open; "Rename current file…" appears in the main menu; `onRenameCurrentFile` callback updates the tab display name
   - **MRU per project** — `getMru(projectId)` / `pushMruFile(projectId, fileId)` persist the most-recently-used file order in IndexedDB; used for Ctrl+Tab switching
 
-## Main Menu Plugin (enhanced 2026-02-26, restyled 2026-02-27) — `@bpmn-sdk/canvas-plugin-main-menu`
+## Main Menu Plugin (enhanced 2026-02-26, restyled 2026-02-27) — `@bpmnkit/canvas-plugin-main-menu`
 
 - **`MainMenuApi`** — programmatic API: `setTitle(text)` updates title span; `setDynamicItems(fn)` injects items on every open
 - **`MenuDrill`** — drill-down menu items with back-navigation stack; clicking drills into sub-menu; "← Back" button returns to parent
@@ -378,7 +378,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - Theme picker now behind a "Theme" drill item instead of flat in root dropdown
 - **Integrated into tab bar** — panel is flush with the tab bar (right-anchored, 36px tall, matching dark/light background colors); auto-reserves 160px via CSS `:has()` so the tab labels are never hidden behind it
 
-## BPMN Element Config — Event Types (2026-02-27) — `@bpmn-sdk/canvas-plugin-config-panel-bpmn`
+## BPMN Element Config — Event Types (2026-02-27) — `@bpmnkit/canvas-plugin-config-panel-bpmn`
 
 - **Timer events** — timerStartEvent, timerCatchEvent, timer boundaryEvent: "Timer type" select (Cycle / Duration / Date) + FEEL expression field for the chosen type; writes `BpmnTimerEventDefinition`
 - **Message events** — messageStartEvent, messageCatchEvent, messageEndEvent, messageThrowEvent, message boundaryEvent, receiveTask: "Message name" + "Correlation key" FEEL fields; writes `zeebe:message` extension element
@@ -396,21 +396,21 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Script task** — configure `zeebe:script expression` (FEEL expression, textarea) and `resultVariable`; replaces the generic name-only panel
 - **Sequence flow condition expression** — clicking any sequence flow (edge) opens the config panel showing an editable `conditionExpression` FEEL textarea; works for gateway outgoing edges and any other flows; empty expression removes the condition element from the XML
 
-## FEEL Language Support (2026-02-26) — `@bpmn-sdk/feel` + `@bpmn-sdk/canvas-plugin-feel-playground`
+## FEEL Language Support (2026-02-26) — `@bpmnkit/feel` + `@bpmnkit/canvas-plugin-feel-playground`
 
-- **`@bpmn-sdk/feel`** — pure TypeScript FEEL engine; zero runtime dependencies; works in Node.js and browser
+- **`@bpmnkit/feel`** — pure TypeScript FEEL engine; zero runtime dependencies; works in Node.js and browser
   - **Lexer** — position-aware tokenizer with full FEEL token set (temporal literals, backtick names, `..`, `**`, comments)
   - **Parser** — Pratt parser; `parseExpression()` and `parseUnaryTests()` entry points; greedy multi-word name resolution; error recovery
   - **Evaluator** — tree-walking evaluator; three-valued logic; ~60 built-in functions (string, numeric, list, context, temporal, range)
   - **Formatter** — pretty printer with configurable line-length-aware wrapping
   - **Highlighter** — `annotate()` / `highlightToHtml()` / `highlightFeel`; semantic token classification
-- **`@bpmn-sdk/canvas-plugin-feel-playground`** — interactive FEEL panel in the editor
+- **`@bpmnkit/canvas-plugin-feel-playground`** — interactive FEEL panel in the editor
   - Expression and Unary-Tests modes; syntax-highlighted textarea; JSON context input; live evaluation; theme-aware (light/dark)
   - Opens as a full tab via `tabsPlugin.api.openTab({ type: "feel" })` — accessible from the command palette (Ctrl+K), the ⋯ main menu, and the welcome screen
   - `buildFeelPlaygroundPanel(onClose?)` exported for embedding in any container; `createFeelPlaygroundPlugin()` retained as a standalone overlay variant
-- **`@bpmn-sdk/canvas-plugin-dmn-viewer` migration** — `feel.ts` now re-exports from `@bpmn-sdk/feel`; DMN cell highlighting uses the full FEEL highlighter
+- **`@bpmnkit/canvas-plugin-dmn-viewer` migration** — `feel.ts` now re-exports from `@bpmnkit/feel`; DMN cell highlighting uses the full FEEL highlighter
 
-## Welcome Screen Examples (2026-02-26, updated 2026-02-27) — `@bpmn-sdk/canvas-plugin-tabs` + `apps/landing`
+## Welcome Screen Examples (2026-02-26, updated 2026-02-27) — `@bpmnkit/canvas-plugin-tabs` + `apps/landing`
 
 - **"Open recent" dropdown** — `getRecentProjects` option renders a dropdown button below "Import files…"; shows up to 10 most recently saved projects (Workspace / Project format); disabled when none; rebuilt on each welcome screen show
 - **Dynamic sections on welcome screen** — `getWelcomeSections` option accepts a `() => WelcomeSection[]`; rebuilt on each show
@@ -421,7 +421,7 @@ New package that wires storage and tabs together so client apps don't need to ma
   - *Support Ticket* (FORM) — subject, category, priority, description, attachment
   - *Loan Application Flow* (MULTI) — BPMN + Credit Risk DMN + Application Form; opens all three tabs and registers resources in the resolver
 
-## Welcome Screen + Grouped Tabs (2026-02-26, updated 2026-02-27) — `@bpmn-sdk/canvas-plugin-tabs`
+## Welcome Screen + Grouped Tabs (2026-02-26, updated 2026-02-27) — `@bpmnkit/canvas-plugin-tabs`
 
 - **Welcome screen** — shown when no tabs are open (and always on initial load); centered card with BPMN icon, title, "New diagram", "Import files…", and optional "Open recent" dropdown button; theme-aware (light/dark); `onNewDiagram` / `onImportFiles` / `onWelcomeShow` option callbacks
 - **Plugin-managed tab XML** — subscribes to `diagram:change` internally; keeps `tab.config.xml` up to date for all open BPMN tabs; eliminates the need for client apps to track per-tab XML manually
@@ -439,65 +439,65 @@ New package that wires storage and tabs together so client apps don't need to ma
 
 ## DMN Viewer + Form Viewer + Tabs Plugin (2026-02-26)
 
-### `@bpmn-sdk/canvas-plugin-dmn-viewer`
+### `@bpmnkit/canvas-plugin-dmn-viewer`
 - **Read-only DMN decision table viewer** — renders any `DmnDefinitions` as an HTML table; hit policy badge; input/output columns with type annotations
 - **FEEL syntax highlighting** — tokenizes FEEL expressions in decision cells; colors keywords, strings, numbers, operators, ranges, function calls
 - **Light/dark/auto themes** via CSS custom properties
 - **`createDmnViewerPlugin(options)`** — canvas plugin wrapper; opens DMN viewer on click of call activities with `zeebe:calledDecision`
 
-### `@bpmn-sdk/canvas-plugin-form-viewer`
+### `@bpmnkit/canvas-plugin-form-viewer`
 - **Read-only Form viewer** — renders all 21 Camunda Form component types; built entirely in-repo (no `@bpmn-io/form-js` dependency)
 - **Row-based grid layout** — respects `layout.row` grouping from the form schema
 - **`createFormViewerPlugin(options)`** — canvas plugin wrapper; opens Form viewer on click of user tasks with `zeebe:formDefinition`
 
-### `@bpmn-sdk/canvas-plugin-tabs`
+### `@bpmnkit/canvas-plugin-tabs`
 - **Tab bar overlay** — fixed tab strip inside the canvas container for BPMN/DMN/Form tabs
 - **`FileResolver` abstraction** — pluggable interface for resolving file references; `InMemoryFileResolver` default; designed for future FS/SaaS backends
 - **`TabsApi`** — programmatic `openDecision(id)` / `openForm(id)` + full tab lifecycle management
 - **Warning badge** — shown when a referenced DMN/Form file is not registered
 - **Close-tab download prompt** — closing a tab with in-memory content shows a dialog (Cancel / Close without saving / Download & Close); the download callback serializes BPMN/DMN/Form to their respective formats and triggers a browser file download
 
-### `@bpmn-sdk/core` — Extended form and Zeebe model
+### `@bpmnkit/core` — Extended form and Zeebe model
 - **13 new Form component types** — number, datetime, button, taglist, table, image, dynamiclist, iframe, separator, spacer, documentPreview, html, expression, filepicker; `FormUnknownComponent` catch-all
 - **`ZeebeFormDefinition`** and **`ZeebeCalledDecision`** typed interfaces in `ZeebeExtensions`
 
-### `@bpmn-sdk/canvas-plugin-config-panel` + `config-panel-bpmn`
+### `@bpmnkit/canvas-plugin-config-panel` + `config-panel-bpmn`
 - **`"action"` FieldType** — clickable button fields in the config panel with `onClick` callback
 - **Typed userTask panel** — `formId` field + "Open Form ↗" button wired to the tabs plugin
 - **Typed businessRuleTask panel** — `decisionId` + `resultVariable` fields + "Open Decision ↗" button wired to the tabs plugin
 
-## SubProcess Containment + Sticky Movement (2026-02-25) — `@bpmn-sdk/editor`
+## SubProcess Containment + Sticky Movement (2026-02-25) — `@bpmnkit/editor`
 - **Sticky movement** — moving a subprocess moves all descendant shapes with it
 - **Containment on create** — shapes dropped inside a subprocess become children in the BPMN model
 - **Cascade delete** — deleting a subprocess removes all descendants from both the model and DI
 - **Recursive label/connection updates** — renaming and connecting works for elements at any nesting depth
 
-## Agentic AI Subprocess (2026-02-25) — `@bpmn-sdk/editor` + `@bpmn-sdk/canvas-plugin-config-panel-bpmn` + `@bpmn-sdk/core`
+## Agentic AI Subprocess (2026-02-25) — `@bpmnkit/editor` + `@bpmnkit/canvas-plugin-config-panel-bpmn` + `@bpmnkit/core`
 - **`adHocSubProcess` creatable in the editor** — appears in the Activities palette group (with tilde icon); 200×120 default size; resizable; type-switchable via `changeElementType`
 - **AI Agent template wired end-to-end** — selecting the `io.camunda.connectors.agenticai.aiagent.jobworker.v1` template in the config panel's "Template" dropdown writes `zeebe:taskDefinition type="io.camunda.agenticai:aiagent-job-worker:1"`, `zeebe:adHoc outputCollection="toolCallResults"` + `outputElement` FEEL expression, and all required IO mappings and task headers; `zeebe:modelerTemplate`, `zeebe:modelerTemplateVersion`, and `zeebe:modelerTemplateIcon` are stamped on the element
-- **`ZeebeAdHoc` typed interface** in `@bpmn-sdk/core` — `outputCollection`, `outputElement`, `activeElementsCollection`; `zeebeExtensionsToXmlElements` serialises it
+- **`ZeebeAdHoc` typed interface** in `@bpmnkit/core` — `outputCollection`, `outputElement`, `activeElementsCollection`; `zeebeExtensionsToXmlElements` serialises it
 - **`zeebe:adHoc` template binding** — `TemplateBinding` union extended; template engine reads/writes all three `zeebe:adHoc` properties correctly
 - **Template-aware config panel for `adHocSubProcess`** — shows "Custom" or AI Agent template selector; `resolve()` delegates to full template form when template is active; clearing the template removes all modelerTemplate attributes
 
-## Config Panel: Template Adapter Fix + Required Field Indicators (2026-02-25) — `@bpmn-sdk/canvas-plugin-config-panel` + `@bpmn-sdk/canvas-plugin-config-panel-bpmn`
+## Config Panel: Template Adapter Fix + Required Field Indicators (2026-02-25) — `@bpmnkit/canvas-plugin-config-panel` + `@bpmnkit/canvas-plugin-config-panel-bpmn`
 - **Template adapter bug fixed** — changing any field while a connector template was active reverted the panel to the generic service task form (the write path used the base adapter which strips `zeebe:modelerTemplate`); now correctly uses the template-resolved adapter for all writes
 - **Required field asterisk** — fields with `constraints.notEmpty: true` in connector templates show a red `*` next to the label
 - **Required field red border** — input/select/textarea gets a red border when a required field is empty; clears as soon as the user enters a value
 
-## Connector Template Icons in Canvas (2026-02-25) — `@bpmn-sdk/canvas` + `@bpmn-sdk/canvas-plugin-config-panel-bpmn`
+## Connector Template Icons in Canvas (2026-02-25) — `@bpmnkit/canvas` + `@bpmnkit/canvas-plugin-config-panel-bpmn`
 - **Template icon rendering** — when a service task has `zeebe:modelerTemplateIcon` set (data URI from the connector template), the canvas renderer displays it as an SVG `<image>` in the top-left icon slot instead of the generic gear icon; works for all 116 Camunda connectors
 - **Icon stamped on apply** — the config panel template engine writes `zeebe:modelerTemplateIcon` to the BPMN element whenever a connector template is applied, so the icon persists in the saved XML
 
-## Connector Templates + Core Builder Integration (2026-02-25) — `@bpmn-sdk/canvas-plugin-config-panel-bpmn`
+## Connector Templates + Core Builder Integration (2026-02-25) — `@bpmnkit/canvas-plugin-config-panel-bpmn`
 - **`templateToServiceTaskOptions(template, values)`** — converts any of the 116 connector templates into `ServiceTaskOptions` for the `Bpmn` builder; use any connector programmatically without hand-crafting extension XML
 - **`CAMUNDA_CONNECTOR_TEMPLATES`** exported from the public API — find templates by id or name for programmatic use
 
-## All 116 Camunda Connector Templates (2026-02-25) — `@bpmn-sdk/canvas-plugin-config-panel-bpmn`
+## All 116 Camunda Connector Templates (2026-02-25) — `@bpmnkit/canvas-plugin-config-panel-bpmn`
 - **`pnpm update-connectors`** — fetches all OOTB templates from the Camunda marketplace and regenerates `canvas-plugins/config-panel-bpmn/src/templates/generated.ts`
 - **116 connectors** available in the connector selector: REST, Slack, Salesforce, ServiceNow, GitHub, Twilio, AWS EventBridge/Lambda/SQS/SNS, Azure, Google Sheets, WhatsApp, Facebook Messenger, and 100+ more
 - **Template-ID-keyed selector** — each connector has its own distinct dropdown entry regardless of whether multiple connectors share the same underlying task definition type
 
-## Element Templates System (2026-02-25) — `@bpmn-sdk/canvas-plugin-config-panel-bpmn` + `@bpmn-sdk/canvas-plugin-config-panel`
+## Element Templates System (2026-02-25) — `@bpmnkit/canvas-plugin-config-panel-bpmn` + `@bpmnkit/canvas-plugin-config-panel`
 - **Camunda element template types** — full TypeScript type definitions (`ElementTemplate`, `TemplateProperty`, `TemplateBinding`, `TemplateCondition`) matching the Camunda zeebe-element-templates-json-schema
 - **Template engine** — `buildRegistrationFromTemplate(template)` converts any element template descriptor to a `PanelSchema` + `PanelAdapter` pair; all binding types, condition types, and property types supported
 - **REST Outbound Connector** — official Camunda template (`io.camunda.connectors.HttpJson.v2` v12) bundled; 8 groups, 5 auth modes (noAuth, API key, Basic, Bearer, OAuth 2.0), full output/error/retry configuration
@@ -505,7 +505,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **`registerTemplate(template)`** — runtime API to register additional connector templates
 - **`restConnector()` builder** — now stamps `zeebe:modelerTemplate` so programmatically-generated BPMN is recognized by the editor's template panel automatically
 
-## Event Subgroups, Boundary Events & Ghost Fix (2026-02-25) — `@bpmn-sdk/editor`
+## Event Subgroups, Boundary Events & Ghost Fix (2026-02-25) — `@bpmnkit/editor`
 - **3 event palette groups** — Start Events (5), End Events (7), Intermediate Events (10); each group contains only compatible types for type-switching
 - **20 specific event palette types** — every BPMN event variant has a dedicated `CreateShapeType` with preset event definition; icons show the appropriate marker inside the ring
 - **Boundary events** — any intermediate event type can be attached to an activity by hovering over it during creation; dashed blue highlight indicates attachment target; the event is positioned on the nearest boundary edge; boundary events move and delete with their host
@@ -513,7 +513,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Type-switch restriction** — the configure toolbar only shows types within the same event subgroup; start, end, and intermediate events cannot be changed to each other
 - **Escape to cancel** — canvas host auto-focuses when a create tool is activated, so Escape always cancels creation
 
-## Full BPMN Element Type Coverage (2026-02-25) — `@bpmn-sdk/core` + `@bpmn-sdk/canvas` + `@bpmn-sdk/editor`
+## Full BPMN Element Type Coverage (2026-02-25) — `@bpmnkit/core` + `@bpmnkit/canvas` + `@bpmnkit/editor`
 - **New core model types** — `BpmnTask`, `BpmnManualTask`, `BpmnTransaction`, `BpmnComplexGateway`; `BpmnLane`/`BpmnLaneSet` swimlane hierarchy; `BpmnMessageFlow` for inter-pool communication; five new event definition types (conditional, link, cancel, terminate, compensate)
 - **Pool & lane rendering** — pools and lanes render as container rects with rotated title bars; correct nesting in the renderer
 - **Message flow rendering** — dashed inter-pool arrows between participants
@@ -523,7 +523,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Complex gateway** — asterisk marker; added to creatable types with proper default bounds
 - **21 element creation commands** — command palette and shape palette updated to cover all standard BPMN elements
 
-## Element Colors & Text Annotations (2026-02-25) — `@bpmn-sdk/editor` + `@bpmn-sdk/canvas` + `@bpmn-sdk/core`
+## Element Colors & Text Annotations (2026-02-25) — `@bpmnkit/editor` + `@bpmnkit/canvas` + `@bpmnkit/core`
 - **Shape colors** — `bioc:fill`/`bioc:stroke` (bpmn-js) and `color:background-color`/`color:border-color` (OMG) attributes rendered as inline fill/stroke on shape bodies; fully round-trips through import/export
 - **Color picker** — 6 preset color swatches in the contextual toolbar for any selected flow element; clicking active swatch clears the color
 - **Text annotations** — `BpmnTextAnnotation` text rendered inside the bracket shape; correct in both viewer and editor
@@ -532,9 +532,9 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Annotation editing** — double-click annotation to edit its text; standard label editor
 - **Cascade delete** — deleting a flow element also removes linked associations and their DI edges; deleting an annotation removes the association edges pointing to it
 - **Association move** — moving a shape recomputes association edge waypoints
-- **`DiColor` helpers** — `readDiColor`, `writeDiColor`, `BIOC_NS`, `COLOR_NS` exported from `@bpmn-sdk/core`
+- **`DiColor` helpers** — `readDiColor`, `writeDiColor`, `BIOC_NS`, `COLOR_NS` exported from `@bpmnkit/core`
 
-## BPMN Diagram Editor (2026-02-23) — `@bpmn-sdk/editor`
+## BPMN Diagram Editor (2026-02-23) — `@bpmnkit/editor`
 - **Full diagram editing** — create, move, resize, connect, delete, label-edit, undo/redo, copy/paste; type switching within BPMN groups
 - **Edge split on drop** — drag a shape over a sequence flow to highlight it (green); release to insert the shape between source and target, splitting the edge
 - **Configure bar (above element)** — shows all element types in the same BPMN group for quick type switching; label position picker for events and gateways
@@ -559,21 +559,21 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Keyboard shortcuts** — Delete (shapes and edges), Ctrl+Z/Y, Ctrl+A, Ctrl+C/V, Escape
 - **Events** — `diagram:change`, `editor:select`, `editor:tool` extend `CanvasEvents`
 
-## Watermark Plugin (2026-02-25) — `@bpmn-sdk/canvas-plugin-watermark`
+## Watermark Plugin (2026-02-25) — `@bpmnkit/canvas-plugin-watermark`
 - **Attribution bar** — bottom-right overlay bar with configurable links and an optional square SVG logo; logo is always rightmost
 - **`createWatermarkPlugin({ links?, logo? })`** — factory; `links` is an array of `{ label, url }` objects; `logo` is an SVG markup string
 - Works with both canvas viewer and editor
 
 ## Canvas Plugins Workspace (2026-02-23) — `canvas-plugins/*`
 - New pnpm workspace `canvas-plugins/*` for first-party canvas plugin packages
-- **`@bpmn-sdk/canvas-plugin-minimap`** — minimap as an opt-in plugin; install via `plugins: [createMinimapPlugin()]`; handles `diagram:load`, `viewport:change`, `diagram:clear`; navigates via `CanvasApi.setViewport()`; fully self-contained CSS injection
-- **`@bpmn-sdk/canvas-plugin-command-palette`** (2026-02-24) — Ctrl+K / ⌘K command palette; built-in commands: toggle theme, zoom to 100%/fit, export BPMN XML, zen mode; `addCommands(cmds)` extension point; works with both canvas viewer and editor
-- **`@bpmn-sdk/canvas-plugin-command-palette-editor`** (2026-02-24) — editor extension plugin adding 21 BPMN element creation commands to the palette; requires `@bpmn-sdk/canvas-plugin-command-palette`
-- **`@bpmn-sdk/canvas-plugin-config-panel`** (2026-02-24) — schema-driven property panel; `registerSchema(type, schema, adapter)` for extensible element forms; compact right-rail panel for single-element selection; 65%-wide full overlay with grouped tabs; auto-save on change; in-place value refresh preserves focus
-- **`@bpmn-sdk/canvas-plugin-config-panel-bpmn`** (2026-02-24) — BPMN schemas for all standard element types; full Zeebe REST connector form for service tasks (method, URL, headers, body, auth, output mapping, retries)
+- **`@bpmnkit/canvas-plugin-minimap`** — minimap as an opt-in plugin; install via `plugins: [createMinimapPlugin()]`; handles `diagram:load`, `viewport:change`, `diagram:clear`; navigates via `CanvasApi.setViewport()`; fully self-contained CSS injection
+- **`@bpmnkit/canvas-plugin-command-palette`** (2026-02-24) — Ctrl+K / ⌘K command palette; built-in commands: toggle theme, zoom to 100%/fit, export BPMN XML, zen mode; `addCommands(cmds)` extension point; works with both canvas viewer and editor
+- **`@bpmnkit/canvas-plugin-command-palette-editor`** (2026-02-24) — editor extension plugin adding 21 BPMN element creation commands to the palette; requires `@bpmnkit/canvas-plugin-command-palette`
+- **`@bpmnkit/canvas-plugin-config-panel`** (2026-02-24) — schema-driven property panel; `registerSchema(type, schema, adapter)` for extensible element forms; compact right-rail panel for single-element selection; 65%-wide full overlay with grouped tabs; auto-save on change; in-place value refresh preserves focus
+- **`@bpmnkit/canvas-plugin-config-panel-bpmn`** (2026-02-24) — BPMN schemas for all standard element types; full Zeebe REST connector form for service tasks (method, URL, headers, body, auth, output mapping, retries)
 
-## BPMN Canvas Viewer (2026-02-23) — `@bpmn-sdk/canvas`
-- **Zero-dependency SVG viewer** — renders BPMN diagrams parsed by `@bpmn-sdk/core` with no external runtime deps
+## BPMN Canvas Viewer (2026-02-23) — `@bpmnkit/canvas`
+- **Zero-dependency SVG viewer** — renders BPMN diagrams parsed by `@bpmnkit/core` with no external runtime deps
 - **Framework-agnostic** — plain TypeScript/DOM; works in React, Vue, Svelte, or vanilla JS
 - **Pan & zoom** — pointer-drag panning, mouse-wheel / two-finger pinch zoom, zoom-toward-cursor; RAF-batched at 60fps
 - **Infinite dot-grid** — SVG `<pattern>` background that scrolls with the viewport

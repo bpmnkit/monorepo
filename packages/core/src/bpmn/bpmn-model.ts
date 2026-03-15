@@ -8,7 +8,7 @@ import type { XmlElement } from "../types/xml-element.js"
  * Discriminant string literal union for every BPMN flow node type.
  * Every {@link BpmnFlowElement} carries a `type` field of this union, enabling
  * exhaustive `switch` statements and type-narrowing with the type guard helpers
- * exported from `@bpmn-sdk/core`.
+ * exported from `@bpmnkit/core`.
  */
 export type BpmnElementType =
 	| "startEvent"
@@ -333,11 +333,11 @@ export interface BpmnTransaction extends BpmnFlowNodeBase {
 /**
  * Discriminated union of every BPMN flow node that can appear inside a
  * {@link BpmnProcess}. Narrow with the `type` field or with the type guard
- * helpers exported from `@bpmn-sdk/core` (e.g. `isBpmnServiceTask`).
+ * helpers exported from `@bpmnkit/core` (e.g. `isBpmnServiceTask`).
  *
  * @example
  * ```typescript
- * import { isBpmnServiceTask, isBpmnGateway } from "@bpmn-sdk/core"
+ * import { isBpmnServiceTask, isBpmnGateway } from "@bpmnkit/core"
  *
  * for (const el of process.flowElements) {
  *   if (isBpmnServiceTask(el)) console.log("job type:", el.extensionElements)
@@ -569,7 +569,7 @@ export interface BpmnDiagram {
  *
  * @example
  * ```typescript
- * import { Bpmn } from "@bpmn-sdk/core"
+ * import { Bpmn } from "@bpmnkit/core"
  *
  * const defs: BpmnDefinitions = Bpmn.parse(xml)
  * console.log(defs.processes[0].id)

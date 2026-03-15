@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/plugins",
+	"name": "@bpmnkit/plugins",
 	"version": "0.0.8",
 	"private": false,
 	"type": "module",
@@ -105,17 +105,17 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmn-sdk/ascii": "workspace:*",
-		"@bpmn-sdk/canvas": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/editor": "workspace:*",
-		"@bpmn-sdk/feel": "workspace:*"
+		"@bpmnkit/ascii": "workspace:*",
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/editor": "workspace:*",
+		"@bpmnkit/feel": "workspace:*"
 	},
 	"description": "22 composable canvas plugins for BPMN editors and viewers — minimap, AI chat, process simulation, storage, and more",
 	"keywords": ["bpmn", "plugins", "canvas", "minimap", "workflow", "typescript", "camunda"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

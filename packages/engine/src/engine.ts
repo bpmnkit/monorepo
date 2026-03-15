@@ -1,4 +1,4 @@
-import type { BpmnDefinitions, DmnDecision, DmnDefinitions, FormDefinition } from "@bpmn-sdk/core"
+import type { BpmnDefinitions, DmnDecision, DmnDefinitions, FormDefinition } from "@bpmnkit/core"
 import { ProcessInstance } from "./instance.js"
 import type { JobHandler } from "./types.js"
 
@@ -12,7 +12,7 @@ export interface StartOptions {
 }
 
 export class Engine {
-	private readonly processes = new Map<string, import("@bpmn-sdk/core").BpmnProcess>()
+	private readonly processes = new Map<string, import("@bpmnkit/core").BpmnProcess>()
 	private readonly decisions = new Map<string, DmnDecision>()
 	private readonly forms = new Map<string, FormDefinition>()
 	private readonly workers = new Map<string, JobHandler>()

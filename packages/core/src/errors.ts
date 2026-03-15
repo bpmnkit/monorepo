@@ -1,9 +1,9 @@
 /**
- * Typed error codes for all errors thrown by `@bpmn-sdk/core`.
+ * Typed error codes for all errors thrown by `@bpmnkit/core`.
  *
  * Use these values to programmatically distinguish error causes:
  * ```typescript
- * import { ParseError, ErrorCode } from "@bpmn-sdk/core"
+ * import { ParseError, ErrorCode } from "@bpmnkit/core"
  *
  * try {
  *   const defs = Bpmn.parse(xml)
@@ -21,7 +21,7 @@ export type ErrorCode =
 	| "validation-error"
 
 /**
- * Base class for all errors thrown by `@bpmn-sdk/core`.
+ * Base class for all errors thrown by `@bpmnkit/core`.
  *
  * Always use `instanceof ParseError` or `instanceof ValidationError` rather
  * than catching the base class, so you can handle each case precisely.
@@ -43,7 +43,7 @@ export class BpmnSdkError extends Error {
  *
  * @example
  * ```typescript
- * import { Bpmn, ParseError } from "@bpmn-sdk/core"
+ * import { Bpmn, ParseError } from "@bpmnkit/core"
  *
  * try {
  *   const defs = Bpmn.parse("<invalid>")
@@ -68,7 +68,7 @@ export class ParseError extends BpmnSdkError {
  *
  * @example
  * ```typescript
- * import { Dmn, ValidationError } from "@bpmn-sdk/core"
+ * import { Dmn, ValidationError } from "@bpmnkit/core"
  *
  * try {
  *   Dmn.createDecisionTable("decide")

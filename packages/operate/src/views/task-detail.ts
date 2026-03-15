@@ -1,4 +1,4 @@
-import { FormEditor } from "@bpmn-sdk/plugins/form-editor"
+import { FormEditor } from "@bpmnkit/plugins/form-editor"
 import { badge } from "../components/badge.js"
 import type { TasksStore } from "../stores/tasks.js"
 import type { UserTaskResult } from "../types.js"

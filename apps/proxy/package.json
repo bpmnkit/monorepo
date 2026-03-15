@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/proxy",
+	"name": "@bpmnkit/proxy",
 	"version": "0.0.8",
 	"description": "Local proxy server for @bpmn-sdk — AI bridge (SSE/MCP) and Camunda API proxy using stored CLI profiles",
 	"type": "module",
@@ -12,9 +12,9 @@
 		"node": ">=20"
 	},
 	"dependencies": {
-		"@bpmn-sdk/api": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/profiles": "workspace:*"
+		"@bpmnkit/api": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/profiles": "workspace:*"
 	},
 	"scripts": {
 		"start": "node dist/index.js",
@@ -30,6 +30,6 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

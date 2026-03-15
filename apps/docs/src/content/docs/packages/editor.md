@@ -1,11 +1,11 @@
 ---
-title: "@bpmn-sdk/editor"
+title: "@bpmnkit/editor"
 description: Full BPMN editor — canvas, properties panel, AI bridge, and storage.
 ---
 
 ## Overview
 
-`@bpmn-sdk/editor` bundles everything needed to embed a full-featured BPMN editor
+`@bpmnkit/editor` bundles everything needed to embed a full-featured BPMN editor
 into any web application:
 
 - **Canvas** — SVG viewer with pan/zoom
@@ -18,13 +18,13 @@ into any web application:
 ## Installation
 
 ```sh
-pnpm add @bpmn-sdk/editor
+pnpm add @bpmnkit/editor
 ```
 
 ## Basic Setup
 
 ```typescript
-import { BpmnEditor, initEditorHud } from "@bpmn-sdk/editor";
+import { BpmnEditor, initEditorHud } from "@bpmnkit/editor";
 
 // Create the editor
 const editor = new BpmnEditor({
@@ -45,7 +45,7 @@ await editor.loadXML(bpmnXml);
 The side dock provides a collapsible properties + AI panel:
 
 ```typescript
-import { BpmnEditor, initEditorHud, createSideDock } from "@bpmn-sdk/editor";
+import { BpmnEditor, initEditorHud, createSideDock } from "@bpmnkit/editor";
 
 const editor = new BpmnEditor({
   container: document.getElementById("editor"),
@@ -102,8 +102,8 @@ The landing page editor uses the `createStorageTabsBridge` plugin which wires to
 tabs, storage, AI, and command palette in one call:
 
 ```typescript
-import { createStorageTabsBridge } from "@bpmn-sdk/canvas-plugin-storage-tabs-bridge";
-import { BpmnEditor, initEditorHud, createSideDock } from "@bpmn-sdk/editor";
+import { createStorageTabsBridge } from "@bpmnkit/canvas-plugin-storage-tabs-bridge";
+import { BpmnEditor, initEditorHud, createSideDock } from "@bpmnkit/editor";
 
 const editor = new BpmnEditor({ container });
 const dock = createSideDock();

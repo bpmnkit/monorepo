@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Minimal stdio MCP server for BPMN/DMN/Form editing.
- * Zero external dependencies — pure Node.js built-ins + @bpmn-sdk/core (workspace package).
+ * Zero external dependencies — pure Node.js built-ins + @bpmnkit/core (workspace package).
  *
  * State is stored as the native model (BpmnDefinitions, DmnDefinitions, or FormDefinition)
  * so core builder APIs produce the correct structure.
@@ -42,8 +42,8 @@ import {
 	expandForm,
 	layoutDmn,
 	layoutProcess,
-} from "@bpmn-sdk/core"
-import type { CompactDmn, CompactForm } from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
+import type { CompactDmn, CompactForm } from "@bpmnkit/core"
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 

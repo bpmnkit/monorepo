@@ -1,4 +1,4 @@
-import { deleteProfile, getActiveName, listProfiles, useProfile } from "@bpmn-sdk/profiles"
+import { deleteProfile, getActiveName, listProfiles, useProfile } from "@bpmnkit/profiles"
 
 // ─── ANSI helpers ─────────────────────────────────────────────────────────────
 

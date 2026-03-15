@@ -7,8 +7,8 @@ import type {
 	ProcessInstanceResult,
 	UserTaskResult,
 	VariableResult,
-} from "@bpmn-sdk/api"
-import type { Theme } from "@bpmn-sdk/ui"
+} from "@bpmnkit/api"
+import type { Theme } from "@bpmnkit/ui"
 
 export type { Theme }
 

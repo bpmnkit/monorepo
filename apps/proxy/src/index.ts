@@ -4,16 +4,16 @@ import http from "node:http"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { Bpmn, expand, optimize } from "@bpmn-sdk/core"
-import type { CompactDiagram } from "@bpmn-sdk/core"
-import { createClientFromProfile } from "@bpmn-sdk/profiles"
+import { Bpmn, expand, optimize } from "@bpmnkit/core"
+import type { CompactDiagram } from "@bpmnkit/core"
+import { createClientFromProfile } from "@bpmnkit/profiles"
 import {
 	getActiveName,
 	getActiveProfile,
 	getAuthHeader,
 	getProfile,
 	listProfiles,
-} from "@bpmn-sdk/profiles"
+} from "@bpmnkit/profiles"
 import * as claude from "./adapters/claude.js"
 import * as copilot from "./adapters/copilot.js"
 import * as gemini from "./adapters/gemini.js"

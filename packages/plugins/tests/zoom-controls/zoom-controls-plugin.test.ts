@@ -1,4 +1,4 @@
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import { BpmnCanvas } from "@bpmnkit/canvas"
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ZOOM_CONTROLS_STYLE_ID, createZoomControlsPlugin } from "../../src/zoom-controls/index.js"

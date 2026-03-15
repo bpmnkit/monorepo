@@ -10,7 +10,7 @@ current "cursor" position in the process graph. Each method call appends an elem
 advances the cursor:
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 Bpmn.createProcess("my-process")
   .startEvent("start")       // cursor at startEvent
@@ -69,7 +69,7 @@ You can access element sizes via the `ELEMENT_SIZES` export if you need to build
 The SDK can round-trip any BPMN 2.0 XML — parse it, modify it in TypeScript, and export it back:
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 // Parse XML into a typed object
 const definitions = Bpmn.parse(xmlString);
@@ -94,7 +94,7 @@ Raw BPMN XML is verbose — a simple three-node process takes ~60 lines of XML. 
 format reduces this to a small JSON object that fits in a single LLM prompt:
 
 ```typescript
-import { compactify, expand } from "@bpmn-sdk/core";
+import { compactify, expand } from "@bpmnkit/core";
 
 // Definitions → CompactDiagram (small JSON)
 const compact = compactify(definitions);

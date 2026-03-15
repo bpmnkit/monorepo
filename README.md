@@ -1,6 +1,6 @@
-# @bpmn-sdk/core
+# @bpmnkit/core
 
-[![npm version](https://img.shields.io/npm/v/@bpmn-sdk/core)](https://www.npmjs.com/package/@bpmn-sdk/core)
+[![npm version](https://img.shields.io/npm/v/@bpmnkit/core)](https://www.npmjs.com/package/@bpmnkit/core)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
@@ -47,15 +47,15 @@ A TypeScript SDK for working with Camunda 8 process automation artifacts — BPM
 ## Installation
 
 ```bash
-npm install @bpmn-sdk/core
+npm install @bpmnkit/core
 ```
 
 ```bash
-pnpm add @bpmn-sdk/core
+pnpm add @bpmnkit/core
 ```
 
 ```bash
-yarn add @bpmn-sdk/core
+yarn add @bpmnkit/core
 ```
 
 ## Quick Start
@@ -63,7 +63,7 @@ yarn add @bpmn-sdk/core
 ### BPMN — Build a Process
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 const definitions = Bpmn.createProcess("order-process")
   .name("Order Process")
@@ -91,7 +91,7 @@ const xml = Bpmn.export(definitions);
 ### BPMN — Parse and Inspect
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 const definitions = Bpmn.parse(xml);
 const process = definitions.processes[0];
@@ -111,7 +111,7 @@ for (const element of process.flowElements) {
 ### DMN
 
 ```typescript
-import { Dmn } from "@bpmn-sdk/core";
+import { Dmn } from "@bpmnkit/core";
 
 // Build a decision table
 const definitions = Dmn.createDecisionTable("risk-level")
@@ -133,7 +133,7 @@ console.log(`${parsed.decisions[0].decisionTable.rules.length} rules`);
 ### Forms
 
 ```typescript
-import { Form } from "@bpmn-sdk/core";
+import { Form } from "@bpmnkit/core";
 
 const form = Form.create("onboarding")
   .textField({ key: "name", label: "Full Name" })
@@ -158,7 +158,7 @@ const json = Form.export(form);
 Build HTTP connector service tasks with a dedicated convenience API:
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 const definitions = Bpmn.createProcess("api-call")
   .startEvent("start")
@@ -263,8 +263,8 @@ Without `.withAutoLayout()`, the exported XML contains valid BPMN semantics but 
 ### Roundtrip — Parse, Modify, Export
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
-import type { BpmnDefinitions } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
+import type { BpmnDefinitions } from "@bpmnkit/core";
 
 // Parse existing BPMN XML
 const definitions: BpmnDefinitions = Bpmn.parse(existingXml);
@@ -286,7 +286,7 @@ import type {
   BpmnDefinitions,
   BpmnServiceTask,
   BpmnFlowElement,
-} from "@bpmn-sdk/core";
+} from "@bpmnkit/core";
 
 // Use discriminated unions to narrow element types
 function getServiceTasks(definitions: BpmnDefinitions): BpmnServiceTask[] {
@@ -412,7 +412,7 @@ const definitions = Bpmn.createProcess("main")
 
 ```
 packages/
-  bpmn-sdk/          # Main SDK package — @bpmn-sdk/core
+  bpmn-sdk/          # Main SDK package — @bpmnkit/core
     src/
       bpmn/          # BPMN parser, serializer, builder, model
       dmn/           # DMN parser, serializer, builder, model
@@ -445,14 +445,14 @@ Build the SDK once, then run any example:
 
 ```bash
 pnpm install
-pnpm build                                    # build @bpmn-sdk/core first
+pnpm build                                    # build @bpmnkit/core first
 
 # Run all five examples (writes BPMN files to apps/examples/output/)
-pnpm --filter @bpmn-sdk/examples all
+pnpm --filter @bpmnkit/examples all
 
 # Or run a single example
-pnpm --filter @bpmn-sdk/examples 01           # employee onboarding
-pnpm --filter @bpmn-sdk/examples 03           # loan approval
+pnpm --filter @bpmnkit/examples 01           # employee onboarding
+pnpm --filter @bpmnkit/examples 03           # loan approval
 ```
 
 Each script writes a `.bpmn` file to `apps/examples/output/`. Open any file in [Camunda Modeler](https://camunda.com/download/modeler/) or paste the XML into [bpmn.io](https://demo.bpmn.io/) to visualise the generated diagram.
@@ -467,7 +467,7 @@ Each script writes a `.bpmn` file to `apps/examples/output/`. Open any file in [
 ### Setup
 
 ```bash
-git clone https://github.com/bpmn-sdk/monorepo.git
+git clone https://github.com/bpmnkit/monorepo.git
 cd monorepo
 pnpm install
 ```

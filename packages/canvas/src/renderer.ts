@@ -7,8 +7,8 @@ import type {
 	BpmnParticipant,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
-} from "@bpmn-sdk/core"
-import { readDiColor } from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
+import { readDiColor } from "@bpmnkit/core"
 import type { RenderedEdge, RenderedShape } from "./types.js"
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────

@@ -54,7 +54,7 @@ export const SAMPLE_BPMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
  *
  * @example
  * ```typescript
- * import { Bpmn } from "@bpmn-sdk/core"
+ * import { Bpmn } from "@bpmnkit/core"
  *
  * // Parse existing XML
  * const defs = Bpmn.parse(xml)
@@ -99,7 +99,7 @@ export const Bpmn = {
 	 *
 	 * @example
 	 * ```typescript
-	 * import { Bpmn, ParseError } from "@bpmn-sdk/core"
+	 * import { Bpmn, ParseError } from "@bpmnkit/core"
 	 *
 	 * try {
 	 *   const defs = Bpmn.parse(xmlString)

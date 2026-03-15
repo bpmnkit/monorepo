@@ -1,5 +1,5 @@
-import { getSettings, saveSettings } from "@bpmn-sdk/profiles"
-import type { Settings } from "@bpmn-sdk/profiles"
+import { getSettings, saveSettings } from "@bpmnkit/profiles"
+import type { Settings } from "@bpmnkit/profiles"
 
 // ─── ANSI helpers ─────────────────────────────────────────────────────────────
 

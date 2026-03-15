@@ -1,4 +1,4 @@
-import { AdminApiClient, CamundaClient } from "@bpmn-sdk/api"
+import { AdminApiClient, CamundaClient } from "@bpmnkit/api"
 import { getActiveProfile, getProfile } from "./profile.js"
 
 function requireProfile(profileName?: string) {

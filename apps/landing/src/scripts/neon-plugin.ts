@@ -1,4 +1,4 @@
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
 
 // Skeleton BPMN flow: Start → Task → Gateway → Task → End
 // Uses inline animation-delay to stagger the pulse wave across shapes.

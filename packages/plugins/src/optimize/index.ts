@@ -1,5 +1,5 @@
-import { Bpmn, optimize } from "@bpmn-sdk/core"
-import type { BpmnDefinitions, OptimizationFinding } from "@bpmn-sdk/core"
+import { Bpmn, optimize } from "@bpmnkit/core"
+import type { BpmnDefinitions, OptimizationFinding } from "@bpmnkit/core"
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 

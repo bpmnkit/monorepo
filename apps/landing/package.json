@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/landing",
+	"name": "@bpmnkit/landing",
 	"private": true,
 	"version": "0.0.8",
 	"type": "module",
@@ -11,11 +11,11 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmn-sdk/canvas": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/editor": "workspace:*",
-		"@bpmn-sdk/engine": "workspace:*",
-		"@bpmn-sdk/operate": "workspace:*",
-		"@bpmn-sdk/plugins": "workspace:*"
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/editor": "workspace:*",
+		"@bpmnkit/engine": "workspace:*",
+		"@bpmnkit/operate": "workspace:*",
+		"@bpmnkit/plugins": "workspace:*"
 	}
 }

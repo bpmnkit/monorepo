@@ -1,1 +1,1 @@
-export { createStatsCard } from "@bpmn-sdk/ui"
+export { createStatsCard } from "@bpmnkit/ui"

@@ -1,5 +1,5 @@
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
-import { Bpmn } from "@bpmn-sdk/core"
+import { BpmnCanvas } from "@bpmnkit/canvas"
+import { Bpmn } from "@bpmnkit/core"
 import { createNeonThemePlugin } from "./neon-plugin.js"
 
 // ── Utilities ──────────────────────────────────────────────────────────
@@ -265,7 +265,7 @@ function buildAnimExamples(): AnimExample[] {
 			stages: [
 				{
 					lines: [
-						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;`,
+						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;`,
 						"",
 						`<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"order-validation"</span>)`,
 						`  .<span class="fn">name</span>(<span class="str">"Order Validation"</span>)`,
@@ -294,7 +294,7 @@ function buildAnimExamples(): AnimExample[] {
 			stages: [
 				{
 					lines: [
-						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;`,
+						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;`,
 						"",
 						`<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"approval-flow"</span>)`,
 						`  .<span class="fn">name</span>(<span class="str">"Approval Flow"</span>)`,
@@ -323,7 +323,7 @@ function buildAnimExamples(): AnimExample[] {
 			stages: [
 				{
 					lines: [
-						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;`,
+						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;`,
 						"",
 						`<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"ai-support-agent"</span>)`,
 						`  .<span class="fn">name</span>(<span class="str">"AI Support Agent"</span>)`,
@@ -353,7 +353,7 @@ function buildAnimExamples(): AnimExample[] {
 			stages: [
 				{
 					lines: [
-						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;`,
+						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;`,
 						"",
 						`<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"order-fulfillment"</span>)`,
 						`  .<span class="fn">name</span>(<span class="str">"Order Fulfillment"</span>)`,
@@ -382,7 +382,7 @@ function buildAnimExamples(): AnimExample[] {
 			stages: [
 				{
 					lines: [
-						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmn-sdk/core"</span>;`,
+						`<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;`,
 						"",
 						`<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"payment-processing"</span>)`,
 						`  .<span class="fn">name</span>(<span class="str">"Payment Processing"</span>)`,

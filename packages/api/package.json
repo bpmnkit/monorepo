@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/api",
+	"name": "@bpmnkit/api",
 	"version": "0.0.8",
 	"private": false,
 	"type": "module",
@@ -26,6 +26,6 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

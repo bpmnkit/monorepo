@@ -1,5 +1,5 @@
-import { Bpmn, layoutFlowNodes } from "@bpmn-sdk/core"
-import type { LayoutNode } from "@bpmn-sdk/core"
+import { Bpmn, layoutFlowNodes } from "@bpmnkit/core"
+import type { LayoutNode } from "@bpmnkit/core"
 import { drawEdge } from "./edges.js"
 import { AsciiGrid } from "./grid.js"
 import { CELL_H, CELL_W, drawElement, entryCol, exitCol, midRow } from "./shapes.js"

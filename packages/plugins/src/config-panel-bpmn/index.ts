@@ -1,5 +1,5 @@
 /**
- * @bpmn-sdk/canvas-plugin-config-panel-bpmn — BPMN element schemas for the
+ * @bpmnkit/canvas-plugin-config-panel-bpmn — BPMN element schemas for the
  * config panel plugin.
  *
  * Registers config panel schemas for all standard BPMN element types. For
@@ -9,8 +9,8 @@
  *
  * ## Usage
  * ```typescript
- * import { createConfigPanelPlugin } from "@bpmn-sdk/canvas-plugin-config-panel";
- * import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/canvas-plugin-config-panel-bpmn";
+ * import { createConfigPanelPlugin } from "@bpmnkit/canvas-plugin-config-panel";
+ * import { createConfigPanelBpmnPlugin } from "@bpmnkit/canvas-plugin-config-panel-bpmn";
  *
  * let editorRef: BpmnEditor | null = null;
  * const configPanel = createConfigPanelPlugin({
@@ -25,17 +25,17 @@
  * @packageDocumentation
  */
 
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
 import type {
 	BpmnConditionalEventDefinition,
 	BpmnDefinitions,
 	BpmnEventDefinition,
 	BpmnFlowElement,
 	BpmnTimerEventDefinition,
-} from "@bpmn-sdk/core"
-import { zeebeExtensionsToXmlElements } from "@bpmn-sdk/core"
-import { ELEMENT_TYPE_LABELS } from "@bpmn-sdk/editor"
-import type { CreateShapeType } from "@bpmn-sdk/editor"
+} from "@bpmnkit/core"
+import { zeebeExtensionsToXmlElements } from "@bpmnkit/core"
+import { ELEMENT_TYPE_LABELS } from "@bpmnkit/editor"
+import type { CreateShapeType } from "@bpmnkit/editor"
 import type {
 	ConfigPanelPlugin,
 	FieldValue,

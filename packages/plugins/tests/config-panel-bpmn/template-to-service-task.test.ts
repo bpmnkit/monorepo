@@ -1,4 +1,4 @@
-import { Bpmn, resetIdCounter } from "@bpmn-sdk/core"
+import { Bpmn, resetIdCounter } from "@bpmnkit/core"
 import { beforeEach, describe, expect, it } from "vitest"
 import {
 	CAMUNDA_CONNECTOR_TEMPLATES,

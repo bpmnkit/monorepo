@@ -11,8 +11,8 @@ import type {
 	BpmnTextAnnotation,
 	BpmnWaypoint,
 	DiColor,
-} from "@bpmn-sdk/core"
-import { BIOC_NS, COLOR_NS, writeDiColor } from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
+import { BIOC_NS, COLOR_NS, writeDiColor } from "@bpmnkit/core"
 import {
 	computeWaypoints,
 	computeWaypointsAvoiding,

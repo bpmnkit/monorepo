@@ -4,7 +4,7 @@ import {
 	getAuditLog,
 	getSettings,
 	saveSettings,
-} from "@bpmn-sdk/profiles"
+} from "@bpmnkit/profiles"
 import type { CommandGroup } from "../types.js"
 
 export const settingsGroup: CommandGroup = {

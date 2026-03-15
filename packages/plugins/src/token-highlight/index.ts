@@ -1,11 +1,11 @@
-import type { CanvasApi, CanvasPlugin } from "@bpmn-sdk/canvas"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 import { injectTokenHighlightStyles } from "./css"
 
-// ── Structural type — no hard dep on @bpmn-sdk/engine ─────────────────────────
+// ── Structural type — no hard dep on @bpmnkit/engine ─────────────────────────
 
 /**
- * Minimal interface satisfied by `ProcessInstance` from `@bpmn-sdk/engine`.
+ * Minimal interface satisfied by `ProcessInstance` from `@bpmnkit/engine`.
  * Using structural typing keeps this plugin free of an engine dependency.
  */
 export interface InstanceLike {

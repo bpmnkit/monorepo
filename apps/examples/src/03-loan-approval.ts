@@ -11,7 +11,7 @@
  */
 
 import { writeFileSync } from "node:fs"
-import { Bpmn } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
 
 const definitions = Bpmn.createProcess("LoanApproval")
 	.withAutoLayout()

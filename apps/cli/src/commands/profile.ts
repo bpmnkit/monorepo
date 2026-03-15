@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import type { AuthConfig, CamundaClientInput } from "@bpmn-sdk/api"
+import type { AuthConfig, CamundaClientInput } from "@bpmnkit/api"
 import {
 	deleteProfile,
 	getActiveName,
@@ -9,8 +9,8 @@ import {
 	listProfiles,
 	saveProfile,
 	useProfile,
-} from "@bpmn-sdk/profiles"
-import type { ApiType } from "@bpmn-sdk/profiles"
+} from "@bpmnkit/profiles"
+import type { ApiType } from "@bpmnkit/profiles"
 import type { CommandGroup, FlagSpec } from "../types.js"
 
 const API_TYPE_FLAG: FlagSpec = {

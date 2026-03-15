@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/ascii",
+	"name": "@bpmnkit/ascii",
 	"version": "0.0.8",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -18,13 +18,13 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmn-sdk/core": "workspace:*"
+		"@bpmnkit/core": "workspace:*"
 	},
 	"description": "Render BPMN diagrams as Unicode box-drawing ASCII art — perfect for terminals and docs",
 	"keywords": ["bpmn", "ascii", "terminal", "diagram", "typescript"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

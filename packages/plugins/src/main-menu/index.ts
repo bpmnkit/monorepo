@@ -1,5 +1,5 @@
 /**
- * @bpmn-sdk/canvas-plugin-main-menu — main menu plugin for `@bpmn-sdk/canvas`.
+ * @bpmnkit/canvas-plugin-main-menu — main menu plugin for `@bpmnkit/canvas`.
  *
  * Adds a panel in the top-right corner of the canvas with an optional title
  * and a menu button. The menu lets users switch between light, dark, and
@@ -9,7 +9,7 @@
  * @packageDocumentation
  */
 
-import type { CanvasPlugin, Theme } from "@bpmn-sdk/canvas"
+import type { CanvasPlugin, Theme } from "@bpmnkit/canvas"
 import { injectMainMenuStyles } from "./css.js"
 
 export { MAIN_MENU_CSS, MAIN_MENU_STYLE_ID, injectMainMenuStyles } from "./css.js"

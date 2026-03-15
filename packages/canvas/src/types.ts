@@ -4,7 +4,7 @@ import type {
 	BpmnDiShape,
 	BpmnFlowElement,
 	BpmnTextAnnotation,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 
 /** The color theme applied to the canvas. */
 export type Theme = "light" | "dark" | "auto"

@@ -1,6 +1,6 @@
-import type { RenderedEdge, RenderedShape } from "@bpmn-sdk/canvas"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
-import { parseExpression } from "@bpmn-sdk/feel"
+import type { RenderedEdge, RenderedShape } from "@bpmnkit/canvas"
+import type { BpmnDefinitions } from "@bpmnkit/core"
+import { parseExpression } from "@bpmnkit/feel"
 import type { FieldSchema, FieldValue, GroupSchema, PanelAdapter, PanelSchema } from "./types.js"
 
 const SVG_NS = "http://www.w3.org/2000/svg"

@@ -1,4 +1,4 @@
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import { BpmnCanvas } from "@bpmnkit/canvas"
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from "vitest"
 import { MAIN_MENU_STYLE_ID, createMainMenuPlugin } from "../../src/main-menu/index.js"

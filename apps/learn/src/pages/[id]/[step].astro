@@ -206,10 +206,10 @@ const contentHtml = renderMarkdown(step.content)
 </BaseLayout>
 
 <script>
-  import { BpmnEditor, initEditorHud } from "@bpmn-sdk/editor"
-  import { Engine } from "@bpmn-sdk/engine"
-  import { createProcessRunnerPlugin } from "@bpmn-sdk/plugins/process-runner"
-  import { createTokenHighlightPlugin } from "@bpmn-sdk/plugins/token-highlight"
+  import { BpmnEditor, initEditorHud } from "@bpmnkit/editor"
+  import { Engine } from "@bpmnkit/engine"
+  import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
+  import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
   import { markStepComplete, loadProgress, saveCanvasXml } from "../../lib/progress.js"
   import { validateStep } from "../../lib/validation.js"
   import type { TutorialStep } from "../../lib/types.js"

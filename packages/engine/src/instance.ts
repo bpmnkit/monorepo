@@ -5,10 +5,10 @@ import type {
 	BpmnSequenceFlow,
 	DmnDecision,
 	FormDefinition,
-} from "@bpmn-sdk/core"
-import { generateId } from "@bpmn-sdk/core"
-import { evaluate, parseExpression } from "@bpmn-sdk/feel"
-import type { FeelValue } from "@bpmn-sdk/feel"
+} from "@bpmnkit/core"
+import { generateId } from "@bpmnkit/core"
+import { evaluate, parseExpression } from "@bpmnkit/feel"
+import type { FeelValue } from "@bpmnkit/feel"
 import { evaluateDecision } from "./dmn.js"
 import { scheduleTimer } from "./timers.js"
 import type { JobHandler, ProcessEvent } from "./types.js"

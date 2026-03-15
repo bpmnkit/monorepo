@@ -17,7 +17,7 @@
  *   - Double-click Decision → open decision table
  *   - Inline label editing on double-click (non-decision nodes)
  */
-import type { DmnDefinitions, DmnWaypoint } from "@bpmn-sdk/core"
+import type { DmnDefinitions, DmnWaypoint } from "@bpmnkit/core"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

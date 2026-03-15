@@ -10,7 +10,7 @@ This guide walks you from zero to a deployed, running BPMN process in three step
 Use the fluent builder to describe your process in TypeScript:
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 const xml = Bpmn.export(
   Bpmn.createProcess("hello")
@@ -34,7 +34,7 @@ The `xml` string is a complete, valid BPMN 2.0 document that any standards-compl
 The simulation engine runs the process right in Node.js — no Camunda cluster required:
 
 ```typescript
-import { Engine } from "@bpmn-sdk/engine";
+import { Engine } from "@bpmnkit/engine";
 
 const engine = new Engine();
 await engine.deploy({ bpmn: xml });
@@ -60,7 +60,7 @@ await new Promise<void>((resolve) => {
 When you're ready for production, deploy to a real Camunda 8 cluster:
 
 ```typescript
-import { CamundaClient } from "@bpmn-sdk/api";
+import { CamundaClient } from "@bpmnkit/api";
 
 const client = new CamundaClient({
   baseUrl: "https://api.cloud.camunda.io",

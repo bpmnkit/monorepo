@@ -1,5 +1,5 @@
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 
 /** Input field types supported by the config panel renderer. */
 export type FieldType = "text" | "select" | "textarea" | "feel-expression" | "toggle" | "action"

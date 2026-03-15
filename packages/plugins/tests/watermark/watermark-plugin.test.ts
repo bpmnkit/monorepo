@@ -1,4 +1,4 @@
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import { BpmnCanvas } from "@bpmnkit/canvas"
 import { afterEach, describe, expect, it } from "vitest"
 import { WATERMARK_STYLE_ID, createWatermarkPlugin } from "../../src/watermark/index.js"
 

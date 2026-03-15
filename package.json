@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/monorepo",
+	"name": "@bpmnkit/monorepo",
 	"private": true,
 	"type": "module",
 	"packageManager": "pnpm@10.21.0",
@@ -16,13 +16,13 @@
 		"release": "pnpm turbo build && changeset publish",
 		"fix-bpmn": "node scripts/fix-bpmn.mjs",
 		"update-connectors": "node scripts/update-connectors.mjs",
-		"docs:dev": "pnpm --filter @bpmn-sdk/docs dev",
-		"docs:build": "pnpm turbo build --filter @bpmn-sdk/docs",
-		"proxy": "pnpm --filter @bpmn-sdk/proxy start",
+		"docs:dev": "pnpm --filter @bpmnkit/docs dev",
+		"docs:build": "pnpm turbo build --filter @bpmnkit/docs",
+		"proxy": "pnpm --filter @bpmnkit/proxy start",
 		"proxy-rs": "cargo build --manifest-path apps/proxy-rs/Cargo.toml && apps/proxy-rs/target/debug/ai-server",
 		"proxy-rs:build": "cargo build --manifest-path apps/proxy-rs/Cargo.toml --release",
-		"desktop:dev": "pnpm --filter @bpmn-sdk/desktop tauri:dev",
-		"desktop:build": "pnpm --filter @bpmn-sdk/desktop tauri:build"
+		"desktop:dev": "pnpm --filter @bpmnkit/desktop tauri:dev",
+		"desktop:build": "pnpm --filter @bpmnkit/desktop tauri:build"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",

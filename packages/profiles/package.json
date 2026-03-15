@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/profiles",
+	"name": "@bpmnkit/profiles",
 	"version": "0.0.5",
 	"description": "Shared profile storage and auth client factory for @bpmn-sdk CLI and proxy server",
 	"type": "module",
@@ -21,7 +21,7 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmn-sdk/api": "workspace:*"
+		"@bpmnkit/api": "workspace:*"
 	},
 	"keywords": ["bpmn", "camunda", "profiles", "authentication", "oauth2", "cli", "typescript"],
 	"publishConfig": {
@@ -29,6 +29,6 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

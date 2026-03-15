@@ -2,7 +2,7 @@
  * Convert an element template + user-provided values into ServiceTaskOptions
  * for use with the core `Bpmn` builder.
  */
-import type { ServiceTaskOptions } from "@bpmn-sdk/core"
+import type { ServiceTaskOptions } from "@bpmnkit/core"
 import type { TemplateBinding, TemplateProperty } from "./template-types.js"
 import type { ElementTemplate } from "./template-types.js"
 
@@ -47,8 +47,8 @@ function applyBinding(
  *
  * @example
  * ```typescript
- * import { Bpmn } from "@bpmn-sdk/core";
- * import { CAMUNDA_CONNECTOR_TEMPLATES, templateToServiceTaskOptions } from "@bpmn-sdk/canvas-plugin-config-panel-bpmn";
+ * import { Bpmn } from "@bpmnkit/core";
+ * import { CAMUNDA_CONNECTOR_TEMPLATES, templateToServiceTaskOptions } from "@bpmnkit/canvas-plugin-config-panel-bpmn";
  *
  * const kafka = CAMUNDA_CONNECTOR_TEMPLATES.find(t => t.id === "io.camunda.connectors.KAFKA.v1")!;
  * const defs = Bpmn.createProcess("proc")

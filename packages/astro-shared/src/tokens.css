@@ -4,7 +4,7 @@
  * don't need updating.  Aurora / layout tokens live here too.
  * ─────────────────────────────────────────────────────────────────────────── */
 
-@import "@bpmn-sdk/ui/tokens.css";
+@import "@bpmnkit/ui/tokens.css";
 
 /* Map --bpmnkit-* → short names used in Astro layout templates */
 :root {

@@ -1,5 +1,5 @@
-import { Form } from "@bpmn-sdk/core"
-import type { FormComponent, FormUnknownComponent } from "@bpmn-sdk/core"
+import { Form } from "@bpmnkit/core"
+import type { FormComponent, FormUnknownComponent } from "@bpmnkit/core"
 
 // FormUnknownComponent's `[key: string]: unknown` index signature prevents TypeScript from
 // narrowing properties inside switch cases. Exclude it so the switch can narrow correctly;

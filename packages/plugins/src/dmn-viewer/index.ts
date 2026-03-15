@@ -1,5 +1,5 @@
 /**
- * @bpmn-sdk/canvas-plugin-dmn-viewer — DMN decision table viewer.
+ * @bpmnkit/canvas-plugin-dmn-viewer — DMN decision table viewer.
  *
  * Provides a standalone `DmnViewer` class that renders a DMN decision table
  * as an HTML table with FEEL syntax highlighting.

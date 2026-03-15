@@ -1,9 +1,9 @@
-import { buildRelations } from "@bpmn-sdk/api"
+import { buildRelations } from "@bpmnkit/api"
 import type { CommandGroup } from "../types.js"
 
 /**
  * Auto-detect follow-up relations between commands using the shared
- * buildRelations() from @bpmn-sdk/api. Converts CommandGroups to generic
+ * buildRelations() from @bpmnkit/api. Converts CommandGroups to generic
  * RelationSources, computes the graph, and wires results back to commands.
  * Mutates commands in-place.
  */

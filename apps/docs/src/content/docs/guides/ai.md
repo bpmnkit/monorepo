@@ -13,7 +13,7 @@ Raw BPMN XML is far too verbose for LLMs — a simple three-node process generat
 The compact format represents the same information as a small JSON object:
 
 ```typescript
-import { Bpmn, compactify, expand } from "@bpmn-sdk/core";
+import { Bpmn, compactify, expand } from "@bpmnkit/core";
 
 // Parse some BPMN XML
 const definitions = Bpmn.parse(existingXml);
@@ -36,7 +36,7 @@ When an AI agent needs to start fresh, use `Bpmn.makeEmpty()` to get a valid sta
 with a single start event:
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 // Returns a valid BPMN XML string — one start event, ready for an agent to extend
 const xml = Bpmn.makeEmpty("my-process", "My Process");
@@ -65,8 +65,8 @@ Using the Anthropic SDK to generate a process from a description:
 
 ```typescript
 import Anthropic from "@anthropic-ai/sdk";
-import { Bpmn, expand } from "@bpmn-sdk/core";
-import type { CompactDiagram } from "@bpmn-sdk/core";
+import { Bpmn, expand } from "@bpmnkit/core";
+import type { CompactDiagram } from "@bpmnkit/core";
 
 const anthropic = new Anthropic();
 
@@ -104,7 +104,7 @@ Use function/tool calling for reliable structured output:
 
 ```typescript
 import OpenAI from "openai";
-import { expand, Bpmn } from "@bpmn-sdk/core";
+import { expand, Bpmn } from "@bpmnkit/core";
 
 const openai = new OpenAI();
 
@@ -122,7 +122,7 @@ const response = await openai.chat.completions.create({
       function: {
         name: "create_bpmn_process",
         description: "Create a BPMN process diagram",
-        parameters: compactDiagramJsonSchema, // export from @bpmn-sdk/core
+        parameters: compactDiagramJsonSchema, // export from @bpmnkit/core
       },
     },
   ],

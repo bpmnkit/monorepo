@@ -148,7 +148,7 @@ function compactifyElement(el: BpmnFlowElement): CompactElement {
  *
  * @example
  * ```typescript
- * import { Bpmn, compactify, expand } from "@bpmn-sdk/core"
+ * import { Bpmn, compactify, expand } from "@bpmnkit/core"
  *
  * const defs    = Bpmn.parse(xml)
  * const compact = compactify(defs)   // send to AI

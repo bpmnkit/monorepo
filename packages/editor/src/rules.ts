@@ -1,4 +1,4 @@
-import type { BpmnElementType } from "@bpmn-sdk/core"
+import type { BpmnElementType } from "@bpmnkit/core"
 
 /**
  * Returns true if a sequence flow from `sourceType` to `targetType` is valid.

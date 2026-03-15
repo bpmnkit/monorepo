@@ -1,5 +1,5 @@
-import type { RenderedShape, ViewportState } from "@bpmn-sdk/canvas"
-import type { BpmnBounds } from "@bpmn-sdk/core"
+import type { RenderedShape, ViewportState } from "@bpmnkit/canvas"
+import type { BpmnBounds } from "@bpmnkit/core"
 import { applyResize } from "./geometry.js"
 import type { CreateShapeType, DiagPoint, HandleDir, HitResult, PortDir, Tool } from "./types.js"
 

@@ -1,4 +1,4 @@
-import { DmnEditor } from "@bpmn-sdk/plugins/dmn-editor"
+import { DmnEditor } from "@bpmnkit/plugins/dmn-editor"
 import type { DecisionsStore } from "../stores/decisions.js"
 import type { DecisionDefinitionResult } from "../types.js"
 

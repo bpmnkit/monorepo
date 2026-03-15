@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/astro-shared",
+	"name": "@bpmnkit/astro-shared",
 	"version": "0.0.2",
 	"private": false,
 	"type": "module",
@@ -14,7 +14,7 @@
 	},
 	"keywords": ["bpmn", "astro", "design-tokens", "shared"],
 	"dependencies": {
-		"@bpmn-sdk/ui": "workspace:*"
+		"@bpmnkit/ui": "workspace:*"
 	},
 	"license": "MIT",
 	"publishConfig": {
@@ -22,6 +22,6 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

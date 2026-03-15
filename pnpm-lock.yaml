@@ -53,31 +53,31 @@ importers:
 
   apps/cli:
     dependencies:
-      '@bpmn-sdk/api':
+      '@bpmnkit/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@bpmn-sdk/ascii':
+      '@bpmnkit/ascii':
         specifier: workspace:*
         version: link:../../packages/ascii
-      '@bpmn-sdk/connector-gen':
+      '@bpmnkit/connector-gen':
         specifier: workspace:*
         version: link:../../packages/connector-gen
-      '@bpmn-sdk/profiles':
+      '@bpmnkit/profiles':
         specifier: workspace:*
         version: link:../../packages/profiles
 
   apps/desktop:
     dependencies:
-      '@bpmn-sdk/canvas':
+      '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@bpmn-sdk/editor':
+      '@bpmnkit/editor':
         specifier: workspace:*
         version: link:../../packages/editor
-      '@bpmn-sdk/plugins':
+      '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins
 
@@ -92,7 +92,7 @@ importers:
 
   apps/examples:
     dependencies:
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
     devDependencies:
@@ -105,55 +105,55 @@ importers:
 
   apps/landing:
     dependencies:
-      '@bpmn-sdk/canvas':
+      '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@bpmn-sdk/editor':
+      '@bpmnkit/editor':
         specifier: workspace:*
         version: link:../../packages/editor
-      '@bpmn-sdk/engine':
+      '@bpmnkit/engine':
         specifier: workspace:*
         version: link:../../packages/engine
-      '@bpmn-sdk/operate':
+      '@bpmnkit/operate':
         specifier: workspace:*
         version: link:../../packages/operate
-      '@bpmn-sdk/plugins':
+      '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins
 
   apps/learn:
     dependencies:
-      '@bpmn-sdk/astro-shared':
+      '@bpmnkit/astro-shared':
         specifier: workspace:*
         version: link:../../packages/astro-shared
-      '@bpmn-sdk/canvas':
+      '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@bpmn-sdk/editor':
+      '@bpmnkit/editor':
         specifier: workspace:*
         version: link:../../packages/editor
-      '@bpmn-sdk/engine':
+      '@bpmnkit/engine':
         specifier: workspace:*
         version: link:../../packages/engine
-      '@bpmn-sdk/plugins':
+      '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins
 
   apps/proxy:
     dependencies:
-      '@bpmn-sdk/api':
+      '@bpmnkit/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@bpmn-sdk/profiles':
+      '@bpmnkit/profiles':
         specifier: workspace:*
         version: link:../../packages/profiles
 
@@ -161,19 +161,19 @@ importers:
 
   packages/ascii:
     dependencies:
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../core
 
   packages/astro-shared:
     dependencies:
-      '@bpmn-sdk/ui':
+      '@bpmnkit/ui':
         specifier: workspace:*
         version: link:../ui
 
   packages/canvas:
     dependencies:
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../core
 
@@ -187,19 +187,19 @@ importers:
 
   packages/editor:
     dependencies:
-      '@bpmn-sdk/canvas':
+      '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../canvas
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../core
 
   packages/engine:
     dependencies:
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../core
-      '@bpmn-sdk/feel':
+      '@bpmnkit/feel':
         specifier: workspace:*
         version: link:../feel
 
@@ -207,43 +207,43 @@ importers:
 
   packages/operate:
     dependencies:
-      '@bpmn-sdk/api':
+      '@bpmnkit/api':
         specifier: workspace:*
         version: link:../api
-      '@bpmn-sdk/canvas':
+      '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../canvas
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../core
-      '@bpmn-sdk/plugins':
+      '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../plugins
-      '@bpmn-sdk/ui':
+      '@bpmnkit/ui':
         specifier: workspace:*
         version: link:../ui
 
   packages/plugins:
     dependencies:
-      '@bpmn-sdk/ascii':
+      '@bpmnkit/ascii':
         specifier: workspace:*
         version: link:../ascii
-      '@bpmn-sdk/canvas':
+      '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../canvas
-      '@bpmn-sdk/core':
+      '@bpmnkit/core':
         specifier: workspace:*
         version: link:../core
-      '@bpmn-sdk/editor':
+      '@bpmnkit/editor':
         specifier: workspace:*
         version: link:../editor
-      '@bpmn-sdk/feel':
+      '@bpmnkit/feel':
         specifier: workspace:*
         version: link:../feel
 
   packages/profiles:
     dependencies:
-      '@bpmn-sdk/api':
+      '@bpmnkit/api':
         specifier: workspace:*
         version: link:../api
 

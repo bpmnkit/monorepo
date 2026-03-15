@@ -1,8 +1,8 @@
 # Progress
 
-## 2026-03-14 — `@bpmn-sdk/connector-gen` + `casen connector` command
+## 2026-03-14 — `@bpmnkit/connector-gen` + `casen connector` command
 
-### New package: `packages/connector-gen` (`@bpmn-sdk/connector-gen`)
+### New package: `packages/connector-gen` (`@bpmnkit/connector-gen`)
 - **`src/types.ts`**: Full OpenAPI 3.x type definitions (minimal subset); connector template types (`ConnectorTemplate`, `PropertyDef`, `Binding`, etc.); generator options
 - **`src/parse-openapi.ts`**: `parseOpenApi()` (auto-detects JSON/YAML), `getOperations()` (enumerate with merged params + body/response schema resolution), `detectDefaultAuth()` (infers from `securitySchemes`), `$ref` helpers
 - **`src/build-template.ts`**: Builds Camunda REST connector element templates per operation — URL field (Hidden or FEEL expression for path params), individual path param inputs, query params FEEL context, headers FEEL context, body (single Text or expanded properties with `--expand-body`), full 5-type auth block with conditions, timeout, output mapping, error expression, retries
@@ -59,7 +59,7 @@
 
 ### Brand token system (`packages/ui`, `packages/astro-shared`, `packages/canvas`, `packages/editor`, `packages/plugins`)
 - **`packages/ui`**: expanded as brand token authority; new neon dark palette, new tokens (`--bpmnkit-accent-bright`, `--bpmnkit-accent-subtle`, `--bpmnkit-teal`, `--bpmnkit-panel-bg`, `--bpmnkit-panel-border`, `--bpmnkit-font-mono`); added `./tokens.css` CSS file export for Astro `@import` usage
-- **`packages/astro-shared`**: `tokens.css` now delegates to `@bpmn-sdk/ui/tokens.css` instead of duplicating palette; only adds Astro-specific layout tokens and `--* → --bpmnkit-*` alias mappings
+- **`packages/astro-shared`**: `tokens.css` now delegates to `@bpmnkit/ui/tokens.css` instead of duplicating palette; only adds Astro-specific layout tokens and `--* → --bpmnkit-*` alias mappings
 - **`packages/canvas`**: hardcoded highlight/accent/text colors replaced with `var(--bpmnkit-accent)`, `var(--bpmnkit-fg)` tokens
 - **`packages/editor`**: all hardcoded panel/accent colors in HUD_CSS and EDITOR_CSS replaced with `var(--bpmnkit-*)` tokens
 - **18 plugin CSS files** migrated: ai-bridge, tabs, config-panel, command-palette, history, main-menu, ascii-view, process-runner, dmn-editor, dmn-viewer, form-editor, form-viewer, minimap, zoom-controls; semantic colors (token-highlight amber/green, feel-playground syntax) unchanged
@@ -146,7 +146,7 @@
 ### canvas — fix element:click in flex/scroll containers
 - `BpmnCanvas` click handler now uses `document.elementFromPoint(clientX, clientY)` to resolve the
   hit element instead of relying on `e.target`, which native SVG hit-testing was returning as the
-  root `<svg>` when the canvas is hosted inside a flex/scroll container (e.g. `@bpmn-sdk/operate`)
+  root `<svg>` when the canvas is hosted inside a flex/scroll container (e.g. `@bpmnkit/operate`)
 - Falls back to `e.target.closest("[data-bpmn-id]")` so existing tests (happy-dom, dispatched events)
   continue to pass
 
@@ -191,7 +191,7 @@
 
 ### Config panel Properties tab (instance-detail, definition-detail, incident-detail)
 - Added a read-only "Properties" tab to the sidebar of all three canvas detail views
-- Uses `createConfigPanelPlugin` + `createConfigPanelBpmnPlugin` from `@bpmn-sdk/plugins`
+- Uses `createConfigPanelPlugin` + `createConfigPanelBpmnPlugin` from `@bpmnkit/plugins`
 - A bridge plugin converts `element:click` → `editor:select` so the config panel responds to canvas element clicks
 - `getDefinitions` closure captures `BpmnDefinitions` from the canvas `diagram:load` event
 - `applyChange` is a no-op — all editing is disabled in Operate
@@ -229,7 +229,7 @@
 - Mock mode shows fixture subscriptions and gives "Mock mode" feedback on actions
 
 ### Supporting changes
-- Added `messages` envelope icon to `@bpmn-sdk/ui` `IC_UI`
+- Added `messages` envelope icon to `@bpmnkit/ui` `IC_UI`
 - Added `MessageSubscriptionResult` to operate types re-exports
 - Added mock message subscription fixtures to `mock-data.ts`
 - New CSS: form modal styles (`.op-modal--form`, `.op-form-*`), messages view (`.op-msg-*`), danger button (`.op-action-btn--danger`)
@@ -451,7 +451,7 @@
 - Exported `applyAutoLayout` from `./bpmn/auto-layout.js`
 
 ### `packages/editor/src/editor.ts`
-- Imported `applyAutoLayout` from `@bpmn-sdk/core`
+- Imported `applyAutoLayout` from `@bpmnkit/core`
 - Added `BpmnEditor.autoLayout(): void` — executes applyAutoLayout as undoable command, then fitView
 
 ### `packages/editor/src/hud.ts`
@@ -570,7 +570,7 @@
 ### `packages/api` — relations moved to shared package
 - New `packages/api/src/runtime/relations.ts`: exports `Relation`, `RelationSource`, `buildRelations()` — framework-agnostic, usable by CLI and operate.
 - `packages/api/src/index.ts`: re-exports the new types and function.
-- `apps/cli/src/types.ts`: imports `Relation` from `@bpmn-sdk/api` (removed local duplicate).
+- `apps/cli/src/types.ts`: imports `Relation` from `@bpmnkit/api` (removed local duplicate).
 - `apps/cli/src/commands/relations.ts`: rewritten as thin adapter — converts `CommandGroup[]` to `RelationSource[]`, calls `buildRelations()`, wires results back.
 
 ### `apps/cli` — profile name in header
@@ -651,7 +651,7 @@
 ### `apps/cli` + `packages/api` — fix `get-x-m-l` (XML endpoint)
 - Added `accept?: string` and `responseType?: "json" | "text"` to `RequestOptions`.
 - `HttpClient` uses `options.accept` for the `Accept` header (default `"application/json"`) and calls `response.text()` when `responseType === "text"`.
-- Generated `get-x-m-l` command removed; replaced with `get-xml` that requests `Accept: text/xml`, receives the XML as text, and renders it as ASCII art via `@bpmn-sdk/ascii`.
+- Generated `get-x-m-l` command removed; replaced with `get-xml` that requests `Accept: text/xml`, receives the XML as text, and renders it as ASCII art via `@bpmnkit/ascii`.
 
 ---
 
@@ -665,9 +665,9 @@
 
 ### `apps/cli` — BPMN ASCII render command
 - Added `process-definition render <processDefinitionKey>` command (alias: `pd render`).
-- Fetches the process definition's BPMN XML and renders it as Unicode ASCII art via `@bpmn-sdk/ascii`.
+- Fetches the process definition's BPMN XML and renders it as Unicode ASCII art via `@bpmnkit/ascii`.
 - Command injected into the generated group in `commands/index.ts` without modifying generated files.
-- Added `@bpmn-sdk/ascii: workspace:*` dependency to the CLI package.
+- Added `@bpmnkit/ascii: workspace:*` dependency to the CLI package.
 
 ---
 
@@ -681,13 +681,13 @@
 ### `packages/api` — `rawResponse` event
 - Added `RawResponseEvent` interface: `{ method, url, status, headers, body }`.
 - `HttpClient` emits `rawResponse` after every HTTP response (before error handling), using `response.clone().text()` to buffer the body without consuming the original stream.
-- Exported `RawResponseEvent` from `@bpmn-sdk/api` public index.
+- Exported `RawResponseEvent` from `@bpmnkit/api` public index.
 
 ---
 
 ## 2026-03-11 — editor12: packages/ui — shared design system; operate visual unification
 
-### `packages/ui` (new package — `@bpmn-sdk/ui`)
+### `packages/ui` (new package — `@bpmnkit/ui`)
 - New shared design-system package consumed by all frontends (operate, editor, canvas).
 - **Design tokens** (`UI_TOKENS_CSS`): CSS custom properties on `:root` (light default) + `[data-theme="dark"]` override. Namespace `--bpmnkit-*` for surfaces, typography, accent, semantic, radius, nav, header.
 - **Unified blue accent**: `#1a56db` (light) / `#4c8ef7` (dark) — replaces operate's purple `#7b61ff`.
@@ -698,21 +698,21 @@
 - **`IC_UI` icons**: SVG icon set for theme switcher (moon/sun/auto/check) and navigation (dashboard/processes/instances/incidents/jobs/tasks).
 
 ### `packages/operate` — visual unification with editor
-- Replaced all `--op-*` CSS variables with shared `--bpmnkit-*` tokens from `@bpmn-sdk/ui`.
+- Replaced all `--op-*` CSS variables with shared `--bpmnkit-*` tokens from `@bpmnkit/ui`.
 - Theme switcher button added to header (next to profile picker). Persists selection across sessions.
 - Theme persistence: `loadPersistedTheme()` on init — user choice survives page reload.
 - Nav icons: replaced emoji (`⊞ ◈ ▷ ⚠ ⚙ ☑`) with clean SVG icons from `IC_UI`.
 - Active nav item: blue tint `rgba(76,142,247,0.18)` (was purple `rgba(123,97,255,0.18)`).
-- Component CSS (badge, card, table) moved to `@bpmn-sdk/ui`; operate components are now thin re-exports.
+- Component CSS (badge, card, table) moved to `@bpmnkit/ui`; operate components are now thin re-exports.
 - `injectUiStyles()` called before `injectOperateStyles()` — tokens always available.
 
 ## 2026-03-10 — editor11: packages/operate — monitoring frontend
 
-### `packages/operate` (new package — `@bpmn-sdk/operate`)
+### `packages/operate` (new package — `@bpmnkit/operate`)
 - Zero-dependency monitoring and operations frontend library (same pattern as `packages/editor`).
 - `createOperate(options)` factory — mounts a full monitoring UI into any container element.
 - **6 views**: Dashboard, Processes (definitions), Instances, Incidents, Jobs, User Tasks.
-- **Instance detail view**: BPMN canvas via `@bpmn-sdk/canvas` with token-highlight overlay (`@bpmn-sdk/plugins/token-highlight`) showing active/visited elements. Sidebar tabs: Variables, Incidents.
+- **Instance detail view**: BPMN canvas via `@bpmnkit/canvas` with token-highlight overlay (`@bpmnkit/plugins/token-highlight`) showing active/visited elements. Sidebar tabs: Variables, Incidents.
 - **SSE-based data**: stores open `EventSource` connections to proxy `/operate/stream?topic=...`; proxy polls Camunda on server-side and pushes JSON events. No client-side timers.
 - **Mock/demo mode**: `mock: true` option feeds fixture data via simulated streams — no proxy required. Used in landing page demo.
 - **Profile picker**: header dropdown calls `GET /profiles`, switches active profile; all streams reconnect.
@@ -728,32 +728,32 @@
 
 ### `apps/landing` — Operate demo page
 - New `/operate` page (`operate.astro`) — full-screen operate UI in mock mode.
-- Added `@bpmn-sdk/operate: workspace:*` dependency.
+- Added `@bpmnkit/operate: workspace:*` dependency.
 - Added "Operate" nav link from main landing page.
 
 ## 2026-03-10 — editor11: packages/profiles + proxy rename
 
-### `packages/profiles` (new package — `@bpmn-sdk/profiles`)
+### `packages/profiles` (new package — `@bpmnkit/profiles`)
 - Moved `profile.ts` and `client.ts` from `apps/cli/src/` into this new shared package.
 - Added `src/token.ts`: `getAuthHeader(config): Promise<string>` — returns Authorization header for any auth type; OAuth2 tokens cached in-memory with automatic 60-second pre-expiry refresh.
 - Added `src/index.ts` re-exporting all public symbols.
 - `tsconfig.json` emits declarations (`declaration: true`) so downstream consumers get types.
 
-### `apps/ai-server` → `apps/proxy` (`@bpmn-sdk/proxy`)
+### `apps/ai-server` → `apps/proxy` (`@bpmnkit/proxy`)
 - Renamed directory and package name.
-- Added `@bpmn-sdk/api` and `@bpmn-sdk/profiles` as dependencies.
+- Added `@bpmnkit/api` and `@bpmnkit/profiles` as dependencies.
 - Added `GET /profiles` endpoint — returns all CLI profiles (name, active flag, apiType, baseUrl, authType).
 - Added `ALL /api/*` transparent proxy endpoint — reads `X-Profile` header or active profile, fetches auth token via `getAuthHeader`, forwards raw HTTP to `profile.baseUrl/*`, returns upstream response.
 - All existing AI bridge endpoints (`GET /status`, `POST /chat`) unchanged.
 
 ### `apps/ai-server-rs` → `apps/proxy-rs`
 - Renamed directory and Cargo package name (`bpmn-ai-server` → `bpmn-proxy`).
-- Updated `build.rs`: pnpm filter `@bpmn-sdk/proxy`, source path `apps/proxy/dist/bridge.bundle.js`.
+- Updated `build.rs`: pnpm filter `@bpmnkit/proxy`, source path `apps/proxy/dist/bridge.bundle.js`.
 - Updated `src/main.rs` and `src/mcp_main.rs`: `bpmn_ai_server::*` → `bpmn_proxy::*`.
 
 ### `apps/cli`
 - Removed `src/profile.ts` and `src/client.ts` (moved to `packages/profiles`).
-- Added `@bpmn-sdk/profiles: workspace:*` dependency.
+- Added `@bpmnkit/profiles: workspace:*` dependency.
 - Updated all import sites: `profile-tui.ts`, `run.ts`, `commands/profile.ts`.
 
 ### Supporting files
@@ -767,7 +767,7 @@
 ## 2026-03-10 — editor11: Landing page SDK feature highlights
 
 ### `apps/landing/src/data/content.ts`
-- Updated `PACKAGES[0].description` for `@bpmn-sdk/core` to mention type guards, typed errors, and lookup utilities.
+- Updated `PACKAGES[0].description` for `@bpmnkit/core` to mention type guards, typed errors, and lookup utilities.
 - Added 4 new `FEATURES` bullets: type guards, typed errors, element lookup utilities, full JSDoc coverage.
 - Added `typeGuards` code example (plain + HTML-highlighted) demonstrating `isBpmnServiceTask`, `findElement`, `getZeebeExtensions`, and `instanceof ParseError` pattern.
 
@@ -780,7 +780,7 @@
 
 ---
 
-## 2026-03-10 — editor11: @bpmn-sdk/core SDK improvements
+## 2026-03-10 — editor11: @bpmnkit/core SDK improvements
 
 ### `packages/core/src/errors.ts` (new)
 - Added typed error hierarchy: `BpmnSdkError` (base), `ParseError`, `ValidationError`.
@@ -897,13 +897,13 @@
 
 ---
 
-## 2026-03-10 — editor11: exportSvg() in @bpmn-sdk/core
+## 2026-03-10 — editor11: exportSvg() in @bpmnkit/core
 
 ### `packages/core/src/bpmn/svg.ts` (new)
 - `exportSvg(defs, options?)` — generates a self-contained SVG string from a `BpmnDefinitions` object (must include DI position data, i.e. produced by `.withAutoLayout().build()` or parsed from BPMN XML).
 - Pure string generation, zero external dependencies, works in every environment (Node.js, browsers, Deno, Bun, edge runtimes).
 - Renders all element types: events (start/end/intermediate/boundary with event definition markers), tasks (with type-specific icons: service, user, script, send, receive, businessRule, manual), gateways (exclusive/parallel/inclusive/eventBased/complex with markers), sub-processes (expand marker + adHoc tilde), call activities, pools, lanes, text annotations, sequence flow edges (with arrow markers, rounded bezier paths, default-flow slash), message flows (dashed), associations (dashed, no arrow), edge labels.
-- `SvgExportOptions.theme?: "light" | "dark"` — light by default. Both themes use the same concrete colors as `@bpmn-sdk/canvas`.
+- `SvgExportOptions.theme?: "light" | "dark"` — light by default. Both themes use the same concrete colors as `@bpmnkit/canvas`.
 - `SvgExportOptions.padding?: number` — padding around diagram content, default 20px.
 - Icon groups use scoped `<style>` elements (class names `.bi/.bis/.gm/.gms`) so icons render correctly in all SVG viewers without relying on external CSS.
 - `esc()` escapes `& < > "` in all text content.
@@ -1021,7 +1021,7 @@ After the AI generates and applies a BPMN diagram, the chat panel now detects re
 
 ## 2026-03-10 — editor11: DMN/Form layout, compact format, and MCP server multi-type support
 
-Extended `@bpmn-sdk/core` and the MCP server to fully support DMN and Form files alongside BPMN, with the same builder/export/layout pattern.
+Extended `@bpmnkit/core` and the MCP server to fully support DMN and Form files alongside BPMN, with the same builder/export/layout pattern.
 
 ### `packages/core/src/dmn/dmn-layout.ts` (new)
 - `layoutDmn(defs: DmnDefinitions): DmnDefinitions` — auto-assigns DMNDI positions to all DRG elements using a left-to-right layered layout based on the requirement DAG. Element sizes: decision=180×80, inputData=125×45, knowledgeSource=100×63, BKM=160×80.
@@ -1141,7 +1141,7 @@ Root cause: `computeWaypointsAvoiding` excluded the source and target shapes fro
 
 ## 2026-03-09 — editor + plugins: BPMN element docs sidebar tab
 
-- **`packages/plugins/src/element-docs/`** — New `element-docs` plugin (`@bpmn-sdk/plugins/element-docs`):
+- **`packages/plugins/src/element-docs/`** — New `element-docs` plugin (`@bpmnkit/plugins/element-docs`):
   - `content.ts`: Comprehensive docs for 40+ BPMN elements across 8 categories (Start Events, End Events, Intermediate Events, Boundary Events, Tasks, Sub-Processes, Gateways, Connectors). Each entry has a title, subtitle, and markdown body covering _what it is_, _when to use_, _Camunda notes_, and _best practices_.
   - `index.ts`: Plugin UI — searchable index view with category groups + detail view with inline SVG shape icons, fully rendered markdown (headings, bold/italic, code blocks, tables, blockquotes, bullet/numbered lists). Selecting a canvas element auto-navigates to its doc. Supports dark/light themes.
 - **`packages/editor/src/dock.ts`**: Added "Docs" tab and `docsPane` to `SideDock`. Updated `switchTab` union to include `"docs"`. Added `setDocsTabClickHandler`. Exported `docsPane` from the returned object.
@@ -1240,18 +1240,18 @@ Root cause: `computeWaypointsAvoiding` excluded the source and target shapes fro
 
 ## 2026-03-08 — rename `packages/bpmn-sdk` → `packages/core`
 
-- Renamed directory to match the package name (`@bpmn-sdk/core`)
+- Renamed directory to match the package name (`@bpmnkit/core`)
 - Updated references: root `tsconfig.json`, `packages/editor/tsconfig.json`, `apps/ai-server-rs/build.rs`, `apps/landing/src/data/content.ts`, `PUBLISHING.md`
 - `pnpm-lock.yaml` regenerated automatically by `pnpm install`
 - All 50 turbo tasks pass after the rename
 
 ## 2026-03-08 — consolidate all canvas plugins into `packages/plugins`
 
-- Merged all 22 packages from `canvas-plugins/*` into a single `packages/plugins` package (`@bpmn-sdk/plugins`)
+- Merged all 22 packages from `canvas-plugins/*` into a single `packages/plugins` package (`@bpmnkit/plugins`)
 - Each plugin is a subdirectory under `src/` with its own `index.ts`; all tests live under `tests/<plugin>/`
-- Package exposes 22 subpath exports (`@bpmn-sdk/plugins/minimap`, `@bpmn-sdk/plugins/tabs`, etc.) enabling tree-shaking per import
+- Package exposes 22 subpath exports (`@bpmnkit/plugins/minimap`, `@bpmnkit/plugins/tabs`, etc.) enabling tree-shaking per import
 - Updated all inter-plugin imports to relative paths within the unified package
-- Updated `apps/landing` and `apps/desktop` to import from `@bpmn-sdk/plugins/*`; simplified their `package.json` from 15+ plugin deps to one `@bpmn-sdk/plugins` dep
+- Updated `apps/landing` and `apps/desktop` to import from `@bpmnkit/plugins/*`; simplified their `package.json` from 15+ plugin deps to one `@bpmnkit/plugins` dep
 - Removed `canvas-plugins/*` from `pnpm-workspace.yaml`
 - Added `DOM.Iterable` to the tsconfig lib (needed when compiling all plugins together)
 - All 94 tests pass; full turbo pipeline (50 tasks) passes
@@ -1283,7 +1283,7 @@ Root cause: `computeWaypointsAvoiding` excluded the source and target shapes fro
 - **Content** (15 pages):
   - Getting Started: Installation, Quick Start, Core Concepts
   - Guides: Building Processes, Gateways & Branching, Simulation, Camunda 8 Deployment, AI Integration
-  - Packages: @bpmn-sdk/core, engine, api, canvas, editor
+  - Packages: @bpmnkit/core, engine, api, canvas, editor
   - CLI: casen reference
 - **Deployment**: `.github/workflows/deploy-docs.yml` deploys to Cloudflare Pages (`bpmn-sdk-docs` project) on push to main
 - **Root scripts**: `pnpm docs:dev`, `pnpm docs:build`
@@ -1305,7 +1305,7 @@ Root cause: `computeWaypointsAvoiding` excluded the source and target shapes fro
 
 ## 2026-03-06 — landing: API SDK + CLI sections with terminal animation
 
-- Added `#api` section showcasing `@bpmn-sdk/api` with a code panel (CamundaClient usage), 4 stat tiles (180 methods, 30+ classes, 3 auth modes, retry), and feature chips
+- Added `#api` section showcasing `@bpmnkit/api` with a code panel (CamundaClient usage), 4 stat tiles (180 methods, 30+ classes, 3 auth modes, retry), and feature chips
 - Added `#cli` section showcasing `casen` CLI with feature list cards and an animated terminal window
 - Created `apps/landing/src/scripts/cli-anim.ts` — IntersectionObserver-triggered terminal animation cycling 6 frames (shell → main menu → navigate → process commands → list form → results table)
 - CSS: terminal window styles (`.tl`, `.ti`, `.tb`, `.td`, `.tc`, `.tp`, `.tcur`, `.cli-key-badge`), API section styles, responsive grid collapses at 900px
@@ -1339,7 +1339,7 @@ Added Camunda Admin API (SaaS Console) support alongside the existing C8 REST AP
 - Fixed `makeUpdateCmd` to omit body parameter for PUT methods with no request body schema
 
 **API package** (`packages/api`):
-- `AdminApiClient` and all Admin API types exported from `@bpmn-sdk/api`
+- `AdminApiClient` and all Admin API types exported from `@bpmnkit/api`
 - `new pnpm run generate:admin` script added
 
 **CLI** (`apps/cli`):
@@ -1356,7 +1356,7 @@ Added Camunda Admin API (SaaS Console) support alongside the existing C8 REST AP
 
 ## 2026-03-05 — packages/api: Camunda v2 REST API SDK
 
-New package `@bpmn-sdk/api` — auto-generated TypeScript SDK for the Camunda 8 Orchestration Cluster REST API (v2).
+New package `@bpmnkit/api` — auto-generated TypeScript SDK for the Camunda 8 Orchestration Cluster REST API (v2).
 
 **Generator** (`scripts/generate.mjs`, pure Node.js ESM, zero dependencies):
 - Downloads 42 OpenAPI YAML files from the Camunda GitHub repository into `swagger/`
@@ -1376,12 +1376,12 @@ New package `@bpmn-sdk/api` — auto-generated TypeScript SDK for the Camunda 8 
 
 **Tests**: 25 unit tests covering events, cache (with fake timers), retry logic, and error building.
 
-## 2026-03-05 — New package: @bpmn-sdk/ascii
+## 2026-03-05 — New package: @bpmnkit/ascii
 
 Added `packages/ascii` — a zero-dependency BPMN ASCII art renderer.
 
 - **`renderBpmnAscii(xml, options?): string`** — parses BPMN XML, runs the Sugiyama layout engine, and renders the process as a Unicode box-drawing diagram.
-- Uses the same `layoutProcess()` engine as `@bpmn-sdk/canvas`; element layer/position data drives fixed-cell ASCII placement.
+- Uses the same `layoutProcess()` engine as `@bpmnkit/canvas`; element layer/position data drives fixed-cell ASCII placement.
 - **Element shapes**: tasks → square box `┌──┐│└──┘` with `[svc]`/`[usr]`/`[scr]` type tags; events/gateways → rounded box `╭──╮│╰──╯` with Unicode markers (`○ ● × + ◇`).
 - **Edge routing**: orthogonal lines with box-drawing corners (`┐ └ ┌ ┘`); T-junctions merged with `mergeBoxChars()` (`┤ ├ ┬ ┴ ┼`); backward/loop edges routed above the diagram at row 0.
 - **`RenderOptions.title`**: process name header above diagram (default), `false` to suppress, or a custom string.
@@ -1485,7 +1485,7 @@ The FEEL/string toggle (non-fixed fields) also now hides the `=` — toggling on
 
 **`canvas-plugins/config-panel`**:
 - Added `validate?: (value: FieldValue) => string | null` to `FieldSchema` — custom per-field validation returning an error message or null.
-- Added `@bpmn-sdk/feel` dependency; replaced heuristic `hasFEELSyntaxError` with `validateFeelExpression` using the real FEEL parser (`parseExpression`). Invalid FEEL expressions now show the parser's error message.
+- Added `@bpmnkit/feel` dependency; replaced heuristic `hasFEELSyntaxError` with `validateFeelExpression` using the real FEEL parser (`parseExpression`). Invalid FEEL expressions now show the parser's error message.
 - Added `_fieldError()` method returning the error message string (used by `_fieldHasError()`, `_refreshValidation`, and `_renderField`).
 - All `feel-expression` fields now show a **FEEL/string mode toggle** pill next to the label. Clicking it adds/removes the `=` prefix and updates validation accordingly.
 - Added `.bpmn-cfg-field-error` div below each field (hidden when valid) that shows the validation error message. Updated `_refreshValidation` to keep it in sync.
@@ -1657,15 +1657,15 @@ Moved the process runner toolbar out of the canvas overlay and into the tabs bar
 
 ## 2026-03-04 — Integrate token-highlight and process-runner into landing editor
 
-Wired `@bpmn-sdk/canvas-plugin-token-highlight` and `@bpmn-sdk/canvas-plugin-process-runner` into `apps/landing`.
+Wired `@bpmnkit/canvas-plugin-token-highlight` and `@bpmnkit/canvas-plugin-process-runner` into `apps/landing`.
 
-- Added `@bpmn-sdk/canvas-plugin-process-runner`, `@bpmn-sdk/canvas-plugin-token-highlight`, and `@bpmn-sdk/engine` to `apps/landing/package.json`
+- Added `@bpmnkit/canvas-plugin-process-runner`, `@bpmnkit/canvas-plugin-token-highlight`, and `@bpmnkit/engine` to `apps/landing/package.json`
 - Created `tokenHighlightPlugin` and `processRunnerPlugin` (with a shared `Engine` instance) in `apps/landing/src/editor.ts` and registered both in the editor's plugins array
 - Fixed `EngineLike.deploy` in process-runner to accept `bpmn?: unknown` (optional) so the concrete `Engine` class is structurally compatible
 
-## 2026-03-03 — `@bpmn-sdk/canvas-plugin-process-runner` (`canvas-plugins/process-runner`)
+## 2026-03-03 — `@bpmnkit/canvas-plugin-process-runner` (`canvas-plugins/process-runner`)
 
-New canvas plugin that embeds a process execution toolbar directly on the canvas, wiring `@bpmn-sdk/engine` and (optionally) `@bpmn-sdk/canvas-plugin-token-highlight` together.
+New canvas plugin that embeds a process execution toolbar directly on the canvas, wiring `@bpmnkit/engine` and (optionally) `@bpmnkit/canvas-plugin-token-highlight` together.
 
 ### Toolbar
 A floating control bar is injected at the top-center of the canvas container:
@@ -1681,7 +1681,7 @@ A floating control bar is injected at the top-center of the canvas container:
 A floating dialog with a monospace textarea accepts any JSON object as initial variables. Inline parse-error feedback prevents invalid JSON from being submitted. Respects dark/light theme.
 
 ### Step-by-step execution
-Uses a new `beforeComplete` hook on `ProcessInstance` (added to `@bpmn-sdk/engine`). In step mode, the hook enqueues a deferred promise per element. Clicking "Next" resolves the earliest-queued promise, letting that element proceed. Multiple concurrent tokens (e.g. after a parallel split) each get their own queue entry.
+Uses a new `beforeComplete` hook on `ProcessInstance` (added to `@bpmnkit/engine`). In step mode, the hook enqueues a deferred promise per element. Clicking "Next" resolves the earliest-queued promise, letting that element proceed. Multiple concurrent tokens (e.g. after a parallel split) each get their own queue entry.
 
 ### Token-highlight integration
 If the token-highlight plugin is passed as `options.tokenHighlight`, `api.trackInstance()` is wired automatically. Highlights clear on stop or diagram reload.
@@ -1694,9 +1694,9 @@ If the token-highlight plugin is passed as `options.tokenHighlight`, `api.trackI
 ### Fixed
 - `canvas-plugins/token-highlight` — added `vitest.config.ts` with `passWithNoTests: true` (was failing the turbo test pipeline with "no test files found").
 
-## 2026-03-03 — `@bpmn-sdk/canvas-plugin-token-highlight` (`canvas-plugins/token-highlight`)
+## 2026-03-03 — `@bpmnkit/canvas-plugin-token-highlight` (`canvas-plugins/token-highlight`)
 
-New canvas plugin that highlights the current and past token positions when used alongside `@bpmn-sdk/engine`.
+New canvas plugin that highlights the current and past token positions when used alongside `@bpmnkit/engine`.
 
 ### Visual design
 - **Active elements** (token currently here): amber/orange stroke (`#f59e0b`), translucent amber fill, animated glow pulse on the `<g>` group via CSS `drop-shadow` keyframes.
@@ -1712,13 +1712,13 @@ An edge is highlighted only when its source element has been visited, eliminatin
 - `api.trackInstance(instance)` — structural interface (no engine dep), returns unsubscribe
 - `api.setActive(ids)` / `api.addVisited(ids)` / `api.clear()` — manual control
 
-## 2026-03-03 — `@bpmn-sdk/engine` — Lightweight BPMN Simulation Engine (`packages/engine`)
+## 2026-03-03 — `@bpmnkit/engine` — Lightweight BPMN Simulation Engine (`packages/engine`)
 
 New `packages/engine` package providing a zero-dependency, browser+Node compatible BPMN simulation engine.
 
 ### Architecture
 - **`variables.ts`** — Hierarchical scope chain (`VariableStore`); reads walk up to parent, writes update nearest owning scope or fall back to local.
-- **`dmn.ts`** — DMN decision table evaluator using `@bpmn-sdk/feel`; supports UNIQUE, FIRST, ANY, COLLECT (SUM/MIN/MAX/COUNT), RULE ORDER, OUTPUT ORDER, PRIORITY hit policies.
+- **`dmn.ts`** — DMN decision table evaluator using `@bpmnkit/feel`; supports UNIQUE, FIRST, ANY, COLLECT (SUM/MIN/MAX/COUNT), RULE ORDER, OUTPUT ORDER, PRIORITY hit policies.
 - **`zeebe.ts`** — `parseZeebeExt(XmlElement[])` parses Zeebe extension elements into a typed `ParsedZeebeExt` struct.
 - **`timers.ts`** — `scheduleTimer()` supports ISO 8601 durations (PT2M), dates, and cycles (R3/PT5S); returns a cancel function.
 - **`types.ts`** — Public `ProcessEvent` discriminated union, `Job` interface, `JobHandler` type.
@@ -1729,7 +1729,7 @@ New `packages/engine` package providing a zero-dependency, browser+Node compatib
 StartEvent, EndEvent (none/terminate/error), Task, ManualTask, ServiceTask (job workers or auto-complete), UserTask, ScriptTask (FEEL expression), BusinessRuleTask (DMN), ExclusiveGateway, ParallelGateway (split+join), InclusiveGateway, IntermediateCatchEvent (timer/message), BoundaryEvent (timer/error), SubProcess.
 
 ### Package
-- `pnpm --filter @bpmn-sdk/engine run build` — zero TS errors
+- `pnpm --filter @bpmnkit/engine run build` — zero TS errors
 - 30 tests passing (variables, DMN, engine integration)
 
 ## 2026-03-03 — Rust AI server with embedded QuickJS core bridge (`apps/ai-server-rs`)
@@ -1737,11 +1737,11 @@ StartEvent, EndEvent (none/terminate/error), Task, ManualTask, ServiceTask (job 
 New standalone Rust package (`bpmn-ai-server`) replacing the Node.js `ai-server.cjs` bundle in the Tauri desktop app. Eliminates the Node.js runtime dependency from the desktop distribution.
 
 ### Architecture
-- **`apps/ai-server/src/bridge.ts`** — new TypeScript bridge that exposes all `@bpmn-sdk/core` operations as `globalThis.Bridge.*` functions (IIFE bundle, platform=neutral). Includes stateful MCP operations (`mcpInit`, `mcpGetDiagram`, `mcpExportXml`, `mcpAddElements`, etc.) and stateless HTTP helpers (`expandAndExport`, `optimizeFindings`).
+- **`apps/ai-server/src/bridge.ts`** — new TypeScript bridge that exposes all `@bpmnkit/core` operations as `globalThis.Bridge.*` functions (IIFE bundle, platform=neutral). Includes stateful MCP operations (`mcpInit`, `mcpGetDiagram`, `mcpExportXml`, `mcpAddElements`, etc.) and stateless HTTP helpers (`expandAndExport`, `optimizeFindings`).
 - **`apps/ai-server-rs/`** — Rust crate with two binaries:
   - `ai-server` — axum HTTP server (port 3033), CORS, SSE, `/status` + `/chat` routes
   - `bpmn-mcp` — JSON-RPC 2.0 stdio MCP server (replaces `mcp-server.ts`)
-- **`build.rs`** — runs `pnpm --filter @bpmn-sdk/ai-server run bridge` at Rust build time, copies `bridge.bundle.js` to `OUT_DIR`, embeds it with `include_str!`
+- **`build.rs`** — runs `pnpm --filter @bpmnkit/ai-server run bridge` at Rust build time, copies `bridge.bundle.js` to `OUT_DIR`, embeds it with `include_str!`
 - **`src/bridge.rs`** — QuickJS thread with `std::sync::mpsc` channel; async HTTP methods and sync MCP methods dispatch via `tokio::sync::oneshot`
 - **`src/adapters.rs`** — ports of `claude.ts`, `copilot.ts`, `gemini.ts` spawning CLIs via `tokio::process::Command`
 - **`src/prompt.rs`** — `build_mcp_system_prompt`, `build_mcp_improve_prompt`, `build_system_prompt` (pure Rust strings)
@@ -1757,7 +1757,7 @@ New standalone Rust package (`bpmn-ai-server`) replacing the Node.js `ai-server.
 
 ## 2026-03-03 — Extract history into dedicated canvas-plugin; polish History tab; remove AI History button
 
-### New package: `canvas-plugins/history` → `@bpmn-sdk/canvas-plugin-history`
+### New package: `canvas-plugins/history` → `@bpmnkit/canvas-plugin-history`
 - `src/checkpoint.ts` — IndexedDB checkpoint storage (moved from ai-bridge, unchanged)
 - `src/history-panel.ts` — redesigned History tab pane with date grouping, time-only display,
   custom in-editor confirm dialog; calls `injectHistoryStyles()` on first mount
@@ -1770,13 +1770,13 @@ New standalone Rust package (`bpmn-ai-server`) replacing the Node.js `ai-server.
 - Removed `checkpoint.ts` and `history-panel.ts` (both now in the history package)
 - Removed all `ai-hist-*` and `bpmn-hist-*` CSS from `css.ts`
 - Removed History button (`histBtn`) and `showHistoryModal()` from `panel.ts`
-- `panel.ts` now imports `saveCheckpoint` from `@bpmn-sdk/canvas-plugin-history`
+- `panel.ts` now imports `saveCheckpoint` from `@bpmnkit/canvas-plugin-history`
 - `index.ts` no longer re-exports history types
-- Added `@bpmn-sdk/canvas-plugin-history: workspace:*` dependency
+- Added `@bpmnkit/canvas-plugin-history: workspace:*` dependency
 
 ### `apps/landing/src/editor.ts`
-- Imports `createHistoryPanel`, `saveCheckpoint` from `@bpmn-sdk/canvas-plugin-history`
-- Import of `createAiBridgePlugin` remains from `@bpmn-sdk/canvas-plugin-ai-bridge`
+- Imports `createHistoryPanel`, `saveCheckpoint` from `@bpmnkit/canvas-plugin-history`
+- Import of `createAiBridgePlugin` remains from `@bpmnkit/canvas-plugin-ai-bridge`
 
 ## 2026-03-03 — History panel redesign + custom confirm dialog
 
@@ -1879,7 +1879,7 @@ converted this to `zeebe:taskHeaders` XML — but the Camunda HTTP connector rea
 Replaced the fragile JSON-in-prompt approach with a proper MCP server, giving the LLM structured tools to read and modify diagrams.
 
 **`src/mcp-server.ts`** (new, zero external deps):
-- Minimal stdio JSON-RPC 2.0 MCP server — pure Node.js built-ins + `@bpmn-sdk/core`
+- Minimal stdio JSON-RPC 2.0 MCP server — pure Node.js built-ins + `@bpmnkit/core`
 - Tools: `get_diagram`, `add_elements`, `remove_elements`, `update_element`, `set_condition`, `add_http_call`, `replace_diagram`
 - `add_http_call` always uses `jobType: "io.camunda:http-json:1"` — HTTP connector is now structural, not instructional
 - Reads initial diagram from `--input` file; writes state to `--output` file after every mutating call
@@ -1894,7 +1894,7 @@ Replaced the fragile JSON-in-prompt approach with a proper MCP server, giving th
 1. Creates temp dir with `input.json`, `output.json`, `mcp.json`
 2. Passes `--mcp-config` to Claude/Copilot; `null` for Gemini
 3. After streaming, reads `output.json` for diagram state (MCP path) or extracts CompactDiagram from LLM text (Gemini fallback)
-4. Expands + exports via `@bpmn-sdk/core` and emits `{ type: "xml" }` SSE event
+4. Expands + exports via `@bpmnkit/core` and emits `{ type: "xml" }` SSE event
 5. Cleans up temp dir
 
 **`src/prompt.ts`** — simplified:
@@ -1963,7 +1963,7 @@ Root cause: the HTTP connector rule was a short note buried at the end of the fo
 
 ### `apps/ai-server` — core-backed improve pipeline
 
-- Added `@bpmn-sdk/core` as a runtime dependency
+- Added `@bpmnkit/core` as a runtime dependency
 - For `action === "improve"`:
   1. `expand(context)` — deserializes the CompactDiagram into a full `BpmnDefinitions` using core
   2. `optimize(defs)` — runs static analysis (FEEL complexity, flow issues, task-reuse) and collects concrete findings with element IDs
@@ -1977,13 +1977,13 @@ Root cause: the HTTP connector rule was a short note buried at the end of the fo
 
 ### `apps/desktop` — new Tauri v2 desktop application
 
-- New `@bpmn-sdk/desktop` package: Vite frontend (same editor as landing) wrapped in a Tauri v2 native window
+- New `@bpmnkit/desktop` package: Vite frontend (same editor as landing) wrapped in a Tauri v2 native window
 - **Tauri Rust backend** (`src-tauri/`): minimal setup — no plugins, just `std::process::Command` to spawn the AI server
 - **AI server auto-start**: on launch, spawns `node ai-server.cjs` from the bundled resource directory; silently skipped if Node.js is unavailable or resource not present (dev mode)
 - **Minimal binary**: `opt-level = "s"`, `lto = true`, `panic = "abort"`, `strip = true` — target ~3–5 MB installer vs 85+ MB for Electron
 - **Vite config**: `port: 1420`, `clearScreen: false`, `src-tauri/**` excluded from watch
 - **Icon generation**: `scripts/gen-icons.mjs` generates placeholder 32×128×256px PNGs using pure Node.js built-ins (`zlib.deflateSync`); replace with `pnpm tauri icon icon.png` for production
-- **AI server bundling** (`@bpmn-sdk/ai-server`): new `bundle` script using `esbuild` produces `dist/bundle.cjs` — single-file CJS bundle with only Node.js built-in dependencies
+- **AI server bundling** (`@bpmnkit/ai-server`): new `bundle` script using `esbuild` produces `dist/bundle.cjs` — single-file CJS bundle with only Node.js built-in dependencies
 - **Root scripts**: `desktop:dev` and `desktop:build` shortcuts; `@tauri-apps/cli` and `esbuild` added to root devDeps
 - Tauri `src-tauri/` excluded from Biome linting via `biome.json`
 
@@ -1996,7 +1996,7 @@ Root cause: the HTTP connector rule was a short note buried at the end of the fo
 
 ### `packages/editor` — dock moved + redesigned
 
-- Moved `dock.ts` from `apps/landing/src/` to `packages/editor/src/`; exported `createSideDock` + `SideDock` from `@bpmn-sdk/editor`
+- Moved `dock.ts` from `apps/landing/src/` to `packages/editor/src/`; exported `createSideDock` + `SideDock` from `@bpmnkit/editor`
 - **Collapse handle redesign**: replaced tab-strip button with a 20×52px pill handle anchored at `left: -20px; top: 50%` on the dock's left edge — always visible and accessible
 - **Collapse fix**: set `el.style.width` directly in `collapse()`/`expand()` to override inline style; `--collapsed` CSS class now only hides tab-strip + panes
 - **Resize fix**: disable `transition: width` on mousedown, restore on mouseup — instantaneous drag feedback
@@ -2006,7 +2006,7 @@ Root cause: the HTTP connector rule was a short note buried at the end of the fo
 
 ### `apps/landing/src/editor.ts`
 
-- Import `createSideDock` from `@bpmn-sdk/editor` (no longer local file)
+- Import `createSideDock` from `@bpmnkit/editor` (no longer local file)
 - Use `dock.showPanel()`/`dock.hidePanel()` in config panel callbacks
 - Track `currentFileName` from `onTabActivate`; update `dock.setDiagramInfo()` on tab change and `diagram:change`
 
@@ -2021,7 +2021,7 @@ Root cause: the HTTP connector rule was a short note buried at the end of the fo
 - Collapse button stays visible in the 38px strip so the dock can always be re-expanded manually
 - Dark default + `[data-bpmn-hud-theme="light"]` overrides
 
-### `@bpmn-sdk/canvas-plugin-config-panel` — hosted mode
+### `@bpmnkit/canvas-plugin-config-panel` — hosted mode
 
 - `ConfigPanelOptions` gains `container?`, `onPanelShow?`, `onPanelHide?` optional fields
 - `ConfigPanelRenderer` constructor gains `opts?` bag for the three new fields
@@ -2029,7 +2029,7 @@ Root cause: the HTTP connector rule was a short note buried at the end of the fo
 - `onPanelShow` called after panel is appended; `onPanelHide` called after panel is removed
 - CSS: `.bpmn-cfg-full--hosted` overrides `position: static`, suppresses standalone controls
 
-### `@bpmn-sdk/canvas-plugin-ai-bridge` — docked mode
+### `@bpmnkit/canvas-plugin-ai-bridge` — docked mode
 
 - `AiBridgePluginOptions` gains `container?` and `onOpen?` optional fields
 - In docked mode: panel gets `ai-panel--docked` class, appended to `container`; button click calls `onOpen?.()` then `p.open()` (no toggle)
@@ -2063,7 +2063,7 @@ Root cause: the HTTP connector rule was a short note buried at the end of the fo
 
 ## 2026-03-02 — AI integration
 
-### Compact BPMN format in `@bpmn-sdk/core`
+### Compact BPMN format in `@bpmnkit/core`
 
 New token-efficient representation for AI contexts (5-10x smaller than raw XML):
 
@@ -2072,9 +2072,9 @@ New token-efficient representation for AI contexts (5-10x smaller than raw XML):
 - `CompactElement` → `{ id, type, name?, jobType?, calledProcess?, formId?, decisionId?, eventType?, attachedTo? }`
 - `CompactFlow` → `{ id, from, to, name?, condition? }`
 - `expand()` auto-lays-out the process via `layoutProcess()` and builds a full `BpmnDefinitions` with DI
-- Exported from `@bpmn-sdk/core` main index
+- Exported from `@bpmnkit/core` main index
 
-### Layout + ELEMENT_SIZES exported from `@bpmn-sdk/core`
+### Layout + ELEMENT_SIZES exported from `@bpmnkit/core`
 
 - Added `layoutProcess`, `layoutFlowNodes`, `ELEMENT_SIZES`, and layout types (`Bounds`, `LayoutNode`, `LayoutEdge`, `LayoutResult`, `Waypoint`) to main `packages/bpmn-sdk/src/index.ts`
 
@@ -2095,7 +2095,7 @@ Local HTTP server bridging the editor to CLI-based AI tools:
 - `pnpm ai-server` root script to start it (port 3033 or `AI_SERVER_PORT` env var)
 - Added `@types/node: ^22.0.0` to root devDependencies
 
-### New `@bpmn-sdk/canvas-plugin-ai-bridge`
+### New `@bpmnkit/canvas-plugin-ai-bridge`
 
 Canvas plugin providing AI chat panel in the editor:
 
@@ -2113,11 +2113,11 @@ Canvas plugin providing AI chat panel in the editor:
 
 - **Modified** `packages/editor/src/hud.ts` — added `aiButton?: HTMLButtonElement | null` to `HudOptions`
 - **Modified** `apps/landing/src/editor.ts` — imports `createAiBridgePlugin`, creates plugin, passes `aiButton` to `initEditorHud`
-- **Modified** `apps/landing/package.json` — added `@bpmn-sdk/canvas-plugin-ai-bridge: workspace:*`
+- **Modified** `apps/landing/package.json` — added `@bpmnkit/canvas-plugin-ai-bridge: workspace:*`
 
 ## 2026-03-02 — Three-part editor refactor
 
-### Task 1 — Optimize dialog extracted to `@bpmn-sdk/canvas-plugin-optimize`
+### Task 1 — Optimize dialog extracted to `@bpmnkit/canvas-plugin-optimize`
 
 New self-contained canvas plugin; landing app no longer has inline dialog code.
 
@@ -2159,7 +2159,7 @@ Two-phase "Optimize Diagram" dialog wired into the editor HUD:
 - `apps/landing/src/editor.ts` — wires `onOptimize` to open the dialog via `optimize(defs)` + `editor.load()`
 - `apps/landing/src/examples.ts` — added "Customer Notification Flow" example with 4 deliberate optimization findings (`feel/empty-condition`, `feel/missing-default-flow`, `flow/dead-end`, `task/reusable-group`)
 
-## 2026-03-02 — `optimize()` — Static BPMN Optimization Analyzer in `@bpmn-sdk/core`
+## 2026-03-02 — `optimize()` — Static BPMN Optimization Analyzer in `@bpmnkit/core`
 
 New `optimize(defs, options?)` function that performs static analysis on a `BpmnDefinitions` object and returns an `OptimizationReport` with actionable findings and optional in-place fixes.
 
@@ -2200,7 +2200,7 @@ New `optimize(defs, options?)` function that performs static analysis on a `Bpmn
 
 ## 2026-03-02 — Developer-experience refactor: storage-tabs-bridge + API improvements
 
-### New package: `@bpmn-sdk/canvas-plugin-storage-tabs-bridge`
+### New package: `@bpmnkit/canvas-plugin-storage-tabs-bridge`
 Extracted all cross-plugin wiring from `apps/landing/src/editor.ts` into a new standalone package. Reduces integration boilerplate from ~800 to ~180 lines.
 
 - `createStorageTabsBridge(options)` creates and wires `tabsPlugin`, `storagePlugin`, and `bridgePlugin` together
@@ -2212,7 +2212,7 @@ Extracted all cross-plugin wiring from `apps/landing/src/editor.ts` into a new s
 
 ### New: `Bpmn.makeEmpty(processId?, processName?)` — minimal empty BPMN XML
 ### New: `Bpmn.SAMPLE_XML` — 3-node sample diagram constant
-### New: `SAMPLE_BPMN_XML` named export from `@bpmn-sdk/core`
+### New: `SAMPLE_BPMN_XML` named export from `@bpmnkit/core`
 ### New: `Dmn.makeEmpty()` — returns a minimal `DmnDefinitions` with one empty decision table
 ### New: `EditorOptions.persistTheme` — reads/writes `localStorage "bpmn-theme"` automatically in `BpmnEditor`
 ### New: `TabsPluginOptions.enableFileImport` — built-in file picker + drag-and-drop in the tabs plugin
@@ -2269,7 +2269,7 @@ Removed the global "Connect" toggle. Connect mode is now initiated from the Conn
 
 ## 2026-03-01 — DMN DRD (Decision Requirements Diagram) support
 
-### Feature: full DRG element model in `@bpmn-sdk/core`
+### Feature: full DRG element model in `@bpmnkit/core`
 Expanded `DmnDefinitions` with all standard DMN DRG element types:
 - `DmnInputData`, `DmnKnowledgeSource`, `DmnBusinessKnowledgeModel`, `DmnTextAnnotation`, `DmnAssociation`
 - `DmnInformationRequirement`, `DmnKnowledgeRequirement`, `DmnAuthorityRequirement`
@@ -2282,7 +2282,7 @@ Expanded `DmnDefinitions` with all standard DMN DRG element types:
 - Serializer: `serializeDmn` writes all new element types, requirement children, and DMNDI edges
 - Builder: `DmnBuilder.build()` initialises all new arrays; `edges: []` added to diagram
 
-### Feature: interactive SVG DRD canvas (`@bpmn-sdk/canvas-plugin-dmn-editor`)
+### Feature: interactive SVG DRD canvas (`@bpmnkit/canvas-plugin-dmn-editor`)
 New `DrdCanvas` class (~920 lines) in `drd-canvas.ts`:
 - **5 node shapes**: Decision (rectangle), InputData (stadium/rounded ends), KnowledgeSource (wavy-bottom rect), BusinessKnowledgeModel (clipped-corner rect), TextAnnotation (open bracket)
 - **4 edge types**: InformationRequirement (solid filled arrow), KnowledgeRequirement (dashed open-V), AuthorityRequirement (dashed + open circle at source), Association (dotted)
@@ -2472,7 +2472,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
   - Add / remove input and output columns; add / remove rules (rows)
   - Each cell is a `<textarea>` bound directly to the model entry; re-render only on structural changes
   - New **`css.ts`** — `injectDmnEditorStyles()` injects scoped `--dme-*` CSS variables; same dark-default / `.light` override pattern as the viewer
-  - Removed `dmn-js` dependency; added `@bpmn-sdk/core: workspace:*`
+  - Removed `dmn-js` dependency; added `@bpmnkit/core: workspace:*`
 
 ### `canvas-plugins/form-editor`
 - **Rewrote `FormEditor`** — native two-panel component editor; no external deps
@@ -2482,7 +2482,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
   - "Add" button opens a popup dropdown grouped by category (Fields / Display / Advanced / Layout)
   - Supports all component types: `textfield`, `textarea`, `number`, `select`, `radio`, `checkbox`, `checklist`, `taglist`, `filepicker`, `datetime`, `expression`, `table`, `text`, `html`, `image`, `button`, `separator`, `spacer`, `iframe`, `group`, `dynamiclist`
   - New **`css.ts`** — `injectFormEditorStyles()` injects scoped `--fe-*` CSS variables
-  - Removed `@bpmn-io/form-js-editor` dependency; added `@bpmn-sdk/core: workspace:*`
+  - Removed `@bpmn-io/form-js-editor` dependency; added `@bpmnkit/core: workspace:*`
 
 ### Other changes
 - **Root `package.json`** — removed `dmn-js` and `@bpmn-io/form-js-editor` from `dependencies`
@@ -2492,14 +2492,14 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 ## 2026-02-27 — DMN and Form editing
 
 ### New packages
-- **`canvas-plugins/dmn-editor`** → `@bpmn-sdk/canvas-plugin-dmn-editor` — thin wrapper around `dmn-js` DmnModeler; exports `DmnEditor` class with `loadXML(xml)`, `getXML()`, `onChange(handler)`, and `destroy()` API; no TypeScript types shipped by dmn-js so uses `@ts-expect-error` import suppression
-- **`canvas-plugins/form-editor`** → `@bpmn-sdk/canvas-plugin-form-editor` — wraps `@bpmn-io/form-js-editor` FormEditor; exports `FormEditor` class with `loadSchema(schema)`, `getSchema()`, `onChange(handler)`, and `destroy()` API
+- **`canvas-plugins/dmn-editor`** → `@bpmnkit/canvas-plugin-dmn-editor` — thin wrapper around `dmn-js` DmnModeler; exports `DmnEditor` class with `loadXML(xml)`, `getXML()`, `onChange(handler)`, and `destroy()` API; no TypeScript types shipped by dmn-js so uses `@ts-expect-error` import suppression
+- **`canvas-plugins/form-editor`** → `@bpmnkit/canvas-plugin-form-editor` — wraps `@bpmn-io/form-js-editor` FormEditor; exports `FormEditor` class with `loadSchema(schema)`, `getSchema()`, `onChange(handler)`, and `destroy()` API
 
 ### `canvas-plugins/tabs`
 - **DMN tabs now editable** — replaces the read-only `DmnViewer` with `DmnEditor` (dmn-js DmnModeler); the editor is initialized with the XML exported from the tab's `DmnDefinitions`; on every `commandStack.changed` event the XML is re-exported, parsed back to `DmnDefinitions`, and stored in the tab config
 - **Form tabs now editable** — replaces the read-only `FormViewer` with `FormEditor` (`@bpmn-io/form-js-editor`); the editor is initialized with the JSON exported from the tab's `FormDefinition`; on every `changed` event the schema is exported, parsed, and stored in the tab config
 - **`onTabChange` callback** — new optional `TabsPluginOptions.onTabChange(tabId, config)` called whenever a DMN or Form tab's content changes; used by the landing app to trigger auto-save
-- **Dependency swap** — `@bpmn-sdk/canvas-plugin-dmn-viewer` and `@bpmn-sdk/canvas-plugin-form-viewer` removed from deps; `@bpmn-sdk/canvas-plugin-dmn-editor` and `@bpmn-sdk/canvas-plugin-form-editor` added
+- **Dependency swap** — `@bpmnkit/canvas-plugin-dmn-viewer` and `@bpmnkit/canvas-plugin-form-viewer` removed from deps; `@bpmnkit/canvas-plugin-dmn-editor` and `@bpmnkit/canvas-plugin-form-editor` added
 - **Tests updated** — DMN fixture updated to correct `DmnDefinitions` structure (with proper `decisionTable` + namespace); editor packages mocked in tests so dmn-js/inferno rendering is skipped in happy-dom
 
 ### `apps/landing`
@@ -2533,7 +2533,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 ## 2026-02-27 — File switcher palette (Ctrl+E)
 
 ### `apps/landing`
-- **`Ctrl+E` / `Cmd+E` file switcher** — opens a palette (identical visual to the command palette) showing all open project files in MRU order; pre-focuses the second entry (most-recently previous file); supports text filtering, arrow-key navigation, Enter to switch, Esc to close; closed by pressing `Ctrl+E` again; only active when a project is open; reuses command palette CSS classes from `@bpmn-sdk/canvas-plugin-command-palette`; `storageFileToType` cache added to show file type badge in each row; shortcut chosen because it is left-hand accessible, non-conflicting with browser tab management, and mirrors IntelliJ's "Recent Files" shortcut
+- **`Ctrl+E` / `Cmd+E` file switcher** — opens a palette (identical visual to the command palette) showing all open project files in MRU order; pre-focuses the second entry (most-recently previous file); supports text filtering, arrow-key navigation, Enter to switch, Esc to close; closed by pressing `Ctrl+E` again; only active when a project is open; reuses command palette CSS classes from `@bpmnkit/canvas-plugin-command-palette`; `storageFileToType` cache added to show file type badge in each row; shortcut chosen because it is left-hand accessible, non-conflicting with browser tab management, and mirrors IntelliJ's "Recent Files" shortcut
 
 ## 2026-02-27 — Project mode: no-close tabs, all-files-open, file search, rename, Ctrl+Tab MRU
 
@@ -2677,7 +2677,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ### `canvas-plugins/storage`
 - **Sidebar removed** — `sidebar.ts` and `css.ts` emptied; no more toggle button or left panel
-- Depends on `@bpmn-sdk/canvas-plugin-main-menu: workspace:*` (new dep + tsconfig reference)
+- Depends on `@bpmnkit/canvas-plugin-main-menu: workspace:*` (new dep + tsconfig reference)
 - **`StorageApi` additions**: `_currentProjectId` (persisted to `localStorage`); in-memory caches (`_workspaces`, `_projects` map); `initialize()` loads caches + restores last-opened project; `openProject(id)` sets current + opens all files; `saveTabsToProject(projectId, wsId, tabs)` upserts tabs as files
 - All mutating methods update in-memory caches synchronously before calling `_notify()`
 - **`StoragePluginOptions`**: adds `mainMenu`, `getOpenTabs()`, `initialTitle`
@@ -2690,7 +2690,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-26 — IndexedDB storage plugin
 
-### `canvas-plugins/storage` (new — `@bpmn-sdk/canvas-plugin-storage`)
+### `canvas-plugins/storage` (new — `@bpmnkit/canvas-plugin-storage`)
 - **StorageApi** — full CRUD for workspaces, projects, and files backed by Dexie v4 / IndexedDB; `createWorkspace`, `createProject`, `createFile`, `renameFile`, `setFileShared`, `deleteFile`, `openFile`; `onChange` listeners notify subscribers (sidebar re-renders)
 - **AutoSave** — 500 ms debounce per file; captures content snapshot at schedule time; forced `flush()` on `document.visibilitychange hidden` and `window.beforeunload`
 - **StorageSidebar** — collapsible DOM left panel (260 px); toggle button floats at top-left of the editor container; expandable workspace → project → file tree; inline + / rename / delete / share-toggle action buttons; empty-state messages
@@ -2700,7 +2700,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **`FileRecord.gitPath`** — nullable string; reserved for future bidirectional GitHub sync
 
 ### `apps/landing`
-- Added `@bpmn-sdk/canvas-plugin-storage` dependency and wired `createStoragePlugin` in `editor.ts`
+- Added `@bpmnkit/canvas-plugin-storage` dependency and wired `createStoragePlugin` in `editor.ts`
 - `onOpenFile` callback opens BPMN / DMN / Form tabs via the tabs plugin and populates the existing in-memory resolver
 - `tabIdToStorageFileId` map tracks which tabs were opened from storage; `onTabActivate` updates `storagePlugin.api.setCurrentFileId` so auto-save always targets the correct file
 
@@ -2732,9 +2732,9 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - Added FEEL token CSS classes to the config panel stylesheet
 
 ### `canvas-plugins/config-panel-bpmn`
-- `expression` field on script task and `conditionExpression` on sequence flow now use `type: "feel-expression"` with `highlightToHtml` from `@bpmn-sdk/feel`
+- `expression` field on script task and `conditionExpression` on sequence flow now use `type: "feel-expression"` with `highlightToHtml` from `@bpmnkit/feel`
 - Added `openFeelPlayground?: (expression: string) => void` to `ConfigPanelBpmnOptions`
-- Added `@bpmn-sdk/feel` as a dependency
+- Added `@bpmnkit/feel` as a dependency
 
 ### `canvas-plugins/feel-playground`
 - `buildFeelPlaygroundPanel` gains optional `initialExpression?: string` parameter that pre-fills and evaluates the expression on open
@@ -2760,7 +2760,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 ### `packages/editor` — HUD navigate button
 - `initEditorHud(editor, options?)` gains an optional `HudOptions` parameter with `openProcess?: (processId: string) => void`
 - `buildCfgToolbar` adds an "Open Process" icon button above a selected call activity when `processId` is set and `options.openProcess` is provided
-- `HudOptions` exported from `@bpmn-sdk/editor`
+- `HudOptions` exported from `@bpmnkit/editor`
 
 ### `apps/landing`
 - `bpmnProcessToTabId` map tracks process ID → tab ID when BPMN files are imported or new diagrams are created
@@ -2785,12 +2785,12 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ### `apps/landing`
 - FEEL Playground opened as a proper tab (`tabsPlugin.api.openTab({ type: "feel" })`) instead of an overlay — accessible from the command palette, the ⋯ main menu, and the welcome screen examples list
-- `createFeelPlaygroundPlugin()` removed from the editor plugins array; direct `@bpmn-sdk/canvas-plugin-feel-playground` dependency removed from `landing/package.json` (tabs handles it)
+- `createFeelPlaygroundPlugin()` removed from the editor plugins array; direct `@bpmnkit/canvas-plugin-feel-playground` dependency removed from `landing/package.json` (tabs handles it)
 - "FEEL Playground" added to `makeExamples()` with FEEL badge
 
 ## 2026-02-26 — FEEL Language Support
 
-### `packages/feel` — `@bpmn-sdk/feel`
+### `packages/feel` — `@bpmnkit/feel`
 - **Lexer** (`lexer.ts`) — position-aware tokenizer; handles temporal literals (`@"..."`), backtick names, `..`/`**` operators, block/line comments; 16 tests
 - **AST** (`ast.ts`) — discriminated union `FeelNode` with start/end positions on every node; range nodes use `low`/`high` to avoid position field conflicts
 - **Parser** (`parser.ts`) — Pratt recursive-descent; two entry points: `parseExpression()` and `parseUnaryTests()`; greedy multi-word name resolution via `BUILTIN_PREFIXES`; error recovery with synchronization points; 42 tests
@@ -2800,13 +2800,13 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **Highlighter** (`highlighter.ts`) — `annotate()` returns `AnnotatedToken[]`; `highlightToHtml()` returns HTML with `feel-*` CSS classes; `highlightFeel` backward-compat alias
 - Zero runtime dependencies; 153 tests total; passes biome and TypeScript strict mode
 
-### `canvas-plugins/feel-playground` — `@bpmn-sdk/canvas-plugin-feel-playground`
+### `canvas-plugins/feel-playground` — `@bpmnkit/canvas-plugin-feel-playground`
 - **Interactive FEEL panel** — Expression / Unary-Tests mode toggle; syntax-highlighted textarea overlay; JSON context input; live result display with type-colored output; error display; 10 pre-built examples
 - **`createFeelPlaygroundPlugin()`** — returns `FeelPlaygroundPlugin` (extends `CanvasPlugin` with `show()`)
 - Wired into the landing page editor via a "FEEL Playground" command palette entry (Ctrl+K)
 
 ### `canvas-plugins/dmn-viewer` — migrated
-- `src/feel.ts` replaced with thin re-exports from `@bpmn-sdk/feel`; `highlightFeel`/`tokenizeFeel` now use the full FEEL lexer and highlighter; `FeelToken`/`FeelTokenType` re-exported as `AnnotatedToken`/`HighlightKind`
+- `src/feel.ts` replaced with thin re-exports from `@bpmnkit/feel`; `highlightFeel`/`tokenizeFeel` now use the full FEEL lexer and highlighter; `FeelToken`/`FeelTokenType` re-exported as `AnnotatedToken`/`HighlightKind`
 
 ## 2026-02-26 — Welcome Screen Examples
 
@@ -2888,7 +2888,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-26 — DMN Viewer, Form Viewer, Tabs Plugin, Extended Core Model
 
-### `@bpmn-sdk/core` — Zeebe extensions + full Form component set
+### `@bpmnkit/core` — Zeebe extensions + full Form component set
 - **`ZeebeFormDefinition`** and **`ZeebeCalledDecision`** typed interfaces added to `zeebe-extensions.ts`; `ZeebeExtensions` grows `formDefinition?` and `calledDecision?` fields; `zeebeExtensionsToXmlElements` serialises both
 - **`bpmn-builder.ts`** updated: `userTask()` now writes `formDefinition: { formId }` and `businessRuleTask()` writes `calledDecision: { decisionId, resultVariable }` using typed fields instead of raw `XmlElement[]`
 - **13 new Form component types** — `number`, `datetime`, `button`, `taglist`, `table`, `image`, `dynamiclist`, `iframe`, `separator`, `spacer`, `documentPreview`, `html`, `expression`, `filepicker`
@@ -2896,20 +2896,20 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - `form-serializer.ts` updated to handle all component types via explicit type assertions (workaround for discriminated union narrowing issue with catch-all type)
 - All new types exported from `packages/bpmn-sdk/src/index.ts`
 
-### `canvas-plugins/dmn-viewer` — New package `@bpmn-sdk/canvas-plugin-dmn-viewer`
+### `canvas-plugins/dmn-viewer` — New package `@bpmnkit/canvas-plugin-dmn-viewer`
 - **`DmnViewer` class** — `load(defs)`, `clear()`, `setTheme()`, `destroy()`; renders `DmnDefinitions` as an HTML decision table with hit policy badge
 - **FEEL syntax highlighting** — `tokenizeFeel()` / `highlightFeel()` tokenize FEEL expressions into keyword, string, number, operator, range, function, comment spans; colored via CSS custom properties
 - **Light/dark themes** — CSS custom properties; `setTheme("light"|"dark"|"auto")`; auto follows `prefers-color-scheme`
 - **`createDmnViewerPlugin(options)`** — thin `CanvasPlugin` wrapper; responds to `element:click` on call activities referencing a decision via `zeebe:calledDecision`
 
-### `canvas-plugins/form-viewer` — New package `@bpmn-sdk/canvas-plugin-form-viewer`
+### `canvas-plugins/form-viewer` — New package `@bpmnkit/canvas-plugin-form-viewer`
 - **`FormViewer` class** — `load(form)`, `clear()`, `setTheme()`, `destroy()`; renders all 21 `FormComponent` types
 - **Row-based grid layout** — components grouped by `layout.row`; side-by-side rendering within a row
 - **All 21 component types rendered** — textfield, textarea, number, datetime, select, radio, checkbox, checklist, taglist, button, group, dynamiclist, table, image, iframe, separator, spacer, documentPreview, html, expression, filepicker, and unknown passthrough
 - **Minimal markdown** — `text` components support `#`/`##` headers, `**bold**`, `_italic_`
 - **`createFormViewerPlugin(options)`** — thin `CanvasPlugin` wrapper; responds to `element:click` on user tasks with a `zeebe:formDefinition`
 
-### `canvas-plugins/tabs` — New package `@bpmn-sdk/canvas-plugin-tabs`
+### `canvas-plugins/tabs` — New package `@bpmnkit/canvas-plugin-tabs`
 - **`FileResolver` interface** — `resolveDmn(decisionId)`, `resolveForm(formId)`, `resolveBpmn(processId)`; pluggable abstraction for in-memory, file system, or SaaS backends
 - **`InMemoryFileResolver`** — default implementation using Maps; `registerDmn(defs)` / `registerForm(form)` / `registerBpmn(id, xml)` to populate at runtime
 - **Tab bar overlay** — fixed overlay inside the canvas container; tabs for BPMN/DMN/Form files; close button per tab; active tab highlighted
@@ -2934,7 +2934,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **"Try the Editor →" button** added to hero section with a gradient `btn-editor` style (accent → green)
 - **Footer link** to `/editor` added alongside GitHub and npm links
 
-### `@bpmn-sdk/editor` — Collapsible HUD toolbars on mobile (≤600px)
+### `@bpmnkit/editor` — Collapsible HUD toolbars on mobile (≤600px)
 - **Bottom-center toolbar** (`#hud-bottom-center`) starts collapsed on mobile; tapping the toggle button expands it to full width; auto-collapses after selecting any tool or element group
 - **Top-center toolbar** (`#hud-top-center`) same pattern; auto-collapses after undo/redo/delete/duplicate
 - Toggle button icons update to reflect the currently active tool (bottom-center) or show the undo icon (top-center)
@@ -2943,7 +2943,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-25 — SubProcess Containment + Sticky Movement
 
-### `@bpmn-sdk/editor` — Container-aware modeling operations
+### `@bpmnkit/editor` — Container-aware modeling operations
 
 - **Sticky movement** — moving an `adHocSubProcess` (or any subprocess/transaction) also moves all descendant DI shapes; edge waypoints for flows inside or connected to the subprocess are updated correctly using a new `collectAllSequenceFlows` helper that searches all nesting levels
 - **Containment on create** — when a new shape is dropped inside a subprocess's DI bounds, `createShape` detects the innermost container via `findContainerForPoint` and nests the new `BpmnFlowElement` inside it via `addToContainer`; the DI shape is always added flat to `diagram.plane.shapes`
@@ -2953,11 +2953,11 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-25 — Agentic AI Subprocess Support
 
-### `@bpmn-sdk/core` — `ZeebeAdHoc` typed interface
+### `@bpmnkit/core` — `ZeebeAdHoc` typed interface
 - **`ZeebeAdHoc`** interface added to `zeebe-extensions.ts`: `outputCollection`, `outputElement`, `activeElementsCollection` fields
 - **`ZeebeExtensions.adHoc`** field added; `zeebeExtensionsToXmlElements` now serialises `zeebe:adHoc` element when present
 
-### `@bpmn-sdk/canvas-plugin-config-panel-bpmn` — Full AI Agent template support
+### `@bpmnkit/canvas-plugin-config-panel-bpmn` — Full AI Agent template support
 - **`TemplateBinding`** union extended with `{ type: "zeebe:adHoc"; property: "outputCollection" | "outputElement" | "activeElementsCollection" }` in `template-types.ts`
 - **`getPropertyKey`** handles `zeebe:adHoc` → `adHoc.${property}` key
 - **`readPropertyValue`** reads `zeebe:adHoc` attributes via `getAdHocAttr(el.extensionElements, property)`; `el` parameter widened to include `extensionElements`
@@ -2970,7 +2970,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **`adHocSubProcess`** registered in `createConfigPanelBpmnPlugin.install()`
 - **6 new tests** in `index.test.ts` covering registration, read/write, resolve, template delegation, and clearing
 
-### `@bpmn-sdk/editor` — Ad-hoc subprocess as a creatable element
+### `@bpmnkit/editor` — Ad-hoc subprocess as a creatable element
 - **`CreateShapeType`**: `"adHocSubProcess"` added to the union
 - **`RESIZABLE_TYPES`**: `"adHocSubProcess"` added
 - **`ELEMENT_TYPE_LABELS`**: `adHocSubProcess: "Ad-hoc Sub-Process"` added
@@ -2982,35 +2982,35 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-25 — Config Panel: Template Adapter Bug Fix + Required Field Indicators
 
-### `@bpmn-sdk/canvas-plugin-config-panel` — Bug fix + required field UI
+### `@bpmnkit/canvas-plugin-config-panel` — Bug fix + required field UI
 - **Bug**: `_applyField` was always using the base registered adapter (`this._schemas.get(type)`) instead of `this._effectiveReg` (the template-resolved adapter). The generic `SERVICE_TASK_ADAPTER.write()` explicitly strips `zeebe:modelerTemplate`, causing the template panel to revert to the generic service task form whenever a field was changed while a connector template was active. Fixed by resolving `effective = this._effectiveReg ?? reg` and using `effective.adapter.write()` + `effective.schema` in `_applyField`.
 - **Feature**: Required field visual indication — `FieldSchema` gains an optional `required?: boolean` field; when set, a red asterisk (`*`) is shown next to the label and the input/select/textarea gets a red border when empty. Validation state is refreshed on every field change and on diagram reload.
 - **`_refreshValidation(schema)`** — new method that toggles `.bpmn-cfg-field--invalid` on field wrappers for required fields with empty values; called from `_applyField` and `onDiagramChange`.
 - **`FIELD_WRAPPER_ATTR`** now stamped on every field wrapper (not just conditional ones) so both `_refreshConditionals` and `_refreshValidation` can query by key.
 - **CSS**: `.bpmn-cfg-required-star` (red `#f87171`) and `.bpmn-cfg-field--invalid` border style added to `css.ts`.
 
-### `@bpmn-sdk/canvas-plugin-config-panel-bpmn` — Propagate `required` from templates
+### `@bpmnkit/canvas-plugin-config-panel-bpmn` — Propagate `required` from templates
 - **`propToFieldSchema`** — sets `required: true` on the generated `FieldSchema` when `prop.constraints?.notEmpty === true`; all Camunda connector template fields marked `notEmpty` now show the required indicator in the config panel.
 
 ## 2026-02-25 — Connector Template Icons Rendered in Canvas
 
-### `@bpmn-sdk/canvas` — Template icon rendering
+### `@bpmnkit/canvas` — Template icon rendering
 - **`renderer.ts`** — `renderTask()` checks `el.unknownAttributes["zeebe:modelerTemplateIcon"]`; if present, renders an SVG `<image>` element (14×14 at position 4,4) with `href` set to the data URI instead of the hardcoded gear icon; standard task type icons are unaffected
 - **1 new test** in `canvas.test.ts`: verifies `<image>` is rendered and gear icon circles are absent when `modelerTemplateIcon` is set
 
-### `@bpmn-sdk/canvas-plugin-config-panel-bpmn` — Stamp icon on template apply
+### `@bpmnkit/canvas-plugin-config-panel-bpmn` — Stamp icon on template apply
 - **`template-engine.ts`** — `adapter.write()` now includes `zeebe:modelerTemplateIcon` in `unknownAttributes` when the template has `icon.contents`; icon is persisted to the BPMN element whenever a connector template is applied via the UI
 
 ## 2026-02-25 — Connector Templates Usable via Core Builder
 
-### `@bpmn-sdk/canvas-plugin-config-panel-bpmn` — `templateToServiceTaskOptions`
+### `@bpmnkit/canvas-plugin-config-panel-bpmn` — `templateToServiceTaskOptions`
 - **`templateToServiceTaskOptions(template, values)`** — converts any `ElementTemplate` + user-provided values into `ServiceTaskOptions` for the core `Bpmn` builder; applies Hidden property defaults and user values to zeebe bindings
 - **`CAMUNDA_CONNECTOR_TEMPLATES`** — now exported from the package public API
 - **3 new tests** in `tests/template-to-service-task.test.ts`: Kafka connector options, full Bpmn build integration, REST connector template defaults
 
 ## 2026-02-25 — Camunda Connector Templates: Fetch, Generate, Integrate
 
-### `@bpmn-sdk/canvas-plugin-config-panel-bpmn` — All 116 Camunda connectors
+### `@bpmnkit/canvas-plugin-config-panel-bpmn` — All 116 Camunda connectors
 - **`scripts/update-connectors.mjs`** — new script that fetches all OOTB connector templates from the Camunda marketplace (`marketplace.cloud.camunda.io/api/v1/ootb-connectors`), resolves each template's `ref` URL, and writes `canvas-plugins/config-panel-bpmn/src/templates/generated.ts` with all templates as a typed array
 - **`pnpm update-connectors`** — root-level script to regenerate `generated.ts` at any time
 - **`generated.ts`** excluded from Biome linting (`biome.json` `files.ignore`)
@@ -3022,7 +3022,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-25 — Element Templates System + REST Connector Template
 
-### `@bpmn-sdk/canvas-plugin-config-panel-bpmn` — Template-aware property panel
+### `@bpmnkit/canvas-plugin-config-panel-bpmn` — Template-aware property panel
 - **Element template types** — `ElementTemplate`, `TemplateProperty`, `TemplateBinding`, `TemplateCondition` TypeScript types matching the Camunda element templates JSON schema
 - **Template engine** — `buildRegistrationFromTemplate(template)` converts any element template descriptor into a `PanelSchema` + `PanelAdapter` pair; handles all binding types (`zeebe:input`, `zeebe:taskHeader`, `zeebe:taskDefinition`), condition types (`equals`, `oneOf`, `allMatch`), and property types (`String`, `Text`, `Dropdown`, `Boolean`, `Number`, `Hidden`)
 - **REST Outbound Connector template** — official Camunda template (`io.camunda.connectors.HttpJson.v2`, version 12) bundled as TypeScript; covers all 8 groups: Authentication (noAuth/apiKey/basic/bearer/OAuth 2.0), HTTP endpoint, Timeout, Payload, Output mapping, Error handling, Retries
@@ -3032,16 +3032,16 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **`TEMPLATE_ID_TO_TASK_TYPE` / `TASK_TYPE_TO_TEMPLATE_ID`** maps for bidirectional connector detection
 - **Backward compatibility** — elements with known task definition types (e.g. `io.camunda:http-json:1`) but without `zeebe:modelerTemplate` are still detected and shown with the correct template form
 
-### `@bpmn-sdk/canvas-plugin-config-panel` — Dynamic registration
+### `@bpmnkit/canvas-plugin-config-panel` — Dynamic registration
 - **`PanelAdapter.resolve?(defs, id)`** — optional method that overrides the schema+adapter for a specific element instance; renderer calls it on every select and diagram-change event
 - **Re-render on schema change** — when `resolve?` returns a different registration (e.g. template applied), the compact/full panel re-renders automatically without requiring a manual re-select
 
-### `@bpmn-sdk/core` — Builder
+### `@bpmnkit/core` — Builder
 - **`restConnector()` stamps `zeebe:modelerTemplate`** — builder now sets `zeebe:modelerTemplate: "io.camunda.connectors.HttpJson.v2"` and `zeebe:modelerTemplateVersion: "12"` on the element; programmatically generated BPMN is now recognized by the editor's template panel
 
 ## 2026-02-25 — Intermediate Event Subgroups, Boundary Events, Ghost Fix
 
-### `@bpmn-sdk/editor` — Event system overhaul
+### `@bpmnkit/editor` — Event system overhaul
 - **3 event subgroups** — single "Events" palette group replaced with `startEvents` (5 types), `endEvents` (7 types), `intermediateEvents` (10 types)
 - **20 new `CreateShapeType` values** — one per BPMN event variant: `messageStartEvent`, `timerStartEvent`, `conditionalStartEvent`, `signalStartEvent`; `messageEndEvent`, `escalationEndEvent`, `errorEndEvent`, `compensationEndEvent`, `signalEndEvent`, `terminateEndEvent`; `messageCatchEvent`, `messageThrowEvent`, `timerCatchEvent`, `escalationThrowEvent`, `conditionalCatchEvent`, `linkCatchEvent`, `linkThrowEvent`, `compensationThrowEvent`, `signalCatchEvent`, `signalThrowEvent`
 - **`makeFlowElement` / `changeElementType`** — all 20 new types map to the correct BPMN base type (`startEvent`, `endEvent`, `intermediateCatchEvent`, `intermediateThrowEvent`) with the right `eventDefinitions` entry
@@ -3058,7 +3058,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-25 — Full BPMN Element Type Coverage
 
-### `@bpmn-sdk/core` — New model types
+### `@bpmnkit/core` — New model types
 - **`BpmnTask`**, **`BpmnManualTask`**, **`BpmnTransaction`**, **`BpmnComplexGateway`** — new flow element interfaces added to the discriminated union
 - **`BpmnLane`**, **`BpmnLaneSet`** — swimlane hierarchy; `BpmnProcess.laneSet` optional field
 - **`BpmnMessageFlow`** — inter-pool communication; `BpmnCollaboration.messageFlows` array
@@ -3067,7 +3067,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **Serializer** — full serialize support for all new types; `serializeLaneSet`, `serializeLane`, `serializeMessageFlow`
 - **Builder** — `makeFlowElement` extended with task, manualTask, complexGateway, transaction cases
 
-### `@bpmn-sdk/canvas` — New renderers
+### `@bpmnkit/canvas` — New renderers
 - **Pool/lane rendering** — `renderPool` and `renderLane` produce container rects with rotated title bars; `ModelIndex` now indexes `participants` and `lanes` maps
 - **Message flow rendering** — dashed inter-pool arrows rendered in the edge loop via `messageFlowIds` Set
 - **Non-interrupting boundary events** — dashed inner ring via new `.bpmn-event-inner-dashed` CSS class when `cancelActivity === false`
@@ -3076,7 +3076,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **New gateway marker** — complexGateway asterisk (diagonal + cross paths)
 - **New task icon** — manualTask (hand SVG path)
 
-### `@bpmn-sdk/editor` — New creatable types
+### `@bpmnkit/editor` — New creatable types
 - **8 new `CreateShapeType` values** — `intermediateThrowEvent`, `intermediateCatchEvent`, `task`, `manualTask`, `callActivity`, `subProcess`, `transaction`, `complexGateway`
 - **`RESIZABLE_TYPES`** — task, manualTask, callActivity, subProcess, transaction added
 - **`defaultBounds`** — intermediate events 36×36; complexGateway 50×50; subProcess/transaction 200×120
@@ -3085,38 +3085,38 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 - **`EXTERNAL_LABEL_TYPES`** — intermediateThrowEvent, intermediateCatchEvent, complexGateway added (external label placement)
 - **`makeFlowElement` / `changeElementType`** — all 8 new types handled in modeling operations
 
-### `@bpmn-sdk/canvas-plugin-command-palette-editor`
+### `@bpmnkit/canvas-plugin-command-palette-editor`
 - Updated command count: 21 element creation commands (was 13); test updated accordingly
 
 ## 2026-02-25 — Watermark Plugin
 
-### `@bpmn-sdk/canvas-plugin-watermark` (NEW)
+### `@bpmnkit/canvas-plugin-watermark` (NEW)
 - **`createWatermarkPlugin(options?)`** — bottom-right attribution bar; renders configurable links and an optional square SVG logo; logo is always the rightmost element; fully self-contained CSS injection
 - **`WatermarkLink`** / **`WatermarkOptions`** interfaces exported
 - 7 tests; added to `canvas-plugins/*` workspace
 
-### `@bpmn-sdk/landing` — editor page
-- Added watermark plugin with a "Github" link (`https://github.com/bpmn-sdk/monorepo`) and a BPMN-flow square SVG logo (start event → task → end event on blue rounded square)
+### `@bpmnkit/landing` — editor page
+- Added watermark plugin with a "Github" link (`https://github.com/bpmnkit/monorepo`) and a BPMN-flow square SVG logo (start event → task → end event on blue rounded square)
 
 ## 2026-02-25 — Annotation Bug Fixes
 
-### `@bpmn-sdk/canvas`
+### `@bpmnkit/canvas`
 - **Annotation selection** — added transparent `<rect>` fill covering the full bounding area so the entire annotation rectangle is clickable/draggable
 - **Bracket path** — changed from short-stub to full-width open-right bracket (`M w 0 L 0 0 L 0 h L w h`) matching standard BPMN notation
 - **Annotation text position** — text now centred in the full shape area (`cx = width/2, cy = height/2, maxW = width - 8`)
 
 ## 2026-02-25 — Colors & Text Annotations
 
-### `@bpmn-sdk/core` — `DiColor` helpers
-- **NEW `packages/bpmn-sdk/src/bpmn/di-color.ts`** — `DiColor` interface, `readDiColor`, `writeDiColor`, `BIOC_NS`, `COLOR_NS` re-exported from `@bpmn-sdk/core`
+### `@bpmnkit/core` — `DiColor` helpers
+- **NEW `packages/bpmn-sdk/src/bpmn/di-color.ts`** — `DiColor` interface, `readDiColor`, `writeDiColor`, `BIOC_NS`, `COLOR_NS` re-exported from `@bpmnkit/core`
 
-### `@bpmn-sdk/canvas` — Color rendering + annotation text
+### `@bpmnkit/canvas` — Color rendering + annotation text
 - **`RenderedShape.annotation?: BpmnTextAnnotation`** — annotation object available on rendered shapes
 - **Color rendering** — `applyColor(el, shape)` helper reads `bioc:fill`/`bioc:stroke` (+ OMG namespace equivalents) from DI `unknownAttributes` and applies inline `style` on shape bodies (task rect, event outer circle, gateway diamond)
 - **Annotation text** — `renderAnnotation` now accepts a `text` param and renders wrapped text inside the bracket
 - **Model index** — `buildIndex` now indexes `textAnnotations` from all processes and collaborations
 
-### `@bpmn-sdk/editor` — New tools, color editing, annotation editing
+### `@bpmnkit/editor` — New tools, color editing, annotation editing
 - **`textAnnotation` type** — added to `CreateShapeType`, `ELEMENT_GROUPS` ("Annotations" group), `ELEMENT_TYPE_LABELS`, `RESIZABLE_TYPES`, `defaultBounds`
 - **`createAnnotation(defs, bounds, text?)`** — creates a `BpmnTextAnnotation` + DI shape
 - **`createAnnotationWithLink(defs, bounds, sourceId, sourceBounds, text?)`** — creates annotation + `BpmnAssociation` + DI edge
@@ -3133,7 +3133,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 ## 2026-02-25
 
-### `@bpmn-sdk/canvas-plugin-config-panel` + `@bpmn-sdk/canvas-plugin-config-panel-bpmn` — Connector selector
+### `@bpmnkit/canvas-plugin-config-panel` + `@bpmnkit/canvas-plugin-config-panel-bpmn` — Connector selector
 - **`FieldSchema.condition`** — new optional field; hides a field when the predicate returns false, mirroring the existing `GroupSchema.condition` at the individual-field level
 - **`ConfigPanelRenderer._refreshConditionals`** — new method updates both field-level and group/tab visibility; called synchronously from `_applyField` (immediate UI) and `onDiagramChange` (after external model update)
 - **Service task "Connector" selector** — replaces the raw `taskType` text input with a `connector` select dropdown:
@@ -3156,7 +3156,7 @@ Replaced `dmn-js` and `@bpmn-io/form-js-editor` with fully in-repo native implem
 
 Two new canvas plugin packages for schema-driven element property editing:
 
-- **`@bpmn-sdk/canvas-plugin-config-panel`** — core infrastructure
+- **`@bpmnkit/canvas-plugin-config-panel`** — core infrastructure
   - `createConfigPanelPlugin({ getDefinitions, applyChange })` factory
   - `ConfigPanelPlugin` extends `CanvasPlugin` with `registerSchema(type, schema, adapter)`
   - Schema-driven rendering: `FieldSchema` (text, select, textarea, toggle), `GroupSchema`, `PanelSchema`
@@ -3166,14 +3166,14 @@ Two new canvas plugin packages for schema-driven element property editing:
   - Auto-save on field `change` event; `_refreshInputs()` updates values in-place without re-render (preserves focus)
   - Subscribes to `editor:select` and `diagram:change` via `api.on` type cast
 
-- **`@bpmn-sdk/canvas-plugin-config-panel-bpmn`** — BPMN element schemas
+- **`@bpmnkit/canvas-plugin-config-panel-bpmn`** — BPMN element schemas
   - Registers general schema (name + documentation) for: startEvent, endEvent, userTask, scriptTask, sendTask, receiveTask, businessRuleTask, exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway
   - Full REST connector form for serviceTask: General (name, taskType, retries, documentation), Request (method, url, headers, queryParameters, body, timeouts), Authentication (authType, authToken), Output (resultVariable, resultExpression, retryBackoff)
   - Zeebe extension parsing and serialization via `parseZeebeExtensions` / `zeebeExtensionsToXmlElements`
   - Immutable `updateFlowElement(defs, id, fn)` helper for model updates
 
 - **`BpmnEditor`** — added `getDefinitions()` and `applyChange(fn)` public methods
-- **`@bpmn-sdk/core`** — now exports `zeebeExtensionsToXmlElements`
+- **`@bpmnkit/core`** — now exports `zeebeExtensionsToXmlElements`
 - Both plugins integrated in `apps/landing` with full keyboard/event wiring
 
 ### Zen mode: view-only restriction
@@ -3256,34 +3256,34 @@ Two new canvas plugin packages for schema-driven element property editing:
 #### Default theme changed to light
 - `apps/landing/src/editor.ts`: `theme: "dark"` → `theme: "light"`
 
-### Refactor: move editor HUD logic to `@bpmn-sdk/editor`
+### Refactor: move editor HUD logic to `@bpmnkit/editor`
 - Extracted all HUD code (~600 lines) from `apps/landing/src/editor.ts` into `packages/editor`
 - New `packages/editor/src/icons.ts` — `IC` SVG icon object (internal, not re-exported from index)
 - New `packages/editor/src/hud.ts` — `initEditorHud(editor: BpmnEditor): void` — all group buttons, context/configure toolbars, zoom widget, action bar, dropdown management, keyboard shortcuts
-- `@bpmn-sdk/editor` now exports `initEditorHud` from `index.ts`
+- `@bpmnkit/editor` now exports `initEditorHud` from `index.ts`
 - `apps/landing/src/editor.ts` reduced to ~75 lines: imports, SAMPLE_XML, plugin setup, `new BpmnEditor(...)`, `initEditorHud(editor)`
 
-### Refactor: move BPMN domain metadata to `@bpmn-sdk/editor`
+### Refactor: move BPMN domain metadata to `@bpmnkit/editor`
 - Extracted element group taxonomy, display names, external-label types, valid label positions, and contextual-add types into `packages/editor/src/element-groups.ts`
 - New exports: `ELEMENT_GROUPS`, `ELEMENT_TYPE_LABELS`, `EXTERNAL_LABEL_TYPES`, `CONTEXTUAL_ADD_TYPES`, `getElementGroup()`, `getValidLabelPositions()`, `ElementGroup` type
-- `apps/landing/src/editor.ts` now imports these from `@bpmn-sdk/editor`; no BPMN semantics defined in landing
-- `@bpmn-sdk/canvas-plugin-command-palette-editor` derives its 12 commands from `ELEMENT_GROUPS` + `ELEMENT_TYPE_LABELS`; all 4 tests pass
+- `apps/landing/src/editor.ts` now imports these from `@bpmnkit/editor`; no BPMN semantics defined in landing
+- `@bpmnkit/canvas-plugin-command-palette-editor` derives its 12 commands from `ELEMENT_GROUPS` + `ELEMENT_TYPE_LABELS`; all 4 tests pass
 
-### Command palette plugins — `@bpmn-sdk/canvas-plugin-command-palette` + `@bpmn-sdk/canvas-plugin-command-palette-editor`
-- **`@bpmn-sdk/canvas-plugin-command-palette`** — base Ctrl+K / ⌘K command palette for both canvas and editor
+### Command palette plugins — `@bpmnkit/canvas-plugin-command-palette` + `@bpmnkit/canvas-plugin-command-palette-editor`
+- **`@bpmnkit/canvas-plugin-command-palette`** — base Ctrl+K / ⌘K command palette for both canvas and editor
   - Built-in commands: toggle theme (dark → light → auto cycle), zoom to 100%, zoom to fit, export as BPMN XML, zen mode
   - **Zen mode**: adds `bpmn-zen-mode` class to container (hides `.bpmn-zoom-controls` / `.bpmn-main-menu-panel` via CSS), hides dot grid rects in SVG, calls `onZenModeChange` callback for external HUD hiding
   - `CommandPalettePlugin.addCommands(cmds): () => void` — extension point; returns deregister function
   - Module-level singleton ensures only one palette open at a time across all instances
   - Theme-aware: resolves "auto" via `window.matchMedia`; light theme applies `bpmn-palette--light` class
   - 14 tests in `canvas-plugins/command-palette/tests/index.test.ts`
-- **`@bpmn-sdk/canvas-plugin-command-palette-editor`** — extends base palette with 12 BPMN element creation commands
+- **`@bpmnkit/canvas-plugin-command-palette-editor`** — extends base palette with 12 BPMN element creation commands
   - Commands: Add Start Event, Add End Event, Add Service/User/Script/Send/Receive/Business Rule Task, Add Exclusive/Parallel/Inclusive/Event-based Gateway
   - Activates via `setTool("create:X")` using lazy `editorRef` pattern (avoids circular dependency at construction time)
   - Deregisters all commands on `uninstall()`; 4 tests in `canvas-plugins/command-palette-editor/tests/index.test.ts`
 - **Landing page**: palette wired with `onZenModeChange` hiding `.hud` elements; editor plugin uses lazy `editorRef`
 
-### `@bpmn-sdk/editor` — Space tool
+### `@bpmnkit/editor` — Space tool
 - **Space tool** (`"space"`) added to `Tool` type; `setTool("space")` activates it
 - **Behavior**: click and hold anywhere on the canvas, then drag to push elements apart:
   - Drag right → all elements whose center is to the right of the click x-position move right by the drag distance
@@ -3307,7 +3307,7 @@ Two new canvas plugin packages for schema-driven element property editing:
 
 ## 2026-02-23 (6)
 
-### `@bpmn-sdk/editor` — Configure bar, edge split, label fix, scriptTask
+### `@bpmnkit/editor` — Configure bar, edge split, label fix, scriptTask
 - **Fix: label moves with shape** — `moveShapes` now also translates `BpmnDiShape.label.bounds` by `(dx, dy)` when present; previously external labels on events/gateways stayed behind when the shape was moved
 - **Edge split on drop** — dragging a shape over an existing sequence flow highlights the edge in green; dropping inserts the shape between source and target (original edge removed, two new connections created); edges connected to the dragged shape are excluded; `insertShapeOnEdge(defs, edgeId, shapeId)` new modeling function
 - **Configure bar above element** — a new HUD panel appears above the selected element with type-switching buttons and label-position picker; replaces label position from the below bar
@@ -3320,12 +3320,12 @@ Two new canvas plugin packages for schema-driven element property editing:
 
 ## 2026-02-23 (5)
 
-### `@bpmn-sdk/editor` — Label positions and edge endpoint repositioning
+### `@bpmnkit/editor` — Label positions and edge endpoint repositioning
 - **External labels for events/gateways**: canvas renderer always renders external labels for startEvent, endEvent, intermediateEvents, boundaryEvent, exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway when the element has a name; default position is bottom-centered (80×20px, 6px gap)
 - **`setLabelPosition(shapeId, position)`**: new `BpmnEditor` public method; accepts 8 positions: `"bottom" | "top" | "left" | "right" | "bottom-left" | "bottom-right" | "top-left" | "top-right"`; persists label bounds in BPMN DI
 - **Label position dropdown**: contextual toolbar now shows a compass icon for events and gateways; clicking opens a dropdown with 4 options (events) or 8 options (gateways)
 - **End event in contextual toolbar**: end events now show a contextual toolbar with the label position option (previously hidden entirely)
-- **`LabelPosition` type exported** from `@bpmn-sdk/editor`
+- **`LabelPosition` type exported** from `@bpmnkit/editor`
 - **Edge selection**: clicking on a sequence flow line selects it and shows draggable endpoint balls at start and end; edge and shape selection are mutually exclusive
 - **Edge endpoint repositioning**: dragging an endpoint ball snaps it to the nearest port (top/right/bottom/left) of the source or target shape; route is recomputed orthogonally via `computeWaypointsWithPorts`
 - **Transparent edge hit areas**: invisible 12px-wide stroke polylines added to each edge group for easier clicking
@@ -3335,7 +3335,7 @@ Two new canvas plugin packages for schema-driven element property editing:
 
 ## 2026-02-23 (4)
 
-### `@bpmn-sdk/editor` — UX improvements
+### `@bpmnkit/editor` — UX improvements
 - **Orthogonal edges**: `computeWaypoints` now produces H/V-only paths (Z-shape with 4 waypoints or straight horizontal); `boundaryPoint` diagonal routing removed
 - **Edge recompute on move**: `moveShapes` recomputes orthogonal waypoints from updated shape bounds when only one endpoint moves
 - **Hover port balls removed**: `OverlayRenderer.setHovered` no longer renders connection port circles — connections are initiated exclusively via the contextual toolbar
@@ -3347,8 +3347,8 @@ Two new canvas plugin packages for schema-driven element property editing:
 
 ## 2026-02-23 (3)
 
-### `@bpmn-sdk/editor` package — BPMN diagram editor
-- New package `packages/editor` (`@bpmn-sdk/editor`) — a full BPMN 2.0 diagram editor built on top of `@bpmn-sdk/canvas` internals
+### `@bpmnkit/editor` package — BPMN diagram editor
+- New package `packages/editor` (`@bpmnkit/editor`) — a full BPMN 2.0 diagram editor built on top of `@bpmnkit/canvas` internals
 - **Create shapes**: start/end events, service/user tasks, exclusive/parallel gateways via `setTool("create:serviceTask")` etc.
 - **Connect shapes**: drag from shape port to draw sequence flows with auto-computed waypoints
 - **Move shapes**: drag to reposition; multi-select moves all selected shapes together
@@ -3373,20 +3373,20 @@ Two new canvas plugin packages for schema-driven element property editing:
 
 ### `canvas-plugins/` workspace — minimap extracted as a plugin
 - New pnpm workspace glob `canvas-plugins/*` added to `pnpm-workspace.yaml`
-- New package `canvas-plugins/minimap` → `@bpmn-sdk/canvas-plugin-minimap`
-  - `Minimap` class moved from `packages/canvas/src/minimap.ts` — import `ViewportState` from `@bpmn-sdk/canvas`, `BpmnDefinitions` from `@bpmn-sdk/core`
+- New package `canvas-plugins/minimap` → `@bpmnkit/canvas-plugin-minimap`
+  - `Minimap` class moved from `packages/canvas/src/minimap.ts` — import `ViewportState` from `@bpmnkit/canvas`, `BpmnDefinitions` from `@bpmnkit/core`
   - Added `Minimap.clear()` method (clears shapes, edges, resets viewport rect)
   - Minimap CSS extracted to `canvas-plugins/minimap/src/css.ts` with its own `injectMinimapStyles()` / `MINIMAP_STYLE_ID`
   - `createMinimapPlugin()` factory returns a `CanvasPlugin` that: installs minimap into `api.container`, subscribes to `diagram:load` / `viewport:change` / `diagram:clear`, navigates by calling `api.setViewport()`, and tears everything down on `uninstall()`
   - 9 tests in `canvas-plugins/minimap/tests/minimap-plugin.test.ts`
 - Removed from `packages/canvas`: `minimap.ts`, `CanvasOptions.minimap`, minimap CSS, `_minimap` field, `_showMinimap` field, `_syncMinimap()` method, minimap construction and update calls, `--bpmnkit-viewport-fill`/`--bpmnkit-viewport-stroke` CSS vars
-- Landing page updated: imports `createMinimapPlugin` from `@bpmn-sdk/canvas-plugin-minimap`, passes it via `plugins: [createMinimapPlugin()]`; removed `minimap: true` option
+- Landing page updated: imports `createMinimapPlugin` from `@bpmnkit/canvas-plugin-minimap`, passes it via `plugins: [createMinimapPlugin()]`; removed `minimap: true` option
 - Verification: `pnpm turbo build typecheck check test` — 15/15 tasks pass, zero errors
 
 ## 2026-02-23
 
-### `@bpmn-sdk/canvas` package — BPMN diagram viewer
-- New package `packages/canvas` (`@bpmn-sdk/canvas`) — a zero-dependency, framework-agnostic SVG BPMN viewer
+### `@bpmnkit/canvas` package — BPMN diagram viewer
+- New package `packages/canvas` (`@bpmnkit/canvas`) — a zero-dependency, framework-agnostic SVG BPMN viewer
 - **SVG rendering**: shapes (events, tasks, gateways, annotations), edges with arrowheads, text labels — all layered (edges → shapes → labels)
 - **Viewport**: pan (pointer drag), zoom (wheel + pinch), click-vs-drag discrimination (4px threshold), RAF-batched transforms for 60fps
 - **Infinite dot-grid** via SVG `<pattern>` with `patternTransform` synced to viewport
@@ -3400,7 +3400,7 @@ Two new canvas plugin packages for schema-driven element property editing:
 - **ResizeObserver**: auto re-fits on container resize
 - **Zoom controls**: +/−/⊡ buttons injected into DOM
 - **14 tests** in `packages/canvas/tests/canvas.test.ts` (happy-dom environment)
-- **Landing page updated**: replaced `bpmn-js` with `@bpmn-sdk/canvas`; removed bpmn.io CSS; diagrams render in dark theme with grid + minimap
+- **Landing page updated**: replaced `bpmn-js` with `@bpmnkit/canvas`; removed bpmn.io CSS; diagrams render in dark theme with grid + minimap
 - **Bundle size**: 112KB JS / 25.95KB gzip (vs bpmn-js which is ~500KB+)
 - **GitHub Actions fix**: `.github/workflows/deploy-pages.yml` — changed `actions/upload-pages-artifact@v3` to `actions/upload-artifact@v4` (required by `actions/deploy-pages@v4`)
 - Verification: `pnpm turbo build typecheck check test` — 11/11 tasks pass, zero errors

@@ -1,4 +1,4 @@
-import { type Theme, applyTheme, injectUiStyles, loadPersistedTheme } from "@bpmn-sdk/ui"
+import { type Theme, applyTheme, injectUiStyles, loadPersistedTheme } from "@bpmnkit/ui"
 import { injectOperateStyles } from "./css.js"
 import { createRouter } from "./router.js"
 import { DashboardStore } from "./stores/dashboard.js"

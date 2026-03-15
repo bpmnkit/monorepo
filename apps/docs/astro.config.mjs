@@ -10,9 +10,9 @@ export default defineConfig({
 			description:
 				"TypeScript SDK for generating, editing, and executing BPMN 2.0 diagrams programmatically.",
 			favicon: "/favicon.svg",
-			social: [{ icon: "github", label: "GitHub", href: "https://github.com/bpmn-sdk/monorepo" }],
+			social: [{ icon: "github", label: "GitHub", href: "https://github.com/bpmnkit/monorepo" }],
 			editLink: {
-				baseUrl: "https://github.com/bpmn-sdk/monorepo/edit/main/apps/docs/src/content/docs/",
+				baseUrl: "https://github.com/bpmnkit/monorepo/edit/main/apps/docs/src/content/docs/",
 			},
 			plugins: [
 				starlightLlmsTxt({
@@ -22,10 +22,10 @@ export default defineConfig({
 						"diagrams programmatically. Designed for AI agents, automation platforms, and " +
 						"Camunda 8 / Zeebe workflow deployments. Zero runtime dependencies in the core packages.",
 					details:
-						"BPMN SDK is a TypeScript monorepo: @bpmn-sdk/core (fluent builder, parser, " +
-						"auto-layout, compact format), @bpmn-sdk/engine (simulation, no Camunda needed), " +
-						"@bpmn-sdk/api (Camunda 8 REST client, 180 methods), @bpmn-sdk/canvas (SVG viewer), " +
-						"@bpmn-sdk/editor (full editor with AI bridge), casen (CLI TUI). ESM-only, " +
+						"BPMN SDK is a TypeScript monorepo: @bpmnkit/core (fluent builder, parser, " +
+						"auto-layout, compact format), @bpmnkit/engine (simulation, no Camunda needed), " +
+						"@bpmnkit/api (Camunda 8 REST client, 180 methods), @bpmnkit/canvas (SVG viewer), " +
+						"@bpmnkit/editor (full editor with AI bridge), casen (CLI TUI). ESM-only, " +
 						"strict TypeScript, runs in browsers/Node.js/Deno/Bun/edge.",
 					promote: ["index*", "getting-started/quick-start*"],
 				}),

@@ -1,4 +1,4 @@
-import { renderBpmnAscii, renderDmnAscii, renderFormAscii } from "@bpmn-sdk/ascii"
+import { renderBpmnAscii, renderDmnAscii, renderFormAscii } from "@bpmnkit/ascii"
 import type { Command } from "../types.js"
 
 // Minimal interface to access the underlying HTTP client on CamundaBaseClient
@@ -18,7 +18,7 @@ interface WithHttp {
 /**
  * Replaces the generated `get-x-m-l` command. The endpoint returns text/xml,
  * so we must set Accept: text/xml and parse the body as text, not JSON.
- * The XML is then rendered as ASCII art via @bpmn-sdk/ascii.
+ * The XML is then rendered as ASCII art via @bpmnkit/ascii.
  */
 export const getXmlCmd: Command = {
 	name: "get-xml",

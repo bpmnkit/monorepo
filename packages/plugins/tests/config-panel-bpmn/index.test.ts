@@ -1,4 +1,4 @@
-import type { BpmnDefinitions, XmlElement } from "@bpmn-sdk/core"
+import type { BpmnDefinitions, XmlElement } from "@bpmnkit/core"
 import { describe, expect, it, vi } from "vitest"
 import { createConfigPanelBpmnPlugin } from "../../src/config-panel-bpmn/index.js"
 
@@ -20,7 +20,7 @@ function makeMinimalDefs(
 	overrides: Partial<{
 		id: string
 		name: string
-		extensionElements: import("@bpmn-sdk/core").XmlElement[]
+		extensionElements: import("@bpmnkit/core").XmlElement[]
 	}> = {},
 ): BpmnDefinitions {
 	return {

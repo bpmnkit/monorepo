@@ -1,9 +1,9 @@
 ---
 title: Camunda 8 Deployment
-description: Deploy and manage BPMN processes on a live Camunda 8 cluster using @bpmn-sdk/api.
+description: Deploy and manage BPMN processes on a live Camunda 8 cluster using @bpmnkit/api.
 ---
 
-The `@bpmn-sdk/api` package is a fully-typed Camunda 8 REST API client. Use it to deploy
+The `@bpmnkit/api` package is a fully-typed Camunda 8 REST API client. Use it to deploy
 processes, start instances, and manage your cluster from Node.js scripts, backend services,
 or CI/CD pipelines.
 
@@ -12,7 +12,7 @@ or CI/CD pipelines.
 ### SaaS (Camunda 8 Cloud)
 
 ```typescript
-import { CamundaClient } from "@bpmn-sdk/api";
+import { CamundaClient } from "@bpmnkit/api";
 
 const client = new CamundaClient({
   baseUrl: "https://api.cloud.camunda.io",
@@ -50,8 +50,8 @@ const client = new CamundaClient({
 ## Deploying a Process
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
-import { CamundaClient } from "@bpmn-sdk/api";
+import { Bpmn } from "@bpmnkit/core";
+import { CamundaClient } from "@bpmnkit/api";
 
 const xml = Bpmn.export(
   Bpmn.createProcess("invoice-approval")
@@ -189,8 +189,8 @@ A typical GitHub Actions step:
 
 ```typescript
 // scripts/deploy.mjs
-import { Bpmn } from "@bpmn-sdk/core";
-import { CamundaClient } from "@bpmn-sdk/api";
+import { Bpmn } from "@bpmnkit/core";
+import { CamundaClient } from "@bpmnkit/api";
 import { readdir, readFile } from "node:fs/promises";
 
 const client = new CamundaClient({

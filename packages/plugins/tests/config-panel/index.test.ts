@@ -1,5 +1,5 @@
-import type { CanvasApi } from "@bpmn-sdk/canvas"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { CanvasApi } from "@bpmnkit/canvas"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createConfigPanelPlugin } from "../../src/config-panel/index.js"
 

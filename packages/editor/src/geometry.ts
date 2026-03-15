@@ -1,5 +1,5 @@
-import type { RenderedShape, ViewportState } from "@bpmn-sdk/canvas"
-import type { BpmnBounds, BpmnWaypoint } from "@bpmn-sdk/core"
+import type { RenderedShape, ViewportState } from "@bpmnkit/canvas"
+import type { BpmnBounds, BpmnWaypoint } from "@bpmnkit/core"
 import type { DiagPoint, HandleDir, LabelPosition, PortDir } from "./types.js"
 
 // ── Coordinate conversion ────────────────────────────────────────────────────

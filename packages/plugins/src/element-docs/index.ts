@@ -1,5 +1,5 @@
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
-import type { BpmnFlowElement } from "@bpmn-sdk/core"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
+import type { BpmnFlowElement } from "@bpmnkit/core"
 import { CATEGORIES, ENTRIES } from "./content.js"
 
 // ── Styles ──────────────────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ import type {
 	FormTextAreaComponent,
 	FormTextComponent,
 	FormTextFieldComponent,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 import { injectFormViewerStyles } from "./css.js"
 
 export interface FormViewerOptions {
@@ -35,7 +35,7 @@ export interface FormViewerOptions {
  * Standalone read-only Camunda Form viewer.
  *
  * Renders a `FormDefinition` as a static HTML preview of all component types.
- * Does not depend on `@bpmn-sdk/canvas`.
+ * Does not depend on `@bpmnkit/canvas`.
  */
 export class FormViewer {
 	private readonly _container: HTMLElement

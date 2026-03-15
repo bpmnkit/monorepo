@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
-import type { AdminApiClient, CamundaClient, RawResponseEvent } from "@bpmn-sdk/api"
-import { renderBpmnAscii } from "@bpmn-sdk/ascii"
-import { appendAuditEntry, getAuditLog, getSettings, saveSettings } from "@bpmn-sdk/profiles"
+import type { AdminApiClient, CamundaClient, RawResponseEvent } from "@bpmnkit/api"
+import { renderBpmnAscii } from "@bpmnkit/ascii"
+import { appendAuditEntry, getAuditLog, getSettings, saveSettings } from "@bpmnkit/profiles"
 import type {
 	ArgSpec,
 	ColumnDef,

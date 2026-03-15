@@ -1,13 +1,13 @@
 /**
- * @bpmn-sdk/canvas-plugin-command-palette-editor — editor extension for the
+ * @bpmnkit/canvas-plugin-command-palette-editor — editor extension for the
  * command palette plugin. Adds one command per BPMN element type.
  *
- * Must be used together with `@bpmn-sdk/canvas-plugin-command-palette`.
+ * Must be used together with `@bpmnkit/canvas-plugin-command-palette`.
  *
  * ## Usage
  * ```typescript
- * import { createCommandPalettePlugin } from "@bpmn-sdk/canvas-plugin-command-palette";
- * import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/canvas-plugin-command-palette-editor";
+ * import { createCommandPalettePlugin } from "@bpmnkit/canvas-plugin-command-palette";
+ * import { createCommandPaletteEditorPlugin } from "@bpmnkit/canvas-plugin-command-palette-editor";
  *
  * let editorRef: BpmnEditor | null = null;
  * const palette = createCommandPalettePlugin({ ... });
@@ -21,8 +21,8 @@
  * @packageDocumentation
  */
 
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
-import { ELEMENT_GROUPS, ELEMENT_TYPE_LABELS } from "@bpmn-sdk/editor"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
+import { ELEMENT_GROUPS, ELEMENT_TYPE_LABELS } from "@bpmnkit/editor"
 import type { CommandPalettePlugin } from "../command-palette/index.js"
 
 // ── Element catalogue ─────────────────────────────────────────────────────────

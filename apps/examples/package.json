@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/examples",
+	"name": "@bpmnkit/examples",
 	"private": true,
 	"version": "0.0.8",
 	"type": "module",
@@ -13,7 +13,7 @@
 		"all": "tsx src/run-all.ts"
 	},
 	"dependencies": {
-		"@bpmn-sdk/core": "workspace:*"
+		"@bpmnkit/core": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.0.0",

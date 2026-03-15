@@ -1,5 +1,5 @@
-import { Bpmn } from "@bpmn-sdk/core"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 import { injectStyles } from "./css.js"
 import { KeyboardHandler } from "./keyboard.js"
 import { computeDiagramBounds, createDefs, createGrid, render } from "./renderer.js"
@@ -24,7 +24,7 @@ let _instanceCounter = 0
  *
  * ## Quick start
  * ```typescript
- * import { BpmnCanvas } from "@bpmn-sdk/canvas";
+ * import { BpmnCanvas } from "@bpmnkit/canvas";
  *
  * const canvas = new BpmnCanvas({
  *   container: document.getElementById("app")!,
@@ -221,7 +221,7 @@ export class BpmnCanvas {
 
 	/**
 	 * Renders an already-parsed `BpmnDefinitions` model.
-	 * Use this when you already have the parsed model from `@bpmn-sdk/core`.
+	 * Use this when you already have the parsed model from `@bpmnkit/core`.
 	 */
 	loadDefinitions(defs: BpmnDefinitions): void {
 		// Clear previous content

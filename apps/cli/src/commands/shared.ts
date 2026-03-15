@@ -1,4 +1,4 @@
-import type { CamundaClient } from "@bpmn-sdk/api"
+import type { CamundaClient } from "@bpmnkit/api"
 import type { ColumnDef, Command, FlagSpec, JsonFieldSpec, RunContext } from "../types.js"
 
 // ─── Shared flag specs ────────────────────────────────────────────────────────

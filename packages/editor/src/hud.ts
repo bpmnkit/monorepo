@@ -1,5 +1,5 @@
-import type { ViewportState } from "@bpmn-sdk/canvas"
-import { readDiColor } from "@bpmn-sdk/core"
+import type { ViewportState } from "@bpmnkit/canvas"
+import { readDiColor } from "@bpmnkit/core"
 import { injectHudStyles } from "./css.js"
 import type { BpmnEditor } from "./editor.js"
 import {

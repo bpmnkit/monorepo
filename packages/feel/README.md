@@ -1,20 +1,20 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/bpmn-sdk/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
-  <h1>@bpmn-sdk/feel</h1>
+  <h1>@bpmnkit/feel</h1>
   <p>Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter</p>
 
-  [![npm](https://img.shields.io/npm/v/@bpmn-sdk/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmn-sdk/feel)
-  [![license](https://img.shields.io/npm/l/@bpmn-sdk/feel?style=flat-square)](https://github.com/bpmn-sdk/monorepo/blob/main/LICENSE)
-  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmn-sdk/monorepo)
+  [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/feel?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
+  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
 
-  [Documentation](https://bpmn-sdk-docs.pages.dev) · [GitHub](https://github.com/bpmn-sdk/monorepo) · [Changelog](https://github.com/bpmn-sdk/monorepo/blob/main/packages/feel/CHANGELOG.md)
+  [Documentation](https://bpmn-sdk-docs.pages.dev) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/feel/CHANGELOG.md)
 </div>
 
 ---
 
 ## Overview
 
-`@bpmn-sdk/feel` is a complete implementation of the FEEL expression language used in DMN decision tables and BPMN condition expressions. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
+`@bpmnkit/feel` is a complete implementation of the FEEL expression language used in DMN decision tables and BPMN condition expressions. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
 
 ## Features
 
@@ -30,7 +30,7 @@
 ## Installation
 
 ```sh
-npm install @bpmn-sdk/feel
+npm install @bpmnkit/feel
 ```
 
 ## Quick Start
@@ -38,7 +38,7 @@ npm install @bpmn-sdk/feel
 ### Evaluate an expression
 
 ```typescript
-import { parseExpression, evaluate } from "@bpmn-sdk/feel"
+import { parseExpression, evaluate } from "@bpmnkit/feel"
 
 const parsed = parseExpression("amount * 1.2 + fee")
 if (!parsed.errors.length) {
@@ -50,7 +50,7 @@ if (!parsed.errors.length) {
 ### Evaluate unary tests (DMN input expressions)
 
 ```typescript
-import { parseUnaryTests, evaluateUnaryTests } from "@bpmn-sdk/feel"
+import { parseUnaryTests, evaluateUnaryTests } from "@bpmnkit/feel"
 
 // Does input value match any listed condition?
 const parsed = parseUnaryTests('"gold","silver"')
@@ -61,7 +61,7 @@ console.log(matches) // true
 ### Syntax highlighting
 
 ```typescript
-import { highlightFeel } from "@bpmn-sdk/feel"
+import { highlightFeel } from "@bpmnkit/feel"
 
 const tokens = highlightFeel('if x > 10 then "high" else "low"')
 for (const token of tokens) {
@@ -97,16 +97,16 @@ interface ParseResult {
 
 | Package | Description |
 |---------|-------------|
-| [`@bpmn-sdk/core`](https://www.npmjs.com/package/@bpmn-sdk/core) | BPMN/DMN/Form parser, builder, layout engine |
-| [`@bpmn-sdk/canvas`](https://www.npmjs.com/package/@bpmn-sdk/canvas) | Zero-dependency SVG BPMN viewer |
-| [`@bpmn-sdk/editor`](https://www.npmjs.com/package/@bpmn-sdk/editor) | Full-featured interactive BPMN editor |
-| [`@bpmn-sdk/engine`](https://www.npmjs.com/package/@bpmn-sdk/engine) | Lightweight BPMN process execution engine |
-| [`@bpmn-sdk/plugins`](https://www.npmjs.com/package/@bpmn-sdk/plugins) | 22 composable canvas plugins |
-| [`@bpmn-sdk/api`](https://www.npmjs.com/package/@bpmn-sdk/api) | Camunda 8 REST API TypeScript client |
-| [`@bpmn-sdk/ascii`](https://www.npmjs.com/package/@bpmn-sdk/ascii) | Render BPMN diagrams as Unicode ASCII art |
-| [`@bpmn-sdk/profiles`](https://www.npmjs.com/package/@bpmn-sdk/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
-| [`@bpmn-sdk/operate`](https://www.npmjs.com/package/@bpmn-sdk/operate) | Monitoring & operations frontend for Camunda clusters |
+| [`@bpmnkit/core`](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine |
+| [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
+| [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
+| [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
+| [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
 
 ## License
 
-[MIT](https://github.com/bpmn-sdk/monorepo/blob/main/LICENSE) © bpmn-sdk
+[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © bpmn-sdk

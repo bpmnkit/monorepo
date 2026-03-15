@@ -15,7 +15,7 @@
  */
 
 import { writeFileSync } from "node:fs"
-import { Bpmn } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
 
 // ── Connector icons (base64-encoded SVGs from Camunda marketplace) ────────────
 

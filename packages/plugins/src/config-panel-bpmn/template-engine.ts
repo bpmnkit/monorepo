@@ -1,5 +1,5 @@
-import type { BpmnDefinitions, XmlElement } from "@bpmn-sdk/core"
-import { zeebeExtensionsToXmlElements } from "@bpmn-sdk/core"
+import type { BpmnDefinitions, XmlElement } from "@bpmnkit/core"
+import { zeebeExtensionsToXmlElements } from "@bpmnkit/core"
 /**
  * Converts a Camunda element template into the PanelSchema + PanelAdapter pair
  * used by the config-panel plugin renderer.

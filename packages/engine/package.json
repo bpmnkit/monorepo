@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/engine",
+	"name": "@bpmnkit/engine",
 	"version": "0.1.7",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -18,14 +18,14 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/feel": "workspace:*"
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/feel": "workspace:*"
 	},
 	"description": "Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
 	"keywords": ["bpmn", "engine", "simulation", "workflow", "typescript", "dmn"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

@@ -2,7 +2,7 @@
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$id": "https://bpmn-sdk.github.io/api/camunda-config.schema.json",
 	"title": "Camunda Client Configuration",
-	"description": "YAML configuration file for the @bpmn-sdk/api Camunda client. Loaded via the configFile option or CAMUNDA_CONFIG_FILE env var.",
+	"description": "YAML configuration file for the @bpmnkit/api Camunda client. Loaded via the configFile option or CAMUNDA_CONFIG_FILE env var.",
 	"type": "object",
 	"additionalProperties": false,
 	"properties": {

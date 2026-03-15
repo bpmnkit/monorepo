@@ -29,7 +29,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build landing page
-        run: pnpm turbo build --filter @bpmn-sdk/landing
+        run: pnpm turbo build --filter @bpmnkit/landing
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

@@ -1,4 +1,4 @@
-import { createOperate } from "@bpmn-sdk/operate"
+import { createOperate } from "@bpmnkit/operate"
 
 const PROXY_URL = "http://localhost:3033"
 

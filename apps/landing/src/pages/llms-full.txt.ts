@@ -39,7 +39,7 @@ ${featureList}
 
 ---
 
-## Core SDK (@bpmn-sdk/core)
+## Core SDK (@bpmnkit/core)
 
 ### Basic Process
 
@@ -61,7 +61,7 @@ ${CODE.parallelGateway}
 
 ---
 
-## Simulation Engine (@bpmn-sdk/engine)
+## Simulation Engine (@bpmnkit/engine)
 
 Run BPMN processes locally in the browser or Node.js. Zero external
 dependencies. Supports service tasks, user tasks, exclusive/parallel/event-based
@@ -73,7 +73,7 @@ ${CODE.deployRun}
 
 ---
 
-## REST API Client (@bpmn-sdk/api)
+## REST API Client (@bpmnkit/api)
 
 \`\`\`typescript
 ${CODE.apiClient}
@@ -116,7 +116,7 @@ Example — list deployed process definitions:
 ### 1. Install
 
 \`\`\`
-pnpm add @bpmn-sdk/core
+pnpm add @bpmnkit/core
 \`\`\`
 
 ### 2. Create a process

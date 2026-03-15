@@ -1,11 +1,11 @@
 ---
-title: "@bpmn-sdk/api"
+title: "@bpmnkit/api"
 description: Fully-typed Camunda 8 REST API client with OAuth2, caching, and retry.
 ---
 
 ## Overview
 
-`@bpmn-sdk/api` is a complete TypeScript client for the Camunda 8 Orchestration Cluster
+`@bpmnkit/api` is a complete TypeScript client for the Camunda 8 Orchestration Cluster
 REST API:
 
 - **180 typed methods** across 30+ resource classes
@@ -18,13 +18,13 @@ REST API:
 ## Installation
 
 ```sh
-pnpm add @bpmn-sdk/api
+pnpm add @bpmnkit/api
 ```
 
 ## Client Configuration
 
 ```typescript
-import { CamundaClient } from "@bpmn-sdk/api";
+import { CamundaClient } from "@bpmnkit/api";
 
 const client = new CamundaClient({
   baseUrl: "https://api.cloud.camunda.io",

@@ -1,5 +1,5 @@
-import type { ViewportState } from "@bpmn-sdk/canvas"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { ViewportState } from "@bpmnkit/canvas"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 
 const NS = "http://www.w3.org/2000/svg"
 

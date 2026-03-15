@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/desktop",
+	"name": "@bpmnkit/desktop",
 	"private": true,
 	"version": "0.1.7",
 	"type": "module",
@@ -12,9 +12,9 @@
 		"tauri:build": "cargo build --manifest-path ../../apps/proxy-rs/Cargo.toml --release && tauri build"
 	},
 	"dependencies": {
-		"@bpmn-sdk/canvas": "workspace:*",
-		"@bpmn-sdk/plugins": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/editor": "workspace:*"
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/plugins": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/editor": "workspace:*"
 	}
 }

@@ -1,13 +1,13 @@
 /**
- * @bpmn-sdk/canvas-plugin-minimap — minimap navigation plugin for `@bpmn-sdk/canvas`.
+ * @bpmnkit/canvas-plugin-minimap — minimap navigation plugin for `@bpmnkit/canvas`.
  *
  * Adds a 160×100 overview panel in the bottom-right corner of the canvas.
  * Clicking the minimap pans the main viewport to that position.
  *
  * ## Usage
  * ```typescript
- * import { BpmnCanvas } from "@bpmn-sdk/canvas";
- * import { createMinimapPlugin } from "@bpmn-sdk/canvas-plugin-minimap";
+ * import { BpmnCanvas } from "@bpmnkit/canvas";
+ * import { createMinimapPlugin } from "@bpmnkit/canvas-plugin-minimap";
  *
  * const canvas = new BpmnCanvas({
  *   container: document.getElementById("app")!,
@@ -19,7 +19,7 @@
  * @packageDocumentation
  */
 
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
 import { injectMinimapStyles } from "./css.js"
 import { Minimap } from "./minimap.js"
 

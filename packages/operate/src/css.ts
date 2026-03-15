@@ -1,12 +1,12 @@
-import { injectStyle } from "@bpmn-sdk/ui"
+import { injectStyle } from "@bpmnkit/ui"
 
 const OPERATE_STYLE_ID = "bpmnkit-operate-styles-v2"
 
 /**
  * Operate-specific layout CSS. Design tokens (colours, radius, font, etc.)
- * come from @bpmn-sdk/ui — call injectUiStyles() before this.
+ * come from @bpmnkit/ui — call injectUiStyles() before this.
  *
- * Component styles (badge, card, table) are also in @bpmn-sdk/ui.
+ * Component styles (badge, card, table) are also in @bpmnkit/ui.
  */
 const OPERATE_CSS = `
 /* ── Layout ─────────────────────────────────────────────────────────────── */

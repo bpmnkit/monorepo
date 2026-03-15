@@ -1,4 +1,4 @@
-import type { DmnDecision, DmnDefinitions } from "@bpmn-sdk/core"
+import type { DmnDecision, DmnDefinitions } from "@bpmnkit/core"
 import { injectDmnViewerStyles } from "./css.js"
 import { highlightFeel } from "./feel.js"
 
@@ -12,7 +12,7 @@ export interface DmnViewerOptions {
  * Standalone DMN decision table viewer.
  *
  * Renders a `DmnDefinitions` object as an HTML decision table with
- * FEEL syntax highlighting. Does not depend on `@bpmn-sdk/canvas`.
+ * FEEL syntax highlighting. Does not depend on `@bpmnkit/canvas`.
  */
 export class DmnViewer {
 	private readonly _container: HTMLElement

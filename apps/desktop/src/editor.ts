@@ -1,19 +1,16 @@
-import { Bpmn, Dmn } from "@bpmn-sdk/core"
-import { BpmnEditor, createSideDock, initEditorHud } from "@bpmn-sdk/editor"
-import type { Tool } from "@bpmn-sdk/editor"
-import { createAiBridgePlugin } from "@bpmn-sdk/plugins/ai-bridge"
-import { createCommandPalettePlugin } from "@bpmn-sdk/plugins/command-palette"
-import { createCommandPaletteEditorPlugin } from "@bpmn-sdk/plugins/command-palette-editor"
-import { createConfigPanelPlugin } from "@bpmn-sdk/plugins/config-panel"
-import { createConfigPanelBpmnPlugin } from "@bpmn-sdk/plugins/config-panel-bpmn"
-import { createMainMenuPlugin } from "@bpmn-sdk/plugins/main-menu"
-import { createOptimizePlugin } from "@bpmn-sdk/plugins/optimize"
-import {
-	InMemoryFileResolver,
-	createStorageTabsBridge,
-} from "@bpmn-sdk/plugins/storage-tabs-bridge"
-import { createWatermarkPlugin } from "@bpmn-sdk/plugins/watermark"
-import { createZoomControlsPlugin } from "@bpmn-sdk/plugins/zoom-controls"
+import { Bpmn, Dmn } from "@bpmnkit/core"
+import { BpmnEditor, createSideDock, initEditorHud } from "@bpmnkit/editor"
+import type { Tool } from "@bpmnkit/editor"
+import { createAiBridgePlugin } from "@bpmnkit/plugins/ai-bridge"
+import { createCommandPalettePlugin } from "@bpmnkit/plugins/command-palette"
+import { createCommandPaletteEditorPlugin } from "@bpmnkit/plugins/command-palette-editor"
+import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel"
+import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn"
+import { createMainMenuPlugin } from "@bpmnkit/plugins/main-menu"
+import { createOptimizePlugin } from "@bpmnkit/plugins/optimize"
+import { InMemoryFileResolver, createStorageTabsBridge } from "@bpmnkit/plugins/storage-tabs-bridge"
+import { createWatermarkPlugin } from "@bpmnkit/plugins/watermark"
+import { createZoomControlsPlugin } from "@bpmnkit/plugins/zoom-controls"
 import { makeExamples } from "./examples.js"
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -214,7 +211,7 @@ const editor = new BpmnEditor({
 		mainMenuPlugin,
 		createZoomControlsPlugin(),
 		createWatermarkPlugin({
-			links: [{ label: "Github", url: "https://github.com/bpmn-sdk/monorepo" }],
+			links: [{ label: "Github", url: "https://github.com/bpmnkit/monorepo" }],
 			logo: LOGO_SVG,
 		}),
 		bridge.tabsPlugin,

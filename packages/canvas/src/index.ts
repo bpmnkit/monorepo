@@ -1,8 +1,8 @@
 /**
- * @bpmn-sdk/canvas — a high-performance, accessible BPMN 2.0 diagram viewer.
+ * @bpmnkit/canvas — a high-performance, accessible BPMN 2.0 diagram viewer.
  *
  * ## Features
- * - **Zero external dependencies** (only `@bpmn-sdk/core` for XML parsing)
+ * - **Zero external dependencies** (only `@bpmnkit/core` for XML parsing)
  * - **Infinite canvas** with pan and zoom (mouse, touch, keyboard)
  * - **Dot-grid background** for visual orientation
  * - **Light / dark / auto theming** via CSS custom properties
@@ -12,7 +12,7 @@
  *
  * ## Quick start
  * ```typescript
- * import { BpmnCanvas } from "@bpmn-sdk/canvas";
+ * import { BpmnCanvas } from "@bpmnkit/canvas";
  *
  * const canvas = new BpmnCanvas({
  *   container: document.getElementById("app")!,
@@ -77,7 +77,7 @@ export type {
 	ViewportState,
 } from "./types.js"
 
-// Internal exports for use by @bpmn-sdk/editor
+// Internal exports for use by @bpmnkit/editor
 export { ViewportController } from "./viewport.js"
 export { render, computeDiagramBounds, createDefs, createGrid } from "./renderer.js"
 export { KeyboardHandler } from "./keyboard.js"

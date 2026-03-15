@@ -1,10 +1,10 @@
-import { Form } from "@bpmn-sdk/core"
+import { Form } from "@bpmnkit/core"
 import type {
 	FormComponent,
 	FormDefinition,
 	FormGroupComponent,
 	FormValueOption,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 import { injectFormEditorStyles } from "./css.js"
 
 export interface FormEditorOptions {

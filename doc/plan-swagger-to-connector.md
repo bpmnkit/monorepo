@@ -159,13 +159,13 @@ packages/connector-gen/       ← new package
     index.ts                  ← public API: generateFromSwagger(file, opts)
   tests/
     build-template.test.ts
-  package.json                ← @bpmn-sdk/connector-gen, runtime dep only
+  package.json                ← @bpmnkit/connector-gen, runtime dep only
   tsconfig.json
 
 apps/cli/src/commands/connector.ts  ← new CLI command group
 ```
 
-`@bpmn-sdk/connector-gen` should have zero external runtime dependencies (OpenAPI is just JSON; template generation is pure data transformation).
+`@bpmnkit/connector-gen` should have zero external runtime dependencies (OpenAPI is just JSON; template generation is pure data transformation).
 
 ---
 

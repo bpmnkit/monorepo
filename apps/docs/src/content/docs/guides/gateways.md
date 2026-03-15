@@ -9,7 +9,7 @@ Only one outgoing path is taken — the first branch whose condition evaluates t
 One branch should always be the default to handle the fallthrough case:
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 const xml = Bpmn.export(
   Bpmn.createProcess("approval-flow")

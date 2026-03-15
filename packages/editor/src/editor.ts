@@ -6,7 +6,7 @@ import {
 	createGrid,
 	injectStyles,
 	render,
-} from "@bpmn-sdk/canvas"
+} from "@bpmnkit/canvas"
 import type {
 	CanvasApi,
 	CanvasEvents,
@@ -15,15 +15,15 @@ import type {
 	RenderedEdge,
 	RenderedShape,
 	Theme,
-} from "@bpmn-sdk/canvas"
-import { Bpmn, applyAutoLayout } from "@bpmn-sdk/core"
+} from "@bpmnkit/canvas"
+import { Bpmn, applyAutoLayout } from "@bpmnkit/core"
 import type {
 	BpmnBounds,
 	BpmnDefinitions,
 	BpmnFlowElement,
 	BpmnSequenceFlow,
 	DiColor,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 import { CommandStack } from "./command-stack.js"
 import { injectEditorStyles } from "./css.js"
 import {

@@ -1,4 +1,4 @@
-import { IC_UI } from "@bpmn-sdk/ui"
+import { IC_UI } from "@bpmnkit/ui"
 import { createBarChart } from "../components/chart.js"
 import type { DashboardStore } from "../stores/dashboard.js"
 

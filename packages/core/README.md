@@ -1,20 +1,20 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/bpmn-sdk/monorepo/main/doc/logos/logo-2-gateway.svg" width="72" height="72" alt="BPMN Kit logo">
-  <h1>@bpmn-sdk/core</h1>
+  <h1>@bpmnkit/core</h1>
   <p>TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams</p>
 
-  [![npm](https://img.shields.io/npm/v/@bpmn-sdk/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmn-sdk/core)
-  [![license](https://img.shields.io/npm/l/@bpmn-sdk/core?style=flat-square)](https://github.com/bpmn-sdk/monorepo/blob/main/LICENSE)
-  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmn-sdk/monorepo)
+  [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/core?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
+  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
 
-  [Documentation](https://bpmn-sdk-docs.pages.dev) · [GitHub](https://github.com/bpmn-sdk/monorepo) · [Changelog](https://github.com/bpmn-sdk/monorepo/blob/main/packages/core/CHANGELOG.md)
+  [Documentation](https://bpmn-sdk-docs.pages.dev) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/core/CHANGELOG.md)
 </div>
 
 ---
 
 ## Overview
 
-`@bpmn-sdk/core` is the foundation of the BPMN Kit. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.
+`@bpmnkit/core` is the foundation of the BPMN Kit. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.
 
 ```
 Parse → Modify → Validate → Export
@@ -34,8 +34,8 @@ Parse → Modify → Validate → Export
 ## Installation
 
 ```sh
-npm install @bpmn-sdk/core
-pnpm add @bpmn-sdk/core
+npm install @bpmnkit/core
+pnpm add @bpmnkit/core
 ```
 
 ## Quick Start
@@ -43,7 +43,7 @@ pnpm add @bpmn-sdk/core
 ### Build a process from code
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
 
 const process = Bpmn.createProcess("order-flow", "Order Flow")
   .startEvent("start", "Order Received")
@@ -66,7 +66,7 @@ const xml = Bpmn.export(process)
 ### Parse and modify existing BPMN
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
 
 const defs = Bpmn.parse(xml)
 const process = defs.processes[0]
@@ -83,7 +83,7 @@ const updated = Bpmn.export(defs)
 ### Auto-layout a process
 
 ```typescript
-import { Bpmn, layoutProcess } from "@bpmn-sdk/core"
+import { Bpmn, layoutProcess } from "@bpmnkit/core"
 
 const defs = Bpmn.parse(xml)
 const result = layoutProcess(defs.processes[0])
@@ -94,7 +94,7 @@ const laid = Bpmn.export(result.defs)
 ### Optimize a diagram
 
 ```typescript
-import { Bpmn, optimize } from "@bpmn-sdk/core"
+import { Bpmn, optimize } from "@bpmnkit/core"
 
 const defs = Bpmn.parse(xml)
 const report = optimize(defs)
@@ -113,7 +113,7 @@ for (const finding of report.findings) {
 ### Compact format for AI/LLM workflows
 
 ```typescript
-import { Bpmn, compactify, expand } from "@bpmn-sdk/core"
+import { Bpmn, compactify, expand } from "@bpmnkit/core"
 
 // Shrink for AI prompt
 const defs = Bpmn.parse(xml)
@@ -170,16 +170,16 @@ const outXml = Bpmn.export(restored)
 
 | Package | Description |
 |---------|-------------|
-| [`@bpmn-sdk/canvas`](https://www.npmjs.com/package/@bpmn-sdk/canvas) | Zero-dependency SVG BPMN viewer |
-| [`@bpmn-sdk/editor`](https://www.npmjs.com/package/@bpmn-sdk/editor) | Full-featured interactive BPMN editor |
-| [`@bpmn-sdk/engine`](https://www.npmjs.com/package/@bpmn-sdk/engine) | Lightweight BPMN process execution engine |
-| [`@bpmn-sdk/feel`](https://www.npmjs.com/package/@bpmn-sdk/feel) | FEEL expression language parser & evaluator |
-| [`@bpmn-sdk/plugins`](https://www.npmjs.com/package/@bpmn-sdk/plugins) | 22 composable canvas plugins |
-| [`@bpmn-sdk/api`](https://www.npmjs.com/package/@bpmn-sdk/api) | Camunda 8 REST API TypeScript client |
-| [`@bpmn-sdk/ascii`](https://www.npmjs.com/package/@bpmn-sdk/ascii) | Render BPMN diagrams as Unicode ASCII art |
-| [`@bpmn-sdk/profiles`](https://www.npmjs.com/package/@bpmn-sdk/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
-| [`@bpmn-sdk/operate`](https://www.npmjs.com/package/@bpmn-sdk/operate) | Monitoring & operations frontend for Camunda clusters |
+| [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
+| [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
+| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |
+| [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
+| [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
+| [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
 
 ## License
 
-[MIT](https://github.com/bpmn-sdk/monorepo/blob/main/LICENSE) © bpmn-sdk
+[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © bpmn-sdk

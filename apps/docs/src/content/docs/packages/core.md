@@ -1,11 +1,11 @@
 ---
-title: "@bpmn-sdk/core"
+title: "@bpmnkit/core"
 description: Fluent process builder, BPMN 2.0 parser/serializer, auto-layout, and AI-compact format.
 ---
 
 ## Overview
 
-`@bpmn-sdk/core` is the foundation of BPMN Kit. It provides everything needed to work with
+`@bpmnkit/core` is the foundation of BPMN Kit. It provides everything needed to work with
 BPMN 2.0 programmatically:
 
 - **Fluent builder** — chain method calls to construct any process shape
@@ -19,7 +19,7 @@ Zero runtime dependencies. ESM-only. Runs in browsers, Node.js, Deno, Bun, and e
 ## Installation
 
 ```sh
-pnpm add @bpmn-sdk/core
+pnpm add @bpmnkit/core
 ```
 
 ## API Reference
@@ -68,7 +68,7 @@ Converts a `BpmnDefinitions` object to a `CompactDiagram` — a small JSON objec
 suitable for LLM prompts.
 
 ```typescript
-import { compactify } from "@bpmn-sdk/core";
+import { compactify } from "@bpmnkit/core";
 
 const compact = compactify(Bpmn.parse(xml));
 ```
@@ -78,7 +78,7 @@ const compact = compactify(Bpmn.parse(xml));
 Converts a `CompactDiagram` back to a `BpmnDefinitions` object.
 
 ```typescript
-import { expand } from "@bpmn-sdk/core";
+import { expand } from "@bpmnkit/core";
 
 const definitions = expand(compactDiagram);
 const xml = Bpmn.export(definitions);
@@ -90,7 +90,7 @@ Runs the Sugiyama auto-layout algorithm on a `BpmnProcess` object.
 Returns a `LayoutResult` with element positions.
 
 ```typescript
-import { layoutProcess, ELEMENT_SIZES } from "@bpmn-sdk/core";
+import { layoutProcess, ELEMENT_SIZES } from "@bpmnkit/core";
 
 const result = layoutProcess(process);
 // result.elements: Map<id, { x, y, width, height }>
@@ -124,7 +124,7 @@ All builder methods return `this` for chaining.
 ## DMN Support
 
 ```typescript
-import { Dmn } from "@bpmn-sdk/core";
+import { Dmn } from "@bpmnkit/core";
 
 // Parse DMN XML
 const dmnDefs = Dmn.parse(dmnXmlString);
@@ -138,7 +138,7 @@ const dmnXml = Dmn.export(dmnDefs);
 
 ## TypeScript Types
 
-Key types exported from `@bpmn-sdk/core`:
+Key types exported from `@bpmnkit/core`:
 
 ```typescript
 import type {
@@ -150,5 +150,5 @@ import type {
   ServiceTaskOptions,
   UserTaskOptions,
   GatewayOptions,
-} from "@bpmn-sdk/core";
+} from "@bpmnkit/core";
 ```

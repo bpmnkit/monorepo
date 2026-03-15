@@ -1,10 +1,10 @@
 /**
- * @bpmn-sdk/canvas-plugin-command-palette — Ctrl+K / ⌘K command palette for
- * `@bpmn-sdk/canvas` and `@bpmn-sdk/editor`.
+ * @bpmnkit/canvas-plugin-command-palette — Ctrl+K / ⌘K command palette for
+ * `@bpmnkit/canvas` and `@bpmnkit/editor`.
  *
  * ## Usage
  * ```typescript
- * import { createCommandPalettePlugin } from "@bpmn-sdk/canvas-plugin-command-palette";
+ * import { createCommandPalettePlugin } from "@bpmnkit/canvas-plugin-command-palette";
  *
  * const palette = createCommandPalettePlugin({
  *   onZenModeChange: (active) => {
@@ -20,10 +20,10 @@
  * @packageDocumentation
  */
 
-import { computeDiagramBounds } from "@bpmn-sdk/canvas"
-import type { CanvasApi, CanvasPlugin, Theme } from "@bpmn-sdk/canvas"
-import { Bpmn } from "@bpmn-sdk/core"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import { computeDiagramBounds } from "@bpmnkit/canvas"
+import type { CanvasApi, CanvasPlugin, Theme } from "@bpmnkit/canvas"
+import { Bpmn } from "@bpmnkit/core"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 import { injectCommandPaletteStyles } from "./css.js"
 
 export {

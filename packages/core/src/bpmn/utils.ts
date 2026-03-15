@@ -25,7 +25,7 @@ import type {
  *
  * @example
  * ```typescript
- * import { Bpmn, findProcess } from "@bpmn-sdk/core"
+ * import { Bpmn, findProcess } from "@bpmnkit/core"
  *
  * const defs = Bpmn.parse(xml)
  * const proc = findProcess(defs, "order-process")
@@ -45,7 +45,7 @@ export function findProcess(defs: BpmnDefinitions, id: string): BpmnProcess | un
  *
  * @example
  * ```typescript
- * import { Bpmn, findElement, isBpmnServiceTask } from "@bpmn-sdk/core"
+ * import { Bpmn, findElement, isBpmnServiceTask } from "@bpmnkit/core"
  *
  * const defs = Bpmn.parse(xml)
  * const el = findElement(defs, "task1")
@@ -174,7 +174,7 @@ function findChild(elements: XmlElement[], tag: string): XmlElement | undefined 
  *
  * @example
  * ```typescript
- * import { Bpmn, findElement, getZeebeExtensions, isBpmnServiceTask } from "@bpmn-sdk/core"
+ * import { Bpmn, findElement, getZeebeExtensions, isBpmnServiceTask } from "@bpmnkit/core"
  *
  * const defs = Bpmn.parse(xml)
  * const el = findElement(defs, "task1")

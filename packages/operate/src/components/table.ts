@@ -1,1 +1,1 @@
-export { type Column, type TableOptions, createTable } from "@bpmn-sdk/ui"
+export { type Column, type TableOptions, createTable } from "@bpmnkit/ui"

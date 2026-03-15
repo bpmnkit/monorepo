@@ -1,9 +1,9 @@
 ---
 title: Simulation
-description: Run BPMN processes locally with @bpmn-sdk/engine — no Camunda cluster required.
+description: Run BPMN processes locally with @bpmnkit/engine — no Camunda cluster required.
 ---
 
-The `@bpmn-sdk/engine` package is a zero-dependency BPMN simulation engine that runs in
+The `@bpmnkit/engine` package is a zero-dependency BPMN simulation engine that runs in
 browsers and Node.js. It's useful for:
 
 - **Testing** process logic before deploying
@@ -14,8 +14,8 @@ browsers and Node.js. It's useful for:
 ## Basic Usage
 
 ```typescript
-import { Engine } from "@bpmn-sdk/engine";
-import { Bpmn } from "@bpmn-sdk/core";
+import { Engine } from "@bpmnkit/engine";
+import { Bpmn } from "@bpmnkit/core";
 
 // Build a process
 const xml = Bpmn.export(
@@ -119,7 +119,7 @@ Write deterministic unit tests for your process logic:
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { Engine } from "@bpmn-sdk/engine";
+import { Engine } from "@bpmnkit/engine";
 import { buildOrderProcess } from "./processes.js";
 
 describe("order process", () => {

@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/operate",
+	"name": "@bpmnkit/operate",
 	"version": "0.0.5",
 	"description": "Monitoring and operations frontend for Camunda 8 clusters — real-time SSE, zero dependencies",
 	"type": "module",
@@ -18,11 +18,11 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmn-sdk/api": "workspace:*",
-		"@bpmn-sdk/canvas": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*",
-		"@bpmn-sdk/plugins": "workspace:*",
-		"@bpmn-sdk/ui": "workspace:*"
+		"@bpmnkit/api": "workspace:*",
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/plugins": "workspace:*",
+		"@bpmnkit/ui": "workspace:*"
 	},
 	"keywords": [
 		"bpmn",
@@ -41,6 +41,6 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

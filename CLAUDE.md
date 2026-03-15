@@ -178,11 +178,11 @@ biome.json         # Biome configuration
 
 ## Brand Tokens
 
-All brand colors and design tokens are defined in **`packages/ui`** (`@bpmn-sdk/ui`).
+All brand colors and design tokens are defined in **`packages/ui`** (`@bpmnkit/ui`).
 
 - **Single source of truth**: edit `packages/ui/src/tokens.css` (CSS file) or `packages/ui/src/css.ts` (`UI_TOKENS_CSS` string) — both must stay in sync
 - **Token namespace**: all public tokens use `--bpmnkit-*` prefix
-- **Usage in packages**: call `injectUiStyles()` at runtime (editor, canvas, plugins), or `@import "@bpmn-sdk/ui/tokens.css"` in Astro apps via `packages/astro-shared`
+- **Usage in packages**: call `injectUiStyles()` at runtime (editor, canvas, plugins), or `@import "@bpmnkit/ui/tokens.css"` in Astro apps via `packages/astro-shared`
 - **Never hardcode brand colors** — always use `var(--bpmnkit-*, <fallback>)` with a hex fallback so packages work standalone
 - **Semantic colors are exempt**: execution-state colors (token-highlight amber/green), syntax highlighting (feel-playground, dmn-viewer), and DMN semantic section colors must not be replaced with brand tokens
 

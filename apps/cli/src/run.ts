@@ -1,11 +1,11 @@
-import type { RawResponseEvent } from "@bpmn-sdk/api"
+import type { RawResponseEvent } from "@bpmnkit/api"
 import {
 	appendAuditEntry,
 	createAdminClientFromProfile,
 	createClientFromProfile,
 	getActiveName,
 	getProfile,
-} from "@bpmn-sdk/profiles"
+} from "@bpmnkit/profiles"
 import { parseArgs } from "./args.js"
 import { commandGroups } from "./commands/index.js"
 import { getRuntimeCompletions } from "./completion.js"

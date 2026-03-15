@@ -1,4 +1,4 @@
-import type { CanvasApi, CanvasPlugin } from "@bpmn-sdk/canvas"
+import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
 import {
 	Bpmn,
 	type BpmnDefinitions,
@@ -6,7 +6,7 @@ import {
 	type DmnDefinitions,
 	Form,
 	type FormDefinition,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 import { DmnEditor } from "../dmn-editor/index.js"
 import { buildFeelPlaygroundPanel, injectPlaygroundStyles } from "../feel-playground/index.js"
 import { FormEditor } from "../form-editor/index.js"

@@ -1,4 +1,4 @@
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import { BpmnCanvas } from "@bpmnkit/canvas"
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createTabsPlugin } from "../../src/tabs/tabs-plugin.js"

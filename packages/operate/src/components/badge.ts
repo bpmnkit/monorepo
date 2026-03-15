@@ -1,1 +1,1 @@
-export { badge, cell } from "@bpmn-sdk/ui"
+export { badge, cell } from "@bpmnkit/ui"

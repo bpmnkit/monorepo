@@ -1,5 +1,5 @@
-import type { AdminApiClient, CamundaClient, RawResponseEvent } from "@bpmn-sdk/api"
-import type { Relation } from "@bpmn-sdk/api"
+import type { AdminApiClient, CamundaClient, RawResponseEvent } from "@bpmnkit/api"
+import type { Relation } from "@bpmnkit/api"
 
 export type { RawResponseEvent, Relation }
 

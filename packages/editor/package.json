@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/editor",
+	"name": "@bpmnkit/editor",
 	"version": "0.0.8",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -18,14 +18,14 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmn-sdk/canvas": "workspace:*",
-		"@bpmn-sdk/core": "workspace:*"
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/core": "workspace:*"
 	},
 	"description": "Full-featured interactive BPMN editor with undo/redo, HUD, and side-dock UI",
 	"keywords": ["bpmn", "editor", "workflow", "typescript", "canvas"],
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

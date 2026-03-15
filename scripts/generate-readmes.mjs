@@ -8,13 +8,13 @@ import { resolve } from "node:path"
 const ROOT = new URL("..", import.meta.url).pathname
 const LOGO_URL =
 	"https://raw.githubusercontent.com/bpmn-sdk/monorepo/main/doc/logos/logo-2-gateway.svg"
-const GITHUB = "https://github.com/bpmn-sdk/monorepo"
+const GITHUB = "https://github.com/bpmnkit/monorepo"
 const DOCS = "https://bpmn-sdk-docs.pages.dev"
 
 // ── Shared header / footer ────────────────────────────────────────────────────
 
 function header({ name, description, extra = "" }) {
-	const pkg = name.replace("@bpmn-sdk/", "")
+	const pkg = name.replace("@bpmnkit/", "")
 	return `<div align="center">
   <img src="${LOGO_URL}" width="72" height="72" alt="BPMN SDK logo">
   <h1>${name}</h1>
@@ -33,19 +33,19 @@ ${extra}`
 
 function footer(currentPkg) {
 	const packages = [
-		{ name: "@bpmn-sdk/core", desc: "BPMN/DMN/Form parser, builder, layout engine" },
-		{ name: "@bpmn-sdk/canvas", desc: "Zero-dependency SVG BPMN viewer" },
-		{ name: "@bpmn-sdk/editor", desc: "Full-featured interactive BPMN editor" },
-		{ name: "@bpmn-sdk/engine", desc: "Lightweight BPMN process execution engine" },
-		{ name: "@bpmn-sdk/feel", desc: "FEEL expression language parser & evaluator" },
-		{ name: "@bpmn-sdk/plugins", desc: "22 composable canvas plugins" },
-		{ name: "@bpmn-sdk/api", desc: "Camunda 8 REST API TypeScript client" },
-		{ name: "@bpmn-sdk/ascii", desc: "Render BPMN diagrams as Unicode ASCII art" },
+		{ name: "@bpmnkit/core", desc: "BPMN/DMN/Form parser, builder, layout engine" },
+		{ name: "@bpmnkit/canvas", desc: "Zero-dependency SVG BPMN viewer" },
+		{ name: "@bpmnkit/editor", desc: "Full-featured interactive BPMN editor" },
+		{ name: "@bpmnkit/engine", desc: "Lightweight BPMN process execution engine" },
+		{ name: "@bpmnkit/feel", desc: "FEEL expression language parser & evaluator" },
+		{ name: "@bpmnkit/plugins", desc: "22 composable canvas plugins" },
+		{ name: "@bpmnkit/api", desc: "Camunda 8 REST API TypeScript client" },
+		{ name: "@bpmnkit/ascii", desc: "Render BPMN diagrams as Unicode ASCII art" },
 		{
-			name: "@bpmn-sdk/profiles",
+			name: "@bpmnkit/profiles",
 			desc: "Shared auth, profile storage, and client factories for CLI & proxy",
 		},
-		{ name: "@bpmn-sdk/operate", desc: "Monitoring & operations frontend for Camunda clusters" },
+		{ name: "@bpmnkit/operate", desc: "Monitoring & operations frontend for Camunda clusters" },
 	].filter((p) => p.name !== currentPkg)
 
 	const rows = packages
@@ -71,11 +71,11 @@ ${rows}
 const packages = {
 	// ── core ──────────────────────────────────────────────────────────────────
 	"packages/core": {
-		name: "@bpmn-sdk/core",
+		name: "@bpmnkit/core",
 		description: "TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
 		content: `## Overview
 
-\`@bpmn-sdk/core\` is the foundation of the BPMN SDK. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.
+\`@bpmnkit/core\` is the foundation of the BPMN SDK. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.
 
 \`\`\`
 Parse → Modify → Validate → Export
@@ -95,8 +95,8 @@ Parse → Modify → Validate → Export
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/core
-pnpm add @bpmn-sdk/core
+npm install @bpmnkit/core
+pnpm add @bpmnkit/core
 \`\`\`
 
 ## Quick Start
@@ -104,7 +104,7 @@ pnpm add @bpmn-sdk/core
 ### Build a process from code
 
 \`\`\`typescript
-import { Bpmn } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
 
 const process = Bpmn.createProcess("order-flow", "Order Flow")
   .startEvent("start", "Order Received")
@@ -127,7 +127,7 @@ const xml = Bpmn.export(process)
 ### Parse and modify existing BPMN
 
 \`\`\`typescript
-import { Bpmn } from "@bpmn-sdk/core"
+import { Bpmn } from "@bpmnkit/core"
 
 const defs = Bpmn.parse(xml)
 const process = defs.processes[0]
@@ -144,7 +144,7 @@ const updated = Bpmn.export(defs)
 ### Auto-layout a process
 
 \`\`\`typescript
-import { Bpmn, layoutProcess } from "@bpmn-sdk/core"
+import { Bpmn, layoutProcess } from "@bpmnkit/core"
 
 const defs = Bpmn.parse(xml)
 const result = layoutProcess(defs.processes[0])
@@ -155,7 +155,7 @@ const laid = Bpmn.export(result.defs)
 ### Optimize a diagram
 
 \`\`\`typescript
-import { Bpmn, optimize } from "@bpmn-sdk/core"
+import { Bpmn, optimize } from "@bpmnkit/core"
 
 const defs = Bpmn.parse(xml)
 const report = optimize(defs)
@@ -174,7 +174,7 @@ for (const finding of report.findings) {
 ### Compact format for AI/LLM workflows
 
 \`\`\`typescript
-import { Bpmn, compactify, expand } from "@bpmn-sdk/core"
+import { Bpmn, compactify, expand } from "@bpmnkit/core"
 
 // Shrink for AI prompt
 const defs = Bpmn.parse(xml)
@@ -229,11 +229,11 @@ const outXml = Bpmn.export(restored)
 
 	// ── canvas ────────────────────────────────────────────────────────────────
 	"packages/canvas": {
-		name: "@bpmn-sdk/canvas",
+		name: "@bpmnkit/canvas",
 		description: "Zero-dependency SVG BPMN viewer with pan/zoom, theming, and a plugin API",
 		content: `## Overview
 
-\`@bpmn-sdk/canvas\` renders BPMN 2.0 diagrams as interactive SVG. It has zero runtime dependencies, works in any framework (or none), and exposes a plugin API for extending its behaviour.
+\`@bpmnkit/canvas\` renders BPMN 2.0 diagrams as interactive SVG. It has zero runtime dependencies, works in any framework (or none), and exposes a plugin API for extending its behaviour.
 
 ## Features
 
@@ -248,13 +248,13 @@ const outXml = Bpmn.export(restored)
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/canvas
+npm install @bpmnkit/canvas
 \`\`\`
 
 ## Quick Start
 
 \`\`\`typescript
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import { BpmnCanvas } from "@bpmnkit/canvas"
 
 const canvas = new BpmnCanvas({
   container: document.getElementById("canvas")!,
@@ -315,7 +315,7 @@ interface CanvasOptions {
 ### Plugin API
 
 \`\`\`typescript
-import type { CanvasPlugin, CanvasApi } from "@bpmn-sdk/canvas"
+import type { CanvasPlugin, CanvasApi } from "@bpmnkit/canvas"
 
 const myPlugin: CanvasPlugin = {
   name: "my-plugin",
@@ -330,11 +330,11 @@ const myPlugin: CanvasPlugin = {
 
 	// ── editor ────────────────────────────────────────────────────────────────
 	"packages/editor": {
-		name: "@bpmn-sdk/editor",
+		name: "@bpmnkit/editor",
 		description: "Full-featured interactive BPMN editor with undo/redo, HUD, and side-dock UI",
 		content: `## Overview
 
-\`@bpmn-sdk/editor\` turns the \`@bpmn-sdk/canvas\` viewer into a fully interactive editor. Drag to connect elements, inline-edit labels, resize shapes, attach boundary events, and integrate AI-assisted design — all through a composable API.
+\`@bpmnkit/editor\` turns the \`@bpmnkit/canvas\` viewer into a fully interactive editor. Drag to connect elements, inline-edit labels, resize shapes, attach boundary events, and integrate AI-assisted design — all through a composable API.
 
 ## Features
 
@@ -352,13 +352,13 @@ const myPlugin: CanvasPlugin = {
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/editor @bpmn-sdk/canvas
+npm install @bpmnkit/editor @bpmnkit/canvas
 \`\`\`
 
 ## Quick Start
 
 \`\`\`typescript
-import { BpmnEditor, initEditorHud, createSideDock } from "@bpmn-sdk/editor"
+import { BpmnEditor, initEditorHud, createSideDock } from "@bpmnkit/editor"
 
 // Full editor (viewer + editing interactions)
 const editor = new BpmnEditor({
@@ -424,12 +424,12 @@ interface SideDock {
 
 	// ── engine ────────────────────────────────────────────────────────────────
 	"packages/engine": {
-		name: "@bpmn-sdk/engine",
+		name: "@bpmnkit/engine",
 		description:
 			"Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
 		content: `## Overview
 
-\`@bpmn-sdk/engine\` simulates BPMN 2.0 process execution. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
+\`@bpmnkit/engine\` simulates BPMN 2.0 process execution. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
 
 Perfect for: workflow testing, visual debugging, interactive demos, offline simulation, and process-driven UI flows.
 
@@ -440,7 +440,7 @@ Perfect for: workflow testing, visual debugging, interactive demos, offline simu
 - **All event types** — message, signal, timer (ISO 8601 duration/date/cycle), error, escalation, compensation
 - **Boundary events** — interrupting and non-interrupting error, timer, compensation
 - **Sub-processes** — embedded, call activity (process invocation by ID)
-- **DMN decisions** — inline decision table evaluation via \`@bpmn-sdk/feel\`
+- **DMN decisions** — inline decision table evaluation via \`@bpmnkit/feel\`
 - **Job workers** — register handlers for service tasks by job type
 - **Step-by-step** — \`beforeComplete\` hook pauses between elements for debugging UIs
 - **Zero dependencies** — browser + Node.js, no server required
@@ -448,13 +448,13 @@ Perfect for: workflow testing, visual debugging, interactive demos, offline simu
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/engine
+npm install @bpmnkit/engine
 \`\`\`
 
 ## Quick Start
 
 \`\`\`typescript
-import { Engine } from "@bpmn-sdk/engine"
+import { Engine } from "@bpmnkit/engine"
 
 const engine = new Engine()
 
@@ -528,12 +528,12 @@ const instance = engine.start("my-process", {}, {
 
 	// ── feel ──────────────────────────────────────────────────────────────────
 	"packages/feel": {
-		name: "@bpmn-sdk/feel",
+		name: "@bpmnkit/feel",
 		description:
 			"Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",
 		content: `## Overview
 
-\`@bpmn-sdk/feel\` is a complete implementation of the FEEL expression language used in DMN decision tables and BPMN condition expressions. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
+\`@bpmnkit/feel\` is a complete implementation of the FEEL expression language used in DMN decision tables and BPMN condition expressions. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
 
 ## Features
 
@@ -549,7 +549,7 @@ const instance = engine.start("my-process", {}, {
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/feel
+npm install @bpmnkit/feel
 \`\`\`
 
 ## Quick Start
@@ -557,7 +557,7 @@ npm install @bpmn-sdk/feel
 ### Evaluate an expression
 
 \`\`\`typescript
-import { parseExpression, evaluate } from "@bpmn-sdk/feel"
+import { parseExpression, evaluate } from "@bpmnkit/feel"
 
 const parsed = parseExpression("amount * 1.2 + fee")
 if (!parsed.errors.length) {
@@ -569,7 +569,7 @@ if (!parsed.errors.length) {
 ### Evaluate unary tests (DMN input expressions)
 
 \`\`\`typescript
-import { parseUnaryTests, evaluateUnaryTests } from "@bpmn-sdk/feel"
+import { parseUnaryTests, evaluateUnaryTests } from "@bpmnkit/feel"
 
 // Does input value match any listed condition?
 const parsed = parseUnaryTests('"gold","silver"')
@@ -580,7 +580,7 @@ console.log(matches) // true
 ### Syntax highlighting
 
 \`\`\`typescript
-import { highlightFeel } from "@bpmn-sdk/feel"
+import { highlightFeel } from "@bpmnkit/feel"
 
 const tokens = highlightFeel('if x > 10 then "high" else "low"')
 for (const token of tokens) {
@@ -614,17 +614,17 @@ interface ParseResult {
 
 	// ── plugins ───────────────────────────────────────────────────────────────
 	"packages/plugins": {
-		name: "@bpmn-sdk/plugins",
+		name: "@bpmnkit/plugins",
 		description:
 			"22 composable canvas plugins — minimap, AI chat, process simulation, storage, and more",
 		content: `## Overview
 
-\`@bpmn-sdk/plugins\` is a single package containing 22 ready-made \`CanvasPlugin\` add-ons for \`@bpmn-sdk/canvas\` and \`@bpmn-sdk/editor\`. Each plugin is imported individually via subpath exports so you only bundle what you use.
+\`@bpmnkit/plugins\` is a single package containing 22 ready-made \`CanvasPlugin\` add-ons for \`@bpmnkit/canvas\` and \`@bpmnkit/editor\`. Each plugin is imported individually via subpath exports so you only bundle what you use.
 
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/plugins
+npm install @bpmnkit/plugins
 \`\`\`
 
 ## Plugins
@@ -687,8 +687,8 @@ npm install @bpmn-sdk/plugins
 ### Minimap
 
 \`\`\`typescript
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
-import { createMinimapPlugin } from "@bpmn-sdk/plugins/minimap"
+import { BpmnCanvas } from "@bpmnkit/canvas"
+import { createMinimapPlugin } from "@bpmnkit/plugins/minimap"
 
 const canvas = new BpmnCanvas({
   container: document.getElementById("canvas")!,
@@ -699,9 +699,9 @@ const canvas = new BpmnCanvas({
 ### Storage + Tabs
 
 \`\`\`typescript
-import { createStoragePlugin } from "@bpmn-sdk/plugins/storage"
-import { createTabsPlugin } from "@bpmn-sdk/plugins/tabs"
-import { createStorageTabsBridge } from "@bpmn-sdk/plugins/storage-tabs-bridge"
+import { createStoragePlugin } from "@bpmnkit/plugins/storage"
+import { createTabsPlugin } from "@bpmnkit/plugins/tabs"
+import { createStorageTabsBridge } from "@bpmnkit/plugins/storage-tabs-bridge"
 
 const storage = createStoragePlugin({ editor })
 const tabs = createTabsPlugin({ editor })
@@ -711,9 +711,9 @@ const bridge = createStorageTabsBridge({ storage, tabs, mainMenu })
 ### Process Simulation
 
 \`\`\`typescript
-import { Engine } from "@bpmn-sdk/engine"
-import { createTokenHighlightPlugin } from "@bpmn-sdk/plugins/token-highlight"
-import { createProcessRunnerPlugin } from "@bpmn-sdk/plugins/process-runner"
+import { Engine } from "@bpmnkit/engine"
+import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
+import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
 
 const engine = new Engine()
 const tokenHighlight = createTokenHighlightPlugin()
@@ -728,7 +728,7 @@ const canvas = new BpmnCanvas({
 ### AI Chat Panel
 
 \`\`\`typescript
-import { createAiBridgePlugin } from "@bpmn-sdk/plugins/ai-bridge"
+import { createAiBridgePlugin } from "@bpmnkit/plugins/ai-bridge"
 
 const ai = createAiBridgePlugin({
   serverUrl: "http://localhost:3033",
@@ -741,12 +741,12 @@ const ai = createAiBridgePlugin({
 
 	// ── api ───────────────────────────────────────────────────────────────────
 	"packages/api": {
-		name: "@bpmn-sdk/api",
+		name: "@bpmnkit/api",
 		description:
 			"TypeScript client for the Camunda 8 REST API — 180 typed operations, OAuth2, retries, and caching",
 		content: `## Overview
 
-\`@bpmn-sdk/api\` is a fully typed TypeScript SDK for the [Camunda 8 Orchestration Cluster REST API v2](https://docs.camunda.io/docs/apis-tools/camunda-api-rest/camunda-api-rest-overview/). Every endpoint, request body, and response shape is typed end-to-end.
+\`@bpmnkit/api\` is a fully typed TypeScript SDK for the [Camunda 8 Orchestration Cluster REST API v2](https://docs.camunda.io/docs/apis-tools/camunda-api-rest/camunda-api-rest-overview/). Every endpoint, request body, and response shape is typed end-to-end.
 
 ## Features
 
@@ -764,13 +764,13 @@ const ai = createAiBridgePlugin({
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/api
+npm install @bpmnkit/api
 \`\`\`
 
 ## Quick Start
 
 \`\`\`typescript
-import { CamundaClient } from "@bpmn-sdk/api"
+import { CamundaClient } from "@bpmnkit/api"
 
 const client = new CamundaClient({
   baseUrl: "https://cluster.camunda.io",
@@ -851,7 +851,7 @@ const client = new CamundaClient({
 ## Error Handling
 
 \`\`\`typescript
-import { CamundaNotFoundError, CamundaRateLimitError } from "@bpmn-sdk/api"
+import { CamundaNotFoundError, CamundaRateLimitError } from "@bpmnkit/api"
 
 try {
   await client.processInstance.get(key)
@@ -865,33 +865,33 @@ try {
 
 	// ── ascii ─────────────────────────────────────────────────────────────────
 	"packages/ascii": {
-		name: "@bpmn-sdk/ascii",
+		name: "@bpmnkit/ascii",
 		description:
 			"Render BPMN diagrams as Unicode box-drawing ASCII art — perfect for terminals and docs",
 		content: `## Overview
 
-\`@bpmn-sdk/ascii\` converts BPMN 2.0 diagrams into Unicode box-drawing text art. It uses the same Sugiyama layout engine as the visual renderer, so the spatial flow of the diagram is preserved.
+\`@bpmnkit/ascii\` converts BPMN 2.0 diagrams into Unicode box-drawing text art. It uses the same Sugiyama layout engine as the visual renderer, so the spatial flow of the diagram is preserved.
 
 Useful for: CLI output, plain-text documentation, terminal UIs, test snapshots, and LLM prompts where visual BPMN isn't available.
 
 ## Features
 
 - **Unicode box-drawing** — \`┌─┐\`, \`│\`, \`└─┘\`, \`→\` for clean terminal output
-- **Automatic layout** — uses \`@bpmn-sdk/core\`'s layout engine
+- **Automatic layout** — uses \`@bpmnkit/core\`'s layout engine
 - **All element types** — tasks, events, gateways, sub-processes
 - **Configurable output** — optional title, element type labels
-- **Zero additional dependencies** — only requires \`@bpmn-sdk/core\` (already bundled)
+- **Zero additional dependencies** — only requires \`@bpmnkit/core\` (already bundled)
 
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/ascii
+npm install @bpmnkit/ascii
 \`\`\`
 
 ## Quick Start
 
 \`\`\`typescript
-import { renderBpmnAscii } from "@bpmn-sdk/ascii"
+import { renderBpmnAscii } from "@bpmnkit/ascii"
 import { readFileSync } from "node:fs"
 
 const xml = readFileSync("my-process.bpmn", "utf8")
@@ -932,14 +932,14 @@ interface RenderOptions {
 
 	// ── profiles ──────────────────────────────────────────────────────────────
 	"packages/profiles": {
-		name: "@bpmn-sdk/profiles",
+		name: "@bpmnkit/profiles",
 		description:
 			"Shared auth, profile storage, and client factories for the BPMN SDK CLI and proxy server",
 		content: `## Overview
 
-\`@bpmn-sdk/profiles\` is the shared layer that connects the \`casen\` CLI with the local proxy server. It handles profile CRUD (read/write to \`~/.config/casen/config.json\`), creates typed \`CamundaClient\` instances from stored profiles, and resolves Authorization headers for any supported auth type.
+\`@bpmnkit/profiles\` is the shared layer that connects the \`casen\` CLI with the local proxy server. It handles profile CRUD (read/write to \`~/.config/casen/config.json\`), creates typed \`CamundaClient\` instances from stored profiles, and resolves Authorization headers for any supported auth type.
 
-You do not need this package if you are connecting directly to Camunda using \`@bpmn-sdk/api\`. It is intended for tooling that needs to share authentication state with the CLI.
+You do not need this package if you are connecting directly to Camunda using \`@bpmnkit/api\`. It is intended for tooling that needs to share authentication state with the CLI.
 
 ## Features
 
@@ -953,7 +953,7 @@ You do not need this package if you are connecting directly to Camunda using \`@
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/profiles
+npm install @bpmnkit/profiles
 \`\`\`
 
 ## Quick Start
@@ -961,7 +961,7 @@ npm install @bpmn-sdk/profiles
 ### Create a \`CamundaClient\` from the active profile
 
 \`\`\`typescript
-import { createClientFromProfile } from "@bpmn-sdk/profiles"
+import { createClientFromProfile } from "@bpmnkit/profiles"
 
 // Uses the currently active profile from ~/.config/casen/config.json
 const client = createClientFromProfile()
@@ -979,7 +979,7 @@ const client = createClientFromProfile("production")
 ### Resolve an auth header directly
 
 \`\`\`typescript
-import { getActiveProfile, getAuthHeader } from "@bpmn-sdk/profiles"
+import { getActiveProfile, getAuthHeader } from "@bpmnkit/profiles"
 
 const profile = getActiveProfile()
 if (profile) {
@@ -991,7 +991,7 @@ if (profile) {
 ### Manage profiles programmatically
 
 \`\`\`typescript
-import { listProfiles, saveProfile, useProfile, deleteProfile } from "@bpmn-sdk/profiles"
+import { listProfiles, saveProfile, useProfile, deleteProfile } from "@bpmnkit/profiles"
 
 // List all profiles
 const profiles = listProfiles()
@@ -1045,14 +1045,14 @@ deleteProfile("old-profile")
 
 	// ── operate ───────────────────────────────────────────────────────────────
 	"packages/operate": {
-		name: "@bpmn-sdk/operate",
+		name: "@bpmnkit/operate",
 		description:
 			"Monitoring and operations frontend for Camunda 8 clusters — real-time SSE, zero dependencies",
 		content: `## Overview
 
-\`@bpmn-sdk/operate\` is a zero-dependency monitoring and operations frontend for Camunda 8. Mount it into any HTML element to get a full process monitoring UI — live dashboard, instance browser, incident management, job queue, and user tasks.
+\`@bpmnkit/operate\` is a zero-dependency monitoring and operations frontend for Camunda 8. Mount it into any HTML element to get a full process monitoring UI — live dashboard, instance browser, incident management, job queue, and user tasks.
 
-It pairs with the \`@bpmn-sdk/proxy\` local server, which polls the Camunda REST API server-side and pushes updates via **Server-Sent Events**. The frontend stays clean with no polling timers.
+It pairs with the \`@bpmnkit/proxy\` local server, which polls the Camunda REST API server-side and pushes updates via **Server-Sent Events**. The frontend stays clean with no polling timers.
 
 A **mock mode** (\`mock: true\`) ships fixture data without any running proxy or cluster — useful for demos and local development.
 
@@ -1061,7 +1061,7 @@ A **mock mode** (\`mock: true\`) ships fixture data without any running proxy or
 - **Dashboard** — real-time stats: active instances, open incidents, active jobs, pending tasks
 - **Process Definitions** — deployed process list with name, version, and tenant
 - **Process Instances** — paginated list with state filter (Active / Completed / Terminated)
-- **Instance Detail** — BPMN canvas via \`@bpmn-sdk/canvas\` with live token-highlight overlay; active elements glow amber, visited elements show green tint
+- **Instance Detail** — BPMN canvas via \`@bpmnkit/canvas\` with live token-highlight overlay; active elements glow amber, visited elements show green tint
 - **Incidents** — error type, message, process, and resolution state
 - **Jobs** — job type, worker, retries, state, error message
 - **User Tasks** — name, assignee, state, due date, priority
@@ -1074,7 +1074,7 @@ A **mock mode** (\`mock: true\`) ships fixture data without any running proxy or
 ## Installation
 
 \`\`\`sh
-npm install @bpmn-sdk/operate @bpmn-sdk/proxy
+npm install @bpmnkit/operate @bpmnkit/proxy
 \`\`\`
 
 ## Quick Start
@@ -1082,7 +1082,7 @@ npm install @bpmn-sdk/operate @bpmn-sdk/proxy
 ### Demo mode (no cluster needed)
 
 \`\`\`typescript
-import { createOperate } from "@bpmn-sdk/operate"
+import { createOperate } from "@bpmnkit/operate"
 
 createOperate({
   container: document.getElementById("app")!,
@@ -1094,7 +1094,7 @@ createOperate({
 ### Connected to a real Camunda cluster via proxy
 
 \`\`\`typescript
-import { createOperate } from "@bpmn-sdk/operate"
+import { createOperate } from "@bpmnkit/operate"
 
 createOperate({
   container: document.getElementById("app")!,
@@ -1110,7 +1110,7 @@ The proxy must be running (\`pnpm proxy\`) and have at least one profile configu
 ## How it works
 
 \`\`\`
-Browser  ──── EventSource ────▶  @bpmn-sdk/proxy  ──── CamundaClient ────▶  Camunda cluster
+Browser  ──── EventSource ────▶  @bpmnkit/proxy  ──── CamundaClient ────▶  Camunda cluster
          ◀─── SSE events ──────  (polls on interval, pushes results)
 \`\`\`
 

@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/cli",
+	"name": "@bpmnkit/cli",
 	"version": "0.0.9",
 	"description": "Camunda v2 REST API command-line interface",
 	"type": "module",
@@ -17,16 +17,16 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmn-sdk/api": "workspace:*",
-		"@bpmn-sdk/ascii": "workspace:*",
-		"@bpmn-sdk/connector-gen": "workspace:*",
-		"@bpmn-sdk/profiles": "workspace:*"
+		"@bpmnkit/api": "workspace:*",
+		"@bpmnkit/ascii": "workspace:*",
+		"@bpmnkit/connector-gen": "workspace:*",
+		"@bpmnkit/profiles": "workspace:*"
 	},
 	"publishConfig": {
 		"access": "public"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

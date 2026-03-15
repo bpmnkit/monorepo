@@ -1,11 +1,11 @@
 ---
-title: "@bpmn-sdk/engine"
+title: "@bpmnkit/engine"
 description: Zero-dependency BPMN simulation engine for browsers and Node.js.
 ---
 
 ## Overview
 
-`@bpmn-sdk/engine` is a lightweight BPMN 2.0 process engine that runs entirely in the
+`@bpmnkit/engine` is a lightweight BPMN 2.0 process engine that runs entirely in the
 JavaScript runtime — no external services required.
 
 **Supported BPMN elements:**
@@ -13,7 +13,7 @@ JavaScript runtime — no external services required.
 - Exclusive, parallel, inclusive, and event-based gateways
 - Timer events (ISO 8601 duration, date, and cycle)
 - Message correlation (intermediate catch events, message start)
-- DMN decision evaluation (requires `@bpmn-sdk/core`)
+- DMN decision evaluation (requires `@bpmnkit/core`)
 - Boundary events (timer, error, message)
 - Call activities (inline subprocess invocation)
 - IO variable mappings (Zeebe `zeebe:ioMapping` extension)
@@ -23,7 +23,7 @@ Zero runtime dependencies. ESM-only.
 ## Installation
 
 ```sh
-pnpm add @bpmn-sdk/engine
+pnpm add @bpmnkit/engine
 ```
 
 ## API Reference
@@ -130,5 +130,5 @@ R3/PT1H     → repeat 3 times, every hour
 2026-12-01T09:00:00Z  → fire at absolute date
 ```
 
-Call `parseDurationMs(str)` from `@bpmn-sdk/engine` to convert duration strings
+Call `parseDurationMs(str)` from `@bpmnkit/engine` to convert duration strings
 to milliseconds in your own code.

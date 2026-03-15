@@ -31,7 +31,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build docs
-        run: pnpm turbo build --filter @bpmn-sdk/docs
+        run: pnpm turbo build --filter @bpmnkit/docs
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

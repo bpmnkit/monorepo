@@ -1,4 +1,4 @@
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
+import { BpmnCanvas } from "@bpmnkit/canvas"
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { MINIMAP_STYLE_ID, createMinimapPlugin } from "../../src/minimap/index.js"
@@ -131,7 +131,7 @@ describe("Minimap", () => {
 	})
 
 	it("clear() removes rendered shapes and edges", async () => {
-		const { Bpmn } = await import("@bpmn-sdk/core")
+		const { Bpmn } = await import("@bpmnkit/core")
 		const defs = Bpmn.parse(SIMPLE_XML)
 		minimap.update(defs)
 		minimap.clear()

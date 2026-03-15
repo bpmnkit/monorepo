@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/connector-gen",
+	"name": "@bpmnkit/connector-gen",
 	"version": "0.0.2",
 	"private": false,
 	"type": "module",
@@ -26,6 +26,6 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/bpmn-sdk/monorepo"
+		"url": "https://github.com/bpmnkit/monorepo"
 	}
 }

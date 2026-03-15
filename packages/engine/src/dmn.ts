@@ -1,6 +1,6 @@
-import type { DmnAggregation, DmnDecision, DmnInput, HitPolicy } from "@bpmn-sdk/core"
-import { evaluate, evaluateUnaryTests, parseExpression, parseUnaryTests } from "@bpmn-sdk/feel"
-import type { FeelValue } from "@bpmn-sdk/feel"
+import type { DmnAggregation, DmnDecision, DmnInput, HitPolicy } from "@bpmnkit/core"
+import { evaluate, evaluateUnaryTests, parseExpression, parseUnaryTests } from "@bpmnkit/feel"
+import type { FeelValue } from "@bpmnkit/feel"
 
 /**
  * Evaluate a DMN decision table against the provided variables.

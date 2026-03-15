@@ -1,13 +1,13 @@
-import type { DmnDecision } from "@bpmn-sdk/core"
+import type { DmnDecision } from "@bpmnkit/core"
 import { describe, expect, it } from "vitest"
 import { evaluateDecision } from "../src/dmn.js"
 
 function makeDecision(
-	hitPolicy: import("@bpmn-sdk/core").HitPolicy,
+	hitPolicy: import("@bpmnkit/core").HitPolicy,
 	inputs: { label: string; expression: string }[],
 	outputs: { name: string }[],
 	rules: { inputEntries: string[]; outputEntries: string[] }[],
-	aggregation?: import("@bpmn-sdk/core").DmnAggregation,
+	aggregation?: import("@bpmnkit/core").DmnAggregation,
 ): DmnDecision {
 	return {
 		id: "Decision_1",

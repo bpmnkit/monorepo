@@ -1,4 +1,4 @@
-import { Bpmn, SAMPLE_BPMN_XML } from "@bpmn-sdk/core"
+import { Bpmn, SAMPLE_BPMN_XML } from "@bpmnkit/core"
 import { describe, expect, it } from "vitest"
 import { renderBpmnAscii } from "../src/index.js"
 

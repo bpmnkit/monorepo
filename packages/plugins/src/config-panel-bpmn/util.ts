@@ -1,10 +1,10 @@
-import type { BpmnDefinitions, BpmnFlowElement, BpmnSequenceFlow, XmlElement } from "@bpmn-sdk/core"
+import type { BpmnDefinitions, BpmnFlowElement, BpmnSequenceFlow, XmlElement } from "@bpmnkit/core"
 import type {
 	ZeebeExtensions,
 	ZeebeIoMappingEntry,
 	ZeebePropertyEntry,
 	ZeebeTaskHeaderEntry,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 
 // ── XML helpers ───────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import type { XmlElement } from "@bpmn-sdk/core"
+import type { XmlElement } from "@bpmnkit/core"
 
 /** Parsed Zeebe extension data for a BPMN element. */
 export interface ParsedZeebeExt {

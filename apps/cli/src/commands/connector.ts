@@ -79,7 +79,7 @@ export const connectorGroup: CommandGroup = {
 			async run(ctx) {
 				// Lazy import so the CLI doesn't load yaml on startup
 				const { generate, generateFromUrl, CATALOG, getCatalogEntry } = await import(
-					"@bpmn-sdk/connector-gen"
+					"@bpmnkit/connector-gen"
 				)
 
 				const swaggerPath = ctx.flags.swagger as string | undefined
@@ -128,7 +128,7 @@ export const connectorGroup: CommandGroup = {
 						return
 					}
 
-					const { writeTemplates } = await import("@bpmn-sdk/connector-gen")
+					const { writeTemplates } = await import("@bpmnkit/connector-gen")
 					const files = await writeTemplates(templates, { outputDir: resolve(outputDir), format })
 					ctx.output.ok(`Generated ${files.length} template(s) → ${resolve(outputDir)}`)
 					for (const f of files) ctx.output.info(`  ${f}`)
@@ -167,7 +167,7 @@ export const connectorGroup: CommandGroup = {
 			description: "List available API catalog entries",
 			examples: [{ description: "Show all catalog entries", command: "casen connector catalog" }],
 			async run(ctx) {
-				const { CATALOG } = await import("@bpmn-sdk/connector-gen")
+				const { CATALOG } = await import("@bpmnkit/connector-gen")
 				ctx.output.printList(
 					{
 						items: CATALOG.map((e) => ({

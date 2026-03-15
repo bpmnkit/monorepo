@@ -1,5 +1,5 @@
-import type { RenderedShape } from "@bpmn-sdk/canvas"
-import type { BpmnBounds, BpmnWaypoint } from "@bpmn-sdk/core"
+import type { RenderedShape } from "@bpmnkit/canvas"
+import type { BpmnBounds, BpmnWaypoint } from "@bpmnkit/core"
 import { handlePositions } from "./geometry.js"
 import type { CreateShapeType, DiagPoint, HandleDir } from "./types.js"
 

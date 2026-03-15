@@ -1,6 +1,6 @@
-import { BpmnCanvas } from "@bpmn-sdk/canvas"
-import { Bpmn, Dmn, Form, compactify } from "@bpmn-sdk/core"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import { BpmnCanvas } from "@bpmnkit/canvas"
+import { Bpmn, Dmn, Form, compactify } from "@bpmnkit/core"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 import { saveCheckpoint } from "../history/index.js"
 import { injectAiBridgeStyles } from "./css.js"
 
@@ -406,8 +406,8 @@ export function createAiPanel(options: PanelOptions): {
 		statusEl.textContent = "AI server not running. Start with:"
 		for (const el of Array.from(statusBar.querySelectorAll("code"))) el.remove()
 		const code = document.createElement("code")
-		code.textContent = "pnpx @bpmn-sdk/ai-server"
-		code.title = "or: npx @bpmn-sdk/ai-server"
+		code.textContent = "pnpx @bpmnkit/ai-server"
+		code.title = "or: npx @bpmnkit/ai-server"
 		statusBar.append(code)
 	}
 

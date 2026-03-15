@@ -1,14 +1,14 @@
 /**
- * @bpmn-sdk/canvas-plugin-config-panel — schema-driven element config panel for
- * `@bpmn-sdk/editor`.
+ * @bpmnkit/canvas-plugin-config-panel — schema-driven element config panel for
+ * `@bpmnkit/editor`.
  *
  * Provides a compact right-rail panel and a full 65%-overlay editor for
  * configuring BPMN element properties. Schemas and adapters are registered by
- * companion plugins (e.g. `@bpmn-sdk/canvas-plugin-config-panel-bpmn`).
+ * companion plugins (e.g. `@bpmnkit/canvas-plugin-config-panel-bpmn`).
  *
  * ## Usage
  * ```typescript
- * import { createConfigPanelPlugin } from "@bpmn-sdk/canvas-plugin-config-panel";
+ * import { createConfigPanelPlugin } from "@bpmnkit/canvas-plugin-config-panel";
  *
  * let editorRef: BpmnEditor | null = null;
  * const configPanel = createConfigPanelPlugin({
@@ -22,7 +22,7 @@
  * @packageDocumentation
  */
 
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 import { injectConfigPanelStyles } from "./css.js"
 import { ConfigPanelRenderer } from "./renderer.js"
 import type { ConfigPanelOptions, ConfigPanelPlugin, PanelAdapter, PanelSchema } from "./types.js"

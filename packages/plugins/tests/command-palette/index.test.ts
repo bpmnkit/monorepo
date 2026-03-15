@@ -1,4 +1,4 @@
-import type { CanvasApi } from "@bpmn-sdk/canvas"
+import type { CanvasApi } from "@bpmnkit/canvas"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createCommandPalettePlugin } from "../../src/command-palette/index.js"
 

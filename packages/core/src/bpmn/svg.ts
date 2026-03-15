@@ -61,7 +61,7 @@ export interface SvgExportOptions {
  *
  * @example
  * ```ts
- * import { Bpmn, exportSvg } from "@bpmn-sdk/core"
+ * import { Bpmn, exportSvg } from "@bpmnkit/core"
  *
  * const defs = Bpmn.createProcess("order")
  *   .startEvent("start")

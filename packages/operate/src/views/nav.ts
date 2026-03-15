@@ -1,4 +1,4 @@
-import { IC_UI } from "@bpmn-sdk/ui"
+import { IC_UI } from "@bpmnkit/ui"
 
 export interface NavItem {
 	id: string

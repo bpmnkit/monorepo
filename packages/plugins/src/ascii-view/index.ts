@@ -1,5 +1,5 @@
-import { renderBpmnAscii } from "@bpmn-sdk/ascii"
-import type { CanvasPlugin } from "@bpmn-sdk/canvas"
+import { renderBpmnAscii } from "@bpmnkit/ascii"
+import type { CanvasPlugin } from "@bpmnkit/canvas"
 import { injectAsciiViewStyles } from "./css.js"
 
 export { ASCII_VIEW_CSS, ASCII_VIEW_STYLE_ID, injectAsciiViewStyles } from "./css.js"

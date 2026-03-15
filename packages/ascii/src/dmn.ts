@@ -1,5 +1,5 @@
-import { Dmn } from "@bpmn-sdk/core"
-import type { DmnDecisionTable } from "@bpmn-sdk/core"
+import { Dmn } from "@bpmnkit/core"
+import type { DmnDecisionTable } from "@bpmnkit/core"
 import type { RenderOptions } from "./types.js"
 
 // ── Box-drawing characters ───────────────────────────────────────────────────

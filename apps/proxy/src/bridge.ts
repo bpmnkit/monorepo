@@ -1,5 +1,5 @@
 /**
- * QuickJS bridge — exposes all @bpmn-sdk/core operations as globalThis.Bridge.* functions.
+ * QuickJS bridge — exposes all @bpmnkit/core operations as globalThis.Bridge.* functions.
  * Bundled as an IIFE (platform=neutral) and embedded in the Rust binaries via rquickjs.
  * All inputs/outputs are JSON strings or primitives.
  */
@@ -20,7 +20,7 @@ import {
 	expand,
 	layoutProcess,
 	optimize,
-} from "@bpmn-sdk/core"
+} from "@bpmnkit/core"
 
 // ── MCP state (persists across calls within a single QuickJS runtime) ─────────
 

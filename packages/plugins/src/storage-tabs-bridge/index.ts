@@ -1,5 +1,5 @@
 /**
- * @bpmn-sdk/canvas-plugin-storage-tabs-bridge
+ * @bpmnkit/canvas-plugin-storage-tabs-bridge
  *
  * Wires the storage plugin and tabs plugin together, handling:
  * - Tab ↔ storage file mapping
@@ -11,8 +11,8 @@
  * @packageDocumentation
  */
 
-import type { CanvasApi, CanvasPlugin } from "@bpmn-sdk/canvas"
-import { Bpmn, Dmn, Form } from "@bpmn-sdk/core"
+import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
+import { Bpmn, Dmn, Form } from "@bpmnkit/core"
 import type { CommandPalettePlugin } from "../command-palette/index.js"
 import type { MainMenuApi } from "../main-menu/index.js"
 import { showInputDialog } from "../storage/index.js"

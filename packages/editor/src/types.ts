@@ -1,5 +1,5 @@
-import type { CanvasEvents, CanvasOptions } from "@bpmn-sdk/canvas"
-import type { BpmnDefinitions } from "@bpmn-sdk/core"
+import type { CanvasEvents, CanvasOptions } from "@bpmnkit/canvas"
+import type { BpmnDefinitions } from "@bpmnkit/core"
 
 export type CreateShapeType =
 	| "startEvent"

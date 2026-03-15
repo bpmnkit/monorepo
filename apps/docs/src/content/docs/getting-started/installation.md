@@ -7,15 +7,15 @@ BPMN Kit is a collection of focused packages. Install only what you need.
 
 ## Core SDK
 
-The `@bpmn-sdk/core` package is the foundation — it provides the fluent process builder,
+The `@bpmnkit/core` package is the foundation — it provides the fluent process builder,
 BPMN 2.0 parser/serializer, auto-layout, and the AI-compact format.
 
 ```sh
-pnpm add @bpmn-sdk/core
+pnpm add @bpmnkit/core
 # or
-npm install @bpmn-sdk/core
+npm install @bpmnkit/core
 # or
-yarn add @bpmn-sdk/core
+yarn add @bpmnkit/core
 ```
 
 ## Simulation Engine
@@ -23,7 +23,7 @@ yarn add @bpmn-sdk/core
 To run BPMN processes locally (browser or Node.js):
 
 ```sh
-pnpm add @bpmn-sdk/engine
+pnpm add @bpmnkit/engine
 ```
 
 ## Camunda 8 REST API Client
@@ -31,7 +31,7 @@ pnpm add @bpmn-sdk/engine
 To interact with a live Camunda 8 cluster:
 
 ```sh
-pnpm add @bpmn-sdk/api
+pnpm add @bpmnkit/api
 ```
 
 ## SVG Canvas Viewer
@@ -39,7 +39,7 @@ pnpm add @bpmn-sdk/api
 To embed an interactive BPMN diagram viewer in a web page:
 
 ```sh
-pnpm add @bpmn-sdk/canvas
+pnpm add @bpmnkit/canvas
 ```
 
 ## Full Editor
@@ -47,7 +47,7 @@ pnpm add @bpmn-sdk/canvas
 The editor bundles the canvas, a properties panel, and an AI bridge:
 
 ```sh
-pnpm add @bpmn-sdk/editor
+pnpm add @bpmnkit/editor
 ```
 
 ## CLI

@@ -1,5 +1,5 @@
 {
-	"name": "@bpmn-sdk/docs",
+	"name": "@bpmnkit/docs",
 	"private": true,
 	"version": "0.0.2",
 	"type": "module",
