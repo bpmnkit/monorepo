@@ -38,7 +38,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 	} = options
 
 	let profile: string | null = options.profile ?? null
-	const initialTheme: Theme = loadPersistedTheme() ?? options.theme ?? "auto"
+	const initialTheme: Theme = loadPersistedTheme() ?? options.theme ?? "neon"
 
 	// ── Root element ──────────────────────────────────────────────────────────
 

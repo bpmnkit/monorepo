@@ -317,7 +317,7 @@ export class BpmnEditor {
 		this._id = String(_instanceCounter++)
 
 		// Resolve initial theme — localStorage overrides the options.theme when persistTheme is on
-		let initialTheme = options.theme ?? "auto"
+		let initialTheme = options.theme ?? "neon"
 		if (options.persistTheme) {
 			try {
 				const stored = localStorage.getItem("bpmnkit-theme")

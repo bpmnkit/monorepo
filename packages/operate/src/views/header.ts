@@ -4,7 +4,7 @@ import type { ProfileInfo } from "../types.js"
 export function createHeader(
 	onProfileChange: (name: string) => void,
 	onThemeChange: (theme: Theme, resolved: "light" | "dark" | "neon") => void,
-	initialTheme: Theme = "auto",
+	initialTheme: Theme = "neon",
 ): {
 	el: HTMLElement
 	setTitle(title: string): void

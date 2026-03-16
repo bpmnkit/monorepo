@@ -35,7 +35,7 @@ try {
 createOperate({
 	container,
 	mock,
-	theme: "auto",
+	theme: "neon",
 	pollInterval: 15_000,
 	...(mock ? {} : { proxyUrl: PROXY_URL, profile }),
 })

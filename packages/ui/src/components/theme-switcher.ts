@@ -24,7 +24,7 @@ export function createThemeSwitcher(options: ThemeSwitcherOptions): {
 	el: HTMLElement
 	setTheme(t: Theme): void
 } {
-	let current: Theme = options.initial ?? "auto"
+	let current: Theme = options.initial ?? "neon"
 	let dropdownEl: HTMLDivElement | null = null
 	let isOpen = false
 
