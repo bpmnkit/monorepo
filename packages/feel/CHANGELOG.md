@@ -1,5 +1,11 @@
 # @bpmnkit/feel
 
+## 0.0.12
+
+### Patch Changes
+
+- [#47](https://github.com/bpmnkit/monorepo/pull/47) [`89e73af`](https://github.com/bpmnkit/monorepo/commit/89e73af16532adb580a338eb8e4996d29b361283) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Design, AI, OpenAPI
+
 ## 0.0.11
 
 ### Patch Changes

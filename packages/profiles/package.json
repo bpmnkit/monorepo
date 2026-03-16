@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/profiles",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"description": "Shared auth, profile storage, and client factories for the BPMN Kit CLI and proxy server",
 	"type": "module",
 	"main": "./dist/index.js",

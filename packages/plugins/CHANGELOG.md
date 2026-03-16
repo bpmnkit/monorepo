@@ -1,5 +1,18 @@
 # @bpmnkit/plugins
 
+## 0.0.12
+
+### Patch Changes
+
+- [#47](https://github.com/bpmnkit/monorepo/pull/47) [`89e73af`](https://github.com/bpmnkit/monorepo/commit/89e73af16532adb580a338eb8e4996d29b361283) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Design, AI, OpenAPI
+
+- Updated dependencies [[`89e73af`](https://github.com/bpmnkit/monorepo/commit/89e73af16532adb580a338eb8e4996d29b361283)]:
+  - @bpmnkit/canvas@0.0.12
+  - @bpmnkit/editor@0.0.12
+  - @bpmnkit/ascii@0.0.12
+  - @bpmnkit/core@0.0.12
+  - @bpmnkit/feel@0.0.12
+
 ## 0.0.11
 
 ### Patch Changes
