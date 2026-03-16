@@ -74,6 +74,9 @@ const SUN_ICON =
 const AUTO_ICON =
 	'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 8V3.5"/><path d="M8 8l3.2 2"/></svg>'
 
+const NEON_ICON =
+	'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9.5,1.5 5.5,8 8.5,8 6.5,14.5 10.5,8 7.5,8 9.5,1.5"/></svg>'
+
 const BACK_ICON =
 	'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="10,3 5,8 10,13"/></svg>'
 
@@ -84,6 +87,7 @@ const THEMES: Array<{ value: Theme; label: string; icon: string }> = [
 	{ value: "dark", label: "Dark", icon: MOON_ICON },
 	{ value: "light", label: "Light", icon: SUN_ICON },
 	{ value: "auto", label: "System", icon: AUTO_ICON },
+	{ value: "neon", label: "Neon", icon: NEON_ICON },
 ]
 
 type Level = { title?: string; items: MenuItem[] }

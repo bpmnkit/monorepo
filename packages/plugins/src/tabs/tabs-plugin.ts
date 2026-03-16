@@ -276,7 +276,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 	let dropdownEl: HTMLDivElement | null = null
 	let recentBtnEl: HTMLButtonElement | null = null
 	let recentListEl: HTMLDivElement | null = null
-	let theme: "dark" | "light" = "dark"
+	let theme: "dark" | "light" | "neon" = "dark"
 	let offDiagramChange: (() => void) | undefined
 	let isRawMode = false
 	let rawPaneEl: HTMLDivElement | null = null
@@ -865,7 +865,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		tab.pane = pane
 
 		if (tab.config.type === "dmn") {
-			const editor = new DmnEditor({ container: pane, theme })
+			const editor = new DmnEditor({ container: pane, theme: theme === "neon" ? "dark" : theme })
 			tab.dmnEditor = editor
 			const xml = Dmn.export(tab.config.defs)
 			void editor.loadXML(xml)
@@ -883,7 +883,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 				})()
 			})
 		} else if (tab.config.type === "form") {
-			const editor = new FormEditor({ container: pane, theme })
+			const editor = new FormEditor({ container: pane, theme: theme === "neon" ? "dark" : theme })
 			tab.formEditor = editor
 			const schema = JSON.parse(Form.export(tab.config.form)) as Record<string, unknown>
 			void editor.loadSchema(schema)
@@ -911,8 +911,9 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 	}
 
 	function applyThemeToTab(tab: TabState): void {
-		tab.dmnEditor?.setTheme(theme)
-		tab.formEditor?.setTheme(theme)
+		const editorTheme = theme === "neon" ? "dark" : theme
+		tab.dmnEditor?.setTheme(editorTheme)
+		tab.formEditor?.setTheme(editorTheme)
 	}
 
 	function showWarning(tab: TabState, show: boolean): void {
@@ -1253,9 +1254,10 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			canvasApi = cApi
 			injectTabsStyles()
 
-			// Detect theme from canvas (canvas sets data-theme="dark" for dark, removes it for light)
+			// Detect theme from canvas (canvas sets data-theme="dark"/"neon"; absence means light)
 			const container = cApi.container
-			theme = container.dataset.theme === "dark" ? "dark" : "light"
+			const initialTheme = container.dataset.theme
+			theme = initialTheme === "dark" || initialTheme === "neon" ? initialTheme : "light"
 
 			// Expand container to be position:relative for absolute children
 			if (getComputedStyle(container).position === "static") {
@@ -1393,10 +1395,10 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			offDiagramChange = anyOn("diagram:change", onDiagramUpdate)
 			anyOn("diagram:load", onDiagramUpdate)
 
-			// Listen for theme changes (canvas toggles data-theme="dark"; absence means light)
+			// Listen for theme changes (canvas sets data-theme="dark"/"neon"; absence means light)
 			const observer = new MutationObserver(() => {
 				const t = container.dataset.theme
-				theme = t === "dark" ? "dark" : "light"
+				theme = t === "dark" || t === "neon" ? t : "light"
 				if (tabBar) tabBar.dataset.theme = theme
 				if (welcomeEl) welcomeEl.dataset.theme = theme
 				if (dropdownEl) dropdownEl.dataset.theme = theme

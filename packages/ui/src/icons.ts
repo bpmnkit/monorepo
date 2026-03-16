@@ -4,6 +4,7 @@ export const IC_UI = {
 	moon: `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M13 9.5a6 6 0 1 1-7.5-7.5 7 7 0 0 0 7.5 7.5z"/></svg>`,
 	sun: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.8"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="3.3" y1="3.3" x2="4.4" y2="4.4"/><line x1="11.6" y1="11.6" x2="12.7" y2="12.7"/><line x1="3.3" y1="12.7" x2="4.4" y2="11.6"/><line x1="11.6" y1="4.4" x2="12.7" y2="3.3"/></svg>`,
 	auto: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 8V3.5"/><path d="M8 8l3.2 2"/></svg>`,
+	neon: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9.5,1.5 5.5,8 8.5,8 6.5,14.5 10.5,8 7.5,8 9.5,1.5"/></svg>`,
 	check: `<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5,6 4.5,9 10.5,3"/></svg>`,
 
 	// ── Navigation ──────────────────────────────────────────────────────────

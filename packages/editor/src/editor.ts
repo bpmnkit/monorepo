@@ -321,7 +321,7 @@ export class BpmnEditor {
 		if (options.persistTheme) {
 			try {
 				const stored = localStorage.getItem("bpmnkit-theme")
-				if (stored === "dark" || stored === "light" || stored === "auto") {
+				if (stored === "dark" || stored === "light" || stored === "auto" || stored === "neon") {
 					initialTheme = stored
 				}
 			} catch {
@@ -711,8 +711,10 @@ export class BpmnEditor {
 		return this._host
 	}
 
-	getTheme(): "light" | "dark" {
-		return this._host.getAttribute("data-theme") === "dark" ? "dark" : "light"
+	getTheme(): "light" | "dark" | "neon" {
+		const t = this._host.getAttribute("data-theme")
+		if (t === "dark" || t === "neon") return t
+		return "light"
 	}
 
 	setTheme(theme: Theme): void {
@@ -2171,10 +2173,10 @@ export class BpmnEditor {
 					? "dark"
 					: "light"
 				: theme
-		if (resolved === "dark") {
-			this._host.setAttribute("data-theme", "dark")
-		} else {
+		if (resolved === "light") {
 			this._host.removeAttribute("data-theme")
+		} else {
+			this._host.setAttribute("data-theme", resolved)
 		}
 	}
 

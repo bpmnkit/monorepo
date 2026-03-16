@@ -504,4 +504,8 @@ hudRef = initEditorHud(editor, {
 	onExitSimulation: () => {
 		processRunnerPlugin.exitPlayMode()
 	},
+	onToggleSidebar: () => {
+		if (dock.collapsed) dock.expand()
+		else dock.collapse()
+	},
 })

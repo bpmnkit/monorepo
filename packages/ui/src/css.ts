@@ -60,6 +60,27 @@ export const UI_TOKENS_CSS = `
   --bpmnkit-nav-bg: #0a0a14;
   --bpmnkit-nav-fg: #8888a8;
 }
+
+[data-theme="neon"] {
+  --bpmnkit-bg: oklch(5% 0.025 270);
+  --bpmnkit-surface: oklch(9% 0.025 270);
+  --bpmnkit-surface-2: oklch(12% 0.03 270);
+  --bpmnkit-border: oklch(65% 0.28 280 / 0.2);
+  --bpmnkit-fg: oklch(88% 0.02 270);
+  --bpmnkit-fg-muted: oklch(55% 0.04 270);
+  --bpmnkit-accent: oklch(55% 0.22 280);
+  --bpmnkit-accent-bright: oklch(73% 0.16 280);
+  --bpmnkit-accent-subtle: oklch(55% 0.22 280 / 0.15);
+  --bpmnkit-accent-fg: oklch(95% 0.01 270);
+  --bpmnkit-teal: oklch(72% 0.18 185);
+  --bpmnkit-success: oklch(72% 0.18 145);
+  --bpmnkit-warn: oklch(75% 0.17 75);
+  --bpmnkit-danger: oklch(65% 0.22 25);
+  --bpmnkit-panel-bg: oklch(8% 0.03 270 / 0.96);
+  --bpmnkit-panel-border: oklch(65% 0.28 280 / 0.2);
+  --bpmnkit-nav-bg: oklch(5% 0.025 270);
+  --bpmnkit-nav-fg: oklch(50% 0.06 270);
+}
 `
 
 /** CSS for shared components: badge, card, table, theme-switcher. */
@@ -205,6 +226,9 @@ export const UI_COMPONENTS_CSS = `
 .bpmnkit-theme-dropdown[data-theme="dark"] {
   box-shadow: 0 6px 24px rgba(0,0,0,0.5);
 }
+.bpmnkit-theme-dropdown[data-theme="neon"] {
+  box-shadow: 0 6px 24px oklch(0% 0 0 / 0.6), 0 0 0 1px oklch(65% 0.28 280 / 0.1);
+}
 .bpmnkit-theme-item {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px;
@@ -219,12 +243,15 @@ export const UI_COMPONENTS_CSS = `
 .bpmnkit-theme-item:hover { background: var(--bpmnkit-surface-2); }
 .bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item { color: rgba(255,255,255,0.75); }
 .bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item:hover { background: rgba(255,255,255,0.08); }
+.bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item { color: oklch(73% 0.16 280); }
+.bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item:hover { background: oklch(65% 0.28 280 / 0.1); }
 .bpmnkit-theme-item-check {
   width: 12px; height: 12px; flex-shrink: 0;
   color: var(--bpmnkit-accent, #1a56db);
   display: flex; align-items: center;
 }
 .bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item-check { color: var(--bpmnkit-accent, #6b9df7); }
+.bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item-check { color: oklch(72% 0.18 185); }
 .bpmnkit-theme-item-icon {
   width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7;
   display: flex; align-items: center;

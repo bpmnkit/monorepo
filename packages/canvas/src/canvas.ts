@@ -361,10 +361,10 @@ export class BpmnCanvas {
 					? "dark"
 					: "light"
 				: theme
-		if (resolved === "dark") {
-			this._host.setAttribute("data-theme", "dark")
-		} else {
+		if (resolved === "light") {
 			this._host.removeAttribute("data-theme")
+		} else {
+			this._host.setAttribute("data-theme", resolved)
 		}
 	}
 

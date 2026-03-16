@@ -1,9 +1,9 @@
-export type Theme = "light" | "dark" | "auto"
+export type Theme = "light" | "dark" | "auto" | "neon"
 
 const STORAGE_KEY = "bpmnkit-theme"
 
-/** Resolves "auto" to the OS preference; returns "light" or "dark". */
-export function resolveTheme(theme: Theme): "light" | "dark" {
+/** Resolves "auto" to the OS preference; "neon" and explicit "light"/"dark" pass through. */
+export function resolveTheme(theme: Theme): "light" | "dark" | "neon" {
 	if (theme !== "auto") return theme
 	return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
@@ -21,7 +21,7 @@ export function persistTheme(theme: Theme): void {
 export function loadPersistedTheme(): Theme | null {
 	try {
 		const v = localStorage.getItem(STORAGE_KEY)
-		if (v === "light" || v === "dark" || v === "auto") return v
+		if (v === "light" || v === "dark" || v === "auto" || v === "neon") return v
 	} catch {
 		// storage unavailable
 	}

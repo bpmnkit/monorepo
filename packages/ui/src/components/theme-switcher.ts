@@ -5,12 +5,13 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; icon: string }> = [
 	{ value: "dark", label: "Dark", icon: IC_UI.moon },
 	{ value: "light", label: "Light", icon: IC_UI.sun },
 	{ value: "auto", label: "System", icon: IC_UI.auto },
+	{ value: "neon", label: "Neon", icon: IC_UI.neon },
 ]
 
 export interface ThemeSwitcherOptions {
 	initial?: Theme
 	/** Called whenever the user selects a theme. */
-	onChange: (theme: Theme, resolved: "light" | "dark") => void
+	onChange: (theme: Theme, resolved: "light" | "dark" | "neon") => void
 	/** If true, persists the selection to localStorage under "bpmnkit-theme". */
 	persist?: boolean
 }

@@ -250,4 +250,8 @@ initEditorHud(editor, {
 	rawModeButton: bridge.tabsPlugin.api.rawModeButton,
 	optimizeButton: optimizePlugin.button,
 	aiButton: aiBridgePlugin.button,
+	onToggleSidebar: () => {
+		if (dock.collapsed) dock.expand()
+		else dock.collapse()
+	},
 })

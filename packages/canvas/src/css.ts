@@ -209,6 +209,26 @@ export const CANVAS_CSS = `
 }
 .bpmnkit-canvas-host[data-theme="dark"] .bpmnkit-edge-hover-dot { fill: var(--bpmnkit-accent, #6b9df7); }
 .bpmnkit-canvas-host[data-theme="dark"] .bpmnkit-edge-waypoint-ball { fill: var(--bpmnkit-accent, #6b9df7); }
+
+/* ── Neon theme ──────────────────────────────────────────────────── */
+.bpmnkit-canvas-host[data-theme="neon"] {
+  --bpmnkit-bg: oklch(5% 0.025 270);
+  --bpmnkit-grid: oklch(65% 0.28 280 / 0.22);
+  --bpmnkit-shape-fill: oklch(7% 0.03 270 / 0.9);
+  --bpmnkit-shape-stroke: oklch(65% 0.28 280);
+  --bpmnkit-flow-stroke: oklch(72% 0.18 185);
+  --bpmnkit-text: oklch(88% 0.02 270);
+  --bpmnkit-highlight: oklch(72% 0.18 185);
+  --bpmnkit-focus: oklch(65% 0.28 280);
+  --bpmnkit-overlay-bg: oklch(8% 0.03 270 / 0.96);
+  --bpmnkit-overlay-border: oklch(65% 0.28 280 / 0.25);
+}
+.bpmnkit-canvas-host[data-theme="neon"] .bpmnkit-pool-header,
+.bpmnkit-canvas-host[data-theme="neon"] .bpmnkit-lane-header {
+  fill: oklch(65% 0.28 280 / 0.07);
+}
+.bpmnkit-canvas-host[data-theme="neon"] .bpmnkit-edge-hover-dot { fill: oklch(72% 0.18 185); }
+.bpmnkit-canvas-host[data-theme="neon"] .bpmnkit-edge-waypoint-ball { fill: oklch(72% 0.18 185); }
 `
 
 /**

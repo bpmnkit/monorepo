@@ -90,7 +90,7 @@ describe("createMainMenuPlugin", () => {
 		expect(dropdown?.classList.contains("open")).toBe(false)
 	})
 
-	it("renders three theme options after drilling into Theme", () => {
+	it("renders four theme options after drilling into Theme", () => {
 		const container = makeContainer()
 		new BpmnCanvas({ container, plugins: [createMainMenuPlugin()] })
 		const btn = container.querySelector<HTMLButtonElement>(".bpmnkit-menu-btn")
@@ -102,14 +102,14 @@ describe("createMainMenuPlugin", () => {
 		)
 		if (!themeBtn) throw new Error("Theme drill button not found")
 		themeBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-		// After drilling: three theme action items (query the active level — during animation
+		// After drilling: four theme action items (query the active level — during animation
 		// the exiting level may still be in the DOM as a sibling)
 		const activeLevel = document.querySelector(
 			".bpmnkit-menu-dropdown .bpmnkit-menu-level:last-child",
 		)
 		if (!activeLevel) throw new Error("active level not found")
 		const items = activeLevel.querySelectorAll(".bpmnkit-menu-item")
-		expect(items.length).toBe(3)
+		expect(items.length).toBe(4)
 	})
 
 	it("applies theme and closes dropdown when a theme item is clicked", () => {

@@ -7,7 +7,7 @@ import type {
 } from "@bpmnkit/core"
 
 /** The color theme applied to the canvas. */
-export type Theme = "light" | "dark" | "auto"
+export type Theme = "light" | "dark" | "auto" | "neon"
 
 /**
  * Controls how the diagram is initially positioned in the viewport.
