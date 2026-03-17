@@ -534,6 +534,7 @@ export class BpmnEditor {
 		this._svg.addEventListener("pointerdown", this._onPointerDown)
 		this._svg.addEventListener("pointermove", this._onPointerMove)
 		this._svg.addEventListener("pointerup", this._onPointerUp)
+		this._svg.addEventListener("pointercancel", this._onPointerCancel)
 		this._svg.addEventListener("dblclick", this._onDblClick)
 
 		// ── Plugins ───────────────────────────────────────────────────
@@ -782,6 +783,7 @@ export class BpmnEditor {
 		this._svg.removeEventListener("pointerdown", this._onPointerDown)
 		this._svg.removeEventListener("pointermove", this._onPointerMove)
 		this._svg.removeEventListener("pointerup", this._onPointerUp)
+		this._svg.removeEventListener("pointercancel", this._onPointerCancel)
 		this._svg.removeEventListener("dblclick", this._onDblClick)
 		this._host.removeEventListener("keydown", this._onKeyDown)
 		for (const plugin of this._plugins) plugin.uninstall?.()
@@ -1951,6 +1953,10 @@ export class BpmnEditor {
 		const diag = screenToDiagram(e.clientX, e.clientY, this._viewport.state, rect)
 		const hit = this._hitTest(e.clientX, e.clientY)
 		this._stateMachine.onPointerUp(e, diag, hit)
+	}
+
+	private readonly _onPointerCancel = (_e: PointerEvent): void => {
+		this._stateMachine.cancel()
 	}
 
 	private readonly _onDblClick = (e: MouseEvent): void => {

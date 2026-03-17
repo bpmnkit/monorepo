@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import type { AdminApiClient, CamundaClient, RawResponseEvent } from "@bpmnkit/api"
 import { renderBpmnAscii } from "@bpmnkit/ascii"
 import { appendAuditEntry, getAuditLog, getSettings, saveSettings } from "@bpmnkit/profiles"
+import { type AskResult, runAskQuery } from "./commands/ask.js"
 import type {
 	ArgSpec,
 	ColumnDef,
@@ -10,6 +11,7 @@ import type {
 	FlagSpec,
 	JsonFieldSpec,
 	OutputWriter,
+	Relation,
 	RunContext,
 } from "./types.js"
 
@@ -91,6 +93,7 @@ type Screen =
 	| {
 			kind: "detail"
 			group: CommandGroup
+			cmd?: Command
 			item: unknown
 			label: string
 			cursor: number
@@ -107,6 +110,15 @@ type Screen =
 			}>
 			cursor: number
 			scroll: number
+	  }
+	| {
+			kind: "ask"
+			query: string
+			cursor: number
+			status: "idle" | "running"
+			statusMsg: string
+			error: string
+			_timer: ReturnType<typeof setInterval> | null
 	  }
 	| { kind: "profile"; scroll: number }
 	| { kind: "settings"; cursor: number; editing: boolean; editValue: string; message: string }
@@ -523,6 +535,10 @@ function renderMain(state: TuiState, screen: Extract<Screen, { kind: "main" }>):
 		const desc = dim(fit(g.description, cols - nameW - 8))
 		const line = `  ${name}  ${desc}`
 		lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
+		// Add separator after the pinned top section (ask, settings, profile)
+		if (!searching && g.name === "profile" && i < groups.length - 1) {
+			lines.push(`  ${dim("─".repeat(cols - 4))}`)
+		}
 	}
 
 	if (groups.length > viewH) {
@@ -533,6 +549,40 @@ function renderMain(state: TuiState, screen: Extract<Screen, { kind: "main" }>):
 		? `  ${dim("↑↓")} navigate  ${cyan("enter")} open  ${cyan("esc")} clear  ${dim("bksp")} delete  ${cyan("^C")} quit`
 		: `  ${dim("↑↓")} navigate  ${cyan("enter")} open  ${dim("type")} search  ${cyan("^C")} quit`
 	lines.push(`\n${hint}`)
+	return lines
+}
+
+const ASK_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+let askSpinnerFrame = 0
+
+function renderAsk(state: TuiState, screen: Extract<Screen, { kind: "ask" }>): string[] {
+	const { cols } = termSize()
+	const lines = [
+		renderHeader(["casen", "ask"], cols, state.profile),
+		`\n  ${dim("Natural language search using a local AI (claude/copilot/gemini)")}\n`,
+	]
+
+	const inputLine = `  > ${renderText(screen.query, screen.cursor, cols - 6, true)}`
+	lines.push(inputLine)
+	lines.push("")
+
+	if (screen.status === "running" && screen.statusMsg) {
+		const frame = ASK_SPINNER_FRAMES[askSpinnerFrame % ASK_SPINNER_FRAMES.length] ?? "⠋"
+		lines.push(`  ${frame} ${dim(screen.statusMsg)}`)
+	} else if (screen.error) {
+		lines.push(`  ${red("error:")} ${screen.error}`)
+	}
+
+	lines.push("")
+	if (screen.status === "running") {
+		lines.push(
+			`  ${dim("type query")}  ${cyan("enter")} run  ${cyan("esc")} back  ${cyan("^C")} abort`,
+		)
+	} else {
+		lines.push(
+			`  ${dim("type query")}  ${cyan("enter")} run  ${cyan("esc")} back  ${cyan("^C")} quit`,
+		)
+	}
 	return lines
 }
 
@@ -866,10 +916,11 @@ function renderResults(state: TuiState, screen: Extract<Screen, { kind: "results
 			lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
 		}
 		const spaceHint = entries.some(([, v]) => v instanceof ArrayValue)
-			? `  ${cyan("space")} expand array`
+			? `  ${cyan("space")} expand`
 			: ""
+		const fHint = screen.cmd.relations ? `  ${cyan("f")} follow-up` : ""
 		lines.push(
-			`\n${rawToggle}${curlToggle}${spaceHint}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
+			`\n  ${dim("↑↓")} navigate  ${cyan("enter")} navigate field${spaceHint}${fHint}${rawToggle}${curlToggle}  ${cyan("m")} main  ${cyan("esc")} back  ${cyan("q")} quit`,
 		)
 	} else {
 		lines.push(renderHeader([screen.group.name, screen.cmd.name], cols, state.profile))
@@ -927,8 +978,9 @@ function renderDetail(state: TuiState, screen: Extract<Screen, { kind: "detail" 
 	const spaceHint = entries.some(([, v]) => v instanceof ArrayValue)
 		? `  ${cyan("space/→")} expand  ${cyan("←")} back`
 		: `  ${cyan("←")} back`
+	const fHint = screen.cmd?.relations ? `  ${cyan("f")} follow-up` : ""
 	lines.push(
-		`  ${dim("↑↓")} navigate${spaceHint}  ${cyan("m")} main menu  ${cyan("esc")} back  ${cyan("q")} quit`,
+		`  ${dim("↑↓")} navigate  ${cyan("enter")} navigate field${spaceHint}${fHint}  ${cyan("m")} main  ${cyan("esc")} back  ${cyan("q")} quit`,
 	)
 	return lines
 }
@@ -1464,6 +1516,175 @@ function launchWorkerView(inputScreen: Extract<Screen, { kind: "input" }>, state
 	})
 }
 
+// ─── Ask screen helpers ───────────────────────────────────────────────────────
+
+async function runAskInTui(
+	screen: Extract<Screen, { kind: "ask" }>,
+	state: TuiState,
+): Promise<void> {
+	let frame = 0
+	screen._timer = setInterval(() => {
+		frame++
+		askSpinnerFrame = frame
+		if (!state.quitting && state.stack.includes(screen)) {
+			render(state)
+		} else {
+			if (screen._timer !== null) {
+				clearInterval(screen._timer)
+				screen._timer = null
+			}
+		}
+	}, 80)
+
+	let result: AskResult
+	try {
+		result = await runAskQuery(screen.query, state.getClient, (msg) => {
+			screen.statusMsg = msg
+		})
+	} catch (err) {
+		if (screen._timer !== null) {
+			clearInterval(screen._timer)
+			screen._timer = null
+		}
+		screen.error = err instanceof Error ? err.message : String(err)
+		screen.status = "idle"
+		screen.statusMsg = ""
+		render(state)
+		return
+	}
+
+	if (screen._timer !== null) {
+		clearInterval(screen._timer)
+		screen._timer = null
+	}
+
+	const askGrp = state.groups.find((g) => g.name === "ask") ?? {
+		name: "ask",
+		description: "",
+		commands: [],
+	}
+	const syntheticCmd: Command = {
+		name: result.resource,
+		description: "AI search results",
+		run: async () => {},
+		relations: result.relations,
+	}
+
+	state.stack.push({
+		kind: "results",
+		group: askGrp,
+		cmd: syntheticCmd,
+		output: {
+			type: "list",
+			items: result.items as Record<string, unknown>[],
+			columns: result.columns,
+			total: result.total,
+		},
+		raw: null,
+		rawView: false,
+		curlView: false,
+		altView: false,
+		cursor: 0,
+		scroll: 0,
+	})
+	render(state)
+}
+
+async function handleAskKey(
+	key: string,
+	screen: Extract<Screen, { kind: "ask" }>,
+	state: TuiState,
+	done: () => void,
+): Promise<void> {
+	// Ctrl+C always quits
+	if (key === "\x03") {
+		done()
+		return
+	}
+
+	// ESC: if running do nothing; otherwise pop
+	if (key === "\x1b") {
+		if (screen.status === "running") {
+			render(state)
+			return
+		}
+		if (screen._timer !== null) {
+			clearInterval(screen._timer)
+			screen._timer = null
+		}
+		state.stack.pop()
+		render(state)
+		return
+	}
+
+	// Enter: run if not running and has query
+	if (key === "\r" || key === "\n") {
+		if (screen.status !== "running" && screen.query.trim()) {
+			screen.status = "running"
+			screen.statusMsg = ""
+			screen.error = ""
+			render(state)
+			runAskInTui(screen, state).catch((err) => {
+				if (screen._timer !== null) {
+					clearInterval(screen._timer)
+					screen._timer = null
+				}
+				screen.error = err instanceof Error ? err.message : String(err)
+				screen.status = "idle"
+				render(state)
+			})
+		}
+		return
+	}
+
+	// Text editing (only when idle)
+	if (screen.status === "running") {
+		render(state)
+		return
+	}
+
+	switch (key) {
+		case "\x7f": // backspace
+		case "\x08":
+			if (screen.cursor > 0) {
+				screen.query = screen.query.slice(0, screen.cursor - 1) + screen.query.slice(screen.cursor)
+				screen.cursor--
+			}
+			break
+		case "\x01": // Ctrl+A
+		case "\x1b[H":
+			screen.cursor = 0
+			break
+		case "\x05": // Ctrl+E
+		case "\x1b[F":
+			screen.cursor = screen.query.length
+			break
+		case "\x0b": // Ctrl+K — clear to end
+			screen.query = screen.query.slice(0, screen.cursor)
+			break
+		case "\x15": // Ctrl+U — clear line
+			screen.query = ""
+			screen.cursor = 0
+			break
+		case "\x1b[D": // left arrow
+			if (screen.cursor > 0) screen.cursor--
+			break
+		case "\x1b[C": // right arrow
+			if (screen.cursor < screen.query.length) screen.cursor++
+			break
+		default: {
+			const printable = [...key].filter((ch) => ch >= " ").join("")
+			if (printable) {
+				screen.query =
+					screen.query.slice(0, screen.cursor) + printable + screen.query.slice(screen.cursor)
+				screen.cursor += printable.length
+			}
+			break
+		}
+	}
+	render(state)
+}
+
 function render(state: TuiState): void {
 	if (state.quitting) return
 	const screen = state.stack[state.stack.length - 1]
@@ -1472,6 +1693,9 @@ function render(state: TuiState): void {
 	switch (screen.kind) {
 		case "main":
 			lines = renderMain(state, screen)
+			break
+		case "ask":
+			lines = renderAsk(state, screen)
 			break
 		case "commands":
 			lines = renderCommands(state, screen)
@@ -1580,6 +1804,16 @@ function handleMainKey(
 					editing: false,
 					editValue: "",
 					message: "",
+				})
+			} else if (group?.name === "ask") {
+				state.stack.push({
+					kind: "ask",
+					query: "",
+					cursor: 0,
+					status: "idle",
+					statusMsg: "",
+					error: "",
+					_timer: null,
 				})
 			} else if (group) {
 				state.stack.push({ kind: "commands", group, cursor: 0, search: "" })
@@ -2065,7 +2299,39 @@ function handleResultsKey(
 			if (key === "\x1b[A" && screen.cursor > 0) screen.cursor--
 			else if (key === "\x1b[B" && screen.cursor < entries.length - 1) screen.cursor++
 			else if (key === " " || key === "\x1b[C") expandArray()
-			else if (key === "\x1b[D") state.stack.pop()
+			else if (key === "\r" || key === "\n") {
+				const entry = entries[screen.cursor]
+				if (entry) {
+					const [fieldKey, v] = entry
+					if (v instanceof ArrayValue) {
+						expandArray()
+					} else {
+						const resolved = resolveRelationsForField(fieldKey, screen.cmd.relations, state.groups)
+						if (resolved.length > 0) {
+							state.stack.push({
+								kind: "followup",
+								sourceGroup: screen.group,
+								item: screen.output.data as Record<string, unknown>,
+								relations: resolved,
+								cursor: 0,
+								scroll: 0,
+							})
+						}
+					}
+				}
+			} else if (key === "f" || key === "F") {
+				const resolved = resolveAllRelations(screen.cmd.relations, state.groups)
+				if (resolved.length > 0) {
+					state.stack.push({
+						kind: "followup",
+						sourceGroup: screen.group,
+						item: screen.output.data as Record<string, unknown>,
+						relations: resolved,
+						cursor: 0,
+						scroll: 0,
+					})
+				}
+			} else if (key === "\x1b[D") state.stack.pop()
 			else if (key === "\x1b") state.stack.pop()
 			else if (key === "m" || key === "M") popToMain(state)
 			else if (key === "q" || key === "Q") {
@@ -2145,6 +2411,7 @@ function handleResultsKey(
 				state.stack.push({
 					kind: "detail",
 					group: screen.group,
+					cmd: screen.cmd,
 					item,
 					label: "detail",
 					cursor: 0,
@@ -2156,19 +2423,8 @@ function handleResultsKey(
 		case "f":
 		case "F": {
 			const item = screen.output.items[screen.cursor]
-			if (item && screen.cmd.relations) {
-				const resolved: Array<{
-					group: CommandGroup
-					cmd: Command
-					params: Array<{ field: string; param: string }>
-				}> = []
-				for (const rel of screen.cmd.relations) {
-					const tGroup = state.groups.find((g) => g.name === rel.groupName)
-					if (!tGroup) continue
-					const tCmd = tGroup.commands.find((c) => c.name === rel.commandName)
-					if (!tCmd) continue
-					resolved.push({ group: tGroup, cmd: tCmd, params: rel.params })
-				}
+			if (item) {
+				const resolved = resolveAllRelations(screen.cmd.relations, state.groups)
 				if (resolved.length > 0) {
 					state.stack.push({
 						kind: "followup",
@@ -2195,6 +2451,39 @@ function handleResultsKey(
 			return
 	}
 	render(state)
+}
+
+// ─── Relation helpers ─────────────────────────────────────────────────────────
+
+type ResolvedRelation = {
+	group: CommandGroup
+	cmd: Command
+	params: Array<{ field: string; param: string }>
+}
+
+function resolveAllRelations(
+	relations: Relation[] | undefined,
+	groups: CommandGroup[],
+): ResolvedRelation[] {
+	if (!relations) return []
+	const out: ResolvedRelation[] = []
+	for (const rel of relations) {
+		const tGroup = groups.find((g) => g.name === rel.groupName)
+		if (!tGroup) continue
+		const tCmd = tGroup.commands.find((c) => c.name === rel.commandName)
+		if (!tCmd) continue
+		out.push({ group: tGroup, cmd: tCmd, params: rel.params })
+	}
+	return out
+}
+
+function resolveRelationsForField(
+	fieldName: string,
+	relations: Relation[] | undefined,
+	groups: CommandGroup[],
+): ResolvedRelation[] {
+	const matching = (relations ?? []).filter((rel) => rel.params.some((p) => p.field === fieldName))
+	return resolveAllRelations(matching, groups)
 }
 
 function handleDetailKey(
@@ -2247,9 +2536,58 @@ function handleDetailKey(
 			}
 			break
 		}
+		case "\r":
+		case "\n": {
+			const entry = entries[screen.cursor]
+			if (entry && typeof screen.item === "object" && screen.item !== null) {
+				const [fieldKey, v] = entry
+				if (v instanceof ArrayValue) {
+					state.stack.push({
+						kind: "detail",
+						group: screen.group,
+						item: v.items,
+						label: `${fieldKey} (${v.items.length})`,
+						cursor: 0,
+						scroll: 0,
+					})
+				} else {
+					const item = screen.item as Record<string, unknown>
+					const resolved = resolveRelationsForField(fieldKey, screen.cmd?.relations, state.groups)
+					if (resolved.length > 0) {
+						state.stack.push({
+							kind: "followup",
+							sourceGroup: screen.group,
+							item,
+							relations: resolved,
+							cursor: 0,
+							scroll: 0,
+						})
+					}
+				}
+			}
+			break
+		}
 		case "\x1b[D":
 			state.stack.pop()
 			break
+		case "f":
+		case "F": {
+			if (typeof screen.item === "object" && screen.item !== null) {
+				const item = screen.item as Record<string, unknown>
+				const resolved = resolveAllRelations(screen.cmd?.relations, state.groups)
+				if (resolved.length > 0) {
+					state.stack.push({
+						kind: "followup",
+						sourceGroup: screen.group,
+						item,
+						relations: resolved,
+						cursor: 0,
+						scroll: 0,
+					})
+				}
+			}
+			break
+		}
 		case "m":
 		case "M":
 			popToMain(state)
@@ -2751,6 +3089,9 @@ async function handleKey(key: string, state: TuiState, done: () => void): Promis
 		case "main":
 			handleMainKey(key, screen, state, done)
 			break
+		case "ask":
+			await handleAskKey(key, screen, state, done)
+			break
 		case "commands":
 			handleCommandsKey(key, screen, state, done)
 			break
@@ -2857,6 +3198,30 @@ export async function runMainTui(
 	return startTui({
 		groups,
 		stack: [{ kind: "main", cursor: 0, scroll: 0, search: "" }],
+		getClient,
+		getAdminClient:
+			getAdminClient ??
+			opts?.getAdminClient ??
+			(() => Promise.reject(new Error("No admin client"))),
+		quitting: false,
+		profile: opts?.profile ?? "",
+		profileInfo: opts?.profileInfo ?? [],
+	})
+}
+
+/** Open the TUI directly at the ask screen (natural language search). */
+export async function runAskTui(
+	groups: CommandGroup[],
+	getClient: () => Promise<CamundaClient>,
+	getAdminClient?: () => Promise<AdminApiClient>,
+	opts?: TuiOptions,
+): Promise<void> {
+	return startTui({
+		groups,
+		stack: [
+			{ kind: "main", cursor: 0, scroll: 0, search: "" },
+			{ kind: "ask", query: "", cursor: 0, status: "idle", statusMsg: "", error: "", _timer: null },
+		],
 		getClient,
 		getAdminClient:
 			getAdminClient ??

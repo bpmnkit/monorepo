@@ -80,8 +80,8 @@ for (const [ch, dirs] of Object.entries(CHAR_DIRS)) {
 export function mergeBoxChars(existing: string, next: string): string {
 	if (existing === " " || existing === next) return next
 	// Arrows always win
-	if (next === "►" || next === "▼") return next
-	if (existing === "►" || existing === "▼") return existing
+	if (next === "►" || next === "▼" || next === "▲") return next
+	if (existing === "►" || existing === "▼" || existing === "▲") return existing
 	const eDirs = CHAR_DIRS[existing]
 	const nDirs = CHAR_DIRS[next]
 	if (!eDirs || !nDirs) return next

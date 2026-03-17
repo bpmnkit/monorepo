@@ -13,7 +13,7 @@ import { printCommandHelp, printGlobalHelp, printGroupHelp, printVersion } from 
 import { createNullWriter, createOutputWriter, printRawResponse } from "./output.js"
 import { runProfileManager } from "./profile-tui.js"
 import { runSettingsManager } from "./settings-tui.js"
-import { runGroupTui, runMainTui } from "./tui.js"
+import { runAskTui, runGroupTui, runMainTui } from "./tui.js"
 import type { OutputFormat, RunContext } from "./types.js"
 
 // ─── Profile info ─────────────────────────────────────────────────────────────
@@ -120,9 +120,34 @@ export async function run(argv: string[]): Promise<void> {
 		return
 	}
 
+	// ── ask: join remaining positionals as the query ─────────────────────────
+	if (group.name === "ask" && positional.length >= 2 && !wantHelp) {
+		const queryWords = positional.slice(1)
+		const output = createOutputWriter(
+			(flags.output ?? flags.o ?? "table") as OutputFormat,
+			flags["no-color"] === true,
+		)
+		const ctx: RunContext = {
+			positional: queryWords,
+			flags,
+			output,
+			getClient: () => Promise.resolve(createClientFromProfile(profileName)),
+			getAdminClient: () => Promise.resolve(createAdminClientFromProfile(profileName)),
+		}
+		const cmd = group.commands[0]
+		if (cmd) await cmd.run(ctx)
+		return
+	}
+
 	// ── TUI (no subcommand, no --help) ───────────────────────────────────────
 	if (positional.length === 1 && !wantHelp) {
-		if (group.name === "profile") {
+		if (group.name === "ask") {
+			const { name: pName, info: pInfo } = buildProfileInfo(profileName)
+			await runAskTui(commandGroups, getClient, getAdminClient, {
+				profile: pName,
+				profileInfo: pInfo,
+			})
+		} else if (group.name === "profile") {
 			await runProfileManager()
 		} else if (group.name === "settings") {
 			await runSettingsManager()

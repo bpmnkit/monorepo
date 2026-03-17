@@ -1,5 +1,13 @@
 # Features
 
+## Mobile Editor Usability (2026-03-17) — `packages/editor`, `packages/plugins`, `apps/desktop`
+
+- **Fix zoom stuck after pinch-to-zoom**: `pointercancel` now resets the state machine, unlocking the viewport when a system gesture interrupts an editor drag.
+- **Sidebar auto-collapse**: On viewports ≤600px the side dock starts collapsed so it doesn't overlay the screen.
+- **Simplified mobile HUD**: Top-center toolbar and bottom-left toolbar are hidden on mobile. Bottom-center toolbar repositions to the bottom-left corner with its existing collapse toggle.
+- **Mobile "Edit" menu**: On mobile viewports, the main menu gains an "Edit" submenu with Undo, Redo, Delete, Duplicate, Select All, and Auto-layout actions.
+- **Unified file tab on mobile**: The per-type grouped tab bar is replaced by a single tab showing the active file. A unified dropdown lists all open files across all types (with type badges) when multiple files are open.
+
 ## OpenAPI → Camunda Connector Generator (2026-03-14) — `packages/connector-gen`, `apps/cli`
 
 - **`@bpmnkit/connector-gen`**: Zero-dep (+ `yaml`) library that converts OpenAPI 3.x specs to Camunda REST connector element templates.

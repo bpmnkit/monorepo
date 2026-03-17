@@ -320,8 +320,8 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 
 	/** Tracks the last-activated tab ID per type group. */
 	const groupActiveId = new Map<TabConfig["type"], string>()
-	/** Which type group's dropdown is currently open, if any. */
-	let openDropdownType: TabConfig["type"] | null = null
+	/** Which type group's dropdown is currently open, if any. "mobile" means the unified mobile dropdown. */
+	let openDropdownType: TabConfig["type"] | "mobile" | null = null
 	let outsideClickHandler: ((e: PointerEvent) => void) | null = null
 
 	// Cast helper for editor events that extend CanvasEvents at runtime
@@ -749,6 +749,65 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		}
 	}
 
+	function openMobileDropdown(anchorEl: HTMLElement): void {
+		if (!dropdownEl) return
+		dropdownEl.innerHTML = ""
+		dropdownEl.dataset.theme = theme
+
+		for (const type of GROUP_TYPES) {
+			const group = tabs.filter((t) => t.config.type === type)
+			for (const tab of group) {
+				const item = document.createElement("div")
+				item.className = "bpmnkit-tab-drop-item"
+				if (tab.id === activeId) item.classList.add("active")
+
+				const badge = document.createElement("span")
+				badge.className = `bpmnkit-tab-type ${type}`
+				badge.textContent = type.toUpperCase()
+				item.appendChild(badge)
+
+				const nameSpan = document.createElement("span")
+				nameSpan.className = "bpmnkit-tab-drop-name"
+				nameSpan.textContent = tab.config.name ?? tab.id
+				item.appendChild(nameSpan)
+
+				if (!isProjectMode) {
+					const closeBtn = document.createElement("span")
+					closeBtn.className = "bpmnkit-tab-close"
+					closeBtn.textContent = "×"
+					closeBtn.addEventListener("click", (e) => {
+						e.stopPropagation()
+						closeDropdownEl()
+						requestClose(tab)
+					})
+					item.appendChild(closeBtn)
+				}
+
+				item.addEventListener("click", () => {
+					groupActiveId.set(type, tab.id)
+					api.setActiveTab(tab.id)
+					closeDropdownEl()
+				})
+
+				dropdownEl.appendChild(item)
+			}
+		}
+
+		const rect = anchorEl.getBoundingClientRect()
+		dropdownEl.style.top = `${rect.bottom}px`
+		dropdownEl.style.left = `${rect.left}px`
+		dropdownEl.classList.add("open")
+		openDropdownType = "mobile"
+	}
+
+	function toggleMobileDropdown(anchorEl: HTMLElement): void {
+		if (openDropdownType === "mobile") {
+			closeDropdownEl()
+		} else {
+			openMobileDropdown(anchorEl)
+		}
+	}
+
 	// --- Tab bar rendering ---
 
 	function requestClose(tab: TabState): void {
@@ -765,29 +824,68 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 	/**
 	 * Rebuilds the tab bar from scratch.
 	 * At most three group tabs are rendered (one per type: BPMN, DMN, Form).
+	 * On narrow viewports (≤600px) a single unified tab is shown instead.
 	 */
 	function renderTabBar(): void {
 		if (!tabBar) return
 		tabBar.innerHTML = ""
 
-		for (const type of GROUP_TYPES) {
-			const group = tabs.filter((t) => t.config.type === type)
-			if (group.length === 0) continue
-
-			// Ensure groupActiveId[type] points to a valid tab in this group
-			if (!group.some((t) => t.id === groupActiveId.get(type))) {
-				const first = group[0]
-				if (first) groupActiveId.set(type, first.id)
+		if (window.innerWidth <= 600 && tabs.length > 0) {
+			const activeTab = tabs.find((t) => t.id === activeId)
+			if (activeTab) {
+				createMobileTabEl(activeTab)
 			}
+		} else {
+			for (const type of GROUP_TYPES) {
+				const group = tabs.filter((t) => t.config.type === type)
+				if (group.length === 0) continue
 
-			const isGroupActive = group.some((t) => t.id === activeId)
-			createGroupTabEl(type, group, isGroupActive)
+				// Ensure groupActiveId[type] points to a valid tab in this group
+				if (!group.some((t) => t.id === groupActiveId.get(type))) {
+					const first = group[0]
+					if (first) groupActiveId.set(type, first.id)
+				}
+
+				const isGroupActive = group.some((t) => t.id === activeId)
+				createGroupTabEl(type, group, isGroupActive)
+			}
 		}
 
 		// Center slot must be re-appended after innerHTML clear
 		if (centerSlotEl) tabBar.appendChild(centerSlotEl)
 
 		updateRawModeBtn()
+	}
+
+	function createMobileTabEl(activeTab: TabState): void {
+		const el = document.createElement("div")
+		el.className = "bpmnkit-tab active"
+
+		const typeBadge = document.createElement("span")
+		typeBadge.className = `bpmnkit-tab-type ${activeTab.config.type}`
+		typeBadge.textContent = activeTab.config.type.toUpperCase()
+		el.appendChild(typeBadge)
+
+		const nameEl = document.createElement("span")
+		nameEl.className = "bpmnkit-tab-name"
+		nameEl.textContent = activeTab.config.name ?? activeTab.config.type
+		el.appendChild(nameEl)
+
+		if (tabs.length > 1) {
+			const chevron = document.createElement("span")
+			chevron.className = "bpmnkit-tab-chevron"
+			chevron.innerHTML =
+				'<svg viewBox="0 0 10 6" fill="currentColor"><path d="M0 0l5 6 5-6z"/></svg>'
+			el.appendChild(chevron)
+		}
+
+		el.addEventListener("click", () => {
+			if (tabs.length > 1) {
+				toggleMobileDropdown(el)
+			}
+		})
+
+		tabBar?.appendChild(el)
 	}
 
 	function createGroupTabEl(

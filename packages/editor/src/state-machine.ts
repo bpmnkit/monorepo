@@ -686,6 +686,48 @@ export class EditorStateMachine {
 		}
 	}
 
+	// ── Cancel (pointercancel / system gesture) ───────────────────────
+
+	cancel(): void {
+		const mode = this._mode
+		if (mode.mode === "space") {
+			if (mode.sub.name === "dragging") {
+				this._cb.lockViewport(false)
+				this._cb.cancelSpace()
+			}
+		} else if (mode.mode === "select" || mode.mode === "default") {
+			const sub = mode.sub
+			if (sub.name === "translating") {
+				this._cb.cancelTranslate()
+				this._cb.lockViewport(false)
+			} else if (sub.name === "rubber-band") {
+				this._cb.cancelRubberBand()
+				this._cb.lockViewport(false)
+			} else if (
+				sub.name === "pointing-handle" ||
+				sub.name === "resizing" ||
+				sub.name === "pointing-port"
+			) {
+				this._cb.lockViewport(false)
+			} else if (sub.name === "connecting") {
+				this._cb.cancelConnect()
+				this._cb.lockViewport(false)
+			} else if (sub.name === "pointing-edge-endpoint" || sub.name === "dragging-edge-endpoint") {
+				this._cb.cancelEndpointMove()
+				this._cb.lockViewport(false)
+			} else if (sub.name === "pointing-edge-segment" || sub.name === "pointing-edge-waypoint") {
+				this._cb.lockViewport(false)
+			} else if (sub.name === "dragging-edge-waypoint-new") {
+				this._cb.cancelWaypointInsert()
+				this._cb.lockViewport(false)
+			} else if (sub.name === "dragging-edge-waypoint") {
+				this._cb.cancelWaypointMove()
+				this._cb.lockViewport(false)
+			}
+		}
+		this._mode = { mode: "default", sub: { name: "idle", hoveredId: null } }
+	}
+
 	// ── Key down ──────────────────────────────────────────────────────
 
 	onKeyDown(e: KeyboardEvent): void {

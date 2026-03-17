@@ -764,6 +764,35 @@ function setupCompareSlider(): void {
 	slider.addEventListener("pointercancel", stop)
 }
 
+// ── Mobile nav ─────────────────────────────────────────────────────────
+
+function setupMobileNav(): void {
+	const burger = document.getElementById("nav-burger")
+	const menu = document.getElementById("nav-mobile-menu")
+	if (!burger || !menu) return
+
+	const close = () => {
+		burger.setAttribute("aria-expanded", "false")
+		menu.setAttribute("aria-hidden", "true")
+		menu.classList.remove("open")
+	}
+
+	burger.addEventListener("click", () => {
+		const opening = burger.getAttribute("aria-expanded") !== "true"
+		burger.setAttribute("aria-expanded", String(opening))
+		menu.setAttribute("aria-hidden", String(!opening))
+		menu.classList.toggle("open", opening)
+	})
+
+	// Close when any link inside is clicked
+	for (const link of menu.querySelectorAll("a")) link.addEventListener("click", close)
+
+	// Close when clicking outside the nav
+	document.addEventListener("click", (e) => {
+		if (!burger.closest("nav")?.contains(e.target as Node)) close()
+	})
+}
+
 // ── Init ───────────────────────────────────────────────────────────────
 
 setupHeroDiagram()
@@ -773,3 +802,4 @@ setupInstallButton()
 setupBentoSpotlight()
 setupAnimation()
 setupCompareSlider()
+setupMobileNav()

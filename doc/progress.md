@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-03-17 — Mobile editor follow-up fixes
+
+- **`apps/desktop/src/editor.ts`**: `onPanelShow` in the config panel now only calls `dock.expand()` when `window.innerWidth > 600`. On mobile the sidebar stays collapsed when an element is selected — the user must open it actively.
+- **`packages/plugins/src/storage/index.ts`**: Added `prependItems?: () => MenuItem[]` to `StoragePluginOptions`. `buildDynamicItems()` now prepends these items on every menu open, so they survive storage-change events that would otherwise replace the entire dynamic items function.
+- **`packages/plugins/src/storage-tabs-bridge/index.ts`**: Added `prependItems?: () => MenuItem[]` to `StorageTabsBridgeOptions` and threads it through to `createStoragePlugin`.
+- **`apps/desktop/src/editor.ts`**: Replaced the standalone `mainMenuPlugin.api.setDynamicItems(...)` call (which was overridden by the storage plugin) with a `prependItems` callback on `createStorageTabsBridge`. The mobile "Edit" submenu is now reliably composed with storage items rather than racing with them.
+
+## 2026-03-17 — Mobile editor improvements
+
+- **`packages/editor/src/state-machine.ts`**: Added `cancel()` method that unlocks the viewport and cleans up any in-progress drag/resize/connect/rubber-band operation, resetting state to idle. Mirrors the Escape key cleanup logic.
+- **`packages/editor/src/editor.ts`**: Added `pointercancel` event listener on the SVG element that calls `this._stateMachine.cancel()`. Fixes zoom-stuck bug on mobile where a system gesture (palm touch, notification, etc.) fires `pointercancel` during an editor drag, leaving the viewport permanently locked.
+- **`packages/editor/src/dock.ts`**: After restoring sidebar state from localStorage, forces `_collapsed = true` on viewports ≤600px wide so the sidebar doesn't overlay the screen on mobile.
+- **`packages/editor/src/css.ts`**: Replaced the existing mobile (`@media (max-width: 600px)`) block. Top-center toolbar and bottom-left toolbar are now fully hidden on mobile. Bottom-center toolbar is repositioned to the left edge (`left: 10px; transform: none`) and the existing collapse toggle (`#btn-bc-toggle`) is shown.
+- **`apps/desktop/src/editor.ts`**: After `initEditorHud`, calls `mainMenuPlugin.api.setDynamicItems()` to inject a mobile-only "Edit" drill-down submenu (Undo, Redo, Delete, Duplicate, Select All, Auto-layout) into the main menu. Only returned when `window.innerWidth <= 600`.
+- **`packages/plugins/src/tabs/tabs-plugin.ts`**: On narrow viewports (≤600px) `renderTabBar()` now renders a single unified tab showing the active file's type badge and name. A new `createMobileTabEl()` function handles this. Clicking the tab (when multiple files exist) opens a new `openMobileDropdown()` that lists all tabs from all type groups with type badges. A new `toggleMobileDropdown()` handles open/close. Extended `openDropdownType` type with `"mobile"` sentinel.
+
 ## 2026-03-16 — AI Search tab in `@bpmnkit/operate`
 
 - **`apps/proxy/src/prompt.ts`**: Added `buildSearchSystemPrompt()` — a minimal system prompt that instructs the AI to output **only** a JSON object `{ endpoint, filter }`, keeping token usage low (no prose, no markdown).

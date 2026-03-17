@@ -42,13 +42,19 @@ function saveTemplates(key: string, templates: SearchTemplate[]): void {
 
 function relTime(iso: string | null | undefined): string {
 	if (!iso) return "—"
-	const diff = Date.now() - new Date(iso).getTime()
+	const d = new Date(iso)
+	const diff = Date.now() - d.getTime()
 	const m = Math.floor(diff / 60_000)
 	if (m < 1) return "just now"
 	if (m < 60) return `${m}m ago`
 	const h = Math.floor(m / 60)
-	if (h < 24) return `${h}h ago`
-	return `${Math.floor(h / 24)}d ago`
+	if (h < 24) return `${h}h ${m % 60}m ago`
+	return d.toLocaleString(undefined, {
+		month: "short",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	})
 }
 
 interface Config {
@@ -132,6 +138,12 @@ const VAR_FIELDS: VarFieldDef[] = [
 type VarSearchResult = VariableResult & {
 	value: string
 	isTruncated: boolean
+	/** Injected by AI search enrichment from the owning process instance. */
+	instanceStartDate?: string | null
+	instanceProcessName?: string | null
+	instanceProcessId?: string | null
+	instanceState?: string | null
+	instanceIsSubprocess?: boolean
 }
 
 // ── Generic builder helpers ──────────────────────────────────────────────────
@@ -575,13 +587,13 @@ export function createSearchView(
 			},
 			{
 				label: "Started",
-				width: "90px",
+				width: "120px",
 				render: (row) => relTime(row.startDate),
 				sortValue: (row) => row.startDate ?? "",
 			},
 			{
 				label: "Ended",
-				width: "90px",
+				width: "120px",
 				render: (row) => relTime(row.endDate),
 				sortValue: (row) => row.endDate ?? "",
 			},
@@ -1071,7 +1083,7 @@ export function createSearchView(
 			},
 			{
 				label: "Started",
-				width: "90px",
+				width: "120px",
 				render: (row) => relTime(row.startDate),
 				sortValue: (row) => row.startDate ?? "",
 			},
@@ -1087,6 +1099,37 @@ export function createSearchView(
 
 	const { el: aiVarTableEl, setRows: setAiVarRows } = createFilterTable<VarSearchResult>({
 		columns: [
+			{
+				label: "Process",
+				render: (row) => {
+					const wrap = document.createElement("span")
+					wrap.className = "op-ai-var-process"
+					const name = row.instanceProcessName ?? row.instanceProcessId ?? "—"
+					const nameEl = document.createElement("span")
+					nameEl.textContent = name
+					wrap.appendChild(nameEl)
+					if (row.instanceIsSubprocess) {
+						const sub = document.createElement("span")
+						sub.className = "op-ai-var-subprocess-badge"
+						sub.textContent = "sub"
+						wrap.appendChild(sub)
+					}
+					return wrap
+				},
+				sortValue: (row) => row.instanceProcessName ?? row.instanceProcessId ?? "",
+			},
+			{
+				label: "State",
+				width: "110px",
+				render: (row) => {
+					if (!row.instanceState) return "—"
+					const wrap = document.createElement("div")
+					wrap.className = "bpmnkit-badge-wrap"
+					wrap.appendChild(badge(row.instanceState as "ACTIVE" | "COMPLETED" | "TERMINATED"))
+					return wrap
+				},
+				sortValue: (row) => row.instanceState ?? "",
+			},
 			{
 				label: "Name",
 				width: "160px",
@@ -1123,8 +1166,17 @@ export function createSearchView(
 				},
 				sortValue: (row) => row.processInstanceKey,
 			},
+			{
+				label: "Started",
+				width: "120px",
+				render: (row) => relTime(row.instanceStartDate),
+				sortValue: (row) => row.instanceStartDate ?? "",
+			},
 		],
-		searchFn: (row) => [row.name, row.value, row.processInstanceKey].join(" "),
+		searchFn: (row) =>
+			[row.name, row.value, row.processInstanceKey, row.instanceProcessName, row.instanceProcessId]
+				.filter(Boolean)
+				.join(" "),
 		emptyText: "No variables found",
 	})
 	aiResultsSection.appendChild(aiVarTableEl)

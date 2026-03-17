@@ -8,6 +8,7 @@ import {
 	userTaskGroup,
 } from "../generated/commands.js"
 import type { CommandGroup } from "../types.js"
+import { askGroup } from "./ask.js"
 import {
 	getDmnReqsXmlCmd,
 	getDmnXmlCmd,
@@ -49,17 +50,52 @@ const customisedGroups: CommandGroup[] = generatedCommandGroups.map((g) => {
 	return g
 })
 
-const allGroups = [
-	profileGroup,
-	settingsGroup,
+const sortedOtherGroups = [
 	connectorGroup,
 	...customisedGroups,
 	...adminCommandGroups,
 	completionGroup,
-]
+].sort((a, b) => a.name.localeCompare(b.name))
 
-// Sort alphabetically by name for the main menu
-export const commandGroups: CommandGroup[] = allGroups.sort((a, b) => a.name.localeCompare(b.name))
+export const commandGroups: CommandGroup[] = [
+	askGroup,
+	settingsGroup,
+	profileGroup,
+	...sortedOtherGroups,
+]
 
 // Compute follow-up relations between commands based on shared field/arg names
 computeRelations(commandGroups)
+
+// Manually inject relations on GET commands (they return a single object, not a
+// list, so they have no `columns` and are skipped by computeRelations).
+const piGroup = commandGroups.find((g) => g.name === "process-instance")
+const pdGroup = commandGroups.find((g) => g.name === "process-definition")
+const piGetCmd = piGroup?.commands.find((c) => c.name === "get")
+const pdGetCmd = pdGroup?.commands.find((c) => c.name === "get")
+const pdRelations = [
+	{
+		groupName: "process-definition",
+		commandName: "get",
+		description: "View process definition",
+		params: [{ field: "processDefinitionKey", param: "processDefinitionKey" }],
+	},
+	{
+		groupName: "process-definition",
+		commandName: "render",
+		description: "Render BPMN diagram",
+		params: [{ field: "processDefinitionKey", param: "processDefinitionKey" }],
+	},
+	{
+		groupName: "process-definition",
+		commandName: "get-xml",
+		description: "Get BPMN XML",
+		params: [{ field: "processDefinitionKey", param: "processDefinitionKey" }],
+	},
+]
+if (piGetCmd) {
+	piGetCmd.relations = pdRelations
+}
+if (pdGetCmd) {
+	pdGetCmd.relations = pdRelations.filter((r) => r.commandName !== "get")
+}

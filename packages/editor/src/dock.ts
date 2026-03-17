@@ -307,6 +307,11 @@ export function createSideDock(): SideDock {
 		// localStorage unavailable — use defaults
 	}
 
+	// Force collapse on narrow viewports (mobile)
+	if (window.innerWidth <= 600) {
+		_collapsed = true
+	}
+
 	if (_collapsed) {
 		el.classList.add("bpmnkit-side-dock--collapsed")
 		setDocWidth(0)

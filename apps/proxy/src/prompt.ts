@@ -238,12 +238,15 @@ export function buildSearchSystemPrompt(): string {
 		"",
 		'Variable filter fields (endpoint "variables"):',
 		"  name: string (exact variable name)",
-		'  value: any (JSON-serialized: "hello", 42, true)',
+		'  value: string (JSON-serialized form — number 3355 → "3355", boolean true → "true", string hello → "\\"hello\\"")',
 		"  processInstanceKey: string",
 		"  isTruncated: boolean",
 		"  tenantId: string",
 		"",
-		'Use "instances" for process instance queries. Use "variables" for variable/value queries.',
+		'Use "instances" for queries about process state, definition, incidents, or dates.',
+		'Use "variables" whenever a variable name or value is mentioned — even if phrased as "instances with variable X" or "find instances where variable Y equals Z" (the instances endpoint has no variable filter; use variables instead).',
+		"",
+		'Example: "find instances with the variable value 3355" → {"endpoint":"variables","filter":{"value":"3355"}}',
 		"Omit filter fields that are not relevant. Output ONLY the JSON object.",
 	].join("\n")
 }

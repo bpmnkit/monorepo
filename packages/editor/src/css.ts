@@ -719,19 +719,24 @@ export const HUD_CSS = `
 #btn-bc-toggle, #btn-tc-toggle { display: none; }
 
 @media (max-width: 600px) {
-  #btn-bc-toggle, #btn-tc-toggle { display: flex; }
+  #hud-top-center { display: none !important; }
+  #hud-bottom-left { display: none !important; }
+
+  #hud-bottom-center {
+    left: 10px;
+    transform: none;
+  }
+
+  #btn-bc-toggle { display: flex; }
 
   /* Collapsed: hide all children except the toggle button */
   #hud-bottom-center:not(.expanded) > *:not(#btn-bc-toggle) { display: none; }
-  #hud-top-center:not(.expanded) > *:not(#btn-tc-toggle) { display: none; }
 
   /* Expanded: highlight the toggle button as a close affordance */
-  #hud-bottom-center.expanded #btn-bc-toggle,
-  #hud-top-center.expanded #btn-tc-toggle {
+  #hud-bottom-center.expanded #btn-bc-toggle {
     background: rgba(255,255,255,0.08); color: #fff;
   }
-  [data-bpmnkit-hud-theme="light"] #hud-bottom-center.expanded #btn-bc-toggle,
-  [data-bpmnkit-hud-theme="light"] #hud-top-center.expanded #btn-tc-toggle {
+  [data-bpmnkit-hud-theme="light"] #hud-bottom-center.expanded #btn-bc-toggle {
     background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.9);
   }
 }

@@ -197,7 +197,7 @@ const configPanel = createConfigPanelPlugin({
 	},
 	container: dock.propertiesPane,
 	onPanelShow: () => {
-		if (dock.collapsed) dock.expand()
+		if (dock.collapsed && window.innerWidth > 600) dock.expand()
 		dock.showPanel()
 	},
 	onPanelHide: () => {
@@ -257,6 +257,25 @@ const bridge = createStorageTabsBridge({
 	palette,
 	enableFileImport: true,
 	sideDock: dock,
+	prependItems: () => {
+		if (window.innerWidth > 600) return []
+		return [
+			{
+				type: "drill",
+				label: "Edit",
+				items: [
+					{ label: "Undo", onClick: () => editorRef?.undo() },
+					{ label: "Redo", onClick: () => editorRef?.redo() },
+					{ type: "separator" },
+					{ label: "Delete", onClick: () => editorRef?.deleteSelected() },
+					{ label: "Duplicate", onClick: () => editorRef?.duplicate() },
+					{ label: "Select All", onClick: () => editorRef?.selectAll() },
+					{ type: "separator" },
+					{ label: "Auto-layout", onClick: () => editorRef?.autoLayout() },
+				],
+			},
+		]
+	},
 	onNewDiagram: () => {
 		bridge.tabsPlugin.api.openTab({ type: "bpmn", xml: Bpmn.makeEmpty(), name: "New Diagram" })
 	},
@@ -283,7 +302,7 @@ const bridge = createStorageTabsBridge({
 			dock.el.style.pointerEvents = "none"
 			dock.el.style.opacity = "0.4"
 		} else {
-			dock.expand()
+			if (window.innerWidth > 600) dock.expand()
 			dock.el.style.pointerEvents = ""
 			dock.el.style.opacity = ""
 		}
@@ -498,7 +517,7 @@ hudRef = initEditorHud(editor, {
 	},
 	onGatewayEdgeCreated: () => {
 		// Expand dock and switch to properties so user can set condition immediately
-		if (dock.collapsed) dock.expand()
+		if (dock.collapsed && window.innerWidth > 600) dock.expand()
 		dock.switchTab("properties")
 	},
 	onExitSimulation: () => {

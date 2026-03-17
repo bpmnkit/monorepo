@@ -1295,6 +1295,28 @@ const OPERATE_CSS = `
   font-family: var(--bpmnkit-font-mono);
   padding: 2px 0 6px;
 }
+.op-ai-var-process {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.op-ai-var-process > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.op-ai-var-subprocess-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bpmnkit-accent-subtle);
+  color: var(--bpmnkit-accent);
+}
 `
 
 export function injectOperateStyles(): void {

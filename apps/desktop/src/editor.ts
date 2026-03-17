@@ -125,7 +125,7 @@ const configPanel = createConfigPanelPlugin({
 	},
 	container: dock.propertiesPane,
 	onPanelShow: () => {
-		if (dock.collapsed) dock.expand()
+		if (dock.collapsed && window.innerWidth > 600) dock.expand()
 		dock.showPanel()
 	},
 	onPanelHide: () => {
@@ -143,6 +143,25 @@ const bridge = createStorageTabsBridge({
 	palette,
 	enableFileImport: true,
 	sideDock: dock,
+	prependItems: () => {
+		if (window.innerWidth > 600) return []
+		return [
+			{
+				type: "drill",
+				label: "Edit",
+				items: [
+					{ label: "Undo", onClick: () => editorRef?.undo() },
+					{ label: "Redo", onClick: () => editorRef?.redo() },
+					{ type: "separator" },
+					{ label: "Delete", onClick: () => editorRef?.deleteSelected() },
+					{ label: "Duplicate", onClick: () => editorRef?.duplicate() },
+					{ label: "Select All", onClick: () => editorRef?.selectAll() },
+					{ type: "separator" },
+					{ label: "Auto-layout", onClick: () => editorRef?.autoLayout() },
+				],
+			},
+		]
+	},
 	onWelcomeShow: () => setHudVisible(false),
 	onTabActivate(id, config) {
 		const isBpmn = config.type === "bpmn"

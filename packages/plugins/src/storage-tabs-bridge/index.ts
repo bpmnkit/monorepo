@@ -14,7 +14,7 @@
 import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
 import type { CommandPalettePlugin } from "../command-palette/index.js"
-import type { MainMenuApi } from "../main-menu/index.js"
+import type { MainMenuApi, MenuItem } from "../main-menu/index.js"
 import { showInputDialog } from "../storage/index.js"
 import { createStoragePlugin } from "../storage/index.js"
 import type { StorageApi } from "../storage/index.js"
@@ -85,6 +85,11 @@ export interface StorageTabsBridgeOptions {
 	 * Use this to disable editing UI (toolbar buttons, sidebar) while raw mode is active.
 	 */
 	onRawModeChange?: (active: boolean) => void
+	/**
+	 * Optional items prepended to the dynamic menu items on every menu open.
+	 * Composed with storage items so they survive storage change events.
+	 */
+	prependItems?: () => MenuItem[]
 }
 
 // ── Result ────────────────────────────────────────────────────────────────────
@@ -224,6 +229,7 @@ export function createStorageTabsBridge(
 		mainMenu: options.mainMenu,
 		getOpenTabs: () => tabsPlugin.api.getAllTabContent(),
 		initialTitle: options.initialTitle,
+		prependItems: options.prependItems,
 		onLeaveProject() {
 			tabsPlugin.api.closeAllTabs()
 			tabIdToStorageFileId.clear()

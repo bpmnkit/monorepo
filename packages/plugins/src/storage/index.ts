@@ -37,6 +37,12 @@ export interface StoragePluginOptions extends StorageApiOptions {
 	 * Update the corresponding tab's display name from this callback.
 	 */
 	onRenameCurrentFile?: (fileId: string, name: string) => void
+	/**
+	 * Optional items prepended to the dynamic menu items on every open.
+	 * Use this to inject context-sensitive items (e.g. mobile edit actions)
+	 * without being overridden by storage change events.
+	 */
+	prependItems?: () => MenuItem[]
 }
 
 /**
@@ -161,7 +167,7 @@ export function createStoragePlugin(
 
 	function buildDynamicItems(): MenuItem[] {
 		const currentProjectId = storageApi.getCurrentProjectId()
-		const items: MenuItem[] = []
+		const items: MenuItem[] = [...(options.prependItems?.() ?? [])]
 
 		if (currentProjectId) {
 			items.push({

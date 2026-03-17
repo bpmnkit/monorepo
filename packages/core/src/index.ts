@@ -250,7 +250,7 @@ export type {
 	FlowOrderViolation,
 } from "./layout/index.js"
 export type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from "./layout/index.js"
-export { ELEMENT_SIZES } from "./layout/index.js"
+export { ELEMENT_SIZES, GRID_CELL_HEIGHT } from "./layout/index.js"
 export { compactify, expand } from "./bpmn/compact.js"
 export { exportSvg } from "./bpmn/svg.js"
 export type { SvgExportOptions } from "./bpmn/svg.js"
