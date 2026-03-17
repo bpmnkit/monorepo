@@ -135,6 +135,11 @@ export function elemRow(position: number): number {
 	return position * CELL_H + Math.floor((CELL_H - 3) / 2)
 }
 
+/** Column of the horizontal center of an element (for top/bottom connections). */
+export function midCol(type: string, layer: number): number {
+	return elemCol(type, layer) + Math.floor(elemW(type) / 2)
+}
+
 /**
  * Column of the right exit connection point (first column AFTER the element's
  * right border — where an outgoing edge begins).
@@ -158,23 +163,27 @@ export function midRow(position: number): number {
 
 // ── Drawing ─────────────────────────────────────────────────────────────────
 
-/** Draw any BPMN element onto the grid at its logical (layer, position). */
+/**
+ * Draw any BPMN element onto the grid.
+ *
+ * @param row - The top row of the 3-row element box (pre-computed by the caller).
+ */
 export function drawElement(
 	grid: AsciiGrid,
 	type: string,
 	layer: number,
-	position: number,
+	row: number,
 	label: string | undefined,
 ): void {
 	const col = elemCol(type, layer)
 	const name = label ?? ""
 
 	if (isTaskLike(type)) {
-		drawTaskBox(grid, col, elemRow(position), name, type)
+		drawTaskBox(grid, col, row, name, type)
 	} else if (isGateway(type)) {
-		drawGatewayBox(grid, col, elemRow(position), name, elementMarker(type))
+		drawGatewayBox(grid, col, row, name, elementMarker(type))
 	} else {
-		drawCompactBox(grid, col, elemRow(position), name, elementMarker(type))
+		drawCompactBox(grid, col, row, name, elementMarker(type))
 	}
 }
 
