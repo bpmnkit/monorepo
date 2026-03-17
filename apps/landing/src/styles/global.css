@@ -174,6 +174,96 @@ a:hover {
 	text-decoration: none;
 }
 
+.nav-burger {
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 5px;
+	width: 36px;
+	height: 36px;
+	padding: 6px;
+	background: none;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: color 0.2s, background 0.2s;
+}
+
+.nav-burger:hover {
+	color: var(--text);
+	background: oklch(15% 0.03 270 / 0.5);
+}
+
+.nav-burger span {
+	display: block;
+	width: 18px;
+	height: 1.5px;
+	background: currentColor;
+	border-radius: 2px;
+	transition: transform 0.2s, opacity 0.2s;
+}
+
+.nav-burger[aria-expanded="true"] span:nth-child(1) {
+	transform: translateY(6.5px) rotate(45deg);
+}
+
+.nav-burger[aria-expanded="true"] span:nth-child(2) {
+	opacity: 0;
+}
+
+.nav-burger[aria-expanded="true"] span:nth-child(3) {
+	transform: translateY(-6.5px) rotate(-45deg);
+}
+
+.nav-mobile-menu {
+	display: none;
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: oklch(5% 0.025 270 / 0.97);
+	backdrop-filter: blur(18px) saturate(180%);
+	-webkit-backdrop-filter: blur(18px) saturate(180%);
+	border-bottom: 1px solid oklch(15% 0.03 270 / 0.6);
+	padding: 8px 16px 16px;
+	flex-direction: column;
+	gap: 2px;
+	transform: translateY(-6px);
+	opacity: 0;
+	transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-mobile-menu.open {
+	transform: translateY(0);
+	opacity: 1;
+}
+
+.nav-mobile-link {
+	font-size: 15px;
+	color: var(--text-muted);
+	padding: 10px 12px;
+	border-radius: 8px;
+	transition: color 0.2s, background 0.2s;
+}
+
+.nav-mobile-link:hover {
+	color: var(--text);
+	background: oklch(15% 0.03 270 / 0.5);
+	text-decoration: none;
+}
+
+.nav-mobile-cta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 6px;
+	border: 1px solid var(--border);
+	font-weight: 500;
+	justify-content: center;
+}
+
 /* ── Hero ───────────────────────────────────────────────────────── */
 .hero {
 	position: relative;
@@ -1830,8 +1920,17 @@ a:hover {
 }
 
 @media (max-width: 600px) {
-	.nav-link {
+	.nav-link,
+	.nav-cta {
 		display: none;
+	}
+
+	.nav-burger {
+		display: flex;
+	}
+
+	.nav-mobile-menu {
+		display: flex;
 	}
 
 	.section-h2 {
