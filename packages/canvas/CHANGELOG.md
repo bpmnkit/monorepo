@@ -1,5 +1,12 @@
 # @bpmnkit/canvas
 
+## 0.0.13
+
+### Patch Changes
+
+- Updated dependencies [[`7918d12`](https://github.com/bpmnkit/monorepo/commit/7918d120740b85a2c4a363ff7dd9605d4f0f8a0d)]:
+  - @bpmnkit/core@0.0.13
+
 ## 0.0.12
 
 ### Patch Changes

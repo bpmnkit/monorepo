@@ -1,5 +1,16 @@
 # @bpmnkit/learn
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [[`7918d12`](https://github.com/bpmnkit/monorepo/commit/7918d120740b85a2c4a363ff7dd9605d4f0f8a0d)]:
+  - @bpmnkit/plugins@0.0.13
+  - @bpmnkit/editor@0.0.13
+  - @bpmnkit/core@0.0.13
+  - @bpmnkit/canvas@0.0.13
+  - @bpmnkit/engine@0.1.12
+
 ## 0.0.6
 
 ### Patch Changes

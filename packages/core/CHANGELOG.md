@@ -1,5 +1,11 @@
 # @bpmnkit/core
 
+## 0.0.13
+
+### Patch Changes
+
+- [#49](https://github.com/bpmnkit/monorepo/pull/49) [`7918d12`](https://github.com/bpmnkit/monorepo/commit/7918d120740b85a2c4a363ff7dd9605d4f0f8a0d) Thanks [@urbanisierung](https://github.com/urbanisierung)! - AI in CLI, improved AI search in Operate, improved ASCII rendering
+
 ## 0.0.12
 
 ### Patch Changes
