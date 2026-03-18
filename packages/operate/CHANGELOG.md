@@ -1,5 +1,12 @@
 # @bpmnkit/operate
 
+## 0.0.11
+
+### Patch Changes
+
+- Updated dependencies [[`9aa2ca7`](https://github.com/bpmnkit/monorepo/commit/9aa2ca7b49e3d9ebf09abee45006b68a79bfee6c)]:
+  - @bpmnkit/plugins@0.0.14
+
 ## 0.0.10
 
 ### Patch Changes

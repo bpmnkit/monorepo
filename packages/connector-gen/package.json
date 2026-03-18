@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/connector-gen",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"private": false,
 	"type": "module",
 	"exports": {

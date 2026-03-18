@@ -1,5 +1,14 @@
 # @bpmnkit/landing
 
+## 0.0.14
+
+### Patch Changes
+
+- Updated dependencies [[`9aa2ca7`](https://github.com/bpmnkit/monorepo/commit/9aa2ca7b49e3d9ebf09abee45006b68a79bfee6c)]:
+  - @bpmnkit/plugins@0.0.14
+  - @bpmnkit/editor@0.0.14
+  - @bpmnkit/operate@0.0.11
+
 ## 0.0.13
 
 ### Patch Changes
