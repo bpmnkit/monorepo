@@ -18,6 +18,13 @@ export interface FieldSchema {
 	placeholder?: string
 	/** Options for `select` fields. */
 	options?: SelectOption[]
+	/**
+	 * For `type: "select"` fields — when true, renders a custom searchable
+	 * dropdown instead of a native `<select>`. Use this for large option lists
+	 * where filtering is helpful and where the native dropdown's lack of dark
+	 * theme support is a problem.
+	 */
+	searchable?: boolean
 	/** Short hint displayed below the field. */
 	hint?: string
 	/** Tooltip text shown on hover over the field label. */

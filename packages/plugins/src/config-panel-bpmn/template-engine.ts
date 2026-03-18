@@ -102,6 +102,7 @@ function propToFieldSchema(prop: TemplateProperty): FieldSchema {
 			return {
 				...base,
 				type: "select",
+				searchable: true,
 				options: (prop.choices ?? []).map((c) => ({ value: c.value, label: c.name })),
 			}
 

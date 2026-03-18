@@ -69,6 +69,23 @@ function resolveToast(
 
 // ── Core logic ────────────────────────────────────────────────────────────────
 
+/**
+ * Strips common API descriptor words from an entry name to get a short prefix.
+ * "GitHub REST API" → "GitHub", "Twilio Messaging API" → "Twilio".
+ */
+function derivePrefix(entryName: string): string {
+	return entryName
+		.replace(
+			/\s+(REST|Web|Admin|Management|CRM|Messaging|Mail|Payments|Helix|Email|Transactional)?\s*API\s*$/i,
+			"",
+		)
+		.trim()
+}
+
+function withPrefix(templates: ConnectorTemplate[], prefix: string): ConnectorTemplate[] {
+	return templates.map((t) => ({ ...t, name: `${prefix}: ${t.name}` }))
+}
+
 function registerAll(templates: ConnectorTemplate[], registrar: TemplateRegistrar): void {
 	for (const t of templates) {
 		registrar.registerTemplate(t as unknown as ElementTemplate)
@@ -81,7 +98,8 @@ async function loadCatalogEntry(id: string, registrar: TemplateRegistrar): Promi
 	const toast = showToast(`Importing ${label}…`, "loading")
 	try {
 		const { templates } = await generateFromCatalog(id)
-		registerAll(templates, registrar)
+		const prefix = entry ? derivePrefix(entry.name) : id
+		registerAll(withPrefix(templates, prefix), registrar)
 		resolveToast(toast, `${templates.length} operations from ${label} added`, "success", 3000)
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err)
@@ -90,21 +108,24 @@ async function loadCatalogEntry(id: string, registrar: TemplateRegistrar): Promi
 }
 
 async function loadFromUrl(url: string, registrar: TemplateRegistrar): Promise<void> {
-	// Derive a simple idPrefix from the hostname (e.g. "api.example.com" → "com.example")
+	// Derive idPrefix and a display prefix from the hostname
 	let idPrefix = "io.custom"
+	let prefix = "Custom"
 	try {
 		const parts = new URL(url).hostname.split(".").filter(Boolean)
 		if (parts.length >= 2) {
 			idPrefix = parts.slice(-2).reverse().join(".")
+			const last = idPrefix.split(".").at(-1) ?? "custom"
+			prefix = last.charAt(0).toUpperCase() + last.slice(1)
 		}
 	} catch {
-		// url was not parseable — idPrefix stays as fallback
+		// url was not parseable — idPrefix/prefix stay as fallback
 	}
 
 	const toast = showToast("Fetching spec…", "loading")
 	try {
 		const { templates } = await generateFromUrl(url, { idPrefix })
-		registerAll(templates, registrar)
+		registerAll(withPrefix(templates, prefix), registrar)
 		resolveToast(toast, `${templates.length} operations imported`, "success", 3000)
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err)

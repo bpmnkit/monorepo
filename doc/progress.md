@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-03-18 — Connector selector: searchable dropdown, dark theme fix, import prefix
+
+- **`packages/plugins/src/config-panel/types.ts`**: Added `searchable?: boolean` to `FieldSchema` for `select` fields.
+- **`packages/plugins/src/config-panel/css.ts`**: Added `.bpmnkit-cfg-ss-*` styles for the custom searchable dropdown (trigger button, floating panel, search input, option list, empty state). Full dark/light theme support via `data-theme="light"` on the panel element.
+- **`packages/plugins/src/config-panel/renderer.ts`**: Added `_renderSearchableSelect()` — a custom dropdown that replaces the native `<select>` when `field.searchable === true`. Features: search input with live filtering, keyboard navigation (ArrowUp/Down, Enter, Escape), smart flip-up positioning, and singleton tracking so only one dropdown is open at a time. The dropdown closes when the panel hides via `_activeDropdownClose` in `_hidePanel()`.
+- **`packages/plugins/src/config-panel-bpmn/index.ts`**: Added `searchable: true` to the service-task Connector field.
+- **`packages/plugins/src/connector-catalog/index.ts`**: Added `derivePrefix()` (strips "REST API", "Web API" etc. suffixes) and `withPrefix()` (maps templates to `"Prefix: name"`). Catalog imports now show as e.g. `"GitHub: List repositories"`; URL imports use the hostname last-segment capitalized as prefix.
+
 ## 2026-03-18 — Fix `verify` build failure: `connector-gen` Node.js imports in browser bundle
 
 - **`packages/connector-gen/src/browser.ts`**: New browser-safe entry point — exports everything from the main entry except `writeTemplates` (which imports `node:fs/promises` and `node:path`). `generateFromUrl` and `generateFromCatalog` drop the `outputDir` option since disk I/O is not available in browser environments.

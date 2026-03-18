@@ -194,6 +194,7 @@ const GENERIC_SERVICE_TASK_SCHEMA: PanelSchema = {
 					key: "connector",
 					label: "Connector",
 					type: "select",
+					searchable: true,
 					options: CONNECTOR_OPTIONS,
 					hint: "Select a Camunda connector or use a custom job worker type.",
 				},
@@ -354,6 +355,7 @@ const GENERIC_ADHOC_SCHEMA: PanelSchema = {
 					key: "connector",
 					label: "Template",
 					type: "select",
+					searchable: true,
 					options: ADHOC_OPTIONS,
 					hint: "Attach a Camunda AI agent template or use a plain ad-hoc subprocess.",
 				},
@@ -885,6 +887,7 @@ const TIMER_SCHEMA: PanelSchema = {
 					key: "timerType",
 					label: "Timer type",
 					type: "select",
+					searchable: true,
 					options: [
 						{ value: "timeCycle", label: "Cycle" },
 						{ value: "timeDuration", label: "Duration" },

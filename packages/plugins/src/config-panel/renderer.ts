@@ -10,6 +10,9 @@ const SVG_NS = "http://www.w3.org/2000/svg"
 const FIELD_WRAPPER_ATTR = "data-field-wrapper"
 const STORAGE_KEY_WIDTH = "bpmnkit-cfg-panel-width"
 
+// At most one searchable-select dropdown is open at a time across all panels.
+let _activeDropdownClose: (() => void) | null = null
+
 /**
  * Validates a `feel-expression` field value using the real FEEL parser.
  * Returns null when the value is empty or is a valid FEEL expression (or a plain string).
@@ -248,6 +251,7 @@ export class ConfigPanelRenderer {
 	}
 
 	private _hidePanel(): void {
+		_activeDropdownClose?.()
 		this._panelEl?.remove()
 		this._panelEl = null
 		this._tabsAreaEl = null
@@ -1072,7 +1076,11 @@ export class ConfigPanelRenderer {
 			wrapper.appendChild(labelRow)
 
 			if (field.type === "select") {
-				wrapper.appendChild(this._renderSelect(field, value))
+				wrapper.appendChild(
+					field.searchable
+						? this._renderSearchableSelect(field, value)
+						: this._renderSelect(field, value),
+				)
 			} else if (field.type === "textarea") {
 				wrapper.appendChild(this._renderTextarea(field, value))
 			} else if (field.type === "feel-expression") {
@@ -1255,6 +1263,182 @@ export class ConfigPanelRenderer {
 		row.appendChild(lbl)
 		row.appendChild(labelText)
 		return row
+	}
+
+	private _renderSearchableSelect(field: FieldSchema, value: FieldValue): HTMLElement {
+		const options = field.options ?? []
+		const currentValue = typeof value === "string" ? value : (options[0]?.value ?? "")
+
+		const trigger = document.createElement("button")
+		trigger.type = "button"
+		trigger.className = "bpmnkit-cfg-ss-trigger"
+		trigger.setAttribute("data-field-key", field.key)
+		trigger.setAttribute("aria-haspopup", "listbox")
+		trigger.setAttribute("aria-expanded", "false")
+
+		const triggerLabel = document.createElement("span")
+		triggerLabel.className = "bpmnkit-cfg-ss-trigger-label"
+		triggerLabel.textContent = options.find((o) => o.value === currentValue)?.label ?? currentValue
+
+		const arrow = document.createElement("span")
+		arrow.className = "bpmnkit-cfg-ss-arrow"
+		arrow.setAttribute("aria-hidden", "true")
+
+		trigger.append(triggerLabel, arrow)
+
+		if (this._readonly) {
+			trigger.disabled = true
+			return trigger
+		}
+
+		const applyField = (v: string) => this._applyField(field.key, v)
+
+		const openDropdown = () => {
+			// Close any existing dropdown first
+			_activeDropdownClose?.()
+
+			const rect = trigger.getBoundingClientRect()
+			const hudTheme = document.body.dataset.bpmnkitHudTheme ?? ""
+
+			const panel = document.createElement("div")
+			panel.className = "bpmnkit-cfg-ss-dropdown"
+			if (hudTheme === "light" || hudTheme === "neon") panel.setAttribute("data-theme", hudTheme)
+
+			// Position: prefer below, flip above if not enough room
+			const spaceBelow = window.innerHeight - rect.bottom
+			const dropHeight = Math.min(300, options.length * 28 + 48)
+			const openUpward = spaceBelow < dropHeight && rect.top > spaceBelow
+			panel.style.cssText = [
+				"position:fixed",
+				`left:${Math.round(rect.left)}px`,
+				`width:${Math.round(rect.width)}px`,
+				"max-height:300px",
+				"z-index:99999",
+				openUpward
+					? `bottom:${Math.round(window.innerHeight - rect.top + 4)}px`
+					: `top:${Math.round(rect.bottom + 4)}px`,
+			].join(";")
+
+			const search = document.createElement("input")
+			search.type = "text"
+			search.className = "bpmnkit-cfg-ss-search"
+			search.placeholder = "Search\u2026"
+			search.setAttribute("aria-label", "Search connectors")
+
+			const list = document.createElement("div")
+			list.className = "bpmnkit-cfg-ss-list"
+			list.setAttribute("role", "listbox")
+			// Leave room for search bar: total panel max-height minus ~37px search bar
+			list.style.maxHeight = "263px"
+
+			let focusIdx = 0
+			let visibleOpts = options
+
+			const renderOpts = (query: string) => {
+				const q = query.toLowerCase().trim()
+				visibleOpts = q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options
+				focusIdx = 0
+				list.innerHTML = ""
+				if (visibleOpts.length === 0) {
+					const empty = document.createElement("div")
+					empty.className = "bpmnkit-cfg-ss-empty"
+					empty.textContent = "No results"
+					list.appendChild(empty)
+					return
+				}
+				for (let i = 0; i < visibleOpts.length; i++) {
+					const opt = visibleOpts[i]
+					if (!opt) continue
+					const el = document.createElement("div")
+					el.className = "bpmnkit-cfg-ss-option"
+					if (opt.value === currentValue) el.classList.add("bpmnkit-cfg-ss-option--selected")
+					if (i === focusIdx) el.classList.add("bpmnkit-cfg-ss-option--focused")
+					el.setAttribute("role", "option")
+					el.setAttribute("aria-selected", String(opt.value === currentValue))
+					el.setAttribute("data-value", opt.value)
+					el.textContent = opt.label
+					el.addEventListener("pointerdown", (e) => {
+						e.preventDefault()
+						triggerLabel.textContent = opt.label
+						closeDropdown()
+						applyField(opt.value)
+					})
+					list.appendChild(el)
+				}
+			}
+
+			const updateFocus = () => {
+				const items = list.querySelectorAll<HTMLElement>(".bpmnkit-cfg-ss-option")
+				for (let i = 0; i < items.length; i++) {
+					items[i]?.classList.toggle("bpmnkit-cfg-ss-option--focused", i === focusIdx)
+				}
+			}
+
+			search.addEventListener("input", () => renderOpts(search.value))
+			search.addEventListener("keydown", (e) => {
+				const items = list.querySelectorAll<HTMLElement>(".bpmnkit-cfg-ss-option")
+				if (e.key === "ArrowDown") {
+					e.preventDefault()
+					focusIdx = Math.min(focusIdx + 1, items.length - 1)
+					updateFocus()
+					items[focusIdx]?.scrollIntoView({ block: "nearest" })
+				} else if (e.key === "ArrowUp") {
+					e.preventDefault()
+					focusIdx = Math.max(focusIdx - 1, 0)
+					updateFocus()
+					items[focusIdx]?.scrollIntoView({ block: "nearest" })
+				} else if (e.key === "Enter") {
+					e.preventDefault()
+					const focused = visibleOpts[focusIdx]
+					if (focused) {
+						triggerLabel.textContent = focused.label
+						closeDropdown()
+						applyField(focused.value)
+					}
+				} else if (e.key === "Escape") {
+					closeDropdown()
+					trigger.focus()
+				}
+			})
+
+			panel.append(search, list)
+			document.body.appendChild(panel)
+			trigger.setAttribute("aria-expanded", "true")
+
+			renderOpts("")
+			// Scroll the current selection into view
+			list.querySelector<HTMLElement>(".bpmnkit-cfg-ss-option--selected")?.scrollIntoView({
+				block: "nearest",
+			})
+
+			const onOutside = (e: PointerEvent) => {
+				if (!panel.contains(e.target as Node) && e.target !== trigger) closeDropdown()
+			}
+			document.addEventListener("pointerdown", onOutside)
+
+			_activeDropdownClose = closeDropdown
+
+			function closeDropdown() {
+				panel.remove()
+				trigger.setAttribute("aria-expanded", "false")
+				document.removeEventListener("pointerdown", onOutside)
+				if (_activeDropdownClose === closeDropdown) _activeDropdownClose = null
+			}
+
+			requestAnimationFrame(() => {
+				search.focus()
+			})
+		}
+
+		trigger.addEventListener("click", () => {
+			if (trigger.getAttribute("aria-expanded") === "true") {
+				_activeDropdownClose?.()
+			} else {
+				openDropdown()
+			}
+		})
+
+		return trigger
 	}
 
 	private _renderActionButton(field: FieldSchema): HTMLElement {
