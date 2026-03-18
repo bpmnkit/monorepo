@@ -6,6 +6,7 @@ import { createCommandPalettePlugin } from "@bpmnkit/plugins/command-palette"
 import { createCommandPaletteEditorPlugin } from "@bpmnkit/plugins/command-palette-editor"
 import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel"
 import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn"
+import { createConnectorCatalogPlugin } from "@bpmnkit/plugins/connector-catalog"
 import { createMainMenuPlugin } from "@bpmnkit/plugins/main-menu"
 import { createOptimizePlugin } from "@bpmnkit/plugins/optimize"
 import { InMemoryFileResolver, createStorageTabsBridge } from "@bpmnkit/plugins/storage-tabs-bridge"
@@ -190,6 +191,8 @@ const configPanelBpmn = createConfigPanelBpmnPlugin(configPanel, {
 	},
 })
 
+const connectorCatalog = createConnectorCatalogPlugin(configPanelBpmn, palette)
+
 const optimizePlugin = createOptimizePlugin({
 	getDefinitions: () => editorRef?.getDefinitions() ?? null,
 	reload: (xml) => {
@@ -241,6 +244,7 @@ const editor = new BpmnEditor({
 		paletteEditor,
 		configPanel,
 		configPanelBpmn,
+		connectorCatalog,
 		aiBridgePlugin,
 	],
 })

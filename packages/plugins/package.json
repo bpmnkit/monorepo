@@ -16,6 +16,10 @@
 			"import": "./dist/command-palette/index.js",
 			"types": "./dist/command-palette/index.d.ts"
 		},
+		"./connector-catalog": {
+			"import": "./dist/connector-catalog/index.js",
+			"types": "./dist/connector-catalog/index.d.ts"
+		},
 		"./command-palette-editor": {
 			"import": "./dist/command-palette-editor/index.js",
 			"types": "./dist/command-palette-editor/index.d.ts"
@@ -107,11 +111,12 @@
 	"dependencies": {
 		"@bpmnkit/ascii": "workspace:*",
 		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/connector-gen": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/feel": "workspace:*"
 	},
-	"description": "22 composable canvas plugins for BPMN editors and viewers — minimap, AI chat, process simulation, storage, and more",
+	"description": "23 composable canvas plugins for BPMN editors and viewers — minimap, AI chat, process simulation, storage, and more",
 	"keywords": ["bpmn", "plugins", "canvas", "minimap", "workflow", "typescript", "camunda"],
 	"license": "MIT",
 	"repository": {

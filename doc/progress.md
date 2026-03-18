@@ -1,5 +1,19 @@
 # Progress
 
+## 2026-03-18 — Fix `verify` build failure: `connector-gen` Node.js imports in browser bundle
+
+- **`packages/connector-gen/src/browser.ts`**: New browser-safe entry point — exports everything from the main entry except `writeTemplates` (which imports `node:fs/promises` and `node:path`). `generateFromUrl` and `generateFromCatalog` drop the `outputDir` option since disk I/O is not available in browser environments.
+- **`packages/connector-gen/package.json`**: Added `"./browser"` export pointing to `dist/browser.js`.
+- **`packages/plugins/src/connector-catalog/index.ts`**: Updated import to `@bpmnkit/connector-gen/browser` so Vite no longer attempts to bundle the Node-only `write-templates.js`.
+
+## 2026-03-18 — `connector-catalog` plugin: import OpenAPI connectors from the editor
+
+- **`packages/plugins/src/connector-catalog/index.ts`**: New `createConnectorCatalogPlugin(registrar, palette)` plugin. Registers one command per built-in catalog entry (30+ APIs) plus an "Import from OpenAPI URL…" command in the command palette. Selecting a catalog entry calls `generateFromCatalog()`, then registers all generated templates via `configPanelBpmn.registerTemplate()`. The URL command uses `palette.pushView()` to prompt for a URL, then calls `generateFromUrl()`. A toast notification shows loading/success/error state.
+- **`packages/plugins/src/connector-catalog/css.ts`**: Toast notification styles (`bpmnkit-cc-toast`) with `loading`, `success`, and `error` variants. Respects `data-bpmnkit-hud-theme="light"`.
+- **`packages/plugins/package.json`**: Added `@bpmnkit/connector-gen` as a runtime dependency. Added `./connector-catalog` export.
+- **`apps/desktop/src/editor.ts`**: Instantiated `createConnectorCatalogPlugin(configPanelBpmn, palette)` and added it to the editor plugins list.
+- **`apps/landing/src/scripts/editor.ts`**: Same wiring — this is the actual editor app the user interacts with on bpmnkit.com. Both editor apps now have the plugin.
+
 ## 2026-03-17 — Mobile editor follow-up fixes
 
 - **`apps/desktop/src/editor.ts`**: `onPanelShow` in the config panel now only calls `dock.expand()` when `window.innerWidth > 600`. On mobile the sidebar stays collapsed when an element is selected — the user must open it actively.

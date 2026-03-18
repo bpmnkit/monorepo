@@ -1,5 +1,12 @@
 # Features
 
+## Connector Catalog Plugin (2026-03-18) — `packages/plugins/connector-catalog`
+
+- **`createConnectorCatalogPlugin`**: Canvas plugin that wires `@bpmnkit/connector-gen` into the editor via the command palette. Press Ctrl+K / ⌘K, search for an API name (GitHub, Stripe, Slack, Anthropic, …), and the spec is fetched, templates generated, and registered in the connector selector — all in the current session.
+- **30+ catalog entries**: All built-in `connector-gen` catalog entries (GitHub, Stripe, Jira, Slack, Notion, OpenAI, Discord, PagerDuty, etc.) appear as individual commands.
+- **Custom URL import**: "Import from OpenAPI URL…" command accepts any OpenAPI 3.x spec URL for private or custom APIs.
+- **Zero UI friction**: No dialog, no file picker. Commands appear in the existing command palette; a toast confirms success or surfaces errors.
+
 ## Mobile Editor Usability (2026-03-17) — `packages/editor`, `packages/plugins`, `apps/desktop`
 
 - **Fix zoom stuck after pinch-to-zoom**: `pointercancel` now resets the state machine, unlocking the viewport when a system gesture interrupts an editor drag.
