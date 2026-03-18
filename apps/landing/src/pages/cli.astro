@@ -1,0 +1,987 @@
+---
+import "../styles/global.css"
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>casen CLI — Manage Camunda 8 from your terminal · BPMN Kit</title>
+  <meta name="description" content="casen is the official command-line interface for Camunda 8. Deploy processes, manage incidents, query instances, and generate connectors — all from your terminal." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/asciinema-player@3/dist/bundle/player.min.css" />
+  <style is:global>
+    /* ── Page layout ────────────────────────────────────────────────── */
+    .cli-page-wrap {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────────── */
+    .cli-hero {
+      padding: calc(var(--nav-h) + 80px) 24px 72px;
+      text-align: center;
+    }
+
+    .cli-hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 20px;
+    }
+
+    .cli-hero-eyebrow-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--teal);
+      animation: eyebrow-pulse 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes eyebrow-pulse {
+      from { opacity: 1; transform: scale(1); }
+      to   { opacity: 0.3; transform: scale(0.7); }
+    }
+
+    .cli-hero-title {
+      font-size: clamp(3.5rem, 10vw, 6rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin-bottom: 24px;
+    }
+
+    .cli-hero-title .shimmer-text {
+      font-family: var(--font-mono);
+    }
+
+    .cli-hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-muted);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .cli-install-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    .cli-install-prompt {
+      color: var(--teal);
+      user-select: none;
+    }
+
+    .cli-install-cmd {
+      color: var(--text);
+    }
+
+    .cli-install-copy {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .cli-install-copy:hover {
+      color: var(--text);
+      background: var(--border);
+    }
+
+    .cli-hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Demo / asciinema ───────────────────────────────────────────── */
+    .cli-demo-section {
+      padding: 0 24px 80px;
+    }
+
+    .cli-demo-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .cli-demo-player {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 80px oklch(0% 0 0 / 0.5);
+    }
+
+    /* Override asciinema player chrome to match our theme */
+    .cli-demo-player .ap-player {
+      border-radius: 12px;
+    }
+
+    .cli-demo-caption {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ── Features grid ──────────────────────────────────────────────── */
+    .cli-feat-section {
+      padding: 80px 24px;
+    }
+
+    .cli-feat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 48px;
+    }
+
+    .cli-feat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .cli-feat-card:hover {
+      border-color: oklch(55% 0.22 280 / 0.4);
+      box-shadow: 0 8px 32px oklch(55% 0.22 280 / 0.06);
+    }
+
+    .cli-feat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: oklch(55% 0.22 280 / 0.1);
+      border: 1px solid oklch(55% 0.22 280 / 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-bright);
+      margin-bottom: 16px;
+    }
+
+    .cli-feat-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .cli-feat-card p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ── Commands reference ─────────────────────────────────────────── */
+    .cli-cmds-section {
+      padding: 80px 24px;
+    }
+
+    .cli-cmds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .cli-cmd-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .cli-cmd-group-header {
+      padding: 14px 20px;
+      background: oklch(12% 0.025 270);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cli-cmd-group-icon {
+      color: var(--teal);
+    }
+
+    .cli-cmd-group-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .cli-cmd-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .cli-cmd-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cli-cmd-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .cli-cmd-table tr:hover {
+      background: oklch(12% 0.025 270 / 0.5);
+    }
+
+    .cli-cmd-table td {
+      padding: 10px 20px;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .cli-cmd-table td:first-child {
+      font-family: var(--font-mono);
+      color: var(--teal);
+      white-space: nowrap;
+      width: 1%;
+      padding-right: 8px;
+    }
+
+    .cli-cmd-table td:last-child {
+      color: var(--text-muted);
+    }
+
+    /* ── Output formats ─────────────────────────────────────────────── */
+    .cli-output-section {
+      padding: 80px 24px;
+    }
+
+    .cli-output-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    @media (max-width: 720px) {
+      .cli-output-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .cli-output-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .cli-output-card-header {
+      padding: 12px 20px;
+      background: oklch(12% 0.025 270);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .cli-output-card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .cli-output-flag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--teal);
+      background: oklch(72% 0.18 185 / 0.1);
+      border: 1px solid oklch(72% 0.18 185 / 0.2);
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    .cli-output-card pre {
+      padding: 20px;
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      overflow-x: auto;
+    }
+
+    .cli-output-card pre .k { color: var(--accent-bright); }
+    .cli-output-card pre .s { color: oklch(72% 0.18 185); }
+    .cli-output-card pre .n { color: oklch(80% 0.18 60); }
+    .cli-output-card pre .h { color: var(--text-muted); font-style: italic; }
+
+    /* ── Global flags ───────────────────────────────────────────────── */
+    .cli-flags-section {
+      padding: 80px 24px;
+    }
+
+    .cli-flags-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .cli-flags-table thead tr {
+      background: oklch(12% 0.025 270);
+    }
+
+    .cli-flags-table th {
+      padding: 12px 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cli-flags-table td {
+      padding: 12px 20px;
+      font-size: 13px;
+      border-bottom: 1px solid oklch(15% 0.03 270 / 0.5);
+      vertical-align: middle;
+    }
+
+    .cli-flags-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .cli-flags-table td:first-child {
+      font-family: var(--font-mono);
+      color: var(--teal);
+      white-space: nowrap;
+    }
+
+    .cli-flags-table td:nth-child(2) {
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+    }
+
+    .cli-flags-table td:last-child {
+      color: var(--text-muted);
+    }
+
+    /* ── Shell completion ───────────────────────────────────────────── */
+    .cli-completion-section {
+      padding: 80px 24px;
+    }
+
+    .cli-completion-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 48px;
+    }
+
+    @media (max-width: 720px) {
+      .cli-completion-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .cli-completion-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .cli-completion-card-header {
+      padding: 12px 20px;
+      background: oklch(12% 0.025 270);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .cli-completion-card pre {
+      padding: 16px 20px;
+      margin: 0;
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .cli-completion-card pre .c { color: var(--text-muted); opacity: 0.5; }
+    .cli-completion-card pre .cmd { color: var(--teal); }
+
+    /* ── Install ────────────────────────────────────────────────────── */
+    .cli-install-section {
+      padding: 80px 24px 120px;
+    }
+
+    .cli-install-tabs-wrap {
+      max-width: 560px;
+      margin: 48px auto 0;
+    }
+
+    .cli-pkg-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .cli-pkg-tab {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s, border-color 0.2s;
+    }
+
+    .cli-pkg-tab:hover {
+      color: var(--text);
+      background: oklch(15% 0.03 270 / 0.5);
+    }
+
+    .cli-pkg-tab.active {
+      color: var(--text);
+      background: var(--surface);
+      border-color: var(--border);
+    }
+
+    .cli-pkg-cmd {
+      display: none;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .cli-pkg-cmd.active {
+      display: block;
+    }
+
+    .cli-pkg-cmd .prompt {
+      color: var(--teal);
+      user-select: none;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .cli-feat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cli-cmds-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* .shimmer-text — defined in global.css */
+  </style>
+</head>
+<body>
+
+  <div class="aurora" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="scroll-bar" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <nav class="nav" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo" aria-label="BPMN Kit home">
+        <svg width="36" height="36" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path fill="#060609" d="m0 166.67c0 -92.0493 74.6207 -166.67 166.67 -166.67l666.66003 0c44.203613 0 86.5968 17.559824 117.853455 48.816513c31.256714 31.256691 48.81653 73.64986 48.81653 117.853485l0 666.66003c0 92.049255 -74.62073 166.66998 -166.66998 166.66998l-666.66003 0c-92.0493 0 -166.67 -74.62073 -166.67 -166.66998z" fill-rule="evenodd"/>
+          <path fill="#e954c2" d="m80.49353 127.48857l84.734375 0q42.71875 0 63.03125 20.578125q20.3125 20.578125 20.3125 61.828125l0 13.0625q0 26.96875 -9.1875 44.812485q-9.171875 17.828125 -29.8125 20.0625l-0.09375 -0.9375q44.234375 8.796875 44.234375 69.0625l0 28.0q0 40.8125 -21.96875 62.78125q-21.96875 21.96875 -63.25 21.96875l-88.0 0l0 -341.21875zm78.671875 132.99998q12.328125 0 17.921875 -5.7656097q5.59375 -5.78125 5.59375 -21.484375l0 -18.203125q0 -15.203125 -4.421875 -20.765625q-4.40625 -5.5625 -14.421875 -5.5625l-17.453125 0l0 71.781235l12.78125 0zm9.328125 146.98438q10.296875 0 14.8125 -4.984375q4.515625 -5.0 4.515625 -19.921875l0 -28.46875q0 -19.625 -5.703125 -26.0q-5.6875 -6.390625 -20.15625 -6.390625l-15.578125 0l0 85.765625l22.109375 0zm115.10724 -279.98438l82.875 0q41.4375 0 62.625 22.75q21.1875 22.734375 21.1875 65.265625l0 32.1875q0 42.531235 -21.1875 65.281235q-21.1875 22.734375 -62.625 22.734375l-16.984375 0l0 133.0l-65.890625 0l0 -341.21875zm82.875 146.99998q9.359375 0 13.640625 -4.75q4.28125 -4.765625 4.28125 -18.781235l0 -38.71875q0 -14.015625 -4.28125 -18.765625q-4.28125 -4.765625 -13.640625 -4.765625l-16.984375 0l0 85.781235l16.984375 0zm111.83243 -146.99998l86.859406 0l27.28125 239.99998l-0.9375 0l27.265625 -239.99998l86.875 0l0 341.21875l-63.09375 0l6.359375 -253.68748l0.921875 0.15625l-32.0 253.53123l-55.453125 0l-32.0 -253.53123l0.921875 -0.15625l6.359375 253.68748l-59.359406 0l0 -341.21875zm265.6392 0l77.328125 0l45.203125 201.62498l-0.921875 0.265625l-6.359375 -201.89061l60.296875 0l0 341.21875l-65.65625 0l-56.890625 -244.54686l0.9375 -0.265625l6.34375 244.81248l-60.28125 0l0 -341.21875z" fill-rule="nonzero"/>
+          <path fill="#ffffff" d="m270.9452 522.1202l65.890625 0l0 112.609375l53.4375 -112.609375l67.828125 0l-65.203125 127.90625l64.03125 213.3125l-68.875 0l-39.65625 -133.03125l-11.5625 23.390625l0 109.640625l-65.890625 0l0 -341.21875zm207.7738 0l65.890625 0l0 341.21875l-65.890625 0l0 -341.21875zm144.30109 61.21875l-53.671875 0l0 -61.21875l173.23438 0l0 61.21875l-53.671875 0l0 280.0l-65.890625 0l0 -280.0z" fill-rule="nonzero"/>
+        </svg>
+      </a>
+      <div class="nav-links">
+        <a href="/#features" class="nav-link">Features</a>
+        <a href="/#examples" class="nav-link">Examples</a>
+        <a href="/#api" class="nav-link">API</a>
+        <a href="/cli" class="nav-link" aria-current="page" style="color: var(--text);">CLI</a>
+        <a href="https://docs.bpmnkit.com" class="nav-link">Docs</a>
+        <a href="/editor" class="nav-link">Editor</a>
+        <a href="/operate" class="nav-link">Operate</a>
+        <a href="https://github.com/bpmnkit/monorepo" class="nav-cta" target="_blank" rel="noopener">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+      <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-mobile-menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div class="nav-mobile-menu" id="nav-mobile-menu" aria-hidden="true">
+      <a href="/#features" class="nav-mobile-link">Features</a>
+      <a href="/#examples" class="nav-mobile-link">Examples</a>
+      <a href="/#api" class="nav-mobile-link">API</a>
+      <a href="/cli" class="nav-mobile-link">CLI</a>
+      <a href="https://docs.bpmnkit.com" class="nav-mobile-link">Docs</a>
+      <a href="/editor" class="nav-mobile-link">Editor</a>
+      <a href="/operate" class="nav-mobile-link">Operate</a>
+      <a href="https://github.com/bpmnkit/monorepo" class="nav-mobile-link nav-mobile-cta" target="_blank" rel="noopener">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </nav>
+
+  <div class="cli-page-wrap">
+  <main style="flex: 1;">
+
+  <!-- ── Hero ─────────────────────────────────────────────────────── -->
+  <section class="cli-hero">
+    <div class="cli-hero-eyebrow">
+      <span class="cli-hero-eyebrow-dot"></span>
+      Command-Line Interface
+    </div>
+    <h1 class="cli-hero-title">
+      <span class="shimmer-text">casen</span>
+    </h1>
+    <p class="cli-hero-sub">
+      Manage Camunda&nbsp;8 clusters from your terminal.
+      Deploy processes, resolve incidents, query instances,
+      and generate connector templates — all with one tool.
+    </p>
+    <div class="cli-install-box" id="install-box">
+      <span class="cli-install-prompt">$</span>
+      <span class="cli-install-cmd" id="install-cmd">npm install -g @bpmnkit/cli</span>
+      <button class="cli-install-copy" id="copy-btn" aria-label="Copy install command" title="Copy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+      </button>
+    </div>
+    <div class="cli-hero-ctas">
+      <a href="https://www.npmjs.com/package/@bpmnkit/cli" class="btn-primary" target="_blank" rel="noopener">
+        View on npm
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+      <a href="https://github.com/bpmnkit/monorepo/tree/main/apps/cli" class="btn-ghost" target="_blank" rel="noopener">
+        Source on GitHub
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Demo ──────────────────────────────────────────────────────── -->
+  <section class="cli-demo-section">
+    <div class="cli-demo-inner">
+      <div class="cli-demo-player" id="demo"></div>
+      <p class="cli-demo-caption">
+        Profile setup → process list → deploy → incidents → JSON output
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Features ──────────────────────────────────────────────────── -->
+  <section class="cli-feat-section">
+    <div class="section-wrap">
+      <div class="section-eyebrow">What it does</div>
+      <h2 class="section-h2">Everything you need<br>for Camunda 8 ops</h2>
+      <div class="cli-feat-grid">
+
+        <div class="cli-feat-card">
+          <div class="cli-feat-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <h3>Interactive TUI</h3>
+          <p>Navigate menus, commands, and input forms with arrow keys. Run <code style="font-family:var(--font-mono);font-size:12px;color:var(--teal)">casen</code> with no arguments to enter the full TUI.</p>
+        </div>
+
+        <div class="cli-feat-card">
+          <div class="cli-feat-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h3>Connection Profiles</h3>
+          <p>Store multiple clusters — dev, staging, prod. Switch with <code style="font-family:var(--font-mono);font-size:12px;color:var(--teal)">--profile</code> or <code style="font-family:var(--font-mono);font-size:12px;color:var(--teal)">casen profile use</code>. Supports Bearer, OAuth2, and Basic auth.</p>
+        </div>
+
+        <div class="cli-feat-card">
+          <div class="cli-feat-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>Full API Coverage</h3>
+          <p>Processes, instances, incidents, jobs, decisions, variables, messages, and signals — all 34 resource groups, 180+ operations.</p>
+        </div>
+
+        <div class="cli-feat-card">
+          <div class="cli-feat-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>Connector Generation</h3>
+          <p>Point <code style="font-family:var(--font-mono);font-size:12px;color:var(--teal)">casen connector generate</code> at an OpenAPI or Swagger spec and get ready-to-use Camunda element templates.</p>
+        </div>
+
+        <div class="cli-feat-card">
+          <div class="cli-feat-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </div>
+          <h3>Flexible Output</h3>
+          <p>Human-readable tables by default. Add <code style="font-family:var(--font-mono);font-size:12px;color:var(--teal)">--json</code> for machine-readable output. Pipe straight into <code style="font-family:var(--font-mono);font-size:12px;color:var(--teal)">jq</code> or scripts.</p>
+        </div>
+
+        <div class="cli-feat-card">
+          <div class="cli-feat-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <h3>Shell Completion</h3>
+          <p>Tab completion for bash, zsh, and fish. One command to install. Never mistype a subcommand again.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Commands ──────────────────────────────────────────────────── -->
+  <section class="cli-cmds-section">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Reference</div>
+      <h2 class="section-h2">Commands</h2>
+
+      <div class="cli-cmds-grid">
+
+        <!-- Profile -->
+        <div class="cli-cmd-group">
+          <div class="cli-cmd-group-header">
+            <svg class="cli-cmd-group-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span class="cli-cmd-group-title">Profile</span>
+          </div>
+          <table class="cli-cmd-table" aria-label="Profile commands">
+            <tbody>
+              <tr><td>casen profile list</td><td>List all saved profiles</td></tr>
+              <tr><td>casen profile add &lt;name&gt;</td><td>Add a profile interactively</td></tr>
+              <tr><td>casen profile use &lt;name&gt;</td><td>Switch the active profile</td></tr>
+              <tr><td>casen profile remove &lt;name&gt;</td><td>Delete a profile</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Processes -->
+        <div class="cli-cmd-group">
+          <div class="cli-cmd-group-header">
+            <svg class="cli-cmd-group-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.2.649.312 1.337.312 2.066s-.112 1.417-.312 2.066l2.069.888a1 1 0 0 1 .499 1.316l-1 2a1 1 0 0 1-1.316.499l-2.069-.888A9.958 9.958 0 0 1 14 20.92V23h-4v-2.08a9.958 9.958 0 0 1-4.371-2.039l-2.069.888a1 1 0 0 1-1.316-.499l-1-2a1 1 0 0 1 .499-1.316l2.069-.888C3.612 14.417 3.5 13.729 3.5 13s.112-1.417.312-2.066L1.743 10.046a1 1 0 0 1-.499-1.316l1-2a1 1 0 0 1 1.316-.499l2.069.888A9.958 9.958 0 0 1 10 5.08V3h4v2.08a9.958 9.958 0 0 1 4.371 2.039l2.069-.888a1 1 0 0 1 1.316.499l1 2a1 1 0 0 1-.499 1.316l-2.069.888z"/></svg>
+            <span class="cli-cmd-group-title">Processes</span>
+          </div>
+          <table class="cli-cmd-table" aria-label="Process commands">
+            <tbody>
+              <tr><td>casen processes list</td><td>List deployed process definitions</td></tr>
+              <tr><td>casen instances list</td><td>List process instances</td></tr>
+              <tr><td>casen instances cancel &lt;key&gt;</td><td>Cancel a running instance</td></tr>
+              <tr><td>casen deploy &lt;file&gt;</td><td>Deploy a BPMN, DMN, or form file</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Incidents & Jobs -->
+        <div class="cli-cmd-group">
+          <div class="cli-cmd-group-header">
+            <svg class="cli-cmd-group-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span class="cli-cmd-group-title">Incidents &amp; Jobs</span>
+          </div>
+          <table class="cli-cmd-table" aria-label="Incident and job commands">
+            <tbody>
+              <tr><td>casen incidents list</td><td>List open incidents</td></tr>
+              <tr><td>casen incidents resolve &lt;key&gt;</td><td>Resolve an incident</td></tr>
+              <tr><td>casen jobs list</td><td>List active jobs</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Decisions & Variables -->
+        <div class="cli-cmd-group">
+          <div class="cli-cmd-group-header">
+            <svg class="cli-cmd-group-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span class="cli-cmd-group-title">Decisions &amp; Variables</span>
+          </div>
+          <table class="cli-cmd-table" aria-label="Decision and variable commands">
+            <tbody>
+              <tr><td>casen decisions list</td><td>List deployed decision definitions</td></tr>
+              <tr><td>casen variables list &lt;key&gt;</td><td>List variables for a process instance</td></tr>
+              <tr><td>casen messages publish</td><td>Publish a message correlation</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Connectors -->
+        <div class="cli-cmd-group">
+          <div class="cli-cmd-group-header">
+            <svg class="cli-cmd-group-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span class="cli-cmd-group-title">Connector</span>
+          </div>
+          <table class="cli-cmd-table" aria-label="Connector commands">
+            <tbody>
+              <tr><td>casen connector generate &lt;spec&gt;</td><td>Generate element templates from OpenAPI/Swagger</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Output formats ────────────────────────────────────────────── -->
+  <section class="cli-output-section">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Output</div>
+      <h2 class="section-h2">Human-readable<br>or machine-friendly</h2>
+      <div class="cli-output-layout">
+
+        <div class="cli-output-card">
+          <div class="cli-output-card-header">
+            <span class="cli-output-card-title">Table (default)</span>
+            <span class="cli-output-flag">casen processes list</span>
+          </div>
+          <pre>  <span class="h">Name                  Version  Deployed</span>
+  <span class="h">─────────────────────────────────────────────</span>
+  order-process         <span class="n">3</span>        2026-03-15 09:42
+  payment-gateway       <span class="n">1</span>        2026-03-14 14:22
+  notification-flow     <span class="n">2</span>        2026-03-12 11:08
+
+  <span class="h">3 process definitions</span></pre>
+        </div>
+
+        <div class="cli-output-card">
+          <div class="cli-output-card-header">
+            <span class="cli-output-card-title">JSON</span>
+            <span class="cli-output-flag">--json</span>
+          </div>
+          <pre>[
+  &#123;
+    <span class="k">"key"</span>: <span class="n">2251799813685229</span>,
+    <span class="k">"name"</span>: <span class="s">"order-process"</span>,
+    <span class="k">"version"</span>: <span class="n">3</span>,
+    <span class="k">"bpmnProcessId"</span>: <span class="s">"order-process"</span>
+  &#125;
+]</pre>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Global flags ──────────────────────────────────────────────── -->
+  <section class="cli-flags-section">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Flags</div>
+      <h2 class="section-h2">Global options</h2>
+      <table class="cli-flags-table" aria-label="Global CLI flags">
+        <thead>
+          <tr>
+            <th>Flag</th>
+            <th>Value</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>--profile</td>
+            <td>&lt;name&gt;</td>
+            <td>Use a specific saved connection profile for this command</td>
+          </tr>
+          <tr>
+            <td>--json</td>
+            <td>—</td>
+            <td>Output results as JSON instead of a table</td>
+          </tr>
+          <tr>
+            <td>--help</td>
+            <td>—</td>
+            <td>Show help for a command</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Shell completion ───────────────────────────────────────────── -->
+  <section class="cli-completion-section">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Shell completion</div>
+      <h2 class="section-h2">Tab completion<br>for every shell</h2>
+      <div class="cli-completion-grid">
+
+        <div class="cli-completion-card">
+          <div class="cli-completion-card-header">bash</div>
+          <pre><span class="c"># Add to ~/.bashrc</span>
+<span class="cmd">eval "$(casen completion bash)"</span></pre>
+        </div>
+
+        <div class="cli-completion-card">
+          <div class="cli-completion-card-header">zsh</div>
+          <pre><span class="c"># Add to ~/.zshrc</span>
+<span class="cmd">eval "$(casen completion zsh)"</span></pre>
+        </div>
+
+        <div class="cli-completion-card">
+          <div class="cli-completion-card-header">fish</div>
+          <pre><span class="c"># Add to fish config</span>
+<span class="cmd">casen completion fish \
+  | source</span></pre>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Install ────────────────────────────────────────────────────── -->
+  <section class="cli-install-section">
+    <div class="section-wrap" style="text-align: center;">
+      <div class="section-eyebrow">Get started</div>
+      <h2 class="section-h2">Install in seconds</h2>
+      <p class="section-sub">Available on npm. Works with npm, pnpm, bun, and yarn.</p>
+
+      <div class="cli-install-tabs-wrap">
+        <div class="cli-pkg-tabs" role="tablist">
+          <button class="cli-pkg-tab active" data-pkg="npm" role="tab">npm</button>
+          <button class="cli-pkg-tab" data-pkg="pnpm" role="tab">pnpm</button>
+          <button class="cli-pkg-tab" data-pkg="bun" role="tab">bun</button>
+          <button class="cli-pkg-tab" data-pkg="yarn" role="tab">yarn</button>
+        </div>
+        <pre class="cli-pkg-cmd active" data-pkg="npm"><code><span class="prompt">$</span> npm install -g @bpmnkit/cli</code></pre>
+        <pre class="cli-pkg-cmd" data-pkg="pnpm"><code><span class="prompt">$</span> pnpm add -g @bpmnkit/cli</code></pre>
+        <pre class="cli-pkg-cmd" data-pkg="bun"><code><span class="prompt">$</span> bun add -g @bpmnkit/cli</code></pre>
+        <pre class="cli-pkg-cmd" data-pkg="yarn"><code><span class="prompt">$</span> yarn global add @bpmnkit/cli</code></pre>
+
+        <p style="margin-top: 24px; font-size: 13.5px; color: var(--text-muted);">
+          Then run <code style="font-family:var(--font-mono);color:var(--teal);font-size:13px;">casen</code> to launch the interactive TUI,
+          or <code style="font-family:var(--font-mono);color:var(--teal);font-size:13px;">casen --help</code> to see all commands.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- ── Footer ───────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <a href="/" class="nav-logo" aria-label="BPMN Kit home">
+          <svg width="36" height="36" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path fill="#060609" d="m0 166.67c0 -92.0493 74.6207 -166.67 166.67 -166.67l666.66003 0c44.203613 0 86.5968 17.559824 117.853455 48.816513c31.256714 31.256691 48.81653 73.64986 48.81653 117.853485l0 666.66003c0 92.049255 -74.62073 166.66998 -166.66998 166.66998l-666.66003 0c-92.0493 0 -166.67 -74.62073 -166.67 -166.66998z" fill-rule="evenodd"/>
+            <path fill="#e954c2" d="m80.49353 127.48857l84.734375 0q42.71875 0 63.03125 20.578125q20.3125 20.578125 20.3125 61.828125l0 13.0625q0 26.96875 -9.1875 44.812485q-9.171875 17.828125 -29.8125 20.0625l-0.09375 -0.9375q44.234375 8.796875 44.234375 69.0625l0 28.0q0 40.8125 -21.96875 62.78125q-21.96875 21.96875 -63.25 21.96875l-88.0 0l0 -341.21875zm78.671875 132.99998q12.328125 0 17.921875 -5.7656097q5.59375 -5.78125 5.59375 -21.484375l0 -18.203125q0 -15.203125 -4.421875 -20.765625q-4.40625 -5.5625 -14.421875 -5.5625l-17.453125 0l0 71.781235l12.78125 0zm9.328125 146.98438q10.296875 0 14.8125 -4.984375q4.515625 -5.0 4.515625 -19.921875l0 -28.46875q0 -19.625 -5.703125 -26.0q-5.6875 -6.390625 -20.15625 -6.390625l-15.578125 0l0 85.765625l22.109375 0zm115.10724 -279.98438l82.875 0q41.4375 0 62.625 22.75q21.1875 22.734375 21.1875 65.265625l0 32.1875q0 42.531235 -21.1875 65.281235q-21.1875 22.734375 -62.625 22.734375l-16.984375 0l0 133.0l-65.890625 0l0 -341.21875zm82.875 146.99998q9.359375 0 13.640625 -4.75q4.28125 -4.765625 4.28125 -18.781235l0 -38.71875q0 -14.015625 -4.28125 -18.765625q-4.28125 -4.765625 -13.640625 -4.765625l-16.984375 0l0 85.781235l16.984375 0zm111.83243 -146.99998l86.859406 0l27.28125 239.99998l-0.9375 0l27.265625 -239.99998l86.875 0l0 341.21875l-63.09375 0l6.359375 -253.68748l0.921875 0.15625l-32.0 253.53123l-55.453125 0l-32.0 -253.53123l0.921875 -0.15625l6.359375 253.68748l-59.359406 0l0 -341.21875zm265.6392 0l77.328125 0l45.203125 201.62498l-0.921875 0.265625l-6.359375 -201.89061l60.296875 0l0 341.21875l-65.65625 0l-56.890625 -244.54686l0.9375 -0.265625l6.34375 244.81248l-60.28125 0l0 -341.21875z" fill-rule="nonzero"/>
+            <path fill="#ffffff" d="m270.9452 522.1202l65.890625 0l0 112.609375l53.4375 -112.609375l67.828125 0l-65.203125 127.90625l64.03125 213.3125l-68.875 0l-39.65625 -133.03125l-11.5625 23.390625l0 109.640625l-65.890625 0l0 -341.21875zm207.7738 0l65.890625 0l0 341.21875l-65.890625 0l0 -341.21875zm144.30109 61.21875l-53.671875 0l0 -61.21875l173.23438 0l0 61.21875l-53.671875 0l0 280.0l-65.890625 0l0 -280.0z" fill-rule="nonzero"/>
+          </svg>
+        </a>
+        <span class="footer-dot">·</span>
+        <span class="footer-license">MIT License</span>
+        <span class="footer-dot">·</span>
+        <span class="footer-license">made by <a href="https://u11g.com" class="footer-link" target="_blank" rel="noopener">u11g</a></span>
+      </div>
+      <div class="footer-links">
+        <a href="/editor" class="footer-link">Editor</a>
+        <a href="https://github.com/bpmnkit/monorepo" class="footer-link" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.npmjs.com/package/@bpmnkit/cli" class="footer-link" target="_blank" rel="noopener">npm</a>
+      </div>
+    </div>
+  </footer>
+  </div>
+
+  <!-- Asciinema player -->
+  <script is:inline src="https://cdn.jsdelivr.net/npm/asciinema-player@3/dist/bundle/player.min.js"></script>
+  <script is:inline>
+    (function () {
+      var el = document.getElementById('demo');
+      if (el && window.AsciinemaPlayer) {
+        window.AsciinemaPlayer.create('/casen-demo.cast', el, {
+          autoPlay: true,
+          loop: true,
+          speed: 1.5,
+          theme: 'monokai',
+          fit: 'width',
+          terminalFontFamily: '"SF Mono", "Fira Code", "JetBrains Mono", monospace',
+          terminalFontSize: '14px',
+        });
+      }
+    })();
+  </script>
+
+  <script is:inline>
+    // Nav burger
+    (function () {
+      var btn = document.getElementById('nav-burger');
+      var menu = document.getElementById('nav-mobile-menu');
+      if (!btn || !menu) return;
+      btn.addEventListener('click', function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        menu.setAttribute('aria-hidden', String(open));
+      });
+    })();
+
+    // Install cmd copy
+    (function () {
+      var copyBtn = document.getElementById('copy-btn');
+      var cmdEl = document.getElementById('install-cmd');
+      if (!copyBtn || !cmdEl) return;
+      copyBtn.addEventListener('click', function () {
+        navigator.clipboard.writeText(cmdEl.textContent || '').then(function () {
+          copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+          setTimeout(function () {
+            copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+          }, 1500);
+        });
+      });
+    })();
+
+    // Install tabs
+    (function () {
+      var tabs = document.querySelectorAll('.cli-pkg-tab');
+      var cmds = document.querySelectorAll('.cli-pkg-cmd');
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var pkg = tab.dataset.pkg;
+          tabs.forEach(function (t) { t.classList.remove('active'); });
+          cmds.forEach(function (c) { c.classList.remove('active'); });
+          tab.classList.add('active');
+          var cmd = document.querySelector('.cli-pkg-cmd[data-pkg="' + pkg + '"]');
+          if (cmd) cmd.classList.add('active');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
