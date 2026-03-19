@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/*
+  - plugins-cli/*
 
 onlyBuiltDependencies:
   - '@biomejs/biome'

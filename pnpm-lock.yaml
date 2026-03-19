@@ -265,6 +265,15 @@ importers:
 
   packages/ui: {}
 
+  plugins-cli/casen-report:
+    devDependencies:
+      '@bpmnkit/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@bpmnkit/cli-sdk':
+        specifier: workspace:*
+        version: link:../../packages/cli-sdk
+
 packages:
 
   '@astrojs/check@0.9.6':

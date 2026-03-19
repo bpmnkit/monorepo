@@ -1,0 +1,24 @@
+{
+	"name": "casen-report",
+	"version": "0.1.0",
+	"description": "Render HTML reports from Camunda 8 incident and SLA data",
+	"type": "module",
+	"main": "./dist/index.js",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"keywords": ["casen-plugin", "camunda", "report", "incidents", "sla"],
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "echo \"no tests\""
+	},
+	"devDependencies": {
+		"@bpmnkit/api": "workspace:*",
+		"@bpmnkit/cli-sdk": "workspace:*"
+	}
+}
