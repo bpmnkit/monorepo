@@ -11,7 +11,7 @@ REST connector element templates — the `.json` files imported into Camunda Mod
 
 - **OpenAPI 3.x and Swagger 2.x** — JSON and YAML
 - **One template per operation** — method, URL, params, body, auth, output, retries all wired up
-- **30-entry built-in catalog** — GitHub, Stripe, OpenAI, Slack, Shopify, and more
+- **70-entry built-in catalog** — GitHub, Stripe, Slack, Xero, DocuSign, Adyen, and more
 - **Auth auto-detection** — reads `components.securitySchemes` and pre-selects the right auth block
 - **FEEL expressions** — path parameters become `="https://base/"+param` expressions automatically
 - **Body expansion** — optionally decompose request body properties into individual typed fields
