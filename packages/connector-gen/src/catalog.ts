@@ -753,6 +753,95 @@ export const CATALOG: CatalogEntry[] = [
 		idPrefix: "gov.nasa",
 		defaultAuth: "apiKey",
 	},
+	{
+		id: "coda",
+		name: "Coda API",
+		description: "Build rich collaborative docs with tables, views, and automations in Coda",
+		url: "https://coda.io/apis/v1/openapi.json",
+		idPrefix: "io.coda",
+		defaultAuth: "bearer",
+	},
+	{
+		id: "svix",
+		name: "Svix Webhooks API",
+		description:
+			"Webhooks-as-a-service for reliably sending, receiving, and managing webhooks at scale",
+		url: "https://raw.githubusercontent.com/svix/svix-webhooks/main/server/openapi.json",
+		idPrefix: "com.svix",
+		defaultAuth: "bearer",
+	},
+	{
+		id: "supabase-storage",
+		name: "Supabase Storage API",
+		description:
+			"Open-source object storage for managing files and buckets with S3-compatible semantics",
+		url: "https://raw.githubusercontent.com/supabase/supabase/master/apps/docs/spec/storage_v0_openapi.json",
+		idPrefix: "com.supabase",
+		defaultAuth: "bearer",
+	},
+	{
+		id: "novu",
+		name: "Novu Notifications API",
+		description:
+			"Open-source notification infrastructure for orchestrating multi-channel alerts across email, SMS, and push",
+		url: "https://api.novu.co/openapi.json",
+		idPrefix: "co.novu",
+		defaultAuth: "apiKey",
+	},
+	{
+		id: "lago",
+		name: "Lago Billing API",
+		description:
+			"Open-source metering and usage-based billing engine for building flexible event-driven pricing models",
+		url: "https://raw.githubusercontent.com/getlago/lago-openapi/main/openapi.yaml",
+		idPrefix: "com.lago",
+		defaultAuth: "bearer",
+	},
+	{
+		id: "hookdeck",
+		name: "Hookdeck API",
+		description:
+			"Webhook infrastructure for reliably receiving, filtering, transforming, and retrying inbound webhooks",
+		url: "https://raw.githubusercontent.com/hookdeck/hookdeck-api-schema/main/openapi.json",
+		idPrefix: "com.hookdeck",
+		defaultAuth: "apiKey",
+	},
+	{
+		id: "posthog",
+		name: "PostHog API",
+		description:
+			"Open-source product analytics for user behavior tracking, feature flags, session recording, and A/B testing",
+		url: "https://app.posthog.com/api/schema/?format=json",
+		idPrefix: "com.posthog",
+		defaultAuth: "apiKey",
+	},
+	{
+		id: "airbyte",
+		name: "Airbyte API",
+		description:
+			"Open-source data integration platform for syncing data between hundreds of sources and destinations",
+		url: "https://raw.githubusercontent.com/airbytehq/airbyte-api-python-sdk/main/airbyte-api.openapi.yaml",
+		idPrefix: "io.airbyte",
+		defaultAuth: "bearer",
+	},
+	{
+		id: "ably",
+		name: "Ably Control API",
+		description:
+			"Realtime messaging platform for pub/sub, presence, channel management, and data stream orchestration",
+		url: "https://raw.githubusercontent.com/ably/open-specs/main/definitions/control-v1.yaml",
+		idPrefix: "io.ably",
+		defaultAuth: "bearer",
+	},
+	{
+		id: "openfga",
+		name: "OpenFGA API",
+		description:
+			"Fine-grained authorization system for building relationship-based access control based on the Google Zanzibar model",
+		url: "https://raw.githubusercontent.com/openfga/api/main/docs/openapiv2/apidocs.swagger.json",
+		idPrefix: "dev.openfga",
+		defaultAuth: "bearer",
+	},
 ]
 
 export function getCatalogEntry(id: string): CatalogEntry | undefined {
