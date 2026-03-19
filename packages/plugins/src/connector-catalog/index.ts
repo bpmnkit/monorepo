@@ -7,8 +7,9 @@
  * templates via `@bpmnkit/connector-gen`, and registers them in the
  * config-panel-bpmn connector selector — no restart required.
  *
- * An additional "Import from OpenAPI URL…" command accepts any OpenAPI 3.x
- * spec URL for custom or private APIs.
+ * Additional commands accept any OpenAPI 3.x spec URL ("Import from OpenAPI
+ * URL…") or a local file upload ("Import from OpenAPI file…") for custom,
+ * private, or CORS-restricted APIs.
  *
  * ## Usage
  * ```typescript
@@ -25,7 +26,12 @@
  */
 
 import type { CanvasPlugin } from "@bpmnkit/canvas"
-import { CATALOG, generateFromCatalog, generateFromUrl } from "@bpmnkit/connector-gen/browser"
+import {
+	CATALOG,
+	generate,
+	generateFromCatalog,
+	generateFromUrl,
+} from "@bpmnkit/connector-gen/browser"
 import type { ConnectorTemplate } from "@bpmnkit/connector-gen/browser"
 import type { CommandPalettePlugin } from "../command-palette/index.js"
 import type { ElementTemplate } from "../config-panel-bpmn/index.js"
@@ -107,6 +113,34 @@ async function loadCatalogEntry(id: string, registrar: TemplateRegistrar): Promi
 	}
 }
 
+function loadFromFile(registrar: TemplateRegistrar): void {
+	const input = document.createElement("input")
+	input.type = "file"
+	input.accept = ".json,.yaml,.yml"
+	input.onchange = async () => {
+		const file = input.files?.[0]
+		if (!file) return
+
+		const stem = file.name
+			.replace(/\.(json|ya?ml)$/i, "")
+			.replace(/[-_.]/g, " ")
+			.trim()
+		const prefix = stem.charAt(0).toUpperCase() + stem.slice(1) || "Custom"
+
+		const toast = showToast(`Parsing ${file.name}…`, "loading")
+		try {
+			const text = await file.text()
+			const templates = generate(text, { idPrefix: "io.custom" })
+			registerAll(withPrefix(templates, prefix), registrar)
+			resolveToast(toast, `${templates.length} operations imported`, "success", 3000)
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err)
+			resolveToast(toast, `Import failed: ${msg}`, "error", 5000)
+		}
+	}
+	input.click()
+}
+
 async function loadFromUrl(url: string, registrar: TemplateRegistrar): Promise<void> {
 	// Derive idPrefix and a display prefix from the hostname
 	let idPrefix = "io.custom"
@@ -183,7 +217,16 @@ export function createConnectorCatalogPlugin(
 				},
 			}
 
-			_deregister = palette.addCommands([...catalogCmds, urlCmd])
+			const fileCmd = {
+				id: "connector-catalog:file",
+				title: "Import from OpenAPI file\u2026",
+				description: "Upload a local OpenAPI 3.x spec file (.json or .yaml)",
+				action() {
+					loadFromFile(registrar)
+				},
+			}
+
+			_deregister = palette.addCommands([...catalogCmds, urlCmd, fileCmd])
 		},
 
 		uninstall() {
