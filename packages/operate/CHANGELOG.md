@@ -1,5 +1,18 @@
 # @bpmnkit/operate
 
+## 0.0.12
+
+### Patch Changes
+
+- [#53](https://github.com/bpmnkit/monorepo/pull/53) [`e9c16e0`](https://github.com/bpmnkit/monorepo/commit/e9c16e0e8f1d786feb10293a8abb2489846402db) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Introduction of CLI plugins, support for more services.
+
+- Updated dependencies [[`e9c16e0`](https://github.com/bpmnkit/monorepo/commit/e9c16e0e8f1d786feb10293a8abb2489846402db)]:
+  - @bpmnkit/plugins@0.0.15
+  - @bpmnkit/canvas@0.0.14
+  - @bpmnkit/core@0.0.14
+  - @bpmnkit/api@0.0.13
+  - @bpmnkit/ui@0.0.9
+
 ## 0.0.11
 
 ### Patch Changes

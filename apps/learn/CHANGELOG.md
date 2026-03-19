@@ -1,5 +1,17 @@
 # @bpmnkit/learn
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [[`e9c16e0`](https://github.com/bpmnkit/monorepo/commit/e9c16e0e8f1d786feb10293a8abb2489846402db)]:
+  - @bpmnkit/astro-shared@0.0.7
+  - @bpmnkit/plugins@0.0.15
+  - @bpmnkit/canvas@0.0.14
+  - @bpmnkit/editor@0.0.15
+  - @bpmnkit/engine@0.1.13
+  - @bpmnkit/core@0.0.14
+
 ## 0.0.8
 
 ### Patch Changes

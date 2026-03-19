@@ -1,5 +1,16 @@
 # @bpmnkit/ai-server
 
+## 0.0.14
+
+### Patch Changes
+
+- [#53](https://github.com/bpmnkit/monorepo/pull/53) [`e9c16e0`](https://github.com/bpmnkit/monorepo/commit/e9c16e0e8f1d786feb10293a8abb2489846402db) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Introduction of CLI plugins, support for more services.
+
+- Updated dependencies [[`e9c16e0`](https://github.com/bpmnkit/monorepo/commit/e9c16e0e8f1d786feb10293a8abb2489846402db)]:
+  - @bpmnkit/profiles@0.0.10
+  - @bpmnkit/core@0.0.14
+  - @bpmnkit/api@0.0.13
+
 ## 0.0.13
 
 ### Patch Changes

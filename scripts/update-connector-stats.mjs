@@ -21,7 +21,9 @@ const FETCH_TIMEOUT_MS = 30_000
 // ── Extract URLs from catalog source ──────────────────────────────────────────
 
 const catalogSrc = readFileSync(CATALOG_SRC, "utf8")
-const entries = [...catalogSrc.matchAll(/\{\s*\n(?:(?!^\s*\{)[\s\S])*?url:\s*"([^"]+)"[\s\S]*?\}/gm)]
+const entries = [
+	...catalogSrc.matchAll(/\{\s*\n(?:(?!^\s*\{)[\s\S])*?url:\s*"([^"]+)"[\s\S]*?\}/gm),
+]
 	.map((m) => m[1])
 	.filter(Boolean)
 

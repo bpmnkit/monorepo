@@ -1,5 +1,14 @@
 # @bpmnkit/astro-shared
 
+## 0.0.7
+
+### Patch Changes
+
+- [#53](https://github.com/bpmnkit/monorepo/pull/53) [`e9c16e0`](https://github.com/bpmnkit/monorepo/commit/e9c16e0e8f1d786feb10293a8abb2489846402db) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Introduction of CLI plugins, support for more services.
+
+- Updated dependencies [[`e9c16e0`](https://github.com/bpmnkit/monorepo/commit/e9c16e0e8f1d786feb10293a8abb2489846402db)]:
+  - @bpmnkit/ui@0.0.9
+
 ## 0.0.6
 
 ### Patch Changes

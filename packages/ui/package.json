@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/ui",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"description": "Shared design tokens, theme management, and UI components for BPMN Kit packages",
 	"type": "module",
 	"main": "./dist/index.js",
