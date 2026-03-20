@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/operate",
-	"version": "0.0.12",
+	"version": "0.0.13",
 	"description": "Monitoring and operations frontend for Camunda 8 clusters — real-time SSE, zero dependencies",
 	"type": "module",
 	"main": "./dist/index.js",

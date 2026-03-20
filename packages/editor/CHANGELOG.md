@@ -1,5 +1,11 @@
 # @bpmnkit/editor
 
+## 0.0.16
+
+### Patch Changes
+
+- [#55](https://github.com/bpmnkit/monorepo/pull/55) [`6ce255d`](https://github.com/bpmnkit/monorepo/commit/6ce255d0c5fe321acd946a1c776e84ec1ddb8541) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Editor: Deploy, Operate: Open in Editor
+
 ## 0.0.15
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @bpmnkit/operate
 
+## 0.0.13
+
+### Patch Changes
+
+- [#55](https://github.com/bpmnkit/monorepo/pull/55) [`6ce255d`](https://github.com/bpmnkit/monorepo/commit/6ce255d0c5fe321acd946a1c776e84ec1ddb8541) Thanks [@urbanisierung](https://github.com/urbanisierung)! - Editor: Deploy, Operate: Open in Editor
+
+- Updated dependencies [[`6ce255d`](https://github.com/bpmnkit/monorepo/commit/6ce255d0c5fe321acd946a1c776e84ec1ddb8541)]:
+  - @bpmnkit/plugins@0.0.16
+
 ## 0.0.12
 
 ### Patch Changes
