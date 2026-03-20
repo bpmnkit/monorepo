@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-03-20 — Deploy plugin: deploy and start instances from the editor
+
+- **`packages/editor/src/dock.ts`**: Added `"deploy"` tab to `SideDock` — new `deployPane` element, `setDeployTabClickHandler()`, extended tab union type and `switchTab()` logic.
+- **`packages/plugins/src/deploy/index.ts`**: New `createDeployPlugin(options)` — sidebar panel that checks proxy availability, profile selection, cluster topology, optimizer validation, deploy via `POST /api/v2/deployments`, and start instance via `POST /api/v2/process-instances`.
+- **`packages/plugins/src/deploy/css.ts`**: Inline dark-theme styles for the deploy panel.
+- **`packages/plugins/package.json`**: Added `"./deploy"` subpath export.
+
 ## 2026-03-18 — Connector selector: searchable dropdown, dark theme fix, import prefix
 
 - **`packages/plugins/src/config-panel/types.ts`**: Added `searchable?: boolean` to `FieldSchema` for `select` fields.

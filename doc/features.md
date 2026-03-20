@@ -1,5 +1,15 @@
 # Features
 
+## Deploy Plugin (2026-03-20) — `packages/plugins/deploy`
+
+- **`createDeployPlugin`**: Editor sidebar plugin (new "Deploy" tab in SideDock) for deploying processes and starting instances without leaving the editor.
+- **Proxy-first**: All Camunda API calls are routed through the proxy server (`casen proxy start`) to avoid CORS issues. Shows an offline hint with the start command when the proxy is not running.
+- **Profile selector**: Loads available CLI profiles from `/profiles` and passes the selected profile via `x-profile` header on all requests — same mechanism as `@bpmnkit/operate`.
+- **Cluster health check**: Calls `GET /api/v2/topology` before allowing deploy; shows broker count and gateway version, or blocks with an error if the cluster is unreachable.
+- **Optimizer guard**: Runs `optimize(defs)` before every deploy attempt. Errors block the Deploy button; warnings are shown but non-blocking.
+- **One-click deploy**: `POST /api/v2/deployments` with the current BPMN XML as multipart/form-data, using the editor filename as the resource name.
+- **Start Instance**: Shown automatically when the current process definition is already deployed (checked via `POST /api/v2/process-definitions/search`). Accepts optional JSON variables and opens the started instance in the operate app via a `#/instances/{key}` deep link.
+
 ## Connector Catalog Plugin (2026-03-18) — `packages/plugins/connector-catalog`
 
 - **`createConnectorCatalogPlugin`**: Canvas plugin that wires `@bpmnkit/connector-gen` into the editor via the command palette. Press Ctrl+K / ⌘K, search for an API name (GitHub, Stripe, Slack, Anthropic, …), and the spec is fetched, templates generated, and registered in the connector selector — all in the current session.

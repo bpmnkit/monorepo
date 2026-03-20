@@ -7,6 +7,7 @@ import { createCommandPaletteEditorPlugin } from "@bpmnkit/plugins/command-palet
 import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel"
 import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn"
 import { createConnectorCatalogPlugin } from "@bpmnkit/plugins/connector-catalog"
+import { createDeployPlugin } from "@bpmnkit/plugins/deploy"
 import { createMainMenuPlugin } from "@bpmnkit/plugins/main-menu"
 import { createOptimizePlugin } from "@bpmnkit/plugins/optimize"
 import { InMemoryFileResolver, createStorageTabsBridge } from "@bpmnkit/plugins/storage-tabs-bridge"
@@ -215,6 +216,22 @@ const aiBridgePlugin = createAiBridgePlugin({
 })
 _aiPlugin = aiBridgePlugin
 
+// Deploy plugin — mounted into the Deploy pane
+const deployPlugin = createDeployPlugin({
+	proxyUrl: "http://localhost:3033",
+	getDefinitions: () => editorRef?.getDefinitions() ?? null,
+	getXml: () => {
+		const defs = editorRef?.getDefinitions()
+		return defs ? Bpmn.export(defs) : null
+	},
+	getFileName: () => currentFileName,
+})
+deployPlugin.mount(dock.deployPane)
+dock.setDeployTabClickHandler(() => {
+	if (dock.collapsed) dock.expand()
+	deployPlugin.onTabActivated()
+})
+
 palette.addCommands([
 	{
 		id: "feel-playground",
@@ -246,6 +263,7 @@ const editor = new BpmnEditor({
 		configPanelBpmn,
 		connectorCatalog,
 		aiBridgePlugin,
+		deployPlugin,
 	],
 })
 editorRef = editor

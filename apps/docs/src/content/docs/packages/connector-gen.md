@@ -11,7 +11,7 @@ REST connector element templates — the `.json` files imported into Camunda Mod
 
 - **OpenAPI 3.x and Swagger 2.x** — JSON and YAML
 - **One template per operation** — method, URL, params, body, auth, output, retries all wired up
-- **70-entry built-in catalog** — GitHub, Stripe, Slack, Xero, DocuSign, Adyen, and more
+- **100-entry built-in catalog** — GitHub, Stripe, Slack, Xero, DocuSign, Adyen, and more
 - **Auth auto-detection** — reads `components.securitySchemes` and pre-selects the right auth block
 - **FEEL expressions** — path parameters become `="https://base/"+param` expressions automatically
 - **Body expansion** — optionally decompose request body properties into individual typed fields
@@ -57,7 +57,7 @@ console.log(`Wrote ${files.length} templates`)
 
 ## Generating from the catalog
 
-The built-in catalog provides spec URLs and auth defaults for 30 popular APIs:
+The built-in catalog provides spec URLs and auth defaults for 100 popular APIs:
 
 ```typescript
 import { generateFromCatalog } from "@bpmnkit/connector-gen"

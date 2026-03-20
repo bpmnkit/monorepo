@@ -10,6 +10,7 @@ import { createCommandPaletteEditorPlugin } from "@bpmnkit/plugins/command-palet
 import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel"
 import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn"
 import { createConnectorCatalogPlugin } from "@bpmnkit/plugins/connector-catalog"
+import { createDeployPlugin } from "@bpmnkit/plugins/deploy"
 import { createElementDocsPlugin } from "@bpmnkit/plugins/element-docs"
 import { createHistoryPanel, saveCheckpoint } from "@bpmnkit/plugins/history"
 import { createMainMenuPlugin } from "@bpmnkit/plugins/main-menu"
@@ -420,6 +421,23 @@ dock.setDocsTabClickHandler(() => {
 	if (dock.collapsed) dock.expand()
 })
 
+// Deploy plugin — mounted into the Deploy pane
+const deployPlugin = createDeployPlugin({
+	proxyUrl: "http://localhost:3033",
+	operateUrl: `${window.location.origin}/operate`,
+	getDefinitions: () => editorRef?.getDefinitions() ?? null,
+	getXml: () => {
+		const defs = editorRef?.getDefinitions()
+		return defs ? Bpmn.export(defs) : null
+	},
+	getFileName: () => currentFileName,
+})
+deployPlugin.mount(dock.deployPane)
+dock.setDeployTabClickHandler(() => {
+	if (dock.collapsed) dock.expand()
+	deployPlugin.onTabActivated()
+})
+
 // History pane
 const historyPanel = createHistoryPanel({
 	getCurrentContext: () => bridge.storagePlugin.api.getCurrentContext(),
@@ -467,6 +485,7 @@ const editor = new BpmnEditor({
 		processRunnerPlugin,
 		aiBridgePlugin,
 		elementDocsPlugin,
+		deployPlugin,
 	],
 })
 editorRef = editor

@@ -361,6 +361,83 @@ export function injectAiBridgeStyles(): void {
   border-color: rgba(0,80,200,0.25); background: rgba(0,80,200,0.07); color: rgba(0,60,180,0.85);
 }
 [data-bpmnkit-hud-theme="light"] .ai-companion-create:hover:not(:disabled) { background: rgba(0,80,200,0.13); }
+/* ── Neon theme ── */
+[data-bpmnkit-hud-theme="neon"] .ai-panel {
+  background: oklch(5% 0.025 270 / 0.97);
+  border-left-color: oklch(65% 0.28 280 / 0.18);
+  box-shadow: -8px 0 32px oklch(0% 0 0 / 0.6);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-panel-header { border-bottom-color: oklch(65% 0.28 280 / 0.12); }
+[data-bpmnkit-hud-theme="neon"] .ai-panel-status { border-bottom-color: oklch(65% 0.28 280 / 0.08); }
+[data-bpmnkit-hud-theme="neon"] .ai-msg-user {
+  background: oklch(65% 0.28 280 / 0.18);
+  border-color: oklch(65% 0.28 280 / 0.3);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-msg-ai {
+  background: oklch(65% 0.28 280 / 0.05);
+  border-color: oklch(65% 0.28 280 / 0.1);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-msg-copy { border-color: oklch(65% 0.28 280 / 0.15); }
+[data-bpmnkit-hud-theme="neon"] .ai-msg-copy:hover { border-color: oklch(65% 0.28 280 / 0.35); }
+[data-bpmnkit-hud-theme="neon"] .ai-msg-preview { border-color: oklch(65% 0.28 280 / 0.12); }
+[data-bpmnkit-hud-theme="neon"] .ai-welcome-example {
+  background: oklch(65% 0.28 280 / 0.04); border-color: oklch(65% 0.28 280 / 0.1);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-welcome-example:hover {
+  background: oklch(65% 0.28 280 / 0.1); color: oklch(88% 0.02 270);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-quick-actions { border-top-color: oklch(65% 0.28 280 / 0.08); }
+[data-bpmnkit-hud-theme="neon"] .ai-quick-btn {
+  background: oklch(65% 0.28 280 / 0.06); border-color: oklch(65% 0.28 280 / 0.14);
+  color: oklch(65% 0.1 280);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-quick-btn:hover:not(:disabled) {
+  background: oklch(65% 0.28 280 / 0.13); color: oklch(88% 0.02 270);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-context-refs { border-top-color: oklch(65% 0.28 280 / 0.08); }
+[data-bpmnkit-hud-theme="neon"] .ai-context-badge {
+  background: oklch(65% 0.28 280 / 0.12); border-color: oklch(65% 0.28 280 / 0.28);
+  color: oklch(75% 0.16 280);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-context-badge__remove { color: oklch(65% 0.1 280 / 0.55); }
+[data-bpmnkit-hud-theme="neon"] .ai-context-badge__remove:hover { color: oklch(88% 0.02 270); }
+[data-bpmnkit-hud-theme="neon"] .ai-msg-context-chip {
+  background: oklch(65% 0.28 280 / 0.12); border-color: oklch(65% 0.28 280 / 0.25);
+  color: oklch(75% 0.16 280);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-input-area { border-top-color: oklch(65% 0.28 280 / 0.1); }
+[data-bpmnkit-hud-theme="neon"] .ai-textarea {
+  background: oklch(65% 0.28 280 / 0.05); border-color: oklch(65% 0.28 280 / 0.15);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-textarea:focus { border-color: oklch(65% 0.28 280 / 0.45); }
+[data-bpmnkit-hud-theme="neon"] .ai-send-btn {
+  background: oklch(65% 0.28 280 / 0.45); border-color: oklch(65% 0.28 280 / 0.65);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-send-btn:hover:not(:disabled) { background: oklch(65% 0.28 280 / 0.6); }
+[data-bpmnkit-hud-theme="neon"] .ai-hdr-btn {
+  background: oklch(65% 0.28 280 / 0.06); border-color: oklch(65% 0.28 280 / 0.12);
+  color: oklch(65% 0.1 280);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-hdr-btn:hover { color: oklch(88% 0.02 270); }
+[data-bpmnkit-hud-theme="neon"] .ai-backend-select {
+  background: oklch(65% 0.28 280 / 0.06); border-color: oklch(65% 0.28 280 / 0.12);
+  color: oklch(65% 0.1 280);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-backend-select:hover { background: oklch(65% 0.28 280 / 0.12); }
+[data-bpmnkit-hud-theme="neon"] .ai-hist-panel {
+  background: oklch(5% 0.025 270 / 0.97); border-color: oklch(65% 0.28 280 / 0.15);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-hist-header { border-bottom-color: oklch(65% 0.28 280 / 0.1); }
+[data-bpmnkit-hud-theme="neon"] .ai-hist-item { border-bottom-color: oklch(65% 0.28 280 / 0.07); }
+[data-bpmnkit-hud-theme="neon"] .ai-hist-item:hover { background: oklch(65% 0.28 280 / 0.05); }
+[data-bpmnkit-hud-theme="neon"] .ai-companion-offer {
+  background: oklch(65% 0.28 280 / 0.05); border-color: oklch(65% 0.28 280 / 0.15);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-companion-create {
+  border-color: oklch(65% 0.28 280 / 0.25); background: oklch(65% 0.28 280 / 0.1);
+  color: oklch(75% 0.16 280);
+}
+[data-bpmnkit-hud-theme="neon"] .ai-companion-create:hover:not(:disabled) { background: oklch(65% 0.28 280 / 0.2); }
 `
 	document.head.appendChild(style)
 }

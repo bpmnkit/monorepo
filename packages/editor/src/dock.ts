@@ -142,11 +142,12 @@ export interface SideDock {
 	aiPane: HTMLDivElement
 	playPane: HTMLDivElement
 	docsPane: HTMLDivElement
-	switchTab(tab: "properties" | "history" | "ai" | "play" | "docs"): void
+	deployPane: HTMLDivElement
+	switchTab(tab: "properties" | "history" | "ai" | "play" | "docs" | "deploy"): void
 	expand(): void
 	collapse(): void
 	get collapsed(): boolean
-	get activeTab(): "properties" | "history" | "ai" | "play" | "docs"
+	get activeTab(): "properties" | "history" | "ai" | "play" | "docs" | "deploy"
 	/** Update the info shown in the Properties empty state. */
 	setDiagramInfo(processName: string | null, fileName: string | null): void
 	/** Hide the empty state when a config panel is displayed. */
@@ -167,6 +168,8 @@ export interface SideDock {
 	setPlayTabClickHandler(fn: () => void): void
 	/** Register a callback invoked when the Docs tab is clicked. */
 	setDocsTabClickHandler(fn: () => void): void
+	/** Register a callback invoked when the Deploy tab is clicked. */
+	setDeployTabClickHandler(fn: () => void): void
 }
 
 export function createSideDock(): SideDock {
@@ -212,11 +215,16 @@ export function createSideDock(): SideDock {
 	docsTab.className = "bpmnkit-side-dock__tab"
 	docsTab.textContent = "Docs"
 
+	const deployTab = document.createElement("button")
+	deployTab.className = "bpmnkit-side-dock__tab"
+	deployTab.textContent = "Deploy"
+
 	tabStrip.appendChild(propertiesTab)
 	tabStrip.appendChild(historyTab)
 	tabStrip.appendChild(aiTab)
 	tabStrip.appendChild(playTab)
 	tabStrip.appendChild(docsTab)
+	tabStrip.appendChild(deployTab)
 
 	// Properties pane — contains the info empty state
 	const propertiesPane = document.createElement("div")
@@ -273,6 +281,10 @@ export function createSideDock(): SideDock {
 	const docsPane = document.createElement("div")
 	docsPane.className = "bpmnkit-side-dock__pane bpmnkit-side-dock__pane--hidden"
 
+	// Deploy pane
+	const deployPane = document.createElement("div")
+	deployPane.className = "bpmnkit-side-dock__pane bpmnkit-side-dock__pane--hidden"
+
 	el.appendChild(collapseHandle)
 	el.appendChild(resizeHandle)
 	el.appendChild(tabStrip)
@@ -281,15 +293,17 @@ export function createSideDock(): SideDock {
 	el.appendChild(aiPane)
 	el.appendChild(playPane)
 	el.appendChild(docsPane)
+	el.appendChild(deployPane)
 
 	// ── State ──
 	let _collapsed = false
 	let _width = DEFAULT_WIDTH
-	let _activeTab: "properties" | "history" | "ai" | "play" | "docs" = "properties"
+	let _activeTab: "properties" | "history" | "ai" | "play" | "docs" | "deploy" = "properties"
 	let _aiTabHandler: (() => void) | null = null
 	let _historyTabHandler: (() => void) | null = null
 	let _playTabHandler: (() => void) | null = null
 	let _docsTabHandler: (() => void) | null = null
+	let _deployTabHandler: (() => void) | null = null
 
 	function setDocWidth(w: number): void {
 		el.style.width = `${w}px`
@@ -326,18 +340,20 @@ export function createSideDock(): SideDock {
 	document.body.style.setProperty("--bpmnkit-dock-width", "0px")
 
 	// ── Tab switching ──
-	function switchTab(tab: "properties" | "history" | "ai" | "play" | "docs"): void {
+	function switchTab(tab: "properties" | "history" | "ai" | "play" | "docs" | "deploy"): void {
 		_activeTab = tab
 		propertiesTab.classList.toggle("active", tab === "properties")
 		historyTab.classList.toggle("active", tab === "history")
 		aiTab.classList.toggle("active", tab === "ai")
 		playTab.classList.toggle("active", tab === "play")
 		docsTab.classList.toggle("active", tab === "docs")
+		deployTab.classList.toggle("active", tab === "deploy")
 		propertiesPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "properties")
 		historyPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "history")
 		aiPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "ai")
 		playPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "play")
 		docsPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "docs")
+		deployPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "deploy")
 	}
 
 	// ── Expand / collapse ──
@@ -413,6 +429,10 @@ export function createSideDock(): SideDock {
 		_docsTabHandler = fn
 	}
 
+	function setDeployTabClickHandler(fn: () => void): void {
+		_deployTabHandler = fn
+	}
+
 	function setVisible(visible: boolean): void {
 		if (visible) {
 			el.style.display = ""
@@ -440,6 +460,10 @@ export function createSideDock(): SideDock {
 	docsTab.addEventListener("click", () => {
 		switchTab("docs")
 		_docsTabHandler?.()
+	})
+	deployTab.addEventListener("click", () => {
+		switchTab("deploy")
+		_deployTabHandler?.()
 	})
 	collapseHandle.addEventListener("click", () => {
 		if (_collapsed) expand()
@@ -480,6 +504,7 @@ export function createSideDock(): SideDock {
 		aiPane,
 		playPane,
 		docsPane,
+		deployPane,
 		switchTab,
 		expand,
 		collapse,
@@ -493,6 +518,7 @@ export function createSideDock(): SideDock {
 		setPlayTabVisible,
 		setPlayTabClickHandler,
 		setDocsTabClickHandler,
+		setDeployTabClickHandler,
 		get collapsed() {
 			return _collapsed
 		},
