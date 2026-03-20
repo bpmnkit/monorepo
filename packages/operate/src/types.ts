@@ -23,6 +23,11 @@ export interface OperateOptions {
 	pollInterval?: number
 	/** Use mock/demo data instead of connecting to proxy. */
 	mock?: boolean
+	/**
+	 * Called when the user clicks "Open in Editor" on a diagram view.
+	 * Receives the raw BPMN XML and a suggested file name.
+	 */
+	onOpenInEditor?: (xml: string, name: string) => void
 }
 
 export interface OperateApi {

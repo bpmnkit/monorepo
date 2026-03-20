@@ -25,6 +25,7 @@ interface Config {
 	mock: boolean
 	theme: "light" | "dark" | "neon"
 	navigate?: (path: string) => void
+	onOpenInEditor?: (xml: string, name: string) => void
 }
 
 function relTime(iso: string | null | undefined): string {
@@ -158,6 +159,19 @@ export function createInstanceDetailView(
 	backBtn.textContent = "← Instances"
 	backBtn.addEventListener("click", onBack)
 	breadcrumb.appendChild(backBtn)
+
+	let _openInEditorXml: string | null = null
+	let _openInEditorName = ""
+	const openInEditorBtn = document.createElement("button")
+	openInEditorBtn.className = "op-action-btn"
+	openInEditorBtn.textContent = "Open in Editor ↗"
+	openInEditorBtn.style.marginLeft = "auto"
+	openInEditorBtn.style.display = "none"
+	openInEditorBtn.addEventListener("click", () => {
+		if (_openInEditorXml) cfg.onOpenInEditor?.(_openInEditorXml, _openInEditorName)
+	})
+	if (cfg.onOpenInEditor) breadcrumb.appendChild(openInEditorBtn)
+
 	el.appendChild(breadcrumb)
 
 	// Process hierarchy chain (shown for sub-process instances)
@@ -274,7 +288,10 @@ export function createInstanceDetailView(
 	const tokenHighlight = createTokenHighlightPlugin()
 	let canvas: BpmnCanvas | null = null
 
-	function loadCanvas(xml: string): void {
+	function loadCanvas(xml: string, name: string): void {
+		_openInEditorXml = xml
+		_openInEditorName = name
+		openInEditorBtn.style.display = ""
 		canvas?.destroy()
 		canvasWrap.innerHTML = ""
 		canvas = new BpmnCanvas({
@@ -684,7 +701,7 @@ export function createInstanceDetailView(
 	let instUnsub: () => void
 
 	if (cfg.mock) {
-		loadCanvas(MOCK_BPMN_XML)
+		loadCanvas(MOCK_BPMN_XML, "Order Processing")
 		applyTokens(MOCK_ACTIVE_ELEMENTS, MOCK_VISITED_ELEMENTS)
 		renderVariables(MOCK_VARIABLES.filter((v) => v.processInstanceKey === instanceKey))
 		setTimeout(() => applyTokens(MOCK_ACTIVE_ELEMENTS, MOCK_VISITED_ELEMENTS), 100)
@@ -710,6 +727,7 @@ export function createInstanceDetailView(
 			renderMeta(inst)
 			fetchProcessChain(inst.processInstanceKey).catch(() => {})
 			const pdKey = inst.processDefinitionKey
+			const instName = inst.processDefinitionName ?? inst.processDefinitionId ?? "Process"
 			fetch(`${cfg.proxyUrl}/api/process-definitions/${pdKey}/xml`, {
 				headers: {
 					accept: "text/xml",
@@ -718,7 +736,7 @@ export function createInstanceDetailView(
 			})
 				.then((r) => r.text())
 				.then((xml) => {
-					loadCanvas(xml)
+					loadCanvas(xml, instName)
 					return fetch(`${cfg.proxyUrl}/api/element-instances/search`, {
 						method: "POST",
 						headers: {

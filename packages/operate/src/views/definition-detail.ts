@@ -13,6 +13,7 @@ interface Config {
 	mock: boolean
 	theme: "light" | "dark" | "neon"
 	navigate?: (path: string) => void
+	onOpenInEditor?: (xml: string, name: string) => void
 }
 
 function parseVariables(raw: string): Record<string, unknown> | null {
@@ -50,6 +51,19 @@ export function createDefinitionDetailView(
 	backBtn.textContent = "← Processes"
 	backBtn.addEventListener("click", onBack)
 	breadcrumb.appendChild(backBtn)
+
+	let _openInEditorXml: string | null = null
+	let _openInEditorName = ""
+	const openInEditorBtn = document.createElement("button")
+	openInEditorBtn.className = "op-action-btn"
+	openInEditorBtn.textContent = "Open in Editor ↗"
+	openInEditorBtn.style.marginLeft = "auto"
+	openInEditorBtn.style.display = "none"
+	openInEditorBtn.addEventListener("click", () => {
+		if (_openInEditorXml) cfg.onOpenInEditor?.(_openInEditorXml, _openInEditorName)
+	})
+	if (cfg.onOpenInEditor) breadcrumb.appendChild(openInEditorBtn)
+
 	el.appendChild(breadcrumb)
 
 	// Metadata row
@@ -344,7 +358,10 @@ export function createDefinitionDetailView(
 		setTimeout(() => bizInput.focus(), 0)
 	}
 
-	function loadCanvas(xml: string): void {
+	function loadCanvas(xml: string, name: string): void {
+		_openInEditorXml = xml
+		_openInEditorName = name
+		openInEditorBtn.style.display = ""
 		canvas?.destroy()
 		canvasWrap.innerHTML = ""
 		canvas = new BpmnCanvas({
@@ -356,11 +373,14 @@ export function createDefinitionDetailView(
 	}
 
 	if (cfg.mock) {
-		renderMeta(getDef())
-		loadCanvas(MOCK_BPMN_XML)
+		const def = getDef()
+		renderMeta(def)
+		const mockName = def?.name ?? def?.processDefinitionId ?? "Process"
+		loadCanvas(MOCK_BPMN_XML, mockName)
 	} else {
 		const def = getDef()
 		renderMeta(def)
+		const defName = def?.name ?? def?.processDefinitionId ?? "Process"
 		fetch(`${cfg.proxyUrl}/api/process-definitions/${definitionKey}/xml`, {
 			headers: {
 				accept: "text/xml",
@@ -368,7 +388,7 @@ export function createDefinitionDetailView(
 			},
 		})
 			.then((r) => r.text())
-			.then((xml) => loadCanvas(xml))
+			.then((xml) => loadCanvas(xml, defName))
 			.catch(() => {
 				canvasWrap.innerHTML = `<div style="padding:24px;color:var(--bpmnkit-fg-muted)">Failed to load diagram</div>`
 			})

@@ -35,6 +35,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 		proxyUrl = "http://localhost:3033",
 		pollInterval = 30_000,
 		mock = false,
+		onOpenInEditor,
 	} = options
 
 	let profile: string | null = options.profile ?? null
@@ -192,7 +193,14 @@ export function createOperate(options: OperateOptions): OperateApi {
 		} = createDefinitionDetailView(
 			params.key ?? "",
 			defStore,
-			{ proxyUrl, profile, mock, theme: getTheme(), navigate: (path) => router.navigate(path) },
+			{
+				proxyUrl,
+				profile,
+				mock,
+				theme: getTheme(),
+				navigate: (path) => router.navigate(path),
+				onOpenInEditor,
+			},
 			() => router.navigate("/definitions"),
 		)
 		showView(vEl, destroy, setTheme)
@@ -275,6 +283,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 				mock,
 				theme: getTheme(),
 				navigate: (path) => router.navigate(path),
+				onOpenInEditor,
 			},
 			() => router.navigate("/instances"),
 		)
@@ -307,7 +316,14 @@ export function createOperate(options: OperateOptions): OperateApi {
 		const { el: vEl, destroy } = createIncidentDetailView(
 			incidentKey,
 			incStore,
-			{ proxyUrl, profile, mock, theme: getTheme(), navigate: (path) => router.navigate(path) },
+			{
+				proxyUrl,
+				profile,
+				mock,
+				theme: getTheme(),
+				navigate: (path) => router.navigate(path),
+				onOpenInEditor,
+			},
 			() => router.navigate("/incidents"),
 		)
 		showView(vEl, destroy)

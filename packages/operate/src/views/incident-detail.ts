@@ -15,6 +15,7 @@ interface Config {
 	mock: boolean
 	theme: "light" | "dark" | "neon"
 	navigate?: (path: string) => void
+	onOpenInEditor?: (xml: string, name: string) => void
 }
 
 function relTime(iso: string | null | undefined): string {
@@ -68,6 +69,19 @@ export function createIncidentDetailView(
 	backBtn.textContent = "← Incidents"
 	backBtn.addEventListener("click", onBack)
 	breadcrumb.appendChild(backBtn)
+
+	let _openInEditorXml: string | null = null
+	let _openInEditorName = ""
+	const openInEditorBtn = document.createElement("button")
+	openInEditorBtn.className = "op-action-btn"
+	openInEditorBtn.textContent = "Open in Editor ↗"
+	openInEditorBtn.style.marginLeft = "auto"
+	openInEditorBtn.style.display = "none"
+	openInEditorBtn.addEventListener("click", () => {
+		if (_openInEditorXml) cfg.onOpenInEditor?.(_openInEditorXml, _openInEditorName)
+	})
+	if (cfg.onOpenInEditor) breadcrumb.appendChild(openInEditorBtn)
+
 	el.appendChild(breadcrumb)
 
 	// Process chain (shows Root / Parent / Current)
@@ -264,7 +278,10 @@ export function createIncidentDetailView(
 	const tokenHighlight = createTokenHighlightPlugin()
 	let canvas: BpmnCanvas | null = null
 
-	function loadCanvas(xml: string): void {
+	function loadCanvas(xml: string, name: string): void {
+		_openInEditorXml = xml
+		_openInEditorName = name
+		openInEditorBtn.style.display = ""
 		canvas?.destroy()
 		canvasWrap.innerHTML = ""
 		canvas = new BpmnCanvas({
@@ -511,7 +528,7 @@ export function createIncidentDetailView(
 
 	if (cfg.mock) {
 		const mockInc = MOCK_INCIDENTS.find((i) => i.incidentKey === incidentKey) ?? null
-		loadCanvas(MOCK_BPMN_XML)
+		loadCanvas(MOCK_BPMN_XML, mockInc?.processDefinitionId ?? "Process")
 		if (mockInc) {
 			renderMeta(mockInc)
 			renderDetails(mockInc)
@@ -539,6 +556,7 @@ export function createIncidentDetailView(
 			fetchProcessChain(inc).catch(() => {})
 
 			const pdKey = inc.processDefinitionKey
+			const incName = inc.processDefinitionId ?? "Process"
 			if (pdKey) {
 				fetch(`${cfg.proxyUrl}/api/process-definitions/${pdKey}/xml`, {
 					headers: {
@@ -548,7 +566,7 @@ export function createIncidentDetailView(
 				})
 					.then((r) => r.text())
 					.then((xml) => {
-						loadCanvas(xml)
+						loadCanvas(xml, incName)
 						if (inc.elementId) {
 							tokenHighlight.api.setActive([inc.elementId])
 						}

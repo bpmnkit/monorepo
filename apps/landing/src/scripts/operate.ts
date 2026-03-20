@@ -38,4 +38,12 @@ createOperate({
 	theme: "neon",
 	pollInterval: 15_000,
 	...(mock ? {} : { proxyUrl: PROXY_URL, profile }),
+	onOpenInEditor(xml, name) {
+		try {
+			sessionStorage.setItem("bpmnkit-from-operate", JSON.stringify({ xml, name }))
+		} catch {
+			// sessionStorage unavailable — fall back to plain navigation
+		}
+		window.location.href = "/editor"
+	},
 })

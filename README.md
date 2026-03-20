@@ -1,472 +1,222 @@
-# @bpmnkit/core
+<div align="center">
+  <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="80" height="80" alt="BPMN Kit logo"></a>
+  <h1>BPMN Kit</h1>
+  <p>The complete TypeScript toolkit for Camunda 8 process automation</p>
 
-[![npm version](https://img.shields.io/npm/v/@bpmnkit/core)](https://www.npmjs.com/package/@bpmnkit/core)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+  [![license](https://img.shields.io/github/license/bpmnkit/monorepo?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
+  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
+  [![turborepo](https://img.shields.io/badge/Turborepo-monorepo-ef4444?style=flat-square&logo=turborepo&logoColor=white)](https://turbo.build/)
 
-A TypeScript SDK for working with Camunda 8 process automation artifacts — BPMN, DMN, and Forms. Parse, build, and export process definitions programmatically with full type safety and roundtrip fidelity.
+  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](https://github.com/bpmnkit/monorepo)
+</div>
 
-## Table of Contents
+---
 
-- [Why this SDK?](#why-this-sdk)
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Advanced Examples](#advanced-examples)
-- [API Reference](#api-reference)
-- [Best Practices](#best-practices)
-- [Development](#development)
-- [Contributing](#contributing)
-- [License](#license)
+## What is BPMN Kit?
 
-## Why this SDK?
+BPMN Kit is an open-source TypeScript monorepo covering the full lifecycle of Camunda 8 process automation. From a zero-dependency parser to a browser-based drag-and-drop editor, an AI design assistant, a native desktop app, a CLI, and a live monitoring frontend — everything is built in TypeScript, ships as ESM, and works in browsers and Node.js.
 
-- **Type-safe models** — Discriminated unions, strict TypeScript, and full IntelliSense support
-- **Roundtrip fidelity** — Parse → export preserves semantic equivalence, extensions, and diagram interchange
-- **Fluent builders** — Method-chaining APIs that guide you through valid process construction
-- **Minimal footprint** — Single runtime dependency (`fast-xml-parser`), ESM-only, tree-shakeable
-- **Production-tested** — Roundtrip-validated against 34 real-world process files
+## Highlights
 
-## Features
+- **Full-stack BPMN tooling** — parse, build, validate, auto-layout, and export BPMN 2.0 / DMN 1.3 / Camunda Forms with a fluent TypeScript API
+- **Interactive browser editor** — drag-and-drop BPMN editor with 40+ element types, undo/redo, multi-file tabs, AI chat, and in-browser process simulation
+- **22 composable plugins** — minimap, command palette, AI bridge, token highlight, storage, history, connector catalog, optimizer, and more
+- **100+ OpenAPI connectors** — generate Camunda REST connector templates from 100 built-in API specs (18,000+ endpoints: GitHub, Stripe, Slack, Jira, and more)
+- **`casen` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
+- **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
+- **Native desktop app** — 3–5 MB Tauri installer for Windows, macOS, and Linux
+- **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
 
-| Module | Parse | Build | Export | Format |
-|--------|:-----:|:-----:|:------:|--------|
-| **BPMN** | ✅ | ✅ | ✅ | XML |
-| **DMN** | ✅ | ✅ | ✅ | XML |
-| **Forms** | ✅ | ✅ | ✅ | JSON |
+## Packages
 
-- **Auto-layout** — Sugiyama/layered layout algorithm with sub-process support
-- **Extension preservation** — Zeebe, modeler, and Camunda extensions roundtrip correctly
-- **Diagram interchange** — BPMNDI shapes and edges preserved on roundtrip
+### Core Libraries
 
-## Requirements
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@bpmnkit/core`](packages/core) | [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine, optimizer |
+| [`@bpmnkit/canvas`](packages/canvas) | [![npm](https://img.shields.io/npm/v/@bpmnkit/canvas?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer with pan/zoom and plugin API |
+| [`@bpmnkit/editor`](packages/editor) | [![npm](https://img.shields.io/npm/v/@bpmnkit/editor?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
+| [`@bpmnkit/engine`](packages/engine) | [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight zero-dependency BPMN execution engine |
+| [`@bpmnkit/feel`](packages/feel) | [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel) | Complete FEEL expression language — parser, evaluator, highlighter |
+| [`@bpmnkit/plugins`](packages/plugins) | [![npm](https://img.shields.io/npm/v/@bpmnkit/plugins?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/ascii`](packages/ascii) | [![npm](https://img.shields.io/npm/v/@bpmnkit/ascii?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 
-- **Node.js** ≥ 18 (latest LTS recommended)
-- **TypeScript** ≥ 5.0 (for type-safe usage)
+### Camunda Integration
 
-## Installation
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@bpmnkit/api`](packages/api) | [![npm](https://img.shields.io/npm/v/@bpmnkit/api?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API client — 180 typed operations, OAuth2, retries |
+| [`@bpmnkit/connector-gen`](packages/connector-gen) | [![npm](https://img.shields.io/npm/v/@bpmnkit/connector-gen?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs (100 built-in) |
+| [`@bpmnkit/profiles`](packages/profiles) | [![npm](https://img.shields.io/npm/v/@bpmnkit/profiles?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/profiles) | Auth & profile storage shared between CLI and proxy |
 
-```bash
-npm install @bpmnkit/core
-```
+### Apps & CLI
 
-```bash
-pnpm add @bpmnkit/core
-```
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@bpmnkit/cli`](apps/cli) | [![npm](https://img.shields.io/npm/v/@bpmnkit/cli?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/cli) | `casen` — Camunda 8 command-line interface |
+| [`@bpmnkit/proxy`](apps/proxy) | [![npm](https://img.shields.io/npm/v/@bpmnkit/proxy?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |
+| [`@bpmnkit/operate`](packages/operate) | [![npm](https://img.shields.io/npm/v/@bpmnkit/operate?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
+| [`@bpmnkit/cli-sdk`](packages/cli-sdk) | [![npm](https://img.shields.io/npm/v/@bpmnkit/cli-sdk?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for `casen` |
+| [`@bpmnkit/create-casen-plugin`](packages/create-casen-plugin) | [![npm](https://img.shields.io/npm/v/@bpmnkit/create-casen-plugin?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new `casen` CLI plugin in seconds |
 
-```bash
-yarn add @bpmnkit/core
-```
+### CLI Plugins
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@bpmnkit/casen-report`](plugins-cli/casen-report) | [![npm](https://img.shields.io/npm/v/@bpmnkit/casen-report?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda incident and SLA data |
+
+### Design System & Shared
+
+| Package | Description |
+|---------|-------------|
+| [`@bpmnkit/ui`](packages/ui) | Shared design tokens and CSS theme system (`--bpmnkit-*` variables) |
+| [`@bpmnkit/astro-shared`](packages/astro-shared) | Shared CSS tokens and metadata for Astro apps |
 
 ## Quick Start
 
-### BPMN — Build a Process
+### SDK — parse and build BPMN in TypeScript
+
+```sh
+npm install @bpmnkit/core
+```
 
 ```typescript
-import { Bpmn } from "@bpmnkit/core";
+import { Bpmn } from "@bpmnkit/core"
 
-const definitions = Bpmn.createProcess("order-process")
-  .name("Order Process")
-  .startEvent("start")
-  .serviceTask("validate", {
-    name: "Validate Order",
-    taskType: "validate-order",
-  })
-  .exclusiveGateway("check", { name: "Order Valid?" })
-    .branch("yes", (b) =>
-      b.condition("= valid")
-        .serviceTask("fulfill", { name: "Fulfill", taskType: "fulfill-order" })
-        .endEvent("end-ok")
-    )
-    .branch("no", (b) =>
-      b.defaultFlow()
-        .serviceTask("notify", { name: "Notify Customer", taskType: "send-rejection" })
-        .endEvent("end-rejected")
-    )
-  .build();
+// Build a process programmatically
+const xml = Bpmn.export(
+  Bpmn.createProcess("order-flow")
+    .startEvent("start")
+    .serviceTask("validate", { name: "Validate Order", type: "order-validator" })
+    .exclusiveGateway("check", { name: "Valid?" })
+      .branch("yes", (b) => b.condition("= valid").serviceTask("fulfill", { type: "fulfillment-service" }).endEvent("done"))
+      .branch("no",  (b) => b.defaultFlow().endEvent("rejected"))
+    .build()
+)
 
-const xml = Bpmn.export(definitions);
+// Parse existing BPMN
+const defs = Bpmn.parse(xml)
+console.log(defs.processes[0].flowElements.length, "elements")
 ```
 
-### BPMN — Parse and Inspect
+See the full [`@bpmnkit/core` README](packages/core/README.md) for the complete API reference.
+
+### Browser Editor — embed a BPMN editor in your app
+
+```sh
+npm install @bpmnkit/editor @bpmnkit/canvas @bpmnkit/plugins
+```
 
 ```typescript
-import { Bpmn } from "@bpmnkit/core";
+import { BpmnEditor, createSideDock, initEditorHud } from "@bpmnkit/editor"
+import { createMinimapPlugin } from "@bpmnkit/plugins/minimap"
+import { createAiBridgePlugin } from "@bpmnkit/plugins/ai-bridge"
 
-const definitions = Bpmn.parse(xml);
-const process = definitions.processes[0];
+const dock  = createSideDock()
+document.body.appendChild(dock.el)
 
-for (const element of process.flowElements) {
-  switch (element.type) {
-    case "serviceTask":
-      console.log(`Service: ${element.id} — ${element.name}`);
-      break;
-    case "exclusiveGateway":
-      console.log(`Gateway: ${element.name}`);
-      break;
-  }
-}
+const editor = new BpmnEditor({
+  container: document.getElementById("editor")!,
+  theme: "dark",
+  persistTheme: true,
+  plugins: [
+    createMinimapPlugin(),
+    createAiBridgePlugin({ container: dock.aiPane, serverUrl: "http://localhost:3033" }),
+  ],
+})
+
+initEditorHud(editor)
+editor.loadXML(bpmnXml)
 ```
 
-### DMN
+See the [`@bpmnkit/editor`](packages/editor/README.md) and [`@bpmnkit/plugins`](packages/plugins/README.md) READMEs for all options.
+
+### CLI — manage Camunda 8 from the terminal
+
+```sh
+npm install -g @bpmnkit/cli
+
+# Connect to your Camunda cluster
+casen profile add production
+
+# Deploy a process
+casen deploy order-process.bpmn
+
+# Monitor running instances
+casen instances list --state active
+
+# Generate connector templates from any OpenAPI spec
+casen connector generate https://api.example.com/openapi.json --out ./templates/
+
+# Start the local AI bridge and API proxy
+casen proxy start
+```
+
+See the full [`@bpmnkit/cli` README](apps/cli/README.md) for all commands.
+
+### Monitoring — embed the operations frontend
 
 ```typescript
-import { Dmn } from "@bpmnkit/core";
+import { createOperate } from "@bpmnkit/operate"
 
-// Build a decision table
-const definitions = Dmn.createDecisionTable("risk-level")
-  .name("Risk Level")
-  .hitPolicy("FIRST")
-  .input({ label: "Age", expression: "age", typeRef: "integer" })
-  .output({ label: "Risk", name: "risk", typeRef: "string" })
-  .rule({ inputs: ["< 25"], outputs: ['"high"'], description: "Young driver" })
-  .rule({ inputs: [">= 25"], outputs: ['"low"'], description: "Standard" })
-  .build();
+// Demo mode — no cluster required
+createOperate({ container: document.getElementById("app")!, mock: true })
 
-const xml = Dmn.export(definitions);
-
-// Parse existing DMN
-const parsed = Dmn.parse(xml);
-console.log(`${parsed.decisions[0].decisionTable.rules.length} rules`);
+// Live mode via proxy
+createOperate({
+  container: document.getElementById("app")!,
+  proxyUrl: "http://localhost:3033",
+  profile: "production",
+})
 ```
 
-### Forms
-
-```typescript
-import { Form } from "@bpmnkit/core";
-
-const form = Form.create("onboarding")
-  .textField({ key: "name", label: "Full Name" })
-  .select({
-    key: "department",
-    label: "Department",
-    values: [
-      { label: "Engineering", value: "eng" },
-      { label: "Sales", value: "sales" },
-    ],
-  })
-  .checkbox({ key: "agree", label: "I agree to the terms" })
-  .build();
-
-const json = Form.export(form);
-```
-
-## Advanced Examples
-
-### REST Connector
-
-Build HTTP connector service tasks with a dedicated convenience API:
-
-```typescript
-import { Bpmn } from "@bpmnkit/core";
-
-const definitions = Bpmn.createProcess("api-call")
-  .startEvent("start")
-  .restConnector("fetch-users", {
-    method: "GET",
-    url: "https://api.example.com/users",
-    authentication: { type: "bearer", token: "=secrets.API_TOKEN" },
-    resultVariable: "response",
-    resultExpression: "= response.body.users",
-  })
-  .endEvent("end")
-  .build();
-```
-
-### Parallel Branches
-
-```typescript
-const definitions = Bpmn.createProcess("parallel-flow")
-  .startEvent("start")
-  .parallelGateway("fork")
-    .branch("a", (b) =>
-      b.serviceTask("task-a", { name: "Task A", taskType: "worker-a" })
-    )
-    .branch("b", (b) =>
-      b.serviceTask("task-b", { name: "Task B", taskType: "worker-b" })
-    )
-  .parallelGateway("join")
-  .endEvent("end")
-  .build();
-```
-
-### Boundary Events
-
-```typescript
-const definitions = Bpmn.createProcess("with-timeout")
-  .startEvent("start")
-  .serviceTask("long-task", {
-    name: "Long Running Task",
-    taskType: "long-worker",
-  })
-  .boundaryEvent("timeout", {
-    attachedTo: "long-task",
-    timerDuration: "PT30S",
-  })
-  .endEvent("timeout-end")
-  .build();
-```
-
-### Sub-Processes
-
-```typescript
-const definitions = Bpmn.createProcess("with-subprocess")
-  .startEvent("start")
-  .subProcess("inner", { name: "Inner Process" }, (sub) => {
-    sub
-      .startEvent("sub-start")
-      .serviceTask("sub-task", { name: "Sub Task", taskType: "sub-worker" })
-      .endEvent("sub-end");
-  })
-  .endEvent("end")
-  .build();
-```
-
-### Auto-Layout
-
-Builder-created workflows have no visual layout by default. Call `.withAutoLayout()` to automatically generate diagram interchange data (shapes with bounds and edges with waypoints) using a Sugiyama/layered layout algorithm:
-
-```typescript
-const definitions = Bpmn.createProcess("order-process")
-  .withAutoLayout()
-  .startEvent("start")
-  .serviceTask("validate", {
-    name: "Validate Order",
-    taskType: "validate-order",
-  })
-  .exclusiveGateway("check", { name: "Order Valid?" })
-    .branch("yes", (b) =>
-      b.condition("= valid")
-        .serviceTask("fulfill", { name: "Fulfill", taskType: "fulfill-order" })
-        .endEvent("end-ok")
-    )
-    .branch("no", (b) =>
-      b.defaultFlow()
-        .serviceTask("notify", { name: "Notify Customer", taskType: "send-rejection" })
-        .endEvent("end-rejected")
-    )
-  .build();
-
-const xml = Bpmn.export(definitions);
-// XML now includes <bpmndi:BPMNDiagram> with shapes and edges
-```
-
-The layout engine handles:
-- **Left-to-right flow** — elements are positioned with increasing x coordinates
-- **Gateway branches** — parallel paths are spaced vertically without overlaps
-- **Sub-processes** — children are positioned within parent bounds
-- **Element sizing** — events (36×36), tasks (100×80), gateways (50×50)
-- **Orthogonal edge routing** — sequence flow waypoints use right-angle paths
-
-Without `.withAutoLayout()`, the exported XML contains valid BPMN semantics but the `<bpmndi:BPMNDiagram>` section is omitted entirely. Most BPMN viewers require diagram interchange data to render processes visually.
-
-### Roundtrip — Parse, Modify, Export
-
-```typescript
-import { Bpmn } from "@bpmnkit/core";
-import type { BpmnDefinitions } from "@bpmnkit/core";
-
-// Parse existing BPMN XML
-const definitions: BpmnDefinitions = Bpmn.parse(existingXml);
-
-// Inspect the model
-const process = definitions.processes[0];
-console.log(`Process: ${process.id}, ${process.flowElements.length} elements`);
-
-// Export back to XML (preserves extensions, DI, namespaces)
-const xml = Bpmn.export(definitions);
-```
-
-### TypeScript Type Narrowing
-
-The SDK exports all model types for fully typed workflows:
-
-```typescript
-import type {
-  BpmnDefinitions,
-  BpmnServiceTask,
-  BpmnFlowElement,
-} from "@bpmnkit/core";
-
-// Use discriminated unions to narrow element types
-function getServiceTasks(definitions: BpmnDefinitions): BpmnServiceTask[] {
-  return definitions.processes
-    .flatMap((p) => p.flowElements)
-    .filter((el): el is BpmnServiceTask => el.type === "serviceTask");
-}
-```
-
-## API Reference
-
-### `Bpmn`
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `Bpmn.createProcess(id)` | `ProcessBuilder` | Create a new process using the fluent builder API |
-| `Bpmn.parse(xml)` | `BpmnDefinitions` | Parse BPMN XML string into a typed model |
-| `Bpmn.export(definitions)` | `string` | Serialize a `BpmnDefinitions` model to BPMN XML |
-
-**Builder methods:**
-
-| Category | Methods |
-|----------|---------|
-| **Events** | `startEvent()`, `endEvent()`, `intermediateThrowEvent()`, `intermediateCatchEvent()`, `boundaryEvent()` |
-| **Tasks** | `serviceTask()`, `userTask()`, `scriptTask()`, `sendTask()`, `receiveTask()`, `businessRuleTask()`, `callActivity()` |
-| **Gateways** | `exclusiveGateway()`, `parallelGateway()`, `inclusiveGateway()`, `eventBasedGateway()` — each with `branch(name, callback)` |
-| **Sub-processes** | `subProcess()`, `adHocSubProcess()`, `eventSubProcess()` — with nested `SubProcessContentBuilder` |
-| **Flow control** | `connectTo(id)` for merging and loops, `element(id)` for navigation |
-| **Connectors** | `restConnector(id, config)` for Camunda HTTP JSON connector tasks |
-| **Layout** | `withAutoLayout()` — generates diagram interchange (shapes + edges) via Sugiyama layout engine |
-| **Extensions** | Multi-instance (parallel/sequential), Zeebe task definitions, IO mappings, task headers, modeler templates |
-
-### `Dmn`
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `Dmn.createDecisionTable(id)` | `DecisionTableBuilder` | Create a new decision table |
-| `Dmn.parse(xml)` | `DmnDefinitions` | Parse DMN XML into a typed model |
-| `Dmn.export(definitions)` | `string` | Serialize a `DmnDefinitions` model to DMN XML |
-
-**Supported hit policies:** `UNIQUE` (default), `FIRST`, `ANY`, `COLLECT`, `RULE ORDER`, `OUTPUT ORDER`, `PRIORITY`
-
-### `Form`
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `Form.create(id?)` | `FormBuilder` | Create a new form using the fluent builder |
-| `Form.parse(json)` | `FormDefinition` | Parse Camunda Form JSON into a typed model |
-| `Form.export(form)` | `string` | Serialize a `FormDefinition` model to JSON |
-
-**Component types:** `text`, `textfield`, `textarea`, `select`, `radio`, `checkbox`, `checklist`, `group` (with nesting)
-
-## Best Practices
-
-### Use Descriptive IDs
-
-Element IDs appear in logs, metrics, and error messages. Use meaningful, kebab-case identifiers:
-
-```typescript
-// ✅ Good — IDs describe what the element does
-Bpmn.createProcess("order-fulfillment")
-  .serviceTask("validate-payment", { ... })
-  .serviceTask("ship-order", { ... })
-
-// ❌ Avoid — auto-generated or meaningless IDs
-Bpmn.createProcess("Process_1")
-  .serviceTask("Activity_0x1a2b", { ... })
-```
-
-### Leverage Discriminated Unions
-
-The parsed model uses discriminated unions on the `type` field. Use `switch` or type guards for safe property access:
-
-```typescript
-for (const el of process.flowElements) {
-  if (el.type === "serviceTask") {
-    // TypeScript narrows `el` to BpmnServiceTask
-    console.log(el.extensionElements);
-  }
-}
-```
-
-### Prefer `branch()` for Gateway Patterns
-
-The `branch(name, callback)` pattern ensures gateway branches are properly connected with sequence flows:
-
-```typescript
-.exclusiveGateway("decision")
-  .branch("approved", (b) =>
-    b.condition("= status = 'approved'")
-      .serviceTask("process", { ... })
-  )
-  .branch("rejected", (b) =>
-    b.defaultFlow()
-      .endEvent("end-rejected")
-  )
-```
-
-### Use Roundtrip for Modifications
-
-When modifying existing BPMN files, parse → modify → export to preserve extensions and diagram data:
-
-```typescript
-const definitions = Bpmn.parse(existingXml);
-// Modify the model...
-const updatedXml = Bpmn.export(definitions);
-```
-
-### Keep Processes Composable
-
-Use `callActivity()` to reference sub-processes by ID, keeping each process focused:
-
-```typescript
-const definitions = Bpmn.createProcess("main")
-  .startEvent("start")
-  .callActivity("validate", { processId: "validation-process" })
-  .callActivity("fulfill", { processId: "fulfillment-process" })
-  .endEvent("end")
-  .build();
-```
-
-## Project Structure
+## Repository Structure
 
 ```
-packages/
-  bpmn-sdk/          # Main SDK package — @bpmnkit/core
-    src/
-      bpmn/          # BPMN parser, serializer, builder, model
-      dmn/           # DMN parser, serializer, builder, model
-      form/          # Form parser, serializer, builder, model
-      layout/        # BPMN auto-layout engine (Sugiyama/layered)
-      xml/           # Generic XML parser/serializer
-      types/         # Shared types (XmlElement, ID generator)
-    tests/           # Vitest test suites
-apps/
-  examples/          # Runnable example workflows (see Examples section)
-examples/            # 34 real-world BPMN, DMN, and Form files for roundtrip testing
+bpmnkit/monorepo
+├── packages/           # Published npm packages
+│   ├── core/           # @bpmnkit/core    — BPMN/DMN/Form SDK
+│   ├── canvas/         # @bpmnkit/canvas  — SVG viewer
+│   ├── editor/         # @bpmnkit/editor  — Interactive editor
+│   ├── engine/         # @bpmnkit/engine  — Process execution engine
+│   ├── feel/           # @bpmnkit/feel    — FEEL expression language
+│   ├── plugins/        # @bpmnkit/plugins — 22 canvas plugins
+│   ├── api/            # @bpmnkit/api     — Camunda 8 REST client
+│   ├── connector-gen/  # @bpmnkit/connector-gen — OpenAPI → connectors
+│   ├── operate/        # @bpmnkit/operate — Monitoring frontend
+│   ├── profiles/       # @bpmnkit/profiles — Auth & profile storage
+│   ├── cli-sdk/        # @bpmnkit/cli-sdk — Plugin authoring SDK
+│   ├── ascii/          # @bpmnkit/ascii   — ASCII art renderer
+│   ├── ui/             # @bpmnkit/ui      — Design tokens
+│   └── astro-shared/   # Shared Astro CSS/metadata
+├── apps/               # Non-published applications
+│   ├── cli/            # casen CLI tool
+│   ├── proxy/          # Local AI + API proxy server
+│   ├── desktop/        # Tauri native desktop app
+│   ├── landing/        # bpmnkit.com (Astro)
+│   ├── docs/           # docs.bpmnkit.com (Astro Starlight)
+│   ├── learn/          # Interactive learning center (Astro)
+│   └── examples/       # Runnable BPMN workflow examples
+├── plugins-cli/        # Official casen CLI plugins
+│   └── casen-report/   # HTML incident & SLA reports
+├── scripts/            # Build utilities (readme gen, stats, etc.)
+├── turbo.json          # Turborepo pipeline
+└── pnpm-workspace.yaml # pnpm workspace config
 ```
-
-## Examples
-
-The `apps/examples` package contains five runnable example workflows that demonstrate the SDK's core features.
-
-| File | Demonstrates |
-|---|---|
-| `01-employee-onboarding.ts` | Parallel gateway, business rule task, user tasks, IO mapping |
-| `02-incident-response.ts` | Exclusive gateways, sub-process, multiple end events |
-| `03-loan-approval.ts` | REST connector, chained gateways, `connectTo()` for merging paths |
-| `04-invoice-processing.ts` | Sub-process, inclusive gateway, script task, call activity |
-| `05-content-publishing.ts` | Event-based gateway, intermediate events, parallel post-actions |
-| `06-ai-code-review-agent.ts` | **Ad-hoc sub-process** as Camunda AI agent, tool tasks, webhook start, confidence routing |
-
-### Running the examples
-
-Build the SDK once, then run any example:
-
-```bash
-pnpm install
-pnpm build                                    # build @bpmnkit/core first
-
-# Run all five examples (writes BPMN files to apps/examples/output/)
-pnpm --filter @bpmnkit/examples all
-
-# Or run a single example
-pnpm --filter @bpmnkit/examples 01           # employee onboarding
-pnpm --filter @bpmnkit/examples 03           # loan approval
-```
-
-Each script writes a `.bpmn` file to `apps/examples/output/`. Open any file in [Camunda Modeler](https://camunda.com/download/modeler/) or paste the XML into [bpmn.io](https://demo.bpmn.io/) to visualise the generated diagram.
 
 ## Development
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+ (latest LTS recommended)
-- [pnpm](https://pnpm.io/) 10+
+| Tool | Version |
+|------|---------|
+| [Node.js](https://nodejs.org/) | 18+ (latest LTS recommended) |
+| [pnpm](https://pnpm.io/) | 10+ |
 
 ### Setup
 
-```bash
+```sh
 git clone https://github.com/bpmnkit/monorepo.git
 cd monorepo
 pnpm install
@@ -476,42 +226,49 @@ pnpm install
 
 | Command | Description |
 |---------|-------------|
-| `pnpm build` | Build all packages |
+| `pnpm build` | Build all packages (Turborepo, incremental) |
 | `pnpm test` | Run all tests (Vitest) |
 | `pnpm check` | Lint and format check (Biome) |
-| `pnpm typecheck` | TypeScript type checking |
-| `pnpm verify` | Build + typecheck + check + test |
+| `pnpm typecheck` | TypeScript strict type check |
+| `pnpm verify` | Full CI check — build + typecheck + check + test |
+| `pnpm docs:dev` | Start docs site dev server |
+| `pnpm proxy` | Start local AI bridge and API proxy (port 3033) |
+| `pnpm desktop:dev` | Start Tauri desktop app in dev mode |
+
+### Releasing
+
+This monorepo uses [Changesets](https://github.com/changesets/changesets) for versioning and publishing.
+
+```sh
+pnpm changeset          # Describe your change (interactive)
+pnpm version-packages   # Apply changesets and bump versions
+pnpm release            # Build and publish all changed packages to npm
+```
+
+Every PR that changes a published package **must** include a changeset. Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes.
 
 ## Contributing
 
+Contributions are welcome — bug reports, feature requests, documentation improvements, and pull requests.
+
 1. Fork the repository and create a feature branch
-2. Install dependencies: `pnpm install`
-3. Make your changes and add tests
-4. Validate everything passes: `pnpm verify`
-5. Add a changeset describing your change: `pnpm changeset`
-6. Commit and open a pull request
+2. `pnpm install` to set up the workspace
+3. Make your changes and add tests where appropriate
+4. Run `pnpm verify` — all checks must pass
+5. Add a changeset: `pnpm changeset`
+6. Open a pull request
 
-### Versioning & Releases
+### Code Standards
 
-This project uses [Changesets](https://github.com/changesets/changesets) for version management and publishing. Every PR that changes package functionality **must** include a changeset.
-
-```bash
-pnpm changeset            # Create a new changeset (interactive)
-pnpm version-packages     # Apply changesets and bump versions
-pnpm release              # Build and publish to npm
-```
-
-Changesets enforce semantic versioning:
-- **patch** — Bug fixes, internal refactors
-- **minor** — New features, new builder methods, new model fields
-- **major** — Breaking API changes, model restructuring
-
-### Code Quality
-
-- **Formatter & Linter:** [Biome](https://biomejs.dev/) — run `pnpm check` before submitting
-- **Type Safety:** TypeScript strict mode — zero type errors required
-- **Tests:** [Vitest](https://vitest.dev/) — all tests must pass
+- **TypeScript strict mode** — zero type errors required
+- **Biome** for formatting and linting — `pnpm check` must pass
+- **Vitest** for tests — all existing tests must pass
+- No new external dependencies without discussion
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
+
+<div align="center">
+  <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="32" height="32" alt="BPMN Kit"></a>
+</div>
