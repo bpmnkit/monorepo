@@ -73,6 +73,8 @@ export interface ArgSpec {
 	name: string
 	description: string
 	required?: boolean
+	/** Pre-filled default value shown in the TUI input form. */
+	default?: string
 	/** Restricts to specific values; TUI shows a cycling picker. */
 	enum?: string[]
 	/** Value is a JSON object; TUI opens a key-value editor. */
@@ -97,6 +99,34 @@ export interface RunContext {
 
 export type ParsedFlags = Record<string, string | boolean | number>
 
+/** Minimal shape of an activated job — full type is in @bpmnkit/api. */
+export interface WorkerJob {
+	jobKey: string
+	processDefinitionId: string
+	elementId: string
+	processInstanceKey: string
+	variables: Record<string, unknown>
+}
+
+/** Result returned by WorkerConfig.processJob — mirrors WorkerJobResult in cli-sdk. */
+export type WorkerJobResult =
+	| { outcome: "complete"; variables: Record<string, unknown> }
+	| { outcome: "fail"; errorMessage: string; retries?: number; retryBackOff?: number }
+	| {
+			outcome: "error"
+			errorCode: string
+			errorMessage?: string
+			variables?: Record<string, unknown>
+	  }
+
+/** Worker configuration attached to commands created via createWorkerCommand. */
+export interface WorkerConfig {
+	jobType: string
+	description?: string
+	defaultVariables?: Record<string, unknown>
+	processJob?: (job: WorkerJob) => Promise<WorkerJobResult>
+}
+
 /** A single executable command. */
 export interface Command {
 	name: string
@@ -109,6 +139,8 @@ export interface Command {
 	columns?: ColumnDef[]
 	/** Follow-up commands whose args can be pre-filled from this command's result fields. */
 	relations?: Relation[]
+	/** If set, the TUI routes this command through the live worker view. */
+	_worker?: WorkerConfig
 	run(ctx: RunContext): Promise<void>
 }
 
@@ -119,4 +151,6 @@ export interface CommandGroup {
 	aliases?: string[]
 	description: string
 	commands: Command[]
+	/** Tagged true by the plugin loader — drives the plugin section separators in the TUI. */
+	_plugin?: true
 }

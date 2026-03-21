@@ -46,25 +46,35 @@ const customisedGroups: CommandGroup[] = generatedCommandGroups.map((g) => {
 		return { ...g, commands: [...commands, getUserTaskFormCmd] }
 	}
 	if (g === jobGroup) {
-		return { ...g, commands: [...g.commands, workerCmd] }
+		return g
 	}
 	return g
 })
 
 const sortedOtherGroups = [
 	connectorGroup,
-	pluginGroup,
 	...customisedGroups,
 	...adminCommandGroups,
 	completionGroup,
 ].sort((a, b) => a.name.localeCompare(b.name))
 
-export const commandGroups: CommandGroup[] = [
-	askGroup,
-	settingsGroup,
-	profileGroup,
-	...sortedOtherGroups,
-]
+const workerGroup: CommandGroup = {
+	name: "worker",
+	description: workerCmd.description,
+	commands: [workerCmd],
+}
+
+/** Pinned groups shown above the separator in the main TUI menu. */
+export const pinnedGroups: CommandGroup[] = [askGroup, settingsGroup, workerGroup]
+
+/** API command groups — shown below the plugin section in the main TUI menu. */
+export const apiGroups: CommandGroup[] = sortedOtherGroups
+
+/** All built-in groups — used for CLI routing. */
+export const commandGroups: CommandGroup[] = [...pinnedGroups, ...apiGroups]
+
+// Exported for CLI routing in run.ts (not shown in main TUI menu)
+export { pluginGroup, profileGroup }
 
 // Compute follow-up relations between commands based on shared field/arg names
 computeRelations(commandGroups)

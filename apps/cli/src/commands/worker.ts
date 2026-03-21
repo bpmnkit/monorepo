@@ -13,11 +13,13 @@ import type { Command } from "../types.js"
 export const workerCmd: Command = {
 	name: "worker",
 	description: "Run a simple job worker that auto-completes jobs of a given type",
+	_worker: { jobType: "io.camunda.connector.HttpJson:1" },
 	args: [
 		{
 			name: "type",
 			description: "Job type to subscribe to (matches the task definition type in BPMN)",
 			required: true,
+			default: "io.camunda.connector.HttpJson:1",
 		},
 	],
 	flags: [
@@ -48,11 +50,11 @@ export const workerCmd: Command = {
 	examples: [
 		{
 			description: "Subscribe to jobs of type 'payment-service'",
-			command: "casen job worker payment-service",
+			command: "casen worker payment-service",
 		},
 		{
 			description: "Return custom variables on completion",
-			command: 'casen job worker payment-service --variables \'{"status":"ok","amount":100}\'',
+			command: 'casen worker payment-service --variables \'{"status":"ok","amount":100}\'',
 		},
 	],
 

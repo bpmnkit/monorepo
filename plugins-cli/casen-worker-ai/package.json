@@ -1,0 +1,69 @@
+{
+	"name": "@bpmnkit/casen-worker-ai",
+	"version": "0.1.0",
+	"private": false,
+	"description": "AI task worker plugin for casen — classify, summarize, extract, and decide using Claude",
+	"type": "module",
+	"main": "./dist/index.js",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"keywords": [
+		"casen-plugin",
+		"casen-worker",
+		"camunda",
+		"worker",
+		"ai",
+		"claude",
+		"anthropic",
+		"bpmnkit"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"casen": {
+		"group": "ai-worker",
+		"commands": [
+			{
+				"name": "classify",
+				"description": "Classify text into one of the given categories"
+			},
+			{
+				"name": "summarize",
+				"description": "Summarize text to a given length and style"
+			},
+			{
+				"name": "extract",
+				"description": "Extract structured fields from unstructured text"
+			},
+			{
+				"name": "decide",
+				"description": "Make a boolean decision based on a question, context, and optional policy"
+			}
+		]
+	},
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.40.0"
+	},
+	"devDependencies": {
+		"@bpmnkit/cli-sdk": "workspace:*"
+	}
+}

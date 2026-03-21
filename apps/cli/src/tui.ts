@@ -3,6 +3,9 @@ import type { AdminApiClient, CamundaClient, RawResponseEvent } from "@bpmnkit/a
 import { renderBpmnAscii } from "@bpmnkit/ascii"
 import { appendAuditEntry, getAuditLog, getSettings, saveSettings } from "@bpmnkit/profiles"
 import { type AskResult, runAskQuery } from "./commands/ask.js"
+import { type NpmSearchObject, pluginGroup, searchNpmRegistry } from "./commands/plugin.js"
+import { profileGroup } from "./commands/profile.js"
+import { readInstalledPlugins } from "./plugin-loader.js"
 import type {
 	ArgSpec,
 	ColumnDef,
@@ -13,6 +16,7 @@ import type {
 	OutputWriter,
 	Relation,
 	RunContext,
+	WorkerJobResult,
 } from "./types.js"
 
 // ─── ANSI helpers ─────────────────────────────────────────────────────────────
@@ -124,6 +128,31 @@ type Screen =
 	| { kind: "settings"; cursor: number; editing: boolean; editValue: string; message: string }
 	| { kind: "audit-log"; scroll: number }
 	| {
+			kind: "plugins"
+			subview: "menu" | "search" | "results" | "prompt" | "done"
+			menuCursor: number
+			query: string
+			queryCursor: number
+			resultKind: "search" | "installed"
+			results: Array<{
+				name: string
+				version: string
+				description: string
+				publisher: string
+				score: string
+				installedAt: string
+			}>
+			resultCursor: number
+			resultScroll: number
+			promptLabel: string
+			promptValue: string
+			promptCursor: number
+			promptAction: "install" | "remove" | "update"
+			message: string
+			error: string
+			running: boolean
+	  }
+	| {
 			kind: "worker"
 			group: CommandGroup
 			cmd: Command
@@ -228,12 +257,13 @@ const SKIP_FLAGS = new Set(["output", "profile", "help", "no-color", "debug"])
 function buildFields(cmd: Command): FieldState[] {
 	const fields: FieldState[] = []
 	for (const arg of cmd.args ?? []) {
+		const defaultVal = arg.default ?? ""
 		fields.push({
 			kind: "arg",
 			label: arg.name,
 			hint: arg.required ? "required" : "optional",
-			value: "",
-			cursor: 0,
+			value: defaultVal,
+			cursor: defaultVal.length,
 			required: arg.required ?? false,
 			argSpec: arg,
 		})
@@ -535,8 +565,12 @@ function renderMain(state: TuiState, screen: Extract<Screen, { kind: "main" }>):
 		const desc = dim(fit(g.description, cols - nameW - 8))
 		const line = `  ${name}  ${desc}`
 		lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
-		// Add separator after the pinned top section (ask, settings, profile)
-		if (!searching && g.name === "profile" && i < groups.length - 1) {
+		// Separator after pinned section (after "worker", before plugins or api groups)
+		if (!searching && g.name === "worker" && i < groups.length - 1) {
+			lines.push(`  ${dim("─".repeat(cols - 4))}`)
+		}
+		// Separator after the last plugin group (before api groups), only when plugins exist
+		if (!searching && g._plugin && !groups[i + 1]?._plugin && i < groups.length - 1) {
 			lines.push(`  ${dim("─".repeat(cols - 4))}`)
 		}
 	}
@@ -1043,7 +1077,7 @@ function renderProfile(state: TuiState, screen: Extract<Screen, { kind: "profile
 		const hi = Math.min(screen.scroll + viewH, state.profileInfo.length)
 		lines.push(`  ${dim(`${screen.scroll + 1}–${hi} of ${state.profileInfo.length}`)}`)
 	}
-	lines.push(`  ${dim("↑↓")} scroll  ${cyan("esc/p")} close  ${cyan("q")} quit`)
+	lines.push(`  ${dim("↑↓")} scroll  ${cyan("esc")} close  ${cyan("q")} quit`)
 	return lines
 }
 
@@ -1059,6 +1093,12 @@ type SettingsRow =
 			max: number
 	  }
 	| { kind: "action"; id: "show-audit-log"; label: string; description: string }
+	| {
+			kind: "nav"
+			id: "active-profile" | "profiles" | "plugins"
+			label: string
+			description: string
+	  }
 
 const SETTINGS_ROWS: SettingsRow[] = [
 	{
@@ -1074,6 +1114,24 @@ const SETTINGS_ROWS: SettingsRow[] = [
 		id: "show-audit-log",
 		label: "Show Audit Log",
 		description: "View recent commands executed for the active profile",
+	},
+	{
+		kind: "nav",
+		id: "active-profile",
+		label: "Active Profile",
+		description: "View details for the current connection profile",
+	},
+	{
+		kind: "nav",
+		id: "profiles",
+		label: "Profiles",
+		description: "Manage and switch connection profiles",
+	},
+	{
+		kind: "nav",
+		id: "plugins",
+		label: "Plugins",
+		description: "Browse and manage CLI plugins",
 	},
 ]
 
@@ -1179,7 +1237,7 @@ function renderWorker(state: TuiState, screen: Extract<Screen, { kind: "worker" 
 					? cyan("◌ STOPPING")
 					: dim("■ STOPPED")
 
-	const lines = [renderHeader(["job", "worker"], cols, state.profile), ""]
+	const lines = [renderHeader(["worker"], cols, state.profile), ""]
 
 	lines.push(
 		`  ${padEnd(dim("type"), 8)}  ${cyan(screen.jobType)}    ${dim("status")}  ${statusStr}`,
@@ -1429,16 +1487,51 @@ async function runWorkerLoop(
 				"info",
 				`Activated ${job.jobKey}  process=${job.processDefinitionId}  element=${job.elementId}`,
 			)
+			let jobResult: WorkerJobResult = { outcome: "complete", variables }
+			const processJob = ws.cmd._worker?.processJob
+			if (processJob) {
+				try {
+					jobResult = await processJob(job)
+				} catch (err) {
+					addWorkerLog(
+						ws,
+						"err",
+						`Handler error: ${err instanceof Error ? err.message : String(err)} — using defaults`,
+					)
+				}
+			}
 			try {
-				await client.job.completeJob(job.jobKey, { variables })
-				ws.stats.completed++
-				addWorkerLog(ws, "ok", `Completed ${job.jobKey}`)
+				if (jobResult.outcome === "complete") {
+					await client.job.completeJob(job.jobKey, { variables: jobResult.variables })
+					ws.stats.completed++
+					addWorkerLog(ws, "ok", `Completed ${job.jobKey}`)
+				} else if (jobResult.outcome === "fail") {
+					await client.job.failJob(job.jobKey, {
+						errorMessage: jobResult.errorMessage,
+						retries: jobResult.retries,
+						retryBackOff: jobResult.retryBackOff,
+					})
+					ws.stats.failed++
+					addWorkerLog(ws, "err", `Failed ${job.jobKey}: ${jobResult.errorMessage}`)
+				} else {
+					await client.job.throwJobError(job.jobKey, {
+						errorCode: jobResult.errorCode,
+						errorMessage: jobResult.errorMessage,
+						variables: jobResult.variables,
+					})
+					ws.stats.failed++
+					addWorkerLog(
+						ws,
+						"err",
+						`Error ${job.jobKey} [${jobResult.errorCode}]: ${jobResult.errorMessage ?? ""}`,
+					)
+				}
 			} catch (err) {
 				ws.stats.failed++
 				addWorkerLog(
 					ws,
 					"err",
-					`Failed to complete ${job.jobKey}: ${err instanceof Error ? err.message : String(err)}`,
+					`Failed to settle ${job.jobKey}: ${err instanceof Error ? err.message : String(err)}`,
 				)
 			}
 		}
@@ -1727,6 +1820,9 @@ function render(state: TuiState): void {
 		case "json-editor":
 			lines = renderJsonEditor(state, screen)
 			break
+		case "plugins":
+			lines = renderPlugins(state, screen)
+			break
 	}
 	process.stdout.write(`${CLEAR}${lines.join("\n")}\n`)
 }
@@ -1814,6 +1910,25 @@ function handleMainKey(
 					statusMsg: "",
 					error: "",
 					_timer: null,
+				})
+			} else if (
+				group &&
+				group.commands.length === 1 &&
+				group.commands[0] &&
+				"_worker" in group.commands[0]
+			) {
+				// Single-command worker group: skip commands list, go straight to input
+				const cmd = group.commands[0]
+				state.stack.push({
+					kind: "input",
+					group,
+					cmd,
+					fields: buildFields(cmd),
+					cursor: 0,
+					scroll: 0,
+					editing: false,
+					error: "",
+					running: false,
 				})
 			} else if (group) {
 				state.stack.push({ kind: "commands", group, cursor: 0, search: "" })
@@ -2137,7 +2252,7 @@ async function handleInputKey(
 		case "\n":
 			if (!field) break
 			if (field.kind === "run") {
-				if (screen.cmd.name === "worker") {
+				if ("_worker" in screen.cmd) {
 					launchWorkerView(screen, state)
 				} else {
 					await executeCommand(screen, state)
@@ -2960,6 +3075,12 @@ function handleSettingsKey(
 				screen.editValue = String(getSettings()[row.key])
 			} else if (row?.kind === "action" && row.id === "show-audit-log") {
 				state.stack.push({ kind: "audit-log", scroll: 0 })
+			} else if (row?.kind === "nav" && row.id === "active-profile") {
+				state.stack.push({ kind: "profile", scroll: 0 })
+			} else if (row?.kind === "nav" && row.id === "profiles") {
+				state.stack.push({ kind: "commands", group: profileGroup, cursor: 0, search: "" })
+			} else if (row?.kind === "nav" && row.id === "plugins") {
+				state.stack.push(newPluginsScreen())
 			}
 			break
 		}
@@ -3062,6 +3183,483 @@ function handleWorkerKey(
 	render(state)
 }
 
+// ─── Plugins screen ───────────────────────────────────────────────────────────
+
+const PLUGIN_MENU = [
+	{ id: "search", label: "search", description: "Search the npm registry for plugins" },
+	{ id: "list", label: "list", description: "Show installed plugins" },
+	{ id: "install", label: "install", description: "Install a plugin from npm or local path" },
+	{
+		id: "update",
+		label: "update",
+		description: "Update installed plugins to their latest versions",
+	},
+	{ id: "remove", label: "remove", description: "Remove a plugin" },
+] as const
+
+function newPluginsScreen(): Extract<Screen, { kind: "plugins" }> {
+	return {
+		kind: "plugins",
+		subview: "menu",
+		menuCursor: 0,
+		query: "",
+		queryCursor: 0,
+		resultKind: "search",
+		results: [],
+		resultCursor: 0,
+		resultScroll: 0,
+		promptLabel: "",
+		promptValue: "",
+		promptCursor: 0,
+		promptAction: "install",
+		message: "",
+		error: "",
+		running: false,
+	}
+}
+
+function renderPlugins(state: TuiState, screen: Extract<Screen, { kind: "plugins" }>): string[] {
+	const { cols, rows } = termSize()
+
+	if (screen.subview === "menu") {
+		const nameW = PLUGIN_MENU.reduce((m, item) => Math.max(m, item.label.length), 0) + 2
+		const lines = [renderHeader(["settings", "plugins"], cols, state.profile), ""]
+		for (let i = 0; i < PLUGIN_MENU.length; i++) {
+			const item = PLUGIN_MENU[i]
+			if (!item) continue
+			const isCursor = i === screen.menuCursor
+			const name = padEnd(isCursor ? cyan(item.label) : item.label, nameW)
+			const desc = dim(fit(item.description, cols - nameW - 6))
+			const line = `  ${name}  ${desc}`
+			lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
+		}
+		lines.push("")
+		lines.push(
+			`  ${dim("↑↓")} navigate  ${cyan("enter")} open  ${cyan("esc")} back  ${cyan("q")} quit`,
+		)
+		return lines
+	}
+
+	if (screen.subview === "search") {
+		const lines = [renderHeader(["settings", "plugins", "search"], cols, state.profile), ""]
+		lines.push(`  ${dim("Search the npm registry — leave empty to browse all plugins")}`)
+		lines.push("")
+		lines.push(`  > ${renderText(screen.query, screen.queryCursor, cols - 6, true)}`)
+		if (screen.running) {
+			lines.push("")
+			lines.push(`  ${dim("Searching…")}`)
+		} else if (screen.error) {
+			lines.push("")
+			lines.push(`  ${red("error:")} ${screen.error}`)
+		}
+		lines.push("")
+		lines.push(
+			`  ${dim("type query")}  ${cyan("enter")} search  ${cyan("esc")} back  ${cyan("^C")} quit`,
+		)
+		return lines
+	}
+
+	if (screen.subview === "results") {
+		const viewH = Math.max(3, rows - 10)
+		const isSearch = screen.resultKind === "search"
+		const title = isSearch ? "search results" : "installed"
+		const lines = [renderHeader(["settings", "plugins", title], cols, state.profile), ""]
+		if (screen.results.length === 0) {
+			lines.push(`  ${dim(isSearch ? "No plugins found." : "No plugins installed.")}`)
+		} else {
+			const nameW =
+				Math.min(
+					32,
+					screen.results.reduce((m, r) => Math.max(m, r.name.length), 0),
+				) + 2
+			// Official badge shown for @bpmnkit/* packages (2 visible chars: "◆ ")
+			const BADGE = `${cyan("◆")} `
+			const BADGE_W = 2
+			const visible = screen.results.slice(screen.resultScroll, screen.resultScroll + viewH)
+			for (let vi = 0; vi < visible.length; vi++) {
+				const r = visible[vi]
+				if (!r) continue
+				const ri = screen.resultScroll + vi
+				const isCursor = ri === screen.resultCursor
+				const isOfficial = r.name.startsWith("@bpmnkit/")
+				const badge = isOfficial ? BADGE : " ".repeat(BADGE_W)
+				const name = padEnd(isCursor ? cyan(r.name) : r.name, nameW)
+				const verStr = r.version.padEnd(10)
+				const extra = isSearch
+					? dim(fit(r.description, cols - nameW - BADGE_W - 14))
+					: dim(r.installedAt.slice(0, 10))
+				const line = `  ${badge}${name}  ${verStr}  ${extra}`
+				lines.push(isCursor ? inv(line.padEnd(cols - 1)) : line)
+			}
+		}
+		if (screen.message) {
+			lines.push("")
+			lines.push(`  ${screen.message}`)
+		}
+		lines.push("")
+		const actions = isSearch
+			? `${cyan("enter/i")} install  ${cyan("esc")} back  ${cyan("q")} quit`
+			: `${cyan("enter/r")} remove  ${cyan("esc")} back  ${cyan("q")} quit`
+		lines.push(`  ${dim("↑↓")} navigate  ${actions}`)
+		lines.push(`  ${cyan("◆")} ${dim("= official @bpmnkit plugin")}`)
+		return lines
+	}
+
+	if (screen.subview === "prompt") {
+		const lines = [
+			renderHeader(["settings", "plugins", screen.promptAction], cols, state.profile),
+			"",
+		]
+		lines.push(`  ${screen.promptLabel}`)
+		lines.push("")
+		lines.push(`  > ${renderText(screen.promptValue, screen.promptCursor, cols - 6, true)}`)
+		if (screen.running) {
+			lines.push("")
+			lines.push(`  ${dim("Running…")}`)
+		} else if (screen.error) {
+			lines.push("")
+			lines.push(`  ${red("error:")} ${screen.error}`)
+		}
+		lines.push("")
+		lines.push(
+			`  ${dim("type name")}  ${cyan("enter")} confirm  ${cyan("esc")} back  ${cyan("^C")} quit`,
+		)
+		return lines
+	}
+
+	// "done"
+	const lines = [renderHeader(["settings", "plugins"], cols, state.profile), "", ""]
+	if (screen.error) {
+		lines.push(`  ${red("error:")} ${screen.error}`)
+	} else {
+		for (const line of screen.message.split("\n")) {
+			lines.push(`  ${line}`)
+		}
+	}
+	lines.push("")
+	lines.push(`  ${cyan("esc")} back  ${cyan("q")} quit`)
+	return lines
+}
+
+/** Temporarily restore the normal terminal, run fn (which may spawn processes), then re-enter. */
+async function runWithTerminal(fn: () => Promise<void>): Promise<void> {
+	process.stdout.write(`${ALT_OFF}${SHOW}`)
+	if (process.stdin.isTTY) process.stdin.setRawMode(false)
+	try {
+		await fn()
+	} finally {
+		if (process.stdin.isTTY) process.stdin.setRawMode(true)
+		process.stdout.write(`${ALT_ON}${HIDE}${CLEAR}`)
+	}
+}
+
+async function handlePluginsKey(
+	key: string,
+	screen: Extract<Screen, { kind: "plugins" }>,
+	state: TuiState,
+	done: () => void,
+): Promise<void> {
+	if (key === "\x03") {
+		done()
+		return
+	}
+
+	// ── Menu subview ──────────────────────────────────────────────────────────
+	if (screen.subview === "menu") {
+		switch (key) {
+			case "\x1b[A":
+				if (screen.menuCursor > 0) screen.menuCursor--
+				break
+			case "\x1b[B":
+				if (screen.menuCursor < PLUGIN_MENU.length - 1) screen.menuCursor++
+				break
+			case "\r":
+			case "\n": {
+				const item = PLUGIN_MENU[screen.menuCursor]
+				if (item?.id === "search") {
+					screen.subview = "search"
+					screen.query = ""
+					screen.queryCursor = 0
+					screen.error = ""
+				} else if (item?.id === "list") {
+					screen.running = true
+					screen.error = ""
+					render(state)
+					try {
+						const plugins = await readInstalledPlugins()
+						screen.resultKind = "installed"
+						screen.results = plugins.map((p) => ({
+							name: p.package,
+							version: p.version,
+							description: "",
+							publisher: "",
+							score: "",
+							installedAt: p.installedAt,
+						}))
+						screen.resultCursor = 0
+						screen.resultScroll = 0
+						screen.message = ""
+						screen.subview = "results"
+					} catch (err) {
+						screen.error = err instanceof Error ? err.message : String(err)
+					} finally {
+						screen.running = false
+					}
+				} else if (item?.id === "install") {
+					screen.subview = "prompt"
+					screen.promptLabel = "Package name (e.g. casen-deploy or ./local-path):"
+					screen.promptValue = ""
+					screen.promptCursor = 0
+					screen.promptAction = "install"
+					screen.error = ""
+				} else if (item?.id === "update") {
+					await runWithTerminal(async () => {
+						const cmd = pluginGroup.commands.find((c) => c.name === "update")
+						if (!cmd) return
+						const { writer } = makeCapturingWriter()
+						await cmd.run({
+							positional: [],
+							flags: {},
+							output: writer,
+							getClient: state.getClient,
+							getAdminClient: state.getAdminClient,
+						})
+					})
+					screen.subview = "done"
+					screen.message = green("✓ Update complete. Restart casen to activate changes.")
+					screen.error = ""
+				} else if (item?.id === "remove") {
+					screen.subview = "prompt"
+					screen.promptLabel = "Plugin package name to remove:"
+					screen.promptValue = ""
+					screen.promptCursor = 0
+					screen.promptAction = "remove"
+					screen.error = ""
+				}
+				break
+			}
+			case "\x1b":
+				state.stack.pop()
+				break
+			case "q":
+			case "Q":
+				done()
+				return
+		}
+		render(state)
+		return
+	}
+
+	// ── Search subview ────────────────────────────────────────────────────────
+	if (screen.subview === "search") {
+		if (key === "\x1b") {
+			screen.subview = "menu"
+			render(state)
+			return
+		}
+		if (key === "\r" || key === "\n") {
+			screen.running = true
+			screen.error = ""
+			render(state)
+			try {
+				const raw = await searchNpmRegistry(screen.query)
+				screen.results = raw.map((r: NpmSearchObject) => ({
+					name: r.package.name,
+					version: r.package.version,
+					description: r.package.description ?? "",
+					publisher: r.package.publisher?.username ?? "",
+					score: r.score.final.toFixed(2),
+					installedAt: "",
+				}))
+				screen.resultKind = "search"
+				screen.resultCursor = 0
+				screen.resultScroll = 0
+				screen.message = ""
+				screen.subview = "results"
+			} catch (err) {
+				screen.error = err instanceof Error ? err.message : String(err)
+			} finally {
+				screen.running = false
+			}
+			render(state)
+			return
+		}
+		if (key === "\x7f" || key === "\x08") {
+			if (screen.queryCursor > 0) {
+				screen.query =
+					screen.query.slice(0, screen.queryCursor - 1) + screen.query.slice(screen.queryCursor)
+				screen.queryCursor--
+			}
+		} else if (key === "\x1b[D") {
+			if (screen.queryCursor > 0) screen.queryCursor--
+		} else if (key === "\x1b[C") {
+			if (screen.queryCursor < screen.query.length) screen.queryCursor++
+		} else if (key === "\x01" || key === "\x1b[H") {
+			screen.queryCursor = 0
+		} else if (key === "\x05" || key === "\x1b[F") {
+			screen.queryCursor = screen.query.length
+		} else if (key.length === 1 && key >= " ") {
+			screen.query =
+				screen.query.slice(0, screen.queryCursor) + key + screen.query.slice(screen.queryCursor)
+			screen.queryCursor++
+		}
+		render(state)
+		return
+	}
+
+	// ── Results subview ───────────────────────────────────────────────────────
+	if (screen.subview === "results") {
+		const { rows } = termSize()
+		const viewH = Math.max(3, rows - 10)
+		switch (key) {
+			case "\x1b[A":
+				if (screen.resultCursor > 0) {
+					screen.resultCursor--
+					if (screen.resultCursor < screen.resultScroll) screen.resultScroll--
+				}
+				break
+			case "\x1b[B":
+				if (screen.resultCursor < screen.results.length - 1) {
+					screen.resultCursor++
+					if (screen.resultCursor >= screen.resultScroll + viewH) screen.resultScroll++
+				}
+				break
+			case "\r":
+			case "\n":
+			case "i":
+			case "I":
+			case "r":
+			case "R": {
+				const result = screen.results[screen.resultCursor]
+				if (!result) break
+				if (screen.resultKind === "installed" && (key === "i" || key === "I")) break
+				const action = screen.resultKind === "installed" ? "remove" : "install"
+				const pkgName = result.name
+				screen.message = dim(`${action === "install" ? "Installing" : "Removing"} ${pkgName}…`)
+				render(state)
+				const cmd = pluginGroup.commands.find((c) => c.name === action)
+				if (!cmd) break
+				let opError = ""
+				let opMessage = ""
+				await runWithTerminal(async () => {
+					const { writer, get } = makeCapturingWriter()
+					try {
+						await cmd.run({
+							positional: [pkgName],
+							flags: {},
+							output: writer,
+							getClient: state.getClient,
+							getAdminClient: state.getAdminClient,
+						})
+						const out = get()
+						if (out.type === "messages") opMessage = out.lines.join("\n")
+						else opMessage = green(`✓ ${action === "install" ? "Installed" : "Removed"} ${pkgName}`)
+					} catch (err) {
+						opError = err instanceof Error ? err.message : String(err)
+					}
+				})
+				screen.subview = "done"
+				screen.message = opMessage
+				screen.error = opError
+				break
+			}
+			case "\x1b":
+				// Go back to search input if came from search, else back to menu
+				if (screen.resultKind === "search") {
+					screen.subview = "search"
+				} else {
+					screen.subview = "menu"
+				}
+				break
+			case "q":
+			case "Q":
+				done()
+				return
+		}
+		render(state)
+		return
+	}
+
+	// ── Prompt subview ────────────────────────────────────────────────────────
+	if (screen.subview === "prompt") {
+		if (key === "\x1b") {
+			screen.subview = "menu"
+			render(state)
+			return
+		}
+		if (key === "\r" || key === "\n") {
+			const pkgName = screen.promptValue.trim()
+			if (!pkgName) {
+				screen.error = "Package name is required"
+				render(state)
+				return
+			}
+			const cmd = pluginGroup.commands.find((c) => c.name === screen.promptAction)
+			if (!cmd) return
+			let opError = ""
+			let opMessage = ""
+			await runWithTerminal(async () => {
+				const { writer, get } = makeCapturingWriter()
+				try {
+					await cmd.run({
+						positional: [pkgName],
+						flags: {},
+						output: writer,
+						getClient: state.getClient,
+						getAdminClient: state.getAdminClient,
+					})
+					const out = get()
+					if (out.type === "messages") opMessage = out.lines.join("\n")
+					else opMessage = green("✓ Done")
+				} catch (err) {
+					opError = err instanceof Error ? err.message : String(err)
+				}
+			})
+			screen.subview = "done"
+			screen.message = opMessage
+			screen.error = opError
+			render(state)
+			return
+		}
+		if (key === "\x7f" || key === "\x08") {
+			if (screen.promptCursor > 0) {
+				screen.promptValue =
+					screen.promptValue.slice(0, screen.promptCursor - 1) +
+					screen.promptValue.slice(screen.promptCursor)
+				screen.promptCursor--
+			}
+		} else if (key === "\x1b[D") {
+			if (screen.promptCursor > 0) screen.promptCursor--
+		} else if (key === "\x1b[C") {
+			if (screen.promptCursor < screen.promptValue.length) screen.promptCursor++
+		} else if (key === "\x01" || key === "\x1b[H") {
+			screen.promptCursor = 0
+		} else if (key === "\x05" || key === "\x1b[F") {
+			screen.promptCursor = screen.promptValue.length
+		} else if (key.length === 1 && key >= " ") {
+			screen.promptValue =
+				screen.promptValue.slice(0, screen.promptCursor) +
+				key +
+				screen.promptValue.slice(screen.promptCursor)
+			screen.promptCursor++
+		}
+		render(state)
+		return
+	}
+
+	// ── Done subview ──────────────────────────────────────────────────────────
+	switch (key) {
+		case "\x1b":
+			screen.subview = "menu"
+			break
+		case "q":
+		case "Q":
+			done()
+			return
+	}
+	render(state)
+}
+
 async function handleKey(key: string, state: TuiState, done: () => void): Promise<void> {
 	if (state.quitting) return
 	if (key === "\x03") {
@@ -3070,20 +3668,6 @@ async function handleKey(key: string, state: TuiState, done: () => void): Promis
 	}
 	const screen = state.stack[state.stack.length - 1]
 	if (!screen) return
-
-	// Global p/P: open profile view (skip when actively editing text)
-	if (key === "p" || key === "P") {
-		const isEditing =
-			(screen.kind === "input" && screen.editing) ||
-			(screen.kind === "json-editor" && screen.editing) ||
-			(screen.kind === "settings" && screen.editing)
-		const isProfile = screen.kind === "profile"
-		if (!isEditing && !isProfile) {
-			state.stack.push({ kind: "profile", scroll: 0 })
-			render(state)
-			return
-		}
-	}
 
 	switch (screen.kind) {
 		case "main":
@@ -3121,6 +3705,9 @@ async function handleKey(key: string, state: TuiState, done: () => void): Promis
 			break
 		case "json-editor":
 			handleJsonEditorKey(key, screen, state, done)
+			break
+		case "plugins":
+			await handlePluginsKey(key, screen, state, done)
 			break
 	}
 }

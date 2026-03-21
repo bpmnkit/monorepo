@@ -30,6 +30,9 @@ const PUBLISHED = [
 	"packages/connector-gen",
 	"apps/cli",
 	"apps/proxy",
+	"plugins-cli/casen-report",
+	"plugins-cli/casen-worker-http",
+	"plugins-cli/casen-worker-ai",
 ]
 
 const STALE_BRAND_PATTERNS = [/@bpmn-sdk\//, /bpmn-sdk frontends/, /bpmn-sdk CLI/, /for @bpmn-sdk/]

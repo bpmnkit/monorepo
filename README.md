@@ -65,6 +65,8 @@ BPMN Kit is an open-source TypeScript monorepo covering the full lifecycle of Ca
 | Package | Version | Description |
 |---------|---------|-------------|
 | [`@bpmnkit/casen-report`](plugins-cli/casen-report) | [![npm](https://img.shields.io/npm/v/@bpmnkit/casen-report?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda incident and SLA data |
+| [`@bpmnkit/casen-worker-http`](plugins-cli/casen-worker-http) | [![npm](https://img.shields.io/npm/v/@bpmnkit/casen-worker-http?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/casen-worker-http) | Example HTTP worker — complete jobs with live API data |
+| [`@bpmnkit/casen-worker-ai`](plugins-cli/casen-worker-ai) | [![npm](https://img.shields.io/npm/v/@bpmnkit/casen-worker-ai?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/casen-worker-ai) | AI task worker — classify, summarize, extract, decide via Claude |
 
 ### Design System & Shared
 
@@ -199,7 +201,9 @@ bpmnkit/monorepo
 │   ├── learn/          # Interactive learning center (Astro)
 │   └── examples/       # Runnable BPMN workflow examples
 ├── plugins-cli/        # Official casen CLI plugins
-│   └── casen-report/   # HTML incident & SLA reports
+│   ├── casen-report/        # HTML incident & SLA reports
+│   ├── casen-worker-http/   # Example HTTP worker plugin
+│   └── casen-worker-ai/      # AI task worker (Claude)
 ├── scripts/            # Build utilities (readme gen, stats, etc.)
 ├── turbo.json          # Turborepo pipeline
 └── pnpm-workspace.yaml # pnpm workspace config

@@ -1,0 +1,45 @@
+{
+	"name": "@bpmnkit/casen-worker-http",
+	"version": "0.1.0",
+	"private": false,
+	"description": "Example casen worker plugin — processes HTTP connector jobs using the JSONPlaceholder API",
+	"type": "module",
+	"main": "./dist/index.js",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"keywords": ["casen-plugin", "casen-worker", "camunda", "worker", "http", "bpmnkit"],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"casen": {
+		"group": "http-worker",
+		"commands": [
+			{
+				"name": "start",
+				"description": "Subscribe to HTTP connector jobs and complete them with live API data"
+			}
+		]
+	},
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "echo \"no tests\""
+	},
+	"devDependencies": {
+		"@bpmnkit/cli-sdk": "workspace:*"
+	}
+}
