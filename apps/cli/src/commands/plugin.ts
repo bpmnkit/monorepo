@@ -26,7 +26,7 @@ function runNpm(args: string[], cwd: string): Promise<void> {
 
 // ── npm registry search ───────────────────────────────────────────────────────
 
-interface NpmSearchObject {
+export interface NpmSearchObject {
 	package: {
 		name: string
 		version: string
@@ -36,7 +36,7 @@ interface NpmSearchObject {
 	score: { final: number }
 }
 
-async function searchNpmRegistry(query: string): Promise<NpmSearchObject[]> {
+export async function searchNpmRegistry(query: string): Promise<NpmSearchObject[]> {
 	const text = `keywords:casen-plugin${query ? ` ${query}` : ""}`
 	const url = `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(text)}&size=50`
 	const res = await fetch(url)

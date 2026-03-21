@@ -46,25 +46,33 @@ const customisedGroups: CommandGroup[] = generatedCommandGroups.map((g) => {
 		return { ...g, commands: [...commands, getUserTaskFormCmd] }
 	}
 	if (g === jobGroup) {
-		return { ...g, commands: [...g.commands, workerCmd] }
+		return g
 	}
 	return g
 })
 
 const sortedOtherGroups = [
 	connectorGroup,
-	pluginGroup,
 	...customisedGroups,
 	...adminCommandGroups,
 	completionGroup,
 ].sort((a, b) => a.name.localeCompare(b.name))
 
+const workerGroup: CommandGroup = {
+	name: "worker",
+	description: workerCmd.description,
+	commands: [workerCmd],
+}
+
 export const commandGroups: CommandGroup[] = [
 	askGroup,
 	settingsGroup,
-	profileGroup,
+	workerGroup,
 	...sortedOtherGroups,
 ]
+
+// Exported for CLI routing in run.ts (not shown in main TUI menu)
+export { pluginGroup, profileGroup }
 
 // Compute follow-up relations between commands based on shared field/arg names
 computeRelations(commandGroups)

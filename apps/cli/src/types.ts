@@ -73,6 +73,8 @@ export interface ArgSpec {
 	name: string
 	description: string
 	required?: boolean
+	/** Pre-filled default value shown in the TUI input form. */
+	default?: string
 	/** Restricts to specific values; TUI shows a cycling picker. */
 	enum?: string[]
 	/** Value is a JSON object; TUI opens a key-value editor. */

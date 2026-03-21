@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-03-21 — `apps/cli`: restructure settings/profiles/plugins menus
+
+- **`apps/cli/src/commands/index.ts`**: Removed `profileGroup` and `pluginGroup` from the exported `commandGroups` (TUI main menu); they are now re-exported for use by `run.ts` so CLI subcommand routing still works.
+- **`apps/cli/src/run.ts`**: Added `profileGroup` and `pluginGroup` to `allGroups` so `casen profile *` and `casen plugin *` CLI commands continue to work.
+- **`apps/cli/src/commands/plugin.ts`**: Exported `NpmSearchObject` interface and `searchNpmRegistry` function for direct use by the TUI plugins screen.
+- **`apps/cli/src/tui.ts`**:
+  - Removed global `p`/`P` shortcut that jumped to the profile info view from anywhere.
+  - Added `"nav"` kind to `SettingsRow` type; added three new settings rows: `Active Profile` (profile info view), `Profiles` (profile commands), `Plugins` (new plugins screen).
+  - Updated main-menu separator to trigger after `settings` (was `profile`).
+  - Added `plugins` to the `Screen` union with `subview` field for `"menu" | "search" | "results" | "prompt" | "done"` states.
+  - Added `newPluginsScreen()` factory, `renderPlugins()`, `runWithTerminal()` helper, and `handlePluginsKey()` async handler.
+  - Plugins screen menu: **search** (npm registry, Enter runs search, results are cursor-navigable, `i`/Enter installs selected), **list** (shows installed plugins instantly), **install** (inline prompt), **update** (runs immediately with terminal takeover for npm output), **remove** (inline prompt).
+
 ## 2026-03-20 — Deploy plugin: deploy and start instances from the editor
 
 - **`packages/editor/src/dock.ts`**: Added `"deploy"` tab to `SideDock` — new `deployPane` element, `setDeployTabClickHandler()`, extended tab union type and `switchTab()` logic.

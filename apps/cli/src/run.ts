@@ -7,7 +7,7 @@ import {
 	getProfile,
 } from "@bpmnkit/profiles"
 import { parseArgs } from "./args.js"
-import { commandGroups } from "./commands/index.js"
+import { commandGroups, pluginGroup, profileGroup } from "./commands/index.js"
 import { getRuntimeCompletions } from "./completion.js"
 import { printCommandHelp, printGlobalHelp, printGroupHelp, printVersion } from "./help.js"
 import { createNullWriter, createOutputWriter, printRawResponse } from "./output.js"
@@ -64,7 +64,7 @@ export async function run(argv: string[]): Promise<void> {
 	// Load plugin-contributed groups and merge with built-in groups.
 	// Failures are isolated inside loadPlugins — a broken plugin cannot crash the CLI.
 	const pluginGroups = await loadPlugins()
-	const allGroups = [...commandGroups, ...pluginGroups]
+	const allGroups = [...commandGroups, profileGroup, pluginGroup, ...pluginGroups]
 
 	// ── Completion protocol ───────────────────────────────────────────────────
 	// casen --complete <cursorWordIndex> -- <words...>
@@ -101,7 +101,8 @@ export async function run(argv: string[]): Promise<void> {
 		} else {
 			const { name: pName, info: pInfo } = buildProfileInfo(profileName)
 			await runMainTui(
-				allGroups,
+				// commandGroups only — profile and plugin are accessed via the settings menu
+				[...commandGroups, ...pluginGroups],
 				() => Promise.resolve(createClientFromProfile(profileName)),
 				() => Promise.resolve(createAdminClientFromProfile(profileName)),
 				{ profile: pName, profileInfo: pInfo },
@@ -123,6 +124,21 @@ export async function run(argv: string[]): Promise<void> {
 			colors,
 		)
 		process.exitCode = 1
+		return
+	}
+
+	// ── worker: treat positional[1] as the job type argument ─────────────────
+	if (group.name === "worker" && positional.length >= 2 && !wantHelp) {
+		const output = createOutputWriter(outputFormat, noColor)
+		const ctx: RunContext = {
+			positional: positional.slice(1),
+			flags,
+			output,
+			getClient,
+			getAdminClient,
+		}
+		const cmd = group.commands[0]
+		if (cmd) await cmd.run(ctx)
 		return
 	}
 
