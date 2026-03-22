@@ -1,5 +1,11 @@
 # @bpmnkit/core
 
+## 0.0.15
+
+### Patch Changes
+
+- [#58](https://github.com/bpmnkit/monorepo/pull/58) [`4953231`](https://github.com/bpmnkit/monorepo/commit/49532315a01c884d2a50375e6ea0148d6e294034) Thanks [@urbanisierung](https://github.com/urbanisierung)! - UX improvements
+
 ## 0.0.14
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @bpmnkit/cli
 
+## 0.0.17
+
+### Patch Changes
+
+- [#58](https://github.com/bpmnkit/monorepo/pull/58) [`4953231`](https://github.com/bpmnkit/monorepo/commit/49532315a01c884d2a50375e6ea0148d6e294034) Thanks [@urbanisierung](https://github.com/urbanisierung)! - UX improvements
+
+- Updated dependencies [[`4953231`](https://github.com/bpmnkit/monorepo/commit/49532315a01c884d2a50375e6ea0148d6e294034)]:
+  - @bpmnkit/engine@0.1.14
+  - @bpmnkit/core@0.0.15
+  - @bpmnkit/ascii@0.0.15
+
 ## 0.0.16
 
 ### Patch Changes
