@@ -76,6 +76,8 @@ export interface LayoutNode {
 	labelBounds?: Bounds
 	/** Whether this node is an expanded sub-process container. */
 	isExpanded?: boolean
+	/** True for virtual dummy nodes injected for multi-span edge routing. Filtered out of output. */
+	isDummy?: boolean
 }
 
 /** A routed edge in the layout. */

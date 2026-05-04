@@ -1,21 +1,16 @@
 import type { BpmnFlowElement, BpmnProcess, BpmnSequenceFlow } from "../bpmn/bpmn-model.js"
+import { bandLayout } from "./band-engine.js"
 import { buildBlockTree } from "./block-builder.js"
 import { applyBlockLayout } from "./block-layout.js"
 import {
 	alignBaselinePath,
-	alignBranchBaselines,
-	alignSplitJoinPairs,
 	assignCoordinates,
 	assignGridRows,
-	compactBranches,
-	distributeSplitBranches,
-	ensureEarlyReturnOffBaseline,
 	resolveLayerOverlaps,
-	snapToYRows,
 } from "./coordinates.js"
 import { minimizeCrossings } from "./crossing.js"
 import { buildGraph, detectBackEdges, reverseBackEdges } from "./graph.js"
-import { assignLayers, groupByLayer } from "./layers.js"
+import { assignLayers, groupByLayer, injectDummyNodes } from "./layers.js"
 import { assertNoOverlap } from "./overlap.js"
 import { routeEdges } from "./routing.js"
 import { layoutSubProcesses } from "./subprocess.js"
@@ -68,10 +63,13 @@ export function layoutFlowNodes(
 	const blockTree = backEdges.length === 0 ? buildBlockTree(dag, nodeIndex) : null
 	const usedBlockLayout = blockTree !== null
 
+	const dummyChains = new Map<string, string[]>()
 	if (blockTree) {
 		layoutNodes = applyBlockLayout(blockTree, nodeIndex)
 	} else {
-		layoutNodes = sugiyamaLayout(dag, nodeIndex, backEdges)
+		// Band layout is a complete replacement (handles routing internally).
+		// Return early — subprocess handling is performed inside bandLayout.
+		return bandLayout(flowNodes, sequenceFlows)
 	}
 
 	// Phase 5: Sub-process layout — expand containers and lay out children
@@ -114,10 +112,10 @@ export function layoutFlowNodes(
 		nodeMap.set(node.id, node)
 	}
 
-	const edges = routeEdges(sequenceFlows, nodeMap, backEdges)
+	const edges = routeEdges(sequenceFlows, nodeMap, backEdges, dummyChains)
 
-	// Flatten child results into the main layout
-	const allNodes = [...layoutNodes]
+	// Flatten child results into the main layout, excluding dummy nodes
+	const allNodes = layoutNodes.filter((n) => !n.isDummy)
 	const allEdges = [...edges]
 	for (const child of childResults) {
 		for (const cn of child.result.nodes) {
@@ -134,68 +132,48 @@ export function layoutFlowNodes(
 /**
  * Run the Sugiyama layered layout pipeline.
  * Used as fallback for unstructured or loop-containing processes.
+ *
+ * Phases:
+ * 1. Longest-path layer assignment
+ * 2. Dummy-node injection for multi-span edges
+ * 3. Barycenter crossing minimization
+ * 4. Grid coordinate assignment
+ * 5. Overlap resolution (safety net)
  */
 function sugiyamaLayout(
 	dag: ReturnType<typeof buildGraph>,
 	nodeIndex: Map<string, BpmnFlowElement>,
 	backEdges: ReturnType<typeof detectBackEdges>,
-): LayoutNode[] {
-	// Phase 2: Layer assignment
+	sequenceFlows: BpmnSequenceFlow[],
+): { layoutNodes: LayoutNode[]; dummyChains: Map<string, string[]> } {
+	// Phase 1: Layer assignment
 	const layers = assignLayers(dag)
 
-	// Phase 3: Group by layer and minimize crossings
-	const layerGroups = groupByLayer(layers)
-	const orderedLayers = minimizeCrossings(layerGroups, dag)
+	// Phase 2: Inject dummy nodes for edges that skip layers
+	const backEdgeIds = new Set(backEdges.map((be) => be.flowId))
+	const { augmentedGraph, augmentedLayers, dummyChains } = injectDummyNodes(
+		dag,
+		layers,
+		sequenceFlows,
+		backEdgeIds,
+	)
 
-	// Phase 4: Coordinate assignment
+	// Phase 3: Group by layer and minimize crossings (using augmented graph with dummies)
+	const layerGroups = groupByLayer(augmentedLayers)
+	const orderedLayers = minimizeCrossings(layerGroups, augmentedGraph)
+
+	// Phase 4: Coordinate assignment (dummy nodes get 0×0 size at grid-cell centers)
 	const layoutNodes = assignCoordinates(orderedLayers, nodeIndex)
 
-	// Phase 4b: Align linear sequences to a common y-baseline
-	alignBranchBaselines(layoutNodes, dag)
-
-	// Phase 4c: Align split/join gateway pairs to same y-coordinate
-	alignSplitJoinPairs(layoutNodes, dag, backEdges)
-
-	// Phase 4d: Align all baseline-path nodes to the same center-Y
+	// Phase 5a: Align main-path nodes to a common baseline Y.
+	// Grid placement alone can't guarantee this when branch nodes share a layer with
+	// baseline nodes and skew the layer's vertical centering.
 	alignBaselinePath(layoutNodes, dag, backEdges)
 
-	// Phase 4e: Ensure early-return branches are never on the baseline
-	ensureEarlyReturnOffBaseline(layoutNodes, dag, backEdges)
-
-	// Re-align linear chains that may have been disrupted by position swaps
-	alignBranchBaselines(layoutNodes, dag)
-
-	// Phase 4f: Distribute split gateway branches symmetrically
-	distributeSplitBranches(layoutNodes, dag, backEdges)
-
-	// Re-align split/join pairs that may have been separated during branch distribution
-	alignSplitJoinPairs(layoutNodes, dag, backEdges)
-
-	// Re-align branch spines after distribution moved chains and alignSplitJoinPairs
-	// adjusted join gateways (continuation nodes after joins must follow)
-	alignBranchBaselines(layoutNodes, dag)
-
-	// Phase 4g: Resolve any layer overlaps from redistribution
+	// Phase 5b: Resolve any Y-overlaps between real nodes in the same layer
 	resolveLayerOverlaps(layoutNodes)
 
-	// Phase 4h: Re-align baseline after overlap resolution (overlap resolution may push
-	// baseline nodes off-center when they share a layer with branch nodes)
-	alignBaselinePath(layoutNodes, dag, backEdges)
-
-	// Phase 4i: Final overlap resolution — baseline re-alignment may pull a node back into
-	// an overlap that resolveLayerOverlaps already fixed; one more pass eliminates these.
-	resolveLayerOverlaps(layoutNodes)
-
-	// Phase 4j: Branch compaction — pull branch subtrees toward baseline
-	compactBranches(layoutNodes, dag, backEdges)
-	resolveLayerOverlaps(layoutNodes)
-	alignBaselinePath(layoutNodes, dag, backEdges)
-
-	// Phase 4k: Row snapping — merge close Y rows for matrix-like alignment
-	snapToYRows(layoutNodes)
-	resolveLayerOverlaps(layoutNodes)
-
-	return layoutNodes
+	return { layoutNodes, dummyChains }
 }
 
 /**

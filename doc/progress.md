@@ -1,5 +1,48 @@
 # Progress
 
+## 2026-05-04 — Feat: Band layout engine
+
+**`packages/core/src/layout/trunk.ts`** (new):
+- `REJECTION_PATTERN`: regex matching rejection/error/escalation terms.
+- `BAND_Y`: fixed Y-coordinates for each band level (0=100, 1=250, 2=500, 3=700, 4=900, 5=1100).
+- `identifyTrunk(nodeIndex, dag, sequenceFlows)`: Dijkstra from startEvent to endEvent(s) with REJECTION_COST=10000 penalty on rejection-labelled edges/nodes; returns the set of node IDs on the best (lowest-cost) path.
+- `classifyNodeBands(...)`: maps each node to a `NodeBand` (0–5). Trunk → 2, back-edge sources → 1, rejection nodes/edges → 4, others → 3.
+
+**`packages/core/src/layout/band-engine.ts`** (new):
+- `bandLayout(flowNodes, sequenceFlows)`: complete self-contained layout pipeline. Runs graph construction, trunk identification, band classification, layer assignment with dummy injection, crossing minimisation, band-coordinate assignment, subprocess layout, and edge routing. Returns a full `LayoutResult`.
+- `assignBandCoordinates`: X-axis uses per-layer max-width + 60px gap. Y-axis pins nodes to `BAND_Y[band]`; multiple nodes in the same layer+band are stacked with 20px gap. Dummy nodes placed at the column centre at the band-2 Y.
+- `routeBandEdges`: back-edges route through the BAND_Y[1]=250 channel; multi-span edges via L-shaped dummy-chain waypoints; direct edges via A* obstacle routing.
+
+**`packages/core/src/layout/routing.ts`**:
+- Exported `placeEdgeLabelsExport` (thin wrapper around private `placeEdgeLabels`) for use by band-engine.
+
+**`packages/core/src/layout/layout-engine.ts`**:
+- `layoutFlowNodes`: when no block-tree is available (loops or unstructured processes), delegates immediately to `bandLayout` and returns its result. Block-layout path unchanged.
+
+**Result**: All 336 core tests pass, zero type errors, zero lint warnings.
+
+## 2026-05-04 — Feat: Sugiyama dummy-node injection
+
+**`packages/core/src/layout/types.ts`**:
+- Added `isDummy?: boolean` to `LayoutNode` — marks virtual routing waypoint nodes.
+
+**`packages/core/src/layout/layers.ts`**:
+- New `injectDummyNodes()` function: for every forward edge that skips more than one layer, inserts a 0×0 dummy node at each intermediate layer. Rewires adjacency lists (source→d0→d1→…→target). Returns augmented graph, augmented layer map, and `dummyChains` (flowId → ordered dummy IDs).
+
+**`packages/core/src/layout/coordinates.ts`**:
+- `assignCoordinates`: dummy nodes (absent from `nodeIndex`) now receive 0×0 bounds centered in their grid cell instead of being silently skipped. Marked `isDummy: true` in the returned `LayoutNode`.
+
+**`packages/core/src/layout/routing.ts`**:
+- `routeEdges` accepts optional `dummyChains` parameter.
+- New `routeViaChain()`: for multi-span edges, emits L-shaped waypoints through each dummy node's center position, bypassing the old obstacle-detection fallback for these edges.
+
+**`packages/core/src/layout/layout-engine.ts`** — pipeline simplified:
+- Removed complex heuristic passes: `alignBranchBaselines`, `alignSplitJoinPairs`, `distributeSplitBranches`, `ensureEarlyReturnOffBaseline`, `compactBranches`, `snapToYRows` (multiple repetitions each).
+- New `sugiyamaLayout` pipeline: `assignLayers` → `injectDummyNodes` → `groupByLayer` → `minimizeCrossings` → `assignCoordinates` → `alignBaselinePath` → `resolveLayerOverlaps`.
+- Dummy nodes included in `nodeMap` during routing, then filtered from final output.
+
+**Result**: All 336 core tests pass, zero type errors, zero lint warnings. Multi-span edges now route through crossing-minimizer-placed waypoints instead of flying over intermediate layers.
+
 ## 2026-04-30 — Fix: Gateway port routing & annotation spacing
 
 **`packages/core/src/layout/routing.ts`** — gateway port improvements:

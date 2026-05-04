@@ -56,10 +56,11 @@ export function assignCoordinates(
 			const nodeId = layer[posIdx]
 			if (!nodeId) continue
 			const node = nodeIndex.get(nodeId)
-			if (!node) continue
 
-			const size = getElementSize(node.type)
-			const rowsNeeded = Math.ceil(size.height / GRID_CELL_HEIGHT)
+			// Dummy nodes (injected for multi-span edge routing) have 0×0 size and
+			// are placed at the center of their grid cell for use as routing waypoints.
+			const size = node ? getElementSize(node.type) : { width: 0, height: 0 }
+			const rowsNeeded = Math.max(1, Math.ceil(size.height / GRID_CELL_HEIGHT))
 			const cellSpanH = rowsNeeded * GRID_CELL_HEIGHT
 
 			// Center element within its grid cell(s)
@@ -75,16 +76,17 @@ export function assignCoordinates(
 				height: size.height,
 			}
 
-			const labelBounds = computeLabelBounds(node, bounds)
+			const labelBounds = node ? computeLabelBounds(node, bounds) : undefined
 
 			layoutNodes.push({
 				id: nodeId,
-				type: node.type,
+				type: node?.type ?? "serviceTask",
 				bounds,
 				layer: layerIdx,
 				position: posIdx,
-				label: node.name,
+				label: node?.name,
 				labelBounds,
+				isDummy: !node,
 			})
 
 			gridRow += rowsNeeded

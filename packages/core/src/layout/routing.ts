@@ -110,6 +110,7 @@ export function routeEdges(
 	sequenceFlows: BpmnSequenceFlow[],
 	nodeMap: Map<string, LayoutNode>,
 	backEdges: BackEdge[],
+	dummyChains?: ReadonlyMap<string, readonly string[]>,
 ): LayoutEdge[] {
 	const backEdgeIds = new Set(backEdges.map((be) => be.flowId))
 
@@ -162,10 +163,15 @@ export function routeEdges(
 		if (isBackEdge) {
 			waypoints = routeBackEdge(source, target, nodeMap)
 		} else {
-			const port = portAssignments.get(flow.id)
-			waypoints = port
-				? routeFromPort(source, target, port, joinGateways)
-				: routeForwardEdge(source, target, joinGateways)
+			const dummies = dummyChains?.get(flow.id)
+			if (dummies && dummies.length > 0) {
+				waypoints = routeViaChain(source, target, dummies, nodeMap)
+			} else {
+				const port = portAssignments.get(flow.id)
+				waypoints = port
+					? routeFromPort(source, target, port, joinGateways)
+					: routeForwardEdge(source, target, joinGateways)
+			}
 		}
 
 		edges.push({
@@ -185,6 +191,48 @@ export function routeEdges(
 	placeEdgeLabels(edges, nodeMap)
 
 	return edges
+}
+
+/**
+ * Route a multi-span edge through its dummy-node chain.
+ * Each dummy node carries a pre-computed center position (0×0 bounds) placed by
+ * the barycenter crossing-minimizer. We emit L-shaped segments between consecutive
+ * points (source → d0 → d1 → … → target) and collapse collinear points at the end.
+ */
+function routeViaChain(
+	source: LayoutNode,
+	target: LayoutNode,
+	dummyIds: readonly string[],
+	nodeMap: Map<string, LayoutNode>,
+): Waypoint[] {
+	const waypoints: Waypoint[] = []
+
+	const srcRight = source.bounds.x + source.bounds.width
+	const srcCy = source.bounds.y + source.bounds.height / 2
+	waypoints.push({ x: srcRight, y: srcCy })
+
+	let prevY = srcCy
+	for (const dummyId of dummyIds) {
+		const dummy = nodeMap.get(dummyId)
+		if (!dummy) continue
+		// 0×0 dummy: bounds.x/y is the center position of the routing waypoint
+		const dx = dummy.bounds.x
+		const dy = dummy.bounds.y
+		if (Math.abs(prevY - dy) > 0.5) {
+			waypoints.push({ x: dx, y: prevY }) // horizontal to dummy column
+		}
+		waypoints.push({ x: dx, y: dy }) // vertical to dummy row
+		prevY = dy
+	}
+
+	const tgtLeft = target.bounds.x
+	const tgtCy = target.bounds.y + target.bounds.height / 2
+	if (Math.abs(prevY - tgtCy) > 0.5) {
+		waypoints.push({ x: tgtLeft, y: prevY }) // horizontal to target column
+	}
+	waypoints.push({ x: tgtLeft, y: tgtCy }) // entry into target
+
+	return collapseCollinear(waypoints)
 }
 
 /** Route a forward edge with orthogonal segments, preferring L-shaped over Z-shaped. */
@@ -630,6 +678,11 @@ function boundsOverlap(a: Bounds, b: Bounds): boolean {
  * For each labeled edge, generates candidate positions on the longest segment
  * and picks the first one that doesn't overlap nodes or already-placed labels.
  */
+/** @internal Exported for use by band-engine.ts. */
+export function placeEdgeLabelsExport(edges: LayoutEdge[], nodeMap: Map<string, LayoutNode>): void {
+	placeEdgeLabels(edges, nodeMap)
+}
+
 function placeEdgeLabels(edges: LayoutEdge[], nodeMap: Map<string, LayoutNode>): void {
 	const occupied: Bounds[] = []
 
