@@ -1,5 +1,41 @@
 # Progress
 
+## 2026-05-04 — Feat: Simulated Annealing layout optimizer (Modules 1–5)
+
+**`packages/core/src/layout/optimizer.ts`** (new):
+- `OptNode`, `OptEdge` interfaces and `OptGraph` class with `clone()` (deep copy — independent maps, new waypoint arrays).
+- `calculateLayoutCost(graph)`: 7-penalty cost function — node overlap (+10,000/pair), edge crossing (+1,000), edge-through-node (+5,000), bends (+50), non-orthogonal segments (+500), total edge length (+1/px), alignment misalignment (+10/px of center delta).
+- `initializeOptGraph(flowNodes, sequenceFlows)`: builds a rough layered grid from raw BPMN elements using DAG layer assignment; straight-line initial edges.
+- `mutateGraphRandomly(graph)`: 4 mutation types — nudge node ±20px (updates adjacent edge endpoints), insert dogleg midpoint, remove intermediate waypoint, snap waypoint to neighbor's axis.
+- `optimizeLayout(graph, iterations=10000)`: SA loop with linear temperature schedule and exp(-Δ/(T×500+1)) acceptance probability.
+- `layoutResultToOptGraph`, `applyOptGraphToResult`, `optimizeLayoutResult` — public API to apply SA to an existing `LayoutResult`.
+
+**`packages/core/tests/optimizer.test.ts`** (new): 20 Vitest tests covering all 5 modules and conversion utilities.
+
+**Result**: All 356 core tests pass, zero type errors, zero lint warnings.
+
+## 2026-05-04 — Feat: Band layout routing improvements (Modules 7 & 8)
+
+**`packages/core/src/layout/astar.ts`**:
+- `TURN_PENALTY`: 5 → 20. Strongly discourages unnecessary direction changes, producing straighter routes with fewer corners.
+- `OCCUPIED_EDGE_COST = 50`: New constant. Cells already traversed by a previously routed edge incur an extra 50-point penalty, steering later edges away from corridors already in use.
+- `routeEdgeAstar` now accepts an optional `occupiedCells?: Set<number>` parameter. Keys encode absolute grid coordinates (`absGx * 65536 + absGy`). Cells used by the found path are added to the set; subsequent calls pay the occupied penalty for shared cells.
+
+**`packages/core/src/layout/band-engine.ts`**:
+- `routeBandEdges`: creates a shared `occupiedCells = new Set<number>()` before the routing loop and passes it to every `routeEdgeAstar` call, so each new edge is penalised for reusing grid cells claimed by earlier edges.
+
+**`packages/core/src/bpmn/auto-layout.ts`**:
+- New `isBandLayoutResult(nodes)` helper: detects band-engine output by checking whether any node's centre Y falls within 60px of `BAND_Y[2]` (500).
+- `computeAnnotationLocalBounds`: when band layout is detected, annotations snap to fixed tracks instead of floating freely:
+  - Nodes at or above the trunk (centre Y ≤ 560) → annotation placed at **Track 0 (Y=100)**, pushed upward if a prior annotation already occupies the slot.
+  - Nodes on alternate/rejection bands (centre Y > 560) → annotation placed at **Track 5 (Y=1100)**, pushed downward for stacking.
+  - Non-band layouts retain the existing above/below nudging logic.
+
+**`packages/core/src/layout/band-engine.ts`**:
+- `MIN_H_GAP`: 60 → 100 (previous fix). Prevents label overlaps between adjacent small-node columns (gateway + end-event with 130 px wide labels need ≥ 94 px of column gap).
+
+**Result**: All 336 core tests pass, zero type errors, zero lint warnings.
+
 ## 2026-05-04 — Feat: Band layout engine
 
 **`packages/core/src/layout/trunk.ts`** (new):

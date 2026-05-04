@@ -1,5 +1,6 @@
 import { layoutProcess } from "../layout/layout-engine.js"
 import { resolveEdgeCrossings } from "../layout/routing.js"
+import { BAND_Y } from "../layout/trunk.js"
 import type { LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
 import type {
 	BpmnDefinitions,
@@ -184,6 +185,18 @@ function contentBbox(
 	return { minX, minY, maxX, maxY }
 }
 
+/**
+ * Returns true when the layout was produced by the band engine.
+ * Heuristic: at least one real node has its vertical center near BAND_Y[2] (trunk = 500).
+ */
+function isBandLayoutResult(nodes: LayoutNode[]): boolean {
+	const trunkY = BAND_Y[2]
+	return nodes.some((n) => {
+		const cy = n.bounds.y + n.bounds.height / 2
+		return cy > trunkY - 60 && cy < trunkY + 60
+	})
+}
+
 /** Pre-compute annotation positions in layout space (before dx/dy shift). */
 function computeAnnotationLocalBounds(
 	process: BpmnProcess,
@@ -201,6 +214,8 @@ function computeAnnotationLocalBounds(
 
 	// Static obstacles for crossing detection (nodes + labels only, not annotations)
 	const obstacles: LocalBounds[] = [...occupied]
+
+	const bandMode = isBandLayoutResult(layoutNodes)
 
 	for (const ta of process.textAnnotations) {
 		const assoc = process.associations.find((a) => a.sourceRef === ta.id || a.targetRef === ta.id)
@@ -221,27 +236,55 @@ function computeAnnotationLocalBounds(
 		}
 
 		const localX = connNode.bounds.x + connNode.bounds.width / 2 - annW / 2
-		const anchorX = connNode.bounds.x + connNode.bounds.width / 2
-		const pushStep = ANN_H + ANN_PADDING * 2 + 10
 
-		// Try below: start below connected element, push down for overlaps
-		const belowY = connNode.bounds.y + connNode.bounds.height + ANN_GAP
-		const below: LocalBounds = { x: localX, y: belowY, width: annW, height: ANN_H }
-		for (let i = 0; i < 30 && hasOverlapPadded(below, occupied, ANN_PADDING); i++)
-			below.y += pushStep
+		let candidate: LocalBounds
 
-		// Try above: gap scales with text length so longer annotations have more breathing room
-		const aboveGap = ANN_GAP + Math.round(annW * 0.2)
-		const aboveY = connNode.bounds.y - aboveGap - ANN_H
-		const above: LocalBounds = { x: localX, y: aboveY, width: annW, height: ANN_H }
-		for (let i = 0; i < 30 && hasOverlapPadded(above, occupied, ANN_PADDING); i++)
-			above.y -= pushStep
+		if (bandMode) {
+			// Band layout: snap to Track 0 (Y=100) or Track 5 (Y=1100) based on node's band.
+			// Nodes at or above the trunk (center Y ≤ BAND_Y[2]) get a top annotation;
+			// nodes on alternate/rejection bands get a bottom annotation.
+			const connCy = connNode.bounds.y + connNode.bounds.height / 2
+			const useTop = connCy <= BAND_Y[2] + 60
 
-		// Count how many obstacles the association line would cross for each candidate
-		const belowCrossings = countLineCrossings(anchorX, connNode.bounds, below, obstacles)
-		const aboveCrossings = countLineCrossings(anchorX, connNode.bounds, above, obstacles)
+			if (useTop) {
+				// Track 0: annotation sits at Y=100, shifted up by ANN_H so it ends at Y=100
+				candidate = { x: localX, y: BAND_Y[0] - ANN_H, width: annW, height: ANN_H }
+				// Push up further if this slot is already occupied by another annotation
+				const pushStep = ANN_H + ANN_PADDING + 4
+				for (let i = 0; i < 20 && hasOverlapPadded(candidate, occupied, ANN_PADDING); i++) {
+					candidate.y -= pushStep
+				}
+			} else {
+				// Track 5: annotation sits at Y=1100
+				candidate = { x: localX, y: BAND_Y[5], width: annW, height: ANN_H }
+				const pushStep = ANN_H + ANN_PADDING + 4
+				for (let i = 0; i < 20 && hasOverlapPadded(candidate, occupied, ANN_PADDING); i++) {
+					candidate.y += pushStep
+				}
+			}
+		} else {
+			const anchorX = connNode.bounds.x + connNode.bounds.width / 2
+			const pushStep = ANN_H + ANN_PADDING * 2 + 10
 
-		const candidate = belowCrossings <= aboveCrossings ? below : above
+			// Try below: start below connected element, push down for overlaps
+			const belowY = connNode.bounds.y + connNode.bounds.height + ANN_GAP
+			const below: LocalBounds = { x: localX, y: belowY, width: annW, height: ANN_H }
+			for (let i = 0; i < 30 && hasOverlapPadded(below, occupied, ANN_PADDING); i++)
+				below.y += pushStep
+
+			// Try above: gap scales with text length so longer annotations have more breathing room
+			const aboveGap = ANN_GAP + Math.round(annW * 0.2)
+			const aboveY = connNode.bounds.y - aboveGap - ANN_H
+			const above: LocalBounds = { x: localX, y: aboveY, width: annW, height: ANN_H }
+			for (let i = 0; i < 30 && hasOverlapPadded(above, occupied, ANN_PADDING); i++)
+				above.y -= pushStep
+
+			// Count how many obstacles the association line would cross for each candidate
+			const belowCrossings = countLineCrossings(anchorX, connNode.bounds, below, obstacles)
+			const aboveCrossings = countLineCrossings(anchorX, connNode.bounds, above, obstacles)
+
+			candidate = belowCrossings <= aboveCrossings ? below : above
+		}
 
 		occupied.push({ ...candidate })
 		obstacles.push({ ...candidate })

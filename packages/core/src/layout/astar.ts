@@ -2,7 +2,8 @@ import type { Bounds, Waypoint } from "./types.js"
 
 const GRID_RES = 10
 const OBSTACLE_MARGIN = 6
-const TURN_PENALTY = 5
+const TURN_PENALTY = 20
+const OCCUPIED_EDGE_COST = 50
 const CANVAS_EXTEND = 80
 
 const DX = [1, 0, -1, 0]
@@ -71,6 +72,12 @@ class MinHeap {
  * Route a single edge using A* on a 10px grid.
  * source/target are center points of source/target nodes.
  * obstacles are node bounding boxes to avoid (inflated by 6px margin).
+ *
+ * occupiedCells — optional shared set (keys: absGx * 65536 + absGy).
+ *   Cells already in the set incur an extra OCCUPIED_EDGE_COST penalty, steering
+ *   subsequent edges away from corridors already used by earlier edges.
+ *   Successfully routed cells are added to the set so the next call sees them.
+ *
  * Returns simplified orthogonal waypoints.
  */
 export function routeEdgeAstar(
@@ -79,6 +86,7 @@ export function routeEdgeAstar(
 	obstacles: Bounds[],
 	canvasWidth: number,
 	canvasHeight: number,
+	occupiedCells?: Set<number>,
 ): Waypoint[] {
 	// Extend canvas to allow routing around edges
 	const minX = Math.max(0, Math.min(source.x, target.x) - CANVAS_EXTEND)
@@ -88,6 +96,10 @@ export function routeEdgeAstar(
 
 	const cols = Math.ceil((maxX - minX) / GRID_RES) + 1
 	const rows = Math.ceil((maxY - minY) / GRID_RES) + 1
+
+	// Absolute grid offset — maps local (lx, ly) → absolute (lx+offsetGx, ly+offsetGy)
+	const offsetGx = Math.round(minX / GRID_RES)
+	const offsetGy = Math.round(minY / GRID_RES)
 
 	// Snap source and target to grid
 	const sx = Math.round((source.x - minX) / GRID_RES)
@@ -136,8 +148,6 @@ export function routeEdgeAstar(
 		heap.push(h, key)
 	}
 
-	let found = false
-
 	while (heap.size > 0) {
 		const item = heap.pop()
 		if (!item) break
@@ -148,8 +158,7 @@ export function routeEdgeAstar(
 		const cy = (cell - cx) / cols
 
 		if (cx === tx && cy === ty) {
-			found = true
-			// Reconstruct path
+			// Reconstruct path, marking each cell as occupied for subsequent edges
 			const path: Array<{ x: number; y: number }> = []
 			let k = key
 			while (k !== -1) {
@@ -158,10 +167,12 @@ export function routeEdgeAstar(
 				const kx = kCell % cols
 				const ky = (kCell - kx) / cols
 				path.push({ x: kx * GRID_RES + minX, y: ky * GRID_RES + minY })
+				if (occupiedCells) {
+					occupiedCells.add((kx + offsetGx) * 65536 + (ky + offsetGy))
+				}
 				k = parent[k] ?? -1
 			}
 			path.reverse()
-			// Simplify collinear points
 			return simplifyPath(path)
 		}
 
@@ -176,7 +187,13 @@ export function routeEdgeAstar(
 
 			const nkey = ncell * 4 + nd
 			const turnCost = nd !== dir ? TURN_PENALTY : 0
-			const ng = gCur + 1 + turnCost
+			// Penalise cells already used by a previously routed edge
+			let occupiedCost = 0
+			if (occupiedCells) {
+				const absKey = (nx + offsetGx) * 65536 + (ny + offsetGy)
+				if (occupiedCells.has(absKey)) occupiedCost = OCCUPIED_EDGE_COST
+			}
+			const ng = gCur + 1 + turnCost + occupiedCost
 			const prevG = g[nkey] ?? INF
 			if (ng < prevG) {
 				g[nkey] = ng
@@ -188,11 +205,7 @@ export function routeEdgeAstar(
 		}
 	}
 
-	if (!found) {
-		// Fall back to straight line
-		return [source, target]
-	}
-
+	// No path found — fall back to straight line
 	return [source, target]
 }
 

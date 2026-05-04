@@ -344,6 +344,9 @@ function routeBandEdges(
 	}
 
 	const edges: LayoutEdge[] = []
+	// Shared occupancy set: cells used by already-routed edges incur OCCUPIED_EDGE_COST,
+	// steering later edges away from crowded corridors.
+	const occupiedCells = new Set<number>()
 
 	for (const flow of sequenceFlows) {
 		const source = nodeMap.get(flow.sourceRef)
@@ -361,7 +364,7 @@ function routeBandEdges(
 				// Multi-span: use dummy chain as L-shape waypoints
 				waypoints = routeViaChain(source, target, dummies, nodeMap)
 			} else {
-				// Direct forward edge: A* routing
+				// Direct forward edge: A* routing with shared occupancy tracking
 				const obstacles: Bounds[] = allRealNodes
 					.filter((n) => n.id !== flow.sourceRef && n.id !== flow.targetRef)
 					.map((n) => n.bounds)
@@ -375,7 +378,14 @@ function routeBandEdges(
 					y: target.bounds.y + target.bounds.height / 2,
 				}
 
-				const astarResult = routeEdgeAstar(srcPort, tgtPort, obstacles, canvasW, canvasH)
+				const astarResult = routeEdgeAstar(
+					srcPort,
+					tgtPort,
+					obstacles,
+					canvasW,
+					canvasH,
+					occupiedCells,
+				)
 				waypoints = astarResult.length >= 2 ? astarResult : [srcPort, tgtPort]
 			}
 		}
