@@ -538,30 +538,34 @@ describe("assignPorts", () => {
 		expect(p.target.x).toBe(280) // west: x
 	})
 
-	it("assigns South/North when source track < target track", () => {
+	it("assigns South exit and West entry when source track < target track (non-gateway target)", () => {
 		const g = new V2Graph()
 		g.addNode(nodeAt("a", 50, 320, 2)) // track 2 (trunk)
-		g.addNode(nodeAt("b", 50, 520, 3)) // track 3 (below)
+		g.addNode(nodeAt("b", 50, 520, 3)) // track 3 (below), non-gateway
 		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
 		const ports = assignPorts(g)
 		const p = ports.get("e1")
 		expect(p).toBeDefined()
 		if (!p) return
 		expect(p.source.y).toBe(400) // south: y + height = 320 + 80
-		expect(p.target.y).toBe(520) // north: y
+		// Non-gateway target gets west port (enters from left side)
+		expect(p.target.x).toBe(50) // west: x
+		expect(p.target.y).toBe(560) // west center: y + height/2 = 520 + 40
 	})
 
-	it("assigns North/South when source track > target track", () => {
+	it("assigns North exit and West entry when source track > target track (non-gateway target)", () => {
 		const g = new V2Graph()
 		g.addNode(nodeAt("a", 50, 520, 3)) // track 3 (below)
-		g.addNode(nodeAt("b", 50, 320, 2)) // track 2 (above)
+		g.addNode(nodeAt("b", 50, 320, 2)) // track 2 (above), non-gateway
 		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
 		const ports = assignPorts(g)
 		const p = ports.get("e1")
 		expect(p).toBeDefined()
 		if (!p) return
 		expect(p.source.y).toBe(520) // north: y
-		expect(p.target.y).toBe(400) // south: y + height = 320 + 80
+		// Non-gateway target gets west port (enters from left side)
+		expect(p.target.x).toBe(50) // west: x
+		expect(p.target.y).toBe(360) // west center: y + height/2 = 320 + 40
 	})
 
 	it("assigns East/West for back-edges regardless of track", () => {

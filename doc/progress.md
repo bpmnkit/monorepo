@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-05-05 Layout V2 rewrite
+Replaced Sugiyama/band-engine hybrid with unified 8-module pipeline:
+trunk BFS → cycle breaking → layer assignment + gateway alignment →
+track-based Y coordinates with dynamic X gaps → port assignment →
+orthogonal channel routing → annotation re-attachment.
+
+**`packages/core/src/layout/layout-engine.ts`**: `layoutProcess` and `layoutFlowNodes` now delegate to `layoutV2`. Subprocess expansion is preserved via `layoutSubProcesses` + `resolveSubProcessOverlaps` post-pass.
+
+**`packages/core/src/layout/v2/engine.ts`**:
+- Back-edges and multi-span forward edges re-added to augmented graph after dummy injection so they get port assignment and routing.
+- `computeNodeLabelBounds` added to `toLayoutResult` for events and gateways.
+
+**`packages/core/src/layout/v2/grid.ts`**:
+- Y placement uses `Math.round` instead of snap-to-CELL_SIZE so all trunk nodes share the same center-Y (TRACK_Y[2]=360).
+- `resolveCrossTrackOverlaps` post-pass prevents tall branch stacks from bleeding into trunk territory.
+
+**`packages/core/src/layout/v2/ports.ts`**: Non-gateway targets always receive edges from the west (left side) per BPMN convention, even when source and target are on different tracks.
+
+**Tests updated** (`layout.test.ts`, `layout-v2.test.ts`): Port assignment expectations and "early-return baseline" description updated to reflect v2's shortest-path trunk selection.
+
+**Result**: All 406 core tests pass, zero type errors, zero lint warnings.
+
 ## 2026-05-04 — Feat: Simulated Annealing layout optimizer (Modules 1–5)
 
 **`packages/core/src/layout/optimizer.ts`** (new):

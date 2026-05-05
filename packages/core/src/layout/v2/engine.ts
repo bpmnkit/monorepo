@@ -82,6 +82,41 @@ function buildV2Graph(
 	return { graph, nodeIndex }
 }
 
+const LABEL_CHAR_WIDTH = 7
+const LABEL_HEIGHT = 14
+const LABEL_MIN_WIDTH = 40
+const LABEL_MAX_WIDTH = 120
+
+/**
+ * Compute label bounds for nodes that have a label.
+ * Events and gateways get labels below; tasks get labels inside (no separate labelBounds).
+ */
+function computeNodeLabelBounds(
+	n: V2Node,
+): { x: number; y: number; width: number; height: number } | undefined {
+	if (!n.label) return undefined
+	const isSmallElement =
+		n.type === "startEvent" ||
+		n.type === "endEvent" ||
+		n.type === "intermediateThrowEvent" ||
+		n.type === "intermediateCatchEvent" ||
+		n.type === "boundaryEvent" ||
+		n.type.includes("Gateway") ||
+		n.type.includes("gateway")
+	if (!isSmallElement) return undefined
+
+	const labelWidth = Math.min(
+		Math.max(n.label.length * LABEL_CHAR_WIDTH, LABEL_MIN_WIDTH),
+		LABEL_MAX_WIDTH,
+	)
+	return {
+		x: n.x + n.width / 2 - labelWidth / 2,
+		y: n.y + n.height + 4,
+		width: labelWidth,
+		height: LABEL_HEIGHT,
+	}
+}
+
 /**
  * Convert V2Graph back to LayoutResult (the stable external interface).
  * Filters out dummy nodes and only includes original sequence flow edges.
@@ -97,6 +132,7 @@ function toLayoutResult(graph: V2Graph, originalEdgeIds: Set<string>): LayoutRes
 			layer: n.layer,
 			position: n.track,
 			label: n.label,
+			labelBounds: computeNodeLabelBounds(n),
 		})
 	}
 
@@ -155,6 +191,15 @@ export function layoutV2(
 	assignLayers(dag)
 	alignGatewayPairs(dag, nodeIndex)
 	const augmented = injectDummies(dag)
+
+	// Re-add edges that were either excluded from the DAG (back-edges) or replaced
+	// by dummy-node segments (multi-span forward edges). Both need to be routed
+	// directly using their real source/target nodes.
+	for (const [, e] of graph.edges) {
+		if (!augmented.edges.has(e.id)) {
+			augmented.addEdge(e)
+		}
+	}
 
 	// Module 5: Track assignment + coordinates
 	assignTracks(augmented, trunkIds, backEdgeIds, sequenceFlows, nodeIndex)

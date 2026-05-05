@@ -145,7 +145,7 @@ export function assignCoordinates(graph: V2Graph): void {
 		if (!n.isDummy) continue
 		const lx = layerX.get(n.layer) ?? snap(LEFT_MARGIN)
 		n.x = lx
-		n.y = snap(TRACK_Y[2]) // dummy has height=0, center on trunk
+		n.y = TRACK_Y[2] // dummy has height=0, center on trunk
 	}
 
 	// Place real nodes
@@ -166,8 +166,58 @@ export function assignCoordinates(graph: V2Graph): void {
 				const n = graph.nodes.get(id)
 				if (!n) continue
 				n.x = lx
-				n.y = snap(curY)
+				// Round to nearest pixel; do NOT snap to CELL_SIZE so that center-Y
+				// stays at TRACK_Y regardless of element height.
+				n.y = Math.round(curY)
 				curY += n.height + STACK_V_GAP
+			}
+		}
+
+		// Resolve cross-track overlaps within this layer: if a higher-track stack
+		// bleeds into lower-track territory, shift the higher stack down.
+		resolveCrossTrackOverlaps(graph, byTrack, STACK_V_GAP)
+	}
+}
+
+/**
+ * After initial placement, shift stacks in higher-numbered tracks downward
+ * if they physically overlap with stacks in lower-numbered tracks.
+ */
+function resolveCrossTrackOverlaps(
+	graph: V2Graph,
+	byTrack: Map<NodeTrack, string[]>,
+	gap: number,
+): void {
+	const sortedTracks = [...byTrack.keys()].sort((a, b) => a - b)
+	for (let i = 0; i < sortedTracks.length - 1; i++) {
+		const lowerTrack = sortedTracks[i]
+		const upperTrack = sortedTracks[i + 1]
+		if (lowerTrack === undefined || upperTrack === undefined) continue
+		const lowerIds = byTrack.get(lowerTrack) ?? []
+		const upperIds = byTrack.get(upperTrack) ?? []
+
+		// Find the bottom edge of the lower-track stack
+		let lowerBottom = Number.NEGATIVE_INFINITY
+		for (const id of lowerIds) {
+			const n = graph.nodes.get(id)
+			if (n) lowerBottom = Math.max(lowerBottom, n.y + n.height)
+		}
+		if (!Number.isFinite(lowerBottom)) continue
+
+		// Find the top edge of the upper-track stack
+		let upperTop = Number.POSITIVE_INFINITY
+		for (const id of upperIds) {
+			const n = graph.nodes.get(id)
+			if (n) upperTop = Math.min(upperTop, n.y)
+		}
+		if (!Number.isFinite(upperTop)) continue
+
+		const overlap = lowerBottom + gap - upperTop
+		if (overlap > 0) {
+			// Shift the entire upper stack down by the overlap amount
+			for (const id of upperIds) {
+				const n = graph.nodes.get(id)
+				if (n) n.y += overlap
 			}
 		}
 	}
