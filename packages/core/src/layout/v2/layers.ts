@@ -66,6 +66,7 @@ export function assignLayers(dag: V2Graph): void {
  * and set join.layer = maxBranchLayer + 1.
  * Mutates node.layer in-place.
  */
+// _nodeIndex reserved for future gateway type narrowing (e.g., event-based gateways)
 export function alignGatewayPairs(dag: V2Graph, _nodeIndex: Map<string, BpmnFlowElement>): void {
 	for (const [splitId] of dag.nodes) {
 		if (!isSplitGateway(splitId, dag)) continue
@@ -90,22 +91,37 @@ export function alignGatewayPairs(dag: V2Graph, _nodeIndex: Map<string, BpmnFlow
 			const allFromSplit = preds.every((p) => reachable.has(p) || p === splitId)
 			if (!allFromSplit) continue
 
-			// Find deepest layer between split and join (exclusive of join)
+			// Build the set of nodes reachable FROM the join (its downstream).
+			// This lets us exclude downstream nodes when computing maxBranchLayer,
+			// and restrict the cascade shift to only the join and its successors.
+			const fromJoin = new Set<string>()
+			const joinBfsQueue = [...dag.getSuccessors(candidateId)]
+			while (joinBfsQueue.length > 0) {
+				const cur = joinBfsQueue.shift()
+				if (cur === undefined || fromJoin.has(cur)) continue
+				fromJoin.add(cur)
+				joinBfsQueue.push(...dag.getSuccessors(cur))
+			}
+
+			// Only count nodes between split and join (exclude the join itself and downstream nodes).
+			// This prevents nodes after the join from inflating maxBranchLayer.
 			let maxBranchLayer = splitNode.layer
 			for (const id of reachable) {
-				if (id === candidateId) continue
+				if (id === candidateId || fromJoin.has(id)) continue
 				const n = dag.nodes.get(id)
 				if (n) maxBranchLayer = Math.max(maxBranchLayer, n.layer)
 			}
 
 			const joinNode = dag.nodes.get(candidateId)
-			if (!joinNode) break
+			if (!joinNode) continue
 			const required = maxBranchLayer + 1
 			if (joinNode.layer < required) {
 				const shift = required - joinNode.layer
-				// Cascade: push join and all nodes that come after it
-				for (const [, n] of dag.nodes) {
-					if (n.layer >= joinNode.layer && n.id !== splitId) n.layer += shift
+				// Only shift the join and its downstream nodes — not unrelated branches.
+				joinNode.layer += shift
+				for (const id of fromJoin) {
+					const n = dag.nodes.get(id)
+					if (n) n.layer += shift
 				}
 			}
 			break

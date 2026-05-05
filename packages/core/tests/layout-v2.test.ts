@@ -284,24 +284,59 @@ describe("assignLayers", () => {
 })
 
 describe("alignGatewayPairs", () => {
-	it("forces join gateway to maxBranchLayer + 1", () => {
-		// split (gw) → A (deep branch: A→B→C) → join
-		// split → join directly (short path)
-		// Without alignment: join.layer = max(3+1, 0+1) = 4 (longest-path already gives this)
-		// With alignment: join.layer stays >= maxBranchLayer+1
+	it("corrects join gateway layer when set too low", () => {
+		// split → A → B → C → join, split → join (direct)
+		// After assignLayers: split=0, A=1, B=2, C=3, join=4, after=5
+		// Manually set join too low to simulate a case where correction is needed
 		const g = new V2Graph()
 		g.addNode({ ...makeNode("split"), type: "exclusiveGateway" })
-		for (const id of ["A", "B", "C"]) g.addNode(makeNode(id))
+		g.addNode(makeNode("A"))
+		g.addNode(makeNode("B"))
+		g.addNode(makeNode("C"))
 		g.addNode({ ...makeNode("join"), type: "exclusiveGateway" })
+		g.addNode(makeNode("after")) // node after join
 		g.addEdge({ id: "e1", sourceId: "split", targetId: "A", isBackEdge: false, waypoints: [] })
 		g.addEdge({ id: "e2", sourceId: "A", targetId: "B", isBackEdge: false, waypoints: [] })
 		g.addEdge({ id: "e3", sourceId: "B", targetId: "C", isBackEdge: false, waypoints: [] })
 		g.addEdge({ id: "e4", sourceId: "C", targetId: "join", isBackEdge: false, waypoints: [] })
 		g.addEdge({ id: "e5", sourceId: "split", targetId: "join", isBackEdge: false, waypoints: [] })
-		assignLayers(g)
-		const layerBeforeAlign = g.nodes.get("join")!.layer
+		g.addEdge({ id: "e6", sourceId: "join", targetId: "after", isBackEdge: false, waypoints: [] })
+		assignLayers(g) // places: split=0, A=1, B=2, C=3, join=4, after=5
+		// Force join layer too low to test correction:
+		const joinNode = g.nodes.get("join")
+		const afterNode = g.nodes.get("after")
+		if (joinNode) joinNode.layer = 1
+		if (afterNode) afterNode.layer = 2
 		alignGatewayPairs(g, new Map())
-		expect(g.nodes.get("join")!.layer).toBeGreaterThanOrEqual(layerBeforeAlign)
+		// join should be corrected to maxBranchLayer(3) + 1 = 4
+		expect(g.nodes.get("join")?.layer).toBe(4)
+		// after should be cascaded: was 2, shift = 4-1=3, after = 2+3 = 5
+		expect(g.nodes.get("after")?.layer).toBe(5)
+		// branch nodes should NOT be shifted (they're between split and join)
+		expect(g.nodes.get("C")?.layer).toBe(3) // unchanged
+	})
+
+	it("does not shift unrelated nodes outside the gateway block", () => {
+		// Two separate parallel paths; alignment of one should not affect the other
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("split"), type: "exclusiveGateway" })
+		g.addNode(makeNode("A"))
+		g.addNode(makeNode("B"))
+		g.addNode({ ...makeNode("join"), type: "exclusiveGateway" })
+		g.addNode(makeNode("unrelated")) // separate node at same layer as join
+		g.addEdge({ id: "e1", sourceId: "split", targetId: "A", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e2", sourceId: "A", targetId: "B", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e3", sourceId: "B", targetId: "join", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e4", sourceId: "split", targetId: "join", isBackEdge: false, waypoints: [] })
+		assignLayers(g)
+		const unrelatedNode = g.nodes.get("unrelated")
+		const naturalJoinLayer = g.nodes.get("join")?.layer ?? 2
+		if (unrelatedNode) unrelatedNode.layer = naturalJoinLayer // same layer as join
+		const joinNode = g.nodes.get("join")
+		if (joinNode) joinNode.layer = 0 // force too low
+		alignGatewayPairs(g, new Map())
+		// unrelated should NOT be shifted
+		expect(g.nodes.get("unrelated")?.layer).toBe(naturalJoinLayer)
 	})
 })
 
