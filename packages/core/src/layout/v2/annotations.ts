@@ -106,5 +106,31 @@ export function layoutAnnotations(
 		})
 	}
 
+	// Resolve annotation-annotation overlaps within each Y band.
+	// When two nodes are close in X, their centered annotations can overlap.
+	// Spread them right-ward within the band so they're gap-separated.
+	const ANN_GAP = 8
+	const bands = new Map<number, AnnotationResult[]>()
+	for (const r of results) {
+		const arr = bands.get(r.y) ?? []
+		arr.push(r)
+		bands.set(r.y, arr)
+	}
+	for (const band of bands.values()) {
+		band.sort((a, b) => a.x - b.x)
+		for (let i = 1; i < band.length; i++) {
+			const prev = band[i - 1]
+			const cur = band[i]
+			if (!prev || !cur) continue
+			const minX = prev.x + prev.width + ANN_GAP
+			if (cur.x < minX) {
+				cur.x = minX
+				// Update first waypoint to match the shifted annotation connection point
+				const first = cur.waypoints[0]
+				if (first) cur.waypoints[0] = { x: Math.round(cur.x + cur.width / 2), y: first.y }
+			}
+		}
+	}
+
 	return results
 }
