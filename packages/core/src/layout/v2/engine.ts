@@ -142,19 +142,19 @@ export function layoutV2(
 	const { graph, nodeIndex } = buildV2Graph(flowNodes, sequenceFlows, textAnnotations, associations)
 	const originalEdgeIds = new Set(sequenceFlows.map((f) => f.id))
 
-	// Module 2: Trunk identification
-	const trunkIds = identifyTrunk(graph, nodeIndex, sequenceFlows)
-
-	// Module 3: Cycle breaking
+	// Module 3: Cycle detection + DAG construction
 	const backEdges = detectBackEdges(graph)
 	const backEdgeIds = new Set(backEdges.map((b) => b.edgeId))
 	const dag = makeDAG(graph, backEdges)
+
+	// Module 2: Trunk identification (uses DAG — back-edges already reversed)
+	const trunkIds = identifyTrunk(dag, nodeIndex, sequenceFlows)
 
 	// Module 4: Layer assignment + gateway alignment + dummy injection
 	// dag shares node objects with graph, so mutations propagate back
 	assignLayers(dag)
 	alignGatewayPairs(dag, nodeIndex)
-	const augmented = injectDummies(dag, originalEdgeIds)
+	const augmented = injectDummies(dag)
 
 	// Module 5: Track assignment + coordinates
 	assignTracks(augmented, trunkIds, backEdgeIds, sequenceFlows, nodeIndex)

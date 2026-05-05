@@ -135,7 +135,7 @@ export function alignGatewayPairs(dag: V2Graph, _nodeIndex: Map<string, BpmnFlow
  * Returns the augmented graph (new nodes/edges added, originals preserved).
  * Edges with "__rev" suffix (DAG-only back-edge reversals) are kept as-is.
  */
-export function injectDummies(dag: V2Graph, _originalEdgeIds: Set<string>): V2Graph {
+export function injectDummies(dag: V2Graph): V2Graph {
 	const augmented = new GraphClass()
 	for (const n of dag.nodes.values()) augmented.addNode(n)
 

@@ -357,7 +357,7 @@ describe("injectDummies", () => {
 		g.addNode({ ...makeNode("a"), layer: 0 })
 		g.addNode({ ...makeNode("b"), layer: 3 }) // spans layers 0→1→2→3
 		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
-		const aug = injectDummies(g, new Set(["e1"]))
+		const aug = injectDummies(g)
 		const dummies = [...aug.nodes.values()].filter((n) => n.isDummy)
 		expect(dummies).toHaveLength(2) // layers 1 and 2
 		for (const d of dummies) {
@@ -371,7 +371,7 @@ describe("injectDummies", () => {
 		g.addNode({ ...makeNode("a"), layer: 0 })
 		g.addNode({ ...makeNode("b"), layer: 1 })
 		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
-		const aug = injectDummies(g, new Set(["e1"]))
+		const aug = injectDummies(g)
 		expect([...aug.nodes.values()].filter((n) => n.isDummy)).toHaveLength(0)
 	})
 
@@ -380,7 +380,7 @@ describe("injectDummies", () => {
 		g.addNode({ ...makeNode("a"), layer: 0 })
 		g.addNode({ ...makeNode("b"), layer: 3 })
 		g.addEdge({ id: "e1__rev", sourceId: "b", targetId: "a", isBackEdge: false, waypoints: [] })
-		const aug = injectDummies(g, new Set())
+		const aug = injectDummies(g)
 		expect([...aug.nodes.values()].filter((n) => n.isDummy)).toHaveLength(0)
 		expect(aug.edges.has("e1__rev")).toBe(true)
 	})
