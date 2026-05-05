@@ -11,7 +11,7 @@ function makeNode(id: string): V2Node {
 		x: 0,
 		y: 0,
 		layer: 0,
-		track: 1,
+		track: 2,
 		isTrunk: false,
 		isBackEdgeSource: false,
 		isDummy: false,
@@ -37,21 +37,24 @@ describe("V2Graph", () => {
 		expect(g.getPredecessors("a")).toEqual([])
 	})
 
-	it("does not duplicate successors when the same edge is added twice", () => {
+	it("does not duplicate successors when same edge re-added", () => {
 		const g = new V2Graph()
-		g.addNode(makeNode("x"))
-		g.addNode(makeNode("y"))
-		const edge = {
-			id: "e2",
-			sourceId: "x",
-			targetId: "y",
-			isBackEdge: false,
-			waypoints: [],
-		}
-		g.addEdge(edge)
-		g.addEdge(edge)
+		g.addNode(makeNode("a"))
+		g.addNode(makeNode("b"))
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] }) // same id
+		expect(g.getSuccessors("a")).toHaveLength(1)
+		expect(g.edges.size).toBe(1)
+	})
 
-		expect(g.getSuccessors("x")).toEqual(["y"])
-		expect(g.getPredecessors("y")).toEqual(["x"])
+	it("allows two distinct edges between the same node pair (multigraph)", () => {
+		const g = new V2Graph()
+		g.addNode(makeNode("a"))
+		g.addNode(makeNode("b"))
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e2", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		expect(g.edges.size).toBe(2)
+		expect(g.getSuccessors("a")).toHaveLength(2) // both edges appear
+		expect(g.getPredecessors("b")).toHaveLength(2)
 	})
 })

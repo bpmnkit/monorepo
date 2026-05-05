@@ -1,4 +1,3 @@
-// packages/core/src/layout/v2/graph.ts
 import type { V2Edge, V2Node } from "./types.js"
 
 export class V2Graph {
@@ -16,12 +15,13 @@ export class V2Graph {
 	}
 
 	addEdge(edge: V2Edge): void {
+		if (this.edges.has(edge.id)) return // idempotent on exact same-edge re-add
 		this.edges.set(edge.id, edge)
 		const s = this.successors.get(edge.sourceId) ?? []
-		if (!s.includes(edge.targetId)) s.push(edge.targetId)
+		s.push(edge.targetId)
 		this.successors.set(edge.sourceId, s)
 		const p = this.predecessors.get(edge.targetId) ?? []
-		if (!p.includes(edge.sourceId)) p.push(edge.sourceId)
+		p.push(edge.sourceId)
 		this.predecessors.set(edge.targetId, p)
 	}
 

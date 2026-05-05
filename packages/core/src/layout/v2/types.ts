@@ -1,7 +1,8 @@
-// packages/core/src/layout/v2/types.ts
+/** Track bands for Y placement (0=top-annotations, 5=bottom-annotations). */
+export type NodeTrack = 0 | 1 | 2 | 3 | 4 | 5
 
 /** Y-center for each track band. Flow nodes use tracks 1–4; 0 and 5 are for annotations. */
-export const TRACK_Y: Record<number, number> = {
+export const TRACK_Y: Record<NodeTrack, number> = {
 	0: 40,
 	1: 160,
 	2: 360,
@@ -30,9 +31,6 @@ export const ANN_HEIGHT = 50
 
 /** Pattern for rejection/error/escalation nodes and flows. */
 export const REJECTION_PATTERN = /reject|escalat|error|cancel|declin/i
-
-/** Track bands for Y placement (0=top-annotations, 5=bottom-annotations). */
-export type NodeTrack = 0 | 1 | 2 | 3 | 4 | 5
 
 export interface V2Node {
 	id: string
