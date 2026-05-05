@@ -6,6 +6,7 @@ import type {
 	BpmnTextAnnotation,
 } from "../src/bpmn/bpmn-model.js"
 import { layoutAnnotations } from "../src/layout/v2/annotations.js"
+import { layoutV2 } from "../src/layout/v2/engine.js"
 import { detectBackEdges, makeDAG } from "../src/layout/v2/dag.js"
 import { V2Graph } from "../src/layout/v2/graph.js"
 import { assignCoordinates, assignTracks } from "../src/layout/v2/grid.js"
@@ -13,7 +14,7 @@ import { alignGatewayPairs, assignLayers, injectDummies } from "../src/layout/v2
 import { assignPorts } from "../src/layout/v2/ports.js"
 import { routeAllEdges } from "../src/layout/v2/router.js"
 import { identifyTrunk } from "../src/layout/v2/trunk.js"
-import { CELL_SIZE, TRACK_Y } from "../src/layout/v2/types.js"
+import { ANN_HEIGHT, CELL_SIZE, TRACK_Y } from "../src/layout/v2/types.js"
 import type { NodeTrack, V2Node } from "../src/layout/v2/types.js"
 
 function makeNode(id: string, type = "task"): V2Node {
@@ -667,7 +668,7 @@ describe("layoutAnnotations", () => {
 		expect(result).toHaveLength(1)
 		const r = result[0]
 		if (!r) return
-		expect(r.y).toBeGreaterThan(TRACK_Y[4] as number) // below rejection band
+		expect(r.y).toBe((TRACK_Y[5] as number) - ANN_HEIGHT) // 960 - 50 = 910
 		expect(r.waypoints.length).toBeGreaterThanOrEqual(2)
 	})
 
@@ -693,5 +694,86 @@ describe("layoutAnnotations", () => {
 		)
 		expect(result).toHaveLength(1)
 		expect(result[0]?.y).toBe(TRACK_Y[0]) // still placed correctly
+	})
+
+	describe("annotation width formula", () => {
+		it("clamps short text to 80px minimum", () => {
+			// text = "" → 0 * 5 = 0, clamped to 80
+			const g = new V2Graph()
+			const ta: BpmnTextAnnotation = { id: "ann1", text: "", unknownAttributes: {} }
+			const results = layoutAnnotations([ta], [], g)
+			expect(results[0]!.width).toBe(80)
+		})
+
+		it("clamps long text to 200px maximum", () => {
+			// text = 50 chars → 50 * 5 = 250, clamped to 200
+			const g = new V2Graph()
+			const ta: BpmnTextAnnotation = { id: "ann1", text: "x".repeat(50), unknownAttributes: {} }
+			const results = layoutAnnotations([ta], [], g)
+			expect(results[0]!.width).toBe(200)
+		})
+
+		it("computes mid-range width correctly", () => {
+			// text = 20 chars → 20 * 5 = 100
+			const g = new V2Graph()
+			const ta: BpmnTextAnnotation = { id: "ann1", text: "x".repeat(20), unknownAttributes: {} }
+			const results = layoutAnnotations([ta], [], g)
+			expect(results[0]!.width).toBe(100)
+		})
+	})
+})
+
+describe("layoutV2 — engine integration", () => {
+	it("lays out a linear process with 3 nodes", () => {
+		const nodes = [bpmnNode("s", "startEvent"), bpmnNode("t"), bpmnNode("e", "endEvent")]
+		const flows = [bpmnFlow("f1", "s", "t"), bpmnFlow("f2", "t", "e")]
+		const result = layoutV2(nodes, flows)
+		expect(result.nodes).toHaveLength(3)
+		expect(result.edges).toHaveLength(2)
+		const s = result.nodes.find((n) => n.id === "s")!
+		const t = result.nodes.find((n) => n.id === "t")!
+		const e = result.nodes.find((n) => n.id === "e")!
+		expect(s.bounds.x).toBeLessThan(t.bounds.x)
+		expect(t.bounds.x).toBeLessThan(e.bounds.x)
+	})
+
+	it("trunk nodes have y-center near TRACK_Y[2]", () => {
+		const nodes = [bpmnNode("s", "startEvent"), bpmnNode("t"), bpmnNode("e", "endEvent")]
+		const flows = [bpmnFlow("f1", "s", "t"), bpmnFlow("f2", "t", "e")]
+		const result = layoutV2(nodes, flows)
+		for (const n of result.nodes) {
+			const cy = n.bounds.y + n.bounds.height / 2
+			expect(Math.abs(cy - TRACK_Y[2]!)).toBeLessThan(80)
+		}
+	})
+
+	it("produces no overlapping nodes", () => {
+		const nodes = [
+			bpmnNode("s", "startEvent"),
+			bpmnNode("t1"),
+			bpmnNode("t2"),
+			bpmnNode("e", "endEvent"),
+		]
+		const flows = [
+			bpmnFlow("f1", "s", "t1"),
+			bpmnFlow("f2", "s", "t2"),
+			bpmnFlow("f3", "t1", "e"),
+			bpmnFlow("f4", "t2", "e"),
+		]
+		const result = layoutV2(nodes, flows)
+		const ns = result.nodes
+		for (let i = 0; i < ns.length; i++) {
+			for (let j = i + 1; j < ns.length; j++) {
+				const a = ns[i]!.bounds
+				const b = ns[j]!.bounds
+				const xOverlap = a.x < b.x + b.width && b.x < a.x + a.width
+				const yOverlap = a.y < b.y + b.height && b.y < a.y + a.height
+				expect(xOverlap && yOverlap).toBe(false)
+			}
+		}
+	})
+
+	it("returns empty result for empty process", () => {
+		expect(layoutV2([], [])).toEqual({ nodes: [], edges: [] })
 	})
 })
