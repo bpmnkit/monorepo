@@ -6,8 +6,8 @@ import type {
 	BpmnTextAnnotation,
 } from "../src/bpmn/bpmn-model.js"
 import { layoutAnnotations } from "../src/layout/v2/annotations.js"
-import { layoutV2 } from "../src/layout/v2/engine.js"
 import { detectBackEdges, makeDAG } from "../src/layout/v2/dag.js"
+import { layoutV2 } from "../src/layout/v2/engine.js"
 import { V2Graph } from "../src/layout/v2/graph.js"
 import { assignCoordinates, assignTracks } from "../src/layout/v2/grid.js"
 import { alignGatewayPairs, assignLayers, injectDummies } from "../src/layout/v2/layers.js"
@@ -457,7 +457,7 @@ describe("assignCoordinates", () => {
 		expect(g.nodes.get("b")?.x).toBeGreaterThan(g.nodes.get("a")?.x)
 	})
 
-	it("snaps X and Y to CELL_SIZE", () => {
+	it("places node y-center at TRACK_Y[2]", () => {
 		const g = new V2Graph()
 		g.addNode({ ...makeNode("a"), layer: 0, track: 2 as const })
 		assignCoordinates(g)
@@ -465,7 +465,8 @@ describe("assignCoordinates", () => {
 		expect(n).toBeDefined()
 		if (!n) return
 		expect(n.x % CELL_SIZE).toBe(0)
-		expect(n.y % CELL_SIZE).toBe(0)
+		// TRACK_Y is Record<NodeTrack, number> so index 2 is always defined
+		expect(Math.abs(n.y + n.height / 2 - TRACK_Y[2])).toBeLessThan(1)
 	})
 
 	it("stacks two nodes in same layer+track without overlap", () => {
@@ -602,7 +603,7 @@ describe("routeAllEdges", () => {
 		g.addNode(nodeAt("b", 280, 320))
 		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
 		const ports = assignPorts(g)
-		routeAllEdges(g, ports, new Set())
+		routeAllEdges(g, ports)
 		const edge = g.edges.get("e1")
 		expect(edge).toBeDefined()
 		if (!edge) return
@@ -617,7 +618,7 @@ describe("routeAllEdges", () => {
 		g.addNode(nodeAt("a", 50, 320, 2))
 		g.addEdge({ id: "e1", sourceId: "b", targetId: "a", isBackEdge: true, waypoints: [] })
 		const ports = assignPorts(g)
-		routeAllEdges(g, ports, new Set(["e1"]))
+		routeAllEdges(g, ports)
 		const edge = g.edges.get("e1")
 		expect(edge).toBeDefined()
 		if (!edge) return
@@ -779,5 +780,45 @@ describe("layoutV2 — engine integration", () => {
 
 	it("returns empty result for empty process", () => {
 		expect(layoutV2([], [])).toEqual({ nodes: [], edges: [] })
+	})
+
+	it("handles a cyclic process with a retry back-edge", () => {
+		const nodes = [
+			bpmnNode("s", "startEvent"),
+			bpmnNode("review"),
+			bpmnNode("approved", "exclusiveGateway"),
+			bpmnNode("done", "endEvent"),
+			bpmnNode("revise"),
+		]
+		const flows = [
+			bpmnFlow("f1", "s", "review"),
+			bpmnFlow("f2", "review", "approved"),
+			bpmnFlow("f3", "approved", "done"), // happy path
+			bpmnFlow("f4", "approved", "revise"), // rejection branch
+			bpmnFlow("f5", "revise", "review"), // back-edge (creates cycle)
+		]
+		const result = layoutV2(nodes, flows)
+
+		// All nodes present (no crash)
+		expect(result.nodes).toHaveLength(5)
+
+		// At least the non-back-edge flows have waypoints
+		const edgeIds = new Set(result.edges.map((e) => e.id))
+		expect(edgeIds.has("f1")).toBe(true)
+		expect(edgeIds.has("f2")).toBe(true)
+		expect(edgeIds.has("f3")).toBe(true)
+
+		// No overlapping nodes
+		const ns = result.nodes
+		for (let i = 0; i < ns.length; i++) {
+			for (let j = i + 1; j < ns.length; j++) {
+				const a = ns[i]?.bounds
+				const b = ns[j]?.bounds
+				if (!a || !b) continue
+				const xOverlap = a.x < b.x + b.width && b.x < a.x + a.width
+				const yOverlap = a.y < b.y + b.height && b.y < a.y + a.height
+				expect(xOverlap && yOverlap).toBe(false)
+			}
+		}
 	})
 })
