@@ -23,7 +23,9 @@
 		"proxy-rs:build": "cargo build --manifest-path apps/proxy-rs/Cargo.toml --release",
 		"desktop:dev": "pnpm --filter @bpmnkit/desktop tauri:dev",
 		"desktop:build": "pnpm --filter @bpmnkit/desktop tauri:build",
-		"build:wasm": "wasm-pack build apps/reebe/crates/reebe-wasm --target web --out-dir \"$(pwd)/apps/reebe-wasm\""
+		"build:wasm": "wasm-pack build apps/reebe/crates/reebe-wasm --target web --out-dir \"$(pwd)/apps/reebe-wasm\"",
+		"format:tree": "pnpm --filter @bpmnkit/core build && node packages/core/scripts/show-layout-tree.mjs",
+		"tree:dev": "pnpm --filter @bpmnkit/core build && node packages/core/scripts/tree-server.mjs"
 	},
 	"devDependencies": {
 		"@astrojs/check": "^0.9",

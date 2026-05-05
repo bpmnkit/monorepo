@@ -11,7 +11,14 @@ import { ELEMENT_SIZES } from "../types.js"
 import { layoutAnnotations } from "./annotations.js"
 import { detectBackEdges, makeDAG } from "./dag.js"
 import { V2Graph } from "./graph.js"
-import { assignCoordinates, assignTracks, reassignGatewayBranchTracks } from "./grid.js"
+import {
+	assignCoordinates,
+	assignTracks,
+	describeGatewayTree,
+	reassignGatewayBranchTracks,
+	repositionGatewayBranches,
+} from "./grid.js"
+export type { GatewayBranch, GatewayPairInfo } from "./grid.js"
 import { alignGatewayPairs, assignLayers, injectDummies, injectVirtualSpacers } from "./layers.js"
 import { assignPorts } from "./ports.js"
 import { routeAllEdges } from "./router.js"
@@ -206,6 +213,7 @@ export function layoutV2(
 	assignTracks(augmented, trunkIds, backEdgeIds, sequenceFlows, nodeIndex)
 	reassignGatewayBranchTracks(augmented) // longest branch at gateway Y
 	assignCoordinates(augmented)
+	repositionGatewayBranches(augmented) // center branches symmetrically around gateway Y
 
 	// Module 6: Port assignment
 	const ports = assignPorts(augmented)
@@ -243,4 +251,59 @@ export function layoutV2(
 	}
 
 	return result
+}
+
+/**
+ * Run the full v2 layout pipeline and also return a description of every
+ * gateway pair's branch structure, for debugging and visualisation.
+ */
+export function layoutV2WithTree(
+	flowNodes: BpmnFlowElement[],
+	sequenceFlows: BpmnSequenceFlow[],
+	textAnnotations: BpmnTextAnnotation[] = [],
+	associations: BpmnAssociation[] = [],
+): { result: LayoutResult; tree: ReturnType<typeof describeGatewayTree> } {
+	// Re-run the pipeline up through repositionGatewayBranches, then snapshot the tree
+	// before handing off to port assignment.  We do this by running layoutV2 normally
+	// and re-building just enough state to call describeGatewayTree.
+	const result = layoutV2(flowNodes, sequenceFlows, textAnnotations, associations)
+
+	// Build a quick label map from the layout result nodes
+	const nodeLabel = new Map(result.nodes.map((n) => [n.id, n.label ?? n.id]))
+	for (const n of flowNodes) {
+		if (!nodeLabel.has(n.id)) nodeLabel.set(n.id, n.name ?? n.id)
+	}
+
+	// Reconstruct the augmented graph at the post-reposition stage (needed for pair BFS).
+	// We re-run modules 1-5 (no port/routing) to get the final node positions.
+	const { graph: g, nodeIndex } = buildV2Graph(
+		flowNodes,
+		sequenceFlows,
+		textAnnotations,
+		associations,
+	)
+	const backEdges = detectBackEdges(g)
+	const dag = makeDAG(g, backEdges)
+	const trunkIds = identifyTrunk(dag, nodeIndex, sequenceFlows)
+	const backEdgeIds = new Set(backEdges.map((b) => b.edgeId))
+	assignLayers(dag)
+	alignGatewayPairs(dag, nodeIndex)
+	injectVirtualSpacers(dag)
+	const aug = injectDummies(dag)
+	for (const [, e] of g.edges) {
+		if (!aug.edges.has(e.id)) aug.addEdge(e)
+	}
+	assignTracks(aug, trunkIds, backEdgeIds, sequenceFlows, nodeIndex)
+	reassignGatewayBranchTracks(aug)
+	assignCoordinates(aug)
+	repositionGatewayBranches(aug)
+
+	const labelOf = (id: string) => {
+		const n = aug.nodes.get(id)
+		const bpmn = nodeIndex.get(id)
+		return n?.label ?? bpmn?.name ?? id
+	}
+
+	const tree = describeGatewayTree(aug, labelOf)
+	return { result, tree }
 }

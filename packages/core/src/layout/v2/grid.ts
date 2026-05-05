@@ -1,6 +1,7 @@
 import type { BpmnFlowElement, BpmnSequenceFlow } from "../../bpmn/bpmn-model.js"
 import type { V2Graph } from "./graph.js"
 import {
+	BRANCH_GAP,
 	CELL_SIZE,
 	LEFT_MARGIN,
 	MIN_COL_GAP,
@@ -71,6 +72,22 @@ export function assignTracks(
 }
 
 /**
+ * Build a forward-only adjacency map, excluding back-edges.
+ * Back-edge traversal contaminates branch detection by marking branch nodes
+ * as "downstream of join", causing repositioning to find empty branches and bail.
+ */
+function buildForwardAdj(graph: V2Graph): Map<string, string[]> {
+	const adj = new Map<string, string[]>()
+	for (const [, e] of graph.edges) {
+		if (e.isBackEdge) continue
+		const list = adj.get(e.sourceId) ?? []
+		list.push(e.targetId)
+		adj.set(e.sourceId, list)
+	}
+	return adj
+}
+
+/**
  * Snap a value to the nearest multiple of CELL_SIZE.
  */
 function snap(v: number): number {
@@ -93,18 +110,20 @@ function realAdjCount(ids: string[], graph: V2Graph): number {
  * Must be called after assignTracks and before assignCoordinates.
  */
 export function reassignGatewayBranchTracks(graph: V2Graph): void {
+	const fwd = buildForwardAdj(graph)
+
 	for (const [splitId, splitNode] of graph.nodes) {
 		if (!isGateway(splitNode.type) || splitNode.isDummy) continue
 		if (realAdjCount(graph.getSuccessors(splitId), graph) <= 1) continue
 
-		// BFS to find all nodes reachable from split
+		// BFS to find all nodes reachable from split (forward edges only)
 		const reachable = new Set<string>()
-		const bfsQ = [...graph.getSuccessors(splitId)]
+		const bfsQ = [...(fwd.get(splitId) ?? [])]
 		while (bfsQ.length > 0) {
 			const cur = bfsQ.shift()
 			if (cur === undefined || reachable.has(cur)) continue
 			reachable.add(cur)
-			bfsQ.push(...graph.getSuccessors(cur))
+			bfsQ.push(...(fwd.get(cur) ?? []))
 		}
 
 		// Find the matching join gateway (all non-dummy predecessors come from split's reachable set)
@@ -123,14 +142,15 @@ export function reassignGatewayBranchTracks(graph: V2Graph): void {
 		}
 		if (!joinId) continue
 
-		// Collect downstream of join (to exclude from interior)
+		// Collect downstream of join (forward edges only — back-edges would traverse
+		// back into branches, incorrectly excluding them from repositioning)
 		const fromJoin = new Set<string>()
-		const joinQ = [...graph.getSuccessors(joinId)]
+		const joinQ = [...(fwd.get(joinId) ?? [])]
 		while (joinQ.length > 0) {
 			const cur = joinQ.shift()
 			if (cur === undefined || fromJoin.has(cur)) continue
 			fromJoin.add(cur)
-			joinQ.push(...graph.getSuccessors(cur))
+			joinQ.push(...(fwd.get(cur) ?? []))
 		}
 
 		// BFS from each real direct successor of split to build per-branch node lists.
@@ -139,7 +159,7 @@ export function reassignGatewayBranchTracks(graph: V2Graph): void {
 		const assigned = new Set<string>()
 		const branches: string[][] = []
 
-		for (const succId of graph.getSuccessors(splitId)) {
+		for (const succId of fwd.get(splitId) ?? []) {
 			if (succId === joinId) continue
 			const succNode = graph.nodes.get(succId)
 			if (succNode?.isDummy) continue
@@ -159,7 +179,7 @@ export function reassignGatewayBranchTracks(graph: V2Graph): void {
 					branchNodes.push(cur)
 					assigned.add(cur)
 				}
-				q.push(...graph.getSuccessors(cur))
+				q.push(...(fwd.get(cur) ?? []))
 			}
 
 			if (branchNodes.length > 0) branches.push(branchNodes)
@@ -346,4 +366,324 @@ function resolveCrossTrackOverlaps(
 			}
 		}
 	}
+}
+
+/**
+ * Find all split-join gateway pairs in the graph.
+ * Returns pairs sorted by split layer descending so innermost pairs are first.
+ */
+function findGatewayPairs(graph: V2Graph): Array<{ splitId: string; joinId: string }> {
+	const pairs: Array<{ splitId: string; joinId: string; splitLayer: number }> = []
+	const fwd = buildForwardAdj(graph)
+
+	for (const [splitId, splitNode] of graph.nodes) {
+		if (!isGateway(splitNode.type) || splitNode.isDummy) continue
+		if (realAdjCount(graph.getSuccessors(splitId), graph) <= 1) continue
+
+		const reachable = new Set<string>()
+		const bfsQ = [...(fwd.get(splitId) ?? [])]
+		while (bfsQ.length > 0) {
+			const cur = bfsQ.shift()
+			if (cur === undefined || reachable.has(cur)) continue
+			reachable.add(cur)
+			bfsQ.push(...(fwd.get(cur) ?? []))
+		}
+
+		let joinId: string | undefined
+		for (const candidateId of reachable) {
+			const candidate = graph.nodes.get(candidateId)
+			if (!candidate || !isGateway(candidate.type) || candidate.isDummy) continue
+			if (realAdjCount(graph.getPredecessors(candidateId), graph) <= 1) continue
+			const preds = graph
+				.getPredecessors(candidateId)
+				.filter((p) => !(graph.nodes.get(p)?.isDummy ?? false))
+			if (preds.every((p) => reachable.has(p) || p === splitId)) {
+				joinId = candidateId
+				break
+			}
+		}
+		if (!joinId) continue
+
+		pairs.push({ splitId, joinId, splitLayer: splitNode.layer })
+	}
+
+	return pairs.sort((a, b) => b.splitLayer - a.splitLayer)
+}
+
+/**
+ * Reposition the branches of a single split-join gateway pair so that the longest
+ * branch is centered at the gateway's Y, with shorter branches interleaved above
+ * and below using actual bounding-box dimensions.
+ *
+ * Operates on already-placed nodes (runs after assignCoordinates).
+ * By processing pairs innermost-first, inner pair dimensions are already final
+ * when the outer pair is processed.
+ */
+function repositionOnePair(graph: V2Graph, splitId: string, joinId: string): void {
+	const splitNode = graph.nodes.get(splitId)
+	if (!splitNode) return
+
+	const gatewayY = splitNode.y + splitNode.height / 2
+	const fwd = buildForwardAdj(graph)
+
+	// Collect nodes downstream of join (forward edges only — back-edges would traverse
+	// back into branches, incorrectly excluding them from repositioning)
+	const fromJoin = new Set<string>()
+	const joinQ = [...(fwd.get(joinId) ?? [])]
+	while (joinQ.length > 0) {
+		const cur = joinQ.shift()
+		if (cur === undefined || fromJoin.has(cur)) continue
+		fromJoin.add(cur)
+		joinQ.push(...(fwd.get(cur) ?? []))
+	}
+
+	// Build per-branch node lists from each direct real successor of split
+	const branches: string[][] = []
+	for (const succId of fwd.get(splitId) ?? []) {
+		if (succId === joinId) continue
+		const succNode = graph.nodes.get(succId)
+		if (!succNode || succNode.isDummy) continue
+
+		const branchNodes: string[] = []
+		const visited = new Set<string>([splitId])
+		const q: string[] = [succId]
+		while (q.length > 0) {
+			const cur: string | undefined = q.shift()
+			if (cur === undefined || visited.has(cur) || cur === joinId) continue
+			visited.add(cur)
+			if (fromJoin.has(cur)) continue
+			const n = graph.nodes.get(cur)
+			if (n && !n.isDummy) branchNodes.push(cur)
+			q.push(...(fwd.get(cur) ?? []))
+		}
+		if (branchNodes.length > 0) branches.push(branchNodes)
+	}
+
+	if (branches.length <= 1) return
+
+	// Compute the actual bounding box of each branch using current node positions
+	type BranchInfo = {
+		nodeIds: string[]
+		top: number
+		bottom: number
+		height: number
+		centerY: number
+		nodeCount: number
+	}
+	const infos: BranchInfo[] = branches.map((nodeIds) => {
+		let top = Number.POSITIVE_INFINITY
+		let bottom = Number.NEGATIVE_INFINITY
+		for (const id of nodeIds) {
+			const n = graph.nodes.get(id)
+			if (!n) continue
+			top = Math.min(top, n.y)
+			bottom = Math.max(bottom, n.y + n.height)
+		}
+		const height = bottom - top
+		return { nodeIds, top, bottom, height, centerY: (top + bottom) / 2, nodeCount: nodeIds.length }
+	})
+
+	// Sort by node count descending: most-elements branch → center (gatewayY).
+	// Tiebreak by bounding-box height so visually larger branches stay central.
+	infos.sort((a, b) => b.nodeCount - a.nodeCount || b.height - a.height)
+
+	// Place: branch[0] → at gatewayY, branch[1] → below, branch[2] → above,
+	//        branch[3] → further below, branch[4] → further above, ...
+	const centerHeight = infos[0]?.height ?? 0
+	let aboveTop = gatewayY - centerHeight / 2
+	let belowBottom = gatewayY + centerHeight / 2
+	const targetCenterYs: number[] = [gatewayY]
+
+	for (let i = 1; i < infos.length; i++) {
+		const h = infos[i]?.height ?? 0
+		if (i % 2 === 1) {
+			// below
+			const cy = belowBottom + BRANCH_GAP + h / 2
+			targetCenterYs.push(cy)
+			belowBottom = cy + h / 2
+		} else {
+			// above
+			const cy = aboveTop - BRANCH_GAP - h / 2
+			targetCenterYs.push(cy)
+			aboveTop = cy - h / 2
+		}
+	}
+
+	// Shift each branch to its target center Y.
+	// A node can appear in multiple branches (reachable from several split successors).
+	// Prevent double-shifting: first branch to claim a node wins.
+	const shifted = new Set<string>()
+	for (let i = 0; i < infos.length; i++) {
+		const info = infos[i]
+		const targetCY = targetCenterYs[i]
+		if (!info || targetCY === undefined) continue
+		const shift = Math.round(targetCY - info.centerY)
+		if (shift === 0) {
+			for (const id of info.nodeIds) shifted.add(id)
+			continue
+		}
+		for (const id of info.nodeIds) {
+			if (shifted.has(id)) continue
+			shifted.add(id)
+			const n = graph.nodes.get(id)
+			if (n) n.y += shift
+		}
+	}
+}
+
+/**
+ * After assignCoordinates, re-center the branches of each gateway pair so the
+ * longest branch sits at the gateway's Y and shorter branches are distributed
+ * symmetrically above and below based on actual bounding-box heights.
+ *
+ * Pairs are processed innermost-first so outer pairs account for already-compacted
+ * inner pair dimensions.
+ */
+export function repositionGatewayBranches(graph: V2Graph): void {
+	for (const { splitId, joinId } of findGatewayPairs(graph)) {
+		repositionOnePair(graph, splitId, joinId)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Debug / diagnostics
+// ---------------------------------------------------------------------------
+
+export interface GatewayBranch {
+	nodeIds: string[]
+	labels: string[]
+	centerY: number
+	height: number
+}
+
+export interface GatewayPairInfo {
+	splitId: string
+	joinId: string
+	splitLabel: string
+	joinLabel: string
+	gatewayY: number
+	layer: number
+	branches: GatewayBranch[]
+	/** Bounding box covering split, join, and all branch nodes. */
+	bounds: { x: number; y: number; width: number; height: number }
+	/** IDs of nested pairs (split IDs) found inside any branch of this pair. */
+	nestedPairSplitIds: string[]
+}
+
+/**
+ * Return a structured description of every split-join gateway pair in the graph,
+ * including the nodes in each branch and their final Y positions.
+ * Call this after assignCoordinates + repositionGatewayBranches.
+ */
+export function describeGatewayTree(
+	graph: V2Graph,
+	labelOf: (id: string) => string,
+): GatewayPairInfo[] {
+	const pairs = findGatewayPairs(graph) // innermost first
+	const fwd = buildForwardAdj(graph)
+
+	const result: GatewayPairInfo[] = []
+
+	for (const { splitId, joinId } of pairs) {
+		const splitNode = graph.nodes.get(splitId)
+		const joinNode = graph.nodes.get(joinId)
+		if (!splitNode || !joinNode) continue
+
+		const gatewayY = splitNode.y + splitNode.height / 2
+
+		// Collect downstream of join (forward edges only)
+		const fromJoin = new Set<string>()
+		const joinQ = [...(fwd.get(joinId) ?? [])]
+		while (joinQ.length > 0) {
+			const cur = joinQ.shift()
+			if (cur === undefined || fromJoin.has(cur)) continue
+			fromJoin.add(cur)
+			joinQ.push(...(fwd.get(cur) ?? []))
+		}
+
+		// Per-branch node lists
+		const branches: GatewayBranch[] = []
+		for (const succId of fwd.get(splitId) ?? []) {
+			if (succId === joinId) continue
+			const succNode = graph.nodes.get(succId)
+			if (!succNode || succNode.isDummy) continue
+
+			const branchNodes: string[] = []
+			const visited = new Set<string>([splitId])
+			const q: string[] = [succId]
+			while (q.length > 0) {
+				const cur: string | undefined = q.shift()
+				if (cur === undefined || visited.has(cur) || cur === joinId) continue
+				visited.add(cur)
+				if (fromJoin.has(cur)) continue
+				const n = graph.nodes.get(cur)
+				if (n && !n.isDummy) branchNodes.push(cur)
+				q.push(...(fwd.get(cur) ?? []))
+			}
+			if (branchNodes.length === 0) continue
+
+			let top = Number.POSITIVE_INFINITY
+			let bottom = Number.NEGATIVE_INFINITY
+			for (const id of branchNodes) {
+				const n = graph.nodes.get(id)
+				if (!n) continue
+				top = Math.min(top, n.y)
+				bottom = Math.max(bottom, n.y + n.height)
+			}
+
+			branches.push({
+				nodeIds: branchNodes,
+				labels: branchNodes.map(labelOf),
+				centerY: (top + bottom) / 2,
+				height: bottom - top,
+			})
+		}
+
+		// Find nested pairs inside this pair's overall interior
+		const allInterior = new Set<string>()
+		for (const b of branches) {
+			for (const id of b.nodeIds) allInterior.add(id)
+		}
+		const nestedPairSplitIds = pairs
+			.filter(
+				(p) => p.splitId !== splitId && allInterior.has(p.splitId) && allInterior.has(p.joinId),
+			)
+			.map((p) => p.splitId)
+
+		// Bounding box over split + join + all branch nodes
+		const allNodeIds = [splitId, joinId, ...branches.flatMap((b) => b.nodeIds)]
+		let minX = Number.POSITIVE_INFINITY
+		let minY = Number.POSITIVE_INFINITY
+		let maxX = Number.NEGATIVE_INFINITY
+		let maxY = Number.NEGATIVE_INFINITY
+		for (const id of allNodeIds) {
+			const n = graph.nodes.get(id)
+			if (!n) continue
+			minX = Math.min(minX, n.x)
+			minY = Math.min(minY, n.y)
+			maxX = Math.max(maxX, n.x + n.width)
+			maxY = Math.max(maxY, n.y + n.height)
+		}
+		const bounds = {
+			x: Math.round(minX),
+			y: Math.round(minY),
+			width: Math.round(maxX - minX),
+			height: Math.round(maxY - minY),
+		}
+
+		result.push({
+			splitId,
+			joinId,
+			splitLabel: labelOf(splitId),
+			joinLabel: labelOf(joinId),
+			gatewayY,
+			layer: splitNode.layer,
+			branches,
+			bounds,
+			nestedPairSplitIds,
+		})
+	}
+
+	// Return outermost first (reverse innermost-first order)
+	return result.reverse()
 }

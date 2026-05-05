@@ -20,6 +20,9 @@ export const MIN_COL_GAP = 80
 /** Vertical gap when stacking multiple nodes in the same track+layer (px). */
 export const STACK_V_GAP = 20
 
+/** Minimum vertical gap between adjacent parallel branches within a gateway pair (px). */
+export const BRANCH_GAP = 60
+
 /** Left margin before the first layer (px). */
 export const LEFT_MARGIN = 50
 
