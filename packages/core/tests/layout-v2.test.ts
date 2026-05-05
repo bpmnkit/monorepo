@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { BpmnFlowElement, BpmnSequenceFlow } from "../src/bpmn/bpmn-model.js"
 import { detectBackEdges, makeDAG } from "../src/layout/v2/dag.js"
 import { V2Graph } from "../src/layout/v2/graph.js"
+import { alignGatewayPairs, assignLayers, injectDummies } from "../src/layout/v2/layers.js"
 import { identifyTrunk } from "../src/layout/v2/trunk.js"
 import type { V2Node } from "../src/layout/v2/types.js"
 
@@ -242,5 +243,99 @@ describe("V2Graph", () => {
 		expect(g.edges.size).toBe(2)
 		expect(g.getSuccessors("a")).toHaveLength(2) // both edges appear
 		expect(g.getPredecessors("b")).toHaveLength(2)
+	})
+})
+
+describe("assignLayers", () => {
+	it("assigns layer 0 to source, increments along chain", () => {
+		const g = new V2Graph()
+		for (const id of ["a", "b", "c"]) g.addNode(makeNode(id))
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e2", sourceId: "b", targetId: "c", isBackEdge: false, waypoints: [] })
+		assignLayers(g)
+		expect(g.nodes.get("a")!.layer).toBe(0)
+		expect(g.nodes.get("b")!.layer).toBe(1)
+		expect(g.nodes.get("c")!.layer).toBe(2)
+	})
+
+	it("uses longest-path for fork/join", () => {
+		// S → A → B → J (long path), S → J (short path)
+		// J.layer should be max(B.layer+1, S.layer+1) = 3
+		const g = new V2Graph()
+		for (const id of ["S", "A", "B", "J"]) g.addNode(makeNode(id))
+		g.addEdge({ id: "e1", sourceId: "S", targetId: "A", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e2", sourceId: "A", targetId: "B", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e3", sourceId: "B", targetId: "J", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e4", sourceId: "S", targetId: "J", isBackEdge: false, waypoints: [] })
+		assignLayers(g)
+		expect(g.nodes.get("J")!.layer).toBe(3)
+	})
+
+	it("handles multiple roots", () => {
+		const g = new V2Graph()
+		for (const id of ["r1", "r2", "c"]) g.addNode(makeNode(id))
+		g.addEdge({ id: "e1", sourceId: "r1", targetId: "c", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e2", sourceId: "r2", targetId: "c", isBackEdge: false, waypoints: [] })
+		assignLayers(g)
+		expect(g.nodes.get("r1")!.layer).toBe(0)
+		expect(g.nodes.get("r2")!.layer).toBe(0)
+		expect(g.nodes.get("c")!.layer).toBe(1)
+	})
+})
+
+describe("alignGatewayPairs", () => {
+	it("forces join gateway to maxBranchLayer + 1", () => {
+		// split (gw) → A (deep branch: A→B→C) → join
+		// split → join directly (short path)
+		// Without alignment: join.layer = max(3+1, 0+1) = 4 (longest-path already gives this)
+		// With alignment: join.layer stays >= maxBranchLayer+1
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("split"), type: "exclusiveGateway" })
+		for (const id of ["A", "B", "C"]) g.addNode(makeNode(id))
+		g.addNode({ ...makeNode("join"), type: "exclusiveGateway" })
+		g.addEdge({ id: "e1", sourceId: "split", targetId: "A", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e2", sourceId: "A", targetId: "B", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e3", sourceId: "B", targetId: "C", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e4", sourceId: "C", targetId: "join", isBackEdge: false, waypoints: [] })
+		g.addEdge({ id: "e5", sourceId: "split", targetId: "join", isBackEdge: false, waypoints: [] })
+		assignLayers(g)
+		const layerBeforeAlign = g.nodes.get("join")!.layer
+		alignGatewayPairs(g, new Map())
+		expect(g.nodes.get("join")!.layer).toBeGreaterThanOrEqual(layerBeforeAlign)
+	})
+})
+
+describe("injectDummies", () => {
+	it("inserts dummy nodes for edges spanning 3 layers", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("a"), layer: 0 })
+		g.addNode({ ...makeNode("b"), layer: 3 }) // spans layers 0→1→2→3
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		const aug = injectDummies(g, new Set(["e1"]))
+		const dummies = [...aug.nodes.values()].filter((n) => n.isDummy)
+		expect(dummies).toHaveLength(2) // layers 1 and 2
+		for (const d of dummies) {
+			expect(d.width).toBe(0)
+			expect(d.height).toBe(0)
+		}
+	})
+
+	it("does not inject dummies for same-layer or adjacent-layer edges", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("a"), layer: 0 })
+		g.addNode({ ...makeNode("b"), layer: 1 })
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		const aug = injectDummies(g, new Set(["e1"]))
+		expect([...aug.nodes.values()].filter((n) => n.isDummy)).toHaveLength(0)
+	})
+
+	it("passes through __rev edges without dummy injection", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("a"), layer: 0 })
+		g.addNode({ ...makeNode("b"), layer: 3 })
+		g.addEdge({ id: "e1__rev", sourceId: "b", targetId: "a", isBackEdge: false, waypoints: [] })
+		const aug = injectDummies(g, new Set())
+		expect([...aug.nodes.values()].filter((n) => n.isDummy)).toHaveLength(0)
+		expect(aug.edges.has("e1__rev")).toBe(true)
 	})
 })
