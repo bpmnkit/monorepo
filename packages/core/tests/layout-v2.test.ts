@@ -707,7 +707,7 @@ describe("layoutAnnotations", () => {
 			const g = new V2Graph()
 			const ta: BpmnTextAnnotation = { id: "ann1", text: "", unknownAttributes: {} }
 			const results = layoutAnnotations([ta], [], g)
-			expect(results[0]!.width).toBe(80)
+			expect(results.at(0)?.width).toBe(80)
 		})
 
 		it("clamps long text to 200px maximum", () => {
@@ -715,7 +715,7 @@ describe("layoutAnnotations", () => {
 			const g = new V2Graph()
 			const ta: BpmnTextAnnotation = { id: "ann1", text: "x".repeat(50), unknownAttributes: {} }
 			const results = layoutAnnotations([ta], [], g)
-			expect(results[0]!.width).toBe(200)
+			expect(results.at(0)?.width).toBe(200)
 		})
 
 		it("computes mid-range width correctly", () => {
@@ -723,7 +723,7 @@ describe("layoutAnnotations", () => {
 			const g = new V2Graph()
 			const ta: BpmnTextAnnotation = { id: "ann1", text: "x".repeat(20), unknownAttributes: {} }
 			const results = layoutAnnotations([ta], [], g)
-			expect(results[0]!.width).toBe(100)
+			expect(results.at(0)?.width).toBe(100)
 		})
 	})
 })
@@ -735,9 +735,10 @@ describe("layoutV2 — engine integration", () => {
 		const result = layoutV2(nodes, flows)
 		expect(result.nodes).toHaveLength(3)
 		expect(result.edges).toHaveLength(2)
-		const s = result.nodes.find((n) => n.id === "s")!
-		const t = result.nodes.find((n) => n.id === "t")!
-		const e = result.nodes.find((n) => n.id === "e")!
+		const s = result.nodes.find((n) => n.id === "s")
+		const t = result.nodes.find((n) => n.id === "t")
+		const e = result.nodes.find((n) => n.id === "e")
+		if (!s || !t || !e) throw new Error("missing nodes in layout result")
 		expect(s.bounds.x).toBeLessThan(t.bounds.x)
 		expect(t.bounds.x).toBeLessThan(e.bounds.x)
 	})
@@ -748,7 +749,7 @@ describe("layoutV2 — engine integration", () => {
 		const result = layoutV2(nodes, flows)
 		for (const n of result.nodes) {
 			const cy = n.bounds.y + n.bounds.height / 2
-			expect(Math.abs(cy - TRACK_Y[2]!)).toBeLessThan(80)
+			expect(Math.abs(cy - (TRACK_Y[2] ?? 360))).toBeLessThan(80)
 		}
 	})
 
@@ -769,8 +770,9 @@ describe("layoutV2 — engine integration", () => {
 		const ns = result.nodes
 		for (let i = 0; i < ns.length; i++) {
 			for (let j = i + 1; j < ns.length; j++) {
-				const a = ns[i]!.bounds
-				const b = ns[j]!.bounds
+				const a = ns[i]?.bounds
+				const b = ns[j]?.bounds
+				if (!a || !b) continue
 				const xOverlap = a.x < b.x + b.width && b.x < a.x + a.width
 				const yOverlap = a.y < b.y + b.height && b.y < a.y + a.height
 				expect(xOverlap && yOverlap).toBe(false)
