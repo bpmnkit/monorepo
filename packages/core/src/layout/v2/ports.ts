@@ -16,6 +16,9 @@ function southPort(n: NodeBounds): PortPoint {
 function northPort(n: NodeBounds): PortPoint {
 	return { x: Math.round(n.x + n.width / 2), y: n.y }
 }
+function centerY(n: NodeBounds): number {
+	return n.y + n.height / 2
+}
 
 /**
  * Assign entry/exit ports for every non-dummy edge in the graph.
@@ -44,18 +47,34 @@ export function assignPorts(graph: V2Graph): Map<string, PortAssignment> {
 		let source: PortPoint
 		let target: PortPoint
 
+		const srcIsGateway = isGateway(src.type)
+		const tgtIsGateway = isGateway(tgt.type)
+
 		if (e.isBackEdge) {
 			source = eastPort(src)
 			target = westPort(tgt)
+		} else if (srcIsGateway || tgtIsGateway) {
+			// Rule 3: Gateway-adjacent edges use actual Y-center comparison for port direction.
+			const srcCY = centerY(src)
+			const tgtCY = centerY(tgt)
+			if (srcCY < tgtCY) {
+				source = southPort(src)
+				target = tgtIsGateway ? northPort(tgt) : westPort(tgt)
+			} else if (srcCY > tgtCY) {
+				source = northPort(src)
+				target = tgtIsGateway ? southPort(tgt) : westPort(tgt)
+			} else {
+				source = eastPort(src)
+				target = westPort(tgt)
+			}
 		} else if (src.track < tgt.track) {
 			// Source is higher (lower Y-band), target is lower.
 			source = southPort(src)
-			// Non-gateway targets always receive from west (BPMN convention).
-			target = isGateway(tgt.type) ? northPort(tgt) : westPort(tgt)
+			target = westPort(tgt)
 		} else if (src.track > tgt.track) {
 			// Source is lower, target is higher.
 			source = northPort(src)
-			target = isGateway(tgt.type) ? southPort(tgt) : westPort(tgt)
+			target = westPort(tgt)
 		} else {
 			source = eastPort(src)
 			target = westPort(tgt)

@@ -2,7 +2,7 @@ import type { BpmnFlowElement } from "../../bpmn/bpmn-model.js"
 import type { V2Graph } from "./graph.js"
 import { V2Graph as GraphClass } from "./graph.js"
 import type { V2Node } from "./types.js"
-import { isGateway } from "./types.js"
+import { CELL_SIZE, isGateway } from "./types.js"
 
 function isSplitGateway(id: string, graph: V2Graph): boolean {
 	return isGateway(graph.nodes.get(id)?.type ?? "") && graph.getSuccessors(id).length > 1
@@ -113,6 +113,62 @@ export function alignGatewayPairs(dag: V2Graph, _nodeIndex: Map<string, BpmnFlow
 					if (n) n.layer += shift
 				}
 			}
+			break
+		}
+	}
+}
+
+/**
+ * For every direct split-gateway→join-gateway edge (span=1 after alignGatewayPairs),
+ * shift the join and all its downstream nodes +1 layer, then insert a 40×40 virtual
+ * spacer dummy at the intermediate layer to hold column width for the empty bypass path.
+ * Mutates node.layer in-place and adds spacer nodes to the dag.
+ */
+export function injectVirtualSpacers(dag: V2Graph): void {
+	let spacerCounter = 0
+
+	for (const [splitId] of dag.nodes) {
+		if (!isSplitGateway(splitId, dag)) continue
+		const splitNode = dag.nodes.get(splitId)
+		if (!splitNode) continue
+
+		for (const succId of dag.getSuccessors(splitId)) {
+			if (!isJoinGateway(succId, dag)) continue
+			const joinNode = dag.nodes.get(succId)
+			if (!joinNode) continue
+			// Only inject when split and join are directly adjacent (bypass has no nodes)
+			if (joinNode.layer !== splitNode.layer + 1) continue
+
+			// BFS downstream from join to shift along with it
+			const fromJoin = new Set<string>()
+			const q = [...dag.getSuccessors(succId)]
+			while (q.length > 0) {
+				const cur = q.shift()
+				if (cur === undefined || fromJoin.has(cur)) continue
+				fromJoin.add(cur)
+				q.push(...dag.getSuccessors(cur))
+			}
+			joinNode.layer += 1
+			for (const id of fromJoin) {
+				const n = dag.nodes.get(id)
+				if (n) n.layer += 1
+			}
+
+			// Insert virtual spacer at the new intermediate layer to claim column width
+			const spacer: V2Node = {
+				id: `__spacer_${splitId}_${spacerCounter++}`,
+				type: "virtual_spacer",
+				width: CELL_SIZE,
+				height: CELL_SIZE,
+				x: 0,
+				y: 0,
+				layer: splitNode.layer + 1,
+				track: 2,
+				isTrunk: false,
+				isBackEdgeSource: false,
+				isDummy: true,
+			}
+			dag.addNode(spacer)
 			break
 		}
 	}

@@ -7,6 +7,7 @@ import {
 	REJECTION_PATTERN,
 	STACK_V_GAP,
 	TRACK_Y,
+	isGateway,
 } from "./types.js"
 import type { NodeTrack } from "./types.js"
 
@@ -118,6 +119,14 @@ export function assignCoordinates(graph: V2Graph): void {
 	for (const n of graph.nodes.values()) allLayerNums.add(n.layer)
 	const sortedLayers = [...allLayerNums].sort((a, b) => a - b)
 
+	// Build virtual spacer max width per layer (isDummy with width > 0)
+	const spacerWidths = new Map<number, number>()
+	for (const [, n] of graph.nodes) {
+		if (n.isDummy && n.width > 0) {
+			spacerWidths.set(n.layer, Math.max(spacerWidths.get(n.layer) ?? 0, n.width))
+		}
+	}
+
 	// Calculate X for each layer
 	const layerX = new Map<number, number>()
 	let currentX = snap(LEFT_MARGIN)
@@ -126,18 +135,22 @@ export function assignCoordinates(graph: V2Graph): void {
 		layerX.set(layer, currentX)
 		const byTrack = layerGroups.get(layer)
 
-		// Find effective column width: max of (node width, annotation half-width)
-		let maxW = 0
+		// Find effective column width: max of (node width, annotation half-width, virtual spacer width)
+		let maxW = spacerWidths.get(layer) ?? 0
+		let hasGateway = false
 		for (const ids of byTrack?.values() ?? []) {
 			for (const id of ids) {
 				const n = graph.nodes.get(id)
 				if (!n) continue
 				const effectiveW = Math.max(n.width, (n.annotationWidth ?? 0) / 2)
 				maxW = Math.max(maxW, effectiveW)
+				if (isGateway(n.type)) hasGateway = true
 			}
 		}
 
-		currentX = snap(currentX + maxW + MIN_COL_GAP)
+		// Rule 5: Extra gap for gateway columns to provide routing lane clearance
+		const gap = hasGateway ? MIN_COL_GAP + CELL_SIZE : MIN_COL_GAP
+		currentX = snap(currentX + maxW + gap)
 	}
 
 	// Place dummy nodes
@@ -176,6 +189,13 @@ export function assignCoordinates(graph: V2Graph): void {
 		// Resolve cross-track overlaps within this layer: if a higher-track stack
 		// bleeds into lower-track territory, shift the higher stack down.
 		resolveCrossTrackOverlaps(graph, byTrack, STACK_V_GAP)
+	}
+
+	// Rule 1: Lock all trunk nodes to exact TRACK_Y[2] center
+	for (const [, n] of graph.nodes) {
+		if (!n.isDummy && n.isTrunk) {
+			n.y = TRACK_Y[2] - Math.round(n.height / 2)
+		}
 	}
 }
 

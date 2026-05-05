@@ -579,8 +579,14 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 			dy = PADDING - minY
 		}
 
-		for (const node of result.nodes) allShapes.push(nodeToShape(node, dx, dy))
-		for (const edge of result.edges) allEdges.push(edgeToShape(edge, dx, dy))
+		// Exclude text annotation nodes and association edges: addAnnotationShapes handles them
+		const assocIds = new Set(process.associations.map((a) => a.id))
+		for (const node of result.nodes) {
+			if (node.type !== ("textAnnotation" as string)) allShapes.push(nodeToShape(node, dx, dy))
+		}
+		for (const edge of result.edges) {
+			if (!assocIds.has(edge.id)) allEdges.push(edgeToShape(edge, dx, dy))
+		}
 		addAnnotationShapes(process, result.nodes, annBounds, allShapes, allEdges, dx, dy)
 
 		if (participantId) {

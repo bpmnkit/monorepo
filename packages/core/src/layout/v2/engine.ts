@@ -12,7 +12,7 @@ import { layoutAnnotations } from "./annotations.js"
 import { detectBackEdges, makeDAG } from "./dag.js"
 import { V2Graph } from "./graph.js"
 import { assignCoordinates, assignTracks } from "./grid.js"
-import { alignGatewayPairs, assignLayers, injectDummies } from "./layers.js"
+import { alignGatewayPairs, assignLayers, injectDummies, injectVirtualSpacers } from "./layers.js"
 import { assignPorts } from "./ports.js"
 import { routeAllEdges } from "./router.js"
 import { identifyTrunk } from "./trunk.js"
@@ -190,6 +190,7 @@ export function layoutV2(
 	// dag shares node objects with graph, so mutations propagate back
 	assignLayers(dag)
 	alignGatewayPairs(dag, nodeIndex)
+	injectVirtualSpacers(dag) // Rule 2: bypass spacers for direct split→join edges
 	const augmented = injectDummies(dag)
 
 	// Re-add edges that were either excluded from the DAG (back-edges) or replaced
