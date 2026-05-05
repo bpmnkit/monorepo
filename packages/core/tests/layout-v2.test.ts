@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import type { BpmnFlowElement, BpmnSequenceFlow } from "../src/bpmn/bpmn-model.js"
+import type {
+	BpmnAssociation,
+	BpmnFlowElement,
+	BpmnSequenceFlow,
+	BpmnTextAnnotation,
+} from "../src/bpmn/bpmn-model.js"
+import { layoutAnnotations } from "../src/layout/v2/annotations.js"
 import { detectBackEdges, makeDAG } from "../src/layout/v2/dag.js"
 import { V2Graph } from "../src/layout/v2/graph.js"
 import { assignCoordinates, assignTracks } from "../src/layout/v2/grid.js"
@@ -612,5 +618,80 @@ describe("routeAllEdges", () => {
 		if (!edge) return
 		const ys = edge.waypoints.map((w) => w.y)
 		expect(ys).toContain(TRACK_Y[1]) // highway waypoint at Track 1 Y
+	})
+})
+
+describe("layoutAnnotations", () => {
+	function ta(id: string, text = "hello"): BpmnTextAnnotation {
+		return { id, text, unknownAttributes: {} }
+	}
+	function assoc(id: string, src: string, tgt: string): BpmnAssociation {
+		return { id, sourceRef: src, targetRef: tgt, unknownAttributes: {} }
+	}
+
+	it("returns empty array when no annotations", () => {
+		const g = new V2Graph()
+		expect(layoutAnnotations([], [], g)).toHaveLength(0)
+	})
+
+	it("returns unconnected annotation at (0, TRACK_Y[0]) with empty waypoints", () => {
+		const g = new V2Graph()
+		const result = layoutAnnotations([ta("ann1")], [], g)
+		expect(result).toHaveLength(1)
+		const r = result[0]
+		if (!r) return
+		expect(r.x).toBe(0)
+		expect(r.y).toBe(TRACK_Y[0])
+		expect(r.waypoints).toHaveLength(0)
+	})
+
+	it("places annotation above trunk node (track <= 2)", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("t1"), x: 200, y: 320, width: 100, height: 80, track: 2, layer: 0 })
+		const result = layoutAnnotations([ta("ann1", "hello")], [assoc("a1", "ann1", "t1")], g)
+		expect(result).toHaveLength(1)
+		const r = result[0]
+		if (!r) return
+		expect(r.y).toBe(TRACK_Y[0]) // placed at top annotation band
+		expect(r.waypoints.length).toBeGreaterThanOrEqual(2)
+	})
+
+	it("places annotation below rejection node (track > 2)", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("rej"), x: 200, y: 720, width: 100, height: 80, track: 4, layer: 0 })
+		const result = layoutAnnotations(
+			[ta("ann2", "rejection note")],
+			[assoc("a2", "ann2", "rej")],
+			g,
+		)
+		expect(result).toHaveLength(1)
+		const r = result[0]
+		if (!r) return
+		expect(r.y).toBeGreaterThan(TRACK_Y[4] as number) // below rejection band
+		expect(r.waypoints.length).toBeGreaterThanOrEqual(2)
+	})
+
+	it("centers annotation horizontally over target node", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("t1"), x: 200, y: 320, width: 100, height: 80, track: 2, layer: 0 })
+		const result = layoutAnnotations([ta("ann1", "short")], [assoc("a1", "ann1", "t1")], g)
+		const r = result[0]
+		if (!r) return
+		const annCenter = r.x + r.width / 2
+		const nodeCenter = 200 + 100 / 2 // 250
+		expect(Math.abs(annCenter - nodeCenter)).toBeLessThan(5)
+	})
+
+	it("annotation can be on either end of association", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("t1"), x: 200, y: 320, width: 100, height: 80, track: 2, layer: 0 })
+		// annotation as targetRef (not sourceRef)
+		const result = layoutAnnotations(
+			[ta("ann1")],
+			[assoc("a1", "t1", "ann1")], // reversed: node is sourceRef, annotation is targetRef
+			g,
+		)
+		expect(result).toHaveLength(1)
+		expect(result[0]?.y).toBe(TRACK_Y[0]) // still placed correctly
 	})
 })
