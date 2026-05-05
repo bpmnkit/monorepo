@@ -4,9 +4,11 @@ import { detectBackEdges, makeDAG } from "../src/layout/v2/dag.js"
 import { V2Graph } from "../src/layout/v2/graph.js"
 import { assignCoordinates, assignTracks } from "../src/layout/v2/grid.js"
 import { alignGatewayPairs, assignLayers, injectDummies } from "../src/layout/v2/layers.js"
+import { assignPorts } from "../src/layout/v2/ports.js"
+import { routeAllEdges } from "../src/layout/v2/router.js"
 import { identifyTrunk } from "../src/layout/v2/trunk.js"
 import { CELL_SIZE, TRACK_Y } from "../src/layout/v2/types.js"
-import type { V2Node } from "../src/layout/v2/types.js"
+import type { NodeTrack, V2Node } from "../src/layout/v2/types.js"
 
 function makeNode(id: string, type = "task"): V2Node {
 	return {
@@ -508,5 +510,107 @@ describe("assignCoordinates", () => {
 		expect(g.nodes.get("d")?.x).toBeLessThan(g.nodes.get("b")?.x)
 		// dummy.y should be TRACK_Y[2] (snapped)
 		expect(g.nodes.get("d")?.y).toBe(TRACK_Y[2])
+	})
+})
+
+describe("assignPorts", () => {
+	function nodeAt(id: string, x: number, y: number, track: NodeTrack = 2): V2Node {
+		return { ...makeNode(id), x, y, width: 100, height: 80, layer: 0, track }
+	}
+
+	it("assigns East/West for same-track edges", () => {
+		const g = new V2Graph()
+		g.addNode(nodeAt("a", 50, 320))
+		g.addNode(nodeAt("b", 280, 320))
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		const ports = assignPorts(g)
+		const p = ports.get("e1")
+		expect(p).toBeDefined()
+		if (!p) return
+		expect(p.source.x).toBe(150) // east: x + width
+		expect(p.target.x).toBe(280) // west: x
+	})
+
+	it("assigns South/North when source track < target track", () => {
+		const g = new V2Graph()
+		g.addNode(nodeAt("a", 50, 320, 2)) // track 2 (trunk)
+		g.addNode(nodeAt("b", 50, 520, 3)) // track 3 (below)
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		const ports = assignPorts(g)
+		const p = ports.get("e1")
+		expect(p).toBeDefined()
+		if (!p) return
+		expect(p.source.y).toBe(400) // south: y + height = 320 + 80
+		expect(p.target.y).toBe(520) // north: y
+	})
+
+	it("assigns North/South when source track > target track", () => {
+		const g = new V2Graph()
+		g.addNode(nodeAt("a", 50, 520, 3)) // track 3 (below)
+		g.addNode(nodeAt("b", 50, 320, 2)) // track 2 (above)
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		const ports = assignPorts(g)
+		const p = ports.get("e1")
+		expect(p).toBeDefined()
+		if (!p) return
+		expect(p.source.y).toBe(520) // north: y
+		expect(p.target.y).toBe(400) // south: y + height = 320 + 80
+	})
+
+	it("assigns East/West for back-edges regardless of track", () => {
+		const g = new V2Graph()
+		g.addNode(nodeAt("b", 280, 320, 2))
+		g.addNode(nodeAt("a", 50, 320, 2))
+		g.addEdge({ id: "e1", sourceId: "b", targetId: "a", isBackEdge: true, waypoints: [] })
+		const ports = assignPorts(g)
+		const p = ports.get("e1")
+		expect(p).toBeDefined()
+		if (!p) return
+		expect(p.source.x).toBe(380) // east: 280 + 100
+		expect(p.target.x).toBe(50) // west: x
+	})
+
+	it("skips __rev edges", () => {
+		const g = new V2Graph()
+		g.addNode(nodeAt("a", 50, 320))
+		g.addNode(nodeAt("b", 280, 320))
+		g.addEdge({ id: "e1__rev", sourceId: "b", targetId: "a", isBackEdge: false, waypoints: [] })
+		const ports = assignPorts(g)
+		expect(ports.has("e1__rev")).toBe(false)
+	})
+})
+
+describe("routeAllEdges", () => {
+	function nodeAt(id: string, x: number, y: number, track: NodeTrack = 2): V2Node {
+		return { ...makeNode(id), x, y, width: 100, height: 80, layer: 0, track }
+	}
+
+	it("produces waypoints for a normal edge", () => {
+		const g = new V2Graph()
+		g.addNode(nodeAt("a", 50, 320))
+		g.addNode(nodeAt("b", 280, 320))
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		const ports = assignPorts(g)
+		routeAllEdges(g, ports, new Set())
+		const edge = g.edges.get("e1")
+		expect(edge).toBeDefined()
+		if (!edge) return
+		expect(edge.waypoints.length).toBeGreaterThanOrEqual(2)
+		expect(edge.waypoints[0]).toMatchObject({ x: 150 }) // source east port
+		expect(edge.waypoints[edge.waypoints.length - 1]).toMatchObject({ x: 280 }) // target west port
+	})
+
+	it("routes back-edge through Track 1 highway", () => {
+		const g = new V2Graph()
+		g.addNode(nodeAt("b", 280, 320, 2))
+		g.addNode(nodeAt("a", 50, 320, 2))
+		g.addEdge({ id: "e1", sourceId: "b", targetId: "a", isBackEdge: true, waypoints: [] })
+		const ports = assignPorts(g)
+		routeAllEdges(g, ports, new Set(["e1"]))
+		const edge = g.edges.get("e1")
+		expect(edge).toBeDefined()
+		if (!edge) return
+		const ys = edge.waypoints.map((w) => w.y)
+		expect(ys).toContain(TRACK_Y[1]) // highway waypoint at Track 1 Y
 	})
 })
