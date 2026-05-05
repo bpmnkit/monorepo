@@ -53,7 +53,7 @@ export function detectBackEdges(graph: V2Graph): BackEdgeInfo[] {
 export function makeDAG(graph: V2Graph, backEdges: BackEdgeInfo[]): V2Graph {
 	const backEdgeIds = new Set(backEdges.map((b) => b.edgeId))
 
-	// Mark original edges as back-edges (mutate shared node objects)
+	// Mark original edges as back-edges in-place (shared objects between graph and dag)
 	for (const [id, e] of graph.edges) {
 		if (backEdgeIds.has(id)) {
 			;(e as V2Edge).isBackEdge = true

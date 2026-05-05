@@ -8,6 +8,9 @@ import { REJECTION_PATTERN } from "./types.js"
  * Flows/nodes with rejection terms are penalised (+10000).
  * Default-flagged outgoing flows from gateways get 0 cost (preferred).
  * Returns the set of node IDs on the winning path.
+ *
+ * Precondition: `graph` must be built from the same `sequenceFlows`
+ * (matching sourceRef/targetRef node IDs).
  */
 export function identifyTrunk(
 	graph: V2Graph,

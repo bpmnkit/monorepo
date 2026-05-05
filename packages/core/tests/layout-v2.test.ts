@@ -109,6 +109,50 @@ describe("identifyTrunk", () => {
 		const trunk = identifyTrunk(graph, nodeIndex, flows)
 		expect(trunk.size).toBe(0)
 	})
+
+	it("prefers the default flow from a gateway", () => {
+		// exclusiveGateway with default→"ok", non-default→"alt"
+		// both paths lead to endEvent
+		const gwNode = {
+			id: "gw",
+			type: "exclusiveGateway" as const,
+			default: "f_ok",
+			incoming: [],
+			outgoing: [],
+			extensionElements: [],
+			unknownAttributes: {},
+		}
+		const nodes: BpmnFlowElement[] = [
+			bpmnNode("s", "startEvent"),
+			gwNode,
+			bpmnNode("ok"),
+			bpmnNode("alt"),
+			bpmnNode("e", "endEvent"),
+		]
+		const flows: BpmnSequenceFlow[] = [
+			bpmnFlow("f_start", "s", "gw"),
+			{
+				id: "f_ok",
+				sourceRef: "gw",
+				targetRef: "ok",
+				extensionElements: [],
+				unknownAttributes: {},
+			},
+			{
+				id: "f_alt",
+				sourceRef: "gw",
+				targetRef: "alt",
+				extensionElements: [],
+				unknownAttributes: {},
+			},
+			bpmnFlow("f_ok_end", "ok", "e"),
+			bpmnFlow("f_alt_end", "alt", "e"),
+		]
+		const { graph, nodeIndex } = buildV2Graph(nodes, flows)
+		const trunk = identifyTrunk(graph, nodeIndex, flows)
+		expect(trunk.has("ok")).toBe(true)
+		expect(trunk.has("alt")).toBe(false)
+	})
 })
 
 describe("detectBackEdges", () => {
