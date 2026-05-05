@@ -481,9 +481,32 @@ describe("assignCoordinates", () => {
 		g.addNode(nNext)
 		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
 		assignCoordinates(g)
-		// Without annotation: b.x = LEFT_MARGIN + max(100, 0) + MIN_COL_GAP = 50 + 100 + 80 = 230
-		// With annotation: b.x should be >= LEFT_MARGIN + max(100, 150) + MIN_COL_GAP = 50 + 150 + 80 = 280
+		// snap(LEFT_MARGIN)=40, max(nodeWidth=100, annW/2=0)=100, gap=80 → snap(40+100+80)=snap(220)=240
+		// With annotation: max(100, 300/2=150)=150 → snap(40+150+80)=snap(270)=280
 		// (annotationWidth/2 = 150 > nodeWidth 100)
 		expect(g.nodes.get("b")?.x).toBeGreaterThanOrEqual(280)
+	})
+
+	it("places dummy at correct intermediate layer X", () => {
+		const g = new V2Graph()
+		const a = { ...makeNode("a"), layer: 0, track: 2 as const }
+		const b = { ...makeNode("b"), layer: 2, track: 2 as const }
+		const dummy = {
+			...makeNode("d"),
+			layer: 1,
+			isDummy: true,
+			width: 0,
+			height: 0,
+			track: 2 as const,
+		}
+		g.addNode(a)
+		g.addNode(b)
+		g.addNode(dummy)
+		assignCoordinates(g)
+		// dummy.x should be between a.x and b.x (at the intermediate layer)
+		expect(g.nodes.get("d")?.x).toBeGreaterThan(g.nodes.get("a")?.x)
+		expect(g.nodes.get("d")?.x).toBeLessThan(g.nodes.get("b")?.x)
+		// dummy.y should be TRACK_Y[2] (snapped)
+		expect(g.nodes.get("d")?.y).toBe(TRACK_Y[2])
 	})
 })

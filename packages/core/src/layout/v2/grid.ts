@@ -113,7 +113,10 @@ function groupByLayerAndTrack(graph: V2Graph): Map<number, Map<NodeTrack, string
  */
 export function assignCoordinates(graph: V2Graph): void {
 	const layerGroups = groupByLayerAndTrack(graph)
-	const sortedLayers = [...layerGroups.keys()].sort((a, b) => a - b)
+	// Collect ALL layer values (including dummy-only layers)
+	const allLayerNums = new Set<number>()
+	for (const n of graph.nodes.values()) allLayerNums.add(n.layer)
+	const sortedLayers = [...allLayerNums].sort((a, b) => a - b)
 
 	// Calculate X for each layer
 	const layerX = new Map<number, number>()
@@ -142,7 +145,7 @@ export function assignCoordinates(graph: V2Graph): void {
 		if (!n.isDummy) continue
 		const lx = layerX.get(n.layer) ?? snap(LEFT_MARGIN)
 		n.x = lx
-		n.y = snap(TRACK_Y[2] - 0) // dummy has height=0, center on trunk
+		n.y = snap(TRACK_Y[2]) // dummy has height=0, center on trunk
 	}
 
 	// Place real nodes
