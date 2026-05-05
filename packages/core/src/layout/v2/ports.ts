@@ -1,16 +1,18 @@
 import type { V2Graph } from "./graph.js"
 import type { PortAssignment, PortPoint } from "./types.js"
 
-function eastPort(n: { x: number; y: number; width: number; height: number }): PortPoint {
+type NodeBounds = { x: number; y: number; width: number; height: number }
+
+function eastPort(n: NodeBounds): PortPoint {
 	return { x: n.x + n.width, y: Math.round(n.y + n.height / 2) }
 }
-function westPort(n: { x: number; y: number; width: number; height: number }): PortPoint {
+function westPort(n: NodeBounds): PortPoint {
 	return { x: n.x, y: Math.round(n.y + n.height / 2) }
 }
-function southPort(n: { x: number; y: number; width: number; height: number }): PortPoint {
+function southPort(n: NodeBounds): PortPoint {
 	return { x: Math.round(n.x + n.width / 2), y: n.y + n.height }
 }
-function northPort(n: { x: number; y: number; width: number; height: number }): PortPoint {
+function northPort(n: NodeBounds): PortPoint {
 	return { x: Math.round(n.x + n.width / 2), y: n.y }
 }
 

@@ -2,7 +2,7 @@ import { routeEdgeAstar } from "../astar.js"
 import type { Bounds } from "../types.js"
 import type { V2Graph } from "./graph.js"
 import type { PortAssignment } from "./types.js"
-import { TRACK_Y } from "./types.js"
+import { CELL_SIZE, TRACK_Y } from "./types.js"
 
 /**
  * Route all edges in the graph using the grid-visibility A* router (astar.ts).
@@ -16,16 +16,12 @@ import { TRACK_Y } from "./types.js"
  *
  * Results are written back into edge.waypoints in-place.
  */
-export function routeAllEdges(
-	graph: V2Graph,
-	ports: Map<string, PortAssignment>,
-	backEdgeIds: Set<string>,
-): void {
-	// Build obstacle Bounds array for all real nodes
-	const allObstacles: Bounds[] = []
-	for (const [, n] of graph.nodes) {
+export function routeAllEdges(graph: V2Graph, ports: Map<string, PortAssignment>): void {
+	// Build obstacle map keyed by node ID
+	const obstacleMap = new Map<string, Bounds>()
+	for (const [id, n] of graph.nodes) {
 		if (n.isDummy || n.width === 0) continue
-		allObstacles.push({ x: n.x, y: n.y, width: n.width, height: n.height })
+		obstacleMap.set(id, { x: n.x, y: n.y, width: n.width, height: n.height })
 	}
 
 	const occupiedCells = new Set<number>()
@@ -45,22 +41,31 @@ export function routeAllEdges(
 			const sy = assignment.source.y
 			const tx = assignment.target.x
 			const ty = assignment.target.y
-			// Fixed highway route: East → up to Track 1 → back to target X → down
-			edge.waypoints = [
-				{ x: sx, y: sy },
-				{ x: sx, y: highwayY },
-				{ x: tx, y: highwayY },
-				{ x: tx, y: ty },
-			]
+
+			if (sy <= highwayY) {
+				// Source is already at or above highway — route directly without a degenerate segment
+				edge.waypoints = [
+					{ x: sx, y: sy },
+					{ x: Math.min(sx, tx) - CELL_SIZE, y: sy },
+					{ x: Math.min(sx, tx) - CELL_SIZE, y: ty },
+					{ x: tx, y: ty },
+				]
+			} else {
+				// Fixed highway route: East → up to Track 1 → back to target X → down
+				edge.waypoints = [
+					{ x: sx, y: sy },
+					{ x: sx, y: highwayY },
+					{ x: tx, y: highwayY },
+					{ x: tx, y: ty },
+				]
+			}
 			return
 		}
 
-		// Exclude source and target from obstacles
-		const obstacles = allObstacles.filter(
-			(o) =>
-				!(o.x === src.x && o.y === src.y && o.width === src.width && o.height === src.height) &&
-				!(o.x === tgt.x && o.y === tgt.y && o.width === tgt.width && o.height === tgt.height),
-		)
+		// Exclude source and target from obstacles by ID
+		const obstacles = [...obstacleMap.entries()]
+			.filter(([id]) => id !== edge.sourceId && id !== edge.targetId)
+			.map(([, bounds]) => bounds)
 
 		edge.waypoints = routeEdgeAstar(
 			assignment.source,
