@@ -11,7 +11,7 @@ import { ELEMENT_SIZES } from "../types.js"
 import { layoutAnnotations } from "./annotations.js"
 import { detectBackEdges, makeDAG } from "./dag.js"
 import { V2Graph } from "./graph.js"
-import { assignCoordinates, assignTracks } from "./grid.js"
+import { assignCoordinates, assignTracks, reassignGatewayBranchTracks } from "./grid.js"
 import { alignGatewayPairs, assignLayers, injectDummies, injectVirtualSpacers } from "./layers.js"
 import { assignPorts } from "./ports.js"
 import { routeAllEdges } from "./router.js"
@@ -204,6 +204,7 @@ export function layoutV2(
 
 	// Module 5: Track assignment + coordinates
 	assignTracks(augmented, trunkIds, backEdgeIds, sequenceFlows, nodeIndex)
+	reassignGatewayBranchTracks(augmented) // longest branch at gateway Y
 	assignCoordinates(augmented)
 
 	// Module 6: Port assignment

@@ -25,11 +25,9 @@ function centerY(n: NodeBounds): number {
  *
  * Rules (in priority order):
  *   1. Back-edge: East exit, West entry (router handles highway routing)
- *   2. Cross-track edges where the target is NOT a gateway:
- *      Source exits south/north, target enters from the west.
- *      Non-gateway tasks/events always receive from the left for BPMN convention.
- *   3. Cross-track edges where the target IS a gateway:
- *      Source exits south/north, target enters from north/south.
+ *   2. Gateway-adjacent edges: use Y-center comparison to pick south/north/east port.
+ *      When both endpoints are at the same Y, use east/west (e.g. bypass edges).
+ *   3. Cross-track non-gateway edges: source exits south/north, target enters west.
  *   4. Same track: East exit, West entry (standard left-to-right)
  *
  * Edges with "__rev" suffix (DAG reversal only) and edges to/from dummy nodes are skipped.
@@ -54,7 +52,6 @@ export function assignPorts(graph: V2Graph): Map<string, PortAssignment> {
 			source = eastPort(src)
 			target = westPort(tgt)
 		} else if (srcIsGateway || tgtIsGateway) {
-			// Rule 3: Gateway-adjacent edges use actual Y-center comparison for port direction.
 			const srcCY = centerY(src)
 			const tgtCY = centerY(tgt)
 			if (srcCY < tgtCY) {
@@ -64,15 +61,14 @@ export function assignPorts(graph: V2Graph): Map<string, PortAssignment> {
 				source = northPort(src)
 				target = tgtIsGateway ? southPort(tgt) : westPort(tgt)
 			} else {
+				// Same Y: direct east→west (covers same-track and bypass edges)
 				source = eastPort(src)
 				target = westPort(tgt)
 			}
 		} else if (src.track < tgt.track) {
-			// Source is higher (lower Y-band), target is lower.
 			source = southPort(src)
 			target = westPort(tgt)
 		} else if (src.track > tgt.track) {
-			// Source is lower, target is higher.
 			source = northPort(src)
 			target = westPort(tgt)
 		} else {

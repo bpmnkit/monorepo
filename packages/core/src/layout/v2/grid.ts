@@ -78,6 +78,110 @@ function snap(v: number): number {
 }
 
 /**
+ * Count real (non-dummy) successors or predecessors of a node.
+ */
+function realAdjCount(ids: string[], graph: V2Graph): number {
+	return ids.filter((id) => !(graph.nodes.get(id)?.isDummy ?? false)).length
+}
+
+/**
+ * After global track assignment, reassign tracks within each split-join gateway pair
+ * so the branch with the most real nodes occupies track 2 (same Y as the gateways).
+ * Other branches are assigned tracks 3 (below) and 4 in descending size order.
+ *
+ * Back-edge sources (track 1) and dummy nodes are never reassigned.
+ * Must be called after assignTracks and before assignCoordinates.
+ */
+export function reassignGatewayBranchTracks(graph: V2Graph): void {
+	for (const [splitId, splitNode] of graph.nodes) {
+		if (!isGateway(splitNode.type) || splitNode.isDummy) continue
+		if (realAdjCount(graph.getSuccessors(splitId), graph) <= 1) continue
+
+		// BFS to find all nodes reachable from split
+		const reachable = new Set<string>()
+		const bfsQ = [...graph.getSuccessors(splitId)]
+		while (bfsQ.length > 0) {
+			const cur = bfsQ.shift()
+			if (cur === undefined || reachable.has(cur)) continue
+			reachable.add(cur)
+			bfsQ.push(...graph.getSuccessors(cur))
+		}
+
+		// Find the matching join gateway (all non-dummy predecessors come from split's reachable set)
+		let joinId: string | undefined
+		for (const candidateId of reachable) {
+			const candidate = graph.nodes.get(candidateId)
+			if (!candidate || !isGateway(candidate.type) || candidate.isDummy) continue
+			if (realAdjCount(graph.getPredecessors(candidateId), graph) <= 1) continue
+			const preds = graph
+				.getPredecessors(candidateId)
+				.filter((p) => !(graph.nodes.get(p)?.isDummy ?? false))
+			if (preds.every((p) => reachable.has(p) || p === splitId)) {
+				joinId = candidateId
+				break
+			}
+		}
+		if (!joinId) continue
+
+		// Collect downstream of join (to exclude from interior)
+		const fromJoin = new Set<string>()
+		const joinQ = [...graph.getSuccessors(joinId)]
+		while (joinQ.length > 0) {
+			const cur = joinQ.shift()
+			if (cur === undefined || fromJoin.has(cur)) continue
+			fromJoin.add(cur)
+			joinQ.push(...graph.getSuccessors(cur))
+		}
+
+		// BFS from each real direct successor of split to build per-branch node lists.
+		// Back-edge sources (track 1) and rejection nodes (track 4) are excluded so
+		// that their special Y bands are preserved.
+		const assigned = new Set<string>()
+		const branches: string[][] = []
+
+		for (const succId of graph.getSuccessors(splitId)) {
+			if (succId === joinId) continue
+			const succNode = graph.nodes.get(succId)
+			if (succNode?.isDummy) continue
+
+			const branchNodes: string[] = []
+			const visited = new Set<string>([splitId])
+			const q: string[] = [succId]
+
+			while (q.length > 0) {
+				const cur: string | undefined = q.shift()
+				if (cur === undefined || visited.has(cur) || cur === joinId) continue
+				visited.add(cur)
+				if (fromJoin.has(cur)) continue
+
+				const n = graph.nodes.get(cur)
+				if (n && !n.isDummy && !n.isBackEdgeSource && n.track !== 4 && !assigned.has(cur)) {
+					branchNodes.push(cur)
+					assigned.add(cur)
+				}
+				q.push(...graph.getSuccessors(cur))
+			}
+
+			if (branchNodes.length > 0) branches.push(branchNodes)
+		}
+
+		if (branches.length <= 1) continue
+
+		// Largest branch → same track as the split gateway, smaller branches cascade below.
+		// This ensures nested pairs stay relative to their parent pair's Y band.
+		branches.sort((a, b) => b.length - a.length)
+		const splitTrack = splitNode.track as number
+		for (let i = 0; i < branches.length; i++) {
+			const track = Math.min(5, splitTrack + i) as NodeTrack
+			for (const nodeId of branches[i] ?? []) {
+				const n = graph.nodes.get(nodeId)
+				if (n) n.track = track
+			}
+		}
+	}
+}
+
+/**
  * Group real (non-dummy) node IDs by layer, then by track within each layer.
  */
 function groupByLayerAndTrack(graph: V2Graph): Map<number, Map<NodeTrack, string[]>> {
@@ -191,9 +295,10 @@ export function assignCoordinates(graph: V2Graph): void {
 		resolveCrossTrackOverlaps(graph, byTrack, STACK_V_GAP)
 	}
 
-	// Rule 1: Lock all trunk nodes to exact TRACK_Y[2] center
+	// Rule 1: Lock trunk nodes at track 2 to exact TRACK_Y[2] center.
+	// Skip nodes reassigned to a different track by reassignGatewayBranchTracks.
 	for (const [, n] of graph.nodes) {
-		if (!n.isDummy && n.isTrunk) {
+		if (!n.isDummy && n.isTrunk && n.track === 2) {
 			n.y = TRACK_Y[2] - Math.round(n.height / 2)
 		}
 	}

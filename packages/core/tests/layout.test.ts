@@ -1236,10 +1236,10 @@ describe("L-shaped edge preference", () => {
 })
 
 describe("Early-return baseline", () => {
-	it("shorter branch is on the trunk; longer branches are off the baseline", () => {
-		// v2 uses shortest-path Dijkstra for trunk selection.
-		// s→gw→a→join→e (5 hops) is shorter than s→gw→b→c→join→e (6 hops),
-		// so 'a' is on the trunk (same Y as gw) and 'b','c' are off the baseline.
+	it("longer branch is on the gateway Y; shorter branch is off the baseline", () => {
+		// reassignGatewayBranchTracks puts the branch with the most nodes at track 2
+		// (same Y as gateways). s→gw→b→c→join→e has 2 branch nodes (b,c) vs s→gw→a→join→e
+		// with 1 branch node (a), so 'b' and 'c' are at gateway Y and 'a' is off baseline.
 		const process = proc(
 			"early-return",
 			[
@@ -1266,8 +1266,8 @@ describe("Early-return baseline", () => {
 		const nodeMap = new Map(result.nodes.map((n) => [n.id, n]))
 
 		const gwNode = nodeMap.get("gw")
-		const aNode = nodeMap.get("a") // short branch — trunk in v2
-		const bNode = nodeMap.get("b") // long branch — off baseline
+		const aNode = nodeMap.get("a") // short branch — off baseline
+		const bNode = nodeMap.get("b") // long branch — at gateway Y
 		expect(gwNode).toBeDefined()
 		expect(aNode).toBeDefined()
 		expect(bNode).toBeDefined()
@@ -1277,10 +1277,10 @@ describe("Early-return baseline", () => {
 		const aCenterY = aNode.bounds.y + aNode.bounds.height / 2
 		const bCenterY = bNode.bounds.y + bNode.bounds.height / 2
 
-		// Short branch "a" is on the trunk — same Y as gateway
-		expect(Math.abs(aCenterY - gwCenterY)).toBeLessThan(1)
-		// Long branch "b" is off the baseline
-		expect(Math.abs(bCenterY - gwCenterY)).toBeGreaterThan(10)
+		// Long branch "b" is at gateway Y
+		expect(Math.abs(bCenterY - gwCenterY)).toBeLessThan(1)
+		// Short branch "a" is off the baseline
+		expect(Math.abs(aCenterY - gwCenterY)).toBeGreaterThan(10)
 	})
 })
 
