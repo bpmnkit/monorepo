@@ -1,5 +1,6 @@
 import type { V2Graph } from "./graph.js"
 import type { PortAssignment, PortPoint } from "./types.js"
+import { isGateway } from "./types.js"
 
 type NodeBounds = { x: number; y: number; width: number; height: number }
 
@@ -14,18 +15,6 @@ function southPort(n: NodeBounds): PortPoint {
 }
 function northPort(n: NodeBounds): PortPoint {
 	return { x: Math.round(n.x + n.width / 2), y: n.y }
-}
-
-const GATEWAY_TYPES = new Set([
-	"exclusiveGateway",
-	"parallelGateway",
-	"inclusiveGateway",
-	"eventBasedGateway",
-	"complexGateway",
-])
-
-function isGateway(type: string): boolean {
-	return GATEWAY_TYPES.has(type)
 }
 
 /**

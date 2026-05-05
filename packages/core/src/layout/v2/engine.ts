@@ -16,6 +16,7 @@ import { alignGatewayPairs, assignLayers, injectDummies } from "./layers.js"
 import { assignPorts } from "./ports.js"
 import { routeAllEdges } from "./router.js"
 import { identifyTrunk } from "./trunk.js"
+import { isGateway } from "./types.js"
 import type { V2Node } from "./types.js"
 
 function getSize(type: string): { width: number; height: number } {
@@ -101,8 +102,7 @@ function computeNodeLabelBounds(
 		n.type === "intermediateThrowEvent" ||
 		n.type === "intermediateCatchEvent" ||
 		n.type === "boundaryEvent" ||
-		n.type.includes("Gateway") ||
-		n.type.includes("gateway")
+		isGateway(n.type)
 	if (!isSmallElement) return undefined
 
 	const labelWidth = Math.min(

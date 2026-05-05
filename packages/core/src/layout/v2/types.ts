@@ -77,3 +77,15 @@ export interface PortAssignment {
 	source: PortPoint
 	target: PortPoint
 }
+
+export const GATEWAY_TYPES = new Set([
+	"exclusiveGateway",
+	"parallelGateway",
+	"inclusiveGateway",
+	"eventBasedGateway",
+	"complexGateway",
+])
+
+export function isGateway(type: string): boolean {
+	return GATEWAY_TYPES.has(type)
+}

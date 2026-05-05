@@ -40,6 +40,7 @@ export function layoutProcess(process: BpmnProcess): LayoutResult {
 /**
  * Layout a set of flow nodes and sequence flows.
  * Used both for top-level processes and recursively for sub-processes.
+ * Annotations not supported — callers that need annotation layout use layoutProcess().
  */
 export function layoutFlowNodes(
 	flowNodes: BpmnFlowElement[],
@@ -85,6 +86,9 @@ function resolveSubProcessOverlaps(nodes: LayoutNode[]): void {
 		const gap = curLeft - prevRight
 		if (gap < MIN_GAP) {
 			const dx = MIN_GAP - gap
+			// Only the container node's X is shifted here — child nodes are not present yet.
+			// Expanded subprocess children are appended to result.nodes after this function
+			// returns (already in absolute coordinates), so no child-sync is needed.
 			for (const n of curNodes) {
 				n.bounds.x += dx
 				if (n.labelBounds) n.labelBounds.x += dx

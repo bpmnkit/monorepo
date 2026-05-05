@@ -2,18 +2,7 @@ import type { BpmnFlowElement } from "../../bpmn/bpmn-model.js"
 import type { V2Graph } from "./graph.js"
 import { V2Graph as GraphClass } from "./graph.js"
 import type { V2Node } from "./types.js"
-
-const GATEWAY_TYPES = new Set([
-	"exclusiveGateway",
-	"parallelGateway",
-	"inclusiveGateway",
-	"eventBasedGateway",
-	"complexGateway",
-])
-
-function isGateway(type: string): boolean {
-	return GATEWAY_TYPES.has(type)
-}
+import { isGateway } from "./types.js"
 
 function isSplitGateway(id: string, graph: V2Graph): boolean {
 	return isGateway(graph.nodes.get(id)?.type ?? "") && graph.getSuccessors(id).length > 1
