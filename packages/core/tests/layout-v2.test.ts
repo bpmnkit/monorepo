@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 import type { BpmnFlowElement, BpmnSequenceFlow } from "../src/bpmn/bpmn-model.js"
 import { detectBackEdges, makeDAG } from "../src/layout/v2/dag.js"
 import { V2Graph } from "../src/layout/v2/graph.js"
+import { assignCoordinates, assignTracks } from "../src/layout/v2/grid.js"
 import { alignGatewayPairs, assignLayers, injectDummies } from "../src/layout/v2/layers.js"
 import { identifyTrunk } from "../src/layout/v2/trunk.js"
+import { CELL_SIZE, TRACK_Y } from "../src/layout/v2/types.js"
 import type { V2Node } from "../src/layout/v2/types.js"
 
 function makeNode(id: string, type = "task"): V2Node {
@@ -253,9 +255,9 @@ describe("assignLayers", () => {
 		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
 		g.addEdge({ id: "e2", sourceId: "b", targetId: "c", isBackEdge: false, waypoints: [] })
 		assignLayers(g)
-		expect(g.nodes.get("a")!.layer).toBe(0)
-		expect(g.nodes.get("b")!.layer).toBe(1)
-		expect(g.nodes.get("c")!.layer).toBe(2)
+		expect(g.nodes.get("a")?.layer).toBe(0)
+		expect(g.nodes.get("b")?.layer).toBe(1)
+		expect(g.nodes.get("c")?.layer).toBe(2)
 	})
 
 	it("uses longest-path for fork/join", () => {
@@ -268,7 +270,7 @@ describe("assignLayers", () => {
 		g.addEdge({ id: "e3", sourceId: "B", targetId: "J", isBackEdge: false, waypoints: [] })
 		g.addEdge({ id: "e4", sourceId: "S", targetId: "J", isBackEdge: false, waypoints: [] })
 		assignLayers(g)
-		expect(g.nodes.get("J")!.layer).toBe(3)
+		expect(g.nodes.get("J")?.layer).toBe(3)
 	})
 
 	it("handles multiple roots", () => {
@@ -277,9 +279,9 @@ describe("assignLayers", () => {
 		g.addEdge({ id: "e1", sourceId: "r1", targetId: "c", isBackEdge: false, waypoints: [] })
 		g.addEdge({ id: "e2", sourceId: "r2", targetId: "c", isBackEdge: false, waypoints: [] })
 		assignLayers(g)
-		expect(g.nodes.get("r1")!.layer).toBe(0)
-		expect(g.nodes.get("r2")!.layer).toBe(0)
-		expect(g.nodes.get("c")!.layer).toBe(1)
+		expect(g.nodes.get("r1")?.layer).toBe(0)
+		expect(g.nodes.get("r2")?.layer).toBe(0)
+		expect(g.nodes.get("c")?.layer).toBe(1)
 	})
 })
 
@@ -372,5 +374,116 @@ describe("injectDummies", () => {
 		const aug = injectDummies(g, new Set())
 		expect([...aug.nodes.values()].filter((n) => n.isDummy)).toHaveLength(0)
 		expect(aug.edges.has("e1__rev")).toBe(true)
+	})
+})
+
+describe("assignTracks", () => {
+	it("puts trunk nodes on track 2", () => {
+		const g = new V2Graph()
+		g.addNode(makeNode("a"))
+		g.addNode(makeNode("b"))
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		assignTracks(g, new Set(["a", "b"]), new Set(), [], new Map())
+		expect(g.nodes.get("a")?.track).toBe(2)
+		expect(g.nodes.get("b")?.track).toBe(2)
+	})
+
+	it("puts rejection-named nodes on track 4", () => {
+		const g = new V2Graph()
+		g.addNode(makeNode("a"))
+		g.addNode(makeNode("rej"))
+		const flows = [bpmnFlow("f1", "a", "rej", "Reject")]
+		g.addEdge({ id: "f1", sourceId: "a", targetId: "rej", isBackEdge: false, waypoints: [] })
+		const nodeIndex = new Map<string, BpmnFlowElement>([
+			["a", bpmnNode("a")],
+			["rej", bpmnNode("rej", "serviceTask", "Reject Task")],
+		])
+		assignTracks(g, new Set(["a"]), new Set(), flows, nodeIndex)
+		expect(g.nodes.get("rej")?.track).toBe(4)
+	})
+
+	it("puts back-edge source nodes on track 1", () => {
+		const g = new V2Graph()
+		g.addNode(makeNode("loop"))
+		const flows = [bpmnFlow("f_back", "loop", "start")]
+		assignTracks(g, new Set(), new Set(["f_back"]), flows, new Map())
+		expect(g.nodes.get("loop")?.track).toBe(1)
+		expect(g.nodes.get("loop")?.isBackEdgeSource).toBe(true)
+	})
+
+	it("puts alternate nodes on track 3", () => {
+		const g = new V2Graph()
+		g.addNode(makeNode("alt"))
+		assignTracks(g, new Set(), new Set(), [], new Map())
+		expect(g.nodes.get("alt")?.track).toBe(3)
+	})
+
+	it("puts dummy nodes on track 2 regardless of trunk membership", () => {
+		const g = new V2Graph()
+		const dummy = { ...makeNode("d"), isDummy: true }
+		g.addNode(dummy)
+		assignTracks(g, new Set(), new Set(), [], new Map())
+		expect(g.nodes.get("d")?.track).toBe(2)
+	})
+})
+
+describe("assignCoordinates", () => {
+	it("places trunk node y-center near TRACK_Y[2]", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("a"), layer: 0, track: 2 as const })
+		assignCoordinates(g)
+		const n = g.nodes.get("a")
+		expect(n).toBeDefined()
+		if (!n) return
+		const cy = n.y + n.height / 2
+		expect(Math.abs(cy - (TRACK_Y[2] as number))).toBeLessThan(CELL_SIZE)
+	})
+
+	it("assigns increasing X for increasing layers", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("a"), layer: 0, track: 2 as const })
+		g.addNode({ ...makeNode("b"), layer: 1, track: 2 as const })
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		assignCoordinates(g)
+		expect(g.nodes.get("b")?.x).toBeGreaterThan(g.nodes.get("a")?.x)
+	})
+
+	it("snaps X and Y to CELL_SIZE", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("a"), layer: 0, track: 2 as const })
+		assignCoordinates(g)
+		const n = g.nodes.get("a")
+		expect(n).toBeDefined()
+		if (!n) return
+		expect(n.x % CELL_SIZE).toBe(0)
+		expect(n.y % CELL_SIZE).toBe(0)
+	})
+
+	it("stacks two nodes in same layer+track without overlap", () => {
+		const g = new V2Graph()
+		g.addNode({ ...makeNode("a"), layer: 0, track: 2 as const })
+		g.addNode({ ...makeNode("b"), layer: 0, track: 2 as const })
+		assignCoordinates(g)
+		const a = g.nodes.get("a")
+		const b = g.nodes.get("b")
+		expect(a).toBeDefined()
+		expect(b).toBeDefined()
+		if (!a || !b) return
+		const overlap = a.y < b.y + b.height && b.y < a.y + a.height
+		expect(overlap).toBe(false)
+	})
+
+	it("uses annotationWidth to widen column gap", () => {
+		const g = new V2Graph()
+		const nAnnotated = { ...makeNode("a"), layer: 0, track: 2 as const, annotationWidth: 300 }
+		const nNext = { ...makeNode("b"), layer: 1, track: 2 as const }
+		g.addNode(nAnnotated)
+		g.addNode(nNext)
+		g.addEdge({ id: "e1", sourceId: "a", targetId: "b", isBackEdge: false, waypoints: [] })
+		assignCoordinates(g)
+		// Without annotation: b.x = LEFT_MARGIN + max(100, 0) + MIN_COL_GAP = 50 + 100 + 80 = 230
+		// With annotation: b.x should be >= LEFT_MARGIN + max(100, 150) + MIN_COL_GAP = 50 + 150 + 80 = 280
+		// (annotationWidth/2 = 150 > nodeWidth 100)
+		expect(g.nodes.get("b")?.x).toBeGreaterThanOrEqual(280)
 	})
 })
