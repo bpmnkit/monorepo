@@ -236,6 +236,54 @@ export function layoutWithPaths(
 		}
 	}
 
+	// ── Phase 1c: Shift elements north for clean east→south routing ──────────
+	// When a non-gateway element has a forward south-east edge and the east
+	// corridor at its track level is blocked by same-track elements, shift the
+	// source one track north so the east segment travels above all obstructions.
+	// Re-anchor attached boundary events.
+	{
+		const shiftedNorth = new Set<string>()
+		for (const sf of sequenceFlows) {
+			if (backEdgeIds.has(sf.id)) continue
+			if (shiftedNorth.has(sf.sourceRef)) continue
+
+			const src = nodePosMap.get(sf.sourceRef)
+			const tgt = nodePosMap.get(sf.targetRef)
+			if (!src || !tgt) continue
+
+			const srcType = flowNodeMap.get(sf.sourceRef)?.type ?? ""
+			if (isGatewayType(srcType)) continue
+			if (boundaryEventIds.has(sf.sourceRef)) continue
+
+			const sTrack = trackOf(src)
+			const tTrack = trackOf(tgt)
+			const sCol = colOf(src)
+			const tCol = colOf(tgt)
+
+			if (tTrack <= sTrack || tCol <= sCol) continue
+
+			// East-first path blocked when a same-track element sits between source and target columns.
+			const eastBlocked = [...nodePosMap.entries()].some(([nid, nl]) => {
+				if (nid === sf.sourceRef || nid === sf.targetRef) return false
+				if (boundaryEventIds.has(nid)) return false
+				return trackOf(nl) === sTrack && colOf(nl) > sCol && colOf(nl) < tCol
+			})
+			if (!eastBlocked) continue
+
+			shiftedNorth.add(sf.sourceRef)
+			nodePosMap.set(sf.sourceRef, { ...src, y: src.y - TRACK_HEIGHT })
+
+			for (const fn of flowNodes) {
+				if (fn.type !== "boundaryEvent") continue
+				const be = fn as BpmnBoundaryEvent
+				if (be.attachedToRef !== sf.sourceRef) continue
+				const beNl = nodePosMap.get(be.id)
+				if (!beNl) continue
+				nodePosMap.set(be.id, { ...beNl, y: beNl.y - TRACK_HEIGHT })
+			}
+		}
+	}
+
 	// ── Phase 2: Segment occupancy — geometric crossing detection ────────────
 	// Store actual routed segments so crossing checks use exact geometry instead
 	// of grid-cell approximations (which produce false positives).
@@ -780,6 +828,56 @@ export function layoutWithPaths(
 	}
 
 	let edges = routeAll()
+
+	// ── Phase 4.5: Shift elements north when deep-south arc is chosen ─────────
+	// A non-gateway source with a south-east target that receives the deep-south
+	// Z fallback (path dips below botY) should instead route east-then-south.
+	// The east corridor at the current Y is blocked by segment crossings from
+	// earlier edges. Shifting the source one track north raises the east corridor
+	// above those segments and enables a clean L-path. Repeat up to 3 times.
+	{
+		const shiftedNorth = new Set<string>()
+		for (let iter = 0; iter < 3; iter++) {
+			let anyShifted = false
+			for (const edge of edges) {
+				if (shiftedNorth.has(edge.sourceId)) continue
+				const srcFnType = flowNodeMap.get(edge.sourceId)?.type ?? ""
+				if (isGatewayType(srcFnType)) continue
+				if (boundaryEventIds.has(edge.sourceId)) continue
+				if (backEdgeIds.has(edge.edgeId)) continue
+
+				const src = nodePosMap.get(edge.sourceId)
+				const tgt = nodePosMap.get(edge.targetId)
+				if (!src || !tgt) continue
+
+				// Only target south-east forward connections.
+				const srcCy = src.y + src.height / 2
+				const tgtCy = tgt.y + tgt.height / 2
+				if (srcCy >= tgtCy) continue
+				if (colOf(src) >= colOf(tgt)) continue
+
+				// Deep-south fallback: any edge point is below botY.
+				if (!edge.points.some((p) => p.y > botY)) continue
+
+				shiftedNorth.add(edge.sourceId)
+				nodePosMap.set(edge.sourceId, { ...src, y: src.y - TRACK_HEIGHT })
+
+				for (const fn of flowNodes) {
+					if (fn.type !== "boundaryEvent") continue
+					const be = fn as BpmnBoundaryEvent
+					if (be.attachedToRef !== edge.sourceId) continue
+					const beNl = nodePosMap.get(be.id)
+					if (!beNl) continue
+					nodePosMap.set(be.id, { ...beNl, y: beNl.y - TRACK_HEIGHT })
+				}
+
+				anyShifted = true
+			}
+			if (!anyShifted) break
+			uCorrYUsed.clear()
+			edges = routeAll()
+		}
+	}
 
 	// ── Phase 5: Shift nodes crossed by non-straight path segments ────────────
 	// Detect segments (non-horizontal-straight) that pass through non-endpoint
