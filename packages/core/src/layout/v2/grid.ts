@@ -185,7 +185,7 @@ export function reassignGatewayBranchTracks(graph: V2Graph): void {
 			if (branchNodes.length > 0) branches.push(branchNodes)
 		}
 
-		if (branches.length <= 1) continue
+		if (branches.length === 0) continue
 
 		// Largest branch → same track as the split gateway, smaller branches cascade below.
 		// This ensures nested pairs stay relative to their parent pair's Y band.

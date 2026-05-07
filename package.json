@@ -25,7 +25,9 @@
 		"desktop:build": "pnpm --filter @bpmnkit/desktop tauri:build",
 		"build:wasm": "wasm-pack build apps/reebe/crates/reebe-wasm --target web --out-dir \"$(pwd)/apps/reebe-wasm\"",
 		"format:tree": "pnpm --filter @bpmnkit/core build && node packages/core/scripts/show-layout-tree.mjs",
-		"tree:dev": "pnpm --filter @bpmnkit/core build && node packages/core/scripts/tree-server.mjs"
+		"tree:dev": "pnpm --filter @bpmnkit/core build && node packages/core/scripts/tree-server.mjs",
+		"viz:dev": "pnpm --filter @bpmnkit/core build && node packages/core/scripts/layout-viz-server.mjs",
+		"viz:v3": "pnpm --filter @bpmnkit/core build && node packages/core/scripts/layout-v3-server.mjs"
 	},
 	"devDependencies": {
 		"@astrojs/check": "^0.9",
