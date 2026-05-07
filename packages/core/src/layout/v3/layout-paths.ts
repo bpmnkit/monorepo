@@ -408,6 +408,22 @@ export function layoutWithPaths(
 		return y
 	}
 
+	// North corridor — mirror of uCorrYFor going above the layout.
+	// Each overlapping X-range gets a progressively more-negative Y slot.
+	const northCorrBase = topY - U_MARGIN
+	const northCorrYUsed = new Map<string, number>()
+	function northCorrYFor(srcX: number, tgtX: number): number {
+		const x1 = Math.min(srcX, tgtX)
+		const x2 = Math.max(srcX, tgtX)
+		let y = northCorrBase
+		for (const [rangeKey, rangeY] of northCorrYUsed) {
+			const [rx1, rx2] = rangeKey.split(",").map(Number) as [number, number]
+			if (rx1 < x2 && rx2 > x1 && Math.abs(rangeY - y) < 8) y = rangeY - U_MARGIN / 2
+		}
+		northCorrYUsed.set(`${x1},${x2}`, y)
+		return y
+	}
+
 	// ── Geometric segment-to-node crossing test ───────────────────────────────
 	// Returns true when a path segment visually passes through a node's bounding box.
 	function segmentCrossesNode(p1: Point, p2: Point, nl: NodeLayout): boolean {
@@ -645,17 +661,19 @@ export function layoutWithPaths(
 				if (!crossesIntermediate) {
 					route = { kind: "straight", points: [p1, p2] }
 				} else if (isGwGw) {
-					// gw→gw blocked: arch via same side (top or bottom center) of both gateways.
+					// gw→gw blocked: arch above then below. Each gets a dedicated corridor Y
+					// so overlapping arches don't share the same horizontal band.
+					const archAboveY = northCorrYFor(srcCx, tgtCx)
 					const archAbovePts: Point[] = [
 						{ x: srcCx, y: src.y },
-						{ x: srcCx, y: skipAboveY },
-						{ x: tgtCx, y: skipAboveY },
+						{ x: srcCx, y: archAboveY },
+						{ x: tgtCx, y: archAboveY },
 						{ x: tgtCx, y: tgt.y },
 					]
 					if (isClear(archAbovePts, sf.sourceRef, sf.targetRef)) {
 						route = { kind: "Z", points: archAbovePts }
 					} else {
-						const archBelowY = botY + U_MARGIN
+						const archBelowY = uCorrYFor(srcCx, tgtCx)
 						const archBelowPts: Point[] = [
 							{ x: srcCx, y: src.y + src.height },
 							{ x: srcCx, y: archBelowY },
@@ -665,12 +683,13 @@ export function layoutWithPaths(
 						if (isClear(archBelowPts, sf.sourceRef, sf.targetRef)) {
 							route = { kind: "Z", points: archBelowPts }
 						} else {
+							const fallbackAboveY = northCorrYFor(src.x + src.width, tgt.x)
 							route = {
 								kind: "Z",
 								points: [
 									{ x: src.x + src.width, y: src.y },
-									{ x: src.x + src.width, y: skipAboveY },
-									{ x: tgt.x, y: skipAboveY },
+									{ x: src.x + src.width, y: fallbackAboveY },
+									{ x: tgt.x, y: fallbackAboveY },
 									{ x: tgt.x, y: tgt.y },
 								],
 							}
@@ -747,12 +766,13 @@ export function layoutWithPaths(
 						}
 					}
 				} else {
+					const northY = northCorrYFor(srcCx, tgt.x + tgt.width)
 					route = {
 						kind: "Z",
 						points: [
 							{ x: srcCx, y: exitY },
-							{ x: srcCx, y: skipAboveY },
-							{ x: tgt.x, y: skipAboveY },
+							{ x: srcCx, y: northY },
+							{ x: tgt.x, y: northY },
 							{ x: tgt.x, y: tgtCy },
 						],
 					}
@@ -940,6 +960,7 @@ export function layoutWithPaths(
 
 		// Re-route with updated positions.
 		uCorrYUsed.clear()
+		northCorrYUsed.clear()
 		edges = routeAll()
 	}
 
