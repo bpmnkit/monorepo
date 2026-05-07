@@ -29,6 +29,7 @@ import { findAllPaths } from "../dist/layout/v3/paths.js"
 import { layoutWithTracks, TRACK_HEIGHT } from "../dist/layout/v3/layout-tracks.js"
 import { layoutWithColumns, COLUMN_WIDTH } from "../dist/layout/v3/layout-columns.js"
 import { layoutWithPaths } from "../dist/layout/v3/layout-paths.js"
+import { layoutWithAnnotations } from "../dist/layout/v3/layout-annotations.js"
 
 const [, , inputArg] = process.argv
 if (!inputArg) {
@@ -309,6 +310,27 @@ function getData() {
 			trackLayout,
 			columnLayout,
 			pathLayout,
+		})
+
+		// ── Step 11: Annotation Layout ────────────────────────────────────────────────
+		const textAnnotations = proc.textAnnotations ?? []
+		const associations = proc.associations ?? []
+		const annotationLayout = layoutWithAnnotations(pathLayout, textAnnotations, associations)
+
+		steps.push({
+			name: "Annotation Layout",
+			desc: `${annotationLayout.annotationNodes.length} annotation(s) placed out of ${textAnnotations.length} total.`,
+			...snap(backEdgeIds, annotated, topoDepths, segmentOf),
+			groups: groupsAnnotated,
+			topLevelGroupIds: [...topLevelGroupIds],
+			groupLayouts,
+			processFlow: processFlowAnnotated,
+			processLayout,
+			fullLayout,
+			trackLayout,
+			columnLayout,
+			pathLayout,
+			annotationLayout,
 		})
 
 		return { steps, filename: inputArg }
@@ -1220,6 +1242,103 @@ function renderFullLayout(canvas, step) {
   setupPanZoom(canvas)
 }
 
+// ── Annotation layout rendering ───────────────────────────────────────────────
+
+function renderAnnotationLayout(canvas, step) {
+  const al = step.annotationLayout
+  const pl = step.pathLayout
+  const tl = step.trackLayout
+  const cl = step.columnLayout
+  const nodes = step.nodes || []
+  if (!al || !pl || pl.nodes.length === 0) {
+    canvas.innerHTML = '<div style="padding:20px;color:#444;font-size:11px">No annotation layout data.</div>'
+    return
+  }
+
+  const PAD = 60
+  const TH = ${TRACK_HEIGHT}
+  const CW_COL = ${COLUMN_WIDTH}
+  const nodeMap = new Map(nodes.map(n => [n.id, n]))
+  const nodePos = new Map(pl.nodes.map(nl => [nl.id, { x: nl.x + PAD, y: nl.y + PAD }]))
+
+  const W = al.width + PAD * 2, H = al.height + PAD * 2
+  const cW = canvas.clientWidth || 800, cH = canvas.clientHeight || 600
+
+  const kindColor = { straight: '#3a3a6a', L: '#2a4a6a', Z: '#4a2a6a', U: '#6a3a1a' }
+
+  let svgBody = \`<defs>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#4a4a7a"/></marker>
+    <marker id="arr-U" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#f97316"/></marker>
+  </defs>\`
+
+  // Track bands
+  if (tl) {
+    for (const band of tl.trackBands) {
+      const by = band.y + PAD
+      const isMain = band.track === 0
+      const isBack = tl.backTrack !== null && band.track === tl.backTrack
+      const fill = isMain ? '#0f0f22' : isBack ? '#1a0f00' : (band.track < 0 ? '#0a180a' : '#180a0a')
+      const lineCol = isMain ? '#2a2a44' : isBack ? '#3a2000' : '#1e2a1e'
+      svgBody += \`<rect x="0" y="\${by}" width="\${W}" height="\${TH}" fill="\${fill}" opacity="0.6"/>\`
+      svgBody += \`<line x1="0" y1="\${by}" x2="\${W}" y2="\${by}" stroke="\${lineCol}" stroke-width="1"/>\`
+    }
+  }
+
+  // Column bands
+  if (cl) {
+    for (const band of cl.columnBands) {
+      const bx = band.x + PAD
+      const fill = band.column % 2 === 0 ? '#131320' : '#0d0d1c'
+      svgBody += \`<rect x="\${bx}" y="0" width="\${CW_COL}" height="\${H}" fill="\${fill}" opacity="0.4"/>\`
+      svgBody += \`<line x1="\${bx}" y1="0" x2="\${bx}" y2="\${H}" stroke="#1a1a2a" stroke-width="1"/>\`
+    }
+  }
+
+  // Sequence flow edges
+  for (const edge of pl.edges) {
+    if (!edge.points || edge.points.length < 2) continue
+    const isU = edge.kind === 'U'
+    const stroke = isU ? '#f97316' : (kindColor[edge.kind] ?? '#3a3a6a')
+    const dash = isU ? '5,3' : 'none'
+    const pts = edge.points.map(p => \`\${p.x + PAD},\${p.y + PAD}\`).join(' ')
+    svgBody += \`<polyline points="\${pts}" fill="none" stroke="\${stroke}" stroke-width="1.5" stroke-opacity="0.7" stroke-dasharray="\${dash}" marker-end="url(#arr)"/>\`
+  }
+
+  // Association edges (dashed)
+  for (const ae of al.annotationEdges) {
+    if (!ae.points || ae.points.length < 2) continue
+    const pts = ae.points.map(p => \`\${p.x + PAD},\${p.y + PAD}\`).join(' ')
+    svgBody += \`<polyline points="\${pts}" fill="none" stroke="#6a6a9a" stroke-width="1.5" stroke-dasharray="6,3" stroke-opacity="0.9"/>\`
+  }
+
+  // Flow nodes
+  for (const nl of pl.nodes) {
+    const n = nodeMap.get(nl.id), pos = nodePos.get(nl.id)
+    if (!n || !pos) continue
+    svgBody += svgNode(n, pos, null, null, null, false)
+  }
+
+  // Annotation boxes
+  for (const an of al.annotationNodes) {
+    const ax = an.x + PAD, ay = an.y + PAD
+    svgBody += \`<rect x="\${ax}" y="\${ay}" width="\${an.width}" height="\${an.height}" rx="4" fill="#0f0f28" stroke="#4a4a8a" stroke-width="1.5" stroke-dasharray="4,2"/>\`
+    // Left bracket line (BPMN convention)
+    svgBody += \`<line x1="\${ax + 8}" y1="\${ay + 4}" x2="\${ax + 8}" y2="\${ay + an.height - 4}" stroke="#4a4a8a" stroke-width="2"/>\`
+    const label = an.text.length > 60 ? an.text.slice(0, 57) + '…' : an.text
+    svgBody += \`<text x="\${ax + 14}" y="\${ay + 16}" font-size="9" fill="#8a8aba" font-family="monospace" style="white-space:pre">\${label.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text>\`
+  }
+
+  canvas.innerHTML = \`<svg xmlns="http://www.w3.org/2000/svg" width="\${cW}" height="\${cH}" style="background:#0a0a12">
+    <g id="diagram" transform="translate(\${panX},\${panY}) scale(\${scale})">\${svgBody}</g>
+  </svg>\`
+
+  if (scale === 1 && panX === 0 && panY === 0) {
+    const fit = Math.min(cW/W, cH/H, 1)
+    scale=fit; panX=(cW-W*fit)/2; panY=(cH-H*fit)/2; applyTransform()
+  }
+  setupPanZoom(canvas)
+}
+
 function render() {
   const data = currentData
   const canvas = document.getElementById('canvas')
@@ -1238,6 +1357,9 @@ function render() {
   viewToggleBtn.style.display = isProcessStep ? '' : 'none'
   if (!isProcessStep) { showRealLayout = false; viewToggleBtn.classList.remove('active') }
   viewToggleBtn.textContent = showRealLayout ? 'boxes' : 'elements'
+
+  // Step 11: annotation layout
+  if (step.annotationLayout) { renderAnnotationLayout(canvas, step); return }
 
   // Step 10: path layout
   if (step.pathLayout) { renderPathLayout(canvas, step); return }

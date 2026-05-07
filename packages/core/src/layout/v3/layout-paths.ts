@@ -172,7 +172,7 @@ export function layoutWithPaths(
 			clearedGateways.add(sf.sourceRef)
 
 			// Capture original gateway column before any shifts for this gateway.
-			const originalGwCol = colOf(nodePosMap.get(sf.sourceRef)!)
+			const originalGwCol = colOf(gw)
 
 			// Nodes that have at least one incoming non-back edge from a source
 			// that is NOT being shifted — these must not be shifted.
@@ -444,6 +444,75 @@ export function layoutWithPaths(
 		const y1 = Math.min(p1.y, p2.y)
 		const y2 = Math.max(p1.y, p2.y)
 		return y2 > nl.y + eps && y1 < nl.y + nl.height - eps
+	}
+
+	// ── Connection-point normalisation ───────────────────────────────────────
+	// After a route is computed, snap the first and last waypoints to the centre
+	// of whichever element face the segment exits/enters, and adjust the adjacent
+	// intermediate point to keep every segment strictly orthogonal.
+
+	function segDir(p1: Point, p2: Point): "N" | "S" | "E" | "W" {
+		const dx = p2.x - p1.x
+		const dy = p2.y - p1.y
+		if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "E" : "W"
+		return dy >= 0 ? "S" : "N"
+	}
+
+	function faceCentre(el: NodeLayout, pt: Point, hint: "N" | "S" | "E" | "W"): Point {
+		const cx = el.x + el.width / 2
+		const cy = el.y + el.height / 2
+		const distN = Math.abs(pt.y - el.y)
+		const distS = Math.abs(pt.y - (el.y + el.height))
+		const distW = Math.abs(pt.x - el.x)
+		const distE = Math.abs(pt.x - (el.x + el.width))
+		const min = Math.min(distN, distS, distW, distE)
+		const tol = 2
+		// Collect faces within tolerance, prefer hint to break ties.
+		const near = (["N", "S", "W", "E"] as const).filter((f) => {
+			const d = f === "N" ? distN : f === "S" ? distS : f === "W" ? distW : distE
+			return d <= min + tol
+		})
+		const face = near.includes(hint) ? hint : (near[0] ?? hint)
+		if (face === "N") return { x: cx, y: el.y }
+		if (face === "S") return { x: cx, y: el.y + el.height }
+		if (face === "W") return { x: el.x, y: cy }
+		return { x: el.x + el.width, y: cy }
+	}
+
+	function normaliseEndpoints(pts: Point[], srcEl: NodeLayout, tgtEl: NodeLayout): Point[] {
+		if (pts.length < 2) return pts
+		const out = pts.map((p) => ({ ...p }))
+		const n = out.length
+		const first = out[0]
+		const second = out[1]
+		const last = out[n - 1]
+		const prev = out[n - 2]
+		if (!first || !second || !last) return out
+
+		// Source: direction of departure → snap first point to that face.
+		const srcHint = segDir(first, second)
+		const snappedSrc = faceCentre(srcEl, first, srcHint)
+		if (n >= 3 && second) {
+			// Keep second point orthogonal to the snapped source.
+			if (srcHint === "N" || srcHint === "S") second.x = snappedSrc.x
+			else second.y = snappedSrc.y
+		}
+		out[0] = snappedSrc
+
+		// Target: direction of arrival → snap last point to the face it enters.
+		const preTarget = n >= 3 ? prev : out[0]
+		if (!preTarget) return out
+		const arrDir = segDir(preTarget, last)
+		const tgtHint: "N" | "S" | "E" | "W" =
+			arrDir === "S" ? "N" : arrDir === "N" ? "S" : arrDir === "E" ? "W" : "E"
+		const snappedTgt = faceCentre(tgtEl, last, tgtHint)
+		if (n >= 3 && prev) {
+			if (arrDir === "N" || arrDir === "S") prev.x = snappedTgt.x
+			else prev.y = snappedTgt.y
+		}
+		out[n - 1] = snappedTgt
+
+		return out
 	}
 
 	// ── Phase 4: Route all edges (re-callable) ────────────────────────────────
@@ -840,6 +909,7 @@ export function layoutWithPaths(
 				}
 			}
 
+			route.points = normaliseEndpoints(route.points, src, tgt)
 			occupyPoints(route.points)
 			result.push({ edgeId: sf.id, sourceId: sf.sourceRef, targetId: sf.targetRef, ...route })
 		}
