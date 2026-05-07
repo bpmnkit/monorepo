@@ -466,6 +466,14 @@ function parseProcessContents(element: XmlElement): {
 		if (FLOW_ELEMENT_TYPES.has(ln)) {
 			const fe = parseFlowElement(child)
 			if (fe) flowElements.push(fe)
+			// Boundary events are normally process-level siblings, but some tools
+			// nest them inside their host task element.  Hoist them here.
+			for (const grandchild of child.children) {
+				if (localName(grandchild.name) === "boundaryEvent") {
+					const bfe = parseFlowElement(grandchild)
+					if (bfe) flowElements.push(bfe)
+				}
+			}
 		} else if (ln === "sequenceFlow") {
 			sequenceFlows.push(parseSequenceFlow(child))
 		} else if (ln === "textAnnotation") {

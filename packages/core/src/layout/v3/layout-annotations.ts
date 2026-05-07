@@ -65,6 +65,7 @@ export function layoutWithAnnotations(
 
 	// ── Grid helpers ──────────────────────────────────────────────────────────
 
+	// colOf/trackOf: column/track for the CENTER of an element (used for anchor lookup).
 	function colOf(nx: number, nw: number): number {
 		const cx = nx + nw / 2
 		for (const b of columnBands) if (cx >= b.x && cx < b.x + COLUMN_WIDTH) return b.column
@@ -75,6 +76,17 @@ export function layoutWithAnnotations(
 		const cy = ny + nh / 2
 		for (const b of trackBands) if (cy >= b.y && cy < b.y + TRACK_HEIGHT) return b.track
 		return Math.floor((cy - minBandY) / TRACK_HEIGHT) + trackMin
+	}
+
+	// colOfX/trackOfY: column/track for a raw coordinate (used for occupancy marking).
+	function colOfX(x: number): number {
+		for (const b of columnBands) if (x >= b.x && x < b.x + COLUMN_WIDTH) return b.column
+		return Math.floor(x / COLUMN_WIDTH)
+	}
+
+	function trackOfY(y: number): number {
+		for (const b of trackBands) if (y >= b.y && y < b.y + TRACK_HEIGHT) return b.track
+		return Math.floor((y - minBandY) / TRACK_HEIGHT) + trackMin
 	}
 
 	function cellX(col: number): number {
@@ -94,10 +106,16 @@ export function layoutWithAnnotations(
 	const occupied = new Set<string>()
 
 	for (const n of nodes) {
-		const col = colOf(n.x, n.width)
-		const track = trackOf(n.y, n.height)
-		const span = Math.max(1, Math.ceil(n.width / COLUMN_WIDTH))
-		for (let c = col; c < col + span; c++) occupied.add(`${c},${track}`)
+		// Mark from the left/top edge so wide and tall nodes cover all their grid cells.
+		const col = colOfX(n.x)
+		const track = trackOfY(n.y)
+		const spanCols = Math.max(1, Math.ceil(n.width / COLUMN_WIDTH))
+		const spanRows = Math.max(1, Math.ceil(n.height / TRACK_HEIGHT))
+		for (let r = track; r < track + spanRows; r++) {
+			for (let c = col; c < col + spanCols; c++) {
+				occupied.add(`${c},${r}`)
+			}
+		}
 	}
 
 	function isFree(col: number, track: number, widthInCols: number): boolean {

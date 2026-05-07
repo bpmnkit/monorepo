@@ -18,7 +18,7 @@
  *             tasks, orphan junctions).  Each is placed to the right of its
  *             rightmost placed forward predecessor.
  */
-import type { BpmnFlowElement, BpmnSequenceFlow } from "../../bpmn/bpmn-model.js"
+import type { BpmnBoundaryEvent, BpmnFlowElement, BpmnSequenceFlow } from "../../bpmn/bpmn-model.js"
 import { ELEMENT_SIZES } from "../types.js"
 import type { GroupLayout, NodeLayout } from "./layout-group.js"
 import type { ProcessLayout } from "./layout-process.js"
@@ -117,6 +117,7 @@ export function assembleFullLayout(
 	groups: SegmentGroup[],
 	sequenceFlows: BpmnSequenceFlow[],
 	backEdgeIds: Set<string>,
+	sizeOverrides?: Map<string, { width: number; height: number }>,
 ): FullLayout {
 	const placed = new Map<string, NodeLayout>()
 	const nodeMap = new Map(flowNodes.map((n) => [n.id, n]))
@@ -125,7 +126,10 @@ export function assembleFullLayout(
 
 	function nodeSize(id: string): { width: number; height: number } {
 		const n = nodeMap.get(id)
-		return n ? (ELEMENT_SIZES[n.type] ?? { width: 100, height: 80 }) : { width: 100, height: 80 }
+		return (
+			sizeOverrides?.get(id) ??
+			(n ? (ELEMENT_SIZES[n.type] ?? { width: 100, height: 80 }) : { width: 100, height: 80 })
+		)
 	}
 
 	function placeNode(id: string, x: number, y: number): void {
@@ -225,6 +229,26 @@ export function assembleFullLayout(
 				})
 			}
 		}
+	}
+
+	// ── Phase 3b: Orphaned boundary events ───────────────────────────────────────
+	// Boundary events with no event-attachment group (e.g. when their sole
+	// outgoing edge goes directly to another junction, producing no segment) are
+	// not handled by Phase 3.  Anchor them to their host task's bottom-right edge.
+	for (const fn of flowNodes) {
+		if (fn.type !== "boundaryEvent") continue
+		if (placed.has(fn.id)) continue
+		const be = fn as BpmnBoundaryEvent
+		const host = placed.get(be.attachedToRef)
+		if (!host) continue
+		const beSz = nodeSize(fn.id)
+		placed.set(fn.id, {
+			id: fn.id,
+			x: host.x + host.width - beSz.width / 2,
+			y: host.y + host.height - beSz.height / 2,
+			width: beSz.width,
+			height: beSz.height,
+		})
 	}
 
 	// ── Phase 4: fallback for uncovered nodes ─────────────────────────────────────

@@ -236,6 +236,96 @@ export function layoutWithPaths(
 		}
 	}
 
+	// ── Phase 1b-be: Clear boundary-event host south corridors ──────────────
+	// Mirror of Phase 1b for boundary events: when a boundary event has a south-
+	// going forward path and elements on a south track occupy the same column as
+	// its host task, shift the host (and all same-track elements) east by one
+	// column — repeating until the corridor is clear.
+	// Boundary events re-anchor to their (possibly shifted) host tasks each pass.
+	{
+		const clearedHosts = new Set<string>()
+		for (const sf of sequenceFlows) {
+			if (backEdgeIds.has(sf.id)) continue
+			if (!boundaryEventIds.has(sf.sourceRef)) continue
+			if (clearedHosts.has(sf.sourceRef)) continue
+
+			const beNl = nodePosMap.get(sf.sourceRef)
+			const tgt0 = nodePosMap.get(sf.targetRef)
+			if (!beNl || !tgt0) continue
+			if (trackOf(tgt0) <= trackOf(beNl)) continue
+
+			const hostId = beHosts.get(sf.sourceRef)
+			if (!hostId) continue
+			const host = nodePosMap.get(hostId)
+			if (!host) continue
+
+			// Target is west of host — path uses south-then-west U route; no south corridor to clear.
+			const originalHostCol = colOf(host)
+			if (colOf(tgt0) < originalHostCol) continue
+
+			clearedHosts.add(sf.sourceRef)
+			const hostTrack = trackOf(host)
+
+			// Nodes with an incoming forward edge from west of the host are anchored
+			// and must not be shifted (same logic as Phase 1b).
+			const hasWestIncoming = new Set<string>()
+			for (const flow of sequenceFlows) {
+				if (backEdgeIds.has(flow.id)) continue
+				const flowSrc = nodePosMap.get(flow.sourceRef)
+				if (!flowSrc) continue
+				if (trackOf(flowSrc) === hostTrack && colOf(flowSrc) >= originalHostCol) continue
+				if (colOf(flowSrc) <= originalHostCol) hasWestIncoming.add(flow.targetRef)
+			}
+
+			for (let attempt = 0; attempt < 10; attempt++) {
+				const currHost = nodePosMap.get(hostId)
+				if (!currHost) break
+				const hostCol = colOf(currHost)
+
+				let blocked = false
+				for (const [nid, nl] of nodePosMap) {
+					if (nid === hostId) continue
+					if (boundaryEventIds.has(nid)) continue
+					if (trackOf(nl) <= hostTrack) continue
+					if (colOf(nl) !== hostCol) continue
+					blocked = true
+					break
+				}
+				if (!blocked) break
+
+				// Shift same-track elements at col ≥ hostCol east by one column.
+				for (const [nid, nl] of [...nodePosMap.entries()]) {
+					if (boundaryEventIds.has(nid)) continue
+					if (trackOf(nl) !== hostTrack) continue
+					if (colOf(nl) < hostCol) continue
+					nodePosMap.set(nid, { ...nl, x: nl.x + COLUMN_WIDTH })
+				}
+
+				// Shift other-track elements at col ≥ hostCol that have no west incoming.
+				// sf.targetRef (the south target) must stay put — it is the blocker we're clearing
+				// space for; shifting it along with the host prevents the loop from terminating.
+				for (const [nid, nl] of [...nodePosMap.entries()]) {
+					if (boundaryEventIds.has(nid)) continue
+					if (trackOf(nl) === hostTrack) continue
+					if (colOf(nl) < hostCol) continue
+					if (hasWestIncoming.has(nid)) continue
+					if (nid === sf.targetRef) continue
+					nodePosMap.set(nid, { ...nl, x: nl.x + COLUMN_WIDTH })
+				}
+
+				// Re-anchor boundary events to their (possibly shifted) host tasks.
+				for (const fn of flowNodes) {
+					if (fn.type !== "boundaryEvent") continue
+					const be = fn as BpmnBoundaryEvent
+					const beHost = nodePosMap.get(be.attachedToRef)
+					const beNl2 = nodePosMap.get(be.id)
+					if (!beHost || !beNl2) continue
+					nodePosMap.set(be.id, { ...beNl2, x: beHost.x + beHost.width - beNl2.width / 2 })
+				}
+			}
+		}
+	}
+
 	// ── Phase 1c: Shift elements north for clean east→south routing ──────────
 	// When a non-gateway element has a forward south-east edge and the east
 	// corridor at its track level is blocked by same-track elements, shift the

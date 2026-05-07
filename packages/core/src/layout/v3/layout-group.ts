@@ -38,8 +38,11 @@ export interface GroupLayout {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function nodeSize(node: BpmnFlowElement): { width: number; height: number } {
-	return ELEMENT_SIZES[node.type] ?? { width: 100, height: 80 }
+function nodeSize(
+	node: BpmnFlowElement,
+	overrides?: Map<string, { width: number; height: number }>,
+): { width: number; height: number } {
+	return overrides?.get(node.id) ?? ELEMENT_SIZES[node.type] ?? { width: 100, height: 80 }
 }
 
 function findEdge(
@@ -57,6 +60,7 @@ function layoutGatewayPair(
 	segMap: Map<string, AtomicSegment>,
 	nodeMap: Map<string, BpmnFlowElement>,
 	sequenceFlows: BpmnSequenceFlow[],
+	overrides?: Map<string, { width: number; height: number }>,
 ): GroupLayout {
 	const nodes: NodeLayout[] = []
 	const edges: EdgeLayout[] = []
@@ -67,14 +71,14 @@ function layoutGatewayPair(
 
 	const splitNode = group.splitId ? nodeMap.get(group.splitId) : undefined
 	const joinNode = group.joinId ? nodeMap.get(group.joinId) : undefined
-	const splitSz = splitNode ? nodeSize(splitNode) : { width: 50, height: 50 }
-	const joinSz = joinNode ? nodeSize(joinNode) : { width: 50, height: 50 }
+	const splitSz = splitNode ? nodeSize(splitNode, overrides) : { width: 50, height: 50 }
+	const joinSz = joinNode ? nodeSize(joinNode, overrides) : { width: 50, height: 50 }
 
 	// Lane heights: tallest node in branch + padding
 	const lanes = branchSegs.map((seg) => {
 		const maxH = seg.nodeIds.reduce((acc, id) => {
 			const n = nodeMap.get(id)
-			return Math.max(acc, n ? nodeSize(n).height : 80)
+			return Math.max(acc, n ? nodeSize(n, overrides).height : 80)
 		}, 0)
 		return { seg, laneH: Math.max(maxH, splitSz.height, joinSz.height) + LANE_PAD * 2 }
 	})
@@ -117,7 +121,7 @@ function layoutGatewayPair(
 
 		for (const nid of seg.nodeIds) {
 			const n = nodeMap.get(nid)
-			const s = n ? nodeSize(n) : { width: 100, height: 80 }
+			const s = n ? nodeSize(n, overrides) : { width: 100, height: 80 }
 			nodes.push({
 				id: nid,
 				x: nodeX,
@@ -158,6 +162,7 @@ function layoutEventAttachment(
 	segMap: Map<string, AtomicSegment>,
 	nodeMap: Map<string, BpmnFlowElement>,
 	sequenceFlows: BpmnSequenceFlow[],
+	overrides?: Map<string, { width: number; height: number }>,
 ): GroupLayout {
 	const nodes: NodeLayout[] = []
 	const edges: EdgeLayout[] = []
@@ -168,8 +173,8 @@ function layoutEventAttachment(
 
 	const hostNode = group.hostNodeId ? nodeMap.get(group.hostNodeId) : undefined
 	const eventNode = group.eventNodeId ? nodeMap.get(group.eventNodeId) : undefined
-	const hostSz = hostNode ? nodeSize(hostNode) : { width: 100, height: 80 }
-	const eventSz = eventNode ? nodeSize(eventNode) : { width: 36, height: 36 }
+	const hostSz = hostNode ? nodeSize(hostNode, overrides) : { width: 100, height: 80 }
+	const eventSz = eventNode ? nodeSize(eventNode, overrides) : { width: 36, height: 36 }
 
 	// Host task at origin
 	if (hostNode && group.hostNodeId) {
@@ -202,7 +207,7 @@ function layoutEventAttachment(
 
 		for (const nid of seg.nodeIds) {
 			const n = nodeMap.get(nid)
-			const s = n ? nodeSize(n) : { width: 100, height: 80 }
+			const s = n ? nodeSize(n, overrides) : { width: 100, height: 80 }
 			nodes.push({
 				id: nid,
 				x: nodeX,
@@ -221,7 +226,7 @@ function layoutEventAttachment(
 		// Place the terminal node (toId) at the end of the path
 		if (seg.toId) {
 			const toNode = nodeMap.get(seg.toId)
-			const toSz = toNode ? nodeSize(toNode) : { width: 36, height: 36 }
+			const toSz = toNode ? nodeSize(toNode, overrides) : { width: 36, height: 36 }
 			nodes.push({
 				id: seg.toId,
 				x: nodeX,
@@ -248,10 +253,11 @@ export function layoutGroup(
 	segments: AtomicSegment[],
 	flowNodes: BpmnFlowElement[],
 	sequenceFlows: BpmnSequenceFlow[],
+	sizeOverrides?: Map<string, { width: number; height: number }>,
 ): GroupLayout {
 	const segMap = new Map(segments.map((s) => [s.id, s]))
 	const nodeMap = new Map(flowNodes.map((n) => [n.id, n]))
 	return group.kind === "gateway-pair"
-		? layoutGatewayPair(group, segMap, nodeMap, sequenceFlows)
-		: layoutEventAttachment(group, segMap, nodeMap, sequenceFlows)
+		? layoutGatewayPair(group, segMap, nodeMap, sequenceFlows, sizeOverrides)
+		: layoutEventAttachment(group, segMap, nodeMap, sequenceFlows, sizeOverrides)
 }
