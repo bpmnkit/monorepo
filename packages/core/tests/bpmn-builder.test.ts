@@ -2276,3 +2276,65 @@ describe("disconnectedStartEvent alias", () => {
 		expect(p.sequenceFlows.some((f) => f.sourceRef === "s2" && f.targetRef === "t2")).toBe(true)
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 6 — DiagramBuilder / Bpmn.createDiagram()
+// -----------------------------------------------------------------------
+
+describe("DiagramBuilder", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("builds a definitions with a user-provided id", () => {
+		const defs = Bpmn.createDiagram("OrderSystem")
+			.process("order-flow", (p) =>
+				p.startEvent("s").serviceTask("t1", { name: "T", taskType: "x" }).endEvent("e"),
+			)
+			.build()
+
+		expect(defs.id).toBe("OrderSystem")
+		expect(defs.processes).toHaveLength(1)
+		expect(defs.processes[0]?.id).toBe("order-flow")
+	})
+
+	it("builds a definitions with two processes and no id conflict", () => {
+		const defs = Bpmn.createDiagram("TwoProcess")
+			.process("caller", (p) =>
+				p.startEvent("s1").callActivity("call-callee", { processId: "callee" }).endEvent("e1"),
+			)
+			.process("callee", (p) =>
+				p.startEvent("s2").serviceTask("work", { name: "Work", taskType: "work" }).endEvent("e2"),
+			)
+			.build()
+
+		expect(defs.processes).toHaveLength(2)
+		expect(defs.processes[0]?.id).toBe("caller")
+		expect(defs.processes[1]?.id).toBe("callee")
+	})
+
+	it("collects root messages across processes", () => {
+		const defs = Bpmn.createDiagram("Messaging")
+			.process("sender", (p) =>
+				p
+					.startEvent("s")
+					.intermediateThrowEvent("throw", { messageName: "order-placed" })
+					.endEvent("e"),
+			)
+			.process("receiver", (p) =>
+				p.startEvent("catch", { messageName: "order-placed" }).endEvent("e2"),
+			)
+			.build()
+
+		// Both processes reference "order-placed" — messages should be collected
+		expect(defs.messages.length).toBeGreaterThanOrEqual(1)
+	})
+
+	it("defaults definitions id to 'Definitions_1' when not provided", () => {
+		const defs = Bpmn.createDiagram()
+			.process("p", (p) => p.startEvent("s").endEvent("e"))
+			.build()
+
+		expect(defs.id).toBe("Definitions_1")
+	})
+})

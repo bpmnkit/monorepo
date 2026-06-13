@@ -1686,3 +1686,61 @@ export class ProcessBuilder {
 		this.lastNodeId = element.id
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Diagram builder — multi-process support
+// ---------------------------------------------------------------------------
+
+/**
+ * Builder for a complete BPMN definitions document containing one or more processes.
+ * Use `Bpmn.createDiagram(id?)` to obtain an instance.
+ */
+export class DiagramBuilder {
+	private readonly _id: string
+	private readonly _processes: BpmnProcess[] = []
+	private readonly _errors: BpmnError[] = []
+	private readonly _messages: BpmnMessage[] = []
+
+	constructor(id: string) {
+		this._id = id
+	}
+
+	process(id: string, callback: (b: ProcessBuilder) => void): this {
+		const builder = new ProcessBuilder(id)
+		callback(builder)
+		const defs = builder.build()
+		this._processes.push(...defs.processes)
+		this._errors.push(...defs.errors)
+		this._messages.push(...defs.messages)
+		return this
+	}
+
+	build(): BpmnDefinitions {
+		return {
+			id: this._id,
+			targetNamespace: "http://bpmn.io/schema/bpmn",
+			exporter: "@bpmnkit/core",
+			exporterVersion: "0.0.1",
+			namespaces: {
+				bpmn: "http://www.omg.org/spec/BPMN/20100524/MODEL",
+				bpmndi: "http://www.omg.org/spec/BPMN/20100524/DI",
+				dc: "http://www.omg.org/spec/DD/20100524/DC",
+				di: "http://www.omg.org/spec/DD/20100524/DI",
+				zeebe: "http://camunda.org/schema/zeebe/1.0",
+				modeler: "http://camunda.org/schema/modeler/1.0",
+				xsi: "http://www.w3.org/2001/XMLSchema-instance",
+			},
+			unknownAttributes: {
+				"modeler:executionPlatform": "Camunda Cloud",
+				"modeler:executionPlatformVersion": "8.6.0",
+			},
+			errors: this._errors,
+			escalations: [],
+			messages: this._messages,
+			signals: [],
+			collaborations: [],
+			processes: this._processes,
+			diagrams: [],
+		}
+	}
+}

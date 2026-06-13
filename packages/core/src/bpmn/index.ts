@@ -1,5 +1,5 @@
 import { applyAutoLayout } from "./auto-layout.js"
-import { ProcessBuilder } from "./bpmn-builder.js"
+import { DiagramBuilder, ProcessBuilder } from "./bpmn-builder.js"
 import type { BpmnDefinitions } from "./bpmn-model.js"
 import { parseBpmn } from "./bpmn-parser.js"
 import { serializeBpmn } from "./bpmn-serializer.js"
@@ -88,6 +88,23 @@ export const Bpmn = {
 	 */
 	createProcess(processId: string): ProcessBuilder {
 		return new ProcessBuilder(processId)
+	},
+
+	/**
+	 * Create a multi-process BPMN definitions document using the fluent builder API.
+	 *
+	 * @param id - Unique identifier for the definitions element (defaults to `"Definitions_1"`).
+	 *
+	 * @example
+	 * ```typescript
+	 * const defs = Bpmn.createDiagram("OrderSystem")
+	 *   .process("caller", (p) => p.startEvent("s").callActivity("call", { processId: "callee" }).endEvent("e"))
+	 *   .process("callee", (p) => p.startEvent("s2").serviceTask("work", { name: "Work", taskType: "work" }).endEvent("e2"))
+	 *   .build()
+	 * ```
+	 */
+	createDiagram(id = "Definitions_1"): DiagramBuilder {
+		return new DiagramBuilder(id)
 	},
 
 	/**
