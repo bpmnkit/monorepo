@@ -62,3 +62,62 @@ describe("camunda_search", () => {
 		await expect(handleCamundaSearch("while(true){}")).rejects.toThrow()
 	}, 10000)
 })
+
+import { vi } from "vitest"
+import { handleCamundaExecute } from "../src/aikit-mcp.js"
+
+vi.mock("@bpmnkit/api", () => ({
+	CamundaClient: vi.fn().mockImplementation(() => ({
+		processInstance: {
+			searchProcessInstances: vi.fn().mockResolvedValue({
+				items: [{ processInstanceKey: "123", state: "ACTIVE" }],
+				total: 1,
+			}),
+		},
+		incident: {
+			resolveIncident: vi.fn().mockResolvedValue(undefined),
+		},
+	})),
+}))
+
+vi.mock("@bpmnkit/profiles", async (orig) => ({
+	...(await orig<typeof import("@bpmnkit/profiles")>()),
+	getActiveProfile: vi.fn().mockReturnValue({
+		name: "test",
+		apiType: "c8" as const,
+		config: { baseUrl: "http://localhost:8080", auth: { type: "none" as const } },
+		createdAt: null,
+	}),
+}))
+
+describe("camunda_execute", () => {
+	it("runs code with camunda proxy and returns JSON", async () => {
+		const result = await handleCamundaExecute(
+			`const r = await camunda.processInstance.searchProcessInstances({ filter: { state: 'ACTIVE' } })
+       return r.items`,
+		)
+		const parsed = JSON.parse(result)
+		expect(parsed).toEqual([{ processInstanceKey: "123", state: "ACTIVE" }])
+	})
+
+	it("throws when no active profile", async () => {
+		const { getActiveProfile } = await import("@bpmnkit/profiles")
+		vi.mocked(getActiveProfile).mockReturnValueOnce(null)
+		await expect(handleCamundaExecute("return 1")).rejects.toThrow("No active Camunda profile")
+	})
+
+	it("propagates API errors from the host function", async () => {
+		const { CamundaClient } = await import("@bpmnkit/api")
+		vi.mocked(CamundaClient).mockImplementationOnce(
+			() =>
+				({
+					incident: {
+						resolveIncident: vi.fn().mockRejectedValue(new Error("404 Not Found")),
+					},
+				}) as never,
+		)
+		await expect(
+			handleCamundaExecute(`await camunda.incident.resolveIncident({ incidentKey: 'bad' })`),
+		).rejects.toThrow()
+	})
+})

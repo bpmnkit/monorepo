@@ -23,6 +23,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { homedir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import { createInterface } from "node:readline"
+import { CamundaClient } from "@bpmnkit/api"
 import { Bpmn, compactify, optimize } from "@bpmnkit/core"
 import { ALL_PATTERNS, findPattern } from "@bpmnkit/patterns"
 import { getActiveProfile, getAuthHeader } from "@bpmnkit/profiles"
@@ -997,6 +998,29 @@ const TOOLS = [
 			required: ["code"],
 		},
 	},
+	{
+		name: "camunda_execute",
+		description:
+			"Execute JavaScript against the authenticated Camunda 8 REST API.\n" +
+			"Has access to `camunda` — a proxy over the live CamundaClient.\n" +
+			"Call camunda_search first to discover resource group names and method parameter shapes.\n\n" +
+			"Example — list active process instances:\n" +
+			"  const r = await camunda.processInstance.searchProcessInstances({ filter: { state: 'ACTIVE' } })\n" +
+			"  return r.items.map(i => ({ key: i.processInstanceKey, id: i.bpmnProcessId }))\n\n" +
+			"Example — resolve an incident:\n" +
+			"  await camunda.incident.resolveIncident({ incidentKey: '9007199254741099' })\n" +
+			"  return 'resolved'",
+		inputSchema: {
+			type: "object",
+			properties: {
+				code: {
+					type: "string",
+					description: "Async JavaScript. Has `camunda` proxy. Return value is JSON-serialized.",
+				},
+			},
+			required: ["code"],
+		},
+	},
 ] as const
 
 // ── JSON-RPC 2.0 stdio loop ───────────────────────────────────────────────────
@@ -1017,6 +1041,52 @@ interface JsonRpcResponse {
 
 export async function handleCamundaSearch(code: string): Promise<string> {
 	const result = await runSandboxed(code, { data: { spec: CAMUNDA_SPEC } }, 5000)
+	return JSON.stringify(result)
+}
+
+// Bootstrap injected into the isolate — builds a camunda proxy over __dispatch.
+// The proxy intercepts resource.method(args) calls and routes them to the host client.
+const CAMUNDA_PROXY_BOOTSTRAP = `
+const camunda = new Proxy({}, {
+  get(_, resource) {
+    return new Proxy({}, {
+      get(_, method) {
+        return async (args) => {
+          const json = await __dispatch.apply(
+            undefined,
+            [resource, method, JSON.stringify(args ?? null)],
+            { result: { promise: true, copy: true } }
+          )
+          return JSON.parse(json)
+        }
+      }
+    })
+  }
+})
+`
+
+export async function handleCamundaExecute(code: string): Promise<string> {
+	const profile = getActiveProfile()
+	if (!profile) throw new Error("No active Camunda profile")
+
+	const client = new CamundaClient(profile.config)
+
+	const dispatch: HostFunction = async (resource: unknown, method: unknown, argsJson: unknown) => {
+		const rc = (
+			client as unknown as Record<string, Record<string, (a: unknown) => Promise<unknown>>>
+		)[String(resource)]
+		if (!rc) throw new Error(`Unknown resource: ${resource}`)
+		const fn = rc[String(method)]
+		if (typeof fn !== "function") throw new Error(`Unknown method: ${resource}.${method}`)
+		const result = await fn.call(rc, JSON.parse(String(argsJson)))
+		return JSON.stringify(result ?? null)
+	}
+
+	const result = await runSandboxed(
+		code,
+		{ bootstrap: CAMUNDA_PROXY_BOOTSTRAP, functions: { __dispatch: dispatch } },
+		10000,
+	)
 	return JSON.stringify(result)
 }
 
@@ -1076,6 +1146,9 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
 
 		case "camunda_search":
 			return handleCamundaSearch(args.code as string)
+
+		case "camunda_execute":
+			return handleCamundaExecute(args.code as string)
 
 		default:
 			throw new Error(`Unknown tool: ${name}`)
