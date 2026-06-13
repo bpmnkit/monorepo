@@ -22,6 +22,9 @@ export const PACKAGES = [
 			"Fluent process builder, BPMN 2.0 parser/serializer, DMN support, " +
 			"AI-compact format (compactify/expand), auto-layout (Sugiyama algorithm), " +
 			"SVG export (zero deps, all runtimes). " +
+			"Multi-process support: Bpmn.createDiagram() assembles caller/callee process pairs in one definitions document. " +
+			"Full branching inside sub-processes (exclusiveGateway, parallelGateway, branch()). " +
+			"Ergonomic boundary events via withBoundary() — cursor auto-restores to main flow after the error path. " +
 			"Includes 22 TypeScript type guard predicates (isBpmnServiceTask, isBpmnGateway…), " +
 			"typed error classes (ParseError, ValidationError — instanceof-catchable), " +
 			"and element lookup utilities (findElement, getZeebeExtensions, etc.)",
@@ -63,6 +66,9 @@ export const PACKAGES = [
 
 export const FEATURES = [
 	"Fluent builder API: chain .startEvent().serviceTask().exclusiveGateway().branch()...",
+	"Multi-process definitions: Bpmn.createDiagram(id) assembles multiple processes (caller/callee, sub-flows) into one BPMN definitions document",
+	"Sub-process branching: full gateway and branch() support inside subProcess() callbacks, with auto-join insertion",
+	"Ergonomic boundary events: .withBoundary(id, options, handler) attaches error/timeout paths and auto-restores the main flow cursor",
 	"Auto-layout: Sugiyama algorithm produces clean diagrams with no coordinate math",
 	"AI-native: compact intermediate format fits an entire diagram in a single LLM prompt",
 	"Camunda 8 ready: native Zeebe task definitions, IO mappings, connectors, forms",
@@ -168,6 +174,29 @@ const xml = Bpmn.export(
         .endEvent("end-ok")
     )
     .branch("no", (b) => b.defaultFlow().endEvent("end-no"))
+    .withAutoLayout()
+    .build()
+);`,
+
+	withBoundary: `\
+const xml = Bpmn.export(
+  Bpmn.createProcess("payment-flow")
+    .startEvent("start")
+    .serviceTask("charge", {
+      name: "Charge Card",
+      taskType: "payment-charge",
+    })
+    .withBoundary("on-fail", { errorCode: "PAYMENT_FAILED" }, (p) =>
+      p
+        .serviceTask("notify", { taskType: "send-email" })
+        .endEvent("end-failed"),
+    )
+    // main flow continues from "charge" — not from boundary
+    .serviceTask("fulfill", {
+      name: "Fulfill Order",
+      taskType: "warehouse-pick",
+    })
+    .endEvent("end-ok")
     .withAutoLayout()
     .build()
 );`,
@@ -365,6 +394,28 @@ engine.start(<span class="str">"hello"</span>);`,
 <span class="comment">// React to lifecycle events</span>
 client.<span class="fn">on</span>(<span class="str">"request"</span>, (e) => console.log(e.method, e.url));
 client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => metrics.<span class="fn">inc</span>(<span class="str">"api.error"</span>));`,
+
+	withBoundary: `<span class="kw">const</span> xml = Bpmn.<span class="fn">export</span>(
+  Bpmn.<span class="fn">createProcess</span>(<span class="str">"payment-flow"</span>)
+    .<span class="fn">startEvent</span>(<span class="str">"start"</span>)
+    .<span class="fn">serviceTask</span>(<span class="str">"charge"</span>, {
+      name: <span class="str">"Charge Card"</span>,
+      taskType: <span class="str">"payment-charge"</span>,
+    })
+    .<span class="fn">withBoundary</span>(<span class="str">"on-fail"</span>, { errorCode: <span class="str">"PAYMENT_FAILED"</span> }, (p) =>
+      p
+        .<span class="fn">serviceTask</span>(<span class="str">"notify"</span>, { taskType: <span class="str">"send-email"</span> })
+        .<span class="fn">endEvent</span>(<span class="str">"end-failed"</span>),
+    )
+    <span class="comment">// main flow continues from "charge" — not from boundary</span>
+    .<span class="fn">serviceTask</span>(<span class="str">"fulfill"</span>, {
+      name: <span class="str">"Fulfill Order"</span>,
+      taskType: <span class="str">"warehouse-pick"</span>,
+    })
+    .<span class="fn">endEvent</span>(<span class="str">"end-ok"</span>)
+    .<span class="fn">withAutoLayout</span>()
+    .<span class="fn">build</span>()
+);`,
 
 	dmnTable: `<span class="kw">import</span> { Dmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
 

@@ -1844,3 +1844,517 @@ describe("BpmnProcessBuilder", () => {
 		})
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 1 regression — factory extraction
+// -----------------------------------------------------------------------
+
+describe("factory extraction regression", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("service task with modeler template in a branch still sets unknownAttributes", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("yes", (b) =>
+					b
+						.defaultFlow()
+						.serviceTask("t1", {
+							name: "Templated",
+							taskType: "worker",
+							modelerTemplate: "io.example.v1",
+							modelerTemplateVersion: "3",
+						})
+						.connectTo("end"),
+				)
+				.branch("no", (b) => b.condition("= false").endEvent())
+				.endEvent("end")
+				.build(),
+		)
+
+		const t1 = defined(process.flowElements.find((e) => e.id === "t1"))
+		expect(t1.unknownAttributes["zeebe:modelerTemplate"]).toBe("io.example.v1")
+		expect(t1.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("3")
+	})
+
+	it("user task with formId in a sub-process sets zeebe:formDefinition extension", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.subProcess("sub", (b) => {
+					b.startEvent("ss").userTask("ut", { formId: "form-abc" }).endEvent("se")
+				})
+				.endEvent("e")
+				.build(),
+		)
+
+		const sub = defined(process.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		const ut = defined(sub.flowElements.find((e) => e.id === "ut"))
+		const formDef = ut.extensionElements.find((x) => x.name === "zeebe:formDefinition")
+		expect(formDef).toBeDefined()
+		expect(formDef?.attributes.formId).toBe("form-abc")
+	})
+
+	it("businessRuleTask with taskType in a branch sets zeebe:taskDefinition", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("rule-path", (b) =>
+				b.defaultFlow().businessRuleTask("rule", { taskType: "evaluate-worker" }).connectTo("end"),
+			)
+			.branch("other", (b) => b.condition("= false").endEvent())
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		const rule = defined(p.flowElements.find((e) => e.id === "rule"))
+		const taskDef = rule.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		expect(taskDef).toBeDefined()
+		expect(taskDef?.attributes.type).toBe("evaluate-worker")
+	})
+})
+
+// -----------------------------------------------------------------------
+// Task 2 — SubProcessContentBuilder branching
+// -----------------------------------------------------------------------
+
+describe("SubProcessContentBuilder branching", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("sub-process supports exclusive gateway with branches to separate end events", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.exclusiveGateway("gw")
+					.branch("approve", (br) =>
+						br
+							.condition("= approved")
+							.serviceTask("approve-task", { name: "Approve", taskType: "approve" })
+							.endEvent("se-approve"),
+					)
+					.branch("reject", (br) =>
+						br
+							.defaultFlow()
+							.serviceTask("reject-task", { name: "Reject", taskType: "reject" })
+							.endEvent("se-reject"),
+					)
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		expect(sub.flowElements.some((e) => e.id === "approve-task")).toBe(true)
+		expect(sub.flowElements.some((e) => e.id === "reject-task")).toBe(true)
+		// Gateway flows to branch tasks
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "gw" && f.targetRef === "approve-task"),
+		).toBe(true)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "gw" && f.targetRef === "reject-task"),
+		).toBe(true)
+		// Branch tasks flow to their respective end events
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "approve-task" && f.targetRef === "se-approve"),
+		).toBe(true)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "reject-task" && f.targetRef === "se-reject"),
+		).toBe(true)
+		// No auto-join needed (no convergence)
+		expect(sub.flowElements.some((e) => e.id === "gw_join")).toBe(false)
+	})
+
+	it("sub-process auto-inserts join gateway when branches converge", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.exclusiveGateway("gw")
+					.branch("a", (br) =>
+						br
+							.condition("= x > 0")
+							.serviceTask("ta", { name: "A", taskType: "a" })
+							.connectTo("merge"),
+					)
+					.branch("b", (br) =>
+						br.defaultFlow().serviceTask("tb", { name: "B", taskType: "b" }).connectTo("merge"),
+					)
+					.serviceTask("merge", { name: "After", taskType: "after" })
+					.endEvent("se")
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		const join = sub.flowElements.find((e) => e.id === "gw_join")
+		expect(join).toBeDefined()
+		expect(join?.type).toBe("exclusiveGateway")
+		// Verify flows: ta→gw_join, tb→gw_join, gw_join→merge
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "ta" && f.targetRef === "gw_join")).toBe(
+			true,
+		)
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "tb" && f.targetRef === "gw_join")).toBe(
+			true,
+		)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "gw_join" && f.targetRef === "merge"),
+		).toBe(true)
+		// Original ta→merge and tb→merge flows should not exist (replaced by gw_join)
+		expect(sub.sequenceFlows.some((f) => f.targetRef === "merge" && f.sourceRef === "ta")).toBe(
+			false,
+		)
+		expect(sub.sequenceFlows.some((f) => f.targetRef === "merge" && f.sourceRef === "tb")).toBe(
+			false,
+		)
+	})
+
+	it("sub-process supports connectTo for loop back", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.serviceTask("work", { name: "Work", taskType: "work" })
+					.exclusiveGateway("check")
+					.branch("done", (br) => br.condition("= done").endEvent("se"))
+					.branch("retry", (br) => br.defaultFlow().connectTo("work"))
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "check" && f.targetRef === "work")).toBe(
+			true,
+		)
+	})
+
+	it("sub-process supports businessRuleTask and sendTask", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.businessRuleTask("rule", { decisionId: "approval-decision", resultVariable: "decision" })
+					.sendTask("notify", { name: "Notify" })
+					.endEvent("se")
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		expect(sub.flowElements.some((e) => e.id === "rule")).toBe(true)
+		expect(sub.flowElements.some((e) => e.id === "notify")).toBe(true)
+	})
+})
+
+// -----------------------------------------------------------------------
+// Task 3 — Build-time validation
+// -----------------------------------------------------------------------
+
+describe("build-time validation", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("throws when connectTo references an ID that does not exist", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("t1", { name: "T", taskType: "x" })
+				.connectTo("nonexistent")
+				.endEvent("e")
+				.build(),
+		).toThrow(/nonexistent/)
+	})
+
+	it("allows connectTo with a forward reference that is satisfied later", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) =>
+					b.condition("= x").serviceTask("t1", { name: "A", taskType: "a" }).connectTo("end"),
+				)
+				.branch("b", (b) => b.defaultFlow().connectTo("end"))
+				.endEvent("end")
+				.build(),
+		).not.toThrow()
+	})
+
+	it("strict mode throws when auto-join gateway would be inserted", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) =>
+					b.condition("= x").serviceTask("t1", { name: "A", taskType: "a" }).connectTo("after"),
+				)
+				.branch("b", (b) => b.defaultFlow().connectTo("after"))
+				.serviceTask("after", { name: "After", taskType: "z" })
+				.endEvent("end")
+				.build({ strict: true }),
+		).toThrow(/auto-join/)
+	})
+
+	it("strict mode passes when join gateway is explicit", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) =>
+					b.condition("= x").serviceTask("t1", { name: "A", taskType: "a" }).connectTo("join"),
+				)
+				.branch("b", (b) => b.defaultFlow().connectTo("join"))
+				.exclusiveGateway("join")
+				.endEvent("end")
+				.build({ strict: true }),
+		).not.toThrow()
+	})
+})
+
+// -----------------------------------------------------------------------
+// Task 4 — withBoundary ergonomics
+// -----------------------------------------------------------------------
+
+describe("withBoundary", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("attaches error boundary to the preceding task and main flow continues", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.serviceTask("validate", { name: "Validate", taskType: "validate" })
+			.withBoundary("on-err", { errorCode: "INVALID", cancelActivity: true }, (p) =>
+				p.serviceTask("handle", { name: "Handle", taskType: "handle-err" }).endEvent("err-end"),
+			)
+			.serviceTask("next", { name: "Next", taskType: "next" })
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		// boundary event is attached to "validate"
+		const boundary = p.flowElements.find((e) => e.id === "on-err")
+		expect(boundary).toBeDefined()
+		if (boundary?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(boundary.attachedToRef).toBe("validate")
+
+		// main flow: validate → next (not validate → handle)
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "validate" && f.targetRef === "next")).toBe(
+			true,
+		)
+
+		// error path: on-err → handle → err-end
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "on-err" && f.targetRef === "handle")).toBe(
+			true,
+		)
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "handle" && f.targetRef === "err-end")).toBe(
+			true,
+		)
+	})
+
+	it("timer boundary leaves main flow intact", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.serviceTask("slow", { name: "Slow", taskType: "slow" })
+			.withBoundary("on-timeout", { timerDuration: "PT30S", cancelActivity: false }, (p) =>
+				p
+					.serviceTask("escalate", { name: "Escalate", taskType: "escalate" })
+					.endEvent("timeout-end"),
+			)
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		const timeout = p.flowElements.find((e) => e.id === "on-timeout")
+		expect(timeout).toBeDefined()
+		if (timeout?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(timeout.attachedToRef).toBe("slow")
+		expect(timeout.cancelActivity).toBe(false)
+
+		// main flow: slow → end
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "slow" && f.targetRef === "end")).toBe(true)
+	})
+
+	it("throws when withBoundary is called without a preceding element", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.withBoundary("err", { errorCode: "X" }, (p) => p.endEvent())
+				.build(),
+		).toThrow(/withBoundary/)
+	})
+})
+
+// -----------------------------------------------------------------------
+// Task 5 — Task defaults + disconnectedStartEvent alias
+// -----------------------------------------------------------------------
+
+describe("task defaults", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("applies default retries to all subsequent service tasks", () => {
+		const defs = Bpmn.createProcess("proc")
+			.defaults({ serviceTask: { retries: "5" } })
+			.startEvent("s")
+			.serviceTask("t1", { name: "T1", taskType: "worker-a" })
+			.serviceTask("t2", { name: "T2", taskType: "worker-b" })
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		for (const id of ["t1", "t2"]) {
+			const task = defined(p.flowElements.find((e) => e.id === id))
+			const taskDef = task.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+			expect(taskDef?.attributes.retries, `${id} retries`).toBe("5")
+		}
+	})
+
+	it("explicit retries override the default", () => {
+		const defs = Bpmn.createProcess("proc")
+			.defaults({ serviceTask: { retries: "5" } })
+			.startEvent("s")
+			.serviceTask("t1", { name: "T1", taskType: "worker-a", retries: "1" })
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const task = defined(p.flowElements.find((e) => e.id === "t1"))
+		const taskDef = task.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		expect(taskDef?.attributes.retries).toBe("1")
+	})
+
+	it("defaults do not affect service tasks added before .defaults() call", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.serviceTask("before", { name: "Before", taskType: "x" })
+			.defaults({ serviceTask: { retries: "9" } })
+			.serviceTask("after", { name: "After", taskType: "y" })
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const before = defined(p.flowElements.find((e) => e.id === "before"))
+		const taskDefBefore = before.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		// "before" had no explicit retries and defaults weren't set yet
+		expect(taskDefBefore?.attributes.retries).toBeUndefined()
+
+		const after = defined(p.flowElements.find((e) => e.id === "after"))
+		const taskDefAfter = after.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		expect(taskDefAfter?.attributes.retries).toBe("9")
+	})
+})
+
+describe("disconnectedStartEvent alias", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("disconnectedStartEvent creates a start event with no auto-connection", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s1")
+			.serviceTask("t1", { name: "T1", taskType: "x" })
+			.endEvent("e1")
+			.disconnectedStartEvent("s2")
+			.serviceTask("t2", { name: "T2", taskType: "y" })
+			.endEvent("e2")
+			.build()
+
+		const p = firstProcess(defs)
+		// s2 should have no incoming flows
+		expect(p.sequenceFlows.some((f) => f.targetRef === "s2")).toBe(false)
+		// t2 connects from s2
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "s2" && f.targetRef === "t2")).toBe(true)
+	})
+})
+
+// -----------------------------------------------------------------------
+// Task 6 — DiagramBuilder / Bpmn.createDiagram()
+// -----------------------------------------------------------------------
+
+describe("DiagramBuilder", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("builds a definitions with a user-provided id", () => {
+		const defs = Bpmn.createDiagram("OrderSystem")
+			.process("order-flow", (p) =>
+				p.startEvent("s").serviceTask("t1", { name: "T", taskType: "x" }).endEvent("e"),
+			)
+			.build()
+
+		expect(defs.id).toBe("OrderSystem")
+		expect(defs.processes).toHaveLength(1)
+		expect(defs.processes[0]?.id).toBe("order-flow")
+	})
+
+	it("builds a definitions with two processes and no id conflict", () => {
+		const defs = Bpmn.createDiagram("TwoProcess")
+			.process("caller", (p) =>
+				p.startEvent("s1").callActivity("call-callee", { processId: "callee" }).endEvent("e1"),
+			)
+			.process("callee", (p) =>
+				p.startEvent("s2").serviceTask("work", { name: "Work", taskType: "work" }).endEvent("e2"),
+			)
+			.build()
+
+		expect(defs.processes).toHaveLength(2)
+		expect(defs.processes[0]?.id).toBe("caller")
+		expect(defs.processes[1]?.id).toBe("callee")
+	})
+
+	it("collects root messages across processes", () => {
+		const defs = Bpmn.createDiagram("Messaging")
+			.process("sender", (p) =>
+				p
+					.startEvent("s")
+					.intermediateThrowEvent("throw", { messageName: "order-placed" })
+					.endEvent("e"),
+			)
+			.process("receiver", (p) =>
+				p.startEvent("catch", { messageName: "order-placed" }).endEvent("e2"),
+			)
+			.build()
+
+		// Both processes reference "order-placed" — messages should be collected
+		expect(defs.messages.length).toBeGreaterThanOrEqual(1)
+	})
+
+	it("defaults definitions id to 'Definitions_1' when not provided", () => {
+		const defs = Bpmn.createDiagram()
+			.process("p", (p) => p.startEvent("s").endEvent("e"))
+			.build()
+
+		expect(defs.id).toBe("Definitions_1")
+	})
+})
+
+// -----------------------------------------------------------------------
+// Task 7 — exporterVersion constant
+// -----------------------------------------------------------------------
+
+describe("exporterVersion", () => {
+	it("ProcessBuilder.build() sets a non-empty exporterVersion", () => {
+		const defs = Bpmn.createProcess("proc").startEvent("s").endEvent("e").build()
+		expect(defs.exporterVersion).toBeTruthy()
+		expect(typeof defs.exporterVersion).toBe("string")
+	})
+
+	it("DiagramBuilder.build() sets the same exporterVersion as ProcessBuilder", () => {
+		const single = Bpmn.createProcess("proc").startEvent("s").endEvent("e").build()
+		const multi = Bpmn.createDiagram("D")
+			.process("proc", (p) => p.startEvent("s").endEvent("e"))
+			.build()
+		expect(multi.exporterVersion).toBe(single.exporterVersion)
+	})
+})

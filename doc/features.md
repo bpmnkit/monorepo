@@ -1,5 +1,19 @@
 # Features
 
+## BPMN Builder SDK improvements (2026-06-13)
+
+Seven incremental improvements to `@bpmnkit/core`'s `bpmn-builder.ts` API:
+
+| # | Feature | Entry point |
+|---|---|---|
+| 1 | Element factory functions extracted (refactor + `userTask` `formId` fix) | internal |
+| 2 | Gateway/branch support in `SubProcessContentBuilder` | `SubProcessContentBuilder.exclusiveGateway()`, `.branch()`, etc. |
+| 3 | Build-time validation + strict mode | `Bpmn.createProcess(..., { strict: true })` |
+| 4 | Ergonomic boundary event attachment | `ProcessBuilder.withBoundary(config, cb)` |
+| 5 | Service task type default + `disconnectedStartEvent()` alias | `ProcessBuilder.disconnectedStartEvent()` |
+| 6 | Multi-process diagram builder | `Bpmn.createDiagram(id).process(...).build()` |
+| 7 | `EXPORTER_VERSION` constant (replaces hardcoded `"0.0.1"`) | internal constant in `bpmn-builder.ts` |
+
 ## CLI — `casen generate` and `casen view` (2026-04-25)
 
 ### `casen generate bpmn` — Generate BPMN files from parameters or JSON
@@ -1115,3 +1129,18 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Worker scaffolder** — `worker_scaffold` MCP tool generates TypeScript workers (`index.ts`) using `@bpmnkit/worker-client`; `tsx` for dev (no build step), `tsc` for production; multi-stage Docker in README
 - **`casen worker start [name]`** — starts scaffolded workers from `./workers/` directory via `npm start`
 - **`.claude/mcp.json`** — project-level MCP config registers `bpmnkit-aikit` server with Claude Code automatically
+
+## Code Mode MCP Tools (2026-06-13)
+
+Implements the Cloudflare Code Mode pattern: two meta-tools per domain replace enumerated API tools. The AI writes JS to introspect a spec, then writes JS to call the API.
+
+### Camunda REST API (`camunda_search` + `camunda_execute`)
+- **`camunda_search`** — runs arbitrary JS in a sandboxed V8 isolate (`isolated-vm`) with `CAMUNDA_SPEC` in scope (34 resource groups, 179 methods); returns whatever the code returns as JSON. Use to explore the API before executing.
+- **`camunda_execute`** — runs arbitrary JS in a sandboxed V8 isolate with a `camunda` Proxy that routes `camunda.resource.method(args)` calls to a real `CamundaClient` on the host. Full Camunda REST API accessible in one tool.
+- **`CAMUNDA_SPEC`** — auto-generated from `@bpmnkit/api` types; includes description, endpoint, params, returns for every method.
+- **Sandbox** — `isolated-vm` V8 isolate per call; 64 MB memory limit; 5s timeout for search, 10s for execute; host never exposed beyond explicit `ivm.Reference` dispatch function.
+
+### TypeScript SDK (`sdk_search` + `sdk_execute`)
+- **`sdk_search`** — runs arbitrary JS in a Node `vm` context with `SDK_SPEC` in scope (5 SDK functions + compact diagram shape); returns whatever the code returns as JSON.
+- **`sdk_execute`** — runs arbitrary JS with `sdk.{parse, exportXml, optimize, layout, analyzeVariables}` helpers bound to `@bpmnkit/core`; optional `xml` argument pre-loaded into context. Use to generate, transform, or analyze BPMN diagrams.
+- **`SDK_SPEC`** — documents each SDK function with description, params, returns, usage example.

@@ -32,6 +32,22 @@ Returns a `ProcessBuilder` with the given process ID and optional name.
 const builder = Bpmn.createProcess("my-process", "My Process");
 ```
 
+### `Bpmn.createDiagram(id?)`
+
+Returns a `DiagramBuilder` for assembling multiple processes into one BPMN definitions document.
+`id` defaults to `"Definitions_1"`.
+
+```typescript
+const defs = Bpmn.createDiagram("OrderSystem")
+  .process("order-flow", (p) =>
+    p.startEvent("s").serviceTask("t", { name: "Process", taskType: "process" }).endEvent("e"),
+  )
+  .process("payment-flow", (p) =>
+    p.startEvent("s2").serviceTask("pay", { name: "Pay", taskType: "pay" }).endEvent("e2"),
+  )
+  .build();
+```
+
 ### `Bpmn.export(definitions)`
 
 Serializes a `BpmnDefinitions` object to a BPMN 2.0 XML string.
@@ -118,8 +134,11 @@ All builder methods return `this` for chaining.
 | `.intermediateThrowEvent(id, options?)` | Add a throw event |
 | `.branch(id, builder)` | Define a gateway branch |
 | `.boundaryEvent(id, options)` | Attach a boundary event to the previous task |
+| `.withBoundary(id, options, handler)` | Attach a boundary event and build its error/timeout path; cursor auto-restores to the main flow after the handler |
+| `.defaults(options)` | Set process-wide defaults (e.g. `{ serviceTask: { retries: "5" } }`) applied to all subsequent tasks |
+| `.disconnectedStartEvent(id?, options?)` | Add a start event with no auto-connection to the current cursor — alias for `addStartEvent` |
 | `.withAutoLayout()` | Apply Sugiyama layout before building |
-| `.build()` | Return the completed `BpmnProcess` |
+| `.build(options?)` | Return the completed `BpmnDefinitions`. Pass `{ strict: true }` to throw if auto-join gateways are inserted (encourages explicit topology) |
 
 ## DMN Support
 
@@ -147,6 +166,7 @@ import type {
   CompactDiagram,
   LayoutResult,
   ProcessBuilder,
+  DiagramBuilder,
   ServiceTaskOptions,
   UserTaskOptions,
   GatewayOptions,

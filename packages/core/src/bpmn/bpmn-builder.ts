@@ -27,6 +27,9 @@ import {
 } from "./rest-connector.js"
 import { type ZeebeExtensions, zeebeExtensionsToXmlElements } from "./zeebe-extensions.js"
 
+// Keep in sync with packages/core/package.json version
+const EXPORTER_VERSION = "0.0.23"
+
 // ---------------------------------------------------------------------------
 // Option types
 // ---------------------------------------------------------------------------
@@ -487,6 +490,181 @@ function makeConditionExpression(expression: string): BpmnConditionExpression {
 }
 
 // ---------------------------------------------------------------------------
+// Element factory functions — shared by all three builder classes
+// ---------------------------------------------------------------------------
+
+function makeServiceTaskEl(id: string, options: ServiceTaskOptions): BpmnFlowElement {
+	const unknownAttributes: Record<string, string> = {}
+	if (options.modelerTemplate) unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
+	if (options.modelerTemplateVersion)
+		unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
+	if (options.modelerTemplateIcon)
+		unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
+	const el = makeFlowElement(id, "serviceTask", {
+		name: options.name,
+		extensionElements: buildServiceTaskExtensions(options),
+	})
+	el.unknownAttributes = unknownAttributes
+	return el
+}
+
+function makeScriptTaskEl(id: string, options: ScriptTaskOptions): BpmnFlowElement {
+	return makeFlowElement(id, "scriptTask", {
+		name: options.name,
+		extensionElements: zeebeExtensionsToXmlElements({
+			unknownElements: [
+				{
+					name: "zeebe:script",
+					attributes: { expression: options.expression, resultVariable: options.resultVariable },
+					children: [],
+				},
+			],
+		}),
+	})
+}
+
+function makeUserTaskEl(id: string, options?: UserTaskOptions): BpmnFlowElement {
+	const ext = options?.formId
+		? zeebeExtensionsToXmlElements({ formDefinition: { formId: options.formId } })
+		: []
+	return makeFlowElement(id, "userTask", { name: options?.name, extensionElements: ext })
+}
+
+function makeBusinessRuleTaskEl(id: string, options?: BusinessRuleTaskOptions): BpmnFlowElement {
+	const ext: XmlElement[] = []
+	if (options?.taskType) {
+		ext.push(...zeebeExtensionsToXmlElements({ taskDefinition: { type: options.taskType } }))
+	}
+	if (options?.decisionId) {
+		ext.push(
+			...zeebeExtensionsToXmlElements({
+				calledDecision: {
+					decisionId: options.decisionId,
+					resultVariable: options.resultVariable ?? "result",
+				},
+			}),
+		)
+	}
+	return makeFlowElement(id, "businessRuleTask", { name: options?.name, extensionElements: ext })
+}
+
+function makeCallActivityEl(id: string, options: CallActivityOptions): BpmnFlowElement {
+	const attrs: Record<string, string> = { processId: options.processId }
+	if (options.propagateAllChildVariables !== undefined) {
+		attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
+	}
+	return makeFlowElement(id, "callActivity", {
+		name: options.name,
+		extensionElements: zeebeExtensionsToXmlElements({
+			unknownElements: [{ name: "zeebe:calledElement", attributes: attrs, children: [] }],
+		}),
+	})
+}
+
+function makeExclusiveGatewayEl(id: string, options?: GatewayOptions): BpmnFlowElement {
+	const el = makeFlowElement(id, "exclusiveGateway", options)
+	if (options?.defaultFlow && el.type === "exclusiveGateway") {
+		;(el as { default?: string }).default = options.defaultFlow
+	}
+	return el
+}
+
+function makeInclusiveGatewayEl(id: string, options?: GatewayOptions): BpmnFlowElement {
+	const el = makeFlowElement(id, "inclusiveGateway", options)
+	if (options?.defaultFlow && el.type === "inclusiveGateway") {
+		;(el as { default?: string }).default = options.defaultFlow
+	}
+	return el
+}
+
+// ---------------------------------------------------------------------------
+// Shared graph helpers — used by ProcessBuilder and SubProcessContentBuilder
+// ---------------------------------------------------------------------------
+
+function insertJoinGateways(elements: BpmnFlowElement[], flows: BpmnSequenceFlow[]): void {
+	const GATEWAY_TYPES = new Set([
+		"exclusiveGateway",
+		"parallelGateway",
+		"inclusiveGateway",
+		"eventBasedGateway",
+	])
+
+	const elementTypes = new Map<string, string>()
+	for (const el of elements) elementTypes.set(el.id, el.type)
+
+	const outCount = new Map<string, number>()
+	for (const flow of flows) {
+		outCount.set(flow.sourceRef, (outCount.get(flow.sourceRef) ?? 0) + 1)
+	}
+	const splitGateways = new Set<string>()
+	for (const [id, count] of outCount) {
+		const type = elementTypes.get(id)
+		if (type && GATEWAY_TYPES.has(type) && count >= 2) splitGateways.add(id)
+	}
+	if (splitGateways.size === 0) return
+
+	const incoming = new Map<string, BpmnSequenceFlow[]>()
+	for (const flow of flows) {
+		const arr = incoming.get(flow.targetRef)
+		if (arr) arr.push(flow)
+		else incoming.set(flow.targetRef, [flow])
+	}
+
+	for (const [targetId, inFlows] of incoming) {
+		if (inFlows.length < 2) continue
+		const splitToFlows = new Map<string, BpmnSequenceFlow[]>()
+		for (const flow of inFlows) {
+			const split = traceBackToSplit(flow.sourceRef, splitGateways, flows)
+			if (split) {
+				const arr = splitToFlows.get(split)
+				if (arr) arr.push(flow)
+				else splitToFlows.set(split, [flow])
+			}
+		}
+		for (const [splitId, convergingFlows] of splitToFlows) {
+			if (convergingFlows.length < 2) continue
+			const gwType = elementTypes.get(splitId)
+			if (!gwType) continue
+			const targetType = elementTypes.get(targetId)
+			if (targetType === gwType) continue
+			const joinId = `${splitId}_join`
+			if (elementTypes.has(joinId)) continue
+			const joinElement = makeFlowElement(joinId, gwType as BpmnElementType, {})
+			elements.push(joinElement)
+			elementTypes.set(joinId, gwType)
+			for (const flow of convergingFlows) flow.targetRef = joinId
+			flows.push({
+				id: generateId("Flow"),
+				sourceRef: joinId,
+				targetRef: targetId,
+				extensionElements: [],
+				unknownAttributes: {},
+			})
+		}
+	}
+}
+
+function traceBackToSplit(
+	nodeId: string,
+	splitGateways: Set<string>,
+	flows: BpmnSequenceFlow[],
+): string | undefined {
+	const visited = new Set<string>()
+	let current = nodeId
+	while (current) {
+		if (visited.has(current)) return undefined
+		visited.add(current)
+		if (splitGateways.has(current)) return current
+		const inFlows = flows.filter((f) => f.targetRef === current)
+		if (inFlows.length !== 1) return undefined
+		const prev = inFlows[0]
+		if (!prev) return undefined
+		current = prev.sourceRef
+	}
+	return undefined
+}
+
+// ---------------------------------------------------------------------------
 // Branch builder (used inside gateway branch callbacks)
 // ---------------------------------------------------------------------------
 
@@ -595,52 +773,15 @@ export class BranchBuilder {
 	// ---- Flow-node methods (mirror ProcessBuilder) ----
 
 	serviceTask(id: string, options: ServiceTaskOptions): this {
-		const unknownAttributes: Record<string, string> = {}
-		if (options.modelerTemplate)
-			unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
-		if (options.modelerTemplateVersion)
-			unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
-		if (options.modelerTemplateIcon)
-			unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
-
-		const el = makeFlowElement(id, "serviceTask", {
-			name: options.name,
-			extensionElements: buildServiceTaskExtensions(options),
-		})
-		el.unknownAttributes = unknownAttributes
-		return this.addElement(el)
+		return this.addElement(makeServiceTaskEl(id, options))
 	}
 
 	userTask(id: string, options?: UserTaskOptions): this {
-		const ext = options?.formId
-			? zeebeExtensionsToXmlElements({ formDefinition: { formId: options.formId } })
-			: []
-		return this.addElement(
-			makeFlowElement(id, "userTask", {
-				name: options?.name,
-				extensionElements: ext,
-			}),
-		)
+		return this.addElement(makeUserTaskEl(id, options))
 	}
 
 	scriptTask(id: string, options: ScriptTaskOptions): this {
-		return this.addElement(
-			makeFlowElement(id, "scriptTask", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:script",
-							attributes: {
-								expression: options.expression,
-								resultVariable: options.resultVariable,
-							},
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		return this.addElement(makeScriptTaskEl(id, options))
 	}
 
 	sendTask(id: string, options?: ElementOptions): this {
@@ -652,41 +793,11 @@ export class BranchBuilder {
 	}
 
 	businessRuleTask(id: string, options?: BusinessRuleTaskOptions): this {
-		const ext = options?.decisionId
-			? zeebeExtensionsToXmlElements({
-					calledDecision: {
-						decisionId: options.decisionId,
-						resultVariable: options.resultVariable ?? "result",
-					},
-				})
-			: []
-		return this.addElement(
-			makeFlowElement(id, "businessRuleTask", {
-				name: options?.name,
-				extensionElements: ext,
-			}),
-		)
+		return this.addElement(makeBusinessRuleTaskEl(id, options))
 	}
 
 	callActivity(id: string, options: CallActivityOptions): this {
-		const attrs: Record<string, string> = { processId: options.processId }
-		if (options.propagateAllChildVariables !== undefined) {
-			attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
-		}
-		return this.addElement(
-			makeFlowElement(id, "callActivity", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:calledElement",
-							attributes: attrs,
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		return this.addElement(makeCallActivityEl(id, options))
 	}
 
 	startEvent(id?: string, options?: StartEventOptions): this {
@@ -729,11 +840,7 @@ export class BranchBuilder {
 	}
 
 	exclusiveGateway(id: string, options?: GatewayOptions): this {
-		const el = makeFlowElement(id, "exclusiveGateway", options)
-		if (options?.defaultFlow && el.type === "exclusiveGateway") {
-			;(el as { default?: string }).default = options.defaultFlow
-		}
-		return this.addElement(el)
+		return this.addElement(makeExclusiveGatewayEl(id, options))
 	}
 
 	parallelGateway(id: string, options?: ElementOptions): this {
@@ -741,11 +848,7 @@ export class BranchBuilder {
 	}
 
 	inclusiveGateway(id: string, options?: GatewayOptions): this {
-		const el = makeFlowElement(id, "inclusiveGateway", options)
-		if (options?.defaultFlow && el.type === "inclusiveGateway") {
-			;(el as { default?: string }).default = options.defaultFlow
-		}
-		return this.addElement(el)
+		return this.addElement(makeInclusiveGatewayEl(id, options))
 	}
 
 	eventBasedGateway(id: string, options?: ElementOptions): this {
@@ -764,95 +867,47 @@ export class SubProcessContentBuilder {
 	/** @internal */
 	readonly _flows: BpmnSequenceFlow[] = []
 	private lastNodeId: string | undefined
+	private currentGatewayId: string | undefined
+	private openBranchEnds: string[] = []
 
 	private addElement(element: BpmnFlowElement): this {
+		if (this._elements.some((n) => n.id === element.id)) {
+			throw new Error(`Duplicate element ID "${element.id}" in sub-process`)
+		}
 		this._elements.push(element)
 		if (this.lastNodeId) {
-			const flowId = generateId("Flow")
 			this._flows.push({
-				id: flowId,
+				id: generateId("Flow"),
 				sourceRef: this.lastNodeId,
 				targetRef: element.id,
 				extensionElements: [],
 				unknownAttributes: {},
 			})
 		}
+		for (const branchEnd of this.openBranchEnds) {
+			this._flows.push({
+				id: generateId("Flow"),
+				sourceRef: branchEnd,
+				targetRef: element.id,
+				extensionElements: [],
+				unknownAttributes: {},
+			})
+		}
+		this.openBranchEnds = []
 		this.lastNodeId = element.id
 		return this
 	}
 
+	// ---- Events ----
+
 	startEvent(id?: string, options?: StartEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("StartEvent"), "startEvent", options)
-		if (el.type === "startEvent" && options) {
-			el.eventDefinitions = buildEventDefinitions(options)
-		}
+		if (el.type === "startEvent" && options) el.eventDefinitions = buildEventDefinitions(options)
 		return this.addElement(el)
 	}
 
 	endEvent(id?: string, options?: ElementOptions): this {
 		return this.addElement(makeFlowElement(id ?? generateId("EndEvent"), "endEvent", options))
-	}
-
-	serviceTask(id: string, options: ServiceTaskOptions): this {
-		const unknownAttributes: Record<string, string> = {}
-		if (options.modelerTemplate)
-			unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
-		if (options.modelerTemplateVersion)
-			unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
-		if (options.modelerTemplateIcon)
-			unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
-
-		const el = makeFlowElement(id, "serviceTask", {
-			name: options.name,
-			extensionElements: buildServiceTaskExtensions(options),
-		})
-		el.unknownAttributes = unknownAttributes
-		return this.addElement(el)
-	}
-
-	userTask(id: string, options?: UserTaskOptions): this {
-		return this.addElement(makeFlowElement(id, "userTask", { name: options?.name }))
-	}
-
-	scriptTask(id: string, options: ScriptTaskOptions): this {
-		return this.addElement(
-			makeFlowElement(id, "scriptTask", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:script",
-							attributes: {
-								expression: options.expression,
-								resultVariable: options.resultVariable,
-							},
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
-	}
-
-	callActivity(id: string, options: CallActivityOptions): this {
-		const attrs: Record<string, string> = { processId: options.processId }
-		if (options.propagateAllChildVariables !== undefined) {
-			attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
-		}
-		return this.addElement(
-			makeFlowElement(id, "callActivity", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:calledElement",
-							attributes: attrs,
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
 	}
 
 	intermediateThrowEvent(id?: string, options?: IntermediateThrowEventOptions): this {
@@ -861,9 +916,8 @@ export class SubProcessContentBuilder {
 			"intermediateThrowEvent",
 			options,
 		)
-		if (el.type === "intermediateThrowEvent" && options) {
+		if (el.type === "intermediateThrowEvent" && options)
 			el.eventDefinitions = buildEventDefinitions(options)
-		}
 		return this.addElement(el)
 	}
 
@@ -873,10 +927,119 @@ export class SubProcessContentBuilder {
 			"intermediateCatchEvent",
 			options,
 		)
-		if (el.type === "intermediateCatchEvent" && options) {
+		if (el.type === "intermediateCatchEvent" && options)
 			el.eventDefinitions = buildEventDefinitions(options)
-		}
 		return this.addElement(el)
+	}
+
+	// ---- Tasks ----
+
+	serviceTask(id: string, options: ServiceTaskOptions): this {
+		return this.addElement(makeServiceTaskEl(id, options))
+	}
+
+	scriptTask(id: string, options: ScriptTaskOptions): this {
+		return this.addElement(makeScriptTaskEl(id, options))
+	}
+
+	userTask(id: string, options?: UserTaskOptions): this {
+		return this.addElement(makeUserTaskEl(id, options))
+	}
+
+	businessRuleTask(id: string, options?: BusinessRuleTaskOptions): this {
+		return this.addElement(makeBusinessRuleTaskEl(id, options))
+	}
+
+	callActivity(id: string, options: CallActivityOptions): this {
+		return this.addElement(makeCallActivityEl(id, options))
+	}
+
+	sendTask(id: string, options?: ElementOptions): this {
+		return this.addElement(makeFlowElement(id, "sendTask", options))
+	}
+
+	receiveTask(id: string, options?: ElementOptions): this {
+		return this.addElement(makeFlowElement(id, "receiveTask", options))
+	}
+
+	// ---- Gateways ----
+
+	exclusiveGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
+		return this.addElement(makeExclusiveGatewayEl(id, options))
+	}
+
+	parallelGateway(id: string, options?: ElementOptions): this {
+		this.currentGatewayId = id
+		return this.addElement(makeFlowElement(id, "parallelGateway", options))
+	}
+
+	inclusiveGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
+		return this.addElement(makeInclusiveGatewayEl(id, options))
+	}
+
+	eventBasedGateway(id: string, options?: ElementOptions): this {
+		this.currentGatewayId = id
+		return this.addElement(makeFlowElement(id, "eventBasedGateway", options))
+	}
+
+	// ---- Branching & flow control ----
+
+	branch(name: string, callback: (b: BranchBuilder) => void): this {
+		if (!this.currentGatewayId) {
+			throw new Error("branch() must be called after a gateway element")
+		}
+		const b = new BranchBuilder(this.currentGatewayId, name)
+		callback(b)
+
+		for (const el of b._elements) {
+			if (this._elements.some((n) => n.id === el.id)) {
+				throw new Error(`Duplicate element ID "${el.id}"`)
+			}
+			this._elements.push(el)
+		}
+		for (const fl of b._flows) this._flows.push(fl)
+
+		if (b._defaultFlowId) {
+			const gw = this._elements.find((n) => n.id === this.currentGatewayId)
+			if (gw && (gw.type === "exclusiveGateway" || gw.type === "inclusiveGateway")) {
+				gw.default = b._defaultFlowId
+			}
+		}
+
+		if (!b._connected && b._elements.length > 0) {
+			const lastEl = b._elements[b._elements.length - 1]
+			if (lastEl && lastEl.type !== "endEvent") {
+				this.openBranchEnds.push(b._lastNodeId)
+			}
+		}
+
+		this.lastNodeId = undefined
+		return this
+	}
+
+	connectTo(targetId: string): this {
+		if (this.lastNodeId) {
+			this._flows.push({
+				id: generateId("Flow"),
+				sourceRef: this.lastNodeId,
+				targetRef: targetId,
+				extensionElements: [],
+				unknownAttributes: {},
+			})
+		}
+		this.lastNodeId = undefined
+		return this
+	}
+
+	element(elementId: string): this {
+		if (!this._elements.some((n) => n.id === elementId)) {
+			throw new Error(`Element "${elementId}" not found in sub-process`)
+		}
+		this.lastNodeId = elementId
+		this.currentGatewayId = undefined
+		return this
 	}
 }
 
@@ -898,6 +1061,7 @@ export class ProcessBuilder {
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
 	private _autoLayout = false
+	private _serviceTaskDefaults: { retries?: string } = {}
 
 	constructor(processId: string) {
 		this.processId = processId
@@ -906,6 +1070,13 @@ export class ProcessBuilder {
 	/** Enable auto-layout: `build()` will run the layout engine and populate diagram interchange data. */
 	withAutoLayout(): this {
 		this._autoLayout = true
+		return this
+	}
+
+	/** Set process-wide defaults applied to subsequently added elements. */
+	defaults(options: { serviceTask?: { retries?: string } }): this {
+		if (options.serviceTask)
+			this._serviceTaskDefaults = { ...this._serviceTaskDefaults, ...options.serviceTask }
 		return this
 	}
 
@@ -973,6 +1144,15 @@ export class ProcessBuilder {
 		return this.startEvent(id, options)
 	}
 
+	/**
+	 * Alias for `addStartEvent()` — begins a new disconnected parallel path.
+	 *
+	 * Use this for readability when modeling processes with multiple independent paths.
+	 */
+	disconnectedStartEvent(id?: string, options?: StartEventOptions): this {
+		return this.addStartEvent(id, options)
+	}
+
 	/** Add an end event. */
 	endEvent(id?: string, options?: ElementOptions): this {
 		const nodeId = id ?? generateId("EndEvent")
@@ -1024,24 +1204,54 @@ export class ProcessBuilder {
 		return this
 	}
 
+	/**
+	 * Attach a boundary event to the preceding task and build its outgoing path,
+	 * then restore the builder cursor to the preceding task so the main flow continues.
+	 *
+	 * @param id - ID for the boundary event element.
+	 * @param options - Boundary event options (without `attachedTo` — inferred from cursor).
+	 * @param handler - Callback that chains elements from the boundary event.
+	 */
+	withBoundary(
+		id: string,
+		options: Omit<BoundaryEventOptions, "attachedTo">,
+		handler: (b: ProcessBuilder) => void,
+	): this {
+		const attachedTo = this.lastNodeId
+		if (!attachedTo) {
+			throw new Error(
+				"withBoundary() must follow a task element. Current builder position has no active element.",
+			)
+		}
+
+		const savedLast = this.lastNodeId
+		const savedGateway = this.currentGatewayId
+		const savedOpenEnds = [...this.openBranchEnds]
+		this.openBranchEnds = []
+
+		// boundaryEvent() sets lastNodeId to the boundary event id
+		this.boundaryEvent(id, { ...options, attachedTo })
+
+		// Build the error/timeout path chaining from the boundary event
+		handler(this)
+
+		// Restore cursor to the original task so the main flow continues
+		this.lastNodeId = savedLast
+		this.currentGatewayId = savedGateway
+		this.openBranchEnds = savedOpenEnds
+
+		return this
+	}
+
 	// ---- Tasks ----
 
 	/** Add a service task with Zeebe task definition and optional IO mappings. */
 	serviceTask(id: string, options: ServiceTaskOptions): this {
-		const unknownAttributes: Record<string, string> = {}
-		if (options.modelerTemplate)
-			unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
-		if (options.modelerTemplateVersion)
-			unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
-		if (options.modelerTemplateIcon)
-			unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
-
-		const el = makeFlowElement(id, "serviceTask", {
-			name: options.name,
-			extensionElements: buildServiceTaskExtensions(options),
-		})
-		el.unknownAttributes = unknownAttributes
-		this.addFlowElement(el)
+		const merged: ServiceTaskOptions = {
+			...options,
+			retries: options.retries ?? this._serviceTaskDefaults.retries,
+		}
+		this.addFlowElement(makeServiceTaskEl(id, merged))
 		return this
 	}
 
@@ -1077,37 +1287,13 @@ export class ProcessBuilder {
 
 	/** Add a script task with a FEEL expression. */
 	scriptTask(id: string, options: ScriptTaskOptions): this {
-		this.addFlowElement(
-			makeFlowElement(id, "scriptTask", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:script",
-							attributes: {
-								expression: options.expression,
-								resultVariable: options.resultVariable,
-							},
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		this.addFlowElement(makeScriptTaskEl(id, options))
 		return this
 	}
 
 	/** Add a user task with optional form reference. */
 	userTask(id: string, options?: UserTaskOptions): this {
-		const extensionElements = options?.formId
-			? zeebeExtensionsToXmlElements({ formDefinition: { formId: options.formId } })
-			: []
-		this.addFlowElement(
-			makeFlowElement(id, "userTask", {
-				name: options?.name,
-				extensionElements,
-			}),
-		)
+		this.addFlowElement(makeUserTaskEl(id, options))
 		return this
 	}
 
@@ -1125,51 +1311,13 @@ export class ProcessBuilder {
 
 	/** Add a business rule task. */
 	businessRuleTask(id: string, options?: BusinessRuleTaskOptions): this {
-		const ext: XmlElement[] = []
-		if (options?.taskType) {
-			ext.push(...zeebeExtensionsToXmlElements({ taskDefinition: { type: options.taskType } }))
-		}
-		if (options?.decisionId) {
-			ext.push(
-				...zeebeExtensionsToXmlElements({
-					calledDecision: {
-						decisionId: options.decisionId,
-						resultVariable: options.resultVariable ?? "result",
-					},
-				}),
-			)
-		}
-		this.addFlowElement(
-			makeFlowElement(id, "businessRuleTask", {
-				name: options?.name,
-				extensionElements: ext,
-			}),
-		)
+		this.addFlowElement(makeBusinessRuleTaskEl(id, options))
 		return this
 	}
 
 	/** Add a call activity referencing another process. */
 	callActivity(id: string, options: CallActivityOptions): this {
-		const attrs: Record<string, string> = {
-			processId: options.processId,
-		}
-		if (options.propagateAllChildVariables !== undefined) {
-			attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
-		}
-		this.addFlowElement(
-			makeFlowElement(id, "callActivity", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:calledElement",
-							attributes: attrs,
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		this.addFlowElement(makeCallActivityEl(id, options))
 		return this
 	}
 
@@ -1177,11 +1325,7 @@ export class ProcessBuilder {
 
 	/** Add an exclusive gateway (XOR split/join). */
 	exclusiveGateway(id: string, options?: GatewayOptions): this {
-		const element = makeFlowElement(id, "exclusiveGateway", options)
-		if (options?.defaultFlow && element.type === "exclusiveGateway") {
-			;(element as { default?: string }).default = options.defaultFlow
-		}
-		this.addFlowElement(element)
+		this.addFlowElement(makeExclusiveGatewayEl(id, options))
 		this.currentGatewayId = id
 		return this
 	}
@@ -1195,11 +1339,7 @@ export class ProcessBuilder {
 
 	/** Add an inclusive gateway (OR split/join). Aspirational. */
 	inclusiveGateway(id: string, options?: GatewayOptions): this {
-		const element = makeFlowElement(id, "inclusiveGateway", options)
-		if (options?.defaultFlow && element.type === "inclusiveGateway") {
-			;(element as { default?: string }).default = options.defaultFlow
-		}
-		this.addFlowElement(element)
+		this.addFlowElement(makeInclusiveGatewayEl(id, options))
 		this.currentGatewayId = id
 		return this
 	}
@@ -1310,6 +1450,7 @@ export class ProcessBuilder {
 	): this {
 		const sub = new SubProcessContentBuilder()
 		content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
 		const zeebeExt: ZeebeExtensions = {}
@@ -1382,6 +1523,7 @@ export class ProcessBuilder {
 	): this {
 		const sub = new SubProcessContentBuilder()
 		content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "subProcess", options)
@@ -1404,6 +1546,7 @@ export class ProcessBuilder {
 	): this {
 		const sub = new SubProcessContentBuilder()
 		content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "eventSubProcess", options)
@@ -1423,8 +1566,21 @@ export class ProcessBuilder {
 	 * Resolves all forward-referenced `incoming` / `outgoing` arrays and wraps
 	 * the process in a {@link BpmnDefinitions} ready for XML serialization.
 	 */
-	build(): BpmnDefinitions {
-		this.insertJoinGateways()
+	build(options?: { strict?: boolean }): BpmnDefinitions {
+		const beforeCount = this.flowElements.length
+		insertJoinGateways(this.flowElements, this.sequenceFlows)
+
+		if (options?.strict && this.flowElements.length > beforeCount) {
+			const inserted = this.flowElements
+				.slice(beforeCount)
+				.map((e) => e.id)
+				.join(", ")
+			throw new Error(
+				`auto-join gateways were inserted: ${inserted}. Use explicit .connectTo(joinId) to make gateway topology explicit, or remove { strict: true }.`,
+			)
+		}
+
+		this.validate()
 		recomputeIncomingOutgoing(this.flowElements, this.sequenceFlows)
 
 		const extensionElements: XmlElement[] = []
@@ -1452,7 +1608,7 @@ export class ProcessBuilder {
 			id: "Definitions_1",
 			targetNamespace: "http://bpmn.io/schema/bpmn",
 			exporter: "@bpmnkit/core",
-			exporterVersion: "0.0.1",
+			exporterVersion: EXPORTER_VERSION,
 			namespaces: {
 				bpmn: "http://www.omg.org/spec/BPMN/20100524/MODEL",
 				bpmndi: "http://www.omg.org/spec/BPMN/20100524/DI",
@@ -1481,117 +1637,22 @@ export class ProcessBuilder {
 		return layoutResultToDiagram(this.processId, layoutResult)
 	}
 
-	// ---- Internal ----
-
-	/**
-	 * Insert matching join gateways where split-gateway branches converge
-	 * on a non-gateway target. BPMN best practice: every split has a join.
-	 */
-	private insertJoinGateways(): void {
-		const GATEWAY_TYPES = new Set([
-			"exclusiveGateway",
-			"parallelGateway",
-			"inclusiveGateway",
-			"eventBasedGateway",
-		])
-
-		const elementTypes = new Map<string, string>()
-		for (const el of this.flowElements) {
-			elementTypes.set(el.id, el.type)
-		}
-
-		// Find split gateways (2+ outgoing flows)
-		const outCount = new Map<string, number>()
+	private validate(): void {
+		const elementIds = new Set(this.flowElements.map((el) => el.id))
 		for (const flow of this.sequenceFlows) {
-			outCount.set(flow.sourceRef, (outCount.get(flow.sourceRef) ?? 0) + 1)
-		}
-		const splitGateways = new Set<string>()
-		for (const [id, count] of outCount) {
-			const type = elementTypes.get(id)
-			if (type && GATEWAY_TYPES.has(type) && count >= 2) {
-				splitGateways.add(id)
+			if (!elementIds.has(flow.targetRef)) {
+				throw new Error(
+					`Sequence flow "${flow.id}" in process "${this.processId}" references unknown ` +
+						`element "${flow.targetRef}". Check connectTo() calls — target must exist.`,
+				)
+			}
+			if (!elementIds.has(flow.sourceRef)) {
+				throw new Error(
+					`Sequence flow "${flow.id}" in process "${this.processId}" references unknown ` +
+						`source element "${flow.sourceRef}".`,
+				)
 			}
 		}
-		if (splitGateways.size === 0) return
-
-		// Build incoming flow map
-		const incoming = new Map<string, BpmnSequenceFlow[]>()
-		for (const flow of this.sequenceFlows) {
-			const arr = incoming.get(flow.targetRef)
-			if (arr) arr.push(flow)
-			else incoming.set(flow.targetRef, [flow])
-		}
-
-		// For each target with 2+ incoming flows, check if they trace back
-		// to the same split gateway → insert a join gateway if needed
-		for (const [targetId, inFlows] of incoming) {
-			if (inFlows.length < 2) continue
-
-			// Group incoming flows by originating split gateway
-			const splitToFlows = new Map<string, BpmnSequenceFlow[]>()
-			for (const flow of inFlows) {
-				const split = this.traceBackToSplit(flow.sourceRef, splitGateways)
-				if (split) {
-					const arr = splitToFlows.get(split)
-					if (arr) arr.push(flow)
-					else splitToFlows.set(split, [flow])
-				}
-			}
-
-			for (const [splitId, convergingFlows] of splitToFlows) {
-				if (convergingFlows.length < 2) continue
-
-				const gwType = elementTypes.get(splitId)
-				if (!gwType) continue
-
-				// Don't insert if target is already a matching gateway type
-				const targetType = elementTypes.get(targetId)
-				if (targetType === gwType) continue
-
-				const joinId = `${splitId}_join`
-				if (elementTypes.has(joinId)) continue
-
-				const joinElement = makeFlowElement(joinId, gwType as BpmnElementType, {})
-				this.flowElements.push(joinElement)
-				elementTypes.set(joinId, gwType)
-
-				// Re-route converging flows to the join gateway
-				for (const flow of convergingFlows) {
-					flow.targetRef = joinId
-				}
-
-				// Add flow from join to original target
-				this.sequenceFlows.push({
-					id: generateId("Flow"),
-					sourceRef: joinId,
-					targetRef: targetId,
-					extensionElements: [],
-					unknownAttributes: {},
-				})
-			}
-		}
-	}
-
-	/** Trace backward from a node to find which split gateway it belongs to. */
-	private traceBackToSplit(nodeId: string, splitGateways: Set<string>): string | undefined {
-		const visited = new Set<string>()
-		let current = nodeId
-
-		while (current) {
-			if (visited.has(current)) return undefined
-			visited.add(current)
-
-			if (splitGateways.has(current)) return current
-
-			// Follow single incoming flow backward
-			const inFlows = this.sequenceFlows.filter((f) => f.targetRef === current)
-			if (inFlows.length !== 1) return undefined
-
-			const prev = inFlows[0]
-			if (!prev) return undefined
-			current = prev.sourceRef
-		}
-		return undefined
 	}
 
 	private addFlowElement(element: BpmnFlowElement): void {
@@ -1626,5 +1687,63 @@ export class ProcessBuilder {
 		this.openBranchEnds = []
 
 		this.lastNodeId = element.id
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Diagram builder — multi-process support
+// ---------------------------------------------------------------------------
+
+/**
+ * Builder for a complete BPMN definitions document containing one or more processes.
+ * Use `Bpmn.createDiagram(id?)` to obtain an instance.
+ */
+export class DiagramBuilder {
+	private readonly _id: string
+	private readonly _processes: BpmnProcess[] = []
+	private readonly _errors: BpmnError[] = []
+	private readonly _messages: BpmnMessage[] = []
+
+	constructor(id: string) {
+		this._id = id
+	}
+
+	process(id: string, callback: (b: ProcessBuilder) => void): this {
+		const builder = new ProcessBuilder(id)
+		callback(builder)
+		const defs = builder.build()
+		this._processes.push(...defs.processes)
+		this._errors.push(...defs.errors)
+		this._messages.push(...defs.messages)
+		return this
+	}
+
+	build(): BpmnDefinitions {
+		return {
+			id: this._id,
+			targetNamespace: "http://bpmn.io/schema/bpmn",
+			exporter: "@bpmnkit/core",
+			exporterVersion: EXPORTER_VERSION,
+			namespaces: {
+				bpmn: "http://www.omg.org/spec/BPMN/20100524/MODEL",
+				bpmndi: "http://www.omg.org/spec/BPMN/20100524/DI",
+				dc: "http://www.omg.org/spec/DD/20100524/DC",
+				di: "http://www.omg.org/spec/DD/20100524/DI",
+				zeebe: "http://camunda.org/schema/zeebe/1.0",
+				modeler: "http://camunda.org/schema/modeler/1.0",
+				xsi: "http://www.w3.org/2001/XMLSchema-instance",
+			},
+			unknownAttributes: {
+				"modeler:executionPlatform": "Camunda Cloud",
+				"modeler:executionPlatformVersion": "8.6.0",
+			},
+			errors: this._errors,
+			escalations: [],
+			messages: this._messages,
+			signals: [],
+			collaborations: [],
+			processes: this._processes,
+			diagrams: [],
+		}
 	}
 }
