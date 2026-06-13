@@ -2192,3 +2192,87 @@ describe("withBoundary", () => {
 		).toThrow(/withBoundary/)
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 5 — Task defaults + disconnectedStartEvent alias
+// -----------------------------------------------------------------------
+
+describe("task defaults", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("applies default retries to all subsequent service tasks", () => {
+		const defs = Bpmn.createProcess("proc")
+			.defaults({ serviceTask: { retries: "5" } })
+			.startEvent("s")
+			.serviceTask("t1", { name: "T1", taskType: "worker-a" })
+			.serviceTask("t2", { name: "T2", taskType: "worker-b" })
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		for (const id of ["t1", "t2"]) {
+			const task = defined(p.flowElements.find((e) => e.id === id))
+			const taskDef = task.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+			expect(taskDef?.attributes.retries, `${id} retries`).toBe("5")
+		}
+	})
+
+	it("explicit retries override the default", () => {
+		const defs = Bpmn.createProcess("proc")
+			.defaults({ serviceTask: { retries: "5" } })
+			.startEvent("s")
+			.serviceTask("t1", { name: "T1", taskType: "worker-a", retries: "1" })
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const task = defined(p.flowElements.find((e) => e.id === "t1"))
+		const taskDef = task.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		expect(taskDef?.attributes.retries).toBe("1")
+	})
+
+	it("defaults do not affect service tasks added before .defaults() call", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.serviceTask("before", { name: "Before", taskType: "x" })
+			.defaults({ serviceTask: { retries: "9" } })
+			.serviceTask("after", { name: "After", taskType: "y" })
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const before = defined(p.flowElements.find((e) => e.id === "before"))
+		const taskDefBefore = before.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		// "before" had no explicit retries and defaults weren't set yet
+		expect(taskDefBefore?.attributes.retries).toBeUndefined()
+
+		const after = defined(p.flowElements.find((e) => e.id === "after"))
+		const taskDefAfter = after.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		expect(taskDefAfter?.attributes.retries).toBe("9")
+	})
+})
+
+describe("disconnectedStartEvent alias", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("disconnectedStartEvent creates a start event with no auto-connection", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s1")
+			.serviceTask("t1", { name: "T1", taskType: "x" })
+			.endEvent("e1")
+			.disconnectedStartEvent("s2")
+			.serviceTask("t2", { name: "T2", taskType: "y" })
+			.endEvent("e2")
+			.build()
+
+		const p = firstProcess(defs)
+		// s2 should have no incoming flows
+		expect(p.sequenceFlows.some((f) => f.targetRef === "s2")).toBe(false)
+		// t2 connects from s2
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "s2" && f.targetRef === "t2")).toBe(true)
+	})
+})

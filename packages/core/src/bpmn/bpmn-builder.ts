@@ -1058,6 +1058,7 @@ export class ProcessBuilder {
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
 	private _autoLayout = false
+	private _serviceTaskDefaults: { retries?: string } = {}
 
 	constructor(processId: string) {
 		this.processId = processId
@@ -1066,6 +1067,13 @@ export class ProcessBuilder {
 	/** Enable auto-layout: `build()` will run the layout engine and populate diagram interchange data. */
 	withAutoLayout(): this {
 		this._autoLayout = true
+		return this
+	}
+
+	/** Set process-wide defaults applied to subsequently added elements. */
+	defaults(options: { serviceTask?: { retries?: string } }): this {
+		if (options.serviceTask)
+			this._serviceTaskDefaults = { ...this._serviceTaskDefaults, ...options.serviceTask }
 		return this
 	}
 
@@ -1131,6 +1139,15 @@ export class ProcessBuilder {
 		this.lastNodeId = undefined
 		this.currentGatewayId = undefined
 		return this.startEvent(id, options)
+	}
+
+	/**
+	 * Alias for `addStartEvent()` — begins a new disconnected parallel path.
+	 *
+	 * Use this for readability when modeling processes with multiple independent paths.
+	 */
+	disconnectedStartEvent(id?: string, options?: StartEventOptions): this {
+		return this.addStartEvent(id, options)
 	}
 
 	/** Add an end event. */
@@ -1227,7 +1244,11 @@ export class ProcessBuilder {
 
 	/** Add a service task with Zeebe task definition and optional IO mappings. */
 	serviceTask(id: string, options: ServiceTaskOptions): this {
-		this.addFlowElement(makeServiceTaskEl(id, options))
+		const merged: ServiceTaskOptions = {
+			...options,
+			retries: options.retries ?? this._serviceTaskDefaults.retries,
+		}
+		this.addFlowElement(makeServiceTaskEl(id, merged))
 		return this
 	}
 
