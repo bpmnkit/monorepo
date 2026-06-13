@@ -487,6 +487,94 @@ function makeConditionExpression(expression: string): BpmnConditionExpression {
 }
 
 // ---------------------------------------------------------------------------
+// Element factory functions — shared by all three builder classes
+// ---------------------------------------------------------------------------
+
+function makeServiceTaskEl(id: string, options: ServiceTaskOptions): BpmnFlowElement {
+	const unknownAttributes: Record<string, string> = {}
+	if (options.modelerTemplate) unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
+	if (options.modelerTemplateVersion)
+		unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
+	if (options.modelerTemplateIcon)
+		unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
+	const el = makeFlowElement(id, "serviceTask", {
+		name: options.name,
+		extensionElements: buildServiceTaskExtensions(options),
+	})
+	el.unknownAttributes = unknownAttributes
+	return el
+}
+
+function makeScriptTaskEl(id: string, options: ScriptTaskOptions): BpmnFlowElement {
+	return makeFlowElement(id, "scriptTask", {
+		name: options.name,
+		extensionElements: zeebeExtensionsToXmlElements({
+			unknownElements: [
+				{
+					name: "zeebe:script",
+					attributes: { expression: options.expression, resultVariable: options.resultVariable },
+					children: [],
+				},
+			],
+		}),
+	})
+}
+
+function makeUserTaskEl(id: string, options?: UserTaskOptions): BpmnFlowElement {
+	const ext = options?.formId
+		? zeebeExtensionsToXmlElements({ formDefinition: { formId: options.formId } })
+		: []
+	return makeFlowElement(id, "userTask", { name: options?.name, extensionElements: ext })
+}
+
+function makeBusinessRuleTaskEl(id: string, options?: BusinessRuleTaskOptions): BpmnFlowElement {
+	const ext: XmlElement[] = []
+	if (options?.taskType) {
+		ext.push(...zeebeExtensionsToXmlElements({ taskDefinition: { type: options.taskType } }))
+	}
+	if (options?.decisionId) {
+		ext.push(
+			...zeebeExtensionsToXmlElements({
+				calledDecision: {
+					decisionId: options.decisionId,
+					resultVariable: options.resultVariable ?? "result",
+				},
+			}),
+		)
+	}
+	return makeFlowElement(id, "businessRuleTask", { name: options?.name, extensionElements: ext })
+}
+
+function makeCallActivityEl(id: string, options: CallActivityOptions): BpmnFlowElement {
+	const attrs: Record<string, string> = { processId: options.processId }
+	if (options.propagateAllChildVariables !== undefined) {
+		attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
+	}
+	return makeFlowElement(id, "callActivity", {
+		name: options.name,
+		extensionElements: zeebeExtensionsToXmlElements({
+			unknownElements: [{ name: "zeebe:calledElement", attributes: attrs, children: [] }],
+		}),
+	})
+}
+
+function makeExclusiveGatewayEl(id: string, options?: GatewayOptions): BpmnFlowElement {
+	const el = makeFlowElement(id, "exclusiveGateway", options)
+	if (options?.defaultFlow && el.type === "exclusiveGateway") {
+		;(el as { default?: string }).default = options.defaultFlow
+	}
+	return el
+}
+
+function makeInclusiveGatewayEl(id: string, options?: GatewayOptions): BpmnFlowElement {
+	const el = makeFlowElement(id, "inclusiveGateway", options)
+	if (options?.defaultFlow && el.type === "inclusiveGateway") {
+		;(el as { default?: string }).default = options.defaultFlow
+	}
+	return el
+}
+
+// ---------------------------------------------------------------------------
 // Branch builder (used inside gateway branch callbacks)
 // ---------------------------------------------------------------------------
 
@@ -595,52 +683,15 @@ export class BranchBuilder {
 	// ---- Flow-node methods (mirror ProcessBuilder) ----
 
 	serviceTask(id: string, options: ServiceTaskOptions): this {
-		const unknownAttributes: Record<string, string> = {}
-		if (options.modelerTemplate)
-			unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
-		if (options.modelerTemplateVersion)
-			unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
-		if (options.modelerTemplateIcon)
-			unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
-
-		const el = makeFlowElement(id, "serviceTask", {
-			name: options.name,
-			extensionElements: buildServiceTaskExtensions(options),
-		})
-		el.unknownAttributes = unknownAttributes
-		return this.addElement(el)
+		return this.addElement(makeServiceTaskEl(id, options))
 	}
 
 	userTask(id: string, options?: UserTaskOptions): this {
-		const ext = options?.formId
-			? zeebeExtensionsToXmlElements({ formDefinition: { formId: options.formId } })
-			: []
-		return this.addElement(
-			makeFlowElement(id, "userTask", {
-				name: options?.name,
-				extensionElements: ext,
-			}),
-		)
+		return this.addElement(makeUserTaskEl(id, options))
 	}
 
 	scriptTask(id: string, options: ScriptTaskOptions): this {
-		return this.addElement(
-			makeFlowElement(id, "scriptTask", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:script",
-							attributes: {
-								expression: options.expression,
-								resultVariable: options.resultVariable,
-							},
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		return this.addElement(makeScriptTaskEl(id, options))
 	}
 
 	sendTask(id: string, options?: ElementOptions): this {
@@ -652,41 +703,11 @@ export class BranchBuilder {
 	}
 
 	businessRuleTask(id: string, options?: BusinessRuleTaskOptions): this {
-		const ext = options?.decisionId
-			? zeebeExtensionsToXmlElements({
-					calledDecision: {
-						decisionId: options.decisionId,
-						resultVariable: options.resultVariable ?? "result",
-					},
-				})
-			: []
-		return this.addElement(
-			makeFlowElement(id, "businessRuleTask", {
-				name: options?.name,
-				extensionElements: ext,
-			}),
-		)
+		return this.addElement(makeBusinessRuleTaskEl(id, options))
 	}
 
 	callActivity(id: string, options: CallActivityOptions): this {
-		const attrs: Record<string, string> = { processId: options.processId }
-		if (options.propagateAllChildVariables !== undefined) {
-			attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
-		}
-		return this.addElement(
-			makeFlowElement(id, "callActivity", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:calledElement",
-							attributes: attrs,
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		return this.addElement(makeCallActivityEl(id, options))
 	}
 
 	startEvent(id?: string, options?: StartEventOptions): this {
@@ -729,11 +750,7 @@ export class BranchBuilder {
 	}
 
 	exclusiveGateway(id: string, options?: GatewayOptions): this {
-		const el = makeFlowElement(id, "exclusiveGateway", options)
-		if (options?.defaultFlow && el.type === "exclusiveGateway") {
-			;(el as { default?: string }).default = options.defaultFlow
-		}
-		return this.addElement(el)
+		return this.addElement(makeExclusiveGatewayEl(id, options))
 	}
 
 	parallelGateway(id: string, options?: ElementOptions): this {
@@ -741,11 +758,7 @@ export class BranchBuilder {
 	}
 
 	inclusiveGateway(id: string, options?: GatewayOptions): this {
-		const el = makeFlowElement(id, "inclusiveGateway", options)
-		if (options?.defaultFlow && el.type === "inclusiveGateway") {
-			;(el as { default?: string }).default = options.defaultFlow
-		}
-		return this.addElement(el)
+		return this.addElement(makeInclusiveGatewayEl(id, options))
 	}
 
 	eventBasedGateway(id: string, options?: ElementOptions): this {
@@ -794,65 +807,19 @@ export class SubProcessContentBuilder {
 	}
 
 	serviceTask(id: string, options: ServiceTaskOptions): this {
-		const unknownAttributes: Record<string, string> = {}
-		if (options.modelerTemplate)
-			unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
-		if (options.modelerTemplateVersion)
-			unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
-		if (options.modelerTemplateIcon)
-			unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
-
-		const el = makeFlowElement(id, "serviceTask", {
-			name: options.name,
-			extensionElements: buildServiceTaskExtensions(options),
-		})
-		el.unknownAttributes = unknownAttributes
-		return this.addElement(el)
+		return this.addElement(makeServiceTaskEl(id, options))
 	}
 
 	userTask(id: string, options?: UserTaskOptions): this {
-		return this.addElement(makeFlowElement(id, "userTask", { name: options?.name }))
+		return this.addElement(makeUserTaskEl(id, options))
 	}
 
 	scriptTask(id: string, options: ScriptTaskOptions): this {
-		return this.addElement(
-			makeFlowElement(id, "scriptTask", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:script",
-							attributes: {
-								expression: options.expression,
-								resultVariable: options.resultVariable,
-							},
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		return this.addElement(makeScriptTaskEl(id, options))
 	}
 
 	callActivity(id: string, options: CallActivityOptions): this {
-		const attrs: Record<string, string> = { processId: options.processId }
-		if (options.propagateAllChildVariables !== undefined) {
-			attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
-		}
-		return this.addElement(
-			makeFlowElement(id, "callActivity", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:calledElement",
-							attributes: attrs,
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		return this.addElement(makeCallActivityEl(id, options))
 	}
 
 	intermediateThrowEvent(id?: string, options?: IntermediateThrowEventOptions): this {
@@ -1028,20 +995,7 @@ export class ProcessBuilder {
 
 	/** Add a service task with Zeebe task definition and optional IO mappings. */
 	serviceTask(id: string, options: ServiceTaskOptions): this {
-		const unknownAttributes: Record<string, string> = {}
-		if (options.modelerTemplate)
-			unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
-		if (options.modelerTemplateVersion)
-			unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
-		if (options.modelerTemplateIcon)
-			unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
-
-		const el = makeFlowElement(id, "serviceTask", {
-			name: options.name,
-			extensionElements: buildServiceTaskExtensions(options),
-		})
-		el.unknownAttributes = unknownAttributes
-		this.addFlowElement(el)
+		this.addFlowElement(makeServiceTaskEl(id, options))
 		return this
 	}
 
@@ -1077,37 +1031,13 @@ export class ProcessBuilder {
 
 	/** Add a script task with a FEEL expression. */
 	scriptTask(id: string, options: ScriptTaskOptions): this {
-		this.addFlowElement(
-			makeFlowElement(id, "scriptTask", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:script",
-							attributes: {
-								expression: options.expression,
-								resultVariable: options.resultVariable,
-							},
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		this.addFlowElement(makeScriptTaskEl(id, options))
 		return this
 	}
 
 	/** Add a user task with optional form reference. */
 	userTask(id: string, options?: UserTaskOptions): this {
-		const extensionElements = options?.formId
-			? zeebeExtensionsToXmlElements({ formDefinition: { formId: options.formId } })
-			: []
-		this.addFlowElement(
-			makeFlowElement(id, "userTask", {
-				name: options?.name,
-				extensionElements,
-			}),
-		)
+		this.addFlowElement(makeUserTaskEl(id, options))
 		return this
 	}
 
@@ -1125,51 +1055,13 @@ export class ProcessBuilder {
 
 	/** Add a business rule task. */
 	businessRuleTask(id: string, options?: BusinessRuleTaskOptions): this {
-		const ext: XmlElement[] = []
-		if (options?.taskType) {
-			ext.push(...zeebeExtensionsToXmlElements({ taskDefinition: { type: options.taskType } }))
-		}
-		if (options?.decisionId) {
-			ext.push(
-				...zeebeExtensionsToXmlElements({
-					calledDecision: {
-						decisionId: options.decisionId,
-						resultVariable: options.resultVariable ?? "result",
-					},
-				}),
-			)
-		}
-		this.addFlowElement(
-			makeFlowElement(id, "businessRuleTask", {
-				name: options?.name,
-				extensionElements: ext,
-			}),
-		)
+		this.addFlowElement(makeBusinessRuleTaskEl(id, options))
 		return this
 	}
 
 	/** Add a call activity referencing another process. */
 	callActivity(id: string, options: CallActivityOptions): this {
-		const attrs: Record<string, string> = {
-			processId: options.processId,
-		}
-		if (options.propagateAllChildVariables !== undefined) {
-			attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
-		}
-		this.addFlowElement(
-			makeFlowElement(id, "callActivity", {
-				name: options.name,
-				extensionElements: zeebeExtensionsToXmlElements({
-					unknownElements: [
-						{
-							name: "zeebe:calledElement",
-							attributes: attrs,
-							children: [],
-						},
-					],
-				}),
-			}),
-		)
+		this.addFlowElement(makeCallActivityEl(id, options))
 		return this
 	}
 
@@ -1177,11 +1069,7 @@ export class ProcessBuilder {
 
 	/** Add an exclusive gateway (XOR split/join). */
 	exclusiveGateway(id: string, options?: GatewayOptions): this {
-		const element = makeFlowElement(id, "exclusiveGateway", options)
-		if (options?.defaultFlow && element.type === "exclusiveGateway") {
-			;(element as { default?: string }).default = options.defaultFlow
-		}
-		this.addFlowElement(element)
+		this.addFlowElement(makeExclusiveGatewayEl(id, options))
 		this.currentGatewayId = id
 		return this
 	}
@@ -1195,11 +1083,7 @@ export class ProcessBuilder {
 
 	/** Add an inclusive gateway (OR split/join). Aspirational. */
 	inclusiveGateway(id: string, options?: GatewayOptions): this {
-		const element = makeFlowElement(id, "inclusiveGateway", options)
-		if (options?.defaultFlow && element.type === "inclusiveGateway") {
-			;(element as { default?: string }).default = options.defaultFlow
-		}
-		this.addFlowElement(element)
+		this.addFlowElement(makeInclusiveGatewayEl(id, options))
 		this.currentGatewayId = id
 		return this
 	}

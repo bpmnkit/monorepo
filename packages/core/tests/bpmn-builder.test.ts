@@ -1844,3 +1844,58 @@ describe("BpmnProcessBuilder", () => {
 		})
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 1 regression — factory extraction
+// -----------------------------------------------------------------------
+
+describe("factory extraction regression", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("service task with modeler template in a branch still sets unknownAttributes", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("yes", (b) =>
+					b
+						.defaultFlow()
+						.serviceTask("t1", {
+							name: "Templated",
+							taskType: "worker",
+							modelerTemplate: "io.example.v1",
+							modelerTemplateVersion: "3",
+						})
+						.connectTo("end"),
+				)
+				.branch("no", (b) => b.condition("= false").endEvent())
+				.endEvent("end")
+				.build(),
+		)
+
+		const t1 = defined(process.flowElements.find((e) => e.id === "t1"))
+		expect(t1.unknownAttributes["zeebe:modelerTemplate"]).toBe("io.example.v1")
+		expect(t1.unknownAttributes["zeebe:modelerTemplateVersion"]).toBe("3")
+	})
+
+	it("user task with formId in a sub-process sets zeebe:formDefinition extension", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.subProcess("sub", (b) => {
+					b.startEvent("ss").userTask("ut", { formId: "form-abc" }).endEvent("se")
+				})
+				.endEvent("e")
+				.build(),
+		)
+
+		const sub = defined(process.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		const ut = defined(sub.flowElements.find((e) => e.id === "ut"))
+		const formDef = ut.extensionElements.find((x) => x.name === "zeebe:formDefinition")
+		expect(formDef).toBeDefined()
+		expect(formDef?.attributes.formId).toBe("form-abc")
+	})
+})
