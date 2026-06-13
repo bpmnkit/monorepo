@@ -2119,3 +2119,76 @@ describe("build-time validation", () => {
 		).not.toThrow()
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 4 — withBoundary ergonomics
+// -----------------------------------------------------------------------
+
+describe("withBoundary", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("attaches error boundary to the preceding task and main flow continues", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.serviceTask("validate", { name: "Validate", taskType: "validate" })
+			.withBoundary("on-err", { errorCode: "INVALID", cancelActivity: true }, (p) =>
+				p.serviceTask("handle", { name: "Handle", taskType: "handle-err" }).endEvent("err-end"),
+			)
+			.serviceTask("next", { name: "Next", taskType: "next" })
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		// boundary event is attached to "validate"
+		const boundary = p.flowElements.find((e) => e.id === "on-err")
+		expect(boundary).toBeDefined()
+		if (boundary?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(boundary.attachedToRef).toBe("validate")
+
+		// main flow: validate → next (not validate → handle)
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "validate" && f.targetRef === "next")).toBe(
+			true,
+		)
+
+		// error path: on-err → handle → err-end
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "on-err" && f.targetRef === "handle")).toBe(
+			true,
+		)
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "handle" && f.targetRef === "err-end")).toBe(
+			true,
+		)
+	})
+
+	it("timer boundary leaves main flow intact", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.serviceTask("slow", { name: "Slow", taskType: "slow" })
+			.withBoundary("on-timeout", { timerDuration: "PT30S", cancelActivity: false }, (p) =>
+				p
+					.serviceTask("escalate", { name: "Escalate", taskType: "escalate" })
+					.endEvent("timeout-end"),
+			)
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		const timeout = p.flowElements.find((e) => e.id === "on-timeout")
+		expect(timeout).toBeDefined()
+		if (timeout?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(timeout.attachedToRef).toBe("slow")
+		expect(timeout.cancelActivity).toBe(false)
+
+		// main flow: slow → end
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "slow" && f.targetRef === "end")).toBe(true)
+	})
+
+	it("throws when withBoundary is called without a preceding element", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.withBoundary("err", { errorCode: "X" }, (p) => p.endEvent())
+				.build(),
+		).toThrow(/withBoundary/)
+	})
+})

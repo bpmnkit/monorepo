@@ -1184,6 +1184,45 @@ export class ProcessBuilder {
 		return this
 	}
 
+	/**
+	 * Attach a boundary event to the preceding task and build its outgoing path,
+	 * then restore the builder cursor to the preceding task so the main flow continues.
+	 *
+	 * @param id - ID for the boundary event element.
+	 * @param options - Boundary event options (without `attachedTo` — inferred from cursor).
+	 * @param handler - Callback that chains elements from the boundary event.
+	 */
+	withBoundary(
+		id: string,
+		options: Omit<BoundaryEventOptions, "attachedTo">,
+		handler: (b: ProcessBuilder) => void,
+	): this {
+		const attachedTo = this.lastNodeId
+		if (!attachedTo) {
+			throw new Error(
+				"withBoundary() must follow a task element. Current builder position has no active element.",
+			)
+		}
+
+		const savedLast = this.lastNodeId
+		const savedGateway = this.currentGatewayId
+		const savedOpenEnds = [...this.openBranchEnds]
+		this.openBranchEnds = []
+
+		// boundaryEvent() sets lastNodeId to the boundary event id
+		this.boundaryEvent(id, { ...options, attachedTo })
+
+		// Build the error/timeout path chaining from the boundary event
+		handler(this)
+
+		// Restore cursor to the original task so the main flow continues
+		this.lastNodeId = savedLast
+		this.currentGatewayId = savedGateway
+		this.openBranchEnds = savedOpenEnds
+
+		return this
+	}
+
 	// ---- Tasks ----
 
 	/** Add a service task with Zeebe task definition and optional IO mappings. */
