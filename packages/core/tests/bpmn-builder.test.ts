@@ -1927,7 +1927,7 @@ describe("SubProcessContentBuilder branching", () => {
 		resetIdCounter()
 	})
 
-	it("sub-process supports exclusive gateway with branches", () => {
+	it("sub-process supports exclusive gateway with branches to separate end events", () => {
 		const defs = Bpmn.createProcess("proc")
 			.startEvent("s")
 			.subProcess("sub", (b) => {
@@ -1937,15 +1937,14 @@ describe("SubProcessContentBuilder branching", () => {
 						br
 							.condition("= approved")
 							.serviceTask("approve-task", { name: "Approve", taskType: "approve" })
-							.connectTo("se"),
+							.endEvent("se-approve"),
 					)
 					.branch("reject", (br) =>
 						br
 							.defaultFlow()
 							.serviceTask("reject-task", { name: "Reject", taskType: "reject" })
-							.connectTo("se"),
+							.endEvent("se-reject"),
 					)
-					.endEvent("se")
 			})
 			.endEvent("e")
 			.build()
@@ -1954,12 +1953,22 @@ describe("SubProcessContentBuilder branching", () => {
 		if (sub.type !== "subProcess") throw new Error("expected subProcess")
 		expect(sub.flowElements.some((e) => e.id === "approve-task")).toBe(true)
 		expect(sub.flowElements.some((e) => e.id === "reject-task")).toBe(true)
+		// Gateway flows to branch tasks
 		expect(
 			sub.sequenceFlows.some((f) => f.sourceRef === "gw" && f.targetRef === "approve-task"),
 		).toBe(true)
 		expect(
 			sub.sequenceFlows.some((f) => f.sourceRef === "gw" && f.targetRef === "reject-task"),
 		).toBe(true)
+		// Branch tasks flow to their respective end events
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "approve-task" && f.targetRef === "se-approve"),
+		).toBe(true)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "reject-task" && f.targetRef === "se-reject"),
+		).toBe(true)
+		// No auto-join needed (no convergence)
+		expect(sub.flowElements.some((e) => e.id === "gw_join")).toBe(false)
 	})
 
 	it("sub-process auto-inserts join gateway when branches converge", () => {
@@ -1988,6 +1997,23 @@ describe("SubProcessContentBuilder branching", () => {
 		const join = sub.flowElements.find((e) => e.id === "gw_join")
 		expect(join).toBeDefined()
 		expect(join?.type).toBe("exclusiveGateway")
+		// Verify flows: ta→gw_join, tb→gw_join, gw_join→merge
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "ta" && f.targetRef === "gw_join")).toBe(
+			true,
+		)
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "tb" && f.targetRef === "gw_join")).toBe(
+			true,
+		)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "gw_join" && f.targetRef === "merge"),
+		).toBe(true)
+		// Original ta→merge and tb→merge flows should not exist (replaced by gw_join)
+		expect(sub.sequenceFlows.some((f) => f.targetRef === "merge" && f.sourceRef === "ta")).toBe(
+			false,
+		)
+		expect(sub.sequenceFlows.some((f) => f.targetRef === "merge" && f.sourceRef === "tb")).toBe(
+			false,
+		)
 	})
 
 	it("sub-process supports connectTo for loop back", () => {
