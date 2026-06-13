@@ -1917,3 +1917,114 @@ describe("factory extraction regression", () => {
 		expect(taskDef?.attributes.type).toBe("evaluate-worker")
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 2 — SubProcessContentBuilder branching
+// -----------------------------------------------------------------------
+
+describe("SubProcessContentBuilder branching", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("sub-process supports exclusive gateway with branches", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.exclusiveGateway("gw")
+					.branch("approve", (br) =>
+						br
+							.condition("= approved")
+							.serviceTask("approve-task", { name: "Approve", taskType: "approve" })
+							.connectTo("se"),
+					)
+					.branch("reject", (br) =>
+						br
+							.defaultFlow()
+							.serviceTask("reject-task", { name: "Reject", taskType: "reject" })
+							.connectTo("se"),
+					)
+					.endEvent("se")
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		expect(sub.flowElements.some((e) => e.id === "approve-task")).toBe(true)
+		expect(sub.flowElements.some((e) => e.id === "reject-task")).toBe(true)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "gw" && f.targetRef === "approve-task"),
+		).toBe(true)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "gw" && f.targetRef === "reject-task"),
+		).toBe(true)
+	})
+
+	it("sub-process auto-inserts join gateway when branches converge", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.exclusiveGateway("gw")
+					.branch("a", (br) =>
+						br
+							.condition("= x > 0")
+							.serviceTask("ta", { name: "A", taskType: "a" })
+							.connectTo("merge"),
+					)
+					.branch("b", (br) =>
+						br.defaultFlow().serviceTask("tb", { name: "B", taskType: "b" }).connectTo("merge"),
+					)
+					.serviceTask("merge", { name: "After", taskType: "after" })
+					.endEvent("se")
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		const join = sub.flowElements.find((e) => e.id === "gw_join")
+		expect(join).toBeDefined()
+		expect(join?.type).toBe("exclusiveGateway")
+	})
+
+	it("sub-process supports connectTo for loop back", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.serviceTask("work", { name: "Work", taskType: "work" })
+					.exclusiveGateway("check")
+					.branch("done", (br) => br.condition("= done").endEvent("se"))
+					.branch("retry", (br) => br.defaultFlow().connectTo("work"))
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "check" && f.targetRef === "work")).toBe(
+			true,
+		)
+	})
+
+	it("sub-process supports businessRuleTask and sendTask", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (b) => {
+				b.startEvent("ss")
+					.businessRuleTask("rule", { decisionId: "approval-decision", resultVariable: "decision" })
+					.sendTask("notify", { name: "Notify" })
+					.endEvent("se")
+			})
+			.endEvent("e")
+			.build()
+
+		const sub = defined(defs.processes[0]?.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		expect(sub.flowElements.some((e) => e.id === "rule")).toBe(true)
+		expect(sub.flowElements.some((e) => e.id === "notify")).toBe(true)
+	})
+})
