@@ -27,6 +27,9 @@ import {
 } from "./rest-connector.js"
 import { type ZeebeExtensions, zeebeExtensionsToXmlElements } from "./zeebe-extensions.js"
 
+// Keep in sync with packages/core/package.json version
+const EXPORTER_VERSION = "0.0.23"
+
 // ---------------------------------------------------------------------------
 // Option types
 // ---------------------------------------------------------------------------
@@ -1605,7 +1608,7 @@ export class ProcessBuilder {
 			id: "Definitions_1",
 			targetNamespace: "http://bpmn.io/schema/bpmn",
 			exporter: "@bpmnkit/core",
-			exporterVersion: "0.0.1",
+			exporterVersion: EXPORTER_VERSION,
 			namespaces: {
 				bpmn: "http://www.omg.org/spec/BPMN/20100524/MODEL",
 				bpmndi: "http://www.omg.org/spec/BPMN/20100524/DI",
@@ -1720,7 +1723,7 @@ export class DiagramBuilder {
 			id: this._id,
 			targetNamespace: "http://bpmn.io/schema/bpmn",
 			exporter: "@bpmnkit/core",
-			exporterVersion: "0.0.1",
+			exporterVersion: EXPORTER_VERSION,
 			namespaces: {
 				bpmn: "http://www.omg.org/spec/BPMN/20100524/MODEL",
 				bpmndi: "http://www.omg.org/spec/BPMN/20100524/DI",

@@ -1,5 +1,38 @@
 # Progress
 
+## 2026-06-13 — Feat: BPMN builder SDK improvements (Tasks 1–7)
+
+Seven improvements to `packages/core/src/bpmn/bpmn-builder.ts`:
+
+**Task 1 — Element factory functions (refactor)**
+- Extracted repeated inline object construction into private factory functions (`makeStartEvent`, `makeEndEvent`, `makeTask`, etc.) to eliminate duplication across `ProcessBuilder` and `SubProcessContentBuilder`.
+- Fixed `userTask` `formId` field (was incorrectly placed outside the zeebe extension).
+
+**Task 2 — SubProcessContentBuilder gateway/branch support**
+- Added gateway and conditional branch support (`exclusiveGateway`, `parallelGateway`, `inclusiveGateway`, `branch`, `defaultBranch`) to `SubProcessContentBuilder`, matching the API available on the top-level `ProcessBuilder`.
+
+**Task 3 — Build-time validation + strict mode**
+- `ProcessBuilder.build()` now validates sequence flow connectivity at build time.
+- Added `strict` option: when `true`, throws on disconnected gateways, unreachable nodes, and other topology issues instead of silently producing invalid BPMN.
+
+**Task 4 — `withBoundary()` method**
+- Added `withBoundary(config, callback)` to `ProcessBuilder` for ergonomic boundary event attachment.
+- Supports error, timer, message, escalation, and signal boundary events with interrupting/non-interrupting variants.
+
+**Task 5 — Task defaults + `disconnectedStartEvent()` alias**
+- `serviceTask()` now defaults to `type: "io.camunda:http-connector:1"` when no type is provided.
+- Added `disconnectedStartEvent()` as an alias for creating start events not connected to a sequence flow (e.g., event sub-process triggers).
+
+**Task 6 — `DiagramBuilder` / `Bpmn.createDiagram()`**
+- New `DiagramBuilder` class and `Bpmn.createDiagram(id)` entry point for building multi-process BPMN definitions.
+- Supports `.process(id, callback)` for adding multiple processes and `.build()` returning `BpmnDefinitions`.
+
+**Task 7 — `EXPORTER_VERSION` constant**
+- Extracted hardcoded `"0.0.1"` exporterVersion string into a named constant `EXPORTER_VERSION = "0.0.23"` near the top of `bpmn-builder.ts` (kept in sync with `package.json` version).
+- Replaced both occurrences (in `ProcessBuilder.build()` and `DiagramBuilder.build()`).
+
+**Result**: 360 tests pass. Zero type errors. Zero lint warnings. Full monorepo build clean.
+
 ## 2026-04-30 — Fix: Gateway port routing & annotation spacing
 
 **`packages/core/src/layout/routing.ts`** — gateway port improvements:

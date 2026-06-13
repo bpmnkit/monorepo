@@ -2338,3 +2338,23 @@ describe("DiagramBuilder", () => {
 		expect(defs.id).toBe("Definitions_1")
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 7 — exporterVersion constant
+// -----------------------------------------------------------------------
+
+describe("exporterVersion", () => {
+	it("ProcessBuilder.build() sets a non-empty exporterVersion", () => {
+		const defs = Bpmn.createProcess("proc").startEvent("s").endEvent("e").build()
+		expect(defs.exporterVersion).toBeTruthy()
+		expect(typeof defs.exporterVersion).toBe("string")
+	})
+
+	it("DiagramBuilder.build() sets the same exporterVersion as ProcessBuilder", () => {
+		const single = Bpmn.createProcess("proc").startEvent("s").endEvent("e").build()
+		const multi = Bpmn.createDiagram("D")
+			.process("proc", (p) => p.startEvent("s").endEvent("e"))
+			.build()
+		expect(multi.exporterVersion).toBe(single.exporterVersion)
+	})
+})

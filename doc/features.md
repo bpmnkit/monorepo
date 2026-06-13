@@ -1,5 +1,19 @@
 # Features
 
+## BPMN Builder SDK improvements (2026-06-13)
+
+Seven incremental improvements to `@bpmnkit/core`'s `bpmn-builder.ts` API:
+
+| # | Feature | Entry point |
+|---|---|---|
+| 1 | Element factory functions extracted (refactor + `userTask` `formId` fix) | internal |
+| 2 | Gateway/branch support in `SubProcessContentBuilder` | `SubProcessContentBuilder.exclusiveGateway()`, `.branch()`, etc. |
+| 3 | Build-time validation + strict mode | `Bpmn.createProcess(..., { strict: true })` |
+| 4 | Ergonomic boundary event attachment | `ProcessBuilder.withBoundary(config, cb)` |
+| 5 | Service task type default + `disconnectedStartEvent()` alias | `ProcessBuilder.disconnectedStartEvent()` |
+| 6 | Multi-process diagram builder | `Bpmn.createDiagram(id).process(...).build()` |
+| 7 | `EXPORTER_VERSION` constant (replaces hardcoded `"0.0.1"`) | internal constant in `bpmn-builder.ts` |
+
 ## CLI — `casen generate` and `casen view` (2026-04-25)
 
 ### `casen generate bpmn` — Generate BPMN files from parameters or JSON
