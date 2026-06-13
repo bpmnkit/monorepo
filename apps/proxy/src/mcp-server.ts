@@ -44,6 +44,7 @@ import {
 	layoutProcess,
 } from "@bpmnkit/core"
 import type { CompactDmn, CompactForm } from "@bpmnkit/core"
+import { sdkExecute, sdkSearch } from "./sdk-code-mode.js"
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -365,6 +366,54 @@ const BPMN_TOOLS = [
 			required: ["diagram"],
 		},
 	},
+	{
+		name: "sdk_search",
+		description:
+			"Inspect the @bpmnkit/core SDK to discover available functions and the CompactDiagram format.\n" +
+			"Receives `spec.functions` (available operations) and `spec.compactDiagram` (input/output shape).\n\n" +
+			"Example — list all available functions:\n" +
+			"  return Object.entries(spec.functions).map(([name, s]) => name + ': ' + s.description)\n\n" +
+			"Example — get element type list:\n" +
+			"  return spec.compactDiagram.shape.processes[0].elements[0].type",
+		inputSchema: {
+			type: "object",
+			properties: {
+				code: {
+					type: "string",
+					description: "JavaScript returning a value. Has `spec` as a global.",
+				},
+			},
+			required: ["code"],
+		},
+	},
+	{
+		name: "sdk_execute",
+		description:
+			"Execute JavaScript using @bpmnkit/core SDK functions. Has `sdk` with parse, exportXml, optimize, layout, analyzeVariables.\n" +
+			"All sdk functions take/return strings (XML or JSON). Pass input XML via the `xml` argument.\n" +
+			"Call sdk_search first to see function signatures and the CompactDiagram shape.\n\n" +
+			"Example — parse, optimize, and re-export:\n" +
+			"  const compact = sdk.parse(xml)\n" +
+			"  const { diagram, findings } = JSON.parse(sdk.optimize(compact))\n" +
+			"  return { findings, xml: sdk.exportXml(JSON.stringify(diagram)) }\n\n" +
+			"Example — analyze variable flow:\n" +
+			"  const compact = sdk.parse(xml)\n" +
+			"  return JSON.parse(sdk.analyzeVariables(compact))",
+		inputSchema: {
+			type: "object",
+			properties: {
+				code: {
+					type: "string",
+					description: "JavaScript with access to `sdk` and optional `xml` global.",
+				},
+				xml: {
+					type: "string",
+					description: "Optional BPMN XML injected as `xml` global inside the sandbox.",
+				},
+			},
+			required: ["code"],
+		},
+	},
 ]
 
 const DMN_TOOLS = [
@@ -565,6 +614,17 @@ function callTool(name: string, args: Record<string, unknown>): string {
 					`Code execution failed: ${err instanceof Error ? err.message : String(err)}`,
 				)
 			}
+		}
+
+		case "sdk_search": {
+			const code = args.code as string
+			return sdkSearch(code)
+		}
+
+		case "sdk_execute": {
+			const code = args.code as string
+			const xml = args.xml as string | undefined
+			return sdkExecute(code, xml)
 		}
 
 		default:
