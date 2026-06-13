@@ -25,6 +25,7 @@ describe("CAMUNDA_SPEC", () => {
 		for (const [resource, methods] of Object.entries(CAMUNDA_SPEC)) {
 			for (const [method, s] of Object.entries(methods)) {
 				expect(s.description, `${resource}.${method}.description`).toBeTruthy()
+				expect(s.endpoint, `${resource}.${method}.endpoint`).toBeDefined()
 				expect(s.params, `${resource}.${method}.params`).toBeTruthy()
 				expect(s.returns, `${resource}.${method}.returns`).toBeTruthy()
 			}
