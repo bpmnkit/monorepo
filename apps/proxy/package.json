@@ -15,11 +15,7 @@
 		},
 		"./dist/aikit-mcp.js": "./dist/aikit-mcp.js"
 	},
-	"files": [
-		"LICENSE",
-		"README.md",
-		"dist/**/*.js"
-	],
+	"files": ["LICENSE", "README.md", "dist/**/*.js"],
 	"engines": {
 		"node": ">=20"
 	},
