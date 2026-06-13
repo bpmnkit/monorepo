@@ -1503,8 +1503,21 @@ export class ProcessBuilder {
 	 * Resolves all forward-referenced `incoming` / `outgoing` arrays and wraps
 	 * the process in a {@link BpmnDefinitions} ready for XML serialization.
 	 */
-	build(): BpmnDefinitions {
+	build(options?: { strict?: boolean }): BpmnDefinitions {
+		const beforeCount = this.flowElements.length
 		insertJoinGateways(this.flowElements, this.sequenceFlows)
+
+		if (options?.strict && this.flowElements.length > beforeCount) {
+			const inserted = this.flowElements
+				.slice(beforeCount)
+				.map((e) => e.id)
+				.join(", ")
+			throw new Error(
+				`auto-join gateways were inserted: ${inserted}. Use explicit .connectTo(joinId) to make gateway topology explicit, or remove { strict: true }.`,
+			)
+		}
+
+		this.validate()
 		recomputeIncomingOutgoing(this.flowElements, this.sequenceFlows)
 
 		const extensionElements: XmlElement[] = []
@@ -1559,6 +1572,24 @@ export class ProcessBuilder {
 	private buildDiagram(process: BpmnProcess): BpmnDiagram {
 		const layoutResult = layoutProcess(process)
 		return layoutResultToDiagram(this.processId, layoutResult)
+	}
+
+	private validate(): void {
+		const elementIds = new Set(this.flowElements.map((el) => el.id))
+		for (const flow of this.sequenceFlows) {
+			if (!elementIds.has(flow.targetRef)) {
+				throw new Error(
+					`Sequence flow "${flow.id}" in process "${this.processId}" references unknown ` +
+						`element "${flow.targetRef}". Check connectTo() calls — target must exist.`,
+				)
+			}
+			if (!elementIds.has(flow.sourceRef)) {
+				throw new Error(
+					`Sequence flow "${flow.id}" in process "${this.processId}" references unknown ` +
+						`source element "${flow.sourceRef}".`,
+				)
+			}
+		}
 	}
 
 	private addFlowElement(element: BpmnFlowElement): void {

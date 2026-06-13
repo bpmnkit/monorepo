@@ -2054,3 +2054,68 @@ describe("SubProcessContentBuilder branching", () => {
 		expect(sub.flowElements.some((e) => e.id === "notify")).toBe(true)
 	})
 })
+
+// -----------------------------------------------------------------------
+// Task 3 — Build-time validation
+// -----------------------------------------------------------------------
+
+describe("build-time validation", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("throws when connectTo references an ID that does not exist", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("t1", { name: "T", taskType: "x" })
+				.connectTo("nonexistent")
+				.endEvent("e")
+				.build(),
+		).toThrow(/nonexistent/)
+	})
+
+	it("allows connectTo with a forward reference that is satisfied later", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) =>
+					b.condition("= x").serviceTask("t1", { name: "A", taskType: "a" }).connectTo("end"),
+				)
+				.branch("b", (b) => b.defaultFlow().connectTo("end"))
+				.endEvent("end")
+				.build(),
+		).not.toThrow()
+	})
+
+	it("strict mode throws when auto-join gateway would be inserted", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) =>
+					b.condition("= x").serviceTask("t1", { name: "A", taskType: "a" }).connectTo("after"),
+				)
+				.branch("b", (b) => b.defaultFlow().connectTo("after"))
+				.serviceTask("after", { name: "After", taskType: "z" })
+				.endEvent("end")
+				.build({ strict: true }),
+		).toThrow(/auto-join/)
+	})
+
+	it("strict mode passes when join gateway is explicit", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) =>
+					b.condition("= x").serviceTask("t1", { name: "A", taskType: "a" }).connectTo("join"),
+				)
+				.branch("b", (b) => b.defaultFlow().connectTo("join"))
+				.exclusiveGateway("join")
+				.endEvent("end")
+				.build({ strict: true }),
+		).not.toThrow()
+	})
+})
