@@ -1898,4 +1898,22 @@ describe("factory extraction regression", () => {
 		expect(formDef).toBeDefined()
 		expect(formDef?.attributes.formId).toBe("form-abc")
 	})
+
+	it("businessRuleTask with taskType in a branch sets zeebe:taskDefinition", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("rule-path", (b) =>
+				b.defaultFlow().businessRuleTask("rule", { taskType: "evaluate-worker" }).connectTo("end"),
+			)
+			.branch("other", (b) => b.condition("= false").endEvent())
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		const rule = defined(p.flowElements.find((e) => e.id === "rule"))
+		const taskDef = rule.extensionElements.find((x) => x.name === "zeebe:taskDefinition")
+		expect(taskDef).toBeDefined()
+		expect(taskDef?.attributes.type).toBe("evaluate-worker")
+	})
 })
