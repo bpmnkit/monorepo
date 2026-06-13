@@ -26,6 +26,9 @@ import { createInterface } from "node:readline"
 import { Bpmn, compactify, optimize } from "@bpmnkit/core"
 import { ALL_PATTERNS, findPattern } from "@bpmnkit/patterns"
 import { getActiveProfile, getAuthHeader } from "@bpmnkit/profiles"
+import { CAMUNDA_SPEC } from "./camunda-spec.js"
+import { runSandboxed } from "./sandbox.js"
+import type { HostFunction } from "./sandbox.js"
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -971,6 +974,29 @@ const TOOLS = [
 			required: ["bpmnPath"],
 		},
 	},
+	{
+		name: "camunda_search",
+		description:
+			"Inspect the Camunda 8 REST API spec to discover available operations before calling camunda_execute.\n" +
+			"Receives `spec` — an object keyed by resource group (processInstance, incident, job, etc.).\n" +
+			"Each entry maps method names to { description, endpoint, params, returns }.\n\n" +
+			"Example — list all process instance methods:\n" +
+			"  return Object.keys(spec.processInstance)\n\n" +
+			"Example — find all search operations across resources:\n" +
+			"  return Object.entries(spec).flatMap(([r, ms]) => Object.keys(ms).filter(m => m.startsWith('search')).map(m => r + '.' + m))\n\n" +
+			"Example — get full spec for one method:\n" +
+			"  return spec.incident.resolveIncident",
+		inputSchema: {
+			type: "object",
+			properties: {
+				code: {
+					type: "string",
+					description: "JavaScript returning a value. Has `spec` as a global.",
+				},
+			},
+			required: ["code"],
+		},
+	},
 ] as const
 
 // ── JSON-RPC 2.0 stdio loop ───────────────────────────────────────────────────
@@ -987,6 +1013,11 @@ interface JsonRpcResponse {
 	id: number | string | undefined
 	result?: unknown
 	error?: { code: number; message: string }
+}
+
+export async function handleCamundaSearch(code: string): Promise<string> {
+	const result = await runSandboxed(code, { data: { spec: CAMUNDA_SPEC } }, 5000)
+	return JSON.stringify(result)
 }
 
 async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
@@ -1042,6 +1073,9 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
 			const outDir = args.outputDir ? String(args.outputDir) : undefined
 			return toolDmnCreate(path, outDir)
 		}
+
+		case "camunda_search":
+			return handleCamundaSearch(args.code as string)
 
 		default:
 			throw new Error(`Unknown tool: ${name}`)
