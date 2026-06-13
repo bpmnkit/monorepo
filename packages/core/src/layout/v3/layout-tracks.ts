@@ -285,6 +285,89 @@ export function layoutWithTracks(
 		}
 	}
 
+	// ── S4: Center gateway branches around the split/join Y ──────────────────────
+	// After track snapping, branches may be asymmetric around the gateway.
+	// Shift all off-base-track branch nodes by the imbalance so the visual
+	// midpoint of the branches aligns with the split/join center Y.
+	// Only applied to top-level groups (not nested children — they're already
+	// positioned within their parent branch's track band).
+	{
+		const segMap = new Map(segments.map((s) => [s.id, s]))
+		const grpMap = new Map(groups.map((g) => [g.id, g]))
+		const childGroupIds = new Set(groups.flatMap((g) => g.childGroupIds))
+
+		const collectBranchCenters = (grp: SegmentGroup, baseTrack: number): number[] => {
+			const centers: number[] = []
+			for (const segId of grp.segmentIds) {
+				const seg = segMap.get(segId)
+				if (!seg) continue
+				for (const nid of seg.nodeIds) {
+					if ((nodeTrack.get(nid) ?? baseTrack) === baseTrack) continue
+					const nl = placed.get(nid)
+					if (nl) centers.push(nl.y + nl.height / 2)
+				}
+			}
+			for (const childId of grp.childGroupIds) {
+				const child = grpMap.get(childId)
+				if (child) centers.push(...collectBranchCenters(child, baseTrack))
+			}
+			return centers
+		}
+
+		const shiftOffTrack = (grp: SegmentGroup, baseTrack: number, dy: number): void => {
+			for (const segId of grp.segmentIds) {
+				const seg = segMap.get(segId)
+				if (!seg) continue
+				for (const nid of seg.nodeIds) {
+					if ((nodeTrack.get(nid) ?? baseTrack) === baseTrack) continue
+					const nl = placed.get(nid)
+					if (nl) placed.set(nid, { ...nl, y: nl.y + dy })
+				}
+				if (seg.toId && seg.toId !== grp.joinId) {
+					const t = nodeTrack.get(seg.toId) ?? baseTrack
+					if (t !== baseTrack) {
+						const nl = placed.get(seg.toId)
+						if (nl) placed.set(seg.toId, { ...nl, y: nl.y + dy })
+					}
+				}
+			}
+			for (const childId of grp.childGroupIds) {
+				const child = grpMap.get(childId)
+				if (child) shiftOffTrack(child, baseTrack, dy)
+			}
+		}
+
+		for (const g of groups) {
+			if (g.kind !== "gateway-pair") continue
+			if (childGroupIds.has(g.id)) continue // nested groups center within their parent
+			if (!g.splitId) continue
+
+			const splitNl = placed.get(g.splitId)
+			if (!splitNl) continue
+			const baseTrack = nodeTrack.get(g.splitId) ?? 0
+			const splitCY = splitNl.y + splitNl.height / 2
+
+			const centers = collectBranchCenters(g, baseTrack)
+			if (centers.length === 0) continue
+			const branchMidY = (Math.min(...centers) + Math.max(...centers)) / 2
+			const dy = splitCY - branchMidY
+			if (Math.abs(dy) < TRACK_HEIGHT / 4) continue
+
+			shiftOffTrack(g, baseTrack, dy)
+
+			// Re-anchor boundary events on any shifted host.
+			for (const fn of flowNodes) {
+				if (fn.type !== "boundaryEvent") continue
+				const be = fn as BpmnBoundaryEvent
+				if ((nodeTrack.get(be.attachedToRef) ?? baseTrack) === baseTrack) continue
+				const host = placed.get(be.attachedToRef)
+				const beNl = placed.get(be.id)
+				if (!host || !beNl) continue
+				placed.set(be.id, { ...beNl, y: host.y + host.height - beNl.height / 2 })
+			}
+		}
+	}
+
 	const nodes = [...placed.values()]
 	const width = nodes.reduce((acc, n) => Math.max(acc, n.x + n.width), 0)
 	const height = (trackMax - trackMin + 1) * TRACK_HEIGHT

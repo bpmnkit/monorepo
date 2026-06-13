@@ -193,8 +193,17 @@ export function layoutWithColumns(
 
 		for (const ids of cellMap.values()) {
 			if (ids.length <= 1) continue
-			// Sort for determinism; push all but the first to the right
-			ids.sort()
+			// Sort by barycenter (avg track of predecessors) to minimise crossings;
+			// fall back to ID for determinism when predecessors share a track.
+			ids.sort((a, b) => {
+				const bary = (id: string): number => {
+					const preds = inAdj.get(id) ?? []
+					return preds.length === 0
+						? 0
+						: preds.reduce((s, p) => s + (nlTrack.get(p) ?? 0), 0) / preds.length
+				}
+				return bary(a) - bary(b) || a.localeCompare(b)
+			})
 			for (let i = 1; i < ids.length; i++) {
 				const id = ids[i]
 				if (!id) continue
@@ -231,6 +240,99 @@ export function layoutWithColumns(
 						propChanged = true
 					}
 				}
+			}
+		}
+	}
+
+	// ── S1/S3: Atomic east-shift helper ──────────────────────────────────────────
+	// Shift all same-track nodes at col >= fromCol east by one column, then
+	// propagate successor ordering.  skipId (if set) is never shifted.
+	const shiftSameTrackEast = (mainTrack: number, fromCol: number, skipId?: string): void => {
+		for (const nl of trackLayout.nodes) {
+			if (boundaryEventIds.has(nl.id)) continue
+			if ((nlTrack.get(nl.id) ?? 0) !== mainTrack) continue
+			const c = colStart.get(nl.id) ?? 0
+			if (c < fromCol || nl.id === skipId) continue
+			colStart.set(nl.id, c + 1)
+		}
+		let p = true
+		while (p) {
+			p = false
+			for (const sf of sequenceFlows) {
+				if (backEdgeIds.has(sf.id)) continue
+				const aNl = nlMap.get(sf.sourceRef)
+				if (!aNl) continue
+				const aEnd = (colStart.get(sf.sourceRef) ?? 0) + span(aNl)
+				const bStart = colStart.get(sf.targetRef) ?? 0
+				if (bStart < aEnd) {
+					colStart.set(sf.targetRef, aEnd)
+					p = true
+				}
+			}
+		}
+	}
+
+	// ── S3: Gateway south-corridor clearance ──────────────────────────────────────
+	// For each gateway with south-going forward edges, ensure its column contains
+	// no elements on south tracks.  Shift the gateway (same-track) east until clear.
+	// This eliminates the root cause of Phase 1b conflicts in layout-paths.
+	for (const gwNl of trackLayout.nodes) {
+		if (boundaryEventIds.has(gwNl.id)) continue
+		const gwType = flowNodes.find((f) => f.id === gwNl.id)?.type ?? ""
+		if (!gwType.includes("Gateway") && gwType !== "complexGateway") continue
+		const gwTrack = nlTrack.get(gwNl.id) ?? 0
+
+		const hasSouth = (outAdj.get(gwNl.id) ?? []).some((s) => (nlTrack.get(s) ?? gwTrack) > gwTrack)
+		if (!hasSouth) continue
+
+		for (let attempt = 0; attempt < 10; attempt++) {
+			const gwCol = colStart.get(gwNl.id) ?? 0
+			const blocked = trackLayout.nodes.some(
+				(o) =>
+					o.id !== gwNl.id &&
+					!boundaryEventIds.has(o.id) &&
+					(nlTrack.get(o.id) ?? gwTrack) > gwTrack &&
+					(colStart.get(o.id) ?? 0) === gwCol,
+			)
+			if (!blocked) break
+			shiftSameTrackEast(gwTrack, gwCol)
+		}
+	}
+
+	// ── S3: Boundary-event host south-corridor clearance ──────────────────────────
+	// For each boundary event with a south-going forward edge, the host task's
+	// column must be free of south-track elements.  Shift the host (same-track)
+	// east, keeping the direct south target anchored so the loop terminates.
+	{
+		const beHostMap = new Map<string, string>()
+		for (const fn of flowNodes) {
+			if (fn.type === "boundaryEvent") beHostMap.set(fn.id, (fn as BpmnBoundaryEvent).attachedToRef)
+		}
+		const clearedHosts = new Set<string>()
+		for (const sf of sequenceFlows) {
+			if (backEdgeIds.has(sf.id)) continue
+			if (!boundaryEventIds.has(sf.sourceRef)) continue
+			const hostId = beHostMap.get(sf.sourceRef)
+			if (!hostId || clearedHosts.has(hostId)) continue
+			const hostTrack = nlTrack.get(hostId)
+			if (hostTrack === undefined) continue
+			const tgtTrack = nlTrack.get(sf.targetRef)
+			if (tgtTrack === undefined || tgtTrack <= hostTrack) continue
+			// Target is west of host → south-then-west U-path, no south corridor needed.
+			if ((colStart.get(sf.targetRef) ?? 0) < (colStart.get(hostId) ?? 0)) continue
+			clearedHosts.add(hostId)
+			for (let attempt = 0; attempt < 10; attempt++) {
+				const hostCol = colStart.get(hostId) ?? 0
+				const blocked = trackLayout.nodes.some(
+					(o) =>
+						o.id !== hostId &&
+						!boundaryEventIds.has(o.id) &&
+						(nlTrack.get(o.id) ?? hostTrack) > hostTrack &&
+						(colStart.get(o.id) ?? 0) === hostCol,
+				)
+				if (!blocked) break
+				// skipId: the south target stays put — it is the blocker we're clearing around.
+				shiftSameTrackEast(hostTrack, hostCol, sf.targetRef)
 			}
 		}
 	}
