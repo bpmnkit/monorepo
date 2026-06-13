@@ -49,8 +49,8 @@ describe("sdk_search", () => {
 		expect(shape.processes[0].elements).toBeDefined()
 	})
 
-	it("times out on infinite loop", async () => {
-		await expect(handleSdkSearch("while(true){}")).rejects.toThrow()
+	it("times out on infinite loop", () => {
+		expect(() => handleSdkSearch("while(true){}")).toThrow()
 	}, 10000)
 })
 

@@ -44,7 +44,7 @@ import {
 	layoutProcess,
 } from "@bpmnkit/core"
 import type { CompactDmn, CompactForm } from "@bpmnkit/core"
-import { sdkExecute, sdkSearch } from "./sdk-code-mode.js"
+import { handleSdkExecute, handleSdkSearch } from "./sdk-code-mode.js"
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -618,13 +618,13 @@ function callTool(name: string, args: Record<string, unknown>): string {
 
 		case "sdk_search": {
 			const code = args.code as string
-			return sdkSearch(code)
+			return handleSdkSearch(code)
 		}
 
 		case "sdk_execute": {
 			const code = args.code as string
 			const xml = args.xml as string | undefined
-			return sdkExecute(code, xml)
+			return handleSdkExecute(code, xml)
 		}
 
 		default:

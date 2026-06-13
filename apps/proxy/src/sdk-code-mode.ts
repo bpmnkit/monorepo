@@ -57,21 +57,13 @@ function runInVm(code: string, ctx: Record<string, unknown>, timeoutMs: number):
 	}
 }
 
-export function sdkSearch(code: string): string {
+export function handleSdkSearch(code: string): string {
 	// JSON round-trip ensures Object.keys works on plain objects inside the vm context
 	const result = runInVm(code, { spec: JSON.parse(JSON.stringify(SDK_SPEC)) }, 5000)
 	return JSON.stringify(result)
 }
 
-export function sdkExecute(code: string, xml?: string): string {
+export function handleSdkExecute(code: string, xml?: string): string {
 	const result = runInVm(code, buildSdkContext(xml), 10000)
 	return JSON.stringify(result)
-}
-
-export async function handleSdkSearch(code: string): Promise<string> {
-	return sdkSearch(code)
-}
-
-export async function handleSdkExecute(code: string, xml?: string): Promise<string> {
-	return sdkExecute(code, xml)
 }
