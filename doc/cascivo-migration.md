@@ -96,9 +96,33 @@ in the final stage, once nothing depends on it).
 - [x] **Stage 0 — Foundation.** Add `@cascivo/react` / `@cascivo/themes` /
   `@cascivo/tokens` / `@preact/signals-react`; add `src/styles/cascivo.css`
   brand bridge; import it from `globals.css`. *(done — this change)*
-- [ ] **Stage 1 — Primitives.** Replace `components/ui/*` re-exports with
-  `@cascivo/react` equivalents; update the ~14 import sites. Reconcile prop
-  APIs (e.g. studio `Button variant="danger"` → cascivo variant).
+- [~] **Stage 1 — Primitives.** *In progress.* Migrated **Button**, **Badge**,
+  **Separator** to thin `@cascivo/react` adapters that keep the existing
+  call-site API (variant names mapped: `default→primary`, `outline→secondary`,
+  `danger→destructive`, `warn→warning`, `muted→secondary`), so the 10 Button /
+  2 Badge / 1 Separator sites are unchanged. Dropped `asChild` from Button (only
+  `ErrorState` used it — switched to an `onClick` navigation). **Deferred** in
+  this stage:
+  - **Input** — cascivo `Input` always renders a wrapper `<div>` and applies
+    `className` to the wrapper, not the `<input>`; re-exporting it would regress
+    the studio's bare-input search boxes (`className="pl-8"` icon padding). Move
+    these to cascivo `Search` / `Field` during the list-page work (Stage 4).
+  - **Dialog → Modal** and **DropdownMenu → Dropdown/Menu** — compositional APIs
+    differ entirely from Radix; these need call-site rewrites (Stage 1b).
+  - `tabs` / `tooltip` / `popover` wrappers are **dead code** (no importers) —
+    will be deleted alongside the Radix dependency once nothing uses Radix.
+
+  **Required foundation fix (also part of this stage):** the studio uses
+  `jsxImportSource: "preact"` with no `react → preact/compat` type alias, so
+  cascivo's React-typed `.d.ts` resolved against real `react@19` and failed to
+  typecheck (`children does not exist on ButtonProps`). Added a `paths` alias in
+  `apps/studio/tsconfig.json` mapping `react` / `react-dom` / `react/jsx-runtime`
+  to `preact/compat`; verified in isolation that cascivo **and** the existing
+  Radix / react-query usage typecheck together with it.
+- [ ] **Stage 1b — Overlays.** `Dialog`→`Modal`, `DropdownMenu`→`Dropdown`/`Menu`
+  with call-site rewrites; then remove the dead `tabs`/`tooltip`/`popover`
+  wrappers and drop `@radix-ui/*`, `class-variance-authority`, `clsx`,
+  `tailwind-merge`.
 - [ ] **Stage 2 — App shell.** Replace `Shell`/`Sidebar`/`TopBar` with
   `AppShell` + `SideNav` + `ShellHeader`; keep the existing keyboard-shortcut /
   view-transition logic. Wire `SideNav` open state to the header burger.

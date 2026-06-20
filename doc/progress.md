@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 1 primitives (Button/Badge/Separator)
+
+Continued the cascivo migration (plan in `doc/cascivo-migration.md`).
+
+- Migrated `components/ui/button`, `badge`, and `separator` to thin
+  `@cascivo/react` adapters that preserve the existing call-site API (studio
+  variant names mapped to cascivo variants). The 10 Button / 2 Badge / 1
+  Separator call sites are unchanged; removed Radix/cva from these three files.
+- Dropped the unused `asChild` prop from Button (only `ErrorState` used it →
+  switched to an `onClick` navigation via `useLocation`).
+- **Required fix:** added a `react → preact/compat` `paths` alias to
+  `apps/studio/tsconfig.json`. Without it, cascivo's React-typed components don't
+  typecheck under the studio's `jsxImportSource: "preact"` setup. Verified in
+  isolation that the migrated files + a representative call site typecheck (exit
+  0, strict), and that the alias is compatible with the existing Radix /
+  react-query usage.
+- Deferred `Input` (cascivo's wrapper-div structure regresses the bare-input
+  search boxes → use `Search`/`Field` later), `Dialog`/`DropdownMenu`
+  (compositional rewrites), and the dead `tabs`/`tooltip`/`popover` wrappers.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — Stage 0 foundation
 
 Began migrating the studio console to the [cascivo](https://cascivo.com) design
