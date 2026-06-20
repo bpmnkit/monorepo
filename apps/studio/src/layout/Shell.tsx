@@ -1,4 +1,5 @@
-import type { ComponentChildren } from "preact"
+import { AppShell } from "@cascivo/react"
+import type { ComponentChildren, JSX } from "preact"
 import { useEffect } from "preact/hooks"
 import { useLocation } from "wouter"
 import { CommandPalette } from "../components/CommandPalette.js"
@@ -26,7 +27,7 @@ const ROUTE_MAP: Record<string, string> = {
 
 export function Shell({ children }: ShellProps) {
 	const [, navigate] = useLocation()
-	const { toggleCommandPalette, toggleAI, toggleSidebar, zenMode, sidebarExpanded } = useUiStore()
+	const { toggleCommandPalette, toggleAI, toggleSidebar, zenMode } = useUiStore()
 
 	// Global keyboard shortcuts + link-click interceptor for view transitions
 	useEffect(() => {
@@ -115,25 +116,31 @@ export function Shell({ children }: ShellProps) {
 		}
 	}, [navigate, toggleCommandPalette, toggleAI, toggleSidebar])
 
-	return (
-		<div className="flex h-full flex-col overflow-hidden">
-			{/* Mobile backdrop — closes the sidebar when tapped outside */}
-			{!zenMode && sidebarExpanded && (
-				<div
-					role="button"
-					tabIndex={-1}
-					className="fixed inset-0 z-40 bg-black/50 md:hidden"
-					onClick={toggleSidebar}
-					onKeyDown={(e) => e.key === "Escape" && toggleSidebar()}
-					aria-label="Close navigation"
-				/>
-			)}
-			{!zenMode && <TopBar />}
-			<div className="flex flex-1 overflow-hidden">
-				{!zenMode && <Sidebar />}
+	// Zen mode: no chrome — full-screen content only.
+	if (zenMode) {
+		return (
+			<div className="flex h-full flex-col overflow-hidden">
 				<main className="flex-1 overflow-y-auto bg-bg">{children}</main>
-				{!zenMode && <AIDrawer />}
+				<ToastContainer />
+				<CommandPalette />
 			</div>
+		)
+	}
+
+	// `SideNav` self-sizes (16rem ↔ 4rem rail), so let it drive the AppShell nav
+	// column width instead of AppShell's fixed default.
+	const shellStyle = {
+		"--cascivo-shell-aside-inline-size": "fit-content",
+	} as unknown as JSX.CSSProperties
+
+	return (
+		<div className="h-full" style={shellStyle}>
+			<AppShell header={<TopBar />} nav={<Sidebar />}>
+				<div className="flex h-full overflow-hidden">
+					<main className="flex-1 overflow-y-auto bg-bg">{children}</main>
+					<AIDrawer />
+				</div>
+			</AppShell>
 			<ToastContainer />
 			<CommandPalette />
 		</div>

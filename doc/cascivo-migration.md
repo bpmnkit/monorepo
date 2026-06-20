@@ -142,9 +142,31 @@ in the final stage, once nothing depends on it).
 - [ ] **Stage 1c — Cleanup.** Once `DropdownMenu` is migrated: delete the dead
   `tabs`/`tooltip`/`popover` wrappers and drop the remaining `@radix-ui/*`,
   `clsx`, `tailwind-merge`.
-- [ ] **Stage 2 — App shell.** Replace `Shell`/`Sidebar`/`TopBar` with
-  `AppShell` + `SideNav` + `ShellHeader`; keep the existing keyboard-shortcut /
-  view-transition logic. Wire `SideNav` open state to the header burger.
+- [~] **Stage 2 — App shell.** *In progress.*
+  - `Shell` now uses cascivo **`AppShell`** (header = the existing `TopBar`,
+    nav = `Sidebar`, content = main + `AIDrawer`). Zen mode bypasses AppShell for
+    a chrome-free full-screen view. The nav column is set to
+    `--cascivo-shell-aside-inline-size: fit-content` so the self-sizing `SideNav`
+    drives its own width.
+  - `Sidebar` rewritten onto cascivo **`SideNav`**: the 9 nav links → `items[]`
+    (label/href/icon/active; navigation still flows through the Shell's global
+    `<a>` interceptor for view transitions). The collapse rail is now `SideNav`'s
+    native `collapsed` (wired to `sidebarExpanded`) + `expandOnHover` + its own
+    collapse toggle. The cluster/project pickers, search, reconnect, and "Get
+    started" live in `SideNav`'s **`footer`** slot (per decision), still on Radix
+    `DropdownMenu` (deferred).
+  - **Correction:** an earlier analysis wrongly claimed cascivo couldn't do a
+    collapsible rail sidebar. It can — `SideNav` self-sizes `16rem ↔ 4rem` rail
+    with hover-expand. The real (resolved) issue was *wrapping the studio's own
+    self-transforming sidebar* in AppShell; using cascivo `SideNav` avoids it.
+  - **Known follow-ups (need browser verification):** (1) `TopBar` kept as-is
+    (not `ShellHeader`) because it's breadcrumb-centric — so there's no header
+    burger; on mobile AppShell starts the nav closed and nothing reopens it.
+    Wire a mobile drawer toggle (separate from the desktop `sidebarExpanded`
+    rail state) or move `TopBar` to `ShellHeader`. (2) Lost the offline-dimming
+    of proxy-required nav items and the per-item keyboard-shortcut hints in
+    collapsed tooltips (`SideNav` items have no such props). (3) Verify footer
+    padding/width and pickers collapsing to icons at the 4rem rail.
 - [ ] **Stage 3 — Toast + command palette.** Mount `ToastProvider`; migrate the
   toast store callers to `useToast`/`enqueue`; swap `CommandPalette` →
   `CommandMenu`.

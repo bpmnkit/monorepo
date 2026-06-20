@@ -133,6 +133,17 @@ Bridging a single app "Button" abstraction onto both meant special-casing size
 `icon` → `IconButton` and remapping variants. Aligning the variant vocabularies
 (or giving `Button` an `icon`/square size) would simplify adoption.
 
+### P2 — `AppShell` nav width doesn't follow a `SideNav` child's self-size
+`AppShell`'s nav column is `inline-size: var(--cascivo-shell-aside-inline-size,
+18rem)` (fixed), while `SideNav` self-sizes (`16rem` ↔ `4rem` rail). Dropping a
+`SideNav` into `AppShell`'s `nav` slot therefore leaves dead space around the
+rail unless the consumer manually sets `--cascivo-shell-aside-inline-size:
+fit-content` (or syncs it to the collapsed state). Since `AppShell` + `SideNav`
+are the obvious pairing, `AppShell` should default the nav column to hug its
+content (or detect a `SideNav` child). Also: `SideNav` has `items`/`groups`/
+`footer` but **no top/header slot**, so app-level context controls (cluster /
+project pickers) can only go in `footer` — a header slot would help.
+
 ### P3 — Redundant / overlapping semantic color tokens
 While bridging I found several near-synonyms that create ambiguity about which to
 target:

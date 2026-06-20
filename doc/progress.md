@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 2 app shell (AppShell + SideNav)
+
+- `Shell` now uses cascivo `AppShell` (header = `TopBar`, nav = `Sidebar`,
+  content = main + `AIDrawer`); zen mode bypasses it for full-screen. Nav column
+  uses `--cascivo-shell-aside-inline-size: fit-content` so `SideNav` self-sizes.
+- `Sidebar` rewritten onto cascivo `SideNav`: 9 nav links → `items[]`, native
+  `collapsed` rail (wired to `sidebarExpanded`) + `expandOnHover` + built-in
+  collapse toggle; cluster/project pickers + search + reconnect + "Get started"
+  moved into `SideNav`'s `footer` slot (still Radix dropdowns, deferred).
+- Corrected an earlier wrong claim: cascivo *does* support a collapsible rail
+  sidebar (`SideNav` self-sizes 16rem↔4rem). The real issue had been wrapping the
+  studio's own self-transforming sidebar in AppShell; using `SideNav` fixes it.
+- Known follow-ups needing browser verification: mobile drawer has no reopen
+  control (TopBar isn't a `ShellHeader`, so no burger); lost offline nav-dimming
+  and per-item shortcut hints; footer/rail spacing. Documented in
+  `doc/cascivo-migration.md`.
+- Verified: isolated typecheck of AppShell + SideNav + items + the CSS-var style
+  under the studio's preact-aliased config (exit 0); Biome clean. Studio full
+  build remains WASM-blocked here.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — Stage 1b overlays (Dialog → Modal)
 
 - Replaced all 8 `Dialog` instances (`WelcomeModal`, `Models` ×5, `Settings`)
