@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 0 foundation
+
+Began migrating the studio console to the [cascivo](https://cascivo.com) design
+system (full Tailwind replacement, via the `@cascivo/react` package). Plan in
+`doc/cascivo-migration.md`.
+
+- Verified `@cascivo/react` builds clean under the studio's `react → preact`
+  Vite alias, and that the cascivo CSS composition builds through the studio's
+  real Tailwind v4 toolchain.
+- Added `@cascivo/react`, `@cascivo/themes`, `@cascivo/tokens`,
+  `@preact/signals-react` to `apps/studio`.
+- Added `apps/studio/src/styles/cascivo.css`: imports cascivo token/base/component
+  CSS and bridges cascivo semantic color tokens onto the `--bpmnkit-*` brand
+  tokens, so `@bpmnkit/ui` stays the single source of truth and the existing
+  light/dark/neon themes drive cascivo components. Imported it from `globals.css`.
+- Component-swap stages (primitives, app shell, toasts, tables, Tailwind removal,
+  then `@bpmnkit/operate` and desktop) are sequenced in the plan; not yet applied.
+
 ## 2026-06-13 — Feat: BPMN builder SDK improvements (Tasks 1–7)
 
 Seven improvements to `packages/core/src/bpmn/bpmn-builder.ts`:

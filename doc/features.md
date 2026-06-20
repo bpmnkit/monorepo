@@ -1,5 +1,13 @@
 # Features
 
+## Cascivo design system — studio (2026-06-20)
+
+Migrating the studio console to the [cascivo](https://cascivo.com) design system
+(`@cascivo/react`), replacing the Radix + Tailwind UI layer. Stage 0 foundation
+landed: dependencies, a cascivo↔`@bpmnkit/ui` brand-token bridge
+(`apps/studio/src/styles/cascivo.css`), and a staged migration plan
+(`doc/cascivo-migration.md`). Scope: studio, `@bpmnkit/operate`, desktop.
+
 ## BPMN Builder SDK improvements (2026-06-13)
 
 Seven incremental improvements to `@bpmnkit/core`'s `bpmn-builder.ts` API:

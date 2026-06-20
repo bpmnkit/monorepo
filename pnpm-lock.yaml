@@ -244,6 +244,18 @@ importers:
       '@bpmnkit/user-tasks':
         specifier: workspace:*
         version: link:../../packages/user-tasks
+      '@cascivo/react':
+        specifier: ^0.2.1
+        version: 0.2.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@cascivo/themes':
+        specifier: ^0.2.2
+        version: 0.2.2(@cascivo/tokens@0.2.0)
+      '@cascivo/tokens':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@preact/signals-react':
+        specifier: ^2.0.0
+        version: 2.3.0(react@19.2.4)
       '@radix-ui/react-dialog':
         specifier: ^1.1.4
         version: 1.1.15(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -667,6 +679,33 @@ packages:
   '@capsizecss/unpack@4.0.0':
     resolution: {integrity: sha512-VERIM64vtTP1C4mxQ5thVT9fK0apjPFobqybMtA1UdUujWka24ERHbRHFGmpbbhp73MhV+KSsHQH9C6uOTdEQA==}
     engines: {node: '>=18'}
+
+  '@cascivo/core@0.1.1':
+    resolution: {integrity: sha512-vZG4yiEfq4GgPPDMKGSX7IBd7U7tn+tb9o5ThcFiPrN7tQ1QXMwSwk6urDoRiEckdS60cldBSqfOw+u6yXOjtw==}
+    peerDependencies:
+      '@preact/signals-react': '>=2.0.0'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+
+  '@cascivo/i18n@0.1.1':
+    resolution: {integrity: sha512-S57ovKCemPvjVpJ48nHMWWZzceHNHMHsRpHl7TCvAZ7qElO4dCPI2TvICh7ApHI0WWKVO2nxoxH/jnrQxt24jA==}
+    peerDependencies:
+      '@preact/signals-react': '>=2.0.0'
+
+  '@cascivo/react@0.2.1':
+    resolution: {integrity: sha512-b9kzv7qUBnwvUYKIBjOOgLUaudYyzJX8gv2cUajlVz87pDUUxzsHSw09udvVeV4JoxS3YbB55jTxPVuL3wMV3A==}
+    peerDependencies:
+      '@preact/signals-react': '>=2.0.0'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+
+  '@cascivo/themes@0.2.2':
+    resolution: {integrity: sha512-kPjmSXA8lMwd+16K/MA8OzwTHqLLETIdbA6NlmWWG6CutejrYpeNLWnGIqBEQh9MclfEtWmXZbuDfkstifkG9A==}
+    peerDependencies:
+      '@cascivo/tokens': '>=0.0.0'
+
+  '@cascivo/tokens@0.2.0':
+    resolution: {integrity: sha512-lN9rE7m+qRWTFbVUQIm+b/d8RYwmbJuGrNBXMQ7W8j6KGDiEw6sL3o6m/TGIKhtFNb8YmJT/FMlZ9KUf7XUuBA==}
 
   '@changesets/apply-release-plan@7.0.14':
     resolution: {integrity: sha512-ddBvf9PHdy2YY0OUiEl3TV78mH9sckndJR14QAt87KLEbIov81XO0q0QAmvooBxXlqRRP8I9B7XOzZwQG7JkWA==}
@@ -1244,6 +1283,14 @@ packages:
     peerDependencies:
       '@babel/core': 7.x
       vite: 2.x || 3.x || 4.x || 5.x || 6.x || 7.x || 8.x
+
+  '@preact/signals-core@1.14.3':
+    resolution: {integrity: sha512-m0K3vnbSLC5rHs2ZVfeAMvBtT1zIyq4mxx5OlNncSgMj5Iz6W5Rn3kPrDxAC+iIKmiVe0lSl6U37t5ZkEWoVAw==}
+
+  '@preact/signals-react@2.3.0':
+    resolution: {integrity: sha512-g77rc7gTuPaoS5Lr80wjbN9P0t2U+YqJ6NG2krF5KLWLIoGn4uiByOv4bcZSJ41E4Nj50JLuXvdQEGlpU6cOug==}
+    peerDependencies:
+      react: ^16.14.0 || 17.x || 18.x || 19.x
 
   '@prefresh/babel-plugin@0.5.3':
     resolution: {integrity: sha512-57LX2SHs4BX2s1IwCjNzTE2OJeEepRCNf1VTEpbNcUyHfMO68eeOWGDIt4ob9aYlW6PEWZ1SuwNikuoIXANDtQ==}
@@ -5215,6 +5262,34 @@ snapshots:
     dependencies:
       fontkitten: 1.0.2
 
+  '@cascivo/core@0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@preact/signals-react': 2.3.0(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
+  '@cascivo/i18n@0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@preact/signals-react': 2.3.0(react@19.2.4)
+    transitivePeerDependencies:
+      - react
+      - react-dom
+
+  '@cascivo/react@0.2.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@cascivo/i18n': 0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@preact/signals-react': 2.3.0(react@19.2.4)
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
+  '@cascivo/themes@0.2.2(@cascivo/tokens@0.2.0)':
+    dependencies:
+      '@cascivo/tokens': 0.2.0
+
+  '@cascivo/tokens@0.2.0': {}
+
   '@changesets/apply-release-plan@7.0.14':
     dependencies:
       '@changesets/config': 3.1.2
@@ -5819,6 +5894,14 @@ snapshots:
       - preact
       - rollup
       - supports-color
+
+  '@preact/signals-core@1.14.3': {}
+
+  '@preact/signals-react@2.3.0(react@19.2.4)':
+    dependencies:
+      '@preact/signals-core': 1.14.3
+      react: 19.2.4
+      use-sync-external-store: 1.6.0(react@19.2.4)
 
   '@prefresh/babel-plugin@0.5.3': {}
 

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@bpmnkit/ui/tokens.css";
+@import "./cascivo.css";
 
 @theme inline {
 	--color-bg: var(--bpmnkit-bg);
