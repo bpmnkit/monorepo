@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 1b overlays (Dialog → Modal)
+
+- Replaced all 8 `Dialog` instances (`WelcomeModal`, `Models` ×5, `Settings`)
+  with cascivo `Modal` (string `title` / `onClose` / `size`) and deleted
+  `components/ui/dialog.tsx`. `WelcomeModal`'s custom centred title became a
+  title-less `Modal` + `<h2>`.
+- Routed `Button size="icon"` (3 sites) to cascivo `IconButton` inside the Button
+  adapter (derives the required `label` from `aria-label`); call sites unchanged.
+- Removed the now-orphaned direct deps `@radix-ui/react-separator`,
+  `@radix-ui/react-slot`, and `class-variance-authority`.
+- **Deferred** `DropdownMenu` → cascivo `Menu`: cascivo `Menu` lacks `MenuLabel`,
+  `asChild` triggers/items, and checkbox/radio items that the studio's menus rely
+  on. Documented in `doc/cascivo-feedback.md`.
+- Verified via isolated typecheck (cascivo `Modal` / `IconButton` / Button
+  adapter prop patterns under the studio's preact-aliased config, exit 0) and
+  Biome. The studio's full build remains WASM-blocked in this environment.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — Stage 1 primitives (Button/Badge/Separator)
 
 Continued the cascivo migration (plan in `doc/cascivo-migration.md`).

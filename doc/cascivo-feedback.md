@@ -106,6 +106,33 @@ documented sideEffects/tree-shaking guarantees) would help bundle size.
 Some tooling reads it; adding `"./package.json": "./package.json"` to `exports`
 is the conventional fix.
 
+### P1 — `Menu` can't replace a Radix-style dropdown menu
+`Menu` is currently `Menu` + `MenuTrigger` + `MenuItem{children, onSelect,
+disabled}` + `MenuSeparator`. Migrating three real studio dropdowns (cluster
+picker, project picker, model actions) off Radix was blocked by missing pieces:
+- **No `MenuLabel` / section header** — these menus group items under labels
+  ("Profiles", "Projects"); there's no non-interactive label item.
+- **No `asChild` on `MenuTrigger`** — the triggers are bespoke styled controls
+  (status dot + truncated text + caret). `MenuTrigger` wraps its children in its
+  own button, forcing nested/duplicated trigger chrome.
+- **No `asChild` (or `href`) on `MenuItem`** — several items are router links
+  ("Add profile →"). Workable via `onSelect: () => navigate(...)`, but loses
+  real anchor semantics (middle-click / open-in-new-tab).
+- **No checkbox / radio items** — needed for selection-state menus.
+
+`MenuButton` (label + `items[]`) is even more constrained (flat array, no custom
+trigger). Net: a Radix `DropdownMenu` consumer can't migrate without losing
+features. Consider adding `MenuLabel`, `asChild` on trigger/items, and
+checkbox/radio item variants.
+
+### P2 — `Button` has no icon-only size; `IconButton` is separate with a different variant set
+`Button` sizes are `sm|md|lg` (no square/icon size), so icon-only buttons must
+use `IconButton` — which has a *different* variant set (`ghost|outline|filled`
+vs Button's `primary|secondary|ghost|destructive`) and a required `label`.
+Bridging a single app "Button" abstraction onto both meant special-casing size
+`icon` → `IconButton` and remapping variants. Aligning the variant vocabularies
+(or giving `Button` an `icon`/square size) would simplify adoption.
+
 ### P3 — Redundant / overlapping semantic color tokens
 While bridging I found several near-synonyms that create ambiguity about which to
 target:

@@ -1,10 +1,10 @@
+import { Modal } from "@cascivo/react"
 import { CheckCircle2, Folder, Plus, RefreshCw, Trash2, XCircle } from "lucide-react"
 import { useEffect, useState } from "preact/hooks"
 import { useProfiles } from "../api/queries.js"
 import { ProfileTag } from "../components/ProfileTag.js"
 import { ThemePicker } from "../components/ThemePicker.js"
 import { Button } from "../components/ui/button.js"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog.js"
 import { Input } from "../components/ui/input.js"
 import { Separator } from "../components/ui/separator.js"
 import { useClusterStore } from "../stores/cluster.js"
@@ -372,62 +372,54 @@ export function Settings() {
 			</section>
 
 			{/* Add project dialog */}
-			<Dialog
-				open={addingProject}
-				onOpenChange={(open: boolean) => !open && setAddingProject(false)}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Add Project</DialogTitle>
-					</DialogHeader>
-					<div className="space-y-4 mt-4">
-						<div>
-							<label className="text-sm text-muted mb-1 block" htmlFor="project-name">
-								Display name
-							</label>
-							<Input
-								id="project-name"
-								value={newProjectName}
-								onInput={(e) => setNewProjectName((e.target as HTMLInputElement).value)}
-								placeholder="My BPMN Project"
-							/>
-						</div>
-						<div>
-							<label className="text-sm text-muted mb-1 block" htmlFor="project-path">
-								Absolute folder path
-							</label>
-							<Input
-								id="project-path"
-								value={newProjectPath}
-								onInput={(e) => setNewProjectPath((e.target as HTMLInputElement).value)}
-								placeholder="/home/user/projects/my-processes"
-								className="font-mono text-xs"
-							/>
-							<p className="text-xs text-muted mt-1">
-								Must be accessible on the machine running the proxy.
-							</p>
-						</div>
-						<div className="flex justify-end gap-2">
-							<Button
-								variant="outline"
-								onClick={() => {
-									setAddingProject(false)
-									setNewProjectName("")
-									setNewProjectPath("")
-								}}
-							>
-								Cancel
-							</Button>
-							<Button
-								onClick={() => void handleAddProject()}
-								disabled={!newProjectName.trim() || !newProjectPath.trim() || validating}
-							>
-								{validating ? "Validating…" : "Add Project"}
-							</Button>
-						</div>
+			<Modal open={addingProject} onClose={() => setAddingProject(false)} title="Add Project">
+				<div className="space-y-4 mt-4">
+					<div>
+						<label className="text-sm text-muted mb-1 block" htmlFor="project-name">
+							Display name
+						</label>
+						<Input
+							id="project-name"
+							value={newProjectName}
+							onInput={(e) => setNewProjectName((e.target as HTMLInputElement).value)}
+							placeholder="My BPMN Project"
+						/>
 					</div>
-				</DialogContent>
-			</Dialog>
+					<div>
+						<label className="text-sm text-muted mb-1 block" htmlFor="project-path">
+							Absolute folder path
+						</label>
+						<Input
+							id="project-path"
+							value={newProjectPath}
+							onInput={(e) => setNewProjectPath((e.target as HTMLInputElement).value)}
+							placeholder="/home/user/projects/my-processes"
+							className="font-mono text-xs"
+						/>
+						<p className="text-xs text-muted mt-1">
+							Must be accessible on the machine running the proxy.
+						</p>
+					</div>
+					<div className="flex justify-end gap-2">
+						<Button
+							variant="outline"
+							onClick={() => {
+								setAddingProject(false)
+								setNewProjectName("")
+								setNewProjectPath("")
+							}}
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={() => void handleAddProject()}
+							disabled={!newProjectName.trim() || !newProjectPath.trim() || validating}
+						>
+							{validating ? "Validating…" : "Add Project"}
+						</Button>
+					</div>
+				</div>
+			</Modal>
 		</div>
 	)
 }

@@ -119,10 +119,29 @@ in the final stage, once nothing depends on it).
   `apps/studio/tsconfig.json` mapping `react` / `react-dom` / `react/jsx-runtime`
   to `preact/compat`; verified in isolation that cascivo **and** the existing
   Radix / react-query usage typecheck together with it.
-- [ ] **Stage 1b — Overlays.** `Dialog`→`Modal`, `DropdownMenu`→`Dropdown`/`Menu`
-  with call-site rewrites; then remove the dead `tabs`/`tooltip`/`popover`
-  wrappers and drop `@radix-ui/*`, `class-variance-authority`, `clsx`,
-  `tailwind-merge`.
+- [~] **Stage 1b — Overlays.** *In progress.*
+  - **Dialog → Modal: done.** Rewrote all 8 dialog instances across
+    `WelcomeModal`, `Models` (×5), and `Settings` to cascivo `Modal` (string
+    `title`, `onClose`, `size`), and deleted `components/ui/dialog.tsx`.
+    `WelcomeModal` (custom centred title) uses a title-less `Modal` + `<h2>`.
+  - Routed `Button size="icon"` (3 sites) to cascivo **`IconButton`** inside the
+    Button adapter, deriving its required `label` from `aria-label` — call sites
+    unchanged.
+  - Removed the now-orphaned direct deps `@radix-ui/react-separator`,
+    `@radix-ui/react-slot`, `class-variance-authority` (no remaining importers
+    after Button/Separator/Dialog migration). `@radix-ui/react-dialog` stays —
+    still used by `CommandPalette`.
+  - **DropdownMenu → cascivo Menu: deferred.** cascivo `Menu` is minimal
+    (`MenuItem{children,onSelect,disabled}`, `MenuTrigger`, `MenuSeparator`) and
+    lacks a `MenuLabel`, `asChild` trigger/item, and checkbox/radio items — all
+    of which the studio's cluster/project/actions menus rely on (section labels,
+    custom-styled `asChild` triggers, `asChild` links). Migrating now would be
+    lossy and is not visually verifiable in this environment. Tracked as cascivo
+    feedback; revisit when `Menu` gains those features, or rewrite the menus'
+    information architecture to fit. See `doc/cascivo-feedback.md`.
+- [ ] **Stage 1c — Cleanup.** Once `DropdownMenu` is migrated: delete the dead
+  `tabs`/`tooltip`/`popover` wrappers and drop the remaining `@radix-ui/*`,
+  `clsx`, `tailwind-merge`.
 - [ ] **Stage 2 — App shell.** Replace `Shell`/`Sidebar`/`TopBar` with
   `AppShell` + `SideNav` + `ShellHeader`; keep the existing keyboard-shortcut /
   view-transition logic. Wire `SideNav` open state to the header burger.
