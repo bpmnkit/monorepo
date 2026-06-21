@@ -202,7 +202,17 @@ in the final stage, once nothing depends on it).
     without losing behavior. Keep hand-rolled, or revisit if cascivo exposes
     controlled expansion.
   - **Models** — a file/folder browser (tree + cards), not a tabular list.
-  - Detail pages (`Card`/`Stat`/`DataList`/`Timeline`) still pending.
+  - **Detail pages.** `IncidentDetail`'s incident-info block (Error Type /
+    Message / Element / Links / Created) is migrated to cascivo **`DataList`**
+    (vertical, conditional Element/Created items). **Deferred (with reason):**
+    `DecisionDetail`, `TaskDetail`, and the non-wasm `DefinitionDetail` are
+    imperative hosts that mount external `@bpmnkit/operate` / `@bpmnkit/user-tasks`
+    widgets — no React content to migrate. `InstanceDetail` and the rest of
+    `IncidentDetail`/`WasmDefinitionDetail` are complex tabbed + BPMN-canvas
+    layouts whose remaining pieces are panels/forms (`border rounded-lg` →
+    `Card`) — a purely visual swap that isn't verifiable in this environment
+    (these files also carry pre-existing `@bpmnkit/*` type-resolution errors).
+    Best done with a running browser.
 - [ ] **Stage 5 — Remaining pages & chrome.** `Dashboard`, `Settings`,
   `RunHistory`, modals, empty/error states.
 - [ ] **Stage 6 — Remove Tailwind.** Delete `@tailwindcss/vite`, the

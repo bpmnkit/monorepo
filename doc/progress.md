@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — detail pages (IncidentDetail → DataList)
+
+- Migrated `IncidentDetail`'s incident-info block to cascivo `DataList`
+  (vertical; conditional Element/Created items via spreads). Verified the file's
+  `tsc` output still shows only its 2 pre-existing `@bpmnkit` resolution errors
+  (no new errors); Biome clean.
+- Surveyed the other detail pages: `DecisionDetail`/`TaskDetail`/non-wasm
+  `DefinitionDetail` are imperative `@bpmnkit` widget hosts (no React content);
+  `InstanceDetail` + the rest of `IncidentDetail`/`WasmDefinitionDetail` are
+  tabbed BPMN-canvas layouts whose remaining bits are panel/`Card` visual swaps
+  — deferred as unverifiable here. See `doc/cascivo-migration.md`.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — Stage 4 list tables → cascivo DataTable
 
 - Migrated 4 flat data tables to cascivo `DataTable`: Decisions, Incidents
