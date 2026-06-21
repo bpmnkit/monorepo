@@ -193,7 +193,17 @@ in the final stage, once nothing depends on it).
     `bindToast()`, keeping the imperative `toast.success/error/info(message)`
     API unchanged across all 39 call sites (success→`success`,
     error→`destructive`, info→`default`).
-  - **CommandPalette → `CommandMenu`** — pending.
+  - **CommandPalette → `CommandMenu`** — **deferred (with reason).** The studio
+    `CommandPalette` (1114 lines) isn't a plain palette: it's a bespoke Radix
+    dialog hosting three interleaved modes — `InlineAiChat` (token-streaming AI
+    chat), `InlineImproveMode` (AI-driven BPMN ops via `@bpmnkit/core`), and the
+    command list with a `/`-command mode, nested in-view sub-palettes
+    (`pushPaletteView`/`popPaletteView`), and an inline "Ask AI" action. cascivo
+    `CommandMenu` is a self-contained groups palette (`open`/`groups`/
+    `onQueryChange`) and can't express any of those AI surfaces or the
+    nested-view behavior. Migrating would be heavily lossy or require extracting
+    the AI surfaces into separate dialogs first — a large, unverifiable rewrite.
+    Keep the bespoke palette; revisit only if those AI surfaces are split out.
 - [~] **Stage 4 — List pages.** *In progress.* Migrated the 4 flat data tables
   to cascivo **`DataTable`**: **Decisions**, **Incidents** (mode-conditional
   Element column), **Tasks** (Badge cells), **Instances** (row `selection` +

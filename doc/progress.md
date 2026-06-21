@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-06-20 — Chore: Cascivo migration — defer CommandPalette → CommandMenu
+
+- Surveyed `CommandPalette` (1114 lines): a bespoke Radix dialog hosting three
+  interleaved modes (`InlineAiChat` token streaming, `InlineImproveMode` BPMN
+  ops via `@bpmnkit/core`, and the command list with `/`-command mode + nested
+  in-view sub-palettes + inline "Ask AI"). cascivo `CommandMenu` is a generic
+  groups palette and can't host the AI surfaces or nested views — migrating
+  would be lossy or a large unverifiable rewrite. Deferred; documented in
+  `doc/cascivo-migration.md`.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — Stage 3a Toast → cascivo ToastProvider
 
 - Mounted cascivo `ToastProvider` in `app.tsx`; deleted the custom zustand
