@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 4 list tables → cascivo DataTable
+
+- Migrated 4 flat data tables to cascivo `DataTable`: Decisions, Incidents
+  (mode-conditional Element column), Tasks (Badge cells), Instances. Cells map
+  via `columns[].render`; kept the external `Search`/filter (pre-filtered rows);
+  used `loading` (skeleton) + `emptyState`.
+- Instances: replaced the hand-rolled checkbox column + header bulk-cancel
+  button with `DataTable` `selection` (multi) + `batchActions`; refactored
+  `handleBulkCancel(ids)`; removed `toggleSelect` and the stray checkbox input.
+- Deferred Definitions (grouped rows + expandable version sub-rows with a
+  coupled toggle; `DataTable` expand state is internal/uncontrollable) and
+  Models (file/folder browser, not tabular). Detail pages still pending.
+- Verified: full studio `tsc --noEmit` shows zero errors in the 4 migrated
+  files (remaining errors are pre-existing `@bpmnkit/*` resolution in
+  ModelDetail/Models/TaskDetail); Biome clean.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — form fields → cascivo Input; delete local wrapper
 
 - Migrated the 6 form-field inputs to cascivo `Input`: Settings (proxy URL,

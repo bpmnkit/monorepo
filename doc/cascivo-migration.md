@@ -188,9 +188,21 @@ in the final stage, once nothing depends on it).
 - [ ] **Stage 3 — Toast + command palette.** Mount `ToastProvider`; migrate the
   toast store callers to `useToast`/`enqueue`; swap `CommandPalette` →
   `CommandMenu`.
-- [ ] **Stage 4 — List pages.** Move `Instances` / `Incidents` / `Tasks` /
-  `Definitions` / `Decisions` / `Models` tables to `DataTable`; detail pages to
-  `Card` / `Stat` / `DataList` / `Timeline`.
+- [~] **Stage 4 — List pages.** *In progress.* Migrated the 4 flat data tables
+  to cascivo **`DataTable`**: **Decisions**, **Incidents** (mode-conditional
+  Element column), **Tasks** (Badge cells), **Instances** (row `selection` +
+  `batchActions` replace the hand-rolled checkbox column + bulk-cancel button;
+  the stray `<input type="checkbox">` is gone). Each maps cells via
+  `columns[].render`, keeps the external `Search`/filter (rows pre-filtered),
+  and uses `loading` (skeleton) + `emptyState`. **Deferred:**
+  - **Definitions** — not a flat table: rows are *grouped* by `processDefinitionId`
+    with **expandable version sub-rows**, and a "N versions" button that toggles
+    the same expansion. `DataTable` keeps expand state internal (no
+    `expanded`/`onExpandedChange` prop), so the coupled toggle can't be wired
+    without losing behavior. Keep hand-rolled, or revisit if cascivo exposes
+    controlled expansion.
+  - **Models** — a file/folder browser (tree + cards), not a tabular list.
+  - Detail pages (`Card`/`Stat`/`DataList`/`Timeline`) still pending.
 - [ ] **Stage 5 — Remaining pages & chrome.** `Dashboard`, `Settings`,
   `RunHistory`, modals, empty/error states.
 - [ ] **Stage 6 — Remove Tailwind.** Delete `@tailwindcss/vite`, the

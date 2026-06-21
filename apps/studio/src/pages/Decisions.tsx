@@ -1,9 +1,42 @@
-import { Search } from "@cascivo/react"
+import { type Column, DataTable, Search } from "@cascivo/react"
 import { useEffect, useState } from "preact/hooks"
 import { Link } from "wouter"
 import { useDecisions } from "../api/queries.js"
+import type { DecisionDefinition } from "../api/types.js"
 import { ErrorState } from "../components/ErrorState.js"
 import { useUiStore } from "../stores/ui.js"
+
+const columns: Column<DecisionDefinition>[] = [
+	{
+		key: "name",
+		header: "Name",
+		render: (dec) => (
+			<Link
+				href={`/decisions/${dec.decisionDefinitionKey}`}
+				className="font-medium text-fg hover:text-accent"
+			>
+				{dec.name || dec.decisionDefinitionId}
+			</Link>
+		),
+	},
+	{
+		key: "decisionId",
+		header: "Decision ID",
+		render: (dec) => (
+			<span className="font-mono text-muted text-xs">{dec.decisionDefinitionId}</span>
+		),
+	},
+	{
+		key: "version",
+		header: "Version",
+		render: (dec) => <span className="text-muted">v{dec.version}</span>,
+	},
+	{
+		key: "tenant",
+		header: "Tenant",
+		render: (dec) => <span className="text-muted">{dec.tenantId ?? "—"}</span>,
+	},
+]
 
 export function Decisions() {
 	const [search, setSearch] = useState("")
@@ -50,57 +83,13 @@ export function Decisions() {
 				/>
 			</div>
 
-			<div className="rounded-lg border border-border bg-surface overflow-hidden">
-				<table className="w-full text-sm">
-					<thead>
-						<tr className="border-b border-border bg-surface-2 text-left text-xs text-muted">
-							<th className="px-4 py-3 font-medium">Name</th>
-							<th className="px-4 py-3 font-medium">Decision ID</th>
-							<th className="px-4 py-3 font-medium">Version</th>
-							<th className="px-4 py-3 font-medium">Tenant</th>
-						</tr>
-					</thead>
-					<tbody>
-						{isLoading &&
-							(["s0", "s1", "s2", "s3", "s4"] as const).map((sk) => (
-								<tr key={sk} className="border-b border-border/50">
-									{(["a", "b", "c", "d"] as const).map((col) => (
-										<td key={col} className="px-4 py-3">
-											<div className="h-4 animate-pulse rounded bg-surface-2" />
-										</td>
-									))}
-								</tr>
-							))}
-						{filtered?.map((dec) => (
-							<tr
-								key={dec.decisionDefinitionKey}
-								className="border-b border-border/50 hover:bg-surface-2"
-							>
-								<td className="px-4 py-3">
-									<Link
-										href={`/decisions/${dec.decisionDefinitionKey}`}
-										className="font-medium text-fg hover:text-accent"
-									>
-										{dec.name || dec.decisionDefinitionId}
-									</Link>
-								</td>
-								<td className="px-4 py-3 font-mono text-xs text-muted">
-									{dec.decisionDefinitionId}
-								</td>
-								<td className="px-4 py-3 text-muted">v{dec.version}</td>
-								<td className="px-4 py-3 text-muted">{dec.tenantId ?? "—"}</td>
-							</tr>
-						))}
-						{!isLoading && filtered?.length === 0 && (
-							<tr>
-								<td colSpan={4} className="px-4 py-8 text-center text-sm text-muted">
-									No decisions found.
-								</td>
-							</tr>
-						)}
-					</tbody>
-				</table>
-			</div>
+			<DataTable
+				columns={columns}
+				rows={filtered ?? []}
+				getRowId={(dec) => dec.decisionDefinitionKey}
+				loading={isLoading}
+				emptyState="No decisions found."
+			/>
 		</div>
 	)
 }
