@@ -3,7 +3,6 @@ import type { ComponentChildren, JSX } from "preact"
 import { useEffect } from "preact/hooks"
 import { useLocation } from "wouter"
 import { CommandPalette } from "../components/CommandPalette.js"
-import { ToastContainer } from "../components/Toast.js"
 import { navigateWithTransition } from "../lib/transition.js"
 import { useUiStore } from "../stores/ui.js"
 import { AIDrawer } from "./AIDrawer.js"
@@ -121,7 +120,6 @@ export function Shell({ children }: ShellProps) {
 		return (
 			<div className="flex h-full flex-col overflow-hidden">
 				<main className="flex-1 overflow-y-auto bg-bg">{children}</main>
-				<ToastContainer />
 				<CommandPalette />
 			</div>
 		)
@@ -141,7 +139,6 @@ export function Shell({ children }: ShellProps) {
 					<AIDrawer />
 				</div>
 			</AppShell>
-			<ToastContainer />
 			<CommandPalette />
 		</div>
 	)

@@ -1,49 +1,17 @@
-import { create } from "zustand"
+import type { ToastOptions } from "@cascivo/react"
 
-export interface ToastMessage {
-	id: string
-	type: "success" | "error" | "info"
-	message: string
-	dying?: boolean
+// cascivo's imperative `enqueue` isn't exported — only the `useToast()` hook
+// exposes it. <ToastBridge> (app.tsx) binds it here so the existing imperative
+// `toast.*` call sites keep working from non-component code (stores, async
+// handlers). Rendering is handled by the <ToastProvider> in app.tsx.
+let enqueue: ((options: ToastOptions) => void) | null = null
+
+export function bindToast(fn: (options: ToastOptions) => void) {
+	enqueue = fn
 }
-
-interface ToastState {
-	toasts: ToastMessage[]
-	addToast(t: Omit<ToastMessage, "id" | "dying">): void
-	removeToast(id: string): void
-}
-
-const EXIT_MS = 220
-
-export const useToastStore = create<ToastState>()((set) => ({
-	toasts: [],
-
-	addToast(t) {
-		const id = crypto.randomUUID()
-		set((s) => ({ toasts: [...s.toasts, { ...t, id }] }))
-		// Start exit animation before the auto-remove deadline
-		setTimeout(() => {
-			set((s) => ({
-				toasts: s.toasts.map((x) => (x.id === id ? { ...x, dying: true } : x)),
-			}))
-		}, 5000 - EXIT_MS)
-		setTimeout(() => {
-			set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) }))
-		}, 5000)
-	},
-
-	removeToast(id) {
-		set((s) => ({
-			toasts: s.toasts.map((x) => (x.id === id ? { ...x, dying: true } : x)),
-		}))
-		setTimeout(() => {
-			set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) }))
-		}, EXIT_MS)
-	},
-}))
 
 export const toast = {
-	success: (message: string) => useToastStore.getState().addToast({ type: "success", message }),
-	error: (message: string) => useToastStore.getState().addToast({ type: "error", message }),
-	info: (message: string) => useToastStore.getState().addToast({ type: "info", message }),
+	success: (message: string) => enqueue?.({ title: message, variant: "success" }),
+	error: (message: string) => enqueue?.({ title: message, variant: "destructive" }),
+	info: (message: string) => enqueue?.({ title: message, variant: "default" }),
 }

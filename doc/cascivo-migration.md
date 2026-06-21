@@ -185,9 +185,15 @@ in the final stage, once nothing depends on it).
     props). (3) Verify footer padding/width and pickers collapsing to icons at
     the 4rem rail. (4) The AI-assistant / simulate buttons could later become
     cascivo `ShellHeader` `actions` (icon-only) instead of custom `end` markup.
-- [ ] **Stage 3 — Toast + command palette.** Mount `ToastProvider`; migrate the
-  toast store callers to `useToast`/`enqueue`; swap `CommandPalette` →
-  `CommandMenu`.
+- [~] **Stage 3 — Toast + command palette.** *In progress.*
+  - **Toast — done.** Mounted cascivo `ToastProvider` in `app.tsx`; deleted the
+    custom zustand `useToastStore` + `ToastContainer`. cascivo's imperative
+    `enqueue` isn't exported (only the `useToast()` hook is), so a tiny
+    `<ToastBridge>` captures `useToast().toast` into a module ref via
+    `bindToast()`, keeping the imperative `toast.success/error/info(message)`
+    API unchanged across all 39 call sites (success→`success`,
+    error→`destructive`, info→`default`).
+  - **CommandPalette → `CommandMenu`** — pending.
 - [~] **Stage 4 — List pages.** *In progress.* Migrated the 4 flat data tables
   to cascivo **`DataTable`**: **Decisions**, **Incidents** (mode-conditional
   Element column), **Tasks** (Badge cells), **Instances** (row `selection` +

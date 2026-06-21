@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 3a Toast → cascivo ToastProvider
+
+- Mounted cascivo `ToastProvider` in `app.tsx`; deleted the custom zustand
+  `useToastStore` and `ToastContainer` (`components/Toast.tsx`).
+- cascivo's `enqueue` isn't exported (only the `useToast()` hook), so a tiny
+  `<ToastBridge>` captures `useToast().toast` into a module ref (`bindToast`),
+  keeping the imperative `toast.success/error/info(message)` API unchanged for
+  all 39 call sites (success→success, error→destructive, info→default).
+- Verified: full studio `tsc --noEmit` clean for app.tsx/Shell.tsx/stores/toast;
+  Biome clean.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — detail pages (IncidentDetail → DataList)
 
 - Migrated `IncidentDetail`'s incident-info block to cascivo `DataList`
