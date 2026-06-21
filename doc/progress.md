@@ -1,5 +1,25 @@
 # Progress
 
+# Progress
+
+## 2026-06-20 — Fix: studio production build (cascivo / signals-react jsx-runtime)
+
+- `pnpm build` was failing. Two distinct causes:
+  1. **Environmental:** `@bpmnkit/reebe-wasm` (wasm-pack output) wasn't generated
+     in the fresh container, so `@bpmnkit/engine` and everything downstream
+     couldn't resolve it. Provisioned the toolchain (wasm32 target, wasm-pack,
+     binaryen for `wasm-opt`) and ran `build:wasm`. Not a code change — the
+     artifacts are gitignored and regenerate in CI.
+  2. **Code (cascivo integration, latent since Stage 0):** the studio's Vite/
+     rolldown production build failed with `MISSING_EXPORT` because
+     `@preact/signals-react/runtime` (pulled in by cascivo) does dead default
+     imports `import v from "react/jsx-runtime"` / `import m from
+     "react/jsx-dev-runtime"`, which have no default under the preact alias.
+     Added an `enforce:"pre"` Vite transform (`fixSignalsReactJsxImport`) that
+     rewrites those unused default imports to side-effect imports. `tsc --noEmit`
+     never caught this — it's a bundler-level ESM export check.
+- Result: full `pnpm build` green — 28/28 tasks successful.
+
 ## 2026-06-20 — Chore: Cascivo migration — defer CommandPalette → CommandMenu
 
 - Surveyed `CommandPalette` (1114 lines): a bespoke Radix dialog hosting three
