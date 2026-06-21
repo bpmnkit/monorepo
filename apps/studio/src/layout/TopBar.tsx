@@ -1,3 +1,4 @@
+import { ShellHeader } from "@cascivo/react"
 import { FlaskConical, FolderOpen, MessageSquare } from "lucide-react"
 import { Link } from "wouter"
 import { BpmnkitLogo } from "../components/Logo.js"
@@ -6,50 +7,55 @@ import { useClusterStore } from "../stores/cluster.js"
 import { useProjectsStore } from "../stores/projects.js"
 import { useUiStore } from "../stores/ui.js"
 
-export function TopBar() {
-	const { aiOpen, toggleAI, toggleSidebar, breadcrumbs } = useUiStore()
+// AppShell clones the header element and injects these so the burger toggles the
+// nav drawer (notably the only way to reopen the nav on mobile).
+interface TopBarProps {
+	onMenuClick?: () => void
+	menuExpanded?: boolean
+}
+
+export function TopBar({ onMenuClick, menuExpanded }: TopBarProps) {
+	const { aiOpen, toggleAI, breadcrumbs } = useUiStore()
 	const { activeProjectId, projects } = useProjectsStore()
 	const activeProject = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null
 	const { activeProfile, simulationMode, setSimulationMode } = useClusterStore()
 
-	return (
-		<header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
-			{/* Logo — click to toggle sidebar */}
-			<button
-				type="button"
-				onClick={toggleSidebar}
-				className="flex items-center gap-2 shrink-0 rounded hover:opacity-80 active:opacity-60 transition-opacity duration-150"
-				aria-label="Toggle sidebar"
-				title="Toggle sidebar ["
+	const brand = (
+		<div className="flex min-w-0 items-center gap-3">
+			{/* Logo — links home */}
+			<Link
+				href="/"
+				className="flex shrink-0 items-center gap-2 transition-opacity duration-150 hover:opacity-80 active:opacity-60"
+				aria-label="Studio home"
 			>
 				<BpmnkitLogo height={30} />
-				<span className="text-sm font-semibold text-fg">Studio</span>
-			</button>
+				<span className="font-semibold text-fg text-sm">Studio</span>
+			</Link>
 
 			{/* Breadcrumb */}
 			{breadcrumbs.length > 0 && (
-				<nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm min-w-0">
+				<nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
 					<span className="text-border" aria-hidden="true">
 						/
 					</span>
 					{breadcrumbs.map((crumb, i) => {
 						const isLast = i === breadcrumbs.length - 1
 						return (
-							<span key={crumb.label} className="flex items-center gap-1.5 min-w-0">
+							<span key={crumb.label} className="flex min-w-0 items-center gap-1.5">
 								{crumb.href && !isLast ? (
 									<Link
 										href={crumb.href}
-										className="text-muted hover:text-fg transition-colors duration-100 truncate"
+										className="truncate text-muted transition-colors duration-100 hover:text-fg"
 									>
 										{crumb.label}
 									</Link>
 								) : (
-									<span className={`truncate ${isLast ? "text-fg font-medium" : "text-muted"}`}>
+									<span className={`truncate ${isLast ? "font-medium text-fg" : "text-muted"}`}>
 										{crumb.label}
 									</span>
 								)}
 								{!isLast && (
-									<span className="text-border shrink-0" aria-hidden="true">
+									<span className="shrink-0 text-border" aria-hidden="true">
 										/
 									</span>
 								)}
@@ -62,47 +68,53 @@ export function TopBar() {
 			{activeProject && (
 				<Link
 					href="/settings"
-					className="hidden sm:flex items-center gap-1.5 ml-4 px-2 py-1 rounded text-xs text-muted hover:text-fg hover:bg-surface-2 transition-colors"
+					className="ml-1 hidden items-center gap-1.5 rounded px-2 py-1 text-muted text-xs transition-colors hover:bg-surface-2 hover:text-fg sm:flex"
 					title={`Project: ${activeProject.path}`}
 				>
 					<FolderOpen size={13} />
 					<span className="max-w-48 truncate">{activeProject.name}</span>
 				</Link>
 			)}
+		</div>
+	)
 
-			<div className="ml-auto flex items-center gap-2">
-				{activeProfile === "reebe-wasm" && (
-					<button
-						type="button"
-						onClick={() => setSimulationMode(!simulationMode)}
-						className={`flex h-8 items-center gap-1.5 rounded border px-2 text-xs transition-colors active:opacity-70 ${
-							simulationMode
-								? "border-warn bg-warn/10 text-warn"
-								: "border-border text-muted hover:text-fg"
-						}`}
-						aria-label="Toggle simulation mode"
-						aria-pressed={simulationMode}
-						title="Simulation Mode: auto-complete service tasks instead of creating incidents"
-					>
-						<FlaskConical size={14} />
-						<span>Simulate</span>
-					</button>
-				)}
-				<ModeToggle />
+	const end = (
+		<div className="flex items-center gap-2">
+			{activeProfile === "reebe-wasm" && (
 				<button
 					type="button"
-					onClick={toggleAI}
-					className={`flex h-8 w-8 items-center justify-center rounded border transition-colors active:opacity-70 ${
-						aiOpen
-							? "border-accent bg-accent/10 text-accent"
+					onClick={() => setSimulationMode(!simulationMode)}
+					className={`flex h-8 items-center gap-1.5 rounded border px-2 text-xs transition-colors active:opacity-70 ${
+						simulationMode
+							? "border-warn bg-warn/10 text-warn"
 							: "border-border text-muted hover:text-fg"
 					}`}
-					aria-label="Toggle AI assistant"
-					aria-pressed={aiOpen}
+					aria-label="Toggle simulation mode"
+					aria-pressed={simulationMode}
+					title="Simulation Mode: auto-complete service tasks instead of creating incidents"
 				>
-					<MessageSquare size={16} />
+					<FlaskConical size={14} />
+					<span>Simulate</span>
 				</button>
-			</div>
-		</header>
+			)}
+			<ModeToggle />
+			<button
+				type="button"
+				onClick={toggleAI}
+				className={`flex h-8 w-8 items-center justify-center rounded border transition-colors active:opacity-70 ${
+					aiOpen
+						? "border-accent bg-accent/10 text-accent"
+						: "border-border text-muted hover:text-fg"
+				}`}
+				aria-label="Toggle AI assistant"
+				aria-pressed={aiOpen}
+			>
+				<MessageSquare size={16} />
+			</button>
+		</div>
+	)
+
+	return (
+		<ShellHeader brand={brand} end={end} onMenuClick={onMenuClick} menuExpanded={menuExpanded} />
 	)
 }

@@ -159,14 +159,23 @@ in the final stage, once nothing depends on it).
     collapsible rail sidebar. It can — `SideNav` self-sizes `16rem ↔ 4rem` rail
     with hover-expand. The real (resolved) issue was *wrapping the studio's own
     self-transforming sidebar* in AppShell; using cascivo `SideNav` avoids it.
-  - **Known follow-ups (need browser verification):** (1) `TopBar` kept as-is
-    (not `ShellHeader`) because it's breadcrumb-centric — so there's no header
-    burger; on mobile AppShell starts the nav closed and nothing reopens it.
-    Wire a mobile drawer toggle (separate from the desktop `sidebarExpanded`
-    rail state) or move `TopBar` to `ShellHeader`. (2) Lost the offline-dimming
-    of proxy-required nav items and the per-item keyboard-shortcut hints in
-    collapsed tooltips (`SideNav` items have no such props). (3) Verify footer
-    padding/width and pickers collapsing to icons at the 4rem rail.
+  - `TopBar` now renders cascivo **`ShellHeader`** (brand = logo + breadcrumb +
+    project link as a ReactNode; the simulate / mode / AI-assistant controls in
+    the `end` slot). AppShell `cloneElement`s the header to inject
+    `onMenuClick`/`menuExpanded`, which `TopBar` forwards to `ShellHeader` — so
+    the burger toggles AppShell's nav drawer. **Resolves follow-up (1)**: mobile
+    now has a working reopen control. The logo no longer toggles the rail (it
+    links home); the rail toggle is `SideNav`'s own button + the `[` shortcut.
+    The burger also shows on desktop (cascivo has no breakpoint hiding it) as an
+    extra hide/show affordance.
+  - **Known follow-ups (need browser verification):** (1) Breadcrumb has no
+    native `ShellHeader` slot — it lives inside the `brand` ReactNode, which is
+    `inline-flex; white-space:nowrap`; verify long-breadcrumb truncation.
+    (2) Lost the offline-dimming of proxy-required nav items and the per-item
+    keyboard-shortcut hints in collapsed tooltips (`SideNav` items have no such
+    props). (3) Verify footer padding/width and pickers collapsing to icons at
+    the 4rem rail. (4) The AI-assistant / simulate buttons could later become
+    cascivo `ShellHeader` `actions` (icon-only) instead of custom `end` markup.
 - [ ] **Stage 3 — Toast + command palette.** Mount `ToastProvider`; migrate the
   toast store callers to `useToast`/`enqueue`; swap `CommandPalette` →
   `CommandMenu`.
