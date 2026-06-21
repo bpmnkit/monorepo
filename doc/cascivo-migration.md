@@ -103,15 +103,19 @@ in the final stage, once nothing depends on it).
   2 Badge / 1 Separator sites are unchanged. Dropped `asChild` from Button (only
   `ErrorState` used it — switched to an `onClick` navigation). **Deferred** in
   this stage:
-  - **Input** — cascivo `Input` always renders a wrapper `<div>` and applies
-    `className` to the wrapper, not the `<input>`; re-exporting it would regress
-    the studio's inputs. *Update:* the 6 **list-page search boxes** (Incidents,
-    Tasks, Instances, Definitions, Decisions, Models) are now migrated to cascivo
-    **`Search`** (`value`/`onChange`/`label` → sr-only accessible label; gains a
-    search icon + clear button). Remaining `Input` users are true **form fields**
-    (Settings ×3, Models create/rename ×2, ModelDetail ×1) and the detail-panel
-    bare search inputs (Incident/Instance detail ×2 each) — migrate to cascivo
-    `Field` + control in a later pass.
+  - **Input** — **done.** The 6 list-page search boxes use cascivo `Search`;
+    the 6 form fields (Settings proxy/project-name/project-path, Models
+    create-model/create-folder, ModelDetail link-process-id) use cascivo
+    **`Input`** (its `label`/`hint`/`size` props replaced the hand-rolled
+    `<label>`/hint `<p>`; `aria-label` kept for the unlabeled inline inputs;
+    `size="sm"` + `flex-1` for the compact inline one). The local
+    `components/ui/input.tsx` wrapper is now unused and was **deleted**.
+    *Deferred:* the 4 detail-panel bare `<input>` filters (Incident/Instance
+    detail) — 2 use a focus `ref` (autofocus on open) that cascivo `Search`
+    can't express, and all 4 are dense custom-styled compact filters where the
+    swap is low-value and visually risky. *Minor loss:* the project-path input
+    is no longer monospaced (cascivo `Input` applies `className` to the wrapper,
+    not the `<input>`).
   - **Dialog → Modal** and **DropdownMenu → Dropdown/Menu** — compositional APIs
     differ entirely from Radix; these need call-site rewrites (Stage 1b).
   - `tabs` / `tooltip` / `popover` wrappers are **dead code** (no importers) —

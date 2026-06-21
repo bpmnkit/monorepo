@@ -1,7 +1,6 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
-import { Modal } from "@cascivo/react"
-import { Search } from "@cascivo/react"
+import { Input, Modal, Search } from "@cascivo/react"
 import {
 	BookOpen,
 	ChevronDown,
@@ -22,7 +21,6 @@ import { useEffect, useRef, useState } from "preact/hooks"
 import { useLocation } from "wouter"
 import { StatusPill } from "../components/StatusPill.js"
 import { Button } from "../components/ui/button.js"
-import { Input } from "../components/ui/input.js"
 import { getFsAdapter, isFsMode, storage } from "../storage/index.js"
 import type { FsEntry, ModelFile } from "../storage/types.js"
 import { useModelsStore } from "../stores/models.js"
@@ -817,18 +815,14 @@ export function Models() {
 			{/* Create model dialog */}
 			<Modal open={creating} onClose={() => setCreating(false)} title="New Model">
 				<div className="space-y-4 mt-4">
-					<div>
-						<label className="text-sm text-muted mb-1 block" htmlFor="model-name">
-							Name
-						</label>
-						<Input
-							id="model-name"
-							value={newName}
-							onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
-							placeholder="My Process"
-							onKeyDown={(e) => e.key === "Enter" && void handleCreate()}
-						/>
-					</div>
+					<Input
+						id="model-name"
+						label="Name"
+						value={newName}
+						onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
+						placeholder="My Process"
+						onKeyDown={(e) => e.key === "Enter" && void handleCreate()}
+					/>
 					{selectedFolder && (
 						<p className="text-xs text-muted">
 							Folder: <span className="font-mono text-fg">{selectedFolder}/</span>
@@ -871,18 +865,14 @@ export function Models() {
 			{/* Create folder dialog */}
 			<Modal open={creatingFolder} onClose={() => setCreatingFolder(false)} title="New Folder">
 				<div className="space-y-4 mt-4">
-					<div>
-						<label className="text-sm text-muted mb-1 block" htmlFor="folder-name">
-							Folder name
-						</label>
-						<Input
-							id="folder-name"
-							value={newFolderName}
-							onInput={(e) => setNewFolderName((e.target as HTMLInputElement).value)}
-							placeholder="processes"
-							onKeyDown={(e) => e.key === "Enter" && void handleCreateFolder()}
-						/>
-					</div>
+					<Input
+						id="folder-name"
+						label="Folder name"
+						value={newFolderName}
+						onInput={(e) => setNewFolderName((e.target as HTMLInputElement).value)}
+						placeholder="processes"
+						onKeyDown={(e) => e.key === "Enter" && void handleCreateFolder()}
+					/>
 					{selectedFolder && (
 						<p className="text-xs text-muted">
 							Location: <span className="font-mono text-fg">{selectedFolder}/</span>

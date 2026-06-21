@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — form fields → cascivo Input; delete local wrapper
+
+- Migrated the 6 form-field inputs to cascivo `Input`: Settings (proxy URL,
+  project name, project path), Models (new-model name, new-folder name),
+  ModelDetail (link process ID). Used cascivo `Input`'s `label`/`hint`/`size`
+  props in place of the hand-rolled `<label>` + hint `<p>`; kept `aria-label`
+  for the unlabeled inline inputs; `size="sm"` + `flex-1` for the compact one.
+- Deleted the now-orphaned `apps/studio/src/components/ui/input.tsx` wrapper
+  (no remaining importers).
+- Deferred the 4 detail-panel bare `<input>` filters (Incident/Instance detail):
+  2 rely on a focus ref (autofocus) cascivo `Search` can't express, and all are
+  dense compact filters where the swap is low-value/visually risky. Minor loss:
+  project-path input no longer monospaced (cascivo `Input` className → wrapper).
+- Verified: isolated typecheck of cascivo `Input` (label/hint/size/aria-label/
+  className, exit 0) and Biome clean.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — list-page search boxes → cascivo Search
 
 - Migrated the 6 list-page search filters (Incidents, Tasks, Instances,
