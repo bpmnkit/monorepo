@@ -1,8 +1,8 @@
+import { Search } from "@cascivo/react"
 import { useEffect, useState } from "preact/hooks"
 import { Link } from "wouter"
 import { useDecisions } from "../api/queries.js"
 import { ErrorState } from "../components/ErrorState.js"
-import { Input } from "../components/ui/input.js"
 import { useUiStore } from "../stores/ui.js"
 
 export function Decisions() {
@@ -41,12 +41,12 @@ export function Decisions() {
 			)}
 
 			<div className="mb-4">
-				<Input
+				<Search
 					placeholder="Search by name or decision ID..."
 					value={search}
-					onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+					onChange={setSearch}
 					className="w-full max-w-80"
-					aria-label="Search decisions"
+					label="Search decisions"
 				/>
 			</div>
 

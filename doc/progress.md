@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-06-20 — Feat: Cascivo UI migration — list-page search boxes → cascivo Search
+
+- Migrated the 6 list-page search filters (Incidents, Tasks, Instances,
+  Definitions, Decisions, Models) from the local `Input` wrapper to cascivo
+  `Search`: `value={search}` + `onChange={setSearch}` (fires immediately; the
+  300ms `debounceMs` only gates the optional `onSearch`), `aria-label` → `label`
+  (rendered sr-only). Gains a search icon + clear button for free; `className`
+  width constraints preserved on the root.
+- Removed the now-unused `Input` import from the 5 single-input pages; Models
+  keeps it (2 form fields remain). Remaining `Input` users are true form fields
+  (Settings, Models create/rename, ModelDetail) + detail-panel search inputs —
+  deferred to a `Field` pass.
+- Also migrated `TopBar` → cascivo `ShellHeader` (burger wired via AppShell,
+  fixing mobile nav reopen).
+- Verified: isolated typecheck of `Search` (controlled value/onChange/label,
+  exit 0) and Biome clean across all changed files.
+
 ## 2026-06-20 — Feat: Cascivo UI migration — Stage 2 app shell (AppShell + SideNav)
 
 - `Shell` now uses cascivo `AppShell` (header = `TopBar`, nav = `Sidebar`,

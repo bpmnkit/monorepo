@@ -1,10 +1,10 @@
+import { Search } from "@cascivo/react"
 import { useEffect, useState } from "preact/hooks"
 import { Link } from "wouter"
 import { useCancelInstance, useInstances } from "../api/queries.js"
 import { ErrorState } from "../components/ErrorState.js"
 import { StatusPill } from "../components/StatusPill.js"
 import { Button } from "../components/ui/button.js"
-import { Input } from "../components/ui/input.js"
 import { toast } from "../stores/toast.js"
 import { useUiStore } from "../stores/ui.js"
 
@@ -82,12 +82,12 @@ export function Instances() {
 
 			{/* Filters */}
 			<div className="flex items-center gap-3 mb-4">
-				<Input
+				<Search
 					placeholder="Search by process ID or key..."
 					value={search}
-					onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+					onChange={setSearch}
 					className="w-full max-w-80"
-					aria-label="Search instances"
+					label="Search instances"
 				/>
 				<div className="flex rounded border border-border bg-surface-2 text-xs overflow-hidden">
 					{(["all", "ACTIVE", "COMPLETED", "TERMINATED"] as StateFilter[]).map((s) => (

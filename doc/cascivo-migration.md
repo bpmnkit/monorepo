@@ -105,8 +105,13 @@ in the final stage, once nothing depends on it).
   this stage:
   - **Input** — cascivo `Input` always renders a wrapper `<div>` and applies
     `className` to the wrapper, not the `<input>`; re-exporting it would regress
-    the studio's bare-input search boxes (`className="pl-8"` icon padding). Move
-    these to cascivo `Search` / `Field` during the list-page work (Stage 4).
+    the studio's inputs. *Update:* the 6 **list-page search boxes** (Incidents,
+    Tasks, Instances, Definitions, Decisions, Models) are now migrated to cascivo
+    **`Search`** (`value`/`onChange`/`label` → sr-only accessible label; gains a
+    search icon + clear button). Remaining `Input` users are true **form fields**
+    (Settings ×3, Models create/rename ×2, ModelDetail ×1) and the detail-panel
+    bare search inputs (Incident/Instance detail ×2 each) — migrate to cascivo
+    `Field` + control in a later pass.
   - **Dialog → Modal** and **DropdownMenu → Dropdown/Menu** — compositional APIs
     differ entirely from Radix; these need call-site rewrites (Stage 1b).
   - `tabs` / `tooltip` / `popover` wrappers are **dead code** (no importers) —

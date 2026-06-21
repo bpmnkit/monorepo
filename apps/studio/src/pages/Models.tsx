@@ -1,6 +1,7 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
 import { Modal } from "@cascivo/react"
+import { Search } from "@cascivo/react"
 import {
 	BookOpen,
 	ChevronDown,
@@ -659,12 +660,12 @@ export function Models() {
 
 						{/* Filters */}
 						<div className="flex items-center gap-3 mb-4">
-							<Input
+							<Search
 								placeholder="Search models..."
 								value={search}
-								onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+								onChange={setSearch}
 								className="max-w-64"
-								aria-label="Search models"
+								label="Search models"
 							/>
 							<div className="flex rounded border border-border bg-surface-2 text-xs overflow-hidden">
 								{typeFilterOptions.map((t) => (

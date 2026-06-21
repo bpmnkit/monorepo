@@ -1,9 +1,9 @@
+import { Search } from "@cascivo/react"
 import { useEffect, useState } from "preact/hooks"
 import { Link } from "wouter"
 import { useUserTasks } from "../api/queries.js"
 import { ErrorState } from "../components/ErrorState.js"
 import { Badge } from "../components/ui/badge.js"
-import { Input } from "../components/ui/input.js"
 import { useUiStore } from "../stores/ui.js"
 
 function isOverdue(dueDate?: string): boolean {
@@ -59,12 +59,12 @@ export function Tasks() {
 			</div>
 
 			<div className="mb-4">
-				<Input
+				<Search
 					placeholder="Search by name or assignee..."
 					value={search}
-					onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+					onChange={setSearch}
 					className="w-full max-w-80"
-					aria-label="Search tasks"
+					label="Search tasks"
 				/>
 			</div>
 
