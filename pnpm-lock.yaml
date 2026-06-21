@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@preact/signals-react@2.3.0':
+    hash: ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9
+    path: patches/@preact__signals-react@2.3.0.patch
+
 importers:
 
   .:
@@ -246,7 +251,7 @@ importers:
         version: link:../../packages/user-tasks
       '@cascivo/react':
         specifier: ^0.2.1
-        version: 0.2.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.2.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@cascivo/themes':
         specifier: ^0.2.2
         version: 0.2.2(@cascivo/tokens@0.2.0)
@@ -255,7 +260,7 @@ importers:
         version: 0.2.0
       '@preact/signals-react':
         specifier: ^2.0.0
-        version: 2.3.0(react@19.2.4)
+        version: 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
       '@radix-ui/react-dialog':
         specifier: ^1.1.4
         version: 1.1.15(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -5215,25 +5220,25 @@ snapshots:
     dependencies:
       fontkitten: 1.0.2
 
-  '@cascivo/core@0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@cascivo/core@0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@preact/signals-react': 2.3.0(react@19.2.4)
+      '@preact/signals-react': 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@cascivo/i18n@0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@cascivo/i18n@0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@preact/signals-react': 2.3.0(react@19.2.4)
+      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@preact/signals-react': 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
     transitivePeerDependencies:
       - react
       - react-dom
 
-  '@cascivo/react@0.2.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@cascivo/react@0.2.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@cascivo/i18n': 0.1.1(@preact/signals-react@2.3.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@preact/signals-react': 2.3.0(react@19.2.4)
+      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@cascivo/i18n': 0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@preact/signals-react': 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
@@ -5850,7 +5855,7 @@ snapshots:
 
   '@preact/signals-core@1.14.3': {}
 
-  '@preact/signals-react@2.3.0(react@19.2.4)':
+  '@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)':
     dependencies:
       '@preact/signals-core': 1.14.3
       react: 19.2.4

@@ -8,3 +8,6 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - workerd
+
+patchedDependencies:
+  '@preact/signals-react@2.3.0': patches/@preact__signals-react@2.3.0.patch

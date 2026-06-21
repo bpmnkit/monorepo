@@ -2,6 +2,23 @@
 
 # Progress
 
+## 2026-06-20 — Fix: studio dev server (signals-react jsx-runtime) via pnpm patch
+
+- `pnpm dev` failed during Vite **dependency optimization** with the same
+  `MISSING_EXPORT` as the earlier build issue: `@preact/signals-react/runtime`
+  (pulled in by cascivo) does `import v from "react/jsx-runtime"` / `import m
+  from "react/jsx-dev-runtime"`, which have no default export under the preact
+  alias. The build-only Vite `transform` plugin didn't help here — optimizeDeps
+  pre-bundles deps outside that pipeline.
+- Root-cause fix via **`pnpm patch @preact/signals-react@2.3.0`**: rewrote the
+  two default imports to namespace imports (`import * as v …`), which both
+  resolve under preact and keep `v.jsx`/`v.jsxs`/`v.jsxDEV` valid (they're
+  named exports of `preact/jsx-runtime`). The patch applies uniformly in dev,
+  build, and optimizeDeps, so the build-time `vite.config.ts` transform hack
+  was removed.
+- Verified: `pnpm dev` starts clean (ready, 0 errors) and `pnpm --filter
+  @bpmnkit/studio build` is green.
+
 ## 2026-06-20 — Fix: studio production build (cascivo / signals-react jsx-runtime)
 
 - `pnpm build` was failing. Two distinct causes:
