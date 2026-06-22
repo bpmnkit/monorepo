@@ -2,6 +2,21 @@
 
 # Progress
 
+## 2026-06-20 — Fix: header burger collapses the sidebar to the rail (not hidden)
+
+- AppShell binds the header burger to its `open` (show/hide) state; on desktop
+  `[data-open=false]` sets the nav column to `inline-size:0`, so the burger hid
+  the whole sidebar instead of collapsing it to the icon rail.
+- Made AppShell controlled and breakpoint-aware (`useIsDesktop`, 64rem to match
+  cascivo): on desktop `open` is pinned true and the burger's `onOpenChange`
+  calls `toggleSidebar()` (toggles `sidebarExpanded` → the icon rail, nav never
+  hidden); below 64rem `open` follows a `mobileNavOpen` state so the burger
+  opens/closes the off-canvas drawer.
+- Note: `TopBar` was already cascivo `ShellHeader` (custom `brand`/`end`
+  ReactNode for the breadcrumb + simulate/mode/AI controls) — i.e. the navbar
+  already comes from cascivo's AppShell, it isn't custom.
+- Verified: `tsc`/Biome clean, `pnpm dev` starts clean, studio build green.
+
 ## 2026-06-20 — Feat: native cascivo SideNav sidebar (cascivo 0.3.1)
 
 - Updated `@cascivo/react` 0.2.1 → 0.3.1 (`@cascivo/themes` 0.2.4, `@cascivo/tokens`

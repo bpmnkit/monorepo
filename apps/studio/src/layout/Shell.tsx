@@ -1,6 +1,6 @@
 import { AppShell } from "@cascivo/react"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect } from "preact/hooks"
+import { useEffect, useState } from "preact/hooks"
 import { useLocation } from "wouter"
 import { CommandPalette } from "../components/CommandPalette.js"
 import { navigateWithTransition } from "../lib/transition.js"
@@ -11,6 +11,23 @@ import { TopBar } from "./TopBar.js"
 
 interface ShellProps {
 	children: ComponentChildren
+}
+
+// cascivo AppShell renders the nav as an in-flow column at >= 64rem and as an
+// off-canvas drawer below it. We track that breakpoint so the header burger can
+// do the right thing per layout (see Shell).
+function useIsDesktop() {
+	const query = "(min-width: 64rem)"
+	const [isDesktop, setIsDesktop] = useState(
+		() => typeof window === "undefined" || window.matchMedia(query).matches,
+	)
+	useEffect(() => {
+		const mq = window.matchMedia(query)
+		const onChange = () => setIsDesktop(mq.matches)
+		mq.addEventListener("change", onChange)
+		return () => mq.removeEventListener("change", onChange)
+	}, [])
+	return isDesktop
 }
 
 const ROUTE_MAP: Record<string, string> = {
@@ -27,6 +44,8 @@ const ROUTE_MAP: Record<string, string> = {
 export function Shell({ children }: ShellProps) {
 	const [, navigate] = useLocation()
 	const { toggleCommandPalette, toggleAI, toggleSidebar, zenMode, sidebarExpanded } = useUiStore()
+	const isDesktop = useIsDesktop()
+	const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
 	// Global keyboard shortcuts + link-click interceptor for view transitions
 	useEffect(() => {
@@ -136,7 +155,18 @@ export function Shell({ children }: ShellProps) {
 
 	return (
 		<div className="h-full" style={shellStyle}>
-			<AppShell header={<TopBar />} nav={<Sidebar />}>
+			<AppShell
+				header={<TopBar />}
+				nav={<Sidebar />}
+				open={isDesktop ? true : mobileNavOpen}
+				onOpenChange={(open) => {
+					// Desktop: the nav stays in flow, so the burger collapses it to the
+					// icon rail (toggling `sidebarExpanded`) instead of hiding it.
+					// Mobile: it opens/closes the off-canvas drawer.
+					if (isDesktop) toggleSidebar()
+					else setMobileNavOpen(open)
+				}}
+			>
 				<div className="flex h-full overflow-hidden">
 					<main className="flex-1 overflow-y-auto bg-bg">{children}</main>
 					<AIDrawer />
