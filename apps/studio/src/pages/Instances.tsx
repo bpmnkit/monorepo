@@ -1,14 +1,68 @@
+import { type Column, DataTable, Search } from "@cascivo/react"
 import { useEffect, useState } from "preact/hooks"
 import { Link } from "wouter"
 import { useCancelInstance, useInstances } from "../api/queries.js"
+import type { ProcessInstance } from "../api/types.js"
 import { ErrorState } from "../components/ErrorState.js"
 import { StatusPill } from "../components/StatusPill.js"
-import { Button } from "../components/ui/button.js"
-import { Input } from "../components/ui/input.js"
 import { toast } from "../stores/toast.js"
 import { useUiStore } from "../stores/ui.js"
 
 type StateFilter = "all" | "ACTIVE" | "COMPLETED" | "TERMINATED"
+
+const columns: Column<ProcessInstance>[] = [
+	{
+		key: "state",
+		header: "State",
+		render: (inst) => (
+			<Link href={`/instances/${inst.processInstanceKey}`}>
+				<StatusPill state={inst.state} />
+			</Link>
+		),
+	},
+	{
+		key: "processId",
+		header: "Process ID",
+		render: (inst) => (
+			<Link
+				href={`/instances/${inst.processInstanceKey}`}
+				className="font-mono text-muted text-xs hover:text-fg"
+			>
+				{inst.processDefinitionId}
+			</Link>
+		),
+	},
+	{
+		key: "key",
+		header: "Key",
+		render: (inst) => (
+			<Link
+				href={`/instances/${inst.processInstanceKey}`}
+				className="font-mono text-muted text-xs hover:text-accent"
+			>
+				{inst.processInstanceKey}
+			</Link>
+		),
+	},
+	{
+		key: "started",
+		header: "Started",
+		render: (inst) => (
+			<span className="text-muted text-xs">
+				{inst.startDate ? new Date(inst.startDate).toLocaleString() : "—"}
+			</span>
+		),
+	},
+	{
+		key: "ended",
+		header: "Ended",
+		render: (inst) => (
+			<span className="text-muted text-xs">
+				{inst.endDate ? new Date(inst.endDate).toLocaleString() : "—"}
+			</span>
+		),
+	},
+]
 
 export function Instances() {
 	const [search, setSearch] = useState("")
@@ -31,17 +85,8 @@ export function Instances() {
 			i.processInstanceKey.includes(search),
 	)
 
-	function toggleSelect(key: string) {
-		setSelected((prev) => {
-			const next = new Set(prev)
-			if (next.has(key)) next.delete(key)
-			else next.add(key)
-			return next
-		})
-	}
-
-	async function handleBulkCancel() {
-		for (const key of selected) {
+	async function handleBulkCancel(ids: string[]) {
+		for (const key of ids) {
 			try {
 				await cancelMutation.mutateAsync(key)
 			} catch {
@@ -49,7 +94,7 @@ export function Instances() {
 			}
 		}
 		setSelected(new Set())
-		toast.success(`Cancelled ${selected.size} instance(s)`)
+		toast.success(`Cancelled ${ids.length} instance(s)`)
 	}
 
 	if (isError) {
@@ -73,21 +118,16 @@ export function Instances() {
 						</p>
 					)}
 				</div>
-				{selected.size > 0 && (
-					<Button variant="danger" size="sm" onClick={() => void handleBulkCancel()}>
-						Cancel selected ({selected.size})
-					</Button>
-				)}
 			</div>
 
 			{/* Filters */}
 			<div className="flex items-center gap-3 mb-4">
-				<Input
+				<Search
 					placeholder="Search by process ID or key..."
 					value={search}
-					onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+					onChange={setSearch}
 					className="w-full max-w-80"
-					aria-label="Search instances"
+					label="Search instances"
 				/>
 				<div className="flex rounded border border-border bg-surface-2 text-xs overflow-hidden">
 					{(["all", "ACTIVE", "COMPLETED", "TERMINATED"] as StateFilter[]).map((s) => (
@@ -106,84 +146,19 @@ export function Instances() {
 				</div>
 			</div>
 
-			<div className="rounded-lg border border-border bg-surface overflow-hidden">
-				<div className="overflow-x-auto">
-					<table className="w-full text-sm min-w-[480px]">
-						<thead>
-							<tr className="border-b border-border bg-surface-2 text-left text-xs text-muted">
-								<th className="px-4 py-3 w-8">
-									<span className="sr-only">Select</span>
-								</th>
-								<th className="px-4 py-3 font-medium">State</th>
-								<th className="px-4 py-3 font-medium">Process ID</th>
-								<th className="px-4 py-3 font-medium">Key</th>
-								<th className="px-4 py-3 font-medium">Started</th>
-								<th className="px-4 py-3 font-medium">Ended</th>
-							</tr>
-						</thead>
-						<tbody>
-							{isLoading &&
-								(["s0", "s1", "s2", "s3", "s4"] as const).map((sk) => (
-									<tr key={sk} className="border-b border-border/50">
-										{(["a", "b", "c", "d", "e", "f"] as const).map((col) => (
-											<td key={col} className="px-4 py-3">
-												<div className="h-4 animate-pulse rounded bg-surface-2" />
-											</td>
-										))}
-									</tr>
-								))}
-							{filtered?.map((inst) => (
-								<tr
-									key={inst.processInstanceKey}
-									className="border-b border-border/50 hover:bg-surface-2 cursor-pointer"
-								>
-									<td className="px-4 py-3">
-										<input
-											type="checkbox"
-											checked={selected.has(inst.processInstanceKey)}
-											onClick={(e) => e.stopPropagation()}
-											onChange={() => toggleSelect(inst.processInstanceKey)}
-											aria-label={`Select instance ${inst.processInstanceKey}`}
-											className="cursor-pointer"
-										/>
-									</td>
-									<td className="px-4 py-3">
-										<Link href={`/instances/${inst.processInstanceKey}`}>
-											<StatusPill state={inst.state} />
-										</Link>
-									</td>
-									<td className="px-4 py-3 font-mono text-xs text-muted">
-										<Link href={`/instances/${inst.processInstanceKey}`} className="hover:text-fg">
-											{inst.processDefinitionId}
-										</Link>
-									</td>
-									<td className="px-4 py-3 font-mono text-xs text-muted">
-										<Link
-											href={`/instances/${inst.processInstanceKey}`}
-											className="hover:text-accent"
-										>
-											{inst.processInstanceKey}
-										</Link>
-									</td>
-									<td className="px-4 py-3 text-muted text-xs">
-										{inst.startDate ? new Date(inst.startDate).toLocaleString() : "—"}
-									</td>
-									<td className="px-4 py-3 text-muted text-xs">
-										{inst.endDate ? new Date(inst.endDate).toLocaleString() : "—"}
-									</td>
-								</tr>
-							))}
-							{!isLoading && filtered?.length === 0 && (
-								<tr>
-									<td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
-										No instances found.
-									</td>
-								</tr>
-							)}
-						</tbody>
-					</table>
-				</div>
-			</div>
+			<DataTable
+				columns={columns}
+				rows={filtered ?? []}
+				getRowId={(inst) => inst.processInstanceKey}
+				loading={isLoading}
+				emptyState="No instances found."
+				selection={{
+					mode: "multi",
+					selected: Array.from(selected),
+					onChange: (ids) => setSelected(new Set(ids)),
+				}}
+				batchActions={[{ label: "Cancel selected", onClick: (ids) => void handleBulkCancel(ids) }]}
+			/>
 		</div>
 	)
 }

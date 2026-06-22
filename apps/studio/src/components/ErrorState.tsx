@@ -1,5 +1,5 @@
 import { AlertTriangle, RefreshCw, Settings } from "lucide-react"
-import { Link } from "wouter"
+import { useLocation } from "wouter"
 import { Button } from "./ui/button.js"
 
 interface ErrorStateProps {
@@ -13,6 +13,7 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({ title, description, hint, onRetry, settingsHint }: ErrorStateProps) {
+	const [, navigate] = useLocation()
 	return (
 		<div className="flex flex-col items-center justify-center h-full gap-5 text-center p-8">
 			<div className="rounded-full bg-danger/10 p-3.5">
@@ -35,11 +36,9 @@ export function ErrorState({ title, description, hint, onRetry, settingsHint }: 
 					</Button>
 				)}
 				{settingsHint && (
-					<Button variant="ghost" size="sm" asChild>
-						<Link href="/settings">
-							<Settings size={13} />
-							Settings
-						</Link>
+					<Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
+						<Settings size={13} />
+						Settings
 					</Button>
 				)}
 			</div>

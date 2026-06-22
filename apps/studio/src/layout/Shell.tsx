@@ -1,8 +1,8 @@
-import type { ComponentChildren } from "preact"
-import { useEffect } from "preact/hooks"
+import { AppShell } from "@cascivo/react"
+import type { ComponentChildren, JSX } from "preact"
+import { useEffect, useState } from "preact/hooks"
 import { useLocation } from "wouter"
 import { CommandPalette } from "../components/CommandPalette.js"
-import { ToastContainer } from "../components/Toast.js"
 import { navigateWithTransition } from "../lib/transition.js"
 import { useUiStore } from "../stores/ui.js"
 import { AIDrawer } from "./AIDrawer.js"
@@ -11,6 +11,23 @@ import { TopBar } from "./TopBar.js"
 
 interface ShellProps {
 	children: ComponentChildren
+}
+
+// cascivo AppShell renders the nav as an in-flow column at >= 64rem and as an
+// off-canvas drawer below it. We track that breakpoint so the header burger can
+// do the right thing per layout (see Shell).
+function useIsDesktop() {
+	const query = "(min-width: 64rem)"
+	const [isDesktop, setIsDesktop] = useState(
+		() => typeof window === "undefined" || window.matchMedia(query).matches,
+	)
+	useEffect(() => {
+		const mq = window.matchMedia(query)
+		const onChange = () => setIsDesktop(mq.matches)
+		mq.addEventListener("change", onChange)
+		return () => mq.removeEventListener("change", onChange)
+	}, [])
+	return isDesktop
 }
 
 const ROUTE_MAP: Record<string, string> = {
@@ -27,6 +44,8 @@ const ROUTE_MAP: Record<string, string> = {
 export function Shell({ children }: ShellProps) {
 	const [, navigate] = useLocation()
 	const { toggleCommandPalette, toggleAI, toggleSidebar, zenMode, sidebarExpanded } = useUiStore()
+	const isDesktop = useIsDesktop()
+	const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
 	// Global keyboard shortcuts + link-click interceptor for view transitions
 	useEffect(() => {
@@ -115,26 +134,44 @@ export function Shell({ children }: ShellProps) {
 		}
 	}, [navigate, toggleCommandPalette, toggleAI, toggleSidebar])
 
-	return (
-		<div className="flex h-full flex-col overflow-hidden">
-			{/* Mobile backdrop — closes the sidebar when tapped outside */}
-			{!zenMode && sidebarExpanded && (
-				<div
-					role="button"
-					tabIndex={-1}
-					className="fixed inset-0 z-40 bg-black/50 md:hidden"
-					onClick={toggleSidebar}
-					onKeyDown={(e) => e.key === "Escape" && toggleSidebar()}
-					aria-label="Close navigation"
-				/>
-			)}
-			{!zenMode && <TopBar />}
-			<div className="flex flex-1 overflow-hidden">
-				{!zenMode && <Sidebar />}
+	// Zen mode: no chrome — full-screen content only.
+	if (zenMode) {
+		return (
+			<div className="flex h-full flex-col overflow-hidden">
 				<main className="flex-1 overflow-y-auto bg-bg">{children}</main>
-				{!zenMode && <AIDrawer />}
+				<CommandPalette />
 			</div>
-			<ToastContainer />
+		)
+	}
+
+	// Give the AppShell nav column an explicit width that matches `SideNav`'s own
+	// rail/expanded width and tracks the collapsed state. (A `fit-content` column
+	// collapses to 0 if the nav is ever taken out of flow, causing layout flicker.)
+	const shellStyle = {
+		"--cascivo-shell-aside-inline-size": sidebarExpanded
+			? "var(--cascivo-sidenav-inline-size, 16rem)"
+			: "var(--cascivo-sidenav-rail-inline-size, 4rem)",
+	} as unknown as JSX.CSSProperties
+
+	return (
+		<div className="h-full" style={shellStyle}>
+			<AppShell
+				header={<TopBar />}
+				nav={<Sidebar />}
+				open={isDesktop ? true : mobileNavOpen}
+				onOpenChange={(open) => {
+					// Desktop: the nav stays in flow, so the burger collapses it to the
+					// icon rail (toggling `sidebarExpanded`) instead of hiding it.
+					// Mobile: it opens/closes the off-canvas drawer.
+					if (isDesktop) toggleSidebar()
+					else setMobileNavOpen(open)
+				}}
+			>
+				<div className="flex h-full overflow-hidden">
+					<main className="flex-1 overflow-y-auto bg-bg">{children}</main>
+					<AIDrawer />
+				</div>
+			</AppShell>
 			<CommandPalette />
 		</div>
 	)

@@ -1,3 +1,4 @@
+import { SideNav, type SideNavGroup, type SideNavItem, type SideNavSubItem } from "@cascivo/react"
 import {
 	AlertTriangle,
 	CheckSquare,
@@ -6,8 +7,6 @@ import {
 	History,
 	Layers,
 	LayoutDashboard,
-	PanelLeftClose,
-	PanelLeftOpen,
 	Play,
 	RotateCw,
 	Search,
@@ -15,18 +14,8 @@ import {
 	Sparkles,
 } from "lucide-react"
 import { useState } from "preact/hooks"
-import { Link } from "wouter"
 import { useLocation } from "wouter"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu.js"
 import { getOnboardingState } from "../lib/onboarding.js"
-import { navigateWithTransition } from "../lib/transition.js"
 import { useClusterStore } from "../stores/cluster.js"
 import { useModeStore } from "../stores/mode.js"
 import { useProjectsStore } from "../stores/projects.js"
@@ -38,17 +27,6 @@ interface NavItem {
 	path: string
 	shortcut: string
 }
-
-// Paths that require a running proxy to be useful
-const PROXY_REQUIRED = new Set([
-	"/",
-	"/definitions",
-	"/instances",
-	"/incidents",
-	"/tasks",
-	"/decisions",
-	"/run-history",
-])
 
 const ALL_ITEMS: NavItem[] = [
 	{ icon: LayoutDashboard, label: "Dashboard", path: "/", shortcut: "g d" },
@@ -91,7 +69,7 @@ function getOrderedItems(mode: "developer" | "operator"): NavItem[] {
 }
 
 export function Sidebar() {
-	const [location, navigate] = useLocation()
+	const [location] = useLocation()
 	const { mode } = useModeStore()
 	const { profiles, activeProfile, status, setActiveProfile, loadProfiles, proxyUrl } =
 		useClusterStore()
@@ -103,13 +81,7 @@ export function Sidebar() {
 		await loadProfiles()
 		setReconnecting(false)
 	}
-	const {
-		sidebarExpanded,
-		toggleSidebar,
-		setSidebarExpanded,
-		openCommandPalette,
-		openWelcomeModal,
-	} = useUiStore()
+	const { sidebarExpanded, setSidebarExpanded, openCommandPalette, openWelcomeModal } = useUiStore()
 	const items = getOrderedItems(mode)
 
 	function isActive(path: string) {
@@ -120,300 +92,112 @@ export function Sidebar() {
 	const statusColor =
 		status === "connected" ? "bg-success" : status === "loading" ? "bg-warn" : "bg-danger"
 
+	// ── Main navigation. Navigation + view transitions flow through the Shell's
+	// global <a> click interceptor; onClick only closes the rail on mobile.
+	const navItems: SideNavItem[] = items.map((item) => {
+		const Icon = item.icon
+		return {
+			label: item.label,
+			href: item.path,
+			icon: <Icon size={18} />,
+			active: isActive(item.path),
+			onClick: () => {
+				if (window.innerWidth < 768) setSidebarExpanded(false)
+			},
+		}
+	})
+
+	// ── App-context controls: cluster + project pickers (native sub-item menus),
+	// reconnect, and search.
+	const clusterSubItems: SideNavSubItem[] = [
+		{ type: "label", label: profiles.length === 0 ? "No profiles found" : "Profiles" },
+		...profiles.map(
+			(p): SideNavSubItem => ({
+				label: p.name,
+				selected: p.name === activeProfile,
+				onSelect: () => setActiveProfile(p.name),
+			}),
+		),
+		{ type: "separator" },
+		{ label: "Add profile →", href: "/settings" },
+	]
+
+	const projectSubItems: SideNavSubItem[] = [
+		{ type: "label", label: "Projects" },
+		{
+			label: "Local (IndexedDB)",
+			selected: activeProjectId === null,
+			onSelect: () => setActiveProject(null, proxyUrl),
+		},
+		...projects.map(
+			(p): SideNavSubItem => ({
+				label: p.name,
+				selected: p.id === activeProjectId,
+				onSelect: () => setActiveProject(p.id, proxyUrl),
+			}),
+		),
+		{ type: "separator" },
+		{ label: "Manage projects →", href: "/settings" },
+	]
+
+	const contextItems: SideNavItem[] = [
+		{
+			label: activeProfile ?? (status === "offline" ? "No cluster" : "Select profile"),
+			icon: (
+				<span
+					className={`h-2 w-2 rounded-full ${statusColor} ${status === "loading" ? "animate-pulse" : ""}`}
+				/>
+			),
+			items: clusterSubItems,
+		},
+		{
+			label: activeProjectId
+				? (projects.find((p) => p.id === activeProjectId)?.name ?? "Unknown project")
+				: "Local (IndexedDB)",
+			icon: <FolderOpen size={18} />,
+			items: projectSubItems,
+		},
+	]
+
+	if (status === "offline") {
+		contextItems.push({
+			label: reconnecting ? "Connecting…" : "Retry connection",
+			icon: <RotateCw size={18} className={reconnecting ? "animate-spin" : ""} />,
+			onClick: () => void handleReconnect(),
+			tone: "warning",
+			disabled: reconnecting,
+		})
+	}
+
+	contextItems.push({
+		label: "Search...",
+		icon: <Search size={18} />,
+		onClick: () => openCommandPalette(),
+		trailing: <kbd className="text-muted text-xs">⌘K</kbd>,
+	})
+
+	// ── Help.
+	const helpItems: SideNavItem[] = []
+	if (!getOnboardingState().hidden) {
+		helpItems.push({
+			label: "Get started",
+			icon: <Sparkles size={18} className="text-accent" />,
+			onClick: () => openWelcomeModal(),
+		})
+	}
+
+	const groups: SideNavGroup[] = [
+		{ items: contextItems },
+		{ items: navItems },
+		...(helpItems.length > 0 ? [{ items: helpItems }] : []),
+	]
+
 	return (
-		<nav
-			className={`flex shrink-0 flex-col bg-nav py-2
-				fixed inset-y-0 left-0 z-50
-				md:relative md:inset-auto md:z-auto
-				transition-[transform,width] duration-200 ease-in-out
-				${sidebarExpanded ? "translate-x-0 w-64 md:w-52 md:border-r md:border-border/40" : "-translate-x-full md:translate-x-0 md:w-16"}`}
-			aria-label="Main navigation"
-		>
-			{/* Top: profile picker + search */}
-			<div className="px-2 pb-2 mb-1 border-b border-white/10 flex flex-col gap-0.5">
-				{/* Cluster / profile picker */}
-				<DropdownMenu>
-					<DropdownMenuTrigger
-						className={`flex w-full items-center gap-2.5 rounded-md h-9 px-2.5 text-nav-fg hover:text-nav-fg-active hover:bg-white/5 active:bg-white/10 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent ${
-							sidebarExpanded ? "justify-start" : "justify-center"
-						}`}
-						aria-label="Select cluster profile"
-					>
-						<span
-							className={`h-2 w-2 shrink-0 rounded-full ${statusColor} ${status === "loading" ? "animate-pulse" : ""}`}
-							aria-hidden="true"
-						/>
-						<span
-							className={`text-sm font-medium whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 flex-1 text-left ${
-								sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-							}`}
-						>
-							{activeProfile ?? (status === "offline" ? "No cluster" : "Select profile")}
-						</span>
-						<span
-							className={`text-muted text-xs transition-[max-width,opacity] duration-150 ${
-								sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-							}`}
-						>
-							▾
-						</span>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start" className="min-w-48">
-						{profiles.length === 0 ? (
-							<>
-								<DropdownMenuLabel>No profiles found</DropdownMenuLabel>
-								<DropdownMenuSeparator />
-							</>
-						) : (
-							<>
-								<DropdownMenuLabel>Profiles</DropdownMenuLabel>
-								{profiles.map((p) => (
-									<DropdownMenuItem
-										key={p.name}
-										onSelect={() => setActiveProfile(p.name)}
-										className="gap-2"
-									>
-										{p.name === activeProfile && (
-											<span className="text-accent" aria-label="Active">
-												●
-											</span>
-										)}
-										<span className={p.name === activeProfile ? "font-medium" : ""}>{p.name}</span>
-									</DropdownMenuItem>
-								))}
-								<DropdownMenuSeparator />
-							</>
-						)}
-						<DropdownMenuItem asChild>
-							<Link href="/settings" className="cursor-pointer text-muted">
-								Add profile →
-							</Link>
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
-
-				{/* Project picker */}
-				<DropdownMenu>
-					<DropdownMenuTrigger
-						className={`flex w-full items-center gap-2.5 rounded-md h-9 px-2.5 text-nav-fg hover:text-nav-fg-active hover:bg-white/5 active:bg-white/10 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent ${
-							sidebarExpanded ? "justify-start" : "justify-center"
-						}`}
-						aria-label="Select project"
-					>
-						<FolderOpen size={18} className="shrink-0" />
-						<span
-							className={`text-sm font-medium whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 flex-1 text-left ${
-								sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-							}`}
-						>
-							{activeProjectId
-								? (projects.find((p) => p.id === activeProjectId)?.name ?? "Unknown project")
-								: "Local (IndexedDB)"}
-						</span>
-						<span
-							className={`text-muted text-xs transition-[max-width,opacity] duration-150 ${
-								sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-							}`}
-						>
-							▾
-						</span>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start" className="min-w-48">
-						<DropdownMenuLabel>Projects</DropdownMenuLabel>
-						<DropdownMenuItem onSelect={() => setActiveProject(null, proxyUrl)} className="gap-2">
-							{activeProjectId === null && <span className="text-accent">●</span>}
-							<span className={activeProjectId === null ? "font-medium" : ""}>
-								Local (IndexedDB)
-							</span>
-						</DropdownMenuItem>
-						{projects.map((p) => (
-							<DropdownMenuItem
-								key={p.id}
-								onSelect={() => setActiveProject(p.id, proxyUrl)}
-								className="gap-2"
-							>
-								{p.id === activeProjectId && <span className="text-accent">●</span>}
-								<span className={p.id === activeProjectId ? "font-medium" : ""}>{p.name}</span>
-							</DropdownMenuItem>
-						))}
-						<DropdownMenuSeparator />
-						<DropdownMenuItem asChild>
-							<Link href="/settings" className="cursor-pointer text-muted">
-								Manage projects →
-							</Link>
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
-
-				{/* Reconnect button — visible when proxy is offline */}
-				{status === "offline" && (
-					<div className="group relative">
-						<button
-							type="button"
-							onClick={() => void handleReconnect()}
-							disabled={reconnecting}
-							className={`flex w-full items-center gap-2.5 rounded-md h-9 px-2.5 text-warn hover:text-warn/80 hover:bg-white/5 active:bg-white/10 transition-colors duration-150 disabled:opacity-50 ${
-								sidebarExpanded ? "justify-start" : "justify-center"
-							}`}
-							aria-label="Retry proxy connection"
-						>
-							<RotateCw size={18} className={`shrink-0 ${reconnecting ? "animate-spin" : ""}`} />
-							<span
-								className={`text-sm whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 ${
-									sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-								}`}
-							>
-								{reconnecting ? "Connecting…" : "Retry connection"}
-							</span>
-						</button>
-						{!sidebarExpanded && (
-							<div
-								className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded bg-surface-2 px-2 py-1 text-xs text-fg opacity-0 shadow-md transition-opacity duration-150 delay-300 group-hover:opacity-100"
-								role="tooltip"
-							>
-								Retry connection
-							</div>
-						)}
-					</div>
-				)}
-
-				{/* Search trigger */}
-				<div className="group relative">
-					<button
-						type="button"
-						onClick={openCommandPalette}
-						className={`flex w-full items-center gap-2.5 rounded-md h-9 px-2.5 text-nav-fg hover:text-nav-fg-active hover:bg-white/5 active:bg-white/10 transition-colors duration-150 ${
-							sidebarExpanded ? "justify-start" : "justify-center"
-						}`}
-						aria-label="Open search"
-					>
-						<Search size={18} className="shrink-0" />
-						<span
-							className={`text-sm whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 flex-1 text-left ${
-								sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-							}`}
-						>
-							Search...
-						</span>
-						<kbd
-							className={`text-xs text-muted whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 ${
-								sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-							}`}
-						>
-							⌘K
-						</kbd>
-					</button>
-					{!sidebarExpanded && (
-						<div
-							className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded bg-surface-2 px-2 py-1 text-xs text-fg opacity-0 shadow-md transition-opacity duration-150 delay-300 group-hover:opacity-100"
-							role="tooltip"
-						>
-							Search <span className="ml-1 text-muted">⌘K</span>
-						</div>
-					)}
-				</div>
-			</div>
-
-			{/* Nav items */}
-			<div className="flex flex-col gap-0.5 px-2 flex-1">
-				{items.map((item) => {
-					const active = isActive(item.path)
-					const Icon = item.icon
-					const dimmed = status === "offline" && PROXY_REQUIRED.has(item.path)
-					return (
-						<div key={item.path} className={`group relative ${dimmed ? "opacity-40" : ""}`}>
-							<button
-								type="button"
-								onClick={() => {
-									navigateWithTransition(item.path, navigate)
-									// Close the sidebar overlay when navigating on mobile
-									if (window.innerWidth < 768) setSidebarExpanded(false)
-								}}
-								aria-label={item.label}
-								aria-current={active ? "page" : undefined}
-								className={`relative flex w-full items-center gap-3 rounded-md h-9 px-2.5 transition-all duration-150 active:bg-white/10 ${
-									active
-										? "bg-white/10 text-nav-fg-active"
-										: "text-nav-fg hover:text-nav-fg-active hover:bg-white/5"
-								}`}
-							>
-								{active && (
-									<span
-										className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-accent animate-in fade-in duration-200"
-										aria-hidden="true"
-									/>
-								)}
-								<Icon size={18} className="shrink-0" />
-								<span
-									className={`text-sm font-medium whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 ${
-										sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-									}`}
-								>
-									{item.label}
-								</span>
-							</button>
-							{/* Tooltip — only when collapsed */}
-							{!sidebarExpanded && (
-								<div
-									className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded bg-surface-2 px-2 py-1 text-xs text-fg opacity-0 shadow-md transition-opacity duration-150 delay-300 group-hover:opacity-100"
-									role="tooltip"
-								>
-									{item.label}
-									<span className="ml-2 text-muted">{item.shortcut}</span>
-								</div>
-							)}
-						</div>
-					)
-				})}
-			</div>
-
-			{/* Get started */}
-			{!getOnboardingState().hidden && (
-				<div className="px-2">
-					<button
-						type="button"
-						onClick={openWelcomeModal}
-						className={`flex w-full items-center gap-3 rounded-md h-9 px-2.5 text-nav-fg hover:text-nav-fg-active hover:bg-white/5 active:bg-white/10 transition-colors duration-150 ${
-							sidebarExpanded ? "justify-start" : "justify-center"
-						}`}
-						aria-label="Get started"
-						title="Get started"
-					>
-						<Sparkles size={18} className="shrink-0 text-accent" />
-						<span
-							className={`text-sm whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 ${
-								sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-							}`}
-						>
-							Get started
-						</span>
-					</button>
-				</div>
-			)}
-
-			{/* Bottom: collapse toggle */}
-			<div className="px-2 pt-2 border-t border-white/10 mt-2">
-				<button
-					type="button"
-					onClick={toggleSidebar}
-					className="flex w-full items-center gap-3 rounded-md h-9 px-2.5 text-nav-fg hover:text-nav-fg-active hover:bg-white/5 active:bg-white/10 transition-colors duration-150"
-					aria-label={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
-					title={sidebarExpanded ? "Collapse sidebar [" : "Expand sidebar ["}
-				>
-					{sidebarExpanded ? (
-						<PanelLeftClose size={18} className="shrink-0" />
-					) : (
-						<PanelLeftOpen size={18} className="shrink-0" />
-					)}
-					<span
-						className={`text-sm whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 ${
-							sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-						}`}
-					>
-						Collapse
-					</span>
-				</button>
-			</div>
-		</nav>
+		<SideNav
+			ariaLabel="Main navigation"
+			groups={groups}
+			collapsed={!sidebarExpanded}
+			onCollapsedChange={(collapsed) => setSidebarExpanded(!collapsed)}
+		/>
 	)
 }

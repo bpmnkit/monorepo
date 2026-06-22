@@ -1,9 +1,9 @@
+import { Search } from "@cascivo/react"
 import { AlertTriangle, ChevronDown, ChevronRight, ExternalLink, Layers } from "lucide-react"
 import { useEffect, useState } from "preact/hooks"
 import { Link } from "wouter"
 import { useDefinitions } from "../api/queries.js"
 import type { ProcessDefinition } from "../api/types.js"
-import { Input } from "../components/ui/input.js"
 import { useModelsStore } from "../stores/models.js"
 import { useUiStore } from "../stores/ui.js"
 
@@ -126,12 +126,12 @@ export function Definitions() {
 			)}
 
 			<div className="mb-4">
-				<Input
+				<Search
 					placeholder="Search by name or process ID..."
 					value={search}
-					onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+					onChange={setSearch}
 					className="w-full max-w-80"
-					aria-label="Search definitions"
+					label="Search definitions"
 				/>
 			</div>
 

@@ -1,5 +1,6 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
+import { Input, Modal, Search } from "@cascivo/react"
 import {
 	BookOpen,
 	ChevronDown,
@@ -20,8 +21,6 @@ import { useEffect, useRef, useState } from "preact/hooks"
 import { useLocation } from "wouter"
 import { StatusPill } from "../components/StatusPill.js"
 import { Button } from "../components/ui/button.js"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog.js"
-import { Input } from "../components/ui/input.js"
 import { getFsAdapter, isFsMode, storage } from "../storage/index.js"
 import type { FsEntry, ModelFile } from "../storage/types.js"
 import { useModelsStore } from "../stores/models.js"
@@ -261,52 +260,47 @@ function MoveDialog({
 	}
 
 	return (
-		<Dialog open onOpenChange={(open: boolean) => !open && onClose()}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Move "{model.name}"</DialogTitle>
-				</DialogHeader>
-				<div className="mt-4">
-					<p className="text-xs text-muted mb-2">Select destination folder:</p>
-					<div className="border border-border rounded p-2 max-h-48 overflow-y-auto">
-						{/* Root option */}
+		<Modal open onClose={onClose} title={`Move "${model.name}"`}>
+			<div className="mt-4">
+				<p className="text-xs text-muted mb-2">Select destination folder:</p>
+				<div className="border border-border rounded p-2 max-h-48 overflow-y-auto">
+					{/* Root option */}
+					<button
+						type="button"
+						className={`flex w-full items-center gap-1.5 px-2 py-1 rounded text-sm text-left transition-colors ${
+							selectedFolder === "" ? "bg-accent/15 text-accent" : "text-fg hover:bg-surface-2"
+						}`}
+						onClick={() => setSelectedFolder("")}
+					>
+						<Folder size={14} />
+						<span>(project root)</span>
+					</button>
+					{folders.map((f) => (
 						<button
+							key={f.relativePath}
 							type="button"
 							className={`flex w-full items-center gap-1.5 px-2 py-1 rounded text-sm text-left transition-colors ${
-								selectedFolder === "" ? "bg-accent/15 text-accent" : "text-fg hover:bg-surface-2"
+								selectedFolder === f.relativePath
+									? "bg-accent/15 text-accent"
+									: "text-fg hover:bg-surface-2"
 							}`}
-							onClick={() => setSelectedFolder("")}
+							onClick={() => setSelectedFolder(f.relativePath)}
 						>
 							<Folder size={14} />
-							<span>(project root)</span>
+							<span>{f.relativePath}</span>
 						</button>
-						{folders.map((f) => (
-							<button
-								key={f.relativePath}
-								type="button"
-								className={`flex w-full items-center gap-1.5 px-2 py-1 rounded text-sm text-left transition-colors ${
-									selectedFolder === f.relativePath
-										? "bg-accent/15 text-accent"
-										: "text-fg hover:bg-surface-2"
-								}`}
-								onClick={() => setSelectedFolder(f.relativePath)}
-							>
-								<Folder size={14} />
-								<span>{f.relativePath}</span>
-							</button>
-						))}
-					</div>
+					))}
 				</div>
-				<div className="flex justify-end gap-2 mt-4">
-					<Button variant="outline" onClick={onClose}>
-						Cancel
-					</Button>
-					<Button onClick={() => void handleMove()} disabled={moving}>
-						{moving ? "Moving…" : "Move"}
-					</Button>
-				</div>
-			</DialogContent>
-		</Dialog>
+			</div>
+			<div className="flex justify-end gap-2 mt-4">
+				<Button variant="outline" onClick={onClose}>
+					Cancel
+				</Button>
+				<Button onClick={() => void handleMove()} disabled={moving}>
+					{moving ? "Moving…" : "Move"}
+				</Button>
+			</div>
+		</Modal>
 	)
 }
 
@@ -664,12 +658,12 @@ export function Models() {
 
 						{/* Filters */}
 						<div className="flex items-center gap-3 mb-4">
-							<Input
+							<Search
 								placeholder="Search models..."
 								value={search}
-								onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+								onChange={setSearch}
 								className="max-w-64"
-								aria-label="Search models"
+								label="Search models"
 							/>
 							<div className="flex rounded border border-border bg-surface-2 text-xs overflow-hidden">
 								{typeFilterOptions.map((t) => (
@@ -819,129 +813,100 @@ export function Models() {
 			{/* end animated wrapper */}
 
 			{/* Create model dialog */}
-			<Dialog open={creating} onOpenChange={(open: boolean) => !open && setCreating(false)}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>New Model</DialogTitle>
-					</DialogHeader>
-					<div className="space-y-4 mt-4">
-						<div>
-							<label className="text-sm text-muted mb-1 block" htmlFor="model-name">
-								Name
-							</label>
-							<Input
-								id="model-name"
-								value={newName}
-								onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
-								placeholder="My Process"
-								onKeyDown={(e) => e.key === "Enter" && void handleCreate()}
-							/>
-						</div>
-						{selectedFolder && (
-							<p className="text-xs text-muted">
-								Folder: <span className="font-mono text-fg">{selectedFolder}/</span>
-							</p>
-						)}
-						<div>
-							<p className="text-sm text-muted mb-2">Type</p>
-							<div className={`grid gap-2 ${fsMode ? "grid-cols-4" : "grid-cols-3"}`}>
-								{(fsMode
-									? (["bpmn", "dmn", "form", "md"] as const)
-									: (["bpmn", "dmn", "form"] as const)
-								).map((t) => (
-									<button
-										key={t}
-										type="button"
-										onClick={() => setNewType(t)}
-										className={`rounded border p-3 text-center text-sm transition-colors ${
-											newType === t
-												? "border-accent bg-accent/10 text-accent"
-												: "border-border text-fg hover:bg-surface-2"
-										}`}
-										aria-pressed={newType === t}
-									>
-										{TYPE_LABELS[t]}
-									</button>
-								))}
-							</div>
-						</div>
-						<div className="flex justify-end gap-2">
-							<Button variant="outline" onClick={() => setCreating(false)}>
-								Cancel
-							</Button>
-							<Button onClick={() => void handleCreate()} disabled={!newName.trim()}>
-								Create
-							</Button>
+			<Modal open={creating} onClose={() => setCreating(false)} title="New Model">
+				<div className="space-y-4 mt-4">
+					<Input
+						id="model-name"
+						label="Name"
+						value={newName}
+						onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
+						placeholder="My Process"
+						onKeyDown={(e) => e.key === "Enter" && void handleCreate()}
+					/>
+					{selectedFolder && (
+						<p className="text-xs text-muted">
+							Folder: <span className="font-mono text-fg">{selectedFolder}/</span>
+						</p>
+					)}
+					<div>
+						<p className="text-sm text-muted mb-2">Type</p>
+						<div className={`grid gap-2 ${fsMode ? "grid-cols-4" : "grid-cols-3"}`}>
+							{(fsMode
+								? (["bpmn", "dmn", "form", "md"] as const)
+								: (["bpmn", "dmn", "form"] as const)
+							).map((t) => (
+								<button
+									key={t}
+									type="button"
+									onClick={() => setNewType(t)}
+									className={`rounded border p-3 text-center text-sm transition-colors ${
+										newType === t
+											? "border-accent bg-accent/10 text-accent"
+											: "border-border text-fg hover:bg-surface-2"
+									}`}
+									aria-pressed={newType === t}
+								>
+									{TYPE_LABELS[t]}
+								</button>
+							))}
 						</div>
 					</div>
-				</DialogContent>
-			</Dialog>
-
-			{/* Create folder dialog */}
-			<Dialog
-				open={creatingFolder}
-				onOpenChange={(open: boolean) => !open && setCreatingFolder(false)}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>New Folder</DialogTitle>
-					</DialogHeader>
-					<div className="space-y-4 mt-4">
-						<div>
-							<label className="text-sm text-muted mb-1 block" htmlFor="folder-name">
-								Folder name
-							</label>
-							<Input
-								id="folder-name"
-								value={newFolderName}
-								onInput={(e) => setNewFolderName((e.target as HTMLInputElement).value)}
-								placeholder="processes"
-								onKeyDown={(e) => e.key === "Enter" && void handleCreateFolder()}
-							/>
-						</div>
-						{selectedFolder && (
-							<p className="text-xs text-muted">
-								Location: <span className="font-mono text-fg">{selectedFolder}/</span>
-							</p>
-						)}
-						<div className="flex justify-end gap-2">
-							<Button variant="outline" onClick={() => setCreatingFolder(false)}>
-								Cancel
-							</Button>
-							<Button onClick={() => void handleCreateFolder()} disabled={!newFolderName.trim()}>
-								Create
-							</Button>
-						</div>
-					</div>
-				</DialogContent>
-			</Dialog>
-
-			{/* Delete confirmation */}
-			<Dialog
-				open={!!confirmDelete}
-				onOpenChange={(open: boolean) => !open && setConfirmDelete(null)}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Delete Model</DialogTitle>
-					</DialogHeader>
-					<p className="text-sm text-muted mt-2">
-						Are you sure you want to delete{" "}
-						<strong className="text-fg">{confirmDelete?.name}</strong>? This cannot be undone.
-					</p>
-					<div className="flex justify-end gap-2 mt-4">
-						<Button variant="outline" onClick={() => setConfirmDelete(null)}>
+					<div className="flex justify-end gap-2">
+						<Button variant="outline" onClick={() => setCreating(false)}>
 							Cancel
 						</Button>
-						<Button
-							variant="danger"
-							onClick={() => confirmDelete && void handleDelete(confirmDelete)}
-						>
-							Delete
+						<Button onClick={() => void handleCreate()} disabled={!newName.trim()}>
+							Create
 						</Button>
 					</div>
-				</DialogContent>
-			</Dialog>
+				</div>
+			</Modal>
+
+			{/* Create folder dialog */}
+			<Modal open={creatingFolder} onClose={() => setCreatingFolder(false)} title="New Folder">
+				<div className="space-y-4 mt-4">
+					<Input
+						id="folder-name"
+						label="Folder name"
+						value={newFolderName}
+						onInput={(e) => setNewFolderName((e.target as HTMLInputElement).value)}
+						placeholder="processes"
+						onKeyDown={(e) => e.key === "Enter" && void handleCreateFolder()}
+					/>
+					{selectedFolder && (
+						<p className="text-xs text-muted">
+							Location: <span className="font-mono text-fg">{selectedFolder}/</span>
+						</p>
+					)}
+					<div className="flex justify-end gap-2">
+						<Button variant="outline" onClick={() => setCreatingFolder(false)}>
+							Cancel
+						</Button>
+						<Button onClick={() => void handleCreateFolder()} disabled={!newFolderName.trim()}>
+							Create
+						</Button>
+					</div>
+				</div>
+			</Modal>
+
+			{/* Delete confirmation */}
+			<Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete Model">
+				<p className="text-sm text-muted mt-2">
+					Are you sure you want to delete <strong className="text-fg">{confirmDelete?.name}</strong>
+					? This cannot be undone.
+				</p>
+				<div className="flex justify-end gap-2 mt-4">
+					<Button variant="outline" onClick={() => setConfirmDelete(null)}>
+						Cancel
+					</Button>
+					<Button
+						variant="danger"
+						onClick={() => confirmDelete && void handleDelete(confirmDelete)}
+					>
+						Delete
+					</Button>
+				</div>
+			</Modal>
 
 			{/* Move dialog */}
 			{moveTarget && (
@@ -954,29 +919,29 @@ export function Models() {
 			)}
 
 			{/* Template gallery dialog */}
-			<Dialog open={templateGalleryOpen} onOpenChange={setTemplateGalleryOpen}>
-				<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-					<DialogHeader>
-						<DialogTitle>Process Templates</DialogTitle>
-					</DialogHeader>
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-2">
-						{PROCESS_TEMPLATES.map((tpl) => (
-							<button
-								key={tpl.id}
-								type="button"
-								onClick={() => void handleCreateFromTemplate(tpl)}
-								className="text-left rounded-lg border border-border bg-surface p-4 hover:border-accent hover:bg-accent/5 transition-colors"
-							>
-								<div className="text-sm font-medium text-fg">{tpl.name}</div>
-								<div className="text-xs text-muted mt-1">{tpl.description}</div>
-								<div className="mt-2 inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted capitalize">
-									{tpl.category}
-								</div>
-							</button>
-						))}
-					</div>
-				</DialogContent>
-			</Dialog>
+			<Modal
+				open={templateGalleryOpen}
+				onClose={() => setTemplateGalleryOpen(false)}
+				title="Process Templates"
+				size="lg"
+			>
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-2">
+					{PROCESS_TEMPLATES.map((tpl) => (
+						<button
+							key={tpl.id}
+							type="button"
+							onClick={() => void handleCreateFromTemplate(tpl)}
+							className="text-left rounded-lg border border-border bg-surface p-4 hover:border-accent hover:bg-accent/5 transition-colors"
+						>
+							<div className="text-sm font-medium text-fg">{tpl.name}</div>
+							<div className="text-xs text-muted mt-1">{tpl.description}</div>
+							<div className="mt-2 inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted capitalize">
+								{tpl.category}
+							</div>
+						</button>
+					))}
+				</div>
+			</Modal>
 		</div>
 	)
 }

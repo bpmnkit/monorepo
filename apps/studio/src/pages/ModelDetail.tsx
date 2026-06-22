@@ -11,6 +11,7 @@ import { DmnEditor } from "@bpmnkit/plugins/dmn-editor"
 import { type PresentationApi, createPresentationPlugin } from "@bpmnkit/plugins/presentation"
 import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
 import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
+import { Input } from "@cascivo/react"
 import { QueryClientProvider } from "@tanstack/react-query"
 import {
 	ArrowLeft,
@@ -43,7 +44,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu.js"
-import { Input } from "../components/ui/input.js"
 import { getFsAdapter } from "../storage/index.js"
 import type { ModelFile } from "../storage/types.js"
 import { useClusterStore } from "../stores/cluster.js"
@@ -303,7 +303,8 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 						value={processIdInput}
 						onInput={(e) => setProcessIdInput((e.target as HTMLInputElement).value)}
 						placeholder="process-id"
-						className="text-xs h-7"
+						size="sm"
+						className="flex-1"
 						aria-label="Process definition ID"
 					/>
 					<Button size="sm" variant="outline" onClick={() => void handleLink()}>

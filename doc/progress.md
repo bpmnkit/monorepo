@@ -1,5 +1,261 @@
 # Progress
 
+# Progress
+
+## 2026-06-20 — Fix: header burger collapses the sidebar to the rail (not hidden)
+
+- AppShell binds the header burger to its `open` (show/hide) state; on desktop
+  `[data-open=false]` sets the nav column to `inline-size:0`, so the burger hid
+  the whole sidebar instead of collapsing it to the icon rail.
+- Made AppShell controlled and breakpoint-aware (`useIsDesktop`, 64rem to match
+  cascivo): on desktop `open` is pinned true and the burger's `onOpenChange`
+  calls `toggleSidebar()` (toggles `sidebarExpanded` → the icon rail, nav never
+  hidden); below 64rem `open` follows a `mobileNavOpen` state so the burger
+  opens/closes the off-canvas drawer.
+- Note: `TopBar` was already cascivo `ShellHeader` (custom `brand`/`end`
+  ReactNode for the breadcrumb + simulate/mode/AI controls) — i.e. the navbar
+  already comes from cascivo's AppShell, it isn't custom.
+- Verified: `tsc`/Biome clean, `pnpm dev` starts clean, studio build green.
+
+## 2026-06-20 — Feat: native cascivo SideNav sidebar (cascivo 0.3.1)
+
+- Updated `@cascivo/react` 0.2.1 → 0.3.1 (`@cascivo/themes` 0.2.4, `@cascivo/tokens`
+  0.3.1), which shipped the requested `SideNav` enhancements
+  (`doc/cascivo-sidenav-feedback.md`): button-mode items (`onClick`+no `href`),
+  item `disabled`/`tone`/`trailing`/`render`, actionable rich sub-items
+  (`onSelect`/`selected`/`icon` + `separator`/`label` types), and a `header` slot.
+- Rewrote `Sidebar` so every entry is a **native SideNav item** — no more
+  hand-aligned custom footer markup (dropped the Radix `DropdownMenu` pickers and
+  the manual `_link`/`_icon` spacing). Layout via three `groups`: context
+  (cluster + project pickers as sub-item menus with `selected` ✓ + separators +
+  "Add/Manage →" links, reconnect with `tone="warning"`/`disabled`, search with
+  a `⌘K` `trailing` hint), main nav, and help (get started). Alignment is now
+  cascivo's responsibility.
+- Verified: patched `@preact/signals-react` still applies on the new version;
+  `tsc`/Biome clean; `pnpm dev` starts clean; studio build green.
+
+## 2026-06-20 — Fix: align studio sidebar footer items with nav items
+
+- Footer controls (cluster/project pickers, reconnect, search, get-started) were
+  misaligned vs the cascivo SideNav nav links, and inconsistent with each other
+  (the 8px status dot vs 18px icons). Cause: cascivo nav items get `_sideNav`
+  (`space-2`) + `_list` (`px space-2`) + `_link` (`px space-2`) insets with a
+  fixed `_icon` `space-4` box, while the footer (`_footer`, no inline padding)
+  used custom buttons with `px-2.5`/`gap-2.5` and raw icons of differing widths.
+- Fix: mirror cascivo's structure in the footer — wrapper `px-2 gap-1`, buttons
+  `px-2 py-2 gap-2`, every icon (incl. the status dot) in a fixed `h-4 w-4`
+  centred box, and the label `display:none` on the rail so its flex gap doesn't
+  off-centre the icon. All entries now share identical icon/label positions
+  (24px icon, 48px label) and the rail centres every icon.
+- Verified: `tsc`/Biome clean, studio build green.
+
+## 2026-06-20 — Fix: studio sidebar flicker (SideNav expandOnHover + fit-content)
+
+- Opening/hovering the left sidebar flickered. Root cause: the AppShell nav
+  column used `--cascivo-shell-aside-inline-size: fit-content`, while `SideNav`
+  had `expandOnHover`, whose collapsed `:hover`/`:focus-within` rule switches the
+  nav to `position:absolute`. Out of flow, the `fit-content` column collapses to
+  0, the content jumps, and the pointer/focus state oscillates → flicker (also
+  fired on the collapse-toggle click via `:focus-within`).
+- Fix: (1) removed `expandOnHover` (restores the studio's original rail+toggle
+  UX, and SideNav never leaves the flow); (2) replaced the `fit-content` column
+  with an explicit width that tracks the collapsed state
+  (`sidebarExpanded ? --cascivo-sidenav-inline-size : --cascivo-sidenav-rail-inline-size`),
+  so the toggle animates a stable column matching SideNav's own width.
+- Verified: `tsc`/Biome clean, `pnpm dev` starts clean, studio build green.
+
+## 2026-06-20 — Fix: studio dev server (signals-react jsx-runtime) via pnpm patch
+
+- `pnpm dev` failed during Vite **dependency optimization** with the same
+  `MISSING_EXPORT` as the earlier build issue: `@preact/signals-react/runtime`
+  (pulled in by cascivo) does `import v from "react/jsx-runtime"` / `import m
+  from "react/jsx-dev-runtime"`, which have no default export under the preact
+  alias. The build-only Vite `transform` plugin didn't help here — optimizeDeps
+  pre-bundles deps outside that pipeline.
+- Root-cause fix via **`pnpm patch @preact/signals-react@2.3.0`**: rewrote the
+  two default imports to namespace imports (`import * as v …`), which both
+  resolve under preact and keep `v.jsx`/`v.jsxs`/`v.jsxDEV` valid (they're
+  named exports of `preact/jsx-runtime`). The patch applies uniformly in dev,
+  build, and optimizeDeps, so the build-time `vite.config.ts` transform hack
+  was removed.
+- Verified: `pnpm dev` starts clean (ready, 0 errors) and `pnpm --filter
+  @bpmnkit/studio build` is green.
+
+## 2026-06-20 — Fix: studio production build (cascivo / signals-react jsx-runtime)
+
+- `pnpm build` was failing. Two distinct causes:
+  1. **Environmental:** `@bpmnkit/reebe-wasm` (wasm-pack output) wasn't generated
+     in the fresh container, so `@bpmnkit/engine` and everything downstream
+     couldn't resolve it. Provisioned the toolchain (wasm32 target, wasm-pack,
+     binaryen for `wasm-opt`) and ran `build:wasm`. Not a code change — the
+     artifacts are gitignored and regenerate in CI.
+  2. **Code (cascivo integration, latent since Stage 0):** the studio's Vite/
+     rolldown production build failed with `MISSING_EXPORT` because
+     `@preact/signals-react/runtime` (pulled in by cascivo) does dead default
+     imports `import v from "react/jsx-runtime"` / `import m from
+     "react/jsx-dev-runtime"`, which have no default under the preact alias.
+     Added an `enforce:"pre"` Vite transform (`fixSignalsReactJsxImport`) that
+     rewrites those unused default imports to side-effect imports. `tsc --noEmit`
+     never caught this — it's a bundler-level ESM export check.
+- Result: full `pnpm build` green — 28/28 tasks successful.
+
+## 2026-06-20 — Chore: Cascivo migration — defer CommandPalette → CommandMenu
+
+- Surveyed `CommandPalette` (1114 lines): a bespoke Radix dialog hosting three
+  interleaved modes (`InlineAiChat` token streaming, `InlineImproveMode` BPMN
+  ops via `@bpmnkit/core`, and the command list with `/`-command mode + nested
+  in-view sub-palettes + inline "Ask AI"). cascivo `CommandMenu` is a generic
+  groups palette and can't host the AI surfaces or nested views — migrating
+  would be lossy or a large unverifiable rewrite. Deferred; documented in
+  `doc/cascivo-migration.md`.
+
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 3a Toast → cascivo ToastProvider
+
+- Mounted cascivo `ToastProvider` in `app.tsx`; deleted the custom zustand
+  `useToastStore` and `ToastContainer` (`components/Toast.tsx`).
+- cascivo's `enqueue` isn't exported (only the `useToast()` hook), so a tiny
+  `<ToastBridge>` captures `useToast().toast` into a module ref (`bindToast`),
+  keeping the imperative `toast.success/error/info(message)` API unchanged for
+  all 39 call sites (success→success, error→destructive, info→default).
+- Verified: full studio `tsc --noEmit` clean for app.tsx/Shell.tsx/stores/toast;
+  Biome clean.
+
+## 2026-06-20 — Feat: Cascivo UI migration — detail pages (IncidentDetail → DataList)
+
+- Migrated `IncidentDetail`'s incident-info block to cascivo `DataList`
+  (vertical; conditional Element/Created items via spreads). Verified the file's
+  `tsc` output still shows only its 2 pre-existing `@bpmnkit` resolution errors
+  (no new errors); Biome clean.
+- Surveyed the other detail pages: `DecisionDetail`/`TaskDetail`/non-wasm
+  `DefinitionDetail` are imperative `@bpmnkit` widget hosts (no React content);
+  `InstanceDetail` + the rest of `IncidentDetail`/`WasmDefinitionDetail` are
+  tabbed BPMN-canvas layouts whose remaining bits are panel/`Card` visual swaps
+  — deferred as unverifiable here. See `doc/cascivo-migration.md`.
+
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 4 list tables → cascivo DataTable
+
+- Migrated 4 flat data tables to cascivo `DataTable`: Decisions, Incidents
+  (mode-conditional Element column), Tasks (Badge cells), Instances. Cells map
+  via `columns[].render`; kept the external `Search`/filter (pre-filtered rows);
+  used `loading` (skeleton) + `emptyState`.
+- Instances: replaced the hand-rolled checkbox column + header bulk-cancel
+  button with `DataTable` `selection` (multi) + `batchActions`; refactored
+  `handleBulkCancel(ids)`; removed `toggleSelect` and the stray checkbox input.
+- Deferred Definitions (grouped rows + expandable version sub-rows with a
+  coupled toggle; `DataTable` expand state is internal/uncontrollable) and
+  Models (file/folder browser, not tabular). Detail pages still pending.
+- Verified: full studio `tsc --noEmit` shows zero errors in the 4 migrated
+  files (remaining errors are pre-existing `@bpmnkit/*` resolution in
+  ModelDetail/Models/TaskDetail); Biome clean.
+
+## 2026-06-20 — Feat: Cascivo UI migration — form fields → cascivo Input; delete local wrapper
+
+- Migrated the 6 form-field inputs to cascivo `Input`: Settings (proxy URL,
+  project name, project path), Models (new-model name, new-folder name),
+  ModelDetail (link process ID). Used cascivo `Input`'s `label`/`hint`/`size`
+  props in place of the hand-rolled `<label>` + hint `<p>`; kept `aria-label`
+  for the unlabeled inline inputs; `size="sm"` + `flex-1` for the compact one.
+- Deleted the now-orphaned `apps/studio/src/components/ui/input.tsx` wrapper
+  (no remaining importers).
+- Deferred the 4 detail-panel bare `<input>` filters (Incident/Instance detail):
+  2 rely on a focus ref (autofocus) cascivo `Search` can't express, and all are
+  dense compact filters where the swap is low-value/visually risky. Minor loss:
+  project-path input no longer monospaced (cascivo `Input` className → wrapper).
+- Verified: isolated typecheck of cascivo `Input` (label/hint/size/aria-label/
+  className, exit 0) and Biome clean.
+
+## 2026-06-20 — Feat: Cascivo UI migration — list-page search boxes → cascivo Search
+
+- Migrated the 6 list-page search filters (Incidents, Tasks, Instances,
+  Definitions, Decisions, Models) from the local `Input` wrapper to cascivo
+  `Search`: `value={search}` + `onChange={setSearch}` (fires immediately; the
+  300ms `debounceMs` only gates the optional `onSearch`), `aria-label` → `label`
+  (rendered sr-only). Gains a search icon + clear button for free; `className`
+  width constraints preserved on the root.
+- Removed the now-unused `Input` import from the 5 single-input pages; Models
+  keeps it (2 form fields remain). Remaining `Input` users are true form fields
+  (Settings, Models create/rename, ModelDetail) + detail-panel search inputs —
+  deferred to a `Field` pass.
+- Also migrated `TopBar` → cascivo `ShellHeader` (burger wired via AppShell,
+  fixing mobile nav reopen).
+- Verified: isolated typecheck of `Search` (controlled value/onChange/label,
+  exit 0) and Biome clean across all changed files.
+
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 2 app shell (AppShell + SideNav)
+
+- `Shell` now uses cascivo `AppShell` (header = `TopBar`, nav = `Sidebar`,
+  content = main + `AIDrawer`); zen mode bypasses it for full-screen. Nav column
+  uses `--cascivo-shell-aside-inline-size: fit-content` so `SideNav` self-sizes.
+- `Sidebar` rewritten onto cascivo `SideNav`: 9 nav links → `items[]`, native
+  `collapsed` rail (wired to `sidebarExpanded`) + `expandOnHover` + built-in
+  collapse toggle; cluster/project pickers + search + reconnect + "Get started"
+  moved into `SideNav`'s `footer` slot (still Radix dropdowns, deferred).
+- Corrected an earlier wrong claim: cascivo *does* support a collapsible rail
+  sidebar (`SideNav` self-sizes 16rem↔4rem). The real issue had been wrapping the
+  studio's own self-transforming sidebar in AppShell; using `SideNav` fixes it.
+- Known follow-ups needing browser verification: mobile drawer has no reopen
+  control (TopBar isn't a `ShellHeader`, so no burger); lost offline nav-dimming
+  and per-item shortcut hints; footer/rail spacing. Documented in
+  `doc/cascivo-migration.md`.
+- Verified: isolated typecheck of AppShell + SideNav + items + the CSS-var style
+  under the studio's preact-aliased config (exit 0); Biome clean. Studio full
+  build remains WASM-blocked here.
+
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 1b overlays (Dialog → Modal)
+
+- Replaced all 8 `Dialog` instances (`WelcomeModal`, `Models` ×5, `Settings`)
+  with cascivo `Modal` (string `title` / `onClose` / `size`) and deleted
+  `components/ui/dialog.tsx`. `WelcomeModal`'s custom centred title became a
+  title-less `Modal` + `<h2>`.
+- Routed `Button size="icon"` (3 sites) to cascivo `IconButton` inside the Button
+  adapter (derives the required `label` from `aria-label`); call sites unchanged.
+- Removed the now-orphaned direct deps `@radix-ui/react-separator`,
+  `@radix-ui/react-slot`, and `class-variance-authority`.
+- **Deferred** `DropdownMenu` → cascivo `Menu`: cascivo `Menu` lacks `MenuLabel`,
+  `asChild` triggers/items, and checkbox/radio items that the studio's menus rely
+  on. Documented in `doc/cascivo-feedback.md`.
+- Verified via isolated typecheck (cascivo `Modal` / `IconButton` / Button
+  adapter prop patterns under the studio's preact-aliased config, exit 0) and
+  Biome. The studio's full build remains WASM-blocked in this environment.
+
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 1 primitives (Button/Badge/Separator)
+
+Continued the cascivo migration (plan in `doc/cascivo-migration.md`).
+
+- Migrated `components/ui/button`, `badge`, and `separator` to thin
+  `@cascivo/react` adapters that preserve the existing call-site API (studio
+  variant names mapped to cascivo variants). The 10 Button / 2 Badge / 1
+  Separator call sites are unchanged; removed Radix/cva from these three files.
+- Dropped the unused `asChild` prop from Button (only `ErrorState` used it →
+  switched to an `onClick` navigation via `useLocation`).
+- **Required fix:** added a `react → preact/compat` `paths` alias to
+  `apps/studio/tsconfig.json`. Without it, cascivo's React-typed components don't
+  typecheck under the studio's `jsxImportSource: "preact"` setup. Verified in
+  isolation that the migrated files + a representative call site typecheck (exit
+  0, strict), and that the alias is compatible with the existing Radix /
+  react-query usage.
+- Deferred `Input` (cascivo's wrapper-div structure regresses the bare-input
+  search boxes → use `Search`/`Field` later), `Dialog`/`DropdownMenu`
+  (compositional rewrites), and the dead `tabs`/`tooltip`/`popover` wrappers.
+
+## 2026-06-20 — Feat: Cascivo UI migration — Stage 0 foundation
+
+Began migrating the studio console to the [cascivo](https://cascivo.com) design
+system (full Tailwind replacement, via the `@cascivo/react` package). Plan in
+`doc/cascivo-migration.md`.
+
+- Verified `@cascivo/react` builds clean under the studio's `react → preact`
+  Vite alias, and that the cascivo CSS composition builds through the studio's
+  real Tailwind v4 toolchain.
+- Added `@cascivo/react`, `@cascivo/themes`, `@cascivo/tokens`,
+  `@preact/signals-react` to `apps/studio`.
+- Added `apps/studio/src/styles/cascivo.css`: imports cascivo token/base/component
+  CSS and bridges cascivo semantic color tokens onto the `--bpmnkit-*` brand
+  tokens, so `@bpmnkit/ui` stays the single source of truth and the existing
+  light/dark/neon themes drive cascivo components. Imported it from `globals.css`.
+- Component-swap stages (primitives, app shell, toasts, tables, Tailwind removal,
+  then `@bpmnkit/operate` and desktop) are sequenced in the plan; not yet applied.
+
 ## 2026-06-13 — Feat: BPMN builder SDK improvements (Tasks 1–7)
 
 Seven improvements to `packages/core/src/bpmn/bpmn-builder.ts`:

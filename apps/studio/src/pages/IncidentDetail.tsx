@@ -1,5 +1,6 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
+import { DataList } from "@cascivo/react"
 import { useEffect, useRef, useState } from "preact/hooks"
 import type { JSX } from "preact/jsx-runtime"
 import { Link, useParams } from "wouter"
@@ -393,49 +394,73 @@ export function IncidentDetail() {
 									))}
 								</div>
 							) : incident ? (
-								<>
-									<div>
-										<p className="text-xs text-muted uppercase tracking-wider mb-1">Error Type</p>
-										<p className="text-sm font-mono text-danger">{incident.errorType}</p>
-									</div>
-									<div>
-										<p className="text-xs text-muted uppercase tracking-wider mb-1">Message</p>
-										<p className="text-sm text-fg break-words">{incident.errorMessage}</p>
-									</div>
-									{mode === "developer" && (
-										<div>
-											<p className="text-xs text-muted uppercase tracking-wider mb-1">Element</p>
-											<p className="text-sm font-mono text-muted">{incident.elementId}</p>
-										</div>
-									)}
-									<div>
-										<p className="text-xs text-muted uppercase tracking-wider mb-1">Links</p>
-										<div className="space-y-1">
-											<Link
-												href={`/instances/${incident.processInstanceKey}`}
-												className="block text-sm text-accent hover:underline"
-											>
-												View instance →
-											</Link>
-											{incident.processDefinitionKey && (
-												<Link
-													href={`/definitions/${incident.processDefinitionKey}`}
-													className="block text-sm text-accent hover:underline"
-												>
-													View definition →
-												</Link>
-											)}
-										</div>
-									</div>
-									{incident.creationTime && (
-										<div>
-											<p className="text-xs text-muted uppercase tracking-wider mb-1">Created</p>
-											<p className="text-sm text-muted">
-												{new Date(incident.creationTime).toLocaleString()}
-											</p>
-										</div>
-									)}
-								</>
+								<DataList
+									orientation="vertical"
+									items={[
+										{
+											id: "errorType",
+											label: "Error Type",
+											value: (
+												<span className="font-mono text-danger text-sm">{incident.errorType}</span>
+											),
+										},
+										{
+											id: "message",
+											label: "Message",
+											value: (
+												<span className="break-words text-fg text-sm">{incident.errorMessage}</span>
+											),
+										},
+										...(mode === "developer"
+											? [
+													{
+														id: "element",
+														label: "Element",
+														value: (
+															<span className="font-mono text-muted text-sm">
+																{incident.elementId}
+															</span>
+														),
+													},
+												]
+											: []),
+										{
+											id: "links",
+											label: "Links",
+											value: (
+												<div className="space-y-1">
+													<Link
+														href={`/instances/${incident.processInstanceKey}`}
+														className="block text-accent text-sm hover:underline"
+													>
+														View instance →
+													</Link>
+													{incident.processDefinitionKey && (
+														<Link
+															href={`/definitions/${incident.processDefinitionKey}`}
+															className="block text-accent text-sm hover:underline"
+														>
+															View definition →
+														</Link>
+													)}
+												</div>
+											),
+										},
+										...(incident.creationTime
+											? [
+													{
+														id: "created",
+														label: "Created",
+														value: (
+															<span className="text-muted text-sm">
+																{new Date(incident.creationTime).toLocaleString()}
+															</span>
+														),
+													},
+												]
+											: []),
+									]}
+								/>
 							) : null}
 						</div>
 					)}
