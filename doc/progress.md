@@ -2,6 +2,21 @@
 
 # Progress
 
+## 2026-06-20 — Fix: align studio sidebar footer items with nav items
+
+- Footer controls (cluster/project pickers, reconnect, search, get-started) were
+  misaligned vs the cascivo SideNav nav links, and inconsistent with each other
+  (the 8px status dot vs 18px icons). Cause: cascivo nav items get `_sideNav`
+  (`space-2`) + `_list` (`px space-2`) + `_link` (`px space-2`) insets with a
+  fixed `_icon` `space-4` box, while the footer (`_footer`, no inline padding)
+  used custom buttons with `px-2.5`/`gap-2.5` and raw icons of differing widths.
+- Fix: mirror cascivo's structure in the footer — wrapper `px-2 gap-1`, buttons
+  `px-2 py-2 gap-2`, every icon (incl. the status dot) in a fixed `h-4 w-4`
+  centred box, and the label `display:none` on the rail so its flex gap doesn't
+  off-centre the icon. All entries now share identical icon/label positions
+  (24px icon, 48px label) and the rail centres every icon.
+- Verified: `tsc`/Biome clean, studio build green.
+
 ## 2026-06-20 — Fix: studio sidebar flicker (SideNav expandOnHover + fit-content)
 
 - Opening/hovering the left sidebar flickered. Root cause: the AppShell nav

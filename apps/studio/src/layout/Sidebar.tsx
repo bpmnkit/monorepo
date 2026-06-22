@@ -115,23 +115,31 @@ export function Sidebar() {
 		}
 	})
 
-	// Collapse the footer controls to icon-only when the rail is collapsed.
-	const labelCls = `text-sm font-medium whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-150 flex-1 text-left ${
-		sidebarExpanded ? "max-w-xs opacity-100" : "max-w-0 opacity-0"
-	}`
-	const triggerCls = `flex w-full items-center gap-2.5 rounded-md h-9 px-2.5 text-nav-fg hover:text-nav-fg-active hover:bg-white/5 active:bg-white/10 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent ${
-		sidebarExpanded ? "justify-start" : "justify-center"
-	}`
+	// Footer controls are styled to match cascivo's SideNav items so every entry
+	// lines up: same horizontal insets (list `px-2` + link `px-2`), same `gap-2`,
+	// and every icon in a fixed `h-4 w-4` box (= cascivo's `_icon`, `space-4`).
+	// The label is removed (not just width-collapsed) on the rail so its flex gap
+	// doesn't push the icon off-centre.
+	const iconBox = "inline-flex h-4 w-4 shrink-0 items-center justify-center"
+	const labelCls = sidebarExpanded
+		? "min-w-0 flex-1 truncate text-left font-medium text-sm"
+		: "hidden"
+	const itemBase =
+		"flex w-full items-center gap-2 rounded-md px-2 py-2 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent"
+	const triggerCls = `${itemBase} text-nav-fg hover:bg-white/5 hover:text-nav-fg-active active:bg-white/10`
+	const reconnectCls = `${itemBase} text-warn hover:bg-white/5 hover:text-warn/80 active:bg-white/10 disabled:opacity-50`
 
 	const footer = (
-		<div className="flex flex-col gap-0.5">
+		<div className="flex flex-col gap-1 px-2">
 			{/* Cluster / profile picker */}
 			<DropdownMenu>
 				<DropdownMenuTrigger className={triggerCls} aria-label="Select cluster profile">
-					<span
-						className={`h-2 w-2 shrink-0 rounded-full ${statusColor} ${status === "loading" ? "animate-pulse" : ""}`}
-						aria-hidden="true"
-					/>
+					<span className={iconBox}>
+						<span
+							className={`h-2 w-2 rounded-full ${statusColor} ${status === "loading" ? "animate-pulse" : ""}`}
+							aria-hidden="true"
+						/>
+					</span>
 					<span className={labelCls}>
 						{activeProfile ?? (status === "offline" ? "No cluster" : "Select profile")}
 					</span>
@@ -173,7 +181,9 @@ export function Sidebar() {
 			{/* Project picker */}
 			<DropdownMenu>
 				<DropdownMenuTrigger className={triggerCls} aria-label="Select project">
-					<FolderOpen size={18} className="shrink-0" />
+					<span className={iconBox}>
+						<FolderOpen size={18} />
+					</span>
 					<span className={labelCls}>
 						{activeProjectId
 							? (projects.find((p) => p.id === activeProjectId)?.name ?? "Unknown project")
@@ -211,12 +221,12 @@ export function Sidebar() {
 					type="button"
 					onClick={() => void handleReconnect()}
 					disabled={reconnecting}
-					className={`flex w-full items-center gap-2.5 rounded-md h-9 px-2.5 text-warn hover:text-warn/80 hover:bg-white/5 active:bg-white/10 transition-colors duration-150 disabled:opacity-50 ${
-						sidebarExpanded ? "justify-start" : "justify-center"
-					}`}
+					className={reconnectCls}
 					aria-label="Retry proxy connection"
 				>
-					<RotateCw size={18} className={`shrink-0 ${reconnecting ? "animate-spin" : ""}`} />
+					<span className={iconBox}>
+						<RotateCw size={18} className={reconnecting ? "animate-spin" : ""} />
+					</span>
 					<span className={labelCls}>{reconnecting ? "Connecting…" : "Retry connection"}</span>
 				</button>
 			)}
@@ -228,7 +238,9 @@ export function Sidebar() {
 				className={triggerCls}
 				aria-label="Open search"
 			>
-				<Search size={18} className="shrink-0" />
+				<span className={iconBox}>
+					<Search size={18} />
+				</span>
 				<span className={labelCls}>Search...</span>
 			</button>
 
@@ -241,7 +253,9 @@ export function Sidebar() {
 					aria-label="Get started"
 					title="Get started"
 				>
-					<Sparkles size={18} className="shrink-0 text-accent" />
+					<span className={iconBox}>
+						<Sparkles size={18} className="text-accent" />
+					</span>
 					<span className={labelCls}>Get started</span>
 				</button>
 			)}
