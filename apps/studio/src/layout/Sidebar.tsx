@@ -254,7 +254,6 @@ export function Sidebar() {
 			items={navItems}
 			collapsed={!sidebarExpanded}
 			onCollapsedChange={(collapsed) => setSidebarExpanded(!collapsed)}
-			expandOnHover
 			footer={footer}
 		/>
 	)

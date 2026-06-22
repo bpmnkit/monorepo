@@ -26,7 +26,7 @@ const ROUTE_MAP: Record<string, string> = {
 
 export function Shell({ children }: ShellProps) {
 	const [, navigate] = useLocation()
-	const { toggleCommandPalette, toggleAI, toggleSidebar, zenMode } = useUiStore()
+	const { toggleCommandPalette, toggleAI, toggleSidebar, zenMode, sidebarExpanded } = useUiStore()
 
 	// Global keyboard shortcuts + link-click interceptor for view transitions
 	useEffect(() => {
@@ -125,10 +125,13 @@ export function Shell({ children }: ShellProps) {
 		)
 	}
 
-	// `SideNav` self-sizes (16rem ↔ 4rem rail), so let it drive the AppShell nav
-	// column width instead of AppShell's fixed default.
+	// Give the AppShell nav column an explicit width that matches `SideNav`'s own
+	// rail/expanded width and tracks the collapsed state. (A `fit-content` column
+	// collapses to 0 if the nav is ever taken out of flow, causing layout flicker.)
 	const shellStyle = {
-		"--cascivo-shell-aside-inline-size": "fit-content",
+		"--cascivo-shell-aside-inline-size": sidebarExpanded
+			? "var(--cascivo-sidenav-inline-size, 16rem)"
+			: "var(--cascivo-sidenav-rail-inline-size, 4rem)",
 	} as unknown as JSX.CSSProperties
 
 	return (

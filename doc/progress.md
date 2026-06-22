@@ -2,6 +2,21 @@
 
 # Progress
 
+## 2026-06-20 — Fix: studio sidebar flicker (SideNav expandOnHover + fit-content)
+
+- Opening/hovering the left sidebar flickered. Root cause: the AppShell nav
+  column used `--cascivo-shell-aside-inline-size: fit-content`, while `SideNav`
+  had `expandOnHover`, whose collapsed `:hover`/`:focus-within` rule switches the
+  nav to `position:absolute`. Out of flow, the `fit-content` column collapses to
+  0, the content jumps, and the pointer/focus state oscillates → flicker (also
+  fired on the collapse-toggle click via `:focus-within`).
+- Fix: (1) removed `expandOnHover` (restores the studio's original rail+toggle
+  UX, and SideNav never leaves the flow); (2) replaced the `fit-content` column
+  with an explicit width that tracks the collapsed state
+  (`sidebarExpanded ? --cascivo-sidenav-inline-size : --cascivo-sidenav-rail-inline-size`),
+  so the toggle animates a stable column matching SideNav's own width.
+- Verified: `tsc`/Biome clean, `pnpm dev` starts clean, studio build green.
+
 ## 2026-06-20 — Fix: studio dev server (signals-react jsx-runtime) via pnpm patch
 
 - `pnpm dev` failed during Vite **dependency optimization** with the same
