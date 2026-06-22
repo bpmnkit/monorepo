@@ -1,4 +1,4 @@
-import { SideNav, type SideNavItem } from "@cascivo/react"
+import { SideNav, type SideNavGroup, type SideNavItem, type SideNavSubItem } from "@cascivo/react"
 import {
 	AlertTriangle,
 	CheckSquare,
@@ -14,15 +14,7 @@ import {
 	Sparkles,
 } from "lucide-react"
 import { useState } from "preact/hooks"
-import { Link, useLocation } from "wouter"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu.js"
+import { useLocation } from "wouter"
 import { getOnboardingState } from "../lib/onboarding.js"
 import { useClusterStore } from "../stores/cluster.js"
 import { useModeStore } from "../stores/mode.js"
@@ -100,8 +92,8 @@ export function Sidebar() {
 	const statusColor =
 		status === "connected" ? "bg-success" : status === "loading" ? "bg-warn" : "bg-danger"
 
-	// Nav links → cascivo SideNav items. Navigation + view transitions are handled
-	// by the Shell's global <a> click interceptor; onClick only closes on mobile.
+	// ── Main navigation. Navigation + view transitions flow through the Shell's
+	// global <a> click interceptor; onClick only closes the rail on mobile.
 	const navItems: SideNavItem[] = items.map((item) => {
 		const Icon = item.icon
 		return {
@@ -115,160 +107,97 @@ export function Sidebar() {
 		}
 	})
 
-	// Footer controls are styled to match cascivo's SideNav items so every entry
-	// lines up: same horizontal insets (list `px-2` + link `px-2`), same `gap-2`,
-	// and every icon in a fixed `h-4 w-4` box (= cascivo's `_icon`, `space-4`).
-	// The label is removed (not just width-collapsed) on the rail so its flex gap
-	// doesn't push the icon off-centre.
-	const iconBox = "inline-flex h-4 w-4 shrink-0 items-center justify-center"
-	const labelCls = sidebarExpanded
-		? "min-w-0 flex-1 truncate text-left font-medium text-sm"
-		: "hidden"
-	const itemBase =
-		"flex w-full items-center gap-2 rounded-md px-2 py-2 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent"
-	const triggerCls = `${itemBase} text-nav-fg hover:bg-white/5 hover:text-nav-fg-active active:bg-white/10`
-	const reconnectCls = `${itemBase} text-warn hover:bg-white/5 hover:text-warn/80 active:bg-white/10 disabled:opacity-50`
+	// ── App-context controls: cluster + project pickers (native sub-item menus),
+	// reconnect, and search.
+	const clusterSubItems: SideNavSubItem[] = [
+		{ type: "label", label: profiles.length === 0 ? "No profiles found" : "Profiles" },
+		...profiles.map(
+			(p): SideNavSubItem => ({
+				label: p.name,
+				selected: p.name === activeProfile,
+				onSelect: () => setActiveProfile(p.name),
+			}),
+		),
+		{ type: "separator" },
+		{ label: "Add profile →", href: "/settings" },
+	]
 
-	const footer = (
-		<div className="flex flex-col gap-1 px-2">
-			{/* Cluster / profile picker */}
-			<DropdownMenu>
-				<DropdownMenuTrigger className={triggerCls} aria-label="Select cluster profile">
-					<span className={iconBox}>
-						<span
-							className={`h-2 w-2 rounded-full ${statusColor} ${status === "loading" ? "animate-pulse" : ""}`}
-							aria-hidden="true"
-						/>
-					</span>
-					<span className={labelCls}>
-						{activeProfile ?? (status === "offline" ? "No cluster" : "Select profile")}
-					</span>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="start" className="min-w-48">
-					{profiles.length === 0 ? (
-						<>
-							<DropdownMenuLabel>No profiles found</DropdownMenuLabel>
-							<DropdownMenuSeparator />
-						</>
-					) : (
-						<>
-							<DropdownMenuLabel>Profiles</DropdownMenuLabel>
-							{profiles.map((p) => (
-								<DropdownMenuItem
-									key={p.name}
-									onSelect={() => setActiveProfile(p.name)}
-									className="gap-2"
-								>
-									{p.name === activeProfile && (
-										<span className="text-accent" aria-label="Active">
-											●
-										</span>
-									)}
-									<span className={p.name === activeProfile ? "font-medium" : ""}>{p.name}</span>
-								</DropdownMenuItem>
-							))}
-							<DropdownMenuSeparator />
-						</>
-					)}
-					<DropdownMenuItem asChild>
-						<Link href="/settings" className="cursor-pointer text-muted">
-							Add profile →
-						</Link>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+	const projectSubItems: SideNavSubItem[] = [
+		{ type: "label", label: "Projects" },
+		{
+			label: "Local (IndexedDB)",
+			selected: activeProjectId === null,
+			onSelect: () => setActiveProject(null, proxyUrl),
+		},
+		...projects.map(
+			(p): SideNavSubItem => ({
+				label: p.name,
+				selected: p.id === activeProjectId,
+				onSelect: () => setActiveProject(p.id, proxyUrl),
+			}),
+		),
+		{ type: "separator" },
+		{ label: "Manage projects →", href: "/settings" },
+	]
 
-			{/* Project picker */}
-			<DropdownMenu>
-				<DropdownMenuTrigger className={triggerCls} aria-label="Select project">
-					<span className={iconBox}>
-						<FolderOpen size={18} />
-					</span>
-					<span className={labelCls}>
-						{activeProjectId
-							? (projects.find((p) => p.id === activeProjectId)?.name ?? "Unknown project")
-							: "Local (IndexedDB)"}
-					</span>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="start" className="min-w-48">
-					<DropdownMenuLabel>Projects</DropdownMenuLabel>
-					<DropdownMenuItem onSelect={() => setActiveProject(null, proxyUrl)} className="gap-2">
-						{activeProjectId === null && <span className="text-accent">●</span>}
-						<span className={activeProjectId === null ? "font-medium" : ""}>Local (IndexedDB)</span>
-					</DropdownMenuItem>
-					{projects.map((p) => (
-						<DropdownMenuItem
-							key={p.id}
-							onSelect={() => setActiveProject(p.id, proxyUrl)}
-							className="gap-2"
-						>
-							{p.id === activeProjectId && <span className="text-accent">●</span>}
-							<span className={p.id === activeProjectId ? "font-medium" : ""}>{p.name}</span>
-						</DropdownMenuItem>
-					))}
-					<DropdownMenuSeparator />
-					<DropdownMenuItem asChild>
-						<Link href="/settings" className="cursor-pointer text-muted">
-							Manage projects →
-						</Link>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+	const contextItems: SideNavItem[] = [
+		{
+			label: activeProfile ?? (status === "offline" ? "No cluster" : "Select profile"),
+			icon: (
+				<span
+					className={`h-2 w-2 rounded-full ${statusColor} ${status === "loading" ? "animate-pulse" : ""}`}
+				/>
+			),
+			items: clusterSubItems,
+		},
+		{
+			label: activeProjectId
+				? (projects.find((p) => p.id === activeProjectId)?.name ?? "Unknown project")
+				: "Local (IndexedDB)",
+			icon: <FolderOpen size={18} />,
+			items: projectSubItems,
+		},
+	]
 
-			{/* Reconnect button — visible when proxy is offline */}
-			{status === "offline" && (
-				<button
-					type="button"
-					onClick={() => void handleReconnect()}
-					disabled={reconnecting}
-					className={reconnectCls}
-					aria-label="Retry proxy connection"
-				>
-					<span className={iconBox}>
-						<RotateCw size={18} className={reconnecting ? "animate-spin" : ""} />
-					</span>
-					<span className={labelCls}>{reconnecting ? "Connecting…" : "Retry connection"}</span>
-				</button>
-			)}
+	if (status === "offline") {
+		contextItems.push({
+			label: reconnecting ? "Connecting…" : "Retry connection",
+			icon: <RotateCw size={18} className={reconnecting ? "animate-spin" : ""} />,
+			onClick: () => void handleReconnect(),
+			tone: "warning",
+			disabled: reconnecting,
+		})
+	}
 
-			{/* Search trigger */}
-			<button
-				type="button"
-				onClick={openCommandPalette}
-				className={triggerCls}
-				aria-label="Open search"
-			>
-				<span className={iconBox}>
-					<Search size={18} />
-				</span>
-				<span className={labelCls}>Search...</span>
-			</button>
+	contextItems.push({
+		label: "Search...",
+		icon: <Search size={18} />,
+		onClick: () => openCommandPalette(),
+		trailing: <kbd className="text-muted text-xs">⌘K</kbd>,
+	})
 
-			{/* Get started */}
-			{!getOnboardingState().hidden && (
-				<button
-					type="button"
-					onClick={openWelcomeModal}
-					className={triggerCls}
-					aria-label="Get started"
-					title="Get started"
-				>
-					<span className={iconBox}>
-						<Sparkles size={18} className="text-accent" />
-					</span>
-					<span className={labelCls}>Get started</span>
-				</button>
-			)}
-		</div>
-	)
+	// ── Help.
+	const helpItems: SideNavItem[] = []
+	if (!getOnboardingState().hidden) {
+		helpItems.push({
+			label: "Get started",
+			icon: <Sparkles size={18} className="text-accent" />,
+			onClick: () => openWelcomeModal(),
+		})
+	}
+
+	const groups: SideNavGroup[] = [
+		{ items: contextItems },
+		{ items: navItems },
+		...(helpItems.length > 0 ? [{ items: helpItems }] : []),
+	]
 
 	return (
 		<SideNav
 			ariaLabel="Main navigation"
-			items={navItems}
+			groups={groups}
 			collapsed={!sidebarExpanded}
 			onCollapsedChange={(collapsed) => setSidebarExpanded(!collapsed)}
-			footer={footer}
 		/>
 	)
 }

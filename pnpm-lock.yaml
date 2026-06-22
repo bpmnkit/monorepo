@@ -250,14 +250,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/user-tasks
       '@cascivo/react':
-        specifier: ^0.2.1
-        version: 0.2.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^0.3.1
+        version: 0.3.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@cascivo/themes':
-        specifier: ^0.2.2
-        version: 0.2.2(@cascivo/tokens@0.2.0)
+        specifier: ^0.2.4
+        version: 0.2.4(@cascivo/tokens@0.3.1)
       '@cascivo/tokens':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.3.1
+        version: 0.3.1
       '@preact/signals-react':
         specifier: ^2.0.0
         version: 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
@@ -676,32 +676,32 @@ packages:
     resolution: {integrity: sha512-VERIM64vtTP1C4mxQ5thVT9fK0apjPFobqybMtA1UdUujWka24ERHbRHFGmpbbhp73MhV+KSsHQH9C6uOTdEQA==}
     engines: {node: '>=18'}
 
-  '@cascivo/core@0.1.1':
-    resolution: {integrity: sha512-vZG4yiEfq4GgPPDMKGSX7IBd7U7tn+tb9o5ThcFiPrN7tQ1QXMwSwk6urDoRiEckdS60cldBSqfOw+u6yXOjtw==}
+  '@cascivo/core@0.1.3':
+    resolution: {integrity: sha512-AeYugTgVYwhaKEz61PpFF+s+uSVptksH6X0pLmWgzo6dvBRmvJUmKbZjwpAvUo0mxPcT8PxKtsDjA8JI6Y3heg==}
     peerDependencies:
       '@preact/signals-react': '>=2.0.0'
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
 
-  '@cascivo/i18n@0.1.1':
-    resolution: {integrity: sha512-S57ovKCemPvjVpJ48nHMWWZzceHNHMHsRpHl7TCvAZ7qElO4dCPI2TvICh7ApHI0WWKVO2nxoxH/jnrQxt24jA==}
+  '@cascivo/i18n@0.1.3':
+    resolution: {integrity: sha512-ylYYkBwaaE732iG4qtD+DerL8t85RLjt7I0UmQZlJRo7PacjsgDOZpDEVGZqHJV0qQLKtjboQS6+JdZIPRmh+w==}
     peerDependencies:
       '@preact/signals-react': '>=2.0.0'
 
-  '@cascivo/react@0.2.1':
-    resolution: {integrity: sha512-b9kzv7qUBnwvUYKIBjOOgLUaudYyzJX8gv2cUajlVz87pDUUxzsHSw09udvVeV4JoxS3YbB55jTxPVuL3wMV3A==}
+  '@cascivo/react@0.3.1':
+    resolution: {integrity: sha512-/+G4Y8KyBN8JUUwkqf5r7+N3hE0GWrP7P99LN+fDhk8Nx1Xceq+8fHYqbEqQWnvWJTJ8kNTTsbba/yTbRvpJyQ==}
     peerDependencies:
       '@preact/signals-react': '>=2.0.0'
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
 
-  '@cascivo/themes@0.2.2':
-    resolution: {integrity: sha512-kPjmSXA8lMwd+16K/MA8OzwTHqLLETIdbA6NlmWWG6CutejrYpeNLWnGIqBEQh9MclfEtWmXZbuDfkstifkG9A==}
+  '@cascivo/themes@0.2.4':
+    resolution: {integrity: sha512-huxq51pVKWaaT0IsyB4dFx3Rqo+iEVfHSiTbmrWPmy9rcFEIUz0ZQV0ic/NUzx6Tksg4kYITcvVJgzxQWd8lhQ==}
     peerDependencies:
-      '@cascivo/tokens': '>=0.0.0'
+      '@cascivo/tokens': '>=0.2.0'
 
-  '@cascivo/tokens@0.2.0':
-    resolution: {integrity: sha512-lN9rE7m+qRWTFbVUQIm+b/d8RYwmbJuGrNBXMQ7W8j6KGDiEw6sL3o6m/TGIKhtFNb8YmJT/FMlZ9KUf7XUuBA==}
+  '@cascivo/tokens@0.3.1':
+    resolution: {integrity: sha512-nnyupc5vUFNxJFmQJHilJX+p89IoELzzkXbLSgqjrDsXOcWObMgoPz5CODBFRto8F4yIsmwDq4d2Cq30w8E6Uw==}
 
   '@changesets/apply-release-plan@7.0.14':
     resolution: {integrity: sha512-ddBvf9PHdy2YY0OUiEl3TV78mH9sckndJR14QAt87KLEbIov81XO0q0QAmvooBxXlqRRP8I9B7XOzZwQG7JkWA==}
@@ -2247,6 +2247,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@vitest/expect@3.2.4':
     resolution: {integrity: sha512-Io0yyORnB6sikFlt8QW5K7slY4OjqNX9jmJQ02QDda8lyM6B5oNgVWoSoKPac8/kgnCUzuHQKrSLtu/uOqqrig==}
@@ -4227,6 +4228,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -5220,33 +5222,33 @@ snapshots:
     dependencies:
       fontkitten: 1.0.2
 
-  '@cascivo/core@0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@cascivo/core@0.1.3(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@preact/signals-react': 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@cascivo/i18n@0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@cascivo/i18n@0.1.3(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@cascivo/core': 0.1.3(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@preact/signals-react': 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
     transitivePeerDependencies:
       - react
       - react-dom
 
-  '@cascivo/react@0.2.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@cascivo/react@0.3.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@cascivo/core': 0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@cascivo/i18n': 0.1.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@cascivo/core': 0.1.3(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@cascivo/i18n': 0.1.3(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@preact/signals-react': 2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@cascivo/themes@0.2.2(@cascivo/tokens@0.2.0)':
+  '@cascivo/themes@0.2.4(@cascivo/tokens@0.3.1)':
     dependencies:
-      '@cascivo/tokens': 0.2.0
+      '@cascivo/tokens': 0.3.1
 
-  '@cascivo/tokens@0.2.0': {}
+  '@cascivo/tokens@0.3.1': {}
 
   '@changesets/apply-release-plan@7.0.14':
     dependencies:

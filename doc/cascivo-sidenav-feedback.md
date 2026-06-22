@@ -1,6 +1,11 @@
 # cascivo `SideNav` — feedback for native sidebar footer items
 
-**Package:** `@cascivo/react` (observed on `0.2.1`)
+**Status:** ✅ Implemented in `@cascivo/react@0.3.1` (button-mode items,
+item `disabled`/`tone`/`trailing`/`render`, actionable rich sub-items with
+`onSelect`/`selected`/`icon` + `separator`/`label`, and the `header` slot). The
+Studio sidebar now uses native items end-to-end.
+
+**Package:** `@cascivo/react` (originally filed against `0.2.1`)
 **Context:** A consumer app (bpmnkit Studio) builds its shell with `AppShell` +
 `SideNav` + `ShellHeader`. The main page navigation maps cleanly to
 `SideNav` `items[]`. The sidebar also needs a cluster of **app-context

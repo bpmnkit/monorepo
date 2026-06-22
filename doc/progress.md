@@ -2,6 +2,23 @@
 
 # Progress
 
+## 2026-06-20 — Feat: native cascivo SideNav sidebar (cascivo 0.3.1)
+
+- Updated `@cascivo/react` 0.2.1 → 0.3.1 (`@cascivo/themes` 0.2.4, `@cascivo/tokens`
+  0.3.1), which shipped the requested `SideNav` enhancements
+  (`doc/cascivo-sidenav-feedback.md`): button-mode items (`onClick`+no `href`),
+  item `disabled`/`tone`/`trailing`/`render`, actionable rich sub-items
+  (`onSelect`/`selected`/`icon` + `separator`/`label` types), and a `header` slot.
+- Rewrote `Sidebar` so every entry is a **native SideNav item** — no more
+  hand-aligned custom footer markup (dropped the Radix `DropdownMenu` pickers and
+  the manual `_link`/`_icon` spacing). Layout via three `groups`: context
+  (cluster + project pickers as sub-item menus with `selected` ✓ + separators +
+  "Add/Manage →" links, reconnect with `tone="warning"`/`disabled`, search with
+  a `⌘K` `trailing` hint), main nav, and help (get started). Alignment is now
+  cascivo's responsibility.
+- Verified: patched `@preact/signals-react` still applies on the new version;
+  `tsc`/Biome clean; `pnpm dev` starts clean; studio build green.
+
 ## 2026-06-20 — Fix: align studio sidebar footer items with nav items
 
 - Footer controls (cluster/project pickers, reconnect, search, get-started) were
