@@ -75,6 +75,8 @@ export interface ZeebeExtensions {
 	formDefinition?: ZeebeFormDefinition
 	/** DMN decision invoked by a business rule task (zeebe:calledDecision). */
 	calledDecision?: ZeebeCalledDecision
+	/** Marks this as a Camunda 8 native user task (zeebe:userTask). */
+	userTask?: true
 	/** Unrecognized extension elements preserved for roundtrip. */
 	unknownElements?: XmlElement[]
 }
@@ -153,6 +155,10 @@ export function zeebeExtensionsToXmlElements(extensions: ZeebeExtensions): XmlEl
 		if (outputElement) attrs.outputElement = outputElement
 		if (activeElementsCollection) attrs.activeElementsCollection = activeElementsCollection
 		elements.push({ name: "zeebe:adHoc", attributes: attrs, children: [] })
+	}
+
+	if (extensions.userTask) {
+		elements.push({ name: "zeebe:userTask", attributes: {}, children: [] })
 	}
 
 	if (extensions.formDefinition) {
