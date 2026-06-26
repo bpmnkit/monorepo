@@ -503,4 +503,87 @@ describe("Builder → auto-layout integration", () => {
 		const gap = lower.bounds.y - (upper.bounds.y + upper.bounds.height)
 		expect(gap).toBeGreaterThanOrEqual(59)
 	})
+
+	// Regression: multiple boundary events on one activity threw "Layout overlap detected"
+	// because assertNoOverlap ran before repositionBoundaryEvents had placed the events.
+	it("builds without throwing when a task has multiple boundary events", () => {
+		expect(() =>
+			Bpmn.createProcess("P")
+				.withAutoLayout()
+				.startEvent("S", { name: "documents requested" })
+				.receiveTask("Wait", { name: "wait for documents" })
+				.endEvent("E_OK", { name: "documents received" })
+				.element("Wait")
+				.boundaryEvent("B7", {
+					attachedTo: "Wait",
+					cancelActivity: false,
+					timerDuration: "P7D",
+					name: "7 days",
+				})
+				.serviceTask("R7", { name: "send first reminder", taskType: "r7" })
+				.endEvent("E7", { name: "first reminder sent" })
+				.element("Wait")
+				.boundaryEvent("B14", {
+					attachedTo: "Wait",
+					cancelActivity: false,
+					timerDuration: "P14D",
+					name: "14 days",
+				})
+				.serviceTask("R14", { name: "send second reminder", taskType: "r14" })
+				.endEvent("E14", { name: "second reminder sent" })
+				.element("Wait")
+				.boundaryEvent("B21", {
+					attachedTo: "Wait",
+					cancelActivity: false,
+					timerDuration: "P21D",
+					name: "21 days",
+				})
+				.serviceTask("R21", { name: "alert manager", taskType: "r21" })
+				.endEvent("E21", { name: "manager alerted" })
+				.element("Wait")
+				.boundaryEvent("B35", {
+					attachedTo: "Wait",
+					cancelActivity: true,
+					timerDuration: "P35D",
+					name: "35 days",
+				})
+				.serviceTask("R35", { name: "escalate", taskType: "r35" })
+				.endEvent("E35", { name: "escalated" })
+				.build(),
+		).not.toThrow()
+	})
+
+	it("boundary events are positioned on the bottom edge of their host task", () => {
+		const defs = Bpmn.createProcess("P")
+			.withAutoLayout()
+			.startEvent("S")
+			.serviceTask("T", { name: "task", taskType: "t" })
+			.endEvent("E")
+			.element("T")
+			.boundaryEvent("B1", { attachedTo: "T", cancelActivity: false, timerDuration: "PT1H" })
+			.endEvent("EB1")
+			.element("T")
+			.boundaryEvent("B2", { attachedTo: "T", cancelActivity: false, timerDuration: "PT2H" })
+			.endEvent("EB2")
+			.build()
+
+		const diagram = firstDiagram(defs)
+		const taskShape = shapeFor(diagram.plane.shapes, "T")
+		const b1Shape = shapeFor(diagram.plane.shapes, "B1")
+		const b2Shape = shapeFor(diagram.plane.shapes, "B2")
+
+		// Boundary events must be at the bottom edge of the host task
+		const taskBottom = taskShape.bounds.y + taskShape.bounds.height
+		const b1CenterY = b1Shape.bounds.y + b1Shape.bounds.height / 2
+		const b2CenterY = b2Shape.bounds.y + b2Shape.bounds.height / 2
+		expect(b1CenterY).toBeCloseTo(taskBottom, 0)
+		expect(b2CenterY).toBeCloseTo(taskBottom, 0)
+
+		// Boundary events must not overlap each other
+		shapesDoNotOverlap(b1Shape, b2Shape)
+
+		// Chain end events must exist in the diagram
+		shapeFor(diagram.plane.shapes, "EB1")
+		shapeFor(diagram.plane.shapes, "EB2")
+	})
 })
