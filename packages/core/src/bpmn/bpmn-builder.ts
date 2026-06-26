@@ -98,6 +98,8 @@ export interface UserTaskOptions {
 	name?: string
 	/** Form key or form reference. */
 	formId?: string
+	/** Emit <zeebe:userTask /> to mark as a Camunda 8 native user task. */
+	zeebeUserTask?: boolean
 }
 
 /** Options for creating a call activity. */
@@ -524,9 +526,10 @@ function makeScriptTaskEl(id: string, options: ScriptTaskOptions): BpmnFlowEleme
 }
 
 function makeUserTaskEl(id: string, options?: UserTaskOptions): BpmnFlowElement {
-	const ext = options?.formId
-		? zeebeExtensionsToXmlElements({ formDefinition: { formId: options.formId } })
-		: []
+	const ext = zeebeExtensionsToXmlElements({
+		...(options?.zeebeUserTask ? { userTask: true } : {}),
+		...(options?.formId ? { formDefinition: { formId: options.formId } } : {}),
+	})
 	return makeFlowElement(id, "userTask", { name: options?.name, extensionElements: ext })
 }
 

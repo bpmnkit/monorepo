@@ -158,6 +158,35 @@ describe("BpmnProcessBuilder", () => {
 			expect(formDef.attributes.formId).toBe("form-123")
 		})
 
+		it("creates a zeebe user task with zeebeUserTask flag", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc").userTask("ut2", { name: "Review", zeebeUserTask: true }).build(),
+			)
+
+			const el = defined(process.flowElements.find((n) => n.id === "ut2"))
+			expect(el.type).toBe("userTask")
+			const zeebeUserTaskEl = el.extensionElements.find((e) => e.name === "zeebe:userTask")
+			expect(zeebeUserTaskEl).toBeDefined()
+		})
+
+		it("creates a zeebe user task with both zeebeUserTask flag and formId", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.userTask("ut3", { name: "Review", zeebeUserTask: true, formId: "form-456" })
+					.build(),
+			)
+
+			const el = defined(process.flowElements.find((n) => n.id === "ut3"))
+			const zeebeUserTaskEl = el.extensionElements.find((e) => e.name === "zeebe:userTask")
+			expect(zeebeUserTaskEl).toBeDefined()
+			const formDef = defined(el.extensionElements.find((e) => e.name === "zeebe:formDefinition"))
+			expect(formDef.attributes.formId).toBe("form-456")
+			// zeebe:userTask should appear before zeebe:formDefinition
+			const zeebeIdx = el.extensionElements.findIndex((e) => e.name === "zeebe:userTask")
+			const formIdx = el.extensionElements.findIndex((e) => e.name === "zeebe:formDefinition")
+			expect(zeebeIdx).toBeLessThan(formIdx)
+		})
+
 		it("creates a script task with FEEL expression", () => {
 			const process = firstProcess(
 				Bpmn.createProcess("proc")
