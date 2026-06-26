@@ -26,6 +26,7 @@
 			"dist",
 			".turbo",
 			".swarm",
+			"tmp/**",
 			"**/templates/generated.ts",
 			"**/src-tauri/**",
 			"**/.astro/**",
@@ -33,6 +34,7 @@
 			"**/swagger/**",
 			"apps/proxy-rs/target/**",
 			"apps/reebe-wasm/**",
+			"apps/reebe/crates/**",
 			"apps/reebe/packages/reebe-wasm/src/wasm/**"
 		]
 	}

@@ -1,14 +1,10 @@
-import { layoutProcess } from "../layout/layout-engine.js"
-import type { LayoutResult } from "../layout/types.js"
 import { generateId } from "../types/id-generator.js"
 import type { XmlElement } from "../types/xml-element.js"
+import { applyAutoLayout } from "./auto-layout.js"
 import type {
+	BpmnAssociation,
 	BpmnConditionExpression,
 	BpmnDefinitions,
-	BpmnDiEdge,
-	BpmnDiPlane,
-	BpmnDiShape,
-	BpmnDiagram,
 	BpmnElementType,
 	BpmnError,
 	BpmnEventDefinition,
@@ -17,6 +13,7 @@ import type {
 	BpmnMultiInstanceLoopCharacteristics,
 	BpmnProcess,
 	BpmnSequenceFlow,
+	BpmnTextAnnotation,
 } from "./bpmn-model.js"
 import type { RestConnectorConfig } from "./rest-connector.js"
 import {
@@ -415,50 +412,6 @@ function buildAdHocLoopCharacteristics(lc: {
 	}
 }
 
-/** Convert a layout engine result into a BPMN diagram interchange structure. */
-function layoutResultToDiagram(processId: string, layout: LayoutResult): BpmnDiagram {
-	const shapes: BpmnDiShape[] = layout.nodes.map((node) => {
-		const shape: BpmnDiShape = {
-			id: `${node.id}_di`,
-			bpmnElement: node.id,
-			bounds: { ...node.bounds },
-			unknownAttributes: {},
-		}
-		if (node.isExpanded !== undefined) {
-			shape.isExpanded = node.isExpanded
-		}
-		if (node.labelBounds) {
-			shape.label = { bounds: { ...node.labelBounds } }
-		}
-		return shape
-	})
-
-	const edges: BpmnDiEdge[] = layout.edges.map((edge) => {
-		const diEdge: BpmnDiEdge = {
-			id: `${edge.id}_di`,
-			bpmnElement: edge.id,
-			waypoints: edge.waypoints.map((wp) => ({ ...wp })),
-			unknownAttributes: {},
-		}
-		if (edge.labelBounds) {
-			diEdge.label = { bounds: { ...edge.labelBounds } }
-		}
-		return diEdge
-	})
-
-	const plane: BpmnDiPlane = {
-		id: `${processId}_di_plane`,
-		bpmnElement: processId,
-		shapes,
-		edges,
-	}
-
-	return {
-		id: `${processId}_di`,
-		plane,
-	}
-}
-
 function recomputeIncomingOutgoing(elements: BpmnFlowElement[], flows: BpmnSequenceFlow[]): void {
 	for (const el of elements) {
 		el.incoming = []
@@ -706,6 +659,11 @@ export class BranchBuilder {
 	private pendingDefault = false
 	/** @internal – true once connectTo() has been called, meaning the branch end is already wired */
 	_connected = false
+	/** @internal */
+	readonly _textAnnotations: BpmnTextAnnotation[] = []
+	/** @internal */
+	readonly _associations: BpmnAssociation[] = []
+	private readonly _annCounters = new Map<string, number>()
 
 	/** @internal */
 	constructor(gatewayId: string, branchName: string) {
@@ -785,6 +743,29 @@ export class BranchBuilder {
 	/** @internal – ID of the last element added (or the gateway if branch is empty) */
 	get _lastNodeId(): string {
 		return this.lastNodeId
+	}
+
+	// ---- Annotations ----
+
+	/** Attach a text annotation to the element at the current cursor position. */
+	textAnnotation(text: string): this {
+		return this.annotate(this.lastNodeId, text)
+	}
+
+	/** Attach a text annotation to an element by explicit ID. */
+	annotate(elementId: string, text: string): this {
+		const n = (this._annCounters.get(elementId) ?? 0) + 1
+		this._annCounters.set(elementId, n)
+		const annId = `TextAnnotation_${elementId}_${n}`
+		this._textAnnotations.push({ id: annId, text, unknownAttributes: {} })
+		this._associations.push({
+			id: `Association_${elementId}_${n}`,
+			sourceRef: elementId,
+			targetRef: annId,
+			associationDirection: "None",
+			unknownAttributes: {},
+		})
+		return this
 	}
 
 	// ---- Flow-node methods (mirror ProcessBuilder) ----
@@ -887,6 +868,11 @@ export class SubProcessContentBuilder {
 	readonly _elements: BpmnFlowElement[] = []
 	/** @internal */
 	readonly _flows: BpmnSequenceFlow[] = []
+	/** @internal */
+	readonly _textAnnotations: BpmnTextAnnotation[] = []
+	/** @internal */
+	readonly _associations: BpmnAssociation[] = []
+	private readonly _annCounters = new Map<string, number>()
 	private lastNodeId: string | undefined
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
@@ -1007,6 +993,32 @@ export class SubProcessContentBuilder {
 		return this.addElement(makeFlowElement(id, "eventBasedGateway", options))
 	}
 
+	// ---- Annotations ----
+
+	/** Attach a text annotation to the element at the current cursor position. */
+	textAnnotation(text: string): this {
+		if (!this.lastNodeId) {
+			throw new Error("textAnnotation() must follow a flow element")
+		}
+		return this.annotate(this.lastNodeId, text)
+	}
+
+	/** Attach a text annotation to an element by explicit ID. */
+	annotate(elementId: string, text: string): this {
+		const n = (this._annCounters.get(elementId) ?? 0) + 1
+		this._annCounters.set(elementId, n)
+		const annId = `TextAnnotation_${elementId}_${n}`
+		this._textAnnotations.push({ id: annId, text, unknownAttributes: {} })
+		this._associations.push({
+			id: `Association_${elementId}_${n}`,
+			sourceRef: elementId,
+			targetRef: annId,
+			associationDirection: "None",
+			unknownAttributes: {},
+		})
+		return this
+	}
+
 	// ---- Branching & flow control ----
 
 	branch(name: string, callback: (b: BranchBuilder) => void): this {
@@ -1023,6 +1035,8 @@ export class SubProcessContentBuilder {
 			this._elements.push(el)
 		}
 		for (const fl of b._flows) this._flows.push(fl)
+		for (const ann of b._textAnnotations) this._textAnnotations.push(ann)
+		for (const assoc of b._associations) this._associations.push(assoc)
 
 		if (b._defaultFlowId) {
 			const gw = this._elements.find((n) => n.id === this.currentGatewayId)
@@ -1080,6 +1094,9 @@ export class ProcessBuilder {
 	private readonly sequenceFlows: BpmnSequenceFlow[] = []
 	private readonly rootErrors: BpmnError[] = []
 	private readonly rootMessages: BpmnMessage[] = []
+	private readonly _textAnnotations: BpmnTextAnnotation[] = []
+	private readonly _associations: BpmnAssociation[] = []
+	private readonly _annCounters = new Map<string, number>()
 	private lastNodeId: string | undefined
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
@@ -1420,6 +1437,8 @@ export class ProcessBuilder {
 		for (const fl of b._flows) {
 			this.sequenceFlows.push(fl)
 		}
+		for (const ann of b._textAnnotations) this._textAnnotations.push(ann)
+		for (const assoc of b._associations) this._associations.push(assoc)
 
 		// If the branch is the default flow, set the gateway's default
 		if (b._defaultFlowId) {
@@ -1539,6 +1558,8 @@ export class ProcessBuilder {
 		if (element.type === "adHocSubProcess") {
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
 			if (options?.loopCharacteristics) {
 				element.loopCharacteristics = buildAdHocLoopCharacteristics(options.loopCharacteristics)
 			} else if (options?.multiInstance) {
@@ -1564,6 +1585,8 @@ export class ProcessBuilder {
 		if (element.type === "subProcess") {
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
 			if (options?.multiInstance) {
 				element.loopCharacteristics = buildMultiInstance(options.multiInstance)
 			}
@@ -1587,8 +1610,36 @@ export class ProcessBuilder {
 		if (element.type === "eventSubProcess") {
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
 		}
 		this.addFlowElement(element)
+		return this
+	}
+
+	// ---- Annotations ----
+
+	/** Attach a text annotation to the element at the current cursor position. */
+	textAnnotation(text: string): this {
+		if (!this.lastNodeId) {
+			throw new Error("textAnnotation() must follow a flow element")
+		}
+		return this.annotate(this.lastNodeId, text)
+	}
+
+	/** Attach a text annotation to any flow element by explicit ID. */
+	annotate(elementId: string, text: string): this {
+		const n = (this._annCounters.get(elementId) ?? 0) + 1
+		this._annCounters.set(elementId, n)
+		const annId = `TextAnnotation_${elementId}_${n}`
+		this._textAnnotations.push({ id: annId, text, unknownAttributes: {} })
+		this._associations.push({
+			id: `Association_${elementId}_${n}`,
+			sourceRef: elementId,
+			targetRef: annId,
+			associationDirection: "None",
+			unknownAttributes: {},
+		})
 		return this
 	}
 
@@ -1633,12 +1684,12 @@ export class ProcessBuilder {
 			extensionElements,
 			flowElements: this.flowElements,
 			sequenceFlows: this.sequenceFlows,
-			textAnnotations: [],
-			associations: [],
+			textAnnotations: this._textAnnotations,
+			associations: this._associations,
 			unknownAttributes: {},
 		}
 
-		return {
+		const defs: BpmnDefinitions = {
 			id: "Definitions_1",
 			targetNamespace: "http://bpmn.io/schema/bpmn",
 			exporter: "@bpmnkit/core",
@@ -1662,13 +1713,23 @@ export class ProcessBuilder {
 			signals: [],
 			collaborations: [],
 			processes: [process],
-			diagrams: this._autoLayout ? [this.buildDiagram(process)] : [],
+			// Seed diagram stub so applyAutoLayout preserves process-specific IDs.
+			diagrams: this._autoLayout
+				? [
+						{
+							id: `${this.processId}_di`,
+							plane: {
+								id: `${this.processId}_di_plane`,
+								bpmnElement: this.processId,
+								shapes: [],
+								edges: [],
+							},
+						},
+					]
+				: [],
 		}
-	}
 
-	private buildDiagram(process: BpmnProcess): BpmnDiagram {
-		const layoutResult = layoutProcess(process)
-		return layoutResultToDiagram(this.processId, layoutResult)
+		return this._autoLayout ? applyAutoLayout(defs) : defs
 	}
 
 	private validate(): void {

@@ -2511,3 +2511,110 @@ describe("DiagramBuilder", () => {
 		expect(builder.executionPlatformVersion("8.7.0")).toBe(builder)
 	})
 })
+
+// ---------------------------------------------------------------------------
+// Text annotations
+// ---------------------------------------------------------------------------
+
+describe("text annotations", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("textAnnotation() attaches annotation to current element", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("p")
+				.startEvent("s")
+				.userTask("T", { name: "Do work" })
+				.textAnnotation("Manual: needs sign-off")
+				.endEvent("e")
+				.build(),
+		)
+
+		expect(process.textAnnotations).toHaveLength(1)
+		const ann = defined(process.textAnnotations[0])
+		expect(ann.id).toBe("TextAnnotation_T_1")
+		expect(ann.text).toBe("Manual: needs sign-off")
+
+		expect(process.associations).toHaveLength(1)
+		const assoc = defined(process.associations[0])
+		expect(assoc.id).toBe("Association_T_1")
+		expect(assoc.sourceRef).toBe("T")
+		expect(assoc.targetRef).toBe("TextAnnotation_T_1")
+		expect(assoc.associationDirection).toBe("None")
+	})
+
+	it("annotate() attaches annotation to an arbitrary element by ID", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("p")
+				.startEvent("s")
+				.userTask("T", { name: "Do work" })
+				.endEvent("e")
+				.annotate("s", "Triggered by: customer order")
+				.build(),
+		)
+
+		expect(process.textAnnotations).toHaveLength(1)
+		const ann = defined(process.textAnnotations[0])
+		expect(ann.id).toBe("TextAnnotation_s_1")
+		expect(ann.text).toBe("Triggered by: customer order")
+		expect(process.associations[0]?.sourceRef).toBe("s")
+	})
+
+	it("multiple annotations on the same element get incremented IDs", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("p")
+				.startEvent("s")
+				.userTask("T", { name: "Do work" })
+				.textAnnotation("Implementation: POST /work")
+				.textAnnotation("Manual: needs sign-off")
+				.endEvent("e")
+				.build(),
+		)
+
+		expect(process.textAnnotations).toHaveLength(2)
+		expect(process.textAnnotations[0]?.id).toBe("TextAnnotation_T_1")
+		expect(process.textAnnotations[1]?.id).toBe("TextAnnotation_T_2")
+		expect(process.associations[0]?.id).toBe("Association_T_1")
+		expect(process.associations[1]?.id).toBe("Association_T_2")
+	})
+
+	it("textAnnotation() does not move the cursor", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("p")
+				.startEvent("s")
+				.userTask("T", { name: "Do work" })
+				.textAnnotation("note")
+				.endEvent("e")
+				.build(),
+		)
+
+		// The sequence flow should still go T → e, not annotation → e
+		const toEnd = process.sequenceFlows.find((f) => f.targetRef === "e")
+		expect(defined(toEnd).sourceRef).toBe("T")
+	})
+
+	it("annotations in branches bubble up to the process", () => {
+		const process = firstProcess(
+			Bpmn.createProcess("p")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("yes", (b) =>
+					b.userTask("T1", { name: "Option A" }).textAnnotation("Follow-up: notify team"),
+				)
+				.branch("no", (b) => b.endEvent("e2"))
+				.endEvent("e")
+				.build(),
+		)
+
+		expect(process.textAnnotations).toHaveLength(1)
+		expect(process.textAnnotations[0]?.id).toBe("TextAnnotation_T1_1")
+		expect(process.associations[0]?.sourceRef).toBe("T1")
+	})
+
+	it("textAnnotation() throws if no current element", () => {
+		expect(() => Bpmn.createProcess("p").textAnnotation("note").build()).toThrow(
+			"textAnnotation() must follow a flow element",
+		)
+	})
+})

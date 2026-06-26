@@ -13,8 +13,7 @@ if (!clientBody) throw new Error("Could not find CamundaClient body")
 
 const resourceMap = {}
 const propRe = /readonly (\w+):\s*(\w+Resource)/g
-let m
-while ((m = propRe.exec(clientBody)) !== null) resourceMap[m[1]] = m[2]
+for (const m of clientBody.matchAll(propRe)) resourceMap[m[1]] = m[2]
 
 console.log(`Found ${Object.keys(resourceMap).length} resource groups`)
 
@@ -34,8 +33,7 @@ for (const [resourceKey, className] of Object.entries(resourceMap)) {
 
 	// Match JSDoc block immediately followed by async method signature
 	const methodRe = /\/\*\*([\s\S]*?)\*\/\s+async (\w+)\(([^)]*)\)[^:]*:\s*Promise<([^>]+)>/g
-	let mm
-	while ((mm = methodRe.exec(classBody)) !== null) {
+	for (const mm of classBody.matchAll(methodRe)) {
 		const [, jsdoc, methodName, rawParams, returnType] = mm
 		const lines = jsdoc
 			.split("\n")
