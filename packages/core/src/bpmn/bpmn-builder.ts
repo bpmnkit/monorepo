@@ -1064,7 +1064,7 @@ export class ProcessBuilder {
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
 	private _autoLayout = false
-	private _executionPlatformVersion = "8.6.0"
+	private _executionPlatformVersion = "8.9.0"
 	private _serviceTaskDefaults: { retries?: string } = {}
 
 	constructor(processId: string) {
@@ -1077,7 +1077,7 @@ export class ProcessBuilder {
 		return this
 	}
 
-	/** Set the Camunda execution platform version stamped into the BPMN definitions. Defaults to `"8.6.0"`. */
+	/** Set the Camunda execution platform version stamped into the BPMN definitions. Defaults to `"8.9.0"`. */
 	executionPlatformVersion(version: string): this {
 		this._executionPlatformVersion = version
 		return this
@@ -1713,13 +1713,13 @@ export class DiagramBuilder {
 	private readonly _processes: BpmnProcess[] = []
 	private readonly _errors: BpmnError[] = []
 	private readonly _messages: BpmnMessage[] = []
-	private _executionPlatformVersion = "8.6.0"
+	private _executionPlatformVersion = "8.9.0"
 
 	constructor(id: string) {
 		this._id = id
 	}
 
-	/** Set the Camunda execution platform version stamped into the BPMN definitions. Defaults to `"8.6.0"`. */
+	/** Set the Camunda execution platform version stamped into the BPMN definitions. Defaults to `"8.9.0"`. */
 	executionPlatformVersion(version: string): this {
 		this._executionPlatformVersion = version
 		return this

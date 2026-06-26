@@ -1110,9 +1110,9 @@ describe("BpmnProcessBuilder", () => {
 	})
 
 	describe("executionPlatformVersion", () => {
-		it("defaults to 8.6.0", () => {
+		it("defaults to 8.9.0", () => {
 			const defs = Bpmn.createProcess("p1").startEvent("s").endEvent("e").build()
-			expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.6.0")
+			expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.9.0")
 		})
 
 		it("accepts a custom version", () => {
@@ -2414,11 +2414,11 @@ describe("DiagramBuilder", () => {
 		resetIdCounter()
 	})
 
-	it("defaults executionPlatformVersion to 8.6.0", () => {
+	it("defaults executionPlatformVersion to 8.9.0", () => {
 		const defs = Bpmn.createDiagram("D1")
 			.process("p1", (b) => b.startEvent("s").endEvent("e"))
 			.build()
-		expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.6.0")
+		expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.9.0")
 	})
 
 	it("accepts a custom executionPlatformVersion", () => {
