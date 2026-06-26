@@ -1064,6 +1064,7 @@ export class ProcessBuilder {
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
 	private _autoLayout = false
+	private _executionPlatformVersion = "8.6.0"
 	private _serviceTaskDefaults: { retries?: string } = {}
 
 	constructor(processId: string) {
@@ -1073,6 +1074,12 @@ export class ProcessBuilder {
 	/** Enable auto-layout: `build()` will run the layout engine and populate diagram interchange data. */
 	withAutoLayout(): this {
 		this._autoLayout = true
+		return this
+	}
+
+	/** Set the Camunda execution platform version stamped into the BPMN definitions. Defaults to `"8.6.0"`. */
+	executionPlatformVersion(version: string): this {
+		this._executionPlatformVersion = version
 		return this
 	}
 
@@ -1623,7 +1630,7 @@ export class ProcessBuilder {
 			},
 			unknownAttributes: {
 				"modeler:executionPlatform": "Camunda Cloud",
-				"modeler:executionPlatformVersion": "8.6.0",
+				"modeler:executionPlatformVersion": this._executionPlatformVersion,
 			},
 			errors: this.rootErrors,
 			escalations: [],

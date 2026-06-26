@@ -1109,6 +1109,27 @@ describe("BpmnProcessBuilder", () => {
 		})
 	})
 
+	describe("executionPlatformVersion", () => {
+		it("defaults to 8.6.0", () => {
+			const defs = Bpmn.createProcess("p1").startEvent("s").endEvent("e").build()
+			expect(defs.unknownAttributes?.["modeler:executionPlatformVersion"]).toBe("8.6.0")
+		})
+
+		it("accepts a custom version", () => {
+			const defs = Bpmn.createProcess("p1")
+				.executionPlatformVersion("8.8.0")
+				.startEvent("s")
+				.endEvent("e")
+				.build()
+			expect(defs.unknownAttributes?.["modeler:executionPlatformVersion"]).toBe("8.8.0")
+		})
+
+		it("is chainable", () => {
+			const builder = Bpmn.createProcess("p1")
+			expect(builder.executionPlatformVersion("8.7.0")).toBe(builder)
+		})
+	})
+
 	// -----------------------------------------------------------------------
 	// Event definitions
 	// -----------------------------------------------------------------------
