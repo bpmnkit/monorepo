@@ -10,7 +10,7 @@ landed: dependencies, a cascivo↔`@bpmnkit/ui` brand-token bridge
 
 ## BPMN Builder SDK improvements (2026-06-13)
 
-Seven incremental improvements to `@bpmnkit/core`'s `bpmn-builder.ts` API:
+Eight incremental improvements to `@bpmnkit/core`'s `bpmn-builder.ts` API:
 
 | # | Feature | Entry point |
 |---|---|---|
@@ -21,6 +21,7 @@ Seven incremental improvements to `@bpmnkit/core`'s `bpmn-builder.ts` API:
 | 5 | Service task type default + `disconnectedStartEvent()` alias | `ProcessBuilder.disconnectedStartEvent()` |
 | 6 | Multi-process diagram builder | `Bpmn.createDiagram(id).process(...).build()` |
 | 7 | `EXPORTER_VERSION` constant (replaces hardcoded `"0.0.1"`) | internal constant in `bpmn-builder.ts` |
+| 8 | **`executionPlatformVersion` setter** (2026-06-26) | `ProcessBuilder.executionPlatformVersion("8.x.0")`, `DiagramBuilder.executionPlatformVersion("8.x.0")` |
 
 ## CLI — `casen generate` and `casen view` (2026-04-25)
 

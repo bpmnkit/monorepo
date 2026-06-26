@@ -1,6 +1,8 @@
 # Progress
 
-# Progress
+## 2026-06-26 — feat(core): add executionPlatformVersion setter to BPMN builders
+
+`ProcessBuilder` and `DiagramBuilder` now expose `.executionPlatformVersion(version)` — a fluent setter that overrides the default `"8.6.0"` stamp in the generated BPMN XML. Mirrors the existing `FormBuilder` API.
 
 ## 2026-06-20 — Fix: header burger collapses the sidebar to the rail (not hidden)
 
