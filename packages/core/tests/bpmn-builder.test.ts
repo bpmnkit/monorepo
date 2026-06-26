@@ -1109,6 +1109,27 @@ describe("BpmnProcessBuilder", () => {
 		})
 	})
 
+	describe("executionPlatformVersion", () => {
+		it("defaults to 8.9.0", () => {
+			const defs = Bpmn.createProcess("p1").startEvent("s").endEvent("e").build()
+			expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.9.0")
+		})
+
+		it("accepts a custom version", () => {
+			const defs = Bpmn.createProcess("p1")
+				.executionPlatformVersion("8.8.0")
+				.startEvent("s")
+				.endEvent("e")
+				.build()
+			expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.8.0")
+		})
+
+		it("is chainable", () => {
+			const builder = Bpmn.createProcess("p1")
+			expect(builder.executionPlatformVersion("8.7.0")).toBe(builder)
+		})
+	})
+
 	// -----------------------------------------------------------------------
 	// Event definitions
 	// -----------------------------------------------------------------------
@@ -2385,5 +2406,31 @@ describe("exporterVersion", () => {
 			.process("proc", (p) => p.startEvent("s").endEvent("e"))
 			.build()
 		expect(multi.exporterVersion).toBe(single.exporterVersion)
+	})
+})
+
+describe("DiagramBuilder", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("defaults executionPlatformVersion to 8.9.0", () => {
+		const defs = Bpmn.createDiagram("D1")
+			.process("p1", (b) => b.startEvent("s").endEvent("e"))
+			.build()
+		expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.9.0")
+	})
+
+	it("accepts a custom executionPlatformVersion", () => {
+		const defs = Bpmn.createDiagram("D1")
+			.executionPlatformVersion("8.9.0")
+			.process("p1", (b) => b.startEvent("s").endEvent("e"))
+			.build()
+		expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.9.0")
+	})
+
+	it("executionPlatformVersion is chainable", () => {
+		const builder = Bpmn.createDiagram("D1")
+		expect(builder.executionPlatformVersion("8.7.0")).toBe(builder)
 	})
 })
