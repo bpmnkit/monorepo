@@ -154,6 +154,20 @@ export interface IntermediateThrowEventOptions extends ElementOptions {
 	escalationCode?: string
 }
 
+/** Options for an end event. */
+export interface EndEventOptions extends ElementOptions {
+	/** Error code — creates an error end event. */
+	errorCode?: string
+	/** Error reference ID. */
+	errorRef?: string
+	/** Message name — creates a message end event. */
+	messageName?: string
+	/** Signal name — creates a signal end event. */
+	signalName?: string
+	/** Escalation code — creates an escalation end event. */
+	escalationCode?: string
+}
+
 /** Options for a boundary event. */
 export interface BoundaryEventOptions extends ElementOptions {
 	/** ID of the activity this boundary event is attached to. */
@@ -814,8 +828,12 @@ export class BranchBuilder {
 		return this.addElement(el)
 	}
 
-	endEvent(id?: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id ?? generateId("EndEvent"), "endEvent", options))
+	endEvent(id?: string, options?: EndEventOptions): this {
+		const el = makeFlowElement(id ?? generateId("EndEvent"), "endEvent", options)
+		if (el.type === "endEvent" && options) {
+			el.eventDefinitions = buildEventDefinitions(options)
+		}
+		return this.addElement(el)
 	}
 
 	intermediateThrowEvent(id?: string, options?: IntermediateThrowEventOptions): this {
@@ -909,8 +927,10 @@ export class SubProcessContentBuilder {
 		return this.addElement(el)
 	}
 
-	endEvent(id?: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id ?? generateId("EndEvent"), "endEvent", options))
+	endEvent(id?: string, options?: EndEventOptions): this {
+		const el = makeFlowElement(id ?? generateId("EndEvent"), "endEvent", options)
+		if (el.type === "endEvent" && options) el.eventDefinitions = buildEventDefinitions(options)
+		return this.addElement(el)
 	}
 
 	intermediateThrowEvent(id?: string, options?: IntermediateThrowEventOptions): this {
@@ -1164,9 +1184,13 @@ export class ProcessBuilder {
 	}
 
 	/** Add an end event. */
-	endEvent(id?: string, options?: ElementOptions): this {
+	endEvent(id?: string, options?: EndEventOptions): this {
 		const nodeId = id ?? generateId("EndEvent")
-		this.addFlowElement(makeFlowElement(nodeId, "endEvent", options))
+		const element = makeFlowElement(nodeId, "endEvent", options)
+		if (element.type === "endEvent" && options) {
+			element.eventDefinitions = buildEventDefinitions(options, this.rootErrors, this.rootMessages)
+		}
+		this.addFlowElement(element)
 		return this
 	}
 

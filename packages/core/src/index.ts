@@ -56,6 +56,7 @@ export type {
 	StartEventOptions,
 	IntermediateCatchEventOptions,
 	IntermediateThrowEventOptions,
+	EndEventOptions,
 	BoundaryEventOptions,
 	AdHocSubProcessOptions,
 } from "./bpmn/bpmn-builder.js"

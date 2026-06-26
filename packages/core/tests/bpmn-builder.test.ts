@@ -1475,6 +1475,83 @@ describe("BpmnProcessBuilder", () => {
 	})
 
 	// -----------------------------------------------------------------------
+	// Regression: end event event definitions
+	// -----------------------------------------------------------------------
+
+	describe("end event event definitions", () => {
+		it("creates an error end event with errorCode", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.endEvent("e", { errorCode: "BOOM" })
+				.build()
+
+			const process = firstProcess(defs)
+			const end = defined(process.flowElements.find((n) => n.id === "e"))
+			expect(end.type).toBe("endEvent")
+			if (end.type === "endEvent") {
+				expect(end.eventDefinitions).toHaveLength(1)
+				expect(end.eventDefinitions[0]?.type).toBe("error")
+			}
+			// root bpmn:error element must be emitted
+			expect(defs.errors).toHaveLength(1)
+			expect(defs.errors[0]?.errorCode).toBe("BOOM")
+		})
+
+		it("creates a message end event with messageName", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.endEvent("e", { messageName: "order-failed" })
+					.build(),
+			)
+
+			const end = defined(process.flowElements.find((n) => n.id === "e"))
+			if (end.type === "endEvent") {
+				expect(end.eventDefinitions).toHaveLength(1)
+				expect(end.eventDefinitions[0]?.type).toBe("message")
+			}
+		})
+
+		it("creates a signal end event with signalName", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc").startEvent("s").endEvent("e", { signalName: "abort" }).build(),
+			)
+
+			const end = defined(process.flowElements.find((n) => n.id === "e"))
+			if (end.type === "endEvent") {
+				expect(end.eventDefinitions).toHaveLength(1)
+				expect(end.eventDefinitions[0]?.type).toBe("signal")
+			}
+		})
+
+		it("creates an escalation end event with escalationCode", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.endEvent("e", { escalationCode: "ESC_001" })
+					.build(),
+			)
+
+			const end = defined(process.flowElements.find((n) => n.id === "e"))
+			if (end.type === "endEvent") {
+				expect(end.eventDefinitions).toHaveLength(1)
+				expect(end.eventDefinitions[0]?.type).toBe("escalation")
+			}
+		})
+
+		it("end event with no event options remains a none end event", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc").startEvent("s").endEvent("e", { name: "Done" }).build(),
+			)
+
+			const end = defined(process.flowElements.find((n) => n.id === "e"))
+			if (end.type === "endEvent") {
+				expect(end.eventDefinitions).toHaveLength(0)
+			}
+		})
+	})
+
+	// -----------------------------------------------------------------------
 	// Regression: duplicate ID in branch
 	// -----------------------------------------------------------------------
 
