@@ -586,4 +586,56 @@ describe("Builder → auto-layout integration", () => {
 		shapeFor(diagram.plane.shapes, "EB1")
 		shapeFor(diagram.plane.shapes, "EB2")
 	})
+
+	// -----------------------------------------------------------------------
+	// Text annotation DI
+	// -----------------------------------------------------------------------
+
+	it("textAnnotation() produces a BPMNShape and BPMNEdge for the annotation", () => {
+		const defs = Bpmn.createProcess("p")
+			.withAutoLayout()
+			.startEvent("s")
+			.userTask("T", { name: "Do work" })
+			.textAnnotation("Manual: needs sign-off")
+			.endEvent("e")
+			.build()
+
+		const diagram = firstDiagram(defs)
+
+		const annShape = shapeFor(diagram.plane.shapes, "TextAnnotation_T_1")
+		expect(annShape.bounds.width).toBeGreaterThan(0)
+		expect(annShape.bounds.height).toBeGreaterThan(0)
+
+		const assocEdge = edgeFor(diagram.plane.edges, "Association_T_1")
+		expect(assocEdge.waypoints.length).toBeGreaterThanOrEqual(2)
+	})
+
+	it("annotate() produces DI for annotation attached to an arbitrary element", () => {
+		const defs = Bpmn.createProcess("p")
+			.withAutoLayout()
+			.startEvent("s")
+			.userTask("T", { name: "Do work" })
+			.endEvent("e")
+			.annotate("s", "Triggered by: order placed")
+			.build()
+
+		const diagram = firstDiagram(defs)
+		shapeFor(diagram.plane.shapes, "TextAnnotation_s_1")
+		edgeFor(diagram.plane.edges, "Association_s_1")
+	})
+
+	it("annotation shape does not overlap its connected element", () => {
+		const defs = Bpmn.createProcess("p")
+			.withAutoLayout()
+			.startEvent("s")
+			.userTask("T", { name: "Do work" })
+			.textAnnotation("Implementation: POST /work; stores work_id")
+			.endEvent("e")
+			.build()
+
+		const diagram = firstDiagram(defs)
+		const taskShape = shapeFor(diagram.plane.shapes, "T")
+		const annShape = shapeFor(diagram.plane.shapes, "TextAnnotation_T_1")
+		shapesDoNotOverlap(taskShape, annShape)
+	})
 })

@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-06-26 — feat(core): fluent text annotation API + annotation DI in auto-layout
+
+Closed two gaps in `@bpmnkit/core`'s process builder:
+
+**Gap 1 — Fluent API**: Added `.textAnnotation(text)` (cursor-based) and `.annotate(elementId, text)` (explicit target) to `ProcessBuilder`, `BranchBuilder`, and `SubProcessContentBuilder`. Both auto-generate IDs (`TextAnnotation_${targetId}_${n}`, `Association_${targetId}_${n}`), set `associationDirection: "None"`, and do not move the cursor. Annotations inside branches bubble up to the parent process; annotations inside sub-processes are stored on the sub-process element's own arrays.
+
+**Gap 2 — DI generation**: `ProcessBuilder.build()` previously called `layoutProcess()` + an internal `layoutResultToDiagram()` that skipped annotations. Now routes through `applyAutoLayout()`, which already contained `computeAnnotationLocalBounds()` and `addAnnotationShapes()` — annotation shapes and association edges are emitted with correct positions for any process that calls `.withAutoLayout()`. The removed `buildDiagram()` / `layoutResultToDiagram()` private methods are replaced by the single `applyAutoLayout()` call.
+
+9 new tests added across `bpmn-builder.test.ts` and `builder-layout-integration.test.ts`.
+
 ## 2026-06-26 — fix(ci): changeset version fails with node-fetch gzip premature close
 
 `@changesets/changelog-github` calls GitHub's GraphQL API during `changeset version` to enrich changelogs with PR info. `node-fetch@2.7.0` (used internally) fails with `ERR_STREAM_PREMATURE_CLOSE` on GitHub's gzip-compressed responses — a known upstream bug.
