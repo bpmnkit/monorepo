@@ -21,6 +21,140 @@ import { routeEdges } from "./routing.js"
 import { layoutSubProcesses } from "./subprocess.js"
 import type { LayoutNode, LayoutResult, SubProcessChildResult } from "./types.js"
 
+const CHAIN_GAP = 30
+const CHAIN_V_GAP = 20
+
+/**
+ * Reposition boundary events to the bottom edge of their host task, then walk
+ * each boundary event's exclusive downstream chain and place those nodes
+ * horizontally to the right of the host task. Re-routes all affected edges.
+ */
+function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: LayoutResult): void {
+	const boundaryMap = new Map<string, string[]>()
+	for (const el of flowElements) {
+		if (el.type !== "boundaryEvent") continue
+		const list = boundaryMap.get(el.attachedToRef) ?? []
+		list.push(el.id)
+		boundaryMap.set(el.attachedToRef, list)
+	}
+	if (boundaryMap.size === 0) return
+
+	const nodeById = new Map(result.nodes.map((n) => [n.id, n]))
+
+	const succIds = new Map<string, string[]>()
+	const predIds = new Map<string, Set<string>>()
+	for (const edge of result.edges) {
+		const se = succIds.get(edge.sourceRef) ?? []
+		se.push(edge.targetRef)
+		succIds.set(edge.sourceRef, se)
+		const ps = predIds.get(edge.targetRef) ?? new Set<string>()
+		ps.add(edge.sourceRef)
+		predIds.set(edge.targetRef, ps)
+	}
+
+	for (const [hostId, beIds] of boundaryMap) {
+		const hostNode = nodeById.get(hostId)
+		if (!hostNode) continue
+
+		for (let i = 0; i < beIds.length; i++) {
+			const beId = beIds[i]
+			if (!beId) continue
+			const beNode = nodeById.get(beId)
+			if (!beNode) continue
+
+			const bW = beNode.bounds.width
+			const bH = beNode.bounds.height
+
+			// Place boundary event on the bottom edge of the host task, stacking leftward
+			const rightEdge = hostNode.bounds.x + hostNode.bounds.width
+			beNode.bounds.x = Math.round(rightEdge - bW / 2 - i * (bW + 4))
+			beNode.bounds.y = Math.round(hostNode.bounds.y + hostNode.bounds.height - bH / 2)
+			if (beNode.labelBounds) {
+				beNode.labelBounds.x = beNode.bounds.x + Math.round(bW / 2 - beNode.labelBounds.width / 2)
+				beNode.labelBounds.y = beNode.bounds.y + bH + 4
+			}
+
+			// Collect nodes exclusively reachable from this boundary event (BFS)
+			const chainSet = new Set<string>([beId])
+			const chainOrder: string[] = []
+			const queue = [...(succIds.get(beId) ?? [])]
+			while (queue.length > 0) {
+				const id = queue.shift()
+				if (!id || chainSet.has(id)) continue
+				const preds = predIds.get(id) ?? new Set<string>()
+				if ([...preds].every((p) => chainSet.has(p))) {
+					chainSet.add(id)
+					chainOrder.push(id)
+					queue.push(...(succIds.get(id) ?? []))
+				}
+			}
+
+			// Each boundary event's chain gets its own vertical lane
+			let maxChainH = 0
+			for (const id of chainOrder) {
+				const n = nodeById.get(id)
+				if (n) maxChainH = Math.max(maxChainH, n.bounds.height)
+			}
+			const laneOffset = i * (maxChainH + CHAIN_V_GAP + 10)
+			const chainCenterY = Math.round(
+				beNode.bounds.y + bH + CHAIN_V_GAP + maxChainH / 2 + laneOffset,
+			)
+			const chainStartX = Math.max(
+				Math.round(beNode.bounds.x + bW / 2) + CHAIN_GAP,
+				hostNode.bounds.x + hostNode.bounds.width + CHAIN_GAP,
+			)
+			let curX = chainStartX
+
+			for (const id of chainOrder) {
+				const n = nodeById.get(id)
+				if (!n) continue
+				n.bounds.x = curX
+				n.bounds.y = chainCenterY - Math.round(n.bounds.height / 2)
+				if (n.labelBounds) {
+					// Center label on node, but clamp so it never extends left of the node —
+					// wide event labels would otherwise overlap the preceding chain element.
+					const labelX = n.bounds.x + Math.round(n.bounds.width / 2 - n.labelBounds.width / 2)
+					n.labelBounds.x = Math.max(labelX, n.bounds.x)
+					n.labelBounds.y = n.bounds.y + n.bounds.height + 4
+				}
+				// Advance past the node AND its label so the next element doesn't overlap.
+				const nodeRight = n.bounds.x + n.bounds.width
+				const labelRight = n.labelBounds ? n.labelBounds.x + n.labelBounds.width : 0
+				curX = Math.max(nodeRight, labelRight) + CHAIN_GAP
+			}
+
+			// Re-route edges touching the boundary event or its chain
+			for (const edge of result.edges) {
+				if (!chainSet.has(edge.sourceRef)) continue
+				const src = nodeById.get(edge.sourceRef)
+				const tgt = nodeById.get(edge.targetRef)
+				if (!src || !tgt) continue
+
+				if (edge.sourceRef === beId) {
+					const srcX = Math.round(src.bounds.x + bW / 2)
+					const srcY = Math.round(src.bounds.y + bH)
+					const tgtX = Math.round(tgt.bounds.x)
+					const tgtY = Math.round(tgt.bounds.y + tgt.bounds.height / 2)
+					edge.waypoints = [
+						{ x: srcX, y: srcY },
+						{ x: srcX, y: tgtY },
+						{ x: tgtX, y: tgtY },
+					]
+				} else {
+					const srcX = Math.round(src.bounds.x + src.bounds.width)
+					const srcY = Math.round(src.bounds.y + src.bounds.height / 2)
+					const tgtX = Math.round(tgt.bounds.x)
+					const tgtY = Math.round(tgt.bounds.y + tgt.bounds.height / 2)
+					edge.waypoints = [
+						{ x: srcX, y: srcY },
+						{ x: tgtX, y: tgtY },
+					]
+				}
+			}
+		}
+	}
+}
+
 /**
  * Auto-layout a BPMN process using the Sugiyama/layered algorithm.
  *
@@ -31,10 +165,12 @@ import type { LayoutNode, LayoutResult, SubProcessChildResult } from "./types.js
  * 4. Coordinate assignment — Fixed element sizes with spacing
  * 5. Sub-process layout — Recursive nested passes
  * 6. Edge routing — Orthogonal waypoints
- * 7. Overlap assertion — Post-condition validation
+ * 7. Boundary event repositioning — place events on host border
+ * 8. Overlap assertion — Post-condition validation
  */
 export function layoutProcess(process: BpmnProcess): LayoutResult {
 	const result = layoutFlowNodes(process.flowElements, process.sequenceFlows)
+	repositionBoundaryEvents(process.flowElements, result)
 	assertNoOverlap(result)
 	return result
 }

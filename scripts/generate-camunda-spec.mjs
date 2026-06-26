@@ -1,13 +1,14 @@
+import { execSync } from "node:child_process"
 // scripts/generate-camunda-spec.mjs
 import { readFileSync, writeFileSync } from "node:fs"
-import { execSync } from "node:child_process"
 
 const source = readFileSync("packages/api/src/generated/resources.ts", "utf-8")
 
 // ── Step 1: resource key → class name from CamundaClient body ────────────────
-const clientBody = source.match(
-  /export class CamundaClient extends CamundaBaseClient \{([\s\S]*?)(?=\n\n  constructor|\n\n  [a-z])/
-)?.[1] ?? ""
+const clientBody =
+	source.match(
+		/export class CamundaClient extends CamundaBaseClient \{([\s\S]*?)(?=\n\n {2}constructor|\n\n {2}[a-z])/,
+	)?.[1] ?? ""
 if (!clientBody) throw new Error("Could not find CamundaClient body")
 
 const resourceMap = {}
@@ -20,44 +21,40 @@ console.log(`Found ${Object.keys(resourceMap).length} resource groups`)
 // ── Step 2: extract method specs from each resource class ────────────────────
 const spec = {}
 for (const [resourceKey, className] of Object.entries(resourceMap)) {
-  const classRe = new RegExp(
-    `export class ${className} extends ResourceBase \\{([\\s\\S]*?)(?=\\nexport class|$)`
-  )
-  const classBody = source.match(classRe)?.[1]
-  if (!classBody) { console.warn(`  ⚠ class ${className} not found`); continue }
+	const classRe = new RegExp(
+		`export class ${className} extends ResourceBase \\{([\\s\\S]*?)(?=\\nexport class|$)`,
+	)
+	const classBody = source.match(classRe)?.[1]
+	if (!classBody) {
+		console.warn(`  ⚠ class ${className} not found`)
+		continue
+	}
 
-  spec[resourceKey] = {}
+	spec[resourceKey] = {}
 
-  // Match JSDoc block immediately followed by async method signature
-  const methodRe =
-    /\/\*\*([\s\S]*?)\*\/\s+async (\w+)\(([^)]*)\)[^:]*:\s*Promise<([^>]+)>/g
-  let mm
-  while ((mm = methodRe.exec(classBody)) !== null) {
-    const [, jsdoc, methodName, rawParams, returnType] = mm
-    const lines = jsdoc
-      .split("\n")
-      .map((l) => l.replace(/^\s*\*\s?/, "").trim())
-      .filter(Boolean)
-    const descLines = lines.filter((l) => !l.startsWith("@"))
-    const endpoint =
-      lines.find((l) => l.startsWith("@see"))?.replace("@see ", "") ?? ""
-    const params = rawParams.trim()
-      ? rawParams.trim().replace(/Types\./g, "")
-      : "none"
+	// Match JSDoc block immediately followed by async method signature
+	const methodRe = /\/\*\*([\s\S]*?)\*\/\s+async (\w+)\(([^)]*)\)[^:]*:\s*Promise<([^>]+)>/g
+	let mm
+	while ((mm = methodRe.exec(classBody)) !== null) {
+		const [, jsdoc, methodName, rawParams, returnType] = mm
+		const lines = jsdoc
+			.split("\n")
+			.map((l) => l.replace(/^\s*\*\s?/, "").trim())
+			.filter(Boolean)
+		const descLines = lines.filter((l) => !l.startsWith("@"))
+		const endpoint = lines.find((l) => l.startsWith("@see"))?.replace("@see ", "") ?? ""
+		const params = rawParams.trim() ? rawParams.trim().replace(/Types\./g, "") : "none"
 
-    spec[resourceKey][methodName] = {
-      description: descLines.join(" ").trim(),
-      endpoint,
-      params,
-      returns: returnType.replace(/Types\./g, "").trim(),
-    }
-  }
+		spec[resourceKey][methodName] = {
+			description: descLines.join(" ").trim(),
+			endpoint,
+			params,
+			returns: returnType.replace(/Types\./g, "").trim(),
+		}
+	}
 }
 
-const methodCount = Object.values(spec).reduce(
-  (s, ms) => s + Object.keys(ms).length,
-  0
-)
+const methodCount = Object.values(spec).reduce((s, ms) => s + Object.keys(ms).length, 0)
 console.log(`Extracted ${methodCount} methods`)
 
 // ── Step 3: write TypeScript file ────────────────────────────────────────────

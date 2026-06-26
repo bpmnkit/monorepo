@@ -11,6 +11,8 @@ export function assertNoOverlap(result: LayoutResult): void {
 	const allBounds: Array<{ id: string; kind: string; bounds: Bounds }> = []
 
 	for (const node of result.nodes) {
+		// Boundary events intentionally overlap their host activity — skip them.
+		if (node.type === "boundaryEvent") continue
 		allBounds.push({ id: node.id, kind: "element", bounds: node.bounds })
 		if (node.labelBounds) {
 			allBounds.push({ id: `${node.id}-label`, kind: "label", bounds: node.labelBounds })

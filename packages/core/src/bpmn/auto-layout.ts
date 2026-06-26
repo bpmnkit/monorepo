@@ -5,7 +5,6 @@ import type {
 	BpmnDefinitions,
 	BpmnDiEdge,
 	BpmnDiShape,
-	BpmnFlowElement,
 	BpmnLane,
 	BpmnProcess,
 } from "./bpmn-model.js"
@@ -14,142 +13,9 @@ const POOL_HEADER = 30
 const LANE_HEADER = 30
 const PADDING = 20
 const POOL_GAP = 30
-const CHAIN_GAP = 30
-const CHAIN_V_GAP = 20
 const ANN_H = 50
 const ANN_GAP = 60
 const ANN_PADDING = 20
-
-/**
- * Reposition boundary events to the bottom edge of their host task, then walk
- * each boundary event's exclusive downstream chain and place those nodes
- * horizontally to the right of the host task.  Re-routes all affected edges.
- */
-function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: LayoutResult): void {
-	// Collect boundary events grouped by host task id
-	const boundaryMap = new Map<string, string[]>()
-	for (const el of flowElements) {
-		if (el.type !== "boundaryEvent") continue
-		const list = boundaryMap.get(el.attachedToRef) ?? []
-		list.push(el.id)
-		boundaryMap.set(el.attachedToRef, list)
-	}
-	if (boundaryMap.size === 0) return
-
-	const nodeById = new Map(result.nodes.map((n) => [n.id, n]))
-
-	// Build successor / predecessor maps from edges for chain walking
-	const succIds = new Map<string, string[]>()
-	const predIds = new Map<string, Set<string>>()
-	for (const edge of result.edges) {
-		const se = succIds.get(edge.sourceRef) ?? []
-		se.push(edge.targetRef)
-		succIds.set(edge.sourceRef, se)
-		const ps = predIds.get(edge.targetRef) ?? new Set<string>()
-		ps.add(edge.sourceRef)
-		predIds.set(edge.targetRef, ps)
-	}
-
-	for (const [hostId, beIds] of boundaryMap) {
-		const hostNode = nodeById.get(hostId)
-		if (!hostNode) continue
-
-		for (let i = 0; i < beIds.length; i++) {
-			const beId = beIds[i]
-			if (!beId) continue
-			const beNode = nodeById.get(beId)
-			if (!beNode) continue
-
-			const bW = beNode.bounds.width
-			const bH = beNode.bounds.height
-
-			// Place boundary event at bottom-right of host task, stacking leftward
-			const rightEdge = hostNode.bounds.x + hostNode.bounds.width
-			beNode.bounds.x = Math.round(rightEdge - bW / 2 - i * (bW + 4))
-			beNode.bounds.y = Math.round(hostNode.bounds.y + hostNode.bounds.height - bH / 2)
-			if (beNode.labelBounds) {
-				beNode.labelBounds.x = beNode.bounds.x + Math.round(bW / 2 - beNode.labelBounds.width / 2)
-				beNode.labelBounds.y = beNode.bounds.y + bH + 4
-			}
-
-			// Collect nodes exclusively reachable from this boundary event (in BFS order)
-			const chainSet = new Set<string>([beId])
-			const chainOrder: string[] = []
-			const queue = [...(succIds.get(beId) ?? [])]
-			while (queue.length > 0) {
-				const id = queue.shift()
-				if (!id || chainSet.has(id)) continue
-				// Include only if every predecessor is already in the chain
-				const preds = predIds.get(id) ?? new Set<string>()
-				if ([...preds].every((p) => chainSet.has(p))) {
-					chainSet.add(id)
-					chainOrder.push(id)
-					queue.push(...(succIds.get(id) ?? []))
-				}
-			}
-
-			// Find tallest chain element to compute center Y below boundary event.
-			// Each boundary event's chain gets its own vertical lane to avoid overlaps.
-			let maxChainH = 0
-			for (const id of chainOrder) {
-				const n = nodeById.get(id)
-				if (n) maxChainH = Math.max(maxChainH, n.bounds.height)
-			}
-			const laneOffset = i * (maxChainH + CHAIN_V_GAP + 10)
-			const chainCenterY = Math.round(
-				beNode.bounds.y + bH + CHAIN_V_GAP + maxChainH / 2 + laneOffset,
-			)
-			const chainStartX = Math.max(
-				Math.round(beNode.bounds.x + bW / 2) + CHAIN_GAP,
-				hostNode.bounds.x + hostNode.bounds.width + CHAIN_GAP,
-			)
-			let curX = chainStartX
-
-			for (const id of chainOrder) {
-				const n = nodeById.get(id)
-				if (!n) continue
-				n.bounds.x = curX
-				n.bounds.y = chainCenterY - Math.round(n.bounds.height / 2)
-				if (n.labelBounds) {
-					n.labelBounds.x = n.bounds.x + Math.round(n.bounds.width / 2 - n.labelBounds.width / 2)
-					n.labelBounds.y = n.bounds.y + n.bounds.height + 4
-				}
-				curX += n.bounds.width + CHAIN_GAP
-			}
-
-			// Re-route all edges touching the boundary event or its chain
-			for (const edge of result.edges) {
-				if (!chainSet.has(edge.sourceRef)) continue
-				const src = nodeById.get(edge.sourceRef)
-				const tgt = nodeById.get(edge.targetRef)
-				if (!src || !tgt) continue
-
-				if (edge.sourceRef === beId) {
-					// Boundary event → first chain node: route down then right
-					const srcX = Math.round(src.bounds.x + bW / 2)
-					const srcY = Math.round(src.bounds.y + bH)
-					const tgtX = Math.round(tgt.bounds.x)
-					const tgtY = Math.round(tgt.bounds.y + tgt.bounds.height / 2)
-					edge.waypoints = [
-						{ x: srcX, y: srcY },
-						{ x: srcX, y: tgtY },
-						{ x: tgtX, y: tgtY },
-					]
-				} else {
-					// Within chain: straight horizontal edge
-					const srcX = Math.round(src.bounds.x + src.bounds.width)
-					const srcY = Math.round(src.bounds.y + src.bounds.height / 2)
-					const tgtX = Math.round(tgt.bounds.x)
-					const tgtY = Math.round(tgt.bounds.y + tgt.bounds.height / 2)
-					edge.waypoints = [
-						{ x: srcX, y: srcY },
-						{ x: tgtX, y: tgtY },
-					]
-				}
-			}
-		}
-	}
-}
 
 type LocalBounds = { x: number; y: number; width: number; height: number }
 
@@ -504,12 +370,8 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		const lanes = process.laneSet?.lanes ?? []
 		const hasLanes = lanes.length > 0
 
+		// layoutProcess now handles boundary event repositioning internally.
 		const result = layoutProcess(process)
-
-		// Post-process boundary events: reposition each boundary event to the bottom
-		// of its host task, then walk its exclusive downstream chain and reposition
-		// those nodes horizontally to the right of the host task.
-		repositionBoundaryEvents(process.flowElements, result)
 
 		// Re-resolve edge crossings after boundary events moved shapes
 		const nodeMap = new Map(result.nodes.map((n) => [n.id, n]))
