@@ -1112,7 +1112,7 @@ describe("BpmnProcessBuilder", () => {
 	describe("executionPlatformVersion", () => {
 		it("defaults to 8.6.0", () => {
 			const defs = Bpmn.createProcess("p1").startEvent("s").endEvent("e").build()
-			expect(defs.unknownAttributes?.["modeler:executionPlatformVersion"]).toBe("8.6.0")
+			expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.6.0")
 		})
 
 		it("accepts a custom version", () => {
@@ -1121,7 +1121,7 @@ describe("BpmnProcessBuilder", () => {
 				.startEvent("s")
 				.endEvent("e")
 				.build()
-			expect(defs.unknownAttributes?.["modeler:executionPlatformVersion"]).toBe("8.8.0")
+			expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.8.0")
 		})
 
 		it("is chainable", () => {
@@ -2418,7 +2418,7 @@ describe("DiagramBuilder", () => {
 		const defs = Bpmn.createDiagram("D1")
 			.process("p1", (b) => b.startEvent("s").endEvent("e"))
 			.build()
-		expect(defs.unknownAttributes?.["modeler:executionPlatformVersion"]).toBe("8.6.0")
+		expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.6.0")
 	})
 
 	it("accepts a custom executionPlatformVersion", () => {
@@ -2426,7 +2426,7 @@ describe("DiagramBuilder", () => {
 			.executionPlatformVersion("8.9.0")
 			.process("p1", (b) => b.startEvent("s").endEvent("e"))
 			.build()
-		expect(defs.unknownAttributes?.["modeler:executionPlatformVersion"]).toBe("8.9.0")
+		expect(defs.unknownAttributes["modeler:executionPlatformVersion"]).toBe("8.9.0")
 	})
 
 	it("executionPlatformVersion is chainable", () => {
