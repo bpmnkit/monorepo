@@ -1,5 +1,19 @@
 # Progress
 
+## 2026-06-26 — fix(ci): changeset version fails with node-fetch gzip premature close
+
+`@changesets/changelog-github` calls GitHub's GraphQL API during `changeset version` to enrich changelogs with PR info. `node-fetch@2.7.0` (used internally) fails with `ERR_STREAM_PREMATURE_CLOSE` on GitHub's gzip-compressed responses — a known upstream bug.
+
+Fix: switched `.changeset/config.json` `changelog` to `"@changesets/cli/changelog"` (bundled format, no HTTP calls) and removed the `@changesets/changelog-github` dev dependency.
+
+## 2026-06-26 — fix(core): endEvent silently dropped event definitions
+
+`endEvent()` in all three builder classes (`BranchBuilder`, `SubProcessContentBuilder`, `ProcessBuilder`) was not calling `buildEventDefinitions`, so options like `errorCode`, `messageName`, `signalName`, and `escalationCode` were silently discarded. The element serialized as a plain none end event with no warning.
+
+- Added `EndEventOptions` interface (exported from `@bpmnkit/core`) with `errorCode`, `errorRef`, `messageName`, `signalName`, `escalationCode`.
+- All three `endEvent` implementations now call `buildEventDefinitions`; `ProcessBuilder` passes `rootErrors`/`rootMessages` so `<bpmn:error>` root elements are emitted correctly.
+- Regression tests added for error, message, signal, and escalation end events.
+
 ## 2026-06-26 — feat(core): add executionPlatformVersion setter to BPMN builders
 
 `ProcessBuilder` and `DiagramBuilder` now expose `.executionPlatformVersion(version)` — a fluent setter that overrides the default `"8.6.0"` stamp in the generated BPMN XML. Mirrors the existing `FormBuilder` API.
