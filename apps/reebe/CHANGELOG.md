@@ -1,5 +1,12 @@
 # @bpmnkit/reebe
 
+## 0.1.4
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+
 ## 0.1.3
 
 ### Patch Changes

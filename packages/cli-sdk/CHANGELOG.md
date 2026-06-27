@@ -1,5 +1,12 @@
 # @bpmnkit/cli-sdk
 
+## 0.0.8
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+
 ## 0.0.7
 
 ### Patch Changes

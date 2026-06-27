@@ -1,5 +1,12 @@
 # @bpmnkit/connector-gen
 
+## 0.0.14
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+
 ## 0.0.13
 
 ### Patch Changes

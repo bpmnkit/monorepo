@@ -1,5 +1,12 @@
 # @bpmnkit/api
 
+## 0.0.19
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+
 ## 0.0.18
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @bpmnkit/casen-worker-ai
 
+## 0.1.6
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+
 ## 0.1.5
 
 ### Patch Changes

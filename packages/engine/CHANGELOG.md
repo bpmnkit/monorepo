@@ -1,5 +1,17 @@
 # @bpmnkit/engine
 
+## 0.1.24
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [e9ac598]
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/core@0.0.24
+  - @bpmnkit/feel@0.0.19
+
 ## 0.1.23
 
 ### Patch Changes

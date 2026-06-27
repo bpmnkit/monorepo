@@ -1,5 +1,20 @@
 # @bpmnkit/ai-server
 
+## 0.0.27
+
+### Patch Changes
+
+- e9ac598: SDK improvements
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [e9ac598]
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/core@0.0.24
+  - @bpmnkit/api@0.0.19
+  - @bpmnkit/patterns@0.0.4
+  - @bpmnkit/profiles@0.0.17
+
 ## 0.0.26
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @bpmnkit/core
 
+## 0.0.24
+
+### Patch Changes
+
+- e9ac598: SDK improvements
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/feel@0.0.19
+
 ## 0.0.23
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @bpmnkit/patterns
 
+## 0.0.4
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+
 ## 0.0.3
 
 ### Patch Changes
