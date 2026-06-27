@@ -1,5 +1,21 @@
 # @bpmnkit/learn
 
+## 0.0.22
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [e9ac598]
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/core@0.0.24
+  - @bpmnkit/astro-shared@0.0.13
+  - @bpmnkit/canvas@0.0.24
+  - @bpmnkit/editor@0.0.27
+  - @bpmnkit/engine@0.1.24
+  - @bpmnkit/plugins@0.0.27
+
 ## 0.0.21
 
 ### Patch Changes

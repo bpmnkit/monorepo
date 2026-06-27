@@ -1,5 +1,19 @@
 # @bpmnkit/desktop
 
+## 0.1.26
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [e9ac598]
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/core@0.0.24
+  - @bpmnkit/canvas@0.0.24
+  - @bpmnkit/editor@0.0.27
+  - @bpmnkit/plugins@0.0.27
+
 ## 0.1.25
 
 ### Patch Changes

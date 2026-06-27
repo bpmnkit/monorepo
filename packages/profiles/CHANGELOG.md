@@ -1,5 +1,15 @@
 # @bpmnkit/profiles
 
+## 0.0.17
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/api@0.0.19
+
 ## 0.0.16
 
 ### Patch Changes

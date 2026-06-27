@@ -1,5 +1,13 @@
 # @bpmnkit/docs
 
+## 0.0.10
+
+### Patch Changes
+
+- e9ac598: SDK improvements
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+
 ## 0.0.9
 
 ### Patch Changes

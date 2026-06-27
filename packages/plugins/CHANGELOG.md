@@ -1,5 +1,21 @@
 # @bpmnkit/plugins
 
+## 0.0.27
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [e9ac598]
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/core@0.0.24
+  - @bpmnkit/ascii@0.0.24
+  - @bpmnkit/canvas@0.0.24
+  - @bpmnkit/connector-gen@0.0.14
+  - @bpmnkit/editor@0.0.27
+  - @bpmnkit/feel@0.0.19
+
 ## 0.0.26
 
 ### Patch Changes

@@ -1,5 +1,26 @@
 # @bpmnkit/studio
 
+## 0.0.13
+
+### Patch Changes
+
+- dcf850a: Improvements
+- d6d1860: Several bugfixes and feature implementations
+- Updated dependencies [e9ac598]
+- Updated dependencies [dcf850a]
+- Updated dependencies [d6d1860]
+  - @bpmnkit/core@0.0.24
+  - @bpmnkit/reebe-wasm@0.1.5
+  - @bpmnkit/api@0.0.19
+  - @bpmnkit/canvas@0.0.24
+  - @bpmnkit/editor@0.0.27
+  - @bpmnkit/engine@0.1.24
+  - @bpmnkit/operate@0.0.24
+  - @bpmnkit/plugins@0.0.27
+  - @bpmnkit/profiles@0.0.17
+  - @bpmnkit/ui@0.0.15
+  - @bpmnkit/user-tasks@0.0.11
+
 ## 0.0.12
 
 ### Patch Changes
