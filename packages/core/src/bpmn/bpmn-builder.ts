@@ -275,7 +275,7 @@ function buildEventDefinitions(
 			}
 			errorRef = existing.id
 		} else {
-			errorRef = opts.errorRef
+			errorRef = codeOrRef
 		}
 		defs.push({ type: "error", errorRef })
 	}
