@@ -1783,7 +1783,7 @@ export class ProcessBuilder {
 		return this
 	}
 
-	/** Add an event sub-process (aspirational). */
+	/** Add an event sub-process. Triggered by its start event — no incoming or outgoing sequence flows. */
 	eventSubProcess(
 		id: string,
 		content: (b: SubProcessContentBuilder) => void,
@@ -1794,14 +1794,21 @@ export class ProcessBuilder {
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const element = makeFlowElement(id, "eventSubProcess", options)
-		if (element.type === "eventSubProcess") {
+		const element = makeFlowElement(id, "subProcess", options)
+		if (element.type === "subProcess") {
+			element.triggeredByEvent = true
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
 			element.textAnnotations = sub._textAnnotations
 			element.associations = sub._associations
 		}
-		this.addFlowElement(element)
+
+		// Event sub-processes have no incoming/outgoing sequence flows and must not
+		// advance the flow cursor — the surrounding process wires around them.
+		if (this.flowElements.some((n) => n.id === element.id)) {
+			throw new Error(`Duplicate element ID "${element.id}" in process "${this.processId}"`)
+		}
+		this.flowElements.push(element)
 		return this
 	}
 

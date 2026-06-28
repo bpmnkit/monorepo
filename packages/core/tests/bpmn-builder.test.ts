@@ -784,11 +784,11 @@ describe("BpmnProcessBuilder", () => {
 	})
 
 	// -----------------------------------------------------------------------
-	// Event sub-process (aspirational)
+	// Event sub-process
 	// -----------------------------------------------------------------------
 
-	describe("event sub-process (aspirational)", () => {
-		it("creates an event sub-process", () => {
+	describe("event sub-process", () => {
+		it("creates a subProcess with triggeredByEvent=true", () => {
 			const process = firstProcess(
 				Bpmn.createProcess("proc")
 					.startEvent("s")
@@ -807,13 +807,57 @@ describe("BpmnProcessBuilder", () => {
 			)
 
 			const evtSub = defined(process.flowElements.find((n) => n.id === "evtsub1"))
-			expect(evtSub.type).toBe("eventSubProcess")
+			// (a) correct element type
+			expect(evtSub.type).toBe("subProcess")
 			expect(evtSub.name).toBe("Error Handler")
 
-			if (evtSub.type === "eventSubProcess") {
+			if (evtSub.type === "subProcess") {
+				// (a) canonical attribute
+				expect(evtSub.triggeredByEvent).toBe(true)
+				// internal flows preserved
 				expect(evtSub.flowElements).toHaveLength(3)
 				expect(evtSub.sequenceFlows).toHaveLength(2)
 			}
+
+			// (c) no illegal incoming/outgoing on the sub-process
+			expect(evtSub.incoming).toHaveLength(0)
+			expect(evtSub.outgoing).toHaveLength(0)
+
+			// (c) no sequence flow references evtsub1 as source or target
+			expect(
+				process.sequenceFlows.every((f) => f.sourceRef !== "evtsub1" && f.targetRef !== "evtsub1"),
+			).toBe(true)
+
+			// cursor advances past event sub-process as if it wasn't there: s → e
+			const sToE = process.sequenceFlows.find((f) => f.sourceRef === "s" && f.targetRef === "e")
+			expect(sToE).toBeDefined()
+		})
+
+		it("emits <bpmn:subProcess triggeredByEvent='true'> in XML — no <bpmn:eventSubProcess>", () => {
+			const xml = Bpmn.export(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.eventSubProcess("esp", (sub) => {
+						sub.startEvent("t-start", { timerDuration: "PT1H" }).endEvent("t-end")
+					})
+					.endEvent("e")
+					.build(),
+			)
+
+			// (a) canonical tag
+			expect(xml).toContain('triggeredByEvent="true"')
+			expect(xml).not.toContain("<bpmn:eventSubProcess")
+
+			// (c) no flows to/from esp
+			expect(xml).not.toContain('sourceRef="esp"')
+			expect(xml).not.toContain('targetRef="esp"')
+
+			// (c) no incoming/outgoing on sub-process
+			// (the serializer emits incoming/outgoing only when the arrays are non-empty)
+			// We verify by checking the flow count: s→e = 1 flow at process level
+			const flowMatches = [...xml.matchAll(/<bpmn:sequenceFlow /g)]
+			// internal: t-start→t-end = 1; process level: s→e = 1; total = 2
+			expect(flowMatches).toHaveLength(2)
 		})
 	})
 
