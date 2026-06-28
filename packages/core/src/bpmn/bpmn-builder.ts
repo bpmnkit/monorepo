@@ -7,12 +7,14 @@ import type {
 	BpmnDefinitions,
 	BpmnElementType,
 	BpmnError,
+	BpmnEscalation,
 	BpmnEventDefinition,
 	BpmnFlowElement,
 	BpmnMessage,
 	BpmnMultiInstanceLoopCharacteristics,
 	BpmnProcess,
 	BpmnSequenceFlow,
+	BpmnSignal,
 	BpmnTextAnnotation,
 } from "./bpmn-model.js"
 import type { RestConnectorConfig } from "./rest-connector.js"
@@ -155,7 +157,7 @@ export interface IntermediateThrowEventOptions extends ElementOptions {
 export interface EndEventOptions extends ElementOptions {
 	/** Error code — creates an error end event. */
 	errorCode?: string
-	/** Error reference ID. */
+	/** Error code — creates an error end event. Alias for errorCode. */
 	errorRef?: string
 	/** Message name — creates a message end event. */
 	messageName?: string
@@ -173,7 +175,7 @@ export interface BoundaryEventOptions extends ElementOptions {
 	cancelActivity?: boolean
 	/** Error code — creates an error boundary event. */
 	errorCode?: string
-	/** Error reference ID. */
+	/** Error code — creates an error boundary event. Alias for errorCode. */
 	errorRef?: string
 	/** Timer duration — creates a timer boundary event (aspirational). */
 	timerDuration?: string
@@ -250,6 +252,8 @@ function buildEventDefinitions(
 	},
 	rootErrors?: BpmnError[],
 	rootMessages?: BpmnMessage[],
+	rootSignals?: BpmnSignal[],
+	rootEscalations?: BpmnEscalation[],
 ): BpmnEventDefinition[] {
 	const defs: BpmnEventDefinition[] = []
 	if (opts.timerDuration || opts.timerDate || opts.timerCycle) {
@@ -261,28 +265,59 @@ function buildEventDefinitions(
 		})
 	}
 	if (opts.errorCode !== undefined || opts.errorRef !== undefined) {
-		let errorRef = opts.errorRef
-		if (!errorRef && opts.errorCode !== undefined && rootErrors) {
-			const errorId = generateId("Error")
-			rootErrors.push({ id: errorId, name: opts.errorCode, errorCode: opts.errorCode })
-			errorRef = errorId
+		const codeOrRef = opts.errorCode ?? opts.errorRef
+		let errorRef: string | undefined
+		if (codeOrRef !== undefined && rootErrors) {
+			let existing = rootErrors.find((e) => e.errorCode === codeOrRef || e.name === codeOrRef)
+			if (!existing) {
+				existing = { id: generateId("Error"), name: codeOrRef, errorCode: codeOrRef }
+				rootErrors.push(existing)
+			}
+			errorRef = existing.id
+		} else {
+			errorRef = codeOrRef
 		}
 		defs.push({ type: "error", errorRef })
 	}
 	if (opts.messageName !== undefined) {
 		let messageRef: string | undefined = opts.messageName
 		if (rootMessages) {
-			const messageId = generateId("Message")
-			rootMessages.push({ id: messageId, name: opts.messageName, unknownAttributes: {} })
-			messageRef = messageId
+			let existing = rootMessages.find((m) => m.name === opts.messageName)
+			if (!existing) {
+				existing = { id: generateId("Message"), name: opts.messageName, unknownAttributes: {} }
+				rootMessages.push(existing)
+			}
+			messageRef = existing.id
 		}
 		defs.push({ type: "message", messageRef })
 	}
 	if (opts.signalName !== undefined) {
-		defs.push({ type: "signal", signalRef: opts.signalName })
+		let signalRef: string | undefined = opts.signalName
+		if (rootSignals) {
+			let existing = rootSignals.find((s) => s.name === opts.signalName)
+			if (!existing) {
+				existing = { id: generateId("Signal"), name: opts.signalName }
+				rootSignals.push(existing)
+			}
+			signalRef = existing.id
+		}
+		defs.push({ type: "signal", signalRef })
 	}
 	if (opts.escalationCode !== undefined) {
-		defs.push({ type: "escalation", escalationRef: opts.escalationCode })
+		let escalationRef: string | undefined = opts.escalationCode
+		if (rootEscalations) {
+			let existing = rootEscalations.find((e) => e.escalationCode === opts.escalationCode)
+			if (!existing) {
+				existing = {
+					id: generateId("Escalation"),
+					name: opts.escalationCode,
+					escalationCode: opts.escalationCode,
+				}
+				rootEscalations.push(existing)
+			}
+			escalationRef = existing.id
+		}
+		defs.push({ type: "escalation", escalationRef })
 	}
 	return defs
 }
@@ -664,12 +699,27 @@ export class BranchBuilder {
 	/** @internal */
 	readonly _associations: BpmnAssociation[] = []
 	private readonly _annCounters = new Map<string, number>()
+	private readonly rootErrors: BpmnError[]
+	private readonly rootMessages: BpmnMessage[]
+	private readonly rootSignals: BpmnSignal[]
+	private readonly rootEscalations: BpmnEscalation[]
 
 	/** @internal */
-	constructor(gatewayId: string, branchName: string) {
+	constructor(
+		gatewayId: string,
+		branchName: string,
+		rootErrors: BpmnError[] = [],
+		rootMessages: BpmnMessage[] = [],
+		rootSignals: BpmnSignal[] = [],
+		rootEscalations: BpmnEscalation[] = [],
+	) {
 		this.gatewayId = gatewayId
 		this.branchName = branchName
 		this.lastNodeId = gatewayId
+		this.rootErrors = rootErrors
+		this.rootMessages = rootMessages
+		this.rootSignals = rootSignals
+		this.rootEscalations = rootEscalations
 	}
 
 	/** Set a FEEL condition expression on this branch's outgoing sequence flow. */
@@ -805,11 +855,14 @@ export class BranchBuilder {
 
 	startEvent(id?: string, options?: StartEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("StartEvent"), "startEvent", options)
-		if (
-			el.type === "startEvent" &&
-			(options?.timerDuration || options?.timerCycle || options?.timerDate)
-		) {
-			el.eventDefinitions = buildEventDefinitions(options)
+		if (el.type === "startEvent" && options) {
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -817,7 +870,13 @@ export class BranchBuilder {
 	endEvent(id?: string, options?: EndEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("EndEvent"), "endEvent", options)
 		if (el.type === "endEvent" && options) {
-			el.eventDefinitions = buildEventDefinitions(options)
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -829,7 +888,13 @@ export class BranchBuilder {
 			options,
 		)
 		if (el.type === "intermediateThrowEvent" && options) {
-			el.eventDefinitions = buildEventDefinitions(options)
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -841,7 +906,13 @@ export class BranchBuilder {
 			options,
 		)
 		if (el.type === "intermediateCatchEvent" && options) {
-			el.eventDefinitions = buildEventDefinitions(options)
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -1104,6 +1175,8 @@ export class ProcessBuilder {
 	private readonly sequenceFlows: BpmnSequenceFlow[] = []
 	private readonly rootErrors: BpmnError[] = []
 	private readonly rootMessages: BpmnMessage[] = []
+	private readonly rootSignals: BpmnSignal[] = []
+	private readonly rootEscalations: BpmnEscalation[] = []
 	private readonly _textAnnotations: BpmnTextAnnotation[] = []
 	private readonly _associations: BpmnAssociation[] = []
 	private readonly _annCounters = new Map<string, number>()
@@ -1173,7 +1246,13 @@ export class ProcessBuilder {
 			extensionElements: extElements,
 		})
 		if (element.type === "startEvent" && options) {
-			element.eventDefinitions = buildEventDefinitions(options, this.rootErrors, this.rootMessages)
+			element.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		if (options?.modelerTemplate) {
 			element.unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
@@ -1215,7 +1294,13 @@ export class ProcessBuilder {
 		const nodeId = id ?? generateId("EndEvent")
 		const element = makeFlowElement(nodeId, "endEvent", options)
 		if (element.type === "endEvent" && options) {
-			element.eventDefinitions = buildEventDefinitions(options, this.rootErrors, this.rootMessages)
+			element.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		this.addFlowElement(element)
 		return this
@@ -1226,7 +1311,13 @@ export class ProcessBuilder {
 		const nodeId = id ?? generateId("IntermediateThrowEvent")
 		const element = makeFlowElement(nodeId, "intermediateThrowEvent", options)
 		if (element.type === "intermediateThrowEvent" && options) {
-			element.eventDefinitions = buildEventDefinitions(options)
+			element.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		this.addFlowElement(element)
 		return this
@@ -1237,7 +1328,13 @@ export class ProcessBuilder {
 		const nodeId = id ?? generateId("IntermediateCatchEvent")
 		const element = makeFlowElement(nodeId, "intermediateCatchEvent", options)
 		if (element.type === "intermediateCatchEvent" && options) {
-			element.eventDefinitions = buildEventDefinitions(options)
+			element.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		this.addFlowElement(element)
 		return this
@@ -1254,7 +1351,13 @@ export class ProcessBuilder {
 		if (element.type === "boundaryEvent") {
 			element.attachedToRef = options.attachedTo
 			element.cancelActivity = options.cancelActivity
-			element.eventDefinitions = buildEventDefinitions(options, this.rootErrors, this.rootMessages)
+			element.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		// Boundary events never auto-connect — temporarily clear lastNodeId
 		const prevLast = this.lastNodeId
@@ -1441,7 +1544,14 @@ export class ProcessBuilder {
 		if (!this.currentGatewayId) {
 			throw new Error("branch() must be called after a gateway element")
 		}
-		const b = new BranchBuilder(this.currentGatewayId, name)
+		const b = new BranchBuilder(
+			this.currentGatewayId,
+			name,
+			this.rootErrors,
+			this.rootMessages,
+			this.rootSignals,
+			this.rootEscalations,
+		)
 		callback(b)
 
 		for (const el of b._elements) {
@@ -1724,9 +1834,9 @@ export class ProcessBuilder {
 				"modeler:executionPlatformVersion": this._executionPlatformVersion,
 			},
 			errors: this.rootErrors,
-			escalations: [],
+			escalations: this.rootEscalations,
 			messages: this.rootMessages,
-			signals: [],
+			signals: this.rootSignals,
 			collaborations: [],
 			processes: [process],
 			// Seed diagram stub so applyAutoLayout preserves process-specific IDs.
