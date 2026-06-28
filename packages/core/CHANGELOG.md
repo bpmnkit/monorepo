@@ -1,5 +1,11 @@
 # @bpmnkit/core
 
+## 0.0.25
+
+### Patch Changes
+
+- 7916980: Fix illegal BPMN
+
 ## 0.0.24
 
 ### Patch Changes

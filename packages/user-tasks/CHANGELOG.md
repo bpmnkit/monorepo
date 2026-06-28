@@ -1,5 +1,13 @@
 # @bpmnkit/user-tasks
 
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies [7916980]
+  - @bpmnkit/core@0.0.25
+  - @bpmnkit/plugins@0.0.28
+
 ## 0.0.11
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @bpmnkit/plugins
 
+## 0.0.28
+
+### Patch Changes
+
+- Updated dependencies [7916980]
+  - @bpmnkit/core@0.0.25
+  - @bpmnkit/ascii@0.0.25
+  - @bpmnkit/canvas@0.0.25
+  - @bpmnkit/editor@0.0.28
+
 ## 0.0.27
 
 ### Patch Changes
