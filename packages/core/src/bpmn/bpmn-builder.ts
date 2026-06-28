@@ -867,11 +867,15 @@ export class BranchBuilder {
 	}
 
 	sendTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "sendTask", options))
+		const el = makeFlowElement(id, "sendTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	receiveTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "receiveTask", options))
+		const el = makeFlowElement(id, "receiveTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	businessRuleTask(id: string, options?: BusinessRuleTaskOptions): this {
@@ -884,7 +888,9 @@ export class BranchBuilder {
 
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "task", options))
+		const el = makeFlowElement(id, "task", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	startEvent(id?: string, options?: StartEventOptions): this {
@@ -1074,16 +1080,22 @@ export class SubProcessContentBuilder {
 	}
 
 	sendTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "sendTask", options))
+		const el = makeFlowElement(id, "sendTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	receiveTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "receiveTask", options))
+		const el = makeFlowElement(id, "receiveTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "task", options))
+		const el = makeFlowElement(id, "task", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	// ---- Gateways ----
@@ -1443,6 +1455,7 @@ export class ProcessBuilder {
 		this.lastNodeId = savedLast
 		this.currentGatewayId = savedGateway
 		this.openBranchEnds = savedOpenEnds
+		this._savedMainFlowId = undefined
 
 		return this
 	}

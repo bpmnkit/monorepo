@@ -3116,7 +3116,9 @@ describe("compensation", () => {
 		const process = defs.processes[0]!
 		// Main flow: start → BookHotel → CompThrow → end
 		const flows = process.sequenceFlows
-		expect(flows.find((f) => f.sourceRef === "BookHotel" && f.targetRef === "CompThrow")).toBeDefined()
+		expect(
+			flows.find((f) => f.sourceRef === "BookHotel" && f.targetRef === "CompThrow"),
+		).toBeDefined()
 		expect(flows.find((f) => f.sourceRef === "CompThrow" && f.targetRef === "end")).toBeDefined()
 	})
 
@@ -3169,5 +3171,132 @@ describe("compensation", () => {
 		expect(xml2).toContain("compensateEventDefinition")
 		expect(xml2).toContain("isForCompensation")
 		expect(xml2).toContain('activityRef="BookHotel"')
+	})
+})
+
+describe("BranchBuilder — isForCompensation forwarding (C1)", () => {
+	it("sendTask with isForCompensation:true in a branch produces isForCompensation on the element", () => {
+		const p = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.parallelGateway("split")
+				.branch("A", (b) => b.sendTask("send-comp", { isForCompensation: true }).connectTo("join"))
+				.branch("B", (b) => b.task("other", {}).connectTo("join"))
+				.parallelGateway("join")
+				.endEvent("end")
+				.build(),
+		)
+		const el = defined(p.flowElements.find((e) => e.id === "send-comp"))
+		expect(el.isForCompensation).toBe(true)
+	})
+
+	it("receiveTask with isForCompensation:true in a branch produces isForCompensation on the element", () => {
+		const p = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.parallelGateway("split")
+				.branch("A", (b) =>
+					b.receiveTask("recv-comp", { isForCompensation: true }).connectTo("join"),
+				)
+				.branch("B", (b) => b.task("other", {}).connectTo("join"))
+				.parallelGateway("join")
+				.endEvent("end")
+				.build(),
+		)
+		const el = defined(p.flowElements.find((e) => e.id === "recv-comp"))
+		expect(el.isForCompensation).toBe(true)
+	})
+
+	it("task with isForCompensation:true in a branch produces isForCompensation on the element", () => {
+		const p = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.parallelGateway("split")
+				.branch("A", (b) => b.task("task-comp", { isForCompensation: true }).connectTo("join"))
+				.branch("B", (b) => b.task("other", {}).connectTo("join"))
+				.parallelGateway("join")
+				.endEvent("end")
+				.build(),
+		)
+		const el = defined(p.flowElements.find((e) => e.id === "task-comp"))
+		expect(el.isForCompensation).toBe(true)
+	})
+})
+
+describe("SubProcessContentBuilder — isForCompensation forwarding (C2)", () => {
+	it("sendTask with isForCompensation:true inside a subProcess produces isForCompensation on the element", () => {
+		const p = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.subProcess("sub", (b) => {
+					b.startEvent("sub-start")
+						.sendTask("send-comp", { isForCompensation: true })
+						.endEvent("sub-end")
+				})
+				.endEvent("end")
+				.build(),
+		)
+		const sub = defined(p.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		const el = defined(sub.flowElements.find((e) => e.id === "send-comp"))
+		expect(el.isForCompensation).toBe(true)
+	})
+
+	it("receiveTask with isForCompensation:true inside a subProcess produces isForCompensation on the element", () => {
+		const p = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.subProcess("sub", (b) => {
+					b.startEvent("sub-start")
+						.receiveTask("recv-comp", { isForCompensation: true })
+						.endEvent("sub-end")
+				})
+				.endEvent("end")
+				.build(),
+		)
+		const sub = defined(p.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		const el = defined(sub.flowElements.find((e) => e.id === "recv-comp"))
+		expect(el.isForCompensation).toBe(true)
+	})
+
+	it("task with isForCompensation:true inside a subProcess produces isForCompensation on the element", () => {
+		const p = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.subProcess("sub", (b) => {
+					b.startEvent("sub-start")
+						.task("task-comp", { isForCompensation: true })
+						.endEvent("sub-end")
+				})
+				.endEvent("end")
+				.build(),
+		)
+		const sub = defined(p.flowElements.find((e) => e.id === "sub"))
+		if (sub.type !== "subProcess") throw new Error("expected subProcess")
+		const el = defined(sub.flowElements.find((e) => e.id === "task-comp"))
+		expect(el.isForCompensation).toBe(true)
+	})
+})
+
+describe("withBoundary — _savedMainFlowId cleanup (C3)", () => {
+	it("element added after withBoundary(compensation) connects correctly to main flow", () => {
+		const p = firstProcess(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.serviceTask("Book", { name: "Book", taskType: "book" })
+				.withBoundary("comp-boundary", { compensation: true }, (b) =>
+					b.serviceTask("Cancel", { name: "Cancel", taskType: "cancel", isForCompensation: true }),
+				)
+				.serviceTask("Confirm", { name: "Confirm", taskType: "confirm" })
+				.endEvent("end")
+				.build(),
+		)
+		const flows = p.sequenceFlows
+		// Main flow: Book → Confirm → end (not Book → Cancel or comp-boundary → Confirm)
+		expect(flows.find((f) => f.sourceRef === "Book" && f.targetRef === "Confirm")).toBeDefined()
+		expect(flows.find((f) => f.sourceRef === "Confirm" && f.targetRef === "end")).toBeDefined()
+		// Compensation handler must not be in main sequence flow
+		expect(flows.find((f) => f.targetRef === "Cancel")).toBeUndefined()
 	})
 })
