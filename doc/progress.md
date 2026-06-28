@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-06-28 — Builder: abstract `.task()` method
+
+Added `.task(id, options?)` to `ProcessBuilder`, `BranchBuilder`, and `SubProcessContentBuilder`. Emits a plain `<bpmn:task>` with no Zeebe extension elements — the correct BPMN element for documentation-grade / overview diagrams where the task type is unspecified. Resolves issue #109.
+
 ## 2026-06-26 — feat(core): fluent text annotation API + annotation DI in auto-layout
 
 Closed two gaps in `@bpmnkit/core`'s process builder:
