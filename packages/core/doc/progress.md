@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-06-28 — Builder: emit root declarations for all event name/code refs
+
+All event positions (`intermediateThrowEvent`, `intermediateCatchEvent`, `boundaryEvent`, `endEvent`, `startEvent`) now consistently emit root `<bpmn:signal>`, `<bpmn:message>`, `<bpmn:escalation>`, and `<bpmn:error>` elements under `<bpmn:definitions>` whenever a name/code ref option is set. Previously, intermediate and boundary events wrote the raw name/code string directly into `signalRef`/`messageRef`/`escalationRef`, producing dangling references rejected by `bpmnlint` and Camunda 8. Roots are de-duplicated: two events sharing the same `signalName` resolve to one `<bpmn:signal>` element. The `errorRef` option now creates a root error element (consistent with `errorCode`).
+
 ## 2026-06-26 — Builder: emit `<zeebe:userTask />` marker
 
 Added `zeebeUserTask?: boolean` option to `UserTaskOptions`. When `true`, the builder emits `<zeebe:userTask />` inside `<bpmn:extensionElements>`, marking the task as a Camunda 8 native user task. Compatible with `formId`; `<zeebe:userTask />` appears before `<zeebe:formDefinition />`.
