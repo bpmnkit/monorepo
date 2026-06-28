@@ -1819,6 +1819,7 @@ export class ProcessBuilder {
 		if (this.flowElements.some((n) => n.id === element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}" in process "${this.processId}"`)
 		}
+		this._savedMainFlowId = undefined
 		this.flowElements.push(element)
 		return this
 	}

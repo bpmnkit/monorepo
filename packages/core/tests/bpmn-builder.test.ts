@@ -885,6 +885,46 @@ describe("BpmnProcessBuilder", () => {
 
 			expect(xml).not.toContain("isInterrupting")
 		})
+
+		it("throws on duplicate ID in eventSubProcess", () => {
+			expect(() =>
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.eventSubProcess("s", (sub) => {
+						sub.startEvent("t-start").endEvent("t-end")
+					})
+					.build(),
+			).toThrow('Duplicate element ID "s"')
+		})
+
+		it("does not consume openBranchEnds — next element drains them", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.exclusiveGateway("gw")
+					.branch("a", (b) =>
+						b.serviceTask("t1", { name: "T1", taskType: "t1" }).connectTo("merge"),
+					)
+					.branch("b", (b) =>
+						b.serviceTask("t2", { name: "T2", taskType: "t2" }).connectTo("merge"),
+					)
+					.exclusiveGateway("merge")
+					.eventSubProcess("esp", (sub) => {
+						sub.startEvent("esp-start", { timerDuration: "PT1H" }).endEvent("esp-end")
+					})
+					.endEvent("e")
+					.build(),
+			)
+
+			// both branch ends connect to "merge", not to "esp"
+			const flows = process.sequenceFlows
+			expect(flows.some((f) => f.targetRef === "merge" && f.sourceRef === "t1")).toBe(true)
+			expect(flows.some((f) => f.targetRef === "merge" && f.sourceRef === "t2")).toBe(true)
+			// merge connects to e (the element added after eventSubProcess)
+			expect(flows.some((f) => f.sourceRef === "merge" && f.targetRef === "e")).toBe(true)
+			// no flow references esp
+			expect(flows.every((f) => f.sourceRef !== "esp" && f.targetRef !== "esp")).toBe(true)
+		})
 	})
 
 	// -----------------------------------------------------------------------
