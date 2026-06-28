@@ -36,6 +36,7 @@ const EXPORTER_VERSION = "0.0.23"
 /** Options shared by all element methods. */
 export interface ElementOptions {
 	name?: string
+	isForCompensation?: boolean
 }
 
 /** Options for creating a start event. */
@@ -79,6 +80,8 @@ export interface ServiceTaskOptions {
 	modelerTemplateVersion?: string
 	/** Zeebe modeler template icon (data URI). */
 	modelerTemplateIcon?: string
+	/** Mark this task as a compensation handler. */
+	isForCompensation?: boolean
 }
 
 /** Options for creating a script task. */
@@ -89,6 +92,8 @@ export interface ScriptTaskOptions {
 	expression: string
 	/** Variable name to store the result. */
 	resultVariable: string
+	/** Mark this task as a compensation handler. */
+	isForCompensation?: boolean
 }
 
 /** Options for creating a user task. */
@@ -99,6 +104,8 @@ export interface UserTaskOptions {
 	formId?: string
 	/** Emit <zeebe:userTask /> to mark as a Camunda 8 native user task. */
 	zeebeUserTask?: boolean
+	/** Mark this task as a compensation handler. */
+	isForCompensation?: boolean
 }
 
 /** Options for creating a call activity. */
@@ -109,6 +116,8 @@ export interface CallActivityOptions {
 	processId: string
 	/** Whether to propagate all child variables. */
 	propagateAllChildVariables?: boolean
+	/** Mark this activity as a compensation handler. */
+	isForCompensation?: boolean
 }
 
 /** Options for creating a business rule task. */
@@ -121,6 +130,8 @@ export interface BusinessRuleTaskOptions {
 	decisionId?: string
 	/** Variable to store the result. */
 	resultVariable?: string
+	/** Mark this task as a compensation handler. */
+	isForCompensation?: boolean
 }
 
 /** Options for gateway elements. */
@@ -151,6 +162,10 @@ export interface IntermediateThrowEventOptions extends ElementOptions {
 	signalName?: string
 	/** Escalation code — creates an escalation throw event (aspirational). */
 	escalationCode?: string
+	/** Emit a compensateEventDefinition. */
+	compensation?: boolean
+	/** Activity to compensate (activityRef attribute on compensateEventDefinition). */
+	activityRef?: string
 }
 
 /** Options for an end event. */
@@ -187,6 +202,8 @@ export interface BoundaryEventOptions extends ElementOptions {
 	messageName?: string
 	/** Signal name — creates a signal boundary event (aspirational). */
 	signalName?: string
+	/** Creates a compensation boundary event. */
+	compensation?: boolean
 }
 
 /** Multi-instance loop configuration. */
@@ -249,6 +266,8 @@ function buildEventDefinitions(
 		messageName?: string
 		signalName?: string
 		escalationCode?: string
+		compensation?: boolean
+		activityRef?: string
 	},
 	rootErrors?: BpmnError[],
 	rootMessages?: BpmnMessage[],
@@ -318,6 +337,9 @@ function buildEventDefinitions(
 			escalationRef = existing.id
 		}
 		defs.push({ type: "escalation", escalationRef })
+	}
+	if (opts.compensation) {
+		defs.push({ type: "compensate", activityRef: opts.activityRef })
 	}
 	return defs
 }
@@ -509,11 +531,12 @@ function makeServiceTaskEl(id: string, options: ServiceTaskOptions): BpmnFlowEle
 		extensionElements: buildServiceTaskExtensions(options),
 	})
 	el.unknownAttributes = unknownAttributes
+	if (options.isForCompensation) el.isForCompensation = true
 	return el
 }
 
 function makeScriptTaskEl(id: string, options: ScriptTaskOptions): BpmnFlowElement {
-	return makeFlowElement(id, "scriptTask", {
+	const el = makeFlowElement(id, "scriptTask", {
 		name: options.name,
 		extensionElements: zeebeExtensionsToXmlElements({
 			unknownElements: [
@@ -525,6 +548,8 @@ function makeScriptTaskEl(id: string, options: ScriptTaskOptions): BpmnFlowEleme
 			],
 		}),
 	})
+	if (options.isForCompensation) el.isForCompensation = true
+	return el
 }
 
 function makeUserTaskEl(id: string, options?: UserTaskOptions): BpmnFlowElement {
@@ -532,7 +557,9 @@ function makeUserTaskEl(id: string, options?: UserTaskOptions): BpmnFlowElement 
 		...(options?.zeebeUserTask ? { userTask: true } : {}),
 		...(options?.formId ? { formDefinition: { formId: options.formId } } : {}),
 	})
-	return makeFlowElement(id, "userTask", { name: options?.name, extensionElements: ext })
+	const el = makeFlowElement(id, "userTask", { name: options?.name, extensionElements: ext })
+	if (options?.isForCompensation) el.isForCompensation = true
+	return el
 }
 
 function makeBusinessRuleTaskEl(id: string, options?: BusinessRuleTaskOptions): BpmnFlowElement {
@@ -550,7 +577,12 @@ function makeBusinessRuleTaskEl(id: string, options?: BusinessRuleTaskOptions): 
 			}),
 		)
 	}
-	return makeFlowElement(id, "businessRuleTask", { name: options?.name, extensionElements: ext })
+	const el = makeFlowElement(id, "businessRuleTask", {
+		name: options?.name,
+		extensionElements: ext,
+	})
+	if (options?.isForCompensation) el.isForCompensation = true
+	return el
 }
 
 function makeCallActivityEl(id: string, options: CallActivityOptions): BpmnFlowElement {
@@ -558,12 +590,14 @@ function makeCallActivityEl(id: string, options: CallActivityOptions): BpmnFlowE
 	if (options.propagateAllChildVariables !== undefined) {
 		attrs.propagateAllChildVariables = String(options.propagateAllChildVariables)
 	}
-	return makeFlowElement(id, "callActivity", {
+	const el = makeFlowElement(id, "callActivity", {
 		name: options.name,
 		extensionElements: zeebeExtensionsToXmlElements({
 			unknownElements: [{ name: "zeebe:calledElement", attributes: attrs, children: [] }],
 		}),
 	})
+	if (options.isForCompensation) el.isForCompensation = true
+	return el
 }
 
 function makeExclusiveGatewayEl(id: string, options?: GatewayOptions): BpmnFlowElement {
@@ -833,11 +867,15 @@ export class BranchBuilder {
 	}
 
 	sendTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "sendTask", options))
+		const el = makeFlowElement(id, "sendTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	receiveTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "receiveTask", options))
+		const el = makeFlowElement(id, "receiveTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	businessRuleTask(id: string, options?: BusinessRuleTaskOptions): this {
@@ -850,7 +888,9 @@ export class BranchBuilder {
 
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "task", options))
+		const el = makeFlowElement(id, "task", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	startEvent(id?: string, options?: StartEventOptions): this {
@@ -1040,16 +1080,22 @@ export class SubProcessContentBuilder {
 	}
 
 	sendTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "sendTask", options))
+		const el = makeFlowElement(id, "sendTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	receiveTask(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "receiveTask", options))
+		const el = makeFlowElement(id, "receiveTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
-		return this.addElement(makeFlowElement(id, "task", options))
+		const el = makeFlowElement(id, "task", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
 	}
 
 	// ---- Gateways ----
@@ -1186,6 +1232,7 @@ export class ProcessBuilder {
 	private _autoLayout = false
 	private _executionPlatformVersion = "8.9.0"
 	private _serviceTaskDefaults: { retries?: string } = {}
+	private _savedMainFlowId: string | undefined = undefined
 
 	constructor(processId: string) {
 		this.processId = processId
@@ -1363,6 +1410,11 @@ export class ProcessBuilder {
 		const prevLast = this.lastNodeId
 		this.lastNodeId = undefined
 		this.addFlowElement(element)
+		// For compensation boundary events, save the main-flow cursor AFTER addFlowElement
+		// so subsequent normal elements don't accidentally clear it before it's consumed.
+		if (options.compensation) {
+			this._savedMainFlowId = prevLast
+		}
 		// Don't restore prevLast — the builder now chains from the boundary event
 		void prevLast
 		return this
@@ -1403,6 +1455,7 @@ export class ProcessBuilder {
 		this.lastNodeId = savedLast
 		this.currentGatewayId = savedGateway
 		this.openBranchEnds = savedOpenEnds
+		this._savedMainFlowId = undefined
 
 		return this
 	}
@@ -1463,13 +1516,17 @@ export class ProcessBuilder {
 
 	/** Add a send task (aspirational). */
 	sendTask(id: string, options?: ElementOptions): this {
-		this.addFlowElement(makeFlowElement(id, "sendTask", options))
+		const el = makeFlowElement(id, "sendTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		this.addFlowElement(el)
 		return this
 	}
 
 	/** Add a receive task (aspirational). */
 	receiveTask(id: string, options?: ElementOptions): this {
-		this.addFlowElement(makeFlowElement(id, "receiveTask", options))
+		const el = makeFlowElement(id, "receiveTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		this.addFlowElement(el)
 		return this
 	}
 
@@ -1487,7 +1544,9 @@ export class ProcessBuilder {
 
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
-		this.addFlowElement(makeFlowElement(id, "task", options))
+		const el = makeFlowElement(id, "task", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		this.addFlowElement(el)
 		return this
 	}
 
@@ -1883,6 +1942,25 @@ export class ProcessBuilder {
 
 		this.flowElements.push(element)
 
+		// Compensation handlers are outside the normal token flow: link via association
+		// from the preceding compensation boundary event, then restore the main-flow cursor.
+		if (element.isForCompensation) {
+			if (this.lastNodeId) {
+				this._associations.push({
+					id: generateId("Association"),
+					sourceRef: this.lastNodeId,
+					targetRef: element.id,
+					associationDirection: "One",
+					unknownAttributes: {},
+				})
+			}
+			// Restore main-flow cursor (saved by boundaryEvent() when compensation: true)
+			this.lastNodeId = this._savedMainFlowId
+			this._savedMainFlowId = undefined
+			// Do NOT connect open branch ends — handler is outside normal flow
+			return
+		}
+
 		if (this.lastNodeId) {
 			const flowId = generateId("Flow")
 			this.sequenceFlows.push({
@@ -1907,6 +1985,9 @@ export class ProcessBuilder {
 		}
 		this.openBranchEnds = []
 
+		// Clear any saved compensation cursor — a normal element advancing the cursor
+		// means the compensation boundary/handler pattern has been interrupted.
+		this._savedMainFlowId = undefined
 		this.lastNodeId = element.id
 	}
 }

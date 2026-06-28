@@ -76,6 +76,7 @@ const KNOWN_ATTRS = new Set([
 	"default",
 	"attachedToRef",
 	"cancelActivity",
+	"isForCompensation",
 	"sourceRef",
 	"targetRef",
 	"associationDirection",
@@ -340,7 +341,12 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 		case "businessRuleTask":
 		case "manualTask":
 		case "callActivity":
-			return { ...base, type: ln, loopCharacteristics: parseLoopCharacteristics(element) }
+			return {
+				...base,
+				type: ln,
+				loopCharacteristics: parseLoopCharacteristics(element),
+				isForCompensation: attr(element, "isForCompensation") === "true" ? true : undefined,
+			}
 
 		case "adHocSubProcess":
 			return {

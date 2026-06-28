@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-06-28
+
+- **Compensation support in ProcessBuilder** (`@bpmnkit/core`):
+  - `BoundaryEventOptions` now accepts `compensation: true` — emits `<bpmn:compensateEventDefinition/>`.
+  - `IntermediateThrowEventOptions` now accepts `compensation: true` and optional `activityRef` — emits `<bpmn:compensateEventDefinition activityRef="..."/>`.
+  - `ServiceTaskOptions` (and all other task option interfaces) now accept `isForCompensation: true` — serializes `isForCompensation="true"` on the activity XML element.
+  - Compensation handler activities are automatically linked to their compensation boundary event via `<bpmn:association>` (not a `<bpmn:sequenceFlow>`).
+  - Handler activities carry no incoming/outgoing sequence flows (outside normal token flow).
+  - The main-flow cursor is automatically restored after adding a compensation handler.
+  - All three constructs survive `Bpmn.parse()` → `Bpmn.export()` round-trip.
+
 ## 2026-06-28 — Builder: abstract `.task()` method
 
 Added `.task(id, options?)` to `ProcessBuilder`, `BranchBuilder`, and `SubProcessContentBuilder`. Emits a plain `<bpmn:task>` with no Zeebe extension elements — the correct BPMN element for documentation-grade / overview diagrams where the task type is unspecified. Resolves issue #109.
