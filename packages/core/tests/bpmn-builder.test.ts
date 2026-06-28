@@ -3018,3 +3018,156 @@ describe("compensation — isForCompensation serialization", () => {
 		expect(xml2).toContain('isForCompensation="true"')
 	})
 })
+
+describe("compensation", () => {
+	it("boundary event with compensation: true emits compensateEventDefinition", () => {
+		const xml = Bpmn.export(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.serviceTask("BookHotel", { name: "Book Hotel", taskType: "book-hotel" })
+				.boundaryEvent("CompBoundary", { attachedTo: "BookHotel", compensation: true })
+				.endEvent("end")
+				.build(),
+		)
+		expect(xml).toContain("compensateEventDefinition")
+		expect(xml).toContain('id="CompBoundary"')
+	})
+
+	it("intermediateThrowEvent with compensation: true emits compensateEventDefinition", () => {
+		const xml = Bpmn.export(
+			Bpmn.createProcess("proc")
+				.startEvent("start")
+				.intermediateThrowEvent("CompThrow", {
+					name: "Compensate",
+					compensation: true,
+					activityRef: "BookHotel",
+				})
+				.endEvent("end")
+				.build(),
+		)
+		expect(xml).toContain("compensateEventDefinition")
+		expect(xml).toContain('activityRef="BookHotel"')
+	})
+
+	it("compensation handler is linked by association, not sequence flow", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("start")
+			.serviceTask("BookHotel", { name: "Book Hotel", taskType: "book-hotel" })
+			.boundaryEvent("CompBoundary", { attachedTo: "BookHotel", compensation: true })
+			.serviceTask("CancelHotel", {
+				name: "Cancel Hotel",
+				taskType: "cancel-hotel",
+				isForCompensation: true,
+			})
+			.intermediateThrowEvent("CompThrow", { name: "Compensate", compensation: true })
+			.endEvent("end")
+			.build()
+
+		const process = defs.processes[0]!
+		const xml = Bpmn.export(defs)
+
+		// No sequence flow from CompBoundary to CancelHotel
+		expect(xml).not.toMatch(/sourceRef="CompBoundary"[^>]*?sequenceFlow/)
+		expect(xml).not.toMatch(/sequenceFlow[^>]*?sourceRef="CompBoundary"/)
+
+		// Association exists from CompBoundary to CancelHotel
+		const assoc = process.associations.find(
+			(a) => a.sourceRef === "CompBoundary" && a.targetRef === "CancelHotel",
+		)
+		expect(assoc).toBeDefined()
+		expect(xml).toContain("<bpmn:association")
+		expect(xml).toContain('sourceRef="CompBoundary"')
+		expect(xml).toContain('targetRef="CancelHotel"')
+	})
+
+	it("compensation handler has no incoming/outgoing sequence flows", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("start")
+			.serviceTask("BookHotel", { name: "Book Hotel", taskType: "book-hotel" })
+			.boundaryEvent("CompBoundary", { attachedTo: "BookHotel", compensation: true })
+			.serviceTask("CancelHotel", {
+				name: "Cancel Hotel",
+				taskType: "cancel-hotel",
+				isForCompensation: true,
+			})
+			.endEvent("end")
+			.build()
+
+		const process = defs.processes[0]!
+		const handler = process.flowElements.find((e) => e.id === "CancelHotel")!
+		expect(handler.incoming).toHaveLength(0)
+		expect(handler.outgoing).toHaveLength(0)
+	})
+
+	it("main flow continues normally after adding compensation handler", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("start")
+			.serviceTask("BookHotel", { name: "Book Hotel", taskType: "book-hotel" })
+			.boundaryEvent("CompBoundary", { attachedTo: "BookHotel", compensation: true })
+			.serviceTask("CancelHotel", {
+				name: "Cancel Hotel",
+				taskType: "cancel-hotel",
+				isForCompensation: true,
+			})
+			.intermediateThrowEvent("CompThrow", { name: "Compensate", compensation: true })
+			.endEvent("end")
+			.build()
+
+		const process = defs.processes[0]!
+		// Main flow: start → BookHotel → CompThrow → end
+		const flows = process.sequenceFlows
+		expect(flows.find((f) => f.sourceRef === "BookHotel" && f.targetRef === "CompThrow")).toBeDefined()
+		expect(flows.find((f) => f.sourceRef === "CompThrow" && f.targetRef === "end")).toBeDefined()
+	})
+
+	it("reproduction script: all three contains checks pass", () => {
+		const builder = Bpmn.createProcess("trip-booking").name("Trip Booking")
+		builder
+			.startEvent("start", { name: "Start" })
+			.serviceTask("BookHotel", { name: "Book Hotel", taskType: "book-hotel" })
+		builder.boundaryEvent("CompBoundary", { attachedTo: "BookHotel", compensation: true })
+		builder.serviceTask("CancelHotel", {
+			name: "Cancel Hotel",
+			taskType: "cancel-hotel",
+			isForCompensation: true,
+		})
+		builder.intermediateThrowEvent("CompThrow", {
+			name: "Compensate",
+			compensation: true,
+			activityRef: "BookHotel",
+		})
+		const defs = builder.endEvent("end", { name: "End" }).build()
+		const xml = Bpmn.export(defs)
+
+		expect(xml).toContain("compensateEventDefinition")
+		expect(xml).toContain("isForCompensation")
+		expect(xml).toContain("activityRef")
+		// Association, not sequence flow, links boundary to handler
+		expect(xml).toContain("<bpmn:association")
+		expect(xml).not.toMatch(/sequenceFlow[^>]*sourceRef="CompBoundary"/)
+		expect(xml).not.toMatch(/sequenceFlow[^>]*targetRef="CancelHotel"/)
+	})
+
+	it("round-trips compensation constructs through parse → export", () => {
+		const builder = Bpmn.createProcess("comp-proc")
+		builder
+			.startEvent("start")
+			.serviceTask("BookHotel", { name: "Book Hotel", taskType: "book-hotel" })
+		builder.boundaryEvent("CompBoundary", { attachedTo: "BookHotel", compensation: true })
+		builder.serviceTask("CancelHotel", {
+			name: "Cancel Hotel",
+			taskType: "cancel-hotel",
+			isForCompensation: true,
+		})
+		builder.intermediateThrowEvent("CompThrow", {
+			compensation: true,
+			activityRef: "BookHotel",
+		})
+		const xml1 = Bpmn.export(builder.endEvent("end").build())
+		const xml2 = Bpmn.export(Bpmn.parse(xml1))
+
+		expect(xml2).toContain("compensateEventDefinition")
+		expect(xml2).toContain("isForCompensation")
+		expect(xml2).toContain('activityRef="BookHotel"')
+	})
+})
