@@ -2347,6 +2347,76 @@ describe("BpmnProcessBuilder", () => {
 			// No auto-join needed since branches go to different targets
 			expect(process.flowElements.find((e) => e.id === "gw_join")).toBeUndefined()
 		})
+
+		it("inserts an exclusiveGateway join (not eventBasedGateway) when eventBasedGateway branches converge", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.eventBasedGateway("wait", { name: "Wait for response" })
+					.branch("msg", (b) =>
+						b
+							.intermediateCatchEvent("onMessage", {
+								name: "Message received",
+								messageName: "ResponseMessage",
+							})
+							.connectTo("converge"),
+					)
+					.branch("timer", (b) =>
+						b
+							.intermediateCatchEvent("onTimeout", {
+								name: "Timeout",
+								timerDuration: "PT1H",
+							})
+							.connectTo("converge"),
+					)
+					.serviceTask("converge", { name: "Handle outcome", taskType: "handle" })
+					.endEvent("end")
+					.build(),
+			)
+
+			const join = process.flowElements.find((e) => e.id === "wait_join")
+			expect(join).toBeDefined()
+			// Must NOT be eventBasedGateway — that is illegal BPMN (split-only type)
+			expect(join?.type).not.toBe("eventBasedGateway")
+			// Must be exclusiveGateway — event-based branches are mutually exclusive
+			expect(join?.type).toBe("exclusiveGateway")
+
+			// Both catch events should flow into the join
+			expect(
+				process.sequenceFlows.some(
+					(f) => f.sourceRef === "onMessage" && f.targetRef === "wait_join",
+				),
+			).toBe(true)
+			expect(
+				process.sequenceFlows.some(
+					(f) => f.sourceRef === "onTimeout" && f.targetRef === "wait_join",
+				),
+			).toBe(true)
+
+			// Join flows to converge task
+			expect(
+				process.sequenceFlows.some(
+					(f) => f.sourceRef === "wait_join" && f.targetRef === "converge",
+				),
+			).toBe(true)
+		})
+
+		it("still inserts parallelGateway join for parallelGateway splits (regression)", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.parallelGateway("split")
+					.branch("a", (b) => b.serviceTask("ta", { name: "A", taskType: "x" }).connectTo("merge"))
+					.branch("b", (b) => b.serviceTask("tb", { name: "B", taskType: "y" }).connectTo("merge"))
+					.serviceTask("merge", { name: "After", taskType: "z" })
+					.endEvent("end")
+					.build(),
+			)
+
+			const join = process.flowElements.find((e) => e.id === "split_join")
+			expect(join).toBeDefined()
+			expect(join?.type).toBe("parallelGateway")
+		})
 	})
 })
 

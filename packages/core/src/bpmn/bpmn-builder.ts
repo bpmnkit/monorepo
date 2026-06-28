@@ -664,13 +664,16 @@ function insertJoinGateways(elements: BpmnFlowElement[], flows: BpmnSequenceFlow
 			if (convergingFlows.length < 2) continue
 			const gwType = elementTypes.get(splitId)
 			if (!gwType) continue
+			// eventBasedGateway is split-only; converge through an XOR join instead
+			const joinType: BpmnElementType =
+				gwType === "eventBasedGateway" ? "exclusiveGateway" : (gwType as BpmnElementType)
 			const targetType = elementTypes.get(targetId)
-			if (targetType === gwType) continue
+			if (targetType === joinType) continue
 			const joinId = `${splitId}_join`
 			if (elementTypes.has(joinId)) continue
-			const joinElement = makeFlowElement(joinId, gwType as BpmnElementType, {})
+			const joinElement = makeFlowElement(joinId, joinType, {})
 			elements.push(joinElement)
-			elementTypes.set(joinId, gwType)
+			elementTypes.set(joinId, joinType)
 			for (const flow of convergingFlows) flow.targetRef = joinId
 			flows.push({
 				id: generateId("Flow"),

@@ -1,5 +1,9 @@
 # Progress
 
+## [0.0.24+] Fix illegal eventBasedGateway join (2026-06-28)
+
+`insertJoinGateways()` now maps `eventBasedGateway` splits to an `exclusiveGateway` join instead of mirroring the split type. Event-based gateways are split-only constructs; the XOR join is semantically correct because exactly one branch fires.
+
 ## 2026-06-28 — Builder: emit root declarations for all event name/code refs
 
 All event positions (`intermediateThrowEvent`, `intermediateCatchEvent`, `boundaryEvent`, `endEvent`, `startEvent`) now consistently emit root `<bpmn:signal>`, `<bpmn:message>`, `<bpmn:escalation>`, and `<bpmn:error>` elements under `<bpmn:definitions>` whenever a name/code ref option is set. Previously, intermediate and boundary events wrote the raw name/code string directly into `signalRef`/`messageRef`/`escalationRef`, producing dangling references rejected by `bpmnlint` and Camunda 8. Roots are de-duplicated: two events sharing the same `signalName` resolve to one `<bpmn:signal>` element. The `errorRef` option now creates a root error element (consistent with `errorCode`).
