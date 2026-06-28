@@ -279,6 +279,61 @@ describe("BpmnProcessBuilder", () => {
 			expect(el.name).toBe("Wait for Message")
 		})
 
+		it("creates an abstract task with no extension elements", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc").task("t1", { name: "Phase 1" }).build(),
+			)
+
+			const el = defined(process.flowElements.find((n) => n.id === "t1"))
+			expect(el.type).toBe("task")
+			expect(el.name).toBe("Phase 1")
+			expect(el.extensionElements).toHaveLength(0)
+		})
+
+		it("creates an abstract task with no options", () => {
+			const process = firstProcess(Bpmn.createProcess("proc").task("t2").build())
+
+			const el = defined(process.flowElements.find((n) => n.id === "t2"))
+			expect(el.type).toBe("task")
+			expect(el.name).toBeUndefined()
+			expect(el.extensionElements).toHaveLength(0)
+		})
+
+		it("abstract task round-trips through export → parse unchanged", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.task("t1", { name: "Phase 1" })
+				.endEvent("e")
+				.build()
+
+			const xml = Bpmn.export(defs)
+			const parsed = Bpmn.parse(xml)
+
+			const el = defined(parsed.processes[0]?.flowElements.find((n) => n.id === "t1"))
+			expect(el.type).toBe("task")
+			expect(el.name).toBe("Phase 1")
+			expect(el.extensionElements).toHaveLength(0)
+			// No <zeebe:*> leakage
+			expect(xml).not.toContain("zeebe:taskDefinition")
+			expect(xml).toContain('<bpmn:task id="t1"')
+		})
+
+		it("abstract task works in a branch", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.exclusiveGateway("gw")
+					.branch("A", (b) => b.task("t-a", { name: "Path A" }).connectTo("merge"))
+					.branch("B", (b) => b.task("t-b", { name: "Path B" }).connectTo("merge"))
+					.exclusiveGateway("merge")
+					.build(),
+			)
+
+			const ta = defined(process.flowElements.find((n) => n.id === "t-a"))
+			const tb = defined(process.flowElements.find((n) => n.id === "t-b"))
+			expect(ta.type).toBe("task")
+			expect(tb.type).toBe("task")
+		})
+
 		it("creates a business rule task with decision reference", () => {
 			const process = firstProcess(
 				Bpmn.createProcess("proc")

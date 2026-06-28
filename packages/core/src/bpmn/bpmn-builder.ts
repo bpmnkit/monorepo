@@ -798,6 +798,11 @@ export class BranchBuilder {
 		return this.addElement(makeCallActivityEl(id, options))
 	}
 
+	/** Add an abstract task with no Zeebe extensions. */
+	task(id: string, options?: ElementOptions): this {
+		return this.addElement(makeFlowElement(id, "task", options))
+	}
+
 	startEvent(id?: string, options?: StartEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("StartEvent"), "startEvent", options)
 		if (
@@ -969,6 +974,11 @@ export class SubProcessContentBuilder {
 
 	receiveTask(id: string, options?: ElementOptions): this {
 		return this.addElement(makeFlowElement(id, "receiveTask", options))
+	}
+
+	/** Add an abstract task with no Zeebe extensions. */
+	task(id: string, options?: ElementOptions): this {
+		return this.addElement(makeFlowElement(id, "task", options))
 	}
 
 	// ---- Gateways ----
@@ -1369,6 +1379,12 @@ export class ProcessBuilder {
 	/** Add a call activity referencing another process. */
 	callActivity(id: string, options: CallActivityOptions): this {
 		this.addFlowElement(makeCallActivityEl(id, options))
+		return this
+	}
+
+	/** Add an abstract task with no Zeebe extensions. */
+	task(id: string, options?: ElementOptions): this {
+		this.addFlowElement(makeFlowElement(id, "task", options))
 		return this
 	}
 
