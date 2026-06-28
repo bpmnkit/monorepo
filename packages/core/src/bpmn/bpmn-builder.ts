@@ -1805,6 +1805,8 @@ export class ProcessBuilder {
 
 		// Event sub-processes have no incoming/outgoing sequence flows and must not
 		// advance the flow cursor — the surrounding process wires around them.
+		// openBranchEnds is intentionally NOT drained here; the next normal
+		// addFlowElement call will drain it and connect branch ends to that element.
 		if (this.flowElements.some((n) => n.id === element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}" in process "${this.processId}"`)
 		}
