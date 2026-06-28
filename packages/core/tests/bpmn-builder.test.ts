@@ -1471,59 +1471,293 @@ describe("BpmnProcessBuilder", () => {
 	// -----------------------------------------------------------------------
 
 	describe("event definition values", () => {
-		it("stores messageName as messageRef", () => {
-			const process = firstProcess(
-				Bpmn.createProcess("proc")
-					.startEvent("s")
-					.intermediateThrowEvent("msg", { messageName: "order-placed" })
-					.endEvent("e")
-					.build(),
-			)
+		it("intermediateThrowEvent messageName emits root message and sets messageRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateThrowEvent("msg", { messageName: "order-placed" })
+				.endEvent("e")
+				.build()
 
-			const ite = defined(process.flowElements.find((n) => n.id === "msg"))
-			if (ite.type === "intermediateThrowEvent") {
-				const def = defined(ite.eventDefinitions[0])
-				expect(def.type).toBe("message")
-				if (def.type === "message") {
-					expect(def.messageRef).toBe("order-placed")
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("order-placed")
+
+			const ite = defs.processes[0]?.flowElements.find((n) => n.id === "msg")
+			if (ite?.type === "intermediateThrowEvent") {
+				const def = ite.eventDefinitions[0]
+				expect(def?.type).toBe("message")
+				if (def?.type === "message") {
+					expect(def.messageRef).toBe(rootMsg?.id)
 				}
 			}
 		})
 
-		it("stores signalName as signalRef", () => {
-			const process = firstProcess(
-				Bpmn.createProcess("proc")
-					.startEvent("s")
-					.intermediateCatchEvent("sig", { signalName: "data-ready" })
-					.endEvent("e")
-					.build(),
-			)
+		it("intermediateCatchEvent signalName emits root signal and sets signalRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateCatchEvent("sig", { signalName: "data-ready" })
+				.endEvent("e")
+				.build()
 
-			const ice = defined(process.flowElements.find((n) => n.id === "sig"))
-			if (ice.type === "intermediateCatchEvent") {
-				const def = defined(ice.eventDefinitions[0])
-				expect(def.type).toBe("signal")
-				if (def.type === "signal") {
-					expect(def.signalRef).toBe("data-ready")
+			expect(defs.signals).toHaveLength(1)
+			const rootSig = defs.signals[0]
+			expect(rootSig?.name).toBe("data-ready")
+
+			const ice = defs.processes[0]?.flowElements.find((n) => n.id === "sig")
+			if (ice?.type === "intermediateCatchEvent") {
+				const def = ice.eventDefinitions[0]
+				expect(def?.type).toBe("signal")
+				if (def?.type === "signal") {
+					expect(def.signalRef).toBe(rootSig?.id)
 				}
 			}
 		})
 
-		it("stores escalationCode as escalationRef", () => {
-			const process = firstProcess(
-				Bpmn.createProcess("proc")
-					.startEvent("s")
-					.intermediateThrowEvent("esc", { escalationCode: "ESC_001" })
-					.endEvent("e")
-					.build(),
-			)
+		it("intermediateThrowEvent escalationCode emits root escalation and sets escalationRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateThrowEvent("esc", { escalationCode: "ESC_001" })
+				.endEvent("e")
+				.build()
 
-			const ite = defined(process.flowElements.find((n) => n.id === "esc"))
-			if (ite.type === "intermediateThrowEvent") {
-				const def = defined(ite.eventDefinitions[0])
-				expect(def.type).toBe("escalation")
-				if (def.type === "escalation") {
-					expect(def.escalationRef).toBe("ESC_001")
+			expect(defs.escalations).toHaveLength(1)
+			const rootEsc = defs.escalations[0]
+			expect(rootEsc?.escalationCode).toBe("ESC_001")
+
+			const ite = defs.processes[0]?.flowElements.find((n) => n.id === "esc")
+			if (ite?.type === "intermediateThrowEvent") {
+				const def = ite.eventDefinitions[0]
+				expect(def?.type).toBe("escalation")
+				if (def?.type === "escalation") {
+					expect(def.escalationRef).toBe(rootEsc?.id)
+				}
+			}
+		})
+	})
+
+	// -----------------------------------------------------------------------
+	// Event ref root declarations
+	// -----------------------------------------------------------------------
+
+	describe("event ref root declarations", () => {
+		it("intermediateThrowEvent signalName emits root signal and sets signalRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateThrowEvent("throw", { signalName: "OrderShipped" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.signals).toHaveLength(1)
+			const rootSig = defs.signals[0]
+			expect(rootSig?.name).toBe("OrderShipped")
+
+			const ev = defs.processes[0]?.flowElements.find((n) => n.id === "throw")
+			if (ev?.type === "intermediateThrowEvent") {
+				const def = ev.eventDefinitions[0]
+				expect(def?.type).toBe("signal")
+				if (def?.type === "signal") expect(def.signalRef).toBe(rootSig?.id)
+			}
+		})
+
+		it("intermediateCatchEvent messageName emits root message and sets messageRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateCatchEvent("catch", { messageName: "PaymentConfirmed" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("PaymentConfirmed")
+
+			const ev = defs.processes[0]?.flowElements.find((n) => n.id === "catch")
+			if (ev?.type === "intermediateCatchEvent") {
+				const def = ev.eventDefinitions[0]
+				expect(def?.type).toBe("message")
+				if (def?.type === "message") expect(def.messageRef).toBe(rootMsg?.id)
+			}
+		})
+
+		it("boundaryEvent signalName emits root signal and sets signalRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("task", { name: "T", taskType: "t" })
+				.boundaryEvent("bnd", { attachedTo: "task", signalName: "Cancelled" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.signals).toHaveLength(1)
+			const rootSig = defs.signals[0]
+			expect(rootSig?.name).toBe("Cancelled")
+
+			const ev = defs.processes[0]?.flowElements.find((n) => n.id === "bnd")
+			if (ev?.type === "boundaryEvent") {
+				const def = ev.eventDefinitions[0]
+				expect(def?.type).toBe("signal")
+				if (def?.type === "signal") expect(def.signalRef).toBe(rootSig?.id)
+			}
+		})
+
+		it("boundaryEvent messageName emits root message and sets messageRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("task", { name: "T", taskType: "t" })
+				.boundaryEvent("bnd", { attachedTo: "task", messageName: "Retry" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("Retry")
+
+			const ev = defs.processes[0]?.flowElements.find((n) => n.id === "bnd")
+			if (ev?.type === "boundaryEvent") {
+				const def = ev.eventDefinitions[0]
+				expect(def?.type).toBe("message")
+				if (def?.type === "message") expect(def.messageRef).toBe(rootMsg?.id)
+			}
+		})
+
+		it("boundaryEvent errorRef emits root error and sets errorRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("task", { name: "T", taskType: "t" })
+				.boundaryEvent("bnd", { attachedTo: "task", errorRef: "MyError" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.errors).toHaveLength(1)
+			const rootErr = defs.errors[0]
+			expect(rootErr?.name).toBe("MyError")
+
+			const ev = defs.processes[0]?.flowElements.find((n) => n.id === "bnd")
+			if (ev?.type === "boundaryEvent") {
+				const def = ev.eventDefinitions[0]
+				expect(def?.type).toBe("error")
+				if (def?.type === "error") expect(def.errorRef).toBe(rootErr?.id)
+			}
+		})
+
+		it("de-duplicates signals: two events with same signalName share one root", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateThrowEvent("t1", { signalName: "Shared" })
+				.intermediateThrowEvent("t2", { signalName: "Shared" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.signals).toHaveLength(1)
+			const rootSig = defs.signals[0]
+
+			const t1 = defs.processes[0]?.flowElements.find((n) => n.id === "t1")
+			const t2 = defs.processes[0]?.flowElements.find((n) => n.id === "t2")
+			if (t1?.type === "intermediateThrowEvent" && t2?.type === "intermediateThrowEvent") {
+				const def1 = t1.eventDefinitions[0]
+				const def2 = t2.eventDefinitions[0]
+				if (def1?.type === "signal" && def2?.type === "signal") {
+					expect(def1.signalRef).toBe(rootSig?.id)
+					expect(def2.signalRef).toBe(rootSig?.id)
+				}
+			}
+		})
+
+		it("de-duplicates messages: two events with same messageName share one root", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateCatchEvent("c1", { messageName: "Shared" })
+				.intermediateCatchEvent("c2", { messageName: "Shared" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+
+			const c1 = defs.processes[0]?.flowElements.find((n) => n.id === "c1")
+			const c2 = defs.processes[0]?.flowElements.find((n) => n.id === "c2")
+			if (c1?.type === "intermediateCatchEvent" && c2?.type === "intermediateCatchEvent") {
+				const def1 = c1.eventDefinitions[0]
+				const def2 = c2.eventDefinitions[0]
+				if (def1?.type === "message" && def2?.type === "message") {
+					expect(def1.messageRef).toBe(rootMsg?.id)
+					expect(def2.messageRef).toBe(rootMsg?.id)
+				}
+			}
+		})
+
+		it("no ref points at raw name string — all refs resolve to a declared root ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateThrowEvent("sig-throw", { signalName: "Sig1" })
+				.intermediateCatchEvent("msg-catch", { messageName: "Msg1" })
+				.intermediateThrowEvent("esc-throw", { escalationCode: "ESC_1" })
+				.endEvent("e")
+				.build()
+
+			const allRootIds = new Set([
+				...defs.signals.map((s) => s.id),
+				...defs.messages.map((m) => m.id),
+				...defs.escalations.map((e) => e.id),
+				...defs.errors.map((e) => e.id),
+			])
+
+			for (const el of defs.processes[0]?.flowElements ?? []) {
+				const evDefs =
+					el.type === "intermediateThrowEvent" ||
+					el.type === "intermediateCatchEvent" ||
+					el.type === "boundaryEvent"
+						? el.eventDefinitions
+						: []
+				for (const def of evDefs) {
+					if (def.type === "signal" && def.signalRef) {
+						expect(allRootIds.has(def.signalRef)).toBe(true)
+					}
+					if (def.type === "message" && def.messageRef) {
+						expect(allRootIds.has(def.messageRef)).toBe(true)
+					}
+					if (def.type === "escalation" && def.escalationRef) {
+						expect(allRootIds.has(def.escalationRef)).toBe(true)
+					}
+					if (def.type === "error" && def.errorRef) {
+						expect(allRootIds.has(def.errorRef)).toBe(true)
+					}
+				}
+			}
+		})
+
+		it("existing working case unchanged: messageName on startEvent emits root message", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s", { messageName: "webhook-trigger" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			expect(defs.messages[0]?.name).toBe("webhook-trigger")
+
+			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s")
+			if (start?.type === "startEvent") {
+				const def = start.eventDefinitions[0]
+				if (def?.type === "message") {
+					expect(def.messageRef).toBe(defs.messages[0]?.id)
+				}
+			}
+		})
+
+		it("existing working case unchanged: errorCode on boundaryEvent emits root error", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("task", { name: "T", taskType: "t" })
+				.boundaryEvent("bnd", { attachedTo: "task", errorCode: "BOOM" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.errors).toHaveLength(1)
+			expect(defs.errors[0]?.errorCode).toBe("BOOM")
+
+			const ev = defs.processes[0]?.flowElements.find((n) => n.id === "bnd")
+			if (ev?.type === "boundaryEvent") {
+				const def = ev.eventDefinitions[0]
+				if (def?.type === "error") {
+					expect(def.errorRef).toBe(defs.errors[0]?.id)
 				}
 			}
 		})
