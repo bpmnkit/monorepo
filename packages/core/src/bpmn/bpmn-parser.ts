@@ -314,7 +314,16 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 	}
 
 	switch (ln) {
-		case "startEvent":
+		case "startEvent": {
+			const isInterruptingAttr = attr(element, "isInterrupting")
+			return {
+				...base,
+				type: "startEvent",
+				eventDefinitions: parseEventDefinitions(element),
+				...(isInterruptingAttr === "false" ? { isInterrupting: false } : {}),
+			}
+		}
+
 		case "endEvent":
 		case "intermediateCatchEvent":
 		case "intermediateThrowEvent":

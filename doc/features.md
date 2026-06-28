@@ -1098,7 +1098,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Gateway support** — exclusive, parallel, inclusive, event-based gateways with `branch(name, callback)` pattern
 - **Auto-join gateways** — split gateways automatically get matching join gateways inserted when branches converge (BPMN best practice)
 - **Loop support** — `connectTo(targetId)` for merge points and back-edge loops
-- **Sub-process builders** — `adHocSubProcess()`, `subProcess()`, `eventSubProcess()` with nested content
+- **Sub-process builders** — `adHocSubProcess()`, `subProcess()`, `eventSubProcess()` with nested content; `eventSubProcess()` emits canonical `<bpmn:subProcess triggeredByEvent="true">` with no illegal sequence flows; start events inside event sub-processes accept `isInterrupting: false` for non-interrupting triggers
 - **Multi-instance** — parallel/sequential multi-instance with Zeebe extension elements
 - **Aspirational elements** — sendTask, receiveTask, businessRuleTask builders
 - **REST connector builder** — `restConnector(id, config)` convenience method generates service tasks with `io.camunda:http-json:1` task type, IO mappings (method, url, auth, body, headers, queryParameters, timeouts), and task headers (resultVariable, resultExpression, retryBackoff)

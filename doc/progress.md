@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-06-28 — Fix eventSubProcess() canonical BPMN output (issue #116)
+
+**Defects fixed:**
+
+- **(a) Wrong element tag** — `eventSubProcess()` now emits `<bpmn:subProcess triggeredByEvent="true">` instead of the non-standard `<bpmn:eventSubProcess>`, making it interoperable with bpmn-moddle and the Camunda toolchain.
+- **(b) Missing isInterrupting option** — `StartEventOptions` now includes `isInterrupting?: boolean`. Pass `false` to emit `isInterrupting="false"` on the start event (non-interrupting trigger). Omit for the default interrupting behavior (no attribute emitted).
+- **(c) Illegal sequence flows** — The event sub-process is no longer auto-wired with incoming/outgoing sequence flows. The surrounding process flow cursor is unchanged, so the next element connects from the element preceding the event sub-process.
+
 ## 2026-06-28
 
 - **Compensation support in ProcessBuilder** (`@bpmnkit/core`):

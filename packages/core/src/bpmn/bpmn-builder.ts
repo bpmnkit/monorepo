@@ -57,6 +57,11 @@ export interface StartEventOptions extends ElementOptions {
 	modelerTemplateVersion?: string
 	/** Zeebe modeler template icon (data URI). */
 	modelerTemplateIcon?: string
+	/**
+	 * Non-interrupting flag — only meaningful for start events inside event sub-processes.
+	 * Pass `false` to emit `isInterrupting="false"`. Omit for the default interrupting behavior.
+	 */
+	isInterrupting?: boolean
 }
 
 /** Options for creating a service task. */
@@ -1028,7 +1033,10 @@ export class SubProcessContentBuilder {
 
 	startEvent(id?: string, options?: StartEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("StartEvent"), "startEvent", options)
-		if (el.type === "startEvent" && options) el.eventDefinitions = buildEventDefinitions(options)
+		if (el.type === "startEvent" && options) {
+			el.eventDefinitions = buildEventDefinitions(options)
+			if (options.isInterrupting === false) el.isInterrupting = false
+		}
 		return this.addElement(el)
 	}
 
@@ -1303,6 +1311,7 @@ export class ProcessBuilder {
 				this.rootSignals,
 				this.rootEscalations,
 			)
+			if (options.isInterrupting === false) element.isInterrupting = false
 		}
 		if (options?.modelerTemplate) {
 			element.unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
@@ -1783,7 +1792,7 @@ export class ProcessBuilder {
 		return this
 	}
 
-	/** Add an event sub-process (aspirational). */
+	/** Add an event sub-process. Triggered by its start event — no incoming or outgoing sequence flows. */
 	eventSubProcess(
 		id: string,
 		content: (b: SubProcessContentBuilder) => void,
@@ -1794,14 +1803,24 @@ export class ProcessBuilder {
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const element = makeFlowElement(id, "eventSubProcess", options)
-		if (element.type === "eventSubProcess") {
+		const element = makeFlowElement(id, "subProcess", options)
+		if (element.type === "subProcess") {
+			element.triggeredByEvent = true
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
 			element.textAnnotations = sub._textAnnotations
 			element.associations = sub._associations
 		}
-		this.addFlowElement(element)
+
+		// Event sub-processes have no incoming/outgoing sequence flows and must not
+		// advance the flow cursor — the surrounding process wires around them.
+		// openBranchEnds is intentionally NOT drained here; the next normal
+		// addFlowElement call will drain it and connect branch ends to that element.
+		if (this.flowElements.some((n) => n.id === element.id)) {
+			throw new Error(`Duplicate element ID "${element.id}" in process "${this.processId}"`)
+		}
+		this._savedMainFlowId = undefined
+		this.flowElements.push(element)
 		return this
 	}
 

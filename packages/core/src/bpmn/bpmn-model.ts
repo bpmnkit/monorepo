@@ -189,6 +189,7 @@ interface BpmnFlowNodeBase {
 export interface BpmnStartEvent extends BpmnFlowNodeBase {
 	type: "startEvent"
 	eventDefinitions: BpmnEventDefinition[]
+	isInterrupting?: boolean
 }
 
 export interface BpmnEndEvent extends BpmnFlowNodeBase {
