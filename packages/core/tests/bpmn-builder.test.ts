@@ -1792,6 +1792,66 @@ describe("BpmnProcessBuilder", () => {
 		})
 	})
 
+	describe("BranchBuilder event ref root declarations", () => {
+		it("branch intermediateThrowEvent signalName emits root signal and sets signalRef to its ID", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("yes", (b) =>
+					b.intermediateThrowEvent("throw", { signalName: "BranchSignal" }).connectTo("end"),
+				)
+				.branch("no", (b) => b.connectTo("end"))
+				.exclusiveGateway("end")
+				.endEvent("e")
+				.build()
+
+			expect(defs.signals).toHaveLength(1)
+			const rootSig = defs.signals[0]
+			expect(rootSig?.name).toBe("BranchSignal")
+
+			const ev = defs.processes[0]?.flowElements.find((n) => n.id === "throw")
+			if (ev?.type === "intermediateThrowEvent") {
+				const def = ev.eventDefinitions[0]
+				expect(def?.type).toBe("signal")
+				if (def?.type === "signal") expect(def.signalRef).toBe(rootSig?.id)
+			}
+		})
+
+		it("branch escalationCode and process-level escalationCode deduplicate to one root", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("yes", (b) =>
+					b.intermediateThrowEvent("branch-esc", { escalationCode: "SHARED" }).connectTo("end"),
+				)
+				.branch("no", (b) => b.connectTo("end"))
+				.exclusiveGateway("end")
+				.intermediateThrowEvent("proc-esc", { escalationCode: "SHARED" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.escalations).toHaveLength(1)
+			const rootEsc = defs.escalations[0]
+			expect(rootEsc?.escalationCode).toBe("SHARED")
+
+			const branchEv = defs.processes[0]?.flowElements.find((n) => n.id === "branch-esc")
+			const procEv = defs.processes[0]?.flowElements.find((n) => n.id === "proc-esc")
+			if (
+				branchEv?.type === "intermediateThrowEvent" &&
+				procEv?.type === "intermediateThrowEvent"
+			) {
+				const def1 = branchEv.eventDefinitions[0]
+				const def2 = procEv.eventDefinitions[0]
+				expect(def1?.type).toBe("escalation")
+				expect(def2?.type).toBe("escalation")
+				if (def1?.type === "escalation" && def2?.type === "escalation") {
+					expect(def1.escalationRef).toBe(rootEsc?.id)
+					expect(def2.escalationRef).toBe(rootEsc?.id)
+				}
+			}
+		})
+	})
+
 	// -----------------------------------------------------------------------
 	// Regression: end event event definitions
 	// -----------------------------------------------------------------------

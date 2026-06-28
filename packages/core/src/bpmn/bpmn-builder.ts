@@ -157,7 +157,7 @@ export interface IntermediateThrowEventOptions extends ElementOptions {
 export interface EndEventOptions extends ElementOptions {
 	/** Error code — creates an error end event. */
 	errorCode?: string
-	/** Error reference ID. */
+	/** Error code — creates an error end event. Alias for errorCode. */
 	errorRef?: string
 	/** Message name — creates a message end event. */
 	messageName?: string
@@ -175,7 +175,7 @@ export interface BoundaryEventOptions extends ElementOptions {
 	cancelActivity?: boolean
 	/** Error code — creates an error boundary event. */
 	errorCode?: string
-	/** Error reference ID. */
+	/** Error code — creates an error boundary event. Alias for errorCode. */
 	errorRef?: string
 	/** Timer duration — creates a timer boundary event (aspirational). */
 	timerDuration?: string
@@ -699,12 +699,27 @@ export class BranchBuilder {
 	/** @internal */
 	readonly _associations: BpmnAssociation[] = []
 	private readonly _annCounters = new Map<string, number>()
+	private readonly rootErrors: BpmnError[]
+	private readonly rootMessages: BpmnMessage[]
+	private readonly rootSignals: BpmnSignal[]
+	private readonly rootEscalations: BpmnEscalation[]
 
 	/** @internal */
-	constructor(gatewayId: string, branchName: string) {
+	constructor(
+		gatewayId: string,
+		branchName: string,
+		rootErrors: BpmnError[] = [],
+		rootMessages: BpmnMessage[] = [],
+		rootSignals: BpmnSignal[] = [],
+		rootEscalations: BpmnEscalation[] = [],
+	) {
 		this.gatewayId = gatewayId
 		this.branchName = branchName
 		this.lastNodeId = gatewayId
+		this.rootErrors = rootErrors
+		this.rootMessages = rootMessages
+		this.rootSignals = rootSignals
+		this.rootEscalations = rootEscalations
 	}
 
 	/** Set a FEEL condition expression on this branch's outgoing sequence flow. */
@@ -840,11 +855,14 @@ export class BranchBuilder {
 
 	startEvent(id?: string, options?: StartEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("StartEvent"), "startEvent", options)
-		if (
-			el.type === "startEvent" &&
-			(options?.timerDuration || options?.timerCycle || options?.timerDate)
-		) {
-			el.eventDefinitions = buildEventDefinitions(options)
+		if (el.type === "startEvent" && options) {
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -852,7 +870,13 @@ export class BranchBuilder {
 	endEvent(id?: string, options?: EndEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("EndEvent"), "endEvent", options)
 		if (el.type === "endEvent" && options) {
-			el.eventDefinitions = buildEventDefinitions(options)
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -864,7 +888,13 @@ export class BranchBuilder {
 			options,
 		)
 		if (el.type === "intermediateThrowEvent" && options) {
-			el.eventDefinitions = buildEventDefinitions(options)
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -876,7 +906,13 @@ export class BranchBuilder {
 			options,
 		)
 		if (el.type === "intermediateCatchEvent" && options) {
-			el.eventDefinitions = buildEventDefinitions(options)
+			el.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
 		}
 		return this.addElement(el)
 	}
@@ -1508,7 +1544,14 @@ export class ProcessBuilder {
 		if (!this.currentGatewayId) {
 			throw new Error("branch() must be called after a gateway element")
 		}
-		const b = new BranchBuilder(this.currentGatewayId, name)
+		const b = new BranchBuilder(
+			this.currentGatewayId,
+			name,
+			this.rootErrors,
+			this.rootMessages,
+			this.rootSignals,
+			this.rootEscalations,
+		)
 		callback(b)
 
 		for (const el of b._elements) {
