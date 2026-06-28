@@ -3063,7 +3063,7 @@ describe("compensation", () => {
 			.endEvent("end")
 			.build()
 
-		const process = defs.processes[0]!
+		const process = defined(defs.processes[0])
 		const xml = Bpmn.export(defs)
 
 		// No sequence flow from CompBoundary to CancelHotel
@@ -3093,8 +3093,8 @@ describe("compensation", () => {
 			.endEvent("end")
 			.build()
 
-		const process = defs.processes[0]!
-		const handler = process.flowElements.find((e) => e.id === "CancelHotel")!
+		const process = defined(defs.processes[0])
+		const handler = defined(process.flowElements.find((e) => e.id === "CancelHotel"))
 		expect(handler.incoming).toHaveLength(0)
 		expect(handler.outgoing).toHaveLength(0)
 	})
@@ -3113,7 +3113,7 @@ describe("compensation", () => {
 			.endEvent("end")
 			.build()
 
-		const process = defs.processes[0]!
+		const process = defined(defs.processes[0])
 		// Main flow: start → BookHotel → CompThrow → end
 		const flows = process.sequenceFlows
 		expect(
