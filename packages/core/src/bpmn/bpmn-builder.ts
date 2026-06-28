@@ -1397,12 +1397,12 @@ export class ProcessBuilder {
 		// Boundary events never auto-connect — temporarily clear lastNodeId
 		const prevLast = this.lastNodeId
 		this.lastNodeId = undefined
-		// For compensation boundary events, save the main-flow cursor so it can be
-		// restored after the handler activity is registered (handler is outside normal flow).
+		this.addFlowElement(element)
+		// For compensation boundary events, save the main-flow cursor AFTER addFlowElement
+		// so subsequent normal elements don't accidentally clear it before it's consumed.
 		if (options.compensation) {
 			this._savedMainFlowId = prevLast
 		}
-		this.addFlowElement(element)
 		// Don't restore prevLast — the builder now chains from the boundary event
 		void prevLast
 		return this
@@ -1972,6 +1972,9 @@ export class ProcessBuilder {
 		}
 		this.openBranchEnds = []
 
+		// Clear any saved compensation cursor — a normal element advancing the cursor
+		// means the compensation boundary/handler pattern has been interrupted.
+		this._savedMainFlowId = undefined
 		this.lastNodeId = element.id
 	}
 }
