@@ -1,5 +1,12 @@
 # @bpmnkit/canvas
 
+## 0.0.25
+
+### Patch Changes
+
+- Updated dependencies [7916980]
+  - @bpmnkit/core@0.0.25
+
 ## 0.0.24
 
 ### Patch Changes
