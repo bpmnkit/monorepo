@@ -859,6 +859,32 @@ describe("BpmnProcessBuilder", () => {
 			// internal: t-start→t-end = 1; process level: s→e = 1; total = 2
 			expect(flowMatches).toHaveLength(2)
 		})
+
+		it("emits isInterrupting='false' on non-interrupting start event", () => {
+			const xml = Bpmn.export(
+				Bpmn.createProcess("proc")
+					.eventSubProcess("esp", (sub) => {
+						sub
+							.startEvent("t-start", { timerDuration: "PT1H", isInterrupting: false })
+							.endEvent("t-end")
+					})
+					.build(),
+			)
+
+			expect(xml).toContain('isInterrupting="false"')
+		})
+
+		it("omits isInterrupting attribute for interrupting (default) start event", () => {
+			const xml = Bpmn.export(
+				Bpmn.createProcess("proc")
+					.eventSubProcess("esp", (sub) => {
+						sub.startEvent("t-start", { timerDuration: "PT1H" }).endEvent("t-end")
+					})
+					.build(),
+			)
+
+			expect(xml).not.toContain("isInterrupting")
+		})
 	})
 
 	// -----------------------------------------------------------------------

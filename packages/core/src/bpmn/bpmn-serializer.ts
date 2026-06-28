@@ -209,6 +209,10 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 
 	switch (fe.type) {
 		case "startEvent":
+			if (fe.isInterrupting === false) attrs.isInterrupting = "false"
+			children.push(...serializeEventDefinitions(fe.eventDefinitions, bp))
+			break
+
 		case "endEvent":
 		case "intermediateCatchEvent":
 		case "intermediateThrowEvent":

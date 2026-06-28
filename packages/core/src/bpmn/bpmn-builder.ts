@@ -57,6 +57,11 @@ export interface StartEventOptions extends ElementOptions {
 	modelerTemplateVersion?: string
 	/** Zeebe modeler template icon (data URI). */
 	modelerTemplateIcon?: string
+	/**
+	 * Non-interrupting flag — only meaningful for start events inside event sub-processes.
+	 * Pass `false` to emit `isInterrupting="false"`. Omit for the default interrupting behavior.
+	 */
+	isInterrupting?: boolean
 }
 
 /** Options for creating a service task. */
@@ -1028,7 +1033,10 @@ export class SubProcessContentBuilder {
 
 	startEvent(id?: string, options?: StartEventOptions): this {
 		const el = makeFlowElement(id ?? generateId("StartEvent"), "startEvent", options)
-		if (el.type === "startEvent" && options) el.eventDefinitions = buildEventDefinitions(options)
+		if (el.type === "startEvent" && options) {
+			el.eventDefinitions = buildEventDefinitions(options)
+			if (options.isInterrupting === false) el.isInterrupting = false
+		}
 		return this.addElement(el)
 	}
 
@@ -1303,6 +1311,7 @@ export class ProcessBuilder {
 				this.rootSignals,
 				this.rootEscalations,
 			)
+			if (options.isInterrupting === false) element.isInterrupting = false
 		}
 		if (options?.modelerTemplate) {
 			element.unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
