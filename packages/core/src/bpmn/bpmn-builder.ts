@@ -79,6 +79,8 @@ export interface ServiceTaskOptions {
 	modelerTemplateVersion?: string
 	/** Zeebe modeler template icon (data URI). */
 	modelerTemplateIcon?: string
+	/** Mark this task as a compensation handler. */
+	isForCompensation?: boolean
 }
 
 /** Options for creating a script task. */
@@ -509,6 +511,7 @@ function makeServiceTaskEl(id: string, options: ServiceTaskOptions): BpmnFlowEle
 		extensionElements: buildServiceTaskExtensions(options),
 	})
 	el.unknownAttributes = unknownAttributes
+	if (options.isForCompensation) el.isForCompensation = true
 	return el
 }
 

@@ -191,6 +191,7 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 	const bp = bpmnPrefix(ns)
 	const attrs: Record<string, string> = { id: fe.id, ...fe.unknownAttributes }
 	if (fe.name !== undefined) attrs.name = fe.name
+	if (fe.isForCompensation) attrs.isForCompensation = "true"
 
 	const children: XmlElement[] = []
 

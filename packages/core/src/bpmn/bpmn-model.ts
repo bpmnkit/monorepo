@@ -179,6 +179,7 @@ interface BpmnFlowNodeBase {
 	documentation?: string
 	extensionElements: XmlElement[]
 	unknownAttributes: Record<string, string>
+	isForCompensation?: boolean
 }
 
 // ---------------------------------------------------------------------------

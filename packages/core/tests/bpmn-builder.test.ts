@@ -2996,3 +2996,25 @@ describe("text annotations", () => {
 		)
 	})
 })
+
+describe("compensation — isForCompensation serialization", () => {
+	it("serializes isForCompensation=true on a service task to XML", () => {
+		const xml = Bpmn.export(
+			Bpmn.createProcess("proc")
+				.serviceTask("handler", { name: "Cancel", taskType: "cancel", isForCompensation: true })
+				.build(),
+		)
+		expect(xml).toContain('isForCompensation="true"')
+		expect(xml).toContain('id="handler"')
+	})
+
+	it("round-trips isForCompensation through parse → export", () => {
+		const xml1 = Bpmn.export(
+			Bpmn.createProcess("proc")
+				.serviceTask("handler", { name: "Cancel", taskType: "cancel", isForCompensation: true })
+				.build(),
+		)
+		const xml2 = Bpmn.export(Bpmn.parse(xml1))
+		expect(xml2).toContain('isForCompensation="true"')
+	})
+})
