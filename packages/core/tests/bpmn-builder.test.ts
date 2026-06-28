@@ -1654,6 +1654,8 @@ describe("BpmnProcessBuilder", () => {
 			if (t1?.type === "intermediateThrowEvent" && t2?.type === "intermediateThrowEvent") {
 				const def1 = t1.eventDefinitions[0]
 				const def2 = t2.eventDefinitions[0]
+				expect(def1?.type).toBe("signal")
+				expect(def2?.type).toBe("signal")
 				if (def1?.type === "signal" && def2?.type === "signal") {
 					expect(def1.signalRef).toBe(rootSig?.id)
 					expect(def2.signalRef).toBe(rootSig?.id)
@@ -1677,9 +1679,36 @@ describe("BpmnProcessBuilder", () => {
 			if (c1?.type === "intermediateCatchEvent" && c2?.type === "intermediateCatchEvent") {
 				const def1 = c1.eventDefinitions[0]
 				const def2 = c2.eventDefinitions[0]
+				expect(def1?.type).toBe("message")
+				expect(def2?.type).toBe("message")
 				if (def1?.type === "message" && def2?.type === "message") {
 					expect(def1.messageRef).toBe(rootMsg?.id)
 					expect(def2.messageRef).toBe(rootMsg?.id)
+				}
+			}
+		})
+
+		it("de-duplicates escalations: two events with same escalationCode share one root", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateThrowEvent("t1", { escalationCode: "ESC_1" })
+				.intermediateThrowEvent("t2", { escalationCode: "ESC_1" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.escalations).toHaveLength(1)
+			const rootEsc = defs.escalations[0]
+
+			const t1 = defs.processes[0]?.flowElements.find((n) => n.id === "t1")
+			const t2 = defs.processes[0]?.flowElements.find((n) => n.id === "t2")
+			if (t1?.type === "intermediateThrowEvent" && t2?.type === "intermediateThrowEvent") {
+				const def1 = t1.eventDefinitions[0]
+				const def2 = t2.eventDefinitions[0]
+				expect(def1?.type).toBe("escalation")
+				expect(def2?.type).toBe("escalation")
+				if (def1?.type === "escalation" && def2?.type === "escalation") {
+					expect(def1.escalationRef).toBe(rootEsc?.id)
+					expect(def2.escalationRef).toBe(rootEsc?.id)
 				}
 			}
 		})
