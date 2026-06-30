@@ -812,7 +812,6 @@ export class BranchBuilder {
 			if (this.isFirstElement && this.pendingDefault) {
 				this._defaultFlowId = flowId
 			}
-			this.isFirstElement = false
 		}
 
 		for (const branchEnd of this.openBranchEnds) {
@@ -826,6 +825,7 @@ export class BranchBuilder {
 		}
 		this.openBranchEnds = []
 
+		this.isFirstElement = false
 		this.lastNodeId = element.id
 		return this
 	}
