@@ -249,9 +249,9 @@ describe("Coordinate assignment", () => {
 		expect(taskNode).toBeDefined()
 		if (!startNode || !taskNode) return
 
-		// Task should be at least HORIZONTAL_SPACING (30px) after start's right edge
+		// Task should be at least HORIZONTAL_SPACING (50px) after start's right edge
 		const startRight = startNode.bounds.x + startNode.bounds.width
-		expect(taskNode.bounds.x).toBeGreaterThanOrEqual(startRight + 30 - 1)
+		expect(taskNode.bounds.x).toBeGreaterThanOrEqual(startRight + 50 - 1)
 	})
 
 	it("ensures vertical spacing between nodes in the same layer", () => {
@@ -269,6 +269,23 @@ describe("Coordinate assignment", () => {
 
 		const gap = nodeB.bounds.y - (nodeA.bounds.y + nodeA.bounds.height)
 		expect(gap).toBeGreaterThanOrEqual(VERTICAL_SPACING - 1)
+	})
+
+	it("GRID_CELL_WIDTH provides at least 50px gap between layer right-edges and next layer left-edge", () => {
+		const flowNodes = [node("start", "startEvent"), node("task", "serviceTask")]
+		const nodeIndex = new Map(flowNodes.map((n) => [n.id, n]))
+		const orderedLayers = [["start"], ["task"]]
+
+		const result = assignCoordinates(orderedLayers, nodeIndex)
+
+		const startNode = result.find((n) => n.id === "start")
+		const taskNode = result.find((n) => n.id === "task")
+		expect(startNode).toBeDefined()
+		expect(taskNode).toBeDefined()
+		if (!startNode || !taskNode) return
+
+		const startRight = startNode.bounds.x + startNode.bounds.width
+		expect(taskNode.bounds.x).toBeGreaterThanOrEqual(startRight + 50 - 1)
 	})
 })
 
@@ -791,6 +808,38 @@ describe("Layout engine (integration)", () => {
 		expect(child2).toBeDefined()
 	})
 
+	it("expanded subprocess has at least 50px padding on each side around its content", () => {
+		const subprocess = node("sub", "subProcess") as BpmnFlowElement & {
+			flowElements: BpmnFlowElement[]
+			sequenceFlows: BpmnSequenceFlow[]
+		}
+		subprocess.flowElements = [node("c1", "serviceTask")]
+		subprocess.sequenceFlows = []
+
+		const process = proc(
+			"p_padding",
+			[node("s", "startEvent"), subprocess, node("e", "endEvent")],
+			[flow("f1", "s", "sub"), flow("f2", "sub", "e")],
+		)
+
+		const result = layoutProcess(process)
+		const container = result.nodes.find((n) => n.id === "sub")
+		const child = result.nodes.find((n) => n.id === "c1")
+		expect(container).toBeDefined()
+		expect(child).toBeDefined()
+		if (!container || !child) return
+
+		// Child must be at least 50px inside each container edge
+		expect(child.bounds.x - container.bounds.x).toBeGreaterThanOrEqual(49)
+		expect(child.bounds.y - container.bounds.y).toBeGreaterThanOrEqual(49)
+		expect(
+			container.bounds.x + container.bounds.width - (child.bounds.x + child.bounds.width),
+		).toBeGreaterThanOrEqual(49)
+		expect(
+			container.bounds.y + container.bounds.height - (child.bounds.y + child.bounds.height),
+		).toBeGreaterThanOrEqual(49)
+	})
+
 	it("handles an empty process", () => {
 		const process = proc("empty", [], [])
 
@@ -1158,7 +1207,7 @@ describe("resolveTargetPort", () => {
 })
 
 describe("Grid-based coordinate system", () => {
-	it("places elements centered in 130×140 grid cells", () => {
+	it("places elements centered in 150×140 grid cells", () => {
 		const flowNodes = [
 			node("start", "startEvent"),
 			node("task", "serviceTask"),
@@ -1169,10 +1218,10 @@ describe("Grid-based coordinate system", () => {
 
 		const result = assignCoordinates(orderedLayers, nodeIndex)
 
-		// Each element should be centered within its grid cell (130×140)
+		// Each element should be centered within its grid cell (150×140)
 		for (const n of result) {
-			const cellX = n.layer * 130
-			const centerX = cellX + 65
+			const cellX = n.layer * 150
+			const centerX = cellX + 75
 			const nodeCenterX = n.bounds.x + n.bounds.width / 2
 			expect(nodeCenterX).toBeCloseTo(centerX, 0)
 		}
@@ -1190,8 +1239,8 @@ describe("Grid-based coordinate system", () => {
 		expect(nodeB).toBeDefined()
 		if (!nodeA || !nodeB) return
 
-		// Layer 0 starts at x=0, layer 1 at x=130 (grid cell width)
-		expect(nodeB.bounds.x - nodeA.bounds.x).toBe(130)
+		// Layer 0 starts at x=0, layer 1 at x=150 (grid cell width)
+		expect(nodeB.bounds.x - nodeA.bounds.x).toBe(150)
 	})
 
 	it("grid spacing between nodes in same layer is 140px cell height", () => {
