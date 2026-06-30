@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/cli",
-	"version": "0.0.33",
+	"version": "0.0.34",
 	"description": "Command-line interface for Camunda 8 — deploy, manage, and monitor processes from the terminal",
 	"type": "module",
 	"bin": {

@@ -1,5 +1,15 @@
 # @bpmnkit/cli
 
+## 0.0.34
+
+### Patch Changes
+
+- Updated dependencies [5ea5318]
+  - @bpmnkit/core@0.0.27
+  - @bpmnkit/proxy@0.0.30
+  - @bpmnkit/ascii@0.0.27
+  - @bpmnkit/engine@0.1.27
+
 ## 0.0.33
 
 ### Patch Changes

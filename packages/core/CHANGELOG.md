@@ -1,5 +1,11 @@
 # @bpmnkit/core
 
+## 0.0.27
+
+### Patch Changes
+
+- 5ea5318: Improved Layouting
+
 ## 0.0.26
 
 ### Patch Changes
