@@ -279,6 +279,25 @@ describe("BpmnProcessBuilder", () => {
 			expect(el.name).toBe("Wait for Message")
 		})
 
+		it("receiveTask round-trips messageRef through export → parse", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.receiveTask("rt", { name: "Await ping", messageName: "PingMsg" })
+				.endEvent("e")
+				.build()
+
+			const xml = Bpmn.export(defs)
+			const parsed = Bpmn.parse(xml)
+
+			const el = defined(parsed.processes[0]?.flowElements.find((n) => n.id === "rt"))
+			if (el.type !== "receiveTask") throw new Error("expected receiveTask")
+			expect(el.messageRef).toBeDefined()
+			// Must resolve to the root message ID, not raw name
+			const rootMsg = parsed.messages.find((m) => m.name === "PingMsg")
+			expect(rootMsg).toBeDefined()
+			expect(el.messageRef).toBe(rootMsg?.id)
+		})
+
 		it("creates an abstract task with no extension elements", () => {
 			const process = firstProcess(
 				Bpmn.createProcess("proc").task("t1", { name: "Phase 1" }).build(),
