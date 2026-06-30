@@ -1023,6 +1023,73 @@ export class BranchBuilder {
 	}
 
 	/**
+	 * Add a boundary event attached to an existing activity in this branch.
+	 *
+	 * The boundary event is NOT connected by a sequence flow — it attaches via
+	 * `attachedToRef`. The builder cursor advances to the boundary event so
+	 * subsequent elements chain from it. Use `withBoundary()` if you want the
+	 * cursor to return to the task afterward.
+	 */
+	boundaryEvent(id: string, options: BoundaryEventOptions): this {
+		const element = makeFlowElement(id, "boundaryEvent", options)
+		if (element.type === "boundaryEvent") {
+			element.attachedToRef = options.attachedTo
+			element.cancelActivity = options.cancelActivity
+			element.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
+		}
+		// Push directly — no sequence flow, boundary events attach via attachedToRef
+		this._elements.push(element)
+		this.lastNodeId = element.id
+		return this
+	}
+
+	/**
+	 * Attach a boundary event to the preceding task and build its outgoing path,
+	 * then restore the branch cursor to the preceding task so the main branch flow continues.
+	 *
+	 * @param id - ID for the boundary event element.
+	 * @param options - Boundary event options (without `attachedTo` — inferred from cursor).
+	 * @param handler - Callback that chains elements from the boundary event.
+	 */
+	withBoundary(
+		id: string,
+		options: Omit<BoundaryEventOptions, "attachedTo">,
+		handler: (b: BranchBuilder) => void,
+	): this {
+		const attachedTo = this.lastNodeId
+		if (!attachedTo || attachedTo === this.gatewayId) {
+			throw new Error(
+				"withBoundary() must follow a task element inside the branch. Current builder position has no active task.",
+			)
+		}
+
+		const savedLast = this.lastNodeId
+		const savedGateway = this.currentGatewayId
+		const savedConnected = this._connected
+		const savedOpenEnds = [...this.openBranchEnds]
+		this.openBranchEnds = []
+
+		// Create and push the boundary event (no sequence flow)
+		this.boundaryEvent(id, { ...options, attachedTo })
+
+		// Build the boundary event's outgoing path
+		handler(this)
+
+		// Restore cursor to the task so the branch main flow continues
+		this.lastNodeId = savedLast
+		this.currentGatewayId = savedGateway
+		this._connected = savedConnected
+		this.openBranchEnds = savedOpenEnds
+		return this
+	}
+
+	/**
 	 * Create a named branch from the last gateway added inside this branch.
 	 *
 	 * Works identically to the top-level `ProcessBuilder.branch()` — use
