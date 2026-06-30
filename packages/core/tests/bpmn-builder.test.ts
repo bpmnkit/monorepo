@@ -3870,7 +3870,7 @@ describe("boundary events inside a branch", () => {
 			.build()
 
 		const p = firstProcess(defs)
-		// The flow be → e-be must NOT have name "path-a" (that belongs on gw → be's implied sequence)
+		// The flow be → e-be must NOT have name "path-a" (branch name belongs on gw → first task flow, not on boundary event outflow)
 		const beToEnd = p.sequenceFlows.find((f) => f.sourceRef === "be" && f.targetRef === "e-be")
 		expect(beToEnd).toBeDefined()
 		expect(beToEnd?.name).toBeUndefined()
