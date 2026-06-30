@@ -52,6 +52,8 @@ function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: Layou
 		predIds.set(edge.targetRef, ps)
 	}
 
+	const allChainNodes = new Set<string>()
+
 	for (const [hostId, beIds] of boundaryMap) {
 		const hostNode = nodeById.get(hostId)
 		if (!hostNode) continue
@@ -88,6 +90,9 @@ function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: Layou
 					queue.push(...(succIds.get(id) ?? []))
 				}
 			}
+
+			// Record all chain members so the forward pass can identify them.
+			for (const cid of chainSet) allChainNodes.add(cid)
 
 			// Each boundary event's chain gets its own vertical lane
 			let maxChainH = 0
@@ -152,6 +157,105 @@ function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: Layou
 				}
 			}
 		}
+	}
+
+	// Forward-placement pass: any node not in any chain but whose predecessor
+	// has been relocated further right must be pushed rightward.
+	// Process in topological order (Kahn's algorithm over the sequenceFlow graph).
+	const inDegree = new Map<string, number>()
+	for (const id of nodeById.keys()) {
+		inDegree.set(id, (predIds.get(id) ?? new Set()).size)
+	}
+	const topoQueue: string[] = []
+	for (const [id, deg] of inDegree) {
+		if (deg === 0) topoQueue.push(id)
+	}
+	const topoOrder: string[] = []
+	while (topoQueue.length > 0) {
+		const id = topoQueue.shift()
+		if (!id) break
+		topoOrder.push(id)
+		for (const succId of succIds.get(id) ?? []) {
+			const newDeg = (inDegree.get(succId) ?? 1) - 1
+			inDegree.set(succId, newDeg)
+			if (newDeg === 0) topoQueue.push(succId)
+		}
+	}
+
+	const movedInPass = new Set<string>()
+
+	for (const id of topoOrder) {
+		if (allChainNodes.has(id)) continue
+		const node = nodeById.get(id)
+		if (!node) continue
+		const preds = predIds.get(id) ?? new Set<string>()
+		if (preds.size === 0) continue
+
+		let maxPredRight = 0
+		for (const predId of preds) {
+			const pred = nodeById.get(predId)
+			if (pred) maxPredRight = Math.max(maxPredRight, pred.bounds.x + pred.bounds.width)
+		}
+
+		const minX = maxPredRight + CHAIN_GAP
+		if (minX > node.bounds.x) {
+			const delta = minX - node.bounds.x
+			node.bounds.x = minX
+			if (node.labelBounds) node.labelBounds.x += delta
+			movedInPass.add(id)
+		}
+	}
+
+	// Spatial bump: if a moved node now overlaps a non-chain node on a parallel
+	// path (no predecessor/successor relationship), push it clear and cascade.
+	let bumped = true
+	while (bumped) {
+		bumped = false
+		for (const movedId of movedInPass) {
+			const moved = nodeById.get(movedId)
+			if (!moved) continue
+			const movedRight = moved.bounds.x + moved.bounds.width
+			for (const [otherId, other] of nodeById) {
+				if (otherId === movedId) continue
+				if (allChainNodes.has(otherId)) continue
+				if (movedInPass.has(otherId)) continue
+				// Check y overlap
+				if (other.bounds.y + other.bounds.height <= moved.bounds.y) continue
+				if (other.bounds.y >= moved.bounds.y + moved.bounds.height) continue
+				// Check x overlap (moved node intrudes into other's space)
+				if (other.bounds.x >= movedRight) continue
+				if (other.bounds.x + other.bounds.width <= moved.bounds.x) continue
+				// Push other right of moved
+				const newX = movedRight + CHAIN_GAP
+				if (newX > other.bounds.x) {
+					const delta = newX - other.bounds.x
+					other.bounds.x = newX
+					if (other.labelBounds) other.labelBounds.x += delta
+					movedInPass.add(otherId)
+					bumped = true
+				}
+			}
+		}
+	}
+
+	// Re-route edges where a chain source now points at a moved target,
+	// or where the source itself was moved by the forward pass.
+	for (const edge of result.edges) {
+		const srcMoved = movedInPass.has(edge.sourceRef)
+		const tgtMoved = movedInPass.has(edge.targetRef)
+		const srcInChain = allChainNodes.has(edge.sourceRef)
+		if (!srcMoved && !(srcInChain && tgtMoved)) continue
+		const src = nodeById.get(edge.sourceRef)
+		const tgt = nodeById.get(edge.targetRef)
+		if (!src || !tgt) continue
+		const srcX = Math.round(src.bounds.x + src.bounds.width)
+		const srcY = Math.round(src.bounds.y + src.bounds.height / 2)
+		const tgtX = Math.round(tgt.bounds.x)
+		const tgtY = Math.round(tgt.bounds.y + tgt.bounds.height / 2)
+		edge.waypoints = [
+			{ x: srcX, y: srcY },
+			{ x: tgtX, y: tgtY },
+		]
 	}
 }
 
