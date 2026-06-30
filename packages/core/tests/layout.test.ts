@@ -906,6 +906,58 @@ describe("Layout engine (integration)", () => {
 			container.bounds.y + container.bounds.height,
 		)
 	})
+
+	it("adHocSubProcess with 6 disconnected tools wraps into multiple grid rows", () => {
+		const subproc = node("agent", "adHocSubProcess") as BpmnFlowElement & {
+			flowElements: BpmnFlowElement[]
+			sequenceFlows: BpmnSequenceFlow[]
+		}
+		subproc.flowElements = [
+			node("t1", "serviceTask"),
+			node("t2", "serviceTask"),
+			node("t3", "serviceTask"),
+			node("t4", "serviceTask"),
+			node("t5", "serviceTask"),
+			node("t6", "serviceTask"),
+		]
+		subproc.sequenceFlows = []
+
+		const process = proc(
+			"p_grid",
+			[node("s", "startEvent"), subproc, node("e", "endEvent")],
+			[flow("f1", "s", "agent"), flow("f2", "agent", "e")],
+		)
+
+		const result = layoutProcess(process)
+
+		const container = result.nodes.find((n) => n.id === "agent")
+		const toolNodes = ["t1", "t2", "t3", "t4", "t5", "t6"].map((id) =>
+			result.nodes.find((n) => n.id === id),
+		)
+		expect(container).toBeDefined()
+		for (const n of toolNodes) expect(n).toBeDefined()
+		if (!container) return
+		const defined = toolNodes.filter(Boolean) as LayoutNode[]
+
+		// Must have at least 2 distinct Y rows (grid wrapped)
+		const yValues = new Set(defined.map((n) => n.bounds.y))
+		expect(yValues.size).toBeGreaterThan(1)
+
+		// All tools inside the container
+		for (const n of defined) {
+			expect(n.bounds.x).toBeGreaterThanOrEqual(container.bounds.x)
+			expect(n.bounds.y).toBeGreaterThanOrEqual(container.bounds.y)
+			expect(n.bounds.x + n.bounds.width).toBeLessThanOrEqual(
+				container.bounds.x + container.bounds.width + 1,
+			)
+			expect(n.bounds.y + n.bounds.height).toBeLessThanOrEqual(
+				container.bounds.y + container.bounds.height + 1,
+			)
+		}
+
+		// No overlaps
+		expect(() => assertNoOverlap(result)).not.toThrow()
+	})
 })
 
 describe("Branch baseline alignment", () => {
