@@ -279,6 +279,96 @@ describe("BpmnProcessBuilder", () => {
 			expect(el.name).toBe("Wait for Message")
 		})
 
+		it("receiveTask with messageName emits root bpmn:message and sets messageRef on task", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.receiveTask("rt", { name: "Await ping", messageName: "PingMsg" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("PingMsg")
+
+			const el = defined(defs.processes[0]?.flowElements.find((n) => n.id === "rt"))
+			if (el.type !== "receiveTask") throw new Error("expected receiveTask")
+			expect(el.messageRef).toBe(rootMsg?.id)
+		})
+
+		it("sendTask with messageName emits root bpmn:message and sets messageRef on task", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.sendTask("st", { name: "Send ping", messageName: "PingMsg" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("PingMsg")
+
+			const el = defined(defs.processes[0]?.flowElements.find((n) => n.id === "st"))
+			if (el.type !== "sendTask") throw new Error("expected sendTask")
+			expect(el.messageRef).toBe(rootMsg?.id)
+		})
+
+		it("receiveTask without messageName emits a bare task (no messageRef)", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.receiveTask("rt", { name: "Bare receive" })
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(0)
+			const el = defined(defs.processes[0]?.flowElements.find((n) => n.id === "rt"))
+			if (el.type !== "receiveTask") throw new Error("expected receiveTask")
+			expect(el.messageRef).toBeUndefined()
+		})
+
+		it("messageName is de-duplicated across receiveTask and message start event", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s", { messageName: "SharedMsg" })
+				.receiveTask("rt", { name: "Await", messageName: "SharedMsg" })
+				.endEvent("e")
+				.build()
+
+			// Only one root message despite two usages
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("SharedMsg")
+
+			// Start event references the same root
+			const start = defs.processes[0]?.flowElements.find((n) => n.id === "s")
+			if (start?.type === "startEvent") {
+				const def = start.eventDefinitions[0]
+				if (def?.type === "message") expect(def.messageRef).toBe(rootMsg?.id)
+			}
+
+			// Receive task also references the same root
+			const el = defined(defs.processes[0]?.flowElements.find((n) => n.id === "rt"))
+			if (el.type !== "receiveTask") throw new Error("expected receiveTask")
+			expect(el.messageRef).toBe(rootMsg?.id)
+		})
+
+		it("receiveTask messageName in a branch emits root message and sets messageRef", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("A", (b) =>
+					b.receiveTask("rt", { name: "Wait", messageName: "BranchMsg" }).connectTo("e"),
+				)
+				.branch("B", (b) => b.endEvent("e2"))
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("BranchMsg")
+
+			const el = defined(defs.processes[0]?.flowElements.find((n) => n.id === "rt"))
+			if (el.type !== "receiveTask") throw new Error("expected receiveTask")
+			expect(el.messageRef).toBe(rootMsg?.id)
+		})
+
 		it("receiveTask round-trips messageRef through export → parse", () => {
 			const defs = Bpmn.createProcess("proc")
 				.startEvent("s")
