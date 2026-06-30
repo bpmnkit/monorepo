@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import type { BpmnFlowElement, BpmnProcess, BpmnSequenceFlow } from "../src/bpmn/bpmn-model.js"
+import { applyAutoLayout } from "../src/bpmn/auto-layout.js"
+import type {
+	BpmnDefinitions,
+	BpmnFlowElement,
+	BpmnLane,
+	BpmnProcess,
+	BpmnSequenceFlow,
+} from "../src/bpmn/bpmn-model.js"
 import {
 	alignBranchBaselines,
 	alignSplitJoinPairs,
@@ -1797,5 +1804,108 @@ describe("Boundary event convergence join placement", () => {
 		}
 
 		expect(() => assertNoOverlap(result)).not.toThrow()
+	})
+})
+
+describe("Lane proportional height", () => {
+	/** Build a minimal BpmnDefinitions with two lanes and a collaboration. */
+	function makeProcess(
+		laneANodes: BpmnFlowElement[],
+		laneBNodes: BpmnFlowElement[],
+	): BpmnDefinitions {
+		const allNodes = [...laneANodes, ...laneBNodes]
+		const laneA: BpmnLane = {
+			id: "laneA",
+			name: "Lane A",
+			flowNodeRefs: laneANodes.map((n) => n.id),
+			unknownAttributes: {},
+		}
+		const laneB: BpmnLane = {
+			id: "laneB",
+			name: "Lane B",
+			flowNodeRefs: laneBNodes.map((n) => n.id),
+			unknownAttributes: {},
+		}
+		const process: BpmnProcess = {
+			id: "proc",
+			extensionElements: [],
+			flowElements: allNodes,
+			sequenceFlows: [flow("f1", allNodes[0]?.id ?? "s", allNodes[allNodes.length - 1]?.id ?? "e")],
+			textAnnotations: [],
+			associations: [],
+			laneSet: { id: "ls1", lanes: [laneA, laneB] },
+			unknownAttributes: {},
+		}
+		return {
+			id: "defs",
+			targetNamespace: "http://bpmn.io/schema/bpmn",
+			namespaces: {},
+			unknownAttributes: {},
+			processes: [process],
+			collaborations: [
+				{
+					id: "collab",
+					participants: [{ id: "part1", processRef: "proc", unknownAttributes: {} }],
+					messageFlows: [],
+					unknownAttributes: {},
+				},
+			],
+			messages: [],
+			errors: [],
+			signals: [],
+			escalations: [],
+			diagrams: [],
+		}
+	}
+
+	it("lane with more elements gets more height than lane with fewer elements", () => {
+		// Lane A: 4 service tasks (will occupy more vertical space)
+		const laneANodes = [
+			node("a1", "serviceTask"),
+			node("a2", "serviceTask"),
+			node("a3", "serviceTask"),
+			node("a4", "serviceTask"),
+		]
+		// Lane B: 1 service task (minimal vertical space)
+		const laneBNodes = [node("b1", "serviceTask")]
+
+		const defs = makeProcess(laneANodes, laneBNodes)
+		const result = applyAutoLayout(defs)
+
+		const diagram = result.diagrams[0]
+		expect(diagram).toBeDefined()
+		if (!diagram) return
+
+		const laneAShape = diagram.plane.shapes.find((s) => s.bpmnElement === "laneA")
+		const laneBShape = diagram.plane.shapes.find((s) => s.bpmnElement === "laneB")
+		expect(laneAShape).toBeDefined()
+		expect(laneBShape).toBeDefined()
+		if (!laneAShape || !laneBShape) return
+
+		// Lane A has 4 tasks vs 1 task — must be taller
+		expect(laneAShape.bounds.height).toBeGreaterThan(laneBShape.bounds.height)
+	})
+
+	it("lane heights sum to pool height", () => {
+		const laneANodes = [node("a1", "serviceTask"), node("a2", "serviceTask")]
+		const laneBNodes = [node("b1", "serviceTask")]
+
+		const defs = makeProcess(laneANodes, laneBNodes)
+		const result = applyAutoLayout(defs)
+
+		const diagram = result.diagrams[0]
+		if (!diagram) return
+
+		const laneShapes = diagram.plane.shapes.filter(
+			(s) => s.bpmnElement === "laneA" || s.bpmnElement === "laneB",
+		)
+		const poolShape = diagram.plane.shapes.find((s) => s.bpmnElement === "part1")
+		expect(laneShapes).toHaveLength(2)
+		expect(poolShape).toBeDefined()
+		if (!poolShape) return
+
+		const totalLaneH = laneShapes.reduce((sum, s) => sum + s.bounds.height, 0)
+		// Lane heights must sum to pool height (within 1px for rounding)
+		expect(Math.abs(totalLaneH - poolShape.bounds.height)).toBeLessThanOrEqual(1)
 	})
 })
