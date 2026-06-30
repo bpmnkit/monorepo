@@ -3590,6 +3590,113 @@ describe("SubProcessContentBuilder — isForCompensation forwarding (C2)", () =>
 	})
 })
 
+describe("BranchBuilder nested branch infrastructure", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("elements added after nested branches in a branch auto-connect from all open ends", () => {
+		// This exercises the new openBranchEnds drainage in BranchBuilder.addElement()
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("outer-gw")
+			.branch("path-a", (b) => {
+				b.exclusiveGateway("inner-gw")
+					.branch("x", (bb) => bb.userTask("t-x"))
+					.branch("y", (bb) => bb.userTask("t-y"))
+					.userTask("t-after")
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		// t-x and t-y both connect via a convergence join to t-after
+		// (build() auto-inserts inner-gw_join when multiple branches converge on the same target)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-x" && f.targetRef === "inner-gw_join"),
+		).toBe(true)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-y" && f.targetRef === "inner-gw_join"),
+		).toBe(true)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "inner-gw_join" && f.targetRef === "t-after"),
+		).toBe(true)
+	})
+
+	it("exclusiveGateway inside a branch supports branch() sub-split with endEvent termination", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("outer-gw")
+			.branch("path-a", (b) => {
+				b.exclusiveGateway("inner-gw")
+					.branch("x", (bb) => bb.condition("= x").endEvent("e-x"))
+					.branch("y", (bb) => bb.defaultFlow().endEvent("e-y"))
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		// inner-gw exists
+		expect(p.flowElements.some((e) => e.id === "inner-gw")).toBe(true)
+		// outer-gw → inner-gw (labeled "path-a")
+		expect(
+			p.sequenceFlows.some(
+				(f) => f.sourceRef === "outer-gw" && f.targetRef === "inner-gw" && f.name === "path-a",
+			),
+		).toBe(true)
+		// inner-gw → e-x (labeled "x")
+		expect(
+			p.sequenceFlows.some(
+				(f) => f.sourceRef === "inner-gw" && f.targetRef === "e-x" && f.name === "x",
+			),
+		).toBe(true)
+		// inner-gw → e-y (labeled "y")
+		expect(
+			p.sequenceFlows.some(
+				(f) => f.sourceRef === "inner-gw" && f.targetRef === "e-y" && f.name === "y",
+			),
+		).toBe(true)
+	})
+
+	it("nested branch with connectTo correctly wires to a process-level element", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("outer-gw")
+			.branch("path-a", (b) => {
+				b.exclusiveGateway("inner-gw")
+					.branch("x", (bb) => bb.condition("= x").userTask("t-x").connectTo("outer-merge"))
+					.branch("y", (bb) => bb.defaultFlow().userTask("t-y").connectTo("outer-merge"))
+			})
+			.branch("path-b", (b) =>
+				b.serviceTask("t-b", { name: "B", taskType: "b" }).connectTo("outer-merge"),
+			)
+			.exclusiveGateway("outer-merge")
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		// Both inner branches connect to outer-merge
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-x" && f.targetRef === "outer-merge"),
+		).toBe(true)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-y" && f.targetRef === "outer-merge"),
+		).toBe(true)
+	})
+
+	it("throws when branch() called without preceding gateway inside a branch", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) => {
+					b.userTask("t").branch("x", (bb) => bb.endEvent("e"))
+				})
+				.build(),
+		).toThrow("branch() must be called after a gateway element")
+	})
+})
+
 describe("withBoundary — _savedMainFlowId cleanup (C3)", () => {
 	it("element added after withBoundary(compensation) connects correctly to main flow", () => {
 		const p = firstProcess(
@@ -3609,5 +3716,178 @@ describe("withBoundary — _savedMainFlowId cleanup (C3)", () => {
 		expect(flows.find((f) => f.sourceRef === "Confirm" && f.targetRef === "end")).toBeDefined()
 		// Compensation handler must not be in main sequence flow
 		expect(flows.find((f) => f.targetRef === "Cancel")).toBeUndefined()
+	})
+})
+
+describe("boundary events inside a branch", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("boundaryEvent() inside a branch attaches to the preceding task via attachedToRef", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) => {
+				b.userTask("ut")
+					.boundaryEvent("be", { attachedTo: "ut", timerDuration: "PT4H", cancelActivity: false })
+					.endEvent("e-timeout")
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		const be = p.flowElements.find((e) => e.id === "be")
+		expect(be).toBeDefined()
+		if (be?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(be.attachedToRef).toBe("ut")
+		expect(be.cancelActivity).toBe(false)
+		expect(be.eventDefinitions).toHaveLength(1)
+		expect(be.eventDefinitions[0]?.type).toBe("timer")
+		// Boundary event chains to e-timeout
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "be" && f.targetRef === "e-timeout")).toBe(
+			true,
+		)
+		// No sequence flow from ut to be (boundary events never auto-connect via sequence flow)
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "ut" && f.targetRef === "be")).toBe(false)
+	})
+
+	it("withBoundary() inside a branch attaches boundary and restores cursor to the task", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) => {
+				b.userTask("ut")
+					.withBoundary("be-timer", { timerDuration: "PT4H", cancelActivity: false }, (h) => {
+						h.userTask("escalate").endEvent("e-escalate")
+					})
+					.endEvent("e-main")
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+
+		// boundary is attached to ut
+		const be = p.flowElements.find((e) => e.id === "be-timer")
+		if (be?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(be.attachedToRef).toBe("ut")
+		expect(be.cancelActivity).toBe(false)
+
+		// main flow: ut → e-main (cursor restored to ut after withBoundary)
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "ut" && f.targetRef === "e-main")).toBe(true)
+
+		// timeout path: be-timer → escalate → e-escalate
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "be-timer" && f.targetRef === "escalate"),
+		).toBe(true)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "escalate" && f.targetRef === "e-escalate"),
+		).toBe(true)
+
+		// no flow from ut to be-timer
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "ut" && f.targetRef === "be-timer")).toBe(
+			false,
+		)
+	})
+
+	it("withBoundary() error variant works in a branch", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) => {
+				b.serviceTask("validate", { name: "Validate", taskType: "validate" })
+					.withBoundary("on-err", { errorCode: "INVALID", cancelActivity: true }, (h) => {
+						h.endEvent("e-err", { errorCode: "INVALID" })
+					})
+					.endEvent("e-ok")
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		const be = p.flowElements.find((e) => e.id === "on-err")
+		if (be?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(be.attachedToRef).toBe("validate")
+		expect(be.cancelActivity).toBe(true)
+		// error definition
+		expect(be.eventDefinitions[0]?.type).toBe("error")
+		// main path: validate → e-ok
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "validate" && f.targetRef === "e-ok")).toBe(
+			true,
+		)
+		// error path: on-err → e-err
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "on-err" && f.targetRef === "e-err")).toBe(
+			true,
+		)
+	})
+
+	it("withBoundary() throws when no preceding task in the branch", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("path-a", (b) => {
+					b.withBoundary("be", { timerDuration: "PT1H" }, (h) => h.endEvent("e-be"))
+				})
+				.build(),
+		).toThrow(/withBoundary/)
+	})
+
+	it("boundaryEvent in a branch has correct structure in the built model", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) => {
+				b.userTask("ut")
+					.withBoundary("be", { timerDuration: "PT1H" }, (h) => h.endEvent("e-be"))
+					.endEvent("e-main")
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		const be = p.flowElements.find((e) => e.id === "be")
+		if (be?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(be.attachedToRef).toBe("ut")
+		// boundary event is in the main process flowElements
+		expect(p.flowElements.some((e) => e.id === "be")).toBe(true)
+	})
+
+	it("boundaryEvent() as first element in a branch does not corrupt isFirstElement state", () => {
+		// A boundary event attached to an external task, followed by another element
+		// The second element must NOT get the branch name stamped on its flow
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.userTask("external-task")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) => {
+				b.boundaryEvent("be", { attachedTo: "external-task", timerDuration: "PT1H" }).endEvent(
+					"e-be",
+				)
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		// The flow be → e-be must NOT have name "path-a" (branch name belongs on gw → first task flow, not on boundary event outflow)
+		const beToEnd = p.sequenceFlows.find((f) => f.sourceRef === "be" && f.targetRef === "e-be")
+		expect(beToEnd).toBeDefined()
+		expect(beToEnd?.name).toBeUndefined()
+	})
+
+	it("withBoundary() throws when the cursor is on a boundary event (not a task)", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("path-a", (b) => {
+					b.userTask("t")
+						.boundaryEvent("be1", { attachedTo: "t", timerDuration: "PT1H" })
+						.withBoundary("be2", { timerDuration: "PT2H" }, (h) => h.endEvent("e"))
+				})
+				.branch("path-b", (b) => b.endEvent("e-b"))
+				.build(),
+		).toThrow(/withBoundary/)
 	})
 })

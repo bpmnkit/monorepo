@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-30 Branch sub-builder: boundary events and nested gateway branches
+
+- Added `boundaryEvent()` to `BranchBuilder` — attach a boundary event to a task inside a branch without a sequence flow; cursor advances to the boundary event.
+- Added `withBoundary()` to `BranchBuilder` — ergonomic helper that attaches a boundary, runs a handler lambda from the boundary, and restores the cursor to the task.
+- Added `branch()` to `BranchBuilder` — nested gateway splits inside a branch, with full `openBranchEnds` auto-connect propagation.
+- Updated `ProcessBuilder.branch()` and `SubProcessContentBuilder.branch()` to handle `_lastNodeId: string | undefined` and drain `_openBranchEnds` from nested splits.
+
 ## 2026-06-30 — receiveTask/sendTask messageName support (issue #125)
 
 **Feature:** `receiveTask(id, { messageName })` and `sendTask(id, { messageName })` now emit root `<bpmn:message>` elements and set `messageRef` on the task. Messages are de-duplicated by name across all positions (consistent with message events added in issue #113).

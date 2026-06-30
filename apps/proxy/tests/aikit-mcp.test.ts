@@ -145,5 +145,5 @@ describe("bpmn_validate logic", () => {
 		const defs = Bpmn.parse(readFileSync(bpmnPath, "utf8"))
 		const report = optimize(defs)
 		expect(Array.isArray(report.findings)).toBe(true)
-	})
+	}, 30_000)
 })

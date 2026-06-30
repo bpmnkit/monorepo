@@ -739,7 +739,7 @@ export class BranchBuilder {
 	readonly _flows: BpmnSequenceFlow[] = []
 	/** @internal */
 	_defaultFlowId: string | undefined
-	private lastNodeId: string
+	private lastNodeId: string | undefined
 	private readonly gatewayId: string
 	private readonly branchName: string
 	private isFirstElement = true
@@ -751,6 +751,10 @@ export class BranchBuilder {
 	readonly _textAnnotations: BpmnTextAnnotation[] = []
 	/** @internal */
 	readonly _associations: BpmnAssociation[] = []
+	/** @internal – ID of the last gateway added in this branch (for nested branch() support). */
+	private currentGatewayId: string | undefined
+	/** @internal – Open ends of nested branches waiting to auto-connect to the next element. */
+	private openBranchEnds: string[] = []
 	private readonly _annCounters = new Map<string, number>()
 	private readonly rootErrors: BpmnError[]
 	private readonly rootMessages: BpmnMessage[]
@@ -789,24 +793,37 @@ export class BranchBuilder {
 
 	private addElement(element: BpmnFlowElement): this {
 		this._elements.push(element)
-		const flowId = generateId("Flow")
-		const flow: BpmnSequenceFlow = {
-			id: flowId,
-			sourceRef: this.lastNodeId,
-			targetRef: element.id,
-			name: this.isFirstElement ? this.branchName : undefined,
-			conditionExpression:
-				this.isFirstElement && this.pendingCondition
-					? makeConditionExpression(this.pendingCondition)
-					: undefined,
-			extensionElements: [],
-			unknownAttributes: {},
-		}
-		this._flows.push(flow)
 
-		if (this.isFirstElement && this.pendingDefault) {
-			this._defaultFlowId = flowId
+		if (this.lastNodeId) {
+			const flowId = generateId("Flow")
+			const flow: BpmnSequenceFlow = {
+				id: flowId,
+				sourceRef: this.lastNodeId,
+				targetRef: element.id,
+				name: this.isFirstElement ? this.branchName : undefined,
+				conditionExpression:
+					this.isFirstElement && this.pendingCondition
+						? makeConditionExpression(this.pendingCondition)
+						: undefined,
+				extensionElements: [],
+				unknownAttributes: {},
+			}
+			this._flows.push(flow)
+			if (this.isFirstElement && this.pendingDefault) {
+				this._defaultFlowId = flowId
+			}
 		}
+
+		for (const branchEnd of this.openBranchEnds) {
+			this._flows.push({
+				id: generateId("Flow"),
+				sourceRef: branchEnd,
+				targetRef: element.id,
+				extensionElements: [],
+				unknownAttributes: {},
+			})
+		}
+		this.openBranchEnds = []
 
 		this.isFirstElement = false
 		this.lastNodeId = element.id
@@ -821,7 +838,8 @@ export class BranchBuilder {
 		const flowId = generateId("Flow")
 		const flow: BpmnSequenceFlow = {
 			id: flowId,
-			sourceRef: this.lastNodeId,
+			// biome-ignore lint/style/noNonNullAssertion: lastNodeId starts as gatewayId and is always defined in pre-branch context
+			sourceRef: this.lastNodeId!,
 			targetRef: targetId,
 			name: this.isFirstElement ? this.branchName : undefined,
 			conditionExpression:
@@ -843,16 +861,22 @@ export class BranchBuilder {
 		return this
 	}
 
-	/** @internal – ID of the last element added (or the gateway if branch is empty) */
-	get _lastNodeId(): string {
+	/** @internal – ID of the last element added (or undefined if branches are open). */
+	get _lastNodeId(): string | undefined {
 		return this.lastNodeId
+	}
+
+	/** @internal – Open ends of nested branches that have not yet been connected. */
+	get _openBranchEnds(): string[] {
+		return this.openBranchEnds
 	}
 
 	// ---- Annotations ----
 
 	/** Attach a text annotation to the element at the current cursor position. */
 	textAnnotation(text: string): this {
-		return this.annotate(this.lastNodeId, text)
+		// biome-ignore lint/style/noNonNullAssertion: lastNodeId starts as gatewayId and is always defined in pre-branch context
+		return this.annotate(this.lastNodeId!, text)
 	}
 
 	/** Attach a text annotation to an element by explicit ID. */
@@ -979,19 +1003,153 @@ export class BranchBuilder {
 	}
 
 	exclusiveGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeExclusiveGatewayEl(id, options))
 	}
 
 	parallelGateway(id: string, options?: ElementOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeFlowElement(id, "parallelGateway", options))
 	}
 
 	inclusiveGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeInclusiveGatewayEl(id, options))
 	}
 
 	eventBasedGateway(id: string, options?: ElementOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeFlowElement(id, "eventBasedGateway", options))
+	}
+
+	/**
+	 * Add a boundary event attached to an existing activity in this branch.
+	 *
+	 * The boundary event is NOT connected by a sequence flow — it attaches via
+	 * `attachedToRef`. The builder cursor advances to the boundary event so
+	 * subsequent elements chain from it. Use `withBoundary()` if you want the
+	 * cursor to return to the task afterward.
+	 */
+	boundaryEvent(id: string, options: BoundaryEventOptions): this {
+		const element = makeFlowElement(id, "boundaryEvent", options)
+		if (element.type === "boundaryEvent") {
+			element.attachedToRef = options.attachedTo
+			element.cancelActivity = options.cancelActivity
+			element.eventDefinitions = buildEventDefinitions(
+				options,
+				this.rootErrors,
+				this.rootMessages,
+				this.rootSignals,
+				this.rootEscalations,
+			)
+		}
+		// Push directly — no sequence flow, boundary events attach via attachedToRef
+		this._elements.push(element)
+		this.lastNodeId = element.id
+		this.isFirstElement = false
+		return this
+	}
+
+	/**
+	 * Attach a boundary event to the preceding task and build its outgoing path,
+	 * then restore the branch cursor to the preceding task so the main branch flow continues.
+	 *
+	 * @param id - ID for the boundary event element.
+	 * @param options - Boundary event options (without `attachedTo` — inferred from cursor).
+	 * @param handler - Callback that chains elements from the boundary event.
+	 */
+	withBoundary(
+		id: string,
+		options: Omit<BoundaryEventOptions, "attachedTo">,
+		handler: (b: BranchBuilder) => void,
+	): this {
+		const attachedTo = this.lastNodeId
+		if (!attachedTo || attachedTo === this.gatewayId) {
+			throw new Error(
+				"withBoundary() must follow a task element inside the branch. Current builder position has no active task.",
+			)
+		}
+
+		const attachedEl = this._elements.find((n) => n.id === attachedTo)
+		if (attachedEl?.type === "boundaryEvent") {
+			throw new Error(
+				"withBoundary() cannot attach to a boundary event. It must follow a task or activity element.",
+			)
+		}
+
+		const savedLast = this.lastNodeId
+		const savedGateway = this.currentGatewayId
+		const savedConnected = this._connected
+		const savedOpenEnds = [...this.openBranchEnds]
+		this.openBranchEnds = []
+
+		// Create and push the boundary event (no sequence flow)
+		this.boundaryEvent(id, { ...options, attachedTo })
+
+		// Build the boundary event's outgoing path
+		handler(this)
+
+		// Restore cursor to the task so the branch main flow continues
+		this.lastNodeId = savedLast
+		this.currentGatewayId = savedGateway
+		this._connected = savedConnected
+		this.openBranchEnds = savedOpenEnds
+		return this
+	}
+
+	/**
+	 * Create a named branch from the last gateway added inside this branch.
+	 *
+	 * Works identically to the top-level `ProcessBuilder.branch()` — use
+	 * `.condition(expr)` or `.defaultFlow()` inside the callback, finish with
+	 * `.connectTo(id)` or an `.endEvent()` to terminate the nested branch.
+	 */
+	branch(name: string, callback: (b: BranchBuilder) => void): this {
+		if (!this.currentGatewayId) {
+			throw new Error("branch() must be called after a gateway element")
+		}
+		const b = new BranchBuilder(
+			this.currentGatewayId,
+			name,
+			this.rootErrors,
+			this.rootMessages,
+			this.rootSignals,
+			this.rootEscalations,
+		)
+		callback(b)
+
+		for (const el of b._elements) {
+			if (this._elements.some((n) => n.id === el.id)) {
+				throw new Error(`Duplicate element ID "${el.id}"`)
+			}
+			this._elements.push(el)
+		}
+		for (const fl of b._flows) this._flows.push(fl)
+		for (const ann of b._textAnnotations) this._textAnnotations.push(ann)
+		for (const assoc of b._associations) this._associations.push(assoc)
+
+		if (b._defaultFlowId) {
+			const gw = this._elements.find((n) => n.id === this.currentGatewayId)
+			if (gw && (gw.type === "exclusiveGateway" || gw.type === "inclusiveGateway")) {
+				gw.default = b._defaultFlowId
+			}
+		}
+
+		if (!b._connected) {
+			const allEnds: string[] = [
+				...(b._lastNodeId !== undefined ? [b._lastNodeId] : []),
+				...b._openBranchEnds,
+			]
+			for (const endId of allEnds) {
+				const endEl = this._elements.find((n) => n.id === endId)
+				if (endEl && endEl.type !== "endEvent") {
+					this.openBranchEnds.push(endId)
+				}
+			}
+		}
+
+		this.lastNodeId = undefined
+		return this
 	}
 }
 
@@ -1204,10 +1362,16 @@ export class SubProcessContentBuilder {
 			}
 		}
 
-		if (!b._connected && b._elements.length > 0) {
-			const lastEl = b._elements[b._elements.length - 1]
-			if (lastEl && lastEl.type !== "endEvent") {
-				this.openBranchEnds.push(b._lastNodeId)
+		if (!b._connected) {
+			const allEnds: string[] = [
+				...(b._lastNodeId !== undefined ? [b._lastNodeId] : []),
+				...b._openBranchEnds,
+			]
+			for (const endId of allEnds) {
+				const endEl = this._elements.find((n) => n.id === endId)
+				if (endEl && endEl.type !== "endEvent") {
+					this.openBranchEnds.push(endId)
+				}
 			}
 		}
 
@@ -1670,10 +1834,16 @@ export class ProcessBuilder {
 
 		// Track the branch's open end so the next element auto-connects from it.
 		// Skip branches that terminated at an end event (those are intentional dead-ends).
-		if (!b._connected && b._elements.length > 0) {
-			const lastEl = b._elements[b._elements.length - 1]
-			if (lastEl && lastEl.type !== "endEvent") {
-				this.openBranchEnds.push(b._lastNodeId)
+		if (!b._connected) {
+			const allEnds: string[] = [
+				...(b._lastNodeId !== undefined ? [b._lastNodeId] : []),
+				...b._openBranchEnds,
+			]
+			for (const endId of allEnds) {
+				const endEl = this.flowElements.find((n) => n.id === endId)
+				if (endEl && endEl.type !== "endEvent") {
+					this.openBranchEnds.push(endId)
+				}
 			}
 		}
 
