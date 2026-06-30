@@ -24,6 +24,7 @@ Nine incremental improvements to `@bpmnkit/core`'s `bpmn-builder.ts` API:
 | 8 | **`executionPlatformVersion` setter** (2026-06-26) | `ProcessBuilder.executionPlatformVersion("8.x.0")`, `DiagramBuilder.executionPlatformVersion("8.x.0")` |
 | 9 | **Fluent text annotations + DI** (2026-06-26) | `.textAnnotation(text)`, `.annotate(elementId, text)` on `ProcessBuilder`, `BranchBuilder`, `SubProcessContentBuilder`; annotation shapes/edges in `withAutoLayout()` |
 | 10 | **Abstract `.task()` method** (2026-06-28) | `ProcessBuilder.task()` / `BranchBuilder.task()` / `SubProcessContentBuilder.task()` — emits abstract `<bpmn:task>` with no Zeebe extensions, for documentation-grade diagrams. |
+| 11 | **Branch sub-builder: boundary events and nested gateway branches** (2026-06-30) | `BranchBuilder.boundaryEvent()`, `.withBoundary()`, nested `.branch()` on sub-builder with full open-branch-ends propagation |
 
 ## CLI — `casen generate` and `casen view` (2026-04-25)
 
