@@ -1,5 +1,12 @@
 # @bpmnkit/core
 
+## 0.0.26
+
+### Patch Changes
+
+- c93b45d: Minor fixes
+- c93b45d: Several improvements and bugfixes.
+
 ## 0.0.25
 
 ### Patch Changes
