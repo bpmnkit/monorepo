@@ -1013,6 +1013,12 @@ export class SubProcessContentBuilder {
 	private lastNodeId: string | undefined
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
+	private readonly rootMessages: BpmnMessage[]
+
+	/** @internal */
+	constructor(rootMessages: BpmnMessage[] = []) {
+		this.rootMessages = rootMessages
+	}
 
 	private addElement(element: BpmnFlowElement): this {
 		if (this._elements.some((n) => n.id === element.id)) {
@@ -1106,14 +1112,14 @@ export class SubProcessContentBuilder {
 	sendTask(id: string, options?: MessageTaskOptions): this {
 		const el = makeFlowElement(id, "sendTask", options) as BpmnSendTask
 		if (options?.isForCompensation) el.isForCompensation = true
-		if (options?.messageName) el.messageRef = options.messageName
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
 	}
 
 	receiveTask(id: string, options?: MessageTaskOptions): this {
 		const el = makeFlowElement(id, "receiveTask", options) as BpmnReceiveTask
 		if (options?.isForCompensation) el.isForCompensation = true
-		if (options?.messageName) el.messageRef = options.messageName
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
 	}
 
@@ -1715,7 +1721,7 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: AdHocSubProcessOptions,
 	): this {
-		const sub = new SubProcessContentBuilder()
+		const sub = new SubProcessContentBuilder(this.rootMessages)
 		content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
@@ -1790,7 +1796,7 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: SubProcessOptions,
 	): this {
-		const sub = new SubProcessContentBuilder()
+		const sub = new SubProcessContentBuilder(this.rootMessages)
 		content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
@@ -1815,7 +1821,7 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: ElementOptions,
 	): this {
-		const sub = new SubProcessContentBuilder()
+		const sub = new SubProcessContentBuilder(this.rootMessages)
 		content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)

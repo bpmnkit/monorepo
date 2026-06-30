@@ -369,6 +369,28 @@ describe("BpmnProcessBuilder", () => {
 			expect(el.messageRef).toBe(rootMsg?.id)
 		})
 
+		it("receiveTask with messageName inside subProcess emits root bpmn:message and sets messageRef", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.subProcess("sub", (b) => {
+					b.startEvent("sub-s")
+						.receiveTask("rt", { name: "Await ping", messageName: "SubMsg" })
+						.endEvent("sub-e")
+				})
+				.endEvent("e")
+				.build()
+
+			expect(defs.messages).toHaveLength(1)
+			const rootMsg = defs.messages[0]
+			expect(rootMsg?.name).toBe("SubMsg")
+
+			const subProc = defs.processes[0]?.flowElements.find((n) => n.id === "sub")
+			if (subProc?.type !== "subProcess") throw new Error("expected subProcess")
+			const rt = subProc.flowElements.find((n) => n.id === "rt")
+			if (rt?.type !== "receiveTask") throw new Error("expected receiveTask")
+			expect(rt.messageRef).toBe(rootMsg?.id)
+		})
+
 		it("receiveTask round-trips messageRef through export → parse", () => {
 			const defs = Bpmn.createProcess("proc")
 				.startEvent("s")
