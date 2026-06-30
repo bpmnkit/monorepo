@@ -516,6 +516,10 @@ A unified Preact web application replacing fragmented Camunda tooling (Modeler, 
 - **`BpmnEditor.autoLayout()`**: undoable auto-layout command in the editor; triggers `fitView` after layout.
 - **Auto-layout button**: HUD action bar now has an auto-layout button (grid icon) between `btnTopMore` and optional inject buttons.
 - **`BpmnDiShape.isHorizontal`**: new optional field parsed and serialized round-trip by parser/serializer.
+- **[2026-06-30] Layout constants match canonical Camunda BPMN skill spec**: subprocess padding 50px, Sugiyama horizontal spacing 150px center-to-center.
+- **[2026-06-30] Boundary event center-bottom placement**: single event at task center-bottom; multiple events symmetrically distributed.
+- **[2026-06-30] adHocSubProcess tool grid layout**: agent tools tile into rows of up to 4 columns.
+- **[2026-06-30] Lane proportional height**: pool lanes sized relative to content, not equal tiles.
 
 ## ASCII rendering for DMN and Forms (2026-03-11) — `packages/ascii`
 

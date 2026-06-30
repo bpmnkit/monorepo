@@ -3,6 +3,38 @@ import { layoutFlowNodes } from "./layout-engine.js"
 import type { LayoutNode, SubProcessChildResult } from "./types.js"
 import { SUBPROCESS_PADDING } from "./types.js"
 
+const ADHOC_MAX_COLS = 4
+const ADHOC_H_GAP = 50
+const ADHOC_V_GAP = 80
+
+/**
+ * Rearrange disconnected adHocSubProcess tool nodes into a grid.
+ * Nodes start at (0, 0) so the subprocess padding offset applies cleanly.
+ */
+function applyAdHocGridLayout(nodes: LayoutNode[]): void {
+	if (nodes.length === 0) return
+	const cols = Math.min(nodes.length, ADHOC_MAX_COLS)
+	const cellW = nodes.reduce((max, n) => Math.max(max, n.bounds.width), 0)
+	const cellH = nodes.reduce((max, n) => Math.max(max, n.bounds.height), 0)
+
+	for (let i = 0; i < nodes.length; i++) {
+		const col = i % cols
+		const row = Math.floor(i / cols)
+		const n = nodes[i]
+		if (!n) continue
+		const newX = col * (cellW + ADHOC_H_GAP) + Math.round((cellW - n.bounds.width) / 2)
+		const newY = row * (cellH + ADHOC_V_GAP) + Math.round((cellH - n.bounds.height) / 2)
+		const dx = newX - n.bounds.x
+		const dy = newY - n.bounds.y
+		n.bounds.x = newX
+		n.bounds.y = newY
+		if (n.labelBounds) {
+			n.labelBounds.x += dx
+			n.labelBounds.y += dy
+		}
+	}
+}
+
 /** Sub-process types that contain child elements. */
 type SubProcessElement = BpmnAdHocSubProcess
 
@@ -32,6 +64,16 @@ export function layoutSubProcesses(
 		if (!subProcess.flowElements || subProcess.flowElements.length === 0) continue
 
 		const childResult = layoutFlowNodes(subProcess.flowElements, subProcess.sequenceFlows ?? [])
+
+		// For adHocSubProcess with no sequence flows, rearrange into a compact grid
+		// instead of a single long horizontal row.
+		if (
+			bpmnNode.type === "adHocSubProcess" &&
+			(subProcess.sequenceFlows?.length ?? 0) === 0 &&
+			childResult.nodes.length > 0
+		) {
+			applyAdHocGridLayout(childResult.nodes)
+		}
 
 		if (childResult.nodes.length === 0) continue
 

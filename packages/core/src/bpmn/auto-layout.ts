@@ -250,19 +250,41 @@ function buildLaneShapes(
 		return mA - mB
 	})
 
-	const tileH = Math.round(poolHeight / sortedLanes.length)
-	return sortedLanes.map((lane, i) => ({
-		id: `${lane.id}_di`,
-		bpmnElement: lane.id,
-		isHorizontal: true,
-		bounds: {
-			x: Math.round(poolHeaderWidth),
-			y: Math.round(poolY + i * tileH),
-			width: Math.round(laneContentWidth),
-			height: Math.round(i === sortedLanes.length - 1 ? poolHeight - i * tileH : tileH),
-		},
-		unknownAttributes: {},
-	}))
+	// Compute proportional weight per lane: node count × row height, minimum 1 row
+	const MIN_LANE_H = 80
+
+	const weights = sortedLanes.map((lane) => {
+		const count = nodes.filter((n) => elemToLane.get(n.id) === lane.id).length
+		return Math.max(count, 1)
+	})
+	const totalWeight = weights.reduce((a, b) => a + b, 0)
+
+	// Scale proportionally to poolHeight so all lanes fill the pool exactly
+	const scaledHeights = weights.map((w) => Math.round((w / totalWeight) * poolHeight))
+	// Fix last lane for rounding drift
+	if (scaledHeights.length > 0) {
+		scaledHeights[scaledHeights.length - 1] =
+			poolHeight - scaledHeights.slice(0, -1).reduce((a, b) => a + b, 0)
+	}
+
+	let cumulativeY = 0
+	return sortedLanes.map((lane, i) => {
+		const laneH = scaledHeights[i] ?? MIN_LANE_H
+		const shape: BpmnDiShape = {
+			id: `${lane.id}_di`,
+			bpmnElement: lane.id,
+			isHorizontal: true,
+			bounds: {
+				x: Math.round(poolHeaderWidth),
+				y: Math.round(poolY + cumulativeY),
+				width: Math.round(laneContentWidth),
+				height: Math.round(laneH),
+			},
+			unknownAttributes: {},
+		}
+		cumulativeY += laneH
+		return shape
+	})
 }
 
 function addAnnotationShapes(

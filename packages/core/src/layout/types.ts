@@ -25,7 +25,7 @@ export const ELEMENT_SIZES: Record<string, { width: number; height: number }> = 
 }
 
 /** Virtual grid cell dimensions for element placement. */
-export const GRID_CELL_WIDTH = 130
+export const GRID_CELL_WIDTH = 150
 export const GRID_CELL_HEIGHT = 140
 
 /** Minimum spacing between elements (derived from grid). */
@@ -33,7 +33,7 @@ export const HORIZONTAL_SPACING = GRID_CELL_WIDTH - 100 // 100 = max element wid
 export const VERTICAL_SPACING = GRID_CELL_HEIGHT - 80 // 80 = max element height
 
 /** Padding inside sub-process containers. */
-export const SUBPROCESS_PADDING = 20
+export const SUBPROCESS_PADDING = 50
 
 /** Edge-label sizing constants (used for placement & collision detection). */
 export const LABEL_CHAR_WIDTH = 7

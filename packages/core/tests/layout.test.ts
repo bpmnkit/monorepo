@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import type { BpmnFlowElement, BpmnProcess, BpmnSequenceFlow } from "../src/bpmn/bpmn-model.js"
+import { applyAutoLayout } from "../src/bpmn/auto-layout.js"
+import type {
+	BpmnDefinitions,
+	BpmnFlowElement,
+	BpmnLane,
+	BpmnProcess,
+	BpmnSequenceFlow,
+} from "../src/bpmn/bpmn-model.js"
 import {
 	alignBranchBaselines,
 	alignSplitJoinPairs,
@@ -249,9 +256,9 @@ describe("Coordinate assignment", () => {
 		expect(taskNode).toBeDefined()
 		if (!startNode || !taskNode) return
 
-		// Task should be at least HORIZONTAL_SPACING (30px) after start's right edge
+		// Task should be at least HORIZONTAL_SPACING (50px) after start's right edge
 		const startRight = startNode.bounds.x + startNode.bounds.width
-		expect(taskNode.bounds.x).toBeGreaterThanOrEqual(startRight + 30 - 1)
+		expect(taskNode.bounds.x).toBeGreaterThanOrEqual(startRight + 50 - 1)
 	})
 
 	it("ensures vertical spacing between nodes in the same layer", () => {
@@ -269,6 +276,23 @@ describe("Coordinate assignment", () => {
 
 		const gap = nodeB.bounds.y - (nodeA.bounds.y + nodeA.bounds.height)
 		expect(gap).toBeGreaterThanOrEqual(VERTICAL_SPACING - 1)
+	})
+
+	it("GRID_CELL_WIDTH provides at least 50px gap between layer right-edges and next layer left-edge", () => {
+		const flowNodes = [node("start", "startEvent"), node("task", "serviceTask")]
+		const nodeIndex = new Map(flowNodes.map((n) => [n.id, n]))
+		const orderedLayers = [["start"], ["task"]]
+
+		const result = assignCoordinates(orderedLayers, nodeIndex)
+
+		const startNode = result.find((n) => n.id === "start")
+		const taskNode = result.find((n) => n.id === "task")
+		expect(startNode).toBeDefined()
+		expect(taskNode).toBeDefined()
+		if (!startNode || !taskNode) return
+
+		const startRight = startNode.bounds.x + startNode.bounds.width
+		expect(taskNode.bounds.x).toBeGreaterThanOrEqual(startRight + 50 - 1)
 	})
 })
 
@@ -791,6 +815,38 @@ describe("Layout engine (integration)", () => {
 		expect(child2).toBeDefined()
 	})
 
+	it("expanded subprocess has at least 50px padding on each side around its content", () => {
+		const subprocess = node("sub", "subProcess") as BpmnFlowElement & {
+			flowElements: BpmnFlowElement[]
+			sequenceFlows: BpmnSequenceFlow[]
+		}
+		subprocess.flowElements = [node("c1", "serviceTask")]
+		subprocess.sequenceFlows = []
+
+		const process = proc(
+			"p_padding",
+			[node("s", "startEvent"), subprocess, node("e", "endEvent")],
+			[flow("f1", "s", "sub"), flow("f2", "sub", "e")],
+		)
+
+		const result = layoutProcess(process)
+		const container = result.nodes.find((n) => n.id === "sub")
+		const child = result.nodes.find((n) => n.id === "c1")
+		expect(container).toBeDefined()
+		expect(child).toBeDefined()
+		if (!container || !child) return
+
+		// Child must be at least 50px inside each container edge
+		expect(child.bounds.x - container.bounds.x).toBeGreaterThanOrEqual(49)
+		expect(child.bounds.y - container.bounds.y).toBeGreaterThanOrEqual(49)
+		expect(
+			container.bounds.x + container.bounds.width - (child.bounds.x + child.bounds.width),
+		).toBeGreaterThanOrEqual(49)
+		expect(
+			container.bounds.y + container.bounds.height - (child.bounds.y + child.bounds.height),
+		).toBeGreaterThanOrEqual(49)
+	})
+
 	it("handles an empty process", () => {
 		const process = proc("empty", [], [])
 
@@ -856,6 +912,58 @@ describe("Layout engine (integration)", () => {
 		expect(think.bounds.y + think.bounds.height).toBeLessThanOrEqual(
 			container.bounds.y + container.bounds.height,
 		)
+	})
+
+	it("adHocSubProcess with 6 disconnected tools wraps into multiple grid rows", () => {
+		const subproc = node("agent", "adHocSubProcess") as BpmnFlowElement & {
+			flowElements: BpmnFlowElement[]
+			sequenceFlows: BpmnSequenceFlow[]
+		}
+		subproc.flowElements = [
+			node("t1", "serviceTask"),
+			node("t2", "serviceTask"),
+			node("t3", "serviceTask"),
+			node("t4", "serviceTask"),
+			node("t5", "serviceTask"),
+			node("t6", "serviceTask"),
+		]
+		subproc.sequenceFlows = []
+
+		const process = proc(
+			"p_grid",
+			[node("s", "startEvent"), subproc, node("e", "endEvent")],
+			[flow("f1", "s", "agent"), flow("f2", "agent", "e")],
+		)
+
+		const result = layoutProcess(process)
+
+		const container = result.nodes.find((n) => n.id === "agent")
+		const toolNodes = ["t1", "t2", "t3", "t4", "t5", "t6"].map((id) =>
+			result.nodes.find((n) => n.id === id),
+		)
+		expect(container).toBeDefined()
+		for (const n of toolNodes) expect(n).toBeDefined()
+		if (!container) return
+		const defined = toolNodes.filter(Boolean) as LayoutNode[]
+
+		// Must have at least 2 distinct Y rows (grid wrapped)
+		const yValues = new Set(defined.map((n) => n.bounds.y))
+		expect(yValues.size).toBeGreaterThan(1)
+
+		// All tools inside the container
+		for (const n of defined) {
+			expect(n.bounds.x).toBeGreaterThanOrEqual(container.bounds.x)
+			expect(n.bounds.y).toBeGreaterThanOrEqual(container.bounds.y)
+			expect(n.bounds.x + n.bounds.width).toBeLessThanOrEqual(
+				container.bounds.x + container.bounds.width + 1,
+			)
+			expect(n.bounds.y + n.bounds.height).toBeLessThanOrEqual(
+				container.bounds.y + container.bounds.height + 1,
+			)
+		}
+
+		// No overlaps
+		expect(() => assertNoOverlap(result)).not.toThrow()
 	})
 })
 
@@ -1158,7 +1266,7 @@ describe("resolveTargetPort", () => {
 })
 
 describe("Grid-based coordinate system", () => {
-	it("places elements centered in 130×140 grid cells", () => {
+	it("places elements centered in 150×140 grid cells", () => {
 		const flowNodes = [
 			node("start", "startEvent"),
 			node("task", "serviceTask"),
@@ -1169,10 +1277,10 @@ describe("Grid-based coordinate system", () => {
 
 		const result = assignCoordinates(orderedLayers, nodeIndex)
 
-		// Each element should be centered within its grid cell (130×140)
+		// Each element should be centered within its grid cell (150×140)
 		for (const n of result) {
-			const cellX = n.layer * 130
-			const centerX = cellX + 65
+			const cellX = n.layer * 150
+			const centerX = cellX + 75
 			const nodeCenterX = n.bounds.x + n.bounds.width / 2
 			expect(nodeCenterX).toBeCloseTo(centerX, 0)
 		}
@@ -1190,8 +1298,8 @@ describe("Grid-based coordinate system", () => {
 		expect(nodeB).toBeDefined()
 		if (!nodeA || !nodeB) return
 
-		// Layer 0 starts at x=0, layer 1 at x=130 (grid cell width)
-		expect(nodeB.bounds.x - nodeA.bounds.x).toBe(130)
+		// Layer 0 starts at x=0, layer 1 at x=150 (grid cell width)
+		expect(nodeB.bounds.x - nodeA.bounds.x).toBe(150)
 	})
 
 	it("grid spacing between nodes in same layer is 140px cell height", () => {
@@ -1696,5 +1804,108 @@ describe("Boundary event convergence join placement", () => {
 		}
 
 		expect(() => assertNoOverlap(result)).not.toThrow()
+	})
+})
+
+describe("Lane proportional height", () => {
+	/** Build a minimal BpmnDefinitions with two lanes and a collaboration. */
+	function makeProcess(
+		laneANodes: BpmnFlowElement[],
+		laneBNodes: BpmnFlowElement[],
+	): BpmnDefinitions {
+		const allNodes = [...laneANodes, ...laneBNodes]
+		const laneA: BpmnLane = {
+			id: "laneA",
+			name: "Lane A",
+			flowNodeRefs: laneANodes.map((n) => n.id),
+			unknownAttributes: {},
+		}
+		const laneB: BpmnLane = {
+			id: "laneB",
+			name: "Lane B",
+			flowNodeRefs: laneBNodes.map((n) => n.id),
+			unknownAttributes: {},
+		}
+		const process: BpmnProcess = {
+			id: "proc",
+			extensionElements: [],
+			flowElements: allNodes,
+			sequenceFlows: [flow("f1", allNodes[0]?.id ?? "s", allNodes[allNodes.length - 1]?.id ?? "e")],
+			textAnnotations: [],
+			associations: [],
+			laneSet: { id: "ls1", lanes: [laneA, laneB] },
+			unknownAttributes: {},
+		}
+		return {
+			id: "defs",
+			targetNamespace: "http://bpmn.io/schema/bpmn",
+			namespaces: {},
+			unknownAttributes: {},
+			processes: [process],
+			collaborations: [
+				{
+					id: "collab",
+					participants: [{ id: "part1", processRef: "proc", unknownAttributes: {} }],
+					messageFlows: [],
+					unknownAttributes: {},
+				},
+			],
+			messages: [],
+			errors: [],
+			signals: [],
+			escalations: [],
+			diagrams: [],
+		}
+	}
+
+	it("lane with more elements gets more height than lane with fewer elements", () => {
+		// Lane A: 4 service tasks (will occupy more vertical space)
+		const laneANodes = [
+			node("a1", "serviceTask"),
+			node("a2", "serviceTask"),
+			node("a3", "serviceTask"),
+			node("a4", "serviceTask"),
+		]
+		// Lane B: 1 service task (minimal vertical space)
+		const laneBNodes = [node("b1", "serviceTask")]
+
+		const defs = makeProcess(laneANodes, laneBNodes)
+		const result = applyAutoLayout(defs)
+
+		const diagram = result.diagrams[0]
+		expect(diagram).toBeDefined()
+		if (!diagram) return
+
+		const laneAShape = diagram.plane.shapes.find((s) => s.bpmnElement === "laneA")
+		const laneBShape = diagram.plane.shapes.find((s) => s.bpmnElement === "laneB")
+		expect(laneAShape).toBeDefined()
+		expect(laneBShape).toBeDefined()
+		if (!laneAShape || !laneBShape) return
+
+		// Lane A has 4 tasks vs 1 task — must be taller
+		expect(laneAShape.bounds.height).toBeGreaterThan(laneBShape.bounds.height)
+	})
+
+	it("lane heights sum to pool height", () => {
+		const laneANodes = [node("a1", "serviceTask"), node("a2", "serviceTask")]
+		const laneBNodes = [node("b1", "serviceTask")]
+
+		const defs = makeProcess(laneANodes, laneBNodes)
+		const result = applyAutoLayout(defs)
+
+		const diagram = result.diagrams[0]
+		if (!diagram) return
+
+		const laneShapes = diagram.plane.shapes.filter(
+			(s) => s.bpmnElement === "laneA" || s.bpmnElement === "laneB",
+		)
+		const poolShape = diagram.plane.shapes.find((s) => s.bpmnElement === "part1")
+		expect(laneShapes).toHaveLength(2)
+		expect(poolShape).toBeDefined()
+		if (!poolShape) return
+
+		const totalLaneH = laneShapes.reduce((sum, s) => sum + s.bounds.height, 0)
+		// Lane heights must sum to pool height (within 1px for rounding)
+		expect(Math.abs(totalLaneH - poolShape.bounds.height)).toBeLessThanOrEqual(1)
 	})
 })

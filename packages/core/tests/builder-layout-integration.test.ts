@@ -587,6 +587,64 @@ describe("Builder → auto-layout integration", () => {
 		shapeFor(diagram.plane.shapes, "EB2")
 	})
 
+	it("single boundary event is placed at horizontal center of host task bottom edge", () => {
+		const defs = Bpmn.createProcess("P")
+			.withAutoLayout()
+			.startEvent("S")
+			.serviceTask("T", { name: "task", taskType: "t" })
+			.endEvent("E")
+			.element("T")
+			.boundaryEvent("B", { attachedTo: "T", cancelActivity: false, timerDuration: "PT1H" })
+			.endEvent("EB")
+			.build()
+
+		const diagram = firstDiagram(defs)
+		const taskShape = shapeFor(diagram.plane.shapes, "T")
+		const bShape = shapeFor(diagram.plane.shapes, "B")
+
+		const taskCenterX = taskShape.bounds.x + taskShape.bounds.width / 2
+		const bCenterX = bShape.bounds.x + bShape.bounds.width / 2
+		const taskBottom = taskShape.bounds.y + taskShape.bounds.height
+		const bCenterY = bShape.bounds.y + bShape.bounds.height / 2
+
+		// Center must be within 1px of task center horizontally
+		expect(Math.abs(bCenterX - taskCenterX)).toBeLessThanOrEqual(1)
+		// Must be at bottom edge vertically
+		expect(bCenterY).toBeCloseTo(taskBottom, 0)
+	})
+
+	it("two boundary events are distributed symmetrically on host task bottom edge", () => {
+		const defs = Bpmn.createProcess("P")
+			.withAutoLayout()
+			.startEvent("S")
+			.serviceTask("T", { name: "task", taskType: "t" })
+			.endEvent("E")
+			.element("T")
+			.boundaryEvent("B1", { attachedTo: "T", cancelActivity: false, timerDuration: "PT1H" })
+			.endEvent("EB1")
+			.element("T")
+			.boundaryEvent("B2", { attachedTo: "T", cancelActivity: false, timerDuration: "PT2H" })
+			.endEvent("EB2")
+			.build()
+
+		const diagram = firstDiagram(defs)
+		const taskShape = shapeFor(diagram.plane.shapes, "T")
+		const b1Shape = shapeFor(diagram.plane.shapes, "B1")
+		const b2Shape = shapeFor(diagram.plane.shapes, "B2")
+
+		const taskCenterX = taskShape.bounds.x + taskShape.bounds.width / 2
+		const b1CenterX = b1Shape.bounds.x + b1Shape.bounds.width / 2
+		const b2CenterX = b2Shape.bounds.x + b2Shape.bounds.width / 2
+
+		// The two events must be symmetric around task center (within 1px)
+		const leftDistance = Math.abs(taskCenterX - b1CenterX)
+		const rightDistance = Math.abs(taskCenterX - b2CenterX)
+		expect(Math.abs(leftDistance - rightDistance)).toBeLessThanOrEqual(2)
+
+		// Must not overlap
+		shapesDoNotOverlap(b1Shape, b2Shape)
+	})
+
 	// -----------------------------------------------------------------------
 	// Text annotation DI
 	// -----------------------------------------------------------------------

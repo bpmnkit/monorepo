@@ -58,18 +58,29 @@ function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: Layou
 		const hostNode = nodeById.get(hostId)
 		if (!hostNode) continue
 
+		// Pre-compute distribution parameters (all boundary events share the same fixed size).
+		// Distribute events evenly along the bottom edge, centered on the task.
+		// effectiveSpacing guarantees events don't overlap (min bW + 4px gap).
+		const firstBeNode = nodeById.get(beIds[0] ?? "")
+		const bW = firstBeNode?.bounds.width ?? 36
+		const bH = firstBeNode?.bounds.height ?? 36
+		const n = beIds.length
+		const effectiveSpacing = Math.max(Math.round(hostNode.bounds.width / (n + 1)), bW + 4)
+		const groupWidth = Math.max(0, n - 1) * effectiveSpacing
+		const groupStartCenterX = Math.round(
+			hostNode.bounds.x + hostNode.bounds.width / 2 - groupWidth / 2,
+		)
+
 		for (let i = 0; i < beIds.length; i++) {
 			const beId = beIds[i]
 			if (!beId) continue
 			const beNode = nodeById.get(beId)
 			if (!beNode) continue
 
-			const bW = beNode.bounds.width
-			const bH = beNode.bounds.height
+			// bW / bH come from the pre-loop computation (all BEs are fixed 36×36)
 
-			// Place boundary event on the bottom edge of the host task, stacking leftward
-			const rightEdge = hostNode.bounds.x + hostNode.bounds.width
-			beNode.bounds.x = Math.round(rightEdge - bW / 2 - i * (bW + 4))
+			// Center-bottom distribution: single event → task center; multiple → even spread
+			beNode.bounds.x = Math.round(groupStartCenterX + i * effectiveSpacing - bW / 2)
 			beNode.bounds.y = Math.round(hostNode.bounds.y + hostNode.bounds.height - bH / 2)
 			if (beNode.labelBounds) {
 				beNode.labelBounds.x = beNode.bounds.x + Math.round(bW / 2 - beNode.labelBounds.width / 2)

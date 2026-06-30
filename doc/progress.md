@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-06-30 — Layout skills alignment
+
+- **Subprocess padding**: increased from 20px to 50px, matching the canonical `layout-rules.md` 50px-padding rule.
+- **Horizontal spacing** (Sugiyama path): `GRID_CELL_WIDTH` increased from 130px to 150px, giving 150px center-to-center element spacing.
+- **Boundary event placement**: single event now centers horizontally on host task bottom edge; multiple events distribute symmetrically instead of stacking from the right corner.
+- **adHocSubProcess grid layout**: tools with no sequence flows tile into a max-4-column grid instead of an unbounded horizontal row.
+- **Lane proportional height**: pool lane heights scale with lane content bounding box instead of equal tiles.
+
 ## 2026-06-30 Branch sub-builder: boundary events and nested gateway branches
 
 - Added `boundaryEvent()` to `BranchBuilder` — attach a boundary event to a task inside a branch without a sequence flow; cursor advances to the boundary event.
