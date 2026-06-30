@@ -243,7 +243,6 @@ function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: Layou
 	for (const edge of result.edges) {
 		const srcMoved = movedInPass.has(edge.sourceRef)
 		const tgtMoved = movedInPass.has(edge.targetRef)
-		const srcInChain = allChainNodes.has(edge.sourceRef)
 		if (!srcMoved && !tgtMoved) continue
 		const src = nodeById.get(edge.sourceRef)
 		const tgt = nodeById.get(edge.targetRef)
