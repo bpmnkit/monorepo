@@ -3610,13 +3610,92 @@ describe("BranchBuilder nested branch infrastructure", () => {
 			.build()
 
 		const p = firstProcess(defs)
-		// t-x and t-y both connect to t-after
-		expect(p.sequenceFlows.some((f) => f.sourceRef === "t-x" && f.targetRef === "t-after")).toBe(
-			true,
-		)
-		expect(p.sequenceFlows.some((f) => f.sourceRef === "t-y" && f.targetRef === "t-after")).toBe(
-			true,
-		)
+		// t-x and t-y both connect via a convergence join to t-after
+		// (build() auto-inserts inner-gw_join when multiple branches converge on the same target)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-x" && f.targetRef === "inner-gw_join"),
+		).toBe(true)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-y" && f.targetRef === "inner-gw_join"),
+		).toBe(true)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "inner-gw_join" && f.targetRef === "t-after"),
+		).toBe(true)
+	})
+
+	it("exclusiveGateway inside a branch supports branch() sub-split with endEvent termination", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("outer-gw")
+			.branch("path-a", (b) => {
+				b.exclusiveGateway("inner-gw")
+					.branch("x", (bb) => bb.condition("= x").endEvent("e-x"))
+					.branch("y", (bb) => bb.defaultFlow().endEvent("e-y"))
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		// inner-gw exists
+		expect(p.flowElements.some((e) => e.id === "inner-gw")).toBe(true)
+		// outer-gw → inner-gw (labeled "path-a")
+		expect(
+			p.sequenceFlows.some(
+				(f) => f.sourceRef === "outer-gw" && f.targetRef === "inner-gw" && f.name === "path-a",
+			),
+		).toBe(true)
+		// inner-gw → e-x (labeled "x")
+		expect(
+			p.sequenceFlows.some(
+				(f) => f.sourceRef === "inner-gw" && f.targetRef === "e-x" && f.name === "x",
+			),
+		).toBe(true)
+		// inner-gw → e-y (labeled "y")
+		expect(
+			p.sequenceFlows.some(
+				(f) => f.sourceRef === "inner-gw" && f.targetRef === "e-y" && f.name === "y",
+			),
+		).toBe(true)
+	})
+
+	it("nested branch with connectTo correctly wires to a process-level element", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("outer-gw")
+			.branch("path-a", (b) => {
+				b.exclusiveGateway("inner-gw")
+					.branch("x", (bb) => bb.condition("= x").userTask("t-x").connectTo("outer-merge"))
+					.branch("y", (bb) => bb.defaultFlow().userTask("t-y").connectTo("outer-merge"))
+			})
+			.branch("path-b", (b) =>
+				b.serviceTask("t-b", { name: "B", taskType: "b" }).connectTo("outer-merge"),
+			)
+			.exclusiveGateway("outer-merge")
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		// Both inner branches connect to outer-merge
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-x" && f.targetRef === "outer-merge"),
+		).toBe(true)
+		expect(
+			p.sequenceFlows.some((f) => f.sourceRef === "t-y" && f.targetRef === "outer-merge"),
+		).toBe(true)
+	})
+
+	it("throws when branch() called without preceding gateway inside a branch", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("a", (b) => {
+					b.userTask("t")
+						// @ts-expect-error — no gateway before branch
+						.branch("x", (bb) => bb.endEvent("e"))
+				})
+				.build(),
+		).toThrow("branch() must be called after a gateway element")
 	})
 })
 

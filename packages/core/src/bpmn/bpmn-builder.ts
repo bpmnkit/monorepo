@@ -1021,6 +1021,61 @@ export class BranchBuilder {
 		this.currentGatewayId = id
 		return this.addElement(makeFlowElement(id, "eventBasedGateway", options))
 	}
+
+	/**
+	 * Create a named branch from the last gateway added inside this branch.
+	 *
+	 * Works identically to the top-level `ProcessBuilder.branch()` — use
+	 * `.condition(expr)` or `.defaultFlow()` inside the callback, finish with
+	 * `.connectTo(id)` or an `.endEvent()` to terminate the nested branch.
+	 */
+	branch(name: string, callback: (b: BranchBuilder) => void): this {
+		if (!this.currentGatewayId) {
+			throw new Error("branch() must be called after a gateway element")
+		}
+		const b = new BranchBuilder(
+			this.currentGatewayId,
+			name,
+			this.rootErrors,
+			this.rootMessages,
+			this.rootSignals,
+			this.rootEscalations,
+		)
+		callback(b)
+
+		for (const el of b._elements) {
+			if (this._elements.some((n) => n.id === el.id)) {
+				throw new Error(`Duplicate element ID "${el.id}"`)
+			}
+			this._elements.push(el)
+		}
+		for (const fl of b._flows) this._flows.push(fl)
+		for (const ann of b._textAnnotations) this._textAnnotations.push(ann)
+		for (const assoc of b._associations) this._associations.push(assoc)
+
+		if (b._defaultFlowId) {
+			const gw = this._elements.find((n) => n.id === this.currentGatewayId)
+			if (gw && (gw.type === "exclusiveGateway" || gw.type === "inclusiveGateway")) {
+				gw.default = b._defaultFlowId
+			}
+		}
+
+		if (!b._connected) {
+			const allEnds: string[] = [
+				...(b._lastNodeId !== undefined ? [b._lastNodeId] : []),
+				...b._openBranchEnds,
+			]
+			for (const endId of allEnds) {
+				const endEl = this._elements.find((n) => n.id === endId)
+				if (endEl && endEl.type !== "endEvent") {
+					this.openBranchEnds.push(endId)
+				}
+			}
+		}
+
+		this.lastNodeId = undefined
+		return this
+	}
 }
 
 // ---------------------------------------------------------------------------
