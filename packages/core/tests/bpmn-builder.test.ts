@@ -3690,9 +3690,7 @@ describe("BranchBuilder nested branch infrastructure", () => {
 				.startEvent("s")
 				.exclusiveGateway("gw")
 				.branch("a", (b) => {
-					b.userTask("t")
-						// @ts-expect-error — no gateway before branch
-						.branch("x", (bb) => bb.endEvent("e"))
+					b.userTask("t").branch("x", (bb) => bb.endEvent("e"))
 				})
 				.build(),
 		).toThrow("branch() must be called after a gateway element")
@@ -3854,5 +3852,42 @@ describe("boundary events inside a branch", () => {
 		expect(be.attachedToRef).toBe("ut")
 		// boundary event is in the main process flowElements
 		expect(p.flowElements.some((e) => e.id === "be")).toBe(true)
+	})
+
+	it("boundaryEvent() as first element in a branch does not corrupt isFirstElement state", () => {
+		// A boundary event attached to an external task, followed by another element
+		// The second element must NOT get the branch name stamped on its flow
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.userTask("external-task")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) => {
+				b.boundaryEvent("be", { attachedTo: "external-task", timerDuration: "PT1H" }).endEvent(
+					"e-be",
+				)
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		// The flow be → e-be must NOT have name "path-a" (that belongs on gw → be's implied sequence)
+		const beToEnd = p.sequenceFlows.find((f) => f.sourceRef === "be" && f.targetRef === "e-be")
+		expect(beToEnd).toBeDefined()
+		expect(beToEnd?.name).toBeUndefined()
+	})
+
+	it("withBoundary() throws when the cursor is on a boundary event (not a task)", () => {
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.startEvent("s")
+				.exclusiveGateway("gw")
+				.branch("path-a", (b) => {
+					b.userTask("t")
+						.boundaryEvent("be1", { attachedTo: "t", timerDuration: "PT1H" })
+						.withBoundary("be2", { timerDuration: "PT2H" }, (h) => h.endEvent("e"))
+				})
+				.branch("path-b", (b) => b.endEvent("e-b"))
+				.build(),
+		).toThrow(/withBoundary/)
 	})
 })

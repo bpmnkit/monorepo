@@ -1046,6 +1046,7 @@ export class BranchBuilder {
 		// Push directly — no sequence flow, boundary events attach via attachedToRef
 		this._elements.push(element)
 		this.lastNodeId = element.id
+		this.isFirstElement = false
 		return this
 	}
 
@@ -1066,6 +1067,13 @@ export class BranchBuilder {
 		if (!attachedTo || attachedTo === this.gatewayId) {
 			throw new Error(
 				"withBoundary() must follow a task element inside the branch. Current builder position has no active task.",
+			)
+		}
+
+		const attachedEl = this._elements.find((n) => n.id === attachedTo)
+		if (attachedEl?.type === "boundaryEvent") {
+			throw new Error(
+				"withBoundary() cannot attach to a boundary event. It must follow a task or activity element.",
 			)
 		}
 
