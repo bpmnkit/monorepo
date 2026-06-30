@@ -1232,10 +1232,16 @@ export class SubProcessContentBuilder {
 			}
 		}
 
-		if (!b._connected && b._elements.length > 0) {
-			const lastEl = b._elements[b._elements.length - 1]
-			if (lastEl && lastEl.type !== "endEvent") {
-				this.openBranchEnds.push(b._lastNodeId)
+		if (!b._connected) {
+			const allEnds: string[] = [
+				...(b._lastNodeId !== undefined ? [b._lastNodeId] : []),
+				...b._openBranchEnds,
+			]
+			for (const endId of allEnds) {
+				const endEl = this._elements.find((n) => n.id === endId)
+				if (endEl && endEl.type !== "endEvent") {
+					this.openBranchEnds.push(endId)
+				}
 			}
 		}
 
@@ -1698,10 +1704,16 @@ export class ProcessBuilder {
 
 		// Track the branch's open end so the next element auto-connects from it.
 		// Skip branches that terminated at an end event (those are intentional dead-ends).
-		if (!b._connected && b._elements.length > 0) {
-			const lastEl = b._elements[b._elements.length - 1]
-			if (lastEl && lastEl.type !== "endEvent") {
-				this.openBranchEnds.push(b._lastNodeId)
+		if (!b._connected) {
+			const allEnds: string[] = [
+				...(b._lastNodeId !== undefined ? [b._lastNodeId] : []),
+				...b._openBranchEnds,
+			]
+			for (const endId of allEnds) {
+				const endEl = this.flowElements.find((n) => n.id === endId)
+				if (endEl && endEl.type !== "endEvent") {
+					this.openBranchEnds.push(endId)
+				}
 			}
 		}
 
