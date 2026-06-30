@@ -136,18 +136,14 @@ describe("bpmn_validate logic", () => {
 		rmSync(tmpDir, { recursive: true, force: true })
 	})
 
-	it(
-		"parses a minimal valid BPMN without throwing",
-		async () => {
-			const { Bpmn, optimize } = await import("@bpmnkit/core")
-			const xml = Bpmn.export(Bpmn.parse(Bpmn.makeEmpty("Process_1", "Test")))
-			const bpmnPath = join(tmpDir, "test.bpmn")
-			writeFileSync(bpmnPath, xml)
+	it("parses a minimal valid BPMN without throwing", async () => {
+		const { Bpmn, optimize } = await import("@bpmnkit/core")
+		const xml = Bpmn.export(Bpmn.parse(Bpmn.makeEmpty("Process_1", "Test")))
+		const bpmnPath = join(tmpDir, "test.bpmn")
+		writeFileSync(bpmnPath, xml)
 
-			const defs = Bpmn.parse(readFileSync(bpmnPath, "utf8"))
-			const report = optimize(defs)
-			expect(Array.isArray(report.findings)).toBe(true)
-		},
-		30_000,
-	)
+		const defs = Bpmn.parse(readFileSync(bpmnPath, "utf8"))
+		const report = optimize(defs)
+		expect(Array.isArray(report.findings)).toBe(true)
+	}, 30_000)
 })
