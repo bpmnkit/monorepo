@@ -1,5 +1,14 @@
 # @bpmnkit/ai-server
 
+## 0.0.29
+
+### Patch Changes
+
+- c93b45d: Minor fixes
+- Updated dependencies [c93b45d]
+- Updated dependencies [c93b45d]
+  - @bpmnkit/core@0.0.26
+
 ## 0.0.28
 
 ### Patch Changes
