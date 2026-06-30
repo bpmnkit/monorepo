@@ -245,11 +245,13 @@ export interface BpmnCallActivity extends BpmnFlowNodeBase {
 
 export interface BpmnSendTask extends BpmnFlowNodeBase {
 	type: "sendTask"
+	messageRef?: string
 	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
 export interface BpmnReceiveTask extends BpmnFlowNodeBase {
 	type: "receiveTask"
+	messageRef?: string
 	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
