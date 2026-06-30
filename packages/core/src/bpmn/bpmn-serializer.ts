@@ -229,11 +229,15 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 		case "serviceTask":
 		case "scriptTask":
 		case "userTask":
-		case "sendTask":
-		case "receiveTask":
 		case "businessRuleTask":
 		case "manualTask":
 		case "callActivity":
+			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp))
+			break
+
+		case "sendTask":
+		case "receiveTask":
+			if (fe.messageRef) attrs.messageRef = fe.messageRef
 			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp))
 			break
 
