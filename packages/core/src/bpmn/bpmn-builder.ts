@@ -739,7 +739,7 @@ export class BranchBuilder {
 	readonly _flows: BpmnSequenceFlow[] = []
 	/** @internal */
 	_defaultFlowId: string | undefined
-	private lastNodeId: string
+	private lastNodeId: string | undefined
 	private readonly gatewayId: string
 	private readonly branchName: string
 	private isFirstElement = true
@@ -751,6 +751,10 @@ export class BranchBuilder {
 	readonly _textAnnotations: BpmnTextAnnotation[] = []
 	/** @internal */
 	readonly _associations: BpmnAssociation[] = []
+	/** @internal – ID of the last gateway added in this branch (for nested branch() support). */
+	private currentGatewayId: string | undefined
+	/** @internal – Open ends of nested branches waiting to auto-connect to the next element. */
+	private openBranchEnds: string[] = []
 	private readonly _annCounters = new Map<string, number>()
 	private readonly rootErrors: BpmnError[]
 	private readonly rootMessages: BpmnMessage[]
@@ -789,26 +793,39 @@ export class BranchBuilder {
 
 	private addElement(element: BpmnFlowElement): this {
 		this._elements.push(element)
-		const flowId = generateId("Flow")
-		const flow: BpmnSequenceFlow = {
-			id: flowId,
-			sourceRef: this.lastNodeId,
-			targetRef: element.id,
-			name: this.isFirstElement ? this.branchName : undefined,
-			conditionExpression:
-				this.isFirstElement && this.pendingCondition
-					? makeConditionExpression(this.pendingCondition)
-					: undefined,
-			extensionElements: [],
-			unknownAttributes: {},
-		}
-		this._flows.push(flow)
 
-		if (this.isFirstElement && this.pendingDefault) {
-			this._defaultFlowId = flowId
+		if (this.lastNodeId) {
+			const flowId = generateId("Flow")
+			const flow: BpmnSequenceFlow = {
+				id: flowId,
+				sourceRef: this.lastNodeId,
+				targetRef: element.id,
+				name: this.isFirstElement ? this.branchName : undefined,
+				conditionExpression:
+					this.isFirstElement && this.pendingCondition
+						? makeConditionExpression(this.pendingCondition)
+						: undefined,
+				extensionElements: [],
+				unknownAttributes: {},
+			}
+			this._flows.push(flow)
+			if (this.isFirstElement && this.pendingDefault) {
+				this._defaultFlowId = flowId
+			}
+			this.isFirstElement = false
 		}
 
-		this.isFirstElement = false
+		for (const branchEnd of this.openBranchEnds) {
+			this._flows.push({
+				id: generateId("Flow"),
+				sourceRef: branchEnd,
+				targetRef: element.id,
+				extensionElements: [],
+				unknownAttributes: {},
+			})
+		}
+		this.openBranchEnds = []
+
 		this.lastNodeId = element.id
 		return this
 	}
@@ -821,7 +838,8 @@ export class BranchBuilder {
 		const flowId = generateId("Flow")
 		const flow: BpmnSequenceFlow = {
 			id: flowId,
-			sourceRef: this.lastNodeId,
+			// biome-ignore lint/style/noNonNullAssertion: lastNodeId starts as gatewayId and is always defined in pre-branch context
+			sourceRef: this.lastNodeId!,
 			targetRef: targetId,
 			name: this.isFirstElement ? this.branchName : undefined,
 			conditionExpression:
@@ -843,16 +861,22 @@ export class BranchBuilder {
 		return this
 	}
 
-	/** @internal – ID of the last element added (or the gateway if branch is empty) */
-	get _lastNodeId(): string {
+	/** @internal – ID of the last element added (or undefined if branches are open). */
+	get _lastNodeId(): string | undefined {
 		return this.lastNodeId
+	}
+
+	/** @internal – Open ends of nested branches that have not yet been connected. */
+	get _openBranchEnds(): string[] {
+		return this.openBranchEnds
 	}
 
 	// ---- Annotations ----
 
 	/** Attach a text annotation to the element at the current cursor position. */
 	textAnnotation(text: string): this {
-		return this.annotate(this.lastNodeId, text)
+		// biome-ignore lint/style/noNonNullAssertion: lastNodeId starts as gatewayId and is always defined in pre-branch context
+		return this.annotate(this.lastNodeId!, text)
 	}
 
 	/** Attach a text annotation to an element by explicit ID. */
@@ -979,18 +1003,22 @@ export class BranchBuilder {
 	}
 
 	exclusiveGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeExclusiveGatewayEl(id, options))
 	}
 
 	parallelGateway(id: string, options?: ElementOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeFlowElement(id, "parallelGateway", options))
 	}
 
 	inclusiveGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeInclusiveGatewayEl(id, options))
 	}
 
 	eventBasedGateway(id: string, options?: ElementOptions): this {
+		this.currentGatewayId = id
 		return this.addElement(makeFlowElement(id, "eventBasedGateway", options))
 	}
 }

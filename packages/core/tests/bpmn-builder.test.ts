@@ -3590,6 +3590,36 @@ describe("SubProcessContentBuilder — isForCompensation forwarding (C2)", () =>
 	})
 })
 
+describe("BranchBuilder nested branch infrastructure", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("elements added after nested branches in a branch auto-connect from all open ends", () => {
+		// This exercises the new openBranchEnds drainage in BranchBuilder.addElement()
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("outer-gw")
+			.branch("path-a", (b) => {
+				b.exclusiveGateway("inner-gw")
+					.branch("x", (bb) => bb.userTask("t-x"))
+					.branch("y", (bb) => bb.userTask("t-y"))
+					.userTask("t-after")
+			})
+			.branch("path-b", (b) => b.endEvent("e-b"))
+			.build()
+
+		const p = firstProcess(defs)
+		// t-x and t-y both connect to t-after
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "t-x" && f.targetRef === "t-after")).toBe(
+			true,
+		)
+		expect(p.sequenceFlows.some((f) => f.sourceRef === "t-y" && f.targetRef === "t-after")).toBe(
+			true,
+		)
+	})
+})
+
 describe("withBoundary — _savedMainFlowId cleanup (C3)", () => {
 	it("element added after withBoundary(compensation) connects correctly to main flow", () => {
 		const p = firstProcess(
