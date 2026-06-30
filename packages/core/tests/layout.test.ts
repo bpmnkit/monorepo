@@ -1553,3 +1553,148 @@ describe("Back-edge loop alignment", () => {
 		expect(Math.abs(collectCenterY - screenCenterY)).toBeLessThan(1)
 	})
 })
+
+describe("Boundary event convergence join placement", () => {
+	it("places join after the rightmost chain tail when two boundary chains converge", () => {
+		// Start → A → M1 → M2 → EndMain
+		// B1 (boundary on M1) → H1 → Join → EndJoin
+		// B2 (boundary on M2) → H2 → Join
+		const be1 = node("B1", "boundaryEvent")
+		;(be1 as { attachedToRef: string }).attachedToRef = "M1"
+		const be2 = node("B2", "boundaryEvent")
+		;(be2 as { attachedToRef: string }).attachedToRef = "M2"
+
+		const process = proc(
+			"P",
+			[
+				node("Start", "startEvent"),
+				node("A", "serviceTask"),
+				node("M1", "serviceTask"),
+				node("M2", "serviceTask"),
+				node("EndMain", "endEvent"),
+				be1,
+				be2,
+				node("H1", "serviceTask"),
+				node("H2", "serviceTask"),
+				node("Join", "exclusiveGateway"),
+				node("EndJoin", "endEvent"),
+			],
+			[
+				flow("f0", "Start", "A"),
+				flow("f1", "A", "M1"),
+				flow("f2", "M1", "M2"),
+				flow("f3", "M2", "EndMain"),
+				flow("fb1", "B1", "H1"),
+				flow("fb2", "B2", "H2"),
+				flow("fh1", "H1", "Join"),
+				flow("fh2", "H2", "Join"),
+				flow("fj", "Join", "EndJoin"),
+			],
+		)
+
+		const result = layoutProcess(process)
+		const nodeMap = new Map(result.nodes.map((n) => [n.id, n]))
+
+		const h1 = nodeMap.get("H1")
+		const h2 = nodeMap.get("H2")
+		const join = nodeMap.get("Join")
+		const endJoin = nodeMap.get("EndJoin")
+		expect(h1).toBeDefined()
+		expect(h2).toBeDefined()
+		expect(join).toBeDefined()
+		expect(endJoin).toBeDefined()
+		if (!h1 || !h2 || !join || !endJoin) return
+
+		const h1Right = h1.bounds.x + h1.bounds.width
+		const h2Right = h2.bounds.x + h2.bounds.width
+		const maxChainRight = Math.max(h1Right, h2Right)
+
+		// Join must be placed to the right of both chain tails
+		expect(join.bounds.x).toBeGreaterThanOrEqual(maxChainRight)
+
+		// EndJoin must be placed to the right of Join
+		const joinRight = join.bounds.x + join.bounds.width
+		expect(endJoin.bounds.x).toBeGreaterThanOrEqual(joinRight)
+
+		// All sequence flows must be left-to-right (no backward edges)
+		const edgeIds = ["fh1", "fh2", "fj"]
+		for (const eid of edgeIds) {
+			const edge = result.edges.find((e) => e.id === eid)
+			expect(edge, `edge ${eid}`).toBeDefined()
+			if (!edge) continue
+			const src = nodeMap.get(edge.sourceRef)
+			const tgt = nodeMap.get(edge.targetRef)
+			if (!src || !tgt) continue
+			expect(
+				src.bounds.x + src.bounds.width,
+				`edge ${eid}: source right must be <= target left`,
+			).toBeLessThanOrEqual(tgt.bounds.x + 1) // +1 for rounding tolerance
+		}
+
+		// No overlaps
+		expect(() => assertNoOverlap(result)).not.toThrow()
+	})
+
+	it("single boundary chain (join is on the chain) is unchanged by the forward pass", () => {
+		// Start → Task → End
+		// B (boundary on Task) → H → ChainEnd
+		// Join node not present — no convergence join needed
+		const be = node("B", "boundaryEvent")
+		;(be as { attachedToRef: string }).attachedToRef = "Task"
+
+		const process = proc(
+			"P",
+			[
+				node("Start", "startEvent"),
+				node("Task", "serviceTask"),
+				node("End", "endEvent"),
+				be,
+				node("H", "serviceTask"),
+				node("ChainEnd", "endEvent"),
+			],
+			[
+				flow("f0", "Start", "Task"),
+				flow("f1", "Task", "End"),
+				flow("fb", "B", "H"),
+				flow("fh", "H", "ChainEnd"),
+			],
+		)
+
+		const result = layoutProcess(process)
+		const nodeMap = new Map(result.nodes.map((n) => [n.id, n]))
+
+		const bNode = nodeMap.get("B")
+		const hNode = nodeMap.get("H")
+		const chainEnd = nodeMap.get("ChainEnd")
+		const taskNode = nodeMap.get("Task")
+		expect(bNode).toBeDefined()
+		expect(hNode).toBeDefined()
+		expect(chainEnd).toBeDefined()
+		expect(taskNode).toBeDefined()
+		if (!bNode || !hNode || !chainEnd || !taskNode) return
+
+		// Boundary event is on the host's bottom edge (existing invariant)
+		const taskBottom = taskNode.bounds.y + taskNode.bounds.height
+		const bCenterY = bNode.bounds.y + bNode.bounds.height / 2
+		expect(bCenterY).toBeCloseTo(taskBottom, 0)
+
+		// H (chain head) is to the right of the task
+		expect(hNode.bounds.x).toBeGreaterThan(taskNode.bounds.x)
+
+		// ChainEnd is to the right of H
+		expect(chainEnd.bounds.x).toBeGreaterThan(hNode.bounds.x)
+
+		// All edges are left-to-right
+		for (const edge of result.edges) {
+			const src = nodeMap.get(edge.sourceRef)
+			const tgt = nodeMap.get(edge.targetRef)
+			if (!src || !tgt) continue
+			expect(
+				src.bounds.x + src.bounds.width,
+				`edge ${edge.id}: source right must be <= target left`,
+			).toBeLessThanOrEqual(tgt.bounds.x + 1)
+		}
+
+		expect(() => assertNoOverlap(result)).not.toThrow()
+	})
+})
