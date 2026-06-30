@@ -869,7 +869,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 ## BPMN Element Config — Event Types (2026-02-27) — `@bpmnkit/canvas-plugin-config-panel-bpmn`
 
 - **Timer events** — timerStartEvent, timerCatchEvent, timer boundaryEvent: "Timer type" select (Cycle / Duration / Date) + FEEL expression field for the chosen type; writes `BpmnTimerEventDefinition`
-- **Message events** — messageStartEvent, messageCatchEvent, messageEndEvent, messageThrowEvent, message boundaryEvent, receiveTask: "Message name" + "Correlation key" FEEL fields; writes `zeebe:message` extension element
+- **Message events** — messageStartEvent, messageCatchEvent, messageEndEvent, messageThrowEvent, message boundaryEvent, receiveTask, sendTask: "Message name" + "Correlation key" FEEL fields; writes `zeebe:message` extension element; receiveTask and sendTask support `messageName` option with root message de-duplication by name
 - **Signal events** — signal start/catch/throw/end events and signal boundaryEvent: "Signal name" FEEL field; writes `zeebe:signal` extension element
 - **Error events** — errorEndEvent and error boundaryEvent: "Error code" FEEL field; writes `zeebe:error` extension element
 - **Escalation events** — escalation end/throw/catch events and escalation boundaryEvent: "Escalation code" FEEL field; writes `zeebe:escalation` extension element
@@ -1100,7 +1100,7 @@ New package that wires storage and tabs together so client apps don't need to ma
 - **Loop support** — `connectTo(targetId)` for merge points and back-edge loops
 - **Sub-process builders** — `adHocSubProcess()`, `subProcess()`, `eventSubProcess()` with nested content; `eventSubProcess()` emits canonical `<bpmn:subProcess triggeredByEvent="true">` with no illegal sequence flows; start events inside event sub-processes accept `isInterrupting: false` for non-interrupting triggers
 - **Multi-instance** — parallel/sequential multi-instance with Zeebe extension elements
-- **Aspirational elements** — sendTask, receiveTask, businessRuleTask builders
+- **Aspirational elements** — businessRuleTask builder
 - **REST connector builder** — `restConnector(id, config)` convenience method generates service tasks with `io.camunda:http-json:1` task type, IO mappings (method, url, auth, body, headers, queryParameters, timeouts), and task headers (resultVariable, resultExpression, retryBackoff)
 - **Extension preservation** — zeebe:*, modeler:*, camunda:* extensions roundtrip as `XmlElement[]`
 - **Root-level messages** — `bpmn:message` elements parsed, preserved, and serialized at definitions level

@@ -13,6 +13,8 @@ import type {
 	BpmnMessage,
 	BpmnMultiInstanceLoopCharacteristics,
 	BpmnProcess,
+	BpmnReceiveTask,
+	BpmnSendTask,
 	BpmnSequenceFlow,
 	BpmnSignal,
 	BpmnTextAnnotation,
@@ -37,6 +39,12 @@ const EXPORTER_VERSION = "0.0.23"
 export interface ElementOptions {
 	name?: string
 	isForCompensation?: boolean
+}
+
+/** Options for send/receive task elements. */
+export interface MessageTaskOptions extends ElementOptions {
+	/** Message name — generates or reuses a root <bpmn:message> and sets messageRef. */
+	messageName?: string
 }
 
 /** Options for creating a start event. */
@@ -261,6 +269,15 @@ export interface AdHocSubProcessOptions extends ElementOptions {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+function resolveMessage(messageName: string, rootMessages: BpmnMessage[]): string {
+	let existing = rootMessages.find((m) => m.name === messageName)
+	if (!existing) {
+		existing = { id: generateId("Message"), name: messageName, unknownAttributes: {} }
+		rootMessages.push(existing)
+	}
+	return existing.id
+}
+
 function buildEventDefinitions(
 	opts: {
 		timerDuration?: string
@@ -304,15 +321,9 @@ function buildEventDefinitions(
 		defs.push({ type: "error", errorRef })
 	}
 	if (opts.messageName !== undefined) {
-		let messageRef: string | undefined = opts.messageName
-		if (rootMessages) {
-			let existing = rootMessages.find((m) => m.name === opts.messageName)
-			if (!existing) {
-				existing = { id: generateId("Message"), name: opts.messageName, unknownAttributes: {} }
-				rootMessages.push(existing)
-			}
-			messageRef = existing.id
-		}
+		const messageRef = rootMessages
+			? resolveMessage(opts.messageName, rootMessages)
+			: opts.messageName
 		defs.push({ type: "message", messageRef })
 	}
 	if (opts.signalName !== undefined) {
@@ -874,15 +885,17 @@ export class BranchBuilder {
 		return this.addElement(makeScriptTaskEl(id, options))
 	}
 
-	sendTask(id: string, options?: ElementOptions): this {
-		const el = makeFlowElement(id, "sendTask", options)
+	sendTask(id: string, options?: MessageTaskOptions): this {
+		const el = makeFlowElement(id, "sendTask", options) as BpmnSendTask
 		if (options?.isForCompensation) el.isForCompensation = true
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
 	}
 
-	receiveTask(id: string, options?: ElementOptions): this {
-		const el = makeFlowElement(id, "receiveTask", options)
+	receiveTask(id: string, options?: MessageTaskOptions): this {
+		const el = makeFlowElement(id, "receiveTask", options) as BpmnReceiveTask
 		if (options?.isForCompensation) el.isForCompensation = true
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
 	}
 
@@ -1000,6 +1013,12 @@ export class SubProcessContentBuilder {
 	private lastNodeId: string | undefined
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
+	private readonly rootMessages: BpmnMessage[]
+
+	/** @internal */
+	constructor(rootMessages: BpmnMessage[] = []) {
+		this.rootMessages = rootMessages
+	}
 
 	private addElement(element: BpmnFlowElement): this {
 		if (this._elements.some((n) => n.id === element.id)) {
@@ -1090,15 +1109,17 @@ export class SubProcessContentBuilder {
 		return this.addElement(makeCallActivityEl(id, options))
 	}
 
-	sendTask(id: string, options?: ElementOptions): this {
-		const el = makeFlowElement(id, "sendTask", options)
+	sendTask(id: string, options?: MessageTaskOptions): this {
+		const el = makeFlowElement(id, "sendTask", options) as BpmnSendTask
 		if (options?.isForCompensation) el.isForCompensation = true
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
 	}
 
-	receiveTask(id: string, options?: ElementOptions): this {
-		const el = makeFlowElement(id, "receiveTask", options)
+	receiveTask(id: string, options?: MessageTaskOptions): this {
+		const el = makeFlowElement(id, "receiveTask", options) as BpmnReceiveTask
 		if (options?.isForCompensation) el.isForCompensation = true
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
 	}
 
@@ -1527,17 +1548,19 @@ export class ProcessBuilder {
 	}
 
 	/** Add a send task (aspirational). */
-	sendTask(id: string, options?: ElementOptions): this {
-		const el = makeFlowElement(id, "sendTask", options)
+	sendTask(id: string, options?: MessageTaskOptions): this {
+		const el = makeFlowElement(id, "sendTask", options) as BpmnSendTask
 		if (options?.isForCompensation) el.isForCompensation = true
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		this.addFlowElement(el)
 		return this
 	}
 
 	/** Add a receive task (aspirational). */
-	receiveTask(id: string, options?: ElementOptions): this {
-		const el = makeFlowElement(id, "receiveTask", options)
+	receiveTask(id: string, options?: MessageTaskOptions): this {
+		const el = makeFlowElement(id, "receiveTask", options) as BpmnReceiveTask
 		if (options?.isForCompensation) el.isForCompensation = true
+		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		this.addFlowElement(el)
 		return this
 	}
@@ -1698,7 +1721,7 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: AdHocSubProcessOptions,
 	): this {
-		const sub = new SubProcessContentBuilder()
+		const sub = new SubProcessContentBuilder(this.rootMessages)
 		content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
@@ -1773,7 +1796,7 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: SubProcessOptions,
 	): this {
-		const sub = new SubProcessContentBuilder()
+		const sub = new SubProcessContentBuilder(this.rootMessages)
 		content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
@@ -1798,7 +1821,7 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: ElementOptions,
 	): this {
-		const sub = new SubProcessContentBuilder()
+		const sub = new SubProcessContentBuilder(this.rootMessages)
 		content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)

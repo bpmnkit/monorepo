@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-06-30 — receiveTask/sendTask messageName support (issue #125)
+
+**Feature:** `receiveTask(id, { messageName })` and `sendTask(id, { messageName })` now emit root `<bpmn:message>` elements and set `messageRef` on the task. Messages are de-duplicated by name across all positions (consistent with message events added in issue #113).
+
+- **ProcessBuilder, BranchBuilder, SubProcessContentBuilder**: receiveTask and sendTask accept `MessageTaskOptions` with `messageName` field
+- **Root message elements**: `resolveMessage(messageName, rootMessages)` returns matching root message ID or generates a new one if not found
+- **De-duplication**: All positions (start events, catch events, throw events, boundary events, receive/send tasks) de-duplicate by name
+- **Round-trip safe**: Parse → export round-trip preserves root messages and messageRef without loss
+- **Omit messageName**: Bare receive/send tasks (no messageName) emit no dangling refs and parse as plain tasks
+
 ## 2026-06-28 — Fix eventSubProcess() canonical BPMN output (issue #116)
 
 **Defects fixed:**

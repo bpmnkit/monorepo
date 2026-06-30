@@ -345,14 +345,22 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 		case "serviceTask":
 		case "scriptTask":
 		case "userTask":
-		case "sendTask":
-		case "receiveTask":
 		case "businessRuleTask":
 		case "manualTask":
 		case "callActivity":
 			return {
 				...base,
 				type: ln,
+				loopCharacteristics: parseLoopCharacteristics(element),
+				isForCompensation: attr(element, "isForCompensation") === "true" ? true : undefined,
+			}
+
+		case "sendTask":
+		case "receiveTask":
+			return {
+				...base,
+				type: ln,
+				messageRef: attr(element, "messageRef"),
 				loopCharacteristics: parseLoopCharacteristics(element),
 				isForCompensation: attr(element, "isForCompensation") === "true" ? true : undefined,
 			}
