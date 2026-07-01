@@ -15,7 +15,9 @@
 - Biome — zero warnings, zero errors
 - All bpmnkit design tokens via `var(--bpmnkit-*)` with hex fallbacks
 - Dark theme by default (`data-theme="dark"` on `<body>`)
-- `ANTHROPIC_API_KEY` env var must be set to run the server (the plan uses `@anthropic-ai/sdk` directly rather than the `claude -p` subprocess described in the spec — this is more reliable and avoids CLI flag/format uncertainty; the trade-off is that auth is explicit rather than inherited from Claude Code)
+- **[Amended 2026-06-30]** No `ANTHROPIC_API_KEY` required — the server spawns the `claude` CLI (`claude -p`) as a child process and streams its `--output-format stream-json --include-partial-messages --verbose` NDJSON output, inheriting the operator's existing Claude Code authentication. This matches the original spec's design intent; the Anthropic SDK approach from Task 5's initial implementation was replaced. `claude` must be on `PATH` and authenticated (`ant auth status` / interactive login) to run the server.
+- `--allowedTools` does NOT block tool execution in non-interactive `-p` mode (verified: a Bash tool call ran despite `--allowedTools "Read"`). Use `--disallowedTools` with the full harness tool list instead — this reliably blocks tool use, needed since the demo must not let the model take real actions in the repo mid-stream.
+- `--safe-mode` (not `--bare`) isolates the subprocess from the operator's own CLAUDE.md/skills/plugins without requiring `ANTHROPIC_API_KEY` (`--bare` strictly requires an API key and rejects OAuth/keychain auth — incompatible with this design).
 - `pnpm-workspace.yaml` already contains `apps/*` — no change needed; `apps/demo` is auto-discovered
 - Model: `claude-opus-4-8` (default per current model guidance — the user did not request a specific model)
 - Fixed scenario: Loan Approval (uses `apps/examples/src/03-loan-approval.ts` as SDK example)
