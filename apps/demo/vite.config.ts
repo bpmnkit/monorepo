@@ -10,6 +10,7 @@ export default defineConfig({
 			"/stream": "http://localhost:3001",
 			"/health": "http://localhost:3001",
 			"/prompts": "http://localhost:3001",
+			"/recordings": "http://localhost:3001",
 		},
 	},
 	build: {

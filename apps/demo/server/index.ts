@@ -6,7 +6,9 @@ import { serve } from "@hono/node-server"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { streamSSE } from "hono/streaming"
+import type { Recording } from "../shared/recording-types.js"
 import { extractTsBlock, extractXmlBlock } from "./extractor.js"
+import { saveRecording } from "./recordings-store.js"
 import { executeSdkCode } from "./sdk-executor.js"
 import {
 	SCENARIO_PROMPT,
@@ -15,6 +17,7 @@ import {
 } from "./system-prompt.js"
 
 const REPO_ROOT = join(fileURLToPath(import.meta.url), "../../../..")
+const RECORDINGS_DIR = join(REPO_ROOT, "apps/demo/recordings")
 const PORT = 3001
 
 const SDK_SYSTEM_PROMPT = buildSdkSystemPrompt(REPO_ROOT)
@@ -70,6 +73,18 @@ app.get("/prompts", (c) =>
 		withoutSdk: WITHOUT_SDK_SYSTEM_PROMPT,
 	}),
 )
+
+app.post("/recordings", async (c) => {
+	const body = (await c.req.json()) as Recording
+	const result = saveRecording(RECORDINGS_DIR, body)
+	if (result.status === "invalid") {
+		return c.json({ error: "Recording name must contain at least one alphanumeric character" }, 400)
+	}
+	if (result.status === "conflict") {
+		return c.json({ error: `A recording named "${result.slug}" already exists` }, 409)
+	}
+	return c.json({ slug: result.slug })
+})
 
 function extractDeltaText(event: unknown): string | null {
 	if (typeof event !== "object" || event === null) return null
