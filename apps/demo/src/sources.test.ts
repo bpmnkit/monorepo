@@ -48,7 +48,7 @@ describe("ReplaySource", () => {
 		expect(onBpmn).not.toHaveBeenCalled()
 	})
 
-	it("delivers a bpmn result at durationMs", () => {
+	it("delivers a bpmn result at durationMs with null usage when the recording has none", () => {
 		const onBpmn = vi.fn()
 		new ReplaySource(panel).subscribe({
 			onChunk: vi.fn(),
@@ -58,10 +58,27 @@ describe("ReplaySource", () => {
 		})
 
 		vi.advanceTimersByTime(300)
-		expect(onBpmn).toHaveBeenCalledWith("<xml/>")
+		expect(onBpmn).toHaveBeenCalledWith("<xml/>", null)
 	})
 
-	it("delivers an error result when the recorded result is an error", () => {
+	it("delivers the recorded usage alongside the bpmn result when present", () => {
+		const panelWithUsage: RecordedPanel = {
+			...panel,
+			usage: { inputTokens: 8100, outputTokens: 340 },
+		}
+		const onBpmn = vi.fn()
+		new ReplaySource(panelWithUsage).subscribe({
+			onChunk: vi.fn(),
+			onDone: vi.fn(),
+			onBpmn,
+			onError: vi.fn(),
+		})
+
+		vi.advanceTimersByTime(300)
+		expect(onBpmn).toHaveBeenCalledWith("<xml/>", { inputTokens: 8100, outputTokens: 340 })
+	})
+
+	it("delivers an error result with null usage when the recorded result is an error", () => {
 		const errorPanel: RecordedPanel = {
 			...panel,
 			result: { type: "error", message: "boom" },
@@ -75,7 +92,7 @@ describe("ReplaySource", () => {
 		})
 
 		vi.advanceTimersByTime(300)
-		expect(onError).toHaveBeenCalledWith("boom")
+		expect(onError).toHaveBeenCalledWith("boom", null)
 	})
 
 	it("cancels all pending timers when unsubscribed", () => {
@@ -106,6 +123,6 @@ describe("ReplaySource", () => {
 		vi.advanceTimersByTime(0)
 		expect(onDone).toHaveBeenCalledTimes(1)
 		vi.advanceTimersByTime(300)
-		expect(onBpmn).toHaveBeenCalledWith("<xml/>")
+		expect(onBpmn).toHaveBeenCalledWith("<xml/>", null)
 	})
 })

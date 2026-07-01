@@ -1,10 +1,10 @@
-import type { RecordedPanel } from "../shared/recording-types.js"
+import type { RecordedPanel, TokenUsage } from "../shared/recording-types.js"
 
 export interface PanelSourceHandlers {
 	onChunk: (text: string) => void
 	onDone: () => void
-	onBpmn: (xml: string) => void
-	onError: (message: string) => void
+	onBpmn: (xml: string, usage: TokenUsage | null) => void
+	onError: (message: string, usage: TokenUsage | null) => void
 }
 
 export interface PanelSource {
@@ -29,14 +29,20 @@ export class LiveSource implements PanelSource {
 		})
 
 		es.addEventListener("bpmn", (e) => {
-			const { xml } = JSON.parse((e as MessageEvent).data) as { xml: string }
-			handlers.onBpmn(xml)
+			const { xml, usage } = JSON.parse((e as MessageEvent).data) as {
+				xml: string
+				usage: TokenUsage | null
+			}
+			handlers.onBpmn(xml, usage)
 		})
 
 		es.addEventListener("error", (e) => {
 			if (e instanceof MessageEvent && e.data) {
-				const { message } = JSON.parse(e.data) as { message: string }
-				handlers.onError(message)
+				const { message, usage } = JSON.parse(e.data) as {
+					message: string
+					usage: TokenUsage | null
+				}
+				handlers.onError(message, usage)
 			}
 			es.close()
 		})
@@ -60,10 +66,11 @@ export class ReplaySource implements PanelSource {
 
 		timers.push(
 			setTimeout(() => {
+				const usage = this.panel.usage ?? null
 				if (this.panel.result.type === "bpmn") {
-					handlers.onBpmn(this.panel.result.xml)
+					handlers.onBpmn(this.panel.result.xml, usage)
 				} else {
-					handlers.onError(this.panel.result.message)
+					handlers.onError(this.panel.result.message, usage)
 				}
 			}, this.panel.durationMs),
 		)
