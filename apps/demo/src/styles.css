@@ -1,0 +1,30 @@
+@import "@bpmnkit/ui/tokens.css";
+@import "tailwindcss";
+
+@keyframes blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: var(--bpmnkit-font, system-ui, sans-serif);
+	background: var(--bpmnkit-bg, #0d0d16);
+	color: var(--bpmnkit-fg, #cdd6f4);
+}
