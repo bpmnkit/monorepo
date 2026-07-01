@@ -26,7 +26,7 @@
 			"dist",
 			".turbo",
 			".swarm",
-			"tmp/**",
+			"**/tmp/**",
 			"**/templates/generated.ts",
 			"**/src-tauri/**",
 			"**/.astro/**",

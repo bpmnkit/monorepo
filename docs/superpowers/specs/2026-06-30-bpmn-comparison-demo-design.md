@@ -78,9 +78,11 @@ Both `/stream/with-sdk` and `/stream/without-sdk` emit the same event types:
 
 ## LLM Invocation
 
+> **⚠️ SUPERSEDED — see the "[Amended 2026-06-30]" note in the implementation plan.** The actual implementation uses `claude -p` with `--safe-mode --disallowedTools` flags to isolate the subprocess and block tool execution. The LLM API call is `Bpmn.export(definitions)` not `definitions.toXml()`. This section documents the original spec and may differ from the shipped code (see `apps/demo/server/index.ts`).
+
 **Command (both runs):**
 ```
-claude -p "<scenario prompt>" --system "<system prompt>" --output-format stream-json
+claude -p "<scenario prompt>" --system "<system prompt>" --output-format stream-json --safe-mode --disallowedTools [full-tool-list]
 ```
 
 Uses existing `claude` CLI auth — no API key management needed.

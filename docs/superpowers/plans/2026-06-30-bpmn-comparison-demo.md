@@ -583,6 +583,8 @@ git commit -m "feat(demo): add SDK executor (tsx runner)"
 
 ### Task 5: Hono SSE Server
 
+> **⚠️ SUPERSEDED — see the "[Amended 2026-06-30]" note in Global Constraints above.** The implementation actually spawns the `claude` CLI as a subprocess (with `--safe-mode`, `--disallowedTools`, no API key), not `@anthropic-ai/sdk`. This section describes the original plan and is kept for historical record.
+
 **Files:**
 - Create: `apps/demo/server/index.ts`
 
@@ -1119,10 +1121,12 @@ git commit -m "feat(demo): add App layout and entry point"
 
 ### Task 9: End-to-End Integration Run
 
+> **⚠️ SUPERSEDED — see the "[Amended 2026-06-30]" note in Global Constraints above.** The server spawns the `claude` CLI as a subprocess, not `@anthropic-ai/sdk`. No `ANTHROPIC_API_KEY` is needed; the CLI inherits the operator's existing Claude Code authentication. This section describes the original plan.
+
 **Files:**
 - No new files — verification only
 
-- [ ] **Step 1: Ensure `ANTHROPIC_API_KEY` is set**
+- [ ] **Step 1: Ensure `claude` CLI is on PATH and authenticated**
 
 ```bash
 echo $ANTHROPIC_API_KEY
