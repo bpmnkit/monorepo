@@ -10,6 +10,7 @@ import type { Recording, TokenUsage } from "../shared/recording-types.js"
 import { extractTsBlock, extractXmlBlock } from "./extractor.js"
 import { saveRecording } from "./recordings-store.js"
 import { executeSdkCode } from "./sdk-executor.js"
+import { extractDeltaText, extractResultUsage } from "./stream-parsers.js"
 import {
 	SCENARIO_PROMPT,
 	WITHOUT_SDK_SYSTEM_PROMPT,
@@ -85,27 +86,6 @@ app.post("/recordings", async (c) => {
 	}
 	return c.json({ slug: result.slug })
 })
-
-function extractDeltaText(event: unknown): string | null {
-	if (typeof event !== "object" || event === null) return null
-	if (!("type" in event) || event.type !== "stream_event") return null
-	if (!("event" in event) || typeof event.event !== "object" || event.event === null) return null
-	const inner = event.event as Record<string, unknown>
-	if (inner.type !== "content_block_delta") return null
-	if (typeof inner.delta !== "object" || inner.delta === null) return null
-	const delta = inner.delta as Record<string, unknown>
-	if (delta.type !== "text_delta") return null
-	return typeof delta.text === "string" ? delta.text : null
-}
-
-function extractResultUsage(event: unknown): TokenUsage | null {
-	if (typeof event !== "object" || event === null) return null
-	if (!("type" in event) || event.type !== "result") return null
-	if (!("usage" in event) || typeof event.usage !== "object" || event.usage === null) return null
-	const usage = event.usage as Record<string, unknown>
-	if (typeof usage.input_tokens !== "number" || typeof usage.output_tokens !== "number") return null
-	return { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens }
-}
 
 async function streamLlm(
 	systemPrompt: string,
