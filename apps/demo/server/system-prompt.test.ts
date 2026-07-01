@@ -1,11 +1,7 @@
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import {
-	SCENARIO_PROMPT,
-	WITHOUT_SDK_SYSTEM_PROMPT,
-	buildSdkSystemPrompt,
-} from "./system-prompt.js"
+import { WITHOUT_SDK_SYSTEM_PROMPT, buildSdkSystemPrompt } from "./system-prompt.js"
 
 const REPO_ROOT = join(fileURLToPath(import.meta.url), "../../../../")
 
@@ -35,11 +31,5 @@ describe("buildSdkSystemPrompt", () => {
 describe("WITHOUT_SDK_SYSTEM_PROMPT", () => {
 	it("instructs raw XML output", () => {
 		expect(WITHOUT_SDK_SYSTEM_PROMPT).toContain("XML")
-	})
-})
-
-describe("SCENARIO_PROMPT", () => {
-	it("mentions loan approval", () => {
-		expect(SCENARIO_PROMPT.toLowerCase()).toContain("loan")
 	})
 })

@@ -1,15 +1,6 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-export const SCENARIO_PROMPT = `Generate a Loan Approval BPMN process for Camunda 8. It should include:
-- Credit score check via REST connector
-- Exclusive gateway for pre-screening (reject below 580)
-- DMN business rule task for risk scoring
-- User task for manual underwriter review
-- Separate end events for approved and rejected outcomes
-
-Output code only. No explanation. No markdown prose outside the code block.`
-
 export const WITHOUT_SDK_SYSTEM_PROMPT = `You are a BPMN expert. Output only valid BPMN 2.0 XML for Camunda 8.
 No explanation, no markdown, no code fences. Raw XML only, starting with <?xml.`
 

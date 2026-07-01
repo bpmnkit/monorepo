@@ -9,19 +9,18 @@ import { streamSSE } from "hono/streaming"
 import type { Recording, TokenUsage } from "../shared/recording-types.js"
 import { extractTsBlock, extractXmlBlock } from "./extractor.js"
 import { saveRecording } from "./recordings-store.js"
+import { DEFAULT_SCENARIO_ID, getScenario } from "./scenarios.js"
 import { executeSdkCode } from "./sdk-executor.js"
 import { extractDeltaText, extractResultUsage } from "./stream-parsers.js"
-import {
-	SCENARIO_PROMPT,
-	WITHOUT_SDK_SYSTEM_PROMPT,
-	buildSdkSystemPrompt,
-} from "./system-prompt.js"
+import { WITHOUT_SDK_SYSTEM_PROMPT, buildSdkSystemPrompt } from "./system-prompt.js"
 
 const REPO_ROOT = join(fileURLToPath(import.meta.url), "../../../..")
 const RECORDINGS_DIR = join(REPO_ROOT, "apps/demo/recordings")
 const PORT = 3001
 
 const SDK_SYSTEM_PROMPT = buildSdkSystemPrompt(REPO_ROOT)
+const DEFAULT_SCENARIO = getScenario(DEFAULT_SCENARIO_ID)
+const SCENARIO_PROMPT = DEFAULT_SCENARIO?.prompt ?? ""
 
 // Tools the harness exposes that the spawned `claude` subprocess must not be able to use —
 // this is a demo generating text/code from a prompt, not an agent that should touch the filesystem
