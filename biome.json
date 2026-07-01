@@ -27,6 +27,7 @@
 			".turbo",
 			".swarm",
 			"**/tmp/**",
+			"apps/demo/recordings/**",
 			"**/templates/generated.ts",
 			"**/src-tauri/**",
 			"**/.astro/**",
