@@ -9,7 +9,7 @@ import { streamSSE } from "hono/streaming"
 import type { Recording, TokenUsage } from "../shared/recording-types.js"
 import { extractTsBlock, extractXmlBlock } from "./extractor.js"
 import { saveRecording } from "./recordings-store.js"
-import { DEFAULT_SCENARIO_ID, getScenario } from "./scenarios.js"
+import { DEFAULT_SCENARIO_ID, SCENARIOS, getScenario } from "./scenarios.js"
 import { executeSdkCode } from "./sdk-executor.js"
 import { extractDeltaText, extractResultUsage } from "./stream-parsers.js"
 import { WITHOUT_SDK_SYSTEM_PROMPT, buildSdkSystemPrompt } from "./system-prompt.js"
@@ -19,8 +19,6 @@ const RECORDINGS_DIR = join(REPO_ROOT, "apps/demo/recordings")
 const PORT = 3001
 
 const SDK_SYSTEM_PROMPT = buildSdkSystemPrompt(REPO_ROOT)
-const DEFAULT_SCENARIO = getScenario(DEFAULT_SCENARIO_ID)
-const SCENARIO_PROMPT = DEFAULT_SCENARIO?.prompt ?? ""
 
 // Tools the harness exposes that the spawned `claude` subprocess must not be able to use —
 // this is a demo generating text/code from a prompt, not an agent that should touch the filesystem
@@ -66,9 +64,10 @@ app.use("*", cors())
 
 app.get("/health", (c) => c.json({ status: "ok" }))
 
+app.get("/scenarios", (c) => c.json(SCENARIOS))
+
 app.get("/prompts", (c) =>
 	c.json({
-		scenario: SCENARIO_PROMPT,
 		withSdk: SDK_SYSTEM_PROMPT,
 		withoutSdk: WITHOUT_SDK_SYSTEM_PROMPT,
 	}),
@@ -87,6 +86,7 @@ app.post("/recordings", async (c) => {
 })
 
 async function streamLlm(
+	scenarioPrompt: string,
 	systemPrompt: string,
 	onChunk: (text: string) => Promise<void>,
 ): Promise<{ text: string; usage: TokenUsage | null }> {
@@ -94,7 +94,7 @@ async function streamLlm(
 		"claude",
 		[
 			"-p",
-			SCENARIO_PROMPT,
+			scenarioPrompt,
 			"--model",
 			"claude-opus-4-8",
 			"--system-prompt",
@@ -158,11 +158,16 @@ async function streamLlm(
 	return { text: accumulated, usage }
 }
 
-app.get("/stream/with-sdk", (c) =>
-	streamSSE(c, async (stream) => {
+app.get("/stream/with-sdk", (c) => {
+	const scenarioId = c.req.query("scenario") ?? DEFAULT_SCENARIO_ID
+	const scenario = getScenario(scenarioId)
+	if (!scenario) {
+		return c.json({ error: `Unknown scenario "${scenarioId}"` }, 400)
+	}
+	return streamSSE(c, async (stream) => {
 		let usage: TokenUsage | null = null
 		try {
-			const result = await streamLlm(SDK_SYSTEM_PROMPT, async (text) => {
+			const result = await streamLlm(scenario.prompt, SDK_SYSTEM_PROMPT, async (text) => {
 				await stream.writeSSE({ event: "chunk", data: JSON.stringify({ text }) })
 			})
 			usage = result.usage
@@ -186,14 +191,19 @@ app.get("/stream/with-sdk", (c) =>
 			const message = err instanceof Error ? err.message : String(err)
 			await stream.writeSSE({ event: "error", data: JSON.stringify({ message, usage }) })
 		}
-	}),
-)
+	})
+})
 
-app.get("/stream/without-sdk", (c) =>
-	streamSSE(c, async (stream) => {
+app.get("/stream/without-sdk", (c) => {
+	const scenarioId = c.req.query("scenario") ?? DEFAULT_SCENARIO_ID
+	const scenario = getScenario(scenarioId)
+	if (!scenario) {
+		return c.json({ error: `Unknown scenario "${scenarioId}"` }, 400)
+	}
+	return streamSSE(c, async (stream) => {
 		let usage: TokenUsage | null = null
 		try {
-			const result = await streamLlm(WITHOUT_SDK_SYSTEM_PROMPT, async (text) => {
+			const result = await streamLlm(scenario.prompt, WITHOUT_SDK_SYSTEM_PROMPT, async (text) => {
 				await stream.writeSSE({ event: "chunk", data: JSON.stringify({ text }) })
 			})
 			usage = result.usage
@@ -212,8 +222,8 @@ app.get("/stream/without-sdk", (c) =>
 			const message = err instanceof Error ? err.message : String(err)
 			await stream.writeSSE({ event: "error", data: JSON.stringify({ message, usage }) })
 		}
-	}),
-)
+	})
+})
 
 serve({ fetch: app.fetch, port: PORT }, () => {
 	console.log(`Demo server running on http://localhost:${PORT}`)
