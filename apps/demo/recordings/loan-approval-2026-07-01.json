@@ -1,0 +1,483 @@
+{
+  "scenarioPrompt": "Generate a Loan Approval BPMN process for Camunda 8. It should include:\n- Credit score check via REST connector\n- Exclusive gateway for pre-screening (reject below 580)\n- DMN business rule task for risk scoring\n- User task for manual underwriter review\n- Separate end events for approved and rejected outcomes\n\nOutput code only. No explanation. No markdown prose outside the code block.",
+  "panels": {
+    "with-sdk": {
+      "systemPrompt": "You are an expert at using the @bpmnkit/core TypeScript SDK to generate Camunda 8 BPMN processes.\n\n## SDK Overview\n<div align=\"center\">\n  <a href=\"https://bpmnkit.com\"><img src=\"https://bpmnkit.com/favicon.svg\" width=\"72\" height=\"72\" alt=\"BPMN Kit logo\"></a>\n  <h1>@bpmnkit/core</h1>\n  <p>TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams</p>\n\n  [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core)\n  [![license](https://img.shields.io/npm/l/@bpmnkit/core?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)\n  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)\n  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)\n  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)\n\n  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/core/CHANGELOG.md)\n</div>\n\n---\n\n## Overview\n\n`@bpmnkit/core` is the foundation of the BPMN Kit. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.\n\n```\nParse → Modify → Validate → Export\n```\n\n## Features\n\n- **BPMN 2.0** — parse, create, and export process diagrams with full Zeebe/Camunda 8 extension support\n- **Fluent Builder API** — construct valid processes programmatically, never touch raw XML\n- **Sugiyama Layout Engine** — auto-position elements with clean orthogonal edge routing\n- **DMN 1.3** — decision tables, including FEEL expression support\n- **Camunda Form Definitions** — type-safe form schema builder\n- **Optimizer** — built-in rule engine to detect and auto-fix anti-patterns\n- **Compact Format** — 70% smaller token-efficient JSON representation for AI/LLM workflows\n- **Zero Dependencies** — runs in browsers, Node.js, Deno, Bun, and edge runtimes\n\n## Installation\n\n```sh\nnpm install @bpmnkit/core\npnpm add @bpmnkit/core\n```\n\n## Quick Start\n\n### Build a process from code\n\n```typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst process = Bpmn.createProcess(\"order-flow\", \"Order Flow\")\n  .startEvent(\"start\", \"Order Received\")\n  .serviceTask(\"validate\", \"Validate Order\", {\n    type: \"order-validator\",\n    inputs: [{ source: \"=order\", target: \"order\" }],\n    outputs: [{ source: \"=valid\", target: \"isValid\" }],\n  })\n  .exclusiveGateway(\"check\", \"Order Valid?\")\n  .sequenceFlow(\"check\", \"fulfill\", \"=isValid = true\")\n  .serviceTask(\"fulfill\", \"Fulfill Order\", { type: \"fulfillment-service\" })\n  .endEvent(\"end\", \"Order Complete\")\n  .sequenceFlow(\"check\", \"reject\", \"=isValid = false\")\n  .endEvent(\"reject-end\", \"Order Rejected\")\n  .build()\n\nconst xml = Bpmn.export(process)\n```\n\n### Parse and modify existing BPMN\n\n```typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst process = defs.processes[0]\n\n// Access flow elements\nfor (const el of process.flowElements) {\n  console.log(el.type, el.id, el.name)\n}\n\n// Serialize back to XML\nconst updated = Bpmn.export(defs)\n```\n\n### Auto-layout a process\n\n```typescript\nimport { Bpmn, layoutProcess } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst result = layoutProcess(defs.processes[0])\n// result.defs now has updated DI coordinates\nconst laid = Bpmn.export(result.defs)\n```\n\n### Optimize a diagram\n\n```typescript\nimport { Bpmn, optimize } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst report = optimize(defs)\n\nconsole.log(`${report.summary.total} findings`)\n\nfor (const finding of report.findings) {\n  console.log(`[${finding.severity}] ${finding.message}`)\n  if (finding.applyFix) {\n    const { description } = finding.applyFix(defs)\n    console.log(\"Fixed:\", description)\n  }\n}\n```\n\n### Compact format for AI/LLM workflows\n\n```typescript\nimport { Bpmn, compactify, expand } from \"@bpmnkit/core\"\n\n// Shrink for AI prompt\nconst defs = Bpmn.parse(xml)\nconst compact = compactify(defs)          // ~70% smaller JSON\nconst json = JSON.stringify(compact)      // send to LLM\n\n// Restore full BPMN from AI response\nconst restored = expand(JSON.parse(json))\nconst outXml = Bpmn.export(restored)\n```\n\n## API Reference\n\n### BPMN\n\n| Export | Description |\n|--------|-------------|\n| `Bpmn.parse(xml)` | Parse BPMN XML → `BpmnDefinitions` |\n| `Bpmn.export(defs)` | Serialize `BpmnDefinitions` → XML |\n| `Bpmn.createProcess(id, name?)` | Start a `ProcessBuilder` |\n| `Bpmn.makeEmpty(processId?, name?)` | Minimal BPMN XML with one start event |\n| `Bpmn.SAMPLE_XML` | 3-node sample diagram string |\n\n### DMN\n\n| Export | Description |\n|--------|-------------|\n| `Dmn.parse(xml)` | Parse DMN XML → `DmnDefinitions` |\n| `Dmn.export(defs)` | Serialize → XML |\n| `Dmn.createDecisionTable(id, name?)` | Start a `DecisionTableBuilder` |\n| `Dmn.makeEmpty()` | Minimal DMN with one empty decision table |\n\n### Form\n\n| Export | Description |\n|--------|-------------|\n| `Form.create()` | Start a `FormBuilder` |\n| `Form.parse(json)` | Parse a form schema |\n| `Form.export(schema)` | Serialize → JSON string |\n\n### Layout & Optimization\n\n| Export | Description |\n|--------|-------------|\n| `layoutProcess(process)` | Auto-layout all elements; returns `LayoutResult` |\n| `optimize(defs)` | Run all optimization rules; returns `OptimizeReport` |\n| `compactify(defs)` | Convert to compact `CompactDiagram` |\n| `expand(compact)` | Restore full `BpmnDefinitions` |\n| `generateId(prefix)` | Generate a unique short ID |\n\n---\n\n## Related Packages\n\n| Package | Description |\n|---------|-------------|\n| [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |\n| [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |\n| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |\n| [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |\n| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |\n| [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |\n| [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |\n| [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |\n| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |\n| [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |\n| [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |\n| [`@bpmnkit/cli`](https://www.npmjs.com/package/@bpmnkit/cli) | Camunda 8 command-line interface (casen) |\n| [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |\n| [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |\n| [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |\n| [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |\n| [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |\n| [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |\n| [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |\n| [`@bpmnkit/casen-worker-http`](https://www.npmjs.com/package/@bpmnkit/casen-worker-http) | Example HTTP worker plugin — completes jobs with live JSONPlaceholder API data |\n| [`@bpmnkit/casen-worker-ai`](https://www.npmjs.com/package/@bpmnkit/casen-worker-ai) | AI task worker — classify, summarize, extract, and decide using Claude |\n\n## License\n\n[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)\n\n<div align=\"center\">\n  <a href=\"https://bpmnkit.com\"><img src=\"https://bpmnkit.com/favicon.svg\" width=\"32\" height=\"32\" alt=\"BPMN Kit\"></a>\n</div>\n\n\n## Exported API (from packages/core/src/index.ts)\n```typescript\nexport { BpmnSdkError, ParseError, ValidationError } from \"./errors.js\"\nexport type { ErrorCode } from \"./errors.js\"\nexport {\n\tisBpmnActivity,\n\tisBpmnAdHocSubProcess,\n\tisBpmnBoundaryEvent,\n\tisBpmnBusinessRuleTask,\n\tisBpmnCallActivity,\n\tisBpmnComplexGateway,\n\tisBpmnEndEvent,\n\tisBpmnEvent,\n\tisBpmnEventBasedGateway,\n\tisBpmnEventSubProcess,\n\tisBpmnExclusiveGateway,\n\tisBpmnGateway,\n\tisBpmnInclusiveGateway,\n\tisBpmnIntermediateCatchEvent,\n\tisBpmnIntermediateThrowEvent,\n\tisBpmnManualTask,\n\tisBpmnParallelGateway,\n\tisBpmnReceiveTask,\n\tisBpmnScriptTask,\n\tisBpmnSendTask,\n\tisBpmnServiceTask,\n\tisBpmnStartEvent,\n\tisBpmnSubProcess,\n\tisBpmnTask,\n\tisBpmnTransaction,\n\tisBpmnUserTask,\n} from \"./bpmn/type-guards.js\"\nexport {\n\tfindElement,\n\tfindElementInProcess,\n\tfindProcess,\n\tfindSequenceFlow,\n\tgetAllElements,\n\tgetElementType,\n\tgetZeebeExtensions,\n} from \"./bpmn/utils.js\"\nexport { Bpmn, SAMPLE_BPMN_XML } from \"./bpmn/index.js\"\nexport { applyAutoLayout } from \"./bpmn/auto-layout.js\"\nexport { DiagramBuilder } from \"./bpmn/bpmn-builder.js\"\nexport type {\n\tProcessBuilder,\n\tBranchBuilder,\n\tSubProcessContentBuilder,\n\tServiceTaskOptions,\n\tScriptTaskOptions,\n\tUserTaskOptions,\n\tCallActivityOptions,\n\tBusinessRuleTaskOptions,\n\tElementOptions,\n\tGatewayOptions,\n\tMultiInstanceOptions,\n\tSubProcessOptions,\n\tStartEventOptions,\n\tIntermediateCatchEventOptions,\n\tIntermediateThrowEventOptions,\n\tEndEventOptions,\n\tBoundaryEventOptions,\n\tAdHocSubProcessOptions,\n} from \"./bpmn/bpmn-builder.js\"\nexport type {\n\tBpmnDefinitions,\n\tBpmnProcess,\n\tBpmnFlowNode,\n\tBpmnFlowElement,\n\tBpmnSequenceFlow,\n\tBpmnBoundaryEvent,\n\tBpmnElementType,\n\tBpmnStartEvent,\n\tBpmnEndEvent,\n\tBpmnIntermediateCatchEvent,\n\tBpmnIntermediateThrowEvent,\n\tBpmnTask,\n\tBpmnServiceTask,\n\tBpmnScriptTask,\n\tBpmnUserTask,\n\tBpmnSendTask,\n\tBpmnReceiveTask,\n\tBpmnBusinessRuleTask,\n\tBpmnManualTask,\n\tBpmnCallActivity,\n\tBpmnSubProcess,\n\tBpmnAdHocSubProcess,\n\tBpmnEventSubProcess,\n\tBpmnTransaction,\n\tBpmnExclusiveGateway,\n\tBpmnParallelGateway,\n\tBpmnInclusiveGateway,\n\tBpmnEventBasedGateway,\n\tBpmnComplexGateway,\n\tBpmnCollaboration,\n\tBpmnParticipant,\n\tBpmnMessageFlow,\n\tBpmnLane,\n\tBpmnLaneSet,\n\tBpmnError,\n\tBpmnEscalation,\n\tBpmnMessage,\n\tBpmnSignal,\n\tBpmnTextAnnotation,\n\tBpmnAssociation,\n\tBpmnConditionExpression,\n\tBpmnEventDefinition,\n\tBpmnTimerEventDefinition,\n\tBpmnErrorEventDefinition,\n\tBpmnEscalationEventDefinition,\n\tBpmnMessageEventDefinition,\n\tBpmnSignalEventDefinition,\n\tBpmnConditionalEventDefinition,\n\tBpmnLinkEventDefinition,\n\tBpmnCancelEventDefinition,\n\tBpmnTerminateEventDefinition,\n\tBpmnCompensateEventDefinition,\n\tBpmnMultiInstanceLoopCharacteristics,\n\tBpmnDiagram,\n\tBpmnDiPlane,\n\tBpmnDiShape,\n\tBpmnDiEdge,\n\tBpmnDiLabel,\n\tBpmnBounds,\n\tBpmnWaypoint,\n} from \"./bpmn/bpmn-model.js\"\nexport type {\n\tRestConnectorConfig,\n\tRestAuthentication,\n\tHttpMethod,\n} from \"./bpmn/rest-connector.js\"\nexport type {\n\tZeebeExtensions,\n\tZeebeTaskDefinition,\n\tZeebeIoMapping,\n\tZeebeIoMappingEntry,\n\tZeebeTaskHeaders,\n\tZeebeTaskHeaderEntry,\n\tZeebeProperties,\n\tZeebePropertyEntry,\n\tZeebeFormDefinition,\n\tZeebeCalledDecision,\n} from \"./bpmn/zeebe-extensions.js\"\nexport { zeebeExtensionsToXmlElements } from \"./bpmn/zeebe-extensions.js\"\nexport { Dmn, layoutDmn, benchmarkDmnLayout, compactifyDmn, expandDmn } from \"./dmn/index.js\"\nexport type {\n\tDmnBenchmarkResult,\n\tDmnElementPosition,\n\tCompactDmn,\n\tCompactDmnDecision,\n\tCompactDmnInput,\n\tCompactDmnOutput,\n\tCompactDmnRule,\n} from \"./dmn/index.js\"\nexport { Form, compactifyForm, expandForm } from \"./form/index.js\"\nexport type { CompactForm, CompactFormField } from \"./form/index.js\"\nexport { FormBuilder, GroupBuilder } from \"./form/form-builder.js\"\nexport type {\n\tTextFieldOptions,\n\tSelectOptions,\n\tRadioOptions,\n\tCheckboxOptions,\n\tChecklistOptions,\n\tGroupOptions,\n} from \"./form/form-builder.js\"\nexport type {\n\tFormComponent,\n\tFormCheckboxComponent,\n\tFormChecklistComponent,\n\tFormDefinition,\n\tFormExporter,\n\tFormGroupComponent,\n\tFormLayout,\n\tFormRadioComponent,\n\tFormSelectComponent,\n\tFormTextAreaComponent,\n\tFormTextComponent,\n\tFormTextFieldComponent,\n\tFormValidation,\n\tFormValueOption,\n\tFormNumberComponent,\n\tFormDatetimeComponent,\n\tFormButtonComponent,\n\tFormTaglistComponent,\n\tFormTableComponent,\n\tFormImageComponent,\n\tFormDynamicListComponent,\n\tFormIframeComponent,\n\tFormSeparatorComponent,\n\tFormSpacerComponent,\n\tFormDocumentPreviewComponent,\n\tFormHtmlComponent,\n\tFormExpressionComponent,\n\tFormFilepickerComponent,\n\tFormUnknownComponent,\n} from \"./form/form-model.js\"\nexport type {\n\tDecisionTableBuilder,\n\tInputOptions,\n\tOutputOptions,\n\tRuleOptions,\n} from \"./dmn/dmn-builder.js\"\nexport type {\n\tDmnDefinitions,\n\tDmnDecision,\n\tDmnDecisionTable,\n\tDmnInput,\n\tDmnOutput,\n\tDmnRule,\n\tDmnInputEntry,\n\tDmnOutputEntry,\n\tDmnDiagram,\n\tDmnDiagramShape,\n\tDmnDiagramEdge,\n\tDmnWaypoint,\n\tDmnTypeRef,\n\tDmnAggregation,\n\tHitPolicy,\n\tDmnInformationRequirement,\n\tDmnKnowledgeRequirement,\n\tDmnAuthorityRequirement,\n\tDmnInputData,\n\tDmnKnowledgeSource,\n\tDmnBusinessKnowledgeModel,\n\tDmnTextAnnotation,\n\tDmnAssociation,\n} from \"./dmn/dmn-model.js\"\nexport type { XmlElement } from \"./types/xml-element.js\"\nexport { generateId, resetIdCounter } from \"./types/id-generator.js\"\nexport { parseXml, serializeXml } from \"./xml/index.js\"\nexport { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from \"./bpmn/di-color.js\"\nexport type { DiColor } from \"./bpmn/di-color.js\"\nexport { optimize } from \"./bpmn/optimize/index.js\"\nexport { renderStoryHtml } from \"./bpmn/story.js\"\nexport type { StoryRenderOptions } from \"./bpmn/story.js\"\nexport { analyzeVariableFlow, extractFeelIdentifiers } from \"./bpmn/optimize/variable-flow.js\"\nexport type {\n\tOptimizationReport,\n\tOptimizationFinding,\n\tOptimizationSeverity,\n\tOptimizationCategory,\n\tApplyFixResult,\n\tOptimizeOptions,\n} from \"./bpmn/optimize/types.js\"\nexport { layoutProcess, layoutFlowNodes } from \"./layout/index.js\"\nexport {\n\tbenchmarkLayout,\n\tcompareLayouts,\n\tformatBenchmarkResult,\n\tgenerateAutoLayout,\n\tparseReferenceLayout,\n} from \"./layout/index.js\"\nexport type {\n\tBenchmarkResult,\n\tBoundingBox,\n\tElementComparison,\n\tElementPosition,\n\tFlowOrderViolation,\n} from \"./layout/index.js\"\nexport type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from \"./layout/index.js\"\nexport { ELEMENT_SIZES, GRID_CELL_HEIGHT, GRID_CELL_WIDTH } from \"./layout/index.js\"\nexport { compactify, expand } from \"./bpmn/compact.js\"\nexport { applyOperations } from \"./bpmn/operations.js\"\nexport type { BpmnOperation } from \"./bpmn/operations.js\"\nexport {\n\tbuildValidationDmn,\n\tfindValidationStructure,\n\tgetValidationInputNames,\n\tinsertValidationStructure,\n\tremoveValidationStructure,\n\tvalidationDecisionId,\n} from \"./bpmn/input-validation.js\"\nexport type {\n\tInputVariableDef,\n\tValidationStructure,\n\tValidationVariableType,\n} from \"./bpmn/input-validation.js\"\nexport { exportSvg } from \"./bpmn/svg.js\"\nexport type { SvgExportOptions } from \"./bpmn/svg.js\"\nexport type {\n\tCompactDiagram,\n\tCompactElement,\n\tCompactFlow,\n\tCompactProcess,\n} from \"./bpmn/compact.js\"\n\n```\n\n## Real-World Example — Loan Approval\nStudy this example carefully. Use the same fluent builder pattern.\n```typescript\n/**\n * Example 03 — Loan Approval\n *\n * Demonstrates:\n * - REST connector for external credit bureau API call\n * - Chained exclusive gateways for multi-step decision logic\n * - Business rule task for risk scoring (DMN integration)\n * - User task for manual underwriter review\n * - Script task for interest rate calculation\n * - connectTo() for merging paths from multiple branches\n */\n\nimport { writeFileSync } from \"node:fs\"\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst definitions = Bpmn.createProcess(\"LoanApproval\")\n\t.withAutoLayout()\n\t.name(\"Loan Approval Process\")\n\t.versionTag(\"1.0.0\")\n\n\t.startEvent(\"start\", { name: \"Application Received\" })\n\n\t// Fetch credit score from external bureau\n\t.restConnector(\"fetchCreditScore\", {\n\t\tname: \"Fetch Credit Score\",\n\t\tmethod: \"GET\",\n\t\turl: '=creditBureauUrl + \"/score/\" + applicant.ssn',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.CREDIT_BUREAU_TOKEN\" },\n\t\tresultVariable: \"creditBureauResponse\",\n\t\tresultExpression: \"=creditBureauResponse.body\",\n\t})\n\n\t// Automated pre-screening: reject below minimum threshold\n\t.exclusiveGateway(\"preScreen\", { name: \"Credit Score ≥ 580?\" })\n\n\t.branch(\"rejected-prescreening\", (b) =>\n\t\tb\n\t\t\t.condition(\"=creditBureauResponse.score < 580\")\n\t\t\t.serviceTask(\"sendRejectionLetter\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-credit\" },\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [\n\t\t\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t\t\t{ source: \"=creditBureauResponse.score\", target: \"creditScore\" },\n\t\t\t\t\t],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedAutomatic\", { name: \"Rejected — Credit Score\" }),\n\t)\n\n\t.branch(\"passed-prescreening\", (b) =>\n\t\tb.condition(\"=creditBureauResponse.score >= 580\").connectTo(\"riskScoring\"),\n\t)\n\n\t// DMN-based risk scoring combining multiple applicant factors\n\t.businessRuleTask(\"riskScoring\", {\n\t\tname: \"Calculate Risk Score\",\n\t\tdecisionRef: \"loan-risk-scoring\",\n\t\tresultVariable: \"riskAssessment\",\n\t})\n\n\t// Route by risk tier; medium risk goes to underwriter, high risk is auto-rejected\n\t.exclusiveGateway(\"riskGateway\", { name: \"Risk Tier?\" })\n\n\t// Low risk: calculate rate and generate offer automatically\n\t.branch(\"low-risk\", (b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"low\"')\n\t\t\t.scriptTask(\"calculateRate\", {\n\t\t\t\tname: \"Calculate Interest Rate\",\n\t\t\t\texpression: \"=if riskAssessment.score < 30 then baseRate + 0.5 else baseRate + 1.0\",\n\t\t\t\tresultVariable: \"interestRate\",\n\t\t\t})\n\t\t\t.serviceTask(\"generateOffer\", {\n\t\t\t\tname: \"Generate Loan Offer\",\n\t\t\t\ttaskType: \"offer-generator\",\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [\n\t\t\t\t\t\t{ source: \"=application.amount\", target: \"amount\" },\n\t\t\t\t\t\t{ source: \"=interestRate\", target: \"rate\" },\n\t\t\t\t\t],\n\t\t\t\t\toutputs: [{ source: \"=offerId\", target: \"loanOfferId\" }],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.connectTo(\"notifyApplicant\"),\n\t)\n\n\t// Medium risk: send to underwriter for manual review, then check their decision\n\t.branch(\"medium-risk\", (b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"medium\"')\n\t\t\t.userTask(\"underwriterReview\", {\n\t\t\t\tname: \"Underwriter Review\",\n\t\t\t\tformId: \"underwriter-review-form\",\n\t\t\t})\n\t\t\t.connectTo(\"underwriterDecision\"),\n\t)\n\n\t// High risk: auto-reject\n\t.branch(\"high-risk\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendHighRiskRejection\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-risk\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedRisk\", { name: \"Rejected — High Risk\" }),\n\t)\n\n\t// Underwriter decision gateway (reached via connectTo from medium-risk branch)\n\t.exclusiveGateway(\"underwriterDecision\", { name: \"Underwriter Approved?\" })\n\n\t.branch(\"uw-approved\", (b) =>\n\t\tb.condition(\"=underwriterApproved = true\").connectTo(\"notifyApplicant\"),\n\t)\n\n\t.branch(\"uw-rejected\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendManualRejection\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-underwriter\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedManual\", { name: \"Rejected — Underwriter\" }),\n\t)\n\n\t// Reached from both low-risk (auto) and medium-risk (approved) paths\n\t.serviceTask(\"notifyApplicant\", {\n\t\tname: \"Send Offer to Applicant\",\n\t\ttaskType: \"email-sender\",\n\t\ttaskHeaders: { template: \"loan-offer\" },\n\t\tioMapping: {\n\t\t\tinputs: [\n\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t{ source: \"=loanOfferId\", target: \"offerId\" },\n\t\t\t],\n\t\t},\n\t})\n\n\t.endEvent(\"endApproved\", { name: \"Loan Approved\" })\n\t.build()\n\nconst xml = Bpmn.export(definitions)\nwriteFileSync(\"output/03-loan-approval.bpmn\", xml)\nconsole.log(\"✓ 03-loan-approval.bpmn\")\n\n```\n\n## Output Instructions\n- Generate TypeScript using @bpmnkit/core.\n- At the end of your code, use: process.stdout.write(Bpmn.export(definitions))\n- Do NOT use writeFileSync.\n- Output code only — no explanation, no markdown prose outside the code block.\n- Wrap your code in a single ```typescript code block.",
+      "chunks": [
+        {
+          "t": 5262,
+          "text": "```"
+        },
+        {
+          "t": 5812,
+          "text": "typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst definitions = Bpmn.createProcess(\"LoanApproval\")\n\t.withAutoLayout()\n\t.name(\""
+        },
+        {
+          "t": 6285,
+          "text": "Loan Approval Process\")\n\t.versionTag(\"1.0.0\")\n\n\t.startEvent(\"start\", { name: \"Application Received\" })\n\n\t// Fetch credit score from external bureau\n\t.rest"
+        },
+        {
+          "t": 6770,
+          "text": "Connector(\"fetchCreditScore\", {\n\t\tname: \"Fetch Credit Score\",\n\t\tmethod: \"GET\",\n\t\turl: '=creditBureauUrl + \"/score"
+        },
+        {
+          "t": 7243,
+          "text": "/\" + applicant.ssn',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.CREDIT_BUREAU_TOKEN\" },\n\t\tresultV"
+        },
+        {
+          "t": 7659,
+          "text": "ariable: \"creditBureauResponse\",\n\t\tresultExpression: \"=creditBureauResponse.body\",\n\t})\n\n\t// Automated pre-screening: reject below minimum threshold\n\t.exclus"
+        },
+        {
+          "t": 8143,
+          "text": "iveGateway(\"preScreen\", { name: \"Credit Score ≥ 580?\" })\n\n\t.branch(\"rejected-prescreening\", (b) =>\n\t\tb\n\t\t\t.condition(\"=creditBureau"
+        },
+        {
+          "t": 8692,
+          "text": "Response.score < 580\")\n\t\t\t.serviceTask(\"sendRejectionLetter\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders"
+        },
+        {
+          "t": 9215,
+          "text": ": { template: \"loan-rejected-credit\" },\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [\n\t\t\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t\t\t{ source: \"=creditBure"
+        },
+        {
+          "t": 9570,
+          "text": "auResponse.score\", target: \"creditScore\" },\n\t\t\t\t\t],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedCredit\", { name: \"Rejected — Credit Score\" }),\n\t)"
+        },
+        {
+          "t": 15034,
+          "text": "\n\n\t.branch(\"passed-prescreening\", (b) =>\n\t\tb.condition(\"=creditBureauResponse.score >= 580\").connectTo(\"riskScoring\"),\n\t)\n\n\t// DMN-"
+        },
+        {
+          "t": 15061,
+          "text": "based risk scoring combining multiple applicant factors\n\t.businessRuleTask(\"riskScoring\", {\n\t\tname: \"Calculate Risk Score\",\n\t\tdecisionRef: \"loan-risk-"
+        },
+        {
+          "t": 15106,
+          "text": "scoring\",\n\t\tresultVariable: \"riskAssessment\",\n\t})\n\n\t// Route by risk tier\n\t.exclusiveGateway(\"riskGateway\", { name: \"Risk Tier?\" })"
+        },
+        {
+          "t": 15128,
+          "text": "\n\n\t.branch(\"low-risk\", (b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"low\"')\n\t\t\t.serviceTask(\"generateOffer\", {\n\t\t\t\tname: \"Generate"
+        },
+        {
+          "t": 15252,
+          "text": " Loan Offer\",\n\t\t\t\ttaskType: \"offer-generator\",\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [{ source: \"=application.amount\", target: \"amount\" }],\n\t\t\t\t\toutputs:"
+        },
+        {
+          "t": 15606,
+          "text": " [{ source: \"=offerId\", target: \"loanOfferId\" }],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.connectTo(\"notifyApplicant\"),\n\t)\n\n\t.branch(\"medium-risk\", ("
+        },
+        {
+          "t": 15680,
+          "text": "b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"medium\"')\n\t\t\t.userTask(\"underwriterReview\", {\n\t\t\t\tname: \"Underwriter Review\",\n\t\t\t\tformId: \"under"
+        },
+        {
+          "t": 15935,
+          "text": "writer-review-form\",\n\t\t\t})\n\t\t\t.connectTo(\"underwriterDecision\"),\n\t)\n\n\t.branch(\"high-risk\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.ser"
+        },
+        {
+          "t": 16213,
+          "text": "viceTask(\"sendHighRiskRejection\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-"
+        },
+        {
+          "t": 16357,
+          "text": "risk\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedRisk\", { name: \"Rejected — High Risk\" }),\n\t)\n\n\t// Underwriter decision gateway\n\t.exclusive"
+        },
+        {
+          "t": 16511,
+          "text": "Gateway(\"underwriterDecision\", { name: \"Underwriter Approved?\" })\n\n\t.branch(\"uw-approved\", (b) =>\n\t\tb.condition(\"=underwriterApproved = true\").connect"
+        },
+        {
+          "t": 16933,
+          "text": "To(\"notifyApplicant\"),\n\t)\n\n\t.branch(\"uw-rejected\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendManualRejection\", {"
+        },
+        {
+          "t": 17027,
+          "text": "\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-underwriter\" },\n\t\t\t})\n\t\t\t.endEvent(\""
+        },
+        {
+          "t": 17189,
+          "text": "endRejectedManual\", { name: \"Rejected — Underwriter\" }),\n\t)\n\n\t// Reached from both low-risk (auto) and medium-risk (approved) paths\n\t.serviceTask"
+        },
+        {
+          "t": 17267,
+          "text": "(\"notifyApplicant\", {\n\t\tname: \"Send Offer to Applicant\",\n\t\ttaskType: \"email-sender\",\n\t\ttaskHeaders: { template: \"loan-offer\" },\n\t\tioMap"
+        },
+        {
+          "t": 17438,
+          "text": "ping: {\n\t\t\tinputs: [\n\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t{ source: \"=loanOfferId\", target: \"offerId\" },\n\t\t\t],\n\t\t},\n\t})\n\n\t"
+        },
+        {
+          "t": 17599,
+          "text": ".endEvent(\"endApproved\", { name: \"Loan Approved\" })\n\t.build()\n\nprocess.stdout.write(Bpmn.export(definitions))\n```"
+        }
+      ],
+      "durationMs": 19670,
+      "result": {
+        "type": "bpmn",
+        "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:zeebe=\"http://camunda.org/schema/zeebe/1.0\" xmlns:modeler=\"http://camunda.org/schema/modeler/1.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" id=\"Definitions_1\" targetNamespace=\"http://bpmn.io/schema/bpmn\" exporter=\"@bpmnkit/core\" exporterVersion=\"0.0.23\" modeler:executionPlatform=\"Camunda Cloud\" modeler:executionPlatformVersion=\"8.9.0\">\n  <bpmn:process id=\"LoanApproval\" name=\"Loan Approval Process\" isExecutable=\"true\">\n    <bpmn:extensionElements>\n      <zeebe:versionTag value=\"1.0.0\"/>\n    </bpmn:extensionElements>\n    <bpmn:startEvent id=\"start\" name=\"Application Received\">\n      <bpmn:outgoing>Flow_xaaoL4Wx</bpmn:outgoing>\n    </bpmn:startEvent>\n    <bpmn:serviceTask id=\"fetchCreditScore\" zeebe:modelerTemplate=\"io.camunda.connectors.HttpJson.v2\" zeebe:modelerTemplateVersion=\"12\" name=\"Fetch Credit Score\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" retries=\"3\"/>\n        <zeebe:ioMapping>\n          <zeebe:input source=\"bearer\" target=\"authentication.type\"/>\n          <zeebe:input source=\"=secrets.CREDIT_BUREAU_TOKEN\" target=\"authentication.token\"/>\n          <zeebe:input source=\"GET\" target=\"method\"/>\n          <zeebe:input source=\"=creditBureauUrl + &quot;/score/&quot; + applicant.ssn\" target=\"url\"/>\n          <zeebe:input source=\"20\" target=\"connectionTimeoutInSeconds\"/>\n          <zeebe:input source=\"20\" target=\"readTimeoutInSeconds\"/>\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultVariable\" value=\"creditBureauResponse\"/>\n          <zeebe:header key=\"resultExpression\" value=\"=creditBureauResponse.body\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_xaaoL4Wx</bpmn:incoming>\n      <bpmn:outgoing>Flow_UUTgpqpg</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"preScreen\" name=\"Credit Score ≥ 580?\">\n      <bpmn:incoming>Flow_UUTgpqpg</bpmn:incoming>\n      <bpmn:outgoing>Flow_8D4RPWGI</bpmn:outgoing>\n      <bpmn:outgoing>Flow_1oLUChta</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"sendRejectionLetter\" name=\"Send Rejection Letter\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:ioMapping>\n          <zeebe:input source=\"=applicant.email\" target=\"to\"/>\n          <zeebe:input source=\"=creditBureauResponse.score\" target=\"creditScore\"/>\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"loan-rejected-credit\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_8D4RPWGI</bpmn:incoming>\n      <bpmn:outgoing>Flow_gxygAefR</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endRejectedCredit\" name=\"Rejected — Credit Score\">\n      <bpmn:incoming>Flow_gxygAefR</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:businessRuleTask id=\"riskScoring\" name=\"Calculate Risk Score\">\n      <bpmn:incoming>Flow_1oLUChta</bpmn:incoming>\n      <bpmn:outgoing>Flow_9OlmLhkS</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:exclusiveGateway id=\"riskGateway\" name=\"Risk Tier?\" default=\"Flow_G7KC6Skp\">\n      <bpmn:incoming>Flow_9OlmLhkS</bpmn:incoming>\n      <bpmn:outgoing>Flow_VLNoQeqr</bpmn:outgoing>\n      <bpmn:outgoing>Flow_XEp3Mpwj</bpmn:outgoing>\n      <bpmn:outgoing>Flow_G7KC6Skp</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"generateOffer\" name=\"Generate Loan Offer\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"offer-generator\"/>\n        <zeebe:ioMapping>\n          <zeebe:input source=\"=application.amount\" target=\"amount\"/>\n          <zeebe:output source=\"=offerId\" target=\"loanOfferId\"/>\n        </zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_VLNoQeqr</bpmn:incoming>\n      <bpmn:outgoing>Flow_Q4O8t0cd</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:userTask id=\"underwriterReview\" name=\"Underwriter Review\">\n      <bpmn:extensionElements>\n        <zeebe:formDefinition formId=\"underwriter-review-form\"/>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_XEp3Mpwj</bpmn:incoming>\n      <bpmn:outgoing>Flow_DG1c9h69</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:serviceTask id=\"sendHighRiskRejection\" name=\"Send Rejection Letter\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"loan-rejected-risk\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_G7KC6Skp</bpmn:incoming>\n      <bpmn:outgoing>Flow_KXHauVVy</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endRejectedRisk\" name=\"Rejected — High Risk\">\n      <bpmn:incoming>Flow_KXHauVVy</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:exclusiveGateway id=\"underwriterDecision\" name=\"Underwriter Approved?\" default=\"Flow_GGj5QwUW\">\n      <bpmn:incoming>Flow_DG1c9h69</bpmn:incoming>\n      <bpmn:outgoing>Flow_Dy4YJ7c9</bpmn:outgoing>\n      <bpmn:outgoing>Flow_GGj5QwUW</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"sendManualRejection\" name=\"Send Rejection Letter\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"loan-rejected-underwriter\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_GGj5QwUW</bpmn:incoming>\n      <bpmn:outgoing>Flow_91RjZsxq</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endRejectedManual\" name=\"Rejected — Underwriter\">\n      <bpmn:incoming>Flow_91RjZsxq</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:serviceTask id=\"notifyApplicant\" name=\"Send Offer to Applicant\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:ioMapping>\n          <zeebe:input source=\"=applicant.email\" target=\"to\"/>\n          <zeebe:input source=\"=loanOfferId\" target=\"offerId\"/>\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"loan-offer\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_Q4O8t0cd</bpmn:incoming>\n      <bpmn:incoming>Flow_Dy4YJ7c9</bpmn:incoming>\n      <bpmn:outgoing>Flow_5wOGjGmi</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endApproved\" name=\"Loan Approved\">\n      <bpmn:incoming>Flow_5wOGjGmi</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:sequenceFlow id=\"Flow_xaaoL4Wx\" sourceRef=\"start\" targetRef=\"fetchCreditScore\"/>\n    <bpmn:sequenceFlow id=\"Flow_UUTgpqpg\" sourceRef=\"fetchCreditScore\" targetRef=\"preScreen\"/>\n    <bpmn:sequenceFlow id=\"Flow_8D4RPWGI\" sourceRef=\"preScreen\" targetRef=\"sendRejectionLetter\" name=\"rejected-prescreening\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=creditBureauResponse.score &lt; 580</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_gxygAefR\" sourceRef=\"sendRejectionLetter\" targetRef=\"endRejectedCredit\"/>\n    <bpmn:sequenceFlow id=\"Flow_1oLUChta\" sourceRef=\"preScreen\" targetRef=\"riskScoring\" name=\"passed-prescreening\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=creditBureauResponse.score &gt;= 580</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_9OlmLhkS\" sourceRef=\"riskScoring\" targetRef=\"riskGateway\"/>\n    <bpmn:sequenceFlow id=\"Flow_VLNoQeqr\" sourceRef=\"riskGateway\" targetRef=\"generateOffer\" name=\"low-risk\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=riskAssessment.tier = \"low\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_Q4O8t0cd\" sourceRef=\"generateOffer\" targetRef=\"notifyApplicant\"/>\n    <bpmn:sequenceFlow id=\"Flow_XEp3Mpwj\" sourceRef=\"riskGateway\" targetRef=\"underwriterReview\" name=\"medium-risk\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=riskAssessment.tier = \"medium\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_DG1c9h69\" sourceRef=\"underwriterReview\" targetRef=\"underwriterDecision\"/>\n    <bpmn:sequenceFlow id=\"Flow_G7KC6Skp\" sourceRef=\"riskGateway\" targetRef=\"sendHighRiskRejection\" name=\"high-risk\"/>\n    <bpmn:sequenceFlow id=\"Flow_KXHauVVy\" sourceRef=\"sendHighRiskRejection\" targetRef=\"endRejectedRisk\"/>\n    <bpmn:sequenceFlow id=\"Flow_Dy4YJ7c9\" sourceRef=\"underwriterDecision\" targetRef=\"notifyApplicant\" name=\"uw-approved\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=underwriterApproved = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_GGj5QwUW\" sourceRef=\"underwriterDecision\" targetRef=\"sendManualRejection\" name=\"uw-rejected\"/>\n    <bpmn:sequenceFlow id=\"Flow_91RjZsxq\" sourceRef=\"sendManualRejection\" targetRef=\"endRejectedManual\"/>\n    <bpmn:sequenceFlow id=\"Flow_5wOGjGmi\" sourceRef=\"notifyApplicant\" targetRef=\"endApproved\"/>\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"LoanApproval_di\">\n    <bpmndi:BPMNPlane id=\"LoanApproval_di_plane\" bpmnElement=\"LoanApproval\">\n      <bpmndi:BPMNShape id=\"start_di\" bpmnElement=\"start\">\n        <dc:Bounds x=\"72\" y=\"192\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"20\" y=\"232\" width=\"140\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"fetchCreditScore_di\" bpmnElement=\"fetchCreditScore\">\n        <dc:Bounds x=\"190\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"preScreen_di\" bpmnElement=\"preScreen\">\n        <dc:Bounds x=\"365\" y=\"185\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"324\" y=\"239\" width=\"133\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"sendRejectionLetter_di\" bpmnElement=\"sendRejectionLetter\">\n        <dc:Bounds x=\"490\" y=\"20\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"riskScoring_di\" bpmnElement=\"riskScoring\">\n        <dc:Bounds x=\"490\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endRejectedCredit_di\" bpmnElement=\"endRejectedCredit\">\n        <dc:Bounds x=\"672\" y=\"42\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"615\" y=\"82\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"riskGateway_di\" bpmnElement=\"riskGateway\">\n        <dc:Bounds x=\"665\" y=\"185\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"655\" y=\"239\" width=\"70\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"generateOffer_di\" bpmnElement=\"generateOffer\">\n        <dc:Bounds x=\"790\" y=\"20\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"underwriterReview_di\" bpmnElement=\"underwriterReview\">\n        <dc:Bounds x=\"790\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"sendHighRiskRejection_di\" bpmnElement=\"sendHighRiskRejection\">\n        <dc:Bounds x=\"790\" y=\"323\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"underwriterDecision_di\" bpmnElement=\"underwriterDecision\">\n        <dc:Bounds x=\"965\" y=\"185\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"917\" y=\"239\" width=\"147\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endRejectedRisk_di\" bpmnElement=\"endRejectedRisk\">\n        <dc:Bounds x=\"972\" y=\"345\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"920\" y=\"385\" width=\"140\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"notifyApplicant_di\" bpmnElement=\"notifyApplicant\">\n        <dc:Bounds x=\"1090\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"sendManualRejection_di\" bpmnElement=\"sendManualRejection\">\n        <dc:Bounds x=\"1090\" y=\"320\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endApproved_di\" bpmnElement=\"endApproved\">\n        <dc:Bounds x=\"1272\" y=\"192\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1245\" y=\"232\" width=\"91\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endRejectedManual_di\" bpmnElement=\"endRejectedManual\">\n        <dc:Bounds x=\"1272\" y=\"342\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1215\" y=\"382\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_xaaoL4Wx_di\" bpmnElement=\"Flow_xaaoL4Wx\">\n        <di:waypoint x=\"108\" y=\"210\"/>\n        <di:waypoint x=\"190\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_UUTgpqpg_di\" bpmnElement=\"Flow_UUTgpqpg\">\n        <di:waypoint x=\"290\" y=\"210\"/>\n        <di:waypoint x=\"365\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_8D4RPWGI_di\" bpmnElement=\"Flow_8D4RPWGI\">\n        <di:waypoint x=\"390\" y=\"185\"/>\n        <di:waypoint x=\"390\" y=\"60\"/>\n        <di:waypoint x=\"490\" y=\"60\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"366\" y=\"116\" width=\"147\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_gxygAefR_di\" bpmnElement=\"Flow_gxygAefR\">\n        <di:waypoint x=\"590\" y=\"60\"/>\n        <di:waypoint x=\"672\" y=\"60\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1oLUChta_di\" bpmnElement=\"Flow_1oLUChta\">\n        <di:waypoint x=\"415\" y=\"210\"/>\n        <di:waypoint x=\"490\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_9OlmLhkS_di\" bpmnElement=\"Flow_9OlmLhkS\">\n        <di:waypoint x=\"590\" y=\"210\"/>\n        <di:waypoint x=\"665\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_VLNoQeqr_di\" bpmnElement=\"Flow_VLNoQeqr\">\n        <di:waypoint x=\"690\" y=\"185\"/>\n        <di:waypoint x=\"690\" y=\"98\"/>\n        <di:waypoint x=\"652\" y=\"98\"/>\n        <di:waypoint x=\"652\" y=\"22\"/>\n        <di:waypoint x=\"728\" y=\"22\"/>\n        <di:waypoint x=\"728\" y=\"60\"/>\n        <di:waypoint x=\"790\" y=\"60\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"666\" y=\"135\" width=\"56\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Q4O8t0cd_di\" bpmnElement=\"Flow_Q4O8t0cd\">\n        <di:waypoint x=\"890\" y=\"60\"/>\n        <di:waypoint x=\"1090\" y=\"60\"/>\n        <di:waypoint x=\"1090\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_XEp3Mpwj_di\" bpmnElement=\"Flow_XEp3Mpwj\">\n        <di:waypoint x=\"715\" y=\"210\"/>\n        <di:waypoint x=\"790\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_DG1c9h69_di\" bpmnElement=\"Flow_DG1c9h69\">\n        <di:waypoint x=\"890\" y=\"210\"/>\n        <di:waypoint x=\"965\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_G7KC6Skp_di\" bpmnElement=\"Flow_G7KC6Skp\">\n        <di:waypoint x=\"690\" y=\"235\"/>\n        <di:waypoint x=\"690\" y=\"363\"/>\n        <di:waypoint x=\"790\" y=\"363\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"666\" y=\"292\" width=\"63\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_KXHauVVy_di\" bpmnElement=\"Flow_KXHauVVy\">\n        <di:waypoint x=\"890\" y=\"363\"/>\n        <di:waypoint x=\"972\" y=\"363\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Dy4YJ7c9_di\" bpmnElement=\"Flow_Dy4YJ7c9\">\n        <di:waypoint x=\"1015\" y=\"210\"/>\n        <di:waypoint x=\"1090\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_GGj5QwUW_di\" bpmnElement=\"Flow_GGj5QwUW\">\n        <di:waypoint x=\"990\" y=\"235\"/>\n        <di:waypoint x=\"990\" y=\"325\"/>\n        <di:waypoint x=\"952\" y=\"325\"/>\n        <di:waypoint x=\"952\" y=\"401\"/>\n        <di:waypoint x=\"1028\" y=\"401\"/>\n        <di:waypoint x=\"1028\" y=\"360\"/>\n        <di:waypoint x=\"1090\" y=\"360\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"966\" y=\"273\" width=\"77\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_91RjZsxq_di\" bpmnElement=\"Flow_91RjZsxq\">\n        <di:waypoint x=\"1190\" y=\"360\"/>\n        <di:waypoint x=\"1272\" y=\"360\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_5wOGjGmi_di\" bpmnElement=\"Flow_5wOGjGmi\">\n        <di:waypoint x=\"1190\" y=\"210\"/>\n        <di:waypoint x=\"1272\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn:definitions>"
+      }
+    },
+    "without-sdk": {
+      "systemPrompt": "You are a BPMN expert. Output only valid BPMN 2.0 XML for Camunda 8.\nNo explanation, no markdown, no code fences. Raw XML only, starting with <?xml.",
+      "chunks": [
+        {
+          "t": 6657,
+          "text": "<?xml version=\"1."
+        },
+        {
+          "t": 7210,
+          "text": "0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/M"
+        },
+        {
+          "t": 7602,
+          "text": "ODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec"
+        },
+        {
+          "t": 8048,
+          "text": "/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:zeebe=\"http://camunda.org/schema/zeeb"
+        },
+        {
+          "t": 8551,
+          "text": "e/1.0\" xmlns:modeler=\"http://camunda.org/schema/modeler/1.0\" id=\"Definitions_LoanApproval\" targetNamespace=\"http://"
+        },
+        {
+          "t": 8987,
+          "text": "bpmn.io/schema/bpmn\" exporter=\"Camunda Modeler\" exporterVersion=\"5.0"
+        },
+        {
+          "t": 9468,
+          "text": ".0\" modeler:executionPlatform=\"Camunda Cloud\" modeler:executionPlatformVersion=\"8.5.0\">\n  <bp"
+        },
+        {
+          "t": 9927,
+          "text": "mn:process id=\"loan-approval-process\" name=\"Loan Approval Process\" isExecutable=\"true\">\n    <bpmn:startEvent id=\"StartEvent_LoanRequ"
+        },
+        {
+          "t": 10398,
+          "text": "est\" name=\"Loan Application Received\">\n      <bpmn:outgoing>Flow_ToCreditCheck</bpmn:"
+        },
+        {
+          "t": 11030,
+          "text": "outgoing>\n    </bpmn:startEvent>\n    <bpmn:serviceTask id=\"Task_CreditScoreCheck\" name=\"Credit Score Check\">\n      <bpmn:"
+        },
+        {
+          "t": 11559,
+          "text": "extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json"
+        },
+        {
+          "t": 11810,
+          "text": ":1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source"
+        },
+        {
+          "t": 12326,
+          "text": "=\"=&#34;GET&#34;\" target=\"method\" />\n          <zeebe:input source=\"=&"
+        },
+        {
+          "t": 12746,
+          "text": "#34;https://api.creditbureau.example.com/v1/score/&#34; + applicant"
+        },
+        {
+          "t": 13226,
+          "text": "Id\" target=\"url\" />\n          <zeebe:input source=\"noAuth\" target=\"authentication.type\" />\n          <zeebe:output source"
+        },
+        {
+          "t": 13689,
+          "text": "=\"=response.body.creditScore\" target=\"creditScore\" />\n        </zeebe:ioMapping>\n        <zeebe:task"
+        },
+        {
+          "t": 14155,
+          "text": "Headers>\n          <zeebe:header key=\"resultVariable\" value=\"creditResponse\" />\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements"
+        },
+        {
+          "t": 14628,
+          "text": ">\n      <bpmn:incoming>Flow_ToCreditCheck</bpmn:incoming>\n      <bpmn:outgoing>Flow_ToPreScreen</bpmn"
+        },
+        {
+          "t": 15114,
+          "text": ":outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"Gateway_PreScreen\" name=\"Pre-Screening\">"
+        },
+        {
+          "t": 15572,
+          "text": "\n      <bpmn:incoming>Flow_ToPreScreen</bpmn:incoming>\n      <bpmn:outgoing>Flow_RejectLowScore</bpmn"
+        },
+        {
+          "t": 16042,
+          "text": ":outgoing>\n      <bpmn:outgoing>Flow_PassPreScreen</bpmn:outgoing>\n    </bpmn:exclusiveGateway>"
+        },
+        {
+          "t": 16513,
+          "text": "\n    <bpmn:businessRuleTask id=\"Task_RiskScoring\" name=\"Risk Scoring\">\n      <bpmn:extensionElements>\n        <zeebe:called"
+        },
+        {
+          "t": 17023,
+          "text": "Decision decisionId=\"risk-scoring\" resultVariable=\"riskResult\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>"
+        },
+        {
+          "t": 17455,
+          "text": "Flow_PassPreScreen</bpmn:incoming>\n      <bpmn:outgoing>Flow_ToUnderwriter</bpmn:outgoing>\n    </bp"
+        },
+        {
+          "t": 17932,
+          "text": "mn:businessRuleTask>\n    <bpmn:userTask id=\"Task_UnderwriterReview\" name=\"Manual Underwriter Review\">\n      <bpmn:extensionElements>"
+        },
+        {
+          "t": 18553,
+          "text": "\n        <zeebe:userTask />\n        <zeebe:assignmentDefinition candidateGroups=\"underwriters\" />\n        <z"
+        },
+        {
+          "t": 18908,
+          "text": "eebe:formDefinition formId=\"underwriter-review-form\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_ToUnderwriter</"
+        },
+        {
+          "t": 19373,
+          "text": "bpmn:incoming>\n      <bpmn:outgoing>Flow_ToDecisionGateway</bpmn:outgoing>\n    </bpmn:userTask>\n    <bp"
+        },
+        {
+          "t": 21491,
+          "text": "mn:exclusiveGateway id=\"Gateway_FinalDecision\" name=\"Underwriter Decision\">\n      <bpmn:incoming>Flow_ToDecisionG"
+        },
+        {
+          "t": 21492,
+          "text": "ateway</bpmn:incoming>\n      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>\n      <bpmn:outgoing>Flow_Rejected"
+        },
+        {
+          "t": 24909,
+          "text": "</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:endEvent id=\"EndEvent_Approved\" name=\"Loan Approved\">\n      "
+        },
+        {
+          "t": 25031,
+          "text": "<bpmn:incoming>Flow_Approved</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"EndEvent_Rejected\""
+        },
+        {
+          "t": 25079,
+          "text": " name=\"Loan Rejected\">\n      <bpmn:incoming>Flow_RejectLowScore</bpmn:incoming>\n      <bpmn:incoming>Flow_Rejected</"
+        },
+        {
+          "t": 25110,
+          "text": "bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:sequenceFlow id=\"Flow_ToCreditCheck\" sourceRef=\"StartEvent_"
+        },
+        {
+          "t": 25129,
+          "text": "LoanRequest\" targetRef=\"Task_CreditScoreCheck\" />\n    <bpmn:sequenceFlow id=\"Flow_ToPreScreen\" sourceRef=\"Task_"
+        },
+        {
+          "t": 25149,
+          "text": "CreditScoreCheck\" targetRef=\"Gateway_PreScreen\" />\n    <bpmn:sequenceFlow id=\"Flow_RejectLowScore\" name=\"Score"
+        },
+        {
+          "t": 25209,
+          "text": " &lt; 580\" sourceRef=\"Gateway_PreScreen\" targetRef=\"EndEvent_Rejected\">\n      <bpmn:conditionExpression xs"
+        },
+        {
+          "t": 25294,
+          "text": "i:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=creditScore &lt; "
+        },
+        {
+          "t": 25323,
+          "text": "580</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_PassPreScreen\" name=\"Score &"
+        },
+        {
+          "t": 25348,
+          "text": "gt;= 580\" sourceRef=\"Gateway_PreScreen\" targetRef=\"Task_RiskScoring\">\n      <bpmn:condition"
+        },
+        {
+          "t": 25556,
+          "text": "Expression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=creditScore &gt;= "
+        },
+        {
+          "t": 25969,
+          "text": "580</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_ToUnderwriter\" sourceR"
+        },
+        {
+          "t": 26494,
+          "text": "ef=\"Task_RiskScoring\" targetRef=\"Task_UnderwriterReview\" />\n    <bpmn:sequenceFlow id=\"Flow_ToDecisionGateway\" source"
+        },
+        {
+          "t": 26886,
+          "text": "Ref=\"Task_UnderwriterReview\" targetRef=\"Gateway_FinalDecision\" />\n    <bpmn:sequenceFlow id=\"Flow_Approved\" name=\"Approved\""
+        },
+        {
+          "t": 27664,
+          "text": " sourceRef=\"Gateway_FinalDecision\" targetRef=\"EndEvent_Approved\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExp"
+        },
+        {
+          "t": 27909,
+          "text": "ression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=approved = true</bpmn:conditionExpression>\n    </bpmn:"
+        },
+        {
+          "t": 28490,
+          "text": "sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_Rejected\" name=\"Rejected\" sourceRef=\"Gateway_FinalDecision\" targetRef=\""
+        },
+        {
+          "t": 28825,
+          "text": "EndEvent_Rejected\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001"
+        },
+        {
+          "t": 29293,
+          "text": "/XMLSchema-instance\">=approved = false</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n  </bpmn:process>\n  "
+        },
+        {
+          "t": 29738,
+          "text": "<bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpm"
+        },
+        {
+          "t": 30456,
+          "text": "nElement=\"loan-approval-process\">\n      <bpmndi:BPMNShape id=\"StartEvent_LoanRequest_di\" bpmnElement=\"StartEvent_Lo"
+        },
+        {
+          "t": 30676,
+          "text": "anRequest\">\n        <dc:Bounds x=\"152\" y=\"192\" width=\"36\" height=\"36\" />\n        <b"
+        },
+        {
+          "t": 31226,
+          "text": "pmndi:BPMNLabel>\n          <dc:Bounds x=\"140\" y=\"235\" width=\"62\" height=\"27\" />\n        </bpm"
+        },
+        {
+          "t": 31582,
+          "text": "ndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_CreditScoreCheck_di\" bpmnEl"
+        },
+        {
+          "t": 32142,
+          "text": "ement=\"Task_CreditScoreCheck\">\n        <dc:Bounds x=\"240\" y=\"170\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpm"
+        },
+        {
+          "t": 32817,
+          "text": "ndi:BPMNShape id=\"Gateway_PreScreen_di\" bpmnElement=\"Gateway_PreScreen\" isMarkerVisible=\"true\">\n        "
+        },
+        {
+          "t": 33077,
+          "text": "<dc:Bounds x=\"395\" y=\"185\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"385\" y=\"242"
+        },
+        {
+          "t": 33627,
+          "text": "\" width=\"70\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_R"
+        },
+        {
+          "t": 34070,
+          "text": "iskScoring_di\" bpmnElement=\"Task_RiskScoring\">\n        <dc:Bounds x=\"500\" y=\"170\" width=\"100\" height=\"80\" />\n      </bpmndi:BPM"
+        },
+        {
+          "t": 34504,
+          "text": "NShape>\n      <bpmndi:BPMNShape id=\"Task_UnderwriterReview_di\" bpmnElement=\"Task_UnderwriterReview\">\n        <dc:Bounds"
+        },
+        {
+          "t": 35174,
+          "text": " x=\"660\" y=\"170\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_FinalD"
+        },
+        {
+          "t": 35387,
+          "text": "ecision_di\" bpmnElement=\"Gateway_FinalDecision\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"815\" y=\"185\" width=\"50\" height=\"50\" />\n        "
+        },
+        {
+          "t": 35860,
+          "text": "<bpmndi:BPMNLabel>\n          <dc:Bounds x=\"800\" y=\"242\" width=\"82\" height=\"14\" />\n        </bpmndi:BPMNLabel>"
+        },
+        {
+          "t": 36383,
+          "text": "\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_Approved_di\" bpmnElement=\"EndEvent_Approved\">\n        "
+        },
+        {
+          "t": 36830,
+          "text": "<dc:Bounds x=\"932\" y=\"192\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"912\" y=\"235\" width=\"76"
+        },
+        {
+          "t": 37265,
+          "text": "\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_R"
+        },
+        {
+          "t": 37713,
+          "text": "ejected_di\" bpmnElement=\"EndEvent_Rejected\">\n        <dc:Bounds x=\"822\" y=\"352\" width=\"36\" height=\"36\" />\n        <bpm"
+        },
+        {
+          "t": 38176,
+          "text": "ndi:BPMNLabel>\n          <dc:Bounds x=\"805\" y=\"395\" width=\"72\" height=\"14\" />\n        </bpmndi:BPMNLabel>"
+        },
+        {
+          "t": 38671,
+          "text": "\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_ToCreditCheck_di\" bpmnElement=\"Flow_ToCre"
+        },
+        {
+          "t": 39151,
+          "text": "ditCheck\">\n        <di:waypoint x=\"188\" y=\"210\" />\n        <di:waypoint x=\"240\" y=\"210\" />\n      </bpmndi:BPMNEdge>"
+        },
+        {
+          "t": 39581,
+          "text": "\n      <bpmndi:BPMNEdge id=\"Flow_ToPreScreen_di\" bpmnElement=\"Flow_ToPreScreen\">\n        <di:waypoint x=\"340\" y"
+        },
+        {
+          "t": 40051,
+          "text": "=\"210\" />\n        <di:waypoint x=\"395\" y=\"210\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Reject"
+        },
+        {
+          "t": 40585,
+          "text": "LowScore_di\" bpmnElement=\"Flow_RejectLowScore\">\n        <di:waypoint x=\"420\" y=\"235\" />\n        <di:waypoint x=\"420\" y=\"370\" />\n        "
+        },
+        {
+          "t": 40992,
+          "text": "<di:waypoint x=\"822\" y=\"370\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"430\" y=\"343\" width=\"52"
+        },
+        {
+          "t": 41463,
+          "text": "\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Pass"
+        },
+        {
+          "t": 41949,
+          "text": "PreScreen_di\" bpmnElement=\"Flow_PassPreScreen\">\n        <di:waypoint x=\"445\" y=\"210\" />\n        <di:waypoint x=\"500\" y=\"210\" />"
+        },
+        {
+          "t": 42407,
+          "text": "\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"447\" y=\"192\" width=\"58\" height=\"14\" />\n        </bpmndi:B"
+        },
+        {
+          "t": 43373,
+          "text": "PMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_ToUnderwriter_di\" bpmnElement=\""
+        },
+        {
+          "t": 43419,
+          "text": "Flow_ToUnderwriter\">\n        <di:waypoint x=\"600\" y=\"210\" />\n        <di:waypoint x=\"660\" y=\"210\" />\n      </bpmndi:BPMNEd"
+        },
+        {
+          "t": 43837,
+          "text": "ge>\n      <bpmndi:BPMNEdge id=\"Flow_ToDecisionGateway_di\" bpmnElement=\"Flow_ToDecisionGateway\">\n        <di:wayp"
+        },
+        {
+          "t": 44376,
+          "text": "oint x=\"760\" y=\"210\" />\n        <di:waypoint x=\"815\" y=\"210\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\""
+        },
+        {
+          "t": 44841,
+          "text": "Flow_Approved_di\" bpmnElement=\"Flow_Approved\">\n        <di:waypoint x=\"865\" y=\"210\" />\n        <di:waypoint x=\"932\" y=\"210\" />\n        "
+        },
+        {
+          "t": 45290,
+          "text": "<bpmndi:BPMNLabel>\n          <dc:Bounds x=\"875\" y=\"192\" width=\"48\" height=\"14\" />\n        </bpmndi:BPMNLabel>"
+        },
+        {
+          "t": 45742,
+          "text": "\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Rejected_di\" bpmnElement=\"Flow_Rejected\">\n        "
+        },
+        {
+          "t": 46244,
+          "text": "<di:waypoint x=\"840\" y=\"235\" />\n        <di:waypoint x=\"840\" y=\"352\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"847"
+        },
+        {
+          "t": 46750,
+          "text": "\" y=\"290\" width=\"46\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n    </bpmndi"
+        },
+        {
+          "t": 47025,
+          "text": ":BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn:definitions>"
+        }
+      ],
+      "durationMs": 49425,
+      "result": {
+        "type": "bpmn",
+        "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:zeebe=\"http://camunda.org/schema/zeebe/1.0\" xmlns:modeler=\"http://camunda.org/schema/modeler/1.0\" id=\"Definitions_LoanApproval\" targetNamespace=\"http://bpmn.io/schema/bpmn\" exporter=\"Camunda Modeler\" exporterVersion=\"5.0.0\" modeler:executionPlatform=\"Camunda Cloud\" modeler:executionPlatformVersion=\"8.5.0\">\n  <bpmn:process id=\"loan-approval-process\" name=\"Loan Approval Process\" isExecutable=\"true\">\n    <bpmn:startEvent id=\"StartEvent_LoanRequest\" name=\"Loan Application Received\">\n      <bpmn:outgoing>Flow_ToCreditCheck</bpmn:outgoing>\n    </bpmn:startEvent>\n    <bpmn:serviceTask id=\"Task_CreditScoreCheck\" name=\"Credit Score Check\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source=\"=&#34;GET&#34;\" target=\"method\" />\n          <zeebe:input source=\"=&#34;https://api.creditbureau.example.com/v1/score/&#34; + applicantId\" target=\"url\" />\n          <zeebe:input source=\"noAuth\" target=\"authentication.type\" />\n          <zeebe:output source=\"=response.body.creditScore\" target=\"creditScore\" />\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultVariable\" value=\"creditResponse\" />\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_ToCreditCheck</bpmn:incoming>\n      <bpmn:outgoing>Flow_ToPreScreen</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"Gateway_PreScreen\" name=\"Pre-Screening\">\n      <bpmn:incoming>Flow_ToPreScreen</bpmn:incoming>\n      <bpmn:outgoing>Flow_RejectLowScore</bpmn:outgoing>\n      <bpmn:outgoing>Flow_PassPreScreen</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:businessRuleTask id=\"Task_RiskScoring\" name=\"Risk Scoring\">\n      <bpmn:extensionElements>\n        <zeebe:calledDecision decisionId=\"risk-scoring\" resultVariable=\"riskResult\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_PassPreScreen</bpmn:incoming>\n      <bpmn:outgoing>Flow_ToUnderwriter</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:userTask id=\"Task_UnderwriterReview\" name=\"Manual Underwriter Review\">\n      <bpmn:extensionElements>\n        <zeebe:userTask />\n        <zeebe:assignmentDefinition candidateGroups=\"underwriters\" />\n        <zeebe:formDefinition formId=\"underwriter-review-form\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_ToUnderwriter</bpmn:incoming>\n      <bpmn:outgoing>Flow_ToDecisionGateway</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:exclusiveGateway id=\"Gateway_FinalDecision\" name=\"Underwriter Decision\">\n      <bpmn:incoming>Flow_ToDecisionGateway</bpmn:incoming>\n      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>\n      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:endEvent id=\"EndEvent_Approved\" name=\"Loan Approved\">\n      <bpmn:incoming>Flow_Approved</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"EndEvent_Rejected\" name=\"Loan Rejected\">\n      <bpmn:incoming>Flow_RejectLowScore</bpmn:incoming>\n      <bpmn:incoming>Flow_Rejected</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:sequenceFlow id=\"Flow_ToCreditCheck\" sourceRef=\"StartEvent_LoanRequest\" targetRef=\"Task_CreditScoreCheck\" />\n    <bpmn:sequenceFlow id=\"Flow_ToPreScreen\" sourceRef=\"Task_CreditScoreCheck\" targetRef=\"Gateway_PreScreen\" />\n    <bpmn:sequenceFlow id=\"Flow_RejectLowScore\" name=\"Score &lt; 580\" sourceRef=\"Gateway_PreScreen\" targetRef=\"EndEvent_Rejected\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=creditScore &lt; 580</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_PassPreScreen\" name=\"Score &gt;= 580\" sourceRef=\"Gateway_PreScreen\" targetRef=\"Task_RiskScoring\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=creditScore &gt;= 580</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_ToUnderwriter\" sourceRef=\"Task_RiskScoring\" targetRef=\"Task_UnderwriterReview\" />\n    <bpmn:sequenceFlow id=\"Flow_ToDecisionGateway\" sourceRef=\"Task_UnderwriterReview\" targetRef=\"Gateway_FinalDecision\" />\n    <bpmn:sequenceFlow id=\"Flow_Approved\" name=\"Approved\" sourceRef=\"Gateway_FinalDecision\" targetRef=\"EndEvent_Approved\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=approved = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_Rejected\" name=\"Rejected\" sourceRef=\"Gateway_FinalDecision\" targetRef=\"EndEvent_Rejected\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=approved = false</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"loan-approval-process\">\n      <bpmndi:BPMNShape id=\"StartEvent_LoanRequest_di\" bpmnElement=\"StartEvent_LoanRequest\">\n        <dc:Bounds x=\"152\" y=\"192\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"140\" y=\"235\" width=\"62\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_CreditScoreCheck_di\" bpmnElement=\"Task_CreditScoreCheck\">\n        <dc:Bounds x=\"240\" y=\"170\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_PreScreen_di\" bpmnElement=\"Gateway_PreScreen\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"395\" y=\"185\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"385\" y=\"242\" width=\"70\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_RiskScoring_di\" bpmnElement=\"Task_RiskScoring\">\n        <dc:Bounds x=\"500\" y=\"170\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_UnderwriterReview_di\" bpmnElement=\"Task_UnderwriterReview\">\n        <dc:Bounds x=\"660\" y=\"170\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_FinalDecision_di\" bpmnElement=\"Gateway_FinalDecision\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"815\" y=\"185\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"800\" y=\"242\" width=\"82\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_Approved_di\" bpmnElement=\"EndEvent_Approved\">\n        <dc:Bounds x=\"932\" y=\"192\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"912\" y=\"235\" width=\"76\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_Rejected_di\" bpmnElement=\"EndEvent_Rejected\">\n        <dc:Bounds x=\"822\" y=\"352\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"805\" y=\"395\" width=\"72\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_ToCreditCheck_di\" bpmnElement=\"Flow_ToCreditCheck\">\n        <di:waypoint x=\"188\" y=\"210\" />\n        <di:waypoint x=\"240\" y=\"210\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_ToPreScreen_di\" bpmnElement=\"Flow_ToPreScreen\">\n        <di:waypoint x=\"340\" y=\"210\" />\n        <di:waypoint x=\"395\" y=\"210\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_RejectLowScore_di\" bpmnElement=\"Flow_RejectLowScore\">\n        <di:waypoint x=\"420\" y=\"235\" />\n        <di:waypoint x=\"420\" y=\"370\" />\n        <di:waypoint x=\"822\" y=\"370\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"430\" y=\"343\" width=\"52\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_PassPreScreen_di\" bpmnElement=\"Flow_PassPreScreen\">\n        <di:waypoint x=\"445\" y=\"210\" />\n        <di:waypoint x=\"500\" y=\"210\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"447\" y=\"192\" width=\"58\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_ToUnderwriter_di\" bpmnElement=\"Flow_ToUnderwriter\">\n        <di:waypoint x=\"600\" y=\"210\" />\n        <di:waypoint x=\"660\" y=\"210\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_ToDecisionGateway_di\" bpmnElement=\"Flow_ToDecisionGateway\">\n        <di:waypoint x=\"760\" y=\"210\" />\n        <di:waypoint x=\"815\" y=\"210\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Approved_di\" bpmnElement=\"Flow_Approved\">\n        <di:waypoint x=\"865\" y=\"210\" />\n        <di:waypoint x=\"932\" y=\"210\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"875\" y=\"192\" width=\"48\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Rejected_di\" bpmnElement=\"Flow_Rejected\">\n        <di:waypoint x=\"840\" y=\"235\" />\n        <di:waypoint x=\"840\" y=\"352\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"847\" y=\"290\" width=\"46\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn:definitions>"
+      }
+    }
+  },
+  "name": "loan-approval-2026-07-01",
+  "recordedAt": "2026-07-01T09:03:37.667Z"
+}
