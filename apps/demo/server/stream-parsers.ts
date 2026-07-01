@@ -22,6 +22,12 @@ export function extractDeltaText(event: unknown): string | null {
  * Defensively extracts token usage from the `claude` CLI's final NDJSON
  * `result` line for a `-p` run. Returns null for any non-matching or
  * malformed line — same untrusted-input posture as extractDeltaText.
+ *
+ * inputTokens sums input_tokens with cache_creation_input_tokens and
+ * cache_read_input_tokens: once a system prompt has been cached, Anthropic
+ * bills repeat reads through the cache fields, and input_tokens alone drops
+ * to just the uncached delta — reporting only input_tokens would make a
+ * large, cached system prompt look nearly free on every run after the first.
  */
 export function extractResultUsage(event: unknown): TokenUsage | null {
 	if (typeof event !== "object" || event === null) return null
@@ -29,5 +35,12 @@ export function extractResultUsage(event: unknown): TokenUsage | null {
 	if (!("usage" in event) || typeof event.usage !== "object" || event.usage === null) return null
 	const usage = event.usage as Record<string, unknown>
 	if (typeof usage.input_tokens !== "number" || typeof usage.output_tokens !== "number") return null
-	return { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens }
+	const cacheCreation =
+		typeof usage.cache_creation_input_tokens === "number" ? usage.cache_creation_input_tokens : 0
+	const cacheRead =
+		typeof usage.cache_read_input_tokens === "number" ? usage.cache_read_input_tokens : 0
+	return {
+		inputTokens: usage.input_tokens + cacheCreation + cacheRead,
+		outputTokens: usage.output_tokens,
+	}
 }

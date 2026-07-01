@@ -40,6 +40,19 @@ describe("extractResultUsage", () => {
 		expect(extractResultUsage(line)).toEqual({ inputTokens: 355, outputTokens: 5311 })
 	})
 
+	it("includes cache_creation_input_tokens and cache_read_input_tokens in inputTokens", () => {
+		const line = {
+			type: "result",
+			usage: {
+				input_tokens: 2,
+				cache_creation_input_tokens: 0,
+				cache_read_input_tokens: 10465,
+				output_tokens: 1526,
+			},
+		}
+		expect(extractResultUsage(line)).toEqual({ inputTokens: 10467, outputTokens: 1526 })
+	})
+
 	it("returns null for a non-result line", () => {
 		const line = { type: "stream_event", event: { type: "message_start" } }
 		expect(extractResultUsage(line)).toBeNull()
