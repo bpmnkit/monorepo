@@ -1,6 +1,7 @@
+import { spawn } from "node:child_process"
 import { join } from "node:path"
+import { createInterface } from "node:readline"
 import { fileURLToPath } from "node:url"
-import Anthropic from "@anthropic-ai/sdk"
 import { serve } from "@hono/node-server"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
@@ -16,32 +17,126 @@ import {
 const REPO_ROOT = join(fileURLToPath(import.meta.url), "../../../..")
 const PORT = 3001
 
-const anthropic = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY,
-})
 const SDK_SYSTEM_PROMPT = buildSdkSystemPrompt(REPO_ROOT)
+
+// Tools the harness exposes that the spawned `claude` subprocess must not be able to use —
+// this is a demo generating text/code from a prompt, not an agent that should touch the filesystem
+// or network. --allowedTools does not reliably block execution in non-interactive `-p` mode,
+// so we deny everything explicitly instead.
+const DISALLOWED_TOOLS = [
+	"Task",
+	"Bash",
+	"CronCreate",
+	"CronDelete",
+	"CronList",
+	"DesignSync",
+	"Edit",
+	"EnterWorktree",
+	"ExitWorktree",
+	"Glob",
+	"Grep",
+	"Monitor",
+	"NotebookEdit",
+	"PushNotification",
+	"Read",
+	"RemoteTrigger",
+	"ReportFindings",
+	"ScheduleWakeup",
+	"SendMessage",
+	"ShareOnboardingGuide",
+	"Skill",
+	"TaskCreate",
+	"TaskGet",
+	"TaskList",
+	"TaskOutput",
+	"TaskStop",
+	"TaskUpdate",
+	"ToolSearch",
+	"WebFetch",
+	"WebSearch",
+	"Workflow",
+	"Write",
+].join(" ")
 
 const app = new Hono()
 app.use("*", cors())
+
+function extractDeltaText(event: unknown): string | null {
+	if (typeof event !== "object" || event === null) return null
+	if (!("type" in event) || event.type !== "stream_event") return null
+	if (!("event" in event) || typeof event.event !== "object" || event.event === null) return null
+	const inner = event.event as Record<string, unknown>
+	if (inner.type !== "content_block_delta") return null
+	if (typeof inner.delta !== "object" || inner.delta === null) return null
+	const delta = inner.delta as Record<string, unknown>
+	if (delta.type !== "text_delta") return null
+	return typeof delta.text === "string" ? delta.text : null
+}
 
 async function streamLlm(
 	systemPrompt: string,
 	onChunk: (text: string) => Promise<void>,
 ): Promise<string> {
-	let accumulated = ""
-	const stream = anthropic.messages.stream({
-		model: "claude-opus-4-8",
-		max_tokens: 8192,
-		system: systemPrompt,
-		messages: [{ role: "user", content: SCENARIO_PROMPT }],
+	const child = spawn(
+		"claude",
+		[
+			"-p",
+			SCENARIO_PROMPT,
+			"--model",
+			"claude-opus-4-8",
+			"--system-prompt",
+			systemPrompt,
+			"--safe-mode",
+			"--output-format",
+			"stream-json",
+			"--include-partial-messages",
+			"--verbose",
+			"--disallowedTools",
+			DISALLOWED_TOOLS,
+		],
+		{ cwd: REPO_ROOT },
+	)
+
+	let stderr = ""
+	child.stderr.on("data", (data: Buffer) => {
+		stderr += data.toString()
 	})
-	for await (const event of stream) {
-		if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-			const text = event.delta.text
-			accumulated += text
-			await onChunk(text)
+
+	const spawnError = new Promise<never>((_, reject) => {
+		child.on("error", (err) => {
+			reject(new Error(`claude CLI not found or failed to start: ${err.message}`))
+		})
+	})
+
+	let accumulated = ""
+	const readLines = async () => {
+		const rl = createInterface({ input: child.stdout })
+		for await (const line of rl) {
+			if (!line.trim()) continue
+			let parsed: unknown
+			try {
+				parsed = JSON.parse(line)
+			} catch {
+				continue
+			}
+			const text = extractDeltaText(parsed)
+			if (text !== null) {
+				accumulated += text
+				await onChunk(text)
+			}
 		}
 	}
+
+	await Promise.race([spawnError, readLines()])
+
+	const exitCode = await new Promise<number | null>((resolve) => {
+		child.on("close", (code) => resolve(code))
+	})
+
+	if (exitCode !== 0) {
+		throw new Error(`claude CLI exited with code ${exitCode}${stderr ? `: ${stderr}` : ""}`)
+	}
+
 	return accumulated
 }
 

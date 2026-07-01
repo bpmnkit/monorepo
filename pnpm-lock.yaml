@@ -106,9 +106,6 @@ importers:
 
   apps/demo:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.36.0
-        version: 0.36.3
       '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
@@ -477,9 +474,6 @@ importers:
         version: link:../../packages/cli-sdk
 
 packages:
-
-  '@anthropic-ai/sdk@0.36.3':
-    resolution: {integrity: sha512-+c0mMLxL/17yFZ4P5+U6bTWiCSFZUKJddrv01ud2aFBWnTPLdRncYV76D3q1tqfnL7aCnhRtykFnoCFzvr4U3Q==}
 
   '@anthropic-ai/sdk@0.40.1':
     resolution: {integrity: sha512-DJMWm8lTEM9Lk/MSFL+V+ugF7jKOn0M2Ujvb5fN8r2nY14aHbGPZ1k6sgjL+tpJ3VuOGJNG+4R83jEpOuYPv8w==}
@@ -4901,18 +4895,6 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
-
-  '@anthropic-ai/sdk@0.36.3':
-    dependencies:
-      '@types/node': 18.19.130
-      '@types/node-fetch': 2.6.13
-      abort-controller: 3.0.0
-      agentkeepalive: 4.6.0
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0
-    transitivePeerDependencies:
-      - encoding
 
   '@anthropic-ai/sdk@0.40.1':
     dependencies:
