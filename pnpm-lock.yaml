@@ -115,6 +115,15 @@ importers:
       '@bpmnkit/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@cascivo/react':
+        specifier: ^0.3.1
+        version: 0.3.1(@preact/signals-react@2.3.0(patch_hash=ed910fcfdcd1b786ac8b3f3fc4066b6c848d908c3237294818fb7f5ae99f89a9)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@cascivo/themes':
+        specifier: ^0.2.4
+        version: 0.2.4(@cascivo/tokens@0.3.1)
+      '@cascivo/tokens':
+        specifier: ^0.3.1
+        version: 0.3.1
       '@hono/node-server':
         specifier: ^1.0.0
         version: 1.19.14(hono@4.12.27)

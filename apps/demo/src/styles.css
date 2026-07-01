@@ -1,5 +1,87 @@
 @import "@bpmnkit/ui/tokens.css";
 @import "tailwindcss";
+@import "@cascivo/tokens";
+@import "@cascivo/themes/base.css";
+@import "@cascivo/react/styles.css";
+
+/* Brand bridge: cascivo semantic color tokens → @bpmnkit/ui brand tokens.
+ * Mirrors apps/studio/src/styles/cascivo.css so Cascivo components pick up
+ * this app's dark theme for free. */
+:root {
+	--cascivo-color-bg: var(--bpmnkit-bg);
+	--cascivo-color-background: var(--bpmnkit-bg);
+	--cascivo-color-bg-subtle: var(--bpmnkit-surface-2);
+	--cascivo-color-bg-muted: var(--bpmnkit-surface-2);
+	--cascivo-color-surface: var(--bpmnkit-surface);
+	--cascivo-color-surface-2: var(--bpmnkit-surface-2);
+	--cascivo-color-surface-raised: var(--bpmnkit-surface);
+	--cascivo-color-surface-overlay: var(--bpmnkit-panel-bg);
+
+	--cascivo-color-foreground: var(--bpmnkit-fg);
+	--cascivo-color-foreground-muted: var(--bpmnkit-fg-muted);
+	--cascivo-color-text: var(--bpmnkit-fg);
+	--cascivo-color-text-muted: var(--bpmnkit-fg-muted);
+	--cascivo-color-text-subtle: var(--bpmnkit-fg-muted);
+	--cascivo-color-text-on-accent: var(--bpmnkit-accent-fg);
+	--cascivo-color-on-accent: var(--bpmnkit-accent-fg);
+
+	--cascivo-color-border: var(--bpmnkit-border);
+	--cascivo-color-border-strong: var(--bpmnkit-border);
+	--cascivo-border-default: var(--bpmnkit-border);
+	--cascivo-border-subtle: var(--bpmnkit-border);
+
+	--cascivo-color-active-bg: var(--bpmnkit-accent-subtle);
+	--cascivo-color-accent: var(--bpmnkit-accent);
+	--cascivo-color-accent-hover: var(--bpmnkit-accent-bright);
+	--cascivo-color-accent-active: var(--bpmnkit-accent);
+	--cascivo-color-accent-foreground: var(--bpmnkit-accent-fg);
+	--cascivo-color-accent-content: var(--bpmnkit-accent-fg);
+	--cascivo-color-accent-muted: var(--bpmnkit-accent-subtle);
+	--cascivo-color-accent-subtle: var(--bpmnkit-accent-subtle);
+	--cascivo-color-primary: var(--bpmnkit-accent);
+	--cascivo-color-primary-hover: var(--bpmnkit-accent-bright);
+	--cascivo-color-primary-active: var(--bpmnkit-accent);
+	--cascivo-color-primary-fg: var(--bpmnkit-accent-fg);
+	--cascivo-color-primary-content: var(--bpmnkit-accent-fg);
+	--cascivo-color-secondary: var(--bpmnkit-surface-2);
+	--cascivo-color-secondary-hover: var(--bpmnkit-surface-2);
+	--cascivo-color-secondary-content: var(--bpmnkit-fg);
+
+	--cascivo-color-focus-ring: var(--bpmnkit-accent);
+	--cascivo-focus-ring: var(--bpmnkit-accent);
+	--cascivo-ring-color: var(--bpmnkit-accent);
+	--cascivo-link-color: var(--bpmnkit-accent-bright);
+
+	--cascivo-color-success: var(--bpmnkit-success);
+	--cascivo-color-success-foreground: #fff;
+	--cascivo-color-success-content: var(--bpmnkit-success);
+	--cascivo-color-success-subtle: color-mix(in oklab, var(--bpmnkit-success) 15%, transparent);
+
+	--cascivo-color-warning: var(--bpmnkit-warn);
+	--cascivo-color-warning-foreground: #fff;
+	--cascivo-color-warning-content: var(--bpmnkit-warn);
+	--cascivo-color-warning-subtle: color-mix(in oklab, var(--bpmnkit-warn) 15%, transparent);
+
+	--cascivo-color-danger: var(--bpmnkit-danger);
+	--cascivo-color-danger-subtle: color-mix(in oklab, var(--bpmnkit-danger) 15%, transparent);
+	--cascivo-color-error: var(--bpmnkit-danger);
+	--cascivo-color-error-content: var(--bpmnkit-danger);
+	--cascivo-color-destructive: var(--bpmnkit-danger);
+	--cascivo-color-destructive-hover: var(--bpmnkit-danger);
+	--cascivo-color-destructive-foreground: #fff;
+	--cascivo-color-destructive-content: #fff;
+	--cascivo-color-on-destructive: #fff;
+	--cascivo-color-text-on-destructive: #fff;
+	--cascivo-color-destructive-subtle: color-mix(in oklab, var(--bpmnkit-danger) 15%, transparent);
+
+	--cascivo-color-info: var(--bpmnkit-accent-bright);
+	--cascivo-color-info-content: var(--bpmnkit-accent-bright);
+	--cascivo-color-info-subtle: var(--bpmnkit-accent-subtle);
+
+	--cascivo-font-sans: var(--bpmnkit-font);
+	--cascivo-font-display: var(--bpmnkit-font);
+	--cascivo-font-mono: var(--bpmnkit-font-mono);
+}
 
 @keyframes blink {
 	0%,

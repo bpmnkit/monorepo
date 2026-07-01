@@ -15,6 +15,9 @@
 		"@bpmnkit/canvas": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/ui": "workspace:*",
+		"@cascivo/react": "^0.3.1",
+		"@cascivo/themes": "^0.2.4",
+		"@cascivo/tokens": "^0.3.1",
 		"@hono/node-server": "^1.0.0",
 		"hono": "^4.0.0",
 		"preact": "^10.25.4"
