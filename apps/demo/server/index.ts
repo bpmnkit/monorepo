@@ -61,6 +61,16 @@ const DISALLOWED_TOOLS = [
 const app = new Hono()
 app.use("*", cors())
 
+app.get("/health", (c) => c.json({ status: "ok" }))
+
+app.get("/prompts", (c) =>
+	c.json({
+		scenario: SCENARIO_PROMPT,
+		withSdk: SDK_SYSTEM_PROMPT,
+		withoutSdk: WITHOUT_SDK_SYSTEM_PROMPT,
+	}),
+)
+
 function extractDeltaText(event: unknown): string | null {
 	if (typeof event !== "object" || event === null) return null
 	if (!("type" in event) || event.type !== "stream_event") return null

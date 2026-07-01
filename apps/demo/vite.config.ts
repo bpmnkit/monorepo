@@ -8,6 +8,8 @@ export default defineConfig({
 		port: 3000,
 		proxy: {
 			"/stream": "http://localhost:3001",
+			"/health": "http://localhost:3001",
+			"/prompts": "http://localhost:3001",
 		},
 	},
 	build: {
