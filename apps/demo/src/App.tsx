@@ -57,6 +57,17 @@ export function App() {
 		}
 	}, [])
 
+	// Published (replay-only) builds have no picker interaction by default —
+	// auto-play the most recently recorded run so a cold visitor sees the demo
+	// without hunting for the dropdown first. Runs once, when mode settles.
+	useEffect(() => {
+		if (mode !== "replay-only" || recordings.length === 0) return
+		const mostRecent = recordings.reduce((latest, r) =>
+			r.recordedAt > latest.recordedAt ? r : latest,
+		)
+		replay(mostRecent)
+	}, [mode])
+
 	function activeScenarioPrompt(): string {
 		if (selectedRecording) return selectedRecording.scenarioPrompt
 		return prompts?.scenario ?? ""
