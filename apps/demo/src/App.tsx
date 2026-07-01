@@ -4,7 +4,7 @@ import type { Recording } from "../shared/recording-types.js"
 import { ComparePanel } from "./ComparePanel.js"
 import { PromptModal } from "./PromptModal.js"
 import { SaveRecordingModal } from "./SaveRecordingModal.js"
-import { buildDurationBanner } from "./duration-banner.js"
+import { buildComparisonBanner } from "./comparison-banner.js"
 import { recordings } from "./recordings.js"
 import { LiveSource, ReplaySource } from "./sources.js"
 import type { PanelRunResult, PanelSource } from "./sources.js"
@@ -108,8 +108,10 @@ export function App() {
 	const withSdkResult = runResults["with-sdk"]
 	const withoutSdkResult = runResults["without-sdk"]
 
-	const durationBanner =
-		withSdkResult && withoutSdkResult ? buildDurationBanner(withSdkResult, withoutSdkResult) : null
+	const comparisonBanner =
+		withSdkResult && withoutSdkResult
+			? buildComparisonBanner(withSdkResult, withoutSdkResult)
+			: null
 
 	const recordingData: Omit<Recording, "name" | "recordedAt"> | null =
 		withSdkResult && withoutSdkResult
@@ -165,12 +167,12 @@ export function App() {
 				</div>
 			</header>
 
-			{durationBanner && (
+			{comparisonBanner && (
 				<div
 					class="px-6 py-2 text-sm text-center"
 					style="background: var(--bpmnkit-surface-2, #1e1e2e); color: var(--bpmnkit-fg, #cdd6f4);"
 				>
-					{durationBanner}
+					{comparisonBanner}
 				</div>
 			)}
 
