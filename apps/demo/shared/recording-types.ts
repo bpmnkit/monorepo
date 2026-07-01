@@ -1,6 +1,7 @@
 export interface Recording {
 	name: string
 	recordedAt: string
+	scenarioId?: string
 	scenarioPrompt: string
 	panels: {
 		"with-sdk": RecordedPanel

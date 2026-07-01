@@ -13,9 +13,29 @@ type Variant = "with-sdk" | "without-sdk"
 type Mode = "checking" | "live" | "replay-only"
 
 interface Prompts {
-	scenario: string
 	withSdk: string
 	withoutSdk: string
+}
+
+interface ScenarioInfo {
+	id: string
+	label: string
+	prompt: string
+}
+
+// Keep ids and labels in sync with apps/demo/server/scenarios.ts.
+// Duplicated (rather than fetched) so the header title and the live-mode
+// picker both work without depending on network state.
+const SCENARIO_OPTIONS: { id: string; label: string }[] = [
+	{ id: "loan-approval", label: "Loan Approval" },
+	{ id: "quote-to-cash", label: "Quote-to-Cash" },
+	{ id: "kyc", label: "KYC" },
+]
+
+const DEFAULT_SCENARIO_ID = "loan-approval"
+
+function scenarioLabel(id: string): string {
+	return SCENARIO_OPTIONS.find((s) => s.id === id)?.label ?? SCENARIO_OPTIONS[0].label
 }
 
 export function App() {
@@ -32,6 +52,8 @@ export function App() {
 	})
 	const [viewingPrompt, setViewingPrompt] = useState<Variant | null>(null)
 	const [savingRecording, setSavingRecording] = useState(false)
+	const [selectedScenarioId, setSelectedScenarioId] = useState(DEFAULT_SCENARIO_ID)
+	const [scenarios, setScenarios] = useState<ScenarioInfo[] | null>(null)
 
 	useEffect(() => {
 		const controller = new AbortController()
@@ -40,10 +62,14 @@ export function App() {
 		fetch("/health", { signal: controller.signal })
 			.then((res) => {
 				if (!res.ok) throw new Error("unhealthy")
-				return fetch("/prompts").then((r) => r.json())
+				return Promise.all([
+					fetch("/prompts").then((r) => r.json()),
+					fetch("/scenarios").then((r) => r.json()),
+				])
 			})
-			.then((data: Prompts) => {
-				setPrompts(data)
+			.then(([promptsData, scenariosData]: [Prompts, ScenarioInfo[]]) => {
+				setPrompts(promptsData)
+				setScenarios(scenariosData)
 				setMode("live")
 			})
 			.catch(() => {
@@ -68,9 +94,14 @@ export function App() {
 		replay(mostRecent)
 	}, [mode])
 
+	function activeScenarioId(): string {
+		if (selectedRecording) return selectedRecording.scenarioId ?? DEFAULT_SCENARIO_ID
+		return selectedScenarioId
+	}
+
 	function activeScenarioPrompt(): string {
 		if (selectedRecording) return selectedRecording.scenarioPrompt
-		return prompts?.scenario ?? ""
+		return scenarios?.find((s) => s.id === selectedScenarioId)?.prompt ?? ""
 	}
 
 	function activeSystemPrompt(variant: Variant): string {
@@ -83,8 +114,8 @@ export function App() {
 		setSelectedRecording(null)
 		setRunResults({ "with-sdk": null, "without-sdk": null })
 		setSources({
-			"with-sdk": new LiveSource("/stream/with-sdk"),
-			"without-sdk": new LiveSource("/stream/without-sdk"),
+			"with-sdk": new LiveSource(`/stream/with-sdk?scenario=${selectedScenarioId}`),
+			"without-sdk": new LiveSource(`/stream/without-sdk?scenario=${selectedScenarioId}`),
 		})
 	}
 
@@ -116,6 +147,7 @@ export function App() {
 	const recordingData: Omit<Recording, "name" | "recordedAt"> | null =
 		withSdkResult && withoutSdkResult
 			? {
+					scenarioId: activeScenarioId(),
 					scenarioPrompt: activeScenarioPrompt(),
 					panels: {
 						"with-sdk": { systemPrompt: activeSystemPrompt("with-sdk"), ...withSdkResult },
@@ -138,10 +170,17 @@ export function App() {
 						bpmnkit
 					</span>
 					<span class="text-sm" style="color: var(--bpmnkit-fg-muted, #8888a8);">
-						/ AI comparison — Loan Approval Process
+						/ AI comparison — {scenarioLabel(activeScenarioId())} Process
 					</span>
 				</div>
 				<div class="flex items-center gap-2">
+					{mode === "live" && (
+						<Select
+							options={SCENARIO_OPTIONS.map((s) => ({ value: s.id, label: s.label }))}
+							value={selectedScenarioId}
+							onChange={(e) => setSelectedScenarioId((e.target as HTMLSelectElement).value)}
+						/>
+					)}
 					{mode === "live" && (
 						<Button variant="primary" onClick={runLive}>
 							{sources["with-sdk"] ? "Run Again" : "Run Demo"}
@@ -211,7 +250,7 @@ export function App() {
 				<SaveRecordingModal
 					open
 					onClose={() => setSavingRecording(false)}
-					defaultName={`loan-approval-${new Date().toISOString().slice(0, 10)}`}
+					defaultName={`${activeScenarioId()}-${new Date().toISOString().slice(0, 10)}`}
 					recordingData={recordingData}
 				/>
 			)}
