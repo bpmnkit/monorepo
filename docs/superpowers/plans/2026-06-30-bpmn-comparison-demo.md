@@ -17,7 +17,7 @@
 - Dark theme by default (`data-theme="dark"` on `<body>`)
 - `ANTHROPIC_API_KEY` env var must be set to run the server (the plan uses `@anthropic-ai/sdk` directly rather than the `claude -p` subprocess described in the spec — this is more reliable and avoids CLI flag/format uncertainty; the trade-off is that auth is explicit rather than inherited from Claude Code)
 - `pnpm-workspace.yaml` already contains `apps/*` — no change needed; `apps/demo` is auto-discovered
-- Model: `claude-sonnet-4-6`
+- Model: `claude-opus-4-8` (default per current model guidance — the user did not request a specific model)
 - Fixed scenario: Loan Approval (uses `apps/examples/src/03-loan-approval.ts` as SDK example)
 - `Bpmn.export(definitions)` is the correct API to get XML string from the SDK
 - All server files use ESM (`"type": "module"`, `.js` imports)
@@ -90,6 +90,7 @@ Open `package.json` at the repo root. In `"devDependencies"`, add:
     "@bpmnkit/canvas": "workspace:*",
     "@bpmnkit/core": "workspace:*",
     "@bpmnkit/ui": "workspace:*",
+    "@hono/node-server": "^1.0.0",
     "hono": "^4.0.0"
   }
 }
@@ -646,7 +647,7 @@ async function streamLlm(
 ): Promise<string> {
   let accumulated = ""
   const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-6",
+    model: "claude-opus-4-8",
     max_tokens: 8192,
     system: systemPrompt,
     messages: [{ role: "user", content: SCENARIO_PROMPT }],
@@ -719,14 +720,12 @@ serve({ fetch: app.fetch, port: PORT }, () => {
 })
 ```
 
-- [ ] **Step 3: Check Hono node server package is available**
+- [ ] **Step 3: Run `pnpm install` to pick up `@hono/node-server`**
 
-`@hono/node-server` is required alongside `hono`. Add it to `apps/demo/package.json` dependencies:
-```json
-"@hono/node-server": "^1.0.0"
+`@hono/node-server` was already added to `apps/demo/package.json` in Task 1. Run:
+```bash
+pnpm install
 ```
-
-Then run `pnpm install` from repo root.
 
 - [ ] **Step 4: Type-check the server**
 
