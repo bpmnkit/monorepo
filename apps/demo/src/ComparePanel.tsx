@@ -1,6 +1,8 @@
 import { Badge, Button } from "@cascivo/react"
 import { useEffect, useRef, useState } from "preact/hooks"
+import type { TokenUsage } from "../shared/recording-types.js"
 import { BpmnViewer } from "./BpmnViewer.js"
+import { formatTokenCount } from "./format-tokens.js"
 import type { PanelRunResult, PanelSource } from "./sources.js"
 
 interface ComparePanelProps {
@@ -33,6 +35,7 @@ export function ComparePanel({
 	const [bpmnError, setBpmnError] = useState<string | null>(null)
 	const [streaming, setStreaming] = useState(false)
 	const [elapsedMs, setElapsedMs] = useState(0)
+	const [usage, setUsage] = useState<TokenUsage | null>(null)
 	const codeRef = useRef<HTMLPreElement>(null)
 	const chunksRef = useRef<{ t: number; text: string }[]>([])
 	const startedAtRef = useRef(0)
@@ -42,6 +45,7 @@ export function ComparePanel({
 		setBpmnXml(null)
 		setBpmnError(null)
 		setElapsedMs(0)
+		setUsage(null)
 		chunksRef.current = []
 
 		if (!source) {
@@ -67,22 +71,30 @@ export function ComparePanel({
 			onDone: () => {
 				setStreaming(false)
 			},
-			onBpmn: (xml) => {
+			onBpmn: (xml, runUsage) => {
 				const durationMs = Date.now() - startedAtRef.current
 				setBpmnXml(xml)
+				setUsage(runUsage)
 				clearInterval(tick)
 				setElapsedMs(durationMs)
-				onFinish?.({ chunks: chunksRef.current, durationMs, result: { type: "bpmn", xml } })
+				onFinish?.({
+					chunks: chunksRef.current,
+					durationMs,
+					usage: runUsage,
+					result: { type: "bpmn", xml },
+				})
 			},
-			onError: (message) => {
+			onError: (message, runUsage) => {
 				const durationMs = Date.now() - startedAtRef.current
 				setBpmnError(message)
+				setUsage(runUsage)
 				setStreaming(false)
 				clearInterval(tick)
 				setElapsedMs(durationMs)
 				onFinish?.({
 					chunks: chunksRef.current,
 					durationMs,
+					usage: runUsage,
 					result: { type: "error", message },
 				})
 			},
@@ -118,6 +130,8 @@ export function ComparePanel({
 					<span class="flex items-center gap-3">
 						<span style="color: var(--bpmnkit-fg-muted, #8888a8);" class="font-mono">
 							{(elapsedMs / 1000).toFixed(1)}s
+							{usage &&
+								` · ${formatTokenCount(usage.inputTokens)} in / ${formatTokenCount(usage.outputTokens)} out`}
 						</span>
 						<Button size="sm" variant="ghost" disabled={!promptAvailable} onClick={onViewPrompt}>
 							View Prompt
