@@ -124,6 +124,9 @@ importers:
       hono:
         specifier: ^4.0.0
         version: 4.12.27
+      preact:
+        specifier: ^10.25.4
+        version: 10.29.0
 
   apps/desktop:
     dependencies:

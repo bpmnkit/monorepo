@@ -3,15 +3,15 @@ import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
 
 export default defineConfig({
-  plugins: [preact(), tailwindcss()],
-  server: {
-    port: 3000,
-    proxy: {
-      "/stream": "http://localhost:3001",
-    },
-  },
-  build: {
-    outDir: "dist",
-    emptyOutDir: true,
-  },
+	plugins: [preact(), tailwindcss()],
+	server: {
+		port: 3000,
+		proxy: {
+			"/stream": "http://localhost:3001",
+		},
+	},
+	build: {
+		outDir: "dist",
+		emptyOutDir: true,
+	},
 })
