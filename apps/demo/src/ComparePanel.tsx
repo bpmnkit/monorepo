@@ -1,94 +1,128 @@
+import { Badge, Button } from "@cascivo/react"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { BpmnViewer } from "./BpmnViewer.js"
+import type { PanelRunResult, PanelSource } from "./sources.js"
 
 interface ComparePanelProps {
 	variant: "with-sdk" | "without-sdk"
-	runKey: number
+	source: PanelSource | null
+	onFinish?: (result: PanelRunResult) => void
+	onViewPrompt: () => void
+	promptAvailable: boolean
 }
 
 const LABELS = {
 	"with-sdk": "WITH SDK",
 	"without-sdk": "WITHOUT SDK",
-}
+} satisfies Record<ComparePanelProps["variant"], string>
 
-const LABEL_COLORS = {
-	"with-sdk": "var(--bpmnkit-success, #22c55e)",
-	"without-sdk": "var(--bpmnkit-danger, #f87171)",
-}
+const BADGE_VARIANTS = {
+	"with-sdk": "success",
+	"without-sdk": "destructive",
+} satisfies Record<ComparePanelProps["variant"], "success" | "destructive">
 
-export function ComparePanel({ variant, runKey }: ComparePanelProps) {
+export function ComparePanel({
+	variant,
+	source,
+	onFinish,
+	onViewPrompt,
+	promptAvailable,
+}: ComparePanelProps) {
 	const [text, setText] = useState("")
 	const [bpmnXml, setBpmnXml] = useState<string | null>(null)
 	const [bpmnError, setBpmnError] = useState<string | null>(null)
 	const [streaming, setStreaming] = useState(false)
+	const [elapsedMs, setElapsedMs] = useState(0)
 	const codeRef = useRef<HTMLPreElement>(null)
-	const eventSourceRef = useRef<EventSource | null>(null)
+	const chunksRef = useRef<{ t: number; text: string }[]>([])
+	const startedAtRef = useRef(0)
 
 	useEffect(() => {
-		// Reset state on new run
 		setText("")
 		setBpmnXml(null)
 		setBpmnError(null)
-		setStreaming(false)
+		setElapsedMs(0)
+		chunksRef.current = []
 
-		if (runKey === 0) return
+		if (!source) {
+			setStreaming(false)
+			return
+		}
 
-		eventSourceRef.current?.close()
-
-		const es = new EventSource(`/stream/${variant}`)
-		eventSourceRef.current = es
+		startedAtRef.current = Date.now()
 		setStreaming(true)
 
-		es.addEventListener("chunk", (e) => {
-			const { text: chunk } = JSON.parse(e.data) as { text: string }
-			setText((prev) => prev + chunk)
-			// Auto-scroll
-			if (codeRef.current) {
-				codeRef.current.scrollTop = codeRef.current.scrollHeight
-			}
-		})
+		const tick = setInterval(() => {
+			setElapsedMs(Date.now() - startedAtRef.current)
+		}, 100)
 
-		es.addEventListener("done", () => {
-			setStreaming(false)
-		})
-
-		es.addEventListener("bpmn", (e) => {
-			const { xml } = JSON.parse(e.data) as { xml: string }
-			setBpmnXml(xml)
-		})
-
-		es.addEventListener("error", (e) => {
-			if (e instanceof MessageEvent) {
-				const { message } = JSON.parse(e.data) as { message: string }
+		const unsubscribe = source.subscribe({
+			onChunk: (chunk) => {
+				chunksRef.current.push({ t: Date.now() - startedAtRef.current, text: chunk })
+				setText((prev) => prev + chunk)
+				if (codeRef.current) {
+					codeRef.current.scrollTop = codeRef.current.scrollHeight
+				}
+			},
+			onDone: () => {
+				setStreaming(false)
+			},
+			onBpmn: (xml) => {
+				const durationMs = Date.now() - startedAtRef.current
+				setBpmnXml(xml)
+				clearInterval(tick)
+				setElapsedMs(durationMs)
+				onFinish?.({ chunks: chunksRef.current, durationMs, result: { type: "bpmn", xml } })
+			},
+			onError: (message) => {
+				const durationMs = Date.now() - startedAtRef.current
 				setBpmnError(message)
-			}
-			setStreaming(false)
-			es.close()
+				setStreaming(false)
+				clearInterval(tick)
+				setElapsedMs(durationMs)
+				onFinish?.({
+					chunks: chunksRef.current,
+					durationMs,
+					result: { type: "error", message },
+				})
+			},
 		})
 
 		return () => {
-			es.close()
+			clearInterval(tick)
+			unsubscribe()
 		}
-	}, [runKey, variant])
+	}, [source, onFinish])
 
 	return (
 		<div class="flex h-full" style="border-top: 1px solid var(--bpmnkit-border, #2a2a42);">
-			{/* Left column — streaming code */}
 			<div
 				class="flex flex-col w-1/2"
 				style="border-right: 1px solid var(--bpmnkit-border, #2a2a42);"
 			>
 				<div
-					class="flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold tracking-widest"
-					style={`color: ${LABEL_COLORS[variant]}; border-bottom: 1px solid var(--bpmnkit-border, #2a2a42);`}
+					class="flex items-center justify-between gap-2 px-4 py-2 text-xs"
+					style="border-bottom: 1px solid var(--bpmnkit-border, #2a2a42);"
 				>
-					{LABELS[variant]}
-					{streaming && (
-						<span
-							class="inline-block w-2 h-4 ml-1"
-							style="background: currentColor; animation: blink 1s step-end infinite;"
-						/>
-					)}
+					<span class="flex items-center gap-2">
+						<Badge variant={BADGE_VARIANTS[variant]} size="sm">
+							{LABELS[variant]}
+						</Badge>
+						{streaming && (
+							<span
+								class="inline-block w-2 h-4"
+								style="background: currentColor; animation: blink 1s step-end infinite;"
+							/>
+						)}
+					</span>
+					<span class="flex items-center gap-3">
+						<span style="color: var(--bpmnkit-fg-muted, #8888a8);" class="font-mono">
+							{(elapsedMs / 1000).toFixed(1)}s
+						</span>
+						<Button size="sm" variant="ghost" disabled={!promptAvailable} onClick={onViewPrompt}>
+							View Prompt
+						</Button>
+					</span>
 				</div>
 				<pre
 					ref={codeRef}
@@ -109,7 +143,6 @@ export function ComparePanel({ variant, runKey }: ComparePanelProps) {
 				</pre>
 			</div>
 
-			{/* Right column — BPMN render */}
 			<div class="flex-1 p-4" style="background: var(--bpmnkit-bg, #0d0d16);">
 				<BpmnViewer xml={bpmnXml} error={bpmnError} />
 			</div>
