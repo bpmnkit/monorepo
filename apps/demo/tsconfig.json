@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
+		"jsxImportSource": "preact",
+		"baseUrl": ".",
+		"paths": {
+			"react": ["./node_modules/preact/compat"],
+			"react-dom": ["./node_modules/preact/compat"],
+			"react/jsx-runtime": ["./node_modules/preact/jsx-runtime"]
+		},
+		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"types": ["vite/client"]
+	},
+	"include": ["src", "shared"]
+}
