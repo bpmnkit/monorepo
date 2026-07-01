@@ -1,0 +1,22 @@
+{
+  "name": "@bpmnkit/demo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"tsx watch server/index.ts\" \"vite --port 3000\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "check": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.36.0",
+    "@bpmnkit/canvas": "workspace:*",
+    "@bpmnkit/core": "workspace:*",
+    "@bpmnkit/ui": "workspace:*",
+    "@hono/node-server": "^1.0.0",
+    "hono": "^4.0.0"
+  }
+}
