@@ -10,6 +10,7 @@ export default defineConfig({
 			"/stream": "http://localhost:3001",
 			"/health": "http://localhost:3001",
 			"/prompts": "http://localhost:3001",
+			"/scenarios": "http://localhost:3001",
 			// Exact match only — POST /recordings is the only request this app ever
 			// sends to that literal path. Anything under /recordings/* is a static
 			// JSON file (e.g. /recordings/<name>.json?import, fetched by Vite's dev
