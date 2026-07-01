@@ -6,7 +6,7 @@ import { serve } from "@hono/node-server"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { streamSSE } from "hono/streaming"
-import type { Recording } from "../shared/recording-types.js"
+import type { Recording, TokenUsage } from "../shared/recording-types.js"
 import { extractTsBlock, extractXmlBlock } from "./extractor.js"
 import { saveRecording } from "./recordings-store.js"
 import { executeSdkCode } from "./sdk-executor.js"
@@ -98,10 +98,19 @@ function extractDeltaText(event: unknown): string | null {
 	return typeof delta.text === "string" ? delta.text : null
 }
 
+function extractResultUsage(event: unknown): TokenUsage | null {
+	if (typeof event !== "object" || event === null) return null
+	if (!("type" in event) || event.type !== "result") return null
+	if (!("usage" in event) || typeof event.usage !== "object" || event.usage === null) return null
+	const usage = event.usage as Record<string, unknown>
+	if (typeof usage.input_tokens !== "number" || typeof usage.output_tokens !== "number") return null
+	return { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens }
+}
+
 async function streamLlm(
 	systemPrompt: string,
 	onChunk: (text: string) => Promise<void>,
-): Promise<string> {
+): Promise<{ text: string; usage: TokenUsage | null }> {
 	const child = spawn(
 		"claude",
 		[
@@ -134,6 +143,7 @@ async function streamLlm(
 	})
 
 	let accumulated = ""
+	let usage: TokenUsage | null = null
 	const readLines = async () => {
 		const rl = createInterface({ input: child.stdout })
 		for await (const line of rl) {
@@ -149,6 +159,10 @@ async function streamLlm(
 				accumulated += text
 				await onChunk(text)
 			}
+			const resultUsage = extractResultUsage(parsed)
+			if (resultUsage !== null) {
+				usage = resultUsage
+			}
 		}
 	}
 
@@ -162,55 +176,62 @@ async function streamLlm(
 		throw new Error(`claude CLI exited with code ${exitCode}${stderr ? `: ${stderr}` : ""}`)
 	}
 
-	return accumulated
+	return { text: accumulated, usage }
 }
 
 app.get("/stream/with-sdk", (c) =>
 	streamSSE(c, async (stream) => {
+		let usage: TokenUsage | null = null
 		try {
-			const accumulated = await streamLlm(SDK_SYSTEM_PROMPT, async (text) => {
+			const result = await streamLlm(SDK_SYSTEM_PROMPT, async (text) => {
 				await stream.writeSSE({ event: "chunk", data: JSON.stringify({ text }) })
 			})
+			usage = result.usage
 			await stream.writeSSE({ event: "done", data: "{}" })
 
-			const tsCode = extractTsBlock(accumulated)
+			const tsCode = extractTsBlock(result.text)
 			if (!tsCode) {
 				await stream.writeSSE({
 					event: "error",
-					data: JSON.stringify({ message: "No TypeScript code block found in LLM output" }),
+					data: JSON.stringify({
+						message: "No TypeScript code block found in LLM output",
+						usage,
+					}),
 				})
 				return
 			}
 
 			const xml = await executeSdkCode(tsCode, REPO_ROOT)
-			await stream.writeSSE({ event: "bpmn", data: JSON.stringify({ xml }) })
+			await stream.writeSSE({ event: "bpmn", data: JSON.stringify({ xml, usage }) })
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err)
-			await stream.writeSSE({ event: "error", data: JSON.stringify({ message }) })
+			await stream.writeSSE({ event: "error", data: JSON.stringify({ message, usage }) })
 		}
 	}),
 )
 
 app.get("/stream/without-sdk", (c) =>
 	streamSSE(c, async (stream) => {
+		let usage: TokenUsage | null = null
 		try {
-			const accumulated = await streamLlm(WITHOUT_SDK_SYSTEM_PROMPT, async (text) => {
+			const result = await streamLlm(WITHOUT_SDK_SYSTEM_PROMPT, async (text) => {
 				await stream.writeSSE({ event: "chunk", data: JSON.stringify({ text }) })
 			})
+			usage = result.usage
 			await stream.writeSSE({ event: "done", data: "{}" })
 
-			const xml = extractXmlBlock(accumulated)
+			const xml = extractXmlBlock(result.text)
 			if (!xml) {
 				await stream.writeSSE({
 					event: "error",
-					data: JSON.stringify({ message: "No BPMN XML found in LLM output" }),
+					data: JSON.stringify({ message: "No BPMN XML found in LLM output", usage }),
 				})
 				return
 			}
-			await stream.writeSSE({ event: "bpmn", data: JSON.stringify({ xml }) })
+			await stream.writeSSE({ event: "bpmn", data: JSON.stringify({ xml, usage }) })
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err)
-			await stream.writeSSE({ event: "error", data: JSON.stringify({ message }) })
+			await stream.writeSSE({ event: "error", data: JSON.stringify({ message, usage }) })
 		}
 	}),
 )
