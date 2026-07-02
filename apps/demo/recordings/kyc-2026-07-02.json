@@ -1,0 +1,866 @@
+{
+  "scenarioId": "kyc",
+  "scenarioPrompt": "Generate a KYC (Know Your Customer) onboarding BPMN process for Camunda 8. It\nshould include:\n- Identity document upload and verification via a REST connector to an OCR\n  service\n- Exclusive gateway on document quality: reject and loop back to re-upload\n  (up to 2 retries) if verification fails\n- Sanctions and PEP (politically exposed person) screening via a REST\n  connector\n- Risk-based gateway routing to standard due diligence or enhanced due\n  diligence based on the screening result\n- User task for enhanced due diligence manual review by a compliance officer\n- DMN business rule task for final risk classification\n- Separate end events for approved, rejected, and escalated-to-compliance\n  outcomes\n\nOutput code only. No explanation. No markdown prose outside the code block.",
+  "panels": {
+    "with-sdk": {
+      "systemPrompt": "You are an expert at using the @bpmnkit/core TypeScript SDK to generate Camunda 8 BPMN processes.\n\n## SDK Overview\n<div align=\"center\">\n  <a href=\"https://bpmnkit.com\"><img src=\"https://bpmnkit.com/favicon.svg\" width=\"72\" height=\"72\" alt=\"BPMN Kit logo\"></a>\n  <h1>@bpmnkit/core</h1>\n  <p>TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams</p>\n\n  [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core)\n  [![license](https://img.shields.io/npm/l/@bpmnkit/core?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)\n  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)\n  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)\n  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)\n\n  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/core/CHANGELOG.md)\n</div>\n\n---\n\n## Overview\n\n`@bpmnkit/core` is the foundation of the BPMN Kit. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.\n\n```\nParse → Modify → Validate → Export\n```\n\n## Features\n\n- **BPMN 2.0** — parse, create, and export process diagrams with full Zeebe/Camunda 8 extension support\n- **Fluent Builder API** — construct valid processes programmatically, never touch raw XML\n- **Sugiyama Layout Engine** — auto-position elements with clean orthogonal edge routing\n- **DMN 1.3** — decision tables, including FEEL expression support\n- **Camunda Form Definitions** — type-safe form schema builder\n- **Optimizer** — built-in rule engine to detect and auto-fix anti-patterns\n- **Compact Format** — 70% smaller token-efficient JSON representation for AI/LLM workflows\n- **Zero Dependencies** — runs in browsers, Node.js, Deno, Bun, and edge runtimes\n\n## Installation\n\n```sh\nnpm install @bpmnkit/core\npnpm add @bpmnkit/core\n```\n\n## Quick Start\n\n### Build a process from code\n\n```typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst process = Bpmn.createProcess(\"order-flow\", \"Order Flow\")\n  .startEvent(\"start\", \"Order Received\")\n  .serviceTask(\"validate\", \"Validate Order\", {\n    type: \"order-validator\",\n    inputs: [{ source: \"=order\", target: \"order\" }],\n    outputs: [{ source: \"=valid\", target: \"isValid\" }],\n  })\n  .exclusiveGateway(\"check\", \"Order Valid?\")\n  .sequenceFlow(\"check\", \"fulfill\", \"=isValid = true\")\n  .serviceTask(\"fulfill\", \"Fulfill Order\", { type: \"fulfillment-service\" })\n  .endEvent(\"end\", \"Order Complete\")\n  .sequenceFlow(\"check\", \"reject\", \"=isValid = false\")\n  .endEvent(\"reject-end\", \"Order Rejected\")\n  .build()\n\nconst xml = Bpmn.export(process)\n```\n\n### Parse and modify existing BPMN\n\n```typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst process = defs.processes[0]\n\n// Access flow elements\nfor (const el of process.flowElements) {\n  console.log(el.type, el.id, el.name)\n}\n\n// Serialize back to XML\nconst updated = Bpmn.export(defs)\n```\n\n### Auto-layout a process\n\n```typescript\nimport { Bpmn, layoutProcess } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst result = layoutProcess(defs.processes[0])\n// result.defs now has updated DI coordinates\nconst laid = Bpmn.export(result.defs)\n```\n\n### Optimize a diagram\n\n```typescript\nimport { Bpmn, optimize } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst report = optimize(defs)\n\nconsole.log(`${report.summary.total} findings`)\n\nfor (const finding of report.findings) {\n  console.log(`[${finding.severity}] ${finding.message}`)\n  if (finding.applyFix) {\n    const { description } = finding.applyFix(defs)\n    console.log(\"Fixed:\", description)\n  }\n}\n```\n\n### Compact format for AI/LLM workflows\n\n```typescript\nimport { Bpmn, compactify, expand } from \"@bpmnkit/core\"\n\n// Shrink for AI prompt\nconst defs = Bpmn.parse(xml)\nconst compact = compactify(defs)          // ~70% smaller JSON\nconst json = JSON.stringify(compact)      // send to LLM\n\n// Restore full BPMN from AI response\nconst restored = expand(JSON.parse(json))\nconst outXml = Bpmn.export(restored)\n```\n\n## API Reference\n\n### BPMN\n\n| Export | Description |\n|--------|-------------|\n| `Bpmn.parse(xml)` | Parse BPMN XML → `BpmnDefinitions` |\n| `Bpmn.export(defs)` | Serialize `BpmnDefinitions` → XML |\n| `Bpmn.createProcess(id, name?)` | Start a `ProcessBuilder` |\n| `Bpmn.makeEmpty(processId?, name?)` | Minimal BPMN XML with one start event |\n| `Bpmn.SAMPLE_XML` | 3-node sample diagram string |\n\n### DMN\n\n| Export | Description |\n|--------|-------------|\n| `Dmn.parse(xml)` | Parse DMN XML → `DmnDefinitions` |\n| `Dmn.export(defs)` | Serialize → XML |\n| `Dmn.createDecisionTable(id, name?)` | Start a `DecisionTableBuilder` |\n| `Dmn.makeEmpty()` | Minimal DMN with one empty decision table |\n\n### Form\n\n| Export | Description |\n|--------|-------------|\n| `Form.create()` | Start a `FormBuilder` |\n| `Form.parse(json)` | Parse a form schema |\n| `Form.export(schema)` | Serialize → JSON string |\n\n### Layout & Optimization\n\n| Export | Description |\n|--------|-------------|\n| `layoutProcess(process)` | Auto-layout all elements; returns `LayoutResult` |\n| `optimize(defs)` | Run all optimization rules; returns `OptimizeReport` |\n| `compactify(defs)` | Convert to compact `CompactDiagram` |\n| `expand(compact)` | Restore full `BpmnDefinitions` |\n| `generateId(prefix)` | Generate a unique short ID |\n\n---\n\n## Related Packages\n\n| Package | Description |\n|---------|-------------|\n| [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |\n| [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |\n| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |\n| [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |\n| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |\n| [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |\n| [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |\n| [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |\n| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |\n| [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |\n| [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |\n| [`@bpmnkit/cli`](https://www.npmjs.com/package/@bpmnkit/cli) | Camunda 8 command-line interface (casen) |\n| [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |\n| [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |\n| [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |\n| [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |\n| [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |\n| [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |\n| [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |\n| [`@bpmnkit/casen-worker-http`](https://www.npmjs.com/package/@bpmnkit/casen-worker-http) | Example HTTP worker plugin — completes jobs with live JSONPlaceholder API data |\n| [`@bpmnkit/casen-worker-ai`](https://www.npmjs.com/package/@bpmnkit/casen-worker-ai) | AI task worker — classify, summarize, extract, and decide using Claude |\n\n## License\n\n[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)\n\n<div align=\"center\">\n  <a href=\"https://bpmnkit.com\"><img src=\"https://bpmnkit.com/favicon.svg\" width=\"32\" height=\"32\" alt=\"BPMN Kit\"></a>\n</div>\n\n\n## Exported API (from packages/core/src/index.ts)\n```typescript\nexport { BpmnSdkError, ParseError, ValidationError } from \"./errors.js\"\nexport type { ErrorCode } from \"./errors.js\"\nexport {\n\tisBpmnActivity,\n\tisBpmnAdHocSubProcess,\n\tisBpmnBoundaryEvent,\n\tisBpmnBusinessRuleTask,\n\tisBpmnCallActivity,\n\tisBpmnComplexGateway,\n\tisBpmnEndEvent,\n\tisBpmnEvent,\n\tisBpmnEventBasedGateway,\n\tisBpmnEventSubProcess,\n\tisBpmnExclusiveGateway,\n\tisBpmnGateway,\n\tisBpmnInclusiveGateway,\n\tisBpmnIntermediateCatchEvent,\n\tisBpmnIntermediateThrowEvent,\n\tisBpmnManualTask,\n\tisBpmnParallelGateway,\n\tisBpmnReceiveTask,\n\tisBpmnScriptTask,\n\tisBpmnSendTask,\n\tisBpmnServiceTask,\n\tisBpmnStartEvent,\n\tisBpmnSubProcess,\n\tisBpmnTask,\n\tisBpmnTransaction,\n\tisBpmnUserTask,\n} from \"./bpmn/type-guards.js\"\nexport {\n\tfindElement,\n\tfindElementInProcess,\n\tfindProcess,\n\tfindSequenceFlow,\n\tgetAllElements,\n\tgetElementType,\n\tgetZeebeExtensions,\n} from \"./bpmn/utils.js\"\nexport { Bpmn, SAMPLE_BPMN_XML } from \"./bpmn/index.js\"\nexport { applyAutoLayout } from \"./bpmn/auto-layout.js\"\nexport { DiagramBuilder } from \"./bpmn/bpmn-builder.js\"\nexport type {\n\tProcessBuilder,\n\tBranchBuilder,\n\tSubProcessContentBuilder,\n\tServiceTaskOptions,\n\tScriptTaskOptions,\n\tUserTaskOptions,\n\tCallActivityOptions,\n\tBusinessRuleTaskOptions,\n\tElementOptions,\n\tGatewayOptions,\n\tMultiInstanceOptions,\n\tSubProcessOptions,\n\tStartEventOptions,\n\tIntermediateCatchEventOptions,\n\tIntermediateThrowEventOptions,\n\tEndEventOptions,\n\tBoundaryEventOptions,\n\tAdHocSubProcessOptions,\n} from \"./bpmn/bpmn-builder.js\"\nexport type {\n\tBpmnDefinitions,\n\tBpmnProcess,\n\tBpmnFlowNode,\n\tBpmnFlowElement,\n\tBpmnSequenceFlow,\n\tBpmnBoundaryEvent,\n\tBpmnElementType,\n\tBpmnStartEvent,\n\tBpmnEndEvent,\n\tBpmnIntermediateCatchEvent,\n\tBpmnIntermediateThrowEvent,\n\tBpmnTask,\n\tBpmnServiceTask,\n\tBpmnScriptTask,\n\tBpmnUserTask,\n\tBpmnSendTask,\n\tBpmnReceiveTask,\n\tBpmnBusinessRuleTask,\n\tBpmnManualTask,\n\tBpmnCallActivity,\n\tBpmnSubProcess,\n\tBpmnAdHocSubProcess,\n\tBpmnEventSubProcess,\n\tBpmnTransaction,\n\tBpmnExclusiveGateway,\n\tBpmnParallelGateway,\n\tBpmnInclusiveGateway,\n\tBpmnEventBasedGateway,\n\tBpmnComplexGateway,\n\tBpmnCollaboration,\n\tBpmnParticipant,\n\tBpmnMessageFlow,\n\tBpmnLane,\n\tBpmnLaneSet,\n\tBpmnError,\n\tBpmnEscalation,\n\tBpmnMessage,\n\tBpmnSignal,\n\tBpmnTextAnnotation,\n\tBpmnAssociation,\n\tBpmnConditionExpression,\n\tBpmnEventDefinition,\n\tBpmnTimerEventDefinition,\n\tBpmnErrorEventDefinition,\n\tBpmnEscalationEventDefinition,\n\tBpmnMessageEventDefinition,\n\tBpmnSignalEventDefinition,\n\tBpmnConditionalEventDefinition,\n\tBpmnLinkEventDefinition,\n\tBpmnCancelEventDefinition,\n\tBpmnTerminateEventDefinition,\n\tBpmnCompensateEventDefinition,\n\tBpmnMultiInstanceLoopCharacteristics,\n\tBpmnDiagram,\n\tBpmnDiPlane,\n\tBpmnDiShape,\n\tBpmnDiEdge,\n\tBpmnDiLabel,\n\tBpmnBounds,\n\tBpmnWaypoint,\n} from \"./bpmn/bpmn-model.js\"\nexport type {\n\tRestConnectorConfig,\n\tRestAuthentication,\n\tHttpMethod,\n} from \"./bpmn/rest-connector.js\"\nexport type {\n\tZeebeExtensions,\n\tZeebeTaskDefinition,\n\tZeebeIoMapping,\n\tZeebeIoMappingEntry,\n\tZeebeTaskHeaders,\n\tZeebeTaskHeaderEntry,\n\tZeebeProperties,\n\tZeebePropertyEntry,\n\tZeebeFormDefinition,\n\tZeebeCalledDecision,\n} from \"./bpmn/zeebe-extensions.js\"\nexport { zeebeExtensionsToXmlElements } from \"./bpmn/zeebe-extensions.js\"\nexport { Dmn, layoutDmn, benchmarkDmnLayout, compactifyDmn, expandDmn } from \"./dmn/index.js\"\nexport type {\n\tDmnBenchmarkResult,\n\tDmnElementPosition,\n\tCompactDmn,\n\tCompactDmnDecision,\n\tCompactDmnInput,\n\tCompactDmnOutput,\n\tCompactDmnRule,\n} from \"./dmn/index.js\"\nexport { Form, compactifyForm, expandForm } from \"./form/index.js\"\nexport type { CompactForm, CompactFormField } from \"./form/index.js\"\nexport { FormBuilder, GroupBuilder } from \"./form/form-builder.js\"\nexport type {\n\tTextFieldOptions,\n\tSelectOptions,\n\tRadioOptions,\n\tCheckboxOptions,\n\tChecklistOptions,\n\tGroupOptions,\n} from \"./form/form-builder.js\"\nexport type {\n\tFormComponent,\n\tFormCheckboxComponent,\n\tFormChecklistComponent,\n\tFormDefinition,\n\tFormExporter,\n\tFormGroupComponent,\n\tFormLayout,\n\tFormRadioComponent,\n\tFormSelectComponent,\n\tFormTextAreaComponent,\n\tFormTextComponent,\n\tFormTextFieldComponent,\n\tFormValidation,\n\tFormValueOption,\n\tFormNumberComponent,\n\tFormDatetimeComponent,\n\tFormButtonComponent,\n\tFormTaglistComponent,\n\tFormTableComponent,\n\tFormImageComponent,\n\tFormDynamicListComponent,\n\tFormIframeComponent,\n\tFormSeparatorComponent,\n\tFormSpacerComponent,\n\tFormDocumentPreviewComponent,\n\tFormHtmlComponent,\n\tFormExpressionComponent,\n\tFormFilepickerComponent,\n\tFormUnknownComponent,\n} from \"./form/form-model.js\"\nexport type {\n\tDecisionTableBuilder,\n\tInputOptions,\n\tOutputOptions,\n\tRuleOptions,\n} from \"./dmn/dmn-builder.js\"\nexport type {\n\tDmnDefinitions,\n\tDmnDecision,\n\tDmnDecisionTable,\n\tDmnInput,\n\tDmnOutput,\n\tDmnRule,\n\tDmnInputEntry,\n\tDmnOutputEntry,\n\tDmnDiagram,\n\tDmnDiagramShape,\n\tDmnDiagramEdge,\n\tDmnWaypoint,\n\tDmnTypeRef,\n\tDmnAggregation,\n\tHitPolicy,\n\tDmnInformationRequirement,\n\tDmnKnowledgeRequirement,\n\tDmnAuthorityRequirement,\n\tDmnInputData,\n\tDmnKnowledgeSource,\n\tDmnBusinessKnowledgeModel,\n\tDmnTextAnnotation,\n\tDmnAssociation,\n} from \"./dmn/dmn-model.js\"\nexport type { XmlElement } from \"./types/xml-element.js\"\nexport { generateId, resetIdCounter } from \"./types/id-generator.js\"\nexport { parseXml, serializeXml } from \"./xml/index.js\"\nexport { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from \"./bpmn/di-color.js\"\nexport type { DiColor } from \"./bpmn/di-color.js\"\nexport { optimize } from \"./bpmn/optimize/index.js\"\nexport { renderStoryHtml } from \"./bpmn/story.js\"\nexport type { StoryRenderOptions } from \"./bpmn/story.js\"\nexport { analyzeVariableFlow, extractFeelIdentifiers } from \"./bpmn/optimize/variable-flow.js\"\nexport type {\n\tOptimizationReport,\n\tOptimizationFinding,\n\tOptimizationSeverity,\n\tOptimizationCategory,\n\tApplyFixResult,\n\tOptimizeOptions,\n} from \"./bpmn/optimize/types.js\"\nexport { layoutProcess, layoutFlowNodes } from \"./layout/index.js\"\nexport {\n\tbenchmarkLayout,\n\tcompareLayouts,\n\tformatBenchmarkResult,\n\tgenerateAutoLayout,\n\tparseReferenceLayout,\n} from \"./layout/index.js\"\nexport type {\n\tBenchmarkResult,\n\tBoundingBox,\n\tElementComparison,\n\tElementPosition,\n\tFlowOrderViolation,\n} from \"./layout/index.js\"\nexport type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from \"./layout/index.js\"\nexport { ELEMENT_SIZES, GRID_CELL_HEIGHT, GRID_CELL_WIDTH } from \"./layout/index.js\"\nexport { compactify, expand } from \"./bpmn/compact.js\"\nexport { applyOperations } from \"./bpmn/operations.js\"\nexport type { BpmnOperation } from \"./bpmn/operations.js\"\nexport {\n\tbuildValidationDmn,\n\tfindValidationStructure,\n\tgetValidationInputNames,\n\tinsertValidationStructure,\n\tremoveValidationStructure,\n\tvalidationDecisionId,\n} from \"./bpmn/input-validation.js\"\nexport type {\n\tInputVariableDef,\n\tValidationStructure,\n\tValidationVariableType,\n} from \"./bpmn/input-validation.js\"\nexport { exportSvg } from \"./bpmn/svg.js\"\nexport type { SvgExportOptions } from \"./bpmn/svg.js\"\nexport type {\n\tCompactDiagram,\n\tCompactElement,\n\tCompactFlow,\n\tCompactProcess,\n} from \"./bpmn/compact.js\"\n\n```\n\n## Real-World Example — Loan Approval\nStudy this example carefully. Use the same fluent builder pattern.\n```typescript\n/**\n * Example 03 — Loan Approval\n *\n * Demonstrates:\n * - REST connector for external credit bureau API call\n * - Chained exclusive gateways for multi-step decision logic\n * - Business rule task for risk scoring (DMN integration)\n * - User task for manual underwriter review\n * - Script task for interest rate calculation\n * - connectTo() for merging paths from multiple branches\n */\n\nimport { writeFileSync } from \"node:fs\"\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst definitions = Bpmn.createProcess(\"LoanApproval\")\n\t.withAutoLayout()\n\t.name(\"Loan Approval Process\")\n\t.versionTag(\"1.0.0\")\n\n\t.startEvent(\"start\", { name: \"Application Received\" })\n\n\t// Fetch credit score from external bureau\n\t.restConnector(\"fetchCreditScore\", {\n\t\tname: \"Fetch Credit Score\",\n\t\tmethod: \"GET\",\n\t\turl: '=creditBureauUrl + \"/score/\" + applicant.ssn',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.CREDIT_BUREAU_TOKEN\" },\n\t\tresultVariable: \"creditBureauResponse\",\n\t\tresultExpression: \"=creditBureauResponse.body\",\n\t})\n\n\t// Automated pre-screening: reject below minimum threshold\n\t.exclusiveGateway(\"preScreen\", { name: \"Credit Score ≥ 580?\" })\n\n\t.branch(\"rejected-prescreening\", (b) =>\n\t\tb\n\t\t\t.condition(\"=creditBureauResponse.score < 580\")\n\t\t\t.serviceTask(\"sendRejectionLetter\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-credit\" },\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [\n\t\t\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t\t\t{ source: \"=creditBureauResponse.score\", target: \"creditScore\" },\n\t\t\t\t\t],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedAutomatic\", { name: \"Rejected — Credit Score\" }),\n\t)\n\n\t.branch(\"passed-prescreening\", (b) =>\n\t\tb.condition(\"=creditBureauResponse.score >= 580\").connectTo(\"riskScoring\"),\n\t)\n\n\t// DMN-based risk scoring combining multiple applicant factors\n\t.businessRuleTask(\"riskScoring\", {\n\t\tname: \"Calculate Risk Score\",\n\t\tdecisionRef: \"loan-risk-scoring\",\n\t\tresultVariable: \"riskAssessment\",\n\t})\n\n\t// Route by risk tier; medium risk goes to underwriter, high risk is auto-rejected\n\t.exclusiveGateway(\"riskGateway\", { name: \"Risk Tier?\" })\n\n\t// Low risk: calculate rate and generate offer automatically\n\t.branch(\"low-risk\", (b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"low\"')\n\t\t\t.scriptTask(\"calculateRate\", {\n\t\t\t\tname: \"Calculate Interest Rate\",\n\t\t\t\texpression: \"=if riskAssessment.score < 30 then baseRate + 0.5 else baseRate + 1.0\",\n\t\t\t\tresultVariable: \"interestRate\",\n\t\t\t})\n\t\t\t.serviceTask(\"generateOffer\", {\n\t\t\t\tname: \"Generate Loan Offer\",\n\t\t\t\ttaskType: \"offer-generator\",\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [\n\t\t\t\t\t\t{ source: \"=application.amount\", target: \"amount\" },\n\t\t\t\t\t\t{ source: \"=interestRate\", target: \"rate\" },\n\t\t\t\t\t],\n\t\t\t\t\toutputs: [{ source: \"=offerId\", target: \"loanOfferId\" }],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.connectTo(\"notifyApplicant\"),\n\t)\n\n\t// Medium risk: send to underwriter for manual review, then check their decision\n\t.branch(\"medium-risk\", (b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"medium\"')\n\t\t\t.userTask(\"underwriterReview\", {\n\t\t\t\tname: \"Underwriter Review\",\n\t\t\t\tformId: \"underwriter-review-form\",\n\t\t\t})\n\t\t\t.connectTo(\"underwriterDecision\"),\n\t)\n\n\t// High risk: auto-reject\n\t.branch(\"high-risk\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendHighRiskRejection\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-risk\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedRisk\", { name: \"Rejected — High Risk\" }),\n\t)\n\n\t// Underwriter decision gateway (reached via connectTo from medium-risk branch)\n\t.exclusiveGateway(\"underwriterDecision\", { name: \"Underwriter Approved?\" })\n\n\t.branch(\"uw-approved\", (b) =>\n\t\tb.condition(\"=underwriterApproved = true\").connectTo(\"notifyApplicant\"),\n\t)\n\n\t.branch(\"uw-rejected\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendManualRejection\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-underwriter\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedManual\", { name: \"Rejected — Underwriter\" }),\n\t)\n\n\t// Reached from both low-risk (auto) and medium-risk (approved) paths\n\t.serviceTask(\"notifyApplicant\", {\n\t\tname: \"Send Offer to Applicant\",\n\t\ttaskType: \"email-sender\",\n\t\ttaskHeaders: { template: \"loan-offer\" },\n\t\tioMapping: {\n\t\t\tinputs: [\n\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t{ source: \"=loanOfferId\", target: \"offerId\" },\n\t\t\t],\n\t\t},\n\t})\n\n\t.endEvent(\"endApproved\", { name: \"Loan Approved\" })\n\t.build()\n\nconst xml = Bpmn.export(definitions)\nwriteFileSync(\"output/03-loan-approval.bpmn\", xml)\nconsole.log(\"✓ 03-loan-approval.bpmn\")\n\n```\n\n## Output Instructions\n- Generate TypeScript using @bpmnkit/core.\n- At the end of your code, use: process.stdout.write(Bpmn.export(definitions))\n- Do NOT use writeFileSync.\n- Output code only — no explanation, no markdown prose outside the code block.\n- Wrap your code in a single ```typescript code block.",
+      "chunks": [
+        {
+          "t": 8231,
+          "text": "```typescript\nimport {"
+        },
+        {
+          "t": 8710,
+          "text": " Bpmn } from \"@bpmnkit/core\"\n\nconst definitions = Bpmn.createProcess(\"KycOnboarding\")\n\t.withAutoLayout()\n\t.name"
+        },
+        {
+          "t": 9186,
+          "text": "(\"KYC Onboarding Process\")\n\t.versionTag(\"1.0.0\")\n\n\t.startEvent(\"start\", { name: \"Customer Onboarding Started\" })\n\n\t// Custom"
+        },
+        {
+          "t": 9661,
+          "text": "er uploads identity document\n\t.userTask(\"uploadDocument\", {\n\t\tname: \"Upload Identity Document\",\n\t\tformId: \"id-document-upload-form\",\n\t"
+        },
+        {
+          "t": 10138,
+          "text": "})\n\n\t// Verify document via OCR service (REST connector)\n\t.restConnector(\"verifyDocument\", {\n\t\tname: \"Verify Document (OCR)\",\n\t\tmethod: \"POST\",\n\t\turl"
+        },
+        {
+          "t": 10623,
+          "text": ": '=ocrServiceUrl + \"/verify\"',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.O"
+        },
+        {
+          "t": 11102,
+          "text": "CR_SERVICE_TOKEN\" },\n\t\tbody: \"={ documentId: documentId, docum"
+        },
+        {
+          "t": 11548,
+          "text": "entType: documentType }\",\n\t\tresultVariable: \"ocrResponse\",\n\t\tresultExpression: \"={ quality: ocrResponse.body.quality, verified: ocrResponse.body.verified"
+        },
+        {
+          "t": 12021,
+          "text": " }\",\n\t})\n\n\t// Gateway on document quality / verification\n\t.exclusiveGateway(\"qualityGateway\", { name: \"Document Ver"
+        },
+        {
+          "t": 12492,
+          "text": "ified?\" })\n\n\t// Verification passed -> proceed to screening\n\t.branch(\"verification-passed\", (b) =>\n\t\tb.condition(\"=ver"
+        },
+        {
+          "t": 12964,
+          "text": "ified = true\").connectTo(\"screening\"),\n\t)\n\n\t// Verification failed -> evaluate retry count\n\t.branch(\"verification-failed\", (b) =>\n\t\tb\n\t\t\t.def"
+        },
+        {
+          "t": 13436,
+          "text": "aultFlow()\n\t\t\t.scriptTask(\"incrementRetry\", {\n\t\t\t\tname: \"Increment Retry Count\",\n\t\t\t\texpression: \"=if is defined(retryCount) then"
+        },
+        {
+          "t": 13908,
+          "text": " retryCount + 1 else 1\",\n\t\t\t\tresultVariable: \"retryCount\",\n\t\t\t})\n\t\t\t.connectTo(\"retryGateway\"),\n\t)\n\n\t// Retry gateway: all"
+        },
+        {
+          "t": 14391,
+          "text": "ow up to 2 retries\n\t.exclusiveGateway(\"retryGateway\", { name: \"Retries Remaining?\" })\n\n\t.branch(\"retry-upload\", (b) =>"
+        },
+        {
+          "t": 14854,
+          "text": "\n\t\tb.condition(\"=retryCount <= 2\").connectTo(\"uploadDocument\"),\n\t)\n\n\t.branch(\"retries-exhausted\", (b) =>\n\t\tb\n\t\t\t"
+        },
+        {
+          "t": 15324,
+          "text": ".defaultFlow()\n\t\t\t.serviceTask(\"sendVerificationRejection\", {\n\t\t\t\tname: \"Send Rejection Notice\",\n\t\t\t\ttaskType: \"email-s"
+        },
+        {
+          "t": 15803,
+          "text": "ender\",\n\t\t\t\ttaskHeaders: { template: \"kyc-rejected-verification\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedVerification\", { name: \"Rejected — Ver"
+        },
+        {
+          "t": 16265,
+          "text": "ification Failed\" }),\n\t)\n\n\t// Sanctions and PEP screening via REST connector\n\t.restConnector(\"screening\", {\n\t\tname: \"Sanctions & PEP Screening\","
+        },
+        {
+          "t": 16736,
+          "text": "\n\t\tmethod: \"POST\",\n\t\turl: '=screeningServiceUrl + \"/screen\"',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.SCREENING_SERVICE_"
+        },
+        {
+          "t": 17207,
+          "text": "TOKEN\" },\n\t\tbody: \"={ fullName: applicant.fullName, dateOfBirth: applicant.dateOfBirth, nationality: applicant.n"
+        },
+        {
+          "t": 17679,
+          "text": "ationality }\",\n\t\tresultVariable: \"screeningResponse\",\n\t\tresultExpression:\n\t\t\t\"={ sanctionsHit: screeningResponse.body.sanction"
+        },
+        {
+          "t": 18168,
+          "text": "sHit, pep: screeningResponse.body.pep, riskLevel: screeningResponse.body.riskLevel }\",\n\t})\n\n\t// Risk-based routing: standard v"
+        },
+        {
+          "t": 18673,
+          "text": "s enhanced due diligence\n\t.exclusiveGateway(\"dueDiligenceGateway\", { name: \"Due Diligence Level"
+        },
+        {
+          "t": 19101,
+          "text": "?\" })\n\n\t// Standard due diligence\n\t.branch(\"standard-dd\", (b) =>\n\t\tb\n\t\t\t.condition(\"=sanctionsHit = false and pep = false\")"
+        },
+        {
+          "t": 19579,
+          "text": "\n\t\t\t.serviceTask(\"standardDueDiligence\", {\n\t\t\t\tname: \"Standard Due Diligence\",\n\t\t\t\ttaskType: \"due-diligence-service\",\n\t\t\t\tta"
+        },
+        {
+          "t": 20033,
+          "text": "skHeaders: { level: \"standard\" },\n\t\t\t})\n\t\t\t.connectTo(\"riskClassification\"),\n\t)\n\n\t// Enhanced due diligence: manual compliance review\n\t.branch(\"enhanced"
+        },
+        {
+          "t": 20509,
+          "text": "-dd\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.userTask(\"complianceReview\", {\n\t\t\t\tname: \"Enhanced Due Diligence"
+        },
+        {
+          "t": 20973,
+          "text": " Review\",\n\t\t\t\tassignee: \"=complianceOfficer\",\n\t\t\t\tformId: \"enhanced-dd-review-form\",\n\t\t\t})\n\t\t\t"
+        },
+        {
+          "t": 21446,
+          "text": ".connectTo(\"riskClassification\"),\n\t)\n\n\t// DMN-based final risk classification\n\t.businessRuleTask(\"riskClassification\", {\n\t\tname: \"Final Risk Classification"
+        },
+        {
+          "t": 21916,
+          "text": "\",\n\t\tdecisionRef: \"kyc-risk-classification\",\n\t\tresultVariable: \"riskClassification\",\n\t})\n\n\t// Route by final class"
+        },
+        {
+          "t": 22388,
+          "text": "ification outcome\n\t.exclusiveGateway(\"outcomeGateway\", { name: \"Classification Outcome?\" })\n\n\t.branch(\"approved\", (b) =>\n\t\tb\n\t\t\t.condition('="
+        },
+        {
+          "t": 22858,
+          "text": "riskClassification.decision = \"approve\"')\n\t\t\t.serviceTask(\"activateAccount\", {\n\t\t\t\tname: \"Activate Customer Account\",\n\t\t\t\ttaskType: \"account-activation"
+        },
+        {
+          "t": 23332,
+          "text": "-service\",\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [{ source: \"=applicant.id\", target: \"customerId\" }],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.endEvent(\"endApproved"
+        },
+        {
+          "t": 23815,
+          "text": "\", { name: \"Customer Approved\" }),\n\t)\n\n\t.branch(\"escalated\", (b) =>\n\t\tb\n\t\t\t.condition('=riskClassification.decision = \"escalate\"')\n\t\t\t.serviceT"
+        },
+        {
+          "t": 24289,
+          "text": "ask(\"escalateToCompliance\", {\n\t\t\t\tname: \"Escalate to Compliance\",\n\t\t\t\ttaskType: \"compliance-escalation-service\",\n\t\t\t\ttaskHeaders: { que"
+        },
+        {
+          "t": 24817,
+          "text": "ue: \"compliance-review\" },\n\t\t\t})\n\t\t\t.endEvent(\"endEscalated\", { name: \"Escalated to Compliance\" }),\n\t)\n\n\t.branch(\"rejected\", (b) =>\n\t\tb"
+        },
+        {
+          "t": 25234,
+          "text": "\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendFinalRejection\", {\n\t\t\t\tname: \"Send Rejection Notice\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHe"
+        },
+        {
+          "t": 25686,
+          "text": "aders: { template: \"kyc-rejected-risk\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejected\", { name: \"Customer Rejected\" }),\n\t)\n\n\t.build()\n\nprocess.stdout."
+        },
+        {
+          "t": 26036,
+          "text": "write(Bpmn.export(definitions))\n```"
+        }
+      ],
+      "durationMs": 28274,
+      "usage": {
+        "inputTokens": 10599,
+        "outputTokens": 2273
+      },
+      "result": {
+        "type": "bpmn",
+        "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:zeebe=\"http://camunda.org/schema/zeebe/1.0\" xmlns:modeler=\"http://camunda.org/schema/modeler/1.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" id=\"Definitions_1\" targetNamespace=\"http://bpmn.io/schema/bpmn\" exporter=\"@bpmnkit/core\" exporterVersion=\"0.0.23\" modeler:executionPlatform=\"Camunda Cloud\" modeler:executionPlatformVersion=\"8.9.0\">\n  <bpmn:process id=\"KycOnboarding\" name=\"KYC Onboarding Process\" isExecutable=\"true\">\n    <bpmn:extensionElements>\n      <zeebe:versionTag value=\"1.0.0\"/>\n    </bpmn:extensionElements>\n    <bpmn:startEvent id=\"start\" name=\"Customer Onboarding Started\">\n      <bpmn:outgoing>Flow_xMEWWQ9P</bpmn:outgoing>\n    </bpmn:startEvent>\n    <bpmn:userTask id=\"uploadDocument\" name=\"Upload Identity Document\">\n      <bpmn:extensionElements>\n        <zeebe:formDefinition formId=\"id-document-upload-form\"/>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_xMEWWQ9P</bpmn:incoming>\n      <bpmn:incoming>Flow_8reekDVI</bpmn:incoming>\n      <bpmn:outgoing>Flow_aFggSXlz</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:serviceTask id=\"verifyDocument\" zeebe:modelerTemplate=\"io.camunda.connectors.HttpJson.v2\" zeebe:modelerTemplateVersion=\"12\" name=\"Verify Document (OCR)\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" retries=\"3\"/>\n        <zeebe:ioMapping>\n          <zeebe:input source=\"bearer\" target=\"authentication.type\"/>\n          <zeebe:input source=\"=secrets.OCR_SERVICE_TOKEN\" target=\"authentication.token\"/>\n          <zeebe:input source=\"POST\" target=\"method\"/>\n          <zeebe:input source=\"=ocrServiceUrl + &quot;/verify&quot;\" target=\"url\"/>\n          <zeebe:input source=\"={ documentId: documentId, documentType: documentType }\" target=\"body\"/>\n          <zeebe:input source=\"20\" target=\"connectionTimeoutInSeconds\"/>\n          <zeebe:input source=\"20\" target=\"readTimeoutInSeconds\"/>\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultVariable\" value=\"ocrResponse\"/>\n          <zeebe:header key=\"resultExpression\" value=\"={ quality: ocrResponse.body.quality, verified: ocrResponse.body.verified }\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_aFggSXlz</bpmn:incoming>\n      <bpmn:outgoing>Flow_nrWGBeCZ</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"qualityGateway\" name=\"Document Verified?\" default=\"Flow_RETXa3Vt\">\n      <bpmn:incoming>Flow_nrWGBeCZ</bpmn:incoming>\n      <bpmn:outgoing>Flow_Vp0HOfCz</bpmn:outgoing>\n      <bpmn:outgoing>Flow_RETXa3Vt</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:scriptTask id=\"incrementRetry\" name=\"Increment Retry Count\">\n      <bpmn:extensionElements>\n        <zeebe:script expression=\"=if is defined(retryCount) then retryCount + 1 else 1\" resultVariable=\"retryCount\"/>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_RETXa3Vt</bpmn:incoming>\n      <bpmn:outgoing>Flow_i4OMbS2y</bpmn:outgoing>\n    </bpmn:scriptTask>\n    <bpmn:exclusiveGateway id=\"retryGateway\" name=\"Retries Remaining?\" default=\"Flow_Y4q86h1Q\">\n      <bpmn:incoming>Flow_i4OMbS2y</bpmn:incoming>\n      <bpmn:outgoing>Flow_8reekDVI</bpmn:outgoing>\n      <bpmn:outgoing>Flow_Y4q86h1Q</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"sendVerificationRejection\" name=\"Send Rejection Notice\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"kyc-rejected-verification\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_Y4q86h1Q</bpmn:incoming>\n      <bpmn:outgoing>Flow_VNppp5Gg</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endRejectedVerification\" name=\"Rejected — Verification Failed\">\n      <bpmn:incoming>Flow_VNppp5Gg</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:serviceTask id=\"screening\" zeebe:modelerTemplate=\"io.camunda.connectors.HttpJson.v2\" zeebe:modelerTemplateVersion=\"12\" name=\"Sanctions &amp; PEP Screening\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" retries=\"3\"/>\n        <zeebe:ioMapping>\n          <zeebe:input source=\"bearer\" target=\"authentication.type\"/>\n          <zeebe:input source=\"=secrets.SCREENING_SERVICE_TOKEN\" target=\"authentication.token\"/>\n          <zeebe:input source=\"POST\" target=\"method\"/>\n          <zeebe:input source=\"=screeningServiceUrl + &quot;/screen&quot;\" target=\"url\"/>\n          <zeebe:input source=\"={ fullName: applicant.fullName, dateOfBirth: applicant.dateOfBirth, nationality: applicant.nationality }\" target=\"body\"/>\n          <zeebe:input source=\"20\" target=\"connectionTimeoutInSeconds\"/>\n          <zeebe:input source=\"20\" target=\"readTimeoutInSeconds\"/>\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultVariable\" value=\"screeningResponse\"/>\n          <zeebe:header key=\"resultExpression\" value=\"={ sanctionsHit: screeningResponse.body.sanctionsHit, pep: screeningResponse.body.pep, riskLevel: screeningResponse.body.riskLevel }\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_Vp0HOfCz</bpmn:incoming>\n      <bpmn:outgoing>Flow_8ZqbzajU</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"dueDiligenceGateway\" name=\"Due Diligence Level?\" default=\"Flow_LXaUZMEX\">\n      <bpmn:incoming>Flow_8ZqbzajU</bpmn:incoming>\n      <bpmn:outgoing>Flow_hyodCBEu</bpmn:outgoing>\n      <bpmn:outgoing>Flow_LXaUZMEX</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"standardDueDiligence\" name=\"Standard Due Diligence\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"due-diligence-service\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"level\" value=\"standard\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_hyodCBEu</bpmn:incoming>\n      <bpmn:outgoing>Flow_Fj3alEoq</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:userTask id=\"complianceReview\" name=\"Enhanced Due Diligence Review\">\n      <bpmn:extensionElements>\n        <zeebe:formDefinition formId=\"enhanced-dd-review-form\"/>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_LXaUZMEX</bpmn:incoming>\n      <bpmn:outgoing>Flow_1u29yKxb</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:businessRuleTask id=\"riskClassification\" name=\"Final Risk Classification\">\n      <bpmn:incoming>Flow_WuhSJujP</bpmn:incoming>\n      <bpmn:outgoing>Flow_NFb6OA8f</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:exclusiveGateway id=\"outcomeGateway\" name=\"Classification Outcome?\" default=\"Flow_y162Zfc7\">\n      <bpmn:incoming>Flow_NFb6OA8f</bpmn:incoming>\n      <bpmn:outgoing>Flow_hHN1OOEM</bpmn:outgoing>\n      <bpmn:outgoing>Flow_VHWI1YqZ</bpmn:outgoing>\n      <bpmn:outgoing>Flow_y162Zfc7</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"activateAccount\" name=\"Activate Customer Account\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"account-activation-service\"/>\n        <zeebe:ioMapping>\n          <zeebe:input source=\"=applicant.id\" target=\"customerId\"/>\n        </zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_hHN1OOEM</bpmn:incoming>\n      <bpmn:outgoing>Flow_1busQeAe</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endApproved\" name=\"Customer Approved\">\n      <bpmn:incoming>Flow_1busQeAe</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:serviceTask id=\"escalateToCompliance\" name=\"Escalate to Compliance\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"compliance-escalation-service\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"queue\" value=\"compliance-review\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_VHWI1YqZ</bpmn:incoming>\n      <bpmn:outgoing>Flow_KmLNM32V</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endEscalated\" name=\"Escalated to Compliance\">\n      <bpmn:incoming>Flow_KmLNM32V</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:serviceTask id=\"sendFinalRejection\" name=\"Send Rejection Notice\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"kyc-rejected-risk\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_y162Zfc7</bpmn:incoming>\n      <bpmn:outgoing>Flow_b0dqg7ck</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endRejected\" name=\"Customer Rejected\">\n      <bpmn:incoming>Flow_b0dqg7ck</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:exclusiveGateway id=\"dueDiligenceGateway_join\">\n      <bpmn:incoming>Flow_Fj3alEoq</bpmn:incoming>\n      <bpmn:incoming>Flow_1u29yKxb</bpmn:incoming>\n      <bpmn:outgoing>Flow_WuhSJujP</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_xMEWWQ9P\" sourceRef=\"start\" targetRef=\"uploadDocument\"/>\n    <bpmn:sequenceFlow id=\"Flow_aFggSXlz\" sourceRef=\"uploadDocument\" targetRef=\"verifyDocument\"/>\n    <bpmn:sequenceFlow id=\"Flow_nrWGBeCZ\" sourceRef=\"verifyDocument\" targetRef=\"qualityGateway\"/>\n    <bpmn:sequenceFlow id=\"Flow_Vp0HOfCz\" sourceRef=\"qualityGateway\" targetRef=\"screening\" name=\"verification-passed\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=verified = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_RETXa3Vt\" sourceRef=\"qualityGateway\" targetRef=\"incrementRetry\" name=\"verification-failed\"/>\n    <bpmn:sequenceFlow id=\"Flow_i4OMbS2y\" sourceRef=\"incrementRetry\" targetRef=\"retryGateway\"/>\n    <bpmn:sequenceFlow id=\"Flow_8reekDVI\" sourceRef=\"retryGateway\" targetRef=\"uploadDocument\" name=\"retry-upload\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=retryCount &lt;= 2</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_Y4q86h1Q\" sourceRef=\"retryGateway\" targetRef=\"sendVerificationRejection\" name=\"retries-exhausted\"/>\n    <bpmn:sequenceFlow id=\"Flow_VNppp5Gg\" sourceRef=\"sendVerificationRejection\" targetRef=\"endRejectedVerification\"/>\n    <bpmn:sequenceFlow id=\"Flow_8ZqbzajU\" sourceRef=\"screening\" targetRef=\"dueDiligenceGateway\"/>\n    <bpmn:sequenceFlow id=\"Flow_hyodCBEu\" sourceRef=\"dueDiligenceGateway\" targetRef=\"standardDueDiligence\" name=\"standard-dd\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=sanctionsHit = false and pep = false</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_Fj3alEoq\" sourceRef=\"standardDueDiligence\" targetRef=\"dueDiligenceGateway_join\"/>\n    <bpmn:sequenceFlow id=\"Flow_LXaUZMEX\" sourceRef=\"dueDiligenceGateway\" targetRef=\"complianceReview\" name=\"enhanced-dd\"/>\n    <bpmn:sequenceFlow id=\"Flow_1u29yKxb\" sourceRef=\"complianceReview\" targetRef=\"dueDiligenceGateway_join\"/>\n    <bpmn:sequenceFlow id=\"Flow_NFb6OA8f\" sourceRef=\"riskClassification\" targetRef=\"outcomeGateway\"/>\n    <bpmn:sequenceFlow id=\"Flow_hHN1OOEM\" sourceRef=\"outcomeGateway\" targetRef=\"activateAccount\" name=\"approved\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=riskClassification.decision = \"approve\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_1busQeAe\" sourceRef=\"activateAccount\" targetRef=\"endApproved\"/>\n    <bpmn:sequenceFlow id=\"Flow_VHWI1YqZ\" sourceRef=\"outcomeGateway\" targetRef=\"escalateToCompliance\" name=\"escalated\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">=riskClassification.decision = \"escalate\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_KmLNM32V\" sourceRef=\"escalateToCompliance\" targetRef=\"endEscalated\"/>\n    <bpmn:sequenceFlow id=\"Flow_y162Zfc7\" sourceRef=\"outcomeGateway\" targetRef=\"sendFinalRejection\" name=\"rejected\"/>\n    <bpmn:sequenceFlow id=\"Flow_b0dqg7ck\" sourceRef=\"sendFinalRejection\" targetRef=\"endRejected\"/>\n    <bpmn:sequenceFlow id=\"Flow_WuhSJujP\" sourceRef=\"dueDiligenceGateway_join\" targetRef=\"riskClassification\"/>\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"KycOnboarding_di\">\n    <bpmndi:BPMNPlane id=\"KycOnboarding_di_plane\" bpmnElement=\"KycOnboarding\">\n      <bpmndi:BPMNShape id=\"start_di\" bpmnElement=\"start\">\n        <dc:Bounds x=\"77\" y=\"192\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"20\" y=\"232\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"uploadDocument_di\" bpmnElement=\"uploadDocument\">\n        <dc:Bounds x=\"195\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"verifyDocument_di\" bpmnElement=\"verifyDocument\">\n        <dc:Bounds x=\"345\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"qualityGateway_di\" bpmnElement=\"qualityGateway\">\n        <dc:Bounds x=\"520\" y=\"185\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"482\" y=\"239\" width=\"126\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"screening_di\" bpmnElement=\"screening\">\n        <dc:Bounds x=\"645\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"incrementRetry_di\" bpmnElement=\"incrementRetry\">\n        <dc:Bounds x=\"645\" y=\"400\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"dueDiligenceGateway_di\" bpmnElement=\"dueDiligenceGateway\">\n        <dc:Bounds x=\"820\" y=\"185\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"775\" y=\"239\" width=\"140\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"retryGateway_di\" bpmnElement=\"retryGateway\">\n        <dc:Bounds x=\"820\" y=\"415\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"782\" y=\"469\" width=\"126\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"standardDueDiligence_di\" bpmnElement=\"standardDueDiligence\">\n        <dc:Bounds x=\"945\" y=\"60\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"complianceReview_di\" bpmnElement=\"complianceReview\">\n        <dc:Bounds x=\"945\" y=\"280\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"sendVerificationRejection_di\" bpmnElement=\"sendVerificationRejection\">\n        <dc:Bounds x=\"945\" y=\"470\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"dueDiligenceGateway_join_di\" bpmnElement=\"dueDiligenceGateway_join\">\n        <dc:Bounds x=\"1120\" y=\"185\" width=\"50\" height=\"50\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endRejectedVerification_di\" bpmnElement=\"endRejectedVerification\">\n        <dc:Bounds x=\"1127\" y=\"492\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1070\" y=\"532\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"riskClassification_di\" bpmnElement=\"riskClassification\">\n        <dc:Bounds x=\"1245\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"outcomeGateway_di\" bpmnElement=\"outcomeGateway\">\n        <dc:Bounds x=\"1420\" y=\"185\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1370\" y=\"239\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"activateAccount_di\" bpmnElement=\"activateAccount\">\n        <dc:Bounds x=\"1545\" y=\"170\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"escalateToCompliance_di\" bpmnElement=\"escalateToCompliance\">\n        <dc:Bounds x=\"1545\" y=\"20\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"sendFinalRejection_di\" bpmnElement=\"sendFinalRejection\">\n        <dc:Bounds x=\"1545\" y=\"320\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endApproved_di\" bpmnElement=\"endApproved\">\n        <dc:Bounds x=\"1727\" y=\"192\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1686\" y=\"232\" width=\"119\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endEscalated_di\" bpmnElement=\"endEscalated\">\n        <dc:Bounds x=\"1727\" y=\"42\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1670\" y=\"82\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endRejected_di\" bpmnElement=\"endRejected\">\n        <dc:Bounds x=\"1727\" y=\"342\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1686\" y=\"382\" width=\"119\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_xMEWWQ9P_di\" bpmnElement=\"Flow_xMEWWQ9P\">\n        <di:waypoint x=\"113\" y=\"210\"/>\n        <di:waypoint x=\"195\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_aFggSXlz_di\" bpmnElement=\"Flow_aFggSXlz\">\n        <di:waypoint x=\"295\" y=\"210\"/>\n        <di:waypoint x=\"345\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_nrWGBeCZ_di\" bpmnElement=\"Flow_nrWGBeCZ\">\n        <di:waypoint x=\"445\" y=\"210\"/>\n        <di:waypoint x=\"520\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Vp0HOfCz_di\" bpmnElement=\"Flow_Vp0HOfCz\">\n        <di:waypoint x=\"570\" y=\"210\"/>\n        <di:waypoint x=\"645\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_RETXa3Vt_di\" bpmnElement=\"Flow_RETXa3Vt\">\n        <di:waypoint x=\"545\" y=\"235\"/>\n        <di:waypoint x=\"545\" y=\"440\"/>\n        <di:waypoint x=\"645\" y=\"440\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"521\" y=\"331\" width=\"133\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_i4OMbS2y_di\" bpmnElement=\"Flow_i4OMbS2y\">\n        <di:waypoint x=\"745\" y=\"440\"/>\n        <di:waypoint x=\"820\" y=\"440\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_8reekDVI_di\" bpmnElement=\"Flow_8reekDVI\">\n        <di:waypoint x=\"870\" y=\"440\"/>\n        <di:waypoint x=\"890\" y=\"440\"/>\n        <di:waypoint x=\"890\" y=\"580\"/>\n        <di:waypoint x=\"175\" y=\"580\"/>\n        <di:waypoint x=\"175\" y=\"210\"/>\n        <di:waypoint x=\"195\" y=\"210\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"491\" y=\"556\" width=\"84\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Y4q86h1Q_di\" bpmnElement=\"Flow_Y4q86h1Q\">\n        <di:waypoint x=\"870\" y=\"440\"/>\n        <di:waypoint x=\"945\" y=\"440\"/>\n        <di:waypoint x=\"945\" y=\"510\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"878\" y=\"416\" width=\"119\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_VNppp5Gg_di\" bpmnElement=\"Flow_VNppp5Gg\">\n        <di:waypoint x=\"1045\" y=\"510\"/>\n        <di:waypoint x=\"1127\" y=\"510\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_8ZqbzajU_di\" bpmnElement=\"Flow_8ZqbzajU\">\n        <di:waypoint x=\"745\" y=\"210\"/>\n        <di:waypoint x=\"820\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_hyodCBEu_di\" bpmnElement=\"Flow_hyodCBEu\">\n        <di:waypoint x=\"845\" y=\"185\"/>\n        <di:waypoint x=\"845\" y=\"100\"/>\n        <di:waypoint x=\"945\" y=\"100\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"857\" y=\"76\" width=\"77\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Fj3alEoq_di\" bpmnElement=\"Flow_Fj3alEoq\">\n        <di:waypoint x=\"1045\" y=\"100\"/>\n        <di:waypoint x=\"1145\" y=\"100\"/>\n        <di:waypoint x=\"1145\" y=\"185\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_LXaUZMEX_di\" bpmnElement=\"Flow_LXaUZMEX\">\n        <di:waypoint x=\"845\" y=\"235\"/>\n        <di:waypoint x=\"845\" y=\"320\"/>\n        <di:waypoint x=\"945\" y=\"320\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"857\" y=\"296\" width=\"77\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1u29yKxb_di\" bpmnElement=\"Flow_1u29yKxb\">\n        <di:waypoint x=\"1045\" y=\"320\"/>\n        <di:waypoint x=\"1145\" y=\"320\"/>\n        <di:waypoint x=\"1145\" y=\"235\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_NFb6OA8f_di\" bpmnElement=\"Flow_NFb6OA8f\">\n        <di:waypoint x=\"1345\" y=\"210\"/>\n        <di:waypoint x=\"1420\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_hHN1OOEM_di\" bpmnElement=\"Flow_hHN1OOEM\">\n        <di:waypoint x=\"1470\" y=\"210\"/>\n        <di:waypoint x=\"1545\" y=\"210\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1480\" y=\"186\" width=\"56\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_1busQeAe_di\" bpmnElement=\"Flow_1busQeAe\">\n        <di:waypoint x=\"1645\" y=\"210\"/>\n        <di:waypoint x=\"1727\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_VHWI1YqZ_di\" bpmnElement=\"Flow_VHWI1YqZ\">\n        <di:waypoint x=\"1445\" y=\"185\"/>\n        <di:waypoint x=\"1445\" y=\"60\"/>\n        <di:waypoint x=\"1545\" y=\"60\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1421\" y=\"116\" width=\"63\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_KmLNM32V_di\" bpmnElement=\"Flow_KmLNM32V\">\n        <di:waypoint x=\"1645\" y=\"60\"/>\n        <di:waypoint x=\"1727\" y=\"60\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_y162Zfc7_di\" bpmnElement=\"Flow_y162Zfc7\">\n        <di:waypoint x=\"1445\" y=\"235\"/>\n        <di:waypoint x=\"1445\" y=\"360\"/>\n        <di:waypoint x=\"1545\" y=\"360\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1421\" y=\"291\" width=\"56\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_b0dqg7ck_di\" bpmnElement=\"Flow_b0dqg7ck\">\n        <di:waypoint x=\"1645\" y=\"360\"/>\n        <di:waypoint x=\"1727\" y=\"360\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_WuhSJujP_di\" bpmnElement=\"Flow_WuhSJujP\">\n        <di:waypoint x=\"1170\" y=\"210\"/>\n        <di:waypoint x=\"1245\" y=\"210\"/>\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn:definitions>"
+      }
+    },
+    "with-sdk-compact": {
+      "systemPrompt": "You are an expert at representing Camunda 8 BPMN processes in a compact,\nline-based notation that gets decoded into full BPMN by @bpmnkit/core. This\nnotation carries the exact same process logic as the full TypeScript SDK —\nit's a terser representation of the identical process, not a simplified one.\n\n## Compact Notation Grammar\n\nOne line per element or flow. Tokens are separated by spaces; wrap any value\ncontaining spaces in double quotes (escape inner quotes as \\\").\n\n### Process header (exactly one line, first)\n    process <id> [\"<name>\"]\n\n### Elements\n    <tag> <id> [\"<name>\"] [field=value ...]\n\nTags:\n    start     startEvent\n    end       endEvent\n    task      task (generic, no Zeebe extension)\n    service   serviceTask\n    user      userTask\n    script    scriptTask\n    rule      businessRuleTask\n    send      sendTask\n    receive   receiveTask\n    call      callActivity\n    xgw       exclusiveGateway\n    pgw       parallelGateway\n    igw       inclusiveGateway\n    egw       eventBasedGateway\n    boundary  boundaryEvent\n    throw     intermediateThrowEvent\n    catch     intermediateCatchEvent\n    sub       subProcess\n    adhoc     adHocSubProcess\n    eventsub  eventSubProcess\n\nFields (all optional, any order, only include what applies):\n    job=<value>        Zeebe job type (service/send/receive/call/task)\n    h.<key>=<value>     one task header entry (repeatable)\n    call=<value>       called process id (callActivity)\n    form=<value>        Camunda form id (userTask)\n    decision=<value>   DMN decision id (businessRuleTask)\n    result=<value>     result variable name\n    event=<value>       event definition type, e.g. timer/message/error/signal\n    at=<value>          boundary event's host activity id\n    noninterrupt        bare flag — boundary event does not cancel its host\n\nDo NOT invent fields beyond this list — this notation intentionally cannot\nrepresent everything the full SDK can (e.g. REST connector input mappings,\nmulti-instance loop configuration, gateway default-flow markers). Represent\nwhat you can with the fields above and omit the rest; do not approximate a\nmissing field with an unlisted one.\n\n### Flows\n    <fromId> -> <toId> [\"<name>\"] [if=\"<condition>\"]\n\nA line is a flow if its 2nd token is exactly `->`; otherwise it is an\nelement line dispatched by tag.\n\n### Nesting\nIndent child elements/flows by exactly 2 spaces per level under a\nsub/adhoc/eventsub line. A line back at the parent's indent (or less) ends\nthe nested block.\n\nFlow and diagram IDs are never written — the decoder generates them.\n\n## Worked Example — Loan Approval\nStudy this example carefully. It represents the exact same process as the\nfull-SDK builder example, just in this notation.\n\n```compact\nprocess LoanApproval \"Loan Approval Process\"\nstart start \"Application Received\"\nservice fetchCreditScore \"Fetch Credit Score\" job=io.camunda:http-json:1 h.resultVariable=creditBureauResponse h.resultExpression=\"=creditBureauResponse.body\"\nxgw preScreen \"Credit Score >= 580?\"\nservice sendRejectionLetter \"Send Rejection Letter\" job=email-sender h.template=loan-rejected-credit\nend endRejectedAutomatic \"Rejected - Credit Score\"\nrule riskScoring \"Calculate Risk Score\" decision=loan-risk-scoring result=riskAssessment\nxgw riskGateway \"Risk Tier?\"\nscript calculateRate \"Calculate Interest Rate\" result=interestRate\nservice generateOffer \"Generate Loan Offer\" job=offer-generator result=loanOfferId\nuser underwriterReview \"Underwriter Review\" form=underwriter-review-form\nservice sendHighRiskRejection \"Send Rejection Letter\" job=email-sender h.template=loan-rejected-risk\nend endRejectedRisk \"Rejected - High Risk\"\nxgw underwriterDecision \"Underwriter Approved?\"\nservice sendManualRejection \"Send Rejection Letter\" job=email-sender h.template=loan-rejected-underwriter\nend endRejectedManual \"Rejected - Underwriter\"\nservice notifyApplicant \"Send Offer to Applicant\" job=email-sender h.template=loan-offer\nend endApproved \"Loan Approved\"\nstart -> fetchCreditScore\nfetchCreditScore -> preScreen\npreScreen -> sendRejectionLetter \"rejected-prescreening\" if=\"=creditBureauResponse.score < 580\"\nsendRejectionLetter -> endRejectedAutomatic\npreScreen -> riskScoring \"passed-prescreening\" if=\"=creditBureauResponse.score >= 580\"\nriskScoring -> riskGateway\nriskGateway -> calculateRate \"low-risk\" if=\"=riskAssessment.tier = \\\"low\\\"\"\ncalculateRate -> generateOffer\ngenerateOffer -> notifyApplicant\nriskGateway -> underwriterReview \"medium-risk\" if=\"=riskAssessment.tier = \\\"medium\\\"\"\nunderwriterReview -> underwriterDecision\nriskGateway -> sendHighRiskRejection \"high-risk\"\nsendHighRiskRejection -> endRejectedRisk\nunderwriterDecision -> notifyApplicant \"uw-approved\" if=\"=underwriterApproved = true\"\nunderwriterDecision -> sendManualRejection \"uw-rejected\"\nsendManualRejection -> endRejectedManual\nnotifyApplicant -> endApproved\n\n```\n\n## Output Instructions\n- Output ONLY the compact notation — no explanation, no markdown prose outside the code block.\n- Wrap your output in a single ```compact code block.\n- Use the exact same scenario logic you would use for the full SDK.",
+      "chunks": [
+        {
+          "t": 5143,
+          "text": "```compact\nprocess KY"
+        },
+        {
+          "t": 5834,
+          "text": "COnboarding \"KYC Customer Onboarding\"\nstart start \"Onboarding Started\"\nuser uploadDocument \"Upload Identity Document\" form=identity-upload-"
+        },
+        {
+          "t": 6060,
+          "text": "form\nservice verifyDocument \"Verify Document via OCR\" job=io.camunda:http-json:1 h.resultVariable=ocrResponse h.resultExpression=\"=ocrResponse"
+        },
+        {
+          "t": 6529,
+          "text": ".body\"\nxgw documentQuality \"Document Verified?\"\nservice sanctionsScreening \"Sanctions & PEP Screening\" job=io.camunda:http-json:1 h.resultVari"
+        },
+        {
+          "t": 7002,
+          "text": "able=screeningResponse h.resultExpression=\"=screeningResponse.body\"\nxgw riskRouting \"Risk Level?\"\nservice standardDueDiligence \"Standard Due"
+        },
+        {
+          "t": 7468,
+          "text": " Diligence\" job=io.camunda:http-json:1 h.resultVariable=sddResponse\nuser enhancedDueDiligence \"En"
+        },
+        {
+          "t": 7936,
+          "text": "hanced Due Diligence Review\" form=compliance-edd-form\nrule finalRiskClassification \"Final Risk Classification\" dec"
+        },
+        {
+          "t": 8409,
+          "text": "ision=kyc-risk-classification result=riskClassification\nxgw classificationGateway \"Classification Outcome?\"\nservice notifyR"
+        },
+        {
+          "t": 8883,
+          "text": "ejection \"Notify Rejection\" job=email-sender h.template=kyc-rejected\nservice notifyApproval \"Notify Approval\" job=email-sender"
+        },
+        {
+          "t": 9347,
+          "text": " h.template=kyc-approved\nend endApproved \"Customer Approved\"\nend endRejected \"Customer Rejected\"\nend endEscalated \"Escalated to Compliance\""
+        },
+        {
+          "t": 9820,
+          "text": "\nstart -> uploadDocument\nuploadDocument -> verifyDocument\nverifyDocument -> documentQuality\ndocumentQuality -> uploadDocument \"ver"
+        },
+        {
+          "t": 10298,
+          "text": "ification-failed-retry\" if=\"=ocrResponse.verified = false and (uploadRetries != null and uploadRetries < 2)\"\ndocumentQu"
+        },
+        {
+          "t": 10759,
+          "text": "ality -> notifyRejection \"verification-failed-exhausted\" if=\"=ocrResponse.verified = false and (uploadRetries = null or uploadRetries >= 2)\"\ndocumentQuality"
+        },
+        {
+          "t": 11393,
+          "text": " -> sanctionsScreening \"verification-passed\" if=\"=ocrResponse.verified = true\"\nsanctionsScreening -> riskRouting\nriskRouting -> standardDueD"
+        },
+        {
+          "t": 11709,
+          "text": "iligence \"standard-risk\" if=\"=screeningResponse.riskLevel = \\\"low\\\"\"\nriskRouting -> enhancedDueDiligence \"enhanced-risk\" if=\"="
+        },
+        {
+          "t": 12173,
+          "text": "screeningResponse.riskLevel = \\\"high\\\" or screeningResponse.pepMatch = true\"\nstandardDueDiligence -"
+        },
+        {
+          "t": 12652,
+          "text": "> finalRiskClassification\nenhancedDueDiligence -> finalRiskClassification\nfinalRiskClassification -> classificationGateway\nclassificationGateway -> notifyApproval \"appro"
+        },
+        {
+          "t": 13126,
+          "text": "ved\" if=\"=riskClassification.outcome = \\\"approved\\\"\"\nclassificationGateway -> notifyRejection \"rejected\" if=\"=riskClassification.outcome = \\\"rejected\\"
+        },
+        {
+          "t": 13583,
+          "text": "\"\"\nclassificationGateway -> endEscalated \"escalate\" if=\"=riskClassification.outcome = \\\"escalate\\\"\"\nnotifyApproval -> endApproved\nnotifyRejection -> endR"
+        },
+        {
+          "t": 13669,
+          "text": "ejected\n```"
+        }
+      ],
+      "durationMs": 16170,
+      "usage": {
+        "inputTokens": 2415,
+        "outputTokens": 1020
+      },
+      "result": {
+        "type": "bpmn",
+        "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:zeebe=\"http://camunda.org/schema/zeebe/1.0\" id=\"Definitions_1\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n  <bpmn:process id=\"KYCOnboarding\" name=\"KYC Customer Onboarding\" isExecutable=\"true\">\n    <bpmn:startEvent id=\"start\" name=\"Onboarding Started\">\n      <bpmn:outgoing>Flow_compact_1</bpmn:outgoing>\n    </bpmn:startEvent>\n    <bpmn:userTask id=\"uploadDocument\" name=\"Upload Identity Document\">\n      <bpmn:extensionElements>\n        <zeebe:formDefinition formId=\"identity-upload-form\"/>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_1</bpmn:incoming>\n      <bpmn:incoming>Flow_compact_4</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_2</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:serviceTask id=\"verifyDocument\" name=\"Verify Document via OCR\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultVariable\" value=\"ocrResponse\"/>\n          <zeebe:header key=\"resultExpression\" value=\"=ocrResponse.body\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_2</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_3</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"documentQuality\" name=\"Document Verified?\">\n      <bpmn:incoming>Flow_compact_3</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_4</bpmn:outgoing>\n      <bpmn:outgoing>Flow_compact_5</bpmn:outgoing>\n      <bpmn:outgoing>Flow_compact_6</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"sanctionsScreening\" name=\"Sanctions &amp; PEP Screening\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultVariable\" value=\"screeningResponse\"/>\n          <zeebe:header key=\"resultExpression\" value=\"=screeningResponse.body\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_6</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_7</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"riskRouting\" name=\"Risk Level?\">\n      <bpmn:incoming>Flow_compact_7</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_8</bpmn:outgoing>\n      <bpmn:outgoing>Flow_compact_9</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"standardDueDiligence\" name=\"Standard Due Diligence\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultVariable\" value=\"sddResponse\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_8</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_10</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:userTask id=\"enhancedDueDiligence\" name=\"Enhanced Due Diligence Review\">\n      <bpmn:extensionElements>\n        <zeebe:formDefinition formId=\"compliance-edd-form\"/>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_9</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_11</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:businessRuleTask id=\"finalRiskClassification\" name=\"Final Risk Classification\">\n      <bpmn:extensionElements>\n        <zeebe:calledDecision decisionId=\"kyc-risk-classification\" resultVariable=\"riskClassification\"/>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_10</bpmn:incoming>\n      <bpmn:incoming>Flow_compact_11</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_12</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:exclusiveGateway id=\"classificationGateway\" name=\"Classification Outcome?\">\n      <bpmn:incoming>Flow_compact_12</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_13</bpmn:outgoing>\n      <bpmn:outgoing>Flow_compact_14</bpmn:outgoing>\n      <bpmn:outgoing>Flow_compact_15</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:serviceTask id=\"notifyRejection\" name=\"Notify Rejection\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"kyc-rejected\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_5</bpmn:incoming>\n      <bpmn:incoming>Flow_compact_14</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_17</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:serviceTask id=\"notifyApproval\" name=\"Notify Approval\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"email-sender\"/>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"template\" value=\"kyc-approved\"/>\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_compact_13</bpmn:incoming>\n      <bpmn:outgoing>Flow_compact_16</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:endEvent id=\"endApproved\" name=\"Customer Approved\">\n      <bpmn:incoming>Flow_compact_16</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"endRejected\" name=\"Customer Rejected\">\n      <bpmn:incoming>Flow_compact_17</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"endEscalated\" name=\"Escalated to Compliance\">\n      <bpmn:incoming>Flow_compact_15</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:sequenceFlow id=\"Flow_compact_1\" sourceRef=\"start\" targetRef=\"uploadDocument\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_2\" sourceRef=\"uploadDocument\" targetRef=\"verifyDocument\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_3\" sourceRef=\"verifyDocument\" targetRef=\"documentQuality\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_4\" sourceRef=\"documentQuality\" targetRef=\"uploadDocument\" name=\"verification-failed-retry\">\n      <bpmn:conditionExpression>=ocrResponse.verified = false and (uploadRetries != null and uploadRetries &lt; 2)</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_5\" sourceRef=\"documentQuality\" targetRef=\"notifyRejection\" name=\"verification-failed-exhausted\">\n      <bpmn:conditionExpression>=ocrResponse.verified = false and (uploadRetries = null or uploadRetries &gt;= 2)</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_6\" sourceRef=\"documentQuality\" targetRef=\"sanctionsScreening\" name=\"verification-passed\">\n      <bpmn:conditionExpression>=ocrResponse.verified = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_7\" sourceRef=\"sanctionsScreening\" targetRef=\"riskRouting\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_8\" sourceRef=\"riskRouting\" targetRef=\"standardDueDiligence\" name=\"standard-risk\">\n      <bpmn:conditionExpression>=screeningResponse.riskLevel = \"low\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_9\" sourceRef=\"riskRouting\" targetRef=\"enhancedDueDiligence\" name=\"enhanced-risk\">\n      <bpmn:conditionExpression>=screeningResponse.riskLevel = \"high\" or screeningResponse.pepMatch = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_10\" sourceRef=\"standardDueDiligence\" targetRef=\"finalRiskClassification\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_11\" sourceRef=\"enhancedDueDiligence\" targetRef=\"finalRiskClassification\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_12\" sourceRef=\"finalRiskClassification\" targetRef=\"classificationGateway\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_13\" sourceRef=\"classificationGateway\" targetRef=\"notifyApproval\" name=\"approved\">\n      <bpmn:conditionExpression>=riskClassification.outcome = \"approved\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_14\" sourceRef=\"classificationGateway\" targetRef=\"notifyRejection\" name=\"rejected\">\n      <bpmn:conditionExpression>=riskClassification.outcome = \"rejected\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_15\" sourceRef=\"classificationGateway\" targetRef=\"endEscalated\" name=\"escalate\">\n      <bpmn:conditionExpression>=riskClassification.outcome = \"escalate\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_compact_16\" sourceRef=\"notifyApproval\" targetRef=\"endApproved\"/>\n    <bpmn:sequenceFlow id=\"Flow_compact_17\" sourceRef=\"notifyRejection\" targetRef=\"endRejected\"/>\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_KYCOnboarding\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_KYCOnboarding\" bpmnElement=\"KYCOnboarding\">\n      <bpmndi:BPMNShape id=\"start_di\" bpmnElement=\"start\">\n        <dc:Bounds x=\"57\" y=\"322\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"12\" y=\"362\" width=\"126\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"uploadDocument_di\" bpmnElement=\"uploadDocument\">\n        <dc:Bounds x=\"175\" y=\"300\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"verifyDocument_di\" bpmnElement=\"verifyDocument\">\n        <dc:Bounds x=\"325\" y=\"300\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"documentQuality_di\" bpmnElement=\"documentQuality\">\n        <dc:Bounds x=\"500\" y=\"315\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"462\" y=\"369\" width=\"126\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"sanctionsScreening_di\" bpmnElement=\"sanctionsScreening\">\n        <dc:Bounds x=\"625\" y=\"300\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"riskRouting_di\" bpmnElement=\"riskRouting\">\n        <dc:Bounds x=\"800\" y=\"315\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"786.5\" y=\"369\" width=\"77\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"standardDueDiligence_di\" bpmnElement=\"standardDueDiligence\">\n        <dc:Bounds x=\"925\" y=\"120\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"enhancedDueDiligence_di\" bpmnElement=\"enhancedDueDiligence\">\n        <dc:Bounds x=\"925\" y=\"480\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"finalRiskClassification_di\" bpmnElement=\"finalRiskClassification\">\n        <dc:Bounds x=\"1075\" y=\"300\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"classificationGateway_di\" bpmnElement=\"classificationGateway\">\n        <dc:Bounds x=\"1250\" y=\"315\" width=\"50\" height=\"50\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1200\" y=\"369\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"notifyApproval_di\" bpmnElement=\"notifyApproval\">\n        <dc:Bounds x=\"1375\" y=\"300\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"notifyRejection_di\" bpmnElement=\"notifyRejection\">\n        <dc:Bounds x=\"1375\" y=\"0\" width=\"100\" height=\"80\"/>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endEscalated_di\" bpmnElement=\"endEscalated\">\n        <dc:Bounds x=\"1407\" y=\"450\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1350\" y=\"490\" width=\"150\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endApproved_di\" bpmnElement=\"endApproved\">\n        <dc:Bounds x=\"1557\" y=\"322\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1515.5\" y=\"362\" width=\"119\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"endRejected_di\" bpmnElement=\"endRejected\">\n        <dc:Bounds x=\"1557\" y=\"22\" width=\"36\" height=\"36\"/>\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1515.5\" y=\"62\" width=\"119\" height=\"14\"/>\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_compact_1_di\" bpmnElement=\"Flow_compact_1\">\n        <di:waypoint x=\"93\" y=\"340\"/>\n        <di:waypoint x=\"175\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_2_di\" bpmnElement=\"Flow_compact_2\">\n        <di:waypoint x=\"275\" y=\"340\"/>\n        <di:waypoint x=\"325\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_3_di\" bpmnElement=\"Flow_compact_3\">\n        <di:waypoint x=\"425\" y=\"340\"/>\n        <di:waypoint x=\"500\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_4_di\" bpmnElement=\"Flow_compact_4\">\n        <di:waypoint x=\"550\" y=\"340\"/>\n        <di:waypoint x=\"570\" y=\"340\"/>\n        <di:waypoint x=\"570\" y=\"590\"/>\n        <di:waypoint x=\"155\" y=\"590\"/>\n        <di:waypoint x=\"155\" y=\"340\"/>\n        <di:waypoint x=\"175\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_5_di\" bpmnElement=\"Flow_compact_5\">\n        <di:waypoint x=\"525\" y=\"315\"/>\n        <di:waypoint x=\"525\" y=\"40\"/>\n        <di:waypoint x=\"1375\" y=\"40\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_6_di\" bpmnElement=\"Flow_compact_6\">\n        <di:waypoint x=\"550\" y=\"340\"/>\n        <di:waypoint x=\"625\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_7_di\" bpmnElement=\"Flow_compact_7\">\n        <di:waypoint x=\"725\" y=\"340\"/>\n        <di:waypoint x=\"800\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_8_di\" bpmnElement=\"Flow_compact_8\">\n        <di:waypoint x=\"825\" y=\"315\"/>\n        <di:waypoint x=\"825\" y=\"160\"/>\n        <di:waypoint x=\"925\" y=\"160\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_9_di\" bpmnElement=\"Flow_compact_9\">\n        <di:waypoint x=\"825\" y=\"365\"/>\n        <di:waypoint x=\"825\" y=\"520\"/>\n        <di:waypoint x=\"925\" y=\"520\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_10_di\" bpmnElement=\"Flow_compact_10\">\n        <di:waypoint x=\"1025\" y=\"160\"/>\n        <di:waypoint x=\"1075\" y=\"160\"/>\n        <di:waypoint x=\"1075\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_11_di\" bpmnElement=\"Flow_compact_11\">\n        <di:waypoint x=\"1025\" y=\"520\"/>\n        <di:waypoint x=\"1075\" y=\"520\"/>\n        <di:waypoint x=\"1075\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_12_di\" bpmnElement=\"Flow_compact_12\">\n        <di:waypoint x=\"1175\" y=\"340\"/>\n        <di:waypoint x=\"1250\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_13_di\" bpmnElement=\"Flow_compact_13\">\n        <di:waypoint x=\"1300\" y=\"340\"/>\n        <di:waypoint x=\"1375\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_14_di\" bpmnElement=\"Flow_compact_14\">\n        <di:waypoint x=\"1275\" y=\"315\"/>\n        <di:waypoint x=\"1275\" y=\"40\"/>\n        <di:waypoint x=\"1375\" y=\"40\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_15_di\" bpmnElement=\"Flow_compact_15\">\n        <di:waypoint x=\"1275\" y=\"365\"/>\n        <di:waypoint x=\"1275\" y=\"468\"/>\n        <di:waypoint x=\"1407\" y=\"468\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_16_di\" bpmnElement=\"Flow_compact_16\">\n        <di:waypoint x=\"1475\" y=\"340\"/>\n        <di:waypoint x=\"1557\" y=\"340\"/>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_compact_17_di\" bpmnElement=\"Flow_compact_17\">\n        <di:waypoint x=\"1475\" y=\"40\"/>\n        <di:waypoint x=\"1557\" y=\"40\"/>\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn:definitions>\n\n"
+      }
+    },
+    "without-sdk": {
+      "systemPrompt": "You are a BPMN expert. Output only valid BPMN 2.0 XML for Camunda 8.\nNo explanation, no markdown, no code fences. Raw XML only, starting with <?xml.",
+      "chunks": [
+        {
+          "t": 45618,
+          "text": "<?xml version=\"1."
+        },
+        {
+          "t": 46079,
+          "text": "0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MOD"
+        },
+        {
+          "t": 46548,
+          "text": "EL\"\n                  xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\"\n                  xmlns:dc=\"http://www.omg.org"
+        },
+        {
+          "t": 47021,
+          "text": "/spec/DD/20100524/DC\"\n                  xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\"\n                  xmlns:zeebe=\"http://cam"
+        },
+        {
+          "t": 47492,
+          "text": "unda.org/schema/zeebe/1.0\"\n                  id=\"Definitions_KYC\"\n                  targetNamespace=\"http://camunda.org/schema/"
+        },
+        {
+          "t": 47960,
+          "text": "kyc\">\n  <bpmn:process id=\"kyc-onboarding\" name=\"KYC Onboarding\" isExec"
+        },
+        {
+          "t": 48435,
+          "text": "utable=\"true\">\n    <bpmn:startEvent id=\"StartEvent_1\" name=\"KYC Started\">\n      <bpmn:extensionElements>\n        <zeebe:ioMapping>"
+        },
+        {
+          "t": 48940,
+          "text": "\n          <zeebe:output source=\"=0\" target=\"retryCount\" />\n        </zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:outgoing>Fl"
+        },
+        {
+          "t": 49719,
+          "text": "ow_start</bpmn:outgoing>\n    </bpmn:startEvent>\n    <bpmn:userTask id=\"Task_Upload\" name=\"Upload Identity Document\">\n      <bpm"
+        },
+        {
+          "t": 49908,
+          "text": "n:extensionElements>\n        <zeebe:userTask />\n        <zeebe:formDefinition extern"
+        },
+        {
+          "t": 50343,
+          "text": "alReference=\"kyc-upload-form\" />\n        <zeebe:assignmentDefinition candidateGroups=\"customers\" />\n      </bpmn:extensionElements"
+        },
+        {
+          "t": 50789,
+          "text": ">\n      <bpmn:incoming>Flow_start</bpmn:incoming>\n      <bpmn:incoming>Flow_inc_upload</bpmn:incoming>\n      <bp"
+        },
+        {
+          "t": 51256,
+          "text": "mn:outgoing>Flow_upload_ocr</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:serviceTask id=\"Task_OCR\" name"
+        },
+        {
+          "t": 51726,
+          "text": "=\"OCR Document Verification\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />"
+        },
+        {
+          "t": 52197,
+          "text": "\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"https://ocr.example.com/api/ver"
+        },
+        {
+          "t": 52667,
+          "text": "ify\" target=\"url\" />\n          <zeebe:input source=\"noAuth\" target=\"authentication.type\" />\n          <zeebe:input source=\"={documentId: documentId, documentUrl: docum"
+        },
+        {
+          "t": 53139,
+          "text": "entUrl}\" target=\"body\" />\n          <zeebe:input source=\"=20\" target=\"connectionTimeoutInSeconds\" />\n        </zeebe:ioMapping>\n        "
+        },
+        {
+          "t": 53609,
+          "text": "<zeebe:taskHeaders>\n          <zeebe:header key=\"resultExpression\" value=\"={verificationPassed: response.body.passed, documentQuality: response.body.quality}\""
+        },
+        {
+          "t": 54078,
+          "text": " />\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_upload_ocr</bpmn:incoming>\n      "
+        },
+        {
+          "t": 54550,
+          "text": "<bpmn:outgoing>Flow_ocr_quality</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\""
+        },
+        {
+          "t": 55023,
+          "text": "Gateway_Quality\" name=\"Document quality OK?\" default=\"Flow_quality_bad\">\n      <bpmn:incoming>Flow_ocr_quality</bpmn:"
+        },
+        {
+          "t": 55509,
+          "text": "incoming>\n      <bpmn:outgoing>Flow_quality_good</bpmn:outgoing>\n      <bpmn:outgoing>Flow_quality_bad</bpmn:"
+        },
+        {
+          "t": 56041,
+          "text": "outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:exclusiveGateway id=\"Gateway_Retry\" name=\"Retries left?\" default=\"Flow_"
+        },
+        {
+          "t": 56433,
+          "text": "retry_no\">\n      <bpmn:incoming>Flow_quality_bad</bpmn:incoming>\n      <bpmn:outgoing>Flow_retry_yes</bpmn:"
+        },
+        {
+          "t": 56903,
+          "text": "outgoing>\n      <bpmn:outgoing>Flow_retry_no</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:scri"
+        },
+        {
+          "t": 57377,
+          "text": "ptTask id=\"Task_IncRetry\" name=\"Increment Retry Counter\">\n      <bpmn:extensionElements>\n        <zeebe:script expression=\"=retryC"
+        },
+        {
+          "t": 57846,
+          "text": "ount + 1\" resultVariable=\"retryCount\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_retry_yes</bpmn:incoming>\n      "
+        },
+        {
+          "t": 58320,
+          "text": "<bpmn:outgoing>Flow_inc_upload</bpmn:outgoing>\n    </bpmn:scriptTask>\n    <bpmn:serviceTask id=\"Task_"
+        },
+        {
+          "t": 58786,
+          "text": "Screening\" name=\"Sanctions &amp; PEP Screening\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-"
+        },
+        {
+          "t": 59257,
+          "text": "json:1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"https://screening.example.com/api/screen"
+        },
+        {
+          "t": 59728,
+          "text": "\" target=\"url\" />\n          <zeebe:input source=\"noAuth\" target=\"authentication.type\" />\n          <zeebe:input source=\"={fullName: fullName, dateOfBirth: dateOfB"
+        },
+        {
+          "t": 60198,
+          "text": "irth, nationality: nationality}\" target=\"body\" />\n          <zeebe:input source=\"=20\" target=\"connectionTimeoutInSeconds\" />\n        </zeebe:ioMapping>\n        "
+        },
+        {
+          "t": 60669,
+          "text": "<zeebe:taskHeaders>\n          <zeebe:header key=\"resultExpression\" value=\"={screeningRisk: response.body.risk"
+        },
+        {
+          "t": 61140,
+          "text": "Level, isPep: response.body.pep, sanctionsHit: response.body.sanctions}\" />\n        </zeebe:taskHeaders>\n      </bpmn:extension"
+        },
+        {
+          "t": 61610,
+          "text": "Elements>\n      <bpmn:incoming>Flow_quality_good</bpmn:incoming>\n      <bpmn:outgoing>Flow_screening_risk</bpmn:outgo"
+        },
+        {
+          "t": 62084,
+          "text": "ing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"Gateway_Risk\" name=\"Risk-based routing\" default=\"Flow_"
+        },
+        {
+          "t": 62553,
+          "text": "risk_standard\">\n      <bpmn:incoming>Flow_screening_risk</bpmn:incoming>\n      <bpmn:outgoing>Flow_risk_enhanced</bp"
+        },
+        {
+          "t": 63262,
+          "text": "mn:outgoing>\n      <bpmn:outgoing>Flow_risk_standard</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpm"
+        },
+        {
+          "t": 63544,
+          "text": "n:userTask id=\"Task_EnhancedDD\" name=\"Enhanced Due Diligence Review\">\n      <bpmn:extensionElements>\n        <zeebe:userTask />\n        <z"
+        },
+        {
+          "t": 63966,
+          "text": "eebe:formDefinition externalReference=\"edd-review-form\" />\n        <zeebe:assignmentDefinition candidateGroups=\"compliance-officers\" />\n      </bpmn:extens"
+        },
+        {
+          "t": 64437,
+          "text": "ionElements>\n      <bpmn:incoming>Flow_risk_enhanced</bpmn:incoming>\n      <bpmn:outgoing>Flow_edd_class</bpmn:"
+        },
+        {
+          "t": 65255,
+          "text": "outgoing>\n    </bpmn:userTask>\n    <bpmn:businessRuleTask id=\"Task_RiskClassification\" name=\"Final Risk Classification\">\n      <bpmn:ext"
+        },
+        {
+          "t": 65389,
+          "text": "ensionElements>\n        <zeebe:calledDecision decisionId=\"riskClassification\" resultVariable=\"riskResult\" />\n      </bpmn:extensionElements>\n      <bpmn:inc"
+        },
+        {
+          "t": 65883,
+          "text": "oming>Flow_risk_standard</bpmn:incoming>\n      <bpmn:incoming>Flow_edd_class</bpmn:incoming>\n      <bpmn:outgoing"
+        },
+        {
+          "t": 66318,
+          "text": ">Flow_class_final</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:exclusiveGateway id=\"Gateway_Final\" name=\""
+        },
+        {
+          "t": 66789,
+          "text": "Final decision\" default=\"Flow_final_escalated\">\n      <bpmn:incoming>Flow_class_final</bpmn:incoming>\n      <bp"
+        },
+        {
+          "t": 67258,
+          "text": "mn:outgoing>Flow_final_approved</bpmn:outgoing>\n      <bpmn:outgoing>Flow_final_rejected</bpmn:outgoing>\n      <b"
+        },
+        {
+          "t": 67731,
+          "text": "pmn:outgoing>Flow_final_escalated</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:endEvent id=\"End"
+        },
+        {
+          "t": 68211,
+          "text": "_Approved\" name=\"Approved\">\n      <bpmn:incoming>Flow_final_approved</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endE"
+        },
+        {
+          "t": 68747,
+          "text": "vent id=\"End_Rejected\" name=\"Rejected\">\n      <bpmn:incoming>Flow_final_rejected</bpmn:incoming>\n      <bpmn:incoming>Flow"
+        },
+        {
+          "t": 69142,
+          "text": "_retry_no</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"End_Escalated\" name=\"Escalated to Compliance\">\n      "
+        },
+        {
+          "t": 69617,
+          "text": "<bpmn:incoming>Flow_final_escalated</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:sequenceFlow id=\"Flow_start\""
+        },
+        {
+          "t": 70099,
+          "text": " sourceRef=\"StartEvent_1\" targetRef=\"Task_Upload\" />\n    <bpmn:sequenceFlow id=\"Flow_upload_ocr\" sourceRef=\"Task_"
+        },
+        {
+          "t": 70563,
+          "text": "Upload\" targetRef=\"Task_OCR\" />\n    <bpmn:sequenceFlow id=\"Flow_ocr_quality\" sourceRef=\"Task_OCR\" targetRef=\""
+        },
+        {
+          "t": 71025,
+          "text": "Gateway_Quality\" />\n    <bpmn:sequenceFlow id=\"Flow_quality_good\" name=\"Passed\" sourceRef=\"Gateway_Quality"
+        },
+        {
+          "t": 71494,
+          "text": "\" targetRef=\"Task_Screening\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org"
+        },
+        {
+          "t": 71966,
+          "text": "/2001/XMLSchema-instance\">=verificationPassed = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequence"
+        },
+        {
+          "t": 72441,
+          "text": "Flow id=\"Flow_quality_bad\" name=\"Failed\" sourceRef=\"Gateway_Quality\" targetRef=\"Gateway_Retry\" />\n    <bpmn:sequenceF"
+        },
+        {
+          "t": 72907,
+          "text": "low id=\"Flow_retry_yes\" name=\"Retry (&lt; 2)\" sourceRef=\"Gateway_"
+        },
+        {
+          "t": 73381,
+          "text": "Retry\" targetRef=\"Task_IncRetry\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w"
+        },
+        {
+          "t": 73849,
+          "text": "3.org/2001/XMLSchema-instance\">=retryCount &lt; 2</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn"
+        },
+        {
+          "t": 74320,
+          "text": ":sequenceFlow id=\"Flow_inc_upload\" sourceRef=\"Task_IncRetry\" targetRef=\"Task_Upload\" />\n    <bpmn:sequenceFlow id"
+        },
+        {
+          "t": 74793,
+          "text": "=\"Flow_retry_no\" name=\"No retries left\" sourceRef=\"Gateway_Retry\" targetRef=\"End_Rejected\" />\n    <bpmn:sequenceFlow id=\"Fl"
+        },
+        {
+          "t": 75271,
+          "text": "ow_screening_risk\" sourceRef=\"Task_Screening\" targetRef=\"Gateway_Risk\" />\n    <bpmn:sequenceFlow id=\"Flow_risk_enhanced"
+        },
+        {
+          "t": 75732,
+          "text": "\" name=\"High risk\" sourceRef=\"Gateway_Risk\" targetRef=\"Task_EnhancedDD\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:t"
+        },
+        {
+          "t": 76255,
+          "text": "FormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=screeningRisk = \"high\" or isPep = true or sanctionsHit ="
+        },
+        {
+          "t": 76690,
+          "text": " true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_risk_standard\" name=\"Standard\""
+        },
+        {
+          "t": 77147,
+          "text": " sourceRef=\"Gateway_Risk\" targetRef=\"Task_RiskClassification\" />\n    <bpmn:sequenceFlow id=\"Flow_edd_class\" sourceRef=\""
+        },
+        {
+          "t": 77618,
+          "text": "Task_EnhancedDD\" targetRef=\"Task_RiskClassification\" />\n    <bpmn:sequenceFlow id=\"Flow_class_final\" sourceRef=\"Task_RiskCl"
+        },
+        {
+          "t": 78085,
+          "text": "assification\" targetRef=\"Gateway_Final\" />\n    <bpmn:sequenceFlow id=\"Flow_final_approved\" name=\"Approved\" sourceRef=\"Gateway_Final\" targ"
+        },
+        {
+          "t": 78563,
+          "text": "etRef=\"End_Approved\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/"
+        },
+        {
+          "t": 79050,
+          "text": "XMLSchema-instance\">=riskResult.classification = \"approved\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequence"
+        },
+        {
+          "t": 79957,
+          "text": "Flow id=\"Flow_final_rejected\" name=\"Rejected\" sourceRef=\"Gateway_Final\" targetRef=\"End_Rejected\">\n      <bpmn:conditionExpression xs"
+        },
+        {
+          "t": 80052,
+          "text": "i:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=riskResult.classification = \"rejected\"</b"
+        },
+        {
+          "t": 80474,
+          "text": "pmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_final_escalated\" name=\"Escalate\" source"
+        },
+        {
+          "t": 80944,
+          "text": "Ref=\"Gateway_Final\" targetRef=\"End_Escalated\" />\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_"
+        },
+        {
+          "t": 81379,
+          "text": "1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"kyc-onboarding\">\n      <bpmndi:BPMNShape id=\"St"
+        },
+        {
+          "t": 81932,
+          "text": "artEvent_1_di\" bpmnElement=\"StartEvent_1\">\n        <dc:Bounds x=\"152\" y=\"202\" width=\"36"
+        },
+        {
+          "t": 82337,
+          "text": "\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"146\" y=\"245\" width=\"52"
+        },
+        {
+          "t": 82791,
+          "text": "\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_"
+        },
+        {
+          "t": 83270,
+          "text": "Upload_di\" bpmnElement=\"Task_Upload\">\n        <dc:Bounds x=\"240\" y=\"180\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNSh"
+        },
+        {
+          "t": 83739,
+          "text": "ape>\n      <bpmndi:BPMNShape id=\"Task_OCR_di\" bpmnElement=\"Task_OCR\">\n        <dc:Bounds x=\"400\" y=\"180\" width=\"100\""
+        },
+        {
+          "t": 84204,
+          "text": " height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Quality_di\" bpmnElement=\"Gateway_Quality"
+        },
+        {
+          "t": 84675,
+          "text": "\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"555\" y=\"195\" width=\"50\" height=\"50\" />\n        <bpmndi:B"
+        },
+        {
+          "t": 85143,
+          "text": "PMNLabel>\n          <dc:Bounds x=\"545\" y=\"165\" width=\"72\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bp"
+        },
+        {
+          "t": 85616,
+          "text": "mndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Retry_di\" bpmnElement=\"Gateway_Retry\" isMarkerVisible=\""
+        },
+        {
+          "t": 86086,
+          "text": "true\">\n        <dc:Bounds x=\"555\" y=\"335\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"546"
+        },
+        {
+          "t": 86555,
+          "text": "\" y=\"392\" width=\"68\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:"
+        },
+        {
+          "t": 87027,
+          "text": "BPMNShape id=\"Task_IncRetry_di\" bpmnElement=\"Task_IncRetry\">\n        <dc:Bounds x=\"290\" y=\"320\" width=\"100\" height=\"80\" />\n      "
+        },
+        {
+          "t": 87505,
+          "text": "</bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_Screening_di\" bpmnElement=\"Task_Screening\">\n        <dc:Bounds"
+        },
+        {
+          "t": 87995,
+          "text": " x=\"670\" y=\"180\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Risk_"
+        },
+        {
+          "t": 88440,
+          "text": "di\" bpmnElement=\"Gateway_Risk\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"825\" y=\"195\" width=\"50\" height=\"50\" />\n        <bpmndi"
+        },
+        {
+          "t": 88954,
+          "text": ":BPMNLabel>\n          <dc:Bounds x=\"815\" y=\"252\" width=\"72\" height=\"14\" />\n        </bpmndi:BPMNL"
+        },
+        {
+          "t": 89664,
+          "text": "abel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_EnhancedDD_di\" bpmnElement=\"Task_Enhanced"
+        },
+        {
+          "t": 93958,
+          "text": "DD\">\n        <dc:Bounds x=\"920\" y=\"70\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNSh"
+        },
+        {
+          "t": 94026,
+          "text": "ape id=\"Task_RiskClassification_di\" bpmnElement=\"Task_RiskClassification\">\n        <dc:Bounds x=\"1080\" y=\"180\" width=\"100\" height=\"80\" />\n      </b"
+        },
+        {
+          "t": 94060,
+          "text": "pmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Final_di\" bpmnElement=\"Gateway_Final\" isMarkerVisible=\"true"
+        },
+        {
+          "t": 94074,
+          "text": "\">\n        <dc:Bounds x=\"1235\" y=\"195\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1230\" y=\"252"
+        },
+        {
+          "t": 94095,
+          "text": "\" width=\"60\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"End_Appro"
+        },
+        {
+          "t": 94126,
+          "text": "ved_di\" bpmnElement=\"End_Approved\">\n        <dc:Bounds x=\"1362\" y=\"82\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNL"
+        },
+        {
+          "t": 94161,
+          "text": "abel>\n          <dc:Bounds x=\"1357\" y=\"125\" width=\"48\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:"
+        },
+        {
+          "t": 94168,
+          "text": "BPMNShape>\n      <bpmndi:BPMNShape id=\"End_Rejected_di\" bpmnElement=\"End_Rejected\">\n        <dc:Bounds x=\"1362\" y=\""
+        },
+        {
+          "t": 94173,
+          "text": "202\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1358\" y=\"245\" width=\"46\" height=\"14\" />\n        "
+        },
+        {
+          "t": 94182,
+          "text": "</bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"End_Escalated_di\" bpmnElement=\""
+        },
+        {
+          "t": 94680,
+          "text": "End_Escalated\">\n        <dc:Bounds x=\"1362\" y=\"322\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc"
+        },
+        {
+          "t": 95128,
+          "text": ":Bounds x=\"1340\" y=\"365\" width=\"80\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bp"
+        },
+        {
+          "t": 95515,
+          "text": "mndi:BPMNEdge id=\"Flow_start_di\" bpmnElement=\"Flow_start\">\n        <di:waypoint x=\"188\" y"
+        },
+        {
+          "t": 96026,
+          "text": "=\"220\" />\n        <di:waypoint x=\"240\" y=\"220\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_upload_"
+        },
+        {
+          "t": 96461,
+          "text": "ocr_di\" bpmnElement=\"Flow_upload_ocr\">\n        <di:waypoint x=\"340\" y=\"220\" />\n        <di:waypoint x=\"400\" y=\"220\" />\n      </b"
+        },
+        {
+          "t": 97015,
+          "text": "pmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_ocr_quality_di\" bpmnElement=\"Flow_ocr_quality\">\n        "
+        },
+        {
+          "t": 97386,
+          "text": "<di:waypoint x=\"500\" y=\"220\" />\n        <di:waypoint x=\"555\" y=\"220\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMN"
+        },
+        {
+          "t": 97851,
+          "text": "Edge id=\"Flow_quality_good_di\" bpmnElement=\"Flow_quality_good\">\n        <di:waypoint x=\"605\" y=\"220\" />\n        <di:waypoint x=\"670\" y"
+        },
+        {
+          "t": 98324,
+          "text": "=\"220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"619\" y=\"202\" width=\"35\" height=\"14\" />\n        "
+        },
+        {
+          "t": 98796,
+          "text": "</bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_quality_bad_di\" bp"
+        },
+        {
+          "t": 99269,
+          "text": "mnElement=\"Flow_quality_bad\">\n        <di:waypoint x=\"580\" y=\"245\" />\n        <di:waypoint x=\"580\" y=\"335\" />\n        <bpmndi:BPMN"
+        },
+        {
+          "t": 99735,
+          "text": "Label>\n          <dc:Bounds x=\"586\" y=\"287\" width=\"32\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bp"
+        },
+        {
+          "t": 100465,
+          "text": "mndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_retry_yes_di\" bpmnElement=\"Flow_retry_yes\">\n        <di:"
+        },
+        {
+          "t": 100686,
+          "text": "waypoint x=\"555\" y=\"360\" />\n        <di:waypoint x=\"390\" y=\"360\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"440\" y=\""
+        },
+        {
+          "t": 101148,
+          "text": "342\" width=\"55\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge"
+        },
+        {
+          "t": 101626,
+          "text": " id=\"Flow_inc_upload_di\" bpmnElement=\"Flow_inc_upload\">\n        <di:waypoint x=\"290\" y=\"320\" />\n        <di:waypoint x=\"290\" y"
+        },
+        {
+          "t": 102097,
+          "text": "=\"260\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"255\" y=\"283\" width=\"70\" height=\"14\" />\n        "
+        },
+        {
+          "t": 102572,
+          "text": "</bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_retry_no_di\" bpm"
+        },
+        {
+          "t": 103029,
+          "text": "nElement=\"Flow_retry_no\">\n        <di:waypoint x=\"605\" y=\"360\" />\n        <di:waypoint x=\"1380\" y=\"360\" />\n        <di:waypoint x=\"1380\""
+        },
+        {
+          "t": 103524,
+          "text": " y=\"238\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"960\" y=\"342\" width=\"76\" height=\"14\" />\n        "
+        },
+        {
+          "t": 103969,
+          "text": "</bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_screening_risk_di\" bp"
+        },
+        {
+          "t": 104441,
+          "text": "mnElement=\"Flow_screening_risk\">\n        <di:waypoint x=\"770\" y=\"220\" />\n        <di:waypoint x=\"825\" y=\"220\" />\n      </bpmndi:BPMN"
+        },
+        {
+          "t": 104914,
+          "text": "Edge>\n      <bpmndi:BPMNEdge id=\"Flow_risk_enhanced_di\" bpmnElement=\"Flow_risk_enhanced\">\n        <di:waypoint"
+        },
+        {
+          "t": 105381,
+          "text": " x=\"850\" y=\"195\" />\n        <di:waypoint x=\"850\" y=\"110\" />\n        <di:waypoint x=\"920\" y=\"110\" />\n        <bpmndi:BPMNLabel>"
+        },
+        {
+          "t": 105851,
+          "text": "\n          <dc:Bounds x=\"855\" y=\"150\" width=\"47\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>"
+        },
+        {
+          "t": 106325,
+          "text": "\n      <bpmndi:BPMNEdge id=\"Flow_risk_standard_di\" bpmnElement=\"Flow_risk_standard\">\n        <di:waypoint x=\"875\" y=\"220\""
+        },
+        {
+          "t": 106795,
+          "text": " />\n        <di:waypoint x=\"1080\" y=\"220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"950\" y=\"202\" width=\"46"
+        },
+        {
+          "t": 107288,
+          "text": "\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_edd"
+        },
+        {
+          "t": 107736,
+          "text": "_class_di\" bpmnElement=\"Flow_edd_class\">\n        <di:waypoint x=\"1020\" y=\"110\" />\n        <di:waypoint x=\"1130\" y=\"110\" />\n        <di:"
+        },
+        {
+          "t": 108205,
+          "text": "waypoint x=\"1130\" y=\"180\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_class_final_di\" bpmnEl"
+        },
+        {
+          "t": 108675,
+          "text": "ement=\"Flow_class_final\">\n        <di:waypoint x=\"1180\" y=\"220\" />\n        <di:waypoint x=\"1235\" y=\"220\" />\n      </bpmndi:BPMNEdge"
+        },
+        {
+          "t": 109147,
+          "text": ">\n      <bpmndi:BPMNEdge id=\"Flow_final_approved_di\" bpmnElement=\"Flow_final_approved\">\n        <di:waypoint x=\"1260\" y=\"195\""
+        },
+        {
+          "t": 109617,
+          "text": " />\n        <di:waypoint x=\"1260\" y=\"100\" />\n        <di:waypoint x=\"1362\" y=\"100\" />\n        <bpmndi:BPMNLabel>\n          <dc:B"
+        },
+        {
+          "t": 110086,
+          "text": "ounds x=\"1268\" y=\"145\" width=\"48\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi"
+        },
+        {
+          "t": 110563,
+          "text": ":BPMNEdge id=\"Flow_final_rejected_di\" bpmnElement=\"Flow_final_rejected\">\n        <di:waypoint x=\"1285\" y=\"220\" />\n        <di:wa"
+        },
+        {
+          "t": 111029,
+          "text": "ypoint x=\"1362\" y=\"220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1300\" y=\"202\" width=\"46\" height=\"14\" />\n        </bpm"
+        },
+        {
+          "t": 111575,
+          "text": "ndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_final_escalated_di\" bpmnElement"
+        },
+        {
+          "t": 111971,
+          "text": "=\"Flow_final_escalated\">\n        <di:waypoint x=\"1260\" y=\"245\" />\n        <di:waypoint x=\"1260\" y=\"340\" />\n        <di:waypoint x=\"1362\" y"
+        },
+        {
+          "t": 112448,
+          "text": "=\"340\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1268\" y=\"290\" width=\"44\" height=\"14\" />\n        </bpmndi:B"
+        },
+        {
+          "t": 112931,
+          "text": "PMNLabel>\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</b"
+        },
+        {
+          "t": 113079,
+          "text": "pmn:definitions>"
+        }
+      ],
+      "durationMs": 115620,
+      "usage": {
+        "inputTokens": 487,
+        "outputTokens": 12425
+      },
+      "result": {
+        "type": "bpmn",
+        "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\"\n                  xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\"\n                  xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\"\n                  xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\"\n                  xmlns:zeebe=\"http://camunda.org/schema/zeebe/1.0\"\n                  id=\"Definitions_KYC\"\n                  targetNamespace=\"http://camunda.org/schema/kyc\">\n  <bpmn:process id=\"kyc-onboarding\" name=\"KYC Onboarding\" isExecutable=\"true\">\n    <bpmn:startEvent id=\"StartEvent_1\" name=\"KYC Started\">\n      <bpmn:extensionElements>\n        <zeebe:ioMapping>\n          <zeebe:output source=\"=0\" target=\"retryCount\" />\n        </zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:outgoing>Flow_start</bpmn:outgoing>\n    </bpmn:startEvent>\n    <bpmn:userTask id=\"Task_Upload\" name=\"Upload Identity Document\">\n      <bpmn:extensionElements>\n        <zeebe:userTask />\n        <zeebe:formDefinition externalReference=\"kyc-upload-form\" />\n        <zeebe:assignmentDefinition candidateGroups=\"customers\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_start</bpmn:incoming>\n      <bpmn:incoming>Flow_inc_upload</bpmn:incoming>\n      <bpmn:outgoing>Flow_upload_ocr</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:serviceTask id=\"Task_OCR\" name=\"OCR Document Verification\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"https://ocr.example.com/api/verify\" target=\"url\" />\n          <zeebe:input source=\"noAuth\" target=\"authentication.type\" />\n          <zeebe:input source=\"={documentId: documentId, documentUrl: documentUrl}\" target=\"body\" />\n          <zeebe:input source=\"=20\" target=\"connectionTimeoutInSeconds\" />\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultExpression\" value=\"={verificationPassed: response.body.passed, documentQuality: response.body.quality}\" />\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_upload_ocr</bpmn:incoming>\n      <bpmn:outgoing>Flow_ocr_quality</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"Gateway_Quality\" name=\"Document quality OK?\" default=\"Flow_quality_bad\">\n      <bpmn:incoming>Flow_ocr_quality</bpmn:incoming>\n      <bpmn:outgoing>Flow_quality_good</bpmn:outgoing>\n      <bpmn:outgoing>Flow_quality_bad</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:exclusiveGateway id=\"Gateway_Retry\" name=\"Retries left?\" default=\"Flow_retry_no\">\n      <bpmn:incoming>Flow_quality_bad</bpmn:incoming>\n      <bpmn:outgoing>Flow_retry_yes</bpmn:outgoing>\n      <bpmn:outgoing>Flow_retry_no</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:scriptTask id=\"Task_IncRetry\" name=\"Increment Retry Counter\">\n      <bpmn:extensionElements>\n        <zeebe:script expression=\"=retryCount + 1\" resultVariable=\"retryCount\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_retry_yes</bpmn:incoming>\n      <bpmn:outgoing>Flow_inc_upload</bpmn:outgoing>\n    </bpmn:scriptTask>\n    <bpmn:serviceTask id=\"Task_Screening\" name=\"Sanctions &amp; PEP Screening\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"https://screening.example.com/api/screen\" target=\"url\" />\n          <zeebe:input source=\"noAuth\" target=\"authentication.type\" />\n          <zeebe:input source=\"={fullName: fullName, dateOfBirth: dateOfBirth, nationality: nationality}\" target=\"body\" />\n          <zeebe:input source=\"=20\" target=\"connectionTimeoutInSeconds\" />\n        </zeebe:ioMapping>\n        <zeebe:taskHeaders>\n          <zeebe:header key=\"resultExpression\" value=\"={screeningRisk: response.body.riskLevel, isPep: response.body.pep, sanctionsHit: response.body.sanctions}\" />\n        </zeebe:taskHeaders>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_quality_good</bpmn:incoming>\n      <bpmn:outgoing>Flow_screening_risk</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:exclusiveGateway id=\"Gateway_Risk\" name=\"Risk-based routing\" default=\"Flow_risk_standard\">\n      <bpmn:incoming>Flow_screening_risk</bpmn:incoming>\n      <bpmn:outgoing>Flow_risk_enhanced</bpmn:outgoing>\n      <bpmn:outgoing>Flow_risk_standard</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:userTask id=\"Task_EnhancedDD\" name=\"Enhanced Due Diligence Review\">\n      <bpmn:extensionElements>\n        <zeebe:userTask />\n        <zeebe:formDefinition externalReference=\"edd-review-form\" />\n        <zeebe:assignmentDefinition candidateGroups=\"compliance-officers\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_risk_enhanced</bpmn:incoming>\n      <bpmn:outgoing>Flow_edd_class</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:businessRuleTask id=\"Task_RiskClassification\" name=\"Final Risk Classification\">\n      <bpmn:extensionElements>\n        <zeebe:calledDecision decisionId=\"riskClassification\" resultVariable=\"riskResult\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_risk_standard</bpmn:incoming>\n      <bpmn:incoming>Flow_edd_class</bpmn:incoming>\n      <bpmn:outgoing>Flow_class_final</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:exclusiveGateway id=\"Gateway_Final\" name=\"Final decision\" default=\"Flow_final_escalated\">\n      <bpmn:incoming>Flow_class_final</bpmn:incoming>\n      <bpmn:outgoing>Flow_final_approved</bpmn:outgoing>\n      <bpmn:outgoing>Flow_final_rejected</bpmn:outgoing>\n      <bpmn:outgoing>Flow_final_escalated</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:endEvent id=\"End_Approved\" name=\"Approved\">\n      <bpmn:incoming>Flow_final_approved</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"End_Rejected\" name=\"Rejected\">\n      <bpmn:incoming>Flow_final_rejected</bpmn:incoming>\n      <bpmn:incoming>Flow_retry_no</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"End_Escalated\" name=\"Escalated to Compliance\">\n      <bpmn:incoming>Flow_final_escalated</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:sequenceFlow id=\"Flow_start\" sourceRef=\"StartEvent_1\" targetRef=\"Task_Upload\" />\n    <bpmn:sequenceFlow id=\"Flow_upload_ocr\" sourceRef=\"Task_Upload\" targetRef=\"Task_OCR\" />\n    <bpmn:sequenceFlow id=\"Flow_ocr_quality\" sourceRef=\"Task_OCR\" targetRef=\"Gateway_Quality\" />\n    <bpmn:sequenceFlow id=\"Flow_quality_good\" name=\"Passed\" sourceRef=\"Gateway_Quality\" targetRef=\"Task_Screening\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=verificationPassed = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_quality_bad\" name=\"Failed\" sourceRef=\"Gateway_Quality\" targetRef=\"Gateway_Retry\" />\n    <bpmn:sequenceFlow id=\"Flow_retry_yes\" name=\"Retry (&lt; 2)\" sourceRef=\"Gateway_Retry\" targetRef=\"Task_IncRetry\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=retryCount &lt; 2</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_inc_upload\" sourceRef=\"Task_IncRetry\" targetRef=\"Task_Upload\" />\n    <bpmn:sequenceFlow id=\"Flow_retry_no\" name=\"No retries left\" sourceRef=\"Gateway_Retry\" targetRef=\"End_Rejected\" />\n    <bpmn:sequenceFlow id=\"Flow_screening_risk\" sourceRef=\"Task_Screening\" targetRef=\"Gateway_Risk\" />\n    <bpmn:sequenceFlow id=\"Flow_risk_enhanced\" name=\"High risk\" sourceRef=\"Gateway_Risk\" targetRef=\"Task_EnhancedDD\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=screeningRisk = \"high\" or isPep = true or sanctionsHit = true</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_risk_standard\" name=\"Standard\" sourceRef=\"Gateway_Risk\" targetRef=\"Task_RiskClassification\" />\n    <bpmn:sequenceFlow id=\"Flow_edd_class\" sourceRef=\"Task_EnhancedDD\" targetRef=\"Task_RiskClassification\" />\n    <bpmn:sequenceFlow id=\"Flow_class_final\" sourceRef=\"Task_RiskClassification\" targetRef=\"Gateway_Final\" />\n    <bpmn:sequenceFlow id=\"Flow_final_approved\" name=\"Approved\" sourceRef=\"Gateway_Final\" targetRef=\"End_Approved\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=riskResult.classification = \"approved\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_final_rejected\" name=\"Rejected\" sourceRef=\"Gateway_Final\" targetRef=\"End_Rejected\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=riskResult.classification = \"rejected\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_final_escalated\" name=\"Escalate\" sourceRef=\"Gateway_Final\" targetRef=\"End_Escalated\" />\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"kyc-onboarding\">\n      <bpmndi:BPMNShape id=\"StartEvent_1_di\" bpmnElement=\"StartEvent_1\">\n        <dc:Bounds x=\"152\" y=\"202\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"146\" y=\"245\" width=\"52\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_Upload_di\" bpmnElement=\"Task_Upload\">\n        <dc:Bounds x=\"240\" y=\"180\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_OCR_di\" bpmnElement=\"Task_OCR\">\n        <dc:Bounds x=\"400\" y=\"180\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Quality_di\" bpmnElement=\"Gateway_Quality\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"555\" y=\"195\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"545\" y=\"165\" width=\"72\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Retry_di\" bpmnElement=\"Gateway_Retry\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"555\" y=\"335\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"546\" y=\"392\" width=\"68\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_IncRetry_di\" bpmnElement=\"Task_IncRetry\">\n        <dc:Bounds x=\"290\" y=\"320\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_Screening_di\" bpmnElement=\"Task_Screening\">\n        <dc:Bounds x=\"670\" y=\"180\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Risk_di\" bpmnElement=\"Gateway_Risk\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"825\" y=\"195\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"815\" y=\"252\" width=\"72\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_EnhancedDD_di\" bpmnElement=\"Task_EnhancedDD\">\n        <dc:Bounds x=\"920\" y=\"70\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_RiskClassification_di\" bpmnElement=\"Task_RiskClassification\">\n        <dc:Bounds x=\"1080\" y=\"180\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Final_di\" bpmnElement=\"Gateway_Final\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"1235\" y=\"195\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1230\" y=\"252\" width=\"60\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"End_Approved_di\" bpmnElement=\"End_Approved\">\n        <dc:Bounds x=\"1362\" y=\"82\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1357\" y=\"125\" width=\"48\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"End_Rejected_di\" bpmnElement=\"End_Rejected\">\n        <dc:Bounds x=\"1362\" y=\"202\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1358\" y=\"245\" width=\"46\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"End_Escalated_di\" bpmnElement=\"End_Escalated\">\n        <dc:Bounds x=\"1362\" y=\"322\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1340\" y=\"365\" width=\"80\" height=\"27\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_start_di\" bpmnElement=\"Flow_start\">\n        <di:waypoint x=\"188\" y=\"220\" />\n        <di:waypoint x=\"240\" y=\"220\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_upload_ocr_di\" bpmnElement=\"Flow_upload_ocr\">\n        <di:waypoint x=\"340\" y=\"220\" />\n        <di:waypoint x=\"400\" y=\"220\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_ocr_quality_di\" bpmnElement=\"Flow_ocr_quality\">\n        <di:waypoint x=\"500\" y=\"220\" />\n        <di:waypoint x=\"555\" y=\"220\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_quality_good_di\" bpmnElement=\"Flow_quality_good\">\n        <di:waypoint x=\"605\" y=\"220\" />\n        <di:waypoint x=\"670\" y=\"220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"619\" y=\"202\" width=\"35\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_quality_bad_di\" bpmnElement=\"Flow_quality_bad\">\n        <di:waypoint x=\"580\" y=\"245\" />\n        <di:waypoint x=\"580\" y=\"335\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"586\" y=\"287\" width=\"32\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_retry_yes_di\" bpmnElement=\"Flow_retry_yes\">\n        <di:waypoint x=\"555\" y=\"360\" />\n        <di:waypoint x=\"390\" y=\"360\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"440\" y=\"342\" width=\"55\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_inc_upload_di\" bpmnElement=\"Flow_inc_upload\">\n        <di:waypoint x=\"290\" y=\"320\" />\n        <di:waypoint x=\"290\" y=\"260\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"255\" y=\"283\" width=\"70\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_retry_no_di\" bpmnElement=\"Flow_retry_no\">\n        <di:waypoint x=\"605\" y=\"360\" />\n        <di:waypoint x=\"1380\" y=\"360\" />\n        <di:waypoint x=\"1380\" y=\"238\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"960\" y=\"342\" width=\"76\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_screening_risk_di\" bpmnElement=\"Flow_screening_risk\">\n        <di:waypoint x=\"770\" y=\"220\" />\n        <di:waypoint x=\"825\" y=\"220\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_risk_enhanced_di\" bpmnElement=\"Flow_risk_enhanced\">\n        <di:waypoint x=\"850\" y=\"195\" />\n        <di:waypoint x=\"850\" y=\"110\" />\n        <di:waypoint x=\"920\" y=\"110\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"855\" y=\"150\" width=\"47\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_risk_standard_di\" bpmnElement=\"Flow_risk_standard\">\n        <di:waypoint x=\"875\" y=\"220\" />\n        <di:waypoint x=\"1080\" y=\"220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"950\" y=\"202\" width=\"46\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_edd_class_di\" bpmnElement=\"Flow_edd_class\">\n        <di:waypoint x=\"1020\" y=\"110\" />\n        <di:waypoint x=\"1130\" y=\"110\" />\n        <di:waypoint x=\"1130\" y=\"180\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_class_final_di\" bpmnElement=\"Flow_class_final\">\n        <di:waypoint x=\"1180\" y=\"220\" />\n        <di:waypoint x=\"1235\" y=\"220\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_final_approved_di\" bpmnElement=\"Flow_final_approved\">\n        <di:waypoint x=\"1260\" y=\"195\" />\n        <di:waypoint x=\"1260\" y=\"100\" />\n        <di:waypoint x=\"1362\" y=\"100\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1268\" y=\"145\" width=\"48\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_final_rejected_di\" bpmnElement=\"Flow_final_rejected\">\n        <di:waypoint x=\"1285\" y=\"220\" />\n        <di:waypoint x=\"1362\" y=\"220\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1300\" y=\"202\" width=\"46\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_final_escalated_di\" bpmnElement=\"Flow_final_escalated\">\n        <di:waypoint x=\"1260\" y=\"245\" />\n        <di:waypoint x=\"1260\" y=\"340\" />\n        <di:waypoint x=\"1362\" y=\"340\" />\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x=\"1268\" y=\"290\" width=\"44\" height=\"14\" />\n        </bpmndi:BPMNLabel>\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn:definitions>"
+      }
+    }
+  },
+  "name": "kyc-2026-07-02",
+  "recordedAt": "2026-07-02T15:05:26.462Z"
+}
