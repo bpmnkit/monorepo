@@ -68,6 +68,9 @@ export function ComparePanel({
 					codeRef.current.scrollTop = codeRef.current.scrollHeight
 				}
 			},
+			onTick: (elapsedMs) => {
+				setElapsedMs(elapsedMs)
+			},
 			onDone: () => {
 				setStreaming(false)
 			},
