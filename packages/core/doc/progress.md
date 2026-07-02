@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-07-02 — XML: skip undefined attribute values instead of crashing the serializer
+
+`escapeAttr()` had no runtime guard against a stray `undefined` value (declared type is `Record<string, string>`, but generated/untyped callers can leave a value unset). `writeElement()` now skips non-string attribute values rather than passing them through, so one bad attribute no longer crashes the whole `serializeXml()` call.
+
+## 2026-07-02 — Layout: `layoutProcess` no longer throws on a residual label overlap
+
+`assertNoOverlap()` was called unconditionally as the final step of `layoutProcess()`, so any cosmetic label overlap made `.build()` throw outright for an otherwise structurally valid process. Removed the automatic call — `assertNoOverlap` stays exported for callers who want a hard check (e.g. test fixtures), but production layout always returns a usable result.
+
+## 2026-07-02 — Builder: tolerate reversed `subProcess`/`adHocSubProcess`/`eventSubProcess` args, complete the method mirror across builder contexts
+
+Added `resolveSubProcessArgs()` — these three methods all take `(id, content, options?)`, an order not demonstrated anywhere in the SDK's docs, so generated code often guesses "options before callback" and gets a `content is not a function` crash. The three methods now accept either order. Also completed the "mirror `ProcessBuilder`" intent across `BranchBuilder` and `SubProcessContentBuilder`: both were missing several of `subProcess`/`adHocSubProcess`/`eventSubProcess`/`boundaryEvent`/`withBoundary` relative to their siblings.
+
 ## 2026-07-02 — Builder: add `BranchBuilder.subProcess`
 
 `BranchBuilder` mirrors most of `ProcessBuilder`'s flow-node methods but was missing `subProcess()`, so `.branch(id, (b) => b.subProcess(...))` threw `TypeError: ... .subProcess is not a function`. Added `subProcess(id, content, options?)` to `BranchBuilder`, matching `ProcessBuilder.subProcess`'s implementation (nested flow content, multi-instance support) but wired through `BranchBuilder.addElement` instead of `ProcessBuilder.addFlowElement`.
