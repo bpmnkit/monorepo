@@ -856,6 +856,28 @@ describe("BpmnProcessBuilder", () => {
 				expect(adhoc.loopCharacteristics).toBeDefined()
 			}
 		})
+
+		it("tolerates content and options passed in reversed order (options second, callback third)", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.adHocSubProcess("adhoc1", { name: "Review Steps" }, (sub) => {
+						sub
+							.startEvent("sub-start")
+							.serviceTask("sub-task", { taskType: "sub-work" })
+							.endEvent("sub-end")
+					})
+					.endEvent("e")
+					.build(),
+			)
+
+			const adhoc = defined(process.flowElements.find((n) => n.id === "adhoc1"))
+			expect(adhoc.type).toBe("adHocSubProcess")
+			expect(adhoc.name).toBe("Review Steps")
+			if (adhoc.type === "adHocSubProcess") {
+				expect(adhoc.flowElements).toHaveLength(3)
+			}
+		})
 	})
 
 	// -----------------------------------------------------------------------
@@ -910,6 +932,24 @@ describe("BpmnProcessBuilder", () => {
 			const sub = defined(process.flowElements.find((n) => n.id === "sub-mi"))
 			if (sub.type === "subProcess") {
 				expect(sub.loopCharacteristics).toBeDefined()
+			}
+		})
+
+		it("tolerates content and options passed in reversed order (options second, callback third)", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.subProcess("sub1", { name: "Embedded Sub" }, (sub) => {
+						sub.startEvent("sub-s").serviceTask("sub-t", { taskType: "inner" }).endEvent("sub-e")
+					})
+					.build(),
+			)
+
+			const sub = defined(process.flowElements.find((n) => n.id === "sub1"))
+			expect(sub.type).toBe("subProcess")
+			expect(sub.name).toBe("Embedded Sub")
+			if (sub.type === "subProcess") {
+				expect(sub.flowElements).toHaveLength(3)
+				expect(sub.sequenceFlows).toHaveLength(2)
 			}
 		})
 	})
@@ -1055,6 +1095,29 @@ describe("BpmnProcessBuilder", () => {
 			expect(flows.some((f) => f.sourceRef === "merge" && f.targetRef === "e")).toBe(true)
 			// no flow references esp
 			expect(flows.every((f) => f.sourceRef !== "esp" && f.targetRef !== "esp")).toBe(true)
+		})
+
+		it("tolerates content and options passed in reversed order (options second, callback third)", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.eventSubProcess("evtsub1", { name: "Error Handler" }, (sub) => {
+						sub
+							.startEvent("err-start", { name: "Error Start" })
+							.serviceTask("handle-err", { taskType: "error-handler" })
+							.endEvent("err-end")
+					})
+					.endEvent("e")
+					.build(),
+			)
+
+			const evtSub = defined(process.flowElements.find((n) => n.id === "evtsub1"))
+			expect(evtSub.type).toBe("subProcess")
+			expect(evtSub.name).toBe("Error Handler")
+			if (evtSub.type === "subProcess") {
+				expect(evtSub.triggeredByEvent).toBe(true)
+				expect(evtSub.flowElements).toHaveLength(3)
+			}
 		})
 	})
 
@@ -1344,6 +1407,34 @@ describe("BpmnProcessBuilder", () => {
 			const sub = defined(process.flowElements.find((n) => n.id === "sub-mi"))
 			if (sub.type === "subProcess") {
 				expect(sub.loopCharacteristics).toBeDefined()
+			}
+		})
+
+		it("tolerates content and options passed in reversed order (options second, callback third)", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.exclusiveGateway("gw")
+					.branch("bundled", (b) =>
+						b
+							.defaultFlow()
+							.subProcess("sub1", { name: "Embedded Sub" }, (sub) => {
+								sub
+									.startEvent("sub-s")
+									.serviceTask("sub-t", { taskType: "inner" })
+									.endEvent("sub-e")
+							})
+							.connectTo("end"),
+					)
+					.endEvent("end")
+					.build(),
+			)
+
+			const sub = defined(process.flowElements.find((n) => n.id === "sub1"))
+			expect(sub.type).toBe("subProcess")
+			expect(sub.name).toBe("Embedded Sub")
+			if (sub.type === "subProcess") {
+				expect(sub.flowElements).toHaveLength(3)
 			}
 		})
 	})
@@ -3968,5 +4059,172 @@ describe("boundary events inside a branch", () => {
 				.branch("path-b", (b) => b.endEvent("e-b"))
 				.build(),
 		).toThrow(/withBoundary/)
+	})
+})
+
+describe("boundary events inside a sub-process", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("boundaryEvent() inside subProcess content attaches to the preceding task via attachedToRef", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (sp) => {
+				sp.userTask("ut")
+					.boundaryEvent("be", { attachedTo: "ut", timerDuration: "PT4H", cancelActivity: false })
+					.endEvent("e-timeout")
+			})
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const sub = p.flowElements.find((n) => n.id === "sub")
+		if (sub?.type !== "subProcess") throw new Error("expected subProcess")
+
+		const be = sub.flowElements.find((e) => e.id === "be")
+		if (be?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(be.attachedToRef).toBe("ut")
+		expect(be.cancelActivity).toBe(false)
+		expect(be.eventDefinitions).toHaveLength(1)
+		expect(be.eventDefinitions[0]?.type).toBe("timer")
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "be" && f.targetRef === "e-timeout")).toBe(
+			true,
+		)
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "ut" && f.targetRef === "be")).toBe(false)
+	})
+
+	it("withBoundary() inside subProcess content attaches boundary and restores cursor to the task", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("sub", (sp) => {
+				sp.userTask("ut")
+					.withBoundary("be-timer", { timerDuration: "PT4H", cancelActivity: false }, (h) => {
+						h.userTask("escalate").endEvent("e-escalate")
+					})
+					.endEvent("e-main")
+			})
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const sub = p.flowElements.find((n) => n.id === "sub")
+		if (sub?.type !== "subProcess") throw new Error("expected subProcess")
+
+		const be = sub.flowElements.find((e) => e.id === "be-timer")
+		if (be?.type !== "boundaryEvent") throw new Error("expected boundaryEvent")
+		expect(be.attachedToRef).toBe("ut")
+
+		expect(sub.sequenceFlows.some((f) => f.sourceRef === "ut" && f.targetRef === "e-main")).toBe(
+			true,
+		)
+		expect(
+			sub.sequenceFlows.some((f) => f.sourceRef === "be-timer" && f.targetRef === "escalate"),
+		).toBe(true)
+	})
+})
+
+describe("sub-process style methods mirrored across builder contexts", () => {
+	beforeEach(() => {
+		resetIdCounter()
+	})
+
+	it("SubProcessContentBuilder.subProcess nests a sub-process inside a sub-process", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("outer", (sp) => {
+				sp.subProcess("inner", (inner) => {
+					inner.startEvent("i-s").serviceTask("i-t", { taskType: "inner-work" }).endEvent("i-e")
+				})
+			})
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const outer = p.flowElements.find((n) => n.id === "outer")
+		if (outer?.type !== "subProcess") throw new Error("expected subProcess")
+		const inner = outer.flowElements.find((n) => n.id === "inner")
+		if (inner?.type !== "subProcess") throw new Error("expected nested subProcess")
+		expect(inner.flowElements).toHaveLength(3)
+	})
+
+	it("SubProcessContentBuilder.adHocSubProcess nests an ad-hoc sub-process inside a sub-process", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("outer", (sp) => {
+				sp.adHocSubProcess("adhoc", (sub) => {
+					sub.serviceTask("review", { taskType: "review" })
+				})
+			})
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const outer = p.flowElements.find((n) => n.id === "outer")
+		if (outer?.type !== "subProcess") throw new Error("expected subProcess")
+		const adhoc = outer.flowElements.find((n) => n.id === "adhoc")
+		expect(adhoc?.type).toBe("adHocSubProcess")
+	})
+
+	it("SubProcessContentBuilder.eventSubProcess nests an event sub-process inside a sub-process", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.subProcess("outer", (sp) => {
+				sp.startEvent("outer-s")
+					.eventSubProcess("evtsub", (sub) => {
+						sub.startEvent("err-start").endEvent("err-end")
+					})
+					.endEvent("outer-e")
+			})
+			.endEvent("e")
+			.build()
+
+		const p = firstProcess(defs)
+		const outer = p.flowElements.find((n) => n.id === "outer")
+		if (outer?.type !== "subProcess") throw new Error("expected subProcess")
+		const evtsub = outer.flowElements.find((n) => n.id === "evtsub")
+		if (evtsub?.type !== "subProcess") throw new Error("expected nested event subProcess")
+		expect(evtsub.triggeredByEvent).toBe(true)
+	})
+
+	it("BranchBuilder.adHocSubProcess adds an ad-hoc sub-process inside a branch", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) =>
+				b
+					.defaultFlow()
+					.adHocSubProcess("adhoc", (sub) => {
+						sub.serviceTask("review", { taskType: "review" })
+					})
+					.connectTo("end"),
+			)
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		const adhoc = p.flowElements.find((n) => n.id === "adhoc")
+		expect(adhoc?.type).toBe("adHocSubProcess")
+	})
+
+	it("BranchBuilder.eventSubProcess adds an event sub-process inside a branch", () => {
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("path-a", (b) =>
+				b
+					.defaultFlow()
+					.eventSubProcess("evtsub", (sub) => {
+						sub.startEvent("err-start").endEvent("err-end")
+					})
+					.connectTo("end"),
+			)
+			.endEvent("end")
+			.build()
+
+		const p = firstProcess(defs)
+		const evtsub = p.flowElements.find((n) => n.id === "evtsub")
+		if (evtsub?.type !== "subProcess") throw new Error("expected event subProcess")
+		expect(evtsub.triggeredByEvent).toBe(true)
 	})
 })

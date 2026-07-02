@@ -632,6 +632,35 @@ function makeInclusiveGatewayEl(id: string, options?: GatewayOptions): BpmnFlowE
 	return el
 }
 
+/**
+ * `subProcess`/`eventSubProcess`/`adHocSubProcess` all take a required content
+ * callback as their 2nd argument and an optional options object as their 3rd.
+ * That shape isn't demonstrated anywhere in this SDK's docs/examples, and
+ * callers that only see the parameter *names* (not enforced types — e.g.
+ * generated code run without type-checking) sometimes guess the common
+ * "options before callback" order instead. Detect that by runtime type and
+ * swap, so a reversed call still succeeds instead of throwing on `content`
+ * not being callable.
+ */
+function resolveSubProcessArgs<TOptions>(
+	content: unknown,
+	options: unknown,
+): { content: (b: SubProcessContentBuilder) => void; options: TOptions | undefined } {
+	if (typeof content === "function") {
+		return {
+			content: content as (b: SubProcessContentBuilder) => void,
+			options: options as TOptions | undefined,
+		}
+	}
+	if (typeof options === "function") {
+		return {
+			content: options as (b: SubProcessContentBuilder) => void,
+			options: content as TOptions | undefined,
+		}
+	}
+	throw new TypeError("subProcess() requires a content callback function")
+}
+
 // ---------------------------------------------------------------------------
 // Shared graph helpers — used by ProcessBuilder and SubProcessContentBuilder
 // ---------------------------------------------------------------------------
@@ -1105,22 +1134,133 @@ export class BranchBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: SubProcessOptions,
 	): this {
+		const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
-		content(sub)
+		resolved.content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const element = makeFlowElement(id, "subProcess", options)
+		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
 			element.textAnnotations = sub._textAnnotations
 			element.associations = sub._associations
-			if (options?.multiInstance) {
-				element.loopCharacteristics = buildMultiInstance(options.multiInstance)
+			if (resolved.options?.multiInstance) {
+				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
 			}
 		}
 		return this.addElement(element)
+	}
+
+	/** Add an ad-hoc sub-process (mirrors `ProcessBuilder.adHocSubProcess`). */
+	adHocSubProcess(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: AdHocSubProcessOptions,
+	): this {
+		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
+		const sub = new SubProcessContentBuilder(this.rootMessages)
+		resolved.content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
+		recomputeIncomingOutgoing(sub._elements, sub._flows)
+
+		const zeebeExt: ZeebeExtensions = {}
+		if (resolved.options?.taskDefinition) {
+			zeebeExt.taskDefinition = resolved.options.taskDefinition
+		}
+		if (resolved.options?.ioMapping) {
+			zeebeExt.ioMapping = {
+				inputs: resolved.options.ioMapping.inputs ?? [],
+				outputs: resolved.options.ioMapping.outputs ?? [],
+			}
+		}
+		if (resolved.options?.taskHeaders) {
+			zeebeExt.taskHeaders = {
+				headers: Object.entries(resolved.options.taskHeaders).map(([key, value]) => ({
+					key,
+					value,
+				})),
+			}
+		}
+		const extensionElements = zeebeExtensionsToXmlElements(zeebeExt)
+
+		const adHocAttrs: Record<string, string> = {}
+		if (resolved.options?.activeElementsCollection) {
+			adHocAttrs.activeElementsCollection = resolved.options.activeElementsCollection
+		}
+		if (resolved.options?.outputCollection) {
+			adHocAttrs.outputCollection = resolved.options.outputCollection
+		}
+		if (resolved.options?.outputElement) {
+			adHocAttrs.outputElement = resolved.options.outputElement
+		}
+		if (Object.keys(adHocAttrs).length > 0) {
+			extensionElements.push({
+				name: "zeebe:adHoc",
+				attributes: adHocAttrs,
+				children: [],
+			})
+		}
+
+		const element = makeFlowElement(id, "adHocSubProcess", {
+			name: resolved.options?.name,
+			extensionElements,
+		})
+		if (resolved.options?.modelerTemplate) {
+			element.unknownAttributes["zeebe:modelerTemplate"] = resolved.options.modelerTemplate
+		}
+		if (resolved.options?.modelerTemplateVersion) {
+			element.unknownAttributes["zeebe:modelerTemplateVersion"] =
+				resolved.options.modelerTemplateVersion
+		}
+		if (resolved.options?.modelerTemplateIcon) {
+			element.unknownAttributes["zeebe:modelerTemplateIcon"] = resolved.options.modelerTemplateIcon
+		}
+		if (element.type === "adHocSubProcess") {
+			element.flowElements = sub._elements
+			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
+			if (resolved.options?.loopCharacteristics) {
+				element.loopCharacteristics = buildAdHocLoopCharacteristics(
+					resolved.options.loopCharacteristics,
+				)
+			} else if (resolved.options?.multiInstance) {
+				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
+			}
+		}
+		return this.addElement(element)
+	}
+
+	/** Add an event sub-process. Triggered by its start event — no incoming or outgoing sequence flows. */
+	eventSubProcess(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: ElementOptions,
+	): this {
+		const resolved = resolveSubProcessArgs<ElementOptions>(content, options)
+		const sub = new SubProcessContentBuilder(this.rootMessages)
+		resolved.content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
+		recomputeIncomingOutgoing(sub._elements, sub._flows)
+
+		const element = makeFlowElement(id, "subProcess", resolved.options)
+		if (element.type === "subProcess") {
+			element.triggeredByEvent = true
+			element.flowElements = sub._elements
+			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
+		}
+
+		// Event sub-processes have no incoming/outgoing sequence flows and must not
+		// advance the branch cursor — mirrors ProcessBuilder.eventSubProcess.
+		if (this._elements.some((n) => n.id === element.id)) {
+			throw new Error(`Duplicate element ID "${element.id}"`)
+		}
+		this._elements.push(element)
+		return this
 	}
 
 	/**
@@ -1425,6 +1565,211 @@ export class SubProcessContentBuilder {
 		}
 		this.lastNodeId = elementId
 		this.currentGatewayId = undefined
+		return this
+	}
+
+	// ---- Boundary events ----
+
+	/**
+	 * Add a boundary event attached to an existing activity in this sub-process.
+	 *
+	 * The boundary event is NOT connected by a sequence flow — it attaches via
+	 * `attachedToRef`. The builder cursor advances to the boundary event so
+	 * subsequent elements chain from it. Use `withBoundary()` if you want the
+	 * cursor to return to the task afterward.
+	 */
+	boundaryEvent(id: string, options: BoundaryEventOptions): this {
+		const element = makeFlowElement(id, "boundaryEvent", options)
+		if (element.type === "boundaryEvent") {
+			element.attachedToRef = options.attachedTo
+			element.cancelActivity = options.cancelActivity
+			element.eventDefinitions = buildEventDefinitions(options)
+		}
+		// Push directly — no sequence flow, boundary events attach via attachedToRef
+		this._elements.push(element)
+		this.lastNodeId = element.id
+		return this
+	}
+
+	/**
+	 * Attach a boundary event to the preceding task and build its outgoing path,
+	 * then restore the builder cursor to the preceding task so the main flow continues.
+	 *
+	 * @param id - ID for the boundary event element.
+	 * @param options - Boundary event options (without `attachedTo` — inferred from cursor).
+	 * @param handler - Callback that chains elements from the boundary event.
+	 */
+	withBoundary(
+		id: string,
+		options: Omit<BoundaryEventOptions, "attachedTo">,
+		handler: (b: SubProcessContentBuilder) => void,
+	): this {
+		const attachedTo = this.lastNodeId
+		if (!attachedTo) {
+			throw new Error(
+				"withBoundary() must follow a task element inside the sub-process. Current builder position has no active task.",
+			)
+		}
+
+		const attachedEl = this._elements.find((n) => n.id === attachedTo)
+		if (attachedEl?.type === "boundaryEvent") {
+			throw new Error(
+				"withBoundary() cannot attach to a boundary event. It must follow a task or activity element.",
+			)
+		}
+
+		const savedLast = this.lastNodeId
+		const savedGateway = this.currentGatewayId
+		const savedOpenEnds = [...this.openBranchEnds]
+		this.openBranchEnds = []
+
+		// Create and push the boundary event (no sequence flow)
+		this.boundaryEvent(id, { ...options, attachedTo })
+
+		// Build the boundary event's outgoing path
+		handler(this)
+
+		// Restore cursor to the task so the sub-process main flow continues
+		this.lastNodeId = savedLast
+		this.currentGatewayId = savedGateway
+		this.openBranchEnds = savedOpenEnds
+		return this
+	}
+
+	// ---- Sub-process ----
+
+	/** Add a sub-process nested inside this sub-process's content. */
+	subProcess(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: SubProcessOptions,
+	): this {
+		const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
+		const sub = new SubProcessContentBuilder(this.rootMessages)
+		resolved.content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
+		recomputeIncomingOutgoing(sub._elements, sub._flows)
+
+		const element = makeFlowElement(id, "subProcess", resolved.options)
+		if (element.type === "subProcess") {
+			element.flowElements = sub._elements
+			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
+			if (resolved.options?.multiInstance) {
+				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
+			}
+		}
+		return this.addElement(element)
+	}
+
+	/** Add an ad-hoc sub-process nested inside this sub-process's content. */
+	adHocSubProcess(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: AdHocSubProcessOptions,
+	): this {
+		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
+		const sub = new SubProcessContentBuilder(this.rootMessages)
+		resolved.content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
+		recomputeIncomingOutgoing(sub._elements, sub._flows)
+
+		const zeebeExt: ZeebeExtensions = {}
+		if (resolved.options?.taskDefinition) {
+			zeebeExt.taskDefinition = resolved.options.taskDefinition
+		}
+		if (resolved.options?.ioMapping) {
+			zeebeExt.ioMapping = {
+				inputs: resolved.options.ioMapping.inputs ?? [],
+				outputs: resolved.options.ioMapping.outputs ?? [],
+			}
+		}
+		if (resolved.options?.taskHeaders) {
+			zeebeExt.taskHeaders = {
+				headers: Object.entries(resolved.options.taskHeaders).map(([key, value]) => ({
+					key,
+					value,
+				})),
+			}
+		}
+		const extensionElements = zeebeExtensionsToXmlElements(zeebeExt)
+
+		const adHocAttrs: Record<string, string> = {}
+		if (resolved.options?.activeElementsCollection) {
+			adHocAttrs.activeElementsCollection = resolved.options.activeElementsCollection
+		}
+		if (resolved.options?.outputCollection) {
+			adHocAttrs.outputCollection = resolved.options.outputCollection
+		}
+		if (resolved.options?.outputElement) {
+			adHocAttrs.outputElement = resolved.options.outputElement
+		}
+		if (Object.keys(adHocAttrs).length > 0) {
+			extensionElements.push({
+				name: "zeebe:adHoc",
+				attributes: adHocAttrs,
+				children: [],
+			})
+		}
+
+		const element = makeFlowElement(id, "adHocSubProcess", {
+			name: resolved.options?.name,
+			extensionElements,
+		})
+		if (resolved.options?.modelerTemplate) {
+			element.unknownAttributes["zeebe:modelerTemplate"] = resolved.options.modelerTemplate
+		}
+		if (resolved.options?.modelerTemplateVersion) {
+			element.unknownAttributes["zeebe:modelerTemplateVersion"] =
+				resolved.options.modelerTemplateVersion
+		}
+		if (resolved.options?.modelerTemplateIcon) {
+			element.unknownAttributes["zeebe:modelerTemplateIcon"] = resolved.options.modelerTemplateIcon
+		}
+		if (element.type === "adHocSubProcess") {
+			element.flowElements = sub._elements
+			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
+			if (resolved.options?.loopCharacteristics) {
+				element.loopCharacteristics = buildAdHocLoopCharacteristics(
+					resolved.options.loopCharacteristics,
+				)
+			} else if (resolved.options?.multiInstance) {
+				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
+			}
+		}
+		return this.addElement(element)
+	}
+
+	/** Add an event sub-process. Triggered by its start event — no incoming or outgoing sequence flows. */
+	eventSubProcess(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: ElementOptions,
+	): this {
+		const resolved = resolveSubProcessArgs<ElementOptions>(content, options)
+		const sub = new SubProcessContentBuilder(this.rootMessages)
+		resolved.content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
+		recomputeIncomingOutgoing(sub._elements, sub._flows)
+
+		const element = makeFlowElement(id, "subProcess", resolved.options)
+		if (element.type === "subProcess") {
+			element.triggeredByEvent = true
+			element.flowElements = sub._elements
+			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
+		}
+
+		// Event sub-processes have no incoming/outgoing sequence flows and must not
+		// advance the cursor — mirrors ProcessBuilder.eventSubProcess.
+		if (this._elements.some((n) => n.id === element.id)) {
+			throw new Error(`Duplicate element ID "${element.id}" in sub-process`)
+		}
+		this._elements.push(element)
 		return this
 	}
 }
@@ -1917,38 +2262,42 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: AdHocSubProcessOptions,
 	): this {
+		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
-		content(sub)
+		resolved.content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
 		const zeebeExt: ZeebeExtensions = {}
-		if (options?.taskDefinition) {
-			zeebeExt.taskDefinition = options.taskDefinition
+		if (resolved.options?.taskDefinition) {
+			zeebeExt.taskDefinition = resolved.options.taskDefinition
 		}
-		if (options?.ioMapping) {
+		if (resolved.options?.ioMapping) {
 			zeebeExt.ioMapping = {
-				inputs: options.ioMapping.inputs ?? [],
-				outputs: options.ioMapping.outputs ?? [],
+				inputs: resolved.options.ioMapping.inputs ?? [],
+				outputs: resolved.options.ioMapping.outputs ?? [],
 			}
 		}
-		if (options?.taskHeaders) {
+		if (resolved.options?.taskHeaders) {
 			zeebeExt.taskHeaders = {
-				headers: Object.entries(options.taskHeaders).map(([key, value]) => ({ key, value })),
+				headers: Object.entries(resolved.options.taskHeaders).map(([key, value]) => ({
+					key,
+					value,
+				})),
 			}
 		}
 		const extensionElements = zeebeExtensionsToXmlElements(zeebeExt)
 
 		// zeebe:adHoc element
 		const adHocAttrs: Record<string, string> = {}
-		if (options?.activeElementsCollection) {
-			adHocAttrs.activeElementsCollection = options.activeElementsCollection
+		if (resolved.options?.activeElementsCollection) {
+			adHocAttrs.activeElementsCollection = resolved.options.activeElementsCollection
 		}
-		if (options?.outputCollection) {
-			adHocAttrs.outputCollection = options.outputCollection
+		if (resolved.options?.outputCollection) {
+			adHocAttrs.outputCollection = resolved.options.outputCollection
 		}
-		if (options?.outputElement) {
-			adHocAttrs.outputElement = options.outputElement
+		if (resolved.options?.outputElement) {
+			adHocAttrs.outputElement = resolved.options.outputElement
 		}
 		if (Object.keys(adHocAttrs).length > 0) {
 			extensionElements.push({
@@ -1959,27 +2308,30 @@ export class ProcessBuilder {
 		}
 
 		const element = makeFlowElement(id, "adHocSubProcess", {
-			name: options?.name,
+			name: resolved.options?.name,
 			extensionElements,
 		})
-		if (options?.modelerTemplate) {
-			element.unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
+		if (resolved.options?.modelerTemplate) {
+			element.unknownAttributes["zeebe:modelerTemplate"] = resolved.options.modelerTemplate
 		}
-		if (options?.modelerTemplateVersion) {
-			element.unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
+		if (resolved.options?.modelerTemplateVersion) {
+			element.unknownAttributes["zeebe:modelerTemplateVersion"] =
+				resolved.options.modelerTemplateVersion
 		}
-		if (options?.modelerTemplateIcon) {
-			element.unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
+		if (resolved.options?.modelerTemplateIcon) {
+			element.unknownAttributes["zeebe:modelerTemplateIcon"] = resolved.options.modelerTemplateIcon
 		}
 		if (element.type === "adHocSubProcess") {
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
 			element.textAnnotations = sub._textAnnotations
 			element.associations = sub._associations
-			if (options?.loopCharacteristics) {
-				element.loopCharacteristics = buildAdHocLoopCharacteristics(options.loopCharacteristics)
-			} else if (options?.multiInstance) {
-				element.loopCharacteristics = buildMultiInstance(options.multiInstance)
+			if (resolved.options?.loopCharacteristics) {
+				element.loopCharacteristics = buildAdHocLoopCharacteristics(
+					resolved.options.loopCharacteristics,
+				)
+			} else if (resolved.options?.multiInstance) {
+				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
 			}
 		}
 		this.addFlowElement(element)
@@ -1992,19 +2344,20 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: SubProcessOptions,
 	): this {
+		const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
-		content(sub)
+		resolved.content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const element = makeFlowElement(id, "subProcess", options)
+		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
 			element.flowElements = sub._elements
 			element.sequenceFlows = sub._flows
 			element.textAnnotations = sub._textAnnotations
 			element.associations = sub._associations
-			if (options?.multiInstance) {
-				element.loopCharacteristics = buildMultiInstance(options.multiInstance)
+			if (resolved.options?.multiInstance) {
+				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
 			}
 		}
 		this.addFlowElement(element)
@@ -2017,12 +2370,13 @@ export class ProcessBuilder {
 		content: (b: SubProcessContentBuilder) => void,
 		options?: ElementOptions,
 	): this {
+		const resolved = resolveSubProcessArgs<ElementOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
-		content(sub)
+		resolved.content(sub)
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const element = makeFlowElement(id, "subProcess", options)
+		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
 			element.triggeredByEvent = true
 			element.flowElements = sub._elements
