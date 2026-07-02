@@ -10,12 +10,14 @@ import { recordings } from "./recordings.js"
 import { LiveSource, ReplaySource } from "./sources.js"
 import type { PanelRunResult, PanelSource } from "./sources.js"
 import { usePanelRun } from "./use-panel-run.js"
+import type { PanelRunState } from "./use-panel-run.js"
 
-type Variant = "with-sdk" | "without-sdk"
+type Variant = "with-sdk" | "with-sdk-compact" | "without-sdk"
 type Mode = "checking" | "live" | "replay-only"
 
 interface Prompts {
 	withSdk: string
+	withSdkCompact: string
 	withoutSdk: string
 }
 
@@ -40,16 +42,33 @@ function scenarioLabel(id: string): string {
 	return SCENARIO_OPTIONS.find((s) => s.id === id)?.label ?? SCENARIO_OPTIONS[0].label
 }
 
+const VARIANT_LABELS: Record<Variant, string> = {
+	"with-sdk-compact": "With SDK (Compact)",
+	"with-sdk": "With SDK",
+	"without-sdk": "Without SDK",
+}
+
+const VARIANT_COLORS: Record<Variant, string> = {
+	"with-sdk-compact": "--bpmnkit-warn",
+	"with-sdk": "--bpmnkit-success",
+	"without-sdk": "--bpmnkit-danger",
+}
+
+// Chart bars and detailed-view rows always render in this order, top to bottom.
+const VARIANT_ORDER: Variant[] = ["with-sdk-compact", "with-sdk", "without-sdk"]
+
 export function App() {
 	const [mode, setMode] = useState<Mode>("checking")
 	const [prompts, setPrompts] = useState<Prompts | null>(null)
 	const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null)
 	const [sources, setSources] = useState<Record<Variant, PanelSource | null>>({
 		"with-sdk": null,
+		"with-sdk-compact": null,
 		"without-sdk": null,
 	})
 	const [runResults, setRunResults] = useState<Record<Variant, PanelRunResult | null>>({
 		"with-sdk": null,
+		"with-sdk-compact": null,
 		"without-sdk": null,
 	})
 	const [viewingPrompt, setViewingPrompt] = useState<Variant | null>(null)
@@ -109,25 +128,30 @@ export function App() {
 	}
 
 	function activeSystemPrompt(variant: Variant): string {
-		if (selectedRecording) return selectedRecording.panels[variant].systemPrompt
+		if (selectedRecording) return selectedRecording.panels[variant]?.systemPrompt ?? ""
 		if (!prompts) return ""
-		return variant === "with-sdk" ? prompts.withSdk : prompts.withoutSdk
+		if (variant === "with-sdk") return prompts.withSdk
+		if (variant === "with-sdk-compact") return prompts.withSdkCompact
+		return prompts.withoutSdk
 	}
 
 	function runLive() {
 		setSelectedRecording(null)
-		setRunResults({ "with-sdk": null, "without-sdk": null })
+		setRunResults({ "with-sdk": null, "with-sdk-compact": null, "without-sdk": null })
 		setSources({
 			"with-sdk": new LiveSource(`/stream/with-sdk?scenario=${selectedScenarioId}`),
+			"with-sdk-compact": new LiveSource(`/stream/with-sdk-compact?scenario=${selectedScenarioId}`),
 			"without-sdk": new LiveSource(`/stream/without-sdk?scenario=${selectedScenarioId}`),
 		})
 	}
 
 	function replay(recording: Recording) {
 		setSelectedRecording(recording)
-		setRunResults({ "with-sdk": null, "without-sdk": null })
+		setRunResults({ "with-sdk": null, "with-sdk-compact": null, "without-sdk": null })
+		const compactPanel = recording.panels["with-sdk-compact"]
 		setSources({
 			"with-sdk": new ReplaySource(recording.panels["with-sdk"]),
+			"with-sdk-compact": compactPanel ? new ReplaySource(compactPanel) : null,
 			"without-sdk": new ReplaySource(recording.panels["without-sdk"]),
 		})
 	}
@@ -136,19 +160,26 @@ export function App() {
 		setRunResults((prev) => ({ ...prev, "with-sdk": result }))
 	}, [])
 
+	const handleFinishWithSdkCompact = useCallback((result: PanelRunResult) => {
+		setRunResults((prev) => ({ ...prev, "with-sdk-compact": result }))
+	}, [])
+
 	const handleFinishWithoutSdk = useCallback((result: PanelRunResult) => {
 		setRunResults((prev) => ({ ...prev, "without-sdk": result }))
 	}, [])
 
 	const withSdkRun = usePanelRun(sources["with-sdk"], handleFinishWithSdk)
+	const withSdkCompactRun = usePanelRun(sources["with-sdk-compact"], handleFinishWithSdkCompact)
 	const withoutSdkRun = usePanelRun(sources["without-sdk"], handleFinishWithoutSdk)
 
 	useEffect(() => {
 		sources["with-sdk"]?.setSpeed?.(replaySpeed)
+		sources["with-sdk-compact"]?.setSpeed?.(replaySpeed)
 		sources["without-sdk"]?.setSpeed?.(replaySpeed)
 	}, [replaySpeed, sources])
 
 	const withSdkResult = runResults["with-sdk"]
+	const withSdkCompactResult = runResults["with-sdk-compact"]
 	const withoutSdkResult = runResults["without-sdk"]
 
 	const comparisonBanner =
@@ -157,12 +188,16 @@ export function App() {
 			: null
 
 	const recordingData: Omit<Recording, "name" | "recordedAt"> | null =
-		withSdkResult && withoutSdkResult
+		withSdkResult && withSdkCompactResult && withoutSdkResult
 			? {
 					scenarioId: activeScenarioId(),
 					scenarioPrompt: activeScenarioPrompt(),
 					panels: {
 						"with-sdk": { systemPrompt: activeSystemPrompt("with-sdk"), ...withSdkResult },
+						"with-sdk-compact": {
+							systemPrompt: activeSystemPrompt("with-sdk-compact"),
+							...withSdkCompactResult,
+						},
 						"without-sdk": {
 							systemPrompt: activeSystemPrompt("without-sdk"),
 							...withoutSdkResult,
@@ -170,6 +205,12 @@ export function App() {
 					},
 				}
 			: null
+
+	const runByVariant: Record<Variant, PanelRunState> = {
+		"with-sdk": withSdkRun,
+		"with-sdk-compact": withSdkCompactRun,
+		"without-sdk": withoutSdkRun,
+	}
 
 	return (
 		<div class="flex flex-col h-full">
@@ -245,49 +286,38 @@ export function App() {
 			<main class="flex-1 flex flex-col overflow-hidden">
 				{view === "chart" ? (
 					<RaceChart
-						withSdk={{
-							elapsedMs: withSdkRun.elapsedMs,
-							streaming: withSdkRun.streaming,
-							text: withSdkRun.text,
-							usage: withSdkRun.usage,
-							finished: withSdkRun.bpmnXml !== null || withSdkRun.bpmnError !== null,
-						}}
-						withoutSdk={{
-							elapsedMs: withoutSdkRun.elapsedMs,
-							streaming: withoutSdkRun.streaming,
-							text: withoutSdkRun.text,
-							usage: withoutSdkRun.usage,
-							finished: withoutSdkRun.bpmnXml !== null || withoutSdkRun.bpmnError !== null,
-						}}
+						rows={VARIANT_ORDER.map((variant) => ({
+							id: variant,
+							label: VARIANT_LABELS[variant],
+							colorVar: VARIANT_COLORS[variant],
+							data: {
+								elapsedMs: runByVariant[variant].elapsedMs,
+								streaming: runByVariant[variant].streaming,
+								text: runByVariant[variant].text,
+								usage: runByVariant[variant].usage,
+								finished:
+									runByVariant[variant].bpmnXml !== null ||
+									runByVariant[variant].bpmnError !== null,
+							},
+						}))}
 					/>
 				) : (
 					<>
-						<div class="flex-1 overflow-hidden">
-							<ComparePanel
-								variant="with-sdk"
-								text={withSdkRun.text}
-								bpmnXml={withSdkRun.bpmnXml}
-								bpmnError={withSdkRun.bpmnError}
-								streaming={withSdkRun.streaming}
-								elapsedMs={withSdkRun.elapsedMs}
-								usage={withSdkRun.usage}
-								onViewPrompt={() => setViewingPrompt("with-sdk")}
-								promptAvailable={activeSystemPrompt("with-sdk") !== ""}
-							/>
-						</div>
-						<div class="flex-1 overflow-hidden">
-							<ComparePanel
-								variant="without-sdk"
-								text={withoutSdkRun.text}
-								bpmnXml={withoutSdkRun.bpmnXml}
-								bpmnError={withoutSdkRun.bpmnError}
-								streaming={withoutSdkRun.streaming}
-								elapsedMs={withoutSdkRun.elapsedMs}
-								usage={withoutSdkRun.usage}
-								onViewPrompt={() => setViewingPrompt("without-sdk")}
-								promptAvailable={activeSystemPrompt("without-sdk") !== ""}
-							/>
-						</div>
+						{VARIANT_ORDER.map((variant) => (
+							<div key={variant} class="flex-1 overflow-hidden">
+								<ComparePanel
+									variant={variant}
+									text={runByVariant[variant].text}
+									bpmnXml={runByVariant[variant].bpmnXml}
+									bpmnError={runByVariant[variant].bpmnError}
+									streaming={runByVariant[variant].streaming}
+									elapsedMs={runByVariant[variant].elapsedMs}
+									usage={runByVariant[variant].usage}
+									onViewPrompt={() => setViewingPrompt(variant)}
+									promptAvailable={activeSystemPrompt(variant) !== ""}
+								/>
+							</div>
+						))}
 					</>
 				)}
 			</main>
@@ -296,7 +326,7 @@ export function App() {
 				<PromptModal
 					open
 					onClose={() => setViewingPrompt(null)}
-					title={viewingPrompt === "with-sdk" ? "With SDK — Prompt" : "Without SDK — Prompt"}
+					title={`${VARIANT_LABELS[viewingPrompt]} — Prompt`}
 					scenarioPrompt={activeScenarioPrompt()}
 					systemPrompt={activeSystemPrompt(viewingPrompt)}
 				/>
