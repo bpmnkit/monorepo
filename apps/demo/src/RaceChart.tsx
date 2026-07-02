@@ -12,13 +12,19 @@ export interface RaceChartPanelData {
 	finished: boolean
 }
 
-export interface RaceChartProps {
-	withSdk: RaceChartPanelData
-	withoutSdk: RaceChartPanelData
+export interface RaceChartRow {
+	id: string
+	label: string
+	colorVar: string
+	data: RaceChartPanelData
 }
 
-function computeAxisMaxMs(elapsedA: number, elapsedB: number): number {
-	const maxElapsed = Math.max(elapsedA, elapsedB)
+export interface RaceChartProps {
+	rows: RaceChartRow[]
+}
+
+function computeAxisMaxMs(elapsedTimes: number[]): number {
+	const maxElapsed = Math.max(...elapsedTimes)
 	if (maxElapsed <= MIN_AXIS_MAX_MS) return MIN_AXIS_MAX_MS
 	return Math.ceil(maxElapsed / MINUTE_MS) * MINUTE_MS
 }
@@ -72,19 +78,21 @@ function Bar({ label, colorVar, data, axisMaxMs }: BarProps) {
 	)
 }
 
-export function RaceChart({ withSdk, withoutSdk }: RaceChartProps) {
-	const axisMaxMs = computeAxisMaxMs(withSdk.elapsedMs, withoutSdk.elapsedMs)
+export function RaceChart({ rows }: RaceChartProps) {
+	const axisMaxMs = computeAxisMaxMs(rows.map((row) => row.data.elapsedMs))
 	const tickCount = Math.round(axisMaxMs / MINUTE_MS)
 
 	return (
 		<div class="flex flex-col gap-6 p-8 h-full justify-center">
-			<Bar label="With SDK" colorVar="--bpmnkit-success" data={withSdk} axisMaxMs={axisMaxMs} />
-			<Bar
-				label="Without SDK"
-				colorVar="--bpmnkit-danger"
-				data={withoutSdk}
-				axisMaxMs={axisMaxMs}
-			/>
+			{rows.map((row) => (
+				<Bar
+					key={row.id}
+					label={row.label}
+					colorVar={row.colorVar}
+					data={row.data}
+					axisMaxMs={axisMaxMs}
+				/>
+			))}
 			<div
 				class="flex justify-between text-xs font-mono"
 				style="color: var(--bpmnkit-fg-muted, #8888a8);"
