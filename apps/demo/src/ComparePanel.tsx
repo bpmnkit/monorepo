@@ -1,14 +1,17 @@
 import { Badge, Button } from "@cascivo/react"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useEffect, useRef } from "preact/hooks"
 import type { TokenUsage } from "../shared/recording-types.js"
 import { BpmnViewer } from "./BpmnViewer.js"
 import { formatTokenCount } from "./format-tokens.js"
-import type { PanelRunResult, PanelSource } from "./sources.js"
 
 interface ComparePanelProps {
 	variant: "with-sdk" | "without-sdk"
-	source: PanelSource | null
-	onFinish?: (result: PanelRunResult) => void
+	text: string
+	bpmnXml: string | null
+	bpmnError: string | null
+	streaming: boolean
+	elapsedMs: number
+	usage: TokenUsage | null
 	onViewPrompt: () => void
 	promptAvailable: boolean
 }
@@ -25,89 +28,23 @@ const BADGE_VARIANTS = {
 
 export function ComparePanel({
 	variant,
-	source,
-	onFinish,
+	text,
+	bpmnXml,
+	bpmnError,
+	streaming,
+	elapsedMs,
+	usage,
 	onViewPrompt,
 	promptAvailable,
 }: ComparePanelProps) {
-	const [text, setText] = useState("")
-	const [bpmnXml, setBpmnXml] = useState<string | null>(null)
-	const [bpmnError, setBpmnError] = useState<string | null>(null)
-	const [streaming, setStreaming] = useState(false)
-	const [elapsedMs, setElapsedMs] = useState(0)
-	const [usage, setUsage] = useState<TokenUsage | null>(null)
 	const codeRef = useRef<HTMLPreElement>(null)
-	const chunksRef = useRef<{ t: number; text: string }[]>([])
-	const startedAtRef = useRef(0)
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: text is a prop; effect should re-run when it changes
 	useEffect(() => {
-		setText("")
-		setBpmnXml(null)
-		setBpmnError(null)
-		setElapsedMs(0)
-		setUsage(null)
-		chunksRef.current = []
-
-		if (!source) {
-			setStreaming(false)
-			return
+		if (codeRef.current) {
+			codeRef.current.scrollTop = codeRef.current.scrollHeight
 		}
-
-		startedAtRef.current = Date.now()
-		setStreaming(true)
-
-		const tick = setInterval(() => {
-			setElapsedMs(Date.now() - startedAtRef.current)
-		}, 100)
-
-		const unsubscribe = source.subscribe({
-			onChunk: (chunk) => {
-				chunksRef.current.push({ t: Date.now() - startedAtRef.current, text: chunk })
-				setText((prev) => prev + chunk)
-				if (codeRef.current) {
-					codeRef.current.scrollTop = codeRef.current.scrollHeight
-				}
-			},
-			onTick: (elapsedMs) => {
-				setElapsedMs(elapsedMs)
-			},
-			onDone: () => {
-				setStreaming(false)
-			},
-			onBpmn: (xml, runUsage) => {
-				const durationMs = Date.now() - startedAtRef.current
-				setBpmnXml(xml)
-				setUsage(runUsage)
-				clearInterval(tick)
-				setElapsedMs(durationMs)
-				onFinish?.({
-					chunks: chunksRef.current,
-					durationMs,
-					usage: runUsage,
-					result: { type: "bpmn", xml },
-				})
-			},
-			onError: (message, runUsage) => {
-				const durationMs = Date.now() - startedAtRef.current
-				setBpmnError(message)
-				setUsage(runUsage)
-				setStreaming(false)
-				clearInterval(tick)
-				setElapsedMs(durationMs)
-				onFinish?.({
-					chunks: chunksRef.current,
-					durationMs,
-					usage: runUsage,
-					result: { type: "error", message },
-				})
-			},
-		})
-
-		return () => {
-			clearInterval(tick)
-			unsubscribe()
-		}
-	}, [source, onFinish])
+	}, [text])
 
 	return (
 		<div class="flex h-full" style="border-top: 1px solid var(--bpmnkit-border, #2a2a42);">
