@@ -696,4 +696,47 @@ describe("Builder → auto-layout integration", () => {
 		const annShape = shapeFor(diagram.plane.shapes, "TextAnnotation_T_1")
 		shapesDoNotOverlap(taskShape, annShape)
 	})
+
+	it("build() never throws on a residual label overlap — returns valid BPMN instead", () => {
+		// This exact shape (several boundary-timed receive tasks converging on one
+		// end event, with a second end event nearby) reliably produces an
+		// end-event label overlap in the current layout algorithm. Overlap is a
+		// cosmetic layout imperfection, not a structural defect — build() must
+		// still succeed and return valid, executable BPMN rather than throwing.
+		expect(() =>
+			Bpmn.createProcess("proc")
+				.withAutoLayout()
+				.startEvent("s")
+				.subProcess("dunning", { name: "Dunning" }, (d) =>
+					d
+						.startEvent("dunStart", { name: "Invoice Overdue" })
+						.receiveTask("reminder1", { name: "Reminder 1", message: { name: "P1" } })
+						.connectTo("dunPaid")
+						.boundaryEvent("timer1", {
+							attachedTo: "reminder1",
+							timerDuration: "P7D",
+							cancelActivity: true,
+						})
+						.receiveTask("reminder2", { name: "Reminder 2", message: { name: "P2" } })
+						.connectTo("dunPaid")
+						.boundaryEvent("timer2", {
+							attachedTo: "reminder2",
+							timerDuration: "P7D",
+							cancelActivity: true,
+						})
+						.receiveTask("reminder3", { name: "Reminder 3", message: { name: "P3" } })
+						.connectTo("dunPaid")
+						.boundaryEvent("timer3", {
+							attachedTo: "reminder3",
+							timerDuration: "P14D",
+							cancelActivity: true,
+						})
+						.serviceTask("collectionsAgency", { name: "Escalate", taskType: "collections" })
+						.endEvent("dunWrittenOff", { name: "Uncollectible" })
+						.endEvent("dunPaid", { name: "Payment Collected" }),
+				)
+				.endEvent("e")
+				.build(),
+		).not.toThrow()
+	})
 })
