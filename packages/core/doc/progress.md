@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-02 — Builder: add `BranchBuilder.subProcess`
+
+`BranchBuilder` mirrors most of `ProcessBuilder`'s flow-node methods but was missing `subProcess()`, so `.branch(id, (b) => b.subProcess(...))` threw `TypeError: ... .subProcess is not a function`. Added `subProcess(id, content, options?)` to `BranchBuilder`, matching `ProcessBuilder.subProcess`'s implementation (nested flow content, multi-instance support) but wired through `BranchBuilder.addElement` instead of `ProcessBuilder.addFlowElement`.
+
 ## [0.0.24+] Fix illegal eventBasedGateway join (2026-06-28)
 
 `insertJoinGateways()` now maps `eventBasedGateway` splits to an `exclusiveGateway` join instead of mirroring the split type. Event-based gateways are split-only constructs; the XOR join is semantically correct because exactly one branch fires.

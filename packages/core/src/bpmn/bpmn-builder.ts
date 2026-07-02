@@ -1097,6 +1097,32 @@ export class BranchBuilder {
 		return this
 	}
 
+	// ---- Sub-process ----
+
+	/** Add a sub-process (mirrors `ProcessBuilder.subProcess`). */
+	subProcess(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: SubProcessOptions,
+	): this {
+		const sub = new SubProcessContentBuilder(this.rootMessages)
+		content(sub)
+		insertJoinGateways(sub._elements, sub._flows)
+		recomputeIncomingOutgoing(sub._elements, sub._flows)
+
+		const element = makeFlowElement(id, "subProcess", options)
+		if (element.type === "subProcess") {
+			element.flowElements = sub._elements
+			element.sequenceFlows = sub._flows
+			element.textAnnotations = sub._textAnnotations
+			element.associations = sub._associations
+			if (options?.multiInstance) {
+				element.loopCharacteristics = buildMultiInstance(options.multiInstance)
+			}
+		}
+		return this.addElement(element)
+	}
+
 	/**
 	 * Create a named branch from the last gateway added inside this branch.
 	 *

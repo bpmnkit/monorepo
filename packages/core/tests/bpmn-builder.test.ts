@@ -1270,6 +1270,85 @@ describe("BpmnProcessBuilder", () => {
 	})
 
 	// -----------------------------------------------------------------------
+	// branch() subProcess (mirrors ProcessBuilder.subProcess)
+	// -----------------------------------------------------------------------
+
+	describe("branch() subProcess", () => {
+		it("creates a sub-process inside a branch with nested flow", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.exclusiveGateway("gw")
+					.branch("bundled", (b) =>
+						b
+							.defaultFlow()
+							.subProcess(
+								"sub1",
+								(sub) => {
+									sub
+										.startEvent("sub-s")
+										.serviceTask("sub-t", { taskType: "inner" })
+										.endEvent("sub-e")
+								},
+								{ name: "Embedded Sub" },
+							)
+							.connectTo("end"),
+					)
+					.endEvent("end")
+					.build(),
+			)
+
+			const sub = defined(process.flowElements.find((n) => n.id === "sub1"))
+			expect(sub.type).toBe("subProcess")
+			expect(sub.name).toBe("Embedded Sub")
+
+			if (sub.type === "subProcess") {
+				expect(sub.flowElements).toHaveLength(3)
+				expect(sub.sequenceFlows).toHaveLength(2)
+			}
+
+			const gw = defined(process.flowElements.find((n) => n.id === "gw"))
+			if (gw.type === "exclusiveGateway") {
+				const defaultFlow = defined(process.sequenceFlows.find((f) => f.id === gw.default))
+				expect(defaultFlow.targetRef).toBe("sub1")
+			}
+		})
+
+		it("creates a sub-process inside a branch with multi-instance", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.exclusiveGateway("gw")
+					.branch("bundled", (b) =>
+						b
+							.defaultFlow()
+							.subProcess(
+								"sub-mi",
+								(sub) => {
+									sub.serviceTask("batch", { taskType: "batch-work" })
+								},
+								{
+									multiInstance: {
+										isSequential: false,
+										collection: "=items",
+										elementVariable: "item",
+									},
+								},
+							)
+							.connectTo("end"),
+					)
+					.endEvent("end")
+					.build(),
+			)
+
+			const sub = defined(process.flowElements.find((n) => n.id === "sub-mi"))
+			if (sub.type === "subProcess") {
+				expect(sub.loopCharacteristics).toBeDefined()
+			}
+		})
+	})
+
+	// -----------------------------------------------------------------------
 	// addStartEvent & element()
 	// -----------------------------------------------------------------------
 
