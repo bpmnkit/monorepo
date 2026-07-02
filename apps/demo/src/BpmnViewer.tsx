@@ -32,10 +32,15 @@ export function BpmnViewer({ xml, error }: BpmnViewerProps) {
 	if (error) {
 		return (
 			<div
-				class="flex h-full w-full items-center justify-center rounded text-sm"
+				class="h-full w-full rounded overflow-auto p-4"
 				style="color: var(--bpmnkit-danger, #f87171); background: var(--bpmnkit-surface-2, #1e1e2e);"
 			>
-				Could not render
+				<pre
+					class="text-xs leading-relaxed"
+					style="white-space: pre-wrap; word-break: break-word; margin: 0; font-family: var(--bpmnkit-font-mono, monospace);"
+				>
+					{error}
+				</pre>
 			</div>
 		)
 	}
