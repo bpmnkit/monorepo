@@ -3,11 +3,13 @@ import { useCallback, useEffect, useState } from "preact/hooks"
 import type { Recording } from "../shared/recording-types.js"
 import { ComparePanel } from "./ComparePanel.js"
 import { PromptModal } from "./PromptModal.js"
+import { RaceChart } from "./RaceChart.js"
 import { SaveRecordingModal } from "./SaveRecordingModal.js"
 import { buildComparisonBanner } from "./comparison-banner.js"
 import { recordings } from "./recordings.js"
 import { LiveSource, ReplaySource } from "./sources.js"
 import type { PanelRunResult, PanelSource } from "./sources.js"
+import { usePanelRun } from "./use-panel-run.js"
 
 type Variant = "with-sdk" | "without-sdk"
 type Mode = "checking" | "live" | "replay-only"
@@ -54,6 +56,8 @@ export function App() {
 	const [savingRecording, setSavingRecording] = useState(false)
 	const [selectedScenarioId, setSelectedScenarioId] = useState(DEFAULT_SCENARIO_ID)
 	const [scenarios, setScenarios] = useState<ScenarioInfo[] | null>(null)
+	const [view, setView] = useState<"chart" | "detailed">("chart")
+	const [replaySpeed, setReplaySpeed] = useState(1)
 
 	useEffect(() => {
 		const controller = new AbortController()
@@ -136,6 +140,14 @@ export function App() {
 		setRunResults((prev) => ({ ...prev, "without-sdk": result }))
 	}, [])
 
+	const withSdkRun = usePanelRun(sources["with-sdk"], handleFinishWithSdk)
+	const withoutSdkRun = usePanelRun(sources["without-sdk"], handleFinishWithoutSdk)
+
+	useEffect(() => {
+		sources["with-sdk"]?.setSpeed?.(replaySpeed)
+		sources["without-sdk"]?.setSpeed?.(replaySpeed)
+	}, [replaySpeed, sources])
+
 	const withSdkResult = runResults["with-sdk"]
 	const withoutSdkResult = runResults["without-sdk"]
 
@@ -186,6 +198,21 @@ export function App() {
 							{sources["with-sdk"] ? "Run Again" : "Run Demo"}
 						</Button>
 					)}
+					<Button variant="ghost" onClick={() => setView(view === "chart" ? "detailed" : "chart")}>
+						{view === "chart" ? "Detailed View" : "Chart View"}
+					</Button>
+					{selectedRecording && (
+						<Select
+							options={[
+								{ value: "1", label: "1x" },
+								{ value: "2", label: "2x" },
+								{ value: "5", label: "5x" },
+								{ value: "10", label: "10x" },
+							]}
+							value={String(replaySpeed)}
+							onChange={(e) => setReplaySpeed(Number((e.target as HTMLSelectElement).value))}
+						/>
+					)}
 					{recordings.length > 0 && (
 						<Select
 							placeholder="Load a recording…"
@@ -216,24 +243,53 @@ export function App() {
 			)}
 
 			<main class="flex-1 flex flex-col overflow-hidden">
-				<div class="flex-1 overflow-hidden">
-					<ComparePanel
-						variant="with-sdk"
-						source={sources["with-sdk"]}
-						onFinish={handleFinishWithSdk}
-						onViewPrompt={() => setViewingPrompt("with-sdk")}
-						promptAvailable={activeSystemPrompt("with-sdk") !== ""}
+				{view === "chart" ? (
+					<RaceChart
+						withSdk={{
+							elapsedMs: withSdkRun.elapsedMs,
+							streaming: withSdkRun.streaming,
+							text: withSdkRun.text,
+							usage: withSdkRun.usage,
+							finished: withSdkRun.bpmnXml !== null || withSdkRun.bpmnError !== null,
+						}}
+						withoutSdk={{
+							elapsedMs: withoutSdkRun.elapsedMs,
+							streaming: withoutSdkRun.streaming,
+							text: withoutSdkRun.text,
+							usage: withoutSdkRun.usage,
+							finished: withoutSdkRun.bpmnXml !== null || withoutSdkRun.bpmnError !== null,
+						}}
 					/>
-				</div>
-				<div class="flex-1 overflow-hidden">
-					<ComparePanel
-						variant="without-sdk"
-						source={sources["without-sdk"]}
-						onFinish={handleFinishWithoutSdk}
-						onViewPrompt={() => setViewingPrompt("without-sdk")}
-						promptAvailable={activeSystemPrompt("without-sdk") !== ""}
-					/>
-				</div>
+				) : (
+					<>
+						<div class="flex-1 overflow-hidden">
+							<ComparePanel
+								variant="with-sdk"
+								text={withSdkRun.text}
+								bpmnXml={withSdkRun.bpmnXml}
+								bpmnError={withSdkRun.bpmnError}
+								streaming={withSdkRun.streaming}
+								elapsedMs={withSdkRun.elapsedMs}
+								usage={withSdkRun.usage}
+								onViewPrompt={() => setViewingPrompt("with-sdk")}
+								promptAvailable={activeSystemPrompt("with-sdk") !== ""}
+							/>
+						</div>
+						<div class="flex-1 overflow-hidden">
+							<ComparePanel
+								variant="without-sdk"
+								text={withoutSdkRun.text}
+								bpmnXml={withoutSdkRun.bpmnXml}
+								bpmnError={withoutSdkRun.bpmnError}
+								streaming={withoutSdkRun.streaming}
+								elapsedMs={withoutSdkRun.elapsedMs}
+								usage={withoutSdkRun.usage}
+								onViewPrompt={() => setViewingPrompt("without-sdk")}
+								promptAvailable={activeSystemPrompt("without-sdk") !== ""}
+							/>
+						</div>
+					</>
+				)}
 			</main>
 
 			{viewingPrompt && (
