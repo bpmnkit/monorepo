@@ -5,7 +5,7 @@ import { BpmnViewer } from "./BpmnViewer.js"
 import { formatTokenCount } from "./format-tokens.js"
 
 interface ComparePanelProps {
-	variant: "with-sdk" | "without-sdk"
+	variant: "with-sdk" | "with-sdk-compact" | "without-sdk"
 	text: string
 	bpmnXml: string | null
 	bpmnError: string | null
@@ -18,13 +18,15 @@ interface ComparePanelProps {
 
 const LABELS = {
 	"with-sdk": "WITH SDK",
+	"with-sdk-compact": "WITH SDK (COMPACT)",
 	"without-sdk": "WITHOUT SDK",
 } satisfies Record<ComparePanelProps["variant"], string>
 
 const BADGE_VARIANTS = {
 	"with-sdk": "success",
+	"with-sdk-compact": "warning",
 	"without-sdk": "destructive",
-} satisfies Record<ComparePanelProps["variant"], "success" | "destructive">
+} satisfies Record<ComparePanelProps["variant"], "success" | "warning" | "destructive">
 
 export function ComparePanel({
 	variant,
