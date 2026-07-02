@@ -1,0 +1,1492 @@
+{
+  "scenarioId": "quote-to-cash",
+  "scenarioPrompt": "Generate a Quote-to-Cash BPMN process for Camunda 8. It should include:\n- Quote/offer generation from a product catalog with tiered pricing\n- Exclusive gateway for discount approval: manager approval above one threshold,\n  escalating to VP approval above a higher threshold\n- Contract generation and e-signature via a REST connector to an external\n  e-signature service\n- Exclusive gateway routing standard orders directly to provisioning, or complex\n  bundled orders through a dedicated multi-line provisioning subprocess\n- Multi-instance subprocess provisioning each ordered line item in parallel\n- Invoice generation triggered once provisioning completes\n- Payment processing via a REST connector to a payment gateway\n- Event-based gateway for payment outcome: paid immediately, or move to a\n  dunning subprocess\n- Dunning/cash-collection subprocess with escalating reminder cycles (timer\n  boundary events on each reminder) before escalating to a collections agency\n- Separate end events for: contract rejected, payment received, and written\n  off after collections failure\n\nOutput code only. No explanation. No markdown prose outside the code block.",
+  "panels": {
+    "with-sdk": {
+      "systemPrompt": "You are an expert at using the @bpmnkit/core TypeScript SDK to generate Camunda 8 BPMN processes.\n\n## SDK Overview\n<div align=\"center\">\n  <a href=\"https://bpmnkit.com\"><img src=\"https://bpmnkit.com/favicon.svg\" width=\"72\" height=\"72\" alt=\"BPMN Kit logo\"></a>\n  <h1>@bpmnkit/core</h1>\n  <p>TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams</p>\n\n  [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core)\n  [![license](https://img.shields.io/npm/l/@bpmnkit/core?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)\n  [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)\n  [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)\n  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)\n\n  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/core/CHANGELOG.md)\n</div>\n\n---\n\n## Overview\n\n`@bpmnkit/core` is the foundation of the BPMN Kit. It gives you everything to work with BPMN 2.0, DMN 1.3, and Camunda Form definitions in pure TypeScript — no XML wrestling, no runtime dependencies.\n\n```\nParse → Modify → Validate → Export\n```\n\n## Features\n\n- **BPMN 2.0** — parse, create, and export process diagrams with full Zeebe/Camunda 8 extension support\n- **Fluent Builder API** — construct valid processes programmatically, never touch raw XML\n- **Sugiyama Layout Engine** — auto-position elements with clean orthogonal edge routing\n- **DMN 1.3** — decision tables, including FEEL expression support\n- **Camunda Form Definitions** — type-safe form schema builder\n- **Optimizer** — built-in rule engine to detect and auto-fix anti-patterns\n- **Compact Format** — 70% smaller token-efficient JSON representation for AI/LLM workflows\n- **Zero Dependencies** — runs in browsers, Node.js, Deno, Bun, and edge runtimes\n\n## Installation\n\n```sh\nnpm install @bpmnkit/core\npnpm add @bpmnkit/core\n```\n\n## Quick Start\n\n### Build a process from code\n\n```typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst process = Bpmn.createProcess(\"order-flow\", \"Order Flow\")\n  .startEvent(\"start\", \"Order Received\")\n  .serviceTask(\"validate\", \"Validate Order\", {\n    type: \"order-validator\",\n    inputs: [{ source: \"=order\", target: \"order\" }],\n    outputs: [{ source: \"=valid\", target: \"isValid\" }],\n  })\n  .exclusiveGateway(\"check\", \"Order Valid?\")\n  .sequenceFlow(\"check\", \"fulfill\", \"=isValid = true\")\n  .serviceTask(\"fulfill\", \"Fulfill Order\", { type: \"fulfillment-service\" })\n  .endEvent(\"end\", \"Order Complete\")\n  .sequenceFlow(\"check\", \"reject\", \"=isValid = false\")\n  .endEvent(\"reject-end\", \"Order Rejected\")\n  .build()\n\nconst xml = Bpmn.export(process)\n```\n\n### Parse and modify existing BPMN\n\n```typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst process = defs.processes[0]\n\n// Access flow elements\nfor (const el of process.flowElements) {\n  console.log(el.type, el.id, el.name)\n}\n\n// Serialize back to XML\nconst updated = Bpmn.export(defs)\n```\n\n### Auto-layout a process\n\n```typescript\nimport { Bpmn, layoutProcess } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst result = layoutProcess(defs.processes[0])\n// result.defs now has updated DI coordinates\nconst laid = Bpmn.export(result.defs)\n```\n\n### Optimize a diagram\n\n```typescript\nimport { Bpmn, optimize } from \"@bpmnkit/core\"\n\nconst defs = Bpmn.parse(xml)\nconst report = optimize(defs)\n\nconsole.log(`${report.summary.total} findings`)\n\nfor (const finding of report.findings) {\n  console.log(`[${finding.severity}] ${finding.message}`)\n  if (finding.applyFix) {\n    const { description } = finding.applyFix(defs)\n    console.log(\"Fixed:\", description)\n  }\n}\n```\n\n### Compact format for AI/LLM workflows\n\n```typescript\nimport { Bpmn, compactify, expand } from \"@bpmnkit/core\"\n\n// Shrink for AI prompt\nconst defs = Bpmn.parse(xml)\nconst compact = compactify(defs)          // ~70% smaller JSON\nconst json = JSON.stringify(compact)      // send to LLM\n\n// Restore full BPMN from AI response\nconst restored = expand(JSON.parse(json))\nconst outXml = Bpmn.export(restored)\n```\n\n## API Reference\n\n### BPMN\n\n| Export | Description |\n|--------|-------------|\n| `Bpmn.parse(xml)` | Parse BPMN XML → `BpmnDefinitions` |\n| `Bpmn.export(defs)` | Serialize `BpmnDefinitions` → XML |\n| `Bpmn.createProcess(id, name?)` | Start a `ProcessBuilder` |\n| `Bpmn.makeEmpty(processId?, name?)` | Minimal BPMN XML with one start event |\n| `Bpmn.SAMPLE_XML` | 3-node sample diagram string |\n\n### DMN\n\n| Export | Description |\n|--------|-------------|\n| `Dmn.parse(xml)` | Parse DMN XML → `DmnDefinitions` |\n| `Dmn.export(defs)` | Serialize → XML |\n| `Dmn.createDecisionTable(id, name?)` | Start a `DecisionTableBuilder` |\n| `Dmn.makeEmpty()` | Minimal DMN with one empty decision table |\n\n### Form\n\n| Export | Description |\n|--------|-------------|\n| `Form.create()` | Start a `FormBuilder` |\n| `Form.parse(json)` | Parse a form schema |\n| `Form.export(schema)` | Serialize → JSON string |\n\n### Layout & Optimization\n\n| Export | Description |\n|--------|-------------|\n| `layoutProcess(process)` | Auto-layout all elements; returns `LayoutResult` |\n| `optimize(defs)` | Run all optimization rules; returns `OptimizeReport` |\n| `compactify(defs)` | Convert to compact `CompactDiagram` |\n| `expand(compact)` | Restore full `BpmnDefinitions` |\n| `generateId(prefix)` | Generate a unique short ID |\n\n---\n\n## Related Packages\n\n| Package | Description |\n|---------|-------------|\n| [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |\n| [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |\n| [`@bpmnkit/engine`](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight BPMN process execution engine |\n| [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |\n| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |\n| [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |\n| [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |\n| [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |\n| [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |\n| [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |\n| [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |\n| [`@bpmnkit/cli`](https://www.npmjs.com/package/@bpmnkit/cli) | Camunda 8 command-line interface (casen) |\n| [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |\n| [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |\n| [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |\n| [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |\n| [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |\n| [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |\n| [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |\n| [`@bpmnkit/casen-worker-http`](https://www.npmjs.com/package/@bpmnkit/casen-worker-http) | Example HTTP worker plugin — completes jobs with live JSONPlaceholder API data |\n| [`@bpmnkit/casen-worker-ai`](https://www.npmjs.com/package/@bpmnkit/casen-worker-ai) | AI task worker — classify, summarize, extract, and decide using Claude |\n\n## License\n\n[MIT](https://github.com/bpmnkit/monorepo/blob/main/LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)\n\n<div align=\"center\">\n  <a href=\"https://bpmnkit.com\"><img src=\"https://bpmnkit.com/favicon.svg\" width=\"32\" height=\"32\" alt=\"BPMN Kit\"></a>\n</div>\n\n\n## Exported API (from packages/core/src/index.ts)\n```typescript\nexport { BpmnSdkError, ParseError, ValidationError } from \"./errors.js\"\nexport type { ErrorCode } from \"./errors.js\"\nexport {\n\tisBpmnActivity,\n\tisBpmnAdHocSubProcess,\n\tisBpmnBoundaryEvent,\n\tisBpmnBusinessRuleTask,\n\tisBpmnCallActivity,\n\tisBpmnComplexGateway,\n\tisBpmnEndEvent,\n\tisBpmnEvent,\n\tisBpmnEventBasedGateway,\n\tisBpmnEventSubProcess,\n\tisBpmnExclusiveGateway,\n\tisBpmnGateway,\n\tisBpmnInclusiveGateway,\n\tisBpmnIntermediateCatchEvent,\n\tisBpmnIntermediateThrowEvent,\n\tisBpmnManualTask,\n\tisBpmnParallelGateway,\n\tisBpmnReceiveTask,\n\tisBpmnScriptTask,\n\tisBpmnSendTask,\n\tisBpmnServiceTask,\n\tisBpmnStartEvent,\n\tisBpmnSubProcess,\n\tisBpmnTask,\n\tisBpmnTransaction,\n\tisBpmnUserTask,\n} from \"./bpmn/type-guards.js\"\nexport {\n\tfindElement,\n\tfindElementInProcess,\n\tfindProcess,\n\tfindSequenceFlow,\n\tgetAllElements,\n\tgetElementType,\n\tgetZeebeExtensions,\n} from \"./bpmn/utils.js\"\nexport { Bpmn, SAMPLE_BPMN_XML } from \"./bpmn/index.js\"\nexport { applyAutoLayout } from \"./bpmn/auto-layout.js\"\nexport { DiagramBuilder } from \"./bpmn/bpmn-builder.js\"\nexport type {\n\tProcessBuilder,\n\tBranchBuilder,\n\tSubProcessContentBuilder,\n\tServiceTaskOptions,\n\tScriptTaskOptions,\n\tUserTaskOptions,\n\tCallActivityOptions,\n\tBusinessRuleTaskOptions,\n\tElementOptions,\n\tGatewayOptions,\n\tMultiInstanceOptions,\n\tSubProcessOptions,\n\tStartEventOptions,\n\tIntermediateCatchEventOptions,\n\tIntermediateThrowEventOptions,\n\tEndEventOptions,\n\tBoundaryEventOptions,\n\tAdHocSubProcessOptions,\n} from \"./bpmn/bpmn-builder.js\"\nexport type {\n\tBpmnDefinitions,\n\tBpmnProcess,\n\tBpmnFlowNode,\n\tBpmnFlowElement,\n\tBpmnSequenceFlow,\n\tBpmnBoundaryEvent,\n\tBpmnElementType,\n\tBpmnStartEvent,\n\tBpmnEndEvent,\n\tBpmnIntermediateCatchEvent,\n\tBpmnIntermediateThrowEvent,\n\tBpmnTask,\n\tBpmnServiceTask,\n\tBpmnScriptTask,\n\tBpmnUserTask,\n\tBpmnSendTask,\n\tBpmnReceiveTask,\n\tBpmnBusinessRuleTask,\n\tBpmnManualTask,\n\tBpmnCallActivity,\n\tBpmnSubProcess,\n\tBpmnAdHocSubProcess,\n\tBpmnEventSubProcess,\n\tBpmnTransaction,\n\tBpmnExclusiveGateway,\n\tBpmnParallelGateway,\n\tBpmnInclusiveGateway,\n\tBpmnEventBasedGateway,\n\tBpmnComplexGateway,\n\tBpmnCollaboration,\n\tBpmnParticipant,\n\tBpmnMessageFlow,\n\tBpmnLane,\n\tBpmnLaneSet,\n\tBpmnError,\n\tBpmnEscalation,\n\tBpmnMessage,\n\tBpmnSignal,\n\tBpmnTextAnnotation,\n\tBpmnAssociation,\n\tBpmnConditionExpression,\n\tBpmnEventDefinition,\n\tBpmnTimerEventDefinition,\n\tBpmnErrorEventDefinition,\n\tBpmnEscalationEventDefinition,\n\tBpmnMessageEventDefinition,\n\tBpmnSignalEventDefinition,\n\tBpmnConditionalEventDefinition,\n\tBpmnLinkEventDefinition,\n\tBpmnCancelEventDefinition,\n\tBpmnTerminateEventDefinition,\n\tBpmnCompensateEventDefinition,\n\tBpmnMultiInstanceLoopCharacteristics,\n\tBpmnDiagram,\n\tBpmnDiPlane,\n\tBpmnDiShape,\n\tBpmnDiEdge,\n\tBpmnDiLabel,\n\tBpmnBounds,\n\tBpmnWaypoint,\n} from \"./bpmn/bpmn-model.js\"\nexport type {\n\tRestConnectorConfig,\n\tRestAuthentication,\n\tHttpMethod,\n} from \"./bpmn/rest-connector.js\"\nexport type {\n\tZeebeExtensions,\n\tZeebeTaskDefinition,\n\tZeebeIoMapping,\n\tZeebeIoMappingEntry,\n\tZeebeTaskHeaders,\n\tZeebeTaskHeaderEntry,\n\tZeebeProperties,\n\tZeebePropertyEntry,\n\tZeebeFormDefinition,\n\tZeebeCalledDecision,\n} from \"./bpmn/zeebe-extensions.js\"\nexport { zeebeExtensionsToXmlElements } from \"./bpmn/zeebe-extensions.js\"\nexport { Dmn, layoutDmn, benchmarkDmnLayout, compactifyDmn, expandDmn } from \"./dmn/index.js\"\nexport type {\n\tDmnBenchmarkResult,\n\tDmnElementPosition,\n\tCompactDmn,\n\tCompactDmnDecision,\n\tCompactDmnInput,\n\tCompactDmnOutput,\n\tCompactDmnRule,\n} from \"./dmn/index.js\"\nexport { Form, compactifyForm, expandForm } from \"./form/index.js\"\nexport type { CompactForm, CompactFormField } from \"./form/index.js\"\nexport { FormBuilder, GroupBuilder } from \"./form/form-builder.js\"\nexport type {\n\tTextFieldOptions,\n\tSelectOptions,\n\tRadioOptions,\n\tCheckboxOptions,\n\tChecklistOptions,\n\tGroupOptions,\n} from \"./form/form-builder.js\"\nexport type {\n\tFormComponent,\n\tFormCheckboxComponent,\n\tFormChecklistComponent,\n\tFormDefinition,\n\tFormExporter,\n\tFormGroupComponent,\n\tFormLayout,\n\tFormRadioComponent,\n\tFormSelectComponent,\n\tFormTextAreaComponent,\n\tFormTextComponent,\n\tFormTextFieldComponent,\n\tFormValidation,\n\tFormValueOption,\n\tFormNumberComponent,\n\tFormDatetimeComponent,\n\tFormButtonComponent,\n\tFormTaglistComponent,\n\tFormTableComponent,\n\tFormImageComponent,\n\tFormDynamicListComponent,\n\tFormIframeComponent,\n\tFormSeparatorComponent,\n\tFormSpacerComponent,\n\tFormDocumentPreviewComponent,\n\tFormHtmlComponent,\n\tFormExpressionComponent,\n\tFormFilepickerComponent,\n\tFormUnknownComponent,\n} from \"./form/form-model.js\"\nexport type {\n\tDecisionTableBuilder,\n\tInputOptions,\n\tOutputOptions,\n\tRuleOptions,\n} from \"./dmn/dmn-builder.js\"\nexport type {\n\tDmnDefinitions,\n\tDmnDecision,\n\tDmnDecisionTable,\n\tDmnInput,\n\tDmnOutput,\n\tDmnRule,\n\tDmnInputEntry,\n\tDmnOutputEntry,\n\tDmnDiagram,\n\tDmnDiagramShape,\n\tDmnDiagramEdge,\n\tDmnWaypoint,\n\tDmnTypeRef,\n\tDmnAggregation,\n\tHitPolicy,\n\tDmnInformationRequirement,\n\tDmnKnowledgeRequirement,\n\tDmnAuthorityRequirement,\n\tDmnInputData,\n\tDmnKnowledgeSource,\n\tDmnBusinessKnowledgeModel,\n\tDmnTextAnnotation,\n\tDmnAssociation,\n} from \"./dmn/dmn-model.js\"\nexport type { XmlElement } from \"./types/xml-element.js\"\nexport { generateId, resetIdCounter } from \"./types/id-generator.js\"\nexport { parseXml, serializeXml } from \"./xml/index.js\"\nexport { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from \"./bpmn/di-color.js\"\nexport type { DiColor } from \"./bpmn/di-color.js\"\nexport { optimize } from \"./bpmn/optimize/index.js\"\nexport { renderStoryHtml } from \"./bpmn/story.js\"\nexport type { StoryRenderOptions } from \"./bpmn/story.js\"\nexport { analyzeVariableFlow, extractFeelIdentifiers } from \"./bpmn/optimize/variable-flow.js\"\nexport type {\n\tOptimizationReport,\n\tOptimizationFinding,\n\tOptimizationSeverity,\n\tOptimizationCategory,\n\tApplyFixResult,\n\tOptimizeOptions,\n} from \"./bpmn/optimize/types.js\"\nexport { layoutProcess, layoutFlowNodes } from \"./layout/index.js\"\nexport {\n\tbenchmarkLayout,\n\tcompareLayouts,\n\tformatBenchmarkResult,\n\tgenerateAutoLayout,\n\tparseReferenceLayout,\n} from \"./layout/index.js\"\nexport type {\n\tBenchmarkResult,\n\tBoundingBox,\n\tElementComparison,\n\tElementPosition,\n\tFlowOrderViolation,\n} from \"./layout/index.js\"\nexport type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from \"./layout/index.js\"\nexport { ELEMENT_SIZES, GRID_CELL_HEIGHT, GRID_CELL_WIDTH } from \"./layout/index.js\"\nexport { compactify, expand } from \"./bpmn/compact.js\"\nexport { applyOperations } from \"./bpmn/operations.js\"\nexport type { BpmnOperation } from \"./bpmn/operations.js\"\nexport {\n\tbuildValidationDmn,\n\tfindValidationStructure,\n\tgetValidationInputNames,\n\tinsertValidationStructure,\n\tremoveValidationStructure,\n\tvalidationDecisionId,\n} from \"./bpmn/input-validation.js\"\nexport type {\n\tInputVariableDef,\n\tValidationStructure,\n\tValidationVariableType,\n} from \"./bpmn/input-validation.js\"\nexport { exportSvg } from \"./bpmn/svg.js\"\nexport type { SvgExportOptions } from \"./bpmn/svg.js\"\nexport type {\n\tCompactDiagram,\n\tCompactElement,\n\tCompactFlow,\n\tCompactProcess,\n} from \"./bpmn/compact.js\"\n\n```\n\n## Real-World Example — Loan Approval\nStudy this example carefully. Use the same fluent builder pattern.\n```typescript\n/**\n * Example 03 — Loan Approval\n *\n * Demonstrates:\n * - REST connector for external credit bureau API call\n * - Chained exclusive gateways for multi-step decision logic\n * - Business rule task for risk scoring (DMN integration)\n * - User task for manual underwriter review\n * - Script task for interest rate calculation\n * - connectTo() for merging paths from multiple branches\n */\n\nimport { writeFileSync } from \"node:fs\"\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst definitions = Bpmn.createProcess(\"LoanApproval\")\n\t.withAutoLayout()\n\t.name(\"Loan Approval Process\")\n\t.versionTag(\"1.0.0\")\n\n\t.startEvent(\"start\", { name: \"Application Received\" })\n\n\t// Fetch credit score from external bureau\n\t.restConnector(\"fetchCreditScore\", {\n\t\tname: \"Fetch Credit Score\",\n\t\tmethod: \"GET\",\n\t\turl: '=creditBureauUrl + \"/score/\" + applicant.ssn',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.CREDIT_BUREAU_TOKEN\" },\n\t\tresultVariable: \"creditBureauResponse\",\n\t\tresultExpression: \"=creditBureauResponse.body\",\n\t})\n\n\t// Automated pre-screening: reject below minimum threshold\n\t.exclusiveGateway(\"preScreen\", { name: \"Credit Score ≥ 580?\" })\n\n\t.branch(\"rejected-prescreening\", (b) =>\n\t\tb\n\t\t\t.condition(\"=creditBureauResponse.score < 580\")\n\t\t\t.serviceTask(\"sendRejectionLetter\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-credit\" },\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [\n\t\t\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t\t\t{ source: \"=creditBureauResponse.score\", target: \"creditScore\" },\n\t\t\t\t\t],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedAutomatic\", { name: \"Rejected — Credit Score\" }),\n\t)\n\n\t.branch(\"passed-prescreening\", (b) =>\n\t\tb.condition(\"=creditBureauResponse.score >= 580\").connectTo(\"riskScoring\"),\n\t)\n\n\t// DMN-based risk scoring combining multiple applicant factors\n\t.businessRuleTask(\"riskScoring\", {\n\t\tname: \"Calculate Risk Score\",\n\t\tdecisionRef: \"loan-risk-scoring\",\n\t\tresultVariable: \"riskAssessment\",\n\t})\n\n\t// Route by risk tier; medium risk goes to underwriter, high risk is auto-rejected\n\t.exclusiveGateway(\"riskGateway\", { name: \"Risk Tier?\" })\n\n\t// Low risk: calculate rate and generate offer automatically\n\t.branch(\"low-risk\", (b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"low\"')\n\t\t\t.scriptTask(\"calculateRate\", {\n\t\t\t\tname: \"Calculate Interest Rate\",\n\t\t\t\texpression: \"=if riskAssessment.score < 30 then baseRate + 0.5 else baseRate + 1.0\",\n\t\t\t\tresultVariable: \"interestRate\",\n\t\t\t})\n\t\t\t.serviceTask(\"generateOffer\", {\n\t\t\t\tname: \"Generate Loan Offer\",\n\t\t\t\ttaskType: \"offer-generator\",\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [\n\t\t\t\t\t\t{ source: \"=application.amount\", target: \"amount\" },\n\t\t\t\t\t\t{ source: \"=interestRate\", target: \"rate\" },\n\t\t\t\t\t],\n\t\t\t\t\toutputs: [{ source: \"=offerId\", target: \"loanOfferId\" }],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.connectTo(\"notifyApplicant\"),\n\t)\n\n\t// Medium risk: send to underwriter for manual review, then check their decision\n\t.branch(\"medium-risk\", (b) =>\n\t\tb\n\t\t\t.condition('=riskAssessment.tier = \"medium\"')\n\t\t\t.userTask(\"underwriterReview\", {\n\t\t\t\tname: \"Underwriter Review\",\n\t\t\t\tformId: \"underwriter-review-form\",\n\t\t\t})\n\t\t\t.connectTo(\"underwriterDecision\"),\n\t)\n\n\t// High risk: auto-reject\n\t.branch(\"high-risk\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendHighRiskRejection\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-risk\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedRisk\", { name: \"Rejected — High Risk\" }),\n\t)\n\n\t// Underwriter decision gateway (reached via connectTo from medium-risk branch)\n\t.exclusiveGateway(\"underwriterDecision\", { name: \"Underwriter Approved?\" })\n\n\t.branch(\"uw-approved\", (b) =>\n\t\tb.condition(\"=underwriterApproved = true\").connectTo(\"notifyApplicant\"),\n\t)\n\n\t.branch(\"uw-rejected\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"sendManualRejection\", {\n\t\t\t\tname: \"Send Rejection Letter\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"loan-rejected-underwriter\" },\n\t\t\t})\n\t\t\t.endEvent(\"endRejectedManual\", { name: \"Rejected — Underwriter\" }),\n\t)\n\n\t// Reached from both low-risk (auto) and medium-risk (approved) paths\n\t.serviceTask(\"notifyApplicant\", {\n\t\tname: \"Send Offer to Applicant\",\n\t\ttaskType: \"email-sender\",\n\t\ttaskHeaders: { template: \"loan-offer\" },\n\t\tioMapping: {\n\t\t\tinputs: [\n\t\t\t\t{ source: \"=applicant.email\", target: \"to\" },\n\t\t\t\t{ source: \"=loanOfferId\", target: \"offerId\" },\n\t\t\t],\n\t\t},\n\t})\n\n\t.endEvent(\"endApproved\", { name: \"Loan Approved\" })\n\t.build()\n\nconst xml = Bpmn.export(definitions)\nwriteFileSync(\"output/03-loan-approval.bpmn\", xml)\nconsole.log(\"✓ 03-loan-approval.bpmn\")\n\n```\n\n## Output Instructions\n- Generate TypeScript using @bpmnkit/core.\n- At the end of your code, use: process.stdout.write(Bpmn.export(definitions))\n- Do NOT use writeFileSync.\n- Output code only — no explanation, no markdown prose outside the code block.\n- Wrap your code in a single ```typescript code block.",
+      "chunks": [
+        {
+          "t": 105251,
+          "text": "```typescript\nimport { Bpmn } from \"@bpmnkit/core\"\n\nconst definitions ="
+        },
+        {
+          "t": 105620,
+          "text": " Bpmn.createProcess(\"QuoteToCash\")\n\t.withAutoLayout()\n\t.name(\"Quote-to-Cash Process\")\n\t.versionTag(\""
+        },
+        {
+          "t": 106153,
+          "text": "1.0.0\")\n\n\t.startEvent(\"start\", { name: \"Quote Requested\" })\n\n\t// Build quote/offer from catalog with tiered pricing\n\t."
+        },
+        {
+          "t": 106557,
+          "text": "serviceTask(\"generateQuote\", {\n\t\tname: \"Generate Quote from Catalog\",\n\t\ttaskType: \"quote-generator\",\n\t\ttaskHeaders: { pricingMod"
+        },
+        {
+          "t": 107027,
+          "text": "el: \"tiered\" },\n\t\tioMapping: {\n\t\t\tinputs: [\n\t\t\t\t{ source: \"=customer\", target: \"customer\" },\n\t\t\t\t{ source: \"=requ"
+        },
+        {
+          "t": 107502,
+          "text": "estedItems\", target: \"requestedItems\" },\n\t\t\t],\n\t\t\toutputs: [\n\t\t\t\t{ source: \"=quote.total\", target: \"quoteTotal\" },\n\t\t\t\t"
+        },
+        {
+          "t": 108156,
+          "text": "{ source: \"=quote.discountPercent\", target: \"discountPercent\" },\n\t\t\t],\n\t\t},\n\t})\n\n\t// Discount approval routing\n\t.exclusiveGateway(\"disc"
+        },
+        {
+          "t": 108439,
+          "text": "ountCheck\", { name: \"Discount Level?\" })\n\n\t.branch(\"auto-approve\", (b) =>\n\t\tb.condition(\"=discountPercent <= 10\").connectTo(\"generateContract\"),"
+        },
+        {
+          "t": 108910,
+          "text": "\n\t)\n\n\t.branch(\"manager-approval\", (b) =>\n\t\tb\n\t\t\t.condition(\"=discountPercent > 10 and discountPercent <= 25\")\n\t\t\t.userTask(\"managerApproval"
+        },
+        {
+          "t": 109475,
+          "text": "\", {\n\t\t\t\tname: \"Manager Discount Approval\",\n\t\t\t\tformId: \"discount-approval-form\",\n\t\t\t})\n\t\t\t.connectTo(\"approvalDecision\"),\n\t)\n\n\t.branch(\"vp"
+        },
+        {
+          "t": 109928,
+          "text": "-approval\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.userTask(\"vpApproval\", {\n\t\t\t\tname: \"VP Discount Approval\",\n\t\t\t\tformId: \"discount-approval-form\","
+        },
+        {
+          "t": 110346,
+          "text": "\n\t\t\t})\n\t\t\t.connectTo(\"approvalDecision\"),\n\t)\n\n\t// Approval outcome\n\t.exclusiveGateway(\"approvalDecision\", { name: \"Discount Approved?\" })"
+        },
+        {
+          "t": 110793,
+          "text": "\n\n\t.branch(\"approval-granted\", (b) =>\n\t\tb.condition(\"=discountApproved = true\").connectTo(\"generateContract\"),\n\t)\n\n\t.branch(\"approval-den"
+        },
+        {
+          "t": 111418,
+          "text": "ied\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.serviceTask(\"notifyDiscountRejected\", {\n\t\t\t\tname: \"Notify Customer —"
+        },
+        {
+          "t": 111755,
+          "text": " Discount Denied\",\n\t\t\t\ttaskType: \"email-sender\",\n\t\t\t\ttaskHeaders: { template: \"discount-rejected\" },\n\t\t\t})\n\t\t\t.endEvent(\"endContractRejected\", { name:"
+        },
+        {
+          "t": 112206,
+          "text": " \"Contract Rejected\" }),\n\t)\n\n\t// Contract generation + e-signature via REST connector\n\t.serviceTask(\"generateContract\", {\n\t\tname: \"Generate Contract\","
+        },
+        {
+          "t": 112682,
+          "text": "\n\t\ttaskType: \"contract-generator\",\n\t\tioMapping: {\n\t\t\toutputs: [{ source: \"=contract.id\", target: \"contractId\" }],\n\t\t},\n\t})"
+        },
+        {
+          "t": 113147,
+          "text": "\n\n\t.restConnector(\"eSignature\", {\n\t\tname: \"Send Contract for E-Signature\",\n\t\tmethod: \"POST\",\n\t\turl: '=eSignatureServiceUrl +"
+        },
+        {
+          "t": 113759,
+          "text": " \"/envelopes\"',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.ESIGN_TOKEN\" },\n\t\tbody: '={ contractId: cont"
+        },
+        {
+          "t": 114099,
+          "text": "ractId, signer: customer.email }',\n\t\tresultVariable: \"signatureResponse\",\n\t\tresultExpression: \"={ status: signatureResponse.body.status }\",\n\t})\n\n\t.excl"
+        },
+        {
+          "t": 114573,
+          "text": "usiveGateway(\"signatureResult\", { name: \"Contract Signed?\" })\n\n\t.branch(\"signed\", (b) =>\n\t\tb.condition('=signatureResponse.status"
+        },
+        {
+          "t": 115030,
+          "text": " = \"signed\"').connectTo(\"orderRouting\"),\n\t)\n\n\t.branch(\"declined\", (b) =>\n\t\tb.defaultFlow().connectTo(\"endContractRejected\"),"
+        },
+        {
+          "t": 115504,
+          "text": "\n\t)\n\n\t// Route standard vs complex bundled orders\n\t.exclusiveGateway(\"orderRouting\", { name: \"Order Type?\" })\n\n\t.branch(\"standard-order\", (b) ="
+        },
+        {
+          "t": 115972,
+          "text": ">\n\t\tb\n\t\t\t.condition(\"=order.type = \\\"standard\\\"\")\n\t\t\t.serviceTask(\"provisionStandard\", {\n\t\t\t\tname: \"Provision Standard Order\","
+        },
+        {
+          "t": 116443,
+          "text": "\n\t\t\t\ttaskType: \"provisioning-service\",\n\t\t\t\tioMapping: {\n\t\t\t\t\tinputs: [{ source: \"=order.lineItems[1]\", target: \"lineItem\" }],\n\t\t\t\t},"
+        },
+        {
+          "t": 116912,
+          "text": "\n\t\t\t})\n\t\t\t.connectTo(\"generateInvoice\"),\n\t)\n\n\t.branch(\"complex-order\", (b) =>\n\t\tb\n\t\t\t.defaultFlow()\n\t\t\t.subProcess(\n\t\t\t\t\"provision"
+        },
+        {
+          "t": 117381,
+          "text": "Bundle\",\n\t\t\t\t{\n\t\t\t\t\tname: \"Provision Bundled Line Items\",\n\t\t\t\t\tmultiInstance: {\n\t\t\t\t\t\tcollection: \"=order.lineItems\",\n\t\t\t\t\t\telementVariable: \"lineItem\",\n\t\t\t\t\t\ts"
+        },
+        {
+          "t": 117856,
+          "text": "equential: false,\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t\t(sp) =>\n\t\t\t\t\tsp\n\t\t\t\t\t\t.startEvent(\"provStart\", { name: \"Provision Line\" })\n\t\t\t\t\t\t.serviceTask(\"provisionLine\", {\n\t\t\t\t\t\t\t"
+        },
+        {
+          "t": 118325,
+          "text": "name: \"Provision Line Item\",\n\t\t\t\t\t\t\ttaskType: \"provisioning-service\",\n\t\t\t\t\t\t\tioMapping: {\n\t\t\t\t\t\t\t\tinputs: [{ source: \"=lineItem\", target: \"lineItem\" }],\n\t\t\t\t\t\t\t"
+        },
+        {
+          "t": 118804,
+          "text": "},\n\t\t\t\t\t\t})\n\t\t\t\t\t\t.endEvent(\"provDone\", { name: \"Line Provisioned\" }),\n\t\t\t)\n\t\t\t.connectTo(\"generateInvoice\"),\n\t)\n\n\t// Invoice generation once"
+        },
+        {
+          "t": 119268,
+          "text": " provisioning is complete\n\t.serviceTask(\"generateInvoice\", {\n\t\tname: \"Generate Invoice\",\n\t\ttaskType: \"invoice-generator\",\n\t\tioMapping: {\n\t\t\tin"
+        },
+        {
+          "t": 119735,
+          "text": "puts: [{ source: \"=order\", target: \"order\" }],\n\t\t\toutputs: [{ source: \"=invoice.id\", target: \"invoiceId\" }],\n\t\t},\n\t})\n\n\t//"
+        },
+        {
+          "t": 120211,
+          "text": " Payment processing via payment gateway REST connector\n\t.restConnector(\"processPayment\", {\n\t\tname: \"Charge Payment\",\n\t\tmethod: \"POST\",\n\t\turl: '=paym"
+        },
+        {
+          "t": 120827,
+          "text": "entGatewayUrl + \"/charges\"',\n\t\tauthentication: { type: \"bearer\", token: \"=secrets.PAYMENT_TOKEN\" },\n\t\tbody: '={ invoi"
+        },
+        {
+          "t": 121204,
+          "text": "ceId: invoiceId, amount: quoteTotal, method: customer.paymentMethod }',\n\t\tresultVariable: \"paymentResponse\","
+        },
+        {
+          "t": 121618,
+          "text": "\n\t})\n\n\t// Event-based gateway for payment outcome\n\t.eventBasedGateway(\"paymentOutcome\", { name: \"Payment Outcome?\" })\n\n\t."
+        },
+        {
+          "t": 122132,
+          "text": "branch(\"paid-now\", (b) =>\n\t\tb\n\t\t\t.intermediateCatchEvent(\"paymentConfirmed\", {\n\t\t\t\tname: \"Payment Confirmed\",\n\t\t\t\tmessage: {"
+        },
+        {
+          "t": 123104,
+          "text": " name: \"PaymentConfirmed\", correlationKey: \"=invoiceId\" },\n\t\t\t})\n\t\t\t.endEvent(\"endPaymentReceived\", { name: \"Payment Received\" }),\n\t)"
+        },
+        {
+          "t": 123140,
+          "text": "\n\n\t.branch(\"payment-overdue\", (b) =>\n\t\tb\n\t\t\t.intermediateCatchEvent(\"paymentOverdue\", {\n\t\t\t\tname: \"Payment Overdue\",\n\t\t\t\ttimer: {"
+        },
+        {
+          "t": 123507,
+          "text": " duration: \"P3D\" },\n\t\t\t})\n\t\t\t.connectTo(\"dunning\"),\n\t)\n\n\t// Dunning / cash-collection subprocess with escalating reminders\n\t.subProcess(\""
+        },
+        {
+          "t": 123975,
+          "text": "dunning\", { name: \"Dunning / Cash Collection\" }, (d) =>\n\t\td\n\t\t\t.startEvent(\"dunStart\", { name: \"Inv"
+        },
+        {
+          "t": 124478,
+          "text": "oice Overdue\" })\n\n\t\t\t.receiveTask(\"reminder1\", {\n\t\t\t\tname: \"Reminder 1 — Await Payment\",\n\t\t\t\tmessage: { name: \"Dunning"
+        },
+        {
+          "t": 124975,
+          "text": "Payment1\", correlationKey: \"=invoiceId\" },\n\t\t\t})\n\t\t\t.connectTo(\"dunPaid\")\n\n\t\t\t.boundaryEvent(\"timer1\", \"reminder1\", {\n\t\t\t\tname: \""
+        },
+        {
+          "t": 125400,
+          "text": "7 days\",\n\t\t\t\ttimer: { duration: \"P7D\" },\n\t\t\t\tcancelActivity: true,\n\t\t\t})\n\t\t\t.receiveTask(\"reminder2\", {\n\t\t\t\tname: \"Reminder 2 — Await"
+        },
+        {
+          "t": 125854,
+          "text": " Payment\",\n\t\t\t\tmessage: { name: \"DunningPayment2\", correlationKey: \"=invoiceId\" },\n\t\t\t})\n\t\t\t.connectTo(\"dunPaid\")\n\n\t\t\t.boundaryEvent(\"timer"
+        },
+        {
+          "t": 126325,
+          "text": "2\", \"reminder2\", {\n\t\t\t\tname: \"7 days\",\n\t\t\t\ttimer: { duration: \"P7D\" },\n\t\t\t\tcancelActivity: true,\n\t\t\t})\n\t\t\t.receiveTask(\"reminder3\", {\n\t\t\t\t"
+        },
+        {
+          "t": 126795,
+          "text": "name: \"Final Reminder — Await Payment\",\n\t\t\t\tmessage: { name: \"DunningPayment3\", correlationKey: \"=invoiceId\" },\n\t\t\t})\n\t\t\t.connectTo(\"dunPaid\")"
+        },
+        {
+          "t": 127288,
+          "text": "\n\n\t\t\t.boundaryEvent(\"timer3\", \"reminder3\", {\n\t\t\t\tname: \"14 days\",\n\t\t\t\ttimer: { duration: \"P14D\" },\n\t\t\t\tcancelActivity: true,\n\t\t\t})\n\t\t\t.ser"
+        },
+        {
+          "t": 127749,
+          "text": "viceTask(\"collectionsAgency\", {\n\t\t\t\tname: \"Escalate to Collections Agency\",\n\t\t\t\ttaskType: \"collections-agency\",\n\t\t\t\tioMapping: {\n\t\t\t\t\toutput"
+        },
+        {
+          "t": 128225,
+          "text": "s: [{ source: \"=false\", target: \"paymentCollected\" }],\n\t\t\t\t},\n\t\t\t})\n\t\t\t.endEvent(\"dunWrittenOff\", { name: \"Uncollectible\""
+        },
+        {
+          "t": 128684,
+          "text": " })\n\n\t\t\t.endEvent(\"dunPaid\", { name: \"Payment Collected\" }),\n\t)\n\n\t// Outcome of dunning\n\t.exclusiveGateway(\"collect"
+        },
+        {
+          "t": 129149,
+          "text": "ionResult\", { name: \"Collected?\" })\n\n\t.branch(\"collected\", (b) =>\n\t\tb.condition(\"=paymentCollected = true\").connectTo(\"endPaymentReceived\""
+        },
+        {
+          "t": 129620,
+          "text": "),\n\t)\n\n\t.branch(\"uncollectible\", (b) =>\n\t\tb.defaultFlow().endEvent(\"endWrittenOff\", { name: \"Written Off\""
+        },
+        {
+          "t": 129946,
+          "text": " }),\n\t)\n\n\t.build()\n\nprocess.stdout.write(Bpmn.export(definitions))\n```"
+        }
+      ],
+      "durationMs": 130996,
+      "usage": {
+        "inputTokens": 10715,
+        "outputTokens": 11793
+      },
+      "result": {
+        "type": "error",
+        "message": "tsx exited with code 1: /home/adam/github.com/bpmnkit/monorepo/packages/core/src/bpmn/bpmn-builder.ts:1109\n\t\tcontent(sub)\n\t\t^\n\nTypeError: content is not a function\n    at BranchBuilder.subProcess \u001b[90m(/home/adam/github.com/bpmnkit/monorepo/\u001b[39mpackages/core/src/bpmn/bpmn-builder.ts:1109:3\u001b[90m)\u001b[39m\n    at <anonymous> \u001b[90m(/home/adam/github.com/bpmnkit/monorepo/\u001b[39mapps/demo/tmp/bpmnkit-demo-ZJyhJg/ab18a0b8-e992-4490-95f0-907be8aae8b6.ts:120:5\u001b[90m)\u001b[39m\n    at ProcessBuilder.branch \u001b[90m(/home/adam/github.com/bpmnkit/monorepo/\u001b[39mpackages/core/src/bpmn/bpmn-builder.ts:1839:3\u001b[90m)\u001b[39m\n    at <anonymous> \u001b[90m(/home/adam/github.com/bpmnkit/monorepo/\u001b[39mapps/demo/tmp/bpmnkit-demo-ZJyhJg/ab18a0b8-e992-4490-95f0-907be8aae8b6.ts:117:3\u001b[90m)\u001b[39m\n\u001b[90m    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)\u001b[39m\n    at async node:internal/modules/esm/loader:643:26\n\u001b[90m    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\u001b[39m\n\nNode.js v24.18.0\n"
+      }
+    },
+    "without-sdk": {
+      "systemPrompt": "You are a BPMN expert. Output only valid BPMN 2.0 XML for Camunda 8.\nNo explanation, no markdown, no code fences. Raw XML only, starting with <?xml.",
+      "chunks": [
+        {
+          "t": 161370,
+          "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn"
+        },
+        {
+          "t": 165745,
+          "text": "=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BP"
+        },
+        {
+          "t": 165802,
+          "text": "MN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100"
+        },
+        {
+          "t": 165834,
+          "text": "524/DI\" xmlns:zeebe=\"http://camunda.org/schema/zeebe/1.0\" id=\"Definitions_Quote"
+        },
+        {
+          "t": 165871,
+          "text": "ToCash\" targetNamespace=\"http://bpmn.io/schema/bpmn\" exporter=\"Camunda Modeler\" exporterVersion=\""
+        },
+        {
+          "t": 165897,
+          "text": "5.0.0\">\n  <bpmn:error id=\"Error_WriteOff\" name=\"WriteOff\" errorC"
+        },
+        {
+          "t": 165941,
+          "text": "ode=\"WRITE_OFF\" />\n  <bpmn:message id=\"Msg_PaymentConfirmed\" name=\"PaymentConfirmed\">\n    <bpmn:extensionElements>"
+        },
+        {
+          "t": 165948,
+          "text": "\n      <zeebe:subscription correlationKey=\"=orderId\" />\n    </bpmn:extensionElements>\n  </bpmn:message>\n  <bpmn:message id=\"Msg_Dunning"
+        },
+        {
+          "t": 166037,
+          "text": "Payment\" name=\"DunningPayment\">\n    <bpmn:extensionElements>\n      <zeebe:subscription correlationKey=\"=orderId\" />\n    </bpmn:extensionElements>"
+        },
+        {
+          "t": 166050,
+          "text": "\n  </bpmn:message>\n  <bpmn:process id=\"quote-to-cash\" name=\"Quote to Cash\" isExecutable=\"true\">\n    <bpmn:startEvent id=\"St"
+        },
+        {
+          "t": 166108,
+          "text": "artEvent_1\" name=\"Quote requested\">\n      <bpmn:outgoing>Flow_1</bpmn:outgoing>\n    </bpmn:startEvent>\n    <b"
+        },
+        {
+          "t": 166456,
+          "text": "pmn:sequenceFlow id=\"Flow_1\" sourceRef=\"StartEvent_1\" targetRef=\"Task_GenerateQuote\" />\n    <bpmn:businessR"
+        },
+        {
+          "t": 166898,
+          "text": "uleTask id=\"Task_GenerateQuote\" name=\"Generate quote from catalog (tiered pricing)\">\n      <bpmn:extensionElements>\n        <zeebe"
+        },
+        {
+          "t": 167378,
+          "text": ":calledDecision decisionId=\"tieredPricing\" resultVariable=\"quote\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_1</bpmn"
+        },
+        {
+          "t": 167885,
+          "text": ":incoming>\n      <bpmn:outgoing>Flow_2</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:sequenceFl"
+        },
+        {
+          "t": 168298,
+          "text": "ow id=\"Flow_2\" sourceRef=\"Task_GenerateQuote\" targetRef=\"Gateway_Discount\" />\n    <bpmn:exclusiveGateway id=\"Gateway_"
+        },
+        {
+          "t": 168763,
+          "text": "Discount\" name=\"Discount approval?\" default=\"Flow_NoApproval\">\n      <bpmn:incoming>Flow_2</bpmn:incoming>\n      <bpmn:"
+        },
+        {
+          "t": 169232,
+          "text": "outgoing>Flow_Manager</bpmn:outgoing>\n      <bpmn:outgoing>Flow_VP</bpmn:outgoing>\n      <bpmn:outgo"
+        },
+        {
+          "t": 169735,
+          "text": "ing>Flow_NoApproval</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_Manager\""
+        },
+        {
+          "t": 170191,
+          "text": " name=\"Manager approval\" sourceRef=\"Gateway_Discount\" targetRef=\"Task_ManagerApproval\">\n      <bpmn:conditionExpression xsi:"
+        },
+        {
+          "t": 170640,
+          "text": "type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=discountPercent &gt; managerThresh"
+        },
+        {
+          "t": 171318,
+          "text": "old and discountPercent &lt;= vpThreshold</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\""
+        },
+        {
+          "t": 171604,
+          "text": "Flow_VP\" name=\"VP approval\" sourceRef=\"Gateway_Discount\" targetRef=\"Task_VPApproval\">\n      <bpmn:conditionExpression xsi:type=\"b"
+        },
+        {
+          "t": 172053,
+          "text": "pmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=discountPercent &gt; vpThreshold</bpmn"
+        },
+        {
+          "t": 172524,
+          "text": ":conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_NoApproval\" name=\"No approval\" sourceRef=\""
+        },
+        {
+          "t": 173024,
+          "text": "Gateway_Discount\" targetRef=\"Gateway_ApprovalMerge\" />\n    <bpmn:userTask id=\"Task_ManagerApproval\" name=\"Manager disc"
+        },
+        {
+          "t": 173518,
+          "text": "ount approval\">\n      <bpmn:extensionElements>\n        <zeebe:userTask />\n        <zeebe:assignmentDefinition candidateGroups=\"sales-managers\" />\n      </"
+        },
+        {
+          "t": 174003,
+          "text": "bpmn:extensionElements>\n      <bpmn:incoming>Flow_Manager</bpmn:incoming>\n      <bpmn:outgoing>Flow_6</bpmn:"
+        },
+        {
+          "t": 174450,
+          "text": "outgoing>\n    </bpmn:userTask>\n    <bpmn:userTask id=\"Task_VPApproval\" name=\"VP discount approval\">\n      <bpmn:extensionElements>\n        "
+        },
+        {
+          "t": 174886,
+          "text": "<zeebe:userTask />\n        <zeebe:assignmentDefinition candidateGroups=\"sales-vp\" />\n      </bpmn:extensionElements>\n      <bpmn:inco"
+        },
+        {
+          "t": 175348,
+          "text": "ming>Flow_VP</bpmn:incoming>\n      <bpmn:outgoing>Flow_7</bpmn:outgoing>\n    </bpmn:userTask>\n    <bp"
+        },
+        {
+          "t": 175824,
+          "text": "mn:sequenceFlow id=\"Flow_6\" sourceRef=\"Task_ManagerApproval\" targetRef=\"Gateway_ApprovalMerge\" />\n    <bpmn:s"
+        },
+        {
+          "t": 176301,
+          "text": "equenceFlow id=\"Flow_7\" sourceRef=\"Task_VPApproval\" targetRef=\"Gateway_ApprovalMerge\" />\n    <bpmn:exclusiveGate"
+        },
+        {
+          "t": 176860,
+          "text": "way id=\"Gateway_ApprovalMerge\">\n      <bpmn:incoming>Flow_NoApproval</bpmn:incoming>\n      <bpmn:inc"
+        },
+        {
+          "t": 177236,
+          "text": "oming>Flow_6</bpmn:incoming>\n      <bpmn:incoming>Flow_7</bpmn:incoming>\n      <bpmn:outgoing>Flow_8</"
+        },
+        {
+          "t": 177701,
+          "text": "bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_8\" sourceRef=\"Gateway_Appr"
+        },
+        {
+          "t": 178185,
+          "text": "ovalMerge\" targetRef=\"Task_GenerateContract\" />\n    <bpmn:serviceTask id=\"Task_GenerateContract\" name=\"Generate contract\">\n      <bpmn:ext"
+        },
+        {
+          "t": 178643,
+          "text": "ensionElements>\n        <zeebe:taskDefinition type=\"generate-contract\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_8</bp"
+        },
+        {
+          "t": 179747,
+          "text": "mn:incoming>\n      <bpmn:outgoing>Flow_9</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:sequenceFl"
+        },
+        {
+          "t": 179773,
+          "text": "ow id=\"Flow_9\" sourceRef=\"Task_GenerateContract\" targetRef=\"Task_ESignature\" />\n    <bpmn:serviceTask id=\"Task_ESignature\" name=\""
+        },
+        {
+          "t": 180093,
+          "text": "E-signature (REST connector)\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />"
+        },
+        {
+          "t": 180526,
+          "text": "\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"=&#34;https://es"
+        },
+        {
+          "t": 181002,
+          "text": "ign.example.com/api/v1/envelopes&#34;\" target=\"url\" />\n          <zeebe:input source=\"={"
+        },
+        {
+          "t": 181471,
+          "text": "&#34;Content-Type&#34;:&#34;application/json&#34;}\" target=\"headers\" />\n          <zeebe:input source=\"={contract"
+        },
+        {
+          "t": 181990,
+          "text": ": contractDocument, signer: customerEmail}\" target=\"body\" />\n          <zeebe:output source=\"=response.body.status\" target=\"contractStatus\" />\n        "
+        },
+        {
+          "t": 182409,
+          "text": "</zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_9</bpmn:incoming>\n      <bpmn:outgo"
+        },
+        {
+          "t": 182879,
+          "text": "ing>Flow_10</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:sequenceFlow id=\"Flow_10\" sourceRef=\"Task_"
+        },
+        {
+          "t": 183350,
+          "text": "ESignature\" targetRef=\"Gateway_ContractOutcome\" />\n    <bpmn:exclusiveGateway id=\"Gateway_ContractOutcome\" name=\"Contract signed?\""
+        },
+        {
+          "t": 183836,
+          "text": " default=\"Flow_Accepted\">\n      <bpmn:incoming>Flow_10</bpmn:incoming>\n      <bpmn:outgoing>Flow_Accepted</bpmn"
+        },
+        {
+          "t": 184292,
+          "text": ":outgoing>\n      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:s"
+        },
+        {
+          "t": 184762,
+          "text": "equenceFlow id=\"Flow_Rejected\" name=\"Rejected\" sourceRef=\"Gateway_ContractOutcome\" targetRef=\"EndEvent_ContractRejected\">"
+        },
+        {
+          "t": 185241,
+          "text": "\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+        },
+        {
+          "t": 185705,
+          "text": "=contractStatus = \"rejected\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_Acc"
+        },
+        {
+          "t": 186347,
+          "text": "epted\" name=\"Accepted\" sourceRef=\"Gateway_ContractOutcome\" targetRef=\"Gateway_OrderType\" />\n    <bpmn:endEvent id=\"EndEvent"
+        },
+        {
+          "t": 186645,
+          "text": "_ContractRejected\" name=\"Contract rejected\">\n      <bpmn:incoming>Flow_Rejected</bpmn:incoming>\n    </bpmn:endEvent>\n    <b"
+        },
+        {
+          "t": 187119,
+          "text": "pmn:exclusiveGateway id=\"Gateway_OrderType\" name=\"Order type?\" default=\"Flow_Standard\">\n      <bpmn:incoming>Flow_Accepted</bp"
+        },
+        {
+          "t": 187587,
+          "text": "mn:incoming>\n      <bpmn:outgoing>Flow_Standard</bpmn:outgoing>\n      <bpmn:outgoing>Flow_Complex</bpmn:"
+        },
+        {
+          "t": 188089,
+          "text": "outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_Standard\" name=\"Standard order\" sourceRef=\"Gateway"
+        },
+        {
+          "t": 188532,
+          "text": "_OrderType\" targetRef=\"Task_ProvisionStandard\" />\n    <bpmn:sequenceFlow id=\"Flow_Complex\" name=\"Complex bundle"
+        },
+        {
+          "t": 188998,
+          "text": "\" sourceRef=\"Gateway_OrderType\" targetRef=\"SubProcess_MultiProvision\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormal"
+        },
+        {
+          "t": 189468,
+          "text": "Expression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=orderType = \"bundle\"</bpmn:conditionExpression>\n    </bpm"
+        },
+        {
+          "t": 189939,
+          "text": "n:sequenceFlow>\n    <bpmn:serviceTask id=\"Task_ProvisionStandard\" name=\"Provision standard order\">\n      <bpmn:extensionElements>\n        <z"
+        },
+        {
+          "t": 190410,
+          "text": "eebe:taskDefinition type=\"provision-order\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_Standard</bpmn:incoming>\n      "
+        },
+        {
+          "t": 190885,
+          "text": "<bpmn:outgoing>Flow_15</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:subProcess id=\"SubProcess_Multi"
+        },
+        {
+          "t": 191351,
+          "text": "Provision\" name=\"Multi-line provisioning\">\n      <bpmn:incoming>Flow_Complex</bpmn:incoming>\n      <bpmn:outgoing>Flow_16</"
+        },
+        {
+          "t": 191858,
+          "text": "bpmn:outgoing>\n      <bpmn:multiInstanceLoopCharacteristics>\n        <bpmn:extensionElements>\n          <zeebe:loop"
+        },
+        {
+          "t": 192365,
+          "text": "Characteristics inputCollection=\"=lineItems\" inputElement=\"lineItem\" />\n        </bpmn:extensionElements>\n      </bpmn:multiInst"
+        },
+        {
+          "t": 192777,
+          "text": "anceLoopCharacteristics>\n      <bpmn:startEvent id=\"MP_Start\" name=\"Line item\">\n        <bpmn:outgoing>mp1</bpmn:"
+        },
+        {
+          "t": 193234,
+          "text": "outgoing>\n      </bpmn:startEvent>\n      <bpmn:sequenceFlow id=\"mp1\" sourceRef=\"MP_Start\" targetRef=\"MP_Task_Pro"
+        },
+        {
+          "t": 193706,
+          "text": "visionLineItem\" />\n      <bpmn:serviceTask id=\"MP_Task_ProvisionLineItem\" name=\"Provision line item\">\n        <bpmn:extensionElements>\n          "
+        },
+        {
+          "t": 194189,
+          "text": "<zeebe:taskDefinition type=\"provision-line-item\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"=lineItem\" target=\"lineItem\" />\n          </"
+        },
+        {
+          "t": 194646,
+          "text": "zeebe:ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>mp1</bpmn:incoming>\n        <bpmn:outgoing>m"
+        },
+        {
+          "t": 195116,
+          "text": "p2</bpmn:outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"mp2\" sourceRef=\"MP_Task_Provis"
+        },
+        {
+          "t": 195588,
+          "text": "ionLineItem\" targetRef=\"MP_End\" />\n      <bpmn:endEvent id=\"MP_End\" name=\"Line provisioned\">\n        <bpmn:incoming>"
+        },
+        {
+          "t": 196082,
+          "text": "mp2</bpmn:incoming>\n      </bpmn:endEvent>\n    </bpmn:subProcess>\n    <bpmn:sequenceFlow id=\"Flow_15\" sour"
+        },
+        {
+          "t": 196587,
+          "text": "ceRef=\"Task_ProvisionStandard\" targetRef=\"Gateway_ProvisionMerge\" />\n    <bpmn:sequenceFlow id=\"Flow_16\" sourceRef"
+        },
+        {
+          "t": 197000,
+          "text": "=\"SubProcess_MultiProvision\" targetRef=\"Gateway_ProvisionMerge\" />\n    <bpmn:exclusiveGateway id=\"Gateway_ProvisionMer"
+        },
+        {
+          "t": 197471,
+          "text": "ge\">\n      <bpmn:incoming>Flow_15</bpmn:incoming>\n      <bpmn:incoming>Flow_16</bpmn:incoming>\n      <bpmn:"
+        },
+        {
+          "t": 197960,
+          "text": "outgoing>Flow_17</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_17\" source"
+        },
+        {
+          "t": 198416,
+          "text": "Ref=\"Gateway_ProvisionMerge\" targetRef=\"Task_GenerateInvoice\" />\n    <bpmn:serviceTask id=\"Task_GenerateInvoice\" name=\""
+        },
+        {
+          "t": 198883,
+          "text": "Generate invoice\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"generate-invoice\" />\n      </bpmn:extensionElements>\n      <bp"
+        },
+        {
+          "t": 199353,
+          "text": "mn:incoming>Flow_17</bpmn:incoming>\n      <bpmn:outgoing>Flow_18</bpmn:outgoing>\n    </bpmn:serviceTask"
+        },
+        {
+          "t": 199862,
+          "text": ">\n    <bpmn:sequenceFlow id=\"Flow_18\" sourceRef=\"Task_GenerateInvoice\" targetRef=\"Task_ProcessPayment\" />\n    <bp"
+        },
+        {
+          "t": 200341,
+          "text": "mn:serviceTask id=\"Task_ProcessPayment\" name=\"Process payment (REST connector)\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\""
+        },
+        {
+          "t": 200765,
+          "text": "io.camunda:http-json:1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"=&#34;https://"
+        },
+        {
+          "t": 201243,
+          "text": "payments.example.com/api/v1/charges&#34;\" target=\"url\" />\n          <zeebe:input source=\"={&#34;Content-Type&#34;:&#34;application/json&#34;}\" target"
+        },
+        {
+          "t": 201707,
+          "text": "=\"headers\" />\n          <zeebe:input source=\"={invoiceId: invoiceId, amount: invoiceAmount}\" target=\"body\" />\n          <zeebe:output source=\"=response.body.status"
+        },
+        {
+          "t": 202184,
+          "text": "\" target=\"paymentStatus\" />\n        </zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_18</bpmn:inco"
+        },
+        {
+          "t": 202648,
+          "text": "ming>\n      <bpmn:outgoing>Flow_19</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:sequenceFlow id=\"Fl"
+        },
+        {
+          "t": 203214,
+          "text": "ow_19\" sourceRef=\"Task_ProcessPayment\" targetRef=\"EventBasedGateway_Payment\" />\n    <bpmn:eventBasedGateway id=\"EventBasedG"
+        },
+        {
+          "t": 203605,
+          "text": "ateway_Payment\" name=\"Payment outcome\">\n      <bpmn:incoming>Flow_19</bpmn:incoming>\n      <bpmn:outgoing>Flow_20</bp"
+        },
+        {
+          "t": 204081,
+          "text": "mn:outgoing>\n      <bpmn:outgoing>Flow_21</bpmn:outgoing>\n    </bpmn:eventBasedGateway>\n    <bpmn:sequ"
+        },
+        {
+          "t": 204567,
+          "text": "enceFlow id=\"Flow_20\" sourceRef=\"EventBasedGateway_Payment\" targetRef=\"Event_PaymentConfirmed\" />\n    <bpmn:sequenceF"
+        },
+        {
+          "t": 205017,
+          "text": "low id=\"Flow_21\" sourceRef=\"EventBasedGateway_Payment\" targetRef=\"Event_PaymentTimeout\" />\n    <bpmn:intermediateCatchEv"
+        },
+        {
+          "t": 205474,
+          "text": "ent id=\"Event_PaymentConfirmed\" name=\"Payment confirmed\">\n      <bpmn:incoming>Flow_20</bpmn:incoming>\n      <bpmn:outgo"
+        },
+        {
+          "t": 205947,
+          "text": "ing>Flow_22</bpmn:outgoing>\n      <bpmn:messageEventDefinition id=\"MED_PaymentConfir"
+        },
+        {
+          "t": 206428,
+          "text": "med\" messageRef=\"Msg_PaymentConfirmed\" />\n    </bpmn:intermediateCatchEvent>\n    <bpmn:sequenceFlow id=\"Flow_22"
+        },
+        {
+          "t": 206883,
+          "text": "\" sourceRef=\"Event_PaymentConfirmed\" targetRef=\"EndEvent_PaymentReceived\" />\n    <bpmn:intermediateCatchEvent id=\"Event_P"
+        },
+        {
+          "t": 207357,
+          "text": "aymentTimeout\" name=\"Payment overdue\">\n      <bpmn:incoming>Flow_21</bpmn:incoming>\n      <bpmn:outgoing>Flow_23"
+        },
+        {
+          "t": 207825,
+          "text": "</bpmn:outgoing>\n      <bpmn:timerEventDefinition id=\"TED_PaymentTimeout\">\n        <bpmn:time"
+        },
+        {
+          "t": 208318,
+          "text": "Duration xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">P"
+        },
+        {
+          "t": 208867,
+          "text": "14D</bpmn:timeDuration>\n      </bpmn:timerEventDefinition>\n    </bpmn:intermediateCatchEvent>\n    <bpmn:sequenceFl"
+        },
+        {
+          "t": 209239,
+          "text": "ow id=\"Flow_23\" sourceRef=\"Event_PaymentTimeout\" targetRef=\"SubProcess_Dunning\" />\n    <bpmn:subProcess id=\"SubProcess_"
+        },
+        {
+          "t": 209709,
+          "text": "Dunning\" name=\"Dunning / cash collection\">\n      <bpmn:incoming>Flow_23</bpmn:incoming>\n      <bpmn:outgoing>Flow_"
+        },
+        {
+          "t": 210202,
+          "text": "24</bpmn:outgoing>\n      <bpmn:startEvent id=\"D_Start\" name=\"Start dunning\">\n        <bpmn:outgoing>df1</bpmn"
+        },
+        {
+          "t": 210658,
+          "text": ":outgoing>\n      </bpmn:startEvent>\n      <bpmn:sequenceFlow id=\"df1\" sourceRef=\"D_Start\" targetRef=\"D_SendReminder1\""
+        },
+        {
+          "t": 211160,
+          "text": " />\n      <bpmn:serviceTask id=\"D_SendReminder1\" name=\"Send reminder 1\">\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type"
+        },
+        {
+          "t": 211725,
+          "text": "=\"send-reminder\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"1\" target=\"reminderL"
+        },
+        {
+          "t": 212071,
+          "text": "evel\" />\n          </zeebe:ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>df1</bpmn:incoming>\n        <bpmn:"
+        },
+        {
+          "t": 212531,
+          "text": "outgoing>df2</bpmn:outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"df2\" sourceRef=\"D_SendRemin"
+        },
+        {
+          "t": 213056,
+          "text": "der1\" targetRef=\"D_Await1\" />\n      <bpmn:receiveTask id=\"D_Await1\" name=\"Await payment (cycle 1)\" message"
+        },
+        {
+          "t": 213472,
+          "text": "Ref=\"Msg_DunningPayment\">\n        <bpmn:incoming>df2</bpmn:incoming>\n        <bpmn:outgoing>df3</bpmn:outgoing>"
+        },
+        {
+          "t": 213945,
+          "text": "\n      </bpmn:receiveTask>\n      <bpmn:sequenceFlow id=\"df3\" sourceRef=\"D_Await1\" targetRef=\"Gateway_Collected\" />\n      "
+        },
+        {
+          "t": 214430,
+          "text": "<bpmn:boundaryEvent id=\"Boundary_Timer1\" name=\"7 days\" attachedToRef=\"D_Await1\">\n        <bpmn:"
+        },
+        {
+          "t": 215284,
+          "text": "outgoing>df4</bpmn:outgoing>\n        <bpmn:timerEventDefinition id=\"TED_R1\">\n          <bpmn:timeDuration xsi:type=\"bpm"
+        },
+        {
+          "t": 215396,
+          "text": "n:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">P7D</bpmn:timeDuration>\n        </bpmn:"
+        },
+        {
+          "t": 215833,
+          "text": "timerEventDefinition>\n      </bpmn:boundaryEvent>\n      <bpmn:sequenceFlow id=\"df4\" sourceRef=\"Boundary_Timer1\" targetR"
+        },
+        {
+          "t": 216315,
+          "text": "ef=\"D_SendReminder2\" />\n      <bpmn:serviceTask id=\"D_SendReminder2\" name=\"Send reminder 2\">\n        <bpmn:extensionElements>\n          <z"
+        },
+        {
+          "t": 216943,
+          "text": "eebe:taskDefinition type=\"send-reminder\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"2\" target=\"reminderLevel\" />\n          </zeebe:"
+        },
+        {
+          "t": 217300,
+          "text": "ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>df4</bpmn:incoming>\n        <bpmn:outgoing>df5</bpmn"
+        },
+        {
+          "t": 217711,
+          "text": ":outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"df5\" sourceRef=\"D_SendReminder2\" targetRef=\"D_Await"
+        },
+        {
+          "t": 218195,
+          "text": "2\" />\n      <bpmn:receiveTask id=\"D_Await2\" name=\"Await payment (cycle 2)\" messageRef=\"Msg_DunningPayment\">\n        <bpmn:inco"
+        },
+        {
+          "t": 218676,
+          "text": "ming>df5</bpmn:incoming>\n        <bpmn:outgoing>df6</bpmn:outgoing>\n      </bpmn:receiveTask>\n      <bpmn:sequ"
+        },
+        {
+          "t": 219122,
+          "text": "enceFlow id=\"df6\" sourceRef=\"D_Await2\" targetRef=\"Gateway_Collected\" />\n      <bpmn:boundaryEvent id=\"Boundary_Timer2\""
+        },
+        {
+          "t": 219593,
+          "text": " name=\"7 days\" attachedToRef=\"D_Await2\">\n        <bpmn:outgoing>df7</bpmn:outgoing>\n        <bpmn:timerEventDef"
+        },
+        {
+          "t": 220068,
+          "text": "inition id=\"TED_R2\">\n          <bpmn:timeDuration xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/X"
+        },
+        {
+          "t": 220533,
+          "text": "MLSchema-instance\">P7D</bpmn:timeDuration>\n        </bpmn:timerEventDefinition>\n      </bpmn:boundaryEvent>\n      <bpmn"
+        },
+        {
+          "t": 221101,
+          "text": ":sequenceFlow id=\"df7\" sourceRef=\"Boundary_Timer2\" targetRef=\"D_SendReminder3\" />\n      <bpmn:serviceTask id=\"D_SendRe"
+        },
+        {
+          "t": 221473,
+          "text": "minder3\" name=\"Send reminder 3 (final notice)\">\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type"
+        },
+        {
+          "t": 221950,
+          "text": "=\"send-reminder\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"3\" target=\"reminderLevel\" />\n          </zeebe:ioMapping>\n        </bp"
+        },
+        {
+          "t": 222462,
+          "text": "mn:extensionElements>\n        <bpmn:incoming>df7</bpmn:incoming>\n        <bpmn:outgoing>df8</bpmn:outgoing>\n      </bp"
+        },
+        {
+          "t": 223156,
+          "text": "mn:serviceTask>\n      <bpmn:sequenceFlow id=\"df8\" sourceRef=\"D_SendReminder3\" targetRef=\"D_Await3\" />\n      <bpmn:"
+        },
+        {
+          "t": 223364,
+          "text": "receiveTask id=\"D_Await3\" name=\"Await payment (cycle 3)\" messageRef=\"Msg_DunningPayment\">\n        <bpmn:incoming>df8</bpmn:inc"
+        },
+        {
+          "t": 223829,
+          "text": "oming>\n        <bpmn:outgoing>df9</bpmn:outgoing>\n      </bpmn:receiveTask>\n      <bpmn:sequenceFlow id=\"df9\" s"
+        },
+        {
+          "t": 224298,
+          "text": "ourceRef=\"D_Await3\" targetRef=\"Gateway_Collected\" />\n      <bpmn:boundaryEvent id=\"Boundary_Timer3\" name=\"7 days\" attachedToR"
+        },
+        {
+          "t": 224810,
+          "text": "ef=\"D_Await3\">\n        <bpmn:outgoing>df10</bpmn:outgoing>\n        <bpmn:timerEventDefinition id=\"TED_R3\">\n          <bpm"
+        },
+        {
+          "t": 225239,
+          "text": "n:timeDuration xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">P7D</bpm"
+        },
+        {
+          "t": 225715,
+          "text": "n:timeDuration>\n        </bpmn:timerEventDefinition>\n      </bpmn:boundaryEvent>\n      <bpmn:sequenceFlow id=\"df10\" source"
+        },
+        {
+          "t": 226183,
+          "text": "Ref=\"Boundary_Timer3\" targetRef=\"D_Collections\" />\n      <bpmn:serviceTask id=\"D_Collections\" name=\"Escalate to collections agency (REST connector)\">"
+        },
+        {
+          "t": 226652,
+          "text": "\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />\n          <zeebe:ioMapping>\n            <zeebe"
+        },
+        {
+          "t": 227124,
+          "text": ":input source=\"POST\" target=\"method\" />\n            <zeebe:input source=\"=&#34;https://collections.example.com/api/v1/cases&#34;\" target=\"url\" />\n            <zeebe:input source"
+        },
+        {
+          "t": 227592,
+          "text": "=\"={&#34;Content-Type&#34;:&#34;application/json&#34;}\" target=\"headers\" />\n            <zeebe:input source=\"={invoiceId: invoiceId, amount: invo"
+        },
+        {
+          "t": 228095,
+          "text": "iceAmount}\" target=\"body\" />\n            <zeebe:output source=\"=response.body.recovered\" target=\"collectionSuccessful\" />\n          </zeebe:ioMapping>\n        </"
+        },
+        {
+          "t": 228611,
+          "text": "bpmn:extensionElements>\n        <bpmn:incoming>df10</bpmn:incoming>\n        <bpmn:outgoing>df11</bpmn:outgoing>\n      </"
+        },
+        {
+          "t": 229004,
+          "text": "bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"df11\" sourceRef=\"D_Collections\" targetRef=\"Gateway_CollectionResult\" />\n      "
+        },
+        {
+          "t": 229476,
+          "text": "<bpmn:exclusiveGateway id=\"Gateway_CollectionResult\" name=\"Recovered?\" default=\"df12\">\n        <bpmn:incoming>df11</bpmn:inco"
+        },
+        {
+          "t": 229945,
+          "text": "ming>\n        <bpmn:outgoing>df12</bpmn:outgoing>\n        <bpmn:outgoing>df13</bpmn:outgoing>\n      </bpmn:excl"
+        },
+        {
+          "t": 230426,
+          "text": "usiveGateway>\n      <bpmn:sequenceFlow id=\"df12\" name=\"Recovered\" sourceRef=\"Gateway_CollectionResult\" targetRef=\"Gateway_Coll"
+        },
+        {
+          "t": 230887,
+          "text": "ected\" />\n      <bpmn:sequenceFlow id=\"df13\" name=\"Not recovered\" sourceRef=\"Gateway_CollectionResult\" targetRef=\"SubEnd_WriteO"
+        },
+        {
+          "t": 231380,
+          "text": "ff\">\n        <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-inst"
+        },
+        {
+          "t": 231847,
+          "text": "ance\">=collectionSuccessful = false</bpmn:conditionExpression>\n      </bpmn:sequenceFlow>\n      <bpmn:exclusiveGateway id=\"Gateway"
+        },
+        {
+          "t": 232299,
+          "text": "_Collected\">\n        <bpmn:incoming>df3</bpmn:incoming>\n        <bpmn:incoming>df6</bpmn:incoming>\n        <bpmn:incoming"
+        },
+        {
+          "t": 233163,
+          "text": ">df9</bpmn:incoming>\n        <bpmn:incoming>df12</bpmn:incoming>\n        <bpmn:outgoing>df14</bpmn:outgoing>"
+        },
+        {
+          "t": 233278,
+          "text": "\n      </bpmn:exclusiveGateway>\n      <bpmn:sequenceFlow id=\"df14\" sourceRef=\"Gateway_Collected\" targetRef=\"SubEnd_Coll"
+        },
+        {
+          "t": 233712,
+          "text": "ected\" />\n      <bpmn:endEvent id=\"SubEnd_Collected\" name=\"Cash collected\">\n        <bpmn:incoming>df14</bpmn:incoming>\n      </bp"
+        },
+        {
+          "t": 234186,
+          "text": "mn:endEvent>\n      <bpmn:endEvent id=\"SubEnd_WriteOff\" name=\"Uncollectable\">\n        <bpmn:incoming>df13</bpmn"
+        },
+        {
+          "t": 234660,
+          "text": ":incoming>\n        <bpmn:errorEventDefinition id=\"EED_WriteOff\" errorRef=\"Error_WriteOff\" />\n      </bpmn:endEvent>"
+        },
+        {
+          "t": 235139,
+          "text": "\n    </bpmn:subProcess>\n    <bpmn:boundaryEvent id=\"Boundary_WriteOffError\" name=\"Written off\" attachedToRef=\"SubProcess_Dun"
+        },
+        {
+          "t": 235600,
+          "text": "ning\">\n      <bpmn:outgoing>Flow_25</bpmn:outgoing>\n      <bpmn:errorEventDefinition id=\"EED_WriteOff"
+        },
+        {
+          "t": 236066,
+          "text": "Boundary\" errorRef=\"Error_WriteOff\" />\n    </bpmn:boundaryEvent>\n    <bpmn:sequenceFlow id=\"Flow_24\" sourceRef"
+        },
+        {
+          "t": 236550,
+          "text": "=\"SubProcess_Dunning\" targetRef=\"EndEvent_PaymentReceived\" />\n    <bpmn:sequenceFlow id=\"Flow_25\" sourceRef=\"Bound"
+        },
+        {
+          "t": 237008,
+          "text": "ary_WriteOffError\" targetRef=\"EndEvent_WrittenOff\" />\n    <bpmn:endEvent id=\"EndEvent_PaymentReceived\" name=\"Payment received\">"
+        },
+        {
+          "t": 237504,
+          "text": "\n      <bpmn:incoming>Flow_22</bpmn:incoming>\n      <bpmn:incoming>Flow_24</bpmn:incoming>\n    </bpmn:endEv"
+        },
+        {
+          "t": 237947,
+          "text": "ent>\n    <bpmn:endEvent id=\"EndEvent_WrittenOff\" name=\"Written off\">\n      <bpmn:incoming>Flow_25</bpmn:inc"
+        },
+        {
+          "t": 238418,
+          "text": "oming>\n    </bpmn:endEvent>\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <b"
+        },
+        {
+          "t": 239392,
+          "text": "pmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"quote-to-cash\">\n      <bpmndi:BPMNShape id=\"StartEvent_1_"
+        },
+        {
+          "t": 239408,
+          "text": "di\" bpmnElement=\"StartEvent_1\">\n        <dc:Bounds x=\"152\" y=\"302\" width=\"36\" height=\"36\" />\n        <b"
+        },
+        {
+          "t": 239830,
+          "text": "pmndi:BPMNLabel><dc:Bounds x=\"140\" y=\"345\" width=\"60\" height=\"27\" /></bpmndi"
+        },
+        {
+          "t": 240309,
+          "text": ":BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_GenerateQuote_di\" bpmnElement=\"Task"
+        },
+        {
+          "t": 240855,
+          "text": "_GenerateQuote\">\n        <dc:Bounds x=\"240\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPM"
+        },
+        {
+          "t": 241241,
+          "text": "NShape id=\"Gateway_Discount_di\" bpmnElement=\"Gateway_Discount\" isMarkerVisible=\"true\">\n        "
+        },
+        {
+          "t": 241716,
+          "text": "<dc:Bounds x=\"400\" y=\"295\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"388\" y=\"352"
+        },
+        {
+          "t": 242183,
+          "text": "\" width=\"74\" height=\"27\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task"
+        },
+        {
+          "t": 242671,
+          "text": "_ManagerApproval_di\" bpmnElement=\"Task_ManagerApproval\">\n        <dc:Bounds x=\"510\" y=\"160\" width=\"100\" height=\"80\" />\n      </b"
+        },
+        {
+          "t": 243124,
+          "text": "pmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_VPApproval_di\" bpmnElement=\"Task_VPApproval\">\n        "
+        },
+        {
+          "t": 243596,
+          "text": "<dc:Bounds x=\"510\" y=\"420\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Ap"
+        },
+        {
+          "t": 244065,
+          "text": "provalMerge_di\" bpmnElement=\"Gateway_ApprovalMerge\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"690\" y=\"295\" width=\"50\" height"
+        },
+        {
+          "t": 244537,
+          "text": "=\"50\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_GenerateContract_di\" bpmnElement=\"Task_GenerateCont"
+        },
+        {
+          "t": 245121,
+          "text": "ract\">\n        <dc:Bounds x=\"790\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task"
+        },
+        {
+          "t": 245489,
+          "text": "_ESignature_di\" bpmnElement=\"Task_ESignature\">\n        <dc:Bounds x=\"950\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNSh"
+        },
+        {
+          "t": 245973,
+          "text": "ape>\n      <bpmndi:BPMNShape id=\"Gateway_ContractOutcome_di\" bpmnElement=\"Gateway_ContractOutcome\" isMarkerVisible=\"true"
+        },
+        {
+          "t": 246452,
+          "text": "\">\n        <dc:Bounds x=\"1120\" y=\"295\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"1108\" y=\"272"
+        },
+        {
+          "t": 246889,
+          "text": "\" width=\"74\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_"
+        },
+        {
+          "t": 247378,
+          "text": "ContractRejected_di\" bpmnElement=\"EndEvent_ContractRejected\">\n        <dc:Bounds x=\"1127\" y=\"440\" width=\"36\" height=\"36\" />\n        "
+        },
+        {
+          "t": 247831,
+          "text": "<bpmndi:BPMNLabel><dc:Bounds x=\"1110\" y=\"483\" width=\"72\" height=\"14\" /></bpmndi:BPMNLabel"
+        },
+        {
+          "t": 248302,
+          "text": ">\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_OrderType_di\" bpmnElement=\"Gateway_OrderType\" is"
+        },
+        {
+          "t": 248772,
+          "text": "MarkerVisible=\"true\">\n        <dc:Bounds x=\"1230\" y=\"295\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\""
+        },
+        {
+          "t": 249244,
+          "text": "1224\" y=\"272\" width=\"63\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BP"
+        },
+        {
+          "t": 249716,
+          "text": "MNShape id=\"Task_ProvisionStandard_di\" bpmnElement=\"Task_ProvisionStandard\">\n        <dc:Bounds x=\"1340\" y=\"160\" width=\"100\" height=\""
+        },
+        {
+          "t": 250183,
+          "text": "80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"SubProcess_MultiProvision_di\" bpmnElement=\"SubProcess_"
+        },
+        {
+          "t": 250654,
+          "text": "MultiProvision\" isExpanded=\"true\">\n        <dc:Bounds x=\"1330\" y=\"400\" width=\"340\" height=\"180\" />\n      </bpmndi:BPMNShape>\n      <bp"
+        },
+        {
+          "t": 251125,
+          "text": "mndi:BPMNShape id=\"MP_Start_di\" bpmnElement=\"MP_Start\">\n        <dc:Bounds x=\"1350\" y=\"500\" width=\"36\" height=\"36\" />\n      </"
+        },
+        {
+          "t": 251600,
+          "text": "bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"MP_Task_ProvisionLineItem_di\" bpmnElement=\"MP_Task_Prov"
+        },
+        {
+          "t": 252074,
+          "text": "isionLineItem\">\n        <dc:Bounds x=\"1430\" y=\"478\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMN"
+        },
+        {
+          "t": 252775,
+          "text": "Shape id=\"MP_End_di\" bpmnElement=\"MP_End\">\n        <dc:Bounds x=\"1600\" y=\"500\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMN"
+        },
+        {
+          "t": 253137,
+          "text": "Shape>\n      <bpmndi:BPMNEdge id=\"mp1_di\" bpmnElement=\"mp1\">\n        <di:waypoint x=\""
+        },
+        {
+          "t": 253876,
+          "text": "1386\" y=\"518\" />\n        <di:waypoint x=\"1430\" y=\"518\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"mp"
+        },
+        {
+          "t": 254089,
+          "text": "2_di\" bpmnElement=\"mp2\">\n        <di:waypoint x=\"1530\" y=\"518\" />\n        <di:waypoint x=\"1600\" y=\"518\" />\n      </bpmndi:BP"
+        },
+        {
+          "t": 254495,
+          "text": "MNEdge>\n      <bpmndi:BPMNShape id=\"Gateway_ProvisionMerge_di\" bpmnElement=\"Gateway_ProvisionMerge\" isMark"
+        },
+        {
+          "t": 254889,
+          "text": "erVisible=\"true\">\n        <dc:Bounds x=\"1730\" y=\"295\" width=\"50\" height=\"50\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMN"
+        },
+        {
+          "t": 255369,
+          "text": "Shape id=\"Task_GenerateInvoice_di\" bpmnElement=\"Task_GenerateInvoice\">\n        <dc:Bounds x=\"1830\" y=\"280\" width=\"100\" height=\"80\""
+        },
+        {
+          "t": 255831,
+          "text": " />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_ProcessPayment_di\" bpmnElement=\"Task_ProcessPayment"
+        },
+        {
+          "t": 256305,
+          "text": "\">\n        <dc:Bounds x=\"1990\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event"
+        },
+        {
+          "t": 256773,
+          "text": "BasedGateway_Payment_di\" bpmnElement=\"EventBasedGateway_Payment\">\n        <dc:Bounds x=\"2150\" y=\"295\" width=\"50\" height=\"50\" />\n        "
+        },
+        {
+          "t": 257260,
+          "text": "<bpmndi:BPMNLabel><dc:Bounds x=\"2140\" y=\"352\" width=\"72\" height=\"14\" /></bpmndi:BPMNLabel>\n      </"
+        },
+        {
+          "t": 257713,
+          "text": "bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_PaymentConfirmed_di\" bpmnElement=\"Event_PaymentConfirmed"
+        },
+        {
+          "t": 258190,
+          "text": "\">\n        <dc:Bounds x=\"2260\" y=\"182\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2240\" y=\"225\" width=\""
+        },
+        {
+          "t": 258697,
+          "text": "78\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event"
+        },
+        {
+          "t": 259149,
+          "text": "_PaymentTimeout_di\" bpmnElement=\"Event_PaymentTimeout\">\n        <dc:Bounds x=\"2260\" y=\"452\" width=\"36\" height=\"36\" />\n        "
+        },
+        {
+          "t": 259599,
+          "text": "<bpmndi:BPMNLabel><dc:Bounds x=\"2244\" y=\"495\" width=\"70\" height=\"14\" /></bpmndi:BPMNLabel>\n      </"
+        },
+        {
+          "t": 260093,
+          "text": "bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"SubProcess_Dunning_di\" bpmnElement=\"SubProcess_Dunning\" isExp"
+        },
+        {
+          "t": 260537,
+          "text": "anded=\"true\">\n        <dc:Bounds x=\"2340\" y=\"460\" width=\"820\" height=\"480\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape"
+        },
+        {
+          "t": 261007,
+          "text": " id=\"D_Start_di\" bpmnElement=\"D_Start\">\n        <dc:Bounds x=\"2360\" y=\"662\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNSh"
+        },
+        {
+          "t": 261487,
+          "text": "ape>\n      <bpmndi:BPMNShape id=\"D_SendReminder1_di\" bpmnElement=\"D_SendReminder1\">\n        <dc:Bounds x=\"2440"
+        },
+        {
+          "t": 261948,
+          "text": "\" y=\"540\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Await1_di\" bpmnElement=\"D_"
+        },
+        {
+          "t": 262419,
+          "text": "Await1\">\n        <dc:Bounds x=\"2600\" y=\"540\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id"
+        },
+        {
+          "t": 262890,
+          "text": "=\"Boundary_Timer1_di\" bpmnElement=\"Boundary_Timer1\">\n        <dc:Bounds x=\"2632\" y=\"602\" width=\"36\" height=\"36\" />\n        "
+        },
+        {
+          "t": 263455,
+          "text": "<bpmndi:BPMNLabel><dc:Bounds x=\"2672\" y=\"620\" width=\"35\" height=\"14\" /></bpmndi:BPMNLabel>\n      </"
+        },
+        {
+          "t": 263838,
+          "text": "bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_SendReminder2_di\" bpmnElement=\"D_SendReminder2\">\n        <dc:"
+        },
+        {
+          "t": 264302,
+          "text": "Bounds x=\"2440\" y=\"660\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Await2_di\" bp"
+        },
+        {
+          "t": 264774,
+          "text": "mnElement=\"D_Await2\">\n        <dc:Bounds x=\"2600\" y=\"660\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:"
+        },
+        {
+          "t": 265245,
+          "text": "BPMNShape id=\"Boundary_Timer2_di\" bpmnElement=\"Boundary_Timer2\">\n        <dc:Bounds x=\"2632\" y=\"722\" width=\"36\" height=\"36\""
+        },
+        {
+          "t": 265716,
+          "text": " />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2672\" y=\"740\" width=\"35\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpm"
+        },
+        {
+          "t": 266184,
+          "text": "ndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_SendReminder3_di\" bpmnElement=\"D_SendReminder3\">\n        <dc:Bounds"
+        },
+        {
+          "t": 266655,
+          "text": " x=\"2440\" y=\"780\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Await3_di\" bpmnEl"
+        },
+        {
+          "t": 267125,
+          "text": "ement=\"D_Await3\">\n        <dc:Bounds x=\"2600\" y=\"780\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPM"
+        },
+        {
+          "t": 267597,
+          "text": "NShape id=\"Boundary_Timer3_di\" bpmnElement=\"Boundary_Timer3\">\n        <dc:Bounds x=\"2632\" y=\"842\" width=\"36\" height=\"36\" />\n        "
+        },
+        {
+          "t": 268067,
+          "text": "<bpmndi:BPMNLabel><dc:Bounds x=\"2672\" y=\"860\" width=\"35\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:"
+        },
+        {
+          "t": 268538,
+          "text": "BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Collections_di\" bpmnElement=\"D_Collections\">\n        <dc:Bounds x=\"2760\" y=\"780\""
+        },
+        {
+          "t": 269019,
+          "text": " width=\"120\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_CollectionResult_di\" bpmnElement=\""
+        },
+        {
+          "t": 269486,
+          "text": "Gateway_CollectionResult\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"2940\" y=\"795\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNL"
+        },
+        {
+          "t": 269950,
+          "text": "abel><dc:Bounds x=\"2932\" y=\"852\" width=\"66\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      "
+        },
+        {
+          "t": 270421,
+          "text": "<bpmndi:BPMNShape id=\"Gateway_Collected_di\" bpmnElement=\"Gateway_Collected\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\""
+        },
+        {
+          "t": 270891,
+          "text": "2795\" y=\"555\" width=\"50\" height=\"50\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"SubEnd_Collected"
+        },
+        {
+          "t": 271361,
+          "text": "_di\" bpmnElement=\"SubEnd_Collected\">\n        <dc:Bounds x=\"3040\" y=\"562\" width=\"36\" height=\"36\" />\n        <bpmndi:B"
+        },
+        {
+          "t": 271831,
+          "text": "PMNLabel><dc:Bounds x=\"3026\" y=\"605\" width=\"66\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>"
+        },
+        {
+          "t": 272322,
+          "text": "\n      <bpmndi:BPMNShape id=\"SubEnd_WriteOff_di\" bpmnElement=\"SubEnd_WriteOff\">\n        <dc:Bounds x=\"3042"
+        },
+        {
+          "t": 272778,
+          "text": "\" y=\"802\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"3028\" y=\"845\" width=\"66\" height=\"14\" /></bpm"
+        },
+        {
+          "t": 273245,
+          "text": "ndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"df1_di\" bpmnElement=\"df1\">\n        <di"
+        },
+        {
+          "t": 273826,
+          "text": ":waypoint x=\"2396\" y=\"680\" />\n        <di:waypoint x=\"2490\" y=\"680\" />\n        <di:waypoint x=\"2490\" y=\"620\" />\n      </"
+        },
+        {
+          "t": 274186,
+          "text": "bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df2_di\" bpmnElement=\"df2\">\n        <di:waypoint x=\"2540\" y=\"580"
+        },
+        {
+          "t": 274658,
+          "text": "\" />\n        <di:waypoint x=\"2600\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df3_di\" bpm"
+        },
+        {
+          "t": 275127,
+          "text": "nElement=\"df3\">\n        <di:waypoint x=\"2700\" y=\"580\" />\n        <di:waypoint x=\"2795\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      "
+        },
+        {
+          "t": 275693,
+          "text": "<bpmndi:BPMNEdge id=\"df4_di\" bpmnElement=\"df4\">\n        <di:waypoint x=\"2650\" y=\"638\" />\n        <di:waypoint x=\"2650"
+        },
+        {
+          "t": 276145,
+          "text": "\" y=\"660\" />\n        <di:waypoint x=\"2540\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMN"
+        },
+        {
+          "t": 276539,
+          "text": "Edge id=\"df5_di\" bpmnElement=\"df5\">\n        <di:waypoint x=\"2540\" y=\"700\" />\n        <di:waypoint x=\"2600\" y=\"700\" />\n      </bpm"
+        },
+        {
+          "t": 277012,
+          "text": "ndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df6_di\" bpmnElement=\"df6\">\n        <di:waypoint x=\"2700\" y=\"700\" />"
+        },
+        {
+          "t": 277484,
+          "text": "\n        <di:waypoint x=\"2820\" y=\"700\" />\n        <di:waypoint x=\"2820\" y=\"605\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:B"
+        },
+        {
+          "t": 277954,
+          "text": "PMNEdge id=\"df7_di\" bpmnElement=\"df7\">\n        <di:waypoint x=\"2650\" y=\"758\" />\n        <di:waypoint x=\"2650\" y=\"780\" />\n        "
+        },
+        {
+          "t": 278420,
+          "text": "<di:waypoint x=\"2540\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df8_di\" bpmnElement=\"df"
+        },
+        {
+          "t": 278890,
+          "text": "8\">\n        <di:waypoint x=\"2540\" y=\"820\" />\n        <di:waypoint x=\"2600\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmnd"
+        },
+        {
+          "t": 279362,
+          "text": "i:BPMNEdge id=\"df9_di\" bpmnElement=\"df9\">\n        <di:waypoint x=\"2700\" y=\"820\" />\n        <di:waypoint x=\"2740"
+        },
+        {
+          "t": 279835,
+          "text": "\" y=\"820\" />\n        <di:waypoint x=\"2740\" y=\"580\" />\n        <di:waypoint x=\"2795\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      "
+        },
+        {
+          "t": 280313,
+          "text": "<bpmndi:BPMNEdge id=\"df10_di\" bpmnElement=\"df10\">\n        <di:waypoint x=\"2650\" y=\"878\" />\n        <di:waypoint x=\"2650\""
+        },
+        {
+          "t": 280780,
+          "text": " y=\"820\" />\n        <di:waypoint x=\"2760\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\""
+        },
+        {
+          "t": 281984,
+          "text": "df11_di\" bpmnElement=\"df11\">\n        <di:waypoint x=\"2880\" y=\"820\" />\n        <di:waypoint x=\"2940\" y=\"820\" />\n      </bpmndi:BP"
+        },
+        {
+          "t": 281994,
+          "text": "MNEdge>\n      <bpmndi:BPMNEdge id=\"df12_di\" bpmnElement=\"df12\">\n        <di:waypoint x=\"2965\" y=\"795\" />\n        <di:wa"
+        },
+        {
+          "t": 282202,
+          "text": "ypoint x=\"2965\" y=\"580\" />\n        <di:waypoint x=\"2845\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEd"
+        },
+        {
+          "t": 282980,
+          "text": "ge id=\"df13_di\" bpmnElement=\"df13\">\n        <di:waypoint x=\"2990\" y=\"820\" />\n        <di:waypoint x=\"3042\" y=\"820\" />\n      </bpmndi"
+        },
+        {
+          "t": 283208,
+          "text": ":BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df14_di\" bpmnElement=\"df14\">\n        <di:waypoint x=\"2845\" y=\"580\" />\n        "
+        },
+        {
+          "t": 283614,
+          "text": "<di:waypoint x=\"3040\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Boundary_WriteOffError_di\""
+        },
+        {
+          "t": 284071,
+          "text": " bpmnElement=\"Boundary_WriteOffError\">\n        <dc:Bounds x=\"3142\" y=\"682\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNL"
+        },
+        {
+          "t": 284555,
+          "text": "abel><dc:Bounds x=\"3182\" y=\"690\" width=\"55\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BP"
+        },
+        {
+          "t": 285032,
+          "text": "MNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_PaymentReceived_di\" bpmnElement=\"EndEvent_PaymentReceived\">\n        <dc"
+        },
+        {
+          "t": 285482,
+          "text": ":Bounds x=\"3260\" y=\"182\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"3244\" y=\"225\" width=\"70"
+        },
+        {
+          "t": 285979,
+          "text": "\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_Written"
+        },
+        {
+          "t": 286422,
+          "text": "Off_di\" bpmnElement=\"EndEvent_WrittenOff\">\n        <dc:Bounds x=\"3260\" y=\"682\" width=\"36\" height=\"36\" />\n        <bpm"
+        },
+        {
+          "t": 286895,
+          "text": "ndi:BPMNLabel><dc:Bounds x=\"3252\" y=\"725\" width=\"55\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BP"
+        },
+        {
+          "t": 287362,
+          "text": "MNShape>\n      <bpmndi:BPMNEdge id=\"Flow_1_di\" bpmnElement=\"Flow_1\">\n        <di:waypoint x=\"188\" y=\"320\" />\n        "
+        },
+        {
+          "t": 287834,
+          "text": "<di:waypoint x=\"240\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_2_di\" bpmnEl"
+        },
+        {
+          "t": 288303,
+          "text": "ement=\"Flow_2\">\n        <di:waypoint x=\"340\" y=\"320\" />\n        <di:waypoint x=\"400\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      "
+        },
+        {
+          "t": 288776,
+          "text": "<bpmndi:BPMNEdge id=\"Flow_Manager_di\" bpmnElement=\"Flow_Manager\">\n        <di:waypoint x=\"425\" y=\"295\" />\n        <di:wa"
+        },
+        {
+          "t": 289247,
+          "text": "ypoint x=\"425\" y=\"200\" />\n        <di:waypoint x=\"510\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id"
+        },
+        {
+          "t": 289754,
+          "text": "=\"Flow_VP_di\" bpmnElement=\"Flow_VP\">\n        <di:waypoint x=\"425\" y=\"345\" />\n        <di:waypoint x=\"425\" y=\"460\" />\n        <di"
+        },
+        {
+          "t": 290193,
+          "text": ":waypoint x=\"510\" y=\"460\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_NoApproval_di\" bpm"
+        },
+        {
+          "t": 290657,
+          "text": "nElement=\"Flow_NoApproval\">\n        <di:waypoint x=\"450\" y=\"320\" />\n        <di:waypoint x=\"690\" y=\"320\" />\n      </bpmndi:BPMNE"
+        },
+        {
+          "t": 291128,
+          "text": "dge>\n      <bpmndi:BPMNEdge id=\"Flow_6_di\" bpmnElement=\"Flow_6\">\n        <di:waypoint x=\"610\" y=\"200\" />\n        <di"
+        },
+        {
+          "t": 291602,
+          "text": ":waypoint x=\"715\" y=\"200\" />\n        <di:waypoint x=\"715\" y=\"295\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEd"
+        },
+        {
+          "t": 292070,
+          "text": "ge id=\"Flow_7_di\" bpmnElement=\"Flow_7\">\n        <di:waypoint x=\"610\" y=\"460\" />\n        <di:waypoint x=\"715\" y=\"460\" />\n        <di"
+        },
+        {
+          "t": 292543,
+          "text": ":waypoint x=\"715\" y=\"345\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_8_di\" bpmnElement=\""
+        },
+        {
+          "t": 293029,
+          "text": "Flow_8\">\n        <di:waypoint x=\"740\" y=\"320\" />\n        <di:waypoint x=\"790\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bp"
+        },
+        {
+          "t": 293580,
+          "text": "mndi:BPMNEdge id=\"Flow_9_di\" bpmnElement=\"Flow_9\">\n        <di:waypoint x=\"890\" y=\"320\" />\n        <di:waypoint x=\"950"
+        },
+        {
+          "t": 294012,
+          "text": "\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_10_di\" bpmnElement=\"Flow_10\">\n        "
+        },
+        {
+          "t": 294431,
+          "text": "<di:waypoint x=\"1050\" y=\"320\" />\n        <di:waypoint x=\"1120\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BP"
+        },
+        {
+          "t": 294900,
+          "text": "MNEdge id=\"Flow_Rejected_di\" bpmnElement=\"Flow_Rejected\">\n        <di:waypoint x=\"1145\" y=\"345\" />\n        <di:waypoint x=\""
+        },
+        {
+          "t": 295420,
+          "text": "1145\" y=\"440\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Accepted_di\" bpmnElement=\""
+        },
+        {
+          "t": 295868,
+          "text": "Flow_Accepted\">\n        <di:waypoint x=\"1170\" y=\"320\" />\n        <di:waypoint x=\"1230\" y=\"320\" />\n      </bpmndi:BPMNEdge>"
+        },
+        {
+          "t": 296814,
+          "text": "\n      <bpmndi:BPMNEdge id=\"Flow_Standard_di\" bpmnElement=\"Flow_Standard\">\n        <di:waypoint x=\"1255\" y=\"295\" />\n        "
+        },
+        {
+          "t": 296895,
+          "text": "<di:waypoint x=\"1255\" y=\"200\" />\n        <di:waypoint x=\"1340\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPM"
+        },
+        {
+          "t": 297287,
+          "text": "NEdge id=\"Flow_Complex_di\" bpmnElement=\"Flow_Complex\">\n        <di:waypoint x=\"1255\" y=\"345\" />\n        <di:waypoint x=\"1255\""
+        },
+        {
+          "t": 297773,
+          "text": " y=\"490\" />\n        <di:waypoint x=\"1330\" y=\"490\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_15"
+        },
+        {
+          "t": 298259,
+          "text": "_di\" bpmnElement=\"Flow_15\">\n        <di:waypoint x=\"1440\" y=\"200\" />\n        <di:waypoint x=\"1755\" y=\"200\" />\n        <di:wa"
+        },
+        {
+          "t": 298665,
+          "text": "ypoint x=\"1755\" y=\"295\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_16_di\" bpmnElement=\""
+        },
+        {
+          "t": 299135,
+          "text": "Flow_16\">\n        <di:waypoint x=\"1670\" y=\"490\" />\n        <di:waypoint x=\"1755\" y=\"490\" />\n        <di:waypoint x=\"1755\" y=\"345\" />\n      "
+        },
+        {
+          "t": 299607,
+          "text": "</bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_17_di\" bpmnElement=\"Flow_17\">\n        <di:waypoint x"
+        },
+        {
+          "t": 300145,
+          "text": "=\"1780\" y=\"320\" />\n        <di:waypoint x=\"1830\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\""
+        },
+        {
+          "t": 300554,
+          "text": "Flow_18_di\" bpmnElement=\"Flow_18\">\n        <di:waypoint x=\"1930\" y=\"320\" />\n        <di:waypoint x=\"1990\" y=\"320\" />\n      </bpm"
+        },
+        {
+          "t": 301054,
+          "text": "ndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_19_di\" bpmnElement=\"Flow_19\">\n        <di:waypoint x=\"2090\""
+        },
+        {
+          "t": 301615,
+          "text": " y=\"320\" />\n        <di:waypoint x=\"2150\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_20"
+        },
+        {
+          "t": 301959,
+          "text": "_di\" bpmnElement=\"Flow_20\">\n        <di:waypoint x=\"2175\" y=\"295\" />\n        <di:waypoint x=\"2175\" y=\"200\" />\n        <di:waypoint x"
+        },
+        {
+          "t": 302521,
+          "text": "=\"2260\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_21_di\" bpmnElement=\"Flow_21"
+        },
+        {
+          "t": 303052,
+          "text": "\">\n        <di:waypoint x=\"2175\" y=\"345\" />\n        <di:waypoint x=\"2175\" y=\"470\" />\n        <di:waypoint x=\"2260\" y=\"470\" />\n      </bpm"
+        },
+        {
+          "t": 303364,
+          "text": "ndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_22_di\" bpmnElement=\"Flow_22\">\n        <di:waypoint x=\"2296\""
+        },
+        {
+          "t": 303839,
+          "text": " y=\"200\" />\n        <di:waypoint x=\"3260\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_23"
+        },
+        {
+          "t": 304310,
+          "text": "_di\" bpmnElement=\"Flow_23\">\n        <di:waypoint x=\"2296\" y=\"470\" />\n        <di:waypoint x=\"2340\" y=\"470\" />\n      </bpmndi:B"
+        },
+        {
+          "t": 304775,
+          "text": "PMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_24_di\" bpmnElement=\"Flow_24\">\n        <di:waypoint x=\"3160\" y=\"500"
+        },
+        {
+          "t": 305248,
+          "text": "\" />\n        <di:waypoint x=\"3278\" y=\"500\" />\n        <di:waypoint x=\"3278\" y=\"218\" />\n      </bpmndi:BPMNEdge>\n      "
+        },
+        {
+          "t": 305716,
+          "text": "<bpmndi:BPMNEdge id=\"Flow_25_di\" bpmnElement=\"Flow_25\">\n        <di:waypoint x=\"3160\" y=\"700\" />\n        <di:waypo"
+        },
+        {
+          "t": 306289,
+          "text": "int x=\"3260\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDi"
+        },
+        {
+          "t": 306420,
+          "text": "agram>\n</bpmn:definitions>"
+        }
+      ],
+      "durationMs": 307300,
+      "usage": {
+        "inputTokens": 603,
+        "outputTokens": 31772
+      },
+      "result": {
+        "type": "bpmn",
+        "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:zeebe=\"http://camunda.org/schema/zeebe/1.0\" id=\"Definitions_QuoteToCash\" targetNamespace=\"http://bpmn.io/schema/bpmn\" exporter=\"Camunda Modeler\" exporterVersion=\"5.0.0\">\n  <bpmn:error id=\"Error_WriteOff\" name=\"WriteOff\" errorCode=\"WRITE_OFF\" />\n  <bpmn:message id=\"Msg_PaymentConfirmed\" name=\"PaymentConfirmed\">\n    <bpmn:extensionElements>\n      <zeebe:subscription correlationKey=\"=orderId\" />\n    </bpmn:extensionElements>\n  </bpmn:message>\n  <bpmn:message id=\"Msg_DunningPayment\" name=\"DunningPayment\">\n    <bpmn:extensionElements>\n      <zeebe:subscription correlationKey=\"=orderId\" />\n    </bpmn:extensionElements>\n  </bpmn:message>\n  <bpmn:process id=\"quote-to-cash\" name=\"Quote to Cash\" isExecutable=\"true\">\n    <bpmn:startEvent id=\"StartEvent_1\" name=\"Quote requested\">\n      <bpmn:outgoing>Flow_1</bpmn:outgoing>\n    </bpmn:startEvent>\n    <bpmn:sequenceFlow id=\"Flow_1\" sourceRef=\"StartEvent_1\" targetRef=\"Task_GenerateQuote\" />\n    <bpmn:businessRuleTask id=\"Task_GenerateQuote\" name=\"Generate quote from catalog (tiered pricing)\">\n      <bpmn:extensionElements>\n        <zeebe:calledDecision decisionId=\"tieredPricing\" resultVariable=\"quote\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_1</bpmn:incoming>\n      <bpmn:outgoing>Flow_2</bpmn:outgoing>\n    </bpmn:businessRuleTask>\n    <bpmn:sequenceFlow id=\"Flow_2\" sourceRef=\"Task_GenerateQuote\" targetRef=\"Gateway_Discount\" />\n    <bpmn:exclusiveGateway id=\"Gateway_Discount\" name=\"Discount approval?\" default=\"Flow_NoApproval\">\n      <bpmn:incoming>Flow_2</bpmn:incoming>\n      <bpmn:outgoing>Flow_Manager</bpmn:outgoing>\n      <bpmn:outgoing>Flow_VP</bpmn:outgoing>\n      <bpmn:outgoing>Flow_NoApproval</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_Manager\" name=\"Manager approval\" sourceRef=\"Gateway_Discount\" targetRef=\"Task_ManagerApproval\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=discountPercent &gt; managerThreshold and discountPercent &lt;= vpThreshold</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_VP\" name=\"VP approval\" sourceRef=\"Gateway_Discount\" targetRef=\"Task_VPApproval\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=discountPercent &gt; vpThreshold</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_NoApproval\" name=\"No approval\" sourceRef=\"Gateway_Discount\" targetRef=\"Gateway_ApprovalMerge\" />\n    <bpmn:userTask id=\"Task_ManagerApproval\" name=\"Manager discount approval\">\n      <bpmn:extensionElements>\n        <zeebe:userTask />\n        <zeebe:assignmentDefinition candidateGroups=\"sales-managers\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_Manager</bpmn:incoming>\n      <bpmn:outgoing>Flow_6</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:userTask id=\"Task_VPApproval\" name=\"VP discount approval\">\n      <bpmn:extensionElements>\n        <zeebe:userTask />\n        <zeebe:assignmentDefinition candidateGroups=\"sales-vp\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_VP</bpmn:incoming>\n      <bpmn:outgoing>Flow_7</bpmn:outgoing>\n    </bpmn:userTask>\n    <bpmn:sequenceFlow id=\"Flow_6\" sourceRef=\"Task_ManagerApproval\" targetRef=\"Gateway_ApprovalMerge\" />\n    <bpmn:sequenceFlow id=\"Flow_7\" sourceRef=\"Task_VPApproval\" targetRef=\"Gateway_ApprovalMerge\" />\n    <bpmn:exclusiveGateway id=\"Gateway_ApprovalMerge\">\n      <bpmn:incoming>Flow_NoApproval</bpmn:incoming>\n      <bpmn:incoming>Flow_6</bpmn:incoming>\n      <bpmn:incoming>Flow_7</bpmn:incoming>\n      <bpmn:outgoing>Flow_8</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_8\" sourceRef=\"Gateway_ApprovalMerge\" targetRef=\"Task_GenerateContract\" />\n    <bpmn:serviceTask id=\"Task_GenerateContract\" name=\"Generate contract\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"generate-contract\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_8</bpmn:incoming>\n      <bpmn:outgoing>Flow_9</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:sequenceFlow id=\"Flow_9\" sourceRef=\"Task_GenerateContract\" targetRef=\"Task_ESignature\" />\n    <bpmn:serviceTask id=\"Task_ESignature\" name=\"E-signature (REST connector)\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"=&#34;https://esign.example.com/api/v1/envelopes&#34;\" target=\"url\" />\n          <zeebe:input source=\"={&#34;Content-Type&#34;:&#34;application/json&#34;}\" target=\"headers\" />\n          <zeebe:input source=\"={contract: contractDocument, signer: customerEmail}\" target=\"body\" />\n          <zeebe:output source=\"=response.body.status\" target=\"contractStatus\" />\n        </zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_9</bpmn:incoming>\n      <bpmn:outgoing>Flow_10</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:sequenceFlow id=\"Flow_10\" sourceRef=\"Task_ESignature\" targetRef=\"Gateway_ContractOutcome\" />\n    <bpmn:exclusiveGateway id=\"Gateway_ContractOutcome\" name=\"Contract signed?\" default=\"Flow_Accepted\">\n      <bpmn:incoming>Flow_10</bpmn:incoming>\n      <bpmn:outgoing>Flow_Accepted</bpmn:outgoing>\n      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_Rejected\" name=\"Rejected\" sourceRef=\"Gateway_ContractOutcome\" targetRef=\"EndEvent_ContractRejected\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=contractStatus = \"rejected\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:sequenceFlow id=\"Flow_Accepted\" name=\"Accepted\" sourceRef=\"Gateway_ContractOutcome\" targetRef=\"Gateway_OrderType\" />\n    <bpmn:endEvent id=\"EndEvent_ContractRejected\" name=\"Contract rejected\">\n      <bpmn:incoming>Flow_Rejected</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:exclusiveGateway id=\"Gateway_OrderType\" name=\"Order type?\" default=\"Flow_Standard\">\n      <bpmn:incoming>Flow_Accepted</bpmn:incoming>\n      <bpmn:outgoing>Flow_Standard</bpmn:outgoing>\n      <bpmn:outgoing>Flow_Complex</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_Standard\" name=\"Standard order\" sourceRef=\"Gateway_OrderType\" targetRef=\"Task_ProvisionStandard\" />\n    <bpmn:sequenceFlow id=\"Flow_Complex\" name=\"Complex bundle\" sourceRef=\"Gateway_OrderType\" targetRef=\"SubProcess_MultiProvision\">\n      <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=orderType = \"bundle\"</bpmn:conditionExpression>\n    </bpmn:sequenceFlow>\n    <bpmn:serviceTask id=\"Task_ProvisionStandard\" name=\"Provision standard order\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"provision-order\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_Standard</bpmn:incoming>\n      <bpmn:outgoing>Flow_15</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:subProcess id=\"SubProcess_MultiProvision\" name=\"Multi-line provisioning\">\n      <bpmn:incoming>Flow_Complex</bpmn:incoming>\n      <bpmn:outgoing>Flow_16</bpmn:outgoing>\n      <bpmn:multiInstanceLoopCharacteristics>\n        <bpmn:extensionElements>\n          <zeebe:loopCharacteristics inputCollection=\"=lineItems\" inputElement=\"lineItem\" />\n        </bpmn:extensionElements>\n      </bpmn:multiInstanceLoopCharacteristics>\n      <bpmn:startEvent id=\"MP_Start\" name=\"Line item\">\n        <bpmn:outgoing>mp1</bpmn:outgoing>\n      </bpmn:startEvent>\n      <bpmn:sequenceFlow id=\"mp1\" sourceRef=\"MP_Start\" targetRef=\"MP_Task_ProvisionLineItem\" />\n      <bpmn:serviceTask id=\"MP_Task_ProvisionLineItem\" name=\"Provision line item\">\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type=\"provision-line-item\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"=lineItem\" target=\"lineItem\" />\n          </zeebe:ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>mp1</bpmn:incoming>\n        <bpmn:outgoing>mp2</bpmn:outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"mp2\" sourceRef=\"MP_Task_ProvisionLineItem\" targetRef=\"MP_End\" />\n      <bpmn:endEvent id=\"MP_End\" name=\"Line provisioned\">\n        <bpmn:incoming>mp2</bpmn:incoming>\n      </bpmn:endEvent>\n    </bpmn:subProcess>\n    <bpmn:sequenceFlow id=\"Flow_15\" sourceRef=\"Task_ProvisionStandard\" targetRef=\"Gateway_ProvisionMerge\" />\n    <bpmn:sequenceFlow id=\"Flow_16\" sourceRef=\"SubProcess_MultiProvision\" targetRef=\"Gateway_ProvisionMerge\" />\n    <bpmn:exclusiveGateway id=\"Gateway_ProvisionMerge\">\n      <bpmn:incoming>Flow_15</bpmn:incoming>\n      <bpmn:incoming>Flow_16</bpmn:incoming>\n      <bpmn:outgoing>Flow_17</bpmn:outgoing>\n    </bpmn:exclusiveGateway>\n    <bpmn:sequenceFlow id=\"Flow_17\" sourceRef=\"Gateway_ProvisionMerge\" targetRef=\"Task_GenerateInvoice\" />\n    <bpmn:serviceTask id=\"Task_GenerateInvoice\" name=\"Generate invoice\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"generate-invoice\" />\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_17</bpmn:incoming>\n      <bpmn:outgoing>Flow_18</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:sequenceFlow id=\"Flow_18\" sourceRef=\"Task_GenerateInvoice\" targetRef=\"Task_ProcessPayment\" />\n    <bpmn:serviceTask id=\"Task_ProcessPayment\" name=\"Process payment (REST connector)\">\n      <bpmn:extensionElements>\n        <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />\n        <zeebe:ioMapping>\n          <zeebe:input source=\"POST\" target=\"method\" />\n          <zeebe:input source=\"=&#34;https://payments.example.com/api/v1/charges&#34;\" target=\"url\" />\n          <zeebe:input source=\"={&#34;Content-Type&#34;:&#34;application/json&#34;}\" target=\"headers\" />\n          <zeebe:input source=\"={invoiceId: invoiceId, amount: invoiceAmount}\" target=\"body\" />\n          <zeebe:output source=\"=response.body.status\" target=\"paymentStatus\" />\n        </zeebe:ioMapping>\n      </bpmn:extensionElements>\n      <bpmn:incoming>Flow_18</bpmn:incoming>\n      <bpmn:outgoing>Flow_19</bpmn:outgoing>\n    </bpmn:serviceTask>\n    <bpmn:sequenceFlow id=\"Flow_19\" sourceRef=\"Task_ProcessPayment\" targetRef=\"EventBasedGateway_Payment\" />\n    <bpmn:eventBasedGateway id=\"EventBasedGateway_Payment\" name=\"Payment outcome\">\n      <bpmn:incoming>Flow_19</bpmn:incoming>\n      <bpmn:outgoing>Flow_20</bpmn:outgoing>\n      <bpmn:outgoing>Flow_21</bpmn:outgoing>\n    </bpmn:eventBasedGateway>\n    <bpmn:sequenceFlow id=\"Flow_20\" sourceRef=\"EventBasedGateway_Payment\" targetRef=\"Event_PaymentConfirmed\" />\n    <bpmn:sequenceFlow id=\"Flow_21\" sourceRef=\"EventBasedGateway_Payment\" targetRef=\"Event_PaymentTimeout\" />\n    <bpmn:intermediateCatchEvent id=\"Event_PaymentConfirmed\" name=\"Payment confirmed\">\n      <bpmn:incoming>Flow_20</bpmn:incoming>\n      <bpmn:outgoing>Flow_22</bpmn:outgoing>\n      <bpmn:messageEventDefinition id=\"MED_PaymentConfirmed\" messageRef=\"Msg_PaymentConfirmed\" />\n    </bpmn:intermediateCatchEvent>\n    <bpmn:sequenceFlow id=\"Flow_22\" sourceRef=\"Event_PaymentConfirmed\" targetRef=\"EndEvent_PaymentReceived\" />\n    <bpmn:intermediateCatchEvent id=\"Event_PaymentTimeout\" name=\"Payment overdue\">\n      <bpmn:incoming>Flow_21</bpmn:incoming>\n      <bpmn:outgoing>Flow_23</bpmn:outgoing>\n      <bpmn:timerEventDefinition id=\"TED_PaymentTimeout\">\n        <bpmn:timeDuration xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">P14D</bpmn:timeDuration>\n      </bpmn:timerEventDefinition>\n    </bpmn:intermediateCatchEvent>\n    <bpmn:sequenceFlow id=\"Flow_23\" sourceRef=\"Event_PaymentTimeout\" targetRef=\"SubProcess_Dunning\" />\n    <bpmn:subProcess id=\"SubProcess_Dunning\" name=\"Dunning / cash collection\">\n      <bpmn:incoming>Flow_23</bpmn:incoming>\n      <bpmn:outgoing>Flow_24</bpmn:outgoing>\n      <bpmn:startEvent id=\"D_Start\" name=\"Start dunning\">\n        <bpmn:outgoing>df1</bpmn:outgoing>\n      </bpmn:startEvent>\n      <bpmn:sequenceFlow id=\"df1\" sourceRef=\"D_Start\" targetRef=\"D_SendReminder1\" />\n      <bpmn:serviceTask id=\"D_SendReminder1\" name=\"Send reminder 1\">\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type=\"send-reminder\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"1\" target=\"reminderLevel\" />\n          </zeebe:ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>df1</bpmn:incoming>\n        <bpmn:outgoing>df2</bpmn:outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"df2\" sourceRef=\"D_SendReminder1\" targetRef=\"D_Await1\" />\n      <bpmn:receiveTask id=\"D_Await1\" name=\"Await payment (cycle 1)\" messageRef=\"Msg_DunningPayment\">\n        <bpmn:incoming>df2</bpmn:incoming>\n        <bpmn:outgoing>df3</bpmn:outgoing>\n      </bpmn:receiveTask>\n      <bpmn:sequenceFlow id=\"df3\" sourceRef=\"D_Await1\" targetRef=\"Gateway_Collected\" />\n      <bpmn:boundaryEvent id=\"Boundary_Timer1\" name=\"7 days\" attachedToRef=\"D_Await1\">\n        <bpmn:outgoing>df4</bpmn:outgoing>\n        <bpmn:timerEventDefinition id=\"TED_R1\">\n          <bpmn:timeDuration xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">P7D</bpmn:timeDuration>\n        </bpmn:timerEventDefinition>\n      </bpmn:boundaryEvent>\n      <bpmn:sequenceFlow id=\"df4\" sourceRef=\"Boundary_Timer1\" targetRef=\"D_SendReminder2\" />\n      <bpmn:serviceTask id=\"D_SendReminder2\" name=\"Send reminder 2\">\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type=\"send-reminder\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"2\" target=\"reminderLevel\" />\n          </zeebe:ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>df4</bpmn:incoming>\n        <bpmn:outgoing>df5</bpmn:outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"df5\" sourceRef=\"D_SendReminder2\" targetRef=\"D_Await2\" />\n      <bpmn:receiveTask id=\"D_Await2\" name=\"Await payment (cycle 2)\" messageRef=\"Msg_DunningPayment\">\n        <bpmn:incoming>df5</bpmn:incoming>\n        <bpmn:outgoing>df6</bpmn:outgoing>\n      </bpmn:receiveTask>\n      <bpmn:sequenceFlow id=\"df6\" sourceRef=\"D_Await2\" targetRef=\"Gateway_Collected\" />\n      <bpmn:boundaryEvent id=\"Boundary_Timer2\" name=\"7 days\" attachedToRef=\"D_Await2\">\n        <bpmn:outgoing>df7</bpmn:outgoing>\n        <bpmn:timerEventDefinition id=\"TED_R2\">\n          <bpmn:timeDuration xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">P7D</bpmn:timeDuration>\n        </bpmn:timerEventDefinition>\n      </bpmn:boundaryEvent>\n      <bpmn:sequenceFlow id=\"df7\" sourceRef=\"Boundary_Timer2\" targetRef=\"D_SendReminder3\" />\n      <bpmn:serviceTask id=\"D_SendReminder3\" name=\"Send reminder 3 (final notice)\">\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type=\"send-reminder\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"3\" target=\"reminderLevel\" />\n          </zeebe:ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>df7</bpmn:incoming>\n        <bpmn:outgoing>df8</bpmn:outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"df8\" sourceRef=\"D_SendReminder3\" targetRef=\"D_Await3\" />\n      <bpmn:receiveTask id=\"D_Await3\" name=\"Await payment (cycle 3)\" messageRef=\"Msg_DunningPayment\">\n        <bpmn:incoming>df8</bpmn:incoming>\n        <bpmn:outgoing>df9</bpmn:outgoing>\n      </bpmn:receiveTask>\n      <bpmn:sequenceFlow id=\"df9\" sourceRef=\"D_Await3\" targetRef=\"Gateway_Collected\" />\n      <bpmn:boundaryEvent id=\"Boundary_Timer3\" name=\"7 days\" attachedToRef=\"D_Await3\">\n        <bpmn:outgoing>df10</bpmn:outgoing>\n        <bpmn:timerEventDefinition id=\"TED_R3\">\n          <bpmn:timeDuration xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">P7D</bpmn:timeDuration>\n        </bpmn:timerEventDefinition>\n      </bpmn:boundaryEvent>\n      <bpmn:sequenceFlow id=\"df10\" sourceRef=\"Boundary_Timer3\" targetRef=\"D_Collections\" />\n      <bpmn:serviceTask id=\"D_Collections\" name=\"Escalate to collections agency (REST connector)\">\n        <bpmn:extensionElements>\n          <zeebe:taskDefinition type=\"io.camunda:http-json:1\" />\n          <zeebe:ioMapping>\n            <zeebe:input source=\"POST\" target=\"method\" />\n            <zeebe:input source=\"=&#34;https://collections.example.com/api/v1/cases&#34;\" target=\"url\" />\n            <zeebe:input source=\"={&#34;Content-Type&#34;:&#34;application/json&#34;}\" target=\"headers\" />\n            <zeebe:input source=\"={invoiceId: invoiceId, amount: invoiceAmount}\" target=\"body\" />\n            <zeebe:output source=\"=response.body.recovered\" target=\"collectionSuccessful\" />\n          </zeebe:ioMapping>\n        </bpmn:extensionElements>\n        <bpmn:incoming>df10</bpmn:incoming>\n        <bpmn:outgoing>df11</bpmn:outgoing>\n      </bpmn:serviceTask>\n      <bpmn:sequenceFlow id=\"df11\" sourceRef=\"D_Collections\" targetRef=\"Gateway_CollectionResult\" />\n      <bpmn:exclusiveGateway id=\"Gateway_CollectionResult\" name=\"Recovered?\" default=\"df12\">\n        <bpmn:incoming>df11</bpmn:incoming>\n        <bpmn:outgoing>df12</bpmn:outgoing>\n        <bpmn:outgoing>df13</bpmn:outgoing>\n      </bpmn:exclusiveGateway>\n      <bpmn:sequenceFlow id=\"df12\" name=\"Recovered\" sourceRef=\"Gateway_CollectionResult\" targetRef=\"Gateway_Collected\" />\n      <bpmn:sequenceFlow id=\"df13\" name=\"Not recovered\" sourceRef=\"Gateway_CollectionResult\" targetRef=\"SubEnd_WriteOff\">\n        <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">=collectionSuccessful = false</bpmn:conditionExpression>\n      </bpmn:sequenceFlow>\n      <bpmn:exclusiveGateway id=\"Gateway_Collected\">\n        <bpmn:incoming>df3</bpmn:incoming>\n        <bpmn:incoming>df6</bpmn:incoming>\n        <bpmn:incoming>df9</bpmn:incoming>\n        <bpmn:incoming>df12</bpmn:incoming>\n        <bpmn:outgoing>df14</bpmn:outgoing>\n      </bpmn:exclusiveGateway>\n      <bpmn:sequenceFlow id=\"df14\" sourceRef=\"Gateway_Collected\" targetRef=\"SubEnd_Collected\" />\n      <bpmn:endEvent id=\"SubEnd_Collected\" name=\"Cash collected\">\n        <bpmn:incoming>df14</bpmn:incoming>\n      </bpmn:endEvent>\n      <bpmn:endEvent id=\"SubEnd_WriteOff\" name=\"Uncollectable\">\n        <bpmn:incoming>df13</bpmn:incoming>\n        <bpmn:errorEventDefinition id=\"EED_WriteOff\" errorRef=\"Error_WriteOff\" />\n      </bpmn:endEvent>\n    </bpmn:subProcess>\n    <bpmn:boundaryEvent id=\"Boundary_WriteOffError\" name=\"Written off\" attachedToRef=\"SubProcess_Dunning\">\n      <bpmn:outgoing>Flow_25</bpmn:outgoing>\n      <bpmn:errorEventDefinition id=\"EED_WriteOffBoundary\" errorRef=\"Error_WriteOff\" />\n    </bpmn:boundaryEvent>\n    <bpmn:sequenceFlow id=\"Flow_24\" sourceRef=\"SubProcess_Dunning\" targetRef=\"EndEvent_PaymentReceived\" />\n    <bpmn:sequenceFlow id=\"Flow_25\" sourceRef=\"Boundary_WriteOffError\" targetRef=\"EndEvent_WrittenOff\" />\n    <bpmn:endEvent id=\"EndEvent_PaymentReceived\" name=\"Payment received\">\n      <bpmn:incoming>Flow_22</bpmn:incoming>\n      <bpmn:incoming>Flow_24</bpmn:incoming>\n    </bpmn:endEvent>\n    <bpmn:endEvent id=\"EndEvent_WrittenOff\" name=\"Written off\">\n      <bpmn:incoming>Flow_25</bpmn:incoming>\n    </bpmn:endEvent>\n  </bpmn:process>\n  <bpmndi:BPMNDiagram id=\"BPMNDiagram_1\">\n    <bpmndi:BPMNPlane id=\"BPMNPlane_1\" bpmnElement=\"quote-to-cash\">\n      <bpmndi:BPMNShape id=\"StartEvent_1_di\" bpmnElement=\"StartEvent_1\">\n        <dc:Bounds x=\"152\" y=\"302\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"140\" y=\"345\" width=\"60\" height=\"27\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_GenerateQuote_di\" bpmnElement=\"Task_GenerateQuote\">\n        <dc:Bounds x=\"240\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Discount_di\" bpmnElement=\"Gateway_Discount\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"400\" y=\"295\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"388\" y=\"352\" width=\"74\" height=\"27\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_ManagerApproval_di\" bpmnElement=\"Task_ManagerApproval\">\n        <dc:Bounds x=\"510\" y=\"160\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_VPApproval_di\" bpmnElement=\"Task_VPApproval\">\n        <dc:Bounds x=\"510\" y=\"420\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_ApprovalMerge_di\" bpmnElement=\"Gateway_ApprovalMerge\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"690\" y=\"295\" width=\"50\" height=\"50\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_GenerateContract_di\" bpmnElement=\"Task_GenerateContract\">\n        <dc:Bounds x=\"790\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_ESignature_di\" bpmnElement=\"Task_ESignature\">\n        <dc:Bounds x=\"950\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_ContractOutcome_di\" bpmnElement=\"Gateway_ContractOutcome\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"1120\" y=\"295\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"1108\" y=\"272\" width=\"74\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_ContractRejected_di\" bpmnElement=\"EndEvent_ContractRejected\">\n        <dc:Bounds x=\"1127\" y=\"440\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"1110\" y=\"483\" width=\"72\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_OrderType_di\" bpmnElement=\"Gateway_OrderType\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"1230\" y=\"295\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"1224\" y=\"272\" width=\"63\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_ProvisionStandard_di\" bpmnElement=\"Task_ProvisionStandard\">\n        <dc:Bounds x=\"1340\" y=\"160\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"SubProcess_MultiProvision_di\" bpmnElement=\"SubProcess_MultiProvision\" isExpanded=\"true\">\n        <dc:Bounds x=\"1330\" y=\"400\" width=\"340\" height=\"180\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"MP_Start_di\" bpmnElement=\"MP_Start\">\n        <dc:Bounds x=\"1350\" y=\"500\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"MP_Task_ProvisionLineItem_di\" bpmnElement=\"MP_Task_ProvisionLineItem\">\n        <dc:Bounds x=\"1430\" y=\"478\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"MP_End_di\" bpmnElement=\"MP_End\">\n        <dc:Bounds x=\"1600\" y=\"500\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"mp1_di\" bpmnElement=\"mp1\">\n        <di:waypoint x=\"1386\" y=\"518\" />\n        <di:waypoint x=\"1430\" y=\"518\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"mp2_di\" bpmnElement=\"mp2\">\n        <di:waypoint x=\"1530\" y=\"518\" />\n        <di:waypoint x=\"1600\" y=\"518\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Gateway_ProvisionMerge_di\" bpmnElement=\"Gateway_ProvisionMerge\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"1730\" y=\"295\" width=\"50\" height=\"50\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_GenerateInvoice_di\" bpmnElement=\"Task_GenerateInvoice\">\n        <dc:Bounds x=\"1830\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Task_ProcessPayment_di\" bpmnElement=\"Task_ProcessPayment\">\n        <dc:Bounds x=\"1990\" y=\"280\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EventBasedGateway_Payment_di\" bpmnElement=\"EventBasedGateway_Payment\">\n        <dc:Bounds x=\"2150\" y=\"295\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2140\" y=\"352\" width=\"72\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_PaymentConfirmed_di\" bpmnElement=\"Event_PaymentConfirmed\">\n        <dc:Bounds x=\"2260\" y=\"182\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2240\" y=\"225\" width=\"78\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Event_PaymentTimeout_di\" bpmnElement=\"Event_PaymentTimeout\">\n        <dc:Bounds x=\"2260\" y=\"452\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2244\" y=\"495\" width=\"70\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"SubProcess_Dunning_di\" bpmnElement=\"SubProcess_Dunning\" isExpanded=\"true\">\n        <dc:Bounds x=\"2340\" y=\"460\" width=\"820\" height=\"480\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Start_di\" bpmnElement=\"D_Start\">\n        <dc:Bounds x=\"2360\" y=\"662\" width=\"36\" height=\"36\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_SendReminder1_di\" bpmnElement=\"D_SendReminder1\">\n        <dc:Bounds x=\"2440\" y=\"540\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Await1_di\" bpmnElement=\"D_Await1\">\n        <dc:Bounds x=\"2600\" y=\"540\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Boundary_Timer1_di\" bpmnElement=\"Boundary_Timer1\">\n        <dc:Bounds x=\"2632\" y=\"602\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2672\" y=\"620\" width=\"35\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_SendReminder2_di\" bpmnElement=\"D_SendReminder2\">\n        <dc:Bounds x=\"2440\" y=\"660\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Await2_di\" bpmnElement=\"D_Await2\">\n        <dc:Bounds x=\"2600\" y=\"660\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Boundary_Timer2_di\" bpmnElement=\"Boundary_Timer2\">\n        <dc:Bounds x=\"2632\" y=\"722\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2672\" y=\"740\" width=\"35\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_SendReminder3_di\" bpmnElement=\"D_SendReminder3\">\n        <dc:Bounds x=\"2440\" y=\"780\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Await3_di\" bpmnElement=\"D_Await3\">\n        <dc:Bounds x=\"2600\" y=\"780\" width=\"100\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Boundary_Timer3_di\" bpmnElement=\"Boundary_Timer3\">\n        <dc:Bounds x=\"2632\" y=\"842\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2672\" y=\"860\" width=\"35\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"D_Collections_di\" bpmnElement=\"D_Collections\">\n        <dc:Bounds x=\"2760\" y=\"780\" width=\"120\" height=\"80\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_CollectionResult_di\" bpmnElement=\"Gateway_CollectionResult\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"2940\" y=\"795\" width=\"50\" height=\"50\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"2932\" y=\"852\" width=\"66\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"Gateway_Collected_di\" bpmnElement=\"Gateway_Collected\" isMarkerVisible=\"true\">\n        <dc:Bounds x=\"2795\" y=\"555\" width=\"50\" height=\"50\" />\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"SubEnd_Collected_di\" bpmnElement=\"SubEnd_Collected\">\n        <dc:Bounds x=\"3040\" y=\"562\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"3026\" y=\"605\" width=\"66\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"SubEnd_WriteOff_di\" bpmnElement=\"SubEnd_WriteOff\">\n        <dc:Bounds x=\"3042\" y=\"802\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"3028\" y=\"845\" width=\"66\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"df1_di\" bpmnElement=\"df1\">\n        <di:waypoint x=\"2396\" y=\"680\" />\n        <di:waypoint x=\"2490\" y=\"680\" />\n        <di:waypoint x=\"2490\" y=\"620\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df2_di\" bpmnElement=\"df2\">\n        <di:waypoint x=\"2540\" y=\"580\" />\n        <di:waypoint x=\"2600\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df3_di\" bpmnElement=\"df3\">\n        <di:waypoint x=\"2700\" y=\"580\" />\n        <di:waypoint x=\"2795\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df4_di\" bpmnElement=\"df4\">\n        <di:waypoint x=\"2650\" y=\"638\" />\n        <di:waypoint x=\"2650\" y=\"660\" />\n        <di:waypoint x=\"2540\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df5_di\" bpmnElement=\"df5\">\n        <di:waypoint x=\"2540\" y=\"700\" />\n        <di:waypoint x=\"2600\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df6_di\" bpmnElement=\"df6\">\n        <di:waypoint x=\"2700\" y=\"700\" />\n        <di:waypoint x=\"2820\" y=\"700\" />\n        <di:waypoint x=\"2820\" y=\"605\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df7_di\" bpmnElement=\"df7\">\n        <di:waypoint x=\"2650\" y=\"758\" />\n        <di:waypoint x=\"2650\" y=\"780\" />\n        <di:waypoint x=\"2540\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df8_di\" bpmnElement=\"df8\">\n        <di:waypoint x=\"2540\" y=\"820\" />\n        <di:waypoint x=\"2600\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df9_di\" bpmnElement=\"df9\">\n        <di:waypoint x=\"2700\" y=\"820\" />\n        <di:waypoint x=\"2740\" y=\"820\" />\n        <di:waypoint x=\"2740\" y=\"580\" />\n        <di:waypoint x=\"2795\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df10_di\" bpmnElement=\"df10\">\n        <di:waypoint x=\"2650\" y=\"878\" />\n        <di:waypoint x=\"2650\" y=\"820\" />\n        <di:waypoint x=\"2760\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df11_di\" bpmnElement=\"df11\">\n        <di:waypoint x=\"2880\" y=\"820\" />\n        <di:waypoint x=\"2940\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df12_di\" bpmnElement=\"df12\">\n        <di:waypoint x=\"2965\" y=\"795\" />\n        <di:waypoint x=\"2965\" y=\"580\" />\n        <di:waypoint x=\"2845\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df13_di\" bpmnElement=\"df13\">\n        <di:waypoint x=\"2990\" y=\"820\" />\n        <di:waypoint x=\"3042\" y=\"820\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"df14_di\" bpmnElement=\"df14\">\n        <di:waypoint x=\"2845\" y=\"580\" />\n        <di:waypoint x=\"3040\" y=\"580\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNShape id=\"Boundary_WriteOffError_di\" bpmnElement=\"Boundary_WriteOffError\">\n        <dc:Bounds x=\"3142\" y=\"682\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"3182\" y=\"690\" width=\"55\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_PaymentReceived_di\" bpmnElement=\"EndEvent_PaymentReceived\">\n        <dc:Bounds x=\"3260\" y=\"182\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"3244\" y=\"225\" width=\"70\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNShape id=\"EndEvent_WrittenOff_di\" bpmnElement=\"EndEvent_WrittenOff\">\n        <dc:Bounds x=\"3260\" y=\"682\" width=\"36\" height=\"36\" />\n        <bpmndi:BPMNLabel><dc:Bounds x=\"3252\" y=\"725\" width=\"55\" height=\"14\" /></bpmndi:BPMNLabel>\n      </bpmndi:BPMNShape>\n      <bpmndi:BPMNEdge id=\"Flow_1_di\" bpmnElement=\"Flow_1\">\n        <di:waypoint x=\"188\" y=\"320\" />\n        <di:waypoint x=\"240\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_2_di\" bpmnElement=\"Flow_2\">\n        <di:waypoint x=\"340\" y=\"320\" />\n        <di:waypoint x=\"400\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Manager_di\" bpmnElement=\"Flow_Manager\">\n        <di:waypoint x=\"425\" y=\"295\" />\n        <di:waypoint x=\"425\" y=\"200\" />\n        <di:waypoint x=\"510\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_VP_di\" bpmnElement=\"Flow_VP\">\n        <di:waypoint x=\"425\" y=\"345\" />\n        <di:waypoint x=\"425\" y=\"460\" />\n        <di:waypoint x=\"510\" y=\"460\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_NoApproval_di\" bpmnElement=\"Flow_NoApproval\">\n        <di:waypoint x=\"450\" y=\"320\" />\n        <di:waypoint x=\"690\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_6_di\" bpmnElement=\"Flow_6\">\n        <di:waypoint x=\"610\" y=\"200\" />\n        <di:waypoint x=\"715\" y=\"200\" />\n        <di:waypoint x=\"715\" y=\"295\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_7_di\" bpmnElement=\"Flow_7\">\n        <di:waypoint x=\"610\" y=\"460\" />\n        <di:waypoint x=\"715\" y=\"460\" />\n        <di:waypoint x=\"715\" y=\"345\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_8_di\" bpmnElement=\"Flow_8\">\n        <di:waypoint x=\"740\" y=\"320\" />\n        <di:waypoint x=\"790\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_9_di\" bpmnElement=\"Flow_9\">\n        <di:waypoint x=\"890\" y=\"320\" />\n        <di:waypoint x=\"950\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_10_di\" bpmnElement=\"Flow_10\">\n        <di:waypoint x=\"1050\" y=\"320\" />\n        <di:waypoint x=\"1120\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Rejected_di\" bpmnElement=\"Flow_Rejected\">\n        <di:waypoint x=\"1145\" y=\"345\" />\n        <di:waypoint x=\"1145\" y=\"440\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Accepted_di\" bpmnElement=\"Flow_Accepted\">\n        <di:waypoint x=\"1170\" y=\"320\" />\n        <di:waypoint x=\"1230\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Standard_di\" bpmnElement=\"Flow_Standard\">\n        <di:waypoint x=\"1255\" y=\"295\" />\n        <di:waypoint x=\"1255\" y=\"200\" />\n        <di:waypoint x=\"1340\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_Complex_di\" bpmnElement=\"Flow_Complex\">\n        <di:waypoint x=\"1255\" y=\"345\" />\n        <di:waypoint x=\"1255\" y=\"490\" />\n        <di:waypoint x=\"1330\" y=\"490\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_15_di\" bpmnElement=\"Flow_15\">\n        <di:waypoint x=\"1440\" y=\"200\" />\n        <di:waypoint x=\"1755\" y=\"200\" />\n        <di:waypoint x=\"1755\" y=\"295\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_16_di\" bpmnElement=\"Flow_16\">\n        <di:waypoint x=\"1670\" y=\"490\" />\n        <di:waypoint x=\"1755\" y=\"490\" />\n        <di:waypoint x=\"1755\" y=\"345\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_17_di\" bpmnElement=\"Flow_17\">\n        <di:waypoint x=\"1780\" y=\"320\" />\n        <di:waypoint x=\"1830\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_18_di\" bpmnElement=\"Flow_18\">\n        <di:waypoint x=\"1930\" y=\"320\" />\n        <di:waypoint x=\"1990\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_19_di\" bpmnElement=\"Flow_19\">\n        <di:waypoint x=\"2090\" y=\"320\" />\n        <di:waypoint x=\"2150\" y=\"320\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_20_di\" bpmnElement=\"Flow_20\">\n        <di:waypoint x=\"2175\" y=\"295\" />\n        <di:waypoint x=\"2175\" y=\"200\" />\n        <di:waypoint x=\"2260\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_21_di\" bpmnElement=\"Flow_21\">\n        <di:waypoint x=\"2175\" y=\"345\" />\n        <di:waypoint x=\"2175\" y=\"470\" />\n        <di:waypoint x=\"2260\" y=\"470\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_22_di\" bpmnElement=\"Flow_22\">\n        <di:waypoint x=\"2296\" y=\"200\" />\n        <di:waypoint x=\"3260\" y=\"200\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_23_di\" bpmnElement=\"Flow_23\">\n        <di:waypoint x=\"2296\" y=\"470\" />\n        <di:waypoint x=\"2340\" y=\"470\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_24_di\" bpmnElement=\"Flow_24\">\n        <di:waypoint x=\"3160\" y=\"500\" />\n        <di:waypoint x=\"3278\" y=\"500\" />\n        <di:waypoint x=\"3278\" y=\"218\" />\n      </bpmndi:BPMNEdge>\n      <bpmndi:BPMNEdge id=\"Flow_25_di\" bpmnElement=\"Flow_25\">\n        <di:waypoint x=\"3160\" y=\"700\" />\n        <di:waypoint x=\"3260\" y=\"700\" />\n      </bpmndi:BPMNEdge>\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>\n</bpmn:definitions>"
+      }
+    }
+  },
+  "name": "quote-to-cash-2026-07-02b",
+  "recordedAt": "2026-07-02T08:58:54.188Z"
+}
