@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { extractTsBlock, extractXmlBlock } from "./extractor.js"
+import { extractCompactBlock, extractTsBlock, extractXmlBlock } from "./extractor.js"
 
 describe("extractXmlBlock", () => {
 	it("returns null when no XML present", () => {
@@ -43,5 +43,26 @@ describe("extractTsBlock", () => {
 	it("returns text unchanged when already raw TS (no fences)", () => {
 		const text = "import { Bpmn } from '@bpmnkit/core'\nconst x = 1"
 		expect(extractTsBlock(text)).toBe(text)
+	})
+})
+
+describe("extractCompactBlock", () => {
+	it("returns null when no compact notation present", () => {
+		expect(extractCompactBlock("no code here")).toBeNull()
+	})
+
+	it("strips compact fences", () => {
+		const text = "```compact\nprocess P\nstart s\n```"
+		expect(extractCompactBlock(text)).toBe("process P\nstart s")
+	})
+
+	it("extracts a mid-text fenced compact block", () => {
+		const text = "Here you go:\n```compact\nprocess P\nstart s\n```\nDone."
+		expect(extractCompactBlock(text)).toBe("process P\nstart s")
+	})
+
+	it("returns text unchanged when already raw compact notation (no fences)", () => {
+		const text = "process P\nstart s"
+		expect(extractCompactBlock(text)).toBe(text)
 	})
 })

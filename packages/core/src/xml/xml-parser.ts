@@ -248,6 +248,10 @@ function writeElement(parts: string[], el: XmlElement, depth: number): void {
 	parts.push(indent, "<", el.name)
 
 	for (const [key, value] of Object.entries(el.attributes)) {
+		// el.attributes is typed Record<string, string>, but content built from
+		// generated/untyped code can leave a value undefined at runtime — skip
+		// rather than crash the whole serialization on one bad attribute.
+		if (typeof value !== "string") continue
 		parts.push(" ", key, '="', escapeAttr(value), '"')
 	}
 

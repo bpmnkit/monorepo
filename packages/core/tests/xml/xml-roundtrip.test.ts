@@ -66,6 +66,22 @@ describe("XML Serializer", () => {
 		const output = serializeXml(el)
 		expect(output).toContain('<empty id="e"/>')
 	})
+
+	it("skips an attribute whose value is undefined instead of throwing", () => {
+		// XmlElement.attributes is typed Record<string, string>, but content
+		// built from generated/untyped code can leave a value undefined at
+		// runtime — serialization must degrade gracefully, not crash.
+		const element = {
+			name: "root",
+			attributes: { id: "1", attachedToRef: undefined as unknown as string },
+			children: [],
+		}
+
+		expect(() => serializeXml(element)).not.toThrow()
+		const xml = serializeXml(element)
+		expect(xml).toContain('id="1"')
+		expect(xml).not.toContain("attachedToRef")
+	})
 })
 
 describe("XML entity decoding", () => {

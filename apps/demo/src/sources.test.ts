@@ -25,6 +25,7 @@ describe("ReplaySource", () => {
 		const onChunk = vi.fn()
 		new ReplaySource(panel).subscribe({
 			onChunk,
+			onTick: vi.fn(),
 			onDone: vi.fn(),
 			onBpmn: vi.fn(),
 			onError: vi.fn(),
@@ -41,7 +42,13 @@ describe("ReplaySource", () => {
 	it("calls onDone right after the last chunk, before the result", () => {
 		const onDone = vi.fn()
 		const onBpmn = vi.fn()
-		new ReplaySource(panel).subscribe({ onChunk: vi.fn(), onDone, onBpmn, onError: vi.fn() })
+		new ReplaySource(panel).subscribe({
+			onChunk: vi.fn(),
+			onTick: vi.fn(),
+			onDone,
+			onBpmn,
+			onError: vi.fn(),
+		})
 
 		vi.advanceTimersByTime(100)
 		expect(onDone).toHaveBeenCalledTimes(1)
@@ -52,6 +59,7 @@ describe("ReplaySource", () => {
 		const onBpmn = vi.fn()
 		new ReplaySource(panel).subscribe({
 			onChunk: vi.fn(),
+			onTick: vi.fn(),
 			onDone: vi.fn(),
 			onBpmn,
 			onError: vi.fn(),
@@ -69,6 +77,7 @@ describe("ReplaySource", () => {
 		const onBpmn = vi.fn()
 		new ReplaySource(panelWithUsage).subscribe({
 			onChunk: vi.fn(),
+			onTick: vi.fn(),
 			onDone: vi.fn(),
 			onBpmn,
 			onError: vi.fn(),
@@ -86,6 +95,7 @@ describe("ReplaySource", () => {
 		const onError = vi.fn()
 		new ReplaySource(errorPanel).subscribe({
 			onChunk: vi.fn(),
+			onTick: vi.fn(),
 			onDone: vi.fn(),
 			onBpmn: vi.fn(),
 			onError,
@@ -99,6 +109,7 @@ describe("ReplaySource", () => {
 		const onChunk = vi.fn()
 		const unsubscribe = new ReplaySource(panel).subscribe({
 			onChunk,
+			onTick: vi.fn(),
 			onDone: vi.fn(),
 			onBpmn: vi.fn(),
 			onError: vi.fn(),
@@ -115,6 +126,7 @@ describe("ReplaySource", () => {
 		const onBpmn = vi.fn()
 		new ReplaySource(emptyPanel).subscribe({
 			onChunk: vi.fn(),
+			onTick: vi.fn(),
 			onDone,
 			onBpmn,
 			onError: vi.fn(),
@@ -124,5 +136,60 @@ describe("ReplaySource", () => {
 		expect(onDone).toHaveBeenCalledTimes(1)
 		vi.advanceTimersByTime(300)
 		expect(onBpmn).toHaveBeenCalledWith("<xml/>", null)
+	})
+
+	it("reports elapsed virtual time via onTick as ticks advance", () => {
+		const onTick = vi.fn()
+		new ReplaySource(panel).subscribe({
+			onChunk: vi.fn(),
+			onTick,
+			onDone: vi.fn(),
+			onBpmn: vi.fn(),
+			onError: vi.fn(),
+		})
+
+		vi.advanceTimersByTime(100)
+		expect(onTick).toHaveBeenLastCalledWith(100)
+	})
+
+	it("setSpeed changes how fast virtual time advances for subsequent ticks", () => {
+		const longPanel: RecordedPanel = {
+			systemPrompt: "irrelevant",
+			chunks: [],
+			durationMs: 10000,
+			result: { type: "bpmn", xml: "<xml/>" },
+		}
+		const onTick = vi.fn()
+		const source = new ReplaySource(longPanel)
+		source.subscribe({
+			onChunk: vi.fn(),
+			onTick,
+			onDone: vi.fn(),
+			onBpmn: vi.fn(),
+			onError: vi.fn(),
+		})
+
+		vi.advanceTimersByTime(100)
+		expect(onTick).toHaveBeenLastCalledWith(100)
+
+		source.setSpeed(5)
+		vi.advanceTimersByTime(100)
+		expect(onTick).toHaveBeenLastCalledWith(600)
+	})
+
+	it("clamps onTick's final value to durationMs, never exceeding it", () => {
+		const onTick = vi.fn()
+		new ReplaySource(panel).subscribe({
+			onChunk: vi.fn(),
+			onTick,
+			onDone: vi.fn(),
+			onBpmn: vi.fn(),
+			onError: vi.fn(),
+		})
+
+		vi.advanceTimersByTime(1000)
+		for (const call of onTick.mock.calls) {
+			expect(call[0]).toBeLessThanOrEqual(300)
+		}
 	})
 })

@@ -5,6 +5,7 @@ export interface Recording {
 	scenarioPrompt: string
 	panels: {
 		"with-sdk": RecordedPanel
+		"with-sdk-compact"?: RecordedPanel
 		"without-sdk": RecordedPanel
 	}
 }

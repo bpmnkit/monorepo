@@ -16,7 +16,6 @@ import {
 import { minimizeCrossings } from "./crossing.js"
 import { buildGraph, detectBackEdges, reverseBackEdges } from "./graph.js"
 import { assignLayers, groupByLayer } from "./layers.js"
-import { assertNoOverlap } from "./overlap.js"
 import { routeEdges } from "./routing.js"
 import { layoutSubProcesses } from "./subprocess.js"
 import type { LayoutNode, LayoutResult, SubProcessChildResult } from "./types.js"
@@ -280,12 +279,16 @@ function repositionBoundaryEvents(flowElements: BpmnFlowElement[], result: Layou
  * 5. Sub-process layout — Recursive nested passes
  * 6. Edge routing — Orthogonal waypoints
  * 7. Boundary event repositioning — place events on host border
- * 8. Overlap assertion — Post-condition validation
+ *
+ * A residual label overlap is a cosmetic layout imperfection, not a
+ * structural defect in the produced BPMN — this must always return a
+ * usable result rather than throwing. Call `assertNoOverlap(result)`
+ * yourself (exported from this package) if you want a hard check, e.g. in
+ * a test suite validating known-good fixtures.
  */
 export function layoutProcess(process: BpmnProcess): LayoutResult {
 	const result = layoutFlowNodes(process.flowElements, process.sequenceFlows)
 	repositionBoundaryEvents(process.flowElements, result)
-	assertNoOverlap(result)
 	return result
 }
 

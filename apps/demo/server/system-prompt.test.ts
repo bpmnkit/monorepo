@@ -1,7 +1,11 @@
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { WITHOUT_SDK_SYSTEM_PROMPT, buildSdkSystemPrompt } from "./system-prompt.js"
+import {
+	WITHOUT_SDK_SYSTEM_PROMPT,
+	buildCompactSystemPrompt,
+	buildSdkSystemPrompt,
+} from "./system-prompt.js"
 
 const REPO_ROOT = join(fileURLToPath(import.meta.url), "../../../../")
 
@@ -31,5 +35,29 @@ describe("buildSdkSystemPrompt", () => {
 describe("WITHOUT_SDK_SYSTEM_PROMPT", () => {
 	it("instructs raw XML output", () => {
 		expect(WITHOUT_SDK_SYSTEM_PROMPT).toContain("XML")
+	})
+})
+
+describe("buildCompactSystemPrompt", () => {
+	it("returns a non-empty string", () => {
+		const prompt = buildCompactSystemPrompt(REPO_ROOT)
+		expect(typeof prompt).toBe("string")
+		expect(prompt.length).toBeGreaterThan(500)
+	})
+
+	it("includes the grammar's tag table", () => {
+		const prompt = buildCompactSystemPrompt(REPO_ROOT)
+		expect(prompt).toContain("startEvent")
+		expect(prompt).toContain("subProcess")
+	})
+
+	it("includes the worked example's process id", () => {
+		const prompt = buildCompactSystemPrompt(REPO_ROOT)
+		expect(prompt).toContain("LoanApproval")
+	})
+
+	it("includes the output instruction", () => {
+		const prompt = buildCompactSystemPrompt(REPO_ROOT)
+		expect(prompt).toContain("```compact")
 	})
 })

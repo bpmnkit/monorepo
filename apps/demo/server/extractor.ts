@@ -34,3 +34,29 @@ export function extractTsBlock(text: string): string | null {
 	// Plain text, not code
 	return null
 }
+
+/**
+ * Extracts compact-notation text from LLM output.
+ * Strips markdown fences if present; returns raw text if no fences found.
+ * Returns null if no compact notation detected (no fences and no "process" line).
+ */
+export function extractCompactBlock(text: string): string | null {
+	const trimmed = text.trim()
+	if (!trimmed) return null
+
+	// Try to find a fenced code block (```compact)
+	const fenced = trimmed.match(/^```compact\n([\s\S]*?)\n```$/m)
+	if (fenced) return fenced[1].trim()
+
+	// Also check for mid-text fenced block
+	const midFenced = trimmed.match(/```compact\n([\s\S]*?)\n```/)
+	if (midFenced) return midFenced[1].trim()
+
+	// No fences — check if it looks like compact notation (starts with a process line)
+	if (/^process\s+\S/m.test(trimmed)) {
+		return trimmed
+	}
+
+	// Plain text, not compact notation
+	return null
+}
