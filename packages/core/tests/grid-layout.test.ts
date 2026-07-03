@@ -394,6 +394,47 @@ describe("Grid Manhattan router", () => {
 		assertOrthogonal(wps)
 	})
 
+	it("same column, unblocked, target below: straight 2-point vertical line", () => {
+		const g = new Grid<{ id: string }>()
+		const a = routable("a", 0, 0)
+		const b = routable("b", 1, 0)
+		const wps = connectElements(a, b, g, SHIFT, NO_EXPANDED)
+		expect(wps).toEqual([
+			{ x: a.bounds.x + a.bounds.width / 2, y: a.bounds.y + a.bounds.height },
+			{ x: b.bounds.x + b.bounds.width / 2, y: b.bounds.y },
+		])
+	})
+
+	it("same column, unblocked, target above: straight 2-point vertical line, docks swapped", () => {
+		const g = new Grid<{ id: string }>()
+		const a = routable("a", 1, 0)
+		const b = routable("b", 0, 0)
+		const wps = connectElements(a, b, g, SHIFT, NO_EXPANDED)
+		expect(wps).toEqual([
+			{ x: a.bounds.x + a.bounds.width / 2, y: a.bounds.y },
+			{ x: b.bounds.x + b.bounds.width / 2, y: b.bounds.y + b.bounds.height },
+		])
+	})
+
+	it("same column, blocked corridor, target below: 5-point right-hand detour", () => {
+		const g = new Grid<{ id: string }>()
+		g.add({ id: "a" }, [0, 0])
+		g.add({ id: "x" }, [1, 0]) // blocker directly in the vertical corridor
+		g.add({ id: "b" }, [2, 0])
+		const a = routable("a", 0, 0)
+		const b = routable("b", 2, 0)
+		const wps = connectElements(a, b, g, SHIFT, NO_EXPANDED)
+		expect(wps).toHaveLength(5)
+		expect(wps).toEqual([
+			{ x: a.bounds.x + a.bounds.width, y: 70 }, // out the right of a, centre height
+			{ x: 150, y: 70 }, // one half-cell-width right of the column
+			{ x: 150, y: 280 }, // down to target centre minus half a cell height
+			{ x: b.bounds.x + b.bounds.width / 2, y: 280 }, // back over target's column
+			{ x: b.bounds.x + b.bounds.width / 2, y: b.bounds.y }, // in the top of b
+		])
+		assertOrthogonal(wps)
+	})
+
 	it("ensureExitBottom rewrites an edge to leave through the boundary event's bottom", () => {
 		const be = { x: 132, y: 122, width: 36, height: 36 }
 		const wps = ensureExitBottom(be, [
