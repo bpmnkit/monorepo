@@ -1511,7 +1511,9 @@ This is a pure code MOVE so Task 8 can delete `routing.ts` without losing label 
 - [ ] **Step 4: Verify** — `pnpm --filter @bpmnkit/core test -- run tests/layout.test.ts` (the "Edge label collision avoidance" suite must still pass) and `pnpm --filter @bpmnkit/core typecheck`.
 - [ ] **Step 5: Commit** — `git commit -am "refactor(core): extract edge-label placement into grid/edge-labels"`
 
----### Task 6: Grid engine — bounds, boundary events, subprocess nesting, LayoutResult
+---
+
+### Task 6: Grid engine — bounds, boundary events, subprocess nesting, LayoutResult
 
 **Files:**
 - Create: `packages/core/src/layout/grid/grid-engine.ts`
