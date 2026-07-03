@@ -1,8 +1,4 @@
 export { layoutProcess, layoutFlowNodes } from "./layout-engine.js"
-export { buildBlockTree } from "./block-builder.js"
-export type { FlowBlock, GatewayBlock, NodeBlock, SequenceBlock } from "./block-builder.js"
-export { applyBlockLayout } from "./block-layout.js"
-export { routeEdgeAstar } from "./astar.js"
 export {
 	benchmarkLayout,
 	compareLayouts,
@@ -17,8 +13,9 @@ export type {
 	ElementPosition,
 	FlowOrderViolation,
 } from "./bench.js"
-export { assignGridRows } from "./coordinates.js"
 export { assertNoOverlap } from "./overlap.js"
+export { checkDiCompleteness } from "../bpmn/di-check.js"
+export type { DiCompleteness } from "../bpmn/di-check.js"
 export type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from "./types.js"
 export {
 	ELEMENT_SIZES,

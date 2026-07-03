@@ -39,6 +39,8 @@ export {
 } from "./bpmn/utils.js"
 export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export { applyAutoLayout } from "./bpmn/auto-layout.js"
+export { checkDiCompleteness } from "./bpmn/di-check.js"
+export type { DiCompleteness } from "./bpmn/di-check.js"
 export { DiagramBuilder } from "./bpmn/bpmn-builder.js"
 export type {
 	ProcessBuilder,

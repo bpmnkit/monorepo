@@ -511,15 +511,19 @@ A unified Preact web application replacing fragmented Camunda tooling (Modeler, 
 
 ## Auto-layout (2026-03-11) — `packages/core`, `packages/editor`
 
-- **`Bpmn.autoLayout(xml)`**: applies the Sugiyama layered layout to all processes in a BPMN XML string and returns updated XML with replaced BPMNDi positions.
+- **`Bpmn.autoLayout(xml)`**: applies auto-layout to all processes in a BPMN XML string and returns updated XML with replaced BPMNDi positions.
 - **`applyAutoLayout(defs)`**: exported from `@bpmnkit/core` — operates on `BpmnDefinitions` directly; handles plain processes and collaborations with pools/lanes; pool and lane shapes carry `isHorizontal: true`.
 - **`BpmnEditor.autoLayout()`**: undoable auto-layout command in the editor; triggers `fitView` after layout.
 - **Auto-layout button**: HUD action bar now has an auto-layout button (grid icon) between `btnTopMore` and optional inject buttons.
 - **`BpmnDiShape.isHorizontal`**: new optional field parsed and serialized round-trip by parser/serializer.
-- **[2026-06-30] Layout constants match canonical Camunda BPMN skill spec**: subprocess padding 50px, Sugiyama horizontal spacing 150px center-to-center.
+- **[2026-06-30] Layout constants match canonical Camunda BPMN skill spec**: subprocess padding 50px, horizontal spacing 150px center-to-center.
 - **[2026-06-30] Boundary event center-bottom placement**: single event at task center-bottom; multiple events symmetrically distributed.
 - **[2026-06-30] adHocSubProcess tool grid layout**: agent tools tile into rows of up to 4 columns.
 - **[2026-06-30] Lane proportional height**: pool lanes sized relative to content, not equal tiles.
+- **[2026-07-03] Grid-based layout engine**: the Sugiyama layered layout + block-tree pipeline was replaced by a grid engine (`packages/core/src/layout/grid/`) — flow nodes placed on a fixed 150×140 grid, edges routed with an orthogonal Manhattan router. Public API unchanged.
+- **[2026-07-03] Message-flow routing**: `applyAutoLayout` emits DI for collaboration `messageFlow` elements, docking on the nearest edge between source/target shapes.
+- **[2026-07-03] DI completeness checker**: `checkDiCompleteness(defs)` reports any element, sequence flow, annotation, association, participant, or message flow missing DI.
+- **[2026-07-03] Annotation packing**: `packAnnotations` packs text annotations above/below the content bounding box with overlap/crossing avoidance.
 
 ## ASCII rendering for DMN and Forms (2026-03-11) — `packages/ascii`
 

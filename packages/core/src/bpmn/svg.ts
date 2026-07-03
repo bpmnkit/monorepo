@@ -167,6 +167,9 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 	}
 
 	// ── Shapes ────────────────────────────────────────────────────────────────
+	// Pool/lane backgrounds are opaque and must render first, or they paint over
+	// the flow-node shapes and edges nested inside them.
+	const containerParts: string[] = []
 	const shapeParts: string[] = []
 	const labelParts: string[] = []
 
@@ -176,6 +179,7 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 		const type = el?.type ?? ""
 
 		let inner: string
+		let isContainer = false
 
 		if (isEvent(type)) {
 			inner = renderEvent(el, width, height, t)
@@ -188,8 +192,10 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 				inner = renderAnnotation(annotation.text, width, height, t)
 			} else if (idx.participants.has(shape.bpmnElement)) {
 				inner = renderPool(idx.participants.get(shape.bpmnElement), width, height, t)
+				isContainer = true
 			} else if (idx.lanes.has(shape.bpmnElement)) {
 				inner = renderLane(idx.lanes.get(shape.bpmnElement), width, height, t)
+				isContainer = true
 			} else {
 				inner = ""
 			}
@@ -198,7 +204,12 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 		}
 
 		if (inner) {
-			shapeParts.push(`<g transform="translate(${x} ${y})">${inner}</g>`)
+			const g = `<g transform="translate(${x} ${y})">${inner}</g>`
+			if (isContainer) {
+				containerParts.push(g)
+			} else {
+				shapeParts.push(g)
+			}
 		}
 
 		// External labels for events and gateways
@@ -228,6 +239,7 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 		`    <path d="M0,0 L8,3 L0,6 Z" fill="${arrowFill}"/>`,
 		"  </marker>",
 		"</defs>",
+		...containerParts,
 		...edgeParts,
 		...shapeParts,
 		...labelParts,

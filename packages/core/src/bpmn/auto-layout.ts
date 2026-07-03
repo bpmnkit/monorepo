@@ -1,6 +1,6 @@
+import { associationWaypoints, packAnnotations } from "../layout/annotations.js"
 import { layoutProcess } from "../layout/layout-engine.js"
-import { resolveEdgeCrossings } from "../layout/routing.js"
-import type { LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
+import type { Bounds, LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
 import type {
 	BpmnDefinitions,
 	BpmnDiEdge,
@@ -13,9 +13,6 @@ const POOL_HEADER = 30
 const LANE_HEADER = 30
 const PADDING = 20
 const POOL_GAP = 30
-const ANN_H = 50
-const ANN_GAP = 60
-const ANN_PADDING = 20
 
 type LocalBounds = { x: number; y: number; width: number; height: number }
 
@@ -48,119 +45,6 @@ function contentBbox(
 		}
 	}
 	return { minX, minY, maxX, maxY }
-}
-
-/** Pre-compute annotation positions in layout space (before dx/dy shift). */
-function computeAnnotationLocalBounds(
-	process: BpmnProcess,
-	layoutNodes: LayoutNode[],
-): Map<string, LocalBounds> {
-	const nodeById = new Map(layoutNodes.map((n) => [n.id, n]))
-	const placements = new Map<string, LocalBounds>()
-
-	// Occupied regions for overlap checks (node bounds + label bounds)
-	const occupied: LocalBounds[] = []
-	for (const n of layoutNodes) {
-		occupied.push({ ...n.bounds })
-		if (n.labelBounds) occupied.push({ ...n.labelBounds })
-	}
-
-	// Static obstacles for crossing detection (nodes + labels only, not annotations)
-	const obstacles: LocalBounds[] = [...occupied]
-
-	for (const ta of process.textAnnotations) {
-		const assoc = process.associations.find((a) => a.sourceRef === ta.id || a.targetRef === ta.id)
-		const connId = assoc
-			? assoc.sourceRef === ta.id
-				? assoc.targetRef
-				: assoc.sourceRef
-			: undefined
-		const connNode = connId ? nodeById.get(connId) : undefined
-
-		const annW = Math.min(200, Math.max(100, (ta.text?.length ?? 10) * 5))
-
-		if (!connNode) {
-			const candidate: LocalBounds = { x: 0, y: 0, width: annW, height: ANN_H }
-			occupied.push({ ...candidate })
-			placements.set(ta.id, candidate)
-			continue
-		}
-
-		const localX = connNode.bounds.x + connNode.bounds.width / 2 - annW / 2
-		const anchorX = connNode.bounds.x + connNode.bounds.width / 2
-		const pushStep = ANN_H + ANN_PADDING * 2 + 10
-
-		// Try below: start below connected element, push down for overlaps
-		const belowY = connNode.bounds.y + connNode.bounds.height + ANN_GAP
-		const below: LocalBounds = { x: localX, y: belowY, width: annW, height: ANN_H }
-		for (let i = 0; i < 30 && hasOverlapPadded(below, occupied, ANN_PADDING); i++)
-			below.y += pushStep
-
-		// Try above: gap scales with text length so longer annotations have more breathing room
-		const aboveGap = ANN_GAP + Math.round(annW * 0.2)
-		const aboveY = connNode.bounds.y - aboveGap - ANN_H
-		const above: LocalBounds = { x: localX, y: aboveY, width: annW, height: ANN_H }
-		for (let i = 0; i < 30 && hasOverlapPadded(above, occupied, ANN_PADDING); i++)
-			above.y -= pushStep
-
-		// Count how many obstacles the association line would cross for each candidate
-		const belowCrossings = countLineCrossings(anchorX, connNode.bounds, below, obstacles)
-		const aboveCrossings = countLineCrossings(anchorX, connNode.bounds, above, obstacles)
-
-		const candidate = belowCrossings <= aboveCrossings ? below : above
-
-		occupied.push({ ...candidate })
-		obstacles.push({ ...candidate })
-		placements.set(ta.id, candidate)
-	}
-
-	return placements
-}
-
-/** Count how many obstacles the vertical association line from connNode to annotation crosses. */
-function countLineCrossings(
-	lineX: number,
-	connBounds: LocalBounds,
-	annBounds: LocalBounds,
-	obstacles: LocalBounds[],
-): number {
-	const annCY = annBounds.y + annBounds.height / 2
-	const connCY = connBounds.y + connBounds.height / 2
-	const top = Math.min(annCY, connCY)
-	const bottom = Math.max(annCY, connCY)
-	const tolerance = 20
-	let crossings = 0
-	for (const b of obstacles) {
-		// Skip the connected element itself
-		if (b.x === connBounds.x && b.y === connBounds.y && b.width === connBounds.width) continue
-		// Obstacle must overlap with the line's X corridor
-		if (b.x + b.width < lineX - tolerance || b.x > lineX + tolerance) continue
-		// Obstacle must be between connNode and annotation vertically
-		if (b.y + b.height <= top || b.y >= bottom) continue
-		crossings++
-	}
-	return crossings
-}
-
-function hasOverlap(a: LocalBounds, others: LocalBounds[]): boolean {
-	for (const b of others) {
-		if (a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y)
-			return true
-	}
-	return false
-}
-
-function hasOverlapPadded(a: LocalBounds, others: LocalBounds[], padding: number): boolean {
-	for (const b of others) {
-		if (
-			a.x - padding < b.x + b.width &&
-			a.x + a.width + padding > b.x &&
-			a.y - padding < b.y + b.height &&
-			a.y + a.height + padding > b.y
-		)
-			return true
-	}
-	return false
 }
 
 function nodeToShape(node: LayoutNode, dx: number, dy: number): BpmnDiShape {
@@ -290,7 +174,7 @@ function buildLaneShapes(
 function addAnnotationShapes(
 	process: BpmnProcess,
 	layoutNodes: LayoutNode[],
-	annLocalBounds: Map<string, LocalBounds>,
+	annLocalBounds: Map<string, Bounds>,
 	allShapes: BpmnDiShape[],
 	allEdges: BpmnDiEdge[],
 	dx: number,
@@ -327,32 +211,17 @@ function addAnnotationShapes(
 		const annB = annId ? annLocalBounds.get(annId) : undefined
 		const elNode = nodeById.get(elId)
 
-		if (!annB || !elNode) continue
+		if (!annB || !annId || !elNode) continue
 
-		const elB = elNode.bounds
-		const annCx = Math.round(annB.x + annB.width / 2 + dx)
-		const elCx = Math.round(elB.x + elB.width / 2 + dx)
-
-		let waypoints: Array<{ x: number; y: number }>
-		if (annB.y >= elB.y + elB.height) {
-			// annotation below: element bottom-center → annotation top-center
-			waypoints = [
-				{ x: elCx, y: Math.round(elB.y + elB.height + dy) },
-				{ x: annCx, y: Math.round(annB.y + dy) },
-			]
-		} else if (annB.y + annB.height <= elB.y) {
-			// annotation above: element top-center → annotation bottom-center
-			waypoints = [
-				{ x: elCx, y: Math.round(elB.y + dy) },
-				{ x: annCx, y: Math.round(annB.y + annB.height + dy) },
-			]
-		} else {
-			// side-by-side: center-to-center
-			waypoints = [
-				{ x: Math.round(elB.x + elB.width / 2 + dx), y: Math.round(elB.y + elB.height / 2 + dy) },
-				{ x: annCx, y: Math.round(annB.y + annB.height / 2 + dy) },
-			]
+		const { pElem, pAnn } = associationWaypoints(elNode.bounds, annB)
+		// Shift into diagram space and honour the original sourceRef→targetRef order.
+		const shifted = {
+			pElem: { x: Math.round(pElem.x + dx), y: Math.round(pElem.y + dy) },
+			pAnn: { x: Math.round(pAnn.x + dx), y: Math.round(pAnn.y + dy) },
 		}
+		const wp1 = assoc.sourceRef === annId ? shifted.pAnn : shifted.pElem
+		const wp2 = assoc.sourceRef === annId ? shifted.pElem : shifted.pAnn
+		const waypoints: Array<{ x: number; y: number }> = [wp1, wp2]
 
 		allEdges.push({
 			id: `${assoc.id}_di`,
@@ -392,17 +261,12 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		const lanes = process.laneSet?.lanes ?? []
 		const hasLanes = lanes.length > 0
 
-		// layoutProcess now handles boundary event repositioning internally.
 		const result = layoutProcess(process)
-
-		// Re-resolve edge crossings after boundary events moved shapes
-		const nodeMap = new Map(result.nodes.map((n) => [n.id, n]))
-		resolveEdgeCrossings(result.edges, nodeMap)
 
 		if (result.nodes.length === 0) continue
 
 		// Pre-compute annotation positions in layout space so they're included in the bbox
-		const annBounds = computeAnnotationLocalBounds(process, result.nodes)
+		const annBounds = packAnnotations(process, result.nodes)
 
 		const { minX, minY, maxX, maxY } = contentBbox(result.nodes, annBounds.values())
 		const contentW = maxX - minX
@@ -452,6 +316,34 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 			}
 
 			poolY += innerH + POOL_GAP
+		}
+	}
+
+	if (collab && collab.messageFlows.length > 0) {
+		const shapeByElement = new Map(allShapes.map((s) => [s.bpmnElement, s.bounds]))
+		for (const mf of collab.messageFlows) {
+			const src = shapeByElement.get(mf.sourceRef)
+			const tgt = shapeByElement.get(mf.targetRef)
+			if (!src || !tgt) continue
+			const srcBelow = src.y + src.height / 2 > tgt.y + tgt.height / 2
+			const sx = Math.round(src.x + src.width / 2)
+			const tx = Math.round(tgt.x + tgt.width / 2)
+			const sy = srcBelow ? src.y : src.y + src.height
+			const ty = srcBelow ? tgt.y + tgt.height : tgt.y
+			const midY = Math.round((sy + ty) / 2)
+			const waypoints =
+				sx === tx
+					? [
+							{ x: sx, y: sy },
+							{ x: tx, y: ty },
+						]
+					: [
+							{ x: sx, y: sy },
+							{ x: sx, y: midY },
+							{ x: tx, y: midY },
+							{ x: tx, y: ty },
+						]
+			allEdges.push({ id: `${mf.id}_di`, bpmnElement: mf.id, waypoints, unknownAttributes: {} })
 		}
 	}
 

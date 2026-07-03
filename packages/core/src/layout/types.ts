@@ -14,14 +14,18 @@ export const ELEMENT_SIZES: Record<string, { width: number; height: number }> = 
 	receiveTask: { width: 100, height: 80 },
 	businessRuleTask: { width: 100, height: 80 },
 	callActivity: { width: 100, height: 80 },
+	task: { width: 100, height: 80 },
+	manualTask: { width: 100, height: 80 },
 	exclusiveGateway: { width: 50, height: 50 },
 	parallelGateway: { width: 50, height: 50 },
 	inclusiveGateway: { width: 50, height: 50 },
 	eventBasedGateway: { width: 50, height: 50 },
+	complexGateway: { width: 50, height: 50 },
 	// Sub-processes are sized dynamically
 	subProcess: { width: 100, height: 80 },
 	adHocSubProcess: { width: 100, height: 80 },
 	eventSubProcess: { width: 100, height: 80 },
+	transaction: { width: 100, height: 80 },
 }
 
 /** Virtual grid cell dimensions for element placement. */

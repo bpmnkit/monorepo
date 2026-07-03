@@ -1,4 +1,12 @@
 import { describe, expect, it } from "vitest"
+import { applyAutoLayout } from "../src/bpmn/auto-layout.js"
+import type {
+	BpmnCollaboration,
+	BpmnDefinitions,
+	BpmnFlowElement,
+	BpmnProcess,
+	BpmnSequenceFlow,
+} from "../src/bpmn/bpmn-model.js"
 import { Bpmn } from "../src/bpmn/index.js"
 import { exportSvg } from "../src/bpmn/svg.js"
 
@@ -120,5 +128,84 @@ describe("exportSvg", () => {
 		const svg = exportSvg(defs)
 		expect(svg).toContain("User")
 		expect(svg).toContain("Service")
+	})
+
+	it("renders pool backgrounds before child shapes so the opaque pool body doesn't paint over them", () => {
+		// Regression test: pool/lane shapes are appended to the DI shapes array
+		// *after* their child flow-node shapes (see applyAutoLayout), but renderPool()/
+		// renderLane() emit an opaque full-size background rect. If the SVG emitted
+		// shapes in DI-array order, that opaque rect painted over every element and
+		// edge nested inside the pool, making the diagram interior look blank.
+		const process: BpmnProcess = {
+			id: "proc",
+			isExecutable: true,
+			extensionElements: [],
+			flowElements: [
+				{
+					id: "s",
+					type: "startEvent",
+					incoming: [],
+					outgoing: [],
+					extensionElements: [],
+					unknownAttributes: {},
+					eventDefinitions: [],
+				} as unknown as BpmnFlowElement,
+				{
+					id: "t",
+					type: "userTask",
+					name: "Pack items",
+					incoming: [],
+					outgoing: [],
+					extensionElements: [],
+					unknownAttributes: {},
+				} as unknown as BpmnFlowElement,
+				{
+					id: "e",
+					type: "endEvent",
+					incoming: [],
+					outgoing: [],
+					extensionElements: [],
+					unknownAttributes: {},
+					eventDefinitions: [],
+				} as unknown as BpmnFlowElement,
+			],
+			sequenceFlows: [
+				{ id: "f1", sourceRef: "s", targetRef: "t", extensionElements: [], unknownAttributes: {} },
+				{ id: "f2", sourceRef: "t", targetRef: "e", extensionElements: [], unknownAttributes: {} },
+			] as BpmnSequenceFlow[],
+			textAnnotations: [],
+			associations: [],
+			unknownAttributes: {},
+		}
+		const collaboration: BpmnCollaboration = {
+			id: "collab",
+			participants: [{ id: "pool1", name: "Warehouse", processRef: "proc", unknownAttributes: {} }],
+			messageFlows: [],
+			textAnnotations: [],
+			associations: [],
+			extensionElements: [],
+			unknownAttributes: {},
+		}
+		const defs: BpmnDefinitions = {
+			id: "defs",
+			targetNamespace: "http://bpmn.io/schema/bpmn",
+			namespaces: {},
+			unknownAttributes: {},
+			errors: [],
+			escalations: [],
+			messages: [],
+			signals: [],
+			collaborations: [collaboration],
+			processes: [process],
+			diagrams: [],
+		}
+
+		const svg = exportSvg(applyAutoLayout(defs))
+
+		const poolLabelIdx = svg.indexOf(">Warehouse<")
+		const taskLabelIdx = svg.indexOf(">Pack items<")
+		expect(poolLabelIdx).toBeGreaterThan(-1)
+		expect(taskLabelIdx).toBeGreaterThan(-1)
+		expect(poolLabelIdx).toBeLessThan(taskLabelIdx)
 	})
 })
