@@ -319,6 +319,34 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		}
 	}
 
+	if (collab && collab.messageFlows.length > 0) {
+		const shapeByElement = new Map(allShapes.map((s) => [s.bpmnElement, s.bounds]))
+		for (const mf of collab.messageFlows) {
+			const src = shapeByElement.get(mf.sourceRef)
+			const tgt = shapeByElement.get(mf.targetRef)
+			if (!src || !tgt) continue
+			const srcBelow = src.y + src.height / 2 > tgt.y + tgt.height / 2
+			const sx = Math.round(src.x + src.width / 2)
+			const tx = Math.round(tgt.x + tgt.width / 2)
+			const sy = srcBelow ? src.y : src.y + src.height
+			const ty = srcBelow ? tgt.y + tgt.height : tgt.y
+			const midY = Math.round((sy + ty) / 2)
+			const waypoints =
+				sx === tx
+					? [
+							{ x: sx, y: sy },
+							{ x: tx, y: ty },
+						]
+					: [
+							{ x: sx, y: sy },
+							{ x: sx, y: midY },
+							{ x: tx, y: midY },
+							{ x: tx, y: ty },
+						]
+			allEdges.push({ id: `${mf.id}_di`, bpmnElement: mf.id, waypoints, unknownAttributes: {} })
+		}
+	}
+
 	const planeBpmnElement = collab?.id ?? defs.processes[0]?.id ?? "plane"
 	const existingDiagram = defs.diagrams[0]
 

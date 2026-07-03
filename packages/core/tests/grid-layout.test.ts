@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest"
+import { applyAutoLayout } from "../src/bpmn/auto-layout.js"
 import type {
 	BpmnAssociation,
+	BpmnCollaboration,
+	BpmnDefinitions,
 	BpmnElementType,
 	BpmnFlowElement,
+	BpmnMessageFlow,
 	BpmnProcess,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
@@ -844,5 +848,165 @@ describe("Annotation packing", () => {
 		expect(bounds.x).toBe(naturalX)
 		expect(bounds.y).toBe(570)
 		expect(separatedBy(bounds, obstacle.bounds, 30)).toBe(true)
+	})
+})
+
+describe("Message flow DI", () => {
+	function participantProcess(
+		id: string,
+		elements: BpmnFlowElement[],
+		flows: BpmnSequenceFlow[],
+	): BpmnProcess {
+		return {
+			id,
+			extensionElements: [],
+			flowElements: elements,
+			sequenceFlows: flows,
+			textAnnotations: [],
+			associations: [],
+			unknownAttributes: {},
+		}
+	}
+
+	function messageFlow(id: string, sourceRef: string, targetRef: string): BpmnMessageFlow {
+		return { id, sourceRef, targetRef, unknownAttributes: {} }
+	}
+
+	function collabDefs(
+		proc1: BpmnProcess,
+		proc2: BpmnProcess,
+		messageFlows: BpmnMessageFlow[],
+	): BpmnDefinitions {
+		const collab: BpmnCollaboration = {
+			id: "collab",
+			participants: [
+				{ id: "part1", processRef: proc1.id, unknownAttributes: {} },
+				{ id: "part2", processRef: proc2.id, unknownAttributes: {} },
+			],
+			messageFlows,
+			textAnnotations: [],
+			associations: [],
+			extensionElements: [],
+			unknownAttributes: {},
+		}
+		return {
+			id: "defs",
+			targetNamespace: "http://bpmn.io/schema/bpmn",
+			namespaces: {},
+			unknownAttributes: {},
+			processes: [proc1, proc2],
+			collaborations: [collab],
+			messages: [],
+			errors: [],
+			signals: [],
+			escalations: [],
+			diagrams: [],
+		}
+	}
+
+	it("aligned source/target x renders a straight 2-point edge, source-bottom to target-top", () => {
+		const proc1 = participantProcess("proc1", [node("t1", "serviceTask")], [])
+		const proc2 = participantProcess("proc2", [node("t2", "serviceTask")], [])
+		const defs = collabDefs(proc1, proc2, [messageFlow("mf1", "t1", "t2")])
+		const result = applyAutoLayout(defs)
+		const diagram = result.diagrams[0]
+		if (!diagram) throw new Error("missing diagram")
+		const edge = diagram.plane.edges.find((e) => e.bpmnElement === "mf1")
+		if (!edge) throw new Error("missing message flow edge")
+		const t1Shape = diagram.plane.shapes.find((s) => s.bpmnElement === "t1")
+		const t2Shape = diagram.plane.shapes.find((s) => s.bpmnElement === "t2")
+		if (!t1Shape || !t2Shape) throw new Error("missing shapes")
+		const sx = t1Shape.bounds.x + t1Shape.bounds.width / 2
+		const tx = t2Shape.bounds.x + t2Shape.bounds.width / 2
+		// precondition: this fixture must actually land on the aligned-x branch
+		expect(sx).toBe(tx)
+		expect(edge.waypoints).toEqual([
+			{ x: sx, y: t1Shape.bounds.y + t1Shape.bounds.height },
+			{ x: tx, y: t2Shape.bounds.y },
+		])
+		assertOrthogonal(edge.waypoints)
+	})
+
+	it("misaligned source/target x renders a 4-point orthogonal edge through a shared mid-y corridor", () => {
+		const proc1 = participantProcess("proc1", [node("t1", "serviceTask")], [])
+		const proc2 = participantProcess(
+			"proc2",
+			[node("s2", "startEvent"), node("t2", "serviceTask"), node("e2", "endEvent")],
+			[flow("f1", "s2", "t2"), flow("f2", "t2", "e2")],
+		)
+		const defs = collabDefs(proc1, proc2, [messageFlow("mf2", "t1", "e2")])
+		const result = applyAutoLayout(defs)
+		const diagram = result.diagrams[0]
+		if (!diagram) throw new Error("missing diagram")
+		const edge = diagram.plane.edges.find((e) => e.bpmnElement === "mf2")
+		if (!edge) throw new Error("missing message flow edge")
+		const srcShape = diagram.plane.shapes.find((s) => s.bpmnElement === "t1")
+		const tgtShape = diagram.plane.shapes.find((s) => s.bpmnElement === "e2")
+		if (!srcShape || !tgtShape) throw new Error("missing shapes")
+		const sx = srcShape.bounds.x + srcShape.bounds.width / 2
+		const tx = tgtShape.bounds.x + tgtShape.bounds.width / 2
+		// precondition: this fixture must actually land on the misaligned-x branch
+		expect(sx).not.toBe(tx)
+		expect(edge.waypoints).toHaveLength(4)
+		expect(edge.waypoints[0]).toEqual({ x: sx, y: srcShape.bounds.y + srcShape.bounds.height })
+		expect(edge.waypoints[3]).toEqual({ x: tx, y: tgtShape.bounds.y })
+		expect(edge.waypoints[1]?.y).toBe(edge.waypoints[2]?.y)
+		assertOrthogonal(edge.waypoints)
+	})
+
+	it("a message flow from the lower pool to the upper pool exits the source's top and enters the target's bottom", () => {
+		const proc1 = participantProcess("proc1", [node("t1", "serviceTask")], [])
+		const proc2 = participantProcess("proc2", [node("t2", "serviceTask")], [])
+		const defs = collabDefs(proc1, proc2, [messageFlow("mf5", "t2", "t1")])
+		const result = applyAutoLayout(defs)
+		const diagram = result.diagrams[0]
+		if (!diagram) throw new Error("missing diagram")
+		const edge = diagram.plane.edges.find((e) => e.bpmnElement === "mf5")
+		if (!edge) throw new Error("missing message flow edge")
+		const t1Shape = diagram.plane.shapes.find((s) => s.bpmnElement === "t1")
+		const t2Shape = diagram.plane.shapes.find((s) => s.bpmnElement === "t2")
+		if (!t1Shape || !t2Shape) throw new Error("missing shapes")
+		expect(edge.waypoints[0]).toEqual({
+			x: t2Shape.bounds.x + t2Shape.bounds.width / 2,
+			y: t2Shape.bounds.y,
+		})
+		expect(edge.waypoints[edge.waypoints.length - 1]).toEqual({
+			x: t1Shape.bounds.x + t1Shape.bounds.width / 2,
+			y: t1Shape.bounds.y + t1Shape.bounds.height,
+		})
+		assertOrthogonal(edge.waypoints)
+	})
+
+	it("a message flow between participant ids docks on the pool shapes themselves", () => {
+		const proc1 = participantProcess("proc1", [node("t1", "serviceTask")], [])
+		const proc2 = participantProcess("proc2", [node("t2", "serviceTask")], [])
+		const defs = collabDefs(proc1, proc2, [messageFlow("mf3", "part1", "part2")])
+		const result = applyAutoLayout(defs)
+		const diagram = result.diagrams[0]
+		if (!diagram) throw new Error("missing diagram")
+		const edge = diagram.plane.edges.find((e) => e.bpmnElement === "mf3")
+		if (!edge) throw new Error("missing message flow edge")
+		const pool1 = diagram.plane.shapes.find((s) => s.bpmnElement === "part1")
+		const pool2 = diagram.plane.shapes.find((s) => s.bpmnElement === "part2")
+		if (!pool1 || !pool2) throw new Error("missing pool shapes")
+		expect(edge.waypoints[0]).toEqual({
+			x: pool1.bounds.x + pool1.bounds.width / 2,
+			y: pool1.bounds.y + pool1.bounds.height,
+		})
+		expect(edge.waypoints[edge.waypoints.length - 1]).toEqual({
+			x: pool2.bounds.x + pool2.bounds.width / 2,
+			y: pool2.bounds.y,
+		})
+		assertOrthogonal(edge.waypoints)
+	})
+
+	it("a message flow referencing an unknown element is skipped without throwing", () => {
+		const proc1 = participantProcess("proc1", [node("t1", "serviceTask")], [])
+		const proc2 = participantProcess("proc2", [node("t2", "serviceTask")], [])
+		const defs = collabDefs(proc1, proc2, [messageFlow("mf4", "t1", "does-not-exist")])
+		const result = applyAutoLayout(defs)
+		const diagram = result.diagrams[0]
+		if (!diagram) throw new Error("missing diagram")
+		expect(diagram.plane.edges.find((e) => e.bpmnElement === "mf4")).toBeUndefined()
 	})
 })
