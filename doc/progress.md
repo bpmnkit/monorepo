@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-07-03 — Grid-based auto-layout engine replaces Sugiyama/block-tree pipeline
+
+Full replacement of the auto-layout engine in `@bpmnkit/core` (`packages/core/src/layout`): the Sugiyama layered layout + block-tree pipeline (`block-builder.ts`, `block-layout.ts`, `layers.ts`, `crossing.ts`, `coordinates.ts`, `routing.ts`, `astar.ts`, `subprocess.ts`, `graph.ts`) is deleted and replaced by a grid-based engine (`packages/core/src/layout/grid/`) that places flow nodes on a fixed 150×140 grid and routes edges with an orthogonal Manhattan router.
+
+- **Message-flow routing**: `applyAutoLayout` now emits DI for collaboration `messageFlow` elements, docking on the nearest edge between source/target shapes (flow nodes or pools).
+- **DI completeness checker**: new `checkDiCompleteness(defs)` export walks a `BpmnDefinitions` tree and reports any element, sequence flow, annotation, association, participant, or message flow missing DI.
+- **Annotation packing**: text annotations are packed above/below the content bounding box with overlap/crossing avoidance (`packAnnotations`), replacing the previous local-bounds heuristic.
+- **Removed exports**: `buildBlockTree`, `applyBlockLayout`, `routeEdgeAstar`, `assignGridRows` are no longer exported from `@bpmnkit/core` (internals of the deleted pipeline).
+- **`exportSvg` z-order fix**: pool/lane background shapes are now rendered before their child shapes and edges — previously the opaque pool/lane body rect was emitted after (on top of) the elements nested inside it, hiding them entirely whenever a diagram had a collaboration with pools.
+- Determinism verified: `applyAutoLayout` run twice on the same fixture (gateway branches, nested subprocess, annotation) produces byte-identical output.
+- `@bpmnkit/ascii`'s full test suite passed unchanged against the new engine's output (no fixture or source changes needed) — no changeset entry for that package.
+
 ## 2026-06-30 — Layout skills alignment
 
 - **Subprocess padding**: increased from 20px to 50px, matching the canonical `layout-rules.md` 50px-padding rule.
