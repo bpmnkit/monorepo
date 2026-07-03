@@ -755,6 +755,47 @@ describe("Annotation packing", () => {
 		expect(separatedBy(bounds, task.bounds, 30)).toBe(true)
 	})
 
+	it("a text annotation with no association still gets a fallback bounds entry", () => {
+		const task = layoutNode("t1", { x: 100, y: 100, width: 100, height: 80 })
+		const process = makeProcess([textAnnotation("ann1", "floating note")], [])
+		const bounds = packAnnotations(process, [task]).get("ann1")
+		if (!bounds) throw new Error("missing ann1 bounds")
+		expect(bounds.width).toBeGreaterThan(0)
+		expect(bounds.height).toBeGreaterThan(0)
+	})
+
+	it("a text annotation whose association target is missing from layoutNodes still gets a fallback bounds entry", () => {
+		const task = layoutNode("t1", { x: 100, y: 100, width: 100, height: 80 })
+		const process = makeProcess(
+			[textAnnotation("ann1", "note")],
+			[association("a1", "missing-element", "ann1")],
+		)
+		const bounds = packAnnotations(process, [task]).get("ann1")
+		if (!bounds) throw new Error("missing ann1 bounds")
+		expect(bounds.width).toBeGreaterThan(0)
+		expect(bounds.height).toBeGreaterThan(0)
+	})
+
+	it("two unlinked annotations don't overlap each other or an already-placed linked annotation", () => {
+		const task = layoutNode("t1", { x: 200, y: 200, width: 100, height: 80 })
+		const process = makeProcess(
+			[
+				textAnnotation("linked", "linked note"),
+				textAnnotation("free1", "floating 1"),
+				textAnnotation("free2", "floating 2"),
+			],
+			[association("a1", "t1", "linked")],
+		)
+		const map = packAnnotations(process, [task])
+		const linkedB = map.get("linked")
+		const free1B = map.get("free1")
+		const free2B = map.get("free2")
+		if (!linkedB || !free1B || !free2B) throw new Error("missing annotation bounds")
+		expect(separatedBy(free1B, free2B, 20)).toBe(true)
+		expect(separatedBy(free1B, linkedB, 20)).toBe(true)
+		expect(separatedBy(free2B, linkedB, 20)).toBe(true)
+	})
+
 	it("associationWaypoints for an annotation strictly above returns clamped edge-to-edge points", () => {
 		const elem: Bounds = { x: 100, y: 200, width: 100, height: 80 }
 		const ann: Bounds = { x: 50, y: 50, width: 200, height: 40 } // ann bottom (90) <= elem top (200)

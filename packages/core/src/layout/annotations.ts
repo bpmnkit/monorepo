@@ -104,11 +104,27 @@ interface PackItem {
 	linked: LayoutNode
 }
 
+function overlapsPadded(a: Bounds, others: Bounds[], padding: number): boolean {
+	for (const b of others) {
+		if (
+			a.x - padding < b.x + b.width &&
+			a.x + a.width + padding > b.x &&
+			a.y - padding < b.y + b.height &&
+			a.y + a.height + padding > b.y
+		)
+			return true
+	}
+	return false
+}
+
 /**
  * Sizes and packs text annotations around their linked elements without
  * overlapping each other or any other layout node (incl. node labels).
- * Returns final Bounds per annotation id; annotations without a resolvable
- * association target in `layoutNodes` are omitted (nothing to anchor to).
+ * Returns final Bounds per annotation id; annotations with no resolvable
+ * association target (no association at all, or the linked element isn't
+ * in `layoutNodes`) still get an entry — they're placed at a fixed fallback
+ * origin and pushed clear of everything else already placed, mirroring the
+ * pre-port fallback in auto-layout.ts's computeAnnotationLocalBounds.
  */
 export function packAnnotations(
 	process: BpmnProcess,
@@ -130,12 +146,16 @@ export function packAnnotations(
 	const mainFlowY = computeMainFlowY(layoutNodes)
 
 	const items: PackItem[] = []
+	const unlinked: Array<{ id: string; width: number; height: number }> = []
 	for (const ann of process.textAnnotations) {
 		const linkedId = elementForAnnotation.get(ann.id)
 		const linked = linkedId ? nodeById.get(linkedId) : undefined
-		if (!linked) continue
 		const width = ANN_WIDTH
 		const height = computeHeight(ann.text ?? "", width)
+		if (!linked) {
+			unlinked.push({ id: ann.id, width, height })
+			continue
+		}
 		const side = naturalSide(linked.bounds, mainFlowY)
 		const lc = center(linked.bounds)
 		items.push({
@@ -216,6 +236,24 @@ export function packAnnotations(
 	packSide("below")
 
 	for (const item of items) result.set(item.id, item.bounds)
+
+	// Fallback placement for annotations with no resolvable linked element:
+	// start at a fixed origin and push straight down until clear of every
+	// node/label obstacle and every already-placed annotation (linked or
+	// unlinked), so they never overlap anything.
+	const annObstacles = items.map((it) => it.bounds)
+	for (const u of unlinked) {
+		const bounds: Bounds = { x: 0, y: 0, width: u.width, height: u.height }
+		while (
+			overlapsPadded(bounds, obstacles, ELEMENT_GAP) ||
+			overlapsPadded(bounds, annObstacles, ANN_GAP)
+		) {
+			bounds.y += u.height + ANN_GAP
+		}
+		annObstacles.push(bounds)
+		result.set(u.id, bounds)
+	}
+
 	return result
 }
 
