@@ -6,6 +6,7 @@ import {
 	hasOtherIncoming,
 	isFutureIncoming,
 } from "../src/layout/grid/flow-graph.js"
+import { gridLayoutFlowNodes } from "../src/layout/grid/grid-engine.js"
 import {
 	collapseCollinear,
 	connectElements,
@@ -14,6 +15,7 @@ import {
 import type { RoutableNode } from "../src/layout/grid/grid-router.js"
 import { Grid } from "../src/layout/grid/grid.js"
 import { createGridLayout } from "../src/layout/grid/walker.js"
+import { assertNoOverlap } from "../src/layout/overlap.js"
 
 // biome-ignore lint/suspicious/noExportsInTest: exported for use by other test files
 export function node(
@@ -458,5 +460,111 @@ describe("Grid Manhattan router", () => {
 			{ x: 100, y: 0 },
 			{ x: 100, y: 80 },
 		])
+	})
+})
+
+describe("Grid engine (integration)", () => {
+	it("linear flow: centred in consecutive cells on one centreline", () => {
+		const els = [node("s", "startEvent"), node("a", "userTask"), node("e", "endEvent")]
+		const flows = [flow("f1", "s", "a"), flow("f2", "a", "e")]
+		const r = gridLayoutFlowNodes(els, flows)
+		const byId = new Map(r.nodes.map((n) => [n.id, n]))
+		expect(byId.get("s")?.bounds).toEqual({ x: 57, y: 52, width: 36, height: 36 })
+		expect(byId.get("a")?.bounds).toEqual({ x: 175, y: 30, width: 100, height: 80 })
+		expect(byId.get("e")?.bounds).toEqual({ x: 357, y: 52, width: 36, height: 36 })
+		// shared centreline
+		expect(new Set(r.nodes.map((n) => n.bounds.y + n.bounds.height / 2))).toEqual(new Set([70]))
+		expect(r.edges).toHaveLength(2)
+	})
+
+	it("boundary event sits on the host's bottom edge and its chain routes from it", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("host", "userTask"),
+			node("be", "boundaryEvent", { attachedToRef: "host" }),
+			node("rec", "userTask"),
+			node("e", "endEvent"),
+		]
+		const flows = [flow("f1", "s", "host"), flow("f2", "host", "e"), flow("f3", "be", "rec")]
+		const r = gridLayoutFlowNodes(els, flows)
+		const byId = new Map(r.nodes.map((n) => [n.id, n]))
+		const host = byId.get("host")
+		const be = byId.get("be")
+		if (!host || !be) throw new Error("missing nodes")
+		expect(be.bounds.y + be.bounds.height / 2).toBe(host.bounds.y + host.bounds.height)
+		expect(be.bounds.x + 18).toBe(host.bounds.x + host.bounds.width / 2)
+		const chain = r.edges.find((edge) => edge.id === "f3")
+		expect(chain?.waypoints[0]).toEqual({
+			x: Math.round(be.bounds.x + 18),
+			y: Math.round(be.bounds.y + 36),
+		})
+	})
+
+	it("expanded subprocess encloses its children; children are absolute", () => {
+		const child1 = node("c1", "userTask")
+		const child2 = node("c2", "userTask")
+		const sub = node("sub", "subProcess", {
+			flowElements: [child1, child2],
+			sequenceFlows: [flow("cf", "c1", "c2")],
+		})
+		const els = [node("s", "startEvent"), sub, node("e", "endEvent")]
+		const flows = [flow("f1", "s", "sub"), flow("f2", "sub", "e")]
+		const r = gridLayoutFlowNodes(els, flows)
+		const byId = new Map(r.nodes.map((n) => [n.id, n]))
+		const subNode = byId.get("sub")
+		if (!subNode) throw new Error("missing sub")
+		expect(subNode.isExpanded).toBe(true)
+		expect(subNode.bounds.width).toBe(2 * 150 + 100)
+		expect(subNode.bounds.height).toBe(1 * 140 + 80)
+		for (const id of ["c1", "c2"]) {
+			const c = byId.get(id)
+			if (!c) throw new Error(`missing ${id}`)
+			expect(c.bounds.x).toBeGreaterThanOrEqual(subNode.bounds.x)
+			expect(c.bounds.x + c.bounds.width).toBeLessThanOrEqual(
+				subNode.bounds.x + subNode.bounds.width,
+			)
+			expect(c.bounds.y).toBeGreaterThanOrEqual(subNode.bounds.y)
+			expect(c.bounds.y + c.bounds.height).toBeLessThanOrEqual(
+				subNode.bounds.y + subNode.bounds.height,
+			)
+		}
+		expect(r.edges.map((edge) => edge.id).sort()).toEqual(["cf", "f1", "f2"])
+	})
+
+	it("every edge is orthogonal and no shapes overlap (fan of 3 branches + join + loop)", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("gw", "inclusiveGateway"),
+			node("a", "userTask"),
+			node("b", "userTask"),
+			node("c", "userTask"),
+			node("j", "inclusiveGateway"),
+			node("chk", "exclusiveGateway"),
+			node("e", "endEvent"),
+		]
+		const flows = [
+			flow("f1", "s", "gw"),
+			flow("f2", "gw", "a"),
+			flow("f3", "gw", "b"),
+			flow("f4", "gw", "c"),
+			flow("f5", "a", "j"),
+			flow("f6", "b", "j"),
+			flow("f7", "c", "j"),
+			flow("f8", "j", "chk"),
+			flow("f9", "chk", "e"),
+			flow("f10", "chk", "gw"), // loop back
+		]
+		const r = gridLayoutFlowNodes(els, flows)
+		expect(r.nodes).toHaveLength(8)
+		expect(r.edges).toHaveLength(10)
+		for (const edge of r.edges) {
+			for (let i = 1; i < edge.waypoints.length; i++) {
+				const p = edge.waypoints[i - 1]
+				const q = edge.waypoints[i]
+				if (!p || !q) continue
+				expect(p.x === q.x || p.y === q.y).toBe(true)
+			}
+		}
+		assertNoOverlap({ nodes: r.nodes, edges: [] })
 	})
 })
