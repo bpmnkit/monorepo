@@ -200,7 +200,18 @@ export function exportSvg(defs: BpmnDefinitions, options?: SvgExportOptions): st
 				inner = ""
 			}
 		} else {
-			inner = renderTask(el, width, height, t)
+			// An expanded sub-process/transaction draws an opaque body rect that must
+			// render before (under) its own internal edges and child shapes, the same
+			// reason pools/lanes are treated as containers above — otherwise the body
+			// paints over everything nested inside it.
+			const isExpandedContainer =
+				(type === "subProcess" ||
+					type === "adHocSubProcess" ||
+					type === "eventSubProcess" ||
+					type === "transaction") &&
+				shape.isExpanded === true
+			inner = renderTask(el, width, height, t, { expanded: isExpandedContainer })
+			if (isExpandedContainer) isContainer = true
 		}
 
 		if (inner) {
@@ -544,6 +555,7 @@ function renderTask(
 	width: number,
 	height: number,
 	t: Theme,
+	options?: { expanded?: boolean },
 ): string {
 	const type = el?.type ?? ""
 	let sw = 1.5
@@ -565,7 +577,14 @@ function renderTask(
 	}
 
 	if (el?.name) {
-		out += labelSvg(el.name, width / 2, height / 2, width - 16, t)
+		// An expanded container's name sits in a top label, like a modeler's pool/
+		// subprocess header, so it doesn't collide with the child shapes drawn
+		// inside it (a centered label would land right where children are placed).
+		if (options?.expanded) {
+			out += labelSvg(el.name, width / 2, 14, width - 16, t, true)
+		} else {
+			out += labelSvg(el.name, width / 2, height / 2, width - 16, t)
+		}
 	}
 
 	if (

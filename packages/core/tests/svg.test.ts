@@ -208,4 +208,37 @@ describe("exportSvg", () => {
 		expect(taskLabelIdx).toBeGreaterThan(-1)
 		expect(poolLabelIdx).toBeLessThan(taskLabelIdx)
 	})
+
+	it("renders expanded sub-process backgrounds before internal edges and shapes", () => {
+		// Regression test: an expanded sub-process shape (isExpanded: true) is emitted
+		// as a plain "task" shape by renderTask(), which draws an opaque body rect —
+		// but that shape wasn't classified as a container, so it painted over its own
+		// internal sequence-flow edges and child shapes (which are emitted later in
+		// DI-array order but earlier in render order, since edges render before shapes).
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("start")
+			.subProcess("sub", (b) => {
+				b.startEvent("sub-start").userTask("sub-task", { name: "Inner Task" }).endEvent("sub-end")
+			})
+			.endEvent("end")
+			.withAutoLayout()
+			.build()
+
+		const svg = exportSvg(defs)
+
+		// The sub-process marker (plus-in-square icon, unique to subProcess/
+		// adHocSubProcess/eventSubProcess/transaction) locates the sub-process's own
+		// render block, since its body rect uses the same `rx="10"` as every task.
+		const subProcessMarkerIdx = svg.indexOf("M0 -4v8M-4 0h8")
+		const innerTaskLabelIdx = svg.indexOf(">Inner Task<")
+		const innerEdgeIdx = svg.lastIndexOf('marker-end="url(#arr)"', innerTaskLabelIdx)
+
+		expect(subProcessMarkerIdx).toBeGreaterThan(-1)
+		expect(innerTaskLabelIdx).toBeGreaterThan(-1)
+		expect(innerEdgeIdx).toBeGreaterThan(-1)
+		// The sub-process's own background must render before (under) both its
+		// internal edges and its internal child shapes.
+		expect(subProcessMarkerIdx).toBeLessThan(innerEdgeIdx)
+		expect(subProcessMarkerIdx).toBeLessThan(innerTaskLabelIdx)
+	})
 })
