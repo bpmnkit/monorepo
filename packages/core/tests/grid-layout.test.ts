@@ -6,6 +6,7 @@ import {
 	hasOtherIncoming,
 	isFutureIncoming,
 } from "../src/layout/grid/flow-graph.js"
+import { createGridLayout } from "../src/layout/grid/walker.js"
 
 // biome-ignore lint/suspicious/noExportsInTest: exported for use by other test files
 export function node(
@@ -77,5 +78,99 @@ describe("FlowGraph", () => {
 		// gw → t → gw  (t is gw's unvisited feeder AND downstream of gw)
 		const g = buildFlowGraph([gw, t], [flow("f1", "gw", "t"), flow("f2", "t", "gw")])
 		expect(formsLoop(gw, new Set(), g)).toBe(true)
+	})
+})
+
+describe("Grid placement walker", () => {
+	function positions(g: ReturnType<typeof createGridLayout>) {
+		return Object.fromEntries(g.elementsByPosition().map((e) => [e.element.id, [e.row, e.col]]))
+	}
+
+	it("linear flow: one row, consecutive columns", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("a", "userTask"),
+			node("b", "serviceTask"),
+			node("e", "endEvent"),
+		]
+		const flows = [flow("f1", "s", "a"), flow("f2", "a", "b"), flow("f3", "b", "e")]
+		const p = positions(createGridLayout(buildFlowGraph(els, flows)))
+		expect(p).toEqual({ s: [0, 0], a: [0, 1], b: [0, 2], e: [0, 3] })
+	})
+
+	it("split/join: first branch straight, second below, join realigned to top row after furthest feeder", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("gw", "exclusiveGateway"),
+			node("a", "userTask"),
+			node("b", "userTask"),
+			node("j", "exclusiveGateway"),
+			node("e", "endEvent"),
+		]
+		const flows = [
+			flow("f1", "s", "gw"),
+			flow("f2", "gw", "a"),
+			flow("f3", "gw", "b"),
+			flow("f4", "a", "j"),
+			flow("f5", "b", "j"),
+			flow("f6", "j", "e"),
+		]
+		const p = positions(createGridLayout(buildFlowGraph(els, flows)))
+		expect(p.gw).toEqual([0, 1])
+		expect(p.a).toEqual([0, 2])
+		expect(p.b).toEqual([1, 2])
+		expect(p.j).toEqual([0, 3])
+		expect(p.e).toEqual([0, 4])
+	})
+
+	it("boundary event successor goes down-right of the host", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("host", "userTask"),
+			node("be", "boundaryEvent", { attachedToRef: "host" }),
+			node("rec", "userTask"),
+			node("e", "endEvent"),
+		]
+		const flows = [flow("f1", "s", "host"), flow("f2", "host", "e"), flow("f3", "be", "rec")]
+		const p = positions(createGridLayout(buildFlowGraph(els, flows)))
+		expect(p.host).toEqual([0, 1])
+		expect(p.rec).toEqual([1, 2])
+		expect(p.be).toBeUndefined() // boundary events are not grid cells
+	})
+
+	it("loop: closing edge target keeps its earlier column, all elements placed", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("t", "userTask"),
+			node("gw", "exclusiveGateway"),
+			node("e", "endEvent"),
+		]
+		const flows = [
+			flow("f1", "s", "t"),
+			flow("f2", "t", "gw"),
+			flow("f3", "gw", "e"),
+			flow("f4", "gw", "t"), // back to t
+		]
+		const g = createGridLayout(buildFlowGraph(els, flows))
+		expect(g.getElementsTotal()).toBe(4)
+		const p = positions(g)
+		expect(p.t?.[1]).toBeLessThan(p.gw?.[1] ?? 0)
+	})
+
+	it("disconnected fragments each start a new row; nothing is lost", () => {
+		const els = [node("a", "userTask"), node("b", "userTask"), node("c", "userTask")]
+		const flows = [flow("f1", "a", "b")]
+		const g = createGridLayout(buildFlowGraph(els, flows))
+		expect(g.getElementsTotal()).toBe(3)
+	})
+
+	it("compact mode packs row-major with max 4 columns", () => {
+		const els = Array.from({ length: 6 }, (_, i) => node(`t${i}`, "userTask"))
+		const g = createGridLayout(buildFlowGraph(els, []), { compact: true })
+		const p = positions(g)
+		expect(p.t0).toEqual([0, 0])
+		expect(p.t3).toEqual([0, 3])
+		expect(p.t4).toEqual([1, 0])
+		expect(p.t5).toEqual([1, 1])
 	})
 })
