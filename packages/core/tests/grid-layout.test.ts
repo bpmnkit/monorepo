@@ -1290,3 +1290,28 @@ describe("DI completeness", () => {
 		})
 	})
 })
+
+describe("Auto-layout determinism", () => {
+	it("produces byte-identical output across repeated runs on the same fixture", () => {
+		// Structurally rich fixture: gateway fan-out/fan-in, a nested subprocess,
+		// and a text annotation — enough surface area to catch nondeterminism from
+		// iteration order (Map/Set), grid placement tie-breaking, or id generation.
+		const defs = Bpmn.createProcess("determinism-fixture")
+			.startEvent("s")
+			.exclusiveGateway("gw")
+			.branch("a", (b) => b.serviceTask("t1", { name: "A", taskType: "a" }))
+			.branch("b", (b) => b.serviceTask("t2", { name: "B", taskType: "b" }))
+			.exclusiveGateway("merge")
+			.subProcess("sub", { name: "Sub" }, (d) =>
+				d.startEvent("subStart").userTask("subTask").endEvent("subEnd"),
+			)
+			.textAnnotation("Needs review")
+			.endEvent("e")
+			.build()
+
+		const result1 = applyAutoLayout(defs)
+		const result2 = applyAutoLayout(defs)
+
+		expect(JSON.stringify(result1)).toBe(JSON.stringify(result2))
+	})
+})
