@@ -807,4 +807,42 @@ describe("Annotation packing", () => {
 		expect(pAnn.x).toBeGreaterThanOrEqual(ann.x)
 		expect(pAnn.x).toBeLessThanOrEqual(ann.x + ann.width)
 	})
+
+	it("associationWaypoints for an annotation to the right returns clamped edge-to-edge points on the right side", () => {
+		const elem: Bounds = { x: 100, y: 200, width: 100, height: 80 } // x: 100-200, y: 200-280
+		const ann: Bounds = { x: 250, y: 190, width: 100, height: 150 } // x >= elem right edge (200); y-ranges overlap
+		const { pElem, pAnn } = associationWaypoints(elem, ann)
+		expect(pElem.x).toBe(elem.x + elem.width)
+		expect(pAnn.x).toBe(ann.x)
+		expect(pElem.y).toBe(265) // clampY(ann center-y 265, elem) -> within [200, 280]
+		expect(pAnn.y).toBe(240) // clampY(elem center-y 240, ann) -> within [190, 340]
+	})
+
+	it("associationWaypoints for an annotation to the left returns clamped edge-to-edge points on the left side", () => {
+		const elem: Bounds = { x: 300, y: 200, width: 100, height: 80 } // x: 300-400, y: 200-280
+		const ann: Bounds = { x: 50, y: 190, width: 100, height: 150 } // ann right edge (150) < elem.x; y-ranges overlap
+		const { pElem, pAnn } = associationWaypoints(elem, ann)
+		expect(pElem.x).toBe(elem.x)
+		expect(pAnn.x).toBe(ann.x + ann.width)
+		expect(pElem.y).toBe(265) // clampY(ann center-y 265, elem) -> within [200, 280]
+		expect(pAnn.y).toBe(240) // clampY(elem center-y 240, ann) -> within [190, 340]
+	})
+
+	it("skyline packing pushes a below annotation downward to clear an obstacle", () => {
+		// "main" establishes mainFlowY (center-Y 140); "task" sits far south of it so its
+		// annotation's natural side is "below". An obstacle sits right at the natural
+		// below-slot (task bottom + PREFERRED_OFFSET), forcing the push-loop to move the
+		// annotation down; the push distance (40px) stays cheaper than any horizontal
+		// shift (min 60px), so dx=0 remains the winning candidate and only y moves.
+		const main = layoutNode("main", { x: 100, y: 100, width: 100, height: 80 })
+		const task = layoutNode("task", { x: 300, y: 400, width: 100, height: 80 })
+		const obstacle = layoutNode("obs", { x: 300, y: 530, width: 60, height: 10 })
+		const process = makeProcess([textAnnotation("ann1", "hi")], [association("a1", "task", "ann1")])
+		const bounds = packAnnotations(process, [task, main, obstacle]).get("ann1")
+		if (!bounds) throw new Error("missing ann1 bounds")
+		const naturalX = Math.round(350 - bounds.width / 2)
+		expect(bounds.x).toBe(naturalX)
+		expect(bounds.y).toBe(570)
+		expect(separatedBy(bounds, obstacle.bounds, 30)).toBe(true)
+	})
 })
