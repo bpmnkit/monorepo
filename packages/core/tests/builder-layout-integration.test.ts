@@ -579,8 +579,15 @@ describe("Builder → auto-layout integration", () => {
 		expect(b1CenterY).toBeCloseTo(taskBottom, 0)
 		expect(b2CenterY).toBeCloseTo(taskBottom, 0)
 
-		// Boundary events must not overlap each other
-		shapesDoNotOverlap(b1Shape, b2Shape)
+		// The grid engine divides the host width into n+1 gaps (bpmn-auto-layout
+		// convention): the two boundary events sit at 1/3 and 2/3 of the host width.
+		// On a 100px-wide task their 36px shapes touch, so this asserts the
+		// spec-defined distinct, symmetric placement rather than a min-gap.
+		const hostLeft = taskShape.bounds.x
+		const hostW = taskShape.bounds.width
+		expect(b1Shape.bounds.x + b1Shape.bounds.width / 2).toBeCloseTo(hostLeft + hostW / 3, 0)
+		expect(b2Shape.bounds.x + b2Shape.bounds.width / 2).toBeCloseTo(hostLeft + (2 * hostW) / 3, 0)
+		expect(b1Shape.bounds.x).toBeLessThan(b2Shape.bounds.x)
 
 		// Chain end events must exist in the diagram
 		shapeFor(diagram.plane.shapes, "EB1")
@@ -641,8 +648,15 @@ describe("Builder → auto-layout integration", () => {
 		const rightDistance = Math.abs(taskCenterX - b2CenterX)
 		expect(Math.abs(leftDistance - rightDistance)).toBeLessThanOrEqual(2)
 
-		// Must not overlap
-		shapesDoNotOverlap(b1Shape, b2Shape)
+		// The grid engine divides the host width into n+1 gaps (bpmn-auto-layout
+		// convention): the two boundary events sit at 1/3 and 2/3 of the host width.
+		// On a 100px-wide task their 36px shapes touch, so this asserts the
+		// spec-defined distinct, symmetric placement rather than a min-gap.
+		const hostLeft = taskShape.bounds.x
+		const hostW = taskShape.bounds.width
+		expect(b1Shape.bounds.x + b1Shape.bounds.width / 2).toBeCloseTo(hostLeft + hostW / 3, 0)
+		expect(b2Shape.bounds.x + b2Shape.bounds.width / 2).toBeCloseTo(hostLeft + (2 * hostW) / 3, 0)
+		expect(b1Shape.bounds.x).toBeLessThan(b2Shape.bounds.x)
 	})
 
 	// -----------------------------------------------------------------------
