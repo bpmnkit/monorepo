@@ -567,4 +567,87 @@ describe("Grid engine (integration)", () => {
 		}
 		assertNoOverlap({ nodes: r.nodes, edges: [] })
 	})
+
+	it("multi-attacher spacing: n boundary events divide the host's width into n+1 gaps", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("host", "userTask"),
+			node("be1", "boundaryEvent", { attachedToRef: "host" }),
+			node("be2", "boundaryEvent", { attachedToRef: "host" }),
+			node("be3", "boundaryEvent", { attachedToRef: "host" }),
+			node("e", "endEvent"),
+		]
+		const flows = [flow("f1", "s", "host"), flow("f2", "host", "e")]
+		const r = gridLayoutFlowNodes(els, flows)
+		const byId = new Map(r.nodes.map((n) => [n.id, n]))
+		const host = byId.get("host")
+		if (!host) throw new Error("missing host")
+		const n = 3
+		for (let i = 0; i < n; i++) {
+			const be = byId.get(`be${i + 1}`)
+			if (!be) throw new Error(`missing be${i + 1}`)
+			const expectedX = host.bounds.x + ((i + 1) * host.bounds.width) / (n + 1) - 18
+			expect(be.bounds.x).toBeCloseTo(expectedX, 5)
+		}
+		// sanity: the three x-positions are distinct and increasing
+		const xs = [1, 2, 3].map((i) => byId.get(`be${i}`)?.bounds.x ?? 0)
+		expect(xs[0]).toBeLessThan(xs[1] ?? 0)
+		expect(xs[1]).toBeLessThan(xs[2] ?? 0)
+	})
+
+	it("named boundary event gets a labelBounds centred below its own shape", () => {
+		const els = [
+			node("s", "startEvent"),
+			node("host", "userTask"),
+			node("be", "boundaryEvent", { attachedToRef: "host", name: "Timeout" }),
+			node("e", "endEvent"),
+		]
+		const flows = [flow("f1", "s", "host"), flow("f2", "host", "e")]
+		const r = gridLayoutFlowNodes(els, flows)
+		const byId = new Map(r.nodes.map((n) => [n.id, n]))
+		const be = byId.get("be")
+		if (!be) throw new Error("missing be")
+		expect(be.label).toBe("Timeout")
+		const lb = be.labelBounds
+		if (!lb) throw new Error("missing labelBounds")
+		// label below the shape (shape_bottom + 4), centred horizontally under it —
+		// same convention as computeLabelBounds in coordinates.ts:141-178
+		expect(lb.y).toBe(be.bounds.y + be.bounds.height + 4)
+		expect(lb.x + lb.width / 2).toBeCloseTo(be.bounds.x + be.bounds.width / 2, 5)
+	})
+
+	it("a named flow node's labelBounds is positioned relative to its final (post-shift) bounds", () => {
+		// c1 lives inside an expanded subprocess, so its bounds include the
+		// CHILD_SHIFT_X/Y offset applied in emitLevel before computeLabelBounds runs.
+		const child1 = node("c1", "startEvent", { name: "Child Start" })
+		const child2 = node("c2", "endEvent")
+		const sub = node("sub", "subProcess", {
+			flowElements: [child1, child2],
+			sequenceFlows: [flow("cf", "c1", "c2")],
+		})
+		const els = [node("s", "startEvent"), sub, node("e", "endEvent")]
+		const flows = [flow("f1", "s", "sub"), flow("f2", "sub", "e")]
+		const r = gridLayoutFlowNodes(els, flows)
+		const byId = new Map(r.nodes.map((n) => [n.id, n]))
+		const c1 = byId.get("c1")
+		if (!c1) throw new Error("missing c1")
+		expect(c1.label).toBe("Child Start")
+		const lb = c1.labelBounds
+		if (!lb) throw new Error("missing labelBounds")
+		expect(lb.y).toBe(c1.bounds.y + c1.bounds.height + 4)
+		expect(lb.x + lb.width / 2).toBeCloseTo(c1.bounds.x + c1.bounds.width / 2, 5)
+		// c1's bounds are absolute (shifted into the subprocess), not (0,0)-relative
+		expect(c1.bounds.x).toBeGreaterThan(0)
+		expect(c1.bounds.y).toBeGreaterThan(0)
+	})
+
+	it("a named sequence flow is wired through to edge.label and placeEdgeLabels populates labelBounds", () => {
+		const els = [node("s", "startEvent"), node("a", "userTask"), node("e", "endEvent")]
+		const namedFlow = { ...flow("f2", "a", "e"), name: "Approved" }
+		const r = gridLayoutFlowNodes(els, [flow("f1", "s", "a"), namedFlow])
+		const edge = r.edges.find((e) => e.id === "f2")
+		if (!edge) throw new Error("missing edge f2")
+		expect(edge.label).toBe("Approved")
+		expect(edge.labelBounds).toBeDefined()
+	})
 })
