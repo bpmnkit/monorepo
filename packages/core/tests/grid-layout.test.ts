@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest"
-import type { BpmnElementType, BpmnFlowElement, BpmnSequenceFlow } from "../src/bpmn/bpmn-model.js"
+import type {
+	BpmnAssociation,
+	BpmnElementType,
+	BpmnFlowElement,
+	BpmnProcess,
+	BpmnSequenceFlow,
+	BpmnTextAnnotation,
+} from "../src/bpmn/bpmn-model.js"
+import { associationWaypoints, packAnnotations } from "../src/layout/annotations.js"
 import {
 	buildFlowGraph,
 	formsLoop,
@@ -16,6 +24,7 @@ import type { RoutableNode } from "../src/layout/grid/grid-router.js"
 import { Grid } from "../src/layout/grid/grid.js"
 import { createGridLayout } from "../src/layout/grid/walker.js"
 import { assertNoOverlap } from "../src/layout/overlap.js"
+import type { Bounds, LayoutNode } from "../src/layout/types.js"
 
 // biome-ignore lint/suspicious/noExportsInTest: exported for use by other test files
 export function node(
@@ -649,5 +658,112 @@ describe("Grid engine (integration)", () => {
 		if (!edge) throw new Error("missing edge f2")
 		expect(edge.label).toBe("Approved")
 		expect(edge.labelBounds).toBeDefined()
+	})
+})
+
+describe("Annotation packing", () => {
+	function layoutNode(id: string, bounds: Bounds, extra: Partial<LayoutNode> = {}): LayoutNode {
+		return { id, type: "userTask", bounds, layer: 0, position: 0, ...extra }
+	}
+
+	function textAnnotation(id: string, text: string): BpmnTextAnnotation {
+		return { id, text, unknownAttributes: {} }
+	}
+
+	function association(id: string, sourceRef: string, targetRef: string): BpmnAssociation {
+		return { id, sourceRef, targetRef, unknownAttributes: {} }
+	}
+
+	function makeProcess(
+		textAnnotations: BpmnTextAnnotation[],
+		associations: BpmnAssociation[],
+	): BpmnProcess {
+		return {
+			id: "p1",
+			extensionElements: [],
+			flowElements: [],
+			sequenceFlows: [],
+			textAnnotations,
+			associations,
+			unknownAttributes: {},
+		}
+	}
+
+	/** Two rects are safely separated if they're apart by `gap` on the x or y axis. */
+	function separatedBy(a: Bounds, b: Bounds, gap: number): boolean {
+		const ax2 = a.x + a.width
+		const bx2 = b.x + b.width
+		const ay2 = a.y + a.height
+		const by2 = b.y + b.height
+		return ax2 + gap <= b.x || bx2 + gap <= a.x || ay2 + gap <= b.y || by2 + gap <= a.y
+	}
+
+	it("height grows with annotation text length", () => {
+		const task = layoutNode("t1", { x: 100, y: 100, width: 100, height: 80 })
+		const longText = "word ".repeat(60).trim() // 300 chars, wraps to many lines
+		const process = makeProcess(
+			[textAnnotation("ann1", longText)],
+			[association("a1", "t1", "ann1")],
+		)
+		const bounds = packAnnotations(process, [task]).get("ann1")
+		if (!bounds) throw new Error("missing ann1 bounds")
+		expect(bounds.width).toBe(200)
+		expect(bounds.height).toBeGreaterThan(30)
+	})
+
+	it("two annotations linked to the same task don't overlap each other or the task", () => {
+		const task = layoutNode("t1", { x: 200, y: 200, width: 100, height: 80 })
+		const process = makeProcess(
+			[textAnnotation("ann1", "first note"), textAnnotation("ann2", "second note")],
+			[association("a1", "t1", "ann1"), association("a2", "t1", "ann2")],
+		)
+		const map = packAnnotations(process, [task])
+		const b1 = map.get("ann1")
+		const b2 = map.get("ann2")
+		if (!b1 || !b2) throw new Error("missing annotation bounds")
+		expect(separatedBy(b1, b2, 20)).toBe(true)
+		expect(separatedBy(b1, task.bounds, 30)).toBe(true)
+		expect(separatedBy(b2, task.bounds, 30)).toBe(true)
+	})
+
+	it("an annotation linked to an element clearly below the main flow is placed below it", () => {
+		// "main" establishes mainFlowY (center-Y 140); "below" sits far south of it.
+		const main = layoutNode("main", { x: 100, y: 100, width: 100, height: 80 })
+		const below = layoutNode("below", { x: 100, y: 400, width: 100, height: 80 })
+		const process = makeProcess(
+			[textAnnotation("ann1", "note")],
+			[association("a1", "below", "ann1")],
+		)
+		const bounds = packAnnotations(process, [main, below]).get("ann1")
+		if (!bounds) throw new Error("missing ann1 bounds")
+		expect(bounds.y).toBeGreaterThanOrEqual(below.bounds.y + below.bounds.height)
+	})
+
+	it("skyline packing shifts an annotation horizontally rather than pay a large vertical cost", () => {
+		const task = layoutNode("task", { x: 300, y: 300, width: 100, height: 80 })
+		// Blocks the natural (dx=0) slot directly above the task with a narrow
+		// obstacle (kept under 60px tall so it doesn't skew mainFlowY); a +120
+		// horizontal shift clears it entirely in x, which is far cheaper than
+		// pushing the annotation all the way above the obstacle's top.
+		const obstacle = layoutNode("obs", { x: 260, y: 135, width: 40, height: 59 })
+		const process = makeProcess([textAnnotation("ann1", "hi")], [association("a1", "task", "ann1")])
+		const bounds = packAnnotations(process, [task, obstacle]).get("ann1")
+		if (!bounds) throw new Error("missing ann1 bounds")
+		const naturalX = Math.round(350 - bounds.width / 2)
+		expect(bounds.x).not.toBe(naturalX)
+		expect(separatedBy(bounds, obstacle.bounds, 30)).toBe(true)
+		expect(separatedBy(bounds, task.bounds, 30)).toBe(true)
+	})
+
+	it("associationWaypoints for an annotation strictly above returns clamped edge-to-edge points", () => {
+		const elem: Bounds = { x: 100, y: 200, width: 100, height: 80 }
+		const ann: Bounds = { x: 50, y: 50, width: 200, height: 40 } // ann bottom (90) <= elem top (200)
+		const { pElem, pAnn } = associationWaypoints(elem, ann)
+		expect(pElem.y).toBe(elem.y)
+		expect(pAnn.y).toBe(ann.y + ann.height)
+		expect(pElem.x).toBeGreaterThanOrEqual(elem.x)
+		expect(pElem.x).toBeLessThanOrEqual(elem.x + elem.width)
+		expect(pAnn.x).toBeGreaterThanOrEqual(ann.x)
+		expect(pAnn.x).toBeLessThanOrEqual(ann.x + ann.width)
 	})
 })
