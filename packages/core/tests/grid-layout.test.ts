@@ -6,6 +6,13 @@ import {
 	hasOtherIncoming,
 	isFutureIncoming,
 } from "../src/layout/grid/flow-graph.js"
+import {
+	collapseCollinear,
+	connectElements,
+	ensureExitBottom,
+} from "../src/layout/grid/grid-router.js"
+import type { RoutableNode } from "../src/layout/grid/grid-router.js"
+import { Grid } from "../src/layout/grid/grid.js"
 import { createGridLayout } from "../src/layout/grid/walker.js"
 
 // biome-ignore lint/suspicious/noExportsInTest: exported for use by other test files
@@ -309,5 +316,106 @@ describe("Grid placement walker", () => {
 		expect(p.a).toEqual([0, 0])
 		expect(p.b).toEqual([0, 1])
 		expect(p.c).toEqual([0, 2])
+	})
+})
+
+const SHIFT = { x: 0, y: 0 }
+const NO_EXPANDED = new Map<number, number>()
+
+function routable(id: string, row: number, col: number, w = 100, h = 80): RoutableNode {
+	return {
+		id,
+		row,
+		col,
+		bounds: { x: col * 150 + (150 - w) / 2, y: row * 140 + (140 - h) / 2, width: w, height: h },
+	}
+}
+
+function assertOrthogonal(wps: Array<{ x: number; y: number }>) {
+	for (let i = 1; i < wps.length; i++) {
+		const a = wps[i - 1]
+		const b = wps[i]
+		if (!a || !b) continue
+		expect(a.x === b.x || a.y === b.y).toBe(true)
+	}
+}
+
+describe("Grid Manhattan router", () => {
+	it("same-row forward: straight 2-point line at centre height", () => {
+		const g = new Grid<{ id: string }>()
+		const a = routable("a", 0, 0)
+		const b = routable("b", 0, 1)
+		const wps = connectElements(a, b, g, SHIFT, NO_EXPANDED)
+		expect(wps).toEqual([
+			{ x: a.bounds.x + a.bounds.width, y: 70 },
+			{ x: b.bounds.x, y: 70 },
+		])
+	})
+
+	it("diagonal down-right with a free corridor: 3 points, out the bottom, into the left", () => {
+		const g = new Grid<{ id: string }>()
+		const a = routable("a", 0, 0, 50, 50) // gateway
+		const b = routable("b", 1, 1)
+		const wps = connectElements(a, b, g, SHIFT, NO_EXPANDED)
+		expect(wps).toHaveLength(3)
+		expect(wps[0]).toEqual({ x: 75, y: a.bounds.y + a.bounds.height }) // bottom of gateway
+		expect(wps[2]).toEqual({ x: b.bounds.x, y: 210 }) // left of task, centre of row 1
+		assertOrthogonal(wps)
+	})
+
+	it("back-edge (target left of source) routes below both with 4 points", () => {
+		const g = new Grid<{ id: string }>()
+		const src = routable("gw", 0, 2, 50, 50)
+		const tgt = routable("t", 0, 1)
+		const wps = connectElements(src, tgt, g, SHIFT, NO_EXPANDED)
+		expect(wps).toHaveLength(4)
+		expect(wps[0]?.y).toBe(src.bounds.y + src.bounds.height) // exits bottom
+		expect(wps[1]?.y).toBe(140) // one cell height below row-0 top
+		expect(wps[3]?.y).toBe(tgt.bounds.y + tgt.bounds.height) // enters bottom
+		assertOrthogonal(wps)
+	})
+
+	it("self-loop routes out right and back in the top with 5 points", () => {
+		const g = new Grid<{ id: string }>()
+		const a = routable("a", 0, 0)
+		const wps = connectElements(a, a, g, SHIFT, NO_EXPANDED)
+		expect(wps).toHaveLength(5)
+		assertOrthogonal(wps)
+	})
+
+	it("blocked same-row corridor routes underneath", () => {
+		const g = new Grid<{ id: string }>()
+		g.add({ id: "a" }, [0, 0])
+		g.add({ id: "x" }, [0, 1]) // blocker
+		g.add({ id: "b" }, [0, 2])
+		const wps = connectElements(routable("a", 0, 0), routable("b", 0, 2), g, SHIFT, NO_EXPANDED)
+		expect(wps).toHaveLength(4)
+		expect(wps[1]?.y).toBe(140)
+		assertOrthogonal(wps)
+	})
+
+	it("ensureExitBottom rewrites an edge to leave through the boundary event's bottom", () => {
+		const be = { x: 132, y: 122, width: 36, height: 36 }
+		const wps = ensureExitBottom(be, [
+			{ x: 168, y: 140 },
+			{ x: 300, y: 140 },
+		])
+		expect(wps[0]).toEqual({ x: 150, y: 158 })
+		assertOrthogonal(wps)
+	})
+
+	it("collapseCollinear removes redundant midpoints", () => {
+		expect(
+			collapseCollinear([
+				{ x: 0, y: 0 },
+				{ x: 50, y: 0 },
+				{ x: 100, y: 0 },
+				{ x: 100, y: 80 },
+			]),
+		).toEqual([
+			{ x: 0, y: 0 },
+			{ x: 100, y: 0 },
+			{ x: 100, y: 80 },
+		])
 	})
 })
