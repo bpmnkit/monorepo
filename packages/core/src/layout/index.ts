@@ -14,6 +14,8 @@ export type {
 	FlowOrderViolation,
 } from "./bench.js"
 export { assertNoOverlap } from "./overlap.js"
+export { checkDiCompleteness } from "../bpmn/di-check.js"
+export type { DiCompleteness } from "../bpmn/di-check.js"
 export type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from "./types.js"
 export {
 	ELEMENT_SIZES,

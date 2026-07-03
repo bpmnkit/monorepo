@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { applyAutoLayout } from "../src/bpmn/auto-layout.js"
 import type {
 	BpmnAssociation,
@@ -11,6 +11,8 @@ import type {
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
 } from "../src/bpmn/bpmn-model.js"
+import { checkDiCompleteness } from "../src/bpmn/di-check.js"
+import { Bpmn, resetIdCounter } from "../src/index.js"
 import { associationWaypoints, packAnnotations } from "../src/layout/annotations.js"
 import {
 	buildFlowGraph,
@@ -1008,5 +1010,283 @@ describe("Message flow DI", () => {
 		const diagram = result.diagrams[0]
 		if (!diagram) throw new Error("missing diagram")
 		expect(diagram.plane.edges.find((e) => e.bpmnElement === "mf4")).toBeUndefined()
+	})
+})
+
+describe("DI completeness", () => {
+	function emptyDefs(
+		processes: BpmnProcess[],
+		collaborations: BpmnCollaboration[] = [],
+	): BpmnDefinitions {
+		return {
+			id: "defs",
+			targetNamespace: "http://bpmn.io/schema/bpmn",
+			namespaces: {},
+			unknownAttributes: {},
+			processes,
+			collaborations,
+			messages: [],
+			errors: [],
+			signals: [],
+			escalations: [],
+			diagrams: [],
+		}
+	}
+
+	function baseProcess(
+		id: string,
+		flowElements: BpmnFlowElement[],
+		sequenceFlows: BpmnSequenceFlow[],
+		extra: Partial<BpmnProcess> = {},
+	): BpmnProcess {
+		return {
+			id,
+			extensionElements: [],
+			flowElements,
+			sequenceFlows,
+			textAnnotations: [],
+			associations: [],
+			unknownAttributes: {},
+			...extra,
+		}
+	}
+
+	it("(a) reports nothing missing for a linear process", () => {
+		const proc = baseProcess(
+			"proc",
+			[node("s", "startEvent"), node("t", "serviceTask"), node("e", "endEvent")],
+			[flow("f1", "s", "t"), flow("f2", "t", "e")],
+		)
+		const result = applyAutoLayout(emptyDefs([proc]))
+		expect(checkDiCompleteness(result)).toEqual({ missingShapes: [], missingEdges: [] })
+	})
+
+	it("(b) reports nothing missing for a boundary event + subprocess + annotation", () => {
+		const sub = node("sub", "subProcess", {
+			flowElements: [
+				node("i-s", "startEvent"),
+				node("i-t", "serviceTask"),
+				node("i-e", "endEvent"),
+			],
+			sequenceFlows: [flow("if1", "i-s", "i-t"), flow("if2", "i-t", "i-e")],
+			textAnnotations: [],
+			associations: [],
+		})
+		const be = node("be", "boundaryEvent", { attachedToRef: "sub" })
+		const ann: BpmnTextAnnotation = { id: "ann1", text: "Watch this", unknownAttributes: {} }
+		const assoc: BpmnAssociation = {
+			id: "assoc1",
+			sourceRef: "sub",
+			targetRef: "ann1",
+			unknownAttributes: {},
+		}
+		const proc = baseProcess(
+			"proc",
+			[node("s", "startEvent"), sub, be, node("recover", "serviceTask"), node("e", "endEvent")],
+			[
+				flow("f1", "s", "sub"),
+				flow("f2", "sub", "e"),
+				flow("f3", "be", "recover"),
+				flow("f4", "recover", "e"),
+			],
+			{ textAnnotations: [ann], associations: [assoc] },
+		)
+		const result = applyAutoLayout(emptyDefs([proc]))
+		expect(checkDiCompleteness(result)).toEqual({ missingShapes: [], missingEdges: [] })
+	})
+
+	it("(c) reports nothing missing for a two-pool collaboration with a message flow", () => {
+		const proc1 = baseProcess(
+			"proc1",
+			[node("s1", "startEvent"), node("t1", "serviceTask"), node("e1", "endEvent")],
+			[flow("f1", "s1", "t1"), flow("f2", "t1", "e1")],
+		)
+		const proc2 = baseProcess(
+			"proc2",
+			[node("s2", "startEvent"), node("t2", "serviceTask"), node("e2", "endEvent")],
+			[flow("f3", "s2", "t2"), flow("f4", "t2", "e2")],
+		)
+		const collab: BpmnCollaboration = {
+			id: "collab",
+			participants: [
+				{ id: "part1", processRef: "proc1", unknownAttributes: {} },
+				{ id: "part2", processRef: "proc2", unknownAttributes: {} },
+			],
+			messageFlows: [{ id: "mf1", sourceRef: "t1", targetRef: "t2", unknownAttributes: {} }],
+			textAnnotations: [],
+			associations: [],
+			extensionElements: [],
+			unknownAttributes: {},
+		}
+		const result = applyAutoLayout(emptyDefs([proc1, proc2], [collab]))
+		expect(checkDiCompleteness(result)).toEqual({ missingShapes: [], missingEdges: [] })
+	})
+
+	it("negative: a hand-built defs missing one shape is caught in missingShapes", () => {
+		const proc = baseProcess(
+			"proc",
+			[node("s", "startEvent"), node("t", "serviceTask"), node("e", "endEvent")],
+			[flow("f1", "s", "t"), flow("f2", "t", "e")],
+		)
+		const defs: BpmnDefinitions = emptyDefs([proc])
+		defs.diagrams = [
+			{
+				id: "d1",
+				plane: {
+					id: "p1",
+					bpmnElement: "proc",
+					shapes: [
+						{
+							id: "s_di",
+							bpmnElement: "s",
+							bounds: { x: 0, y: 0, width: 36, height: 36 },
+							unknownAttributes: {},
+						},
+						// "t" shape intentionally omitted
+						{
+							id: "e_di",
+							bpmnElement: "e",
+							bounds: { x: 200, y: 0, width: 36, height: 36 },
+							unknownAttributes: {},
+						},
+					],
+					edges: [
+						{ id: "f1_di", bpmnElement: "f1", waypoints: [], unknownAttributes: {} },
+						{ id: "f2_di", bpmnElement: "f2", waypoints: [], unknownAttributes: {} },
+					],
+				},
+			},
+		]
+		const result = checkDiCompleteness(defs)
+		expect(result.missingShapes).toEqual(["t"])
+		expect(result.missingEdges).toEqual([])
+	})
+
+	// -------------------------------------------------------------------
+	// (d) Sample of real fixtures already exercised elsewhere in the suite
+	// (builder-layout-integration.test.ts, bpmn-builder.test.ts,
+	// layout.test.ts), run through the actual applyAutoLayout output.
+	// -------------------------------------------------------------------
+	describe("sampled real fixtures", () => {
+		beforeEach(() => {
+			resetIdCounter()
+		})
+
+		it("gateway-branching order-processing workflow", () => {
+			const defs = Bpmn.createProcess("order")
+				.withAutoLayout()
+				.name("Order Processing")
+				.startEvent("start", { name: "Order Received" })
+				.serviceTask("validate", { name: "Validate", taskType: "validate-order" })
+				.exclusiveGateway("check")
+				.branch("valid", (b) =>
+					b
+						.serviceTask("process", { name: "Process", taskType: "process-order" })
+						.serviceTask("ship", { name: "Ship", taskType: "ship-order" }),
+				)
+				.branch("invalid", (b) =>
+					b.serviceTask("reject", { name: "Reject", taskType: "reject-order" }),
+				)
+				.exclusiveGateway("merge")
+				.endEvent("end", { name: "Done" })
+				.build()
+			expect(checkDiCompleteness(defs)).toEqual({ missingShapes: [], missingEdges: [] })
+		})
+
+		it("ad-hoc subprocess with disconnected children", () => {
+			const defs = Bpmn.createProcess("p1")
+				.withAutoLayout()
+				.startEvent("s")
+				.adHocSubProcess(
+					"sub",
+					(b) => b.serviceTask("c1", { taskType: "x" }).serviceTask("c2", { taskType: "y" }),
+					{ name: "SubProcess" },
+				)
+				.endEvent("e")
+				.build()
+			expect(checkDiCompleteness(defs)).toEqual({ missingShapes: [], missingEdges: [] })
+		})
+
+		it("subprocess nested two levels deep", () => {
+			const defs = Bpmn.createProcess("proc")
+				.withAutoLayout()
+				.startEvent("s")
+				.subProcess("outer", (sp) => {
+					sp.subProcess("inner", (inner) => {
+						inner.startEvent("i-s").serviceTask("i-t", { taskType: "inner-work" }).endEvent("i-e")
+					})
+				})
+				.endEvent("e")
+				.build()
+			expect(checkDiCompleteness(defs)).toEqual({ missingShapes: [], missingEdges: [] })
+		})
+
+		it("event sub-process (triggeredByEvent) nested inside a subprocess", () => {
+			const defs = Bpmn.createProcess("proc")
+				.withAutoLayout()
+				.startEvent("s")
+				.subProcess("outer", (sp) => {
+					sp.startEvent("outer-s")
+						.eventSubProcess("evtsub", (sub) => {
+							sub.startEvent("err-start").endEvent("err-end")
+						})
+						.endEvent("outer-e")
+				})
+				.endEvent("e")
+				.build()
+			expect(checkDiCompleteness(defs)).toEqual({ missingShapes: [], missingEdges: [] })
+		})
+
+		it("two-lane pool: lanes are ignored, member elements are still checked", () => {
+			const laneANodes = [node("a1", "serviceTask"), node("a2", "serviceTask")]
+			const laneBNodes = [node("b1", "serviceTask")]
+			const allNodes = [...laneANodes, ...laneBNodes]
+			const proc = baseProcess("proc", allNodes, [flow("f1", "a1", "b1")], {
+				laneSet: {
+					id: "ls1",
+					lanes: [
+						{ id: "laneA", flowNodeRefs: laneANodes.map((n) => n.id), unknownAttributes: {} },
+						{ id: "laneB", flowNodeRefs: laneBNodes.map((n) => n.id), unknownAttributes: {} },
+					],
+				},
+			})
+			const collab: BpmnCollaboration = {
+				id: "collab",
+				participants: [{ id: "part1", processRef: "proc", unknownAttributes: {} }],
+				messageFlows: [],
+				textAnnotations: [],
+				associations: [],
+				extensionElements: [],
+				unknownAttributes: {},
+			}
+			const result = applyAutoLayout(emptyDefs([proc], [collab]))
+			expect(checkDiCompleteness(result)).toEqual({ missingShapes: [], missingEdges: [] })
+		})
+
+		it("literal eventSubProcess and transaction element types are recursed into", () => {
+			const evtSub = node("evtsub", "eventSubProcess", {
+				flowElements: [node("err-s", "startEvent"), node("err-e", "endEvent")],
+				sequenceFlows: [flow("ef1", "err-s", "err-e")],
+				textAnnotations: [],
+				associations: [],
+			})
+			const txn = node("txn", "transaction", {
+				flowElements: [
+					node("tx-s", "startEvent"),
+					node("tx-t", "serviceTask"),
+					node("tx-e", "endEvent"),
+				],
+				sequenceFlows: [flow("tf1", "tx-s", "tx-t"), flow("tf2", "tx-t", "tx-e")],
+				textAnnotations: [],
+				associations: [],
+			})
+			const proc = baseProcess(
+				"proc",
+				[node("s", "startEvent"), evtSub, txn, node("e", "endEvent")],
+				[flow("f1", "s", "txn"), flow("f2", "txn", "e")],
+			)
+			const result = applyAutoLayout(emptyDefs([proc]))
+			expect(checkDiCompleteness(result)).toEqual({ missingShapes: [], missingEdges: [] })
+		})
 	})
 })
