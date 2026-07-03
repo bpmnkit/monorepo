@@ -1,5 +1,17 @@
 # @bpmnkit/learn
 
+## 0.0.26
+
+### Patch Changes
+
+- Updated dependencies [b90111f]
+- Updated dependencies [b90111f]
+  - @bpmnkit/core@0.1.0
+  - @bpmnkit/canvas@0.0.28
+  - @bpmnkit/editor@0.0.31
+  - @bpmnkit/engine@0.1.28
+  - @bpmnkit/plugins@0.0.31
+
 ## 0.0.25
 
 ### Patch Changes

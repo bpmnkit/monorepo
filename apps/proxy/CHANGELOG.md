@@ -1,5 +1,13 @@
 # @bpmnkit/ai-server
 
+## 0.0.31
+
+### Patch Changes
+
+- Updated dependencies [b90111f]
+- Updated dependencies [b90111f]
+  - @bpmnkit/core@0.1.0
+
 ## 0.0.30
 
 ### Patch Changes
