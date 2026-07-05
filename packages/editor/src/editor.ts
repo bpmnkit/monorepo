@@ -2187,6 +2187,32 @@ export class BpmnEditor {
 		}
 	}
 
+	/** Finds the SVG group for a shape or edge by BPMN id. */
+	private _elementById(id: string): SVGGElement | undefined {
+		return (
+			this._shapes.find((s) => s.id === id)?.element ??
+			this._edges.find((e) => e.id === id)?.element
+		)
+	}
+
+	/** Diagram-coordinate bounds of a shape (from DI) or edge (waypoint bbox). */
+	private _boundsById(id: string): { x: number; y: number; width: number; height: number } | null {
+		const shape = this._shapes.find((s) => s.id === id)
+		if (shape) {
+			const { x, y, width, height } = shape.shape.bounds
+			return { x, y, width, height }
+		}
+		const edge = this._edges.find((e) => e.id === id)
+		if (edge && edge.edge.waypoints.length > 0) {
+			const xs = edge.edge.waypoints.map((w) => w.x)
+			const ys = edge.edge.waypoints.map((w) => w.y)
+			const minX = Math.min(...xs)
+			const minY = Math.min(...ys)
+			return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY }
+		}
+		return null
+	}
+
 	private _installPlugin(plugin: CanvasPlugin): void {
 		this._plugins.push(plugin)
 		const self = this
@@ -2200,6 +2226,47 @@ export class BpmnEditor {
 			getEdges: () => [...this._edges],
 			getTheme: () => this._theme,
 			setTheme: (theme) => this.setTheme(theme),
+			addMarker(id, cls) {
+				self._elementById(id)?.classList.add(cls)
+			},
+			removeMarker(id, cls) {
+				self._elementById(id)?.classList.remove(cls)
+			},
+			hasMarker(id, cls) {
+				return self._elementById(id)?.classList.contains(cls) ?? false
+			},
+			toggleMarker(id, cls) {
+				self._elementById(id)?.classList.toggle(cls)
+			},
+			zoom(scaleOrFit = "fit") {
+				if (scaleOrFit === "fit") self.fitView()
+				else self.setZoom(scaleOrFit)
+			},
+			viewbox() {
+				const { tx, ty, scale } = self._viewport.state
+				const { width, height } = self._svg.getBoundingClientRect()
+				return {
+					x: -tx / scale,
+					y: -ty / scale,
+					width: width / scale,
+					height: height / scale,
+					scale,
+				}
+			},
+			scrollToElement(id) {
+				self.scrollToElement(id)
+			},
+			getAbsoluteBBox(id) {
+				const box = self._boundsById(id)
+				if (!box) return null
+				const { tx, ty, scale } = self._viewport.state
+				return {
+					x: box.x * scale + tx,
+					y: box.y * scale + ty,
+					width: box.width * scale,
+					height: box.height * scale,
+				}
+			},
 			on<K extends keyof CanvasEvents>(event: K, handler: CanvasEvents[K]) {
 				return self.on(event as keyof EditorEvents, handler as EditorEvents[keyof EditorEvents])
 			},

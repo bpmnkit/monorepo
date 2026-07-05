@@ -61,6 +61,31 @@ export interface ViewportState {
 	scale: number
 }
 
+/** A rectangle in screen pixels, relative to the canvas host. */
+export interface ScreenBox {
+	x: number
+	y: number
+	width: number
+	height: number
+}
+
+/**
+ * The visible region of the diagram, in diagram coordinates, plus the current
+ * zoom scale. The inverse of the pan/zoom transform applied to the viewport.
+ */
+export interface Viewbox {
+	/** Diagram x-coordinate at the left edge of the viewport. */
+	x: number
+	/** Diagram y-coordinate at the top edge of the viewport. */
+	y: number
+	/** Width of the visible region in diagram units. */
+	width: number
+	/** Height of the visible region in diagram units. */
+	height: number
+	/** Current zoom scale factor. */
+	scale: number
+}
+
 /** A rendered BPMN shape with its SVG element and source model data. */
 export interface RenderedShape {
 	/** The BPMN element ID. */
@@ -91,6 +116,19 @@ export interface CanvasEvents {
 	"viewport:change": (state: ViewportState) => void
 	/** Fired when a BPMN element is clicked. */
 	"element:click": (id: string, event: PointerEvent) => void
+	/** Fired when the pointer moves onto a BPMN element (once per enter). */
+	"element:hover": (id: string, event: PointerEvent) => void
+	/** Fired when the pointer leaves the previously-hovered element. */
+	"element:out": (id: string) => void
+	/** Fired when a BPMN element is double-clicked. */
+	"element:dblclick": (id: string, event: MouseEvent) => void
+	/**
+	 * Fired when a BPMN element is right-clicked. Call `event.preventDefault()`
+	 * in the handler to suppress the browser's native context menu.
+	 */
+	"element:contextmenu": (id: string, event: MouseEvent) => void
+	/** Fired when the empty canvas background (no element) is clicked. */
+	"canvas:click": (event: MouseEvent) => void
 	/** Fired when keyboard focus moves to a BPMN element. */
 	"element:focus": (id: string) => void
 	/** Fired when keyboard focus leaves all BPMN elements. */
@@ -145,6 +183,37 @@ export interface CanvasApi {
 
 	/** Sets the color theme. Pass `"auto"` to follow the OS preference. */
 	setTheme(theme: Theme): void
+
+	/** Adds a CSS class to the element with the given BPMN id. No-op if not found. */
+	addMarker(id: string, cls: string): void
+
+	/** Removes a CSS class from the element with the given BPMN id. */
+	removeMarker(id: string, cls: string): void
+
+	/** Returns whether the element with the given id currently has the CSS class. */
+	hasMarker(id: string, cls: string): boolean
+
+	/** Toggles a CSS class on the element with the given id. */
+	toggleMarker(id: string, cls: string): void
+
+	/**
+	 * Adjusts the zoom. Pass `"fit"` (or no argument) to fit the whole diagram;
+	 * pass a number for an absolute scale, optionally keeping `center`
+	 * (screen-space pixels relative to the host) fixed.
+	 */
+	zoom(scaleOrFit?: number | "fit", center?: { x: number; y: number }): void
+
+	/** Returns the visible region in diagram coordinates plus the zoom scale. */
+	viewbox(): Viewbox
+
+	/** Pans (without changing zoom) so the element with the given id is centred. */
+	scrollToElement(id: string): void
+
+	/**
+	 * Returns the element's bounding box in screen pixels relative to the host,
+	 * or `null` if the element is not found.
+	 */
+	getAbsoluteBBox(id: string): ScreenBox | null
 
 	/**
 	 * Subscribes to a canvas event. Returns an unsubscribe function.

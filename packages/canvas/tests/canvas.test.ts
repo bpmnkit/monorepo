@@ -385,3 +385,149 @@ describe("connection decorations", () => {
 		expect(path?.getAttribute("marker-end")).toContain("open-arrow")
 	})
 })
+
+// ── Marker API (P1-3) ───────────────────────────────────────────────────────────
+
+describe("marker API", () => {
+	let container: HTMLElement
+	let canvas: BpmnCanvas
+
+	beforeEach(() => {
+		container = makeContainer()
+		canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+	})
+
+	it("adds, queries, and removes a marker on a shape", () => {
+		canvas.addMarker("task", "foo")
+		expect(canvas.hasMarker("task", "foo")).toBe(true)
+		expect(container.querySelector('[data-bpmnkit-id="task"]')?.classList.contains("foo")).toBe(
+			true,
+		)
+		canvas.removeMarker("task", "foo")
+		expect(canvas.hasMarker("task", "foo")).toBe(false)
+	})
+
+	it("toggles a marker", () => {
+		canvas.toggleMarker("task", "x")
+		expect(canvas.hasMarker("task", "x")).toBe(true)
+		canvas.toggleMarker("task", "x")
+		expect(canvas.hasMarker("task", "x")).toBe(false)
+	})
+
+	it("adds a marker on an edge", () => {
+		canvas.addMarker("flow1", "hl")
+		expect(container.querySelector('[data-bpmnkit-id="flow1"]')?.classList.contains("hl")).toBe(
+			true,
+		)
+	})
+
+	it("is a no-op for unknown ids", () => {
+		expect(() => canvas.addMarker("nope", "x")).not.toThrow()
+		expect(canvas.hasMarker("nope", "x")).toBe(false)
+	})
+
+	it("clears markers when a new diagram loads", () => {
+		canvas.addMarker("task", "foo")
+		canvas.load(SIMPLE_XML)
+		expect(canvas.hasMarker("task", "foo")).toBe(false)
+	})
+
+	it("highlight and clearHighlights go through the marker API", () => {
+		canvas.highlight(["task"], "changed")
+		expect(canvas.hasMarker("task", "bpmnkit-highlight--changed")).toBe(true)
+		canvas.clearHighlights()
+		expect(canvas.hasMarker("task", "bpmnkit-highlight--changed")).toBe(false)
+	})
+})
+
+// ── Interaction events (P1-4) ────────────────────────────────────────────────────
+
+describe("interaction events", () => {
+	let container: HTMLElement
+	let canvas: BpmnCanvas
+
+	beforeEach(() => {
+		container = makeContainer()
+		canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+	})
+
+	function childOf(id: string): Element {
+		const el = container.querySelector(`[data-bpmnkit-id="${id}"]`)
+		if (!el) throw new Error(`shape ${id} not found`)
+		return el.querySelector("rect") ?? el
+	}
+
+	it("emits element:dblclick", () => {
+		const cb = vi.fn()
+		canvas.on("element:dblclick", cb)
+		childOf("task").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }))
+		expect(cb).toHaveBeenCalledWith("task", expect.anything())
+	})
+
+	it("emits element:contextmenu", () => {
+		const cb = vi.fn()
+		canvas.on("element:contextmenu", cb)
+		childOf("task").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }))
+		expect(cb).toHaveBeenCalledWith("task", expect.anything())
+	})
+
+	it("emits element:hover then element:out as the pointer moves", () => {
+		const hover = vi.fn()
+		const out = vi.fn()
+		canvas.on("element:hover", hover)
+		canvas.on("element:out", out)
+		childOf("task").dispatchEvent(new MouseEvent("pointermove", { bubbles: true }))
+		expect(hover).toHaveBeenCalledWith("task", expect.anything())
+		// Move onto the empty background (svg root) → leave the element.
+		const svg = container.querySelector("svg")
+		if (!svg) throw new Error("no svg")
+		svg.dispatchEvent(new MouseEvent("pointermove", { bubbles: true }))
+		expect(out).toHaveBeenCalledWith("task")
+	})
+
+	it("emits canvas:click when the background is clicked", () => {
+		const cb = vi.fn()
+		canvas.on("canvas:click", cb)
+		const svg = container.querySelector("svg")
+		if (!svg) throw new Error("no svg")
+		svg.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+		expect(cb).toHaveBeenCalledOnce()
+	})
+})
+
+// ── Viewport / navigation API (P1-7) ─────────────────────────────────────────────
+
+describe("viewport API", () => {
+	let container: HTMLElement
+	let canvas: BpmnCanvas
+
+	beforeEach(() => {
+		container = makeContainer()
+		canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+	})
+
+	it("zoom(scale) sets an absolute scale reported by viewbox()", () => {
+		canvas.zoom(2)
+		expect(canvas.viewbox().scale).toBe(2)
+	})
+
+	it("getAbsoluteBBox transforms diagram bounds into screen space", () => {
+		canvas.zoom(2, { x: 0, y: 0 })
+		// task bounds are x=200 y=60 w=100 h=80 in SIMPLE_XML; at scale 2, tx=ty=0.
+		expect(canvas.getAbsoluteBBox("task")).toEqual({ x: 400, y: 120, width: 200, height: 160 })
+	})
+
+	it("getAbsoluteBBox returns null for an unknown id", () => {
+		expect(canvas.getAbsoluteBBox("nope")).toBeNull()
+	})
+
+	it("scrollToElement centres the element at the viewport centre", () => {
+		canvas.zoom(2, { x: 0, y: 0 })
+		canvas.scrollToElement("task")
+		const box = canvas.getAbsoluteBBox("task")
+		const vb = canvas.viewbox()
+		if (!box) throw new Error("no box")
+		// Element centre x maps to the viewport centre x (clientWidth/2).
+		expect(box.x + box.width / 2).toBeCloseTo((vb.width * vb.scale) / 2, 5)
+	})
+})

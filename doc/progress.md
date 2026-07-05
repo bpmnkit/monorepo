@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-07-05 — Canvas API: markers, interaction events, viewport/navigation
+
+Implemented the small self-contained P1 API items from `doc/render-gap-analysis.md` across `@bpmnkit/canvas` and `@bpmnkit/editor`:
+
+- **P1-3 marker API**: `addMarker/removeMarker/hasMarker/toggleMarker(id, cls)` on `BpmnCanvas`, the editor, and the `CanvasApi` plugin surface; `highlight()`/`clearHighlights()` reimplemented on top. Markers tracked per id and cleared on load/clear.
+- **P1-4 interaction events**: `element:hover`, `element:out`, `element:dblclick`, `element:contextmenu`, and `canvas:click` added to `CanvasEvents`. Hover uses `pointermove` with a last-hit memo, suppressed while panning; resolution uses `elementFromPoint` with an `event.target` fallback.
+- **P1-7 viewport/navigation**: `zoom(scaleOrFit, center)`, `viewbox()`, `scrollToElement(id)`, `getAbsoluteBBox(id)` on `BpmnCanvas` and `CanvasApi` (and wired in the editor). The ResizeObserver no longer destroys a user's pan/zoom — it force-fits only until the user interacts (`_userMovedViewport`).
+
+New `Viewbox`/`ScreenBox` types exported from `@bpmnkit/canvas`. Tests: 38 canvas (up from 24), 50 editor, and `@bpmnkit/plugins`/`@bpmnkit/operate` typecheck unchanged.
+
 ## 2026-07-05 — Canvas rendering correctness: activity markers, multiple events, connection decorations
 
 Implemented the self-contained P0 rendering-correctness items from `doc/render-gap-analysis.md` in `@bpmnkit/canvas` (`packages/canvas/src/renderer.ts`, `css.ts`):

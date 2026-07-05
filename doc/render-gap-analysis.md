@@ -222,12 +222,16 @@ canvas.overlays.remove(idOrFilter); canvas.overlays.get({ element?, type? })
 Implementation: absolutely-positioned HTML layer above the SVG inside the host; container per element, repositioned on `viewport:change` (single rAF pass, transform on the layer — not per-overlay work) and on `updateElement` (P1-1). Remove on element removal / `clear()`.
 **AC:** overlay tracks its element under pan/zoom/move; min/maxZoom hides/shows; `scale:false` keeps constant pixel size; destroy removes all DOM.
 
-#### P1-3 · Generic marker API (generalize `highlight`) — **S**
+#### P1-3 · Generic marker API (generalize `highlight`) — **S** — ✅ DONE (2026-07-05)
+`addMarker/removeMarker/hasMarker/toggleMarker(id, cls)` added to `BpmnCanvas`, the editor, and the `CanvasApi` plugin surface; `highlight()`/`clearHighlights()` reimplemented on top. Markers are tracked in a per-id set and cleared on load/clear. Full persistence across incremental `updateElement` lands with P1-1 (there is no incremental update path yet — every load re-renders). Tests in `marker API`.
+
 **Problem:** `highlight(ids, "changed"|"new")` (`canvas.ts:353-366`) hardcodes two variants; token-highlight plugin pokes classLists directly.
 **Spec:** `canvas.addMarker(id, cls)`, `removeMarker(id, cls)`, `hasMarker(id, cls)`, `toggleMarker(id, cls)` backed by the registry and *persisted across `updateElement`* (a marker set per id, re-applied on re-render). Reimplement `highlight()`/`clearHighlights()` on top (keep them — they're a good AI-diff convenience). Migrate token-highlight plugin to the API.
 **AC:** marker survives incremental update; token-highlight tests pass on the new API; old `highlight()` behavior unchanged.
 
-#### P1-4 · Interaction event parity: hover, dblclick, contextmenu, richer payloads — **S/M**
+#### P1-4 · Interaction event parity: hover, dblclick, contextmenu, richer payloads — **S/M** — ✅ DONE (2026-07-05)
+`element:hover`, `element:out`, `element:dblclick`, `element:contextmenu`, and `canvas:click` added to `CanvasEvents`. Hover uses `pointermove` with a last-hit memo and is suppressed while a button is held (panning). Resolution reuses `elementFromPoint` with an `event.target` fallback. Tests in `interaction events`. The richer `(id, event, element)` click payload is deferred (kept `(id, event)` to stay non-breaking).
+
 **Problem:** Only `element:click` exists. Plugins can't build tooltips, hover effects, or context menus without re-implementing hit testing.
 **Spec:** Add `element:hover`, `element:out`, `element:dblclick`, `element:contextmenu`, and `canvas:click` (background) to `CanvasEvents`, using the existing `elementFromPoint`+`closest` resolution; hover via `pointermove` with last-hit-id memo (emit only on change; suppress while panning). Payload: `(id, event, element: RenderedShape|RenderedEdge)` — extend click's payload too (non-breaking: extra arg).
 **AC:** hover fires once per enter/leave; dblclick doesn't also fire during editor label-edit (editor already consumes dblclick — verify no double handling); contextmenu preventable by listener.
@@ -242,7 +246,9 @@ Implementation: absolutely-positioned HTML layer above the SVG inside the host; 
 **Spec:** Pure-math docking (no dependency): `dockPoint(shape, from)` intersecting the segment with the actual outline — circle (events), diamond (gateways), rounded rect (activities); applied at render time to first/last segment of sequence/message flows (do **not** rewrite DI waypoints — display-only cropping, like bpmn-js). Editor routing (`geometry.ts:256-268`) keeps producing bbox-port waypoints; cropping happens in `renderEdge`.
 **AC:** arrow tip touches circle/diamond outline in fixtures (assert path end point within ε of analytic intersection); DI round-trip unchanged; degenerate segments (start inside shape) fall back to uncropped.
 
-#### P1-7 · Viewport/navigation API completeness + stop viewport resets — **S/M**
+#### P1-7 · Viewport/navigation API completeness + stop viewport resets — **S/M** — ✅ DONE (2026-07-05)
+Added `zoom(scaleOrFit, center)`, `viewbox()`, `scrollToElement(id)`, and `getAbsoluteBBox(id)` to `BpmnCanvas` and the `CanvasApi` (editor already had `fitView`/`setZoom`/`scrollToElement`; the four API methods are wired there too). The ResizeObserver now force-fits only while the user hasn't taken control of the viewport (`_userMovedViewport`, set on wheel, real pans, and explicit zoom/setViewport; reset on load). Tests in `viewport API`. Animated scroll and `padding` were dropped from scope (centering already brings the element into view).
+
 **Problem:** No `zoomToElement`/`scrollToElement`/viewbox accessors; `resetZoom()` centers on `(w/2, h/2)` which is not "center the diagram"; the ResizeObserver **force-refits on every container resize**, silently destroying the user's pan/zoom (`canvas.ts:200-205`); studio/operate need "focus the failing element" (incident views currently can't).
 **Spec:** Add `canvas.zoom(scaleOrFit?: number | "fit", center?: {x,y})`, `canvas.viewbox(): {x,y,width,height,scale}` (diagram coords), `canvas.scrollToElement(id, {padding})` (animate optional, 150ms), `canvas.getAbsoluteBBox(id)` (screen coords — needed by overlays consumers). Resize behavior: keep the *center point and scale* stable on resize instead of re-fitting; only auto-fit if the user never interacted (track a `_userMovedViewport` flag).
 **AC:** `scrollToElement` brings an off-screen element into view at unchanged zoom; container resize preserves scale; `viewbox()` inverse-matches `setViewport`.

@@ -11,7 +11,9 @@ import type {
 	FitMode,
 	RenderedEdge,
 	RenderedShape,
+	ScreenBox,
 	Theme,
+	Viewbox,
 	ViewportState,
 } from "./types.js"
 import { ViewportController } from "./viewport.js"
@@ -90,6 +92,15 @@ export class BpmnCanvas {
 	private _currentDefs: BpmnDefinitions | null = null
 	private _theme: Theme
 	private _fit: FitMode
+	/** CSS classes applied via {@link addMarker}, keyed by element id. */
+	private _markers = new Map<string, Set<string>>()
+	/** Element id currently under the pointer (for hover enter/leave events). */
+	private _hoverId: string | null = null
+	/**
+	 * Set once the user pans/zooms so a container resize preserves their
+	 * viewport instead of force-fitting the diagram.
+	 */
+	private _userMovedViewport = false
 
 	// ── Event emitter ─────────────────────────────────────────────────
 	private _listeners = new Map<keyof CanvasEvents, Set<(...args: unknown[]) => void>>()
@@ -183,6 +194,38 @@ export class BpmnCanvas {
 				(e.target as Element).closest("[data-bpmnkit-id]")
 			const id = target?.getAttribute("data-bpmnkit-id")
 			if (id) this._emit("element:click", id, e as unknown as PointerEvent)
+			else this._emit("canvas:click", e)
+		})
+
+		// ── Hover / out ───────────────────────────────────────────────
+		this._svg.addEventListener("pointermove", (e: PointerEvent) => {
+			// Suppress hover changes while a button is held (panning/pinching).
+			if (e.buttons !== 0) return
+			const id = this._elementIdForEvent(e)
+			if (id === this._hoverId) return
+			if (this._hoverId !== null) this._emit("element:out", this._hoverId)
+			this._hoverId = id
+			if (id !== null) this._emit("element:hover", id, e)
+		})
+
+		// ── Double-click ──────────────────────────────────────────────
+		this._svg.addEventListener("dblclick", (e: MouseEvent) => {
+			const id = this._elementIdForEvent(e)
+			if (id) this._emit("element:dblclick", id, e)
+		})
+
+		// ── Context menu ──────────────────────────────────────────────
+		this._svg.addEventListener("contextmenu", (e: MouseEvent) => {
+			const id = this._elementIdForEvent(e)
+			if (id) this._emit("element:contextmenu", id, e)
+		})
+
+		// ── Track user viewport interaction ───────────────────────────
+		this._svg.addEventListener("wheel", () => {
+			this._userMovedViewport = true
+		})
+		this._svg.addEventListener("pointerup", () => {
+			if (this._viewport.didPan) this._userMovedViewport = true
 		})
 
 		// ── Install plugins ───────────────────────────────────────────
@@ -197,9 +240,10 @@ export class BpmnCanvas {
 			this.load(options.xml)
 		}
 
-		// Re-fit on container resize
+		// Re-fit on container resize — but only while the user hasn't taken
+		// control of the viewport, so an explicit pan/zoom survives a resize.
 		const ro = new ResizeObserver(() => {
-			if (this._currentDefs) this.fitView()
+			if (this._currentDefs && !this._userMovedViewport) this.fitView()
 		})
 		ro.observe(this._host)
 		this._ro = ro
@@ -231,6 +275,10 @@ export class BpmnCanvas {
 		this._labelsG.innerHTML = ""
 		this._shapes = []
 		this._edges = []
+		this._markers.clear()
+		this._hoverId = null
+		// A freshly loaded diagram should auto-fit again until the user interacts.
+		this._userMovedViewport = false
 
 		this._currentDefs = defs
 
@@ -264,6 +312,8 @@ export class BpmnCanvas {
 		this._labelsG.innerHTML = ""
 		this._shapes = []
 		this._edges = []
+		this._markers.clear()
+		this._hoverId = null
 		this._currentDefs = null
 		this._emit("diagram:clear")
 	}
@@ -307,19 +357,106 @@ export class BpmnCanvas {
 	/** Zooms in by 25% centred on the canvas. */
 	zoomIn(): void {
 		const { width, height } = this._svg.getBoundingClientRect()
+		this._userMovedViewport = true
 		this._viewport.zoomAt(width / 2, height / 2, 1.25)
 	}
 
 	/** Zooms out by 25% centred on the canvas. */
 	zoomOut(): void {
 		const { width, height } = this._svg.getBoundingClientRect()
+		this._userMovedViewport = true
 		this._viewport.zoomAt(width / 2, height / 2, 0.8)
 	}
 
 	/** Resets to 100% zoom, centred on the canvas. */
 	resetZoom(): void {
 		const { width, height } = this._svg.getBoundingClientRect()
+		this._userMovedViewport = true
 		this._viewport.set({ scale: 1, tx: width / 2, ty: height / 2 })
+	}
+
+	/**
+	 * Adjusts the zoom. Pass `"fit"` (or no argument) to fit the whole diagram;
+	 * pass a number for an absolute scale, optionally keeping `center`
+	 * (screen-space pixels relative to the host) fixed.
+	 */
+	zoom(scaleOrFit: number | "fit" = "fit", center?: { x: number; y: number }): void {
+		if (scaleOrFit === "fit") {
+			this._userMovedViewport = false
+			this.fitView()
+			return
+		}
+		this._userMovedViewport = true
+		const { width, height } = this._svg.getBoundingClientRect()
+		const cx = center?.x ?? width / 2
+		const cy = center?.y ?? height / 2
+		const current = this._viewport.state.scale
+		if (current > 0) this._viewport.zoomAt(cx, cy, scaleOrFit / current)
+	}
+
+	/** Returns the visible region in diagram coordinates plus the zoom scale. */
+	viewbox(): Viewbox {
+		const { tx, ty, scale } = this._viewport.state
+		const { width, height } = this._svg.getBoundingClientRect()
+		return { x: -tx / scale, y: -ty / scale, width: width / scale, height: height / scale, scale }
+	}
+
+	/** Pans (without changing zoom) so the element with the given id is centred. */
+	scrollToElement(id: string): void {
+		const box = this._diagramBounds(id)
+		if (!box) return
+		const { scale } = this._viewport.state
+		const { width, height } = this._svg.getBoundingClientRect()
+		const centerX = box.x + box.width / 2
+		const centerY = box.y + box.height / 2
+		this._userMovedViewport = true
+		this._viewport.set({ tx: width / 2 - centerX * scale, ty: height / 2 - centerY * scale })
+	}
+
+	/**
+	 * Returns the element's bounding box in screen pixels relative to the host,
+	 * or `null` if the element is not found.
+	 */
+	getAbsoluteBBox(id: string): ScreenBox | null {
+		const box = this._diagramBounds(id)
+		if (!box) return null
+		const { tx, ty, scale } = this._viewport.state
+		return {
+			x: box.x * scale + tx,
+			y: box.y * scale + ty,
+			width: box.width * scale,
+			height: box.height * scale,
+		}
+	}
+
+	/** Adds a CSS class to the element with the given BPMN id. No-op if not found. */
+	addMarker(id: string, cls: string): void {
+		const element = this._findElement(id)
+		if (!element) return
+		element.classList.add(cls)
+		let set = this._markers.get(id)
+		if (!set) {
+			set = new Set()
+			this._markers.set(id, set)
+		}
+		set.add(cls)
+	}
+
+	/** Removes a CSS class from the element with the given BPMN id. */
+	removeMarker(id: string, cls: string): void {
+		this._findElement(id)?.classList.remove(cls)
+		this._markers.get(id)?.delete(cls)
+	}
+
+	/** Returns whether the element with the given id currently has the CSS class. */
+	hasMarker(id: string, cls: string): boolean {
+		return this._findElement(id)?.classList.contains(cls) ?? false
+	}
+
+	/** Toggles a CSS class on the element with the given id. */
+	toggleMarker(id: string, cls: string): void {
+		if (this.hasMarker(id, cls)) this.removeMarker(id, cls)
+		else this.addMarker(id, cls)
 	}
 
 	/**
@@ -352,16 +489,17 @@ export class BpmnCanvas {
 	 */
 	highlight(ids: string[], variant: "changed" | "new"): void {
 		const cls = `bpmnkit-highlight--${variant}`
-		const idSet = new Set(ids)
-		for (const { id, element } of [...this._shapes, ...this._edges]) {
-			if (idSet.has(id)) element.classList.add(cls)
-		}
+		for (const id of ids) this.addMarker(id, cls)
 	}
 
 	/** Removes all highlight classes added by {@link highlight}. */
 	clearHighlights(): void {
 		for (const { element } of [...this._shapes, ...this._edges]) {
 			element.classList.remove("bpmnkit-highlight--changed", "bpmnkit-highlight--new")
+		}
+		for (const set of this._markers.values()) {
+			set.delete("bpmnkit-highlight--changed")
+			set.delete("bpmnkit-highlight--new")
 		}
 	}
 
@@ -377,6 +515,48 @@ export class BpmnCanvas {
 	}
 
 	// ── Private ───────────────────────────────────────────────────────
+
+	/** Finds the SVG group for a shape or edge by BPMN id. */
+	private _findElement(id: string): SVGGElement | undefined {
+		return (
+			this._shapes.find((s) => s.id === id)?.element ??
+			this._edges.find((e) => e.id === id)?.element
+		)
+	}
+
+	/**
+	 * Resolves the BPMN element id under a pointer/mouse event, or `null`.
+	 * Prefers `elementFromPoint` (correct when native SVG hit-testing returns
+	 * the root `<svg>` in flex/scroll containers) and falls back to the event
+	 * target (for environments where `elementFromPoint` is unavailable).
+	 */
+	private _elementIdForEvent(e: MouseEvent | PointerEvent): string | null {
+		const fromPoint = document.elementFromPoint(e.clientX, e.clientY)
+		const target =
+			fromPoint?.closest("[data-bpmnkit-id]") ??
+			(e.target as Element | null)?.closest("[data-bpmnkit-id]")
+		return target?.getAttribute("data-bpmnkit-id") ?? null
+	}
+
+	/** Diagram-coordinate bounds of a shape (from DI) or edge (waypoint bbox). */
+	private _diagramBounds(
+		id: string,
+	): { x: number; y: number; width: number; height: number } | null {
+		const shape = this._shapes.find((s) => s.id === id)
+		if (shape) {
+			const { x, y, width, height } = shape.shape.bounds
+			return { x, y, width, height }
+		}
+		const edge = this._edges.find((e) => e.id === id)
+		if (edge && edge.edge.waypoints.length > 0) {
+			const xs = edge.edge.waypoints.map((w) => w.x)
+			const ys = edge.edge.waypoints.map((w) => w.y)
+			const minX = Math.min(...xs)
+			const minY = Math.min(...ys)
+			return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY }
+		}
+		return null
+	}
 
 	private _applyTheme(theme: Theme): void {
 		const resolved =
@@ -399,11 +579,22 @@ export class BpmnCanvas {
 			svg: this._svg,
 			viewportEl: this._viewportG,
 			getViewport: () => this._viewport.state,
-			setViewport: (s) => this._viewport.set(s),
+			setViewport: (s) => {
+				this._userMovedViewport = true
+				this._viewport.set(s)
+			},
 			getShapes: () => [...this._shapes],
 			getEdges: () => [...this._edges],
 			getTheme: () => this._theme,
 			setTheme: (theme) => this.setTheme(theme),
+			addMarker: (id, cls) => this.addMarker(id, cls),
+			removeMarker: (id, cls) => this.removeMarker(id, cls),
+			hasMarker: (id, cls) => this.hasMarker(id, cls),
+			toggleMarker: (id, cls) => this.toggleMarker(id, cls),
+			zoom: (scaleOrFit, center) => this.zoom(scaleOrFit, center),
+			viewbox: () => this.viewbox(),
+			scrollToElement: (id) => this.scrollToElement(id),
+			getAbsoluteBBox: (id) => this.getAbsoluteBBox(id),
 			on: (event, handler) => this.on(event, handler),
 			emit: (event, ...args) => this._emit(event, ...args),
 		}
