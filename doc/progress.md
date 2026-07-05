@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Render library gap analysis vs. bpmn.io (doc only)
+
+Added `doc/render-gap-analysis.md`: a deep comparison of `@bpmnkit/canvas`/`@bpmnkit/editor` against bpmn-js 18.19.0 / diagram-js 15.18.1, with a full feature matrix and a prioritized, spec'd improvement backlog (P0 rendering correctness → P1 architectural foundations → P2 editor parity → P3 polish) ready for implementation. No code changes.
+
 ## 2026-07-03 — Grid-based auto-layout engine replaces Sugiyama/block-tree pipeline
 
 Full replacement of the auto-layout engine in `@bpmnkit/core` (`packages/core/src/layout`): the Sugiyama layered layout + block-tree pipeline (`block-builder.ts`, `block-layout.ts`, `layers.ts`, `crossing.ts`, `coordinates.ts`, `routing.ts`, `astar.ts`, `subprocess.ts`, `graph.ts`) is deleted and replaced by a grid-based engine (`packages/core/src/layout/grid/`) that places flow nodes on a fixed 150×140 grid and routes edges with an orthogonal Manhattan router.
