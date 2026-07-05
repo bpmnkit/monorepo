@@ -34,6 +34,9 @@ export type BpmnElementType =
 	| "adHocSubProcess"
 	| "eventSubProcess"
 	| "transaction"
+	| "dataObject"
+	| "dataObjectReference"
+	| "dataStoreReference"
 
 // ---------------------------------------------------------------------------
 // Geometry
@@ -243,6 +246,33 @@ export interface BpmnCallActivity extends BpmnFlowNodeBase {
 	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
 }
 
+// ---------------------------------------------------------------------------
+// Data
+// ---------------------------------------------------------------------------
+
+/** A data object — a piece of information flowing through the process. */
+export interface BpmnDataObject extends BpmnFlowNodeBase {
+	type: "dataObject"
+	/** When true, represents a collection of items. */
+	isCollection?: boolean
+}
+
+/** A visual reference to a {@link BpmnDataObject} (the shape drawn on the canvas). */
+export interface BpmnDataObjectReference extends BpmnFlowNodeBase {
+	type: "dataObjectReference"
+	/** Id of the referenced `dataObject`. */
+	dataObjectRef?: string
+	/** When true, drawn with the collection (parallel-bars) marker. */
+	isCollection?: boolean
+}
+
+/** A visual reference to a data store (drawn as a cylinder). */
+export interface BpmnDataStoreReference extends BpmnFlowNodeBase {
+	type: "dataStoreReference"
+	/** Id of the referenced `dataStore`. */
+	dataStoreRef?: string
+}
+
 export interface BpmnSendTask extends BpmnFlowNodeBase {
 	type: "sendTask"
 	messageRef?: string
@@ -262,6 +292,7 @@ export interface BpmnAdHocSubProcess extends BpmnFlowNodeBase {
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 }
 
 export interface BpmnSubProcess extends BpmnFlowNodeBase {
@@ -272,6 +303,7 @@ export interface BpmnSubProcess extends BpmnFlowNodeBase {
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 }
 
 export interface BpmnEventSubProcess extends BpmnFlowNodeBase {
@@ -280,6 +312,7 @@ export interface BpmnEventSubProcess extends BpmnFlowNodeBase {
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +363,7 @@ export interface BpmnTransaction extends BpmnFlowNodeBase {
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 }
 
 // ---------------------------------------------------------------------------
@@ -375,6 +409,9 @@ export type BpmnFlowElement =
 	| BpmnInclusiveGateway
 	| BpmnEventBasedGateway
 	| BpmnComplexGateway
+	| BpmnDataObject
+	| BpmnDataObjectReference
+	| BpmnDataStoreReference
 
 /** Backward-compat alias used by the layout module. */
 export type BpmnFlowNode = BpmnFlowElement
@@ -418,6 +455,14 @@ export interface BpmnAssociation {
 	unknownAttributes: Record<string, string>
 }
 
+/** A group artifact — a dashed rounded rectangle visually grouping elements. */
+export interface BpmnGroup {
+	id: string
+	/** Id of the `categoryValue` supplying the group's label, if any. */
+	categoryValueRef?: string
+	unknownAttributes: Record<string, string>
+}
+
 // ---------------------------------------------------------------------------
 // Lanes
 // ---------------------------------------------------------------------------
@@ -458,6 +503,7 @@ export interface BpmnProcess {
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 	laneSet?: BpmnLaneSet
 	unknownAttributes: Record<string, string>
 }
@@ -490,6 +536,7 @@ export interface BpmnCollaboration {
 	messageFlows: BpmnMessageFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 	extensionElements: XmlElement[]
 	unknownAttributes: Record<string, string>
 }

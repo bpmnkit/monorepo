@@ -54,6 +54,7 @@ export function createEmptyDefinitions(): BpmnDefinitions {
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 				unknownAttributes: {},
 			},
 		],
@@ -170,6 +171,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "adHocSubProcess":
 			return {
@@ -179,6 +181,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "transaction":
 			return {
@@ -188,6 +191,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "exclusiveGateway":
 			return { ...base, type: "exclusiveGateway" }
@@ -1449,6 +1453,7 @@ export function changeElementType(
 				sequenceFlows: el.type === "subProcess" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "subProcess" ? el.textAnnotations : [],
 				associations: el.type === "subProcess" ? el.associations : [],
+				groups: el.type === "subProcess" ? el.groups : [],
 			}
 			break
 		case "adHocSubProcess":
@@ -1459,6 +1464,7 @@ export function changeElementType(
 				sequenceFlows: el.type === "adHocSubProcess" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "adHocSubProcess" ? el.textAnnotations : [],
 				associations: el.type === "adHocSubProcess" ? el.associations : [],
+				groups: el.type === "adHocSubProcess" ? el.groups : [],
 			}
 			break
 		case "transaction":
@@ -1469,6 +1475,7 @@ export function changeElementType(
 				sequenceFlows: el.type === "transaction" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "transaction" ? el.textAnnotations : [],
 				associations: el.type === "transaction" ? el.associations : [],
+				groups: el.type === "transaction" ? el.groups : [],
 			}
 			break
 		case "exclusiveGateway":

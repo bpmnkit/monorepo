@@ -5,6 +5,7 @@ import type {
 	BpmnDiPlane,
 	BpmnDiShape,
 	BpmnFlowElement,
+	BpmnGroup,
 	BpmnLane,
 	BpmnMessageFlow,
 	BpmnParticipant,
@@ -406,6 +407,8 @@ interface ModelIndex {
 	lanes: Map<string, BpmnLane>
 	/** id → BpmnAssociation */
 	associations: Map<string, BpmnAssociation>
+	/** id → BpmnGroup */
+	groups: Map<string, BpmnGroup>
 	/** id → BpmnMessageFlow */
 	messageFlows: Map<string, BpmnMessageFlow>
 	/** IDs of sequence flows that are the default flow of their source gateway */
@@ -419,6 +422,7 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 	const participants = new Map<string, BpmnParticipant>()
 	const lanes = new Map<string, BpmnLane>()
 	const associations = new Map<string, BpmnAssociation>()
+	const groups = new Map<string, BpmnGroup>()
 	const messageFlows = new Map<string, BpmnMessageFlow>()
 	const defaultFlowIds = new Set<string>()
 
@@ -462,6 +466,9 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		for (const assoc of proc.associations) {
 			associations.set(assoc.id, assoc)
 		}
+		for (const group of proc.groups) {
+			groups.set(group.id, group)
+		}
 		if (proc.laneSet) indexLaneSet(proc.laneSet)
 	}
 	for (const collab of defs.collaborations) {
@@ -474,6 +481,9 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		for (const assoc of collab.associations) {
 			associations.set(assoc.id, assoc)
 		}
+		for (const group of collab.groups) {
+			groups.set(group.id, group)
+		}
 		for (const mf of collab.messageFlows) {
 			messageFlows.set(mf.id, mf)
 		}
@@ -485,6 +495,7 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		participants,
 		lanes,
 		associations,
+		groups,
 		messageFlows,
 		defaultFlowIds,
 	}
@@ -833,6 +844,116 @@ function renderAnnotation(
 		class: "bpmnkit-shape",
 		tabindex: "-1",
 		role: "note",
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
+function renderDataObjectReference(
+	shape: BpmnDiShape,
+	el: BpmnFlowElement | undefined,
+	instanceId: string,
+): SVGGElement {
+	const { width, height } = shape.bounds
+	const fold = Math.min(14, width / 3)
+	const g = svgEl("g")
+
+	// Document outline with a folded top-right corner.
+	const body = svgEl("path")
+	attr(body, {
+		d: `M0 0 H${width - fold} L${width} ${fold} V${height} H0 Z`,
+		class: "bpmnkit-data-body",
+	})
+	applyColor(body, shape)
+	g.appendChild(body)
+
+	const foldPath = svgEl("path")
+	attr(foldPath, { d: `M${width - fold} 0 V${fold} H${width}`, class: "bpmnkit-icon" })
+	g.appendChild(foldPath)
+
+	// Collection marker (three vertical bars) at bottom centre.
+	if (el?.type === "dataObjectReference" && el.isCollection) {
+		const marker = svgEl("g")
+		attr(marker, { transform: `translate(${width / 2} ${height - 6})` })
+		marker.innerHTML = `<path d="M-3 -5v9M0 -5v9M3 -5v9" class="bpmnkit-icon"/>`
+		g.appendChild(marker)
+	}
+
+	attr(g, {
+		class: "bpmnkit-shape",
+		tabindex: "-1",
+		role: "img",
+		"aria-label": el?.name ?? "Data object",
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
+function renderDataStoreReference(
+	shape: BpmnDiShape,
+	el: BpmnFlowElement | undefined,
+	instanceId: string,
+): SVGGElement {
+	const { width, height } = shape.bounds
+	const ry = Math.min(8, height / 6)
+	const g = svgEl("g")
+
+	// Cylinder body.
+	const body = svgEl("path")
+	attr(body, {
+		d: `M0 ${ry} A ${width / 2} ${ry} 0 0 0 ${width} ${ry} V ${height - ry} A ${width / 2} ${ry} 0 0 1 0 ${height - ry} Z`,
+		class: "bpmnkit-datastore-body",
+	})
+	applyColor(body, shape)
+	g.appendChild(body)
+
+	// Top ellipse + a couple of stacked-disk arcs.
+	const top = svgEl("ellipse")
+	attr(top, { cx: width / 2, cy: ry, rx: width / 2, ry, class: "bpmnkit-datastore-body" })
+	applyColor(top, shape)
+	g.appendChild(top)
+	const disks = svgEl("path")
+	attr(disks, {
+		d: `M0 ${ry * 2} A ${width / 2} ${ry} 0 0 0 ${width} ${ry * 2} M0 ${ry * 3.4} A ${width / 2} ${ry} 0 0 0 ${width} ${ry * 3.4}`,
+		class: "bpmnkit-icon",
+	})
+	g.appendChild(disks)
+
+	attr(g, {
+		class: "bpmnkit-shape",
+		tabindex: "-1",
+		role: "img",
+		"aria-label": el?.name ?? "Data store",
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
+function renderGroup(shape: BpmnDiShape, instanceId: string): SVGGElement {
+	const { width, height } = shape.bounds
+	const g = svgEl("g")
+
+	// Dashed rounded rectangle; border-only hit target so the interior is
+	// click-through (elements inside a group stay selectable).
+	const body = svgEl("rect")
+	attr(body, {
+		x: 0,
+		y: 0,
+		width,
+		height,
+		rx: 8,
+		class: "bpmnkit-group-body",
+		"pointer-events": "stroke",
+	})
+	g.appendChild(body)
+
+	attr(g, {
+		class: "bpmnkit-shape bpmnkit-group",
+		tabindex: "-1",
+		role: "group",
 		"data-bpmnkit-id": shape.bpmnElement,
 		"data-bpmnkit-instance": instanceId,
 	})
@@ -1193,8 +1314,20 @@ export function render(
 			type === "complexGateway"
 		) {
 			g = renderGateway(shape, el, instanceId)
+		} else if (type === "dataObjectReference") {
+			g = renderDataObjectReference(shape, el, instanceId)
+		} else if (type === "dataStoreReference") {
+			g = renderDataStoreReference(shape, el, instanceId)
 		} else if (type === "" && !el) {
-			// Could be: text annotation, pool (participant), or lane
+			// Could be: text annotation, group, pool (participant), or lane
+			const group = index.groups.get(shape.bpmnElement)
+			if (group !== undefined) {
+				g = renderGroup(shape, instanceId)
+				attr(g, { transform: `translate(${x} ${y})` })
+				containersLayer.appendChild(g)
+				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
+				continue
+			}
 			const annotation = index.annotations.get(shape.bpmnElement)
 			if (annotation !== undefined) {
 				g = renderAnnotation(shape, annotation.text, instanceId)
@@ -1243,7 +1376,9 @@ export function render(
 			type === "parallelGateway" ||
 			type === "inclusiveGateway" ||
 			type === "eventBasedGateway" ||
-			type === "complexGateway"
+			type === "complexGateway" ||
+			type === "dataObjectReference" ||
+			type === "dataStoreReference"
 		if (el?.name && isExternalLabelType) {
 			const lb = shape.label?.bounds ?? {
 				x: shape.bounds.x + shape.bounds.width / 2 - 40,

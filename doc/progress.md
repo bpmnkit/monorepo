@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-07-05 — Data objects, data stores, and groups (model + rendering)
+
+Implemented P0-2 from `doc/render-gap-analysis.md`. These elements are common in real diagrams and previously rendered as invisible placeholders.
+
+- **Core model**: `dataObject`, `dataObjectReference` (`dataObjectRef`, `isCollection`), and `dataStoreReference` (`dataStoreRef`) added as flow elements; `group` (`categoryValueRef`) added as an artifact with a `groups` array on every container (process, sub-process variants, collaboration). Full parse + serialize round-trip; new `isBpmnDataObject`/`isBpmnDataObjectReference`/`isBpmnDataStoreReference` type guards. The serializer tolerates a missing `groups` array on hand-built partial models.
+- **Renderer**: data object reference = document with folded corner (+ collection parallel-bars marker); data store reference = cylinder; group = dashed rounded rectangle rendered into the containers layer with a border-only hit target (interior stays click-through). Data references get external labels below the shape.
+
+Deferred (noted in the gap-analysis doc): full `dataInputAssociation`/`dataOutputAssociation` modeling (they render today via the dashed-association fallback — visible but without the open arrowhead), `categoryValue` label resolution for groups, and editor palette/create entries (consistent with the P0-1 editor deferral). Tests: `packages/core/tests/data-elements.test.ts` (2) and canvas `data elements & groups` (4) — 58 canvas tests total; core/canvas/editor/plugins/operate/ascii/cli-sdk/patterns/api all build + typecheck + test green.
+
 ## 2026-07-05 — Multi-plane rendering + collapsed sub-process drilldown (viewer)
 
 Implemented P0-1 from `doc/render-gap-analysis.md` for the viewer. BPMN files that put a collapsed sub-process's content on a separate `BPMNDiagram` plane (as Camunda Modeler / bpmn-js do) were previously invisible — only `diagrams[0]` rendered.

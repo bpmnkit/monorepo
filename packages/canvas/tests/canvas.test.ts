@@ -792,3 +792,53 @@ describe("collapsed sub-process drilldown", () => {
 		expect(canvas.getPlanes().map((p) => p.id)).toEqual(["proc"])
 	})
 })
+
+// ── Data objects / stores / groups (P0-2) ────────────────────────────────────────
+
+describe("data elements & groups", () => {
+	const DATA_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="d" targetNamespace="t">
+  <bpmn:process id="proc">
+    <bpmn:task id="t" name="Do"/>
+    <bpmn:dataObjectReference id="dor" name="Order" isCollection="true"/>
+    <bpmn:dataStoreReference id="dsr" name="Store"/>
+    <bpmn:group id="grp"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc">
+    <bpmndi:BPMNShape id="grp_di" bpmnElement="grp"><dc:Bounds x="-10" y="-10" width="320" height="140"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="t_di" bpmnElement="t"><dc:Bounds x="20" y="20" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="dor_di" bpmnElement="dor"><dc:Bounds x="160" y="20" width="36" height="50"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="dsr_di" bpmnElement="dsr"><dc:Bounds x="220" y="20" width="50" height="50"/></bpmndi:BPMNShape>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+
+	it("renders a data object reference with the collection marker", () => {
+		const container = renderXml(DATA_XML)
+		const html = shapeHtml(container, "dor")
+		expect(html).toContain("bpmnkit-data-body")
+		// collection marker (three vertical bars)
+		expect(html).toContain("M-3 -5v9M0 -5v9M3 -5v9")
+	})
+
+	it("renders a data store reference as a cylinder", () => {
+		const container = renderXml(DATA_XML)
+		expect(shapeHtml(container, "dsr")).toContain("bpmnkit-datastore-body")
+	})
+
+	it("renders a group as a dashed box", () => {
+		const container = renderXml(DATA_XML)
+		const group = container.querySelector('[data-bpmnkit-id="grp"]')
+		expect(group?.querySelector(".bpmnkit-group-body")).not.toBeNull()
+	})
+
+	it("renders external labels for data references", () => {
+		const container = renderXml(DATA_XML)
+		// The data-object name renders as an external label in the labels layer.
+		const labels = [...container.querySelectorAll("text")].map((t) => t.textContent)
+		expect(labels).toContain("Order")
+		expect(labels).toContain("Store")
+	})
+})

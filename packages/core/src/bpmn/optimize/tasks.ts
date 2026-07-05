@@ -173,6 +173,7 @@ function buildExtractedDefs(
 		],
 		textAnnotations: [],
 		associations: [],
+		groups: [],
 		unknownAttributes: {},
 	}
 

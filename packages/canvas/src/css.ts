@@ -157,6 +157,20 @@ export const CANVAS_CSS = `
   stroke-width: 3;
 }
 
+/* ── Data objects / stores / groups ──────────────────────────────── */
+.bpmnkit-data-body,
+.bpmnkit-datastore-body {
+  fill: var(--bpmnkit-shape-fill, #ffffff);
+  stroke: var(--bpmnkit-shape-stroke, #404040);
+  stroke-width: 1.5;
+}
+.bpmnkit-group-body {
+  fill: none;
+  stroke: var(--bpmnkit-shape-stroke, #404040);
+  stroke-width: 1.5;
+  stroke-dasharray: 8 4 1 4;
+}
+
 /* ── Icons ───────────────────────────────────────────────────────── */
 .bpmnkit-icon {
   fill: none;

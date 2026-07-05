@@ -151,7 +151,9 @@ Core adds `planeForElement()`/`listPlaneElementIds()` (`packages/core/src/bpmn/d
 - Multi-`BPMNDiagram` file: `getPlanes()` lists all; each renders.
 - Existing single-plane files behave exactly as before (no API break: `load()` unchanged).
 
-#### P0-2 · Data objects, data stores, data associations, Groups — **L**
+#### P0-2 · Data objects, data stores, data associations, Groups — **L** — ✅ DONE (shapes) (2026-07-05)
+Core models `dataObject`, `dataObjectReference` (`dataObjectRef`, `isCollection`), `dataStoreReference` (`dataStoreRef`) as flow elements and `group` (`categoryValueRef`) as an artifact (`groups` array on every container + collaboration); full parse + serialize round-trip (test `data-elements.test.ts`) + `isBpmnDataObject*` type guards. Renderer draws the data object reference (document with folded corner + collection marker), data store reference (cylinder), and group (dashed rounded rect, border-only hit target, into the containers layer); data references get external labels. Tests in `data elements & groups`. **Deferred:** `dataInputAssociation`/`dataOutputAssociation` full modeling (they currently render via the dashed-association fallback — visible but without the open arrowhead), `categoryValue` label resolution for groups, and editor palette/create entries (consistent with the P0-1 editor deferral).
+
 **Problem:** `dataObject`, `dataObjectReference`, `dataStoreReference`, `dataInput/Output`, `dataInputAssociation`/`dataOutputAssociation`, and `bpmn:group` (+ `categoryValue`) are absent from the core model union (`packages/core/src/bpmn/bpmn-model.ts:354-377`) and from the renderer. These are common in real diagrams; today they render as invisible placeholders (`renderer.ts:947-953`).
 **Spec:**
 1. **Core model:** add typed nodes for the above, parse + serialize them (round-trip test), including `dataObjectReference.dataObjectRef`, `dataStoreReference`, task-level `dataInputAssociation`/`dataOutputAssociation` (source/targetRef, waypoints DI), `group.categoryValueRef` → `categoryValue.value` (label).
