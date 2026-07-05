@@ -1,4 +1,5 @@
 import type {
+	BpmnAssociation,
 	BpmnDefinitions,
 	BpmnDiEdge,
 	BpmnDiShape,
@@ -238,24 +239,64 @@ function gatewayMarker(type: string): string {
 	}
 }
 
-// ── Sub-process bottom markers ────────────────────────────────────────────────
+// ── Activity bottom markers ───────────────────────────────────────────────────
 
-function subProcessMarker(type: string, multiInstance?: "sequential" | "parallel"): string {
-	let base: string
-	if (type === "adHocSubProcess") {
-		base = `<path d="M-7 0Q-4 -4 0 0Q4 4 7 0" class="bpmnkit-icon"/>`
-	} else {
-		base = `<rect x="-7" y="-7" width="14" height="14" rx="1" class="bpmnkit-icon"/>
-<path d="M0 -4v8M-4 0h8" class="bpmnkit-icon"/>`
+/** Glyphs (each centred at 0,0, ~14×14) for the activity marker row. */
+const MARKER_GLYPHS = {
+	miParallel: `<path d="M-4 -5v10M0 -5v10M4 -5v10" class="bpmnkit-icon"/>`,
+	miSequential: `<path d="M-5 -4h10M-5 0h10M-5 4h10" class="bpmnkit-icon"/>`,
+	// Two left-pointing triangles (compensation "rewind")
+	compensation: `<path d="M1 -3.5l-5 3.5 5 3.5zM6 -3.5l-5 3.5 5 3.5z" class="bpmnkit-icon"/>`,
+	// Tilde (ad-hoc)
+	adHoc: `<path d="M-7 1Q-4 -3 0 1Q4 5 7 1" class="bpmnkit-icon"/>`,
+	// Box with a plus (collapsed activity)
+	collapsed: `<rect x="-7" y="-7" width="14" height="14" rx="1" class="bpmnkit-icon"/><path d="M0 -4v8M-4 0h8" class="bpmnkit-icon"/>`,
+} as const
+
+/**
+ * Returns the inner SVG markup for an activity's bottom marker row (loop
+ * characteristics, compensation, ad-hoc, and the collapsed `+` marker),
+ * laid out as a horizontal row centred at the origin.
+ *
+ * Callers translate the returned group to the bottom-centre of the activity.
+ */
+function activityMarkers(el: BpmnFlowElement, shape: BpmnDiShape): string {
+	const glyphs: string[] = []
+	const type = el.type
+
+	// Multi-instance loop
+	const lc = "loopCharacteristics" in el ? el.loopCharacteristics : undefined
+	if (lc) glyphs.push(lc.isSequential ? MARKER_GLYPHS.miSequential : MARKER_GLYPHS.miParallel)
+
+	// Compensation
+	if (el.isForCompensation) glyphs.push(MARKER_GLYPHS.compensation)
+
+	// Ad-hoc
+	if (type === "adHocSubProcess") glyphs.push(MARKER_GLYPHS.adHoc)
+
+	// Collapsed marker: call activities always show it; sub-process variants
+	// show it only when collapsed (not expanded into visible children).
+	const isSubProcessType =
+		type === "subProcess" ||
+		type === "adHocSubProcess" ||
+		type === "eventSubProcess" ||
+		type === "transaction"
+	if (type === "callActivity" || (isSubProcessType && shape.isExpanded !== true)) {
+		glyphs.push(MARKER_GLYPHS.collapsed)
 	}
-	if (multiInstance === "sequential") {
-		// Three horizontal lines ≡ (sequential)
-		base += `<g transform="translate(16 0)"><path d="M-4 -4h8M-4 0h8M-4 4h8" class="bpmnkit-icon"/></g>`
-	} else if (multiInstance === "parallel") {
-		// Three vertical lines ||| (parallel)
-		base += `<g transform="translate(16 0)"><path d="M-4 -4v8M0 -4v8M4 -4v8" class="bpmnkit-icon"/></g>`
-	}
-	return base
+
+	if (glyphs.length === 0) return ""
+	const step = 16
+	const start = -((glyphs.length - 1) * step) / 2
+	return glyphs
+		.map((glyph, i) => `<g transform="translate(${start + i * step} 0)">${glyph}</g>`)
+		.join("")
+}
+
+/** Marker for an event with multiple event definitions (pentagon). */
+function multipleEventMarker(filled: boolean): string {
+	const cls = filled ? "bpmnkit-icon-solid" : "bpmnkit-icon"
+	return `<path d="M0 -5.5L5.2 -1.7L3.2 4.5H-3.2L-5.2 -1.7Z" class="${cls}"/>`
 }
 
 // ── Model index helpers ───────────────────────────────────────────────────────
@@ -271,6 +312,8 @@ interface ModelIndex {
 	participants: Map<string, BpmnParticipant>
 	/** id → BpmnLane */
 	lanes: Map<string, BpmnLane>
+	/** id → BpmnAssociation */
+	associations: Map<string, BpmnAssociation>
 	/** id → messageFlow (stored by id for edge rendering) */
 	messageFlowIds: Set<string>
 	/** IDs of sequence flows that are the default flow of their source gateway */
@@ -283,6 +326,7 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 	const annotations = new Map<string, BpmnTextAnnotation>()
 	const participants = new Map<string, BpmnParticipant>()
 	const lanes = new Map<string, BpmnLane>()
+	const associations = new Map<string, BpmnAssociation>()
 	const messageFlowIds = new Set<string>()
 	const defaultFlowIds = new Set<string>()
 
@@ -323,6 +367,9 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		for (const ta of proc.textAnnotations) {
 			annotations.set(ta.id, ta)
 		}
+		for (const assoc of proc.associations) {
+			associations.set(assoc.id, assoc)
+		}
 		if (proc.laneSet) indexLaneSet(proc.laneSet)
 	}
 	for (const collab of defs.collaborations) {
@@ -332,11 +379,23 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		for (const ta of collab.textAnnotations) {
 			annotations.set(ta.id, ta)
 		}
+		for (const assoc of collab.associations) {
+			associations.set(assoc.id, assoc)
+		}
 		for (const mf of collab.messageFlows) {
 			messageFlowIds.add(mf.id)
 		}
 	}
-	return { elements, flows, annotations, participants, lanes, messageFlowIds, defaultFlowIds }
+	return {
+		elements,
+		flows,
+		annotations,
+		participants,
+		lanes,
+		associations,
+		messageFlowIds,
+		defaultFlowIds,
+	}
 }
 
 // ── Color helper ─────────────────────────────────────────────────────────────
@@ -398,15 +457,16 @@ function renderEvent(
 		g.appendChild(inner)
 	}
 
-	// Event definition marker
-	const eventDef =
-		el && "eventDefinitions" in el && el.eventDefinitions.length > 0
-			? el.eventDefinitions[0]
-			: undefined
-	if (eventDef) {
+	// Event definition marker(s)
+	const eventDefs = el && "eventDefinitions" in el ? el.eventDefinitions : []
+	if (eventDefs.length > 0) {
 		const markerG = svgEl("g")
 		attr(markerG, { transform: `translate(${cx} ${cy})` })
-		markerG.innerHTML = eventMarker(eventDef.type, isThrow && !isEnd)
+		// Multiple event definitions render as a single "multiple" pentagon.
+		markerG.innerHTML =
+			eventDefs.length > 1
+				? multipleEventMarker(isThrow && !isEnd)
+				: eventMarker((eventDefs[0] as { type: string }).type, isThrow && !isEnd)
 		g.appendChild(markerG)
 	}
 
@@ -484,19 +544,16 @@ function renderTask(
 		g.appendChild(labelEl)
 	}
 
-	// Sub-process expand/adHoc marker at bottom centre
-	if (
-		el?.type === "subProcess" ||
-		el?.type === "adHocSubProcess" ||
-		el?.type === "eventSubProcess" ||
-		el?.type === "transaction"
-	) {
-		const lc = "loopCharacteristics" in el ? el.loopCharacteristics : undefined
-		const multiInstance = lc ? (lc.isSequential ? "sequential" : "parallel") : undefined
-		const markerG = svgEl("g")
-		attr(markerG, { transform: `translate(${width / 2} ${height - 10})` })
-		markerG.innerHTML = subProcessMarker(el.type, multiInstance)
-		g.appendChild(markerG)
+	// Activity markers (multi-instance, compensation, ad-hoc, collapsed `+`)
+	// at bottom centre.
+	if (el) {
+		const markers = activityMarkers(el, shape)
+		if (markers) {
+			const markerG = svgEl("g")
+			attr(markerG, { transform: `translate(${width / 2} ${height - 10})` })
+			markerG.innerHTML = markers
+			g.appendChild(markerG)
+		}
 	}
 
 	const label = el?.name ?? el?.type ?? "task"
@@ -699,9 +756,11 @@ function renderExternalLabel(
 function renderEdge(
 	edge: BpmnDiEdge,
 	flow: BpmnSequenceFlow | undefined,
-	markerId: string,
+	instanceId: string,
 	isDefault: boolean,
+	isConditional: boolean,
 ): SVGGElement {
+	const ids = markerIds(instanceId)
 	const g = svgEl("g")
 	attr(g, {
 		class: "bpmnkit-edge",
@@ -711,11 +770,15 @@ function renderEdge(
 	if (edge.waypoints.length < 2) return g
 
 	const path = svgEl("path")
-	attr(path, {
+	const pathAttrs: Record<string, string> = {
 		d: waypointsToRoundedPath(edge.waypoints),
 		class: "bpmnkit-edge-path",
-		"marker-end": `url(#${markerId})`,
-	})
+		"marker-end": `url(#${ids.arrow})`,
+	}
+	// Conditional sequence flow → diamond at the source (mutually exclusive
+	// with the default-flow slash: a flow is never both).
+	if (isConditional) pathAttrs["marker-start"] = `url(#${ids.conditional})`
+	attr(path, pathAttrs)
 	g.appendChild(path)
 
 	// Wide transparent stroke so the edge is easy to click
@@ -767,34 +830,87 @@ function renderEdge(
 	return g
 }
 
-function renderAssociation(edge: BpmnDiEdge): SVGGElement {
+function renderAssociation(
+	edge: BpmnDiEdge,
+	association: BpmnAssociation | undefined,
+	instanceId: string,
+): SVGGElement {
+	const ids = markerIds(instanceId)
 	const g = svgEl("g")
 	attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
 
 	const path = svgEl("path")
-	attr(path, { d: waypointsToRoundedPath(edge.waypoints), class: "bpmnkit-edge-assoc" })
+	const pathAttrs: Record<string, string> = {
+		d: waypointsToRoundedPath(edge.waypoints),
+		class: "bpmnkit-edge-assoc",
+	}
+	// Directed associations get an open arrowhead; "Both" is bidirectional.
+	const direction = association?.associationDirection
+	if (direction === "One" || direction === "Both") {
+		pathAttrs["marker-end"] = `url(#${ids.openArrow})`
+	}
+	if (direction === "Both") {
+		pathAttrs["marker-start"] = `url(#${ids.openArrow})`
+	}
+	attr(path, pathAttrs)
 	g.appendChild(path)
 	return g
 }
 
 // ── SVG defs (arrow markers) ──────────────────────────────────────────────────
 
+interface MarkerIds {
+	/** Filled arrowhead — sequence flow terminus. */
+	arrow: string
+	/** Open (unfilled) arrowhead — message flows, associations, data associations. */
+	openArrow: string
+	/** Diamond at the source of a conditional sequence flow. */
+	conditional: string
+	/** Hollow circle at the source of a message flow. */
+	messageStart: string
+}
+
+/** Derives this canvas instance's per-marker element IDs. */
+function markerIds(instanceId: string): MarkerIds {
+	return {
+		arrow: `bpmnkit-arrow-${instanceId}`,
+		openArrow: `bpmnkit-open-arrow-${instanceId}`,
+		conditional: `bpmnkit-conditional-${instanceId}`,
+		messageStart: `bpmnkit-msgstart-${instanceId}`,
+	}
+}
+
 /**
  * Creates the SVG `<defs>` section for this canvas instance.
  * Uses `instanceId` to make marker IDs unique per canvas, avoiding
  * conflicts when multiple canvases are mounted on the same page.
+ *
+ * @returns the filled-arrowhead marker ID (sequence-flow terminus). Other
+ *   marker IDs are derived from `instanceId` via {@link markerIds}.
  */
 export function createDefs(svg: SVGSVGElement, instanceId: string): string {
-	const markerId = `bpmnkit-arrow-${instanceId}`
+	const ids = markerIds(instanceId)
 	const defs = svgEl("defs")
 	defs.innerHTML = `
-    <marker id="${markerId}" markerWidth="8" markerHeight="6"
+    <marker id="${ids.arrow}" markerWidth="8" markerHeight="6"
             refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L8,3 L0,6 Z" class="bpmnkit-arrow-fill"/>
     </marker>
+    <marker id="${ids.openArrow}" markerWidth="14" markerHeight="10"
+            refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1,1 L10,5 L1,9" class="bpmnkit-open-arrow"/>
+    </marker>
+    <marker id="${ids.conditional}" markerWidth="16" markerHeight="10"
+            refX="0" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,5 L7,1 L14,5 L7,9 Z" class="bpmnkit-conditional-marker"/>
+    </marker>
+    <marker id="${ids.messageStart}" markerWidth="12" markerHeight="10"
+            refX="0" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="4" class="bpmnkit-msg-marker"/>
+    </marker>
   `
 	svg.appendChild(defs)
-	return markerId
+	return ids.arrow
 }
 
 // ── Dot-grid background ───────────────────────────────────────────────────────
@@ -873,23 +989,32 @@ export function render(
 		let g: SVGGElement
 
 		if (flow) {
-			g = renderEdge(edge, flow, markerId, index.defaultFlowIds.has(edge.bpmnElement))
+			const isDefault = index.defaultFlowIds.has(edge.bpmnElement)
+			// A conditional flow shows a diamond at its source, but only when the
+			// source is an activity (not a gateway) and it is not the default flow.
+			const source = index.elements.get(flow.sourceRef)
+			const sourceIsGateway = source?.type.endsWith("Gateway") ?? false
+			const isConditional = !!flow.conditionExpression && !isDefault && !sourceIsGateway
+			g = renderEdge(edge, flow, instanceId, isDefault, isConditional)
 		} else if (index.messageFlowIds.has(edge.bpmnElement)) {
-			// Message flow — dashed arrow between pools
+			// Message flow — dashed line with a hollow source circle and an open
+			// arrowhead at the target.
 			g = svgEl("g")
 			attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
 			if (edge.waypoints.length >= 2) {
+				const ids = markerIds(instanceId)
 				const path = svgEl("path")
 				attr(path, {
 					d: waypointsToRoundedPath(edge.waypoints),
 					class: "bpmnkit-msgflow-path",
-					"marker-end": `url(#${markerId})`,
+					"marker-start": `url(#${ids.messageStart})`,
+					"marker-end": `url(#${ids.openArrow})`,
 				})
 				g.appendChild(path)
 			}
 		} else {
 			// Association or unknown edge type
-			g = renderAssociation(edge)
+			g = renderAssociation(edge, index.associations.get(edge.bpmnElement), instanceId)
 		}
 
 		edgesLayer.appendChild(g)

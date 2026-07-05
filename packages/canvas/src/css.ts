@@ -191,6 +191,19 @@ export const CANVAS_CSS = `
 .bpmnkit-arrow-fill {
   fill: var(--bpmnkit-flow-stroke, #404040);
 }
+.bpmnkit-open-arrow {
+  fill: none;
+  stroke: var(--bpmnkit-flow-stroke, #404040);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bpmnkit-conditional-marker,
+.bpmnkit-msg-marker {
+  fill: var(--bpmnkit-shape-fill, #ffffff);
+  stroke: var(--bpmnkit-flow-stroke, #404040);
+  stroke-width: 1.5;
+}
 
 /* ── Labels ─────────────────────────────────────────────────────── */
 .bpmnkit-label {

@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-07-05 — Canvas rendering correctness: activity markers, multiple events, connection decorations
+
+Implemented the self-contained P0 rendering-correctness items from `doc/render-gap-analysis.md` in `@bpmnkit/canvas` (`packages/canvas/src/renderer.ts`, `css.ts`):
+
+- **P0-3 activity markers**: a unified `activityMarkers()` helper draws the bottom-centre marker row for any activity — multi-instance (parallel `‖` / sequential `≡`), compensation, ad-hoc `~`, and the collapsed `+` (call activities always; sub-process/transaction/event-sub-process when not expanded). Previously only sub-processes showed markers, and expanded sub-processes incorrectly always showed `+`; the `+` is now gated on `shape.isExpanded !== true`.
+- **P0-4 event definitions**: events with more than one event definition now render the "multiple" pentagon (filled when throwing) instead of silently drawing only the first definition.
+- **P0-5 connection decorations**: `createDefs()` adds `open-arrow`, `conditional` (diamond) and `message-start` (circle) markers. Conditional sequence flows from non-gateway sources get a source diamond (mutually exclusive with the default-flow slash); message flows get a hollow source circle + open arrowhead (replacing the reused filled arrowhead); directed associations get open arrowheads per `associationDirection`. The model index now tracks associations.
+
+Deferred (need core-model additions): standard-loop `↻` marker, `parallelMultiple` event marker, non-initiating message-flow styling. Tests added in `packages/canvas/tests/canvas.test.ts` (24 pass); editor unaffected (50 pass). The static server-side renderer (`packages/core/src/bpmn/svg.ts`) was intentionally left unchanged and now lags the canvas on these markers.
+
 ## 2026-07-05 — Render library gap analysis vs. bpmn.io (doc only)
 
 Added `doc/render-gap-analysis.md`: a deep comparison of `@bpmnkit/canvas`/`@bpmnkit/editor` against bpmn-js 18.19.0 / diagram-js 15.18.1, with a full feature matrix and a prioritized, spec'd improvement backlog (P0 rendering correctness → P1 architectural foundations → P2 editor parity → P3 polish) ready for implementation. No code changes.

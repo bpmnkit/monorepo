@@ -162,17 +162,23 @@ Effort: **S** ≤ 1 day · **M** ≤ 3 days · **L** ≤ 2 weeks. Items are orde
 - Camunda-authored fixture with data object + store + associations renders all of them with correct shapes/markers.
 - Palette creates each; undo/redo works; DI written on create/move.
 
-#### P0-3 · Activity markers: loop, multi-instance, compensation, call-activity `+` — **M**
+#### P0-3 · Activity markers: loop, multi-instance, compensation, call-activity `+` — **M** — ✅ DONE (2026-07-05)
+Implemented in `packages/canvas/src/renderer.ts` via a unified `activityMarkers()` helper (multi-instance parallel/sequential, compensation, ad-hoc, and the collapsed `+` for call activities and collapsed sub-processes). Standard loop (`↻`) is deferred — it is not yet in the core model (`multiInstanceLoopCharacteristics` only). Tests in `packages/canvas/tests/canvas.test.ts` (`activity markers`).
+
 **Problem:** Task-level `standardLoopCharacteristics` / `multiInstanceLoopCharacteristics` / `isForCompensation` render nothing (`renderTask` has no bottom-marker block, `renderer.ts:427-513`); collapsed call activities lack the `+` marker. Sub-process MI markers exist (`renderer.ts:243-259`) but loop and compensation are missing there too.
 **Spec:** Add a shared `activityMarkers(el, width, height)` helper emitting a centered bottom row of 14×14 markers, in BPMN spec order: loop ↻ | MI ‖ (parallel) / ≡ (sequential) | compensation ⏪ | ad-hoc ~ | sub-process/call-activity `+`. Multiple markers space 4px apart, row centered at `(width/2, height-10)`. Model already carries `loopCharacteristics` (`bpmn-model.ts:154-158`); add `standardLoop?: boolean` and `isForCompensation?: boolean` to the activity types + parser if missing.
 **AC:** each marker renders per fixture; combinations (loop + compensation) lay out side-by-side; sub-process keeps existing `+`/`~` behavior; call activity gets `+` box.
 
-#### P0-4 · Event definition completeness — **S/M**
+#### P0-4 · Event definition completeness — **S/M** — ✅ DONE (2026-07-05)
+Events with more than one event definition now render the "multiple" pentagon (filled when throwing) via `multipleEventMarker()` in `packages/canvas/src/renderer.ts`. `parallelMultiple` (the unfilled `+`) is deferred pending a `parallelMultiple` model field — the parser does not yet read that attribute. Test in `event definition markers`.
+
 **Problem:** Only `eventDefinitions[0]` is drawn (`renderer.ts:402-411`); `multiple` (pentagon) and `parallelMultiple` (unfilled `+`) are unhandled in `eventMarker` (`renderer.ts:189-218`).
 **Spec:** If `eventDefinitions.length > 1`, render the *multiple* pentagon (filled when throwing) — matching bpmn-js; add pentagon and parallel-`+` markers; verify catch-vs-throw fill for every definition type against bpmn-js's BpmnRenderer table.
 **AC:** fixture matrix (event kind × definition) snapshot-tested; multi-definition event shows pentagon.
 
-#### P0-5 · Connection decorations: conditional flow, message flow endpoints, association direction — **M**
+#### P0-5 · Connection decorations: conditional flow, message flow endpoints, association direction — **M** — ✅ DONE (2026-07-05)
+`createDefs()` now builds `open-arrow`, `conditional` (diamond), and `message-start` (circle) markers alongside the filled arrowhead. Conditional sequence flows from non-gateway sources get a source diamond (mutually exclusive with the default-flow slash); message flows get a hollow source circle + open arrowhead; directed associations get open arrowheads per `associationDirection` (`One`/`Both`). Tests in `connection decorations`. Note: non-initiating message-flow styling (needs `messageVisibleKind` DI) is deferred.
+
 **Problem:** Missing spec-required visuals: conditional sequence flow diamond at source (flow has `conditionExpression` and source is an activity); message flow open circle at source + open (unfilled) arrowhead; association arrowheads per `associationDirection` (`None|One|Both`). Message flows currently reuse the solid sequence-flow arrowhead (`renderer.ts:877-889`).
 **Spec:** Extend `createDefs` (`renderer.ts:787-798`) with per-instance markers: `open-arrow`, `diamond`, `circle`. Apply: sequence flow `marker-start` diamond when conditional; message flow `marker-start` circle + `marker-end` open-arrow; association `marker-end`/`marker-start` thin open arrows per direction. Data associations (P0-2) reuse open-arrow.
 **AC:** fixtures for each decoration; default-flow slash + conditional diamond are mutually exclusive on the same flow (default wins, matching bpmn-js).
