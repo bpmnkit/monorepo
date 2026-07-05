@@ -842,3 +842,78 @@ describe("data elements & groups", () => {
 		expect(labels).toContain("Store")
 	})
 })
+
+// ── Element registry & incremental update (P1-1) ─────────────────────────────────
+
+describe("element registry", () => {
+	let container: HTMLElement
+	let canvas: BpmnCanvas
+
+	beforeEach(() => {
+		container = makeContainer()
+		canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+	})
+
+	it("getElement / getGraphics resolve by id", () => {
+		expect(canvas.getElement("task")?.id).toBe("task")
+		expect(canvas.getGraphics("task")).toBe(container.querySelector('[data-bpmnkit-id="task"]'))
+		expect(canvas.getElement("nope")).toBeUndefined()
+	})
+
+	it("forEachElement visits every shape and edge", () => {
+		const ids = new Set<string>()
+		canvas.forEachElement((el) => ids.add(el.id))
+		expect(ids).toEqual(new Set(["start", "task", "end", "flow1", "flow2"]))
+	})
+})
+
+describe("incremental update", () => {
+	let container: HTMLElement
+	let canvas: BpmnCanvas
+
+	beforeEach(() => {
+		container = makeContainer()
+		canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+	})
+
+	it("re-renders only the target element, leaving others' graphics identical", () => {
+		const startG = canvas.getGraphics("start")
+		const endG = canvas.getGraphics("end")
+		const taskG = canvas.getGraphics("task")
+
+		canvas.updateElement("task")
+
+		// Siblings keep their exact <g> nodes (not re-rendered)…
+		expect(canvas.getGraphics("start")).toBe(startG)
+		expect(canvas.getGraphics("end")).toBe(endG)
+		// …while the target got a fresh node.
+		expect(canvas.getGraphics("task")).not.toBe(taskG)
+	})
+
+	it("preserves marker classes across an update", () => {
+		canvas.addMarker("task", "mk")
+		canvas.updateElement("task")
+		expect(canvas.hasMarker("task", "mk")).toBe(true)
+		expect(canvas.getGraphics("task")?.classList.contains("mk")).toBe(true)
+	})
+
+	it("mutates only the target element's graphics (MutationObserver)", () => {
+		const host = container.querySelector(".bpmnkit-canvas-host")
+		if (!host) throw new Error("no host")
+		const obs = new MutationObserver(() => {})
+		obs.observe(host, { childList: true, subtree: true })
+
+		canvas.updateElement("task")
+
+		const records = obs.takeRecords()
+		obs.disconnect()
+		const touched = new Set<string>()
+		for (const r of records) {
+			for (const n of [...Array.from(r.addedNodes), ...Array.from(r.removedNodes)]) {
+				const id = (n as Element).getAttribute?.("data-bpmnkit-id")
+				if (id) touched.add(id)
+			}
+		}
+		expect([...touched]).toEqual(["task"])
+	})
+})

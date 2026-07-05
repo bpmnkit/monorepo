@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-07-05 — Scene: element registry + incremental rendering
+
+Implemented P1-1 (registry + incremental half) from `doc/render-gap-analysis.md`. Previously every `load()`/edit tore down all four layers and re-rendered the whole scene, and there was no id→graphics lookup.
+
+- **Renderer refactor**: the monolithic `render()` loop is split into reusable primitives — `buildRenderContext(defs, plane, …)` (model index + docking geometry) and `renderEdgeGroup(edge, ctx)` / `renderShapeGroup(shape, ctx)` (single-element `<g>` + external label). `render()` is now a thin wrapper over them, kept for the editor (its `markerId` argument is retained positionally but unused; marker ids derive from the instance id).
+- **`Scene` class** (`packages/canvas/src/scene.ts`): owns the containers/edges/shapes/labels layers and an id→graphics registry; `render()`, `updateElement(id)`, `removeElement(id)`, `getElement`/`getGraphics`/`forEach`/`getShapes`/`getEdges`. `updateElement` re-renders one element's `<g>` (and its external label) in place and copies CSS classes forward so markers/selection survive.
+- **`BpmnCanvas`** consumes `Scene`: new public `getElement`/`getGraphics`/`forEachElement` (O(1)) and `updateElement(id)` (re-syncs caches, reapplies markers via preserved classes, repositions overlays); `_findElement` and plane rendering now go through the scene. `OverlayManager.reposition()` added. `Scene`, `SceneLayers`, and the renderer primitives are exported from `@bpmnkit/canvas`.
+
+Deferred (noted in the doc): migrating the editor's duplicated host onto the shared `Scene` and threading modeling dirty-ids into `updateElement` (spec item #3) — a large separate change; the primitives are now exported so the editor can adopt them incrementally. Tests: `element registry` (2) + `incremental update` (3, incl. a MutationObserver proof that one edit mutates only the target's `<g>`) — 63 canvas tests; canvas/editor/plugins/operate all green.
+
 ## 2026-07-05 — Data objects, data stores, and groups (model + rendering)
 
 Implemented P0-2 from `doc/render-gap-analysis.md`. These elements are common in real diagrams and previously rendered as invisible placeholders.

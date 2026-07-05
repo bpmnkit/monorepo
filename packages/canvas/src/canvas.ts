@@ -3,7 +3,8 @@ import type { BpmnDefinitions, BpmnDiPlane, BpmnFlowElement } from "@bpmnkit/cor
 import { injectStyles } from "./css.js"
 import { KeyboardHandler } from "./keyboard.js"
 import { OverlayManager } from "./overlays.js"
-import { computeDiagramBounds, createDefs, createGrid, render } from "./renderer.js"
+import { computeDiagramBounds, createDefs, createGrid } from "./renderer.js"
+import { Scene } from "./scene.js"
 import type {
 	CanvasApi,
 	CanvasEvents,
@@ -88,6 +89,7 @@ export class BpmnCanvas {
 	private readonly _viewport: ViewportController
 	private readonly _keyboard: KeyboardHandler
 	private readonly _overlays: OverlayManager
+	private readonly _scene: Scene
 	private readonly _plugins: CanvasPlugin[] = []
 
 	// ── State ─────────────────────────────────────────────────────────
@@ -167,6 +169,17 @@ export class BpmnCanvas {
 		this._viewportG.appendChild(this._edgesG)
 		this._viewportG.appendChild(this._shapesG)
 		this._viewportG.appendChild(this._labelsG)
+
+		// Scene owns the layer content + the id→graphics registry.
+		this._scene = new Scene(
+			{
+				containers: this._containersG,
+				edges: this._edgesG,
+				shapes: this._shapesG,
+				labels: this._labelsG,
+			},
+			this._id,
+		)
 
 		// ── Viewport controller ───────────────────────────────────────
 		this._viewport = new ViewportController(
@@ -362,32 +375,18 @@ export class BpmnCanvas {
 
 	/** Renders a specific plane into the (cleared) layers and refits. */
 	private _renderPlane(plane: BpmnDiPlane | null): void {
-		this._containersG.innerHTML = ""
-		this._edgesG.innerHTML = ""
-		this._shapesG.innerHTML = ""
-		this._labelsG.innerHTML = ""
-		this._shapes = []
-		this._edges = []
 		this._markers.clear()
 		this._overlays.clear()
 		this._hoverId = null
 		this._currentPlane = plane
 
 		if (this._currentDefs && plane) {
-			const result = render(
-				this._currentDefs,
-				this._containersG,
-				this._edgesG,
-				this._shapesG,
-				this._labelsG,
-				this._markerId,
-				this._id,
-				plane,
-				this._planeElementIds,
-			)
-			this._shapes = result.shapes
-			this._edges = result.edges
+			this._scene.render(this._currentDefs, plane, this._planeElementIds)
+		} else {
+			this._scene.clear()
 		}
+		this._shapes = this._scene.getShapes()
+		this._edges = this._scene.getEdges()
 
 		this._keyboard.setShapes(this._shapes)
 		this._updateBreadcrumb()
@@ -400,10 +399,7 @@ export class BpmnCanvas {
 
 	/** Clears the canvas and fires `diagram:clear`. */
 	clear(): void {
-		this._containersG.innerHTML = ""
-		this._edgesG.innerHTML = ""
-		this._shapesG.innerHTML = ""
-		this._labelsG.innerHTML = ""
+		this._scene.clear()
 		this._shapes = []
 		this._edges = []
 		this._markers.clear()
@@ -465,6 +461,34 @@ export class BpmnCanvas {
 	 */
 	get overlays(): OverlayManager {
 		return this._overlays
+	}
+
+	/** Returns the rendered shape or edge for a BPMN id, or `undefined` (O(1)). */
+	getElement(id: string): RenderedShape | RenderedEdge | undefined {
+		return this._scene.getElement(id)
+	}
+
+	/** Returns the `<g>` graphics element for a BPMN id, or `undefined` (O(1)). */
+	getGraphics(id: string): SVGGElement | undefined {
+		return this._scene.getGraphics(id)
+	}
+
+	/** Iterates every rendered element (shapes and edges). */
+	forEachElement(fn: (el: RenderedShape | RenderedEdge) => void): void {
+		this._scene.forEach(fn)
+	}
+
+	/**
+	 * Re-renders a single element's `<g>` in place from the current model,
+	 * preserving markers/selection classes — the incremental-update path used
+	 * for cheap edits. No-op for an unknown id.
+	 */
+	updateElement(id: string): void {
+		this._scene.updateElement(id)
+		this._shapes = this._scene.getShapes()
+		this._edges = this._scene.getEdges()
+		this._keyboard.setShapes(this._shapes)
+		this._overlays.reposition()
 	}
 
 	/** Zooms in by 25% centred on the canvas. */
@@ -632,10 +656,7 @@ export class BpmnCanvas {
 
 	/** Finds the SVG group for a shape or edge by BPMN id. */
 	private _findElement(id: string): SVGGElement | undefined {
-		return (
-			this._shapes.find((s) => s.id === id)?.element ??
-			this._edges.find((e) => e.id === id)?.element
-		)
+		return this._scene.getGraphics(id)
 	}
 
 	/** A human-readable label for a plane's `bpmnElement` (name, or a fallback). */

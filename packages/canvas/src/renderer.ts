@@ -394,7 +394,7 @@ function multipleEventMarker(filled: boolean): string {
 
 // ── Model index helpers ───────────────────────────────────────────────────────
 
-interface ModelIndex {
+export interface ModelIndex {
 	/** id → BpmnFlowElement (all levels flattened) */
 	elements: Map<string, BpmnFlowElement>
 	/** id → BpmnSequenceFlow */
@@ -1194,35 +1194,24 @@ export interface RenderResult {
 }
 
 /**
- * Renders a `BpmnDefinitions` model into SVG element groups, appending them
- * to `edgesLayer` and `shapesLayer` respectively.
- *
- * Edges are placed below shapes (rendered first) so connection lines don't
- * cover shape bodies.  Shapes are rendered in DI order so container shapes
- * (sub-processes) appear before their children.
+ * Shared per-render state — a model index and docking geometry — reused by the
+ * full {@link render} pass and by single-element updates in the {@link Scene}.
  */
-export function render(
+export interface RenderContext {
+	index: ModelIndex
+	geomById: Map<string, ShapeGeom>
+	drillableIds: ReadonlySet<string>
+	instanceId: string
+}
+
+/** Builds a {@link RenderContext} for a plane (index + docking geometry). */
+export function buildRenderContext(
 	defs: BpmnDefinitions,
-	containersLayer: SVGGElement,
-	edgesLayer: SVGGElement,
-	shapesLayer: SVGGElement,
-	labelsLayer: SVGGElement,
-	markerId: string,
+	plane: BpmnDiPlane,
+	drillableIds: ReadonlySet<string>,
 	instanceId: string,
-	/** The DI plane to render. Defaults to the first diagram's plane. */
-	targetPlane?: BpmnDiPlane,
-	/** Element ids that own their own plane and can be drilled into. */
-	drillableIds: ReadonlySet<string> = new Set(),
-): RenderResult {
+): RenderContext {
 	const index = buildIndex(defs)
-	const shapes: RenderedShape[] = []
-	const edges: RenderedEdge[] = []
-
-	const plane = targetPlane ?? defs.diagrams[0]?.plane
-	if (!plane) return { shapes, edges }
-
-	// Docking geometry: id → outline, so connections can be cropped to the true
-	// shape outline (circle/diamond) rather than the bounding box.
 	const geomById = new Map<string, ShapeGeom>()
 	for (const shape of plane.shapes) {
 		const { x, y, width, height } = shape.bounds
@@ -1234,172 +1223,234 @@ export function render(
 			kind: geomKind(index.elements.get(shape.bpmnElement)?.type),
 		})
 	}
+	return { index, geomById, drillableIds, instanceId }
+}
 
-	// ── Edges ─────────────────────────────────────────────────────────
-	for (const edge of plane.edges) {
-		const flow = index.flows.get(edge.bpmnElement)
-		let g: SVGGElement
+/** Renders a single edge's `<g>` (no DOM insertion). */
+export function renderEdgeGroup(edge: BpmnDiEdge, ctx: RenderContext): SVGGElement {
+	const { index, geomById, instanceId } = ctx
+	const flow = index.flows.get(edge.bpmnElement)
 
-		if (flow) {
-			const isDefault = index.defaultFlowIds.has(edge.bpmnElement)
-			// A conditional flow shows a diamond at its source, but only when the
-			// source is an activity (not a gateway) and it is not the default flow.
-			const source = index.elements.get(flow.sourceRef)
-			const sourceIsGateway = source?.type.endsWith("Gateway") ?? false
-			const isConditional = !!flow.conditionExpression && !isDefault && !sourceIsGateway
+	if (flow) {
+		const isDefault = index.defaultFlowIds.has(edge.bpmnElement)
+		// A conditional flow shows a diamond at its source, but only when the
+		// source is an activity (not a gateway) and it is not the default flow.
+		const source = index.elements.get(flow.sourceRef)
+		const sourceIsGateway = source?.type.endsWith("Gateway") ?? false
+		const isConditional = !!flow.conditionExpression && !isDefault && !sourceIsGateway
+		const wps = cropWaypoints(
+			edge.waypoints,
+			geomById.get(flow.sourceRef),
+			geomById.get(flow.targetRef),
+		)
+		return renderEdge(edge, flow, instanceId, isDefault, isConditional, wps)
+	}
+
+	if (index.messageFlows.has(edge.bpmnElement)) {
+		// Message flow — dashed line with a hollow source circle and an open
+		// arrowhead at the target.
+		const g = svgEl("g")
+		attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
+		if (edge.waypoints.length >= 2) {
+			const mf = index.messageFlows.get(edge.bpmnElement)
 			const wps = cropWaypoints(
 				edge.waypoints,
-				geomById.get(flow.sourceRef),
-				geomById.get(flow.targetRef),
+				mf ? geomById.get(mf.sourceRef) : undefined,
+				mf ? geomById.get(mf.targetRef) : undefined,
 			)
-			g = renderEdge(edge, flow, instanceId, isDefault, isConditional, wps)
-		} else if (index.messageFlows.has(edge.bpmnElement)) {
-			// Message flow — dashed line with a hollow source circle and an open
-			// arrowhead at the target.
-			g = svgEl("g")
-			attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
-			if (edge.waypoints.length >= 2) {
-				const mf = index.messageFlows.get(edge.bpmnElement)
-				const wps = cropWaypoints(
-					edge.waypoints,
-					mf ? geomById.get(mf.sourceRef) : undefined,
-					mf ? geomById.get(mf.targetRef) : undefined,
-				)
-				const ids = markerIds(instanceId)
-				const path = svgEl("path")
-				attr(path, {
-					d: waypointsToRoundedPath(wps),
-					class: "bpmnkit-msgflow-path",
-					"marker-start": `url(#${ids.messageStart})`,
-					"marker-end": `url(#${ids.openArrow})`,
-				})
-				g.appendChild(path)
-			}
-		} else {
-			// Association or unknown edge type
-			const assoc = index.associations.get(edge.bpmnElement)
-			const wps = cropWaypoints(
-				edge.waypoints,
-				assoc ? geomById.get(assoc.sourceRef) : undefined,
-				assoc ? geomById.get(assoc.targetRef) : undefined,
-			)
-			g = renderAssociation(edge, assoc, instanceId, wps)
+			const ids = markerIds(instanceId)
+			const path = svgEl("path")
+			attr(path, {
+				d: waypointsToRoundedPath(wps),
+				class: "bpmnkit-msgflow-path",
+				"marker-start": `url(#${ids.messageStart})`,
+				"marker-end": `url(#${ids.openArrow})`,
+			})
+			g.appendChild(path)
 		}
+		return g
+	}
 
+	// Association or unknown edge type
+	const assoc = index.associations.get(edge.bpmnElement)
+	const wps = cropWaypoints(
+		edge.waypoints,
+		assoc ? geomById.get(assoc.sourceRef) : undefined,
+		assoc ? geomById.get(assoc.targetRef) : undefined,
+	)
+	return renderAssociation(edge, assoc, instanceId, wps)
+}
+
+/** Which layer a shape's `<g>` belongs to. */
+export type ShapeLayer = "containers" | "shapes"
+
+/** The result of rendering a single shape: its `<g>`, target layer, and external label. */
+export interface RenderedShapeGroup {
+	group: SVGGElement
+	layer: ShapeLayer
+	label: SVGGElement | null
+	rendered: RenderedShape
+}
+
+/** Renders a single shape's `<g>` (+ optional external label), without DOM insertion. */
+export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): RenderedShapeGroup {
+	const { index, drillableIds, instanceId } = ctx
+	const el = index.elements.get(shape.bpmnElement)
+	const { x, y } = shape.bounds
+	const type = el?.type ?? ""
+
+	const place = (
+		group: SVGGElement,
+		layer: ShapeLayer,
+		annotation?: BpmnTextAnnotation,
+	): RenderedShapeGroup => {
+		attr(group, { transform: `translate(${x} ${y})` })
+		return {
+			group,
+			layer,
+			label: null,
+			rendered: { id: shape.bpmnElement, element: group, shape, flowElement: el, annotation },
+		}
+	}
+
+	if (
+		type === "startEvent" ||
+		type === "endEvent" ||
+		type === "intermediateCatchEvent" ||
+		type === "intermediateThrowEvent" ||
+		type === "boundaryEvent"
+	) {
+		return withExternalLabel(place(renderEvent(shape, el, instanceId), "shapes"), shape, el)
+	}
+	if (
+		type === "exclusiveGateway" ||
+		type === "parallelGateway" ||
+		type === "inclusiveGateway" ||
+		type === "eventBasedGateway" ||
+		type === "complexGateway"
+	) {
+		return withExternalLabel(place(renderGateway(shape, el, instanceId), "shapes"), shape, el)
+	}
+	if (type === "dataObjectReference") {
+		return withExternalLabel(
+			place(renderDataObjectReference(shape, el, instanceId), "shapes"),
+			shape,
+			el,
+		)
+	}
+	if (type === "dataStoreReference") {
+		return withExternalLabel(
+			place(renderDataStoreReference(shape, el, instanceId), "shapes"),
+			shape,
+			el,
+		)
+	}
+	if (type === "" && !el) {
+		if (index.groups.has(shape.bpmnElement))
+			return place(renderGroup(shape, instanceId), "containers")
+		const annotation = index.annotations.get(shape.bpmnElement)
+		if (annotation !== undefined) {
+			return place(renderAnnotation(shape, annotation.text, instanceId), "shapes", annotation)
+		}
+		if (index.participants.has(shape.bpmnElement)) {
+			return place(
+				renderPool(shape, index.participants.get(shape.bpmnElement), instanceId),
+				"containers",
+			)
+		}
+		if (index.lanes.has(shape.bpmnElement)) {
+			return place(renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId), "containers")
+		}
+		// Unknown shape — invisible placeholder
+		const g = svgEl("g")
+		attr(g, { "data-bpmnkit-id": shape.bpmnElement, "data-bpmnkit-instance": instanceId })
+		return place(g, "shapes")
+	}
+
+	return withExternalLabel(
+		place(renderTask(shape, el, instanceId, drillableIds.has(shape.bpmnElement)), "shapes"),
+		shape,
+		el,
+	)
+}
+
+const EXTERNAL_LABEL_TYPES = new Set([
+	"startEvent",
+	"endEvent",
+	"intermediateCatchEvent",
+	"intermediateThrowEvent",
+	"boundaryEvent",
+	"exclusiveGateway",
+	"parallelGateway",
+	"inclusiveGateway",
+	"eventBasedGateway",
+	"complexGateway",
+	"dataObjectReference",
+	"dataStoreReference",
+])
+
+/** Attaches an external label (below the shape) to a rendered shape group, if applicable. */
+function withExternalLabel(
+	result: RenderedShapeGroup,
+	shape: BpmnDiShape,
+	el: BpmnFlowElement | undefined,
+): RenderedShapeGroup {
+	if (el?.name && EXTERNAL_LABEL_TYPES.has(el.type)) {
+		const lb = shape.label?.bounds ?? {
+			x: shape.bounds.x + shape.bounds.width / 2 - 40,
+			y: shape.bounds.y + shape.bounds.height + 6,
+			width: 80,
+			height: 20,
+		}
+		// topAlign=true: multi-line text flows downward from the top of the label
+		// bounds, so long labels never extend upward into the shape.
+		result.label = renderExternalLabel(lb.x, lb.y, lb.width, lb.height, el.name, true)
+	}
+	return result
+}
+
+/**
+ * Renders a `BpmnDefinitions` model into SVG element groups, appending them to
+ * the provided layers. Thin wrapper over {@link buildRenderContext} +
+ * {@link renderEdgeGroup}/{@link renderShapeGroup}, retained for existing
+ * callers (the editor). New code should prefer the {@link Scene} class.
+ *
+ * Edges are placed below shapes (rendered first) so connection lines don't
+ * cover shape bodies. Shapes are rendered in DI order so container shapes
+ * (sub-processes) appear before their children.
+ */
+export function render(
+	defs: BpmnDefinitions,
+	containersLayer: SVGGElement,
+	edgesLayer: SVGGElement,
+	shapesLayer: SVGGElement,
+	labelsLayer: SVGGElement,
+	_markerId: string,
+	instanceId: string,
+	/** The DI plane to render. Defaults to the first diagram's plane. */
+	targetPlane?: BpmnDiPlane,
+	/** Element ids that own their own plane and can be drilled into. */
+	drillableIds: ReadonlySet<string> = new Set(),
+): RenderResult {
+	const shapes: RenderedShape[] = []
+	const edges: RenderedEdge[] = []
+
+	const plane = targetPlane ?? defs.diagrams[0]?.plane
+	if (!plane) return { shapes, edges }
+
+	const ctx = buildRenderContext(defs, plane, drillableIds, instanceId)
+
+	for (const edge of plane.edges) {
+		const g = renderEdgeGroup(edge, ctx)
 		edgesLayer.appendChild(g)
 		edges.push({ id: edge.bpmnElement, element: g, edge })
 	}
 
-	// ── Shapes ────────────────────────────────────────────────────────
 	for (const shape of plane.shapes) {
-		const el = index.elements.get(shape.bpmnElement)
-		const { x, y } = shape.bounds
-
-		let g: SVGGElement
-
-		const type = el?.type ?? ""
-		if (
-			type === "startEvent" ||
-			type === "endEvent" ||
-			type === "intermediateCatchEvent" ||
-			type === "intermediateThrowEvent" ||
-			type === "boundaryEvent"
-		) {
-			g = renderEvent(shape, el, instanceId)
-		} else if (
-			type === "exclusiveGateway" ||
-			type === "parallelGateway" ||
-			type === "inclusiveGateway" ||
-			type === "eventBasedGateway" ||
-			type === "complexGateway"
-		) {
-			g = renderGateway(shape, el, instanceId)
-		} else if (type === "dataObjectReference") {
-			g = renderDataObjectReference(shape, el, instanceId)
-		} else if (type === "dataStoreReference") {
-			g = renderDataStoreReference(shape, el, instanceId)
-		} else if (type === "" && !el) {
-			// Could be: text annotation, group, pool (participant), or lane
-			const group = index.groups.get(shape.bpmnElement)
-			if (group !== undefined) {
-				g = renderGroup(shape, instanceId)
-				attr(g, { transform: `translate(${x} ${y})` })
-				containersLayer.appendChild(g)
-				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-				continue
-			}
-			const annotation = index.annotations.get(shape.bpmnElement)
-			if (annotation !== undefined) {
-				g = renderAnnotation(shape, annotation.text, instanceId)
-				attr(g, { transform: `translate(${x} ${y})` })
-				shapesLayer.appendChild(g)
-				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el, annotation })
-				continue
-			}
-			if (index.participants.has(shape.bpmnElement)) {
-				g = renderPool(shape, index.participants.get(shape.bpmnElement), instanceId)
-				attr(g, { transform: `translate(${x} ${y})` })
-				containersLayer.appendChild(g)
-				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-				continue
-			}
-			if (index.lanes.has(shape.bpmnElement)) {
-				g = renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId)
-				attr(g, { transform: `translate(${x} ${y})` })
-				containersLayer.appendChild(g)
-				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-				continue
-			}
-			// Unknown shape — invisible placeholder
-			g = svgEl("g")
-			attr(g, { "data-bpmnkit-id": shape.bpmnElement, "data-bpmnkit-instance": instanceId })
-			attr(g, { transform: `translate(${x} ${y})` })
-			shapesLayer.appendChild(g)
-			shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-			continue
-		} else {
-			g = renderTask(shape, el, instanceId, drillableIds.has(shape.bpmnElement))
-		}
-
-		attr(g, { transform: `translate(${x} ${y})` })
-		shapesLayer.appendChild(g)
-		shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-
-		// External labels for events and gateways — use stored bounds or default to bottom-centred
-		const isExternalLabelType =
-			type === "startEvent" ||
-			type === "endEvent" ||
-			type === "intermediateCatchEvent" ||
-			type === "intermediateThrowEvent" ||
-			type === "boundaryEvent" ||
-			type === "exclusiveGateway" ||
-			type === "parallelGateway" ||
-			type === "inclusiveGateway" ||
-			type === "eventBasedGateway" ||
-			type === "complexGateway" ||
-			type === "dataObjectReference" ||
-			type === "dataStoreReference"
-		if (el?.name && isExternalLabelType) {
-			const lb = shape.label?.bounds ?? {
-				x: shape.bounds.x + shape.bounds.width / 2 - 40,
-				y: shape.bounds.y + shape.bounds.height + 6,
-				width: 80,
-				height: 20,
-			}
-			// topAlign=true: multi-line text flows downward from the top of the
-			// label bounds, so long labels never extend upward into the shape.
-			const labelG = renderExternalLabel(lb.x, lb.y, lb.width, lb.height, el.name, true)
-			labelsLayer.appendChild(labelG)
-		}
-	}
-
-	// Edge labels at their absolute label bounds
-	for (const edge of plane.edges) {
-		const flow = index.flows.get(edge.bpmnElement)
-		if (flow?.name && edge.label?.bounds) {
-			// Already rendered inside the edge group — skip duplicate
-			// (renderEdge adds the label when label.bounds is present)
-		}
+		const { group, layer, label, rendered } = renderShapeGroup(shape, ctx)
+		;(layer === "containers" ? containersLayer : shapesLayer).appendChild(group)
+		if (label) labelsLayer.appendChild(label)
+		shapes.push(rendered)
 	}
 
 	return { shapes, edges }

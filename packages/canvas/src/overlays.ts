@@ -129,6 +129,11 @@ export class OverlayManager {
 		this._overlays.clear()
 	}
 
+	/** Repositions all overlays from their elements' current bounding boxes. */
+	reposition(): void {
+		this._repositionAll()
+	}
+
 	/** Removes the overlay layer and unsubscribes from viewport changes. */
 	destroy(): void {
 		this._unsub()
