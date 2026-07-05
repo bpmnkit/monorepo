@@ -65,6 +65,14 @@
  */
 
 export { BpmnCanvas } from "./canvas.js"
+export { OverlayManager } from "./overlays.js"
+export type {
+	Overlay,
+	OverlayFilter,
+	OverlayHost,
+	OverlayOptions,
+	OverlayPosition,
+} from "./overlays.js"
 export type {
 	CanvasApi,
 	CanvasEvents,
@@ -73,7 +81,9 @@ export type {
 	FitMode,
 	RenderedEdge,
 	RenderedShape,
+	ScreenBox,
 	Theme,
+	Viewbox,
 	ViewportState,
 } from "./types.js"
 

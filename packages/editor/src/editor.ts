@@ -1,5 +1,6 @@
 import {
 	KeyboardHandler,
+	OverlayManager,
 	ViewportController,
 	computeDiagramBounds,
 	createDefs,
@@ -14,6 +15,7 @@ import type {
 	FitMode,
 	RenderedEdge,
 	RenderedShape,
+	ScreenBox,
 	Theme,
 } from "@bpmnkit/canvas"
 import { Bpmn, applyAutoLayout } from "@bpmnkit/core"
@@ -281,6 +283,7 @@ export class BpmnEditor {
 	private readonly _viewport: ViewportController
 	private readonly _keyboard: KeyboardHandler
 	private readonly _overlay: OverlayRenderer
+	private readonly _htmlOverlays: OverlayManager
 	private readonly _commandStack: CommandStack
 	private readonly _stateMachine: EditorStateMachine
 	private readonly _labelEditor: LabelEditor
@@ -375,6 +378,14 @@ export class BpmnEditor {
 			this._gridPattern,
 			(state) => this._emit("viewport:change", state),
 		)
+
+		// ── HTML overlays (element-anchored) ─────────────────────────
+		this._htmlOverlays = new OverlayManager({
+			hostEl: this._host,
+			getScale: () => this._viewport.state.scale,
+			getBBox: (id) => this._absoluteBBox(id),
+			onViewportChange: (cb) => this.on("viewport:change", cb),
+		})
 
 		// ── Overlay ──────────────────────────────────────────────────
 		this._overlay = new OverlayRenderer(this._overlayG, this._markerId)
@@ -590,6 +601,7 @@ export class BpmnEditor {
 		this._commandStack.clear()
 		this._commandStack.push(defs)
 		this._selectedIds = []
+		this._htmlOverlays.clear()
 		this._renderDefs(defs)
 		if (this._fit !== "none") {
 			requestAnimationFrame(() => this.fitView())
@@ -724,6 +736,11 @@ export class BpmnEditor {
 		this._applyTheme(theme)
 	}
 
+	/** HTML overlays anchored to diagram elements (badges, tooltips, panels). */
+	get overlays(): OverlayManager {
+		return this._htmlOverlays
+	}
+
 	zoomIn(): void {
 		const { width, height } = this._svg.getBoundingClientRect()
 		this._viewport.zoomAt(width / 2, height / 2, 1.25)
@@ -780,6 +797,7 @@ export class BpmnEditor {
 		this._ro.disconnect()
 		this._viewport.destroy()
 		this._keyboard.destroy()
+		this._htmlOverlays.destroy()
 		this._labelEditor.destroy()
 		this._svg.removeEventListener("pointerdown", this._onPointerDown)
 		this._svg.removeEventListener("pointermove", this._onPointerMove)
@@ -2195,6 +2213,19 @@ export class BpmnEditor {
 		)
 	}
 
+	/** Element bounding box in screen pixels relative to the host, or `null`. */
+	private _absoluteBBox(id: string): ScreenBox | null {
+		const box = this._boundsById(id)
+		if (!box) return null
+		const { tx, ty, scale } = this._viewport.state
+		return {
+			x: box.x * scale + tx,
+			y: box.y * scale + ty,
+			width: box.width * scale,
+			height: box.height * scale,
+		}
+	}
+
 	/** Diagram-coordinate bounds of a shape (from DI) or edge (waypoint bbox). */
 	private _boundsById(id: string): { x: number; y: number; width: number; height: number } | null {
 		const shape = this._shapes.find((s) => s.id === id)
@@ -2226,6 +2257,7 @@ export class BpmnEditor {
 			getEdges: () => [...this._edges],
 			getTheme: () => this._theme,
 			setTheme: (theme) => this.setTheme(theme),
+			overlays: this._htmlOverlays,
 			addMarker(id, cls) {
 				self._elementById(id)?.classList.add(cls)
 			},
@@ -2257,15 +2289,7 @@ export class BpmnEditor {
 				self.scrollToElement(id)
 			},
 			getAbsoluteBBox(id) {
-				const box = self._boundsById(id)
-				if (!box) return null
-				const { tx, ty, scale } = self._viewport.state
-				return {
-					x: box.x * scale + tx,
-					y: box.y * scale + ty,
-					width: box.width * scale,
-					height: box.height * scale,
-				}
+				return self._absoluteBBox(id)
 			},
 			on<K extends keyof CanvasEvents>(event: K, handler: CanvasEvents[K]) {
 				return self.on(event as keyof EditorEvents, handler as EditorEvents[keyof EditorEvents])

@@ -5,6 +5,7 @@ import type {
 	BpmnFlowElement,
 	BpmnTextAnnotation,
 } from "@bpmnkit/core"
+import type { OverlayManager } from "./overlays.js"
 
 /** The color theme applied to the canvas. */
 export type Theme = "light" | "dark" | "auto" | "neon"
@@ -183,6 +184,9 @@ export interface CanvasApi {
 
 	/** Sets the color theme. Pass `"auto"` to follow the OS preference. */
 	setTheme(theme: Theme): void
+
+	/** HTML overlays anchored to diagram elements. */
+	readonly overlays: OverlayManager
 
 	/** Adds a CSS class to the element with the given BPMN id. No-op if not found. */
 	addMarker(id: string, cls: string): void

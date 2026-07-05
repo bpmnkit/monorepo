@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Generic element-anchored overlay API
+
+Implemented P1-2 from `doc/render-gap-analysis.md`: a new `OverlayManager` (`packages/canvas/src/overlays.ts`) provides HTML overlays anchored to diagram elements — `overlays.add/remove/get/clear` with `position` (top/bottom/left/right offsets), `show:{minZoom,maxZoom}`, `scale` (bool or clamp; default scales 1:1 with zoom), and `type` tags. Overlays live in a dedicated HTML layer above the SVG and reposition on `viewport:change` from each element's screen bbox. Exposed as `canvas.overlays`/`editor.overlays` and on the `CanvasApi` plugin surface, so roadmap items (pattern-advisor badges, variable-flow, timeline, optimize overlay) are now unblocked. Factored as one shared manager (host adapter supplies scale/bbox/subscription) so canvas and editor don't duplicate it. New `Overlay*` types exported from `@bpmnkit/canvas`. Tests: 48 canvas (up from 39), editor/plugins/operate green.
+
 ## 2026-07-05 — Canvas connection docking (crop edges to shape outline)
 
 Implemented P1-6 from `doc/render-gap-analysis.md` in `@bpmnkit/canvas` (`renderer.ts`): connection endpoints are now cropped onto the true shape outline — circle for events, diamond for gateways, rectangle otherwise — via pure-math `dockPoint()`/`cropWaypoints()`/`geomKind()`, so arrows meet circles and diamonds cleanly instead of floating at the bounding-box corner. Applied to sequence flows, message flows, and associations at render time; DI waypoints are never mutated, so the editor's routing is unaffected. The model index now maps message flows by id (was a set). Test added (`connection docking`); 39 canvas tests pass, editor/plugins/operate all green.

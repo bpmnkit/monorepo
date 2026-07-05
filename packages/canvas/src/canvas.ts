@@ -2,6 +2,7 @@ import { Bpmn } from "@bpmnkit/core"
 import type { BpmnDefinitions } from "@bpmnkit/core"
 import { injectStyles } from "./css.js"
 import { KeyboardHandler } from "./keyboard.js"
+import { OverlayManager } from "./overlays.js"
 import { computeDiagramBounds, createDefs, createGrid, render } from "./renderer.js"
 import type {
 	CanvasApi,
@@ -84,6 +85,7 @@ export class BpmnCanvas {
 	// ── Sub-systems ───────────────────────────────────────────────────
 	private readonly _viewport: ViewportController
 	private readonly _keyboard: KeyboardHandler
+	private readonly _overlays: OverlayManager
 	private readonly _plugins: CanvasPlugin[] = []
 
 	// ── State ─────────────────────────────────────────────────────────
@@ -161,6 +163,14 @@ export class BpmnCanvas {
 				this._emit("viewport:change", state)
 			},
 		)
+
+		// ── Overlays ──────────────────────────────────────────────────
+		this._overlays = new OverlayManager({
+			hostEl: this._host,
+			getScale: () => this._viewport.state.scale,
+			getBBox: (id) => this.getAbsoluteBBox(id),
+			onViewportChange: (cb) => this.on("viewport:change", cb),
+		})
 
 		// ── Keyboard ──────────────────────────────────────────────────
 		this._keyboard = new KeyboardHandler(
@@ -276,6 +286,7 @@ export class BpmnCanvas {
 		this._shapes = []
 		this._edges = []
 		this._markers.clear()
+		this._overlays.clear()
 		this._hoverId = null
 		// A freshly loaded diagram should auto-fit again until the user interacts.
 		this._userMovedViewport = false
@@ -313,6 +324,7 @@ export class BpmnCanvas {
 		this._shapes = []
 		this._edges = []
 		this._markers.clear()
+		this._overlays.clear()
 		this._hoverId = null
 		this._currentDefs = null
 		this._emit("diagram:clear")
@@ -352,6 +364,20 @@ export class BpmnCanvas {
 	setTheme(theme: Theme): void {
 		this._theme = theme
 		this._applyTheme(theme)
+	}
+
+	/**
+	 * HTML overlays anchored to diagram elements (badges, tooltips, panels).
+	 * @example
+	 * ```typescript
+	 * canvas.overlays.add("Task_1", {
+	 *   position: { top: -8, right: -8 },
+	 *   html: `<span class="badge">!</span>`,
+	 * });
+	 * ```
+	 */
+	get overlays(): OverlayManager {
+		return this._overlays
 	}
 
 	/** Zooms in by 25% centred on the canvas. */
@@ -508,6 +534,7 @@ export class BpmnCanvas {
 		this._ro.disconnect()
 		this._viewport.destroy()
 		this._keyboard.destroy()
+		this._overlays.destroy()
 		for (const plugin of this._plugins) plugin.uninstall?.()
 		this._plugins.length = 0
 		this._listeners.clear()
@@ -587,6 +614,7 @@ export class BpmnCanvas {
 			getEdges: () => [...this._edges],
 			getTheme: () => this._theme,
 			setTheme: (theme) => this.setTheme(theme),
+			overlays: this._overlays,
 			addMarker: (id, cls) => this.addMarker(id, cls),
 			removeMarker: (id, cls) => this.removeMarker(id, cls),
 			hasMarker: (id, cls) => this.hasMarker(id, cls),

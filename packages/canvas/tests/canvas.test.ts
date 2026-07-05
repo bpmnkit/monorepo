@@ -2,8 +2,10 @@ import { Bpmn } from "@bpmnkit/core"
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { BpmnCanvas } from "../src/canvas.js"
+import { OverlayManager } from "../src/overlays.js"
+import type { OverlayHost } from "../src/overlays.js"
 import { computeDiagramBounds } from "../src/renderer.js"
-import type { CanvasPlugin } from "../src/types.js"
+import type { CanvasPlugin, ScreenBox } from "../src/types.js"
 
 // ── Fixture ───────────────────────────────────────────────────────────────────
 
@@ -568,5 +570,132 @@ describe("viewport API", () => {
 		if (!box) throw new Error("no box")
 		// Element centre x maps to the viewport centre x (clientWidth/2).
 		expect(box.x + box.width / 2).toBeCloseTo((vb.width * vb.scale) / 2, 5)
+	})
+})
+
+// ── Overlays (P1-2) ──────────────────────────────────────────────────────────────
+
+describe("overlays", () => {
+	let container: HTMLElement
+	let canvas: BpmnCanvas
+
+	beforeEach(() => {
+		container = makeContainer()
+		canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+	})
+
+	function overlayLayer(): HTMLElement {
+		const layer = container.querySelector<HTMLElement>(".bpmnkit-overlays")
+		if (!layer) throw new Error("no overlay layer")
+		return layer
+	}
+
+	it("adds an overlay node into the overlay layer", () => {
+		const id = canvas.overlays.add("task", { position: { top: 0, left: 0 }, html: "<b>hi</b>" })
+		expect(typeof id).toBe("string")
+		expect(overlayLayer().querySelector("b")?.textContent).toBe("hi")
+	})
+
+	it("get() and remove() work by id and by filter", () => {
+		canvas.overlays.add("task", { position: { top: 0 }, html: "a", type: "badge" })
+		const id2 = canvas.overlays.add("start", { position: { top: 0 }, html: "b", type: "badge" })
+		expect(canvas.overlays.get({ type: "badge" })).toHaveLength(2)
+		expect(canvas.overlays.get({ element: "task" })).toHaveLength(1)
+		canvas.overlays.remove(id2)
+		expect(canvas.overlays.get()).toHaveLength(1)
+		canvas.overlays.remove({ type: "badge" })
+		expect(canvas.overlays.get()).toHaveLength(0)
+	})
+
+	it("hides an overlay whose element is missing", () => {
+		canvas.overlays.add("nope", { position: { top: 0 }, html: "x" })
+		const node = overlayLayer().firstElementChild as HTMLElement
+		expect(node.style.display).toBe("none")
+	})
+
+	it("clears overlays when a new diagram loads", () => {
+		canvas.overlays.add("task", { position: { top: 0 }, html: "x" })
+		canvas.load(SIMPLE_XML)
+		expect(canvas.overlays.get()).toHaveLength(0)
+	})
+
+	it("removes the overlay layer on destroy", () => {
+		canvas.destroy()
+		expect(container.querySelector(".bpmnkit-overlays")).toBeNull()
+	})
+})
+
+describe("OverlayManager (positioning)", () => {
+	function makeStub() {
+		let scale = 1
+		const boxes = new Map<string, ScreenBox | null>()
+		let cb: () => void = () => {}
+		const hostEl = document.createElement("div")
+		document.body.appendChild(hostEl)
+		const host: OverlayHost = {
+			hostEl,
+			getScale: () => scale,
+			getBBox: (id) => boxes.get(id) ?? null,
+			onViewportChange: (fn) => {
+				cb = fn
+				return () => {}
+			},
+		}
+		return {
+			host,
+			setScale: (s: number) => {
+				scale = s
+			},
+			setBox: (id: string, b: ScreenBox) => boxes.set(id, b),
+			fire: () => cb(),
+			node: () => hostEl.querySelector<HTMLElement>(".bpmnkit-overlays > div"),
+		}
+	}
+
+	it("anchors from top/left at the element's box", () => {
+		const stub = makeStub()
+		stub.setBox("a", { x: 10, y: 20, width: 30, height: 40 })
+		const m = new OverlayManager(stub.host)
+		m.add("a", { position: { top: 2, left: 3 }, html: "x" })
+		const node = stub.node()
+		expect(node?.style.left).toBe("13px")
+		expect(node?.style.top).toBe("22px")
+	})
+
+	it("anchors from right/bottom with translate", () => {
+		const stub = makeStub()
+		stub.setBox("a", { x: 0, y: 0, width: 100, height: 50 })
+		const m = new OverlayManager(stub.host)
+		m.add("a", { position: { right: 5, bottom: 5 }, html: "x", scale: false })
+		const node = stub.node()
+		expect(node?.style.left).toBe("95px")
+		expect(node?.style.top).toBe("45px")
+		expect(node?.style.transform).toContain("translateX(-100%)")
+		expect(node?.style.transform).toContain("translateY(-100%)")
+	})
+
+	it("hides and shows across its zoom range on viewport change", () => {
+		const stub = makeStub()
+		stub.setBox("a", { x: 0, y: 0, width: 10, height: 10 })
+		const m = new OverlayManager(stub.host)
+		m.add("a", { position: { top: 0 }, html: "x", show: { maxZoom: 2 } })
+		const node = stub.node()
+		expect(node?.style.display).toBe("")
+		stub.setScale(5)
+		stub.fire()
+		expect(node?.style.display).toBe("none")
+		stub.setScale(1)
+		stub.fire()
+		expect(node?.style.display).toBe("")
+	})
+
+	it("scales 1:1 with zoom by default", () => {
+		const stub = makeStub()
+		stub.setBox("a", { x: 0, y: 0, width: 10, height: 10 })
+		const m = new OverlayManager(stub.host)
+		m.add("a", { position: { top: 0 }, html: "x" })
+		stub.setScale(3)
+		stub.fire()
+		expect(stub.node()?.style.transform).toContain("scale(3)")
 	})
 })

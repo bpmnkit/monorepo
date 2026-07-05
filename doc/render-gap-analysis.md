@@ -206,7 +206,9 @@ Events with more than one event definition now render the "multiple" pentagon (f
 - Editor no longer imports `createDefs/createGrid/injectStyles` directly; one host implementation remains.
 - All existing canvas/editor/plugins tests pass unchanged (API compatible).
 
-#### P1-2 · Generic overlay API — **M**
+#### P1-2 · Generic overlay API — **M** — ✅ DONE (2026-07-05)
+New `OverlayManager` (`packages/canvas/src/overlays.ts`) provides `overlays.add/remove/get/clear` with `position` (top/bottom/left/right offsets, right/bottom via translate), `show:{minZoom,maxZoom}`, `scale` (bool or `{min,max}`, default scales 1:1), and `type` tags. Exposed as `canvas.overlays` / `editor.overlays` and on the `CanvasApi` plugin surface. Overlays live in a dedicated HTML layer above the SVG and reposition on `viewport:change` from each element's screen bbox; cleared on load/clear, torn down on destroy. Factored as a shared manager so the canvas and editor don't duplicate it (host adapter provides scale/bbox/subscription). Tests in `overlays` and `OverlayManager (positioning)`.
+
 **Problem:** No element-anchored HTML overlays; roadmap explicitly needs them (pattern-advisor badges `roadmap.md:35-36`, optimize overlay `:52`, variable-flow `:68`, timeline `:77-79`). Token highlight resorts to CSS classes + detached side panels.
 **Spec:** Port the bpmn-js overlays semantics into a canvas subsystem (no new package):
 ```ts
