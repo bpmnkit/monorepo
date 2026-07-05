@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Canvas connection docking (crop edges to shape outline)
+
+Implemented P1-6 from `doc/render-gap-analysis.md` in `@bpmnkit/canvas` (`renderer.ts`): connection endpoints are now cropped onto the true shape outline — circle for events, diamond for gateways, rectangle otherwise — via pure-math `dockPoint()`/`cropWaypoints()`/`geomKind()`, so arrows meet circles and diamonds cleanly instead of floating at the bounding-box corner. Applied to sequence flows, message flows, and associations at render time; DI waypoints are never mutated, so the editor's routing is unaffected. The model index now maps message flows by id (was a set). Test added (`connection docking`); 39 canvas tests pass, editor/plugins/operate all green.
+
 ## 2026-07-05 — Canvas API: markers, interaction events, viewport/navigation
 
 Implemented the small self-contained P1 API items from `doc/render-gap-analysis.md` across `@bpmnkit/canvas` and `@bpmnkit/editor`:

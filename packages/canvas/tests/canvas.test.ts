@@ -386,6 +386,45 @@ describe("connection decorations", () => {
 	})
 })
 
+// ── Connection docking (P1-6) ────────────────────────────────────────────────────
+
+describe("connection docking", () => {
+	// A diagonal flow from a task into a circular catch event. The event bounds
+	// are 200,200 36×36 → centre (218,218), radius 18.
+	const DOCK_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="d" targetNamespace="t">
+  <bpmn:process id="proc">
+    <bpmn:task id="t"><bpmn:outgoing>f</bpmn:outgoing></bpmn:task>
+    <bpmn:intermediateCatchEvent id="ev"><bpmn:incoming>f</bpmn:incoming></bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="f" sourceRef="t" targetRef="ev"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc">
+    <bpmndi:BPMNShape id="t_di" bpmnElement="t"><dc:Bounds x="0" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ev_di" bpmnElement="ev"><dc:Bounds x="200" y="200" width="36" height="36"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="f_di" bpmnElement="f"><di:waypoint x="50" y="80"/><di:waypoint x="200" y="200"/></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+
+	it("crops the connection endpoint onto the circular event outline", () => {
+		const container = renderXml(DOCK_XML)
+		const d = container
+			.querySelector('[data-bpmnkit-id="f"] path.bpmnkit-edge-path')
+			?.getAttribute("d")
+		if (!d) throw new Error("no path")
+		const m = d.match(/L([-\d.]+),([-\d.]+)[^L]*$/)
+		if (!m) throw new Error(`no terminal L in ${d}`)
+		const ex = Number.parseFloat(m[1] ?? "")
+		const ey = Number.parseFloat(m[2] ?? "")
+		// Endpoint lies on the circle (distance 18 from the centre)…
+		expect(Math.hypot(ex - 218, ey - 218)).toBeCloseTo(18, 3)
+		// …and is no longer the raw bounding-box corner (200,200).
+		expect(Math.abs(ex - 200)).toBeGreaterThan(1)
+	})
+})
+
 // ── Marker API (P1-3) ───────────────────────────────────────────────────────────
 
 describe("marker API", () => {

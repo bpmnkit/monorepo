@@ -5,6 +5,7 @@ import type {
 	BpmnDiShape,
 	BpmnFlowElement,
 	BpmnLane,
+	BpmnMessageFlow,
 	BpmnParticipant,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
@@ -142,6 +143,92 @@ function waypointsToRoundedPath(waypoints: ReadonlyArray<{ x: number; y: number 
 	}
 
 	return parts.join(" ")
+}
+
+// ── Connection docking ─────────────────────────────────────────────────────────
+
+interface Point {
+	x: number
+	y: number
+}
+
+/** The outline used to crop a connection to a shape. */
+interface ShapeGeom {
+	x: number
+	y: number
+	width: number
+	height: number
+	kind: "circle" | "diamond" | "rect"
+}
+
+/**
+ * Returns the point on `geom`'s outline along the ray from its centre toward
+ * `toward`. Used to dock connection endpoints onto the true shape outline
+ * (circle for events, diamond for gateways) instead of the bounding box.
+ */
+function dockPoint(geom: ShapeGeom, toward: Point): Point {
+	const cx = geom.x + geom.width / 2
+	const cy = geom.y + geom.height / 2
+	const dx = toward.x - cx
+	const dy = toward.y - cy
+	if (dx === 0 && dy === 0) return { x: cx, y: cy }
+
+	if (geom.kind === "circle") {
+		const r = Math.min(geom.width, geom.height) / 2
+		const len = Math.sqrt(dx * dx + dy * dy)
+		return { x: cx + (dx / len) * r, y: cy + (dy / len) * r }
+	}
+
+	if (geom.kind === "diamond") {
+		// Ray/diamond intersection: |t·dx|/(w/2) + |t·dy|/(h/2) = 1
+		const t = 1 / (Math.abs(dx) / (geom.width / 2) + Math.abs(dy) / (geom.height / 2))
+		return { x: cx + dx * t, y: cy + dy * t }
+	}
+
+	// Rectangle: scale the ray to the nearest border.
+	const tx = dx !== 0 ? geom.width / 2 / Math.abs(dx) : Number.POSITIVE_INFINITY
+	const ty = dy !== 0 ? geom.height / 2 / Math.abs(dy) : Number.POSITIVE_INFINITY
+	const t = Math.min(tx, ty)
+	return { x: cx + dx * t, y: cy + dy * t }
+}
+
+/**
+ * Crops the first and last segments of `waypoints` to the source and target
+ * shape outlines. Display-only — the DI waypoints are never mutated.
+ */
+function cropWaypoints(
+	waypoints: ReadonlyArray<Point>,
+	source: ShapeGeom | undefined,
+	target: ShapeGeom | undefined,
+): Point[] {
+	const out = waypoints.map((w) => ({ x: w.x, y: w.y }))
+	if (out.length < 2) return out
+	if (source) {
+		const next = out[1]
+		const first = out[0]
+		if (next && first) out[0] = dockPoint(source, next)
+	}
+	if (target) {
+		const prev = out[out.length - 2]
+		const last = out[out.length - 1]
+		if (prev && last) out[out.length - 1] = dockPoint(target, prev)
+	}
+	return out
+}
+
+/** Classifies a shape's docking outline from its BPMN element type. */
+function geomKind(type: string | undefined): ShapeGeom["kind"] {
+	if (
+		type === "startEvent" ||
+		type === "endEvent" ||
+		type === "intermediateCatchEvent" ||
+		type === "intermediateThrowEvent" ||
+		type === "boundaryEvent"
+	) {
+		return "circle"
+	}
+	if (type?.endsWith("Gateway")) return "diamond"
+	return "rect"
 }
 
 // ── Task type icons (14×14, origin at 0,0) ───────────────────────────────────
@@ -314,8 +401,8 @@ interface ModelIndex {
 	lanes: Map<string, BpmnLane>
 	/** id → BpmnAssociation */
 	associations: Map<string, BpmnAssociation>
-	/** id → messageFlow (stored by id for edge rendering) */
-	messageFlowIds: Set<string>
+	/** id → BpmnMessageFlow */
+	messageFlows: Map<string, BpmnMessageFlow>
 	/** IDs of sequence flows that are the default flow of their source gateway */
 	defaultFlowIds: Set<string>
 }
@@ -327,7 +414,7 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 	const participants = new Map<string, BpmnParticipant>()
 	const lanes = new Map<string, BpmnLane>()
 	const associations = new Map<string, BpmnAssociation>()
-	const messageFlowIds = new Set<string>()
+	const messageFlows = new Map<string, BpmnMessageFlow>()
 	const defaultFlowIds = new Set<string>()
 
 	function indexProcess(flowElements: BpmnFlowElement[], sequenceFlows: BpmnSequenceFlow[]): void {
@@ -383,7 +470,7 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 			associations.set(assoc.id, assoc)
 		}
 		for (const mf of collab.messageFlows) {
-			messageFlowIds.add(mf.id)
+			messageFlows.set(mf.id, mf)
 		}
 	}
 	return {
@@ -393,7 +480,7 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		participants,
 		lanes,
 		associations,
-		messageFlowIds,
+		messageFlows,
 		defaultFlowIds,
 	}
 }
@@ -759,6 +846,7 @@ function renderEdge(
 	instanceId: string,
 	isDefault: boolean,
 	isConditional: boolean,
+	waypoints: ReadonlyArray<Point>,
 ): SVGGElement {
 	const ids = markerIds(instanceId)
 	const g = svgEl("g")
@@ -767,11 +855,11 @@ function renderEdge(
 		"data-bpmnkit-id": edge.bpmnElement,
 	})
 
-	if (edge.waypoints.length < 2) return g
+	if (waypoints.length < 2) return g
 
 	const path = svgEl("path")
 	const pathAttrs: Record<string, string> = {
-		d: waypointsToRoundedPath(edge.waypoints),
+		d: waypointsToRoundedPath(waypoints),
 		class: "bpmnkit-edge-path",
 		"marker-end": `url(#${ids.arrow})`,
 	}
@@ -784,7 +872,7 @@ function renderEdge(
 	// Wide transparent stroke so the edge is easy to click
 	const hitPath = svgEl("path")
 	attr(hitPath, {
-		d: waypointsToRoundedPath(edge.waypoints),
+		d: waypointsToRoundedPath(waypoints),
 		fill: "none",
 		stroke: "transparent",
 		"stroke-width": "12",
@@ -794,8 +882,8 @@ function renderEdge(
 
 	// Default-flow slash mark near the source end
 	if (isDefault) {
-		const wp0 = edge.waypoints[0]
-		const wp1 = edge.waypoints[1]
+		const wp0 = waypoints[0]
+		const wp1 = waypoints[1]
 		if (wp0 && wp1) {
 			const dx = wp1.x - wp0.x
 			const dy = wp1.y - wp0.y
@@ -834,6 +922,7 @@ function renderAssociation(
 	edge: BpmnDiEdge,
 	association: BpmnAssociation | undefined,
 	instanceId: string,
+	waypoints: ReadonlyArray<Point>,
 ): SVGGElement {
 	const ids = markerIds(instanceId)
 	const g = svgEl("g")
@@ -841,7 +930,7 @@ function renderAssociation(
 
 	const path = svgEl("path")
 	const pathAttrs: Record<string, string> = {
-		d: waypointsToRoundedPath(edge.waypoints),
+		d: waypointsToRoundedPath(waypoints),
 		class: "bpmnkit-edge-assoc",
 	}
 	// Directed associations get an open arrowhead; "Both" is bidirectional.
@@ -983,6 +1072,20 @@ export function render(
 	const plane = defs.diagrams[0]?.plane
 	if (!plane) return { shapes, edges }
 
+	// Docking geometry: id → outline, so connections can be cropped to the true
+	// shape outline (circle/diamond) rather than the bounding box.
+	const geomById = new Map<string, ShapeGeom>()
+	for (const shape of plane.shapes) {
+		const { x, y, width, height } = shape.bounds
+		geomById.set(shape.bpmnElement, {
+			x,
+			y,
+			width,
+			height,
+			kind: geomKind(index.elements.get(shape.bpmnElement)?.type),
+		})
+	}
+
 	// ── Edges ─────────────────────────────────────────────────────────
 	for (const edge of plane.edges) {
 		const flow = index.flows.get(edge.bpmnElement)
@@ -995,17 +1098,28 @@ export function render(
 			const source = index.elements.get(flow.sourceRef)
 			const sourceIsGateway = source?.type.endsWith("Gateway") ?? false
 			const isConditional = !!flow.conditionExpression && !isDefault && !sourceIsGateway
-			g = renderEdge(edge, flow, instanceId, isDefault, isConditional)
-		} else if (index.messageFlowIds.has(edge.bpmnElement)) {
+			const wps = cropWaypoints(
+				edge.waypoints,
+				geomById.get(flow.sourceRef),
+				geomById.get(flow.targetRef),
+			)
+			g = renderEdge(edge, flow, instanceId, isDefault, isConditional, wps)
+		} else if (index.messageFlows.has(edge.bpmnElement)) {
 			// Message flow — dashed line with a hollow source circle and an open
 			// arrowhead at the target.
 			g = svgEl("g")
 			attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
 			if (edge.waypoints.length >= 2) {
+				const mf = index.messageFlows.get(edge.bpmnElement)
+				const wps = cropWaypoints(
+					edge.waypoints,
+					mf ? geomById.get(mf.sourceRef) : undefined,
+					mf ? geomById.get(mf.targetRef) : undefined,
+				)
 				const ids = markerIds(instanceId)
 				const path = svgEl("path")
 				attr(path, {
-					d: waypointsToRoundedPath(edge.waypoints),
+					d: waypointsToRoundedPath(wps),
 					class: "bpmnkit-msgflow-path",
 					"marker-start": `url(#${ids.messageStart})`,
 					"marker-end": `url(#${ids.openArrow})`,
@@ -1014,7 +1128,13 @@ export function render(
 			}
 		} else {
 			// Association or unknown edge type
-			g = renderAssociation(edge, index.associations.get(edge.bpmnElement), instanceId)
+			const assoc = index.associations.get(edge.bpmnElement)
+			const wps = cropWaypoints(
+				edge.waypoints,
+				assoc ? geomById.get(assoc.sourceRef) : undefined,
+				assoc ? geomById.get(assoc.targetRef) : undefined,
+			)
+			g = renderAssociation(edge, assoc, instanceId, wps)
 		}
 
 		edgesLayer.appendChild(g)
