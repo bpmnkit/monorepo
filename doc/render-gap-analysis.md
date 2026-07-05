@@ -135,7 +135,9 @@ Effort: **S** ≤ 1 day · **M** ≤ 3 days · **L** ≤ 2 weeks. Items are orde
 
 ### P0 — Rendering correctness (real diagrams render wrong today)
 
-#### P0-1 · Multi-plane rendering + collapsed-subprocess drilldown — **L**
+#### P0-1 · Multi-plane rendering + collapsed-subprocess drilldown — **L** — ✅ DONE (viewer) (2026-07-05)
+Core adds `planeForElement()`/`listPlaneElementIds()` (`packages/core/src/bpmn/di-planes.ts`). The renderer's `render()`/`computeDiagramBounds()` now take an explicit `targetPlane` (+ `drillableIds`), and `BpmnCanvas` tracks a current plane and breadcrumb stack: `getPlanes()`, `showPlane(planeElementId)`, and a `plane:change` event. Collapsed sub-processes that own a plane render a clickable drill-down `+` button (`data-bpmnkit-drilldown`); a breadcrumb bar navigates back. Multi-`BPMNDiagram` files list all planes and each renders. Single-plane files are unchanged (`load()`/`render()` back-compatible via optional params). Tests in `collapsed sub-process drilldown` (6). **Deferred:** in-sub-process *editing* in `@bpmnkit/editor` (spec item #4) — the editor still renders the primary plane only; plane-switching the editor's state machine + DI writes is a separate change.
+
 **Problem:** `render()` reads only `defs.diagrams[0].plane` (`packages/canvas/src/renderer.ts:867`). BPMN files from Camunda Modeler/bpmn-js put collapsed-subprocess content on **separate `BPMNDiagram` planes** — that content is silently invisible. Multi-diagram files lose everything after the first diagram.
 **Spec:**
 1. Core already parses all diagrams (`bpmn-parser.ts:668-748`); add a resolver `planeForElement(defs, bpmnElementId)` in core that maps plane → its `bpmnElement` (process / collapsed subprocess id).

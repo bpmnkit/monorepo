@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-07-05 — Multi-plane rendering + collapsed sub-process drilldown (viewer)
+
+Implemented P0-1 from `doc/render-gap-analysis.md` for the viewer. BPMN files that put a collapsed sub-process's content on a separate `BPMNDiagram` plane (as Camunda Modeler / bpmn-js do) were previously invisible — only `diagrams[0]` rendered.
+
+- **Core**: `planeForElement(defs, id)` and `listPlaneElementIds(defs)` (`packages/core/src/bpmn/di-planes.ts`), exported from `@bpmnkit/core`.
+- **Renderer**: `render()` and `computeDiagramBounds()` take an explicit `targetPlane` (defaulting to the first plane, so existing callers — including the editor — are unaffected) plus a `drillableIds` set. Collapsed sub-processes that own a plane render a clickable drill-down `+` button (`data-bpmnkit-drilldown`).
+- **Canvas**: tracks a current plane and a breadcrumb stack. New public API `getPlanes()`, `showPlane(planeElementId)`, and a `plane:change` event; a breadcrumb bar (`.bpmnkit-breadcrumb`) navigates back up the hierarchy. Clicking the drill-down button opens the sub-process's plane. New `PlaneInfo` type exported.
+
+Deferred: in-sub-process *editing* in `@bpmnkit/editor` (spec item #4) — the editor still renders the primary plane only. Tests: 54 canvas (up from 48); core/editor/plugins/operate all build + typecheck + test green.
+
 ## 2026-07-05 — Generic element-anchored overlay API
 
 Implemented P1-2 from `doc/render-gap-analysis.md`: a new `OverlayManager` (`packages/canvas/src/overlays.ts`) provides HTML overlays anchored to diagram elements — `overlays.add/remove/get/clear` with `position` (top/bottom/left/right offsets), `show:{minZoom,maxZoom}`, `scale` (bool or clamp; default scales 1:1 with zoom), and `type` tags. Overlays live in a dedicated HTML layer above the SVG and reposition on `viewport:change` from each element's screen bbox. Exposed as `canvas.overlays`/`editor.overlays` and on the `CanvasApi` plugin surface, so roadmap items (pattern-advisor badges, variable-flow, timeline, optimize overlay) are now unblocked. Factored as one shared manager (host adapter supplies scale/bbox/subscription) so canvas and editor don't duplicate it. New `Overlay*` types exported from `@bpmnkit/canvas`. Tests: 48 canvas (up from 39), editor/plugins/operate green.

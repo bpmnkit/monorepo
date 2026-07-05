@@ -2,6 +2,7 @@ import type {
 	BpmnAssociation,
 	BpmnDefinitions,
 	BpmnDiEdge,
+	BpmnDiPlane,
 	BpmnDiShape,
 	BpmnFlowElement,
 	BpmnLane,
@@ -347,7 +348,7 @@ const MARKER_GLYPHS = {
  *
  * Callers translate the returned group to the bottom-centre of the activity.
  */
-function activityMarkers(el: BpmnFlowElement, shape: BpmnDiShape): string {
+function activityMarkers(el: BpmnFlowElement, shape: BpmnDiShape, skipCollapsed = false): string {
 	const glyphs: string[] = []
 	const type = el.type
 
@@ -362,13 +363,17 @@ function activityMarkers(el: BpmnFlowElement, shape: BpmnDiShape): string {
 	if (type === "adHocSubProcess") glyphs.push(MARKER_GLYPHS.adHoc)
 
 	// Collapsed marker: call activities always show it; sub-process variants
-	// show it only when collapsed (not expanded into visible children).
+	// show it only when collapsed (not expanded into visible children). Skipped
+	// when the caller renders an interactive drill-down button instead.
 	const isSubProcessType =
 		type === "subProcess" ||
 		type === "adHocSubProcess" ||
 		type === "eventSubProcess" ||
 		type === "transaction"
-	if (type === "callActivity" || (isSubProcessType && shape.isExpanded !== true)) {
+	if (
+		!skipCollapsed &&
+		(type === "callActivity" || (isSubProcessType && shape.isExpanded !== true))
+	) {
 		glyphs.push(MARKER_GLYPHS.collapsed)
 	}
 
@@ -575,6 +580,7 @@ function renderTask(
 	shape: BpmnDiShape,
 	el: BpmnFlowElement | undefined,
 	instanceId: string,
+	drillable = false,
 ): SVGGElement {
 	const { width, height } = shape.bounds
 
@@ -632,15 +638,33 @@ function renderTask(
 	}
 
 	// Activity markers (multi-instance, compensation, ad-hoc, collapsed `+`)
-	// at bottom centre.
+	// at bottom centre. Drillable sub-processes render the collapsed `+` via the
+	// interactive drill-down button below, so it is skipped here.
 	if (el) {
-		const markers = activityMarkers(el, shape)
+		const markers = activityMarkers(el, shape, drillable)
 		if (markers) {
 			const markerG = svgEl("g")
 			attr(markerG, { transform: `translate(${width / 2} ${height - 10})` })
 			markerG.innerHTML = markers
 			g.appendChild(markerG)
 		}
+	}
+
+	// Drill-down affordance: a clickable `+` button at bottom centre that opens
+	// the sub-process's own plane.
+	if (drillable) {
+		const btn = svgEl("g")
+		attr(btn, {
+			class: "bpmnkit-drilldown",
+			transform: `translate(${width / 2} ${height - 10})`,
+			"data-bpmnkit-drilldown": shape.bpmnElement,
+			"aria-label": "Open sub-process",
+			role: "button",
+		})
+		btn.innerHTML =
+			`<rect x="-8" y="-8" width="16" height="16" rx="2" class="bpmnkit-drilldown-box"/>` +
+			`<path d="M0 -4v8M-4 0h8" class="bpmnkit-icon"/>`
+		g.appendChild(btn)
 	}
 
 	const label = el?.name ?? el?.type ?? "task"
@@ -1064,12 +1088,16 @@ export function render(
 	labelsLayer: SVGGElement,
 	markerId: string,
 	instanceId: string,
+	/** The DI plane to render. Defaults to the first diagram's plane. */
+	targetPlane?: BpmnDiPlane,
+	/** Element ids that own their own plane and can be drilled into. */
+	drillableIds: ReadonlySet<string> = new Set(),
 ): RenderResult {
 	const index = buildIndex(defs)
 	const shapes: RenderedShape[] = []
 	const edges: RenderedEdge[] = []
 
-	const plane = defs.diagrams[0]?.plane
+	const plane = targetPlane ?? defs.diagrams[0]?.plane
 	if (!plane) return { shapes, edges }
 
 	// Docking geometry: id → outline, so connections can be cropped to the true
@@ -1197,7 +1225,7 @@ export function render(
 			shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
 			continue
 		} else {
-			g = renderTask(shape, el, instanceId)
+			g = renderTask(shape, el, instanceId, drillableIds.has(shape.bpmnElement))
 		}
 
 		attr(g, { transform: `translate(${x} ${y})` })
@@ -1252,11 +1280,14 @@ export interface DiagramBounds {
 }
 
 /**
- * Computes the bounding box of all shapes in the first DI diagram plane.
- * Returns `null` if the diagram has no shapes.
+ * Computes the bounding box of all shapes in a DI plane (the first diagram's
+ * plane by default). Returns `null` if the plane has no shapes.
  */
-export function computeDiagramBounds(defs: BpmnDefinitions): DiagramBounds | null {
-	const plane = defs.diagrams[0]?.plane
+export function computeDiagramBounds(
+	defs: BpmnDefinitions,
+	targetPlane?: BpmnDiPlane,
+): DiagramBounds | null {
+	const plane = targetPlane ?? defs.diagrams[0]?.plane
 	if (!plane || plane.shapes.length === 0) return null
 
 	let minX = Number.POSITIVE_INFINITY

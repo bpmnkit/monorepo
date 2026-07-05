@@ -138,6 +138,19 @@ export interface CanvasEvents {
 	"diagram:load": (defs: BpmnDefinitions) => void
 	/** Fired when the canvas is cleared. */
 	"diagram:clear": () => void
+	/**
+	 * Fired when the visible plane changes (drilling into a collapsed
+	 * sub-process or navigating back). Both ids are DI plane `bpmnElement`s.
+	 */
+	"plane:change": (fromPlaneId: string, toPlaneId: string) => void
+}
+
+/** A DI plane the canvas can display (a process/collaboration or sub-process). */
+export interface PlaneInfo {
+	/** The plane's `bpmnElement` id (process, collaboration, or sub-process id). */
+	id: string
+	/** A human-readable label (element name, or a fallback). */
+	name: string
 }
 
 /**

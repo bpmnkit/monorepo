@@ -699,3 +699,96 @@ describe("OverlayManager (positioning)", () => {
 		expect(stub.node()?.style.transform).toContain("scale(3)")
 	})
 })
+
+// ── Multi-plane rendering & drilldown (P0-1) ─────────────────────────────────────
+
+describe("collapsed sub-process drilldown", () => {
+	// Parent plane holds a collapsed sub-process "sub"; a second BPMNDiagram
+	// carries "sub"'s own plane with a start/task/end.
+	const DRILL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="d" targetNamespace="t">
+  <bpmn:process id="proc">
+    <bpmn:startEvent id="s"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub" name="Handle">
+      <bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:startEvent id="cs"><bpmn:outgoing>cf</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:task id="ct" name="Inner"><bpmn:incoming>cf</bpmn:incoming></bpmn:task>
+      <bpmn:sequenceFlow id="cf" sourceRef="cs" targetRef="ct"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="s" targetRef="sub"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc">
+    <bpmndi:BPMNShape id="s_di" bpmnElement="s"><dc:Bounds x="40" y="40" width="36" height="36"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="sub_di" bpmnElement="sub" isExpanded="false"><dc:Bounds x="140" y="20" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="f1_di" bpmnElement="f1"><di:waypoint x="76" y="58"/><di:waypoint x="140" y="60"/></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="dg2"><bpmndi:BPMNPlane id="pl2" bpmnElement="sub">
+    <bpmndi:BPMNShape id="cs_di" bpmnElement="cs"><dc:Bounds x="40" y="40" width="36" height="36"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ct_di" bpmnElement="ct"><dc:Bounds x="140" y="20" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="cf_di" bpmnElement="cf"><di:waypoint x="76" y="58"/><di:waypoint x="140" y="60"/></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+
+	function makeCanvas(): { container: HTMLElement; canvas: BpmnCanvas } {
+		const container = makeContainer()
+		const canvas = new BpmnCanvas({ container, grid: false })
+		canvas.load(DRILL_XML)
+		return { container, canvas }
+	}
+
+	it("renders the parent plane with a drilldown button on the collapsed sub-process", () => {
+		const { container } = makeCanvas()
+		expect(container.querySelector('[data-bpmnkit-id="sub"]')).not.toBeNull()
+		expect(container.querySelector('[data-bpmnkit-drilldown="sub"]')).not.toBeNull()
+		// Inner content is not rendered on the parent plane.
+		expect(container.querySelector('[data-bpmnkit-id="ct"]')).toBeNull()
+	})
+
+	it("getPlanes lists both the process and the sub-process planes", () => {
+		const { canvas } = makeCanvas()
+		const planes = canvas.getPlanes().map((p) => p.id)
+		expect(planes).toEqual(["proc", "sub"])
+	})
+
+	it("showPlane drills into the sub-process and fires plane:change", () => {
+		const { container, canvas } = makeCanvas()
+		const cb = vi.fn()
+		canvas.on("plane:change", cb)
+		canvas.showPlane("sub")
+		expect(cb).toHaveBeenCalledWith("proc", "sub")
+		expect(container.querySelector('[data-bpmnkit-id="ct"]')).not.toBeNull()
+		// Parent-only element is gone.
+		expect(container.querySelector('[data-bpmnkit-id="s"]')).toBeNull()
+	})
+
+	it("clicking the drilldown button opens the sub-process plane", () => {
+		const { container } = makeCanvas()
+		const btn = container.querySelector('[data-bpmnkit-drilldown="sub"]')
+		if (!btn) throw new Error("no drilldown button")
+		btn.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+		expect(container.querySelector('[data-bpmnkit-id="ct"]')).not.toBeNull()
+	})
+
+	it("shows a breadcrumb that navigates back to the parent", () => {
+		const { container, canvas } = makeCanvas()
+		expect(container.querySelector<HTMLElement>(".bpmnkit-breadcrumb")?.style.display).toBe("none")
+		canvas.showPlane("sub")
+		const crumbs = container.querySelectorAll(".bpmnkit-breadcrumb-crumb")
+		expect(crumbs).toHaveLength(2)
+		expect(crumbs[1]?.textContent).toBe("Handle")
+		// Click the root crumb to navigate back.
+		;(crumbs[0] as HTMLElement).dispatchEvent(new MouseEvent("click", { bubbles: true }))
+		expect(container.querySelector('[data-bpmnkit-id="s"]')).not.toBeNull()
+		expect(container.querySelector<HTMLElement>(".bpmnkit-breadcrumb")?.style.display).toBe("none")
+	})
+
+	it("does not draw a drilldown button for a single-plane diagram", () => {
+		const container = makeContainer()
+		const canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+		expect(container.querySelector("[data-bpmnkit-drilldown]")).toBeNull()
+		expect(canvas.getPlanes().map((p) => p.id)).toEqual(["proc"])
+	})
+})

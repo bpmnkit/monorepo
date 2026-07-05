@@ -79,6 +79,7 @@ export type {
 	CanvasOptions,
 	CanvasPlugin,
 	FitMode,
+	PlaneInfo,
 	RenderedEdge,
 	RenderedShape,
 	ScreenBox,

@@ -1,5 +1,5 @@
-import { Bpmn } from "@bpmnkit/core"
-import type { BpmnDefinitions } from "@bpmnkit/core"
+import { Bpmn, planeForElement } from "@bpmnkit/core"
+import type { BpmnDefinitions, BpmnDiPlane, BpmnFlowElement } from "@bpmnkit/core"
 import { injectStyles } from "./css.js"
 import { KeyboardHandler } from "./keyboard.js"
 import { OverlayManager } from "./overlays.js"
@@ -10,6 +10,7 @@ import type {
 	CanvasOptions,
 	CanvasPlugin,
 	FitMode,
+	PlaneInfo,
 	RenderedEdge,
 	RenderedShape,
 	ScreenBox,
@@ -81,6 +82,7 @@ export class BpmnCanvas {
 	private readonly _labelsG: SVGGElement
 	private _gridPattern: SVGPatternElement | null = null
 	private _markerId = ""
+	private _breadcrumb: HTMLDivElement
 
 	// ── Sub-systems ───────────────────────────────────────────────────
 	private readonly _viewport: ViewportController
@@ -94,6 +96,12 @@ export class BpmnCanvas {
 	private _currentDefs: BpmnDefinitions | null = null
 	private _theme: Theme
 	private _fit: FitMode
+	/** The DI plane currently rendered. */
+	private _currentPlane: BpmnDiPlane | null = null
+	/** Element ids (this document) that own a plane and can be drilled into. */
+	private _planeElementIds = new Set<string>()
+	/** Breadcrumb path from the root plane to the current one. */
+	private _planeStack: { id: string; name: string }[] = []
 	/** CSS classes applied via {@link addMarker}, keyed by element id. */
 	private _markers = new Map<string, Set<string>>()
 	/** Element id currently under the pointer (for hover enter/leave events). */
@@ -130,6 +138,13 @@ export class BpmnCanvas {
 		this._svg = document.createElementNS(NS, "svg") as SVGSVGElement
 		this._svg.setAttribute("aria-hidden", "true")
 		this._host.appendChild(this._svg)
+
+		// Drill-down breadcrumb (hidden until a sub-process is opened)
+		this._breadcrumb = document.createElement("div")
+		this._breadcrumb.className = "bpmnkit-breadcrumb"
+		this._breadcrumb.setAttribute("aria-label", "Diagram plane")
+		this._breadcrumb.style.display = "none"
+		this._host.appendChild(this._breadcrumb)
 
 		// Arrow marker defs
 		this._markerId = createDefs(this._svg, this._id)
@@ -199,9 +214,18 @@ export class BpmnCanvas {
 			// returns the root <svg> (reproducible in flex/scroll containers). Fall back
 			// to e.target for test environments where elementFromPoint isn't reliable.
 			const fromPoint = document.elementFromPoint(e.clientX, e.clientY)
-			const target =
-				fromPoint?.closest("[data-bpmnkit-id]") ??
-				(e.target as Element).closest("[data-bpmnkit-id]")
+			const domTarget = fromPoint ?? (e.target as Element)
+
+			// Drill-down button takes precedence over element selection.
+			const drill = domTarget
+				.closest("[data-bpmnkit-drilldown]")
+				?.getAttribute("data-bpmnkit-drilldown")
+			if (drill) {
+				this.showPlane(drill)
+				return
+			}
+
+			const target = domTarget.closest("[data-bpmnkit-id]")
 			const id = target?.getAttribute("data-bpmnkit-id")
 			if (id) this._emit("element:click", id, e as unknown as PointerEvent)
 			else this._emit("canvas:click", e)
@@ -278,7 +302,66 @@ export class BpmnCanvas {
 	 * Use this when you already have the parsed model from `@bpmnkit/core`.
 	 */
 	loadDefinitions(defs: BpmnDefinitions): void {
-		// Clear previous content
+		this._currentDefs = defs
+		this._planeElementIds = new Set(defs.diagrams.map((d) => d.plane.bpmnElement))
+
+		// Start at the primary (first) plane and reset the breadcrumb.
+		const root = defs.diagrams[0]?.plane
+		this._planeStack = root
+			? [{ id: root.bpmnElement, name: this._planeName(root.bpmnElement) }]
+			: []
+
+		// A freshly loaded diagram should auto-fit again until the user interacts.
+		this._userMovedViewport = false
+		this._renderPlane(root ?? null)
+
+		this._emit("diagram:load", defs)
+	}
+
+	/**
+	 * Lists every DI plane in the current document (the primary plane plus any
+	 * collapsed sub-processes that carry their own layout).
+	 */
+	getPlanes(): PlaneInfo[] {
+		if (!this._currentDefs) return []
+		return this._currentDefs.diagrams.map((d) => ({
+			id: d.plane.bpmnElement,
+			name: this._planeName(d.plane.bpmnElement),
+		}))
+	}
+
+	/**
+	 * Shows the plane identified by a DI plane `bpmnElement` (a process/
+	 * collaboration id or a collapsed sub-process id). Drilling into a
+	 * sub-process extends the breadcrumb; navigating to an ancestor trims it.
+	 * No-op if the id has no plane. Fires `plane:change`.
+	 */
+	showPlane(planeElementId: string): void {
+		if (!this._currentDefs) return
+		const isRoot = this._currentDefs.diagrams[0]?.plane.bpmnElement === planeElementId
+		const plane = isRoot
+			? this._currentDefs.diagrams[0]?.plane
+			: planeForElement(this._currentDefs, planeElementId)
+		if (!plane) return
+
+		const fromId = this._currentPlane?.bpmnElement ?? ""
+		if (fromId === planeElementId) return
+
+		// Navigate up if already in the breadcrumb, otherwise drill down.
+		const existing = this._planeStack.findIndex((c) => c.id === planeElementId)
+		if (existing >= 0) {
+			this._planeStack = this._planeStack.slice(0, existing + 1)
+		} else {
+			this._planeStack.push({ id: planeElementId, name: this._planeName(planeElementId) })
+		}
+
+		this._userMovedViewport = false
+		this._renderPlane(plane)
+		this._emit("plane:change", fromId, planeElementId)
+	}
+
+	/** Renders a specific plane into the (cleared) layers and refits. */
+	private _renderPlane(plane: BpmnDiPlane | null): void {
 		this._containersG.innerHTML = ""
 		this._edgesG.innerHTML = ""
 		this._shapesG.innerHTML = ""
@@ -288,31 +371,31 @@ export class BpmnCanvas {
 		this._markers.clear()
 		this._overlays.clear()
 		this._hoverId = null
-		// A freshly loaded diagram should auto-fit again until the user interacts.
-		this._userMovedViewport = false
+		this._currentPlane = plane
 
-		this._currentDefs = defs
-
-		const result = render(
-			defs,
-			this._containersG,
-			this._edgesG,
-			this._shapesG,
-			this._labelsG,
-			this._markerId,
-			this._id,
-		)
-		this._shapes = result.shapes
-		this._edges = result.edges
+		if (this._currentDefs && plane) {
+			const result = render(
+				this._currentDefs,
+				this._containersG,
+				this._edgesG,
+				this._shapesG,
+				this._labelsG,
+				this._markerId,
+				this._id,
+				plane,
+				this._planeElementIds,
+			)
+			this._shapes = result.shapes
+			this._edges = result.edges
+		}
 
 		this._keyboard.setShapes(this._shapes)
+		this._updateBreadcrumb()
 
 		if (this._fit !== "none") {
 			// Defer fit to next frame so the SVG has been laid out
 			requestAnimationFrame(() => this.fitView())
 		}
-
-		this._emit("diagram:load", defs)
 	}
 
 	/** Clears the canvas and fires `diagram:clear`. */
@@ -327,6 +410,10 @@ export class BpmnCanvas {
 		this._overlays.clear()
 		this._hoverId = null
 		this._currentDefs = null
+		this._currentPlane = null
+		this._planeStack = []
+		this._planeElementIds.clear()
+		this._updateBreadcrumb()
 		this._emit("diagram:clear")
 	}
 
@@ -336,7 +423,7 @@ export class BpmnCanvas {
 	 */
 	fitView(padding = 40): void {
 		if (!this._currentDefs) return
-		const bounds = computeDiagramBounds(this._currentDefs)
+		const bounds = computeDiagramBounds(this._currentDefs, this._currentPlane ?? undefined)
 		if (!bounds) return
 
 		const svgW = this._svg.clientWidth
@@ -549,6 +636,59 @@ export class BpmnCanvas {
 			this._shapes.find((s) => s.id === id)?.element ??
 			this._edges.find((e) => e.id === id)?.element
 		)
+	}
+
+	/** A human-readable label for a plane's `bpmnElement` (name, or a fallback). */
+	private _planeName(planeElementId: string): string {
+		const el = this._findFlowElementById(planeElementId)
+		if (el) return el.name ?? "Sub-process"
+		return "Process"
+	}
+
+	/** Recursively finds a flow element by id across all processes/sub-processes. */
+	private _findFlowElementById(id: string): BpmnFlowElement | undefined {
+		if (!this._currentDefs) return undefined
+		const walk = (elements: BpmnFlowElement[]): BpmnFlowElement | undefined => {
+			for (const el of elements) {
+				if (el.id === id) return el
+				if ("flowElements" in el) {
+					const found = walk(el.flowElements)
+					if (found) return found
+				}
+			}
+			return undefined
+		}
+		for (const proc of this._currentDefs.processes) {
+			const found = walk(proc.flowElements)
+			if (found) return found
+		}
+		return undefined
+	}
+
+	/** Rebuilds the breadcrumb bar from the current plane stack. */
+	private _updateBreadcrumb(): void {
+		if (this._planeStack.length <= 1) {
+			this._breadcrumb.style.display = "none"
+			this._breadcrumb.replaceChildren()
+			return
+		}
+		this._breadcrumb.style.display = ""
+		this._breadcrumb.replaceChildren()
+		this._planeStack.forEach((crumb, i) => {
+			if (i > 0) {
+				const sep = document.createElement("span")
+				sep.className = "bpmnkit-breadcrumb-sep"
+				sep.textContent = "›"
+				this._breadcrumb.appendChild(sep)
+			}
+			const btn = document.createElement("button")
+			btn.type = "button"
+			btn.className = "bpmnkit-breadcrumb-crumb"
+			btn.textContent = crumb.name
+			const targetId = crumb.id
+			btn.addEventListener("click", () => this.showPlane(targetId))
+			this._breadcrumb.appendChild(btn)
+		})
 	}
 
 	/**
