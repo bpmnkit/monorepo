@@ -50,9 +50,18 @@ the injectable `translate` hook (`EditorOptions.translate`), so an application
 can localize both the visible UI and screen-reader output. See the i18n note in
 `render-gap-analysis.md` (P3-1).
 
+## Touch / coarse pointers
+
+On coarse pointers (`@media (pointer: coarse)`) the editor enlarges drag targets
+to finger size — resize handles grow to 24px and connection/endpoint/waypoint
+dots to a 12px radius. A **long-press** opens the context menu and a
+**double-tap** on a shape starts label editing, so the core editing gestures work
+without a mouse.
+
 ## Known gaps
 
 - SVG element roles are exposed by the **viewer**; the **editor** marks its SVG
   `aria-hidden` and drives AT through the live region instead. Direct
   element-by-element keyboard traversal of the editor canvas is not yet wired.
-- Touch/coarse-pointer editing affordances are tracked separately (P3-2).
+- A real-device Playwright touch-emulation smoke test is not yet set up (the repo
+  has no Playwright harness); touch behavior is covered by unit tests.

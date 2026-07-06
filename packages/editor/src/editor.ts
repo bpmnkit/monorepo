@@ -305,6 +305,7 @@ export class BpmnEditor {
 	private _boundaryHostId: string | null = null
 	private readonly _t: Translate
 	private readonly _liveRegion: HTMLDivElement
+	private _lastTap: { t: number; x: number; y: number; id: string } | null = null
 	private _warningBanner: HTMLElement | null = null
 
 	// ── Events ─────────────────────────────────────────────────────────
@@ -2209,6 +2210,28 @@ export class BpmnEditor {
 		const diag = screenToDiagram(e.clientX, e.clientY, this._viewport.state, rect)
 		const hit = this._hitTest(e.clientX, e.clientY)
 		this._stateMachine.onPointerUp(e, diag, hit)
+		if (e.pointerType === "touch") this._detectDoubleTap(e, hit)
+	}
+
+	/** On coarse pointers, a double-tap on a shape starts label editing (mirrors dblclick). */
+	private _detectDoubleTap(e: PointerEvent, hit: HitResult): void {
+		if (hit.type !== "shape") {
+			this._lastTap = null
+			return
+		}
+		const now = Date.now()
+		const prev = this._lastTap
+		if (
+			prev &&
+			prev.id === hit.id &&
+			now - prev.t < 300 &&
+			Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 20
+		) {
+			this._lastTap = null
+			this._startLabelEdit(hit.id)
+		} else {
+			this._lastTap = { t: now, x: e.clientX, y: e.clientY, id: hit.id }
+		}
 	}
 
 	private readonly _onPointerCancel = (_e: PointerEvent): void => {

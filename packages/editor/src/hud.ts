@@ -1910,6 +1910,36 @@ export function initEditorHud(
 		openCtxMenu(e.clientX, e.clientY)
 	})
 
+	// Touch: a long-press opens the same context menu (dispatched as a synthetic
+	// contextmenu event at the press point, so the handler above is reused).
+	let lpTimer: ReturnType<typeof setTimeout> | null = null
+	let lpStart: { x: number; y: number } | null = null
+	const cancelLongPress = (): void => {
+		if (lpTimer) {
+			clearTimeout(lpTimer)
+			lpTimer = null
+		}
+	}
+	editor.container.addEventListener("pointerdown", (e) => {
+		if (e.pointerType !== "touch") return
+		lpStart = { x: e.clientX, y: e.clientY }
+		lpTimer = setTimeout(() => {
+			lpTimer = null
+			if (!lpStart) return
+			editor.container.dispatchEvent(
+				new MouseEvent("contextmenu", { bubbles: true, clientX: lpStart.x, clientY: lpStart.y }),
+			)
+		}, 500)
+	})
+	editor.container.addEventListener("pointermove", (e) => {
+		// A drag past the slop threshold is a pan/move, not a long-press.
+		if (lpTimer && lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) {
+			cancelLongPress()
+		}
+	})
+	editor.container.addEventListener("pointerup", cancelLongPress)
+	editor.container.addEventListener("pointercancel", cancelLongPress)
+
 	// ── Element search (Ctrl+F) ─────────────────────────────────────────────────
 
 	let searchMatches: string[] = []

@@ -235,6 +235,22 @@ export const EDITOR_CSS = `
   border-color: #d97706;
   color: #fde68a;
 }
+
+/* Coarse pointers (touch): enlarge drag targets to a finger-friendly ≥24px.
+   Resize handles are 7px rects centred on the corner; grow + recentre them.
+   Endpoint / waypoint / port circles grow via the SVG geometry 'r' property. */
+@media (pointer: coarse) {
+  .bpmnkit-resize-handle {
+    width: 24px;
+    height: 24px;
+    transform: translate(-8.5px, -8.5px);
+  }
+  .bpmnkit-edge-endpoint,
+  .bpmnkit-edge-waypoint-ball,
+  .bpmnkit-conn-port {
+    r: 12px;
+  }
+}
 `
 
 /** Injects the editor stylesheet into `<head>` if not already present. */

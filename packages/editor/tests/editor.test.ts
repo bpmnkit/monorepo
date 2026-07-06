@@ -1,6 +1,7 @@
 import { Bpmn } from "@bpmnkit/core"
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { EDITOR_CSS } from "../src/css.js"
 import { BpmnEditor } from "../src/editor.js"
 import { defaultTranslate, interpolate } from "../src/i18n.js"
 
@@ -515,6 +516,87 @@ describe("accessibility", () => {
 		})
 		ed.setSelection(["task"])
 		expect(liveRegion(container)?.textContent).toBe("Do Work ausgewählt")
+		ed.destroy()
+	})
+})
+
+describe("touch editing", () => {
+	// happy-dom has no PointerEvent gesture support; synthesize a touch pointer
+	// event as a MouseEvent tagged with pointerType.
+	function touchEvent(type: string, x: number, y: number): PointerEvent {
+		const e = new MouseEvent(type, {
+			bubbles: true,
+			clientX: x,
+			clientY: y,
+			button: 0,
+		}) as unknown as { pointerType: string }
+		e.pointerType = "touch"
+		return e as unknown as PointerEvent
+	}
+
+	it("enlarges drag targets to ≥24px on coarse pointers", () => {
+		expect(EDITOR_CSS).toContain("@media (pointer: coarse)")
+		expect(EDITOR_CSS).toMatch(/\.bpmnkit-resize-handle\s*\{[^}]*width:\s*24px/)
+		expect(EDITOR_CSS).toMatch(/r:\s*12px/)
+	})
+
+	it("opens the context menu on a long-press", async () => {
+		vi.useFakeTimers()
+		try {
+			const { initEditorHud } = await import("../src/hud.js")
+			const container = makeContainer()
+			const ed = new BpmnEditor({ container, xml: SIMPLE_XML, grid: false })
+			initEditorHud(ed)
+			ed.setSelection(["task"])
+
+			ed.container.dispatchEvent(touchEvent("pointerdown", 120, 120))
+			vi.advanceTimersByTime(500)
+
+			const menu = container.querySelector("#bpmnkit-ctx-menu")
+			expect(menu?.classList.contains("open")).toBe(true)
+			expect(menu?.querySelectorAll(".drop-item").length).toBeGreaterThan(0)
+			ed.destroy()
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
+	it("cancels the long-press when the finger moves (a pan, not a press)", async () => {
+		vi.useFakeTimers()
+		try {
+			const { initEditorHud } = await import("../src/hud.js")
+			const container = makeContainer()
+			const ed = new BpmnEditor({ container, xml: SIMPLE_XML, grid: false })
+			initEditorHud(ed)
+			ed.setSelection(["task"])
+
+			ed.container.dispatchEvent(touchEvent("pointerdown", 120, 120))
+			ed.container.dispatchEvent(touchEvent("pointermove", 200, 200))
+			vi.advanceTimersByTime(500)
+
+			expect(container.querySelector("#bpmnkit-ctx-menu")?.classList.contains("open")).not.toBe(
+				true,
+			)
+			ed.destroy()
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
+	it("double-tap on a shape starts label editing", () => {
+		const container = makeContainer()
+		const ed = new BpmnEditor({ container, xml: SIMPLE_XML, grid: false })
+		const svg = container.querySelector("svg")
+		const shapeEl = container.querySelector('[data-bpmnkit-id="task"]')
+		if (!svg || !shapeEl) throw new Error("no svg/shape")
+		vi.spyOn(document, "elementFromPoint").mockReturnValue(shapeEl as Element)
+
+		svg.dispatchEvent(touchEvent("pointerup", 100, 100))
+		expect(container.querySelector(".bpmnkit-label-editor")).toBeNull()
+		svg.dispatchEvent(touchEvent("pointerup", 100, 100))
+		expect(container.querySelector(".bpmnkit-label-editor")).toBeTruthy()
+
+		vi.restoreAllMocks()
 		ed.destroy()
 	})
 })
