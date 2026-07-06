@@ -906,7 +906,7 @@ export class BpmnEditor {
 			}
 		}
 
-		this._emit("diagram:load", defs)
+		this._emit("diagram:load", defs, { missingShapes: [], missingEdges: [] })
 	}
 
 	private _executeCommand(fn: (d: BpmnDefinitions) => BpmnDefinitions): void {

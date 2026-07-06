@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-07-05 — DI-less import warnings + opt-in auto-layout fallback
+
+Implemented P0-6 (viewer) from `doc/render-gap-analysis.md`. Elements without diagram interchange (BPMNShape/BPMNEdge) previously vanished silently.
+
+- `loadDefinitions()` runs `checkDiCompleteness`, stores the result, exposes it via a new `canvas.getImportWarnings()` accessor and a second `diagram:load` payload argument (`ImportWarnings`), and `console.warn`s once when anything is missing.
+- New `layoutMissingDi: "off" | "all"` canvas option (default `"off"`). When `"all"` and any DI is missing, a copy of the model is `applyAutoLayout`-ed and rendered so the elements become visible; the caller's model is never mutated (`applyAutoLayout` returns a fresh copy — verified by test), and `getImportWarnings()` still reports the original source gaps.
+
+New `ImportWarnings` type exported from `@bpmnkit/canvas`. Deferred (noted in the doc): the editor "Layout missing elements" banner + undoable command (the editor emits empty warnings for now). Tests: canvas `DI completeness` (5) — 68 canvas tests; canvas/editor/plugins/operate all green.
+
 ## 2026-07-05 — Scene: element registry + incremental rendering
 
 Implemented P1-1 (registry + incremental half) from `doc/render-gap-analysis.md`. Previously every `load()`/edit tore down all four layers and re-rendered the whole scene, and there was no id→graphics lookup.

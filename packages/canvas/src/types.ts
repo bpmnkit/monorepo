@@ -4,8 +4,12 @@ import type {
 	BpmnDiShape,
 	BpmnFlowElement,
 	BpmnTextAnnotation,
+	DiCompleteness,
 } from "@bpmnkit/core"
 import type { OverlayManager } from "./overlays.js"
+
+/** Elements in the model that have no diagram interchange (BPMNShape/BPMNEdge). */
+export type ImportWarnings = DiCompleteness
 
 /** The color theme applied to the canvas. */
 export type Theme = "light" | "dark" | "auto" | "neon"
@@ -50,6 +54,16 @@ export interface CanvasOptions {
 	 * @see {@link CanvasPlugin}
 	 */
 	plugins?: CanvasPlugin[]
+
+	/**
+	 * What to do when the model has elements without diagram interchange
+	 * (no `BPMNShape`/`BPMNEdge`), which would otherwise be invisible.
+	 * - `"off"` (default) — render only elements that have DI.
+	 * - `"all"` — if any DI is missing, auto-layout a copy of the model and
+	 *   render that. The caller's model is never mutated.
+	 * @default "off"
+	 */
+	layoutMissingDi?: "off" | "all"
 }
 
 /** The current pan/zoom state of the canvas viewport. */
@@ -134,8 +148,11 @@ export interface CanvasEvents {
 	"element:focus": (id: string) => void
 	/** Fired when keyboard focus leaves all BPMN elements. */
 	"element:blur": () => void
-	/** Fired after a BPMN diagram is loaded and rendered. */
-	"diagram:load": (defs: BpmnDefinitions) => void
+	/**
+	 * Fired after a BPMN diagram is loaded and rendered. `warnings` lists any
+	 * model elements that had no diagram interchange (see {@link ImportWarnings}).
+	 */
+	"diagram:load": (defs: BpmnDefinitions, warnings: ImportWarnings) => void
 	/** Fired when the canvas is cleared. */
 	"diagram:clear": () => void
 	/**

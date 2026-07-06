@@ -1,6 +1,6 @@
 import { Bpmn } from "@bpmnkit/core"
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { BpmnCanvas } from "../src/canvas.js"
 import { OverlayManager } from "../src/overlays.js"
 import type { OverlayHost } from "../src/overlays.js"
@@ -915,5 +915,82 @@ describe("incremental update", () => {
 			}
 		}
 		expect([...touched]).toEqual(["task"])
+	})
+})
+
+// ── DI completeness & auto-layout fallback (P0-6) ────────────────────────────────
+
+describe("DI completeness", () => {
+	// A process with no BPMNDiagram at all → every element lacks DI.
+	const NO_DI_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  id="d" targetNamespace="t">
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:startEvent id="s"><bpmn:outgoing>f</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:task id="t" name="Work"><bpmn:incoming>f</bpmn:incoming></bpmn:task>
+    <bpmn:sequenceFlow id="f" sourceRef="s" targetRef="t"/>
+  </bpmn:process>
+</bpmn:definitions>`
+
+	let warnSpy: ReturnType<typeof vi.spyOn>
+	beforeEach(() => {
+		warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+	})
+	afterEach(() => {
+		warnSpy.mockRestore()
+	})
+
+	it("reports missing DI and renders nothing by default", () => {
+		const container = makeContainer()
+		const canvas = new BpmnCanvas({ container, xml: NO_DI_XML, grid: false })
+		const w = canvas.getImportWarnings()
+		expect(w.missingShapes).toContain("s")
+		expect(w.missingShapes).toContain("t")
+		expect(w.missingEdges).toContain("f")
+		expect(container.querySelector("[data-bpmnkit-id]")).toBeNull()
+		expect(warnSpy).toHaveBeenCalledOnce()
+	})
+
+	it("auto-lays out missing DI when layoutMissingDi is 'all'", () => {
+		const container = makeContainer()
+		const canvas = new BpmnCanvas({
+			container,
+			xml: NO_DI_XML,
+			grid: false,
+			layoutMissingDi: "all",
+		})
+		expect(container.querySelector('[data-bpmnkit-id="t"]')).not.toBeNull()
+		expect(container.querySelector('[data-bpmnkit-id="s"]')).not.toBeNull()
+		// Warnings still describe the source gaps.
+		expect(canvas.getImportWarnings().missingShapes).toContain("t")
+	})
+
+	it("never mutates the caller's model when auto-laying out", () => {
+		const defs = Bpmn.parse(NO_DI_XML)
+		expect(defs.diagrams).toHaveLength(0)
+		const container = makeContainer()
+		new BpmnCanvas({ container, grid: false, layoutMissingDi: "all" }).loadDefinitions(defs)
+		// The original defs is untouched (applyAutoLayout returned a copy).
+		expect(defs.diagrams).toHaveLength(0)
+	})
+
+	it("passes warnings to the diagram:load event", () => {
+		const container = makeContainer()
+		const c = new BpmnCanvas({ container, grid: false })
+		const cb = vi.fn()
+		c.on("diagram:load", cb)
+		c.load(NO_DI_XML)
+		expect(cb).toHaveBeenCalledOnce()
+		const warnings = cb.mock.calls[0]?.[1]
+		expect(warnings.missingShapes).toContain("t")
+	})
+
+	it("reports no warnings for a complete diagram", () => {
+		const container = makeContainer()
+		const canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+		const w = canvas.getImportWarnings()
+		expect(w.missingShapes).toHaveLength(0)
+		expect(w.missingEdges).toHaveLength(0)
+		expect(warnSpy).not.toHaveBeenCalled()
 	})
 })

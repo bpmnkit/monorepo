@@ -187,7 +187,9 @@ Events with more than one event definition now render the "multiple" pentagon (f
 **Spec:** Extend `createDefs` (`renderer.ts:787-798`) with per-instance markers: `open-arrow`, `diamond`, `circle`. Apply: sequence flow `marker-start` diamond when conditional; message flow `marker-start` circle + `marker-end` open-arrow; association `marker-end`/`marker-start` thin open arrows per direction. Data associations (P0-2) reuse open-arrow.
 **AC:** fixtures for each decoration; default-flow slash + conditional diamond are mutually exclusive on the same flow (default wins, matching bpmn-js).
 
-#### P0-6 · DI-less elements: import warnings + opt-in auto-layout fallback — **M**
+#### P0-6 · DI-less elements: import warnings + opt-in auto-layout fallback — **M** — ✅ DONE (viewer) (2026-07-05)
+`loadDefinitions()` runs `checkDiCompleteness`, exposes it via `canvas.getImportWarnings()` and a second `diagram:load` payload arg (`ImportWarnings`), and `console.warn`s once when DI is missing. New `layoutMissingDi: "off" | "all"` option (default `"off"`): when `"all"` and any DI is missing, a copy is `applyAutoLayout`-ed for rendering — the caller's model is never mutated (verified by test), and warnings still describe the source gaps. Tests in `DI completeness`. **Deferred:** the editor "Layout missing elements" banner + undoable auto-layout command (spec item #3) — consistent with the P0-1/P1-1 editor deferrals; the editor emits empty warnings for now.
+
 **Problem:** Elements without `BPMNShape`/`BPMNEdge` silently don't render. bpmn-js at least returns import warnings. Core has `checkDiCompleteness` (`di-check.ts:20-53`) and `applyAutoLayout`, but nothing wires them in.
 **Spec:**
 1. `loadDefinitions()` runs `checkDiCompleteness`; result exposed on a new `diagram:load` payload field and a `canvas.getImportWarnings()` accessor. Console-warn once in dev.

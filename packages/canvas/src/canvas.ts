@@ -1,4 +1,4 @@
-import { Bpmn, planeForElement } from "@bpmnkit/core"
+import { Bpmn, applyAutoLayout, checkDiCompleteness, planeForElement } from "@bpmnkit/core"
 import type { BpmnDefinitions, BpmnDiPlane, BpmnFlowElement } from "@bpmnkit/core"
 import { injectStyles } from "./css.js"
 import { KeyboardHandler } from "./keyboard.js"
@@ -11,6 +11,7 @@ import type {
 	CanvasOptions,
 	CanvasPlugin,
 	FitMode,
+	ImportWarnings,
 	PlaneInfo,
 	RenderedEdge,
 	RenderedShape,
@@ -98,6 +99,9 @@ export class BpmnCanvas {
 	private _currentDefs: BpmnDefinitions | null = null
 	private _theme: Theme
 	private _fit: FitMode
+	private _layoutMissingDi: "off" | "all"
+	/** Elements from the last load that had no diagram interchange. */
+	private _importWarnings: ImportWarnings = { missingShapes: [], missingEdges: [] }
 	/** The DI plane currently rendered. */
 	private _currentPlane: BpmnDiPlane | null = null
 	/** Element ids (this document) that own a plane and can be drilled into. */
@@ -123,6 +127,7 @@ export class BpmnCanvas {
 		this._id = String(_instanceCounter++)
 		this._theme = options.theme ?? "auto"
 		this._fit = options.fit ?? "contain"
+		this._layoutMissingDi = options.layoutMissingDi ?? "off"
 
 		// ── Build DOM ────────────────────────────────────────────────
 		const container = options.container
@@ -315,11 +320,30 @@ export class BpmnCanvas {
 	 * Use this when you already have the parsed model from `@bpmnkit/core`.
 	 */
 	loadDefinitions(defs: BpmnDefinitions): void {
-		this._currentDefs = defs
-		this._planeElementIds = new Set(defs.diagrams.map((d) => d.plane.bpmnElement))
+		// Report elements that have no diagram interchange (they would otherwise
+		// be invisible). Warnings describe the *source* model, even when we
+		// auto-layout below.
+		this._importWarnings = checkDiCompleteness(defs)
+		const hasMissingDi =
+			this._importWarnings.missingShapes.length > 0 || this._importWarnings.missingEdges.length > 0
+
+		if (hasMissingDi) {
+			const outcome = this._layoutMissingDi === "all" ? "auto-laying out" : "they will not render"
+			const { missingShapes, missingEdges } = this._importWarnings
+			console.warn(
+				`[bpmnkit] diagram has ${missingShapes.length} element(s) and ${missingEdges.length} connection(s) without diagram interchange — ${outcome}`,
+			)
+		}
+
+		// Optionally lay out a copy so DI-less elements become visible. The
+		// caller's `defs` is never mutated (applyAutoLayout returns a fresh copy).
+		const rendered = this._layoutMissingDi === "all" && hasMissingDi ? applyAutoLayout(defs) : defs
+
+		this._currentDefs = rendered
+		this._planeElementIds = new Set(rendered.diagrams.map((d) => d.plane.bpmnElement))
 
 		// Start at the primary (first) plane and reset the breadcrumb.
-		const root = defs.diagrams[0]?.plane
+		const root = rendered.diagrams[0]?.plane
 		this._planeStack = root
 			? [{ id: root.bpmnElement, name: this._planeName(root.bpmnElement) }]
 			: []
@@ -328,7 +352,18 @@ export class BpmnCanvas {
 		this._userMovedViewport = false
 		this._renderPlane(root ?? null)
 
-		this._emit("diagram:load", defs)
+		this._emit("diagram:load", rendered, this._importWarnings)
+	}
+
+	/**
+	 * Returns the elements from the last {@link load}/{@link loadDefinitions}
+	 * that had no diagram interchange (and so were auto-laid-out or skipped).
+	 */
+	getImportWarnings(): ImportWarnings {
+		return {
+			missingShapes: [...this._importWarnings.missingShapes],
+			missingEdges: [...this._importWarnings.missingEdges],
+		}
 	}
 
 	/**
