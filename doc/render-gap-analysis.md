@@ -287,7 +287,9 @@ Spec: `canvas.find(query)` scoring name/id/type (word-prefix > substring, à la 
 #### P2-6 · Command stack: labels, merge, memory — **M**
 Keep snapshots (simple, correct), fix costs: store `{label, defs}` entries; merge bursts (label typing, drag ticks — currently one snapshot per commit) via `commitCoalesced(label, key)` window; snapshots are already structurally shared by immutable `modeling.ts` updates — verify with a heap test and stop *deep-copying* if any path still does (`command-stack.ts:1-54`); expose `editor.getUndoLabel()/getRedoLabel()` for HUD tooltips. With P1-1, undo/redo re-renders dirty ids only. AC: 100 undo entries of a 1-element edit on a 500-element model stay < ~2× single-model heap; label-typing produces one undo step.
 
-#### P2-7 · Vertical pools/lanes — **M**
+#### P2-7 · Vertical pools/lanes — **M** — ✅ DONE (rendering) (2026-07-05)
+`renderPool`/`renderLane` refactored into a shared `renderSwimlane` that honours `BpmnDiShape.isHorizontal`: the default (horizontal) keeps the left title bar with rotated text; `isHorizontal === false` draws the title bar across the top with upright text. Test in `vertical pools`. **Deferred:** axis-aware editor resize/space-tool for vertical lanes (editor-side, consistent with prior editor deferrals); core's static `exportSvg` also still assumes horizontal.
+
 `isHorizontal` is parsed (`bpmn-model.ts:528-570`) but ignored. Spec: render title bar on top (not left) when `isHorizontal === false`, lane stacking horizontal; editor resize/space-tool axis-aware; auto-layout may keep emitting horizontal (no change). AC: bpmn-js vertical-pool fixture renders equivalently.
 
 #### P2-8 · Live-canvas SVG/PNG export — **S**

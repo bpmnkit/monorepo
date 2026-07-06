@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Vertical pools / lanes
+
+Implemented P2-7 (rendering) from `doc/render-gap-analysis.md`. `BpmnDiShape.isHorizontal` was parsed but ignored, so vertical pools rendered with a wrong (left, rotated) title bar. `renderPool`/`renderLane` now share a `renderSwimlane` helper that draws the title bar across the top with upright text when `isHorizontal === false`, and keeps the left bar with rotated text otherwise. Test in canvas `vertical pools` — 73 canvas tests. Deferred (noted): axis-aware editor resize/space-tool and core's static `exportSvg` (both still assume horizontal).
+
 ## 2026-07-05 — Real text measurement for label wrapping
 
 Implemented P1-5 from `doc/render-gap-analysis.md`. Label wrapping previously used a fixed 6.5px-per-character estimate, which mis-wrapped (wide glyphs overflowed, narrow text wrapped early) and diverged from Camunda/bpmn-js.

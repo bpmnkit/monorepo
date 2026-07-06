@@ -1032,3 +1032,32 @@ describe("text wrapping", () => {
 		expect(container.querySelector('[data-bpmnkit-id="t"]')?.textContent).toContain("-")
 	})
 })
+
+// ── Vertical pools / lanes (P2-7) ────────────────────────────────────────────────
+
+describe("vertical pools", () => {
+	const VPOOL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="d" targetNamespace="t">
+  <bpmn:collaboration id="c">
+    <bpmn:participant id="p1" name="Vert" processRef="pr1"/>
+  </bpmn:collaboration>
+  <bpmn:process id="pr1"><bpmn:task id="a"/></bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="c">
+    <bpmndi:BPMNShape id="p1_di" bpmnElement="p1" isHorizontal="false"><dc:Bounds x="0" y="0" width="120" height="300"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="a_di" bpmnElement="a"><dc:Bounds x="40" y="60" width="80" height="50"/></bpmndi:BPMNShape>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+
+	it("puts the title bar on top with upright text for a vertical pool", () => {
+		const container = renderXml(VPOOL_XML)
+		const header = container.querySelector('[data-bpmnkit-id="p1"] .bpmnkit-pool-header')
+		expect(header?.getAttribute("width")).toBe("120")
+		expect(header?.getAttribute("height")).toBe("30")
+		const text = container.querySelector('[data-bpmnkit-id="p1"] text')
+		expect(text?.textContent).toBe("Vert")
+		// Upright (no -90 rotation, unlike a horizontal pool).
+		expect(text?.getAttribute("transform") ?? "").not.toContain("rotate")
+	})
+})

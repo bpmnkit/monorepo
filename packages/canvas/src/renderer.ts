@@ -706,44 +706,68 @@ function renderGateway(
 	return g
 }
 
+const TITLE_BAR = 30
+
+/**
+ * Renders a swimlane (pool or lane). The title bar sits on the left with
+ * rotated text for horizontal lanes (the default), or across the top with
+ * upright text when `shape.isHorizontal === false` (vertical pools/lanes).
+ */
+function renderSwimlane(
+	shape: BpmnDiShape,
+	name: string | undefined,
+	kind: "pool" | "lane",
+	instanceId: string,
+): SVGGElement {
+	const { width, height } = shape.bounds
+	const vertical = shape.isHorizontal === false
+	const g = svgEl("g")
+
+	const bg = svgEl("rect")
+	attr(bg, { x: 0, y: 0, width, height, class: `bpmnkit-${kind}-body` })
+	g.appendChild(bg)
+
+	const titleBar = svgEl("rect")
+	attr(
+		titleBar,
+		vertical
+			? { x: 0, y: 0, width, height: TITLE_BAR, class: `bpmnkit-${kind}-header` }
+			: { x: 0, y: 0, width: TITLE_BAR, height, class: `bpmnkit-${kind}-header` },
+	)
+	g.appendChild(titleBar)
+
+	if (name) {
+		const text = svgEl("text")
+		attr(
+			text,
+			vertical
+				? { class: "bpmnkit-label", x: width / 2, y: TITLE_BAR / 2 }
+				: {
+						class: "bpmnkit-label",
+						transform: `translate(${TITLE_BAR / 2} ${height / 2}) rotate(-90)`,
+					},
+		)
+		text.textContent = name
+		g.appendChild(text)
+	}
+
+	attr(g, {
+		class: `bpmnkit-shape bpmnkit-${kind}`,
+		tabindex: "-1",
+		role: "region",
+		"aria-label": name ?? (kind === "pool" ? "Pool" : "Lane"),
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
 function renderPool(
 	shape: BpmnDiShape,
 	participant: BpmnParticipant | undefined,
 	instanceId: string,
 ): SVGGElement {
-	const { width, height } = shape.bounds
-	const g = svgEl("g")
-
-	// Pool body
-	const bg = svgEl("rect")
-	attr(bg, { x: 0, y: 0, width, height, class: "bpmnkit-pool-body" })
-	g.appendChild(bg)
-
-	// Title bar (left column, 30px wide)
-	const titleBar = svgEl("rect")
-	attr(titleBar, { x: 0, y: 0, width: 30, height, class: "bpmnkit-pool-header" })
-	g.appendChild(titleBar)
-
-	// Pool name (rotated in title bar)
-	if (participant?.name) {
-		const text = svgEl("text")
-		attr(text, {
-			class: "bpmnkit-label",
-			transform: `translate(15 ${height / 2}) rotate(-90)`,
-		})
-		text.textContent = participant.name
-		g.appendChild(text)
-	}
-
-	attr(g, {
-		class: "bpmnkit-shape bpmnkit-pool",
-		tabindex: "-1",
-		role: "region",
-		"aria-label": participant?.name ?? "Pool",
-		"data-bpmnkit-id": shape.bpmnElement,
-		"data-bpmnkit-instance": instanceId,
-	})
-	return g
+	return renderSwimlane(shape, participant?.name, "pool", instanceId)
 }
 
 function renderLane(
@@ -751,39 +775,7 @@ function renderLane(
 	lane: BpmnLane | undefined,
 	instanceId: string,
 ): SVGGElement {
-	const { width, height } = shape.bounds
-	const g = svgEl("g")
-
-	// Lane body
-	const bg = svgEl("rect")
-	attr(bg, { x: 0, y: 0, width, height, class: "bpmnkit-lane-body" })
-	g.appendChild(bg)
-
-	// Title bar (left column, 30px wide)
-	const titleBar = svgEl("rect")
-	attr(titleBar, { x: 0, y: 0, width: 30, height, class: "bpmnkit-lane-header" })
-	g.appendChild(titleBar)
-
-	// Lane name (rotated in title bar)
-	if (lane?.name) {
-		const text = svgEl("text")
-		attr(text, {
-			class: "bpmnkit-label",
-			transform: `translate(15 ${height / 2}) rotate(-90)`,
-		})
-		text.textContent = lane.name
-		g.appendChild(text)
-	}
-
-	attr(g, {
-		class: "bpmnkit-shape bpmnkit-lane",
-		tabindex: "-1",
-		role: "region",
-		"aria-label": lane?.name ?? "Lane",
-		"data-bpmnkit-id": shape.bpmnElement,
-		"data-bpmnkit-instance": instanceId,
-	})
-	return g
+	return renderSwimlane(shape, lane?.name, "lane", instanceId)
 }
 
 function renderAnnotation(
