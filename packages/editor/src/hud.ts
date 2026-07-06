@@ -156,6 +156,7 @@ const SHORTCUTS: ReadonlyArray<[string, string]> = [
 	["Delete / Backspace", "Delete selected"],
 	["Ctrl+A", "Select all"],
 	["Ctrl+C", "Copy"],
+	["Ctrl+X", "Cut"],
 	["Ctrl+V", "Paste"],
 	["Ctrl+F", "Find element"],
 	["Ctrl+K", "Command palette"],
@@ -1888,6 +1889,12 @@ export function initEditorHud(
 		ctxMenuEl.appendChild(
 			makeCtxItem(IC.duplicate, "Duplicate", () => {
 				editor.duplicate()
+				closeAllDropdowns()
+			}),
+		)
+		ctxMenuEl.appendChild(
+			makeCtxItem(IC.duplicate, "Cut", () => {
+				editor.cut()
 				closeAllDropdowns()
 			}),
 		)

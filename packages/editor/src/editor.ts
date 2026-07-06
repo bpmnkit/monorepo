@@ -932,6 +932,11 @@ export class BpmnEditor {
 		this._doPaste()
 	}
 
+	/** Copies the current selection to the clipboard and deletes it as one undo step. */
+	cut(): void {
+		this._doCut()
+	}
+
 	/** Pans the viewport to center on the element with the given id (preserves zoom). */
 	scrollToElement(id: string): void {
 		const shape = this._shapes.find((s) => s.id === id)
@@ -1343,12 +1348,19 @@ export class BpmnEditor {
 		if (!this._clipboard) return
 		const base = this._defs ?? createEmptyDefinitions()
 		const result = pasteElements(base, this._clipboard, 20, 20)
-		const newIds = [...result.newIds.values()]
-		this._selectedIds = newIds
-		this._commandStack.push(result.defs)
+		this._selectedIds = result.topLevelIds
+		this._commandStack.push(result.defs, "Paste")
 		this._renderDefs(result.defs)
 		this._emit("diagram:change", result.defs)
-		this._emit("editor:select", newIds)
+		this._emit("editor:select", result.topLevelIds)
+	}
+
+	private _doCut(): void {
+		if (!this._defs || this._selectedIds.length === 0) return
+		this._doCopy()
+		const ids = [...this._selectedIds]
+		this._executeCommand((d) => deleteElements(d, ids), "Cut")
+		this._setSelection([])
 	}
 
 	private _startLabelEdit(id: string): void {
@@ -2205,6 +2217,10 @@ export class BpmnEditor {
 				case "v":
 					e.preventDefault()
 					this._doPaste()
+					break
+				case "x":
+					e.preventDefault()
+					this._doCut()
 					break
 			}
 		}

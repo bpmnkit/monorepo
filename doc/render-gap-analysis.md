@@ -269,7 +269,9 @@ Added `zoom(scaleOrFit, center)`, `viewbox()`, `scrollToElement(id)`, and `getAb
 
 ### P2 — Editor parity & robustness
 
-#### P2-1 · Deep copy/paste + cut — **M**
+#### P2-1 · Deep copy/paste + cut — **M** — ✅ DONE (2026-07-06)
+`copyElements`/`pasteElements` now deep-clone: `collectShapeIds`/`collectEdgeIds` recurse through sub-process children (flow elements, nested flows, text annotations, associations, groups), `buildIdMap`/`remapElement`/`remapFlow` mint fresh ids for every descendant and rewrite all internal references (incoming/outgoing, flow source/target, association source/target, boundary `attachedToRef`), and the DI copy covers descendant shapes/edges with the paste offset. Boundary events attached to a copied host are auto-included. Labels/colours ride along via the existing DI `unknownAttributes`/`label` spread. Paste selects only the pasted top-level roots (`topLevelIds`). `editor.cut()` = copy + delete as one undo step, bound to Ctrl/Cmd+X (plus HUD shortcut list + context-menu entry). Tests: `modeling` deep-clone (sub-process structure, unique ids, re-attached boundary, offset) + `editor` cut (single-undo restore, paste). AC met.
+
 Current paste handles only top-level flow elements whose source+target are both selected (`modeling.ts:1551-1664`). Spec: recursive clone of subprocess children (new ids throughout, internal flows + DI offset), include boundary events attached to copied hosts, include labels/colors; add cut (copy + delete as one undo step); keyboard Ctrl/Cmd+X. AC: copying a subprocess pastes a working deep clone; ids unique (`checkDiCompleteness` + duplicate-ID banner stay silent); one undo restores cut.
 
 #### P2-2 · Rules engine — **M**

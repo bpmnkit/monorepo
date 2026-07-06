@@ -397,3 +397,34 @@ describe("find", () => {
 		ed.destroy()
 	})
 })
+
+describe("cut", () => {
+	it("removes the selection and restores it in one undo step", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		const before = ed.getDefinitions()?.processes[0]?.flowElements.length ?? 0
+		ed.setSelection(["task"])
+		ed.cut()
+
+		const afterCut = ed.getDefinitions()?.processes[0]
+		expect(afterCut?.flowElements.some((el) => el.id === "task")).toBe(false)
+		expect(afterCut?.flowElements.length).toBe(before - 1)
+
+		// A single undo brings the cut element back.
+		ed.undo()
+		const afterUndo = ed.getDefinitions()?.processes[0]
+		expect(afterUndo?.flowElements.some((el) => el.id === "task")).toBe(true)
+		expect(afterUndo?.flowElements.length).toBe(before)
+		ed.destroy()
+	})
+
+	it("pastes what was cut", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		ed.setSelection(["task"])
+		ed.cut()
+		const afterCut = ed.getDefinitions()?.processes[0]?.flowElements.length ?? 0
+		ed.paste()
+		const afterPaste = ed.getDefinitions()?.processes[0]?.flowElements.length ?? 0
+		expect(afterPaste).toBe(afterCut + 1)
+		ed.destroy()
+	})
+})

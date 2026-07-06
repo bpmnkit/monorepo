@@ -457,6 +457,105 @@ describe("copyElements + pasteElements", () => {
 	})
 })
 
+const SUBPROCESS_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Defs_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <process id="Process_1">
+    <subProcess id="Sub_1" name="Sub">
+      <startEvent id="Inner_Start"><outgoing>Inner_Flow</outgoing></startEvent>
+      <task id="Inner_Task" name="Inner"><incoming>Inner_Flow</incoming></task>
+      <sequenceFlow id="Inner_Flow" sourceRef="Inner_Start" targetRef="Inner_Task"/>
+    </subProcess>
+    <boundaryEvent id="Boundary_1" attachedToRef="Sub_1"/>
+  </process>
+  <bpmndi:BPMNDiagram id="Diag_1">
+    <bpmndi:BPMNPlane id="Plane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="Sub_1_di" bpmnElement="Sub_1" isExpanded="true"><dc:Bounds x="100" y="100" width="350" height="200"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Inner_Start_di" bpmnElement="Inner_Start"><dc:Bounds x="140" y="180" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Inner_Task_di" bpmnElement="Inner_Task"><dc:Bounds x="240" y="170" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Inner_Flow_di" bpmnElement="Inner_Flow"><di:waypoint x="176" y="198"/><di:waypoint x="240" y="210"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Boundary_1_di" bpmnElement="Boundary_1"><dc:Bounds x="150" y="282" width="36" height="36"/></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`
+
+function collectAllIds(defs: ReturnType<typeof Bpmn.parse>): string[] {
+	const ids: string[] = []
+	const proc = defs.processes[0]
+	if (!proc) return ids
+	const walk = (els: typeof proc.flowElements): void => {
+		for (const el of els) {
+			ids.push(el.id)
+			if ("flowElements" in el) {
+				walk(el.flowElements)
+				for (const sf of el.sequenceFlows) ids.push(sf.id)
+			}
+		}
+	}
+	walk(proc.flowElements)
+	for (const sf of proc.sequenceFlows) ids.push(sf.id)
+	return ids
+}
+
+describe("copyElements + pasteElements — deep clone", () => {
+	it("copies a sub-process with its children and attached boundary event", () => {
+		const defs = Bpmn.parse(SUBPROCESS_XML)
+		const clipboard = copyElements(defs, ["Sub_1"])
+		// Sub_1 + auto-included Boundary_1.
+		expect(clipboard.elements.map((e) => e.id).sort()).toEqual(["Boundary_1", "Sub_1"])
+		// DI shapes for the sub, its two children, and the boundary.
+		expect(clipboard.shapes.map((s) => s.bpmnElement).sort()).toEqual([
+			"Boundary_1",
+			"Inner_Start",
+			"Inner_Task",
+			"Sub_1",
+		])
+		// The internal edge is included.
+		expect(clipboard.edges.map((e) => e.bpmnElement)).toEqual(["Inner_Flow"])
+	})
+
+	it("pastes a working deep clone with unique ids throughout", () => {
+		const defs = Bpmn.parse(SUBPROCESS_XML)
+		const clipboard = copyElements(defs, ["Sub_1"])
+		const { defs: pasted, newIds, topLevelIds } = pasteElements(defs, clipboard, 40, 40)
+		const proc = pasted.processes[0]
+		if (!proc) throw new Error("no process")
+
+		// Two original top-level (Sub_1, Boundary_1) + two pasted.
+		expect(proc.flowElements).toHaveLength(4)
+
+		// The pasted sub-process keeps its full child structure.
+		const newSubId = newIds.get("Sub_1")
+		const newSub = proc.flowElements.find((el) => el.id === newSubId)
+		if (!newSub || !("flowElements" in newSub)) throw new Error("no pasted sub-process")
+		expect(newSub.flowElements).toHaveLength(2)
+		expect(newSub.sequenceFlows).toHaveLength(1)
+
+		// The internal flow's endpoints point at the pasted children (not the originals).
+		const innerFlow = newSub.sequenceFlows[0]
+		expect(innerFlow?.sourceRef).toBe(newIds.get("Inner_Start"))
+		expect(innerFlow?.targetRef).toBe(newIds.get("Inner_Task"))
+
+		// The pasted boundary event re-attaches to the pasted sub-process.
+		const newBoundary = proc.flowElements.find((el) => el.id === newIds.get("Boundary_1"))
+		if (!newBoundary || newBoundary.type !== "boundaryEvent") throw new Error("no boundary")
+		expect(newBoundary.attachedToRef).toBe(newSubId)
+
+		// Selection targets only the two pasted top-level roots.
+		expect(topLevelIds).toHaveLength(2)
+		expect(topLevelIds).toContain(newSubId)
+
+		// Every id in the pasted model is unique — no collisions with the source.
+		const allIds = collectAllIds(pasted)
+		expect(new Set(allIds).size).toBe(allIds.length)
+
+		// Nested DI shape was offset.
+		const innerTaskDi = pasted.diagrams[0]?.plane.shapes.find(
+			(s) => s.bpmnElement === newIds.get("Inner_Task"),
+		)
+		expect(innerTaskDi?.bounds.x).toBe(280) // 240 + 40
+	})
+})
+
 describe("structural sharing", () => {
 	it("moveShapes leaves untouched shapes as shared references (no deep copy)", () => {
 		const d1 = Bpmn.parse(EDGE_XML)
