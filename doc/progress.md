@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Live-canvas SVG / PNG export
+
+Implemented P2-8 from `doc/render-gap-analysis.md`. `canvas.exportSvg({ bounds?: "diagram" | "viewport" })` serializes the current plane to a standalone SVG — cloning the content layers (diagram coordinates, excluding the pan/zoom transform), a `viewBox`, the marker/pattern `<defs>`, and a `<style>` block with `CANVAS_CSS` plus theme tokens resolved from the live host via `getComputedStyle` so it renders with correct colours off-page (falling back to the CSS `var()` defaults where computed styles aren't available). `canvas.exportPng(scale)` rasterizes it via `Image` + `<canvas>` (browser-only). Tests in canvas `SVG export` — 75 canvas tests; canvas/editor/plugins/operate green.
+
 ## 2026-07-05 — Vertical pools / lanes
 
 Implemented P2-7 (rendering) from `doc/render-gap-analysis.md`. `BpmnDiShape.isHorizontal` was parsed but ignored, so vertical pools rendered with a wrong (left, rotated) title bar. `renderPool`/`renderLane` now share a `renderSwimlane` helper that draws the title bar across the top with upright text when `isHorizontal === false`, and keeps the left bar with rotated text otherwise. Test in canvas `vertical pools` — 73 canvas tests. Deferred (noted): axis-aware editor resize/space-tool and core's static `exportSvg` (both still assume horizontal).

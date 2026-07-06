@@ -1061,3 +1061,25 @@ describe("vertical pools", () => {
 		expect(text?.getAttribute("transform") ?? "").not.toContain("rotate")
 	})
 })
+
+// ── SVG export (P2-8) ────────────────────────────────────────────────────────────
+
+describe("SVG export", () => {
+	it("exports a self-contained SVG with content and embedded styles", () => {
+		const container = makeContainer()
+		const canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+		const svg = canvas.exportSvg()
+		expect(svg).toContain("<svg")
+		expect(svg).toContain("viewBox")
+		// CANVAS_CSS is embedded so it renders standalone…
+		expect(svg).toContain("bpmnkit-shape-body")
+		// …and the diagram content is present.
+		expect(svg).toContain('data-bpmnkit-id="task"')
+	})
+
+	it("supports viewport bounds", () => {
+		const container = makeContainer()
+		const canvas = new BpmnCanvas({ container, xml: SIMPLE_XML, grid: false })
+		expect(canvas.exportSvg({ bounds: "viewport" })).toContain("<svg")
+	})
+})

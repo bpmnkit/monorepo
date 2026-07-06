@@ -292,7 +292,9 @@ Keep snapshots (simple, correct), fix costs: store `{label, defs}` entries; merg
 
 `isHorizontal` is parsed (`bpmn-model.ts:528-570`) but ignored. Spec: render title bar on top (not left) when `isHorizontal === false`, lane stacking horizontal; editor resize/space-tool axis-aware; auto-layout may keep emitting horizontal (no change). AC: bpmn-js vertical-pool fixture renders equivalently.
 
-#### P2-8 · Live-canvas SVG/PNG export — **S**
+#### P2-8 · Live-canvas SVG/PNG export — **S** — ✅ DONE (2026-07-05)
+`canvas.exportSvg({ bounds?: "diagram" | "viewport" })` serializes the current plane to a standalone SVG: it clones the content layers (in diagram coordinates, excluding the pan/zoom transform), a `viewBox` framing the diagram (default) or visible region, the marker/pattern `<defs>`, and a `<style>` block containing `CANVAS_CSS` plus theme tokens resolved from the live host via `getComputedStyle` (so it renders with the right colours off-page; falls back to the CSS `var(...)` defaults where computed styles are unavailable). `canvas.exportPng(scale)` rasterizes it via `Image` + `<canvas>` (browser-only). Tests in `SVG export` (PNG is browser-only, not exercised in happy-dom).
+
 Spec: `canvas.exportSvg({ plane?, bounds?: "diagram"|"viewport" }): string` — serialize the viewport group with inlined computed styles (walk `bpmnkit-*` classes → resolved CSS custom properties; themes make raw class export useless outside the page) + `canvas.exportPng(scale)` via `drawImage` on offscreen canvas (browser only). AC: exported SVG opens standalone with correct theme colors; PNG dimensions = bounds × scale.
 
 ### P3 — Polish & differentiators

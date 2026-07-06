@@ -1,6 +1,6 @@
 import { Bpmn, applyAutoLayout, checkDiCompleteness, planeForElement } from "@bpmnkit/core"
 import type { BpmnDefinitions, BpmnDiPlane, BpmnFlowElement } from "@bpmnkit/core"
-import { injectStyles } from "./css.js"
+import { CANVAS_CSS, injectStyles } from "./css.js"
 import { KeyboardHandler } from "./keyboard.js"
 import { OverlayManager } from "./overlays.js"
 import { computeDiagramBounds, createDefs, createGrid } from "./renderer.js"
@@ -601,6 +601,86 @@ export class BpmnCanvas {
 		}
 	}
 
+	/**
+	 * Serializes the current diagram to a standalone SVG string with theme
+	 * colours inlined, so it renders correctly outside the page.
+	 * @param opts.bounds `"diagram"` (default) exports the whole diagram;
+	 *   `"viewport"` exports only the currently visible region.
+	 */
+	exportSvg(opts?: { bounds?: "diagram" | "viewport" }): string {
+		const box =
+			opts?.bounds === "viewport"
+				? (() => {
+						const v = this.viewbox()
+						return { x: v.x, y: v.y, width: v.width, height: v.height }
+					})()
+				: (() => {
+						const b = this._currentDefs
+							? computeDiagramBounds(this._currentDefs, this._currentPlane ?? undefined)
+							: null
+						const pad = 20
+						return b
+							? {
+									x: b.minX - pad,
+									y: b.minY - pad,
+									width: b.maxX - b.minX + pad * 2,
+									height: b.maxY - b.minY + pad * 2,
+								}
+							: { x: 0, y: 0, width: 0, height: 0 }
+					})()
+
+		const svg = document.createElementNS(NS, "svg")
+		svg.setAttribute("xmlns", NS)
+		svg.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`)
+		svg.setAttribute("width", String(Math.round(box.width)))
+		svg.setAttribute("height", String(Math.round(box.height)))
+
+		const style = document.createElementNS(NS, "style")
+		style.textContent = this._exportStyles()
+		svg.appendChild(style)
+
+		// Marker/pattern defs so `url(#…)` references resolve inside the export.
+		const liveDefs = this._svg.querySelector("defs")
+		if (liveDefs) svg.appendChild(liveDefs.cloneNode(true))
+
+		// Diagram content lives in the layer groups in diagram coordinates (the
+		// pan/zoom transform is on the viewport group, which is intentionally
+		// excluded so the viewBox alone frames the content).
+		for (const layer of [this._containersG, this._edgesG, this._shapesG, this._labelsG]) {
+			svg.appendChild(layer.cloneNode(true))
+		}
+		return new XMLSerializer().serializeToString(svg)
+	}
+
+	/**
+	 * Rasterizes the current diagram to a PNG data URL at `scale`× the diagram
+	 * size. Browser-only (requires `Image`/`<canvas>`).
+	 */
+	exportPng(scale = 2): Promise<string> {
+		const svgString = this.exportSvg()
+		const match = svgString.match(/width="(\d+)" height="(\d+)"/)
+		const w = (match ? Number(match[1]) : 0) * scale
+		const h = (match ? Number(match[2]) : 0) * scale
+		const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
+		return new Promise((resolve, reject) => {
+			const img = new Image()
+			img.onload = () => {
+				const canvas = document.createElement("canvas")
+				canvas.width = w
+				canvas.height = h
+				const ctx = canvas.getContext("2d")
+				if (!ctx) {
+					reject(new Error("2D canvas context unavailable"))
+					return
+				}
+				ctx.drawImage(img, 0, 0, w, h)
+				resolve(canvas.toDataURL("image/png"))
+			}
+			img.onerror = () => reject(new Error("Failed to rasterize SVG"))
+			img.src = url
+		})
+	}
+
 	/** Adds a CSS class to the element with the given BPMN id. No-op if not found. */
 	addMarker(id: string, cls: string): void {
 		const element = this._findElement(id)
@@ -692,6 +772,34 @@ export class BpmnCanvas {
 	/** Finds the SVG group for a shape or edge by BPMN id. */
 	private _findElement(id: string): SVGGElement | undefined {
 		return this._scene.getGraphics(id)
+	}
+
+	/** Design tokens to resolve from the live host for a self-contained export. */
+	private static readonly _EXPORT_TOKENS = [
+		"--bpmnkit-bg",
+		"--bpmnkit-grid",
+		"--bpmnkit-shape-fill",
+		"--bpmnkit-shape-stroke",
+		"--bpmnkit-flow-stroke",
+		"--bpmnkit-text",
+		"--bpmnkit-highlight",
+		"--bpmnkit-focus",
+		"--bpmnkit-warn",
+		"--bpmnkit-success",
+	]
+
+	/** Stylesheet for the exported SVG: resolved theme tokens + the canvas CSS. */
+	private _exportStyles(): string {
+		const decls: string[] = []
+		if (typeof getComputedStyle !== "undefined") {
+			const cs = getComputedStyle(this._host)
+			for (const token of BpmnCanvas._EXPORT_TOKENS) {
+				const value = cs.getPropertyValue(token).trim()
+				if (value) decls.push(`${token}: ${value};`)
+			}
+		}
+		const rootRule = decls.length ? `svg { ${decls.join(" ")} }\n` : ""
+		return `${rootRule}${CANVAS_CSS}`
 	}
 
 	/** A human-readable label for a plane's `bpmnElement` (name, or a fallback). */
