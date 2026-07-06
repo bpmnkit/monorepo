@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Command-stack labels, coalescing, and memory
+
+Implemented P2-6 from `doc/render-gap-analysis.md`. `CommandStack` entries are now `{ defs, label, key }`; `push(defs, label?, key?)` coalesces consecutive same-`key` pushes into a single undo step (bursts like label typing or colour-slider changes), and `undoLabel()`/`redoLabel()` expose the command name. The editor threads descriptive labels through every `_executeCommand` call (Move, Delete, Resize, Connect, Rename, Align, Distribute, Change type, …), with coalesce keys for label edits (`label:<id>`) and colours (`color:<id>`); new `editor.getUndoLabel()`/`getRedoLabel()` drive the HUD undo/redo button tooltips (`Undo Delete (Ctrl+Z)`). Memory: the stack stores references and `modeling.ts` ops structurally share — a test confirms an untouched shape is the same object across snapshots (no deep-copy). Tests: `command-stack` (coalescing + labels), `modeling` (structural sharing), `editor` (undo labels) — 64 editor tests; editor/plugins/operate green.
+
 ## 2026-07-05 — Wire connection segment move
 
 Implemented P2-3 from `doc/render-gap-analysis.md`. `moveEdgeSegment` existed but was unreachable — a segment-body drag inserted a waypoint instead of moving the segment. `_hitTest` now computes `nearMidpoint` for an `edge-segment` hit (via the segment midpoint from `_nearestEdgeSegment`); the state machine routes a drag away from the midpoint to a new `dragging-edge-segment` state driving `moveEdgeSegment` (orthogonal segment move), while a drag near the midpoint still inserts a waypoint. New `previewSegmentMove`/`commitSegmentMove`/`cancelSegmentMove` callbacks; the commit runs through `removeCollinearWaypoints` as one undoable command. Tests: `segment-move.test.ts` (routing: move vs insert) and `modeling.test.ts` (op geometry + immutability) — 59 editor tests; editor/plugins/operate green.

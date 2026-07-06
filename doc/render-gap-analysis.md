@@ -288,7 +288,9 @@ Guides exist; explicit commands don't. Spec: `editor.alignSelected("left"|"cente
 #### P2-5 · Diagram search — **S/M**
 Spec: `canvas.find(query)` scoring name/id/type (word-prefix > substring, à la diagram-js 15.x search), and an editor Ctrl/Cmd+F pad listing matches, arrow-key navigation, Enter → `scrollToElement` + selection (depends P1-7). AC: query matches across planes (P0-1), keyboard-only operation works.
 
-#### P2-6 · Command stack: labels, merge, memory — **M**
+#### P2-6 · Command stack: labels, merge, memory — **M** — ✅ DONE (2026-07-05)
+`CommandStack` entries are now `{ defs, label, key }`. `push(defs, label?, key?)` coalesces consecutive same-`key` pushes into one undo step (bursts like label typing / colour changes), and `undoLabel()`/`redoLabel()` expose the command name. The editor threads descriptive labels through every `_executeCommand` call (Move, Delete, Resize, Connect, Rename, Align, …), with coalesce keys for label edits (`label:<id>`) and colour changes (`color:<id>`); new `editor.getUndoLabel()`/`getRedoLabel()` feed the HUD undo/redo button tooltips. Memory: the stack already stores references, and `modeling.ts` ops structurally share — verified by a test asserting an untouched shape is the same object across snapshots (no deep-copy). Tests: `command-stack` (coalescing + labels), `modeling` (structural sharing), `editor` (undo labels).
+
 Keep snapshots (simple, correct), fix costs: store `{label, defs}` entries; merge bursts (label typing, drag ticks — currently one snapshot per commit) via `commitCoalesced(label, key)` window; snapshots are already structurally shared by immutable `modeling.ts` updates — verify with a heap test and stop *deep-copying* if any path still does (`command-stack.ts:1-54`); expose `editor.getUndoLabel()/getRedoLabel()` for HUD tooltips. With P1-1, undo/redo re-renders dirty ids only. AC: 100 undo entries of a 1-element edit on a 500-element model stay < ~2× single-model heap; label-typing produces one undo step.
 
 #### P2-7 · Vertical pools/lanes — **M** — ✅ DONE (rendering) (2026-07-05)

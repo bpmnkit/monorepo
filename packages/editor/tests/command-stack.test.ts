@@ -100,7 +100,7 @@ describe("CommandStack", () => {
 		}
 		// Should still be at most 100
 		// @ts-expect-error — accessing private for test
-		expect(cs._snapshots.length).toBeLessThanOrEqual(100)
+		expect(cs._entries.length).toBeLessThanOrEqual(100)
 		// Cursor is at end
 		expect(cs.canRedo()).toBe(false)
 	})
@@ -113,5 +113,38 @@ describe("CommandStack", () => {
 		expect(cs.canUndo()).toBe(false)
 		expect(cs.canRedo()).toBe(false)
 		expect(cs.current()).toBeNull()
+	})
+})
+
+describe("CommandStack — labels & coalescing", () => {
+	it("coalesces consecutive pushes with the same key into one undo step", () => {
+		const cs = new CommandStack()
+		cs.push(makeDefs("a"), "Base")
+		cs.push(makeDefs("b"), "Type", "k")
+		cs.push(makeDefs("c"), "Type", "k")
+		// The b→c burst is a single entry (c), so one undo returns to "a".
+		expect(cs.current()?.id).toBe("c")
+		expect(cs.undo()?.id).toBe("a")
+		expect(cs.canUndo()).toBe(false)
+		expect(cs.redo()?.id).toBe("c")
+	})
+
+	it("does not coalesce across different keys", () => {
+		const cs = new CommandStack()
+		cs.push(makeDefs("a"))
+		cs.push(makeDefs("b"), "X", "k1")
+		cs.push(makeDefs("c"), "Y", "k2")
+		expect(cs.undo()?.id).toBe("b")
+		expect(cs.undo()?.id).toBe("a")
+	})
+
+	it("exposes undo/redo labels", () => {
+		const cs = new CommandStack()
+		cs.push(makeDefs("a"), "Open")
+		cs.push(makeDefs("b"), "Delete")
+		expect(cs.undoLabel()).toBe("Delete")
+		expect(cs.redoLabel()).toBeNull()
+		cs.undo()
+		expect(cs.redoLabel()).toBe("Delete")
 	})
 })

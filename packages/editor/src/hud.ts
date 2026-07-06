@@ -991,6 +991,10 @@ export function initEditorHud(
 		btnRedo.disabled = !editor.canRedo()
 		btnDelete.disabled = selectedIds.length === 0
 		btnDuplicate.disabled = selectedIds.length === 0
+		const undoLabel = editor.getUndoLabel()
+		const redoLabel = editor.getRedoLabel()
+		btnUndo.title = undoLabel ? `Undo ${undoLabel} (Ctrl+Z)` : "Undo (Ctrl+Z)"
+		btnRedo.title = redoLabel ? `Redo ${redoLabel} (Ctrl+Y)` : "Redo (Ctrl+Y)"
 	}
 
 	updateActionBar()

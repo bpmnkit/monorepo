@@ -456,3 +456,17 @@ describe("copyElements + pasteElements", () => {
 		expect(pastedShape?.bounds.y).toBe(50) // 0 + 50
 	})
 })
+
+describe("structural sharing", () => {
+	it("moveShapes leaves untouched shapes as shared references (no deep copy)", () => {
+		const d1 = Bpmn.parse(EDGE_XML)
+		const d2 = moveShapes(d1, [{ id: "a", dx: 10, dy: 0 }])
+		const bBefore = d1.diagrams[0]?.plane.shapes.find((s) => s.bpmnElement === "b")
+		const bAfter = d2.diagrams[0]?.plane.shapes.find((s) => s.bpmnElement === "b")
+		// The unmoved shape object is reused, not cloned.
+		expect(bAfter).toBe(bBefore)
+		// The moved shape is a fresh object with shifted bounds.
+		const aAfter = d2.diagrams[0]?.plane.shapes.find((s) => s.bpmnElement === "a")
+		expect(aAfter?.bounds.x).toBe(10)
+	})
+})

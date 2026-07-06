@@ -409,7 +409,7 @@ export class BpmnEditor {
 			previewResize: (bounds) => this._overlay.setResizePreview(bounds),
 			commitResize: (id, bounds) => {
 				this._overlay.setResizePreview(null)
-				this._executeCommand((d) => resizeShape(d, id, bounds))
+				this._executeCommand((d) => resizeShape(d, id, bounds), "Resize")
 			},
 			previewConnect: (ghostEnd) => {
 				const src = this._connectSourceBounds()
@@ -434,7 +434,7 @@ export class BpmnEditor {
 			startLabelEdit: (id) => this._startLabelEdit(id),
 			setHovered: (id) => this._overlay.setHovered(id, this._shapes),
 			executeDelete: (ids) => {
-				this._executeCommand((d) => deleteElements(d, ids))
+				this._executeCommand((d) => deleteElements(d, ids), "Delete")
 				this._setSelection([])
 			},
 			executeCopy: () => this._doCopy(),
@@ -465,8 +465,9 @@ export class BpmnEditor {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
 				const snap = this._snapWaypoint(pt)
-				this._executeCommand((d) =>
-					removeCollinearWaypoints(insertEdgeWaypoint(d, edgeId, segIdx, snap.pt), edgeId),
+				this._executeCommand(
+					(d) => removeCollinearWaypoints(insertEdgeWaypoint(d, edgeId, segIdx, snap.pt), edgeId),
+					"Add waypoint",
 				)
 			},
 			cancelWaypointInsert: () => {
@@ -485,8 +486,9 @@ export class BpmnEditor {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
 				const snap = this._snapWaypoint(pt)
-				this._executeCommand((d) =>
-					removeCollinearWaypoints(moveEdgeWaypoint(d, edgeId, wpIdx, snap.pt), edgeId),
+				this._executeCommand(
+					(d) => removeCollinearWaypoints(moveEdgeWaypoint(d, edgeId, wpIdx, snap.pt), edgeId),
+					"Move waypoint",
 				)
 			},
 			cancelWaypointMove: () => {
@@ -501,8 +503,10 @@ export class BpmnEditor {
 			},
 			commitSegmentMove: (edgeId, segIdx, isHoriz, delta) => {
 				this._overlay.setEndpointDragGhost(null)
-				this._executeCommand((d) =>
-					removeCollinearWaypoints(moveEdgeSegment(d, edgeId, segIdx, isHoriz, delta), edgeId),
+				this._executeCommand(
+					(d) =>
+						removeCollinearWaypoints(moveEdgeSegment(d, edgeId, segIdx, isHoriz, delta), edgeId),
+					"Move segment",
 				)
 			},
 			cancelSegmentMove: () => {
@@ -532,7 +536,7 @@ export class BpmnEditor {
 		this._labelEditor = new LabelEditor(
 			this._host,
 			(id, text) => {
-				this._executeCommand((d) => updateLabel(d, id, text))
+				this._executeCommand((d) => updateLabel(d, id, text), "Rename", `label:${id}`)
 				this._stateMachine.setMode({ mode: "select", sub: { name: "idle", hoveredId: null } })
 			},
 			() => {
@@ -609,7 +613,7 @@ export class BpmnEditor {
 	 * The operation is undoable.
 	 */
 	autoLayout(): void {
-		this._executeCommand(applyAutoLayout)
+		this._executeCommand(applyAutoLayout, "Auto-layout")
 		this.fitView()
 	}
 
@@ -681,7 +685,7 @@ export class BpmnEditor {
 	deleteSelected(): void {
 		if (this._selectedIds.length === 0) return
 		const ids = [...this._selectedIds]
-		this._executeCommand((d) => deleteElements(d, ids))
+		this._executeCommand((d) => deleteElements(d, ids), "Delete")
 		this._setSelection([])
 	}
 
@@ -739,7 +743,7 @@ export class BpmnEditor {
 			}
 			if (dx !== 0 || dy !== 0) moves.push({ id: b.id, dx, dy })
 		}
-		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves))
+		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves), "Align")
 	}
 
 	/**
@@ -773,7 +777,7 @@ export class BpmnEditor {
 			}
 			cursor += size(b) + gap
 		}
-		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves))
+		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves), "Distribute")
 	}
 
 	undo(): void {
@@ -1016,12 +1020,26 @@ export class BpmnEditor {
 		this._emit("diagram:load", defs, { missingShapes: [], missingEdges: [] })
 	}
 
-	private _executeCommand(fn: (d: BpmnDefinitions) => BpmnDefinitions): void {
+	private _executeCommand(
+		fn: (d: BpmnDefinitions) => BpmnDefinitions,
+		label = "",
+		coalesceKey?: string,
+	): void {
 		if (this._readOnly || !this._defs) return
 		const newDefs = fn(this._defs)
-		this._commandStack.push(newDefs)
+		this._commandStack.push(newDefs, label, coalesceKey)
 		this._renderDefs(newDefs)
 		this._emit("diagram:change", newDefs)
+	}
+
+	/** Label of the change `undo()` would revert (for HUD tooltips), or null. */
+	getUndoLabel(): string | null {
+		return this._commandStack.undoLabel()
+	}
+
+	/** Label of the change `redo()` would re-apply (for HUD tooltips), or null. */
+	getRedoLabel(): string | null {
+		return this._commandStack.redoLabel()
 	}
 
 	private _setSelection(ids: string[]): void {
@@ -1101,9 +1119,12 @@ export class BpmnEditor {
 		const moves = this._selectedIds.map((id) => ({ id, dx: snap.dx, dy: snap.dy }))
 		const shapeId = this._selectedIds.length === 1 ? this._selectedIds[0] : undefined
 		if (edgeDropId && shapeId) {
-			this._executeCommand((d) => insertShapeOnEdge(moveShapes(d, moves), edgeDropId, shapeId))
+			this._executeCommand(
+				(d) => insertShapeOnEdge(moveShapes(d, moves), edgeDropId, shapeId),
+				"Insert on flow",
+			)
 		} else {
-			this._executeCommand((d) => moveShapes(d, moves))
+			this._executeCommand((d) => moveShapes(d, moves), "Move")
 		}
 		if (this._isDragging) {
 			this._isDragging = false
@@ -1174,7 +1195,7 @@ export class BpmnEditor {
 		}
 
 		if (moves.length > 0) {
-			this._executeCommand((d) => moveShapes(d, moves))
+			this._executeCommand((d) => moveShapes(d, moves), "Move")
 		}
 	}
 
@@ -1256,7 +1277,7 @@ export class BpmnEditor {
 			tgtShape.shape.bounds,
 			obstacles,
 		)
-		this._executeCommand((d) => createConnection(d, srcId, tgtId, waypoints).defs)
+		this._executeCommand((d) => createConnection(d, srcId, tgtId, waypoints).defs, "Connect")
 	}
 
 	private _doCopy(): void {
@@ -1492,7 +1513,7 @@ export class BpmnEditor {
 		const shape = this._shapes.find((s) => s.id === shapeId)
 		if (!shape) return
 		const labelBounds = labelBoundsForPosition(shape.shape.bounds, position)
-		this._executeCommand((d) => updateLabelPosition(d, shapeId, labelBounds))
+		this._executeCommand((d) => updateLabelPosition(d, shapeId, labelBounds), "Move label")
 	}
 
 	/** Starts inline label editing for the element with the given id. */
@@ -1548,7 +1569,7 @@ export class BpmnEditor {
 
 	/** Updates the color of a shape in the diagram. Pass `{}` to clear colors. */
 	updateColor(id: string, color: DiColor): void {
-		this._executeCommand((d) => updateShapeColor(d, id, color))
+		this._executeCommand((d) => updateShapeColor(d, id, color), "Change colour", `color:${id}`)
 	}
 
 	// ── Private helpers ────────────────────────────────────────────────
@@ -1572,7 +1593,7 @@ export class BpmnEditor {
 
 	/** Changes a flow element's type (e.g. exclusiveGateway → parallelGateway). */
 	changeElementType(id: string, newType: CreateShapeType): void {
-		this._executeCommand((d) => changeElementTypeFn(d, id, newType))
+		this._executeCommand((d) => changeElementTypeFn(d, id, newType), "Change type")
 	}
 
 	private _findEdgeDropTarget(dx: number, dy: number): string | null {
@@ -1670,7 +1691,7 @@ export class BpmnEditor {
 		const newPort = isStart
 			? closestPort(diagPoint, srcDi.bounds)
 			: closestPort(diagPoint, tgtDi.bounds)
-		this._executeCommand((d) => updateEdgeEndpoint(d, edgeId, isStart, newPort))
+		this._executeCommand((d) => updateEdgeEndpoint(d, edgeId, isStart, newPort), "Reconnect")
 	}
 
 	private _isResizable(id: string): boolean {

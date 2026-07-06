@@ -330,3 +330,19 @@ describe("HUD align menu", () => {
 		ed.destroy()
 	})
 })
+
+// ── Command labels (P2-6) ────────────────────────────────────────────────────────
+
+describe("undo labels", () => {
+	it("reports the label of the last command", () => {
+		const container = makeContainer()
+		const ed = new BpmnEditor({ container, xml: SIMPLE_XML, grid: false })
+		ed.setSelection(["task"])
+		ed.deleteSelected()
+		expect(ed.getUndoLabel()).toBe("Delete")
+		expect(ed.getRedoLabel()).toBeNull()
+		ed.undo()
+		expect(ed.getRedoLabel()).toBe("Delete")
+		ed.destroy()
+	})
+})
