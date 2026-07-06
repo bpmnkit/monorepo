@@ -7,6 +7,9 @@ export {
 	isBpmnBusinessRuleTask,
 	isBpmnCallActivity,
 	isBpmnComplexGateway,
+	isBpmnDataObject,
+	isBpmnDataObjectReference,
+	isBpmnDataStoreReference,
 	isBpmnEndEvent,
 	isBpmnEvent,
 	isBpmnEventBasedGateway,
@@ -41,6 +44,7 @@ export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export { applyAutoLayout } from "./bpmn/auto-layout.js"
 export { checkDiCompleteness } from "./bpmn/di-check.js"
 export type { DiCompleteness } from "./bpmn/di-check.js"
+export { planeForElement, listPlaneElementIds } from "./bpmn/di-planes.js"
 export { DiagramBuilder } from "./bpmn/bpmn-builder.js"
 export type {
 	ProcessBuilder,
@@ -103,6 +107,10 @@ export type {
 	BpmnSignal,
 	BpmnTextAnnotation,
 	BpmnAssociation,
+	BpmnGroup,
+	BpmnDataObject,
+	BpmnDataObjectReference,
+	BpmnDataStoreReference,
 	BpmnConditionExpression,
 	BpmnEventDefinition,
 	BpmnTimerEventDefinition,

@@ -32,6 +32,47 @@ export const CANVAS_CSS = `
   outline: none;
 }
 
+/* ── Drill-down breadcrumb ───────────────────────────────────────── */
+.bpmnkit-breadcrumb {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  font-family: var(--bpmnkit-font, system-ui, -apple-system, sans-serif);
+  font-size: 12px;
+  color: var(--bpmnkit-text, #333);
+  background: var(--bpmnkit-overlay-bg, rgba(248, 249, 250, 0.92));
+  border: 1px solid var(--bpmnkit-overlay-border, rgba(0, 0, 0, 0.12));
+  border-radius: 6px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.bpmnkit-breadcrumb-crumb {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+}
+.bpmnkit-breadcrumb-crumb:hover {
+  background: var(--bpmnkit-accent-subtle, rgba(26, 86, 219, 0.12));
+  color: var(--bpmnkit-highlight, #1a56db);
+}
+.bpmnkit-breadcrumb-crumb:last-child {
+  cursor: default;
+  font-weight: 600;
+}
+.bpmnkit-breadcrumb-sep {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* ── Shapes ─────────────────────────────────────────────────────── */
 .bpmnkit-shape {
   cursor: pointer;
@@ -116,6 +157,20 @@ export const CANVAS_CSS = `
   stroke-width: 3;
 }
 
+/* ── Data objects / stores / groups ──────────────────────────────── */
+.bpmnkit-data-body,
+.bpmnkit-datastore-body {
+  fill: var(--bpmnkit-shape-fill, #ffffff);
+  stroke: var(--bpmnkit-shape-stroke, #404040);
+  stroke-width: 1.5;
+}
+.bpmnkit-group-body {
+  fill: none;
+  stroke: var(--bpmnkit-shape-stroke, #404040);
+  stroke-width: 1.5;
+  stroke-dasharray: 8 4 1 4;
+}
+
 /* ── Icons ───────────────────────────────────────────────────────── */
 .bpmnkit-icon {
   fill: none;
@@ -141,6 +196,21 @@ export const CANVAS_CSS = `
   stroke-width: 2.5;
   stroke-linecap: round;
   pointer-events: none;
+}
+
+/* ── Drill-down button (collapsed sub-process) ───────────────────── */
+.bpmnkit-drilldown {
+  cursor: pointer;
+  pointer-events: all;
+}
+.bpmnkit-drilldown-box {
+  fill: var(--bpmnkit-shape-fill, #ffffff);
+  stroke: var(--bpmnkit-shape-stroke, #404040);
+  stroke-width: 1.5;
+}
+.bpmnkit-drilldown:hover .bpmnkit-drilldown-box {
+  fill: var(--bpmnkit-accent-subtle, rgba(26, 86, 219, 0.12));
+  stroke: var(--bpmnkit-highlight, #1a56db);
 }
 
 /* ── Pool / Lane ─────────────────────────────────────────────────── */
@@ -190,6 +260,19 @@ export const CANVAS_CSS = `
 }
 .bpmnkit-arrow-fill {
   fill: var(--bpmnkit-flow-stroke, #404040);
+}
+.bpmnkit-open-arrow {
+  fill: none;
+  stroke: var(--bpmnkit-flow-stroke, #404040);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bpmnkit-conditional-marker,
+.bpmnkit-msg-marker {
+  fill: var(--bpmnkit-shape-fill, #ffffff);
+  stroke: var(--bpmnkit-flow-stroke, #404040);
+  stroke-width: 1.5;
 }
 
 /* ── Labels ─────────────────────────────────────────────────────── */

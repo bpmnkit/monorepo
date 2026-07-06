@@ -9,6 +9,7 @@ import type {
 	BpmnElementType,
 	BpmnEventDefinition,
 	BpmnFlowElement,
+	BpmnGroup,
 	BpmnProcess,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
@@ -278,9 +279,16 @@ function buildSubContent(
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 } {
 	if (!children || children.elements.length === 0) {
-		return { flowElements: [], sequenceFlows: [], textAnnotations: [], associations: [] }
+		return {
+			flowElements: [],
+			sequenceFlows: [],
+			textAnnotations: [],
+			associations: [],
+			groups: [],
+		}
 	}
 	const inc = new Map<string, string[]>()
 	const out = new Map<string, string[]>()
@@ -307,6 +315,7 @@ function buildSubContent(
 		})),
 		textAnnotations: [],
 		associations: [],
+		groups: [],
 	}
 }
 
@@ -380,6 +389,8 @@ function buildFlowElement(
 			return { ...base, type: "eventBasedGateway" }
 		case "complexGateway":
 			return { ...base, type: "complexGateway" }
+		default:
+			return { ...base, type: "task" }
 	}
 }
 
@@ -445,6 +456,7 @@ function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram
 		sequenceFlows,
 		textAnnotations: [],
 		associations: [],
+		groups: [],
 		unknownAttributes: {},
 	}
 

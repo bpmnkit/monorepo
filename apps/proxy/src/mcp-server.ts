@@ -169,6 +169,7 @@ function ensureProcess(processId: string): BpmnProcess {
 			sequenceFlows: [],
 			textAnnotations: [],
 			associations: [],
+			groups: [],
 			unknownAttributes: {},
 		}
 		state.data.processes.push(proc)

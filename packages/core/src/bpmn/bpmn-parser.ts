@@ -17,6 +17,7 @@ import type {
 	BpmnEscalation,
 	BpmnEventDefinition,
 	BpmnFlowElement,
+	BpmnGroup,
 	BpmnLane,
 	BpmnLaneSet,
 	BpmnMessage,
@@ -93,6 +94,10 @@ const KNOWN_ATTRS = new Set([
 	"exporter",
 	"exporterVersion",
 	"processRef",
+	"dataObjectRef",
+	"dataStoreRef",
+	"isCollection",
+	"categoryValueRef",
 ])
 
 /** Extract unknown (namespace-qualified) attributes from an element. */
@@ -297,6 +302,9 @@ const FLOW_ELEMENT_TYPES = new Set<string>([
 	"inclusiveGateway",
 	"eventBasedGateway",
 	"complexGateway",
+	"dataObject",
+	"dataObjectReference",
+	"dataStoreReference",
 ])
 
 function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
@@ -415,6 +423,28 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 		case "complexGateway":
 			return { ...base, type: "complexGateway", default: attr(element, "default") }
 
+		case "dataObject":
+			return {
+				...base,
+				type: "dataObject",
+				...(attr(element, "isCollection") === "true" ? { isCollection: true } : {}),
+			}
+
+		case "dataObjectReference":
+			return {
+				...base,
+				type: "dataObjectReference",
+				dataObjectRef: attr(element, "dataObjectRef"),
+				...(attr(element, "isCollection") === "true" ? { isCollection: true } : {}),
+			}
+
+		case "dataStoreReference":
+			return {
+				...base,
+				type: "dataStoreReference",
+				dataStoreRef: attr(element, "dataStoreRef"),
+			}
+
 		default:
 			return undefined
 	}
@@ -468,6 +498,14 @@ function parseAssociation(element: XmlElement): BpmnAssociation {
 	}
 }
 
+function parseGroup(element: XmlElement): BpmnGroup {
+	return {
+		id: requiredAttr(element, "id"),
+		categoryValueRef: attr(element, "categoryValueRef"),
+		unknownAttributes: unknownAttrs(element),
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Process contents (shared between process and adHocSubProcess)
 // ---------------------------------------------------------------------------
@@ -477,11 +515,13 @@ function parseProcessContents(element: XmlElement): {
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]
 	associations: BpmnAssociation[]
+	groups: BpmnGroup[]
 } {
 	const flowElements: BpmnFlowElement[] = []
 	const sequenceFlows: BpmnSequenceFlow[] = []
 	const textAnnotations: BpmnTextAnnotation[] = []
 	const associations: BpmnAssociation[] = []
+	const groups: BpmnGroup[] = []
 
 	for (const child of element.children) {
 		const ln = localName(child.name)
@@ -495,10 +535,12 @@ function parseProcessContents(element: XmlElement): {
 			textAnnotations.push(parseTextAnnotation(child))
 		} else if (ln === "association") {
 			associations.push(parseAssociation(child))
+		} else if (ln === "group") {
+			groups.push(parseGroup(child))
 		}
 	}
 
-	return { flowElements, sequenceFlows, textAnnotations, associations }
+	return { flowElements, sequenceFlows, textAnnotations, associations, groups }
 }
 
 // ---------------------------------------------------------------------------
@@ -573,6 +615,7 @@ function parseCollaboration(element: XmlElement): BpmnCollaboration {
 		messageFlows: findChildren(element, "messageFlow").map(parseMessageFlow),
 		textAnnotations: findChildren(element, "textAnnotation").map(parseTextAnnotation),
 		associations: findChildren(element, "association").map(parseAssociation),
+		groups: findChildren(element, "group").map(parseGroup),
 		extensionElements: parseExtensionElements(element),
 		unknownAttributes: unknownAttrs(element),
 	}

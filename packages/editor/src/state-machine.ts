@@ -46,10 +46,18 @@ type SelectSub =
 			isHoriz: boolean
 			projPt: DiagPoint
 			origin: DiagPoint
+			nearMidpoint: boolean
 			screenX: number
 			screenY: number
 	  }
 	| { name: "dragging-edge-waypoint-new"; edgeId: string; segIdx: number; origin: DiagPoint }
+	| {
+			name: "dragging-edge-segment"
+			edgeId: string
+			segIdx: number
+			isHoriz: boolean
+			origin: DiagPoint
+	  }
 	| {
 			name: "pointing-edge-waypoint"
 			edgeId: string
@@ -88,7 +96,7 @@ export interface Callbacks {
 	cancelTranslate(): void
 	previewResize(bounds: BpmnBounds): void
 	commitResize(id: string, bounds: BpmnBounds): void
-	previewConnect(ghostEnd: DiagPoint): void
+	previewConnect(ghostEnd: DiagPoint, targetId: string | null): void
 	cancelConnect(): void
 	commitConnect(sourceId: string, targetId: string): void
 	previewRubberBand(origin: DiagPoint, current: DiagPoint): void
@@ -109,6 +117,9 @@ export interface Callbacks {
 	previewWaypointMove(edgeId: string, wpIdx: number, pt: DiagPoint): void
 	commitWaypointMove(edgeId: string, wpIdx: number, pt: DiagPoint): void
 	cancelWaypointMove(): void
+	previewSegmentMove(edgeId: string, segIdx: number, isHoriz: boolean, delta: number): void
+	commitSegmentMove(edgeId: string, segIdx: number, isHoriz: boolean, delta: number): void
+	cancelSegmentMove(): void
 	showEdgeHoverDot(pt: DiagPoint): void
 	hideEdgeHoverDot(): void
 	showEdgeWaypointBalls(edgeId: string): void
@@ -279,6 +290,7 @@ export class EditorStateMachine {
 					isHoriz: hit.isHoriz,
 					projPt: hit.projPt,
 					origin: diag,
+					nearMidpoint: hit.nearMidpoint,
 					screenX: e.clientX,
 					screenY: e.clientY,
 				})
@@ -431,14 +443,14 @@ export class EditorStateMachine {
 						sourceId: sub.sourceId,
 						ghostEnd: diag,
 					})
-					this._cb.previewConnect(diag)
+					this._cb.previewConnect(diag, hit.type === "shape" ? hit.id : null)
 				}
 				break
 			}
 
 			case "connecting": {
 				this._mode = this._withSub({ ...sub, ghostEnd: diag })
-				this._cb.previewConnect(diag)
+				this._cb.previewConnect(diag, hit.type === "shape" ? hit.id : null)
 				break
 			}
 
@@ -464,19 +476,39 @@ export class EditorStateMachine {
 			case "pointing-edge-segment": {
 				const dist = screenDist(e.clientX, e.clientY, sub.screenX, sub.screenY)
 				if (dist > DRAG_THRESHOLD) {
-					this._mode = this._withSub({
-						name: "dragging-edge-waypoint-new",
-						edgeId: sub.edgeId,
-						segIdx: sub.segIdx,
-						origin: sub.origin,
-					})
-					this._cb.previewWaypointInsert(sub.edgeId, sub.segIdx, diag)
+					if (sub.nearMidpoint) {
+						// Near the segment midpoint → insert a new waypoint.
+						this._mode = this._withSub({
+							name: "dragging-edge-waypoint-new",
+							edgeId: sub.edgeId,
+							segIdx: sub.segIdx,
+							origin: sub.origin,
+						})
+						this._cb.previewWaypointInsert(sub.edgeId, sub.segIdx, diag)
+					} else {
+						// Elsewhere on the segment → move the whole segment orthogonally.
+						this._mode = this._withSub({
+							name: "dragging-edge-segment",
+							edgeId: sub.edgeId,
+							segIdx: sub.segIdx,
+							isHoriz: sub.isHoriz,
+							origin: sub.origin,
+						})
+						const delta = sub.isHoriz ? diag.y - sub.origin.y : diag.x - sub.origin.x
+						this._cb.previewSegmentMove(sub.edgeId, sub.segIdx, sub.isHoriz, delta)
+					}
 				}
 				break
 			}
 
 			case "dragging-edge-waypoint-new": {
 				this._cb.previewWaypointInsert(sub.edgeId, sub.segIdx, diag)
+				break
+			}
+
+			case "dragging-edge-segment": {
+				const delta = sub.isHoriz ? diag.y - sub.origin.y : diag.x - sub.origin.x
+				this._cb.previewSegmentMove(sub.edgeId, sub.segIdx, sub.isHoriz, delta)
 				break
 			}
 
@@ -648,6 +680,14 @@ export class EditorStateMachine {
 				break
 			}
 
+			case "dragging-edge-segment": {
+				this._cb.lockViewport(false)
+				const delta = sub.isHoriz ? diag.y - sub.origin.y : diag.x - sub.origin.x
+				this._cb.commitSegmentMove(sub.edgeId, sub.segIdx, sub.isHoriz, delta)
+				this._mode = this._idle()
+				break
+			}
+
 			case "pointing-edge-waypoint": {
 				this._cb.lockViewport(false)
 				this._cb.setEdgeSelected(sub.edgeId)
@@ -722,6 +762,9 @@ export class EditorStateMachine {
 				this._cb.lockViewport(false)
 			} else if (sub.name === "dragging-edge-waypoint") {
 				this._cb.cancelWaypointMove()
+				this._cb.lockViewport(false)
+			} else if (sub.name === "dragging-edge-segment") {
+				this._cb.cancelSegmentMove()
 				this._cb.lockViewport(false)
 			}
 		}

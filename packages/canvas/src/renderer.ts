@@ -1,14 +1,19 @@
 import type {
+	BpmnAssociation,
 	BpmnDefinitions,
 	BpmnDiEdge,
+	BpmnDiPlane,
 	BpmnDiShape,
 	BpmnFlowElement,
+	BpmnGroup,
 	BpmnLane,
+	BpmnMessageFlow,
 	BpmnParticipant,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
 } from "@bpmnkit/core"
 import { readDiColor } from "@bpmnkit/core"
+import { wrapText } from "./measure.js"
 import type { RenderedEdge, RenderedShape } from "./types.js"
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
@@ -24,34 +29,6 @@ function attr(el: Element, attrs: Record<string, string | number>): void {
 }
 
 // ── Text helpers ──────────────────────────────────────────────────────────────
-
-const AVG_CHAR_PX = 6.5 // approximate width at 11px system-ui
-
-/**
- * Splits `text` into lines that fit within `maxPx` pixels.
- * Uses an average character-width estimate rather than actual text measurement
- * to keep this dependency-free and synchronous.
- */
-function wrapText(text: string, maxPx: number): string[] {
-	if (!text.trim()) return []
-	const words = text.split(/\s+/)
-	const lines: string[] = []
-	let line = ""
-	for (const word of words) {
-		const candidate = line ? `${line} ${word}` : word
-		if (candidate.length * AVG_CHAR_PX <= maxPx) {
-			line = candidate
-		} else if (line) {
-			lines.push(line)
-			line = word
-		} else {
-			// Single word wider than maxPx — use as-is
-			line = word
-		}
-	}
-	if (line) lines.push(line)
-	return lines.length > 0 ? lines : [text]
-}
 
 /**
  * Creates a `<text>` element (or multi-line group) centred at (`cx`, `cy`).
@@ -141,6 +118,92 @@ function waypointsToRoundedPath(waypoints: ReadonlyArray<{ x: number; y: number 
 	}
 
 	return parts.join(" ")
+}
+
+// ── Connection docking ─────────────────────────────────────────────────────────
+
+interface Point {
+	x: number
+	y: number
+}
+
+/** The outline used to crop a connection to a shape. */
+interface ShapeGeom {
+	x: number
+	y: number
+	width: number
+	height: number
+	kind: "circle" | "diamond" | "rect"
+}
+
+/**
+ * Returns the point on `geom`'s outline along the ray from its centre toward
+ * `toward`. Used to dock connection endpoints onto the true shape outline
+ * (circle for events, diamond for gateways) instead of the bounding box.
+ */
+function dockPoint(geom: ShapeGeom, toward: Point): Point {
+	const cx = geom.x + geom.width / 2
+	const cy = geom.y + geom.height / 2
+	const dx = toward.x - cx
+	const dy = toward.y - cy
+	if (dx === 0 && dy === 0) return { x: cx, y: cy }
+
+	if (geom.kind === "circle") {
+		const r = Math.min(geom.width, geom.height) / 2
+		const len = Math.sqrt(dx * dx + dy * dy)
+		return { x: cx + (dx / len) * r, y: cy + (dy / len) * r }
+	}
+
+	if (geom.kind === "diamond") {
+		// Ray/diamond intersection: |t·dx|/(w/2) + |t·dy|/(h/2) = 1
+		const t = 1 / (Math.abs(dx) / (geom.width / 2) + Math.abs(dy) / (geom.height / 2))
+		return { x: cx + dx * t, y: cy + dy * t }
+	}
+
+	// Rectangle: scale the ray to the nearest border.
+	const tx = dx !== 0 ? geom.width / 2 / Math.abs(dx) : Number.POSITIVE_INFINITY
+	const ty = dy !== 0 ? geom.height / 2 / Math.abs(dy) : Number.POSITIVE_INFINITY
+	const t = Math.min(tx, ty)
+	return { x: cx + dx * t, y: cy + dy * t }
+}
+
+/**
+ * Crops the first and last segments of `waypoints` to the source and target
+ * shape outlines. Display-only — the DI waypoints are never mutated.
+ */
+function cropWaypoints(
+	waypoints: ReadonlyArray<Point>,
+	source: ShapeGeom | undefined,
+	target: ShapeGeom | undefined,
+): Point[] {
+	const out = waypoints.map((w) => ({ x: w.x, y: w.y }))
+	if (out.length < 2) return out
+	if (source) {
+		const next = out[1]
+		const first = out[0]
+		if (next && first) out[0] = dockPoint(source, next)
+	}
+	if (target) {
+		const prev = out[out.length - 2]
+		const last = out[out.length - 1]
+		if (prev && last) out[out.length - 1] = dockPoint(target, prev)
+	}
+	return out
+}
+
+/** Classifies a shape's docking outline from its BPMN element type. */
+function geomKind(type: string | undefined): ShapeGeom["kind"] {
+	if (
+		type === "startEvent" ||
+		type === "endEvent" ||
+		type === "intermediateCatchEvent" ||
+		type === "intermediateThrowEvent" ||
+		type === "boundaryEvent"
+	) {
+		return "circle"
+	}
+	if (type?.endsWith("Gateway")) return "diamond"
+	return "rect"
 }
 
 // ── Task type icons (14×14, origin at 0,0) ───────────────────────────────────
@@ -238,29 +301,73 @@ function gatewayMarker(type: string): string {
 	}
 }
 
-// ── Sub-process bottom markers ────────────────────────────────────────────────
+// ── Activity bottom markers ───────────────────────────────────────────────────
 
-function subProcessMarker(type: string, multiInstance?: "sequential" | "parallel"): string {
-	let base: string
-	if (type === "adHocSubProcess") {
-		base = `<path d="M-7 0Q-4 -4 0 0Q4 4 7 0" class="bpmnkit-icon"/>`
-	} else {
-		base = `<rect x="-7" y="-7" width="14" height="14" rx="1" class="bpmnkit-icon"/>
-<path d="M0 -4v8M-4 0h8" class="bpmnkit-icon"/>`
+/** Glyphs (each centred at 0,0, ~14×14) for the activity marker row. */
+const MARKER_GLYPHS = {
+	miParallel: `<path d="M-4 -5v10M0 -5v10M4 -5v10" class="bpmnkit-icon"/>`,
+	miSequential: `<path d="M-5 -4h10M-5 0h10M-5 4h10" class="bpmnkit-icon"/>`,
+	// Two left-pointing triangles (compensation "rewind")
+	compensation: `<path d="M1 -3.5l-5 3.5 5 3.5zM6 -3.5l-5 3.5 5 3.5z" class="bpmnkit-icon"/>`,
+	// Tilde (ad-hoc)
+	adHoc: `<path d="M-7 1Q-4 -3 0 1Q4 5 7 1" class="bpmnkit-icon"/>`,
+	// Box with a plus (collapsed activity)
+	collapsed: `<rect x="-7" y="-7" width="14" height="14" rx="1" class="bpmnkit-icon"/><path d="M0 -4v8M-4 0h8" class="bpmnkit-icon"/>`,
+} as const
+
+/**
+ * Returns the inner SVG markup for an activity's bottom marker row (loop
+ * characteristics, compensation, ad-hoc, and the collapsed `+` marker),
+ * laid out as a horizontal row centred at the origin.
+ *
+ * Callers translate the returned group to the bottom-centre of the activity.
+ */
+function activityMarkers(el: BpmnFlowElement, shape: BpmnDiShape, skipCollapsed = false): string {
+	const glyphs: string[] = []
+	const type = el.type
+
+	// Multi-instance loop
+	const lc = "loopCharacteristics" in el ? el.loopCharacteristics : undefined
+	if (lc) glyphs.push(lc.isSequential ? MARKER_GLYPHS.miSequential : MARKER_GLYPHS.miParallel)
+
+	// Compensation
+	if (el.isForCompensation) glyphs.push(MARKER_GLYPHS.compensation)
+
+	// Ad-hoc
+	if (type === "adHocSubProcess") glyphs.push(MARKER_GLYPHS.adHoc)
+
+	// Collapsed marker: call activities always show it; sub-process variants
+	// show it only when collapsed (not expanded into visible children). Skipped
+	// when the caller renders an interactive drill-down button instead.
+	const isSubProcessType =
+		type === "subProcess" ||
+		type === "adHocSubProcess" ||
+		type === "eventSubProcess" ||
+		type === "transaction"
+	if (
+		!skipCollapsed &&
+		(type === "callActivity" || (isSubProcessType && shape.isExpanded !== true))
+	) {
+		glyphs.push(MARKER_GLYPHS.collapsed)
 	}
-	if (multiInstance === "sequential") {
-		// Three horizontal lines ≡ (sequential)
-		base += `<g transform="translate(16 0)"><path d="M-4 -4h8M-4 0h8M-4 4h8" class="bpmnkit-icon"/></g>`
-	} else if (multiInstance === "parallel") {
-		// Three vertical lines ||| (parallel)
-		base += `<g transform="translate(16 0)"><path d="M-4 -4v8M0 -4v8M4 -4v8" class="bpmnkit-icon"/></g>`
-	}
-	return base
+
+	if (glyphs.length === 0) return ""
+	const step = 16
+	const start = -((glyphs.length - 1) * step) / 2
+	return glyphs
+		.map((glyph, i) => `<g transform="translate(${start + i * step} 0)">${glyph}</g>`)
+		.join("")
+}
+
+/** Marker for an event with multiple event definitions (pentagon). */
+function multipleEventMarker(filled: boolean): string {
+	const cls = filled ? "bpmnkit-icon-solid" : "bpmnkit-icon"
+	return `<path d="M0 -5.5L5.2 -1.7L3.2 4.5H-3.2L-5.2 -1.7Z" class="${cls}"/>`
 }
 
 // ── Model index helpers ───────────────────────────────────────────────────────
 
-interface ModelIndex {
+export interface ModelIndex {
 	/** id → BpmnFlowElement (all levels flattened) */
 	elements: Map<string, BpmnFlowElement>
 	/** id → BpmnSequenceFlow */
@@ -271,8 +378,12 @@ interface ModelIndex {
 	participants: Map<string, BpmnParticipant>
 	/** id → BpmnLane */
 	lanes: Map<string, BpmnLane>
-	/** id → messageFlow (stored by id for edge rendering) */
-	messageFlowIds: Set<string>
+	/** id → BpmnAssociation */
+	associations: Map<string, BpmnAssociation>
+	/** id → BpmnGroup */
+	groups: Map<string, BpmnGroup>
+	/** id → BpmnMessageFlow */
+	messageFlows: Map<string, BpmnMessageFlow>
 	/** IDs of sequence flows that are the default flow of their source gateway */
 	defaultFlowIds: Set<string>
 }
@@ -283,7 +394,9 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 	const annotations = new Map<string, BpmnTextAnnotation>()
 	const participants = new Map<string, BpmnParticipant>()
 	const lanes = new Map<string, BpmnLane>()
-	const messageFlowIds = new Set<string>()
+	const associations = new Map<string, BpmnAssociation>()
+	const groups = new Map<string, BpmnGroup>()
+	const messageFlows = new Map<string, BpmnMessageFlow>()
 	const defaultFlowIds = new Set<string>()
 
 	function indexProcess(flowElements: BpmnFlowElement[], sequenceFlows: BpmnSequenceFlow[]): void {
@@ -323,6 +436,12 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		for (const ta of proc.textAnnotations) {
 			annotations.set(ta.id, ta)
 		}
+		for (const assoc of proc.associations) {
+			associations.set(assoc.id, assoc)
+		}
+		for (const group of proc.groups) {
+			groups.set(group.id, group)
+		}
 		if (proc.laneSet) indexLaneSet(proc.laneSet)
 	}
 	for (const collab of defs.collaborations) {
@@ -332,11 +451,27 @@ function buildIndex(defs: BpmnDefinitions): ModelIndex {
 		for (const ta of collab.textAnnotations) {
 			annotations.set(ta.id, ta)
 		}
+		for (const assoc of collab.associations) {
+			associations.set(assoc.id, assoc)
+		}
+		for (const group of collab.groups) {
+			groups.set(group.id, group)
+		}
 		for (const mf of collab.messageFlows) {
-			messageFlowIds.add(mf.id)
+			messageFlows.set(mf.id, mf)
 		}
 	}
-	return { elements, flows, annotations, participants, lanes, messageFlowIds, defaultFlowIds }
+	return {
+		elements,
+		flows,
+		annotations,
+		participants,
+		lanes,
+		associations,
+		groups,
+		messageFlows,
+		defaultFlowIds,
+	}
 }
 
 // ── Color helper ─────────────────────────────────────────────────────────────
@@ -398,15 +533,16 @@ function renderEvent(
 		g.appendChild(inner)
 	}
 
-	// Event definition marker
-	const eventDef =
-		el && "eventDefinitions" in el && el.eventDefinitions.length > 0
-			? el.eventDefinitions[0]
-			: undefined
-	if (eventDef) {
+	// Event definition marker(s)
+	const eventDefs = el && "eventDefinitions" in el ? el.eventDefinitions : []
+	if (eventDefs.length > 0) {
 		const markerG = svgEl("g")
 		attr(markerG, { transform: `translate(${cx} ${cy})` })
-		markerG.innerHTML = eventMarker(eventDef.type, isThrow && !isEnd)
+		// Multiple event definitions render as a single "multiple" pentagon.
+		markerG.innerHTML =
+			eventDefs.length > 1
+				? multipleEventMarker(isThrow && !isEnd)
+				: eventMarker((eventDefs[0] as { type: string }).type, isThrow && !isEnd)
 		g.appendChild(markerG)
 	}
 
@@ -428,6 +564,7 @@ function renderTask(
 	shape: BpmnDiShape,
 	el: BpmnFlowElement | undefined,
 	instanceId: string,
+	drillable = false,
 ): SVGGElement {
 	const { width, height } = shape.bounds
 
@@ -484,19 +621,34 @@ function renderTask(
 		g.appendChild(labelEl)
 	}
 
-	// Sub-process expand/adHoc marker at bottom centre
-	if (
-		el?.type === "subProcess" ||
-		el?.type === "adHocSubProcess" ||
-		el?.type === "eventSubProcess" ||
-		el?.type === "transaction"
-	) {
-		const lc = "loopCharacteristics" in el ? el.loopCharacteristics : undefined
-		const multiInstance = lc ? (lc.isSequential ? "sequential" : "parallel") : undefined
-		const markerG = svgEl("g")
-		attr(markerG, { transform: `translate(${width / 2} ${height - 10})` })
-		markerG.innerHTML = subProcessMarker(el.type, multiInstance)
-		g.appendChild(markerG)
+	// Activity markers (multi-instance, compensation, ad-hoc, collapsed `+`)
+	// at bottom centre. Drillable sub-processes render the collapsed `+` via the
+	// interactive drill-down button below, so it is skipped here.
+	if (el) {
+		const markers = activityMarkers(el, shape, drillable)
+		if (markers) {
+			const markerG = svgEl("g")
+			attr(markerG, { transform: `translate(${width / 2} ${height - 10})` })
+			markerG.innerHTML = markers
+			g.appendChild(markerG)
+		}
+	}
+
+	// Drill-down affordance: a clickable `+` button at bottom centre that opens
+	// the sub-process's own plane.
+	if (drillable) {
+		const btn = svgEl("g")
+		attr(btn, {
+			class: "bpmnkit-drilldown",
+			transform: `translate(${width / 2} ${height - 10})`,
+			"data-bpmnkit-drilldown": shape.bpmnElement,
+			"aria-label": "Open sub-process",
+			role: "button",
+		})
+		btn.innerHTML =
+			`<rect x="-8" y="-8" width="16" height="16" rx="2" class="bpmnkit-drilldown-box"/>` +
+			`<path d="M0 -4v8M-4 0h8" class="bpmnkit-icon"/>`
+		g.appendChild(btn)
 	}
 
 	const label = el?.name ?? el?.type ?? "task"
@@ -508,6 +660,21 @@ function renderTask(
 		"data-bpmnkit-id": shape.bpmnElement,
 		"data-bpmnkit-instance": instanceId,
 	})
+
+	// Expandable containers announce their collapsed/expanded state to AT.
+	const type = el?.type
+	const isContainer =
+		type === "subProcess" ||
+		type === "adHocSubProcess" ||
+		type === "eventSubProcess" ||
+		type === "transaction" ||
+		type === "callActivity"
+	if (isContainer) {
+		g.setAttribute(
+			"aria-expanded",
+			type === "callActivity" ? "false" : String(shape.isExpanded === true),
+		)
+	}
 
 	return g
 }
@@ -554,44 +721,68 @@ function renderGateway(
 	return g
 }
 
+const TITLE_BAR = 30
+
+/**
+ * Renders a swimlane (pool or lane). The title bar sits on the left with
+ * rotated text for horizontal lanes (the default), or across the top with
+ * upright text when `shape.isHorizontal === false` (vertical pools/lanes).
+ */
+function renderSwimlane(
+	shape: BpmnDiShape,
+	name: string | undefined,
+	kind: "pool" | "lane",
+	instanceId: string,
+): SVGGElement {
+	const { width, height } = shape.bounds
+	const vertical = shape.isHorizontal === false
+	const g = svgEl("g")
+
+	const bg = svgEl("rect")
+	attr(bg, { x: 0, y: 0, width, height, class: `bpmnkit-${kind}-body` })
+	g.appendChild(bg)
+
+	const titleBar = svgEl("rect")
+	attr(
+		titleBar,
+		vertical
+			? { x: 0, y: 0, width, height: TITLE_BAR, class: `bpmnkit-${kind}-header` }
+			: { x: 0, y: 0, width: TITLE_BAR, height, class: `bpmnkit-${kind}-header` },
+	)
+	g.appendChild(titleBar)
+
+	if (name) {
+		const text = svgEl("text")
+		attr(
+			text,
+			vertical
+				? { class: "bpmnkit-label", x: width / 2, y: TITLE_BAR / 2 }
+				: {
+						class: "bpmnkit-label",
+						transform: `translate(${TITLE_BAR / 2} ${height / 2}) rotate(-90)`,
+					},
+		)
+		text.textContent = name
+		g.appendChild(text)
+	}
+
+	attr(g, {
+		class: `bpmnkit-shape bpmnkit-${kind}`,
+		tabindex: "-1",
+		role: "region",
+		"aria-label": name ?? (kind === "pool" ? "Pool" : "Lane"),
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
 function renderPool(
 	shape: BpmnDiShape,
 	participant: BpmnParticipant | undefined,
 	instanceId: string,
 ): SVGGElement {
-	const { width, height } = shape.bounds
-	const g = svgEl("g")
-
-	// Pool body
-	const bg = svgEl("rect")
-	attr(bg, { x: 0, y: 0, width, height, class: "bpmnkit-pool-body" })
-	g.appendChild(bg)
-
-	// Title bar (left column, 30px wide)
-	const titleBar = svgEl("rect")
-	attr(titleBar, { x: 0, y: 0, width: 30, height, class: "bpmnkit-pool-header" })
-	g.appendChild(titleBar)
-
-	// Pool name (rotated in title bar)
-	if (participant?.name) {
-		const text = svgEl("text")
-		attr(text, {
-			class: "bpmnkit-label",
-			transform: `translate(15 ${height / 2}) rotate(-90)`,
-		})
-		text.textContent = participant.name
-		g.appendChild(text)
-	}
-
-	attr(g, {
-		class: "bpmnkit-shape bpmnkit-pool",
-		tabindex: "-1",
-		role: "region",
-		"aria-label": participant?.name ?? "Pool",
-		"data-bpmnkit-id": shape.bpmnElement,
-		"data-bpmnkit-instance": instanceId,
-	})
-	return g
+	return renderSwimlane(shape, participant?.name, "pool", instanceId)
 }
 
 function renderLane(
@@ -599,39 +790,7 @@ function renderLane(
 	lane: BpmnLane | undefined,
 	instanceId: string,
 ): SVGGElement {
-	const { width, height } = shape.bounds
-	const g = svgEl("g")
-
-	// Lane body
-	const bg = svgEl("rect")
-	attr(bg, { x: 0, y: 0, width, height, class: "bpmnkit-lane-body" })
-	g.appendChild(bg)
-
-	// Title bar (left column, 30px wide)
-	const titleBar = svgEl("rect")
-	attr(titleBar, { x: 0, y: 0, width: 30, height, class: "bpmnkit-lane-header" })
-	g.appendChild(titleBar)
-
-	// Lane name (rotated in title bar)
-	if (lane?.name) {
-		const text = svgEl("text")
-		attr(text, {
-			class: "bpmnkit-label",
-			transform: `translate(15 ${height / 2}) rotate(-90)`,
-		})
-		text.textContent = lane.name
-		g.appendChild(text)
-	}
-
-	attr(g, {
-		class: "bpmnkit-shape bpmnkit-lane",
-		tabindex: "-1",
-		role: "region",
-		"aria-label": lane?.name ?? "Lane",
-		"data-bpmnkit-id": shape.bpmnElement,
-		"data-bpmnkit-instance": instanceId,
-	})
-	return g
+	return renderSwimlane(shape, lane?.name, "lane", instanceId)
 }
 
 function renderAnnotation(
@@ -671,6 +830,116 @@ function renderAnnotation(
 	return g
 }
 
+function renderDataObjectReference(
+	shape: BpmnDiShape,
+	el: BpmnFlowElement | undefined,
+	instanceId: string,
+): SVGGElement {
+	const { width, height } = shape.bounds
+	const fold = Math.min(14, width / 3)
+	const g = svgEl("g")
+
+	// Document outline with a folded top-right corner.
+	const body = svgEl("path")
+	attr(body, {
+		d: `M0 0 H${width - fold} L${width} ${fold} V${height} H0 Z`,
+		class: "bpmnkit-data-body",
+	})
+	applyColor(body, shape)
+	g.appendChild(body)
+
+	const foldPath = svgEl("path")
+	attr(foldPath, { d: `M${width - fold} 0 V${fold} H${width}`, class: "bpmnkit-icon" })
+	g.appendChild(foldPath)
+
+	// Collection marker (three vertical bars) at bottom centre.
+	if (el?.type === "dataObjectReference" && el.isCollection) {
+		const marker = svgEl("g")
+		attr(marker, { transform: `translate(${width / 2} ${height - 6})` })
+		marker.innerHTML = `<path d="M-3 -5v9M0 -5v9M3 -5v9" class="bpmnkit-icon"/>`
+		g.appendChild(marker)
+	}
+
+	attr(g, {
+		class: "bpmnkit-shape",
+		tabindex: "-1",
+		role: "img",
+		"aria-label": el?.name ?? "Data object",
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
+function renderDataStoreReference(
+	shape: BpmnDiShape,
+	el: BpmnFlowElement | undefined,
+	instanceId: string,
+): SVGGElement {
+	const { width, height } = shape.bounds
+	const ry = Math.min(8, height / 6)
+	const g = svgEl("g")
+
+	// Cylinder body.
+	const body = svgEl("path")
+	attr(body, {
+		d: `M0 ${ry} A ${width / 2} ${ry} 0 0 0 ${width} ${ry} V ${height - ry} A ${width / 2} ${ry} 0 0 1 0 ${height - ry} Z`,
+		class: "bpmnkit-datastore-body",
+	})
+	applyColor(body, shape)
+	g.appendChild(body)
+
+	// Top ellipse + a couple of stacked-disk arcs.
+	const top = svgEl("ellipse")
+	attr(top, { cx: width / 2, cy: ry, rx: width / 2, ry, class: "bpmnkit-datastore-body" })
+	applyColor(top, shape)
+	g.appendChild(top)
+	const disks = svgEl("path")
+	attr(disks, {
+		d: `M0 ${ry * 2} A ${width / 2} ${ry} 0 0 0 ${width} ${ry * 2} M0 ${ry * 3.4} A ${width / 2} ${ry} 0 0 0 ${width} ${ry * 3.4}`,
+		class: "bpmnkit-icon",
+	})
+	g.appendChild(disks)
+
+	attr(g, {
+		class: "bpmnkit-shape",
+		tabindex: "-1",
+		role: "img",
+		"aria-label": el?.name ?? "Data store",
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
+function renderGroup(shape: BpmnDiShape, instanceId: string): SVGGElement {
+	const { width, height } = shape.bounds
+	const g = svgEl("g")
+
+	// Dashed rounded rectangle; border-only hit target so the interior is
+	// click-through (elements inside a group stay selectable).
+	const body = svgEl("rect")
+	attr(body, {
+		x: 0,
+		y: 0,
+		width,
+		height,
+		rx: 8,
+		class: "bpmnkit-group-body",
+		"pointer-events": "stroke",
+	})
+	g.appendChild(body)
+
+	attr(g, {
+		class: "bpmnkit-shape bpmnkit-group",
+		tabindex: "-1",
+		role: "group",
+		"data-bpmnkit-id": shape.bpmnElement,
+		"data-bpmnkit-instance": instanceId,
+	})
+	return g
+}
+
 // ── External label ────────────────────────────────────────────────────────────
 
 /**
@@ -699,29 +968,36 @@ function renderExternalLabel(
 function renderEdge(
 	edge: BpmnDiEdge,
 	flow: BpmnSequenceFlow | undefined,
-	markerId: string,
+	instanceId: string,
 	isDefault: boolean,
+	isConditional: boolean,
+	waypoints: ReadonlyArray<Point>,
 ): SVGGElement {
+	const ids = markerIds(instanceId)
 	const g = svgEl("g")
 	attr(g, {
 		class: "bpmnkit-edge",
 		"data-bpmnkit-id": edge.bpmnElement,
 	})
 
-	if (edge.waypoints.length < 2) return g
+	if (waypoints.length < 2) return g
 
 	const path = svgEl("path")
-	attr(path, {
-		d: waypointsToRoundedPath(edge.waypoints),
+	const pathAttrs: Record<string, string> = {
+		d: waypointsToRoundedPath(waypoints),
 		class: "bpmnkit-edge-path",
-		"marker-end": `url(#${markerId})`,
-	})
+		"marker-end": `url(#${ids.arrow})`,
+	}
+	// Conditional sequence flow → diamond at the source (mutually exclusive
+	// with the default-flow slash: a flow is never both).
+	if (isConditional) pathAttrs["marker-start"] = `url(#${ids.conditional})`
+	attr(path, pathAttrs)
 	g.appendChild(path)
 
 	// Wide transparent stroke so the edge is easy to click
 	const hitPath = svgEl("path")
 	attr(hitPath, {
-		d: waypointsToRoundedPath(edge.waypoints),
+		d: waypointsToRoundedPath(waypoints),
 		fill: "none",
 		stroke: "transparent",
 		"stroke-width": "12",
@@ -731,8 +1007,8 @@ function renderEdge(
 
 	// Default-flow slash mark near the source end
 	if (isDefault) {
-		const wp0 = edge.waypoints[0]
-		const wp1 = edge.waypoints[1]
+		const wp0 = waypoints[0]
+		const wp1 = waypoints[1]
 		if (wp0 && wp1) {
 			const dx = wp1.x - wp0.x
 			const dy = wp1.y - wp0.y
@@ -767,34 +1043,88 @@ function renderEdge(
 	return g
 }
 
-function renderAssociation(edge: BpmnDiEdge): SVGGElement {
+function renderAssociation(
+	edge: BpmnDiEdge,
+	association: BpmnAssociation | undefined,
+	instanceId: string,
+	waypoints: ReadonlyArray<Point>,
+): SVGGElement {
+	const ids = markerIds(instanceId)
 	const g = svgEl("g")
 	attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
 
 	const path = svgEl("path")
-	attr(path, { d: waypointsToRoundedPath(edge.waypoints), class: "bpmnkit-edge-assoc" })
+	const pathAttrs: Record<string, string> = {
+		d: waypointsToRoundedPath(waypoints),
+		class: "bpmnkit-edge-assoc",
+	}
+	// Directed associations get an open arrowhead; "Both" is bidirectional.
+	const direction = association?.associationDirection
+	if (direction === "One" || direction === "Both") {
+		pathAttrs["marker-end"] = `url(#${ids.openArrow})`
+	}
+	if (direction === "Both") {
+		pathAttrs["marker-start"] = `url(#${ids.openArrow})`
+	}
+	attr(path, pathAttrs)
 	g.appendChild(path)
 	return g
 }
 
 // ── SVG defs (arrow markers) ──────────────────────────────────────────────────
 
+interface MarkerIds {
+	/** Filled arrowhead — sequence flow terminus. */
+	arrow: string
+	/** Open (unfilled) arrowhead — message flows, associations, data associations. */
+	openArrow: string
+	/** Diamond at the source of a conditional sequence flow. */
+	conditional: string
+	/** Hollow circle at the source of a message flow. */
+	messageStart: string
+}
+
+/** Derives this canvas instance's per-marker element IDs. */
+function markerIds(instanceId: string): MarkerIds {
+	return {
+		arrow: `bpmnkit-arrow-${instanceId}`,
+		openArrow: `bpmnkit-open-arrow-${instanceId}`,
+		conditional: `bpmnkit-conditional-${instanceId}`,
+		messageStart: `bpmnkit-msgstart-${instanceId}`,
+	}
+}
+
 /**
  * Creates the SVG `<defs>` section for this canvas instance.
  * Uses `instanceId` to make marker IDs unique per canvas, avoiding
  * conflicts when multiple canvases are mounted on the same page.
+ *
+ * @returns the filled-arrowhead marker ID (sequence-flow terminus). Other
+ *   marker IDs are derived from `instanceId` via {@link markerIds}.
  */
 export function createDefs(svg: SVGSVGElement, instanceId: string): string {
-	const markerId = `bpmnkit-arrow-${instanceId}`
+	const ids = markerIds(instanceId)
 	const defs = svgEl("defs")
 	defs.innerHTML = `
-    <marker id="${markerId}" markerWidth="8" markerHeight="6"
+    <marker id="${ids.arrow}" markerWidth="8" markerHeight="6"
             refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L8,3 L0,6 Z" class="bpmnkit-arrow-fill"/>
     </marker>
+    <marker id="${ids.openArrow}" markerWidth="14" markerHeight="10"
+            refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1,1 L10,5 L1,9" class="bpmnkit-open-arrow"/>
+    </marker>
+    <marker id="${ids.conditional}" markerWidth="16" markerHeight="10"
+            refX="0" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,5 L7,1 L14,5 L7,9 Z" class="bpmnkit-conditional-marker"/>
+    </marker>
+    <marker id="${ids.messageStart}" markerWidth="12" markerHeight="10"
+            refX="0" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="4" class="bpmnkit-msg-marker"/>
+    </marker>
   `
 	svg.appendChild(defs)
-	return markerId
+	return ids.arrow
 }
 
 // ── Dot-grid background ───────────────────────────────────────────────────────
@@ -844,11 +1174,229 @@ export interface RenderResult {
 }
 
 /**
- * Renders a `BpmnDefinitions` model into SVG element groups, appending them
- * to `edgesLayer` and `shapesLayer` respectively.
+ * Shared per-render state — a model index and docking geometry — reused by the
+ * full {@link render} pass and by single-element updates in the {@link Scene}.
+ */
+export interface RenderContext {
+	index: ModelIndex
+	geomById: Map<string, ShapeGeom>
+	drillableIds: ReadonlySet<string>
+	instanceId: string
+}
+
+/** Builds a {@link RenderContext} for a plane (index + docking geometry). */
+export function buildRenderContext(
+	defs: BpmnDefinitions,
+	plane: BpmnDiPlane,
+	drillableIds: ReadonlySet<string>,
+	instanceId: string,
+): RenderContext {
+	const index = buildIndex(defs)
+	const geomById = new Map<string, ShapeGeom>()
+	for (const shape of plane.shapes) {
+		const { x, y, width, height } = shape.bounds
+		geomById.set(shape.bpmnElement, {
+			x,
+			y,
+			width,
+			height,
+			kind: geomKind(index.elements.get(shape.bpmnElement)?.type),
+		})
+	}
+	return { index, geomById, drillableIds, instanceId }
+}
+
+/** Renders a single edge's `<g>` (no DOM insertion). */
+export function renderEdgeGroup(edge: BpmnDiEdge, ctx: RenderContext): SVGGElement {
+	const { index, geomById, instanceId } = ctx
+	const flow = index.flows.get(edge.bpmnElement)
+
+	if (flow) {
+		const isDefault = index.defaultFlowIds.has(edge.bpmnElement)
+		// A conditional flow shows a diamond at its source, but only when the
+		// source is an activity (not a gateway) and it is not the default flow.
+		const source = index.elements.get(flow.sourceRef)
+		const sourceIsGateway = source?.type.endsWith("Gateway") ?? false
+		const isConditional = !!flow.conditionExpression && !isDefault && !sourceIsGateway
+		const wps = cropWaypoints(
+			edge.waypoints,
+			geomById.get(flow.sourceRef),
+			geomById.get(flow.targetRef),
+		)
+		return renderEdge(edge, flow, instanceId, isDefault, isConditional, wps)
+	}
+
+	if (index.messageFlows.has(edge.bpmnElement)) {
+		// Message flow — dashed line with a hollow source circle and an open
+		// arrowhead at the target.
+		const g = svgEl("g")
+		attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
+		if (edge.waypoints.length >= 2) {
+			const mf = index.messageFlows.get(edge.bpmnElement)
+			const wps = cropWaypoints(
+				edge.waypoints,
+				mf ? geomById.get(mf.sourceRef) : undefined,
+				mf ? geomById.get(mf.targetRef) : undefined,
+			)
+			const ids = markerIds(instanceId)
+			const path = svgEl("path")
+			attr(path, {
+				d: waypointsToRoundedPath(wps),
+				class: "bpmnkit-msgflow-path",
+				"marker-start": `url(#${ids.messageStart})`,
+				"marker-end": `url(#${ids.openArrow})`,
+			})
+			g.appendChild(path)
+		}
+		return g
+	}
+
+	// Association or unknown edge type
+	const assoc = index.associations.get(edge.bpmnElement)
+	const wps = cropWaypoints(
+		edge.waypoints,
+		assoc ? geomById.get(assoc.sourceRef) : undefined,
+		assoc ? geomById.get(assoc.targetRef) : undefined,
+	)
+	return renderAssociation(edge, assoc, instanceId, wps)
+}
+
+/** Which layer a shape's `<g>` belongs to. */
+export type ShapeLayer = "containers" | "shapes"
+
+/** The result of rendering a single shape: its `<g>`, target layer, and external label. */
+export interface RenderedShapeGroup {
+	group: SVGGElement
+	layer: ShapeLayer
+	label: SVGGElement | null
+	rendered: RenderedShape
+}
+
+/** Renders a single shape's `<g>` (+ optional external label), without DOM insertion. */
+export function renderShapeGroup(shape: BpmnDiShape, ctx: RenderContext): RenderedShapeGroup {
+	const { index, drillableIds, instanceId } = ctx
+	const el = index.elements.get(shape.bpmnElement)
+	const { x, y } = shape.bounds
+	const type = el?.type ?? ""
+
+	const place = (
+		group: SVGGElement,
+		layer: ShapeLayer,
+		annotation?: BpmnTextAnnotation,
+	): RenderedShapeGroup => {
+		attr(group, { transform: `translate(${x} ${y})` })
+		return {
+			group,
+			layer,
+			label: null,
+			rendered: { id: shape.bpmnElement, element: group, shape, flowElement: el, annotation },
+		}
+	}
+
+	if (
+		type === "startEvent" ||
+		type === "endEvent" ||
+		type === "intermediateCatchEvent" ||
+		type === "intermediateThrowEvent" ||
+		type === "boundaryEvent"
+	) {
+		return withExternalLabel(place(renderEvent(shape, el, instanceId), "shapes"), shape, el)
+	}
+	if (
+		type === "exclusiveGateway" ||
+		type === "parallelGateway" ||
+		type === "inclusiveGateway" ||
+		type === "eventBasedGateway" ||
+		type === "complexGateway"
+	) {
+		return withExternalLabel(place(renderGateway(shape, el, instanceId), "shapes"), shape, el)
+	}
+	if (type === "dataObjectReference") {
+		return withExternalLabel(
+			place(renderDataObjectReference(shape, el, instanceId), "shapes"),
+			shape,
+			el,
+		)
+	}
+	if (type === "dataStoreReference") {
+		return withExternalLabel(
+			place(renderDataStoreReference(shape, el, instanceId), "shapes"),
+			shape,
+			el,
+		)
+	}
+	if (type === "" && !el) {
+		if (index.groups.has(shape.bpmnElement))
+			return place(renderGroup(shape, instanceId), "containers")
+		const annotation = index.annotations.get(shape.bpmnElement)
+		if (annotation !== undefined) {
+			return place(renderAnnotation(shape, annotation.text, instanceId), "shapes", annotation)
+		}
+		if (index.participants.has(shape.bpmnElement)) {
+			return place(
+				renderPool(shape, index.participants.get(shape.bpmnElement), instanceId),
+				"containers",
+			)
+		}
+		if (index.lanes.has(shape.bpmnElement)) {
+			return place(renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId), "containers")
+		}
+		// Unknown shape — invisible placeholder
+		const g = svgEl("g")
+		attr(g, { "data-bpmnkit-id": shape.bpmnElement, "data-bpmnkit-instance": instanceId })
+		return place(g, "shapes")
+	}
+
+	return withExternalLabel(
+		place(renderTask(shape, el, instanceId, drillableIds.has(shape.bpmnElement)), "shapes"),
+		shape,
+		el,
+	)
+}
+
+const EXTERNAL_LABEL_TYPES = new Set([
+	"startEvent",
+	"endEvent",
+	"intermediateCatchEvent",
+	"intermediateThrowEvent",
+	"boundaryEvent",
+	"exclusiveGateway",
+	"parallelGateway",
+	"inclusiveGateway",
+	"eventBasedGateway",
+	"complexGateway",
+	"dataObjectReference",
+	"dataStoreReference",
+])
+
+/** Attaches an external label (below the shape) to a rendered shape group, if applicable. */
+function withExternalLabel(
+	result: RenderedShapeGroup,
+	shape: BpmnDiShape,
+	el: BpmnFlowElement | undefined,
+): RenderedShapeGroup {
+	if (el?.name && EXTERNAL_LABEL_TYPES.has(el.type)) {
+		const lb = shape.label?.bounds ?? {
+			x: shape.bounds.x + shape.bounds.width / 2 - 40,
+			y: shape.bounds.y + shape.bounds.height + 6,
+			width: 80,
+			height: 20,
+		}
+		// topAlign=true: multi-line text flows downward from the top of the label
+		// bounds, so long labels never extend upward into the shape.
+		result.label = renderExternalLabel(lb.x, lb.y, lb.width, lb.height, el.name, true)
+	}
+	return result
+}
+
+/**
+ * Renders a `BpmnDefinitions` model into SVG element groups, appending them to
+ * the provided layers. Thin wrapper over {@link buildRenderContext} +
+ * {@link renderEdgeGroup}/{@link renderShapeGroup}, retained for existing
+ * callers (the editor). New code should prefer the {@link Scene} class.
  *
  * Edges are placed below shapes (rendered first) so connection lines don't
- * cover shape bodies.  Shapes are rendered in DI order so container shapes
+ * cover shape bodies. Shapes are rendered in DI order so container shapes
  * (sub-processes) appear before their children.
  */
 export function render(
@@ -857,141 +1405,32 @@ export function render(
 	edgesLayer: SVGGElement,
 	shapesLayer: SVGGElement,
 	labelsLayer: SVGGElement,
-	markerId: string,
+	_markerId: string,
 	instanceId: string,
+	/** The DI plane to render. Defaults to the first diagram's plane. */
+	targetPlane?: BpmnDiPlane,
+	/** Element ids that own their own plane and can be drilled into. */
+	drillableIds: ReadonlySet<string> = new Set(),
 ): RenderResult {
-	const index = buildIndex(defs)
 	const shapes: RenderedShape[] = []
 	const edges: RenderedEdge[] = []
 
-	const plane = defs.diagrams[0]?.plane
+	const plane = targetPlane ?? defs.diagrams[0]?.plane
 	if (!plane) return { shapes, edges }
 
-	// ── Edges ─────────────────────────────────────────────────────────
+	const ctx = buildRenderContext(defs, plane, drillableIds, instanceId)
+
 	for (const edge of plane.edges) {
-		const flow = index.flows.get(edge.bpmnElement)
-		let g: SVGGElement
-
-		if (flow) {
-			g = renderEdge(edge, flow, markerId, index.defaultFlowIds.has(edge.bpmnElement))
-		} else if (index.messageFlowIds.has(edge.bpmnElement)) {
-			// Message flow — dashed arrow between pools
-			g = svgEl("g")
-			attr(g, { class: "bpmnkit-edge", "data-bpmnkit-id": edge.bpmnElement })
-			if (edge.waypoints.length >= 2) {
-				const path = svgEl("path")
-				attr(path, {
-					d: waypointsToRoundedPath(edge.waypoints),
-					class: "bpmnkit-msgflow-path",
-					"marker-end": `url(#${markerId})`,
-				})
-				g.appendChild(path)
-			}
-		} else {
-			// Association or unknown edge type
-			g = renderAssociation(edge)
-		}
-
+		const g = renderEdgeGroup(edge, ctx)
 		edgesLayer.appendChild(g)
 		edges.push({ id: edge.bpmnElement, element: g, edge })
 	}
 
-	// ── Shapes ────────────────────────────────────────────────────────
 	for (const shape of plane.shapes) {
-		const el = index.elements.get(shape.bpmnElement)
-		const { x, y } = shape.bounds
-
-		let g: SVGGElement
-
-		const type = el?.type ?? ""
-		if (
-			type === "startEvent" ||
-			type === "endEvent" ||
-			type === "intermediateCatchEvent" ||
-			type === "intermediateThrowEvent" ||
-			type === "boundaryEvent"
-		) {
-			g = renderEvent(shape, el, instanceId)
-		} else if (
-			type === "exclusiveGateway" ||
-			type === "parallelGateway" ||
-			type === "inclusiveGateway" ||
-			type === "eventBasedGateway" ||
-			type === "complexGateway"
-		) {
-			g = renderGateway(shape, el, instanceId)
-		} else if (type === "" && !el) {
-			// Could be: text annotation, pool (participant), or lane
-			const annotation = index.annotations.get(shape.bpmnElement)
-			if (annotation !== undefined) {
-				g = renderAnnotation(shape, annotation.text, instanceId)
-				attr(g, { transform: `translate(${x} ${y})` })
-				shapesLayer.appendChild(g)
-				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el, annotation })
-				continue
-			}
-			if (index.participants.has(shape.bpmnElement)) {
-				g = renderPool(shape, index.participants.get(shape.bpmnElement), instanceId)
-				attr(g, { transform: `translate(${x} ${y})` })
-				containersLayer.appendChild(g)
-				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-				continue
-			}
-			if (index.lanes.has(shape.bpmnElement)) {
-				g = renderLane(shape, index.lanes.get(shape.bpmnElement), instanceId)
-				attr(g, { transform: `translate(${x} ${y})` })
-				containersLayer.appendChild(g)
-				shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-				continue
-			}
-			// Unknown shape — invisible placeholder
-			g = svgEl("g")
-			attr(g, { "data-bpmnkit-id": shape.bpmnElement, "data-bpmnkit-instance": instanceId })
-			attr(g, { transform: `translate(${x} ${y})` })
-			shapesLayer.appendChild(g)
-			shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-			continue
-		} else {
-			g = renderTask(shape, el, instanceId)
-		}
-
-		attr(g, { transform: `translate(${x} ${y})` })
-		shapesLayer.appendChild(g)
-		shapes.push({ id: shape.bpmnElement, element: g, shape, flowElement: el })
-
-		// External labels for events and gateways — use stored bounds or default to bottom-centred
-		const isExternalLabelType =
-			type === "startEvent" ||
-			type === "endEvent" ||
-			type === "intermediateCatchEvent" ||
-			type === "intermediateThrowEvent" ||
-			type === "boundaryEvent" ||
-			type === "exclusiveGateway" ||
-			type === "parallelGateway" ||
-			type === "inclusiveGateway" ||
-			type === "eventBasedGateway" ||
-			type === "complexGateway"
-		if (el?.name && isExternalLabelType) {
-			const lb = shape.label?.bounds ?? {
-				x: shape.bounds.x + shape.bounds.width / 2 - 40,
-				y: shape.bounds.y + shape.bounds.height + 6,
-				width: 80,
-				height: 20,
-			}
-			// topAlign=true: multi-line text flows downward from the top of the
-			// label bounds, so long labels never extend upward into the shape.
-			const labelG = renderExternalLabel(lb.x, lb.y, lb.width, lb.height, el.name, true)
-			labelsLayer.appendChild(labelG)
-		}
-	}
-
-	// Edge labels at their absolute label bounds
-	for (const edge of plane.edges) {
-		const flow = index.flows.get(edge.bpmnElement)
-		if (flow?.name && edge.label?.bounds) {
-			// Already rendered inside the edge group — skip duplicate
-			// (renderEdge adds the label when label.bounds is present)
-		}
+		const { group, layer, label, rendered } = renderShapeGroup(shape, ctx)
+		;(layer === "containers" ? containersLayer : shapesLayer).appendChild(group)
+		if (label) labelsLayer.appendChild(label)
+		shapes.push(rendered)
 	}
 
 	return { shapes, edges }
@@ -1007,11 +1446,14 @@ export interface DiagramBounds {
 }
 
 /**
- * Computes the bounding box of all shapes in the first DI diagram plane.
- * Returns `null` if the diagram has no shapes.
+ * Computes the bounding box of all shapes in a DI plane (the first diagram's
+ * plane by default). Returns `null` if the plane has no shapes.
  */
-export function computeDiagramBounds(defs: BpmnDefinitions): DiagramBounds | null {
-	const plane = defs.diagrams[0]?.plane
+export function computeDiagramBounds(
+	defs: BpmnDefinitions,
+	targetPlane?: BpmnDiPlane,
+): DiagramBounds | null {
+	const plane = targetPlane ?? defs.diagrams[0]?.plane
 	if (!plane || plane.shapes.length === 0) return null
 
 	let minX = Number.POSITIVE_INFINITY

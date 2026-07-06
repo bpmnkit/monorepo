@@ -13,6 +13,7 @@ import type {
 	BpmnEscalation,
 	BpmnEventDefinition,
 	BpmnFlowElement,
+	BpmnGroup,
 	BpmnLane,
 	BpmnLaneSet,
 	BpmnMessage,
@@ -276,6 +277,19 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 		case "parallelGateway":
 		case "eventBasedGateway":
 			break
+
+		case "dataObject":
+			if (fe.isCollection) attrs.isCollection = "true"
+			break
+
+		case "dataObjectReference":
+			if (fe.dataObjectRef !== undefined) attrs.dataObjectRef = fe.dataObjectRef
+			if (fe.isCollection) attrs.isCollection = "true"
+			break
+
+		case "dataStoreReference":
+			if (fe.dataStoreRef !== undefined) attrs.dataStoreRef = fe.dataStoreRef
+			break
 	}
 
 	return el(`${bp}:${fe.type}`, attrs, children)
@@ -334,6 +348,12 @@ function serializeAssociation(a: BpmnAssociation, bp: string): XmlElement {
 	return el(`${bp}:association`, attrs, [])
 }
 
+function serializeGroup(g: BpmnGroup, bp: string): XmlElement {
+	const attrs: Record<string, string> = { id: g.id, ...g.unknownAttributes }
+	if (g.categoryValueRef !== undefined) attrs.categoryValueRef = g.categoryValueRef
+	return el(`${bp}:group`, attrs, [])
+}
+
 // ---------------------------------------------------------------------------
 // Process contents
 // ---------------------------------------------------------------------------
@@ -344,6 +364,7 @@ function serializeProcessContents(
 		sequenceFlows: BpmnSequenceFlow[]
 		textAnnotations: BpmnTextAnnotation[]
 		associations: BpmnAssociation[]
+		groups: BpmnGroup[]
 	},
 	ns: Record<string, string>,
 ): XmlElement[] {
@@ -361,6 +382,10 @@ function serializeProcessContents(
 	}
 	for (const a of p.associations) {
 		children.push(serializeAssociation(a, bp))
+	}
+	// `groups` may be absent on hand-constructed partial models.
+	for (const g of p.groups ?? []) {
+		children.push(serializeGroup(g, bp))
 	}
 
 	return children
@@ -449,6 +474,9 @@ function serializeCollaboration(c: BpmnCollaboration, ns: Record<string, string>
 	}
 	for (const a of c.associations) {
 		children.push(serializeAssociation(a, bp))
+	}
+	for (const g of c.groups ?? []) {
+		children.push(serializeGroup(g, bp))
 	}
 
 	return el(`${bp}:collaboration`, { id: c.id, ...c.unknownAttributes }, children)

@@ -6,6 +6,25 @@ export const HUD_STYLE_ID = "bpmnkit-editor-hud-styles-v1"
 
 /** CSS for editor-specific overlays injected once into `<head>`. */
 export const EDITOR_CSS = `
+/* Visually-hidden live region for screen-reader announcements */
+.bpmnkit-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Keyboard-focus ring on the editor host — distinct from the selection outline */
+.bpmnkit-canvas-host:focus-visible {
+  outline: 2px dashed var(--bpmnkit-accent-bright, #3b82f6);
+  outline-offset: -2px;
+}
+
 /* Selection outline */
 .bpmnkit-sel-indicator {
   fill: none;
@@ -70,6 +89,11 @@ export const EDITOR_CSS = `
   stroke-dasharray: 6 3;
   fill: none;
   pointer-events: none;
+}
+
+/* Ghost connection over a target the rules forbid */
+.bpmnkit-ghost-conn-invalid {
+  stroke: var(--bpmnkit-danger, #dc2626);
 }
 
 /* Resize preview rect */
@@ -210,6 +234,22 @@ export const EDITOR_CSS = `
   background: #451a03;
   border-color: #d97706;
   color: #fde68a;
+}
+
+/* Coarse pointers (touch): enlarge drag targets to a finger-friendly ≥24px.
+   Resize handles are 7px rects centred on the corner; grow + recentre them.
+   Endpoint / waypoint / port circles grow via the SVG geometry 'r' property. */
+@media (pointer: coarse) {
+  .bpmnkit-resize-handle {
+    width: 24px;
+    height: 24px;
+    transform: translate(-8.5px, -8.5px);
+  }
+  .bpmnkit-edge-endpoint,
+  .bpmnkit-edge-waypoint-ball,
+  .bpmnkit-conn-port {
+    r: 12px;
+  }
 }
 `
 

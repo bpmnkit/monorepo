@@ -4,6 +4,9 @@ import type {
 	BpmnBusinessRuleTask,
 	BpmnCallActivity,
 	BpmnComplexGateway,
+	BpmnDataObject,
+	BpmnDataObjectReference,
+	BpmnDataStoreReference,
 	BpmnEndEvent,
 	BpmnEventBasedGateway,
 	BpmnEventSubProcess,
@@ -302,4 +305,21 @@ export function isBpmnGateway(
 		el.type === "eventBasedGateway" ||
 		el.type === "complexGateway"
 	)
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+/** Narrows a flow element to {@link BpmnDataObject}. */
+export function isBpmnDataObject(el: BpmnFlowElement): el is BpmnDataObject {
+	return el.type === "dataObject"
+}
+
+/** Narrows a flow element to {@link BpmnDataObjectReference}. */
+export function isBpmnDataObjectReference(el: BpmnFlowElement): el is BpmnDataObjectReference {
+	return el.type === "dataObjectReference"
+}
+
+/** Narrows a flow element to {@link BpmnDataStoreReference}. */
+export function isBpmnDataStoreReference(el: BpmnFlowElement): el is BpmnDataStoreReference {
+	return el.type === "dataStoreReference"
 }

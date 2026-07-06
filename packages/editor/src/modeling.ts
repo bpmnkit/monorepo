@@ -7,6 +7,7 @@ import type {
 	BpmnDiShape,
 	BpmnEventDefinition,
 	BpmnFlowElement,
+	BpmnMultiInstanceLoopCharacteristics,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
 	BpmnWaypoint,
@@ -54,6 +55,7 @@ export function createEmptyDefinitions(): BpmnDefinitions {
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 				unknownAttributes: {},
 			},
 		],
@@ -170,6 +172,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "adHocSubProcess":
 			return {
@@ -179,6 +182,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "transaction":
 			return {
@@ -188,6 +192,7 @@ function makeFlowElement(type: CreateShapeType, id: string, name?: string): Bpmn
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "exclusiveGateway":
 			return { ...base, type: "exclusiveGateway" }
@@ -1302,6 +1307,22 @@ export function removeCollinearWaypoints(defs: BpmnDefinitions, edgeId: string):
 
 // ── Change element type ───────────────────────────────────────────────────────
 
+/** Activity types that carry `loopCharacteristics` (multi-instance / loop markers). */
+const ACTIVITY_LOOP_TYPES: ReadonlySet<string> = new Set([
+	"task",
+	"serviceTask",
+	"userTask",
+	"scriptTask",
+	"sendTask",
+	"receiveTask",
+	"businessRuleTask",
+	"manualTask",
+	"callActivity",
+	"subProcess",
+	"adHocSubProcess",
+	"transaction",
+])
+
 /**
  * Replaces a flow element's type while preserving its id, name, and connections.
  * Use this for gateway type-switching (exclusive ↔ parallel) and task type-switching.
@@ -1324,6 +1345,8 @@ export function changeElementType(
 		name: el.name,
 		incoming: el.incoming,
 		outgoing: el.outgoing,
+		documentation: el.documentation,
+		isForCompensation: el.isForCompensation,
 		extensionElements: el.extensionElements,
 		unknownAttributes: el.unknownAttributes,
 	}
@@ -1449,6 +1472,7 @@ export function changeElementType(
 				sequenceFlows: el.type === "subProcess" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "subProcess" ? el.textAnnotations : [],
 				associations: el.type === "subProcess" ? el.associations : [],
+				groups: el.type === "subProcess" ? el.groups : [],
 			}
 			break
 		case "adHocSubProcess":
@@ -1459,6 +1483,7 @@ export function changeElementType(
 				sequenceFlows: el.type === "adHocSubProcess" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "adHocSubProcess" ? el.textAnnotations : [],
 				associations: el.type === "adHocSubProcess" ? el.associations : [],
+				groups: el.type === "adHocSubProcess" ? el.groups : [],
 			}
 			break
 		case "transaction":
@@ -1469,6 +1494,7 @@ export function changeElementType(
 				sequenceFlows: el.type === "transaction" ? el.sequenceFlows : [],
 				textAnnotations: el.type === "transaction" ? el.textAnnotations : [],
 				associations: el.type === "transaction" ? el.associations : [],
+				groups: el.type === "transaction" ? el.groups : [],
 			}
 			break
 		case "exclusiveGateway":
@@ -1488,6 +1514,14 @@ export function changeElementType(
 			break
 		case "textAnnotation":
 			throw new Error("textAnnotation is not a flow element — use createAnnotation()")
+	}
+
+	// Preserve a multi-instance/loop marker when morphing between activity types
+	// that both support one (e.g. serviceTask ⇄ userTask, task → subProcess).
+	const loop = "loopCharacteristics" in el ? el.loopCharacteristics : undefined
+	if (loop && ACTIVITY_LOOP_TYPES.has(newEl.type)) {
+		;(newEl as { loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics }).loopCharacteristics =
+			loop
 	}
 
 	const newElements = [...process.flowElements]
@@ -1548,6 +1582,32 @@ export interface Clipboard {
 	edges: BpmnDiEdge[]
 }
 
+/** True when a flow element is a container carrying its own children. */
+function hasChildren(
+	el: BpmnFlowElement,
+): el is Extract<BpmnFlowElement, { flowElements: BpmnFlowElement[] }> {
+	return "flowElements" in el
+}
+
+/** Collects every id that owns a DI shape within `el` (itself + recursive children). */
+function collectShapeIds(el: BpmnFlowElement, out: Set<string>): void {
+	out.add(el.id)
+	if (hasChildren(el)) {
+		for (const child of el.flowElements) collectShapeIds(child, out)
+		for (const ta of el.textAnnotations) out.add(ta.id)
+		for (const g of el.groups) out.add(g.id)
+	}
+}
+
+/** Collects every id that owns a DI edge within `el` (nested flows + associations). */
+function collectEdgeIds(el: BpmnFlowElement, out: Set<string>): void {
+	if (hasChildren(el)) {
+		for (const sf of el.sequenceFlows) out.add(sf.id)
+		for (const a of el.associations) out.add(a.id)
+		for (const child of el.flowElements) collectEdgeIds(child, out)
+	}
+}
+
 export function copyElements(defs: BpmnDefinitions, ids: string[]): Clipboard {
 	const idSet = new Set(ids)
 
@@ -1557,15 +1617,85 @@ export function copyElements(defs: BpmnDefinitions, ids: string[]): Clipboard {
 		return { elements: [], flows: [], shapes: [], edges: [] }
 	}
 
-	const elements = process.flowElements.filter((el) => idSet.has(el.id))
-	const flows = process.sequenceFlows.filter(
-		(sf) => idSet.has(sf.sourceRef) && idSet.has(sf.targetRef),
+	const selected = process.flowElements.filter((el) => idSet.has(el.id))
+
+	// Auto-include boundary events attached to any copied host (bpmn-js parity).
+	const selectedIds = new Set(selected.map((el) => el.id))
+	const boundaries = process.flowElements.filter(
+		(el) =>
+			el.type === "boundaryEvent" && selectedIds.has(el.attachedToRef) && !selectedIds.has(el.id),
 	)
-	const flowIds = new Set(flows.map((sf) => sf.id))
-	const shapes = diagram.plane.shapes.filter((s) => idSet.has(s.bpmnElement))
-	const edges = diagram.plane.edges.filter((e) => flowIds.has(e.bpmnElement))
+	const elements = [...selected, ...boundaries]
+	const topIds = new Set(elements.map((el) => el.id))
+
+	// All shape/edge ids within the copied subtree (recurses into sub-processes).
+	const shapeIds = new Set<string>()
+	const edgeIds = new Set<string>()
+	for (const el of elements) {
+		collectShapeIds(el, shapeIds)
+		collectEdgeIds(el, edgeIds)
+	}
+
+	// Top-level flows whose endpoints are both copied.
+	const flows = process.sequenceFlows.filter(
+		(sf) => topIds.has(sf.sourceRef) && topIds.has(sf.targetRef),
+	)
+	for (const sf of flows) edgeIds.add(sf.id)
+
+	const shapes = diagram.plane.shapes.filter((s) => shapeIds.has(s.bpmnElement))
+	const edges = diagram.plane.edges.filter((e) => edgeIds.has(e.bpmnElement))
 
 	return { elements, flows, shapes, edges }
+}
+
+/** Assigns a fresh id to `el` and every descendant / nested edge, recording the mapping. */
+function buildIdMap(el: BpmnFlowElement, map: Map<string, string>): void {
+	map.set(el.id, genId(el.type))
+	if (hasChildren(el)) {
+		for (const child of el.flowElements) buildIdMap(child, map)
+		for (const sf of el.sequenceFlows) map.set(sf.id, genId("Flow"))
+		for (const ta of el.textAnnotations) map.set(ta.id, genId("TextAnnotation"))
+		for (const a of el.associations) map.set(a.id, genId("Association"))
+		for (const g of el.groups) map.set(g.id, genId("Group"))
+	}
+}
+
+/** Deep-clones `el`, remapping its own id, refs, and all nested children through `map`. */
+function remapElement(el: BpmnFlowElement, map: Map<string, string>): BpmnFlowElement {
+	const clone: BpmnFlowElement = {
+		...el,
+		id: map.get(el.id) ?? el.id,
+		incoming: el.incoming.map((r) => map.get(r)).filter((r): r is string => r !== undefined),
+		outgoing: el.outgoing.map((r) => map.get(r)).filter((r): r is string => r !== undefined),
+	}
+	if (clone.type === "boundaryEvent" && el.type === "boundaryEvent") {
+		clone.attachedToRef = map.get(el.attachedToRef) ?? el.attachedToRef
+	}
+	if (hasChildren(el) && hasChildren(clone)) {
+		clone.flowElements = el.flowElements.map((c) => remapElement(c, map))
+		clone.sequenceFlows = el.sequenceFlows.map((sf) => remapFlow(sf, map))
+		clone.textAnnotations = el.textAnnotations.map((ta) => ({
+			...ta,
+			id: map.get(ta.id) ?? ta.id,
+		}))
+		clone.associations = el.associations.map((a) => ({
+			...a,
+			id: map.get(a.id) ?? a.id,
+			sourceRef: map.get(a.sourceRef) ?? a.sourceRef,
+			targetRef: map.get(a.targetRef) ?? a.targetRef,
+		}))
+		clone.groups = el.groups.map((g) => ({ ...g, id: map.get(g.id) ?? g.id }))
+	}
+	return clone
+}
+
+function remapFlow(sf: BpmnSequenceFlow, map: Map<string, string>): BpmnSequenceFlow {
+	return {
+		...sf,
+		id: map.get(sf.id) ?? sf.id,
+		sourceRef: map.get(sf.sourceRef) ?? sf.sourceRef,
+		targetRef: map.get(sf.targetRef) ?? sf.targetRef,
+	}
 }
 
 export function pasteElements(
@@ -1573,42 +1703,21 @@ export function pasteElements(
 	clipboard: Clipboard,
 	offsetX: number,
 	offsetY: number,
-): { defs: BpmnDefinitions; newIds: Map<string, string> } {
+): { defs: BpmnDefinitions; newIds: Map<string, string>; topLevelIds: string[] } {
 	const newIds = new Map<string, string>()
 
-	// Generate new IDs for elements
-	for (const el of clipboard.elements) {
-		newIds.set(el.id, genId(el.type))
-	}
-	for (const sf of clipboard.flows) {
-		newIds.set(sf.id, genId("Flow"))
-	}
+	// Generate new IDs for every element (recursively) and top-level flow.
+	for (const el of clipboard.elements) buildIdMap(el, newIds)
+	for (const sf of clipboard.flows) newIds.set(sf.id, genId("Flow"))
 
 	const process = defs.processes[0]
 	const diagram = defs.diagrams[0]
-	if (!process || !diagram) return { defs, newIds }
+	if (!process || !diagram) return { defs, newIds, topLevelIds: [] }
 
-	// Create new flow elements with new IDs, offset positions handled via DI
-	const newElements: BpmnFlowElement[] = clipboard.elements.map((el) => {
-		const newId = newIds.get(el.id) ?? genId(el.type)
-		const newIncoming = el.incoming
-			.map((ref) => newIds.get(ref))
-			.filter((r): r is string => r !== undefined)
-		const newOutgoing = el.outgoing
-			.map((ref) => newIds.get(ref))
-			.filter((r): r is string => r !== undefined)
-		return { ...el, id: newId, incoming: newIncoming, outgoing: newOutgoing }
-	})
+	const newElements = clipboard.elements.map((el) => remapElement(el, newIds))
+	const newFlows = clipboard.flows.map((sf) => remapFlow(sf, newIds))
 
-	// Create new sequence flows
-	const newFlows: BpmnSequenceFlow[] = clipboard.flows.map((sf) => {
-		const newId = newIds.get(sf.id) ?? genId("Flow")
-		const newSrc = newIds.get(sf.sourceRef) ?? sf.sourceRef
-		const newTgt = newIds.get(sf.targetRef) ?? sf.targetRef
-		return { ...sf, id: newId, sourceRef: newSrc, targetRef: newTgt }
-	})
-
-	// Create new DI shapes with offset
+	// Create new DI shapes with offset (covers nested descendants too).
 	const newDiShapes: BpmnDiShape[] = clipboard.shapes.map((s) => {
 		const newElId = newIds.get(s.bpmnElement) ?? s.bpmnElement
 		return {
@@ -1623,7 +1732,7 @@ export function pasteElements(
 		}
 	})
 
-	// Create new DI edges with offset waypoints
+	// Create new DI edges with offset waypoints (covers nested flows/associations).
 	const newDiEdges: BpmnDiEdge[] = clipboard.edges.map((e) => {
 		const newFlowId = newIds.get(e.bpmnElement) ?? e.bpmnElement
 		return {
@@ -1660,7 +1769,11 @@ export function pasteElements(
 		],
 	}
 
-	return { defs: newDefs, newIds }
+	const topLevelIds = clipboard.elements
+		.map((el) => newIds.get(el.id))
+		.filter((id): id is string => id !== undefined)
+
+	return { defs: newDefs, newIds, topLevelIds }
 }
 
 // ── Create text annotation ────────────────────────────────────────────────────

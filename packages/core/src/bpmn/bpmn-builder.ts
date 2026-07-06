@@ -412,6 +412,7 @@ function makeFlowElement(
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "adHocSubProcess":
 			return {
@@ -421,6 +422,7 @@ function makeFlowElement(
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "eventSubProcess":
 			return {
@@ -430,6 +432,7 @@ function makeFlowElement(
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
 		case "transaction":
 			return {
@@ -439,7 +442,10 @@ function makeFlowElement(
 				sequenceFlows: [],
 				textAnnotations: [],
 				associations: [],
+				groups: [],
 			}
+		default:
+			return { ...base, type } as BpmnFlowElement
 	}
 }
 
@@ -2466,6 +2472,7 @@ export class ProcessBuilder {
 			sequenceFlows: this.sequenceFlows,
 			textAnnotations: this._textAnnotations,
 			associations: this._associations,
+			groups: [],
 			unknownAttributes: {},
 		}
 

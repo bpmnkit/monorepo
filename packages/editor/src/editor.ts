@@ -1,5 +1,6 @@
 import {
 	KeyboardHandler,
+	OverlayManager,
 	ViewportController,
 	computeDiagramBounds,
 	createDefs,
@@ -14,6 +15,7 @@ import type {
 	FitMode,
 	RenderedEdge,
 	RenderedShape,
+	ScreenBox,
 	Theme,
 } from "@bpmnkit/canvas"
 import { Bpmn, applyAutoLayout } from "@bpmnkit/core"
@@ -36,6 +38,8 @@ import {
 	portFromWaypoint,
 	screenToDiagram,
 } from "./geometry.js"
+import { defaultTranslate } from "./i18n.js"
+import type { Translate } from "./i18n.js"
 import { LabelEditor } from "./label-editor.js"
 import {
 	changeElementType as changeElementTypeFn,
@@ -49,6 +53,7 @@ import {
 	deleteElements,
 	insertEdgeWaypoint,
 	insertShapeOnEdge,
+	moveEdgeSegment,
 	moveEdgeWaypoint,
 	moveShapes,
 	pasteElements,
@@ -61,10 +66,9 @@ import {
 } from "./modeling.js"
 import type { Clipboard } from "./modeling.js"
 import { OverlayRenderer } from "./overlay.js"
-import { canConnect } from "./rules.js"
+import { canAttach, canConnect, canMorph, canResize } from "./rules.js"
 import { EditorStateMachine } from "./state-machine.js"
 import type { Callbacks } from "./state-machine.js"
-import { RESIZABLE_TYPES } from "./types.js"
 import type {
 	CreateShapeType,
 	DiagPoint,
@@ -79,6 +83,22 @@ import type {
 
 const NS = "http://www.w3.org/2000/svg"
 let _instanceCounter = 0
+
+/**
+ * Scores a search element against a lowercased query. Higher is better; 0 means
+ * no match. A word-prefix hit on the name outranks a name substring, which
+ * outranks an id or type match.
+ */
+function scoreSearch(q: string, name: string, id: string, type: string): number {
+	if (name) {
+		if (name === q) return 120
+		if (name.split(/\s+/).some((w) => w.startsWith(q))) return 100
+		if (name.includes(q)) return 60
+	}
+	if (id.includes(q)) return 30
+	if (type.includes(q)) return 10
+	return 0
+}
 
 function defaultBounds(
 	type: CreateShapeType,
@@ -175,28 +195,8 @@ const INTERMEDIATE_EVENT_TYPES = new Set<CreateShapeType>([
 	"signalThrowEvent",
 ])
 
-const ACTIVITY_TYPES = new Set([
-	"task",
-	"serviceTask",
-	"userTask",
-	"scriptTask",
-	"sendTask",
-	"receiveTask",
-	"businessRuleTask",
-	"manualTask",
-	"callActivity",
-	"subProcess",
-	"adHocSubProcess",
-	"eventSubProcess",
-	"transaction",
-])
-
 function isIntermediateEventType(type: CreateShapeType): boolean {
 	return INTERMEDIATE_EVENT_TYPES.has(type)
-}
-
-function isActivityType(type: string): boolean {
-	return ACTIVITY_TYPES.has(type)
 }
 
 function snapToBoundary(
@@ -281,6 +281,7 @@ export class BpmnEditor {
 	private readonly _viewport: ViewportController
 	private readonly _keyboard: KeyboardHandler
 	private readonly _overlay: OverlayRenderer
+	private readonly _htmlOverlays: OverlayManager
 	private readonly _commandStack: CommandStack
 	private readonly _stateMachine: EditorStateMachine
 	private readonly _labelEditor: LabelEditor
@@ -302,6 +303,9 @@ export class BpmnEditor {
 	private _readOnly = false
 	private _isDragging = false
 	private _boundaryHostId: string | null = null
+	private readonly _t: Translate
+	private readonly _liveRegion: HTMLDivElement
+	private _lastTap: { t: number; x: number; y: number; id: string } | null = null
 	private _warningBanner: HTMLElement | null = null
 
 	// ── Events ─────────────────────────────────────────────────────────
@@ -315,6 +319,7 @@ export class BpmnEditor {
 		injectEditorStyles()
 
 		this._id = String(_instanceCounter++)
+		this._t = options.translate ?? defaultTranslate
 
 		// Resolve initial theme — localStorage overrides the options.theme when persistTheme is on
 		let initialTheme = options.theme ?? "neon"
@@ -342,6 +347,14 @@ export class BpmnEditor {
 		this._host.setAttribute("tabindex", "0")
 		this._applyTheme(this._theme)
 		container.appendChild(this._host)
+
+		// Visually-hidden live region: since the SVG is aria-hidden, this is how
+		// selection and edit results reach assistive technology.
+		this._liveRegion = document.createElement("div")
+		this._liveRegion.className = "bpmnkit-sr-only"
+		this._liveRegion.setAttribute("aria-live", "polite")
+		this._liveRegion.setAttribute("aria-atomic", "true")
+		this._host.appendChild(this._liveRegion)
 
 		this._svg = document.createElementNS(NS, "svg") as SVGSVGElement
 		this._svg.setAttribute("aria-hidden", "true")
@@ -376,6 +389,14 @@ export class BpmnEditor {
 			(state) => this._emit("viewport:change", state),
 		)
 
+		// ── HTML overlays (element-anchored) ─────────────────────────
+		this._htmlOverlays = new OverlayManager({
+			hostEl: this._host,
+			getScale: () => this._viewport.state.scale,
+			getBBox: (id) => this._absoluteBBox(id),
+			onViewportChange: (cb) => this.on("viewport:change", cb),
+		})
+
 		// ── Overlay ──────────────────────────────────────────────────
 		this._overlay = new OverlayRenderer(this._overlayG, this._markerId)
 
@@ -397,9 +418,9 @@ export class BpmnEditor {
 			previewResize: (bounds) => this._overlay.setResizePreview(bounds),
 			commitResize: (id, bounds) => {
 				this._overlay.setResizePreview(null)
-				this._executeCommand((d) => resizeShape(d, id, bounds))
+				this._executeCommand((d) => resizeShape(d, id, bounds), "Resize")
 			},
-			previewConnect: (ghostEnd) => {
+			previewConnect: (ghostEnd, targetId) => {
 				const src = this._connectSourceBounds()
 				if (src) {
 					const wps = computeWaypoints(src, {
@@ -408,7 +429,7 @@ export class BpmnEditor {
 						width: 2,
 						height: 2,
 					})
-					this._overlay.setGhostConnection(wps)
+					this._overlay.setGhostConnection(wps, this._isConnectTargetInvalid(targetId))
 				}
 			},
 			cancelConnect: () => this._overlay.setGhostConnection(null),
@@ -422,7 +443,7 @@ export class BpmnEditor {
 			startLabelEdit: (id) => this._startLabelEdit(id),
 			setHovered: (id) => this._overlay.setHovered(id, this._shapes),
 			executeDelete: (ids) => {
-				this._executeCommand((d) => deleteElements(d, ids))
+				this._executeCommand((d) => deleteElements(d, ids), "Delete")
 				this._setSelection([])
 			},
 			executeCopy: () => this._doCopy(),
@@ -453,8 +474,9 @@ export class BpmnEditor {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
 				const snap = this._snapWaypoint(pt)
-				this._executeCommand((d) =>
-					removeCollinearWaypoints(insertEdgeWaypoint(d, edgeId, segIdx, snap.pt), edgeId),
+				this._executeCommand(
+					(d) => removeCollinearWaypoints(insertEdgeWaypoint(d, edgeId, segIdx, snap.pt), edgeId),
+					"Add waypoint",
 				)
 			},
 			cancelWaypointInsert: () => {
@@ -473,13 +495,31 @@ export class BpmnEditor {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
 				const snap = this._snapWaypoint(pt)
-				this._executeCommand((d) =>
-					removeCollinearWaypoints(moveEdgeWaypoint(d, edgeId, wpIdx, snap.pt), edgeId),
+				this._executeCommand(
+					(d) => removeCollinearWaypoints(moveEdgeWaypoint(d, edgeId, wpIdx, snap.pt), edgeId),
+					"Move waypoint",
 				)
 			},
 			cancelWaypointMove: () => {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
+			},
+			previewSegmentMove: (edgeId, segIdx, isHoriz, delta) => {
+				if (!this._defs) return
+				const preview = moveEdgeSegment(this._defs, edgeId, segIdx, isHoriz, delta)
+				const edge = preview.diagrams[0]?.plane.edges.find((e) => e.bpmnElement === edgeId)
+				this._overlay.setEndpointDragGhost(edge?.waypoints ?? null)
+			},
+			commitSegmentMove: (edgeId, segIdx, isHoriz, delta) => {
+				this._overlay.setEndpointDragGhost(null)
+				this._executeCommand(
+					(d) =>
+						removeCollinearWaypoints(moveEdgeSegment(d, edgeId, segIdx, isHoriz, delta), edgeId),
+					"Move segment",
+				)
+			},
+			cancelSegmentMove: () => {
+				this._overlay.setEndpointDragGhost(null)
 			},
 			showEdgeHoverDot: (pt) => {
 				this._overlay.setEdgeHoverDot(pt)
@@ -505,7 +545,7 @@ export class BpmnEditor {
 		this._labelEditor = new LabelEditor(
 			this._host,
 			(id, text) => {
-				this._executeCommand((d) => updateLabel(d, id, text))
+				this._executeCommand((d) => updateLabel(d, id, text), "Rename", `label:${id}`)
 				this._stateMachine.setMode({ mode: "select", sub: { name: "idle", hoveredId: null } })
 			},
 			() => {
@@ -582,7 +622,7 @@ export class BpmnEditor {
 	 * The operation is undoable.
 	 */
 	autoLayout(): void {
-		this._executeCommand(applyAutoLayout)
+		this._executeCommand(applyAutoLayout, "Auto-layout")
 		this.fitView()
 	}
 
@@ -590,6 +630,7 @@ export class BpmnEditor {
 		this._commandStack.clear()
 		this._commandStack.push(defs)
 		this._selectedIds = []
+		this._htmlOverlays.clear()
 		this._renderDefs(defs)
 		if (this._fit !== "none") {
 			requestAnimationFrame(() => this.fitView())
@@ -653,8 +694,137 @@ export class BpmnEditor {
 	deleteSelected(): void {
 		if (this._selectedIds.length === 0) return
 		const ids = [...this._selectedIds]
-		this._executeCommand((d) => deleteElements(d, ids))
+		this._executeCommand((d) => deleteElements(d, ids), "Delete")
 		this._setSelection([])
+	}
+
+	/** Bounds of the currently-selected shapes (edges have none, and are skipped). */
+	private _selectedShapeBounds(): Array<{
+		id: string
+		x: number
+		y: number
+		width: number
+		height: number
+	}> {
+		const out: Array<{ id: string; x: number; y: number; width: number; height: number }> = []
+		for (const id of this._selectedIds) {
+			const shape = this._shapes.find((s) => s.id === id)
+			if (shape) out.push({ id, ...shape.shape.bounds })
+		}
+		return out
+	}
+
+	/**
+	 * Aligns the selected shapes along an edge or centre-line, as a single
+	 * undoable command. No-op for fewer than two selected shapes.
+	 */
+	alignSelected(edge: "left" | "center" | "right" | "top" | "middle" | "bottom"): void {
+		const bs = this._selectedShapeBounds()
+		if (bs.length < 2) return
+		const minLeft = Math.min(...bs.map((b) => b.x))
+		const maxRight = Math.max(...bs.map((b) => b.x + b.width))
+		const minTop = Math.min(...bs.map((b) => b.y))
+		const maxBottom = Math.max(...bs.map((b) => b.y + b.height))
+
+		const moves: Array<{ id: string; dx: number; dy: number }> = []
+		for (const b of bs) {
+			let dx = 0
+			let dy = 0
+			switch (edge) {
+				case "left":
+					dx = minLeft - b.x
+					break
+				case "right":
+					dx = maxRight - (b.x + b.width)
+					break
+				case "center":
+					dx = (minLeft + maxRight) / 2 - (b.x + b.width / 2)
+					break
+				case "top":
+					dy = minTop - b.y
+					break
+				case "bottom":
+					dy = maxBottom - (b.y + b.height)
+					break
+				case "middle":
+					dy = (minTop + maxBottom) / 2 - (b.y + b.height / 2)
+					break
+			}
+			if (dx !== 0 || dy !== 0) moves.push({ id: b.id, dx, dy })
+		}
+		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves), "Align")
+	}
+
+	/**
+	 * Distributes the selected shapes so the gaps between them are equal along
+	 * the axis (the outermost two stay fixed), as a single undoable command.
+	 * No-op for fewer than three selected shapes.
+	 */
+	distributeSelected(axis: "horizontal" | "vertical"): void {
+		const bs = this._selectedShapeBounds()
+		if (bs.length < 3) return
+		const horiz = axis === "horizontal"
+		const start = (b: (typeof bs)[number]) => (horiz ? b.x : b.y)
+		const size = (b: (typeof bs)[number]) => (horiz ? b.width : b.height)
+
+		const sorted = [...bs].sort((a, b) => start(a) + size(a) / 2 - (start(b) + size(b) / 2))
+		const first = sorted[0]
+		const last = sorted[sorted.length - 1]
+		if (!first || !last) return
+		const span = start(last) + size(last) - start(first)
+		const sumSize = sorted.reduce((s, b) => s + size(b), 0)
+		const gap = (span - sumSize) / (sorted.length - 1)
+
+		const moves: Array<{ id: string; dx: number; dy: number }> = []
+		let cursor = start(first) + size(first) + gap
+		for (let i = 1; i < sorted.length - 1; i++) {
+			const b = sorted[i]
+			if (!b) continue
+			const delta = cursor - start(b)
+			if (delta !== 0) {
+				moves.push(horiz ? { id: b.id, dx: delta, dy: 0 } : { id: b.id, dx: 0, dy: delta })
+			}
+			cursor += size(b) + gap
+		}
+		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves), "Distribute")
+	}
+
+	/**
+	 * Searches the model (recursively, including sub-process children) for
+	 * elements matching `query`, ranked: a word-prefix match on the name beats a
+	 * name substring, which beats an id or type match. Returns `[]` for a blank
+	 * query.
+	 */
+	find(query: string): Array<{ id: string; label: string; type: string }> {
+		const q = query.trim().toLowerCase()
+		if (!q || !this._defs) return []
+
+		const candidates: Array<{ id: string; name: string; type: string }> = []
+		const walk = (els: BpmnFlowElement[]): void => {
+			for (const el of els) {
+				candidates.push({ id: el.id, name: el.name ?? "", type: el.type })
+				if ("flowElements" in el) walk(el.flowElements)
+			}
+		}
+		for (const proc of this._defs.processes) {
+			walk(proc.flowElements)
+			for (const ta of proc.textAnnotations) {
+				candidates.push({ id: ta.id, name: ta.text ?? "", type: "textAnnotation" })
+			}
+		}
+		for (const collab of this._defs.collaborations) {
+			for (const p of collab.participants) {
+				candidates.push({ id: p.id, name: p.name ?? "", type: "participant" })
+			}
+		}
+
+		const scored: Array<{ id: string; name: string; type: string; score: number }> = []
+		for (const c of candidates) {
+			const score = scoreSearch(q, c.name.toLowerCase(), c.id.toLowerCase(), c.type.toLowerCase())
+			if (score > 0) scored.push({ ...c, score })
+		}
+		scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+		return scored.map((c) => ({ id: c.id, label: c.name || c.id, type: c.type }))
 	}
 
 	undo(): void {
@@ -724,6 +894,19 @@ export class BpmnEditor {
 		this._applyTheme(theme)
 	}
 
+	/** HTML overlays anchored to diagram elements (badges, tooltips, panels). */
+	get overlays(): OverlayManager {
+		return this._htmlOverlays
+	}
+
+	/**
+	 * The resolved translation hook (from `options.translate`, or identity).
+	 * Used by the HUD to localize its strings; also available to plugins.
+	 */
+	get translate(): Translate {
+		return this._t
+	}
+
 	zoomIn(): void {
 		const { width, height } = this._svg.getBoundingClientRect()
 		this._viewport.zoomAt(width / 2, height / 2, 1.25)
@@ -748,6 +931,11 @@ export class BpmnEditor {
 
 	paste(): void {
 		this._doPaste()
+	}
+
+	/** Copies the current selection to the clipboard and deletes it as one undo step. */
+	cut(): void {
+		this._doCut()
 	}
 
 	/** Pans the viewport to center on the element with the given id (preserves zoom). */
@@ -780,6 +968,7 @@ export class BpmnEditor {
 		this._ro.disconnect()
 		this._viewport.destroy()
 		this._keyboard.destroy()
+		this._htmlOverlays.destroy()
 		this._labelEditor.destroy()
 		this._svg.removeEventListener("pointerdown", this._onPointerDown)
 		this._svg.removeEventListener("pointermove", this._onPointerMove)
@@ -888,15 +1077,30 @@ export class BpmnEditor {
 			}
 		}
 
-		this._emit("diagram:load", defs)
+		this._emit("diagram:load", defs, { missingShapes: [], missingEdges: [] })
 	}
 
-	private _executeCommand(fn: (d: BpmnDefinitions) => BpmnDefinitions): void {
+	private _executeCommand(
+		fn: (d: BpmnDefinitions) => BpmnDefinitions,
+		label = "",
+		coalesceKey?: string,
+	): void {
 		if (this._readOnly || !this._defs) return
 		const newDefs = fn(this._defs)
-		this._commandStack.push(newDefs)
+		this._commandStack.push(newDefs, label, coalesceKey)
 		this._renderDefs(newDefs)
+		if (label) this._announce(this._t(label))
 		this._emit("diagram:change", newDefs)
+	}
+
+	/** Label of the change `undo()` would revert (for HUD tooltips), or null. */
+	getUndoLabel(): string | null {
+		return this._commandStack.undoLabel()
+	}
+
+	/** Label of the change `redo()` would re-apply (for HUD tooltips), or null. */
+	getRedoLabel(): string | null {
+		return this._commandStack.redoLabel()
 	}
 
 	private _setSelection(ids: string[]): void {
@@ -907,7 +1111,33 @@ export class BpmnEditor {
 			this._overlay.setEdgeEndpoints(null, "")
 		}
 		this._overlay.setSelection(ids, this._shapes, this._getResizableIds())
+		this._announceSelection(ids)
 		this._emit("editor:select", ids)
+	}
+
+	/** Human-readable name for an element (its label, else its type). */
+	private _displayName(id: string): string {
+		const el = this._shapes.find((s) => s.id === id)?.flowElement
+		return el?.name ?? el?.type ?? id
+	}
+
+	/** Pushes `message` to the aria-live region for assistive technology. */
+	private _announce(message: string): void {
+		// Re-assigning identical text does not re-trigger some screen readers, so
+		// clear first when the message is unchanged.
+		if (this._liveRegion.textContent === message) this._liveRegion.textContent = ""
+		this._liveRegion.textContent = message
+	}
+
+	private _announceSelection(ids: string[]): void {
+		// A cleared selection is left unannounced — it is usually the tail of an
+		// edit (delete, cut) whose own result is the meaningful announcement.
+		if (ids.length === 0) return
+		if (ids.length === 1 && ids[0]) {
+			this._announce(this._t("{name} selected", { name: this._displayName(ids[0]) }))
+		} else {
+			this._announce(this._t("{count} elements selected", { count: ids.length }))
+		}
 	}
 
 	private _previewTranslate(dx: number, dy: number): void {
@@ -976,9 +1206,12 @@ export class BpmnEditor {
 		const moves = this._selectedIds.map((id) => ({ id, dx: snap.dx, dy: snap.dy }))
 		const shapeId = this._selectedIds.length === 1 ? this._selectedIds[0] : undefined
 		if (edgeDropId && shapeId) {
-			this._executeCommand((d) => insertShapeOnEdge(moveShapes(d, moves), edgeDropId, shapeId))
+			this._executeCommand(
+				(d) => insertShapeOnEdge(moveShapes(d, moves), edgeDropId, shapeId),
+				"Insert on flow",
+			)
 		} else {
-			this._executeCommand((d) => moveShapes(d, moves))
+			this._executeCommand((d) => moveShapes(d, moves), "Move")
 		}
 		if (this._isDragging) {
 			this._isDragging = false
@@ -1049,7 +1282,7 @@ export class BpmnEditor {
 		}
 
 		if (moves.length > 0) {
-			this._executeCommand((d) => moveShapes(d, moves))
+			this._executeCommand((d) => moveShapes(d, moves), "Move")
 		}
 	}
 
@@ -1131,7 +1364,7 @@ export class BpmnEditor {
 			tgtShape.shape.bounds,
 			obstacles,
 		)
-		this._executeCommand((d) => createConnection(d, srcId, tgtId, waypoints).defs)
+		this._executeCommand((d) => createConnection(d, srcId, tgtId, waypoints).defs, "Connect")
 	}
 
 	private _doCopy(): void {
@@ -1143,12 +1376,19 @@ export class BpmnEditor {
 		if (!this._clipboard) return
 		const base = this._defs ?? createEmptyDefinitions()
 		const result = pasteElements(base, this._clipboard, 20, 20)
-		const newIds = [...result.newIds.values()]
-		this._selectedIds = newIds
-		this._commandStack.push(result.defs)
+		this._selectedIds = result.topLevelIds
+		this._commandStack.push(result.defs, "Paste")
 		this._renderDefs(result.defs)
 		this._emit("diagram:change", result.defs)
-		this._emit("editor:select", newIds)
+		this._emit("editor:select", result.topLevelIds)
+	}
+
+	private _doCut(): void {
+		if (!this._defs || this._selectedIds.length === 0) return
+		this._doCopy()
+		const ids = [...this._selectedIds]
+		this._executeCommand((d) => deleteElements(d, ids), "Cut")
+		this._setSelection([])
 	}
 
 	private _startLabelEdit(id: string): void {
@@ -1173,14 +1413,28 @@ export class BpmnEditor {
 	}
 
 	private _connectSourceBounds(): { x: number; y: number; width: number; height: number } | null {
-		const mode = this._stateMachine.mode
-		if (mode.mode !== "select") return null
-		const sub = mode.sub
-		const sourceId =
-			sub.name === "connecting" ? sub.sourceId : sub.name === "pointing-port" ? sub.sourceId : null
+		const sourceId = this._connectSourceId()
 		if (!sourceId) return null
 		const shape = this._shapes.find((s) => s.id === sourceId)
 		return shape ? shape.shape.bounds : null
+	}
+
+	private _connectSourceId(): string | null {
+		const mode = this._stateMachine.mode
+		if (mode.mode !== "select") return null
+		const sub = mode.sub
+		return sub.name === "connecting" || sub.name === "pointing-port" ? sub.sourceId : null
+	}
+
+	/** True when hovering a target the connect tool would reject (self, or a rule violation). */
+	private _isConnectTargetInvalid(targetId: string | null): boolean {
+		if (!targetId) return false
+		const sourceId = this._connectSourceId()
+		if (!sourceId) return false
+		if (targetId === sourceId) return true
+		const srcType = this._shapes.find((s) => s.id === sourceId)?.flowElement?.type
+		const tgtType = this._shapes.find((s) => s.id === targetId)?.flowElement?.type
+		return srcType !== undefined && tgtType !== undefined && !canConnect(srcType, tgtType)
 	}
 
 	// ── New public helpers ─────────────────────────────────────────────
@@ -1367,7 +1621,7 @@ export class BpmnEditor {
 		const shape = this._shapes.find((s) => s.id === shapeId)
 		if (!shape) return
 		const labelBounds = labelBoundsForPosition(shape.shape.bounds, position)
-		this._executeCommand((d) => updateLabelPosition(d, shapeId, labelBounds))
+		this._executeCommand((d) => updateLabelPosition(d, shapeId, labelBounds), "Move label")
 	}
 
 	/** Starts inline label editing for the element with the given id. */
@@ -1423,7 +1677,7 @@ export class BpmnEditor {
 
 	/** Updates the color of a shape in the diagram. Pass `{}` to clear colors. */
 	updateColor(id: string, color: DiColor): void {
-		this._executeCommand((d) => updateShapeColor(d, id, color))
+		this._executeCommand((d) => updateShapeColor(d, id, color), "Change colour", `color:${id}`)
 	}
 
 	// ── Private helpers ────────────────────────────────────────────────
@@ -1447,7 +1701,9 @@ export class BpmnEditor {
 
 	/** Changes a flow element's type (e.g. exclusiveGateway → parallelGateway). */
 	changeElementType(id: string, newType: CreateShapeType): void {
-		this._executeCommand((d) => changeElementTypeFn(d, id, newType))
+		const current = this._shapes.find((s) => s.id === id)?.flowElement?.type
+		if (current && !canMorph(current, newType)) return
+		this._executeCommand((d) => changeElementTypeFn(d, id, newType), "Change type")
 	}
 
 	private _findEdgeDropTarget(dx: number, dy: number): string | null {
@@ -1545,14 +1801,14 @@ export class BpmnEditor {
 		const newPort = isStart
 			? closestPort(diagPoint, srcDi.bounds)
 			: closestPort(diagPoint, tgtDi.bounds)
-		this._executeCommand((d) => updateEdgeEndpoint(d, edgeId, isStart, newPort))
+		this._executeCommand((d) => updateEdgeEndpoint(d, edgeId, isStart, newPort), "Reconnect")
 	}
 
 	private _isResizable(id: string): boolean {
 		const shape = this._shapes.find((s) => s.id === id)
 		if (!shape) return false
 		if (shape.annotation !== undefined) return true
-		return shape.flowElement !== undefined && RESIZABLE_TYPES.has(shape.flowElement.type)
+		return shape.flowElement !== undefined && canResize(shape.flowElement.type)
 	}
 
 	private _getResizableIds(): Set<string> {
@@ -1560,7 +1816,7 @@ export class BpmnEditor {
 		for (const shape of this._shapes) {
 			if (
 				shape.annotation !== undefined ||
-				(shape.flowElement && RESIZABLE_TYPES.has(shape.flowElement.type))
+				(shape.flowElement && canResize(shape.flowElement.type))
 			) {
 				ids.add(shape.id)
 			}
@@ -1937,7 +2193,7 @@ export class BpmnEditor {
 			// Detect boundary event attachment target for intermediate event types
 			if (isIntermediateEventType(mode.elementType) && hit.type === "shape") {
 				const shape = this._shapes.find((s) => s.id === hit.id)
-				if (shape?.flowElement && isActivityType(shape.flowElement.type)) {
+				if (shape?.flowElement && canAttach(shape.flowElement.type)) {
 					this._setBoundaryHost(hit.id)
 				} else {
 					this._setBoundaryHost(null)
@@ -1954,6 +2210,28 @@ export class BpmnEditor {
 		const diag = screenToDiagram(e.clientX, e.clientY, this._viewport.state, rect)
 		const hit = this._hitTest(e.clientX, e.clientY)
 		this._stateMachine.onPointerUp(e, diag, hit)
+		if (e.pointerType === "touch") this._detectDoubleTap(e, hit)
+	}
+
+	/** On coarse pointers, a double-tap on a shape starts label editing (mirrors dblclick). */
+	private _detectDoubleTap(e: PointerEvent, hit: HitResult): void {
+		if (hit.type !== "shape") {
+			this._lastTap = null
+			return
+		}
+		const now = Date.now()
+		const prev = this._lastTap
+		if (
+			prev &&
+			prev.id === hit.id &&
+			now - prev.t < 300 &&
+			Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 20
+		) {
+			this._lastTap = null
+			this._startLabelEdit(hit.id)
+		} else {
+			this._lastTap = { t: now, x: e.clientX, y: e.clientY, id: hit.id }
+		}
 	}
 
 	private readonly _onPointerCancel = (_e: PointerEvent): void => {
@@ -2006,6 +2284,10 @@ export class BpmnEditor {
 					e.preventDefault()
 					this._doPaste()
 					break
+				case "x":
+					e.preventDefault()
+					this._doCut()
+					break
 			}
 		}
 	}
@@ -2057,14 +2339,20 @@ export class BpmnEditor {
 			// can cause elementFromPoint to return the wrong edge's hit area when
 			// edges are close together.
 			const seg = this._nearestEdgeSegment(diag)
-			if (seg)
+			if (seg) {
+				// A press near the segment midpoint inserts a waypoint; a press
+				// elsewhere along the segment moves the whole segment.
+				const midDist = Math.hypot(seg.projPt.x - seg.mid.x, seg.projPt.y - seg.mid.y)
+				const nearMidpoint = midDist < 12 / this._viewport.state.scale
 				return {
 					type: "edge-segment",
 					id: seg.edgeId,
 					segIdx: seg.segIdx,
 					isHoriz: seg.isHoriz,
 					projPt: seg.projPt,
+					nearMidpoint,
 				}
+			}
 		}
 
 		const shapeEl = el.closest("[data-bpmnkit-id]")
@@ -2082,11 +2370,13 @@ export class BpmnEditor {
 		segIdx: number
 		isHoriz: boolean
 		projPt: DiagPoint
+		mid: DiagPoint
 	} | null {
 		let bestDist = Number.POSITIVE_INFINITY
 		let bestEdgeId = ""
 		let bestIdx = 0
 		let bestProj: DiagPoint = { x: 0, y: 0 }
+		let bestMid: DiagPoint = { x: 0, y: 0 }
 		let bestHoriz = true
 		let found = false
 
@@ -2112,6 +2402,7 @@ export class BpmnEditor {
 					bestEdgeId = edge.id
 					bestIdx = i
 					bestProj = proj
+					bestMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 					bestHoriz = Math.abs(dy) <= Math.abs(dx)
 					found = true
 				}
@@ -2119,7 +2410,13 @@ export class BpmnEditor {
 		}
 
 		if (!found) return null
-		return { edgeId: bestEdgeId, segIdx: bestIdx, isHoriz: bestHoriz, projPt: bestProj }
+		return {
+			edgeId: bestEdgeId,
+			segIdx: bestIdx,
+			isHoriz: bestHoriz,
+			projPt: bestProj,
+			mid: bestMid,
+		}
 	}
 
 	/** Snaps a diagram point to nearby shape/waypoint positions and returns guide lines. */
@@ -2187,6 +2484,45 @@ export class BpmnEditor {
 		}
 	}
 
+	/** Finds the SVG group for a shape or edge by BPMN id. */
+	private _elementById(id: string): SVGGElement | undefined {
+		return (
+			this._shapes.find((s) => s.id === id)?.element ??
+			this._edges.find((e) => e.id === id)?.element
+		)
+	}
+
+	/** Element bounding box in screen pixels relative to the host, or `null`. */
+	private _absoluteBBox(id: string): ScreenBox | null {
+		const box = this._boundsById(id)
+		if (!box) return null
+		const { tx, ty, scale } = this._viewport.state
+		return {
+			x: box.x * scale + tx,
+			y: box.y * scale + ty,
+			width: box.width * scale,
+			height: box.height * scale,
+		}
+	}
+
+	/** Diagram-coordinate bounds of a shape (from DI) or edge (waypoint bbox). */
+	private _boundsById(id: string): { x: number; y: number; width: number; height: number } | null {
+		const shape = this._shapes.find((s) => s.id === id)
+		if (shape) {
+			const { x, y, width, height } = shape.shape.bounds
+			return { x, y, width, height }
+		}
+		const edge = this._edges.find((e) => e.id === id)
+		if (edge && edge.edge.waypoints.length > 0) {
+			const xs = edge.edge.waypoints.map((w) => w.x)
+			const ys = edge.edge.waypoints.map((w) => w.y)
+			const minX = Math.min(...xs)
+			const minY = Math.min(...ys)
+			return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY }
+		}
+		return null
+	}
+
 	private _installPlugin(plugin: CanvasPlugin): void {
 		this._plugins.push(plugin)
 		const self = this
@@ -2200,6 +2536,40 @@ export class BpmnEditor {
 			getEdges: () => [...this._edges],
 			getTheme: () => this._theme,
 			setTheme: (theme) => this.setTheme(theme),
+			overlays: this._htmlOverlays,
+			addMarker(id, cls) {
+				self._elementById(id)?.classList.add(cls)
+			},
+			removeMarker(id, cls) {
+				self._elementById(id)?.classList.remove(cls)
+			},
+			hasMarker(id, cls) {
+				return self._elementById(id)?.classList.contains(cls) ?? false
+			},
+			toggleMarker(id, cls) {
+				self._elementById(id)?.classList.toggle(cls)
+			},
+			zoom(scaleOrFit = "fit") {
+				if (scaleOrFit === "fit") self.fitView()
+				else self.setZoom(scaleOrFit)
+			},
+			viewbox() {
+				const { tx, ty, scale } = self._viewport.state
+				const { width, height } = self._svg.getBoundingClientRect()
+				return {
+					x: -tx / scale,
+					y: -ty / scale,
+					width: width / scale,
+					height: height / scale,
+					scale,
+				}
+			},
+			scrollToElement(id) {
+				self.scrollToElement(id)
+			},
+			getAbsoluteBBox(id) {
+				return self._absoluteBBox(id)
+			},
 			on<K extends keyof CanvasEvents>(event: K, handler: CanvasEvents[K]) {
 				return self.on(event as keyof EditorEvents, handler as EditorEvents[keyof EditorEvents])
 			},

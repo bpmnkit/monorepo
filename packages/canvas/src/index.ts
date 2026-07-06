@@ -65,20 +65,43 @@
  */
 
 export { BpmnCanvas } from "./canvas.js"
+export { Scene } from "./scene.js"
+export type { SceneLayers } from "./scene.js"
+export { OverlayManager } from "./overlays.js"
+export type {
+	Overlay,
+	OverlayFilter,
+	OverlayHost,
+	OverlayOptions,
+	OverlayPosition,
+} from "./overlays.js"
 export type {
 	CanvasApi,
 	CanvasEvents,
 	CanvasOptions,
 	CanvasPlugin,
 	FitMode,
+	ImportWarnings,
+	PlaneInfo,
 	RenderedEdge,
 	RenderedShape,
+	ScreenBox,
 	Theme,
+	Viewbox,
 	ViewportState,
 } from "./types.js"
 
 // Internal exports for use by @bpmnkit/editor
 export { ViewportController } from "./viewport.js"
-export { render, computeDiagramBounds, createDefs, createGrid } from "./renderer.js"
+export {
+	render,
+	computeDiagramBounds,
+	createDefs,
+	createGrid,
+	buildRenderContext,
+	renderEdgeGroup,
+	renderShapeGroup,
+} from "./renderer.js"
+export type { RenderContext, RenderedShapeGroup, ShapeLayer } from "./renderer.js"
 export { KeyboardHandler } from "./keyboard.js"
 export { injectStyles, CANVAS_CSS, STYLE_ID } from "./css.js"

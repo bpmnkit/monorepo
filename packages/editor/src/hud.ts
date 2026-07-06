@@ -156,6 +156,7 @@ const SHORTCUTS: ReadonlyArray<[string, string]> = [
 	["Delete / Backspace", "Delete selected"],
 	["Ctrl+A", "Select all"],
 	["Ctrl+C", "Copy"],
+	["Ctrl+X", "Cut"],
 	["Ctrl+V", "Paste"],
 	["Ctrl+F", "Find element"],
 	["Ctrl+K", "Command palette"],
@@ -177,6 +178,8 @@ export function initEditorHud(
 	setSimulationActive(active: boolean): void
 } {
 	injectHudStyles()
+
+	const t = editor.translate
 
 	// ── Create and inject HUD DOM ──────────────────────────────────────────────
 
@@ -323,10 +326,10 @@ export function initEditorHud(
 	simBannerEl.id = "bpmnkit-sim-banner"
 	simBannerEl.className = "hidden"
 	const simBannerText = document.createElement("span")
-	simBannerText.textContent = "Simulation active — editing is disabled"
+	simBannerText.textContent = t("Simulation active — editing is disabled")
 	const simBannerExit = document.createElement("button")
 	simBannerExit.id = "bpmnkit-sim-banner-exit"
-	simBannerExit.textContent = "Exit simulation"
+	simBannerExit.textContent = t("Exit simulation")
 	simBannerExit.addEventListener("click", () => options.onExitSimulation?.())
 	simBannerEl.append(simBannerText, simBannerExit)
 
@@ -342,14 +345,14 @@ export function initEditorHud(
 	const searchInput = document.createElement("input")
 	searchInput.id = "bpmnkit-search-input"
 	searchInput.type = "text"
-	searchInput.placeholder = "Search elements…"
-	searchInput.setAttribute("aria-label", "Search diagram elements")
+	searchInput.placeholder = t("Search elements…")
+	searchInput.setAttribute("aria-label", t("Search diagram elements"))
 	const searchCount = document.createElement("span")
 	searchCount.id = "bpmnkit-search-count"
 	const searchClose = document.createElement("button")
 	searchClose.id = "bpmnkit-search-close"
 	searchClose.textContent = "×"
-	searchClose.title = "Close search (Escape)"
+	searchClose.title = t("Close search (Escape)")
 	searchBarEl.append(searchInput, searchCount, searchClose)
 
 	// Keyboard shortcuts modal
@@ -359,13 +362,13 @@ export function initEditorHud(
 	const shortcutsInner = document.createElement("div")
 	shortcutsInner.id = "bpmnkit-shortcuts-inner"
 	const shortcutsTitle = document.createElement("h3")
-	shortcutsTitle.textContent = "Keyboard shortcuts"
+	shortcutsTitle.textContent = t("Keyboard shortcuts")
 	shortcutsInner.appendChild(shortcutsTitle)
 	for (const [key, desc] of SHORTCUTS) {
 		const row = document.createElement("div")
 		row.className = "bpmnkit-sc-row"
 		const descEl = document.createElement("span")
-		descEl.textContent = desc
+		descEl.textContent = t(desc)
 		const keyEl = document.createElement("kbd")
 		keyEl.className = "bpmnkit-sc-key"
 		keyEl.textContent = key
@@ -374,7 +377,7 @@ export function initEditorHud(
 	}
 	const shortcutsClose = document.createElement("button")
 	shortcutsClose.id = "bpmnkit-shortcuts-close"
-	shortcutsClose.textContent = "Close"
+	shortcutsClose.textContent = t("Close")
 	shortcutsClose.addEventListener("click", () => shortcutsModal.classList.add("hidden"))
 	shortcutsModal.addEventListener("click", (e) => {
 		if (e.target === shortcutsModal) shortcutsModal.classList.add("hidden")
@@ -487,14 +490,14 @@ export function initEditorHud(
 
 		const label = document.createElement("span")
 		label.className = "group-picker-label"
-		label.textContent = group.title
+		label.textContent = t(group.title)
 		picker.appendChild(label)
 
 		for (const item of group.items) {
 			const btn = document.createElement("button")
 			btn.className = item.type === groupActiveType[group.id] ? "hud-btn active" : "hud-btn"
 			btn.innerHTML = item.icon
-			btn.title = item.title
+			btn.title = t(item.title)
 			btn.addEventListener("click", (e) => {
 				e.stopPropagation()
 				groupActiveType[group.id] = item.type
@@ -548,14 +551,14 @@ export function initEditorHud(
 
 		const label = document.createElement("span")
 		label.className = "group-picker-label"
-		label.textContent = group.title
+		label.textContent = t(group.title)
 		picker.appendChild(label)
 
 		for (const item of group.items) {
 			const btn = document.createElement("button")
 			btn.className = item.type === sourceType ? "hud-btn active" : "hud-btn"
 			btn.innerHTML = item.icon
-			btn.title = item.title
+			btn.title = t(item.title)
 			btn.addEventListener("click", (e) => {
 				e.stopPropagation()
 				if (item.type !== sourceType) editor.changeElementType(sourceId, item.type)
@@ -666,7 +669,7 @@ export function initEditorHud(
 		btn.className = "hud-btn"
 		btn.dataset.group = group.id
 		btn.innerHTML = group.groupIcon
-		btn.title = `${group.title} (hold for options)`
+		btn.title = t("{name} (hold for options)", { name: t(group.title) })
 
 		let longPressTimer: ReturnType<typeof setTimeout> | null = null
 		let isLongPress = false
@@ -896,6 +899,45 @@ export function initEditorHud(
 				},
 			],
 		]
+		// Align / distribute — only meaningful for a multi-selection.
+		if (selectedIds.length >= 2) {
+			const aligns: Array<[string, "left" | "center" | "right" | "top" | "middle" | "bottom"]> = [
+				["Align left", "left"],
+				["Align centre", "center"],
+				["Align right", "right"],
+				["Align top", "top"],
+				["Align middle", "middle"],
+				["Align bottom", "bottom"],
+			]
+			for (const [label, edge] of aligns) {
+				items.push([
+					label,
+					IC.dots,
+					() => {
+						editor.alignSelected(edge)
+						closeAllDropdowns()
+					},
+				])
+			}
+		}
+		if (selectedIds.length >= 3) {
+			items.push([
+				"Distribute horizontally",
+				IC.dots,
+				() => {
+					editor.distributeSelected("horizontal")
+					closeAllDropdowns()
+				},
+			])
+			items.push([
+				"Distribute vertically",
+				IC.dots,
+				() => {
+					editor.distributeSelected("vertical")
+					closeAllDropdowns()
+				},
+			])
+		}
 		if (options.optimizeButton) {
 			items.push([
 				"Optimize diagram",
@@ -952,6 +994,10 @@ export function initEditorHud(
 		btnRedo.disabled = !editor.canRedo()
 		btnDelete.disabled = selectedIds.length === 0
 		btnDuplicate.disabled = selectedIds.length === 0
+		const undoLabel = editor.getUndoLabel()
+		const redoLabel = editor.getRedoLabel()
+		btnUndo.title = undoLabel ? `Undo ${undoLabel} (Ctrl+Z)` : "Undo (Ctrl+Z)"
+		btnRedo.title = redoLabel ? `Redo ${redoLabel} (Ctrl+Y)` : "Redo (Ctrl+Y)"
 	}
 
 	updateActionBar()
@@ -1056,7 +1102,7 @@ export function initEditorHud(
 				const btn = document.createElement("button")
 				btn.className = "hud-btn"
 				btn.innerHTML = opt.icon
-				btn.title = opt.title
+				btn.title = t(opt.title)
 				btn.addEventListener("click", () => {
 					editor.addConnectedElement(sourceId, opt.type)
 					closeAllDropdowns()
@@ -1133,7 +1179,7 @@ export function initEditorHud(
 			const typeBtn = document.createElement("button")
 			typeBtn.className = "hud-btn active"
 			typeBtn.innerHTML = currentItem?.icon ?? group.groupIcon
-			typeBtn.title = `${currentItem?.title ?? group.title} (click to change)`
+			typeBtn.title = t("{name} (click to change)", { name: t(currentItem?.title ?? group.title) })
 			typeBtn.addEventListener("click", () => showTypePicker(typeBtn, group, sourceId, sourceType))
 			cfgToolbar.appendChild(typeBtn)
 		}
@@ -1780,7 +1826,7 @@ export function initEditorHud(
 	function makeCtxItem(icon: string, label: string, onClick: () => void): HTMLButtonElement {
 		const btn = document.createElement("button")
 		btn.className = "drop-item"
-		btn.innerHTML = `<span class="di-check"></span><span class="di-icon">${icon}</span><span>${label}</span>`
+		btn.innerHTML = `<span class="di-check"></span><span class="di-icon">${icon}</span><span>${t(label)}</span>`
 		btn.addEventListener("click", onClick)
 		return btn
 	}
@@ -1849,6 +1895,12 @@ export function initEditorHud(
 			}),
 		)
 		ctxMenuEl.appendChild(
+			makeCtxItem(IC.duplicate, "Cut", () => {
+				editor.cut()
+				closeAllDropdowns()
+			}),
+		)
+		ctxMenuEl.appendChild(
 			makeCtxItem(IC.trash, "Delete", () => {
 				editor.deleteSelected()
 				closeAllDropdowns()
@@ -1857,6 +1909,36 @@ export function initEditorHud(
 
 		openCtxMenu(e.clientX, e.clientY)
 	})
+
+	// Touch: a long-press opens the same context menu (dispatched as a synthetic
+	// contextmenu event at the press point, so the handler above is reused).
+	let lpTimer: ReturnType<typeof setTimeout> | null = null
+	let lpStart: { x: number; y: number } | null = null
+	const cancelLongPress = (): void => {
+		if (lpTimer) {
+			clearTimeout(lpTimer)
+			lpTimer = null
+		}
+	}
+	editor.container.addEventListener("pointerdown", (e) => {
+		if (e.pointerType !== "touch") return
+		lpStart = { x: e.clientX, y: e.clientY }
+		lpTimer = setTimeout(() => {
+			lpTimer = null
+			if (!lpStart) return
+			editor.container.dispatchEvent(
+				new MouseEvent("contextmenu", { bubbles: true, clientX: lpStart.x, clientY: lpStart.y }),
+			)
+		}, 500)
+	})
+	editor.container.addEventListener("pointermove", (e) => {
+		// A drag past the slop threshold is a pan/move, not a long-press.
+		if (lpTimer && lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) {
+			cancelLongPress()
+		}
+	})
+	editor.container.addEventListener("pointerup", cancelLongPress)
+	editor.container.addEventListener("pointercancel", cancelLongPress)
 
 	// ── Element search (Ctrl+F) ─────────────────────────────────────────────────
 
@@ -1893,28 +1975,17 @@ export function initEditorHud(
 	}
 
 	function runSearch(): void {
-		const q = searchInput.value.trim().toLowerCase()
+		const q = searchInput.value.trim()
 		if (!q) {
 			searchCount.textContent = ""
 			searchMatches = []
 			editor.setSelection([])
 			return
 		}
-		const defs = editor.getDefinitions()
-		if (!defs) return
-		const ids: string[] = []
-		for (const proc of defs.processes) {
-			for (const el of proc.flowElements) {
-				if (el.name?.toLowerCase().includes(q)) ids.push(el.id)
-			}
-			for (const el of proc.textAnnotations) {
-				if (el.text?.toLowerCase().includes(q)) ids.push(el.id)
-			}
-		}
-		searchMatches = ids
+		searchMatches = editor.find(q).map((m) => m.id)
 		searchMatchIdx = 0
 		updateSearchCount()
-		const firstId = ids[0]
+		const firstId = searchMatches[0]
 		if (firstId) {
 			selectSearchMatch(firstId)
 		} else {
@@ -1922,20 +1993,27 @@ export function initEditorHud(
 		}
 	}
 
+	/** Moves to the next/previous match, wrapping, and selects it. */
+	function stepSearch(dir: 1 | -1): void {
+		if (searchMatches.length === 0) return
+		searchMatchIdx = (searchMatchIdx + dir + searchMatches.length) % searchMatches.length
+		const id = searchMatches[searchMatchIdx]
+		updateSearchCount()
+		if (id) selectSearchMatch(id)
+	}
+
 	searchInput.addEventListener("input", runSearch)
 	searchInput.addEventListener("keydown", (e) => {
 		if (e.key === "Escape") {
 			e.preventDefault()
 			closeSearch()
-		}
-		if (e.key === "Enter") {
+		} else if (e.key === "Enter" || e.key === "ArrowDown") {
 			e.preventDefault()
-			if (searchMatches.length > 0) {
-				searchMatchIdx = (searchMatchIdx + 1) % searchMatches.length
-				const nextId = searchMatches[searchMatchIdx]
-				updateSearchCount()
-				if (nextId) selectSearchMatch(nextId)
-			}
+			// Enter on the first result keeps it selected; subsequent presses step.
+			stepSearch(1)
+		} else if (e.key === "ArrowUp") {
+			e.preventDefault()
+			stepSearch(-1)
 		}
 	})
 	searchClose.addEventListener("click", closeSearch)

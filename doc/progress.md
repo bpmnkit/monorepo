@@ -1,5 +1,132 @@
 # Progress
 
+## 2026-07-06 — Touch editing
+
+Implemented P3-2 (behavior) from `doc/render-gap-analysis.md` — a differentiator since bpmn.io dropped touch in 2024. Three pieces: (1) a `@media (pointer: coarse)` block enlarges drag targets to finger size — resize handles grow to 24px (re-centred with a transform), and endpoint/waypoint/port circles to `r: 12px`; (2) a **long-press** (touch pointer held 500ms without moving past a 10px slop) opens the context menu by dispatching a synthetic `contextmenu` at the press point, reusing the existing handler, cancelled on move/up/cancel; (3) a **double-tap** on a shape (two touch pointer-ups within 300ms and 20px, same id) starts label editing, mirroring dblclick, via `_detectDoubleTap`. Tests: `touch editing` (coarse-pointer CSS present, long-press opens the menu, a move cancels it, double-tap starts label edit) using synthetic touch pointer events — 41 editor test cases in that file; editor/plugins/operate green. Updated `doc/accessibility.md`. Deferred: the AC's real-device Playwright touch-emulation smoke test (no Playwright harness in the repo); behavior is covered by deterministic happy-dom unit tests.
+
+## 2026-07-06 — Replace-menu / morph fidelity
+
+Implemented P3-6 from `doc/render-gap-analysis.md`. The typed-event morphs and grouped replace entries already existed; the real gap was data loss on morph — `changeElementType` rebuilt the element from a `base` that omitted `documentation`, `isForCompensation`, and `loopCharacteristics`, so morphing a task the config panel had given a multi-instance loop silently dropped it. `base` now carries `documentation`/`isForCompensation`, and after the type switch the multi-instance/loop marker is re-grafted whenever the new type is an activity that supports one (`ACTIVITY_LOOP_TYPES`). Collapsed/expanded state lives on the DI shape (a type change never touches DI), so it survives automatically. Tests: `changeElementType` preserves loop + documentation across an activity morph and drops the loop when morphing to a gateway — 26 modeling tests; editor/plugins/operate green. Deferred: MI *editing* stays in the `config-panel-bpmn` plugin; a true collapse/expand that moves children between planes is P0-1 territory.
+
+## 2026-07-06 — Accessibility deepening
+
+Implemented P3-3 from `doc/render-gap-analysis.md`. The editor now mounts a visually-hidden `aria-live="polite"` region inside the host (the editor SVG is `aria-hidden`, so this is the channel to assistive technology). It announces **selection** (`"<name> selected"` for one element, `"<n> elements selected"` for several) and **edit results** — `_executeCommand` announces the translated command label (`Delete`, `Move`, `Resize`, `Connect`, `Paste`, `Align left`, `Change type`, …). A cleared selection is intentionally left silent so it doesn't clobber the meaningful result of a delete/cut. A distinct keyboard-focus ring (`.bpmnkit-canvas-host:focus-visible`, a dashed `accent-bright` outline) is visually separated from the solid selection outline. The canvas renderer adds `aria-expanded` to expandable containers — sub-process/ad-hoc/event-sub-process/transaction reflect `isExpanded`, call activity is always `false`. All announcements pass through the P3-1 `translate` hook, so localization covers screen-reader output too. Added `doc/accessibility.md` (roles table, keyboard/focus, announcements, known gaps). Tests: editor `accessibility` (live region present, selection + edit announcements, translate routing) and canvas `aria-expanded` (collapsed sub-process vs plain task) — 91 editor + 76 canvas tests; canvas/editor/plugins/operate green. Deferred: per-element keyboard traversal of the editor canvas.
+
+## 2026-07-06 — Editor i18n hook
+
+Implemented P3-1 from `doc/render-gap-analysis.md`. New `packages/editor/src/i18n.ts` exports the `Translate` type plus `defaultTranslate`/`interpolate` (identity translation with `{name}` placeholder filling). `EditorOptions.translate` is resolved in the editor constructor (`options.translate ?? defaultTranslate`) and exposed through a public `editor.translate` getter. The HUD consumes it (`const t = editor.translate`) and localizes the palette group titles + item tooltips, the group "(hold for options)"/"(click to change)" affordances, the simulation banner, the element search bar, the keyboard-shortcuts panel, and context-menu actions (centralized in `makeCtxItem`). English strings double as keys, so any key the dictionary doesn't cover passes through unchanged. Exported `Translate`/`TranslateVars`/`defaultTranslate`/`interpolate` from the package index. Tests: `i18n` (identity + interpolation, the `translate` option on `editor.translate`, and a German dictionary localizing the palette group tooltip) — 87 editor tests; editor/plugins/operate green. Deferred (noted): remaining action-bar/config-toolbar tooltips are mechanical follow-ups; `translate` lives on `EditorOptions` only since the zero-dependency canvas renders no user-facing strings.
+
+## 2026-07-06 — BPMN rules engine
+
+Implemented P2-2 from `doc/render-gap-analysis.md`. The 15-line `rules.ts` grew into a `BpmnRules`-style predicate set consulted by the editor: `canConnect` (no outgoing from end events / incoming to start events, boundary events are never a sequence-flow target, data elements and annotations use associations, event-based gateway → intermediate catch event or receive task only), `canAttach` (boundary events attach to activities only), `canContain` (containers hold flow nodes, no nested pools), `canResize` (backs the existing `RESIZABLE_TYPES`), and `canMorph` (same-category morph via `morphCategory`). Wiring: `_doConnect` still refuses illegal flows at commit, and the connect drag now paints a red "invalid" ghost line over a forbidden or self target (`previewConnect` gained the hovered `targetId`, `_isConnectTargetInvalid` drives `setGhostConnection(wps, invalid)` + the `.bpmnkit-ghost-conn-invalid` class); boundary-host detection uses `canAttach`; resize-handle eligibility uses `canResize`; `changeElementType` guards with `canMorph`. The editor's duplicated `ACTIVITY_TYPES`/`isActivityType` were removed in favour of the shared module. Tests: `rules` (positive + negative per predicate) and `editor` morph-guard wiring — 84 editor tests; editor/plugins/operate green. Deferred (noted): auto-morph of a cross-pool sequence flow to a message flow, and active `canContain` enforcement on drop (no reparent-on-drop feature yet).
+
+## 2026-07-06 — Deep copy/paste + cut
+
+Implemented P2-1 from `doc/render-gap-analysis.md`. Copy/paste previously handled only top-level flow elements, so copying a sub-process dropped its children. `copyElements`/`pasteElements` now deep-clone: `collectShapeIds`/`collectEdgeIds` recurse through sub-process children (flow elements, nested flows, text annotations, associations, groups); `buildIdMap`/`remapElement`/`remapFlow` mint fresh ids for every descendant and rewrite all internal references (incoming/outgoing, flow source/target, association source/target, boundary `attachedToRef`); the DI copy covers descendant shapes/edges with the paste offset. Boundary events attached to a copied host are auto-included, and labels/colours carry over via the existing DI `unknownAttributes`/`label` spread. Paste now selects only the pasted top-level roots (new `topLevelIds` in the return). `editor.cut()` copies then deletes as a single undo step, bound to Ctrl/Cmd+X plus the HUD shortcut list and selection context menu. Tests: `modeling` deep-clone (sub-process structure, unique ids, re-attached boundary, offset) and `editor` cut (single-undo restore + paste) — 71 editor tests; editor/plugins/operate green.
+
+## 2026-07-05 — Diagram search (scored find + keyboard navigation)
+
+Implemented P2-5 from `doc/render-gap-analysis.md`. New `editor.find(query)` walks the model — recursing into sub-process children — and ranks matches by a `scoreSearch` heuristic (exact name > word-prefix > name-substring > id-substring > type), returning `{ id, label, type }[]` sorted by score then label. Text annotations (type `textAnnotation`) and collaboration participants (type `participant`) are included alongside flow elements. The HUD search box now drives `find()`: `runSearch()` renders ranked results and `stepSearch(±1)` cycles them with wrap-around, wired to ArrowDown/ArrowUp (navigate), Enter (select current), and Escape (close). Tests: editor `find` (scoring order + sub-process recursion + annotations/participants via `SEARCH_XML`) — 67 editor tests; editor/plugins/operate green.
+
+## 2026-07-05 — Command-stack labels, coalescing, and memory
+
+Implemented P2-6 from `doc/render-gap-analysis.md`. `CommandStack` entries are now `{ defs, label, key }`; `push(defs, label?, key?)` coalesces consecutive same-`key` pushes into a single undo step (bursts like label typing or colour-slider changes), and `undoLabel()`/`redoLabel()` expose the command name. The editor threads descriptive labels through every `_executeCommand` call (Move, Delete, Resize, Connect, Rename, Align, Distribute, Change type, …), with coalesce keys for label edits (`label:<id>`) and colours (`color:<id>`); new `editor.getUndoLabel()`/`getRedoLabel()` drive the HUD undo/redo button tooltips (`Undo Delete (Ctrl+Z)`). Memory: the stack stores references and `modeling.ts` ops structurally share — a test confirms an untouched shape is the same object across snapshots (no deep-copy). Tests: `command-stack` (coalescing + labels), `modeling` (structural sharing), `editor` (undo labels) — 64 editor tests; editor/plugins/operate green.
+
+## 2026-07-05 — Wire connection segment move
+
+Implemented P2-3 from `doc/render-gap-analysis.md`. `moveEdgeSegment` existed but was unreachable — a segment-body drag inserted a waypoint instead of moving the segment. `_hitTest` now computes `nearMidpoint` for an `edge-segment` hit (via the segment midpoint from `_nearestEdgeSegment`); the state machine routes a drag away from the midpoint to a new `dragging-edge-segment` state driving `moveEdgeSegment` (orthogonal segment move), while a drag near the midpoint still inserts a waypoint. New `previewSegmentMove`/`commitSegmentMove`/`cancelSegmentMove` callbacks; the commit runs through `removeCollinearWaypoints` as one undoable command. Tests: `segment-move.test.ts` (routing: move vs insert) and `modeling.test.ts` (op geometry + immutability) — 59 editor tests; editor/plugins/operate green.
+
+## 2026-07-05 — Editor align & distribute commands
+
+Implemented P2-4 from `doc/render-gap-analysis.md`. `editor.alignSelected(edge)` (left/center/right/top/middle/bottom) and `editor.distributeSelected(axis)` (horizontal/vertical) are single undoable commands built on the existing `moveShapes` op — align requires ≥2 selected shapes, distribute ≥3 (the outermost two stay fixed and the interior is spaced with equal gaps). Wired into the HUD's "More actions" dropdown, which lists the align entries only for a multi-selection and the distribute entries at ≥3. Tests: editor `align & distribute` (per-axis geometry + single-undo) and `HUD align menu` (menu visibility + click-aligns) — 56 editor tests; editor/plugins/operate green.
+
+## 2026-07-05 — Live-canvas SVG / PNG export
+
+Implemented P2-8 from `doc/render-gap-analysis.md`. `canvas.exportSvg({ bounds?: "diagram" | "viewport" })` serializes the current plane to a standalone SVG — cloning the content layers (diagram coordinates, excluding the pan/zoom transform), a `viewBox`, the marker/pattern `<defs>`, and a `<style>` block with `CANVAS_CSS` plus theme tokens resolved from the live host via `getComputedStyle` so it renders with correct colours off-page (falling back to the CSS `var()` defaults where computed styles aren't available). `canvas.exportPng(scale)` rasterizes it via `Image` + `<canvas>` (browser-only). Tests in canvas `SVG export` — 75 canvas tests; canvas/editor/plugins/operate green.
+
+## 2026-07-05 — Vertical pools / lanes
+
+Implemented P2-7 (rendering) from `doc/render-gap-analysis.md`. `BpmnDiShape.isHorizontal` was parsed but ignored, so vertical pools rendered with a wrong (left, rotated) title bar. `renderPool`/`renderLane` now share a `renderSwimlane` helper that draws the title bar across the top with upright text when `isHorizontal === false`, and keeps the left bar with rotated text otherwise. Test in canvas `vertical pools` — 73 canvas tests. Deferred (noted): axis-aware editor resize/space-tool and core's static `exportSvg` (both still assume horizontal).
+
+## 2026-07-05 — Real text measurement for label wrapping
+
+Implemented P1-5 from `doc/render-gap-analysis.md`. Label wrapping previously used a fixed 6.5px-per-character estimate, which mis-wrapped (wide glyphs overflowed, narrow text wrapped early) and diverged from Camunda/bpmn-js.
+
+- New `packages/canvas/src/measure.ts`: a lazily-created offscreen-canvas 2D `measureText` measurer at the label font (`11px system-ui…`), memoized per string and cleared at a 5k-entry cap. A probe measurement detects environments with no working canvas metrics (SSR, happy-dom/jsdom) and falls back to the average-width estimate, keeping label wrapping deterministic in tests.
+- `wrapText(text, maxPx)` now measures each candidate line and breaks a word wider than `maxPx` mid-word with a trailing hyphen (bpmn-js parity). The canvas renderer imports it and no longer carries its own estimate; core's static `exportSvg` is untouched.
+
+Tests: canvas `text wrapping` (4) — 72 canvas tests; canvas/editor/plugins/operate all green. The wide-glyph-overflow AC is only observable in a real browser (happy-dom lacks metrics), so the tests exercise the deterministic fallback.
+
+## 2026-07-05 — DI-less import warnings + opt-in auto-layout fallback
+
+Implemented P0-6 (viewer) from `doc/render-gap-analysis.md`. Elements without diagram interchange (BPMNShape/BPMNEdge) previously vanished silently.
+
+- `loadDefinitions()` runs `checkDiCompleteness`, stores the result, exposes it via a new `canvas.getImportWarnings()` accessor and a second `diagram:load` payload argument (`ImportWarnings`), and `console.warn`s once when anything is missing.
+- New `layoutMissingDi: "off" | "all"` canvas option (default `"off"`). When `"all"` and any DI is missing, a copy of the model is `applyAutoLayout`-ed and rendered so the elements become visible; the caller's model is never mutated (`applyAutoLayout` returns a fresh copy — verified by test), and `getImportWarnings()` still reports the original source gaps.
+
+New `ImportWarnings` type exported from `@bpmnkit/canvas`. Deferred (noted in the doc): the editor "Layout missing elements" banner + undoable command (the editor emits empty warnings for now). Tests: canvas `DI completeness` (5) — 68 canvas tests; canvas/editor/plugins/operate all green.
+
+## 2026-07-05 — Scene: element registry + incremental rendering
+
+Implemented P1-1 (registry + incremental half) from `doc/render-gap-analysis.md`. Previously every `load()`/edit tore down all four layers and re-rendered the whole scene, and there was no id→graphics lookup.
+
+- **Renderer refactor**: the monolithic `render()` loop is split into reusable primitives — `buildRenderContext(defs, plane, …)` (model index + docking geometry) and `renderEdgeGroup(edge, ctx)` / `renderShapeGroup(shape, ctx)` (single-element `<g>` + external label). `render()` is now a thin wrapper over them, kept for the editor (its `markerId` argument is retained positionally but unused; marker ids derive from the instance id).
+- **`Scene` class** (`packages/canvas/src/scene.ts`): owns the containers/edges/shapes/labels layers and an id→graphics registry; `render()`, `updateElement(id)`, `removeElement(id)`, `getElement`/`getGraphics`/`forEach`/`getShapes`/`getEdges`. `updateElement` re-renders one element's `<g>` (and its external label) in place and copies CSS classes forward so markers/selection survive.
+- **`BpmnCanvas`** consumes `Scene`: new public `getElement`/`getGraphics`/`forEachElement` (O(1)) and `updateElement(id)` (re-syncs caches, reapplies markers via preserved classes, repositions overlays); `_findElement` and plane rendering now go through the scene. `OverlayManager.reposition()` added. `Scene`, `SceneLayers`, and the renderer primitives are exported from `@bpmnkit/canvas`.
+
+Deferred (noted in the doc): migrating the editor's duplicated host onto the shared `Scene` and threading modeling dirty-ids into `updateElement` (spec item #3) — a large separate change; the primitives are now exported so the editor can adopt them incrementally. Tests: `element registry` (2) + `incremental update` (3, incl. a MutationObserver proof that one edit mutates only the target's `<g>`) — 63 canvas tests; canvas/editor/plugins/operate all green.
+
+## 2026-07-05 — Data objects, data stores, and groups (model + rendering)
+
+Implemented P0-2 from `doc/render-gap-analysis.md`. These elements are common in real diagrams and previously rendered as invisible placeholders.
+
+- **Core model**: `dataObject`, `dataObjectReference` (`dataObjectRef`, `isCollection`), and `dataStoreReference` (`dataStoreRef`) added as flow elements; `group` (`categoryValueRef`) added as an artifact with a `groups` array on every container (process, sub-process variants, collaboration). Full parse + serialize round-trip; new `isBpmnDataObject`/`isBpmnDataObjectReference`/`isBpmnDataStoreReference` type guards. The serializer tolerates a missing `groups` array on hand-built partial models.
+- **Renderer**: data object reference = document with folded corner (+ collection parallel-bars marker); data store reference = cylinder; group = dashed rounded rectangle rendered into the containers layer with a border-only hit target (interior stays click-through). Data references get external labels below the shape.
+
+Deferred (noted in the gap-analysis doc): full `dataInputAssociation`/`dataOutputAssociation` modeling (they render today via the dashed-association fallback — visible but without the open arrowhead), `categoryValue` label resolution for groups, and editor palette/create entries (consistent with the P0-1 editor deferral). Tests: `packages/core/tests/data-elements.test.ts` (2) and canvas `data elements & groups` (4) — 58 canvas tests total; core/canvas/editor/plugins/operate/ascii/cli-sdk/patterns/api all build + typecheck + test green.
+
+## 2026-07-05 — Multi-plane rendering + collapsed sub-process drilldown (viewer)
+
+Implemented P0-1 from `doc/render-gap-analysis.md` for the viewer. BPMN files that put a collapsed sub-process's content on a separate `BPMNDiagram` plane (as Camunda Modeler / bpmn-js do) were previously invisible — only `diagrams[0]` rendered.
+
+- **Core**: `planeForElement(defs, id)` and `listPlaneElementIds(defs)` (`packages/core/src/bpmn/di-planes.ts`), exported from `@bpmnkit/core`.
+- **Renderer**: `render()` and `computeDiagramBounds()` take an explicit `targetPlane` (defaulting to the first plane, so existing callers — including the editor — are unaffected) plus a `drillableIds` set. Collapsed sub-processes that own a plane render a clickable drill-down `+` button (`data-bpmnkit-drilldown`).
+- **Canvas**: tracks a current plane and a breadcrumb stack. New public API `getPlanes()`, `showPlane(planeElementId)`, and a `plane:change` event; a breadcrumb bar (`.bpmnkit-breadcrumb`) navigates back up the hierarchy. Clicking the drill-down button opens the sub-process's plane. New `PlaneInfo` type exported.
+
+Deferred: in-sub-process *editing* in `@bpmnkit/editor` (spec item #4) — the editor still renders the primary plane only. Tests: 54 canvas (up from 48); core/editor/plugins/operate all build + typecheck + test green.
+
+## 2026-07-05 — Generic element-anchored overlay API
+
+Implemented P1-2 from `doc/render-gap-analysis.md`: a new `OverlayManager` (`packages/canvas/src/overlays.ts`) provides HTML overlays anchored to diagram elements — `overlays.add/remove/get/clear` with `position` (top/bottom/left/right offsets), `show:{minZoom,maxZoom}`, `scale` (bool or clamp; default scales 1:1 with zoom), and `type` tags. Overlays live in a dedicated HTML layer above the SVG and reposition on `viewport:change` from each element's screen bbox. Exposed as `canvas.overlays`/`editor.overlays` and on the `CanvasApi` plugin surface, so roadmap items (pattern-advisor badges, variable-flow, timeline, optimize overlay) are now unblocked. Factored as one shared manager (host adapter supplies scale/bbox/subscription) so canvas and editor don't duplicate it. New `Overlay*` types exported from `@bpmnkit/canvas`. Tests: 48 canvas (up from 39), editor/plugins/operate green.
+
+## 2026-07-05 — Canvas connection docking (crop edges to shape outline)
+
+Implemented P1-6 from `doc/render-gap-analysis.md` in `@bpmnkit/canvas` (`renderer.ts`): connection endpoints are now cropped onto the true shape outline — circle for events, diamond for gateways, rectangle otherwise — via pure-math `dockPoint()`/`cropWaypoints()`/`geomKind()`, so arrows meet circles and diamonds cleanly instead of floating at the bounding-box corner. Applied to sequence flows, message flows, and associations at render time; DI waypoints are never mutated, so the editor's routing is unaffected. The model index now maps message flows by id (was a set). Test added (`connection docking`); 39 canvas tests pass, editor/plugins/operate all green.
+
+## 2026-07-05 — Canvas API: markers, interaction events, viewport/navigation
+
+Implemented the small self-contained P1 API items from `doc/render-gap-analysis.md` across `@bpmnkit/canvas` and `@bpmnkit/editor`:
+
+- **P1-3 marker API**: `addMarker/removeMarker/hasMarker/toggleMarker(id, cls)` on `BpmnCanvas`, the editor, and the `CanvasApi` plugin surface; `highlight()`/`clearHighlights()` reimplemented on top. Markers tracked per id and cleared on load/clear.
+- **P1-4 interaction events**: `element:hover`, `element:out`, `element:dblclick`, `element:contextmenu`, and `canvas:click` added to `CanvasEvents`. Hover uses `pointermove` with a last-hit memo, suppressed while panning; resolution uses `elementFromPoint` with an `event.target` fallback.
+- **P1-7 viewport/navigation**: `zoom(scaleOrFit, center)`, `viewbox()`, `scrollToElement(id)`, `getAbsoluteBBox(id)` on `BpmnCanvas` and `CanvasApi` (and wired in the editor). The ResizeObserver no longer destroys a user's pan/zoom — it force-fits only until the user interacts (`_userMovedViewport`).
+
+New `Viewbox`/`ScreenBox` types exported from `@bpmnkit/canvas`. Tests: 38 canvas (up from 24), 50 editor, and `@bpmnkit/plugins`/`@bpmnkit/operate` typecheck unchanged.
+
+## 2026-07-05 — Canvas rendering correctness: activity markers, multiple events, connection decorations
+
+Implemented the self-contained P0 rendering-correctness items from `doc/render-gap-analysis.md` in `@bpmnkit/canvas` (`packages/canvas/src/renderer.ts`, `css.ts`):
+
+- **P0-3 activity markers**: a unified `activityMarkers()` helper draws the bottom-centre marker row for any activity — multi-instance (parallel `‖` / sequential `≡`), compensation, ad-hoc `~`, and the collapsed `+` (call activities always; sub-process/transaction/event-sub-process when not expanded). Previously only sub-processes showed markers, and expanded sub-processes incorrectly always showed `+`; the `+` is now gated on `shape.isExpanded !== true`.
+- **P0-4 event definitions**: events with more than one event definition now render the "multiple" pentagon (filled when throwing) instead of silently drawing only the first definition.
+- **P0-5 connection decorations**: `createDefs()` adds `open-arrow`, `conditional` (diamond) and `message-start` (circle) markers. Conditional sequence flows from non-gateway sources get a source diamond (mutually exclusive with the default-flow slash); message flows get a hollow source circle + open arrowhead (replacing the reused filled arrowhead); directed associations get open arrowheads per `associationDirection`. The model index now tracks associations.
+
+Deferred (need core-model additions): standard-loop `↻` marker, `parallelMultiple` event marker, non-initiating message-flow styling. Tests added in `packages/canvas/tests/canvas.test.ts` (24 pass); editor unaffected (50 pass). The static server-side renderer (`packages/core/src/bpmn/svg.ts`) was intentionally left unchanged and now lags the canvas on these markers.
+
+## 2026-07-05 — Render library gap analysis vs. bpmn.io (doc only)
+
+Added `doc/render-gap-analysis.md`: a deep comparison of `@bpmnkit/canvas`/`@bpmnkit/editor` against bpmn-js 18.19.0 / diagram-js 15.18.1, with a full feature matrix and a prioritized, spec'd improvement backlog (P0 rendering correctness → P1 architectural foundations → P2 editor parity → P3 polish) ready for implementation. No code changes.
+
 ## 2026-07-03 — Grid-based auto-layout engine replaces Sugiyama/block-tree pipeline
 
 Full replacement of the auto-layout engine in `@bpmnkit/core` (`packages/core/src/layout`): the Sugiyama layered layout + block-tree pipeline (`block-builder.ts`, `block-layout.ts`, `layers.ts`, `crossing.ts`, `coordinates.ts`, `routing.ts`, `astar.ts`, `subprocess.ts`, `graph.ts`) is deleted and replaced by a grid-based engine (`packages/core/src/layout/grid/`) that places flow nodes on a fixed 150×140 grid and routes edges with an orthogonal Manhattan router.

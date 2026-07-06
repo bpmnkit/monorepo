@@ -20,5 +20,7 @@ export {
 export type { ElementGroup } from "./element-groups.js"
 export { initEditorHud } from "./hud.js"
 export type { HudOptions } from "./hud.js"
+export { defaultTranslate, interpolate } from "./i18n.js"
+export type { Translate, TranslateVars } from "./i18n.js"
 export { createSideDock } from "./dock.js"
 export type { SideDock } from "./dock.js"

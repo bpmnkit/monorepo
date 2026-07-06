@@ -4,7 +4,12 @@ import type {
 	BpmnDiShape,
 	BpmnFlowElement,
 	BpmnTextAnnotation,
+	DiCompleteness,
 } from "@bpmnkit/core"
+import type { OverlayManager } from "./overlays.js"
+
+/** Elements in the model that have no diagram interchange (BPMNShape/BPMNEdge). */
+export type ImportWarnings = DiCompleteness
 
 /** The color theme applied to the canvas. */
 export type Theme = "light" | "dark" | "auto" | "neon"
@@ -49,6 +54,16 @@ export interface CanvasOptions {
 	 * @see {@link CanvasPlugin}
 	 */
 	plugins?: CanvasPlugin[]
+
+	/**
+	 * What to do when the model has elements without diagram interchange
+	 * (no `BPMNShape`/`BPMNEdge`), which would otherwise be invisible.
+	 * - `"off"` (default) — render only elements that have DI.
+	 * - `"all"` — if any DI is missing, auto-layout a copy of the model and
+	 *   render that. The caller's model is never mutated.
+	 * @default "off"
+	 */
+	layoutMissingDi?: "off" | "all"
 }
 
 /** The current pan/zoom state of the canvas viewport. */
@@ -58,6 +73,31 @@ export interface ViewportState {
 	/** Vertical translation in screen pixels. */
 	ty: number
 	/** Zoom scale factor. `1.0` = 100%, `0.5` = 50%, `2.0` = 200%. */
+	scale: number
+}
+
+/** A rectangle in screen pixels, relative to the canvas host. */
+export interface ScreenBox {
+	x: number
+	y: number
+	width: number
+	height: number
+}
+
+/**
+ * The visible region of the diagram, in diagram coordinates, plus the current
+ * zoom scale. The inverse of the pan/zoom transform applied to the viewport.
+ */
+export interface Viewbox {
+	/** Diagram x-coordinate at the left edge of the viewport. */
+	x: number
+	/** Diagram y-coordinate at the top edge of the viewport. */
+	y: number
+	/** Width of the visible region in diagram units. */
+	width: number
+	/** Height of the visible region in diagram units. */
+	height: number
+	/** Current zoom scale factor. */
 	scale: number
 }
 
@@ -91,14 +131,43 @@ export interface CanvasEvents {
 	"viewport:change": (state: ViewportState) => void
 	/** Fired when a BPMN element is clicked. */
 	"element:click": (id: string, event: PointerEvent) => void
+	/** Fired when the pointer moves onto a BPMN element (once per enter). */
+	"element:hover": (id: string, event: PointerEvent) => void
+	/** Fired when the pointer leaves the previously-hovered element. */
+	"element:out": (id: string) => void
+	/** Fired when a BPMN element is double-clicked. */
+	"element:dblclick": (id: string, event: MouseEvent) => void
+	/**
+	 * Fired when a BPMN element is right-clicked. Call `event.preventDefault()`
+	 * in the handler to suppress the browser's native context menu.
+	 */
+	"element:contextmenu": (id: string, event: MouseEvent) => void
+	/** Fired when the empty canvas background (no element) is clicked. */
+	"canvas:click": (event: MouseEvent) => void
 	/** Fired when keyboard focus moves to a BPMN element. */
 	"element:focus": (id: string) => void
 	/** Fired when keyboard focus leaves all BPMN elements. */
 	"element:blur": () => void
-	/** Fired after a BPMN diagram is loaded and rendered. */
-	"diagram:load": (defs: BpmnDefinitions) => void
+	/**
+	 * Fired after a BPMN diagram is loaded and rendered. `warnings` lists any
+	 * model elements that had no diagram interchange (see {@link ImportWarnings}).
+	 */
+	"diagram:load": (defs: BpmnDefinitions, warnings: ImportWarnings) => void
 	/** Fired when the canvas is cleared. */
 	"diagram:clear": () => void
+	/**
+	 * Fired when the visible plane changes (drilling into a collapsed
+	 * sub-process or navigating back). Both ids are DI plane `bpmnElement`s.
+	 */
+	"plane:change": (fromPlaneId: string, toPlaneId: string) => void
+}
+
+/** A DI plane the canvas can display (a process/collaboration or sub-process). */
+export interface PlaneInfo {
+	/** The plane's `bpmnElement` id (process, collaboration, or sub-process id). */
+	id: string
+	/** A human-readable label (element name, or a fallback). */
+	name: string
 }
 
 /**
@@ -145,6 +214,40 @@ export interface CanvasApi {
 
 	/** Sets the color theme. Pass `"auto"` to follow the OS preference. */
 	setTheme(theme: Theme): void
+
+	/** HTML overlays anchored to diagram elements. */
+	readonly overlays: OverlayManager
+
+	/** Adds a CSS class to the element with the given BPMN id. No-op if not found. */
+	addMarker(id: string, cls: string): void
+
+	/** Removes a CSS class from the element with the given BPMN id. */
+	removeMarker(id: string, cls: string): void
+
+	/** Returns whether the element with the given id currently has the CSS class. */
+	hasMarker(id: string, cls: string): boolean
+
+	/** Toggles a CSS class on the element with the given id. */
+	toggleMarker(id: string, cls: string): void
+
+	/**
+	 * Adjusts the zoom. Pass `"fit"` (or no argument) to fit the whole diagram;
+	 * pass a number for an absolute scale, optionally keeping `center`
+	 * (screen-space pixels relative to the host) fixed.
+	 */
+	zoom(scaleOrFit?: number | "fit", center?: { x: number; y: number }): void
+
+	/** Returns the visible region in diagram coordinates plus the zoom scale. */
+	viewbox(): Viewbox
+
+	/** Pans (without changing zoom) so the element with the given id is centred. */
+	scrollToElement(id: string): void
+
+	/**
+	 * Returns the element's bounding box in screen pixels relative to the host,
+	 * or `null` if the element is not found.
+	 */
+	getAbsoluteBBox(id: string): ScreenBox | null
 
 	/**
 	 * Subscribes to a canvas event. Returns an unsubscribe function.
