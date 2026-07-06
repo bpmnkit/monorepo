@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-07-05 — Real text measurement for label wrapping
+
+Implemented P1-5 from `doc/render-gap-analysis.md`. Label wrapping previously used a fixed 6.5px-per-character estimate, which mis-wrapped (wide glyphs overflowed, narrow text wrapped early) and diverged from Camunda/bpmn-js.
+
+- New `packages/canvas/src/measure.ts`: a lazily-created offscreen-canvas 2D `measureText` measurer at the label font (`11px system-ui…`), memoized per string and cleared at a 5k-entry cap. A probe measurement detects environments with no working canvas metrics (SSR, happy-dom/jsdom) and falls back to the average-width estimate, keeping label wrapping deterministic in tests.
+- `wrapText(text, maxPx)` now measures each candidate line and breaks a word wider than `maxPx` mid-word with a trailing hyphen (bpmn-js parity). The canvas renderer imports it and no longer carries its own estimate; core's static `exportSvg` is untouched.
+
+Tests: canvas `text wrapping` (4) — 72 canvas tests; canvas/editor/plugins/operate all green. The wide-glyph-overflow AC is only observable in a real browser (happy-dom lacks metrics), so the tests exercise the deterministic fallback.
+
 ## 2026-07-05 — DI-less import warnings + opt-in auto-layout fallback
 
 Implemented P0-6 (viewer) from `doc/render-gap-analysis.md`. Elements without diagram interchange (BPMNShape/BPMNEdge) previously vanished silently.

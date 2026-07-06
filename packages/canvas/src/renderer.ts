@@ -13,6 +13,7 @@ import type {
 	BpmnTextAnnotation,
 } from "@bpmnkit/core"
 import { readDiColor } from "@bpmnkit/core"
+import { wrapText } from "./measure.js"
 import type { RenderedEdge, RenderedShape } from "./types.js"
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
@@ -28,34 +29,6 @@ function attr(el: Element, attrs: Record<string, string | number>): void {
 }
 
 // ── Text helpers ──────────────────────────────────────────────────────────────
-
-const AVG_CHAR_PX = 6.5 // approximate width at 11px system-ui
-
-/**
- * Splits `text` into lines that fit within `maxPx` pixels.
- * Uses an average character-width estimate rather than actual text measurement
- * to keep this dependency-free and synchronous.
- */
-function wrapText(text: string, maxPx: number): string[] {
-	if (!text.trim()) return []
-	const words = text.split(/\s+/)
-	const lines: string[] = []
-	let line = ""
-	for (const word of words) {
-		const candidate = line ? `${line} ${word}` : word
-		if (candidate.length * AVG_CHAR_PX <= maxPx) {
-			line = candidate
-		} else if (line) {
-			lines.push(line)
-			line = word
-		} else {
-			// Single word wider than maxPx — use as-is
-			line = word
-		}
-	}
-	if (line) lines.push(line)
-	return lines.length > 0 ? lines : [text]
-}
 
 /**
  * Creates a `<text>` element (or multi-line group) centred at (`cx`, `cy`).

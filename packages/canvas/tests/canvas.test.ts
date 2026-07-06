@@ -2,6 +2,7 @@ import { Bpmn } from "@bpmnkit/core"
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { BpmnCanvas } from "../src/canvas.js"
+import { wrapText } from "../src/measure.js"
 import { OverlayManager } from "../src/overlays.js"
 import type { OverlayHost } from "../src/overlays.js"
 import { computeDiagramBounds } from "../src/renderer.js"
@@ -992,5 +993,42 @@ describe("DI completeness", () => {
 		expect(w.missingShapes).toHaveLength(0)
 		expect(w.missingEdges).toHaveLength(0)
 		expect(warnSpy).not.toHaveBeenCalled()
+	})
+})
+
+// ── Text measurement & wrapping (P1-5) ───────────────────────────────────────────
+
+describe("text wrapping", () => {
+	// happy-dom has no working canvas metrics, so wrapText uses the deterministic
+	// average-width fallback here — enough to exercise wrapping + hyphenation.
+	it("keeps short text on one line", () => {
+		expect(wrapText("hello world", 1000)).toEqual(["hello world"])
+	})
+
+	it("returns no lines for blank text", () => {
+		expect(wrapText("   ", 100)).toEqual([])
+	})
+
+	it("hyphenates a word wider than the available width", () => {
+		const lines = wrapText("Supercalifragilistic", 84)
+		expect(lines.length).toBeGreaterThan(1)
+		for (const line of lines.slice(0, -1)) expect(line.endsWith("-")).toBe(true)
+		expect(lines.join("").replace(/-/g, "")).toBe("Supercalifragilistic")
+	})
+
+	it("wraps a long label into a multi-line group in the renderer", () => {
+		const XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="d" targetNamespace="t">
+  <bpmn:process id="proc"><bpmn:task id="t" name="Supercalifragilistic"/></bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc">
+    <bpmndi:BPMNShape id="t_di" bpmnElement="t"><dc:Bounds x="0" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+		const container = renderXml(XML)
+		const texts = container.querySelectorAll('[data-bpmnkit-id="t"] text')
+		expect(texts.length).toBeGreaterThan(1)
+		expect(container.querySelector('[data-bpmnkit-id="t"]')?.textContent).toContain("-")
 	})
 })
