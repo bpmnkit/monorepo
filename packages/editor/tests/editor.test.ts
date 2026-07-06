@@ -428,3 +428,19 @@ describe("cut", () => {
 		ed.destroy()
 	})
 })
+
+describe("rules wiring", () => {
+	const typeOf = (ed: BpmnEditor, id: string) =>
+		ed.getDefinitions()?.processes[0]?.flowElements.find((el) => el.id === id)?.type
+
+	it("changeElementType morphs within a category but refuses cross-category", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		// serviceTask → userTask is a valid morph.
+		ed.changeElementType("task", "userTask")
+		expect(typeOf(ed, "task")).toBe("userTask")
+		// userTask → gateway is not — the element is left unchanged.
+		ed.changeElementType("task", "exclusiveGateway")
+		expect(typeOf(ed, "task")).toBe("userTask")
+		ed.destroy()
+	})
+})

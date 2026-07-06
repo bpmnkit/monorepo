@@ -72,6 +72,11 @@ export const EDITOR_CSS = `
   pointer-events: none;
 }
 
+/* Ghost connection over a target the rules forbid */
+.bpmnkit-ghost-conn-invalid {
+  stroke: var(--bpmnkit-danger, #dc2626);
+}
+
 /* Resize preview rect */
 .bpmnkit-resize-preview {
   fill: rgba(0, 102, 204, 0.05);

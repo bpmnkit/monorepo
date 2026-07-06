@@ -96,7 +96,7 @@ export interface Callbacks {
 	cancelTranslate(): void
 	previewResize(bounds: BpmnBounds): void
 	commitResize(id: string, bounds: BpmnBounds): void
-	previewConnect(ghostEnd: DiagPoint): void
+	previewConnect(ghostEnd: DiagPoint, targetId: string | null): void
 	cancelConnect(): void
 	commitConnect(sourceId: string, targetId: string): void
 	previewRubberBand(origin: DiagPoint, current: DiagPoint): void
@@ -443,14 +443,14 @@ export class EditorStateMachine {
 						sourceId: sub.sourceId,
 						ghostEnd: diag,
 					})
-					this._cb.previewConnect(diag)
+					this._cb.previewConnect(diag, hit.type === "shape" ? hit.id : null)
 				}
 				break
 			}
 
 			case "connecting": {
 				this._mode = this._withSub({ ...sub, ghostEnd: diag })
-				this._cb.previewConnect(diag)
+				this._cb.previewConnect(diag, hit.type === "shape" ? hit.id : null)
 				break
 			}
 

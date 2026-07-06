@@ -236,13 +236,13 @@ export class OverlayRenderer {
 
 	// ── Ghost connection ───────────────────────────────────────────────
 
-	setGhostConnection(waypoints: BpmnWaypoint[] | null): void {
+	setGhostConnection(waypoints: BpmnWaypoint[] | null, invalid = false): void {
 		this._ghostConnG.innerHTML = ""
 		if (!waypoints || waypoints.length < 2) return
 		const points = waypoints.map((wp) => `${wp.x},${wp.y}`).join(" ")
 		const poly = svgEl("polyline")
 		attr(poly, {
-			class: "bpmnkit-ghost-conn",
+			class: invalid ? "bpmnkit-ghost-conn bpmnkit-ghost-conn-invalid" : "bpmnkit-ghost-conn",
 			points,
 			"marker-end": `url(#${this._markerId})`,
 		})

@@ -64,10 +64,9 @@ import {
 } from "./modeling.js"
 import type { Clipboard } from "./modeling.js"
 import { OverlayRenderer } from "./overlay.js"
-import { canConnect } from "./rules.js"
+import { canAttach, canConnect, canMorph, canResize } from "./rules.js"
 import { EditorStateMachine } from "./state-machine.js"
 import type { Callbacks } from "./state-machine.js"
-import { RESIZABLE_TYPES } from "./types.js"
 import type {
 	CreateShapeType,
 	DiagPoint,
@@ -194,28 +193,8 @@ const INTERMEDIATE_EVENT_TYPES = new Set<CreateShapeType>([
 	"signalThrowEvent",
 ])
 
-const ACTIVITY_TYPES = new Set([
-	"task",
-	"serviceTask",
-	"userTask",
-	"scriptTask",
-	"sendTask",
-	"receiveTask",
-	"businessRuleTask",
-	"manualTask",
-	"callActivity",
-	"subProcess",
-	"adHocSubProcess",
-	"eventSubProcess",
-	"transaction",
-])
-
 function isIntermediateEventType(type: CreateShapeType): boolean {
 	return INTERMEDIATE_EVENT_TYPES.has(type)
-}
-
-function isActivityType(type: string): boolean {
-	return ACTIVITY_TYPES.has(type)
 }
 
 function snapToBoundary(
@@ -427,7 +406,7 @@ export class BpmnEditor {
 				this._overlay.setResizePreview(null)
 				this._executeCommand((d) => resizeShape(d, id, bounds), "Resize")
 			},
-			previewConnect: (ghostEnd) => {
+			previewConnect: (ghostEnd, targetId) => {
 				const src = this._connectSourceBounds()
 				if (src) {
 					const wps = computeWaypoints(src, {
@@ -436,7 +415,7 @@ export class BpmnEditor {
 						width: 2,
 						height: 2,
 					})
-					this._overlay.setGhostConnection(wps)
+					this._overlay.setGhostConnection(wps, this._isConnectTargetInvalid(targetId))
 				}
 			},
 			cancelConnect: () => this._overlay.setGhostConnection(null),
@@ -1385,14 +1364,28 @@ export class BpmnEditor {
 	}
 
 	private _connectSourceBounds(): { x: number; y: number; width: number; height: number } | null {
-		const mode = this._stateMachine.mode
-		if (mode.mode !== "select") return null
-		const sub = mode.sub
-		const sourceId =
-			sub.name === "connecting" ? sub.sourceId : sub.name === "pointing-port" ? sub.sourceId : null
+		const sourceId = this._connectSourceId()
 		if (!sourceId) return null
 		const shape = this._shapes.find((s) => s.id === sourceId)
 		return shape ? shape.shape.bounds : null
+	}
+
+	private _connectSourceId(): string | null {
+		const mode = this._stateMachine.mode
+		if (mode.mode !== "select") return null
+		const sub = mode.sub
+		return sub.name === "connecting" || sub.name === "pointing-port" ? sub.sourceId : null
+	}
+
+	/** True when hovering a target the connect tool would reject (self, or a rule violation). */
+	private _isConnectTargetInvalid(targetId: string | null): boolean {
+		if (!targetId) return false
+		const sourceId = this._connectSourceId()
+		if (!sourceId) return false
+		if (targetId === sourceId) return true
+		const srcType = this._shapes.find((s) => s.id === sourceId)?.flowElement?.type
+		const tgtType = this._shapes.find((s) => s.id === targetId)?.flowElement?.type
+		return srcType !== undefined && tgtType !== undefined && !canConnect(srcType, tgtType)
 	}
 
 	// ── New public helpers ─────────────────────────────────────────────
@@ -1659,6 +1652,8 @@ export class BpmnEditor {
 
 	/** Changes a flow element's type (e.g. exclusiveGateway → parallelGateway). */
 	changeElementType(id: string, newType: CreateShapeType): void {
+		const current = this._shapes.find((s) => s.id === id)?.flowElement?.type
+		if (current && !canMorph(current, newType)) return
 		this._executeCommand((d) => changeElementTypeFn(d, id, newType), "Change type")
 	}
 
@@ -1764,7 +1759,7 @@ export class BpmnEditor {
 		const shape = this._shapes.find((s) => s.id === id)
 		if (!shape) return false
 		if (shape.annotation !== undefined) return true
-		return shape.flowElement !== undefined && RESIZABLE_TYPES.has(shape.flowElement.type)
+		return shape.flowElement !== undefined && canResize(shape.flowElement.type)
 	}
 
 	private _getResizableIds(): Set<string> {
@@ -1772,7 +1767,7 @@ export class BpmnEditor {
 		for (const shape of this._shapes) {
 			if (
 				shape.annotation !== undefined ||
-				(shape.flowElement && RESIZABLE_TYPES.has(shape.flowElement.type))
+				(shape.flowElement && canResize(shape.flowElement.type))
 			) {
 				ids.add(shape.id)
 			}
@@ -2149,7 +2144,7 @@ export class BpmnEditor {
 			// Detect boundary event attachment target for intermediate event types
 			if (isIntermediateEventType(mode.elementType) && hit.type === "shape") {
 				const shape = this._shapes.find((s) => s.id === hit.id)
-				if (shape?.flowElement && isActivityType(shape.flowElement.type)) {
+				if (shape?.flowElement && canAttach(shape.flowElement.type)) {
 					this._setBoundaryHost(hit.id)
 				} else {
 					this._setBoundaryHost(null)
