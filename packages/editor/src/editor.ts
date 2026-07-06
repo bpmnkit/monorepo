@@ -83,6 +83,22 @@ import type {
 const NS = "http://www.w3.org/2000/svg"
 let _instanceCounter = 0
 
+/**
+ * Scores a search element against a lowercased query. Higher is better; 0 means
+ * no match. A word-prefix hit on the name outranks a name substring, which
+ * outranks an id or type match.
+ */
+function scoreSearch(q: string, name: string, id: string, type: string): number {
+	if (name) {
+		if (name === q) return 120
+		if (name.split(/\s+/).some((w) => w.startsWith(q))) return 100
+		if (name.includes(q)) return 60
+	}
+	if (id.includes(q)) return 30
+	if (type.includes(q)) return 10
+	return 0
+}
+
 function defaultBounds(
 	type: CreateShapeType,
 	cx: number,
@@ -778,6 +794,44 @@ export class BpmnEditor {
 			cursor += size(b) + gap
 		}
 		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves), "Distribute")
+	}
+
+	/**
+	 * Searches the model (recursively, including sub-process children) for
+	 * elements matching `query`, ranked: a word-prefix match on the name beats a
+	 * name substring, which beats an id or type match. Returns `[]` for a blank
+	 * query.
+	 */
+	find(query: string): Array<{ id: string; label: string; type: string }> {
+		const q = query.trim().toLowerCase()
+		if (!q || !this._defs) return []
+
+		const candidates: Array<{ id: string; name: string; type: string }> = []
+		const walk = (els: BpmnFlowElement[]): void => {
+			for (const el of els) {
+				candidates.push({ id: el.id, name: el.name ?? "", type: el.type })
+				if ("flowElements" in el) walk(el.flowElements)
+			}
+		}
+		for (const proc of this._defs.processes) {
+			walk(proc.flowElements)
+			for (const ta of proc.textAnnotations) {
+				candidates.push({ id: ta.id, name: ta.text ?? "", type: "textAnnotation" })
+			}
+		}
+		for (const collab of this._defs.collaborations) {
+			for (const p of collab.participants) {
+				candidates.push({ id: p.id, name: p.name ?? "", type: "participant" })
+			}
+		}
+
+		const scored: Array<{ id: string; name: string; type: string; score: number }> = []
+		for (const c of candidates) {
+			const score = scoreSearch(q, c.name.toLowerCase(), c.id.toLowerCase(), c.type.toLowerCase())
+			if (score > 0) scored.push({ ...c, score })
+		}
+		scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+		return scored.map((c) => ({ id: c.id, label: c.name || c.id, type: c.type }))
 	}
 
 	undo(): void {

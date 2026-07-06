@@ -285,7 +285,9 @@ Current paste handles only top-level flow elements whose source+target are both 
 
 Guides exist; explicit commands don't. Spec: `editor.alignSelected("left"|"center"|"right"|"top"|"middle"|"bottom")`, `editor.distributeSelected("horizontal"|"vertical")` as single undoable commands (reuse `moveShapes`); HUD buttons appear for multi-selection (≥2 align, ≥3 distribute). AC: geometry assertions per axis; single undo step.
 
-#### P2-5 · Diagram search — **S/M**
+#### P2-5 · Diagram search — **S/M** — ✅ DONE (2026-07-05)
+New `editor.find(query)` returns ranked `{ id, label, type }` matches — scored exact-name > word-prefix > name-substring > id > type (`scoreSearch`), walking the model recursively so sub-process children are included. The HUD's Ctrl/Cmd+F search bar now uses `find()` (replacing its shallow substring scan) and supports ArrowDown/ArrowUp/Enter to step through matches (Enter/↓ next, ↑ previous, wrapping), each selecting + `scrollToElement`. Tests: `find` (ranking, recursion, id/type fallback, blank query). Note: selecting a match that lives on a not-yet-rendered collapsed-subprocess plane awaits the deferred editor plane support.
+
 Spec: `canvas.find(query)` scoring name/id/type (word-prefix > substring, à la diagram-js 15.x search), and an editor Ctrl/Cmd+F pad listing matches, arrow-key navigation, Enter → `scrollToElement` + selection (depends P1-7). AC: query matches across planes (P0-1), keyboard-only operation works.
 
 #### P2-6 · Command stack: labels, merge, memory — **M** — ✅ DONE (2026-07-05)

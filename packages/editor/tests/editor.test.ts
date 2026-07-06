@@ -346,3 +346,54 @@ describe("undo labels", () => {
 		ed.destroy()
 	})
 })
+
+// ── Search (P2-5) ────────────────────────────────────────────────────────────────
+
+const SEARCH_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="d" targetNamespace="t">
+  <bpmn:process id="proc">
+    <bpmn:task id="exact" name="Order"/>
+    <bpmn:task id="prefix" name="Order Items"/>
+    <bpmn:task id="substr" name="Reorder"/>
+    <bpmn:subProcess id="sub" name="Group">
+      <bpmn:task id="inner" name="Order Log"/>
+    </bpmn:subProcess>
+    <bpmn:task id="ship" name="Ship"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc">
+    <bpmndi:BPMNShape id="exact_di" bpmnElement="exact"><dc:Bounds x="0" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="prefix_di" bpmnElement="prefix"><dc:Bounds x="150" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="substr_di" bpmnElement="substr"><dc:Bounds x="300" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="sub_di" bpmnElement="sub" isExpanded="true"><dc:Bounds x="0" y="120" width="300" height="160"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="inner_di" bpmnElement="inner"><dc:Bounds x="20" y="160" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="ship_di" bpmnElement="ship"><dc:Bounds x="450" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+
+describe("find", () => {
+	it("ranks exact > word-prefix > substring and searches recursively", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SEARCH_XML, grid: false })
+		const ids = ed.find("order").map((m) => m.id)
+		// exact match first, substring last; unrelated "ship" excluded.
+		expect(ids[0]).toBe("exact")
+		expect(ids[ids.length - 1]).toBe("substr")
+		expect(ids).toContain("inner") // nested sub-process child found
+		expect(ids).not.toContain("ship")
+		ed.destroy()
+	})
+
+	it("matches by id and type when the name does not match", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SEARCH_XML, grid: false })
+		expect(ed.find("inner").map((m) => m.id)).toEqual(["inner"])
+		expect(ed.find("subprocess").map((m) => m.id)).toContain("sub")
+		ed.destroy()
+	})
+
+	it("returns nothing for a blank query", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SEARCH_XML, grid: false })
+		expect(ed.find("   ")).toEqual([])
+		ed.destroy()
+	})
+})

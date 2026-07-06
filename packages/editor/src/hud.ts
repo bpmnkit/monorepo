@@ -1936,28 +1936,17 @@ export function initEditorHud(
 	}
 
 	function runSearch(): void {
-		const q = searchInput.value.trim().toLowerCase()
+		const q = searchInput.value.trim()
 		if (!q) {
 			searchCount.textContent = ""
 			searchMatches = []
 			editor.setSelection([])
 			return
 		}
-		const defs = editor.getDefinitions()
-		if (!defs) return
-		const ids: string[] = []
-		for (const proc of defs.processes) {
-			for (const el of proc.flowElements) {
-				if (el.name?.toLowerCase().includes(q)) ids.push(el.id)
-			}
-			for (const el of proc.textAnnotations) {
-				if (el.text?.toLowerCase().includes(q)) ids.push(el.id)
-			}
-		}
-		searchMatches = ids
+		searchMatches = editor.find(q).map((m) => m.id)
 		searchMatchIdx = 0
 		updateSearchCount()
-		const firstId = ids[0]
+		const firstId = searchMatches[0]
 		if (firstId) {
 			selectSearchMatch(firstId)
 		} else {
@@ -1965,20 +1954,27 @@ export function initEditorHud(
 		}
 	}
 
+	/** Moves to the next/previous match, wrapping, and selects it. */
+	function stepSearch(dir: 1 | -1): void {
+		if (searchMatches.length === 0) return
+		searchMatchIdx = (searchMatchIdx + dir + searchMatches.length) % searchMatches.length
+		const id = searchMatches[searchMatchIdx]
+		updateSearchCount()
+		if (id) selectSearchMatch(id)
+	}
+
 	searchInput.addEventListener("input", runSearch)
 	searchInput.addEventListener("keydown", (e) => {
 		if (e.key === "Escape") {
 			e.preventDefault()
 			closeSearch()
-		}
-		if (e.key === "Enter") {
+		} else if (e.key === "Enter" || e.key === "ArrowDown") {
 			e.preventDefault()
-			if (searchMatches.length > 0) {
-				searchMatchIdx = (searchMatchIdx + 1) % searchMatches.length
-				const nextId = searchMatches[searchMatchIdx]
-				updateSearchCount()
-				if (nextId) selectSearchMatch(nextId)
-			}
+			// Enter on the first result keeps it selected; subsequent presses step.
+			stepSearch(1)
+		} else if (e.key === "ArrowUp") {
+			e.preventDefault()
+			stepSearch(-1)
 		}
 	})
 	searchClose.addEventListener("click", closeSearch)

@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Diagram search (scored find + keyboard navigation)
+
+Implemented P2-5 from `doc/render-gap-analysis.md`. New `editor.find(query)` walks the model — recursing into sub-process children — and ranks matches by a `scoreSearch` heuristic (exact name > word-prefix > name-substring > id-substring > type), returning `{ id, label, type }[]` sorted by score then label. Text annotations (type `textAnnotation`) and collaboration participants (type `participant`) are included alongside flow elements. The HUD search box now drives `find()`: `runSearch()` renders ranked results and `stepSearch(±1)` cycles them with wrap-around, wired to ArrowDown/ArrowUp (navigate), Enter (select current), and Escape (close). Tests: editor `find` (scoring order + sub-process recursion + annotations/participants via `SEARCH_XML`) — 67 editor tests; editor/plugins/operate green.
+
 ## 2026-07-05 — Command-stack labels, coalescing, and memory
 
 Implemented P2-6 from `doc/render-gap-analysis.md`. `CommandStack` entries are now `{ defs, label, key }`; `push(defs, label?, key?)` coalesces consecutive same-`key` pushes into a single undo step (bursts like label typing or colour-slider changes), and `undoLabel()`/`redoLabel()` expose the command name. The editor threads descriptive labels through every `_executeCommand` call (Move, Delete, Resize, Connect, Rename, Align, Distribute, Change type, …), with coalesce keys for label edits (`label:<id>`) and colours (`color:<id>`); new `editor.getUndoLabel()`/`getRedoLabel()` drive the HUD undo/redo button tooltips (`Undo Delete (Ctrl+Z)`). Memory: the stack stores references and `modeling.ts` ops structurally share — a test confirms an untouched shape is the same object across snapshots (no deep-copy). Tests: `command-stack` (coalescing + labels), `modeling` (structural sharing), `editor` (undo labels) — 64 editor tests; editor/plugins/operate green.
