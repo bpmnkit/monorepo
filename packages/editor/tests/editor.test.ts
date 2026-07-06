@@ -2,6 +2,7 @@ import { Bpmn } from "@bpmnkit/core"
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { BpmnEditor } from "../src/editor.js"
+import { defaultTranslate, interpolate } from "../src/i18n.js"
 
 // ── Fixture ───────────────────────────────────────────────────────────────────
 
@@ -425,6 +426,48 @@ describe("cut", () => {
 		ed.paste()
 		const afterPaste = ed.getDefinitions()?.processes[0]?.flowElements.length ?? 0
 		expect(afterPaste).toBe(afterCut + 1)
+		ed.destroy()
+	})
+})
+
+describe("i18n", () => {
+	it("defaultTranslate returns the template and interpolates vars", () => {
+		expect(defaultTranslate("Task")).toBe("Task")
+		expect(defaultTranslate("Undo {name}", { name: "Delete" })).toBe("Undo Delete")
+		expect(interpolate("{a}+{b}", { a: 1, b: 2 })).toBe("1+2")
+		// Unknown placeholders are left untouched.
+		expect(interpolate("Hi {who}", {})).toBe("Hi {who}")
+	})
+
+	it("editor.translate defaults to identity and honours the option", () => {
+		const plain = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		expect(plain.translate("Activities")).toBe("Activities")
+		plain.destroy()
+
+		const de: Record<string, string> = { Activities: "Aktivitäten" }
+		const localized = new BpmnEditor({
+			container: makeContainer(),
+			xml: SIMPLE_XML,
+			grid: false,
+			translate: (s, vars) => interpolate(de[s] ?? s, vars),
+		})
+		expect(localized.translate("Activities")).toBe("Aktivitäten")
+		localized.destroy()
+	})
+
+	it("localizes palette group tooltips via the translate hook", async () => {
+		const { initEditorHud } = await import("../src/hud.js")
+		const container = makeContainer()
+		const de: Record<string, string> = { Activities: "Aktivitäten" }
+		const ed = new BpmnEditor({
+			container,
+			xml: SIMPLE_XML,
+			grid: false,
+			translate: (s, vars) => interpolate(de[s] ?? s, vars),
+		})
+		initEditorHud(ed)
+		const activities = container.querySelector<HTMLButtonElement>('[data-group="activities"]')
+		expect(activities?.title).toContain("Aktivitäten")
 		ed.destroy()
 	})
 })

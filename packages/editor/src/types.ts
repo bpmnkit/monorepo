@@ -1,5 +1,6 @@
 import type { CanvasEvents, CanvasOptions } from "@bpmnkit/canvas"
 import type { BpmnDefinitions } from "@bpmnkit/core"
+import type { Translate } from "./i18n.js"
 
 export type CreateShapeType =
 	| "startEvent"
@@ -74,6 +75,15 @@ export type EditorOptions = CanvasOptions & {
 	 * localStorage automatically. The stored key is `"bpmnkit-theme"`.
 	 */
 	persistTheme?: boolean
+
+	/**
+	 * Optional translation hook for the editor's HUD strings (palette labels,
+	 * banners, keyboard-shortcut names, context-menu actions). Receives the
+	 * English template as the key plus optional `{name}` interpolation vars and
+	 * returns the localized string. Defaults to identity (English); return
+	 * unlocalized keys unchanged.
+	 */
+	translate?: Translate
 }
 
 export interface EditorEvents extends CanvasEvents {

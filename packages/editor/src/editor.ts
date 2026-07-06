@@ -38,6 +38,8 @@ import {
 	portFromWaypoint,
 	screenToDiagram,
 } from "./geometry.js"
+import { defaultTranslate } from "./i18n.js"
+import type { Translate } from "./i18n.js"
 import { LabelEditor } from "./label-editor.js"
 import {
 	changeElementType as changeElementTypeFn,
@@ -301,6 +303,7 @@ export class BpmnEditor {
 	private _readOnly = false
 	private _isDragging = false
 	private _boundaryHostId: string | null = null
+	private readonly _t: Translate
 	private _warningBanner: HTMLElement | null = null
 
 	// ── Events ─────────────────────────────────────────────────────────
@@ -314,6 +317,7 @@ export class BpmnEditor {
 		injectEditorStyles()
 
 		this._id = String(_instanceCounter++)
+		this._t = options.translate ?? defaultTranslate
 
 		// Resolve initial theme — localStorage overrides the options.theme when persistTheme is on
 		let initialTheme = options.theme ?? "neon"
@@ -883,6 +887,14 @@ export class BpmnEditor {
 	/** HTML overlays anchored to diagram elements (badges, tooltips, panels). */
 	get overlays(): OverlayManager {
 		return this._htmlOverlays
+	}
+
+	/**
+	 * The resolved translation hook (from `options.translate`, or identity).
+	 * Used by the HUD to localize its strings; also available to plugins.
+	 */
+	get translate(): Translate {
+		return this._t
 	}
 
 	zoomIn(): void {

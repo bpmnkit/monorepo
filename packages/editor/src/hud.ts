@@ -179,6 +179,8 @@ export function initEditorHud(
 } {
 	injectHudStyles()
 
+	const t = editor.translate
+
 	// ── Create and inject HUD DOM ──────────────────────────────────────────────
 
 	function hudBtn(id: string, title: string): HTMLButtonElement {
@@ -324,10 +326,10 @@ export function initEditorHud(
 	simBannerEl.id = "bpmnkit-sim-banner"
 	simBannerEl.className = "hidden"
 	const simBannerText = document.createElement("span")
-	simBannerText.textContent = "Simulation active — editing is disabled"
+	simBannerText.textContent = t("Simulation active — editing is disabled")
 	const simBannerExit = document.createElement("button")
 	simBannerExit.id = "bpmnkit-sim-banner-exit"
-	simBannerExit.textContent = "Exit simulation"
+	simBannerExit.textContent = t("Exit simulation")
 	simBannerExit.addEventListener("click", () => options.onExitSimulation?.())
 	simBannerEl.append(simBannerText, simBannerExit)
 
@@ -343,14 +345,14 @@ export function initEditorHud(
 	const searchInput = document.createElement("input")
 	searchInput.id = "bpmnkit-search-input"
 	searchInput.type = "text"
-	searchInput.placeholder = "Search elements…"
-	searchInput.setAttribute("aria-label", "Search diagram elements")
+	searchInput.placeholder = t("Search elements…")
+	searchInput.setAttribute("aria-label", t("Search diagram elements"))
 	const searchCount = document.createElement("span")
 	searchCount.id = "bpmnkit-search-count"
 	const searchClose = document.createElement("button")
 	searchClose.id = "bpmnkit-search-close"
 	searchClose.textContent = "×"
-	searchClose.title = "Close search (Escape)"
+	searchClose.title = t("Close search (Escape)")
 	searchBarEl.append(searchInput, searchCount, searchClose)
 
 	// Keyboard shortcuts modal
@@ -360,13 +362,13 @@ export function initEditorHud(
 	const shortcutsInner = document.createElement("div")
 	shortcutsInner.id = "bpmnkit-shortcuts-inner"
 	const shortcutsTitle = document.createElement("h3")
-	shortcutsTitle.textContent = "Keyboard shortcuts"
+	shortcutsTitle.textContent = t("Keyboard shortcuts")
 	shortcutsInner.appendChild(shortcutsTitle)
 	for (const [key, desc] of SHORTCUTS) {
 		const row = document.createElement("div")
 		row.className = "bpmnkit-sc-row"
 		const descEl = document.createElement("span")
-		descEl.textContent = desc
+		descEl.textContent = t(desc)
 		const keyEl = document.createElement("kbd")
 		keyEl.className = "bpmnkit-sc-key"
 		keyEl.textContent = key
@@ -375,7 +377,7 @@ export function initEditorHud(
 	}
 	const shortcutsClose = document.createElement("button")
 	shortcutsClose.id = "bpmnkit-shortcuts-close"
-	shortcutsClose.textContent = "Close"
+	shortcutsClose.textContent = t("Close")
 	shortcutsClose.addEventListener("click", () => shortcutsModal.classList.add("hidden"))
 	shortcutsModal.addEventListener("click", (e) => {
 		if (e.target === shortcutsModal) shortcutsModal.classList.add("hidden")
@@ -488,14 +490,14 @@ export function initEditorHud(
 
 		const label = document.createElement("span")
 		label.className = "group-picker-label"
-		label.textContent = group.title
+		label.textContent = t(group.title)
 		picker.appendChild(label)
 
 		for (const item of group.items) {
 			const btn = document.createElement("button")
 			btn.className = item.type === groupActiveType[group.id] ? "hud-btn active" : "hud-btn"
 			btn.innerHTML = item.icon
-			btn.title = item.title
+			btn.title = t(item.title)
 			btn.addEventListener("click", (e) => {
 				e.stopPropagation()
 				groupActiveType[group.id] = item.type
@@ -549,14 +551,14 @@ export function initEditorHud(
 
 		const label = document.createElement("span")
 		label.className = "group-picker-label"
-		label.textContent = group.title
+		label.textContent = t(group.title)
 		picker.appendChild(label)
 
 		for (const item of group.items) {
 			const btn = document.createElement("button")
 			btn.className = item.type === sourceType ? "hud-btn active" : "hud-btn"
 			btn.innerHTML = item.icon
-			btn.title = item.title
+			btn.title = t(item.title)
 			btn.addEventListener("click", (e) => {
 				e.stopPropagation()
 				if (item.type !== sourceType) editor.changeElementType(sourceId, item.type)
@@ -667,7 +669,7 @@ export function initEditorHud(
 		btn.className = "hud-btn"
 		btn.dataset.group = group.id
 		btn.innerHTML = group.groupIcon
-		btn.title = `${group.title} (hold for options)`
+		btn.title = t("{name} (hold for options)", { name: t(group.title) })
 
 		let longPressTimer: ReturnType<typeof setTimeout> | null = null
 		let isLongPress = false
@@ -1100,7 +1102,7 @@ export function initEditorHud(
 				const btn = document.createElement("button")
 				btn.className = "hud-btn"
 				btn.innerHTML = opt.icon
-				btn.title = opt.title
+				btn.title = t(opt.title)
 				btn.addEventListener("click", () => {
 					editor.addConnectedElement(sourceId, opt.type)
 					closeAllDropdowns()
@@ -1177,7 +1179,7 @@ export function initEditorHud(
 			const typeBtn = document.createElement("button")
 			typeBtn.className = "hud-btn active"
 			typeBtn.innerHTML = currentItem?.icon ?? group.groupIcon
-			typeBtn.title = `${currentItem?.title ?? group.title} (click to change)`
+			typeBtn.title = t("{name} (click to change)", { name: t(currentItem?.title ?? group.title) })
 			typeBtn.addEventListener("click", () => showTypePicker(typeBtn, group, sourceId, sourceType))
 			cfgToolbar.appendChild(typeBtn)
 		}
@@ -1824,7 +1826,7 @@ export function initEditorHud(
 	function makeCtxItem(icon: string, label: string, onClick: () => void): HTMLButtonElement {
 		const btn = document.createElement("button")
 		btn.className = "drop-item"
-		btn.innerHTML = `<span class="di-check"></span><span class="di-icon">${icon}</span><span>${label}</span>`
+		btn.innerHTML = `<span class="di-check"></span><span class="di-icon">${icon}</span><span>${t(label)}</span>`
 		btn.addEventListener("click", onClick)
 		return btn
 	}
