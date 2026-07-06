@@ -375,6 +375,36 @@ describe("changeElementType", () => {
 		if (!proc) throw new Error("no process")
 		expect(proc.flowElements.find((e) => e.id === id)?.type).toBe("scriptTask")
 	})
+
+	const MI_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="d" targetNamespace="t">
+  <process id="p">
+    <serviceTask id="st" name="Work">
+      <documentation>notes</documentation>
+      <multiInstanceLoopCharacteristics isSequential="true"/>
+    </serviceTask>
+  </process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="p">
+    <bpmndi:BPMNShape id="st_di" bpmnElement="st"><dc:Bounds x="0" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</definitions>`
+
+	it("preserves loopCharacteristics and documentation across an activity morph", () => {
+		const defs = Bpmn.parse(MI_XML)
+		const changed = changeElementType(defs, "st", "userTask")
+		const el = changed.processes[0]?.flowElements.find((e) => e.id === "st")
+		if (!el || el.type !== "userTask") throw new Error("expected userTask")
+		expect(el.loopCharacteristics?.isSequential).toBe(true)
+		expect(el.documentation).toBe("notes")
+	})
+
+	it("drops the loop marker when morphing an activity to a gateway", () => {
+		const defs = Bpmn.parse(MI_XML)
+		const changed = changeElementType(defs, "st", "parallelGateway")
+		const el = changed.processes[0]?.flowElements.find((e) => e.id === "st")
+		expect(el?.type).toBe("parallelGateway")
+		expect("loopCharacteristics" in (el ?? {})).toBe(false)
+	})
 })
 
 describe("insertShapeOnEdge", () => {

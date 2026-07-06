@@ -7,6 +7,7 @@ import type {
 	BpmnDiShape,
 	BpmnEventDefinition,
 	BpmnFlowElement,
+	BpmnMultiInstanceLoopCharacteristics,
 	BpmnSequenceFlow,
 	BpmnTextAnnotation,
 	BpmnWaypoint,
@@ -1306,6 +1307,22 @@ export function removeCollinearWaypoints(defs: BpmnDefinitions, edgeId: string):
 
 // ── Change element type ───────────────────────────────────────────────────────
 
+/** Activity types that carry `loopCharacteristics` (multi-instance / loop markers). */
+const ACTIVITY_LOOP_TYPES: ReadonlySet<string> = new Set([
+	"task",
+	"serviceTask",
+	"userTask",
+	"scriptTask",
+	"sendTask",
+	"receiveTask",
+	"businessRuleTask",
+	"manualTask",
+	"callActivity",
+	"subProcess",
+	"adHocSubProcess",
+	"transaction",
+])
+
 /**
  * Replaces a flow element's type while preserving its id, name, and connections.
  * Use this for gateway type-switching (exclusive ↔ parallel) and task type-switching.
@@ -1328,6 +1345,8 @@ export function changeElementType(
 		name: el.name,
 		incoming: el.incoming,
 		outgoing: el.outgoing,
+		documentation: el.documentation,
+		isForCompensation: el.isForCompensation,
 		extensionElements: el.extensionElements,
 		unknownAttributes: el.unknownAttributes,
 	}
@@ -1495,6 +1514,14 @@ export function changeElementType(
 			break
 		case "textAnnotation":
 			throw new Error("textAnnotation is not a flow element — use createAnnotation()")
+	}
+
+	// Preserve a multi-instance/loop marker when morphing between activity types
+	// that both support one (e.g. serviceTask ⇄ userTask, task → subProcess).
+	const loop = "loopCharacteristics" in el ? el.loopCharacteristics : undefined
+	if (loop && ACTIVITY_LOOP_TYPES.has(newEl.type)) {
+		;(newEl as { loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics }).loopCharacteristics =
+			loop
 	}
 
 	const newElements = [...process.flowElements]
