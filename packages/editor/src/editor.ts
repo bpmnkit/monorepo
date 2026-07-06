@@ -669,6 +669,97 @@ export class BpmnEditor {
 		this._setSelection([])
 	}
 
+	/** Bounds of the currently-selected shapes (edges have none, and are skipped). */
+	private _selectedShapeBounds(): Array<{
+		id: string
+		x: number
+		y: number
+		width: number
+		height: number
+	}> {
+		const out: Array<{ id: string; x: number; y: number; width: number; height: number }> = []
+		for (const id of this._selectedIds) {
+			const shape = this._shapes.find((s) => s.id === id)
+			if (shape) out.push({ id, ...shape.shape.bounds })
+		}
+		return out
+	}
+
+	/**
+	 * Aligns the selected shapes along an edge or centre-line, as a single
+	 * undoable command. No-op for fewer than two selected shapes.
+	 */
+	alignSelected(edge: "left" | "center" | "right" | "top" | "middle" | "bottom"): void {
+		const bs = this._selectedShapeBounds()
+		if (bs.length < 2) return
+		const minLeft = Math.min(...bs.map((b) => b.x))
+		const maxRight = Math.max(...bs.map((b) => b.x + b.width))
+		const minTop = Math.min(...bs.map((b) => b.y))
+		const maxBottom = Math.max(...bs.map((b) => b.y + b.height))
+
+		const moves: Array<{ id: string; dx: number; dy: number }> = []
+		for (const b of bs) {
+			let dx = 0
+			let dy = 0
+			switch (edge) {
+				case "left":
+					dx = minLeft - b.x
+					break
+				case "right":
+					dx = maxRight - (b.x + b.width)
+					break
+				case "center":
+					dx = (minLeft + maxRight) / 2 - (b.x + b.width / 2)
+					break
+				case "top":
+					dy = minTop - b.y
+					break
+				case "bottom":
+					dy = maxBottom - (b.y + b.height)
+					break
+				case "middle":
+					dy = (minTop + maxBottom) / 2 - (b.y + b.height / 2)
+					break
+			}
+			if (dx !== 0 || dy !== 0) moves.push({ id: b.id, dx, dy })
+		}
+		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves))
+	}
+
+	/**
+	 * Distributes the selected shapes so the gaps between them are equal along
+	 * the axis (the outermost two stay fixed), as a single undoable command.
+	 * No-op for fewer than three selected shapes.
+	 */
+	distributeSelected(axis: "horizontal" | "vertical"): void {
+		const bs = this._selectedShapeBounds()
+		if (bs.length < 3) return
+		const horiz = axis === "horizontal"
+		const start = (b: (typeof bs)[number]) => (horiz ? b.x : b.y)
+		const size = (b: (typeof bs)[number]) => (horiz ? b.width : b.height)
+
+		const sorted = [...bs].sort((a, b) => start(a) + size(a) / 2 - (start(b) + size(b) / 2))
+		const first = sorted[0]
+		const last = sorted[sorted.length - 1]
+		if (!first || !last) return
+		const span = start(last) + size(last) - start(first)
+		const sumSize = sorted.reduce((s, b) => s + size(b), 0)
+		const gap = (span - sumSize) / (sorted.length - 1)
+
+		const moves: Array<{ id: string; dx: number; dy: number }> = []
+		let cursor = start(first) + size(first) + gap
+		for (let i = 1; i < sorted.length - 1; i++) {
+			const b = sorted[i]
+			if (!b) continue
+			const delta = cursor - start(b)
+			if (delta !== 0) {
+				moves.push(horiz ? { id: b.id, dx: delta, dy: 0 } : { id: b.id, dx: 0, dy: delta })
+			}
+			cursor += size(b) + gap
+		}
+		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves))
+	}
+
 	undo(): void {
 		const prev = this._commandStack.undo()
 		if (prev) {

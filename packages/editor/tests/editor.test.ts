@@ -214,3 +214,119 @@ Object.defineProperty(BpmnEditor.prototype, "container", {
 		return this._host as HTMLElement
 	},
 })
+
+// ── Align & distribute (P2-4) ────────────────────────────────────────────────────
+
+const ALIGN_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="d" targetNamespace="t">
+  <bpmn:process id="proc">
+    <bpmn:task id="t1"/><bpmn:task id="t2"/><bpmn:task id="t3"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc">
+    <bpmndi:BPMNShape id="t1_di" bpmnElement="t1"><dc:Bounds x="0" y="0" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="t2_di" bpmnElement="t2"><dc:Bounds x="150" y="200" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="t3_di" bpmnElement="t3"><dc:Bounds x="500" y="50" width="100" height="80"/></bpmndi:BPMNShape>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+
+describe("align & distribute", () => {
+	function bounds(ed: BpmnEditor, id: string) {
+		const s = ed.getDefinitions()?.diagrams[0]?.plane.shapes.find((sh) => sh.bpmnElement === id)
+		if (!s) throw new Error(`no shape ${id}`)
+		return s.bounds
+	}
+
+	it("aligns selected shapes to the top edge as one undoable step", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: ALIGN_XML, grid: false })
+		ed.setSelection(["t1", "t2", "t3"])
+		ed.alignSelected("top")
+		// minTop across the three is 0.
+		expect(bounds(ed, "t1").y).toBe(0)
+		expect(bounds(ed, "t2").y).toBe(0)
+		expect(bounds(ed, "t3").y).toBe(0)
+		ed.undo()
+		expect(bounds(ed, "t2").y).toBe(200)
+		ed.destroy()
+	})
+
+	it("aligns to the left edge", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: ALIGN_XML, grid: false })
+		ed.setSelection(["t1", "t2", "t3"])
+		ed.alignSelected("left")
+		expect(bounds(ed, "t2").x).toBe(0)
+		expect(bounds(ed, "t3").x).toBe(0)
+		ed.destroy()
+	})
+
+	it("distributes shapes horizontally with equal gaps (endpoints fixed)", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: ALIGN_XML, grid: false })
+		ed.setSelection(["t1", "t2", "t3"])
+		ed.distributeSelected("horizontal")
+		const t1 = bounds(ed, "t1")
+		const t2 = bounds(ed, "t2")
+		const t3 = bounds(ed, "t3")
+		// Endpoints unchanged, middle repositioned so the two gaps match.
+		expect(t1.x).toBe(0)
+		expect(t3.x).toBe(500)
+		expect(t2.x - (t1.x + t1.width)).toBe(t3.x - (t2.x + t2.width))
+		ed.undo()
+		expect(bounds(ed, "t2").x).toBe(150)
+		ed.destroy()
+	})
+
+	it("is a no-op for fewer than the required selection size", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: ALIGN_XML, grid: false })
+		ed.setSelection(["t1"])
+		ed.alignSelected("top")
+		expect(bounds(ed, "t1").y).toBe(0)
+		expect(ed.canUndo()).toBe(false)
+		ed.setSelection(["t1", "t2"])
+		ed.distributeSelected("horizontal")
+		expect(ed.canUndo()).toBe(false)
+		ed.destroy()
+	})
+})
+
+// ── HUD align/distribute menu (P2-4) ─────────────────────────────────────────────
+
+describe("HUD align menu", () => {
+	function bounds(ed: BpmnEditor, id: string) {
+		const s = ed.getDefinitions()?.diagrams[0]?.plane.shapes.find((sh) => sh.bpmnElement === id)
+		if (!s) throw new Error(`no shape ${id}`)
+		return s.bounds
+	}
+
+	it("offers align items on multi-selection and aligns when clicked", async () => {
+		const { initEditorHud } = await import("../src/hud.js")
+		const container = makeContainer()
+		const ed = new BpmnEditor({ container, xml: ALIGN_XML, grid: false })
+		initEditorHud(ed)
+		ed.setSelection(["t1", "t2", "t3"])
+
+		const more = container.querySelector<HTMLButtonElement>("#btn-top-more")
+		if (!more) throw new Error("no more button")
+		more.click()
+
+		const items = [...container.querySelectorAll(".drop-item")]
+		const alignLeft = items.find((el) => el.textContent?.includes("Align left"))
+		expect(alignLeft).toBeTruthy()
+		expect(items.some((el) => el.textContent?.includes("Distribute horizontally"))).toBe(true)
+		;(alignLeft as HTMLButtonElement).click()
+		expect(bounds(ed, "t2").x).toBe(0)
+		ed.destroy()
+	})
+
+	it("hides align items when only one element is selected", async () => {
+		const { initEditorHud } = await import("../src/hud.js")
+		const container = makeContainer()
+		const ed = new BpmnEditor({ container, xml: ALIGN_XML, grid: false })
+		initEditorHud(ed)
+		ed.setSelection(["t1"])
+		container.querySelector<HTMLButtonElement>("#btn-top-more")?.click()
+		const items = [...container.querySelectorAll(".drop-item")]
+		expect(items.some((el) => el.textContent?.includes("Align left"))).toBe(false)
+		ed.destroy()
+	})
+})

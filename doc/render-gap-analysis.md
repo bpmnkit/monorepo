@@ -278,7 +278,9 @@ Current paste handles only top-level flow elements whose source+target are both 
 #### P2-3 · Wire connection segment move — **S**
 `moveEdgeSegment` (`modeling.ts:1173-1200`) is implemented but unreachable — `state-machine.ts:464-476` routes segment drags to waypoint-insert. Spec: drag on a segment *body* moves the segment orthogonally (bpmn-js behavior); drag on the midpoint ball inserts a waypoint (current behavior preserved via the existing hover affordances in `overlay.ts:406-436`). AC: dragging a horizontal segment moves it vertically keeping orthogonality; undo restores.
 
-#### P2-4 · Align & distribute commands — **S**
+#### P2-4 · Align & distribute commands — **S** — ✅ DONE (2026-07-05)
+`editor.alignSelected("left"|"center"|"right"|"top"|"middle"|"bottom")` and `editor.distributeSelected("horizontal"|"vertical")` — single undoable commands built on `moveShapes` (align needs ≥2 shapes, distribute ≥3, endpoints fixed with equal gaps). Wired into the HUD's "More actions" menu, which shows the align entries only for a multi-selection (≥2) and the distribute entries at ≥3. Tests: editor `align & distribute` (geometry + single-undo) and `HUD align menu` (menu visibility + click-aligns).
+
 Guides exist; explicit commands don't. Spec: `editor.alignSelected("left"|"center"|"right"|"top"|"middle"|"bottom")`, `editor.distributeSelected("horizontal"|"vertical")` as single undoable commands (reuse `moveShapes`); HUD buttons appear for multi-selection (≥2 align, ≥3 distribute). AC: geometry assertions per axis; single undo step.
 
 #### P2-5 · Diagram search — **S/M**

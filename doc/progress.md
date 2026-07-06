@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Editor align & distribute commands
+
+Implemented P2-4 from `doc/render-gap-analysis.md`. `editor.alignSelected(edge)` (left/center/right/top/middle/bottom) and `editor.distributeSelected(axis)` (horizontal/vertical) are single undoable commands built on the existing `moveShapes` op — align requires ≥2 selected shapes, distribute ≥3 (the outermost two stay fixed and the interior is spaced with equal gaps). Wired into the HUD's "More actions" dropdown, which lists the align entries only for a multi-selection and the distribute entries at ≥3. Tests: editor `align & distribute` (per-axis geometry + single-undo) and `HUD align menu` (menu visibility + click-aligns) — 56 editor tests; editor/plugins/operate green.
+
 ## 2026-07-05 — Live-canvas SVG / PNG export
 
 Implemented P2-8 from `doc/render-gap-analysis.md`. `canvas.exportSvg({ bounds?: "diagram" | "viewport" })` serializes the current plane to a standalone SVG — cloning the content layers (diagram coordinates, excluding the pan/zoom transform), a `viewBox`, the marker/pattern `<defs>`, and a `<style>` block with `CANVAS_CSS` plus theme tokens resolved from the live host via `getComputedStyle` so it renders with correct colours off-page (falling back to the CSS `var()` defaults where computed styles aren't available). `canvas.exportPng(scale)` rasterizes it via `Image` + `<canvas>` (browser-only). Tests in canvas `SVG export` — 75 canvas tests; canvas/editor/plugins/operate green.

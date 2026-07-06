@@ -896,6 +896,45 @@ export function initEditorHud(
 				},
 			],
 		]
+		// Align / distribute — only meaningful for a multi-selection.
+		if (selectedIds.length >= 2) {
+			const aligns: Array<[string, "left" | "center" | "right" | "top" | "middle" | "bottom"]> = [
+				["Align left", "left"],
+				["Align centre", "center"],
+				["Align right", "right"],
+				["Align top", "top"],
+				["Align middle", "middle"],
+				["Align bottom", "bottom"],
+			]
+			for (const [label, edge] of aligns) {
+				items.push([
+					label,
+					IC.dots,
+					() => {
+						editor.alignSelected(edge)
+						closeAllDropdowns()
+					},
+				])
+			}
+		}
+		if (selectedIds.length >= 3) {
+			items.push([
+				"Distribute horizontally",
+				IC.dots,
+				() => {
+					editor.distributeSelected("horizontal")
+					closeAllDropdowns()
+				},
+			])
+			items.push([
+				"Distribute vertically",
+				IC.dots,
+				() => {
+					editor.distributeSelected("vertical")
+					closeAllDropdowns()
+				},
+			])
+		}
 		if (options.optimizeButton) {
 			items.push([
 				"Optimize diagram",
