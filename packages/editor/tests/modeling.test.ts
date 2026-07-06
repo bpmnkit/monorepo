@@ -1,3 +1,4 @@
+import { Bpmn } from "@bpmnkit/core"
 import { describe, expect, it } from "vitest"
 import {
 	changeElementType,
@@ -7,11 +8,40 @@ import {
 	createShape,
 	deleteElements,
 	insertShapeOnEdge,
+	moveEdgeSegment,
 	moveShapes,
 	pasteElements,
 	resizeShape,
 	updateLabel,
 } from "../src/modeling.js"
+
+const EDGE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="d" targetNamespace="t">
+  <bpmn:process id="proc">
+    <bpmn:task id="a"><bpmn:outgoing>f</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="b"><bpmn:incoming>f</bpmn:incoming></bpmn:task>
+    <bpmn:sequenceFlow id="f" sourceRef="a" targetRef="b"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc">
+    <bpmndi:BPMNShape id="a_di" bpmnElement="a"><dc:Bounds x="0" y="80" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="b_di" bpmnElement="b"><dc:Bounds x="300" y="80" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="f_di" bpmnElement="f"><di:waypoint x="100" y="120"/><di:waypoint x="300" y="120"/></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+
+describe("moveEdgeSegment", () => {
+	it("shifts a horizontal segment's waypoints perpendicularly (in Y)", () => {
+		const defs = Bpmn.parse(EDGE_XML)
+		const moved = moveEdgeSegment(defs, "f", 0, true, 25)
+		const wps = moved.diagrams[0]?.plane.edges.find((e) => e.bpmnElement === "f")?.waypoints
+		expect(wps?.map((w) => w.y)).toEqual([145, 145])
+		// Original is untouched (immutability).
+		expect(defs.diagrams[0]?.plane.edges[0]?.waypoints[0]?.y).toBe(120)
+	})
+})
 
 describe("createEmptyDefinitions", () => {
 	it("returns a valid BpmnDefinitions with one process and one diagram", () => {

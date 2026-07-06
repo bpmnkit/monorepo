@@ -51,6 +51,7 @@ import {
 	deleteElements,
 	insertEdgeWaypoint,
 	insertShapeOnEdge,
+	moveEdgeSegment,
 	moveEdgeWaypoint,
 	moveShapes,
 	pasteElements,
@@ -491,6 +492,21 @@ export class BpmnEditor {
 			cancelWaypointMove: () => {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
+			},
+			previewSegmentMove: (edgeId, segIdx, isHoriz, delta) => {
+				if (!this._defs) return
+				const preview = moveEdgeSegment(this._defs, edgeId, segIdx, isHoriz, delta)
+				const edge = preview.diagrams[0]?.plane.edges.find((e) => e.bpmnElement === edgeId)
+				this._overlay.setEndpointDragGhost(edge?.waypoints ?? null)
+			},
+			commitSegmentMove: (edgeId, segIdx, isHoriz, delta) => {
+				this._overlay.setEndpointDragGhost(null)
+				this._executeCommand((d) =>
+					removeCollinearWaypoints(moveEdgeSegment(d, edgeId, segIdx, isHoriz, delta), edgeId),
+				)
+			},
+			cancelSegmentMove: () => {
+				this._overlay.setEndpointDragGhost(null)
 			},
 			showEdgeHoverDot: (pt) => {
 				this._overlay.setEdgeHoverDot(pt)
@@ -2166,14 +2182,20 @@ export class BpmnEditor {
 			// can cause elementFromPoint to return the wrong edge's hit area when
 			// edges are close together.
 			const seg = this._nearestEdgeSegment(diag)
-			if (seg)
+			if (seg) {
+				// A press near the segment midpoint inserts a waypoint; a press
+				// elsewhere along the segment moves the whole segment.
+				const midDist = Math.hypot(seg.projPt.x - seg.mid.x, seg.projPt.y - seg.mid.y)
+				const nearMidpoint = midDist < 12 / this._viewport.state.scale
 				return {
 					type: "edge-segment",
 					id: seg.edgeId,
 					segIdx: seg.segIdx,
 					isHoriz: seg.isHoriz,
 					projPt: seg.projPt,
+					nearMidpoint,
 				}
+			}
 		}
 
 		const shapeEl = el.closest("[data-bpmnkit-id]")
@@ -2191,11 +2213,13 @@ export class BpmnEditor {
 		segIdx: number
 		isHoriz: boolean
 		projPt: DiagPoint
+		mid: DiagPoint
 	} | null {
 		let bestDist = Number.POSITIVE_INFINITY
 		let bestEdgeId = ""
 		let bestIdx = 0
 		let bestProj: DiagPoint = { x: 0, y: 0 }
+		let bestMid: DiagPoint = { x: 0, y: 0 }
 		let bestHoriz = true
 		let found = false
 
@@ -2221,6 +2245,7 @@ export class BpmnEditor {
 					bestEdgeId = edge.id
 					bestIdx = i
 					bestProj = proj
+					bestMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 					bestHoriz = Math.abs(dy) <= Math.abs(dx)
 					found = true
 				}
@@ -2228,7 +2253,13 @@ export class BpmnEditor {
 		}
 
 		if (!found) return null
-		return { edgeId: bestEdgeId, segIdx: bestIdx, isHoriz: bestHoriz, projPt: bestProj }
+		return {
+			edgeId: bestEdgeId,
+			segIdx: bestIdx,
+			isHoriz: bestHoriz,
+			projPt: bestProj,
+			mid: bestMid,
+		}
 	}
 
 	/** Snaps a diagram point to nearby shape/waypoint positions and returns guide lines. */

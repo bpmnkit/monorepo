@@ -275,7 +275,9 @@ Current paste handles only top-level flow elements whose source+target are both 
 #### P2-2 · Rules engine — **M**
 `rules.ts` is 15 lines. Spec: a `RuleProvider`-style chain (`canConnect(source, target, type)`, `canContain(parent, child)`, `canAttach`, `canResize`, `canMorph`) with BPMN defaults matching `BpmnRules`: no sequence flows across pools (message flow instead — auto-morph on connect like bpmn-js's ReplaceConnectionBehavior), no incoming flow to start / outgoing from end (currently enforced? verify), boundary events attach only to activities, event-based gateway targets restricted to catch events/receive tasks, lanes contain flow nodes only. State machine + HUD consult rules before enabling connect/append targets (visual feedback: forbidden cursor). AC: each rule has a positive+negative test; connect tool refuses illegal targets visually and in commit.
 
-#### P2-3 · Wire connection segment move — **S**
+#### P2-3 · Wire connection segment move — **S** — ✅ DONE (2026-07-05)
+`moveEdgeSegment` is now reachable. `_hitTest` computes `nearMidpoint` for an `edge-segment` hit; the state machine routes a segment-body drag (away from the midpoint) to a new `dragging-edge-segment` state driving `moveEdgeSegment` (orthogonal segment move), while a drag near the segment midpoint still inserts a waypoint (`dragging-edge-waypoint-new`). New `previewSegmentMove`/`commitSegmentMove`/`cancelSegmentMove` callbacks; commit runs through `removeCollinearWaypoints` and is a single undoable command. Tests: `segment-move.test.ts` (routing: move-vs-insert) and `modeling.test.ts` (`moveEdgeSegment` op geometry + immutability).
+
 `moveEdgeSegment` (`modeling.ts:1173-1200`) is implemented but unreachable — `state-machine.ts:464-476` routes segment drags to waypoint-insert. Spec: drag on a segment *body* moves the segment orthogonally (bpmn-js behavior); drag on the midpoint ball inserts a waypoint (current behavior preserved via the existing hover affordances in `overlay.ts:406-436`). AC: dragging a horizontal segment moves it vertically keeping orthogonality; undo restores.
 
 #### P2-4 · Align & distribute commands — **S** — ✅ DONE (2026-07-05)

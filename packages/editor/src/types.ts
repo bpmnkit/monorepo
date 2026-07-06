@@ -101,7 +101,15 @@ export type HitResult =
 	| { type: "port"; shapeId: string; port: PortDir }
 	| { type: "edge"; id: string }
 	| { type: "edge-endpoint"; edgeId: string; isStart: boolean }
-	| { type: "edge-segment"; id: string; segIdx: number; isHoriz: boolean; projPt: DiagPoint }
+	| {
+			type: "edge-segment"
+			id: string
+			segIdx: number
+			isHoriz: boolean
+			projPt: DiagPoint
+			/** True when the press is near the segment midpoint (→ insert a waypoint). */
+			nearMidpoint: boolean
+	  }
 	| { type: "edge-waypoint"; id: string; wpIdx: number; pt: DiagPoint }
 
 export interface DiagPoint {

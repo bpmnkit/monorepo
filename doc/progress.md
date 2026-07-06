@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-05 — Wire connection segment move
+
+Implemented P2-3 from `doc/render-gap-analysis.md`. `moveEdgeSegment` existed but was unreachable — a segment-body drag inserted a waypoint instead of moving the segment. `_hitTest` now computes `nearMidpoint` for an `edge-segment` hit (via the segment midpoint from `_nearestEdgeSegment`); the state machine routes a drag away from the midpoint to a new `dragging-edge-segment` state driving `moveEdgeSegment` (orthogonal segment move), while a drag near the midpoint still inserts a waypoint. New `previewSegmentMove`/`commitSegmentMove`/`cancelSegmentMove` callbacks; the commit runs through `removeCollinearWaypoints` as one undoable command. Tests: `segment-move.test.ts` (routing: move vs insert) and `modeling.test.ts` (op geometry + immutability) — 59 editor tests; editor/plugins/operate green.
+
 ## 2026-07-05 — Editor align & distribute commands
 
 Implemented P2-4 from `doc/render-gap-analysis.md`. `editor.alignSelected(edge)` (left/center/right/top/middle/bottom) and `editor.distributeSelected(axis)` (horizontal/vertical) are single undoable commands built on the existing `moveShapes` op — align requires ≥2 selected shapes, distribute ≥3 (the outermost two stay fixed and the interior is spaced with equal gaps). Wired into the HUD's "More actions" dropdown, which lists the align entries only for a multi-selection and the distribute entries at ≥3. Tests: editor `align & distribute` (per-axis geometry + single-undo) and `HUD align menu` (menu visibility + click-aligns) — 56 editor tests; editor/plugins/operate green.
