@@ -792,6 +792,16 @@ describe("collapsed sub-process drilldown", () => {
 		expect(container.querySelector("[data-bpmnkit-drilldown]")).toBeNull()
 		expect(canvas.getPlanes().map((p) => p.id)).toEqual(["proc"])
 	})
+
+	it("marks the collapsed sub-process with aria-expanded=false", () => {
+		const { container, canvas } = makeCanvas()
+		const sub = container.querySelector('[data-bpmnkit-id="sub"]')
+		expect(sub?.getAttribute("aria-expanded")).toBe("false")
+		// A plain task carries no aria-expanded.
+		canvas.showPlane("sub")
+		const task = container.querySelector('[data-bpmnkit-id="ct"]')
+		expect(task?.hasAttribute("aria-expanded")).toBe(false)
+	})
 })
 
 // ── Data objects / stores / groups (P0-2) ────────────────────────────────────────

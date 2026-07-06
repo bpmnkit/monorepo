@@ -472,6 +472,53 @@ describe("i18n", () => {
 	})
 })
 
+describe("accessibility", () => {
+	const liveRegion = (container: HTMLElement) =>
+		container.querySelector<HTMLElement>('[aria-live="polite"]')
+
+	it("mounts a polite live region inside the host", () => {
+		const container = makeContainer()
+		const ed = new BpmnEditor({ container, xml: SIMPLE_XML, grid: false })
+		const region = liveRegion(container)
+		expect(region).toBeTruthy()
+		expect(region?.className).toContain("bpmnkit-sr-only")
+		ed.destroy()
+	})
+
+	it("announces the selected element by name", () => {
+		const container = makeContainer()
+		const ed = new BpmnEditor({ container, xml: SIMPLE_XML, grid: false })
+		ed.setSelection(["task"])
+		expect(liveRegion(container)?.textContent).toBe("Do Work selected")
+		ed.setSelection(["task", "start"])
+		expect(liveRegion(container)?.textContent).toBe("2 elements selected")
+		ed.destroy()
+	})
+
+	it("announces edit results using the command label", () => {
+		const container = makeContainer()
+		const ed = new BpmnEditor({ container, xml: SIMPLE_XML, grid: false })
+		ed.setSelection(["task"])
+		ed.deleteSelected()
+		expect(liveRegion(container)?.textContent).toBe("Delete")
+		ed.destroy()
+	})
+
+	it("routes announcements through the translate hook", () => {
+		const container = makeContainer()
+		const de: Record<string, string> = { "{name} selected": "{name} ausgewählt" }
+		const ed = new BpmnEditor({
+			container,
+			xml: SIMPLE_XML,
+			grid: false,
+			translate: (s, vars) => interpolate(de[s] ?? s, vars),
+		})
+		ed.setSelection(["task"])
+		expect(liveRegion(container)?.textContent).toBe("Do Work ausgewählt")
+		ed.destroy()
+	})
+})
+
 describe("rules wiring", () => {
 	const typeOf = (ed: BpmnEditor, id: string) =>
 		ed.getDefinitions()?.processes[0]?.flowElements.find((el) => el.id === id)?.type

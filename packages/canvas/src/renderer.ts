@@ -661,6 +661,21 @@ function renderTask(
 		"data-bpmnkit-instance": instanceId,
 	})
 
+	// Expandable containers announce their collapsed/expanded state to AT.
+	const type = el?.type
+	const isContainer =
+		type === "subProcess" ||
+		type === "adHocSubProcess" ||
+		type === "eventSubProcess" ||
+		type === "transaction" ||
+		type === "callActivity"
+	if (isContainer) {
+		g.setAttribute(
+			"aria-expanded",
+			type === "callActivity" ? "false" : String(shape.isExpanded === true),
+		)
+	}
+
 	return g
 }
 

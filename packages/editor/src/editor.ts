@@ -304,6 +304,7 @@ export class BpmnEditor {
 	private _isDragging = false
 	private _boundaryHostId: string | null = null
 	private readonly _t: Translate
+	private readonly _liveRegion: HTMLDivElement
 	private _warningBanner: HTMLElement | null = null
 
 	// ── Events ─────────────────────────────────────────────────────────
@@ -345,6 +346,14 @@ export class BpmnEditor {
 		this._host.setAttribute("tabindex", "0")
 		this._applyTheme(this._theme)
 		container.appendChild(this._host)
+
+		// Visually-hidden live region: since the SVG is aria-hidden, this is how
+		// selection and edit results reach assistive technology.
+		this._liveRegion = document.createElement("div")
+		this._liveRegion.className = "bpmnkit-sr-only"
+		this._liveRegion.setAttribute("aria-live", "polite")
+		this._liveRegion.setAttribute("aria-atomic", "true")
+		this._host.appendChild(this._liveRegion)
 
 		this._svg = document.createElementNS(NS, "svg") as SVGSVGElement
 		this._svg.setAttribute("aria-hidden", "true")
@@ -1079,6 +1088,7 @@ export class BpmnEditor {
 		const newDefs = fn(this._defs)
 		this._commandStack.push(newDefs, label, coalesceKey)
 		this._renderDefs(newDefs)
+		if (label) this._announce(this._t(label))
 		this._emit("diagram:change", newDefs)
 	}
 
@@ -1100,7 +1110,33 @@ export class BpmnEditor {
 			this._overlay.setEdgeEndpoints(null, "")
 		}
 		this._overlay.setSelection(ids, this._shapes, this._getResizableIds())
+		this._announceSelection(ids)
 		this._emit("editor:select", ids)
+	}
+
+	/** Human-readable name for an element (its label, else its type). */
+	private _displayName(id: string): string {
+		const el = this._shapes.find((s) => s.id === id)?.flowElement
+		return el?.name ?? el?.type ?? id
+	}
+
+	/** Pushes `message` to the aria-live region for assistive technology. */
+	private _announce(message: string): void {
+		// Re-assigning identical text does not re-trigger some screen readers, so
+		// clear first when the message is unchanged.
+		if (this._liveRegion.textContent === message) this._liveRegion.textContent = ""
+		this._liveRegion.textContent = message
+	}
+
+	private _announceSelection(ids: string[]): void {
+		// A cleared selection is left unannounced — it is usually the tail of an
+		// edit (delete, cut) whose own result is the meaningful announcement.
+		if (ids.length === 0) return
+		if (ids.length === 1 && ids[0]) {
+			this._announce(this._t("{name} selected", { name: this._displayName(ids[0]) }))
+		} else {
+			this._announce(this._t("{count} elements selected", { count: ids.length }))
+		}
 	}
 
 	private _previewTranslate(dx: number, dy: number): void {

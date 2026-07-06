@@ -6,6 +6,25 @@ export const HUD_STYLE_ID = "bpmnkit-editor-hud-styles-v1"
 
 /** CSS for editor-specific overlays injected once into `<head>`. */
 export const EDITOR_CSS = `
+/* Visually-hidden live region for screen-reader announcements */
+.bpmnkit-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Keyboard-focus ring on the editor host — distinct from the selection outline */
+.bpmnkit-canvas-host:focus-visible {
+  outline: 2px dashed var(--bpmnkit-accent-bright, #3b82f6);
+  outline-offset: -2px;
+}
+
 /* Selection outline */
 .bpmnkit-sel-indicator {
   fill: none;
