@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/editor",
-	"version": "0.0.31",
+	"version": "0.0.32",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

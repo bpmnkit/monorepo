@@ -1,5 +1,13 @@
 # @bpmnkit/canvas
 
+## 0.0.29
+
+### Patch Changes
+
+- c8f04ae: Improved rendering
+- Updated dependencies [c8f04ae]
+  - @bpmnkit/core@0.1.1
+
 ## 0.0.28
 
 ### Patch Changes

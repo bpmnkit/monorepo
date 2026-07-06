@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/user-tasks",
-	"version": "0.0.15",
+	"version": "0.0.16",
 	"description": "Embeddable user task widget for Camunda 8 — form rendering, claim/complete actions, zero dependencies",
 	"type": "module",
 	"main": "./dist/index.js",

@@ -1,5 +1,11 @@
 # @bpmnkit/core
 
+## 0.1.1
+
+### Patch Changes
+
+- c8f04ae: Improved rendering
+
 ## 0.1.0
 
 ### Minor Changes

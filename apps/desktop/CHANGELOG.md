@@ -1,5 +1,15 @@
 # @bpmnkit/desktop
 
+## 0.1.31
+
+### Patch Changes
+
+- Updated dependencies [c8f04ae]
+  - @bpmnkit/canvas@0.0.29
+  - @bpmnkit/editor@0.0.32
+  - @bpmnkit/core@0.1.1
+  - @bpmnkit/plugins@0.0.32
+
 ## 0.1.30
 
 ### Patch Changes
