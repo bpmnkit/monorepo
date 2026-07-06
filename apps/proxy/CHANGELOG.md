@@ -1,5 +1,13 @@
 # @bpmnkit/ai-server
 
+## 0.0.32
+
+### Patch Changes
+
+- c8f04ae: Improved rendering
+- Updated dependencies [c8f04ae]
+  - @bpmnkit/core@0.1.1
+
 ## 0.0.31
 
 ### Patch Changes
