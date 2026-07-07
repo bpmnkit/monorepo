@@ -1,0 +1,347 @@
+{
+	"summary": {
+		"generatedAt": "1970-01-01T00:00:00.000Z",
+		"totalPrompts": 15,
+		"planLevelAttempted": 14,
+		"planLevelSkipped": 1,
+		"synthCleanRate": 1,
+		"deployProfileCleanRate": 1,
+		"deployAttempted": 0,
+		"deployGreenRate": null,
+		"reebeAvailable": false,
+		"fullLlmModeRan": false
+	},
+	"results": [
+		{
+			"id": "slack-notify-ops",
+			"category": "connector",
+			"expected": {
+				"id": "slack-notify-ops",
+				"category": "connector",
+				"description": "Single connector step — the canonical Slack-notify golden case.",
+				"assertions": {
+					"minElements": 3,
+					"mustContainTaskTypes": ["io.camunda:slack:1"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1312,
+				"errors": ["test: skipped — @bpmnkit/reebe-wasm unavailable in this environment"]
+			}
+		},
+		{
+			"id": "multi-branch-approval",
+			"category": "gateway",
+			"expected": {
+				"id": "multi-branch-approval",
+				"category": "gateway",
+				"description": "Exclusive gateway with a user-task branch and an auto-approve branch, converging into a service task with an error boundary.",
+				"assertions": {
+					"minElements": 6,
+					"mustContainElementTypes": ["exclusiveGateway", "userTask", "boundaryEvent"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1312,
+				"errors": ["test: skipped — @bpmnkit/reebe-wasm unavailable in this environment"]
+			}
+		},
+		{
+			"id": "agentic-support-triage",
+			"category": "agentic",
+			"expected": {
+				"id": "agentic-support-triage",
+				"category": "agentic",
+				"description": "AI Agent Sub-process with a connector-backed tool (fromAi() overriding a static value) and a plain job-worker tool.",
+				"assertions": {
+					"minElements": 4,
+					"mustContainTaskTypes": ["io.camunda.agenticai:aiagent-job-worker:1"],
+					"mustPassAgenticLint": true
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1319,
+				"errors": ["test: skipped — @bpmnkit/reebe-wasm unavailable in this environment"]
+			}
+		},
+		{
+			"id": "extend-add-timer-boundary",
+			"category": "extend",
+			"expected": {
+				"id": "extend-add-timer-boundary",
+				"category": "extend",
+				"description": "casen plan extract -> targeted delta plan re-declaring one existing step with a new timerBoundary -> casen synth --merge. Only process_payment and its new boundary/end should change.",
+				"assertions": {
+					"mustContainElementTypes": ["boundaryEvent"],
+					"unchangedElementIds": ["validate_order", "ship_order"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 999,
+				"errors": []
+			}
+		},
+		{
+			"id": "message-correlated-payment",
+			"category": "messaging",
+			"expected": {
+				"id": "message-correlated-payment",
+				"category": "messaging",
+				"description": "A wait step correlated on a process variable, verifying zeebe:subscription correlationKey.",
+				"assertions": {
+					"mustContainElementTypes": ["intermediateCatchEvent"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1330,
+				"errors": ["test: skipped — @bpmnkit/reebe-wasm unavailable in this environment"]
+			}
+		},
+		{
+			"id": "multi-instance-email-notify",
+			"category": "multi-instance",
+			"expected": {
+				"id": "multi-instance-email-notify",
+				"category": "multi-instance",
+				"description": "A multi-instance sub-process iterating a collection, one email per recipient.",
+				"assertions": {
+					"mustContainElementTypes": ["subProcess"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1067,
+				"errors": []
+			}
+		},
+		{
+			"id": "error-boundary-payment-refund",
+			"category": "error-handling",
+			"expected": {
+				"id": "error-boundary-payment-refund",
+				"category": "error-handling",
+				"description": "An error boundary whose handler path runs a compensating (refund) service task before ending — modeled with a plain error boundary, since BPMN compensation events aren't yet exposed via the ProcessPlan IR.",
+				"assertions": {
+					"mustContainElementTypes": ["boundaryEvent"],
+					"mustContainJobTypes": ["charge:1", "refund:1"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1440,
+				"errors": ["test: skipped — @bpmnkit/reebe-wasm unavailable in this environment"]
+			}
+		},
+		{
+			"id": "long-process-onboarding",
+			"category": "long-process",
+			"expected": {
+				"id": "long-process-onboarding",
+				"category": "long-process",
+				"description": "A 25+ element process exercising a gateway branch, a parallel split/join block, user tasks, and a connector, all in one plan.",
+				"assertions": {
+					"minElements": 25,
+					"mustContainElementTypes": ["exclusiveGateway", "parallelGateway", "userTask"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1037,
+				"errors": []
+			}
+		},
+		{
+			"id": "ambiguous-notify-team",
+			"category": "ambiguous",
+			"expected": {
+				"id": "ambiguous-notify-team",
+				"category": "ambiguous",
+				"description": "No notification channel, no trigger event, no team identity — a well-behaved implementer should ask a clarifying question instead of guessing a Slack channel or an arbitrary trigger.",
+				"expectClarification": true
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"skipped": "expects a clarifying question, not a plan"
+			}
+		},
+		{
+			"id": "email-connector-order-confirmation",
+			"category": "connector",
+			"expected": {
+				"id": "email-connector-order-confirmation",
+				"category": "connector",
+				"description": "A single connector step using the SendGrid outbound email template.",
+				"assertions": {
+					"mustContainTaskTypes": ["io.camunda:sendgrid:1"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1075,
+				"errors": []
+			}
+		},
+		{
+			"id": "http-connector-external-api",
+			"category": "connector",
+			"expected": {
+				"id": "http-connector-external-api",
+				"category": "connector",
+				"description": "A generic HTTP REST connector call, with the required error boundary the pattern lint rule enforces for HTTP connectors.",
+				"assertions": {
+					"mustContainTaskTypes": ["io.camunda:http-json:1"],
+					"mustContainElementTypes": ["boundaryEvent"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1110,
+				"errors": []
+			}
+		},
+		{
+			"id": "business-rule-credit-check",
+			"category": "dmn",
+			"expected": {
+				"id": "business-rule-credit-check",
+				"category": "dmn",
+				"description": "A businessRuleTask referencing a DMN decision, branching on its result.",
+				"assertions": {
+					"mustContainElementTypes": ["businessRuleTask", "exclusiveGateway"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1044,
+				"errors": []
+			}
+		},
+		{
+			"id": "parallel-gateway-fulfillment",
+			"category": "gateway",
+			"expected": {
+				"id": "parallel-gateway-fulfillment",
+				"category": "gateway",
+				"description": "A parallel split into three independent tasks joined back before a final step.",
+				"assertions": {
+					"mustContainElementTypes": ["parallelGateway"],
+					"minElements": 6
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1366,
+				"errors": ["test: skipped — @bpmnkit/reebe-wasm unavailable in this environment"]
+			}
+		},
+		{
+			"id": "user-task-candidate-groups",
+			"category": "user-task",
+			"expected": {
+				"id": "user-task-candidate-groups",
+				"category": "user-task",
+				"description": "A single userTask with candidateGroups assignment — the simplest human-in-the-loop shape.",
+				"assertions": {
+					"mustContainElementTypes": ["userTask"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1060,
+				"errors": []
+			}
+		},
+		{
+			"id": "timer-boundary-retry",
+			"category": "timer",
+			"expected": {
+				"id": "timer-boundary-retry",
+				"category": "timer",
+				"description": "A service task with a timer boundary event whose handler path flags the item for manual follow-up.",
+				"assertions": {
+					"mustContainElementTypes": ["boundaryEvent"]
+				}
+			},
+			"planLevel": {
+				"mode": "plan-level",
+				"iterations": 1,
+				"synthProblems": 0,
+				"lintDeployErrors": 0,
+				"testPassRate": null,
+				"deploy": "skipped (Reebe unavailable)",
+				"wallTimeMs": 1413,
+				"errors": ["test: skipped — @bpmnkit/reebe-wasm unavailable in this environment"]
+			}
+		}
+	]
+}

@@ -1,4 +1,7 @@
 import type { BpmnDefinitions } from "../bpmn-model.js"
+import { analyzeAgentic } from "./agentic.js"
+import { analyzeDeploy } from "./deploy.js"
+import { analyzeFeelSyntax } from "./feel-syntax.js"
 import { analyzeFeel } from "./feel.js"
 import { analyzeFlow } from "./flow.js"
 import { analyzeNaming } from "./naming.js"
@@ -16,12 +19,16 @@ import { analyzeVariableFlow } from "./variable-flow.js"
 
 const ALL_CATEGORIES: OptimizationCategory[] = [
 	"feel",
+	"feel-syntax",
 	"flow",
 	"naming",
 	"task-reuse",
 	"extract",
 	"pattern",
 	"data-flow",
+	"deploy",
+	"agentic",
+	"connector",
 ]
 
 function resolveOptions(opts?: OptimizeOptions): ResolvedOptions {
@@ -32,6 +39,7 @@ function resolveOptions(opts?: OptimizeOptions): ResolvedOptions {
 		feelVariableThreshold: opts?.feelVariableThreshold ?? 4,
 		reuseThreshold: opts?.reuseThreshold ?? 2,
 		categories: opts?.categories ?? [...ALL_CATEGORIES],
+		resolveConnectorRequirements: opts?.resolveConnectorRequirements,
 	}
 }
 
@@ -43,6 +51,9 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 	for (const process of defs.processes) {
 		if (resolved.categories.includes("feel")) {
 			findings.push(...analyzeFeel(process, resolved))
+		}
+		if (resolved.categories.includes("feel-syntax")) {
+			findings.push(...analyzeFeelSyntax(process))
 		}
 		if (resolved.categories.includes("flow")) {
 			findings.push(...analyzeFlow(process, resolved))
@@ -59,20 +70,23 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 		if (resolved.categories.includes("data-flow")) {
 			findings.push(...analyzeVariableFlow(process))
 		}
+		if (resolved.categories.includes("deploy") || resolved.categories.includes("connector")) {
+			const deployFindings = analyzeDeploy(process, resolved.resolveConnectorRequirements)
+			findings.push(
+				...deployFindings.filter(
+					(f) =>
+						(f.category === "deploy" && resolved.categories.includes("deploy")) ||
+						(f.category === "connector" && resolved.categories.includes("connector")),
+				),
+			)
+		}
+		if (resolved.categories.includes("agentic")) {
+			findings.push(...analyzeAgentic(process))
+		}
 	}
 
 	const byCategory = Object.fromEntries(
-		(
-			[
-				"feel",
-				"flow",
-				"naming",
-				"task-reuse",
-				"extract",
-				"pattern",
-				"data-flow",
-			] as OptimizationCategory[]
-		).map((c) => [c, findings.filter((f) => f.category === c).length]),
+		ALL_CATEGORIES.map((c) => [c, findings.filter((f) => f.category === c).length]),
 	) as Record<OptimizationCategory, number>
 
 	const bySeverity = Object.fromEntries(

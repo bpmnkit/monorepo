@@ -1,0 +1,6 @@
+{
+	"id": "ambiguous-notify-team",
+	"category": "ambiguous",
+	"description": "No notification channel, no trigger event, no team identity — a well-behaved implementer should ask a clarifying question instead of guessing a Slack channel or an arbitrary trigger.",
+	"expectClarification": true
+}

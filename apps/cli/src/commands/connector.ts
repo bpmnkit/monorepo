@@ -1,6 +1,92 @@
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
-import type { CommandGroup } from "../types.js"
+import { getTemplate, listConnectors, searchConnectors } from "@bpmnkit/connectors"
+import type { Command, CommandGroup } from "../types.js"
+
+const searchCmd: Command = {
+	name: "search",
+	description:
+		"Search the bundled Camunda 8 out-of-the-box connector catalog (Slack, HTTP, AWS, AI Agent, …)",
+	args: [
+		{ name: "query", description: 'Search terms, e.g. "slack" or "send email"', required: true },
+	],
+	examples: [{ description: "Find the Slack connector", command: "casen connector search slack" }],
+	async run(ctx) {
+		const query = ctx.positional.join(" ")
+		const results = searchConnectors(query)
+		if (results.length === 0) {
+			ctx.output.info(`No connectors matched "${query}". Try 'casen connector list' to browse all.`)
+			return
+		}
+		ctx.output.printList({ items: results }, [
+			{ key: "id", header: "TEMPLATE ID", maxWidth: 48 },
+			{ key: "direction", header: "DIRECTION", maxWidth: 18 },
+			{ key: "taskType", header: "TASK TYPE", maxWidth: 32 },
+			{ key: "description", header: "DESCRIPTION", maxWidth: 50 },
+		])
+	},
+}
+
+const listCatalogCmd: Command = {
+	name: "list",
+	description: "List all bundled Camunda 8 out-of-the-box connector templates",
+	async run(ctx) {
+		ctx.output.printList({ items: listConnectors() }, [
+			{ key: "id", header: "TEMPLATE ID", maxWidth: 48 },
+			{ key: "direction", header: "DIRECTION", maxWidth: 18 },
+			{ key: "taskType", header: "TASK TYPE", maxWidth: 32 },
+		])
+	},
+}
+
+const showCmd: Command = {
+	name: "show",
+	description: "Show a connector template's required/optional input keys",
+	args: [
+		{
+			name: "templateId",
+			description: "Template id, e.g. io.camunda.connectors.Slack.v1",
+			required: true,
+		},
+	],
+	examples: [
+		{
+			description: "Show the Slack connector's inputs",
+			command: "casen connector show io.camunda.connectors.Slack.v1",
+		},
+	],
+	async run(ctx) {
+		const templateId = ctx.positional[0]
+		if (!templateId) throw new Error("Missing required argument: <templateId>")
+
+		const summary =
+			searchConnectors(templateId).find((s) => s.id === templateId) ??
+			listConnectors().find((s) => s.id === templateId)
+		if (!summary || !getTemplate(templateId)) {
+			throw new Error(
+				`Unknown connector template "${templateId}". Use 'casen connector search <query>' to find one.`,
+			)
+		}
+
+		ctx.output.info(`${summary.name}  (${summary.id})`)
+		if (summary.taskType) ctx.output.info(`Task type: ${summary.taskType}`)
+		ctx.output.info(`Direction: ${summary.direction}`)
+		if (summary.description) ctx.output.info(summary.description)
+
+		if (summary.requiredInputs.length > 0) {
+			ctx.output.info("\nRequired inputs:")
+			for (const i of summary.requiredInputs) {
+				ctx.output.info(`  ${i.key}${i.isSecret ? " (secret)" : ""} — ${i.label}`)
+			}
+		}
+		if (summary.optionalInputs.length > 0) {
+			ctx.output.info("\nOptional inputs:")
+			for (const i of summary.optionalInputs) {
+				ctx.output.info(`  ${i.key}${i.isSecret ? " (secret)" : ""} — ${i.label}`)
+			}
+		}
+	},
+}
 
 export const connectorGroup: CommandGroup = {
 	name: "connector",
@@ -186,5 +272,8 @@ export const connectorGroup: CommandGroup = {
 				)
 			},
 		},
+		searchCmd,
+		listCatalogCmd,
+		showCmd,
 	],
 }

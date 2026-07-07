@@ -20,8 +20,10 @@
 		"@bpmnkit/api": "workspace:*",
 		"@bpmnkit/ascii": "workspace:*",
 		"@bpmnkit/connector-gen": "workspace:*",
+		"@bpmnkit/connectors": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",
+		"@bpmnkit/patterns": "workspace:*",
 		"@bpmnkit/profiles": "workspace:*",
 		"@bpmnkit/proxy": "workspace:*"
 	},

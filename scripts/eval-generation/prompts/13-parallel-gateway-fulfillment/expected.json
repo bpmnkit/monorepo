@@ -1,0 +1,9 @@
+{
+	"id": "parallel-gateway-fulfillment",
+	"category": "gateway",
+	"description": "A parallel split into three independent tasks joined back before a final step.",
+	"assertions": {
+		"mustContainElementTypes": ["parallelGateway"],
+		"minElements": 6
+	}
+}

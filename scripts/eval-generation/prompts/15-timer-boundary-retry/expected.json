@@ -1,0 +1,8 @@
+{
+	"id": "timer-boundary-retry",
+	"category": "timer",
+	"description": "A service task with a timer boundary event whose handler path flags the item for manual follow-up.",
+	"assertions": {
+		"mustContainElementTypes": ["boundaryEvent"]
+	}
+}

@@ -3,12 +3,16 @@ import type { BpmnDefinitions } from "../bpmn-model.js"
 export type OptimizationSeverity = "info" | "warning" | "error"
 export type OptimizationCategory =
 	| "feel"
+	| "feel-syntax"
 	| "flow"
 	| "naming"
 	| "task-reuse"
 	| "extract"
 	| "pattern"
 	| "data-flow"
+	| "deploy"
+	| "agentic"
+	| "connector"
 
 export interface ApplyFixResult {
 	description: string
@@ -48,6 +52,14 @@ export interface OptimizeOptions {
 	feelVariableThreshold?: number
 	reuseThreshold?: number
 	categories?: OptimizationCategory[]
+	/**
+	 * Resolves a bundled connector template's missing required value keys —
+	 * pass `(templateId, boundKeys) => applyConnectorTemplate(templateId,
+	 * Object.fromEntries(boundKeys.map(k => [k, "x"]))).problems...` or an
+	 * equivalent from `@bpmnkit/connectors`. Without it, `connector/*` findings
+	 * are skipped (core has no dependency on the connector catalog).
+	 */
+	resolveConnectorRequirements?: (templateId: string, boundKeys: string[]) => string[]
 }
 
 export interface ResolvedOptions {
@@ -57,4 +69,5 @@ export interface ResolvedOptions {
 	feelVariableThreshold: number
 	reuseThreshold: number
 	categories: OptimizationCategory[]
+	resolveConnectorRequirements?: (templateId: string, boundKeys: string[]) => string[]
 }

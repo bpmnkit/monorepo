@@ -64,6 +64,29 @@ export interface ZeebeCalledDecision {
 	resultVariable: string
 }
 
+/** Zeebe user task assignment (assignee / candidate groups / candidate users). */
+export interface ZeebeAssignmentDefinition {
+	assignee?: string
+	candidateGroups?: string
+	candidateUsers?: string
+}
+
+/** Zeebe user task scheduling (due date / follow-up date). */
+export interface ZeebeTaskSchedule {
+	dueDate?: string
+	followUpDate?: string
+}
+
+/** Zeebe user task priority (0-100, default 50). */
+export interface ZeebePriorityDefinition {
+	priority: string
+}
+
+/** Zeebe message correlation key for a message catch/boundary/receive element. */
+export interface ZeebeSubscription {
+	correlationKey: string
+}
+
 /** Collected Zeebe extensions on a service task. */
 export interface ZeebeExtensions {
 	taskDefinition?: ZeebeTaskDefinition
@@ -77,6 +100,14 @@ export interface ZeebeExtensions {
 	calledDecision?: ZeebeCalledDecision
 	/** Marks this as a Camunda 8 native user task (zeebe:userTask). */
 	userTask?: true
+	/** User task assignee/candidates (zeebe:assignmentDefinition). */
+	assignmentDefinition?: ZeebeAssignmentDefinition
+	/** User task due/follow-up dates (zeebe:taskSchedule). */
+	taskSchedule?: ZeebeTaskSchedule
+	/** User task priority (zeebe:priorityDefinition). */
+	priorityDefinition?: ZeebePriorityDefinition
+	/** Message correlation key for a message catch/boundary/receive element (zeebe:subscription). */
+	subscription?: ZeebeSubscription
 	/** Unrecognized extension elements preserved for roundtrip. */
 	unknownElements?: XmlElement[]
 }
@@ -176,6 +207,44 @@ export function zeebeExtensionsToXmlElements(extensions: ZeebeExtensions): XmlEl
 				decisionId: extensions.calledDecision.decisionId,
 				resultVariable: extensions.calledDecision.resultVariable,
 			},
+			children: [],
+		})
+	}
+
+	if (extensions.assignmentDefinition) {
+		const attrs: Record<string, string> = {}
+		const { assignee, candidateGroups, candidateUsers } = extensions.assignmentDefinition
+		if (assignee) attrs.assignee = assignee
+		if (candidateGroups) attrs.candidateGroups = candidateGroups
+		if (candidateUsers) attrs.candidateUsers = candidateUsers
+		if (Object.keys(attrs).length > 0) {
+			elements.push({ name: "zeebe:assignmentDefinition", attributes: attrs, children: [] })
+		}
+	}
+
+	if (extensions.taskSchedule) {
+		const attrs: Record<string, string> = {}
+		if (extensions.taskSchedule.dueDate) attrs.dueDate = extensions.taskSchedule.dueDate
+		if (extensions.taskSchedule.followUpDate) {
+			attrs.followUpDate = extensions.taskSchedule.followUpDate
+		}
+		if (Object.keys(attrs).length > 0) {
+			elements.push({ name: "zeebe:taskSchedule", attributes: attrs, children: [] })
+		}
+	}
+
+	if (extensions.priorityDefinition) {
+		elements.push({
+			name: "zeebe:priorityDefinition",
+			attributes: { priority: extensions.priorityDefinition.priority },
+			children: [],
+		})
+	}
+
+	if (extensions.subscription) {
+		elements.push({
+			name: "zeebe:subscription",
+			attributes: { correlationKey: extensions.subscription.correlationKey },
 			children: [],
 		})
 	}

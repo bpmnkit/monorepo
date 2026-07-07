@@ -5,7 +5,7 @@
  * the local proxy is running. They mirror the runtime definitions served by
  * `GET /worker-templates` on the proxy.
  */
-import type { ElementTemplate } from "../config-panel-bpmn/template-types.js"
+import type { ElementTemplate } from "@bpmnkit/connectors"
 
 const CLI_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><rect width="16" height="16" rx="3" fill="#1e1e2e"/><text x="3" y="12" font-family="monospace" font-size="10" fill="#cdd6f4">&gt;_</text></svg>`
 const LLM_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><rect width="16" height="16" rx="3" fill="#1e1e2e"/><circle cx="8" cy="8" r="5" fill="none" stroke="#6b9df7" stroke-width="1.5"/><path d="M6 8h4M8 6v4" stroke="#6b9df7" stroke-width="1.5"/></svg>`

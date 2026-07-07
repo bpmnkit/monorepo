@@ -83,11 +83,14 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 	const exprToFlowIds = new Map<string, string[]>()
 
 	for (const flow of p.sequenceFlows) {
-		// Determine if source is an exclusive/inclusive gateway
+		// Determine if source is an exclusive/inclusive gateway with more than one
+		// outgoing flow — a join (single outgoing flow) makes no decision, so its
+		// one outgoing flow needs neither a condition nor a default marker.
 		const srcEl = p.flowElements.find((e) => e.id === flow.sourceRef)
 		const srcIsDecisionGateway =
 			srcEl !== undefined &&
-			(srcEl.type === "exclusiveGateway" || srcEl.type === "inclusiveGateway")
+			(srcEl.type === "exclusiveGateway" || srcEl.type === "inclusiveGateway") &&
+			(bySource.get(srcEl.id)?.length ?? 0) > 1
 
 		if (srcIsDecisionGateway && srcEl !== undefined) {
 			const defaultFlowId =

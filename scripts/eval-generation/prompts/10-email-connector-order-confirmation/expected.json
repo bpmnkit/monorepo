@@ -1,0 +1,8 @@
+{
+	"id": "email-connector-order-confirmation",
+	"category": "connector",
+	"description": "A single connector step using the SendGrid outbound email template.",
+	"assertions": {
+		"mustContainTaskTypes": ["io.camunda:sendgrid:1"]
+	}
+}

@@ -1,0 +1,127 @@
+{
+	"version": 1,
+	"process": { "id": "employee-onboarding", "name": "Employee Onboarding" },
+	"steps": [
+		{ "kind": "start", "name": "Employee onboarding started" },
+		{
+			"kind": "serviceTask",
+			"id": "record_offer",
+			"name": "Record signed offer",
+			"jobType": "hr:record-offer:1"
+		},
+		{
+			"kind": "serviceTask",
+			"id": "background_check",
+			"name": "Run background check",
+			"jobType": "hr:background-check:1"
+		},
+		{
+			"kind": "gateway",
+			"id": "bg_check_gateway",
+			"name": "Background check passed?",
+			"gatewayType": "exclusive",
+			"branches": [
+				{ "name": "yes", "condition": "=backgroundCheckPassed = true", "steps": [] },
+				{
+					"name": "no",
+					"default": true,
+					"steps": [{ "kind": "end", "id": "bg_check_failed", "name": "Background check failed" }]
+				}
+			]
+		},
+		{
+			"kind": "serviceTask",
+			"id": "create_account",
+			"name": "Create employee account",
+			"jobType": "it:create-account:1"
+		},
+		{
+			"kind": "serviceTask",
+			"id": "assign_email",
+			"name": "Assign email address",
+			"jobType": "it:assign-email:1"
+		},
+		{
+			"kind": "gateway",
+			"id": "provisioning_split",
+			"gatewayType": "parallel",
+			"branches": [
+				{
+					"steps": [
+						{
+							"kind": "serviceTask",
+							"id": "it_setup",
+							"name": "Set up IT equipment",
+							"jobType": "it:setup-equipment:1"
+						}
+					]
+				},
+				{
+					"steps": [
+						{
+							"kind": "serviceTask",
+							"id": "facilities_setup",
+							"name": "Set up facilities access",
+							"jobType": "facilities:setup-access:1"
+						}
+					]
+				},
+				{
+					"steps": [
+						{
+							"kind": "serviceTask",
+							"id": "benefits_enrollment",
+							"name": "Enroll in benefits",
+							"jobType": "hr:enroll-benefits:1"
+						}
+					]
+				}
+			]
+		},
+		{
+			"kind": "userTask",
+			"id": "security_training",
+			"name": "Complete security training",
+			"candidateGroups": "new-hires"
+		},
+		{
+			"kind": "userTask",
+			"id": "compliance_ack",
+			"name": "Acknowledge compliance policy",
+			"candidateGroups": "new-hires"
+		},
+		{
+			"kind": "serviceTask",
+			"id": "org_chart_update",
+			"name": "Update org chart",
+			"jobType": "hr:update-org-chart:1"
+		},
+		{
+			"kind": "serviceTask",
+			"id": "payroll_setup",
+			"name": "Set up payroll",
+			"jobType": "payroll:setup:1"
+		},
+		{
+			"kind": "serviceTask",
+			"id": "orientation_scheduling",
+			"name": "Schedule orientation",
+			"jobType": "hr:schedule-orientation:1"
+		},
+		{
+			"kind": "connector",
+			"id": "welcome_email",
+			"name": "Send welcome message",
+			"connector": {
+				"template": "io.camunda.connectors.Slack.v1",
+				"values": {
+					"method": "chat.postMessage",
+					"token": "{{secrets.SLACK_OAUTH_TOKEN}}",
+					"data.channel": "=slackChannel",
+					"data.text": "=\"Welcome, \" + employeeName + \"!\""
+				}
+			}
+		},
+		{ "kind": "end", "name": "Onboarding complete" }
+	]
+}

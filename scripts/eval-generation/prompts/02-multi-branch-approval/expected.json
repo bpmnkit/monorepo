@@ -1,0 +1,9 @@
+{
+	"id": "multi-branch-approval",
+	"category": "gateway",
+	"description": "Exclusive gateway with a user-task branch and an auto-approve branch, converging into a service task with an error boundary.",
+	"assertions": {
+		"minElements": 6,
+		"mustContainElementTypes": ["exclusiveGateway", "userTask", "boundaryEvent"]
+	}
+}

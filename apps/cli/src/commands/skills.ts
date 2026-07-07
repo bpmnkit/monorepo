@@ -6,7 +6,8 @@ import type { Command, CommandGroup } from "../types.js"
 /**
  * Install BPMNKit AIKit skills into `.claude/commands/` in the current project.
  * Skills are markdown prompt files that Claude Code executes as slash commands:
- *   /design, /implement, /review, /test, /deploy
+ *   /implement, /review, /test, /deploy
+ * Lightweight, CLI-only versions of the full plugin's skill set — see aikit.md.
  *
  * Also installs aikit.md into .claude/ as a shared tool reference.
  */
@@ -97,7 +98,12 @@ const skillsInstallCmd: Command = {
 			ctx.output.info(`  /${name}`)
 		}
 		ctx.output.info("")
-		ctx.output.info("Make sure the BPMNKit AIKit MCP server is configured in .claude/mcp.json")
+		ctx.output.info(
+			"These commands drive `casen` directly — no MCP server or proxy needed. " +
+				"For the full skill set (implement/extend/agent/connect/review/test/deploy + generated " +
+				"reference docs), install the Claude Code plugin instead: " +
+				"/plugin marketplace add github:bpmnkit/monorepo && /plugin install bpmnkit",
+		)
 	},
 }
 

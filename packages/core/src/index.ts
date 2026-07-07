@@ -148,8 +148,25 @@ export type {
 	ZeebePropertyEntry,
 	ZeebeFormDefinition,
 	ZeebeCalledDecision,
+	ZeebeAssignmentDefinition,
+	ZeebeTaskSchedule,
+	ZeebePriorityDefinition,
+	ZeebeSubscription,
 } from "./bpmn/zeebe-extensions.js"
 export { zeebeExtensionsToXmlElements } from "./bpmn/zeebe-extensions.js"
+export {
+	buildAiAgentSubProcess,
+	AI_AGENT_JOB_WORKER_TASK_TYPE,
+	AI_AGENT_DEFAULT_OUTPUT_ELEMENT,
+} from "./bpmn/agentic.js"
+export type {
+	AiAgentOptions,
+	AiAgentModelConfig,
+	AiAgentToolSpec,
+	AiAgentToolParam,
+	AiAgentToolParamType,
+	AiAgentBuild,
+} from "./bpmn/agentic.js"
 export { Dmn, layoutDmn, benchmarkDmnLayout, compactifyDmn, expandDmn } from "./dmn/index.js"
 export type {
 	DmnBenchmarkResult,
@@ -291,3 +308,43 @@ export type {
 	CompactFlow,
 	CompactProcess,
 } from "./bpmn/compact.js"
+export {
+	compilePlan,
+	extractPlan,
+	mergePlan,
+	slugify,
+	uniqueId,
+} from "./plan/index.js"
+export type {
+	CompilePlanOptions,
+	ConnectorApplyResult,
+	ConnectorResolver,
+	ExtractResult,
+	PlanAgentTool,
+	PlanAiAgentStep,
+	PlanBranch,
+	PlanBusinessRuleTaskStep,
+	PlanCallActivityStep,
+	PlanConnectorRef,
+	PlanConnectorStep,
+	PlanEndStep,
+	PlanErrorBoundary,
+	PlanGatewayStep,
+	PlanInputVariable,
+	PlanProblem,
+	PlanRawStep,
+	PlanReceiveTaskStep,
+	PlanScenario,
+	PlanScriptTaskStep,
+	PlanSendTaskStep,
+	PlanServiceTaskStep,
+	PlanStartStep,
+	PlanStep,
+	PlanSubProcessStep,
+	PlanTimerBoundary,
+	PlanUserTaskStep,
+	PlanWaitStep,
+	ProcessPlan,
+	SynthResult,
+	UnsupportedElement,
+} from "./plan/index.js"

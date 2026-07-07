@@ -1,0 +1,9 @@
+{
+	"id": "error-boundary-payment-refund",
+	"category": "error-handling",
+	"description": "An error boundary whose handler path runs a compensating (refund) service task before ending — modeled with a plain error boundary, since BPMN compensation events aren't yet exposed via the ProcessPlan IR.",
+	"assertions": {
+		"mustContainElementTypes": ["boundaryEvent"],
+		"mustContainJobTypes": ["charge:1", "refund:1"]
+	}
+}

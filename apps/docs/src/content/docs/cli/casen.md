@@ -214,10 +214,39 @@ Once installed, plugin commands appear in the main TUI and in tab-completion alo
 
 To build your own plugin, see [Plugin Authoring](/cli/plugin-authoring/).
 
+## BPMN generation pipeline
+
+Every BPMN process is authored as a `ProcessPlan` JSON file — never hand-written XML — and
+compiled deterministically:
+
+```sh
+# Print the ProcessPlan JSON format reference (schema + field notes)
+casen plan schema
+
+# Compile a plan to laid-out, deployable BPMN
+casen synth synth order-process.plan.json --output order-process.bpmn
+
+# Extend an existing process: lift it back to plan form, then merge a delta plan into it
+casen plan extract order-process.bpmn
+casen synth synth delta.plan.json --merge order-process.bpmn --output order-process.bpmn
+
+# Find and inspect a Camunda connector template
+casen connector search slack
+casen connector show io.camunda.connectors.Slack.v1
+
+# Deploy-readiness gate, then deploy
+casen lint lint order-process.bpmn --profile deploy
+casen deploy deploy order-process.bpmn                   # local Reebe
+casen deploy deploy order-process.bpmn --target camunda8 # active Camunda 8 profile
+```
+
+`casen synth` reports any problems keyed by JSON path in the plan (e.g. `steps[2].connector.values.token`) — fix the plan, never the XML, and re-run. If the plan has a `tests` array, `casen synth` also writes a `<file>.bpmn.tests.json` sidecar, runnable with `casen test <file>.bpmn`.
+
+See [Building Processes with AI](/guides/ai-implement/) and [AI Agents](/guides/ai-agents/) for full walkthroughs.
+
 ## AIKit Skills
 
-`casen` ships four Claude Code slash commands for AI-driven process development.
-Install them into the current project:
+`casen` ships four lightweight, CLI-only Claude Code slash commands (no MCP server, no proxy):
 
 ```sh
 casen skills install
@@ -225,12 +254,12 @@ casen skills install
 
 | Command | Description |
 |---|---|
-| `/implement <description>` | Generate BPMN + scaffold workers + validate + deploy |
-| `/review <path>` | Validate a BPMN file and get structured findings |
-| `/test <path>` | Analyse structure, worker coverage, and suggest scenarios |
-| `/deploy <path>` | Deploy a BPMN to local reebe or Camunda 8 |
+| `/implement <description>` | Write a plan, compile it, test it, scaffold workers, deploy |
+| `/review <path>` | Run the full lint report and report a deploy-ready verdict |
+| `/test <path>` | Run scenario tests and report path/branch coverage |
+| `/deploy <path>` | Deploy-readiness gate, then deploy to local Reebe or Camunda 8 |
 
-See [AIKit Skills](/cli/skills/) for full documentation.
+For the richer skill set (`/bpmnkit:implement`, `:extend`, `:agent`, `:connect`, plus generated reference docs), install the Claude Code plugin instead: `/plugin marketplace add github:bpmnkit/monorepo` then `/plugin install bpmnkit`. See [AIKit Skills](/cli/skills/) for full documentation.
 
 ## Worker commands
 

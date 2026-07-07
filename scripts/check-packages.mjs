@@ -28,6 +28,7 @@ const PUBLISHED = [
 	"packages/operate",
 	"packages/astro-shared",
 	"packages/connector-gen",
+	"packages/connectors",
 	"packages/patterns",
 	"packages/worker-client",
 	"apps/cli",

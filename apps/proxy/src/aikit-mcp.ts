@@ -542,6 +542,24 @@ async function toolBpmnSimulate(path: string, scenarios: unknown[]): Promise<str
 	const xml = readFileSync(absPath, "utf8")
 	const defs = Bpmn.parse(xml)
 
+	if (scenarios.length > 0) {
+		const { Engine, runScenario } = await import("@bpmnkit/engine")
+		type ProcessScenarioLike = Parameters<typeof runScenario>[2]
+		const results = []
+		for (const scenario of scenarios as ProcessScenarioLike[]) {
+			results.push(await runScenario(new Engine(), defs, scenario))
+		}
+		return JSON.stringify(
+			{
+				mode: "execution",
+				note: "Ran each scenario against the in-process TS engine (@bpmnkit/engine): mocked job workers, path/variable assertions. Sub-process tools inside an AI Agent sub-process are not individually executed — the sub-process is dispatched and mocked as a single job.",
+				results,
+			},
+			null,
+			2,
+		)
+	}
+
 	// Collect all service task job types referenced in the diagram
 	const referencedJobTypes = new Set<string>()
 	for (const proc of defs.processes) {
@@ -574,7 +592,8 @@ async function toolBpmnSimulate(path: string, scenarios: unknown[]): Promise<str
 
 	return JSON.stringify(
 		{
-			note: "Phase 1: structural analysis. Full simulation (with process execution) coming in a future phase.",
+			mode: "structural",
+			note: "No scenarios provided — ran structural analysis only (validation findings + worker coverage). Pass `scenarios` to actually execute the process.",
 			validation: {
 				errors: errors.length,
 				findings: errors.map((f) => ({ message: f.message, elementIds: f.elementIds })),
@@ -584,7 +603,6 @@ async function toolBpmnSimulate(path: string, scenarios: unknown[]): Promise<str
 				covered: coveredWorkers.length,
 				missing: missingWorkers,
 			},
-			scenariosRequested: scenarios.length,
 		},
 		null,
 		2,
@@ -839,15 +857,19 @@ const TOOLS = [
 	{
 		name: "bpmn_simulate",
 		description:
-			"Analyse a BPMN process structurally: checks validation findings and worker coverage. " +
-			"Full process execution simulation is planned for a future phase.",
+			"Run or analyse a BPMN process. With `scenarios`, actually executes each one against the " +
+			'in-process TS engine (mocked job workers, path/variable assertions) — mode: "execution". ' +
+			"Without scenarios, runs structural analysis only (validation findings + worker coverage) — " +
+			'mode: "structural". The response always reports which mode ran.',
 		inputSchema: {
 			type: "object",
 			properties: {
 				path: { type: "string", description: "Path to the .bpmn file" },
 				scenarios: {
 					type: "array",
-					description: "Test scenarios (reserved for future use)",
+					description:
+						"Test scenarios to execute: { id, name, processId?, inputs?, mocks?: " +
+						"{ [taskType]: { outputs?, error? } }, expect?: { path?, variables? } }",
 					items: { type: "object" },
 				},
 			},

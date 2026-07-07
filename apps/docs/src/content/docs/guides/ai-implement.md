@@ -1,100 +1,106 @@
 ---
-title: AI-Driven Implementation
-description: Use the /implement skill to go from a natural language description to a deployed, tested BPMN process.
+title: Building Processes with AI
+description: Go from a natural language description to a deployed, tested BPMN process — via a deterministic ProcessPlan pipeline, never hand-written XML.
 ---
 
-The `/implement` skill turns a plain-English description into a deployed, working process.
-Claude plans the BPMN, wires workers, validates the result, checks coverage, and asks once
-before deploying.
+BPMNKit's AI pipeline never asks an LLM to write BPMN XML. Every process is authored as a
+`ProcessPlan` JSON file and compiled deterministically by `casen synth` — this is what makes
+generated processes reliably valid, deployable, and easy to diff. The LLM's job is narrower and
+more reliable: write the plan, resolve connectors, and fix reported problems.
 
-## Prerequisites
+## The pipeline
 
-- `casen` installed and `casen proxy` running
-- `.claude/mcp.json` present in your project (created automatically by `casen skills install`)
-- Claude Code active in your terminal or IDE
+```
+"implement X" (natural language)
+        │
+        ▼
+  ProcessPlan JSON  ──casen synth──▶  laid-out, deployable .bpmn
+        │                                    │
+        │                            casen lint --profile deploy
+        │                                    │
+        └──casen plan extract◀────────  casen test
+                (for later edits)
+```
 
-## Install the skills
+1. **Check for a reusable domain pattern** — `casen pattern list`/`get` (see [Pattern Library](/guides/patterns/)) surfaces domain context (regulations, conventions) and realistic worker specs, used as reference while writing the plan below — not pasted in as a `ProcessPlan` directly.
+2. **Resolve external interactions** — `casen connector search "<system>"` / `casen connector show <template-id>` find the right Camunda connector template and its required inputs, instead of guessing property keys.
+3. **Write the plan** — a `ProcessPlan` JSON file (`casen plan schema` prints the full format reference).
+4. **Compile** — `casen synth <plan>.json --output <file>.bpmn`. Problems are reported keyed by JSON path (e.g. `steps[2].connector.values.token`) — fix the plan, never the XML, and re-run.
+5. **Test** — a `tests` array in the plan compiles to a `<file>.bpmn.tests.json` sidecar automatically; run it with `casen test <file>.bpmn`.
+6. **Deploy-readiness gate** — `casen lint <file>.bpmn --profile deploy` must report zero errors before deploying.
+7. **Deploy** — `casen deploy deploy <file>.bpmn` (local Reebe) or `--target camunda8`.
+
+## The Claude Code plugin
+
+The richest way to drive this pipeline is the `bpmnkit` Claude Code plugin:
+
+```sh
+/plugin marketplace add github:bpmnkit/monorepo
+/plugin install bpmnkit
+```
+
+It's **CLI-first**: every skill drives `casen` via Bash — no MCP server, no proxy daemon. Each skill reads the relevant generated/hand-written reference doc (plan format, connector catalog, agentic pattern, FEEL syntax, modeling conventions) before authoring a plan.
+
+```
+/bpmnkit:implement an invoice approval process for accounts payable
+```
+
+Claude works through: resolve connectors → write the plan → compile → test → scaffold missing workers → present a summary → ask where to deploy.
+
+Related skills: `/bpmnkit:extend <file> <change>` (lift an existing process to a plan, apply a targeted delta, merge), `/bpmnkit:agent` (design an AI Agent Sub-process — see [AI Agents](/guides/ai-agents/)), `/bpmnkit:connect <file> <step> <service>` (wire an existing step to a connector), `/bpmnkit:review`, `/bpmnkit:test`, `/bpmnkit:deploy`.
+
+## Lightweight alternative: `casen skills install`
+
+If you don't want the full plugin, four minimal slash commands are available directly from the CLI — see [AIKit Skills](/cli/skills/):
 
 ```sh
 casen skills install
 ```
 
-This copies four slash commands into `.claude/commands/`:
-`/implement`, `/review`, `/test`, `/deploy`.
-
-## Basic usage
-
-In Claude Code, type:
-
-```
-/implement an invoice approval process for accounts payable
-```
-
-Claude works through four steps automatically:
-
-1. **Pattern lookup** — checks whether a domain pattern matches the request and loads it as context
-2. **BPMN creation** — calls `bpmn_create` to generate the process diagram, writes it to disk
-3. **Worker wiring** — matches each service task to an existing worker or scaffolds a new one
-4. **Validation + coverage** — runs the pattern advisor and checks that all job types have a worker
-
-At the end Claude presents a summary and asks where to deploy.
+This installs `/implement`, `/review`, `/test`, `/deploy` into `.claude/commands/`. Same underlying pipeline, less scaffolding around it (no `/extend`/`/agent`/`/connect`, no generated reference docs).
 
 ## What gets created
 
 ```
 project/
-  invoice-approval.bpmn         ← generated process diagram
+  invoice-approval.plan.json         ← the source of truth — edit this, not the XML
+  invoice-approval.bpmn              ← compiled by casen synth
+  invoice-approval.bpmn.tests.json   ← scenarios, if the plan had a `tests` array
   workers/
     validate-invoice/
-      index.ts                  ← implement the handle() function here
+      index.ts                       ← implement the job logic here
       package.json
       tsconfig.json
       README.md
-    check-duplicate/
-      index.ts
-      ...
 ```
-
-## Domain patterns
-
-Before creating the BPMN, Claude checks a built-in pattern library for a domain match.
-Patterns provide a starting template and realistic worker specs for common business processes:
-
-| Pattern | Domain |
-|---|---|
-| `invoice-approval` | Finance / accounts payable |
-| `employee-onboarding` | HR |
-| `supplier-contract-review` | Procurement / legal |
-| `incident-response` | IT / ops |
-| `loan-origination` | Financial services |
-| `content-moderation` | Trust & safety |
-| `order-fulfillment` | E-commerce / supply chain |
-
-Patterns are hints — Claude adapts them or ignores them when the request doesn't match.
 
 ## Deploying
 
-At the end of the flow Claude asks:
-
 ```
-Deploy to local reebe, deploy to Camunda 8, or skip deployment?
+Deploy to local Reebe, deploy to Camunda 8, or skip?
 ```
 
-- **Local reebe** — deploys to `ZEEBE_ADDRESS` (default `http://localhost:26500`).
-  Start reebe first with `casen reebe`.
-- **Camunda 8** — deploys using the active `casen` profile.
-  Set one up with `casen profile add`.
-- **Skip** — leaves the BPMN file on disk for manual review and deployment.
+- **Local Reebe** — deploys via `ZEEBE_ADDRESS` (default `http://localhost:26500`). Start Reebe first: `casen reebe start --port 26500`.
+- **Camunda 8** — deploys using the active `casen` profile. Set one up with `casen profile create`.
+- **Skip** — leaves the plan and BPMN file on disk for manual review and deployment.
 
 ## Implementing workers
 
-Each scaffolded worker has a `handle()` function to implement:
+Each scaffolded worker uses `@bpmnkit/worker-client`'s real polling API:
 
 ```typescript
 // workers/validate-invoice/index.ts
-async function handle(variables: Inputs): Promise<Outputs> {
-  // TODO: implement invoice validation
-  throw new Error("Not implemented")
+import { createWorkerClient } from "@bpmnkit/worker-client"
+
+const client = createWorkerClient({ workerName: "validate-invoice-worker" })
+
+for await (const job of client.poll("validate-invoice:1")) {
+  try {
+    // TODO: implement invoice validation
+    await job.complete({ /* output variables */ })
+  } catch (err) {
+    await job.fail(String(err))
+  }
 }
 ```
 
@@ -114,15 +120,10 @@ casen worker start
 
 See [Standalone Workers](/guides/workers-standalone/) for deployment options.
 
-## Re-running and refining
-
-You can call `/implement` multiple times. Existing workers are reused — only missing job
-types get scaffolded.
-
-To modify the BPMN after generation:
+## Extending an existing process
 
 ```
-/implement add a timeout boundary event to the approval task in invoice-approval.bpmn
+/bpmnkit:extend invoice-approval.bpmn add a timeout boundary event to the approval task
 ```
 
-Or open the file in Studio for visual editing and run `/review` afterward.
+This lifts the process back into plan form (`casen plan extract`), writes a small delta plan touching only the changed step, and merges it in (`casen synth --merge`) — the diff is reported at the element level, not as an XML diff.

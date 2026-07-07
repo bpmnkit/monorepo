@@ -1,0 +1,39 @@
+{
+	"name": "@bpmnkit/connectors",
+	"version": "0.0.1",
+	"private": false,
+	"type": "module",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/feel": "workspace:*"
+	},
+	"description": "Camunda 8 out-of-the-box connector catalog and deterministic element-template application for @bpmnkit/core",
+	"keywords": ["camunda", "connector", "element-template", "bpmn", "zeebe", "typescript"],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

@@ -300,11 +300,14 @@ export class ProcessInstance {
 					} else {
 						val = resolved
 					}
-				} else {
+				} else if (inp.source.trimStart().startsWith("=")) {
 					val = this.evalFeel(inp.source, scopeId, {
 						elementId: el.id,
 						property: `input:${inp.target}`,
 					})
+				} else {
+					// A zeebe:input source without a leading "=" is a literal value, not FEEL.
+					val = inp.source
 				}
 				this.variables.setLocal(scopeId, inp.target, val)
 				this.emit({ type: "variable:set", name: inp.target, value: val, scopeId })
@@ -378,8 +381,21 @@ export class ProcessInstance {
 				await this.handleSubProcess(token, el, ctx)
 				break
 
+			case "adHocSubProcess":
+				if (ext.taskDefinition) {
+					// Job-worker implementation (e.g. the AI Agent Sub-process connector) —
+					// dispatch as a job so scenarios can mock it like any other task.
+					// The tools nested inside are not individually executed; see the
+					// scenario runner docs for scope.
+					await this.handleJobTask(token, el, ext, ctx)
+				} else {
+					// BPMN-native ad-hoc sub-process — auto-complete (tools not executed).
+					await this.complete(token, ctx)
+				}
+				break
+
 			default:
-				// eventSubProcess, adHocSubProcess, callActivity, etc. — auto-complete
+				// eventSubProcess, callActivity, etc. — auto-complete
 				await this.complete(token, ctx)
 				break
 		}

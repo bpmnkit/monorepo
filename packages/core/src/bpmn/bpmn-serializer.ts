@@ -243,8 +243,21 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 			break
 
 		case "adHocSubProcess":
+			if (fe.cancelRemainingInstances !== undefined) {
+				attrs.cancelRemainingInstances = String(fe.cancelRemainingInstances)
+			}
 			children.push(...serializeLoopCharacteristics(fe.loopCharacteristics, bp))
 			children.push(...serializeProcessContents(fe, ns))
+			if (fe.completionCondition) {
+				children.push(
+					el(
+						`${bp}:completionCondition`,
+						fe.completionCondition.attributes,
+						[],
+						fe.completionCondition.text,
+					),
+				)
+			}
 			break
 
 		case "subProcess":

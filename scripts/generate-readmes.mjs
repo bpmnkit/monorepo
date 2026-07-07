@@ -50,6 +50,10 @@ function footer(currentPkg) {
 		},
 		{ name: "@bpmnkit/operate", desc: "Monitoring & operations frontend for Camunda clusters" },
 		{ name: "@bpmnkit/connector-gen", desc: "Generate connector templates from OpenAPI specs" },
+		{
+			name: "@bpmnkit/connectors",
+			desc: "Camunda 8 OOTB connector catalog and deterministic template application",
+		},
 		{ name: "@bpmnkit/cli", desc: "Camunda 8 command-line interface (casen)" },
 		{ name: "@bpmnkit/proxy", desc: "Local AI bridge and Camunda API proxy server" },
 		{ name: "@bpmnkit/patterns", desc: "Domain process patterns for BPMNKit AIKit" },
@@ -1340,6 +1344,73 @@ interface GenerateOptions {
     paths?: string[]       // include only these path prefixes
     methods?: string[]     // e.g. ["get", "post"]
   }
+}
+\`\`\`
+`,
+	},
+
+	// ── connectors ────────────────────────────────────────────────────────────
+	"packages/connectors": {
+		name: "@bpmnkit/connectors",
+		description:
+			"Camunda 8 out-of-the-box connector catalog and deterministic element-template application for @bpmnkit/core",
+		content: `## Overview
+
+\`@bpmnkit/connectors\` bundles the 116+ Camunda 8 out-of-the-box connector element templates (Slack, SendGrid, HTTP, Kafka, AWS, the agentic-AI family, and more) and applies them to \`@bpmnkit/core\` builder options deterministically — every binding kind (\`zeebe:input\`, \`zeebe:output\`, \`zeebe:taskHeader\`, \`zeebe:taskDefinition\`, \`zeebe:property\`, \`zeebe:adHoc\`), dropdown-gated conditions, required-field validation, and FEEL parse-checking on FEEL-tagged values.
+
+## Features
+
+- **Full connector catalog** — search and inspect all bundled Camunda 8 OOTB templates
+- **Complete binding resolution** — including \`zeebe:property\` and \`zeebe:output\`, which naive appliers drop
+- **Required-field and FEEL validation** — problems are reported, never silently swallowed
+- **Works with any template** — bundled catalog or a custom/generated \`ElementTemplate\`
+
+## Installation
+
+\`\`\`sh
+npm install @bpmnkit/connectors
+\`\`\`
+
+## Quick Start
+
+\`\`\`typescript
+import { Bpmn } from "@bpmnkit/core"
+import { applyConnectorTemplate, searchConnectors } from "@bpmnkit/connectors"
+
+const [slack] = searchConnectors("slack")
+const result = applyConnectorTemplate(slack.id, {
+  method: "chat.postMessage",
+  token: "{{secrets.SLACK_OAUTH_TOKEN}}",
+  "data.channel": "#ops",
+  "data.text": "=\\"Order \\" + orderId + \\" failed validation\\"",
+})
+
+if (result.problems.length > 0) throw new Error(result.problems[0].message)
+
+const defs = Bpmn.createProcess("proc")
+  .startEvent("s")
+  .serviceTask("notify", result.serviceTask!)
+  .endEvent("e")
+  .build()
+\`\`\`
+
+## API Reference
+
+\`\`\`typescript
+function listConnectors(): ConnectorSummary[]
+function searchConnectors(query: string): ConnectorSummary[]
+function getTemplate(id: string): ElementTemplate | undefined
+
+function applyConnectorTemplate(templateId: string, values?: Record<string, string>): ApplyResult
+function applyElementTemplate(template: ElementTemplate, values?: Record<string, string>): ApplyResult
+
+interface ApplyResult {
+  serviceTask?: ServiceTaskOptions
+  adHocSubProcess?: Partial<AdHocSubProcessOptions>
+  startEvent?: Partial<StartEventOptions>
+  boundaryEvent?: Partial<BoundaryEventOptions>
+  intermediateEvent?: Partial<IntermediateCatchEventOptions>
+  problems: ApplyProblem[]
 }
 \`\`\`
 `,

@@ -26,6 +26,8 @@
  */
 
 import type { CanvasPlugin } from "@bpmnkit/canvas"
+import { CAMUNDA_CONNECTOR_TEMPLATES } from "@bpmnkit/connectors"
+import type { ElementTemplate } from "@bpmnkit/connectors"
 import type {
 	BpmnConditionalEventDefinition,
 	BpmnDefinitions,
@@ -51,10 +53,8 @@ import type {
 	PanelAdapter,
 	PanelSchema,
 } from "../config-panel/index.js"
+export { CAMUNDA_CONNECTOR_TEMPLATES } from "@bpmnkit/connectors"
 import { buildRegistrationFromTemplate } from "./template-engine.js"
-import type { ElementTemplate } from "./template-types.js"
-import { CAMUNDA_CONNECTOR_TEMPLATES } from "./templates/generated.js"
-export { CAMUNDA_CONNECTOR_TEMPLATES } from "./templates/generated.js"
 export { templateToServiceTaskOptions } from "./template-to-service-task.js"
 import {
 	buildPropertiesWithExampleOutput,

@@ -22,6 +22,7 @@
 	"dependencies": {
 		"@bpmnkit/api": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/engine": "workspace:*",
 		"@bpmnkit/patterns": "workspace:*",
 		"@bpmnkit/profiles": "workspace:*",
 		"better-sqlite3": "^12.8.0",
