@@ -147,3 +147,42 @@ describe("bpmn_validate logic", () => {
 		expect(Array.isArray(report.findings)).toBe(true)
 	}, 30_000)
 })
+
+// ── bpmn_simulate logic (pure, uses @bpmnkit/core + @bpmnkit/engine) ───────────
+//
+// aikit-mcp.ts itself imports "./sandbox.js" (isolated-vm), whose native binary
+// isn't buildable in this sandbox — so, like "bpmn_validate logic" above, these
+// tests exercise the underlying composition directly instead of importing the
+// tool module.
+
+describe("bpmn_simulate logic", () => {
+	async function serviceTaskProcess() {
+		const { Bpmn } = await import("@bpmnkit/core")
+		return Bpmn.createProcess("proc")
+			.startEvent("start")
+			.serviceTask("notify", { name: "Notify", taskType: "test:notify:1" })
+			.endEvent("end")
+			.build()
+	}
+
+	it("structural analysis (the no-scenarios path) reports no validation errors for a valid process", async () => {
+		const { optimize } = await import("@bpmnkit/core")
+		const defs = await serviceTaskProcess()
+		const report = optimize(defs)
+		expect(report.findings.filter((f) => f.severity === "error")).toEqual([])
+	})
+
+	it("executing a mocked scenario against the TS engine passes and visits the task", async () => {
+		const { Engine, runScenario } = await import("@bpmnkit/engine")
+		const defs = await serviceTaskProcess()
+
+		const result = await runScenario(new Engine(), defs, {
+			id: "s1",
+			name: "Notify completes",
+			mocks: { "test:notify:1": { outputs: { notified: true } } },
+			expect: { path: ["start", "notify", "end"], variables: { notified: true } },
+		})
+		expect(result.passed).toBe(true)
+		expect(result.visitedElements).toContain("notify")
+	})
+})

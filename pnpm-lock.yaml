@@ -227,6 +227,9 @@ importers:
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@bpmnkit/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@bpmnkit/patterns':
         specifier: workspace:*
         version: link:../../packages/patterns

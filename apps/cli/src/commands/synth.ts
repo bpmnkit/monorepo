@@ -1,13 +1,36 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { applyConnectorTemplate } from "@bpmnkit/connectors"
-import { Bpmn, compilePlan, mergePlan } from "@bpmnkit/core"
-import type { ProcessPlan } from "@bpmnkit/core"
+import { Bpmn, compilePlan, mergePlan, slugify, uniqueId } from "@bpmnkit/core"
+import type { PlanScenario, ProcessPlan } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
 
 async function readPlan(path: string): Promise<ProcessPlan> {
 	const text = await readFile(resolve(path), "utf-8")
 	return JSON.parse(text) as ProcessPlan
+}
+
+/** Convert plan-embedded test scenarios to the `.bpmn.tests.json` shape consumed by `casen test`. */
+export function toScenarioSidecar(tests: PlanScenario[]): unknown[] {
+	const taken = new Set<string>()
+	return tests.map((t) => {
+		const id = uniqueId(slugify(t.name), taken)
+
+		const mocks = Object.fromEntries(
+			Object.entries(t.mocks ?? {}).map(([jobType, mock]) => [
+				jobType,
+				"error" in mock
+					? {
+							error: mock.error.message
+								? `${mock.error.code}: ${mock.error.message}`
+								: mock.error.code,
+						}
+					: { outputs: mock.outputs },
+			]),
+		)
+
+		return { id, name: t.name, inputs: t.inputs, mocks, expect: t.expect }
+	})
 }
 
 const synthCmd: Command = {
@@ -71,6 +94,14 @@ const synthCmd: Command = {
 				: (mergeTarget ?? planPath.replace(/\.json$/, ".bpmn")),
 		)
 		await writeFile(outputPath, result.xml, "utf-8")
+
+		if (plan.tests && plan.tests.length > 0) {
+			const sidecarPath = `${outputPath}.tests.json`
+			await writeFile(sidecarPath, JSON.stringify(toScenarioSidecar(plan.tests), null, 2), "utf-8")
+			ctx.output.info(
+				`Wrote ${sidecarPath} (${plan.tests.length} scenario(s) — run: casen test ${outputPath})`,
+			)
+		}
 
 		if (result.problems.length > 0) {
 			ctx.output.info(`\nWrote ${outputPath} with ${result.problems.length} problem(s) above.`)
