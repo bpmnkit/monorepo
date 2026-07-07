@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-07-07 — SEO & discoverability: glossary expansion (Phase 4 complete) + Phase 6 checklist
+
+- **Glossary expansion** (`apps/learn`) — added 3 entries to `/glossary`: Message Event, Timer Event, Call Activity, bringing the total to 12 (all core BPMN concepts from `doc/seo-plan.md`'s suggested list). Each grounded in the real `@bpmnkit/core` builder API, checked directly against `packages/core/src/bpmn/bpmn-builder.ts`'s `StartEventOptions`/`IntermediateCatchEventOptions`/`CallActivityOptions` before writing (message/timer events use `messageName`/`timerDuration`/`timerCycle`/`correlationKey`; call activities use `callActivity(id, { processId, propagateAllChildVariables })`).
+- Extended `GlossaryDiagram.astro`'s `DiagramSymbol` union with `message-start` (circle + envelope glyph), `timer-intermediate` (double-circle + clock hands, matching BPMN's intermediate-event notation), and `call-activity` (double-bordered rectangle, matching BPMN's reusable-activity notation) — verified each renders the correct distinct SVG shape in the build output.
+- **`doc/seo-phase6-checklist.md`** (new) — a concrete, actionable checklist for the one phase of `doc/seo-plan.md` that genuinely can't be done from this repo: Google Search Console (domain-property verification via DNS TXT, which covers all three subdomains in one step) + sitemap submission using the real URLs this repo now generates, Bing Webmaster (import-from-GSC), analytics (no script wired in yet — documented where it would go once an account exists, deliberately not stubbing a script tag with nothing behind it), specific backlink/outreach targets (Camunda Forum, dev.to cross-posts of specific existing posts with `canonical_url`, Stack Overflow tags), and a recurring measurement cadence table.
+- Verified: `biome check`/`astro check`/`tsc --noEmit` clean, full `astro build` for `learn` — 54 pages (up from 51), all 3 new glossary pages' canonicals/JSON-LD and diagram SVGs spot-checked in the build output.
+- SEO & Discoverability roadmap section: Phases 1–5 are now fully complete; Phase 6 has a checklist instead of a "can't do this" note.
+
 ## 2026-07-07 — SEO & discoverability: remaining 6 blog posts (Phase 3 complete)
 
 Writes the 6 posts left from `doc/seo-plan.md`'s 10-post editorial calendar, each grounded in a verified real API (checked package source/compiled output before writing, not assumed from memory):

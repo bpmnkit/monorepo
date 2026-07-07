@@ -9,10 +9,11 @@ Technical SEO across `bpmnkit.com`, `docs.bpmnkit.com`, and `learn.bpmnkit.com`,
 - **Domain/brand unification** — `docs` was titled "BPMN SDK" and pointed at `bpmn-sdk-docs.pages.dev`; now "BPMN Kit" / `docs.bpmnkit.com`, matching the product everywhere else. `learn` had no `site` URL configured at all.
 - **`/connectors`** (`bpmnkit.com`) — 116 pages, one per Camunda 8 connector template, generated from `@bpmnkit/connectors`' real catalog data (required/optional inputs, task type, an `applyConnectorTemplate()` code sample).
 - **`/compare`** (`bpmnkit.com`) — `bpmn-js` and `camunda-modeler` comparison pages with FAQ structured data.
-- **`/glossary`** (`learn.bpmnkit.com`) — 9 BPMN element definitions (events, gateways, tasks, sub-processes, boundary events), each with a generated diagram, a runnable `@bpmnkit/core` example, and a link to the matching tutorial.
-- **`/blog`** (`bpmnkit.com`) — Astro content collection + RSS feed, launched with 4 posts on generating, laying out, simulating, and deploying BPMN diagrams with the SDK.
+- **`/glossary`** (`learn.bpmnkit.com`) — 12 BPMN element definitions (events, gateways, tasks, sub-processes, boundary events, message events, timer events, call activities), each with a generated diagram, a runnable `@bpmnkit/core` example, and a link to the matching tutorial where one exists.
+- **`/blog`** (`bpmnkit.com`) — Astro content collection + RSS feed, all 10 posts from the editorial calendar published: generating, laying out, simulating, and deploying BPMN diagrams; migrating from bpmn-js; evaluating FEEL; AI-generated BPMN; embedding a viewer in React; boundary events; generating a connector from an OpenAPI spec.
 - **`/feel-functions`** (`bpmnkit.com`) — reference for all 87 `@bpmnkit/feel` built-in functions, verified 1:1 against the package's real `builtinNames()` export.
 - **`/use-cases`** (`bpmnkit.com`) — 4 pages (AI workflow generation, embedding the editor, Camunda 8 CI automation, process simulation), each with a runnable code sample and FAQ structured data.
+- **`doc/seo-phase6-checklist.md`** — a step-by-step checklist for Search Console, Bing Webmaster, analytics, and backlink/outreach setup — the one part of the SEO plan that requires live domain access and can't be done from the repo.
 
 ## AIKit v2 — Deterministic Generation Pipeline (2026-07-07)
 

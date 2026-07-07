@@ -8,6 +8,9 @@ export interface DiagramSymbol {
 		| "gateway-parallel"
 		| "gateway-inclusive"
 		| "boundary"
+		| "message-start"
+		| "timer-intermediate"
+		| "call-activity"
 	label?: string
 }
 
@@ -238,6 +241,79 @@ Bpmn.createProcess("order-flow")
   .withAutoLayout()
   .build();`,
 		relatedTutorialId: "error-handling",
+	},
+	{
+		slug: "message-event",
+		term: "Message Event",
+		shortDefinition:
+			"An event triggered by an incoming message — starts a process, or pauses one until a correlated message arrives.",
+		definition: [
+			"A message event (drawn with an envelope icon inside its circle) fires when a message with a matching name arrives, rather than on a timer or a manual trigger. A message start event begins a new process instance when a message arrives; a message intermediate catch event pauses an already-running instance until one arrives.",
+			"On Camunda 8, an intermediate message catch event needs a correlation key — a FEEL expression identifying which specific process instance the incoming message belongs to (e.g. matching an order ID), since many instances of the same process can be waiting on the same message name at once.",
+		],
+		diagram: [
+			{ kind: "message-start", label: "Order Received" },
+			{ kind: "task", label: "Process Order" },
+			{ kind: "end" },
+		],
+		codeExample: `Bpmn.createProcess("order-flow")
+  .startEvent("start", { messageName: "OrderReceived" })
+  .serviceTask("reserve-stock", { taskType: "reserve-stock" })
+  .intermediateCatchEvent("wait-payment", {
+    messageName: "PaymentConfirmed",
+    correlationKey: "= orderId",
+  })
+  .serviceTask("ship", { taskType: "ship-order" })
+  .endEvent("end")
+  .withAutoLayout()
+  .build();`,
+	},
+	{
+		slug: "timer-event",
+		term: "Timer Event",
+		shortDefinition:
+			"An event triggered by a schedule — a fixed date, a delay, or a recurring cycle — rather than by another element completing.",
+		definition: [
+			"A timer event (drawn with a clock icon inside its circle) fires based on time rather than an incoming message or a completed task. A timer start event begins a new process instance on a schedule; a timer intermediate catch event pauses a running instance for a duration, until a specific date, or on a recurring cycle.",
+			"Timer values are ISO 8601: a duration like `PT1H` (one hour), a date-time like `2026-08-01T09:00:00Z`, or a recurring cycle like `R/PT24H` (every 24 hours). A timer boundary event (see Boundary Event) uses the same duration/date/cycle options to model timeouts.",
+		],
+		diagram: [
+			{ kind: "start" },
+			{ kind: "task", label: "Submit Request" },
+			{ kind: "timer-intermediate", label: "Wait 24h" },
+			{ kind: "task", label: "Send Reminder" },
+			{ kind: "end" },
+		],
+		codeExample: `Bpmn.createProcess("reminder-flow")
+  .startEvent("start")
+  .userTask("submit-request", { name: "Submit Request" })
+  .intermediateCatchEvent("wait-24h", { timerDuration: "PT24H" })
+  .serviceTask("send-reminder", { taskType: "send-reminder-email" })
+  .endEvent("end")
+  .withAutoLayout()
+  .build();`,
+	},
+	{
+		slug: "call-activity",
+		term: "Call Activity",
+		shortDefinition:
+			"A reference to a separately-deployed process — runs it as a child process instance, rather than embedding its steps inline.",
+		definition: [
+			"A call activity (drawn as a task-shaped rectangle with a thick double border) invokes another, independently-deployed process definition by ID as a child instance, then waits for it to complete before continuing. This is different from a sub-process, whose steps are embedded directly inside the parent diagram.",
+			'Call activities are useful for genuinely reusable process fragments — a "send invoice" flow used by several different parent processes, for example — that are deployed, versioned, and maintained as their own process definitions rather than being copy-pasted into every process that needs them.',
+		],
+		diagram: [{ kind: "start" }, { kind: "call-activity", label: "Shipping" }, { kind: "end" }],
+		codeExample: `Bpmn.createProcess("order-flow")
+  .startEvent("start")
+  .serviceTask("charge", { taskType: "payment-charge" })
+  .callActivity("shipping", {
+    name: "Shipping",
+    processId: "shipping-process", // a separately-deployed process
+    propagateAllChildVariables: false,
+  })
+  .endEvent("end")
+  .withAutoLayout()
+  .build();`,
 	},
 ]
 

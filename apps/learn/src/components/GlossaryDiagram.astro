@@ -71,8 +71,13 @@ function iconFor(kind: DiagramSymbol["kind"]): string {
       {(symbol.kind === "end" || symbol.kind === "end-error") && (
         <circle cx={x} cy={y} r="18" fill="var(--bg-card)" stroke={symbol.kind === "end-error" ? "var(--danger)" : "var(--pink)"} stroke-width="3" />
       )}
-      {symbol.kind === "task" && (
-        <rect x={x - 45} y={y - 24} width="90" height="48" rx="8" fill="var(--bg-card)" stroke="var(--accent-bright)" stroke-width="1.5" />
+      {(symbol.kind === "task" || symbol.kind === "call-activity") && (
+        <g>
+          <rect x={x - 45} y={y - 24} width="90" height="48" rx="8" fill="var(--bg-card)" stroke="var(--accent-bright)" stroke-width="1.5" />
+          {symbol.kind === "call-activity" && (
+            <rect x={x - 41} y={y - 20} width="82" height="40" rx="6" fill="none" stroke="var(--accent-bright)" stroke-width="1.5" />
+          )}
+        </g>
       )}
       {(symbol.kind === "gateway-exclusive" || symbol.kind === "gateway-parallel" || symbol.kind === "gateway-inclusive") && (
         <g>
@@ -80,8 +85,21 @@ function iconFor(kind: DiagramSymbol["kind"]): string {
           <text x={x} y={y + 6} text-anchor="middle" font-size="18" fill="var(--teal)" font-weight="700">{iconFor(symbol.kind)}</text>
         </g>
       )}
+      {symbol.kind === "message-start" && (
+        <g>
+          <circle cx={x} cy={y} r="18" fill="var(--bg-card)" stroke="var(--teal)" stroke-width="2" />
+          <path d={`M${x - 9} ${y - 5} L${x} ${y + 2} L${x + 9} ${y - 5} M${x - 9} ${y - 5} L${x - 9} ${y + 6} L${x + 9} ${y + 6} L${x + 9} ${y - 5}`} stroke="var(--teal)" stroke-width="1.3" fill="none" stroke-linejoin="round" />
+        </g>
+      )}
+      {symbol.kind === "timer-intermediate" && (
+        <g>
+          <circle cx={x} cy={y} r="18" fill="var(--bg-card)" stroke="var(--accent-bright)" stroke-width="1.5" />
+          <circle cx={x} cy={y} r="13" fill="none" stroke="var(--accent-bright)" stroke-width="1.2" />
+          <path d={`M${x} ${y} L${x} ${y - 8} M${x} ${y} L${x + 6} ${y + 3}`} stroke="var(--accent-bright)" stroke-width="1.3" stroke-linecap="round" />
+        </g>
+      )}
       {symbol.label && (
-        <text x={x} y={y + (symbol.kind === "task" ? 42 : 38)} text-anchor="middle" font-size="11" fill="var(--text-muted)" font-family="var(--font-sans)">{symbol.label}</text>
+        <text x={x} y={y + (symbol.kind === "task" || symbol.kind === "call-activity" ? 42 : 38)} text-anchor="middle" font-size="11" fill="var(--text-muted)" font-family="var(--font-sans)">{symbol.label}</text>
       )}
     </g>
   ))}
