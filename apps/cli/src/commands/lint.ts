@@ -1,7 +1,15 @@
 import { readFile, writeFile } from "node:fs/promises"
+import { applyConnectorTemplate } from "@bpmnkit/connectors"
 import { Bpmn, compactify, optimize } from "@bpmnkit/core"
 import type { BpmnOperation, OptimizationCategory } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
+
+/** Resolves a connector template's missing required keys via @bpmnkit/connectors, for the `connector/*` lint rule. */
+function resolveConnectorRequirements(templateId: string, boundKeys: string[]): string[] {
+	const values = Object.fromEntries(boundKeys.map((k) => [k, "x"]))
+	const result = applyConnectorTemplate(templateId, values)
+	return result.problems.filter((p) => p.key !== undefined).map((p) => p.key as string)
+}
 
 const SEVERITY_SYMBOL: Record<string, string> = {
 	error: "✖",
@@ -22,6 +30,12 @@ const lintCmd: Command = {
 			type: "string",
 		},
 		{
+			name: "profile",
+			description:
+				'Lint profile. "deploy" runs every category and shows only error-severity findings — the deploy-readiness gate.',
+			type: "string",
+		},
+		{
 			name: "format",
 			description: "Output format: text (default) or json",
 			type: "string",
@@ -30,6 +44,13 @@ const lintCmd: Command = {
 			name: "fix",
 			description: "Auto-apply all fixable findings and write the result back to the file",
 			type: "boolean",
+		},
+	],
+	examples: [
+		{ description: "Lint a file", command: "casen lint lint order-process.bpmn" },
+		{
+			description: "Deploy-readiness gate (errors only)",
+			command: "casen lint lint order-process.bpmn --profile deploy",
 		},
 	],
 	async run(ctx) {
@@ -44,9 +65,15 @@ const lintCmd: Command = {
 			typeof categoriesFlag === "string" && categoriesFlag.length > 0
 				? (categoriesFlag.split(",").map((s) => s.trim()) as OptimizationCategory[])
 				: undefined
+		const deployProfile = ctx.flags.profile === "deploy"
 
-		const report = optimize(defs, categories !== undefined ? { categories } : undefined)
-		const { findings } = report
+		const report = optimize(defs, {
+			...(categories !== undefined ? { categories } : {}),
+			resolveConnectorRequirements,
+		})
+		const findings = deployProfile
+			? report.findings.filter((f) => f.severity === "error")
+			: report.findings
 
 		// --fix: apply all auto-fixable findings and write back
 		if (ctx.flags.fix) {
@@ -80,10 +107,10 @@ const lintCmd: Command = {
 			ctx.output.info(`${symbol} [${f.category}]${elIds} ${f.message}`)
 		}
 
-		const { total, bySeverity } = report.summary
-		const errorCount = bySeverity.error ?? 0
-		const warnCount = bySeverity.warning ?? 0
-		const infoCount = bySeverity.info ?? 0
+		const total = findings.length
+		const errorCount = findings.filter((f) => f.severity === "error").length
+		const warnCount = findings.filter((f) => f.severity === "warning").length
+		const infoCount = findings.filter((f) => f.severity === "info").length
 		ctx.output.info(
 			`\n${total} finding${total !== 1 ? "s" : ""}: ${errorCount} error${errorCount !== 1 ? "s" : ""}, ${warnCount} warning${warnCount !== 1 ? "s" : ""}, ${infoCount} info`,
 		)
