@@ -22,6 +22,7 @@ import { connectorGroup } from "./connector.js"
 import { deployGroup } from "./deploy.js"
 import { generateGroup } from "./generate.js"
 import { lintGroup } from "./lint.js"
+import { patternGroup } from "./pattern.js"
 import { planGroup } from "./plan.js"
 import { pluginGroup } from "./plugin.js"
 import { profileGroup } from "./profile.js"
@@ -83,6 +84,7 @@ export const pinnedGroups: CommandGroup[] = [
 	deployGroup,
 	generateGroup,
 	lintGroup,
+	patternGroup,
 	planGroup,
 	proxyGroup,
 	reebeGroup,

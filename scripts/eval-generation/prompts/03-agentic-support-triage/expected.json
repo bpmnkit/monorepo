@@ -1,10 +1,10 @@
 {
-  "id": "agentic-support-triage",
-  "category": "agentic",
-  "description": "AI Agent Sub-process with a connector-backed tool (fromAi() overriding a static value) and a plain job-worker tool.",
-  "assertions": {
-    "minElements": 4,
-    "mustContainTaskTypes": ["io.camunda.agenticai:aiagent-job-worker:1"],
-    "mustPassAgenticLint": true
-  }
+	"id": "agentic-support-triage",
+	"category": "agentic",
+	"description": "AI Agent Sub-process with a connector-backed tool (fromAi() overriding a static value) and a plain job-worker tool.",
+	"assertions": {
+		"minElements": 4,
+		"mustContainTaskTypes": ["io.camunda.agenticai:aiagent-job-worker:1"],
+		"mustPassAgenticLint": true
+	}
 }

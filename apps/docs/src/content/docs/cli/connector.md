@@ -1,21 +1,54 @@
 ---
 title: casen connector
-description: Generate Camunda REST connector element templates from OpenAPI specs via the casen CLI.
+description: Browse the bundled Camunda 8 connector catalog, or generate connector element templates from OpenAPI specs, via the casen CLI.
 ---
 
-`casen connector` generates Camunda REST connector element templates from OpenAPI 3.x and Swagger 2.x
-specifications. Point it at a local file or pick from the built-in catalog of 30 popular APIs and get
-ready-to-import `.json` templates for Camunda Modeler.
+`casen connector` has two independent jobs: **browse** the 116 bundled Camunda 8 out-of-the-box
+connector templates (`search`/`show` — used by the AI generation pipeline to wire a plan step to
+a real service), and **generate** brand-new connector element templates from OpenAPI 3.x/Swagger
+2.x specs (`generate`/`catalog` — for APIs Camunda doesn't ship a template for).
 
 ## Commands
 
 ```
 casen connector
-├── generate    — generate templates from a spec file or catalog entry
-└── catalog     — list all built-in catalog entries
+├── search      — find a bundled OOTB connector template by name/keyword
+├── show        — show a bundled template's required/optional inputs
+├── generate    — generate new templates from an OpenAPI spec file or catalog entry
+└── catalog     — list all built-in OpenAPI-catalog entries (for `generate`)
 ```
 
-## Generate from the catalog
+## Browse the bundled OOTB catalog
+
+```sh
+casen connector search slack
+casen connector show io.camunda.connectors.Slack.v1
+```
+
+`search` scores the 116 bundled templates by keyword match and prints a table (template id,
+direction, task type, description). `show` prints a template's task type, direction, and its
+required/optional input keys — these are the keys a `ProcessPlan` `connector` step's `values`
+object uses (see [Building Processes with AI](/guides/ai-implement/)):
+
+```
+$ casen connector show io.camunda.connectors.Slack.v1
+Slack connector  (io.camunda.connectors.Slack.v1)
+Task type: io.camunda:slack:1
+Direction: outbound
+Create a channel or send a message to a channel or user
+
+Required inputs:
+  token (secret) — OAuth token
+  data.channel — Channel/user name/email
+  data.text — Message
+  ...
+```
+
+A field marked `(secret)` should be supplied as a `{{secrets.NAME}}` placeholder, never a literal
+credential. This is the same catalog `@bpmnkit/connectors`' `listConnectors()`/`searchConnectors()`
+expose programmatically.
+
+## Generate from the OpenAPI catalog
 
 The fastest way to get started. The catalog contains 30 popular APIs with pre-configured spec URLs
 and auth defaults:

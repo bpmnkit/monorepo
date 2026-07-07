@@ -1,24 +1,32 @@
 {
-  "version": 1,
-  "process": { "id": "loan-application", "name": "Loan Application" },
-  "steps": [
-    { "kind": "start", "name": "Application submitted" },
-    {
-      "kind": "businessRuleTask",
-      "id": "credit_check",
-      "name": "Check credit",
-      "decisionId": "credit-check",
-      "resultVariable": "creditDecision"
-    },
-    {
-      "kind": "gateway",
-      "id": "decision_gateway",
-      "name": "Approved?",
-      "gatewayType": "exclusive",
-      "branches": [
-        { "name": "yes", "condition": "=creditDecision.approved = true", "steps": [{ "kind": "end", "id": "approved_end", "name": "Loan approved" }] },
-        { "name": "no", "default": true, "steps": [{ "kind": "end", "id": "rejected_end", "name": "Loan rejected" }] }
-      ]
-    }
-  ]
+	"version": 1,
+	"process": { "id": "loan-application", "name": "Loan Application" },
+	"steps": [
+		{ "kind": "start", "name": "Application submitted" },
+		{
+			"kind": "businessRuleTask",
+			"id": "credit_check",
+			"name": "Check credit",
+			"decisionId": "credit-check",
+			"resultVariable": "creditDecision"
+		},
+		{
+			"kind": "gateway",
+			"id": "decision_gateway",
+			"name": "Approved?",
+			"gatewayType": "exclusive",
+			"branches": [
+				{
+					"name": "yes",
+					"condition": "=creditDecision.approved = true",
+					"steps": [{ "kind": "end", "id": "approved_end", "name": "Loan approved" }]
+				},
+				{
+					"name": "no",
+					"default": true,
+					"steps": [{ "kind": "end", "id": "rejected_end", "name": "Loan rejected" }]
+				}
+			]
+		}
+	]
 }

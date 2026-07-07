@@ -1,5 +1,20 @@
 # Features
 
+## AIKit v2 — Deterministic Generation Pipeline (2026-07-07)
+
+Replaces the LLM-in-the-loop `bpmn_create`/`bpmn_update` MCP tools with a deterministic, CLI-first pipeline: every BPMN process is authored as a `ProcessPlan` JSON file and compiled by `casen synth` — the LLM never writes BPMN XML, element IDs, or connector property keys by hand.
+
+- **`@bpmnkit/connectors` package** — the 116-template Camunda 8 OOTB connector catalog plus a complete, deterministic template applier (`listConnectors()`, `searchConnectors()`, `getTemplate()`, `applyElementTemplate()`/`applyConnectorTemplate()`) covering every binding kind (`zeebe:input/output/taskHeader/taskDefinition/property/adHoc`), dropdown-gated conditions, and FEEL parse-validation.
+- **`buildAiAgentSubProcess()`** (`@bpmnkit/core`) — deterministic constructor for Camunda's AI Agent Sub-process pattern: tools as root-node activities, `fromAi()` tool-schema generation, verified against the real bundled `io.camunda.agenticai:aiagent-job-worker:1` template.
+- **`ProcessPlan` JSON IR + `casen synth|plan|connector` CLI** — `casen synth <plan>.json` compiles a plan deterministically to laid-out, deployable BPMN (or `--merge`s a delta plan into an existing process); `casen plan extract` lifts an existing process back into plan form; `casen plan schema` prints the format reference; `casen connector search|show` browse the catalog.
+- **Deploy-grade lint profile** — `casen lint --profile deploy` gates on Zeebe/Reebe deploy-parity rules (`deploy/*`), AI Agent sub-process structural rules (`agentic/*`), connector completeness (`connector/missing-required`), and full-tree FEEL syntax validation (`feel-syntax/*`) — errors only, the deploy-readiness gate.
+- **Honest simulation** — `bpmn_simulate` actually executes scenarios via the TS engine (`mode: "execution"`) when given any, instead of always doing structural-only analysis; the engine's dispatcher runs job-worker-backed ad-hoc sub-processes (e.g. the AI Agent Sub-process) through the same job-mock mechanism as any other task, so scenarios can mock them.
+- **Consolidated, CLI-first Claude Code plugin** (`plugins-claude/bpmnkit-claude`) — `/bpmnkit:implement`, `:extend`, `:agent`, `:connect`, `:review`, `:test`, `:deploy`, `:instances`, `:incidents`; no MCP server or proxy daemon required. Generated + hand-written reference docs (`references/plan-format.md`, `connectors.md`, `agentic.md`, `feel.md`, `modeling-style.md`) read by every skill before it authors a plan.
+- **New `casen deploy deploy <file> [--target camunda8]`** — file-based multipart BPMN deployment to local Reebe or Camunda 8, standalone (previously only reachable via the `bpmn_deploy` MCP tool).
+- **`scripts/eval-generation/`** — a 15-golden-prompt eval harness verifying the pipeline end-to-end (synth-clean, deploy-profile-clean, test pass rate, deploys-green where Reebe is available) without requiring an LLM call.
+
+Full design rationale: [`doc/ai-bpmn-generation-analysis.md`](ai-bpmn-generation-analysis.md); implementation spec: [`doc/spec-bpmn-generation-skills.md`](spec-bpmn-generation-skills.md).
+
 ## Cascivo design system — studio (2026-06-20)
 
 Migrating the studio console to the [cascivo](https://cascivo.com) design system

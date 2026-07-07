@@ -1,37 +1,37 @@
 {
-  "version": 1,
-  "process": {
-    "id": "order-confirmation",
-    "name": "Order Confirmation"
-  },
-  "steps": [
-    {
-      "kind": "start",
-      "name": "Order placed"
-    },
-    {
-      "kind": "connector",
-      "id": "send_confirmation",
-      "name": "Send confirmation email",
-      "connector": {
-        "template": "io.camunda.connectors.SendGrid.v2",
-        "values": {
-          "apiKey": "{{secrets.SENDGRID_API_KEY}}",
-          "from.name": "Orders",
-          "from.email": "orders@example.com",
-          "to.name": "=customerName",
-          "to.email": "=customerEmail",
-          "content.subject": "=\"Order \" + orderId + \" confirmed\"",
-          "content.type": "text/plain",
-          "content.value": "=\"Thanks for your order, \" + customerName + \"!\"",
-          "template.id": "",
-          "template.data": "{}"
-        }
-      }
-    },
-    {
-      "kind": "end",
-      "name": "Confirmation sent"
-    }
-  ]
+	"version": 1,
+	"process": {
+		"id": "order-confirmation",
+		"name": "Order Confirmation"
+	},
+	"steps": [
+		{
+			"kind": "start",
+			"name": "Order placed"
+		},
+		{
+			"kind": "connector",
+			"id": "send_confirmation",
+			"name": "Send confirmation email",
+			"connector": {
+				"template": "io.camunda.connectors.SendGrid.v2",
+				"values": {
+					"apiKey": "{{secrets.SENDGRID_API_KEY}}",
+					"from.name": "Orders",
+					"from.email": "orders@example.com",
+					"to.name": "=customerName",
+					"to.email": "=customerEmail",
+					"content.subject": "=\"Order \" + orderId + \" confirmed\"",
+					"content.type": "text/plain",
+					"content.value": "=\"Thanks for your order, \" + customerName + \"!\"",
+					"template.id": "",
+					"template.data": "{}"
+				}
+			}
+		},
+		{
+			"kind": "end",
+			"name": "Confirmation sent"
+		}
+	]
 }

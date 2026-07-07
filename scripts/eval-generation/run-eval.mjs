@@ -329,7 +329,7 @@ async function main() {
 	}
 
 	const report = { summary, results }
-	writeFileSync(join(HERE, "eval-report.json"), JSON.stringify(report, null, 2), "utf-8")
+	writeFileSync(join(HERE, "eval-report.json"), JSON.stringify(report, null, "\t"), "utf-8")
 
 	const md = [
 		"# BPMN generation eval report",

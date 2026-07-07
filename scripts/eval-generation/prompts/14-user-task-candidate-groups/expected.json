@@ -1,8 +1,8 @@
 {
-  "id": "user-task-candidate-groups",
-  "category": "user-task",
-  "description": "A single userTask with candidateGroups assignment — the simplest human-in-the-loop shape.",
-  "assertions": {
-    "mustContainElementTypes": ["userTask"]
-  }
+	"id": "user-task-candidate-groups",
+	"category": "user-task",
+	"description": "A single userTask with candidateGroups assignment — the simplest human-in-the-loop shape.",
+	"assertions": {
+		"mustContainElementTypes": ["userTask"]
+	}
 }

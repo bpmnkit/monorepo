@@ -23,6 +23,7 @@
 		"@bpmnkit/connectors": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",
+		"@bpmnkit/patterns": "workspace:*",
 		"@bpmnkit/profiles": "workspace:*",
 		"@bpmnkit/proxy": "workspace:*"
 	},

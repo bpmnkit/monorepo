@@ -1,11 +1,13 @@
 ---
 title: Pattern Library
-description: Domain BPMN patterns that Claude uses as context when generating processes with /implement.
+description: Domain BPMN patterns that Claude uses as context when implementing processes with /bpmnkit:implement.
 ---
 
 The pattern library (`@bpmnkit/patterns`) provides domain knowledge for common business
-processes. When you run `/implement`, Claude checks the library for a matching pattern and
-loads it as context before generating the BPMN.
+processes. When you run `/bpmnkit:implement`, Claude checks the library for a matching
+pattern (`casen pattern list`/`get`) and uses its readme and worker specs as context while
+writing the `ProcessPlan` — the pattern's own `template` field predates the plan/synth
+pipeline and is a rough structural reference, not something pasted in directly.
 
 Patterns are hints, not templates. Claude adapts them to the specific request and ignores
 them entirely when nothing relevant matches.
@@ -24,7 +26,7 @@ them entirely when nothing relevant matches.
 
 ## How matching works
 
-When `/implement` runs, Claude calls `pattern_list` and scores each pattern by counting how
+`casen pattern get <query>` (via `findPattern()`) scores each pattern by counting how
 many of its keywords appear in the request. The highest-scoring pattern is selected.
 Exact pattern ID matches take priority over keyword scoring.
 
@@ -53,6 +55,14 @@ options (e.g. "SAP, NetSuite, or QuickBooks" for a payment trigger).
 **Variations** — common process variants (e.g. "3-way match", "auto-approve below threshold")
 so Claude can adapt the flow to the user's specific context.
 
+## Using patterns from the CLI
+
+```sh
+casen pattern list
+casen pattern get invoice-approval
+casen pattern get "employee onboarding workflow"   # free-text match
+```
+
 ## Using patterns from code
 
 You can access the pattern library directly in TypeScript:
@@ -80,10 +90,10 @@ interface Pattern {
   name: string
   description: string
   keywords: string[]
-  readme: string                // domain context for the LLM
+  readme: string                // domain context, Markdown
   workers: WorkerSpec[]
-  variations: string[]
-  template: PatternTemplate     // compact BPMN structure
+  variations: string            // common customizations, Markdown
+  template: PatternTemplate     // compact BPMN structure — a rough reference, predates ProcessPlan
 }
 
 interface WorkerSpec {
@@ -92,7 +102,8 @@ interface WorkerSpec {
   description: string
   inputs: Record<string, string>
   outputs: Record<string, string>
-  integrationOptions?: string[] // e.g. ["Stripe", "Adyen", "Braintree"]
+  externalApis?: string[]  // e.g. ["Stripe", "Adyen", "Braintree"]
+  optional?: boolean
 }
 ```
 
@@ -108,5 +119,5 @@ are welcome via pull request.
 
 ## See also
 
-- [AI-Driven Implementation](/guides/ai-implement/) — how Claude uses patterns during `/implement`
+- [Building Processes with AI](/guides/ai-implement/) — how Claude uses patterns during `/bpmnkit:implement`
 - [`@bpmnkit/patterns` source](https://github.com/bpmnkit/monorepo/tree/main/packages/patterns)

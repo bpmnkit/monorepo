@@ -1,30 +1,30 @@
 {
-  "version": 1,
-  "process": { "id": "order-validation-failed", "name": "Order Validation Failed Notification" },
-  "steps": [
-    { "kind": "start", "name": "Order validation failed" },
-    {
-      "kind": "connector",
-      "id": "notify_ops",
-      "name": "Notify #ops",
-      "connector": {
-        "template": "io.camunda.connectors.Slack.v1",
-        "values": {
-          "method": "chat.postMessage",
-          "token": "{{secrets.SLACK_OAUTH_TOKEN}}",
-          "data.channel": "#ops",
-          "data.text": "=\"Order \" + orderId + \" failed validation\""
-        }
-      }
-    },
-    { "kind": "end", "name": "Ops notified" }
-  ],
-  "tests": [
-    {
-      "name": "Notifies ops",
-      "inputs": { "orderId": "ORD-123" },
-      "mocks": { "io.camunda:slack:1": { "outputs": {} } },
-      "expect": { "path": ["notify_ops"] }
-    }
-  ]
+	"version": 1,
+	"process": { "id": "order-validation-failed", "name": "Order Validation Failed Notification" },
+	"steps": [
+		{ "kind": "start", "name": "Order validation failed" },
+		{
+			"kind": "connector",
+			"id": "notify_ops",
+			"name": "Notify #ops",
+			"connector": {
+				"template": "io.camunda.connectors.Slack.v1",
+				"values": {
+					"method": "chat.postMessage",
+					"token": "{{secrets.SLACK_OAUTH_TOKEN}}",
+					"data.channel": "#ops",
+					"data.text": "=\"Order \" + orderId + \" failed validation\""
+				}
+			}
+		},
+		{ "kind": "end", "name": "Ops notified" }
+	],
+	"tests": [
+		{
+			"name": "Notifies ops",
+			"inputs": { "orderId": "ORD-123" },
+			"mocks": { "io.camunda:slack:1": { "outputs": {} } },
+			"expect": { "path": ["notify_ops"] }
+		}
+	]
 }

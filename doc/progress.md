@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-07-07 — AI BPMN generation: WP8 (documentation & roadmap) — spec complete
+
+Final work package of `doc/spec-bpmn-generation-skills.md` (WP0–WP8, all done).
+
+- `doc/roadmap.md` — new "AIKit v2 — Deterministic Generation Pipeline" section, WP0–WP8 all checked off.
+- `doc/features.md` — new dated entry summarizing the whole effort.
+- `apps/docs` guides rewritten for the plan/synth pipeline (previously described the retired MCP/`bpmn_create` flow): `guides/ai-implement.md`, `guides/claude-code-plugin.md`, `guides/patterns.md`; new `guides/ai-agents.md`. `cli/skills.md` rewritten to match the actual CLI-first `apps/cli/skills/*.md` bundle (no more `/design`, no MCP requirement). `cli/casen.md`/`cli/connector.md` document `casen synth|plan|connector search|show` (the connector doc previously only covered the OpenAPI-template generator, not the bundled-catalog browsing commands from WP3).
+- **New `casen pattern list|get` CLI command** (`apps/cli/src/commands/pattern.ts`) — while writing the doc updates, found that WP6's `/bpmnkit:implement` skill and the `process-builder` agent never actually checked the `@bpmnkit/patterns` domain-pattern library, even though the original spec's skill-flow description called for it ("check `@bpmnkit/patterns` via `casen pattern` commands if a domain matches") — the CLI command never existed, only the old MCP `pattern_list`/`pattern_get` tools did. Added the command (a thin wrapper over `@bpmnkit/patterns`' `findPattern()`/`ALL_PATTERNS`, explicit about the pattern `template` field being a rough, pre-plan-format structural reference, not something to paste into a `ProcessPlan` directly) and wired a pattern-check step into `/bpmnkit:implement` and `process-builder.md`.
+- `packages/connectors` README reconfirmed unchanged via `node scripts/sync-license.mjs && node scripts/generate-readmes.mjs && node scripts/check-packages.mjs` (all 22 published packages still pass).
+
 ## 2026-07-07 — AI BPMN generation: WP7 (golden-prompt eval harness)
 
 New `scripts/eval-generation/` (dev-only, not published): a golden-prompt eval harness for the deterministic generation pipeline, per `doc/spec-bpmn-generation-skills.md` WP7.

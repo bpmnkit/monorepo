@@ -1,9 +1,9 @@
 {
-  "id": "long-process-onboarding",
-  "category": "long-process",
-  "description": "A 25+ element process exercising a gateway branch, a parallel split/join block, user tasks, and a connector, all in one plan.",
-  "assertions": {
-    "minElements": 25,
-    "mustContainElementTypes": ["exclusiveGateway", "parallelGateway", "userTask"]
-  }
+	"id": "long-process-onboarding",
+	"category": "long-process",
+	"description": "A 25+ element process exercising a gateway branch, a parallel split/join block, user tasks, and a connector, all in one plan.",
+	"assertions": {
+		"minElements": 25,
+		"mustContainElementTypes": ["exclusiveGateway", "parallelGateway", "userTask"]
+	}
 }

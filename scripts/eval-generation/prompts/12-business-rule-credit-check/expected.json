@@ -1,8 +1,8 @@
 {
-  "id": "business-rule-credit-check",
-  "category": "dmn",
-  "description": "A businessRuleTask referencing a DMN decision, branching on its result.",
-  "assertions": {
-    "mustContainElementTypes": ["businessRuleTask", "exclusiveGateway"]
-  }
+	"id": "business-rule-credit-check",
+	"category": "dmn",
+	"description": "A businessRuleTask referencing a DMN decision, branching on its result.",
+	"assertions": {
+		"mustContainElementTypes": ["businessRuleTask", "exclusiveGateway"]
+	}
 }

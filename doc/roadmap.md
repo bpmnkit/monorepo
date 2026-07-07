@@ -195,6 +195,24 @@ Medium effort. Expands the builder experience to non-technical stakeholders.
 
 ---
 
+## AIKit v2 — Deterministic Generation Pipeline
+
+> Full spec: [`doc/spec-bpmn-generation-skills.md`](spec-bpmn-generation-skills.md); analysis: [`doc/ai-bpmn-generation-analysis.md`](ai-bpmn-generation-analysis.md)
+
+Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the LLM never writes BPMN XML — every process is authored as a `ProcessPlan` JSON IR and compiled deterministically by `casen synth`.
+
+- [x] **WP0 — Bug fixes & hygiene**: fixed `scripts/update-connectors.mjs`'s stale output path + added a `catalog-meta.json` sidecar; corrected the `deploy`/`worker` plugin skills to match the real tool/API signatures
+- [x] **WP1 — `@bpmnkit/connectors`**: catalog (`listConnectors`/`searchConnectors`/`getTemplate`) + complete deterministic template application (`applyElementTemplate`/`applyConnectorTemplate`) covering every binding kind, dropdown-gated conditions, and FEEL validation
+- [x] **WP2 — Core builder additions**: `buildAiAgentSubProcess()` (AI Agent Sub-process constructor with `fromAi()` tooling), `documentation`, `zeebe:properties`, ad-hoc `completionCondition`/`cancelRemainingInstances`, message `correlationKey`, user-task assignment/schedule/priority
+- [x] **WP3 — ProcessPlan IR + compiler**: `compilePlan()`/`extractPlan()`/`mergePlan()`; `casen synth`, `casen plan extract|schema`, `casen connector search|list|show`
+- [x] **WP4 — Deploy-grade validation**: `feel-syntax`, `deploy`, `agentic` optimizer categories + `connector/missing-required`; `casen lint --profile deploy` deploy-readiness gate
+- [x] **WP5 — Honest simulation**: engine dispatches job-worker-backed ad-hoc sub-processes (e.g. AI Agent) through the job-mock mechanism; `bpmn_simulate` actually executes scenarios (`mode: "execution"`) instead of always doing structural-only analysis; `casen synth` writes a `.bpmn.tests.json` sidecar from `plan.tests`
+- [x] **WP6 — Skills v2**: consolidated CLI-first `plugins-claude/bpmnkit-claude` plugin (`implement`/`extend`/`agent`/`connect`/`review`/`test`/`deploy`), no MCP server required; generated + hand-written reference docs; new `casen deploy deploy` command
+- [x] **WP7 — Golden-prompt eval harness**: `scripts/eval-generation/` — 15 golden prompts, plan-level CI-safe subset + opt-in full-LLM mode
+- [x] **WP8 — Documentation & roadmap**: this section + `doc/features.md`/`doc/progress.md` entries; `apps/docs` guides rewritten for the plan/synth flow (`guides/ai-implement.md`, new `guides/ai-agents.md`, `guides/claude-code-plugin.md`, `guides/patterns.md`), `cli/skills.md` rewritten CLI-first, `cli/casen.md`/`cli/connector.md` document `casen synth|plan|connector`; new `casen pattern list|get` CLI command (the domain-pattern lookup the skills/agent were missing); `packages/connectors` README reconfirmed via `scripts/generate-readmes.mjs`
+
+---
+
 ## CLI Enhancements
 
 - [x] `casen test <file.bpmn>` — run process spec scenarios (Phase 3)

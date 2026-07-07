@@ -1,11 +1,13 @@
 ---
 title: Claude Code Plugin
-description: Install the bpmnkit plugin for Claude Code to get AI-first BPMN development and operations — generate diagrams, scaffold workers, deploy, and resolve incidents from natural language.
+description: Install the bpmnkit plugin for Claude Code to get AI-first BPMN development and operations — generate diagrams, wire connectors, deploy, and resolve incidents from natural language.
 ---
 
 The bpmnkit Claude Code plugin adds BPMN-aware slash commands, autonomous agents, and
-ambient quality hooks directly into Claude Code. Install it once and Claude becomes your
-BPMN co-pilot for both building new processes and operating running ones.
+ambient quality hooks directly into Claude Code. It's **CLI-first**: every skill drives
+`casen` via Bash — no MCP server, no proxy daemon. Every process is authored as a
+`ProcessPlan` JSON file and compiled deterministically by `casen synth`; no skill ever
+writes BPMN XML by hand.
 
 ## Prerequisites
 
@@ -15,8 +17,7 @@ Install the BPMNKit CLI globally:
 npm install -g @bpmnkit/cli
 ```
 
-The plugin connects to `casen proxy mcp` for its MCP tools. The proxy starts automatically
-on session open — no manual setup needed.
+That's it — nothing else needs to be running.
 
 ## Installation
 
@@ -39,7 +40,7 @@ Or add to your project's `.claude/settings.json`:
 ### Via marketplace
 
 ```sh
-# Add the BPMNKit marketplace to Claude Code settings, then:
+/plugin marketplace add github:bpmnkit/monorepo
 /plugin install bpmnkit
 ```
 
@@ -49,77 +50,98 @@ When the plugin is enabled, Claude Code prompts for two optional values:
 
 | Config key | Description |
 |---|---|
-| `camunda_endpoint` | Camunda 8 REST API endpoint (leave blank for local reebe) |
-| `camunda_token` | Camunda 8 OAuth2 token (leave blank for local reebe) |
+| `camunda_endpoint` | Camunda 8 REST API endpoint (leave blank for local Reebe) |
+| `camunda_token` | Camunda 8 OAuth2 token (leave blank for local Reebe) |
 
-Leave both blank to use the local [reebe engine](/cli/reebe).
+Leave both blank to use the local [Reebe engine](/cli/reebe).
 
 ---
 
 ## Skills
 
-### `/bpmnkit:generate <description>`
+### `/bpmnkit:implement <description>`
 
-Generate a BPMN process from a natural language description.
+The main entry point — natural language to a compiled, tested BPMN process.
 
 ```
-/bpmnkit:generate order fulfillment with payment and inventory check
-/bpmnkit:generate employee onboarding process with HR approval
+/bpmnkit:implement order fulfillment with payment and inventory check
+/bpmnkit:implement employee onboarding process with HR approval
 ```
 
-Creates a `.bpmn` file in the current directory and shows the process structure.
+Resolves connectors, writes a `ProcessPlan`, compiles it with `casen synth`, tests it,
+scaffolds any missing workers, and asks where to deploy.
+
+---
+
+### `/bpmnkit:extend <file> <change request>`
+
+Extend an existing process from a natural-language change.
+
+```
+/bpmnkit:extend order-fulfillment.bpmn add a timeout boundary on the payment step
+```
+
+Lifts the process to plan form (`casen plan extract`), writes a small delta plan, and
+merges it in (`casen synth --merge`) — the summary is at the element level, not an XML diff.
+
+---
+
+### `/bpmnkit:agent [file] <description>`
+
+Design and add a Camunda AI Agent Sub-process.
+
+```
+/bpmnkit:agent add a support-triage agent with tools: search KB (http), escalate to human (user task)
+```
+
+Works out the provider/model, prompts, and tools (each mapped via connector search or an
+existing worker job type), then compiles and mock-tests the agent step. See
+[AI Agents](/guides/ai-agents/) for the full pattern.
+
+---
+
+### `/bpmnkit:connect <file> <step> <service>`
+
+Wire an existing plan step to an external system via a Camunda connector template.
+
+```
+/bpmnkit:connect order-fulfillment.bpmn notify_ops slack
+```
 
 ---
 
 ### `/bpmnkit:review [file.bpmn]`
 
-Run static analysis — pattern checks, variable flow, optimizer findings.
+Run the full static analyzer and report deploy-readiness.
 
 ```
 /bpmnkit:review
 /bpmnkit:review order-fulfillment.bpmn
 ```
 
-Reports findings grouped by severity: errors (block deploy), warnings, info.
-
----
-
-### `/bpmnkit:deploy [file.bpmn] [--local|--camunda]`
-
-Deploy a process to local reebe or Camunda 8.
-
-```
-/bpmnkit:deploy
-/bpmnkit:deploy order-fulfillment.bpmn --camunda
-```
-
-Confirms the deployment with process ID and version.
-
----
-
-### `/bpmnkit:worker <job-type>`
-
-Scaffold a TypeScript worker stub for a service task job type.
-
-```
-/bpmnkit:worker order-validator
-/bpmnkit:worker send-invoice-email
-```
-
-Creates `workers/<job-type>.ts` using `@bpmnkit/worker-client`.
+Reports findings grouped by severity and ends with an explicit "Deploy-ready: yes/no" verdict.
 
 ---
 
 ### `/bpmnkit:test [file.bpmn]`
 
-Run scenario tests and report path coverage.
+Run scenario tests and report path/branch coverage.
 
 ```
 /bpmnkit:test
 /bpmnkit:test order-fulfillment.bpmn
 ```
 
-Shows pass/fail per scenario, uncovered paths, and a coverage percentage.
+---
+
+### `/bpmnkit:deploy [file.bpmn] [--local|--camunda]`
+
+Gate on deploy-readiness, then deploy to local Reebe or Camunda 8.
+
+```
+/bpmnkit:deploy
+/bpmnkit:deploy order-fulfillment.bpmn --camunda
+```
 
 ---
 
@@ -132,8 +154,6 @@ List running process instances.
 /bpmnkit:instances order-process --failed
 ```
 
-Table view with instance ID, status, start time, and variable summary.
-
 ---
 
 ### `/bpmnkit:incidents [--process-id X]`
@@ -145,17 +165,19 @@ List open incidents with suggested resolution actions.
 /bpmnkit:incidents --process-id order-process
 ```
 
-Each row includes the error type and a suggested next action.
-
 ---
 
-### `/bpmnkit:ascii <file>`
+## Reference docs
 
-Show the structure of a BPMN, DMN, or Form file — element list and lint findings.
+Every skill reads the relevant reference doc before authoring a plan:
 
-```
-/bpmnkit:ascii order-fulfillment.bpmn
-```
+| File | Contents |
+|---|---|
+| `references/plan-format.md` | The `ProcessPlan` JSON schema + annotated, tested examples |
+| `references/connectors.md` | The 116-template Camunda connector catalog index |
+| `references/agentic.md` | The AI Agent Sub-process pattern, binding keys, a full example |
+| `references/feel.md` | FEEL syntax crib sheet + the `"="`-means-expression convention |
+| `references/modeling-style.md` | Camunda naming/structure conventions |
 
 ---
 
@@ -172,13 +194,13 @@ Build me an invoice approval process for accounts payable
 **What it does:**
 
 1. Asks clarifying questions (error paths, user tasks, deploy target)
-2. Checks domain patterns (`pattern_list` / `pattern_get`)
-3. Generates the BPMN via `bpmn_create`
-4. Shows a preview and **waits for your approval**
-5. Validates and auto-fixes errors
-6. Saves the `.bpmn` file
-7. Scaffolds a TypeScript worker for every service task
-8. Deploys to the chosen target
+2. Checks domain patterns (`casen pattern list`/`get`)
+3. Resolves connectors, writes the plan
+4. Compiles it with `casen synth`
+5. Shows a preview and **waits for your approval**
+6. Tests the process, fixing failures by adjusting the plan
+7. Scaffolds a worker stub for every job type with no connector
+8. Gates on `casen lint --profile deploy`, then deploys to the chosen target
 9. Reports the process ID, files created, and next steps
 
 ---
@@ -209,31 +231,17 @@ The plugin installs two background hooks:
 
 | Hook | Trigger | What it does |
 |---|---|---|
-| SessionStart | Every Claude Code session | Checks `casen` is installed; starts the proxy in background |
-| PostToolUse | After any Write or Edit | Silently lints any `.bpmn` file that was written; surfaces findings as a notification |
+| SessionStart | Every Claude Code session | Checks `casen` is installed |
+| PostToolUse | After any Write or Edit | Silently lints any `.bpmn` file that was written |
 
 The PostToolUse hook means every `.bpmn` file you (or Claude) writes is automatically
-checked against the BPMNKit pattern advisor — zero extra steps.
+checked against the BPMNKit optimizer — zero extra steps.
 
 ---
 
-## MCP Tools
+## No MCP server required
 
-The plugin exposes 10 MCP tools via `casen proxy mcp`:
-
-| Tool | Description |
-|---|---|
-| `bpmn_create` | Generate BPMN from natural language description |
-| `bpmn_read` | Read a BPMN file as compact JSON |
-| `bpmn_update` | Update a BPMN file from a natural language instruction |
-| `bpmn_validate` | Run pattern advisor and return findings |
-| `bpmn_deploy` | Deploy to local reebe or Camunda 8 |
-| `bpmn_simulate` | Structural analysis and worker coverage check |
-| `bpmn_run_history` | Query recent process executions from the proxy |
-| `worker_list` | List built-in and scaffolded workers |
-| `worker_scaffold` | Scaffold a TypeScript worker for a job type |
-| `pattern_list` | List available domain process patterns |
-| `pattern_get` | Get a domain pattern by ID or free-text query |
-
-These tools are available to all skills and agents, and can be called directly by Claude
-during any conversation when the plugin is active.
+Unlike earlier versions of this plugin, none of the skills above call an MCP tool — they
+call `casen` directly via Bash. The separate `@bpmnkit/proxy` MCP server (`bpmn-aikit`)
+still exists for Claude Desktop, Cursor, or other MCP-only hosts, but it's unrelated to
+this plugin.

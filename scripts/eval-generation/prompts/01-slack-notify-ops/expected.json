@@ -1,9 +1,9 @@
 {
-  "id": "slack-notify-ops",
-  "category": "connector",
-  "description": "Single connector step — the canonical Slack-notify golden case.",
-  "assertions": {
-    "minElements": 3,
-    "mustContainTaskTypes": ["io.camunda:slack:1"]
-  }
+	"id": "slack-notify-ops",
+	"category": "connector",
+	"description": "Single connector step — the canonical Slack-notify golden case.",
+	"assertions": {
+		"minElements": 3,
+		"mustContainTaskTypes": ["io.camunda:slack:1"]
+	}
 }
