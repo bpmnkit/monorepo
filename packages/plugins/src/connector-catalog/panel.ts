@@ -9,7 +9,7 @@
  *   panel.open()
  */
 import type { CatalogEntry } from "@bpmnkit/connector-gen/browser"
-import type { ElementTemplate } from "../config-panel-bpmn/template-types.js"
+import type { ElementTemplate } from "@bpmnkit/connectors"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

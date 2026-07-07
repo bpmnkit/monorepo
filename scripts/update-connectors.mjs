@@ -6,10 +6,9 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const REGISTRY_URL = "https://marketplace.cloud.camunda.io/api/v1/ootb-connectors"
-const OUT_FILE = join(
-	dirname(fileURLToPath(import.meta.url)),
-	"../canvas-plugins/config-panel-bpmn/src/templates/generated.ts",
-)
+const PACKAGE_DIR = join(dirname(fileURLToPath(import.meta.url)), "../packages/connectors")
+const OUT_FILE = join(PACKAGE_DIR, "src/templates/generated.ts")
+const META_FILE = join(PACKAGE_DIR, "src/templates/catalog-meta.json")
 
 const registry = await fetch(REGISTRY_URL).then((r) => r.json())
 
@@ -35,4 +34,13 @@ export const CAMUNDA_CONNECTOR_TEMPLATES: ElementTemplate[] = ${json} as unknown
 `
 
 writeFileSync(OUT_FILE, content, "utf8")
+
+const meta = {
+	fetchedAt: new Date().toISOString(),
+	count: templates.length,
+	source: REGISTRY_URL,
+}
+writeFileSync(META_FILE, `${JSON.stringify(meta, null, "\t")}\n`, "utf8")
+
 console.log(`Wrote ${templates.length} templates → ${OUT_FILE}`)
+console.log(`Wrote catalog freshness metadata → ${META_FILE}`)

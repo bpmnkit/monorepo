@@ -1,16 +1,16 @@
-import type { BpmnDefinitions, XmlElement } from "@bpmnkit/core"
-import { zeebeExtensionsToXmlElements } from "@bpmnkit/core"
 /**
  * Converts a Camunda element template into the PanelSchema + PanelAdapter pair
  * used by the config-panel plugin renderer.
  */
-import type { FieldSchema, FieldValue, PanelAdapter, PanelSchema } from "../config-panel/index.js"
 import type {
 	ElementTemplate,
 	TemplateBinding,
 	TemplateCondition,
 	TemplateProperty,
-} from "./template-types.js"
+} from "@bpmnkit/connectors"
+import type { BpmnDefinitions, XmlElement } from "@bpmnkit/core"
+import { zeebeExtensionsToXmlElements } from "@bpmnkit/core"
+import type { FieldSchema, FieldValue, PanelAdapter, PanelSchema } from "../config-panel/index.js"
 import {
 	findFlowElement,
 	getAdHocAttr,

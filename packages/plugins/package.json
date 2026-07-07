@@ -136,6 +136,7 @@
 		"@bpmnkit/ascii": "workspace:*",
 		"@bpmnkit/canvas": "workspace:*",
 		"@bpmnkit/connector-gen": "workspace:*",
+		"@bpmnkit/connectors": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/feel": "workspace:*"

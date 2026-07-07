@@ -2656,6 +2656,40 @@ describe("BpmnProcessBuilder", () => {
 				"data:image/svg+xml;base64,abc",
 			)
 		})
+
+		it("emits completionCondition and cancelRemainingInstances, round-trips through export/parse", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.adHocSubProcess(
+					"agent",
+					(b) => {
+						b.serviceTask("tool1", { name: "Tool", taskType: "test:1" })
+					},
+					{
+						name: "Agent",
+						completionCondition: "=doneFlag = true",
+						cancelRemainingInstances: false,
+					},
+				)
+				.endEvent("e")
+				.build()
+
+			const process = firstProcess(defs)
+			const agent = defined(process.flowElements.find((n) => n.id === "agent"))
+			if (agent.type !== "adHocSubProcess") throw new Error("expected adHocSubProcess")
+			expect(agent.completionCondition?.text).toBe("=doneFlag = true")
+			expect(agent.cancelRemainingInstances).toBe(false)
+
+			const xml = Bpmn.export(defs)
+			expect(xml).toContain("<bpmn:completionCondition")
+			expect(xml).toContain('cancelRemainingInstances="false"')
+
+			const parsed = Bpmn.parse(xml)
+			const reparsedAgent = defined(parsed.processes[0]?.flowElements.find((n) => n.id === "agent"))
+			if (reparsedAgent.type !== "adHocSubProcess") throw new Error("expected adHocSubProcess")
+			expect(reparsedAgent.completionCondition?.text).toBe("=doneFlag = true")
+			expect(reparsedAgent.cancelRemainingInstances).toBe(false)
+		})
 	})
 
 	// -----------------------------------------------------------------------
@@ -2688,6 +2722,112 @@ describe("BpmnProcessBuilder", () => {
 			const propsExt = start?.extensionElements.find((e) => e.name === "zeebe:properties")
 			expect(propsExt).toBeDefined()
 			expect(propsExt?.children).toHaveLength(2)
+		})
+
+		it("emits zeebe:properties on a service task", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("t", {
+					name: "Call connector",
+					taskType: "io.camunda:slack:1",
+					zeebeProperties: [{ name: "resultExpression", value: "={ok: true}" }],
+				})
+				.endEvent("e")
+				.build()
+
+			const task = defined(firstProcess(defs).flowElements.find((n) => n.id === "t"))
+			const propsExt = task.extensionElements.find((e) => e.name === "zeebe:properties")
+			expect(propsExt?.children).toEqual([
+				{
+					name: "zeebe:property",
+					attributes: { name: "resultExpression", value: "={ok: true}" },
+					children: [],
+				},
+			])
+		})
+	})
+
+	// -----------------------------------------------------------------------
+	// Documentation, user task assignment/schedule/priority, message correlation
+	// -----------------------------------------------------------------------
+
+	describe("documentation and executable-process gaps", () => {
+		it("emits <bpmn:documentation> on a service task", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("t", { name: "Tool", taskType: "http:1", documentation: "Searches the KB." })
+				.endEvent("e")
+				.build()
+
+			const task = defined(firstProcess(defs).flowElements.find((n) => n.id === "t"))
+			expect(task.documentation).toBe("Searches the KB.")
+
+			const xml = Bpmn.export(defs)
+			expect(xml).toContain("<bpmn:documentation>Searches the KB.</bpmn:documentation>")
+
+			const parsed = Bpmn.parse(xml)
+			expect(parsed.processes[0]?.flowElements.find((n) => n.id === "t")?.documentation).toBe(
+				"Searches the KB.",
+			)
+		})
+
+		it("emits zeebe:assignmentDefinition, zeebe:taskSchedule, zeebe:priorityDefinition on a user task", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.userTask("u", {
+					name: "Approve",
+					zeebeUserTask: true,
+					assignee: "=initiator",
+					candidateGroups: "approvers",
+					dueDate: '=now() + duration("P3D")',
+					priority: 80,
+				})
+				.endEvent("e")
+				.build()
+
+			const task = defined(firstProcess(defs).flowElements.find((n) => n.id === "u"))
+			const assignment = task.extensionElements.find((e) => e.name === "zeebe:assignmentDefinition")
+			expect(assignment?.attributes).toEqual({
+				assignee: "=initiator",
+				candidateGroups: "approvers",
+			})
+			const schedule = task.extensionElements.find((e) => e.name === "zeebe:taskSchedule")
+			expect(schedule?.attributes).toEqual({ dueDate: '=now() + duration("P3D")' })
+			const priority = task.extensionElements.find((e) => e.name === "zeebe:priorityDefinition")
+			expect(priority?.attributes).toEqual({ priority: "80" })
+		})
+
+		it("emits zeebe:subscription correlationKey on a message intermediate catch event", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.intermediateCatchEvent("wait", {
+					name: "Payment confirmed",
+					messageName: "payment-confirmed",
+					correlationKey: "=orderId",
+				})
+				.endEvent("e")
+				.build()
+
+			const el = defined(firstProcess(defs).flowElements.find((n) => n.id === "wait"))
+			const sub = el.extensionElements.find((e) => e.name === "zeebe:subscription")
+			expect(sub?.attributes).toEqual({ correlationKey: "=orderId" })
+		})
+
+		it("emits zeebe:subscription correlationKey on a message boundary event", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.serviceTask("t", { name: "Ship", taskType: "shipping:1" })
+				.withBoundary(
+					"cancelBoundary",
+					{ messageName: "cancel-order", correlationKey: "=orderId" },
+					(b) => b.endEvent("cancelled"),
+				)
+				.endEvent("e")
+				.build()
+
+			const el = defined(firstProcess(defs).flowElements.find((n) => n.id === "cancelBoundary"))
+			const sub = el.extensionElements.find((e) => e.name === "zeebe:subscription")
+			expect(sub?.attributes).toEqual({ correlationKey: "=orderId" })
 		})
 	})
 

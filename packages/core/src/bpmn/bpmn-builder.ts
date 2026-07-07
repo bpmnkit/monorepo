@@ -39,12 +39,16 @@ const EXPORTER_VERSION = "0.0.23"
 export interface ElementOptions {
 	name?: string
 	isForCompensation?: boolean
+	/** Free-text documentation (`<bpmn:documentation>`). Used by the AI Agent connector as a tool description. */
+	documentation?: string
 }
 
 /** Options for send/receive task elements. */
 export interface MessageTaskOptions extends ElementOptions {
 	/** Message name — generates or reuses a root <bpmn:message> and sets messageRef. */
 	messageName?: string
+	/** FEEL expression correlating this message to a specific process instance (`zeebe:subscription`). */
+	correlationKey?: string
 }
 
 /** Options for creating a start event. */
@@ -87,6 +91,8 @@ export interface ServiceTaskOptions {
 	}
 	/** Task header key-value pairs. */
 	taskHeaders?: Record<string, string>
+	/** Zeebe property key-value pairs (`zeebe:properties`/`zeebe:property`). */
+	zeebeProperties?: Array<{ name: string; value: string }>
 	/** Zeebe modeler template ID. */
 	modelerTemplate?: string
 	/** Zeebe modeler template version. */
@@ -95,6 +101,8 @@ export interface ServiceTaskOptions {
 	modelerTemplateIcon?: string
 	/** Mark this task as a compensation handler. */
 	isForCompensation?: boolean
+	/** Free-text documentation (`<bpmn:documentation>`). Used by the AI Agent connector as a tool description. */
+	documentation?: string
 }
 
 /** Options for creating a script task. */
@@ -107,6 +115,8 @@ export interface ScriptTaskOptions {
 	resultVariable: string
 	/** Mark this task as a compensation handler. */
 	isForCompensation?: boolean
+	/** Free-text documentation (`<bpmn:documentation>`). */
+	documentation?: string
 }
 
 /** Options for creating a user task. */
@@ -119,6 +129,20 @@ export interface UserTaskOptions {
 	zeebeUserTask?: boolean
 	/** Mark this task as a compensation handler. */
 	isForCompensation?: boolean
+	/** Free-text documentation (`<bpmn:documentation>`). */
+	documentation?: string
+	/** Static assignee (`zeebe:assignmentDefinition assignee`). FEEL expressions must start with "=". */
+	assignee?: string
+	/** Candidate groups, comma-separated or a FEEL expression (`zeebe:assignmentDefinition candidateGroups`). */
+	candidateGroups?: string
+	/** Candidate users, comma-separated or a FEEL expression (`zeebe:assignmentDefinition candidateUsers`). */
+	candidateUsers?: string
+	/** Due date — ISO 8601 or FEEL expression (`zeebe:taskSchedule dueDate`). */
+	dueDate?: string
+	/** Follow-up date — ISO 8601 or FEEL expression (`zeebe:taskSchedule followUpDate`). */
+	followUpDate?: string
+	/** Task priority 0-100, default 50 (`zeebe:priorityDefinition`). */
+	priority?: number
 }
 
 /** Options for creating a call activity. */
@@ -131,6 +155,8 @@ export interface CallActivityOptions {
 	propagateAllChildVariables?: boolean
 	/** Mark this activity as a compensation handler. */
 	isForCompensation?: boolean
+	/** Free-text documentation (`<bpmn:documentation>`). */
+	documentation?: string
 }
 
 /** Options for creating a business rule task. */
@@ -145,6 +171,8 @@ export interface BusinessRuleTaskOptions {
 	resultVariable?: string
 	/** Mark this task as a compensation handler. */
 	isForCompensation?: boolean
+	/** Free-text documentation (`<bpmn:documentation>`). */
+	documentation?: string
 }
 
 /** Options for gateway elements. */
@@ -163,6 +191,8 @@ export interface IntermediateCatchEventOptions extends ElementOptions {
 	timerCycle?: string
 	/** Message name — creates a message catch event (aspirational). */
 	messageName?: string
+	/** FEEL expression correlating this message to a specific process instance (`zeebe:subscription`). Required for a deployable message catch when `messageName` is set. */
+	correlationKey?: string
 	/** Signal name — creates a signal catch event (aspirational). */
 	signalName?: string
 }
@@ -213,6 +243,8 @@ export interface BoundaryEventOptions extends ElementOptions {
 	timerCycle?: string
 	/** Message name — creates a message boundary event (aspirational). */
 	messageName?: string
+	/** FEEL expression correlating this message to a specific process instance (`zeebe:subscription`). Required for a deployable message boundary event when `messageName` is set. */
+	correlationKey?: string
 	/** Signal name — creates a signal boundary event (aspirational). */
 	signalName?: string
 	/** Creates a compensation boundary event. */
@@ -249,6 +281,8 @@ export interface AdHocSubProcessOptions extends ElementOptions {
 	}
 	/** Task header key-value pairs. */
 	taskHeaders?: Record<string, string>
+	/** Zeebe property key-value pairs (`zeebe:properties`/`zeebe:property`). */
+	zeebeProperties?: Array<{ name: string; value: string }>
 	/** Multi-instance loop configuration. */
 	loopCharacteristics?: {
 		inputCollection: string
@@ -263,6 +297,13 @@ export interface AdHocSubProcessOptions extends ElementOptions {
 	modelerTemplateVersion?: string
 	/** Zeebe modeler template icon (data URI). */
 	modelerTemplateIcon?: string
+	/**
+	 * FEEL expression evaluated after each tool activity completes; ends the
+	 * ad-hoc scope when true (`bpmn:completionCondition`).
+	 */
+	completionCondition?: string
+	/** Whether still-running inner activity instances are cancelled once the completion condition is met (default true). */
+	cancelRemainingInstances?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +317,12 @@ function resolveMessage(messageName: string, rootMessages: BpmnMessage[]): strin
 		rootMessages.push(existing)
 	}
 	return existing.id
+}
+
+/** Builds the `zeebe:subscription` extension element for a correlated message catch. */
+function buildMessageSubscriptionExt(correlationKey?: string): XmlElement[] {
+	if (!correlationKey) return []
+	return zeebeExtensionsToXmlElements({ subscription: { correlationKey } })
 }
 
 function buildEventDefinitions(
@@ -363,13 +410,14 @@ function buildEventDefinitions(
 function makeFlowElement(
 	id: string,
 	type: BpmnElementType,
-	options?: { name?: string; extensionElements?: XmlElement[] },
+	options?: { name?: string; extensionElements?: XmlElement[]; documentation?: string },
 ): BpmnFlowElement {
 	const base = {
 		id,
 		name: options?.name,
 		incoming: [] as string[],
 		outgoing: [] as string[],
+		documentation: options?.documentation,
 		extensionElements: options?.extensionElements ?? [],
 		unknownAttributes: {} as Record<string, string>,
 	}
@@ -527,6 +575,10 @@ function buildServiceTaskExtensions(options: ServiceTaskOptions): XmlElement[] {
 		}
 	}
 
+	if (options.zeebeProperties) {
+		extensions.properties = { properties: options.zeebeProperties }
+	}
+
 	return zeebeExtensionsToXmlElements(extensions)
 }
 
@@ -534,6 +586,80 @@ function makeConditionExpression(expression: string): BpmnConditionExpression {
 	return {
 		text: expression,
 		attributes: { "xsi:type": "bpmn:tFormalExpression" },
+	}
+}
+
+/** Builds the Zeebe extension elements + completion condition shared by all `adHocSubProcess()` overloads. */
+function buildAdHocSubProcessExtensions(options?: AdHocSubProcessOptions): {
+	extensionElements: XmlElement[]
+	completionCondition?: BpmnConditionExpression
+} {
+	const zeebeExt: ZeebeExtensions = {}
+	if (options?.taskDefinition) {
+		zeebeExt.taskDefinition = options.taskDefinition
+	}
+	if (options?.ioMapping) {
+		zeebeExt.ioMapping = {
+			inputs: options.ioMapping.inputs ?? [],
+			outputs: options.ioMapping.outputs ?? [],
+		}
+	}
+	if (options?.taskHeaders) {
+		zeebeExt.taskHeaders = {
+			headers: Object.entries(options.taskHeaders).map(([key, value]) => ({ key, value })),
+		}
+	}
+	if (options?.zeebeProperties) {
+		zeebeExt.properties = { properties: options.zeebeProperties }
+	}
+	const extensionElements = zeebeExtensionsToXmlElements(zeebeExt)
+
+	const adHocAttrs: Record<string, string> = {}
+	if (options?.activeElementsCollection) {
+		adHocAttrs.activeElementsCollection = options.activeElementsCollection
+	}
+	if (options?.outputCollection) adHocAttrs.outputCollection = options.outputCollection
+	if (options?.outputElement) adHocAttrs.outputElement = options.outputElement
+	if (Object.keys(adHocAttrs).length > 0) {
+		extensionElements.push({ name: "zeebe:adHoc", attributes: adHocAttrs, children: [] })
+	}
+
+	return {
+		extensionElements,
+		completionCondition: options?.completionCondition
+			? makeConditionExpression(options.completionCondition)
+			: undefined,
+	}
+}
+
+/** Applies modeler-template attrs, sub-process contents, loop characteristics, and completion condition. */
+function finalizeAdHocSubProcessEl(
+	element: BpmnFlowElement,
+	options: AdHocSubProcessOptions | undefined,
+	sub: SubProcessContentBuilder,
+	completionCondition: BpmnConditionExpression | undefined,
+): void {
+	if (options?.modelerTemplate)
+		element.unknownAttributes["zeebe:modelerTemplate"] = options.modelerTemplate
+	if (options?.modelerTemplateVersion) {
+		element.unknownAttributes["zeebe:modelerTemplateVersion"] = options.modelerTemplateVersion
+	}
+	if (options?.modelerTemplateIcon) {
+		element.unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
+	}
+	if (element.type !== "adHocSubProcess") return
+	element.flowElements = sub._elements
+	element.sequenceFlows = sub._flows
+	element.textAnnotations = sub._textAnnotations
+	element.associations = sub._associations
+	if (options?.loopCharacteristics) {
+		element.loopCharacteristics = buildAdHocLoopCharacteristics(options.loopCharacteristics)
+	} else if (options?.multiInstance) {
+		element.loopCharacteristics = buildMultiInstance(options.multiInstance)
+	}
+	element.completionCondition = completionCondition
+	if (options?.cancelRemainingInstances !== undefined) {
+		element.cancelRemainingInstances = options.cancelRemainingInstances
 	}
 }
 
@@ -550,6 +676,7 @@ function makeServiceTaskEl(id: string, options: ServiceTaskOptions): BpmnFlowEle
 		unknownAttributes["zeebe:modelerTemplateIcon"] = options.modelerTemplateIcon
 	const el = makeFlowElement(id, "serviceTask", {
 		name: options.name,
+		documentation: options.documentation,
 		extensionElements: buildServiceTaskExtensions(options),
 	})
 	el.unknownAttributes = unknownAttributes
@@ -560,6 +687,7 @@ function makeServiceTaskEl(id: string, options: ServiceTaskOptions): BpmnFlowEle
 function makeScriptTaskEl(id: string, options: ScriptTaskOptions): BpmnFlowElement {
 	const el = makeFlowElement(id, "scriptTask", {
 		name: options.name,
+		documentation: options.documentation,
 		extensionElements: zeebeExtensionsToXmlElements({
 			unknownElements: [
 				{
@@ -578,8 +706,27 @@ function makeUserTaskEl(id: string, options?: UserTaskOptions): BpmnFlowElement 
 	const ext = zeebeExtensionsToXmlElements({
 		...(options?.zeebeUserTask ? { userTask: true } : {}),
 		...(options?.formId ? { formDefinition: { formId: options.formId } } : {}),
+		...(options?.assignee || options?.candidateGroups || options?.candidateUsers
+			? {
+					assignmentDefinition: {
+						assignee: options?.assignee,
+						candidateGroups: options?.candidateGroups,
+						candidateUsers: options?.candidateUsers,
+					},
+				}
+			: {}),
+		...(options?.dueDate || options?.followUpDate
+			? { taskSchedule: { dueDate: options?.dueDate, followUpDate: options?.followUpDate } }
+			: {}),
+		...(options?.priority !== undefined
+			? { priorityDefinition: { priority: String(options.priority) } }
+			: {}),
 	})
-	const el = makeFlowElement(id, "userTask", { name: options?.name, extensionElements: ext })
+	const el = makeFlowElement(id, "userTask", {
+		name: options?.name,
+		documentation: options?.documentation,
+		extensionElements: ext,
+	})
 	if (options?.isForCompensation) el.isForCompensation = true
 	return el
 }
@@ -601,6 +748,7 @@ function makeBusinessRuleTaskEl(id: string, options?: BusinessRuleTaskOptions): 
 	}
 	const el = makeFlowElement(id, "businessRuleTask", {
 		name: options?.name,
+		documentation: options?.documentation,
 		extensionElements: ext,
 	})
 	if (options?.isForCompensation) el.isForCompensation = true
@@ -614,6 +762,7 @@ function makeCallActivityEl(id: string, options: CallActivityOptions): BpmnFlowE
 	}
 	const el = makeFlowElement(id, "callActivity", {
 		name: options.name,
+		documentation: options.documentation,
 		extensionElements: zeebeExtensionsToXmlElements({
 			unknownElements: [{ name: "zeebe:calledElement", attributes: attrs, children: [] }],
 		}),
@@ -1023,7 +1172,10 @@ export class BranchBuilder {
 		const el = makeFlowElement(
 			id ?? generateId("IntermediateCatchEvent"),
 			"intermediateCatchEvent",
-			options,
+			{
+				...options,
+				extensionElements: buildMessageSubscriptionExt(options?.correlationKey),
+			},
 		)
 		if (el.type === "intermediateCatchEvent" && options) {
 			el.eventDefinitions = buildEventDefinitions(
@@ -1066,7 +1218,10 @@ export class BranchBuilder {
 	 * cursor to return to the task afterward.
 	 */
 	boundaryEvent(id: string, options: BoundaryEventOptions): this {
-		const element = makeFlowElement(id, "boundaryEvent", options)
+		const element = makeFlowElement(id, "boundaryEvent", {
+			...options,
+			extensionElements: buildMessageSubscriptionExt(options.correlationKey),
+		})
 		if (element.type === "boundaryEvent") {
 			element.attachedToRef = options.attachedTo
 			element.cancelActivity = options.cancelActivity
@@ -1171,71 +1326,15 @@ export class BranchBuilder {
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const zeebeExt: ZeebeExtensions = {}
-		if (resolved.options?.taskDefinition) {
-			zeebeExt.taskDefinition = resolved.options.taskDefinition
-		}
-		if (resolved.options?.ioMapping) {
-			zeebeExt.ioMapping = {
-				inputs: resolved.options.ioMapping.inputs ?? [],
-				outputs: resolved.options.ioMapping.outputs ?? [],
-			}
-		}
-		if (resolved.options?.taskHeaders) {
-			zeebeExt.taskHeaders = {
-				headers: Object.entries(resolved.options.taskHeaders).map(([key, value]) => ({
-					key,
-					value,
-				})),
-			}
-		}
-		const extensionElements = zeebeExtensionsToXmlElements(zeebeExt)
-
-		const adHocAttrs: Record<string, string> = {}
-		if (resolved.options?.activeElementsCollection) {
-			adHocAttrs.activeElementsCollection = resolved.options.activeElementsCollection
-		}
-		if (resolved.options?.outputCollection) {
-			adHocAttrs.outputCollection = resolved.options.outputCollection
-		}
-		if (resolved.options?.outputElement) {
-			adHocAttrs.outputElement = resolved.options.outputElement
-		}
-		if (Object.keys(adHocAttrs).length > 0) {
-			extensionElements.push({
-				name: "zeebe:adHoc",
-				attributes: adHocAttrs,
-				children: [],
-			})
-		}
-
+		const { extensionElements, completionCondition } = buildAdHocSubProcessExtensions(
+			resolved.options,
+		)
 		const element = makeFlowElement(id, "adHocSubProcess", {
 			name: resolved.options?.name,
+			documentation: resolved.options?.documentation,
 			extensionElements,
 		})
-		if (resolved.options?.modelerTemplate) {
-			element.unknownAttributes["zeebe:modelerTemplate"] = resolved.options.modelerTemplate
-		}
-		if (resolved.options?.modelerTemplateVersion) {
-			element.unknownAttributes["zeebe:modelerTemplateVersion"] =
-				resolved.options.modelerTemplateVersion
-		}
-		if (resolved.options?.modelerTemplateIcon) {
-			element.unknownAttributes["zeebe:modelerTemplateIcon"] = resolved.options.modelerTemplateIcon
-		}
-		if (element.type === "adHocSubProcess") {
-			element.flowElements = sub._elements
-			element.sequenceFlows = sub._flows
-			element.textAnnotations = sub._textAnnotations
-			element.associations = sub._associations
-			if (resolved.options?.loopCharacteristics) {
-				element.loopCharacteristics = buildAdHocLoopCharacteristics(
-					resolved.options.loopCharacteristics,
-				)
-			} else if (resolved.options?.multiInstance) {
-				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
-			}
-		}
+		finalizeAdHocSubProcessEl(element, resolved.options, sub, completionCondition)
 		return this.addElement(element)
 	}
 
@@ -1378,6 +1477,22 @@ export class SubProcessContentBuilder {
 		return this
 	}
 
+	/**
+	 * Add an element with no sequence-flow wiring and no cursor movement.
+	 *
+	 * Used for ad-hoc sub-process tool activities, which the AI Agent connector
+	 * requires to be root nodes (no incoming sequence flow, not a boundary event).
+	 * Unlike `serviceTask()`/`userTask()`/etc., this does not auto-connect from
+	 * the current cursor and does not move it.
+	 */
+	addDisconnected(element: BpmnFlowElement): this {
+		if (this._elements.some((n) => n.id === element.id)) {
+			throw new Error(`Duplicate element ID "${element.id}" in sub-process`)
+		}
+		this._elements.push(element)
+		return this
+	}
+
 	// ---- Events ----
 
 	startEvent(id?: string, options?: StartEventOptions): this {
@@ -1410,7 +1525,10 @@ export class SubProcessContentBuilder {
 		const el = makeFlowElement(
 			id ?? generateId("IntermediateCatchEvent"),
 			"intermediateCatchEvent",
-			options,
+			{
+				...options,
+				extensionElements: buildMessageSubscriptionExt(options?.correlationKey),
+			},
 		)
 		if (el.type === "intermediateCatchEvent" && options)
 			el.eventDefinitions = buildEventDefinitions(options)
@@ -1585,7 +1703,10 @@ export class SubProcessContentBuilder {
 	 * cursor to return to the task afterward.
 	 */
 	boundaryEvent(id: string, options: BoundaryEventOptions): this {
-		const element = makeFlowElement(id, "boundaryEvent", options)
+		const element = makeFlowElement(id, "boundaryEvent", {
+			...options,
+			extensionElements: buildMessageSubscriptionExt(options.correlationKey),
+		})
 		if (element.type === "boundaryEvent") {
 			element.attachedToRef = options.attachedTo
 			element.cancelActivity = options.cancelActivity
@@ -1681,71 +1802,15 @@ export class SubProcessContentBuilder {
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const zeebeExt: ZeebeExtensions = {}
-		if (resolved.options?.taskDefinition) {
-			zeebeExt.taskDefinition = resolved.options.taskDefinition
-		}
-		if (resolved.options?.ioMapping) {
-			zeebeExt.ioMapping = {
-				inputs: resolved.options.ioMapping.inputs ?? [],
-				outputs: resolved.options.ioMapping.outputs ?? [],
-			}
-		}
-		if (resolved.options?.taskHeaders) {
-			zeebeExt.taskHeaders = {
-				headers: Object.entries(resolved.options.taskHeaders).map(([key, value]) => ({
-					key,
-					value,
-				})),
-			}
-		}
-		const extensionElements = zeebeExtensionsToXmlElements(zeebeExt)
-
-		const adHocAttrs: Record<string, string> = {}
-		if (resolved.options?.activeElementsCollection) {
-			adHocAttrs.activeElementsCollection = resolved.options.activeElementsCollection
-		}
-		if (resolved.options?.outputCollection) {
-			adHocAttrs.outputCollection = resolved.options.outputCollection
-		}
-		if (resolved.options?.outputElement) {
-			adHocAttrs.outputElement = resolved.options.outputElement
-		}
-		if (Object.keys(adHocAttrs).length > 0) {
-			extensionElements.push({
-				name: "zeebe:adHoc",
-				attributes: adHocAttrs,
-				children: [],
-			})
-		}
-
+		const { extensionElements, completionCondition } = buildAdHocSubProcessExtensions(
+			resolved.options,
+		)
 		const element = makeFlowElement(id, "adHocSubProcess", {
 			name: resolved.options?.name,
+			documentation: resolved.options?.documentation,
 			extensionElements,
 		})
-		if (resolved.options?.modelerTemplate) {
-			element.unknownAttributes["zeebe:modelerTemplate"] = resolved.options.modelerTemplate
-		}
-		if (resolved.options?.modelerTemplateVersion) {
-			element.unknownAttributes["zeebe:modelerTemplateVersion"] =
-				resolved.options.modelerTemplateVersion
-		}
-		if (resolved.options?.modelerTemplateIcon) {
-			element.unknownAttributes["zeebe:modelerTemplateIcon"] = resolved.options.modelerTemplateIcon
-		}
-		if (element.type === "adHocSubProcess") {
-			element.flowElements = sub._elements
-			element.sequenceFlows = sub._flows
-			element.textAnnotations = sub._textAnnotations
-			element.associations = sub._associations
-			if (resolved.options?.loopCharacteristics) {
-				element.loopCharacteristics = buildAdHocLoopCharacteristics(
-					resolved.options.loopCharacteristics,
-				)
-			} else if (resolved.options?.multiInstance) {
-				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
-			}
-		}
+		finalizeAdHocSubProcessEl(element, resolved.options, sub, completionCondition)
 		return this.addElement(element)
 	}
 
@@ -1947,7 +2012,10 @@ export class ProcessBuilder {
 	/** Add an intermediate catch event (timer, message, signal). */
 	intermediateCatchEvent(id?: string, options?: IntermediateCatchEventOptions): this {
 		const nodeId = id ?? generateId("IntermediateCatchEvent")
-		const element = makeFlowElement(nodeId, "intermediateCatchEvent", options)
+		const element = makeFlowElement(nodeId, "intermediateCatchEvent", {
+			...options,
+			extensionElements: buildMessageSubscriptionExt(options?.correlationKey),
+		})
 		if (element.type === "intermediateCatchEvent" && options) {
 			element.eventDefinitions = buildEventDefinitions(
 				options,
@@ -1968,7 +2036,10 @@ export class ProcessBuilder {
 	 * They start a new outgoing chain from the boundary event itself.
 	 */
 	boundaryEvent(id: string, options: BoundaryEventOptions): this {
-		const element = makeFlowElement(id, "boundaryEvent", options)
+		const element = makeFlowElement(id, "boundaryEvent", {
+			...options,
+			extensionElements: buildMessageSubscriptionExt(options.correlationKey),
+		})
 		if (element.type === "boundaryEvent") {
 			element.attachedToRef = options.attachedTo
 			element.cancelActivity = options.cancelActivity
@@ -2274,72 +2345,15 @@ export class ProcessBuilder {
 		insertJoinGateways(sub._elements, sub._flows)
 		recomputeIncomingOutgoing(sub._elements, sub._flows)
 
-		const zeebeExt: ZeebeExtensions = {}
-		if (resolved.options?.taskDefinition) {
-			zeebeExt.taskDefinition = resolved.options.taskDefinition
-		}
-		if (resolved.options?.ioMapping) {
-			zeebeExt.ioMapping = {
-				inputs: resolved.options.ioMapping.inputs ?? [],
-				outputs: resolved.options.ioMapping.outputs ?? [],
-			}
-		}
-		if (resolved.options?.taskHeaders) {
-			zeebeExt.taskHeaders = {
-				headers: Object.entries(resolved.options.taskHeaders).map(([key, value]) => ({
-					key,
-					value,
-				})),
-			}
-		}
-		const extensionElements = zeebeExtensionsToXmlElements(zeebeExt)
-
-		// zeebe:adHoc element
-		const adHocAttrs: Record<string, string> = {}
-		if (resolved.options?.activeElementsCollection) {
-			adHocAttrs.activeElementsCollection = resolved.options.activeElementsCollection
-		}
-		if (resolved.options?.outputCollection) {
-			adHocAttrs.outputCollection = resolved.options.outputCollection
-		}
-		if (resolved.options?.outputElement) {
-			adHocAttrs.outputElement = resolved.options.outputElement
-		}
-		if (Object.keys(adHocAttrs).length > 0) {
-			extensionElements.push({
-				name: "zeebe:adHoc",
-				attributes: adHocAttrs,
-				children: [],
-			})
-		}
-
+		const { extensionElements, completionCondition } = buildAdHocSubProcessExtensions(
+			resolved.options,
+		)
 		const element = makeFlowElement(id, "adHocSubProcess", {
 			name: resolved.options?.name,
+			documentation: resolved.options?.documentation,
 			extensionElements,
 		})
-		if (resolved.options?.modelerTemplate) {
-			element.unknownAttributes["zeebe:modelerTemplate"] = resolved.options.modelerTemplate
-		}
-		if (resolved.options?.modelerTemplateVersion) {
-			element.unknownAttributes["zeebe:modelerTemplateVersion"] =
-				resolved.options.modelerTemplateVersion
-		}
-		if (resolved.options?.modelerTemplateIcon) {
-			element.unknownAttributes["zeebe:modelerTemplateIcon"] = resolved.options.modelerTemplateIcon
-		}
-		if (element.type === "adHocSubProcess") {
-			element.flowElements = sub._elements
-			element.sequenceFlows = sub._flows
-			element.textAnnotations = sub._textAnnotations
-			element.associations = sub._associations
-			if (resolved.options?.loopCharacteristics) {
-				element.loopCharacteristics = buildAdHocLoopCharacteristics(
-					resolved.options.loopCharacteristics,
-				)
-			} else if (resolved.options?.multiInstance) {
-				element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
-			}
-		}
+		finalizeAdHocSubProcessEl(element, resolved.options, sub, completionCondition)
 		this.addFlowElement(element)
 		return this
 	}

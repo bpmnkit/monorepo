@@ -288,6 +288,10 @@ export interface BpmnReceiveTask extends BpmnFlowNodeBase {
 export interface BpmnAdHocSubProcess extends BpmnFlowNodeBase {
 	type: "adHocSubProcess"
 	loopCharacteristics?: BpmnMultiInstanceLoopCharacteristics
+	/** FEEL expression evaluated after each tool activity completes; ends the ad-hoc scope when true. */
+	completionCondition?: BpmnConditionExpression
+	/** Whether still-running inner activity instances are cancelled once the completion condition is met (default true). */
+	cancelRemainingInstances?: boolean
 	flowElements: BpmnFlowElement[]
 	sequenceFlows: BpmnSequenceFlow[]
 	textAnnotations: BpmnTextAnnotation[]

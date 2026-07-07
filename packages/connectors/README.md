@@ -1,58 +1,78 @@
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="72" height="72" alt="BPMN Kit logo"></a>
-  <h1>@bpmnkit/astro-shared</h1>
-  <p>Shared CSS design tokens, aurora background, and site metadata for BPMN Kit Astro apps</p>
+  <h1>@bpmnkit/connectors</h1>
+  <p>Camunda 8 out-of-the-box connector catalog and deterministic element-template application for @bpmnkit/core</p>
 
-  [![npm](https://img.shields.io/npm/v/@bpmnkit/astro-shared?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/astro-shared)
-  [![license](https://img.shields.io/npm/l/@bpmnkit/astro-shared?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
+  [![npm](https://img.shields.io/npm/v/@bpmnkit/connectors?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/connectors)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/connectors?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
   [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/astro-shared/CHANGELOG.md)
+  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/connectors/CHANGELOG.md)
 </div>
 
 ---
 
 ## Overview
 
-`@bpmnkit/astro-shared` provides shared CSS imports and site metadata used across BPMN Kit's Astro-based apps (landing page, docs, learn). It re-exports the design tokens from `@bpmnkit/ui` and adds a global aurora background animation.
+`@bpmnkit/connectors` bundles the 116+ Camunda 8 out-of-the-box connector element templates (Slack, SendGrid, HTTP, Kafka, AWS, the agentic-AI family, and more) and applies them to `@bpmnkit/core` builder options deterministically — every binding kind (`zeebe:input`, `zeebe:output`, `zeebe:taskHeader`, `zeebe:taskDefinition`, `zeebe:property`, `zeebe:adHoc`), dropdown-gated conditions, required-field validation, and FEEL parse-checking on FEEL-tagged values.
 
-This package is primarily intended for internal use by BPMN Kit's own Astro applications.
+## Features
+
+- **Full connector catalog** — search and inspect all bundled Camunda 8 OOTB templates
+- **Complete binding resolution** — including `zeebe:property` and `zeebe:output`, which naive appliers drop
+- **Required-field and FEEL validation** — problems are reported, never silently swallowed
+- **Works with any template** — bundled catalog or a custom/generated `ElementTemplate`
 
 ## Installation
 
 ```sh
-npm install @bpmnkit/astro-shared
+npm install @bpmnkit/connectors
 ```
 
-## Usage
-
-### Import design tokens in Astro layouts
-
-```astro
----
-import "@bpmnkit/astro-shared/tokens.css"
-import "@bpmnkit/astro-shared/background.css"
----
-```
-
-### Access site metadata
+## Quick Start
 
 ```typescript
-import { SITE } from "@bpmnkit/astro-shared"
+import { Bpmn } from "@bpmnkit/core"
+import { applyConnectorTemplate, searchConnectors } from "@bpmnkit/connectors"
 
-console.log(SITE.name)    // "BPMN Kit"
-console.log(SITE.docsUrl) // "https://docs.bpmnkit.com"
+const [slack] = searchConnectors("slack")
+const result = applyConnectorTemplate(slack.id, {
+  method: "chat.postMessage",
+  token: "{{secrets.SLACK_OAUTH_TOKEN}}",
+  "data.channel": "#ops",
+  "data.text": "=\"Order \" + orderId + \" failed validation\"",
+})
+
+if (result.problems.length > 0) throw new Error(result.problems[0].message)
+
+const defs = Bpmn.createProcess("proc")
+  .startEvent("s")
+  .serviceTask("notify", result.serviceTask!)
+  .endEvent("e")
+  .build()
 ```
 
-## Exports
+## API Reference
 
-| Export | Description |
-|--------|-------------|
-| `/tokens.css` | All `--bpmnkit-*` CSS custom properties (re-exports `@bpmnkit/ui/tokens.css`) |
-| `/background.css` | Global aurora background animation styles |
-| `.` | `SITE` metadata object (name, url, github, docsUrl, learnUrl, npm) |
+```typescript
+function listConnectors(): ConnectorSummary[]
+function searchConnectors(query: string): ConnectorSummary[]
+function getTemplate(id: string): ElementTemplate | undefined
+
+function applyConnectorTemplate(templateId: string, values?: Record<string, string>): ApplyResult
+function applyElementTemplate(template: ElementTemplate, values?: Record<string, string>): ApplyResult
+
+interface ApplyResult {
+  serviceTask?: ServiceTaskOptions
+  adHocSubProcess?: Partial<AdHocSubProcessOptions>
+  startEvent?: Partial<StartEventOptions>
+  boundaryEvent?: Partial<BoundaryEventOptions>
+  intermediateEvent?: Partial<IntermediateCatchEventOptions>
+  problems: ApplyProblem[]
+}
+```
 
 ---
 
@@ -72,7 +92,6 @@ console.log(SITE.docsUrl) // "https://docs.bpmnkit.com"
 | [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
 | [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
 | [`@bpmnkit/connector-gen`](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs |
-| [`@bpmnkit/connectors`](https://www.npmjs.com/package/@bpmnkit/connectors) | Camunda 8 OOTB connector catalog and deterministic template application |
 | [`@bpmnkit/cli`](https://www.npmjs.com/package/@bpmnkit/cli) | Camunda 8 command-line interface (casen) |
 | [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy) | Local AI bridge and Camunda API proxy server |
 | [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |

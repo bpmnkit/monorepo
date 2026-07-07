@@ -373,13 +373,22 @@ function parseFlowElement(element: XmlElement): BpmnFlowElement | undefined {
 				isForCompensation: attr(element, "isForCompensation") === "true" ? true : undefined,
 			}
 
-		case "adHocSubProcess":
+		case "adHocSubProcess": {
+			const completionEl = findChild(element, "completionCondition")
 			return {
 				...base,
 				type: "adHocSubProcess",
 				loopCharacteristics: parseLoopCharacteristics(element),
+				completionCondition: completionEl
+					? { text: completionEl.text ?? "", attributes: { ...completionEl.attributes } }
+					: undefined,
+				cancelRemainingInstances:
+					attr(element, "cancelRemainingInstances") !== undefined
+						? attr(element, "cancelRemainingInstances") === "true"
+						: undefined,
 				...parseProcessContents(element),
 			}
+		}
 
 		case "subProcess":
 			return {

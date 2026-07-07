@@ -148,8 +148,25 @@ export type {
 	ZeebePropertyEntry,
 	ZeebeFormDefinition,
 	ZeebeCalledDecision,
+	ZeebeAssignmentDefinition,
+	ZeebeTaskSchedule,
+	ZeebePriorityDefinition,
+	ZeebeSubscription,
 } from "./bpmn/zeebe-extensions.js"
 export { zeebeExtensionsToXmlElements } from "./bpmn/zeebe-extensions.js"
+export {
+	buildAiAgentSubProcess,
+	AI_AGENT_JOB_WORKER_TASK_TYPE,
+	AI_AGENT_DEFAULT_OUTPUT_ELEMENT,
+} from "./bpmn/agentic.js"
+export type {
+	AiAgentOptions,
+	AiAgentModelConfig,
+	AiAgentToolSpec,
+	AiAgentToolParam,
+	AiAgentToolParamType,
+	AiAgentBuild,
+} from "./bpmn/agentic.js"
 export { Dmn, layoutDmn, benchmarkDmnLayout, compactifyDmn, expandDmn } from "./dmn/index.js"
 export type {
 	DmnBenchmarkResult,

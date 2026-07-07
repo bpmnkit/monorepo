@@ -359,6 +359,15 @@ importers:
         specifier: ^2.7.0
         version: 2.8.2
 
+  packages/connectors:
+    dependencies:
+      '@bpmnkit/core':
+        specifier: workspace:*
+        version: link:../core
+      '@bpmnkit/feel':
+        specifier: workspace:*
+        version: link:../feel
+
   packages/core:
     dependencies:
       '@bpmnkit/feel':
@@ -422,6 +431,9 @@ importers:
       '@bpmnkit/connector-gen':
         specifier: workspace:*
         version: link:../connector-gen
+      '@bpmnkit/connectors':
+        specifier: workspace:*
+        version: link:../connectors
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../core
