@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-07-07 — SEO & discoverability: remaining 6 blog posts (Phase 3 complete)
+
+Writes the 6 posts left from `doc/seo-plan.md`'s 10-post editorial calendar, each grounded in a verified real API (checked package source/compiled output before writing, not assumed from memory):
+
+- **Migrating from bpmn-js: a headless alternative** — practical migration guide (rendering → `@bpmnkit/canvas`, editing → `@bpmnkit/editor`, generation has no bpmn-js equivalent), distinct from the existing `/compare/bpmn-js` feature-comparison page.
+- **Evaluating FEEL expressions in TypeScript** — `parseExpression`/`evaluate` from `@bpmnkit/feel`, verified against `packages/feel/src/evaluator.ts` and its own test file's usage pattern; links to the new `/feel-functions` reference.
+- **Generating BPMN from natural language with an LLM** — `compactify`/`expand`/`Bpmn.makeEmpty()`, grounded directly in `apps/docs/src/content/docs/guides/ai.md`'s existing (already-accurate) documentation of the same pipeline.
+- **Embedding a BPMN viewer in React** — a `useEffect`-based wrapper around `@bpmnkit/canvas`'s real `CanvasOptions`/`.load()`/`.destroy()` API (checked `packages/canvas/src/types.ts` and `canvas.ts` directly).
+- **BPMN boundary events, explained with code** — interrupting vs. non-interrupting semantics plus `withBoundary()`, cross-linked with the existing glossary entry.
+- **Building a Camunda 8 connector from an OpenAPI spec** — `generate()`/`generateFromUrl()` from `@bpmnkit/connector-gen`, verified against `packages/connector-gen/src/index.ts` and `types.ts`'s real `GeneratorOptions` fields.
+- Caught one bad link while writing (a blog post initially referenced a nonexistent `docs.bpmnkit.com/packages/feel/` page — `@bpmnkit/feel` has no docs package page; fixed to link the GitHub source instead).
+- Verified: `biome check`/`tsc --noEmit` clean, full `astro build` — 143 pages (up from 137), all 10 posts present in `dist/blog/`, RSS feed has 10 items, spot-checked code-block rendering (including a `tsx` React sample and an escaped-quote FEEL string) for correctness.
+
 ## 2026-07-07 — SEO & discoverability: Phase 4 completion (use cases, FEEL reference)
 
 Follow-up to the same day's foundation work — fills in the two Phase 4 items previously deferred.

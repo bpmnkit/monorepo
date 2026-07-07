@@ -221,8 +221,7 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] **Phase 2 — Domain & brand unification**: docs renamed "BPMN SDK" → "BPMN Kit" and its `site` URL fixed from `bpmn-sdk-docs.pages.dev` to `docs.bpmnkit.com` (was also serving fake `@bpmn-sdk/*` package names on the docs homepage — corrected to real `@bpmnkit/*`); `learn` given a `site` URL for the first time; cross-site nav/footer linking added across all three apps
 - [x] **Phase 5 — Structured data**: `organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd` helpers, applied site-wide plus per-page on connectors, compare, blog, and glossary pages
 - [x] **Phase 4 — Evergreen pages**: `/connectors` catalog (116 pages generated from `@bpmnkit/connectors`' real template data), `/compare/bpmn-js` + `/compare/camunda-modeler`, `/feel-functions` (all 87 real `@bpmnkit/feel` builtins, verified 1:1 against `builtinNames()`), `/use-cases` (4 pages: AI workflow generation, embedding the editor, Camunda 8 automation, process simulation), and a 9-entry `/glossary` on `learn.bpmnkit.com` (BPMN element definitions with a generated diagram + runnable `@bpmnkit/core` example each, cross-linked to the matching tutorial)
-- [x] **Phase 3 — Blog**: `bpmnkit.com/blog` (Astro content collection + RSS), 4 initial posts
-- [ ] **Phase 3 (remaining)** — 6 of the 10 planned editorial-calendar posts in `doc/seo-plan.md` not yet written
+- [x] **Phase 3 — Blog**: `bpmnkit.com/blog` (Astro content collection + RSS), all 10 posts from the `doc/seo-plan.md` editorial calendar written and published
 - [ ] **Phase 4 (remaining)** — glossary covers 9 of ~12-15 suggested BPMN concepts (missing e.g. message/timer events, call activity)
 - [ ] **Phase 6 — Distribution & measurement** — Search Console/analytics setup requires the live domains and is out of repo scope
 
