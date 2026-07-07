@@ -378,8 +378,21 @@ export class ProcessInstance {
 				await this.handleSubProcess(token, el, ctx)
 				break
 
+			case "adHocSubProcess":
+				if (ext.taskDefinition) {
+					// Job-worker implementation (e.g. the AI Agent Sub-process connector) —
+					// dispatch as a job so scenarios can mock it like any other task.
+					// The tools nested inside are not individually executed; see the
+					// scenario runner docs for scope.
+					await this.handleJobTask(token, el, ext, ctx)
+				} else {
+					// BPMN-native ad-hoc sub-process — auto-complete (tools not executed).
+					await this.complete(token, ctx)
+				}
+				break
+
 			default:
-				// eventSubProcess, adHocSubProcess, callActivity, etc. — auto-complete
+				// eventSubProcess, callActivity, etc. — auto-complete
 				await this.complete(token, ctx)
 				break
 		}
