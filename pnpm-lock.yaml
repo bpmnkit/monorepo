@@ -91,6 +91,9 @@ importers:
       '@bpmnkit/connector-gen':
         specifier: workspace:*
         version: link:../../packages/connector-gen
+      '@bpmnkit/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core

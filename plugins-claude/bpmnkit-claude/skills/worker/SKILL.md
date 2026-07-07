@@ -22,20 +22,22 @@ Steps:
 If `worker_scaffold` is unavailable, generate this template directly:
 
 ```typescript
-import { activateJobs, completeJob, failJob } from "@bpmnkit/worker-client"
+import { createWorkerClient } from "@bpmnkit/worker-client"
 
 const JOB_TYPE = "<job-type>"
 
+const client = createWorkerClient({ workerName: "<job-type>-worker" })
+
 async function run() {
-  for await (const job of activateJobs({ type: JOB_TYPE })) {
+  for await (const job of client.poll(JOB_TYPE)) {
     try {
       const variables = job.variables
 
       // TODO: implement job logic
 
-      await completeJob(job, { /* output variables */ })
+      await job.complete({ /* output variables */ })
     } catch (err) {
-      await failJob(job, { errorMessage: String(err) })
+      await job.fail(String(err))
     }
   }
 }

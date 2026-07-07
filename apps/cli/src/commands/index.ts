@@ -21,6 +21,7 @@ import { completionGroup } from "./completion.js"
 import { connectorGroup } from "./connector.js"
 import { generateGroup } from "./generate.js"
 import { lintGroup } from "./lint.js"
+import { planGroup } from "./plan.js"
 import { pluginGroup } from "./plugin.js"
 import { profileGroup } from "./profile.js"
 import { proxyGroup } from "./proxy.js"
@@ -29,6 +30,7 @@ import { computeRelations } from "./relations.js"
 import { settingsGroup } from "./settings.js"
 import { skillsGroup } from "./skills.js"
 import { storyGroup } from "./story.js"
+import { synthGroup } from "./synth.js"
 import { testGroup } from "./test.js"
 import { viewGroup } from "./view.js"
 import { workerStartCmd } from "./worker-start.js"
@@ -79,11 +81,13 @@ export const pinnedGroups: CommandGroup[] = [
 	askGroup,
 	generateGroup,
 	lintGroup,
+	planGroup,
 	proxyGroup,
 	reebeGroup,
 	skillsGroup,
 	storyGroup,
 	settingsGroup,
+	synthGroup,
 	testGroup,
 	viewGroup,
 	workerGroup,
