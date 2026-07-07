@@ -1,5 +1,11 @@
 # @bpmnkit/connector-gen
 
+## 0.0.15
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+
 ## 0.0.14
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @bpmnkit/astro-shared
 
+## 0.0.14
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+- Updated dependencies [9cd1942]
+  - @bpmnkit/ui@0.0.16
+
 ## 0.0.13
 
 ### Patch Changes

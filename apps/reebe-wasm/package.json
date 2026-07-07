@@ -1,6 +1,6 @@
 {
   "name": "@bpmnkit/reebe-wasm",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "main": "reebe_wasm.js",
   "types": "reebe_wasm.d.ts",

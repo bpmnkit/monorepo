@@ -1,5 +1,11 @@
 # @bpmnkit/casen-worker-http
 
+## 0.1.7
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+
 ## 0.1.6
 
 ### Patch Changes

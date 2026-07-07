@@ -1,5 +1,19 @@
 # @bpmnkit/plugins
 
+## 0.0.33
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+- Updated dependencies [9cd1942]
+  - @bpmnkit/connector-gen@0.0.15
+  - @bpmnkit/connectors@0.0.2
+  - @bpmnkit/canvas@0.0.30
+  - @bpmnkit/editor@0.0.33
+  - @bpmnkit/ascii@0.0.30
+  - @bpmnkit/core@0.1.2
+  - @bpmnkit/feel@0.0.20
+
 ## 0.0.32
 
 ### Patch Changes

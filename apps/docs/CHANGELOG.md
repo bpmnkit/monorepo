@@ -1,5 +1,11 @@
 # @bpmnkit/docs
 
+## 0.0.11
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+
 ## 0.0.10
 
 ### Patch Changes
