@@ -213,6 +213,20 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## SEO & Discoverability
+
+> Full plan: [`doc/seo-plan.md`](seo-plan.md)
+
+- [x] **Phase 1 — Technical foundation**: shared `<Seo>` component + JSON-LD helpers (`packages/astro-shared`), `@astrojs/sitemap` wired into `landing`/`docs`/`learn`, `robots.txt` on all three, full canonical/OG/Twitter tags (fixed a `build.format: "file"` canonical bug — `Astro.url.pathname` resolved to literal `.html`/`.html` suffixes)
+- [x] **Phase 2 — Domain & brand unification**: docs renamed "BPMN SDK" → "BPMN Kit" and its `site` URL fixed from `bpmn-sdk-docs.pages.dev` to `docs.bpmnkit.com` (was also serving fake `@bpmn-sdk/*` package names on the docs homepage — corrected to real `@bpmnkit/*`); `learn` given a `site` URL for the first time; cross-site nav/footer linking added across all three apps
+- [x] **Phase 5 — Structured data**: `organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd` helpers, applied site-wide plus per-page on connectors, compare, blog, and glossary pages
+- [x] **Phase 4 — Evergreen pages**: `/connectors` catalog (116 pages generated from `@bpmnkit/connectors`' real template data), `/compare/bpmn-js` + `/compare/camunda-modeler`, and a 9-entry `/glossary` on `learn.bpmnkit.com` (BPMN element definitions with a generated diagram + runnable `@bpmnkit/core` example each, cross-linked to the matching tutorial)
+- [x] **Phase 3 — Blog**: `bpmnkit.com/blog` (Astro content collection + RSS), 4 initial posts
+- [ ] **Phase 4 (remaining)** — use-case/solution pages, FEEL function reference; **Phase 3 (remaining)** — rest of the 10-post editorial calendar in `doc/seo-plan.md`
+- [ ] **Phase 6 — Distribution & measurement** — Search Console/analytics setup requires the live domains and is out of repo scope
+
+---
+
 ## CLI Enhancements
 
 - [x] `casen test <file.bpmn>` — run process spec scenarios (Phase 3)

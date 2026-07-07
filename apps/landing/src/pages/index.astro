@@ -1,7 +1,20 @@
 ---
 import "../styles/global.css"
+import { SITE } from "@bpmnkit/astro-shared"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { organizationJsonLd, softwareApplicationJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import { CONNECTOR_STATS } from "@bpmnkit/connector-gen"
 import { CODE_HTML } from "../data/content"
+
+const jsonLd = [
+	organizationJsonLd(),
+	softwareApplicationJsonLd({
+		name: SITE.name,
+		description: SITE.description,
+		url: SITE.url,
+		applicationCategory: "DeveloperApplication",
+	}),
+]
 
 const withSdkCode = CODE_HTML.withSdk
 const createProcessCode = CODE_HTML.createProcess
@@ -18,12 +31,12 @@ const typeGuardsCode = CODE_HTML.typeGuards
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BPMN Kit — Generate BPMN diagrams with code</title>
-  <meta name="description" content="A TypeScript SDK for generating production-ready BPMN diagrams programmatically. Built for AI agents, automation platforms, and workflow builders." />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <meta property="og:image" content="https://bpmnkit.com/og.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://bpmnkit.com/og.png" />
+  <Seo
+    title="BPMN Kit — Generate BPMN diagrams with code"
+    description="A TypeScript SDK for generating production-ready BPMN diagrams programmatically. Built for AI agents, automation platforms, and workflow builders."
+    jsonLd={jsonLd}
+  />
 </head>
 <body>
 
@@ -58,7 +71,10 @@ const typeGuardsCode = CODE_HTML.typeGuards
         <a href="#playground" class="nav-link">Playground</a>
         <a href="#api" class="nav-link">API</a>
         <a href="#cli" class="nav-link">CLI</a>
+        <a href="/connectors" class="nav-link">Connectors</a>
+        <a href="/blog" class="nav-link">Blog</a>
         <a href="https://docs.bpmnkit.com" class="nav-link">Docs</a>
+        <a href="https://learn.bpmnkit.com" class="nav-link">Learn</a>
         <a href="/editor" class="nav-link">Editor</a>
         <a href="/operate" class="nav-link">Operate</a>
         <a href="https://github.com/bpmnkit/monorepo" class="nav-cta" target="_blank" rel="noopener">
@@ -79,7 +95,10 @@ const typeGuardsCode = CODE_HTML.typeGuards
       <a href="#playground" class="nav-mobile-link">Playground</a>
       <a href="#api" class="nav-mobile-link">API</a>
       <a href="#cli" class="nav-mobile-link">CLI</a>
+      <a href="/connectors" class="nav-mobile-link">Connectors</a>
+      <a href="/blog" class="nav-mobile-link">Blog</a>
       <a href="https://docs.bpmnkit.com" class="nav-mobile-link">Docs</a>
+      <a href="https://learn.bpmnkit.com" class="nav-mobile-link">Learn</a>
       <a href="/editor" class="nav-mobile-link">Editor</a>
       <a href="/operate" class="nav-mobile-link">Operate</a>
       <a href="https://github.com/bpmnkit/monorepo" class="nav-mobile-link nav-mobile-cta" target="_blank" rel="noopener">
@@ -794,8 +813,13 @@ const typeGuardsCode = CODE_HTML.typeGuards
       </div>
       <div class="footer-links">
         <a href="/editor" class="footer-link">Editor</a>
+        <a href="/connectors" class="footer-link">Connectors</a>
+        <a href="/compare" class="footer-link">Compare</a>
+        <a href="/blog" class="footer-link">Blog</a>
+        <a href="https://docs.bpmnkit.com" class="footer-link" target="_blank" rel="noopener">Docs</a>
+        <a href="https://learn.bpmnkit.com" class="footer-link" target="_blank" rel="noopener">Learn</a>
         <a href="https://github.com/bpmnkit/monorepo" class="footer-link" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://www.npmjs.com/package/@bpmnkit/core" class="footer-link" target="_blank" rel="noopener">npm</a>
+        <a href="https://www.npmjs.com/org/bpmnkit" class="footer-link" target="_blank" rel="noopener">npm</a>
       </div>
     </div>
   </footer>

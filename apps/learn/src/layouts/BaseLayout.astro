@@ -1,13 +1,21 @@
 ---
 import "@bpmnkit/astro-shared/tokens.css"
 import "@bpmnkit/astro-shared/background.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { organizationJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import "../styles/learn.css"
 
 interface Props {
 	title: string
 	description?: string
+	jsonLd?: object | object[]
 }
-const { title, description = "Interactive BPMN tutorials — learn by doing" } = Astro.props
+const {
+	title,
+	description = "Interactive BPMN tutorials — learn by doing",
+	jsonLd = [],
+} = Astro.props
+const allJsonLd = [organizationJsonLd(), ...(Array.isArray(jsonLd) ? jsonLd : [jsonLd])]
 ---
 
 <!doctype html>
@@ -15,9 +23,8 @@ const { title, description = "Interactive BPMN tutorials — learn by doing" } =
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title} — BPMN Kit Learn</title>
-    <meta name="description" content={description} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <Seo title={`${title} — BPMN Kit Learn`} description={description} jsonLd={allJsonLd} />
   </head>
   <body>
     <div class="aurora" aria-hidden="true">
@@ -40,6 +47,7 @@ const { title, description = "Interactive BPMN tutorials — learn by doing" } =
         </a>
         <div class="learn-nav-links">
           <a href="/">Tutorials</a>
+          <a href="/glossary">Glossary</a>
           <a href="https://docs.bpmnkit.com" target="_blank" rel="noopener">Docs ↗</a>
           <a href="https://github.com/bpmnkit/monorepo" target="_blank" rel="noopener">GitHub ↗</a>
         </div>
@@ -53,6 +61,7 @@ const { title, description = "Interactive BPMN tutorials — learn by doing" } =
     <footer class="learn-footer">
       <div class="footer-inner">
         <span>© 2026 BPMN Kit</span>
+        <a href="/glossary">Glossary</a>
         <a href="https://github.com/bpmnkit/monorepo">GitHub</a>
         <a href="https://docs.bpmnkit.com">Docs</a>
       </div>

@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-07-07 — SEO & discoverability: plan + Phase 1/2/5 foundation, Phase 3/4 content
+
+Implements `doc/seo-plan.md` (written this session as a hand-off plan, then implemented directly). Full details in `doc/roadmap.md`'s new "SEO & Discoverability" section.
+
+- **`packages/astro-shared`**: new `Seo.astro` (title/description/canonical/OG/Twitter/JSON-LD in one component) and `seo.ts` (`organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd`), added a missing `tsconfig.json` (its files had no local tsconfig, so esbuild walked up to the root's `tsconfig.json`, which references now-absent `canvas-plugins/*` project paths and broke any app that actually imported from the package). Fixed `SITE.url` (was `https://bpmn-sdk.github.io/monorepo`) to `https://bpmnkit.com`.
+- **`apps/landing`**: adopted `<Seo>` on every page (fixed a real bug — with `build.format: "file"`, `Astro.url.pathname` resolves to the on-disk `.html` filename, and to the literal string `.html` for the homepage, so the naive canonical was `bpmnkit.com/.html`; `Seo.astro` now normalizes it back to the clean URL); added `@astrojs/sitemap` + `robots.txt`; new `/connectors` (index + 116 generated pages from `@bpmnkit/connectors`' real catalog data), `/compare` (`bpmn-js`, `camunda-modeler`), and `/blog` (Astro content collection, RSS feed, 4 initial posts) sections; extracted `Nav.astro`/`Footer.astro` for the new pages to share.
+- **`apps/docs`**: fixed the site being titled "BPMN SDK" (vs. the product's actual "BPMN Kit" branding everywhere else) and configured with `site: "https://bpmn-sdk-docs.pages.dev"` instead of the real `docs.bpmnkit.com` — canonicals/OG were pointing at the wrong domain. The homepage was also showing fabricated `@bpmn-sdk/*` package names in its package table and quick-start code sample; corrected to the real `@bpmnkit/*` names. Added `robots.txt` and site-wide JSON-LD.
+- **`apps/learn`**: had no `site` URL configured at all (blocking canonicals/sitemap); added it, `@astrojs/sitemap`, `robots.txt`, an `og.png` endpoint (didn't exist), and adopted `<Seo>` in `BaseLayout.astro` (tutorial step pages had no meta description before — now use the tutorial's real description instead of none). New `/glossary` — 9 BPMN element definitions (start/end event, exclusive/parallel/inclusive gateway, service/user task, sub-process, boundary event), each with a generated inline SVG diagram (`GlossaryDiagram.astro`, driven by data not hand-drawn per page), a runnable `@bpmnkit/core` code example, and a cross-link to the matching hands-on tutorial.
+- Regenerated `packages/astro-shared`'s README (`scripts/generate-readmes.mjs`) to document the new `Seo.astro`/`seo.js` exports; `scripts/check-packages.mjs` still passes for all 22 published packages.
+- Verified: `pnpm biome check` clean, `tsc --noEmit`/`astro check` clean on all three apps, and a full `astro build` of `landing` (131 pages), `docs` (29 pages), and `learn` (51 pages) — sitemap, robots.txt, canonicals, OG tags, and JSON-LD spot-checked in the actual build output.
+- Deferred (scoped down from the full plan, noted in `doc/roadmap.md`): the remaining 6 of 10 planned blog posts, use-case/solution pages, a FEEL function reference, and Phase 6 (Search Console/analytics) which needs the live production domains and isn't a repo change.
+
 ## 2026-07-07 — AI BPMN generation: WP8 (documentation & roadmap) — spec complete
 
 Final work package of `doc/spec-bpmn-generation-skills.md` (WP0–WP8, all done).

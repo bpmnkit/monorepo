@@ -81,7 +81,7 @@ function renderMarkdown(md: string): string {
 const contentHtml = renderMarkdown(step.content)
 ---
 
-<BaseLayout title={`${step.title} — ${tutorial.title}`}>
+<BaseLayout title={`${step.title} — ${tutorial.title}`} description={tutorial.description}>
   <div class="step-page">
     <!-- Step header bar -->
     <div class="step-header">

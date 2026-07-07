@@ -1,5 +1,17 @@
 # Features
 
+## SEO & discoverability foundation (2026-07-07)
+
+Technical SEO across `bpmnkit.com`, `docs.bpmnkit.com`, and `learn.bpmnkit.com`, plus new evergreen and blog content aimed at organic search. Full plan: [`doc/seo-plan.md`](seo-plan.md).
+
+- **Shared `<Seo>` component + JSON-LD helpers** (`@bpmnkit/astro-shared`) — one source of truth for title/description/canonical/OG/Twitter tags and schema.org structured data (`Organization`, `SoftwareApplication`, `Article`, `BreadcrumbList`, `FAQPage`) across all three Astro apps.
+- **Sitemaps + `robots.txt`** on `landing`, `docs`, and `learn` (none existed before).
+- **Domain/brand unification** — `docs` was titled "BPMN SDK" and pointed at `bpmn-sdk-docs.pages.dev`; now "BPMN Kit" / `docs.bpmnkit.com`, matching the product everywhere else. `learn` had no `site` URL configured at all.
+- **`/connectors`** (`bpmnkit.com`) — 116 pages, one per Camunda 8 connector template, generated from `@bpmnkit/connectors`' real catalog data (required/optional inputs, task type, an `applyConnectorTemplate()` code sample).
+- **`/compare`** (`bpmnkit.com`) — `bpmn-js` and `camunda-modeler` comparison pages with FAQ structured data.
+- **`/glossary`** (`learn.bpmnkit.com`) — 9 BPMN element definitions (events, gateways, tasks, sub-processes, boundary events), each with a generated diagram, a runnable `@bpmnkit/core` example, and a link to the matching tutorial.
+- **`/blog`** (`bpmnkit.com`) — Astro content collection + RSS feed, launched with 4 posts on generating, laying out, simulating, and deploying BPMN diagrams with the SDK.
+
 ## AIKit v2 — Deterministic Generation Pipeline (2026-07-07)
 
 Replaces the LLM-in-the-loop `bpmn_create`/`bpmn_update` MCP tools with a deterministic, CLI-first pipeline: every BPMN process is authored as a `ProcessPlan` JSON file and compiled by `casen synth` — the LLM never writes BPMN XML, element IDs, or connector property keys by hand.

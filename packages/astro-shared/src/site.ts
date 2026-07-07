@@ -3,9 +3,10 @@ export const SITE = {
 	tagline: "Build, model, and deploy BPMN processes with TypeScript",
 	description:
 		"A TypeScript SDK for building, modeling, simulating, and deploying BPMN processes on Camunda 8.",
-	url: "https://bpmn-sdk.github.io/monorepo",
+	url: "https://bpmnkit.com",
 	github: "https://github.com/bpmnkit/monorepo",
-	npm: "https://www.npmjs.com/package/@bpmnkit/core",
+	npm: "https://www.npmjs.com/org/bpmnkit",
 	docsUrl: "https://docs.bpmnkit.com",
 	learnUrl: "https://learn.bpmnkit.com",
+	blogUrl: "https://bpmnkit.com/blog",
 }

@@ -1,0 +1,33 @@
+---
+import { glossary } from "../../glossary/data.js"
+import BaseLayout from "../../layouts/BaseLayout.astro"
+---
+
+<BaseLayout
+  title="BPMN Glossary"
+  description="Plain-English definitions of BPMN 2.0 elements — start events, gateways, tasks, and boundary events — with runnable TypeScript examples."
+>
+  <section class="catalog-hero">
+    <h1>BPMN Glossary</h1>
+    <p>What every BPMN 2.0 element means, with a diagram and a working TypeScript example for each.</p>
+  </section>
+
+  <section class="catalog-section">
+    <div class="glossary-grid">
+      {glossary.map((entry) => (
+        <a href={`/glossary/${entry.slug}`} class="glossary-card">
+          <h3>{entry.term}</h3>
+          <p>{entry.shortDefinition}</p>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .glossary-card { display: block; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); text-decoration: none; transition: border-color 0.2s, transform 0.2s; }
+  .glossary-card:hover { border-color: var(--accent-bright); transform: translateY(-2px); text-decoration: none; }
+  .glossary-card h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .glossary-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
+</style>
