@@ -1,0 +1,62 @@
+---
+import UseCase from "../../layouts/UseCase.astro"
+
+const faqs = [
+	{
+		question: "Does the editor require a backend?",
+		answer:
+			"No — @bpmnkit/editor runs entirely client-side. It reads and writes BPMN 2.0 XML directly; where you store that XML (a database, a file, a Camunda deployment) is up to your app.",
+	},
+	{
+		question: "Can I use it in React, Vue, or plain JavaScript?",
+		answer:
+			"@bpmnkit/editor is a framework-agnostic class that mounts into a container element, so it works the same way regardless of your view framework — wrap it in a small adapter component for React/Vue if you want idiomatic lifecycle hooks.",
+	},
+]
+---
+
+<UseCase
+  title="Embed a BPMN editor in your app"
+  description="Drop a full drag-and-drop BPMN 2.0 editor — canvas, properties panel, and AI bridge — into your own product with @bpmnkit/editor."
+  slug="embed-bpmn-editor"
+  faqs={faqs}
+>
+  <p>
+    Building process-design features into your own product usually means either embedding a
+    heavyweight third-party editor or building canvas interaction (drag, connect, resize,
+    label-edit) from scratch. <code>@bpmnkit/editor</code> is a full BPMN 2.0 editor —
+    canvas, properties panel, and an AI bridge — that mounts into any container element.
+  </p>
+
+  <h2>Mounting the editor</h2>
+  <pre>{`import { BpmnEditor } from "@bpmnkit/editor";
+
+const editor = new BpmnEditor({
+  container: document.getElementById("editor-container"),
+  xml: existingXml, // optional — starts blank if omitted
+  theme: "neon",
+});
+
+editor.on("diagram:change", () => {
+  const xml = editor.exportXml();
+  saveToBackend(xml);
+});`}</pre>
+  <p>
+    The editor emits change events with the current BPMN 2.0 XML, so persisting a diagram is
+    just wiring that event to wherever you store process definitions.
+  </p>
+
+  <h2>Read-only viewing</h2>
+  <p>
+    If you only need to display diagrams — not edit them — <code>@bpmnkit/canvas</code> is a
+    lighter, zero-dependency SVG viewer with pan/zoom and light/dark theming, useful for
+    dashboards or audit views where editing isn't needed.
+  </p>
+
+  <div class="uc-links">
+    <a href="https://docs.bpmnkit.com/packages/editor/">@bpmnkit/editor reference</a>
+    <a href="https://docs.bpmnkit.com/packages/canvas/">@bpmnkit/canvas reference</a>
+    <a href="/editor">Try the editor</a>
+    <a href="/compare/bpmn-js">Compare to bpmn-js</a>
+  </div>
+</UseCase>

@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-07-07 — SEO & discoverability: Phase 4 completion (use cases, FEEL reference)
+
+Follow-up to the same day's foundation work — fills in the two Phase 4 items previously deferred.
+
+- **`/feel-functions`** (`apps/landing`) — a reference page for all 87 `@bpmnkit/feel` built-in functions, grouped into 8 categories (conversion, boolean, string, list, numeric, date/time, interval, context). The function list (`src/data/feel-functions.ts`) was cross-checked programmatically against the real `builtinNames()` export from `packages/feel/dist/builtins.js` — 87/87 match, no typos, no omissions, no invented functions.
+- **`/use-cases`** (`apps/landing`) — 4 pages (AI workflow generation, embedding the editor, Camunda 8 automation from CI, process simulation/testing), each with a real, runnable code sample and FAQ JSON-LD, sharing a new `UseCase.astro` layout. Caught and fixed a broken link (`/glossary` used as a landing-relative path when the glossary actually lives on `learn.bpmnkit.com`).
+- Wired both into `Nav`/`Footer` site-wide.
+- Verified: `biome check` clean, `tsc --noEmit` clean, full `astro build` — 137 pages (up from 131), all new pages' canonicals/JSON-LD spot-checked in the build output.
+- Still deferred from `doc/seo-plan.md`: 6 of 10 blog posts, glossary coverage beyond the current 9 concepts, and Phase 6 (Search Console/analytics — needs live domains, not a repo change).
+
 ## 2026-07-07 — SEO & discoverability: plan + Phase 1/2/5 foundation, Phase 3/4 content
 
 Implements `doc/seo-plan.md` (written this session as a hand-off plan, then implemented directly). Full details in `doc/roadmap.md`'s new "SEO & Discoverability" section.

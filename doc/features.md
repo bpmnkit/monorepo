@@ -11,6 +11,8 @@ Technical SEO across `bpmnkit.com`, `docs.bpmnkit.com`, and `learn.bpmnkit.com`,
 - **`/compare`** (`bpmnkit.com`) — `bpmn-js` and `camunda-modeler` comparison pages with FAQ structured data.
 - **`/glossary`** (`learn.bpmnkit.com`) — 9 BPMN element definitions (events, gateways, tasks, sub-processes, boundary events), each with a generated diagram, a runnable `@bpmnkit/core` example, and a link to the matching tutorial.
 - **`/blog`** (`bpmnkit.com`) — Astro content collection + RSS feed, launched with 4 posts on generating, laying out, simulating, and deploying BPMN diagrams with the SDK.
+- **`/feel-functions`** (`bpmnkit.com`) — reference for all 87 `@bpmnkit/feel` built-in functions, verified 1:1 against the package's real `builtinNames()` export.
+- **`/use-cases`** (`bpmnkit.com`) — 4 pages (AI workflow generation, embedding the editor, Camunda 8 CI automation, process simulation), each with a runnable code sample and FAQ structured data.
 
 ## AIKit v2 — Deterministic Generation Pipeline (2026-07-07)
 
