@@ -463,6 +463,54 @@ describe("Engine", () => {
 			expect(jobType).toBe("payment-worker")
 			expect(instance.variables_snapshot).toMatchObject({ charged: true })
 		})
+
+		it("treats a zeebe:input source without a leading '=' as a literal, not a FEEL expression", async () => {
+			const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+  id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:startEvent id="start">
+      <bpmn:outgoing>flow1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="notify" name="Notify">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-worker"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="claude-sonnet-5" target="model"/>
+          <zeebe:input source="10" target="maxCalls"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>flow1</bpmn:incoming>
+      <bpmn:outgoing>flow2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end">
+      <bpmn:incoming>flow2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="notify"/>
+    <bpmn:sequenceFlow id="flow2" sourceRef="notify" targetRef="end"/>
+  </bpmn:process>
+</bpmn:definitions>`
+
+			const engine = new Engine()
+			engine.deploy({ bpmn: Bpmn.parse(xml) })
+
+			let jobVariables: Record<string, unknown> = {}
+			engine.registerJobWorker("notify-worker", (job) => {
+				jobVariables = job.variables
+				job.complete({})
+			})
+
+			const instance = engine.start("proc")
+			await settle()
+
+			expect(instance.state).toBe("completed")
+			// A literal "claude-sonnet-5" must survive as the string itself, not be
+			// misread as the FEEL subtraction `claude - sonnet - 5` (→ undefined/NaN).
+			expect(jobVariables.model).toBe("claude-sonnet-5")
+			// A literal "10" must survive as the string "10", not the FEEL number 10.
+			expect(jobVariables.maxCalls).toBe("10")
+		})
 	})
 
 	describe("registerJobWorker unsubscribe", () => {

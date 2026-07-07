@@ -13,7 +13,6 @@
 	"skills": "./skills/",
 	"agents": "./agents/",
 	"hooks": "./hooks/hooks.json",
-	"mcpServers": "./.mcp.json",
 	"userConfig": {
 		"camunda_endpoint": {
 			"description": "Camunda 8 REST API endpoint (optional, leave blank for local reebe)",

@@ -4,10 +4,6 @@
 			{
 				"type": "command",
 				"command": "which casen > /dev/null 2>&1 || echo 'BPMNKit plugin: casen CLI not found. Install with: npm install -g @bpmnkit/cli'"
-			},
-			{
-				"type": "command",
-				"command": "pgrep -f 'casen proxy start' > /dev/null 2>&1 || (nohup casen proxy start > /tmp/bpmnkit-proxy.log 2>&1 &)"
 			}
 		],
 		"PostToolUse": [
@@ -16,7 +12,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "FILE=$(node -e \"try{const i=JSON.parse(process.env.CLAUDE_TOOL_INPUT||'{}');process.stdout.write(i.file_path||i.path||'')}catch{}\"); [[ \"$FILE\" == *.bpmn ]] && casen lint \"$FILE\" 2>/dev/null || true"
+						"command": "FILE=$(node -e \"try{const i=JSON.parse(process.env.CLAUDE_TOOL_INPUT||'{}');process.stdout.write(i.file_path||i.path||'')}catch{}\"); [[ \"$FILE\" == *.bpmn ]] && casen lint lint \"$FILE\" 2>/dev/null || true"
 					}
 				]
 			}

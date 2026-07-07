@@ -1,38 +1,36 @@
 ---
-description: Analyse a BPMN process — check worker coverage and validation findings
+description: Run scenario tests on a BPMN process file and report path coverage.
 ---
 
 @.claude/aikit.md
 
-Analyse the BPMN process at the given path.
+Run scenario tests: $ARGUMENTS
 
-## File to test
+If no file is given, find the single `.bpmn` in cwd or ask.
 
-$ARGUMENTS
+## Step 1 — Ensure scenarios exist
 
----
+Look for `<file>.bpmn.tests.json` (written automatically by `casen synth` from a plan's `tests` array). If missing: `casen plan extract <file>.bpmn`, add a `tests` array covering the happy path and every branch/boundary, then `casen synth <plan>.json --merge <file>.bpmn` to regenerate it — or hand-write the sidecar directly (array of `{ id, name, inputs?, mocks?, expect? }`).
 
-1. Call `mcp__bpmnkit-aikit__bpmn_read` to understand the process structure (elements, service tasks, gateways, event types).
+## Step 2 — Run
 
-2. Call `mcp__bpmnkit-aikit__bpmn_simulate` with the path and an empty scenarios array to get worker coverage and validation analysis.
+```sh
+casen test <file>.bpmn
+```
 
-3. Call `mcp__bpmnkit-aikit__worker_list` to show the full worker catalog.
+## Step 3 — Report
 
-4. Present the results:
+```
+| Scenario | Result | Details |
+|----------|--------|---------|
+| happy-path | ✓ PASS | (Nms) |
+| error-path | ✗ FAIL | field: expected X, got Y |
+```
 
-**Process structure**
-- Pools / participants
-- Service tasks and their job types
-- Decision gateways and branch conditions
-- Event types (timer, message, error, escalation)
+## Step 4 — Coverage
 
-**Worker coverage**
-- ✓ Covered job types (matched to built-in or scaffolded workers)
-- ✗ Missing job types (no worker found — scaffold with worker_scaffold)
+Cross-reference gateway branches and error/timer boundaries against which scenarios exercise them; report anything uncovered.
 
-**Validation findings**
-- Errors and warnings from the pattern advisor
+## Step 5 — Summary
 
-**Suggested test scenarios** (derived from the BPMN structure)
-- Happy path: <describe the main success path>
-- Edge cases: <describe key branches, timeouts, error conditions>
+"X/Y scenarios passed. N branch(es)/boundary(ies) uncovered."

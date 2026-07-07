@@ -1,5 +1,19 @@
 # Progress
 
+## 2026-07-07 — AI BPMN generation: WP6 (Skills v2 — consolidated CLI-first plugin)
+
+Rebuilds `plugins-claude/bpmnkit-claude` as the single skill surface. Drops the MCP requirement (`.mcp.json` removed, `plugin.json`'s `mcpServers` key dropped) — every skill now drives `casen` directly via Bash; the `@bpmnkit/proxy` MCP server remains untouched for Studio/other hosts.
+
+- **Skills** (each reads the relevant `references/*.md` first, never hand-writes BPMN XML): `implement`, `extend`, `agent`, `connect` (new), `review`, `test`, `deploy` (rewritten CLI-first); `instances`/`incidents` kept as-is. Retired `generate`/`ascii`/`worker` (folded into `implement`).
+- **New reference docs**: `references/connectors.md` and `references/feel.md` (generated via new `scripts/generate-skill-references.mjs`, from `@bpmnkit/connectors`'s catalog and `@bpmnkit/feel`'s builtins), `references/plan-format.md` (generated, embeds tested golden-case examples from `packages/core/tests/plan.test.ts`), `references/agentic.md` and `references/modeling-style.md` (hand-written/extracted).
+- **New `casen deploy deploy <file> [--target camunda8]` CLI command** (`apps/cli/src/commands/deploy.ts`) — the file-based multipart deploy previously only available via the `bpmn_deploy` MCP tool, now available standalone.
+- **Retired duplicates**: deleted the stale, already-installed root `.claude/commands/*.md`; updated `apps/cli/skills/*.md` (the lightweight `casen skills install` bundle) to drop MCP tool references and point at the full plugin for the rich skill set; fixed its `hooks/hooks.json` PostToolUse hook, which called `casen lint "$FILE"` — missing the CLI's real `<resource> <command>` doubling, so it silently no-opped on every save.
+- **Two real bugs found and fixed while dogfooding the new reference docs' examples through `casen synth`/`casen test`**:
+  - `packages/core/src/bpmn/agentic.ts`: a `fromAi()` tool param whose `target` collided with a connector-resolved static `zeebe:input` produced **two** `<zeebe:input>` entries for the same target (invalid/ambiguous binding) — the param now correctly overrides the static value instead of duplicating it.
+  - `packages/engine/src/instance.ts`: the non-secret branch of `zeebe:input` evaluation always ran every source through the FEEL evaluator, even without a leading `"="` — so a literal like `"claude-sonnet-5"` was misread as `claude - sonnet - 5` and `"10"` as the FEEL number `10` instead of the string `"10"`. Fixed to match the sibling secret-handling branch's existing `"="`-prefix check.
+
+Verified end-to-end in-sandbox: the Slack-notification golden case (`references/connectors.md`'s example) synths with zero deploy-profile lint errors and its mocked scenario passes against the real TS engine; the AI Agent golden case (`references/agentic.md`'s example) likewise synths clean and its mocked-agent-job scenario passes only after the above engine fix.
+
 ## 2026-07-07 — AI BPMN generation: WP0–WP5 implementation
 
 Implements WP0–WP5 of `doc/spec-bpmn-generation-skills.md` (WP6–WP8 remain).

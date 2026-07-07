@@ -138,13 +138,16 @@ function fromAiExpression(param: AiAgentToolParam): string {
 
 /** Builds a single tool activity (a root node with no incoming sequence flow) from its spec. */
 function buildToolElement(spec: AiAgentToolSpec) {
-	const inputs = [
-		...(spec.serviceTask.ioMapping?.inputs ?? []),
-		...(spec.params ?? []).map((p) => ({
-			target: p.target,
-			source: fromAiExpression(p),
-		})),
-	]
+	// A `fromAi()` param declares its target as agent-controlled, so it must win over
+	// any static value the connector template resolved for the same target — otherwise
+	// two <zeebe:input> entries would bind the same target, which is invalid/ambiguous.
+	const inputsByTarget = new Map<string, { source: string; target: string }>()
+	for (const input of spec.serviceTask.ioMapping?.inputs ?? [])
+		inputsByTarget.set(input.target, input)
+	for (const p of spec.params ?? []) {
+		inputsByTarget.set(p.target, { target: p.target, source: fromAiExpression(p) })
+	}
+	const inputs = [...inputsByTarget.values()]
 	const outputs = [
 		...(spec.serviceTask.ioMapping?.outputs ?? []),
 		{ source: spec.resultSource ?? "=response", target: "toolCallResult" },

@@ -41,7 +41,7 @@ const extractCmd: Command = {
 	},
 }
 
-const PLAN_SCHEMA_SUMMARY = `ProcessPlan (version 1)
+export const PLAN_SCHEMA_SUMMARY = `ProcessPlan (version 1)
 {
   "version": 1,
   "process": { "id": string, "name"?: string, "versionTag"?: string },

@@ -1,33 +1,36 @@
 ---
-description: Deploy a BPMN process to local reebe or Camunda 8
+description: Gate a BPMN process on deploy-readiness, then deploy it to local Reebe or Camunda 8.
 ---
 
 @.claude/aikit.md
 
-Deploy the BPMN process at the given path.
+Deploy the BPMN process: $ARGUMENTS
 
-## File to deploy
+Extract the `.bpmn` filename (find the single `.bpmn` in cwd, or ask, if not given) and destination (`--local` default, or `--camunda`).
 
-$ARGUMENTS
+## Step 1 — Gate on deploy-readiness
 
----
+```sh
+casen lint lint <file>.bpmn --profile deploy
+```
 
-1. Call `mcp__bpmnkit-aikit__bpmn_validate` on the file to check for errors before deploying.
-   - If there are errors, show them and ask: **"Fix errors first or deploy anyway?"**
-   - If warnings only: show them but proceed.
+If this reports any errors, stop and fix them first (or run `/review`) — do not deploy with deploy-profile errors.
 
-2. Ask: **"Deploy to local reebe or Camunda 8?"**
+## Step 2 — Deploy
 
-3. Call `mcp__bpmnkit-aikit__bpmn_deploy` with the chosen target:
-   - `"local"` — deploys to the local reebe instance at ZEEBE_ADDRESS
-   - `"camunda8"` — deploys using the active casen profile (run `casen profile create` if not set up)
+```sh
+casen deploy deploy <file>.bpmn                     # local Reebe
+casen deploy deploy <file>.bpmn --target camunda8   # active Camunda 8 profile
+```
 
-4. Report the result:
-   - On success: "Deployed successfully. Process ID: <id>"
-   - On failure: show the error and suggest a fix (profile not set up, reebe not running, etc.)
+Local deploy unreachable → tell the user to run `casen reebe start --port 26500` first, then retry. Camunda 8 deploy with no active profile → tell the user to run `casen profile create <name> --base-url <url> --auth-type bearer --token <token>` then `casen profile use <name>`, then retry.
 
-5. If any scaffolded workers exist in ./workers/, remind:
-   ```
-   Don't forget to start your workers:
-     casen worker start
-   ```
+## Step 3 — Verify and summarize
+
+```sh
+casen process-definition list --output json
+```
+
+Report: `Deployed: <process-id>  version: <N>  target: <local|camunda8>`.
+
+If any scaffolded workers exist in `./workers/`, remind: `casen worker start`. Remind about any `{{secrets.NAME}}` the process references — they must be provisioned in the target engine's secret store.

@@ -165,6 +165,57 @@ describe("buildAiAgentSubProcess", () => {
 		}
 	})
 
+	it("a fromAi() param overrides a static ioMapping input for the same target, instead of duplicating it", () => {
+		const agent = buildAiAgentSubProcess({
+			id: "agent",
+			model: { provider: "anthropic", inputs: {} },
+			systemPrompt: "Help.",
+			userPrompt: "=msg",
+			tools: [
+				{
+					id: "notify_slack",
+					description: "Notify a channel.",
+					serviceTask: {
+						name: "Notify",
+						taskType: "io.camunda:slack:1",
+						ioMapping: {
+							inputs: [
+								{ source: "chat.postMessage", target: "method" },
+								{ source: "placeholder", target: "data.text" },
+							],
+						},
+					},
+					params: [
+						{
+							name: "message",
+							description: "Message to post",
+							type: "string",
+							target: "data.text",
+						},
+					],
+				},
+			],
+		})
+
+		const defs = Bpmn.createProcess("proc")
+			.startEvent("s")
+			.adHocSubProcess("agent", agent.content, agent.options)
+			.endEvent("e")
+			.build()
+
+		const agentEl = defs.processes[0]?.flowElements.find((n) => n.id === "agent")
+		if (agentEl?.type !== "adHocSubProcess") throw new Error("expected adHocSubProcess")
+		const tool = agentEl.flowElements.find((n) => n.id === "notify_slack")
+		const io = tool?.extensionElements.find((e) => e.name === "zeebe:ioMapping")
+		const textInputs = (io?.children ?? []).filter(
+			(c) => c.name === "zeebe:input" && c.attributes.target === "data.text",
+		)
+		expect(textInputs).toHaveLength(1)
+		expect(textInputs[0]?.attributes.source).toBe(
+			'=fromAi(toolCall.message, "Message to post", "string")',
+		)
+	})
+
 	it("supports a completion condition and cancelRemainingInstances override", () => {
 		const agent = buildAiAgentSubProcess({
 			id: "agent",

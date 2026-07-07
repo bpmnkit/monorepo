@@ -19,6 +19,7 @@ import {
 } from "./bpmn.js"
 import { completionGroup } from "./completion.js"
 import { connectorGroup } from "./connector.js"
+import { deployGroup } from "./deploy.js"
 import { generateGroup } from "./generate.js"
 import { lintGroup } from "./lint.js"
 import { planGroup } from "./plan.js"
@@ -79,6 +80,7 @@ const workerGroup: CommandGroup = {
 /** Pinned groups shown above the separator in the main TUI menu. */
 export const pinnedGroups: CommandGroup[] = [
 	askGroup,
+	deployGroup,
 	generateGroup,
 	lintGroup,
 	planGroup,

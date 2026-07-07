@@ -300,11 +300,14 @@ export class ProcessInstance {
 					} else {
 						val = resolved
 					}
-				} else {
+				} else if (inp.source.trimStart().startsWith("=")) {
 					val = this.evalFeel(inp.source, scopeId, {
 						elementId: el.id,
 						property: `input:${inp.target}`,
 					})
+				} else {
+					// A zeebe:input source without a leading "=" is a literal value, not FEEL.
+					val = inp.source
 				}
 				this.variables.setLocal(scopeId, inp.target, val)
 				this.emit({ type: "variable:set", name: inp.target, value: val, scopeId })
