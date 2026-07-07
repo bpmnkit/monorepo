@@ -18,6 +18,16 @@ export interface ApplyProblem {
 	/** The property key this problem is about, if any. */
 	key?: string
 	message: string
+	/**
+	 * What kind of problem this is — distinguishes a genuinely unmet required
+	 * field ("missing-required") from an unrecognized values key
+	 * ("unknown-key"), a FEEL syntax error ("invalid-feel"), or a template
+	 * with no resolvable task type ("no-task-type"). Callers that specifically
+	 * want "what's still required" (e.g. the deploy-lint connector check)
+	 * must filter on `kind === "missing-required"` — an unknown key is not
+	 * evidence that some other field is missing.
+	 */
+	kind?: "missing-required" | "unknown-key" | "invalid-feel" | "no-task-type"
 }
 
 /**
@@ -131,14 +141,21 @@ function directionOf(template: ElementTemplate): string {
  * work the same way. Use {@link applyConnectorTemplate} to apply by bundled
  * template id instead.
  */
-export function applyElementTemplate(template: ElementTemplate, values: Record<string, string> = {}): ApplyResult {
+export function applyElementTemplate(
+	template: ElementTemplate,
+	values: Record<string, string> = {},
+): ApplyResult {
 	const resolved = resolveValues(template, values)
 	const problems: ApplyProblem[] = []
 
 	const knownKeys = new Set(template.properties.map(propertyKey).filter(Boolean))
 	for (const key of Object.keys(values)) {
 		if (key !== "name" && !knownKeys.has(key)) {
-			problems.push({ key, message: `Unknown value key "${key}" for template "${template.id}"` })
+			problems.push({
+				key,
+				kind: "unknown-key",
+				message: `Unknown value key "${key}" for template "${template.id}"`,
+			})
 		}
 	}
 
@@ -159,6 +176,7 @@ export function applyElementTemplate(template: ElementTemplate, values: Record<s
 			if (prop.type !== "Hidden" && prop.constraints?.notEmpty) {
 				problems.push({
 					key,
+					kind: "missing-required",
 					message: `Missing required value for "${prop.label ?? key}" (${key})`,
 				})
 			}
@@ -168,7 +186,11 @@ export function applyElementTemplate(template: ElementTemplate, values: Record<s
 		if ((prop.feel === "required" || prop.feel === "optional") && value.startsWith("=")) {
 			const { errors } = parseExpression(value.slice(1))
 			for (const err of errors) {
-				problems.push({ key, message: `Invalid FEEL expression for "${key}": ${err.message}` })
+				problems.push({
+					key,
+					kind: "invalid-feel",
+					message: `Invalid FEEL expression for "${key}": ${err.message}`,
+				})
 			}
 		}
 
@@ -239,7 +261,10 @@ export function applyElementTemplate(template: ElementTemplate, values: Record<s
 
 	// Default: outbound service task (bpmn:ServiceTask, bpmn:SendTask, bpmn:EndEvent, bpmn:Task, ...)
 	if (!accum.taskType) {
-		problems.push({ message: `Template "${template.id}" produced no zeebe:taskDefinition type` })
+		problems.push({
+			kind: "no-task-type",
+			message: `Template "${template.id}" produced no zeebe:taskDefinition type`,
+		})
 	}
 	return {
 		serviceTask: {

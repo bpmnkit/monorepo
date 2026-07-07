@@ -1,0 +1,9 @@
+{
+  "id": "extend-add-timer-boundary",
+  "category": "extend",
+  "description": "casen plan extract -> targeted delta plan re-declaring one existing step with a new timerBoundary -> casen synth --merge. Only process_payment and its new boundary/end should change.",
+  "assertions": {
+    "mustContainElementTypes": ["boundaryEvent"],
+    "unchangedElementIds": ["validate_order", "ship_order"]
+  }
+}

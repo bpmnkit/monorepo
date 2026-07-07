@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "process": { "id": "report-polling", "name": "Report Polling" },
+  "steps": [
+    { "kind": "start", "name": "Report requested" },
+    {
+      "kind": "serviceTask",
+      "id": "fetch_report",
+      "name": "Fetch report",
+      "jobType": "reports:fetch:1",
+      "timerBoundary": {
+        "duration": "=\"PT5M\"",
+        "steps": [
+          { "kind": "serviceTask", "id": "flag_for_followup", "name": "Flag for manual follow-up", "jobType": "reports:flag:1" },
+          { "kind": "end", "id": "polling_timed_out", "name": "Polling timed out" }
+        ]
+      }
+    },
+    { "kind": "end", "name": "Report received" }
+  ],
+  "tests": [
+    {
+      "name": "Report arrives in time",
+      "mocks": { "reports:fetch:1": { "outputs": {} } },
+      "expect": { "path": ["fetch_report"] }
+    }
+  ]
+}

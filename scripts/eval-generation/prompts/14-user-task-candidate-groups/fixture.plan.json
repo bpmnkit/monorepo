@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "process": { "id": "document-publishing", "name": "Document Publishing" },
+  "steps": [
+    { "kind": "start", "name": "Document ready for review" },
+    {
+      "kind": "userTask",
+      "id": "legal_review",
+      "name": "Review document",
+      "candidateGroups": "legal-team"
+    },
+    { "kind": "serviceTask", "id": "publish_document", "name": "Publish document", "jobType": "cms:publish:1" },
+    { "kind": "end", "name": "Document published" }
+  ]
+}

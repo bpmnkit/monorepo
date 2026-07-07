@@ -1,0 +1,8 @@
+{
+  "id": "message-correlated-payment",
+  "category": "messaging",
+  "description": "A wait step correlated on a process variable, verifying zeebe:subscription correlationKey.",
+  "assertions": {
+    "mustContainElementTypes": ["intermediateCatchEvent"]
+  }
+}

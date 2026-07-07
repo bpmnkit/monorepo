@@ -5,10 +5,15 @@ import type { BpmnOperation, OptimizationCategory } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
 
 /** Resolves a connector template's missing required keys via @bpmnkit/connectors, for the `connector/*` lint rule. */
-function resolveConnectorRequirements(templateId: string, boundKeys: string[]): string[] {
+export function resolveConnectorRequirements(templateId: string, boundKeys: string[]): string[] {
 	const values = Object.fromEntries(boundKeys.map((k) => [k, "x"]))
 	const result = applyConnectorTemplate(templateId, values)
-	return result.problems.filter((p) => p.key !== undefined).map((p) => p.key as string)
+	// Only "missing-required" problems mean something is actually unset — an "unknown-key"
+	// problem here just means a bound key doesn't match propertyKey()'s lookup key (e.g. a
+	// property whose `id` differs from its zeebe:input binding name), not a missing value.
+	return result.problems
+		.filter((p) => p.kind === "missing-required" && p.key !== undefined)
+		.map((p) => p.key as string)
 }
 
 const SEVERITY_SYMBOL: Record<string, string> = {

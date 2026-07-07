@@ -1,0 +1,1 @@
+Build an expense approval process: if the amount is over 1000, route to a manager review user task; otherwise auto-approve. Either way, process the payment afterward. If the payment fails, end with a failure notice.

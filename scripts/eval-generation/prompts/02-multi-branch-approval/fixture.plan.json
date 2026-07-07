@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "process": { "id": "expense-approval", "name": "Expense Approval" },
+  "steps": [
+    { "kind": "start", "name": "Expense submitted" },
+    {
+      "kind": "gateway",
+      "id": "amount_check",
+      "name": "Amount > 1000?",
+      "gatewayType": "exclusive",
+      "branches": [
+        {
+          "name": "yes",
+          "condition": "=amount > 1000",
+          "steps": [
+            {
+              "kind": "userTask",
+              "id": "manager_review",
+              "name": "Manager review",
+              "candidateGroups": "managers"
+            }
+          ]
+        },
+        { "name": "no", "default": true, "steps": [] }
+      ]
+    },
+    {
+      "kind": "serviceTask",
+      "id": "process_payment",
+      "name": "Process payment",
+      "jobType": "payment:1",
+      "errorBoundary": {
+        "errorCode": "PAYMENT_FAILED",
+        "steps": [
+          { "kind": "end", "id": "payment_failed_end", "name": "Payment failed", "errorCode": "PAYMENT_FAILED" }
+        ]
+      }
+    },
+    { "kind": "end", "name": "Expense approved" }
+  ],
+  "tests": [
+    {
+      "name": "Auto-approved path",
+      "inputs": { "amount": 200 },
+      "mocks": { "payment:1": { "outputs": {} } },
+      "expect": { "path": ["amount_check", "process_payment"] }
+    },
+    {
+      "name": "Manager review path",
+      "inputs": { "amount": 5000 },
+      "mocks": { "payment:1": { "outputs": {} } },
+      "expect": { "path": ["amount_check", "manager_review", "process_payment"] }
+    }
+  ]
+}

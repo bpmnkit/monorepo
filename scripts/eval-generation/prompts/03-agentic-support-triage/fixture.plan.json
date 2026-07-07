@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "process": { "id": "support-triage", "name": "Support Triage" },
+  "steps": [
+    { "kind": "start", "name": "Ticket received" },
+    {
+      "kind": "aiAgent",
+      "id": "triage_agent",
+      "name": "Triage agent",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "providerInputs": {
+        "provider.anthropic.authentication.apiKey": "{{secrets.ANTHROPIC_API_KEY}}"
+      },
+      "systemPrompt": "You triage support tickets and post updates to Slack.",
+      "userPrompt": "=ticketText",
+      "tools": [
+        {
+          "id": "notify_slack",
+          "description": "Post a status update to the #support-escalations Slack channel.",
+          "connector": {
+            "template": "io.camunda.connectors.Slack.v1",
+            "values": {
+              "method": "chat.postMessage",
+              "token": "{{secrets.SLACK_OAUTH_TOKEN}}",
+              "data.channel": "#support-escalations",
+              "data.text": "placeholder"
+            }
+          },
+          "params": [
+            { "name": "message", "description": "The status update to post", "type": "string", "target": "data.text" }
+          ]
+        },
+        {
+          "id": "escalate",
+          "description": "Escalate the ticket to a human agent.",
+          "jobType": "escalate:1",
+          "params": [{ "name": "reason", "description": "Why this needs a human" }]
+        }
+      ],
+      "errorBoundary": {
+        "errorCode": "AGENT_FAILED",
+        "steps": [{ "kind": "end", "id": "agent_failed", "errorCode": "AGENT_FAILED" }]
+      }
+    },
+    { "kind": "end", "name": "Triaged" }
+  ],
+  "tests": [
+    {
+      "name": "Agent resolves the ticket",
+      "inputs": { "ticketText": "Customer can't log in" },
+      "mocks": {
+        "io.camunda.agenticai:aiagent-job-worker:1": { "outputs": { "agent": { "status": "resolved" } } }
+      },
+      "expect": { "path": ["triage_agent"], "variables": { "agent": { "status": "resolved" } } }
+    }
+  ]
+}

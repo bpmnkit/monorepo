@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "process": { "id": "stakeholder-notify", "name": "Stakeholder Notify" },
+  "steps": [
+    { "kind": "start", "name": "Notification requested" },
+    {
+      "kind": "subProcess",
+      "id": "notify_each",
+      "name": "Notify each recipient",
+      "steps": [{ "kind": "serviceTask", "id": "send_email", "name": "Send email", "jobType": "email:1" }],
+      "multiInstance": { "collection": "=recipients", "elementVariable": "recipient" },
+      "errorBoundary": {
+        "errorCode": "NOTIFY_FAILED",
+        "steps": [{ "kind": "end", "id": "notify_failed", "name": "Notification failed", "errorCode": "NOTIFY_FAILED" }]
+      }
+    },
+    { "kind": "end", "name": "All notified" }
+  ]
+}

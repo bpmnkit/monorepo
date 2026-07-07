@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "process": {
+    "id": "order-shipping-lookup",
+    "name": "Order Shipping Lookup"
+  },
+  "steps": [
+    {
+      "kind": "start",
+      "name": "Order ready to ship"
+    },
+    {
+      "kind": "connector",
+      "id": "lookup_address",
+      "name": "Look up shipping address",
+      "connector": {
+        "template": "io.camunda.connectors.HttpJson.v2",
+        "values": {
+          "url": "=\"https://api.example.com/customers/\" + customerId + \"/address\"",
+          "method": "get"
+        }
+      },
+      "errorBoundary": {
+        "errorCode": "LOOKUP_FAILED",
+        "steps": [
+          {
+            "kind": "end",
+            "id": "lookup_failed",
+            "name": "Address lookup failed",
+            "errorCode": "LOOKUP_FAILED"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "serviceTask",
+      "id": "ship_order",
+      "name": "Ship order",
+      "jobType": "shipping:1"
+    },
+    {
+      "kind": "end",
+      "name": "Order shipped"
+    }
+  ]
+}

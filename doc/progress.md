@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-07-07 — AI BPMN generation: WP7 (golden-prompt eval harness)
+
+New `scripts/eval-generation/` (dev-only, not published): a golden-prompt eval harness for the deterministic generation pipeline, per `doc/spec-bpmn-generation-skills.md` WP7.
+
+- **15 golden prompts** (`prompts/<NN-slug>/`) spanning connector steps (Slack, SendGrid, HTTP), gateways (exclusive branch + parallel split/join), the agentic (`aiAgent`) pattern, extending an existing process via a delta plan, message correlation, multi-instance sub-processes, error boundaries, a 25+ element long process, a DMN business-rule task, a user task, a timer boundary, and one deliberately ambiguous prompt that expects a clarifying question rather than a generated diagram. Every fixture with a plan is pre-verified: 0 `casen synth` problems, 0 `casen lint --profile deploy` errors.
+- **`run-eval.mjs`** — two modes: **plan-level** (default, CI-safe, no LLM call — runs each fixture through `casen synth` → `casen lint --profile deploy` → `casen test` → an attempted `casen deploy deploy` against local Reebe, reporting deploy as honestly "skipped" rather than fabricating a result when Reebe isn't reachable) and **full LLM** (opt-in `--full`, headless `claude -p` with the plugin loaded; gracefully skipped when `claude` isn't on `PATH`). Emits `eval-report.json` + `eval-report.md`.
+- Verified in-sandbox: 15/15 prompts, 100% synth-clean, 100% deploy-profile-clean; the deploy and `casen test` (WASM-engine-backed) dimensions honestly report "skipped" here since this environment lacks the Rust toolchain to build `reebe-server`/`@bpmnkit/reebe-wasm` — the same pre-existing, documented gap as elsewhere in this effort.
+- **Two more real bugs found and fixed while building/verifying these fixtures**:
+  - `packages/core/src/bpmn/agentic.ts`: the same fromAi()-override fix already landed in WP6 (no new change here, re-confirmed by the `agentic-support-triage` fixture).
+  - `packages/connectors/src/apply.ts` / `apps/cli/src/commands/lint.ts`: the deploy-lint's `connector/missing-required` rule conflated "unknown value key" problems with genuine "missing required value" problems. A bundled template whose property `id`-based lookup key differs from its raw `zeebe:input` binding name (e.g. SendGrid's `mailType` property, id `"mailType"`, bound to `"unMappedFieldNotUseInModel.mailType"`) produced a **false-positive deploy-blocking error** — `casen synth` itself even rejected the same string as an "Unknown value key" if supplied directly, contradicting the lint's claim that it was "missing." `ApplyProblem` now carries a `kind: "missing-required" | "unknown-key" | "invalid-feel" | "no-task-type"` discriminant; the deploy-lint resolver filters strictly on `"missing-required"`.
+
 ## 2026-07-07 — AI BPMN generation: WP6 (Skills v2 — consolidated CLI-first plugin)
 
 Rebuilds `plugins-claude/bpmnkit-claude` as the single skill surface. Drops the MCP requirement (`.mcp.json` removed, `plugin.json`'s `mcpServers` key dropped) — every skill now drives `casen` directly via Bash; the `@bpmnkit/proxy` MCP server remains untouched for Studio/other hosts.

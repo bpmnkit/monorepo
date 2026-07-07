@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "process": { "id": "order-shipping", "name": "Order Shipping" },
+  "steps": [
+    { "kind": "start", "name": "Order placed" },
+    {
+      "kind": "wait",
+      "id": "wait_for_payment",
+      "name": "Wait for payment",
+      "message": { "name": "payment-confirmed", "correlationKey": "=orderId" }
+    },
+    { "kind": "serviceTask", "id": "ship_order", "name": "Ship order", "jobType": "shipping:1" },
+    { "kind": "end", "name": "Order shipped" }
+  ],
+  "tests": [
+    {
+      "name": "Ships once payment is confirmed",
+      "inputs": { "orderId": "ORD-9" },
+      "mocks": { "shipping:1": { "outputs": {} } },
+      "expect": { "path": ["wait_for_payment", "ship_order"] }
+    }
+  ]
+}

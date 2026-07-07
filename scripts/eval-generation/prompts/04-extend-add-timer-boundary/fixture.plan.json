@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "process": {
+    "id": "order-process",
+    "name": "Order Process"
+  },
+  "steps": [
+    {
+      "kind": "start",
+      "name": "Order received"
+    },
+    {
+      "kind": "serviceTask",
+      "id": "validate_order",
+      "name": "Validate order",
+      "jobType": "validate:1"
+    },
+    {
+      "kind": "serviceTask",
+      "id": "process_payment",
+      "name": "Process payment",
+      "jobType": "payment:1",
+      "timerBoundary": {
+        "duration": "=\"PT24H\"",
+        "steps": [
+          {
+            "kind": "end",
+            "id": "payment_timeout",
+            "name": "Payment timed out"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "serviceTask",
+      "id": "ship_order",
+      "name": "Ship order",
+      "jobType": "shipping:1"
+    },
+    {
+      "kind": "end",
+      "name": "Order shipped"
+    }
+  ]
+}

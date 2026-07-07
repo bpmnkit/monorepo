@@ -27,23 +27,42 @@ describe("applyConnectorTemplate", () => {
 		expect(inputs).toContainEqual({ source: "#ops", target: "data.channel" })
 	})
 
-	it("flags a missing required value", () => {
+	it("flags a missing required value, tagged kind: missing-required", () => {
 		const result = applyConnectorTemplate("io.camunda.connectors.Slack.v1", {
 			method: "chat.postMessage",
 			"data.channel": "#ops",
 			// token omitted
 		})
-		expect(result.problems.some((p) => p.key === "token")).toBe(true)
+		expect(result.problems.some((p) => p.key === "token" && p.kind === "missing-required")).toBe(
+			true,
+		)
 	})
 
-	it("flags an unknown value key", () => {
+	it("flags an unknown value key, tagged kind: unknown-key (not missing-required)", () => {
 		const result = applyConnectorTemplate("io.camunda.connectors.Slack.v1", {
 			method: "chat.postMessage",
 			token: "x",
 			"data.channel": "#ops",
 			bogusKey: "nope",
 		})
-		expect(result.problems.some((p) => p.key === "bogusKey")).toBe(true)
+		const problem = result.problems.find((p) => p.key === "bogusKey")
+		expect(problem?.kind).toBe("unknown-key")
+	})
+
+	it("a bound key that doesn't match any property's lookup key never surfaces as missing-required", () => {
+		// Regression: a raw zeebe:input binding-name key that isn't a property's actual
+		// lookup key (propertyKey()) must not be misreported as "missing required" — that's
+		// what caused the deploy lint's connector/missing-required rule to false-positive on
+		// SendGrid's "mailType" property (id "mailType", but bound to the unrelated-looking
+		// zeebe:input name "unMappedFieldNotUseInModel.mailType").
+		const result = applyConnectorTemplate("io.camunda.connectors.SendGrid.v2", {
+			"unMappedFieldNotUseInModel.mailType": "x",
+		})
+		expect(
+			result.problems.some(
+				(p) => p.key === "unMappedFieldNotUseInModel.mailType" && p.kind === "missing-required",
+			),
+		).toBe(false)
 	})
 
 	it("flags an invalid FEEL expression on a FEEL-tagged value", () => {

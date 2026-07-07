@@ -1,0 +1,9 @@
+{
+  "id": "http-connector-external-api",
+  "category": "connector",
+  "description": "A generic HTTP REST connector call, with the required error boundary the pattern lint rule enforces for HTTP connectors.",
+  "assertions": {
+    "mustContainTaskTypes": ["io.camunda:http-json:1"],
+    "mustContainElementTypes": ["boundaryEvent"]
+  }
+}
