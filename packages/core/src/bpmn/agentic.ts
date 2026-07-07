@@ -125,7 +125,8 @@ export interface AiAgentBuild {
 
 function fromAiExpression(param: AiAgentToolParam): string {
 	const args = [`toolCall.${param.name}`, JSON.stringify(param.description)]
-	const needsType = param.type !== undefined || param.schema !== undefined || param.required === false
+	const needsType =
+		param.type !== undefined || param.schema !== undefined || param.required === false
 	if (needsType) args.push(JSON.stringify(param.type ?? "string"))
 	if (param.schema !== undefined) args.push(JSON.stringify(param.schema))
 	if (param.required === false) {

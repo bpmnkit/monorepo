@@ -57,8 +57,27 @@ export function analyzeFlow(p: BpmnProcess, _opts: ResolvedOptions): Optimizatio
 		})
 	}
 
-	// BFS reachability from start events
-	const reachable = reachableFrom(startIds, bySource)
+	// BFS reachability from start events. Boundary events have no incoming
+	// sequence flow by design (they attach via `attachedToRef`), so add a
+	// synthetic edge from each host element to its boundary event(s) —
+	// otherwise every boundary event (and everything chained after it) would
+	// always be flagged as unreachable.
+	const reachabilityEdges = new Map(bySource)
+	for (const el of p.flowElements) {
+		if (el.type !== "boundaryEvent") continue
+		const hostEdges = reachabilityEdges.get(el.attachedToRef) ?? []
+		reachabilityEdges.set(el.attachedToRef, [
+			...hostEdges,
+			{
+				id: `synthetic-attachment-${el.id}`,
+				sourceRef: el.attachedToRef,
+				targetRef: el.id,
+				extensionElements: [],
+				unknownAttributes: {},
+			},
+		])
+	}
+	const reachable = reachableFrom(startIds, reachabilityEdges)
 
 	for (const el of p.flowElements) {
 		// flow/unreachable

@@ -126,6 +126,19 @@ function taskEl(
 	}
 }
 
+function boundaryEl(id: string, attachedToRef: string, outgoing: string[] = []): BpmnFlowElement {
+	return {
+		type: "boundaryEvent",
+		id,
+		attachedToRef,
+		incoming: [],
+		outgoing,
+		extensionElements: [],
+		unknownAttributes: {},
+		eventDefinitions: [],
+	}
+}
+
 function flow(id: string, src: string, tgt: string, condition?: string): BpmnSequenceFlow {
 	return {
 		id,
@@ -311,6 +324,28 @@ describe("optimize()", () => {
 				(f) => f.id === "flow/unreachable" && f.elementIds.includes("isolated"),
 			)
 			expect(finding).toBeDefined()
+		})
+
+		it("does not flag a boundary event (or its downstream path) as unreachable", () => {
+			const t1 = taskEl("t1", ["f1"], ["f2"])
+			const boundary = boundaryEl("t1_error", "t1", ["f3"])
+			const errorEnd = endEl("error_end", ["f3"])
+			const proc = makeProcess(
+				"proc",
+				[startEl("s"), t1, boundary, errorEnd, endEl("e", ["f2"])],
+				[flow("f1", "s", "t1"), flow("f2", "t1", "e"), flow("f3", "t1_error", "error_end")],
+			)
+			const report = optimize(makeDefs(proc))
+			expect(
+				report.findings.some(
+					(f) => f.id === "flow/unreachable" && f.elementIds.includes("t1_error"),
+				),
+			).toBe(false)
+			expect(
+				report.findings.some(
+					(f) => f.id === "flow/unreachable" && f.elementIds.includes("error_end"),
+				),
+			).toBe(false)
 		})
 
 		it("reports flow/dead-end for task with no outgoing flow", () => {
