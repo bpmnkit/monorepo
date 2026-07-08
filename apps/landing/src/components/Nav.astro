@@ -1,16 +1,20 @@
 ---
 interface Props {
 	links?: Array<{ href: string; label: string }>
+	/** Suppress the mobile menu's "Home" link when rendered on the homepage itself. */
+	showHomeLink?: boolean
 }
 const {
 	links = [
 		{ href: "/connectors", label: "Connectors" },
+		{ href: "/use-cases", label: "Use Cases" },
 		{ href: "/compare", label: "Compare" },
 		{ href: "/blog", label: "Blog" },
 		{ href: "https://docs.bpmnkit.com", label: "Docs" },
 		{ href: "https://learn.bpmnkit.com", label: "Learn" },
 		{ href: "/editor", label: "Editor" },
 	],
+	showHomeLink = true,
 } = Astro.props
 ---
 
@@ -39,7 +43,7 @@ const {
     </button>
   </div>
   <div class="nav-mobile-menu" id="nav-mobile-menu" aria-hidden="true">
-    <a href="/" class="nav-mobile-link">Home</a>
+    {showHomeLink && <a href="/" class="nav-mobile-link">Home</a>}
     {links.map((link) => (
       <a href={link.href} class="nav-mobile-link" target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener" : undefined}>{link.label}</a>
     ))}
@@ -53,10 +57,35 @@ const {
 <script>
   const burger = document.getElementById("nav-burger")
   const menu = document.getElementById("nav-mobile-menu")
-  burger?.addEventListener("click", () => {
-    const open = burger.getAttribute("aria-expanded") === "true"
-    burger.setAttribute("aria-expanded", String(!open))
-    menu?.setAttribute("aria-hidden", String(open))
-    menu?.classList.toggle("open")
-  })
+
+  if (burger && menu) {
+    const close = () => {
+      burger.setAttribute("aria-expanded", "false")
+      menu.setAttribute("aria-hidden", "true")
+      menu.classList.remove("open")
+    }
+
+    burger.addEventListener("click", () => {
+      const opening = burger.getAttribute("aria-expanded") !== "true"
+      burger.setAttribute("aria-expanded", String(opening))
+      menu.setAttribute("aria-hidden", String(!opening))
+      menu.classList.toggle("open", opening)
+    })
+
+    // Close when any link inside is clicked
+    for (const link of menu.querySelectorAll("a")) link.addEventListener("click", close)
+
+    // Close when clicking outside the nav
+    document.addEventListener("click", (e) => {
+      if (!burger.closest("nav")?.contains(e.target as Node)) close()
+    })
+
+    // Close on Escape and return focus to the burger button
+    menu.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        close()
+        burger.focus()
+      }
+    })
+  }
 </script>
