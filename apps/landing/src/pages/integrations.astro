@@ -1,0 +1,129 @@
+---
+import "../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import { CATALOG, type CatalogEntry, getCatalogIconUri } from "@bpmnkit/connector-gen"
+import Footer from "../components/Footer.astro"
+import Nav from "../components/Nav.astro"
+
+const catalog = [...CATALOG].sort((a, b) => a.name.localeCompare(b.name))
+
+const AUTH_LABELS: Record<CatalogEntry["defaultAuth"], string> = {
+	noAuth: "No auth",
+	apiKey: "API key",
+	basic: "Basic auth",
+	bearer: "Bearer token",
+	"oauth-client-credentials-flow": "OAuth2 client credentials",
+}
+
+function iconFor(entry: CatalogEntry): string {
+	const uri = getCatalogIconUri(entry.id)
+	if (uri) return uri
+	const letter = entry.name
+		.replace(/^[^A-Za-z]*/, "")
+		.charAt(0)
+		.toUpperCase()
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#4a4a68"/><text x="12" y="17" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="white" text-anchor="middle">${letter}</text></svg>`
+	return `data:image/svg+xml;base64,${btoa(svg)}`
+}
+
+const jsonLd = breadcrumbJsonLd([
+	{ name: "Home", url: "https://bpmnkit.com" },
+	{ name: "Integrations", url: "https://bpmnkit.com/integrations" },
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title={`${catalog.length} OpenAPI Integrations — Generate Camunda 8 Connectors — BPMN Kit`}
+    description={`Browse ${catalog.length} popular APIs with known OpenAPI specs, ready to generate into typed Camunda 8 connector templates with @bpmnkit/connector-gen — or bring any OpenAPI spec of your own.`}
+    jsonLd={jsonLd}
+  />
+  <style is:global>
+    .integrations-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .integrations-main { flex: 1; max-width: var(--max-width); margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .integrations-hero { text-align: center; margin-bottom: 20px; }
+    .integrations-hero h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .integrations-hero p { color: var(--text-muted); font-size: 1.05rem; max-width: 680px; margin: 0 auto; }
+    .integrations-hero .integrations-sub-link { color: var(--accent-bright); }
+    .integrations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin: 40px 0 56px; }
+    .integration-card { display: block; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); text-decoration: none; transition: border-color 0.2s, transform 0.2s; }
+    .integration-card:hover { border-color: var(--accent-bright); transform: translateY(-2px); }
+    .integration-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .integration-card-head img { width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0; }
+    .integration-card h3 { font-size: 0.92rem; font-weight: 600; color: var(--text); }
+    .integration-card p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 8px; }
+    .integration-badge { display: inline-block; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--teal); }
+    .integrations-byo { border-top: 1px solid var(--border); padding-top: 40px; }
+    .integrations-byo h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 10px; }
+    .integrations-byo p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.65; max-width: 720px; margin-bottom: 20px; }
+    code.inline { font-family: var(--font-mono); color: var(--accent-bright); background: var(--bg-code); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+    .integrations-code { background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--text); white-space: pre; margin-bottom: 24px; }
+    .integrations-byo-links { display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.9rem; }
+    .integrations-byo-links a { color: var(--accent-bright); }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <Nav />
+
+  <div class="integrations-wrap">
+    <main class="integrations-main">
+      <div class="integrations-hero">
+        <h1>{catalog.length} OpenAPI Integrations, Ready to Generate</h1>
+        <p>
+          A curated catalog of popular APIs with known OpenAPI specs — generate a typed
+          Camunda 8 connector template from any of them in one call with
+          <code class="inline">@bpmnkit/connector-gen</code>.
+          Looking for the <a class="integrations-sub-link" href="/connectors">built-in Camunda connectors</a> instead?
+        </p>
+      </div>
+
+      <div class="integrations-grid">
+        {catalog.map((entry) => (
+          <a href={entry.url} target="_blank" rel="noopener noreferrer" class="integration-card">
+            <div class="integration-card-head">
+              <img src={iconFor(entry)} alt="" aria-hidden="true" />
+              <h3>{entry.name}</h3>
+            </div>
+            <p>{entry.description}</p>
+            <span class="integration-badge">{AUTH_LABELS[entry.defaultAuth]}</span>
+          </a>
+        ))}
+      </div>
+
+      <div class="integrations-byo">
+        <h2>Don't see the API you need?</h2>
+        <p>
+          Any OpenAPI or Swagger spec works — not just the ones in this catalog. Point
+          <code class="inline">@bpmnkit/connector-gen</code> at a spec URL and it generates a
+          Camunda 8 element template, with typed input fields derived from the spec's request
+          schema and auth type auto-detected from its security schemes.
+        </p>
+        <div class="integrations-code">{`import { generateFromUrl } from "@bpmnkit/connector-gen";
+
+const { templates } = await generateFromUrl(
+  "https://api.example.com/openapi.json",
+  { idPrefix: "com.mycompany" },
+);
+
+// templates is an array of Camunda 8 element templates,
+// one per matched operation — no manual authoring required`}</div>
+        <div class="integrations-byo-links">
+          <a href="/blog/building-camunda-connector-openapi">Full guide: generating a connector from a spec →</a>
+          <a href="https://docs.bpmnkit.com/packages/connector-gen/">@bpmnkit/connector-gen reference →</a>
+        </div>
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

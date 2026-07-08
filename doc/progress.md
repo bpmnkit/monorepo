@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-07-08 — Landing page: new `/integrations` page for the OpenAPI connector-gen catalog
+
+`/connectors` only lists the 116 Camunda-official out-of-the-box connector templates (`@bpmnkit/connectors`, sourced from Camunda's marketplace API) — it does not cover `@bpmnkit/connector-gen`'s separate, 100-entry `CATALOG` of popular third-party APIs with known OpenAPI specs (Stripe, GitHub, Slack, Kubernetes, etc.) that can be turned into a Camunda 8 element template with one `generateFromCatalog()`/`generateFromUrl()` call. The homepage already teased "100 API Connectors, Out of the Box" as a stat but had nowhere for a visitor to click through to — this closes that gap.
+
+- **New page `apps/landing/src/pages/integrations.astro`** — renders all 100 `CATALOG` entries as cards (brand-colored icon via `getCatalogIconUri()`, name, description, default-auth badge), each linking out to the entry's real OpenAPI spec URL. A "Don't see the API you need?" section below explains that any OpenAPI/Swagger spec works, with the `generateFromUrl()` code sample and links to the existing blog post and package docs.
+- Cross-linked from every relevant spot instead of leaving it an orphan page: added to `Nav.astro`'s default "Tools" dropdown and the homepage's own `navLinks` override, added to `Footer.astro`'s link list, linked from `/connectors`'s hero copy ("Need something else? Browse 100 more services ready to generate"), and the homepage's existing connector-catalog teaser card now links to it directly.
+- Counts are computed from `CATALOG.length` at build time in both `/connectors` and `/integrations`, not hardcoded, so the two catalogs can't silently drift out of sync with their copy.
+- Verified: `biome check` and `tsc --noEmit` clean, full `astro build` (144 pages, `/integrations.html` present), and a Playwright pass against `astro preview` confirming all 100 cards render with correct icons/links/auth badges, the Tools dropdown and footer link work on both the homepage and a subpage, and the `/connectors` ↔ `/integrations` cross-links resolve correctly — no console errors.
+
 ## 2026-07-08 — Landing page: group the nav into dropdowns
 
 Follow-up to the 6-phase implementation: the homepage nav had grown to 16 top-level links (7 on-page anchors + 9 page/external links) plus the GitHub CTA. Regrouped into 6 top-level items:

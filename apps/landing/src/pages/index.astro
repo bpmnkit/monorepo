@@ -41,6 +41,7 @@ const navLinks = [
 		items: [
 			{ href: "/operate", label: "Operate" },
 			{ href: "/connectors", label: "Connectors" },
+			{ href: "/integrations", label: "Integrations" },
 		],
 	},
 ]
@@ -258,7 +259,7 @@ const typeGuardsCode = CODE_HTML.typeGuards
           </div>
           <div>
             <h3>{CONNECTOR_STATS.services} API Connectors, Out&nbsp;of&nbsp;the&nbsp;Box</h3>
-            <p>Generate typed Zeebe connector templates from {CONNECTOR_STATS.services} built-in OpenAPI specs — GitHub, Stripe, Slack, DigitalOcean, Kubernetes, and more. Over {(CONNECTOR_STATS.endpoints).toLocaleString("en")} API endpoints covered with zero boilerplate.</p>
+            <p>Generate typed Zeebe connector templates from {CONNECTOR_STATS.services} built-in OpenAPI specs — GitHub, Stripe, Slack, DigitalOcean, Kubernetes, and more. Over {(CONNECTOR_STATS.endpoints).toLocaleString("en")} API endpoints covered with zero boilerplate. <a href="/integrations">Browse the catalog →</a></p>
           </div>
           <div class="bcard-chips">
             <span class="dmn-chip">{CONNECTOR_STATS.services} services</span>
