@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-07-08 — Landing page: multi-persona analysis & improvement plan
+
+- **`doc/landing-page-analysis.md`** (new) — deep audit of the bpmnkit.com landing page from four lenses (Developer, Architect, Business visitor, technical QA), with every factual claim cross-checked against the real package source and the live site. Analysis only — nothing implemented.
+- Findings catalog: 50 deduplicated findings (5 critical, 12 high) including fabricated "DMN 2.0" spec version (SDK emits DMN 1.3), an API code sample calling a nonexistent `client.process.*` surface, a quickstart step that crashes if copy-pasted (and presents the experimental simulation engine as production "Deploy & run"), a false "Zero Dependencies" claim vs. npm, a dead "BPMN with DMN + Form" tab preview (element-ID mismatch), tablet nav overflow (601–1080 px), empty sections for `prefers-reduced-motion` users, a touch-scroll trap on the compare slider, no plain-language product explanation, and no contact channel.
+- Implementation plan: 6 phases (factual corrections → bug fixes → a11y → messaging/trust content → structural consolidation → perf/SEO), each step with concrete files and a verify check, written to be executable by an implementing agent per `CLAUDE.md`. Part C lists 8 items needing maintainer decisions or upstream work (e.g. `createDeployment()` accepts no body in `@bpmnkit/api`).
+
 ## 2026-07-07 — SEO & discoverability: glossary expansion (Phase 4 complete) + Phase 6 checklist
 
 - **Glossary expansion** (`apps/learn`) — added 3 entries to `/glossary`: Message Event, Timer Event, Call Activity, bringing the total to 12 (all core BPMN concepts from `doc/seo-plan.md`'s suggested list). Each grounded in the real `@bpmnkit/core` builder API, checked directly against `packages/core/src/bpmn/bpmn-builder.ts`'s `StartEventOptions`/`IntermediateCatchEventOptions`/`CallActivityOptions` before writing (message/timer events use `messageName`/`timerDuration`/`timerCycle`/`correlationKey`; call activities use `callActivity(id, { processId, propagateAllChildVariables })`).
