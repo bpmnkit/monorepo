@@ -201,8 +201,6 @@ async function runCliLoop(content: HTMLElement, badge: HTMLElement): Promise<voi
 }
 
 export function setupCliAnimation(): void {
-	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
-
 	const terminal = document.getElementById("cli-terminal")
 	const badge = document.getElementById("cli-key-badge")
 	if (!terminal || !badge) return
@@ -210,13 +208,27 @@ export function setupCliAnimation(): void {
 	const content = terminal.querySelector<HTMLElement>(".cli-content")
 	if (!content) return
 
+	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		// Show the final, most complete frame instead of animating.
+		content.innerHTML = frameResults()
+		return
+	}
+
+	let loopRunning = false
+
 	const observer = new IntersectionObserver(
 		(entries) => {
 			for (const entry of entries) {
-				if (entry.isIntersecting && !cliAnimActive) {
+				if (entry.isIntersecting) {
 					cliAnimActive = true
-					observer.disconnect()
-					void runCliLoop(content, badge)
+					if (!loopRunning) {
+						loopRunning = true
+						void runCliLoop(content, badge).finally(() => {
+							loopRunning = false
+						})
+					}
+				} else {
+					cliAnimActive = false
 				}
 			}
 		},

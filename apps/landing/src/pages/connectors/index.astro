@@ -2,6 +2,7 @@
 import "../../styles/global.css"
 import Seo from "@bpmnkit/astro-shared/Seo.astro"
 import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import { CATALOG } from "@bpmnkit/connector-gen"
 import { listConnectors } from "@bpmnkit/connectors"
 import Footer from "../../components/Footer.astro"
 import Nav from "../../components/Nav.astro"
@@ -50,7 +51,7 @@ const jsonLd = breadcrumbJsonLd([
     <main class="connectors-main">
       <div class="connectors-hero">
         <h1>{connectors.length} Camunda 8 Connectors</h1>
-        <p>Every built-in Camunda 8 out-of-the-box connector template, bundled with <code>@bpmnkit/connectors</code> and applicable to a BPMN element in one call.</p>
+        <p>Every built-in Camunda 8 out-of-the-box connector template, bundled with <code>@bpmnkit/connectors</code> and applicable to a BPMN element in one call. Need something else? Browse <a href="/integrations">{CATALOG.length} more services ready to generate</a> from their OpenAPI specs.</p>
       </div>
       <div class="connectors-grid">
         {connectors.map((c) => (

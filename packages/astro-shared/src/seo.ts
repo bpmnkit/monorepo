@@ -7,7 +7,8 @@ export function organizationJsonLd() {
 		"@type": "Organization",
 		name: SITE.name,
 		url: SITE.url,
-		logo: `${SITE.url}/favicon.svg`,
+		// A raster (not SVG) image — Google's logo guidelines expect this.
+		logo: `${SITE.url}/og.png`,
 		sameAs: [SITE.github, SITE.npm],
 	}
 }
@@ -18,6 +19,10 @@ export function softwareApplicationJsonLd(input: {
 	description: string
 	url: string
 	applicationCategory?: string
+	/** e.g. the current @bpmnkit/core version, to reinforce the version shown on the page. */
+	softwareVersion?: string
+	/** SPDX identifier or license URL. */
+	license?: string
 }) {
 	return {
 		"@context": "https://schema.org",
@@ -32,6 +37,8 @@ export function softwareApplicationJsonLd(input: {
 			price: "0",
 			priceCurrency: "USD",
 		},
+		...(input.softwareVersion ? { softwareVersion: input.softwareVersion } : {}),
+		...(input.license ? { license: input.license } : {}),
 	}
 }
 
@@ -57,7 +64,7 @@ export function articleJsonLd(input: {
 		publisher: {
 			"@type": "Organization",
 			name: SITE.name,
-			logo: { "@type": "ImageObject", url: `${SITE.url}/favicon.svg` },
+			logo: { "@type": "ImageObject", url: `${SITE.url}/og.png` },
 		},
 		...(input.image ? { image: input.image } : {}),
 	}

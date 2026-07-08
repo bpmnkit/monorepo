@@ -8,6 +8,45 @@ function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** Copies text to the clipboard, falling back to a hidden textarea when the
+ * Clipboard API is unavailable (e.g. non-secure contexts). Resolves `true`
+ * on success so callers can show accurate feedback. */
+async function copyText(text: string): Promise<boolean> {
+	if (navigator.clipboard) {
+		try {
+			await navigator.clipboard.writeText(text)
+			return true
+		} catch {
+			// fall through to the legacy fallback below
+		}
+	}
+	try {
+		const textarea = document.createElement("textarea")
+		textarea.value = text
+		textarea.style.position = "fixed"
+		textarea.style.opacity = "0"
+		document.body.appendChild(textarea)
+		textarea.select()
+		const ok = document.execCommand("copy")
+		textarea.remove()
+		return ok
+	} catch {
+		return false
+	}
+}
+
+/** Announces a message to screen readers via the shared aria-live region.
+ * Clearing it first ensures repeat announcements (e.g. "Copied!" twice in a
+ * row) still fire, since AT only announces on a content change. */
+function announce(message: string): void {
+	const region = document.getElementById("copy-status")
+	if (!region) return
+	region.textContent = ""
+	window.setTimeout(() => {
+		region.textContent = message
+	}, 30)
+}
+
 // ── Hero diagram ───────────────────────────────────────────────────────
 
 function setupHeroDiagram(): void {
@@ -52,10 +91,14 @@ function setupPkgTabs(): void {
 			const step = tab.closest(".step")
 			if (!step) return
 
-			for (const t of step.querySelectorAll<HTMLElement>(".pkg-tab")) t.classList.remove("active")
+			for (const t of step.querySelectorAll<HTMLElement>(".pkg-tab")) {
+				t.classList.remove("active")
+				t.setAttribute("aria-pressed", "false")
+			}
 			for (const c of step.querySelectorAll<HTMLElement>(".pkg-cmd")) c.classList.remove("active")
 
 			tab.classList.add("active")
+			tab.setAttribute("aria-pressed", "true")
 			const cmd = step.querySelector<HTMLElement>(`.pkg-cmd[data-pkg="${pkg}"]`)
 			if (cmd) cmd.classList.add("active")
 		})
@@ -78,17 +121,17 @@ function setupCopyButtons(): void {
 		btn.type = "button"
 		wrapper.appendChild(btn)
 
-		btn.addEventListener("click", () => {
+		btn.addEventListener("click", async () => {
 			const code = pre.querySelector("code")
 			const text = (code ?? pre).textContent ?? ""
-			navigator.clipboard.writeText(text.trim()).then(() => {
-				btn.textContent = "Copied!"
-				btn.classList.add("copied")
-				setTimeout(() => {
-					btn.textContent = "Copy"
-					btn.classList.remove("copied")
-				}, 1500)
-			})
+			const ok = await copyText(text.trim())
+			btn.textContent = ok ? "Copied!" : "Copy failed"
+			btn.classList.toggle("copied", ok)
+			announce(ok ? "Copied to clipboard" : "Copy failed")
+			setTimeout(() => {
+				btn.textContent = "Copy"
+				btn.classList.remove("copied")
+			}, 1500)
 		})
 	}
 }
@@ -98,13 +141,17 @@ function setupCopyButtons(): void {
 function setupInstallButton(): void {
 	const btn = document.getElementById("install-btn")
 	if (!btn) return
-	btn.addEventListener("click", () => {
+	btn.addEventListener("click", async () => {
 		const code = btn.querySelector("code")
 		const text = code?.textContent?.trim() ?? ""
-		navigator.clipboard.writeText(text).then(() => {
+		const ok = await copyText(text)
+		if (ok) {
 			btn.classList.add("copied")
+			announce("Copied to clipboard")
 			setTimeout(() => btn.classList.remove("copied"), 1500)
-		})
+		} else {
+			announce("Copy failed")
+		}
 	})
 }
 
@@ -336,11 +383,11 @@ function buildAnimExamples(): AnimExample[] {
 				},
 				{
 					lines: [
-						`  .<span class="fn">adHocSubProcess</span>(<span class="str">"agent-loop"</span>,`,
-						`    { name: <span class="str">"Agent Loop"</span> }, sub =>`,
+						`  .<span class="fn">adHocSubProcess</span>(<span class="str">"agent-loop"</span>, sub =>`,
 						`    sub.<span class="fn">serviceTask</span>(<span class="str">"think"</span>, { taskType: <span class="str">"llm-think"</span> })`,
 						`       .<span class="fn">serviceTask</span>(<span class="str">"act"</span>, { taskType: <span class="str">"tool-call"</span> })`,
-						`       .<span class="fn">serviceTask</span>(<span class="str">"observe"</span>, { taskType: <span class="str">"tool-result"</span> }))`,
+						`       .<span class="fn">serviceTask</span>(<span class="str">"observe"</span>, { taskType: <span class="str">"tool-result"</span> }),`,
+						`    { name: <span class="str">"Agent Loop"</span> })`,
 						`  .<span class="fn">endEvent</span>(<span class="str">"end"</span>, { name: <span class="str">"Resolved"</span> })`,
 						`  .<span class="fn">withAutoLayout</span>().<span class="fn">build</span>();`,
 					],
@@ -640,14 +687,27 @@ async function runAnimLoop(
 }
 
 function setupAnimation(): void {
-	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
-
 	const demo = document.getElementById("anim-demo")
 	const linesContainer = document.getElementById("anim-code-lines")
 	const filenameEl = document.getElementById("anim-filename")
 	if (!demo || !linesContainer || !filenameEl) return
 
-	const examples = buildAnimExamples()
+	// buildAnimExamples() runs several build+layout+export passes — defer it
+	// until the section is actually needed instead of paying that cost at
+	// page load for a section the visitor may never scroll to.
+	let examples: AnimExample[] | null = null
+	const getExamples = (): AnimExample[] => {
+		if (!examples) examples = buildAnimExamples()
+		return examples
+	}
+
+	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		// Show the first example's completed code + diagram instead of animating.
+		const first = getExamples()[0]
+		if (first) showExampleInstant(first, linesContainer, filenameEl)
+		document.getElementById("anim-progress")?.style.setProperty("display", "none")
+		return
+	}
 
 	// ── Bar hover: show example instantly, pause animation ─────────────
 	const progressEl = document.getElementById("anim-progress")
@@ -674,7 +734,7 @@ function setupAnimation(): void {
 					b.classList.toggle("anim-bar--active", j === idx)
 				}
 
-				const example = examples[idx]
+				const example = getExamples()[idx]
 				if (example) showExampleInstant(example, linesContainer, filenameEl)
 			})
 		}
@@ -699,7 +759,7 @@ function setupAnimation(): void {
 		animCancelled = false
 		if (!loopRunning) {
 			loopRunning = true
-			runAnimLoop(linesContainer, filenameEl, examples).finally(() => {
+			runAnimLoop(linesContainer, filenameEl, getExamples()).finally(() => {
 				loopRunning = false
 			})
 		}
@@ -729,18 +789,27 @@ function setupAnimation(): void {
 
 function setupCompareSlider(): void {
 	const slider = document.getElementById("compare-slider")
+	const knob = document.getElementById("cmp-divider-knob")
 	if (!slider) return
 
 	let dragging = false
 
 	// Clamp to 5–95% so the knob is always reachable on mobile.
+	const setPct = (pct: number) => {
+		const clamped = Math.max(5, Math.min(95, pct))
+		slider.style.setProperty("--split", `${clamped}%`)
+		knob?.setAttribute("aria-valuenow", String(Math.round(clamped)))
+	}
+
 	const setPos = (clientX: number) => {
 		const rect = slider.getBoundingClientRect()
-		const pct = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100))
-		slider.style.setProperty("--split", `${pct}%`)
+		setPct(((clientX - rect.left) / rect.width) * 100)
 	}
 
 	slider.addEventListener("pointerdown", (e) => {
+		// Let discrete actions inside the panels (e.g. the copy button) behave
+		// normally instead of being hijacked as a drag-to-compare gesture.
+		if ((e.target as HTMLElement).closest(".copy-btn")) return
 		dragging = true
 		slider.setPointerCapture(e.pointerId)
 		setPos(e.clientX)
@@ -755,38 +824,29 @@ function setupCompareSlider(): void {
 	}
 	slider.addEventListener("pointerup", stop)
 	slider.addEventListener("pointercancel", stop)
-}
 
-// ── Mobile nav ─────────────────────────────────────────────────────────
-
-function setupMobileNav(): void {
-	const burger = document.getElementById("nav-burger")
-	const menu = document.getElementById("nav-mobile-menu")
-	if (!burger || !menu) return
-
-	const close = () => {
-		burger.setAttribute("aria-expanded", "false")
-		menu.setAttribute("aria-hidden", "true")
-		menu.classList.remove("open")
-	}
-
-	burger.addEventListener("click", () => {
-		const opening = burger.getAttribute("aria-expanded") !== "true"
-		burger.setAttribute("aria-expanded", String(opening))
-		menu.setAttribute("aria-hidden", String(!opening))
-		menu.classList.toggle("open", opening)
-	})
-
-	// Close when any link inside is clicked
-	for (const link of menu.querySelectorAll("a")) link.addEventListener("click", close)
-
-	// Close when clicking outside the nav
-	document.addEventListener("click", (e) => {
-		if (!burger.closest("nav")?.contains(e.target as Node)) close()
+	// Keyboard support for the divider knob (WAI-ARIA slider pattern).
+	knob?.addEventListener("keydown", (e) => {
+		const current = Number(knob.getAttribute("aria-valuenow") ?? "50")
+		const step = e.key === "PageUp" || e.key === "PageDown" ? 20 : 5
+		if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "PageDown") {
+			e.preventDefault()
+			setPct(current - step)
+		} else if (e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "PageUp") {
+			e.preventDefault()
+			setPct(current + step)
+		} else if (e.key === "Home") {
+			e.preventDefault()
+			setPct(5)
+		} else if (e.key === "End") {
+			e.preventDefault()
+			setPct(95)
+		}
 	})
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
+// Mobile nav is handled by Nav.astro's own inline script.
 
 setupHeroDiagram()
 setupCopyButtons()
@@ -795,4 +855,3 @@ setupInstallButton()
 setupBentoSpotlight()
 setupAnimation()
 setupCompareSlider()
-setupMobileNav()

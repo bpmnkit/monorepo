@@ -92,6 +92,38 @@ a:hover {
 	}
 }
 
+/* ── Screen-reader-only utility ─────────────────────────────────── */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* ── Skip link ──────────────────────────────────────────────────── */
+.skip-link {
+	position: absolute;
+	top: -48px;
+	left: 8px;
+	z-index: 1000;
+	background: var(--bg-card);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 10px 16px;
+	font-size: 14px;
+	transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+	top: 8px;
+}
+
 /* ── Nav ────────────────────────────────────────────────────────── */
 .nav {
 	position: fixed;
@@ -145,10 +177,81 @@ a:hover {
 	color: var(--text-muted);
 	padding: 6px 12px;
 	border-radius: 8px;
+	white-space: nowrap;
 	transition: color 0.2s, background 0.2s;
 }
 
 .nav-link:hover {
+	color: var(--text);
+	background: oklch(15% 0.03 270 / 0.5);
+	text-decoration: none;
+}
+
+/* ── Nav dropdowns (Resources / Tools) ──────────────────────────── */
+.nav-dropdown {
+	position: relative;
+}
+
+.nav-dropdown-toggle {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	background: none;
+	border: none;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.nav-dropdown-chevron {
+	transition: transform 0.15s ease;
+}
+
+.nav-dropdown-toggle[aria-expanded="true"] .nav-dropdown-chevron {
+	transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%) translateY(-6px);
+	min-width: 170px;
+	list-style: none;
+	margin: 0;
+	padding: 6px;
+	background: oklch(8% 0.025 270 / 0.98);
+	backdrop-filter: blur(18px) saturate(180%);
+	-webkit-backdrop-filter: blur(18px) saturate(180%);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	box-shadow: 0 12px 32px oklch(0% 0 0 / 0.4);
+	opacity: 0;
+	/* Not transitioned — an item can be focused the instant the menu opens.
+	   Only opacity/transform animate; visibility/pointer-events flip immediately. */
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.nav-dropdown.open .nav-dropdown-menu {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(-50%) translateY(0);
+}
+
+.nav-dropdown-link {
+	display: block;
+	padding: 8px 12px;
+	border-radius: 7px;
+	font-size: 14px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	transition: color 0.2s, background 0.2s;
+}
+
+.nav-dropdown-link:hover,
+.nav-dropdown-link:focus-visible {
 	color: var(--text);
 	background: oklch(15% 0.03 270 / 0.5);
 	text-decoration: none;
@@ -233,13 +336,19 @@ a:hover {
 	transform: translateY(-6px);
 	opacity: 0;
 	pointer-events: none;
-	transition: transform 0.2s ease, opacity 0.2s ease;
+	/* visibility, not just opacity, so the links inside can't be Tabbed to
+	   while closed. The visibility change is timed to the transition: it
+	   flips to hidden only once the fade-out finishes, and to visible
+	   immediately when opening (default UA behavior for this property). */
+	visibility: hidden;
+	transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .nav-mobile-menu.open {
 	transform: translateY(0);
 	opacity: 1;
 	pointer-events: auto;
+	visibility: visible;
 }
 
 .nav-mobile-link {
@@ -264,6 +373,25 @@ a:hover {
 	border: 1px solid var(--border);
 	font-weight: 500;
 	justify-content: center;
+}
+
+.nav-mobile-group {
+	display: flex;
+	flex-direction: column;
+	margin-top: 10px;
+}
+
+.nav-mobile-group-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: oklch(50% 0.05 280);
+	padding: 4px 12px;
+}
+
+.nav-mobile-link--sub {
+	padding-left: 22px;
 }
 
 /* ── Hero ───────────────────────────────────────────────────────── */
@@ -344,6 +472,15 @@ a:hover {
 	}
 	to {
 		transform: translate(40px, -30px) scale(1.1);
+	}
+}
+
+/* The orbs' filter: blur(80px) is the most expensive thing on the page to
+   keep animating every frame — freeze them on small/battery-constrained
+   screens instead of just on prefers-reduced-motion. */
+@media (max-width: 600px) {
+	.orb {
+		animation: none;
 	}
 }
 
@@ -465,12 +602,21 @@ a:hover {
 	color: var(--text-muted);
 	line-height: 1.7;
 	max-width: 480px;
-	margin-bottom: 36px;
+	margin-bottom: 14px;
 }
 
 .hero-p strong {
 	color: var(--text);
 	font-weight: 500;
+}
+
+.hero-p-sub {
+	font-size: 0.9rem;
+	color: var(--text-muted);
+	opacity: 0.8;
+	line-height: 1.6;
+	max-width: 480px;
+	margin-bottom: 36px;
 }
 
 .hero-ctas {
@@ -990,14 +1136,16 @@ a:hover {
 	padding: 100px 0;
 }
 
-/* Before/after slider container — no overflow:hidden so the knob isn't clipped */
+/* Before/after slider container — no overflow:hidden so the knob isn't clipped.
+   touch-action: pan-y lets vertical page scroll pass through; only a
+   horizontal drag is captured for the compare gesture. */
 .compare-slider {
 	position: relative;
 	max-width: 560px;
 	margin: 0 auto;
 	cursor: col-resize;
 	user-select: none;
-	touch-action: none;
+	touch-action: pan-y;
 }
 
 /* Inner wrapper clips the panels but NOT the divider knob.
@@ -1081,7 +1229,7 @@ a:hover {
 	color: #c3e88d;
 }
 .cmp-code .comment {
-	color: #546e7a;
+	color: #7a90a0;
 }
 .cmp-code .xml-tag {
 	color: oklch(73% 0.16 280);
@@ -1132,6 +1280,13 @@ a:hover {
 	justify-content: center;
 	color: white;
 	box-shadow: 0 2px 16px oklch(0% 0 0 / 0.5);
+	pointer-events: auto;
+	cursor: col-resize;
+}
+
+.cmp-divider-knob:focus-visible {
+	outline: 2px solid var(--accent-bright);
+	outline-offset: 3px;
 }
 
 /* ── Interactive Examples ───────────────────────────────────────── */
@@ -1321,17 +1476,10 @@ a:hover {
 .steps-grid {
 	display: grid;
 	grid-template-columns: repeat(2, 380px);
-	grid-auto-rows: 380px;
+	grid-auto-rows: minmax(380px, auto);
 	gap: 20px;
 	width: fit-content;
 	margin: 0 auto;
-}
-
-/* 3rd tile spans both columns and self-centers via justify-self */
-.step:last-child {
-	grid-column: 1 / -1;
-	width: 380px;
-	justify-self: center;
 }
 
 .step {
@@ -1348,6 +1496,12 @@ a:hover {
 
 .step:hover {
 	border-color: oklch(55% 0.22 280 / 0.5);
+}
+
+.step-note {
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--text-muted);
 }
 
 .step-num {
@@ -1664,7 +1818,7 @@ a:hover {
 	font-weight: 600;
 }
 .td {
-	color: oklch(45% 0.02 270);
+	color: oklch(65% 0.02 270);
 }
 .tc {
 	color: var(--accent-bright);
@@ -1751,6 +1905,89 @@ a:hover {
 	margin: 0;
 }
 
+/* ── Project Status / Ecosystem map ─────────────────────────────── */
+.status-section {
+	padding: 90px 0 60px;
+}
+
+.status-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16px;
+	margin-top: 40px;
+}
+
+.status-card {
+	display: block;
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 20px;
+	transition: border-color 0.2s;
+}
+
+.status-card:hover {
+	border-color: var(--accent-bright);
+	text-decoration: none;
+}
+
+.status-card-top {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.status-card-name {
+	font-family: var(--font-mono);
+	font-size: 13px;
+	color: var(--text);
+	font-weight: 600;
+}
+
+.status-card-version {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.status-card-role {
+	font-size: 13px;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.status-card-note {
+	font-size: 12px;
+	color: oklch(75% 0.15 70);
+	margin-top: 8px;
+	line-height: 1.5;
+}
+
+.status-links {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 8px;
+	margin-top: 32px;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+	.status-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+@media (max-width: 600px) {
+	.status-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
 /* ── Footer ─────────────────────────────────────────────────────── */
 .footer {
 	padding: 48px 0;
@@ -1817,7 +2054,8 @@ a:hover {
 		align-items: center;
 	}
 
-	.hero-p {
+	.hero-p,
+	.hero-p-sub {
 		margin-left: auto;
 		margin-right: auto;
 	}
@@ -1836,6 +2074,10 @@ a:hover {
 		height: 220px;
 	}
 
+	.teams-grid {
+		grid-template-columns: 1fr;
+	}
+
 	.bcard,
 	.bcard-lg,
 	.bcard-tall,
@@ -1844,15 +2086,15 @@ a:hover {
 		aspect-ratio: unset;
 	}
 
-	/* The code panels are clipped by .cmp-panel { overflow: hidden } — they
-	   don't need to be independently scrollable on mobile. Removing the scroll
-	   container eliminates the conflict where the browser scrolls .cmp-code
-	   horizontally instead of routing the horizontal drag to the slider knob.
-	   (Mobile browsers give child scroll containers precedence over an
-	   ancestor's touch-action: pan-y, which is why the ancestor rule alone
-	   was not enough.) */
+	/* Independently-scrollable code panels fight the slider's touch-action:
+	   pan-y for horizontal drags (mobile browsers give a child scroll
+	   container precedence over an ancestor's touch-action). Instead of
+	   scrolling, wrap long lines so nothing is clipped — no horizontal
+	   overflow means no gesture conflict, and the XML stays readable. */
 	.cmp-code {
 		overflow: hidden;
+		white-space: pre-wrap;
+		word-break: break-word;
 	}
 
 	.anim-demo {
@@ -1921,9 +2163,12 @@ a:hover {
 	}
 }
 
-@media (max-width: 600px) {
+/* Switch to the burger menu before the (now much narrower, grouped) nav
+   would ever be at risk of crowding the logo. */
+@media (max-width: 700px) {
 	.nav-link,
-	.nav-cta {
+	.nav-cta,
+	.nav-dropdown {
 		display: none;
 	}
 
@@ -1934,7 +2179,9 @@ a:hover {
 	.nav-mobile-menu {
 		display: flex;
 	}
+}
 
+@media (max-width: 600px) {
 	.section-h2 {
 		margin-bottom: 32px;
 	}
@@ -2242,6 +2489,20 @@ a:hover {
 	position: relative;
 }
 
+.pg-text-preview {
+	margin: 0;
+	padding: 20px;
+	height: 100%;
+	box-sizing: border-box;
+	overflow: auto;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--text);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .pg-examples {
 	padding: 12px 0 0;
 }
@@ -2286,6 +2547,45 @@ a:hover {
 	.pg-code-wrap {
 		min-height: 280px;
 	}
+}
+
+/* ── For Process Teams ──────────────────────────────────────────── */
+.teams-section {
+	padding: 100px 0;
+}
+
+.teams-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 20px;
+	margin-top: 48px;
+}
+
+.teams-card {
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 28px;
+}
+
+.teams-card h3 {
+	font-size: 17px;
+	margin-bottom: 10px;
+}
+
+.teams-card p {
+	font-size: 14px;
+	line-height: 1.65;
+	color: var(--text-muted);
+}
+
+.teams-note {
+	max-width: 720px;
+	margin: 32px auto 0;
+	text-align: center;
+	font-size: 14px;
+	line-height: 1.7;
+	color: var(--text-muted);
 }
 
 /* ── SDK Developer Experience Section ───────────────────────────── */

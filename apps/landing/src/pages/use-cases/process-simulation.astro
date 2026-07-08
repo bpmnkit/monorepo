@@ -21,6 +21,14 @@ const faqs = [
   slug="process-simulation"
   faqs={faqs}
 >
+  <div class="uc-callout">
+    <p>
+      <strong>Why this matters for your team:</strong> catch a broken process — an unreachable
+      branch, a missing gateway condition — in a test run that takes milliseconds, before it
+      ever reaches a real cluster or a customer.
+    </p>
+  </div>
+
   <p>
     Testing a process by deploying it to Camunda, starting an instance, and watching Operate
     is slow feedback for something that should behave like a unit test. <code>@bpmnkit/engine</code>
@@ -32,15 +40,13 @@ const faqs = [
   <pre>{`import { Engine } from "@bpmnkit/engine";
 
 const engine = new Engine();
-await engine.deploy({ bpmn: xml });
+engine.deploy({ bpmn: defs }); // defs is the built BpmnDefinitions, not exported XML
 
 engine.registerJobWorker("payment-charge", async (job) => {
-  await job.complete({ chargeId: "test-123" });
+  job.complete({ chargeId: "test-123" });
 });
 
-const instance = engine.start("payment-flow", {
-  variables: { orderId: "ord-1", amount: 42 },
-});
+const instance = engine.start("payment-flow", { orderId: "ord-1", amount: 42 });
 
 // assert the instance reached the expected end event, took the expected
 // gateway branch, and completed with the expected variables`}</pre>
