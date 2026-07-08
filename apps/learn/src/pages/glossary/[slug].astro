@@ -1,0 +1,73 @@
+---
+import { breadcrumbJsonLd, faqJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import GlossaryDiagram from "../../components/GlossaryDiagram.astro"
+import { glossary } from "../../glossary/data.js"
+import BaseLayout from "../../layouts/BaseLayout.astro"
+import { tutorials } from "../../tutorials/index.js"
+
+export async function getStaticPaths() {
+	return glossary.map((entry) => ({
+		params: { slug: entry.slug },
+		props: { entry },
+	}))
+}
+
+const { entry } = Astro.props as { entry: (typeof glossary)[number] }
+const relatedTutorial = entry.relatedTutorialId
+	? tutorials.find((t) => t.id === entry.relatedTutorialId)
+	: undefined
+
+const pageUrl = `https://learn.bpmnkit.com/glossary/${entry.slug}`
+const jsonLd = [
+	faqJsonLd([
+		{ question: `What is a ${entry.term.toLowerCase()} in BPMN?`, answer: entry.shortDefinition },
+	]),
+	breadcrumbJsonLd([
+		{ name: "Tutorials", url: "https://learn.bpmnkit.com" },
+		{ name: "Glossary", url: "https://learn.bpmnkit.com/glossary" },
+		{ name: entry.term, url: pageUrl },
+	]),
+]
+---
+
+<BaseLayout title={entry.term} description={entry.shortDefinition} jsonLd={jsonLd}>
+  <section class="glossary-detail">
+    <div class="glossary-breadcrumb">
+      <a href="/">Tutorials</a> / <a href="/glossary">Glossary</a> / {entry.term}
+    </div>
+
+    <h1>{entry.term}</h1>
+    <p class="glossary-lede">{entry.shortDefinition}</p>
+
+    <div class="glossary-diagram-frame">
+      <GlossaryDiagram symbols={entry.diagram} />
+    </div>
+
+    {entry.definition.map((paragraph) => (
+      <p class="glossary-paragraph">{paragraph}</p>
+    ))}
+
+    <h2>Example</h2>
+    <pre class="glossary-code"><code>{entry.codeExample}</code></pre>
+
+    {relatedTutorial && (
+      <a href={`/${relatedTutorial.id}`} class="glossary-tutorial-link">
+        Try it hands-on: {relatedTutorial.title} →
+      </a>
+    )}
+  </section>
+</BaseLayout>
+
+<style>
+  .glossary-detail { max-width: 700px; margin: 0 auto; }
+  .glossary-breadcrumb { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px; }
+  .glossary-breadcrumb a { color: var(--text-muted); }
+  .glossary-detail h1 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .glossary-lede { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6; }
+  .glossary-diagram-frame { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); padding: 20px 10px; margin-bottom: 32px; }
+  .glossary-paragraph { font-size: 0.95rem; line-height: 1.75; color: var(--text); margin-bottom: 16px; }
+  .glossary-detail h2 { font-size: 1.1rem; font-weight: 600; margin: 32px 0 12px; }
+  .glossary-code { background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; color: var(--text); white-space: pre; margin-bottom: 28px; }
+  .glossary-tutorial-link { display: inline-block; padding: 10px 18px; border: 1px solid var(--accent-bright); border-radius: 999px; color: var(--accent-bright); font-size: 0.88rem; font-weight: 500; text-decoration: none; }
+  .glossary-tutorial-link:hover { background: var(--accent-glow); text-decoration: none; }
+</style>

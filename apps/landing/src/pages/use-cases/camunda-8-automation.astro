@@ -1,0 +1,72 @@
+---
+import UseCase from "../../layouts/UseCase.astro"
+
+const faqs = [
+	{
+		question: "Do I need the Camunda Modeler to deploy processes built this way?",
+		answer:
+			"No — @bpmnkit/api deploys BPMN 2.0 XML directly to Camunda 8 over its REST API, whether that XML came from @bpmnkit/core, was hand-authored in Camunda Modeler, or came from anywhere else.",
+	},
+	{
+		question: "Can this run in a CI pipeline?",
+		answer:
+			"Yes — every package here is a plain Node.js/TypeScript library with zero or minimal runtime dependencies, so generating, linting, and deploying a process is just a script step in any CI system.",
+	},
+]
+---
+
+<UseCase
+  title="Camunda 8 process automation from CI"
+  description="Generate, validate, and deploy BPMN processes to Camunda 8 as part of a build pipeline — no manual step through a desktop modeler."
+  slug="camunda-8-automation"
+  faqs={faqs}
+>
+  <p>
+    Teams running Camunda 8 at scale often want process definitions to be versioned,
+    reviewed, and deployed the same way application code is — not maintained as a
+    separately-edited BPMN file that someone remembers to redeploy. BPMN Kit's packages
+    compose into exactly that pipeline.
+  </p>
+
+  <h2>The pipeline</h2>
+  <pre>{`import { Bpmn } from "@bpmnkit/core";
+import { CamundaClient } from "@bpmnkit/api";
+
+// 1. Generate (or load) the process definition
+const xml = Bpmn.export(
+  Bpmn.createProcess("invoice-approval")
+    .startEvent("start")
+    .userTask("review", { name: "Review Invoice" })
+    .exclusiveGateway("gw", { name: "Approved?" })
+    .branch("yes", (b) => b.condition("= approved").serviceTask("pay", { taskType: "pay-invoice" }).endEvent("end-paid"))
+    .branch("no", (b) => b.defaultFlow().endEvent("end-rejected"))
+    .withAutoLayout()
+    .build()
+);
+
+// 2. Deploy to Camunda 8
+const client = new CamundaClient({
+  baseUrl: process.env.CAMUNDA_BASE_URL,
+  auth: { type: "oauth2", clientId: process.env.CAMUNDA_CLIENT_ID, clientSecret: process.env.CAMUNDA_CLIENT_SECRET, audience: process.env.CAMUNDA_AUDIENCE },
+});
+await client.process.deploy({ resources: [{ content: xml }] });`}</pre>
+  <p>
+    Add a <a href="/use-cases/process-simulation">simulation step</a> between generation and
+    deployment to catch broken conditions or unreachable paths before they reach a real
+    cluster, and the whole flow — generate, test, deploy — runs as ordinary CI steps.
+  </p>
+
+  <h2>The <code>casen</code> CLI</h2>
+  <p>
+    For interactive or scripted operations against a running Camunda 8 cluster — managing
+    process instances, jobs, incidents, and decisions from the terminal — the
+    <code>casen</code> CLI wraps the same <code>@bpmnkit/api</code> client.
+  </p>
+
+  <div class="uc-links">
+    <a href="https://docs.bpmnkit.com/packages/api/">@bpmnkit/api reference</a>
+    <a href="https://docs.bpmnkit.com/guides/deployment/">Deployment guide</a>
+    <a href="/cli">casen CLI</a>
+    <a href="/blog/connect-camunda-8-nodejs-rest-client">Connect to Camunda 8 from Node.js</a>
+  </div>
+</UseCase>

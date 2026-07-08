@@ -1,5 +1,5 @@
 ---
-title: BPMN SDK
+title: BPMN Kit
 description: TypeScript SDK for generating, editing, and executing BPMN 2.0 diagrams programmatically.
 template: splash
 hero:
@@ -72,17 +72,17 @@ hero:
 
 | Package | Description |
 |---|---|
-| [`@bpmn-sdk/core`](/packages/core/) | Fluent builder, parser/serializer, auto-layout, AI-compact format |
-| [`@bpmn-sdk/engine`](/packages/engine/) | Zero-dep BPMN simulation engine (browser + Node.js) |
-| [`@bpmn-sdk/api`](/packages/api/) | Camunda 8 REST API client — 180 typed methods |
-| [`@bpmn-sdk/canvas`](/packages/canvas/) | SVG BPMN viewer with pan/zoom, dark/light theme |
-| [`@bpmn-sdk/editor`](/packages/editor/) | Full BPMN editor — canvas + properties panel + AI bridge |
+| [`@bpmnkit/core`](/packages/core/) | Fluent builder, parser/serializer, auto-layout, AI-compact format |
+| [`@bpmnkit/engine`](/packages/engine/) | Zero-dep BPMN simulation engine (browser + Node.js) |
+| [`@bpmnkit/api`](/packages/api/) | Camunda 8 REST API client — 180 typed methods |
+| [`@bpmnkit/canvas`](/packages/canvas/) | SVG BPMN viewer with pan/zoom, dark/light theme |
+| [`@bpmnkit/editor`](/packages/editor/) | Full BPMN editor — canvas + properties panel + AI bridge |
 | [`casen` (CLI)](/cli/casen/) | Interactive TUI for managing Camunda 8 from the terminal |
 
 ## Quick Example
 
 ```typescript
-import { Bpmn } from "@bpmn-sdk/core";
+import { Bpmn } from "@bpmnkit/core";
 
 const xml = Bpmn.export(
   Bpmn.createProcess("approval-flow")

@@ -1,0 +1,119 @@
+---
+import type { DiagramSymbol } from "../glossary/data.js"
+
+interface Props {
+	symbols: DiagramSymbol[]
+}
+const { symbols } = Astro.props
+
+const STEP = 130
+const CENTER_Y = 50
+const BOUNDARY_Y = 96
+
+const boundaryIdx = symbols.findIndex((s) => s.kind === "boundary")
+const mainSymbols = symbols.filter((s) => s.kind !== "boundary")
+const attachMainIndex =
+	boundaryIdx === -1
+		? -1
+		: symbols.slice(0, boundaryIdx).filter((s) => s.kind !== "boundary").length - 1
+
+const positions = mainSymbols.map((s, i) => ({ symbol: s, x: 30 + i * STEP, y: CENTER_Y }))
+const width = positions.length * STEP + 20
+const boundaryPos =
+	attachMainIndex >= 0 ? { x: positions[attachMainIndex]?.x ?? 0, y: BOUNDARY_Y } : undefined
+
+function iconFor(kind: DiagramSymbol["kind"]): string {
+	switch (kind) {
+		case "gateway-exclusive":
+			return "×"
+		case "gateway-parallel":
+			return "+"
+		case "gateway-inclusive":
+			return "○"
+		default:
+			return ""
+	}
+}
+---
+
+<svg width={width} height="140" viewBox={`0 0 ${width} 140`} xmlns="http://www.w3.org/2000/svg" class="glossary-diagram-svg" role="img" aria-label="Example BPMN diagram">
+  <!-- Arrows between consecutive main-row symbols (skipping the boundary branch point) -->
+  {positions.slice(0, -1).map((p, i) => {
+    if (i === attachMainIndex) return null
+    const next = positions[i + 1]
+    const x1 = p.x + 26
+    const x2 = (next?.x ?? 0) - 26
+    return (
+      <g>
+        <line x1={x1} y1={CENTER_Y} x2={x2} y2={CENTER_Y} stroke="var(--border)" stroke-width="1.5" />
+        <path d={`M${x2 - 6} ${CENTER_Y - 5} L${x2} ${CENTER_Y} L${x2 - 6} ${CENTER_Y + 5}`} stroke="var(--border)" stroke-width="1.5" fill="none" stroke-linejoin="round" />
+      </g>
+    )
+  })}
+
+  <!-- Boundary branch: down from the attached task, across to the following symbol -->
+  {boundaryPos && (
+    <g>
+      <line x1={boundaryPos.x} y1={CENTER_Y + 22} x2={boundaryPos.x} y2={boundaryPos.y - 12} stroke="var(--border)" stroke-width="1.5" />
+      {positions[attachMainIndex + 1] && (
+        <>
+          <line x1={boundaryPos.x + 12} y1={boundaryPos.y} x2={(positions[attachMainIndex + 1]?.x ?? 0) - 20} y2={boundaryPos.y} stroke="var(--border)" stroke-width="1.5" />
+          <path d={`M${(positions[attachMainIndex + 1]?.x ?? 0) - 26} ${boundaryPos.y - 5} L${(positions[attachMainIndex + 1]?.x ?? 0) - 20} ${boundaryPos.y} L${(positions[attachMainIndex + 1]?.x ?? 0) - 26} ${boundaryPos.y + 5}`} stroke="var(--border)" stroke-width="1.5" fill="none" stroke-linejoin="round" />
+        </>
+      )}
+    </g>
+  )}
+
+  <!-- Main row shapes -->
+  {positions.map(({ symbol, x, y }) => (
+    <g>
+      {symbol.kind === "start" && <circle cx={x} cy={y} r="18" fill="var(--bg-card)" stroke="var(--teal)" stroke-width="2" />}
+      {(symbol.kind === "end" || symbol.kind === "end-error") && (
+        <circle cx={x} cy={y} r="18" fill="var(--bg-card)" stroke={symbol.kind === "end-error" ? "var(--danger)" : "var(--pink)"} stroke-width="3" />
+      )}
+      {(symbol.kind === "task" || symbol.kind === "call-activity") && (
+        <g>
+          <rect x={x - 45} y={y - 24} width="90" height="48" rx="8" fill="var(--bg-card)" stroke="var(--accent-bright)" stroke-width="1.5" />
+          {symbol.kind === "call-activity" && (
+            <rect x={x - 41} y={y - 20} width="82" height="40" rx="6" fill="none" stroke="var(--accent-bright)" stroke-width="1.5" />
+          )}
+        </g>
+      )}
+      {(symbol.kind === "gateway-exclusive" || symbol.kind === "gateway-parallel" || symbol.kind === "gateway-inclusive") && (
+        <g>
+          <rect x={x - 22} y={y - 22} width="44" height="44" rx="4" fill="var(--bg-card)" stroke="var(--teal)" stroke-width="1.5" transform={`rotate(45 ${x} ${y})`} />
+          <text x={x} y={y + 6} text-anchor="middle" font-size="18" fill="var(--teal)" font-weight="700">{iconFor(symbol.kind)}</text>
+        </g>
+      )}
+      {symbol.kind === "message-start" && (
+        <g>
+          <circle cx={x} cy={y} r="18" fill="var(--bg-card)" stroke="var(--teal)" stroke-width="2" />
+          <path d={`M${x - 9} ${y - 5} L${x} ${y + 2} L${x + 9} ${y - 5} M${x - 9} ${y - 5} L${x - 9} ${y + 6} L${x + 9} ${y + 6} L${x + 9} ${y - 5}`} stroke="var(--teal)" stroke-width="1.3" fill="none" stroke-linejoin="round" />
+        </g>
+      )}
+      {symbol.kind === "timer-intermediate" && (
+        <g>
+          <circle cx={x} cy={y} r="18" fill="var(--bg-card)" stroke="var(--accent-bright)" stroke-width="1.5" />
+          <circle cx={x} cy={y} r="13" fill="none" stroke="var(--accent-bright)" stroke-width="1.2" />
+          <path d={`M${x} ${y} L${x} ${y - 8} M${x} ${y} L${x + 6} ${y + 3}`} stroke="var(--accent-bright)" stroke-width="1.3" stroke-linecap="round" />
+        </g>
+      )}
+      {symbol.label && (
+        <text x={x} y={y + (symbol.kind === "task" || symbol.kind === "call-activity" ? 42 : 38)} text-anchor="middle" font-size="11" fill="var(--text-muted)" font-family="var(--font-sans)">{symbol.label}</text>
+      )}
+    </g>
+  ))}
+
+  {boundaryPos && (
+    <g>
+      <circle cx={boundaryPos.x} cy={CENTER_Y + 24} r="9" fill="var(--bg-card)" stroke="var(--danger)" stroke-width="2" />
+      <text x={boundaryPos.x} y={boundaryPos.y + 14} text-anchor="middle" font-size="10" fill="var(--text-muted)">
+        {symbols[boundaryIdx]?.label}
+      </text>
+    </g>
+  )}
+</svg>
+
+<style>
+  .glossary-diagram-svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+</style>

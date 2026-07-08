@@ -1245,10 +1245,10 @@ interface OperateApi {
 	"packages/astro-shared": {
 		name: "@bpmnkit/astro-shared",
 		description:
-			"Shared CSS design tokens, aurora background, and site metadata for BPMN Kit Astro apps",
+			"Shared CSS design tokens, aurora background, site metadata, and SEO helpers for BPMN Kit Astro apps",
 		content: `## Overview
 
-\`@bpmnkit/astro-shared\` provides shared CSS imports and site metadata used across BPMN Kit's Astro-based apps (landing page, docs, learn). It re-exports the design tokens from \`@bpmnkit/ui\` and adds a global aurora background animation.
+\`@bpmnkit/astro-shared\` provides shared CSS imports, site metadata, and SEO building blocks used across BPMN Kit's Astro-based apps (landing page, docs, learn, blog). It re-exports the design tokens from \`@bpmnkit/ui\`, adds a global aurora background animation, and ships a \`<Seo>\` head component plus schema.org JSON-LD helpers so every site emits consistent titles, canonicals, Open Graph tags, and structured data.
 
 This package is primarily intended for internal use by BPMN Kit's own Astro applications.
 
@@ -1278,13 +1278,39 @@ console.log(SITE.name)    // "BPMN Kit"
 console.log(SITE.docsUrl) // "https://docs.bpmnkit.com"
 \`\`\`
 
+### Add SEO tags and structured data to a page
+
+\`\`\`astro
+---
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { articleJsonLd } from "@bpmnkit/astro-shared/seo.js"
+---
+<html>
+  <head>
+    <Seo
+      title="Generate BPMN diagrams with code"
+      description="A TypeScript SDK for BPMN 2.0 diagrams."
+      jsonLd={articleJsonLd({
+        title: "...",
+        description: "...",
+        url: "https://bpmnkit.com/blog/example",
+        datePublished: "2026-01-01",
+        authorName: "BPMN Kit",
+      })}
+    />
+  </head>
+</html>
+\`\`\`
+
 ## Exports
 
 | Export | Description |
 |--------|-------------|
 | \`/tokens.css\` | All \`--bpmnkit-*\` CSS custom properties (re-exports \`@bpmnkit/ui/tokens.css\`) |
 | \`/background.css\` | Global aurora background animation styles |
-| \`.\` | \`SITE\` metadata object (name, url, github, docsUrl, learnUrl, npm) |
+| \`/Seo.astro\` | Shared \`<Seo>\` component — title, meta description, canonical URL, Open Graph, Twitter card, and JSON-LD |
+| \`/seo.js\` | JSON-LD builders: \`organizationJsonLd\`, \`softwareApplicationJsonLd\`, \`articleJsonLd\`, \`breadcrumbJsonLd\`, \`faqJsonLd\` |
+| \`.\` | \`SITE\` metadata object (name, url, github, docsUrl, learnUrl, blogUrl, npm) |
 `,
 	},
 

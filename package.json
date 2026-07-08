@@ -27,6 +27,8 @@
 	},
 	"devDependencies": {
 		"@astrojs/check": "^0.9",
+		"@astrojs/rss": "^4.0.12",
+		"@astrojs/sitemap": "^3.7.1",
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.29.8",
 		"@preact/preset-vite": "^2.9.0",

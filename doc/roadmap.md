@@ -213,6 +213,19 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## SEO & Discoverability
+
+> Full plan: [`doc/seo-plan.md`](seo-plan.md)
+
+- [x] **Phase 1 — Technical foundation**: shared `<Seo>` component + JSON-LD helpers (`packages/astro-shared`), `@astrojs/sitemap` wired into `landing`/`docs`/`learn`, `robots.txt` on all three, full canonical/OG/Twitter tags (fixed a `build.format: "file"` canonical bug — `Astro.url.pathname` resolved to literal `.html`/`.html` suffixes)
+- [x] **Phase 2 — Domain & brand unification**: docs renamed "BPMN SDK" → "BPMN Kit" and its `site` URL fixed from `bpmn-sdk-docs.pages.dev` to `docs.bpmnkit.com` (was also serving fake `@bpmn-sdk/*` package names on the docs homepage — corrected to real `@bpmnkit/*`); `learn` given a `site` URL for the first time; cross-site nav/footer linking added across all three apps
+- [x] **Phase 5 — Structured data**: `organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd` helpers, applied site-wide plus per-page on connectors, compare, blog, and glossary pages
+- [x] **Phase 4 — Evergreen pages**: `/connectors` catalog (116 pages generated from `@bpmnkit/connectors`' real template data), `/compare/bpmn-js` + `/compare/camunda-modeler`, `/feel-functions` (all 87 real `@bpmnkit/feel` builtins, verified 1:1 against `builtinNames()`), `/use-cases` (4 pages: AI workflow generation, embedding the editor, Camunda 8 automation, process simulation), and a 12-entry `/glossary` on `learn.bpmnkit.com` (events, gateways, tasks, sub-processes, boundary events, message events, timer events, call activities — each with a generated diagram + runnable `@bpmnkit/core` example, cross-linked to the matching tutorial where one exists)
+- [x] **Phase 3 — Blog**: `bpmnkit.com/blog` (Astro content collection + RSS), all 10 posts from the `doc/seo-plan.md` editorial calendar written and published
+- [ ] **Phase 6 — Distribution & measurement**: can't be done from the repo (needs live domain/DNS access and third-party accounts) — full step-by-step checklist in [`doc/seo-phase6-checklist.md`](seo-phase6-checklist.md): Search Console + Bing Webmaster setup, analytics, backlink/outreach targets, and an ongoing measurement cadence
+
+---
+
 ## CLI Enhancements
 
 - [x] `casen test <file.bpmn>` — run process spec scenarios (Phase 3)

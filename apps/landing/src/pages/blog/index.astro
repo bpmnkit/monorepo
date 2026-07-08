@@ -1,0 +1,65 @@
+---
+import "../../styles/global.css"
+import { getCollection } from "astro:content"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+
+const posts = (await getCollection("blog")).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+)
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+	year: "numeric",
+	month: "long",
+	day: "numeric",
+})
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate" type="application/rss+xml" title="BPMN Kit Blog" href="/rss.xml" />
+  <Seo
+    title="BPMN Kit Blog — BPMN 2.0, Camunda 8, and TypeScript"
+    description="Guides on generating, simulating, and deploying BPMN 2.0 diagrams with TypeScript, and running Camunda 8 automation."
+  />
+  <style is:global>
+    .blog-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .blog-main { flex: 1; max-width: 720px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .blog-main h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .blog-main > p { color: var(--text-muted); margin-bottom: 40px; }
+    .blog-list { display: grid; gap: 6px; }
+    .blog-post-card { display: block; padding: 22px 0; border-bottom: 1px solid var(--border); text-decoration: none; }
+    .blog-post-card:hover h2 { color: var(--accent-bright); }
+    .blog-post-card h2 { font-size: 1.15rem; font-weight: 600; color: var(--text); margin-bottom: 6px; transition: color 0.2s; }
+    .blog-post-card p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 8px; }
+    .blog-post-date { font-size: 0.78rem; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <Nav />
+  <div class="blog-wrap">
+    <main class="blog-main">
+      <h1>BPMN Kit Blog</h1>
+      <p>Guides on generating, simulating, and deploying BPMN 2.0 diagrams with TypeScript. <a href="/rss.xml" style="color: var(--accent-bright);">RSS feed</a></p>
+      <div class="blog-list">
+        {posts.map((post) => (
+          <a href={`/blog/${post.id}`} class="blog-post-card">
+            <div class="blog-post-date">{dateFormatter.format(post.data.pubDate)}</div>
+            <h2>{post.data.title}</h2>
+            <p>{post.data.description}</p>
+          </a>
+        ))}
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

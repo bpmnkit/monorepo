@@ -1,0 +1,64 @@
+---
+import "../../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+
+const pages = [
+	{
+		href: "/compare/bpmn-js",
+		name: "bpmn-js",
+		tagline: "Headless SDK vs. browser rendering/modeling toolkit",
+	},
+	{
+		href: "/compare/camunda-modeler",
+		name: "Camunda Modeler",
+		tagline: "Code-first generation vs. desktop GUI authoring",
+	},
+]
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title="BPMN Kit vs. Other BPMN Tools — Comparisons"
+    description="How BPMN Kit's TypeScript SDK compares to bpmn-js, Camunda Modeler, and other BPMN 2.0 tools."
+  />
+  <style is:global>
+    .compare-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .compare-main { flex: 1; max-width: 760px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .compare-main h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px; text-align: center; }
+    .compare-main > p { color: var(--text-muted); text-align: center; margin-bottom: 40px; }
+    .compare-list { display: grid; gap: 12px; }
+    .compare-list a { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); text-decoration: none; transition: border-color 0.2s; }
+    .compare-list a:hover { border-color: var(--accent-bright); }
+    .compare-list h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .compare-list p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <Nav />
+  <div class="compare-wrap">
+    <main class="compare-main">
+      <h1>BPMN Kit vs. other BPMN tools</h1>
+      <p>Honest, feature-by-feature comparisons to help you pick the right tool.</p>
+      <div class="compare-list">
+        {pages.map((p) => (
+          <a href={p.href}>
+            <div><h3>BPMN Kit vs. {p.name}</h3><p>{p.tagline}</p></div>
+            <span>→</span>
+          </a>
+        ))}
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

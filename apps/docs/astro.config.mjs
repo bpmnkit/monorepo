@@ -1,12 +1,24 @@
 import starlight from "@astrojs/starlight"
+import { organizationJsonLd, softwareApplicationJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import { defineConfig } from "astro/config"
 import starlightLlmsTxt from "starlight-llms-txt"
 
+const jsonLd = [
+	organizationJsonLd(),
+	softwareApplicationJsonLd({
+		name: "BPMN Kit",
+		description:
+			"TypeScript SDK for generating, editing, and executing BPMN 2.0 diagrams programmatically.",
+		url: "https://docs.bpmnkit.com",
+		applicationCategory: "DeveloperApplication",
+	}),
+]
+
 export default defineConfig({
-	site: "https://bpmn-sdk-docs.pages.dev",
+	site: "https://docs.bpmnkit.com",
 	integrations: [
 		starlight({
-			title: "BPMN SDK",
+			title: "BPMN Kit",
 			logo: { src: "./src/assets/logo.svg", alt: "BPMN Kit" },
 			description:
 				"TypeScript SDK for generating, editing, and executing BPMN 2.0 diagrams programmatically.",
@@ -17,13 +29,13 @@ export default defineConfig({
 			},
 			plugins: [
 				starlightLlmsTxt({
-					projectName: "BPMN SDK",
+					projectName: "BPMN Kit",
 					description:
 						"An open-source TypeScript SDK for generating, editing, and executing BPMN 2.0 " +
 						"diagrams programmatically. Designed for AI agents, automation platforms, and " +
 						"Camunda 8 / Zeebe workflow deployments. Zero runtime dependencies in the core packages.",
 					details:
-						"BPMN SDK is a TypeScript monorepo: @bpmnkit/core (fluent builder, parser, " +
+						"BPMN Kit is a TypeScript monorepo: @bpmnkit/core (fluent builder, parser, " +
 						"auto-layout, compact format), @bpmnkit/engine (simulation, no Camunda needed), " +
 						"@bpmnkit/api (Camunda 8 REST client, 180 methods), @bpmnkit/canvas (SVG viewer), " +
 						"@bpmnkit/editor (full editor with AI bridge), casen (CLI TUI). ESM-only, " +
@@ -72,7 +84,7 @@ export default defineConfig({
 					tag: "meta",
 					attrs: {
 						property: "og:image",
-						content: "https://bpmn-sdk-docs.pages.dev/og.png",
+						content: "https://docs.bpmnkit.com/og.png",
 					},
 				},
 				{
@@ -83,9 +95,14 @@ export default defineConfig({
 					tag: "meta",
 					attrs: {
 						name: "twitter:image",
-						content: "https://bpmn-sdk-docs.pages.dev/og.png",
+						content: "https://docs.bpmnkit.com/og.png",
 					},
 				},
+				...jsonLd.map((item) => ({
+					tag: "script",
+					attrs: { type: "application/ld+json" },
+					content: JSON.stringify(item),
+				})),
 			],
 		}),
 	],

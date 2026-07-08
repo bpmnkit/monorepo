@@ -1,5 +1,48 @@
 # Progress
 
+## 2026-07-07 — SEO & discoverability: glossary expansion (Phase 4 complete) + Phase 6 checklist
+
+- **Glossary expansion** (`apps/learn`) — added 3 entries to `/glossary`: Message Event, Timer Event, Call Activity, bringing the total to 12 (all core BPMN concepts from `doc/seo-plan.md`'s suggested list). Each grounded in the real `@bpmnkit/core` builder API, checked directly against `packages/core/src/bpmn/bpmn-builder.ts`'s `StartEventOptions`/`IntermediateCatchEventOptions`/`CallActivityOptions` before writing (message/timer events use `messageName`/`timerDuration`/`timerCycle`/`correlationKey`; call activities use `callActivity(id, { processId, propagateAllChildVariables })`).
+- Extended `GlossaryDiagram.astro`'s `DiagramSymbol` union with `message-start` (circle + envelope glyph), `timer-intermediate` (double-circle + clock hands, matching BPMN's intermediate-event notation), and `call-activity` (double-bordered rectangle, matching BPMN's reusable-activity notation) — verified each renders the correct distinct SVG shape in the build output.
+- **`doc/seo-phase6-checklist.md`** (new) — a concrete, actionable checklist for the one phase of `doc/seo-plan.md` that genuinely can't be done from this repo: Google Search Console (domain-property verification via DNS TXT, which covers all three subdomains in one step) + sitemap submission using the real URLs this repo now generates, Bing Webmaster (import-from-GSC), analytics (no script wired in yet — documented where it would go once an account exists, deliberately not stubbing a script tag with nothing behind it), specific backlink/outreach targets (Camunda Forum, dev.to cross-posts of specific existing posts with `canonical_url`, Stack Overflow tags), and a recurring measurement cadence table.
+- Verified: `biome check`/`astro check`/`tsc --noEmit` clean, full `astro build` for `learn` — 54 pages (up from 51), all 3 new glossary pages' canonicals/JSON-LD and diagram SVGs spot-checked in the build output.
+- SEO & Discoverability roadmap section: Phases 1–5 are now fully complete; Phase 6 has a checklist instead of a "can't do this" note.
+
+## 2026-07-07 — SEO & discoverability: remaining 6 blog posts (Phase 3 complete)
+
+Writes the 6 posts left from `doc/seo-plan.md`'s 10-post editorial calendar, each grounded in a verified real API (checked package source/compiled output before writing, not assumed from memory):
+
+- **Migrating from bpmn-js: a headless alternative** — practical migration guide (rendering → `@bpmnkit/canvas`, editing → `@bpmnkit/editor`, generation has no bpmn-js equivalent), distinct from the existing `/compare/bpmn-js` feature-comparison page.
+- **Evaluating FEEL expressions in TypeScript** — `parseExpression`/`evaluate` from `@bpmnkit/feel`, verified against `packages/feel/src/evaluator.ts` and its own test file's usage pattern; links to the new `/feel-functions` reference.
+- **Generating BPMN from natural language with an LLM** — `compactify`/`expand`/`Bpmn.makeEmpty()`, grounded directly in `apps/docs/src/content/docs/guides/ai.md`'s existing (already-accurate) documentation of the same pipeline.
+- **Embedding a BPMN viewer in React** — a `useEffect`-based wrapper around `@bpmnkit/canvas`'s real `CanvasOptions`/`.load()`/`.destroy()` API (checked `packages/canvas/src/types.ts` and `canvas.ts` directly).
+- **BPMN boundary events, explained with code** — interrupting vs. non-interrupting semantics plus `withBoundary()`, cross-linked with the existing glossary entry.
+- **Building a Camunda 8 connector from an OpenAPI spec** — `generate()`/`generateFromUrl()` from `@bpmnkit/connector-gen`, verified against `packages/connector-gen/src/index.ts` and `types.ts`'s real `GeneratorOptions` fields.
+- Caught one bad link while writing (a blog post initially referenced a nonexistent `docs.bpmnkit.com/packages/feel/` page — `@bpmnkit/feel` has no docs package page; fixed to link the GitHub source instead).
+- Verified: `biome check`/`tsc --noEmit` clean, full `astro build` — 143 pages (up from 137), all 10 posts present in `dist/blog/`, RSS feed has 10 items, spot-checked code-block rendering (including a `tsx` React sample and an escaped-quote FEEL string) for correctness.
+
+## 2026-07-07 — SEO & discoverability: Phase 4 completion (use cases, FEEL reference)
+
+Follow-up to the same day's foundation work — fills in the two Phase 4 items previously deferred.
+
+- **`/feel-functions`** (`apps/landing`) — a reference page for all 87 `@bpmnkit/feel` built-in functions, grouped into 8 categories (conversion, boolean, string, list, numeric, date/time, interval, context). The function list (`src/data/feel-functions.ts`) was cross-checked programmatically against the real `builtinNames()` export from `packages/feel/dist/builtins.js` — 87/87 match, no typos, no omissions, no invented functions.
+- **`/use-cases`** (`apps/landing`) — 4 pages (AI workflow generation, embedding the editor, Camunda 8 automation from CI, process simulation/testing), each with a real, runnable code sample and FAQ JSON-LD, sharing a new `UseCase.astro` layout. Caught and fixed a broken link (`/glossary` used as a landing-relative path when the glossary actually lives on `learn.bpmnkit.com`).
+- Wired both into `Nav`/`Footer` site-wide.
+- Verified: `biome check` clean, `tsc --noEmit` clean, full `astro build` — 137 pages (up from 131), all new pages' canonicals/JSON-LD spot-checked in the build output.
+- Still deferred from `doc/seo-plan.md`: 6 of 10 blog posts, glossary coverage beyond the current 9 concepts, and Phase 6 (Search Console/analytics — needs live domains, not a repo change).
+
+## 2026-07-07 — SEO & discoverability: plan + Phase 1/2/5 foundation, Phase 3/4 content
+
+Implements `doc/seo-plan.md` (written this session as a hand-off plan, then implemented directly). Full details in `doc/roadmap.md`'s new "SEO & Discoverability" section.
+
+- **`packages/astro-shared`**: new `Seo.astro` (title/description/canonical/OG/Twitter/JSON-LD in one component) and `seo.ts` (`organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd`), added a missing `tsconfig.json` (its files had no local tsconfig, so esbuild walked up to the root's `tsconfig.json`, which references now-absent `canvas-plugins/*` project paths and broke any app that actually imported from the package). Fixed `SITE.url` (was `https://bpmn-sdk.github.io/monorepo`) to `https://bpmnkit.com`.
+- **`apps/landing`**: adopted `<Seo>` on every page (fixed a real bug — with `build.format: "file"`, `Astro.url.pathname` resolves to the on-disk `.html` filename, and to the literal string `.html` for the homepage, so the naive canonical was `bpmnkit.com/.html`; `Seo.astro` now normalizes it back to the clean URL); added `@astrojs/sitemap` + `robots.txt`; new `/connectors` (index + 116 generated pages from `@bpmnkit/connectors`' real catalog data), `/compare` (`bpmn-js`, `camunda-modeler`), and `/blog` (Astro content collection, RSS feed, 4 initial posts) sections; extracted `Nav.astro`/`Footer.astro` for the new pages to share.
+- **`apps/docs`**: fixed the site being titled "BPMN SDK" (vs. the product's actual "BPMN Kit" branding everywhere else) and configured with `site: "https://bpmn-sdk-docs.pages.dev"` instead of the real `docs.bpmnkit.com` — canonicals/OG were pointing at the wrong domain. The homepage was also showing fabricated `@bpmn-sdk/*` package names in its package table and quick-start code sample; corrected to the real `@bpmnkit/*` names. Added `robots.txt` and site-wide JSON-LD.
+- **`apps/learn`**: had no `site` URL configured at all (blocking canonicals/sitemap); added it, `@astrojs/sitemap`, `robots.txt`, an `og.png` endpoint (didn't exist), and adopted `<Seo>` in `BaseLayout.astro` (tutorial step pages had no meta description before — now use the tutorial's real description instead of none). New `/glossary` — 9 BPMN element definitions (start/end event, exclusive/parallel/inclusive gateway, service/user task, sub-process, boundary event), each with a generated inline SVG diagram (`GlossaryDiagram.astro`, driven by data not hand-drawn per page), a runnable `@bpmnkit/core` code example, and a cross-link to the matching hands-on tutorial.
+- Regenerated `packages/astro-shared`'s README (`scripts/generate-readmes.mjs`) to document the new `Seo.astro`/`seo.js` exports; `scripts/check-packages.mjs` still passes for all 22 published packages.
+- Verified: `pnpm biome check` clean, `tsc --noEmit`/`astro check` clean on all three apps, and a full `astro build` of `landing` (131 pages), `docs` (29 pages), and `learn` (51 pages) — sitemap, robots.txt, canonicals, OG tags, and JSON-LD spot-checked in the actual build output.
+- Deferred (scoped down from the full plan, noted in `doc/roadmap.md`): the remaining 6 of 10 planned blog posts, use-case/solution pages, a FEEL function reference, and Phase 6 (Search Console/analytics) which needs the live production domains and isn't a repo change.
+
 ## 2026-07-07 — AI BPMN generation: WP8 (documentation & roadmap) — spec complete
 
 Final work package of `doc/spec-bpmn-generation-skills.md` (WP0–WP8, all done).

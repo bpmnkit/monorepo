@@ -11,8 +11,10 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
+		"@bpmnkit/astro-shared": "workspace:*",
 		"@bpmnkit/canvas": "workspace:*",
 		"@bpmnkit/connector-gen": "workspace:*",
+		"@bpmnkit/connectors": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",

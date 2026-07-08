@@ -1,0 +1,97 @@
+---
+import "../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { articleJsonLd, breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import Footer from "../components/Footer.astro"
+import Nav from "../components/Nav.astro"
+
+interface Props {
+	title: string
+	description: string
+	pubDate: Date
+	updatedDate?: Date
+	author: string
+	slug: string
+}
+
+const { title, description, pubDate, updatedDate, author, slug } = Astro.props
+const pageUrl = `https://bpmnkit.com/blog/${slug}`
+
+const jsonLd = [
+	articleJsonLd({
+		title,
+		description,
+		url: pageUrl,
+		datePublished: pubDate.toISOString(),
+		dateModified: updatedDate?.toISOString(),
+		authorName: author,
+	}),
+	breadcrumbJsonLd([
+		{ name: "Home", url: "https://bpmnkit.com" },
+		{ name: "Blog", url: "https://bpmnkit.com/blog" },
+		{ name: title, url: pageUrl },
+	]),
+]
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+	year: "numeric",
+	month: "long",
+	day: "numeric",
+})
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo title={`${title} — BPMN Kit Blog`} description={description} type="article" jsonLd={jsonLd} />
+  <style is:global>
+    .post-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .post-main { flex: 1; max-width: 720px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .post-breadcrumb { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 24px; }
+    .post-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+    .post-breadcrumb a:hover { color: var(--accent-bright); }
+    .post-header h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 14px; }
+    .post-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 40px; }
+    .post-prose { font-size: 1rem; line-height: 1.75; color: var(--text); }
+    .post-prose h2 { font-size: 1.35rem; font-weight: 700; margin: 40px 0 16px; letter-spacing: -0.01em; }
+    .post-prose h3 { font-size: 1.1rem; font-weight: 600; margin: 28px 0 12px; }
+    .post-prose p { margin-bottom: 18px; color: var(--text); }
+    .post-prose p code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-code); padding: 2px 6px; border-radius: 4px; color: var(--accent-bright); }
+    .post-prose ul, .post-prose ol { margin: 0 0 18px 22px; }
+    .post-prose li { margin-bottom: 6px; }
+    .post-prose li code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-code); padding: 2px 6px; border-radius: 4px; color: var(--accent-bright); }
+    .post-prose a { color: var(--accent-bright); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+    .post-prose a:hover { text-decoration-color: var(--accent-bright); }
+    .post-prose pre { background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; margin-bottom: 20px; }
+    .post-prose pre code { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; background: none; padding: 0; color: var(--text); }
+    .post-prose strong { color: var(--text); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <Nav />
+  <div class="post-wrap">
+    <main class="post-main">
+      <div class="post-breadcrumb">
+        <a href="/">Home</a> / <a href="/blog">Blog</a> / {title}
+      </div>
+      <div class="post-header">
+        <h1>{title}</h1>
+        <div class="post-meta">
+          By {author} · {dateFormatter.format(pubDate)}
+          {updatedDate && ` · Updated ${dateFormatter.format(updatedDate)}`}
+        </div>
+      </div>
+      <article class="post-prose">
+        <slot />
+      </article>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>
