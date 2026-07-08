@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-07-08 — Landing page: group the nav into dropdowns
+
+Follow-up to the 6-phase implementation: the homepage nav had grown to 16 top-level links (7 on-page anchors + 9 page/external links) plus the GitHub CTA. Regrouped into 6 top-level items:
+
+- **Editor**, **Docs** stay standalone (highest-intent single links).
+- **Build ▾** — the 7 on-page anchors (Features, Examples, API, CLI, Quickstart, DMN & Forms, Playground), in DOM order.
+- **Resources ▾** — Use Cases, Compare, Blog, Learn.
+- **Tools ▾** — Operate, Connectors.
+- **GitHub** stays a standalone CTA button, unchanged.
+
+`Nav.astro` now accepts a mixed array of plain links and `{ label, items }` groups; groups render as an ARIA `aria-haspopup`/`aria-expanded` disclosure button + menu on desktop (click or ArrowDown/Enter/Space to open, arrow keys to navigate, Escape to close and return focus, outside-click/focus-out to close, opening one closes the others) and as a labeled, flattened section in the mobile menu (no nested accordions — mobile has no room for two levels of disclosure). Subpages (404, blog, compare, etc.) get the same treatment via `Nav.astro`'s default `links` prop (Resources + Tools dropdowns, no Build group since those anchors are homepage-only). Lowered the burger breakpoint from 1100px to 700px now that the collapsed nav is ~570px wide instead of ~1100px.
+
+Hit a real, subtle CSS/focus bug while wiring up keyboard support: transitioning `visibility` (used so the menu fades out before disappearing) meant a link inside a freshly-opened dropdown was still computed as `hidden` for one or more frames after the `.open` class was added, so `.focus()` on it silently no-opped — confirmed via `getComputedStyle` reads at each step, including that even a forced `!important` inline override and a double-`requestAnimationFrame` deferral weren't reliably enough. Fixed by removing `visibility` from the transitioned properties (opacity/transform still animate; visibility/pointer-events now flip instantly), which sidesteps the race entirely instead of trying to time around it.
+
+Verified: `biome check`, `astro check` (0 errors), full `astro build` (143 pages), and a Playwright regression pass covering desktop dropdown open/close (click, outside-click, Escape+focus-return, arrow-key navigation, opening one closes another), the mobile menu's grouped/flattened rendering, and no nav overflow from 650px–1400px+.
+
 ## 2026-07-08 — Landing page: implement the 6-phase improvement plan
 
 Implements all 6 phases of `doc/landing-page-analysis.md` (the multi-persona audit from earlier today). Every fix was verified against real package source before writing, and every behavioral/visual change was exercised live in a headless browser (Playwright against `astro preview`), not just typechecked — see the phase-by-phase verification below.

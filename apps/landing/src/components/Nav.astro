@@ -1,18 +1,47 @@
 ---
+interface NavLink {
+	href: string
+	label: string
+}
+interface NavGroup {
+	label: string
+	items: NavLink[]
+}
+type NavEntry = NavLink | NavGroup
+
+function isGroup(entry: NavEntry): entry is NavGroup {
+	return "items" in entry
+}
+
+function slug(label: string): string {
+	return label.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+}
+
 interface Props {
-	links?: Array<{ href: string; label: string }>
+	links?: NavEntry[]
 	/** Suppress the mobile menu's "Home" link when rendered on the homepage itself. */
 	showHomeLink?: boolean
 }
 const {
 	links = [
-		{ href: "/connectors", label: "Connectors" },
-		{ href: "/use-cases", label: "Use Cases" },
-		{ href: "/compare", label: "Compare" },
-		{ href: "/blog", label: "Blog" },
-		{ href: "https://docs.bpmnkit.com", label: "Docs" },
-		{ href: "https://learn.bpmnkit.com", label: "Learn" },
 		{ href: "/editor", label: "Editor" },
+		{ href: "https://docs.bpmnkit.com", label: "Docs" },
+		{
+			label: "Resources",
+			items: [
+				{ href: "/use-cases", label: "Use Cases" },
+				{ href: "/compare", label: "Compare" },
+				{ href: "/blog", label: "Blog" },
+				{ href: "https://learn.bpmnkit.com", label: "Learn" },
+			],
+		},
+		{
+			label: "Tools",
+			items: [
+				{ href: "/operate", label: "Operate" },
+				{ href: "/connectors", label: "Connectors" },
+			],
+		},
 	],
 	showHomeLink = true,
 } = Astro.props
@@ -28,8 +57,31 @@ const {
       </svg>
     </a>
     <div class="nav-links">
-      {links.map((link) => (
-        <a href={link.href} class="nav-link" target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener" : undefined}>{link.label}</a>
+      {links.map((entry) => (
+        isGroup(entry) ? (
+          <div class="nav-dropdown">
+            <button
+              type="button"
+              class="nav-link nav-dropdown-toggle"
+              id={`nav-dd-${slug(entry.label)}`}
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls={`nav-dd-menu-${slug(entry.label)}`}
+            >
+              {entry.label}
+              <svg class="nav-dropdown-chevron" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <ul class="nav-dropdown-menu" id={`nav-dd-menu-${slug(entry.label)}`} aria-labelledby={`nav-dd-${slug(entry.label)}`}>
+              {entry.items.map((link) => (
+                <li>
+                  <a href={link.href} class="nav-dropdown-link" target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener" : undefined}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <a href={entry.href} class="nav-link" target={entry.href.startsWith("http") ? "_blank" : undefined} rel={entry.href.startsWith("http") ? "noopener" : undefined}>{entry.label}</a>
+        )
       ))}
       <a href="https://github.com/bpmnkit/monorepo" class="nav-cta" target="_blank" rel="noopener">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
@@ -44,8 +96,17 @@ const {
   </div>
   <div class="nav-mobile-menu" id="nav-mobile-menu" aria-hidden="true">
     {showHomeLink && <a href="/" class="nav-mobile-link">Home</a>}
-    {links.map((link) => (
-      <a href={link.href} class="nav-mobile-link" target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener" : undefined}>{link.label}</a>
+    {links.map((entry) => (
+      isGroup(entry) ? (
+        <div class="nav-mobile-group">
+          <div class="nav-mobile-group-label">{entry.label}</div>
+          {entry.items.map((link) => (
+            <a href={link.href} class="nav-mobile-link nav-mobile-link--sub" target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noopener" : undefined}>{link.label}</a>
+          ))}
+        </div>
+      ) : (
+        <a href={entry.href} class="nav-mobile-link" target={entry.href.startsWith("http") ? "_blank" : undefined} rel={entry.href.startsWith("http") ? "noopener" : undefined}>{entry.label}</a>
+      )
     ))}
     <a href="https://github.com/bpmnkit/monorepo" class="nav-mobile-link nav-mobile-cta" target="_blank" rel="noopener">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
@@ -88,4 +149,78 @@ const {
       }
     })
   }
+
+  // ── Desktop dropdown menus (Product/Resources/Tools) ──────────────────────
+  const dropdowns = Array.from(document.querySelectorAll<HTMLElement>(".nav-dropdown"))
+
+  function closeDropdown(dd: HTMLElement) {
+    const toggle = dd.querySelector<HTMLButtonElement>(".nav-dropdown-toggle")
+    toggle?.setAttribute("aria-expanded", "false")
+    dd.classList.remove("open")
+  }
+
+  function closeAllDropdowns(except?: HTMLElement) {
+    for (const dd of dropdowns) {
+      if (dd !== except) closeDropdown(dd)
+    }
+  }
+
+  for (const dd of dropdowns) {
+    const toggle = dd.querySelector<HTMLButtonElement>(".nav-dropdown-toggle")
+    const menuEl = dd.querySelector<HTMLElement>(".nav-dropdown-menu")
+    if (!toggle || !menuEl) continue
+
+    const open = () => {
+      closeAllDropdowns(dd)
+      toggle.setAttribute("aria-expanded", "true")
+      dd.classList.add("open")
+    }
+
+    toggle.addEventListener("click", () => {
+      const isOpen = toggle.getAttribute("aria-expanded") === "true"
+      if (isOpen) {
+        closeDropdown(dd)
+      } else {
+        open()
+      }
+    })
+
+    toggle.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault()
+        open()
+        menuEl.querySelector<HTMLElement>("a")?.focus()
+      }
+    })
+
+    menuEl.addEventListener("keydown", (e) => {
+      const items = Array.from(menuEl.querySelectorAll<HTMLElement>("a"))
+      const currentIndex = items.indexOf(document.activeElement as HTMLElement)
+
+      if (e.key === "Escape") {
+        e.preventDefault()
+        closeDropdown(dd)
+        toggle.focus()
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault()
+        items[(currentIndex + 1) % items.length]?.focus()
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        items[(currentIndex - 1 + items.length) % items.length]?.focus()
+      }
+    })
+  }
+
+  // Close dropdowns when clicking outside, or when focus leaves the nav entirely
+  document.addEventListener("click", (e) => {
+    for (const dd of dropdowns) {
+      if (!dd.contains(e.target as Node)) closeDropdown(dd)
+    }
+  })
+
+  document.addEventListener("focusin", (e) => {
+    for (const dd of dropdowns) {
+      if (!dd.contains(e.target as Node)) closeDropdown(dd)
+    }
+  })
 </script>

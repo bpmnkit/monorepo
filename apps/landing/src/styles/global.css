@@ -187,6 +187,76 @@ a:hover {
 	text-decoration: none;
 }
 
+/* ── Nav dropdowns (Resources / Tools) ──────────────────────────── */
+.nav-dropdown {
+	position: relative;
+}
+
+.nav-dropdown-toggle {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	background: none;
+	border: none;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.nav-dropdown-chevron {
+	transition: transform 0.15s ease;
+}
+
+.nav-dropdown-toggle[aria-expanded="true"] .nav-dropdown-chevron {
+	transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%) translateY(-6px);
+	min-width: 170px;
+	list-style: none;
+	margin: 0;
+	padding: 6px;
+	background: oklch(8% 0.025 270 / 0.98);
+	backdrop-filter: blur(18px) saturate(180%);
+	-webkit-backdrop-filter: blur(18px) saturate(180%);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	box-shadow: 0 12px 32px oklch(0% 0 0 / 0.4);
+	opacity: 0;
+	/* Not transitioned — an item can be focused the instant the menu opens.
+	   Only opacity/transform animate; visibility/pointer-events flip immediately. */
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.nav-dropdown.open .nav-dropdown-menu {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(-50%) translateY(0);
+}
+
+.nav-dropdown-link {
+	display: block;
+	padding: 8px 12px;
+	border-radius: 7px;
+	font-size: 14px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	transition: color 0.2s, background 0.2s;
+}
+
+.nav-dropdown-link:hover,
+.nav-dropdown-link:focus-visible {
+	color: var(--text);
+	background: oklch(15% 0.03 270 / 0.5);
+	text-decoration: none;
+}
+
 .nav-cta {
 	display: flex;
 	align-items: center;
@@ -303,6 +373,25 @@ a:hover {
 	border: 1px solid var(--border);
 	font-weight: 500;
 	justify-content: center;
+}
+
+.nav-mobile-group {
+	display: flex;
+	flex-direction: column;
+	margin-top: 10px;
+}
+
+.nav-mobile-group-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: oklch(50% 0.05 280);
+	padding: 4px 12px;
+}
+
+.nav-mobile-link--sub {
+	padding-left: 22px;
 }
 
 /* ── Hero ───────────────────────────────────────────────────────── */
@@ -2074,12 +2163,12 @@ a:hover {
 	}
 }
 
-/* The full nav-links row (13 links + GitHub CTA) overflows and clips
-   silently between ~601px and ~1080px viewports — switch to the burger
-   menu well before that point, not just on narrow phones. */
-@media (max-width: 1100px) {
+/* Switch to the burger menu before the (now much narrower, grouped) nav
+   would ever be at risk of crowding the logo. */
+@media (max-width: 700px) {
 	.nav-link,
-	.nav-cta {
+	.nav-cta,
+	.nav-dropdown {
 		display: none;
 	}
 

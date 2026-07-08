@@ -8,24 +8,41 @@ import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
 import { CODE_HTML, ECOSYSTEM } from "../data/content"
 
-// Nav order matches section DOM order (top to bottom), so clicking left-to-right
-// scrolls strictly downward instead of jumping back and forth.
+// Only the highest-value destinations sit at the top level; everything else
+// groups into two dropdowns. "Build" holds the on-page anchors in DOM order
+// (top to bottom), so working through it top-to-bottom scrolls strictly
+// downward instead of jumping back and forth.
 const navLinks = [
-	{ href: "#features", label: "Features" },
-	{ href: "#examples", label: "Examples" },
-	{ href: "#api", label: "API" },
-	{ href: "#cli", label: "CLI" },
-	{ href: "#start", label: "Quickstart" },
-	{ href: "#dmn-forms", label: "DMN & Forms" },
-	{ href: "#playground", label: "Playground" },
-	{ href: "/connectors", label: "Connectors" },
-	{ href: "/use-cases", label: "Use Cases" },
-	{ href: "/compare", label: "Compare" },
-	{ href: "/blog", label: "Blog" },
-	{ href: "https://docs.bpmnkit.com", label: "Docs" },
-	{ href: "https://learn.bpmnkit.com", label: "Learn" },
 	{ href: "/editor", label: "Editor" },
-	{ href: "/operate", label: "Operate" },
+	{ href: "https://docs.bpmnkit.com", label: "Docs" },
+	{
+		label: "Build",
+		items: [
+			{ href: "#features", label: "Features" },
+			{ href: "#examples", label: "Examples" },
+			{ href: "#api", label: "API" },
+			{ href: "#cli", label: "CLI" },
+			{ href: "#start", label: "Quickstart" },
+			{ href: "#dmn-forms", label: "DMN & Forms" },
+			{ href: "#playground", label: "Playground" },
+		],
+	},
+	{
+		label: "Resources",
+		items: [
+			{ href: "/use-cases", label: "Use Cases" },
+			{ href: "/compare", label: "Compare" },
+			{ href: "/blog", label: "Blog" },
+			{ href: "https://learn.bpmnkit.com", label: "Learn" },
+		],
+	},
+	{
+		label: "Tools",
+		items: [
+			{ href: "/operate", label: "Operate" },
+			{ href: "/connectors", label: "Connectors" },
+		],
+	},
 ]
 
 const jsonLd = [
