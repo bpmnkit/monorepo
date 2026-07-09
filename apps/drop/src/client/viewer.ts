@@ -49,7 +49,8 @@ async function renderBpmn(xml: string): Promise<void> {
 		xml,
 		theme: "auto",
 		grid: true,
-		fit: "contain",
+		// Always render at 100% (scale 1), centered — never scale-to-fit.
+		fit: "center",
 		plugins: [createZoomControlsPlugin(), createMinimapPlugin()],
 	})
 	wireCrossFileLinks(xml, current)

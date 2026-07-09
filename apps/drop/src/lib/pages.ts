@@ -54,17 +54,21 @@ h1{font-size:28px;line-height:1.2;margin:0 0 8px}
 .result .link-row{display:flex;gap:8px;align-items:center;margin:12px 0}
 .result input{flex:1;font-family:var(--bpmnkit-font-mono,monospace);font-size:14px;padding:8px 10px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:9px;background:var(--bpmnkit-bg,#f4f4f8);color:var(--bpmnkit-fg,#1a1a2e)}
 .result iframe{width:100%;height:440px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:12px;margin-top:12px;background:var(--bpmnkit-surface,#fff)}
-/* share */
-.share-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
-.share-head h1{font-size:22px;margin:0}
-.meta{color:var(--bpmnkit-fg-muted,#6666a0);font-size:13px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+/* share — full-bleed viewer filling the viewport below the navbar */
+body.share{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body.share .topbar{flex:none}
+.share-bar{flex:none;display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:8px 16px;border-bottom:1px solid var(--bpmnkit-border,#d0d0e8);background:var(--bpmnkit-surface,#fff)}
+.share-bar .btn{padding:5px 10px;font-size:13px}
+.tb-title{font-size:15px;font-weight:700;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-meta{color:var(--bpmnkit-fg-muted,#6666a0);font-size:12px}
+.tb-spacer{flex:1 1 auto}
 .dot{opacity:.5}
 #presence{color:var(--bpmnkit-teal,#0d9488);font-weight:600}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:16px 0 0;border-bottom:1px solid var(--bpmnkit-border,#d0d0e8)}
-.tab{padding:8px 14px;border:1px solid transparent;border-bottom:none;border-radius:9px 9px 0 0;cursor:pointer;font-size:14px;color:var(--bpmnkit-fg-muted,#6666a0);background:none}
-.tab.active{background:var(--bpmnkit-surface,#fff);border-color:var(--bpmnkit-border,#d0d0e8);color:var(--bpmnkit-fg,#1a1a2e);font-weight:600}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{padding:5px 10px;border:1px solid transparent;border-radius:8px;cursor:pointer;font-size:13px;color:var(--bpmnkit-fg-muted,#6666a0);background:none}
+.tab.active{background:var(--bpmnkit-surface-2,#eeeef8);border-color:var(--bpmnkit-border,#d0d0e8);color:var(--bpmnkit-fg,#1a1a2e);font-weight:600}
 .tab .k{font-size:10px;opacity:.7;margin-left:6px;text-transform:uppercase}
-.viewer{height:70vh;min-height:420px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-top:none;border-radius:0 0 12px 12px;background:var(--bpmnkit-surface,#fff);overflow:auto;position:relative}
+.viewer{flex:1 1 auto;min-height:0;width:100%;background:var(--bpmnkit-surface,#161626);overflow:auto;position:relative}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .viewer-msg{padding:24px;color:var(--bpmnkit-fg-muted,#6666a0);font-family:var(--bpmnkit-font-mono,monospace);font-size:13px;white-space:pre-wrap;word-break:break-word}
 footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--bpmnkit-border,#d0d0e8);color:var(--bpmnkit-fg-muted,#6666a0);font-size:13px;display:flex;gap:14px;flex-wrap:wrap}
@@ -85,6 +89,7 @@ interface ShellOptions {
 	bootstrap?: { id: string; data: unknown }
 	scriptSrc?: string
 	noindex?: boolean
+	bodyClass?: string
 }
 
 function shell(opts: ShellOptions): string {
@@ -107,7 +112,7 @@ ${robots}
 <style>${UI_TOKENS_CSS}</style>
 <style>${PAGE_CSS}</style>
 </head>
-<body>
+<body${opts.bodyClass ? ` class="${opts.bodyClass}"` : ""}>
 <header class="topbar"><a class="brand" href="/drop">BPMN Kit <span>Drop</span></a><div class="spacer"></div><span class="muted">Share BPMN, DMN &amp; Forms</span></header>
 ${opts.main}
 ${boot}
@@ -176,28 +181,25 @@ export function sharePage(shareId: string, drop: DropRow, files: FileInfo[]): st
 					.join("")}</div>`
 			: ""
 
-	const main = `<main class="wrap">
-<div class="share-head"><h1>${escapeHtml(title)}</h1>${badges}</div>
-<div class="meta">
-	<span>Created ${created}</span><span class="dot">·</span>
-	<span><span id="viewCount">${drop.view_count}</span> views</span><span class="dot">·</span>
-	<span id="presence" hidden>0 viewing</span>
-</div>
-${tabs}
-<div id="viewer" class="viewer"><div class="viewer-msg">Loading…</div></div>
-<div class="actions">
-	<a id="dlOriginal" class="btn" href="#" download>Download original</a>
-	<a id="dlJson" class="btn" href="#" download>Download JSON</a>
+	const main = `<div class="share-bar">
+	<strong class="tb-title" title="${escapeHtml(title)}">${escapeHtml(title)}</strong>
+	${badges}
+	<span class="tb-meta" title="Created ${created}"><span id="viewCount">${drop.view_count}</span> views<span class="dot"> · </span><span id="presence" hidden>0 viewing</span></span>
+	${tabs}
+	<span class="tb-spacer"></span>
+	<a id="dlOriginal" class="btn" href="#" download>Original</a>
+	<a id="dlJson" class="btn" href="#" download>JSON</a>
 	<button id="copyLink" class="btn">Copy link</button>
+	<button id="reportBtn" class="btn">Report</button>
 </div>
-<footer><button id="reportBtn" class="btn" style="padding:4px 10px">Report abuse</button><a href="/drop/terms">Terms</a><a href="/drop/privacy">Privacy</a><a href="/drop">New drop</a></footer>
-${reportDialog()}
-</main>`
+<div id="viewer" class="viewer"><div class="viewer-msg">Loading…</div></div>
+${reportDialog()}`
 
 	return shell({
 		title: `${title} — BPMN Kit Drop`,
 		description: `A shared ${files[primary]?.kind ?? "BPMN"} diagram on BPMN Kit Drop.`,
 		main,
+		bodyClass: "share",
 		noindex: true,
 		bootstrap: {
 			id: "drop-data",
