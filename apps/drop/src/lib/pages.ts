@@ -54,21 +54,35 @@ h1{font-size:28px;line-height:1.2;margin:0 0 8px}
 .result .link-row{display:flex;gap:8px;align-items:center;margin:12px 0}
 .result input{flex:1;font-family:var(--bpmnkit-font-mono,monospace);font-size:14px;padding:8px 10px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:9px;background:var(--bpmnkit-bg,#f4f4f8);color:var(--bpmnkit-fg,#1a1a2e)}
 .result iframe{width:100%;height:440px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:12px;margin-top:12px;background:var(--bpmnkit-surface,#fff)}
-/* share — full-bleed viewer filling the viewport below the navbar */
+/* share — editor-style viewer filling the viewport */
 body.share{height:100vh;display:flex;flex-direction:column;overflow:hidden}
-body.share .topbar{flex:none}
-.share-bar{flex:none;display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:8px 16px;border-bottom:1px solid var(--bpmnkit-border,#d0d0e8);background:var(--bpmnkit-surface,#fff)}
-.share-bar .btn{padding:5px 10px;font-size:13px}
-.tb-title{font-size:15px;font-weight:700;max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tb-meta{color:var(--bpmnkit-fg-muted,#6666a0);font-size:12px}
-.tb-spacer{flex:1 1 auto}
+.ed-topbar{flex:none;display:flex;align-items:stretch;height:44px;background:var(--bpmnkit-surface-2,#eeeef8);border-bottom:1px solid var(--bpmnkit-border,#d0d0e8)}
+.ed-tabs{display:flex;overflow-x:auto;scrollbar-width:none}
+.ed-tabs::-webkit-scrollbar{display:none}
+.ed-tab{display:flex;align-items:center;gap:8px;padding:0 16px;border:none;border-right:1px solid var(--bpmnkit-border,#d0d0e8);border-bottom:2px solid transparent;background:transparent;cursor:pointer;font-size:13px;color:var(--bpmnkit-fg-muted,#6666a0);white-space:nowrap;max-width:260px}
+.ed-tab:hover{background:var(--bpmnkit-surface,#fff)}
+.ed-tab.active{background:var(--bpmnkit-surface,#fff);color:var(--bpmnkit-fg,#1a1a2e);border-bottom-color:var(--bpmnkit-accent-bright,#3b82f6)}
+.ed-type{font-size:10px;font-weight:700;letter-spacing:.04em}
+.ed-type-bpmn{color:#3b82f6}
+.ed-type-dmn{color:#8b5cf6}
+.ed-type-form{color:#16a34a}
+.ed-tab-name{overflow:hidden;text-overflow:ellipsis}
+.ed-tools{margin-left:auto;display:flex;align-items:center;gap:6px;padding:0 12px}
+.ed-tools .btn{padding:5px 10px;font-size:13px}
+.ed-info{font-size:12px;color:var(--bpmnkit-fg-muted,#6666a0);white-space:nowrap;margin-right:2px}
+.ed-brand{font-weight:700;color:var(--bpmnkit-accent,#1a56db);margin-left:6px;font-size:14px}
+.ed-brand:hover{text-decoration:none}
 .dot{opacity:.5}
 #presence{color:var(--bpmnkit-teal,#0d9488);font-weight:600}
-.tabs{display:flex;gap:4px;flex-wrap:wrap}
-.tab{padding:5px 10px;border:1px solid transparent;border-radius:8px;cursor:pointer;font-size:13px;color:var(--bpmnkit-fg-muted,#6666a0);background:none}
-.tab.active{background:var(--bpmnkit-surface-2,#eeeef8);border-color:var(--bpmnkit-border,#d0d0e8);color:var(--bpmnkit-fg,#1a1a2e);font-weight:600}
-.tab .k{font-size:10px;opacity:.7;margin-left:6px;text-transform:uppercase}
-.viewer{flex:1 1 auto;min-height:0;width:100%;background:var(--bpmnkit-surface,#161626);overflow:auto;position:relative}
+.stage{flex:1 1 auto;min-height:0;position:relative}
+.viewer{position:absolute;inset:0;overflow:auto;background:var(--bpmnkit-surface,#fff)}
+.ed-zoom{position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:1px;background:var(--bpmnkit-panel-bg,rgba(255,255,255,.94));border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:10px;padding:2px;box-shadow:0 2px 10px rgba(0,0,0,.08);z-index:5}
+.ed-zoom button{border:none;background:none;cursor:pointer;color:var(--bpmnkit-fg,#1a1a2e);font-size:16px;line-height:1;min-width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.ed-zoom button:hover{background:var(--bpmnkit-surface-2,#eeeef8)}
+#zoomReset{padding:0 10px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.ed-github{position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--bpmnkit-fg-muted,#6666a0);z-index:5}
+.ed-github .logo{width:20px;height:20px;border-radius:5px}
+@media (max-width:760px){.ed-info{display:none}.ed-tab-name{max-width:120px}}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .viewer-msg{padding:24px;color:var(--bpmnkit-fg-muted,#6666a0);font-family:var(--bpmnkit-font-mono,monospace);font-size:13px;white-space:pre-wrap;word-break:break-word}
 footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--bpmnkit-border,#d0d0e8);color:var(--bpmnkit-fg-muted,#6666a0);font-size:13px;display:flex;gap:14px;flex-wrap:wrap}
@@ -90,6 +104,7 @@ interface ShellOptions {
 	scriptSrc?: string
 	noindex?: boolean
 	bodyClass?: string
+	hideTopbar?: boolean
 }
 
 function shell(opts: ShellOptions): string {
@@ -113,7 +128,7 @@ ${robots}
 <style>${PAGE_CSS}</style>
 </head>
 <body${opts.bodyClass ? ` class="${opts.bodyClass}"` : ""}>
-<header class="topbar"><a class="brand" href="/drop">BPMN Kit <span>Drop</span></a><div class="spacer"></div><span class="muted">Share BPMN, DMN &amp; Forms</span></header>
+${opts.hideTopbar ? "" : `<header class="topbar"><a class="brand" href="/drop">BPMN Kit <span>Drop</span></a><div class="spacer"></div><span class="muted">Share BPMN, DMN &amp; Forms</span></header>`}
 ${opts.main}
 ${boot}
 ${script}
@@ -168,31 +183,36 @@ export function sharePage(shareId: string, drop: DropRow, files: FileInfo[]): st
 	const primary = primaryIndex(files)
 	const title = files[primary]?.name || files[primary]?.filename || "Shared diagram"
 	const created = new Date(drop.created_at).toISOString().slice(0, 10)
-	const badges = [...new Set(files.map((f) => f.kind))]
-		.map((k) => `<span class="badge">${k}</span>`)
-		.join(" ")
-	const tabs =
-		files.length > 1
-			? `<div class="tabs" role="tablist">${files
-					.map(
-						(f, i) =>
-							`<button class="tab${i === primary ? " active" : ""}" role="tab" data-index="${i}">${escapeHtml(f.name || f.filename)}<span class="k">${f.kind}</span></button>`,
-					)
-					.join("")}</div>`
-			: ""
+	const expires = drop.expires_at ? new Date(drop.expires_at).toISOString().slice(0, 10) : "never"
 
-	const main = `<div class="share-bar">
-	<strong class="tb-title" title="${escapeHtml(title)}">${escapeHtml(title)}</strong>
-	${badges}
-	<span class="tb-meta" title="Created ${created}"><span id="viewCount">${drop.view_count}</span> views<span class="dot"> · </span><span id="presence" hidden>0 viewing</span></span>
-	${tabs}
-	<span class="tb-spacer"></span>
-	<a id="dlOriginal" class="btn" href="#" download>Original</a>
-	<a id="dlJson" class="btn" href="#" download>JSON</a>
-	<button id="copyLink" class="btn">Copy link</button>
-	<button id="reportBtn" class="btn">Report</button>
+	const tabs = files
+		.map(
+			(f, i) =>
+				`<button class="ed-tab${i === primary ? " active" : ""}" role="tab" data-index="${i}" title="${escapeHtml(f.filename)}"><span class="ed-type ed-type-${f.kind}">${f.kind.toUpperCase()}</span><span class="ed-tab-name">${escapeHtml(f.name || f.filename)}</span></button>`,
+		)
+		.join("")
+
+	const main = `<div class="ed-topbar">
+	<div class="ed-tabs" role="tablist">${tabs}</div>
+	<div class="ed-tools">
+		<span class="ed-info" title="Created ${created} · expires ${expires}"><span id="viewCount">${drop.view_count}</span> views<span class="dot"> · </span><span id="presence" hidden>0 viewing</span><span class="dot"> · </span>expires ${expires}</span>
+		<a id="dlOriginal" class="btn" href="#" download>Original</a>
+		<a id="dlJson" class="btn" href="#" download>JSON</a>
+		<button id="copyLink" class="btn">Copy link</button>
+		<button id="reportBtn" class="btn">Report</button>
+		<a class="ed-brand" href="/drop">BPMN Kit</a>
+	</div>
 </div>
-<div id="viewer" class="viewer"><div class="viewer-msg">Loading…</div></div>
+<div class="stage">
+	<div id="viewer" class="viewer"><div class="viewer-msg">Loading…</div></div>
+	<div class="ed-zoom" id="zoombar" hidden>
+		<button id="zoomOut" type="button" aria-label="Zoom out">&minus;</button>
+		<button id="zoomReset" type="button" aria-label="Reset to 100%"><span id="zoomLevel">100%</span></button>
+		<button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+		<button id="zoomFit" type="button" aria-label="Fit diagram" title="Fit diagram">&#9974;</button>
+	</div>
+	<a class="ed-github" href="https://github.com/bpmnkit/monorepo" target="_blank" rel="noopener"><img class="logo" src="${FAVICON}" alt="">GitHub</a>
+</div>
 ${reportDialog()}`
 
 	return shell({
@@ -200,6 +220,7 @@ ${reportDialog()}`
 		description: `A shared ${files[primary]?.kind ?? "BPMN"} diagram on BPMN Kit Drop.`,
 		main,
 		bodyClass: "share",
+		hideTopbar: true,
 		noindex: true,
 		bootstrap: {
 			id: "drop-data",

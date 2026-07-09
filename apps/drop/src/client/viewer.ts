@@ -2,8 +2,6 @@ import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, compactify } from "@bpmnkit/core"
 import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
-import { createMinimapPlugin } from "@bpmnkit/plugins/minimap"
-import { createZoomControlsPlugin } from "@bpmnkit/plugins/zoom-controls"
 import { injectUiStyles } from "@bpmnkit/ui"
 import type { FileKind } from "../shared/constants.js"
 
@@ -28,10 +26,15 @@ const data = JSON.parse(
 const viewer = document.getElementById("viewer") as HTMLDivElement
 const dlOriginal = document.getElementById("dlOriginal") as HTMLAnchorElement
 const dlJson = document.getElementById("dlJson") as HTMLAnchorElement
-const theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+// Follow the page theme (bpmnkit tokens default to light; dark only via [data-theme]),
+// NOT the OS — otherwise the canvas would go dark on a light page.
+const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
 
+const zoombar = document.getElementById("zoombar") as HTMLElement
+const zoomLevel = document.getElementById("zoomLevel") as HTMLElement
 let current: BpmnCanvas | null = null
 let activeIndex = -1
+let scale = 1
 
 function contentUrl(file: DropFile, format?: "json"): string {
 	const base = `/drop/${data.shareId}/f/${encodeURIComponent(file.filename)}`
@@ -47,22 +50,28 @@ async function renderBpmn(xml: string): Promise<void> {
 	current = new BpmnCanvas({
 		container: viewer,
 		xml,
-		theme: "auto",
+		theme,
 		grid: true,
 		// Always render at 100% (scale 1), centered — never scale-to-fit.
 		fit: "center",
-		plugins: [createZoomControlsPlugin(), createMinimapPlugin()],
 	})
+	current.on("viewport:change", (state) => {
+		scale = state.scale
+		zoomLevel.textContent = `${Math.round(scale * 100)}%`
+	})
+	zoombar.hidden = false
 	wireCrossFileLinks(xml, current)
 }
 
 function renderDmn(json: string): void {
 	viewer.innerHTML = ""
+	zoombar.hidden = true
 	new DmnViewer({ container: viewer, theme }).load(JSON.parse(json))
 }
 
 function renderForm(json: string): void {
 	viewer.innerHTML = ""
+	zoombar.hidden = true
 	new FormViewer({ container: viewer, theme }).load(JSON.parse(json))
 }
 
@@ -113,7 +122,7 @@ async function select(index: number): Promise<void> {
 	if (!file) return
 	activeIndex = index
 
-	for (const tab of document.querySelectorAll<HTMLElement>(".tab")) {
+	for (const tab of document.querySelectorAll<HTMLElement>(".ed-tab")) {
 		tab.classList.toggle("active", Number(tab.dataset.index) === index)
 	}
 	dlOriginal.href = contentUrl(file)
@@ -142,6 +151,13 @@ for (const tab of document.querySelectorAll<HTMLElement>(".tab")) {
 }
 
 void select(data.primaryIndex)
+
+// ── Zoom controls (BPMN canvas only) ────────────────────────────────────────
+
+document.getElementById("zoomIn")?.addEventListener("click", () => current?.zoom(scale * 1.2))
+document.getElementById("zoomOut")?.addEventListener("click", () => current?.zoom(scale / 1.2))
+document.getElementById("zoomReset")?.addEventListener("click", () => current?.resetZoom())
+document.getElementById("zoomFit")?.addEventListener("click", () => current?.zoom("fit"))
 
 // ── Presence & actions ──────────────────────────────────────────────────────
 
