@@ -47,20 +47,23 @@ function message(text: string): void {
 
 async function renderBpmn(xml: string): Promise<void> {
 	viewer.innerHTML = ""
-	current = new BpmnCanvas({
-		container: viewer,
-		xml,
-		theme,
-		grid: true,
-		// Always render at 100% (scale 1), centered — never scale-to-fit.
-		fit: "center",
-	})
-	current.on("viewport:change", (state) => {
+	// Frame the whole diagram (fit-to-viewport), but never enlarge a small
+	// diagram past 100% — the first auto-fit reports its scale and we cap it.
+	let capped = false
+	const canvas = new BpmnCanvas({ container: viewer, xml, theme, grid: true, fit: "contain" })
+	current = canvas
+	canvas.on("viewport:change", (state) => {
 		scale = state.scale
 		zoomLevel.textContent = `${Math.round(scale * 100)}%`
+		if (!capped) {
+			capped = true
+			// The auto-fit would zoom in past 100% for small diagrams — pin to 100%,
+			// keeping the (already-centered) diagram centered.
+			if (state.scale > 1.001) canvas.zoom(1)
+		}
 	})
 	zoombar.hidden = false
-	wireCrossFileLinks(xml, current)
+	wireCrossFileLinks(xml, canvas)
 }
 
 function renderDmn(json: string): void {

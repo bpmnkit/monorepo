@@ -13,6 +13,24 @@ const FAVICON = `data:image/svg+xml,${encodeURIComponent(
 	`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1a56db"/><path d="M9 16h14M16 9v14" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`,
 )}`
 
+// Inline stroke icons (currentColor), 24×24 viewBox.
+const svg = (body: string) =>
+	`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`
+const ICON = {
+	spark: svg(`<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/>`),
+	upload: svg(
+		`<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/>`,
+	),
+	browser: svg(
+		`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/>`,
+	),
+	bolt: svg(`<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>`),
+	eye: svg(
+		`<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.5"/>`,
+	),
+	clock: svg(`<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`),
+}
+
 const PAGE_CSS = `
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -32,13 +50,43 @@ a:hover{text-decoration:underline}
 h1{font-size:28px;line-height:1.2;margin:0 0 8px}
 .lead{color:var(--bpmnkit-fg-muted,#6666a0);margin:0 0 24px}
 .card{background:var(--bpmnkit-surface,#fff);border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:14px;padding:20px}
-.dropzone{
-	border:2px dashed var(--bpmnkit-border,#d0d0e8);border-radius:16px;background:var(--bpmnkit-surface,#fff);
-	padding:52px 24px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;
-}
-.dropzone.drag{border-color:var(--bpmnkit-accent,#1a56db);background:var(--bpmnkit-accent-subtle,rgba(26,86,219,.12))}
+/* drop landing — hero */
+.hero{position:relative;overflow:hidden;min-height:calc(100vh - 51px)}
+.hero-bg{position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(55% 45% at 12% -5%,var(--bpmnkit-accent-subtle,rgba(26,86,219,.14)),transparent 70%),radial-gradient(45% 40% at 92% 5%,rgba(13,148,136,.13),transparent 70%),radial-gradient(50% 45% at 78% 100%,rgba(139,92,246,.12),transparent 70%)}
+.hero-bg::after{content:"";position:absolute;inset:0;background-image:radial-gradient(currentColor 1px,transparent 1px);background-size:26px 26px;color:var(--bpmnkit-border,#d0d0e8);opacity:.4;-webkit-mask-image:radial-gradient(75% 55% at 50% 25%,#000,transparent 78%);mask-image:radial-gradient(75% 55% at 50% 25%,#000,transparent 78%)}
+.hero-inner{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:52px 20px 56px;text-align:center}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;white-space:nowrap;color:var(--bpmnkit-accent,#1a56db);background:var(--bpmnkit-accent-subtle,rgba(26,86,219,.12));padding:5px 13px;border-radius:999px;margin-bottom:22px}
+.eyebrow svg{width:15px;height:15px;flex:none}
+.hero h1{font-size:clamp(32px,5.2vw,54px);line-height:1.04;letter-spacing:-.025em;margin:0 0 16px;font-weight:800}
+.hero .grad{background:linear-gradient(100deg,var(--bpmnkit-accent,#1a56db),var(--bpmnkit-teal,#0d9488) 55%,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{font-size:clamp(16px,2vw,19px);color:var(--bpmnkit-fg-muted,#6666a0);max-width:600px;margin:0 auto 22px}
+.chips{display:flex;gap:8px;justify-content:center;margin-bottom:30px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:700;letter-spacing:.05em;padding:4px 13px;border-radius:999px;border:1px solid var(--bpmnkit-border,#d0d0e8);background:var(--bpmnkit-surface,#fff)}
+.chip-bpmn{color:#3b82f6}
+.chip-dmn{color:#8b5cf6}
+.chip-form{color:#16a34a}
+.dropzone{position:relative;border:2px dashed var(--bpmnkit-border,#d0d0e8);border-radius:22px;background:var(--bpmnkit-panel-bg,rgba(255,255,255,.72));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:44px 24px;text-align:center;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s;box-shadow:0 12px 42px -22px rgba(26,86,219,.4)}
+.dropzone:hover{border-color:var(--bpmnkit-accent,#1a56db);transform:translateY(-2px);box-shadow:0 22px 54px -26px rgba(26,86,219,.55)}
+.dropzone:focus-visible{outline:none;border-color:var(--bpmnkit-accent,#1a56db);box-shadow:0 0 0 4px var(--bpmnkit-accent-subtle,rgba(26,86,219,.2))}
+.dropzone.drag{border-color:var(--bpmnkit-accent,#1a56db);border-style:solid;background:var(--bpmnkit-accent-subtle,rgba(26,86,219,.14));transform:scale(1.01)}
+.dz-icon{width:58px;height:58px;margin:0 auto 14px;border-radius:17px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,var(--bpmnkit-accent,#1a56db),var(--bpmnkit-teal,#0d9488));box-shadow:0 8px 20px -8px rgba(26,86,219,.6)}
+.dz-icon svg{width:28px;height:28px}
 .dropzone h2{margin:0 0 6px;font-size:20px}
 .dropzone p{margin:0;color:var(--bpmnkit-fg-muted,#6666a0);font-size:14px}
+.dz-link{color:var(--bpmnkit-accent,#1a56db);font-weight:600}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:44px 0 4px;text-align:left}
+.step{display:flex;gap:12px;align-items:flex-start}
+.step .n{flex:none;width:30px;height:30px;border-radius:9px;background:var(--bpmnkit-accent-subtle,rgba(26,86,219,.12));color:var(--bpmnkit-accent,#1a56db);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+.step h3{margin:3px 0 2px;font-size:15px}
+.step p{margin:0;font-size:13px;color:var(--bpmnkit-fg-muted,#6666a0)}
+.features{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:30px;text-align:left}
+.feat{background:var(--bpmnkit-surface,#fff);border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:14px;padding:16px}
+.feat .fi{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:11px;background:var(--bpmnkit-accent-subtle,rgba(26,86,219,.12));color:var(--bpmnkit-accent,#1a56db)}
+.feat .fi svg{width:18px;height:18px}
+.feat h3{margin:0 0 4px;font-size:14px}
+.feat p{margin:0;font-size:12.5px;color:var(--bpmnkit-fg-muted,#6666a0);line-height:1.5}
+.result{background:var(--bpmnkit-surface,#fff);border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:16px;padding:20px;margin-top:22px;text-align:left;box-shadow:0 12px 42px -26px rgba(0,0,0,.3)}
+@media (max-width:680px){.steps,.features{grid-template-columns:1fr}}
 .btn{
 	display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bpmnkit-border,#d0d0e8);
 	background:var(--bpmnkit-surface-2,#eeeef8);color:var(--bpmnkit-fg,#1a1a2e);
@@ -140,24 +188,44 @@ ${script}
 export function dropPage(tosVersion: string): string {
 	const accept = ACCEPTED_EXTENSIONS.join(",")
 	const kb = Math.round(MAX_FILE_BYTES / 1000)
-	const main = `<main class="wrap">
-<h1>Drop a diagram, get a link.</h1>
-<p class="lead">Drop your BPMN, DMN, or Camunda Form files below. We render them in the browser and give you a short link to share — no account needed.</p>
-<div class="card">
+	const main = `<main class="hero">
+<div class="hero-bg"></div>
+<div class="hero-inner">
+	<span class="eyebrow">${ICON.spark} Free · no account · instant</span>
+	<h1>Drop a diagram.<br><span class="grad">Get a shareable link.</span></h1>
+	<p class="sub">Drop your BPMN, DMN, or Camunda Form files — we render them right in the browser and hand you a short link. Anyone who opens it sees a live, pannable diagram.</p>
+	<div class="chips"><span class="chip chip-bpmn">BPMN</span><span class="chip chip-dmn">DMN</span><span class="chip chip-form">FORM</span></div>
+
 	<div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Choose or drop files">
+		<div class="dz-icon">${ICON.upload}</div>
 		<h2>Drop files here</h2>
-		<p>or click to choose · up to ${MAX_FILES_PER_DROP} files · ${kb} KB each</p>
+		<p>or <span class="dz-link">click to choose</span> &middot; up to ${MAX_FILES_PER_DROP} files &middot; ${kb} KB each</p>
 	</div>
 	<input id="fileInput" type="file" class="hidden" multiple accept="${accept}">
 	<div id="errors" class="errors hidden"></div>
 	<p class="notice">By uploading you agree to the <a href="/drop/terms">Terms of Use</a> and acknowledge the <a href="/drop/privacy">Privacy Policy</a>. Shared links are public to anyone who has them.</p>
+
+	<div id="result" class="result hidden">
+		<strong>Your drop is ready</strong>
+		<div class="link-row"><input id="shareUrl" readonly><button id="copyBtn" class="btn">Copy</button><a id="openBtn" class="btn primary" href="#">Open</a></div>
+		<iframe id="preview" title="Preview"></iframe>
+	</div>
+
+	<div class="steps">
+		<div class="step"><span class="n">1</span><div><h3>Drop your files</h3><p>BPMN, DMN &amp; Camunda Forms — one or many at once.</p></div></div>
+		<div class="step"><span class="n">2</span><div><h3>Get a short link</h3><p>Validated, converted, and stored — ready in a second.</p></div></div>
+		<div class="step"><span class="n">3</span><div><h3>Share it anywhere</h3><p>Paste it in Slack, a PR, a ticket — it just renders.</p></div></div>
+	</div>
+
+	<div class="features">
+		<div class="feat"><div class="fi">${ICON.browser}</div><h3>Renders in the browser</h3><p>Real BPMN/DMN/Form viewers — not a screenshot.</p></div>
+		<div class="feat"><div class="fi">${ICON.bolt}</div><h3>No account needed</h3><p>No sign-up, no upload dance. Drop &amp; go.</p></div>
+		<div class="feat"><div class="fi">${ICON.eye}</div><h3>See who's viewing</h3><p>A live count of everyone looking right now.</p></div>
+		<div class="feat"><div class="fi">${ICON.clock}</div><h3>Links that last</h3><p>Kept for 90 days after they're last opened.</p></div>
+	</div>
+
+	<footer><a href="/drop/terms">Terms</a><a href="/drop/privacy">Privacy</a><a href="https://github.com/bpmnkit/monorepo">GitHub</a></footer>
 </div>
-<div id="result" class="card result hidden" style="margin-top:16px">
-	<strong>Your drop is ready</strong>
-	<div class="link-row"><input id="shareUrl" readonly><button id="copyBtn" class="btn">Copy</button><a id="openBtn" class="btn primary" href="#">Open</a></div>
-	<iframe id="preview" title="Preview"></iframe>
-</div>
-<footer><a href="/drop/terms">Terms</a><a href="/drop/privacy">Privacy</a><a href="https://github.com/bpmnkit/monorepo">GitHub</a></footer>
 </main>`
 	return shell({
 		title: "BPMN Kit Drop — share BPMN, DMN & Form files",
