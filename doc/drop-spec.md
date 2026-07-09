@@ -1,6 +1,6 @@
 # BPMN Kit Drop — Plan & Spec
 
-> Status: **approved plan / not implemented** — written 2026-07-09, decisions resolved 2026-07-09 (see §12).
+> Status: **implemented** in `apps/drop` — written 2026-07-09, decisions resolved and built 2026-07-09 (see §12). Enabling the production `bpmnkit.com/drop*` route requires live Cloudflare access (create the D1 database, set `DROP_ADMIN_TOKEN`/`REPORT_IP_SALT`, uncomment the route) — see `apps/drop/README.md`.
 > Inspiration: [Cloudflare Drop](https://www.cloudflare.com/drop/) (launched 2026-07-08): drag a folder onto a page, get a live shareable URL instantly, no account required.
 
 BPMN Kit Drop brings the same zero-friction idea to process artifacts: drop **BPMN**, **DMN**, and **Camunda Form** files on `bpmnkit.com/drop`, get a short shareable link (`bpmnkit.com/drop/:shareId`) that renders them in the browser — plus a live "N people viewing" indicator.

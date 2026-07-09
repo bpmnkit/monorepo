@@ -1,0 +1,63 @@
+import type { Env } from "../env.js"
+import { getDrop, getFileBody, recordView } from "../lib/db.js"
+import { html, json, securityHeaders } from "../lib/http.js"
+import { notFoundPage, sharePage } from "../lib/pages.js"
+
+/** GET /drop/:shareId — the read-only viewer page. */
+export async function handleSharePage(
+	shareId: string,
+	env: Env,
+	ctx: ExecutionContext,
+	now: number,
+): Promise<Response> {
+	const found = await getDrop(env.DB, shareId)
+	if (!found) return html(notFoundPage(), { status: 404, noindex: true })
+	ctx.waitUntil(recordView(env.DB, shareId, now))
+	return html(sharePage(shareId, found.drop, found.files), { noindex: true })
+}
+
+/** GET /drop/:shareId/manifest.json — metadata and file list. */
+export async function handleManifest(shareId: string, env: Env): Promise<Response> {
+	const found = await getDrop(env.DB, shareId)
+	if (!found) return json({ error: "not found" }, { status: 404 })
+	return json({
+		shareId,
+		createdAt: found.drop.created_at,
+		viewCount: found.drop.view_count,
+		expiresAt: found.drop.expires_at,
+		files: found.files.map((f) => ({
+			filename: f.filename,
+			kind: f.kind,
+			name: f.name,
+			meta: f.meta,
+		})),
+	})
+}
+
+/** GET /drop/:shareId/f/:filename — the original bytes as a safe download. */
+export async function handleRaw(shareId: string, filename: string, env: Env): Promise<Response> {
+	const row = await getFileBody(env.DB, shareId, filename, "original")
+	if (!row) return json({ error: "not found" }, { status: 404 })
+	return new Response(row.body, {
+		headers: {
+			// Never let a browser render an uploaded document inline.
+			"Content-Type": "application/octet-stream",
+			"Content-Disposition": `attachment; filename="${filename}"`,
+			ETag: `"${row.hash}"`,
+			...securityHeaders(),
+		},
+	})
+}
+
+/** GET /drop/:shareId/f/:filename.json — the stored JSON model. */
+export async function handleJson(shareId: string, filename: string, env: Env): Promise<Response> {
+	const row = await getFileBody(env.DB, shareId, filename, "json")
+	if (!row) return json({ error: "not found" }, { status: 404 })
+	return new Response(row.body, {
+		headers: {
+			"Content-Type": "application/json; charset=utf-8",
+			ETag: `"${row.hash}"`,
+			...securityHeaders(),
+		},
+	})
+}

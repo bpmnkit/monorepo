@@ -237,16 +237,16 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ## BPMN Kit Drop (`bpmnkit.com/drop`)
 
-> Full spec and design rationale: [`doc/drop-spec.md`](drop-spec.md) — decisions resolved, ready to implement.
+> Full spec and design rationale: [`doc/drop-spec.md`](drop-spec.md) — implemented in `apps/drop` (2026-07-09).
 
-- [ ] Scaffold `apps/drop` — Cloudflare Worker, D1 migrations, static drop page with `@bpmnkit/ui` tokens
-- [ ] Multi-file upload pipeline — sniff/parse/validate via `@bpmnkit/core`, store original + JSON model in D1, ban-list check
-- [ ] Share page `/drop/:shareId` — read-only BPMN viewer (`@bpmnkit/canvas` + zoom/minimap plugins), file tabs, raw/JSON downloads
-- [ ] DMN + Form viewers (`dmn-viewer`, `form-viewer` plugins) + cross-file `formId`/`decisionId` navigation (`file-resolver`)
-- [ ] Presence — Durable Object per shareId, hibernating WebSockets, "N viewing" badge
-- [ ] Moderation — abuse-report flow, admin endpoints + `/drop/admin` page, delete + content-hash ban
-- [ ] Retention cron + hardening (rate limits, CSP, XSS/XXE regression tests) + Terms/Privacy pages
-- [ ] Deploy workflow and route `bpmnkit.com/drop*`
+- [x] Scaffold `apps/drop` — Cloudflare Worker, D1 migrations, static drop page with `@bpmnkit/ui` tokens
+- [x] Multi-file upload pipeline — sniff/parse/validate via `@bpmnkit/core`, store original + JSON model in D1, ban-list check
+- [x] Share page `/drop/:shareId` — read-only BPMN viewer (`@bpmnkit/canvas` + zoom/minimap plugins), file tabs, raw/JSON downloads
+- [x] DMN + Form viewers (`dmn-viewer`, `form-viewer` plugins) + cross-file `formId`/`decisionId` navigation
+- [x] Presence — Durable Object per shareId, hibernating WebSockets, "N viewing" badge
+- [x] Moderation — abuse-report flow, admin endpoints + `/drop/admin` page, delete + content-hash ban
+- [x] Retention cron + hardening (CSP, XSS/XXE regression tests) + Terms/Privacy pages
+- [x] Deploy workflow (`deploy-drop.yml`); enabling the `bpmnkit.com/drop*` route requires live Cloudflare access (D1 id + secrets)
 
 ---
 

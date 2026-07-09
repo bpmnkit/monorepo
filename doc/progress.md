@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-07-09 — BPMN Kit Drop: implementation (`apps/drop`)
+
+Implemented the Drop service from [`doc/drop-spec.md`](drop-spec.md) as a new Cloudflare Worker app, `@bpmnkit/drop`. Single Worker serves the drop page, per-share viewer pages, the JSON/API, and a token-gated `/drop/admin`; static client bundles are served from `public/drop/assets`. Highlights:
+
+- **Validation/conversion** (`src/lib/validate.ts`, `meta.ts`) — sniff kind by extension/content, parse via `@bpmnkit/core` (`Bpmn`/`Dmn`/`Form`), extract metadata, cap sizes below D1's 1 MiB row limit. The exact same module runs client-side (`src/client/drop.ts`) for instant pre-upload feedback and server-side as the trust boundary (`src/routes/upload.ts`).
+- **Storage** (`src/lib/db.ts`, `migrations/0001_init.sql`) — `drops`/`files`/`file_content`/`reports`/`banned_hashes`; multi-file drops stored atomically via `D1.batch`; each file keeps both the byte-faithful original and the typed JSON model, one representation per row.
+- **Viewer** (`src/client/viewer.ts`) — BPMN via `@bpmnkit/canvas` + zoom/minimap plugins, DMN via `dmn-viewer`, Forms via `form-viewer`; file tabs; cross-file `formId`/`decisionId` links resolved through `compactify` + DMN `decisionIds` metadata.
+- **Presence** (`src/presence.ts`) — `PresenceRoom` Durable Object using the WebSocket Hibernation API broadcasts a live viewer count; no external SaaS.
+- **Moderation** — public abuse-report flow (`src/routes/reports.ts`, salted-IP-hash dedup), token-gated admin API + page (`src/routes/admin.ts`, `src/client/admin.ts`) to delete drops and optionally ban their content hashes; passive Terms/Privacy acknowledgment recorded per drop; Terms & Privacy pages written.
+- **Retention** — daily cron (`scheduled` handler) deletes drops past their 90-day sliding TTL.
+- **Hardening** — strict CSP + `nosniff` + `noindex`, original bytes served as `application/octet-stream`; the `@bpmnkit/core` XML parser ignores DOCTYPE/custom entities (pinned by an XXE regression test); XSS tests confirm attacker-controlled file names/titles are escaped.
+- **Verification** — 22 Vitest tests (validation, ids/hashing, security) pass; both tsconfigs typecheck (worker against `@cloudflare/workers-types`, client against DOM); Biome clean; the three client bundles build with esbuild; `wrangler deploy --dry-run` compiles the Worker and resolves all bindings (D1, Durable Object, Assets, vars). The D1/DO runtime paths are exercised by dry-run + typecheck rather than a live deploy (no Cloudflare account in this environment). Added `.github/workflows/deploy-drop.yml` (migrations apply + `wrangler deploy`) and an operator `apps/drop/README.md`.
+
 ## 2026-07-09 — Drop spec v2: decisions resolved, moderation & multi-file added
 
 Updated [`doc/drop-spec.md`](drop-spec.md) with the resolved open questions: the service is **BPMN Kit Drop at `bpmnkit.com/drop`** (the zone is already on Cloudflare — a Worker route carves `/drop*` out next to the Pages-hosted landing), branded with `@bpmnkit/ui` tokens, 90-day sliding retention confirmed. New in v2: **multi-file drops** in v1 (up to 20 files, tabbed viewer, cross-file `formId`/`decisionId` navigation via the `file-resolver` plugin; schema split into `drops`/`files`/`file_content`), **admin moderation** (`DROP_ADMIN_TOKEN`-protected endpoints + minimal `/drop/admin` page, delete with optional content-hash ban via a `banned_hashes` table so policy-violating bytes can't be re-uploaded), a public **"Report abuse"** flow on every share page (D1 `reports` table, salted-IP-hash rate limiting, no auto-takedown), and **Terms/Privacy acknowledgment** on upload (passive notice, `tos_version` recorded; policy pages are a pre-launch content task). Roadmap section updated to match.

@@ -36,7 +36,8 @@
 			"apps/proxy-rs/target/**",
 			"apps/reebe-wasm/**",
 			"apps/reebe/crates/**",
-			"apps/reebe/packages/reebe-wasm/src/wasm/**"
+			"apps/reebe/packages/reebe-wasm/src/wasm/**",
+			"**/public/drop/assets/**"
 		]
 	}
 }
