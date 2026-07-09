@@ -235,6 +235,20 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## Camunda Drop
+
+> Full spec and design rationale: [`doc/drop-spec.md`](drop-spec.md) — blocked on the spec's §12 open questions.
+
+- [ ] Scaffold `apps/drop` — Cloudflare Worker, D1 migrations, static drop page
+- [ ] Upload pipeline — sniff/parse/validate via `@bpmnkit/core`, store original + JSON model in D1
+- [ ] Share page `/drop/:shareId` — read-only BPMN viewer (`@bpmnkit/canvas` + zoom/minimap plugins), raw/JSON downloads
+- [ ] DMN + Form viewers (`dmn-viewer`, `form-viewer` plugins)
+- [ ] Presence — Durable Object per shareId, hibernating WebSockets, "N viewing" badge
+- [ ] Retention cron + hardening (rate limits, CSP, XSS/XXE regression tests)
+- [ ] Deploy and route `camunda.directory/drop*`
+
+---
+
 ## Completed
 
 *(Items moved here from above as they ship)*

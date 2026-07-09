@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-09 — Spec: Camunda Drop (`camunda.directory/drop`)
+
+Wrote [`doc/drop-spec.md`](drop-spec.md) — a plan (no implementation) for a Cloudflare-Drop-inspired share service for BPMN/DMN/Form files: drop a file, get a short link (`/drop/:shareId`) that renders it read-only in the browser. Key decisions: new `apps/drop` Cloudflare Worker; client- and server-side validation via `@bpmnkit/core`; storage in D1 as the full typed JSON model (`BpmnDefinitions` etc. — not the lossy compact format) alongside the byte-faithful original, split across rows to respect D1's 1 MiB row cap; 64-bit base58 share ids; live "N viewing" presence via a Durable Object per share (WebSocket hibernation) instead of an external SaaS; 90-day sliding retention with a cron cleanup. Added a Camunda Drop section to `doc/roadmap.md`; implementation is blocked on the spec's §12 open questions (where `camunda.directory` is hosted, retention policy, branding).
+
 ## 2026-07-08 — Landing page: new `/integrations` page for the OpenAPI connector-gen catalog
 
 `/connectors` only lists the 116 Camunda-official out-of-the-box connector templates (`@bpmnkit/connectors`, sourced from Camunda's marketplace API) — it does not cover `@bpmnkit/connector-gen`'s separate, 100-entry `CATALOG` of popular third-party APIs with known OpenAPI specs (Stripe, GitHub, Slack, Kubernetes, etc.) that can be turned into a Camunda 8 element template with one `generateFromCatalog()`/`generateFromUrl()` call. The homepage already teased "100 API Connectors, Out of the Box" as a stat but had nowhere for a visitor to click through to — this closes that gap.
