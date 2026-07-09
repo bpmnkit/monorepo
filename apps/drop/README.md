@@ -28,8 +28,37 @@ migrations/        D1 schema
 pnpm --filter @bpmnkit/drop build       # bundle client (esbuild) + build workspace deps
 pnpm --filter @bpmnkit/drop typecheck   # worker (workers-types) + client (DOM) tsconfigs
 pnpm --filter @bpmnkit/drop test        # vitest — validation, ids, security regressions
-pnpm --filter @bpmnkit/drop dev         # wrangler dev
+pnpm --filter @bpmnkit/drop check       # biome
 ```
+
+## Run it locally (no Cloudflare account)
+
+`wrangler dev` runs the Worker, D1, and the Durable Object in a local simulator, so the
+whole app works offline. From `apps/drop`:
+
+```sh
+pnpm build                                        # produce public/drop/assets/*.js
+wrangler d1 migrations apply bpmnkit-drop --local # create the local SQLite schema
+wrangler dev --local --port 8787 \
+  --var DROP_ADMIN_TOKEN:devtoken --var REPORT_IP_SALT:devsalt
+```
+
+Then open <http://localhost:8787/drop>, drop a file from `bpmn-samples/`, and follow the
+short link. The admin page is at <http://localhost:8787/drop/admin> (paste `devtoken`).
+
+Quick API smoke test:
+
+```sh
+# upload → returns { shareId, url, files }
+curl -s -X POST http://localhost:8787/drop/api/drops \
+  -F files=@../../bpmn-samples/order-process.bpmn
+# then, with the shareId:
+curl -s http://localhost:8787/drop/<shareId>/manifest.json
+curl -s "http://localhost:8787/drop/<shareId>/f/order-process.bpmn"          # original
+curl -s "http://localhost:8787/drop/<shareId>/f/order-process.bpmn?format=json"  # model
+```
+
+The local D1 lives under `.wrangler/state` (gitignored); delete it to reset.
 
 ## Deploy (one-time setup)
 
