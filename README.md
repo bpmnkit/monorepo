@@ -215,36 +215,18 @@ bpmnkit/monorepo
 
 ### Prerequisites
 
-| Tool | Version | Needed for |
-|------|---------|------------|
-| [Node.js](https://nodejs.org/) | 18+ (latest LTS recommended) | everything |
-| [pnpm](https://pnpm.io/) | 10+ | everything |
-| [Rust](https://rustup.rs/) + [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) | stable, with the `wasm32-unknown-unknown` target | building `@bpmnkit/reebe-wasm` (the Reebe engine), which `@bpmnkit/engine` and several apps depend on |
+| Tool | Version |
+|------|---------|
+| [Node.js](https://nodejs.org/) | 18+ (latest LTS recommended) |
+| [pnpm](https://pnpm.io/) | 10+ |
 
 ### Setup
 
 ```sh
 git clone https://github.com/bpmnkit/monorepo.git
 cd monorepo
-pnpm install        # install workspace deps
-pnpm build:wasm     # one-time: compile the Rust → WASM engine into apps/reebe-wasm
+pnpm install
 ```
-
-> **`pnpm build:wasm` is required before `pnpm build`.** `@bpmnkit/reebe-wasm` is a Rust
-> crate compiled with `wasm-pack`; its output is a git-ignored build artifact, so a fresh
-> clone has no `apps/reebe-wasm/reebe_wasm.js` yet and `@bpmnkit/engine`'s build fails with
-> `Cannot find module '@bpmnkit/reebe-wasm'` until you run it once. `pnpm bootstrap` runs
-> `pnpm install && pnpm build:wasm` together; CI performs the same step (see
-> `.github/workflows/ci.yml`).
->
-> Working only on a package that doesn't depend on the engine (e.g. `@bpmnkit/drop`,
-> `@bpmnkit/core`)? Skip the WASM build and scope your commands, e.g.
-> `pnpm turbo build --filter @bpmnkit/drop`.
->
-> `better-sqlite3` and `isolated-vm` (used by `@bpmnkit/proxy`) are allow-listed in
-> `pnpm-workspace.yaml`'s `onlyBuiltDependencies`, so `pnpm install` compiles their native
-> addons — this needs a C/C++ toolchain (e.g. `build-essential` on Linux, Xcode Command
-> Line Tools on macOS).
 
 ### Commands
 
