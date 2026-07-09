@@ -1,36 +1,37 @@
 {
-  "name": "@bpmnkit/reebe-wasm",
-  "version": "0.1.5",
-  "type": "module",
-  "main": "reebe_wasm.js",
-  "types": "reebe_wasm.d.ts",
-  "files": [
-    "reebe_wasm_bg.wasm",
-    "reebe_wasm.js",
-    "reebe_wasm.d.ts",
-    "README.md"
-  ],
-  "sideEffects": [
-    "./snippets/*"
-  ],
-  "description": "WebAssembly playground for the Reebe BPMN workflow engine",
-  "keywords": [
-    "bpmn",
-    "wasm",
-    "workflow",
-    "engine",
-    "webassembly"
-  ],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/bpmnkit/monorepo"
-  },
-  "homepage": "https://bpmnkit.com",
-  "bugs": {
-    "url": "https://github.com/bpmnkit/monorepo/issues"
-  },
-  "publishConfig": {
-    "access": "public"
-  }
+	"name": "@bpmnkit/reebe-wasm",
+	"type": "module",
+	"description": "WebAssembly playground for the Reebe BPMN workflow engine",
+	"version": "0.1.5",
+	"license": "MIT",
+	"files": [
+		"reebe_wasm_bg.wasm",
+		"reebe_wasm.js",
+		"reebe_wasm.d.ts",
+		"README.md",
+		"LICENSE"
+	],
+	"main": "reebe_wasm.js",
+	"types": "reebe_wasm.d.ts",
+	"sideEffects": [
+		"./snippets/*"
+	],
+	"keywords": [
+		"bpmn",
+		"wasm",
+		"workflow",
+		"engine",
+		"webassembly"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
 }
