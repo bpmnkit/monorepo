@@ -359,8 +359,13 @@ function primaryIndex(files: FileInfo[]): number {
 	return 0
 }
 
-/** The read-only share/viewer page for a stored drop. */
-export function sharePage(shareId: string, drop: DropRow, files: FileInfo[]): string {
+/** The read-only share/viewer page for a stored drop. `aiEnabled` reflects whether AI_PASSCODE is set. */
+export function sharePage(
+	shareId: string,
+	drop: DropRow,
+	files: FileInfo[],
+	aiEnabled = false,
+): string {
 	const primary = primaryIndex(files)
 	const title = files[primary]?.name || files[primary]?.filename || "Shared diagram"
 	const created = new Date(drop.created_at).toISOString().slice(0, 10)
@@ -377,7 +382,7 @@ export function sharePage(shareId: string, drop: DropRow, files: FileInfo[]): st
 	<div class="ed-tabs" role="tablist">${tabs}</div>
 	<div class="ed-tools">
 		<span class="ed-info" title="Created ${created} · expires ${expires}"><span id="viewCount">${drop.view_count}</span> views<span class="dot"> · </span><span id="presence" hidden>0 viewing</span><span class="dot"> · </span>expires ${expires}</span>
-		<button id="aiReviewBtn" class="btn ai-btn" hidden>&#10024; AI review</button>
+		${aiEnabled ? `<button id="aiReviewBtn" class="btn ai-btn" hidden>&#10024; AI review</button>` : ""}
 		<a id="dlOriginal" class="btn" href="#" download>Original</a>
 		<a id="dlJson" class="btn" href="#" download>JSON</a>
 		<button id="copyLink" class="btn">Copy link</button>
@@ -394,11 +399,15 @@ export function sharePage(shareId: string, drop: DropRow, files: FileInfo[]): st
 		<button id="zoomFit" type="button" aria-label="Fit diagram" title="Fit diagram">&#9974;</button>
 	</div>
 	<a class="ed-github" href="https://github.com/bpmnkit/monorepo" target="_blank" rel="noopener"><img class="logo" src="${FAVICON}" alt="">GitHub</a>
-	<aside id="aiPanel" class="ai-panel" hidden>
+	${
+		aiEnabled
+			? `<aside id="aiPanel" class="ai-panel" hidden>
 		<header class="ai-head"><strong>&#10024; AI process review</strong><button id="aiClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
 		<div id="aiBody" class="ai-body"></div>
 		<footer class="ai-foot"><span id="aiModel"></span>AI can be wrong — always review before acting.</footer>
-	</aside>
+	</aside>`
+			: ""
+	}
 </div>
 ${reportDialog()}`
 

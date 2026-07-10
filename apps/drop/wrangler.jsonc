@@ -12,7 +12,13 @@
 	},
 	"vars": {
 		// Bumped whenever the Terms of Use / Privacy Policy change; recorded on each drop.
-		"TOS_VERSION": "2026-07-09"
+		"TOS_VERSION": "2026-07-09",
+		// AI process review. AI_PASSCODE is a secret (wrangler secret put) — unset = feature off.
+		"AI_MODEL": "@cf/openai/gpt-oss-120b",
+		"AI_DAILY_BUDGET": "8000"
+	},
+	"ai": {
+		"binding": "AI"
 	},
 	"d1_databases": [
 		{

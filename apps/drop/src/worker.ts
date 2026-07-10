@@ -54,7 +54,13 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 	const aiReview = rest.match(/^\/api\/ai-review\/([\w-]+)\/(.+)$/)
 	if (aiReview) {
 		if (request.method !== "POST") return methodNotAllowed()
-		return handleAiReview(aiReview[1] as string, decodeURIComponent(aiReview[2] as string), env)
+		return handleAiReview(
+			request,
+			aiReview[1] as string,
+			decodeURIComponent(aiReview[2] as string),
+			env,
+			now,
+		)
 	}
 	const presence = rest.match(/^\/api\/presence\/([\w-]+)$/)
 	if (presence) {

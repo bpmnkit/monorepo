@@ -12,4 +12,12 @@ export interface Env {
 	DROP_ADMIN_TOKEN?: string
 	/** Salt for hashing reporter IPs (`wrangler secret put REPORT_IP_SALT`). */
 	REPORT_IP_SALT?: string
+	/** Workers AI binding — used by the AI process review. */
+	AI: Ai
+	/** Closed-beta access code for AI review. Unset = feature off (`wrangler secret put AI_PASSCODE`). */
+	AI_PASSCODE?: string
+	/** Workers AI model id (var; default `@cf/openai/gpt-oss-120b`). */
+	AI_MODEL: string
+	/** Daily neuron budget for AI reviews (var; string, parsed at the edge). */
+	AI_DAILY_BUDGET: string
 }

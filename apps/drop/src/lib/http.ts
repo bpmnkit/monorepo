@@ -62,3 +62,11 @@ export function json(data: unknown, init: { status?: number } = {}): Response {
 export function clientIp(request: Request): string {
 	return request.headers.get("cf-connecting-ip") ?? "0.0.0.0"
 }
+
+/** Constant-time string comparison — avoids leaking secrets via timing. */
+export function timingSafeEqual(a: string, b: string): boolean {
+	if (a.length !== b.length) return false
+	let diff = 0
+	for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+	return diff === 0
+}

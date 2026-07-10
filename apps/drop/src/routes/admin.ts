@@ -1,14 +1,6 @@
 import type { Env } from "../env.js"
 import { deleteDrop, getDrop, listReports, setReportStatus } from "../lib/db.js"
-import { json } from "../lib/http.js"
-
-/** Constant-time string comparison to avoid leaking the token via timing. */
-function timingSafeEqual(a: string, b: string): boolean {
-	if (a.length !== b.length) return false
-	let diff = 0
-	for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
-	return diff === 0
-}
+import { json, timingSafeEqual } from "../lib/http.js"
 
 function authorized(request: Request, env: Env): boolean {
 	const token = env.DROP_ADMIN_TOKEN

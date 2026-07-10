@@ -24,6 +24,8 @@ export interface ReviewResult {
 	deterministic: Suggestion[]
 	/** True when the AI portion was served from cache. */
 	cached: boolean
+	/** Optional status note shown in the panel (e.g. budget exhausted). */
+	note?: string
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 }

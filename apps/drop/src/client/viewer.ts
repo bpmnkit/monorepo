@@ -4,7 +4,7 @@ import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
 import type { ReviewResult, Suggestion } from "../lib/review.js"
-import type { FileKind } from "../shared/constants.js"
+import { AI_CODE_STORAGE_KEY, type FileKind } from "../shared/constants.js"
 
 interface DropFile {
 	filename: string
@@ -231,37 +231,94 @@ function renderReview(review: ReviewResult): void {
 		aiBody.append(label("Automated checks"))
 		for (const s of review.deterministic) aiBody.append(suggestionCard(s))
 	}
+	if (review.note) {
+		const note = document.createElement("div")
+		note.className = "ai-msg"
+		note.textContent = review.note
+		aiBody.append(note)
+	}
 	if (review.deterministic.length === 0 && review.suggestions.length === 0 && !review.summary) {
 		const ok = document.createElement("div")
 		ok.className = "ai-msg"
 		ok.textContent = "No issues found by the automated checks. Nice diagram!"
 		aiBody.append(ok)
 	}
-	if (aiModelEl) aiModelEl.textContent = review.model ? `Model: ${review.model}` : ""
+	if (aiModelEl) {
+		aiModelEl.textContent = review.model
+			? `Model: ${review.model}${review.cached ? " (cached)" : ""}`
+			: ""
+	}
+}
+
+function aiMessage(text: string): void {
+	aiBody?.replaceChildren(
+		Object.assign(document.createElement("div"), { className: "ai-msg", textContent: text }),
+	)
+}
+
+/** Prompt for the closed-beta access code; on submit, store it and retry. */
+function showPasscodeForm(error = false): void {
+	if (!aiBody) return
+	const wrap = document.createElement("div")
+	wrap.className = error ? "ai-passcode err" : "ai-passcode"
+	const msg = document.createElement("div")
+	msg.className = "ai-msg"
+	msg.textContent = error
+		? "Invalid access code. Try again."
+		: "This feature is in a closed beta. Enter your access code."
+	const input = document.createElement("input")
+	input.type = "password"
+	input.placeholder = "Access code"
+	input.autocomplete = "off"
+	const submit = document.createElement("button")
+	submit.className = "btn primary"
+	submit.textContent = "Unlock"
+	const go = () => {
+		const code = input.value.trim()
+		if (!code) return
+		localStorage.setItem(AI_CODE_STORAGE_KEY, code)
+		void loadReview()
+	}
+	submit.addEventListener("click", go)
+	input.addEventListener("keydown", (e) => {
+		if (e.key === "Enter") go()
+	})
+	wrap.append(msg, input, submit)
+	aiBody.replaceChildren(wrap)
+	input.focus()
 }
 
 async function loadReview(): Promise<void> {
 	if (!reviewFile || !aiBody) return
-	aiBody.replaceChildren(
-		Object.assign(document.createElement("div"), {
-			className: "ai-msg",
-			textContent: "Analyzing…",
-		}),
-	)
+	const code = localStorage.getItem(AI_CODE_STORAGE_KEY)
+	if (!code) {
+		showPasscodeForm(false)
+		return
+	}
+	aiMessage("Analyzing…")
 	try {
 		const res = await fetch(
 			`/drop/api/ai-review/${data.shareId}/${encodeURIComponent(reviewFile.filename)}`,
-			{ method: "POST" },
+			{ method: "POST", headers: { "X-Drop-AI-Code": code } },
 		)
+		if (res.status === 401) {
+			localStorage.removeItem(AI_CODE_STORAGE_KEY)
+			showPasscodeForm(true)
+			return
+		}
+		if (res.status === 429) {
+			aiMessage("Too many attempts. Please try again later.")
+			return
+		}
+		if (res.status === 404) {
+			if (aiBtn) aiBtn.hidden = true
+			if (aiPanel) aiPanel.hidden = true
+			return
+		}
 		if (!res.ok) throw new Error(`status ${res.status}`)
 		renderReview((await res.json()) as ReviewResult)
 	} catch {
-		aiBody.replaceChildren(
-			Object.assign(document.createElement("div"), {
-				className: "ai-msg",
-				textContent: "Couldn't run the review. Please try again.",
-			}),
-		)
+		aiMessage("Couldn't run the review. Please try again.")
 	}
 }
 

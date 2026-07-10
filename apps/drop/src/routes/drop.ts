@@ -23,14 +23,15 @@ export async function handleSharePage(
 	ctx: ExecutionContext,
 	now: number,
 ): Promise<Response> {
+	const aiEnabled = env.AI_PASSCODE !== undefined
 	if (isDemo(shareId)) {
 		const demo = await demoDrop()
-		return html(sharePage(shareId, demo.drop, demo.files), { noindex: true })
+		return html(sharePage(shareId, demo.drop, demo.files, aiEnabled), { noindex: true })
 	}
 	const found = await getDrop(env.DB, shareId)
 	if (!found) return html(notFoundPage(), { status: 404, noindex: true })
 	ctx.waitUntil(recordView(env.DB, shareId, now))
-	return html(sharePage(shareId, found.drop, found.files), { noindex: true })
+	return html(sharePage(shareId, found.drop, found.files, aiEnabled), { noindex: true })
 }
 
 /** GET /drop/:shareId/manifest.json — metadata and file list. */
