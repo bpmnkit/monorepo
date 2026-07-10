@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-10 — Spec: Drop v2 — AI process review & engaging landing page
+
+Wrote [`doc/drop-v2-spec.md`](drop-v2-spec.md) (analysis + plan, no implementation). Part 1 analyzes the Workers AI free tier: 10,000 neurons/day free, no key/vendor (platform `env.AI` binding); with `compactify()`-sized prompts a full BPMN review costs ~160–270 neurons → ~40–60 free reviews/day, effectively more with per-content-hash caching; recommended model `@cf/openai/gpt-oss-120b` (cheapest strong-reasoning output). Part 2 specs an "AI Process Review" feature for Drop as a hybrid pipeline: deterministic `@bpmnkit/core` analysis (`optimize()`, 15+ pattern-advisor rules, variable flow) feeds a JSON-schema-constrained LLM narrative; cached in D1 by content hash, daily neuron budget + IP rate limits, graceful degradation to deterministic-only, prompt-injection and XSS guardrails, no diagram mutations in v1. Part 3 specs a cloudflare.com/drop-style landing redesign: the whole page becomes the drop target (plus paste-XML-to-drop), a live `@bpmnkit/canvas` hero demo with draw-in animation, a pinned never-expiring demo drop for one-click product experience, use-case cards rendered from real diagrams via build-time `exportSvg`, a developer curl section, live D1-backed counters, and FAQ — no new dependencies, CSP unchanged. Roadmap gained a "Drop v2" section; implementation blocked on the spec's open questions.
+
 ## 2026-07-09 — BPMN Kit Drop: implementation (`apps/drop`)
 
 Implemented the Drop service from [`doc/drop-spec.md`](drop-spec.md) as a new Cloudflare Worker app, `@bpmnkit/drop`. Single Worker serves the drop page, per-share viewer pages, the JSON/API, and a token-gated `/drop/admin`; static client bundles are served from `public/drop/assets`. Highlights:

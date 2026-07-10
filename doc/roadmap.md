@@ -248,6 +248,16 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] Retention cron + hardening (CSP, XSS/XXE regression tests) + Terms/Privacy pages
 - [x] Deploy workflow (`deploy-drop.yml`); enabling the `bpmnkit.com/drop*` route requires live Cloudflare access (D1 id + secrets)
 
+### Drop v2 — AI review & engaging landing
+
+> Full analysis and spec: [`doc/drop-v2-spec.md`](drop-v2-spec.md) — blocked on its open questions.
+
+- [ ] Landing v2 structure: full-page drop target, paste-to-drop, live hero canvas with draw-in animation, pinned demo drop + button
+- [ ] Landing v2 story: use-case cards with build-time `exportSvg` mini-diagrams, developer curl block, `/drop/api/stats` counters, FAQ
+- [ ] AI review backbone: Worker endpoint running `optimize` + pattern advisor + variable flow, findings panel (no LLM)
+- [ ] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + rate limits
+- [ ] Polish: suggestion→canvas element highlighting, model attribution, docs
+
 ---
 
 ## Completed
