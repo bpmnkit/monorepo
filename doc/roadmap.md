@@ -252,11 +252,11 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 > Full analysis and spec: [`doc/drop-v2-spec.md`](drop-v2-spec.md) — decisions resolved (AI review is passcode-gated), ready to implement; hand-off notes in the spec's Part 5.
 
-- [ ] Landing v2 structure: full-page drop target, paste-to-drop, live hero canvas with draw-in animation, pinned demo drop + button
-- [ ] Landing v2 story: use-case cards with build-time `exportSvg` mini-diagrams, developer curl block, `/drop/api/stats` counters, FAQ
-- [ ] AI review backbone: Worker endpoint running `optimize` + pattern advisor + variable flow, findings panel (no LLM)
-- [ ] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + rate limits, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, attempt limiting, localStorage persistence)
-- [ ] Polish: suggestion→canvas element highlighting, model attribution, docs
+- [x] Landing v2 structure: full-page drop target, paste-to-drop, live hero canvas with draw-in animation, in-memory demo drop + button
+- [x] Landing v2 story: use-case cards with build-time `exportSvg` mini-diagrams, developer curl block, `/drop/api/stats` counters, FAQ
+- [x] AI review backbone: Worker endpoint running `optimize` (pattern advisor + variable flow + FEEL + naming + flow), findings panel (no LLM)
+- [x] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + attempt limiting, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, localStorage persistence)
+- [x] Polish: suggestion→canvas element highlighting (hover + click), model attribution, docs
 
 ---
 

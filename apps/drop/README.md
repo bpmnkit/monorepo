@@ -6,7 +6,12 @@ with a live "N viewing" indicator. Inspired by [Cloudflare Drop](https://www.clo
 
 A single Cloudflare Worker serves the UI and API; files are stored in D1 as the typed
 JSON model from `@bpmnkit/core` alongside the byte-faithful original; presence is a
-Durable Object per share. Design rationale: [`doc/drop-spec.md`](../../doc/drop-spec.md).
+Durable Object per share. The landing page is a live demo (whole-page drop target,
+paste-to-drop, and a rendered hero diagram); a built-in **demo drop** is served from
+memory (no D1 row) so a fresh deploy has a working example immediately. An optional,
+closed-beta **AI process review** (Workers AI + `@bpmnkit/core`'s optimizer) is gated
+behind an operator passcode. Design rationale: [`doc/drop-spec.md`](../../doc/drop-spec.md)
+and [`doc/drop-v2-spec.md`](../../doc/drop-v2-spec.md).
 
 ## Layout
 
@@ -15,11 +20,12 @@ src/
   worker.ts        Worker entry: router + scheduled (retention) + PresenceRoom export
   presence.ts      Durable Object — hibernating-WebSocket viewer count
   env.ts           Binding types
-  routes/          upload, share pages, raw/json download, reports, admin
-  lib/             ids, validate (parse via @bpmnkit/core), meta, db (D1), http, pages (HTML)
-  client/          browser bundles: drop.ts, viewer.ts, admin.ts (built to public/drop/assets)
+  routes/          upload, share pages, raw/json download, reports, admin, ai-review
+  lib/             ids, validate, meta, db (D1), http, pages (HTML), demo (in-memory
+                   demo drop), review (deterministic optimizer pass), ai (Workers AI + cache)
+  client/          browser bundles: drop, viewer, admin, landing (built to public/drop/assets)
   shared/          constants used by both Worker and client
-migrations/        D1 schema
+migrations/        D1 schema (0001 core, 0002 AI review)
 ```
 
 ## Develop
@@ -45,6 +51,13 @@ wrangler dev --local --port 8787 \
 
 Then open <http://localhost:8787/drop>, drop a file from `bpmn-samples/`, and follow the
 short link. The admin page is at <http://localhost:8787/drop/admin> (paste `devtoken`).
+The built-in demo drop is at <http://localhost:8787/drop/demo-loan-approval>.
+
+To exercise the **AI review** locally, add `--var AI_PASSCODE:devcode`. The passcode gate,
+D1 caching, budget guard, and deterministic findings all work offline; the LLM narrative
+itself needs a real Cloudflare account for the `AI` binding, so locally it gracefully
+degrades to "automated checks only" with a note. Run `wrangler d1 migrations apply
+bpmnkit-drop --local` after pulling to pick up the `0002_ai_review` tables.
 
 Quick API smoke test:
 
@@ -67,6 +80,13 @@ The local D1 lives under `.wrangler/state` (gitignored); delete it to reset.
 3. `wrangler secret put REPORT_IP_SALT` — salt for hashing reporter IPs.
 4. Bump `TOS_VERSION` in `wrangler.jsonc` whenever the Terms/Privacy pages change.
 5. Enable the `bpmnkit.com/drop*` route in `wrangler.jsonc` (`routes`).
+
+**AI review (optional, closed beta):** unset by default — the feature is off and its
+button never renders. To open it to invited users, `wrangler secret put AI_PASSCODE` and
+share the code privately. Rotate the secret to lock everyone out; delete it to turn the
+feature off. `AI_MODEL` and `AI_DAILY_BUDGET` (neurons/day) are tunable vars. Before
+enabling in production, do one manual live run against the real `AI` binding to confirm
+the model returns schema-valid JSON.
 
 CI (`.github/workflows/deploy-drop.yml`) runs `d1 migrations apply` then `wrangler deploy`
 on pushes to `main` that touch this app or its rendering dependencies.

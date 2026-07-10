@@ -203,6 +203,11 @@ function suggestionCard(s: Suggestion): HTMLElement {
 	if (id) {
 		card.addEventListener("mouseenter", () => current?.highlight([id], "changed"))
 		card.addEventListener("mouseleave", () => current?.clearHighlights())
+		// Click pins the highlight (touch devices have no hover).
+		card.addEventListener("click", () => {
+			current?.clearHighlights()
+			current?.highlight([id], "changed")
+		})
 	}
 	return card
 }
