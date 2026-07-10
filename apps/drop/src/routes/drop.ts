@@ -1,5 +1,6 @@
 import type { Env } from "../env.js"
 import { getDrop, getFileBody, recordView } from "../lib/db.js"
+import { demoDrop, demoFileBody, isDemo } from "../lib/demo.js"
 import { html, json, securityHeaders } from "../lib/http.js"
 import { notFoundPage, sharePage } from "../lib/pages.js"
 
@@ -10,6 +11,10 @@ export async function handleSharePage(
 	ctx: ExecutionContext,
 	now: number,
 ): Promise<Response> {
+	if (isDemo(shareId)) {
+		const demo = await demoDrop()
+		return html(sharePage(shareId, demo.drop, demo.files), { noindex: true })
+	}
 	const found = await getDrop(env.DB, shareId)
 	if (!found) return html(notFoundPage(), { status: 404, noindex: true })
 	ctx.waitUntil(recordView(env.DB, shareId, now))
@@ -18,7 +23,7 @@ export async function handleSharePage(
 
 /** GET /drop/:shareId/manifest.json — metadata and file list. */
 export async function handleManifest(shareId: string, env: Env): Promise<Response> {
-	const found = await getDrop(env.DB, shareId)
+	const found = isDemo(shareId) ? await demoDrop() : await getDrop(env.DB, shareId)
 	if (!found) return json({ error: "not found" }, { status: 404 })
 	return json({
 		shareId,
@@ -36,7 +41,9 @@ export async function handleManifest(shareId: string, env: Env): Promise<Respons
 
 /** GET /drop/:shareId/f/:filename — the original bytes as a safe download. */
 export async function handleRaw(shareId: string, filename: string, env: Env): Promise<Response> {
-	const row = await getFileBody(env.DB, shareId, filename, "original")
+	const row = isDemo(shareId)
+		? await demoFileBody(filename, "original")
+		: await getFileBody(env.DB, shareId, filename, "original")
 	if (!row) return json({ error: "not found" }, { status: 404 })
 	return new Response(row.body, {
 		headers: {
@@ -51,7 +58,9 @@ export async function handleRaw(shareId: string, filename: string, env: Env): Pr
 
 /** GET /drop/:shareId/f/:filename.json — the stored JSON model. */
 export async function handleJson(shareId: string, filename: string, env: Env): Promise<Response> {
-	const row = await getFileBody(env.DB, shareId, filename, "json")
+	const row = isDemo(shareId)
+		? await demoFileBody(filename, "json")
+		: await getFileBody(env.DB, shareId, filename, "json")
 	if (!row) return json({ error: "not found" }, { status: 404 })
 	return new Response(row.body, {
 		headers: {

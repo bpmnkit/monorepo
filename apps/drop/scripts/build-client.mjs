@@ -7,6 +7,7 @@ await build({
 		drop: "src/client/drop.ts",
 		viewer: "src/client/viewer.ts",
 		admin: "src/client/admin.ts",
+		landing: "src/client/landing.ts",
 	},
 	bundle: true,
 	format: "esm",

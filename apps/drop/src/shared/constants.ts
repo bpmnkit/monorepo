@@ -24,3 +24,9 @@ export const ACCEPTED_EXTENSIONS = [".bpmn", ".dmn", ".form", ".xml", ".json"] a
 /** Abuse-report categories. */
 export const REPORT_REASONS = ["copyright", "malicious", "personal-data", "other"] as const
 export type ReportReason = (typeof REPORT_REASONS)[number]
+
+/** Share id of the built-in, in-memory demo drop (never expires, no D1 row). */
+export const DEMO_SHARE_ID = "demo-loan-approval"
+
+/** localStorage key holding the AI-review access code (closed beta). */
+export const AI_CODE_STORAGE_KEY = "bpmnkit-drop-ai-code"

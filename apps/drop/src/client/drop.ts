@@ -14,6 +14,7 @@ const shareUrl = $<HTMLInputElement>("shareUrl")
 const openBtn = $<HTMLAnchorElement>("openBtn")
 const preview = $<HTMLIFrameElement>("preview")
 const copyBtn = $<HTMLButtonElement>("copyBtn")
+const overlay = $("dropOverlay")
 
 function showErrors(messages: string[]): void {
 	errorsBox.innerHTML = `<strong>Couldn't upload:</strong><ul>${messages
@@ -78,6 +79,8 @@ function showResult(path: string): void {
 	result.scrollIntoView({ behavior: "smooth", block: "nearest" })
 }
 
+// ── Click / keyboard / file picker ──────────────────────────────────────────
+
 dropzone.addEventListener("click", () => fileInput.click())
 dropzone.addEventListener("keydown", (e) => {
 	if (e.key === "Enter" || e.key === " ") {
@@ -89,23 +92,52 @@ fileInput.addEventListener("change", () => {
 	if (fileInput.files) void handleFiles([...fileInput.files])
 })
 
-for (const type of ["dragenter", "dragover"]) {
-	dropzone.addEventListener(type, (e) => {
-		e.preventDefault()
-		dropzone.classList.add("drag")
-	})
+// ── Full-page drag & drop ───────────────────────────────────────────────────
+
+let dragDepth = 0
+function setOverlay(show: boolean): void {
+	overlay.hidden = !show
+	document.body.classList.toggle("dragging", show)
 }
-for (const type of ["dragleave", "drop"]) {
-	dropzone.addEventListener(type, (e) => {
-		e.preventDefault()
-		if (type === "dragleave" && e.target !== dropzone) return
-		dropzone.classList.remove("drag")
-	})
+function hasFiles(e: DragEvent): boolean {
+	return Array.from(e.dataTransfer?.types ?? []).includes("Files")
 }
-dropzone.addEventListener("drop", (e) => {
-	const dropped = (e as DragEvent).dataTransfer?.files
-	if (dropped) void handleFiles([...dropped])
+
+window.addEventListener("dragenter", (e) => {
+	if (!hasFiles(e)) return
+	dragDepth++
+	setOverlay(true)
 })
+window.addEventListener("dragover", (e) => {
+	if (hasFiles(e)) e.preventDefault()
+})
+window.addEventListener("dragleave", () => {
+	dragDepth = Math.max(0, dragDepth - 1)
+	if (dragDepth === 0) setOverlay(false)
+})
+window.addEventListener("drop", (e) => {
+	e.preventDefault()
+	dragDepth = 0
+	setOverlay(false)
+	const dropped = e.dataTransfer?.files
+	if (dropped?.length) void handleFiles([...dropped])
+})
+
+// ── Paste BPMN/DMN/Form content anywhere ────────────────────────────────────
+
+document.addEventListener("paste", (e) => {
+	const target = e.target
+	if (target instanceof Element && target.closest("input, textarea")) return
+	const text = e.clipboardData?.getData("text/plain")?.trim()
+	if (!text) return
+	const looksLikeDiagram = /^</.test(text) || /^[{[]/.test(text)
+	if (!looksLikeDiagram) return
+	e.preventDefault()
+	const name = /^[{[]/.test(text) ? "pasted.json" : "pasted.xml"
+	void handleFiles([new File([text], name, { type: "text/plain" })])
+})
+
+// ── Copy ────────────────────────────────────────────────────────────────────
 
 copyBtn.addEventListener("click", async () => {
 	await navigator.clipboard.writeText(shareUrl.value)

@@ -2,6 +2,7 @@ import { UI_TOKENS_CSS } from "@bpmnkit/ui"
 import type { ReportReason } from "../shared/constants.js"
 import {
 	ACCEPTED_EXTENSIONS,
+	DEMO_SHARE_ID,
 	MAX_FILES_PER_DROP,
 	MAX_FILE_BYTES,
 	REPORT_REASONS,
@@ -86,6 +87,25 @@ h1{font-size:28px;line-height:1.2;margin:0 0 8px}
 .feat h3{margin:0 0 4px;font-size:14px}
 .feat p{margin:0;font-size:12.5px;color:var(--bpmnkit-fg-muted,#6666a0);line-height:1.5}
 .result{background:var(--bpmnkit-surface,#fff);border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:16px;padding:20px;margin-top:22px;text-align:left;box-shadow:0 12px 42px -26px rgba(0,0,0,.3)}
+/* full-page drop overlay */
+.drop-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:var(--bpmnkit-accent-subtle,rgba(26,86,219,.12));backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.drop-overlay[hidden]{display:none}
+.drop-overlay-card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 60px;border:2.5px dashed var(--bpmnkit-accent,#1a56db);border-radius:22px;background:var(--bpmnkit-surface,#fff);color:var(--bpmnkit-accent,#1a56db);font-size:18px;font-weight:700;box-shadow:0 30px 80px -30px rgba(26,86,219,.6)}
+.drop-overlay-card svg{width:40px;height:40px}
+body.dragging .drop-overlay{animation:overlayIn .12s ease}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+/* live hero demo */
+.hero-demo{margin-top:34px;text-align:left}
+.hero-demo-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.hero-demo-cap{font-size:13px;color:var(--bpmnkit-fg-muted,#6666a0)}
+.hero-canvas{height:340px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:16px;overflow:hidden;background:var(--bpmnkit-surface,#fff);box-shadow:0 16px 50px -30px rgba(0,0,0,.35);position:relative}
+.hero-canvas-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--bpmnkit-fg-muted,#6666a0);font-size:13px;font-family:var(--bpmnkit-font-mono,monospace)}
+@media (prefers-reduced-motion:no-preference){
+.hero-canvas.animate svg{animation:heroFade .6s ease both}
+.hero-canvas.animate .bpmnkit-edge-path{stroke-dasharray:520;stroke-dashoffset:520;animation:heroDraw 1s ease .25s forwards}
+@keyframes heroFade{from{opacity:0}to{opacity:1}}
+@keyframes heroDraw{to{stroke-dashoffset:0}}
+}
 @media (max-width:680px){.steps,.features{grid-template-columns:1fr}}
 .btn{
 	display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bpmnkit-border,#d0d0e8);
@@ -149,7 +169,7 @@ interface ShellOptions {
 	description: string
 	main: string
 	bootstrap?: { id: string; data: unknown }
-	scriptSrc?: string
+	scriptSrc?: string | string[]
 	noindex?: boolean
 	bodyClass?: string
 	hideTopbar?: boolean
@@ -159,7 +179,9 @@ function shell(opts: ShellOptions): string {
 	const boot = opts.bootstrap
 		? `<script type="application/json" id="${opts.bootstrap.id}">${jsonForScript(opts.bootstrap.data)}</script>`
 		: ""
-	const script = opts.scriptSrc ? `<script type="module" src="${opts.scriptSrc}"></script>` : ""
+	const script = (opts.scriptSrc ? [opts.scriptSrc].flat() : [])
+		.map((src) => `<script type="module" src="${src}"></script>`)
+		.join("")
 	const robots = opts.noindex ? `<meta name="robots" content="noindex">` : ""
 	return `<!doctype html>
 <html lang="en">
@@ -188,18 +210,19 @@ ${script}
 export function dropPage(tosVersion: string): string {
 	const accept = ACCEPTED_EXTENSIONS.join(",")
 	const kb = Math.round(MAX_FILE_BYTES / 1000)
-	const main = `<main class="hero">
+	const main = `<div id="dropOverlay" class="drop-overlay" hidden><div class="drop-overlay-card">${ICON.upload}<strong>Release to share your diagram</strong></div></div>
+<main class="hero">
 <div class="hero-bg"></div>
 <div class="hero-inner">
-	<span class="eyebrow">${ICON.spark} Free · no account · instant</span>
-	<h1>Drop a diagram.<br><span class="grad">Get a shareable link.</span></h1>
-	<p class="sub">Drop your BPMN, DMN, or Camunda Form files — we render them right in the browser and hand you a short link. Anyone who opens it sees a live, pannable diagram.</p>
+	<span class="eyebrow">${ICON.spark} Free · no account · live in seconds</span>
+	<h1>Drop a BPMN file.<br><span class="grad">Get a link that renders.</span></h1>
+	<p class="sub">Share living diagrams — not screenshots — with anyone, in seconds. Drop BPMN, DMN, or Camunda Form files and we render them right in the browser. No account.</p>
 	<div class="chips"><span class="chip chip-bpmn">BPMN</span><span class="chip chip-dmn">DMN</span><span class="chip chip-form">FORM</span></div>
 
 	<div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Choose or drop files">
 		<div class="dz-icon">${ICON.upload}</div>
-		<h2>Drop files here</h2>
-		<p>or <span class="dz-link">click to choose</span> &middot; up to ${MAX_FILES_PER_DROP} files &middot; ${kb} KB each</p>
+		<h2>Drop files anywhere on this page</h2>
+		<p>or <span class="dz-link">click to choose</span> &middot; paste BPMN XML &middot; up to ${MAX_FILES_PER_DROP} files &middot; ${kb} KB each</p>
 	</div>
 	<input id="fileInput" type="file" class="hidden" multiple accept="${accept}">
 	<div id="errors" class="errors hidden"></div>
@@ -209,6 +232,14 @@ export function dropPage(tosVersion: string): string {
 		<strong>Your drop is ready</strong>
 		<div class="link-row"><input id="shareUrl" readonly><button id="copyBtn" class="btn">Copy</button><a id="openBtn" class="btn primary" href="#">Open</a></div>
 		<iframe id="preview" title="Preview"></iframe>
+	</div>
+
+	<div class="hero-demo">
+		<div class="hero-demo-head">
+			<span class="hero-demo-cap">Live preview — this is exactly what people see when they open your link.</span>
+			<a class="btn primary" href="/drop/${DEMO_SHARE_ID}">Open the demo drop &rarr;</a>
+		</div>
+		<div id="heroCanvas" class="hero-canvas"><div class="hero-canvas-msg">Loading preview…</div></div>
 	</div>
 
 	<div class="steps">
@@ -233,7 +264,7 @@ export function dropPage(tosVersion: string): string {
 			"Drop a BPMN, DMN, or Camunda Form file and get a short shareable link that renders it in the browser.",
 		main,
 		bootstrap: { id: "drop-config", data: { tosVersion } },
-		scriptSrc: "/drop/assets/drop.js",
+		scriptSrc: ["/drop/assets/drop.js", "/drop/assets/landing.js"],
 	})
 }
 
