@@ -177,6 +177,30 @@ body.share{height:100vh;display:flex;flex-direction:column;overflow:hidden}
 #zoomReset{padding:0 10px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .ed-github{position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--bpmnkit-fg-muted,#6666a0);z-index:5}
 .ed-github .logo{width:20px;height:20px;border-radius:5px}
+.ai-btn{background:linear-gradient(100deg,var(--bpmnkit-accent,#1a56db),#8b5cf6);color:#fff;border-color:transparent}
+.ai-btn[hidden]{display:none}
+.ai-panel{position:absolute;top:0;right:0;bottom:0;width:380px;max-width:92vw;background:var(--bpmnkit-surface,#fff);border-left:1px solid var(--bpmnkit-border,#d0d0e8);box-shadow:-16px 0 50px -30px rgba(0,0,0,.4);z-index:8;display:flex;flex-direction:column}
+.ai-panel[hidden]{display:none}
+.ai-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--bpmnkit-border,#d0d0e8);font-size:15px}
+.ai-x{border:none;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--bpmnkit-fg-muted,#6666a0);padding:0 4px}
+.ai-body{flex:1 1 auto;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.ai-foot{padding:10px 16px;border-top:1px solid var(--bpmnkit-border,#d0d0e8);color:var(--bpmnkit-fg-muted,#6666a0);font-size:11px;line-height:1.5}
+.ai-foot span{display:block;font-weight:600}
+.ai-summary{font-size:13.5px;line-height:1.6;background:var(--bpmnkit-accent-subtle,rgba(26,86,219,.1));border-radius:10px;padding:12px 14px}
+.ai-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--bpmnkit-fg-muted,#6666a0);margin-top:4px}
+.ai-card{border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:10px;padding:10px 12px}
+.ai-card.clickable{cursor:pointer}
+.ai-card.clickable:hover{border-color:var(--bpmnkit-accent,#1a56db);background:var(--bpmnkit-surface-2,#eeeef8)}
+.ai-title{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;font-weight:600}
+.ai-dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:5px}
+.ai-dot.error{background:var(--bpmnkit-danger,#dc2626)}
+.ai-dot.warning{background:var(--bpmnkit-warn,#d97706)}
+.ai-dot.info{background:var(--bpmnkit-accent,#1a56db)}
+.ai-why{font-size:12.5px;color:var(--bpmnkit-fg-muted,#6666a0);margin-top:4px;line-height:1.5}
+.ai-msg{color:var(--bpmnkit-fg-muted,#6666a0);font-size:13px;padding:8px 0}
+.ai-passcode input{width:100%;padding:9px 11px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:9px;font:inherit;margin:10px 0}
+.ai-passcode.err input{border-color:var(--bpmnkit-danger,#dc2626);animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 @media (max-width:760px){.ed-info{display:none}.ed-tab-name{max-width:120px}}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .viewer-msg{padding:24px;color:var(--bpmnkit-fg-muted,#6666a0);font-family:var(--bpmnkit-font-mono,monospace);font-size:13px;white-space:pre-wrap;word-break:break-word}
@@ -353,6 +377,7 @@ export function sharePage(shareId: string, drop: DropRow, files: FileInfo[]): st
 	<div class="ed-tabs" role="tablist">${tabs}</div>
 	<div class="ed-tools">
 		<span class="ed-info" title="Created ${created} · expires ${expires}"><span id="viewCount">${drop.view_count}</span> views<span class="dot"> · </span><span id="presence" hidden>0 viewing</span><span class="dot"> · </span>expires ${expires}</span>
+		<button id="aiReviewBtn" class="btn ai-btn" hidden>&#10024; AI review</button>
 		<a id="dlOriginal" class="btn" href="#" download>Original</a>
 		<a id="dlJson" class="btn" href="#" download>JSON</a>
 		<button id="copyLink" class="btn">Copy link</button>
@@ -369,6 +394,11 @@ export function sharePage(shareId: string, drop: DropRow, files: FileInfo[]): st
 		<button id="zoomFit" type="button" aria-label="Fit diagram" title="Fit diagram">&#9974;</button>
 	</div>
 	<a class="ed-github" href="https://github.com/bpmnkit/monorepo" target="_blank" rel="noopener"><img class="logo" src="${FAVICON}" alt="">GitHub</a>
+	<aside id="aiPanel" class="ai-panel" hidden>
+		<header class="ai-head"><strong>&#10024; AI process review</strong><button id="aiClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
+		<div id="aiBody" class="ai-body"></div>
+		<footer class="ai-foot"><span id="aiModel"></span>AI can be wrong — always review before acting.</footer>
+	</aside>
 </div>
 ${reportDialog()}`
 

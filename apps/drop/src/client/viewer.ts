@@ -3,6 +3,7 @@ import { Bpmn, compactify } from "@bpmnkit/core"
 import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
+import type { ReviewResult, Suggestion } from "../lib/review.js"
 import type { FileKind } from "../shared/constants.js"
 
 interface DropFile {
@@ -32,9 +33,22 @@ const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "
 
 const zoombar = document.getElementById("zoombar") as HTMLElement
 const zoomLevel = document.getElementById("zoomLevel") as HTMLElement
+const aiBtn = document.getElementById("aiReviewBtn") as HTMLButtonElement | null
+const aiPanel = document.getElementById("aiPanel") as HTMLElement | null
+const aiBody = document.getElementById("aiBody") as HTMLElement | null
+const aiModelEl = document.getElementById("aiModel") as HTMLElement | null
 let current: BpmnCanvas | null = null
 let activeIndex = -1
 let scale = 1
+let reviewFile: DropFile | null = null
+
+// The button only exists (server-rendered) when AI is enabled; show it on BPMN tabs.
+function setActiveReviewFile(file: DropFile | null): void {
+	reviewFile = file
+	if (aiBtn) aiBtn.hidden = file === null
+	if (!file && aiPanel) aiPanel.hidden = true
+	aiBody?.replaceChildren()
+}
 
 function contentUrl(file: DropFile, format?: "json"): string {
 	const base = `/drop/${data.shareId}/f/${encodeURIComponent(file.filename)}`
@@ -133,6 +147,9 @@ async function select(index: number): Promise<void> {
 	dlJson.href = contentUrl(file, "json")
 	dlJson.setAttribute("download", `${file.filename}.json`)
 
+	// AI review applies to BPMN only; reset per-file review state on switch.
+	setActiveReviewFile(file.kind === "bpmn" ? file : null)
+
 	current?.destroy()
 	current = null
 	message("Loading…")
@@ -149,7 +166,7 @@ async function select(index: number): Promise<void> {
 	}
 }
 
-for (const tab of document.querySelectorAll<HTMLElement>(".tab")) {
+for (const tab of document.querySelectorAll<HTMLElement>(".ed-tab")) {
 	tab.addEventListener("click", () => void select(Number(tab.dataset.index)))
 }
 
@@ -161,6 +178,101 @@ document.getElementById("zoomIn")?.addEventListener("click", () => current?.zoom
 document.getElementById("zoomOut")?.addEventListener("click", () => current?.zoom(scale / 1.2))
 document.getElementById("zoomReset")?.addEventListener("click", () => current?.resetZoom())
 document.getElementById("zoomFit")?.addEventListener("click", () => current?.zoom("fit"))
+
+// ── AI process review panel ─────────────────────────────────────────────────
+
+function dot(severity: string): HTMLElement {
+	const d = document.createElement("span")
+	d.className = `ai-dot ${severity}`
+	return d
+}
+
+function suggestionCard(s: Suggestion): HTMLElement {
+	const card = document.createElement("div")
+	card.className = s.elementId ? "ai-card clickable" : "ai-card"
+	const title = document.createElement("div")
+	title.className = "ai-title"
+	const text = document.createElement("span")
+	text.textContent = s.title // textContent: hostile names can't inject markup
+	title.append(dot(s.severity), text)
+	const why = document.createElement("div")
+	why.className = "ai-why"
+	why.textContent = s.why
+	card.append(title, why)
+	const id = s.elementId
+	if (id) {
+		card.addEventListener("mouseenter", () => current?.highlight([id], "changed"))
+		card.addEventListener("mouseleave", () => current?.clearHighlights())
+	}
+	return card
+}
+
+function label(txt: string): HTMLElement {
+	const l = document.createElement("div")
+	l.className = "ai-label"
+	l.textContent = txt
+	return l
+}
+
+function renderReview(review: ReviewResult): void {
+	if (!aiBody) return
+	aiBody.replaceChildren()
+	if (review.summary) {
+		const sum = document.createElement("div")
+		sum.className = "ai-summary"
+		sum.textContent = review.summary
+		aiBody.append(sum)
+	}
+	if (review.suggestions.length > 0) {
+		aiBody.append(label("AI suggestions"))
+		for (const s of review.suggestions) aiBody.append(suggestionCard(s))
+	}
+	if (review.deterministic.length > 0) {
+		aiBody.append(label("Automated checks"))
+		for (const s of review.deterministic) aiBody.append(suggestionCard(s))
+	}
+	if (review.deterministic.length === 0 && review.suggestions.length === 0 && !review.summary) {
+		const ok = document.createElement("div")
+		ok.className = "ai-msg"
+		ok.textContent = "No issues found by the automated checks. Nice diagram!"
+		aiBody.append(ok)
+	}
+	if (aiModelEl) aiModelEl.textContent = review.model ? `Model: ${review.model}` : ""
+}
+
+async function loadReview(): Promise<void> {
+	if (!reviewFile || !aiBody) return
+	aiBody.replaceChildren(
+		Object.assign(document.createElement("div"), {
+			className: "ai-msg",
+			textContent: "Analyzing…",
+		}),
+	)
+	try {
+		const res = await fetch(
+			`/drop/api/ai-review/${data.shareId}/${encodeURIComponent(reviewFile.filename)}`,
+			{ method: "POST" },
+		)
+		if (!res.ok) throw new Error(`status ${res.status}`)
+		renderReview((await res.json()) as ReviewResult)
+	} catch {
+		aiBody.replaceChildren(
+			Object.assign(document.createElement("div"), {
+				className: "ai-msg",
+				textContent: "Couldn't run the review. Please try again.",
+			}),
+		)
+	}
+}
+
+aiBtn?.addEventListener("click", () => {
+	if (!aiPanel) return
+	aiPanel.hidden = !aiPanel.hidden
+	if (!aiPanel.hidden) void loadReview()
+})
+document.getElementById("aiClose")?.addEventListener("click", () => {
+	if (aiPanel) aiPanel.hidden = true
+})
 
 // ── Presence & actions ──────────────────────────────────────────────────────
 

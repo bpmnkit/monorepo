@@ -4,6 +4,7 @@ import { html, json } from "./lib/http.js"
 import { adminPage, dropPage, policyPage } from "./lib/pages.js"
 import { PresenceRoom } from "./presence.js"
 import { handleAdmin } from "./routes/admin.js"
+import { handleAiReview } from "./routes/ai-review.js"
 import {
 	handleJson,
 	handleManifest,
@@ -49,6 +50,11 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 	}
 	if (rest.startsWith("/api/admin")) {
 		return handleAdmin(request, rest.slice("/api/admin".length), env, now)
+	}
+	const aiReview = rest.match(/^\/api\/ai-review\/([\w-]+)\/(.+)$/)
+	if (aiReview) {
+		if (request.method !== "POST") return methodNotAllowed()
+		return handleAiReview(aiReview[1] as string, decodeURIComponent(aiReview[2] as string), env)
 	}
 	const presence = rest.match(/^\/api\/presence\/([\w-]+)$/)
 	if (presence) {
