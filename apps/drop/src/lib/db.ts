@@ -41,6 +41,14 @@ export interface FileInfo {
 	meta: FileMeta
 }
 
+/** Aggregate public counters: total drops and total views. */
+export async function getStats(db: D1Database): Promise<{ drops: number; views: number }> {
+	const row = await db
+		.prepare("SELECT COUNT(*) AS drops, COALESCE(SUM(view_count), 0) AS views FROM drops")
+		.first<{ drops: number; views: number }>()
+	return { drops: row?.drops ?? 0, views: row?.views ?? 0 }
+}
+
 /** Return the subset of `hashes` that are banned. */
 export async function findBannedHashes(db: D1Database, hashes: string[]): Promise<string[]> {
 	if (hashes.length === 0) return []

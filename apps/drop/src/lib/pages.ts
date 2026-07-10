@@ -106,7 +106,34 @@ body.dragging .drop-overlay{animation:overlayIn .12s ease}
 @keyframes heroFade{from{opacity:0}to{opacity:1}}
 @keyframes heroDraw{to{stroke-dashoffset:0}}
 }
-@media (max-width:680px){.steps,.features{grid-template-columns:1fr}}
+/* story sections */
+.section-head{margin:52px 0 18px;text-align:center}
+.section-head h2{font-size:clamp(22px,3vw,30px);font-weight:800;letter-spacing:-.02em;margin:0}
+.section-head p{color:var(--bpmnkit-fg-muted,#6666a0);margin:8px 0 0}
+.usecases{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;text-align:left}
+.uc{background:var(--bpmnkit-surface,#fff);border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:14px;padding:14px;transition:transform .15s,box-shadow .15s,border-color .15s}
+.uc:hover{transform:translateY(-3px);box-shadow:0 16px 40px -24px rgba(0,0,0,.35);border-color:var(--bpmnkit-accent,#1a56db)}
+.uc-diagram{height:96px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:10px;background:var(--bpmnkit-bg,#f4f4f8);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:12px}
+.uc-diagram svg{width:100%;height:100%;object-fit:contain}
+.uc h3{margin:0 0 4px;font-size:15px}
+.uc p{margin:0;font-size:12.5px;color:var(--bpmnkit-fg-muted,#6666a0);line-height:1.5}
+.stats{display:flex;justify-content:center;gap:56px;margin:48px 0 0;flex-wrap:wrap}
+.stats[hidden]{display:none}
+.stat{text-align:center}
+.stat-n{display:block;font-size:clamp(30px,5vw,44px);font-weight:800;letter-spacing:-.02em;background:linear-gradient(100deg,var(--bpmnkit-accent,#1a56db),var(--bpmnkit-teal,#0d9488));-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
+.stat-l{color:var(--bpmnkit-fg-muted,#6666a0);font-size:14px}
+.terminal{background:#0d1117;color:#c9d1d9;border-radius:14px;padding:18px 20px;text-align:left;font-family:var(--bpmnkit-font-mono,ui-monospace,monospace);font-size:13px;line-height:1.75;overflow-x:auto;box-shadow:0 16px 50px -30px rgba(0,0,0,.5)}
+.terminal .t-p{color:var(--bpmnkit-teal,#2dd4bf);user-select:none}
+.terminal .t-c{color:#6e7681}
+.faq{max-width:640px;margin:0 auto;text-align:left}
+.faq details{border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:12px;background:var(--bpmnkit-surface,#fff);margin-bottom:10px;padding:0 16px}
+.faq summary{cursor:pointer;font-weight:600;padding:14px 0;list-style:none;font-size:15px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";float:right;color:var(--bpmnkit-fg-muted,#6666a0);font-weight:700}
+.faq details[open] summary::after{content:"−"}
+.faq details p{margin:0 0 14px;color:var(--bpmnkit-fg-muted,#6666a0);font-size:14px}
+@media (max-width:820px){.usecases{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:680px){.steps,.features{grid-template-columns:1fr}.usecases{grid-template-columns:1fr}}
 .btn{
 	display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bpmnkit-border,#d0d0e8);
 	background:var(--bpmnkit-surface-2,#eeeef8);color:var(--bpmnkit-fg,#1a1a2e);
@@ -253,6 +280,37 @@ export function dropPage(tosVersion: string): string {
 		<div class="feat"><div class="fi">${ICON.bolt}</div><h3>No account needed</h3><p>No sign-up, no upload dance. Drop &amp; go.</p></div>
 		<div class="feat"><div class="fi">${ICON.eye}</div><h3>See who's viewing</h3><p>A live count of everyone looking right now.</p></div>
 		<div class="feat"><div class="fi">${ICON.clock}</div><h3>Links that last</h3><p>Kept for 90 days after they're last opened.</p></div>
+	</div>
+
+	<div class="section-head"><h2>What people drop</h2></div>
+	<div class="usecases">
+		<div class="uc"><div class="uc-diagram" data-uc="review"></div><h3>Code review</h3><p>Attach the process next to the PR that implements it.</p></div>
+		<div class="uc"><div class="uc-diagram" data-uc="incident"></div><h3>Incident channel</h3><p>Stop describing the flow in Slack. Drop it.</p></div>
+		<div class="uc"><div class="uc-diagram" data-uc="docs"></div><h3>Docs &amp; tickets</h3><p>A link that renders beats a stale screenshot.</p></div>
+		<div class="uc"><div class="uc-diagram" data-uc="handoff"></div><h3>Client handoff</h3><p>Send a process draft without asking anyone to install a modeler.</p></div>
+	</div>
+
+	<div id="stats" class="stats" hidden>
+		<div class="stat"><span class="stat-n" id="statDrops">—</span><span class="stat-l">diagrams shared</span></div>
+		<div class="stat"><span class="stat-n" id="statViews">—</span><span class="stat-l">views delivered</span></div>
+	</div>
+
+	<div class="section-head"><h2>Has an API, too</h2><p>No account, fully scriptable — drop straight from your terminal.</p></div>
+	<pre class="terminal"><span class="t-c"># upload — returns a shareId and URL</span>
+<span class="t-p">$</span> curl -F files=@order.bpmn https://bpmnkit.com/drop/api/drops
+{ "shareId": "aB3xY7kQn2p", "url": "/drop/aB3xY7kQn2p", "files": [ … ] }
+
+<span class="t-c"># then, with the shareId</span>
+<span class="t-p">$</span> curl https://bpmnkit.com/drop/aB3xY7kQn2p/manifest.json
+<span class="t-p">$</span> curl "https://bpmnkit.com/drop/aB3xY7kQn2p/f/order.bpmn?format=json"</pre>
+
+	<div class="section-head"><h2>Questions</h2></div>
+	<div class="faq">
+		<details><summary>How long do links last?</summary><p>90 days after a drop is last opened. Every view slides the window forward, so links people actually use stay alive; abandoned ones clean themselves up.</p></details>
+		<details><summary>Who can see my diagram?</summary><p>Anyone with the link. Links are unguessable (64 bits of randomness) and never listed anywhere, but they aren't otherwise access-controlled — don't drop confidential material.</p></details>
+		<details><summary>What can I drop?</summary><p>BPMN 2.0, DMN, and Camunda Form files — up to ${MAX_FILES_PER_DROP} at once. Only files that parse are stored; this isn't a generic file host.</p></details>
+		<details><summary>Is it really free?</summary><p>Yes. No account, no sign-up, no payment. Just drop and share.</p></details>
+		<details><summary>Can I delete a drop?</summary><p>Drops expire on their own, and you can <a href="/drop/privacy">report</a> anything that shouldn't be up. Per-uploader deletion is on the roadmap.</p></details>
 	</div>
 
 	<footer><a href="/drop/terms">Terms</a><a href="/drop/privacy">Privacy</a><a href="https://github.com/bpmnkit/monorepo">GitHub</a></footer>

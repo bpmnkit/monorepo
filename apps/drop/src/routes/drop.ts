@@ -1,8 +1,20 @@
 import type { Env } from "../env.js"
-import { getDrop, getFileBody, recordView } from "../lib/db.js"
+import { getDrop, getFileBody, getStats, recordView } from "../lib/db.js"
 import { demoDrop, demoFileBody, isDemo } from "../lib/demo.js"
 import { html, json, securityHeaders } from "../lib/http.js"
 import { notFoundPage, sharePage } from "../lib/pages.js"
+
+/** GET /drop/api/stats — public drop/view counters, cached at the edge for 60s. */
+export async function handleStats(env: Env): Promise<Response> {
+	const stats = await getStats(env.DB)
+	return new Response(JSON.stringify(stats), {
+		headers: {
+			"Content-Type": "application/json; charset=utf-8",
+			"Cache-Control": "public, max-age=60",
+			...securityHeaders(),
+		},
+	})
+}
 
 /** GET /drop/:shareId — the read-only viewer page. */
 export async function handleSharePage(

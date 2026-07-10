@@ -4,7 +4,13 @@ import { html, json } from "./lib/http.js"
 import { adminPage, dropPage, policyPage } from "./lib/pages.js"
 import { PresenceRoom } from "./presence.js"
 import { handleAdmin } from "./routes/admin.js"
-import { handleJson, handleManifest, handleRaw, handleSharePage } from "./routes/drop.js"
+import {
+	handleJson,
+	handleManifest,
+	handleRaw,
+	handleSharePage,
+	handleStats,
+} from "./routes/drop.js"
 import { handleReport } from "./routes/reports.js"
 import { handleUpload } from "./routes/upload.js"
 
@@ -37,6 +43,9 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 	}
 	if (rest === "/api/reports") {
 		return request.method === "POST" ? handleReport(request, env, now) : methodNotAllowed()
+	}
+	if (rest === "/api/stats") {
+		return request.method === "GET" ? handleStats(env) : methodNotAllowed()
 	}
 	if (rest.startsWith("/api/admin")) {
 		return handleAdmin(request, rest.slice("/api/admin".length), env, now)
