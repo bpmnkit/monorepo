@@ -235,6 +235,31 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## BPMN Kit Drop (`bpmnkit.com/drop`)
+
+> Full spec and design rationale: [`doc/drop-spec.md`](drop-spec.md) — implemented in `apps/drop` (2026-07-09).
+
+- [x] Scaffold `apps/drop` — Cloudflare Worker, D1 migrations, static drop page with `@bpmnkit/ui` tokens
+- [x] Multi-file upload pipeline — sniff/parse/validate via `@bpmnkit/core`, store original + JSON model in D1, ban-list check
+- [x] Share page `/drop/:shareId` — read-only BPMN viewer (`@bpmnkit/canvas` + zoom/minimap plugins), file tabs, raw/JSON downloads
+- [x] DMN + Form viewers (`dmn-viewer`, `form-viewer` plugins) + cross-file `formId`/`decisionId` navigation
+- [x] Presence — Durable Object per shareId, hibernating WebSockets, "N viewing" badge
+- [x] Moderation — abuse-report flow, admin endpoints + `/drop/admin` page, delete + content-hash ban
+- [x] Retention cron + hardening (CSP, XSS/XXE regression tests) + Terms/Privacy pages
+- [x] Deploy workflow (`deploy-drop.yml`); enabling the `bpmnkit.com/drop*` route requires live Cloudflare access (D1 id + secrets)
+
+### Drop v2 — AI review & engaging landing
+
+> Full analysis and spec: [`doc/drop-v2-spec.md`](drop-v2-spec.md) — decisions resolved (AI review is passcode-gated), ready to implement; hand-off notes in the spec's Part 5.
+
+- [x] Landing v2 structure: full-page drop target, paste-to-drop, live hero canvas with draw-in animation, in-memory demo drop + button
+- [x] Landing v2 story: use-case cards with build-time `exportSvg` mini-diagrams, developer curl block, `/drop/api/stats` counters, FAQ
+- [x] AI review backbone: Worker endpoint running `optimize` (pattern advisor + variable flow + FEEL + naming + flow), findings panel (no LLM)
+- [x] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + attempt limiting, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, localStorage persistence)
+- [x] Polish: suggestion→canvas element highlighting (hover + click), model attribution, docs
+
+---
+
 ## Completed
 
 *(Items moved here from above as they ship)*

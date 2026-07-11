@@ -1,5 +1,25 @@
 # Features
 
+## BPMN Kit Drop v2 — engaging landing + AI process review (2026-07-10)
+
+Second iteration of [BPMN Kit Drop](drop-v2-spec.md), shipped in `apps/drop`.
+
+- **cloudflare.com/drop-style landing** — the whole page is a drop target (full-viewport overlay on drag), `Ctrl/Cmd+V` pastes BPMN/DMN/Form content to create a drop, and a **live hero canvas** renders a real diagram with a draw-in animation. A built-in **demo drop** (`/drop/demo-loan-approval`, a BPMN + linked DMN + Form) is served from memory — one click shows the full share experience, and it works on a fresh deploy with no seeding.
+- **Story sections** — "what people drop" cards each render a real mini BPMN (built at deploy time via `exportSvg`), a developer `curl` walkthrough, live D1-backed counters (shown once ≥ 100 drops), and an FAQ.
+- **AI process review (closed beta)** — a one-click panel that reviews a BPMN process. Deterministic `@bpmnkit/core` analysis (`optimize`: pattern advisor, variable flow, FEEL, naming) is narrated by Workers AI (`@cf/openai/gpt-oss-120b`, JSON-schema output) into a prioritized summary + suggestions; each suggestion highlights its element on the canvas. Reviews are cached in D1 by content hash, guarded by a daily neuron budget, and degrade to deterministic-only if the AI is unavailable.
+- **Passcode gate** — the AI review is invite-only: off unless the operator sets an `AI_PASSCODE` secret (feature hidden entirely when unset), verified constant-time via an `X-Drop-AI-Code` header, with per-IP brute-force limiting and client-side persistence. Rotating the secret is an instant kill switch.
+
+## BPMN Kit Drop — one-drop diagram sharing (2026-07-09)
+
+New Cloudflare Worker app (`apps/drop`) served at `bpmnkit.com/drop`: drop BPMN, DMN, and Camunda Form files and get a short shareable link (`/drop/:shareId`) that renders them read-only in the browser. Inspired by [Cloudflare Drop](https://www.cloudflare.com/drop/). Design and rationale: [`doc/drop-spec.md`](drop-spec.md).
+
+- **Multi-file drops** (up to 20 files / 5 MB): tabbed viewer with cross-file navigation — clicking a user task or business-rule task jumps to the referenced form/decision file when it's in the drop.
+- **Renders with bpmnkit only** — BPMN via `@bpmnkit/canvas` (+ zoom/minimap plugins), DMN via the `dmn-viewer` plugin, Forms via `form-viewer`; no bpmn-js/dmn-js/form-js.
+- **JSON-native storage** — every file is validated and converted with `@bpmnkit/core` on both client and server, then stored in Cloudflare D1 as the full typed model alongside the byte-faithful original.
+- **Live presence** — a Durable Object per share (WebSocket Hibernation API) shows "N viewing" with no external SaaS.
+- **90-day sliding retention** — drops expire 90 days after their last view; a daily cron deletes expired rows.
+- **Moderation & safety** — passive Terms/Privacy acknowledgment on upload, a public "Report abuse" flow, and token-gated admin endpoints + a `/drop/admin` page to delete drops (optionally banning their content hashes). Strict CSP, `noindex` share pages, XSS/XXE regression tests.
+
 ## SEO & discoverability foundation (2026-07-07)
 
 Technical SEO across `bpmnkit.com`, `docs.bpmnkit.com`, and `learn.bpmnkit.com`, plus new evergreen and blog content aimed at organic search. Full plan: [`doc/seo-plan.md`](seo-plan.md).

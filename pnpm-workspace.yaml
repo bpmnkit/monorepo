@@ -5,7 +5,9 @@ packages:
 
 onlyBuiltDependencies:
   - '@biomejs/biome'
+  - better-sqlite3
   - esbuild
+  - isolated-vm
   - sharp
   - workerd
 
