@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-11 — Fix drop provision script: invalid `wrangler secret list --json`
+
+Follow-up to PR #145. [`apps/drop/scripts/provision.mjs`](../apps/drop/scripts/provision.mjs) crashed in `configureSecrets` with `✘ [ERROR] Unknown argument: json`. Unlike `d1 list` (which does take `--json`), the `wrangler secret list` subcommand has no `--json` flag — it exposes `--format` (choices `json`/`pretty`, default `json`) and already emits JSON on stdout. Dropped the flag (`secret list --json` → `secret list`), which is compatible across wrangler v3/v4. The crash happened before the `AI_PASSCODE` prompt, so this was also why AI review couldn't be enabled — the same fix restores that step.
+
 ## 2026-07-11 — Drop one-command provisioning script
 
 Added [`apps/drop/scripts/provision.mjs`](../apps/drop/scripts/provision.mjs) (`pnpm --filter @bpmnkit/drop provision`) — an idempotent Node script that stands up the whole Cloudflare side and deploys, so an operator with `wrangler login` done runs one command. It: checks login (`wrangler whoami`); ensures the D1 database `bpmnkit-drop` exists (find via `d1 list --json`, else `d1 create`) and writes its id into `wrangler.jsonc` (replacing the `REPLACE_WITH_D1_DATABASE_ID` placeholder); applies migrations `--remote`; optionally uncomments the `bpmnkit.com/drop*` route (prompt, default no); builds via `turbo build --filter` and `wrangler deploy`s; then sets secrets — auto-generating `DROP_ADMIN_TOKEN` (printed once) and `REPORT_IP_SALT` via `crypto.randomBytes`, and prompting whether to set `AI_PASSCODE` (delegated to `wrangler secret put` so input stays hidden). Existing secrets/route/id are detected and left untouched, so re-runs are safe. Documented in `README.md` (Deploy) and `onboarding.md` (operator section, as the recommended path alongside the manual steps).
