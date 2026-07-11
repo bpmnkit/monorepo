@@ -73,7 +73,17 @@ curl -s "http://localhost:8787/drop/<shareId>/f/order-process.bpmn?format=json" 
 
 The local D1 lives under `.wrangler/state` (gitignored); delete it to reset.
 
-## Deploy (one-time setup)
+## Deploy
+
+Fastest path — after `wrangler login`, run the idempotent provisioning script, which
+creates the D1 database, applies migrations, builds, deploys, and sets the secrets
+(auto-generating the admin token and IP salt, prompting for the optional `AI_PASSCODE`):
+
+```sh
+pnpm --filter @bpmnkit/drop provision
+```
+
+### One-time setup (what the script automates)
 
 1. `wrangler d1 create bpmnkit-drop` → copy the id into `wrangler.jsonc` (`database_id`).
 2. `wrangler secret put DROP_ADMIN_TOKEN` — operator token for `/drop/admin` and admin API.

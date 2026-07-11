@@ -9,7 +9,8 @@
 		"check": "biome check .",
 		"test": "vitest run",
 		"dev": "node scripts/build-client.mjs && wrangler dev",
-		"deploy": "wrangler deploy"
+		"deploy": "wrangler deploy",
+		"provision": "node scripts/provision.mjs"
 	},
 	"dependencies": {
 		"@bpmnkit/canvas": "workspace:*",

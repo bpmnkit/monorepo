@@ -216,7 +216,31 @@ curl -s -X POST http://localhost:8787/drop/api/ai-review/<shareId>/order-process
 
 ## 3. For operators
 
-### One-time deploy setup
+### One-command setup (recommended)
+
+After `wrangler login`, run the provisioning script — it does everything below
+and deploys:
+
+```sh
+pnpm --filter @bpmnkit/drop provision    # or: cd apps/drop && node scripts/provision.mjs
+```
+
+It is **idempotent** (safe to re-run) and:
+
+1. Creates the D1 database `bpmnkit-drop` if missing and writes its id into `wrangler.jsonc`.
+2. Applies the D1 migrations remotely.
+3. Optionally routes `bpmnkit.com/drop*` to the Worker (prompts; default no — otherwise it
+   stays on its `*.workers.dev` URL).
+4. Builds the client bundles and deploys the Worker.
+5. Generates and sets `DROP_ADMIN_TOKEN` and `REPORT_IP_SALT` (auto), and prompts whether to
+   set `AI_PASSCODE` now (hidden input). Existing secrets are kept, not overwritten.
+
+The **admin token is printed once** at the end — save it; it's what you paste at `/drop/admin`.
+
+Bump `TOS_VERSION` in `wrangler.jsonc` whenever the Terms/Privacy pages change (it is
+recorded on each drop).
+
+### Manual setup (equivalent steps)
 
 1. `wrangler d1 create bpmnkit-drop` → copy the id into `wrangler.jsonc`
    (`d1_databases[0].database_id`, currently `REPLACE_WITH_D1_DATABASE_ID`).
