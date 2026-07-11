@@ -126,7 +126,7 @@ function putSecret(name, value) {
 
 async function configureSecrets() {
 	log("Configuring secrets")
-	const have = new Set(JSON.parse(capture(["secret", "list", "--json"])).map((s) => s.name))
+	const have = new Set(JSON.parse(capture(["secret", "list"])).map((s) => s.name))
 
 	let adminToken = null
 	if (have.has("DROP_ADMIN_TOKEN")) {
