@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-11 — Drop onboarding guide
+
+Added [`apps/drop/onboarding.md`](../apps/drop/onboarding.md) — a role-oriented walkthrough (users / developers / operators) covering: what the service is and its limits (20 files, 900 KB/file, 5 MB/drop, 90-day sliding TTL); the user flows (share, view with cross-file nav + presence, the `/drop/demo-loan-approval` demo, requesting an AI review); the developer setup (offline `wrangler dev`, the AI-review dev path with `--var AI_PASSCODE`, the build/typecheck/test/check gate, layout, the full route table, curl smoke tests, and the house rules from CLAUDE.md/specs); and the operator runbook (one-time deploy, moderation admin API, turning the AI beta on/off/rotate, the required pre-enable live model run, and the `handleAiReview` order-of-checks). Complements the develop/deploy-focused `README.md`. Also corrected the PR #145 body, which still described retention as "30 days" (the code and spec use a 90-day sliding TTL).
+
 ## 2026-07-10 — Drop v2 implemented: engaging landing + passcode-gated AI review
 
 Implemented [`doc/drop-v2-spec.md`](drop-v2-spec.md) across five phases in `apps/drop`.
