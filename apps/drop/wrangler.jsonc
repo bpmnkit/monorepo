@@ -25,7 +25,7 @@
 			"binding": "DB",
 			"database_name": "bpmnkit-drop",
 			// Replace with the real database id after `wrangler d1 create bpmnkit-drop`.
-			"database_id": "REPLACE_WITH_D1_DATABASE_ID",
+			"database_id": "4f6807dc-95a5-442f-bae0-876977eb4072",
 			"migrations_dir": "migrations"
 		}
 	],
@@ -46,8 +46,6 @@
 	"triggers": {
 		// Daily at 03:17 UTC — delete drops past their sliding-TTL expiry.
 		"crons": ["17 3 * * *"]
-	}
-	// The bpmnkit.com zone is on Cloudflare; this route carves /drop* out of the
-	// Pages-hosted landing site. Uncomment and set the zone once deploying.
-	// "routes": [{ "pattern": "bpmnkit.com/drop*", "zone_name": "bpmnkit.com" }]
+	},
+	"routes": [{ "pattern": "bpmnkit.com/drop*", "zone_name": "bpmnkit.com" }]
 }
