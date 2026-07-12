@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-07-12 — Deploy Drop workflow: dedicated Cloudflare API token secret
+
+The `Deploy Drop` workflow failed at "Apply D1 migrations" with Cloudflare error 7403 (`The given account is not valid or is not authorized to access this service`) — the shared `CLOUDFLARE_API_TOKEN` lacks D1 access. Switched both wrangler steps in [`deploy-drop.yml`](../.github/workflows/deploy-drop.yml) to a dedicated `CLOUDFLARE_DROP_API_TOKEN` repo secret, scoped to exactly what this workflow needs: Account → D1 → Edit, Account → Workers Scripts → Edit, Zone (bpmnkit.com) → Workers Routes → Edit. `CLOUDFLARE_ACCOUNT_ID` stays shared. The secret must be created in the Cloudflare dashboard and added to the repo before the workflow can pass.
+
 ## 2026-07-11 — Fix drop provision script: invalid `wrangler secret list --json`
 
 Follow-up to PR #145. [`apps/drop/scripts/provision.mjs`](../apps/drop/scripts/provision.mjs) crashed in `configureSecrets` with `✘ [ERROR] Unknown argument: json`. Unlike `d1 list` (which does take `--json`), the `wrangler secret list` subcommand has no `--json` flag — it exposes `--format` (choices `json`/`pretty`, default `json`) and already emits JSON on stdout. Dropped the flag (`secret list --json` → `secret list`), which is compatible across wrangler v3/v4. The crash happened before the `AI_PASSCODE` prompt, so this was also why AI review couldn't be enabled — the same fix restores that step.

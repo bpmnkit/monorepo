@@ -37,10 +37,13 @@ jobs:
       - name: Build drop (client bundles + workspace deps)
         run: pnpm turbo build --filter @bpmnkit/drop
 
+      # CLOUDFLARE_DROP_API_TOKEN is a dedicated token scoped to this workflow:
+      # Account → D1 → Edit, Account → Workers Scripts → Edit,
+      # Zone (bpmnkit.com) → Workers Routes → Edit.
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_DROP_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/drop
           command: d1 migrations apply bpmnkit-drop --remote
@@ -48,7 +51,7 @@ jobs:
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_DROP_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/drop
           command: deploy
