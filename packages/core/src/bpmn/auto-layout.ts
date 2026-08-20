@@ -657,6 +657,32 @@ function messageLinks(
 	return links
 }
 
+/**
+ * Every element inside a collaboration mapped to the element that would contain
+ * it on a plane: its sub-process, or the participant of its process. Following
+ * the chain finds the nearest ancestor a collapsed scope leaves visible.
+ */
+function ancestorIndex(defs: BpmnDefinitions, collab: BpmnCollaboration): Map<string, string> {
+	const parents = new Map<string, string>()
+	const processById = new Map(defs.processes.map((p) => [p.id, p]))
+
+	for (const participant of collab.participants) {
+		const process = participant.processRef ? processById.get(participant.processRef) : undefined
+		if (!process) continue
+
+		const walk = (elements: BpmnFlowElement[], parent: string): void => {
+			for (const element of elements) {
+				parents.set(element.id, parent)
+				const container = element as unknown as { flowElements?: BpmnFlowElement[] }
+				if (container.flowElements?.length) walk(container.flowElements, element.id)
+			}
+		}
+		walk(process.flowElements, participant.id)
+	}
+
+	return parents
+}
+
 export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 	if (defs.processes.length === 0) return defs
 
@@ -856,6 +882,16 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 
 	if (collab && collab.messageFlows.length > 0) {
 		const shapeByElement = new Map(allShapes.map((s) => [s.bpmnElement, s.bounds]))
+		// An endpoint inside a collapsed sub-process has no shape on this plane;
+		// the message docks on the nearest ancestor that does.
+		const visibleAncestors = ancestorIndex(defs, collab)
+		const resolve = (id: string): string => {
+			let current: string | undefined = id
+			while (current !== undefined && !shapeByElement.has(current)) {
+				current = visibleAncestors.get(current)
+			}
+			return current ?? id
+		}
 		const participantIds = new Set(collab.participants.map((p) => p.id))
 		const laneIds = new Set(
 			defs.processes.flatMap((p) => (p.laneSet?.lanes ?? []).map((lane) => lane.id)),
@@ -876,21 +912,24 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 
 		let stemOffset = 0
 		for (const mf of collab.messageFlows) {
-			const src = shapeByElement.get(mf.sourceRef)
-			const tgt = shapeByElement.get(mf.targetRef)
+			const sourceRef = resolve(mf.sourceRef)
+			const targetRef = resolve(mf.targetRef)
+			const src = shapeByElement.get(sourceRef)
+			const tgt = shapeByElement.get(targetRef)
 			if (!src || !tgt) continue
-			runs.push({
+			const run = {
 				id: mf.id,
 				...messageFlowRoute(
 					src,
 					tgt,
-					participantIds.has(mf.sourceRef),
-					participantIds.has(mf.targetRef),
+					participantIds.has(sourceRef),
+					participantIds.has(targetRef),
 					poolGaps,
 					obstacles,
 					stemOffset,
 				),
-			})
+			}
+			runs.push(run)
 			stemOffset = (stemOffset + MESSAGE_FLOW_STEM_STEP) % (MESSAGE_FLOW_STEM_STEP * 4)
 		}
 
