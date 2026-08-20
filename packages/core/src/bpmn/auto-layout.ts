@@ -1,4 +1,5 @@
 import { associationWaypoints, packAnnotations } from "../layout/annotations.js"
+import { collapseCollinear } from "../layout/grid/grid-router.js"
 import { layoutProcess } from "../layout/layout-engine.js"
 import type { Bounds, LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
 import type {
@@ -10,6 +11,7 @@ import type {
 	BpmnFlowElement,
 	BpmnLane,
 	BpmnProcess,
+	BpmnWaypoint,
 } from "./bpmn-model.js"
 
 const POOL_HEADER = 30
@@ -258,6 +260,13 @@ function addAnnotationShapes(
 const EMPTY_POOL_HEIGHT = 60
 /** Sideways step when nudging a message flow out of a shape. */
 const MESSAGE_FLOW_STEP = 10
+/** Stub a message flow leaves its element by before it may jog sideways. */
+const MESSAGE_FLOW_STEM = 20
+/** Stagger between the stems of consecutive flows. */
+const MESSAGE_FLOW_STEM_STEP = 8
+/** Step and reach of that sideways jog. */
+const MESSAGE_FLOW_JOG = 20
+const MESSAGE_FLOW_MAX_JOG = 2400
 const EMPTY_POOL_WIDTH = 300
 
 /**
@@ -354,34 +363,25 @@ function poolBands(
 	return gaps
 }
 
-/** Index of the pool gap nearest the midpoint of the run; -1 when none lies on it. */
-function crossingBandIndex(
-	gaps: Array<{ top: number; bottom: number }>,
+/** True when a vertical run at `x` between two heights would cross a shape. */
+function columnBlocked(
+	x: number,
 	fromY: number,
 	toY: number,
-): number {
-	const midpoint = (fromY + toY) / 2
-	const low = Math.min(fromY, toY)
-	const high = Math.max(fromY, toY)
-	let best = -1
-	let bestDistance = Number.POSITIVE_INFINITY
-	for (let i = 0; i < gaps.length; i++) {
-		const gap = gaps[i]
-		if (!gap) continue
-		const centre = (gap.top + gap.bottom) / 2
-		if (centre < low || centre > high) continue
-		const distance = Math.abs(centre - midpoint)
-		if (distance < bestDistance) {
-			best = i
-			bestDistance = distance
-		}
-	}
-	return best
+	obstacles: BpmnBounds[],
+	own: BpmnBounds[],
+): boolean {
+	const top = Math.min(fromY, toY)
+	const bottom = Math.max(fromY, toY)
+	return obstacles.some(
+		(o) => !own.includes(o) && o.x < x && x < o.x + o.width && o.y < bottom && top < o.y + o.height,
+	)
 }
 
 /**
  * Shift a vertical run sideways until it misses every shape it would otherwise
- * pass through, keeping it within the element it docks onto.
+ * pass through. The run has to stay on the element it docks onto, so the search
+ * is bounded by that element's own width.
  */
 function clearColumn(
 	x: number,
@@ -391,25 +391,174 @@ function clearColumn(
 	own: BpmnBounds[],
 	dock: BpmnBounds,
 ): number {
-	const top = Math.min(fromY, toY)
-	const bottom = Math.max(fromY, toY)
-	const blocked = (candidate: number): boolean =>
+	if (!columnBlocked(x, fromY, toY, obstacles, own)) return x
+	const limit = Math.floor(dock.width / 2)
+	for (let step = MESSAGE_FLOW_STEP; step <= limit; step += MESSAGE_FLOW_STEP) {
+		if (!columnBlocked(x + step, fromY, toY, obstacles, own)) return x + step
+		if (!columnBlocked(x - step, fromY, toY, obstacles, own)) return x - step
+	}
+	return x
+}
+
+/**
+ * One vertical leg of a message flow, from its dock to the crossing band.
+ *
+ * A straight drop is used when the column is clear. Otherwise the leg leaves
+ * the element by a short stem and jogs sideways to a column that is clear for
+ * the rest of the descent — the same move a modeller makes by hand, and the
+ * only way past a shape sitting directly below the dock.
+ */
+function messageFlowLeg(
+	dockX: number,
+	fromY: number,
+	toY: number,
+	obstacles: BpmnBounds[],
+	own: BpmnBounds[],
+	dock: BpmnBounds,
+	/** Staggers the stem so two flows jogging side by side do not share a line. */
+	stemOffset = 0,
+): { points: BpmnWaypoint[]; blocked: boolean } {
+	const straight = clearColumn(dockX, fromY, toY, obstacles, own, dock)
+	if (!columnBlocked(straight, fromY, toY, obstacles, own)) {
+		return {
+			points: [
+				{ x: straight, y: fromY },
+				{ x: straight, y: toY },
+			],
+			blocked: false,
+		}
+	}
+
+	const down = toY > fromY
+	const stem = MESSAGE_FLOW_STEM + stemOffset
+	const stemY = down ? fromY + stem : fromY - stem
+	const rowBlocked = (x: number): boolean =>
 		obstacles.some(
 			(o) =>
 				!own.includes(o) &&
-				o.x < candidate &&
-				candidate < o.x + o.width &&
-				o.y < bottom &&
-				top < o.y + o.height,
+				o.x < Math.max(dockX, x) &&
+				Math.min(dockX, x) < o.x + o.width &&
+				o.y < stemY &&
+				stemY < o.y + o.height,
 		)
 
-	if (!blocked(x)) return x
-	const limit = Math.floor(dock.width / 2)
-	for (let step = MESSAGE_FLOW_STEP; step <= limit; step += MESSAGE_FLOW_STEP) {
-		if (!blocked(x + step)) return x + step
-		if (!blocked(x - step)) return x - step
+	for (let offset = MESSAGE_FLOW_JOG; offset <= MESSAGE_FLOW_MAX_JOG; offset += MESSAGE_FLOW_JOG) {
+		for (const candidate of [dockX + offset, dockX - offset]) {
+			if (rowBlocked(candidate)) continue
+			if (columnBlocked(candidate, stemY, toY, obstacles, own)) continue
+			return {
+				points: [
+					{ x: dockX, y: fromY },
+					{ x: dockX, y: stemY },
+					{ x: candidate, y: stemY },
+					{ x: candidate, y: toY },
+				],
+				blocked: false,
+			}
+		}
 	}
-	return x
+
+	return {
+		points: [
+			{ x: straight, y: fromY },
+			{ x: straight, y: toY },
+		],
+		blocked: true,
+	}
+}
+
+/**
+ * Pick where a message flow crosses between pools and how each of its two legs
+ * gets there.
+ *
+ * Bands are tried nearest-first: the gaps between pools are clear ground, so a
+ * route that reaches one has nothing left to cross. Each leg is checked over
+ * its own stretch rather than the whole run, which is what lets a flow slip
+ * past shapes on the far side of the band.
+ */
+function messageFlowRoute(
+	src: BpmnBounds,
+	tgt: BpmnBounds,
+	srcIsPool: boolean,
+	tgtIsPool: boolean,
+	gaps: Array<{ top: number; bottom: number }>,
+	obstacles: BpmnBounds[],
+	stemOffset: number,
+): { source: BpmnWaypoint[]; target: BpmnWaypoint[]; gap: number } {
+	const srcBelow = src.y + src.height / 2 > tgt.y + tgt.height / 2
+	const sy = srcBelow ? src.y : src.y + src.height
+	const ty = srcBelow ? tgt.y + tgt.height : tgt.y
+	const own = [src, tgt]
+	const midpoint = (sy + ty) / 2
+	const low = Math.min(sy, ty)
+	const high = Math.max(sy, ty)
+
+	const build = (
+		bandY: number,
+	): { source: BpmnWaypoint[]; target: BpmnWaypoint[]; blocked: boolean } => {
+		const source = messageFlowLeg(
+			Math.round(src.x + src.width / 2),
+			sy,
+			bandY,
+			obstacles,
+			own,
+			src,
+			stemOffset,
+		)
+		const target = messageFlowLeg(
+			Math.round(tgt.x + tgt.width / 2),
+			ty,
+			bandY,
+			obstacles,
+			own,
+			tgt,
+			stemOffset,
+		)
+		// A pool has no position of its own to respect: dock it under whatever it
+		// is talking to, so the flow drops straight instead of fanning into the
+		// pool's centre along with every other flow.
+		if (tgtIsPool && !srcIsPool) {
+			const x = source.points[source.points.length - 1]?.x ?? 0
+			return {
+				source: source.points,
+				target: [
+					{ x, y: ty },
+					{ x, y: bandY },
+				],
+				blocked: source.blocked,
+			}
+		}
+		if (srcIsPool && !tgtIsPool) {
+			const x = target.points[target.points.length - 1]?.x ?? 0
+			return {
+				source: [
+					{ x, y: sy },
+					{ x, y: bandY },
+				],
+				target: target.points,
+				blocked: target.blocked,
+			}
+		}
+		return {
+			source: source.points,
+			target: target.points,
+			blocked: source.blocked || target.blocked,
+		}
+	}
+
+	const candidates = gaps
+		.map((gap, index) => ({ index, y: (gap.top + gap.bottom) / 2 }))
+		.filter((candidate) => candidate.y >= low && candidate.y <= high)
+		.sort((a, b) => Math.abs(a.y - midpoint) - Math.abs(b.y - midpoint))
+
+	for (const candidate of candidates) {
+		const route = build(candidate.y)
+		if (!route.blocked) return { source: route.source, target: route.target, gap: candidate.index }
+	}
+
+	const fallback = candidates[0]
+	const route = build(fallback?.y ?? midpoint)
+	return { source: route.source, target: route.target, gap: fallback?.index ?? -1 }
 }
 
 /**
@@ -614,40 +763,29 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 
 		const runs: Array<{
 			id: string
-			sx: number
-			tx: number
-			sy: number
-			ty: number
+			source: BpmnWaypoint[]
+			target: BpmnWaypoint[]
 			gap: number
 		}> = []
 
+		let stemOffset = 0
 		for (const mf of collab.messageFlows) {
 			const src = shapeByElement.get(mf.sourceRef)
 			const tgt = shapeByElement.get(mf.targetRef)
 			if (!src || !tgt) continue
-			const srcBelow = src.y + src.height / 2 > tgt.y + tgt.height / 2
-			const sy = srcBelow ? src.y : src.y + src.height
-			const ty = srcBelow ? tgt.y + tgt.height : tgt.y
-			const own = [src, tgt]
-
-			// A pool has no position of its own to respect: dock it under whatever it
-			// is talking to, so the flow drops straight instead of fanning into the
-			// pool's centre along with every other flow.
-			const srcIsPool = participantIds.has(mf.sourceRef)
-			const tgtIsPool = participantIds.has(mf.targetRef)
-			let sx = clearColumn(Math.round(src.x + src.width / 2), sy, ty, obstacles, own, src)
-			let tx = clearColumn(Math.round(tgt.x + tgt.width / 2), sy, ty, obstacles, own, tgt)
-			if (tgtIsPool && !srcIsPool) tx = sx
-			else if (srcIsPool && !tgtIsPool) sx = tx
-
 			runs.push({
 				id: mf.id,
-				sx,
-				tx,
-				sy,
-				ty,
-				gap: crossingBandIndex(poolGaps, sy, ty),
+				...messageFlowRoute(
+					src,
+					tgt,
+					participantIds.has(mf.sourceRef),
+					participantIds.has(mf.targetRef),
+					poolGaps,
+					obstacles,
+					stemOffset,
+				),
 			})
+			stemOffset = (stemOffset + MESSAGE_FLOW_STEM_STEP) % (MESSAGE_FLOW_STEM_STEP * 4)
 		}
 
 		// Flows sharing a gap get their own line inside it, so parallel runs do not
@@ -659,36 +797,29 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 			else perGap.set(run.gap, [run])
 		}
 
-		const crossingY = new Map<string, number>()
+		const endX = (points: BpmnWaypoint[]): number => points[points.length - 1]?.x ?? 0
 		for (const [index, list] of perGap) {
 			const gap = poolGaps[index]
-			list.sort((a, b) => Math.min(a.sx, a.tx) - Math.min(b.sx, b.tx))
+			if (!gap) continue
+			list.sort(
+				(a, b) =>
+					Math.min(endX(a.source), endX(a.target)) - Math.min(endX(b.source), endX(b.target)),
+			)
 			for (let i = 0; i < list.length; i++) {
 				const run = list[i]
 				if (!run) continue
-				crossingY.set(
-					run.id,
-					gap
-						? Math.round(gap.top + ((i + 1) * (gap.bottom - gap.top)) / (list.length + 1))
-						: Math.round((run.sy + run.ty) / 2),
-				)
+				// The gap is clear ground, so moving the crossing inside it cannot
+				// introduce a collision.
+				const y = Math.round(gap.top + ((i + 1) * (gap.bottom - gap.top)) / (list.length + 1))
+				const last = run.source[run.source.length - 1]
+				const lastTarget = run.target[run.target.length - 1]
+				if (last) last.y = y
+				if (lastTarget) lastTarget.y = y
 			}
 		}
 
 		for (const run of runs) {
-			const midY = crossingY.get(run.id) ?? Math.round((run.sy + run.ty) / 2)
-			const waypoints =
-				run.sx === run.tx
-					? [
-							{ x: run.sx, y: run.sy },
-							{ x: run.tx, y: run.ty },
-						]
-					: [
-							{ x: run.sx, y: run.sy },
-							{ x: run.sx, y: midY },
-							{ x: run.tx, y: midY },
-							{ x: run.tx, y: run.ty },
-						]
+			const waypoints = collapseCollinear([...run.source, ...[...run.target].reverse()])
 			allEdges.push({ id: `${run.id}_di`, bpmnElement: run.id, waypoints, unknownAttributes: {} })
 		}
 	}

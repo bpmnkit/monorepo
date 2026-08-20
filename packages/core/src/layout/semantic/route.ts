@@ -10,6 +10,10 @@ const ROUTING_MARGIN = 20
 const BOUNDARY_STEM = 20
 /** Shapes may be grazed by this much before a route counts as blocked. */
 const HIT_TOLERANCE = 2
+/** Crossings a direct route may make before a detour is considered instead. */
+const CROSSING_TOLERANCE = 0
+/** How many crossings going around has to save to be worth the extra bends. */
+const DETOUR_PENALTY = 0
 /** Vertical spacing between two detours sharing the same stretch of diagram. */
 const CORRIDOR_SPACING = 20
 /** How many lanes deep a corridor may stack before routes are allowed to share. */
@@ -22,6 +26,8 @@ interface RouteContext {
 	gutterX: Map<number, number>
 	/** Corridors already taken by detours, so parallel runs stack instead of merging. */
 	reserved: Array<{ left: number; right: number; y: number }>
+	/** Segments of the edges routed so far, to keep new routes off them. */
+	routed: Array<[Waypoint, Waypoint]>
 }
 
 function centre(b: Bounds): Waypoint {
@@ -43,7 +49,7 @@ export function routeFlows(
 	bandLayout: BandLayout,
 	gutterX: Map<number, number>,
 ): LayoutEdge[] {
-	const ctx: RouteContext = { graph, bounds, gutterX, reserved: [] }
+	const ctx: RouteContext = { graph, bounds, gutterX, reserved: [], routed: [] }
 	const routed = new Map<string, Waypoint[]>()
 	const pending: Array<{
 		flow: BpmnSequenceFlow
@@ -53,6 +59,8 @@ export function routeFlows(
 		targetRank: number | undefined
 		below: boolean
 		span: number
+		/** Best clear route found without a detour, if there was one. */
+		direct: { waypoints: Waypoint[]; crossings: number } | null
 	}> = []
 
 	for (const flow of flows) {
@@ -74,8 +82,8 @@ export function routeFlows(
 				: forwardCandidates(ctx, source, target, sourceRank, targetRank)
 
 		const clear = pick(direct, ctx, flow.sourceRef, flow.targetRef)
-		if (clear) {
-			routed.set(flow.id, clear)
+		if (clear && clear.crossings <= CROSSING_TOLERANCE) {
+			commit(ctx, routed, flow.id, clear.waypoints)
 			continue
 		}
 		pending.push({
@@ -86,6 +94,7 @@ export function routeFlows(
 			targetRank,
 			below: isBackEdge,
 			span: Math.abs(target.x - source.x),
+			direct: clear,
 		})
 	}
 
@@ -93,19 +102,21 @@ export function routeFlows(
 	// short ones instead of crossing them.
 	pending.sort((a, b) => b.span - a.span)
 	for (const item of pending) {
-		routed.set(
-			item.flow.id,
-			detour(
-				ctx,
-				item.source,
-				item.target,
-				item.sourceRank,
-				item.targetRank,
-				item.below,
-				item.flow.sourceRef,
-				item.flow.targetRef,
-			),
+		const around = detour(
+			ctx,
+			item.source,
+			item.target,
+			item.sourceRank,
+			item.targetRank,
+			item.below,
+			item.flow.sourceRef,
+			item.flow.targetRef,
 		)
+		// Going around costs bends and length, so it has to save more than one
+		// crossing to be worth taking.
+		const cost = crossingCount(around, ctx.routed) + DETOUR_PENALTY
+		const waypoints = item.direct && item.direct.crossings <= cost ? item.direct.waypoints : around
+		commit(ctx, routed, item.flow.id, waypoints)
 	}
 
 	// Emit in declaration order, whichever pass produced the route.
@@ -126,6 +137,21 @@ export function routeFlows(
 	return edges
 }
 
+/** Record a chosen route so later edges can steer around it. */
+function commit(
+	ctx: RouteContext,
+	routed: Map<string, Waypoint[]>,
+	id: string,
+	waypoints: Waypoint[],
+): void {
+	routed.set(id, waypoints)
+	for (let i = 0; i + 1 < waypoints.length; i++) {
+		const a = waypoints[i]
+		const b = waypoints[i + 1]
+		if (a && b) ctx.routed.push([a, b])
+	}
+}
+
 function hostOf(graph: SemanticGraph, eventId: string): string {
 	for (const [hostId, events] of graph.attachers) {
 		if (events.some((e) => e.id === eventId)) return hostId
@@ -139,17 +165,47 @@ function pick(
 	ctx: RouteContext,
 	sourceId: string,
 	targetId: string,
-): Waypoint[] | null {
+): { waypoints: Waypoint[]; crossings: number } | null {
 	const obstacles: Bounds[] = []
 	for (const [id, b] of ctx.bounds) {
 		if (id === sourceId || id === targetId) continue
 		// An expanded container legitimately holds its children's routes.
 		obstacles.push(b)
 	}
+	let best: { waypoints: Waypoint[]; crossings: number } | null = null
 	for (const candidate of candidates) {
-		if (!blocked(candidate, obstacles)) return candidate
+		if (blocked(candidate, obstacles)) continue
+		const crossings = crossingCount(candidate, ctx.routed)
+		if (crossings === 0) return { waypoints: candidate, crossings }
+		if (!best || crossings < best.crossings) best = { waypoints: candidate, crossings }
 	}
-	return null
+	return best
+}
+
+/** Proper intersection between two segments — touching endpoints do not count. */
+function intersects(p: Waypoint, q: Waypoint, r: Waypoint, t: Waypoint): boolean {
+	const side = (o: Waypoint, a: Waypoint, b: Waypoint): number =>
+		Math.sign((a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x))
+	return side(p, q, r) !== side(p, q, t) && side(r, t, p) !== side(r, t, q)
+}
+
+/** How many already-routed edges a candidate would cut across. */
+function crossingCount(waypoints: Waypoint[], routed: Array<[Waypoint, Waypoint]>): number {
+	let count = 0
+	for (let i = 0; i + 1 < waypoints.length; i++) {
+		const a = waypoints[i]
+		const b = waypoints[i + 1]
+		if (!a || !b) continue
+		for (const [c, d] of routed) if (intersects(a, b, c, d)) count++
+	}
+	return count
+}
+
+/** How many shapes a route passes through. */
+function hitCount(waypoints: Waypoint[], obstacles: Bounds[]): number {
+	let count = 0
+	for (const o of obstacles) if (blocked(waypoints, [o])) count++
+	return count
 }
 
 function blocked(waypoints: Waypoint[], obstacles: Bounds[]): boolean {
@@ -209,15 +265,18 @@ function forwardCandidates(
 
 	const down = to.y > from.y
 	const gutter = ctx.gutterX.get(targetRank ?? 0) ?? target.x - H_GAP / 2
-
-	return [
+	const behind =
+		sourceRank !== undefined
+			? (ctx.gutterX.get(sourceRank + 1) ?? source.x + source.width + H_GAP / 2)
+			: source.x + source.width + H_GAP / 2
+	const candidates: Waypoint[][] = [
 		// Branch: leave through the side facing the target band, then run in.
 		[
 			{ x: from.x, y: down ? source.y + source.height : source.y },
 			{ x: from.x, y: to.y },
 			{ x: target.x, y: to.y },
 		],
-		// Gutter turn: out of the right edge, across, then into the left edge.
+		// Gutter turn in front of the target: out of the right edge, across, in.
 		[
 			{ x: source.x + source.width, y: from.y },
 			{ x: gutter, y: from.y },
@@ -225,6 +284,20 @@ function forwardCandidates(
 			{ x: target.x, y: to.y },
 		],
 	]
+
+	// Turning in the gutter right behind the source instead reaches the target
+	// band early; which of the two crosses less depends on what is already
+	// routed, so both are offered.
+	if (Math.abs(behind - gutter) > 1) {
+		candidates.push([
+			{ x: source.x + source.width, y: from.y },
+			{ x: behind, y: from.y },
+			{ x: behind, y: to.y },
+			{ x: target.x, y: to.y },
+		])
+	}
+
+	return candidates
 }
 
 /** A boundary event leaves through its outward side, never into its host. */
@@ -329,7 +402,17 @@ function detour(
 		{ x: target.x, y: to.y },
 	]
 
-	return pick([straightOut, viaGutter], ctx, sourceId, targetId) ?? straightOut
+	const chosen = pick([straightOut, viaGutter], ctx, sourceId, targetId)
+	if (chosen) return chosen.waypoints
+
+	// Neither is clear: keep whichever grazes fewer shapes.
+	const obstacles: Bounds[] = []
+	for (const [id, b] of ctx.bounds) {
+		if (id !== sourceId && id !== targetId) obstacles.push(b)
+	}
+	return hitCount(straightOut, obstacles) <= hitCount(viaGutter, obstacles)
+		? straightOut
+		: viaGutter
 }
 
 /**
@@ -343,21 +426,30 @@ function reserve(
 	base: number,
 	direction: 1 | -1,
 ): number {
-	let y = base
-	for (let lane = 0; lane < CORRIDOR_LANES; lane++) {
-		const taken = ctx.reserved.some(
-			(r) => r.left < right && left < r.right && Math.abs(r.y - y) < CORRIDOR_SPACING,
-		)
-		const hitsShape = [...ctx.bounds.values()].some(
+	const hitsShape = (candidate: number): boolean =>
+		[...ctx.bounds.values()].some(
 			(b) =>
 				b.x + b.width > left &&
 				b.x < right &&
-				b.y - HIT_TOLERANCE < y &&
-				y < b.y + b.height + HIT_TOLERANCE,
+				b.y - HIT_TOLERANCE < candidate &&
+				candidate < b.y + b.height + HIT_TOLERANCE,
 		)
-		if (!taken && !hitsShape) break
+
+	let y = base
+	let free = base
+	for (let lane = 0; lane < CORRIDOR_LANES; lane++) {
+		if (!hitsShape(y)) {
+			free = y
+			const taken = ctx.reserved.some(
+				(r) => r.left < right && left < r.right && Math.abs(r.y - y) < CORRIDOR_SPACING,
+			)
+			if (!taken) break
+		}
 		y += direction * CORRIDOR_SPACING
 	}
+	// Sharing a corridor with another route is a lesser evil than running the
+	// route through a shape, so fall back to the last line that was clear.
+	if (hitsShape(y)) y = free
 	ctx.reserved.push({ left, right, y })
 	return y
 }
