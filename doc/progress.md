@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-08-20 — Routing: fewer crossings, fewer routes through shapes
+
+Third pass on layout, this time on the routing gap the previous entries kept flagging. Started by categorising every crossing and every route-through-shape across the 161 reference fixtures rather than guessing: message flows turned out to cause **56 of the 78** shape hits and 206 of the 493 crossings, and among sequence flows the dominant pattern was a long horizontal run along a band centre line being crossed by other edges' gutter risers.
+
+Three changes came out of that:
+
+- **Message-flow legs may jog** (`auto-layout.ts`). Each leg is checked over its own stretch — its end to the crossing band — rather than over the whole run, so a flow can slip past shapes on the far side of the band. When its column is blocked it leaves the element by a short stem and steps sideways to a column clear for the rest of the descent, the move a modeller makes by hand. Consecutive flows stagger their stems so parallel jogs do not share a line. Message flows through shapes: **56 → 16**.
+- **Routing is crossing-aware** (`semantic/route.ts`). Candidates that clear every shape are scored by how many already-routed edges they would cut across, cheapest wins, and a third candidate turns in the gutter behind the source instead of in front of the target.
+- **Detours are no longer penalised.** A detour previously had to save more than one crossing to be taken, which kept long skip edges on the band centre line where every riser crossed them. Removing that penalty lets them nest as stacked arcs above the flow — the canonical look — and cut sequence-flow crossings **286 → 174**, the single largest win of the pass.
+
+Totals over the corpus: **edge crossings 493 → 425**, **edges through unrelated shapes 78 → 49** (the original human DI in these files has 132; upstream alpha.2 has 13 and 200). Bends 734 → 822 and total edge length +2% are what pays for it. Mean runtime 0.6 ms → 1.0 ms against upstream's ~38 ms. DI stays complete (0 missing), lane placement stays exact (0/257 misplaced), 561 core + 76 canvas + 23 ascii tests pass.
+
+Four things were tried and reverted on the measurements, recorded so they are not retried: routing spine-first or shortest-first (sequence-flow crossings 260 → 282), jogging at the deepest clear point rather than a short stem (message-flow crossings 67 → 121), a rip-up-and-re-route pass (one crossing recovered over two rounds), and deeper corridor stacking (425 → 430).
+
+**What is left is placement, not routing.** The rip-up experiment is the evidence: re-scoring every edge against the finished picture recovered a single crossing, which means the remaining ones are not a choice the router is getting wrong — they follow from where the nodes are. Closing the rest of the distance to upstream needs the placement refinements skipped in the first pass: rank bays for detached alternatives, tighter band compaction, and letting nested joins of the same gateway type share a rank.
+
 ## 2026-08-20 — Auto-layout DI: black-box pools, sub-process planes
 
 Closed the two gaps the [`bpmn-auto-layout` evaluation](bpmn-auto-layout-evaluation.md) found in DI emission (`packages/core/src/bpmn/auto-layout.ts`); both were in the emitter, not the layout engine.

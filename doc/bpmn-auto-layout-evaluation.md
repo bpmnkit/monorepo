@@ -215,19 +215,27 @@ Measured on the same corpus, ours before → ours after (upstream for reference)
 | Deviation from the original DI | 348 px | 262 px | **227 px** |
 | Shape overlaps | 124 | 89 | **80** |
 | Diagram area (Mpx) | 150 | **133** | 140 |
-| Edges through unrelated shapes | 68 † | 78 | **13** |
-| Edge crossings | 275 † | 493 | **200** |
-| Mean runtime | 0.4 ms | **0.6 ms** | 24 ms |
+| Edges through unrelated shapes | 68 † | 49 | **13** |
+| Edge crossings | 275 † | 425 | **200** |
+| Edge bends | **650** † | 822 | 708 |
+| Mean runtime | **0.4 ms** | 1.0 ms | 38 ms |
 
 † Not comparable: the grid walk emitted no DI for black-box pools, so the message
 flows docking onto them were never drawn and could not cross anything. The
 semantic column draws the same connections upstream does.
 
-The correctness gap on lanes is closed and the output reads as BPMN — spine through the
-middle, exceptions below, escalations above. Our routing still crosses itself more than
-either the old walk or upstream, and our diagrams are looser than both; that is where the
-next pass should go (band compaction, and edge bundling where several routes share a
-corridor).
+The correctness gap on lanes is closed, DI is complete, and the output reads as BPMN — spine
+through the middle, exceptions below, escalations above, skip edges nesting as arcs over the
+flow.
+
+Routing has had its own pass since: message-flow legs may jog around a blocking shape,
+candidates are scored by how many routed edges they would cross, and detours are no longer
+penalised into never being chosen. That took crossings 493 → 425 and routes through shapes
+78 → 49. What remains is not the router's to fix — re-scoring every edge against the
+finished layout recovers a single crossing — it follows from placement. Closing the rest of
+the distance needs the placement refinements this port skipped: rank bays for detached
+alternatives, tighter band compaction, and nested joins of one gateway type sharing a
+rank.
 
 The other two gaps this evaluation found are closed too, in DI emission rather than in the
 engine: participants are walked in declaration order so a black-box pool keeps its band and
