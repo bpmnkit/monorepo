@@ -1,5 +1,19 @@
 # Progress
 
+## 2026-08-20 — Collaboration pipeline: pool ordering, alignment, endpoint resolution
+
+Ported the parts of [upstream's collaboration pipeline](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) that earn their place, in our own code (`packages/core/src/layout/collaboration/`), keeping our own pool stacking and message routing underneath.
+
+- **Pool ordering** (`ordering.ts`) — the vertical order now follows the message flows instead of the declaration order. The cost is the weighted vertical travel of every message, with drift from the declared order as the tie-break, so pools only move when there is something to gain. Exhaustive search up to eight pools, remove-and-reinsert refinement above that; both deterministic. **The single biggest win of this pass: message flows crossing each other 67 → 15, crossing sequence flows 171 → 120, total crossings 394 → 290.**
+- **Horizontal alignment** (`alignment.ts`) — each process now slides sideways as a unit so the elements it exchanges messages with line up vertically. The widest process anchors the diagram and the rest move to meet it, largest first; every connected message proposes the shift that would make it vertical and the cheapest wins. Pools grow by whatever their content moved, so nothing leaves its pool. Crossings 290 → 283, total edge length 447k → **435k** against upstream's 429k.
+- **Endpoint resolution** — an endpoint inside a collapsed sub-process has no shape on the root plane, so its message flow was being dropped, a hole opened by emitting collapsed sub-process planes. Endpoints now walk up to the nearest ancestor that is on the plane and dock there.
+
+Two things were written, measured, and **removed**: crossing-aware scoring of message routes against the edges already on the plane (283 → 285, message-to-message 11 → 13), and an empty-pool expansion pass (black boxes already take the width of the widest pool, and every dock sits at a content x inside that range, so it could never fire — its test stays as a guard on the invariant).
+
+Where the remaining message-flow crossings live, measured rather than guessed: **106 of our 116** are vertical message stems crossing sequence flows *inside* a pool, on their way from an element to the pool edge. Running the same breakdown over upstream's output shows **51** of the same kind — so the pattern is partly inherent to docking on an element mid-pool, and the difference is the density of horizontal sequence-flow runs our routing leaves in the way, not the collaboration assembly.
+
+Totals over the 161 fixtures: crossings **394 → 283** (upstream 200), routes through unrelated shapes 51 → **39** (upstream 13), edge length 494k → **435k** (upstream 429k), diagram area 140 Mpx (upstream 140), deviation from the reference DI 265 → **259 px** (upstream 227), mean runtime **1.0 ms** (upstream 38 ms). DI complete, lanes exact, flow-direction violations 8 against upstream's 7. 570 core + 76 canvas + 23 ascii tests pass.
+
 ## 2026-08-20 — Placement refinements, and what they were worth
 
 Fourth pass on layout, working through the three rank/band refinements in [upstream's contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) and measuring each one against the 161 reference fixtures before keeping it.

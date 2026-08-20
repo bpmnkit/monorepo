@@ -215,10 +215,11 @@ Measured on the same corpus, ours before → ours after (upstream for reference)
 | Deviation from the original DI | 348 px | 262 px | **227 px** |
 | Shape overlaps | 124 | 89 | **80** |
 | Diagram area (Mpx) | 150 | **133** | 140 |
-| Edges through unrelated shapes | 68 † | 51 | **13** |
-| Edge crossings | 275 † | 394 | **200** |
-| Edge bends | **650** † | 807 | 708 |
-| Mean runtime | **0.4 ms** | 1.1 ms | 40 ms |
+| Edges through unrelated shapes | 68 † | 39 | **13** |
+| Edge crossings | 275 † | 283 | **200** |
+| Edge bends | **650** † | 789 | 708 |
+| Total edge length | **398k** † | 435k | 429k |
+| Mean runtime | **0.4 ms** | 1.0 ms | 38 ms |
 
 † Not comparable: the grid walk emitted no DI for black-box pools, so the message
 flows docking onto them were never drawn and could not cross anything. The
@@ -238,11 +239,19 @@ bands already span at most 4 levels. The gains came instead from two gaps those 
 exposed: nodes no traversal reaches were being dropped onto the spine, and annotation
 placement never checked whether its own association line was clear (crossings 425 → 394).
 
-The remaining distance is not rank or band tuning. It is concentrated in message flows —
-171 of our 394 crossings are message flows against sequence flows, another 67 against each
-other — in dense multi-pool collaborations, which is exactly the part where we kept our own
-pool stacking instead of porting upstream's collaboration pipeline. That pipeline is what
-the next real gain would take, along with the latency it costs upstream.
+The collaboration pipeline has since been ported in part — pool ordering by message-flow
+relationships, and horizontal alignment of each process so its messages run straight down.
+That took message flows crossing each other from 67 to 11, crossings overall from 394 to
+283, and total edge length to within 1.5 % of upstream's, while keeping our own pool
+stacking and the 1 ms runtime.
+
+What is left is narrower than "collaborations" and now measured rather than assumed: 106 of
+our 116 remaining message-vs-sequence crossings are vertical stems crossing sequence flows
+*inside* a pool, between an element and the pool edge. The same breakdown over upstream's
+own output shows 51 of exactly that kind, so roughly half of ours is inherent to docking on
+an element mid-pool and the other half comes from how much horizontal sequence-flow traffic
+our routing leaves in the stem's way — a routing-density question inside the process, not a
+collaboration one.
 
 The other two gaps this evaluation found are closed too, in DI emission rather than in the
 engine: participants are walked in declaration order so a black-box pool keeps its band and
