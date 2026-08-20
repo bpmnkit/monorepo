@@ -939,28 +939,49 @@ describe("Message flow DI", () => {
 	})
 
 	it("misaligned source/target x renders a 4-point orthogonal edge through a shared mid-y corridor", () => {
-		const proc1 = participantProcess("proc1", [node("t1", "serviceTask")], [])
+		// Two message flows between the same pair of pools, whose element spacing
+		// differs: pool alignment can make one of them vertical, never both, so
+		// the other has to travel through the corridor between the pools.
+		const proc1 = participantProcess(
+			"proc1",
+			[node("a1", "serviceTask"), node("a2", "serviceTask")],
+			[flow("fa", "a1", "a2")],
+		)
 		const proc2 = participantProcess(
 			"proc2",
 			[node("s2", "startEvent"), node("t2", "serviceTask"), node("e2", "endEvent")],
 			[flow("f1", "s2", "t2"), flow("f2", "t2", "e2")],
 		)
-		const defs = collabDefs(proc1, proc2, [messageFlow("mf2", "t1", "e2")])
+		const defs = collabDefs(proc1, proc2, [
+			messageFlow("mf2", "a1", "s2"),
+			messageFlow("mf3", "a2", "e2"),
+		])
 		const result = applyAutoLayout(defs)
 		const diagram = result.diagrams[0]
 		if (!diagram) throw new Error("missing diagram")
-		const edge = diagram.plane.edges.find((e) => e.bpmnElement === "mf2")
-		if (!edge) throw new Error("missing message flow edge")
-		const srcShape = diagram.plane.shapes.find((s) => s.bpmnElement === "t1")
-		const tgtShape = diagram.plane.shapes.find((s) => s.bpmnElement === "e2")
-		if (!srcShape || !tgtShape) throw new Error("missing shapes")
-		const sx = srcShape.bounds.x + srcShape.bounds.width / 2
-		const tx = tgtShape.bounds.x + tgtShape.bounds.width / 2
+
+		const centreOf = (id: string): { x: number; bounds: BpmnBounds } => {
+			const shape = diagram.plane.shapes.find((s) => s.bpmnElement === id)
+			if (!shape) throw new Error(`missing shape ${id}`)
+			return { x: shape.bounds.x + shape.bounds.width / 2, bounds: shape.bounds }
+		}
+
+		const pairs = [
+			{ edge: "mf2", source: "a1", target: "s2" },
+			{ edge: "mf3", source: "a2", target: "e2" },
+		]
+		const misaligned = pairs.find((pair) => centreOf(pair.source).x !== centreOf(pair.target).x)
 		// precondition: this fixture must actually land on the misaligned-x branch
-		expect(sx).not.toBe(tx)
+		expect(misaligned).toBeDefined()
+		if (!misaligned) return
+
+		const edge = diagram.plane.edges.find((e) => e.bpmnElement === misaligned.edge)
+		if (!edge) throw new Error("missing message flow edge")
+		const src = centreOf(misaligned.source)
+		const tgt = centreOf(misaligned.target)
 		expect(edge.waypoints).toHaveLength(4)
-		expect(edge.waypoints[0]).toEqual({ x: sx, y: srcShape.bounds.y + srcShape.bounds.height })
-		expect(edge.waypoints[3]).toEqual({ x: tx, y: tgtShape.bounds.y })
+		expect(edge.waypoints[0]).toEqual({ x: src.x, y: src.bounds.y + src.bounds.height })
+		expect(edge.waypoints[3]).toEqual({ x: tgt.x, y: tgt.bounds.y })
 		expect(edge.waypoints[1]?.y).toBe(edge.waypoints[2]?.y)
 		assertOrthogonal(edge.waypoints)
 	})

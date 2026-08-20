@@ -1,9 +1,14 @@
 import { associationWaypoints, packAnnotations } from "../layout/annotations.js"
+import type { MessageLink } from "../layout/collaboration/alignment.js"
+import { alignPools } from "../layout/collaboration/alignment.js"
+import type { PoolLink } from "../layout/collaboration/ordering.js"
+import { orderPools } from "../layout/collaboration/ordering.js"
 import { collapseCollinear } from "../layout/grid/grid-router.js"
 import { layoutProcess } from "../layout/layout-engine.js"
 import type { Bounds, LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
 import type {
 	BpmnBounds,
+	BpmnCollaboration,
 	BpmnDefinitions,
 	BpmnDiEdge,
 	BpmnDiShape,
@@ -568,6 +573,90 @@ function messageFlowRoute(
  * - Handles plain processes (no collaboration) and collaborations with pools.
  * - When pools have lanes, lane shapes are tiled vertically around the process content.
  */
+/** Every element id in a collaboration mapped to the index of the pool holding it. */
+function poolOwners(defs: BpmnDefinitions, collab: BpmnCollaboration): Map<string, number> {
+	const owners = new Map<string, number>()
+	const processById = new Map(defs.processes.map((p) => [p.id, p]))
+
+	for (let index = 0; index < collab.participants.length; index++) {
+		const participant = collab.participants[index]
+		if (!participant) continue
+		owners.set(participant.id, index)
+		const process = participant.processRef ? processById.get(participant.processRef) : undefined
+		if (!process) continue
+
+		const walk = (elements: BpmnFlowElement[]): void => {
+			for (const element of elements) {
+				owners.set(element.id, index)
+				const container = element as unknown as { flowElements?: BpmnFlowElement[] }
+				if (container.flowElements?.length) walk(container.flowElements)
+			}
+		}
+		walk(process.flowElements)
+	}
+
+	return owners
+}
+
+/** Message flows collapsed into weighted pool-to-pool relationships. */
+function poolLinks(collab: BpmnCollaboration, owners: Map<string, number>): PoolLink[] {
+	const weights = new Map<string, PoolLink>()
+	for (const flow of collab.messageFlows) {
+		const from = owners.get(flow.sourceRef)
+		const to = owners.get(flow.targetRef)
+		if (from === undefined || to === undefined || from === to) continue
+		const key = from < to ? `${from}:${to}` : `${to}:${from}`
+		const existing = weights.get(key)
+		if (existing) existing.weight++
+		else weights.set(key, { from, to, weight: 1 })
+	}
+	return [...weights.values()]
+}
+
+/** Width of a laid-out process, ignoring where in space it happens to sit. */
+function contentWidth(layout: LayoutResult): number {
+	if (layout.nodes.length === 0) return 0
+	const { minX, maxX } = contentBbox(layout.nodes)
+	return maxX - minX
+}
+
+/**
+ * Message flows expressed as the x centres of the two elements they connect,
+ * measured inside each pool's own content so alignment can shift pools freely.
+ */
+function messageLinks(
+	collab: BpmnCollaboration | undefined,
+	pools: Array<{ participantId?: string; process?: BpmnProcess }>,
+	layouts: LayoutResult[],
+): MessageLink[] {
+	if (!collab) return []
+
+	const centres = new Map<string, { pool: number; x: number }>()
+	for (let index = 0; index < pools.length; index++) {
+		const layout = layouts[index]
+		const pool = pools[index]
+		if (!layout || !pool?.participantId || layout.nodes.length === 0) continue
+		const { minX } = contentBbox(layout.nodes)
+		const hasLanes = (pool.process?.laneSet?.lanes.length ?? 0) > 0
+		const elemX = POOL_HEADER + (hasLanes ? LANE_HEADER : 0) + PADDING
+		for (const node of layout.nodes) {
+			centres.set(node.id, {
+				pool: index,
+				x: elemX + node.bounds.x + node.bounds.width / 2 - minX,
+			})
+		}
+	}
+
+	const links: MessageLink[] = []
+	for (const flow of collab.messageFlows) {
+		const from = centres.get(flow.sourceRef)
+		const to = centres.get(flow.targetRef)
+		if (!from || !to || from.pool === to.pool) continue
+		links.push({ fromPool: from.pool, toPool: to.pool, fromX: from.x, toX: to.x })
+	}
+	return links
+}
+
 export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 	if (defs.processes.length === 0) return defs
 
@@ -592,11 +681,16 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 	const processById = new Map(defs.processes.map((p) => [p.id, p]))
 	const pools: Array<{ participantId?: string; process?: BpmnProcess }> = []
 	if (collab) {
-		for (const participant of collab.participants) {
-			pools.push({
-				participantId: participant.id,
-				process: participant.processRef ? processById.get(participant.processRef) : undefined,
-			})
+		const participantPools = collab.participants.map((participant) => ({
+			participantId: participant.id,
+			process: participant.processRef ? processById.get(participant.processRef) : undefined,
+		}))
+		// Pools that exchange messages read better next to each other, so the
+		// stack follows the message flows rather than the declaration order.
+		const order = orderPools(participantPools.length, poolLinks(collab, poolOwners(defs, collab)))
+		for (const index of order) {
+			const pool = participantPools[index]
+			if (pool) pools.push(pool)
 		}
 		for (const process of defs.processes) {
 			if (!processToParticipant.has(process.id)) pools.push({ process })
@@ -605,20 +699,32 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		for (const process of defs.processes) pools.push({ process })
 	}
 
+	// Lay every pool out first: alignment needs to see all of them before any
+	// geometry is committed.
+	const layouts = pools.map((pool) =>
+		pool.process ? layoutProcess(pool.process, "semantic", collapsed) : { nodes: [], edges: [] },
+	)
+	const alignment = alignPools(
+		pools.length,
+		layouts.map((layout) => contentWidth(layout)),
+		messageLinks(collab, pools, layouts),
+	)
+
 	/** Pools with nothing to draw; widened to match the others once all are placed. */
 	const blackBoxPools: BpmnDiShape[] = []
 	/** Root processes that are not the primary one, each on a plane of its own. */
 	const rootPlanes: Array<{ elementId: string; shapes: BpmnDiShape[]; edges: BpmnDiEdge[] }> = []
 	const primaryProcessId = defs.processes[0]?.id
 
-	for (const pool of pools) {
+	for (let poolIndex = 0; poolIndex < pools.length; poolIndex++) {
+		const pool = pools[poolIndex]
+		if (!pool) continue
 		const { participantId, process } = pool
 		const lanes = process?.laneSet?.lanes ?? []
 		const hasLanes = lanes.length > 0
 
-		const result: LayoutResult = process
-			? layoutProcess(process, "semantic", collapsed)
-			: { nodes: [], edges: [] }
+		const result: LayoutResult = layouts[poolIndex] ?? { nodes: [], edges: [] }
+		const alignDx = alignment[poolIndex] ?? 0
 
 		// A participant with no process, or one whose process has no flow nodes,
 		// is a black box: it still needs a pool of its own to dock message flows
@@ -677,7 +783,7 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		let dy: number
 		if (participantId) {
 			const elemX = POOL_HEADER + (hasLanes ? LANE_HEADER : 0) + PADDING
-			dx = elemX - minX
+			dx = elemX - minX + alignDx
 			dy = laneBands ? poolY - bandTop : poolY + PADDING - minY
 		} else {
 			dx = PADDING - minX
@@ -703,7 +809,7 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		}
 
 		if (participantId) {
-			const innerW = (hasLanes ? LANE_HEADER : 0) + contentW + 2 * PADDING
+			const innerW = (hasLanes ? LANE_HEADER : 0) + contentW + 2 * PADDING + alignDx
 			// Lanes must tile the pool exactly, so the pool takes their height.
 			const innerH = laneBands ? bandHeight : contentH + 2 * PADDING
 			const poolW = POOL_HEADER + innerW
