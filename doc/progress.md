@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-08-20 — Semantic layout engine in `@bpmnkit/core`
+
+Implemented the process-layout approach from [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) in our own code, following [their layout contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) rather than vendoring or depending on the package — `packages/core/src/layout/semantic/` (graph, bands, place, route, ~900 lines), no new runtime dependency, synchronous.
+
+`graph.ts` finds weakly connected components and their semantic starts, marks back edges by depth-first traversal, and assigns longest-path ranks (a boundary event's successors hang off its host, so a handler never precedes the activity it guards). `bands.ts` picks the spine one edge at a time — prefer a target that can still reach an end event, then the gateway default, then declaration order — and assigns the remaining branches to bands: error handlers below, escalation handlers above, alternatives alternating, with branches packed onto shared bands when their rank spans do not overlap. `place.ts` turns ranks into columns and bands into rows, separates same-cell collisions per component, applies lane membership (nested lane sets included), and docks boundary events on the host edge facing their handler. `route.ts` routes each edge by proposing candidates and taking the first that clears every unrelated shape.
+
+`layoutProcess()` takes an engine argument and defaults to `"semantic"`; `"grid"` keeps the old cell walk, which still serves `layoutFlowNodes()`. Lane DI now comes from the engine's bands, so lanes tile their pool exactly instead of being tiled proportionally around a lane-blind layout.
+
+Measured over the same 161 fixtures as the evaluation, against the original DI in each file: **elements outside their assigned lane 43/257 → 0/257**, flow-direction violations 9 → 7 (equal to upstream), shape overlaps 124 → 90 (upstream 80), edges through unrelated shapes 68 → 67 (upstream 13), edge crossings 275 → 364 (upstream 200), diagram area 150 → 180 Mpx (upstream 140), runtime unchanged at ~0.4 ms mean (upstream ~24 ms). So: the correctness gaps close and the layout reads as BPMN, but our routing still crosses more than either the old grid walk or upstream, and our diagrams are looser. 14 new tests in `packages/core/tests/semantic-layout.test.ts`; all 552 core tests pass.
+
+**Still open** from the evaluation: black-box pools get no DI (238 missing entries), and auto-layout still collapses collapsed-sub-process planes into one `BPMNDiagram`. Both live in `auto-layout.ts`, not the engine. Collaboration assembly (pool stacking, message flows) is unchanged — as agreed, we did not take on upstream's collaboration pipeline.
+
 ## 2026-08-20 — Evaluated `bpmn-auto-layout` 2.0.0-alpha.2 against our layout engine
 
 Upstream replaced its grid layouter with a semantic BPMN layout (TypeScript rewrite, collaboration/pool/message-flow/group/artifact support, `{ xml, warnings }` + `LayoutError` diagnostics, a CLI, Node >= 22). Benchmarked it against `packages/core/src/layout` over upstream's 161 test fixtures, scoring both engines against the original DI in each file: it deviates less from the human layout (227 px vs 348 px average, closer on 122/161), routes fewer edges through shapes (13 vs 68) and crosses fewer edges (200 vs 275), but is 20x-800x slower (p50 7 ms vs 0.3 ms; 1.8 s worst case on a 91-element, 8-pool collaboration).

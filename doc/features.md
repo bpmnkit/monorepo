@@ -1,5 +1,14 @@
 # Features
 
+## Semantic BPMN layout engine (2026-08-20)
+
+`@bpmnkit/core`'s auto-layout is now a **semantic** engine (`packages/core/src/layout/semantic/`) rather than a cell-grid walk. It follows the layout contract that [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) documents, reimplemented in our own code against our own AST — no new runtime dependency, and still fully synchronous.
+
+- **Ranks and semantic bands** — a primary path (spine) is picked one edge at a time, preferring edges that can still reach an end event and the gateway's default flow, so a dead-end alternative never becomes the main narrative. Branches take bands around it: error handlers below, escalation handlers above, plain alternatives alternating; branches whose rank spans do not overlap share a band.
+- **Lane membership is a placement constraint** — nodes are moved into the lane that claims them and lanes are sized to their content, nested lane sets included (a parent lane spans the lanes inside it). Lane bands come from the engine, so lanes tile their pool exactly. Previously lanes were ignored by placement and tiled proportionally afterwards, which put **43 of 257** lane-assigned elements in the wrong lane across the reference corpus; it is now **0 of 257**.
+- **Obstacle-aware orthogonal routing** — each edge proposes candidate routes and takes the first that clears every unrelated shape: a straight spine segment, a turn out of the source's top or bottom, a turn in the empty gutter in front of the target's column, then a corridor detour. Detours stack in separate corridor lanes, widest span outermost, and loops run underneath the flow they repeat.
+- **`layoutProcess(process, engine)`** selects `"semantic"` (default) or `"grid"`; the grid walk still backs `layoutFlowNodes()` for ascii, proxy and compact rendering.
+
 ## BPMN Kit Drop v2 — engaging landing + AI process review (2026-07-10)
 
 Second iteration of [BPMN Kit Drop](drop-v2-spec.md), shipped in `apps/drop`.

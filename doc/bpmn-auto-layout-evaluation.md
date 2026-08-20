@@ -189,3 +189,39 @@ theirs to add if asked.
 4. **Do nothing and re-check at 2.0 final.**
 
 1 and 2 are complementary and are what we would suggest doing; 3 stays open.
+
+## Outcome (2026-08-20)
+
+We took a variant of options 1 and 2: **implement their process-layout approach in our own
+code**, no dependency and no vendored source. `packages/core/src/layout/semantic/` (~900
+lines) follows the layout contract above — ranks, spine selection, semantic bands, lane
+membership as a placement constraint, obstacle-aware orthogonal routing — against our own
+AST, synchronously. `layoutProcess(process, engine)` defaults to it; the grid walk stays
+behind `"grid"` and still serves `layoutFlowNodes()`.
+
+Two things from the plan did **not** change, deliberately: collaboration assembly (pool
+stacking and message flows) is still ours, so we never take on the pipeline that costs
+upstream its latency tail; and the sync-patch route was not needed, since none of this is
+a dependency any more.
+
+Measured on the same corpus, ours before → ours after (upstream for reference):
+
+| | grid walk | semantic engine | `2.0.0-alpha.2` |
+|---|---|---|---|
+| Elements outside their assigned lane | 43 / 257 | **0 / 257** | 0 / 257 |
+| Flow-direction violations | 9 | **7** | 7 |
+| Shape overlaps | 124 | **90** | 80 |
+| Edges through unrelated shapes | 68 | 67 | **13** |
+| Edge crossings | **275** | 364 | 200 |
+| Diagram area (Mpx) | **150** | 180 | 140 |
+| Mean runtime | 0.4 ms | **0.4 ms** | 24 ms |
+
+The correctness gap on lanes is closed and the output reads as BPMN — spine through the
+middle, exceptions below, escalations above. Our routing still crosses itself more than
+either the old walk or upstream, and our diagrams are looser than both; that is where the
+next pass should go (band compaction, and edge bundling where several routes share a
+corridor).
+
+The other two gaps this evaluation found are untouched and still open, because both live in
+DI emission rather than in the engine: black-box pools get no DI at all, and every layout
+still collapses to a single `BPMNDiagram`, dropping collapsed-sub-process planes.
