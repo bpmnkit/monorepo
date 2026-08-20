@@ -107,4 +107,9 @@ export interface SubProcessChildResult {
 export interface LayoutResult {
 	nodes: LayoutNode[]
 	edges: LayoutEdge[]
+	/**
+	 * Lane bands in top-to-bottom order, when the engine placed nodes by lane
+	 * membership. Absent when the scope has no lanes.
+	 */
+	lanes?: Array<{ id: string; bounds: Bounds }>
 }

@@ -265,6 +265,10 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 
 		if (result.nodes.length === 0) continue
 
+		// The engine reports lane bands when it placed nodes by lane membership;
+		// they replace the proportional tiling below.
+		const engineLanes = result.lanes
+
 		// Pre-compute annotation positions in layout space so they're included in the bbox
 		const annBounds = packAnnotations(process, result.nodes)
 
@@ -272,13 +276,19 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		const contentW = maxX - minX
 		const contentH = maxY - minY
 
+		// Engine lane bands already stack the content vertically, so the pool
+		// aligns to the band space rather than to the content bounding box —
+		// otherwise the shapes drift out of the lanes drawn around them.
+		const laneBands = participantId && hasLanes ? engineLanes : undefined
+		const bandTop = laneBands?.[0]?.bounds.y ?? 0
+		const bandHeight = laneBands ? laneBands.reduce((sum, lane) => sum + lane.bounds.height, 0) : 0
+
 		let dx: number
 		let dy: number
 		if (participantId) {
 			const elemX = POOL_HEADER + (hasLanes ? LANE_HEADER : 0) + PADDING
-			const elemY = poolY + PADDING
 			dx = elemX - minX
-			dy = elemY - minY
+			dy = laneBands ? poolY - bandTop : poolY + PADDING - minY
 		} else {
 			dx = PADDING - minX
 			dy = PADDING - minY
@@ -290,7 +300,8 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 
 		if (participantId) {
 			const innerW = (hasLanes ? LANE_HEADER : 0) + contentW + 2 * PADDING
-			const innerH = contentH + 2 * PADDING
+			// Lanes must tile the pool exactly, so the pool takes their height.
+			const innerH = laneBands ? bandHeight : contentH + 2 * PADDING
 			const poolW = POOL_HEADER + innerW
 
 			allShapes.push({
@@ -302,16 +313,20 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 			})
 
 			if (hasLanes) {
-				const laneShapes = buildLaneShapes(
-					lanes,
-					result.nodes,
-					dx,
-					dy,
-					poolY,
-					POOL_HEADER,
-					innerW,
-					innerH,
-				)
+				const laneShapes = laneBands
+					? laneBands.map((lane) => ({
+							id: `${lane.id}_di`,
+							bpmnElement: lane.id,
+							isHorizontal: true,
+							bounds: {
+								x: Math.round(POOL_HEADER),
+								y: Math.round(lane.bounds.y + dy),
+								width: Math.round(innerW),
+								height: Math.round(lane.bounds.height),
+							},
+							unknownAttributes: {},
+						}))
+					: buildLaneShapes(lanes, result.nodes, dx, dy, poolY, POOL_HEADER, innerW, innerH)
 				allShapes.push(...laneShapes)
 			}
 
