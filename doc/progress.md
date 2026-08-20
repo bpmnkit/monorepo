@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-08-20 — Auto-layout DI: black-box pools, sub-process planes
+
+Closed the two gaps the [`bpmn-auto-layout` evaluation](bpmn-auto-layout-evaluation.md) found in DI emission (`packages/core/src/bpmn/auto-layout.ts`); both were in the emitter, not the layout engine.
+
+**Black-box pools.** `applyAutoLayout` walked `defs.processes`, so a participant whose `processRef` was missing or pointed at an empty process never got a shape — and its message flows went with it (238 missing DI entries across 19 of the 161 reference fixtures; those pools simply disappeared). It now walks `collab.participants` in declaration order, so a black-box participant keeps its place in the stack and gets a band of its own, widened to match the widest pool that has content. Processes no participant references follow after.
+
+**Sub-process planes.** Every layout collapsed into a single `BPMNPlane`, dropping the planes of collapsed sub-processes (43 across 23 fixtures) even though the canvas already supports drilldown. Collapsed scopes are now detected from the input DI — an explicit `isExpanded="false"`, or an existing plane for that element — passed to the engine so their contents stay out of the parent's geometry, and emitted as their own `BPMNDiagram`, reusing the input's diagram and plane ids. An empty collapsed scope keeps its (empty) plane rather than losing the drill-down target. Root processes beyond the first now get their own plane too, instead of being stacked at the origin on top of the first.
+
+Two smaller omissions fell out of the same pass: a process consisting only of text annotations emitted nothing at all, and associations between two ordinary elements (a data object and an activity) were skipped because the emitter only handled annotation associations.
+
+Message flows were re-routed to suit the new pools: a pool-side end docks under its counterpart so the flow drops straight instead of fanning into the pool's centre, vertical runs step sideways to miss shapes, and flows sharing a pool gap are spread across it.
+
+Over the same 161 fixtures: **missing DI 240 → 0** (upstream alpha.2 leaves 6), **sub-process planes dropped 43 → 0**, deviation from the original DI 375px → 262px (upstream 227px), diagram area 180 → 133 Mpx (upstream 140), shape overlaps 90 → 89 (upstream 80). 9 new tests in `packages/core/tests/auto-layout-di.test.ts`; 561 core tests, 76 canvas and 23 ascii all pass.
+
+Note when comparing edge metrics against earlier entries: those message flows were previously **not drawn at all**, so edge crossings (493) and edges through unrelated shapes (78) now count routes that simply did not exist in the old numbers. Against upstream, which draws the same set, we are at 493 crossings to their 200 and 78 shape hits to their 13 — the routing gap called out in the previous entry is unchanged and still the next thing to work on.
+
 ## 2026-08-20 — Semantic layout engine in `@bpmnkit/core`
 
 Implemented the process-layout approach from [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) in our own code, following [their layout contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) rather than vendoring or depending on the package — `packages/core/src/layout/semantic/` (graph, bands, place, route, ~900 lines), no new runtime dependency, synchronous.

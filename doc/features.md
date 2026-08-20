@@ -8,6 +8,7 @@
 - **Lane membership is a placement constraint** — nodes are moved into the lane that claims them and lanes are sized to their content, nested lane sets included (a parent lane spans the lanes inside it). Lane bands come from the engine, so lanes tile their pool exactly. Previously lanes were ignored by placement and tiled proportionally afterwards, which put **43 of 257** lane-assigned elements in the wrong lane across the reference corpus; it is now **0 of 257**.
 - **Obstacle-aware orthogonal routing** — each edge proposes candidate routes and takes the first that clears every unrelated shape: a straight spine segment, a turn out of the source's top or bottom, a turn in the empty gutter in front of the target's column, then a corridor detour. Detours stack in separate corridor lanes, widest span outermost, and loops run underneath the flow they repeat.
 - **`layoutProcess(process, engine)`** selects `"semantic"` (default) or `"grid"`; the grid walk still backs `layoutFlowNodes()` for ascii, proxy and compact rendering.
+- **Complete diagram interchange** — every participant gets a pool, black boxes included (a participant with no process still gets a band and its message flows are routed); collapsed sub-processes keep their own `BPMNDiagram` for drilldown instead of being flattened into the root plane; root processes beyond the first get a plane of their own. Across the reference corpus auto-layout now emits DI for **every** element, connection and plane.
 
 ## BPMN Kit Drop v2 — engaging landing + AI process review (2026-07-10)
 

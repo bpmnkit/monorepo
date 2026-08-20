@@ -208,13 +208,20 @@ Measured on the same corpus, ours before → ours after (upstream for reference)
 
 | | grid walk | semantic engine | `2.0.0-alpha.2` |
 |---|---|---|---|
+| Missing DI (shapes/edges) | 240 | **0** | 6 |
+| Sub-process planes dropped | 43 | **0** | 0 |
 | Elements outside their assigned lane | 43 / 257 | **0 / 257** | 0 / 257 |
 | Flow-direction violations | 9 | **7** | 7 |
-| Shape overlaps | 124 | **90** | 80 |
-| Edges through unrelated shapes | 68 | 67 | **13** |
-| Edge crossings | **275** | 364 | 200 |
-| Diagram area (Mpx) | **150** | 180 | 140 |
-| Mean runtime | 0.4 ms | **0.4 ms** | 24 ms |
+| Deviation from the original DI | 348 px | 262 px | **227 px** |
+| Shape overlaps | 124 | 89 | **80** |
+| Diagram area (Mpx) | 150 | **133** | 140 |
+| Edges through unrelated shapes | 68 † | 78 | **13** |
+| Edge crossings | 275 † | 493 | **200** |
+| Mean runtime | 0.4 ms | **0.6 ms** | 24 ms |
+
+† Not comparable: the grid walk emitted no DI for black-box pools, so the message
+flows docking onto them were never drawn and could not cross anything. The
+semantic column draws the same connections upstream does.
 
 The correctness gap on lanes is closed and the output reads as BPMN — spine through the
 middle, exceptions below, escalations above. Our routing still crosses itself more than
@@ -222,6 +229,9 @@ either the old walk or upstream, and our diagrams are looser than both; that is 
 next pass should go (band compaction, and edge bundling where several routes share a
 corridor).
 
-The other two gaps this evaluation found are untouched and still open, because both live in
-DI emission rather than in the engine: black-box pools get no DI at all, and every layout
-still collapses to a single `BPMNDiagram`, dropping collapsed-sub-process planes.
+The other two gaps this evaluation found are closed too, in DI emission rather than in the
+engine: participants are walked in declaration order so a black-box pool keeps its band and
+its message flows, and collapsed sub-processes keep their own `BPMNDiagram` for drilldown.
+Auto-layout now emits DI for every element, connection and plane in the corpus — six fewer
+omissions than upstream, which leaves the non-visual `bpmn:DataObject` and unrelated input
+planes alone by design.
