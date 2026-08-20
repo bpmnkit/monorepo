@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-08-20 — Placement refinements, and what they were worth
+
+Fourth pass on layout, working through the three rank/band refinements in [upstream's contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) and measuring each one against the 161 reference fixtures before keeping it.
+
+- **Nested joins of one gateway type share a rank** and connect vertically; different types keep their forward step (`semantic/graph.ts`, zero-weight edges in the longest-path relaxation). Faithful to the contract, but the pattern occurs **6 times** in the whole corpus, so it moves no aggregate number. Kept for the geometry it produces on those cases, with tests. A looser reading — any same-type gateway feeding a join — fired 39 times and was **worse** (crossings 426 → 432, flow-direction violations 7 → 12), because a split and its join sharing a rank turns the flow vertical.
+- **Boundary-handler branches reserve their full span**, out to the rank they rejoin at rather than only the ranks their own nodes occupy, so nothing claims the band the handler's last edge still travels along. Metric-neutral, contract-correct.
+- **Band compaction had nothing to gain.** Measured first: bands span at most 4 levels across the corpus (1699 nodes on the spine, 322 at ±1, 62 at ±2, 8 at ±3), and repacking intervals by start rank instead of by depth changed no metric while costing a flow-direction violation. Left alone.
+
+What did move the numbers were two gaps the measurements turned up on the way:
+
+- **Unreached nodes were dropped onto the spine.** A node no traversal claims — a scope entered only through a loop, say — was assigned band 0, landing on whatever already occupied its rank and then being shoved aside by same-cell separation, off any band at all. It now takes a free band next to whatever it connects to. **Sequence-flow crossings 174 → 145.**
+- **Annotation placement never checked its own association line.** The packer confirmed the box was clear of shapes but not the line drawn back to the element, so associations cut straight through activities. Candidates whose line crosses a shape are now heavily penalised. **Association routes through shapes 13 → 5**, below the 7 they started this pass at.
+
+Totals over the corpus: **edge crossings 425 → 394** and, by connection kind, sequence-flow crossings 174 → 145. Routes through unrelated shapes are 39 counted by connection kind, 51 by the plane-based count. DI stays complete (0 missing), lane placement stays exact (0/257), flow-direction violations are 8 against upstream's 7 — five of the six affected fixtures match upstream exactly. 564 core + 76 canvas + 23 ascii tests pass.
+
+**Where this leaves us against upstream** (crossings 394 vs 200, shape routes 51 vs 13): the diagnosis is no longer "placement is loose". Bands are tight, collisions are rare, and the remaining crossings are dominated by message flows (171 of 394 against sequence flows, 67 against each other) in dense multi-pool collaborations — the one area where we deliberately kept our own simple pool stacking rather than porting upstream's collaboration pipeline. That pipeline, not more rank or band tuning, is what the next real gain would take.
+
 ## 2026-08-20 — Routing: fewer crossings, fewer routes through shapes
 
 Third pass on layout, this time on the routing gap the previous entries kept flagging. Started by categorising every crossing and every route-through-shape across the 161 reference fixtures rather than guessing: message flows turned out to cause **56 of the 78** shape hits and 206 of the 493 crossings, and among sequence flows the dominant pattern was a long horizontal run along a band centre line being crossed by other edges' gutter risers.

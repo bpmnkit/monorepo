@@ -215,10 +215,10 @@ Measured on the same corpus, ours before → ours after (upstream for reference)
 | Deviation from the original DI | 348 px | 262 px | **227 px** |
 | Shape overlaps | 124 | 89 | **80** |
 | Diagram area (Mpx) | 150 | **133** | 140 |
-| Edges through unrelated shapes | 68 † | 49 | **13** |
-| Edge crossings | 275 † | 425 | **200** |
-| Edge bends | **650** † | 822 | 708 |
-| Mean runtime | **0.4 ms** | 1.0 ms | 38 ms |
+| Edges through unrelated shapes | 68 † | 51 | **13** |
+| Edge crossings | 275 † | 394 | **200** |
+| Edge bends | **650** † | 807 | 708 |
+| Mean runtime | **0.4 ms** | 1.1 ms | 40 ms |
 
 † Not comparable: the grid walk emitted no DI for black-box pools, so the message
 flows docking onto them were never drawn and could not cross anything. The
@@ -228,14 +228,21 @@ The correctness gap on lanes is closed, DI is complete, and the output reads as 
 through the middle, exceptions below, escalations above, skip edges nesting as arcs over the
 flow.
 
-Routing has had its own pass since: message-flow legs may jog around a blocking shape,
-candidates are scored by how many routed edges they would cross, and detours are no longer
-penalised into never being chosen. That took crossings 493 → 425 and routes through shapes
-78 → 49. What remains is not the router's to fix — re-scoring every edge against the
-finished layout recovers a single crossing — it follows from placement. Closing the rest of
-the distance needs the placement refinements this port skipped: rank bays for detached
-alternatives, tighter band compaction, and nested joins of one gateway type sharing a
-rank.
+Routing and placement have each had a pass since. Routing: message-flow legs may jog around
+a blocking shape, candidates are scored by how many routed edges they would cross, and
+detours are no longer penalised into never being chosen (crossings 493 → 425, routes through
+shapes 78 → 49). Placement: the three rank and band refinements from the contract above were
+each implemented and measured — nested joins sharing a rank occurs 6 times in the corpus,
+handler-span reservation is metric-neutral, and band compaction had nothing to gain, since
+bands already span at most 4 levels. The gains came instead from two gaps those measurements
+exposed: nodes no traversal reaches were being dropped onto the spine, and annotation
+placement never checked whether its own association line was clear (crossings 425 → 394).
+
+The remaining distance is not rank or band tuning. It is concentrated in message flows —
+171 of our 394 crossings are message flows against sequence flows, another 67 against each
+other — in dense multi-pool collaborations, which is exactly the part where we kept our own
+pool stacking instead of porting upstream's collaboration pipeline. That pipeline is what
+the next real gain would take, along with the latency it costs upstream.
 
 The other two gaps this evaluation found are closed too, in DI emission rather than in the
 engine: participants are walked in declaration order so a black-box pool keeps its band and
