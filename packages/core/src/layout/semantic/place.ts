@@ -120,9 +120,18 @@ function separateSameCell(
 	bandLayout: BandLayout,
 	bounds: Map<string, Bounds>,
 ): void {
+	const componentOf = new Map<string, number>()
+	for (let i = 0; i < graph.components.length; i++) {
+		for (const id of graph.components[i] ?? []) componentOf.set(id, i)
+	}
+
+	// Scoped per component: components occupy their own vertical space already,
+	// so two nodes sharing a rank and band across components do not collide.
 	const cells = new Map<string, string[]>()
 	for (const node of graph.nodes) {
-		const key = `${graph.ranks.get(node.id) ?? 0}:${bandLayout.bands.get(node.id) ?? 0}`
+		const rank = graph.ranks.get(node.id) ?? 0
+		const band = bandLayout.bands.get(node.id) ?? 0
+		const key = `${componentOf.get(node.id) ?? 0}:${rank}:${band}`
 		const list = cells.get(key)
 		if (list) list.push(node.id)
 		else cells.set(key, [node.id])

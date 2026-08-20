@@ -10,12 +10,18 @@ const ROUTING_MARGIN = 20
 const BOUNDARY_STEM = 20
 /** Shapes may be grazed by this much before a route counts as blocked. */
 const HIT_TOLERANCE = 2
+/** Vertical spacing between two detours sharing the same stretch of diagram. */
+const CORRIDOR_SPACING = 20
+/** How many lanes deep a corridor may stack before routes are allowed to share. */
+const CORRIDOR_LANES = 4
 
 interface RouteContext {
 	graph: SemanticGraph
 	bounds: Map<string, Bounds>
 	/** Mid-x of the clear gutter in front of each rank. */
 	gutterX: Map<number, number>
+	/** Corridors already taken by detours, so parallel runs stack instead of merging. */
+	reserved: Array<{ left: number; right: number; y: number }>
 }
 
 function centre(b: Bounds): Waypoint {
@@ -37,8 +43,17 @@ export function routeFlows(
 	bandLayout: BandLayout,
 	gutterX: Map<number, number>,
 ): LayoutEdge[] {
-	const ctx: RouteContext = { graph, bounds, gutterX }
-	const edges: LayoutEdge[] = []
+	const ctx: RouteContext = { graph, bounds, gutterX, reserved: [] }
+	const routed = new Map<string, Waypoint[]>()
+	const pending: Array<{
+		flow: BpmnSequenceFlow
+		source: Bounds
+		target: Bounds
+		sourceRank: number | undefined
+		targetRank: number | undefined
+		below: boolean
+		span: number
+	}> = []
 
 	for (const flow of flows) {
 		const source = bounds.get(flow.sourceRef)
@@ -50,15 +65,54 @@ export function routeFlows(
 			fromBoundary ? hostOf(graph, flow.sourceRef) : flow.sourceRef,
 		)
 		const targetRank = graph.ranks.get(flow.targetRef)
+		const isBackEdge = graph.backEdges.has(flow.id)
 
-		const candidates = graph.backEdges.has(flow.id)
-			? [detour(ctx, source, target, sourceRank, targetRank, true)]
+		const direct = isBackEdge
+			? []
 			: fromBoundary
 				? fromBoundaryCandidates(ctx, source, target, targetRank)
 				: forwardCandidates(ctx, source, target, sourceRank, targetRank)
 
-		const waypoints = pick(candidates, ctx, flow.sourceRef, flow.targetRef)
+		const clear = pick(direct, ctx, flow.sourceRef, flow.targetRef)
+		if (clear) {
+			routed.set(flow.id, clear)
+			continue
+		}
+		pending.push({
+			flow,
+			source,
+			target,
+			sourceRank,
+			targetRank,
+			below: isBackEdge,
+			span: Math.abs(target.x - source.x),
+		})
+	}
 
+	// Widest detours claim the outermost corridors, so long routes nest around
+	// short ones instead of crossing them.
+	pending.sort((a, b) => b.span - a.span)
+	for (const item of pending) {
+		routed.set(
+			item.flow.id,
+			detour(
+				ctx,
+				item.source,
+				item.target,
+				item.sourceRank,
+				item.targetRank,
+				item.below,
+				item.flow.sourceRef,
+				item.flow.targetRef,
+			),
+		)
+	}
+
+	// Emit in declaration order, whichever pass produced the route.
+	const edges: LayoutEdge[] = []
+	for (const flow of flows) {
+		const waypoints = routed.get(flow.id)
+		if (!waypoints) continue
 		const edge: LayoutEdge = {
 			id: flow.id,
 			sourceRef: flow.sourceRef,
@@ -85,7 +139,7 @@ function pick(
 	ctx: RouteContext,
 	sourceId: string,
 	targetId: string,
-): Waypoint[] {
+): Waypoint[] | null {
 	const obstacles: Bounds[] = []
 	for (const [id, b] of ctx.bounds) {
 		if (id === sourceId || id === targetId) continue
@@ -95,7 +149,7 @@ function pick(
 	for (const candidate of candidates) {
 		if (!blocked(candidate, obstacles)) return candidate
 	}
-	return candidates[candidates.length - 1] ?? []
+	return null
 }
 
 function blocked(waypoints: Waypoint[], obstacles: Bounds[]): boolean {
@@ -137,7 +191,6 @@ function forwardCandidates(
 				{ x: source.x + source.width, y: from.y },
 				{ x: target.x, y: to.y },
 			],
-			detour(ctx, source, target, sourceRank, targetRank),
 		]
 	}
 
@@ -149,11 +202,10 @@ function forwardCandidates(
 				{ x: from.x, y: down ? source.y + source.height : source.y },
 				{ x: to.x, y: down ? target.y : target.y + target.height },
 			],
-			detour(ctx, source, target, sourceRank, targetRank),
 		]
 	}
 
-	if (!rightOf) return [detour(ctx, source, target, sourceRank, targetRank)]
+	if (!rightOf) return []
 
 	const down = to.y > from.y
 	const gutter = ctx.gutterX.get(targetRank ?? 0) ?? target.x - H_GAP / 2
@@ -172,8 +224,6 @@ function forwardCandidates(
 			{ x: gutter, y: to.y },
 			{ x: target.x, y: to.y },
 		],
-		// Last resort: around the outside, below everything in between.
-		detour(ctx, source, target, sourceRank, targetRank),
 	]
 }
 
@@ -241,6 +291,8 @@ function detour(
 	targetRank: number | undefined,
 	/** Loops read as loops only when they run underneath the flow they repeat. */
 	below = false,
+	sourceId = "",
+	targetId = "",
 ): Waypoint[] {
 	const from = centre(source)
 	const to = centre(target)
@@ -249,16 +301,26 @@ function detour(
 			? (ctx.gutterX.get(sourceRank + 1) ?? source.x + source.width + H_GAP / 2)
 			: source.x + source.width + H_GAP / 2
 	const riseX = ctx.gutterX.get(targetRank ?? 0) ?? target.x - H_GAP / 2
+	const left = Math.min(dropX, riseX, from.x, to.x)
+	const right = Math.max(dropX, riseX, from.x, to.x)
 	const floor = below ? Math.max(source.y + source.height, target.y + target.height) : undefined
-	const corridorY = corridor(
-		ctx,
-		Math.min(dropX, riseX),
-		Math.max(dropX, riseX),
-		(from.y + to.y) / 2,
-		floor,
-	)
+	const base = corridor(ctx, left, right, (from.y + to.y) / 2, floor)
+	const goesDown = base > (from.y + to.y) / 2
+	const corridorY = reserve(ctx, left, right, base, goesDown ? 1 : -1)
 
-	return [
+	const exitY = goesDown ? source.y + source.height : source.y
+	const entryY = goesDown ? target.y + target.height : target.y
+
+	// Leaving through the source's own top or bottom keeps the route out of the
+	// horizontal corridor its neighbours flow along; the gutter variant is the
+	// fallback for when that vertical is occupied.
+	const straightOut: Waypoint[] = [
+		{ x: from.x, y: exitY },
+		{ x: from.x, y: corridorY },
+		{ x: to.x, y: corridorY },
+		{ x: to.x, y: entryY },
+	]
+	const viaGutter: Waypoint[] = [
 		{ x: source.x + source.width, y: from.y },
 		{ x: dropX, y: from.y },
 		{ x: dropX, y: corridorY },
@@ -266,6 +328,38 @@ function detour(
 		{ x: riseX, y: to.y },
 		{ x: target.x, y: to.y },
 	]
+
+	return pick([straightOut, viaGutter], ctx, sourceId, targetId) ?? straightOut
+}
+
+/**
+ * Keep parallel detours apart: step away from the flow until this stretch of
+ * corridor is free, so two long routes stack instead of merging into one line.
+ */
+function reserve(
+	ctx: RouteContext,
+	left: number,
+	right: number,
+	base: number,
+	direction: 1 | -1,
+): number {
+	let y = base
+	for (let lane = 0; lane < CORRIDOR_LANES; lane++) {
+		const taken = ctx.reserved.some(
+			(r) => r.left < right && left < r.right && Math.abs(r.y - y) < CORRIDOR_SPACING,
+		)
+		const hitsShape = [...ctx.bounds.values()].some(
+			(b) =>
+				b.x + b.width > left &&
+				b.x < right &&
+				b.y - HIT_TOLERANCE < y &&
+				y < b.y + b.height + HIT_TOLERANCE,
+		)
+		if (!taken && !hitsShape) break
+		y += direction * CORRIDOR_SPACING
+	}
+	ctx.reserved.push({ left, right, y })
+	return y
 }
 
 /**
