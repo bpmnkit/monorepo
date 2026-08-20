@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-08-20 — Evaluated `bpmn-auto-layout` 2.0.0-alpha.2 against our layout engine
+
+Upstream replaced its grid layouter with a semantic BPMN layout (TypeScript rewrite, collaboration/pool/message-flow/group/artifact support, `{ xml, warnings }` + `LayoutError` diagnostics, a CLI, Node >= 22). Benchmarked it against `packages/core/src/layout` over upstream's 161 test fixtures, scoring both engines against the original DI in each file: it deviates less from the human layout (227 px vs 348 px average, closer on 122/161), routes fewer edges through shapes (13 vs 68) and crosses fewer edges (200 vs 275), but is 20x-800x slower (p50 7 ms vs 0.3 ms; 1.8 s worst case on a 91-element, 8-pool collaboration).
+
+The benchmark also surfaced three correctness bugs in **our** engine: lanes are ignored entirely (43 of 257 lane-assigned elements land in the wrong lane; `packages/core/src/layout/` has no lane logic), black-box pools and their message flows get no DI at all (238 missing entries across 19 fixtures), and every layout collapses to a single `BPMNDiagram`, dropping collapsed sub-process planes (43 planes over 23 fixtures) that the canvas already knows how to drill into.
+
+Integration is possible but not drop-in: `layoutProcess` is async and XML-only (no model entry point), while all our call sites — including the public `Bpmn.autoLayout()`, `builder.build()`, `compilePlan()`, `mergePlan()` — are synchronous, and it adds 45 KB gzipped plus `bpmn-moddle` to packages that are currently dependency-free. Extension preservation is clean: round-tripping 161 fixtures dropped no `zeebe:`/`camunda:` element or attribute, and it accepts our `Bpmn.export()` output unchanged. Written up in [`doc/bpmn-auto-layout-evaluation.md`](bpmn-auto-layout-evaluation.md) with options; no code changed.
+
 ## 2026-07-12 — Deploy Drop workflow: dedicated Cloudflare API token secret
 
 The `Deploy Drop` workflow failed at "Apply D1 migrations" with Cloudflare error 7403 (`The given account is not valid or is not authorized to access this service`) — the shared `CLOUDFLARE_API_TOKEN` lacks D1 access. Switched both wrangler steps in [`deploy-drop.yml`](../.github/workflows/deploy-drop.yml) to a dedicated `CLOUDFLARE_DROP_API_TOKEN` repo secret, scoped to exactly what this workflow needs: Account → D1 → Edit, Account → Workers Scripts → Edit, Zone (bpmnkit.com) → Workers Routes → Edit. `CLOUDFLARE_ACCOUNT_ID` stays shared. The secret must be created in the Cloudflare dashboard and added to the repo before the workflow can pass.

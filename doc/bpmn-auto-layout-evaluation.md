@@ -1,0 +1,154 @@
+# `bpmn-auto-layout` 2.0.0-alpha.2 — evaluation for bpmnkit
+
+_2026-08-20 · evaluated against `packages/core/src/layout` (the grid engine behind `applyAutoLayout`)_
+
+## Verdict
+
+The upstream rewrite is real and it is better than our engine on every layout-quality
+measurement we can make. It fixes two things our engine gets **wrong**, not merely
+suboptimal: lane membership and black-box pools. It is not a drop-in replacement — the
+API is async and XML-string based, ours is sync and model based — and the worst-case
+runtime (~1.8 s on a 91-element collaboration) rules it out for the synchronous
+browser paths without a worker.
+
+Recommendation: **do not swap the engine wholesale today.** Adopt it where async is
+already fine (CLI, proxy, plan compile/merge) behind a flag, keep the grid engine as the
+sync default for canvas/editor, and re-evaluate when 2.0 goes stable. Independently, fix
+the three correctness gaps the benchmark exposed in our own engine — they are ours to fix
+regardless of what we do about the dependency.
+
+## What changed upstream
+
+`1.3.0` (2026-03-11) → `2.0.0-alpha.0/1/2` (2026-07-22 … 07-24). It is a rewrite, not an
+increment:
+
+- **The grid layouter is gone.** 2.0 is a "semantic BPMN layout" — a constrained layered
+  algorithm with ranks for left-to-right progress, *semantic bands* for vertical narrative
+  role (happy path in the middle, exception paths below), recursive container layout, and
+  a separate orthogonal routing pass. Documented as a layout contract in
+  [`docs/LAYOUT.md`](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md).
+  Layout is deterministic: declaration order breaks ties, so the same input is byte-identical
+  on every run.
+- **Collaboration support.** Pools (including empty/black-box ones), message flows, groups,
+  artifacts, data associations.
+- **Diagnostics.** `layoutProcess` now resolves `{ xml, warnings }` (breaking) with
+  `LayoutWarning { name, code, elementId, relatedElementIds }` — observed codes
+  `GROUP_MEMBERS_NOT_FOUND`, `DI_NOT_CREATED` — and rejects unlayoutable input with a
+  coded `LayoutError` instead of emitting misleading geometry.
+- **Source is TypeScript now** (~15k LOC), 161 fixtures, snapshot + metrics-baseline tests.
+- **A CLI**: `npx bpmn-auto-layout diagram.bpmn [--output … | --stdout]`.
+- **Node ≥ 22** on `main` (the published alpha.2 still declares `engines: node >= 18`,
+  but the README already says 22.12 — the `package.json` field is stale).
+
+Still a **pre-release**: `dist-tags.latest` is `1.3.0`, `next` is the alpha. Only three
+exports — `layoutProcess`, `LayoutError`, `LayoutWarning`.
+
+## How it compares to our engine — measured
+
+Corpus: upstream's 161 test fixtures (Camunda blueprints, 8-tutorials,
+consulting diagrams, plus synthetic per-feature cases). 158 ship the **original**
+hand/tool-made DI, which serves as the reference layout. Both engines were run on the
+same input; results were parsed back with `Bpmn.parse` and compared with our own
+`compareLayouts` / `checkDiCompleteness`. Scripts are not committed — they live in the
+session scratchpad; the numbers below are reproducible from the fixture set.
+
+| | bpmnkit grid engine | `2.0.0-alpha.2` |
+|---|---|---|
+| Failures / throws | 0 / 161 | 0 / 161 |
+| Avg deviation from reference DI | 348 px | **227 px** |
+| Closer to the reference layout | 39 fixtures | **122 fixtures** |
+| Flow-direction violations | 9 | **7** |
+| Incomplete DI (missing shapes/edges) | **240** | 6 |
+| Elements outside their assigned lane | **43 / 257** | **0 / 257** |
+| Sub-process planes dropped | **43** (23 fixtures) | 0 |
+| Edges routed through unrelated shapes | 68 | **13** |
+| Edge crossings | 275 | **200** |
+| Median / p90 / max runtime | **0.3 / 0.7 / 3.2 ms** | 7 / 78 / **1947 ms** |
+
+Three of those rows are correctness bugs in *our* engine, and they are the interesting
+result of this evaluation:
+
+1. **Lanes are ignored.** `packages/core/src/layout/` contains no lane logic at all — the
+   grid engine lays the process out as if lanes did not exist, and `auto-layout.ts` then
+   tiles lane bands proportionally over the result. 17 % of lane-assigned elements end up
+   in the wrong lane. On `lane.skipping-lanes.bpmn` we render one straight row through
+   three lanes; upstream places each task in its own lane and routes vertically between
+   them.
+2. **Black-box pools get no DI.** `applyAutoLayout` skips participants whose `processRef`
+   is missing or empty, and their message flows with them — 238 of our 240 missing DI
+   entries, across 19 fixtures. Those pools silently disappear from the diagram.
+3. **Sub-process planes are flattened.** We always emit exactly one `BPMNDiagram`, so a
+   file with collapsed sub-process planes loses them (43 planes over 23 fixtures) and its
+   contents get squashed into the root plane's coordinate space. Note the canvas already
+   *supports* multi-plane drilldown (`doc/render-gap-analysis.md`, P0-1) — auto-layout is
+   what destroys it.
+
+The remaining 6 "incomplete DI" entries on the upstream side are not defects: 3 are
+non-visual `bpmn:DataObject` elements that our completeness checker counts but which never
+carry DI, and 3 belong to a second, unrelated plane in inputs that declare two — upstream
+lays out the selected root only.
+
+Caveats on these numbers: the corpus is upstream's own, chosen to cover what upstream
+handles, so it is not neutral ground. "Deviation from reference DI" measures similarity to
+the original human layout, which is a proxy for quality, not quality itself. The
+overlap/crossing counts only cover DI each engine actually emitted, which flatters us —
+shapes we never place cannot be overlapped.
+
+## Integration assessment
+
+### What works out of the box
+
+- **Our XML is accepted.** `Bpmn.export()` output from all four repo samples
+  (`bpmn-samples/*`, `apps/landing/diagram.bpmn`, the eval-generation base) laid out with
+  zero warnings and complete DI.
+- **Its XML is accepted by us.** `Bpmn.parse` round-trips all 161 outputs.
+- **Extensions survive.** Round-tripping 161 fixtures through `bpmn-moddle` dropped no
+  `zeebe:` or `camunda:` element or attribute. The only losses are the `bioc:`/`color:`
+  namespace declarations, which exist solely for the DI that layout regenerates anyway.
+- **Same replace-everything semantics** as `applyAutoLayout`: existing coordinates are
+  discarded, so the editor's "Auto-layout" command and the canvas' `layoutMissingDi: "all"`
+  path would behave as they do today.
+- MIT, same license posture as ours.
+
+### What blocks a drop-in swap
+
+- **Async, XML-only API.** `layoutProcess(xml): Promise<{ xml, warnings }>` is the entire
+  surface — there is no way to hand it a parsed model. Every one of our call sites is
+  synchronous and model-based, and four of them are public API:
+  `Bpmn.autoLayout()`, `builder.build()`, `compilePlan()`, `mergePlan()`, plus
+  `BpmnCanvas.load()`'s render path, the editor's undoable command, and
+  `apps/proxy/sdk-code-mode`. Adopting it in core means making those async — a breaking
+  change for `@bpmnkit/core` consumers — and paying a model → XML → moddle → XML → model
+  double round-trip on every layout.
+- **Latency tail.** 1.8 s (measured five times, stable) on `process.application-processing.bpmn`
+  — 91 elements, 8 pools. Our engine does it in 2.2 ms. Upstream's own README says layout
+  is CPU-bound and recommends a Web Worker; that is not something the canvas' synchronous
+  `load()` can accommodate without a real restructure.
+- **Browser weight.** 153 KB minified / 45 KB gzipped bundled with its `bpmn-moddle` +
+  `min-dash` deps. `@bpmnkit/core` today has zero runtime dependencies and
+  `@bpmnkit/canvas`/`editor` inherit that; "zero runtime dependencies" is listed in
+  `doc/render-gap-analysis.md` as a position we hold *against* bpmn.io.
+- **No type declarations.** The published `files` are `bin` + `dist`, and `dist` has no
+  `.d.ts` — we would hand-write an ambient declaration to keep strict mode clean.
+- **Pre-release.** `next`-tagged alpha, three weeks old, with a breaking API change already
+  in it and a Node-22 bump queued in `Unreleased`.
+- **Its extra output partly outruns our renderer.** It emits DI for data objects, data
+  stores and groups; per `doc/render-gap-analysis.md` those elements do not exist in our
+  model or renderer yet, so that DI would parse but not draw.
+
+## Options
+
+1. **Async adoption in non-interactive paths, behind a flag.** CLI, proxy and
+   `compilePlan`/`mergePlan` can be async without hurting anyone. Keeps the grid engine as
+   the sync default for canvas/editor. Smallest blast radius, gets the better layout where
+   the diagrams are generated (which is where our layout quality actually matters most).
+2. **Fix our engine using the benchmark as the target.** Lanes, black-box pools and
+   multi-plane output are our three known-wrong behaviours; the harness in this evaluation
+   gives a pass/fail signal for each. No new dependency, no async migration, and it closes
+   the correctness gap even if we never adopt upstream.
+3. **Full swap once 2.0 is stable.** Requires the async migration through public API, a
+   worker for the canvas, and accepting the dependency + bundle cost. Defensible later,
+   premature now.
+4. **Do nothing and re-check at 2.0 final.**
+
+1 and 2 are complementary and are what we would suggest doing; 3 stays open.
