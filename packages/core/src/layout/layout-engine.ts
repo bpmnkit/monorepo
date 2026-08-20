@@ -21,9 +21,11 @@ export type LayoutEngine = "semantic" | "grid"
 export function layoutProcess(
 	process: BpmnProcess,
 	engine: LayoutEngine = "semantic",
+	/** Sub-processes the diagram draws collapsed; their contents get their own plane. */
+	collapsed?: ReadonlySet<string>,
 ): LayoutResult {
 	if (engine === "grid") return gridLayoutFlowNodes(process.flowElements, process.sequenceFlows)
-	return semanticLayoutProcess(process)
+	return semanticLayoutProcess(process, collapsed)
 }
 
 /** Layout a set of flow nodes and sequence flows (used by ascii, proxy, compact). */

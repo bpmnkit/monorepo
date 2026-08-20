@@ -2,9 +2,12 @@ import { associationWaypoints, packAnnotations } from "../layout/annotations.js"
 import { layoutProcess } from "../layout/layout-engine.js"
 import type { Bounds, LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
 import type {
+	BpmnBounds,
 	BpmnDefinitions,
 	BpmnDiEdge,
 	BpmnDiShape,
+	BpmnDiagram,
+	BpmnFlowElement,
 	BpmnLane,
 	BpmnProcess,
 } from "./bpmn-model.js"
@@ -206,12 +209,32 @@ function addAnnotationShapes(
 			: annLocalBounds.has(assoc.targetRef)
 				? assoc.targetRef
 				: undefined
-		const elId = annId === assoc.sourceRef ? assoc.targetRef : assoc.sourceRef
 
-		const annB = annId ? annLocalBounds.get(annId) : undefined
+		// An association does not have to involve a text annotation — a data
+		// object may be associated with an activity. Both ends are placed, so
+		// the same docking works.
+		if (!annId) {
+			const source = nodeById.get(assoc.sourceRef)
+			const target = nodeById.get(assoc.targetRef)
+			if (!source || !target) continue
+			const { pElem, pAnn } = associationWaypoints(source.bounds, target.bounds)
+			allEdges.push({
+				id: `${assoc.id}_di`,
+				bpmnElement: assoc.id,
+				waypoints: [
+					{ x: Math.round(pElem.x + dx), y: Math.round(pElem.y + dy) },
+					{ x: Math.round(pAnn.x + dx), y: Math.round(pAnn.y + dy) },
+				],
+				unknownAttributes: {},
+			})
+			continue
+		}
+
+		const elId = annId === assoc.sourceRef ? assoc.targetRef : assoc.sourceRef
+		const annB = annLocalBounds.get(annId)
 		const elNode = nodeById.get(elId)
 
-		if (!annB || !annId || !elNode) continue
+		if (!annB || !elNode) continue
 
 		const { pElem, pAnn } = associationWaypoints(elNode.bounds, annB)
 		// Shift into diagram space and honour the original sourceRef→targetRef order.
@@ -230,6 +253,163 @@ function addAnnotationShapes(
 			unknownAttributes: {},
 		})
 	}
+}
+
+const EMPTY_POOL_HEIGHT = 60
+/** Sideways step when nudging a message flow out of a shape. */
+const MESSAGE_FLOW_STEP = 10
+const EMPTY_POOL_WIDTH = 300
+
+/**
+ * Sub-processes the source diagram draws collapsed. A collapsed sub-process
+ * keeps its activity shape on the parent plane and carries its contents on a
+ * plane of its own, so the layout must not inline them.
+ *
+ * Either marker counts: an explicit `isExpanded="false"` on the shape, or the
+ * presence of a separate plane for that sub-process.
+ */
+function collapsedSubProcesses(defs: BpmnDefinitions): Set<string> {
+	const containers = new Set<string>()
+	const walk = (elements: BpmnFlowElement[]): void => {
+		for (const el of elements) {
+			const sub = el as unknown as { flowElements?: BpmnFlowElement[] }
+			if (sub.flowElements) {
+				containers.add(el.id)
+				walk(sub.flowElements)
+			}
+		}
+	}
+	for (const process of defs.processes) walk(process.flowElements)
+
+	const collapsed = new Set<string>()
+	for (const diagram of defs.diagrams) {
+		if (containers.has(diagram.plane.bpmnElement)) collapsed.add(diagram.plane.bpmnElement)
+		for (const shape of diagram.plane.shapes) {
+			if (shape.isExpanded === false && containers.has(shape.bpmnElement)) {
+				collapsed.add(shape.bpmnElement)
+			}
+		}
+	}
+	return collapsed
+}
+
+/** One `BPMNDiagram` per collapsed sub-process, its contents laid out at the origin. */
+function childPlaneDiagrams(
+	planes: Array<{ elementId: string; result: LayoutResult }>,
+	defs: BpmnDefinitions,
+	collapsed: ReadonlySet<string>,
+): BpmnDiagram[] {
+	const existing = new Map(defs.diagrams.map((d) => [d.plane.bpmnElement, d]))
+	const diagrams: BpmnDiagram[] = []
+	const emitted = new Set(planes.map((plane) => plane.elementId))
+
+	// A collapsed sub-process that holds nothing still owns its plane; dropping it
+	// would lose the drill-down target the source diagram declared.
+	for (const [elementId, diagram] of existing) {
+		if (!collapsed.has(elementId) || emitted.has(elementId)) continue
+		diagrams.push({
+			id: diagram.id,
+			plane: { id: diagram.plane.id, bpmnElement: elementId, shapes: [], edges: [] },
+		})
+	}
+
+	for (const plane of planes) {
+		const { minX, minY } = contentBbox(plane.result.nodes)
+		if (!Number.isFinite(minX)) continue
+		const dx = PADDING - minX
+		const dy = PADDING - minY
+		const previous = existing.get(plane.elementId)
+		diagrams.push({
+			id: previous?.id ?? `BPMNDiagram_${plane.elementId}`,
+			plane: {
+				id: previous?.plane.id ?? `BPMNPlane_${plane.elementId}`,
+				bpmnElement: plane.elementId,
+				shapes: plane.result.nodes.map((node) => nodeToShape(node, dx, dy)),
+				edges: plane.result.edges.map((edge) => edgeToShape(edge, dx, dy)),
+			},
+		})
+	}
+
+	return diagrams
+}
+
+/** Vertical bands between pools — clear ground for a message flow to cross in. */
+function poolBands(
+	shapes: BpmnDiShape[],
+	participantIds: ReadonlySet<string>,
+): Array<{ top: number; bottom: number }> {
+	const pools = shapes
+		.filter((s) => participantIds.has(s.bpmnElement))
+		.map((s) => ({ top: s.bounds.y, bottom: s.bounds.y + s.bounds.height }))
+		.sort((a, b) => a.top - b.top)
+
+	const gaps: Array<{ top: number; bottom: number }> = []
+	for (let i = 0; i + 1 < pools.length; i++) {
+		const above = pools[i]
+		const below = pools[i + 1]
+		if (above && below && below.top > above.bottom) {
+			gaps.push({ top: above.bottom, bottom: below.top })
+		}
+	}
+	return gaps
+}
+
+/** Index of the pool gap nearest the midpoint of the run; -1 when none lies on it. */
+function crossingBandIndex(
+	gaps: Array<{ top: number; bottom: number }>,
+	fromY: number,
+	toY: number,
+): number {
+	const midpoint = (fromY + toY) / 2
+	const low = Math.min(fromY, toY)
+	const high = Math.max(fromY, toY)
+	let best = -1
+	let bestDistance = Number.POSITIVE_INFINITY
+	for (let i = 0; i < gaps.length; i++) {
+		const gap = gaps[i]
+		if (!gap) continue
+		const centre = (gap.top + gap.bottom) / 2
+		if (centre < low || centre > high) continue
+		const distance = Math.abs(centre - midpoint)
+		if (distance < bestDistance) {
+			best = i
+			bestDistance = distance
+		}
+	}
+	return best
+}
+
+/**
+ * Shift a vertical run sideways until it misses every shape it would otherwise
+ * pass through, keeping it within the element it docks onto.
+ */
+function clearColumn(
+	x: number,
+	fromY: number,
+	toY: number,
+	obstacles: BpmnBounds[],
+	own: BpmnBounds[],
+	dock: BpmnBounds,
+): number {
+	const top = Math.min(fromY, toY)
+	const bottom = Math.max(fromY, toY)
+	const blocked = (candidate: number): boolean =>
+		obstacles.some(
+			(o) =>
+				!own.includes(o) &&
+				o.x < candidate &&
+				candidate < o.x + o.width &&
+				o.y < bottom &&
+				top < o.y + o.height,
+		)
+
+	if (!blocked(x)) return x
+	const limit = Math.floor(dock.width / 2)
+	for (let step = MESSAGE_FLOW_STEP; step <= limit; step += MESSAGE_FLOW_STEP) {
+		if (!blocked(x + step)) return x + step
+		if (!blocked(x - step)) return x - step
+	}
+	return x
 }
 
 /**
@@ -254,23 +434,84 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 
 	const allShapes: BpmnDiShape[] = []
 	const allEdges: BpmnDiEdge[] = []
+	const childPlanes: Array<{ elementId: string; result: LayoutResult }> = []
+	const collapsed = collapsedSubProcesses(defs)
 	let poolY = 0
 
-	for (const process of defs.processes) {
-		const participantId = processToParticipant.get(process.id)
-		const lanes = process.laneSet?.lanes ?? []
+	// Walk the pools in declaration order so a black-box participant keeps its
+	// place in the stack; processes no participant references follow.
+	const processById = new Map(defs.processes.map((p) => [p.id, p]))
+	const pools: Array<{ participantId?: string; process?: BpmnProcess }> = []
+	if (collab) {
+		for (const participant of collab.participants) {
+			pools.push({
+				participantId: participant.id,
+				process: participant.processRef ? processById.get(participant.processRef) : undefined,
+			})
+		}
+		for (const process of defs.processes) {
+			if (!processToParticipant.has(process.id)) pools.push({ process })
+		}
+	} else {
+		for (const process of defs.processes) pools.push({ process })
+	}
+
+	/** Pools with nothing to draw; widened to match the others once all are placed. */
+	const blackBoxPools: BpmnDiShape[] = []
+	/** Root processes that are not the primary one, each on a plane of its own. */
+	const rootPlanes: Array<{ elementId: string; shapes: BpmnDiShape[]; edges: BpmnDiEdge[] }> = []
+	const primaryProcessId = defs.processes[0]?.id
+
+	for (const pool of pools) {
+		const { participantId, process } = pool
+		const lanes = process?.laneSet?.lanes ?? []
 		const hasLanes = lanes.length > 0
 
-		const result = layoutProcess(process)
+		const result: LayoutResult = process
+			? layoutProcess(process, "semantic", collapsed)
+			: { nodes: [], edges: [] }
 
-		if (result.nodes.length === 0) continue
+		// A participant with no process, or one whose process has no flow nodes,
+		// is a black box: it still needs a pool of its own to dock message flows
+		// onto, and to stay visible at all.
+		if (result.nodes.length === 0) {
+			// A process can be nothing but annotations; they still belong on the plane.
+			if (!participantId && process && process.textAnnotations.length > 0) {
+				const annOnly = packAnnotations(process, [])
+				const bbox = contentBbox([], annOnly.values())
+				addAnnotationShapes(
+					process,
+					[],
+					annOnly,
+					allShapes,
+					allEdges,
+					PADDING - bbox.minX,
+					PADDING - bbox.minY,
+				)
+				continue
+			}
+			if (participantId) {
+				const shape: BpmnDiShape = {
+					id: `${participantId}_di`,
+					bpmnElement: participantId,
+					isHorizontal: true,
+					bounds: { x: 0, y: poolY, width: EMPTY_POOL_WIDTH, height: EMPTY_POOL_HEIGHT },
+					unknownAttributes: {},
+				}
+				allShapes.push(shape)
+				blackBoxPools.push(shape)
+				poolY += EMPTY_POOL_HEIGHT + POOL_GAP
+			}
+			continue
+		}
+		childPlanes.push(...(result.planes ?? []))
 
 		// The engine reports lane bands when it placed nodes by lane membership;
 		// they replace the proportional tiling below.
 		const engineLanes = result.lanes
 
 		// Pre-compute annotation positions in layout space so they're included in the bbox
-		const annBounds = packAnnotations(process, result.nodes)
+		const annBounds = process ? packAnnotations(process, result.nodes) : new Map<string, Bounds>()
 
 		const { minX, minY, maxX, maxY } = contentBbox(result.nodes, annBounds.values())
 		const contentW = maxX - minX
@@ -294,9 +535,23 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 			dy = PADDING - minY
 		}
 
+		// Only the primary process shares the root plane; any other root process
+		// owns one, instead of being stacked on top of the first at the origin.
+		if (!participantId && process && process.id !== primaryProcessId) {
+			const shapes: BpmnDiShape[] = []
+			const edges: BpmnDiEdge[] = []
+			for (const node of result.nodes) shapes.push(nodeToShape(node, dx, dy))
+			for (const edge of result.edges) edges.push(edgeToShape(edge, dx, dy))
+			addAnnotationShapes(process, result.nodes, annBounds, shapes, edges, dx, dy)
+			rootPlanes.push({ elementId: process.id, shapes, edges })
+			continue
+		}
+
 		for (const node of result.nodes) allShapes.push(nodeToShape(node, dx, dy))
 		for (const edge of result.edges) allEdges.push(edgeToShape(edge, dx, dy))
-		addAnnotationShapes(process, result.nodes, annBounds, allShapes, allEdges, dx, dy)
+		if (process) {
+			addAnnotationShapes(process, result.nodes, annBounds, allShapes, allEdges, dx, dy)
+		}
 
 		if (participantId) {
 			const innerW = (hasLanes ? LANE_HEADER : 0) + contentW + 2 * PADDING
@@ -334,31 +589,107 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 		}
 	}
 
+	// Give the black boxes the width of the widest pool that has content, so the
+	// stack reads as one diagram rather than a ragged column.
+	if (blackBoxPools.length > 0) {
+		const participantIds = new Set(collab?.participants.map((p) => p.id) ?? [])
+		const widest = allShapes
+			.filter((s) => participantIds.has(s.bpmnElement) && !blackBoxPools.includes(s))
+			.reduce((max, s) => Math.max(max, s.bounds.width), EMPTY_POOL_WIDTH)
+		for (const shape of blackBoxPools) shape.bounds.width = widest
+	}
+
 	if (collab && collab.messageFlows.length > 0) {
 		const shapeByElement = new Map(allShapes.map((s) => [s.bpmnElement, s.bounds]))
+		const participantIds = new Set(collab.participants.map((p) => p.id))
+		const laneIds = new Set(
+			defs.processes.flatMap((p) => (p.laneSet?.lanes ?? []).map((lane) => lane.id)),
+		)
+		// Pools and lanes are containers; message flows cross them by design. It is
+		// the elements inside that a route has to miss.
+		const obstacles = allShapes
+			.filter((s) => !participantIds.has(s.bpmnElement) && !laneIds.has(s.bpmnElement))
+			.map((s) => s.bounds)
+		const poolGaps = poolBands(allShapes, participantIds)
+
+		const runs: Array<{
+			id: string
+			sx: number
+			tx: number
+			sy: number
+			ty: number
+			gap: number
+		}> = []
+
 		for (const mf of collab.messageFlows) {
 			const src = shapeByElement.get(mf.sourceRef)
 			const tgt = shapeByElement.get(mf.targetRef)
 			if (!src || !tgt) continue
 			const srcBelow = src.y + src.height / 2 > tgt.y + tgt.height / 2
-			const sx = Math.round(src.x + src.width / 2)
-			const tx = Math.round(tgt.x + tgt.width / 2)
 			const sy = srcBelow ? src.y : src.y + src.height
 			const ty = srcBelow ? tgt.y + tgt.height : tgt.y
-			const midY = Math.round((sy + ty) / 2)
+			const own = [src, tgt]
+
+			// A pool has no position of its own to respect: dock it under whatever it
+			// is talking to, so the flow drops straight instead of fanning into the
+			// pool's centre along with every other flow.
+			const srcIsPool = participantIds.has(mf.sourceRef)
+			const tgtIsPool = participantIds.has(mf.targetRef)
+			let sx = clearColumn(Math.round(src.x + src.width / 2), sy, ty, obstacles, own, src)
+			let tx = clearColumn(Math.round(tgt.x + tgt.width / 2), sy, ty, obstacles, own, tgt)
+			if (tgtIsPool && !srcIsPool) tx = sx
+			else if (srcIsPool && !tgtIsPool) sx = tx
+
+			runs.push({
+				id: mf.id,
+				sx,
+				tx,
+				sy,
+				ty,
+				gap: crossingBandIndex(poolGaps, sy, ty),
+			})
+		}
+
+		// Flows sharing a gap get their own line inside it, so parallel runs do not
+		// pile onto one row and cross every other flow's riser.
+		const perGap = new Map<number, typeof runs>()
+		for (const run of runs) {
+			const list = perGap.get(run.gap)
+			if (list) list.push(run)
+			else perGap.set(run.gap, [run])
+		}
+
+		const crossingY = new Map<string, number>()
+		for (const [index, list] of perGap) {
+			const gap = poolGaps[index]
+			list.sort((a, b) => Math.min(a.sx, a.tx) - Math.min(b.sx, b.tx))
+			for (let i = 0; i < list.length; i++) {
+				const run = list[i]
+				if (!run) continue
+				crossingY.set(
+					run.id,
+					gap
+						? Math.round(gap.top + ((i + 1) * (gap.bottom - gap.top)) / (list.length + 1))
+						: Math.round((run.sy + run.ty) / 2),
+				)
+			}
+		}
+
+		for (const run of runs) {
+			const midY = crossingY.get(run.id) ?? Math.round((run.sy + run.ty) / 2)
 			const waypoints =
-				sx === tx
+				run.sx === run.tx
 					? [
-							{ x: sx, y: sy },
-							{ x: tx, y: ty },
+							{ x: run.sx, y: run.sy },
+							{ x: run.tx, y: run.ty },
 						]
 					: [
-							{ x: sx, y: sy },
-							{ x: sx, y: midY },
-							{ x: tx, y: midY },
-							{ x: tx, y: ty },
+							{ x: run.sx, y: run.sy },
+							{ x: run.sx, y: midY },
+							{ x: run.tx, y: midY },
+							{ x: run.tx, y: run.ty },
 						]
-			allEdges.push({ id: `${mf.id}_di`, bpmnElement: mf.id, waypoints, unknownAttributes: {} })
+			allEdges.push({ id: `${run.id}_di`, bpmnElement: run.id, waypoints, unknownAttributes: {} })
 		}
 	}
 
@@ -377,6 +708,19 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 					edges: allEdges,
 				},
 			},
+			...rootPlanes.map((plane) => {
+				const previous = defs.diagrams.find((d) => d.plane.bpmnElement === plane.elementId)
+				return {
+					id: previous?.id ?? `BPMNDiagram_${plane.elementId}`,
+					plane: {
+						id: previous?.plane.id ?? `BPMNPlane_${plane.elementId}`,
+						bpmnElement: plane.elementId,
+						shapes: plane.shapes,
+						edges: plane.edges,
+					},
+				}
+			}),
+			...childPlaneDiagrams(childPlanes, defs, collapsed),
 		],
 	}
 }

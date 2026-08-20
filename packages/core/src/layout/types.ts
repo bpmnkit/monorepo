@@ -112,4 +112,10 @@ export interface LayoutResult {
 	 * membership. Absent when the scope has no lanes.
 	 */
 	lanes?: Array<{ id: string; bounds: Bounds }>
+	/**
+	 * Layouts that belong on their own plane rather than on this one: the
+	 * contents of each collapsed sub-process, laid out at the origin. Nested
+	 * collapsed scopes are flattened into this list.
+	 */
+	planes?: Array<{ elementId: string; result: LayoutResult }>
 }

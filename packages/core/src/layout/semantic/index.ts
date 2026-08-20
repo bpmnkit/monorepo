@@ -44,30 +44,44 @@ interface Container {
  * semantic bands carry branch meaning up and down, and lane membership wins over
  * both.
  */
-export function semanticLayoutProcess(process: BpmnProcess): LayoutResult {
-	return semanticLayout(process.flowElements, process.sequenceFlows, process.laneSet)
+export function semanticLayoutProcess(
+	process: BpmnProcess,
+	collapsed?: ReadonlySet<string>,
+): LayoutResult {
+	return semanticLayout(process.flowElements, process.sequenceFlows, process.laneSet, collapsed)
 }
 
 export function semanticLayout(
 	flowElements: BpmnFlowElement[],
 	sequenceFlows: BpmnSequenceFlow[],
 	laneSet?: BpmnLaneSet,
+	/** Sub-processes drawn collapsed: their contents go on a plane of their own. */
+	collapsed: ReadonlySet<string> = new Set(),
 ): LayoutResult {
 	if (flowElements.length === 0) return { nodes: [], edges: [] }
 
 	const graph = buildSemanticGraph(flowElements, sequenceFlows)
 	const bandLayout = assignBands(graph)
 
-	// Children first: an expanded sub-process is sized by what it contains.
+	// Children first: an expanded sub-process is sized by what it contains, while
+	// a collapsed one stays activity-sized and its contents move to their own plane.
 	const childResults = new Map<string, LayoutResult>()
+	const planes: Array<{ elementId: string; result: LayoutResult }> = []
 	const sizes = new Map<string, { width: number; height: number }>()
 	for (const el of graph.nodes) {
-		const child = childLayoutOf(el)
-		if (child) {
-			childResults.set(el.id, child.result)
-			sizes.set(el.id, child.size)
-		} else {
+		const child = childLayoutOf(el, collapsed)
+		if (!child) {
 			sizes.set(el.id, sizeOf(el))
+			continue
+		}
+		if (collapsed.has(el.id)) {
+			planes.push({ elementId: el.id, result: child.result })
+			planes.push(...(child.result.planes ?? []))
+			sizes.set(el.id, sizeOf(el))
+		} else {
+			childResults.set(el.id, child.result)
+			planes.push(...(child.result.planes ?? []))
+			sizes.set(el.id, child.size)
 		}
 	}
 
@@ -91,6 +105,7 @@ export function semanticLayout(
 			if (labelBounds) node.labelBounds = labelBounds
 		}
 		if (childResults.has(el.id)) node.isExpanded = true
+		else if (collapsed.has(el.id)) node.isExpanded = false
 		nodes.push(node)
 	}
 
@@ -119,6 +134,7 @@ export function semanticLayout(
 
 	const result: LayoutResult = { nodes, edges }
 	if (lanes.length > 0) result.lanes = lanes
+	if (planes.length > 0) result.planes = planes
 	placeEdgeLabels(edges, new Map(nodes.map((n) => [n.id, n])))
 	return result
 }
@@ -126,6 +142,7 @@ export function semanticLayout(
 /** Lay out a container's children and report the size its border needs. */
 function childLayoutOf(
 	el: BpmnFlowElement,
+	collapsed: ReadonlySet<string>,
 ): { result: LayoutResult; size: { width: number; height: number } } | null {
 	if (!CONTAINER_TYPES.has(el.type)) return null
 	const container = el as unknown as Container
@@ -135,6 +152,7 @@ function childLayoutOf(
 		container.flowElements,
 		container.sequenceFlows ?? [],
 		container.laneSet,
+		collapsed,
 	)
 	const extent = extentOf(result)
 	if (!extent) return null
