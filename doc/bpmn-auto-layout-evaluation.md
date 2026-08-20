@@ -6,16 +6,19 @@ _2026-08-20 · evaluated against `packages/core/src/layout` (the grid engine beh
 
 The upstream rewrite is real and it is better than our engine on every layout-quality
 measurement we can make. It fixes two things our engine gets **wrong**, not merely
-suboptimal: lane membership and black-box pools. It is not a drop-in replacement — the
-API is async and XML-string based, ours is sync and model based — and the worst-case
-runtime (~1.8 s on a 91-element collaboration) rules it out for the synchronous
-browser paths without a worker.
+suboptimal: lane membership and black-box pools.
 
-Recommendation: **do not swap the engine wholesale today.** Adopt it where async is
-already fine (CLI, proxy, plan compile/merge) behind a flag, keep the grid engine as the
-sync default for canvas/editor, and re-evaluate when 2.0 goes stable. Independently, fix
-the three correctness gaps the benchmark exposed in our own engine — they are ours to fix
-regardless of what we do about the dependency.
+Its `Promise` is **not** a real asynchrony barrier — the layout is synchronous inside and
+can be driven synchronously (verified below), so adopting it does not force our public API
+to go async. What it does cost is a patched dependency chain, 45 KB gzipped in the browser,
+and a latency tail on collaborations (median 36 ms, worst case ~1–1.9 s) against our
+engine's 0.3 ms.
+
+Recommendation: **do not swap the engine wholesale today.** Adopt it behind a flag where
+the latency tail is harmless — the CLI, the proxy, `compilePlan`/`mergePlan` — keep the
+grid engine as the default for canvas/editor, and re-evaluate when 2.0 goes stable.
+Independently, fix the three correctness gaps the benchmark exposed in our own engine —
+they are ours to fix regardless of what we do about the dependency.
 
 ## What changed upstream
 
@@ -112,18 +115,20 @@ shapes we never place cannot be overlapped.
 
 ### What blocks a drop-in swap
 
-- **Async, XML-only API.** `layoutProcess(xml): Promise<{ xml, warnings }>` is the entire
-  surface — there is no way to hand it a parsed model. Every one of our call sites is
-  synchronous and model-based, and four of them are public API:
-  `Bpmn.autoLayout()`, `builder.build()`, `compilePlan()`, `mergePlan()`, plus
-  `BpmnCanvas.load()`'s render path, the editor's undoable command, and
-  `apps/proxy/sdk-code-mode`. Adopting it in core means making those async — a breaking
-  change for `@bpmnkit/core` consumers — and paying a model → XML → moddle → XML → model
-  double round-trip on every layout.
-- **Latency tail.** 1.8 s (measured five times, stable) on `process.application-processing.bpmn`
-  — 91 elements, 8 pools. Our engine does it in 2.2 ms. Upstream's own README says layout
-  is CPU-bound and recommends a Web Worker; that is not something the canvas' synchronous
-  `load()` can accommodate without a real restructure.
+- **XML-only API, and sync only via patches.** `layoutProcess(xml): Promise<{ xml, warnings }>`
+  is the entire surface — no model entry point, so every layout costs a
+  model → XML → moddle → XML → model round-trip (~34 ms on our largest fixture, negligible
+  next to the layout itself). A synchronous entry point requires patching three packages
+  (see below); without those patches, adopting it in `@bpmnkit/core` means making
+  `Bpmn.autoLayout()`, `builder.build()`, `compilePlan()` and `mergePlan()` async — a
+  breaking change for consumers.
+- **Latency tail on collaborations.** Median 7 ms for single-process diagrams (p90 41 ms),
+  but 36 ms median / 211 ms p90 for collaborations, and 1–1.9 s on
+  `process.application-processing.bpmn` (91 elements, 8 pools) where our engine takes
+  2.2 ms. The driver is pool count, not element count — an 11-element collaboration costs
+  211 ms while comparable single-process diagrams cost 5–12 ms. Going synchronous does not
+  help here; it turns a 1-second `await` into a 1-second main-thread freeze, which is why
+  upstream's README recommends a worker.
 - **Browser weight.** 153 KB minified / 45 KB gzipped bundled with its `bpmn-moddle` +
   `min-dash` deps. `@bpmnkit/core` today has zero runtime dependencies and
   `@bpmnkit/canvas`/`editor` inherit that; "zero runtime dependencies" is listed in
@@ -136,19 +141,51 @@ shapes we never place cannot be overlapped.
   stores and groups; per `doc/render-gap-analysis.md` those elements do not exist in our
   model or renderer yet, so that DI would parse but not draw.
 
+### Can it run synchronously? Yes — with patches
+
+The `Promise` is decorative. `layoutProcess` awaits exactly two things, `moddle.fromXML`
+and `moddle.toXML`; everything between them (`layoutCollaboration` / `layoutProcessScope` /
+`generateDiagrams`) is synchronous. And both moddle calls are themselves synchronous work
+wrapped in a promise: `Writer.toXML` returns a string directly, and `moddle-xml`'s reader
+runs `parser.parse(xml)` inside the `new Promise` executor — saxen is a synchronous SAX
+parser, so the executor settles before it returns. The comment in `moddle-xml` claiming
+"async XML parsing to keep the execution environment responsive" does not describe what the
+code does; nothing ever yields.
+
+Verified by building it. Patching three packages — `moddle-xml` (record the outcome the
+executor already produces synchronously), `bpmn-moddle` (`fromXMLSync`/`toXMLSync`), and
+`bpmn-auto-layout`'s bundle (a `layoutProcessSync` twin of the method, with the two `await`s
+removed) — yields a fully synchronous entry point that:
+
+- produces **byte-identical XML and identical warnings on all 161 fixtures**;
+- completes without a microtask turn (a `queueMicrotask` scheduled just before the call has
+  not run when it returns);
+- runs at the same speed (972 ms vs 981 ms; 110 ms vs 113 ms; 3 ms vs 3 ms) — the promise
+  wrapper costs nothing, confirming there was no real async work to begin with.
+
+So the async signature is not a technical blocker for our sync API. The cost is
+maintenance: three patches via `pnpm patch` (we already carry one, for
+`@preact/signals-react`), one of them against a *generated rollup bundle* of a pre-release
+that is still being rewritten — every alpha bump means re-applying it against regenerated
+output. The cleaner version of this is upstream exposing a sync entry point; bpmn.io
+maintains `bpmn-moddle` and `moddle-xml` too, so a `fromXMLSync` + `layoutProcessSync` is
+theirs to add if asked.
+
 ## Options
 
-1. **Async adoption in non-interactive paths, behind a flag.** CLI, proxy and
-   `compilePlan`/`mergePlan` can be async without hurting anyone. Keeps the grid engine as
-   the sync default for canvas/editor. Smallest blast radius, gets the better layout where
-   the diagrams are generated (which is where our layout quality actually matters most).
+1. **Adopt in non-interactive paths, behind a flag.** CLI, proxy and
+   `compilePlan`/`mergePlan` can absorb both the latency tail and (if we skip the patches)
+   an async signature. Keeps the grid engine as the default for canvas/editor. Smallest
+   blast radius, gets the better layout where the diagrams are generated — which is where
+   our layout quality actually matters most.
 2. **Fix our engine using the benchmark as the target.** Lanes, black-box pools and
    multi-plane output are our three known-wrong behaviours; the harness in this evaluation
-   gives a pass/fail signal for each. No new dependency, no async migration, and it closes
-   the correctness gap even if we never adopt upstream.
-3. **Full swap once 2.0 is stable.** Requires the async migration through public API, a
-   worker for the canvas, and accepting the dependency + bundle cost. Defensible later,
-   premature now.
+   gives a pass/fail signal for each. No new dependency, no patches, and it closes the
+   correctness gap even if we never adopt upstream.
+3. **Full swap once 2.0 is stable.** Needs either the sync patches or an async migration
+   through the public API, a worker (or a size threshold that falls back to the grid engine)
+   for the canvas' latency tail, and accepting the dependency + bundle cost. Defensible
+   later, premature against an alpha.
 4. **Do nothing and re-check at 2.0 final.**
 
 1 and 2 are complementary and are what we would suggest doing; 3 stays open.
