@@ -146,6 +146,33 @@ function markBackEdges(graph: SemanticGraph): void {
 	for (const node of graph.nodes) if (!state.has(node.id)) visit(node.id)
 }
 
+const GATEWAY_TYPES = new Set([
+	"exclusiveGateway",
+	"parallelGateway",
+	"inclusiveGateway",
+	"eventBasedGateway",
+	"complexGateway",
+])
+
+/** True when a node merges more than one path. */
+function isJoin(graph: SemanticGraph, id: string): boolean {
+	return (graph.incoming.get(id) ?? []).length > 1
+}
+
+/**
+ * Nested joins of one gateway type may share a rank and connect vertically —
+ * closing an inner branch and the branch around it is one moment in the flow,
+ * not two. Joins of different types keep their forward step, because the change
+ * of gateway is itself part of the story.
+ */
+function sharesRank(graph: SemanticGraph, flow: BpmnSequenceFlow): boolean {
+	const source = graph.byId.get(flow.sourceRef)
+	const target = graph.byId.get(flow.targetRef)
+	if (!source || !target) return false
+	if (source.type !== target.type || !GATEWAY_TYPES.has(source.type)) return false
+	return isJoin(graph, source.id) && isJoin(graph, target.id)
+}
+
 /**
  * Longest-path ranks over the acyclic remainder, then a bounded fixed point so
  * a boundary handler never precedes the activity it is attached to.
@@ -164,9 +191,10 @@ function assignRanks(graph: SemanticGraph): void {
 		for (const node of graph.nodes) {
 			const rank = ranks.get(node.id) ?? 0
 			for (const flow of forward(node.id)) {
+				const step = sharesRank(graph, flow) ? 0 : 1
 				const target = ranks.get(flow.targetRef) ?? 0
-				if (target < rank + 1) {
-					ranks.set(flow.targetRef, rank + 1)
+				if (target < rank + step) {
+					ranks.set(flow.targetRef, rank + step)
 					changed = true
 				}
 			}

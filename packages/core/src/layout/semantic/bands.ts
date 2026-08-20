@@ -72,11 +72,51 @@ export function assignBands(graph: SemanticGraph): BandLayout {
 		}
 	}
 
-	// Anything still unassigned (unreachable from any start) trails on the spine.
-	for (const node of graph.nodes) if (!assigned.has(node.id)) bands.set(node.id, 0)
-
 	for (const [id, band] of compact(branches)) bands.set(id, band)
+	placeUnassigned(graph, bands, assigned)
 	return { bands, spine, straightFlows }
+}
+
+/**
+ * Give the nodes no traversal reached — a scope entered only through a loop, say
+ * — a band of their own rather than dropping them on the spine, where they would
+ * land on top of whatever already occupies their rank.
+ */
+function placeUnassigned(
+	graph: SemanticGraph,
+	bands: Map<string, number>,
+	assigned: Set<string>,
+): void {
+	const taken = new Set<string>()
+	for (const node of graph.nodes) {
+		if (!assigned.has(node.id)) continue
+		taken.add(`${graph.ranks.get(node.id) ?? 0}:${bands.get(node.id) ?? 0}`)
+	}
+
+	for (const node of graph.nodes) {
+		if (assigned.has(node.id)) continue
+		const rank = graph.ranks.get(node.id) ?? 0
+
+		// Start from whatever this node is connected to, so it lands near it.
+		let preferred = 0
+		const neighbours = [
+			...(graph.outgoing.get(node.id) ?? []).map((f) => f.targetRef),
+			...(graph.incoming.get(node.id) ?? []).map((f) => f.sourceRef),
+		]
+		for (const neighbour of neighbours) {
+			if (!assigned.has(neighbour)) continue
+			preferred = bands.get(neighbour) ?? 0
+			break
+		}
+
+		let band = preferred
+		for (let step = 0; step <= graph.nodes.length; step++) {
+			band = preferred + (step % 2 === 0 ? step / 2 : -(step + 1) / 2)
+			if (!taken.has(`${rank}:${band}`)) break
+		}
+		bands.set(node.id, band)
+		taken.add(`${rank}:${band}`)
+	}
 }
 
 /**
@@ -168,13 +208,20 @@ function handlerSideOf(
 	return event ? boundarySide(event) : undefined
 }
 
-/** Follow a branch forward until it rejoins placed flow or runs out. */
+/**
+ * Follow a branch forward until it rejoins placed flow or runs out.
+ *
+ * A boundary handler reserves its complete span — out to the rank it rejoins at,
+ * not just the ranks its own nodes occupy — so nothing else claims the band the
+ * handler's last edge still has to travel along.
+ */
 function follow(
 	graph: SemanticGraph,
 	entry: string,
 	side: 1 | -1,
 	depth: number,
 	assigned: Set<string>,
+	reserveToRejoin = false,
 ): Branch | null {
 	const nodes: string[] = []
 	const local = new Set<string>()
@@ -195,6 +242,9 @@ function follow(
 	}
 
 	if (nodes.length === 0) return null
+	if (reserveToRejoin && current !== undefined) {
+		maxRank = Math.max(maxRank, graph.ranks.get(current) ?? maxRank)
+	}
 	return { nodes, side, depth, minRank, maxRank }
 }
 
@@ -209,7 +259,7 @@ function compact(branches: Branch[]): Map<string, number> {
 	for (const side of [1, -1] as const) {
 		const mine = branches
 			.filter((b) => b.side === side)
-			.sort((a, b) => a.depth - b.depth || a.minRank - b.minRank)
+			.sort((a, b) => a.minRank - b.minRank || a.depth - b.depth)
 		/** physical level (1-based) → rank intervals already reserved on it. */
 		const reserved: Array<Array<[number, number]>> = []
 

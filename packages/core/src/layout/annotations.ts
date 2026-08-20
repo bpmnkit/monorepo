@@ -18,6 +18,8 @@ const ELEMENT_GAP = 30 // min gap between annotation and a non-annotation shape
 const PREFERRED_OFFSET = 50 // preferred gap to associated element
 const MIN_HEIGHT = 30
 const HORIZONTAL_SHIFTS = [0, 60, -60, 120, -120, 180, -180, 240, -240]
+/** Cost added to a candidate whose association line would cross a shape. */
+const BLOCKED_LINE_COST = 10_000
 
 function computeHeight(text: string, width: number): number {
 	if (!text || !text.trim()) return MIN_HEIGHT
@@ -222,7 +224,20 @@ export function packAnnotations(
 					}
 				}
 
-				const cost = Math.hypot(candidateX - naturalX, y - naturalY)
+				// A clear box is not enough: the association line drawn back to the
+				// element must not cut through anything either.
+				const candidate: Bounds = {
+					x: candidateX,
+					y,
+					width: item.bounds.width,
+					height: item.bounds.height,
+				}
+				const { pElem, pAnn } = associationWaypoints(linked.bounds, candidate)
+				const crosses = obstacles.some(
+					(sh) => sh !== linked.bounds && segmentHitsBox(pElem, pAnn, sh),
+				)
+				const cost =
+					Math.hypot(candidateX - naturalX, y - naturalY) + (crosses ? BLOCKED_LINE_COST : 0)
 				if (cost < best.cost) best = { x: candidateX, y, cost }
 			}
 
@@ -255,6 +270,29 @@ export function packAnnotations(
 	}
 
 	return result
+}
+
+/** Whether a straight segment passes through a box. */
+function segmentHitsBox(a: Waypoint, b: Waypoint, box: Bounds): boolean {
+	const minX = Math.min(a.x, b.x)
+	const maxX = Math.max(a.x, b.x)
+	const minY = Math.min(a.y, b.y)
+	const maxY = Math.max(a.y, b.y)
+	if (maxX <= box.x || box.x + box.width <= minX) return false
+	if (maxY <= box.y || box.y + box.height <= minY) return false
+	if (a.x === b.x || a.y === b.y) return true
+
+	// Diagonal: the box is hit unless all four corners fall on one side of it.
+	const side = (p: { x: number; y: number }): number =>
+		Math.sign((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x))
+	const corners = [
+		{ x: box.x, y: box.y },
+		{ x: box.x + box.width, y: box.y },
+		{ x: box.x + box.width, y: box.y + box.height },
+		{ x: box.x, y: box.y + box.height },
+	]
+	const first = side(corners[0] ?? { x: 0, y: 0 })
+	return corners.some((corner) => side(corner) !== first)
 }
 
 /**

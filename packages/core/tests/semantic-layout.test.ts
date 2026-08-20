@@ -341,3 +341,80 @@ describe("semantic layout — engine selection", () => {
 		expect(JSON.stringify(semantic)).not.toBe(JSON.stringify(grid))
 	})
 })
+
+describe("semantic layout — rank refinements", () => {
+	/**
+	 * split ⇒ {a, b} ⇒ inner join, plus a third branch straight to the outer
+	 * join, so both gateways really are joins.
+	 */
+	function nestedJoins(outerType: BpmnFlowElement["type"]): BpmnProcess {
+		return proc(
+			[
+				node("s", "startEvent"),
+				node("split", "exclusiveGateway"),
+				node("a"),
+				node("b"),
+				node("c"),
+				node("inner", "exclusiveGateway"),
+				{ ...node("outer", "exclusiveGateway"), type: outerType } as BpmnFlowElement,
+				node("e", "endEvent"),
+			],
+			[
+				flow("f1", "s", "split"),
+				flow("f2", "split", "a"),
+				flow("f3", "split", "b"),
+				flow("f4", "split", "c"),
+				flow("f5", "a", "inner"),
+				flow("f6", "b", "inner"),
+				flow("f7", "inner", "outer"),
+				flow("f8", "c", "outer"),
+				flow("f9", "outer", "e"),
+			],
+		)
+	}
+
+	it("lets nested joins of one gateway type share a rank and connect vertically", () => {
+		const result = layoutProcess(nestedJoins("exclusiveGateway"))
+		const nodes = byId(result)
+		const inner = nodes.get("inner")?.bounds
+		const outer = nodes.get("outer")?.bounds
+		expect(inner && outer).toBeTruthy()
+		if (!inner || !outer) return
+		expect(outer.x).toBe(inner.x)
+
+		const edge = result.edges.find((e) => e.id === "f7")
+		expect(edge?.waypoints).toHaveLength(2)
+		expect(edge?.waypoints[0]?.x).toBe(edge?.waypoints[1]?.x)
+	})
+
+	it("keeps the forward step between joins of different gateway types", () => {
+		const nodes = byId(layoutProcess(nestedJoins("parallelGateway")))
+		const inner = nodes.get("inner")?.bounds
+		const outer = nodes.get("outer")?.bounds
+		expect(inner && outer).toBeTruthy()
+		if (!inner || !outer) return
+		expect(outer.x).toBeGreaterThan(inner.x + inner.width)
+	})
+
+	it("gives a node no traversal reaches a band of its own", () => {
+		// "x" feeds into the flow without being reachable from the start, so no
+		// spine or branch walk ever claims it.
+		const process = proc(
+			[node("s", "startEvent"), node("a"), node("b"), node("e", "endEvent"), node("x")],
+			[flow("f1", "s", "a"), flow("f2", "a", "b"), flow("f3", "b", "e"), flow("f4", "x", "a")],
+		)
+		const nodes = byId(layoutProcess(process))
+		const start = nodes.get("s")?.bounds
+		const stray = nodes.get("x")?.bounds
+		expect(start && stray).toBeTruthy()
+		if (!start || !stray) return
+
+		const overlaps =
+			start.x < stray.x + stray.width &&
+			stray.x < start.x + start.width &&
+			start.y < stray.y + stray.height &&
+			stray.y < start.y + start.height
+		expect(overlaps).toBe(false)
+		expect(centreY(stray)).not.toBe(centreY(start))
+	})
+})

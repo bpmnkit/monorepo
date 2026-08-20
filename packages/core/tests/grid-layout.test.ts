@@ -838,18 +838,27 @@ describe("Annotation packing", () => {
 		// "main" establishes mainFlowY (center-Y 140); "task" sits far south of it so its
 		// annotation's natural side is "below". An obstacle sits right at the natural
 		// below-slot (task bottom + PREFERRED_OFFSET), forcing the push-loop to move the
-		// annotation down; the push distance (40px) stays cheaper than any horizontal
-		// shift (min 60px), so dx=0 remains the winning candidate and only y moves.
+		// annotation down past it. The annotation also shifts sideways, because the
+		// association line drawn straight down from the task would run through the
+		// obstacle — a clear box is not enough on its own.
 		const main = layoutNode("main", { x: 100, y: 100, width: 100, height: 80 })
 		const task = layoutNode("task", { x: 300, y: 400, width: 100, height: 80 })
 		const obstacle = layoutNode("obs", { x: 300, y: 530, width: 60, height: 10 })
 		const process = makeProcess([textAnnotation("ann1", "hi")], [association("a1", "task", "ann1")])
 		const bounds = packAnnotations(process, [task, main, obstacle]).get("ann1")
 		if (!bounds) throw new Error("missing ann1 bounds")
-		const naturalX = Math.round(350 - bounds.width / 2)
-		expect(bounds.x).toBe(naturalX)
 		expect(bounds.y).toBe(570)
 		expect(separatedBy(bounds, obstacle.bounds, 30)).toBe(true)
+
+		// The line back to the task clears the obstacle too.
+		const { pElem, pAnn } = associationWaypoints(task.bounds, bounds)
+		const crossesObstacle = [0.1, 0.3, 0.5, 0.7, 0.9].some((t) => {
+			const x = pElem.x + (pAnn.x - pElem.x) * t
+			const y = pElem.y + (pAnn.y - pElem.y) * t
+			const o = obstacle.bounds
+			return x > o.x && x < o.x + o.width && y > o.y && y < o.y + o.height
+		})
+		expect(crossesObstacle).toBe(false)
 	})
 })
 
