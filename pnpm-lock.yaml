@@ -418,6 +418,8 @@ importers:
 
   packages/create-casen-plugin: {}
 
+  packages/docspack: {}
+
   packages/editor:
     dependencies:
       '@bpmnkit/canvas':

@@ -35,6 +35,9 @@ export default defineConfig({
 						"diagrams programmatically. Designed for AI agents, automation platforms, and " +
 						"Camunda 8 / Zeebe workflow deployments. Zero runtime dependencies in the core packages.",
 					details:
+						"Documentation is also published as an offline, searchable npm package: " +
+						'`npm i -D @bpmnkit/docspack` then `npx bpmnkit-docs ask "<question>"` ' +
+						"answers from the installed version with no network call. " +
 						"BPMN Kit is a TypeScript monorepo: @bpmnkit/core (fluent builder, parser, " +
 						"auto-layout, compact format), @bpmnkit/engine (simulation, no Camunda needed), " +
 						"@bpmnkit/api (Camunda 8 REST client, 180 methods), @bpmnkit/canvas (SVG viewer), " +

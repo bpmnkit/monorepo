@@ -1,5 +1,9 @@
 # Features
 
+## Documentation as an installable package for AI agents (2026-08-21)
+
+`@bpmnkit/docspack` ships the BPMN Kit documentation as an npm package in the [docspack format](https://docspack.dev/spec): `.llms/chunks/*.md`, a schema-valid `.llms/manifest.json` and an `llms.txt` table of contents, built from `apps/docs/src/content/docs`. An agent installs it and runs `npx bpmnkit-docs ask "<question>"`; the answer comes from a local BM25 index with Porter stemming, capped at three chunks and 3,000 tokens, and names the pack, version and chunk it came from. Every command reads the filesystem only — no server, no network call. The vendor-scope name means the upstream `docspack` CLI indexes the pack too.
+
 ## Auto-layout comparison page (2026-08-21)
 
 `/auto-layout` on the landing site lays out five real process models with both engines and lets you toggle between them. The models ship as model-only BPMN with no diagram interchange, so both layouts are computed in the browser from the same source; per-diagram counts for crossings, routes over shapes, backward flows, bends and edge length are measured at build time. `applyAutoLayout(defs, engine)` accepts `"semantic"` (default) or `"grid"`, matching `layoutProcess`.

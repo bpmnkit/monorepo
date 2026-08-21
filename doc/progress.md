@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-08-21 — `@bpmnkit/docspack`: the docs as a package an agent can install and search
+
+Agents answer BPMN Kit questions from whatever they remember, which is usually an older release. New package `packages/docspack` ships the documentation itself as an npm package, indexed and searched locally, so an agent reads the docs for the version the project actually installed.
+
+It implements the [docspack format](https://docspack.dev/spec) rather than a private one. The vendor-scope name `@bpmnkit/docspack` is exactly what the upstream `docspack` CLI discovers in `node_modules`, so that tool indexes this pack with no extra work — and the bundled `bpmnkit-docs` command does the same job for anyone who does not want a second tool. Zero runtime dependencies either way.
+
+- **Payload** — `bpmnkit-docs build` reads `apps/docs/src/content/docs`, splits each page at its `##` headings and writes `.llms/chunks/*.md`, `.llms/manifest.json` (validating against `https://docspack.dev/schema/v1.json`) and an `llms.txt` table of contents. Currently **152 chunks from 28 documents, 30,882 tokens**.
+- **Chunking** — a section over the budget is subdivided at `###` and then at paragraph boundaries, never inside a fenced code block (a `## comment` in a shell sample is not a heading). A section too short to answer anything merges into the one before it, so a reference table does not become one chunk per row. Tags come from front matter, the page slug and the heading's own words; entities are the qualified identifiers named in inline code. `<!-- docspack: tags=… -->` overrides either from the page.
+- **Retrieval** — BM25 (k1 1.2, b 0.75) over chunk text with a Porter stemmer, so `authenticate` reaches a passage that only says `authentication`. Tags and entities weigh 3× prose, which is what puts *Exclusive Gateway (XOR)* at 14.73 against 8.04 for the inclusive-gateway page on "exclusive gateway condition".
+- **Bounded answers** — three chunks and 3,000 tokens by default, spent from the manifest's counts before any content is read, so an overrunning chunk is dropped rather than truncated mid-sentence. Every answer names `<pack>@<version>/<chunk-id>` and closes with what it cost.
+- **Manifests are untrusted** — a chunk path resolving outside `.llms/` is refused, duplicate or malformed chunk ids are refused, `tokens: 0` is refused, the installed `package.json` version supersedes the manifest's (a disagreement is reported by `list`), and `@docspack-community/*` packages are labelled unreviewed in every answer.
+- **No network** — `ask`, `search`, `list` and `build` read the filesystem only. There is no server and nothing resident between questions.
+
+The library is exported too (`discoverPacks`, `indexPacks`, `search`, `answer`, `buildPack`), so an editor extension or MCP server can search without shelling out. 31 tests cover the stemmer, the chunker, manifest validation and the token budget.
+
+Docs page at `packages/docspack`; the package is wired into `sync-license.mjs`, `generate-readmes.mjs` and `check-packages.mjs`.
+
+**Discoverability.** A pack nobody finds is a pack nobody uses, so it is named at the five places an agent actually lands: the top of `CLAUDE.md` (first thing in context for a session in this repo), a new root `AGENTS.md` (the convention Cursor, Codex and Copilot read), a "For AI Agents" section near the head of the root `README.md`, the same section on the docs homepage — which `promote: ["index*"]` puts at line 35 of 5,500 in `llms-full.txt` — and the `details` preamble of `llms.txt` itself, which is the whole content of that file and therefore the first thing an agent fetching `docs.bpmnkit.com/llms.txt` reads. The wording follows docspack's own `ai-rules.md`, including the line that decides a conflict: a retrieved chunk beats recalled knowledge, and the two are not blended.
+
 ## 2026-08-21 — Surface `/auto-layout` from the homepage and the footer
 
 The layout comparison page shipped reachable from one place only: the Resources dropdown in the nav. Three links added so it is findable without opening a menu.

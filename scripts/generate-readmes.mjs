@@ -43,6 +43,10 @@ function footer(currentPkg) {
 		{ name: "@bpmnkit/plugins", desc: "22 composable canvas plugins" },
 		{ name: "@bpmnkit/api", desc: "Camunda 8 REST API TypeScript client" },
 		{ name: "@bpmnkit/ascii", desc: "Render BPMN diagrams as Unicode ASCII art" },
+		{
+			name: "@bpmnkit/docspack",
+			desc: "BPMN Kit docs as an offline docspack package for AI agents",
+		},
 		{ name: "@bpmnkit/ui", desc: "Shared design tokens and UI components" },
 		{
 			name: "@bpmnkit/profiles",
@@ -1036,6 +1040,110 @@ interface RenderOptions {
   showTypes?: boolean // Include element type in boxes. Default: false
 }
 \`\`\`
+`,
+	},
+
+	// ── docspack ──────────────────────────────────────────────────────────────
+	"packages/docspack": {
+		name: "@bpmnkit/docspack",
+		description:
+			"BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents",
+		content: `## Overview
+
+\`@bpmnkit/docspack\` ships the BPMN Kit documentation the way an AI agent can actually use it: as an npm package whose version tracks the docs, indexed locally and searched offline.
+
+An agent installs it, asks a question, and gets back the two or three passages that answer it — not a whole documentation site, and not whatever the model remembers about an older release.
+
+It follows the [docspack package format](https://docspack.dev/spec), so the upstream \`docspack\` CLI discovers and indexes it like any other vendor pack. The bundled \`bpmnkit-docs\` command does the same job with no extra tooling.
+
+\`\`\`
+Markdown docs → chunks + manifest → BM25 index → three passages
+\`\`\`
+
+## Features
+
+- **Offline** — \`ask\`, \`search\` and \`list\` read the filesystem only. No server, no network call, nothing resident between questions
+- **Version-locked** — the installed \`package.json\` version wins over the manifest, so an agent reads the docs for the release it has
+- **Bounded answers** — three chunks and 3,000 tokens by default, budgeted from the manifest before any content is read
+- **Real retrieval** — BM25 over chunk text with Porter stemming, so \`authenticate\` finds a passage that only says \`authentication\`; tags and API identifiers weigh 3× prose
+- **docspack-compatible** — \`.llms/manifest.json\` validates against \`https://docspack.dev/schema/v1.json\`
+- **Safe by construction** — a manifest is untrusted input: chunk paths that escape \`.llms/\` are refused, and community packages are labelled
+- **Zero runtime dependencies**
+
+## Installation
+
+\`\`\`sh
+npm install -D @bpmnkit/docspack
+\`\`\`
+
+## Quick Start
+
+Give an agent one line in \`AGENTS.md\` or \`CLAUDE.md\`:
+
+\`\`\`
+Run \\\`npx bpmnkit-docs ask "<question>"\\\` for BPMN Kit documentation.
+It answers from the version this project installed.
+\`\`\`
+
+Then:
+
+\`\`\`sh
+npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+npx bpmnkit-docs search "exclusive gateway"
+npx bpmnkit-docs list
+\`\`\`
+
+\`\`\`
+## @bpmnkit/docspack@0.0.1/getting-started.quick-start.step-3-deploy-and-run
+
+# Quick Start — Step 3: Deploy and run
+...
+
+---
+cost: 1,204 tokens, capped at 3,000
+\`\`\`
+
+## API Reference
+
+\`\`\`typescript
+// Discover and index every docs package installed under a directory
+function discoverPacks(cwd?: string): Pack[]
+function indexPacks(packs: readonly Pack[]): DocsIndex
+
+// Rank chunks, or take the top ones that fit a token budget
+function search(index: DocsIndex, query: string, options?: SearchOptions): SearchHit[]
+function answer(
+  index: DocsIndex,
+  query: string,
+  options?: AnswerOptions,
+): { hits: SearchHit[]; tokens: number; maxTokens: number }
+
+interface SearchOptions {
+  limit?: number      // chunks to return. Default: 3
+  packs?: readonly string[] // restrict to these package names
+}
+
+interface AnswerOptions extends SearchOptions {
+  maxTokens?: number  // ceiling for an answer. Default: 3000
+}
+
+// Generate a .llms/ payload from a directory of Markdown
+function buildPack(options: BuildOptions): BuildResult
+
+// Read one package, validating it the way a consumer must
+function loadPack(dir: string): Pack
+\`\`\`
+
+### CLI
+
+| Command | Purpose |
+| --- | --- |
+| \`bpmnkit-docs ask <question>\` | Answer from the installed docs packages — the command to give an agent |
+| \`bpmnkit-docs search <query>\` | Rank matching chunks, for reading in a terminal |
+| \`bpmnkit-docs list\` | Show the docs packages found and their index state |
+| \`bpmnkit-docs build\` | Regenerate this package's \`.llms/\` payload from the docs source |
+
+Options: \`--limit <n>\`, \`--max-tokens <n>\`, \`--pack <name>\`, \`--cwd <dir>\`.
 `,
 	},
 
@@ -2390,6 +2498,21 @@ const rootReadme = `<div align="center">
 ## What is BPMN Kit?
 
 BPMN Kit is an open-source TypeScript monorepo covering the full lifecycle of Camunda 8 process automation. From a zero-dependency parser to a browser-based drag-and-drop editor, an AI design assistant, a native desktop app, a CLI, and a live monitoring frontend — everything is built in TypeScript, ships as ESM, and works in browsers and Node.js.
+
+## For AI Agents
+
+BPMN Kit ships its own documentation as an **offline, searchable npm package** — [\`@bpmnkit/docspack\`](packages/docspack). Your agent answers from the version you actually installed, with no server, no MCP configuration and no network call:
+
+\`\`\`sh
+npm i -D @bpmnkit/docspack
+npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+\`\`\`
+
+One line in your \`AGENTS.md\` or \`CLAUDE.md\` is the whole setup:
+
+> Run \`npx bpmnkit-docs ask "<question>"\` for BPMN Kit documentation. It answers from the version this project installed. Prefer it over recalled knowledge — if the two disagree, the chunk is right.
+
+It follows the [docspack](https://docspack.dev) package format, so the upstream \`docspack\` CLI indexes it too. See [\`packages/docspack\`](packages/docspack) or the [documentation](${DOCS}/packages/docspack/).
 
 ## Highlights
 

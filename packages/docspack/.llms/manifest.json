@@ -1,0 +1,2083 @@
+{
+	"$schema": "https://docspack.dev/schema/v1.json",
+	"name": "@bpmnkit/docspack",
+	"version": "0.0.1",
+	"documents": [
+		"@bpmnkit/core",
+		"@bpmnkit/canvas",
+		"@bpmnkit/editor",
+		"@bpmnkit/engine",
+		"@bpmnkit/feel",
+		"@bpmnkit/plugins",
+		"@bpmnkit/api",
+		"@bpmnkit/ascii",
+		"@bpmnkit/connector-gen",
+		"@bpmnkit/connectors",
+		"@bpmnkit/patterns",
+		"@bpmnkit/worker-client",
+		"@bpmnkit/cli"
+	],
+	"chunks": [
+		{
+			"id": "cli.casen",
+			"file": "chunks/cli.casen.md",
+			"tokens": 677,
+			"tags": [
+				"cli",
+				"casen"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.generate-bpmn-files",
+			"file": "chunks/cli.casen.generate-bpmn-files.md",
+			"tokens": 205,
+			"tags": [
+				"cli",
+				"casen",
+				"generate",
+				"bpmn",
+				"files"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.connection-profiles",
+			"file": "chunks/cli.casen.connection-profiles.md",
+			"tokens": 279,
+			"tags": [
+				"cli",
+				"casen",
+				"connection",
+				"profiles"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.plugins",
+			"file": "chunks/cli.casen.plugins.md",
+			"tokens": 271,
+			"tags": [
+				"cli",
+				"casen",
+				"plugins"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.bpmn-generation-pipeline",
+			"file": "chunks/cli.casen.bpmn-generation-pipeline.md",
+			"tokens": 281,
+			"tags": [
+				"cli",
+				"casen",
+				"bpmn",
+				"generation",
+				"pipeline"
+			],
+			"entities": [
+				"ProcessPlan"
+			]
+		},
+		{
+			"id": "cli.casen.aikit-skills",
+			"file": "chunks/cli.casen.aikit-skills.md",
+			"tokens": 197,
+			"tags": [
+				"cli",
+				"casen",
+				"aikit",
+				"skills"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.worker-commands",
+			"file": "chunks/cli.casen.worker-commands.md",
+			"tokens": 192,
+			"tags": [
+				"cli",
+				"casen",
+				"worker",
+				"commands"
+			],
+			"entities": [
+				"claude_desktop_config.json"
+			]
+		},
+		{
+			"id": "cli.connector",
+			"file": "chunks/cli.connector.md",
+			"tokens": 167,
+			"tags": [
+				"cli",
+				"connector"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.connector.browse-the-bundled-ootb-catalog",
+			"file": "chunks/cli.connector.browse-the-bundled-ootb-catalog.md",
+			"tokens": 213,
+			"tags": [
+				"cli",
+				"connector",
+				"browse",
+				"bundled",
+				"ootb",
+				"catalog"
+			],
+			"entities": [
+				"ProcessPlan",
+				"@bpmnkit/connectors",
+				"listConnectors()",
+				"searchConnectors()"
+			]
+		},
+		{
+			"id": "cli.connector.generate-from-the-openapi-catalog",
+			"file": "chunks/cli.connector.generate-from-the-openapi-catalog.md",
+			"tokens": 174,
+			"tags": [
+				"cli",
+				"connector",
+				"generate",
+				"openapi",
+				"catalog"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.connector.all-flags",
+			"file": "chunks/cli.connector.all-flags.md",
+			"tokens": 329,
+			"tags": [
+				"cli",
+				"connector",
+				"all",
+				"flags"
+			],
+			"entities": [
+				"com.myorg",
+				"operationId",
+				"noAuth",
+				"apiKey",
+				"components.securitySchemes"
+			]
+		},
+		{
+			"id": "cli.connector.common-workflows",
+			"file": "chunks/cli.connector.common-workflows.md",
+			"tokens": 288,
+			"tags": [
+				"cli",
+				"connector",
+				"common",
+				"workflows"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.connector.what-gets-generated",
+			"file": "chunks/cli.connector.what-gets-generated.md",
+			"tokens": 225,
+			"tags": [
+				"cli",
+				"connector",
+				"gets",
+				"generated"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.connector.built-in-catalog",
+			"file": "chunks/cli.connector.built-in-catalog.md",
+			"tokens": 426,
+			"tags": [
+				"cli",
+				"connector",
+				"built-in",
+				"catalog"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.connector.programmatic-usage",
+			"file": "chunks/cli.connector.programmatic-usage.md",
+			"tokens": 45,
+			"tags": [
+				"cli",
+				"connector",
+				"programmatic",
+				"usage"
+			],
+			"entities": [
+				"@bpmnkit/connector-gen"
+			]
+		},
+		{
+			"id": "cli.generate",
+			"file": "chunks/cli.generate.md",
+			"tokens": 508,
+			"tags": [
+				"cli",
+				"generate"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.generate.definition-mode-ai-scripting-path",
+			"file": "chunks/cli.generate.definition-mode-ai-scripting-path.md",
+			"tokens": 672,
+			"tags": [
+				"cli",
+				"generate",
+				"definition",
+				"mode",
+				"scripting",
+				"path"
+			],
+			"entities": [
+				"serviceTask",
+				"userTask",
+				"scriptTask",
+				"businessRuleTask",
+				"callActivity",
+				"sendTask",
+				"receiveTask",
+				"manualTask",
+				"startEvent",
+				"endEvent",
+				"intermediateCatchEvent",
+				"intermediateThrowEvent"
+			]
+		},
+		{
+			"id": "cli.generate.modify-existing-mode-input",
+			"file": "chunks/cli.generate.modify-existing-mode-input.md",
+			"tokens": 449,
+			"tags": [
+				"cli",
+				"generate",
+				"modify-existing",
+				"mode",
+				"input"
+			],
+			"entities": [
+				"CompactDiagram"
+			]
+		},
+		{
+			"id": "cli.generate.typical-ai-workflow",
+			"file": "chunks/cli.generate.typical-ai-workflow.md",
+			"tokens": 106,
+			"tags": [
+				"cli",
+				"generate",
+				"typical",
+				"workflow"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.plugin-authoring",
+			"file": "chunks/cli.plugin-authoring.md",
+			"tokens": 326,
+			"tags": [
+				"cli",
+				"plugin-authoring"
+			],
+			"entities": [
+				"CasenPlugin"
+			]
+		},
+		{
+			"id": "cli.plugin-authoring.what-gets-generated",
+			"file": "chunks/cli.plugin-authoring.what-gets-generated.md",
+			"tokens": 310,
+			"tags": [
+				"cli",
+				"plugin-authoring",
+				"gets",
+				"generated"
+			],
+			"entities": [
+				"package.json",
+				"src/index.ts"
+			]
+		},
+		{
+			"id": "cli.plugin-authoring.the-bpmnkit-cli-sdk-sdk",
+			"file": "chunks/cli.plugin-authoring.the-bpmnkit-cli-sdk-sdk.md",
+			"tokens": 423,
+			"tags": [
+				"cli",
+				"plugin-authoring",
+				"bpmnkit",
+				"cli-sdk",
+				"sdk"
+			],
+			"entities": [
+				"CasenPlugin",
+				"dist/index.js",
+				"CommandGroup",
+				"RunContext",
+				"run()",
+				"OutputWriter",
+				"ctx.output"
+			]
+		},
+		{
+			"id": "cli.plugin-authoring.writing-commands",
+			"file": "chunks/cli.plugin-authoring.writing-commands.md",
+			"tokens": 425,
+			"tags": [
+				"cli",
+				"plugin-authoring",
+				"writing",
+				"commands"
+			],
+			"entities": [
+				"getClient()",
+				"CamundaClient",
+				"@bpmnkit/api"
+			]
+		},
+		{
+			"id": "cli.plugin-authoring.test-locally",
+			"file": "chunks/cli.plugin-authoring.test-locally.md",
+			"tokens": 161,
+			"tags": [
+				"cli",
+				"plugin-authoring",
+				"test",
+				"locally"
+			],
+			"entities": [
+				"prepublishOnly",
+				"package.json",
+				"dist/"
+			]
+		},
+		{
+			"id": "cli.plugin-authoring.plugin-naming-conventions",
+			"file": "chunks/cli.plugin-authoring.plugin-naming-conventions.md",
+			"tokens": 116,
+			"tags": [
+				"cli",
+				"plugin-authoring",
+				"plugin",
+				"naming",
+				"conventions"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.plugins",
+			"file": "chunks/cli.plugins.md",
+			"tokens": 167,
+			"tags": [
+				"cli",
+				"plugins"
+			],
+			"entities": [
+				"@bpmnkit/casen-report",
+				"@bpmnkit/casen-worker-ai",
+				"@bpmnkit/casen-worker-http"
+			]
+		},
+		{
+			"id": "cli.plugins.bpmnkit-casen-report",
+			"file": "chunks/cli.plugins.bpmnkit-casen-report.md",
+			"tokens": 244,
+			"tags": [
+				"cli",
+				"plugins",
+				"bpmnkit",
+				"casen-report"
+			],
+			"entities": [
+				"@bpmnkit/casen-worker-ai"
+			]
+		},
+		{
+			"id": "cli.plugins.bpmnkit-casen-worker-http",
+			"file": "chunks/cli.plugins.bpmnkit-casen-worker-http.md",
+			"tokens": 116,
+			"tags": [
+				"cli",
+				"plugins",
+				"bpmnkit",
+				"casen-worker-http"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.skills",
+			"file": "chunks/cli.skills.md",
+			"tokens": 166,
+			"tags": [
+				"cli",
+				"skills"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.skills.implement",
+			"file": "chunks/cli.skills.implement.md",
+			"tokens": 221,
+			"tags": [
+				"cli",
+				"skills",
+				"implement"
+			],
+			"entities": [
+				"ProcessPlan"
+			]
+		},
+		{
+			"id": "cli.skills.review",
+			"file": "chunks/cli.skills.review.md",
+			"tokens": 184,
+			"tags": [
+				"cli",
+				"skills",
+				"review"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.skills.test",
+			"file": "chunks/cli.skills.test.md",
+			"tokens": 193,
+			"tags": [
+				"cli",
+				"skills",
+				"test"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.skills.deploy",
+			"file": "chunks/cli.skills.deploy.md",
+			"tokens": 184,
+			"tags": [
+				"cli",
+				"skills",
+				"deploy"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.skills.no-mcp-server-required",
+			"file": "chunks/cli.skills.no-mcp-server-required.md",
+			"tokens": 83,
+			"tags": [
+				"cli",
+				"skills",
+				"mcp",
+				"server",
+				"required"
+			],
+			"entities": [
+				"@bpmnkit/proxy"
+			]
+		},
+		{
+			"id": "cli.view",
+			"file": "chunks/cli.view.md",
+			"tokens": 358,
+			"tags": [
+				"cli",
+				"view"
+			],
+			"entities": [
+				"exportSvg",
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "cli.view.folder-support",
+			"file": "chunks/cli.view.folder-support.md",
+			"tokens": 202,
+			"tags": [
+				"cli",
+				"view",
+				"folder",
+				"support"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.view.tabbed-navigation",
+			"file": "chunks/cli.view.tabbed-navigation.md",
+			"tokens": 181,
+			"tags": [
+				"cli",
+				"view",
+				"tabbed",
+				"navigation"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.concepts.the-fluent-builder",
+			"file": "chunks/getting-started.concepts.the-fluent-builder.md",
+			"tokens": 252,
+			"tags": [
+				"getting-started",
+				"concepts",
+				"fluent",
+				"builder"
+			],
+			"entities": [
+				"ProcessBuilder"
+			]
+		},
+		{
+			"id": "getting-started.concepts.auto-layout",
+			"file": "chunks/getting-started.concepts.auto-layout.md",
+			"tokens": 150,
+			"tags": [
+				"getting-started",
+				"concepts",
+				"auto-layout"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.concepts.parsing-and-serializing",
+			"file": "chunks/getting-started.concepts.parsing-and-serializing.md",
+			"tokens": 149,
+			"tags": [
+				"getting-started",
+				"concepts",
+				"parsing",
+				"serializing"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.concepts.ai-compact-format",
+			"file": "chunks/getting-started.concepts.ai-compact-format.md",
+			"tokens": 182,
+			"tags": [
+				"getting-started",
+				"concepts",
+				"ai-compact",
+				"format"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.concepts.zeebe-extensions",
+			"file": "chunks/getting-started.concepts.zeebe-extensions.md",
+			"tokens": 135,
+			"tags": [
+				"getting-started",
+				"concepts",
+				"zeebe",
+				"extensions"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.installation",
+			"file": "chunks/getting-started.installation.md",
+			"tokens": 141,
+			"tags": [
+				"getting-started",
+				"installation"
+			],
+			"entities": [
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "getting-started.installation.svg-canvas-viewer",
+			"file": "chunks/getting-started.installation.svg-canvas-viewer.md",
+			"tokens": 189,
+			"tags": [
+				"getting-started",
+				"installation",
+				"svg",
+				"canvas",
+				"viewer"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.installation.worker-client",
+			"file": "chunks/getting-started.installation.worker-client.md",
+			"tokens": 145,
+			"tags": [
+				"getting-started",
+				"installation",
+				"worker",
+				"client"
+			],
+			"entities": [
+				"tsconfig.json"
+			]
+		},
+		{
+			"id": "getting-started.installation.runtime-requirements",
+			"file": "chunks/getting-started.installation.runtime-requirements.md",
+			"tokens": 87,
+			"tags": [
+				"getting-started",
+				"installation",
+				"runtime",
+				"requirements"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.quick-start",
+			"file": "chunks/getting-started.quick-start.md",
+			"tokens": 149,
+			"tags": [
+				"getting-started",
+				"quick-start"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.quick-start.step-2-simulate-locally",
+			"file": "chunks/getting-started.quick-start.step-2-simulate-locally.md",
+			"tokens": 158,
+			"tags": [
+				"getting-started",
+				"quick-start",
+				"step",
+				"simulate",
+				"locally"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.quick-start.step-3-deploy-to-camunda-8",
+			"file": "chunks/getting-started.quick-start.step-3-deploy-to-camunda-8.md",
+			"tokens": 152,
+			"tags": [
+				"getting-started",
+				"quick-start",
+				"step",
+				"deploy",
+				"camunda"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.quick-start.what-s-next",
+			"file": "chunks/getting-started.quick-start.what-s-next.md",
+			"tokens": 137,
+			"tags": [
+				"getting-started",
+				"quick-start",
+				"next"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai-agents",
+			"file": "chunks/guides.ai-agents.md",
+			"tokens": 146,
+			"tags": [
+				"guides",
+				"ai-agents"
+			],
+			"entities": [
+				"ProcessPlan",
+				"aiAgent"
+			]
+		},
+		{
+			"id": "guides.ai-agents.how-it-s-modeled",
+			"file": "chunks/guides.ai-agents.how-it-s-modeled.md",
+			"tokens": 183,
+			"tags": [
+				"guides",
+				"ai-agents",
+				"modeled"
+			],
+			"entities": [
+				"outputCollection",
+				"toolCallResults",
+				"aiAgent"
+			]
+		},
+		{
+			"id": "guides.ai-agents.the-aiagent-plan-step",
+			"file": "chunks/guides.ai-agents.the-aiagent-plan-step.md",
+			"tokens": 501,
+			"tags": [
+				"guides",
+				"ai-agents",
+				"aiagent",
+				"plan",
+				"step"
+			],
+			"entities": [
+				"jobType",
+				"connector.values"
+			]
+		},
+		{
+			"id": "guides.ai-agents.deploy-grade-validation",
+			"file": "chunks/guides.ai-agents.deploy-grade-validation.md",
+			"tokens": 205,
+			"tags": [
+				"guides",
+				"ai-agents",
+				"deploy-grade",
+				"validation"
+			],
+			"entities": [
+				"agentic/tool-not-root",
+				"agentic/tool-no-description",
+				"agentic/fromai-bad-ref",
+				"fromAi()",
+				"agentic/no-output-collection",
+				"agentic/limits-missing",
+				"maxModelCalls"
+			]
+		},
+		{
+			"id": "guides.ai-agents.testing-without-a-real-llm-call",
+			"file": "chunks/guides.ai-agents.testing-without-a-real-llm-call.md",
+			"tokens": 201,
+			"tags": [
+				"guides",
+				"ai-agents",
+				"testing",
+				"without",
+				"real",
+				"llm",
+				"call"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai-agents.see-also",
+			"file": "chunks/guides.ai-agents.see-also.md",
+			"tokens": 49,
+			"tags": [
+				"guides",
+				"ai-agents",
+				"see",
+				"also"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai-implement",
+			"file": "chunks/guides.ai-implement.md",
+			"tokens": 403,
+			"tags": [
+				"guides",
+				"ai-implement"
+			],
+			"entities": [
+				"ProcessPlan"
+			]
+		},
+		{
+			"id": "guides.ai-implement.the-claude-code-plugin",
+			"file": "chunks/guides.ai-implement.the-claude-code-plugin.md",
+			"tokens": 231,
+			"tags": [
+				"guides",
+				"ai-implement",
+				"claude",
+				"code",
+				"plugin"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai-implement.lightweight-alternative-casen-skills-install",
+			"file": "chunks/guides.ai-implement.lightweight-alternative-casen-skills-install.md",
+			"tokens": 172,
+			"tags": [
+				"guides",
+				"ai-implement",
+				"lightweight",
+				"alternative",
+				"casen",
+				"skills",
+				"install"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai-implement.deploying",
+			"file": "chunks/guides.ai-implement.deploying.md",
+			"tokens": 256,
+			"tags": [
+				"guides",
+				"ai-implement",
+				"deploying"
+			],
+			"entities": [
+				"@bpmnkit/worker-client"
+			]
+		},
+		{
+			"id": "guides.ai-implement.extending-an-existing-process",
+			"file": "chunks/guides.ai-implement.extending-an-existing-process.md",
+			"tokens": 100,
+			"tags": [
+				"guides",
+				"ai-implement",
+				"extending",
+				"existing",
+				"process"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai",
+			"file": "chunks/guides.ai.md",
+			"tokens": 227,
+			"tags": [
+				"guides",
+				"ai"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai.minimal-empty-diagram",
+			"file": "chunks/guides.ai.minimal-empty-diagram.md",
+			"tokens": 229,
+			"tags": [
+				"guides",
+				"ai",
+				"minimal",
+				"empty",
+				"diagram"
+			],
+			"entities": [
+				"Bpmn.makeEmpty()"
+			]
+		},
+		{
+			"id": "guides.ai.claude-api-example",
+			"file": "chunks/guides.ai.claude-api-example.md",
+			"tokens": 227,
+			"tags": [
+				"guides",
+				"ai",
+				"claude",
+				"api",
+				"example"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai.openai-function-calling",
+			"file": "chunks/guides.ai.openai-function-calling.md",
+			"tokens": 192,
+			"tags": [
+				"guides",
+				"ai",
+				"openai",
+				"function",
+				"calling"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.ai.mcp-server",
+			"file": "chunks/guides.ai.mcp-server.md",
+			"tokens": 151,
+			"tags": [
+				"guides",
+				"ai",
+				"mcp",
+				"server"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.building-processes.service-tasks",
+			"file": "chunks/guides.building-processes.service-tasks.md",
+			"tokens": 203,
+			"tags": [
+				"guides",
+				"building-processes",
+				"service",
+				"tasks"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.building-processes.events",
+			"file": "chunks/guides.building-processes.events.md",
+			"tokens": 245,
+			"tags": [
+				"guides",
+				"building-processes",
+				"events"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.building-processes.sub-processes",
+			"file": "chunks/guides.building-processes.sub-processes.md",
+			"tokens": 181,
+			"tags": [
+				"guides",
+				"building-processes",
+				"sub-processes"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.building-processes.boundary-events",
+			"file": "chunks/guides.building-processes.boundary-events.md",
+			"tokens": 294,
+			"tags": [
+				"guides",
+				"building-processes",
+				"boundary",
+				"events"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.building-processes.call-activities",
+			"file": "chunks/guides.building-processes.call-activities.md",
+			"tokens": 217,
+			"tags": [
+				"guides",
+				"building-processes",
+				"call",
+				"activities"
+			],
+			"entities": [
+				"Bpmn.createDiagram()"
+			]
+		},
+		{
+			"id": "guides.building-processes.task-defaults",
+			"file": "chunks/guides.building-processes.task-defaults.md",
+			"tokens": 141,
+			"tags": [
+				"guides",
+				"building-processes",
+				"task",
+				"defaults"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.building-processes.multi-instance",
+			"file": "chunks/guides.building-processes.multi-instance.md",
+			"tokens": 93,
+			"tags": [
+				"guides",
+				"building-processes",
+				"multi-instance"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.claude-code-plugin",
+			"file": "chunks/guides.claude-code-plugin.md",
+			"tokens": 205,
+			"tags": [
+				"guides",
+				"claude-code-plugin"
+			],
+			"entities": [
+				"ProcessPlan"
+			]
+		},
+		{
+			"id": "guides.claude-code-plugin.configuration",
+			"file": "chunks/guides.claude-code-plugin.configuration.md",
+			"tokens": 591,
+			"tags": [
+				"guides",
+				"claude-code-plugin",
+				"configuration"
+			],
+			"entities": [
+				"ProcessPlan"
+			]
+		},
+		{
+			"id": "guides.claude-code-plugin.reference-docs",
+			"file": "chunks/guides.claude-code-plugin.reference-docs.md",
+			"tokens": 412,
+			"tags": [
+				"guides",
+				"claude-code-plugin",
+				"reference",
+				"docs"
+			],
+			"entities": [
+				"references/plan-format.md",
+				"ProcessPlan",
+				"references/connectors.md",
+				"references/agentic.md",
+				"references/feel.md",
+				"references/modeling-style.md"
+			]
+		},
+		{
+			"id": "guides.claude-code-plugin.ambient-hooks",
+			"file": "chunks/guides.claude-code-plugin.ambient-hooks.md",
+			"tokens": 191,
+			"tags": [
+				"guides",
+				"claude-code-plugin",
+				"ambient",
+				"hooks"
+			],
+			"entities": [
+				"@bpmnkit/proxy"
+			]
+		},
+		{
+			"id": "guides.deployment",
+			"file": "chunks/guides.deployment.md",
+			"tokens": 192,
+			"tags": [
+				"guides",
+				"deployment"
+			],
+			"entities": [
+				"@bpmnkit/api"
+			]
+		},
+		{
+			"id": "guides.deployment.deploying-a-process",
+			"file": "chunks/guides.deployment.deploying-a-process.md",
+			"tokens": 196,
+			"tags": [
+				"guides",
+				"deployment",
+				"deploying",
+				"process"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.deployment.handling-jobs",
+			"file": "chunks/guides.deployment.handling-jobs.md",
+			"tokens": 195,
+			"tags": [
+				"guides",
+				"deployment",
+				"handling",
+				"jobs"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.deployment.managing-incidents",
+			"file": "chunks/guides.deployment.managing-incidents.md",
+			"tokens": 143,
+			"tags": [
+				"guides",
+				"deployment",
+				"managing",
+				"incidents"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.deployment.ci-cd-deploy-on-push",
+			"file": "chunks/guides.deployment.ci-cd-deploy-on-push.md",
+			"tokens": 222,
+			"tags": [
+				"guides",
+				"deployment",
+				"deploy",
+				"push"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.gateways.exclusive-gateway-xor",
+			"file": "chunks/guides.gateways.exclusive-gateway-xor.md",
+			"tokens": 218,
+			"tags": [
+				"guides",
+				"gateways",
+				"exclusive",
+				"gateway",
+				"xor"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.gateways.parallel-gateway-and",
+			"file": "chunks/guides.gateways.parallel-gateway-and.md",
+			"tokens": 143,
+			"tags": [
+				"guides",
+				"gateways",
+				"parallel",
+				"gateway"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.gateways.inclusive-gateway-or",
+			"file": "chunks/guides.gateways.inclusive-gateway-or.md",
+			"tokens": 208,
+			"tags": [
+				"guides",
+				"gateways",
+				"inclusive",
+				"gateway"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.gateways.branching-inside-sub-processes",
+			"file": "chunks/guides.gateways.branching-inside-sub-processes.md",
+			"tokens": 142,
+			"tags": [
+				"guides",
+				"gateways",
+				"branching",
+				"inside",
+				"sub-processes"
+			],
+			"entities": [
+				"subProcess()"
+			]
+		},
+		{
+			"id": "guides.gateways.nested-branching",
+			"file": "chunks/guides.gateways.nested-branching.md",
+			"tokens": 122,
+			"tags": [
+				"guides",
+				"gateways",
+				"nested",
+				"branching"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.patterns",
+			"file": "chunks/guides.patterns.md",
+			"tokens": 304,
+			"tags": [
+				"guides",
+				"patterns"
+			],
+			"entities": [
+				"@bpmnkit/patterns",
+				"ProcessPlan"
+			]
+		},
+		{
+			"id": "guides.patterns.how-matching-works",
+			"file": "chunks/guides.patterns.how-matching-works.md",
+			"tokens": 138,
+			"tags": [
+				"guides",
+				"patterns",
+				"matching",
+				"works"
+			],
+			"entities": [
+				"findPattern()"
+			]
+		},
+		{
+			"id": "guides.patterns.what-a-pattern-contains",
+			"file": "chunks/guides.patterns.what-a-pattern-contains.md",
+			"tokens": 154,
+			"tags": [
+				"guides",
+				"patterns",
+				"pattern",
+				"contains"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.patterns.using-patterns-from-the-cli",
+			"file": "chunks/guides.patterns.using-patterns-from-the-cli.md",
+			"tokens": 139,
+			"tags": [
+				"guides",
+				"patterns",
+				"cli"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.patterns.pattern-schema",
+			"file": "chunks/guides.patterns.pattern-schema.md",
+			"tokens": 212,
+			"tags": [
+				"guides",
+				"patterns",
+				"pattern",
+				"schema"
+			],
+			"entities": [
+				"packages/patterns/src/patterns/",
+				"index.ts",
+				"findPattern"
+			]
+		},
+		{
+			"id": "guides.patterns.see-also",
+			"file": "chunks/guides.patterns.see-also.md",
+			"tokens": 45,
+			"tags": [
+				"guides",
+				"patterns",
+				"see",
+				"also"
+			],
+			"entities": [
+				"@bpmnkit/patterns"
+			]
+		},
+		{
+			"id": "guides.simulation",
+			"file": "chunks/guides.simulation.md",
+			"tokens": 261,
+			"tags": [
+				"guides",
+				"simulation"
+			],
+			"entities": [
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "guides.simulation.instance-state",
+			"file": "chunks/guides.simulation.instance-state.md",
+			"tokens": 136,
+			"tags": [
+				"guides",
+				"simulation",
+				"instance",
+				"state"
+			],
+			"entities": [
+				"ProcessInstance"
+			]
+		},
+		{
+			"id": "guides.simulation.message-correlation",
+			"file": "chunks/guides.simulation.message-correlation.md",
+			"tokens": 144,
+			"tags": [
+				"guides",
+				"simulation",
+				"message",
+				"correlation"
+			],
+			"entities": [
+				"intermediateCatchEvent",
+				"beforeComplete"
+			]
+		},
+		{
+			"id": "guides.simulation.dmn-decision-evaluation",
+			"file": "chunks/guides.simulation.dmn-decision-evaluation.md",
+			"tokens": 251,
+			"tags": [
+				"guides",
+				"simulation",
+				"dmn",
+				"decision",
+				"evaluation"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.simulation.multiple-deployments",
+			"file": "chunks/guides.simulation.multiple-deployments.md",
+			"tokens": 86,
+			"tags": [
+				"guides",
+				"simulation",
+				"multiple",
+				"deployments"
+			],
+			"entities": [
+				"engine.getDeployedProcesses()"
+			]
+		},
+		{
+			"id": "guides.workers-standalone",
+			"file": "chunks/guides.workers-standalone.md",
+			"tokens": 184,
+			"tags": [
+				"guides",
+				"workers-standalone"
+			],
+			"entities": [
+				"@bpmnkit/worker-client"
+			]
+		},
+		{
+			"id": "guides.workers-standalone.anatomy-of-a-worker",
+			"file": "chunks/guides.workers-standalone.anatomy-of-a-worker.md",
+			"tokens": 212,
+			"tags": [
+				"guides",
+				"workers-standalone",
+				"anatomy",
+				"worker"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.workers-standalone.environment-variables",
+			"file": "chunks/guides.workers-standalone.environment-variables.md",
+			"tokens": 141,
+			"tags": [
+				"guides",
+				"workers-standalone",
+				"environment",
+				"variables"
+			],
+			"entities": [
+				"zeebe.camunda.io"
+			]
+		},
+		{
+			"id": "guides.workers-standalone.running-workers",
+			"file": "chunks/guides.workers-standalone.running-workers.md",
+			"tokens": 222,
+			"tags": [
+				"guides",
+				"workers-standalone",
+				"running",
+				"workers"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.workers-standalone.camunda-saas",
+			"file": "chunks/guides.workers-standalone.camunda-saas.md",
+			"tokens": 274,
+			"tags": [
+				"guides",
+				"workers-standalone",
+				"camunda",
+				"saas"
+			],
+			"entities": [
+				"@bpmnkit/worker-client"
+			]
+		},
+		{
+			"id": "guides.workers-standalone.see-also",
+			"file": "chunks/guides.workers-standalone.see-also.md",
+			"tokens": 46,
+			"tags": [
+				"guides",
+				"workers-standalone",
+				"see",
+				"also"
+			],
+			"entities": [
+				"@bpmnkit/worker-client"
+			]
+		},
+		{
+			"id": "packages.api.overview",
+			"file": "chunks/packages.api.overview.md",
+			"tokens": 218,
+			"tags": [
+				"packages",
+				"api",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/api"
+			]
+		},
+		{
+			"id": "packages.api.resource-namespaces",
+			"file": "chunks/packages.api.resource-namespaces.md",
+			"tokens": 172,
+			"tags": [
+				"packages",
+				"api",
+				"resource",
+				"namespaces"
+			],
+			"entities": [
+				"client.process",
+				"client.jobs",
+				"client.incidents",
+				"client.variables",
+				"client.decisions",
+				"client.messages",
+				"client.signals",
+				"client.userTasks",
+				"client.users",
+				"client.groups",
+				"client.authorizations"
+			]
+		},
+		{
+			"id": "packages.api.process-operations",
+			"file": "chunks/packages.api.process-operations.md",
+			"tokens": 239,
+			"tags": [
+				"packages",
+				"api",
+				"process",
+				"operations"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.api.incident-resolution",
+			"file": "chunks/packages.api.incident-resolution.md",
+			"tokens": 138,
+			"tags": [
+				"packages",
+				"api",
+				"incident",
+				"resolution"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.api.observability-events",
+			"file": "chunks/packages.api.observability-events.md",
+			"tokens": 95,
+			"tags": [
+				"packages",
+				"api",
+				"observability",
+				"events"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.canvas.overview",
+			"file": "chunks/packages.canvas.overview.md",
+			"tokens": 162,
+			"tags": [
+				"packages",
+				"canvas",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/canvas"
+			]
+		},
+		{
+			"id": "packages.canvas.options",
+			"file": "chunks/packages.canvas.options.md",
+			"tokens": 147,
+			"tags": [
+				"packages",
+				"canvas",
+				"options"
+			],
+			"entities": [
+				"canvas.getXML()",
+				"canvas.destroy()"
+			]
+		},
+		{
+			"id": "packages.canvas.events",
+			"file": "chunks/packages.canvas.events.md",
+			"tokens": 269,
+			"tags": [
+				"packages",
+				"canvas",
+				"events"
+			],
+			"entities": [
+				"@bpmnkit/canvas-plugin-minimap",
+				"@bpmnkit/canvas-plugin-zoom-controls",
+				"@bpmnkit/canvas-plugin-command-palette",
+				"@bpmnkit/canvas-plugin-storage",
+				"@bpmnkit/canvas-plugin-tabs",
+				"@bpmnkit/canvas-plugin-process-runner",
+				"@bpmnkit/canvas-plugin-token-highlight",
+				"@bpmnkit/canvas-plugin-ai-bridge"
+			]
+		},
+		{
+			"id": "packages.connector-gen.overview",
+			"file": "chunks/packages.connector-gen.overview.md",
+			"tokens": 182,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/connector-gen",
+				"components.securitySchemes"
+			]
+		},
+		{
+			"id": "packages.connector-gen.installation",
+			"file": "chunks/packages.connector-gen.installation.md",
+			"tokens": 159,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"installation"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.connector-gen.generating-from-the-catalog",
+			"file": "chunks/packages.connector-gen.generating-from-the-catalog.md",
+			"tokens": 268,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"generating",
+				"catalog"
+			],
+			"entities": [
+				"GeneratorOptions",
+				"idPrefix",
+				"defaultAuthType",
+				"AuthHint",
+				"baseUrl",
+				"expandBody",
+				"operationId"
+			]
+		},
+		{
+			"id": "packages.connector-gen.writeoptions",
+			"file": "chunks/packages.connector-gen.writeoptions.md",
+			"tokens": 236,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"writeoptions"
+			],
+			"entities": [
+				"outputDir",
+				"AuthHint",
+				"noAuth",
+				"apiKey",
+				"components.securitySchemes"
+			]
+		},
+		{
+			"id": "packages.connector-gen.body-expansion",
+			"file": "chunks/packages.connector-gen.body-expansion.md",
+			"tokens": 137,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"body",
+				"expansion"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.connector-gen.lower-level-api",
+			"file": "chunks/packages.connector-gen.lower-level-api.md",
+			"tokens": 185,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"lower-level",
+				"api"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.connector-gen.catalog-reference",
+			"file": "chunks/packages.connector-gen.catalog-reference.md",
+			"tokens": 518,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"catalog",
+				"reference"
+			],
+			"entities": [
+				"getCatalogEntry"
+			]
+		},
+		{
+			"id": "packages.connector-gen.catalogentry-type",
+			"file": "chunks/packages.connector-gen.catalogentry-type.md",
+			"tokens": 86,
+			"tags": [
+				"packages",
+				"connector-gen",
+				"catalogentry",
+				"type"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.core.overview",
+			"file": "chunks/packages.core.overview.md",
+			"tokens": 136,
+			"tags": [
+				"packages",
+				"core",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "packages.core.installation",
+			"file": "chunks/packages.core.installation.md",
+			"tokens": 27,
+			"tags": [
+				"packages",
+				"core",
+				"installation"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.core.installation-bpmn.createprocess-id-name",
+			"file": "chunks/packages.core.installation-bpmn.createprocess-id-name.md",
+			"tokens": 51,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.createprocess",
+				"name"
+			],
+			"entities": [
+				"ProcessBuilder"
+			]
+		},
+		{
+			"id": "packages.core.installation-bpmn.creatediagram-id",
+			"file": "chunks/packages.core.installation-bpmn.creatediagram-id.md",
+			"tokens": 107,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.creatediagram"
+			],
+			"entities": [
+				"DiagramBuilder"
+			]
+		},
+		{
+			"id": "packages.core.installation-bpmn.export-definitions",
+			"file": "chunks/packages.core.installation-bpmn.export-definitions.md",
+			"tokens": 44,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.export",
+				"definitions"
+			],
+			"entities": [
+				"BpmnDefinitions"
+			]
+		},
+		{
+			"id": "packages.core.installation-bpmn.parse-xml",
+			"file": "chunks/packages.core.installation-bpmn.parse-xml.md",
+			"tokens": 45,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.parse",
+				"xml"
+			],
+			"entities": [
+				"BpmnDefinitions"
+			]
+		},
+		{
+			"id": "packages.core.installation-bpmn.makeempty-processid-processname",
+			"file": "chunks/packages.core.installation-bpmn.makeempty-processid-processname.md",
+			"tokens": 65,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.makeempty",
+				"processid",
+				"processname"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.core.installation-bpmn.sample_xml",
+			"file": "chunks/packages.core.installation-bpmn.sample_xml.md",
+			"tokens": 43,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.sample_xml"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.core.installation-compactify-definitions",
+			"file": "chunks/packages.core.installation-compactify-definitions.md",
+			"tokens": 62,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"compactify",
+				"definitions"
+			],
+			"entities": [
+				"BpmnDefinitions",
+				"CompactDiagram"
+			]
+		},
+		{
+			"id": "packages.core.installation-expand-compact",
+			"file": "chunks/packages.core.installation-expand-compact.md",
+			"tokens": 57,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"expand",
+				"compact"
+			],
+			"entities": [
+				"CompactDiagram",
+				"BpmnDefinitions"
+			]
+		},
+		{
+			"id": "packages.core.installation-layoutprocess-process",
+			"file": "chunks/packages.core.installation-layoutprocess-process.md",
+			"tokens": 85,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"layoutprocess",
+				"process"
+			],
+			"entities": [
+				"BpmnProcess",
+				"LayoutResult"
+			]
+		},
+		{
+			"id": "packages.core.installation-processbuilder-methods",
+			"file": "chunks/packages.core.installation-processbuilder-methods.md",
+			"tokens": 415,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"processbuilder",
+				"methods"
+			],
+			"entities": [
+				"addStartEvent",
+				"BpmnDefinitions"
+			]
+		},
+		{
+			"id": "packages.core.dmn-support",
+			"file": "chunks/packages.core.dmn-support.md",
+			"tokens": 113,
+			"tags": [
+				"packages",
+				"core",
+				"dmn",
+				"support"
+			],
+			"entities": [
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "packages.docspack.overview",
+			"file": "chunks/packages.docspack.overview.md",
+			"tokens": 253,
+			"tags": [
+				"packages",
+				"docspack",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/docspack",
+				"package.json"
+			]
+		},
+		{
+			"id": "packages.docspack.installation",
+			"file": "chunks/packages.docspack.installation.md",
+			"tokens": 252,
+			"tags": [
+				"packages",
+				"docspack",
+				"installation"
+			],
+			"entities": [
+				"AGENTS.md",
+				"CLAUDE.md"
+			]
+		},
+		{
+			"id": "packages.docspack.reading-it-yourself",
+			"file": "chunks/packages.docspack.reading-it-yourself.md",
+			"tokens": 252,
+			"tags": [
+				"packages",
+				"docspack",
+				"reading",
+				"yourself"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.docspack.using-the-index-directly",
+			"file": "chunks/packages.docspack.using-the-index-directly.md",
+			"tokens": 320,
+			"tags": [
+				"grid",
+				"columns",
+				"packages",
+				"docspack",
+				"index",
+				"directly"
+			],
+			"entities": [
+				"TwoColumn",
+				"apps/docs/src/content/docs"
+			]
+		},
+		{
+			"id": "packages.docspack.trust",
+			"file": "chunks/packages.docspack.trust.md",
+			"tokens": 118,
+			"tags": [
+				"packages",
+				"docspack",
+				"trust"
+			],
+			"entities": [
+				"package.json"
+			]
+		},
+		{
+			"id": "packages.editor.overview",
+			"file": "chunks/packages.editor.overview.md",
+			"tokens": 135,
+			"tags": [
+				"packages",
+				"editor",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/editor"
+			]
+		},
+		{
+			"id": "packages.editor.basic-setup",
+			"file": "chunks/packages.editor.basic-setup.md",
+			"tokens": 166,
+			"tags": [
+				"packages",
+				"editor",
+				"basic",
+				"setup"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.editor.hud-options",
+			"file": "chunks/packages.editor.hud-options.md",
+			"tokens": 164,
+			"tags": [
+				"packages",
+				"editor",
+				"hud",
+				"options"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.editor.full-editor-with-all-plugins",
+			"file": "chunks/packages.editor.full-editor-with-all-plugins.md",
+			"tokens": 157,
+			"tags": [
+				"packages",
+				"editor",
+				"full",
+				"all",
+				"plugins"
+			],
+			"entities": [
+				"createStorageTabsBridge"
+			]
+		},
+		{
+			"id": "packages.engine.overview",
+			"file": "chunks/packages.engine.overview.md",
+			"tokens": 141,
+			"tags": [
+				"packages",
+				"engine",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/engine",
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "packages.engine.installation",
+			"file": "chunks/packages.engine.installation.md",
+			"tokens": 346,
+			"tags": [
+				"packages",
+				"engine",
+				"installation"
+			],
+			"entities": [
+				"StartOptions",
+				"beforeComplete",
+				"engine.getDeployedProcesses()"
+			]
+		},
+		{
+			"id": "packages.engine.processinstance",
+			"file": "chunks/packages.engine.processinstance.md",
+			"tokens": 161,
+			"tags": [
+				"packages",
+				"engine",
+				"processinstance"
+			],
+			"entities": [
+				"activeElements",
+				"beforeComplete",
+				"instance.cancel()"
+			]
+		},
+		{
+			"id": "packages.engine.variable-scoping",
+			"file": "chunks/packages.engine.variable-scoping.md",
+			"tokens": 148,
+			"tags": [
+				"packages",
+				"engine",
+				"variable",
+				"scoping"
+			],
+			"entities": [
+				"setLocal",
+				"setTimeout",
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "packages.worker-client",
+			"file": "chunks/packages.worker-client.md",
+			"tokens": 141,
+			"tags": [
+				"packages",
+				"worker-client"
+			],
+			"entities": [
+				"@bpmnkit/worker-client"
+			]
+		},
+		{
+			"id": "packages.worker-client.createworkerclient-options",
+			"file": "chunks/packages.worker-client.createworkerclient-options.md",
+			"tokens": 267,
+			"tags": [
+				"packages",
+				"worker-client",
+				"createworkerclient",
+				"options"
+			],
+			"entities": [
+				"clientId",
+				"clientSecret",
+				"tokenUrl",
+				"zeebe.camunda.io",
+				"workerName",
+				"WorkerClient",
+				"poll()"
+			]
+		},
+		{
+			"id": "packages.worker-client.client.poll-jobtype-options",
+			"file": "chunks/packages.worker-client.client.poll-jobtype-options.md",
+			"tokens": 265,
+			"tags": [
+				"packages",
+				"worker-client",
+				"client.poll",
+				"jobtype",
+				"options"
+			],
+			"entities": [
+				"maxJobs",
+				"ActivatedJob"
+			]
+		},
+		{
+			"id": "packages.worker-client.job.complete-variables",
+			"file": "chunks/packages.worker-client.job.complete-variables.md",
+			"tokens": 172,
+			"tags": [
+				"packages",
+				"worker-client",
+				"job.complete",
+				"variables"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.worker-client.oauth2-camunda-saas",
+			"file": "chunks/packages.worker-client.oauth2-camunda-saas.md",
+			"tokens": 150,
+			"tags": [
+				"packages",
+				"worker-client",
+				"oauth2",
+				"camunda",
+				"saas"
+			],
+			"entities": [
+				"clientId",
+				"clientSecret"
+			]
+		},
+		{
+			"id": "packages.worker-client.see-also",
+			"file": "chunks/packages.worker-client.see-also.md",
+			"tokens": 47,
+			"tags": [
+				"packages",
+				"worker-client",
+				"see",
+				"also"
+			],
+			"entities": []
+		}
+	]
+}
