@@ -216,8 +216,8 @@ Measured on the same corpus, ours before → ours after (upstream for reference)
 | Shape overlaps | 124 | 89 | **80** |
 | Diagram area (Mpx) | 150 | **133** | 140 |
 | Edges through unrelated shapes | 68 † | 35 | **13** |
-| Edge crossings | 275 † | 259 | **200** |
-| Edge bends | **650** † | 772 | 708 |
+| Edge crossings | 275 † | 234 | **200** |
+| Edge bends | **650** † | 768 | 708 |
 | Total edge length | **398k** † | 435k | 429k |
 | Mean runtime | **0.4 ms** | 1.0 ms | 38 ms |
 
@@ -265,10 +265,17 @@ than routing. Reserving each branch's band out to its rejoin, and letting neighb
 trade places when that untangles the edges running past them, took sequence × sequence from
 146 to 120 against upstream's 118.
 
-Remaining gap by category, ours / upstream: sequence × sequence 120 / 118, message ×
-sequence 118 / 54, message × message 11 / 21, associations 10 / 1, routes through shapes
-37 / 13. The message-to-sequence column is the whole remaining difference, and the
-measurements above say it is a balance point rather than a defect.
+Loops were then found to account for the rest of the sequence-flow gap: band ordering had no
+headroom left (the estimator counts 6 crossings across all 179 processes, an exhaustive
+search finds 2), while 22 of 46 remaining unrelated-edge crossings involved a backward loop
+against upstream's 5. Letting a loop take whichever side of the flow is clearer took
+sequence × sequence to **101, below upstream's 118**.
+
+Remaining gap by category, ours / upstream: sequence × sequence **101 / 118**, message ×
+sequence 112 / 54, message × message 11 / 21, associations 10 / 1, routes through shapes
+37 / 13. We are now ahead on sequence flows and on message-to-message; the
+message-to-sequence column is the whole remaining difference, and the measurements above
+say it is a balance point upstream chooses rather than a defect in ours.
 
 The other two gaps this evaluation found are closed too, in DI emission rather than in the
 engine: participants are walked in declaration order so a black-box pool keeps its band and

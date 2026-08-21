@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-08-20 — Unrelated-edge crossings: loops were the whole story
+
+Asked whether the 46 remaining "unrelated edge" crossings could be improved further, and measured the headroom before writing anything.
+
+**Band ordering was exhausted.** The inversion estimator the engine uses — edges whose rank spans overlap and whose endpoints swap order vertically — counts only **6** crossings across all 179 processes in the corpus. A search over band assignments (40 randomised restarts, hill-climbing on every same-side swap) finds at best **3**, or **2** if branches may change side. So no reordering of bands could remove more than a handful.
+
+That mismatch — 6 predicted against 46 observed — said the crossings come from routing geometry, not placement. Classifying them: none were between two straight runs, 21 involved a corridor-bent route, and **22 of 46 involved a backward-running loop edge**. Against upstream: they have **5** of that kind, and on forward-only crossings we were already ahead, **24 against their 28**, with the same 43 loop routes in both.
+
+The fix follows from that: **a loop now takes whichever side of the flow is clearer.** It offers the nearest clear corridor below and the nearest above, and takes whichever crosses fewer of the edges already routed; convention wins ties, so a loop over open space still runs below. Previously the floor was forced below both endpoints, so a loop spanning a band full of alternatives had to cut across every one of them.
+
+- unrelated-edge crossings **46 → 35** (upstream 33), loop-involved **22 → 11**
+- sequence-flow crossings **120 → 101**, now below upstream's **118**
+- total crossings **259 → 234**, bends 772 → 768, mean loop length 705 → 675 px
+
+Offering loops four corridor options instead of two changed nothing, so it stayed at two.
+
+Two process notes. A worker restart landed mid-`git stash`, leaving the fix stashed and the tree looking clean — worth checking `git stash list` after any interrupted command. And the first attempt at proving the new test non-vacuous toggled the code into invalid TypeScript: the build failed, the stale dist stayed in place, and the test "passed" against the code it was meant to be running without. Toggling to a valid below-only variant showed the test failing as it should.
+
 ## 2026-08-20 — Sequence-flow crossings: bands, not routing
 
 Split our 146 sequence-flow crossings by category against upstream's 118 before changing anything, and the split decided the work:
