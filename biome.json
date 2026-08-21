@@ -32,6 +32,7 @@
 			"**/src-tauri/**",
 			"**/.astro/**",
 			"**/src/generated/**",
+			"**/.llms/**",
 			"**/swagger/**",
 			"apps/proxy-rs/target/**",
 			"apps/reebe-wasm/**",
