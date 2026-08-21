@@ -1,5 +1,11 @@
 # @bpmnkit/create-casen-plugin
 
+## 0.0.9
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+
 ## 0.0.8
 
 ### Patch Changes
