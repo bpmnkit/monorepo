@@ -4,6 +4,7 @@ import { alignPools } from "../layout/collaboration/alignment.js"
 import type { PoolLink } from "../layout/collaboration/ordering.js"
 import { orderPools } from "../layout/collaboration/ordering.js"
 import { collapseCollinear } from "../layout/grid/grid-router.js"
+import type { LayoutEngine } from "../layout/layout-engine.js"
 import { layoutProcess } from "../layout/layout-engine.js"
 import type { Bounds, LayoutEdge, LayoutNode, LayoutResult } from "../layout/types.js"
 import type {
@@ -688,7 +689,16 @@ function ancestorIndex(defs: BpmnDefinitions, collab: BpmnCollaboration): Map<st
 	return parents
 }
 
-export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
+/**
+ * Replace every diagram-interchange position in `defs` with a computed layout.
+ *
+ * @param engine - Which process layout algorithm to run. Defaults to `semantic`;
+ *   `grid` runs the older cell-grid walk and is used to compare the two.
+ */
+export function applyAutoLayout(
+	defs: BpmnDefinitions,
+	engine: LayoutEngine = "semantic",
+): BpmnDefinitions {
 	if (defs.processes.length === 0) return defs
 
 	const collab = defs.collaborations[0]
@@ -733,7 +743,7 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 	// Lay every pool out first: alignment needs to see all of them before any
 	// geometry is committed.
 	const layouts = pools.map((pool) =>
-		pool.process ? layoutProcess(pool.process, "semantic", collapsed) : { nodes: [], edges: [] },
+		pool.process ? layoutProcess(pool.process, engine, collapsed) : { nodes: [], edges: [] },
 	)
 	const alignment = alignPools(
 		pools.length,

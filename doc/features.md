@@ -1,5 +1,9 @@
 # Features
 
+## Auto-layout comparison page (2026-08-21)
+
+`/auto-layout` on the landing site lays out five real process models with both engines and lets you toggle between them. The models ship as model-only BPMN with no diagram interchange, so both layouts are computed in the browser from the same source; per-diagram counts for crossings, routes over shapes, backward flows, bends and edge length are measured at build time. `applyAutoLayout(defs, engine)` accepts `"semantic"` (default) or `"grid"`, matching `layoutProcess`.
+
 ## Semantic BPMN layout engine (2026-08-20)
 
 `@bpmnkit/core`'s auto-layout is now a **semantic** engine (`packages/core/src/layout/semantic/`) rather than a cell-grid walk. It follows the layout contract that [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) documents, reimplemented in our own code against our own AST — no new runtime dependency, and still fully synchronous.

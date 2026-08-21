@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-08-21 — Landing page: old engine vs new engine, on five real models
+
+New page at `/auto-layout` comparing BPMN Kit's original grid layouter against the semantic engine on five process models taken from the BPMN generation demo recordings. Their diagram interchange is stripped, so both engines lay each model out from nothing and neither side is a recording of somebody else's output.
+
+`applyAutoLayout(defs, engine)` now takes the engine the way `layoutProcess` already did (`LayoutEngine` is exported), which is what lets the page compute both layouts in the browser from one XML rather than shipping two pre-rendered diagrams.
+
+Measured across the five, grid → semantic:
+
+| metric | old | new |
+| --- | ---: | ---: |
+| edge crossings | 15 | **2** |
+| routes over shapes | 8 | **0** |
+| backward flows | 8 | **0** |
+| bends | 56 | **52** |
+| edge length | 25,538 | **23,666** |
+
+The page states each number for each diagram and does not hide the two samples where edge length goes up or the one where bends go up — spreading branches onto their own bands costs length, and saying so is more convincing than a table where everything is green.
+
+"Backward flows" excludes genuine loops: a flow counts only if its target cannot reach its source again, so a retry loop — which every engine must draw right-to-left — is not scored against either side. Counting them would have shown 11 → 2 and been wrong.
+
+Stats are computed at build time in the page's frontmatter; the diagrams are laid out client-side when each scrolls into view.
+
 ## 2026-08-20 — Should we take upstream's message-flow trade? Measured: no
 
 Upstream gets message-to-sequence crossings down to 54 against our 112, and pays with 21 message-to-message crossings against our 11. Asked whether we should take the same trade, so I mapped the frontier instead of answering from the earlier failed attempts — those were 6x the message-to-message crossings, not 2x, so the trade had never actually been tested at a sensible setting.

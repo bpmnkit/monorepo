@@ -268,6 +268,7 @@ export type {
 	OptimizeOptions,
 } from "./bpmn/optimize/types.js"
 export { layoutProcess, layoutFlowNodes } from "./layout/index.js"
+export type { LayoutEngine } from "./layout/index.js"
 export {
 	benchmarkLayout,
 	compareLayouts,

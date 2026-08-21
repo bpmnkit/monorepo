@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="KYCOnboarding" name="KYC Customer Onboarding" isExecutable="true">
+    <bpmn:startEvent id="start" name="Onboarding Started">
+      <bpmn:outgoing>Flow_compact_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="uploadDocument" name="Upload Identity Document">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formId="identity-upload-form"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_1</bpmn:incoming>
+      <bpmn:incoming>Flow_compact_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="verifyDocument" name="Verify Document via OCR">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1"/>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="ocrResponse"/>
+          <zeebe:header key="resultExpression" value="=ocrResponse.body"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="documentQuality" name="Document Verified?">
+      <bpmn:incoming>Flow_compact_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_compact_5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_compact_6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="sanctionsScreening" name="Sanctions &amp; PEP Screening">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1"/>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="screeningResponse"/>
+          <zeebe:header key="resultExpression" value="=screeningResponse.body"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="riskRouting" name="Risk Level?">
+      <bpmn:incoming>Flow_compact_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_compact_9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="standardDueDiligence" name="Standard Due Diligence">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1"/>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="sddResponse"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_10</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="enhancedDueDiligence" name="Enhanced Due Diligence Review">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formId="compliance-edd-form"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_11</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:businessRuleTask id="finalRiskClassification" name="Final Risk Classification">
+      <bpmn:extensionElements>
+        <zeebe:calledDecision decisionId="kyc-risk-classification" resultVariable="riskClassification"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_10</bpmn:incoming>
+      <bpmn:incoming>Flow_compact_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_12</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:exclusiveGateway id="classificationGateway" name="Classification Outcome?">
+      <bpmn:incoming>Flow_compact_12</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_13</bpmn:outgoing>
+      <bpmn:outgoing>Flow_compact_14</bpmn:outgoing>
+      <bpmn:outgoing>Flow_compact_15</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="notifyRejection" name="Notify Rejection">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="email-sender"/>
+        <zeebe:taskHeaders>
+          <zeebe:header key="template" value="kyc-rejected"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_5</bpmn:incoming>
+      <bpmn:incoming>Flow_compact_14</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_17</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="notifyApproval" name="Notify Approval">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="email-sender"/>
+        <zeebe:taskHeaders>
+          <zeebe:header key="template" value="kyc-approved"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_compact_13</bpmn:incoming>
+      <bpmn:outgoing>Flow_compact_16</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="endApproved" name="Customer Approved">
+      <bpmn:incoming>Flow_compact_16</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endRejected" name="Customer Rejected">
+      <bpmn:incoming>Flow_compact_17</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endEscalated" name="Escalated to Compliance">
+      <bpmn:incoming>Flow_compact_15</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_compact_1" sourceRef="start" targetRef="uploadDocument"/>
+    <bpmn:sequenceFlow id="Flow_compact_2" sourceRef="uploadDocument" targetRef="verifyDocument"/>
+    <bpmn:sequenceFlow id="Flow_compact_3" sourceRef="verifyDocument" targetRef="documentQuality"/>
+    <bpmn:sequenceFlow id="Flow_compact_4" sourceRef="documentQuality" targetRef="uploadDocument" name="verification-failed-retry">
+      <bpmn:conditionExpression>=ocrResponse.verified = false and (uploadRetries != null and uploadRetries &lt; 2)</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_5" sourceRef="documentQuality" targetRef="notifyRejection" name="verification-failed-exhausted">
+      <bpmn:conditionExpression>=ocrResponse.verified = false and (uploadRetries = null or uploadRetries &gt;= 2)</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_6" sourceRef="documentQuality" targetRef="sanctionsScreening" name="verification-passed">
+      <bpmn:conditionExpression>=ocrResponse.verified = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_7" sourceRef="sanctionsScreening" targetRef="riskRouting"/>
+    <bpmn:sequenceFlow id="Flow_compact_8" sourceRef="riskRouting" targetRef="standardDueDiligence" name="standard-risk">
+      <bpmn:conditionExpression>=screeningResponse.riskLevel = "low"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_9" sourceRef="riskRouting" targetRef="enhancedDueDiligence" name="enhanced-risk">
+      <bpmn:conditionExpression>=screeningResponse.riskLevel = "high" or screeningResponse.pepMatch = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_10" sourceRef="standardDueDiligence" targetRef="finalRiskClassification"/>
+    <bpmn:sequenceFlow id="Flow_compact_11" sourceRef="enhancedDueDiligence" targetRef="finalRiskClassification"/>
+    <bpmn:sequenceFlow id="Flow_compact_12" sourceRef="finalRiskClassification" targetRef="classificationGateway"/>
+    <bpmn:sequenceFlow id="Flow_compact_13" sourceRef="classificationGateway" targetRef="notifyApproval" name="approved">
+      <bpmn:conditionExpression>=riskClassification.outcome = "approved"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_14" sourceRef="classificationGateway" targetRef="notifyRejection" name="rejected">
+      <bpmn:conditionExpression>=riskClassification.outcome = "rejected"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_15" sourceRef="classificationGateway" targetRef="endEscalated" name="escalate">
+      <bpmn:conditionExpression>=riskClassification.outcome = "escalate"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_compact_16" sourceRef="notifyApproval" targetRef="endApproved"/>
+    <bpmn:sequenceFlow id="Flow_compact_17" sourceRef="notifyRejection" targetRef="endRejected"/>
+  </bpmn:process>
+</bpmn:definitions>

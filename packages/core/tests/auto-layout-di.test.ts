@@ -22,6 +22,7 @@ function node(id: string, type: BpmnFlowElement["type"] = "serviceTask"): BpmnFl
 		unknownAttributes: {},
 	}
 	if (type === "startEvent") return { ...base, type: "startEvent", eventDefinitions: [] }
+	if (type === "exclusiveGateway") return { ...base, type: "exclusiveGateway" }
 	if (type === "endEvent") return { ...base, type: "endEvent", eventDefinitions: [] }
 	if (type === "subProcess") {
 		return {
@@ -233,5 +234,49 @@ describe("auto-layout DI — planes", () => {
 		])
 		const shapes = applyAutoLayout(defs).diagrams[0]?.plane.shapes ?? []
 		expect(shapes.find((s) => s.bpmnElement === "note")).toBeDefined()
+	})
+})
+
+describe("auto-layout DI — engine selection", () => {
+	// A decision whose rejection path leaves the flow early: the two engines rank
+	// and band it differently, so their diagram interchange cannot match.
+	const branching = (): BpmnDefinitions =>
+		defsOf([
+			proc(
+				"p1",
+				[
+					node("s", "startEvent"),
+					node("gw", "exclusiveGateway"),
+					node("review"),
+					node("approve"),
+					node("rejected", "endEvent"),
+					node("done", "endEvent"),
+				],
+				[
+					flow("f1", "s", "gw"),
+					flow("f2", "gw", "review"),
+					flow("f3", "gw", "rejected"),
+					flow("f4", "review", "approve"),
+					flow("f5", "approve", "done"),
+				],
+			),
+		])
+
+	function positions(defs: BpmnDefinitions): string[] {
+		return (defs.diagrams[0]?.plane.shapes ?? [])
+			.map((shape) => `${shape.bpmnElement}:${shape.bounds.x},${shape.bounds.y}`)
+			.sort()
+	}
+
+	it("lays out with the grid engine when asked for it", () => {
+		expect(positions(applyAutoLayout(branching(), "grid"))).not.toEqual(
+			positions(applyAutoLayout(branching(), "semantic")),
+		)
+	})
+
+	it("defaults to the semantic engine", () => {
+		expect(positions(applyAutoLayout(branching()))).toEqual(
+			positions(applyAutoLayout(branching(), "semantic")),
+		)
 	})
 })
