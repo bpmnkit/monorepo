@@ -489,11 +489,16 @@ function messageFlowRoute(
 	gaps: Array<{ top: number; bottom: number }>,
 	obstacles: BpmnBounds[],
 	stemOffset: number,
+	/** Containers holding an endpoint: a route out of one has to cross it. */
+	containers: BpmnBounds[] = [],
 ): { source: BpmnWaypoint[]; target: BpmnWaypoint[]; gap: number } {
 	const srcBelow = src.y + src.height / 2 > tgt.y + tgt.height / 2
 	const sy = srcBelow ? src.y : src.y + src.height
 	const ty = srcBelow ? tgt.y + tgt.height : tgt.y
-	const own = [src, tgt]
+	// The endpoints themselves, plus any expanded sub-process they sit inside:
+	// leaving an element means crossing the border of whatever contains it, so
+	// treating that border as an obstacle would leave the route no way out.
+	const own = [src, tgt, ...containers]
 	const midpoint = (sy + ty) / 2
 	const low = Math.min(sy, ty)
 	const high = Math.max(sy, ty)
@@ -910,6 +915,18 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 			gap: number
 		}> = []
 
+		/** Bounds of every expanded scope an element sits inside. */
+		const containersOf = (id: string): BpmnBounds[] => {
+			const out: BpmnBounds[] = []
+			let parent = visibleAncestors.get(id)
+			while (parent !== undefined) {
+				const bounds = shapeByElement.get(parent)
+				if (bounds) out.push(bounds)
+				parent = visibleAncestors.get(parent)
+			}
+			return out
+		}
+
 		let stemOffset = 0
 		for (const mf of collab.messageFlows) {
 			const sourceRef = resolve(mf.sourceRef)
@@ -927,6 +944,7 @@ export function applyAutoLayout(defs: BpmnDefinitions): BpmnDefinitions {
 					poolGaps,
 					obstacles,
 					stemOffset,
+					[...containersOf(sourceRef), ...containersOf(targetRef)],
 				),
 			}
 			runs.push(run)
