@@ -216,8 +216,8 @@ Measured on the same corpus, ours before → ours after (upstream for reference)
 | Shape overlaps | 124 | 89 | **80** |
 | Diagram area (Mpx) | 150 | **133** | 140 |
 | Edges through unrelated shapes | 68 † | 35 | **13** |
-| Edge crossings | 275 † | 283 | **200** |
-| Edge bends | **650** † | 789 | 708 |
+| Edge crossings | 275 † | 259 | **200** |
+| Edge bends | **650** † | 772 | 708 |
 | Total edge length | **398k** † | 435k | 429k |
 | Mean runtime | **0.4 ms** | 1.0 ms | 38 ms |
 
@@ -258,9 +258,17 @@ our 118. Three attempts at bending stems around the runs in our way (crossing-sc
 candidates, stepping to a clear column, and the same with the bends spread apart) each moved
 crossings from one class into another without netting out ahead, and were reverted.
 
-Remaining gap by category, ours / upstream: sequence × sequence 146 / 118, message ×
+Sequence-flow crossings have since been worked separately, and there the categories pointed
+somewhere useful: flows converging on one join cross about as often in both engines, but
+pairs of *unrelated* edges crossed twice as often in ours, which is band assignment rather
+than routing. Reserving each branch's band out to its rejoin, and letting neighbouring bands
+trade places when that untangles the edges running past them, took sequence × sequence from
+146 to 120 against upstream's 118.
+
+Remaining gap by category, ours / upstream: sequence × sequence 120 / 118, message ×
 sequence 118 / 54, message × message 11 / 21, associations 10 / 1, routes through shapes
-35 / 13.
+37 / 13. The message-to-sequence column is the whole remaining difference, and the
+measurements above say it is a balance point rather than a defect.
 
 The other two gaps this evaluation found are closed too, in DI emission rather than in the
 engine: participants are walked in declaration order so a black-box pool keeps its band and

@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-08-20 — Sequence-flow crossings: bands, not routing
+
+Split our 146 sequence-flow crossings by category against upstream's 118 before changing anything, and the split decided the work:
+
+| | ours before | ours after | upstream |
+| --- | ---: | ---: | ---: |
+| converge on one node | 56 | 51 | 48 |
+| unrelated edges | 60 | **46** | 33 |
+| diverge from one node | 24 | **15** | 34 |
+| chained endpoints | 6 | 8 | 3 |
+| **total** | **146** | **120** | **118** |
+
+**Convergence is largely inherent** — both engines cross about as often when several flows meet at one join, which is why three attempts at fixing it all failed: preferring the gutter approach per edge (146 → 152), bundling every convergent group onto the target's shared column (146 → 211), and reordering candidates for convergent targets (no change). All reverted. Two edges arriving at one node from different rows have to cross something; only an explicit routing trunk with staggered docks avoids it, and BPMN docks them at one point.
+
+The excess was in **pairs of edges with no shared endpoint** — 60 against upstream's 33 — which is band assignment, not routing. Two changes, both in `semantic/bands.ts`:
+
+- **A branch reserves its band out to the rank it rejoins at**, not just the ranks its own nodes occupy. Two branches whose nodes never share a rank were packed onto one band, and the edge from the first back to its join then ran straight through the second. The first attempt at this looked inert because `follow()` stops *before* the rejoin node — it filters out already-placed targets — so the reservation never saw it; reading the last node's outgoing flows fixed that.
+- **Neighbouring bands trade places when that untangles the edges running past them.** Compaction picks a band from where a branch starts and how far from the spine it belongs, which says nothing about what crosses it. The estimator counts inversions — edges whose rank spans overlap and whose endpoints swap order vertically — straight from the graph, with no geometry. Swaps stay on one side of the spine, so exceptions-below and escalations-above survive. Using the *host's* rank for a boundary event's outgoing edges (they have no rank of their own) was worth another 6 crossings; widening the search from neighbouring bands to any same-side pair was worth nothing, so it stayed simple.
+
+Totals over the 161 fixtures: **crossings 285 → 259** (upstream 200), bends 789 → 772, edge length 434.8k (upstream 429k), deviation 261 px (227), area 141 Mpx (140), runtime 1.1 ms (41 ms). DI complete, lanes exact, flow-direction violations 8 against 7. 572 core + 76 canvas + 23 ascii tests pass, including a new one that fails without the reservation fix.
+
 ## 2026-08-20 — Routing density inside pools: the diagnosis was wrong
 
 Last entry closed by blaming our remaining message-flow crossings on "the density of horizontal sequence-flow runs our routing leaves in the way". Measured it, and that is **not true**: our horizontal sequence-flow traffic is indistinguishable from upstream's — 1854 segments against 1831, 267k px against 263k, the same 143 px mean, and slightly fewer very long runs (15 against 18). Nor is it stem length (285 px against 265), pool height (235 px against 242), or messages crossing pools they merely pass through (1 each).
