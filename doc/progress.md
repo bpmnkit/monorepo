@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-08-21 — Surface `/auto-layout` from the homepage and the footer
+
+The layout comparison page shipped reachable from one place only: the Resources dropdown in the nav. Three links added so it is findable without opening a menu.
+
+- Footer link list, between "Compare" and "Blog", matching the nav order — this puts it on every page of the site.
+- Homepage hero: "with auto-layout" now links to the page.
+- Homepage bento grid, the Auto-Layout card: "See both engines compared on five real process models".
+
+No new markup or styles — the global `a` rule already covers inline links inside `.hero-p` and `.bcard p`, the way the Roundtrip Fidelity card's link does.
+
 ## 2026-08-21 — Landing page: old engine vs new engine, on five real models
 
 New page at `/auto-layout` comparing BPMN Kit's original grid layouter against the semantic engine on five process models taken from the BPMN generation demo recordings. Their diagram interchange is stripped, so both engines lay each model out from nothing and neither side is a recording of somebody else's output.
