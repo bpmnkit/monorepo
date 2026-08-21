@@ -74,7 +74,94 @@ export function assignBands(graph: SemanticGraph): BandLayout {
 
 	for (const [id, band] of compact(branches)) bands.set(id, band)
 	placeUnassigned(graph, bands, assigned)
+	reduceCrossings(graph, bands)
 	return { bands, spine, straightFlows }
+}
+
+/**
+ * Two edges cross when their rank spans overlap and their endpoints swap order
+ * vertically on the way across. Counting those inversions estimates the
+ * crossings a band assignment will produce, without routing anything.
+ */
+function inversions(graph: SemanticGraph, bands: Map<string, number>): number {
+	const edges: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
+	for (const [host, flows] of graph.outgoing) {
+		for (const flow of flows) {
+			if (graph.backEdges.has(flow.id)) continue
+			// A boundary event has no rank of its own; it travels with its host.
+			edges.push({
+				x1: graph.ranks.get(host) ?? 0,
+				y1: bands.get(host) ?? 0,
+				x2: graph.ranks.get(flow.targetRef) ?? 0,
+				y2: bands.get(flow.targetRef) ?? 0,
+			})
+		}
+	}
+
+	let count = 0
+	for (let i = 0; i < edges.length; i++) {
+		const a = edges[i]
+		if (!a) continue
+		for (let j = i + 1; j < edges.length; j++) {
+			const b = edges[j]
+			if (!b) continue
+			// Only edges travelling over the same ranks can cross.
+			if (Math.min(a.x1, a.x2) >= Math.max(b.x1, b.x2)) continue
+			if (Math.min(b.x1, b.x2) >= Math.max(a.x1, a.x2)) continue
+			const left = Math.sign(a.y1 - b.y1)
+			const right = Math.sign(a.y2 - b.y2)
+			if (left !== 0 && right !== 0 && left !== right) count++
+		}
+	}
+	return count
+}
+
+/**
+ * Swap neighbouring bands where doing so untangles the edges between them.
+ *
+ * Compaction picks a band from where a branch starts and how far from the spine
+ * it belongs, which says nothing about the edges running past it: two branches
+ * that leave in one order and rejoin in the other end up crossing. Trading two
+ * neighbouring bands keeps each on its own side of the spine, so the narrative
+ * survives while the crossings drop.
+ */
+function reduceCrossings(graph: SemanticGraph, bands: Map<string, number>): void {
+	const levels = [...new Set(bands.values())].filter((band) => band !== 0).sort((a, b) => a - b)
+	if (levels.length < 2) return
+
+	let best = inversions(graph, bands)
+	for (let sweep = 0; sweep < levels.length; sweep++) {
+		let improved = false
+		for (let i = 0; i + 1 < levels.length; i++) {
+			const lower = levels[i]
+			const upper = levels[i + 1]
+			// Only bands on the same side of the spine may trade places.
+			if (lower === undefined || upper === undefined) continue
+			if (Math.sign(lower) !== Math.sign(upper)) continue
+
+			const moved = new Map<string, number>()
+			for (const [id, band] of bands) {
+				if (band === lower) moved.set(id, upper)
+				else if (band === upper) moved.set(id, lower)
+			}
+			if (moved.size === 0) continue
+
+			const previous = new Map<string, number>()
+			for (const [id, band] of moved) {
+				previous.set(id, bands.get(id) ?? 0)
+				bands.set(id, band)
+			}
+
+			const candidate = inversions(graph, bands)
+			if (candidate < best) {
+				best = candidate
+				improved = true
+			} else {
+				for (const [id, band] of previous) bands.set(id, band)
+			}
+		}
+		if (!improved) break
+	}
 }
 
 /**
@@ -211,9 +298,10 @@ function handlerSideOf(
 /**
  * Follow a branch forward until it rejoins placed flow or runs out.
  *
- * A boundary handler reserves its complete span — out to the rank it rejoins at,
- * not just the ranks its own nodes occupy — so nothing else claims the band the
- * handler's last edge still has to travel along.
+ * A branch reserves its complete span — out to the rank it rejoins at, not just
+ * the ranks its own nodes occupy — because the edge back to the join still has
+ * to travel along that band. Reserving only the nodes lets a second branch share
+ * the band and be crossed by the first one's last edge.
  */
 function follow(
 	graph: SemanticGraph,
@@ -221,7 +309,6 @@ function follow(
 	side: 1 | -1,
 	depth: number,
 	assigned: Set<string>,
-	reserveToRejoin = false,
 ): Branch | null {
 	const nodes: string[] = []
 	const local = new Set<string>()
@@ -242,9 +329,18 @@ function follow(
 	}
 
 	if (nodes.length === 0) return null
-	if (reserveToRejoin && current !== undefined) {
-		maxRank = Math.max(maxRank, graph.ranks.get(current) ?? maxRank)
+
+	// The walk stops before the node the branch rejoins at, because that node is
+	// already placed. Reserve out to it anyway: the edge back into it still
+	// travels along this band.
+	const last = nodes[nodes.length - 1]
+	if (last !== undefined) {
+		for (const flow of graph.outgoing.get(last) ?? []) {
+			if (graph.backEdges.has(flow.id)) continue
+			maxRank = Math.max(maxRank, graph.ranks.get(flow.targetRef) ?? maxRank)
+		}
 	}
+
 	return { nodes, side, depth, minRank, maxRank }
 }
 

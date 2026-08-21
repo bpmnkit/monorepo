@@ -418,3 +418,62 @@ describe("semantic layout — rank refinements", () => {
 		expect(centreY(stray)).not.toBe(centreY(start))
 	})
 })
+
+describe("semantic layout — crossing reduction", () => {
+	/**
+	 * Two branches whose nodes never share a rank, but whose edges do: A leaves
+	 * at the first gateway and rejoins at the last join, B leaves and rejoins
+	 * inside that span.
+	 */
+	function interleavedBranches(): BpmnProcess {
+		return proc(
+			[
+				node("s", "startEvent"),
+				node("g1", "exclusiveGateway"),
+				node("g2", "exclusiveGateway"),
+				node("x"),
+				node("y"),
+				node("j2", "exclusiveGateway"),
+				node("j1", "exclusiveGateway"),
+				node("e", "endEvent"),
+			],
+			[
+				flow("f1", "s", "g1"),
+				flow("f2", "g1", "g2"),
+				flow("f3", "g2", "j2"),
+				flow("f4", "j2", "j1"),
+				flow("f5", "j1", "e"),
+				flow("a1", "g1", "x"),
+				flow("a2", "x", "j1"),
+				flow("b1", "g2", "y"),
+				flow("b2", "y", "j2"),
+			],
+		)
+	}
+
+	it("keeps two branches apart when only their edges overlap", () => {
+		// Packing bands by the ranks their nodes occupy would put both on one
+		// band — x sits at one rank, y at the next — and the edge from x back to
+		// its join would then run straight through y's band.
+		const nodes = byId(layoutProcess(interleavedBranches()))
+		const x = nodes.get("x")
+		const y = nodes.get("y")
+		expect(x && y).toBeTruthy()
+		if (!x || !y) return
+		expect(x.position).not.toBe(y.position)
+		expect(Math.sign(x.position)).toBe(Math.sign(y.position))
+		expect(centreY(x.bounds)).not.toBe(centreY(y.bounds))
+	})
+
+	it("leaves a branch and its own join on the same side of the spine", () => {
+		const result = layoutProcess(interleavedBranches())
+		const nodes = byId(result)
+		const spineY = centreY(nodes.get("g1")?.bounds ?? { x: 0, y: 0, width: 0, height: 0 })
+		for (const id of ["x", "y"]) {
+			const branch = nodes.get(id)
+			expect(branch).toBeDefined()
+			if (!branch) continue
+			expect(centreY(branch.bounds)).toBeGreaterThan(spineY)
+		}
+	})
+})
