@@ -1,5 +1,13 @@
 # @bpmnkit/profiles
 
+## 0.0.18
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+- Updated dependencies [9cd1942]
+  - @bpmnkit/api@0.0.20
+
 ## 0.0.17
 
 ### Patch Changes

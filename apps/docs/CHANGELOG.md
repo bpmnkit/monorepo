@@ -1,5 +1,14 @@
 # @bpmnkit/docs
 
+## 0.0.11
+
+### Patch Changes
+
+- 1c5e32d: New `@bpmnkit/docspack` package: the BPMN Kit documentation shipped as an offline, version-locked [docspack](https://docspack.dev/spec) package, with a `bpmnkit-docs` CLI so an AI agent can search it without a server or a network call.
+- 9cd1942: Improvements around AI integration
+- Updated dependencies [9cd1942]
+  - @bpmnkit/astro-shared@0.0.14
+
 ## 0.0.10
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @bpmnkit/worker-client
 
+## 0.0.5
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+
 ## 0.0.4
 
 ### Patch Changes

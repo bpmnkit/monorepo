@@ -1,5 +1,15 @@
 # @bpmnkit/user-tasks
 
+## 0.0.17
+
+### Patch Changes
+
+- Updated dependencies [9cd1942]
+  - @bpmnkit/plugins@0.0.33
+  - @bpmnkit/core@0.1.2
+  - @bpmnkit/api@0.0.20
+  - @bpmnkit/ui@0.0.16
+
 ## 0.0.16
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @bpmnkit/editor
 
+## 0.0.33
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+- Updated dependencies [9cd1942]
+  - @bpmnkit/canvas@0.0.30
+  - @bpmnkit/core@0.1.2
+
 ## 0.0.32
 
 ### Patch Changes

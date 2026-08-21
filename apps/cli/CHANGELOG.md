@@ -1,5 +1,21 @@
 # @bpmnkit/cli
 
+## 0.0.37
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+- Updated dependencies [9cd1942]
+  - @bpmnkit/connector-gen@0.0.15
+  - @bpmnkit/connectors@0.0.2
+  - @bpmnkit/patterns@0.0.5
+  - @bpmnkit/profiles@0.0.18
+  - @bpmnkit/engine@0.1.30
+  - @bpmnkit/ascii@0.0.30
+  - @bpmnkit/core@0.1.2
+  - @bpmnkit/api@0.0.20
+  - @bpmnkit/proxy@0.0.33
+
 ## 0.0.36
 
 ### Patch Changes

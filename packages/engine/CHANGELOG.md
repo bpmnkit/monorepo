@@ -1,5 +1,14 @@
 # @bpmnkit/engine
 
+## 0.1.30
+
+### Patch Changes
+
+- 9cd1942: Improvements around AI integration
+- Updated dependencies [9cd1942]
+  - @bpmnkit/core@0.1.2
+  - @bpmnkit/feel@0.0.20
+
 ## 0.1.29
 
 ### Patch Changes
