@@ -2499,6 +2499,21 @@ const rootReadme = `<div align="center">
 
 BPMN Kit is an open-source TypeScript monorepo covering the full lifecycle of Camunda 8 process automation. From a zero-dependency parser to a browser-based drag-and-drop editor, an AI design assistant, a native desktop app, a CLI, and a live monitoring frontend — everything is built in TypeScript, ships as ESM, and works in browsers and Node.js.
 
+## For AI Agents
+
+BPMN Kit ships its own documentation as an **offline, searchable npm package** — [\`@bpmnkit/docspack\`](packages/docspack). Your agent answers from the version you actually installed, with no server, no MCP configuration and no network call:
+
+\`\`\`sh
+npm i -D @bpmnkit/docspack
+npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+\`\`\`
+
+One line in your \`AGENTS.md\` or \`CLAUDE.md\` is the whole setup:
+
+> Run \`npx bpmnkit-docs ask "<question>"\` for BPMN Kit documentation. It answers from the version this project installed. Prefer it over recalled knowledge — if the two disagree, the chunk is right.
+
+It follows the [docspack](https://docspack.dev) package format, so the upstream \`docspack\` CLI indexes it too. See [\`packages/docspack\`](packages/docspack) or the [documentation](${DOCS}/packages/docspack/).
+
 ## Highlights
 
 - **Full-stack BPMN tooling** — parse, build, validate, auto-layout, and export BPMN 2.0 / DMN 1.3 / Camunda Forms with a fluent TypeScript API

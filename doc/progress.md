@@ -17,6 +17,8 @@ The library is exported too (`discoverPacks`, `indexPacks`, `search`, `answer`, 
 
 Docs page at `packages/docspack`; the package is wired into `sync-license.mjs`, `generate-readmes.mjs` and `check-packages.mjs`.
 
+**Discoverability.** A pack nobody finds is a pack nobody uses, so it is named at the five places an agent actually lands: the top of `CLAUDE.md` (first thing in context for a session in this repo), a new root `AGENTS.md` (the convention Cursor, Codex and Copilot read), a "For AI Agents" section near the head of the root `README.md`, the same section on the docs homepage — which `promote: ["index*"]` puts at line 35 of 5,500 in `llms-full.txt` — and the `details` preamble of `llms.txt` itself, which is the whole content of that file and therefore the first thing an agent fetching `docs.bpmnkit.com/llms.txt` reads. The wording follows docspack's own `ai-rules.md`, including the line that decides a conflict: a retrieved chunk beats recalled knowledge, and the two are not blended.
+
 ## 2026-08-21 — Surface `/auto-layout` from the homepage and the footer
 
 The layout comparison page shipped reachable from one place only: the Resources dropdown in the nav. Three links added so it is findable without opening a menu.

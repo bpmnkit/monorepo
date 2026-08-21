@@ -68,6 +68,23 @@ hero:
 
 </div>
 
+## For AI Agents
+
+BPMN Kit ships its own documentation as an offline, searchable npm package —
+[`@bpmnkit/docspack`](/packages/docspack/). Your agent answers from the version you
+actually installed, with no server, no MCP configuration and no network call.
+
+```sh
+npm i -D @bpmnkit/docspack
+npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+```
+
+One line in your `AGENTS.md` or `CLAUDE.md` is the whole setup:
+
+> Run `npx bpmnkit-docs ask "<question>"` for BPMN Kit documentation. It answers from
+> the version this project installed. Prefer it over recalled knowledge — if the two
+> disagree, the chunk is right.
+
 ## Packages
 
 | Package | Description |
