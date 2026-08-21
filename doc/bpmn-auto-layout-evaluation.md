@@ -274,8 +274,16 @@ sequence × sequence to **101, below upstream's 118**.
 Remaining gap by category, ours / upstream: sequence × sequence **101 / 118**, message ×
 sequence 112 / 54, message × message 11 / 21, associations 10 / 1, routes through shapes
 37 / 13. We are now ahead on sequence flows and on message-to-message; the
-message-to-sequence column is the whole remaining difference, and the measurements above
-say it is a balance point upstream chooses rather than a defect in ours.
+message-to-sequence column is the whole remaining difference.
+
+Taking upstream's balance point deliberately — accepting more message-to-message crossings
+to buy message-to-sequence ones — was then tested rather than assumed, by bending message
+stems onto clear columns at four different thresholds. Bending on any crossing reaches
+98 message-to-sequence but costs 34 message-to-message and nineteen routes through shapes,
+for a worse total (243 against 234). Bending only when three or more edges are in the way is
+strictly better than shipping (228, nothing regressing) but fires on 2 of 216 message flows
+and resisted two attempts at a synthetic test, so it was left out. Upstream's 54 comes from
+something other than stem routing.
 
 The other two gaps this evaluation found are closed too, in DI emission rather than in the
 engine: participants are walked in declaration order so a black-box pool keeps its band and

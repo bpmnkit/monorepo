@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-08-20 — Should we take upstream's message-flow trade? Measured: no
+
+Upstream gets message-to-sequence crossings down to 54 against our 112, and pays with 21 message-to-message crossings against our 11. Asked whether we should take the same trade, so I mapped the frontier instead of answering from the earlier failed attempts — those were 6x the message-to-message crossings, not 2x, so the trade had never actually been tested at a sensible setting.
+
+Bending a message stem sideways onto a clear column, gated on how many edges the straight stem would cut:
+
+| bend when the stem would cut… | msg × seq | msg × msg | msg → shape | total crossings |
+| --- | ---: | ---: | ---: | ---: |
+| never (shipped) | 112 | 11 | 1 | **234** |
+| ≥ 1 edge | 98 | 34 | 19 | 243 |
+| ≥ 2 edges | 103 | 14 | 1 | 228 |
+| ≥ 3 edges | 107 | 10 | 1 | 228 |
+
+**No, the trade is not worth taking.** The aggressive setting that actually reaches upstream's balance point costs 34 message-to-message crossings *and* nineteen routes cutting through shapes — a hard defect, not a crossing — for a worse total. Upstream reaches 54 by some means other than bending stems; whatever it is, this lever does not get there.
+
+The conservative settings are a genuine, if small, improvement: bending only when a stem would cut three or more edges is strictly better than shipping on every axis (crossings 234 → 228, no category regressing). It was **not shipped**: it fires on **2 of 216** message flows, both in one fixture, and two deliberate attempts to build a synthetic case that triggers it failed — roughly 70 lines that no test could protect. Same bar that removed the link-event pairing, the empty-pool expansion, the loose nested-join rule, and three earlier message-routing variants. Available for −6 crossings if we ever decide the code is worth it.
+
 ## 2026-08-20 — Unrelated-edge crossings: loops were the whole story
 
 Asked whether the 46 remaining "unrelated edge" crossings could be improved further, and measured the headroom before writing anything.
