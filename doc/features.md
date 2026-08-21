@@ -1,5 +1,20 @@
 # Features
 
+## Auto-layout comparison page (2026-08-21)
+
+`/auto-layout` on the landing site lays out five real process models with both engines and lets you toggle between them. The models ship as model-only BPMN with no diagram interchange, so both layouts are computed in the browser from the same source; per-diagram counts for crossings, routes over shapes, backward flows, bends and edge length are measured at build time. `applyAutoLayout(defs, engine)` accepts `"semantic"` (default) or `"grid"`, matching `layoutProcess`.
+
+## Semantic BPMN layout engine (2026-08-20)
+
+`@bpmnkit/core`'s auto-layout is now a **semantic** engine (`packages/core/src/layout/semantic/`) rather than a cell-grid walk. It follows the layout contract that [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) documents, reimplemented in our own code against our own AST — no new runtime dependency, and still fully synchronous.
+
+- **Ranks and semantic bands** — a primary path (spine) is picked one edge at a time, preferring edges that can still reach an end event and the gateway's default flow, so a dead-end alternative never becomes the main narrative. Branches take bands around it: error handlers below, escalation handlers above, plain alternatives alternating; branches whose rank spans do not overlap share a band.
+- **Lane membership is a placement constraint** — nodes are moved into the lane that claims them and lanes are sized to their content, nested lane sets included (a parent lane spans the lanes inside it). Lane bands come from the engine, so lanes tile their pool exactly. Previously lanes were ignored by placement and tiled proportionally afterwards, which put **43 of 257** lane-assigned elements in the wrong lane across the reference corpus; it is now **0 of 257**.
+- **Obstacle-aware orthogonal routing** — each edge proposes candidate routes and takes the first that clears every unrelated shape: a straight spine segment, a turn out of the source's top or bottom, a turn in the empty gutter in front of the target's column, then a corridor detour. Detours stack in separate corridor lanes, widest span outermost, and loops run underneath the flow they repeat.
+- **Collaboration pipeline** (`packages/core/src/layout/collaboration/`) — pools are ordered by their message-flow relationships rather than by declaration (exhaustive up to eight pools, remove-and-reinsert above), and each process slides sideways as a unit so the elements it exchanges messages with line up vertically. Message endpoints inside a collapsed sub-process dock on the nearest ancestor that is actually on the plane.
+- **`layoutProcess(process, engine)`** selects `"semantic"` (default) or `"grid"`; the grid walk still backs `layoutFlowNodes()` for ascii, proxy and compact rendering.
+- **Complete diagram interchange** — every participant gets a pool, black boxes included (a participant with no process still gets a band and its message flows are routed); collapsed sub-processes keep their own `BPMNDiagram` for drilldown instead of being flattened into the root plane; root processes beyond the first get a plane of their own. Across the reference corpus auto-layout now emits DI for **every** element, connection and plane.
+
 ## BPMN Kit Drop v2 — engaging landing + AI process review (2026-07-10)
 
 Second iteration of [BPMN Kit Drop](drop-v2-spec.md), shipped in `apps/drop`.

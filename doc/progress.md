@@ -1,5 +1,188 @@
 # Progress
 
+## 2026-08-21 — Landing page: old engine vs new engine, on five real models
+
+New page at `/auto-layout` comparing BPMN Kit's original grid layouter against the semantic engine on five process models taken from the BPMN generation demo recordings. Their diagram interchange is stripped, so both engines lay each model out from nothing and neither side is a recording of somebody else's output.
+
+`applyAutoLayout(defs, engine)` now takes the engine the way `layoutProcess` already did (`LayoutEngine` is exported), which is what lets the page compute both layouts in the browser from one XML rather than shipping two pre-rendered diagrams.
+
+Measured across the five, grid → semantic:
+
+| metric | old | new |
+| --- | ---: | ---: |
+| edge crossings | 15 | **2** |
+| routes over shapes | 8 | **0** |
+| backward flows | 8 | **0** |
+| bends | 56 | **52** |
+| edge length | 25,538 | **23,666** |
+
+The page states each number for each diagram and does not hide the two samples where edge length goes up or the one where bends go up — spreading branches onto their own bands costs length, and saying so is more convincing than a table where everything is green.
+
+"Backward flows" excludes genuine loops: a flow counts only if its target cannot reach its source again, so a retry loop — which every engine must draw right-to-left — is not scored against either side. Counting them would have shown 11 → 2 and been wrong.
+
+Stats are computed at build time in the page's frontmatter; the diagrams are laid out client-side when each scrolls into view.
+
+## 2026-08-20 — Should we take upstream's message-flow trade? Measured: no
+
+Upstream gets message-to-sequence crossings down to 54 against our 112, and pays with 21 message-to-message crossings against our 11. Asked whether we should take the same trade, so I mapped the frontier instead of answering from the earlier failed attempts — those were 6x the message-to-message crossings, not 2x, so the trade had never actually been tested at a sensible setting.
+
+Bending a message stem sideways onto a clear column, gated on how many edges the straight stem would cut:
+
+| bend when the stem would cut… | msg × seq | msg × msg | msg → shape | total crossings |
+| --- | ---: | ---: | ---: | ---: |
+| never (shipped) | 112 | 11 | 1 | **234** |
+| ≥ 1 edge | 98 | 34 | 19 | 243 |
+| ≥ 2 edges | 103 | 14 | 1 | 228 |
+| ≥ 3 edges | 107 | 10 | 1 | 228 |
+
+**No, the trade is not worth taking.** The aggressive setting that actually reaches upstream's balance point costs 34 message-to-message crossings *and* nineteen routes cutting through shapes — a hard defect, not a crossing — for a worse total. Upstream reaches 54 by some means other than bending stems; whatever it is, this lever does not get there.
+
+The conservative settings are a genuine, if small, improvement: bending only when a stem would cut three or more edges is strictly better than shipping on every axis (crossings 234 → 228, no category regressing). It was **not shipped**: it fires on **2 of 216** message flows, both in one fixture, and two deliberate attempts to build a synthetic case that triggers it failed — roughly 70 lines that no test could protect. Same bar that removed the link-event pairing, the empty-pool expansion, the loose nested-join rule, and three earlier message-routing variants. Available for −6 crossings if we ever decide the code is worth it.
+
+## 2026-08-20 — Unrelated-edge crossings: loops were the whole story
+
+Asked whether the 46 remaining "unrelated edge" crossings could be improved further, and measured the headroom before writing anything.
+
+**Band ordering was exhausted.** The inversion estimator the engine uses — edges whose rank spans overlap and whose endpoints swap order vertically — counts only **6** crossings across all 179 processes in the corpus. A search over band assignments (40 randomised restarts, hill-climbing on every same-side swap) finds at best **3**, or **2** if branches may change side. So no reordering of bands could remove more than a handful.
+
+That mismatch — 6 predicted against 46 observed — said the crossings come from routing geometry, not placement. Classifying them: none were between two straight runs, 21 involved a corridor-bent route, and **22 of 46 involved a backward-running loop edge**. Against upstream: they have **5** of that kind, and on forward-only crossings we were already ahead, **24 against their 28**, with the same 43 loop routes in both.
+
+The fix follows from that: **a loop now takes whichever side of the flow is clearer.** It offers the nearest clear corridor below and the nearest above, and takes whichever crosses fewer of the edges already routed; convention wins ties, so a loop over open space still runs below. Previously the floor was forced below both endpoints, so a loop spanning a band full of alternatives had to cut across every one of them.
+
+- unrelated-edge crossings **46 → 35** (upstream 33), loop-involved **22 → 11**
+- sequence-flow crossings **120 → 101**, now below upstream's **118**
+- total crossings **259 → 234**, bends 772 → 768, mean loop length 705 → 675 px
+
+Offering loops four corridor options instead of two changed nothing, so it stayed at two.
+
+Two process notes. A worker restart landed mid-`git stash`, leaving the fix stashed and the tree looking clean — worth checking `git stash list` after any interrupted command. And the first attempt at proving the new test non-vacuous toggled the code into invalid TypeScript: the build failed, the stale dist stayed in place, and the test "passed" against the code it was meant to be running without. Toggling to a valid below-only variant showed the test failing as it should.
+
+## 2026-08-20 — Sequence-flow crossings: bands, not routing
+
+Split our 146 sequence-flow crossings by category against upstream's 118 before changing anything, and the split decided the work:
+
+| | ours before | ours after | upstream |
+| --- | ---: | ---: | ---: |
+| converge on one node | 56 | 51 | 48 |
+| unrelated edges | 60 | **46** | 33 |
+| diverge from one node | 24 | **15** | 34 |
+| chained endpoints | 6 | 8 | 3 |
+| **total** | **146** | **120** | **118** |
+
+**Convergence is largely inherent** — both engines cross about as often when several flows meet at one join, which is why three attempts at fixing it all failed: preferring the gutter approach per edge (146 → 152), bundling every convergent group onto the target's shared column (146 → 211), and reordering candidates for convergent targets (no change). All reverted. Two edges arriving at one node from different rows have to cross something; only an explicit routing trunk with staggered docks avoids it, and BPMN docks them at one point.
+
+The excess was in **pairs of edges with no shared endpoint** — 60 against upstream's 33 — which is band assignment, not routing. Two changes, both in `semantic/bands.ts`:
+
+- **A branch reserves its band out to the rank it rejoins at**, not just the ranks its own nodes occupy. Two branches whose nodes never share a rank were packed onto one band, and the edge from the first back to its join then ran straight through the second. The first attempt at this looked inert because `follow()` stops *before* the rejoin node — it filters out already-placed targets — so the reservation never saw it; reading the last node's outgoing flows fixed that.
+- **Neighbouring bands trade places when that untangles the edges running past them.** Compaction picks a band from where a branch starts and how far from the spine it belongs, which says nothing about what crosses it. The estimator counts inversions — edges whose rank spans overlap and whose endpoints swap order vertically — straight from the graph, with no geometry. Swaps stay on one side of the spine, so exceptions-below and escalations-above survive. Using the *host's* rank for a boundary event's outgoing edges (they have no rank of their own) was worth another 6 crossings; widening the search from neighbouring bands to any same-side pair was worth nothing, so it stayed simple.
+
+Totals over the 161 fixtures: **crossings 285 → 259** (upstream 200), bends 789 → 772, edge length 434.8k (upstream 429k), deviation 261 px (227), area 141 Mpx (140), runtime 1.1 ms (41 ms). DI complete, lanes exact, flow-direction violations 8 against 7. 572 core + 76 canvas + 23 ascii tests pass, including a new one that fails without the reservation fix.
+
+## 2026-08-20 — Routing density inside pools: the diagnosis was wrong
+
+Last entry closed by blaming our remaining message-flow crossings on "the density of horizontal sequence-flow runs our routing leaves in the way". Measured it, and that is **not true**: our horizontal sequence-flow traffic is indistinguishable from upstream's — 1854 segments against 1831, 267k px against 263k, the same 143 px mean, and slightly fewer very long runs (15 against 18). Nor is it stem length (285 px against 265), pool height (235 px against 242), or messages crossing pools they merely pass through (1 each).
+
+What the numbers do say: stems cross **long** runs (373 px mean, against 139 px across all runs) and every blocked stem has a clear column within 600 px — 34 of them within 100 px. So bending stems around the runs looked promising, and three separate attempts all failed to net out ahead:
+
+| attempt | msg × seq | msg × msg | msg → shape | total crossings |
+| --- | ---: | ---: | ---: | ---: |
+| baseline | 116 | 11 | 5 | 283 |
+| candidates scored by crossings | 116 | 13 | 5 | 285 |
+| bend to a clear column | 96 | 68 | 26 | 320 |
+| …only when 2+ runs are in the way | 109 | 14 | 9 | 279 |
+| …plus spreading the bends apart | 101 | 34 | 18 | 291 |
+
+Every variant trades one crossing class for another. The reason is visible in upstream's own breakdown, which we had never measured: **upstream accepts more message-to-message crossings than we do — 21 against our 11 — to get message-to-sequence down to 54.** It sits at a different balance point, and local search over stem columns cannot reach it. All three attempts were reverted.
+
+One real defect did come out of the investigation and is fixed: a route leaving an element **inside an expanded sub-process** treated that sub-process's own border as an obstacle, so every candidate came back blocked and the router fell back to a route it had already rejected — sometimes straight through a shape. An endpoint's containers now count as its own. Message flows through unrelated shapes **5 → 1**; routes through shapes overall **39 → 35**.
+
+Where the gap to upstream actually sits, by category (ours / upstream): sequence × sequence **146 / 118**, message × sequence **118 / 54**, message × message **11 / 21**, associations **10 / 1**, routes through shapes **35 / 13**. We are ahead on one of the five.
+
+A test written for the container fix turned out to pass without it — the synthetic fixture put the sibling to the right rather than underneath, and the fix only changes which corridor the fallback picks. It was deleted rather than kept as decoration; the fix is evidenced by the corpus measurement above.
+
+## 2026-08-20 — Collaboration pipeline: pool ordering, alignment, endpoint resolution
+
+Ported the parts of [upstream's collaboration pipeline](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) that earn their place, in our own code (`packages/core/src/layout/collaboration/`), keeping our own pool stacking and message routing underneath.
+
+- **Pool ordering** (`ordering.ts`) — the vertical order now follows the message flows instead of the declaration order. The cost is the weighted vertical travel of every message, with drift from the declared order as the tie-break, so pools only move when there is something to gain. Exhaustive search up to eight pools, remove-and-reinsert refinement above that; both deterministic. **The single biggest win of this pass: message flows crossing each other 67 → 15, crossing sequence flows 171 → 120, total crossings 394 → 290.**
+- **Horizontal alignment** (`alignment.ts`) — each process now slides sideways as a unit so the elements it exchanges messages with line up vertically. The widest process anchors the diagram and the rest move to meet it, largest first; every connected message proposes the shift that would make it vertical and the cheapest wins. Pools grow by whatever their content moved, so nothing leaves its pool. Crossings 290 → 283, total edge length 447k → **435k** against upstream's 429k.
+- **Endpoint resolution** — an endpoint inside a collapsed sub-process has no shape on the root plane, so its message flow was being dropped, a hole opened by emitting collapsed sub-process planes. Endpoints now walk up to the nearest ancestor that is on the plane and dock there.
+
+Two things were written, measured, and **removed**: crossing-aware scoring of message routes against the edges already on the plane (283 → 285, message-to-message 11 → 13), and an empty-pool expansion pass (black boxes already take the width of the widest pool, and every dock sits at a content x inside that range, so it could never fire — its test stays as a guard on the invariant).
+
+Where the remaining message-flow crossings live, measured rather than guessed: **106 of our 116** are vertical message stems crossing sequence flows *inside* a pool, on their way from an element to the pool edge. Running the same breakdown over upstream's output shows **51** of the same kind — so the pattern is partly inherent to docking on an element mid-pool, and the difference is the density of horizontal sequence-flow runs our routing leaves in the way, not the collaboration assembly.
+
+Totals over the 161 fixtures: crossings **394 → 283** (upstream 200), routes through unrelated shapes 51 → **39** (upstream 13), edge length 494k → **435k** (upstream 429k), diagram area 140 Mpx (upstream 140), deviation from the reference DI 265 → **259 px** (upstream 227), mean runtime **1.0 ms** (upstream 38 ms). DI complete, lanes exact, flow-direction violations 8 against upstream's 7. 570 core + 76 canvas + 23 ascii tests pass.
+
+## 2026-08-20 — Placement refinements, and what they were worth
+
+Fourth pass on layout, working through the three rank/band refinements in [upstream's contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) and measuring each one against the 161 reference fixtures before keeping it.
+
+- **Nested joins of one gateway type share a rank** and connect vertically; different types keep their forward step (`semantic/graph.ts`, zero-weight edges in the longest-path relaxation). Faithful to the contract, but the pattern occurs **6 times** in the whole corpus, so it moves no aggregate number. Kept for the geometry it produces on those cases, with tests. A looser reading — any same-type gateway feeding a join — fired 39 times and was **worse** (crossings 426 → 432, flow-direction violations 7 → 12), because a split and its join sharing a rank turns the flow vertical.
+- **Boundary-handler branches reserve their full span**, out to the rank they rejoin at rather than only the ranks their own nodes occupy, so nothing claims the band the handler's last edge still travels along. Metric-neutral, contract-correct.
+- **Band compaction had nothing to gain.** Measured first: bands span at most 4 levels across the corpus (1699 nodes on the spine, 322 at ±1, 62 at ±2, 8 at ±3), and repacking intervals by start rank instead of by depth changed no metric while costing a flow-direction violation. Left alone.
+
+What did move the numbers were two gaps the measurements turned up on the way:
+
+- **Unreached nodes were dropped onto the spine.** A node no traversal claims — a scope entered only through a loop, say — was assigned band 0, landing on whatever already occupied its rank and then being shoved aside by same-cell separation, off any band at all. It now takes a free band next to whatever it connects to. **Sequence-flow crossings 174 → 145.**
+- **Annotation placement never checked its own association line.** The packer confirmed the box was clear of shapes but not the line drawn back to the element, so associations cut straight through activities. Candidates whose line crosses a shape are now heavily penalised. **Association routes through shapes 13 → 5**, below the 7 they started this pass at.
+
+Totals over the corpus: **edge crossings 425 → 394** and, by connection kind, sequence-flow crossings 174 → 145. Routes through unrelated shapes are 39 counted by connection kind, 51 by the plane-based count. DI stays complete (0 missing), lane placement stays exact (0/257), flow-direction violations are 8 against upstream's 7 — five of the six affected fixtures match upstream exactly. 564 core + 76 canvas + 23 ascii tests pass.
+
+**Where this leaves us against upstream** (crossings 394 vs 200, shape routes 51 vs 13): the diagnosis is no longer "placement is loose". Bands are tight, collisions are rare, and the remaining crossings are dominated by message flows (171 of 394 against sequence flows, 67 against each other) in dense multi-pool collaborations — the one area where we deliberately kept our own simple pool stacking rather than porting upstream's collaboration pipeline. That pipeline, not more rank or band tuning, is what the next real gain would take.
+
+## 2026-08-20 — Routing: fewer crossings, fewer routes through shapes
+
+Third pass on layout, this time on the routing gap the previous entries kept flagging. Started by categorising every crossing and every route-through-shape across the 161 reference fixtures rather than guessing: message flows turned out to cause **56 of the 78** shape hits and 206 of the 493 crossings, and among sequence flows the dominant pattern was a long horizontal run along a band centre line being crossed by other edges' gutter risers.
+
+Three changes came out of that:
+
+- **Message-flow legs may jog** (`auto-layout.ts`). Each leg is checked over its own stretch — its end to the crossing band — rather than over the whole run, so a flow can slip past shapes on the far side of the band. When its column is blocked it leaves the element by a short stem and steps sideways to a column clear for the rest of the descent, the move a modeller makes by hand. Consecutive flows stagger their stems so parallel jogs do not share a line. Message flows through shapes: **56 → 16**.
+- **Routing is crossing-aware** (`semantic/route.ts`). Candidates that clear every shape are scored by how many already-routed edges they would cut across, cheapest wins, and a third candidate turns in the gutter behind the source instead of in front of the target.
+- **Detours are no longer penalised.** A detour previously had to save more than one crossing to be taken, which kept long skip edges on the band centre line where every riser crossed them. Removing that penalty lets them nest as stacked arcs above the flow — the canonical look — and cut sequence-flow crossings **286 → 174**, the single largest win of the pass.
+
+Totals over the corpus: **edge crossings 493 → 425**, **edges through unrelated shapes 78 → 49** (the original human DI in these files has 132; upstream alpha.2 has 13 and 200). Bends 734 → 822 and total edge length +2% are what pays for it. Mean runtime 0.6 ms → 1.0 ms against upstream's ~38 ms. DI stays complete (0 missing), lane placement stays exact (0/257 misplaced), 561 core + 76 canvas + 23 ascii tests pass.
+
+Four things were tried and reverted on the measurements, recorded so they are not retried: routing spine-first or shortest-first (sequence-flow crossings 260 → 282), jogging at the deepest clear point rather than a short stem (message-flow crossings 67 → 121), a rip-up-and-re-route pass (one crossing recovered over two rounds), and deeper corridor stacking (425 → 430).
+
+**What is left is placement, not routing.** The rip-up experiment is the evidence: re-scoring every edge against the finished picture recovered a single crossing, which means the remaining ones are not a choice the router is getting wrong — they follow from where the nodes are. Closing the rest of the distance to upstream needs the placement refinements skipped in the first pass: rank bays for detached alternatives, tighter band compaction, and letting nested joins of the same gateway type share a rank.
+
+## 2026-08-20 — Auto-layout DI: black-box pools, sub-process planes
+
+Closed the two gaps the [`bpmn-auto-layout` evaluation](bpmn-auto-layout-evaluation.md) found in DI emission (`packages/core/src/bpmn/auto-layout.ts`); both were in the emitter, not the layout engine.
+
+**Black-box pools.** `applyAutoLayout` walked `defs.processes`, so a participant whose `processRef` was missing or pointed at an empty process never got a shape — and its message flows went with it (238 missing DI entries across 19 of the 161 reference fixtures; those pools simply disappeared). It now walks `collab.participants` in declaration order, so a black-box participant keeps its place in the stack and gets a band of its own, widened to match the widest pool that has content. Processes no participant references follow after.
+
+**Sub-process planes.** Every layout collapsed into a single `BPMNPlane`, dropping the planes of collapsed sub-processes (43 across 23 fixtures) even though the canvas already supports drilldown. Collapsed scopes are now detected from the input DI — an explicit `isExpanded="false"`, or an existing plane for that element — passed to the engine so their contents stay out of the parent's geometry, and emitted as their own `BPMNDiagram`, reusing the input's diagram and plane ids. An empty collapsed scope keeps its (empty) plane rather than losing the drill-down target. Root processes beyond the first now get their own plane too, instead of being stacked at the origin on top of the first.
+
+Two smaller omissions fell out of the same pass: a process consisting only of text annotations emitted nothing at all, and associations between two ordinary elements (a data object and an activity) were skipped because the emitter only handled annotation associations.
+
+Message flows were re-routed to suit the new pools: a pool-side end docks under its counterpart so the flow drops straight instead of fanning into the pool's centre, vertical runs step sideways to miss shapes, and flows sharing a pool gap are spread across it.
+
+Over the same 161 fixtures: **missing DI 240 → 0** (upstream alpha.2 leaves 6), **sub-process planes dropped 43 → 0**, deviation from the original DI 375px → 262px (upstream 227px), diagram area 180 → 133 Mpx (upstream 140), shape overlaps 90 → 89 (upstream 80). 9 new tests in `packages/core/tests/auto-layout-di.test.ts`; 561 core tests, 76 canvas and 23 ascii all pass.
+
+Note when comparing edge metrics against earlier entries: those message flows were previously **not drawn at all**, so edge crossings (493) and edges through unrelated shapes (78) now count routes that simply did not exist in the old numbers. Against upstream, which draws the same set, we are at 493 crossings to their 200 and 78 shape hits to their 13 — the routing gap called out in the previous entry is unchanged and still the next thing to work on.
+
+## 2026-08-20 — Semantic layout engine in `@bpmnkit/core`
+
+Implemented the process-layout approach from [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) in our own code, following [their layout contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) rather than vendoring or depending on the package — `packages/core/src/layout/semantic/` (graph, bands, place, route, ~900 lines), no new runtime dependency, synchronous.
+
+`graph.ts` finds weakly connected components and their semantic starts, marks back edges by depth-first traversal, and assigns longest-path ranks (a boundary event's successors hang off its host, so a handler never precedes the activity it guards). `bands.ts` picks the spine one edge at a time — prefer a target that can still reach an end event, then the gateway default, then declaration order — and assigns the remaining branches to bands: error handlers below, escalation handlers above, alternatives alternating, with branches packed onto shared bands when their rank spans do not overlap. `place.ts` turns ranks into columns and bands into rows, separates same-cell collisions per component, applies lane membership (nested lane sets included), and docks boundary events on the host edge facing their handler. `route.ts` routes each edge by proposing candidates and taking the first that clears every unrelated shape.
+
+`layoutProcess()` takes an engine argument and defaults to `"semantic"`; `"grid"` keeps the old cell walk, which still serves `layoutFlowNodes()`. Lane DI now comes from the engine's bands, so lanes tile their pool exactly instead of being tiled proportionally around a lane-blind layout.
+
+Measured over the same 161 fixtures as the evaluation, against the original DI in each file: **elements outside their assigned lane 43/257 → 0/257**, flow-direction violations 9 → 7 (equal to upstream), shape overlaps 124 → 90 (upstream 80), edges through unrelated shapes 68 → 67 (upstream 13), edge crossings 275 → 364 (upstream 200), diagram area 150 → 180 Mpx (upstream 140), runtime unchanged at ~0.4 ms mean (upstream ~24 ms). So: the correctness gaps close and the layout reads as BPMN, but our routing still crosses more than either the old grid walk or upstream, and our diagrams are looser. 14 new tests in `packages/core/tests/semantic-layout.test.ts`; all 552 core tests pass.
+
+**Still open** from the evaluation: black-box pools get no DI (238 missing entries), and auto-layout still collapses collapsed-sub-process planes into one `BPMNDiagram`. Both live in `auto-layout.ts`, not the engine. Collaboration assembly (pool stacking, message flows) is unchanged — as agreed, we did not take on upstream's collaboration pipeline.
+
+## 2026-08-20 — Evaluated `bpmn-auto-layout` 2.0.0-alpha.2 against our layout engine
+
+Upstream replaced its grid layouter with a semantic BPMN layout (TypeScript rewrite, collaboration/pool/message-flow/group/artifact support, `{ xml, warnings }` + `LayoutError` diagnostics, a CLI, Node >= 22). Benchmarked it against `packages/core/src/layout` over upstream's 161 test fixtures, scoring both engines against the original DI in each file: it deviates less from the human layout (227 px vs 348 px average, closer on 122/161), routes fewer edges through shapes (13 vs 68) and crosses fewer edges (200 vs 275), but is 20x-800x slower (p50 7 ms vs 0.3 ms; 1.8 s worst case on a 91-element, 8-pool collaboration).
+
+The benchmark also surfaced three correctness bugs in **our** engine: lanes are ignored entirely (43 of 257 lane-assigned elements land in the wrong lane; `packages/core/src/layout/` has no lane logic), black-box pools and their message flows get no DI at all (238 missing entries across 19 fixtures), and every layout collapses to a single `BPMNDiagram`, dropping collapsed sub-process planes (43 planes over 23 fixtures) that the canvas already knows how to drill into.
+
+Integration is possible but not drop-in: `layoutProcess` is XML-only (no model entry point) and adds 45 KB gzipped plus `bpmn-moddle` to packages that are currently dependency-free. Its `Promise`, however, is decorative — the only two `await`s are `moddle.fromXML`/`toXML`, both synchronous work wrapped in a promise (`moddle-xml` parses with saxen inside the executor). Patching three packages (`moddle-xml`, `bpmn-moddle`, the `bpmn-auto-layout` bundle) produced a synchronous entry point with byte-identical output on all 161 fixtures, no microtask turn, and the same runtime — so our sync public API (`Bpmn.autoLayout()`, `builder.build()`, `compilePlan()`, `mergePlan()`) is not the blocker it first looked like. What remains is patch maintenance against a generated bundle of a moving pre-release, and the latency tail: collaborations cost 36 ms median / 211 ms p90 (pool count drives it, not element count), and going sync only converts that `await` into a main-thread freeze. Extension preservation is clean: round-tripping 161 fixtures dropped no `zeebe:`/`camunda:` element or attribute, and it accepts our `Bpmn.export()` output unchanged. Written up in [`doc/bpmn-auto-layout-evaluation.md`](bpmn-auto-layout-evaluation.md) with options; no code changed.
+
 ## 2026-07-12 — Deploy Drop workflow: dedicated Cloudflare API token secret
 
 The `Deploy Drop` workflow failed at "Apply D1 migrations" with Cloudflare error 7403 (`The given account is not valid or is not authorized to access this service`) — the shared `CLOUDFLARE_API_TOKEN` lacks D1 access. Switched both wrangler steps in [`deploy-drop.yml`](../.github/workflows/deploy-drop.yml) to a dedicated `CLOUDFLARE_DROP_API_TOKEN` repo secret, scoped to exactly what this workflow needs: Account → D1 → Edit, Account → Workers Scripts → Edit, Zone (bpmnkit.com) → Workers Routes → Edit. `CLOUDFLARE_ACCOUNT_ID` stays shared. The secret must be created in the Cloudflare dashboard and added to the repo before the workflow can pass.

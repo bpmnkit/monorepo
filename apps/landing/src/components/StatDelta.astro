@@ -1,0 +1,23 @@
+---
+interface Props {
+	label: string
+	before: number
+	after: number
+}
+const { label, before, after } = Astro.props
+
+function format(value: number): string {
+	return value.toLocaleString("en-US")
+}
+
+const state = after === before ? "same" : after < before ? "better" : "worse"
+---
+
+<div class="stat-delta">
+  <div class="stat-delta-label">{label}</div>
+  <div class="stat-delta-value">
+    <span class="stat-delta-before">{format(before)}</span>
+    <span class="stat-delta-arrow" aria-hidden="true">→</span>
+    <span class={`stat-delta-after stat-delta-${state}`}>{format(after)}</span>
+  </div>
+</div>
