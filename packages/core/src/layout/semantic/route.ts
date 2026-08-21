@@ -362,8 +362,8 @@ function detour(
 	target: Bounds,
 	sourceRank: number | undefined,
 	targetRank: number | undefined,
-	/** Loops read as loops only when they run underneath the flow they repeat. */
-	below = false,
+	/** A loop reads as a loop when it runs clear of the flow it repeats. */
+	isLoop = false,
 	sourceId = "",
 	targetId = "",
 ): Waypoint[] {
@@ -376,9 +376,38 @@ function detour(
 	const riseX = ctx.gutterX.get(targetRank ?? 0) ?? target.x - H_GAP / 2
 	const left = Math.min(dropX, riseX, from.x, to.x)
 	const right = Math.max(dropX, riseX, from.x, to.x)
-	const floor = below ? Math.max(source.y + source.height, target.y + target.height) : undefined
-	const base = corridor(ctx, left, right, (from.y + to.y) / 2, floor)
-	const goesDown = base > (from.y + to.y) / 2
+	// A loop leaves the band it repeats: below by convention, but above when the
+	// space below is busy and the space above is not. Anything else takes the
+	// nearest clear corridor, whichever side that is on.
+	const middle = (from.y + to.y) / 2
+	const bottom = Math.max(source.y + source.height, target.y + target.height)
+	const top = Math.min(source.y, target.y)
+	const options = isLoop
+		? [
+				corridor(ctx, left, right, middle, bottom),
+				corridor(ctx, left, right, middle, undefined, top),
+			]
+		: [corridor(ctx, left, right, middle)]
+
+	let base = options[0] ?? middle
+	if (isLoop) {
+		let fewest = Number.POSITIVE_INFINITY
+		for (const option of options) {
+			const crossings = crossingCount(
+				[
+					{ x: left, y: option },
+					{ x: right, y: option },
+				],
+				ctx.routed,
+			)
+			if (crossings < fewest) {
+				fewest = crossings
+				base = option
+			}
+		}
+	}
+
+	const goesDown = base > middle
 	const corridorY = reserve(ctx, left, right, base, goesDown ? 1 : -1)
 
 	const exitY = goesDown ? source.y + source.height : source.y
@@ -464,7 +493,10 @@ function corridor(
 	left: number,
 	right: number,
 	preferredY: number,
+	/** Only consider corridors below this line. */
 	floor?: number,
+	/** Only consider corridors above this line. */
+	ceiling?: number,
 ): number {
 	const spans: Array<[number, number]> = []
 	for (const b of ctx.bounds.values()) {
@@ -494,7 +526,8 @@ function corridor(
 		if (a && b) options.push((a[1] + b[0]) / 2)
 	}
 
-	const allowed = floor === undefined ? options : options.filter((y) => y > floor)
+	let allowed = floor === undefined ? options : options.filter((y) => y > floor)
+	if (ceiling !== undefined) allowed = allowed.filter((y) => y < ceiling)
 	const usable = allowed.length > 0 ? allowed : options
 	let best = usable[0] ?? preferredY
 	for (const option of usable) {

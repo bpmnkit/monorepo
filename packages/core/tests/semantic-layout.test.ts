@@ -269,6 +269,46 @@ describe("semantic layout — lanes", () => {
 })
 
 describe("semantic layout — cycles and containers", () => {
+	it("sends a loop over the top when the band below it is busy", () => {
+		// The gateway's alternative occupies the band under the spine, so the loop
+		// from "c" back to "a" would have to cut across it to run underneath.
+		const process = proc(
+			[
+				node("s", "startEvent"),
+				node("g", "exclusiveGateway"),
+				node("a"),
+				node("b"),
+				node("c"),
+				node("d"),
+				node("j", "exclusiveGateway"),
+				node("e", "endEvent"),
+			],
+			[
+				flow("f1", "s", "g"),
+				flow("f2", "g", "a"),
+				flow("f3", "a", "b"),
+				flow("f4", "b", "c"),
+				flow("f5", "c", "j"),
+				flow("f6", "j", "e"),
+				flow("br1", "g", "d"),
+				flow("br2", "d", "j"),
+				flow("loop", "c", "a"),
+			],
+		)
+		const result = layoutProcess(process)
+		const nodes = byId(result)
+		const spine = nodes.get("a")?.bounds
+		const branch = nodes.get("d")?.bounds
+		const loop = result.edges.find((edge) => edge.id === "loop")
+		expect(spine && branch && loop).toBeTruthy()
+		if (!spine || !branch || !loop) return
+
+		// Precondition: the alternative really does sit below the spine.
+		expect(branch.y).toBeGreaterThan(spine.y)
+		// The loop goes over the top rather than squeezing between the two.
+		expect(Math.max(...loop.waypoints.map((wp) => wp.y))).toBeLessThanOrEqual(spine.y)
+	})
+
 	it("routes a loop back below the nodes it spans", () => {
 		const process = proc(
 			[node("s", "startEvent"), node("a"), node("b"), node("e", "endEvent")],
