@@ -23,12 +23,16 @@
 		"proxy-rs:build": "cargo build --manifest-path apps/proxy-rs/Cargo.toml --release",
 		"desktop:dev": "pnpm --filter @bpmnkit/desktop tauri:dev",
 		"desktop:build": "pnpm --filter @bpmnkit/desktop tauri:build",
-		"build:wasm": "wasm-pack build apps/reebe/crates/reebe-wasm --target web --out-dir \"$(pwd)/apps/reebe-wasm\""
+		"build:wasm": "WASM_VERSION=$(node -p \"require('./apps/reebe-wasm/package.json').version\") && wasm-pack build apps/reebe/crates/reebe-wasm --target web --scope bpmnkit --out-dir \"$(pwd)/apps/reebe-wasm\" && node scripts/patch-wasm-pkg.mjs \"$WASM_VERSION\"",
+		"bootstrap": "pnpm install && pnpm build:wasm"
 	},
 	"devDependencies": {
 		"@astrojs/check": "^0.9",
+		"@astrojs/rss": "^4.0.12",
+		"@astrojs/sitemap": "^3.7.1",
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.29.8",
+		"@cloudflare/workers-types": "^5.20260708.1",
 		"@preact/preset-vite": "^2.9.0",
 		"@resvg/resvg-js": "^2.6.2",
 		"@tailwindcss/vite": "^4.0.0",
@@ -41,12 +45,12 @@
 		"esbuild": "^0.27.0",
 		"happy-dom": "^20.7.0",
 		"tailwindcss": "^4.0.0",
-		"turbo": "^2.4.4",
 		"tsx": "^4.0.0",
+		"turbo": "^2.4.4",
 		"typescript": "^5.7.3",
 		"vite": "^8.0.3",
 		"vitest": "^3.0.5",
-		"wrangler": "^4",
+		"wrangler": "^4.110.0",
 		"yaml": "^2.8.2"
 	}
 }

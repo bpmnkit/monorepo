@@ -1,0 +1,82 @@
+---
+import UseCase from "../../layouts/UseCase.astro"
+
+const faqs = [
+	{
+		question: "Why not have the LLM write BPMN XML directly?",
+		answer:
+			"BPMN 2.0 XML is verbose and easy to get subtly wrong — mismatched IDs, missing sequence flow references, invalid Zeebe extension elements. A fluent builder API constrains the LLM to valid operations at every step, and TypeScript's type checker catches structural mistakes before the diagram is ever exported.",
+	},
+	{
+		question: "Does the LLM need to compute the diagram layout?",
+		answer:
+			"No — @bpmnkit/core's .withAutoLayout() runs a Sugiyama layout pass after the process is built, so the model only needs to describe the process structure, not x/y coordinates.",
+	},
+]
+---
+
+<UseCase
+  title="AI-generated BPMN workflows"
+  description="Generate valid, auto-laid-out BPMN 2.0 processes from natural language with an LLM and @bpmnkit/core's fluent TypeScript API."
+  slug="ai-workflow-generation"
+  faqs={faqs}
+>
+  <div class="uc-callout">
+    <p>
+      <strong>Why this matters for your team:</strong> a process owner can describe a workflow
+      in plain language and get back a valid, deployable BPMN diagram — one your analysts can
+      still review and edit visually — instead of waiting on a developer to hand-draw it.
+    </p>
+  </div>
+
+  <p>
+    Asking an LLM to write raw BPMN 2.0 XML is a bad time — a hallucinated element ID or
+    a mismatched sequence flow reference is easy to produce and hard for the model to catch.
+    <code>@bpmnkit/core</code>'s fluent builder gives the model a much smaller, type-checked
+    surface to work with instead: a chain of method calls that can only construct valid BPMN.
+  </p>
+
+  <h2>How it works</h2>
+  <p>
+    An LLM (or a deterministic planning step) produces a compact intermediate description of
+    the process — which tasks, which gateways, which branches — small enough to fit in a
+    single prompt. That description is compiled into a real <code>ProcessBuilder</code> chain:
+  </p>
+  <pre>{`import { Bpmn } from "@bpmnkit/core";
+
+const xml = Bpmn.export(
+  Bpmn.createProcess("support-ticket")
+    .startEvent("start", { name: "Ticket Created" })
+    .exclusiveGateway("gw", { name: "Severity?" })
+    .branch("high", (b) =>
+      b.condition("= severity = \\"high\\"")
+        .serviceTask("escalate", { taskType: "escalate-to-oncall" })
+        .endEvent("end-escalated"),
+    )
+    .branch("normal", (b) =>
+      b.defaultFlow()
+        .userTask("triage", { name: "Triage Ticket" })
+        .endEvent("end-triaged"),
+    )
+    .withAutoLayout()
+    .build()
+);`}</pre>
+  <p>
+    Because every call is type-checked, a model that tries to reference a task that doesn't
+    exist, or attach a gateway with no branches, fails at generation time rather than producing
+    silently-broken XML.
+  </p>
+
+  <h2>Where this fits</h2>
+  <p>
+    This is the same approach used for AI-assisted design inside BPMN Kit's own editor and CLI
+    (<code>casen</code>) — see the <a href="https://docs.bpmnkit.com/guides/ai/">AI guide</a>
+    in the docs for the full pipeline, including the plan format and deploy-readiness linting
+    that runs before a generated process reaches Camunda 8.
+  </p>
+  <div class="uc-links">
+    <a href="https://docs.bpmnkit.com/guides/ai/">AI guide</a>
+    <a href="/blog/generate-bpmn-diagrams-programmatically-typescript">Generate BPMN with TypeScript</a>
+    <a href="https://learn.bpmnkit.com/glossary">BPMN glossary</a>
+  </div>
+</UseCase>

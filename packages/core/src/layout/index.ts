@@ -1,4 +1,5 @@
 export { layoutProcess, layoutFlowNodes } from "./layout-engine.js"
+export type { LayoutEngine } from "./layout-engine.js"
 export {
 	benchmarkLayout,
 	compareLayouts,

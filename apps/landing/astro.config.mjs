@@ -1,3 +1,4 @@
+import sitemap from "@astrojs/sitemap"
 import { defineConfig } from "astro/config"
 
 export default defineConfig({
@@ -8,4 +9,5 @@ export default defineConfig({
 	devToolbar: {
 		enabled: false,
 	},
+	integrations: [sitemap()],
 })

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="@bpmnkit/core" exporterVersion="0.0.23" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.9.0">
+  <bpmn:process id="KycOnboarding" name="KYC Onboarding Process" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:versionTag value="1.0.0"/>
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="start" name="Onboarding Started">
+      <bpmn:outgoing>Flow_dzvGWk3K</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="uploadDocument" name="Upload Identity Document">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formId="identity-document-upload-form"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_dzvGWk3K</bpmn:incoming>
+      <bpmn:incoming>Flow_rlKvyhN6</bpmn:incoming>
+      <bpmn:outgoing>Flow_jFSBMYJb</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="verifyDocument" zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v2" zeebe:modelerTemplateVersion="12" name="Verify Document (OCR)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="bearer" target="authentication.type"/>
+          <zeebe:input source="=secrets.OCR_SERVICE_TOKEN" target="authentication.token"/>
+          <zeebe:input source="POST" target="method"/>
+          <zeebe:input source="=ocrServiceUrl + &quot;/verify&quot;" target="url"/>
+          <zeebe:input target="body"/>
+          <zeebe:input source="20" target="connectionTimeoutInSeconds"/>
+          <zeebe:input source="20" target="readTimeoutInSeconds"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="ocrResponse"/>
+          <zeebe:header key="resultExpression" value="={ verified: ocrResponse.body.verified, quality: ocrResponse.body.quality }"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_jFSBMYJb</bpmn:incoming>
+      <bpmn:outgoing>Flow_1TTrGjjw</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="qualityGateway" name="Document Verified?">
+      <bpmn:incoming>Flow_1TTrGjjw</bpmn:incoming>
+      <bpmn:outgoing>Flow_0LEUQOxJ</bpmn:outgoing>
+      <bpmn:outgoing>Flow_mYkhul6F</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="retryGateway" name="Retries Remaining?" default="Flow_uHPpRk4d">
+      <bpmn:incoming>Flow_mYkhul6F</bpmn:incoming>
+      <bpmn:outgoing>Flow_S3pkDgDT</bpmn:outgoing>
+      <bpmn:outgoing>Flow_uHPpRk4d</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:scriptTask id="incrementRetry" name="Increment Retry Count">
+      <bpmn:extensionElements>
+        <zeebe:script expression="=retryCount + 1" resultVariable="retryCount"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_S3pkDgDT</bpmn:incoming>
+      <bpmn:outgoing>Flow_rlKvyhN6</bpmn:outgoing>
+    </bpmn:scriptTask>
+    <bpmn:serviceTask id="sendVerificationRejection" name="Send Verification Rejection">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="email-sender"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=applicant.email" target="to"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="template" value="kyc-document-rejected"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_uHPpRk4d</bpmn:incoming>
+      <bpmn:outgoing>Flow_tODzlPDa</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="endRejectedDocument" name="Rejected — Document">
+      <bpmn:incoming>Flow_tODzlPDa</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="sanctionsScreening" zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v2" zeebe:modelerTemplateVersion="12" name="Sanctions &amp; PEP Screening">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="bearer" target="authentication.type"/>
+          <zeebe:input source="=secrets.SCREENING_SERVICE_TOKEN" target="authentication.token"/>
+          <zeebe:input source="POST" target="method"/>
+          <zeebe:input source="=screeningServiceUrl + &quot;/screen&quot;" target="url"/>
+          <zeebe:input target="body"/>
+          <zeebe:input source="20" target="connectionTimeoutInSeconds"/>
+          <zeebe:input source="20" target="readTimeoutInSeconds"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="screeningResponse"/>
+          <zeebe:header key="resultExpression" value="={ riskLevel: screeningResponse.body.riskLevel, isPep: screeningResponse.body.isPep, hits: screeningResponse.body.hits }"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0LEUQOxJ</bpmn:incoming>
+      <bpmn:outgoing>Flow_IRsmpnbh</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="dueDiligenceGateway" name="Due Diligence Level?" default="Flow_P4BQYrEw">
+      <bpmn:incoming>Flow_IRsmpnbh</bpmn:incoming>
+      <bpmn:outgoing>Flow_8vSOCU50</bpmn:outgoing>
+      <bpmn:outgoing>Flow_P4BQYrEw</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="standardDueDiligence" name="Standard Due Diligence">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="due-diligence-service"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=applicant.id" target="applicantId"/>
+          <zeebe:output source="=ddResult" target="dueDiligenceResult"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_8vSOCU50</bpmn:incoming>
+      <bpmn:outgoing>Flow_K56CWSVL</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="enhancedDueDiligence" name="Enhanced Due Diligence Review">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formId="enhanced-due-diligence-form"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_P4BQYrEw</bpmn:incoming>
+      <bpmn:outgoing>Flow_01TCJkY6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:businessRuleTask id="finalRiskClassification" name="Final Risk Classification">
+      <bpmn:incoming>Flow_5Xnykddu</bpmn:incoming>
+      <bpmn:outgoing>Flow_afmDHVqD</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:exclusiveGateway id="outcomeGateway" name="Final Decision?" default="Flow_RGXncTod">
+      <bpmn:incoming>Flow_afmDHVqD</bpmn:incoming>
+      <bpmn:outgoing>Flow_nsEpR6Kw</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NgrHE8n7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_RGXncTod</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="activateAccount" name="Activate Customer Account">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="account-service"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=applicant.id" target="applicantId"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_nsEpR6Kw</bpmn:incoming>
+      <bpmn:outgoing>Flow_hyA4P19S</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="endApproved" name="Approved">
+      <bpmn:incoming>Flow_hyA4P19S</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="escalateToCompliance" name="Escalate to Compliance">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="compliance-notifier"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=applicant.id" target="applicantId"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="queue" value="compliance-review"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_NgrHE8n7</bpmn:incoming>
+      <bpmn:outgoing>Flow_jEsjEcCl</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="endEscalated" name="Escalated to Compliance">
+      <bpmn:incoming>Flow_jEsjEcCl</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="sendKycRejection" name="Send KYC Rejection">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="email-sender"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=applicant.email" target="to"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="template" value="kyc-rejected"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_RGXncTod</bpmn:incoming>
+      <bpmn:outgoing>Flow_LtOjKgN2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="endRejected" name="Rejected">
+      <bpmn:incoming>Flow_LtOjKgN2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="dueDiligenceGateway_join">
+      <bpmn:incoming>Flow_K56CWSVL</bpmn:incoming>
+      <bpmn:incoming>Flow_01TCJkY6</bpmn:incoming>
+      <bpmn:outgoing>Flow_5Xnykddu</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_dzvGWk3K" sourceRef="start" targetRef="uploadDocument"/>
+    <bpmn:sequenceFlow id="Flow_jFSBMYJb" sourceRef="uploadDocument" targetRef="verifyDocument"/>
+    <bpmn:sequenceFlow id="Flow_1TTrGjjw" sourceRef="verifyDocument" targetRef="qualityGateway"/>
+    <bpmn:sequenceFlow id="Flow_0LEUQOxJ" sourceRef="qualityGateway" targetRef="sanctionsScreening" name="document-verified">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=ocrResponse.verified = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_mYkhul6F" sourceRef="qualityGateway" targetRef="retryGateway" name="document-failed">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=ocrResponse.verified = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_S3pkDgDT" sourceRef="retryGateway" targetRef="incrementRetry" name="retry-upload">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=retryCount &lt; 2</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_rlKvyhN6" sourceRef="incrementRetry" targetRef="uploadDocument"/>
+    <bpmn:sequenceFlow id="Flow_uHPpRk4d" sourceRef="retryGateway" targetRef="sendVerificationRejection" name="retries-exhausted"/>
+    <bpmn:sequenceFlow id="Flow_tODzlPDa" sourceRef="sendVerificationRejection" targetRef="endRejectedDocument"/>
+    <bpmn:sequenceFlow id="Flow_IRsmpnbh" sourceRef="sanctionsScreening" targetRef="dueDiligenceGateway"/>
+    <bpmn:sequenceFlow id="Flow_8vSOCU50" sourceRef="dueDiligenceGateway" targetRef="standardDueDiligence" name="standard-dd">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=screeningResponse.riskLevel = "low" and screeningResponse.isPep = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_K56CWSVL" sourceRef="standardDueDiligence" targetRef="dueDiligenceGateway_join"/>
+    <bpmn:sequenceFlow id="Flow_P4BQYrEw" sourceRef="dueDiligenceGateway" targetRef="enhancedDueDiligence" name="enhanced-dd"/>
+    <bpmn:sequenceFlow id="Flow_01TCJkY6" sourceRef="enhancedDueDiligence" targetRef="dueDiligenceGateway_join"/>
+    <bpmn:sequenceFlow id="Flow_afmDHVqD" sourceRef="finalRiskClassification" targetRef="outcomeGateway"/>
+    <bpmn:sequenceFlow id="Flow_nsEpR6Kw" sourceRef="outcomeGateway" targetRef="activateAccount" name="outcome-approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=finalClassification.decision = "approve"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_hyA4P19S" sourceRef="activateAccount" targetRef="endApproved"/>
+    <bpmn:sequenceFlow id="Flow_NgrHE8n7" sourceRef="outcomeGateway" targetRef="escalateToCompliance" name="outcome-escalated">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=finalClassification.decision = "escalate"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_jEsjEcCl" sourceRef="escalateToCompliance" targetRef="endEscalated"/>
+    <bpmn:sequenceFlow id="Flow_RGXncTod" sourceRef="outcomeGateway" targetRef="sendKycRejection" name="outcome-rejected"/>
+    <bpmn:sequenceFlow id="Flow_LtOjKgN2" sourceRef="sendKycRejection" targetRef="endRejected"/>
+    <bpmn:sequenceFlow id="Flow_5Xnykddu" sourceRef="dueDiligenceGateway_join" targetRef="finalRiskClassification"/>
+  </bpmn:process>
+</bpmn:definitions>

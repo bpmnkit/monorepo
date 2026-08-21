@@ -1,0 +1,83 @@
+---
+import "../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd, faqJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import Footer from "../components/Footer.astro"
+import Nav from "../components/Nav.astro"
+
+interface Props {
+	title: string
+	description: string
+	slug: string
+	faqs?: Array<{ question: string; answer: string }>
+}
+
+const { title, description, slug, faqs = [] } = Astro.props
+const pageUrl = `https://bpmnkit.com/use-cases/${slug}`
+
+const jsonLd = [
+	breadcrumbJsonLd([
+		{ name: "Home", url: "https://bpmnkit.com" },
+		{ name: "Use Cases", url: "https://bpmnkit.com/use-cases" },
+		{ name: title, url: pageUrl },
+	]),
+	...(faqs.length ? [faqJsonLd(faqs)] : []),
+]
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo title={`${title} — BPMN Kit`} description={description} jsonLd={jsonLd} />
+  <style is:global>
+    .uc-detail-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .uc-detail-main { flex: 1; max-width: 720px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .uc-detail-breadcrumb { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 24px; }
+    .uc-detail-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+    .uc-detail-main h1 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px; }
+    .uc-detail-main h2 { font-size: 1.15rem; font-weight: 600; margin: 36px 0 14px; }
+    .uc-detail-main p { font-size: 0.95rem; line-height: 1.75; color: var(--text); margin-bottom: 16px; }
+    .uc-detail-main p code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-code); padding: 2px 6px; border-radius: 4px; color: var(--accent-bright); }
+    .uc-detail-main pre { background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; margin-bottom: 20px; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; color: var(--text); white-space: pre; }
+    .uc-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    .uc-links a { display: inline-block; padding: 9px 16px; border: 1px solid var(--accent-bright); border-radius: 999px; color: var(--accent-bright); font-size: 0.85rem; font-weight: 500; text-decoration: none; }
+    .uc-links a:hover { background: var(--accent-glow); }
+    .uc-faq-item { margin-bottom: 18px; }
+    .uc-faq-item h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .uc-faq-item p { font-size: 0.88rem; }
+    .uc-callout { background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--accent-bright); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 28px; }
+    .uc-callout p { font-size: 0.88rem; margin-bottom: 0; }
+    .uc-callout strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <Nav />
+  <div class="uc-detail-wrap">
+    <main class="uc-detail-main">
+      <div class="uc-detail-breadcrumb">
+        <a href="/">Home</a> / <a href="/use-cases">Use Cases</a> / {title}
+      </div>
+      <h1>{title}</h1>
+      <slot />
+      {faqs.length > 0 && (
+        <>
+          <h2>Frequently asked</h2>
+          {faqs.map((f) => (
+            <div class="uc-faq-item">
+              <h3>{f.question}</h3>
+              <p>{f.answer}</p>
+            </div>
+          ))}
+        </>
+      )}
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

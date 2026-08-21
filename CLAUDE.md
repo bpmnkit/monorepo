@@ -1,5 +1,28 @@
 # Instructions
 
+## Documentation Lookup — Do This Before Answering From Memory
+
+This repo ships its own documentation as an offline, searchable package:
+**`@bpmnkit/docspack`** (`packages/docspack`). Ask it before answering any question
+about BPMN Kit's own APIs, CLI or guides.
+
+```sh
+npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+```
+
+- **Ask a question, not a package name.** `ask "verify a worker's job type"` beats
+  `ask "workers"`. Answers cap at 3 chunks / 3,000 tokens, so prefer several narrow
+  questions over one broad one.
+- **A returned chunk beats recalled knowledge.** It describes the version in this
+  workspace; your memory describes some earlier release. If the two disagree, the chunk
+  is right. Do not blend them into one answer.
+- `bpmnkit-docs search "<query>"` ranks matches without printing them;
+  `bpmnkit-docs list` shows which packs are indexed.
+- Every command reads the filesystem only — no network call, no server, nothing resident.
+
+After changing anything under `apps/docs/src/content/docs/`, rebuild the pack so the
+index does not go stale: `pnpm --filter @bpmnkit/docspack build`.
+
 <!-- Part 1 & 2: Portable across repos. Do NOT add repo-specific rules here. -->
 <!-- Repo-specific instructions go in .github/instructions/repo.instructions.md -->
 

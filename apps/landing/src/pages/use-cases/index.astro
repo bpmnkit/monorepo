@@ -1,0 +1,74 @@
+---
+import "../../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+
+const cases = [
+	{
+		href: "/use-cases/ai-workflow-generation",
+		name: "AI-generated workflows",
+		tagline: "Let an LLM produce valid BPMN processes from a prompt",
+	},
+	{
+		href: "/use-cases/embed-bpmn-editor",
+		name: "Embed a BPMN editor",
+		tagline: "Drop a drag-and-drop process editor into your own app",
+	},
+	{
+		href: "/use-cases/camunda-8-automation",
+		name: "Camunda 8 automation",
+		tagline: "Generate, deploy, and operate processes from CI",
+	},
+	{
+		href: "/use-cases/process-simulation",
+		name: "Process simulation & testing",
+		tagline: "Test a process end-to-end before it ever reaches Camunda",
+	},
+]
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title="BPMN Kit Use Cases"
+    description="What teams build with BPMN Kit: AI-generated workflows, embedded BPMN editors, Camunda 8 automation, and process simulation."
+  />
+  <style is:global>
+    .uc-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .uc-main { flex: 1; max-width: 760px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .uc-main h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px; text-align: center; }
+    .uc-main > p { color: var(--text-muted); text-align: center; margin-bottom: 40px; }
+    .uc-list { display: grid; gap: 12px; }
+    .uc-list a { display: flex; justify-content: space-between; align-items: center; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); text-decoration: none; transition: border-color 0.2s; }
+    .uc-list a:hover { border-color: var(--accent-bright); }
+    .uc-list h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .uc-list p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <Nav />
+  <div class="uc-wrap">
+    <main class="uc-main">
+      <h1>Use cases</h1>
+      <p>What teams build with BPMN Kit.</p>
+      <div class="uc-list">
+        {cases.map((c) => (
+          <a href={c.href}>
+            <div><h3>{c.name}</h3><p>{c.tagline}</p></div>
+            <span>→</span>
+          </a>
+        ))}
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+	"name": "@bpmnkit/drop",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "node scripts/build-client.mjs",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+		"check": "biome check .",
+		"test": "vitest run",
+		"dev": "node scripts/build-client.mjs && wrangler dev",
+		"deploy": "wrangler deploy",
+		"provision": "node scripts/provision.mjs"
+	},
+	"dependencies": {
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/plugins": "workspace:*",
+		"@bpmnkit/ui": "workspace:*"
+	}
+}

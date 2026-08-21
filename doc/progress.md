@@ -1,5 +1,359 @@
 # Progress
 
+## 2026-08-21 — `@bpmnkit/docspack`: the docs as a package an agent can install and search
+
+Agents answer BPMN Kit questions from whatever they remember, which is usually an older release. New package `packages/docspack` ships the documentation itself as an npm package, indexed and searched locally, so an agent reads the docs for the version the project actually installed.
+
+It implements the [docspack format](https://docspack.dev/spec) rather than a private one. The vendor-scope name `@bpmnkit/docspack` is exactly what the upstream `docspack` CLI discovers in `node_modules`, so that tool indexes this pack with no extra work — and the bundled `bpmnkit-docs` command does the same job for anyone who does not want a second tool. Zero runtime dependencies either way.
+
+- **Payload** — `bpmnkit-docs build` reads `apps/docs/src/content/docs`, splits each page at its `##` headings and writes `.llms/chunks/*.md`, `.llms/manifest.json` (validating against `https://docspack.dev/schema/v1.json`) and an `llms.txt` table of contents. Currently **152 chunks from 28 documents, 30,882 tokens**.
+- **Chunking** — a section over the budget is subdivided at `###` and then at paragraph boundaries, never inside a fenced code block (a `## comment` in a shell sample is not a heading). A section too short to answer anything merges into the one before it, so a reference table does not become one chunk per row. Tags come from front matter, the page slug and the heading's own words; entities are the qualified identifiers named in inline code. `<!-- docspack: tags=… -->` overrides either from the page.
+- **Retrieval** — BM25 (k1 1.2, b 0.75) over chunk text with a Porter stemmer, so `authenticate` reaches a passage that only says `authentication`. Tags and entities weigh 3× prose, which is what puts *Exclusive Gateway (XOR)* at 14.73 against 8.04 for the inclusive-gateway page on "exclusive gateway condition".
+- **Bounded answers** — three chunks and 3,000 tokens by default, spent from the manifest's counts before any content is read, so an overrunning chunk is dropped rather than truncated mid-sentence. Every answer names `<pack>@<version>/<chunk-id>` and closes with what it cost.
+- **Manifests are untrusted** — a chunk path resolving outside `.llms/` is refused, duplicate or malformed chunk ids are refused, `tokens: 0` is refused, the installed `package.json` version supersedes the manifest's (a disagreement is reported by `list`), and `@docspack-community/*` packages are labelled unreviewed in every answer.
+- **No network** — `ask`, `search`, `list` and `build` read the filesystem only. There is no server and nothing resident between questions.
+
+The library is exported too (`discoverPacks`, `indexPacks`, `search`, `answer`, `buildPack`), so an editor extension or MCP server can search without shelling out. 31 tests cover the stemmer, the chunker, manifest validation and the token budget.
+
+Docs page at `packages/docspack`; the package is wired into `sync-license.mjs`, `generate-readmes.mjs` and `check-packages.mjs`.
+
+**Discoverability.** A pack nobody finds is a pack nobody uses, so it is named at the five places an agent actually lands: the top of `CLAUDE.md` (first thing in context for a session in this repo), a new root `AGENTS.md` (the convention Cursor, Codex and Copilot read), a "For AI Agents" section near the head of the root `README.md`, the same section on the docs homepage — which `promote: ["index*"]` puts at line 35 of 5,500 in `llms-full.txt` — and the `details` preamble of `llms.txt` itself, which is the whole content of that file and therefore the first thing an agent fetching `docs.bpmnkit.com/llms.txt` reads. The wording follows docspack's own `ai-rules.md`, including the line that decides a conflict: a retrieved chunk beats recalled knowledge, and the two are not blended.
+
+## 2026-08-21 — Surface `/auto-layout` from the homepage and the footer
+
+The layout comparison page shipped reachable from one place only: the Resources dropdown in the nav. Three links added so it is findable without opening a menu.
+
+- Footer link list, between "Compare" and "Blog", matching the nav order — this puts it on every page of the site.
+- Homepage hero: "with auto-layout" now links to the page.
+- Homepage bento grid, the Auto-Layout card: "See both engines compared on five real process models".
+
+No new markup or styles — the global `a` rule already covers inline links inside `.hero-p` and `.bcard p`, the way the Roundtrip Fidelity card's link does.
+
+## 2026-08-21 — Landing page: old engine vs new engine, on five real models
+
+New page at `/auto-layout` comparing BPMN Kit's original grid layouter against the semantic engine on five process models taken from the BPMN generation demo recordings. Their diagram interchange is stripped, so both engines lay each model out from nothing and neither side is a recording of somebody else's output.
+
+`applyAutoLayout(defs, engine)` now takes the engine the way `layoutProcess` already did (`LayoutEngine` is exported), which is what lets the page compute both layouts in the browser from one XML rather than shipping two pre-rendered diagrams.
+
+Measured across the five, grid → semantic:
+
+| metric | old | new |
+| --- | ---: | ---: |
+| edge crossings | 15 | **2** |
+| routes over shapes | 8 | **0** |
+| backward flows | 8 | **0** |
+| bends | 56 | **52** |
+| edge length | 25,538 | **23,666** |
+
+The page states each number for each diagram and does not hide the two samples where edge length goes up or the one where bends go up — spreading branches onto their own bands costs length, and saying so is more convincing than a table where everything is green.
+
+"Backward flows" excludes genuine loops: a flow counts only if its target cannot reach its source again, so a retry loop — which every engine must draw right-to-left — is not scored against either side. Counting them would have shown 11 → 2 and been wrong.
+
+Stats are computed at build time in the page's frontmatter; the diagrams are laid out client-side when each scrolls into view.
+
+## 2026-08-20 — Should we take upstream's message-flow trade? Measured: no
+
+Upstream gets message-to-sequence crossings down to 54 against our 112, and pays with 21 message-to-message crossings against our 11. Asked whether we should take the same trade, so I mapped the frontier instead of answering from the earlier failed attempts — those were 6x the message-to-message crossings, not 2x, so the trade had never actually been tested at a sensible setting.
+
+Bending a message stem sideways onto a clear column, gated on how many edges the straight stem would cut:
+
+| bend when the stem would cut… | msg × seq | msg × msg | msg → shape | total crossings |
+| --- | ---: | ---: | ---: | ---: |
+| never (shipped) | 112 | 11 | 1 | **234** |
+| ≥ 1 edge | 98 | 34 | 19 | 243 |
+| ≥ 2 edges | 103 | 14 | 1 | 228 |
+| ≥ 3 edges | 107 | 10 | 1 | 228 |
+
+**No, the trade is not worth taking.** The aggressive setting that actually reaches upstream's balance point costs 34 message-to-message crossings *and* nineteen routes cutting through shapes — a hard defect, not a crossing — for a worse total. Upstream reaches 54 by some means other than bending stems; whatever it is, this lever does not get there.
+
+The conservative settings are a genuine, if small, improvement: bending only when a stem would cut three or more edges is strictly better than shipping on every axis (crossings 234 → 228, no category regressing). It was **not shipped**: it fires on **2 of 216** message flows, both in one fixture, and two deliberate attempts to build a synthetic case that triggers it failed — roughly 70 lines that no test could protect. Same bar that removed the link-event pairing, the empty-pool expansion, the loose nested-join rule, and three earlier message-routing variants. Available for −6 crossings if we ever decide the code is worth it.
+
+## 2026-08-20 — Unrelated-edge crossings: loops were the whole story
+
+Asked whether the 46 remaining "unrelated edge" crossings could be improved further, and measured the headroom before writing anything.
+
+**Band ordering was exhausted.** The inversion estimator the engine uses — edges whose rank spans overlap and whose endpoints swap order vertically — counts only **6** crossings across all 179 processes in the corpus. A search over band assignments (40 randomised restarts, hill-climbing on every same-side swap) finds at best **3**, or **2** if branches may change side. So no reordering of bands could remove more than a handful.
+
+That mismatch — 6 predicted against 46 observed — said the crossings come from routing geometry, not placement. Classifying them: none were between two straight runs, 21 involved a corridor-bent route, and **22 of 46 involved a backward-running loop edge**. Against upstream: they have **5** of that kind, and on forward-only crossings we were already ahead, **24 against their 28**, with the same 43 loop routes in both.
+
+The fix follows from that: **a loop now takes whichever side of the flow is clearer.** It offers the nearest clear corridor below and the nearest above, and takes whichever crosses fewer of the edges already routed; convention wins ties, so a loop over open space still runs below. Previously the floor was forced below both endpoints, so a loop spanning a band full of alternatives had to cut across every one of them.
+
+- unrelated-edge crossings **46 → 35** (upstream 33), loop-involved **22 → 11**
+- sequence-flow crossings **120 → 101**, now below upstream's **118**
+- total crossings **259 → 234**, bends 772 → 768, mean loop length 705 → 675 px
+
+Offering loops four corridor options instead of two changed nothing, so it stayed at two.
+
+Two process notes. A worker restart landed mid-`git stash`, leaving the fix stashed and the tree looking clean — worth checking `git stash list` after any interrupted command. And the first attempt at proving the new test non-vacuous toggled the code into invalid TypeScript: the build failed, the stale dist stayed in place, and the test "passed" against the code it was meant to be running without. Toggling to a valid below-only variant showed the test failing as it should.
+
+## 2026-08-20 — Sequence-flow crossings: bands, not routing
+
+Split our 146 sequence-flow crossings by category against upstream's 118 before changing anything, and the split decided the work:
+
+| | ours before | ours after | upstream |
+| --- | ---: | ---: | ---: |
+| converge on one node | 56 | 51 | 48 |
+| unrelated edges | 60 | **46** | 33 |
+| diverge from one node | 24 | **15** | 34 |
+| chained endpoints | 6 | 8 | 3 |
+| **total** | **146** | **120** | **118** |
+
+**Convergence is largely inherent** — both engines cross about as often when several flows meet at one join, which is why three attempts at fixing it all failed: preferring the gutter approach per edge (146 → 152), bundling every convergent group onto the target's shared column (146 → 211), and reordering candidates for convergent targets (no change). All reverted. Two edges arriving at one node from different rows have to cross something; only an explicit routing trunk with staggered docks avoids it, and BPMN docks them at one point.
+
+The excess was in **pairs of edges with no shared endpoint** — 60 against upstream's 33 — which is band assignment, not routing. Two changes, both in `semantic/bands.ts`:
+
+- **A branch reserves its band out to the rank it rejoins at**, not just the ranks its own nodes occupy. Two branches whose nodes never share a rank were packed onto one band, and the edge from the first back to its join then ran straight through the second. The first attempt at this looked inert because `follow()` stops *before* the rejoin node — it filters out already-placed targets — so the reservation never saw it; reading the last node's outgoing flows fixed that.
+- **Neighbouring bands trade places when that untangles the edges running past them.** Compaction picks a band from where a branch starts and how far from the spine it belongs, which says nothing about what crosses it. The estimator counts inversions — edges whose rank spans overlap and whose endpoints swap order vertically — straight from the graph, with no geometry. Swaps stay on one side of the spine, so exceptions-below and escalations-above survive. Using the *host's* rank for a boundary event's outgoing edges (they have no rank of their own) was worth another 6 crossings; widening the search from neighbouring bands to any same-side pair was worth nothing, so it stayed simple.
+
+Totals over the 161 fixtures: **crossings 285 → 259** (upstream 200), bends 789 → 772, edge length 434.8k (upstream 429k), deviation 261 px (227), area 141 Mpx (140), runtime 1.1 ms (41 ms). DI complete, lanes exact, flow-direction violations 8 against 7. 572 core + 76 canvas + 23 ascii tests pass, including a new one that fails without the reservation fix.
+
+## 2026-08-20 — Routing density inside pools: the diagnosis was wrong
+
+Last entry closed by blaming our remaining message-flow crossings on "the density of horizontal sequence-flow runs our routing leaves in the way". Measured it, and that is **not true**: our horizontal sequence-flow traffic is indistinguishable from upstream's — 1854 segments against 1831, 267k px against 263k, the same 143 px mean, and slightly fewer very long runs (15 against 18). Nor is it stem length (285 px against 265), pool height (235 px against 242), or messages crossing pools they merely pass through (1 each).
+
+What the numbers do say: stems cross **long** runs (373 px mean, against 139 px across all runs) and every blocked stem has a clear column within 600 px — 34 of them within 100 px. So bending stems around the runs looked promising, and three separate attempts all failed to net out ahead:
+
+| attempt | msg × seq | msg × msg | msg → shape | total crossings |
+| --- | ---: | ---: | ---: | ---: |
+| baseline | 116 | 11 | 5 | 283 |
+| candidates scored by crossings | 116 | 13 | 5 | 285 |
+| bend to a clear column | 96 | 68 | 26 | 320 |
+| …only when 2+ runs are in the way | 109 | 14 | 9 | 279 |
+| …plus spreading the bends apart | 101 | 34 | 18 | 291 |
+
+Every variant trades one crossing class for another. The reason is visible in upstream's own breakdown, which we had never measured: **upstream accepts more message-to-message crossings than we do — 21 against our 11 — to get message-to-sequence down to 54.** It sits at a different balance point, and local search over stem columns cannot reach it. All three attempts were reverted.
+
+One real defect did come out of the investigation and is fixed: a route leaving an element **inside an expanded sub-process** treated that sub-process's own border as an obstacle, so every candidate came back blocked and the router fell back to a route it had already rejected — sometimes straight through a shape. An endpoint's containers now count as its own. Message flows through unrelated shapes **5 → 1**; routes through shapes overall **39 → 35**.
+
+Where the gap to upstream actually sits, by category (ours / upstream): sequence × sequence **146 / 118**, message × sequence **118 / 54**, message × message **11 / 21**, associations **10 / 1**, routes through shapes **35 / 13**. We are ahead on one of the five.
+
+A test written for the container fix turned out to pass without it — the synthetic fixture put the sibling to the right rather than underneath, and the fix only changes which corridor the fallback picks. It was deleted rather than kept as decoration; the fix is evidenced by the corpus measurement above.
+
+## 2026-08-20 — Collaboration pipeline: pool ordering, alignment, endpoint resolution
+
+Ported the parts of [upstream's collaboration pipeline](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) that earn their place, in our own code (`packages/core/src/layout/collaboration/`), keeping our own pool stacking and message routing underneath.
+
+- **Pool ordering** (`ordering.ts`) — the vertical order now follows the message flows instead of the declaration order. The cost is the weighted vertical travel of every message, with drift from the declared order as the tie-break, so pools only move when there is something to gain. Exhaustive search up to eight pools, remove-and-reinsert refinement above that; both deterministic. **The single biggest win of this pass: message flows crossing each other 67 → 15, crossing sequence flows 171 → 120, total crossings 394 → 290.**
+- **Horizontal alignment** (`alignment.ts`) — each process now slides sideways as a unit so the elements it exchanges messages with line up vertically. The widest process anchors the diagram and the rest move to meet it, largest first; every connected message proposes the shift that would make it vertical and the cheapest wins. Pools grow by whatever their content moved, so nothing leaves its pool. Crossings 290 → 283, total edge length 447k → **435k** against upstream's 429k.
+- **Endpoint resolution** — an endpoint inside a collapsed sub-process has no shape on the root plane, so its message flow was being dropped, a hole opened by emitting collapsed sub-process planes. Endpoints now walk up to the nearest ancestor that is on the plane and dock there.
+
+Two things were written, measured, and **removed**: crossing-aware scoring of message routes against the edges already on the plane (283 → 285, message-to-message 11 → 13), and an empty-pool expansion pass (black boxes already take the width of the widest pool, and every dock sits at a content x inside that range, so it could never fire — its test stays as a guard on the invariant).
+
+Where the remaining message-flow crossings live, measured rather than guessed: **106 of our 116** are vertical message stems crossing sequence flows *inside* a pool, on their way from an element to the pool edge. Running the same breakdown over upstream's output shows **51** of the same kind — so the pattern is partly inherent to docking on an element mid-pool, and the difference is the density of horizontal sequence-flow runs our routing leaves in the way, not the collaboration assembly.
+
+Totals over the 161 fixtures: crossings **394 → 283** (upstream 200), routes through unrelated shapes 51 → **39** (upstream 13), edge length 494k → **435k** (upstream 429k), diagram area 140 Mpx (upstream 140), deviation from the reference DI 265 → **259 px** (upstream 227), mean runtime **1.0 ms** (upstream 38 ms). DI complete, lanes exact, flow-direction violations 8 against upstream's 7. 570 core + 76 canvas + 23 ascii tests pass.
+
+## 2026-08-20 — Placement refinements, and what they were worth
+
+Fourth pass on layout, working through the three rank/band refinements in [upstream's contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) and measuring each one against the 161 reference fixtures before keeping it.
+
+- **Nested joins of one gateway type share a rank** and connect vertically; different types keep their forward step (`semantic/graph.ts`, zero-weight edges in the longest-path relaxation). Faithful to the contract, but the pattern occurs **6 times** in the whole corpus, so it moves no aggregate number. Kept for the geometry it produces on those cases, with tests. A looser reading — any same-type gateway feeding a join — fired 39 times and was **worse** (crossings 426 → 432, flow-direction violations 7 → 12), because a split and its join sharing a rank turns the flow vertical.
+- **Boundary-handler branches reserve their full span**, out to the rank they rejoin at rather than only the ranks their own nodes occupy, so nothing claims the band the handler's last edge still travels along. Metric-neutral, contract-correct.
+- **Band compaction had nothing to gain.** Measured first: bands span at most 4 levels across the corpus (1699 nodes on the spine, 322 at ±1, 62 at ±2, 8 at ±3), and repacking intervals by start rank instead of by depth changed no metric while costing a flow-direction violation. Left alone.
+
+What did move the numbers were two gaps the measurements turned up on the way:
+
+- **Unreached nodes were dropped onto the spine.** A node no traversal claims — a scope entered only through a loop, say — was assigned band 0, landing on whatever already occupied its rank and then being shoved aside by same-cell separation, off any band at all. It now takes a free band next to whatever it connects to. **Sequence-flow crossings 174 → 145.**
+- **Annotation placement never checked its own association line.** The packer confirmed the box was clear of shapes but not the line drawn back to the element, so associations cut straight through activities. Candidates whose line crosses a shape are now heavily penalised. **Association routes through shapes 13 → 5**, below the 7 they started this pass at.
+
+Totals over the corpus: **edge crossings 425 → 394** and, by connection kind, sequence-flow crossings 174 → 145. Routes through unrelated shapes are 39 counted by connection kind, 51 by the plane-based count. DI stays complete (0 missing), lane placement stays exact (0/257), flow-direction violations are 8 against upstream's 7 — five of the six affected fixtures match upstream exactly. 564 core + 76 canvas + 23 ascii tests pass.
+
+**Where this leaves us against upstream** (crossings 394 vs 200, shape routes 51 vs 13): the diagnosis is no longer "placement is loose". Bands are tight, collisions are rare, and the remaining crossings are dominated by message flows (171 of 394 against sequence flows, 67 against each other) in dense multi-pool collaborations — the one area where we deliberately kept our own simple pool stacking rather than porting upstream's collaboration pipeline. That pipeline, not more rank or band tuning, is what the next real gain would take.
+
+## 2026-08-20 — Routing: fewer crossings, fewer routes through shapes
+
+Third pass on layout, this time on the routing gap the previous entries kept flagging. Started by categorising every crossing and every route-through-shape across the 161 reference fixtures rather than guessing: message flows turned out to cause **56 of the 78** shape hits and 206 of the 493 crossings, and among sequence flows the dominant pattern was a long horizontal run along a band centre line being crossed by other edges' gutter risers.
+
+Three changes came out of that:
+
+- **Message-flow legs may jog** (`auto-layout.ts`). Each leg is checked over its own stretch — its end to the crossing band — rather than over the whole run, so a flow can slip past shapes on the far side of the band. When its column is blocked it leaves the element by a short stem and steps sideways to a column clear for the rest of the descent, the move a modeller makes by hand. Consecutive flows stagger their stems so parallel jogs do not share a line. Message flows through shapes: **56 → 16**.
+- **Routing is crossing-aware** (`semantic/route.ts`). Candidates that clear every shape are scored by how many already-routed edges they would cut across, cheapest wins, and a third candidate turns in the gutter behind the source instead of in front of the target.
+- **Detours are no longer penalised.** A detour previously had to save more than one crossing to be taken, which kept long skip edges on the band centre line where every riser crossed them. Removing that penalty lets them nest as stacked arcs above the flow — the canonical look — and cut sequence-flow crossings **286 → 174**, the single largest win of the pass.
+
+Totals over the corpus: **edge crossings 493 → 425**, **edges through unrelated shapes 78 → 49** (the original human DI in these files has 132; upstream alpha.2 has 13 and 200). Bends 734 → 822 and total edge length +2% are what pays for it. Mean runtime 0.6 ms → 1.0 ms against upstream's ~38 ms. DI stays complete (0 missing), lane placement stays exact (0/257 misplaced), 561 core + 76 canvas + 23 ascii tests pass.
+
+Four things were tried and reverted on the measurements, recorded so they are not retried: routing spine-first or shortest-first (sequence-flow crossings 260 → 282), jogging at the deepest clear point rather than a short stem (message-flow crossings 67 → 121), a rip-up-and-re-route pass (one crossing recovered over two rounds), and deeper corridor stacking (425 → 430).
+
+**What is left is placement, not routing.** The rip-up experiment is the evidence: re-scoring every edge against the finished picture recovered a single crossing, which means the remaining ones are not a choice the router is getting wrong — they follow from where the nodes are. Closing the rest of the distance to upstream needs the placement refinements skipped in the first pass: rank bays for detached alternatives, tighter band compaction, and letting nested joins of the same gateway type share a rank.
+
+## 2026-08-20 — Auto-layout DI: black-box pools, sub-process planes
+
+Closed the two gaps the [`bpmn-auto-layout` evaluation](bpmn-auto-layout-evaluation.md) found in DI emission (`packages/core/src/bpmn/auto-layout.ts`); both were in the emitter, not the layout engine.
+
+**Black-box pools.** `applyAutoLayout` walked `defs.processes`, so a participant whose `processRef` was missing or pointed at an empty process never got a shape — and its message flows went with it (238 missing DI entries across 19 of the 161 reference fixtures; those pools simply disappeared). It now walks `collab.participants` in declaration order, so a black-box participant keeps its place in the stack and gets a band of its own, widened to match the widest pool that has content. Processes no participant references follow after.
+
+**Sub-process planes.** Every layout collapsed into a single `BPMNPlane`, dropping the planes of collapsed sub-processes (43 across 23 fixtures) even though the canvas already supports drilldown. Collapsed scopes are now detected from the input DI — an explicit `isExpanded="false"`, or an existing plane for that element — passed to the engine so their contents stay out of the parent's geometry, and emitted as their own `BPMNDiagram`, reusing the input's diagram and plane ids. An empty collapsed scope keeps its (empty) plane rather than losing the drill-down target. Root processes beyond the first now get their own plane too, instead of being stacked at the origin on top of the first.
+
+Two smaller omissions fell out of the same pass: a process consisting only of text annotations emitted nothing at all, and associations between two ordinary elements (a data object and an activity) were skipped because the emitter only handled annotation associations.
+
+Message flows were re-routed to suit the new pools: a pool-side end docks under its counterpart so the flow drops straight instead of fanning into the pool's centre, vertical runs step sideways to miss shapes, and flows sharing a pool gap are spread across it.
+
+Over the same 161 fixtures: **missing DI 240 → 0** (upstream alpha.2 leaves 6), **sub-process planes dropped 43 → 0**, deviation from the original DI 375px → 262px (upstream 227px), diagram area 180 → 133 Mpx (upstream 140), shape overlaps 90 → 89 (upstream 80). 9 new tests in `packages/core/tests/auto-layout-di.test.ts`; 561 core tests, 76 canvas and 23 ascii all pass.
+
+Note when comparing edge metrics against earlier entries: those message flows were previously **not drawn at all**, so edge crossings (493) and edges through unrelated shapes (78) now count routes that simply did not exist in the old numbers. Against upstream, which draws the same set, we are at 493 crossings to their 200 and 78 shape hits to their 13 — the routing gap called out in the previous entry is unchanged and still the next thing to work on.
+
+## 2026-08-20 — Semantic layout engine in `@bpmnkit/core`
+
+Implemented the process-layout approach from [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) in our own code, following [their layout contract](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) rather than vendoring or depending on the package — `packages/core/src/layout/semantic/` (graph, bands, place, route, ~900 lines), no new runtime dependency, synchronous.
+
+`graph.ts` finds weakly connected components and their semantic starts, marks back edges by depth-first traversal, and assigns longest-path ranks (a boundary event's successors hang off its host, so a handler never precedes the activity it guards). `bands.ts` picks the spine one edge at a time — prefer a target that can still reach an end event, then the gateway default, then declaration order — and assigns the remaining branches to bands: error handlers below, escalation handlers above, alternatives alternating, with branches packed onto shared bands when their rank spans do not overlap. `place.ts` turns ranks into columns and bands into rows, separates same-cell collisions per component, applies lane membership (nested lane sets included), and docks boundary events on the host edge facing their handler. `route.ts` routes each edge by proposing candidates and taking the first that clears every unrelated shape.
+
+`layoutProcess()` takes an engine argument and defaults to `"semantic"`; `"grid"` keeps the old cell walk, which still serves `layoutFlowNodes()`. Lane DI now comes from the engine's bands, so lanes tile their pool exactly instead of being tiled proportionally around a lane-blind layout.
+
+Measured over the same 161 fixtures as the evaluation, against the original DI in each file: **elements outside their assigned lane 43/257 → 0/257**, flow-direction violations 9 → 7 (equal to upstream), shape overlaps 124 → 90 (upstream 80), edges through unrelated shapes 68 → 67 (upstream 13), edge crossings 275 → 364 (upstream 200), diagram area 150 → 180 Mpx (upstream 140), runtime unchanged at ~0.4 ms mean (upstream ~24 ms). So: the correctness gaps close and the layout reads as BPMN, but our routing still crosses more than either the old grid walk or upstream, and our diagrams are looser. 14 new tests in `packages/core/tests/semantic-layout.test.ts`; all 552 core tests pass.
+
+**Still open** from the evaluation: black-box pools get no DI (238 missing entries), and auto-layout still collapses collapsed-sub-process planes into one `BPMNDiagram`. Both live in `auto-layout.ts`, not the engine. Collaboration assembly (pool stacking, message flows) is unchanged — as agreed, we did not take on upstream's collaboration pipeline.
+
+## 2026-08-20 — Evaluated `bpmn-auto-layout` 2.0.0-alpha.2 against our layout engine
+
+Upstream replaced its grid layouter with a semantic BPMN layout (TypeScript rewrite, collaboration/pool/message-flow/group/artifact support, `{ xml, warnings }` + `LayoutError` diagnostics, a CLI, Node >= 22). Benchmarked it against `packages/core/src/layout` over upstream's 161 test fixtures, scoring both engines against the original DI in each file: it deviates less from the human layout (227 px vs 348 px average, closer on 122/161), routes fewer edges through shapes (13 vs 68) and crosses fewer edges (200 vs 275), but is 20x-800x slower (p50 7 ms vs 0.3 ms; 1.8 s worst case on a 91-element, 8-pool collaboration).
+
+The benchmark also surfaced three correctness bugs in **our** engine: lanes are ignored entirely (43 of 257 lane-assigned elements land in the wrong lane; `packages/core/src/layout/` has no lane logic), black-box pools and their message flows get no DI at all (238 missing entries across 19 fixtures), and every layout collapses to a single `BPMNDiagram`, dropping collapsed sub-process planes (43 planes over 23 fixtures) that the canvas already knows how to drill into.
+
+Integration is possible but not drop-in: `layoutProcess` is XML-only (no model entry point) and adds 45 KB gzipped plus `bpmn-moddle` to packages that are currently dependency-free. Its `Promise`, however, is decorative — the only two `await`s are `moddle.fromXML`/`toXML`, both synchronous work wrapped in a promise (`moddle-xml` parses with saxen inside the executor). Patching three packages (`moddle-xml`, `bpmn-moddle`, the `bpmn-auto-layout` bundle) produced a synchronous entry point with byte-identical output on all 161 fixtures, no microtask turn, and the same runtime — so our sync public API (`Bpmn.autoLayout()`, `builder.build()`, `compilePlan()`, `mergePlan()`) is not the blocker it first looked like. What remains is patch maintenance against a generated bundle of a moving pre-release, and the latency tail: collaborations cost 36 ms median / 211 ms p90 (pool count drives it, not element count), and going sync only converts that `await` into a main-thread freeze. Extension preservation is clean: round-tripping 161 fixtures dropped no `zeebe:`/`camunda:` element or attribute, and it accepts our `Bpmn.export()` output unchanged. Written up in [`doc/bpmn-auto-layout-evaluation.md`](bpmn-auto-layout-evaluation.md) with options; no code changed.
+
+## 2026-07-12 — Deploy Drop workflow: dedicated Cloudflare API token secret
+
+The `Deploy Drop` workflow failed at "Apply D1 migrations" with Cloudflare error 7403 (`The given account is not valid or is not authorized to access this service`) — the shared `CLOUDFLARE_API_TOKEN` lacks D1 access. Switched both wrangler steps in [`deploy-drop.yml`](../.github/workflows/deploy-drop.yml) to a dedicated `CLOUDFLARE_DROP_API_TOKEN` repo secret, scoped to exactly what this workflow needs: Account → D1 → Edit, Account → Workers Scripts → Edit, Zone (bpmnkit.com) → Workers Routes → Edit. `CLOUDFLARE_ACCOUNT_ID` stays shared. The secret must be created in the Cloudflare dashboard and added to the repo before the workflow can pass.
+
+## 2026-07-11 — Fix drop provision script: invalid `wrangler secret list --json`
+
+Follow-up to PR #145. [`apps/drop/scripts/provision.mjs`](../apps/drop/scripts/provision.mjs) crashed in `configureSecrets` with `✘ [ERROR] Unknown argument: json`. Unlike `d1 list` (which does take `--json`), the `wrangler secret list` subcommand has no `--json` flag — it exposes `--format` (choices `json`/`pretty`, default `json`) and already emits JSON on stdout. Dropped the flag (`secret list --json` → `secret list`), which is compatible across wrangler v3/v4. The crash happened before the `AI_PASSCODE` prompt, so this was also why AI review couldn't be enabled — the same fix restores that step.
+
+## 2026-07-11 — Drop one-command provisioning script
+
+Added [`apps/drop/scripts/provision.mjs`](../apps/drop/scripts/provision.mjs) (`pnpm --filter @bpmnkit/drop provision`) — an idempotent Node script that stands up the whole Cloudflare side and deploys, so an operator with `wrangler login` done runs one command. It: checks login (`wrangler whoami`); ensures the D1 database `bpmnkit-drop` exists (find via `d1 list --json`, else `d1 create`) and writes its id into `wrangler.jsonc` (replacing the `REPLACE_WITH_D1_DATABASE_ID` placeholder); applies migrations `--remote`; optionally uncomments the `bpmnkit.com/drop*` route (prompt, default no); builds via `turbo build --filter` and `wrangler deploy`s; then sets secrets — auto-generating `DROP_ADMIN_TOKEN` (printed once) and `REPORT_IP_SALT` via `crypto.randomBytes`, and prompting whether to set `AI_PASSCODE` (delegated to `wrangler secret put` so input stays hidden). Existing secrets/route/id are detected and left untouched, so re-runs are safe. Documented in `README.md` (Deploy) and `onboarding.md` (operator section, as the recommended path alongside the manual steps).
+
+## 2026-07-11 — Drop onboarding guide
+
+Added [`apps/drop/onboarding.md`](../apps/drop/onboarding.md) — a role-oriented walkthrough (users / developers / operators) covering: what the service is and its limits (20 files, 900 KB/file, 5 MB/drop, 90-day sliding TTL); the user flows (share, view with cross-file nav + presence, the `/drop/demo-loan-approval` demo, requesting an AI review); the developer setup (offline `wrangler dev`, the AI-review dev path with `--var AI_PASSCODE`, the build/typecheck/test/check gate, layout, the full route table, curl smoke tests, and the house rules from CLAUDE.md/specs); and the operator runbook (one-time deploy, moderation admin API, turning the AI beta on/off/rotate, the required pre-enable live model run, and the `handleAiReview` order-of-checks). Complements the develop/deploy-focused `README.md`. Also corrected the PR #145 body, which still described retention as "30 days" (the code and spec use a 90-day sliding TTL).
+
+## 2026-07-10 — Drop v2 implemented: engaging landing + passcode-gated AI review
+
+Implemented [`doc/drop-v2-spec.md`](drop-v2-spec.md) across five phases in `apps/drop`.
+
+- **Landing (phases 1–2)** — whole-page drop overlay + `Ctrl/Cmd+V` paste-to-drop (`src/client/drop.ts`), a live hero canvas rendering the demo BPMN with a `prefers-reduced-motion`-gated draw-in (`src/client/landing.ts`), a built-in **in-memory demo drop** (`src/lib/demo.ts`, `/drop/demo-loan-approval` — BPMN+DMN+Form with cross-file refs, no D1 row, never expires) wired through the share/manifest/raw/json handlers via `isDemo()`. Story sections: use-case cards with `exportSvg` mini-diagrams generated at build time into `public/drop/assets/usecases.json`, a `curl` block, `/drop/api/stats` counters (COUNT/SUM, `Cache-Control: 60s`, shown ≥ 100 drops), FAQ.
+- **AI review (phases 3–4)** — `src/lib/review.ts` maps `@bpmnkit/core`'s `optimize()` to severity-sorted suggestions (deterministic pass); `src/lib/ai.ts` adds the Workers AI call (JSON-schema output, neuron estimate), content-hash cache, daily budget, and attempt-limit helpers; `src/routes/ai-review.ts` enforces gate → attempt-limit → cache → budget → model. The `✨ AI review` panel (`src/client/viewer.ts`) shows the AI narrative over deterministic findings, with hover/click element highlighting on the canvas.
+- **Passcode gate** — `AI_PASSCODE` secret (unset = feature off, 404 + button not rendered via the new `aiEnabled` flag threaded into `sharePage`), `X-Drop-AI-Code` header, constant-time compare (`timingSafeEqual` extracted from admin to `src/lib/http.ts`), 5-failures/hour per-IP-hash limit, `localStorage` persistence with 401 re-prompt. Migration `0002_ai_review.sql`; `AI` binding + `AI_MODEL`/`AI_DAILY_BUDGET` vars in `wrangler.jsonc`.
+- **Deviations from the spec** (both simplifications, noted for the record): the demo drop is served **in-memory** rather than seeded into D1 via a script — it needs no operator step and can't drift; and the budget-exhausted case returns **200 with a `note`** (panel shows deterministic findings) instead of 429, so the client shows the fallback without special-casing an error status. Also fixed a latent bug where viewer tab-click handlers used the stale `.tab` selector (now `.ed-tab`).
+- **Verification** — new Vitest suites `review.test.ts` (known-bad fixture + XSS-as-data) and `ai-review.test.ts` (mocked `env.AI`/D1: gate off 404, wrong code 401 then 429, cache miss calls model once + hit serves cache, budget exhausted → note). Playwright end-to-end against `wrangler dev`: full-page overlay, paste-to-drop, hero + demo render, use-case SVGs, story sections, AI passcode prompt → wrong-code error/clear → right-code renders findings, hostile element name escaped (no execution), hover-highlight. The live LLM narrative needs a real Cloudflare `AI` binding (account) — a documented pre-deploy manual step; locally it degrades to deterministic + note. `pnpm turbo build typecheck test check` green throughout; `pnpm dev` rebuilds the client first so the served bundle is never stale.
+
+## 2026-07-10 — Drop v2 spec: passcode gate decided, hand-off-ready
+
+Updated [`doc/drop-v2-spec.md`](drop-v2-spec.md): the AI review launches **closed** — every request must carry a passcode set by the operator as the `AI_PASSCODE` Worker secret (new §2.4: `X-Drop-AI-Code` header, constant-time compare via the extracted `timingSafeEqual`, 5-failures/hour per-IP-hash brute-force limit, localStorage persistence with 401 re-prompt, secret-unset = feature off/404 with the button hidden server-side, rotation as instant kill switch; gate ordered before the cache — closed means closed). Remaining open questions converted to implementable defaults (budget 8k neurons, counters hidden under 100 drops, landing ships first), and a new Part 5 adds hand-off notes for the implementing agent: exact reuse map (existing helpers/files), migration naming, `Env` additions, test expectations, CSP/no-deps constraints, and per-phase definition of done.
+
+## 2026-07-10 — Spec: Drop v2 — AI process review & engaging landing page
+
+Wrote [`doc/drop-v2-spec.md`](drop-v2-spec.md) (analysis + plan, no implementation). Part 1 analyzes the Workers AI free tier: 10,000 neurons/day free, no key/vendor (platform `env.AI` binding); with `compactify()`-sized prompts a full BPMN review costs ~160–270 neurons → ~40–60 free reviews/day, effectively more with per-content-hash caching; recommended model `@cf/openai/gpt-oss-120b` (cheapest strong-reasoning output). Part 2 specs an "AI Process Review" feature for Drop as a hybrid pipeline: deterministic `@bpmnkit/core` analysis (`optimize()`, 15+ pattern-advisor rules, variable flow) feeds a JSON-schema-constrained LLM narrative; cached in D1 by content hash, daily neuron budget + IP rate limits, graceful degradation to deterministic-only, prompt-injection and XSS guardrails, no diagram mutations in v1. Part 3 specs a cloudflare.com/drop-style landing redesign: the whole page becomes the drop target (plus paste-XML-to-drop), a live `@bpmnkit/canvas` hero demo with draw-in animation, a pinned never-expiring demo drop for one-click product experience, use-case cards rendered from real diagrams via build-time `exportSvg`, a developer curl section, live D1-backed counters, and FAQ — no new dependencies, CSP unchanged. Roadmap gained a "Drop v2" section; implementation blocked on the spec's open questions.
+
+## 2026-07-09 — BPMN Kit Drop: implementation (`apps/drop`)
+
+Implemented the Drop service from [`doc/drop-spec.md`](drop-spec.md) as a new Cloudflare Worker app, `@bpmnkit/drop`. Single Worker serves the drop page, per-share viewer pages, the JSON/API, and a token-gated `/drop/admin`; static client bundles are served from `public/drop/assets`. Highlights:
+
+- **Validation/conversion** (`src/lib/validate.ts`, `meta.ts`) — sniff kind by extension/content, parse via `@bpmnkit/core` (`Bpmn`/`Dmn`/`Form`), extract metadata, cap sizes below D1's 1 MiB row limit. The exact same module runs client-side (`src/client/drop.ts`) for instant pre-upload feedback and server-side as the trust boundary (`src/routes/upload.ts`).
+- **Storage** (`src/lib/db.ts`, `migrations/0001_init.sql`) — `drops`/`files`/`file_content`/`reports`/`banned_hashes`; multi-file drops stored atomically via `D1.batch`; each file keeps both the byte-faithful original and the typed JSON model, one representation per row.
+- **Viewer** (`src/client/viewer.ts`) — BPMN via `@bpmnkit/canvas` + zoom/minimap plugins, DMN via `dmn-viewer`, Forms via `form-viewer`; file tabs; cross-file `formId`/`decisionId` links resolved through `compactify` + DMN `decisionIds` metadata.
+- **Presence** (`src/presence.ts`) — `PresenceRoom` Durable Object using the WebSocket Hibernation API broadcasts a live viewer count; no external SaaS.
+- **Moderation** — public abuse-report flow (`src/routes/reports.ts`, salted-IP-hash dedup), token-gated admin API + page (`src/routes/admin.ts`, `src/client/admin.ts`) to delete drops and optionally ban their content hashes; passive Terms/Privacy acknowledgment recorded per drop; Terms & Privacy pages written.
+- **Retention** — daily cron (`scheduled` handler) deletes drops past their 90-day sliding TTL.
+- **Hardening** — strict CSP + `nosniff` + `noindex`, original bytes served as `application/octet-stream`; the `@bpmnkit/core` XML parser ignores DOCTYPE/custom entities (pinned by an XXE regression test); XSS tests confirm attacker-controlled file names/titles are escaped.
+- **Verification** — 22 Vitest tests (validation, ids/hashing, security) pass; both tsconfigs typecheck (worker against `@cloudflare/workers-types`, client against DOM); Biome clean; the three client bundles build with esbuild; `wrangler deploy --dry-run` compiles the Worker and resolves all bindings (D1, Durable Object, Assets, vars). The D1/DO runtime paths are exercised by dry-run + typecheck rather than a live deploy (no Cloudflare account in this environment). Added `.github/workflows/deploy-drop.yml` (migrations apply + `wrangler deploy`) and an operator `apps/drop/README.md`.
+
+## 2026-07-09 — Drop spec v2: decisions resolved, moderation & multi-file added
+
+Updated [`doc/drop-spec.md`](drop-spec.md) with the resolved open questions: the service is **BPMN Kit Drop at `bpmnkit.com/drop`** (the zone is already on Cloudflare — a Worker route carves `/drop*` out next to the Pages-hosted landing), branded with `@bpmnkit/ui` tokens, 90-day sliding retention confirmed. New in v2: **multi-file drops** in v1 (up to 20 files, tabbed viewer, cross-file `formId`/`decisionId` navigation via the `file-resolver` plugin; schema split into `drops`/`files`/`file_content`), **admin moderation** (`DROP_ADMIN_TOKEN`-protected endpoints + minimal `/drop/admin` page, delete with optional content-hash ban via a `banned_hashes` table so policy-violating bytes can't be re-uploaded), a public **"Report abuse"** flow on every share page (D1 `reports` table, salted-IP-hash rate limiting, no auto-takedown), and **Terms/Privacy acknowledgment** on upload (passive notice, `tos_version` recorded; policy pages are a pre-launch content task). Roadmap section updated to match.
+
+## 2026-07-09 — Spec: Camunda Drop (`camunda.directory/drop`)
+
+Wrote [`doc/drop-spec.md`](drop-spec.md) — a plan (no implementation) for a Cloudflare-Drop-inspired share service for BPMN/DMN/Form files: drop a file, get a short link (`/drop/:shareId`) that renders it read-only in the browser. Key decisions: new `apps/drop` Cloudflare Worker; client- and server-side validation via `@bpmnkit/core`; storage in D1 as the full typed JSON model (`BpmnDefinitions` etc. — not the lossy compact format) alongside the byte-faithful original, split across rows to respect D1's 1 MiB row cap; 64-bit base58 share ids; live "N viewing" presence via a Durable Object per share (WebSocket hibernation) instead of an external SaaS; 90-day sliding retention with a cron cleanup. Added a Camunda Drop section to `doc/roadmap.md`; implementation is blocked on the spec's §12 open questions (where `camunda.directory` is hosted, retention policy, branding).
+
+## 2026-07-08 — Landing page: new `/integrations` page for the OpenAPI connector-gen catalog
+
+`/connectors` only lists the 116 Camunda-official out-of-the-box connector templates (`@bpmnkit/connectors`, sourced from Camunda's marketplace API) — it does not cover `@bpmnkit/connector-gen`'s separate, 100-entry `CATALOG` of popular third-party APIs with known OpenAPI specs (Stripe, GitHub, Slack, Kubernetes, etc.) that can be turned into a Camunda 8 element template with one `generateFromCatalog()`/`generateFromUrl()` call. The homepage already teased "100 API Connectors, Out of the Box" as a stat but had nowhere for a visitor to click through to — this closes that gap.
+
+- **New page `apps/landing/src/pages/integrations.astro`** — renders all 100 `CATALOG` entries as cards (brand-colored icon via `getCatalogIconUri()`, name, description, default-auth badge), each linking out to the entry's real OpenAPI spec URL. A "Don't see the API you need?" section below explains that any OpenAPI/Swagger spec works, with the `generateFromUrl()` code sample and links to the existing blog post and package docs.
+- Cross-linked from every relevant spot instead of leaving it an orphan page: added to `Nav.astro`'s default "Tools" dropdown and the homepage's own `navLinks` override, added to `Footer.astro`'s link list, linked from `/connectors`'s hero copy ("Need something else? Browse 100 more services ready to generate"), and the homepage's existing connector-catalog teaser card now links to it directly.
+- Counts are computed from `CATALOG.length` at build time in both `/connectors` and `/integrations`, not hardcoded, so the two catalogs can't silently drift out of sync with their copy.
+- Verified: `biome check` and `tsc --noEmit` clean, full `astro build` (144 pages, `/integrations.html` present), and a Playwright pass against `astro preview` confirming all 100 cards render with correct icons/links/auth badges, the Tools dropdown and footer link work on both the homepage and a subpage, and the `/connectors` ↔ `/integrations` cross-links resolve correctly — no console errors.
+
+## 2026-07-08 — Landing page: group the nav into dropdowns
+
+Follow-up to the 6-phase implementation: the homepage nav had grown to 16 top-level links (7 on-page anchors + 9 page/external links) plus the GitHub CTA. Regrouped into 6 top-level items:
+
+- **Editor**, **Docs** stay standalone (highest-intent single links).
+- **Build ▾** — the 7 on-page anchors (Features, Examples, API, CLI, Quickstart, DMN & Forms, Playground), in DOM order.
+- **Resources ▾** — Use Cases, Compare, Blog, Learn.
+- **Tools ▾** — Operate, Connectors.
+- **GitHub** stays a standalone CTA button, unchanged.
+
+`Nav.astro` now accepts a mixed array of plain links and `{ label, items }` groups; groups render as an ARIA `aria-haspopup`/`aria-expanded` disclosure button + menu on desktop (click or ArrowDown/Enter/Space to open, arrow keys to navigate, Escape to close and return focus, outside-click/focus-out to close, opening one closes the others) and as a labeled, flattened section in the mobile menu (no nested accordions — mobile has no room for two levels of disclosure). Subpages (404, blog, compare, etc.) get the same treatment via `Nav.astro`'s default `links` prop (Resources + Tools dropdowns, no Build group since those anchors are homepage-only). Lowered the burger breakpoint from 1100px to 700px now that the collapsed nav is ~570px wide instead of ~1100px.
+
+Hit a real, subtle CSS/focus bug while wiring up keyboard support: transitioning `visibility` (used so the menu fades out before disappearing) meant a link inside a freshly-opened dropdown was still computed as `hidden` for one or more frames after the `.open` class was added, so `.focus()` on it silently no-opped — confirmed via `getComputedStyle` reads at each step, including that even a forced `!important` inline override and a double-`requestAnimationFrame` deferral weren't reliably enough. Fixed by removing `visibility` from the transitioned properties (opacity/transform still animate; visibility/pointer-events now flip instantly), which sidesteps the race entirely instead of trying to time around it.
+
+Verified: `biome check`, `astro check` (0 errors), full `astro build` (143 pages), and a Playwright regression pass covering desktop dropdown open/close (click, outside-click, Escape+focus-return, arrow-key navigation, opening one closes another), the mobile menu's grouped/flattened rendering, and no nav overflow from 650px–1400px+.
+
+## 2026-07-08 — Landing page: implement the 6-phase improvement plan
+
+Implements all 6 phases of `doc/landing-page-analysis.md` (the multi-persona audit from earlier today). Every fix was verified against real package source before writing, and every behavioral/visual change was exercised live in a headless browser (Playwright against `astro preview`), not just typechecked — see the phase-by-phase verification below.
+
+- **Phase 1 — Factual corrections.** Fixed "DMN 2.0" → "DMN 1.3" (the SDK's actual namespace) in 4 places; rewrote the homepage's REST API sample to use the real `client.processInstance.createProcessInstance({ processDefinitionId, ... })` surface with a complete OAuth2 config (added the required `tokenUrl`) instead of the nonexistent `client.process.deploy()`; fixed the Quickstart's `engine.deploy()` call (synchronous, takes the built `BpmnDefinitions`, not an XML string) and retitled the step "Simulate it locally" with a new step 4 "Deploy to Camunda 8" using the corrected API sample; reworded "Zero Dependencies" → "zero third-party dependencies" (verified `@bpmnkit/core` depends on `@bpmnkit/feel`); corrected the type-guard count 22 → 29 (recounted `isBpmn*` exports); fixed a displayed `adHocSubProcess()` argument order that didn't match the real signature; replaced the misleading "∞ retry & backoff" stat with the real default (3 attempts); linked the roundtrip-fidelity claim to the actual test suite. Also caught and fixed the same `client.process.deploy()` / `engine.deploy({ bpmn: xml })` / `engine.start(processId, { variables })` bugs in `use-cases/camunda-8-automation.astro` and `use-cases/process-simulation.astro` — the latter's `engine.start()` call was nesting variables under a `variables` key when the real signature takes them as a flat second argument.
+- **Phase 2 — Functional bugs.** Fixed the dead "BPMN with DMN + Form" tab preview (`playground.ts` was querying `dmn-bpmnkit-preview`, the markup is `dmn-bpmn-preview`); raised the nav's burger breakpoint to 1100px (the full link row was overflowing silently between ~601–1080px) and added `white-space: nowrap` to nav links; reduced-motion users now get the completed code/diagram and the final CLI frame instead of permanently empty sections; fixed the CLI terminal animation never pausing when scrolled away; the compare-slider now uses `touch-action: pan-y` instead of `none` (verified live: vertical scroll passes through, drag still works) and wraps long XML lines on mobile instead of clipping them; hardened clipboard copy with a textarea fallback and error feedback; the playground now routes DMN/Form return values to a text preview instead of always trying `Bpmn.export()`; fixed the copy-button-inside-the-slider triggering a drag; fixed `href="#"` logo links; fixed the RSS feed's trailing-slash mismatch with `build.format: "file"`.
+- **Phase 3 — Accessibility.** Mobile menu now uses `visibility` (not just `opacity`) so closed links aren't Tab-reachable, plus Escape-to-close with focus return — fixed in all three copies (`main.ts`, `Nav.astro`, `404.astro`) before Phase 5 unified them; completed the DMN tabs' ARIA (`aria-selected`, `aria-controls`, roving tabindex, arrow-key navigation) and added `aria-pressed` to the package-manager toggle buttons; made the compare-slider knob a real `role="slider"` with keyboard support; added a skip-to-content link and an `aria-live` region so clipboard-copy feedback is actually announced; fixed two contrast failures (verified with a WCAG contrast calculation: 3.86:1 → 6.28:1 and 2.81:1 → 6.46:1); added `aria-hidden` + screen-reader text alternatives to the two continuously-animating panels.
+- **Phase 4 — Messaging & trust.** Added a plain-language hero subtitle and reworded the pill to lead with "Open Source · MIT"; added a new "For process teams" section (3 cards + a reconciling line) and a "Project Status" ecosystem section rendering real per-package versions with a link to Contact/Issues/Releases; added `hello@bpmnkit.com` (a real, already-used address — found in the Claude plugin marketplace listing) to both footers; added Use Cases to the main nav; relabeled "Try the Editor" → "Open the visual editor — no install"; added a "Why this matters for your team" callout to all four use-case pages.
+- **Phase 5 — Structural consolidation.** Replaced index.astro's and 404.astro's hand-inlined nav/footer markup (and 404's third copy of the mobile-menu script) with the shared `Nav`/`Footer` components — caught and fixed a real double-registration bug this introduced (both `main.ts`'s and `Nav.astro`'s scripts were toggling the same burger, canceling each other out); reordered the homepage nav to match section DOM order and added Quickstart; unified the two drifted `SITE` constants (`content.ts` now re-exports `@bpmnkit/astro-shared`'s); extracted the syntax highlighter from `playground.ts` into `lib/highlight.ts` and generate `CODE_HTML` from `CODE` at build time instead of hand-duplicating — this surfaced and fixed two tokenizer bugs (`Bpmn.export()` misclassified as the `export` keyword instead of a method call; `{ type: "oauth2" }` misclassified the property key as the `type` keyword) that a byte-diff against the old hand-written HTML caught.
+- **Phase 6 — Performance & SEO.** `buildAnimExamples()` (10 build+layout+export passes) now runs lazily on first scroll-into-view instead of at page load (verified: 0 code lines present right after load, populated after scrolling to the section); the aurora orbs' animation is disabled under 600px width; added `og:image` dimensions/alt, an RSS `<link rel="alternate">`, and `softwareVersion`/`license` to the JSON-LD (plus switched the Organization/Article logo from `favicon.svg` to the raster `og.png`, matching Google's structured-data logo guidance).
+- Left for a maintainer per Part C of the plan: `@bpmnkit/api`'s `createDeployment()` accepting no request body (the deployment endpoint needs multipart support the generated HTTP client doesn't have — worked around in the use-case pages by deploying through the `casen` CLI instead, which already does this correctly); new compare-page content (`@camunda8/sdk`, `bpmn-moddle`); final nav-taxonomy trim; per-package stability-tag commitments.
+- Verified: `biome check` clean across `apps/landing` and `packages/astro-shared`, `tsc --noEmit` and `astro check` clean (0 errors), full `astro build` (143 pages), and a Playwright-driven regression pass against `astro preview` covering the playground, DMN tabs, compare slider (mouse + keyboard), mobile menu (focus/Escape/visibility), clipboard announcements, nav overflow at multiple widths, reduced-motion, and cross-page smoke tests on every other page using the shared Nav/Footer.
+
+## 2026-07-08 — Landing page: multi-persona analysis & improvement plan
+
+- **`doc/landing-page-analysis.md`** (new) — deep audit of the bpmnkit.com landing page from four lenses (Developer, Architect, Business visitor, technical QA), with every factual claim cross-checked against the real package source and the live site. Analysis only — nothing implemented.
+- Findings catalog: 50 deduplicated findings (5 critical, 12 high) including fabricated "DMN 2.0" spec version (SDK emits DMN 1.3), an API code sample calling a nonexistent `client.process.*` surface, a quickstart step that crashes if copy-pasted (and presents the experimental simulation engine as production "Deploy & run"), a false "Zero Dependencies" claim vs. npm, a dead "BPMN with DMN + Form" tab preview (element-ID mismatch), tablet nav overflow (601–1080 px), empty sections for `prefers-reduced-motion` users, a touch-scroll trap on the compare slider, no plain-language product explanation, and no contact channel.
+- Implementation plan: 6 phases (factual corrections → bug fixes → a11y → messaging/trust content → structural consolidation → perf/SEO), each step with concrete files and a verify check, written to be executable by an implementing agent per `CLAUDE.md`. Part C lists 8 items needing maintainer decisions or upstream work (e.g. `createDeployment()` accepts no body in `@bpmnkit/api`).
+
+## 2026-07-07 — SEO & discoverability: glossary expansion (Phase 4 complete) + Phase 6 checklist
+
+- **Glossary expansion** (`apps/learn`) — added 3 entries to `/glossary`: Message Event, Timer Event, Call Activity, bringing the total to 12 (all core BPMN concepts from `doc/seo-plan.md`'s suggested list). Each grounded in the real `@bpmnkit/core` builder API, checked directly against `packages/core/src/bpmn/bpmn-builder.ts`'s `StartEventOptions`/`IntermediateCatchEventOptions`/`CallActivityOptions` before writing (message/timer events use `messageName`/`timerDuration`/`timerCycle`/`correlationKey`; call activities use `callActivity(id, { processId, propagateAllChildVariables })`).
+- Extended `GlossaryDiagram.astro`'s `DiagramSymbol` union with `message-start` (circle + envelope glyph), `timer-intermediate` (double-circle + clock hands, matching BPMN's intermediate-event notation), and `call-activity` (double-bordered rectangle, matching BPMN's reusable-activity notation) — verified each renders the correct distinct SVG shape in the build output.
+- **`doc/seo-phase6-checklist.md`** (new) — a concrete, actionable checklist for the one phase of `doc/seo-plan.md` that genuinely can't be done from this repo: Google Search Console (domain-property verification via DNS TXT, which covers all three subdomains in one step) + sitemap submission using the real URLs this repo now generates, Bing Webmaster (import-from-GSC), analytics (no script wired in yet — documented where it would go once an account exists, deliberately not stubbing a script tag with nothing behind it), specific backlink/outreach targets (Camunda Forum, dev.to cross-posts of specific existing posts with `canonical_url`, Stack Overflow tags), and a recurring measurement cadence table.
+- Verified: `biome check`/`astro check`/`tsc --noEmit` clean, full `astro build` for `learn` — 54 pages (up from 51), all 3 new glossary pages' canonicals/JSON-LD and diagram SVGs spot-checked in the build output.
+- SEO & Discoverability roadmap section: Phases 1–5 are now fully complete; Phase 6 has a checklist instead of a "can't do this" note.
+
+## 2026-07-07 — SEO & discoverability: remaining 6 blog posts (Phase 3 complete)
+
+Writes the 6 posts left from `doc/seo-plan.md`'s 10-post editorial calendar, each grounded in a verified real API (checked package source/compiled output before writing, not assumed from memory):
+
+- **Migrating from bpmn-js: a headless alternative** — practical migration guide (rendering → `@bpmnkit/canvas`, editing → `@bpmnkit/editor`, generation has no bpmn-js equivalent), distinct from the existing `/compare/bpmn-js` feature-comparison page.
+- **Evaluating FEEL expressions in TypeScript** — `parseExpression`/`evaluate` from `@bpmnkit/feel`, verified against `packages/feel/src/evaluator.ts` and its own test file's usage pattern; links to the new `/feel-functions` reference.
+- **Generating BPMN from natural language with an LLM** — `compactify`/`expand`/`Bpmn.makeEmpty()`, grounded directly in `apps/docs/src/content/docs/guides/ai.md`'s existing (already-accurate) documentation of the same pipeline.
+- **Embedding a BPMN viewer in React** — a `useEffect`-based wrapper around `@bpmnkit/canvas`'s real `CanvasOptions`/`.load()`/`.destroy()` API (checked `packages/canvas/src/types.ts` and `canvas.ts` directly).
+- **BPMN boundary events, explained with code** — interrupting vs. non-interrupting semantics plus `withBoundary()`, cross-linked with the existing glossary entry.
+- **Building a Camunda 8 connector from an OpenAPI spec** — `generate()`/`generateFromUrl()` from `@bpmnkit/connector-gen`, verified against `packages/connector-gen/src/index.ts` and `types.ts`'s real `GeneratorOptions` fields.
+- Caught one bad link while writing (a blog post initially referenced a nonexistent `docs.bpmnkit.com/packages/feel/` page — `@bpmnkit/feel` has no docs package page; fixed to link the GitHub source instead).
+- Verified: `biome check`/`tsc --noEmit` clean, full `astro build` — 143 pages (up from 137), all 10 posts present in `dist/blog/`, RSS feed has 10 items, spot-checked code-block rendering (including a `tsx` React sample and an escaped-quote FEEL string) for correctness.
+
+## 2026-07-07 — SEO & discoverability: Phase 4 completion (use cases, FEEL reference)
+
+Follow-up to the same day's foundation work — fills in the two Phase 4 items previously deferred.
+
+- **`/feel-functions`** (`apps/landing`) — a reference page for all 87 `@bpmnkit/feel` built-in functions, grouped into 8 categories (conversion, boolean, string, list, numeric, date/time, interval, context). The function list (`src/data/feel-functions.ts`) was cross-checked programmatically against the real `builtinNames()` export from `packages/feel/dist/builtins.js` — 87/87 match, no typos, no omissions, no invented functions.
+- **`/use-cases`** (`apps/landing`) — 4 pages (AI workflow generation, embedding the editor, Camunda 8 automation from CI, process simulation/testing), each with a real, runnable code sample and FAQ JSON-LD, sharing a new `UseCase.astro` layout. Caught and fixed a broken link (`/glossary` used as a landing-relative path when the glossary actually lives on `learn.bpmnkit.com`).
+- Wired both into `Nav`/`Footer` site-wide.
+- Verified: `biome check` clean, `tsc --noEmit` clean, full `astro build` — 137 pages (up from 131), all new pages' canonicals/JSON-LD spot-checked in the build output.
+- Still deferred from `doc/seo-plan.md`: 6 of 10 blog posts, glossary coverage beyond the current 9 concepts, and Phase 6 (Search Console/analytics — needs live domains, not a repo change).
+
+## 2026-07-07 — SEO & discoverability: plan + Phase 1/2/5 foundation, Phase 3/4 content
+
+Implements `doc/seo-plan.md` (written this session as a hand-off plan, then implemented directly). Full details in `doc/roadmap.md`'s new "SEO & Discoverability" section.
+
+- **`packages/astro-shared`**: new `Seo.astro` (title/description/canonical/OG/Twitter/JSON-LD in one component) and `seo.ts` (`organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd`), added a missing `tsconfig.json` (its files had no local tsconfig, so esbuild walked up to the root's `tsconfig.json`, which references now-absent `canvas-plugins/*` project paths and broke any app that actually imported from the package). Fixed `SITE.url` (was `https://bpmn-sdk.github.io/monorepo`) to `https://bpmnkit.com`.
+- **`apps/landing`**: adopted `<Seo>` on every page (fixed a real bug — with `build.format: "file"`, `Astro.url.pathname` resolves to the on-disk `.html` filename, and to the literal string `.html` for the homepage, so the naive canonical was `bpmnkit.com/.html`; `Seo.astro` now normalizes it back to the clean URL); added `@astrojs/sitemap` + `robots.txt`; new `/connectors` (index + 116 generated pages from `@bpmnkit/connectors`' real catalog data), `/compare` (`bpmn-js`, `camunda-modeler`), and `/blog` (Astro content collection, RSS feed, 4 initial posts) sections; extracted `Nav.astro`/`Footer.astro` for the new pages to share.
+- **`apps/docs`**: fixed the site being titled "BPMN SDK" (vs. the product's actual "BPMN Kit" branding everywhere else) and configured with `site: "https://bpmn-sdk-docs.pages.dev"` instead of the real `docs.bpmnkit.com` — canonicals/OG were pointing at the wrong domain. The homepage was also showing fabricated `@bpmn-sdk/*` package names in its package table and quick-start code sample; corrected to the real `@bpmnkit/*` names. Added `robots.txt` and site-wide JSON-LD.
+- **`apps/learn`**: had no `site` URL configured at all (blocking canonicals/sitemap); added it, `@astrojs/sitemap`, `robots.txt`, an `og.png` endpoint (didn't exist), and adopted `<Seo>` in `BaseLayout.astro` (tutorial step pages had no meta description before — now use the tutorial's real description instead of none). New `/glossary` — 9 BPMN element definitions (start/end event, exclusive/parallel/inclusive gateway, service/user task, sub-process, boundary event), each with a generated inline SVG diagram (`GlossaryDiagram.astro`, driven by data not hand-drawn per page), a runnable `@bpmnkit/core` code example, and a cross-link to the matching hands-on tutorial.
+- Regenerated `packages/astro-shared`'s README (`scripts/generate-readmes.mjs`) to document the new `Seo.astro`/`seo.js` exports; `scripts/check-packages.mjs` still passes for all 22 published packages.
+- Verified: `pnpm biome check` clean, `tsc --noEmit`/`astro check` clean on all three apps, and a full `astro build` of `landing` (131 pages), `docs` (29 pages), and `learn` (51 pages) — sitemap, robots.txt, canonicals, OG tags, and JSON-LD spot-checked in the actual build output.
+- Deferred (scoped down from the full plan, noted in `doc/roadmap.md`): the remaining 6 of 10 planned blog posts, use-case/solution pages, a FEEL function reference, and Phase 6 (Search Console/analytics) which needs the live production domains and isn't a repo change.
+
 ## 2026-07-07 — AI BPMN generation: WP8 (documentation & roadmap) — spec complete
 
 Final work package of `doc/spec-bpmn-generation-skills.md` (WP0–WP8, all done).

@@ -1,0 +1,61 @@
+---
+import { SITE } from "./site.js"
+
+interface Props {
+	title: string
+	description: string
+	/** Defaults to "website"; pages should pass "article" for blog posts. */
+	type?: "website" | "article"
+	/** Absolute image URL. Defaults to `${Astro.site}og.png`. */
+	image?: string
+	/** Set true on pages that should not be indexed (drafts, internal utility pages). */
+	noindex?: boolean
+	/** One or more schema.org JSON-LD objects (see seo.ts helpers) to embed. */
+	jsonLd?: object | object[]
+}
+
+const {
+	title,
+	description,
+	type = "website",
+	image = `${new URL("og.png", Astro.site)}`,
+	noindex = false,
+	jsonLd,
+} = Astro.props
+
+// `build.format: "file"` apps emit `<page>.html` files served as clean URLs by the
+// static host, but `Astro.url.pathname` reflects the on-disk filename (and is literally
+// ".html" for the homepage) — normalize back to the clean, extensionless path.
+let canonicalPath = Astro.url.pathname
+if (canonicalPath.endsWith(".html")) canonicalPath = canonicalPath.slice(0, -".html".length)
+if (canonicalPath.endsWith("/index")) canonicalPath = canonicalPath.slice(0, -"index".length)
+if (canonicalPath === "") canonicalPath = "/"
+if (!canonicalPath.startsWith("/")) canonicalPath = `/${canonicalPath}`
+
+const canonicalUrl = new URL(canonicalPath, Astro.site)
+const jsonLdItems = jsonLd === undefined ? [] : Array.isArray(jsonLd) ? jsonLd : [jsonLd]
+---
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalUrl} />
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={SITE.name} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:image" content={image} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={title} />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={image} />
+
+{jsonLdItems.map((item) => (
+	<script type="application/ld+json" set:html={JSON.stringify(item)} />
+))}

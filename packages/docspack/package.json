@@ -1,0 +1,61 @@
+{
+	"name": "@bpmnkit/docspack",
+	"version": "0.0.1",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"bin": {
+		"bpmnkit-docs": "./dist/cli.js"
+	},
+	"files": ["LICENSE", "README.md", "llms.txt", ".llms", "dist/**/*.js", "dist/**/*.d.ts"],
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"build": "tsc && node ./dist/cli.js build",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"docspack": {
+		"source": "../../apps/docs/src/content/docs",
+		"siteUrl": "https://docs.bpmnkit.com",
+		"maxTokens": 800,
+		"minTokens": 120,
+		"documents": [
+			"@bpmnkit/core",
+			"@bpmnkit/canvas",
+			"@bpmnkit/editor",
+			"@bpmnkit/engine",
+			"@bpmnkit/feel",
+			"@bpmnkit/plugins",
+			"@bpmnkit/api",
+			"@bpmnkit/ascii",
+			"@bpmnkit/connector-gen",
+			"@bpmnkit/connectors",
+			"@bpmnkit/patterns",
+			"@bpmnkit/worker-client",
+			"@bpmnkit/cli"
+		]
+	},
+	"description": "BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents",
+	"keywords": ["docspack", "llms-txt", "ai-agents", "documentation", "search", "bpmn", "mcp"],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

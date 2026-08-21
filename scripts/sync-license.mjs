@@ -21,6 +21,7 @@ const PUBLISHED = [
 	"packages/feel",
 	"packages/api",
 	"packages/ascii",
+	"packages/docspack",
 	"packages/profiles",
 	"packages/operate",
 	"packages/astro-shared",

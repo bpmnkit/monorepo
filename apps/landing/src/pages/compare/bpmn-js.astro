@@ -1,0 +1,128 @@
+---
+import "../../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { faqJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+
+const rows = [
+	[
+		"Primary purpose",
+		"Fluent TypeScript builder that generates and executes BPMN 2.0 XML from code",
+		"Toolkit for rendering and interactively modeling BPMN diagrams in the browser",
+	],
+	[
+		"Runtime",
+		"Node.js, browsers, Deno, Bun, edge — zero runtime dependencies in core",
+		"Browser only (SVG/DOM-based rendering)",
+	],
+	[
+		"Generate a diagram from code",
+		"Yes — `Bpmn.createProcess().startEvent()...build()` with auto-layout (Sugiyama algorithm)",
+		"No built-in fluent builder; diagrams are typically authored via the GUI or by hand-editing the underlying diagram-js model",
+	],
+	[
+		"Auto-layout",
+		"Built in — no coordinate math required",
+		"Not included; you position elements yourself or rely on a modeling UI",
+	],
+	[
+		"Simulation / execution",
+		"`@bpmnkit/engine` — zero-dep simulation engine, no Camunda required",
+		"Not included",
+	],
+	["Camunda 8 deployment", "`@bpmnkit/api` — 180-method typed REST client", "Not included"],
+	["DMN support", "`Dmn` builder in `@bpmnkit/core`", "Separate library (dmn-js)"],
+	[
+		"AI / LLM-friendly",
+		"Compact intermediate format fits a diagram in one prompt; designed for AI agents",
+		"Not a design goal",
+	],
+	[
+		"Maturity & ecosystem",
+		"Newer, smaller ecosystem",
+		"Mature, widely adopted, large plugin ecosystem (bpmn.io)",
+	],
+]
+
+const jsonLd = faqJsonLd([
+	{
+		question: "Is BPMN Kit a replacement for bpmn-js?",
+		answer:
+			"Not exactly — they solve different problems. bpmn-js is a browser toolkit for rendering and interactively modeling BPMN diagrams. BPMN Kit is a TypeScript SDK for generating, simulating, and deploying BPMN diagrams from code, with zero runtime dependencies and no browser requirement. Some teams use BPMN Kit's canvas/editor packages for in-browser diagram display and bpmn-js for rich manual modeling — they are not mutually exclusive.",
+	},
+	{
+		question: "Can I generate a BPMN diagram programmatically with bpmn-js?",
+		answer:
+			"bpmn-js exposes a lower-level diagram-js model you can script against, but it does not provide a fluent builder API or automatic layout for generating a complete, valid BPMN 2.0 process from code the way @bpmnkit/core does.",
+	},
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title="BPMN Kit vs. bpmn-js — Headless SDK vs. Browser Modeling Toolkit"
+    description="How @bpmnkit/core compares to bpmn-js: code-first generation with auto-layout and zero runtime dependencies vs. browser-based interactive BPMN modeling."
+    jsonLd={jsonLd}
+  />
+  <style is:global>
+    .cmp-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .cmp-main { flex: 1; max-width: 820px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .cmp-main h1 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px; }
+    .cmp-main > p.lede { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 32px; }
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; margin-bottom: 40px; }
+    .cmp-table th, .cmp-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
+    .cmp-table th { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .cmp-table td:first-child { color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+    .cmp-faq h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; }
+    .cmp-faq-item { margin-bottom: 20px; }
+    .cmp-faq-item h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .cmp-faq-item p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.65; }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <Nav />
+  <div class="cmp-wrap">
+    <main class="cmp-main">
+      <h1>BPMN Kit vs. bpmn-js</h1>
+      <p class="lede">
+        <a href="https://github.com/bpmn-io/bpmn-js">bpmn-js</a> is a mature, widely-used
+        open-source toolkit from bpmn.io for rendering and interactively modeling BPMN 2.0
+        diagrams in the browser. <strong>BPMN Kit</strong> is a TypeScript SDK for generating,
+        simulating, and deploying BPMN 2.0 diagrams from code. They target different jobs —
+        here's how they compare.
+      </p>
+
+      <table class="cmp-table">
+        <thead><tr><th></th><th>BPMN Kit</th><th>bpmn-js</th></tr></thead>
+        <tbody>
+          {rows.map(([label, kit, other]) => (
+            <tr><td>{label}</td><td>{kit}</td><td>{other}</td></tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div class="cmp-faq">
+        <h2>Frequently asked</h2>
+        <div class="cmp-faq-item">
+          <h3>Is BPMN Kit a replacement for bpmn-js?</h3>
+          <p>Not exactly — they solve different problems. bpmn-js is a browser toolkit for rendering and interactively modeling BPMN diagrams. BPMN Kit is a TypeScript SDK for generating, simulating, and deploying BPMN diagrams from code, with zero runtime dependencies and no browser requirement. Some teams use BPMN Kit's canvas/editor packages for in-browser diagram display and bpmn-js for rich manual modeling — they are not mutually exclusive.</p>
+        </div>
+        <div class="cmp-faq-item">
+          <h3>Can I generate a BPMN diagram programmatically with bpmn-js?</h3>
+          <p>bpmn-js exposes a lower-level diagram-js model you can script against, but it does not provide a fluent builder API or automatic layout for generating a complete, valid BPMN 2.0 process from code the way @bpmnkit/core does.</p>
+        </div>
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

@@ -1,7 +1,62 @@
 ---
 import "../styles/global.css"
+import { SITE } from "@bpmnkit/astro-shared"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { organizationJsonLd, softwareApplicationJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import { CONNECTOR_STATS } from "@bpmnkit/connector-gen"
-import { CODE_HTML } from "../data/content"
+import Footer from "../components/Footer.astro"
+import Nav from "../components/Nav.astro"
+import { CODE_HTML, ECOSYSTEM } from "../data/content"
+
+// Only the highest-value destinations sit at the top level; everything else
+// groups into two dropdowns. "Build" holds the on-page anchors in DOM order
+// (top to bottom), so working through it top-to-bottom scrolls strictly
+// downward instead of jumping back and forth.
+const navLinks = [
+	{ href: "/editor", label: "Editor" },
+	{ href: "https://docs.bpmnkit.com", label: "Docs" },
+	{
+		label: "Build",
+		items: [
+			{ href: "#features", label: "Features" },
+			{ href: "#examples", label: "Examples" },
+			{ href: "#api", label: "API" },
+			{ href: "#cli", label: "CLI" },
+			{ href: "#start", label: "Quickstart" },
+			{ href: "#dmn-forms", label: "DMN & Forms" },
+			{ href: "#playground", label: "Playground" },
+		],
+	},
+	{
+		label: "Resources",
+		items: [
+			{ href: "/use-cases", label: "Use Cases" },
+			{ href: "/compare", label: "Compare" },
+			{ href: "/blog", label: "Blog" },
+			{ href: "https://learn.bpmnkit.com", label: "Learn" },
+		],
+	},
+	{
+		label: "Tools",
+		items: [
+			{ href: "/operate", label: "Operate" },
+			{ href: "/connectors", label: "Connectors" },
+			{ href: "/integrations", label: "Integrations" },
+		],
+	},
+]
+
+const jsonLd = [
+	organizationJsonLd(),
+	softwareApplicationJsonLd({
+		name: SITE.name,
+		description: SITE.description,
+		url: SITE.url,
+		applicationCategory: "DeveloperApplication",
+		softwareVersion: ECOSYSTEM.find((pkg) => pkg.name === "@bpmnkit/core")?.version,
+		license: "https://opensource.org/license/mit",
+	}),
+]
 
 const withSdkCode = CODE_HTML.withSdk
 const createProcessCode = CODE_HTML.createProcess
@@ -18,14 +73,18 @@ const typeGuardsCode = CODE_HTML.typeGuards
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BPMN Kit — Generate BPMN diagrams with code</title>
-  <meta name="description" content="A TypeScript SDK for generating production-ready BPMN diagrams programmatically. Built for AI agents, automation platforms, and workflow builders." />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <meta property="og:image" content="https://bpmnkit.com/og.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://bpmnkit.com/og.png" />
+  <link rel="alternate" type="application/rss+xml" title="BPMN Kit Blog" href="/rss.xml" />
+  <Seo
+    title="BPMN Kit — Generate BPMN diagrams with code"
+    description="Open-source toolkit for building, simulating, and deploying business process (BPMN) diagrams with code and AI. Free, MIT-licensed, Camunda 8 compatible."
+    jsonLd={jsonLd}
+  />
 </head>
 <body>
+
+  <a href="#main-content" class="skip-link">Skip to content</a>
+  <div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
 
   <!-- Fixed page background — aurora orbs, dot grid, grain texture.
        position:fixed + z-index:-1 keeps them behind all content while
@@ -42,54 +101,9 @@ const typeGuardsCode = CODE_HTML.typeGuards
   <div class="scroll-bar" aria-hidden="true"></div>
 
   <!-- Nav -->
-  <nav class="nav" aria-label="Main navigation">
-    <div class="nav-inner">
-      <a href="#" class="nav-logo" aria-label="BPMN Kit">
-        <svg width="36" height="36" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path fill="#060609" d="m0 166.67c0 -92.0493 74.6207 -166.67 166.67 -166.67l666.66003 0c44.203613 0 86.5968 17.559824 117.853455 48.816513c31.256714 31.256691 48.81653 73.64986 48.81653 117.853485l0 666.66003c0 92.049255 -74.62073 166.66998 -166.66998 166.66998l-666.66003 0c-92.0493 0 -166.67 -74.62073 -166.67 -166.66998z" fill-rule="evenodd"/>
-          <path fill="#e954c2" d="m80.49353 127.48857l84.734375 0q42.71875 0 63.03125 20.578125q20.3125 20.578125 20.3125 61.828125l0 13.0625q0 26.96875 -9.1875 44.812485q-9.171875 17.828125 -29.8125 20.0625l-0.09375 -0.9375q44.234375 8.796875 44.234375 69.0625l0 28.0q0 40.8125 -21.96875 62.78125q-21.96875 21.96875 -63.25 21.96875l-88.0 0l0 -341.21875zm78.671875 132.99998q12.328125 0 17.921875 -5.7656097q5.59375 -5.78125 5.59375 -21.484375l0 -18.203125q0 -15.203125 -4.421875 -20.765625q-4.40625 -5.5625 -14.421875 -5.5625l-17.453125 0l0 71.781235l12.78125 0zm9.328125 146.98438q10.296875 0 14.8125 -4.984375q4.515625 -5.0 4.515625 -19.921875l0 -28.46875q0 -19.625 -5.703125 -26.0q-5.6875 -6.390625 -20.15625 -6.390625l-15.578125 0l0 85.765625l22.109375 0zm115.10724 -279.98438l82.875 0q41.4375 0 62.625 22.75q21.1875 22.734375 21.1875 65.265625l0 32.1875q0 42.531235 -21.1875 65.281235q-21.1875 22.734375 -62.625 22.734375l-16.984375 0l0 133.0l-65.890625 0l0 -341.21875zm82.875 146.99998q9.359375 0 13.640625 -4.75q4.28125 -4.765625 4.28125 -18.781235l0 -38.71875q0 -14.015625 -4.28125 -18.765625q-4.28125 -4.765625 -13.640625 -4.765625l-16.984375 0l0 85.781235l16.984375 0zm111.83243 -146.99998l86.859406 0l27.28125 239.99998l-0.9375 0l27.265625 -239.99998l86.875 0l0 341.21875l-63.09375 0l6.359375 -253.68748l0.921875 0.15625l-32.0 253.53123l-55.453125 0l-32.0 -253.53123l0.921875 -0.15625l6.359375 253.68748l-59.359406 0l0 -341.21875zm265.6392 0l77.328125 0l45.203125 201.62498l-0.921875 0.265625l-6.359375 -201.89061l60.296875 0l0 341.21875l-65.65625 0l-56.890625 -244.54686l0.9375 -0.265625l6.34375 244.81248l-60.28125 0l0 -341.21875z" fill-rule="nonzero"/>
-          <path fill="#ffffff" d="m270.9452 522.1202l65.890625 0l0 112.609375l53.4375 -112.609375l67.828125 0l-65.203125 127.90625l64.03125 213.3125l-68.875 0l-39.65625 -133.03125l-11.5625 23.390625l0 109.640625l-65.890625 0l0 -341.21875zm207.7738 0l65.890625 0l0 341.21875l-65.890625 0l0 -341.21875zm144.30109 61.21875l-53.671875 0l0 -61.21875l173.23438 0l0 61.21875l-53.671875 0l0 280.0l-65.890625 0l0 -280.0z" fill-rule="nonzero"/>
-        </svg>
-      </a>
-      <div class="nav-links">
-        <a href="#features" class="nav-link">Features</a>
-        <a href="#examples" class="nav-link">Examples</a>
-        <a href="#dmn-forms" class="nav-link">DMN &amp; Forms</a>
-        <a href="#playground" class="nav-link">Playground</a>
-        <a href="#api" class="nav-link">API</a>
-        <a href="#cli" class="nav-link">CLI</a>
-        <a href="https://docs.bpmnkit.com" class="nav-link">Docs</a>
-        <a href="/editor" class="nav-link">Editor</a>
-        <a href="/operate" class="nav-link">Operate</a>
-        <a href="https://github.com/bpmnkit/monorepo" class="nav-cta" target="_blank" rel="noopener">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
-          GitHub
-        </a>
-      </div>
-      <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-mobile-menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-    </div>
-    <div class="nav-mobile-menu" id="nav-mobile-menu" aria-hidden="true">
-      <a href="#features" class="nav-mobile-link">Features</a>
-      <a href="#examples" class="nav-mobile-link">Examples</a>
-      <a href="#dmn-forms" class="nav-mobile-link">DMN &amp; Forms</a>
-      <a href="#playground" class="nav-mobile-link">Playground</a>
-      <a href="#api" class="nav-mobile-link">API</a>
-      <a href="#cli" class="nav-mobile-link">CLI</a>
-      <a href="https://docs.bpmnkit.com" class="nav-mobile-link">Docs</a>
-      <a href="/editor" class="nav-mobile-link">Editor</a>
-      <a href="/operate" class="nav-mobile-link">Operate</a>
-      <a href="https://github.com/bpmnkit/monorepo" class="nav-mobile-link nav-mobile-cta" target="_blank" rel="noopener">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
-        GitHub
-      </a>
-    </div>
-  </nav>
+  <Nav links={navLinks} showHomeLink={false} />
 
-  <main>
+  <main id="main-content">
 
   <!-- ── Hero ──────────────────────────────────────────────────────────────── -->
   <section class="hero">
@@ -97,16 +111,21 @@ const typeGuardsCode = CODE_HTML.typeGuards
       <div class="hero-text">
         <div class="pill">
           <span class="pill-dot"></span>
-          AI-Native · TypeScript · Zero Dependencies
+          Open Source · MIT · AI-Native · TypeScript
         </div>
         <h1 class="hero-h1">
           BPMN diagrams<br>
           <span class="shimmer-text">from code, not clicks</span>
         </h1>
         <p class="hero-p">
-          A fluent TypeScript API that generates production-ready BPMN&nbsp;2.0 diagrams
-          with auto-layout. Built for <strong>AI&nbsp;agents</strong>, automation platforms,
+          A fluent TypeScript API that generates deployable BPMN&nbsp;2.0 diagrams
+          with <a href="/auto-layout">auto-layout</a>. Built for <strong>AI&nbsp;agents</strong>, automation platforms,
           and workflow builders.
+        </p>
+        <p class="hero-p-sub">
+          BPMN is the industry standard for business-process diagrams. BPMN Kit lets your
+          developers — and AI assistants — create, test, and deploy them as fast as they write
+          code. Analysts still review and edit everything visually in the built-in editor.
         </p>
         <div class="hero-ctas">
           <button class="install-btn" id="install-btn" title="Click to copy">
@@ -118,7 +137,7 @@ const typeGuardsCode = CODE_HTML.typeGuards
             Get Started
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
           </a>
-          <a href="/editor" class="btn-ghost">Try the Editor</a>
+          <a href="/editor" class="btn-ghost">Open the visual editor — no install</a>
           <a href="https://github.com/bpmnkit/monorepo" class="btn-ghost" target="_blank" rel="noopener">GitHub →</a>
         </div>
       </div>
@@ -169,11 +188,11 @@ const typeGuardsCode = CODE_HTML.typeGuards
           <div class="bcard-icon bcard-icon--teal">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           </div>
-          <h3>Zero<br>Dependencies</h3>
+          <h3>No Third-Party<br>Dependencies</h3>
           <p>Pure ESM, tree-shakeable. Runs in browsers, Node, Deno, Bun, and edge runtimes.</p>
           <div class="deps-ring">
             <div class="deps-center">0</div>
-            <div class="deps-label">runtime deps</div>
+            <div class="deps-label">third-party deps</div>
           </div>
         </div>
 
@@ -183,7 +202,7 @@ const typeGuardsCode = CODE_HTML.typeGuards
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           </div>
           <h3>Auto-Layout</h3>
-          <p>Sugiyama layout engine produces clean, readable diagrams with orthogonal edge routing. No coordinate math.</p>
+          <p>Sugiyama layout engine produces clean, readable diagrams with orthogonal edge routing. No coordinate math. <a href="/auto-layout">See both engines compared</a> on five real process models.</p>
           <div class="bcard-chips">
             <span class="dmn-chip">Sugiyama algorithm</span>
             <span class="dmn-chip">SVG export</span>
@@ -196,9 +215,9 @@ const typeGuardsCode = CODE_HTML.typeGuards
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <h3>Type-Safe</h3>
-          <p>Strict TypeScript throughout. 22 type guard predicates narrow the <code>BpmnFlowElement</code> union. Typed errors are <code>instanceof</code>-catchable.</p>
+          <p>Strict TypeScript throughout. 29 type guard predicates narrow the <code>BpmnFlowElement</code> union. Typed errors are <code>instanceof</code>-catchable.</p>
           <div class="bcard-chips">
-            <span class="dmn-chip">22 type guards</span>
+            <span class="dmn-chip">29 type guards</span>
             <span class="dmn-chip">ParseError / ValidationError</span>
             <span class="dmn-chip">findElement / getZeebeExtensions</span>
           </div>
@@ -211,7 +230,7 @@ const typeGuardsCode = CODE_HTML.typeGuards
           </div>
           <div>
             <h3>Roundtrip Fidelity</h3>
-            <p>Parse → modify → export without data loss. All Zeebe extensions, custom namespaces, and diagram info preserved perfectly.</p>
+            <p>Parse → modify → export without data loss. All Zeebe extensions, custom namespaces, and diagram info preserved — <a href="https://github.com/bpmnkit/monorepo/blob/main/packages/core/tests/xml/xml-roundtrip.test.ts" target="_blank" rel="noopener">verified by the roundtrip test suite</a>.</p>
           </div>
           <div class="roundtrip-flow">
             <span class="rt-step">Parse</span>
@@ -240,7 +259,7 @@ const typeGuardsCode = CODE_HTML.typeGuards
           </div>
           <div>
             <h3>{CONNECTOR_STATS.services} API Connectors, Out&nbsp;of&nbsp;the&nbsp;Box</h3>
-            <p>Generate typed Zeebe connector templates from {CONNECTOR_STATS.services} built-in OpenAPI specs — GitHub, Stripe, Slack, DigitalOcean, Kubernetes, and more. Over {(CONNECTOR_STATS.endpoints).toLocaleString("en")} API endpoints covered with zero boilerplate.</p>
+            <p>Generate typed Zeebe connector templates from {CONNECTOR_STATS.services} built-in OpenAPI specs — GitHub, Stripe, Slack, DigitalOcean, Kubernetes, and more. Over {(CONNECTOR_STATS.endpoints).toLocaleString("en")} API endpoints covered with zero boilerplate. <a href="/integrations">Browse the catalog →</a></p>
           </div>
           <div class="bcard-chips">
             <span class="dmn-chip">{CONNECTOR_STATS.services} services</span>
@@ -248,6 +267,33 @@ const typeGuardsCode = CODE_HTML.typeGuards
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ── For Process Teams ────────────────────────────────────────────────── -->
+  <section class="teams-section" id="teams">
+    <div class="section-wrap">
+      <div class="section-eyebrow">For process teams</div>
+      <h2 class="section-h2">Your analysts model it.<br>Your developers ship it. AI drafts it.</h2>
+      <div class="teams-grid">
+        <div class="teams-card">
+          <h3>Faster process changes</h3>
+          <p>Process updates ship through code review — versioned, tested, and audit-traceable — not a modeling-tool ritual.</p>
+        </div>
+        <div class="teams-card">
+          <h3>AI-drafted workflows</h3>
+          <p>Describe a process in plain language; get a valid, deployable BPMN diagram your analysts review visually.</p>
+        </div>
+        <div class="teams-card">
+          <h3>No lock-in, no license fees</h3>
+          <p>Open source (MIT). Standard BPMN&nbsp;2.0 files that open in any BPMN tool, including Camunda Modeler.</p>
+        </div>
+      </div>
+      <p class="teams-note">
+        BPMN Kit doesn't replace visual modeling — the built-in editor and any BPMN&nbsp;2.0 tool
+        still open every diagram. It replaces the copy-paste-redeploy gap between the diagram and
+        production. <a href="/use-cases">Explore use cases →</a>
+      </p>
     </div>
   </section>
 
@@ -264,7 +310,7 @@ const typeGuardsCode = CODE_HTML.typeGuards
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </div>
             <div>
-              <h3>22 Type Guard Predicates</h3>
+              <h3>29 Type Guard Predicates</h3>
               <p>Narrow <code>BpmnFlowElement</code> to a specific type without casting. One predicate per BPMN element type — <code>isBpmnServiceTask</code>, <code>isBpmnParallelGateway</code>, <code>isBpmnBoundaryEvent</code>, and group guards like <code>isBpmnGateway</code>, <code>isBpmnActivity</code>, <code>isBpmnEvent</code>.</p>
             </div>
           </div>
@@ -383,7 +429,16 @@ const typeGuardsCode = CODE_HTML.typeGuards
         <!-- Drag handle — outside compare-panels so the knob isn't clipped -->
         <div class="cmp-divider" aria-hidden="true">
           <div class="cmp-divider-line"></div>
-          <div class="cmp-divider-knob">
+          <div
+            class="cmp-divider-knob"
+            role="slider"
+            tabindex="0"
+            aria-label="Comparison divider — Without SDK vs. With BPMN Kit"
+            aria-valuemin="5"
+            aria-valuemax="95"
+            aria-valuenow="50"
+            id="cmp-divider-knob"
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M8 5L3 12l5 7V5zM16 5l5 7-5 7V5z"/>
             </svg>
@@ -398,7 +453,13 @@ const typeGuardsCode = CODE_HTML.typeGuards
     <div class="section-wrap">
       <div class="section-eyebrow">Interactive Examples</div>
       <h2 class="section-h2">See it in action</h2>
-      <p class="section-sub">Watch TypeScript code generate a live BPMN diagram in real time — every method call updates the preview.</p>
+      <p class="section-sub">Watch a process get built — each line of code (or AI instruction) instantly becomes a diagram your team can read.</p>
+      <p class="sr-only">
+        This section continuously animates through five example scripts, each typing out a
+        BPMN Kit builder call and rendering the resulting diagram live. The code and diagrams
+        shown are also available in the Examples and Playground sections below as static,
+        interactive code.
+      </p>
 
       <!-- Progress bars: one per example, fills during that example -->
       <div class="anim-progress" id="anim-progress" aria-hidden="true">
@@ -409,8 +470,10 @@ const typeGuardsCode = CODE_HTML.typeGuards
         <div class="anim-bar"><div class="anim-bar-fill"></div></div>
       </div>
 
-      <!-- Animated demo: code grows on left, diagram updates on right -->
-      <div class="anim-demo" id="anim-demo">
+      <!-- Animated demo: code grows on left, diagram updates on right.
+           aria-hidden — a text alternative is provided above; the constant
+           DOM churn here would otherwise be announced piecemeal by AT. -->
+      <div class="anim-demo" id="anim-demo" aria-hidden="true">
         <!-- Left: animated code panel -->
         <div class="anim-code-panel">
           <div class="code-topbar">
@@ -477,8 +540,8 @@ const typeGuardsCode = CODE_HTML.typeGuards
               <div class="api-stat-label">auth modes</div>
             </div>
             <div class="api-stat">
-              <div class="api-stat-num">∞</div>
-              <div class="api-stat-label">retry & backoff</div>
+              <div class="api-stat-num">3×</div>
+              <div class="api-stat-label">auto-retry w/ backoff</div>
             </div>
           </div>
           <p class="section-sub" style="margin-bottom: 24px; margin-top: 0;">
@@ -508,6 +571,9 @@ const typeGuardsCode = CODE_HTML.typeGuards
     <div class="section-wrap">
       <div class="section-eyebrow">Command-Line Interface</div>
       <h2 class="section-h2">Manage Camunda&nbsp;8<br>from your terminal</h2>
+      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
+        <strong>casen</strong> — the BPMN Kit command line.
+      </p>
       <div class="cli-layout">
         <!-- Left: features -->
         <div class="cli-features">
@@ -551,7 +617,13 @@ const typeGuardsCode = CODE_HTML.typeGuards
 
         <!-- Right: animated terminal -->
         <div class="cli-terminal-wrap">
-          <div id="cli-terminal">
+          <p class="sr-only">
+            This terminal continuously animates a demo session of casen, the BPMN Kit CLI:
+            navigating the main menu, opening the "process" command group, listing process
+            definitions, and viewing a tabular result.
+          </p>
+          <!-- aria-hidden — a text alternative is provided above -->
+          <div id="cli-terminal" aria-hidden="true">
             <div class="cli-topbar">
               <span class="tb-dot tb-red"></span>
               <span class="tb-dot tb-yellow"></span>
@@ -570,16 +642,16 @@ const typeGuardsCode = CODE_HTML.typeGuards
   <section class="start-section" id="start">
     <div class="section-wrap">
       <div class="section-eyebrow">Quickstart</div>
-      <h2 class="section-h2">Up and running<br>in 3 steps</h2>
+      <h2 class="section-h2">Up and running<br>in 4 steps</h2>
       <div class="steps-grid">
         <div class="step">
           <div class="step-num">01</div>
           <h3>Install</h3>
-          <div class="pkg-tabs">
-            <button class="pkg-tab active" data-pkg="pnpm">pnpm</button>
-            <button class="pkg-tab" data-pkg="bun">bun</button>
-            <button class="pkg-tab" data-pkg="npm">npm</button>
-            <button class="pkg-tab" data-pkg="yarn">yarn</button>
+          <div class="pkg-tabs" role="group" aria-label="Package manager">
+            <button class="pkg-tab active" data-pkg="pnpm" aria-pressed="true">pnpm</button>
+            <button class="pkg-tab" data-pkg="bun" aria-pressed="false">bun</button>
+            <button class="pkg-tab" data-pkg="npm" aria-pressed="false">npm</button>
+            <button class="pkg-tab" data-pkg="yarn" aria-pressed="false">yarn</button>
           </div>
           <pre class="pkg-cmd active" data-pkg="pnpm"><code>pnpm add @bpmnkit/core</code></pre>
           <pre class="pkg-cmd" data-pkg="bun"><code>bun add @bpmnkit/core</code></pre>
@@ -595,8 +667,15 @@ const typeGuardsCode = CODE_HTML.typeGuards
 
         <div class="step">
           <div class="step-num">03</div>
-          <h3>Deploy &amp; run</h3>
+          <h3>Simulate it locally</h3>
           <pre><code set:html={deployRunCode}></code></pre>
+          <p class="step-note">The engine is an in-process simulator for tests and demos — for production execution, deploy to Camunda 8/Zeebe (next step).</p>
+        </div>
+
+        <div class="step">
+          <div class="step-num">04</div>
+          <h3>Deploy to Camunda&nbsp;8</h3>
+          <pre><code set:html={apiCode}></code></pre>
         </div>
       </div>
     </div>
@@ -613,16 +692,46 @@ const typeGuardsCode = CODE_HTML.typeGuards
       </p>
 
       <!-- Tab buttons -->
-      <div class="dmn-tabs" role="tablist">
-        <button class="dmn-tab active" data-tab="dmn" role="tab">DMN Decision Table</button>
-        <button class="dmn-tab" data-tab="form" role="tab">Camunda Form</button>
-        <button class="dmn-tab" data-tab="bpmn" role="tab">BPMN with DMN + Form</button>
+      <div class="dmn-tabs" role="tablist" aria-label="DMN and Forms examples">
+        <button
+          class="dmn-tab active"
+          data-tab="dmn"
+          role="tab"
+          id="dmn-tab-dmn"
+          aria-selected="true"
+          aria-controls="dmn-panel-dmn"
+          tabindex="0"
+        >DMN Decision Table</button>
+        <button
+          class="dmn-tab"
+          data-tab="form"
+          role="tab"
+          id="dmn-tab-form"
+          aria-selected="false"
+          aria-controls="dmn-panel-form"
+          tabindex="-1"
+        >Camunda Form</button>
+        <button
+          class="dmn-tab"
+          data-tab="bpmn"
+          role="tab"
+          id="dmn-tab-bpmn"
+          aria-selected="false"
+          aria-controls="dmn-panel-bpmn"
+          tabindex="-1"
+        >BPMN with DMN + Form</button>
       </div>
 
       <div class="dmn-panels">
 
         <!-- DMN panel -->
-        <div class="dmn-panel active" data-panel="dmn">
+        <div
+          class="dmn-panel active"
+          data-panel="dmn"
+          id="dmn-panel-dmn"
+          role="tabpanel"
+          aria-labelledby="dmn-tab-dmn"
+        >
           <div class="dmn-layout">
             <div class="dmn-code-panel">
               <div class="diagram-topbar">
@@ -638,10 +747,10 @@ const typeGuardsCode = CODE_HTML.typeGuards
             <div class="dmn-desc">
               <h3>DMN Decision Tables</h3>
               <p>Build DMN decision tables with a fluent API. Define inputs, outputs, and rules —
-              the SDK generates valid DMN 2.0 XML with auto-computed DMNDI layout.</p>
+              the SDK generates valid DMN 1.3 XML with auto-computed DMNDI layout.</p>
               <div class="dmn-chips">
                 <span class="dmn-chip">Fluent builder</span>
-                <span class="dmn-chip">DMN 2.0 XML export</span>
+                <span class="dmn-chip">DMN 1.3 XML export</span>
                 <span class="dmn-chip">Auto-layout DMNDI</span>
                 <span class="dmn-chip">Hit policies</span>
                 <span class="dmn-chip">FEEL type refs</span>
@@ -657,7 +766,13 @@ const typeGuardsCode = CODE_HTML.typeGuards
         </div>
 
         <!-- Form panel -->
-        <div class="dmn-panel" data-panel="form">
+        <div
+          class="dmn-panel"
+          data-panel="form"
+          id="dmn-panel-form"
+          role="tabpanel"
+          aria-labelledby="dmn-tab-form"
+        >
           <div class="dmn-layout">
             <div class="dmn-code-panel">
               <div class="diagram-topbar">
@@ -691,7 +806,13 @@ const typeGuardsCode = CODE_HTML.typeGuards
         </div>
 
         <!-- BPMN with companions panel -->
-        <div class="dmn-panel" data-panel="bpmn">
+        <div
+          class="dmn-panel"
+          data-panel="bpmn"
+          id="dmn-panel-bpmn"
+          role="tabpanel"
+          aria-labelledby="dmn-tab-bpmn"
+        >
           <div class="dmn-layout">
             <div class="dmn-code-panel">
               <div class="diagram-topbar">
@@ -774,31 +895,41 @@ const typeGuardsCode = CODE_HTML.typeGuards
     </div>
   </section>
 
+  <!-- ── Project Status / Ecosystem map ───────────────────────────────────── -->
+  <section class="status-section" id="status">
+    <div class="section-wrap">
+      <div class="section-eyebrow">Project Status</div>
+      <h2 class="section-h2">The BPMN Kit ecosystem</h2>
+      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
+        Independently-versioned, pre-1.0 packages developed in the open under the MIT license.
+        Each links to its source and current version.
+      </p>
+      <div class="status-grid">
+        {ECOSYSTEM.map((pkg) => (
+          <a class="status-card" href={pkg.url} target="_blank" rel="noopener">
+            <div class="status-card-top">
+              <span class="status-card-name">{pkg.name}</span>
+              <span class="status-card-version">v{pkg.version}</span>
+            </div>
+            <p class="status-card-role">{pkg.role}</p>
+            {pkg.note && <p class="status-card-note">{pkg.note}</p>}
+          </a>
+        ))}
+      </div>
+      <div class="status-links">
+        <a href={`${SITE.github}/releases`} target="_blank" rel="noopener">Changelog &amp; Releases</a>
+        <span class="footer-dot">·</span>
+        <a href={`${SITE.github}/issues`} target="_blank" rel="noopener">Report an issue</a>
+        <span class="footer-dot">·</span>
+        <a href="mailto:hello@bpmnkit.com">Contact</a>
+      </div>
+    </div>
+  </section>
+
   </main>
 
   <!-- ── Footer ───────────────────────────────────────────────────────────── -->
-  <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-left">
-        <a href="#" class="nav-logo" aria-label="BPMN Kit home">
-          <svg width="36" height="36" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path fill="#060609" d="m0 166.67c0 -92.0493 74.6207 -166.67 166.67 -166.67l666.66003 0c44.203613 0 86.5968 17.559824 117.853455 48.816513c31.256714 31.256691 48.81653 73.64986 48.81653 117.853485l0 666.66003c0 92.049255 -74.62073 166.66998 -166.66998 166.66998l-666.66003 0c-92.0493 0 -166.67 -74.62073 -166.67 -166.66998z" fill-rule="evenodd"/>
-            <path fill="#e954c2" d="m80.49353 127.48857l84.734375 0q42.71875 0 63.03125 20.578125q20.3125 20.578125 20.3125 61.828125l0 13.0625q0 26.96875 -9.1875 44.812485q-9.171875 17.828125 -29.8125 20.0625l-0.09375 -0.9375q44.234375 8.796875 44.234375 69.0625l0 28.0q0 40.8125 -21.96875 62.78125q-21.96875 21.96875 -63.25 21.96875l-88.0 0l0 -341.21875zm78.671875 132.99998q12.328125 0 17.921875 -5.7656097q5.59375 -5.78125 5.59375 -21.484375l0 -18.203125q0 -15.203125 -4.421875 -20.765625q-4.40625 -5.5625 -14.421875 -5.5625l-17.453125 0l0 71.781235l12.78125 0zm9.328125 146.98438q10.296875 0 14.8125 -4.984375q4.515625 -5.0 4.515625 -19.921875l0 -28.46875q0 -19.625 -5.703125 -26.0q-5.6875 -6.390625 -20.15625 -6.390625l-15.578125 0l0 85.765625l22.109375 0zm115.10724 -279.98438l82.875 0q41.4375 0 62.625 22.75q21.1875 22.734375 21.1875 65.265625l0 32.1875q0 42.531235 -21.1875 65.281235q-21.1875 22.734375 -62.625 22.734375l-16.984375 0l0 133.0l-65.890625 0l0 -341.21875zm82.875 146.99998q9.359375 0 13.640625 -4.75q4.28125 -4.765625 4.28125 -18.781235l0 -38.71875q0 -14.015625 -4.28125 -18.765625q-4.28125 -4.765625 -13.640625 -4.765625l-16.984375 0l0 85.781235l16.984375 0zm111.83243 -146.99998l86.859406 0l27.28125 239.99998l-0.9375 0l27.265625 -239.99998l86.875 0l0 341.21875l-63.09375 0l6.359375 -253.68748l0.921875 0.15625l-32.0 253.53123l-55.453125 0l-32.0 -253.53123l0.921875 -0.15625l6.359375 253.68748l-59.359406 0l0 -341.21875zm265.6392 0l77.328125 0l45.203125 201.62498l-0.921875 0.265625l-6.359375 -201.89061l60.296875 0l0 341.21875l-65.65625 0l-56.890625 -244.54686l0.9375 -0.265625l6.34375 244.81248l-60.28125 0l0 -341.21875z" fill-rule="nonzero"/>
-            <path fill="#ffffff" d="m270.9452 522.1202l65.890625 0l0 112.609375l53.4375 -112.609375l67.828125 0l-65.203125 127.90625l64.03125 213.3125l-68.875 0l-39.65625 -133.03125l-11.5625 23.390625l0 109.640625l-65.890625 0l0 -341.21875zm207.7738 0l65.890625 0l0 341.21875l-65.890625 0l0 -341.21875zm144.30109 61.21875l-53.671875 0l0 -61.21875l173.23438 0l0 61.21875l-53.671875 0l0 280.0l-65.890625 0l0 -280.0z" fill-rule="nonzero"/>
-          </svg>
-        </a>
-        <span class="footer-dot">·</span>
-        <span class="footer-license">MIT License</span>
-        <span class="footer-dot">·</span>
-        <span class="footer-license">made by <a href="https://u11g.com" class="footer-link" target="_blank" rel="noopener">u11g</a></span>
-      </div>
-      <div class="footer-links">
-        <a href="/editor" class="footer-link">Editor</a>
-        <a href="https://github.com/bpmnkit/monorepo" class="footer-link" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://www.npmjs.com/package/@bpmnkit/core" class="footer-link" target="_blank" rel="noopener">npm</a>
-      </div>
-    </div>
-  </footer>
+  <Footer />
 
   <script>
     import "../scripts/main.ts";

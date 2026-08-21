@@ -1,16 +1,9 @@
-// ── Site metadata ──────────────────────────────────────────────────────────────
+import { SITE } from "@bpmnkit/astro-shared"
+import { tokenize } from "../lib/highlight"
 
-export const SITE = {
-	name: "BPMN Kit",
-	tagline: "Generate BPMN diagrams with code",
-	description:
-		"A TypeScript SDK for generating, editing, and executing BPMN 2.0 diagrams " +
-		"programmatically. Designed for AI agents, automation platforms, and Camunda 8 " +
-		"/ Zeebe workflow deployments. Zero runtime dependencies in the core packages.",
-	url: "https://bpmnkit.com",
-	github: "https://github.com/bpmnkit/monorepo",
-	npm: "https://www.npmjs.com/package/@bpmnkit/core",
-}
+// ── Site metadata ──────────────────────────────────────────────────────────────
+// Single source of truth — see @bpmnkit/astro-shared. Do not redefine here.
+export { SITE }
 
 // ── Packages ───────────────────────────────────────────────────────────────────
 
@@ -21,11 +14,11 @@ export const PACKAGES = [
 		description:
 			"Fluent process builder, BPMN 2.0 parser/serializer, DMN support, " +
 			"AI-compact format (compactify/expand), auto-layout (Sugiyama algorithm), " +
-			"SVG export (zero deps, all runtimes). " +
+			"SVG export (zero third-party deps, all runtimes). " +
 			"Multi-process support: Bpmn.createDiagram() assembles caller/callee process pairs in one definitions document. " +
 			"Full branching inside sub-processes (exclusiveGateway, parallelGateway, branch()). " +
 			"Ergonomic boundary events via withBoundary() — cursor auto-restores to main flow after the error path. " +
-			"Includes 22 TypeScript type guard predicates (isBpmnServiceTask, isBpmnGateway…), " +
+			"Includes 29 TypeScript type guard predicates (isBpmnServiceTask, isBpmnGateway…), " +
 			"typed error classes (ParseError, ValidationError — instanceof-catchable), " +
 			"and element lookup utilities (findElement, getZeebeExtensions, etc.)",
 	},
@@ -33,8 +26,8 @@ export const PACKAGES = [
 		name: "@bpmnkit/engine",
 		url: `${SITE.github}/tree/main/packages/engine`,
 		description:
-			"Zero-dependency BPMN simulation engine (browser + Node.js) — service tasks, " +
-			"user tasks, gateways, timers, message correlation, DMN evaluation",
+			"BPMN simulation engine, zero third-party dependencies (browser + Node.js) — " +
+			"service tasks, user tasks, gateways, timers, message correlation, DMN evaluation",
 	},
 	{
 		name: "@bpmnkit/api",
@@ -46,7 +39,8 @@ export const PACKAGES = [
 	{
 		name: "@bpmnkit/canvas",
 		url: `${SITE.github}/tree/main/packages/canvas`,
-		description: "Zero-dependency SVG BPMN viewer with pan/zoom, dark/light theme, plugin API",
+		description:
+			"Zero-third-party-dependency SVG BPMN viewer with pan/zoom, dark/light theme, plugin API",
 	},
 	{
 		name: "@bpmnkit/editor",
@@ -62,6 +56,60 @@ export const PACKAGES = [
 	},
 ] as const
 
+// ── Ecosystem map (for the homepage "project status" section) ─────────────────
+// Versions are hand-maintained — update when a package is version-bumped.
+
+export const ECOSYSTEM = [
+	{
+		name: "@bpmnkit/core",
+		version: "0.1.1",
+		role: "Author & parse BPMN, DMN, and Forms",
+		note: null,
+		url: `${SITE.github}/tree/main/packages/core`,
+		npm: "https://www.npmjs.com/package/@bpmnkit/core",
+	},
+	{
+		name: "@bpmnkit/engine",
+		version: "0.1.29",
+		role: "Simulate a process in-process",
+		note: "Experimental — simulation only, not a production runtime",
+		url: `${SITE.github}/tree/main/packages/engine`,
+		npm: "https://www.npmjs.com/package/@bpmnkit/engine",
+	},
+	{
+		name: "@bpmnkit/api",
+		version: "0.0.19",
+		role: "Deploy & operate on Camunda 8",
+		note: null,
+		url: `${SITE.github}/tree/main/packages/api`,
+		npm: "https://www.npmjs.com/package/@bpmnkit/api",
+	},
+	{
+		name: "@bpmnkit/canvas",
+		version: "0.0.29",
+		role: "View a diagram (SVG, pan/zoom)",
+		note: null,
+		url: `${SITE.github}/tree/main/packages/canvas`,
+		npm: "https://www.npmjs.com/package/@bpmnkit/canvas",
+	},
+	{
+		name: "@bpmnkit/editor",
+		version: "0.0.32",
+		role: "Edit a diagram in the browser",
+		note: null,
+		url: `${SITE.github}/tree/main/packages/editor`,
+		npm: "https://www.npmjs.com/package/@bpmnkit/editor",
+	},
+	{
+		name: "casen (CLI)",
+		version: "0.0.36",
+		role: "Operate Camunda 8 from the terminal",
+		note: null,
+		url: `${SITE.github}/tree/main/apps/cli`,
+		npm: "https://www.npmjs.com/package/@bpmnkit/cli",
+	},
+] as const
+
 // ── Feature bullets (for llms.txt) ────────────────────────────────────────────
 
 export const FEATURES = [
@@ -73,8 +121,8 @@ export const FEATURES = [
 	"AI-native: compact intermediate format fits an entire diagram in a single LLM prompt",
 	"Camunda 8 ready: native Zeebe task definitions, IO mappings, connectors, forms",
 	"Roundtrip fidelity: parse → modify → export without data loss",
-	"SVG export: generate diagram images from BpmnDefinitions — zero deps, works in Node.js, browser, Deno, Bun",
-	"Type guards: 22 predicates (isBpmnServiceTask, isBpmnGateway…) narrow BpmnFlowElement unions at compile time",
+	"SVG export: generate diagram images from BpmnDefinitions — zero third-party deps, works in Node.js, browser, Deno, Bun",
+	"Type guards: 29 predicates (isBpmnServiceTask, isBpmnGateway…) narrow BpmnFlowElement unions at compile time",
 	"Typed errors: ParseError and ValidationError extend a common BpmnSdkError base — all instanceof-catchable with error codes",
 	"Element lookup utilities: findElement, findProcess, getZeebeExtensions and friends traverse parsed diagrams",
 	"Full JSDoc coverage: @param, @returns, @throws, @example on every public API",
@@ -124,14 +172,16 @@ const svg = exportSvg(defs);   // ✓ SVG image, zero deps`,
 	deployRun: `\
 import { Engine } from "@bpmnkit/engine";
 
+// Simulate the process in-process — for tests and local development.
+// Deploying to a real Camunda 8 cluster? See the API client below.
 const engine = new Engine();
-await engine.deploy({ bpmn: xml });
+engine.deploy({ bpmn: defs });
 
 engine.registerJobWorker(
   "greet",
   async (job) => {
     console.log("Hello!");
-    await job.complete();
+    job.complete();
   }
 );
 engine.start("hello");`,
@@ -143,18 +193,16 @@ const client = new CamundaClient({
   baseUrl: "https://api.cloud.camunda.io",
   auth: {
     type: "oauth2",
-    clientId:     process.env.CAMUNDA_CLIENT_ID,
-    clientSecret: process.env.CAMUNDA_CLIENT_SECRET,
-    audience:     process.env.CAMUNDA_AUDIENCE,
+    clientId:     process.env.CAMUNDA_CLIENT_ID!,
+    clientSecret: process.env.CAMUNDA_CLIENT_SECRET!,
+    tokenUrl:     "https://login.cloud.camunda.io/oauth/token",
+    audience:     process.env.CAMUNDA_AUDIENCE!,
   },
 });
 
-// Deploy a process definition
-await client.process.deploy({ resources: [{ content: xml }] });
-
-// Start a new instance
-const instance = await client.process.startInstance({
-  bpmnProcessId: "my-flow",
+// Start a new instance of an already-deployed process
+const instance = await client.processInstance.createProcessInstance({
+  processDefinitionId: "my-flow",
   variables: { orderId: "ord-123" },
 });
 
@@ -233,7 +281,7 @@ const dmnDefs = Dmn.createDecisionTable("Eligibility")
   .rule({ inputs: ["-",       "-"],       outputs: ["false", "0"] })
   .build();
 
-const xml = Dmn.export(dmnDefs); // ✓ valid DMN 2.0 XML`,
+const xml = Dmn.export(dmnDefs); // ✓ valid DMN 1.3 XML`,
 
 	formExample: `\
 import { Form } from "@bpmnkit/core";
@@ -320,181 +368,9 @@ const defs = Bpmn.createProcess("loan-application")
 } as const
 
 // ── Code examples — HTML-highlighted (for index.astro) ────────────────────────
-// When you change a code example above, update the matching HTML version here.
+// Generated from CODE above via the shared tokenizer — never hand-edit these.
+// This keeps the visible page and llms-full.txt showing the exact same code.
 
-export const CODE_HTML = {
-	withSdk: `<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
-
-<span class="kw">const</span> xml = Bpmn.export(
-  Bpmn.createProcess(<span class="str">"my-flow"</span>) <span class="comment">// fluent API</span>
-    .startEvent(<span class="str">"start"</span>)        <span class="comment">// trigger</span>
-    .serviceTask(<span class="str">"task"</span>, {
-      name: <span class="str">"Do Something"</span>,
-      taskType: <span class="str">"my-worker"</span>,    <span class="comment">// Zeebe type</span>
-    })
-    .endEvent(<span class="str">"end"</span>)
-    .withAutoLayout()            <span class="comment">// Sugiyama</span>
-    .build()
-);
-
-<span class="comment">// ✓ Valid BPMN 2.0 XML</span>
-<span class="comment">// ✓ Auto-layout applied</span>
-<span class="comment">// ✓ Zeebe extensions set</span>`,
-
-	createProcess: `<span class="kw">import</span> { Bpmn, exportSvg } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
-
-<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"hello"</span>)
-  .<span class="fn">startEvent</span>(<span class="str">"start"</span>)
-  .<span class="fn">serviceTask</span>(<span class="str">"task"</span>, {
-    name: <span class="str">"Hello World"</span>,
-    taskType: <span class="str">"greet"</span>,
-  })
-  .<span class="fn">endEvent</span>(<span class="str">"end"</span>)
-  .<span class="fn">withAutoLayout</span>()
-  .<span class="fn">build</span>();
-
-<span class="kw">const</span> xml = Bpmn.<span class="fn">export</span>(defs); <span class="comment">// ✓ BPMN 2.0 XML</span>
-<span class="kw">const</span> svg = <span class="fn">exportSvg</span>(defs);   <span class="comment">// ✓ SVG image, zero deps</span>`,
-
-	deployRun: `<span class="kw">import</span> { Engine } <span class="kw">from</span> <span class="str">"@bpmnkit/engine"</span>;
-
-<span class="kw">const</span> engine = <span class="kw">new</span> Engine();
-<span class="kw">await</span> engine.deploy({ bpmn: xml });
-
-engine.registerJobWorker(
-  <span class="str">"greet"</span>,
-  <span class="kw">async</span> (job) => {
-    console.log(<span class="str">"Hello!"</span>);
-    <span class="kw">await</span> job.complete();
-  }
-);
-engine.start(<span class="str">"hello"</span>);`,
-
-	apiClient: `<span class="kw">import</span> { CamundaClient } <span class="kw">from</span> <span class="str">"@bpmnkit/api"</span>;
-
-<span class="kw">const</span> client = <span class="kw">new</span> CamundaClient({
-  baseUrl: <span class="str">"https://api.cloud.camunda.io"</span>,
-  auth: {
-    type: <span class="str">"oauth2"</span>,
-    clientId:     process.env.<span class="fn">CAMUNDA_CLIENT_ID</span>,
-    clientSecret: process.env.<span class="fn">CAMUNDA_CLIENT_SECRET</span>,
-    audience:     process.env.<span class="fn">CAMUNDA_AUDIENCE</span>,
-  },
-});
-
-<span class="comment">// Deploy a process definition</span>
-<span class="kw">await</span> client.process.<span class="fn">deploy</span>({ resources: [{ content: xml }] });
-
-<span class="comment">// Start a new instance</span>
-<span class="kw">const</span> instance = <span class="kw">await</span> client.process.<span class="fn">startInstance</span>({
-  bpmnProcessId: <span class="str">"my-flow"</span>,
-  variables: { orderId: <span class="str">"ord-123"</span> },
-});
-
-<span class="comment">// React to lifecycle events</span>
-client.<span class="fn">on</span>(<span class="str">"request"</span>, (e) => console.log(e.method, e.url));
-client.<span class="fn">on</span>(<span class="str">"error"</span>,   (e) => metrics.<span class="fn">inc</span>(<span class="str">"api.error"</span>));`,
-
-	withBoundary: `<span class="kw">const</span> xml = Bpmn.<span class="fn">export</span>(
-  Bpmn.<span class="fn">createProcess</span>(<span class="str">"payment-flow"</span>)
-    .<span class="fn">startEvent</span>(<span class="str">"start"</span>)
-    .<span class="fn">serviceTask</span>(<span class="str">"charge"</span>, {
-      name: <span class="str">"Charge Card"</span>,
-      taskType: <span class="str">"payment-charge"</span>,
-    })
-    .<span class="fn">withBoundary</span>(<span class="str">"on-fail"</span>, { errorCode: <span class="str">"PAYMENT_FAILED"</span> }, (p) =>
-      p
-        .<span class="fn">serviceTask</span>(<span class="str">"notify"</span>, { taskType: <span class="str">"send-email"</span> })
-        .<span class="fn">endEvent</span>(<span class="str">"end-failed"</span>),
-    )
-    <span class="comment">// main flow continues from "charge" — not from boundary</span>
-    .<span class="fn">serviceTask</span>(<span class="str">"fulfill"</span>, {
-      name: <span class="str">"Fulfill Order"</span>,
-      taskType: <span class="str">"warehouse-pick"</span>,
-    })
-    .<span class="fn">endEvent</span>(<span class="str">"end-ok"</span>)
-    .<span class="fn">withAutoLayout</span>()
-    .<span class="fn">build</span>()
-);`,
-
-	dmnTable: `<span class="kw">import</span> { Dmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
-
-<span class="comment">// Build a DMN decision table</span>
-<span class="kw">const</span> dmnDefs = Dmn.<span class="fn">createDecisionTable</span>(<span class="str">"Eligibility"</span>)
-  .<span class="fn">name</span>(<span class="str">"Loan Eligibility"</span>)
-  .<span class="fn">input</span>({ label: <span class="str">"Credit Score"</span>, expression: <span class="str">"creditScore"</span>, typeRef: <span class="str">"integer"</span> })
-  .<span class="fn">input</span>({ label: <span class="str">"Income"</span>, expression: <span class="str">"income"</span>, typeRef: <span class="str">"number"</span> })
-  .<span class="fn">output</span>({ label: <span class="str">"Eligible"</span>, name: <span class="str">"eligible"</span>, typeRef: <span class="str">"boolean"</span> })
-  .<span class="fn">output</span>({ label: <span class="str">"Max Amount"</span>, name: <span class="str">"maxAmount"</span>, typeRef: <span class="str">"number"</span> })
-  .<span class="fn">rule</span>({ inputs: [<span class="str">"&gt;= 700"</span>, <span class="str">"&gt;= 50000"</span>], outputs: [<span class="str">"true"</span>, <span class="str">"500000"</span>] })
-  .<span class="fn">rule</span>({ inputs: [<span class="str">"&gt;= 600"</span>, <span class="str">"&gt;= 30000"</span>], outputs: [<span class="str">"true"</span>, <span class="str">"200000"</span>] })
-  .<span class="fn">rule</span>({ inputs: [<span class="str">"-"</span>,       <span class="str">"-"</span>],       outputs: [<span class="str">"false"</span>, <span class="str">"0"</span>] })
-  .<span class="fn">build</span>();
-
-<span class="kw">const</span> xml = Dmn.<span class="fn">export</span>(dmnDefs); <span class="comment">// ✓ valid DMN 2.0 XML</span>`,
-
-	formExample: `<span class="kw">import</span> { Form } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
-
-<span class="comment">// Scaffold a Camunda form with a specific ID</span>
-<span class="kw">const</span> form = Form.<span class="fn">makeEmpty</span>(<span class="str">"ApplicationForm"</span>);
-<span class="comment">// extend components array with typed fields:</span>
-<span class="comment">// { type: "textfield", key: "applicantName", label: "Applicant Name" }</span>
-<span class="comment">// { type: "number",    key: "requestAmount", label: "Requested Amount" }</span>
-<span class="comment">// { type: "select",    key: "loanType", label: "Loan Type",</span>
-<span class="comment">//   values: [{ label: "Personal", value: "personal" }] }</span>
-<span class="comment">// { type: "submit",    label: "Submit Application" }</span>
-
-<span class="kw">const</span> json = Form.<span class="fn">export</span>(form); <span class="comment">// ✓ valid Camunda form JSON</span>`,
-
-	typeGuards: `<span class="kw">import</span> {
-  Bpmn, findElement, getZeebeExtensions,
-  isBpmnServiceTask, isBpmnGateway,
-  ParseError,
-} <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
-
-<span class="kw">try</span> {
-  <span class="kw">const</span> defs = Bpmn.<span class="fn">parse</span>(xml); <span class="comment">// throws ParseError if invalid</span>
-
-  <span class="kw">const</span> el = <span class="fn">findElement</span>(defs, <span class="str">"task1"</span>);
-  <span class="kw">if</span> (<span class="fn">isBpmnServiceTask</span>(el)) {
-    <span class="comment">// el is BpmnServiceTask ✓ — no cast needed</span>
-    <span class="kw">const</span> ext = <span class="fn">getZeebeExtensions</span>(el.extensionElements);
-    console.log(ext.taskDefinition?.type); <span class="comment">// "my-worker"</span>
-  }
-
-  <span class="kw">if</span> (<span class="fn">isBpmnGateway</span>(el)) {
-    console.log(<span class="str">"gateway:"</span>, el.type); <span class="comment">// narrowed to gateway types</span>
-  }
-} <span class="kw">catch</span> (err) {
-  <span class="kw">if</span> (err <span class="kw">instanceof</span> ParseError) {
-    <span class="comment">// Typed, instanceof-catchable ✓</span>
-    console.error(err.code, err.message);
-  }
-}`,
-
-	bpmnWithCompanions: `<span class="kw">import</span> { Bpmn } <span class="kw">from</span> <span class="str">"@bpmnkit/core"</span>;
-
-<span class="comment">// Process referencing a DMN table and a Camunda Form</span>
-<span class="kw">const</span> defs = Bpmn.<span class="fn">createProcess</span>(<span class="str">"loan-application"</span>)
-  .<span class="fn">name</span>(<span class="str">"Loan Application"</span>)
-  .<span class="fn">startEvent</span>(<span class="str">"start"</span>, { name: <span class="str">"Application Received"</span> })
-  .<span class="fn">userTask</span>(<span class="str">"collect-data"</span>, {
-    name: <span class="str">"Collect Applicant Data"</span>,
-    formId: <span class="str">"ApplicationForm"</span>,   <span class="comment">// ← links Camunda Form</span>
-  })
-  .<span class="fn">businessRuleTask</span>(<span class="str">"check-eligibility"</span>, {
-    name: <span class="str">"Check Eligibility"</span>,
-    decisionId: <span class="str">"Eligibility"</span>,    <span class="comment">// ← links DMN table</span>
-    resultVariable: <span class="str">"eligibilityResult"</span>,
-  })
-  .<span class="fn">exclusiveGateway</span>(<span class="str">"gw"</span>, { name: <span class="str">"Eligible?"</span> })
-  .<span class="fn">branch</span>(<span class="str">"approved"</span>, b =>
-    b.<span class="fn">condition</span>(<span class="str">"= eligibilityResult.eligible"</span>)
-     .<span class="fn">serviceTask</span>(<span class="str">"disburse"</span>, { taskType: <span class="str">"disburse-loan"</span> })
-     .<span class="fn">endEvent</span>(<span class="str">"end-ok"</span>, { name: <span class="str">"Loan Approved"</span> }))
-  .<span class="fn">branch</span>(<span class="str">"rejected"</span>, b =>
-    b.<span class="fn">defaultFlow</span>()
-     .<span class="fn">serviceTask</span>(<span class="str">"notify"</span>, { taskType: <span class="str">"send-rejection-email"</span> })
-     .<span class="fn">endEvent</span>(<span class="str">"end-rejected"</span>, { name: <span class="str">"Rejected"</span> }))
-  .<span class="fn">withAutoLayout</span>().<span class="fn">build</span>();`,
-} as const
+export const CODE_HTML: Record<keyof typeof CODE, string> = Object.fromEntries(
+	Object.entries(CODE).map(([key, code]) => [key, tokenize(code)]),
+) as Record<keyof typeof CODE, string>

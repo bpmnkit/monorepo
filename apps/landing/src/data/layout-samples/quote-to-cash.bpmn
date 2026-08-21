@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="@bpmnkit/core" exporterVersion="0.0.23" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.9.0">
+  <bpmn:message id="Message_VgqDdPrJ" name="payment-confirmed"/>
+  <bpmn:process id="QuoteToCash" name="Quote-to-Cash Process" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:versionTag value="1.0.0"/>
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="start" name="Opportunity Received">
+      <bpmn:outgoing>Flow_XjhCYuOK</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="generateQuote" name="Generate Quote from Catalog">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="quote-generator"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=opportunity.lineItems" target="lineItems"/>
+          <zeebe:input source="=customer.tier" target="pricingTier"/>
+          <zeebe:output source="=quote.total" target="quoteTotal"/>
+          <zeebe:output source="=quote.discountPercent" target="discountPercent"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="pricingModel" value="tiered"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_XjhCYuOK</bpmn:incoming>
+      <bpmn:outgoing>Flow_bchUvOZ2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="discountApproval" name="Discount Level?" default="Flow_y9NbTDhR">
+      <bpmn:incoming>Flow_bchUvOZ2</bpmn:incoming>
+      <bpmn:outgoing>Flow_QZRbwxhU</bpmn:outgoing>
+      <bpmn:outgoing>Flow_7TjRkdGd</bpmn:outgoing>
+      <bpmn:outgoing>Flow_y9NbTDhR</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="managerApproval" name="Manager Discount Approval">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formId="discount-approval-form"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_7TjRkdGd</bpmn:incoming>
+      <bpmn:outgoing>Flow_McQkxpe9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="vpApproval" name="VP Discount Approval">
+      <bpmn:extensionElements>
+        <zeebe:formDefinition formId="discount-approval-form"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_y9NbTDhR</bpmn:incoming>
+      <bpmn:outgoing>Flow_fpJ7UEWD</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="approvalDecision" name="Discount Approved?" default="Flow_va69mGZx">
+      <bpmn:incoming>Flow_McQkxpe9</bpmn:incoming>
+      <bpmn:incoming>Flow_fpJ7UEWD</bpmn:incoming>
+      <bpmn:outgoing>Flow_oExsK6c1</bpmn:outgoing>
+      <bpmn:outgoing>Flow_va69mGZx</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="endContractRejected" name="Contract Rejected">
+      <bpmn:incoming>Flow_va69mGZx</bpmn:incoming>
+      <bpmn:incoming>Flow_TtJzWXLn</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="generateContract" name="Generate Contract">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="contract-generator"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=quote" target="quote"/>
+          <zeebe:input source="=customer" target="customer"/>
+          <zeebe:output source="=contract.id" target="contractId"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_QZRbwxhU</bpmn:incoming>
+      <bpmn:incoming>Flow_oExsK6c1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2s0JeKjV</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="sendForSignature" zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v2" zeebe:modelerTemplateVersion="12" name="Send Contract for E-Signature">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="bearer" target="authentication.type"/>
+          <zeebe:input source="=secrets.ESIGN_TOKEN" target="authentication.token"/>
+          <zeebe:input source="POST" target="method"/>
+          <zeebe:input source="=esignatureUrl + &quot;/envelopes&quot;" target="url"/>
+          <zeebe:input source="20" target="connectionTimeoutInSeconds"/>
+          <zeebe:input source="20" target="readTimeoutInSeconds"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="signatureResponse"/>
+          <zeebe:header key="resultExpression" value="=signatureResponse.body"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2s0JeKjV</bpmn:incoming>
+      <bpmn:outgoing>Flow_GqAZEa9L</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="signatureCheck" name="Contract Signed?">
+      <bpmn:incoming>Flow_GqAZEa9L</bpmn:incoming>
+      <bpmn:outgoing>Flow_TtJzWXLn</bpmn:outgoing>
+      <bpmn:outgoing>Flow_bm3sKMZA</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="orderType" name="Order Type?" default="Flow_U58MqVEA">
+      <bpmn:incoming>Flow_bm3sKMZA</bpmn:incoming>
+      <bpmn:outgoing>Flow_K9wwadg1</bpmn:outgoing>
+      <bpmn:outgoing>Flow_U58MqVEA</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="provisionStandard" name="Provision Standard Order">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="provisioning-service"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=order" target="order"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_K9wwadg1</bpmn:incoming>
+      <bpmn:outgoing>Flow_MJRLe9Ud</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:subProcess id="provisionBundle" name="Provision Bundled Order">
+      <bpmn:incoming>Flow_U58MqVEA</bpmn:incoming>
+      <bpmn:outgoing>Flow_ppq2whx1</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics/>
+      <bpmn:startEvent id="provStart" name="Line Item">
+        <bpmn:outgoing>Flow_JiJIEANV</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="provisionLine" name="Provision Line Item">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="provisioning-service"/>
+          <zeebe:ioMapping>
+            <zeebe:input source="=lineItem" target="lineItem"/>
+            <zeebe:output source="=provisionStatus" target="provisionResult"/>
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_JiJIEANV</bpmn:incoming>
+        <bpmn:outgoing>Flow_opsPtJat</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="provEnd" name="Line Provisioned">
+        <bpmn:incoming>Flow_opsPtJat</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_JiJIEANV" sourceRef="provStart" targetRef="provisionLine"/>
+      <bpmn:sequenceFlow id="Flow_opsPtJat" sourceRef="provisionLine" targetRef="provEnd"/>
+    </bpmn:subProcess>
+    <bpmn:serviceTask id="generateInvoice" name="Generate Invoice">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="invoice-generator"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=order" target="order"/>
+          <zeebe:input source="=quote.total" target="amountDue"/>
+          <zeebe:output source="=invoice.id" target="invoiceId"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_mGa16ca8</bpmn:incoming>
+      <bpmn:outgoing>Flow_NNMRv3Pv</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="processPayment" zeebe:modelerTemplate="io.camunda.connectors.HttpJson.v2" zeebe:modelerTemplateVersion="12" name="Charge Payment Gateway">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1" retries="3"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="bearer" target="authentication.type"/>
+          <zeebe:input source="=secrets.PAYMENT_GATEWAY_TOKEN" target="authentication.token"/>
+          <zeebe:input source="POST" target="method"/>
+          <zeebe:input source="=paymentGatewayUrl + &quot;/charges&quot;" target="url"/>
+          <zeebe:input source="20" target="connectionTimeoutInSeconds"/>
+          <zeebe:input source="20" target="readTimeoutInSeconds"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="paymentResponse"/>
+          <zeebe:header key="resultExpression" value="=paymentResponse.body"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_NNMRv3Pv</bpmn:incoming>
+      <bpmn:outgoing>Flow_rAke0SwX</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:eventBasedGateway id="paymentOutcome" name="Payment Outcome?">
+      <bpmn:incoming>Flow_rAke0SwX</bpmn:incoming>
+      <bpmn:outgoing>Flow_CGvPR8ea</bpmn:outgoing>
+      <bpmn:outgoing>Flow_EpnDtwOl</bpmn:outgoing>
+    </bpmn:eventBasedGateway>
+    <bpmn:intermediateCatchEvent id="paymentConfirmed" name="Payment Confirmed">
+      <bpmn:incoming>Flow_CGvPR8ea</bpmn:incoming>
+      <bpmn:outgoing>Flow_WvP1ZYV3</bpmn:outgoing>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="endPaymentReceived" name="Payment Received">
+      <bpmn:incoming>Flow_WvP1ZYV3</bpmn:incoming>
+      <bpmn:incoming>Flow_tTnmOKZY</bpmn:incoming>
+      <bpmn:incoming>Flow_V7DE8MG5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:intermediateCatchEvent id="paymentWindowElapsed" name="Payment Window Elapsed">
+      <bpmn:incoming>Flow_EpnDtwOl</bpmn:incoming>
+      <bpmn:outgoing>Flow_z74FHoCS</bpmn:outgoing>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:subProcess id="dunning" name="Dunning &amp; Cash Collection">
+      <bpmn:incoming>Flow_z74FHoCS</bpmn:incoming>
+      <bpmn:outgoing>Flow_FRNklBg3</bpmn:outgoing>
+      <bpmn:startEvent id="dunStart" name="Payment Overdue">
+        <bpmn:outgoing>Flow_Y2WHbokq</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="sendReminder1" name="Send 1st Reminder">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="reminder-sender"/>
+          <zeebe:taskHeaders>
+            <zeebe:header key="template" value="dunning-1"/>
+          </zeebe:taskHeaders>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_Y2WHbokq</bpmn:incoming>
+        <bpmn:outgoing>Flow_bxCEkomG</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:receiveTask id="awaitPayment1" messageRef="Message_VgqDdPrJ" name="Await Payment (1)">
+        <bpmn:incoming>Flow_bxCEkomG</bpmn:incoming>
+      </bpmn:receiveTask>
+      <bpmn:boundaryEvent id="timerReminder1" name="7 Days" attachedToRef="awaitPayment1" cancelActivity="true">
+        <bpmn:outgoing>Flow_jRDLA0qv</bpmn:outgoing>
+      </bpmn:boundaryEvent>
+      <bpmn:endEvent id="dunEndPaid" name="Payment Collected">
+        <bpmn:incoming>Flow_jRDLA0qv</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_Y2WHbokq" sourceRef="dunStart" targetRef="sendReminder1"/>
+      <bpmn:sequenceFlow id="Flow_bxCEkomG" sourceRef="sendReminder1" targetRef="awaitPayment1"/>
+      <bpmn:sequenceFlow id="Flow_jRDLA0qv" sourceRef="timerReminder1" targetRef="dunEndPaid"/>
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="collectionCheck" name="Payment Collected?" default="Flow_baF9j4Dg">
+      <bpmn:incoming>Flow_FRNklBg3</bpmn:incoming>
+      <bpmn:outgoing>Flow_tTnmOKZY</bpmn:outgoing>
+      <bpmn:outgoing>Flow_baF9j4Dg</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="collectionsAgency" name="Escalate to Collections Agency">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="collections-agency"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=invoiceId" target="invoiceId"/>
+          <zeebe:output source="=collectionResult.recovered" target="recovered"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_baF9j4Dg</bpmn:incoming>
+      <bpmn:outgoing>Flow_ZTOMVwy0</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="collectionsResult" name="Debt Recovered?" default="Flow_fyHvSVmV">
+      <bpmn:incoming>Flow_ZTOMVwy0</bpmn:incoming>
+      <bpmn:outgoing>Flow_V7DE8MG5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_fyHvSVmV</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="endWrittenOff" name="Written Off — Collections Failed">
+      <bpmn:incoming>Flow_fyHvSVmV</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="orderType_join">
+      <bpmn:incoming>Flow_MJRLe9Ud</bpmn:incoming>
+      <bpmn:incoming>Flow_ppq2whx1</bpmn:incoming>
+      <bpmn:outgoing>Flow_mGa16ca8</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_XjhCYuOK" sourceRef="start" targetRef="generateQuote"/>
+    <bpmn:sequenceFlow id="Flow_bchUvOZ2" sourceRef="generateQuote" targetRef="discountApproval"/>
+    <bpmn:sequenceFlow id="Flow_QZRbwxhU" sourceRef="discountApproval" targetRef="generateContract" name="no-approval-needed">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=discountPercent &lt;= 10</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_7TjRkdGd" sourceRef="discountApproval" targetRef="managerApproval" name="manager-approval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=discountPercent &gt; 10 and discountPercent &lt;= 25</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_McQkxpe9" sourceRef="managerApproval" targetRef="approvalDecision"/>
+    <bpmn:sequenceFlow id="Flow_y9NbTDhR" sourceRef="discountApproval" targetRef="vpApproval" name="vp-approval"/>
+    <bpmn:sequenceFlow id="Flow_fpJ7UEWD" sourceRef="vpApproval" targetRef="approvalDecision"/>
+    <bpmn:sequenceFlow id="Flow_oExsK6c1" sourceRef="approvalDecision" targetRef="generateContract" name="discount-approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=discountApproved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_va69mGZx" sourceRef="approvalDecision" targetRef="endContractRejected" name="discount-rejected"/>
+    <bpmn:sequenceFlow id="Flow_2s0JeKjV" sourceRef="generateContract" targetRef="sendForSignature"/>
+    <bpmn:sequenceFlow id="Flow_GqAZEa9L" sourceRef="sendForSignature" targetRef="signatureCheck"/>
+    <bpmn:sequenceFlow id="Flow_TtJzWXLn" sourceRef="signatureCheck" targetRef="endContractRejected" name="signature-declined">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=signatureResponse.status = "declined"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_bm3sKMZA" sourceRef="signatureCheck" targetRef="orderType" name="signature-signed">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=signatureResponse.status = "signed"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_K9wwadg1" sourceRef="orderType" targetRef="provisionStandard" name="standard-order">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=order.type = "standard"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_MJRLe9Ud" sourceRef="provisionStandard" targetRef="orderType_join"/>
+    <bpmn:sequenceFlow id="Flow_U58MqVEA" sourceRef="orderType" targetRef="provisionBundle" name="bundled-order"/>
+    <bpmn:sequenceFlow id="Flow_ppq2whx1" sourceRef="provisionBundle" targetRef="orderType_join"/>
+    <bpmn:sequenceFlow id="Flow_NNMRv3Pv" sourceRef="generateInvoice" targetRef="processPayment"/>
+    <bpmn:sequenceFlow id="Flow_rAke0SwX" sourceRef="processPayment" targetRef="paymentOutcome"/>
+    <bpmn:sequenceFlow id="Flow_CGvPR8ea" sourceRef="paymentOutcome" targetRef="paymentConfirmed" name="paid-immediately"/>
+    <bpmn:sequenceFlow id="Flow_WvP1ZYV3" sourceRef="paymentConfirmed" targetRef="endPaymentReceived"/>
+    <bpmn:sequenceFlow id="Flow_EpnDtwOl" sourceRef="paymentOutcome" targetRef="paymentWindowElapsed" name="payment-overdue"/>
+    <bpmn:sequenceFlow id="Flow_z74FHoCS" sourceRef="paymentWindowElapsed" targetRef="dunning"/>
+    <bpmn:sequenceFlow id="Flow_FRNklBg3" sourceRef="dunning" targetRef="collectionCheck"/>
+    <bpmn:sequenceFlow id="Flow_tTnmOKZY" sourceRef="collectionCheck" targetRef="endPaymentReceived" name="collected-during-dunning">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=paymentReceived = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_baF9j4Dg" sourceRef="collectionCheck" targetRef="collectionsAgency" name="still-unpaid"/>
+    <bpmn:sequenceFlow id="Flow_ZTOMVwy0" sourceRef="collectionsAgency" targetRef="collectionsResult"/>
+    <bpmn:sequenceFlow id="Flow_V7DE8MG5" sourceRef="collectionsResult" targetRef="endPaymentReceived" name="debt-recovered">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=recovered = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_fyHvSVmV" sourceRef="collectionsResult" targetRef="endWrittenOff" name="debt-written-off"/>
+    <bpmn:sequenceFlow id="Flow_mGa16ca8" sourceRef="orderType_join" targetRef="generateInvoice"/>
+  </bpmn:process>
+</bpmn:definitions>

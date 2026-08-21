@@ -1,0 +1,57 @@
+name: Deploy Drop
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/drop/**"
+      - "packages/core/**"
+      - "packages/canvas/**"
+      - "packages/plugins/**"
+      - "packages/ui/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-drop
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build drop (client bundles + workspace deps)
+        run: pnpm turbo build --filter @bpmnkit/drop
+
+      # CLOUDFLARE_DROP_API_TOKEN is a dedicated token scoped to this workflow:
+      # Account → D1 → Edit, Account → Workers Scripts → Edit,
+      # Zone (bpmnkit.com) → Workers Routes → Edit.
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_DROP_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/drop
+          command: d1 migrations apply bpmnkit-drop --remote
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_DROP_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/drop
+          command: deploy

@@ -1,0 +1,145 @@
+---
+import "../../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd, softwareApplicationJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import { type ConnectorInputSpec, type ConnectorSummary, listConnectors } from "@bpmnkit/connectors"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+
+export async function getStaticPaths() {
+	return listConnectors().map((connector) => ({
+		params: { id: encodeURIComponent(connector.id) },
+		props: { connector },
+	}))
+}
+
+const { connector } = Astro.props as { connector: ConnectorSummary }
+
+function renderInput(input: ConnectorInputSpec): string {
+	if (input.isSecret) return `"${input.key}": "<your ${input.label.toLowerCase()}>"`
+	if (input.isFeel) return `"${input.key}": "= ${input.default ?? "..."}"`
+	if (input.choices?.length) return `"${input.key}": "${input.choices[0]?.value}"`
+	return `"${input.key}": ${input.default !== undefined ? JSON.stringify(input.default) : `"..."`}`
+}
+
+const sampleValues = [...connector.requiredInputs, ...connector.optionalInputs.slice(0, 2)]
+const codeSample = `import { applyConnectorTemplate } from "@bpmnkit/connectors"
+
+const result = applyConnectorTemplate("${connector.id}", {
+${sampleValues.map((i) => `  ${renderInput(i)},`).join("\n")}
+})`
+
+const pageUrl = `https://bpmnkit.com/connectors/${encodeURIComponent(connector.id)}`
+const jsonLd = [
+	breadcrumbJsonLd([
+		{ name: "Home", url: "https://bpmnkit.com" },
+		{ name: "Connectors", url: "https://bpmnkit.com/connectors" },
+		{ name: connector.name, url: pageUrl },
+	]),
+	softwareApplicationJsonLd({
+		name: `${connector.name} Camunda 8 Connector`,
+		description: connector.description ?? `Camunda 8 connector template for ${connector.name}.`,
+		url: pageUrl,
+		applicationCategory: "DeveloperApplication",
+	}),
+]
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title={`${connector.name} Camunda 8 Connector — BPMN Kit`}
+    description={`${connector.description ?? `Camunda 8 connector template for ${connector.name}.`} Apply it to a BPMN element with @bpmnkit/connectors in one call.`}
+    jsonLd={jsonLd}
+  />
+  <style is:global>
+    .connector-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .connector-main { flex: 1; max-width: 820px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .connector-breadcrumb { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px; }
+    .connector-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+    .connector-breadcrumb a:hover { color: var(--accent-bright); }
+    .connector-header h1 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+    .connector-header p { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 16px; }
+    .connector-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 32px; }
+    .connector-meta span { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--teal); }
+    .connector-section { margin-bottom: 32px; }
+    .connector-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+    .connector-inputs-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .connector-inputs-table th, .connector-inputs-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .connector-inputs-table th { color: var(--text-muted); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .connector-inputs-table code { font-family: var(--font-mono); color: var(--accent-bright); font-size: 0.8rem; }
+    .connector-code { background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--text); white-space: pre; }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <Nav />
+
+  <div class="connector-wrap">
+    <main class="connector-main">
+      <div class="connector-breadcrumb">
+        <a href="/">Home</a> / <a href="/connectors">Connectors</a> / {connector.name}
+      </div>
+
+      <div class="connector-header">
+        <h1>{connector.name}</h1>
+        <p>{connector.description ?? `Camunda 8 connector template for ${connector.name}.`}</p>
+      </div>
+
+      <div class="connector-meta">
+        <span>{connector.direction}</span>
+        {connector.taskType && <span>{connector.taskType}</span>}
+      </div>
+
+      {connector.requiredInputs.length > 0 && (
+        <div class="connector-section">
+          <h2>Required inputs</h2>
+          <table class="connector-inputs-table">
+            <thead><tr><th>Key</th><th>Label</th><th>Type</th></tr></thead>
+            <tbody>
+              {connector.requiredInputs.map((input) => (
+                <tr>
+                  <td><code>{input.key}</code></td>
+                  <td>{input.label}</td>
+                  <td>{input.isSecret ? "secret" : input.isFeel ? "FEEL expression" : "string"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {connector.optionalInputs.length > 0 && (
+        <div class="connector-section">
+          <h2>Optional inputs</h2>
+          <table class="connector-inputs-table">
+            <thead><tr><th>Key</th><th>Label</th><th>Type</th></tr></thead>
+            <tbody>
+              {connector.optionalInputs.map((input) => (
+                <tr>
+                  <td><code>{input.key}</code></td>
+                  <td>{input.label}</td>
+                  <td>{input.isSecret ? "secret" : input.isFeel ? "FEEL expression" : "string"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div class="connector-section">
+        <h2>Apply this connector with @bpmnkit/connectors</h2>
+        <div class="connector-code">{codeSample}</div>
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

@@ -6,13 +6,15 @@
 	"exports": {
 		"./tokens.css": "./src/tokens.css",
 		"./background.css": "./src/background.css",
+		"./seo.js": "./src/seo.ts",
+		"./Seo.astro": "./src/Seo.astro",
 		".": "./src/site.ts"
 	},
-	"files": ["LICENSE", "README.md", "src/*.css", "src/site.ts"],
+	"files": ["LICENSE", "README.md", "src/*.css", "src/site.ts", "src/seo.ts", "src/Seo.astro"],
 	"scripts": {
 		"check": "biome check ."
 	},
-	"keywords": ["bpmn", "astro", "design-tokens", "shared", "css", "typescript"],
+	"keywords": ["bpmn", "astro", "design-tokens", "shared", "seo", "css", "typescript"],
 	"dependencies": {
 		"@bpmnkit/ui": "workspace:*"
 	},

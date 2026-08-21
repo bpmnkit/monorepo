@@ -1,32 +1,56 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
+import { esc, tokenize } from "../lib/highlight.js"
 import { createNeonThemePlugin } from "./neon-plugin.js"
 
 // ── DMN section tabs ─────────────────────────────────────────────────────────
 
 function setupDmnTabs(): void {
-	const tabs = document.querySelectorAll<HTMLElement>(".dmn-tab")
+	const tabs = Array.from(document.querySelectorAll<HTMLElement>(".dmn-tab"))
 	const panels = document.querySelectorAll<HTMLElement>(".dmn-panel")
 
-	for (const tab of tabs) {
-		tab.addEventListener("click", () => {
-			const target = tab.dataset.tab
-			if (!target) return
-			for (const t of tabs) t.classList.remove("active")
-			for (const p of panels) p.classList.remove("active")
-			tab.classList.add("active")
-			const panel = document.querySelector<HTMLElement>(`.dmn-panel[data-panel="${target}"]`)
-			if (panel) panel.classList.add("active")
+	function activate(tab: HTMLElement): void {
+		const target = tab.dataset.tab
+		if (!target) return
+		for (const t of tabs) {
+			const isActive = t === tab
+			t.classList.toggle("active", isActive)
+			t.setAttribute("aria-selected", String(isActive))
+			t.tabIndex = isActive ? 0 : -1
+		}
+		for (const p of panels) p.classList.remove("active")
+		const panel = document.querySelector<HTMLElement>(`.dmn-panel[data-panel="${target}"]`)
+		if (panel) panel.classList.add("active")
 
-			// Render BPMN preview when that tab is first activated
-			if (target === "bpmn") renderDmnBpmnPreview()
+		// Render BPMN preview when that tab is first activated
+		if (target === "bpmn") renderDmnBpmnPreview()
+	}
+
+	for (const [i, tab] of tabs.entries()) {
+		tab.addEventListener("click", () => activate(tab))
+
+		// Roving-tabindex arrow-key navigation, per the WAI-ARIA tabs pattern.
+		tab.addEventListener("keydown", (e) => {
+			let nextIndex: number | null = null
+			if (e.key === "ArrowRight") nextIndex = (i + 1) % tabs.length
+			else if (e.key === "ArrowLeft") nextIndex = (i - 1 + tabs.length) % tabs.length
+			else if (e.key === "Home") nextIndex = 0
+			else if (e.key === "End") nextIndex = tabs.length - 1
+			if (nextIndex === null) return
+
+			e.preventDefault()
+			const next = tabs[nextIndex]
+			if (next) {
+				next.focus()
+				activate(next)
+			}
 		})
 	}
 }
 
 let _dmnBpmnCanvas: BpmnCanvas | null = null
 function renderDmnBpmnPreview(): void {
-	const container = document.getElementById("dmn-bpmnkit-preview")
+	const container = document.getElementById("dmn-bpmn-preview")
 	if (!container || _dmnBpmnCanvas) return
 
 	const xml = Bpmn.export(
@@ -157,111 +181,36 @@ const EXAMPLE_SNIPPETS: Array<{ label: string; code: string }> = [
   .withAutoLayout()
   .build()`,
 	},
+	{
+		label: "DMN decision table",
+		code: `return Dmn.createDecisionTable("Eligibility")
+  .name("Loan Eligibility")
+  .input({ label: "Credit Score", expression: "creditScore", typeRef: "integer" })
+  .input({ label: "Income", expression: "income", typeRef: "number" })
+  .output({ label: "Eligible", name: "eligible", typeRef: "boolean" })
+  .output({ label: "Max Amount", name: "maxAmount", typeRef: "number" })
+  .rule({ inputs: [">= 700", ">= 50000"], outputs: ["true", "500000"] })
+  .rule({ inputs: [">= 600", ">= 30000"], outputs: ["true", "200000"] })
+  .rule({ inputs: ["-", "-"], outputs: ["false", "0"] })
+  .build()`,
+	},
+	{
+		label: "Camunda Form",
+		code: `return Form.create("ApplicationForm")
+  .textfield("Applicant Name", "applicantName")
+  .textfield("Requested Amount", "requestAmount")
+  .select("Loan Type", "loanType", {
+    values: [
+      { label: "Personal", value: "personal" },
+      { label: "Business", value: "business" },
+    ],
+  })
+  .build()`,
+	},
 ]
 
-// ── Syntax highlighting ──────────────────────────────────────────────────────
-
-function esc(s: string): string {
-	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-}
-
-function isAlpha(c: string): boolean {
-	return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_" || c === "$"
-}
-
-function isAlphaNum(c: string): boolean {
-	return isAlpha(c) || (c >= "0" && c <= "9")
-}
-
-const KEYWORDS = new Set([
-	"import",
-	"export",
-	"const",
-	"let",
-	"var",
-	"return",
-	"new",
-	"from",
-	"function",
-	"if",
-	"else",
-	"for",
-	"of",
-	"in",
-	"true",
-	"false",
-	"null",
-	"undefined",
-	"class",
-	"extends",
-	"async",
-	"await",
-	"type",
-	"interface",
-])
-
-function tokenize(raw: string): string {
-	let out = ""
-	let i = 0
-	const len = raw.length
-
-	while (i < len) {
-		const c = raw.charAt(i)
-
-		// Line comment
-		if (c === "/" && raw.charAt(i + 1) === "/") {
-			let j = i
-			while (j < len && raw.charAt(j) !== "\n") j++
-			out += `<span class="comment">${esc(raw.slice(i, j))}</span>`
-			i = j
-			continue
-		}
-
-		// String literals: " ' `
-		if (c === '"' || c === "'" || c === "`") {
-			const quote = c
-			let j = i + 1
-			while (j < len) {
-				const qc = raw.charAt(j)
-				if (qc === "\\") {
-					j += 2
-					continue
-				}
-				if (qc === quote) {
-					j++
-					break
-				}
-				j++
-			}
-			out += `<span class="str">${esc(raw.slice(i, j))}</span>`
-			i = j
-			continue
-		}
-
-		// Identifier, keyword, or method call
-		if (isAlpha(c)) {
-			let j = i + 1
-			while (j < len && isAlphaNum(raw.charAt(j))) j++
-			const word = raw.slice(i, j)
-			// Peek past whitespace — method call if followed by "("
-			let k = j
-			while (k < len && raw.charAt(k) === " ") k++
-			if (!KEYWORDS.has(word) && raw.charAt(k) === "(") {
-				out += `<span class="fn">${esc(word)}</span>`
-			} else if (KEYWORDS.has(word)) {
-				out += `<span class="kw">${esc(word)}</span>`
-			} else {
-				out += esc(word)
-			}
-			i = j
-			continue
-		}
-
-		out += esc(c)
-		i++
-	}
-
-	return out
+function renderTextPreview(container: HTMLElement, content: string): void {
+	container.innerHTML = `<pre class="pg-text-preview">${esc(content)}</pre>`
 }
 
 // ── Playground setup ────────────────────────────────────────────────────────
@@ -307,16 +256,8 @@ function setupPlayground(): void {
 		}
 
 		if (!defs || typeof defs !== "object") {
-			errEl.textContent = "Code must return a BpmnDefinitions object (call .build())"
-			errEl.style.display = ""
-			return
-		}
-
-		let xml: string
-		try {
-			xml = Bpmn.export(defs)
-		} catch (err) {
-			errEl.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`
+			errEl.textContent =
+				"Code must return a BpmnDefinitions, DmnDefinitions, or FormDefinition object (call .build())"
 			errEl.style.display = ""
 			return
 		}
@@ -324,19 +265,57 @@ function setupPlayground(): void {
 		canvas?.destroy()
 		canvas = null
 		diagramEl.innerHTML = ""
-		try {
-			canvas = new BpmnCanvas({
-				container: diagramEl,
-				xml,
-				theme: "dark",
-				fit: "contain",
-				grid: false,
-				plugins: [createNeonThemePlugin()],
-			})
-		} catch (err) {
-			errEl.textContent = `Render failed: ${err instanceof Error ? err.message : String(err)}`
-			errEl.style.display = ""
+
+		// BPMN diagrams render on the live canvas. DMN tables and Forms have no
+		// diagram notation — show their generated XML/JSON instead.
+		if (Array.isArray(defs.processes)) {
+			let xml: string
+			try {
+				xml = Bpmn.export(defs)
+			} catch (err) {
+				errEl.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`
+				errEl.style.display = ""
+				return
+			}
+			try {
+				canvas = new BpmnCanvas({
+					container: diagramEl,
+					xml,
+					theme: "dark",
+					fit: "contain",
+					grid: false,
+					plugins: [createNeonThemePlugin()],
+				})
+			} catch (err) {
+				errEl.textContent = `Render failed: ${err instanceof Error ? err.message : String(err)}`
+				errEl.style.display = ""
+			}
+			return
 		}
+
+		if (Array.isArray(defs.decisions)) {
+			try {
+				renderTextPreview(diagramEl, Dmn.export(defs))
+			} catch (err) {
+				errEl.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`
+				errEl.style.display = ""
+			}
+			return
+		}
+
+		if (Array.isArray(defs.components)) {
+			try {
+				renderTextPreview(diagramEl, Form.export(defs))
+			} catch (err) {
+				errEl.textContent = `Export failed: ${err instanceof Error ? err.message : String(err)}`
+				errEl.style.display = ""
+			}
+			return
+		}
+
+		errEl.textContent =
+			"Code must return a BpmnDefinitions, DmnDefinitions, or FormDefinition object (call .build())"
+		errEl.style.display = ""
 	}
 
 	// Pre-fill and run starter code

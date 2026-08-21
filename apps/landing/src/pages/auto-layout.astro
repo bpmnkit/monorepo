@@ -1,0 +1,213 @@
+---
+import "../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import Footer from "../components/Footer.astro"
+import Nav from "../components/Nav.astro"
+import StatDelta from "../components/StatDelta.astro"
+import { type LayoutStats, SAMPLES, layoutWith, measure } from "../data/layout-samples.js"
+
+const rows = SAMPLES.map((sample) => ({
+	sample,
+	before: measure(layoutWith(sample.xml, "grid")),
+	after: measure(layoutWith(sample.xml, "semantic")),
+}))
+
+const METRICS = [
+	{ key: "crossings", label: "Edge crossings" },
+	{ key: "overlaps", label: "Routes over shapes" },
+	{ key: "backwards", label: "Backward flows" },
+	{ key: "bends", label: "Bends" },
+	{ key: "length", label: "Edge length" },
+] as const satisfies ReadonlyArray<{ key: keyof LayoutStats; label: string }>
+
+function total(engine: "before" | "after", key: keyof LayoutStats): number {
+	return rows.reduce((sum, row) => sum + row[engine][key], 0)
+}
+
+const totals = METRICS.map((metric) => ({
+	label: metric.label,
+	before: total("before", metric.key),
+	after: total("after", metric.key),
+}))
+
+const jsonLd = breadcrumbJsonLd([
+	{ name: "Home", url: "https://bpmnkit.com" },
+	{ name: "Auto-Layout", url: "https://bpmnkit.com/auto-layout" },
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title="BPMN Auto-Layout — Old Engine vs New Engine — BPMN Kit"
+    description="Five real BPMN process models laid out twice: once by BPMN Kit's original grid layouter, once by the new semantic engine. Toggle between them and compare crossings, routing and edge length."
+    jsonLd={jsonLd}
+  />
+  <style is:global>
+    .al-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .al-main { flex: 1; max-width: var(--max-width); margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .al-hero { text-align: center; margin-bottom: 44px; }
+    .al-hero h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px; }
+    .al-hero p { color: var(--text-muted); font-size: 1.05rem; line-height: 1.7; max-width: 720px; margin: 0 auto 12px; }
+    .al-hero a { color: var(--accent-bright); }
+
+    .stat-delta { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); padding: 16px 18px; }
+    .stat-delta-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 10px; }
+    .stat-delta-value { display: flex; align-items: baseline; gap: 8px; font-family: var(--font-mono); }
+    .stat-delta-before { color: var(--text-muted); font-size: 1.1rem; }
+    .stat-delta-arrow { color: var(--text-muted); font-size: 0.85rem; }
+    .stat-delta-after { font-size: 1.5rem; font-weight: 700; }
+    .stat-delta-better { color: var(--teal); }
+    .stat-delta-worse { color: var(--pink); }
+    .stat-delta-same { color: var(--text-muted); }
+
+    .al-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 64px; }
+
+    .al-sample { margin-bottom: 72px; }
+    .al-sample-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .al-sample-head h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; }
+    .al-sample-head p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.65; max-width: 640px; }
+
+    .al-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 3px; background: var(--bg-code); flex-shrink: 0; }
+    .al-toggle button { appearance: none; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: 0.82rem; font-weight: 600; padding: 7px 16px; border-radius: 999px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .al-toggle button:hover { color: var(--text); }
+    .al-toggle button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+    .al-canvas-wrap { height: 440px; position: relative; background: var(--bg); }
+    .al-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
+
+    .al-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 16px; }
+    .al-stats .stat-delta { border-radius: 10px; padding: 11px 14px; }
+    .al-stats .stat-delta-label { margin-bottom: 6px; font-size: 0.68rem; }
+    .al-stats .stat-delta-before { font-size: 0.85rem; }
+    .al-stats .stat-delta-after { font-size: 1rem; }
+
+    .al-method { border-top: 1px solid var(--border); padding-top: 40px; }
+    .al-method h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 12px; }
+    .al-method p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; max-width: 760px; margin-bottom: 16px; }
+    .al-method a { color: var(--accent-bright); }
+    .al-method dl { max-width: 760px; margin-bottom: 24px; }
+    .al-method dt { font-weight: 600; font-size: 0.9rem; margin-top: 14px; }
+    .al-method dd { color: var(--text-muted); font-size: 0.9rem; line-height: 1.65; }
+    code.inline { font-family: var(--font-mono); color: var(--accent-bright); background: var(--bg-code); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+
+    @media (max-width: 720px) {
+      .al-canvas-wrap { height: 300px; }
+      .al-sample-head { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <Nav />
+
+  <div class="al-wrap">
+    <main class="al-main">
+      <div class="al-hero">
+        <h1>Auto-Layout: Old Engine vs New Engine</h1>
+        <p>
+          BPMN Kit's original layouter walked elements onto a cell grid. The new engine
+          ranks the flow, gives each branch a band of its own, and routes edges around
+          whatever is in the way. Same five process models, laid out twice — toggle
+          between the two and see what changed.
+        </p>
+        <p>
+          Every diagram below ships as model-only BPMN with no diagram interchange, so
+          both engines start from nothing and both layouts are computed in your browser
+          when the diagram scrolls into view.
+        </p>
+      </div>
+
+      <div class="al-totals">
+        {totals.map((entry) => (
+          <StatDelta label={entry.label} before={entry.before} after={entry.after} />
+        ))}
+      </div>
+
+      {rows.map(({ sample, before, after }) => (
+        <section class="al-sample" data-sample={sample.id}>
+          <div class="al-sample-head">
+            <div>
+              <h2>{sample.title}</h2>
+              <p>{sample.blurb}</p>
+            </div>
+            <div class="al-toggle" role="group" aria-label={`Layout engine for ${sample.title}`}>
+              <button type="button" data-engine="grid" aria-pressed="false">Old engine</button>
+              <button type="button" data-engine="semantic" aria-pressed="true">New engine</button>
+            </div>
+          </div>
+
+          <div class="diagram-card">
+            <div class="diagram-topbar">
+              <span class="tb-dot tb-red"></span>
+              <span class="tb-dot tb-yellow"></span>
+              <span class="tb-dot tb-green"></span>
+              <span class="tb-title">{sample.id}.bpmn</span>
+            </div>
+            <div class="al-canvas-wrap" data-canvas={sample.id}></div>
+          </div>
+          <p class="al-hint">Scroll to zoom, drag to pan.</p>
+
+          <div class="al-stats">
+            {METRICS.map((metric) => (
+              <StatDelta label={metric.label} before={before[metric.key]} after={after[metric.key]} />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <div class="al-method">
+        <h2>How these numbers are measured</h2>
+        <p>
+          Each model is parsed, laid out by both engines, and measured on the resulting
+          diagram interchange — plane by plane, so an expanded sub-process is counted on
+          its own plane rather than mixed into the parent.
+        </p>
+        <dl>
+          <dt>Edge crossings</dt>
+          <dd>Pairs of segments from different edges that intersect. Shared endpoints do not count.</dd>
+          <dt>Routes over shapes</dt>
+          <dd>Edge segments that run across a shape they neither start nor end at — a line drawn through a task.</dd>
+          <dt>Backward flows</dt>
+          <dd>
+            Flows drawn right-to-left whose target cannot reach their source again. Genuine
+            loops are excluded: a retry has to travel backwards, so counting it would be unfair
+            to both engines.
+          </dd>
+          <dt>Bends</dt>
+          <dd>Waypoints that are neither the start nor the end of an edge.</dd>
+          <dt>Edge length</dt>
+          <dd>Total orthogonal edge length in diagram units.</dd>
+        </dl>
+        <p>
+          Not every number goes down, and the ones that go up are the point of the trade:
+          separating branches onto their own bands moves elements further apart, so a
+          diagram with no crossings left can still carry more edge length than the tangled
+          version it replaced.
+        </p>
+        <p>
+          Run it yourself with <code class="inline">applyAutoLayout(defs)</code> from
+          <code class="inline">@bpmnkit/core</code>, or pass
+          <code class="inline">"grid"</code> as the second argument for the original engine.
+          For how the layout pass works, see
+          <a href="/blog/auto-layout-bpmn-diagrams-sugiyama-algorithm">auto-layout BPMN diagrams with the Sugiyama algorithm</a>
+          and the <a href="https://docs.bpmnkit.com/packages/core/">@bpmnkit/core reference</a>.
+        </p>
+      </div>
+    </main>
+    <Footer />
+  </div>
+
+  <script>
+    import "../scripts/auto-layout.ts";
+  </script>
+</body>
+</html>

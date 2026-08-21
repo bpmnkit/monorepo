@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_LoanApproval" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.0.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <bpmn:process id="loan-approval-process" name="Loan Approval Process" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_LoanRequest" name="Loan Application Received">
+      <bpmn:outgoing>Flow_ToCreditCheck</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_CreditScoreCheck" name="Credit Score Check">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1"/>
+        <zeebe:ioMapping>
+          <zeebe:input source="=&quot;GET&quot;" target="method"/>
+          <zeebe:input source="=&quot;https://api.creditbureau.example.com/v1/score/&quot; + applicantId" target="url"/>
+          <zeebe:input source="noAuth" target="authentication.type"/>
+          <zeebe:output source="=response.body.creditScore" target="creditScore"/>
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="resultVariable" value="creditResponse"/>
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToCreditCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToPreScreen</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_PreScreen" name="Pre-Screening">
+      <bpmn:incoming>Flow_ToPreScreen</bpmn:incoming>
+      <bpmn:outgoing>Flow_RejectLowScore</bpmn:outgoing>
+      <bpmn:outgoing>Flow_PassPreScreen</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:businessRuleTask id="Task_RiskScoring" name="Risk Scoring">
+      <bpmn:extensionElements>
+        <zeebe:calledDecision decisionId="risk-scoring" resultVariable="riskResult"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_PassPreScreen</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToUnderwriter</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:userTask id="Task_UnderwriterReview" name="Manual Underwriter Review">
+      <bpmn:extensionElements>
+        <zeebe:userTask/>
+        <zeebe:assignmentDefinition candidateGroups="underwriters"/>
+        <zeebe:formDefinition formId="underwriter-review-form"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToUnderwriter</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToDecisionGateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_FinalDecision" name="Underwriter Decision">
+      <bpmn:incoming>Flow_ToDecisionGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_Approved" name="Loan Approved">
+      <bpmn:incoming>Flow_Approved</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Rejected" name="Loan Rejected">
+      <bpmn:incoming>Flow_RejectLowScore</bpmn:incoming>
+      <bpmn:incoming>Flow_Rejected</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_ToCreditCheck" sourceRef="StartEvent_LoanRequest" targetRef="Task_CreditScoreCheck"/>
+    <bpmn:sequenceFlow id="Flow_ToPreScreen" sourceRef="Task_CreditScoreCheck" targetRef="Gateway_PreScreen"/>
+    <bpmn:sequenceFlow id="Flow_RejectLowScore" sourceRef="Gateway_PreScreen" targetRef="EndEvent_Rejected" name="Score &lt; 580">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=creditScore &lt; 580</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_PassPreScreen" sourceRef="Gateway_PreScreen" targetRef="Task_RiskScoring" name="Score >= 580">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=creditScore &gt;= 580</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ToUnderwriter" sourceRef="Task_RiskScoring" targetRef="Task_UnderwriterReview"/>
+    <bpmn:sequenceFlow id="Flow_ToDecisionGateway" sourceRef="Task_UnderwriterReview" targetRef="Gateway_FinalDecision"/>
+    <bpmn:sequenceFlow id="Flow_Approved" sourceRef="Gateway_FinalDecision" targetRef="EndEvent_Approved" name="Approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Rejected" sourceRef="Gateway_FinalDecision" targetRef="EndEvent_Rejected" name="Rejected">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=approved = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+  </bpmn:process>
+</bpmn:definitions>

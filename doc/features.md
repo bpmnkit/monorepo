@@ -1,5 +1,59 @@
 # Features
 
+## Documentation as an installable package for AI agents (2026-08-21)
+
+`@bpmnkit/docspack` ships the BPMN Kit documentation as an npm package in the [docspack format](https://docspack.dev/spec): `.llms/chunks/*.md`, a schema-valid `.llms/manifest.json` and an `llms.txt` table of contents, built from `apps/docs/src/content/docs`. An agent installs it and runs `npx bpmnkit-docs ask "<question>"`; the answer comes from a local BM25 index with Porter stemming, capped at three chunks and 3,000 tokens, and names the pack, version and chunk it came from. Every command reads the filesystem only — no server, no network call. The vendor-scope name means the upstream `docspack` CLI indexes the pack too.
+
+## Auto-layout comparison page (2026-08-21)
+
+`/auto-layout` on the landing site lays out five real process models with both engines and lets you toggle between them. The models ship as model-only BPMN with no diagram interchange, so both layouts are computed in the browser from the same source; per-diagram counts for crossings, routes over shapes, backward flows, bends and edge length are measured at build time. `applyAutoLayout(defs, engine)` accepts `"semantic"` (default) or `"grid"`, matching `layoutProcess`.
+
+## Semantic BPMN layout engine (2026-08-20)
+
+`@bpmnkit/core`'s auto-layout is now a **semantic** engine (`packages/core/src/layout/semantic/`) rather than a cell-grid walk. It follows the layout contract that [`bpmn-auto-layout` 2.x](bpmn-auto-layout-evaluation.md) documents, reimplemented in our own code against our own AST — no new runtime dependency, and still fully synchronous.
+
+- **Ranks and semantic bands** — a primary path (spine) is picked one edge at a time, preferring edges that can still reach an end event and the gateway's default flow, so a dead-end alternative never becomes the main narrative. Branches take bands around it: error handlers below, escalation handlers above, plain alternatives alternating; branches whose rank spans do not overlap share a band.
+- **Lane membership is a placement constraint** — nodes are moved into the lane that claims them and lanes are sized to their content, nested lane sets included (a parent lane spans the lanes inside it). Lane bands come from the engine, so lanes tile their pool exactly. Previously lanes were ignored by placement and tiled proportionally afterwards, which put **43 of 257** lane-assigned elements in the wrong lane across the reference corpus; it is now **0 of 257**.
+- **Obstacle-aware orthogonal routing** — each edge proposes candidate routes and takes the first that clears every unrelated shape: a straight spine segment, a turn out of the source's top or bottom, a turn in the empty gutter in front of the target's column, then a corridor detour. Detours stack in separate corridor lanes, widest span outermost, and loops run underneath the flow they repeat.
+- **Collaboration pipeline** (`packages/core/src/layout/collaboration/`) — pools are ordered by their message-flow relationships rather than by declaration (exhaustive up to eight pools, remove-and-reinsert above), and each process slides sideways as a unit so the elements it exchanges messages with line up vertically. Message endpoints inside a collapsed sub-process dock on the nearest ancestor that is actually on the plane.
+- **`layoutProcess(process, engine)`** selects `"semantic"` (default) or `"grid"`; the grid walk still backs `layoutFlowNodes()` for ascii, proxy and compact rendering.
+- **Complete diagram interchange** — every participant gets a pool, black boxes included (a participant with no process still gets a band and its message flows are routed); collapsed sub-processes keep their own `BPMNDiagram` for drilldown instead of being flattened into the root plane; root processes beyond the first get a plane of their own. Across the reference corpus auto-layout now emits DI for **every** element, connection and plane.
+
+## BPMN Kit Drop v2 — engaging landing + AI process review (2026-07-10)
+
+Second iteration of [BPMN Kit Drop](drop-v2-spec.md), shipped in `apps/drop`.
+
+- **cloudflare.com/drop-style landing** — the whole page is a drop target (full-viewport overlay on drag), `Ctrl/Cmd+V` pastes BPMN/DMN/Form content to create a drop, and a **live hero canvas** renders a real diagram with a draw-in animation. A built-in **demo drop** (`/drop/demo-loan-approval`, a BPMN + linked DMN + Form) is served from memory — one click shows the full share experience, and it works on a fresh deploy with no seeding.
+- **Story sections** — "what people drop" cards each render a real mini BPMN (built at deploy time via `exportSvg`), a developer `curl` walkthrough, live D1-backed counters (shown once ≥ 100 drops), and an FAQ.
+- **AI process review (closed beta)** — a one-click panel that reviews a BPMN process. Deterministic `@bpmnkit/core` analysis (`optimize`: pattern advisor, variable flow, FEEL, naming) is narrated by Workers AI (`@cf/openai/gpt-oss-120b`, JSON-schema output) into a prioritized summary + suggestions; each suggestion highlights its element on the canvas. Reviews are cached in D1 by content hash, guarded by a daily neuron budget, and degrade to deterministic-only if the AI is unavailable.
+- **Passcode gate** — the AI review is invite-only: off unless the operator sets an `AI_PASSCODE` secret (feature hidden entirely when unset), verified constant-time via an `X-Drop-AI-Code` header, with per-IP brute-force limiting and client-side persistence. Rotating the secret is an instant kill switch.
+
+## BPMN Kit Drop — one-drop diagram sharing (2026-07-09)
+
+New Cloudflare Worker app (`apps/drop`) served at `bpmnkit.com/drop`: drop BPMN, DMN, and Camunda Form files and get a short shareable link (`/drop/:shareId`) that renders them read-only in the browser. Inspired by [Cloudflare Drop](https://www.cloudflare.com/drop/). Design and rationale: [`doc/drop-spec.md`](drop-spec.md).
+
+- **Multi-file drops** (up to 20 files / 5 MB): tabbed viewer with cross-file navigation — clicking a user task or business-rule task jumps to the referenced form/decision file when it's in the drop.
+- **Renders with bpmnkit only** — BPMN via `@bpmnkit/canvas` (+ zoom/minimap plugins), DMN via the `dmn-viewer` plugin, Forms via `form-viewer`; no bpmn-js/dmn-js/form-js.
+- **JSON-native storage** — every file is validated and converted with `@bpmnkit/core` on both client and server, then stored in Cloudflare D1 as the full typed model alongside the byte-faithful original.
+- **Live presence** — a Durable Object per share (WebSocket Hibernation API) shows "N viewing" with no external SaaS.
+- **90-day sliding retention** — drops expire 90 days after their last view; a daily cron deletes expired rows.
+- **Moderation & safety** — passive Terms/Privacy acknowledgment on upload, a public "Report abuse" flow, and token-gated admin endpoints + a `/drop/admin` page to delete drops (optionally banning their content hashes). Strict CSP, `noindex` share pages, XSS/XXE regression tests.
+
+## SEO & discoverability foundation (2026-07-07)
+
+Technical SEO across `bpmnkit.com`, `docs.bpmnkit.com`, and `learn.bpmnkit.com`, plus new evergreen and blog content aimed at organic search. Full plan: [`doc/seo-plan.md`](seo-plan.md).
+
+- **Shared `<Seo>` component + JSON-LD helpers** (`@bpmnkit/astro-shared`) — one source of truth for title/description/canonical/OG/Twitter tags and schema.org structured data (`Organization`, `SoftwareApplication`, `Article`, `BreadcrumbList`, `FAQPage`) across all three Astro apps.
+- **Sitemaps + `robots.txt`** on `landing`, `docs`, and `learn` (none existed before).
+- **Domain/brand unification** — `docs` was titled "BPMN SDK" and pointed at `bpmn-sdk-docs.pages.dev`; now "BPMN Kit" / `docs.bpmnkit.com`, matching the product everywhere else. `learn` had no `site` URL configured at all.
+- **`/connectors`** (`bpmnkit.com`) — 116 pages, one per Camunda 8 connector template, generated from `@bpmnkit/connectors`' real catalog data (required/optional inputs, task type, an `applyConnectorTemplate()` code sample).
+- **`/compare`** (`bpmnkit.com`) — `bpmn-js` and `camunda-modeler` comparison pages with FAQ structured data.
+- **`/glossary`** (`learn.bpmnkit.com`) — 12 BPMN element definitions (events, gateways, tasks, sub-processes, boundary events, message events, timer events, call activities), each with a generated diagram, a runnable `@bpmnkit/core` example, and a link to the matching tutorial where one exists.
+- **`/blog`** (`bpmnkit.com`) — Astro content collection + RSS feed, all 10 posts from the editorial calendar published: generating, laying out, simulating, and deploying BPMN diagrams; migrating from bpmn-js; evaluating FEEL; AI-generated BPMN; embedding a viewer in React; boundary events; generating a connector from an OpenAPI spec.
+- **`/feel-functions`** (`bpmnkit.com`) — reference for all 87 `@bpmnkit/feel` built-in functions, verified 1:1 against the package's real `builtinNames()` export.
+- **`/use-cases`** (`bpmnkit.com`) — 4 pages (AI workflow generation, embedding the editor, Camunda 8 CI automation, process simulation), each with a runnable code sample and FAQ structured data.
+- **`doc/seo-phase6-checklist.md`** — a step-by-step checklist for Search Console, Bing Webmaster, analytics, and backlink/outreach setup — the one part of the SEO plan that requires live domain access and can't be done from the repo.
+
 ## AIKit v2 — Deterministic Generation Pipeline (2026-07-07)
 
 Replaces the LLM-in-the-loop `bpmn_create`/`bpmn_update` MCP tools with a deterministic, CLI-first pipeline: every BPMN process is authored as a `ProcessPlan` JSON file and compiled by `casen synth` — the LLM never writes BPMN XML, element IDs, or connector property keys by hand.

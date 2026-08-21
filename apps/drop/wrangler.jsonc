@@ -1,0 +1,51 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "bpmnkit-drop",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-07-01",
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"vars": {
+		// Bumped whenever the Terms of Use / Privacy Policy change; recorded on each drop.
+		"TOS_VERSION": "2026-07-09",
+		// AI process review. AI_PASSCODE is a secret (wrangler secret put) — unset = feature off.
+		"AI_MODEL": "@cf/openai/gpt-oss-120b",
+		"AI_DAILY_BUDGET": "8000"
+	},
+	"ai": {
+		"binding": "AI"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "bpmnkit-drop",
+			// Replace with the real database id after `wrangler d1 create bpmnkit-drop`.
+			"database_id": "4f6807dc-95a5-442f-bae0-876977eb4072",
+			"migrations_dir": "migrations"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "PRESENCE",
+				"class_name": "PresenceRoom"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["PresenceRoom"]
+		}
+	],
+	"triggers": {
+		// Daily at 03:17 UTC — delete drops past their sliding-TTL expiry.
+		"crons": ["17 3 * * *"]
+	},
+	"routes": [{ "pattern": "bpmnkit.com/drop*", "zone_name": "bpmnkit.com" }]
+}

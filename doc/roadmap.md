@@ -213,12 +213,50 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## SEO & Discoverability
+
+> Full plan: [`doc/seo-plan.md`](seo-plan.md)
+
+- [x] **Phase 1 — Technical foundation**: shared `<Seo>` component + JSON-LD helpers (`packages/astro-shared`), `@astrojs/sitemap` wired into `landing`/`docs`/`learn`, `robots.txt` on all three, full canonical/OG/Twitter tags (fixed a `build.format: "file"` canonical bug — `Astro.url.pathname` resolved to literal `.html`/`.html` suffixes)
+- [x] **Phase 2 — Domain & brand unification**: docs renamed "BPMN SDK" → "BPMN Kit" and its `site` URL fixed from `bpmn-sdk-docs.pages.dev` to `docs.bpmnkit.com` (was also serving fake `@bpmn-sdk/*` package names on the docs homepage — corrected to real `@bpmnkit/*`); `learn` given a `site` URL for the first time; cross-site nav/footer linking added across all three apps
+- [x] **Phase 5 — Structured data**: `organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd` helpers, applied site-wide plus per-page on connectors, compare, blog, and glossary pages
+- [x] **Phase 4 — Evergreen pages**: `/connectors` catalog (116 pages generated from `@bpmnkit/connectors`' real template data), `/compare/bpmn-js` + `/compare/camunda-modeler`, `/feel-functions` (all 87 real `@bpmnkit/feel` builtins, verified 1:1 against `builtinNames()`), `/use-cases` (4 pages: AI workflow generation, embedding the editor, Camunda 8 automation, process simulation), and a 12-entry `/glossary` on `learn.bpmnkit.com` (events, gateways, tasks, sub-processes, boundary events, message events, timer events, call activities — each with a generated diagram + runnable `@bpmnkit/core` example, cross-linked to the matching tutorial where one exists)
+- [x] **Phase 3 — Blog**: `bpmnkit.com/blog` (Astro content collection + RSS), all 10 posts from the `doc/seo-plan.md` editorial calendar written and published
+- [ ] **Phase 6 — Distribution & measurement**: can't be done from the repo (needs live domain/DNS access and third-party accounts) — full step-by-step checklist in [`doc/seo-phase6-checklist.md`](seo-phase6-checklist.md): Search Console + Bing Webmaster setup, analytics, backlink/outreach targets, and an ongoing measurement cadence
+
+---
+
 ## CLI Enhancements
 
 - [x] `casen test <file.bpmn>` — run process spec scenarios (Phase 3)
 - [x] `casen lint <file.bpmn>` — run optimizer + pattern advisor + variable flow analysis,
       exit code 1 on errors (CI integration)
 - [x] `casen story <file.bpmn>` — render story mode to static HTML for sharing without the editor
+
+---
+
+## BPMN Kit Drop (`bpmnkit.com/drop`)
+
+> Full spec and design rationale: [`doc/drop-spec.md`](drop-spec.md) — implemented in `apps/drop` (2026-07-09).
+
+- [x] Scaffold `apps/drop` — Cloudflare Worker, D1 migrations, static drop page with `@bpmnkit/ui` tokens
+- [x] Multi-file upload pipeline — sniff/parse/validate via `@bpmnkit/core`, store original + JSON model in D1, ban-list check
+- [x] Share page `/drop/:shareId` — read-only BPMN viewer (`@bpmnkit/canvas` + zoom/minimap plugins), file tabs, raw/JSON downloads
+- [x] DMN + Form viewers (`dmn-viewer`, `form-viewer` plugins) + cross-file `formId`/`decisionId` navigation
+- [x] Presence — Durable Object per shareId, hibernating WebSockets, "N viewing" badge
+- [x] Moderation — abuse-report flow, admin endpoints + `/drop/admin` page, delete + content-hash ban
+- [x] Retention cron + hardening (CSP, XSS/XXE regression tests) + Terms/Privacy pages
+- [x] Deploy workflow (`deploy-drop.yml`); enabling the `bpmnkit.com/drop*` route requires live Cloudflare access (D1 id + secrets)
+
+### Drop v2 — AI review & engaging landing
+
+> Full analysis and spec: [`doc/drop-v2-spec.md`](drop-v2-spec.md) — decisions resolved (AI review is passcode-gated), ready to implement; hand-off notes in the spec's Part 5.
+
+- [x] Landing v2 structure: full-page drop target, paste-to-drop, live hero canvas with draw-in animation, in-memory demo drop + button
+- [x] Landing v2 story: use-case cards with build-time `exportSvg` mini-diagrams, developer curl block, `/drop/api/stats` counters, FAQ
+- [x] AI review backbone: Worker endpoint running `optimize` (pattern advisor + variable flow + FEEL + naming + flow), findings panel (no LLM)
+- [x] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + attempt limiting, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, localStorage persistence)
+- [x] Polish: suggestion→canvas element highlighting (hover + click), model attribution, docs
 
 ---
 

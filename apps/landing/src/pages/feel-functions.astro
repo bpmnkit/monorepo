@@ -1,0 +1,88 @@
+---
+import "../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import Footer from "../components/Footer.astro"
+import Nav from "../components/Nav.astro"
+import { FEEL_CATEGORIES, FEEL_FUNCTION_COUNT } from "../data/feel-functions"
+
+const jsonLd = breadcrumbJsonLd([
+	{ name: "Home", url: "https://bpmnkit.com" },
+	{ name: "FEEL Functions", url: "https://bpmnkit.com/feel-functions" },
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title={`FEEL Function Reference — ${FEEL_FUNCTION_COUNT} Built-in Functions — BPMN Kit`}
+    description={`Every FEEL built-in function implemented by @bpmnkit/feel — ${FEEL_FUNCTION_COUNT} functions across string, list, numeric, date/time, interval, and context operations, with examples.`}
+    jsonLd={jsonLd}
+  />
+  <style is:global>
+    .feel-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .feel-main { flex: 1; max-width: 880px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .feel-main h1 { font-size: clamp(1.7rem, 3.8vw, 2.3rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .feel-lede { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 20px; }
+    .feel-toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+    .feel-toc a { font-size: 0.78rem; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); text-decoration: none; }
+    .feel-toc a:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
+    .feel-category { margin-bottom: 40px; scroll-margin-top: 80px; }
+    .feel-category h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .feel-fn { padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .feel-fn:last-child { border-bottom: none; }
+    .feel-fn-name { font-family: var(--font-mono); font-size: 0.88rem; color: var(--accent-bright); font-weight: 600; }
+    .feel-fn-desc { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-top: 4px; }
+    .feel-fn-example { font-family: var(--font-mono); font-size: 0.8rem; color: var(--teal); margin-top: 6px; background: var(--bg-code); padding: 6px 10px; border-radius: 6px; display: inline-block; }
+    .feel-cta { margin-top: 40px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); font-size: 0.9rem; color: var(--text-muted); }
+    .feel-cta code { color: var(--accent-bright); }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <Nav />
+  <div class="feel-wrap">
+    <main class="feel-main">
+      <h1>FEEL Function Reference</h1>
+      <p class="feel-lede">
+        <code>@bpmnkit/feel</code> is a zero-dependency FEEL (Friendly Enough Expression
+        Language) parser and evaluator — the expression language DMN decision tables and
+        BPMN gateway conditions use. All {FEEL_FUNCTION_COUNT} built-in functions below are
+        implemented and callable today.
+      </p>
+
+      <div class="feel-toc">
+        {FEEL_CATEGORIES.map((cat) => (
+          <a href={`#${cat.id}`}>{cat.title}</a>
+        ))}
+      </div>
+
+      {FEEL_CATEGORIES.map((cat) => (
+        <section class="feel-category" id={cat.id}>
+          <h2>{cat.title}</h2>
+          {cat.functions.map((fn) => (
+            <div class="feel-fn">
+              <span class="feel-fn-name">{fn.name}(...)</span>
+              <div class="feel-fn-desc">{fn.description}</div>
+              {fn.example && <div class="feel-fn-example">{fn.example}</div>}
+            </div>
+          ))}
+        </section>
+      ))}
+
+      <div class="feel-cta">
+        Evaluate FEEL expressions in TypeScript with <code>@bpmnkit/feel</code>, or use them
+        directly in gateway conditions and DMN decision tables built with
+        <code>@bpmnkit/core</code>. See the <a href="https://docs.bpmnkit.com/packages/core/">package reference</a>.
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>

@@ -1,0 +1,69 @@
+---
+import "../../styles/global.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import { CATALOG } from "@bpmnkit/connector-gen"
+import { listConnectors } from "@bpmnkit/connectors"
+import Footer from "../../components/Footer.astro"
+import Nav from "../../components/Nav.astro"
+
+const connectors = listConnectors().sort((a, b) => a.name.localeCompare(b.name))
+
+const jsonLd = breadcrumbJsonLd([
+	{ name: "Home", url: "https://bpmnkit.com" },
+	{ name: "Connectors", url: "https://bpmnkit.com/connectors" },
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo
+    title={`${connectors.length} Camunda 8 Connectors — BPMN Kit`}
+    description={`Browse ${connectors.length} built-in Camunda 8 connector templates for @bpmnkit/connectors — Slack, ServiceNow, Stripe, GitHub, and more. Typed inputs, generated from real element templates.`}
+    jsonLd={jsonLd}
+  />
+  <style is:global>
+    .connectors-wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+    .connectors-main { flex: 1; max-width: var(--max-width); margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
+    .connectors-hero { text-align: center; margin-bottom: 48px; }
+    .connectors-hero h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .connectors-hero p { color: var(--text-muted); font-size: 1.05rem; max-width: 640px; margin: 0 auto; }
+    .connectors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .connector-card { display: block; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); text-decoration: none; transition: border-color 0.2s, transform 0.2s; }
+    .connector-card:hover { border-color: var(--accent-bright); transform: translateY(-2px); }
+    .connector-card h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .connector-card p { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .connector-badge { display: inline-block; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--teal); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="dots" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <Nav />
+
+  <div class="connectors-wrap">
+    <main class="connectors-main">
+      <div class="connectors-hero">
+        <h1>{connectors.length} Camunda 8 Connectors</h1>
+        <p>Every built-in Camunda 8 out-of-the-box connector template, bundled with <code>@bpmnkit/connectors</code> and applicable to a BPMN element in one call. Need something else? Browse <a href="/integrations">{CATALOG.length} more services ready to generate</a> from their OpenAPI specs.</p>
+      </div>
+      <div class="connectors-grid">
+        {connectors.map((c) => (
+          <a href={`/connectors/${encodeURIComponent(c.id)}`} class="connector-card">
+            <h3>{c.name}</h3>
+            <p>{c.description ?? "Camunda 8 connector template."}</p>
+            <span class="connector-badge">{c.direction}</span>
+          </a>
+        ))}
+      </div>
+    </main>
+    <Footer />
+  </div>
+</body>
+</html>
