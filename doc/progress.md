@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-08-20 — Routing density inside pools: the diagnosis was wrong
+
+Last entry closed by blaming our remaining message-flow crossings on "the density of horizontal sequence-flow runs our routing leaves in the way". Measured it, and that is **not true**: our horizontal sequence-flow traffic is indistinguishable from upstream's — 1854 segments against 1831, 267k px against 263k, the same 143 px mean, and slightly fewer very long runs (15 against 18). Nor is it stem length (285 px against 265), pool height (235 px against 242), or messages crossing pools they merely pass through (1 each).
+
+What the numbers do say: stems cross **long** runs (373 px mean, against 139 px across all runs) and every blocked stem has a clear column within 600 px — 34 of them within 100 px. So bending stems around the runs looked promising, and three separate attempts all failed to net out ahead:
+
+| attempt | msg × seq | msg × msg | msg → shape | total crossings |
+| --- | ---: | ---: | ---: | ---: |
+| baseline | 116 | 11 | 5 | 283 |
+| candidates scored by crossings | 116 | 13 | 5 | 285 |
+| bend to a clear column | 96 | 68 | 26 | 320 |
+| …only when 2+ runs are in the way | 109 | 14 | 9 | 279 |
+| …plus spreading the bends apart | 101 | 34 | 18 | 291 |
+
+Every variant trades one crossing class for another. The reason is visible in upstream's own breakdown, which we had never measured: **upstream accepts more message-to-message crossings than we do — 21 against our 11 — to get message-to-sequence down to 54.** It sits at a different balance point, and local search over stem columns cannot reach it. All three attempts were reverted.
+
+One real defect did come out of the investigation and is fixed: a route leaving an element **inside an expanded sub-process** treated that sub-process's own border as an obstacle, so every candidate came back blocked and the router fell back to a route it had already rejected — sometimes straight through a shape. An endpoint's containers now count as its own. Message flows through unrelated shapes **5 → 1**; routes through shapes overall **39 → 35**.
+
+Where the gap to upstream actually sits, by category (ours / upstream): sequence × sequence **146 / 118**, message × sequence **118 / 54**, message × message **11 / 21**, associations **10 / 1**, routes through shapes **35 / 13**. We are ahead on one of the five.
+
+A test written for the container fix turned out to pass without it — the synthetic fixture put the sibling to the right rather than underneath, and the fix only changes which corridor the fallback picks. It was deleted rather than kept as decoration; the fix is evidenced by the corpus measurement above.
+
 ## 2026-08-20 — Collaboration pipeline: pool ordering, alignment, endpoint resolution
 
 Ported the parts of [upstream's collaboration pipeline](https://github.com/bpmn-io/bpmn-auto-layout/blob/main/docs/LAYOUT.md) that earn their place, in our own code (`packages/core/src/layout/collaboration/`), keeping our own pool stacking and message routing underneath.

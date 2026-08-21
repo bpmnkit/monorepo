@@ -215,7 +215,7 @@ Measured on the same corpus, ours before → ours after (upstream for reference)
 | Deviation from the original DI | 348 px | 262 px | **227 px** |
 | Shape overlaps | 124 | 89 | **80** |
 | Diagram area (Mpx) | 150 | **133** | 140 |
-| Edges through unrelated shapes | 68 † | 39 | **13** |
+| Edges through unrelated shapes | 68 † | 35 | **13** |
 | Edge crossings | 275 † | 283 | **200** |
 | Edge bends | **650** † | 789 | 708 |
 | Total edge length | **398k** † | 435k | 429k |
@@ -245,13 +245,22 @@ That took message flows crossing each other from 67 to 11, crossings overall fro
 283, and total edge length to within 1.5 % of upstream's, while keeping our own pool
 stacking and the 1 ms runtime.
 
-What is left is narrower than "collaborations" and now measured rather than assumed: 106 of
-our 116 remaining message-vs-sequence crossings are vertical stems crossing sequence flows
-*inside* a pool, between an element and the pool edge. The same breakdown over upstream's
-own output shows 51 of exactly that kind, so roughly half of ours is inherent to docking on
-an element mid-pool and the other half comes from how much horizontal sequence-flow traffic
-our routing leaves in the stem's way — a routing-density question inside the process, not a
-collaboration one.
+What is left is narrower than "collaborations", and the obvious explanation for it turned
+out to be wrong. 106 of our 116 remaining message-vs-sequence crossings are vertical stems
+crossing sequence flows *inside* a pool; upstream has 51 of exactly that kind. That is not
+because our routing leaves more traffic in the way — our horizontal sequence-flow segments
+(1854, 267k px, 143 px mean) are within 1 % of upstream's on every measure, and stem length
+and pool height match too.
+
+The real difference is the balance point. Upstream accepts **more** message-to-message
+crossings than we do — 21 against our 11 — in exchange for message-to-sequence at 54 against
+our 118. Three attempts at bending stems around the runs in our way (crossing-scored
+candidates, stepping to a clear column, and the same with the bends spread apart) each moved
+crossings from one class into another without netting out ahead, and were reverted.
+
+Remaining gap by category, ours / upstream: sequence × sequence 146 / 118, message ×
+sequence 118 / 54, message × message 11 / 21, associations 10 / 1, routes through shapes
+35 / 13.
 
 The other two gaps this evaluation found are closed too, in DI emission rather than in the
 engine: participants are walked in declaration order so a black-box pool keeps its band and
