@@ -2,7 +2,7 @@
 
 ## Landing site engineering-specification design (2026-08-22)
 
-The landing site (`apps/landing`) moved off the dark-gradient dev-tool template to a paper-ground engineering-specification system: `#f4f5f7` ground, hairline `#dcdfe4` rules, ink `#14161a` code panels and dark bands, one accent `#a8503a`, Space Grotesk + Space Mono, no radius, shadows or gradients. Tokens live in `apps/landing/src/styles/global.css` and every page inherits them. The homepage is a hero plus eight numbered sections instead of eleven undifferentiated ones, with the builder snippet and its rendered diagram above the fold, and pre-1.0 versions plus the engine simulator caveat stated up front in section 03 rather than at the page bottom.
+The landing site (`apps/landing`) moved off the dark-gradient dev-tool template to a paper-ground engineering-specification system: `#f4f5f7` ground, hairline `#dcdfe4` rules, ink `#14161a` code panels and dark bands, one accent `#a8503a`, self-hosted Space Grotesk + Space Mono (six woff2 subsets, ~140 KB, no third-party request on first paint), no radius, shadows or gradients. Tokens live in `apps/landing/src/styles/global.css` and every page inherits them. The homepage is a hero plus eight numbered sections instead of eleven undifferentiated ones, with the builder snippet and its rendered diagram above the fold, and pre-1.0 versions plus the engine simulator caveat stated up front in section 03 rather than at the page bottom.
 
 ## Documentation as an installable package for AI agents (2026-08-21)
 
