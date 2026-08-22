@@ -78,7 +78,7 @@ const jsonLd = faqJsonLd([
     .cmp-main { flex: 1; max-width: 820px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
     .cmp-main h1 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px; }
     .cmp-main > p.lede { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 32px; }
-    .cmp-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; margin-bottom: 40px; }
+    .cmp-table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.86rem; margin-bottom: 40px; }
     .cmp-table th, .cmp-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
     .cmp-table th { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
     .cmp-table td:first-child { color: var(--text-muted); white-space: nowrap; font-weight: 500; }
@@ -103,6 +103,7 @@ const jsonLd = faqJsonLd([
         very different workflow.
       </p>
 
+      <div class="table-scroll">
       <table class="cmp-table">
         <thead><tr><th></th><th>BPMN Kit</th><th>Camunda Modeler</th></tr></thead>
         <tbody>
@@ -111,6 +112,7 @@ const jsonLd = faqJsonLd([
           ))}
         </tbody>
       </table>
+      </div>
 
       <div class="cmp-faq">
         <h2>Frequently asked</h2>

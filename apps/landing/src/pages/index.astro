@@ -4,46 +4,19 @@ import { SITE } from "@bpmnkit/astro-shared"
 import Seo from "@bpmnkit/astro-shared/Seo.astro"
 import { organizationJsonLd, softwareApplicationJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import { CONNECTOR_STATS } from "@bpmnkit/connector-gen"
+import { Bpmn, exportSvg } from "@bpmnkit/core"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
 import { CODE_HTML, ECOSYSTEM } from "../data/content"
 
-// Only the highest-value destinations sit at the top level; everything else
-// groups into two dropdowns. "Build" holds the on-page anchors in DOM order
-// (top to bottom), so working through it top-to-bottom scrolls strictly
-// downward instead of jumping back and forth.
+// The header carries the five destinations a cold visitor needs; everything
+// else is reachable from the footer.
 const navLinks = [
-	{ href: "/editor", label: "Editor" },
+	{ href: "#why", label: "Why" },
+	{ href: "#packages", label: "Packages" },
+	{ href: "#camunda", label: "Camunda 8" },
+	{ href: "#start", label: "Quickstart" },
 	{ href: "https://docs.bpmnkit.com", label: "Docs" },
-	{
-		label: "Build",
-		items: [
-			{ href: "#features", label: "Features" },
-			{ href: "#examples", label: "Examples" },
-			{ href: "#api", label: "API" },
-			{ href: "#cli", label: "CLI" },
-			{ href: "#start", label: "Quickstart" },
-			{ href: "#dmn-forms", label: "DMN & Forms" },
-			{ href: "#playground", label: "Playground" },
-		],
-	},
-	{
-		label: "Resources",
-		items: [
-			{ href: "/use-cases", label: "Use Cases" },
-			{ href: "/compare", label: "Compare" },
-			{ href: "/blog", label: "Blog" },
-			{ href: "https://learn.bpmnkit.com", label: "Learn" },
-		],
-	},
-	{
-		label: "Tools",
-		items: [
-			{ href: "/operate", label: "Operate" },
-			{ href: "/connectors", label: "Connectors" },
-			{ href: "/integrations", label: "Integrations" },
-		],
-	},
 ]
 
 const jsonLd = [
@@ -58,6 +31,26 @@ const jsonLd = [
 	}),
 ]
 
+// The hero diagram is the real `exportSvg()` output of the hero snippet, built
+// here so the code and the picture beside it can never drift apart. Once the
+// page hydrates, the animated demo replaces it with a live canvas.
+const heroSvg = exportSvg(
+	Bpmn.createProcess("order-flow")
+		.name("Order Flow")
+		.startEvent("received", { name: "Order Received" })
+		.serviceTask("validate", { name: "Validate Order", taskType: "validate-order" })
+		.exclusiveGateway("ok", { name: "OK?" })
+		.serviceTask("ship", { name: "Ship Order", taskType: "ship-order" })
+		.endEvent("done", { name: "Done" })
+		.withAutoLayout()
+		.build(),
+)
+	// Retint the exporter's stock light theme to the page's own palette.
+	.replace(/ width="[\d.]+" height="[\d.]+"/, "")
+	.replaceAll("#f8f9fa", "#fbfbfc")
+	.replaceAll("#404040", "#14161a")
+	.replaceAll("#333333", "#14161a")
+
 const withSdkCode = CODE_HTML.withSdk
 const createProcessCode = CODE_HTML.createProcess
 const deployRunCode = CODE_HTML.deployRun
@@ -65,7 +58,45 @@ const apiCode = CODE_HTML.apiClient
 const dmnTableCode = CODE_HTML.dmnTable
 const formExampleCode = CODE_HTML.formExample
 const bpmnWithCompanionsCode = CODE_HTML.bpmnWithCompanions
-const typeGuardsCode = CODE_HTML.typeGuards
+
+const CAPABILITIES = [
+	{
+		title: "Auto-layout",
+		body: "Sugiyama engine with orthogonal edge routing. No coordinate math, ever.",
+		api: ".withAutoLayout()",
+		href: "/auto-layout",
+	},
+	{
+		title: "Type-safe",
+		body: "29 guards narrow the <code>BpmnFlowElement</code> union. Errors are <code>instanceof</code>-catchable with machine-readable codes.",
+		api: "isBpmnServiceTask(el)",
+		href: null,
+	},
+	{
+		title: "Roundtrip fidelity",
+		body: "Parse → modify → export with no data loss. Zeebe extensions, custom namespaces and DI preserved.",
+		api: "roundtrip test suite ↗",
+		href: `${SITE.github}/blob/main/packages/core/tests/xml/xml-roundtrip.test.ts`,
+	},
+	{
+		title: "Zero dependencies",
+		body: "Pure ESM, tree-shakeable. Browsers, Node, Deno, Bun and edge runtimes.",
+		api: "0 third-party deps",
+		href: null,
+	},
+	{
+		title: "DMN &amp; Forms",
+		body: "The same builder pattern for DMN 1.3 decision tables and Camunda form JSON, referenced from the process.",
+		api: "Dmn.createDecisionTable(id)",
+		href: "#dmn-forms",
+	},
+	{
+		title: "LLM-friendly format",
+		body: "A compact intermediate form fits a whole diagram in one prompt. The SDK validates and renders what the model returns.",
+		api: "compactify(defs) / expand(c)",
+		href: null,
+	},
+]
 ---
 
 <!DOCTYPE html>
@@ -86,21 +117,6 @@ const typeGuardsCode = CODE_HTML.typeGuards
   <a href="#main-content" class="skip-link">Skip to content</a>
   <div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
 
-  <!-- Fixed page background — aurora orbs, dot grid, grain texture.
-       position:fixed + z-index:-1 keeps them behind all content while
-       the user scrolls, giving the whole page a consistent ambient glow. -->
-  <div class="aurora" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-  </div>
-  <div class="dots" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
-
-  <!-- Scroll progress (pure CSS) -->
-  <div class="scroll-bar" aria-hidden="true"></div>
-
-  <!-- Nav -->
   <Nav links={navLinks} showHomeLink={false} />
 
   <main id="main-content">
@@ -109,761 +125,453 @@ const typeGuardsCode = CODE_HTML.typeGuards
   <section class="hero">
     <div class="hero-body">
       <div class="hero-text">
-        <div class="pill">
-          <span class="pill-dot"></span>
-          Open Source · MIT · AI-Native · TypeScript
-        </div>
-        <h1 class="hero-h1">
-          BPMN diagrams<br>
-          <span class="shimmer-text">from code, not clicks</span>
-        </h1>
+        <div class="hero-eyebrow">TypeScript · BPMN 2.0 · MIT</div>
+        <h1 class="hero-h1">BPMN diagrams<br>from code,<br>not clicks.</h1>
         <p class="hero-p">
-          A fluent TypeScript API that generates deployable BPMN&nbsp;2.0 diagrams
-          with <a href="/auto-layout">auto-layout</a>. Built for <strong>AI&nbsp;agents</strong>, automation platforms,
-          and workflow builders.
+          A fluent TypeScript API that generates deployable BPMN&nbsp;2.0 diagrams with
+          <a href="/auto-layout">auto-layout</a> — for developers, automation platforms, and
+          AI&nbsp;agents.
         </p>
         <p class="hero-p-sub">
-          BPMN is the industry standard for business-process diagrams. BPMN Kit lets your
-          developers — and AI assistants — create, test, and deploy them as fast as they write
-          code. Analysts still review and edit everything visually in the built-in editor.
+          Analysts still review and edit everything visually. It replaces the
+          copy-paste-redeploy gap between the diagram and production, not the diagram.
         </p>
+
+        <button class="install-btn" id="install-btn" title="Click to copy">
+          <code>pnpm add @bpmnkit/core</code>
+          <span class="install-copied" aria-hidden="true"></span>
+        </button>
+
         <div class="hero-ctas">
-          <button class="install-btn" id="install-btn" title="Click to copy">
-            <svg class="install-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4.5" y="4.5" width="9" height="9" rx="1.5"/><path d="M2.5 11.5H1.5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/></svg>
-            <code>pnpm add @bpmnkit/core</code>
-            <span class="install-copied" aria-hidden="true">Copied!</span>
-          </button>
-          <a href="https://docs.bpmnkit.com" class="btn-primary">
-            Get Started
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-          </a>
-          <a href="/editor" class="btn-ghost">Open the visual editor — no install</a>
-          <a href="https://github.com/bpmnkit/monorepo" class="btn-ghost" target="_blank" rel="noopener">GitHub →</a>
+          <a href="https://docs.bpmnkit.com" class="btn-primary">Read the docs</a>
+          <a href="/editor" class="btn-link">Open the editor — no install</a>
+        </div>
+
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-num">0</div>
+            <div class="hero-stat-label">deps</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">ESM</div>
+            <div class="hero-stat-label">node · deno · bun · edge</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">MIT</div>
+            <div class="hero-stat-label">pre-1.0</div>
+          </div>
         </div>
       </div>
 
-      <!-- Live BPMN diagram preview (rendered by @bpmnkit/canvas) -->
-      <div class="hero-diagram">
-        <div class="diagram-card">
-          <div class="diagram-topbar">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="tb-title">order-flow.bpmn</span>
+      <div class="hero-panel">
+        <p class="sr-only">
+          The panel beside this text cycles through five example scripts, typing out a
+          BPMN Kit builder call and rendering the resulting diagram live. The same
+          builder API is available as static, editable code in the playground below.
+        </p>
+        <!-- aria-hidden — the text alternative above covers it; the constant DOM
+             churn would otherwise be announced piecemeal by assistive tech. -->
+        <div class="anim-demo" id="anim-demo" aria-hidden="true">
+          <div class="panel-label" id="anim-filename">order-flow.ts</div>
+          <div class="anim-code-panel">
+            <div class="anim-code-body">
+              <div id="anim-code-lines" class="anim-code-lines"><code set:html={withSdkCode}></code></div>
+            </div>
           </div>
-          <div id="diagram-hero" class="diagram-canvas-wrap"></div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Scroll hint -->
-    <div class="scroll-hint" aria-hidden="true">
-      <div class="scroll-hint-dot"></div>
-    </div>
-  </section>
+          <div class="hero-note">
+            <span class="hero-note-mark">↓</span>
+            valid BPMN 2.0 XML · layout computed · Zeebe extensions set
+          </div>
 
-  <!-- ── Features Bento ───────────────────────────────────────────────────── -->
-  <section class="features" id="features">
-    <div class="section-wrap">
-      <div class="section-eyebrow">Why BPMN Kit</div>
-      <h2 class="section-h2">Everything you need,<br>nothing you don't</h2>
-      <div class="bento" id="bento">
-        <!-- Large: AI-Native -->
-        <div class="bcard bcard-lg">
-          <div class="bcard-icon">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          </div>
-          <div class="bcard-body">
-            <h3>AI-Native Design</h3>
-            <p>LLMs call a fluent API instead of wrestling with raw XML. A compact intermediate format makes the entire diagram fit in a single prompt — AI generates it, the SDK validates and renders it.</p>
-          </div>
-          <div class="bcard-chip">
-            <span class="kw">const</span> compact = <span class="fn">compactify</span>(defs)<br>
-            <span class="kw">const</span> xml = Bpmn.<span class="fn">export</span>(<span class="fn">expand</span>(compact))
-          </div>
-        </div>
-
-        <!-- Tall: Zero Deps -->
-        <div class="bcard bcard-tall">
-          <div class="bcard-icon bcard-icon--teal">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </div>
-          <h3>No Third-Party<br>Dependencies</h3>
-          <p>Pure ESM, tree-shakeable. Runs in browsers, Node, Deno, Bun, and edge runtimes.</p>
-          <div class="deps-ring">
-            <div class="deps-center">0</div>
-            <div class="deps-label">third-party deps</div>
-          </div>
-        </div>
-
-        <!-- Normal: Auto-Layout -->
-        <div class="bcard">
-          <div class="bcard-icon bcard-icon--pink">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          </div>
-          <h3>Auto-Layout</h3>
-          <p>Sugiyama layout engine produces clean, readable diagrams with orthogonal edge routing. No coordinate math. <a href="/auto-layout">See both engines compared</a> on five real process models.</p>
-          <div class="bcard-chips">
-            <span class="dmn-chip">Sugiyama algorithm</span>
-            <span class="dmn-chip">SVG export</span>
-          </div>
-        </div>
-
-        <!-- Normal: Type-Safe -->
-        <div class="bcard">
-          <div class="bcard-icon">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>
-          <h3>Type-Safe</h3>
-          <p>Strict TypeScript throughout. 29 type guard predicates narrow the <code>BpmnFlowElement</code> union. Typed errors are <code>instanceof</code>-catchable.</p>
-          <div class="bcard-chips">
-            <span class="dmn-chip">29 type guards</span>
-            <span class="dmn-chip">ParseError / ValidationError</span>
-            <span class="dmn-chip">findElement / getZeebeExtensions</span>
-          </div>
-        </div>
-
-        <!-- Wide: Roundtrip -->
-        <div class="bcard bcard-wide">
-          <div class="bcard-icon bcard-icon--teal">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-          </div>
-          <div>
-            <h3>Roundtrip Fidelity</h3>
-            <p>Parse → modify → export without data loss. All Zeebe extensions, custom namespaces, and diagram info preserved — <a href="https://github.com/bpmnkit/monorepo/blob/main/packages/core/tests/xml/xml-roundtrip.test.ts" target="_blank" rel="noopener">verified by the roundtrip test suite</a>.</p>
-          </div>
-          <div class="roundtrip-flow">
-            <span class="rt-step">Parse</span>
-            <svg width="18" height="10" viewBox="0 0 18 10" fill="none" aria-hidden="true"><path d="M1 5h14M11 1l4 4-4 4" stroke="oklch(65% 0.28 280 / 0.7)" stroke-width="1.5" stroke-linecap="round"/></svg>
-            <span class="rt-step">Modify</span>
-            <svg width="18" height="10" viewBox="0 0 18 10" fill="none" aria-hidden="true"><path d="M1 5h14M11 1l4 4-4 4" stroke="oklch(65% 0.28 280 / 0.7)" stroke-width="1.5" stroke-linecap="round"/></svg>
-            <span class="rt-step">Export</span>
-          </div>
-        </div>
-
-        <!-- Wide: Camunda 8 -->
-        <div class="bcard bcard-wide">
-          <div class="bcard-icon bcard-icon--pink">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div>
-            <h3>Camunda&nbsp;8 Ready</h3>
-            <p>Native Zeebe task definitions, IO mappings, connectors, forms, and modeler templates. Deploy directly to Camunda Cloud.</p>
-          </div>
-        </div>
-
-        <!-- Wide: Connector Catalog -->
-        <div class="bcard bcard-wide">
-          <div class="bcard-icon bcard-icon--teal">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          </div>
-          <div>
-            <h3>{CONNECTOR_STATS.services} API Connectors, Out&nbsp;of&nbsp;the&nbsp;Box</h3>
-            <p>Generate typed Zeebe connector templates from {CONNECTOR_STATS.services} built-in OpenAPI specs — GitHub, Stripe, Slack, DigitalOcean, Kubernetes, and more. Over {(CONNECTOR_STATS.endpoints).toLocaleString("en")} API endpoints covered with zero boilerplate. <a href="/integrations">Browse the catalog →</a></p>
-          </div>
-          <div class="bcard-chips">
-            <span class="dmn-chip">{CONNECTOR_STATS.services} services</span>
-            <span class="dmn-chip">{CONNECTOR_STATS.endpoints.toLocaleString("en")}+ endpoints</span>
+          <div class="anim-diagram-panel">
+            <div id="anim-diagram" class="anim-diagram-inner"><Fragment set:html={heroSvg} /></div>
+            <div class="anim-progress" id="anim-progress">
+              <div class="anim-bar"><div class="anim-bar-fill"></div></div>
+              <div class="anim-bar"><div class="anim-bar-fill"></div></div>
+              <div class="anim-bar"><div class="anim-bar-fill"></div></div>
+              <div class="anim-bar"><div class="anim-bar-fill"></div></div>
+              <div class="anim-bar"><div class="anim-bar-fill"></div></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── For Process Teams ────────────────────────────────────────────────── -->
-  <section class="teams-section" id="teams">
+  <!-- ── 01 · The same process, two ways ───────────────────────────────────── -->
+  <section class="section section--alt" id="why">
     <div class="section-wrap">
-      <div class="section-eyebrow">For process teams</div>
-      <h2 class="section-h2">Your analysts model it.<br>Your developers ship it. AI drafts it.</h2>
-      <div class="teams-grid">
-        <div class="teams-card">
-          <h3>Faster process changes</h3>
-          <p>Process updates ship through code review — versioned, tested, and audit-traceable — not a modeling-tool ritual.</p>
-        </div>
-        <div class="teams-card">
-          <h3>AI-drafted workflows</h3>
-          <p>Describe a process in plain language; get a valid, deployable BPMN diagram your analysts review visually.</p>
-        </div>
-        <div class="teams-card">
-          <h3>No lock-in, no license fees</h3>
-          <p>Open source (MIT). Standard BPMN&nbsp;2.0 files that open in any BPMN tool, including Camunda Modeler.</p>
-        </div>
+      <div class="section-head">
+        <span class="section-num">01</span>
+        <h2 class="section-h2">The same process, two ways.</h2>
       </div>
-      <p class="teams-note">
-        BPMN Kit doesn't replace visual modeling — the built-in editor and any BPMN&nbsp;2.0 tool
-        still open every diagram. It replaces the copy-paste-redeploy gap between the diagram and
-        production. <a href="/use-cases">Explore use cases →</a>
-      </p>
-    </div>
-  </section>
-
-  <!-- ── SDK Developer Experience ────────────────────────────────────────── -->
-  <section class="sdk-dx-section">
-    <div class="section-wrap">
-      <div class="section-eyebrow">SDK Quality</div>
-      <h2 class="section-h2">TypeScript-first,<br>from top to bottom</h2>
-      <div class="sdk-dx-layout">
-        <!-- Left: feature list -->
-        <div class="sdk-dx-features">
-          <div class="sdk-dx-item">
-            <div class="sdk-dx-bullet" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <div>
-              <h3>29 Type Guard Predicates</h3>
-              <p>Narrow <code>BpmnFlowElement</code> to a specific type without casting. One predicate per BPMN element type — <code>isBpmnServiceTask</code>, <code>isBpmnParallelGateway</code>, <code>isBpmnBoundaryEvent</code>, and group guards like <code>isBpmnGateway</code>, <code>isBpmnActivity</code>, <code>isBpmnEvent</code>.</p>
-            </div>
-          </div>
-          <div class="sdk-dx-item">
-            <div class="sdk-dx-bullet" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </div>
-            <div>
-              <h3>Typed Error Classes</h3>
-              <p><code>ParseError</code> (malformed XML) and <code>ValidationError</code> (builder rule violations) both extend <code>BpmnSdkError</code>. Every error carries a machine-readable <code>code</code> string — no string matching on <code>err.message</code>.</p>
-            </div>
-          </div>
-          <div class="sdk-dx-item">
-            <div class="sdk-dx-bullet" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </div>
-            <div>
-              <h3>Element Lookup Utilities</h3>
-              <p><code>findElement</code>, <code>findProcess</code>, <code>findSequenceFlow</code>, <code>getAllElements</code>, and <code>getZeebeExtensions</code> give you a clean query layer over the parsed model — no manual array traversal.</p>
-            </div>
-          </div>
-          <div class="sdk-dx-item">
-            <div class="sdk-dx-bullet" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            </div>
-            <div>
-              <h3>Full JSDoc Coverage</h3>
-              <p>Every public API has <code>@param</code>, <code>@returns</code>, <code>@throws</code>, and <code>@example</code> documentation. Hover any function in your IDE and get complete usage guidance inline.</p>
-            </div>
-          </div>
+      <div class="compare-grid">
+        <div class="cmp-panel">
+          <div class="panel-label">hand-written BPMN XML · 41 lines</div>
+          <pre class="cmp-code cmp-code--xml">&lt;bpmn:definitions
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"&gt;
+  &lt;bpmn:process id="p" isExecutable="true"&gt;
+    &lt;bpmn:startEvent id="s"&gt;
+      &lt;bpmn:outgoing&gt;Flow_1&lt;/bpmn:outgoing&gt;
+    &lt;/bpmn:startEvent&gt;
+    &lt;bpmn:serviceTask id="t"&gt;
+      &lt;bpmn:extensionElements&gt;
+        &lt;zeebe:taskDefinition type="worker"/&gt;
+      &lt;/bpmn:extensionElements&gt;
+      &lt;bpmn:incoming&gt;Flow_1&lt;/bpmn:incoming&gt;
+      &lt;bpmn:outgoing&gt;Flow_2&lt;/bpmn:outgoing&gt;
+    &lt;/bpmn:serviceTask&gt;
+    &lt;bpmn:endEvent id="e"&gt;
+      &lt;bpmn:incoming&gt;Flow_2&lt;/bpmn:incoming&gt;
+    &lt;/bpmn:endEvent&gt;
+    &lt;bpmn:sequenceFlow id="Flow_1" sourceRef="s" targetRef="t"/&gt;
+    &lt;bpmn:sequenceFlow id="Flow_2" sourceRef="t" targetRef="e"/&gt;
+  &lt;/bpmn:process&gt;
+  &lt;bpmndi:BPMNDiagram&gt;
+    &lt;bpmndi:BPMNPlane&gt;
+      &lt;bpmndi:BPMNShape bpmnElement="s"&gt;
+        &lt;dc:Bounds x="152" y="82" width="36" height="36"/&gt;</pre>
         </div>
-
-        <!-- Right: code panel -->
-        <div class="sdk-dx-code-panel">
-          <div class="diagram-topbar">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="tb-title">type-guards.ts</span>
-          </div>
-          <div class="sdk-dx-code-body">
-            <pre><code set:html={typeGuardsCode}></code></pre>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Code Comparison ──────────────────────────────────────────────────── -->
-  <section class="compare-section">
-    <div class="section-wrap">
-      <div class="section-eyebrow">Developer Experience</div>
-      <h2 class="section-h2">Stop writing XML.<br>Start building workflows.</h2>
-      <p class="section-sub" style="text-align:center; margin-top: -16px; margin-bottom: 28px;">Drag the divider to compare</p>
-
-      <div class="compare-slider" id="compare-slider">
-        <div class="compare-panels">
-        <!-- Left: raw XML (without SDK) -->
-        <div class="cmp-panel cmp-bad cmp-left">
-          <div class="cmp-header">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="cmp-label cmp-label-bad">Without SDK</span>
-          </div>
-          <pre class="cmp-code"><code>&lt;<span class="xml-tag">bpmn:definitions</span>
-  <span class="xml-attr">xmlns:bpmn</span>=<span class="str">"http://www.omg.org/spec/BPMN/20100524/MODEL"</span>
-  <span class="xml-attr">xmlns:bpmndi</span>=<span class="str">"http://www.omg.org/spec/BPMN/20100524/DI"</span>
-  <span class="xml-attr">xmlns:zeebe</span>=<span class="str">"http://camunda.org/schema/zeebe/1.0"</span>&gt;
-  &lt;<span class="xml-tag">bpmn:process</span> <span class="xml-attr">id</span>=<span class="str">"p"</span> <span class="xml-attr">isExecutable</span>=<span class="str">"true"</span>&gt;
-    &lt;<span class="xml-tag">bpmn:startEvent</span> <span class="xml-attr">id</span>=<span class="str">"s"</span>&gt;
-      &lt;<span class="xml-tag">bpmn:outgoing</span>&gt;Flow_1&lt;/<span class="xml-tag">bpmn:outgoing</span>&gt;
-    &lt;/<span class="xml-tag">bpmn:startEvent</span>&gt;
-    &lt;<span class="xml-tag">bpmn:serviceTask</span> <span class="xml-attr">id</span>=<span class="str">"t"</span>&gt;
-      &lt;<span class="xml-tag">bpmn:extensionElements</span>&gt;
-        &lt;<span class="xml-tag">zeebe:taskDefinition</span>
-          <span class="xml-attr">type</span>=<span class="str">"worker"</span>/&gt;
-      &lt;/<span class="xml-tag">bpmn:extensionElements</span>&gt;
-      &lt;<span class="xml-tag">bpmn:incoming</span>&gt;Flow_1&lt;/<span class="xml-tag">bpmn:incoming</span>&gt;
-      &lt;<span class="xml-tag">bpmn:outgoing</span>&gt;Flow_2&lt;/<span class="xml-tag">bpmn:outgoing</span>&gt;
-    &lt;/<span class="xml-tag">bpmn:serviceTask</span>&gt;
-    &lt;<span class="xml-tag">bpmn:endEvent</span> <span class="xml-attr">id</span>=<span class="str">"e"</span>&gt;
-      &lt;<span class="xml-tag">bpmn:incoming</span>&gt;Flow_2&lt;/<span class="xml-tag">bpmn:incoming</span>&gt;
-    &lt;/<span class="xml-tag">bpmn:endEvent</span>&gt;
-    &lt;<span class="xml-tag">bpmn:sequenceFlow</span> <span class="xml-attr">id</span>=<span class="str">"Flow_1"</span>
-      <span class="xml-attr">sourceRef</span>=<span class="str">"s"</span> <span class="xml-attr">targetRef</span>=<span class="str">"t"</span>/&gt;
-    &lt;<span class="xml-tag">bpmn:sequenceFlow</span> <span class="xml-attr">id</span>=<span class="str">"Flow_2"</span>
-      <span class="xml-attr">sourceRef</span>=<span class="str">"t"</span> <span class="xml-attr">targetRef</span>=<span class="str">"e"</span>/&gt;
-  &lt;/<span class="xml-tag">bpmn:process</span>&gt;
-  &lt;<span class="xml-tag">bpmndi:BPMNDiagram</span>&gt;
-    &lt;<span class="xml-tag">bpmndi:BPMNPlane</span>&gt;
-      &lt;<span class="xml-tag">bpmndi:BPMNShape</span>
-        <span class="xml-attr">bpmnElement</span>=<span class="str">"s"</span>&gt;
-        &lt;<span class="xml-tag">dc:Bounds</span> <span class="xml-attr">x</span>=<span class="str">"152"</span> <span class="xml-attr">y</span>=<span class="str">"82"</span>
-          <span class="xml-attr">width</span>=<span class="str">"36"</span> <span class="xml-attr">height</span>=<span class="str">"36"</span>/&gt;
-      &lt;/<span class="xml-tag">bpmndi:BPMNShape</span>&gt;
-      <span class="comment">&lt;!-- ...more shapes + edges... --&gt;</span>
-    &lt;/<span class="xml-tag">bpmndi:BPMNPlane</span>&gt;
-  &lt;/<span class="xml-tag">bpmndi:BPMNDiagram</span>&gt;
-&lt;/<span class="xml-tag">bpmn:definitions</span>&gt;</code></pre>
-        </div>
-
-        <!-- Right: with BPMN Kit -->
-        <div class="cmp-panel cmp-good cmp-right">
-          <div class="cmp-header">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="cmp-label cmp-label-good">With BPMN Kit</span>
-          </div>
+        <div class="cmp-panel">
+          <div class="panel-label panel-label--accent">with BPMN Kit · 13 lines</div>
           <pre class="cmp-code"><code set:html={withSdkCode}></code></pre>
         </div>
-
-        </div><!-- /.compare-panels -->
-
-        <!-- Drag handle — outside compare-panels so the knob isn't clipped -->
-        <div class="cmp-divider" aria-hidden="true">
-          <div class="cmp-divider-line"></div>
-          <div
-            class="cmp-divider-knob"
-            role="slider"
-            tabindex="0"
-            aria-label="Comparison divider — Without SDK vs. With BPMN Kit"
-            aria-valuemin="5"
-            aria-valuemax="95"
-            aria-valuenow="50"
-            id="cmp-divider-knob"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M8 5L3 12l5 7V5zM16 5l5 7-5 7V5z"/>
-            </svg>
-          </div>
-        </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Interactive Examples ─────────────────────────────────────────────── -->
-  <section class="examples" id="examples">
+  <!-- ── 02 · What you get ─────────────────────────────────────────────────── -->
+  <section class="section" id="features">
     <div class="section-wrap">
-      <div class="section-eyebrow">Interactive Examples</div>
-      <h2 class="section-h2">See it in action</h2>
-      <p class="section-sub">Watch a process get built — each line of code (or AI instruction) instantly becomes a diagram your team can read.</p>
-      <p class="sr-only">
-        This section continuously animates through five example scripts, each typing out a
-        BPMN Kit builder call and rendering the resulting diagram live. The code and diagrams
-        shown are also available in the Examples and Playground sections below as static,
-        interactive code.
-      </p>
-
-      <!-- Progress bars: one per example, fills during that example -->
-      <div class="anim-progress" id="anim-progress" aria-hidden="true">
-        <div class="anim-bar"><div class="anim-bar-fill"></div></div>
-        <div class="anim-bar"><div class="anim-bar-fill"></div></div>
-        <div class="anim-bar"><div class="anim-bar-fill"></div></div>
-        <div class="anim-bar"><div class="anim-bar-fill"></div></div>
-        <div class="anim-bar"><div class="anim-bar-fill"></div></div>
+      <div class="section-head">
+        <span class="section-num">02</span>
+        <h2 class="section-h2">What you get</h2>
       </div>
-
-      <!-- Animated demo: code grows on left, diagram updates on right.
-           aria-hidden — a text alternative is provided above; the constant
-           DOM churn here would otherwise be announced piecemeal by AT. -->
-      <div class="anim-demo" id="anim-demo" aria-hidden="true">
-        <!-- Left: animated code panel -->
-        <div class="anim-code-panel">
-          <div class="code-topbar">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="tb-title" id="anim-filename">order-validation.ts</span>
-          </div>
-          <div class="anim-code-body">
-            <div id="anim-code-lines" class="anim-code-lines"></div>
-          </div>
-        </div>
-
-        <!-- Right: live diagram preview -->
-        <div class="anim-diagram-panel">
-          <div class="diagram-topbar">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="tb-title">Live Preview</span>
-            <div class="anim-live-badge" aria-hidden="true">
-              <span class="anim-live-dot"></span>
-              live
+      <div class="hair-grid hair-grid--3">
+        {CAPABILITIES.map((cap) => (
+          <div class="cap-card">
+            <h3 set:html={cap.title} />
+            <p set:html={cap.body} />
+            <div class="cap-api">
+              {cap.href
+                ? <a href={cap.href} target={cap.href.startsWith("http") ? "_blank" : undefined} rel={cap.href.startsWith("http") ? "noopener" : undefined}>{cap.api}</a>
+                : cap.api}
             </div>
           </div>
-          <div id="anim-diagram" class="anim-diagram-inner"></div>
-        </div>
+        ))}
       </div>
     </div>
   </section>
 
-  <!-- ── API SDK ──────────────────────────────────────────────────────────── -->
-  <section class="api-section" id="api">
+  <!-- ── 03 · Packages ─────────────────────────────────────────────────────── -->
+  <section class="section section--ink" id="packages">
     <div class="section-wrap">
-      <div class="section-eyebrow">REST API Client</div>
-      <h2 class="section-h2">Camunda&nbsp;8 API,<br>fully typed</h2>
-      <div class="api-layout">
-        <!-- Code panel -->
-        <div class="api-code-panel">
-          <div class="diagram-topbar">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="tb-title">client.ts</span>
-          </div>
-          <div class="api-code-body">
-            <pre><code set:html={apiCode}></code></pre>
-          </div>
-        </div>
+      <div class="section-head section-head--tight">
+        <span class="section-num">03</span>
+        <h2 class="section-h2">Six packages, pick what you need</h2>
+      </div>
+      <p class="section-sub">
+        Independently versioned and pre-1.0, developed in the open under MIT. Everything
+        below is installable today.
+      </p>
+      <div class="pkg-grid">
+        {ECOSYSTEM.map((pkg) => (
+          <a class="pkg-row" href={pkg.url} target="_blank" rel="noopener">
+            <div class="pkg-main">
+              <div class="pkg-name">{pkg.name}</div>
+              <div class="pkg-role">
+                {pkg.role}
+                {pkg.note && <span class="pkg-caveat"> — {pkg.note}</span>}
+              </div>
+            </div>
+            <div class="pkg-version">v{pkg.version}</div>
+          </a>
+        ))}
+      </div>
+      <div class="pkg-links">
+        <a href={`${SITE.github}/releases`} target="_blank" rel="noopener">Changelog &amp; releases</a>
+        <a href={`${SITE.github}/issues`} target="_blank" rel="noopener">Report an issue</a>
+        <a href={SITE.npm} target="_blank" rel="noopener">npm</a>
+        <a href="mailto:hello@bpmnkit.com">Contact</a>
+      </div>
+    </div>
+  </section>
 
-        <!-- Right: stats + feature chips -->
+  <!-- ── 04 · Camunda 8 ────────────────────────────────────────────────────── -->
+  <section class="section" id="camunda">
+    <div class="section-wrap">
+      <div class="section-head section-head--tight">
+        <span class="section-num">04</span>
+        <h2 class="section-h2">Camunda 8, end to end</h2>
+      </div>
+      <p class="section-sub">
+        A fully typed REST client — 180 methods across 30+ resource classes, three auth
+        modes, retry with backoff — plus <code>casen</code>, a terminal UI for the same API.
+        And {CONNECTOR_STATS.services} built-in OpenAPI specs covering
+        {" "}{CONNECTOR_STATS.endpoints.toLocaleString("en")} endpoints that generate typed
+        Zeebe connector templates. <a href="/integrations">Browse the catalog →</a>
+      </p>
+      <div class="camunda-layout">
         <div>
-          <div class="api-stats">
-            <div class="api-stat">
-              <div class="api-stat-num">180</div>
-              <div class="api-stat-label">typed methods</div>
+          <div class="panel-label">client.ts</div>
+          <pre class="code-panel"><code set:html={apiCode}></code></pre>
+        </div>
+
+        <div class="camunda-side">
+          <div class="hair-grid hair-grid--2">
+            <div class="metric">
+              <div class="metric-num">180</div>
+              <div class="metric-label">typed methods</div>
             </div>
-            <div class="api-stat">
-              <div class="api-stat-num">30+</div>
-              <div class="api-stat-label">resource classes</div>
+            <div class="metric">
+              <div class="metric-num">{CONNECTOR_STATS.services}</div>
+              <div class="metric-label">connector specs</div>
             </div>
-            <div class="api-stat">
-              <div class="api-stat-num">3</div>
-              <div class="api-stat-label">auth modes</div>
+            <div class="metric">
+              <div class="metric-num">3</div>
+              <div class="metric-label">auth modes</div>
             </div>
-            <div class="api-stat">
-              <div class="api-stat-num">3×</div>
-              <div class="api-stat-label">auto-retry w/ backoff</div>
+            <div class="metric">
+              <div class="metric-num">3×</div>
+              <div class="metric-label">auto-retry</div>
             </div>
           </div>
-          <p class="section-sub" style="margin-bottom: 24px; margin-top: 0;">
-            A complete TypeScript client for the Camunda 8 REST API. Every endpoint is typed end-to-end — from request body to response shape. Drop it into any Node.js or edge runtime.
-          </p>
-          <div class="api-chips">
-            <span class="api-chip">OAuth2 / Bearer / Basic</span>
-            <span class="api-chip">LRU + TTL cache</span>
-            <span class="api-chip">Exponential backoff</span>
-            <span class="api-chip">TypedEventEmitter</span>
-            <span class="api-chip">ESM tree-shakeable</span>
-            <span class="api-chip">Processes</span>
-            <span class="api-chip">Jobs &amp; Workers</span>
-            <span class="api-chip">Decisions</span>
-            <span class="api-chip">Messages</span>
-            <span class="api-chip">Incidents</span>
-            <span class="api-chip">Variables</span>
-            <span class="api-chip">Signals</span>
+          <div class="chips">
+            <span class="chip">OAuth2 / Bearer / Basic</span>
+            <span class="chip">LRU + TTL cache</span>
+            <span class="chip">Exponential backoff</span>
+            <span class="chip">TypedEventEmitter</span>
+            <span class="chip">ESM tree-shakeable</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="camunda-layout camunda-layout--flip">
+        <div class="camunda-side">
+          <div class="inset-card">
+            <div class="inset-card-label">$ casen</div>
+            <p>
+              Interactive TUI over the same API: connection profiles for dev/staging/prod,
+              processes, jobs, incidents, decisions and variables, with scrollable tabular
+              output. <a href="/cli">Full command reference →</a>
+            </p>
+          </div>
+          <div class="chips">
+            <span class="chip">Processes</span>
+            <span class="chip">Jobs &amp; Workers</span>
+            <span class="chip">Decisions</span>
+            <span class="chip">Messages</span>
+            <span class="chip">Incidents</span>
+            <span class="chip">Variables</span>
+            <span class="chip">Signals</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel-label">casen — interactive TUI</div>
+          <div class="cli-terminal-wrap">
+            <p class="sr-only">
+              This terminal animates a demo session of casen, the BPMN Kit CLI: navigating
+              the main menu, opening the process command group, listing process definitions
+              and viewing a tabular result.
+            </p>
+            <!-- aria-hidden — the text alternative above covers it. -->
+            <div id="cli-terminal" aria-hidden="true">
+              <div class="cli-topbar">
+                <span class="cli-topbar-title">casen</span>
+              </div>
+              <div class="cli-content"></div>
+            </div>
+            <div id="cli-key-badge"></div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── CLI ──────────────────────────────────────────────────────────────── -->
-  <section class="cli-section" id="cli">
+  <!-- ── 05 · Three steps ──────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="start">
     <div class="section-wrap">
-      <div class="section-eyebrow">Command-Line Interface</div>
-      <h2 class="section-h2">Manage Camunda&nbsp;8<br>from your terminal</h2>
-      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
-        <strong>casen</strong> — the BPMN Kit command line.
-      </p>
-      <div class="cli-layout">
-        <!-- Left: features -->
-        <div class="cli-features">
-          <div class="cli-feature">
-            <div class="cli-feature-icon" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-            </div>
-            <div>
-              <h3>Interactive TUI</h3>
-              <p>Arrow-key navigation through menus, commands, and input forms. No flags to memorize.</p>
-            </div>
-          </div>
-          <div class="cli-feature">
-            <div class="cli-feature-icon" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <div>
-              <h3>Connection Profiles</h3>
-              <p>Store multiple Camunda clusters. Switch between dev, staging, and prod in one keystroke.</p>
-            </div>
-          </div>
-          <div class="cli-feature">
-            <div class="cli-feature-icon" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </div>
-            <div>
-              <h3>Full API Coverage</h3>
-              <p>Processes, jobs, incidents, decisions, variables, messages — all accessible from the terminal.</p>
-            </div>
-          </div>
-          <div class="cli-feature">
-            <div class="cli-feature-icon" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </div>
-            <div>
-              <h3>Tabular Results</h3>
-              <p>Query results rendered as scrollable tables with detail view on enter. Copy-friendly output.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: animated terminal -->
-        <div class="cli-terminal-wrap">
-          <p class="sr-only">
-            This terminal continuously animates a demo session of casen, the BPMN Kit CLI:
-            navigating the main menu, opening the "process" command group, listing process
-            definitions, and viewing a tabular result.
-          </p>
-          <!-- aria-hidden — a text alternative is provided above -->
-          <div id="cli-terminal" aria-hidden="true">
-            <div class="cli-topbar">
-              <span class="tb-dot tb-red"></span>
-              <span class="tb-dot tb-yellow"></span>
-              <span class="tb-dot tb-green"></span>
-              <span class="cli-topbar-title">casen</span>
-            </div>
-            <div class="cli-content"></div>
-          </div>
-          <div id="cli-key-badge"></div>
-        </div>
+      <div class="section-head">
+        <span class="section-num">05</span>
+        <h2 class="section-h2">Three steps to a deployable diagram</h2>
       </div>
-    </div>
-  </section>
-
-  <!-- ── Getting Started ──────────────────────────────────────────────────── -->
-  <section class="start-section" id="start">
-    <div class="section-wrap">
-      <div class="section-eyebrow">Quickstart</div>
-      <h2 class="section-h2">Up and running<br>in 4 steps</h2>
       <div class="steps-grid">
         <div class="step">
-          <div class="step-num">01</div>
-          <h3>Install</h3>
-          <div class="pkg-tabs" role="group" aria-label="Package manager">
-            <button class="pkg-tab active" data-pkg="pnpm" aria-pressed="true">pnpm</button>
-            <button class="pkg-tab" data-pkg="bun" aria-pressed="false">bun</button>
-            <button class="pkg-tab" data-pkg="npm" aria-pressed="false">npm</button>
-            <button class="pkg-tab" data-pkg="yarn" aria-pressed="false">yarn</button>
+          <div class="step-head">
+            <span class="step-num">01</span>
+            <h3>Install</h3>
+            <span class="step-head-spacer"></span>
+            <div class="pkg-tabs" role="group" aria-label="Package manager">
+              <button class="pkg-tab active" data-pkg="pnpm" aria-pressed="true">pnpm</button>
+              <button class="pkg-tab" data-pkg="bun" aria-pressed="false">bun</button>
+              <button class="pkg-tab" data-pkg="npm" aria-pressed="false">npm</button>
+              <button class="pkg-tab" data-pkg="yarn" aria-pressed="false">yarn</button>
+            </div>
           </div>
-          <pre class="pkg-cmd active" data-pkg="pnpm"><code>pnpm add @bpmnkit/core</code></pre>
-          <pre class="pkg-cmd" data-pkg="bun"><code>bun add @bpmnkit/core</code></pre>
-          <pre class="pkg-cmd" data-pkg="npm"><code>npm install @bpmnkit/core</code></pre>
-          <pre class="pkg-cmd" data-pkg="yarn"><code>yarn add @bpmnkit/core</code></pre>
+          <pre class="pkg-cmd active" data-pkg="pnpm"><code><span class="comment">$</span> pnpm add @bpmnkit/core
+
+<span class="comment"># optional</span>
+<span class="comment">$</span> pnpm add @bpmnkit/api
+<span class="comment">$</span> pnpm add -g casen</code></pre>
+          <pre class="pkg-cmd" data-pkg="bun"><code><span class="comment">$</span> bun add @bpmnkit/core
+
+<span class="comment"># optional</span>
+<span class="comment">$</span> bun add @bpmnkit/api
+<span class="comment">$</span> bun add -g casen</code></pre>
+          <pre class="pkg-cmd" data-pkg="npm"><code><span class="comment">$</span> npm install @bpmnkit/core
+
+<span class="comment"># optional</span>
+<span class="comment">$</span> npm install @bpmnkit/api
+<span class="comment">$</span> npm install -g casen</code></pre>
+          <pre class="pkg-cmd" data-pkg="yarn"><code><span class="comment">$</span> yarn add @bpmnkit/core
+
+<span class="comment"># optional</span>
+<span class="comment">$</span> yarn add @bpmnkit/api
+<span class="comment">$</span> yarn global add casen</code></pre>
         </div>
 
         <div class="step">
-          <div class="step-num">02</div>
-          <h3>Create a process</h3>
+          <div class="step-head">
+            <span class="step-num">02</span>
+            <h3>Build a process</h3>
+          </div>
           <pre><code set:html={createProcessCode}></code></pre>
         </div>
 
         <div class="step">
-          <div class="step-num">03</div>
-          <h3>Simulate it locally</h3>
+          <div class="step-head">
+            <span class="step-num">03</span>
+            <h3>Simulate, then deploy</h3>
+          </div>
           <pre><code set:html={deployRunCode}></code></pre>
-          <p class="step-note">The engine is an in-process simulator for tests and demos — for production execution, deploy to Camunda 8/Zeebe (next step).</p>
-        </div>
-
-        <div class="step">
-          <div class="step-num">04</div>
-          <h3>Deploy to Camunda&nbsp;8</h3>
-          <pre><code set:html={apiCode}></code></pre>
+          <p class="step-note">
+            The engine is an in-process simulator for tests and demos. Production execution
+            runs on Camunda 8 / Zeebe via <code>@bpmnkit/api</code>.
+          </p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── DMN & Forms ─────────────────────────────────────────────────────── -->
-  <section class="dmn-section" id="dmn-forms">
+  <!-- ── 06 · DMN & Forms ──────────────────────────────────────────────────── -->
+  <section class="section" id="dmn-forms">
     <div class="section-wrap">
-      <div class="section-eyebrow">DMN &amp; Forms</div>
-      <h2 class="section-h2">Beyond BPMN — decisions<br>and forms, too</h2>
-      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
-        The same fluent builder pattern works for DMN decision tables and Camunda Forms.
-        Reference them directly from your BPMN process.
+      <div class="section-head section-head--tight">
+        <span class="section-num">06</span>
+        <h2 class="section-h2">Decisions and forms, same builder</h2>
+      </div>
+      <p class="section-sub">
+        DMN 1.3 decision tables and Camunda form JSON come out of the same fluent API, and
+        a BPMN process can reference both.
       </p>
 
-      <!-- Tab buttons -->
       <div class="dmn-tabs" role="tablist" aria-label="DMN and Forms examples">
-        <button
-          class="dmn-tab active"
-          data-tab="dmn"
-          role="tab"
-          id="dmn-tab-dmn"
-          aria-selected="true"
-          aria-controls="dmn-panel-dmn"
-          tabindex="0"
-        >DMN Decision Table</button>
-        <button
-          class="dmn-tab"
-          data-tab="form"
-          role="tab"
-          id="dmn-tab-form"
-          aria-selected="false"
-          aria-controls="dmn-panel-form"
-          tabindex="-1"
-        >Camunda Form</button>
-        <button
-          class="dmn-tab"
-          data-tab="bpmn"
-          role="tab"
-          id="dmn-tab-bpmn"
-          aria-selected="false"
-          aria-controls="dmn-panel-bpmn"
-          tabindex="-1"
-        >BPMN with DMN + Form</button>
+        <button class="dmn-tab active" data-tab="dmn" role="tab" id="dmn-tab-dmn" aria-selected="true" aria-controls="dmn-panel-dmn" tabindex="0">DMN decision table</button>
+        <button class="dmn-tab" data-tab="form" role="tab" id="dmn-tab-form" aria-selected="false" aria-controls="dmn-panel-form" tabindex="-1">Camunda form</button>
+        <button class="dmn-tab" data-tab="bpmn" role="tab" id="dmn-tab-bpmn" aria-selected="false" aria-controls="dmn-panel-bpmn" tabindex="-1">BPMN with both</button>
       </div>
 
       <div class="dmn-panels">
-
-        <!-- DMN panel -->
-        <div
-          class="dmn-panel active"
-          data-panel="dmn"
-          id="dmn-panel-dmn"
-          role="tabpanel"
-          aria-labelledby="dmn-tab-dmn"
-        >
+        <div class="dmn-panel active" data-panel="dmn" id="dmn-panel-dmn" role="tabpanel" aria-labelledby="dmn-tab-dmn">
           <div class="dmn-layout">
-            <div class="dmn-code-panel">
-              <div class="diagram-topbar">
-                <span class="tb-dot tb-red"></span>
-                <span class="tb-dot tb-yellow"></span>
-                <span class="tb-dot tb-green"></span>
-                <span class="tb-title">eligibility.ts</span>
-              </div>
+            <div>
+              <div class="panel-label">eligibility.ts</div>
               <div class="dmn-code-body">
                 <pre><code set:html={dmnTableCode}></code></pre>
               </div>
             </div>
             <div class="dmn-desc">
-              <h3>DMN Decision Tables</h3>
-              <p>Build DMN decision tables with a fluent API. Define inputs, outputs, and rules —
-              the SDK generates valid DMN 1.3 XML with auto-computed DMNDI layout.</p>
+              <h3>DMN decision tables</h3>
+              <p>
+                Define inputs, outputs and rules; the SDK emits valid DMN 1.3 XML with
+                auto-computed DMNDI layout. <code>Dmn.createDecisionTable(id)</code> builds
+                it, <code>Dmn.export(defs)</code> serialises it, <code>Dmn.layout(defs)</code>
+                positions it.
+              </p>
               <div class="dmn-chips">
                 <span class="dmn-chip">Fluent builder</span>
-                <span class="dmn-chip">DMN 1.3 XML export</span>
+                <span class="dmn-chip">DMN 1.3 XML</span>
                 <span class="dmn-chip">Auto-layout DMNDI</span>
                 <span class="dmn-chip">Hit policies</span>
                 <span class="dmn-chip">FEEL type refs</span>
-                <span class="dmn-chip">Compact AI format</span>
               </div>
-              <p style="font-size:13px; color:var(--text-muted);">
-                Use <code>Dmn.createDecisionTable(id)</code> to build decision tables,
-                <code>Dmn.export(defs)</code> to serialize to XML, and
-                <code>Dmn.layout(defs)</code> to assign diagram positions automatically.
-              </p>
             </div>
           </div>
         </div>
 
-        <!-- Form panel -->
-        <div
-          class="dmn-panel"
-          data-panel="form"
-          id="dmn-panel-form"
-          role="tabpanel"
-          aria-labelledby="dmn-tab-form"
-        >
+        <div class="dmn-panel" data-panel="form" id="dmn-panel-form" role="tabpanel" aria-labelledby="dmn-tab-form">
           <div class="dmn-layout">
-            <div class="dmn-code-panel">
-              <div class="diagram-topbar">
-                <span class="tb-dot tb-red"></span>
-                <span class="tb-dot tb-yellow"></span>
-                <span class="tb-dot tb-green"></span>
-                <span class="tb-title">application-form.ts</span>
-              </div>
+            <div>
+              <div class="panel-label">application-form.ts</div>
               <div class="dmn-code-body">
                 <pre><code set:html={formExampleCode}></code></pre>
               </div>
             </div>
             <div class="dmn-desc">
-              <h3>Camunda Forms</h3>
-              <p>Scaffold Camunda form JSON from code. Use <code>Form.makeEmpty(id)</code>
-              to get a baseline form structure, then extend it with typed fields for
-              text inputs, numbers, dropdowns, and more.</p>
+              <h3>Camunda forms</h3>
+              <p>
+                Scaffold Camunda form JSON from code. <code>Form.makeEmpty(id)</code> gives a
+                baseline structure; extend it with typed fields for text inputs, numbers and
+                dropdowns.
+              </p>
               <div class="dmn-chips">
                 <span class="dmn-chip">Form JSON export</span>
                 <span class="dmn-chip">textfield / number / select</span>
                 <span class="dmn-chip">Schema version 16</span>
-                <span class="dmn-chip">Compact AI format</span>
                 <span class="dmn-chip">Round-trip fidelity</span>
               </div>
-              <p style="font-size:13px; color:var(--text-muted);">
-                After applying a BPMN from the AI chat, the editor automatically detects
-                referenced forms and DMN tables and offers to scaffold them as companion files.
-              </p>
             </div>
           </div>
         </div>
 
-        <!-- BPMN with companions panel -->
-        <div
-          class="dmn-panel"
-          data-panel="bpmn"
-          id="dmn-panel-bpmn"
-          role="tabpanel"
-          aria-labelledby="dmn-tab-bpmn"
-        >
+        <div class="dmn-panel" data-panel="bpmn" id="dmn-panel-bpmn" role="tabpanel" aria-labelledby="dmn-tab-bpmn">
           <div class="dmn-layout">
-            <div class="dmn-code-panel">
-              <div class="diagram-topbar">
-                <span class="tb-dot tb-red"></span>
-                <span class="tb-dot tb-yellow"></span>
-                <span class="tb-dot tb-green"></span>
-                <span class="tb-title">loan-application.ts</span>
-              </div>
+            <div>
+              <div class="panel-label">loan-application.ts</div>
               <div class="dmn-code-body">
                 <pre><code set:html={bpmnWithCompanionsCode}></code></pre>
               </div>
             </div>
             <div class="dmn-desc">
-              <h3>BPMN with DMN &amp; Form references</h3>
-              <p>Link your BPMN process to a DMN decision table via
-              <code>businessRuleTask</code> and to a Camunda Form via
-              <code>userTask</code>. Both use Zeebe extension attributes
-              so the process is immediately deployable to Camunda 8.</p>
+              <h3>BPMN with DMN &amp; form references</h3>
+              <p>
+                Link a process to a decision table via <code>businessRuleTask</code> and to a
+                form via <code>userTask</code>. Both use Zeebe extension attributes, so the
+                process is immediately deployable to Camunda 8.
+              </p>
               <div class="dmn-chips">
                 <span class="dmn-chip">userTask → formId</span>
                 <span class="dmn-chip">businessRuleTask → decisionId</span>
                 <span class="dmn-chip">resultVariable</span>
-                <span class="dmn-chip">Camunda 8 / Zeebe</span>
                 <span class="dmn-chip">Auto-layout</span>
               </div>
               <div id="dmn-bpmn-preview" class="dmn-bpmn-preview"></div>
             </div>
           </div>
         </div>
-
-      </div><!-- /.dmn-panels -->
+      </div>
     </div>
   </section>
 
-  <!-- ── Playground ───────────────────────────────────────────────────────── -->
-  <section class="playground-section" id="playground">
+  <!-- ── 07 · Playground ───────────────────────────────────────────────────── -->
+  <section class="section section--alt" id="playground">
     <div class="section-wrap">
-      <div class="section-eyebrow">Playground</div>
-      <h2 class="section-h2">Try the builder API<br>live in your browser</h2>
-      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
-        Write <code>Bpmn</code>, <code>Dmn</code>, and <code>Form</code> builder expressions.
-        Press <kbd>Ctrl+Enter</kbd> (or <kbd>⌘ Enter</kbd>) to render.
+      <div class="section-head section-head--tight">
+        <span class="section-num">07</span>
+        <h2 class="section-h2">Try the builder in the browser</h2>
+      </div>
+      <p class="section-sub">
+        Write <code>Bpmn</code>, <code>Dmn</code> and <code>Form</code> builder expressions.
+        Press <kbd>Ctrl+Enter</kbd> (or <kbd>⌘ Enter</kbd>) to render. Nothing to install.
       </p>
 
       <div class="playground-wrap">
-        <!-- Editor -->
         <div class="pg-editor-panel">
           <div class="pg-topbar">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
             <span class="pg-topbar-title">playground.ts</span>
             <span class="pg-shortcut">Ctrl+Enter to run</span>
             <button class="pg-run-btn" id="playground-run">▶ Run</button>
@@ -875,19 +583,11 @@ const typeGuardsCode = CODE_HTML.typeGuards
           <div id="playground-error"></div>
         </div>
 
-        <!-- Preview -->
         <div class="pg-diagram-panel">
-          <div class="diagram-topbar">
-            <span class="tb-dot tb-red"></span>
-            <span class="tb-dot tb-yellow"></span>
-            <span class="tb-dot tb-green"></span>
-            <span class="tb-title">Live Preview</span>
-          </div>
           <div id="playground-diagram"></div>
         </div>
       </div>
 
-      <!-- Example presets -->
       <div class="pg-examples">
         <div class="pg-examples-label">Examples</div>
         <div id="playground-examples"></div>
@@ -895,40 +595,56 @@ const typeGuardsCode = CODE_HTML.typeGuards
     </div>
   </section>
 
-  <!-- ── Project Status / Ecosystem map ───────────────────────────────────── -->
-  <section class="status-section" id="status">
+  <!-- ── 08 · For process teams ────────────────────────────────────────────── -->
+  <section class="section" id="teams">
     <div class="section-wrap">
-      <div class="section-eyebrow">Project Status</div>
-      <h2 class="section-h2">The BPMN Kit ecosystem</h2>
-      <p class="section-sub" style="text-align:center; margin-top:-16px; margin-bottom:32px;">
-        Independently-versioned, pre-1.0 packages developed in the open under the MIT license.
-        Each links to its source and current version.
-      </p>
-      <div class="status-grid">
-        {ECOSYSTEM.map((pkg) => (
-          <a class="status-card" href={pkg.url} target="_blank" rel="noopener">
-            <div class="status-card-top">
-              <span class="status-card-name">{pkg.name}</span>
-              <span class="status-card-version">v{pkg.version}</span>
-            </div>
-            <p class="status-card-role">{pkg.role}</p>
-            {pkg.note && <p class="status-card-note">{pkg.note}</p>}
-          </a>
-        ))}
-      </div>
-      <div class="status-links">
-        <a href={`${SITE.github}/releases`} target="_blank" rel="noopener">Changelog &amp; Releases</a>
-        <span class="footer-dot">·</span>
-        <a href={`${SITE.github}/issues`} target="_blank" rel="noopener">Report an issue</a>
-        <span class="footer-dot">·</span>
-        <a href="mailto:hello@bpmnkit.com">Contact</a>
+      <div class="teams-layout">
+        <div class="teams-lede">
+          <div class="section-head section-head--tight">
+            <span class="section-num">08</span>
+            <span class="hero-eyebrow" style="margin:0">For process teams</span>
+          </div>
+          <h2>Analysts model it. Developers ship it.</h2>
+          <p>
+            Standard BPMN&nbsp;2.0 files open in any tool, including Camunda Modeler. Nothing
+            here is a lock-in format. <a href="/use-cases">Explore use cases →</a>
+          </p>
+        </div>
+        <div class="hair-grid hair-grid--3">
+          <div class="teams-card">
+            <h3>Faster process changes</h3>
+            <p>Updates ship through code review — versioned, tested, audit-traceable.</p>
+          </div>
+          <div class="teams-card">
+            <h3>AI-drafted workflows</h3>
+            <p>Describe a process in plain language; get a valid diagram analysts review visually.</p>
+          </div>
+          <div class="teams-card">
+            <h3>No license fees</h3>
+            <p>MIT, open source, standard files. Leave whenever you want.</p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
   </main>
 
-  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <!-- ── CTA ───────────────────────────────────────────────────────────────── -->
+  <section class="cta">
+    <div class="cta-inner">
+      <div class="cta-lede">
+        <h2>Write the diagram like you write the code.</h2>
+        <p>Or try the builder in the browser playground — nothing to install.</p>
+      </div>
+      <div class="cta-actions">
+        <a href="https://docs.bpmnkit.com" class="btn-primary">Read the docs</a>
+        <a href="#playground" class="btn-ghost">Playground</a>
+        <a href={SITE.github} class="btn-ghost" target="_blank" rel="noopener">GitHub ↗</a>
+      </div>
+    </div>
+  </section>
+
   <Footer />
 
   <script>

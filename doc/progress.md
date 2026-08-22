@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-08-22 — Landing site redesign: engineering-specification visual system
+
+The landing site read as 2025 dev-tool template output — dark indigo gradient with aurora glow, gradient-text headline, an "Open Source · MIT · AI-Native · TypeScript" pill, and eleven sections that all shared one rhythm (eyebrow → centred headline → card grid). The strongest artefact on the page, the 13-line builder snippet, sat in section four behind a drag-to-compare divider. Rebuilt against the handoff brief's audit, rationale and visual spec.
+
+**The system** (`apps/landing/src/styles/global.css`, rewritten). Cool paper ground `#f4f5f7` with an alternating `#eef0f3` band, ink `#14161a` for headings, code panels, the packages band and the footer, hairline `#dcdfe4` rules, and one accent `#a8503a` (`#d99a7c` on ink). Space Grotesk for prose, Space Mono for code, filenames, versions and eyebrow metadata. Card grids are a 1px grid gap over the rule colour rather than floating rounded cards — `--radius` is `0` and the only remaining radius is the 6px on diagram task nodes. No shadows, no gradients, no glows; the sticky header's backdrop blur is the only blur left. The old token names (`--bg`, `--bg-card`, `--bg-code`, `--border`, `--text`, `--accent-bright`, …) are kept as aliases, so every content page picked up the new palette without touching its markup.
+
+**Homepage** (`apps/landing/src/pages/index.astro`, rewritten). Eleven sections down to a hero plus eight numbered ones: the XML-versus-builder comparison, capabilities, packages, Camunda 8, quickstart, DMN & Forms, playground, process teams. Duplicates are gone — the Camunda client snippet appeared verbatim in two places, and "See it in action" / Examples / Playground were three renderings of one idea. The hero is a two-column grid split by a vertical hairline: claim, install line and three trust stats on the left; on the right the animated example demo, which now carries the code panel and the live diagram the brief wanted above the fold instead of a separate section three screens down. Its no-JS fallback is real `exportSvg()` output of the hero snippet, generated at build time, so the code and the picture beside it cannot drift. Pre-1.0 versions and the engine's simulator caveat moved from the page bottom into section 03, the caveat inline with the package it qualifies.
+
+**Canvas theme** — `scripts/neon-plugin.ts` → `scripts/canvas-theme.ts`, `createNeonThemePlugin` → `createSpecThemePlugin`: hairline ink on paper with the accent for highlight and focus, replacing the neon-on-black overrides. Every `BpmnCanvas` on the site (hero demo, playground, DMN preview, auto-layout comparison) renders `theme: "light"` through it.
+
+**Content pages** — `Nav.astro` is now a `bpmnkit v0.1.1` wordmark reading the live core version, with the five destinations a cold visitor needs and Editor + GitHub on the right; `Footer.astro` and the CLI page's private nav/footer copies were replaced with the shared components (the CLI page also had a duplicate burger script that double-toggled the menu). `cli.astro`'s 500-line stylesheet, `404.astro` and the prose layouts were retuned off the dark palette — inline code moved to a light tint, code blocks to ink with `--code-fg`, pill chips squared off.
+
+**Responsive** — the prototype specified none. The hero and every two-column grid stack below 1040px, card grids step 3 → 2 → 1, and code panels and wide tables scroll inside their own container rather than shrinking type. Grid cells carry `min-width: 0` so a `white-space: pre` panel cannot widen its track; audited at 1440px and 390px across fourteen pages — no horizontal page scroll, no console errors.
+
+Orphans removed with the sections that hosted them: `setupHeroDiagram`, `setupBentoSpotlight` and `setupCompareSlider` in `scripts/main.ts`.
+
 ## 2026-08-21 — `@bpmnkit/docspack`: the docs as a package an agent can install and search
 
 Agents answer BPMN Kit questions from whatever they remember, which is usually an older release. New package `packages/docspack` ships the documentation itself as an npm package, indexed and searched locally, so an agent reads the docs for the version the project actually installed.

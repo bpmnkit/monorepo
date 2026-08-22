@@ -1,6 +1,6 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn } from "@bpmnkit/core"
-import { createNeonThemePlugin } from "./neon-plugin.js"
+import { createSpecThemePlugin } from "./canvas-theme.js"
 
 // ── Utilities ──────────────────────────────────────────────────────────
 
@@ -47,39 +47,6 @@ function announce(message: string): void {
 	}, 30)
 }
 
-// ── Hero diagram ───────────────────────────────────────────────────────
-
-function setupHeroDiagram(): void {
-	const container = document.getElementById("diagram-hero")
-	if (!container) return
-
-	const xml = Bpmn.export(
-		Bpmn.createProcess("order-flow")
-			.name("Order Flow")
-			.startEvent("start", { name: "Order Received" })
-			.serviceTask("validate", { name: "Validate Order", taskType: "validate-order" })
-			.exclusiveGateway("gw", { name: "Valid?" })
-			.branch("yes", (b) =>
-				b
-					.condition("= valid")
-					.serviceTask("process", { name: "Process Order", taskType: "process-order" })
-					.endEvent("end-ok", { name: "Done" }),
-			)
-			.branch("no", (b) => b.defaultFlow().endEvent("end-rejected", { name: "Rejected" }))
-			.withAutoLayout()
-			.build(),
-	)
-
-	new BpmnCanvas({
-		container,
-		xml,
-		theme: "dark",
-		grid: true,
-		fit: "contain",
-		plugins: [createNeonThemePlugin()],
-	})
-}
-
 // ── Package manager tabs ───────────────────────────────────────────────
 
 function setupPkgTabs(): void {
@@ -108,7 +75,7 @@ function setupPkgTabs(): void {
 // ── Copy buttons ───────────────────────────────────────────────────────
 
 function setupCopyButtons(): void {
-	const blocks = document.querySelectorAll<HTMLElement>("pre")
+	const blocks = document.querySelectorAll<HTMLElement>("pre:not(.cmp-code--xml)")
 	for (const pre of blocks) {
 		const wrapper = document.createElement("div")
 		wrapper.className = "copy-wrapper"
@@ -117,7 +84,7 @@ function setupCopyButtons(): void {
 
 		const btn = document.createElement("button")
 		btn.className = "copy-btn"
-		btn.textContent = "Copy"
+		btn.textContent = "copy"
 		btn.type = "button"
 		wrapper.appendChild(btn)
 
@@ -125,11 +92,11 @@ function setupCopyButtons(): void {
 			const code = pre.querySelector("code")
 			const text = (code ?? pre).textContent ?? ""
 			const ok = await copyText(text.trim())
-			btn.textContent = ok ? "Copied!" : "Copy failed"
+			btn.textContent = ok ? "copied" : "copy failed"
 			btn.classList.toggle("copied", ok)
 			announce(ok ? "Copied to clipboard" : "Copy failed")
 			setTimeout(() => {
-				btn.textContent = "Copy"
+				btn.textContent = "copy"
 				btn.classList.remove("copied")
 			}, 1500)
 		})
@@ -152,18 +119,6 @@ function setupInstallButton(): void {
 		} else {
 			announce("Copy failed")
 		}
-	})
-}
-
-// ── Bento spotlight ────────────────────────────────────────────────────
-
-function setupBentoSpotlight(): void {
-	const bento = document.getElementById("bento")
-	if (!bento) return
-	bento.addEventListener("pointermove", (e: PointerEvent) => {
-		const rect = bento.getBoundingClientRect()
-		bento.style.setProperty("--mx", `${e.clientX - rect.left}px`)
-		bento.style.setProperty("--my", `${e.clientY - rect.top}px`)
 	})
 }
 
@@ -510,14 +465,14 @@ async function updateAnimDiagram(xml: string): Promise<void> {
 	container.style.transition = ""
 	container.style.opacity = "1"
 
-	// Neon plugin handles the fade-in after diagram:load.
+	// The theme plugin handles the fade-in after diagram:load.
 	// maxZoom: 1.4 keeps compact diagrams from over-filling the canvas.
 	animCanvas = new BpmnCanvas({
 		container,
 		xml,
-		theme: "dark",
+		theme: "light",
 		fit: "contain",
-		plugins: [createNeonThemePlugin({ maxZoom: 1.4 })],
+		plugins: [createSpecThemePlugin({ maxZoom: 1.4 })],
 	})
 }
 
@@ -560,9 +515,9 @@ function showExampleInstant(
 			animCanvas = new BpmnCanvas({
 				container,
 				xml: finalXml,
-				theme: "dark",
+				theme: "light",
 				fit: "contain",
-				plugins: [createNeonThemePlugin({ maxZoom: 1.4 })],
+				plugins: [createSpecThemePlugin({ maxZoom: 1.4 })],
 			})
 		}
 	}
@@ -785,73 +740,10 @@ function setupAnimation(): void {
 	observer.observe(demo)
 }
 
-// ── Before/After compare slider ─────────────────────────────────────────
-
-function setupCompareSlider(): void {
-	const slider = document.getElementById("compare-slider")
-	const knob = document.getElementById("cmp-divider-knob")
-	if (!slider) return
-
-	let dragging = false
-
-	// Clamp to 5–95% so the knob is always reachable on mobile.
-	const setPct = (pct: number) => {
-		const clamped = Math.max(5, Math.min(95, pct))
-		slider.style.setProperty("--split", `${clamped}%`)
-		knob?.setAttribute("aria-valuenow", String(Math.round(clamped)))
-	}
-
-	const setPos = (clientX: number) => {
-		const rect = slider.getBoundingClientRect()
-		setPct(((clientX - rect.left) / rect.width) * 100)
-	}
-
-	slider.addEventListener("pointerdown", (e) => {
-		// Let discrete actions inside the panels (e.g. the copy button) behave
-		// normally instead of being hijacked as a drag-to-compare gesture.
-		if ((e.target as HTMLElement).closest(".copy-btn")) return
-		dragging = true
-		slider.setPointerCapture(e.pointerId)
-		setPos(e.clientX)
-	})
-
-	slider.addEventListener("pointermove", (e) => {
-		if (dragging) setPos(e.clientX)
-	})
-
-	const stop = () => {
-		dragging = false
-	}
-	slider.addEventListener("pointerup", stop)
-	slider.addEventListener("pointercancel", stop)
-
-	// Keyboard support for the divider knob (WAI-ARIA slider pattern).
-	knob?.addEventListener("keydown", (e) => {
-		const current = Number(knob.getAttribute("aria-valuenow") ?? "50")
-		const step = e.key === "PageUp" || e.key === "PageDown" ? 20 : 5
-		if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "PageDown") {
-			e.preventDefault()
-			setPct(current - step)
-		} else if (e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "PageUp") {
-			e.preventDefault()
-			setPct(current + step)
-		} else if (e.key === "Home") {
-			e.preventDefault()
-			setPct(5)
-		} else if (e.key === "End") {
-			e.preventDefault()
-			setPct(95)
-		}
-	})
-}
-
 // ── Init ───────────────────────────────────────────────────────────────
 // Mobile nav is handled by Nav.astro's own inline script.
 
-setupHeroDiagram()
 setupCopyButtons()
 setupPkgTabs()
 setupInstallButton()
-setupBentoSpotlight()
 setupAnimation()
-setupCompareSlider()

@@ -65,14 +65,14 @@ const jsonLd = [
     .connector-header h1 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
     .connector-header p { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 16px; }
     .connector-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 32px; }
-    .connector-meta span { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--teal); }
+    .connector-meta span { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 9px; border: 1px solid var(--border); color: var(--text-muted); font-family: var(--font-mono); }
     .connector-section { margin-bottom: 32px; }
     .connector-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--text); }
-    .connector-inputs-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .connector-inputs-table { width: 100%; min-width: 460px; border-collapse: collapse; font-size: 0.85rem; }
     .connector-inputs-table th, .connector-inputs-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
     .connector-inputs-table th { color: var(--text-muted); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
-    .connector-inputs-table code { font-family: var(--font-mono); color: var(--accent-bright); font-size: 0.8rem; }
-    .connector-code { background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--text); white-space: pre; }
+    .connector-inputs-table code { font-family: var(--font-mono); color: var(--accent); font-size: 0.8rem; }
+    .connector-code { background: var(--code-bg); padding: 18px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--code-fg); white-space: pre; }
   </style>
 </head>
 <body>
@@ -101,7 +101,8 @@ const jsonLd = [
       {connector.requiredInputs.length > 0 && (
         <div class="connector-section">
           <h2>Required inputs</h2>
-          <table class="connector-inputs-table">
+          <div class="table-scroll">
+            <table class="connector-inputs-table">
             <thead><tr><th>Key</th><th>Label</th><th>Type</th></tr></thead>
             <tbody>
               {connector.requiredInputs.map((input) => (
@@ -113,13 +114,15 @@ const jsonLd = [
               ))}
             </tbody>
           </table>
+            </div>
         </div>
       )}
 
       {connector.optionalInputs.length > 0 && (
         <div class="connector-section">
           <h2>Optional inputs</h2>
-          <table class="connector-inputs-table">
+          <div class="table-scroll">
+            <table class="connector-inputs-table">
             <thead><tr><th>Key</th><th>Label</th><th>Type</th></tr></thead>
             <tbody>
               {connector.optionalInputs.map((input) => (
@@ -131,6 +134,7 @@ const jsonLd = [
               ))}
             </tbody>
           </table>
+            </div>
         </div>
       )}
 

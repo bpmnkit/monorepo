@@ -7,18 +7,13 @@ const logoUri = `data:image/svg+xml;base64,${logoB64}`
 
 function ogSvg(title: string, subtitle: string): string {
 	return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6b9df7"/>
-      <stop offset="100%" stop-color="#2dd4bf"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="630" fill="#0d0d16"/>
-  <rect x="0" y="0" width="8" height="630" fill="url(#bar)"/>
+  <rect width="1200" height="630" fill="#f4f5f7"/>
+  <rect x="0" y="0" width="8" height="630" fill="#a8503a"/>
   <image href="${logoUri}" x="80" y="70" width="120" height="120"/>
-  <text x="80" y="334" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="#cdd6f4">${title}</text>
-  <text x="80" y="394" font-family="system-ui,-apple-system,sans-serif" font-size="30" fill="#6b9df7">${subtitle}</text>
-  <text x="80" y="568" font-family="system-ui,-apple-system,sans-serif" font-size="22" fill="#8888a8">bpmnkit.com</text>
+  <text x="80" y="334" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="600" fill="#14161a">${title}</text>
+  <text x="80" y="394" font-family="system-ui,-apple-system,sans-serif" font-size="30" fill="#a8503a">${subtitle}</text>
+  <line x1="80" y1="520" x2="1120" y2="520" stroke="#dcdfe4" stroke-width="1"/>
+  <text x="80" y="568" font-family="monospace" font-size="22" fill="#7a828e">bpmnkit.com</text>
 </svg>`
 }
 

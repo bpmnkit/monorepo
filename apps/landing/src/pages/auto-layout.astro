@@ -56,7 +56,7 @@ const jsonLd = breadcrumbJsonLd([
     .al-hero p { color: var(--text-muted); font-size: 1.05rem; line-height: 1.7; max-width: 720px; margin: 0 auto 12px; }
     .al-hero a { color: var(--accent-bright); }
 
-    .stat-delta { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); padding: 16px 18px; }
+    .stat-delta { border: 1px solid var(--border); background: var(--bg-card); padding: 16px 18px; }
     .stat-delta-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 10px; }
     .stat-delta-value { display: flex; align-items: baseline; gap: 8px; font-family: var(--font-mono); }
     .stat-delta-before { color: var(--text-muted); font-size: 1.1rem; }
@@ -73,16 +73,17 @@ const jsonLd = breadcrumbJsonLd([
     .al-sample-head h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; }
     .al-sample-head p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.65; max-width: 640px; }
 
-    .al-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 3px; background: var(--bg-code); flex-shrink: 0; }
-    .al-toggle button { appearance: none; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: 0.82rem; font-weight: 600; padding: 7px 16px; border-radius: 999px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .al-toggle { display: inline-flex; border: 1px solid var(--border); flex-shrink: 0; }
+    .al-toggle button { appearance: none; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.74rem; padding: 6px 14px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .al-toggle button:last-child { border-right: 0; }
     .al-toggle button:hover { color: var(--text); }
-    .al-toggle button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+    .al-toggle button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
 
     .al-canvas-wrap { height: 440px; position: relative; background: var(--bg); }
     .al-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
 
     .al-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 16px; }
-    .al-stats .stat-delta { border-radius: 10px; padding: 11px 14px; }
+    .al-stats .stat-delta { padding: 11px 14px; }
     .al-stats .stat-delta-label { margin-bottom: 6px; font-size: 0.68rem; }
     .al-stats .stat-delta-before { font-size: 0.85rem; }
     .al-stats .stat-delta-after { font-size: 1rem; }
@@ -94,7 +95,7 @@ const jsonLd = breadcrumbJsonLd([
     .al-method dl { max-width: 760px; margin-bottom: 24px; }
     .al-method dt { font-weight: 600; font-size: 0.9rem; margin-top: 14px; }
     .al-method dd { color: var(--text-muted); font-size: 0.9rem; line-height: 1.65; }
-    code.inline { font-family: var(--font-mono); color: var(--accent-bright); background: var(--bg-code); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+    code.inline { font-family: var(--font-mono); color: var(--accent); background: var(--inline-code-bg); padding: 2px 5px; font-size: 0.85em; }
 
     @media (max-width: 720px) {
       .al-canvas-wrap { height: 300px; }

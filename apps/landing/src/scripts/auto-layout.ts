@@ -1,7 +1,7 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import type { BpmnDefinitions, LayoutEngine } from "@bpmnkit/core"
 import { SAMPLES, layoutWith } from "../data/layout-samples.js"
-import { createNeonThemePlugin } from "./neon-plugin.js"
+import { createSpecThemePlugin } from "./canvas-theme.js"
 
 const xmlById = new Map(SAMPLES.map((sample) => [sample.id, sample.xml]))
 
@@ -40,10 +40,10 @@ function mount(section: HTMLElement): void {
 	mounted.set(id, {
 		canvas: new BpmnCanvas({
 			container,
-			theme: "dark",
+			theme: "light",
 			grid: false,
 			fit: "contain",
-			plugins: [createNeonThemePlugin({ maxZoom: 1.5 })],
+			plugins: [createSpecThemePlugin({ maxZoom: 1.5 })],
 		}),
 		laid: new Map(),
 		xml,
