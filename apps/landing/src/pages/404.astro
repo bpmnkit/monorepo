@@ -37,23 +37,13 @@ import Nav from "../components/Nav.astro"
     }
 
     .nf-code {
-      font-size: clamp(7rem, 22vw, 11rem);
-      font-weight: 800;
+      font-family: var(--font-mono);
+      font-size: clamp(6rem, 18vw, 9rem);
+      font-weight: 700;
       line-height: 1;
       letter-spacing: -0.05em;
+      color: var(--ink);
       margin-bottom: 32px;
-      background: linear-gradient(
-        90deg,
-        var(--accent-bright) 0%,
-        var(--teal) 33%,
-        var(--pink) 66%,
-        var(--accent-bright) 100%
-      );
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: shimmer 4s linear infinite;
     }
 
     /* Mini BPMN flow diagram — decorative */
@@ -88,38 +78,9 @@ import Nav from "../components/Nav.astro"
       flex-wrap: wrap;
     }
 
-    .btn-ghost {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 22px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      transition: color 0.2s, border-color 0.2s, background 0.2s;
-      text-decoration: none;
-    }
-
-    .btn-ghost:hover {
-      color: var(--text);
-      border-color: oklch(30% 0.04 270);
-      background: oklch(12% 0.025 270 / 0.6);
-      text-decoration: none;
-    }
   </style>
 </head>
 <body>
-
-  <!-- Fixed page backgrounds -->
-  <div class="aurora" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-  </div>
-  <div class="dots" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
 
   <!-- Nav -->
   <Nav />
@@ -134,21 +95,21 @@ import Nav from "../components/Nav.astro"
         <div class="nf-flow" aria-hidden="true">
           <svg width="280" height="56" viewBox="0 0 280 56" fill="none" xmlns="http://www.w3.org/2000/svg">
             <!-- Start event -->
-            <circle cx="22" cy="28" r="16" stroke="oklch(72% 0.18 185)" stroke-width="1.5"/>
+            <circle cx="22" cy="28" r="16" stroke="#14161a" stroke-width="1.5"/>
             <!-- Arrow: start → task -->
-            <line x1="38" y1="28" x2="58" y2="28" stroke="oklch(45% 0.04 270)" stroke-width="1.5"/>
-            <path d="M55 23.5 L62 28 L55 32.5" stroke="oklch(45% 0.04 270)" stroke-width="1.5" stroke-linejoin="round"/>
+            <line x1="38" y1="28" x2="58" y2="28" stroke="#14161a" stroke-width="1.5"/>
+            <path d="M55 23.5 L62 28 L55 32.5" stroke="#14161a" stroke-width="1.5" stroke-linejoin="round"/>
             <!-- Task box -->
-            <rect x="62" y="10" width="98" height="36" rx="6" stroke="oklch(55% 0.12 280)" stroke-width="1.5"/>
-            <text x="111" y="32" text-anchor="middle" font-size="11" fill="oklch(58% 0.03 270)" font-family="-apple-system, BlinkMacSystemFont, sans-serif">GET /this-page</text>
+            <rect x="62" y="10" width="98" height="36" rx="6" stroke="#14161a" stroke-width="1.5"/>
+            <text x="111" y="32" text-anchor="middle" font-size="11" fill="#14161a" font-family="Space Mono, ui-monospace, monospace">GET /this-page</text>
             <!-- Arrow: task → end -->
-            <line x1="160" y1="28" x2="182" y2="28" stroke="oklch(45% 0.04 270)" stroke-width="1.5"/>
-            <path d="M179 23.5 L186 28 L179 32.5" stroke="oklch(45% 0.04 270)" stroke-width="1.5" stroke-linejoin="round"/>
+            <line x1="160" y1="28" x2="182" y2="28" stroke="#14161a" stroke-width="1.5"/>
+            <path d="M179 23.5 L186 28 L179 32.5" stroke="#14161a" stroke-width="1.5" stroke-linejoin="round"/>
             <!-- Error end event (thick border = end event, lightning bolt = error) -->
-            <circle cx="202" cy="28" r="16" stroke="oklch(65% 0.22 20)" stroke-width="3"/>
-            <circle cx="202" cy="28" r="12" stroke="oklch(65% 0.22 20)" stroke-width="1" stroke-dasharray="2 2" opacity="0.4"/>
+            <circle cx="202" cy="28" r="16" stroke="#a8503a" stroke-width="3"/>
+            <circle cx="202" cy="28" r="12" stroke="#a8503a" stroke-width="1" stroke-dasharray="2 2" opacity="0.4"/>
             <!-- Lightning bolt (error marker) -->
-            <path d="M205 18 L199 27 L204 27 L199 38 L207 25 L202 25 Z" fill="oklch(65% 0.22 20)" opacity="0.9"/>
+            <path d="M205 18 L199 27 L204 27 L199 38 L207 25 L202 25 Z" fill="#a8503a" opacity="0.9"/>
           </svg>
         </div>
 

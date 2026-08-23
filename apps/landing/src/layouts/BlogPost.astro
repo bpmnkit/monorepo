@@ -59,14 +59,14 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
     .post-prose h2 { font-size: 1.35rem; font-weight: 700; margin: 40px 0 16px; letter-spacing: -0.01em; }
     .post-prose h3 { font-size: 1.1rem; font-weight: 600; margin: 28px 0 12px; }
     .post-prose p { margin-bottom: 18px; color: var(--text); }
-    .post-prose p code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-code); padding: 2px 6px; border-radius: 4px; color: var(--accent-bright); }
+    .post-prose p code { font-family: var(--font-mono); font-size: 0.88em; background: var(--inline-code-bg); padding: 2px 5px; color: var(--accent); }
     .post-prose ul, .post-prose ol { margin: 0 0 18px 22px; }
     .post-prose li { margin-bottom: 6px; }
-    .post-prose li code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-code); padding: 2px 6px; border-radius: 4px; color: var(--accent-bright); }
+    .post-prose li code { font-family: var(--font-mono); font-size: 0.88em; background: var(--inline-code-bg); padding: 2px 5px; color: var(--accent); }
     .post-prose a { color: var(--accent-bright); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
     .post-prose a:hover { text-decoration-color: var(--accent-bright); }
-    .post-prose pre { background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; margin-bottom: 20px; }
-    .post-prose pre code { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; background: none; padding: 0; color: var(--text); }
+    .post-prose pre { background: var(--code-bg); padding: 18px; overflow-x: auto; margin-bottom: 20px; }
+    .post-prose pre code { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; background: none; padding: 0; color: var(--code-fg); }
     .post-prose strong { color: var(--text); font-weight: 600; }
   </style>
 </head>

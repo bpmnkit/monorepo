@@ -1,7 +1,7 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
 import { esc, tokenize } from "../lib/highlight.js"
-import { createNeonThemePlugin } from "./neon-plugin.js"
+import { createSpecThemePlugin } from "./canvas-theme.js"
 
 // ── DMN section tabs ─────────────────────────────────────────────────────────
 
@@ -80,7 +80,14 @@ function renderDmnBpmnPreview(): void {
 			.build(),
 	)
 
-	_dmnBpmnCanvas = new BpmnCanvas({ container, xml, theme: "dark", fit: "contain", grid: false })
+	_dmnBpmnCanvas = new BpmnCanvas({
+		container,
+		xml,
+		theme: "light",
+		fit: "contain",
+		grid: false,
+		plugins: [createSpecThemePlugin()],
+	})
 }
 
 // ── Starter code ────────────────────────────────────────────────────────────
@@ -281,10 +288,10 @@ function setupPlayground(): void {
 				canvas = new BpmnCanvas({
 					container: diagramEl,
 					xml,
-					theme: "dark",
+					theme: "light",
 					fit: "contain",
 					grid: false,
-					plugins: [createNeonThemePlugin()],
+					plugins: [createSpecThemePlugin()],
 				})
 			} catch (err) {
 				errEl.textContent = `Render failed: ${err instanceof Error ? err.message : String(err)}`

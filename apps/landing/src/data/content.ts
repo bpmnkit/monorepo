@@ -72,7 +72,7 @@ export const ECOSYSTEM = [
 		name: "@bpmnkit/engine",
 		version: "0.1.29",
 		role: "Simulate a process in-process",
-		note: "Experimental — simulation only, not a production runtime",
+		note: "experimental, not a production runtime",
 		url: `${SITE.github}/tree/main/packages/engine`,
 		npm: "https://www.npmjs.com/package/@bpmnkit/engine",
 	},
