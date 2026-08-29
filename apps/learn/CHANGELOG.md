@@ -1,5 +1,13 @@
 # @bpmnkit/learn
 
+## 0.0.29
+
+### Patch Changes
+
+- Updated dependencies [f990c94]
+  - @bpmnkit/astro-shared@0.0.15
+  - @bpmnkit/plugins@0.0.34
+
 ## 0.0.28
 
 ### Patch Changes

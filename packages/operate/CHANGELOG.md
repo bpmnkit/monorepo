@@ -1,5 +1,12 @@
 # @bpmnkit/operate
 
+## 0.0.31
+
+### Patch Changes
+
+- Updated dependencies [f990c94]
+  - @bpmnkit/plugins@0.0.34
+
 ## 0.0.30
 
 ### Patch Changes

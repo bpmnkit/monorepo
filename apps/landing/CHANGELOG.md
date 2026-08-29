@@ -1,5 +1,14 @@
 # @bpmnkit/landing
 
+## 0.0.35
+
+### Patch Changes
+
+- Updated dependencies [f990c94]
+  - @bpmnkit/astro-shared@0.0.15
+  - @bpmnkit/plugins@0.0.34
+  - @bpmnkit/operate@0.0.31
+
 ## 0.0.34
 
 ### Patch Changes
