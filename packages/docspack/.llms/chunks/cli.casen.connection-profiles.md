@@ -59,4 +59,4 @@ Variables (JSON): {"method": "card"}
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/casen/
+Source: https://bpmnkit.com/docs/cli/casen

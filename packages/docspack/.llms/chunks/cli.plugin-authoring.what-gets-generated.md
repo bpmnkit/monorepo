@@ -66,4 +66,4 @@ export default plugin
 Replace the example command with your own logic. Add as many command groups and commands as needed.
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugin-authoring/
+Source: https://bpmnkit.com/docs/cli/plugin-authoring

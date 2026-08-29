@@ -17,4 +17,4 @@ Run a task or sub-process once per item in a collection:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/building-processes/
+Source: https://bpmnkit.com/docs/guides/building-processes

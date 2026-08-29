@@ -58,4 +58,4 @@ Investigate and resolve the open incidents
 ---
 
 ---
-Source: https://docs.bpmnkit.com/guides/claude-code-plugin/
+Source: https://bpmnkit.com/docs/guides/claude-code-plugin

@@ -37,4 +37,4 @@ interface ActivatedJob {
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/worker-client/
+Source: https://bpmnkit.com/docs/packages/worker-client

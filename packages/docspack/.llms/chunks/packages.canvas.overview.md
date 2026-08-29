@@ -32,4 +32,4 @@ await canvas.loadXML(bpmnXml);
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/canvas/
+Source: https://bpmnkit.com/docs/packages/canvas

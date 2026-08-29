@@ -10,4 +10,4 @@
 All packages are **ESM-only** (`"type": "module"`). CommonJS is not supported.
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/installation/
+Source: https://bpmnkit.com/docs/getting-started/installation

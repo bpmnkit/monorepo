@@ -17,4 +17,4 @@ casen connector
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/connector/
+Source: https://bpmnkit.com/docs/cli/connector

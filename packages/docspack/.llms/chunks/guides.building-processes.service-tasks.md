@@ -36,4 +36,4 @@ A user task waits for a human actor. Optionally attach a Camunda form:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/building-processes/
+Source: https://bpmnkit.com/docs/guides/building-processes

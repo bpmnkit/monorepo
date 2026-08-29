@@ -20,4 +20,4 @@ does the same job with no extra tooling.
 - Zero runtime dependencies
 
 ---
-Source: https://docs.bpmnkit.com/packages/docspack/
+Source: https://bpmnkit.com/docs/packages/docspack

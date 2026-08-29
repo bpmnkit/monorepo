@@ -7,7 +7,7 @@ tags: ["camunda", "zeebe", "api"]
 ---
 
 Camunda 8's REST API is large — deployment, process instances, user tasks,
-incidents, decisions, and more. [`@bpmnkit/api`](https://docs.bpmnkit.com/packages/api/)
+incidents, decisions, and more. [`@bpmnkit/api`](/docs/packages/api)
 wraps it in a single typed client: 180 methods across 30+ resource classes, generated
 from Camunda's own OpenAPI specification, so every request and response is typed.
 
@@ -66,5 +66,5 @@ call site.
 ## Where to go next
 
 - [Simulate a BPMN process without Camunda](/blog/simulate-bpmn-process-without-camunda) — test before you deploy
-- [`@bpmnkit/api` package reference](https://docs.bpmnkit.com/packages/api/) — full method list
+- [`@bpmnkit/api` package reference](/docs/packages/api) — full method list
 - [`casen` CLI](/cli) — manage Camunda 8 from the terminal, built on this same client

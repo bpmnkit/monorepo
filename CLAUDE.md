@@ -20,7 +20,7 @@ npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
   `bpmnkit-docs list` shows which packs are indexed.
 - Every command reads the filesystem only — no network call, no server, nothing resident.
 
-After changing anything under `apps/docs/src/content/docs/`, rebuild the pack so the
+After changing anything under `apps/landing/src/content/docs/`, rebuild the pack so the
 index does not go stale: `pnpm --filter @bpmnkit/docspack build`.
 
 <!-- Part 1 & 2: Portable across repos. Do NOT add repo-specific rules here. -->

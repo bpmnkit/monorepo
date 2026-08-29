@@ -11,4 +11,4 @@
 For local development with reebe, only `ZEEBE_ADDRESS` matters (or leave it at the default).
 
 ---
-Source: https://docs.bpmnkit.com/guides/workers-standalone/
+Source: https://bpmnkit.com/docs/guides/workers-standalone

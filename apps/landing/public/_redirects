@@ -1,0 +1,6 @@
+# The documentation used to live on its own subdomain at the site root. Keep the
+# old paths working for anything still pointing at them.
+/getting-started/*  /docs/getting-started/:splat  301
+/guides/*           /docs/guides/:splat           301
+/packages/*         /docs/packages/:splat         301
+/cli/*              /docs/cli/:splat              301

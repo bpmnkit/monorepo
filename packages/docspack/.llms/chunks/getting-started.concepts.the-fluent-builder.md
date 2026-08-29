@@ -38,4 +38,4 @@ Each branch builder starts at the gateway. Branches merge automatically when two
 the same element.
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/concepts/
+Source: https://bpmnkit.com/docs/getting-started/concepts

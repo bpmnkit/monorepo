@@ -17,4 +17,4 @@ Import the generated `.json` files into Camunda Modeler via
 **File → Import Element Templates** or by placing them in your `.camunda/element-templates/` directory.
 
 ---
-Source: https://docs.bpmnkit.com/cli/connector/
+Source: https://bpmnkit.com/docs/cli/connector

@@ -1,8 +1,7 @@
 # casen Plugins
 
-:::note[Auto-generated]
-This page is generated from `plugins-cli/*/package.json` during the docs build. Do not edit manually.
-:::
+> **Auto-generated** — this page is built from `plugins-cli/*/package.json` during the site
+> build. Do not edit it by hand.
 
 Official plugins extend `casen` with domain-specific command groups. Install them with:
 
@@ -22,4 +21,4 @@ casen plugin install <name>
 ---
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugins/
+Source: https://bpmnkit.com/docs/cli/plugins

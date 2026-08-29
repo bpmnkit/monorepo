@@ -8,4 +8,4 @@ pnpm add @bpmnkit/core
 ## API Reference
 
 ---
-Source: https://docs.bpmnkit.com/packages/core/
+Source: https://bpmnkit.com/docs/packages/core

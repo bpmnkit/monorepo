@@ -49,4 +49,4 @@ casen generate bpmn --template timer-start --process-id nightly-sync
 | `--output` | `-o` | Output file path (`-` for stdout) | `<process-id>.bpmn` |
 
 ---
-Source: https://docs.bpmnkit.com/cli/generate/
+Source: https://bpmnkit.com/docs/cli/generate

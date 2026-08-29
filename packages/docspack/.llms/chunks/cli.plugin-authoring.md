@@ -56,4 +56,4 @@ pnpm create @bpmnkit/casen-plugin \
 | `--no-git` | Skip `git init` |
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugin-authoring/
+Source: https://bpmnkit.com/docs/cli/plugin-authoring

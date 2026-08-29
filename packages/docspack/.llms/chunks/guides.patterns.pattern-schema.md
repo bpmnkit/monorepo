@@ -35,4 +35,4 @@ pattern object to `ALL_PATTERNS` via the `findPattern` API. Contributions to the
 are welcome via pull request.
 
 ---
-Source: https://docs.bpmnkit.com/guides/patterns/
+Source: https://bpmnkit.com/docs/guides/patterns

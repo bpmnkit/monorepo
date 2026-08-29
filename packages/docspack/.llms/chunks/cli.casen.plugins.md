@@ -50,7 +50,7 @@ casen plugin remove casen-deploy
 
 Once installed, plugin commands appear in the main TUI and in tab-completion alongside built-in commands.
 
-To build your own plugin, see [Plugin Authoring](/cli/plugin-authoring/).
+To build your own plugin, see [Plugin Authoring](/docs/cli/plugin-authoring).
 
 ---
-Source: https://docs.bpmnkit.com/cli/casen/
+Source: https://bpmnkit.com/docs/cli/casen

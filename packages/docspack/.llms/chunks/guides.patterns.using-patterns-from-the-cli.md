@@ -27,4 +27,4 @@ console.log(invoice?.workers.map((w) => w.jobType))
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/patterns/
+Source: https://bpmnkit.com/docs/guides/patterns

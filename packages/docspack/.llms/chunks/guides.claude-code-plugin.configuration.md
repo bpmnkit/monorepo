@@ -7,7 +7,7 @@ When the plugin is enabled, Claude Code prompts for two optional values:
 | `camunda_endpoint` | Camunda 8 REST API endpoint (leave blank for local Reebe) |
 | `camunda_token` | Camunda 8 OAuth2 token (leave blank for local Reebe) |
 
-Leave both blank to use the local [Reebe engine](/cli/reebe).
+Leave both blank to use the local [Reebe engine](/docs/cli/casen#local-engine-reebe).
 
 ---
 
@@ -51,7 +51,7 @@ Design and add a Camunda AI Agent Sub-process.
 
 Works out the provider/model, prompts, and tools (each mapped via connector search or an
 existing worker job type), then compiles and mock-tests the agent step. See
-[AI Agents](/guides/ai-agents/) for the full pattern.
+[AI Agents](/docs/guides/ai-agents) for the full pattern.
 
 ---
 
@@ -123,4 +123,4 @@ List open incidents with suggested resolution actions.
 ---
 
 ---
-Source: https://docs.bpmnkit.com/guides/claude-code-plugin/
+Source: https://bpmnkit.com/docs/guides/claude-code-plugin

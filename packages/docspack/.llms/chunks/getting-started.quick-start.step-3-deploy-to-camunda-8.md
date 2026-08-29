@@ -30,4 +30,4 @@ console.log("Started instance:", instance.processInstanceKey);
 ```
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/quick-start/
+Source: https://bpmnkit.com/docs/getting-started/quick-start

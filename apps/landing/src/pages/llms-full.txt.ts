@@ -1,10 +1,30 @@
+import { getCollection } from "astro:content"
 import type { APIRoute } from "astro"
 import { CODE, FEATURES, PACKAGES, SITE } from "../data/content"
+import { getDocsNav } from "../data/docs-nav"
 
 const packageList = PACKAGES.map((p) => `- [${p.name}](${p.url}): ${p.description}`).join("\n")
 const featureList = FEATURES.map((f) => `- ${f}`).join("\n")
 
-const content = `\
+/** The full documentation, in sidebar order, one Markdown body per page. */
+async function documentation(): Promise<string> {
+	const nav = await getDocsNav()
+	const bodies = new Map((await getCollection("docs")).map((entry) => [entry.id, entry.body ?? ""]))
+	return nav
+		.map((section) => {
+			const pages = section.items
+				.map(
+					(item) =>
+						`### ${item.title}\n\n${item.description}\n\nSource: ${SITE.url}${item.href}\n\n${bodies.get(item.slug) ?? ""}`,
+				)
+				.join("\n\n---\n\n")
+			return `## Documentation — ${section.label}\n\n${pages}`
+		})
+		.join("\n\n---\n\n")
+}
+
+async function build(): Promise<string> {
+	return `\
 # ${SITE.name} — Full Content
 
 > ${SITE.description}
@@ -133,15 +153,21 @@ ${CODE.deployRun}
 
 ---
 
+${await documentation()}
+
+---
+
 ## Links
 
 - Live Editor: ${SITE.url}/editor
+- Documentation: ${SITE.url}/docs
 - GitHub: ${SITE.github}
 - npm: ${SITE.npm}
 - Compact index (llms.txt): ${SITE.url}/llms.txt
 `
+}
 
-export const GET: APIRoute = () =>
-	new Response(content, {
+export const GET: APIRoute = async () =>
+	new Response(await build(), {
 		headers: { "Content-Type": "text/plain; charset=utf-8" },
 	})

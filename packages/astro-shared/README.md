@@ -9,7 +9,7 @@
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
   [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/astro-shared/CHANGELOG.md)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/astro-shared/CHANGELOG.md)
 </div>
 
 ---
@@ -43,7 +43,7 @@ import "@bpmnkit/astro-shared/background.css"
 import { SITE } from "@bpmnkit/astro-shared"
 
 console.log(SITE.name)    // "BPMN Kit"
-console.log(SITE.docsUrl) // "https://docs.bpmnkit.com"
+console.log(SITE.docsUrl) // "https://bpmnkit.com/docs"
 ```
 
 ### Add SEO tags and structured data to a page

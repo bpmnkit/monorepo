@@ -23,4 +23,4 @@ Auth is auto-detected from `components.securitySchemes`. The detected or specifi
 pre-selected in the template dropdown.
 
 ---
-Source: https://docs.bpmnkit.com/packages/connector-gen/
+Source: https://bpmnkit.com/docs/packages/connector-gen

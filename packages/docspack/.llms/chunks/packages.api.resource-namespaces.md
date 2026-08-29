@@ -17,4 +17,4 @@ All methods are grouped by resource type:
 | `client.authorizations` | list, create, delete |
 
 ---
-Source: https://docs.bpmnkit.com/packages/api/
+Source: https://bpmnkit.com/docs/packages/api

@@ -17,7 +17,7 @@ casen plugin install @bpmnkit/casen-worker-http
 
 ## Authoring Plugins
 
-See the [Plugin Authoring](/cli/plugin-authoring/) guide to build and publish your own `casen` plugin.
+See the [Plugin Authoring](/docs/cli/plugin-authoring) guide to build and publish your own `casen` plugin.
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugins/
+Source: https://bpmnkit.com/docs/cli/plugins

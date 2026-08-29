@@ -35,4 +35,4 @@ pnpm add @bpmnkit/api
 ```
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/installation/
+Source: https://bpmnkit.com/docs/getting-started/installation

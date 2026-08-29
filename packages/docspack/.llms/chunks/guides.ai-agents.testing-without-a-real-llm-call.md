@@ -23,4 +23,4 @@ exercise the agent's actual tool-calling behavior, prompt quality, or model choi
 require a real (or sandboxed) LLM run, which is out of scope for `casen test`.
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-agents/
+Source: https://bpmnkit.com/docs/guides/ai-agents

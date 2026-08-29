@@ -15,7 +15,7 @@ It's **CLI-first**: every skill drives `casen` via Bash — no MCP server, no pr
 
 Claude works through: resolve connectors → write the plan → compile → test → scaffold missing workers → present a summary → ask where to deploy.
 
-Related skills: `/bpmnkit:extend <file> <change>` (lift an existing process to a plan, apply a targeted delta, merge), `/bpmnkit:agent` (design an AI Agent Sub-process — see [AI Agents](/guides/ai-agents/)), `/bpmnkit:connect <file> <step> <service>` (wire an existing step to a connector), `/bpmnkit:review`, `/bpmnkit:test`, `/bpmnkit:deploy`.
+Related skills: `/bpmnkit:extend <file> <change>` (lift an existing process to a plan, apply a targeted delta, merge), `/bpmnkit:agent` (design an AI Agent Sub-process — see [AI Agents](/docs/guides/ai-agents)), `/bpmnkit:connect <file> <step> <service>` (wire an existing step to a connector), `/bpmnkit:review`, `/bpmnkit:test`, `/bpmnkit:deploy`.
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-implement/
+Source: https://bpmnkit.com/docs/guides/ai-implement

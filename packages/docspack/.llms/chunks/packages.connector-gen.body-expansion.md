@@ -15,4 +15,4 @@ generate(spec, { idPrefix: "com.myorg", expandBody: true })
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/connector-gen/
+Source: https://bpmnkit.com/docs/packages/connector-gen

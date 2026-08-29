@@ -24,4 +24,4 @@ Branches can contain further gateways:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/gateways/
+Source: https://bpmnkit.com/docs/guides/gateways

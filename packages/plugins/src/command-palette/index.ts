@@ -64,7 +64,7 @@ export interface CommandPaletteOptions {
 	aiServerUrl?: string
 	/**
 	 * Base URL for documentation links.
-	 * Defaults to `https://docs.bpmnkit.com`.
+	 * Defaults to `https://bpmnkit.com/docs`.
 	 */
 	docsBaseUrl?: string
 }
@@ -112,7 +112,7 @@ function wordsMatch(text: string, query: string): boolean {
 
 // ── Docs registry ─────────────────────────────────────────────────────────────
 
-const DOCS_BASE_DEFAULT = "https://docs.bpmnkit.com"
+const DOCS_BASE_DEFAULT = "https://bpmnkit.com/docs"
 
 interface DocEntry {
 	title: string
@@ -123,27 +123,27 @@ interface DocEntry {
 const DOC_ENTRIES: DocEntry[] = [
 	{
 		title: "Quick Start",
-		path: "/getting-started/quick-start/",
+		path: "/getting-started/quick-start",
 		keywords: ["start", "install", "begin", "setup", "first", "hello", "quickstart"],
 	},
 	{
 		title: "Installation",
-		path: "/getting-started/installation/",
+		path: "/getting-started/installation",
 		keywords: ["install", "npm", "pnpm", "yarn", "add", "package", "require"],
 	},
 	{
 		title: "Concepts",
-		path: "/getting-started/concepts/",
+		path: "/getting-started/concepts",
 		keywords: ["concept", "bpmn", "process", "element", "overview", "intro", "what"],
 	},
 	{
 		title: "Building Processes",
-		path: "/guides/building-processes/",
+		path: "/guides/building-processes",
 		keywords: ["build", "create", "process", "task", "flow", "sequence", "diagram", "guide"],
 	},
 	{
 		title: "Gateways",
-		path: "/guides/gateways/",
+		path: "/guides/gateways",
 		keywords: [
 			"gateway",
 			"exclusive",
@@ -159,17 +159,17 @@ const DOC_ENTRIES: DocEntry[] = [
 	},
 	{
 		title: "Simulation",
-		path: "/guides/simulation/",
+		path: "/guides/simulation",
 		keywords: ["simulate", "run", "test", "engine", "execute", "play", "simulation"],
 	},
 	{
 		title: "Deployment",
-		path: "/guides/deployment/",
+		path: "/guides/deployment",
 		keywords: ["deploy", "camunda", "cluster", "zeebe", "publish", "production", "upload"],
 	},
 	{
 		title: "AI Guide",
-		path: "/guides/ai/",
+		path: "/guides/ai",
 		keywords: [
 			"ai",
 			"artificial",
@@ -185,7 +185,7 @@ const DOC_ENTRIES: DocEntry[] = [
 	},
 	{
 		title: "@bpmnkit/core",
-		path: "/packages/core/",
+		path: "/packages/core",
 		keywords: [
 			"core",
 			"parser",
@@ -200,32 +200,32 @@ const DOC_ENTRIES: DocEntry[] = [
 	},
 	{
 		title: "@bpmnkit/editor",
-		path: "/packages/editor/",
+		path: "/packages/editor",
 		keywords: ["editor", "edit", "modeler", "interactive", "canvas", "plugin"],
 	},
 	{
 		title: "@bpmnkit/engine",
-		path: "/packages/engine/",
+		path: "/packages/engine",
 		keywords: ["engine", "execute", "run", "simulate", "worker", "job", "token", "fire"],
 	},
 	{
 		title: "@bpmnkit/api",
-		path: "/packages/api/",
+		path: "/packages/api",
 		keywords: ["api", "client", "camunda", "rest", "http", "zeebe", "operate", "instance"],
 	},
 	{
 		title: "@bpmnkit/canvas",
-		path: "/packages/canvas/",
+		path: "/packages/canvas",
 		keywords: ["canvas", "viewer", "svg", "render", "view", "display", "embed"],
 	},
 	{
 		title: "Connector Generator",
-		path: "/packages/connector-gen/",
+		path: "/packages/connector-gen",
 		keywords: ["connector", "openapi", "swagger", "template", "generate", "rest", "http", "api"],
 	},
 	{
 		title: "casen CLI",
-		path: "/cli/casen/",
+		path: "/cli/casen",
 		keywords: [
 			"cli",
 			"command",
@@ -241,7 +241,7 @@ const DOC_ENTRIES: DocEntry[] = [
 	},
 	{
 		title: "casen connector",
-		path: "/cli/connector/",
+		path: "/cli/connector",
 		keywords: ["connector", "cli", "generate", "api", "catalog", "swagger", "openapi"],
 	},
 ]

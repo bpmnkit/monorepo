@@ -1,7 +1,7 @@
 {
 	"$schema": "https://docspack.dev/schema/v1.json",
 	"name": "@bpmnkit/docspack",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"documents": [
 		"@bpmnkit/core",
 		"@bpmnkit/canvas",
@@ -56,7 +56,7 @@
 		{
 			"id": "cli.casen.plugins",
 			"file": "chunks/cli.casen.plugins.md",
-			"tokens": 271,
+			"tokens": 270,
 			"tags": [
 				"cli",
 				"casen",
@@ -67,7 +67,7 @@
 		{
 			"id": "cli.casen.bpmn-generation-pipeline",
 			"file": "chunks/cli.casen.bpmn-generation-pipeline.md",
-			"tokens": 281,
+			"tokens": 280,
 			"tags": [
 				"cli",
 				"casen",
@@ -82,7 +82,7 @@
 		{
 			"id": "cli.casen.aikit-skills",
 			"file": "chunks/cli.casen.aikit-skills.md",
-			"tokens": 197,
+			"tokens": 196,
 			"tags": [
 				"cli",
 				"casen",
@@ -94,12 +94,27 @@
 		{
 			"id": "cli.casen.worker-commands",
 			"file": "chunks/cli.casen.worker-commands.md",
-			"tokens": 192,
+			"tokens": 272,
 			"tags": [
 				"cli",
 				"casen",
 				"worker",
 				"commands"
+			],
+			"entities": [
+				"config.toml"
+			]
+		},
+		{
+			"id": "cli.casen.mcp-server-mode",
+			"file": "chunks/cli.casen.mcp-server-mode.md",
+			"tokens": 140,
+			"tags": [
+				"cli",
+				"casen",
+				"mcp",
+				"server",
+				"mode"
 			],
 			"entities": [
 				"claude_desktop_config.json"
@@ -108,7 +123,7 @@
 		{
 			"id": "cli.connector",
 			"file": "chunks/cli.connector.md",
-			"tokens": 167,
+			"tokens": 166,
 			"tags": [
 				"cli",
 				"connector"
@@ -150,7 +165,7 @@
 		{
 			"id": "cli.connector.all-flags",
 			"file": "chunks/cli.connector.all-flags.md",
-			"tokens": 329,
+			"tokens": 328,
 			"tags": [
 				"cli",
 				"connector",
@@ -180,7 +195,7 @@
 		{
 			"id": "cli.connector.what-gets-generated",
 			"file": "chunks/cli.connector.what-gets-generated.md",
-			"tokens": 225,
+			"tokens": 224,
 			"tags": [
 				"cli",
 				"connector",
@@ -228,7 +243,7 @@
 		{
 			"id": "cli.generate.definition-mode-ai-scripting-path",
 			"file": "chunks/cli.generate.definition-mode-ai-scripting-path.md",
-			"tokens": 672,
+			"tokens": 671,
 			"tags": [
 				"cli",
 				"generate",
@@ -255,7 +270,7 @@
 		{
 			"id": "cli.generate.modify-existing-mode-input",
 			"file": "chunks/cli.generate.modify-existing-mode-input.md",
-			"tokens": 449,
+			"tokens": 448,
 			"tags": [
 				"cli",
 				"generate",
@@ -294,7 +309,7 @@
 		{
 			"id": "cli.plugin-authoring.what-gets-generated",
 			"file": "chunks/cli.plugin-authoring.what-gets-generated.md",
-			"tokens": 310,
+			"tokens": 309,
 			"tags": [
 				"cli",
 				"plugin-authoring",
@@ -362,7 +377,7 @@
 		{
 			"id": "cli.plugin-authoring.plugin-naming-conventions",
 			"file": "chunks/cli.plugin-authoring.plugin-naming-conventions.md",
-			"tokens": 116,
+			"tokens": 115,
 			"tags": [
 				"cli",
 				"plugin-authoring",
@@ -375,7 +390,7 @@
 		{
 			"id": "cli.plugins",
 			"file": "chunks/cli.plugins.md",
-			"tokens": 167,
+			"tokens": 172,
 			"tags": [
 				"cli",
 				"plugins"
@@ -425,7 +440,7 @@
 		{
 			"id": "cli.skills.implement",
 			"file": "chunks/cli.skills.implement.md",
-			"tokens": 221,
+			"tokens": 220,
 			"tags": [
 				"cli",
 				"skills",
@@ -460,7 +475,7 @@
 		{
 			"id": "cli.skills.deploy",
 			"file": "chunks/cli.skills.deploy.md",
-			"tokens": 184,
+			"tokens": 183,
 			"tags": [
 				"cli",
 				"skills",
@@ -486,7 +501,7 @@
 		{
 			"id": "cli.view",
 			"file": "chunks/cli.view.md",
-			"tokens": 358,
+			"tokens": 357,
 			"tags": [
 				"cli",
 				"view"
@@ -499,7 +514,7 @@
 		{
 			"id": "cli.view.folder-support",
 			"file": "chunks/cli.view.folder-support.md",
-			"tokens": 202,
+			"tokens": 201,
 			"tags": [
 				"cli",
 				"view",
@@ -523,7 +538,7 @@
 		{
 			"id": "getting-started.concepts.the-fluent-builder",
 			"file": "chunks/getting-started.concepts.the-fluent-builder.md",
-			"tokens": 252,
+			"tokens": 251,
 			"tags": [
 				"getting-started",
 				"concepts",
@@ -572,7 +587,7 @@
 		{
 			"id": "getting-started.concepts.zeebe-extensions",
 			"file": "chunks/getting-started.concepts.zeebe-extensions.md",
-			"tokens": 135,
+			"tokens": 134,
 			"tags": [
 				"getting-started",
 				"concepts",
@@ -584,7 +599,7 @@
 		{
 			"id": "getting-started.installation",
 			"file": "chunks/getting-started.installation.md",
-			"tokens": 141,
+			"tokens": 140,
 			"tags": [
 				"getting-started",
 				"installation"
@@ -645,7 +660,7 @@
 		{
 			"id": "getting-started.quick-start.step-2-simulate-locally",
 			"file": "chunks/getting-started.quick-start.step-2-simulate-locally.md",
-			"tokens": 158,
+			"tokens": 157,
 			"tags": [
 				"getting-started",
 				"quick-start",
@@ -658,7 +673,7 @@
 		{
 			"id": "getting-started.quick-start.step-3-deploy-to-camunda-8",
 			"file": "chunks/getting-started.quick-start.step-3-deploy-to-camunda-8.md",
-			"tokens": 152,
+			"tokens": 151,
 			"tags": [
 				"getting-started",
 				"quick-start",
@@ -671,7 +686,7 @@
 		{
 			"id": "getting-started.quick-start.what-s-next",
 			"file": "chunks/getting-started.quick-start.what-s-next.md",
-			"tokens": 137,
+			"tokens": 140,
 			"tags": [
 				"getting-started",
 				"quick-start",
@@ -682,7 +697,7 @@
 		{
 			"id": "guides.ai-agents",
 			"file": "chunks/guides.ai-agents.md",
-			"tokens": 146,
+			"tokens": 145,
 			"tags": [
 				"guides",
 				"ai-agents"
@@ -710,7 +725,7 @@
 		{
 			"id": "guides.ai-agents.the-aiagent-plan-step",
 			"file": "chunks/guides.ai-agents.the-aiagent-plan-step.md",
-			"tokens": 501,
+			"tokens": 500,
 			"tags": [
 				"guides",
 				"ai-agents",
@@ -813,7 +828,7 @@
 		{
 			"id": "guides.ai-implement.deploying",
 			"file": "chunks/guides.ai-implement.deploying.md",
-			"tokens": 256,
+			"tokens": 255,
 			"tags": [
 				"guides",
 				"ai-implement",
@@ -864,7 +879,7 @@
 		{
 			"id": "guides.ai.claude-api-example",
 			"file": "chunks/guides.ai.claude-api-example.md",
-			"tokens": 227,
+			"tokens": 226,
 			"tags": [
 				"guides",
 				"ai",
@@ -902,7 +917,7 @@
 		{
 			"id": "guides.building-processes.service-tasks",
 			"file": "chunks/guides.building-processes.service-tasks.md",
-			"tokens": 203,
+			"tokens": 202,
 			"tags": [
 				"guides",
 				"building-processes",
@@ -914,7 +929,7 @@
 		{
 			"id": "guides.building-processes.events",
 			"file": "chunks/guides.building-processes.events.md",
-			"tokens": 245,
+			"tokens": 244,
 			"tags": [
 				"guides",
 				"building-processes",
@@ -948,7 +963,7 @@
 		{
 			"id": "guides.building-processes.call-activities",
 			"file": "chunks/guides.building-processes.call-activities.md",
-			"tokens": 217,
+			"tokens": 216,
 			"tags": [
 				"guides",
 				"building-processes",
@@ -974,7 +989,7 @@
 		{
 			"id": "guides.building-processes.multi-instance",
 			"file": "chunks/guides.building-processes.multi-instance.md",
-			"tokens": 93,
+			"tokens": 92,
 			"tags": [
 				"guides",
 				"building-processes",
@@ -997,7 +1012,7 @@
 		{
 			"id": "guides.claude-code-plugin.configuration",
 			"file": "chunks/guides.claude-code-plugin.configuration.md",
-			"tokens": 591,
+			"tokens": 592,
 			"tags": [
 				"guides",
 				"claude-code-plugin",
@@ -1055,7 +1070,7 @@
 		{
 			"id": "guides.deployment.deploying-a-process",
 			"file": "chunks/guides.deployment.deploying-a-process.md",
-			"tokens": 196,
+			"tokens": 195,
 			"tags": [
 				"guides",
 				"deployment",
@@ -1301,7 +1316,7 @@
 		{
 			"id": "guides.simulation.multiple-deployments",
 			"file": "chunks/guides.simulation.multiple-deployments.md",
-			"tokens": 86,
+			"tokens": 85,
 			"tags": [
 				"guides",
 				"simulation",
@@ -1339,7 +1354,7 @@
 		{
 			"id": "guides.workers-standalone.environment-variables",
 			"file": "chunks/guides.workers-standalone.environment-variables.md",
-			"tokens": 141,
+			"tokens": 140,
 			"tags": [
 				"guides",
 				"workers-standalone",
@@ -1379,7 +1394,7 @@
 		{
 			"id": "guides.workers-standalone.see-also",
 			"file": "chunks/guides.workers-standalone.see-also.md",
-			"tokens": 46,
+			"tokens": 45,
 			"tags": [
 				"guides",
 				"workers-standalone",
@@ -1430,7 +1445,7 @@
 		{
 			"id": "packages.api.process-operations",
 			"file": "chunks/packages.api.process-operations.md",
-			"tokens": 239,
+			"tokens": 238,
 			"tags": [
 				"packages",
 				"api",
@@ -1442,7 +1457,7 @@
 		{
 			"id": "packages.api.incident-resolution",
 			"file": "chunks/packages.api.incident-resolution.md",
-			"tokens": 138,
+			"tokens": 137,
 			"tags": [
 				"packages",
 				"api",
@@ -1454,7 +1469,7 @@
 		{
 			"id": "packages.api.observability-events",
 			"file": "chunks/packages.api.observability-events.md",
-			"tokens": 95,
+			"tokens": 94,
 			"tags": [
 				"packages",
 				"api",
@@ -1466,7 +1481,7 @@
 		{
 			"id": "packages.canvas.overview",
 			"file": "chunks/packages.canvas.overview.md",
-			"tokens": 162,
+			"tokens": 161,
 			"tags": [
 				"packages",
 				"canvas",
@@ -1558,7 +1573,7 @@
 		{
 			"id": "packages.connector-gen.writeoptions",
 			"file": "chunks/packages.connector-gen.writeoptions.md",
-			"tokens": 236,
+			"tokens": 235,
 			"tags": [
 				"packages",
 				"connector-gen",
@@ -1575,7 +1590,7 @@
 		{
 			"id": "packages.connector-gen.body-expansion",
 			"file": "chunks/packages.connector-gen.body-expansion.md",
-			"tokens": 137,
+			"tokens": 136,
 			"tags": [
 				"packages",
 				"connector-gen",
@@ -1625,7 +1640,7 @@
 		{
 			"id": "packages.core.overview",
 			"file": "chunks/packages.core.overview.md",
-			"tokens": 136,
+			"tokens": 135,
 			"tags": [
 				"packages",
 				"core",
@@ -1678,7 +1693,7 @@
 		{
 			"id": "packages.core.installation-bpmn.export-definitions",
 			"file": "chunks/packages.core.installation-bpmn.export-definitions.md",
-			"tokens": 44,
+			"tokens": 43,
 			"tags": [
 				"packages",
 				"core",
@@ -1812,7 +1827,7 @@
 		{
 			"id": "packages.docspack.overview",
 			"file": "chunks/packages.docspack.overview.md",
-			"tokens": 253,
+			"tokens": 252,
 			"tags": [
 				"packages",
 				"docspack",
@@ -1826,7 +1841,7 @@
 		{
 			"id": "packages.docspack.installation",
 			"file": "chunks/packages.docspack.installation.md",
-			"tokens": 252,
+			"tokens": 251,
 			"tags": [
 				"packages",
 				"docspack",
@@ -1863,7 +1878,7 @@
 			],
 			"entities": [
 				"TwoColumn",
-				"apps/docs/src/content/docs"
+				"apps/landing/src/content/docs"
 			]
 		},
 		{
@@ -1934,7 +1949,7 @@
 		{
 			"id": "packages.engine.overview",
 			"file": "chunks/packages.engine.overview.md",
-			"tokens": 141,
+			"tokens": 140,
 			"tags": [
 				"packages",
 				"engine",
@@ -2042,7 +2057,7 @@
 		{
 			"id": "packages.worker-client.job.complete-variables",
 			"file": "chunks/packages.worker-client.job.complete-variables.md",
-			"tokens": 172,
+			"tokens": 171,
 			"tags": [
 				"packages",
 				"worker-client",

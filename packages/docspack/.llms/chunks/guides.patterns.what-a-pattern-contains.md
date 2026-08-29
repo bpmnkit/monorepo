@@ -15,4 +15,4 @@ options (e.g. "SAP, NetSuite, or QuickBooks" for a payment trigger).
 so Claude can adapt the flow to the user's specific context.
 
 ---
-Source: https://docs.bpmnkit.com/guides/patterns/
+Source: https://bpmnkit.com/docs/guides/patterns

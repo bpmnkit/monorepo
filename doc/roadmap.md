@@ -213,6 +213,23 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## Documentation on the Landing Site
+
+> Implemented 2026-08-29 — see [`doc/progress.md`](progress.md).
+
+- [x] Move `apps/docs/src/content/docs` into `apps/landing/src/content/docs` as a `docs` content collection
+- [x] `DocsLayout.astro` + `docs.css` — sidebar, table of contents, breadcrumb, prev/next pager, edit link, mobile drawer, all in the landing's design system
+- [x] Auto-generated sidebar / pager / `/docs` index from the collection, ordered by `sidebar.order`
+- [x] Shiki theme built from the site's `--code-*` tokens so Markdown code blocks match the hand-built panels
+- [x] Client-side search over a build-time `/docs/search.json`, replacing Starlight's Pagefind
+- [x] `llms.txt` indexes every doc page; `llms-full.txt` carries their full Markdown
+- [x] Move the `cli/plugins.md` generator and the docspack source to the landing app
+- [x] Delete `apps/docs` and `deploy-docs.yml`; repoint every `docs.bpmnkit.com` reference at `bpmnkit.com/docs`
+- [x] `_redirects` for the four legacy path prefixes (`/getting-started`, `/guides`, `/packages`, `/cli`)
+- [ ] **Manual, needs DNS access**: point `docs.bpmnkit.com` at the landing Pages project (or redirect it to `https://bpmnkit.com/docs`) and retire the `bpmn-sdk-docs` Pages project
+
+---
+
 ## SEO & Discoverability
 
 > Full plan: [`doc/seo-plan.md`](seo-plan.md)

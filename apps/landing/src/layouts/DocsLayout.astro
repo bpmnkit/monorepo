@@ -1,0 +1,320 @@
+---
+import "../styles/global.css"
+import "../styles/docs.css"
+import Seo from "@bpmnkit/astro-shared/Seo.astro"
+import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import type { MarkdownHeading } from "astro"
+import Footer from "../components/Footer.astro"
+import Nav from "../components/Nav.astro"
+import { type DocLink, flattenDocs, getDocsNav, sectionLabel, sectionOf } from "../data/docs-nav"
+
+interface Props {
+	title: string
+	description: string
+	/** Collection id of the page being rendered. Omitted on the documentation home. */
+	slug?: string
+	headings?: MarkdownHeading[]
+}
+
+const { title, description, slug, headings = [] } = Astro.props
+
+const nav = await getDocsNav()
+const pages = flattenDocs(nav)
+const index = slug === undefined ? -1 : pages.findIndex((page) => page.slug === slug)
+const previous: DocLink | undefined = index > 0 ? pages[index - 1] : undefined
+const next: DocLink | undefined = index >= 0 ? pages[index + 1] : undefined
+
+const section = slug === undefined ? "" : sectionOf(slug)
+const toc = headings.filter((heading) => heading.depth === 2 || heading.depth === 3)
+
+const editUrl = slug
+	? `https://github.com/bpmnkit/monorepo/edit/main/apps/landing/src/content/docs/${slug}.md`
+	: undefined
+
+const jsonLd = breadcrumbJsonLd([
+	{ name: "Home", url: "https://bpmnkit.com" },
+	{ name: "Docs", url: "https://bpmnkit.com/docs" },
+	...(section ? [{ name: sectionLabel(section), url: `https://bpmnkit.com/docs#${section}` }] : []),
+	...(slug ? [{ name: title, url: `https://bpmnkit.com/docs/${slug}` }] : []),
+])
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <Seo title={`${title} — BPMN Kit Docs`} description={description} jsonLd={jsonLd} />
+</head>
+<body>
+  <a href="#docs-content" class="skip-link">Skip to content</a>
+  <Nav />
+  <div class="docs-shell">
+    <div class:list={["docs-body", toc.length === 0 && "docs-body--no-toc"]}>
+      <button
+        type="button"
+        class="docs-sidebar-toggle"
+        id="docs-sidebar-toggle"
+        aria-expanded="false"
+        aria-controls="docs-sidebar"
+      >
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Documentation
+      </button>
+
+      <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation navigation">
+        <div class="docs-search">
+          <input
+            type="search"
+            id="docs-search-input"
+            placeholder="Search docs…"
+            autocomplete="off"
+            aria-label="Search documentation"
+            aria-controls="docs-search-results"
+          />
+          <div class="docs-search-results" id="docs-search-results" role="listbox" hidden></div>
+        </div>
+
+        {nav.map((group, i) => (
+          <div class="docs-nav-section">
+            <div class="docs-nav-label" id={group.id}>
+              <span class="docs-nav-num">{String(i + 1).padStart(2, "0")}</span>
+              <span>{group.label}</span>
+            </div>
+            <ul class="docs-nav-list">
+              {group.items.map((item) => (
+                <li>
+                  <a
+                    href={item.href}
+                    class="docs-nav-link"
+                    aria-current={item.slug === slug ? "page" : undefined}
+                  >{item.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </aside>
+
+      <main class="docs-main" id="docs-content">
+        <div class="docs-breadcrumb">
+          <a href="/">Home</a>
+          <span class="docs-breadcrumb-sep">/</span>
+          {slug === undefined ? <span>Docs</span> : <a href="/docs">Docs</a>}
+          {section && (
+            <>
+              <span class="docs-breadcrumb-sep">/</span>
+              <a href={`/docs#${section}`}>{sectionLabel(section)}</a>
+            </>
+          )}
+          {slug !== undefined && (
+            <>
+              <span class="docs-breadcrumb-sep">/</span>
+              <span>{title}</span>
+            </>
+          )}
+        </div>
+
+        <div class="docs-header">
+          <h1>{title}</h1>
+          <p>{description}</p>
+        </div>
+
+        <slot />
+
+        {slug !== undefined && (
+          <div class="docs-foot">
+            <div class="docs-edit">
+              <a href={editUrl} target="_blank" rel="noopener">Edit this page on GitHub ↗</a>
+            </div>
+            {(previous || next) && (
+              <nav class="docs-pager" aria-label="Page navigation">
+                {previous && (
+                  <a href={previous.href} rel="prev">
+                    <span class="docs-pager-dir">← Previous</span>
+                    <span class="docs-pager-title">{previous.label}</span>
+                  </a>
+                )}
+                {next && (
+                  <a href={next.href} rel="next" class="docs-pager-next">
+                    <span class="docs-pager-dir">Next →</span>
+                    <span class="docs-pager-title">{next.label}</span>
+                  </a>
+                )}
+              </nav>
+            )}
+          </div>
+        )}
+      </main>
+
+      {toc.length > 0 && (
+        <aside class="docs-toc" aria-label="On this page">
+          <div class="docs-toc-label">On this page</div>
+          <ul>
+            {toc.map((heading) => (
+              <li class={heading.depth === 3 ? "docs-toc-depth-3" : undefined}>
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
+    </div>
+    <Footer />
+  </div>
+
+  <script>
+    // ── Mobile sidebar ────────────────────────────────────────────────────
+    const toggle = document.getElementById("docs-sidebar-toggle")
+    const sidebar = document.getElementById("docs-sidebar")
+    const mobile = window.matchMedia("(max-width: 860px)")
+
+    function syncSidebar() {
+      if (!toggle || !sidebar) return
+      const collapsed = mobile.matches && toggle.getAttribute("aria-expanded") !== "true"
+      sidebar.hidden = collapsed
+    }
+
+    toggle?.addEventListener("click", () => {
+      toggle.setAttribute("aria-expanded", String(toggle.getAttribute("aria-expanded") !== "true"))
+      syncSidebar()
+    })
+    mobile.addEventListener("change", syncSidebar)
+    syncSidebar()
+
+    // ── Table-of-contents scroll spy ──────────────────────────────────────
+    const tocLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>(".docs-toc a"))
+    if (tocLinks.length > 0) {
+      const byId = new Map(tocLinks.map((link) => [decodeURIComponent(link.hash.slice(1)), link]))
+      const targets = [...byId.keys()]
+        .map((id) => document.getElementById(id))
+        .filter((el): el is HTMLElement => el !== null)
+
+      const visible = new Set<string>()
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) visible.add(entry.target.id)
+            else visible.delete(entry.target.id)
+          }
+          const first = targets.find((el) => visible.has(el.id))
+          for (const link of tocLinks) link.classList.remove("active")
+          if (first) byId.get(first.id)?.classList.add("active")
+        },
+        { rootMargin: "-80px 0px -70% 0px" },
+      )
+      for (const target of targets) observer.observe(target)
+    }
+
+    // ── Search ────────────────────────────────────────────────────────────
+    interface Hit {
+      title: string
+      description: string
+      section: string
+      href: string
+      text: string
+    }
+
+    const input = document.getElementById("docs-search-input") as HTMLInputElement | null
+    const results = document.getElementById("docs-search-results")
+    let entries: Hit[] | null = null
+    let loading: Promise<void> | null = null
+
+    function load(): Promise<void> {
+      loading ??= fetch("/docs/search.json")
+        .then((res) => res.json())
+        .then((data: Hit[]) => {
+          entries = data
+        })
+        .catch(() => {
+          entries = []
+        })
+      return loading
+    }
+
+    function score(hit: Hit, terms: string[]): number {
+      let total = 0
+      for (const term of terms) {
+        const inTitle = hit.title.toLowerCase().includes(term)
+        const inDescription = hit.description.toLowerCase().includes(term)
+        const inText = hit.text.includes(term)
+        if (!inTitle && !inDescription && !inText) return 0
+        total += (inTitle ? 8 : 0) + (inDescription ? 3 : 0) + (inText ? 1 : 0)
+      }
+      return total
+    }
+
+    function render(query: string) {
+      if (!results) return
+      const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
+      if (terms.length === 0 || entries === null) {
+        results.hidden = true
+        results.replaceChildren()
+        return
+      }
+
+      const hits = entries
+        .map((hit) => ({ hit, rank: score(hit, terms) }))
+        .filter((match) => match.rank > 0)
+        .sort((a, b) => b.rank - a.rank)
+        .slice(0, 8)
+
+      results.replaceChildren()
+      if (hits.length === 0) {
+        const empty = document.createElement("div")
+        empty.className = "docs-search-empty"
+        empty.textContent = `No matches for “${query}”`
+        results.append(empty)
+      } else {
+        for (const { hit } of hits) {
+          const link = document.createElement("a")
+          link.className = "docs-search-hit"
+          link.href = hit.href
+          link.setAttribute("role", "option")
+
+          const title = document.createElement("span")
+          title.className = "docs-search-hit-title"
+          title.textContent = hit.title
+
+          const section = document.createElement("span")
+          section.className = "docs-search-hit-section"
+          section.textContent = hit.section
+
+          link.append(title, section)
+          results.append(link)
+        }
+      }
+      results.hidden = false
+    }
+
+    input?.addEventListener("focus", () => void load())
+    input?.addEventListener("input", () => {
+      const query = input.value.trim()
+      if (query === "") {
+        render("")
+        return
+      }
+      void load().then(() => render(input.value.trim()))
+    })
+    input?.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        input.value = ""
+        render("")
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault()
+        results?.querySelector<HTMLAnchorElement>("a")?.focus()
+      } else if (event.key === "Enter") {
+        const first = results?.querySelector<HTMLAnchorElement>("a")
+        if (first) window.location.href = first.href
+      }
+    })
+
+    document.addEventListener("click", (event) => {
+      if (!input?.closest(".docs-search")?.contains(event.target as Node)) {
+        if (results) results.hidden = true
+      }
+    })
+  </script>
+</body>
+</html>

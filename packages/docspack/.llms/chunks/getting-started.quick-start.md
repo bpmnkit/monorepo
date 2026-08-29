@@ -28,4 +28,4 @@ console.log(xml); // valid BPMN 2.0 XML
 The `xml` string is a complete, valid BPMN 2.0 document that any standards-compliant engine can load.
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/quick-start/
+Source: https://bpmnkit.com/docs/getting-started/quick-start

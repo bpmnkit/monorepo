@@ -86,4 +86,4 @@ casen generate bpmn --help-schema
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/generate/
+Source: https://bpmnkit.com/docs/cli/generate

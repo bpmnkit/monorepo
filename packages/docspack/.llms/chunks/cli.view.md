@@ -67,4 +67,4 @@ casen view form ./forms/
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/view/
+Source: https://bpmnkit.com/docs/cli/view

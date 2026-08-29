@@ -31,4 +31,4 @@ with the versions installed.
 Options: `--limit <n>`, `--max-tokens <n>`, `--pack <name>`, `--cwd <dir>`.
 
 ---
-Source: https://docs.bpmnkit.com/packages/docspack/
+Source: https://bpmnkit.com/docs/packages/docspack

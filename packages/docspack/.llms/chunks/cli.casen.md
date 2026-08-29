@@ -77,4 +77,4 @@ casen
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/casen/
+Source: https://bpmnkit.com/docs/cli/casen

@@ -26,4 +26,4 @@ await job.throwError("PAYMENT_DECLINED", "Card declined by issuer", { code: "05"
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/worker-client/
+Source: https://bpmnkit.com/docs/packages/worker-client

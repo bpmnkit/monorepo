@@ -1,0 +1,47 @@
+---
+import { getDocsNav } from "../../data/docs-nav"
+import DocsLayout from "../../layouts/DocsLayout.astro"
+
+const nav = await getDocsNav()
+---
+
+<DocsLayout
+  title="Documentation"
+  description="Generate, edit, simulate, and deploy BPMN 2.0 processes from TypeScript — reference guides for every BPMN Kit package and the casen CLI."
+>
+  <p class="docs-home-lede">
+    BPMN Kit is a TypeScript monorepo for working with BPMN 2.0 entirely in code: a fluent
+    builder with auto-layout, a zero-dependency simulation engine, a typed Camunda 8 REST
+    client, an embeddable canvas and editor, and a terminal CLI. Every package is
+    strict-TypeScript and ESM-only, and runs in browsers, Node.js, Deno, Bun and edge
+    runtimes.
+  </p>
+
+  <div class="docs-prose">
+    <blockquote>
+      <p>
+        <strong>Reading this as an AI agent?</strong> These same pages ship as an offline,
+        version-locked npm package. Install <a href="/docs/packages/docspack"><code>@bpmnkit/docspack</code></a>
+        and run <code>npx bpmnkit-docs ask "&lt;question&gt;"</code> — it answers from the version
+        the project actually installed, with no server and no network call.
+      </p>
+    </blockquote>
+  </div>
+
+  {nav.map((section, i) => (
+    <section class="docs-home-section" id={section.id}>
+      <h2 class="docs-home-section-head">
+        <span class="docs-nav-num">{String(i + 1).padStart(2, "0")}</span>
+        <span>{section.label}</span>
+      </h2>
+      <div class="docs-home-list">
+        {section.items.map((item) => (
+          <a href={item.href} class="docs-home-item">
+            <span class="docs-home-item-title">{item.label}</span>
+            <span class="docs-home-item-desc">{item.description}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+</DocsLayout>

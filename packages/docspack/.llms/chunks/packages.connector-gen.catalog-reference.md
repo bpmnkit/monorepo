@@ -51,4 +51,4 @@ const stripe = getCatalogEntry("stripe")
 | `brex` | Brex API | oauth-client-credentials-flow |
 
 ---
-Source: https://docs.bpmnkit.com/packages/connector-gen/
+Source: https://bpmnkit.com/docs/packages/connector-gen

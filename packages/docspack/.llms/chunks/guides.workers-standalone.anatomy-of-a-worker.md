@@ -39,4 +39,4 @@ for await (const job of client.poll(JOB_TYPE)) {
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/workers-standalone/
+Source: https://bpmnkit.com/docs/guides/workers-standalone

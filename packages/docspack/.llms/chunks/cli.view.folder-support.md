@@ -28,4 +28,4 @@ casen view bpmn process.bpmn --theme dark --port 8080 --no-open
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/view/
+Source: https://bpmnkit.com/docs/cli/view

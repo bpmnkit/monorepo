@@ -81,4 +81,4 @@ async run(ctx) {
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugin-authoring/
+Source: https://bpmnkit.com/docs/cli/plugin-authoring

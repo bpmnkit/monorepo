@@ -13,7 +13,7 @@ casen skills install
 | `/test <path>` | Run scenario tests and report path/branch coverage |
 | `/deploy <path>` | Deploy-readiness gate, then deploy to local Reebe or Camunda 8 |
 
-For the richer skill set (`/bpmnkit:implement`, `:extend`, `:agent`, `:connect`, plus generated reference docs), install the Claude Code plugin instead: `/plugin marketplace add github:bpmnkit/monorepo` then `/plugin install bpmnkit`. See [AIKit Skills](/cli/skills/) for full documentation.
+For the richer skill set (`/bpmnkit:implement`, `:extend`, `:agent`, `:connect`, plus generated reference docs), install the Claude Code plugin instead: `/plugin marketplace add github:bpmnkit/monorepo` then `/plugin install bpmnkit`. See [AIKit Skills](/docs/cli/skills) for full documentation.
 
 ---
-Source: https://docs.bpmnkit.com/cli/casen/
+Source: https://bpmnkit.com/docs/cli/casen

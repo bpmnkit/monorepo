@@ -14,4 +14,4 @@
 | `instance.deliverMessage(name, vars?)` | Correlate a message to a waiting event |
 
 ---
-Source: https://docs.bpmnkit.com/packages/engine/
+Source: https://bpmnkit.com/docs/packages/engine

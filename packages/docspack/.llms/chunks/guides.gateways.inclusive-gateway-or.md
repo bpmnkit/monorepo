@@ -40,4 +40,4 @@ Waits for the _first_ of several events to occur, then takes that path:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/gateways/
+Source: https://bpmnkit.com/docs/guides/gateways

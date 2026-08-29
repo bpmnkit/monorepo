@@ -22,4 +22,4 @@ The builder exposes these as first-class TypeScript options:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/concepts/
+Source: https://bpmnkit.com/docs/getting-started/concepts

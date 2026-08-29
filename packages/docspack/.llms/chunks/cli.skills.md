@@ -6,7 +6,7 @@ They drive `casen` directly (no MCP server, no proxy daemon).
 
 For the full skill set — `/bpmnkit:implement`, `:extend`, `:agent`, `:connect`, plus generated
 reference docs the skills read before authoring a plan — install the
-[Claude Code plugin](/guides/ai-implement/#the-claude-code-plugin) instead.
+[Claude Code plugin](/docs/guides/ai-implement#the-claude-code-plugin) instead.
 
 
 ## Installation
@@ -26,4 +26,4 @@ casen skills install --force
 ---
 
 ---
-Source: https://docs.bpmnkit.com/cli/skills/
+Source: https://bpmnkit.com/docs/cli/skills

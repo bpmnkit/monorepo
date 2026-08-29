@@ -37,4 +37,4 @@ For browser/bundler projects (Vite, Webpack, etc.), use:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/installation/
+Source: https://bpmnkit.com/docs/getting-started/installation

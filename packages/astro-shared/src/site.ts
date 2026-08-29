@@ -6,7 +6,7 @@ export const SITE = {
 	url: "https://bpmnkit.com",
 	github: "https://github.com/bpmnkit/monorepo",
 	npm: "https://www.npmjs.com/org/bpmnkit",
-	docsUrl: "https://docs.bpmnkit.com",
+	docsUrl: "https://bpmnkit.com/docs",
 	learnUrl: "https://learn.bpmnkit.com",
 	blogUrl: "https://bpmnkit.com/blog",
 }

@@ -56,4 +56,4 @@ casen generate bpmn --input messy.bpmn --output clean.bpmn
 | `--output` / `-o` | Output path (`-` for stdout) | Overwrites `--input` file |
 
 ---
-Source: https://docs.bpmnkit.com/cli/generate/
+Source: https://bpmnkit.com/docs/cli/generate

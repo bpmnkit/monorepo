@@ -11,24 +11,25 @@
 
 - Admin/DNS access to `bpmnkit.com` (needed for domain-wide Search Console verification
   and any analytics DNS-based setup).
-- The three sites already live and serving the sitemap/robots.txt this repo generates:
-  - `https://bpmnkit.com/sitemap-index.xml`
-  - `https://docs.bpmnkit.com/sitemap-index.xml`
+- The two sites already live and serving the sitemap/robots.txt this repo generates:
+  - `https://bpmnkit.com/sitemap-index.xml` (includes the documentation under `/docs`)
   - `https://learn.bpmnkit.com/sitemap-index.xml`
 
   Confirm these resolve before starting — Search Console will fail silently on a 404.
+- `docs.bpmnkit.com` no longer serves a site built from this repo. Point it at the landing
+  Pages project (its `_redirects` maps the old paths to `/docs/*`) or redirect the host to
+  `https://bpmnkit.com/docs`, and remove its sitemap from Search Console if it was submitted.
 
 ## 1. Google Search Console
 
 1. Go to [search.google.com/search-console](https://search.google.com/search-console).
 2. Add a **Domain property** for `bpmnkit.com` (not a URL-prefix property) — this is the
-   important choice: a domain property verified via DNS covers `bpmnkit.com`,
-   `docs.bpmnkit.com`, and `learn.bpmnkit.com` in one verification, since they're all
-   subdomains of the same registrable domain. Verify via the DNS TXT record Google gives
+   important choice: a domain property verified via DNS covers `bpmnkit.com` and
+   `learn.bpmnkit.com` in one verification, since they're all subdomains of the same
+   registrable domain. Verify via the DNS TXT record Google gives
    you, added at the domain registrar/DNS provider.
-3. Once verified, under **Sitemaps**, submit all three:
+3. Once verified, under **Sitemaps**, submit both:
    - `sitemap-index.xml` (relative to `bpmnkit.com`)
-   - `https://docs.bpmnkit.com/sitemap-index.xml`
    - `https://learn.bpmnkit.com/sitemap-index.xml`
 4. Under **URL Inspection**, spot-check that the homepage of each site and one deep page
    (e.g. a `/connectors/<id>` page, a glossary page, a blog post) can be indexed —
@@ -53,9 +54,8 @@ script tag with no account behind it would just be dead weight). Once an account
 1. Pick a privacy-friendly, cookie-consent-free analytics provider — **Plausible** or
    **Fathom** are reasonable defaults for a developer-tool site (no cookie banner
    required in the EU, which matters more for conversion than raw feature count).
-2. Create one site entry per domain (`bpmnkit.com`, `docs.bpmnkit.com`,
-   `learn.bpmnkit.com`) or one shared property with subdomain tracking, depending on the
-   provider's model.
+2. Create one site entry per domain (`bpmnkit.com`, `learn.bpmnkit.com`) or one shared
+   property with subdomain tracking, depending on the provider's model.
 3. Add the tracking script. The natural place in this codebase is the shared `<Seo>`
    component (`packages/astro-shared/src/Seo.astro`) so it's wired once and applies
    everywhere — add it as a new optional prop or a separate `<Analytics>` component in

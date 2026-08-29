@@ -20,7 +20,7 @@ more reliable: write the plan, resolve connectors, and fix reported problems.
                 (for later edits)
 ```
 
-1. **Check for a reusable domain pattern** — `casen pattern list`/`get` (see [Pattern Library](/guides/patterns/)) surfaces domain context (regulations, conventions) and realistic worker specs, used as reference while writing the plan below — not pasted in as a `ProcessPlan` directly.
+1. **Check for a reusable domain pattern** — `casen pattern list`/`get` (see [Pattern Library](/docs/guides/patterns)) surfaces domain context (regulations, conventions) and realistic worker specs, used as reference while writing the plan below — not pasted in as a `ProcessPlan` directly.
 2. **Resolve external interactions** — `casen connector search "<system>"` / `casen connector show <template-id>` find the right Camunda connector template and its required inputs, instead of guessing property keys.
 3. **Write the plan** — a `ProcessPlan` JSON file (`casen plan schema` prints the full format reference).
 4. **Compile** — `casen synth <plan>.json --output <file>.bpmn`. Problems are reported keyed by JSON path (e.g. `steps[2].connector.values.token`) — fix the plan, never the XML, and re-run.
@@ -29,4 +29,4 @@ more reliable: write the plan, resolve connectors, and fix reported problems.
 7. **Deploy** — `casen deploy deploy <file>.bpmn` (local Reebe) or `--target camunda8`.
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-implement/
+Source: https://bpmnkit.com/docs/guides/ai-implement

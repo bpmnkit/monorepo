@@ -23,4 +23,4 @@ them entirely when nothing relevant matches.
 | `order-fulfillment` | E-commerce / supply chain | Inventory validation, payment, warehouse order, shipment tracking |
 
 ---
-Source: https://docs.bpmnkit.com/guides/patterns/
+Source: https://bpmnkit.com/docs/guides/patterns

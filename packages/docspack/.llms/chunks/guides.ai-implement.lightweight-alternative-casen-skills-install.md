@@ -1,6 +1,6 @@
 # Building Processes with AI — Lightweight alternative: `casen skills install`
 
-If you don't want the full plugin, four minimal slash commands are available directly from the CLI — see [AIKit Skills](/cli/skills/):
+If you don't want the full plugin, four minimal slash commands are available directly from the CLI — see [AIKit Skills](/docs/cli/skills):
 
 ```sh
 casen skills install
@@ -25,4 +25,4 @@ project/
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-implement/
+Source: https://bpmnkit.com/docs/guides/ai-implement

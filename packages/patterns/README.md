@@ -9,7 +9,7 @@
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
   [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/patterns/CHANGELOG.md)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/patterns/CHANGELOG.md)
 </div>
 
 ---
@@ -100,7 +100,7 @@ export interface WorkerSpec {
 
 This package is consumed by the BPMNKit AIKit MCP server (`@bpmnkit/proxy`). When Claude Code runs `/implement`, it calls the `pattern_list` and `pattern_get` MCP tools which delegate to this library.
 
-See the [Pattern Library guide](https://docs.bpmnkit.com/guides/patterns/) for a full walkthrough.
+See the [Pattern Library guide](https://bpmnkit.com/docs/guides/patterns) for a full walkthrough.
 
 ---
 

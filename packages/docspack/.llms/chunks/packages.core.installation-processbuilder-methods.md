@@ -26,4 +26,4 @@ All builder methods return `this` for chaining.
 | `.build(options?)` | Return the completed `BpmnDefinitions`. Pass `{ strict: true }` to throw if auto-join gateways are inserted (encourages explicit topology) |
 
 ---
-Source: https://docs.bpmnkit.com/packages/core/
+Source: https://bpmnkit.com/docs/packages/core

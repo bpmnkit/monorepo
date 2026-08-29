@@ -1,7 +1,7 @@
 # AI Agents — See also
 
-- [Building Processes with AI](/guides/ai-implement/) — the overall plan/synth pipeline
-- [`casen connector`](/cli/connector/) — searching the catalog for connector-backed tools
+- [Building Processes with AI](/docs/guides/ai-implement) — the overall plan/synth pipeline
+- [`casen connector`](/docs/cli/connector) — searching the catalog for connector-backed tools
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-agents/
+Source: https://bpmnkit.com/docs/guides/ai-agents

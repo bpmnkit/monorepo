@@ -13,4 +13,4 @@ REST connector element templates — the `.json` files imported into Camunda Mod
 - Zero dependencies beyond `yaml` for YAML parsing
 
 ---
-Source: https://docs.bpmnkit.com/packages/connector-gen/
+Source: https://bpmnkit.com/docs/packages/connector-gen

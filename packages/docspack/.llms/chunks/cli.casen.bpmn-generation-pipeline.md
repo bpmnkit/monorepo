@@ -26,7 +26,7 @@ casen deploy deploy order-process.bpmn --target camunda8 # active Camunda 8 prof
 
 `casen synth` reports any problems keyed by JSON path in the plan (e.g. `steps[2].connector.values.token`) — fix the plan, never the XML, and re-run. If the plan has a `tests` array, `casen synth` also writes a `<file>.bpmn.tests.json` sidecar, runnable with `casen test <file>.bpmn`.
 
-See [Building Processes with AI](/guides/ai-implement/) and [AI Agents](/guides/ai-agents/) for full walkthroughs.
+See [Building Processes with AI](/docs/guides/ai-implement) and [AI Agents](/docs/guides/ai-agents) for full walkthroughs.
 
 ---
-Source: https://docs.bpmnkit.com/cli/casen/
+Source: https://bpmnkit.com/docs/cli/casen

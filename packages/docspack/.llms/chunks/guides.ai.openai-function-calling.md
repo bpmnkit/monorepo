@@ -37,4 +37,4 @@ const xml = Bpmn.export(expand(compact));
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai/
+Source: https://bpmnkit.com/docs/guides/ai

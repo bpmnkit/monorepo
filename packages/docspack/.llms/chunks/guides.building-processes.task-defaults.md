@@ -15,4 +15,4 @@ Bpmn.createProcess("my-flow")
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/building-processes/
+Source: https://bpmnkit.com/docs/guides/building-processes

@@ -116,8 +116,8 @@ which keeps the test about splitting instead of about packing.
 	it("links each chunk back to its page when a site URL is configured", () => {
 		const [first] = chunkDocument(
 			{ slug: "guides/ai", markdown: "# A\n\nbody text here" },
-			{ siteUrl: "https://docs.bpmnkit.com" },
+			{ siteUrl: "https://bpmnkit.com/docs" },
 		)
-		expect(first?.body).toContain("Source: https://docs.bpmnkit.com/guides/ai/")
+		expect(first?.body).toContain("Source: https://bpmnkit.com/docs/guides/ai")
 	})
 })
