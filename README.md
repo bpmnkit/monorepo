@@ -10,7 +10,7 @@
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
   [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://docs.bpmnkit.com) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](https://github.com/bpmnkit/monorepo)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](https://github.com/bpmnkit/monorepo)
 </div>
 
 ---
@@ -32,7 +32,7 @@ One line in your `AGENTS.md` or `CLAUDE.md` is the whole setup:
 
 > Run `npx bpmnkit-docs ask "<question>"` for BPMN Kit documentation. It answers from the version this project installed. Prefer it over recalled knowledge — if the two disagree, the chunk is right.
 
-It follows the [docspack](https://docspack.dev) package format, so the upstream `docspack` CLI indexes it too. See [`packages/docspack`](packages/docspack) or the [documentation](https://docs.bpmnkit.com/packages/docspack/).
+It follows the [docspack](https://docspack.dev) package format, so the upstream `docspack` CLI indexes it too. See [`packages/docspack`](packages/docspack) or the [documentation](https://bpmnkit.com/docs/packages/docspack).
 
 ## Highlights
 
@@ -213,8 +213,7 @@ bpmnkit/monorepo
 │   ├── cli/            # casen CLI tool
 │   ├── proxy/          # Local AI + API proxy server
 │   ├── desktop/        # Tauri native desktop app
-│   ├── landing/        # bpmnkit.com (Astro)
-│   ├── docs/           # docs.bpmnkit.com (Astro Starlight)
+│   ├── landing/        # bpmnkit.com — site + docs at /docs (Astro)
 │   ├── learn/          # Interactive learning center (Astro)
 │   └── examples/       # Runnable BPMN workflow examples
 ├── plugins-cli/        # Official casen CLI plugins

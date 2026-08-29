@@ -26,4 +26,4 @@
 Auth is auto-detected from `components.securitySchemes` in the spec. Use `--auth` to override.
 
 ---
-Source: https://docs.bpmnkit.com/cli/connector/
+Source: https://bpmnkit.com/docs/cli/connector

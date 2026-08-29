@@ -8,7 +8,7 @@ tags: ["bpmn", "simulation", "engine"]
 
 Testing a BPMN process usually means deploying it to a running Camunda cluster,
 starting an instance, and watching what happens — slow feedback for something that
-should be a unit test. [`@bpmnkit/engine`](https://docs.bpmnkit.com/packages/engine/)
+should be a unit test. [`@bpmnkit/engine`](/docs/packages/engine)
 is a zero-dependency BPMN simulation engine that runs entirely in-process, in the
 browser or Node.js, with no Camunda deployment required.
 
@@ -58,4 +58,4 @@ feedback loop than "deploy, click through Operate, see what happened."
 
 - [Generate BPMN 2.0 diagrams programmatically in TypeScript](/blog/generate-bpmn-diagrams-programmatically-typescript)
 - [Connect to Camunda 8 from Node.js](/blog/connect-camunda-8-nodejs-rest-client) — when you're ready to deploy for real
-- [`@bpmnkit/engine` package reference](https://docs.bpmnkit.com/packages/engine/)
+- [`@bpmnkit/engine` package reference](/docs/packages/engine)

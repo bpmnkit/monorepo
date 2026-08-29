@@ -77,4 +77,4 @@ against the bundled catalog; a generated template plugs into the same
 
 - [Connector catalog](/connectors) — 116 pre-built templates, no generation needed
 - [Camunda 8 CI automation](/use-cases/camunda-8-automation)
-- [`@bpmnkit/connector-gen` package reference](https://docs.bpmnkit.com/packages/connector-gen/)
+- [`@bpmnkit/connector-gen` package reference](/docs/packages/connector-gen)

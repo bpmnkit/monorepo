@@ -16,4 +16,4 @@ can be misread as an arithmetic expression) — this is a known limitation of th
 not a real issue, and doesn't affect the `deploy` profile.
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-agents/
+Source: https://bpmnkit.com/docs/guides/ai-agents

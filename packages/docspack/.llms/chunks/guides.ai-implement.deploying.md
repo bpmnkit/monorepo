@@ -43,7 +43,7 @@ Or start all workers at once:
 casen worker start
 ```
 
-See [Standalone Workers](/guides/workers-standalone/) for deployment options.
+See [Standalone Workers](/docs/guides/workers-standalone) for deployment options.
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-implement/
+Source: https://bpmnkit.com/docs/guides/ai-implement

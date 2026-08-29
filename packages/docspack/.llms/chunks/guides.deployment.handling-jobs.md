@@ -47,4 +47,4 @@ const variables = await client.variables.list({
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/deployment/
+Source: https://bpmnkit.com/docs/guides/deployment

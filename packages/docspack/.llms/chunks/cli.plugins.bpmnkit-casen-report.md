@@ -36,4 +36,4 @@ casen plugin install @bpmnkit/casen-worker-ai
 ---
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugins/
+Source: https://bpmnkit.com/docs/cli/plugins

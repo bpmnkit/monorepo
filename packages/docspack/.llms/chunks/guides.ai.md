@@ -29,4 +29,4 @@ const updatedXml = Bpmn.export(updatedDefinitions);
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai/
+Source: https://bpmnkit.com/docs/guides/ai

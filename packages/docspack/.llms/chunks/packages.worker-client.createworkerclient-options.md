@@ -29,4 +29,4 @@ const client = createWorkerClient({
 A `WorkerClient` object with a single `poll()` method.
 
 ---
-Source: https://docs.bpmnkit.com/packages/worker-client/
+Source: https://bpmnkit.com/docs/packages/worker-client

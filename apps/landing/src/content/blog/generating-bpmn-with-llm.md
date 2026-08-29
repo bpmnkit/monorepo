@@ -65,6 +65,6 @@ output as a draft, not a guarantee.
 
 ## Where to go next
 
-- [AI integration guide](https://docs.bpmnkit.com/guides/ai/) — the full compact-format reference
+- [AI integration guide](/docs/guides/ai) — the full compact-format reference
 - [AI-generated BPMN workflows](/use-cases/ai-workflow-generation)
 - [Generate BPMN 2.0 diagrams programmatically](/blog/generate-bpmn-diagrams-programmatically-typescript)

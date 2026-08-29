@@ -58,4 +58,4 @@ docker run -e ZEEBE_ADDRESS=http://reebe:26500 my-org/send-invoice
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/workers-standalone/
+Source: https://bpmnkit.com/docs/guides/workers-standalone

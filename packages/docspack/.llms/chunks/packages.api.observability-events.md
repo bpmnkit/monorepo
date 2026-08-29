@@ -10,4 +10,4 @@ client.on("retry",    (e) => logger.warn(`Retrying ${e.url} (attempt ${e.attempt
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/api/
+Source: https://bpmnkit.com/docs/packages/api

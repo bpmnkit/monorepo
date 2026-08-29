@@ -24,8 +24,8 @@
 		"test": "vitest run"
 	},
 	"docspack": {
-		"source": "../../apps/docs/src/content/docs",
-		"siteUrl": "https://docs.bpmnkit.com",
+		"source": "../../apps/landing/src/content/docs",
+		"siteUrl": "https://bpmnkit.com/docs",
 		"maxTokens": 800,
 		"minTokens": 120,
 		"documents": [

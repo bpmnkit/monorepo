@@ -32,4 +32,4 @@ workers/
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/workers-standalone/
+Source: https://bpmnkit.com/docs/guides/workers-standalone

@@ -38,4 +38,4 @@ const hud = initEditorHud(editor, {
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/editor/
+Source: https://bpmnkit.com/docs/packages/editor

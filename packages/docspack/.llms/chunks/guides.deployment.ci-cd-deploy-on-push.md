@@ -44,4 +44,4 @@ console.log(`Deployed ${result.deployments.length} processes`);
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/deployment/
+Source: https://bpmnkit.com/docs/guides/deployment

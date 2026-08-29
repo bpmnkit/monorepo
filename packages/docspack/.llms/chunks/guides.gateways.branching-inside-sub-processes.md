@@ -24,4 +24,4 @@ Auto-join gateway insertion applies inside sub-processes the same way it does at
 top level — converging branches automatically get a matching join gateway.
 
 ---
-Source: https://docs.bpmnkit.com/guides/gateways/
+Source: https://bpmnkit.com/docs/guides/gateways

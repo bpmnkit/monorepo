@@ -34,7 +34,7 @@ const svg = exportSvg(defs);   // ✓ SVG image, zero deps
 
 `.withAutoLayout()` runs before `.build()` and assigns `x`/`y`/`width`/`height` to
 every shape and waypoint list to every edge. The result is a diagram that's ready to
-render — with `exportSvg()`, with [`@bpmnkit/canvas`](https://docs.bpmnkit.com/packages/canvas/),
+render — with `exportSvg()`, with [`@bpmnkit/canvas`](/docs/packages/canvas),
 or in Camunda Modeler / bpmn-js — without a manual layout pass.
 
 ## What the algorithm actually does
@@ -62,5 +62,5 @@ levels of nested branching, without writing any positioning code yourself.
 ## Where to go next
 
 - [Generate BPMN 2.0 diagrams programmatically in TypeScript](/blog/generate-bpmn-diagrams-programmatically-typescript)
-- [Embedding a BPMN viewer in the browser](https://docs.bpmnkit.com/packages/canvas/)
-- [`@bpmnkit/core` package reference](https://docs.bpmnkit.com/packages/core/)
+- [Embedding a BPMN viewer in the browser](/docs/packages/canvas)
+- [`@bpmnkit/core` package reference](/docs/packages/core)

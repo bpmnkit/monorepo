@@ -23,4 +23,4 @@ The parser preserves all attributes, extensions, and vendor-specific elements. E
 parsed object produces XML that is semantically equivalent to the input.
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/concepts/
+Source: https://bpmnkit.com/docs/getting-started/concepts

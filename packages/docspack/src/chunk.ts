@@ -64,7 +64,7 @@ export function chunkDocument(doc: SourceDoc, options: ChunkOptions = {}): Built
 
 			const directives = readDirectives(part.lines)
 			const chunkTitle = part.heading === "" ? title : `${title} — ${part.heading}`
-			const source = options.siteUrl ? `\n\n---\nSource: ${options.siteUrl}/${doc.slug}/` : ""
+			const source = options.siteUrl ? `\n\n---\nSource: ${options.siteUrl}/${doc.slug}` : ""
 			const bodyText = `# ${chunkTitle}\n\n${stripDirectives(text)}${source}\n`
 
 			chunks.push({

@@ -59,4 +59,4 @@ Key points:
 - **Secrets always use `{{secrets.NAME}}`** — never a literal API key or token.
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-agents/
+Source: https://bpmnkit.com/docs/guides/ai-agents

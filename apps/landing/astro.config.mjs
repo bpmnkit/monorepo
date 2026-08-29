@@ -1,5 +1,6 @@
 import sitemap from "@astrojs/sitemap"
 import { defineConfig } from "astro/config"
+import { inkTheme } from "./shiki-theme.mjs"
 
 export default defineConfig({
 	site: "https://bpmnkit.com",
@@ -8,6 +9,9 @@ export default defineConfig({
 	},
 	devToolbar: {
 		enabled: false,
+	},
+	markdown: {
+		shikiConfig: { theme: inkTheme },
 	},
 	integrations: [sitemap()],
 })

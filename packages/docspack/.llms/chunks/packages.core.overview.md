@@ -12,4 +12,4 @@ BPMN 2.0 programmatically:
 Zero runtime dependencies. ESM-only. Runs in browsers, Node.js, Deno, Bun, and edge runtimes.
 
 ---
-Source: https://docs.bpmnkit.com/packages/core/
+Source: https://bpmnkit.com/docs/packages/core

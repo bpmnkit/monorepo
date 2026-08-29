@@ -21,4 +21,4 @@ Under the hood, the layout algorithm:
 You can access element sizes via the `ELEMENT_SIZES` export if you need to build custom layouts.
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/concepts/
+Source: https://bpmnkit.com/docs/getting-started/concepts

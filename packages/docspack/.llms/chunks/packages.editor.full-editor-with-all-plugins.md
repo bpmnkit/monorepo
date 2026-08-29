@@ -27,4 +27,4 @@ const hud = initEditorHud(editor, { aiButton: dock.aiPane.button });
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/editor/
+Source: https://bpmnkit.com/docs/packages/editor

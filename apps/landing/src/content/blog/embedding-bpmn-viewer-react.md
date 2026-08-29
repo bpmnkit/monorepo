@@ -74,6 +74,6 @@ of read-only viewing — see [embedding a BPMN editor](/use-cases/embed-bpmn-edi
 
 ## Where to go next
 
-- [`@bpmnkit/canvas` package reference](https://docs.bpmnkit.com/packages/canvas/)
+- [`@bpmnkit/canvas` package reference](/docs/packages/canvas)
 - [Embed a BPMN editor](/use-cases/embed-bpmn-editor)
 - [BPMN Kit vs. bpmn-js](/compare/bpmn-js)

@@ -79,4 +79,4 @@ ctx.output.print(anything)                      // raw, format-aware
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugin-authoring/
+Source: https://bpmnkit.com/docs/cli/plugin-authoring

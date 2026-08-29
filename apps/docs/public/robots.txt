@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://docs.bpmnkit.com/sitemap-index.xml

@@ -15,4 +15,4 @@ generates this pattern the same way it generates everything else: deterministica
 Or, from the CLI directly: write an `aiAgent` plan step (see below), then `casen synth`.
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai-agents/
+Source: https://bpmnkit.com/docs/guides/ai-agents

@@ -8,4 +8,4 @@
 | Prefix group name with your org for internal plugins | e.g. `acme-deploy` avoids clashing with a published `casen-deploy` |
 
 ---
-Source: https://docs.bpmnkit.com/cli/plugin-authoring/
+Source: https://bpmnkit.com/docs/cli/plugin-authoring

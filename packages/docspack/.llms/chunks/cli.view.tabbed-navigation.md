@@ -25,4 +25,4 @@ casen view bpmn order.bpmn --no-open --port 3044
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/view/
+Source: https://bpmnkit.com/docs/cli/view

@@ -4,7 +4,9 @@
 	"version": "0.0.34",
 	"type": "module",
 	"scripts": {
+		"predev": "node ../../scripts/generate-plugins-doc.mjs",
 		"dev": "astro dev",
+		"prebuild": "node ../../scripts/generate-plugins-doc.mjs",
 		"build": "astro build",
 		"preview": "astro preview",
 		"typecheck": "tsc --noEmit",

@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "apps/landing/**"
+      # The CLI plugin reference page is generated into the docs at build time.
+      - "plugins-cli/**"
+      - "scripts/generate-plugins-doc.mjs"
   workflow_dispatch:
 
 concurrency:

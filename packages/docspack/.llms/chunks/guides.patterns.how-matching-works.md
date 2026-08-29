@@ -14,4 +14,4 @@ Examples:
 | "custom blockchain process" | _(no match — Claude works from scratch)_ |
 
 ---
-Source: https://docs.bpmnkit.com/guides/patterns/
+Source: https://bpmnkit.com/docs/guides/patterns

@@ -27,4 +27,4 @@ const instance = engine.start("order", {}, {
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/simulation/
+Source: https://bpmnkit.com/docs/guides/simulation

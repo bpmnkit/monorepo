@@ -16,4 +16,4 @@ JavaScript runtime — no external services required.
 Zero runtime dependencies. ESM-only.
 
 ---
-Source: https://docs.bpmnkit.com/packages/engine/
+Source: https://bpmnkit.com/docs/packages/engine

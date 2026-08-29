@@ -21,4 +21,4 @@ still exists for Claude Desktop, Cursor, or other MCP-only hosts, but it's unrel
 this plugin.
 
 ---
-Source: https://docs.bpmnkit.com/guides/claude-code-plugin/
+Source: https://bpmnkit.com/docs/guides/claude-code-plugin

@@ -21,7 +21,7 @@ console.log(`${tokens} tokens`);
 
 ## How the pack is built
 
-`bpmnkit-docs build` reads the Markdown under `apps/docs/src/content/docs`, splits each
+`bpmnkit-docs build` reads the Markdown under `apps/landing/src/content/docs`, splits each
 document at its `##` headings, and writes one file per chunk:
 
 ```
@@ -49,4 +49,4 @@ You can steer either from the document itself:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/docspack/
+Source: https://bpmnkit.com/docs/packages/docspack

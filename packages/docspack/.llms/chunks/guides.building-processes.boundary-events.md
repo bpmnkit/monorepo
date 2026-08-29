@@ -44,4 +44,4 @@ builder cursor to the boundary event itself:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/building-processes/
+Source: https://bpmnkit.com/docs/guides/building-processes

@@ -12,34 +12,31 @@ casen worker start send-invoice
 ```
 
 
-## MCP Server Mode
+## Local engine (Reebe)
 
-`casen` can act as an MCP (Model Context Protocol) server, exposing all cluster operations
-as tools to Claude Desktop, Cursor, or any MCP client:
+Reebe is a Zeebe-compatible workflow engine (~50 MB) that runs locally, so you can deploy
+and run processes without a Camunda 8 cluster.
 
 ```sh
-casen mcp
+# Embedded SQLite, no external database
+casen reebe start
+
+# Custom port — match ZEEBE_ADDRESS, which defaults to http://localhost:26500
+casen reebe start --port 26500
+
+# PostgreSQL instead of the embedded database
+casen reebe start --database-url postgres://user:pass@localhost/reebe
 ```
 
-Configure in Claude Desktop (`claude_desktop_config.json`):
+| Flag | Default | Description |
+|---|---|---|
+| `--port` | `8080` | HTTP port to listen on |
+| `--database-url` | embedded SQLite | PostgreSQL connection URL |
+| `--config` | `config.toml` | Path to the engine config file |
 
-```json
-{
-  "mcpServers": {
-    "camunda": {
-      "command": "casen",
-      "args": ["mcp"],
-      "env": {
-        "CAMUNDA_CLIENT_ID": "...",
-        "CAMUNDA_CLIENT_SECRET": "..."
-      }
-    }
-  }
-}
-```
-
-Now you can ask Claude: _"Show me the open incidents on the invoice-approval process"_ or
-_"Resolve all incidents on process instance 2251799813685249"_.
+`casen reebe` on its own is shorthand for `casen reebe start`. The command runs the
+`reebe-server` binary; build it with
+`cargo install --path apps/reebe/crates/reebe-server` if it is not on your `PATH`.
 
 ---
-Source: https://docs.bpmnkit.com/cli/casen/
+Source: https://bpmnkit.com/docs/cli/casen

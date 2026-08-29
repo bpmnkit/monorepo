@@ -38,4 +38,4 @@ Branch conditions are [FEEL expressions](https://docs.camunda.io/docs/components
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/gateways/
+Source: https://bpmnkit.com/docs/guides/gateways

@@ -57,4 +57,4 @@ worker.close();
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/api/
+Source: https://bpmnkit.com/docs/packages/api

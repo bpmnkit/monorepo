@@ -20,4 +20,4 @@ The compact format is designed for AI agents:
 - The full diagram of a typical approval workflow fits in ~500 tokens
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/concepts/
+Source: https://bpmnkit.com/docs/getting-started/concepts

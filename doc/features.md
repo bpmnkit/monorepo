@@ -1,12 +1,23 @@
 # Features
 
+## Documentation served from the landing site at `/docs` (2026-08-29)
+
+The reference documentation renders from `apps/landing` at `bpmnkit.com/docs` in the landing's
+own engineering-specification design, replacing the separate Starlight app on
+`docs.bpmnkit.com`. The sidebar, prev/next pager, `/docs` index, search index and both
+`llms.txt` endpoints are derived from the `docs` content collection, so adding a Markdown file
+under `src/content/docs/<section>/` is the whole procedure for adding a page; `sidebar.order`
+in the front matter positions it. Code blocks use a Shiki theme built from the site's own
+`--code-*` tokens. Search is a build-time `/docs/search.json` (58 KB) ranked client-side —
+no crawler, no dependency.
+
 ## Landing site engineering-specification design (2026-08-22)
 
 The landing site (`apps/landing`) moved off the dark-gradient dev-tool template to a paper-ground engineering-specification system: `#f4f5f7` ground, hairline `#dcdfe4` rules, ink `#14161a` code panels and dark bands, one accent `#a8503a`, self-hosted Space Grotesk + Space Mono (six woff2 subsets, ~140 KB, no third-party request on first paint), no radius, shadows or gradients. Tokens live in `apps/landing/src/styles/global.css` and every page inherits them. The homepage is a hero plus eight numbered sections instead of eleven undifferentiated ones, with the builder snippet and its rendered diagram above the fold, and pre-1.0 versions plus the engine simulator caveat stated up front in section 03 rather than at the page bottom.
 
 ## Documentation as an installable package for AI agents (2026-08-21)
 
-`@bpmnkit/docspack` ships the BPMN Kit documentation as an npm package in the [docspack format](https://docspack.dev/spec): `.llms/chunks/*.md`, a schema-valid `.llms/manifest.json` and an `llms.txt` table of contents, built from `apps/docs/src/content/docs`. An agent installs it and runs `npx bpmnkit-docs ask "<question>"`; the answer comes from a local BM25 index with Porter stemming, capped at three chunks and 3,000 tokens, and names the pack, version and chunk it came from. Every command reads the filesystem only — no server, no network call. The vendor-scope name means the upstream `docspack` CLI indexes the pack too.
+`@bpmnkit/docspack` ships the BPMN Kit documentation as an npm package in the [docspack format](https://docspack.dev/spec): `.llms/chunks/*.md`, a schema-valid `.llms/manifest.json` and an `llms.txt` table of contents, built from `apps/landing/src/content/docs`. An agent installs it and runs `npx bpmnkit-docs ask "<question>"`; the answer comes from a local BM25 index with Porter stemming, capped at three chunks and 3,000 tokens, and names the pack, version and chunk it came from. Every command reads the filesystem only — no server, no network call. The vendor-scope name means the upstream `docspack` CLI indexes the pack too.
 
 ## Auto-layout comparison page (2026-08-21)
 

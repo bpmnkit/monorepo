@@ -15,4 +15,4 @@ const defs = Bpmn.createDiagram("OrderSystem")
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/core/
+Source: https://bpmnkit.com/docs/packages/core

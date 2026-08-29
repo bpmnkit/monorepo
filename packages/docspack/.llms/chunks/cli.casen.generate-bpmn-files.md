@@ -9,7 +9,7 @@ casen generate bpmn --input order.bpmn --dump-compact   # inspect as JSON for AI
 casen generate bpmn --input order.bpmn --patch '{"elements":[...],"flows":[...]}'
 ```
 
-See [casen generate](/cli/generate/) for full documentation.
+See [casen generate](/docs/cli/generate) for full documentation.
 
 
 ## View BPMN, DMN, and Form files
@@ -22,7 +22,7 @@ casen view dmn routing.dmn       # DMN decision table
 casen view open ./project/       # any mix of .bpmn/.dmn/.form
 ```
 
-See [casen view](/cli/view/) for full documentation.
+See [casen view](/docs/cli/view) for full documentation.
 
 ---
-Source: https://docs.bpmnkit.com/cli/casen/
+Source: https://bpmnkit.com/docs/cli/casen

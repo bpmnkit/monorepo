@@ -13,4 +13,14 @@ const blog = defineCollection({
 	}),
 })
 
-export const collections = { blog }
+const docs = defineCollection({
+	loader: glob({ pattern: "**/*.md", base: "./src/content/docs" }),
+	schema: z.object({
+		title: z.string(),
+		description: z.string(),
+		/** Position inside its section. Pages without one sort last, alphabetically. */
+		sidebar: z.object({ order: z.number().optional(), label: z.string().optional() }).optional(),
+	}),
+})
+
+export const collections = { blog, docs }

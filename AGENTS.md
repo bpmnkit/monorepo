@@ -35,5 +35,5 @@ npm i -D @bpmnkit/docspack
 
 - pnpm workspaces + Turborepo; TypeScript strict; Biome for lint and format; Vitest.
 - Verify with `pnpm turbo build typecheck check test`.
-- After editing `apps/docs/src/content/docs/`, rebuild the docs pack:
+- After editing `apps/landing/src/content/docs/`, rebuild the docs pack:
   `pnpm --filter @bpmnkit/docspack build`.

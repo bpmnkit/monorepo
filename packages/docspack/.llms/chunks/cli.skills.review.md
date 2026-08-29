@@ -30,4 +30,4 @@ Deploy-ready: no — 1 error
 ---
 
 ---
-Source: https://docs.bpmnkit.com/cli/skills/
+Source: https://bpmnkit.com/docs/cli/skills

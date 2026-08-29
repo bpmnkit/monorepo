@@ -24,4 +24,4 @@ Call `parseDurationMs(str)` from `@bpmnkit/engine` to convert duration strings
 to milliseconds in your own code.
 
 ---
-Source: https://docs.bpmnkit.com/packages/engine/
+Source: https://bpmnkit.com/docs/packages/engine

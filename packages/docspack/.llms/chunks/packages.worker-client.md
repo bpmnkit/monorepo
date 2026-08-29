@@ -30,4 +30,4 @@ for await (const job of client.poll("com.example:send-email:1")) {
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/worker-client/
+Source: https://bpmnkit.com/docs/packages/worker-client

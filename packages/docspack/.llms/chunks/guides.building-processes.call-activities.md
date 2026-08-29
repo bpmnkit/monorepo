@@ -44,4 +44,4 @@ const xml = Bpmn.export(defs); // both processes in one XML file
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/building-processes/
+Source: https://bpmnkit.com/docs/guides/building-processes

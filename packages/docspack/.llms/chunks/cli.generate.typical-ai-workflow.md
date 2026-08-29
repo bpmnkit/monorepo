@@ -15,4 +15,4 @@ casen view bpmn order.bpmn
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/generate/
+Source: https://bpmnkit.com/docs/cli/generate

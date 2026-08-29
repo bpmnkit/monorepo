@@ -10,4 +10,4 @@ security boundary rather than as configuration:
 - packages under the `@docspack-community` scope are labelled unreviewed in every answer
 
 ---
-Source: https://docs.bpmnkit.com/packages/docspack/
+Source: https://bpmnkit.com/docs/packages/docspack

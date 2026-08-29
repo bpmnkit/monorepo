@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Reads plugins-cli/<name>/package.json and writes the CLI plugins reference page.
 // Run: node scripts/generate-plugins-doc.mjs
-// Also runs automatically as the docs prebuild step.
+// Also runs automatically as the landing-site prebuild step.
 
 import { readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const PLUGINS_DIR = join(ROOT, "plugins-cli")
-const OUT = join(ROOT, "apps/docs/src/content/docs/cli/plugins.md")
+const OUT = join(ROOT, "apps/landing/src/content/docs/cli/plugins.md")
 
 // ── Collect plugin metadata ───────────────────────────────────────────────────
 
@@ -66,11 +66,12 @@ const sections = plugins.map(pluginSection).join("\n---\n\n")
 const output = `---
 title: casen Plugins
 description: Official casen CLI plugins shipped with the BPMN Kit monorepo.
+sidebar:
+  order: 6
 ---
 
-:::note[Auto-generated]
-This page is generated from \`plugins-cli/*/package.json\` during the docs build. Do not edit manually.
-:::
+> **Auto-generated** — this page is built from \`plugins-cli/*/package.json\` during the site
+> build. Do not edit it by hand.
 
 Official plugins extend \`casen\` with domain-specific command groups. Install them with:
 
@@ -91,7 +92,7 @@ ${sections}
 
 ## Authoring Plugins
 
-See the [Plugin Authoring](/cli/plugin-authoring/) guide to build and publish your own \`casen\` plugin.
+See the [Plugin Authoring](/docs/cli/plugin-authoring) guide to build and publish your own \`casen\` plugin.
 `
 
 writeFileSync(OUT, output, "utf8")

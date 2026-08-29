@@ -1,5 +1,63 @@
 # Progress
 
+## 2026-08-29 — Documentation folded into the landing site at `/docs`
+
+The documentation was a second app on a second domain: `apps/docs`, an Astro Starlight site
+deployed to its own Cloudflare Pages project at `docs.bpmnkit.com`. It also still wore the
+pre-redesign skin — dark oklch purple, aurora orbs, 80px blur, 14px radii — so a reader
+crossing from `bpmnkit.com` to the docs left one product and arrived at another. The 29 pages
+now render from `apps/landing` at `/docs`, in the landing's own design system, and `apps/docs`
+is gone.
+
+**Nothing about the content moved but its directory.** `apps/docs/src/content/docs` →
+`apps/landing/src/content/docs`, unchanged Markdown: front matter was only `title` and
+`description`, there were no component imports, and the two Starlight `:::` asides became
+blockquote callouts (`> **Label** — …`), which read better in a docspack chunk anyway. Root-
+absolute links were rewritten `/guides/x/` → `/docs/guides/x`, matching the landing's
+`build.format: "file"` URLs.
+
+**The sidebar, the pager, the search index and `llms.txt` are all derived from the collection.**
+`src/data/docs-nav.ts` groups the `docs` collection by directory and orders each section by an
+optional `sidebar.order`, alphabetically otherwise; an unknown directory gets a title-cased
+label and sorts last. Dropping a Markdown file into `src/content/docs/<section>/` is therefore
+the whole procedure for adding a page — it appears in the sidebar, the prev/next pager, the
+`/docs` index, `/docs/search.json` and both `llms.txt` files with no other edit. The generated
+CLI plugin reference still works the same way: `scripts/generate-plugins-doc.mjs` writes
+`cli/plugins.md`, now from the landing's `prebuild`/`predev`, and `plugins-cli/**` was added to
+the landing's deploy trigger so a plugin change redeploys the page it generates.
+
+**`DocsLayout.astro` is the landing's design, not a docs theme.** Hairline sidebar and table of
+contents against the paper ground, mono section numbers (`01 GETTING STARTED`), the terracotta
+accent for the current page and the active heading, squared code panels on ink, callouts as a
+panel with an accent left rule. Every value is a `global.css` token; `docs.css` adds layout
+only. Code blocks are the same ink: `shiki-theme.mjs` is a Shiki theme built from the
+`--code-*` tokens, so a generated docs page and a hand-built landing section print identical
+syntax colours — it applies to the blog too, which had been rendering `github-dark` inside a
+panel styled for the landing's palette.
+
+**Search replaces Pagefind with 58 KB of JSON.** `/docs/search.json` is emitted at build time —
+title, description, section and the page's prose with code fences and Markdown syntax stripped,
+capped at 4,000 characters per page. The sidebar box fetches it on first focus and ranks
+title 8 / description 3 / body 1 per term. No index to ship, no crawler, no dependency.
+
+**What the old subdomain leaves behind.** `deploy-docs.yml` and the `bpmn-sdk-docs` Pages
+project are no longer built from this repo; `apps/landing/public/_redirects` maps the four
+legacy path prefixes to `/docs/*` so the old URLs keep working once `docs.bpmnkit.com` is
+pointed at the landing project — that DNS change is the one step this commit cannot make.
+`docspack` follows the content (`source`, `siteUrl: https://bpmnkit.com/docs`) and its chunk
+source links lost their trailing slash, which the site's file-format URLs do not use. Every
+other reference to the subdomain — nav, footer, blog posts, use-case pages, the editor command
+palette's docs links, `SITE.docsUrl`, `generate-readmes.mjs` and the package READMEs it
+generates — now points at `bpmnkit.com/docs`.
+
+**Fixed on the way.** `guides/claude-code-plugin.md` linked `/cli/reebe`, a page that has never
+existed; `casen reebe start` is now documented in `cli/casen.md` (flags, defaults, the
+`reebe-server` binary) and the link resolves there. Sections were ordered alphabetically, which
+put *Core Concepts* before *Installation* — explicit `sidebar.order` now runs Installation →
+Quick Start → Concepts, and the guides in learning order. Twelve landing files still carried
+`.aurora`/`.orb`/`.dots`/`.grain` markup whose styles were deleted in the redesign; the dead
+divs are gone.
+
 ## 2026-08-22 — Landing site redesign: engineering-specification visual system
 
 The landing site read as 2025 dev-tool template output — dark indigo gradient with aurora glow, gradient-text headline, an "Open Source · MIT · AI-Native · TypeScript" pill, and eleven sections that all shared one rhythm (eyebrow → centred headline → card grid). The strongest artefact on the page, the 13-line builder snippet, sat in section four behind a drag-to-compare divider. Rebuilt against the handoff brief's audit, rationale and visual spec.

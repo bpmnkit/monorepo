@@ -35,7 +35,7 @@ casen reebe            # start local workflow engine
 
 Then in Claude Code: `/implement an invoice approval process`
 
-See [AI-Driven Implementation](/guides/ai-implement/) for a full walkthrough.
+See [AI-Driven Implementation](/docs/guides/ai-implement) for a full walkthrough.
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/installation/
+Source: https://bpmnkit.com/docs/getting-started/installation

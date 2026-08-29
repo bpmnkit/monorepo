@@ -30,4 +30,4 @@ Uncovered paths:
 ---
 
 ---
-Source: https://docs.bpmnkit.com/cli/skills/
+Source: https://bpmnkit.com/docs/cli/skills

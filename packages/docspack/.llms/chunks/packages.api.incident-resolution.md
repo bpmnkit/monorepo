@@ -28,4 +28,4 @@ await client.messages.publish({
 ```
 
 ---
-Source: https://docs.bpmnkit.com/packages/api/
+Source: https://bpmnkit.com/docs/packages/api

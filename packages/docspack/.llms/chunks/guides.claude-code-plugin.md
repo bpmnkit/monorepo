@@ -44,4 +44,4 @@ Or add to your project's `.claude/settings.json`:
 ```
 
 ---
-Source: https://docs.bpmnkit.com/guides/claude-code-plugin/
+Source: https://bpmnkit.com/docs/guides/claude-code-plugin

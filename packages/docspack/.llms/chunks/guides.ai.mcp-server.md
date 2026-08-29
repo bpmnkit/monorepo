@@ -17,4 +17,4 @@ Available MCP tools:
 - `validate` — validates the diagram and returns any schema errors
 
 ---
-Source: https://docs.bpmnkit.com/guides/ai/
+Source: https://bpmnkit.com/docs/guides/ai

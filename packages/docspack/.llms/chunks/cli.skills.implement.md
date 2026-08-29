@@ -28,9 +28,9 @@ Tests: 3/3 passed
 Deploy to local Reebe, deploy to Camunda 8, or skip?
 ```
 
-See [Building Processes with AI](/guides/ai-implement/) for a full walkthrough.
+See [Building Processes with AI](/docs/guides/ai-implement) for a full walkthrough.
 
 ---
 
 ---
-Source: https://docs.bpmnkit.com/cli/skills/
+Source: https://bpmnkit.com/docs/cli/skills

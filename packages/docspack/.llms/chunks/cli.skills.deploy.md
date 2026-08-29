@@ -21,4 +21,4 @@ Gate a BPMN process on deploy-readiness, then deploy it to local Reebe or Camund
 ---
 
 ---
-Source: https://docs.bpmnkit.com/cli/skills/
+Source: https://bpmnkit.com/docs/cli/skills

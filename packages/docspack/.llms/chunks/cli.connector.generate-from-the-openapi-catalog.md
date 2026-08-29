@@ -27,4 +27,4 @@ casen connector generate --swagger ./api-spec.json --output ./templates/
 ```
 
 ---
-Source: https://docs.bpmnkit.com/cli/connector/
+Source: https://bpmnkit.com/docs/cli/connector

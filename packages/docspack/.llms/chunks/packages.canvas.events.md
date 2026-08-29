@@ -53,4 +53,4 @@ type CanvasPlugin = {
 | `@bpmnkit/canvas-plugin-ai-bridge` | AI chat integration |
 
 ---
-Source: https://docs.bpmnkit.com/packages/canvas/
+Source: https://bpmnkit.com/docs/packages/canvas

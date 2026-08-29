@@ -1,7 +1,7 @@
 # Standalone Workers — See also
 
-- [`@bpmnkit/worker-client`](/packages/worker-client/) — full API reference
-- [AI-Driven Implementation](/guides/ai-implement/) — scaffold workers as part of `/implement`
+- [`@bpmnkit/worker-client`](/docs/packages/worker-client) — full API reference
+- [AI-Driven Implementation](/docs/guides/ai-implement) — scaffold workers as part of `/implement`
 
 ---
-Source: https://docs.bpmnkit.com/guides/workers-standalone/
+Source: https://bpmnkit.com/docs/guides/workers-standalone

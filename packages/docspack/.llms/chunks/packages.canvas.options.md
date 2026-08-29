@@ -21,4 +21,4 @@ type CanvasOptions = {
 | `canvas.destroy()` | Clean up the canvas and remove from DOM |
 
 ---
-Source: https://docs.bpmnkit.com/packages/canvas/
+Source: https://bpmnkit.com/docs/packages/canvas

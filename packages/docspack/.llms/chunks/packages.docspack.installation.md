@@ -32,7 +32,7 @@ When you're ready for production, deploy to a real Camunda 8 cluster:
 ...
 
 ---
-Source: https://docs.bpmnkit.com/getting-started/quick-start/
+Source: /docs/getting-started/quick-start
 
 ---
 cost: 1,204 tokens, capped at 3,000
@@ -42,4 +42,4 @@ Every answer names the package, the version and the chunk it came from, and clos
 what it cost. An agent can quote the chunk id back when a passage turns out to be wrong.
 
 ---
-Source: https://docs.bpmnkit.com/packages/docspack/
+Source: https://bpmnkit.com/docs/packages/docspack
