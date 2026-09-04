@@ -1,13 +1,22 @@
 const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const ID_SIZE = 8
 
+// Random bytes are drawn in batches: one getRandomValues call per id is
+// dominated by the crypto call overhead, not by the bytes it returns.
+const POOL_SIZE = 1024
+const pool = new Uint8Array(POOL_SIZE)
+let poolOffset = POOL_SIZE
+
 function nanoId(): string {
-	const bytes = new Uint8Array(ID_SIZE)
-	crypto.getRandomValues(bytes)
+	if (poolOffset + ID_SIZE > POOL_SIZE) {
+		crypto.getRandomValues(pool)
+		poolOffset = 0
+	}
 	let id = ""
 	for (let i = 0; i < ID_SIZE; i++) {
-		id += ALPHABET[(bytes[i] as number) % ALPHABET.length]
+		id += ALPHABET[(pool[poolOffset + i] as number) % ALPHABET.length]
 	}
+	poolOffset += ID_SIZE
 	return id
 }
 
