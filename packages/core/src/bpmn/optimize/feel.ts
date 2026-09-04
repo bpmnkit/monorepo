@@ -76,7 +76,7 @@ function scoreFeelExpression(expr: string, opts: ResolvedOptions): FeelScore {
 
 export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): OptimizationFinding[] {
 	const findings: OptimizationFinding[] = []
-	const { bySource } = buildFlowIndex(p)
+	const { byId, bySource } = buildFlowIndex(p)
 	const processId = p.id
 
 	// Track FEEL expressions across all sequence flows for duplicate detection
@@ -86,7 +86,7 @@ export function analyzeFeel(p: BpmnProcess, opts: ResolvedOptions): Optimization
 		// Determine if source is an exclusive/inclusive gateway with more than one
 		// outgoing flow — a join (single outgoing flow) makes no decision, so its
 		// one outgoing flow needs neither a condition nor a default marker.
-		const srcEl = p.flowElements.find((e) => e.id === flow.sourceRef)
+		const srcEl = byId.get(flow.sourceRef)
 		const srcIsDecisionGateway =
 			srcEl !== undefined &&
 			(srcEl.type === "exclusiveGateway" || srcEl.type === "inclusiveGateway") &&

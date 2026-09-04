@@ -39,18 +39,31 @@ function localName(name: string): string {
 	return idx >= 0 ? name.slice(idx + 1) : name
 }
 
+/** True when `qname` is `local` or `<prefix>:<local>` — without slicing a new string. */
+function hasLocalName(qname: string, local: string): boolean {
+	const idx = qname.indexOf(":")
+	if (idx < 0) return qname === local
+	return qname.length - idx - 1 === local.length && qname.endsWith(local)
+}
+
 function findChildren(element: XmlElement, tagLocalName: string): XmlElement[] {
-	return element.children.filter((c) => localName(c.name) === tagLocalName)
+	const out: XmlElement[] = []
+	for (const c of element.children) if (hasLocalName(c.name, tagLocalName)) out.push(c)
+	return out
 }
 
 function findChild(element: XmlElement, tagLocalName: string): XmlElement | undefined {
-	return element.children.find((c) => localName(c.name) === tagLocalName)
+	for (const c of element.children) if (hasLocalName(c.name, tagLocalName)) return c
+	return undefined
 }
 
 function attr(element: XmlElement, name: string): string | undefined {
-	if (element.attributes[name] !== undefined) return element.attributes[name]
-	for (const [key, value] of Object.entries(element.attributes)) {
-		if (localName(key) === name) return value
+	const attributes = element.attributes
+	const direct = attributes[name]
+	if (direct !== undefined) return direct
+	// Fall back to a namespace-qualified spelling of the same attribute.
+	for (const key in attributes) {
+		if (key.length > name.length && hasLocalName(key, name)) return attributes[key]
 	}
 	return undefined
 }
@@ -65,9 +78,13 @@ function requiredAttr(element: XmlElement, name: string): string {
 
 /** Collect text from child <bpmn:incoming> / <bpmn:outgoing> elements. */
 function collectFlowRefs(element: XmlElement, tag: string): string[] {
-	return findChildren(element, tag)
-		.map((c) => c.text?.trim())
-		.filter((t): t is string => !!t)
+	const refs: string[] = []
+	for (const c of element.children) {
+		if (!hasLocalName(c.name, tag)) continue
+		const t = c.text?.trim()
+		if (t) refs.push(t)
+	}
+	return refs
 }
 
 /** Known attribute names on flow nodes — everything else goes to unknownAttributes. */
@@ -103,11 +120,12 @@ const KNOWN_ATTRS = new Set([
 /** Extract unknown (namespace-qualified) attributes from an element. */
 function unknownAttrs(element: XmlElement): Record<string, string> {
 	const result: Record<string, string> = {}
-	for (const [key, value] of Object.entries(element.attributes)) {
-		if (key.startsWith("xmlns:") || key === "xmlns") continue
+	const attributes = element.attributes
+	for (const key in attributes) {
 		if (KNOWN_ATTRS.has(key)) continue
-		if (KNOWN_ATTRS.has(localName(key))) continue
-		result[key] = value
+		if (key.startsWith("xmlns:") || key === "xmlns") continue
+		if (key.includes(":") && KNOWN_ATTRS.has(localName(key))) continue
+		result[key] = attributes[key] as string
 	}
 	return result
 }
@@ -770,7 +788,8 @@ export function parseBpmn(xml: string): BpmnDefinitions {
 	const namespaces: Record<string, string> = {}
 	const unknownAttributes: Record<string, string> = {}
 
-	for (const [key, value] of Object.entries(root.attributes)) {
+	for (const key in root.attributes) {
+		const value = root.attributes[key] as string
 		if (key.startsWith("xmlns:")) {
 			namespaces[key.slice(6)] = value
 		} else if (key === "xmlns") {

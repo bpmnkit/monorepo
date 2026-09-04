@@ -26,6 +26,8 @@ export interface SemanticGraph {
 	starts: string[]
 	/** Longest-path rank per node id. */
 	ranks: Map<string, number>
+	/** Lazily built: ids from which an end (or terminal) node is reachable. See {@link reachesEnd}. */
+	endReach?: Set<string>
 }
 
 /**
@@ -213,21 +215,48 @@ function assignRanks(graph: SemanticGraph): void {
 	}
 }
 
-/** True when an end event is reachable from `id` without traversing a back edge. */
+/**
+ * True when an end event is reachable from `id` without traversing a back edge.
+ * A node other than `id` itself that has no outgoing flow also ends the path.
+ *
+ * The reverse reachability set is computed once per graph, so repeated calls
+ * from the spine tracer stay O(1) instead of re-walking the graph each time.
+ */
 export function reachesEnd(graph: SemanticGraph, id: string): boolean {
-	const seen = new Set<string>()
-	const stack = [id]
-	while (stack.length > 0) {
-		const current = stack.pop()
-		if (current === undefined || seen.has(current)) continue
-		seen.add(current)
-		const node = graph.byId.get(current)
-		if (node && END_TYPES.has(node.type)) return true
-		const out = graph.outgoing.get(current) ?? []
-		if (out.length === 0 && seen.size > 1) return true // a terminal node ends the path
-		for (const flow of out) {
-			if (!graph.backEdges.has(flow.id)) stack.push(flow.targetRef)
-		}
+	const node = graph.byId.get(id)
+	if (node && END_TYPES.has(node.type)) return true
+	const endReach = graph.endReach ?? buildEndReach(graph)
+	for (const flow of graph.outgoing.get(id) ?? []) {
+		if (!graph.backEdges.has(flow.id) && endReach.has(flow.targetRef)) return true
 	}
 	return false
+}
+
+/**
+ * Every node from which a path along non-back edges reaches an end event or a
+ * node with no outgoing flow (both inclusive), found by one reverse walk.
+ */
+function buildEndReach(graph: SemanticGraph): Set<string> {
+	const reach = new Set<string>()
+	const stack: string[] = []
+	for (const node of graph.byId.values()) {
+		const out = graph.outgoing.get(node.id)
+		if (END_TYPES.has(node.type) || out === undefined || out.length === 0) {
+			reach.add(node.id)
+			stack.push(node.id)
+		}
+	}
+	while (stack.length > 0) {
+		const id = stack.pop() as string
+		for (const flow of graph.incoming.get(id) ?? []) {
+			if (graph.backEdges.has(flow.id)) continue
+			const from = effectiveSource(flow, graph.byId)
+			if (!reach.has(from)) {
+				reach.add(from)
+				stack.push(from)
+			}
+		}
+	}
+	graph.endReach = reach
+	return reach
 }

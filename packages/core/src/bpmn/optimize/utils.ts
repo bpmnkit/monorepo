@@ -100,9 +100,8 @@ export function reachableFrom(
 ): Set<string> {
 	const visited = new Set<string>(startIds)
 	const queue = [...startIds]
-	while (queue.length > 0) {
-		const current = queue.shift()
-		if (current === undefined) break
+	for (let head = 0; head < queue.length; head++) {
+		const current = queue[head] as string
 		const outflows = bySource.get(current) ?? []
 		for (const flow of outflows) {
 			if (!visited.has(flow.targetRef)) {
