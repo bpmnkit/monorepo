@@ -337,16 +337,36 @@ reg("ends with", (str, match) => {
 	return s.endsWith(m)
 })
 
+// Patterns in FEEL come from static expression text, so the same few regexes
+// are compiled over and over inside loops and decision tables; keep them.
+const REGEX_CACHE_LIMIT = 256
+const regexCache = new Map<string, RegExp | null>()
+
+/** Compiled regex for `pattern`/`flags`, or null when the pattern is invalid. */
+function cachedRegExp(pattern: string, flags: string): RegExp | null {
+	const key = `${flags}/${pattern}`
+	const hit = regexCache.get(key)
+	if (hit !== undefined) return hit
+	let re: RegExp | null
+	try {
+		re = new RegExp(pattern, flags)
+	} catch {
+		re = null
+	}
+	if (regexCache.size >= REGEX_CACHE_LIMIT) regexCache.clear()
+	regexCache.set(key, re)
+	return re
+}
+
 reg("matches", (str, pattern, flags) => {
 	const s = toStr(str)
 	const p = toStr(pattern)
 	if (s === null || p === null) return null
 	const f = flags !== undefined && flags !== null ? (toStr(flags) ?? "") : ""
-	try {
-		return new RegExp(p, f).test(s)
-	} catch {
-		return null
-	}
+	const re = cachedRegExp(p, f)
+	if (re === null) return null
+	re.lastIndex = 0
+	return re.test(s)
 })
 
 reg("replace", (str, pattern, replacement, flags) => {
@@ -355,22 +375,18 @@ reg("replace", (str, pattern, replacement, flags) => {
 	const r = toStr(replacement)
 	if (s === null || p === null || r === null) return null
 	const f = flags !== undefined && flags !== null ? (toStr(flags) ?? "g") : "g"
-	try {
-		return s.replace(new RegExp(p, f.includes("g") ? f : `${f}g`), r)
-	} catch {
-		return null
-	}
+	const re = cachedRegExp(p, f.includes("g") ? f : `${f}g`)
+	if (re === null) return null
+	re.lastIndex = 0
+	return s.replace(re, r)
 })
 
 reg("split", (str, delimiter) => {
 	const s = toStr(str)
 	const d = toStr(delimiter)
 	if (s === null || d === null) return null
-	try {
-		return s.split(new RegExp(d))
-	} catch {
-		return s.split(d)
-	}
+	const re = cachedRegExp(d, "")
+	return re === null ? s.split(d) : s.split(re)
 })
 
 reg("string join", (...args) => {
@@ -721,40 +737,36 @@ reg("index of", (list, match) => {
 	return result
 })
 
+// Set membership is SameValueZero, exactly what Array#includes used here, so
+// de-duplication keeps its semantics while dropping from O(n²) to O(n).
 reg("union", (...args) => {
-	const result: FeelValue[] = []
+	const seen = new Set<FeelValue>()
 	for (const v of args) {
 		if (isFeelList(v)) {
-			for (const item of v) {
-				if (!result.includes(item)) result.push(item)
-			}
-		} else if (!result.includes(v)) {
-			result.push(v)
+			for (const item of v) seen.add(item)
+		} else {
+			seen.add(v)
 		}
 	}
-	return result
+	return [...seen]
 })
 
 reg("distinct values", (list) => {
 	if (!isFeelList(list)) return null
-	const result: FeelValue[] = []
-	for (const v of list) {
-		if (!result.includes(v)) result.push(v)
-	}
-	return result
+	return [...new Set(list)]
 })
 
 reg("flatten", (list) => {
 	if (!isFeelList(list)) return null
-	const flat = (arr: FeelValue[]): FeelValue[] => {
-		const result: FeelValue[] = []
+	const result: FeelValue[] = []
+	const flat = (arr: FeelValue[]): void => {
 		for (const v of arr) {
-			if (isFeelList(v)) result.push(...flat(v))
+			if (isFeelList(v)) flat(v)
 			else result.push(v)
 		}
-		return result
 	}
-	return flat(list)
+	flat(list)
+	return result
 })
 
 reg("sort", (list, fn) => {
@@ -1163,11 +1175,20 @@ reg("coincides", (a, b) => {
 // Exports
 // -------------------------------------------------------------------------
 
+// One FeelFunction wrapper per built-in, created on first use and shared: name
+// resolution runs for every identifier the evaluator meets, so allocating a
+// wrapper and closure per lookup showed up on every loop iteration.
+const builtinWrappers = new Map<string, FeelFunction>()
+
 /** Look up a built-in function by name. Returns undefined if not found. */
 export function getBuiltin(name: string): FeelFunction | undefined {
+	const cached = builtinWrappers.get(name)
+	if (cached) return cached
 	const fn = builtinMap.get(name)
 	if (!fn) return undefined
-	return { type: "function", call: (args) => fn(...args) }
+	const wrapper: FeelFunction = { type: "function", call: (args) => fn(...args) }
+	builtinWrappers.set(name, wrapper)
+	return wrapper
 }
 
 /** All built-in names. */
