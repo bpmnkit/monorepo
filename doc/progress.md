@@ -1,5 +1,65 @@
 # Progress
 
+## 2026-09-05 — Performance pass across core, feel, engine, canvas, editor and plugins
+
+The library was profiled end to end on a synthetic 5,000-element diagram (3.8 MB of XML)
+plus 60 randomly generated processes with gateways, loops, boundary events and
+sub-processes, and every hot spot that scaled worse than linearly was removed. Output is
+byte-identical to before: a golden harness ran parse, export, auto-layout, compactify/expand,
+optimize, SVG export and DI checks through the old and new builds on every fixture
+(497/497 identical), and the editor's snap algorithm was fuzzed against the original on
+24,000 drag positions with no mismatch.
+
+**`@bpmnkit/core`.** The semantic layout re-walked the graph for every candidate edge while
+tracing the spine (`reachesEnd`) and compared every candidate route against every shape and
+every routed segment; it now computes end-reachability once per graph and indexes shapes and
+segments by x-range. The optimizer's variable-flow analysis ran a BFS per sequence flow with an
+O(n) `queue.shift()`; it now propagates scope with one worklist fixed point. Boundary events
+and elements are indexed by id, service tasks are bucketed by job type before pairwise
+similarity, and the builders keep a `Set` of ids instead of scanning on every insert. The XML
+reader compares char codes and uses `indexOf` for text and attribute values; the serializer
+builds one string with single-pass escaping. `generateId` draws random bytes 1 KiB at a time.
+
+| Operation (5,000 elements) | Before | After |
+| --- | --- | --- |
+| `applyAutoLayout` | 4.1 s | 0.23 s |
+| `optimize` | 3.6 s | 0.12 s |
+| `Bpmn.export` | 241 ms | 92 ms |
+| `Bpmn.parse` | 135 ms | 96 ms |
+| Builder chain of 4,000 tasks | 104 ms | 12 ms |
+
+**`@bpmnkit/feel`.** The lexer allocated a one-character string per position and a two-character
+slice per token; it now works on char codes (2.4x faster). `parseExpression` and
+`parseUnaryTests` memoize results in bounded maps, so engines and decision tables stop
+re-parsing static expression text. `getBuiltin` returns one shared wrapper per built-in instead
+of a closure per name lookup, `distinct values` and `union` use a `Set` (21 ms → 0.6 ms on
+6,000 items), regexes in `matches`/`replace`/`split` are cached, and the highlighter escapes
+in one pass (190 ms → 75 ms on the benchmark text).
+
+**`@bpmnkit/engine`.** `VariableStore` re-merged the whole scope chain into a fresh object for
+every FEEL and DMN evaluation; it now keeps one merged view per scope and patches it in place on
+each write. Zeebe extensions are parsed once per element per instance, DMN input expressions
+are evaluated once per decision rather than once per rule, tokens are indexed by element, and
+the `feel:evaluated` payload copy is skipped when no listener is attached.
+
+**`@bpmnkit/canvas`.** `Scene.updateElement` rebuilt the full model index and scanned the plane
+for every single-element update; the render context is now built once per render and only the
+updated shape's geometry is refreshed (200 updates on 2,000 shapes: 500 ms → 75 ms). Overlay
+positioning reads the O(1) registry instead of searching the shape and edge arrays on every
+viewport change, hover resolution uses the event target before falling back to
+`elementFromPoint`, and edge paths are computed once instead of twice.
+
+**`@bpmnkit/editor` and `@bpmnkit/plugins`.** The editor keeps id → shape/edge/flow maps
+(39 linear `find` calls replaced) and computes the equal-spacing snap candidates once per drag
+instead of comparing every pair of static shapes on every pointer move. The tabs plugin refreshes
+its process map from the definitions it already has instead of exporting and re-parsing XML on
+every change, the storage plugin serializes inside the debounced save, and the config panel
+indexes flow elements so badge refreshes are linear.
+
+Noted, not changed: a process variable named `count` (or any other built-in) is shadowed by the
+FEEL built-in function during evaluation, because the evaluator resolves built-ins before
+variables.
+
 ## 2026-08-29 — Documentation folded into the landing site at `/docs`
 
 The documentation was a second app on a second domain: `apps/docs`, an Astro Starlight site
