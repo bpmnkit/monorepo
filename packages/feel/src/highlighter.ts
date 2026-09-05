@@ -147,6 +147,16 @@ export function annotate(input: string): AnnotatedToken[] {
 				i = end
 				continue
 			}
+			// The greedy match above already decided whether this word is a
+			// built-in; re-running the lookahead in classifyToken would repeat it.
+			result.push({
+				kind: BUILTINS.has(name) ? "builtin" : "variable",
+				value: tok.value,
+				start: tok.start,
+				end: tok.end,
+			})
+			i++
+			continue
 		}
 
 		const { kind } = classifyToken(tok, tokens, i)
@@ -157,21 +167,25 @@ export function annotate(input: string): AnnotatedToken[] {
 	return result
 }
 
+const HTML_ESCAPE_RE = /[&<>]/
+const HTML_ESCAPE_ALL_RE = /[&<>]/g
+const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" }
+
 function escapeHtml(s: string): string {
-	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+	// Most tokens contain nothing to escape; one test beats three replace passes.
+	if (!HTML_ESCAPE_RE.test(s)) return s
+	return s.replace(HTML_ESCAPE_ALL_RE, (ch) => HTML_ESCAPES[ch] ?? ch)
 }
 
 /** Render annotated tokens to HTML with span wrappers. */
 export function highlightToHtml(input: string): string {
 	if (!input.trim()) return escapeHtml(input) || '<span class="feel-empty">-</span>'
-	const tokens = annotate(input)
-	return tokens
-		.map((t) => {
-			const escaped = escapeHtml(t.value)
-			if (t.kind === "plain") return escaped
-			return `<span class="feel-${t.kind}">${escaped}</span>`
-		})
-		.join("")
+	let html = ""
+	for (const t of annotate(input)) {
+		const escaped = escapeHtml(t.value)
+		html += t.kind === "plain" ? escaped : `<span class="feel-${t.kind}">${escaped}</span>`
+	}
+	return html
 }
 
 /** Backward-compatible alias. */

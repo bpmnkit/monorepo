@@ -1,6 +1,9 @@
+/** Content to save, or a producer that renders it when the save actually runs. */
+export type SaveContent = string | (() => string)
+
 export class AutoSave {
 	private readonly _timers = new Map<string, ReturnType<typeof setTimeout>>()
-	private readonly _latest = new Map<string, string>()
+	private readonly _latest = new Map<string, SaveContent>()
 	private readonly _delay: number
 	private readonly _onSave: (fileId: string, content: string) => Promise<void>
 
@@ -13,7 +16,7 @@ export class AutoSave {
 		window.addEventListener("beforeunload", () => void this.flush())
 	}
 
-	schedule(fileId: string, content: string): void {
+	schedule(fileId: string, content: SaveContent): void {
 		this._latest.set(fileId, content)
 		const existing = this._timers.get(fileId)
 		if (existing !== undefined) clearTimeout(existing)
@@ -33,7 +36,7 @@ export class AutoSave {
 			this._timers.delete(fileId)
 		}
 		this._latest.clear()
-		await Promise.all(entries.map(([id, content]) => this._onSave(id, content)))
+		await Promise.all(entries.map(([id, content]) => this._onSave(id, resolveContent(content))))
 	}
 
 	private async _save(fileId: string): Promise<void> {
@@ -41,6 +44,10 @@ export class AutoSave {
 		if (content === undefined) return
 		this._latest.delete(fileId)
 		this._timers.delete(fileId)
-		await this._onSave(fileId, content)
+		await this._onSave(fileId, resolveContent(content))
 	}
+}
+
+function resolveContent(content: SaveContent): string {
+	return typeof content === "function" ? content() : content
 }

@@ -522,7 +522,8 @@ export class BpmnCanvas {
 		this._scene.updateElement(id)
 		this._shapes = this._scene.getShapes()
 		this._edges = this._scene.getEdges()
-		this._keyboard.setShapes(this._shapes)
+		const updated = this._scene.getElement(id)
+		if (updated && "shape" in updated) this._keyboard.updateShape(updated)
 		this._overlays.reposition()
 	}
 
@@ -857,36 +858,41 @@ export class BpmnCanvas {
 
 	/**
 	 * Resolves the BPMN element id under a pointer/mouse event, or `null`.
-	 * Prefers `elementFromPoint` (correct when native SVG hit-testing returns
-	 * the root `<svg>` in flex/scroll containers) and falls back to the event
-	 * target (for environments where `elementFromPoint` is unavailable).
+	 * The event target answers directly for most moves; `elementFromPoint`
+	 * (which forces a layout and hit-test flush) is only consulted when native
+	 * SVG hit-testing handed us the root `<svg>`, as it does in some flex/scroll
+	 * containers.
 	 */
 	private _elementIdForEvent(e: MouseEvent | PointerEvent): string | null {
+		const fromTarget = (e.target as Element | null)?.closest("[data-bpmnkit-id]")
+		if (fromTarget) return fromTarget.getAttribute("data-bpmnkit-id")
 		const fromPoint = document.elementFromPoint(e.clientX, e.clientY)
-		const target =
-			fromPoint?.closest("[data-bpmnkit-id]") ??
-			(e.target as Element | null)?.closest("[data-bpmnkit-id]")
-		return target?.getAttribute("data-bpmnkit-id") ?? null
+		return fromPoint?.closest("[data-bpmnkit-id]")?.getAttribute("data-bpmnkit-id") ?? null
 	}
 
 	/** Diagram-coordinate bounds of a shape (from DI) or edge (waypoint bbox). */
 	private _diagramBounds(
 		id: string,
 	): { x: number; y: number; width: number; height: number } | null {
-		const shape = this._shapes.find((s) => s.id === id)
-		if (shape) {
-			const { x, y, width, height } = shape.shape.bounds
+		const el = this._scene.getElement(id)
+		if (!el) return null
+		if ("shape" in el) {
+			const { x, y, width, height } = el.shape.bounds
 			return { x, y, width, height }
 		}
-		const edge = this._edges.find((e) => e.id === id)
-		if (edge && edge.edge.waypoints.length > 0) {
-			const xs = edge.edge.waypoints.map((w) => w.x)
-			const ys = edge.edge.waypoints.map((w) => w.y)
-			const minX = Math.min(...xs)
-			const minY = Math.min(...ys)
-			return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY }
+		const waypoints = el.edge.waypoints
+		if (waypoints.length === 0) return null
+		let minX = Number.POSITIVE_INFINITY
+		let minY = Number.POSITIVE_INFINITY
+		let maxX = Number.NEGATIVE_INFINITY
+		let maxY = Number.NEGATIVE_INFINITY
+		for (const w of waypoints) {
+			if (w.x < minX) minX = w.x
+			if (w.y < minY) minY = w.y
+			if (w.x > maxX) maxX = w.x
+			if (w.y > maxY) maxY = w.y
 		}
-		return null
+		return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
 	}
 
 	private _applyTheme(theme: Theme): void {

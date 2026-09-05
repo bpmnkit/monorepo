@@ -919,6 +919,8 @@ function traceBackToSplit(
 export class BranchBuilder {
 	/** @internal */
 	readonly _elements: BpmnFlowElement[] = []
+	/** Ids in `_elements`, for O(1) duplicate checks. */
+	private readonly _ids = new Set<string>()
 	/** @internal */
 	readonly _flows: BpmnSequenceFlow[] = []
 	/** @internal */
@@ -977,6 +979,7 @@ export class BranchBuilder {
 
 	private addElement(element: BpmnFlowElement): this {
 		this._elements.push(element)
+		this._ids.add(element.id)
 
 		if (this.lastNodeId) {
 			const flowId = generateId("Flow")
@@ -1235,6 +1238,7 @@ export class BranchBuilder {
 		}
 		// Push directly — no sequence flow, boundary events attach via attachedToRef
 		this._elements.push(element)
+		this._ids.add(element.id)
 		this.lastNodeId = element.id
 		this.isFirstElement = false
 		return this
@@ -1361,10 +1365,11 @@ export class BranchBuilder {
 
 		// Event sub-processes have no incoming/outgoing sequence flows and must not
 		// advance the branch cursor — mirrors ProcessBuilder.eventSubProcess.
-		if (this._elements.some((n) => n.id === element.id)) {
+		if (this._ids.has(element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}"`)
 		}
 		this._elements.push(element)
+		this._ids.add(element.id)
 		return this
 	}
 
@@ -1390,10 +1395,11 @@ export class BranchBuilder {
 		callback(b)
 
 		for (const el of b._elements) {
-			if (this._elements.some((n) => n.id === el.id)) {
+			if (this._ids.has(el.id)) {
 				throw new Error(`Duplicate element ID "${el.id}"`)
 			}
 			this._elements.push(el)
+			this._ids.add(el.id)
 		}
 		for (const fl of b._flows) this._flows.push(fl)
 		for (const ann of b._textAnnotations) this._textAnnotations.push(ann)
@@ -1432,6 +1438,8 @@ export class BranchBuilder {
 export class SubProcessContentBuilder {
 	/** @internal */
 	readonly _elements: BpmnFlowElement[] = []
+	/** Ids in `_elements`, for O(1) duplicate checks. */
+	private readonly _ids = new Set<string>()
 	/** @internal */
 	readonly _flows: BpmnSequenceFlow[] = []
 	/** @internal */
@@ -1450,10 +1458,11 @@ export class SubProcessContentBuilder {
 	}
 
 	private addElement(element: BpmnFlowElement): this {
-		if (this._elements.some((n) => n.id === element.id)) {
+		if (this._ids.has(element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}" in sub-process`)
 		}
 		this._elements.push(element)
+		this._ids.add(element.id)
 		if (this.lastNodeId) {
 			this._flows.push({
 				id: generateId("Flow"),
@@ -1486,10 +1495,11 @@ export class SubProcessContentBuilder {
 	 * the current cursor and does not move it.
 	 */
 	addDisconnected(element: BpmnFlowElement): this {
-		if (this._elements.some((n) => n.id === element.id)) {
+		if (this._ids.has(element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}" in sub-process`)
 		}
 		this._elements.push(element)
+		this._ids.add(element.id)
 		return this
 	}
 
@@ -1636,10 +1646,11 @@ export class SubProcessContentBuilder {
 		callback(b)
 
 		for (const el of b._elements) {
-			if (this._elements.some((n) => n.id === el.id)) {
+			if (this._ids.has(el.id)) {
 				throw new Error(`Duplicate element ID "${el.id}"`)
 			}
 			this._elements.push(el)
+			this._ids.add(el.id)
 		}
 		for (const fl of b._flows) this._flows.push(fl)
 		for (const ann of b._textAnnotations) this._textAnnotations.push(ann)
@@ -1684,7 +1695,7 @@ export class SubProcessContentBuilder {
 	}
 
 	element(elementId: string): this {
-		if (!this._elements.some((n) => n.id === elementId)) {
+		if (!this._ids.has(elementId)) {
 			throw new Error(`Element "${elementId}" not found in sub-process`)
 		}
 		this.lastNodeId = elementId
@@ -1714,6 +1725,7 @@ export class SubProcessContentBuilder {
 		}
 		// Push directly — no sequence flow, boundary events attach via attachedToRef
 		this._elements.push(element)
+		this._ids.add(element.id)
 		this.lastNodeId = element.id
 		return this
 	}
@@ -1837,10 +1849,11 @@ export class SubProcessContentBuilder {
 
 		// Event sub-processes have no incoming/outgoing sequence flows and must not
 		// advance the cursor — mirrors ProcessBuilder.eventSubProcess.
-		if (this._elements.some((n) => n.id === element.id)) {
+		if (this._ids.has(element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}" in sub-process`)
 		}
 		this._elements.push(element)
+		this._ids.add(element.id)
 		return this
 	}
 }
@@ -1856,6 +1869,8 @@ export class ProcessBuilder {
 	private _isExecutable = true
 	private _versionTag?: string
 	private readonly flowElements: BpmnFlowElement[] = []
+	/** Ids in `flowElements`, for O(1) duplicate and existence checks. */
+	private readonly elementIds = new Set<string>()
 	private readonly sequenceFlows: BpmnSequenceFlow[] = []
 	private readonly rootErrors: BpmnError[] = []
 	private readonly rootMessages: BpmnMessage[] = []
@@ -2261,10 +2276,11 @@ export class ProcessBuilder {
 		callback(b)
 
 		for (const el of b._elements) {
-			if (this.flowElements.some((n) => n.id === el.id)) {
+			if (this.elementIds.has(el.id)) {
 				throw new Error(`Duplicate element ID "${el.id}"`)
 			}
 			this.flowElements.push(el)
+			this.elementIds.add(el.id)
 		}
 		for (const fl of b._flows) {
 			this.sequenceFlows.push(fl)
@@ -2322,7 +2338,7 @@ export class ProcessBuilder {
 	 * @throws If no element with the given ID exists.
 	 */
 	element(elementId: string): this {
-		const found = this.flowElements.some((n) => n.id === elementId)
+		const found = this.elementIds.has(elementId)
 		if (!found) {
 			throw new Error(`Element "${elementId}" not found in process "${this.processId}"`)
 		}
@@ -2409,11 +2425,12 @@ export class ProcessBuilder {
 		// advance the flow cursor — the surrounding process wires around them.
 		// openBranchEnds is intentionally NOT drained here; the next normal
 		// addFlowElement call will drain it and connect branch ends to that element.
-		if (this.flowElements.some((n) => n.id === element.id)) {
+		if (this.elementIds.has(element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}" in process "${this.processId}"`)
 		}
 		this._savedMainFlowId = undefined
 		this.flowElements.push(element)
+		this.elementIds.add(element.id)
 		return this
 	}
 
@@ -2552,11 +2569,12 @@ export class ProcessBuilder {
 	}
 
 	private addFlowElement(element: BpmnFlowElement): void {
-		if (this.flowElements.some((n) => n.id === element.id)) {
+		if (this.elementIds.has(element.id)) {
 			throw new Error(`Duplicate element ID "${element.id}" in process "${this.processId}"`)
 		}
 
 		this.flowElements.push(element)
+		this.elementIds.add(element.id)
 
 		// Compensation handlers are outside the normal token flow: link via association
 		// from the preceding compensation boundary event, then restore the main-flow cursor.

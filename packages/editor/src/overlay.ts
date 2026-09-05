@@ -82,7 +82,8 @@ export class OverlayRenderer {
 	setSelection(ids: string[], shapes: RenderedShape[], resizableIds?: ReadonlySet<string>): void {
 		this._selectionG.innerHTML = ""
 
-		const selected = shapes.filter((s) => ids.includes(s.id))
+		const idSet = new Set(ids)
+		const selected = shapes.filter((s) => idSet.has(s.id))
 		if (selected.length === 0) return
 
 		const isSingle = selected.length === 1

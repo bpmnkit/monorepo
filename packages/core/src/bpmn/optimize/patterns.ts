@@ -6,16 +6,28 @@ import { buildFlowIndex, readZeebeIoMapping, readZeebeTaskType } from "./utils.j
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns true if the element has a boundary event of the given type attached. */
-function hasBoundaryOf(elementId: string, eventType: "error" | "timer", p: BpmnProcess): boolean {
+/** hostId → event-definition types of the boundary events attached to it. */
+function indexBoundaryTypes(p: BpmnProcess): Map<string, Set<string>> {
+	const index = new Map<string, Set<string>>()
 	for (const el of p.flowElements) {
 		if (el.type !== "boundaryEvent") continue
-		if (el.attachedToRef !== elementId) continue
-		for (const def of el.eventDefinitions) {
-			if (def.type === eventType) return true
+		let types = index.get(el.attachedToRef)
+		if (!types) {
+			types = new Set()
+			index.set(el.attachedToRef, types)
 		}
+		for (const def of el.eventDefinitions) types.add(def.type)
 	}
-	return false
+	return index
+}
+
+/** Returns true if the element has a boundary event of the given type attached. */
+function hasBoundaryOf(
+	elementId: string,
+	eventType: "error" | "timer",
+	boundaryTypes: Map<string, Set<string>>,
+): boolean {
+	return boundaryTypes.get(elementId)?.has(eventType) ?? false
 }
 
 /** Returns true if the condition expression text appears to contain only literals (no variable names). */
@@ -41,7 +53,8 @@ function isLiteralOnlyCondition(text: string): boolean {
 export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 	const findings: OptimizationFinding[] = []
 	const processId = p.id
-	const { bySource, byTarget } = buildFlowIndex(p)
+	const { byId, bySource, byTarget } = buildFlowIndex(p)
+	const boundaryTypes = indexBoundaryTypes(p)
 
 	// ── Rule 1: HTTP/REST service task without error boundary ───────────────
 	for (const el of p.flowElements) {
@@ -52,7 +65,7 @@ export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 			jobType.toLowerCase().includes("rest") ||
 			jobType === "io.camunda.connector.HttpJson:1"
 		if (!isHttp) continue
-		if (!hasBoundaryOf(el.id, "error", p)) {
+		if (!hasBoundaryOf(el.id, "error", boundaryTypes)) {
 			findings.push({
 				id: "pattern/http-no-error-boundary",
 				category: "pattern",
@@ -89,7 +102,7 @@ export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 	for (const el of p.flowElements) {
 		if (el.type !== "subProcess" && el.type !== "adHocSubProcess" && el.type !== "transaction")
 			continue
-		if (!hasBoundaryOf(el.id, "error", p)) {
+		if (!hasBoundaryOf(el.id, "error", boundaryTypes)) {
 			findings.push({
 				id: "pattern/subprocess-no-error-boundary",
 				category: "pattern",
@@ -106,7 +119,7 @@ export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 	// ── Rule 4: Call activity with no error propagation ─────────────────────
 	for (const el of p.flowElements) {
 		if (el.type !== "callActivity") continue
-		if (!hasBoundaryOf(el.id, "error", p)) {
+		if (!hasBoundaryOf(el.id, "error", boundaryTypes)) {
 			findings.push({
 				id: "pattern/call-activity-no-error-boundary",
 				category: "pattern",
@@ -130,7 +143,7 @@ export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 		const branchTargets: string[][] = []
 		for (const flow of outflows) {
 			const targets: string[] = []
-			const branchEl = p.flowElements.find((e) => e.id === flow.targetRef)
+			const branchEl = byId.get(flow.targetRef)
 			if (branchEl !== undefined) {
 				const io = readZeebeIoMapping(branchEl.extensionElements)
 				if (io !== null) {
@@ -168,7 +181,7 @@ export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 	// ── Rule 6: User task without timer boundary ────────────────────────────
 	for (const el of p.flowElements) {
 		if (el.type !== "userTask") continue
-		if (!hasBoundaryOf(el.id, "timer", p)) {
+		if (!hasBoundaryOf(el.id, "timer", boundaryTypes)) {
 			findings.push({
 				id: "pattern/user-task-no-timer",
 				category: "pattern",
@@ -209,7 +222,7 @@ export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 		if (!hasError) continue
 		const outflows = bySource.get(el.id) ?? []
 		for (const flow of outflows) {
-			const target = p.flowElements.find((e) => e.id === flow.targetRef)
+			const target = byId.get(flow.targetRef)
 			if (target !== undefined && target.type === "endEvent") {
 				findings.push({
 					id: "pattern/catch-and-swallow",
@@ -356,7 +369,7 @@ export function analyzePatterns(p: BpmnProcess): OptimizationFinding[] {
 		const cond = flow.conditionExpression?.text?.trim()
 		if (cond === undefined || cond === "") continue
 		if (isLiteralOnlyCondition(cond)) {
-			const sourceEl = p.flowElements.find((e) => e.id === flow.sourceRef)
+			const sourceEl = byId.get(flow.sourceRef)
 			findings.push({
 				id: "pattern/literal-condition",
 				category: "pattern",

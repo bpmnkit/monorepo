@@ -253,9 +253,9 @@ export function createStoragePlugin(
 			function onDiagramUpdate(rawDefs: unknown): void {
 				const currentId = storageApi.getCurrentFileId()
 				if (!currentId) return
+				// Export lazily: only the last change before the debounced save is serialized.
 				const defs = rawDefs as BpmnDefinitions
-				const xml = Bpmn.export(defs)
-				storageApi.scheduleSave(currentId, xml)
+				storageApi.scheduleSave(currentId, () => Bpmn.export(defs))
 			}
 			offDiagramChange = anyOn("diagram:change", onDiagramUpdate)
 			anyOn("diagram:load", onDiagramUpdate)

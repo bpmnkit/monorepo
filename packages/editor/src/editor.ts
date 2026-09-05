@@ -263,6 +263,70 @@ function intermediateEventDefType(type: CreateShapeType): string | null {
  * BpmnEditor — a full BPMN 2.0 diagram editor with create, move, resize,
  * connect, delete, label-edit, undo/redo, and copy/paste.
  */
+/** One equal-spacing snap candidate; see BpmnEditor._spacingCandidates for the fields. */
+interface SpacingEntry {
+	kind: 0 | 1
+	/** Snap target for the moving shape's leading (kind 0) or trailing (kind 1) edge. */
+	value: number
+	/** Position in the original pair scan; earlier pairs win exact ties. */
+	ord: number
+	a: number
+	b: number
+	c: number
+}
+
+interface SpacingIndex {
+	shapes: RenderedShape[]
+	key: string
+	h0: SpacingEntry[]
+	h1: SpacingEntry[]
+	v0: SpacingEntry[]
+	v1: SpacingEntry[]
+}
+
+/** Sort by value and drop duplicate values, keeping the earliest pair for each. */
+function sortCandidates(entries: SpacingEntry[]): SpacingEntry[] {
+	entries.sort((x, y) => x.value - y.value || x.ord - y.ord)
+	const out: SpacingEntry[] = []
+	for (const e of entries) {
+		const last = out[out.length - 1]
+		if (last && last.value === e.value) continue
+		out.push(e)
+	}
+	return out
+}
+
+/**
+ * The candidate strictly closer than `threshold` to its target, choosing the
+ * earliest pair on exact ties — the same winner the full pair scan produced.
+ */
+function nearestCandidate(
+	queries: Array<{ list: SpacingEntry[]; target: number }>,
+	threshold: number,
+): { entry: SpacingEntry; target: number } | null {
+	let best: { entry: SpacingEntry; target: number; dist: number } | null = null
+	for (const { list, target } of queries) {
+		// Binary search for the insertion point; only the two neighbours can be nearest.
+		let lo = 0
+		let hi = list.length
+		while (lo < hi) {
+			const mid = (lo + hi) >> 1
+			if ((list[mid] as SpacingEntry).value < target) lo = mid + 1
+			else hi = mid
+		}
+		for (const i of [lo - 1, lo]) {
+			const entry = list[i]
+			if (!entry) continue
+			const dist = Math.abs(target - entry.value)
+			if (dist >= threshold) continue
+			if (!best || dist < best.dist || (dist === best.dist && entry.ord < best.entry.ord)) {
+				best = { entry, target, dist }
+			}
+		}
+	}
+	return best
+}
+
 export class BpmnEditor {
 	// ── DOM ────────────────────────────────────────────────────────────
 	private readonly _id: string
@@ -289,6 +353,12 @@ export class BpmnEditor {
 
 	// ── State ──────────────────────────────────────────────────────────
 	private _shapes: RenderedShape[] = []
+	/** id → rendered shape/edge/flow, rebuilt with every render so lookups stay O(1). */
+	private readonly _shapeById = new Map<string, RenderedShape>()
+	private readonly _edgeById = new Map<string, RenderedEdge>()
+	private readonly _flowById = new Map<string, BpmnSequenceFlow>()
+	/** Equal-spacing snap candidates for the current drag; see _spacingCandidates. */
+	private _spacingIndex: SpacingIndex | null = null
 	private _edges: RenderedEdge[] = []
 	private _defs: BpmnDefinitions | null = null
 	private _selectedIds: string[] = []
@@ -458,7 +528,7 @@ export class BpmnEditor {
 			cancelEndpointMove: () => {
 				this._overlay.setEndpointDragGhost(null)
 				if (this._selectedEdgeId) {
-					const edge = this._edges.find((e) => e.id === this._selectedEdgeId)
+					const edge = this._edgeById.get(this._selectedEdgeId)
 					this._overlay.setEdgeEndpoints(edge?.edge.waypoints ?? null, this._selectedEdgeId)
 				}
 			},
@@ -528,7 +598,7 @@ export class BpmnEditor {
 				this._overlay.setEdgeHoverDot(null)
 			},
 			showEdgeWaypointBalls: (edgeId) => {
-				const edge = this._edges.find((e) => e.id === edgeId)
+				const edge = this._edgeById.get(edgeId)
 				if (edge) this._overlay.setEdgeWaypointBalls(edge.edge.waypoints, edgeId)
 			},
 			hideEdgeWaypointBalls: () => {
@@ -559,7 +629,7 @@ export class BpmnEditor {
 			this._viewport,
 			() => this.fitView(),
 			(id) => {
-				const shape = this._shapes.find((s) => s.id === id)
+				const shape = this._shapeById.get(id)
 				if (shape) {
 					this._emit("element:click", id, new PointerEvent("click"))
 				}
@@ -708,7 +778,7 @@ export class BpmnEditor {
 	}> {
 		const out: Array<{ id: string; x: number; y: number; width: number; height: number }> = []
 		for (const id of this._selectedIds) {
-			const shape = this._shapes.find((s) => s.id === id)
+			const shape = this._shapeById.get(id)
 			if (shape) out.push({ id, ...shape.shape.bounds })
 		}
 		return out
@@ -940,7 +1010,7 @@ export class BpmnEditor {
 
 	/** Pans the viewport to center on the element with the given id (preserves zoom). */
 	scrollToElement(id: string): void {
-		const shape = this._shapes.find((s) => s.id === id)
+		const shape = this._shapeById.get(id)
 		if (!shape) return
 		const { x, y, width, height } = shape.shape.bounds
 		const cx = x + width / 2
@@ -1050,6 +1120,13 @@ export class BpmnEditor {
 		this._shapes = result.shapes
 		this._edges = result.edges
 		this._defs = defs
+		this._shapeById.clear()
+		for (const shape of this._shapes) this._shapeById.set(shape.id, shape)
+		this._edgeById.clear()
+		for (const edge of this._edges) this._edgeById.set(edge.id, edge)
+		this._flowById.clear()
+		for (const flow of defs.processes[0]?.sequenceFlows ?? []) this._flowById.set(flow.id, flow)
+		this._spacingIndex = null
 
 		// Add transparent hit-area polylines for edge clicking
 		for (const edge of this._edges) {
@@ -1068,7 +1145,7 @@ export class BpmnEditor {
 
 		// Restore edge selection if the edge still exists after re-render
 		if (this._selectedEdgeId) {
-			const edge = this._edges.find((e) => e.id === this._selectedEdgeId)
+			const edge = this._edgeById.get(this._selectedEdgeId)
 			if (edge) {
 				this._overlay.setEdgeEndpoints(edge.edge.waypoints, this._selectedEdgeId)
 			} else {
@@ -1117,7 +1194,7 @@ export class BpmnEditor {
 
 	/** Human-readable name for an element (its label, else its type). */
 	private _displayName(id: string): string {
-		const el = this._shapes.find((s) => s.id === id)?.flowElement
+		const el = this._shapeById.get(id)?.flowElement
 		return el?.name ?? el?.type ?? id
 	}
 
@@ -1162,7 +1239,7 @@ export class BpmnEditor {
 
 		this._snapDelta = { dx: finalDx, dy: finalDy }
 		for (const id of this._selectedIds) {
-			const shape = this._shapes.find((s) => s.id === id)
+			const shape = this._shapeById.get(id)
 			if (!shape) continue
 			const { x, y } = shape.shape.bounds
 			shape.element.setAttribute("transform", `translate(${x + finalDx} ${y + finalDy})`)
@@ -1183,7 +1260,7 @@ export class BpmnEditor {
 		this._overlay.setDistanceGuides([])
 		this._setEdgeDropHighlight(null)
 		for (const id of this._selectedIds) {
-			const shape = this._shapes.find((s) => s.id === id)
+			const shape = this._shapeById.get(id)
 			if (!shape) continue
 			const { x, y } = shape.shape.bounds
 			shape.element.setAttribute("transform", `translate(${x} ${y})`)
@@ -1321,7 +1398,7 @@ export class BpmnEditor {
 		this._setBoundaryHost(null)
 
 		if (boundaryHostId && isIntermediateEventType(type) && this._defs) {
-			const hostShape = this._shapes.find((s) => s.id === boundaryHostId)
+			const hostShape = this._shapeById.get(boundaryHostId)
 			if (hostShape) {
 				const hostBounds = hostShape.shape.bounds
 				// Snap the event center to the nearest point on the host boundary
@@ -1350,8 +1427,8 @@ export class BpmnEditor {
 	}
 
 	private _doConnect(srcId: string, tgtId: string): void {
-		const srcShape = this._shapes.find((s) => s.id === srcId)
-		const tgtShape = this._shapes.find((s) => s.id === tgtId)
+		const srcShape = this._shapeById.get(srcId)
+		const tgtShape = this._shapeById.get(tgtId)
 		if (!srcShape || !tgtShape) return
 		const srcType = srcShape.flowElement?.type
 		const tgtType = tgtShape.flowElement?.type
@@ -1393,7 +1470,7 @@ export class BpmnEditor {
 
 	private _startLabelEdit(id: string): void {
 		if (this._readOnly || !id) return
-		const shape = this._shapes.find((s) => s.id === id)
+		const shape = this._shapeById.get(id)
 		if (!shape) return
 		const defs = this._defs
 		if (!defs) return
@@ -1415,7 +1492,7 @@ export class BpmnEditor {
 	private _connectSourceBounds(): { x: number; y: number; width: number; height: number } | null {
 		const sourceId = this._connectSourceId()
 		if (!sourceId) return null
-		const shape = this._shapes.find((s) => s.id === sourceId)
+		const shape = this._shapeById.get(sourceId)
 		return shape ? shape.shape.bounds : null
 	}
 
@@ -1432,8 +1509,8 @@ export class BpmnEditor {
 		const sourceId = this._connectSourceId()
 		if (!sourceId) return false
 		if (targetId === sourceId) return true
-		const srcType = this._shapes.find((s) => s.id === sourceId)?.flowElement?.type
-		const tgtType = this._shapes.find((s) => s.id === targetId)?.flowElement?.type
+		const srcType = this._shapeById.get(sourceId)?.flowElement?.type
+		const tgtType = this._shapeById.get(targetId)?.flowElement?.type
 		return srcType !== undefined && tgtType !== undefined && !canConnect(srcType, tgtType)
 	}
 
@@ -1441,7 +1518,7 @@ export class BpmnEditor {
 
 	/** Returns screen-space bounds of a shape (for positioning overlays). */
 	getShapeBounds(id: string): { x: number; y: number; width: number; height: number } | null {
-		const shape = this._shapes.find((s) => s.id === id)
+		const shape = this._shapeById.get(id)
 		if (!shape) return null
 		const b = shape.shape.bounds
 		const vp = this._viewport.state
@@ -1452,7 +1529,7 @@ export class BpmnEditor {
 
 	/** Returns the BPMN element type for a given id, or null if not found. */
 	getElementType(id: string): string | null {
-		const shape = this._shapes.find((s) => s.id === id)
+		const shape = this._shapeById.get(id)
 		if (!shape) {
 			if (this._edges.some((e) => e.id === id)) return "sequenceFlow"
 			return null
@@ -1484,7 +1561,7 @@ export class BpmnEditor {
 	 */
 	addConnectedElement(sourceId: string, type: CreateShapeType, name?: string): string | null {
 		if (!this._defs) return null
-		const srcShape = this._shapes.find((s) => s.id === sourceId)
+		const srcShape = this._shapeById.get(sourceId)
 		if (!srcShape) return null
 		const srcBounds = srcShape.shape.bounds
 
@@ -1533,7 +1610,7 @@ export class BpmnEditor {
 		if (process) {
 			for (const flow of process.sequenceFlows) {
 				if (flow.sourceRef !== sourceId) continue
-				const tgt = this._shapes.find((s) => s.id === flow.targetRef)
+				const tgt = this._shapeById.get(flow.targetRef)
 				if (!tgt) continue
 				const tCx = tgt.shape.bounds.x + tgt.shape.bounds.width / 2
 				const tCy = tgt.shape.bounds.y + tgt.shape.bounds.height / 2
@@ -1618,7 +1695,7 @@ export class BpmnEditor {
 	 * Sets the external label position for an event or gateway shape.
 	 */
 	setLabelPosition(shapeId: string, position: LabelPosition): void {
-		const shape = this._shapes.find((s) => s.id === shapeId)
+		const shape = this._shapeById.get(shapeId)
 		if (!shape) return
 		const labelBounds = labelBoundsForPosition(shape.shape.bounds, position)
 		this._executeCommand((d) => updateLabelPosition(d, shapeId, labelBounds), "Move label")
@@ -1640,7 +1717,7 @@ export class BpmnEditor {
 	 * The user then moves the mouse and clicks a target shape to complete the connection.
 	 */
 	startConnectionFrom(sourceId: string): void {
-		const shape = this._shapes.find((s) => s.id === sourceId)
+		const shape = this._shapeById.get(sourceId)
 		if (!shape) return
 		this._viewport.lock(true)
 		this._stateMachine.setMode({
@@ -1652,7 +1729,7 @@ export class BpmnEditor {
 	/** Creates a text annotation linked to the given source shape via an association. */
 	createAnnotationFor(sourceId: string): void {
 		if (!this._defs) return
-		const srcShape = this._shapes.find((s) => s.id === sourceId)
+		const srcShape = this._shapeById.get(sourceId)
 		if (!srcShape) return
 		const srcBounds = srcShape.shape.bounds
 
@@ -1690,7 +1767,7 @@ export class BpmnEditor {
 		}
 		this._selectedEdgeId = edgeId
 		if (edgeId) {
-			const edge = this._edges.find((e) => e.id === edgeId)
+			const edge = this._edgeById.get(edgeId)
 			this._overlay.setEdgeEndpoints(edge?.edge.waypoints ?? null, edgeId)
 			this._emit("editor:select", [edgeId])
 		} else {
@@ -1701,7 +1778,7 @@ export class BpmnEditor {
 
 	/** Changes a flow element's type (e.g. exclusiveGateway → parallelGateway). */
 	changeElementType(id: string, newType: CreateShapeType): void {
-		const current = this._shapes.find((s) => s.id === id)?.flowElement?.type
+		const current = this._shapeById.get(id)?.flowElement?.type
 		if (current && !canMorph(current, newType)) return
 		this._executeCommand((d) => changeElementTypeFn(d, id, newType), "Change type")
 	}
@@ -1710,7 +1787,7 @@ export class BpmnEditor {
 		if (this._selectedIds.length !== 1) return null
 		const id = this._selectedIds[0]
 		if (!id || !this._defs) return null
-		const shape = this._shapes.find((s) => s.id === id)
+		const shape = this._shapeById.get(id)
 		if (!shape) return null
 
 		const b = shape.shape.bounds
@@ -1723,7 +1800,7 @@ export class BpmnEditor {
 		const TOLERANCE = 20
 
 		for (const edge of this._edges) {
-			const flow = process.sequenceFlows.find((sf) => sf.id === edge.id)
+			const flow = this._flowById.get(edge.id)
 			if (!flow) continue
 			// Skip edges that are already connected to the shape being moved
 			if (flow.sourceRef === id || flow.targetRef === id) continue
@@ -1749,19 +1826,19 @@ export class BpmnEditor {
 
 	private _setEdgeDropHighlight(edgeId: string | null): void {
 		if (this._edgeDropTarget) {
-			const prev = this._edges.find((e) => e.id === this._edgeDropTarget)
+			const prev = this._edgeById.get(this._edgeDropTarget)
 			prev?.element.classList.remove("bpmnkit-edge-split-highlight")
 		}
 		this._edgeDropTarget = edgeId
 		if (edgeId) {
-			const edge = this._edges.find((e) => e.id === edgeId)
+			const edge = this._edgeById.get(edgeId)
 			edge?.element.classList.add("bpmnkit-edge-split-highlight")
 		}
 	}
 
 	private _previewEndpointMove(edgeId: string, isStart: boolean, diagPoint: DiagPoint): void {
 		if (!this._defs) return
-		const edge = this._edges.find((e) => e.id === edgeId)
+		const edge = this._edgeById.get(edgeId)
 		if (!edge) return
 		const flow = this._defs.processes[0]?.sequenceFlows.find((sf) => sf.id === edgeId)
 		if (!flow) return
@@ -1789,7 +1866,7 @@ export class BpmnEditor {
 	private _commitEndpointMove(edgeId: string, isStart: boolean, diagPoint: DiagPoint): void {
 		if (!this._defs) return
 		this._overlay.setEndpointDragGhost(null)
-		const edge = this._edges.find((e) => e.id === edgeId)
+		const edge = this._edgeById.get(edgeId)
 		if (!edge) return
 		const flow = this._defs.processes[0]?.sequenceFlows.find((sf) => sf.id === edgeId)
 		if (!flow) return
@@ -1805,7 +1882,7 @@ export class BpmnEditor {
 	}
 
 	private _isResizable(id: string): boolean {
-		const shape = this._shapes.find((s) => s.id === id)
+		const shape = this._shapeById.get(id)
 		if (!shape) return false
 		if (shape.annotation !== undefined) return true
 		return shape.flowElement !== undefined && canResize(shape.flowElement.type)
@@ -1948,97 +2025,118 @@ export class BpmnEditor {
 		const scale = this._viewport.state.scale
 		const threshold = 8 / scale
 
-		let bestDx = dx
-		let bestDy = dy
-		let minDistX = threshold
-		let minDistY = threshold
-		const hGuides: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
-		const vGuides: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
-
+		// Every candidate position derives from a pair of static shapes and is
+		// independent of the pointer, so the O(S²) pair scan runs once per drag
+		// and each move is a binary search over the sorted candidates.
+		const index = this._spacingCandidates(staticShapes)
+		const mx = moving.x + dx
+		const my = moving.y + dy
 		const mCy = moving.y + dy + moving.height / 2
 		const mCx = moving.x + dx + moving.width / 2
 
-		// Horizontal spacing: for each pair (A, B) where B is to the right of A
-		for (const A of staticShapes) {
-			const aRight = A.shape.bounds.x + A.shape.bounds.width
-			for (const B of staticShapes) {
-				if (A.id === B.id) continue
-				const bLeft = B.shape.bounds.x
-				if (bLeft <= aRight) continue
-				const gap = bLeft - aRight
+		const guides: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
+		let bestDx = dx
+		let bestDy = dy
 
-				// Candidate: moving is to the right of B by the same gap
-				const bRight = B.shape.bounds.x + B.shape.bounds.width
-				const candLeft = bRight + gap
-				const distX = Math.abs(moving.x + dx - candLeft)
-				if (distX < minDistX) {
-					minDistX = distX
-					bestDx = dx + (candLeft - (moving.x + dx))
-					hGuides.length = 0
-					hGuides.push(
-						{ x1: aRight, y1: mCy, x2: bLeft, y2: mCy },
-						{ x1: bRight, y1: mCy, x2: candLeft, y2: mCy },
-					)
-				}
-
-				// Candidate: moving is to the left of A by the same gap
-				const aLeft = A.shape.bounds.x
-				const candRight = aLeft - gap
-				const movRight = moving.x + dx + moving.width
-				const distX2 = Math.abs(movRight - candRight)
-				if (distX2 < minDistX) {
-					minDistX = distX2
-					bestDx = dx + (candRight - movRight)
-					hGuides.length = 0
-					hGuides.push(
-						{ x1: candRight, y1: mCy, x2: aLeft, y2: mCy },
-						{ x1: aRight, y1: mCy, x2: bLeft, y2: mCy },
-					)
-				}
+		const bestX = nearestCandidate(
+			[
+				{ list: index.h0, target: mx },
+				{ list: index.h1, target: mx + moving.width },
+			],
+			threshold,
+		)
+		if (bestX) {
+			const { entry, target } = bestX
+			bestDx = dx + (entry.value - target)
+			if (entry.kind === 0) {
+				guides.push(
+					{ x1: entry.a, y1: mCy, x2: entry.b, y2: mCy },
+					{ x1: entry.c, y1: mCy, x2: entry.value, y2: mCy },
+				)
+			} else {
+				guides.push(
+					{ x1: entry.value, y1: mCy, x2: entry.c, y2: mCy },
+					{ x1: entry.a, y1: mCy, x2: entry.b, y2: mCy },
+				)
 			}
 		}
 
-		// Vertical spacing: for each pair (A, B) where B is below A
-		for (const A of staticShapes) {
-			const aBottom = A.shape.bounds.y + A.shape.bounds.height
-			for (const B of staticShapes) {
-				if (A.id === B.id) continue
-				const bTop = B.shape.bounds.y
-				if (bTop <= aBottom) continue
-				const gap = bTop - aBottom
-
-				// Candidate: moving is below B by the same gap
-				const bBottom = B.shape.bounds.y + B.shape.bounds.height
-				const candTop = bBottom + gap
-				const distY = Math.abs(moving.y + dy - candTop)
-				if (distY < minDistY) {
-					minDistY = distY
-					bestDy = dy + (candTop - (moving.y + dy))
-					vGuides.length = 0
-					vGuides.push(
-						{ x1: mCx, y1: aBottom, x2: mCx, y2: bTop },
-						{ x1: mCx, y1: bBottom, x2: mCx, y2: candTop },
-					)
-				}
-
-				// Candidate: moving is above A by the same gap
-				const aTop = A.shape.bounds.y
-				const candBottom = aTop - gap
-				const movBottom = moving.y + dy + moving.height
-				const distY2 = Math.abs(movBottom - candBottom)
-				if (distY2 < minDistY) {
-					minDistY = distY2
-					bestDy = dy + (candBottom - movBottom)
-					vGuides.length = 0
-					vGuides.push(
-						{ x1: mCx, y1: candBottom, x2: mCx, y2: aTop },
-						{ x1: mCx, y1: aBottom, x2: mCx, y2: bTop },
-					)
-				}
+		const bestY = nearestCandidate(
+			[
+				{ list: index.v0, target: my },
+				{ list: index.v1, target: my + moving.height },
+			],
+			threshold,
+		)
+		if (bestY) {
+			const { entry, target } = bestY
+			bestDy = dy + (entry.value - target)
+			if (entry.kind === 0) {
+				guides.push(
+					{ x1: mCx, y1: entry.a, x2: mCx, y2: entry.b },
+					{ x1: mCx, y1: entry.c, x2: mCx, y2: entry.value },
+				)
+			} else {
+				guides.push(
+					{ x1: mCx, y1: entry.value, x2: mCx, y2: entry.c },
+					{ x1: mCx, y1: entry.a, x2: mCx, y2: entry.b },
+				)
 			}
 		}
 
-		return { dx: bestDx, dy: bestDy, guides: [...hGuides, ...vGuides] }
+		return { dx: bestDx, dy: bestDy, guides }
+	}
+
+	/**
+	 * Candidate snap positions from every ordered pair (A, B) of static shapes
+	 * where B lies right of / below A: the moving shape may sit right of B or
+	 * left of A (below B / above A) at the same gap. Cached for the drag: it is
+	 * rebuilt only when the rendered shapes or the selection change.
+	 */
+	private _spacingCandidates(staticShapes: RenderedShape[]): SpacingIndex {
+		const key = this._selectedIds.join("\0")
+		const cached = this._spacingIndex
+		if (cached && cached.shapes === this._shapes && cached.key === key) return cached
+
+		const h: SpacingEntry[] = []
+		const v: SpacingEntry[] = []
+		const count = staticShapes.length
+		for (let ia = 0; ia < count; ia++) {
+			const A = (staticShapes[ia] as RenderedShape).shape.bounds
+			const aRight = A.x + A.width
+			const aBottom = A.y + A.height
+			for (let ib = 0; ib < count; ib++) {
+				if (ia === ib) continue
+				const B = (staticShapes[ib] as RenderedShape).shape.bounds
+				const ord = (ia * count + ib) * 2
+				const bLeft = B.x
+				if (bLeft > aRight) {
+					const gap = bLeft - aRight
+					const bRight = B.x + B.width
+					// kind 0: moving sits right of B; a→b is the reference gap, c→value the new one.
+					h.push({ kind: 0, value: bRight + gap, ord, a: aRight, b: bLeft, c: bRight })
+					// kind 1: moving sits left of A; value→c is the new gap, a→b the reference.
+					h.push({ kind: 1, value: A.x - gap, ord: ord + 1, a: aRight, b: bLeft, c: A.x })
+				}
+				const bTop = B.y
+				if (bTop > aBottom) {
+					const gap = bTop - aBottom
+					const bBottom = B.y + B.height
+					v.push({ kind: 0, value: bBottom + gap, ord, a: aBottom, b: bTop, c: bBottom })
+					v.push({ kind: 1, value: A.y - gap, ord: ord + 1, a: aBottom, b: bTop, c: A.y })
+				}
+			}
+		}
+		const index: SpacingIndex = {
+			shapes: this._shapes,
+			key,
+			h0: sortCandidates(h.filter((e) => e.kind === 0)),
+			h1: sortCandidates(h.filter((e) => e.kind === 1)),
+			v0: sortCandidates(v.filter((e) => e.kind === 0)),
+			v1: sortCandidates(v.filter((e) => e.kind === 1)),
+		}
+		this._spacingIndex = index
+		return index
 	}
 
 	// ── Create-mode helpers ────────────────────────────────────────────
@@ -2121,7 +2219,7 @@ export class BpmnEditor {
 		if (!process) return null
 		const TOLERANCE = 20
 		for (const edge of this._edges) {
-			const flow = process.sequenceFlows.find((sf) => sf.id === edge.id)
+			const flow = this._flowById.get(edge.id)
 			if (!flow) continue
 			const wps = edge.edge.waypoints
 			for (let i = 0; i < wps.length - 1; i++) {
@@ -2142,7 +2240,7 @@ export class BpmnEditor {
 		if (this._boundaryHostId === shapeId) return
 		this._boundaryHostId = shapeId
 		if (shapeId) {
-			const shape = this._shapes.find((s) => s.id === shapeId)
+			const shape = this._shapeById.get(shapeId)
 			this._overlay.setBoundaryHostHighlight(shape ? shape.shape.bounds : null)
 		} else {
 			this._overlay.setBoundaryHostHighlight(null)
@@ -2152,12 +2250,12 @@ export class BpmnEditor {
 	private _setCreateEdgeDropHighlight(edgeId: string | null): void {
 		if (this._createEdgeDropTarget === edgeId) return
 		if (this._createEdgeDropTarget) {
-			const prev = this._edges.find((e) => e.id === this._createEdgeDropTarget)
+			const prev = this._edgeById.get(this._createEdgeDropTarget)
 			prev?.element.classList.remove("bpmnkit-edge-split-highlight")
 		}
 		this._createEdgeDropTarget = edgeId
 		if (edgeId) {
-			const edge = this._edges.find((e) => e.id === edgeId)
+			const edge = this._edgeById.get(edgeId)
 			edge?.element.classList.add("bpmnkit-edge-split-highlight")
 		}
 	}
@@ -2192,7 +2290,7 @@ export class BpmnEditor {
 
 			// Detect boundary event attachment target for intermediate event types
 			if (isIntermediateEventType(mode.elementType) && hit.type === "shape") {
-				const shape = this._shapes.find((s) => s.id === hit.id)
+				const shape = this._shapeById.get(hit.id)
 				if (shape?.flowElement && canAttach(shape.flowElement.type)) {
 					this._setBoundaryHost(hit.id)
 				} else {
@@ -2486,10 +2584,7 @@ export class BpmnEditor {
 
 	/** Finds the SVG group for a shape or edge by BPMN id. */
 	private _elementById(id: string): SVGGElement | undefined {
-		return (
-			this._shapes.find((s) => s.id === id)?.element ??
-			this._edges.find((e) => e.id === id)?.element
-		)
+		return this._shapeById.get(id)?.element ?? this._edgeById.get(id)?.element
 	}
 
 	/** Element bounding box in screen pixels relative to the host, or `null`. */
@@ -2507,12 +2602,12 @@ export class BpmnEditor {
 
 	/** Diagram-coordinate bounds of a shape (from DI) or edge (waypoint bbox). */
 	private _boundsById(id: string): { x: number; y: number; width: number; height: number } | null {
-		const shape = this._shapes.find((s) => s.id === id)
+		const shape = this._shapeById.get(id)
 		if (shape) {
 			const { x, y, width, height } = shape.shape.bounds
 			return { x, y, width, height }
 		}
-		const edge = this._edges.find((e) => e.id === id)
+		const edge = this._edgeById.get(id)
 		if (edge && edge.edge.waypoints.length > 0) {
 			const xs = edge.edge.waypoints.map((w) => w.x)
 			const ys = edge.edge.waypoints.map((w) => w.y)

@@ -1,6 +1,6 @@
 import type { FeelNode } from "@bpmnkit/feel"
 import { parseExpression } from "@bpmnkit/feel"
-import type { BpmnProcess, BpmnSubProcess } from "../bpmn-model.js"
+import type { BpmnProcess, BpmnSequenceFlow, BpmnSubProcess } from "../bpmn-model.js"
 import type { OptimizationFinding } from "./types.js"
 import { buildFlowIndex, readZeebeIoMapping, readZeebeTaskType } from "./utils.js"
 
@@ -240,6 +240,60 @@ function readResultVariable(
 }
 
 // ---------------------------------------------------------------------------
+// Scope propagation
+// ---------------------------------------------------------------------------
+
+/**
+ * For every node in the flow graph, the variables produced by that node or by
+ * any node with a path to it. A worklist fixed point over the graph handles
+ * cycles and costs O((V + E) · vars), instead of one full graph walk per flow.
+ */
+function reachingProduces(
+	flows: BpmnSequenceFlow[],
+	produces: Map<string, string[]>,
+): Map<string, Set<string>> {
+	const successors = new Map<string, string[]>()
+	const scope = new Map<string, Set<string>>()
+	for (const flow of flows) {
+		const out = successors.get(flow.sourceRef)
+		if (out) out.push(flow.targetRef)
+		else successors.set(flow.sourceRef, [flow.targetRef])
+		if (!scope.has(flow.sourceRef)) {
+			scope.set(flow.sourceRef, new Set(produces.get(flow.sourceRef) ?? []))
+		}
+		if (!scope.has(flow.targetRef)) {
+			scope.set(flow.targetRef, new Set(produces.get(flow.targetRef) ?? []))
+		}
+	}
+
+	const queue = [...scope.keys()]
+	const queued = new Set(queue)
+	for (let head = 0; head < queue.length; head++) {
+		const id = queue[head] as string
+		queued.delete(id)
+		const own = scope.get(id)
+		const next = successors.get(id)
+		if (!own || own.size === 0 || !next) continue
+		for (const target of next) {
+			const targetScope = scope.get(target)
+			if (!targetScope) continue
+			let grew = false
+			for (const v of own) {
+				if (!targetScope.has(v)) {
+					targetScope.add(v)
+					grew = true
+				}
+			}
+			if (grew && !queued.has(target)) {
+				queued.add(target)
+				queue.push(target)
+			}
+		}
+	}
+	return scope
+}
+
+// ---------------------------------------------------------------------------
 // Main analysis
 // ---------------------------------------------------------------------------
 
@@ -397,42 +451,10 @@ export function analyzeVariableFlow(p: BpmnProcess): OptimizationFinding[] {
 
 	// ── Per-edge scope findings (variables available at each sequence flow) ──
 
-	// Build reverse adjacency: targetId → set of source IDs
-	const reverseAdj = new Map<string, Set<string>>()
+	const scopeAt = reachingProduces(p.sequenceFlows, elementProduces)
 	for (const flow of p.sequenceFlows) {
-		const set = reverseAdj.get(flow.targetRef) ?? new Set<string>()
-		set.add(flow.sourceRef)
-		reverseAdj.set(flow.targetRef, set)
-	}
-
-	// Collect all transitive predecessors of an element (inclusive of start)
-	function allPredecessors(elementId: string): Set<string> {
-		const visited = new Set<string>()
-		const queue: string[] = [elementId]
-		while (queue.length > 0) {
-			const current = queue.shift()
-			if (current === undefined) break
-			const preds = reverseAdj.get(current)
-			if (preds === undefined) continue
-			for (const pred of preds) {
-				if (!visited.has(pred)) {
-					visited.add(pred)
-					queue.push(pred)
-				}
-			}
-		}
-		return visited
-	}
-
-	for (const flow of p.sequenceFlows) {
-		const predIds = allPredecessors(flow.sourceRef)
-		predIds.add(flow.sourceRef)
-
-		const inScope = new Set<string>()
-		for (const predId of predIds) {
-			for (const v of elementProduces.get(predId) ?? []) inScope.add(v)
-		}
-		if (inScope.size === 0) continue
+		const inScope = scopeAt.get(flow.sourceRef)
+		if (inScope === undefined || inScope.size === 0) continue
 
 		const scopeVars = [...inScope].sort()
 		findings.push({
@@ -477,42 +499,12 @@ export function analyzeVariableFlow(p: BpmnProcess): OptimizationFinding[] {
 			}
 		}
 
-		// Build inner reverse adjacency for BFS
-		const innerReverseAdj = new Map<string, Set<string>>()
-		for (const flow of sp.sequenceFlows) {
-			const set = innerReverseAdj.get(flow.targetRef) ?? new Set<string>()
-			set.add(flow.sourceRef)
-			innerReverseAdj.set(flow.targetRef, set)
-		}
-
-		function innerAllPredecessors(elementId: string): Set<string> {
-			const visited = new Set<string>()
-			const queue: string[] = [elementId]
-			while (queue.length > 0) {
-				const current = queue.shift()
-				if (current === undefined) break
-				const preds = innerReverseAdj.get(current)
-				if (preds === undefined) continue
-				for (const pred of preds) {
-					if (!visited.has(pred)) {
-						visited.add(pred)
-						queue.push(pred)
-					}
-				}
-			}
-			return visited
-		}
-
 		// Emit edge-scope findings for inner sequence flows
+		const innerScopeAt = reachingProduces(sp.sequenceFlows, innerProduces)
 		for (const flow of sp.sequenceFlows) {
-			const predIds = innerAllPredecessors(flow.sourceRef)
-			predIds.add(flow.sourceRef)
-
 			// Scope always includes the iteration variable, plus anything inner elements produce
 			const inScope = new Set<string>([inputElement])
-			for (const predId of predIds) {
-				for (const v of innerProduces.get(predId) ?? []) inScope.add(v)
-			}
+			for (const v of innerScopeAt.get(flow.sourceRef) ?? []) inScope.add(v)
 
 			const scopeVars = [...inScope].sort()
 			findings.push({

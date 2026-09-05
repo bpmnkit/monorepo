@@ -16,6 +16,7 @@ import { scheduleTimer } from "./timers.js"
 import type { JobHandler, ProcessEvent } from "./types.js"
 import { VariableStore } from "./variables.js"
 import { parseZeebeExt } from "./zeebe.js"
+import type { ParsedZeebeExt } from "./zeebe.js"
 
 // ── Internal types ─────────────────────────────────────────────────────────────
 
@@ -56,6 +57,10 @@ export class ProcessInstance {
 
 	/** tokenId → Token */
 	private readonly allTokens = new Map<string, Token>()
+	/** elementId → tokens currently sitting on that element. */
+	private readonly tokensByElement = new Map<string, Set<Token>>()
+	/** Zeebe extensions parsed once per element for the life of this instance. */
+	private readonly zeebeExtCache = new WeakMap<BpmnFlowElement, ParsedZeebeExt>()
 
 	/** Scope stack: rootScopeId + any active sub-process scopes */
 	private readonly scopes = new Map<string, ScopeCtx>()
@@ -152,6 +157,7 @@ export class ProcessInstance {
 		this._state = "terminated"
 		this.cancelAllTimers()
 		this.allTokens.clear()
+		this.tokensByElement.clear()
 		for (const ctx of this.scopes.values()) ctx.tokens.clear()
 	}
 
@@ -229,12 +235,37 @@ export class ProcessInstance {
 	private createToken(elementId: string, scopeId: string): Token {
 		const token: Token = { id: generateId("tok"), elementId, scopeId }
 		this.allTokens.set(token.id, token)
+		const onElement = this.tokensByElement.get(elementId)
+		if (onElement) onElement.add(token)
+		else this.tokensByElement.set(elementId, new Set([token]))
 		this.scopes.get(scopeId)?.tokens.add(token.id)
 		return token
 	}
 
+	/** The first token currently on `elementId`, if any. */
+	private tokenOn(elementId: string): Token | undefined {
+		const onElement = this.tokensByElement.get(elementId)
+		if (onElement === undefined) return undefined
+		for (const token of onElement) return token
+		return undefined
+	}
+
+	private zeebeExt(el: BpmnFlowElement): ParsedZeebeExt {
+		let ext = this.zeebeExtCache.get(el)
+		if (ext === undefined) {
+			ext = parseZeebeExt(el.extensionElements)
+			this.zeebeExtCache.set(el, ext)
+		}
+		return ext
+	}
+
 	private removeToken(token: Token): void {
 		this.allTokens.delete(token.id)
+		const onElement = this.tokensByElement.get(token.elementId)
+		if (onElement !== undefined) {
+			onElement.delete(token)
+			if (onElement.size === 0) this.tokensByElement.delete(token.elementId)
+		}
 		this.scopes.get(token.scopeId)?.tokens.delete(token.id)
 		this.timerCancels.get(token.id)?.()
 		this.timerCancels.delete(token.id)
@@ -284,7 +315,7 @@ export class ProcessInstance {
 		this.emit({ type: "element:entering", elementId, elementName: el.name, elementType: el.type })
 
 		// Apply ioMapping inputs
-		const ext = parseZeebeExt(el.extensionElements)
+		const ext = this.zeebeExt(el)
 		if (ext.ioMapping) {
 			for (const inp of ext.ioMapping.inputs) {
 				let val: unknown
@@ -412,11 +443,11 @@ export class ProcessInstance {
 
 		if (eventDef?.type === "terminate") {
 			this.cancelAllTimers()
-			for (const [id] of this.allTokens) {
-				const tok = this.allTokens.get(id)
-				if (tok !== undefined) this.scopes.get(tok.scopeId)?.tokens.delete(id)
+			for (const tok of this.allTokens.values()) {
+				this.scopes.get(tok.scopeId)?.tokens.delete(tok.id)
 			}
 			this.allTokens.clear()
+			this.tokensByElement.clear()
 			this.emit({
 				type: "element:leaving",
 				elementId: el.id,
@@ -573,7 +604,7 @@ export class ProcessInstance {
 			})
 			return
 		}
-		const result = evaluateDecision(decision, this.variables.getAll(scopeId))
+		const result = evaluateDecision(decision, this.variables.snapshot(scopeId))
 		this.variables.set(scopeId, cd.resultVariable, result)
 		this.emit({ type: "variable:set", name: cd.resultVariable, value: result, scopeId })
 	}
@@ -742,12 +773,8 @@ export class ProcessInstance {
 			const cancel = scheduleTimer(timerDef, () => {
 				this.boundaryTimerCancels.delete(elementId)
 				// Remove the parent token
-				for (const [, tok] of this.allTokens) {
-					if (tok.elementId === elementId) {
-						this.removeToken(tok)
-						break
-					}
-				}
+				const parentToken = this.tokenOn(elementId)
+				if (parentToken !== undefined) this.removeToken(parentToken)
 				if (be.cancelActivity !== false) {
 					void this.activate(be.id, scopeId, undefined)
 				}
@@ -768,12 +795,8 @@ export class ProcessInstance {
 				const errDef = be.eventDefinitions.find((d) => d.type === "error")
 				if (errDef === undefined) continue
 				if (errDef.errorRef !== undefined && errDef.errorRef !== errorCode) continue
-				for (const [, tok] of this.allTokens) {
-					if (tok.elementId === attachedTo) {
-						this.removeToken(tok)
-						break
-					}
-				}
+				const hostToken = this.tokenOn(attachedTo)
+				if (hostToken !== undefined) this.removeToken(hostToken)
 				void this.activate(be.id, ctx.scopeId, undefined)
 				return
 			}
@@ -803,7 +826,7 @@ export class ProcessInstance {
 		const el = ctx.elements.get(token.elementId)
 		if (el === undefined) return
 
-		const ext = parseZeebeExt(el.extensionElements)
+		const ext = this.zeebeExt(el)
 
 		// Apply ioMapping outputs
 		if (ext.ioMapping) {
@@ -881,13 +904,14 @@ export class ProcessInstance {
 		scopeId: string,
 		emitCtx?: { elementId: string; property: string },
 	): unknown {
-		const vars = this.variables.getAll(scopeId)
+		const vars = this.variables.snapshot(scopeId)
 		// Strip Camunda FEEL prefix ("= expr") — the leading "=" is a type indicator, not part of the expression.
 		const normalized = expr.trim().replace(/^=\s*/, "")
 		const parsed = parseExpression(normalized)
 		if (parsed.ast === null) return undefined
 		const result = evaluate(parsed.ast, { vars: vars as Record<string, FeelValue> })
-		if (emitCtx !== undefined) {
+		// The event carries a copy of every variable; skip building it when nobody listens.
+		if (emitCtx !== undefined && this.listeners.length > 0) {
 			this.emit({
 				type: "feel:evaluated",
 				elementId: emitCtx.elementId,

@@ -1,4 +1,4 @@
-import type { BpmnDefinitions, BpmnDiPlane } from "@bpmnkit/core"
+import type { BpmnDefinitions, BpmnDiEdge, BpmnDiPlane, BpmnDiShape } from "@bpmnkit/core"
 import {
 	type RenderContext,
 	buildRenderContext,
@@ -36,6 +36,15 @@ export class Scene {
 	private _defs: BpmnDefinitions | null = null
 	private _plane: BpmnDiPlane | null = null
 	private _drillableIds: ReadonlySet<string> = new Set()
+	/**
+	 * Model index and docking geometry, built once per {@link render}. The
+	 * model is expected to be mutated in place between incremental updates
+	 * (the scene already keeps `_defs`/`_plane` by reference), so rebuilding the
+	 * whole index for every single-element update was pure waste.
+	 */
+	private _ctx: RenderContext | null = null
+	private readonly _shapeById = new Map<string, BpmnDiShape>()
+	private readonly _edgeById = new Map<string, BpmnDiEdge>()
 
 	constructor(
 		private readonly _layers: SceneLayers,
@@ -52,6 +61,9 @@ export class Scene {
 		this._defs = defs
 		this._plane = plane
 		this._drillableIds = drillableIds
+		this._ctx = null
+		for (const shape of plane.shapes) this._shapeById.set(shape.bpmnElement, shape)
+		for (const edge of plane.edges) this._edgeById.set(edge.bpmnElement, edge)
 
 		const ctx = this._context()
 		for (const edge of plane.edges) {
@@ -78,6 +90,9 @@ export class Scene {
 		this._layers.shapes.replaceChildren()
 		this._layers.labels.replaceChildren()
 		this._registry.clear()
+		this._shapeById.clear()
+		this._edgeById.clear()
+		this._ctx = null
 	}
 
 	/** Returns the registered shape or edge for an id, or `undefined`. */
@@ -127,7 +142,7 @@ export class Scene {
 			.filter(Boolean)
 
 		if (entry.kind === "edge") {
-			const edge = this._plane.edges.find((e) => e.bpmnElement === id)
+			const edge = this._edgeById.get(id)
 			if (!edge) return
 			const g = renderEdgeGroup(edge, ctx)
 			for (const c of oldClasses) g.classList.add(c)
@@ -136,8 +151,16 @@ export class Scene {
 			return
 		}
 
-		const shape = this._plane.shapes.find((s) => s.bpmnElement === id)
+		const shape = this._shapeById.get(id)
 		if (!shape) return
+		// A moved or resized shape must dock its edges against its new bounds.
+		const geom = ctx.geomById.get(id)
+		if (geom) {
+			geom.x = shape.bounds.x
+			geom.y = shape.bounds.y
+			geom.width = shape.bounds.width
+			geom.height = shape.bounds.height
+		}
 		const { group, layer, label, rendered } = renderShapeGroup(shape, ctx)
 		for (const c of oldClasses) group.classList.add(c)
 		entry.rendered.element.replaceWith(group)
@@ -158,9 +181,11 @@ export class Scene {
 	}
 
 	private _context(): RenderContext {
+		if (this._ctx) return this._ctx
 		if (!this._defs || !this._plane) {
 			throw new Error("Scene has no rendered plane")
 		}
-		return buildRenderContext(this._defs, this._plane, this._drillableIds, this._instanceId)
+		this._ctx = buildRenderContext(this._defs, this._plane, this._drillableIds, this._instanceId)
+		return this._ctx
 	}
 }

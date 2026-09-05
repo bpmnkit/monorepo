@@ -855,18 +855,43 @@ class Parser {
 	}
 }
 
+// Expression text is static model content that engines and decision tables
+// evaluate over and over, so parse results are memoized. Results are treated
+// as immutable by every consumer; the caches are bounded and simply reset when
+// full.
+const PARSE_CACHE_LIMIT = 2048
+const expressionCache = new Map<string, ParseResult>()
+const unaryTestsCache = new Map<string, ParseResult>()
+
+function remember(
+	cache: Map<string, ParseResult>,
+	input: string,
+	result: ParseResult,
+): ParseResult {
+	if (cache.size >= PARSE_CACHE_LIMIT) cache.clear()
+	cache.set(input, result)
+	return result
+}
+
 export function parseExpression(input: string): ParseResult {
+	const cached = expressionCache.get(input)
+	if (cached !== undefined) return cached
 	const p = new Parser(input)
 	const ast = p.parseExpression(0)
 	p.checkDone()
-	return { ast, errors: p.errors }
+	return remember(expressionCache, input, { ast, errors: p.errors })
 }
 
 export function parseUnaryTests(input: string): ParseResult {
+	const cached = unaryTestsCache.get(input)
+	if (cached !== undefined) return cached
 	if (input.trim() === "-") {
-		return { ast: { kind: "any-input", start: 0, end: input.length }, errors: [] }
+		return remember(unaryTestsCache, input, {
+			ast: { kind: "any-input", start: 0, end: input.length },
+			errors: [],
+		})
 	}
 	const p = new Parser(input)
 	const ast = p.parseUnaryTests()
-	return { ast, errors: p.errors }
+	return remember(unaryTestsCache, input, { ast, errors: p.errors })
 }

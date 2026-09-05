@@ -19,15 +19,64 @@ const CORRIDOR_SPACING = 20
 /** How many lanes deep a corridor may stack before routes are allowed to share. */
 const CORRIDOR_LANES = 4
 
+/** Width of one bucket in the x-axis indexes below. */
+const INDEX_CELL = 128
+
+/**
+ * Items bucketed by the x-range they cover, so a query for a segment's x-span
+ * visits only the shapes and routes near it instead of every one in the
+ * diagram. Orthogonal routes are mostly short, so this turns the per-edge
+ * obstacle and crossing checks from O(n) into near-constant work.
+ */
+class XIndex<T> {
+	private readonly cells = new Map<number, Array<{ item: T; stamp: number }>>()
+	private stamp = 0
+
+	insert(minX: number, maxX: number, item: T): void {
+		const entry = { item, stamp: 0 }
+		const lo = Math.floor(Math.min(minX, maxX) / INDEX_CELL)
+		const hi = Math.floor(Math.max(minX, maxX) / INDEX_CELL)
+		for (let c = lo; c <= hi; c++) {
+			const cell = this.cells.get(c)
+			if (cell) cell.push(entry)
+			else this.cells.set(c, [entry])
+		}
+	}
+
+	/** Visit every item whose x-range may overlap [minX, maxX]; stop early when `visit` returns true. */
+	query(minX: number, maxX: number, visit: (item: T) => boolean): boolean {
+		const stamp = ++this.stamp
+		const lo = Math.floor(Math.min(minX, maxX) / INDEX_CELL)
+		const hi = Math.floor(Math.max(minX, maxX) / INDEX_CELL)
+		for (let c = lo; c <= hi; c++) {
+			const cell = this.cells.get(c)
+			if (!cell) continue
+			for (const entry of cell) {
+				if (entry.stamp === stamp) continue
+				entry.stamp = stamp
+				if (visit(entry.item)) return true
+			}
+		}
+		return false
+	}
+}
+
+interface Obstacle {
+	id: string
+	b: Bounds
+}
+
 interface RouteContext {
 	graph: SemanticGraph
 	bounds: Map<string, Bounds>
+	/** Every shape, indexed by x-range. */
+	obstacles: XIndex<Obstacle>
 	/** Mid-x of the clear gutter in front of each rank. */
 	gutterX: Map<number, number>
 	/** Corridors already taken by detours, so parallel runs stack instead of merging. */
 	reserved: Array<{ left: number; right: number; y: number }>
-	/** Segments of the edges routed so far, to keep new routes off them. */
-	routed: Array<[Waypoint, Waypoint]>
+	/** Segments of the edges routed so far, indexed by x-range, to keep new routes off them. */
+	routed: XIndex<[Waypoint, Waypoint]>
 }
 
 function centre(b: Bounds): Waypoint {
@@ -49,7 +98,16 @@ export function routeFlows(
 	bandLayout: BandLayout,
 	gutterX: Map<number, number>,
 ): LayoutEdge[] {
-	const ctx: RouteContext = { graph, bounds, gutterX, reserved: [], routed: [] }
+	const obstacles = new XIndex<Obstacle>()
+	for (const [id, b] of bounds) obstacles.insert(b.x, b.x + b.width, { id, b })
+	const ctx: RouteContext = {
+		graph,
+		bounds,
+		obstacles,
+		gutterX,
+		reserved: [],
+		routed: new XIndex<[Waypoint, Waypoint]>(),
+	}
 	const routed = new Map<string, Waypoint[]>()
 	const pending: Array<{
 		flow: BpmnSequenceFlow
@@ -114,7 +172,7 @@ export function routeFlows(
 		)
 		// Going around costs bends and length, so it has to save more than one
 		// crossing to be worth taking.
-		const cost = crossingCount(around, ctx.routed) + DETOUR_PENALTY
+		const cost = crossingCount(around, ctx) + DETOUR_PENALTY
 		const waypoints = item.direct && item.direct.crossings <= cost ? item.direct.waypoints : around
 		commit(ctx, routed, item.flow.id, waypoints)
 	}
@@ -148,7 +206,7 @@ function commit(
 	for (let i = 0; i + 1 < waypoints.length; i++) {
 		const a = waypoints[i]
 		const b = waypoints[i + 1]
-		if (a && b) ctx.routed.push([a, b])
+		if (a && b) ctx.routed.insert(Math.min(a.x, b.x), Math.max(a.x, b.x), [a, b])
 	}
 }
 
@@ -166,16 +224,12 @@ function pick(
 	sourceId: string,
 	targetId: string,
 ): { waypoints: Waypoint[]; crossings: number } | null {
-	const obstacles: Bounds[] = []
-	for (const [id, b] of ctx.bounds) {
-		if (id === sourceId || id === targetId) continue
-		// An expanded container legitimately holds its children's routes.
-		obstacles.push(b)
-	}
 	let best: { waypoints: Waypoint[]; crossings: number } | null = null
 	for (const candidate of candidates) {
-		if (blocked(candidate, obstacles)) continue
-		const crossings = crossingCount(candidate, ctx.routed)
+		// An expanded container legitimately holds its children's routes, so only
+		// the two endpoints are exempt from the obstacle check.
+		if (blocked(ctx, candidate, sourceId, targetId)) continue
+		const crossings = crossingCount(candidate, ctx)
 		if (crossings === 0) return { waypoints: candidate, crossings }
 		if (!best || crossings < best.crossings) best = { waypoints: candidate, crossings }
 	}
@@ -190,38 +244,68 @@ function intersects(p: Waypoint, q: Waypoint, r: Waypoint, t: Waypoint): boolean
 }
 
 /** How many already-routed edges a candidate would cut across. */
-function crossingCount(waypoints: Waypoint[], routed: Array<[Waypoint, Waypoint]>): number {
+function crossingCount(waypoints: Waypoint[], ctx: RouteContext): number {
 	let count = 0
 	for (let i = 0; i + 1 < waypoints.length; i++) {
 		const a = waypoints[i]
 		const b = waypoints[i + 1]
 		if (!a || !b) continue
-		for (const [c, d] of routed) if (intersects(a, b, c, d)) count++
+		ctx.routed.query(Math.min(a.x, b.x), Math.max(a.x, b.x), ([c, d]) => {
+			if (intersects(a, b, c, d)) count++
+			return false
+		})
 	}
 	return count
 }
 
-/** How many shapes a route passes through. */
-function hitCount(waypoints: Waypoint[], obstacles: Bounds[]): number {
-	let count = 0
-	for (const o of obstacles) if (blocked(waypoints, [o])) count++
-	return count
+/** True when the segment a→b passes through `o`, grazing allowed up to HIT_TOLERANCE. */
+function segmentHits(a: Waypoint, b: Waypoint, o: Bounds): boolean {
+	const minX = Math.min(a.x, b.x) + HIT_TOLERANCE
+	const maxX = Math.max(a.x, b.x) - HIT_TOLERANCE
+	const minY = Math.min(a.y, b.y) + HIT_TOLERANCE
+	const maxY = Math.max(a.y, b.y) - HIT_TOLERANCE
+	if (maxX <= o.x || o.x + o.width <= minX) return false
+	if (maxY <= o.y || o.y + o.height <= minY) return false
+	return true
 }
 
-function blocked(waypoints: Waypoint[], obstacles: Bounds[]): boolean {
+/** How many shapes a route passes through, its own endpoints excepted. */
+function hitCount(
+	ctx: RouteContext,
+	waypoints: Waypoint[],
+	sourceId: string,
+	targetId: string,
+): number {
+	const hit = new Set<Obstacle>()
 	for (let i = 0; i + 1 < waypoints.length; i++) {
 		const a = waypoints[i]
 		const b = waypoints[i + 1]
 		if (!a || !b) continue
-		const minX = Math.min(a.x, b.x) + HIT_TOLERANCE
-		const maxX = Math.max(a.x, b.x) - HIT_TOLERANCE
-		const minY = Math.min(a.y, b.y) + HIT_TOLERANCE
-		const maxY = Math.max(a.y, b.y) - HIT_TOLERANCE
-		for (const o of obstacles) {
-			if (maxX <= o.x || o.x + o.width <= minX) continue
-			if (maxY <= o.y || o.y + o.height <= minY) continue
-			return true
-		}
+		ctx.obstacles.query(Math.min(a.x, b.x), Math.max(a.x, b.x), (o) => {
+			if (o.id !== sourceId && o.id !== targetId && segmentHits(a, b, o.b)) hit.add(o)
+			return false
+		})
+	}
+	return hit.size
+}
+
+/** True when any segment of the route passes through a shape other than its endpoints. */
+function blocked(
+	ctx: RouteContext,
+	waypoints: Waypoint[],
+	sourceId: string,
+	targetId: string,
+): boolean {
+	for (let i = 0; i + 1 < waypoints.length; i++) {
+		const a = waypoints[i]
+		const b = waypoints[i + 1]
+		if (!a || !b) continue
+		const hit = ctx.obstacles.query(
+			Math.min(a.x, b.x),
+			Math.max(a.x, b.x),
+			(o) => o.id !== sourceId && o.id !== targetId && segmentHits(a, b, o.b),
+		)
+		if (hit) return true
 	}
 	return false
 }
@@ -398,7 +482,7 @@ function detour(
 					{ x: left, y: option },
 					{ x: right, y: option },
 				],
-				ctx.routed,
+				ctx,
 			)
 			if (crossings < fewest) {
 				fewest = crossings
@@ -435,11 +519,8 @@ function detour(
 	if (chosen) return chosen.waypoints
 
 	// Neither is clear: keep whichever grazes fewer shapes.
-	const obstacles: Bounds[] = []
-	for (const [id, b] of ctx.bounds) {
-		if (id !== sourceId && id !== targetId) obstacles.push(b)
-	}
-	return hitCount(straightOut, obstacles) <= hitCount(viaGutter, obstacles)
+	return hitCount(ctx, straightOut, sourceId, targetId) <=
+		hitCount(ctx, viaGutter, sourceId, targetId)
 		? straightOut
 		: viaGutter
 }
@@ -456,8 +537,10 @@ function reserve(
 	direction: 1 | -1,
 ): number {
 	const hitsShape = (candidate: number): boolean =>
-		[...ctx.bounds.values()].some(
-			(b) =>
+		ctx.obstacles.query(
+			left,
+			right,
+			({ b }) =>
 				b.x + b.width > left &&
 				b.x < right &&
 				b.y - HIT_TOLERANCE < candidate &&
@@ -499,11 +582,12 @@ function corridor(
 	ceiling?: number,
 ): number {
 	const spans: Array<[number, number]> = []
-	for (const b of ctx.bounds.values()) {
+	ctx.obstacles.query(left, right, ({ b }) => {
 		if (b.x + b.width > left && b.x < right) {
 			spans.push([b.y - ROUTING_MARGIN, b.y + b.height + ROUTING_MARGIN])
 		}
-	}
+		return false
+	})
 	if (spans.length === 0) return preferredY
 	spans.sort((a, b) => a[0] - b[0])
 

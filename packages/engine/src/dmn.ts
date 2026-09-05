@@ -13,8 +13,15 @@ export function evaluateDecision(decision: DmnDecision, vars: Record<string, unk
 	const hitPolicy: HitPolicy = table.hitPolicy ?? "UNIQUE"
 	const matchedOutputs: Record<string, unknown>[] = []
 
+	// Input expressions do not depend on the rule, so evaluate each column once
+	// instead of once per rule.
+	const inputValues: FeelValue[] = table.inputs.map((col) => {
+		const inputExpr = col.inputExpression.text ?? ""
+		return inputExpr.trim() === "" ? null : (evalExpression(inputExpr, vars) as FeelValue)
+	})
+
 	for (const rule of table.rules) {
-		if (ruleMatches(table.inputs, rule.inputEntries, vars)) {
+		if (ruleMatches(table.inputs, inputValues, rule.inputEntries, vars)) {
 			const output: Record<string, unknown> = {}
 			for (let i = 0; i < table.outputs.length; i++) {
 				const col = table.outputs[i]
@@ -33,6 +40,7 @@ export function evaluateDecision(decision: DmnDecision, vars: Record<string, unk
 
 function ruleMatches(
 	inputs: DmnInput[],
+	inputValues: FeelValue[],
 	inputEntries: { id: string; text: string }[],
 	vars: Record<string, unknown>,
 ): boolean {
@@ -42,9 +50,7 @@ function ruleMatches(
 		const entry = inputEntries[i]
 		if (col === undefined || entry === undefined) continue
 		if (entry.text.trim() === "") continue // empty = "any"
-		const inputExpr = col.inputExpression.text ?? ""
-		const inputValue =
-			inputExpr.trim() === "" ? null : (evalExpression(inputExpr, vars) as FeelValue)
+		const inputValue = inputValues[i] ?? null
 		const parsed = parseUnaryTests(entry.text)
 		if (parsed.ast === null) continue
 		if (!evaluateUnaryTests(parsed.ast, inputValue, { vars: feelVars })) return false

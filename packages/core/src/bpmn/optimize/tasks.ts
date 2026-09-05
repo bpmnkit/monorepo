@@ -69,11 +69,41 @@ function computeSimilarity(a: BpmnServiceTask, b: BpmnServiceTask): number | nul
 	return score
 }
 
-/** Cluster service tasks into connected components above the similarity threshold. */
+/**
+ * Cluster service tasks into connected components above the similarity
+ * threshold. Similarity requires an identical job type, so tasks are bucketed
+ * by type first and the pairwise comparison only runs within a bucket.
+ */
 function cluster(tasks: BpmnServiceTask[], threshold: number): BpmnServiceTask[][] {
+	const byType = new Map<string, BpmnServiceTask[]>()
+	const clusters: BpmnServiceTask[][] = []
+	for (const task of tasks) {
+		const type = readZeebeTaskType(task.extensionElements)
+		// Without a job type nothing is similar to this task; it stands alone.
+		if (type === null) {
+			clusters.push([task])
+			continue
+		}
+		const bucket = byType.get(type)
+		if (bucket) bucket.push(task)
+		else byType.set(type, [task])
+	}
+	for (const bucket of byType.values()) clusterBucket(bucket, threshold, clusters)
+	// Report clusters in declaration order of their first member.
+	const order = new Map(tasks.map((task, index) => [task, index]))
+	clusters.sort(
+		(a, b) => (order.get(a[0] as BpmnServiceTask) ?? 0) - (order.get(b[0] as BpmnServiceTask) ?? 0),
+	)
+	return clusters
+}
+
+function clusterBucket(
+	tasks: BpmnServiceTask[],
+	threshold: number,
+	clusters: BpmnServiceTask[][],
+): void {
 	const n = tasks.length
 	const visited = new Array<boolean>(n).fill(false)
-	const clusters: BpmnServiceTask[][] = []
 
 	for (let i = 0; i < n; i++) {
 		if (visited[i]) continue
@@ -81,9 +111,8 @@ function cluster(tasks: BpmnServiceTask[], threshold: number): BpmnServiceTask[]
 		const queue = [i]
 		visited[i] = true
 
-		while (queue.length > 0) {
-			const curr = queue.shift()
-			if (curr === undefined) break
+		for (let head = 0; head < queue.length; head++) {
+			const curr = queue[head] as number
 			const task = tasks[curr]
 			if (task === undefined) break
 			group.push(task)
@@ -102,8 +131,6 @@ function cluster(tasks: BpmnServiceTask[], threshold: number): BpmnServiceTask[]
 
 		clusters.push(group)
 	}
-
-	return clusters
 }
 
 // ---------------------------------------------------------------------------

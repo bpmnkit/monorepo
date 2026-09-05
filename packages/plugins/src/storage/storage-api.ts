@@ -1,4 +1,5 @@
 import { AutoSave } from "./auto-save.js"
+import type { SaveContent } from "./auto-save.js"
 import { db } from "./db.js"
 import type {
 	FileContentRecord,
@@ -332,7 +333,7 @@ export class StorageApi {
 
 	// ─── Auto-save ───────────────────────────────────────────────────────────────
 
-	scheduleSave(fileId: string, content: string): void {
+	scheduleSave(fileId: string, content: SaveContent): void {
 		this._autoSave.schedule(fileId, content)
 	}
 
