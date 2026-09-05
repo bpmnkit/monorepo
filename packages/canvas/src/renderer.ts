@@ -983,8 +983,9 @@ function renderEdge(
 	if (waypoints.length < 2) return g
 
 	const path = svgEl("path")
+	const d = waypointsToRoundedPath(waypoints)
 	const pathAttrs: Record<string, string> = {
-		d: waypointsToRoundedPath(waypoints),
+		d,
 		class: "bpmnkit-edge-path",
 		"marker-end": `url(#${ids.arrow})`,
 	}
@@ -997,7 +998,7 @@ function renderEdge(
 	// Wide transparent stroke so the edge is easy to click
 	const hitPath = svgEl("path")
 	attr(hitPath, {
-		d: waypointsToRoundedPath(waypoints),
+		d,
 		fill: "none",
 		stroke: "transparent",
 		"stroke-width": "12",

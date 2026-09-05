@@ -44,6 +44,24 @@ export class KeyboardHandler {
 		this._focusIndex = -1
 	}
 
+	/**
+	 * Swaps in the re-rendered graphics of one shape after an incremental
+	 * update, keeping focus position and avoiding a DOM read per shape.
+	 */
+	updateShape(shape: RenderedShape): void {
+		const focusable = shape.element.getAttribute("tabindex") === "-1"
+		const index = this._shapes.findIndex((s) => s.id === shape.id)
+		if (index === -1) {
+			if (focusable) this._shapes.push(shape)
+			return
+		}
+		if (focusable) this._shapes[index] = shape
+		else {
+			this._shapes.splice(index, 1)
+			if (this._focusIndex >= this._shapes.length) this._focusIndex = -1
+		}
+	}
+
 	/** Removes all keyboard event listeners. */
 	destroy(): void {
 		this._container.removeEventListener("keydown", this._onKeyDown)
