@@ -1,5 +1,43 @@
 # Progress
 
+## 2026-09-05 — Streaming BPMN parser
+
+`Bpmn.parse` used to run in two passes: the XML reader built a complete `XmlElement` tree
+(an object, an attribute record and a children array for every element, plus a string for every
+whitespace run between tags), and `bpmn-parser` then walked that tree into the model. After the
+performance pass above, allocating and collecting that intermediate tree was the largest
+remaining cost of a parse.
+
+**The XML reader is now an event scanner.** `scanXml(xml, sink)` reports start tags, character
+data and end tags to a sink; `parseXml` is the same scanner driving a tree-building sink, so DMN,
+forms and every other caller are unaffected and its output is byte-identical. A sink answers each
+start tag with a `Visit`: report everything, report child elements but drop character data without
+decoding it, or skip the subtree — in which case the scanner fast-forwards past the matching end
+tag validating nesting only, with no allocation at all.
+
+**`bpmn-parser` is a sink.** Each known element gets a small frame that keeps only what the
+model needs (flow references, the first `documentation`, event definitions, lane refs, DI
+bounds…), skips unknown children outright, and builds the model object at its end tag in exactly
+the field order the tree walk produced. Only the content of `extensionElements` is still
+materialised as `XmlElement` trees, because the model keeps it verbatim. Attribute-only elements
+such as `dc:Bounds`, `di:waypoint`, participants and event definitions are turned into model
+objects at their start tag and never get a frame.
+
+Equivalence was checked by diffing parse JSON (including which keys are present with `undefined`
+values), re-exported XML, and error classes and messages between the previous build and the new
+one over every fixture in the repo, 60 random processes and a hand-written document exercising
+CDATA, comments, mixed content, namespaced attributes, duplicate `extensionElements`, nested
+lanes, collaborations, DI labels and every error path: 258/258 identical.
+
+| `Bpmn.parse` (3.8 MB, 5,000 elements) | Before | After |
+| --- | --- | --- |
+| Best of 15 | 54 ms | 40 ms |
+| GC time across 20 parses | 457 ms | 209 ms |
+| GC events across 20 parses | 76 | 52 |
+
+The scanner is now the floor: tokenising 3.8 MB of XML in JavaScript costs about 36 ms whether or
+not a tree is built, and the model layer adds only a few milliseconds on top.
+
 ## 2026-09-05 — Performance pass across core, feel, engine, canvas, editor and plugins
 
 The library was profiled end to end on a synthetic 5,000-element diagram (3.8 MB of XML)

@@ -1,8 +1,50 @@
 import type { XmlElement } from "../types/xml-element.js"
 
 // ---------------------------------------------------------------------------
-// Parser
+// Event scanner
 // ---------------------------------------------------------------------------
+
+/** What a sink wants the scanner to do with an element after its start tag. */
+export const Visit = {
+	/** Report child elements and character data. */
+	All: 0,
+	/**
+	 * Skip the element's content: the scanner fast-forwards past the matching
+	 * end tag without building attributes or decoding text for anything inside,
+	 * and `end` is not called for it.
+	 */
+	Skip: 1,
+	/** Report child elements but drop character data without decoding it. */
+	ElementsOnly: 2,
+} as const
+export type Visit = (typeof Visit)[keyof typeof Visit]
+
+/** Receives the events of one XML document from {@link scanXml}. */
+export interface XmlSink {
+	/**
+	 * @param name qualified name, e.g. "bpmn:task"
+	 * @param local name without its prefix, e.g. "task" (same string as `name` when unprefixed)
+	 * @param selfClosing true for `<a/>`; `end` follows immediately
+	 */
+	start(
+		name: string,
+		local: string,
+		attributes: Record<string, string>,
+		selfClosing: boolean,
+	): Visit
+	/** Character data or CDATA directly inside the current element, entities decoded. */
+	text(text: string): void
+	end(name: string): void
+}
+
+/**
+ * Scan an XML document, reporting the root element and everything inside it to
+ * `sink`. Returns false when the document has no root element. Content after
+ * the root element is ignored.
+ */
+export function scanXml(xml: string, sink: XmlSink): boolean {
+	return new XmlScanner(xml).scan(sink)
+}
 
 /**
  * Parse an XML string into an XmlElement tree.
@@ -10,10 +52,35 @@ import type { XmlElement } from "../types/xml-element.js"
  * @throws Error if the XML has no root element.
  */
 export function parseXml(xml: string): XmlElement {
-	const p = new XmlReader(xml)
-	const root = p.parseDocument()
-	if (!root) throw new Error("Failed to parse XML: no root element found")
-	return root
+	const builder = new TreeBuilder()
+	if (!scanXml(xml, builder) || builder.root === undefined) {
+		throw new Error("Failed to parse XML: no root element found")
+	}
+	return builder.root
+}
+
+/** Sink that materialises the document as an XmlElement tree. */
+class TreeBuilder implements XmlSink {
+	root: XmlElement | undefined
+	private readonly stack: XmlElement[] = []
+
+	start(name: string, _local: string, attributes: Record<string, string>): Visit {
+		const el: XmlElement = { name, attributes, children: [] }
+		const parent = this.stack[this.stack.length - 1]
+		if (parent) parent.children.push(el)
+		else this.root = el
+		this.stack.push(el)
+		return Visit.All
+	}
+
+	text(text: string): void {
+		const el = this.stack[this.stack.length - 1] as XmlElement
+		el.text = el.text === undefined ? text : el.text + text
+	}
+
+	end(): void {
+		this.stack.pop()
+	}
 }
 
 // Character codes the scanner switches on. Comparing codes avoids allocating a
@@ -26,23 +93,27 @@ const QUESTION = 0x3f // ?
 const BANG = 0x21 // !
 const DQUOTE = 0x22 // "
 const SQUOTE = 0x27 // '
+const COLON = 0x3a // :
 const SPACE = 0x20
 const TAB = 0x09
 const LF = 0x0a
 const CR = 0x0d
 
-class XmlReader {
-	private s: string
-	private n: number
+class XmlScanner {
+	private readonly s: string
+	private readonly n: number
 	private i = 0
+	/** Index of the first ":" in the name most recently read, or -1. */
+	private colon = -1
+	/** Position of the next "&" at or after the last place we looked, or -1 for none. */
+	private nextAmp = 0
 
 	constructor(source: string) {
 		this.s = source
 		this.n = source.length
 	}
 
-	parseDocument(): XmlElement | undefined {
-		let root: XmlElement | undefined
+	scan(sink: XmlSink): boolean {
 		while (this.i < this.n) {
 			this.skipWhitespace()
 			if (this.i >= this.n) break
@@ -58,77 +129,161 @@ class XmlReader {
 				if (this.s.startsWith("<!--", this.i)) this.skipComment()
 				else this.skipBang()
 			} else {
-				root = this.parseElement()
-				break
+				this.element(sink)
+				return true
 			}
 		}
-		return root
+		return false
 	}
 
-	private parseElement(): XmlElement {
-		// Caller guarantees s[i] === "<".
-		this.i++
+	/** Scan the element starting at `i` (which is "<") and everything inside it. */
+	private element(sink: XmlSink): void {
+		const s = this.s
+		// Open elements, innermost last, with whether each one wants character data.
+		const open: string[] = []
+		const wantText: boolean[] = []
+		if (this.openTag(sink, open, wantText) === 0) return
+
+		while (open.length > 0) {
+			if (this.i >= this.n) throw new Error(`Expected "</" at position ${this.i}`)
+			const c = s.charCodeAt(this.i)
+			if (c !== LT) {
+				if (wantText[wantText.length - 1]) sink.text(this.readText())
+				else this.skipText()
+				continue
+			}
+			const next = s.charCodeAt(this.i + 1)
+			if (next === SLASH) {
+				this.i += 2
+				const closing = this.readName()
+				const name = open[open.length - 1] as string
+				if (closing !== name) {
+					throw new Error(`Mismatched closing tag: expected </${name}>, got </${closing}>`)
+				}
+				this.skipWhitespace()
+				this.expectChar(GT, ">")
+				open.pop()
+				wantText.pop()
+				sink.end(name)
+			} else if (next === BANG) {
+				if (s.startsWith("<!--", this.i)) {
+					this.skipComment()
+				} else if (s.startsWith("<![CDATA[", this.i)) {
+					if (wantText[wantText.length - 1]) sink.text(this.readCData())
+					else this.skipCData()
+				} else {
+					// Unknown declaration inside content — treat it as an element and
+					// let the name reader fail on it, as before.
+					this.openTag(sink, open, wantText)
+				}
+			} else if (next === QUESTION) {
+				this.skipPi()
+			} else {
+				this.openTag(sink, open, wantText)
+			}
+		}
+	}
+
+	/**
+	 * Read a start tag at `i`, report it, and push it onto `open` unless it was
+	 * self-closing or the sink skipped it. Returns the new depth of `open`.
+	 */
+	private openTag(sink: XmlSink, open: string[], wantText: boolean[]): number {
+		const s = this.s
+		this.i++ // <
 		const name = this.readName()
+		const local = this.colon >= 0 ? s.substring(this.colon + 1, this.i) : name
 		const attributes: Record<string, string> = {}
 		this.readAttributes(attributes)
 		this.skipWhitespace()
 
-		const s = this.s
 		if (s.charCodeAt(this.i) === SLASH && s.charCodeAt(this.i + 1) === GT) {
-			// self-closing
 			this.i += 2
-			return { name, attributes, children: [] }
+			if (sink.start(name, local, attributes, true) !== Visit.Skip) sink.end(name)
+			return open.length
 		}
 
 		this.expectChar(GT, ">")
+		const visit = sink.start(name, local, attributes, false)
+		if (visit === Visit.Skip) {
+			this.skipContent(name)
+			return open.length
+		}
+		open.push(name)
+		wantText.push(visit === Visit.All)
+		return open.length
+	}
 
-		const children: XmlElement[] = []
-		let text: string | undefined
-
-		while (this.i < this.n) {
-			const c = s.charCodeAt(this.i)
-			if (c === LT) {
-				const next = s.charCodeAt(this.i + 1)
-				if (next === SLASH) break
-				if (next === BANG) {
-					if (s.startsWith("<!--", this.i)) {
-						this.skipComment()
-					} else if (s.startsWith("<![CDATA[", this.i)) {
-						const cd = this.readCData()
-						text = text === undefined ? cd : text + cd
-					} else {
-						// Unknown declaration inside content — treat it as an element and
-						// let the name reader fail on it, as before.
-						children.push(this.parseElement())
+	/**
+	 * Fast-forward past the content and end tag of the element `name` whose
+	 * start tag was just consumed, validating nesting but allocating nothing.
+	 */
+	private skipContent(name: string): void {
+		const s = this.s
+		// Open elements below `name`, as (start, length) spans into the source.
+		const spans: number[] = []
+		let depth = 1
+		while (depth > 0) {
+			const lt = s.indexOf("<", this.i)
+			if (lt === -1) throw new Error(`Expected "</" at position ${this.n}`)
+			this.i = lt
+			const next = s.charCodeAt(lt + 1)
+			if (next === SLASH) {
+				this.i += 2
+				const start = this.i
+				this.skipName()
+				const length = this.i - start
+				if (spans.length === 0) {
+					if (length !== name.length || !s.startsWith(name, start)) {
+						throw new Error(
+							`Mismatched closing tag: expected </${name}>, got </${s.substring(start, this.i)}>`,
+						)
 					}
-				} else if (next === QUESTION) {
-					this.skipPi()
 				} else {
-					children.push(this.parseElement())
+					const openLength = spans.pop() as number
+					const openStart = spans.pop() as number
+					if (!this.sameSpan(openStart, openLength, start, length)) {
+						throw new Error(
+							`Mismatched closing tag: expected </${s.substring(openStart, openStart + openLength)}>, got </${s.substring(start, this.i)}>`,
+						)
+					}
 				}
+				this.skipWhitespace()
+				this.expectChar(GT, ">")
+				depth--
+			} else if (next === BANG && s.startsWith("<!--", lt)) {
+				this.skipComment()
+			} else if (next === BANG && s.startsWith("<![CDATA[", lt)) {
+				const end = s.indexOf("]]>", lt + 9)
+				if (end === -1) throw new Error("Unterminated CDATA section")
+				this.i = end + 3
+			} else if (next === QUESTION) {
+				this.skipPi()
 			} else {
-				const t = this.readText()
-				if (t.length > 0) {
-					text = text === undefined ? t : text + t
+				this.i++
+				const start = this.i
+				this.skipName()
+				const length = this.i - start
+				this.skipAttributes()
+				this.skipWhitespace()
+				if (s.charCodeAt(this.i) === SLASH && s.charCodeAt(this.i + 1) === GT) {
+					this.i += 2
+					continue
 				}
+				this.expectChar(GT, ">")
+				spans.push(start, length)
+				depth++
 			}
 		}
+	}
 
-		// closing tag </name>
-		if (s.charCodeAt(this.i) !== LT || s.charCodeAt(this.i + 1) !== SLASH) {
-			throw new Error(`Expected "</" at position ${this.i}`)
+	private sameSpan(aStart: number, aLength: number, bStart: number, bLength: number): boolean {
+		if (aLength !== bLength) return false
+		const s = this.s
+		for (let k = 0; k < aLength; k++) {
+			if (s.charCodeAt(aStart + k) !== s.charCodeAt(bStart + k)) return false
 		}
-		this.i += 2
-		const closing = this.readName()
-		if (closing !== name) {
-			throw new Error(`Mismatched closing tag: expected </${name}>, got </${closing}>`)
-		}
-		this.skipWhitespace()
-		this.expectChar(GT, ">")
-
-		const el: XmlElement = { name, attributes, children }
-		if (text !== undefined) el.text = text
-		return el
+		return true
 	}
 
 	private readAttributes(attrs: Record<string, string>): void {
@@ -145,6 +300,27 @@ class XmlReader {
 		}
 	}
 
+	/** Like readAttributes, but validates only; nothing is built. */
+	private skipAttributes(): void {
+		const s = this.s
+		while (this.i < this.n) {
+			this.skipWhitespace()
+			const ch = s.charCodeAt(this.i)
+			if (ch === GT || ch === SLASH) return
+			this.skipName()
+			this.skipWhitespace()
+			this.expectChar(EQ, "=")
+			this.skipWhitespace()
+			const quote = s.charCodeAt(this.i)
+			if (quote !== DQUOTE && quote !== SQUOTE) {
+				throw new Error(`Expected quote at position ${this.i}`)
+			}
+			this.i++
+			const end = s.indexOf(quote === DQUOTE ? '"' : "'", this.i)
+			this.i = end === -1 ? this.n + 1 : end + 1
+		}
+	}
+
 	private readAttrValue(): string {
 		const quote = this.s.charCodeAt(this.i)
 		if (quote !== DQUOTE && quote !== SQUOTE) {
@@ -154,9 +330,23 @@ class XmlReader {
 		const start = this.i
 		let end = this.s.indexOf(quote === DQUOTE ? '"' : "'", start)
 		if (end === -1) end = this.n
-		const value = this.s.substring(start, end)
 		this.i = end + 1 // skip closing quote
-		return decodeXmlEntities(value)
+		return this.slice(start, end)
+	}
+
+	/**
+	 * Substring with entities decoded. Values rarely contain "&", so instead of
+	 * scanning each one, the position of the next "&" is remembered and only
+	 * refreshed once the scan has moved past it.
+	 */
+	private slice(start: number, end: number): string {
+		let amp = this.nextAmp
+		if (amp !== -1 && amp < start) {
+			amp = this.s.indexOf("&", start)
+			this.nextAmp = amp
+		}
+		const value = this.s.substring(start, end)
+		return amp !== -1 && amp < end ? decodeXmlEntities(value) : value
 	}
 
 	private readText(): string {
@@ -164,21 +354,40 @@ class XmlReader {
 		let end = this.s.indexOf("<", start)
 		if (end === -1) end = this.n
 		this.i = end
-		return decodeXmlEntities(this.s.substring(start, end))
+		return this.slice(start, end)
+	}
+
+	private skipText(): void {
+		const end = this.s.indexOf("<", this.i)
+		this.i = end === -1 ? this.n : end
+	}
+
+	private skipCData(): void {
+		const end = this.s.indexOf("]]>", this.i + 9)
+		if (end === -1) throw new Error("Unterminated CDATA section")
+		this.i = end + 3
 	}
 
 	private readName(): string {
-		const s = this.s
 		const start = this.i
-		let i = start
+		this.skipName()
+		return this.s.substring(start, this.i)
+	}
+
+	/** Advance past a name, recording the position of its first ":" in `colon`. */
+	private skipName(): void {
+		const s = this.s
+		let i = this.i
+		let colon = -1
 		while (i < this.n) {
 			const c = s.charCodeAt(i)
 			if (c === SPACE || c === TAB || c === LF || c === CR || c === GT || c === SLASH || c === EQ)
 				break
+			if (c === COLON && colon === -1) colon = i
 			i++
 		}
+		this.colon = colon
 		this.i = i
-		return s.substring(start, i)
 	}
 
 	private readCData(): string {
