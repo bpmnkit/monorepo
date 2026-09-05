@@ -1023,12 +1023,16 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 
 	function trackBpmnProcesses(tabId: string, xml: string): void {
 		try {
-			for (const proc of Bpmn.parse(xml).processes) {
-				bpmnProcessToTabId.set(proc.id, tabId)
-				bpmnProcessNames.set(proc.id, proc.name ?? proc.id)
-			}
+			trackBpmnDefinitions(tabId, Bpmn.parse(xml))
 		} catch {
 			// Malformed XML — tab still opens, process map unchanged
+		}
+	}
+
+	function trackBpmnDefinitions(tabId: string, defs: BpmnDefinitions): void {
+		for (const proc of defs.processes) {
+			bpmnProcessToTabId.set(proc.id, tabId)
+			bpmnProcessNames.set(proc.id, proc.name ?? proc.id)
 		}
 	}
 
@@ -1484,9 +1488,10 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 				const xml = Bpmn.export(defs)
 				// Update stored XML so onTabActivate always receives the latest content
 				activeTab.config = { ...activeTab.config, xml }
-				// Refresh process map for this tab
+				// Refresh process map for this tab from the model we already have,
+				// rather than parsing the XML we just produced.
 				untrackBpmnProcesses(activeId)
-				trackBpmnProcesses(activeId, xml)
+				trackBpmnDefinitions(activeId, defs)
 				// Keep raw pane in sync
 				if (isRawMode) updateRawPane()
 			}

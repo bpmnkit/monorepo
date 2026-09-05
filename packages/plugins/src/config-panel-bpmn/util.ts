@@ -16,9 +16,37 @@ export function xmlLocalName(qname: string): string {
 
 // ── Element lookup / update ───────────────────────────────────────────────────
 
+// id → index per flowElements array. Every badge refresh looks up every shape,
+// which made the panel O(S²) per change. Positions are verified against the
+// array on each hit, so an array mutated in place still resolves correctly.
+const positionIndex = new WeakMap<BpmnFlowElement[], Map<string, number>>()
+
+function indexedFind(elements: BpmnFlowElement[], id: string): BpmnFlowElement | undefined {
+	let index = positionIndex.get(elements)
+	if (index === undefined) {
+		index = new Map()
+		for (let i = 0; i < elements.length; i++) index.set((elements[i] as BpmnFlowElement).id, i)
+		positionIndex.set(elements, index)
+	}
+	const at = index.get(id)
+	if (at !== undefined) {
+		const hit = elements[at]
+		if (hit !== undefined && hit.id === id) return hit
+	}
+	// Stale or missing entry: fall back to a scan and repair the index.
+	for (let i = 0; i < elements.length; i++) {
+		const el = elements[i] as BpmnFlowElement
+		if (el.id === id) {
+			index.set(id, i)
+			return el
+		}
+	}
+	return undefined
+}
+
 export function findFlowElement(defs: BpmnDefinitions, id: string): BpmnFlowElement | undefined {
 	for (const process of defs.processes) {
-		const el = process.flowElements.find((e) => e.id === id)
+		const el = indexedFind(process.flowElements, id)
 		if (el) return el
 	}
 	return undefined
