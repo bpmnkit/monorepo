@@ -1,5 +1,32 @@
 # Progress
 
+## 2026-09-06 — Landing hero: lead with the contrast, prove it above the fold
+
+The hero opened with a positioning line (*BPMN diagrams from code, not clicks*) that only lands
+for someone who already models BPMN, followed by four paragraphs of prose. On a phone the
+animated code→diagram panel — the one thing that shows what the SDK does — sat a screen and a
+half below the fold, so the first seconds were all text and no proof.
+
+**The headline is now the contrast the page already made in section 01**: *41 lines of BPMN XML.
+Or 13 lines of TypeScript.* The first sentence is set in the muted body colour so the
+before/after reads at a glance. The lede is one sentence; the defensive paragraph about analysts
+still editing visually moved to section 08, where the question it answers has actually been
+asked.
+
+**The proof moved above the fold.** The hero's left column is split into `.hero-text`
+(eyebrow, headline, lede) and `.hero-actions` (install, CTAs, proof points) as two grid rows, so
+the stacked mobile order can be headline → demo panel → actions without touching the desktop
+two-column layout. Below 760px the code panel is capped at 152px and masked at its lower edge,
+and the diagram at 180px, which puts the whole demo and the primary CTA inside a 390×844
+viewport (measured: headline 120–224, lede 246–318, code 390–542, diagram 597–777, CTA 816–860).
+
+**The CTAs act instead of read.** The primary is now *▶ Run it in the browser* pointing at the
+on-page playground; *Read the docs* is the quiet secondary. The editor link was dropped from the
+hero — the nav already carries it. The vanity stat row (`0 deps · ESM · MIT pre-1.0`, which put
+"pre-1.0" in the highest-value pixels of the site) is replaced by three claims that answer why
+the visitor needs this: deploys to Camunda 8, opens in any modeler, zero dependencies.
+
+
 ## 2026-09-05 — Streaming BPMN parser
 
 `Bpmn.parse` used to run in two passes: the XML reader built a complete `XmlElement` tree

@@ -1,5 +1,16 @@
 # Features
 
+## Landing hero rewritten around the XML/TypeScript contrast (2026-09-06)
+
+The homepage hero leads with *41 lines of BPMN XML. Or 13 lines of TypeScript.* over a
+one-sentence lede, and the demo panel that types a builder call and renders the resulting diagram
+now sits above the fold on a phone: the hero's left column splits into text and action rows so
+the stacked order is headline → demo → install/CTAs, with the code panel masked at 152px and the
+diagram at 180px below 760px. The primary call to action is the on-page playground (*Run it in
+the browser*) rather than the docs, and the `0 deps · ESM · MIT pre-1.0` stat row is replaced by
+three value claims — deploys to Camunda 8, opens in any modeler, zero dependencies.
+
+
 ## Documentation served from the landing site at `/docs` (2026-08-29)
 
 The reference documentation renders from `apps/landing` at `bpmnkit.com/docs` in the landing's

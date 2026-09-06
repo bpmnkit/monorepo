@@ -125,47 +125,35 @@ const CAPABILITIES = [
   <section class="hero">
     <div class="hero-body">
       <div class="hero-text">
-        <div class="hero-eyebrow">TypeScript · BPMN 2.0 · MIT</div>
-        <h1 class="hero-h1">BPMN diagrams<br>from code,<br>not clicks.</h1>
+        <div class="hero-eyebrow">TypeScript · BPMN 2.0 · Camunda 8 · MIT</div>
+        <h1 class="hero-h1"><span class="hero-h1-before">41 lines of BPMN&nbsp;XML.</span><br>Or 13 lines of TypeScript.</h1>
         <p class="hero-p">
-          A fluent TypeScript API that generates deployable BPMN&nbsp;2.0 diagrams with
-          <a href="/auto-layout">auto-layout</a> — for developers, automation platforms, and
-          AI&nbsp;agents.
+          Write the process as code — BPMN&nbsp;Kit lays it out, validates it, and hands you a
+          diagram Camunda&nbsp;8 can run.
         </p>
-        <p class="hero-p-sub">
-          Analysts still review and edit everything visually. It replaces the
-          copy-paste-redeploy gap between the diagram and production, not the diagram.
-        </p>
+      </div>
 
+      <div class="hero-actions">
         <button class="install-btn" id="install-btn" title="Click to copy">
           <code>pnpm add @bpmnkit/core</code>
           <span class="install-copied" aria-hidden="true"></span>
         </button>
 
         <div class="hero-ctas">
-          <a href="/docs" class="btn-primary">Read the docs</a>
-          <a href="/editor" class="btn-link">Open the editor — no install</a>
+          <a href="#playground" class="btn-primary">▶ Run it in the browser</a>
+          <a href="/docs" class="btn-link">Read the docs</a>
         </div>
 
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <div class="hero-stat-num">0</div>
-            <div class="hero-stat-label">deps</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-num">ESM</div>
-            <div class="hero-stat-label">node · deno · bun · edge</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-num">MIT</div>
-            <div class="hero-stat-label">pre-1.0</div>
-          </div>
-        </div>
+        <ul class="hero-proof-points">
+          <li>Deploys to Camunda 8</li>
+          <li>Opens in any modeler</li>
+          <li>Zero dependencies</li>
+        </ul>
       </div>
 
       <div class="hero-panel">
         <p class="sr-only">
-          The panel beside this text cycles through five example scripts, typing out a
+          This panel cycles through five example scripts, typing out a
           BPMN Kit builder call and rendering the resulting diagram live. The same
           builder API is available as static, editable code in the playground below.
         </p>
@@ -606,7 +594,9 @@ const CAPABILITIES = [
           </div>
           <h2>Analysts model it. Developers ship it.</h2>
           <p>
-            Standard BPMN&nbsp;2.0 files open in any tool, including Camunda Modeler. Nothing
+            Analysts still review and edit everything visually. BPMN Kit replaces the
+            copy-paste-redeploy gap between the diagram and production, not the diagram —
+            standard BPMN&nbsp;2.0 files open in any tool, including Camunda Modeler. Nothing
             here is a lock-in format. <a href="/use-cases">Explore use cases →</a>
           </p>
         </div>

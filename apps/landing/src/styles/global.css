@@ -773,11 +773,25 @@ pre {
 	padding: 0 var(--gutter);
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+	grid-template-rows: auto 1fr;
 	align-items: stretch;
 }
 
 .hero-text {
-	padding: 72px 48px 64px 0;
+	grid-column: 1;
+	grid-row: 1;
+	padding: 72px 48px 0 0;
+	border-right: 1px solid var(--rule);
+	min-width: 0;
+}
+
+.hero-actions {
+	grid-column: 1;
+	grid-row: 2;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 0 48px 64px 0;
 	border-right: 1px solid var(--rule);
 	min-width: 0;
 }
@@ -799,21 +813,16 @@ pre {
 	margin: 0 0 22px;
 }
 
+.hero-h1-before {
+	color: var(--ink-body-soft);
+}
+
 .hero-p {
 	font-size: 18px;
 	line-height: 1.5;
 	color: var(--ink-body);
-	margin: 0 0 14px;
+	margin: 0 0 34px;
 	max-width: 30em;
-	text-wrap: pretty;
-}
-
-.hero-p-sub {
-	font-size: 15px;
-	line-height: 1.55;
-	color: var(--ink-body-soft);
-	margin: 0 0 30px;
-	max-width: 32em;
 	text-wrap: pretty;
 }
 
@@ -825,35 +834,30 @@ pre {
 	margin-top: 14px;
 }
 
-.hero-stats {
+.hero-proof-points {
 	display: flex;
-	gap: 28px;
-	margin-top: 44px;
+	flex-wrap: wrap;
+	gap: 6px 24px;
+	margin: 40px 0 0;
+	padding: 16px 0 0;
 	border-top: 1px solid var(--rule);
+	list-style: none;
 	font-family: var(--font-mono);
-}
-
-.hero-stat {
-	flex: 1;
-	padding: 14px 0;
-	min-width: 0;
-}
-
-.hero-stat-num {
-	font-size: 19px;
-	color: var(--ink);
-}
-
-.hero-stat-label {
-	font-size: 10.5px;
-	color: var(--ink-meta);
+	font-size: 11px;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	margin-top: 3px;
-	line-height: 1.5;
+	color: var(--ink-meta);
+}
+
+.hero-proof-points li::before {
+	content: "✓";
+	color: var(--accent);
+	margin-right: 7px;
 }
 
 .hero-panel {
+	grid-column: 2;
+	grid-row: 1 / span 2;
 	padding: 72px 0 64px 48px;
 	display: flex;
 	flex-direction: column;
@@ -1926,14 +1930,34 @@ kbd {
 		grid-template-columns: 1fr;
 	}
 
-	.hero-text {
-		padding: 48px 0 40px;
+	/* Stacked order: headline → the demo that proves it → install & CTAs.
+	   The proof has to land in the first screen, ahead of the actions. */
+	.hero-body {
+		grid-template-rows: none;
+	}
+
+	.hero-text,
+	.hero-actions,
+	.hero-panel {
+		grid-column: 1;
+		grid-row: auto;
 		border-right: 0;
-		border-bottom: 1px solid var(--rule);
+	}
+
+	.hero-text {
+		order: 1;
+		padding: 44px 0 26px;
 	}
 
 	.hero-panel {
-		padding: 40px 0 56px;
+		order: 2;
+		padding: 0 0 4px;
+	}
+
+	.hero-actions {
+		order: 3;
+		padding: 30px 0 52px;
+		border-top: 1px solid var(--rule);
 	}
 
 	.hero-h1 {
@@ -1998,10 +2022,72 @@ kbd {
 		grid-template-columns: 1fr;
 	}
 
-	.hero-stats {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 0 16px;
+	.hero-text {
+		padding-top: 30px;
+	}
+
+	.hero-eyebrow {
+		margin-bottom: 16px;
+	}
+
+	.hero-h1 {
+		font-size: 34px;
+	}
+
+	.hero-p {
+		font-size: 16px;
+		line-height: 1.5;
+		margin-bottom: 20px;
+	}
+
+	.hero-panel {
+		padding-bottom: 0;
+	}
+
+	/* The code is the setup, the diagram is the payoff — on a phone the
+	   snippet is masked after a few lines so the diagram stays in view. */
+	.anim-code-panel {
+		min-height: 0;
+	}
+
+	.anim-code-body {
+		max-height: 152px;
+		padding: 16px 18px;
+		-webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
+		mask-image: linear-gradient(to bottom, #000 78%, transparent);
+	}
+
+	.anim-code-lines {
+		font-size: 12px;
+	}
+
+	.hero-note {
+		padding: 10px 0;
+	}
+
+	.anim-diagram-inner {
+		min-height: 180px;
+	}
+
+	.hero-actions {
+		padding-top: 16px;
+		padding-bottom: 44px;
+	}
+
+	.hero-ctas {
+		order: 1;
+		margin-top: 0;
+		margin-bottom: 20px;
+	}
+
+	.install-btn {
+		order: 2;
+	}
+
+	.hero-proof-points {
+		order: 3;
+		gap: 6px 18px;
+		margin-top: 26px;
 	}
 
 	.compare-grid {
