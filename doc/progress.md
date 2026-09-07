@@ -1,5 +1,54 @@
 # Progress
 
+## 2026-09-07 — Stop the CLI destroying BPMN files, stop the docs promising it can't
+
+First two items of *Core Model Fidelity* — the two that depend on nothing and were both
+actively harmful.
+
+**A5a — `casen generate bpmn --input` no longer overwrites its input.** It used to rebuild
+the file from the compact model and write the result straight back over the source, with no
+backup, no `--force`, and a `Patched and written to x.bpmn` success line. On a real Camunda
+blueprint that silently drops pools, lanes, message correlation keys and ioMapping detail.
+It now refuses unless you pass `--output <file>` or `--force`, and the refusal names what
+would be lost so the message is actionable rather than bureaucratic. `--output` pointing back
+at the input counts as in-place, resolved paths compared, so `--output flows/../flows/x.bpmn`
+cannot sneak past.
+
+The guard moved **above** the stdin read. It used to be the last thing before `writeFile`,
+which meant the command parsed the file, blocked waiting for a patch on stdin, applied it and
+serialised the result before discovering it had nowhere to write. Now an unwritable target
+fails immediately. That reordering is also what made the path testable: `generate.test.ts`
+covers the pure resolver and drives the real command against a temp copy of a sample file,
+asserting the input is byte-identical after a refusal.
+
+Two `--input` examples in the command's own help wrote in place and would now fail; both
+gained an `--output`.
+
+**A6 — the docs asserted the opposite of what the code does.** `concepts.md` claimed "the
+parser preserves all attributes, extensions, and vendor-specific elements. Exporting the
+parsed object produces XML that is semantically equivalent to the input." Measured: 11 of 12
+real blueprints lose something. Its example also used `definitions.rootElements.find(el =>
+el.$type === "bpmn:Process")` — that is `bpmn-moddle`'s API, not ours; `BpmnDefinitions`
+exposes `processes`. Replaced with an explicit two-list contract of what survives and what is
+dropped today, `zeebe:subscription` named first because losing it breaks message correlation
+while the model still deploys and still looks right. The corrected example was executed
+against a sample file before shipping.
+
+The same falsehood lived in two more places, both corrected rather than left for later:
+`guides/ai.md` presented parse → compactify → LLM edit → expand → export as a safe loop for
+an existing file, which is the most destructive path we ship; and `packages/core.md`
+described `expand()` as converting a compact diagram "back", implying symmetry. Both now say
+plainly that `expand(compactify(d))` is not `d`, and that editing a file authored elsewhere
+means writing to a new path and diffing. `concepts.md` carries the same warning on the
+compact section. Docspack rebuilt, so agents asking about round-trip fidelity now get the
+real answer.
+
+Note for whoever picks up A1: the landing site and the CLI test suite cannot be built here —
+`@bpmnkit/engine` needs `@bpmnkit/reebe-wasm`, which needs a Rust/wasm-pack toolchain. Both
+failures reproduce on a clean tree. `generate.test.ts` (12 tests), the docspack suite and
+`biome check` all pass.
+
+
 ## 2026-09-07 — What `bpmn-sdk` has that we don't: the model layer round-trips, ours doesn't
 
 Analysed [`philippfromme/bpmn-sdk`](https://github.com/philippfromme/bpmn-sdk) (10.7k LOC,

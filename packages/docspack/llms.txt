@@ -54,8 +54,8 @@ npx bpmnkit-docs ask "how do I deploy a process"
 
 - [Core Concepts — The Fluent Builder](.llms/chunks/getting-started.concepts.the-fluent-builder.md) — 251 tokens
 - [Core Concepts — Auto-Layout](.llms/chunks/getting-started.concepts.auto-layout.md) — 150 tokens
-- [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 149 tokens
-- [Core Concepts — AI-Compact Format](.llms/chunks/getting-started.concepts.ai-compact-format.md) — 182 tokens
+- [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 481 tokens
+- [Core Concepts — AI-Compact Format](.llms/chunks/getting-started.concepts.ai-compact-format.md) — 359 tokens
 - [Core Concepts — Zeebe Extensions](.llms/chunks/getting-started.concepts.zeebe-extensions.md) — 134 tokens
 - [Installation](.llms/chunks/getting-started.installation.md) — 140 tokens
 - [Installation — SVG Canvas Viewer](.llms/chunks/getting-started.installation.svg-canvas-viewer.md) — 189 tokens
@@ -79,7 +79,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Building Processes with AI — Lightweight alternative: `casen skills install`](.llms/chunks/guides.ai-implement.lightweight-alternative-casen-skills-install.md) — 172 tokens
 - [Building Processes with AI — Deploying](.llms/chunks/guides.ai-implement.deploying.md) — 255 tokens
 - [Building Processes with AI — Extending an existing process](.llms/chunks/guides.ai-implement.extending-an-existing-process.md) — 100 tokens
-- [AI Integration](.llms/chunks/guides.ai.md) — 227 tokens
+- [AI Integration](.llms/chunks/guides.ai.md) — 417 tokens
 - [AI Integration — Minimal Empty Diagram](.llms/chunks/guides.ai.minimal-empty-diagram.md) — 229 tokens
 - [AI Integration — Claude API Example](.llms/chunks/guides.ai.claude-api-example.md) — 226 tokens
 - [AI Integration — OpenAI Function Calling](.llms/chunks/guides.ai.openai-function-calling.md) — 192 tokens
@@ -149,8 +149,8 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/core — Installation — `Bpmn.parse(xml)`](.llms/chunks/packages.core.installation-bpmn.parse-xml.md) — 45 tokens
 - [@bpmnkit/core — Installation — `Bpmn.makeEmpty(processId?, processName?)`](.llms/chunks/packages.core.installation-bpmn.makeempty-processid-processname.md) — 65 tokens
 - [@bpmnkit/core — Installation — `Bpmn.SAMPLE_XML`](.llms/chunks/packages.core.installation-bpmn.sample_xml.md) — 43 tokens
-- [@bpmnkit/core — Installation — `compactify(definitions)`](.llms/chunks/packages.core.installation-compactify-definitions.md) — 62 tokens
-- [@bpmnkit/core — Installation — `expand(compact)`](.llms/chunks/packages.core.installation-expand-compact.md) — 57 tokens
+- [@bpmnkit/core — Installation — `compactify(definitions)`](.llms/chunks/packages.core.installation-compactify-definitions.md) — 111 tokens
+- [@bpmnkit/core — Installation — `expand(compact)`](.llms/chunks/packages.core.installation-expand-compact.md) — 106 tokens
 - [@bpmnkit/core — Installation — `layoutProcess(process)`](.llms/chunks/packages.core.installation-layoutprocess-process.md) — 85 tokens
 - [@bpmnkit/core — Installation — ProcessBuilder methods](.llms/chunks/packages.core.installation-processbuilder-methods.md) — 415 tokens
 - [@bpmnkit/core — DMN Support](.llms/chunks/packages.core.dmn-support.md) — 113 tokens

@@ -563,26 +563,36 @@
 		{
 			"id": "getting-started.concepts.parsing-and-serializing",
 			"file": "chunks/getting-started.concepts.parsing-and-serializing.md",
-			"tokens": 149,
+			"tokens": 481,
 			"tags": [
 				"getting-started",
 				"concepts",
 				"parsing",
 				"serializing"
 			],
-			"entities": []
+			"entities": [
+				"BpmnDefinitions",
+				"extensionElements",
+				"unknownAttributes",
+				"Bpmn.parse()",
+				"Bpmn.export()"
+			]
 		},
 		{
 			"id": "getting-started.concepts.ai-compact-format",
 			"file": "chunks/getting-started.concepts.ai-compact-format.md",
-			"tokens": 182,
+			"tokens": 359,
 			"tags": [
 				"getting-started",
 				"concepts",
 				"ai-compact",
 				"format"
 			],
-			"entities": []
+			"entities": [
+				"compactify()",
+				"CompactElement",
+				"BpmnDefinitions"
+			]
 		},
 		{
 			"id": "getting-started.concepts.zeebe-extensions",
@@ -854,12 +864,17 @@
 		{
 			"id": "guides.ai",
 			"file": "chunks/guides.ai.md",
-			"tokens": 227,
+			"tokens": 417,
 			"tags": [
 				"guides",
 				"ai"
 			],
-			"entities": []
+			"entities": [
+				"expand()",
+				"compactify()",
+				"CompactElement",
+				"updatedXml"
+			]
 		},
 		{
 			"id": "guides.ai.minimal-empty-diagram",
@@ -1749,7 +1764,7 @@
 		{
 			"id": "packages.core.installation-compactify-definitions",
 			"file": "chunks/packages.core.installation-compactify-definitions.md",
-			"tokens": 62,
+			"tokens": 111,
 			"tags": [
 				"packages",
 				"core",
@@ -1765,7 +1780,7 @@
 		{
 			"id": "packages.core.installation-expand-compact",
 			"file": "chunks/packages.core.installation-expand-compact.md",
-			"tokens": 57,
+			"tokens": 106,
 			"tags": [
 				"packages",
 				"core",
@@ -1774,8 +1789,8 @@
 				"compact"
 			],
 			"entities": [
-				"CompactDiagram",
-				"BpmnDefinitions"
+				"BpmnDefinitions",
+				"CompactDiagram"
 			]
 		},
 		{

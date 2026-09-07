@@ -295,11 +295,13 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [ ] **A1** Round-trip fidelity corpus + gate — 12–20 Camunda blueprints under
       `packages/core/tests/fixtures/blueprints/` with `PROVENANCE.md`, structural-signature
       assertion, landed red-listed so each fix deletes an allow-list entry
-- [ ] **A5a** `casen generate bpmn --input` must not overwrite its input by default —
-      require `--output` or `--force` (`apps/cli/src/commands/generate.ts`)
-- [ ] **A6** Correct the round-trip claim in
-      `apps/landing/src/content/docs/getting-started/concepts.md` (currently asserts a
-      guarantee we do not hold) and the `definitions.rootElements` example; rebuild docspack
+- [x] **A5a** `casen generate bpmn --input` must not overwrite its input by default —
+      require `--output` or `--force` (`apps/cli/src/commands/generate.ts`). The guard also
+      runs before stdin is read, so an unwritable target fails fast
+- [x] **A6** Correct the round-trip claim in
+      `apps/landing/src/content/docs/getting-started/concepts.md` (asserted a guarantee we do
+      not hold) and its `definitions.rootElements` example; the same falsehood in
+      `guides/ai.md` and `packages/core.md` corrected too; docspack rebuilt
 - [ ] **A2** `semantic-hash.ts` — DI-excluded canonical projection, sync SHA-256,
       `diffSemantics()`; assert auto-layout does not change the hash
 - [ ] **A3** Close the model gaps the corpus exposes — `extensionElements` + `documentation`

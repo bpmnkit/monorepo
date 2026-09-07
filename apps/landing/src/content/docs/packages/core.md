@@ -82,8 +82,11 @@ Useful for demos and tests.
 
 ### `compactify(definitions)`
 
-Converts a `BpmnDefinitions` object to a `CompactDiagram` — a small JSON object
-suitable for LLM prompts.
+Projects a `BpmnDefinitions` object onto a `CompactDiagram` — a small JSON object suitable
+for LLM prompts. **Lossy:** it keeps topology, names and the common Zeebe bindings, and drops
+collaborations, participants, message flows, lanes, data stores, artifacts, root-level
+messages and errors, multi-instance loop characteristics, full `zeebe:ioMapping` entries and
+diagram interchange.
 
 ```typescript
 import { compactify } from "@bpmnkit/core";
@@ -93,7 +96,9 @@ const compact = compactify(Bpmn.parse(xml));
 
 ### `expand(compact)`
 
-Converts a `CompactDiagram` back to a `BpmnDefinitions` object.
+Builds a `BpmnDefinitions` object from a `CompactDiagram`. It restores only what the compact
+form carries, so `expand(compactify(definitions))` is not `definitions` — use this to build a
+model from a compact definition, not as a round trip for a file you need to keep.
 
 ```typescript
 import { expand } from "@bpmnkit/core";

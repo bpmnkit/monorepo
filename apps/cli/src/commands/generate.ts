@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises"
+import { resolve } from "node:path"
 import { Bpmn, compactify, expand } from "@bpmnkit/core"
 import type { CompactDiagram, CompactElement, CompactFlow } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
@@ -487,6 +488,52 @@ async function readStdin(): Promise<string> {
 	return Buffer.concat(chunks).toString("utf-8").trim()
 }
 
+// ── Output path guard ─────────────────────────────────────────────────────────
+
+/**
+ * Decide where `--input` mode writes, refusing to replace the input file unless
+ * the caller asked for it explicitly.
+ *
+ * Modifying an existing file round-trips it through {@link compactify} and
+ * {@link expand}, which model only a subset of BPMN. Collaborations, pools,
+ * lanes, data stores, artifacts, root-level messages and errors, and Zeebe
+ * details such as `zeebe:subscription` correlation keys and `zeebe:ioMapping`
+ * entries do not survive. Writing that result back over the source destroys the
+ * original, so in-place replacement has to be asked for by name.
+ *
+ * @param inputFile - The `--input` path.
+ * @param outputFlag - The `--output` path, if any. `-` (stdout) is handled by the caller.
+ * @param force - Whether `--force` was passed.
+ * @returns The path to write to.
+ * @throws If the write would replace `inputFile` and `force` is false.
+ */
+export function resolveModifyOutputPath({
+	inputFile,
+	outputFlag,
+	force,
+}: {
+	inputFile: string
+	outputFlag: string | undefined
+	force: boolean
+}): string {
+	const output = typeof outputFlag === "string" && outputFlag.length > 0 ? outputFlag : undefined
+	const inPlace = output === undefined || resolve(output) === resolve(inputFile)
+
+	if (inPlace && !force) {
+		throw new Error(
+			[
+				`Refusing to overwrite ${inputFile}.`,
+				"Modifying a file re-serialises it from a compact model that does not carry " +
+					"collaborations, pools, lanes, data stores, artifacts, root messages/errors, or " +
+					"Zeebe subscription and ioMapping detail — writing the result back would drop them.",
+				`Write elsewhere with --output <file>, or pass --force to replace ${inputFile} anyway.`,
+			].join("\n"),
+		)
+	}
+
+	return output ?? inputFile
+}
+
 // ── Command ───────────────────────────────────────────────────────────────────
 
 const generateBpmnCmd: Command = {
@@ -534,7 +581,11 @@ const generateBpmnCmd: Command = {
 		{
 			name: "input",
 			short: "f",
-			description: "Existing .bpmn file to load and modify",
+			description:
+				"Existing .bpmn file to load and modify. Lossy — the file is rebuilt from a compact " +
+				"model that drops collaborations, pools, lanes, data stores, artifacts, root " +
+				"messages/errors, and Zeebe subscription/ioMapping detail. Requires --output, or " +
+				"--force to replace it in place.",
 			type: "string",
 		},
 		{
@@ -547,6 +598,12 @@ const generateBpmnCmd: Command = {
 			name: "dump-compact",
 			description:
 				"Print the CompactDiagram JSON of --input and exit (for AI inspection of existing files)",
+			type: "boolean",
+		},
+		{
+			name: "force",
+			description:
+				"Allow --input to be replaced in place. Lossy: see --input. Prefer --output <file>.",
 			type: "boolean",
 		},
 	],
@@ -591,11 +648,12 @@ const generateBpmnCmd: Command = {
 		{
 			description: "Add a new gateway path to an existing file",
 			command:
-				'casen generate bpmn --input order.bpmn --patch \'{"elements":[{"id":"notify","type":"serviceTask","name":"Notify","jobType":"notify-worker"},{"id":"end2","type":"endEvent","name":"Notified"}],"flows":[{"id":"fn1","from":"gw","to":"notify","condition":"= urgent"},{"id":"fn2","from":"notify","to":"end2"}]}\'',
+				'casen generate bpmn --input order.bpmn --output order.patched.bpmn --patch \'{"elements":[{"id":"notify","type":"serviceTask","name":"Notify","jobType":"notify-worker"},{"id":"end2","type":"endEvent","name":"Notified"}],"flows":[{"id":"fn1","from":"gw","to":"notify","condition":"= urgent"},{"id":"fn2","from":"notify","to":"end2"}]}\'',
 		},
 		{
 			description: "Pipe a patch from AI output",
-			command: 'echo \'{"elements":[...],"flows":[...]}\' | casen generate bpmn --input order.bpmn',
+			command:
+				'echo \'{"elements":[...],"flows":[...]}\' | casen generate bpmn --input order.bpmn --output order.patched.bpmn',
 		},
 		{
 			description: "Re-apply auto-layout to an existing file",
@@ -628,6 +686,17 @@ const generateBpmnCmd: Command = {
 				return
 			}
 
+			// Settle the destination before reading stdin or building the patch, so an
+			// unwritable target fails immediately instead of after the work is done.
+			const outputPath =
+				outputFlag === "-"
+					? null
+					: resolveModifyOutputPath({
+							inputFile,
+							outputFlag,
+							force: ctx.flags.force === true,
+						})
+
 			// Resolve patch from --patch flag or stdin
 			let patch: CompactPatch | null = null
 			if (patchFlag) {
@@ -659,13 +728,10 @@ const generateBpmnCmd: Command = {
 
 			const patched = Bpmn.export(expand(compact))
 
-			if (outputFlag === "-") {
+			if (outputPath === null) {
 				process.stdout.write(patched)
 				return
 			}
-
-			const outputPath =
-				typeof outputFlag === "string" && outputFlag.length > 0 ? outputFlag : inputFile
 
 			await writeFile(outputPath, patched, "utf-8")
 			ctx.output.ok(
