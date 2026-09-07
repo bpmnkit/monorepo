@@ -308,10 +308,13 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       `guides/ai.md` and `packages/core.md` corrected too; docspack rebuilt
 - [ ] **A2** `semantic-hash.ts` — DI-excluded canonical projection, sync SHA-256,
       `diffSemantics()`; assert auto-layout does not change the hash
-- [ ] **A3** Close the model gaps the corpus exposes — `extensionElements` + `documentation`
+- [x] **A3** Close the model gaps the corpus exposes — `extensionElements` + `documentation`
       on root/collaboration/artifact/lane types, `bpmn:category`/`categoryValue`, data
       associations, multi-instance `loopCardinality`/`completionCondition` (G22), and an
-      `unknownChildren` catch-all so future gaps preserve rather than drop
+      `unknownChildren` catch-all on `definitions`, `process`, `collaboration` and flow nodes.
+      All nine A3 rows in §7.1 closed; the allow-list holds only the two `normalised` entries.
+      **Not covered:** unmodelled children of lanes, artifacts and root elements (they carry
+      `documentation` + `extensionElements` only), and a second `documentation` on one element
 
 ### Phase 2 — A verified write boundary
 

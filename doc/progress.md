@@ -1,5 +1,56 @@
 # Progress
 
+## 2026-09-07 — A3: the model no longer drops what it does not name
+
+Nine gaps closed in `packages/core`, all nine allow-list entries in the A1 gate deleted, and
+the two `normalised` entries are all that remain. `zeebe:subscription` correlation keys,
+`bpmn:category`/`categoryValue`, data input/output associations with their `bpmn:property`
+placeholders, `documentation` on `definitions` and `process`, multi-instance
+`loopCardinality`/`completionCondition`, and `extensionElements` on collaborations and on
+root-level `message`/`error`/`escalation`/`signal` all round-trip now. The two minimal
+reproductions from the original analysis come back byte-identical.
+
+**The gaps were parser-side, serialiser-side, or both, and the split was not obvious.**
+`CollaborationFrame` already parsed `extensionElements`; nothing emitted them. The root
+elements were the reverse — `parseMessage` and friends were attribute-only functions that
+never saw their children. Eight elements needed the same `documentation` + `extensionElements`
+handling, which earned a shared `BaseElementFrame` rather than eight copies of the same
+switch; a `BaseOnlyFrame` covers the elements whose only children are those two.
+
+**The catch-all (G7) is scoped to four containers**, not everything. `definitions`, `process`,
+`collaboration` and flow nodes keep unrecognised children verbatim in `unknownChildren`, which
+covers `bpmn:import`, `itemDefinition`, `resource`, `ioSpecification`, `correlationKey`,
+`potentialOwner` and vendor elements outside `extensionElements` — a new fixture exercises all
+of them, nested content included. Lanes, artifacts and root elements get `documentation` and
+`extensionElements` but not arbitrary children; that limit is documented rather than hidden.
+
+**Two things the work turned up that were not in the plan.**
+
+First, the catch-all immediately broke `04-artifacts` by emitting associations and groups
+twice. `contentsChild` was using `null` for two different things — "recognised, no frame
+needed" and "not recognised at all" — so the capture path could not tell them apart. It now
+returns `undefined` for the second case only. The gate caught this on the first run, which is
+precisely what it was built for.
+
+Second, `TreeFrame` was recording the indentation between child elements as the parent's text
+content, so every nested extension re-emitted blank lines that grew on each round trip. That
+predates this work — it reproduces on a clean tree — but the catch-all made it apply to every
+captured subtree, so it is fixed here: whitespace-only text on an element that has children is
+dropped.
+
+**Docs rewritten to the guarantee now held**, replacing the accurate-but-temporary list of
+losses from the earlier A6 pass: what round-trips, the two deliberate normalisations, and what
+is still not preserved. Docspack rebuilt.
+
+Also noted, not touched: `KNOWN_FLOW_CHILDREN` and `KNOWN_PROCESS_CHILDREN` in the parser are
+dead code — defined, never referenced. I had edited them before realising, and reverted.
+
+609 tests in `@bpmnkit/core`, plus canvas (76), editor (97), plugins (134) and connectors (16)
+all pass; `biome check` clean across 837 files; every package that consumes `@bpmnkit/core`
+typechecks. `@bpmnkit/engine` still cannot build here — it needs `@bpmnkit/reebe-wasm` and a
+Rust toolchain — which is unchanged from before.
+
+
 ## 2026-09-07 — A round-trip fidelity gate, and two more gaps it immediately found
 
 A1 of *Core Model Fidelity*. `packages/core/tests/roundtrip-corpus.test.ts` now asserts that

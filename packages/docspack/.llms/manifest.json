@@ -563,7 +563,7 @@
 		{
 			"id": "getting-started.concepts.parsing-and-serializing",
 			"file": "chunks/getting-started.concepts.parsing-and-serializing.md",
-			"tokens": 481,
+			"tokens": 515,
 			"tags": [
 				"getting-started",
 				"concepts",
@@ -571,11 +571,13 @@
 				"serializing"
 			],
 			"entities": [
-				"BpmnDefinitions",
-				"extensionElements",
-				"unknownAttributes",
 				"Bpmn.parse()",
-				"Bpmn.export()"
+				"Bpmn.export()",
+				"unknownAttributes",
+				"unknownChildren",
+				"extensionElements",
+				"XmlElement",
+				"packages/core/tests/roundtrip-corpus.test.ts"
 			]
 		},
 		{

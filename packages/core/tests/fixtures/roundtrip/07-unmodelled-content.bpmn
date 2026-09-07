@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:acme="http://acme.example/schema/1.0"
+  id="Definitions_unmodelled" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:import importType="http://www.w3.org/2001/XMLSchema" location="types.xsd" namespace="http://acme.example/types" />
+  <bpmn:itemDefinition id="ItemDefinition_order" structureRef="acme:Order" />
+  <bpmn:resource id="Resource_reviewer" name="Reviewer" />
+  <acme:governance owner="risk-office" reviewCycle="quarterly">
+    <acme:control id="SOX-114" />
+  </acme:governance>
+  <bpmn:collaboration id="Collaboration_unmodelled">
+    <bpmn:participant id="Participant_main" name="Main" processRef="Process_unmodelled" />
+    <bpmn:correlationKey name="OrderKey">
+      <bpmn:correlationPropertyRef>CorrelationProperty_orderId</bpmn:correlationPropertyRef>
+    </bpmn:correlationKey>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_unmodelled" name="Unmodelled content carrier" isExecutable="true">
+    <bpmn:ioSpecification id="IoSpecification_1">
+      <bpmn:dataInput id="DataInput_order" name="order" />
+      <bpmn:dataOutput id="DataOutput_receipt" name="receipt" />
+      <bpmn:inputSet id="InputSet_1">
+        <bpmn:dataInputRefs>DataInput_order</bpmn:dataInputRefs>
+      </bpmn:inputSet>
+      <bpmn:outputSet id="OutputSet_1">
+        <bpmn:dataOutputRefs>DataOutput_receipt</bpmn:dataOutputRefs>
+      </bpmn:outputSet>
+    </bpmn:ioSpecification>
+    <bpmn:startEvent id="Start_u">
+      <bpmn:outgoing>Flow_u1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_u" name="Review order">
+      <bpmn:incoming>Flow_u1</bpmn:incoming>
+      <bpmn:outgoing>Flow_u2</bpmn:outgoing>
+      <bpmn:potentialOwner id="PotentialOwner_1">
+        <bpmn:resourceRef>Resource_reviewer</bpmn:resourceRef>
+      </bpmn:potentialOwner>
+      <acme:slaBudget minutes="30" />
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_u">
+      <bpmn:incoming>Flow_u2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_u1" sourceRef="Start_u" targetRef="Task_u" />
+    <bpmn:sequenceFlow id="Flow_u2" sourceRef="Task_u" targetRef="End_u" />
+  </bpmn:process>
+</bpmn:definitions>

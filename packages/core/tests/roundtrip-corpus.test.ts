@@ -33,87 +33,19 @@ interface AllowedChange {
 	reason: string
 }
 
-const G1 =
-	"G1: extensionElements are not modelled on root bpmn:message, so zeebe:subscription correlation keys are dropped"
-const G3 = "G3: documentation is not modelled on bpmn:definitions or bpmn:process"
-const G4 = "G4: bpmn:category and bpmn:categoryValue are not modelled, so group labels are dropped"
-const G5 = "G5: data associations and bpmn:property are not modelled, so data wiring is dropped"
-const G22 =
-	"G22: loopCardinality and completionCondition are not modelled on bpmn:multiInstanceLoopCharacteristics"
-const G23 = "G23: extensionElements are not modelled on bpmn:collaboration"
-
 const OPTIONAL_FALSE =
 	"Serialised only when true; BPMN treats the absent attribute as false, so the round trip is stable and semantics are unchanged"
 
 const ALLOWED: Record<string, AllowedChange[]> = {
-	"01-root-elements.bpmn": [
-		{ feature: "element:zeebe:subscription", kind: "gap", reason: G1 },
-		{ feature: "attr:zeebe:subscription@correlationKey", kind: "gap", reason: G1 },
-		{ feature: "child:bpmn:extensionElements > zeebe:subscription", kind: "gap", reason: G1 },
-		{ feature: "child:bpmn:message > bpmn:extensionElements", kind: "gap", reason: G1 },
-		{ feature: "element:bpmn:extensionElements", kind: "gap", reason: G1 },
-		{ feature: "element:bpmn:documentation", kind: "gap", reason: G3 },
-		{ feature: "text:bpmn:documentation", kind: "gap", reason: G3 },
-		{ feature: "child:bpmn:definitions > bpmn:documentation", kind: "gap", reason: G3 },
-		{ feature: "child:bpmn:process > bpmn:documentation", kind: "gap", reason: G3 },
-	],
+	"01-root-elements.bpmn": [],
 	"02-collaboration.bpmn": [
-		{ feature: "element:bpmn:extensionElements", kind: "gap", reason: G23 },
-		{ feature: "child:bpmn:collaboration > bpmn:extensionElements", kind: "gap", reason: G23 },
-		{ feature: "element:zeebe:properties", kind: "gap", reason: G23 },
-		{ feature: "element:zeebe:property", kind: "gap", reason: G23 },
-		{ feature: "attr:zeebe:property@name", kind: "gap", reason: G23 },
-		{ feature: "attr:zeebe:property@value", kind: "gap", reason: G23 },
-		{ feature: "child:bpmn:extensionElements > zeebe:properties", kind: "gap", reason: G23 },
-		{ feature: "child:zeebe:properties > zeebe:property", kind: "gap", reason: G23 },
 		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
 	],
-	"03-data-elements.bpmn": [
-		{ feature: "element:bpmn:dataInputAssociation", kind: "gap", reason: G5 },
-		{ feature: "element:bpmn:dataOutputAssociation", kind: "gap", reason: G5 },
-		{ feature: "element:bpmn:property", kind: "gap", reason: G5 },
-		{ feature: "element:bpmn:sourceRef", kind: "gap", reason: G5 },
-		{ feature: "element:bpmn:targetRef", kind: "gap", reason: G5 },
-		{ feature: "text:bpmn:sourceRef", kind: "gap", reason: G5 },
-		{ feature: "text:bpmn:targetRef", kind: "gap", reason: G5 },
-		{ feature: "attr:bpmn:dataInputAssociation@id", kind: "gap", reason: G5 },
-		{ feature: "attr:bpmn:dataOutputAssociation@id", kind: "gap", reason: G5 },
-		{ feature: "attr:bpmn:property@id", kind: "gap", reason: G5 },
-		{ feature: "attr:bpmn:property@name", kind: "gap", reason: G5 },
-		{ feature: "child:bpmn:serviceTask > bpmn:dataInputAssociation", kind: "gap", reason: G5 },
-		{ feature: "child:bpmn:serviceTask > bpmn:dataOutputAssociation", kind: "gap", reason: G5 },
-		{ feature: "child:bpmn:serviceTask > bpmn:property", kind: "gap", reason: G5 },
-		{ feature: "child:bpmn:dataInputAssociation > bpmn:sourceRef", kind: "gap", reason: G5 },
-		{ feature: "child:bpmn:dataInputAssociation > bpmn:targetRef", kind: "gap", reason: G5 },
-		{ feature: "child:bpmn:dataOutputAssociation > bpmn:targetRef", kind: "gap", reason: G5 },
-	],
-	"04-artifacts.bpmn": [
-		{ feature: "element:bpmn:category", kind: "gap", reason: G4 },
-		{ feature: "element:bpmn:categoryValue", kind: "gap", reason: G4 },
-		{ feature: "attr:bpmn:category@id", kind: "gap", reason: G4 },
-		{ feature: "attr:bpmn:categoryValue@id", kind: "gap", reason: G4 },
-		{ feature: "attr:bpmn:categoryValue@value", kind: "gap", reason: G4 },
-		{ feature: "child:bpmn:definitions > bpmn:category", kind: "gap", reason: G4 },
-		{ feature: "child:bpmn:category > bpmn:categoryValue", kind: "gap", reason: G4 },
-	],
+	"03-data-elements.bpmn": [],
+	"04-artifacts.bpmn": [],
 	"05-zeebe-extensions.bpmn": [],
+	"07-unmodelled-content.bpmn": [],
 	"06-events-and-containers.bpmn": [
-		{ feature: "element:bpmn:loopCardinality", kind: "gap", reason: G22 },
-		{ feature: "element:bpmn:completionCondition", kind: "gap", reason: G22 },
-		{ feature: "text:bpmn:loopCardinality", kind: "gap", reason: G22 },
-		{ feature: "text:bpmn:completionCondition", kind: "gap", reason: G22 },
-		{ feature: "attr:bpmn:loopCardinality@xsi:type", kind: "gap", reason: G22 },
-		{ feature: "attr:bpmn:completionCondition@xsi:type", kind: "gap", reason: G22 },
-		{
-			feature: "child:bpmn:multiInstanceLoopCharacteristics > bpmn:loopCardinality",
-			kind: "gap",
-			reason: G22,
-		},
-		{
-			feature: "child:bpmn:multiInstanceLoopCharacteristics > bpmn:completionCondition",
-			kind: "gap",
-			reason: G22,
-		},
 		{
 			feature: "attr:bpmn:multiInstanceLoopCharacteristics@isSequential",
 			kind: "normalised",

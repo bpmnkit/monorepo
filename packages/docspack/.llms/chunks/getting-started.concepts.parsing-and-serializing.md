@@ -18,35 +18,36 @@ const newXml = Bpmn.export(definitions);
 
 ### Round-trip fidelity
 
-`BpmnDefinitions` is a hand-written TypeScript model of BPMN, not a complete one. It carries
-the elements and attributes the SDK models, plus `extensionElements` and `unknownAttributes`
-on the types that declare them — everything else is dropped on export. Know what survives
-before you round-trip a file you cannot regenerate.
+`Bpmn.parse()` → `Bpmn.export()` preserves the document. Content the SDK models round-trips
+through its typed fields; content it does not model is kept verbatim and re-emitted:
 
-**Preserved:** flow nodes, sequence flows, gateways, sub-processes and boundary events;
-their `extensionElements` (so all Zeebe task configuration — job type, IO mappings, headers,
-form and decision bindings) and their `documentation`; process- and flow-level
-`extensionElements`; collaborations, participants, message flows and lanes as structure;
-namespace declarations; and diagram interchange, including `bioc`/`color` extensions.
+- **Unmodelled attributes** land in `unknownAttributes` on the element that carried them.
+- **Unmodelled children** of `definitions`, a `process`, a `collaboration` or a flow node land
+  in `unknownChildren` — so `bpmn:import`, `bpmn:itemDefinition`, `bpmn:ioSpecification`,
+  `bpmn:correlationKey`, `bpmn:potentialOwner` and vendor elements outside `extensionElements`
+  all survive, including their nested content.
+- **`extensionElements`** are kept as raw `XmlElement` trees wherever BPMN allows them,
+  including on root-level `message`, `error`, `escalation` and `signal` elements — which is
+  what carries `zeebe:subscription` correlation keys.
 
-**Dropped today:**
+A corpus of BPMN documents is round-tripped on every build and compared structurally —
+element counts, per-element attribute names, parent/child nesting and text content — by a
+scanner written independently of the parser, so a regression fails CI rather than reaching a
+release. See `packages/core/tests/roundtrip-corpus.test.ts`.
 
-- `extensionElements` on root-level `bpmn:message`, `bpmn:error`, `bpmn:escalation` and
-  `bpmn:signal` — which means **`zeebe:subscription` correlation keys do not survive**. A
-  round-tripped model still deploys and still opens in a modeler, but no longer correlates
-  messages.
-- `extensionElements` on participants, message flows, lanes and artifacts.
-- `bpmn:documentation` on `bpmn:process` and `bpmn:definitions`.
-- `bpmn:category` and `bpmn:categoryValue` (group labels).
-- `bpmn:dataInputAssociation`, `bpmn:dataOutputAssociation` and `bpmn:property` — the data
-  wiring between tasks and data objects.
-- Anything else the parser does not model, including `bpmn:ioSpecification`,
-  `bpmn:correlationKey`, `bpmn:itemDefinition`, `bpmn:import` and `bpmn:resourceRole`.
+**Deliberate normalisations.** The output is not byte-identical to the input, and two rewrites
+are intentional:
 
-Closing these gaps and gating them with a fidelity test over a corpus of real Camunda
-models is tracked as *Core Model Fidelity* on the roadmap. Until that lands, treat
-`Bpmn.parse()` → `Bpmn.export()` over a file you did not generate as lossy: write to a new
-path and diff, rather than replacing the original.
+- `isExecutable="false"` and `isSequential="false"` are written only when true. BPMN treats
+  the absent attribute as false, so this is stable and changes nothing.
+- Empty `<extensionElements/>` elements are dropped, and whitespace and attribute order are
+  not preserved.
+
+**Still not preserved.** Unmodelled *children* are captured on `definitions`, `process`,
+`collaboration` and flow nodes only. On other elements — lanes, artifacts, root-level
+messages and errors — `documentation` and `extensionElements` round-trip, but any other
+unrecognised child does not. A second `<documentation>` on the same element is also dropped;
+only the first is kept. If you need one of these, open an issue rather than working around it.
 
 ---
 Source: https://bpmnkit.com/docs/getting-started/concepts

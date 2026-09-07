@@ -347,13 +347,13 @@ source — only the problem statement can be. Concretely:
 
 | # | Measured gap (§4) | Evidence | Closed by | Verified by |
 |---|---|---|---|---|
-| G1 | `zeebe:subscription` dropped — 22 elements, 9/12 blueprints | §4.1, minimal repro | A3 (`extensionElements` on `BpmnMessage`) | A1 allow-list entry deleted; `zeebe-extensions` accessor test |
-| G2 | `extensionElements` dropped on `BpmnError`, `BpmnEscalation`, `BpmnSignal`, `BpmnParticipant`, `BpmnMessageFlow`, `BpmnLane`, `BpmnTextAnnotation`, `BpmnAssociation`, `BpmnGroup` | §4.1 root cause | A3 | A1 corpus + per-type unit test |
-| G3 | `bpmn:documentation` dropped on `bpmn:process` and `bpmn:definitions` | minimal repro | A3 | A1 corpus |
-| G4 | `bpmn:category` / `bpmn:categoryValue` dropped — group labels | §4.1 servicenow | A3 | A1 corpus |
-| G5 | `bpmn:dataInputAssociation` / `dataOutputAssociation` / `bpmn:property` / `sourceRef` / `targetRef` dropped | §4.1 servicenow, event-registration | A3 | A1 corpus |
-| G6 | `unknownAttributes` missing on `BpmnError`, `BpmnSignal`, `BpmnLaneSet` | `bpmn-model.ts` read | A3 | per-type unit test |
-| G7 | Unmodelled children silently dropped — `ioSpecification`, `correlationKey`, `itemDefinition`, `import`, `resourceRole`, and anything the spec adds later | parser has no case | A3 (`unknownChildren` catch-all — **preservation**, not modelling; model a type only when a consumer needs to read it) | A1 corpus + a synthetic fixture using each |
+| G1 ✅ | `zeebe:subscription` dropped — 22 elements, 9/12 blueprints | §4.1, minimal repro | A3 (`extensionElements` on `BpmnMessage`) | A1 allow-list entry deleted; `zeebe-extensions` accessor test |
+| G2 ✅ | `extensionElements` dropped on `BpmnError`, `BpmnEscalation`, `BpmnSignal`, `BpmnParticipant`, `BpmnMessageFlow`, `BpmnLane`, `BpmnTextAnnotation`, `BpmnAssociation`, `BpmnGroup` | §4.1 root cause | A3 | A1 corpus + per-type unit test |
+| G3 ✅ | `bpmn:documentation` dropped on `bpmn:process` and `bpmn:definitions` | minimal repro | A3 | A1 corpus |
+| G4 ✅ | `bpmn:category` / `bpmn:categoryValue` dropped — group labels | §4.1 servicenow | A3 | A1 corpus |
+| G5 ✅ | `bpmn:dataInputAssociation` / `dataOutputAssociation` / `bpmn:property` / `sourceRef` / `targetRef` dropped | §4.1 servicenow, event-registration | A3 | A1 corpus |
+| G6 ✅ | `unknownAttributes` missing on `BpmnError`, `BpmnSignal`, `BpmnLaneSet` | `bpmn-model.ts` read | A3 | per-type unit test |
+| G7 ✅ | Unmodelled children silently dropped — `ioSpecification`, `correlationKey`, `itemDefinition`, `import`, `resourceRole`, and anything the spec adds later | parser has no case | A3 (`unknownChildren` catch-all — **preservation**, not modelling; model a type only when a consumer needs to read it) | A1 corpus + a synthetic fixture using each |
 | G8 | No fidelity gate — parser and serializer are unchecked against each other | no such test exists | A1 | the suite itself; allow-list empty |
 | G9 | No semantic hash; layout churn indistinguishable from a model change | no such module | A2 | auto-layout does not change the hash |
 | G10 | No change report on write | no such module | A2 (`diffSemantics`) | golden diff per corpus fixture |
@@ -369,12 +369,16 @@ source — only the problem statement can be. Concretely:
 | G20 | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
 | G21 | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
 
-| G22 | `bpmn:loopCardinality` and `bpmn:completionCondition` dropped — a multi-instance activity loses its cardinality and completion condition | A1 corpus, `06-events-and-containers.bpmn` | A3 | A1 allow-list entry deleted |
-| G23 | `extensionElements` dropped on `bpmn:collaboration` | A1 corpus, `02-collaboration.bpmn` | A3 | A1 allow-list entry deleted |
+| G22 ✅ | `bpmn:loopCardinality` and `bpmn:completionCondition` dropped — a multi-instance activity loses its cardinality and completion condition | A1 corpus, `06-events-and-containers.bpmn` | A3 | A1 allow-list entry deleted |
+| G23 ✅ | `extensionElements` dropped on `bpmn:collaboration` | A1 corpus, `02-collaboration.bpmn` | A3 | A1 allow-list entry deleted |
 
 G1–G7, G22 and G23 are one code change (A3) against one test (A1); they are listed
 separately because each is an independently observable loss and each retires an allow-list
 entry.
+
+**Status: all A3 rows closed (2026-09-07).** G1–G7, G22 and G23 are marked ✅ — the model
+gaps are fixed and their allow-list entries deleted, leaving only the two `normalised`
+entries. `packages/core/tests/roundtrip-corpus.test.ts` is the standing proof.
 
 **G22 and G23 were found by the A1 corpus, not by §4.** The blueprints happened to use
 multi-instance activities without a cardinality or completion condition, and to carry no
