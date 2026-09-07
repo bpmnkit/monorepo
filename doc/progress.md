@@ -42,6 +42,25 @@ with evidence, sequencing and eleven costed action items in
 [`doc/bpmn-sdk-comparison.md`](bpmn-sdk-comparison.md), tracked under
 *Core Model Fidelity* in [`doc/roadmap.md`](roadmap.md).
 
+**Re-implementation, not a port.** The SDK ships no LICENSE, so it is all-rights-reserved
+and cannot be a source — only the problem statement can be. The plan now carries an explicit
+clean-room rule (§7.0): build from this document and from the moddle JSON descriptors, which
+are independently licensed (`bpmn-moddle` and `zeebe-bpmn-moddle` are both **MIT**, verified
+— the earlier draft said Apache-2.0 for the Zeebe one, which was wrong and changes the
+attribution the vendored file needs). Fixtures come from Camunda's marketplace with recorded
+provenance, not from that repository.
+
+**And the gaps are now a checklist, not a narrative.** §7.1 traces all 21 measured gaps
+(G1–G21) to the item that closes each and the test that proves it, so "all gaps implemented"
+is verifiable rather than asserted. Auditing that matrix surfaced one gap nothing covered:
+A3 fixes today's model holes and the `unknownChildren` catch-all preserves whatever it
+misses, but nothing detects the model falling behind the spec *again*. Added **A12** — vendor
+the BPMN/DI descriptors and emit a coverage report labelling every descriptor type and
+property `modelled` / `preserved` / `dropped`, with CI failing on any `dropped`. We can't
+generate our types from the descriptors the way the SDK does without taking `bpmn-moddle` at
+runtime; the adaptable half is the check, not the generation. Twelve items, ~26 days, none
+optional.
+
 Explicitly **not** adopting: `bpmn-moddle` at runtime (kills browser support and the
 zero-dependency promise), discarding DI on write (`bpmn-sdk` has no mode that preserves a
 hand-arranged diagram — a regression for us), and `bpmn-auto-layout` (already evaluated and

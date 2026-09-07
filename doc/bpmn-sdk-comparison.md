@@ -28,7 +28,9 @@ contract**, a **verified write boundary**, a **full-model edit path**, and two *
 > `package.json`. It is therefore all-rights-reserved: **do not copy code, tests, or
 > fixtures from it.** Every action item below is an independent implementation of an idea.
 > The blueprint corpus in §4 must be sourced from Camunda's public blueprint marketplace
-> directly, with provenance recorded, not lifted from that repository.
+> directly, with provenance recorded, not lifted from that repository. §7.0 states the
+> clean-room rule this work is done under; §7.1 traces every measured gap to the item
+> that closes it, so "all gaps implemented" is a checkable condition rather than a claim.
 
 ---
 
@@ -312,8 +314,63 @@ Worth stating plainly, because the plan below should not erode any of it.
 
 ## 7. Action items
 
-Priorities: **P0** = silent data loss users cannot detect; **P1** = closes a real
-capability gap; **P2** = worth doing when the area is next touched.
+**Every gap in §4 gets closed.** The priority labels order the work, they do not select it:
+**P0** = silent data loss users cannot detect, do first; **P1** = closes a real capability
+gap; **P2** = depends on P0/P1 landing first. Nothing here is optional, and §7.1 is the
+checklist that says so.
+
+### 7.0 Clean-room rule
+
+None of this is a port. The SDK is all-rights-reserved (§ Verdict), so it cannot be a
+source — only the problem statement can be. Concretely:
+
+- **Implement from this document and from the moddle JSON descriptors, never from the SDK's
+  source.** §3 and §4 describe every behaviour to be built in prose and measurement; that
+  is the whole specification. Do not open `bpmn-sdk`'s `.ts` files while writing the
+  equivalent module, and do not keep a clone in the working tree.
+- **The descriptors are an independent, licensed source.** `bpmn-moddle` and
+  `zeebe-bpmn-moddle` are both **MIT** (verified 2026-09-07: `bpmn-moddle` © 2014 camunda
+  Services GmbH; `zeebe-bpmn-moddle` © 2020–present Camunda Services GmbH). Their
+  `bpmn.json` / `bpmndi.json` / `dc.json` / `di.json` / `zeebe.json` may be vendored or read
+  at build time provided the MIT notice travels with them — record it in
+  `packages/core/src/bpmn/descriptors/LICENSE` alongside the vendored files. The BPMN 2.0
+  and DI specifications themselves (OMG) are the other legitimate source.
+- **Fixtures come from Camunda, not from the SDK.** Same blueprints, sourced independently,
+  with `PROVENANCE.md` recording URL, date and terms per file (A1).
+- **Names and shapes will differ, and should.** Our API is `BpmnDefinitions` +
+  `XmlElement`, not moddle elements; our hash is over our own projection; our write
+  boundary is a free function, not a method on a `Bpmn` facade. Convergent naming for
+  genuinely shared concepts (`semanticHash`, `layout: "none"`) is unavoidable and fine —
+  copied structure is not.
+
+### 7.1 Traceability — every measured gap to the item that closes it
+
+| # | Measured gap (§4) | Evidence | Closed by | Verified by |
+|---|---|---|---|---|
+| G1 | `zeebe:subscription` dropped — 22 elements, 9/12 blueprints | §4.1, minimal repro | A3 (`extensionElements` on `BpmnMessage`) | A1 allow-list entry deleted; `zeebe-extensions` accessor test |
+| G2 | `extensionElements` dropped on `BpmnError`, `BpmnEscalation`, `BpmnSignal`, `BpmnParticipant`, `BpmnMessageFlow`, `BpmnLane`, `BpmnTextAnnotation`, `BpmnAssociation`, `BpmnGroup` | §4.1 root cause | A3 | A1 corpus + per-type unit test |
+| G3 | `bpmn:documentation` dropped on `bpmn:process` and `bpmn:definitions` | minimal repro | A3 | A1 corpus |
+| G4 | `bpmn:category` / `bpmn:categoryValue` dropped — group labels | §4.1 servicenow | A3 | A1 corpus |
+| G5 | `bpmn:dataInputAssociation` / `dataOutputAssociation` / `bpmn:property` / `sourceRef` / `targetRef` dropped | §4.1 servicenow, event-registration | A3 | A1 corpus |
+| G6 | `unknownAttributes` missing on `BpmnError`, `BpmnSignal`, `BpmnLaneSet` | `bpmn-model.ts` read | A3 | per-type unit test |
+| G7 | Unmodelled children silently dropped — `ioSpecification`, `correlationKey`, `itemDefinition`, `import`, `resourceRole`, and anything the spec adds later | parser has no case | A3 (`unknownChildren` catch-all — **preservation**, not modelling; model a type only when a consumer needs to read it) | A1 corpus + a synthetic fixture using each |
+| G8 | No fidelity gate — parser and serializer are unchecked against each other | no such test exists | A1 | the suite itself; allow-list empty |
+| G9 | No semantic hash; layout churn indistinguishable from a model change | no such module | A2 | auto-layout does not change the hash |
+| G10 | No change report on write | no such module | A2 (`diffSemantics`) | golden diff per corpus fixture |
+| G11 | No verified write boundary — nothing re-reads what it wrote | `writeFile` at 11 CLI sites | A4 | injected lossy serializer must be refused |
+| G12 | Non-atomic writes; no overwrite guard; output may alias input | `apps/cli/src/commands/*` | A4 | interrupted-write and alias tests |
+| G13 | `casen generate bpmn --input` overwrites its input with a lossy round trip | `generate.ts:670-676` | A5a | CLI test: refuses without `--output`/`--force` |
+| G14 | `applyOperations()` no-ops silently on unresolved element/flow/parent IDs | `operations.ts:100-160` | A5b | unresolved-ID test expects a failure |
+| G15 | Edit path runs through lossy `CompactDiagram` (CLI, MCP, AI review) | §4.2 | A5c | corpus edit round trip preserves hash |
+| G16 | Docs assert a round-trip guarantee we do not hold; example uses `bpmn-moddle`'s API | `concepts.md:80,90` | A6 | docspack rebuilt; claim matches A1's result |
+| G17 | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
+| G18 | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
+| G19 | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
+| G20 | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
+| G21 | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
+
+G1–G7 are one code change (A3) against one test (A1); they are listed separately because
+each is an independently observable loss and each retires an allow-list entry.
 
 ### A1 — Round-trip fidelity gate (P0, foundational)
 
@@ -432,8 +489,10 @@ Until A3 lands this is a correction, not a downgrade — the current text is sim
 
 Adopt the *idea* of `bpmn-sdk`'s `extensions.ensure()` without `bpmn-moddle`:
 
-- Vendor `zeebe.json` (Apache-2.0, from `zeebe-bpmn-moddle`) into `packages/core` and
-  generate a build-time table of `{ type → { validOwners, properties } }`.
+- Vendor `zeebe.json` from `zeebe-bpmn-moddle` (**MIT**, © 2020–present Camunda Services
+  GmbH — carry the notice into `packages/core/src/bpmn/descriptors/LICENSE`) and generate a
+  build-time table of `{ type → { validOwners, properties } }`. The descriptor is the
+  independent source that makes this a re-implementation rather than a port (§7.0).
 - `zeebe-extensions.ts` gains `ensureExtension(owner, type)` which rejects a placement the
   descriptor does not allow — `zeebe:formDefinition` only on a user task,
   `zeebe:subscription` only on a message, and so on.
@@ -463,6 +522,32 @@ Pairs with A5: "open, edit, write" becomes the default story for existing files,
 
 Effort: ~2 days.
 
+### A12 — Descriptor coverage check for the BPMN core model (P1)
+
+A3 closes today's gaps; this is what stops tomorrow's. It is the one gap in §4 that no
+other item covers: G7's catch-all *preserves* unmodelled content, but nothing tells us
+when the model has fallen behind the spec.
+
+`bpmn-sdk` solves this by generating its whole type surface from the descriptors. We
+cannot — that would mean `bpmn-moddle` at runtime (§6). The adaptable half is the
+**check**, not the generation:
+
+- Vendor `bpmn.json` / `bpmndi.json` / `dc.json` / `di.json` alongside `zeebe.json` (all
+  MIT, same attribution as A7).
+- A build-time script walks the descriptors and emits a coverage report:
+  every descriptor type and property, labelled `modelled` (a named field on our types),
+  `preserved` (reaches `unknownChildren` / `unknownAttributes`) or `dropped`.
+- **`dropped` must be empty.** A `--check` mode fails CI on any entry, so a descriptor bump
+  that widens the spec surface breaks the build instead of silently widening the loss.
+- Keep an explicit, reviewed ignore-list for the presentation prefixes we deliberately
+  handle structurally (`bpmndi`, `dc`, `di`) — the same exclusions A2's projection uses,
+  so the two cannot disagree.
+
+This also retires the question "is our model still a faithful subset?" — currently
+unanswerable without the manual audit that produced §4.
+
+Effort: ~3 days. Sequenced after A3 and A7 share the descriptor-vendoring work.
+
 ### A10 — Publish gate that consumes the tarball (P2)
 
 Extend `scripts/check-packages.mjs` (or add `scripts/check-package-consumable.mjs`) to,
@@ -484,14 +569,20 @@ Effort: ~2 days.
 ### Sequencing
 
 ```
-A1 fidelity gate ──┬── A3 model gaps ──┬── A7 descriptor-checked extensions
-                   │                   └── A6 docs correction (after A3 lands)
-A2 semantic hash ──┴── A4 write boundary ── A5 CLI/MCP re-target
+A1 fidelity gate ──┬── A3 model gaps ──┬── A7 zeebe descriptor checks ─┬── A12 coverage check
+                   │                   └── A6 docs correction          │   (shares vendored
+                   │                                                   │    descriptors)
+A2 semantic hash ──┴── A4 write boundary ── A5b/A5c operations re-target
                                               └── A9 continue-existing ── A8 collaboration builder
-A10, A11 independent
+A5a CLI overwrite guard, A10 publish gate, A11 ergonomics — independent
 ```
 
-A5's CLI guard and A6's factual correction do not depend on anything and should ship first.
+A5a's CLI guard and A6's factual correction depend on nothing and should ship first: one
+stops active data destruction, the other stops us telling users it cannot happen.
+
+Total: roughly 26 working days across twelve items. None is dropped — §7.1 is the
+completion criterion, and it is only satisfied when A1's allow-list is empty, A12's
+`dropped` set is empty, and every row's "verified by" test exists and passes.
 
 ---
 

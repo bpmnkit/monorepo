@@ -283,6 +283,12 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 > — measured against `philippfromme/bpmn-sdk` (2026-09-07). `Bpmn.parse()` → `Bpmn.export()`
 > loses data on 11 of 12 real Camunda blueprints, including 22 `zeebe:subscription`
 > correlation keys across 9 files.
+>
+> **Every gap is closed by an item below — none is optional.** The reference SDK is
+> all-rights-reserved, so this is re-implementation from the written specification and from
+> the MIT moddle descriptors, never a port: see §7.0 (clean-room rule) and §7.1 (the
+> gap → item → verification matrix, G1–G21) in the analysis. Done means A1's allow-list is
+> empty, A12's `dropped` set is empty, and every §7.1 verification exists and passes.
 
 ### Phase 1 — Stop the silent loss
 
@@ -310,8 +316,13 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ### Phase 3 — Capability gaps
 
-- [ ] **A7** Descriptor-checked Zeebe extension writes — vendored `zeebe.json`, generated
-      owner/property table, `--check` mode in CI
+- [ ] **A7** Descriptor-checked Zeebe extension writes — vendored `zeebe.json` (MIT, notice
+      carried into `packages/core/src/bpmn/descriptors/LICENSE`), generated owner/property
+      table, `--check` mode in CI
+- [ ] **A12** Descriptor coverage check for the BPMN core model — vendor `bpmn.json`,
+      `bpmndi.json`, `dc.json`, `di.json`; report every descriptor type/property as
+      `modelled` / `preserved` / `dropped`; CI fails on any `dropped`. This is what stops
+      the model drifting from the spec again after A3 closes today's gaps
 - [ ] **A9** `ProcessBuilder.from(defs, processId).at(nodeId)` — continue an existing model
       fluently instead of regenerating it
 - [ ] **A8** Collaboration builder — `.participant()`, `.message()`, `.messageFlow()`
