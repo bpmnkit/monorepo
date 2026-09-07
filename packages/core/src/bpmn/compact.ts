@@ -72,7 +72,18 @@ export interface CompactProcess {
 
 /**
  * Token-efficient representation of a {@link BpmnDefinitions} document.
- * Produced by {@link compactify}; restored to full form by {@link expand}.
+ *
+ * **A read-only view, not a model.** It carries topology, names and the common
+ * Zeebe bindings and drops everything else — collaborations, participants,
+ * message flows, lanes, data stores, artifacts, root-level messages and errors,
+ * multi-instance loop characteristics, full `zeebe:ioMapping` entries and the
+ * diagram. Use it to show a model to a language model, and
+ * {@link expand} to build a *new* model from one.
+ *
+ * Do not use it as an edit path for a file you need to keep:
+ * `expand(compactify(defs))` is not `defs`. Edit the {@link BpmnDefinitions}
+ * instead — `applyBpmnOperations` applies the same operation vocabulary to the
+ * full model without going through this projection.
  */
 export interface CompactDiagram {
 	id: string
@@ -193,7 +204,7 @@ export function compactify(defs: BpmnDefinitions): CompactDiagram {
 
 // ── Expand ───────────────────────────────────────────────────────────────────
 
-function makeEventDef(eventType: string): BpmnEventDefinition | undefined {
+export function makeEventDef(eventType: string): BpmnEventDefinition | undefined {
 	switch (eventType) {
 		case "timer":
 			return { type: "timer" }
@@ -220,7 +231,7 @@ function makeEventDef(eventType: string): BpmnEventDefinition | undefined {
 	}
 }
 
-function makeExtensions(el: CompactElement): XmlElement[] {
+export function makeExtensions(el: CompactElement): XmlElement[] {
 	const ext: XmlElement[] = []
 	if (el.jobType) {
 		ext.push({ name: "zeebe:taskDefinition", attributes: { type: el.jobType }, children: [] })
@@ -319,7 +330,7 @@ function buildSubContent(
 	}
 }
 
-function buildFlowElement(
+export function buildFlowElement(
 	el: CompactElement,
 	incoming: string[],
 	outgoing: string[],

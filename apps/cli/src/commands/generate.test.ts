@@ -1,4 +1,4 @@
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve as resolvePath } from "node:path"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -37,10 +37,10 @@ describe("resolveModifyOutputPath", () => {
 		).toThrow(/--output <file>.*--force/s)
 	})
 
-	it("says what would be lost, so the refusal is actionable", () => {
+	it("says why replacing is still destructive, so the refusal is actionable", () => {
 		expect(() =>
 			resolveModifyOutputPath({ inputFile: "order.bpmn", outputFlag: undefined, force: false }),
-		).toThrow(/collaborations, pools, lanes/)
+		).toThrow(/the original is gone once it is replaced/)
 	})
 
 	it("allows in-place replacement with --force", () => {
@@ -122,5 +122,54 @@ describe("generate bpmn --input", () => {
 		copyFileSync(sample, input)
 		await run({ input, force: true })
 		expect(readFileSync(input, "utf-8")).toContain("<bpmn:definitions")
+	})
+
+	/**
+	 * The patch used to be applied to a compact projection and expanded back, so
+	 * adding one task to a file with pools removed the pools. It now goes through
+	 * the full model.
+	 */
+	it("keeps pools and message correlation keys across a patch", async () => {
+		const rich = join(dir, "rich.bpmn")
+		writeFileSync(
+			rich,
+			`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="D" targetNamespace="x">
+  <bpmn:message id="Msg" name="Ping"><bpmn:extensionElements><zeebe:subscription correlationKey="=id" /></bpmn:extensionElements></bpmn:message>
+  <bpmn:collaboration id="C"><bpmn:participant id="Pa" name="Pool" processRef="P" /></bpmn:collaboration>
+  <bpmn:process id="P" isExecutable="true">
+    <bpmn:startEvent id="S"><bpmn:outgoing>F</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:endEvent id="E"><bpmn:incoming>F</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="F" sourceRef="S" targetRef="E" />
+  </bpmn:process>
+</bpmn:definitions>`,
+			"utf-8",
+		)
+		const output = join(dir, "rich.patched.bpmn")
+
+		await run({
+			input: rich,
+			output,
+			patch: JSON.stringify({
+				elements: [{ id: "T", type: "serviceTask", name: "Work", jobType: "do-work" }],
+				flows: [{ id: "F2", from: "T", to: "E" }],
+			}),
+		})
+
+		const written = readFileSync(output, "utf-8")
+		expect(written).toContain('<zeebe:subscription correlationKey="=id"')
+		expect(written).toContain('<bpmn:participant id="Pa"')
+		expect(written).toContain('id="T"')
+	})
+
+	it("refuses a patch that names an element which does not exist", async () => {
+		copyFileSync(sample, input)
+		await expect(
+			run({
+				input,
+				output: join(dir, "bad.bpmn"),
+				patch: JSON.stringify({ flows: [{ id: "X", from: "nope", to: "alsonope" }] }),
+			}),
+		).rejects.toThrow(/no element with id "nope"/)
 	})
 })

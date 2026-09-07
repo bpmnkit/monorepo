@@ -328,9 +328,18 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       **No opt-out of verification** — see the module header for why. Note the boundary
       cannot catch *parser* losses (absent from both sides of the comparison); that stays A1's
       job
-- [ ] **A5b** `applyOperations()` fails loudly on unresolved IDs (`strict` option, then default)
-- [ ] **A5c** Re-target operations at `BpmnDefinitions`; keep `compactify()` as a read-only
-      LLM view and document it as lossy; same for the MCP mutation tools
+- [x] **A5b** Unresolved ids fail loudly. `applyBpmnOperations` is strict by default and
+      all-or-nothing; `strict: false` returns typed problems instead. The old compact
+      `applyOperations` is left as-is and is now documented as legacy — nothing calls it
+- [x] **A5c** Operations re-targeted at `BpmnDefinitions` (`applyBpmnOperations`), plus
+      `reconcileCompact` for applying a compact diagram as changes rather than expanding it
+      over the model. `compactify()` documented as a read-only view. Call sites moved: the CLI
+      `--patch` path, the proxy `/improve` (now takes `{ xml }`, compact only for the prompt),
+      and the MCP `replace_diagram`. **The MCP mutation tools already applied to the full
+      model** — the plan was wrong about that. **Remaining:** the MCP server writes with
+      `writeFileSync`, not `writeBpmn`, because its code-mode bridge calls tools synchronously
+      inside a `vm`; it now verifies the round trip inline, but adopting A4 there needs an
+      async bridge first
 
 ### Phase 3 — Capability gaps
 

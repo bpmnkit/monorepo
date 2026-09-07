@@ -866,7 +866,7 @@
 		{
 			"id": "guides.ai",
 			"file": "chunks/guides.ai.md",
-			"tokens": 417,
+			"tokens": 478,
 			"tags": [
 				"guides",
 				"ai"
@@ -875,7 +875,8 @@
 				"expand()",
 				"compactify()",
 				"CompactElement",
-				"updatedXml"
+				"reconcileCompact",
+				"applyBpmnOperations"
 			]
 		},
 		{
@@ -1806,6 +1807,41 @@
 				"after"
 			],
 			"entities": []
+		},
+		{
+			"id": "packages.core.installation-applybpmnoperations-definitions-operations-options",
+			"file": "chunks/packages.core.installation-applybpmnoperations-definitions-operations-options.md",
+			"tokens": 235,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"applybpmnoperations",
+				"definitions",
+				"operations",
+				"options"
+			],
+			"entities": [
+				"CompactDiagram",
+				"OperationError"
+			]
+		},
+		{
+			"id": "packages.core.installation-reconcilecompact-definitions-compact-options",
+			"file": "chunks/packages.core.installation-reconcilecompact-definitions-compact-options.md",
+			"tokens": 129,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"reconcilecompact",
+				"definitions",
+				"compact",
+				"options"
+			],
+			"entities": [
+				"CompactDiagram"
+			]
 		},
 		{
 			"id": "packages.core.installation-compactify-definitions",

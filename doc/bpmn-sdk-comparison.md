@@ -360,8 +360,8 @@ source — only the problem statement can be. Concretely:
 | G11 ✅ | No verified write boundary — nothing re-reads what it wrote | `writeFile` at 11 CLI sites | A4 | injected lossy serializer must be refused |
 | G12 ✅ | Non-atomic writes; no overwrite guard; output may alias input | `apps/cli/src/commands/*` | A4 | interrupted-write and alias tests |
 | G13 | `casen generate bpmn --input` overwrites its input with a lossy round trip | `generate.ts:670-676` | A5a | CLI test: refuses without `--output`/`--force` |
-| G14 | `applyOperations()` no-ops silently on unresolved element/flow/parent IDs | `operations.ts:100-160` | A5b | unresolved-ID test expects a failure |
-| G15 | Edit path runs through lossy `CompactDiagram` (CLI, MCP, AI review) | §4.2 | A5c | corpus edit round trip preserves hash |
+| G14 ✅ | `applyOperations()` no-ops silently on unresolved element/flow/parent IDs | `operations.ts:100-160` | A5b | unresolved-ID test expects a failure |
+| G15 ✅ | Edit path runs through lossy `CompactDiagram` (CLI, MCP, AI review) | §4.2 | A5c | corpus edit round trip preserves hash |
 | G16 | Docs assert a round-trip guarantee we do not hold; example uses `bpmn-moddle`'s API | `concepts.md:80,90` | A6 | docspack rebuilt; claim matches A1's result |
 | G17 | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
 | G18 | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
@@ -375,6 +375,16 @@ source — only the problem statement can be. Concretely:
 G1–G7, G22 and G23 are one code change (A3) against one test (A1); they are listed
 separately because each is an independently observable loss and each retires an allow-list
 entry.
+
+**Status: A1, A2, A3, A4, A5a, A5b, A5c and A6 shipped (2026-09-07).** G14 and G15 are
+A5b/A5c's rows. `applyBpmnOperations` and `reconcileCompact` apply the operation vocabulary to
+`BpmnDefinitions` and report unresolved ids instead of skipping them; the CLI patch path, the
+proxy's `/improve` and the MCP server's `replace_diagram` all go through them now.
+
+**Correction to this plan.** §7.1 and A5c said the MCP *mutation* tools apply to a compact
+diagram. They do not — `add_elements`, `remove_elements`, `update_element`, `set_condition` and
+`add_http_call` already mutated `BpmnDefinitions` directly. Only `replace_diagram` expanded
+compact over the whole model, and only that one needed changing.
 
 **Status: A1, A2, A3, A4, A5a and A6 shipped (2026-09-07).** G11 and G12 are A4's rows:
 `writeBpmn` in `packages/core/src/node/write.ts`, behind the `@bpmnkit/core/node` subpath so

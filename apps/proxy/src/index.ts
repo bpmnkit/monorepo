@@ -15,8 +15,8 @@ import http from "node:http"
 import { homedir, tmpdir } from "node:os"
 import { basename, dirname, extname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
-import { Bpmn, applyOperations, compactify, expand, optimize } from "@bpmnkit/core"
-import type { BpmnOperation, CompactDiagram } from "@bpmnkit/core"
+import { Bpmn, applyBpmnOperations, compactify, expand, optimize } from "@bpmnkit/core"
+import type { BpmnDefinitions, BpmnOperation, CompactDiagram } from "@bpmnkit/core"
 import { createClientFromProfile } from "@bpmnkit/profiles"
 import {
 	getActiveName,
@@ -1178,16 +1178,32 @@ const server = http.createServer(async (req, res) => {
 	// Emits SSE: tokens (explanation) + ops event + xml event + done.
 	if (url.pathname === "/improve" && req.method === "POST") {
 		const body = await readBody(req)
-		let context: CompactDiagram
+		let definitions: BpmnDefinitions
 		let instruction: string | null
 		let backend: string | null
 		try {
 			const parsed = JSON.parse(body) as {
-				context: CompactDiagram
+				xml?: string
+				context?: CompactDiagram
 				instruction?: string | null
 				backend?: string | null
 			}
-			context = parsed.context
+			// `xml` carries the whole model, so operations apply to it directly and
+			// nothing outside the compact projection is lost. `context` is the older
+			// contract, kept working for clients that have not been updated — it can
+			// only ever describe what compact models.
+			if (typeof parsed.xml === "string") {
+				definitions = Bpmn.parse(parsed.xml)
+			} else if (parsed.context) {
+				console.warn(
+					"[server] /improve received compact context; send { xml } to keep pools, lanes and ioMapping detail",
+				)
+				definitions = expand(parsed.context)
+			} else {
+				res.writeHead(400)
+				res.end("Bad Request: send { xml } or { context }")
+				return
+			}
 			instruction = parsed.instruction ?? null
 			backend = parsed.backend ?? null
 		} catch {
@@ -1207,10 +1223,9 @@ const server = http.createServer(async (req, res) => {
 		}
 
 		// ── Phase 1: auto-fix ─────────────────────────────────────────────────
-		let fixedCompact = context
 		let autoFixCount = 0
 		try {
-			const defs = expand(context)
+			const defs = definitions
 			const report = optimize(defs)
 			const fixable = report.findings
 				.filter((f) => f.applyFix)
@@ -1221,7 +1236,6 @@ const server = http.createServer(async (req, res) => {
 			for (const f of fixable) f.applyFix?.(defs)
 			autoFixCount = fixable.length
 			if (autoFixCount > 0) {
-				fixedCompact = compactify(defs)
 				console.log(`[server] /improve → auto-fixed ${autoFixCount} issue(s)`)
 			}
 		} catch (err) {
@@ -1231,7 +1245,7 @@ const server = http.createServer(async (req, res) => {
 		// ── Phase 2: collect remaining findings ───────────────────────────────
 		const findings: FindingInfo[] = []
 		try {
-			const remaining = optimize(expand(fixedCompact))
+			const remaining = optimize(definitions)
 			for (const f of remaining.findings) {
 				findings.push({
 					category: f.category,
@@ -1258,7 +1272,9 @@ const server = http.createServer(async (req, res) => {
 		// ── Phase 3: AI call — outputs explanation + ```json operations block ─
 		const systemPrompt = buildImproveSystemPrompt()
 		const improveCtx: ImproveContext = {
-			compact: fixedCompact,
+			// The prompt gets the compact view — that is what it is for. The
+			// operations it produces are applied to the full model below.
+			compact: compactify(definitions),
 			findings,
 			autoFixCount,
 			instruction,
@@ -1292,12 +1308,26 @@ const server = http.createServer(async (req, res) => {
 
 		if (ops.length > 0 || autoFixCount > 0) {
 			try {
-				const finalCompact = ops.length > 0 ? applyOperations(fixedCompact, ops) : fixedCompact
-				const xml = Bpmn.export(expand(finalCompact))
+				// Operations land on the full model, so anything the compact view in
+				// the prompt could not describe survives the edit untouched.
+				const edited =
+					ops.length > 0
+						? applyBpmnOperations(definitions, ops, { strict: false })
+						: { definitions, problems: [], applied: 0 }
+				if (edited.problems.length > 0) {
+					// An operation naming an element that does not exist used to be
+					// skipped in silence; report it so the model can be corrected.
+					const detail = edited.problems.map((p) => `[${p.index}] ${p.reason}`).join("; ")
+					console.warn(
+						`[server] /improve → ${edited.problems.length} operation(s) skipped: ${detail}`,
+					)
+					res.write(`data: ${JSON.stringify({ type: "problems", problems: edited.problems })}\n\n`)
+				}
+				const xml = Bpmn.export(edited.definitions)
 				res.write(`data: ${JSON.stringify({ type: "xml", xml })}\n\n`)
-				console.log(`[server] /improve → ${ops.length} ops applied, XML emitted`)
+				console.log(`[server] /improve → ${edited.applied} ops applied, XML emitted`)
 			} catch (err) {
-				console.error("[server] /improve expand failed:", String(err))
+				console.error("[server] /improve apply failed:", String(err))
 				res.write(
 					`data: ${JSON.stringify({ type: "error", message: `Failed to apply operations: ${String(err)}` })}\n\n`,
 				)

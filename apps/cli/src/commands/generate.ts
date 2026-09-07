@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
-import { Bpmn, compactify, expand } from "@bpmnkit/core"
-import type { CompactDiagram, CompactElement, CompactFlow } from "@bpmnkit/core"
+import { Bpmn, applyAutoLayout, applyBpmnOperations, compactify, expand } from "@bpmnkit/core"
+import type { BpmnOperation, CompactDiagram, CompactElement, CompactFlow } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
 
 // ── JSON schema reference ─────────────────────────────────────────────────────
@@ -494,12 +494,10 @@ async function readStdin(): Promise<string> {
  * Decide where `--input` mode writes, refusing to replace the input file unless
  * the caller asked for it explicitly.
  *
- * Modifying an existing file round-trips it through {@link compactify} and
- * {@link expand}, which model only a subset of BPMN. Collaborations, pools,
- * lanes, data stores, artifacts, root-level messages and errors, and Zeebe
- * details such as `zeebe:subscription` correlation keys and `zeebe:ioMapping`
- * entries do not survive. Writing that result back over the source destroys the
- * original, so in-place replacement has to be asked for by name.
+ * The patch itself is applied to the full model, so nothing outside it is lost.
+ * Replacing the source is still destructive — the diagram is re-laid out, and a
+ * mistaken patch has nowhere to be compared against — so in-place replacement
+ * has to be asked for by name.
  *
  * @param inputFile - The `--input` path.
  * @param outputFlag - The `--output` path, if any. `-` (stdout) is handled by the caller.
@@ -523,9 +521,8 @@ export function resolveModifyOutputPath({
 		throw new Error(
 			[
 				`Refusing to overwrite ${inputFile}.`,
-				"Modifying a file re-serialises it from a compact model that does not carry " +
-					"collaborations, pools, lanes, data stores, artifacts, root messages/errors, or " +
-					"Zeebe subscription and ioMapping detail — writing the result back would drop them.",
+				"The patch applies to the full model, so nothing is dropped, but the diagram is " +
+					"re-laid out and the original is gone once it is replaced.",
 				`Write elsewhere with --output <file>, or pass --force to replace ${inputFile} anyway.`,
 			].join("\n"),
 		)
@@ -582,10 +579,9 @@ const generateBpmnCmd: Command = {
 			name: "input",
 			short: "f",
 			description:
-				"Existing .bpmn file to load and modify. Lossy — the file is rebuilt from a compact " +
-				"model that drops collaborations, pools, lanes, data stores, artifacts, root " +
-				"messages/errors, and Zeebe subscription/ioMapping detail. Requires --output, or " +
-				"--force to replace it in place.",
+				"Existing .bpmn file to load and modify. The patch is applied to the full model, so " +
+				"pools, lanes, data wiring and Zeebe detail are preserved; the diagram is re-laid " +
+				"out. Requires --output, or --force to replace it in place.",
 			type: "string",
 		},
 		{
@@ -602,8 +598,7 @@ const generateBpmnCmd: Command = {
 		},
 		{
 			name: "force",
-			description:
-				"Allow --input to be replaced in place. Lossy: see --input. Prefer --output <file>.",
+			description: "Allow --input to be replaced in place. Prefer --output <file>.",
 			type: "boolean",
 		},
 	],
@@ -678,11 +673,10 @@ const generateBpmnCmd: Command = {
 		if (inputFile) {
 			const xml = await readFile(inputFile, "utf-8")
 			const defs = Bpmn.parse(xml)
-			const compact = compactify(defs)
 
 			// --dump-compact: print JSON for AI inspection and exit
 			if (ctx.flags["dump-compact"]) {
-				process.stdout.write(`${JSON.stringify(compact, null, 2)}\n`)
+				process.stdout.write(`${JSON.stringify(compactify(defs), null, 2)}\n`)
 				return
 			}
 
@@ -718,15 +712,43 @@ const generateBpmnCmd: Command = {
 				}
 			}
 
-			// Apply patch to first process (covers all single-process cases)
+			// Apply the patch to the full model, not to the compact view of it: an
+			// element added this way leaves the document's pools, lanes, data
+			// wiring and Zeebe detail exactly where they were.
+			let edited = defs
 			if (patch) {
-				const proc = compact.processes[0]
-				if (!proc) throw new Error("Input BPMN has no processes")
-				if (patch.elements?.length) proc.elements.push(...patch.elements)
-				if (patch.flows?.length) proc.flows.push(...patch.flows)
+				const process = defs.processes[0]
+				if (!process) throw new Error("Input BPMN has no processes")
+
+				const operations: BpmnOperation[] = [
+					...(patch.elements ?? []).map(
+						(element): BpmnOperation => ({ op: "insert", element, parent: process.id }),
+					),
+					...(patch.flows ?? []).map(
+						(flow): BpmnOperation => ({
+							op: "add_flow",
+							id: flow.id,
+							parent: process.id,
+							from: flow.from,
+							to: flow.to,
+							name: flow.name,
+							condition: flow.condition,
+						}),
+					),
+				]
+
+				try {
+					edited = applyBpmnOperations(defs, operations).definitions
+				} catch (error) {
+					// Unresolved ids used to be skipped in silence, so a patch naming a
+					// misspelled element reported success and changed nothing.
+					throw new Error(
+						`Patch could not be applied: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				}
 			}
 
-			const patched = Bpmn.export(expand(compact))
+			const patched = Bpmn.export(applyAutoLayout(edited))
 
 			if (outputPath === null) {
 				process.stdout.write(patched)

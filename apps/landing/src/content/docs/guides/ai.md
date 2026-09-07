@@ -39,10 +39,21 @@ const updatedXml = Bpmn.export(updatedDefinitions);
 >
 > The loop above is safe for a model **you generated** from a compact definition. Running it
 > over a file authored elsewhere — a Camunda blueprint, anything touched in Web Modeler —
-> will silently strip those parts. When editing such a file, write `updatedXml` to a **new
-> path** and diff it against the original before you replace anything. A full-model edit path
-> that does not go through the compact form is tracked as *Core Model Fidelity* on the
-> roadmap.
+> will silently strip those parts.
+>
+> **Use `reconcileCompact` instead when editing an existing file.** It applies the same compact
+> input as changes rather than expanding it over the model, so what the compact form cannot
+> describe survives:
+>
+> ```typescript
+> import { reconcileCompact } from "@bpmnkit/core";
+>
+> const { definitions } = reconcileCompact(Bpmn.parse(existingXml), modified);
+> const updatedXml = Bpmn.export(definitions);
+> ```
+>
+> If the model returns edit operations rather than a whole diagram, `applyBpmnOperations` takes
+> them directly against the full model.
 
 ## Minimal Empty Diagram
 

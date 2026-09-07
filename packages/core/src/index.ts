@@ -297,6 +297,12 @@ export { ELEMENT_SIZES, GRID_CELL_HEIGHT, GRID_CELL_WIDTH } from "./layout/index
 export { compactify, expand } from "./bpmn/compact.js"
 export { applyOperations } from "./bpmn/operations.js"
 export type { BpmnOperation } from "./bpmn/operations.js"
+export { applyBpmnOperations, reconcileCompact, OperationError } from "./bpmn/full-operations.js"
+export type {
+	ApplyBpmnOperationsOptions,
+	ApplyBpmnOperationsResult,
+	OperationProblem,
+} from "./bpmn/full-operations.js"
 export {
 	buildValidationDmn,
 	findValidationStructure,

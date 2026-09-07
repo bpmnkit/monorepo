@@ -147,6 +147,14 @@ const outXml = Bpmn.export(restored)
 | `projectSemantics(defs)` | The canonical, presentation-free projection the hash covers |
 | `diffSemantics(a, b)` | What changed between two models, keyed by element id |
 
+### Editing
+
+| Export | Description |
+|--------|-------------|
+| `applyBpmnOperations(defs, ops)` | Apply edit operations to the full model. Strict: unresolved ids throw |
+| `reconcileCompact(defs, compact)` | Apply a compact diagram as changes, keeping what compact cannot carry |
+| `compactify(defs)` | Read-only token-efficient view for LLM prompts. Lossy — not an edit path |
+
 ### Writing files (`@bpmnkit/core/node`)
 
 | Export | Description |

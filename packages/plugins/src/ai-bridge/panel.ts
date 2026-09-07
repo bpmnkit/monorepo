@@ -100,7 +100,7 @@ async function* streamChat(
 
 async function* streamImprove(
 	serverUrl: string,
-	compactDiagram: CompactDiagram,
+	xml: string,
 	backend: string,
 	signal: AbortSignal,
 	onOps?: (ops: BpmnOperation[], autoFixCount: number) => void,
@@ -112,7 +112,10 @@ async function* streamImprove(
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
-				context: compactDiagram,
+				// The whole model, not a compact projection of it: the server applies
+				// the operations to this, so pools, lanes, data wiring and ioMapping
+				// detail survive an edit. It compactifies for the prompt itself.
+				xml,
 				instruction: null,
 				backend: backend === "auto" ? null : backend,
 			}),
@@ -1097,7 +1100,6 @@ export function createAiPanel(options: PanelOptions): {
 		const aiMsgEl = addMessage("ai", "")
 		aiMsgEl.classList.add("ai-msg-cursor")
 
-		const compactDiagram = compactify(defs)
 		let capturedOps: BpmnOperation[] = []
 		let capturedAutoFixCount = 0
 		let capturedXml: string | undefined
@@ -1106,7 +1108,7 @@ export function createAiPanel(options: PanelOptions): {
 		try {
 			for await (const token of streamImprove(
 				options.serverUrl,
-				compactDiagram,
+				Bpmn.export(defs),
 				backendSelect.value,
 				signal,
 				(ops, autoFixCount) => {

@@ -1,5 +1,62 @@
 # Progress
 
+## 2026-09-07 — The edit path finally leaves the lossy projection behind
+
+A5c, and A5b with it. `applyBpmnOperations` applies the same operation vocabulary an LLM
+produces directly to `BpmnDefinitions`, and `reconcileCompact` applies a whole compact diagram
+as *changes* rather than expanding it over the model. Every edit call site moved onto them:
+the CLI `--patch` path, the proxy's `/improve`, and the MCP `replace_diagram`.
+
+**The survey corrected the plan twice.** `applyOperations` was called in exactly one place —
+the proxy — while five other files only imported the `BpmnOperation` *type* for describing
+operations in UIs. And the MCP mutation tools (`add_elements`, `remove_elements`,
+`update_element`, `set_condition`, `add_http_call`) already mutated the full model; the plan
+said they did not. Only `replace_diagram` expanded compact over the whole document. §7.1 now
+records the correction.
+
+**The proxy needed its wire contract changed, not just its apply call.** `/improve` received a
+`CompactDiagram` from the client, so re-targeting the server alone would have fixed nothing —
+the loss happened before the request. It now takes `{ xml }`, compactifies only for the prompt,
+and applies the returned operations to the full model. The old `{ context }` shape still works
+for clients that have not been updated, with a warning that says what it costs.
+
+**Two bugs the tests found rather than review.**
+
+The first was ordering. `delete` cascades to the flows attached to an element, so a reconcile
+that derived `delete` before `redirect_flow` left the redirect pointing at a flow that no
+longer existed. Flows are now settled first, and any flow a removal would take with it is
+re-added instead of redirected.
+
+The second was the more interesting one, because it was the exact class of bug this work
+exists to remove. `patchElement` rebuilt a whole extension element from the compact fields, so
+patching `jobType` dropped the `retries` sitting next to it on the same `zeebe:taskDefinition`.
+It now sets one attribute rather than replacing one element. Chasing that surfaced an
+asymmetry too: `compactify` reads `resultVariable` from an ioMapping's single output whatever
+its source, while the writer only matched `source="= response"` — so a fixture with
+`source="=response.body"` grew a second output on every pass. The writer now updates the same
+output the reader read.
+
+Both were caught by one assertion worth more than the rest: **feeding a model its own compact
+view back must change nothing**, across every fixture in the corpus. Any asymmetry between what
+`compactify` reads and what the patch writes shows up there as drift. A second test applies it
+twice, so a mapping that grows rather than settles fails too.
+
+**A5a's refusal message was a casualty and had to be corrected.** It told users that modifying
+a file re-serialises it from a compact model that drops pools and lanes. That is no longer
+true, so the message now says what is actually still destructive: the diagram is re-laid out,
+and the original is gone once replaced. The guard itself stays — overwriting an input without
+being asked is worth refusing regardless of fidelity.
+
+**One thing left undone, and why.** The MCP server still writes with `writeFileSync` rather
+than A4's `writeBpmn`: its code-mode bridge calls tools synchronously inside a `vm`, and
+`writeBpmn` is async. Making the write async means giving the bridge an async path first. It
+now performs the same verification inline — serialise, parse back, compare the semantic hash,
+throw rather than write — so the safety property is there even though the function is not.
+
+693 tests in `@bpmnkit/core` (31 new), 14 in the CLI, 134 in plugins; core, cli, proxy,
+plugins, editor and canvas all typecheck; `biome check` clean across 847 files.
+
+
 ## 2026-09-07 — A write boundary that reads back what it wrote
 
 A4. `writeBpmn` in `packages/core/src/node/write.ts` is now the only supported way to write a
