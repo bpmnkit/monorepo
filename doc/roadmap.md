@@ -292,9 +292,13 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ### Phase 1 — Stop the silent loss
 
-- [ ] **A1** Round-trip fidelity corpus + gate — 12–20 Camunda blueprints under
-      `packages/core/tests/fixtures/blueprints/` with `PROVENANCE.md`, structural-signature
-      assertion, landed red-listed so each fix deletes an allow-list entry
+- [x] **A1** Round-trip fidelity corpus + gate — `packages/core/tests/roundtrip-corpus.test.ts`
+      over `tests/fixtures/roundtrip/` with `PROVENANCE.md`. Structural signature computed by
+      an independent scanner (`tests/support/xml-signature.ts`, not `src/xml`), landed
+      red-listed so each fix deletes an allow-list entry, and a stale entry fails too. Corpus
+      is 6 hand-written fixtures covering every §4 loss plus the parser's declared surface;
+      it found two further gaps (G22, G23). **Still to add:** real-world models, which need a
+      licensing decision per file — see the directory's PROVENANCE.md
 - [x] **A5a** `casen generate bpmn --input` must not overwrite its input by default —
       require `--output` or `--force` (`apps/cli/src/commands/generate.ts`). The guard also
       runs before stdin is read, so an unwritable target fails fast
@@ -306,7 +310,8 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       `diffSemantics()`; assert auto-layout does not change the hash
 - [ ] **A3** Close the model gaps the corpus exposes — `extensionElements` + `documentation`
       on root/collaboration/artifact/lane types, `bpmn:category`/`categoryValue`, data
-      associations, and an `unknownChildren` catch-all so future gaps preserve rather than drop
+      associations, multi-instance `loopCardinality`/`completionCondition` (G22), and an
+      `unknownChildren` catch-all so future gaps preserve rather than drop
 
 ### Phase 2 — A verified write boundary
 

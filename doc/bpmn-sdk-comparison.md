@@ -369,8 +369,20 @@ source — only the problem statement can be. Concretely:
 | G20 | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
 | G21 | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
 
-G1–G7 are one code change (A3) against one test (A1); they are listed separately because
-each is an independently observable loss and each retires an allow-list entry.
+| G22 | `bpmn:loopCardinality` and `bpmn:completionCondition` dropped — a multi-instance activity loses its cardinality and completion condition | A1 corpus, `06-events-and-containers.bpmn` | A3 | A1 allow-list entry deleted |
+| G23 | `extensionElements` dropped on `bpmn:collaboration` | A1 corpus, `02-collaboration.bpmn` | A3 | A1 allow-list entry deleted |
+
+G1–G7, G22 and G23 are one code change (A3) against one test (A1); they are listed
+separately because each is an independently observable loss and each retires an allow-list
+entry.
+
+**G22 and G23 were found by the A1 corpus, not by §4.** The blueprints happened to use
+multi-instance activities without a cardinality or completion condition, and to carry no
+collaboration-level extensions, so the measurement in §4 could not see either. That is the
+argument for keeping both kinds of fixture: the hand-written corpus covers the constructs
+the parser *claims* to handle, and real-world files cover the ones nobody thought to look
+for. G22 is the more serious of the two — a sequential or bounded loop silently becomes an
+unbounded parallel one.
 
 ### A1 — Round-trip fidelity gate (P0, foundational)
 

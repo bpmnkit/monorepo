@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  id="Definitions_artifacts" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:category id="Category_phases">
+    <bpmn:categoryValue id="CategoryValue_intake" value="Intake" />
+    <bpmn:categoryValue id="CategoryValue_review" value="Review" />
+  </bpmn:category>
+  <bpmn:process id="Process_artifacts" name="Annotated process" isExecutable="true">
+    <bpmn:startEvent id="Start_art">
+      <bpmn:outgoing>Flow_a1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_review" name="Review">
+      <bpmn:documentation>Reviewer checks the submission against policy.</bpmn:documentation>
+      <bpmn:incoming>Flow_a1</bpmn:incoming>
+      <bpmn:outgoing>Flow_a2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_art">
+      <bpmn:incoming>Flow_a2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_a1" sourceRef="Start_art" targetRef="Task_review" />
+    <bpmn:sequenceFlow id="Flow_a2" sourceRef="Task_review" targetRef="End_art" />
+    <bpmn:textAnnotation id="TextAnnotation_sla">
+      <bpmn:text>Must complete within one business day.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_sla" sourceRef="Task_review" targetRef="TextAnnotation_sla" associationDirection="None" />
+    <bpmn:group id="Group_intake" categoryValueRef="CategoryValue_intake" />
+  </bpmn:process>
+</bpmn:definitions>

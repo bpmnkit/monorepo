@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+  id="Definitions_collab" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="Message_request" name="Request" />
+  <bpmn:collaboration id="Collaboration_1">
+    <bpmn:extensionElements>
+      <zeebe:properties>
+        <zeebe:property name="owner" value="fulfilment" />
+      </zeebe:properties>
+    </bpmn:extensionElements>
+    <bpmn:participant id="Participant_buyer" name="Buyer" processRef="Process_buyer" />
+    <bpmn:participant id="Participant_seller" name="Seller" processRef="Process_seller" />
+    <bpmn:participant id="Participant_carrier" name="Carrier" />
+    <bpmn:messageFlow id="MessageFlow_order" name="Order" sourceRef="Participant_buyer" targetRef="Participant_seller" messageRef="Message_request" />
+    <bpmn:messageFlow id="MessageFlow_ack" name="Acknowledgement" sourceRef="Participant_seller" targetRef="Participant_buyer" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_buyer" name="Buyer" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_buyer">
+      <bpmn:lane id="Lane_ordering" name="Ordering">
+        <bpmn:flowNodeRef>Start_buyer</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_place_order</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_receiving" name="Receiving">
+        <bpmn:flowNodeRef>End_buyer</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_buyer" name="Need identified">
+      <bpmn:outgoing>Flow_b1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_place_order" name="Place order">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="place-order" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_b1</bpmn:incoming>
+      <bpmn:outgoing>Flow_b2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="End_buyer" name="Ordered">
+      <bpmn:incoming>Flow_b2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_b1" sourceRef="Start_buyer" targetRef="Task_place_order" />
+    <bpmn:sequenceFlow id="Flow_b2" sourceRef="Task_place_order" targetRef="End_buyer" />
+  </bpmn:process>
+  <bpmn:process id="Process_seller" name="Seller" isExecutable="false">
+    <bpmn:startEvent id="Start_seller">
+      <bpmn:outgoing>Flow_s1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="End_seller">
+      <bpmn:incoming>Flow_s1</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_s1" sourceRef="Start_seller" targetRef="End_seller" />
+  </bpmn:process>
+</bpmn:definitions>

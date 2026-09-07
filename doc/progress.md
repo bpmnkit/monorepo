@@ -1,5 +1,59 @@
 # Progress
 
+## 2026-09-07 — A round-trip fidelity gate, and two more gaps it immediately found
+
+A1 of *Core Model Fidelity*. `packages/core/tests/roundtrip-corpus.test.ts` now asserts that
+`Bpmn.parse()` → `Bpmn.export()` preserves the document, with today's known losses listed
+explicitly. Nothing else in the plan can be verified without it.
+
+**The signature is computed without `src/xml`.** A gate that measured fidelity with the SDK's
+own parser would be blind to exactly what it exists to find: content that parser drops would
+be absent from both sides of the comparison and the diff would come back clean. So
+`tests/support/xml-signature.ts` walks the raw text with its own scanner and counts four
+things — elements, per-element attribute names, parent→child pairs, and elements carrying
+non-whitespace text. That catches dropped elements, dropped attributes, reparenting, and lost
+`documentation` bodies and FEEL condition text. It is order-independent, because BPMN gives
+no meaning to the order of `flowElements` or attributes; dropping them is what matters. The
+scanner is hand-rolled, so it has 11 tests of its own — markup inside attribute values,
+CDATA, comments, the doctype — before it is trusted to judge anything.
+
+**It is a ratchet, not a snapshot.** Each fixture's allow-list is checked in both directions:
+an unlisted change fails as a new loss, and a listed change that no longer happens fails as a
+stale entry to delete. That second half is how A3 will record progress — closing a gap means
+deleting lines from this file until only the `normalised` entries remain. Both directions were
+verified by deliberately breaking each one. Entries are typed `gap` (A3 must close it) or
+`normalised` (deliberate and permanent — `isExecutable="false"` and `isSequential="false"` are
+serialised only when true, which BPMN treats as identical and which round-trips stably). A
+third assertion per fixture pins that a second export is a fixed point, so a save cannot keep
+producing fresh diffs.
+
+**The corpus is six fixtures we wrote, not blueprints.** The plan called for real Camunda
+models from the marketplace. I did not add them: redistribution terms are a licensing decision
+per file that needs a human, and this session's GitHub access is scoped to this repository.
+What is here instead was authored from the BPMN 2.0 spec and the MIT `zeebe-bpmn-moddle`
+descriptor, each file isolating one construct group so a failure names its own cause. It
+reproduces every loss §4 measured against the blueprints. The harness globs the fixture
+directory, so adding real models later is files plus PROVENANCE rows and no code change; the
+directory's PROVENANCE.md records what is there and what to check before adding more.
+
+**It found two gaps §4 could not see.** The blueprints happened to use multi-instance
+activities without a cardinality or completion condition, and carried no collaboration-level
+extensions:
+
+- **G22 — `bpmn:loopCardinality` and `bpmn:completionCondition` are not modelled at all.** A
+  multi-instance activity loses both on round trip. A bounded or conditional loop silently
+  becomes an unbounded one; this is the most serious finding since `zeebe:subscription`.
+- **G23 — `extensionElements` are dropped on `bpmn:collaboration`.**
+
+Both added to §7.1 of `doc/bpmn-sdk-comparison.md` and to A3's scope. That is the argument for
+keeping both kinds of fixture: the hand-written corpus covers what the parser claims to
+handle, real files cover what nobody thought to look for.
+
+606 tests pass in `@bpmnkit/core`, `biome check` is clean across 837 files, and
+`tsc --noEmit` passes. Worth knowing for later: `packages/core/tsconfig.json` scopes
+`include` to `src`, so test files are transpiled by vitest but never type-checked.
+
+
 ## 2026-09-07 — Stop the CLI destroying BPMN files, stop the docs promising it can't
 
 First two items of *Core Model Fidelity* — the two that depend on nothing and were both
