@@ -11,7 +11,7 @@ sidebar:
 BPMN 2.0 programmatically:
 
 - **Fluent builder** — chain method calls to construct any process shape
-- **Parser/serializer** — round-trip any BPMN 2.0 XML with full fidelity
+- **Parser/serializer** — round-trip BPMN 2.0 XML, keeping unmodelled content verbatim
 - **Auto-layout** — Sugiyama algorithm assigns coordinates automatically
 - **Compact format** — token-efficient AI-friendly intermediate representation
 - **DMN support** — parse, build, and export DMN 1.3 decision tables
@@ -79,6 +79,45 @@ const xml = Bpmn.makeEmpty("my-process", "My Process");
 
 A constant containing a simple 3-node sample diagram (start → task → end).
 Useful for demos and tests.
+
+### `semanticHash(definitions)`
+
+SHA-256 of the model's meaning, with the diagram excluded. Two documents that say the same
+thing hash the same however they are laid out, ordered or formatted — so a changed hash means
+the model changed, not that the picture moved.
+
+```typescript
+import { Bpmn, applyAutoLayout, semanticHash } from "@bpmnkit/core";
+
+const definitions = Bpmn.parse(xml);
+semanticHash(applyAutoLayout(definitions)) === semanticHash(definitions); // true
+```
+
+Excluded from the hash: diagram interchange and its `bioc`/`color` extensions,
+`zeebe:modelerTemplateIcon`, and `exporter`/`exporterVersion`. Element order, attribute order
+and whitespace do not affect it. `modeler:executionPlatform` **is** included — it names the
+engine the model targets, so changing it is a real change.
+
+Synchronous and dependency-free, so it works in the browser and does not force callers to
+become async.
+
+### `projectSemantics(definitions)`
+
+The canonical, presentation-free projection `semanticHash` covers. Returns `{ value, elements }`
+— the whole model as canonical JSON, plus a shallow projection per element id.
+
+### `diffSemantics(before, after)`
+
+What changed between two models, as `{ added, removed, changed }` keyed by element id. Changes
+are attributed to the element that actually changed rather than to all of its ancestors, and
+running auto-layout produces an empty diff.
+
+```typescript
+import { diffSemantics } from "@bpmnkit/core";
+
+const { added, removed, changed } = diffSemantics(before, after);
+// changed: [{ id: "Task_1", before: {...}, after: {...} }]
+```
 
 ### `compactify(definitions)`
 

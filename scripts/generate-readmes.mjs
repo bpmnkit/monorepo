@@ -230,6 +230,14 @@ const outXml = Bpmn.export(restored)
 | \`Bpmn.makeEmpty(processId?, name?)\` | Minimal BPMN XML with one start event |
 | \`Bpmn.SAMPLE_XML\` | 3-node sample diagram string |
 
+### Semantics
+
+| Export | Description |
+|--------|-------------|
+| \`semanticHash(defs)\` | SHA-256 of the model, excluding the diagram. Unchanged by layout |
+| \`projectSemantics(defs)\` | The canonical, presentation-free projection the hash covers |
+| \`diffSemantics(a, b)\` | What changed between two models, keyed by element id |
+
 ### DMN
 
 | Export | Description |

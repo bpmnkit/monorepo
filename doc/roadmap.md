@@ -306,8 +306,11 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       `apps/landing/src/content/docs/getting-started/concepts.md` (asserted a guarantee we do
       not hold) and its `definitions.rootElements` example; the same falsehood in
       `guides/ai.md` and `packages/core.md` corrected too; docspack rebuilt
-- [ ] **A2** `semantic-hash.ts` — DI-excluded canonical projection, sync SHA-256,
-      `diffSemantics()`; assert auto-layout does not change the hash
+- [x] **A2** `semantic-hash.ts` — DI-excluded canonical projection, sync in-repo SHA-256
+      (no `node:crypto`, no `crypto.subtle`, so `packages/core` stays browser-safe and callers
+      stay synchronous), `diffSemantics()` attributing changes to the element that changed.
+      Auto-layout invariance asserted across the whole corpus, plus golden hashes to catch a
+      silent change to what counts as semantics
 - [x] **A3** Close the model gaps the corpus exposes — `extensionElements` + `documentation`
       on root/collaboration/artifact/lane types, `bpmn:category`/`categoryValue`, data
       associations, multi-instance `loopCardinality`/`completionCondition` (G22), and an

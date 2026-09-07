@@ -1,5 +1,53 @@
 # Progress
 
+## 2026-09-07 — A semantic hash, so "the layout moved" stops looking like "the model changed"
+
+A2. `packages/core/src/bpmn/semantic-hash.ts` gives three things: `semanticHash(defs)`,
+`projectSemantics(defs)` and `diffSemantics(before, after)`. The point is the one assertion
+the module exists for — **re-running auto-layout cannot change the hash** — which turns a
+claim into a test.
+
+**Synchronous and dependency-free, which decided the design.** `node:crypto` would break the
+browser build that `@bpmnkit/canvas`, `@bpmnkit/editor` and `@bpmnkit/plugins` depend on;
+`crypto.subtle` is async and unavailable outside secure contexts, and would force `async`
+through every caller including the write boundary A4 will put on top. So SHA-256 is
+implemented in-repo — about eighty lines, checked against the published NIST vectors and
+against `node:crypto` at the 55/56/57 and 63/64/65-byte padding boundaries, on UTF-8 beyond
+the BMP, and on BPMN-shaped JSON. `node:crypto` appears in the test as an oracle only;
+`packages/core/src` still imports nothing from `node:`.
+
+**What the projection excludes**, and the one place this departs from the reference SDK:
+diagram interchange with its `bioc`/`color` extensions, `zeebe:modelerTemplateIcon` (a base64
+blob that would otherwise dominate every diff it appears in), and `exporter`/`exporterVersion`
+— which tool wrote the file is not what the file says. `modeler:executionPlatform` is
+deliberately **kept**: it names the engine the model targets, so changing it is a real change.
+That is a judgement call, documented at the top of the module so it can be reversed
+deliberately rather than discovered.
+
+Ordering carries no meaning in BPMN, so collections are sorted by their own canonical form and
+object keys by name. `diffSemantics` projects each element *shallowly* — descendants that
+carry their own id appear as that id — so renaming a task reports the task, not the task and
+its process and its definitions.
+
+**Verified rather than assumed.** The layout-invariance test would pass vacuously if
+`applyAutoLayout` did nothing to these fixtures, so I checked: it creates between 3 and 25 DI
+elements per fixture and moves positions in every one, and the hash holds throughout. Then ten
+adversarial pairs, because a hash that sorts arrays is exactly the kind of thing that quietly
+collides: two tasks swapping names, a sequence flow rewired, a nested `zeebe:input` source, a
+gateway's default flow, an element's type — all must differ; declaration order, attribute
+order and task-header order — all must match. The six sharpest are now permanent tests.
+
+Golden hashes per fixture sit alongside the invariance tests, because those are relative —
+both sides move together if the projection rules change — and a golden is absolute. Quietly
+dropping a field from the projection now fails.
+
+Also softened one more "full fidelity" overclaim in `packages/core.md`, the same class of
+sentence A6 fixed in `concepts.md`.
+
+641 tests in `@bpmnkit/core`; canvas, editor, plugins, ascii and operate all typecheck against
+the new exports; `biome check` clean across 841 files.
+
+
 ## 2026-09-07 — A3: the model no longer drops what it does not name
 
 Nine gaps closed in `packages/core`, all nine allow-list entries in the A1 gate deleted, and

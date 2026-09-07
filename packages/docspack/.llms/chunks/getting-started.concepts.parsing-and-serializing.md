@@ -30,6 +30,10 @@ through its typed fields; content it does not model is kept verbatim and re-emit
   including on root-level `message`, `error`, `escalation` and `signal` elements — which is
   what carries `zeebe:subscription` correlation keys.
 
+`semanticHash(definitions)` gives you this as a check you can run yourself: it hashes the
+model with the diagram excluded, so `semanticHash(applyAutoLayout(defs))` equals
+`semanticHash(defs)`, and any difference means the model changed rather than the layout.
+
 A corpus of BPMN documents is round-tripped on every build and compared structurally —
 element counts, per-element attribute names, parent/child nesting and text content — by a
 scanner written independently of the parser, so a regression fails CI rather than reaching a

@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 0.0.2. 153 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 0.0.2. 156 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -54,7 +54,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 
 - [Core Concepts — The Fluent Builder](.llms/chunks/getting-started.concepts.the-fluent-builder.md) — 251 tokens
 - [Core Concepts — Auto-Layout](.llms/chunks/getting-started.concepts.auto-layout.md) — 150 tokens
-- [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 515 tokens
+- [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 565 tokens
 - [Core Concepts — AI-Compact Format](.llms/chunks/getting-started.concepts.ai-compact-format.md) — 359 tokens
 - [Core Concepts — Zeebe Extensions](.llms/chunks/getting-started.concepts.zeebe-extensions.md) — 134 tokens
 - [Installation](.llms/chunks/getting-started.installation.md) — 140 tokens
@@ -141,7 +141,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/connector-gen — Lower-level API](.llms/chunks/packages.connector-gen.lower-level-api.md) — 185 tokens
 - [@bpmnkit/connector-gen — Catalog reference](.llms/chunks/packages.connector-gen.catalog-reference.md) — 518 tokens
 - [@bpmnkit/connector-gen — `CatalogEntry` type](.llms/chunks/packages.connector-gen.catalogentry-type.md) — 86 tokens
-- [@bpmnkit/core — Overview](.llms/chunks/packages.core.overview.md) — 135 tokens
+- [@bpmnkit/core — Overview](.llms/chunks/packages.core.overview.md) — 136 tokens
 - [@bpmnkit/core — Installation](.llms/chunks/packages.core.installation.md) — 27 tokens
 - [@bpmnkit/core — Installation — `Bpmn.createProcess(id, name?)`](.llms/chunks/packages.core.installation-bpmn.createprocess-id-name.md) — 51 tokens
 - [@bpmnkit/core — Installation — `Bpmn.createDiagram(id?)`](.llms/chunks/packages.core.installation-bpmn.creatediagram-id.md) — 107 tokens
@@ -149,6 +149,9 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/core — Installation — `Bpmn.parse(xml)`](.llms/chunks/packages.core.installation-bpmn.parse-xml.md) — 45 tokens
 - [@bpmnkit/core — Installation — `Bpmn.makeEmpty(processId?, processName?)`](.llms/chunks/packages.core.installation-bpmn.makeempty-processid-processname.md) — 65 tokens
 - [@bpmnkit/core — Installation — `Bpmn.SAMPLE_XML`](.llms/chunks/packages.core.installation-bpmn.sample_xml.md) — 43 tokens
+- [@bpmnkit/core — Installation — `semanticHash(definitions)`](.llms/chunks/packages.core.installation-semantichash-definitions.md) — 193 tokens
+- [@bpmnkit/core — Installation — `projectSemantics(definitions)`](.llms/chunks/packages.core.installation-projectsemantics-definitions.md) — 54 tokens
+- [@bpmnkit/core — Installation — `diffSemantics(before, after)`](.llms/chunks/packages.core.installation-diffsemantics-before-after.md) — 121 tokens
 - [@bpmnkit/core — Installation — `compactify(definitions)`](.llms/chunks/packages.core.installation-compactify-definitions.md) — 111 tokens
 - [@bpmnkit/core — Installation — `expand(compact)`](.llms/chunks/packages.core.installation-expand-compact.md) — 106 tokens
 - [@bpmnkit/core — Installation — `layoutProcess(process)`](.llms/chunks/packages.core.installation-layoutprocess-process.md) — 85 tokens

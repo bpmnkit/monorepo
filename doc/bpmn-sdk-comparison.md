@@ -355,8 +355,8 @@ source — only the problem statement can be. Concretely:
 | G6 ✅ | `unknownAttributes` missing on `BpmnError`, `BpmnSignal`, `BpmnLaneSet` | `bpmn-model.ts` read | A3 | per-type unit test |
 | G7 ✅ | Unmodelled children silently dropped — `ioSpecification`, `correlationKey`, `itemDefinition`, `import`, `resourceRole`, and anything the spec adds later | parser has no case | A3 (`unknownChildren` catch-all — **preservation**, not modelling; model a type only when a consumer needs to read it) | A1 corpus + a synthetic fixture using each |
 | G8 | No fidelity gate — parser and serializer are unchecked against each other | no such test exists | A1 | the suite itself; allow-list empty |
-| G9 | No semantic hash; layout churn indistinguishable from a model change | no such module | A2 | auto-layout does not change the hash |
-| G10 | No change report on write | no such module | A2 (`diffSemantics`) | golden diff per corpus fixture |
+| G9 ✅ | No semantic hash; layout churn indistinguishable from a model change | no such module | A2 | auto-layout does not change the hash |
+| G10 ✅ | No change report on write | no such module | A2 (`diffSemantics`) | golden diff per corpus fixture |
 | G11 | No verified write boundary — nothing re-reads what it wrote | `writeFile` at 11 CLI sites | A4 | injected lossy serializer must be refused |
 | G12 | Non-atomic writes; no overwrite guard; output may alias input | `apps/cli/src/commands/*` | A4 | interrupted-write and alias tests |
 | G13 | `casen generate bpmn --input` overwrites its input with a lossy round trip | `generate.ts:670-676` | A5a | CLI test: refuses without `--output`/`--force` |
@@ -375,6 +375,11 @@ source — only the problem statement can be. Concretely:
 G1–G7, G22 and G23 are one code change (A3) against one test (A1); they are listed
 separately because each is an independently observable loss and each retires an allow-list
 entry.
+
+**Status: A1, A2, A3, A5a and A6 shipped (2026-09-07).** G9 and G10 are A2's rows and are
+marked ✅ too: `semanticHash`, `projectSemantics` and `diffSemantics` live in
+`packages/core/src/bpmn/semantic-hash.ts`, synchronous and dependency-free so the browser
+build and the future write boundary stay unencumbered.
 
 **Status: all A3 rows closed (2026-09-07).** G1–G7, G22 and G23 are marked ✅ — the model
 gaps are fixed and their allow-list entries deleted, leaving only the two `normalised`

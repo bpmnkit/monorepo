@@ -563,7 +563,7 @@
 		{
 			"id": "getting-started.concepts.parsing-and-serializing",
 			"file": "chunks/getting-started.concepts.parsing-and-serializing.md",
-			"tokens": 515,
+			"tokens": 565,
 			"tags": [
 				"getting-started",
 				"concepts",
@@ -1657,7 +1657,7 @@
 		{
 			"id": "packages.core.overview",
 			"file": "chunks/packages.core.overview.md",
-			"tokens": 135,
+			"tokens": 136,
 			"tags": [
 				"packages",
 				"core",
@@ -1760,6 +1760,50 @@
 				"core",
 				"installation",
 				"bpmn.sample_xml"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.core.installation-semantichash-definitions",
+			"file": "chunks/packages.core.installation-semantichash-definitions.md",
+			"tokens": 193,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"semantichash",
+				"definitions"
+			],
+			"entities": [
+				"exporterVersion"
+			]
+		},
+		{
+			"id": "packages.core.installation-projectsemantics-definitions",
+			"file": "chunks/packages.core.installation-projectsemantics-definitions.md",
+			"tokens": 54,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"projectsemantics",
+				"definitions"
+			],
+			"entities": [
+				"semanticHash"
+			]
+		},
+		{
+			"id": "packages.core.installation-diffsemantics-before-after",
+			"file": "chunks/packages.core.installation-diffsemantics-before-after.md",
+			"tokens": 121,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"diffsemantics",
+				"before",
+				"after"
 			],
 			"entities": []
 		},
