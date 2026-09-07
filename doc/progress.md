@@ -67,9 +67,17 @@ and the new gate all read it. A fourth copy of that list is exactly the drift a 
 exists to prevent, and CLAUDE.md's "Adding a New Package" steps drop from three list edits to
 one.
 
-`@bpmnkit/reebe-wasm` is the one package not verified here: it is a Rust crate built with
-wasm-pack, and crates.io returns 503 through this environment's proxy. The release workflow
-builds it before the gate runs, so CI covers it.
+The full run ends 22 of 23 clean: every published package packs, installs, imports and
+type-checks, including all 30 entry points of `@bpmnkit/plugins`. `@bpmnkit/reebe-wasm` is the
+exception and not a real one — it is a Rust crate built with wasm-pack, and crates.io returns
+503 through this environment's proxy. The release workflow builds it before the gate runs, so
+CI covers it.
+
+Two packages report `~ nothing to consume from Node` rather than a tick: `@bpmnkit/astro-shared`
+ships `.ts` and `.astro` source for a bundler, and `@bpmnkit/cli` is bin-only. A `bin` entry is
+checked for being in the tarball but not executed — running a package's CLI to see whether it
+starts has side effects this gate has no business causing — so for those two the coverage is
+the manifest check alone, and the line says so.
 
 
 ## 2026-09-07 — Extending a file no longer means regenerating it

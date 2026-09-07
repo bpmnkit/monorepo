@@ -25,6 +25,11 @@
  * Steps 3-5 install from the network and are slow — 23 packages, one project
  * each. This belongs in the release workflow, not on every PR.
  *
+ * What it does not cover: a `bin` entry is checked for being in the tarball, not
+ * executed — running a package's CLI to see whether it starts has side effects
+ * this has no business causing. A bin-only package therefore reports "nothing to
+ * consume from Node", which is the truth rather than a pass.
+ *
  * Usage:
  *   node scripts/check-package-consumable.mjs
  *   node scripts/check-package-consumable.mjs --filter core --filter feel
