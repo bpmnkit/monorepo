@@ -206,6 +206,7 @@ function serializeDataAssociation(
 	if (association.targetRef !== undefined) {
 		children.push(el(`${bp}:targetRef`, {}, [], association.targetRef))
 	}
+	children.push(...(association.unknownChildren ?? []))
 	return el(`${bp}:${tag}`, attrs, children)
 }
 
@@ -236,6 +237,7 @@ function serializeLoopCharacteristics(
 			),
 		)
 	}
+	children.push(...(lc.unknownChildren ?? []))
 	return [el(`${bp}:multiInstanceLoopCharacteristics`, attrs, children)]
 }
 

@@ -364,7 +364,7 @@ source — only the problem statement can be. Concretely:
 | G15 ✅ | Edit path runs through lossy `CompactDiagram` (CLI, MCP, AI review) | §4.2 | A5c | corpus edit round trip preserves hash |
 | G16 | Docs assert a round-trip guarantee we do not hold; example uses `bpmn-moddle`'s API | `concepts.md:80,90` | A6 | docspack rebuilt; claim matches A1's result |
 | G17 | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
-| G18 | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
+| G18 ✅ | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
 | G19 | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
 | G20 | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
 | G21 | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
@@ -583,6 +583,30 @@ This also retires the question "is our model still a faithful subset?" — curre
 unanswerable without the manual audit that produced §4.
 
 Effort: ~3 days. Sequenced after A3 and A7 share the descriptor-vendoring work.
+
+**As shipped**, in three ways different from the above:
+
+- The check **probes** rather than walks. A static comparison of descriptor names against
+  our field names would pass while the parser silently dropped the thing — the same
+  blindness §4 was written about. Instead it builds a minimal document containing each
+  type, round-trips it through `Bpmn.parse` → `Bpmn.export`, and reads the answer off the
+  output. It is a Vitest gate (`tests/descriptor-coverage.test.ts`) rather than a build
+  script, so it runs on every PR with the rest of the suite;
+  `pnpm --filter @bpmnkit/core check:descriptors` prints the report behind it.
+- It is per **type**, not per type *and property*. 151 types: 109 modelled, 34 preserved,
+  6 dropped, 2 unprobed.
+- **`dropped` is not empty, and the six are probe artifacts rather than losses.** They are
+  base types the descriptors do not mark abstract but which never appear as elements in a
+  document — you write `dataInputAssociation`, never `dataAssociation` — so the probe has
+  nowhere real to put them. Each is listed in `ACCEPTED_DROPS` with a reason, the list is
+  checked in *both* directions (a new drop fails; an entry that stops dropping fails, so
+  the accept-list cannot outlive its cause), and a second test proves the concrete form
+  behind each one does survive. That evidence is what keeps the accept-list a finding
+  rather than an assertion.
+
+The probe found one genuine gap while being built: `bpmn:complexBehaviorDefinition` was
+dropped from multi-instance loop characteristics. `unknownChildren` was extended to
+`BpmnMultiInstanceLoopCharacteristics` and `BpmnDataAssociation` to close it.
 
 ### A10 — Publish gate that consumes the tarball (P2)
 

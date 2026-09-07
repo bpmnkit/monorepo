@@ -162,6 +162,11 @@ export interface BpmnMultiInstanceLoopCharacteristics {
 	/** Stops the loop early once it evaluates true. */
 	completionCondition?: BpmnConditionExpression
 	extensionElements: XmlElement[]
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
@@ -480,6 +485,11 @@ export interface BpmnDataAssociation {
 	/** Id named by the `<bpmn:targetRef>` child element. */
 	targetRef?: string
 	unknownAttributes: Record<string, string>
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------

@@ -1016,6 +1016,7 @@ class ConditionalDefinitionFrame extends Frame implements TextOwner {
 // ---------------------------------------------------------------------------
 
 class LoopFrame extends Frame implements TextOwner {
+	private readonly unknownChildren: XmlElement[] = []
 	private extensionElements: XmlElement[] | null = null
 	private loopCardinality: BpmnConditionExpression | undefined
 	private cardinalitySeen = false
@@ -1044,7 +1045,7 @@ class LoopFrame extends Frame implements TextOwner {
 				this.completionSeen = true
 				return new TextFrame(this, SLOT_COMPLETION_CONDITION, attrs)
 			default:
-				return null
+				return captureUnknown(this.unknownChildren, _name, attrs)
 		}
 	}
 
@@ -1060,6 +1061,7 @@ class LoopFrame extends Frame implements TextOwner {
 			loopCardinality: this.loopCardinality,
 			completionCondition: this.completionCondition,
 			extensionElements: this.extensionElements ?? [],
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		})
 	}
 }
@@ -1204,6 +1206,7 @@ const SLOT_TARGET_REF = 12
 /** A `dataInputAssociation` or `dataOutputAssociation` and its ref children. */
 class DataAssociationFrame extends BaseElementFrame {
 	private readonly sourceRefs: string[] = []
+	private readonly unknownChildren: XmlElement[] = []
 	private targetRef: string | undefined
 
 	constructor(
@@ -1213,12 +1216,12 @@ class DataAssociationFrame extends BaseElementFrame {
 		super()
 	}
 
-	override child(local: string, _name: string, attrs: Attrs): Frame | null {
+	override child(local: string, name: string, attrs: Attrs): Frame | null {
 		const base = this.baseChild(local, attrs)
 		if (base !== undefined) return base
 		if (local === "sourceRef") return new TextFrame(this, SLOT_SOURCE_REF, attrs)
 		if (local === "targetRef") return new TextFrame(this, SLOT_TARGET_REF, attrs)
-		return null
+		return captureUnknown(this.unknownChildren, name, attrs)
 	}
 
 	protected override baseText(slot: number, text: string | undefined): void {
@@ -1234,6 +1237,7 @@ class DataAssociationFrame extends BaseElementFrame {
 			sourceRefs: this.sourceRefs,
 			targetRef: this.targetRef,
 			unknownAttributes: unknownAttrs(this.attrs),
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		})
 	}
 }

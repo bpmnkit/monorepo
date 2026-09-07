@@ -32,8 +32,30 @@ export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue
 /** Attribute names dropped wherever they appear. */
 const EXCLUDED_ATTRIBUTES = new Set(["zeebe:modelerTemplateIcon"])
 
-/** Attribute prefixes that carry presentation, not meaning. */
-const EXCLUDED_ATTRIBUTE_PREFIXES = ["bioc:", "color:"]
+/**
+ * Namespace prefixes that carry presentation rather than meaning.
+ *
+ * Named once so the two things that need the notion cannot disagree about what
+ * counts as presentation: this module, and the descriptor coverage check, which
+ * treats these packages as handled structurally by the diagram model rather than
+ * as gaps.
+ *
+ * They are excluded here in two different ways, which is why the list is not
+ * itself the attribute filter. `bpmndi` / `dc` / `di` describe the diagram, and
+ * the diagram is dropped wholesale via the `diagrams` key. `bioc` and `color`
+ * are extension *attributes* that ride on diagram elements, so they are dropped
+ * by name wherever they appear.
+ */
+export const PRESENTATION_PREFIXES: ReadonlySet<string> = new Set([
+	"bpmndi",
+	"dc",
+	"di",
+	"bioc",
+	"color",
+])
+
+/** The subset of the above excluded per-attribute rather than per-subtree. */
+const EXCLUDED_ATTRIBUTE_PREFIXES = ["bioc:", "color:"] as const
 
 /** Top-level `BpmnDefinitions` keys that describe the exporter or the diagram. */
 const EXCLUDED_DEFINITIONS_KEYS = new Set(["diagrams", "exporter", "exporterVersion"])

@@ -288,7 +288,8 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 > all-rights-reserved, so this is re-implementation from the written specification and from
 > the MIT moddle descriptors, never a port: see §7.0 (clean-room rule) and §7.1 (the
 > gap → item → verification matrix, G1–G21) in the analysis. Done means A1's allow-list is
-> empty, A12's `dropped` set is empty, and every §7.1 verification exists and passes.
+> empty, A12's `dropped` set contains nothing but reviewed probe artifacts, and every
+> §7.1 verification exists and passes.
 
 ### Phase 1 — Stop the silent loss
 
@@ -346,10 +347,14 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [ ] **A7** Descriptor-checked Zeebe extension writes — vendored `zeebe.json` (MIT, notice
       carried into `packages/core/src/bpmn/descriptors/LICENSE`), generated owner/property
       table, `--check` mode in CI
-- [ ] **A12** Descriptor coverage check for the BPMN core model — vendor `bpmn.json`,
-      `bpmndi.json`, `dc.json`, `di.json`; report every descriptor type/property as
-      `modelled` / `preserved` / `dropped`; CI fails on any `dropped`. This is what stops
-      the model drifting from the spec again after A3 closes today's gaps
+- [x] **A12** Descriptor coverage check for the BPMN core model —
+      `packages/core/tests/descriptor-coverage.test.ts` over the vendored `bpmn.json`,
+      `bpmndi.json`, `dc.json`, `di.json`, `zeebe.json`. Round-trips a probe document per
+      type and labels it `modelled` / `preserved` / `dropped`; CI fails on any drop outside
+      a reviewed accept-list, and on an accept-list entry that no longer drops.
+      151 types: 109 / 34 / 6 / 2 unprobed. `pnpm --filter @bpmnkit/core check:descriptors`
+      prints the report. This is what stops the model drifting from the spec again after A3
+      closed today's gaps
 - [ ] **A9** `ProcessBuilder.from(defs, processId).at(nodeId)` — continue an existing model
       fluently instead of regenerating it
 - [ ] **A8** Collaboration builder — `.participant()`, `.message()`, `.messageFlow()`

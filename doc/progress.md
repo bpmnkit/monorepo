@@ -1,5 +1,73 @@
 # Progress
 
+## 2026-09-07 — A gate that asks the descriptors what we are missing
+
+A12. `bpmn.json`, `bpmndi.json`, `dc.json`, `di.json` and `zeebe.json` are vendored under
+`packages/core/descriptors/` with their MIT notices (`bpmn-moddle` 10.2.0,
+`zeebe-bpmn-moddle` 2.0.0). They are not in `files`, so nothing ships. A new gate walks all
+151 types they define and requires each one to survive a round trip.
+
+**It probes rather than compares names.** The plan called for a script that walks the
+descriptors and labels each type against our fields. That check would have passed while the
+parser silently dropped the type — precisely the blindness that let the losses in §4
+accumulate. Instead the gate builds a minimal document containing the type, runs it through
+`Bpmn.parse` → `Bpmn.export`, and reads the answer off the output: `modelled` when it comes
+back as a typed field, `preserved` when it comes back inside an `unknownChildren` array,
+`dropped` when it does not come back. Nothing is asserted that was not observed.
+
+**Result: 109 modelled, 34 preserved, 6 dropped, 2 unprobed.**
+
+**The probe found a real gap.** `bpmn:complexBehaviorDefinition` was dropped from multi-
+instance loop characteristics — it had no typed field and no catch-all to fall into.
+`unknownChildren` now extends to `BpmnMultiInstanceLoopCharacteristics` and
+`BpmnDataAssociation`, which closes it and the two containers' whole future surface with it.
+
+**The six drops are probe artifacts, and proving that is most of the work.** They are base
+types the descriptors do not mark abstract but which never appear as elements in a real
+document — you write `dataInputAssociation`, never `dataAssociation`; `dataObject`, never
+`itemAwareElement`. The probe has nowhere real to put them, so it puts them in the most
+permissive slot the schema allows and they do not come back. Each sits in `ACCEPTED_DROPS`
+with a reason, and a second test parses a document containing the concrete forms
+(`bpmn:assignment`, `bpmn:complexBehaviorDefinition`, `bpmn:condition`, `bpmn:event`,
+`bpmn:dataState`, `bpmn:dataInputAssociation`) and asserts each survives export. Without that
+the accept-list would be an assertion; with it, it is a finding.
+
+**The accept-lists are checked in both directions.** A new drop fails, as intended — but so
+does an accept-list entry that has *stopped* dropping. An ignore-list that outlives its cause
+is how a gate quietly stops gating, and deleting an entry is the record that something
+improved.
+
+**Getting the probe to tell the truth took four rounds.** The first run reported 70 modelled
+and 37 unprobed, and every number was wrong for a different reason: Zeebe types were reported
+as having no containment path (they attach through `extensionElements`, which no descriptor
+declares); `bpmn:Lane` was winning as the parent of everything because `partitionElement`
+accepts `BaseElement`, so parents are now ranked by how *specific* their declared property is;
+elements whose only content is body text looked dropped because the probe gave them none; and
+reference attributes were emitted empty, so the parser discarded the element as malformed. A
+probe that reports a loss it caused itself is worse than no probe, so each was fixed before the
+result was believed.
+
+**One name for "presentation".** `PRESENTATION_PREFIXES` now lives in `semantic-hash.ts` and
+the coverage check imports it, so the two cannot disagree about which namespaces the diagram
+model owns. Sharing it is where a mistake nearly went in: folding the hash's attribute filter
+into the same list widened it from `bioc`/`color` to include `bpmndi`/`dc`/`di`, which no test
+caught — the corpus has no such attribute on a semantic element — and which contradicts the
+documented contract. The two exclusions are different mechanisms (the diagram goes wholesale
+via the `diagrams` key; `bioc`/`color` go by attribute name) and are now written as such. The
+golden hashes are unchanged.
+
+`pnpm --filter @bpmnkit/core check:descriptors` prints the report behind the gate; the
+vendored JSONs are excluded from Biome so they stay byte-identical to upstream.
+
+Verified the gate is not vacuous by removing the `unknownChildren` re-emit from the
+multi-instance serializer: `bpmn:ComplexBehaviorDefinition` reappears as an unaccepted drop
+and four tests fail.
+
+705 tests in `@bpmnkit/core` (12 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 850 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
 ## 2026-09-07 — The edit path finally leaves the lossy projection behind
 
 A5c, and A5b with it. `applyBpmnOperations` applies the same operation vocabulary an LLM
