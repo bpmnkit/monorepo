@@ -1,5 +1,55 @@
 # Progress
 
+## 2026-09-07 — What `bpmn-sdk` has that we don't: the model layer round-trips, ours doesn't
+
+Analysed [`philippfromme/bpmn-sdk`](https://github.com/philippfromme/bpmn-sdk) (10.7k LOC,
+v0.1.0) against `packages/core` (23k LOC). On breadth it is not close — no DMN, no forms,
+no FEEL, no layout engine, no browser support, no engine, no CLI. It is ahead on one axis,
+and it is the one that matters most: **correctness of the model layer**.
+
+It is built on `bpmn-moddle`, so its object model *is* the BPMN and Zeebe moddle
+descriptors — everything they define round-trips by construction. Ours is a hand-written
+TypeScript subset, so anything the subset does not name is dropped on write, silently.
+
+**Measured, not inferred.** Twelve real Camunda 8 blueprints through
+`Bpmn.parse()` → `Bpmn.export()`: **eleven of twelve lose data**, including **22
+`zeebe:subscription` elements across nine files**. That element is the message correlation
+key. A process round-tripped through BPMN Kit today deploys fine, opens fine in a modeler,
+and never correlates a message again. Also dropped: `bpmn:category`/`categoryValue` (group
+labels), data input/output associations, and process-level `documentation`. Root cause is
+narrow and fixable — `BpmnMessage`, `BpmnError`, `BpmnSignal`, `BpmnParticipant`,
+`BpmnLane` and the artifact types have no `extensionElements` field at all.
+
+**The compact path is far worse, and it is the one the AI loop runs on.**
+`compactify → applyOperations → expand` discards every collaboration, participant, message
+flow, lane, data store, artifact and root message/error, plus all `ioMapping` detail
+(`zeebe:input` 91 → 0 in one blueprint) and most DI. `applyOperations()` compounds it by
+no-op'ing silently on any unresolved ID. Sharpest edge: `casen generate bpmn --input x.bpmn`
+with no `--output` **overwrites the input in place** with that lossy round trip, no backup,
+no `--force`, and prints `Patched and written to x.bpmn`.
+
+**Our docs assert the opposite.** `concepts.md` claims "the parser preserves all attributes,
+extensions, and vendor-specific elements" — false as measured — and its example uses
+`definitions.rootElements`, which is `bpmn-moddle`'s API, not ours. It ships in docspack, so
+agents are being told the guarantee holds.
+
+**Four ideas worth taking, none of which requires `bpmn-moddle`:** a fidelity corpus that
+gates round-trip losses in CI; a DI-excluded semantic hash (which makes "layout never
+changes semantics" an assertion, and gives every write a real change report); a write
+boundary that serializes, *re-parses*, compares the hash and only then writes atomically;
+and a publish gate that actually packs, installs and type-checks the tarball. Written up
+with evidence, sequencing and eleven costed action items in
+[`doc/bpmn-sdk-comparison.md`](bpmn-sdk-comparison.md), tracked under
+*Core Model Fidelity* in [`doc/roadmap.md`](roadmap.md).
+
+Explicitly **not** adopting: `bpmn-moddle` at runtime (kills browser support and the
+zero-dependency promise), discarding DI on write (`bpmn-sdk` has no mode that preserves a
+hand-arranged diagram — a regression for us), and `bpmn-auto-layout` (already evaluated and
+declined in `doc/bpmn-auto-layout-evaluation.md`). The SDK ships no LICENSE, so nothing —
+code, tests or fixtures — may be copied from it; the blueprint corpus gets sourced from
+Camunda's marketplace with recorded provenance.
+
+
 ## 2026-09-06 — Landing hero: lead with the contrast, prove it above the fold
 
 The hero opened with a positioning line (*BPMN diagrams from code, not clicks*) that only lands

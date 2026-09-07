@@ -277,6 +277,54 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## Core Model Fidelity
+
+> Full analysis, evidence and sequencing: [`doc/bpmn-sdk-comparison.md`](bpmn-sdk-comparison.md)
+> — measured against `philippfromme/bpmn-sdk` (2026-09-07). `Bpmn.parse()` → `Bpmn.export()`
+> loses data on 11 of 12 real Camunda blueprints, including 22 `zeebe:subscription`
+> correlation keys across 9 files.
+
+### Phase 1 — Stop the silent loss
+
+- [ ] **A1** Round-trip fidelity corpus + gate — 12–20 Camunda blueprints under
+      `packages/core/tests/fixtures/blueprints/` with `PROVENANCE.md`, structural-signature
+      assertion, landed red-listed so each fix deletes an allow-list entry
+- [ ] **A5a** `casen generate bpmn --input` must not overwrite its input by default —
+      require `--output` or `--force` (`apps/cli/src/commands/generate.ts`)
+- [ ] **A6** Correct the round-trip claim in
+      `apps/landing/src/content/docs/getting-started/concepts.md` (currently asserts a
+      guarantee we do not hold) and the `definitions.rootElements` example; rebuild docspack
+- [ ] **A2** `semantic-hash.ts` — DI-excluded canonical projection, sync SHA-256,
+      `diffSemantics()`; assert auto-layout does not change the hash
+- [ ] **A3** Close the model gaps the corpus exposes — `extensionElements` + `documentation`
+      on root/collaboration/artifact/lane types, `bpmn:category`/`categoryValue`, data
+      associations, and an `unknownChildren` catch-all so future gaps preserve rather than drop
+
+### Phase 2 — A verified write boundary
+
+- [ ] **A4** `writeBpmn()` — serialize, re-parse, compare semantic hash, write atomically;
+      returns `{ destination, outputSha256, semanticHash, changes }` (Node-only subpath)
+- [ ] **A5b** `applyOperations()` fails loudly on unresolved IDs (`strict` option, then default)
+- [ ] **A5c** Re-target operations at `BpmnDefinitions`; keep `compactify()` as a read-only
+      LLM view and document it as lossy; same for the MCP mutation tools
+
+### Phase 3 — Capability gaps
+
+- [ ] **A7** Descriptor-checked Zeebe extension writes — vendored `zeebe.json`, generated
+      owner/property table, `--check` mode in CI
+- [ ] **A9** `ProcessBuilder.from(defs, processId).at(nodeId)` — continue an existing model
+      fluently instead of regenerating it
+- [ ] **A8** Collaboration builder — `.participant()`, `.message()`, `.messageFlow()`
+      (`DiagramBuilder` currently hard-codes `collaborations: []`)
+
+### Phase 4 — Gates and ergonomics
+
+- [ ] **A10** Publish gate that packs, installs and type-checks each tarball (release workflow)
+- [ ] **A11** Script-size + wall-clock budget on example scripts; `{ explicitJoins: true }`
+      opt-out for the builder's join inference
+
+---
+
 ## Completed
 
 *(Items moved here from above as they ship)*
