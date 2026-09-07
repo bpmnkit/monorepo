@@ -1,4 +1,10 @@
-export { BpmnSdkError, ParseError, ValidationError } from "./errors.js"
+export {
+	BpmnSdkError,
+	ParseError,
+	ValidationError,
+	WriteError,
+	WriteVerificationError,
+} from "./errors.js"
 export type { ErrorCode } from "./errors.js"
 export {
 	isBpmnActivity,

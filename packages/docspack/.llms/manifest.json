@@ -1872,6 +1872,26 @@
 			]
 		},
 		{
+			"id": "packages.core.writing-files-bpmnkit-core-node",
+			"file": "chunks/packages.core.writing-files-bpmnkit-core-node.md",
+			"tokens": 474,
+			"tags": [
+				"packages",
+				"core",
+				"writing",
+				"files",
+				"bpmnkit",
+				"node"
+			],
+			"entities": [
+				"@bpmnkit/core/node",
+				"@bpmnkit/core",
+				"WriteVerificationError",
+				"WriteError",
+				"Bpmn.export()"
+			]
+		},
+		{
 			"id": "packages.core.dmn-support",
 			"file": "chunks/packages.core.dmn-support.md",
 			"tokens": 113,

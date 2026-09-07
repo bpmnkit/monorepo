@@ -1,5 +1,50 @@
 # Progress
 
+## 2026-09-07 — A write boundary that reads back what it wrote
+
+A4. `writeBpmn` in `packages/core/src/node/write.ts` is now the only supported way to write a
+BPMN file, and the only one that checks the result. It serialises the model, **parses the
+output back**, compares the two semantic hashes from A2, and refuses the write if they differ
+— naming the elements that diverged and carrying the diff on the error.
+
+**Behind the `@bpmnkit/core/node` subpath**, which settles open question 3 from the analysis.
+A separate `@bpmnkit/io` package would have meant the whole new-package checklist for one
+module; the subpath costs an `exports` entry, and `tsc` already emits `dist/node/`. Browser
+safety is not asserted here but measured: walking the 71 modules reachable from
+`dist/index.js`, none imports a `node:` builtin.
+
+**No option to skip verification**, which departs from the plan's sketch of a `validate` flag.
+An off switch on this check would only ever be reached for by someone trying to get past the
+bug it exists to report. Callers who want unchecked serialisation still have `Bpmn.export()`.
+
+**Layout is `preserve` by default, not `auto`.** The reference SDK has only two modes and both
+discard the diagram; preserving a hand-arranged layout is one of the places we are ahead
+(§5), so the default keeps it and `"auto"` opts into regeneration. `applyAutoLayout` returns a
+new model rather than mutating, which a test pins so the caller's object is never touched.
+
+**What the boundary does not cover, stated in the module and the docs.** It compares the model
+in memory against the model read back, so it catches the serialiser losing something. It
+cannot catch the *parser* having dropped something on the way in — that content is absent from
+both sides and the hashes agree. That remains A1's job, and saying so is the difference
+between a guarantee and a comforting story.
+
+**Atomicity, and the part that is only reachable under a race.** Contents go to a temporary
+file in the destination's own directory, then get linked or renamed into place. Without
+`force` the final step is `link`, which fails with EEXIST rather than replacing — the guard
+against a file appearing between the existence check and the write. That path is unreachable
+by ordinary calls, so it is tested with an actual race: two concurrent `writeBpmn` calls to
+the same new path, exactly one of which may win. Forced replacement keeps the permissions the
+old file had, which a plain rename would not.
+
+The lossy-serialiser test the plan asked for replaces the serialiser with one that drops an
+end event, and asserts six things: the write is refused, the error names `E`, the diff is on
+the error, no file and no temporary are left behind, and a good file already on disk is not
+replaced by the damaged one.
+
+662 tests in `@bpmnkit/core`; canvas, editor, plugins and operate typecheck; `biome check`
+clean across 845 files; `check-packages` passes with the new subpath.
+
+
 ## 2026-09-07 — A semantic hash, so "the layout moved" stops looking like "the model changed"
 
 A2. `packages/core/src/bpmn/semantic-hash.ts` gives three things: `semanticHash(defs)`,

@@ -321,8 +321,13 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ### Phase 2 — A verified write boundary
 
-- [ ] **A4** `writeBpmn()` — serialize, re-parse, compare semantic hash, write atomically;
-      returns `{ destination, outputSha256, semanticHash, changes }` (Node-only subpath)
+- [x] **A4** `writeBpmn()` — serialize, re-parse, compare semantic hash, write atomically;
+      returns `{ destination, bytes, outputSha256, semanticHash, changes }` behind the
+      `@bpmnkit/core/node` subpath. Refuses to replace without `force`, keeps the replaced
+      file's permissions, and uses a hard link so two concurrent creates cannot both win.
+      **No opt-out of verification** — see the module header for why. Note the boundary
+      cannot catch *parser* losses (absent from both sides of the comparison); that stays A1's
+      job
 - [ ] **A5b** `applyOperations()` fails loudly on unresolved IDs (`strict` option, then default)
 - [ ] **A5c** Re-target operations at `BpmnDefinitions`; keep `compactify()` as a read-only
       LLM view and document it as lossy; same for the MCP mutation tools

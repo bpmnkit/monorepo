@@ -1,3 +1,5 @@
+import type { SemanticDiff } from "./bpmn/semantic-hash.js"
+
 /**
  * Typed error codes for all errors thrown by `@bpmnkit/core`.
  *
@@ -19,6 +21,10 @@ export type ErrorCode =
 	| "parse-error"
 	/** A builder received an invalid combination of options. */
 	| "validation-error"
+	/** Serialising a model and reading it back did not reproduce the model. */
+	| "write-verification-error"
+	/** The output file could not be written. */
+	| "write-error"
 
 /**
  * Base class for all errors thrown by `@bpmnkit/core`.
@@ -86,5 +92,49 @@ export class ValidationError extends BpmnSdkError {
 	constructor(message: string) {
 		super(message, "validation-error")
 		this.name = "ValidationError"
+	}
+}
+
+/**
+ * Thrown when serialising a model and parsing the result back does not
+ * reproduce the model.
+ *
+ * This means the write would have put something on disk that no longer says
+ * what the model said, so nothing is written. {@link changes} names the
+ * elements that diverged.
+ *
+ * @example
+ * ```typescript
+ * import { writeBpmn } from "@bpmnkit/core/node"
+ * import { WriteVerificationError } from "@bpmnkit/core"
+ *
+ * try {
+ *   await writeBpmn(definitions, { output: "flow.bpmn" })
+ * } catch (err) {
+ *   if (err instanceof WriteVerificationError) {
+ *     console.error("would have lost:", err.changes.removed)
+ *   }
+ * }
+ * ```
+ */
+export class WriteVerificationError extends BpmnSdkError {
+	/** What differed between the model and the model read back from the output. */
+	readonly changes: SemanticDiff
+
+	constructor(message: string, changes: SemanticDiff) {
+		super(message, "write-verification-error")
+		this.name = "WriteVerificationError"
+		this.changes = changes
+	}
+}
+
+/**
+ * Thrown when the output file cannot be written — it already exists and
+ * `force` was not given, or the filesystem refused the write.
+ */
+export class WriteError extends BpmnSdkError {
+	constructor(message: string) {
+		super(message, "write-error")
+		this.name = "WriteError"
 	}
 }

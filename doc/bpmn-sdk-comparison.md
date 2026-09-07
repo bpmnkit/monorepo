@@ -357,8 +357,8 @@ source — only the problem statement can be. Concretely:
 | G8 | No fidelity gate — parser and serializer are unchecked against each other | no such test exists | A1 | the suite itself; allow-list empty |
 | G9 ✅ | No semantic hash; layout churn indistinguishable from a model change | no such module | A2 | auto-layout does not change the hash |
 | G10 ✅ | No change report on write | no such module | A2 (`diffSemantics`) | golden diff per corpus fixture |
-| G11 | No verified write boundary — nothing re-reads what it wrote | `writeFile` at 11 CLI sites | A4 | injected lossy serializer must be refused |
-| G12 | Non-atomic writes; no overwrite guard; output may alias input | `apps/cli/src/commands/*` | A4 | interrupted-write and alias tests |
+| G11 ✅ | No verified write boundary — nothing re-reads what it wrote | `writeFile` at 11 CLI sites | A4 | injected lossy serializer must be refused |
+| G12 ✅ | Non-atomic writes; no overwrite guard; output may alias input | `apps/cli/src/commands/*` | A4 | interrupted-write and alias tests |
 | G13 | `casen generate bpmn --input` overwrites its input with a lossy round trip | `generate.ts:670-676` | A5a | CLI test: refuses without `--output`/`--force` |
 | G14 | `applyOperations()` no-ops silently on unresolved element/flow/parent IDs | `operations.ts:100-160` | A5b | unresolved-ID test expects a failure |
 | G15 | Edit path runs through lossy `CompactDiagram` (CLI, MCP, AI review) | §4.2 | A5c | corpus edit round trip preserves hash |
@@ -375,6 +375,11 @@ source — only the problem statement can be. Concretely:
 G1–G7, G22 and G23 are one code change (A3) against one test (A1); they are listed
 separately because each is an independently observable loss and each retires an allow-list
 entry.
+
+**Status: A1, A2, A3, A4, A5a and A6 shipped (2026-09-07).** G11 and G12 are A4's rows:
+`writeBpmn` in `packages/core/src/node/write.ts`, behind the `@bpmnkit/core/node` subpath so
+the main entry stays free of `node:` builtins — verified by walking the 71 modules reachable
+from `dist/index.js`, none of which import one.
 
 **Status: A1, A2, A3, A5a and A6 shipped (2026-09-07).** G9 and G10 are A2's rows and are
 marked ✅ too: `semanticHash`, `projectSemantics` and `diffSemantics` live in

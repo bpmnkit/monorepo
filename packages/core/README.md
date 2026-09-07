@@ -147,6 +147,19 @@ const outXml = Bpmn.export(restored)
 | `projectSemantics(defs)` | The canonical, presentation-free projection the hash covers |
 | `diffSemantics(a, b)` | What changed between two models, keyed by element id |
 
+### Writing files (`@bpmnkit/core/node`)
+
+| Export | Description |
+|--------|-------------|
+| `writeBpmn(defs, opts)` | Serialize, read back, verify the model survived, then write atomically |
+
+```typescript
+import { writeBpmn } from "@bpmnkit/core/node"
+
+// Refuses rather than overwrite; pass force: true to replace.
+const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
+```
+
 ### DMN
 
 | Export | Description |

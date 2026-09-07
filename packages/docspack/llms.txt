@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 0.0.2. 156 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 0.0.2. 157 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -156,6 +156,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/core — Installation — `expand(compact)`](.llms/chunks/packages.core.installation-expand-compact.md) — 106 tokens
 - [@bpmnkit/core — Installation — `layoutProcess(process)`](.llms/chunks/packages.core.installation-layoutprocess-process.md) — 85 tokens
 - [@bpmnkit/core — Installation — ProcessBuilder methods](.llms/chunks/packages.core.installation-processbuilder-methods.md) — 415 tokens
+- [@bpmnkit/core — Writing files — `@bpmnkit/core/node`](.llms/chunks/packages.core.writing-files-bpmnkit-core-node.md) — 474 tokens
 - [@bpmnkit/core — DMN Support](.llms/chunks/packages.core.dmn-support.md) — 113 tokens
 - [@bpmnkit/docspack — Overview](.llms/chunks/packages.docspack.overview.md) — 252 tokens
 - [@bpmnkit/docspack — Installation](.llms/chunks/packages.docspack.installation.md) — 251 tokens
