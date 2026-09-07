@@ -29,7 +29,11 @@ import {
 	restConnectorToIoMappingInputs,
 	restConnectorToTaskHeaders,
 } from "./rest-connector.js"
-import { type ZeebeExtensions, zeebeExtensionsToXmlElements } from "./zeebe-extensions.js"
+import {
+	type ZeebeExtensions,
+	ensureZeebeExtension,
+	zeebeExtensionsToXmlElements,
+} from "./zeebe-extensions.js"
 
 // Keep in sync with packages/core/package.json version
 const EXPORTER_VERSION = "0.0.23"
@@ -568,6 +572,19 @@ function buildAdHocLoopCharacteristics(lc: {
 			},
 		],
 	}
+}
+
+const GATEWAY_ELEMENT_TYPES = new Set<BpmnElementType>([
+	"exclusiveGateway",
+	"parallelGateway",
+	"inclusiveGateway",
+	"eventBasedGateway",
+	"complexGateway",
+])
+
+/** Gateways are the elements for which several outgoing flows are the point. */
+function isGatewayType(type: BpmnElementType): boolean {
+	return GATEWAY_ELEMENT_TYPES.has(type)
 }
 
 function recomputeIncomingOutgoing(elements: BpmnFlowElement[], flows: BpmnSequenceFlow[]): void {
@@ -1898,6 +1915,8 @@ export class ProcessBuilder {
 	private readonly processId: string
 	private processName?: string
 	private _isExecutable = true
+	/** Whether `executable()` was called, so continue-mode leaves it alone if not. */
+	private _executableSet = false
 	private _versionTag?: string
 	private readonly flowElements: BpmnFlowElement[] = []
 	/** Ids in `flowElements`, for O(1) duplicate and existence checks. */
@@ -1917,9 +1936,163 @@ export class ProcessBuilder {
 	private _executionPlatformVersion = "8.9.0"
 	private _serviceTaskDefaults: { retries?: string } = {}
 	private _savedMainFlowId: string | undefined = undefined
+	/** Set by {@link ProcessBuilder.from}; makes `build()` update rather than generate. */
+	private _source?: { definitions: BpmnDefinitions; process: BpmnProcess }
+	/** Pre-existing flow endpoints, so `build()` can prove it did not rewire them. */
+	private _sourceFlowTargets = new Map<string, string>()
+	/** An `insertAfter` flow waiting to be reattached to what gets built next. */
+	private _pendingSpliceFlowId: string | undefined
+	/** Flows the caller deliberately spliced, exempt from the rewiring guard. */
+	private readonly _splicedFlowIds = new Set<string>()
 
 	constructor(processId: string) {
 		this.processId = processId
+	}
+
+	/**
+	 * Continues an existing model rather than generating a new one.
+	 *
+	 * `build()` then returns *that document* with this process's contents
+	 * replaced, so everything the builder has no opinion about — other processes,
+	 * the collaboration, lanes, diagram interchange, root elements, imports,
+	 * unmodelled content — is still there afterwards. Generating a replacement
+	 * from scratch is what loses those.
+	 *
+	 * The input is not mutated; the builder works on a copy.
+	 *
+	 * @param definitions - The parsed model to continue.
+	 * @param processId - Which process to continue. Named explicitly, because
+	 *   "the first process" is a guess that goes wrong on a collaboration.
+	 * @example
+	 * ```typescript
+	 * const updated = ProcessBuilder.from(Bpmn.parse(xml), "order")
+	 *   .at("validate")
+	 *   .serviceTask("notify", { name: "Notify", taskType: "notify" })
+	 *   .build()
+	 * ```
+	 */
+	static from(definitions: BpmnDefinitions, processId: string): ProcessBuilder {
+		const copy = structuredClone(definitions) as BpmnDefinitions
+		const process = copy.processes.find((candidate) => candidate.id === processId)
+		if (process === undefined) {
+			const available = copy.processes.map((candidate) => candidate.id)
+			throw new Error(
+				`Process "${processId}" is not in this document. It contains: ${
+					available.length > 0 ? available.map((id) => `"${id}"`).join(", ") : "no processes"
+				}`,
+			)
+		}
+
+		const builder = new ProcessBuilder(processId)
+		builder._source = { definitions: copy, process }
+		builder.processName = process.name
+		builder.flowElements.push(...process.flowElements)
+		for (const element of process.flowElements) builder.elementIds.add(element.id)
+		builder.sequenceFlows.push(...process.sequenceFlows)
+		builder._textAnnotations.push(...process.textAnnotations)
+		builder._associations.push(...process.associations)
+		// Seeded so a message event reuses the document's existing message rather
+		// than declaring a second one with the same name.
+		builder.rootErrors.push(...copy.errors)
+		builder.rootMessages.push(...copy.messages)
+		builder.rootSignals.push(...copy.signals)
+		builder.rootEscalations.push(...copy.escalations)
+		builder._sourceFlowTargets = new Map(
+			process.sequenceFlows.map((flow) => [flow.id, `${flow.sourceRef}→${flow.targetRef}`]),
+		)
+		return builder
+	}
+
+	/**
+	 * Moves the cursor to an existing flow node, so the next call chains from it.
+	 *
+	 * @param nodeId - A flow node directly contained by this process. Nodes inside
+	 *   a sub-process are not reachable: continuing into one means building that
+	 *   sub-process, not this one.
+	 */
+	at(nodeId: string): this {
+		const node = this.flowElements.find((element) => element.id === nodeId)
+		if (node === undefined) {
+			throw new Error(
+				`"${nodeId}" is not a flow node in process "${this.processId}". Nodes inside a sub-process cannot be continued from here.`,
+			)
+		}
+		if (node.type === "endEvent") {
+			throw new Error(
+				`Cannot continue from end event "${nodeId}": an end event has no outgoing sequence flow.`,
+			)
+		}
+
+		const hasOutgoing = this.sequenceFlows.some((flow) => flow.sourceRef === nodeId)
+		if (hasOutgoing && !isGatewayType(node.type)) {
+			throw new Error(
+				`"${nodeId}" already has an outgoing sequence flow. Continuing from it would give a ${node.type} two outgoing flows, which is an uncontrolled split. Use insertAfter("${nodeId}") to splice into that path instead.`,
+			)
+		}
+
+		this.moveCursor(node)
+		return this
+	}
+
+	/**
+	 * Splices what you build next into the path leaving an existing node.
+	 *
+	 * `insertAfter("validate")` followed by `.serviceTask("notify", …)` turns
+	 * `validate → end` into `validate → notify → end`. The existing flow keeps its
+	 * id and its target and only changes where it starts, so an edge nobody asked
+	 * to move keeps its identity in the diagram and in a diff.
+	 *
+	 * This is the counterpart to {@link at}, which continues from a node whose
+	 * path is open. Which one you mean is not guessable, so it is not guessed.
+	 *
+	 * @param nodeId - A flow node with exactly one outgoing sequence flow.
+	 */
+	insertAfter(nodeId: string): this {
+		const node = this.flowElements.find((element) => element.id === nodeId)
+		if (node === undefined) {
+			throw new Error(`"${nodeId}" is not a flow node in process "${this.processId}".`)
+		}
+
+		const outgoing = this.sequenceFlows.filter((flow) => flow.sourceRef === nodeId)
+		if (outgoing.length === 0) {
+			throw new Error(
+				`"${nodeId}" has no outgoing sequence flow, so there is nothing to insert into. Use at("${nodeId}") to continue from it.`,
+			)
+		}
+		if (outgoing.length > 1) {
+			throw new Error(
+				`"${nodeId}" has ${outgoing.length} outgoing sequence flows, so "after" is ambiguous. Name the flow's target and insert before that instead.`,
+			)
+		}
+
+		this.resolvePendingSplice()
+		const flow = outgoing[0] as BpmnSequenceFlow
+		this._pendingSpliceFlowId = flow.id
+		this._splicedFlowIds.add(flow.id)
+		this.moveCursor(node)
+		return this
+	}
+
+	/** Points the cursor at an existing node and forgets any branch state. */
+	private moveCursor(node: BpmnFlowElement): void {
+		this.lastNodeId = node.id
+		this.currentGatewayId = isGatewayType(node.type) ? node.id : undefined
+		this.openBranchEnds = []
+		this._savedMainFlowId = undefined
+	}
+
+	/**
+	 * Reattaches the flow a pending `insertAfter` detached, to whatever the cursor
+	 * has reached. With nothing built in between the cursor has not moved and this
+	 * is a no-op, which is the right answer for `insertAfter(x)` followed by
+	 * nothing.
+	 */
+	private resolvePendingSplice(): void {
+		const flowId = this._pendingSpliceFlowId
+		if (flowId === undefined) return
+		this._pendingSpliceFlowId = undefined
+		const flow = this.sequenceFlows.find((candidate) => candidate.id === flowId)
+		if (flow !== undefined && this.lastNodeId !== undefined) flow.sourceRef = this.lastNodeId
 	}
 
 	/** Enable auto-layout: `build()` will run the layout engine and populate diagram interchange data. */
@@ -1950,6 +2123,7 @@ export class ProcessBuilder {
 	/** Set whether this process is executable. */
 	executable(value: boolean): this {
 		this._isExecutable = value
+		this._executableSet = true
 		return this
 	}
 
@@ -2500,8 +2674,14 @@ export class ProcessBuilder {
 	 * the process in a {@link BpmnDefinitions} ready for XML serialization.
 	 */
 	build(options?: { strict?: boolean }): BpmnDefinitions {
+		this.resolvePendingSplice()
 		const beforeCount = this.flowElements.length
-		insertJoinGateways(this.flowElements, this.sequenceFlows)
+		// Continuing a document never infers joins. `insertJoinGateways` reads the
+		// whole topology, so on a parsed model it retargets edges the caller never
+		// touched — the corpus has a document where a no-op continue would have
+		// invented a join gateway and rerouted two flows into it. Building a branch
+		// that needs a join here means saying so with `.connectTo(joinId)`.
+		if (this._source === undefined) insertJoinGateways(this.flowElements, this.sequenceFlows)
 
 		if (options?.strict && this.flowElements.length > beforeCount) {
 			const inserted = this.flowElements
@@ -2514,7 +2694,10 @@ export class ProcessBuilder {
 		}
 
 		this.validate()
+		this.assertSourceTopologyIntact()
 		recomputeIncomingOutgoing(this.flowElements, this.sequenceFlows)
+
+		if (this._source !== undefined) return this.buildOntoSource(this._source)
 
 		const extensionElements: XmlElement[] = []
 		if (this._versionTag) {
@@ -2579,6 +2762,87 @@ export class ProcessBuilder {
 		}
 
 		return this._autoLayout ? applyAutoLayout(defs) : defs
+	}
+
+	/**
+	 * Writes this process's contents back into the document it came from.
+	 *
+	 * Everything not listed here is kept by identity — other processes, the
+	 * collaboration, diagram interchange, root elements, the process's own lanes,
+	 * documentation, extensions and unmodelled content. That is the whole point of
+	 * continuing rather than regenerating.
+	 *
+	 * Diagram interchange is *not* regenerated: existing shapes keep their
+	 * positions, and elements added here have none until `withAutoLayout()` or a
+	 * later `applyAutoLayout()` gives them one.
+	 */
+	private buildOntoSource(source: {
+		definitions: BpmnDefinitions
+		process: BpmnProcess
+	}): BpmnDefinitions {
+		const { definitions, process } = source
+
+		process.flowElements = this.flowElements
+		process.sequenceFlows = this.sequenceFlows
+		process.textAnnotations = this._textAnnotations
+		process.associations = this._associations
+		if (this.processName !== undefined) process.name = this.processName
+		// Only when asked. BPMN reads an absent `isExecutable` as false, so writing
+		// the builder's `true` default onto a process that never carried it makes a
+		// non-executable process executable — a change nobody requested.
+		if (this._executableSet) process.isExecutable = this._isExecutable
+		if (this._versionTag !== undefined) {
+			// Set the attribute on the existing element rather than replacing the
+			// bag: a real process carries other extensions next to it.
+			ensureZeebeExtension(
+				{ type: "process", extensionElements: process.extensionElements },
+				"zeebe:versionTag",
+			).attributes.value = this._versionTag
+		}
+
+		definitions.errors = this.rootErrors
+		definitions.messages = this.rootMessages
+		definitions.signals = this.rootSignals
+		definitions.escalations = this.rootEscalations
+
+		return this._autoLayout ? applyAutoLayout(definitions) : definitions
+	}
+
+	/**
+	 * Refuses to rewire a flow that was already in the document.
+	 *
+	 * `insertJoinGateways` retargets converging flows, which is right for a
+	 * topology this builder just created and wrong for one it was handed: a
+	 * document would come back with edges the caller never touched pointing
+	 * somewhere else. Continuing a model has to leave the model alone.
+	 */
+	private assertSourceTopologyIntact(): void {
+		if (this._source === undefined) return
+		const rewired: string[] = []
+		const byId = new Map(this.sequenceFlows.map((flow) => [flow.id, flow]))
+		for (const [id, endpoints] of this._sourceFlowTargets) {
+			const flow = byId.get(id)
+			if (flow === undefined) {
+				rewired.push(`${id} (removed)`)
+				continue
+			}
+			// A spliced flow was moved on purpose, but only its source may move:
+			// `insertAfter` inserts into a path, it does not redirect one.
+			const [, target] = endpoints.split("→")
+			if (this._splicedFlowIds.has(id)) {
+				if (flow.targetRef !== target) {
+					rewired.push(`${id} (spliced flow now targets ${flow.targetRef}, not ${target})`)
+				}
+				continue
+			}
+			const now = `${flow.sourceRef}→${flow.targetRef}`
+			if (now !== endpoints) rewired.push(`${id} (${endpoints} became ${now})`)
+		}
+		if (rewired.length > 0) {
+			throw new Error(
+				`Building would rewire sequence flows this document already had: ${rewired.join(", ")}. Continuing a model must not change the part you did not touch.`,
+			)
+		}
 	}
 
 	private validate(): void {

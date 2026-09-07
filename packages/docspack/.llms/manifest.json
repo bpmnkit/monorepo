@@ -1697,6 +1697,25 @@
 			]
 		},
 		{
+			"id": "packages.core.installation-bpmn.continueprocess-definitions-processid",
+			"file": "chunks/packages.core.installation-bpmn.continueprocess-definitions-processid.md",
+			"tokens": 517,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.continueprocess",
+				"definitions",
+				"processid"
+			],
+			"entities": [
+				"build()",
+				"ProcessBuilder",
+				"applyAutoLayout()",
+				"isExecutable"
+			]
+		},
+		{
 			"id": "packages.core.installation-bpmn.creatediagram-id",
 			"file": "chunks/packages.core.installation-bpmn.creatediagram-id.md",
 			"tokens": 107,

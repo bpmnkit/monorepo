@@ -1,5 +1,55 @@
 # Progress
 
+## 2026-09-07 — Extending a file no longer means regenerating it
+
+A9. `Bpmn.continueProcess(defs, processId)` — `ProcessBuilder.from(...)` for anyone who prefers
+the static — seeds the fluent builder from a parsed model, and `build()` returns *that
+document* with the named process's contents replaced. Everything the builder has no opinion
+about is still there afterwards: other processes, the collaboration, lanes, diagram
+interchange, root elements, unmodelled content. Regenerating a replacement is what loses those,
+and that was the only way to extend a file before this.
+
+**`at()` alone would not have been a usable feature.** The plan specified
+`from(defs, id).at(nodeId)`, and a strict `at()` — refusing a node that already has an outgoing
+flow, because continuing from it makes an uncontrolled split — refuses on *every* node of a
+linear `start → task → end` except the end event. Splicing into an existing path is the common
+case and deserves its own verb. `insertAfter()` moves the existing flow's **source** and
+nothing else, so the edge keeps its id and its target: it stays the same edge in the diagram,
+and in a diff it reads as one changed endpoint rather than a delete and an add. Which of the
+two verbs you mean is not guessable from the call, so it is not guessed — `at()`'s refusal
+names `insertAfter` in the message.
+
+**One assertion found both real bugs**: continue every process in every corpus fixture, build
+without adding anything, and require an empty `diffSemantics`.
+
+The first was serious. `insertJoinGateways` reads the whole topology, so on a parsed model it
+retargets edges nobody touched. `06-events-and-containers.bpmn` is such a document — a **no-op**
+continue would have invented a `Gateway_check_join` and rerouted two existing flows into it.
+Continue mode no longer runs it at all: a branch that needs a join here says so with
+`.connectTo(joinId)`, which is the explicitness this item was supposed to have. The guard that
+caught it stays as a backstop, refusing any build that would rewire a pre-existing flow.
+
+The second was quieter and worse in its way. The builder defaults `isExecutable` to `true`, and
+writing that onto a process that never carried the attribute makes a non-executable process
+executable — BPMN reads the absent attribute as false. A no-op continue on the seller process
+of `02-collaboration.bpmn` did exactly that. `isExecutable` and the process name are now left
+alone unless `executable()` or `name()` is called.
+
+Diagram interchange is deliberately not regenerated: existing shapes keep their positions, and
+elements added here have none until `.withAutoLayout()` or a later `applyAutoLayout()`. A
+version tag sets its attribute on the existing extension rather than replacing the bag, and the
+document's root messages, errors, signals and escalations are seeded into the builder so a new
+message event reuses the message already declared instead of adding a second with the same
+name.
+
+Blanking any of the four guards — the skipped auto-join, the `isExecutable` check, the splice
+reattachment, the rewiring backstop — fails between one and three tests.
+
+774 tests in `@bpmnkit/core` (28 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 855 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
 ## 2026-09-07 — Pooled diagrams can be built, not only parsed
 
 A8. `DiagramBuilder` hard-coded `collaborations: []`, so a collaboration was the one shape the

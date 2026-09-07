@@ -54,9 +54,8 @@ export { sha256Hex } from "./bpmn/sha256.js"
 export { checkDiCompleteness } from "./bpmn/di-check.js"
 export type { DiCompleteness } from "./bpmn/di-check.js"
 export { planeForElement, listPlaneElementIds } from "./bpmn/di-planes.js"
-export { DiagramBuilder } from "./bpmn/bpmn-builder.js"
+export { DiagramBuilder, ProcessBuilder } from "./bpmn/bpmn-builder.js"
 export type {
-	ProcessBuilder,
 	BranchBuilder,
 	SubProcessContentBuilder,
 	ServiceTaskOptions,

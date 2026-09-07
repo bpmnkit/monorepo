@@ -360,8 +360,12 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       151 types: 109 / 34 / 6 / 2 unprobed. `pnpm --filter @bpmnkit/core check:descriptors`
       prints the report. This is what stops the model drifting from the spec again after A3
       closed today's gaps
-- [ ] **A9** `ProcessBuilder.from(defs, processId).at(nodeId)` — continue an existing model
-      fluently instead of regenerating it
+- [x] **A9** `ProcessBuilder.from(defs, processId)` (also `Bpmn.continueProcess`) with
+      `.at(nodeId)` and `.insertAfter(nodeId)` — continue an existing model fluently instead of
+      regenerating it. `build()` returns the source document with that process replaced;
+      collaboration, lanes, diagram interchange, other processes and unmodelled content all
+      survive. Continue mode never infers join gateways, and refuses to rewire a flow the
+      document already had
 - [x] **A8** Collaboration builder — `.participant()`, `.message()`, `.messageFlow()` and
       `.collaborationId()` on `DiagramBuilder`, ids verbatim, black-box participants
       supported. No participants means no collaboration element. `build()` refuses a

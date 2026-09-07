@@ -366,7 +366,7 @@ source — only the problem statement can be. Concretely:
 | G17 ✅ | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
 | G18 ✅ | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
 | G19 ✅ | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
-| G20 | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
+| G20 ✅ | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
 | G21 | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
 
 | G22 ✅ | `bpmn:loopCardinality` and `bpmn:completionCondition` dropped — a multi-instance activity loses its cardinality and completion condition | A1 corpus, `06-events-and-containers.bpmn` | A3 | A1 allow-list entry deleted |
@@ -609,6 +609,27 @@ Pairs with A5: "open, edit, write" becomes the default story for existing files,
 "generate from scratch" is reserved for new ones.
 
 Effort: ~2 days.
+
+**As shipped.** `ProcessBuilder.from(defs, processId)`, also reachable as
+`Bpmn.continueProcess(...)`, plus `.at(nodeId)` and `.insertAfter(nodeId)`. `build()` returns
+the source document with that process's contents replaced, so nothing else in it moves.
+
+- **`at()` alone was not a shippable feature.** In a linear `start → task → end`, every node
+  but the end event already has an outgoing flow, so a strict `at()` refuses on all of them.
+  Splicing into an existing path is the common case and needs its own verb: `insertAfter()`
+  moves the existing flow's *source* only, so the edge keeps its id and its target and stays
+  the same edge in the diagram and in a diff.
+- **Continue mode does not run `insertJoinGateways`.** It reads the whole topology, so on a
+  parsed model it retargets edges the caller never touched. `06-events-and-containers.bpmn` is
+  such a document: a no-op continue would have invented `Gateway_check_join` and rerouted two
+  existing flows into it. A guard refuses any rewiring of a pre-existing flow as a backstop.
+- **`isExecutable` is left alone unless `executable()` is called.** BPMN reads the absent
+  attribute as false, so writing the builder's `true` default onto a process that never carried
+  it makes a non-executable process executable. A no-op continue on
+  `02-collaboration.bpmn`'s seller process did exactly that before this was fixed.
+
+Both were found by the same assertion: continuing every process in every corpus fixture and
+building without adding anything must produce an empty `diffSemantics`.
 
 ### A12 — Descriptor coverage check for the BPMN core model (P1)
 
