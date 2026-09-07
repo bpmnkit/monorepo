@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 0.0.2. 160 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 0.0.2. 161 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -145,6 +145,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/core — Installation](.llms/chunks/packages.core.installation.md) — 27 tokens
 - [@bpmnkit/core — Installation — `Bpmn.createProcess(id, name?)`](.llms/chunks/packages.core.installation-bpmn.createprocess-id-name.md) — 51 tokens
 - [@bpmnkit/core — Installation — `Bpmn.createDiagram(id?)`](.llms/chunks/packages.core.installation-bpmn.creatediagram-id.md) — 107 tokens
+- [@bpmnkit/core — Installation — DiagramBuilder — collaborations](.llms/chunks/packages.core.installation-diagrambuilder-collaborations.md) — 404 tokens
 - [@bpmnkit/core — Installation — `Bpmn.export(definitions)`](.llms/chunks/packages.core.installation-bpmn.export-definitions.md) — 43 tokens
 - [@bpmnkit/core — Installation — `Bpmn.parse(xml)`](.llms/chunks/packages.core.installation-bpmn.parse-xml.md) — 45 tokens
 - [@bpmnkit/core — Installation — `Bpmn.makeEmpty(processId?, processName?)`](.llms/chunks/packages.core.installation-bpmn.makeempty-processid-processname.md) — 65 tokens

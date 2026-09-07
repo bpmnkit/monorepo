@@ -1,5 +1,56 @@
 # Progress
 
+## 2026-09-07 — Pooled diagrams can be built, not only parsed
+
+A8. `DiagramBuilder` hard-coded `collaborations: []`, so a collaboration was the one shape the
+SDK could parse, lay out and render but not build. `.participant()`, `.message()`,
+`.messageFlow()` and `.collaborationId()` close that, taking ids verbatim so a generated
+diagram can be referred to by the ids you chose. Black-box participants — a pool with no
+process — are a first-class case rather than an incomplete one: it is how you draw the
+counterparty you exchange messages with but do not execute.
+
+Message flow endpoints may name either participants or flow nodes inside them. Both are valid
+BPMN and the layout engine already reads either, so restricting the builder to one would have
+been our rule rather than the spec's.
+
+**No participants means no collaboration element.** Emitting an empty `<bpmn:collaboration/>`
+looks like a harmless default and is not — a modeler reads it as "this document is pooled" and
+renders every process pool-less.
+
+**`build()` refuses rather than emitting a document that opens broken**, and reports every
+problem at once instead of the first: a participant naming a process the diagram does not
+contain, two participants claiming the same process, a duplicate id, a message flow whose
+endpoint does not exist or which names an undeclared message. The rule worth having is the
+last one — a message flow must cross a pool boundary. One that starts and ends in the same
+pool is a sequence flow, and it is easy to write by accident. Blanking the validator fails
+seven tests.
+
+`ProcessBuilder.build()`'s own `collaborations: []` stays. A single-process build has no
+collaboration, and that line was never the bug.
+
+**The round-trip assertion found a model bug that had nothing to do with the builder.**
+`messageRef` was missing from the parser's known-attribute list, so a parsed message flow
+carried it twice — in the typed `BpmnMessageFlow.messageRef` and again in
+`unknownAttributes`. Harmless on the wire, which is why the A1 corpus gate never saw it: the
+serialiser assigns the typed field after spreading the unknown bag, so the XML was right
+either way. But it makes `unknownAttributes` untrue about what the SDK models, which is the
+one thing that field is for. Fixed. One golden semantic hash moved —
+`02-collaboration.bpmn`, the only fixture carrying a `messageRef`, and the only golden that
+moved, which is what confirms the change is scoped to it.
+
+**Eleven more attributes are stored the same way and are deliberately left alone**:
+`activityRef`, `cancelRemainingInstances`, `isInterrupting`, `itemSubjectRef`, `signalRef`,
+`triggeredByEvent`, and the generic `height`, `value`, `width`, `x`, `y`. The generic five
+cannot simply join the known-attribute set, because that set is global rather than
+per-element: adding `x` would silently drop a non-spec `x` on a task, turning a cosmetic
+problem into a real loss. Closing it properly means per-element known-attribute sets, which is
+a larger change than this item.
+
+746 tests in `@bpmnkit/core` (18 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 854 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
 ## 2026-09-07 — Zeebe extensions can no longer be written where they do not belong
 
 A7. `zeebe:calledDecision` on a service task deploys, then fails in Camunda with an error that

@@ -3,6 +3,7 @@ import type { XmlElement } from "../types/xml-element.js"
 import { applyAutoLayout } from "./auto-layout.js"
 import type {
 	BpmnAssociation,
+	BpmnCollaboration,
 	BpmnConditionExpression,
 	BpmnDefinitions,
 	BpmnElementType,
@@ -11,7 +12,9 @@ import type {
 	BpmnEventDefinition,
 	BpmnFlowElement,
 	BpmnMessage,
+	BpmnMessageFlow,
 	BpmnMultiInstanceLoopCharacteristics,
+	BpmnParticipant,
 	BpmnProcess,
 	BpmnReceiveTask,
 	BpmnSendTask,
@@ -179,6 +182,34 @@ export interface BusinessRuleTaskOptions {
 export interface GatewayOptions extends ElementOptions {
 	/** ID of the default sequence flow (set manually; prefer branch().defaultFlow()). */
 	defaultFlow?: string
+}
+
+/** Options for a collaboration participant (a pool). */
+export interface ParticipantOptions {
+	/** Pool label. */
+	name?: string
+	/** Id of the process this pool executes. Omit for a black box. */
+	processId?: string
+}
+
+/** Options for a root-level message declared on a diagram. */
+export interface DiagramMessageOptions {
+	/** Message name, which is what Camunda 8 publishes against. */
+	name?: string
+	/** FEEL expression Camunda 8 correlates published messages on (`zeebe:subscription`). */
+	correlationKey?: string
+}
+
+/** Options for a message flow between two pools. */
+export interface MessageFlowOptions {
+	/** Id of the participant, or of a flow node inside one, the message leaves. */
+	source: string
+	/** Id of the participant, or of a flow node inside one, the message reaches. */
+	target: string
+	/** Flow label. */
+	name?: string
+	/** Id of a message declared with `.message()`. */
+	messageRef?: string
 }
 
 /** Options for an intermediate catch event. */
@@ -2639,6 +2670,9 @@ export class DiagramBuilder {
 	private readonly _processes: BpmnProcess[] = []
 	private readonly _errors: BpmnError[] = []
 	private readonly _messages: BpmnMessage[] = []
+	private readonly _participants: BpmnParticipant[] = []
+	private readonly _messageFlows: BpmnMessageFlow[] = []
+	private _collaborationId = "Collaboration_1"
 	private _executionPlatformVersion = "8.9.0"
 
 	constructor(id: string) {
@@ -2659,6 +2693,169 @@ export class DiagramBuilder {
 		this._errors.push(...defs.errors)
 		this._messages.push(...defs.messages)
 		return this
+	}
+
+	/** Renames the collaboration element. Defaults to `"Collaboration_1"`. */
+	collaborationId(id: string): this {
+		this._collaborationId = id
+		return this
+	}
+
+	/**
+	 * Adds a pool.
+	 *
+	 * Omit `processId` for a black box — a participant whose internals are not
+	 * modelled. That is a real BPMN construct, not an incomplete one: it is how
+	 * you draw the counterparty you exchange messages with but do not execute.
+	 *
+	 * @param id - The participant's element id, used verbatim.
+	 */
+	participant(id: string, options: ParticipantOptions = {}): this {
+		const participant: BpmnParticipant = { id, unknownAttributes: {} }
+		if (options.name !== undefined) participant.name = options.name
+		if (options.processId !== undefined) participant.processRef = options.processId
+		this._participants.push(participant)
+		return this
+	}
+
+	/**
+	 * Declares a root-level message, which a message flow may name and a Camunda 8
+	 * message subscription correlates on.
+	 *
+	 * `ProcessBuilder` already creates messages by name for message events, so
+	 * only call this for a message no event declared — typically one carried by a
+	 * message flow between pools.
+	 *
+	 * @param id - The message's element id, used verbatim.
+	 */
+	message(id: string, options: DiagramMessageOptions = {}): this {
+		const message: BpmnMessage = { id, unknownAttributes: {} }
+		if (options.name !== undefined) message.name = options.name
+		const extensions = zeebeExtensionsToXmlElements(
+			options.correlationKey === undefined
+				? {}
+				: { subscription: { correlationKey: options.correlationKey } },
+		)
+		if (extensions.length > 0) message.extensionElements = extensions
+		this._messages.push(message)
+		return this
+	}
+
+	/**
+	 * Connects two pools.
+	 *
+	 * `source` and `target` name either participants or flow nodes inside them.
+	 * Both forms are valid BPMN and the layout engine reads either, but they must
+	 * be in *different* pools — a message flow is what crosses a pool boundary,
+	 * and one that does not is the error this catches.
+	 *
+	 * @param id - The message flow's element id, used verbatim.
+	 */
+	messageFlow(id: string, options: MessageFlowOptions): this {
+		const flow: BpmnMessageFlow = {
+			id,
+			sourceRef: options.source,
+			targetRef: options.target,
+			unknownAttributes: {},
+		}
+		if (options.name !== undefined) flow.name = options.name
+		if (options.messageRef !== undefined) flow.messageRef = options.messageRef
+		this._messageFlows.push(flow)
+		return this
+	}
+
+	/**
+	 * Reports every way the declared collaboration would not survive contact with
+	 * a modeler, so `build()` can refuse rather than emit a file that opens broken.
+	 */
+	private collaborationProblems(): string[] {
+		const problems: string[] = []
+
+		const seen = new Set<string>()
+		for (const id of [
+			...this._participants.map((p) => p.id),
+			...this._messageFlows.map((f) => f.id),
+		]) {
+			if (seen.has(id)) problems.push(`Duplicate element ID "${id}"`)
+			seen.add(id)
+		}
+
+		const processIds = new Set(this._processes.map((process) => process.id))
+		const claimed = new Map<string, string>()
+		for (const participant of this._participants) {
+			const processId = participant.processRef
+			if (processId === undefined) continue
+			if (!processIds.has(processId)) {
+				problems.push(
+					`Participant "${participant.id}" references process "${processId}", which this diagram does not contain`,
+				)
+				continue
+			}
+			const owner = claimed.get(processId)
+			if (owner !== undefined) {
+				problems.push(
+					`Participants "${owner}" and "${participant.id}" both reference process "${processId}"; a process belongs to one pool`,
+				)
+			}
+			claimed.set(processId, participant.id)
+		}
+
+		const owningParticipant = this.participantIndex()
+		const messageIds = new Set(this._messages.map((message) => message.id))
+		for (const flow of this._messageFlows) {
+			for (const [role, ref] of [
+				["source", flow.sourceRef],
+				["target", flow.targetRef],
+			] as const) {
+				if (!owningParticipant.has(ref)) {
+					problems.push(
+						`Message flow "${flow.id}" names ${role} "${ref}", which is not a participant or a flow node in one`,
+					)
+				}
+			}
+
+			const from = owningParticipant.get(flow.sourceRef)
+			const to = owningParticipant.get(flow.targetRef)
+			if (from !== undefined && from === to) {
+				problems.push(
+					`Message flow "${flow.id}" starts and ends in participant "${from}"; a message flow crosses pools, a sequence flow stays inside one`,
+				)
+			}
+
+			if (flow.messageRef !== undefined && !messageIds.has(flow.messageRef)) {
+				problems.push(
+					`Message flow "${flow.id}" references message "${flow.messageRef}", which this diagram does not declare`,
+				)
+			}
+		}
+
+		return problems
+	}
+
+	/** Maps every participant id and every flow node id to its owning participant. */
+	private participantIndex(): Map<string, string> {
+		const index = new Map<string, string>()
+		const byProcess = new Map<string, string>()
+		for (const participant of this._participants) {
+			index.set(participant.id, participant.id)
+			if (participant.processRef !== undefined)
+				byProcess.set(participant.processRef, participant.id)
+		}
+
+		const walk = (elements: BpmnFlowElement[], owner: string): void => {
+			for (const element of elements) {
+				index.set(element.id, owner)
+				if ("flowElements" in element && Array.isArray(element.flowElements)) {
+					walk(element.flowElements, owner)
+				}
+			}
+		}
+
+		for (const process of this._processes) {
+			const owner = byProcess.get(process.id)
+			if (owner !== undefined) walk(process.flowElements, owner)
+		}
+		return index
 	}
 
 	build(): BpmnDefinitions {
@@ -2684,9 +2881,36 @@ export class DiagramBuilder {
 			escalations: [],
 			messages: this._messages,
 			signals: [],
-			collaborations: [],
+			collaborations: this.buildCollaborations(),
 			processes: this._processes,
 			diagrams: [],
 		}
+	}
+
+	/**
+	 * A document with no participants has no collaboration — an empty
+	 * `<bpmn:collaboration/>` is not a neutral addition, it makes every process a
+	 * pool-less participant in a modeler.
+	 */
+	private buildCollaborations(): BpmnCollaboration[] {
+		if (this._participants.length === 0 && this._messageFlows.length === 0) return []
+
+		const problems = this.collaborationProblems()
+		if (problems.length > 0) {
+			throw new Error(`Invalid collaboration:\n  ${problems.join("\n  ")}`)
+		}
+
+		return [
+			{
+				id: this._collaborationId,
+				participants: this._participants,
+				messageFlows: this._messageFlows,
+				textAnnotations: [],
+				associations: [],
+				groups: [],
+				extensionElements: [],
+				unknownAttributes: {},
+			},
+		]
 	}
 }

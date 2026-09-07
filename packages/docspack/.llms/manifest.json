@@ -1711,6 +1711,22 @@
 			]
 		},
 		{
+			"id": "packages.core.installation-diagrambuilder-collaborations",
+			"file": "chunks/packages.core.installation-diagrambuilder-collaborations.md",
+			"tokens": 404,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"diagrambuilder",
+				"collaborations"
+			],
+			"entities": [
+				"applyAutoLayout",
+				"build()"
+			]
+		},
+		{
 			"id": "packages.core.installation-bpmn.export-definitions",
 			"file": "chunks/packages.core.installation-bpmn.export-definitions.md",
 			"tokens": 43,

@@ -96,6 +96,7 @@ const KNOWN_ATTRS = new Set([
 	"exporter",
 	"exporterVersion",
 	"processRef",
+	"messageRef",
 	"dataObjectRef",
 	"dataStoreRef",
 	"isCollection",

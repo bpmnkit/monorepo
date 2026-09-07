@@ -365,7 +365,7 @@ source — only the problem statement can be. Concretely:
 | G16 | Docs assert a round-trip guarantee we do not hold; example uses `bpmn-moddle`'s API | `concepts.md:80,90` | A6 | docspack rebuilt; claim matches A1's result |
 | G17 ✅ | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
 | G18 ✅ | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
-| G19 | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
+| G19 ✅ | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
 | G20 | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
 | G21 | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
 
@@ -569,6 +569,34 @@ engines and the canvas all handle collaborations. Add `.participant()`, `.messag
 `.messageFlow()` with exact IDs, mirroring `CollaborationBuilder`'s shape.
 
 Effort: ~3 days. Verify against the existing `collaboration-layout.test.ts` fixtures.
+
+**As shipped.** `.participant()`, `.message()`, `.messageFlow()` and `.collaborationId()` on
+`DiagramBuilder`, all taking ids verbatim. Two decisions the plan did not cover:
+
+- **No participants means no collaboration element.** Emitting an empty
+  `<bpmn:collaboration/>` looks harmless and is not: a modeler reads it as "this document is
+  pooled" and renders every process pool-less.
+- **`build()` validates and reports every problem at once**, rather than emitting a document
+  that opens broken. The rule worth having is that a message flow must cross a pool boundary —
+  one that starts and ends in the same pool is a sequence flow, and it is easy to write by
+  accident.
+
+`ProcessBuilder.build()`'s `collaborations: []` at `bpmn-builder.ts:2532` is correct and stays:
+a single-process build has no collaboration.
+
+**The round-trip assertion found an unrelated model bug.** `messageRef` was missing from the
+parser's known-attribute list, so it was stored twice — in the typed `BpmnMessageFlow.messageRef`
+*and* in `unknownAttributes`. Harmless on the wire, since the serialiser writes the typed field
+after spreading the unknown bag, but it makes `unknownAttributes` untrue about what the SDK
+models. Fixed, with one golden semantic hash moved (`02-collaboration.bpmn`, the only fixture
+carrying a `messageRef`).
+
+Eleven more attributes are stored the same way and are **not** fixed here: `activityRef`,
+`cancelRemainingInstances`, `isInterrupting`, `itemSubjectRef`, `signalRef`,
+`triggeredByEvent`, and the generic `height`, `value`, `width`, `x`, `y`. The generic five
+cannot simply join the global known-attribute set — that set is not per-element, so adding `x`
+would silently drop a non-spec `x` on a task, which is a real loss where this is only a
+cosmetic one. Closing it properly means per-element known-attribute sets.
 
 ### A9 — Continue an existing model fluently (P1)
 

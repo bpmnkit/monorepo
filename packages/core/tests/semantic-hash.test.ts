@@ -117,7 +117,7 @@ describe("semanticHash", () => {
 	 */
 	const GOLDEN: Record<string, string> = {
 		"01-root-elements.bpmn": "cb299a10ca6a31810963b5bb48a5ddbf0ebdfdd3ab9e0756d881de3d6e72a097",
-		"02-collaboration.bpmn": "d2060177178e9c9929643c321c07b9aeefc9a9e83d5ebe8be79364ec26de3e5c",
+		"02-collaboration.bpmn": "031ce680fad40fc8befb3d9ff13ca031c24c97a323173410feeb8ba2c5340e1e",
 		"03-data-elements.bpmn": "4f9e9d0fbd41a55fc260641b2f253b1cddfcd59f4c8529e8cc321ca893c78222",
 		"04-artifacts.bpmn": "dc1506d309f7ca7f5dcca3f0efb84d3b00f1bfc2064768bcf83b3633701013b3",
 		"05-zeebe-extensions.bpmn": "cc7d33a3c0a5dda3cd7e086689f4e1f8e4132855870181ab066a99845e407aa6",

@@ -362,8 +362,11 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       closed today's gaps
 - [ ] **A9** `ProcessBuilder.from(defs, processId).at(nodeId)` — continue an existing model
       fluently instead of regenerating it
-- [ ] **A8** Collaboration builder — `.participant()`, `.message()`, `.messageFlow()`
-      (`DiagramBuilder` currently hard-codes `collaborations: []`)
+- [x] **A8** Collaboration builder — `.participant()`, `.message()`, `.messageFlow()` and
+      `.collaborationId()` on `DiagramBuilder`, ids verbatim, black-box participants
+      supported. No participants means no collaboration element. `build()` refuses a
+      collaboration a modeler would not open — reporting every problem at once — including a
+      message flow that does not cross a pool boundary
 
 ### Phase 4 — Gates and ergonomics
 
