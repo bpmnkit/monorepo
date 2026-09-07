@@ -179,16 +179,22 @@ When creating a new published package under `packages/` or `apps/`, complete all
 
 2. **`scripts/generate-readmes.mjs`** — add an entry to the `packages` object with `name`, `description`, and `content` (Overview, Features, Installation, Quick Start, API Reference). Also add the package to the `footer()` function's related packages list.
 
-3. **`scripts/sync-license.mjs`** — add the package path to the `PUBLISHED` array.
+3. **`scripts/published-packages.mjs`** — add the package path to the `PUBLISHED` array. This
+   is the single list; `sync-license.mjs`, `check-packages.mjs` and
+   `check-package-consumable.mjs` all read it.
 
-4. **`scripts/check-packages.mjs`** — add the package path to the `PUBLISHED` array.
-
-5. **Run the scripts** to generate `LICENSE` and `README.md`:
+4. **Run the scripts** to generate `LICENSE` and `README.md`:
    ```sh
    node scripts/sync-license.mjs
    node scripts/generate-readmes.mjs
    node scripts/check-packages.mjs   # must exit 0
    ```
+
+5. **Check the tarball is usable** — `pnpm check:consumable --filter <your-package>`. This packs
+   the package, checks every path its manifest declares is actually in the tarball, installs it
+   into a throwaway project, imports it, and type-checks a strict `NodeNext` consumer against
+   the declarations it ships. Requires a build first. The full run is part of the release
+   workflow.
 
 Never hand-write a `README.md` or `LICENSE` for a published package — they are generated/synced by these scripts and will be overwritten on the next build.
 

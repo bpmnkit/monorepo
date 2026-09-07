@@ -5,6 +5,7 @@
 	"packageManager": "pnpm@10.21.0",
 	"scripts": {
 		"build": "node scripts/sync-license.mjs && node scripts/generate-readmes.mjs && node scripts/check-packages.mjs && pnpm turbo build",
+		"check:consumable": "node scripts/check-package-consumable.mjs",
 		"typecheck": "pnpm turbo typecheck",
 		"lint": "biome check .",
 		"format": "biome check --write .",

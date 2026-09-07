@@ -1,5 +1,77 @@
 # Progress
 
+## 2026-09-07 — The publish gate now opens the tarball
+
+A10. `check-packages.mjs` reads package.json and can only tell you the metadata is present. It
+cannot tell you that `exports` points at a file the tarball does not contain, that the `.d.ts`
+never got built, or that the shipped declarations do not compile. Those ship silently and are
+found by whoever installs the release.
+
+`scripts/check-package-consumable.mjs` packs each of the 23 published packages, checks every
+path its manifest declares is actually in the tarball, installs it into a throwaway project
+with sibling `@bpmnkit/*` tarballs overriding the registry, imports every ESM entry point, and
+type-checks a consumer under `strict` + `NodeNext` with **`skipLibCheck` off** — the point being
+to compile the declarations we ship rather than take their word for it. It runs in the release
+workflow between the build and the publish.
+
+**Four real bugs on the first run, all of which would have shipped:**
+
+1. **`@bpmnkit/proxy` shipped no types.** It declared `exports["."].types` while its `files`
+   listed only `dist/**/*.js`. The declarations were built and never packed. This is precisely
+   the failure the item was written for.
+2. **`@bpmnkit/plugins` could not be imported.** `dist/token-highlight/index.js` carried
+   `import … from "./css"` — extensionless, which Node ESM does not resolve, and which this
+   repo's own ESM rule forbids. `@bpmnkit/plugins/token-highlight` threw, and `@bpmnkit/operate`
+   threw with it. One character.
+3. **`@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai` import `@bpmnkit/cli-sdk` and
+   declared no dependencies at all**, so npm never installs it and importing them fails.
+4. **`@bpmnkit/casen-report` has the same undeclared dependency in its `.d.ts`**, plus an
+   undeclared `@bpmnkit/api`. Its published types do not resolve.
+
+All four are fixed. Every published package now packs, installs, imports and type-checks, with
+one exception noted below.
+
+**Three things the plan got wrong, and the runs said so.**
+
+`npm pack` is the wrong tool: it leaves `workspace:*` in the packed manifest, which installs
+nowhere. `pnpm pack` rewrites it. The gate now also fails any tarball whose manifest still
+carries a `workspace:` range, since that is the thing that silently breaks a publish.
+
+A filtered run has to pack *everything* anyway. The overrides that make a consumer resolve
+`@bpmnkit/*` to this build must cover the whole set — packing only the filtered packages leaves
+their siblings resolving from the registry, so a filtered run quietly tests the last published
+version of half the tree. An early run failed with a 404 that looked like a broken package and
+was a broken harness. `--filter` now narrows only what gets consumed.
+
+And the cheapest check finds most of it. Before any install: does every path the manifest
+declares actually exist in the tarball? Offline, one second, and it caught the proxy bug.
+
+**A green tick that verified nothing is a false green.** `@bpmnkit/astro-shared` ships `.ts` and
+`.astro` source for a bundler to read, so nothing about it is importable from Node and nothing
+is type-checkable. It passes — correctly — but the line now reads `~ … nothing to consume from
+Node` rather than a tick, so a package that quietly stops exporting anything cannot hide there.
+
+**Verified the gate is not vacuous** by breaking things on purpose: appending a reference to an
+undefined type to `@bpmnkit/feel`'s shipped `index.d.ts` fails the typecheck with the file and
+line; making its `index.js` throw at import time fails the import step.
+
+**Left as a finding, not a change.** `@bpmnkit/cli-sdk` is published on npm at 0.0.9 but is not
+in `PUBLISHED`, so it gets no LICENSE sync, no generated README, no metadata check and is not
+part of the changesets release. The three packages above now depend on it as `workspace:*`,
+which `pnpm pack` resolves to the workspace version — if that is bumped without a publish,
+their tarballs will reference a version npm does not have. Adding it to the release set changes
+what gets published, which is not a call to make from here.
+
+`PUBLISHED` moved to `scripts/published-packages.mjs`; `sync-license.mjs`, `check-packages.mjs`
+and the new gate all read it. A fourth copy of that list is exactly the drift a publish gate
+exists to prevent, and CLAUDE.md's "Adding a New Package" steps drop from three list edits to
+one.
+
+`@bpmnkit/reebe-wasm` is the one package not verified here: it is a Rust crate built with
+wasm-pack, and crates.io returns 503 through this environment's proxy. The release workflow
+builds it before the gate runs, so CI covers it.
+
+
 ## 2026-09-07 — Extending a file no longer means regenerating it
 
 A9. `Bpmn.continueProcess(defs, processId)` — `ProcessBuilder.from(...)` for anyone who prefers

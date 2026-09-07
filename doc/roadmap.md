@@ -374,7 +374,13 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ### Phase 4 — Gates and ergonomics
 
-- [ ] **A10** Publish gate that packs, installs and type-checks each tarball (release workflow)
+- [x] **A10** Publish gate that packs, installs and type-checks each tarball —
+      `scripts/check-package-consumable.mjs`, wired into the release workflow before publish.
+      Checks every path a manifest declares is in the tarball, that no `workspace:` range
+      survived packing, that each ESM entry imports, and that the shipped declarations compile
+      under `strict` + `NodeNext` with `skipLibCheck` off. Found `@bpmnkit/proxy` shipping no
+      `.d.ts` despite declaring `exports.types`, and three `plugins-cli` packages importing
+      `@bpmnkit/cli-sdk` without declaring it
 - [ ] **A11** Script-size + wall-clock budget on example scripts; `{ explicitJoins: true }`
       opt-out for the builder's join inference
 

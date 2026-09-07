@@ -11,34 +11,9 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { PUBLISHED } from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "")
-
-const PUBLISHED = [
-	"packages/core",
-	"packages/canvas",
-	"packages/editor",
-	"packages/ui",
-	"packages/plugins",
-	"packages/engine",
-	"packages/feel",
-	"packages/api",
-	"packages/ascii",
-	"packages/docspack",
-	"packages/profiles",
-	"packages/operate",
-	"packages/astro-shared",
-	"packages/connector-gen",
-	"packages/connectors",
-	"packages/patterns",
-	"packages/worker-client",
-	"apps/cli",
-	"apps/proxy",
-	"apps/reebe-wasm",
-	"plugins-cli/casen-report",
-	"plugins-cli/casen-worker-http",
-	"plugins-cli/casen-worker-ai",
-]
 
 const STALE_BRAND_PATTERNS = [/@bpmn-sdk\//, /bpmn-sdk frontends/, /bpmn-sdk CLI/, /for @bpmn-sdk/]
 

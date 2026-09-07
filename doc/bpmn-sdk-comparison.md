@@ -367,7 +367,7 @@ source — only the problem statement can be. Concretely:
 | G18 ✅ | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
 | G19 ✅ | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
 | G20 ✅ | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
-| G21 | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
+| G21 ✅ | Publish gate checks metadata only — broken `exports` or missing `.d.ts` ships | `check-packages.mjs`, 143 lines | A10 | pack + install + strict typecheck per package |
 
 | G22 ✅ | `bpmn:loopCardinality` and `bpmn:completionCondition` dropped — a multi-instance activity loses its cardinality and completion condition | A1 corpus, `06-events-and-containers.bpmn` | A3 | A1 allow-list entry deleted |
 | G23 ✅ | `extensionElements` dropped on `bpmn:collaboration` | A1 corpus, `02-collaboration.bpmn` | A3 | A1 allow-list entry deleted |
@@ -689,6 +689,45 @@ from ESM, and type-check a strict `NodeNext` consumer. Twenty-two published pack
 this slow — run it in the release workflow, not on every PR.
 
 Effort: ~2 days.
+
+**As shipped**, `scripts/check-package-consumable.mjs`, wired into the release workflow
+between the build and the publish. Three things the plan did not anticipate:
+
+- **`npm pack` is the wrong tool.** It leaves `workspace:*` in the packed manifest, which
+  installs nowhere. `pnpm pack` rewrites it to the real version. The gate also fails a tarball
+  whose manifest still carries a `workspace:` range, since that is the thing that silently
+  breaks a publish.
+- **A filtered run has to pack everything anyway.** The overrides that make a consumer resolve
+  `@bpmnkit/*` to *this* build must cover the whole set; packing only the filtered packages
+  leaves siblings resolving from the registry, so a filtered run quietly tests the last
+  published version of half the tree. An early run failed with a 404 that looked like a broken
+  package and was a broken harness.
+- **The cheapest check is the one that finds most of it.** Before any install: does every path
+  the manifest declares — `main`, `types`, `module`, `bin`, every `exports` target — actually
+  exist in the tarball? That is offline, takes a second, and is exactly the G21 failure.
+
+**Four real bugs on the first run**, all of which would have shipped:
+
+1. `@bpmnkit/proxy` declared `exports["."].types` but its `files` listed only `dist/**/*.js`,
+   so no `.d.ts` was ever packed.
+2. `@bpmnkit/plugins` shipped `dist/token-highlight/index.js` with an extensionless
+   `import … from "./css"`, which Node ESM cannot resolve — `@bpmnkit/plugins/token-highlight`
+   threw on import, and `@bpmnkit/operate` with it.
+3. `@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai` import `@bpmnkit/cli-sdk` at
+   runtime while declaring no dependencies at all; the install cannot pull it, so importing
+   them fails.
+4. `@bpmnkit/casen-report` has the same undeclared dependency in its `.d.ts`, plus an
+   undeclared `@bpmnkit/api`, so its published types do not resolve.
+
+**Left as a finding, not a change:** `@bpmnkit/cli-sdk` is published on npm at 0.0.9 but is not
+in `PUBLISHED`, so it gets no LICENSE sync, no generated README, no metadata check, and is not
+part of the changesets release. The packages above now depend on it as `workspace:*`, which
+`pnpm pack` resolves to whatever the workspace version is — if that is ever bumped without a
+publish, their tarballs will reference a version npm does not have. Adding it to the release
+set changes what gets published, which is not a call to make from here.
+
+`PUBLISHED` moved to `scripts/published-packages.mjs`, since a fourth copy of the list is
+exactly the drift a publish gate exists to prevent.
 
 ### A11 — Agent-facing ergonomics (P2)
 

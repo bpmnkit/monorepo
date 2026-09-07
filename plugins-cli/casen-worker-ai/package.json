@@ -2,7 +2,7 @@
 	"name": "@bpmnkit/casen-worker-ai",
 	"version": "0.1.7",
 	"private": false,
-	"description": "AI task worker plugin for casen — classify, summarize, extract, and decide using Claude",
+	"description": "AI task worker plugin for casen \u2014 classify, summarize, extract, and decide using Claude",
 	"type": "module",
 	"main": "./dist/index.js",
 	"exports": {
@@ -61,7 +61,8 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.40.0"
+		"@anthropic-ai/sdk": "^0.40.0",
+		"@bpmnkit/cli-sdk": "workspace:*"
 	},
 	"devDependencies": {
 		"@bpmnkit/cli-sdk": "workspace:*"
