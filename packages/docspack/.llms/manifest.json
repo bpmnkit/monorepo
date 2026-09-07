@@ -1829,6 +1829,28 @@
 			]
 		},
 		{
+			"id": "packages.core.installation-ensurezeebeextension-owner-extension",
+			"file": "chunks/packages.core.installation-ensurezeebeextension-owner-extension.md",
+			"tokens": 323,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"ensurezeebeextension",
+				"owner",
+				"extension"
+			],
+			"entities": [
+				"extensionElements",
+				"ZeebePlacementError",
+				"ownerElement",
+				"allowedOn",
+				"zeebe.json",
+				"meta.allowedIn",
+				"applyBpmnOperations"
+			]
+		},
+		{
 			"id": "packages.core.installation-reconcilecompact-definitions-compact-options",
 			"file": "chunks/packages.core.installation-reconcilecompact-definitions-compact-options.md",
 			"tokens": 129,

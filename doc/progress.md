@@ -1,5 +1,55 @@
 # Progress
 
+## 2026-09-07 — Zeebe extensions can no longer be written where they do not belong
+
+A7. `zeebe:calledDecision` on a service task deploys, then fails in Camunda with an error that
+names neither the element nor the code that wrote it. `scripts/generate-zeebe-placement.ts`
+resolves `zeebe.json`'s `meta.allowedIn` — much of which names abstract BPMN types
+(`bpmn:Event`, `bpmn:Activity`) or Zeebe aliases (`zeebe:ZeebeServiceTask`) — against
+`bpmn.json`'s type graph, and writes out the concrete element names. 26 extensions. All the
+descriptor reasoning happens at generation time, so `packages/core/src` still reads no
+descriptor, and none ship.
+
+`ensureZeebeExtension(owner, extension)` refuses a placement the schema forbids and leaves the
+element untouched when it does. `ZeebePlacementError` carries the owners that would have been
+valid, because "not allowed here" without "allowed there" is a worse message than none.
+
+**The plan's own example turned out to be uncheckable.** It named `zeebe:subscription` as the
+case to catch — "only on a message". The descriptor declares no `allowedIn` for it, nor for
+`zeebe:properties`. So the rule is *reject only what the descriptor positively forbids*: an
+extension the table does not mention is allowed. Asserting the missing rule from memory would
+have put our opinion in the one place this item exists to keep it out of — and would have
+rejected the `zeebe:subscription` correlation keys A3 went to some trouble to stop losing.
+
+**On the operations path a misplacement is a problem, not an exception.** Operations arrive
+from a model, so a bad placement is a thing that will happen rather than a programmer error,
+and `applyBpmnOperations` already has a vocabulary for that. Wiring the throwing helper in
+directly would have aborted a whole non-strict batch on one bad field, and worse, thrown
+half-way through a patch with the earlier fields already applied. It now checks placement
+*before* writing anything: strict mode throws `OperationError` as for any other bad operation,
+and a non-strict caller gets a problem naming the extension and the owner while the rest of
+the batch applies.
+
+**The strongest test is not the rejection tests.** A table can be confidently wrong, so every
+`zeebe:` element in the round-trip corpus and in builder output is checked against it — 12
+placements in `05-zeebe-extensions.bpmn` across service, user, business-rule, script and call
+elements, 5 more from the builder. A wrong entry shows up as an existing, working document
+being declared invalid. Removing `bpmn:userTask` from `zeebe:formDefinition` fails three
+independent tests: the direct assertion, the corpus evidence, and the drift check.
+
+`--check` compares the parsed table rather than the file's bytes. Biome owns the generated
+file's formatting, and a check that reports a stale table every time a line wraps differently
+is a check somebody disables.
+
+`pnpm --filter @bpmnkit/core check:placement` runs it; a test runs it too, so a descriptor
+bump that moves the surface fails the build rather than leaving the table describing the
+previous release.
+
+728 tests in `@bpmnkit/core` (23 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 853 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
 ## 2026-09-07 — A gate that asks the descriptors what we are missing
 
 A12. `bpmn.json`, `bpmndi.json`, `dc.json`, `di.json` and `zeebe.json` are vendored under

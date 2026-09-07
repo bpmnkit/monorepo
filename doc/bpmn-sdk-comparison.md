@@ -363,7 +363,7 @@ source — only the problem statement can be. Concretely:
 | G14 ✅ | `applyOperations()` no-ops silently on unresolved element/flow/parent IDs | `operations.ts:100-160` | A5b | unresolved-ID test expects a failure |
 | G15 ✅ | Edit path runs through lossy `CompactDiagram` (CLI, MCP, AI review) | §4.2 | A5c | corpus edit round trip preserves hash |
 | G16 | Docs assert a round-trip guarantee we do not hold; example uses `bpmn-moddle`'s API | `concepts.md:80,90` | A6 | docspack rebuilt; claim matches A1's result |
-| G17 | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
+| G17 ✅ | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
 | G18 ✅ | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
 | G19 | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
 | G20 | Cannot continue an existing model fluently; extending means regenerating | no such API | A9 | continue-and-write preserves the untouched remainder's hash |
@@ -536,6 +536,30 @@ Adopt the *idea* of `bpmn-sdk`'s `extensions.ensure()` without `bpmn-moddle`:
   surface fails the build instead of drifting (this is `bpmn-sdk`'s `check:types` pattern).
 
 Effort: ~3 days. Naturally sequenced after A3.
+
+**As shipped.** `scripts/generate-zeebe-placement.ts` resolves `zeebe.json`'s `meta.allowedIn`
+against `bpmn.json`'s type graph and writes `src/bpmn/zeebe-placement.ts` — 26 extensions to
+the concrete element names that may own them. All descriptor reasoning happens at generation
+time, so the runtime is a set lookup and `packages/core/src` still reads no descriptor and
+ships none.
+
+Two things the plan did not anticipate:
+
+- **`zeebe:subscription` cannot be checked.** The plan named it as the example
+  (“only on a message”), but the descriptor declares no `allowedIn` for it, nor for
+  `zeebe:properties`. The rule is therefore *reject only what the descriptor positively
+  forbids* — an extension the table does not mention is allowed. Inventing the missing rule
+  would have meant asserting our own opinion in the one place this item exists to avoid that.
+- **A misplaced extension is a reported problem, not a thrown error, on the operations path.**
+  Operations come from a model, so a bad placement is a thing that will happen rather than a
+  programmer error. `applyBpmnOperations` checks placement *before* writing, so the operation
+  stays atomic: strict mode throws `OperationError` as it does for any other bad operation,
+  and a non-strict caller gets a problem naming the extension and the owner while the rest of
+  the batch applies.
+
+`--check` compares the parsed table rather than the file's bytes, because Biome owns the
+generated file's formatting and a check that reports a stale table every time a line wraps
+differently is a check that gets disabled.
 
 ### A8 — Collaboration builder (P1)
 

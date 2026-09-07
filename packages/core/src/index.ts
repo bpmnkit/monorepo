@@ -162,7 +162,15 @@ export type {
 	ZeebePriorityDefinition,
 	ZeebeSubscription,
 } from "./bpmn/zeebe-extensions.js"
-export { zeebeExtensionsToXmlElements } from "./bpmn/zeebe-extensions.js"
+export {
+	assertZeebePlacement,
+	bpmnElementName,
+	ensureZeebeExtension,
+	isZeebePlacementAllowed,
+	ZeebePlacementError,
+	zeebeExtensionsToXmlElements,
+} from "./bpmn/zeebe-extensions.js"
+export { ZEEBE_PLACEMENT } from "./bpmn/zeebe-placement.js"
 export {
 	buildAiAgentSubProcess,
 	AI_AGENT_JOB_WORKER_TASK_TYPE,

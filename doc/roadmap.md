@@ -344,9 +344,14 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ### Phase 3 — Capability gaps
 
-- [ ] **A7** Descriptor-checked Zeebe extension writes — vendored `zeebe.json` (MIT, notice
-      carried into `packages/core/src/bpmn/descriptors/LICENSE`), generated owner/property
-      table, `--check` mode in CI
+- [x] **A7** Descriptor-checked Zeebe extension writes — `scripts/generate-zeebe-placement.ts`
+      resolves `zeebe.json`'s `meta.allowedIn` against the BPMN type graph into
+      `src/bpmn/zeebe-placement.ts` (26 extensions). `ensureZeebeExtension` refuses a
+      placement the schema forbids; `applyBpmnOperations` reports one as an operation problem
+      without touching the element. `pnpm --filter @bpmnkit/core check:placement` fails on a
+      descriptor bump that moves the surface, and a test runs it. Extensions the descriptor
+      declares no owner for (`zeebe:subscription`, `zeebe:properties`) are allowed — the check
+      rejects only what the schema positively forbids
 - [x] **A12** Descriptor coverage check for the BPMN core model —
       `packages/core/tests/descriptor-coverage.test.ts` over the vendored `bpmn.json`,
       `bpmndi.json`, `dc.json`, `di.json`, `zeebe.json`. Round-trips a probe document per

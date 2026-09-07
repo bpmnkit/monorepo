@@ -21,12 +21,14 @@
 		"check": "biome check .",
 		"test": "vitest run",
 		"check:descriptors": "tsx scripts/descriptor-report.ts",
+		"generate:placement": "tsx scripts/generate-zeebe-placement.ts",
+		"check:placement": "tsx scripts/generate-zeebe-placement.ts --check",
 		"format-bpmn": "node scripts/format-bpmn.mjs"
 	},
 	"dependencies": {
 		"@bpmnkit/feel": "workspace:*"
 	},
-	"description": "TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
+	"description": "TypeScript-first BPMN 2.0 SDK \u2014 parse, build, layout, and optimize diagrams",
 	"keywords": ["bpmn", "bpmn2", "camunda", "zeebe", "workflow", "dmn", "typescript", "sdk"],
 	"license": "MIT",
 	"repository": {

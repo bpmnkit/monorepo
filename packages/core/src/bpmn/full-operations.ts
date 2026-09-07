@@ -7,6 +7,11 @@ import {
 	makeEventDef,
 } from "./compact.js"
 import type { BpmnOperation } from "./operations.js"
+import {
+	bpmnElementName,
+	ensureZeebeExtension,
+	isZeebePlacementAllowed,
+} from "./zeebe-extensions.js"
 
 /**
  * Applies the {@link BpmnOperation} vocabulary directly to a
@@ -137,13 +142,52 @@ function nextFlowId(definitions: BpmnDefinitions): string {
 	return `flow_${index}`
 }
 
-/** Finds an extension element by name, creating it if it is not there yet. */
+/**
+ * Finds an extension element by name, creating it if it is not there yet.
+ *
+ * Zeebe extensions go through {@link ensureZeebeExtension}, which refuses a
+ * placement the schema forbids — writing `zeebe:calledDecision` onto a service
+ * task produces a file Camunda rejects at deploy time, and an operation that
+ * asks for it is a mistake worth reporting here rather than there.
+ */
 function ensureExtension(element: BpmnFlowElement, name: string): XmlElement {
+	if (name.startsWith("zeebe:")) return ensureZeebeExtension(element, name)
 	const existing = element.extensionElements.find((candidate) => candidate.name === name)
 	if (existing) return existing
 	const created: XmlElement = { name, attributes: {}, children: [] }
 	element.extensionElements.push(created)
 	return created
+}
+
+/** The Zeebe extension each patch field writes to, for the placement check. */
+const PATCH_EXTENSIONS: ReadonlyArray<[keyof CompactElement, string]> = [
+	["jobType", "zeebe:taskDefinition"],
+	["formId", "zeebe:formDefinition"],
+	["calledProcess", "zeebe:calledElement"],
+	["decisionId", "zeebe:calledDecision"],
+	["taskHeaders", "zeebe:taskHeaders"],
+]
+
+/**
+ * Reports a patch field that would write an extension the Zeebe schema does not
+ * allow on this element — `decisionId` on a service task, say.
+ *
+ * Checked before anything is written so the operation stays atomic: it is
+ * reported like any other failed operation rather than thrown, which is what
+ * lets a non-strict caller apply the rest of the batch and show the user what
+ * was rejected.
+ */
+function misplacedExtensions(
+	element: BpmnFlowElement,
+	patch: Partial<CompactElement>,
+): string | undefined {
+	const owner = bpmnElementName(element)
+	for (const [field, extension] of PATCH_EXTENSIONS) {
+		if (patch[field] === undefined) continue
+		if (isZeebePlacementAllowed(owner, extension)) continue
+		return `${String(field)} writes <${extension}>, which the Zeebe schema does not allow on <${owner}>`
+	}
+	return undefined
 }
 
 /**
@@ -221,6 +265,9 @@ function patchElement(
 	if (patch.type !== undefined && patch.type !== element.type) {
 		return `changing type (${element.type} → ${patch.type}) needs a delete and an insert, so that what the new element should carry is explicit`
 	}
+
+	const misplaced = misplacedExtensions(element, patch)
+	if (misplaced !== undefined) return misplaced
 
 	if (patch.name !== undefined) element.name = patch.name
 	if (patch.attachedTo !== undefined && "attachedToRef" in element) {
