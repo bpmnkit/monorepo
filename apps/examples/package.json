@@ -10,7 +10,8 @@
 		"04": "tsx src/04-invoice-processing.ts",
 		"05": "tsx src/05-content-publishing.ts",
 		"06": "tsx src/06-ai-code-review-agent.ts",
-		"all": "tsx src/run-all.ts"
+		"all": "tsx src/run-all.ts",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@bpmnkit/core": "workspace:*"

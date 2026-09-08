@@ -14,7 +14,7 @@
  * (in any order, any number of times) until it produces a result.
  */
 
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { Bpmn } from "@bpmnkit/core"
 
 // ── Connector icons (base64-encoded SVGs from Camunda marketplace) ────────────
@@ -249,5 +249,7 @@ const definitions = Bpmn.createProcess("AiCodeReviewAgent")
 	.build()
 
 const xml = Bpmn.export(definitions)
+
+mkdirSync("output", { recursive: true })
 writeFileSync("output/06-ai-code-review-agent.bpmn", xml)
 console.log("✓ 06-ai-code-review-agent.bpmn")

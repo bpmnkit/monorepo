@@ -381,8 +381,12 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       under `strict` + `NodeNext` with `skipLibCheck` off. Found `@bpmnkit/proxy` shipping no
       `.d.ts` despite declaring `exports.types`, and three `plugins-cli` packages importing
       `@bpmnkit/cli-sdk` without declaring it
-- [ ] **A11** Script-size + wall-clock budget on example scripts; `{ explicitJoins: true }`
-      opt-out for the builder's join inference
+- [x] **A11** Script-size budget on the example scripts (`apps/examples/tests/budget.test.ts`,
+      a ratchet in both directions on lines *and* elements, so neither verbosity nor deleting
+      content passes) plus a generous per-example time ceiling; `{ explicitJoins: true }` on
+      `build()` refuses inferred join gateways and names them, with `strict` kept as a
+      deprecated alias. Also fixed: every example failed from a clean checkout because only
+      `run-all` created `output/`
 
 ---
 

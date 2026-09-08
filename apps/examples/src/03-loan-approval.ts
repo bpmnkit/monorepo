@@ -10,7 +10,7 @@
  * - connectTo() for merging paths from multiple branches
  */
 
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { Bpmn } from "@bpmnkit/core"
 
 const definitions = Bpmn.createProcess("LoanApproval")
@@ -145,5 +145,7 @@ const definitions = Bpmn.createProcess("LoanApproval")
 	.build()
 
 const xml = Bpmn.export(definitions)
+
+mkdirSync("output", { recursive: true })
 writeFileSync("output/03-loan-approval.bpmn", xml)
 console.log("✓ 03-loan-approval.bpmn")

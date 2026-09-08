@@ -8,7 +8,7 @@
  * - Service task with IO mapping
  */
 
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { Bpmn } from "@bpmnkit/core"
 
 const definitions = Bpmn.createProcess("EmployeeOnboarding")
@@ -86,5 +86,7 @@ const definitions = Bpmn.createProcess("EmployeeOnboarding")
 	.build()
 
 const xml = Bpmn.export(definitions)
+
+mkdirSync("output", { recursive: true })
 writeFileSync("output/01-employee-onboarding.bpmn", xml)
 console.log("✓ 01-employee-onboarding.bpmn")

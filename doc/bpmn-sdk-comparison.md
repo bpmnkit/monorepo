@@ -354,15 +354,15 @@ source — only the problem statement can be. Concretely:
 | G5 ✅ | `bpmn:dataInputAssociation` / `dataOutputAssociation` / `bpmn:property` / `sourceRef` / `targetRef` dropped | §4.1 servicenow, event-registration | A3 | A1 corpus |
 | G6 ✅ | `unknownAttributes` missing on `BpmnError`, `BpmnSignal`, `BpmnLaneSet` | `bpmn-model.ts` read | A3 | per-type unit test |
 | G7 ✅ | Unmodelled children silently dropped — `ioSpecification`, `correlationKey`, `itemDefinition`, `import`, `resourceRole`, and anything the spec adds later | parser has no case | A3 (`unknownChildren` catch-all — **preservation**, not modelling; model a type only when a consumer needs to read it) | A1 corpus + a synthetic fixture using each |
-| G8 | No fidelity gate — parser and serializer are unchecked against each other | no such test exists | A1 | the suite itself; allow-list empty |
+| G8 ✅ | No fidelity gate — parser and serializer are unchecked against each other | no such test exists | A1 | the suite itself; allow-list empty |
 | G9 ✅ | No semantic hash; layout churn indistinguishable from a model change | no such module | A2 | auto-layout does not change the hash |
 | G10 ✅ | No change report on write | no such module | A2 (`diffSemantics`) | golden diff per corpus fixture |
 | G11 ✅ | No verified write boundary — nothing re-reads what it wrote | `writeFile` at 11 CLI sites | A4 | injected lossy serializer must be refused |
 | G12 ✅ | Non-atomic writes; no overwrite guard; output may alias input | `apps/cli/src/commands/*` | A4 | interrupted-write and alias tests |
-| G13 | `casen generate bpmn --input` overwrites its input with a lossy round trip | `generate.ts:670-676` | A5a | CLI test: refuses without `--output`/`--force` |
+| G13 ✅ | `casen generate bpmn --input` overwrites its input with a lossy round trip | `generate.ts:670-676` | A5a | CLI test: refuses without `--output`/`--force` |
 | G14 ✅ | `applyOperations()` no-ops silently on unresolved element/flow/parent IDs | `operations.ts:100-160` | A5b | unresolved-ID test expects a failure |
 | G15 ✅ | Edit path runs through lossy `CompactDiagram` (CLI, MCP, AI review) | §4.2 | A5c | corpus edit round trip preserves hash |
-| G16 | Docs assert a round-trip guarantee we do not hold; example uses `bpmn-moddle`'s API | `concepts.md:80,90` | A6 | docspack rebuilt; claim matches A1's result |
+| G16 ✅ | Docs assert a round-trip guarantee we do not hold; example uses `bpmn-moddle`'s API | `concepts.md:80,90` | A6 | docspack rebuilt; claim matches A1's result |
 | G17 ✅ | Zeebe extensions writable to invalid owners; no descriptor validation | `zeebe-extensions.ts` | A7 | placement-rejection tests |
 | G18 ✅ | Hand-written model drifts from the spec with nothing detecting it | §3.1 | A12 | coverage check fails on an unmodelled descriptor type |
 | G19 ✅ | No collaboration builder — `collaborations: []` hard-coded | `bpmn-builder.ts:2532,2687` | A8 | build → parse → layout against existing collaboration fixtures |
@@ -737,6 +737,32 @@ exactly the drift a publish gate exists to prevent.
 - **Explicitness opt-out.** `ProcessBuilder` infers joins via `insertJoinGateways()`.
   Document the contract, and add `{ explicitJoins: true }` for generated code that wants
   to declare its own.
+
+**As shipped.**
+
+- **The wall-clock half of the budget was not worth asserting as written.** Each example
+  spends one to three milliseconds inside the SDK; the rest of its ~1.4s is `tsx` starting up.
+  A budget on the script's wall clock would have been a flaky test of someone else's tool, and
+  CLAUDE.md forbids timing-dependent tests outright. The examples are imported in-process and
+  timed there, against a ceiling about 100x the real figure — enough to catch a change in the
+  shape of the layout algorithm, not enough to fire on a slow machine.
+- **The size half is a ratchet on two numbers, not one.** Lines alone can be lowered by
+  deleting content, so each example is pinned to its non-comment line count *and* the element
+  count of the model it builds. Both are checked for equality: a longer file fails as a
+  regression, a shorter one fails as a budget that needs tightening. A global
+  lines-per-element ceiling backs it up in case someone waves the per-file numbers through.
+- **`{ explicitJoins: true }` already existed as `{ strict: true }`.** The behaviour was there;
+  the name was the problem — it says nothing about what it is strict *about*, and
+  `applyBpmnOperations` takes a `strict` that means something else entirely. `explicitJoins` is
+  now the documented name and `strict` still works. The message changed too: it now names the
+  gateways it would have inserted, which is the id you pass to `.connectTo()`.
+- **The contract has a subtlety worth stating.** A declared join only satisfies the check if it
+  *matches the split*: an exclusive split converging on a parallel gateway is still inferred.
+  Documented and tested.
+
+**Found while measuring:** every example script failed from a clean checkout. Only `run-all.ts`
+created `output/`, so `pnpm --filter @bpmnkit/examples 02` crashed on the write. Each example
+now creates its own output directory.
 
 ### Sequencing
 

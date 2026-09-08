@@ -188,6 +188,28 @@ export interface GatewayOptions extends ElementOptions {
 	defaultFlow?: string
 }
 
+/** Options for {@link ProcessBuilder.build}. */
+export interface BuildOptions {
+	/**
+	 * Refuse to infer join gateways, so converging branches must be declared.
+	 *
+	 * Generated code should set this: the builder's inference is a help to someone
+	 * reading the chain they just wrote, and a silent topology change to a model
+	 * that cannot see what it did not emit.
+	 */
+	explicitJoins?: boolean
+	/**
+	 * The former name for {@link BuildOptions.explicitJoins}, still honoured.
+	 *
+	 * Renamed because "strict" says nothing about what it is strict *about*, and
+	 * because `applyBpmnOperations` takes a `strict` that means something else
+	 * entirely — whether to throw or report problems.
+	 *
+	 * @deprecated Use `explicitJoins`.
+	 */
+	strict?: boolean
+}
+
 /** Options for a collaboration participant (a pool). */
 export interface ParticipantOptions {
 	/** Pool label. */
@@ -2672,8 +2694,28 @@ export class ProcessBuilder {
 	 *
 	 * Resolves all forward-referenced `incoming` / `outgoing` arrays and wraps
 	 * the process in a {@link BpmnDefinitions} ready for XML serialization.
+	 *
+	 * **The join contract.** Branches built with `.branch()` converge implicitly:
+	 * where several paths from one gateway reach the same element, a matching join
+	 * gateway is inserted for you. That is convenient by hand and a trap for
+	 * generated code, which cannot see the element it did not write. Pass
+	 * `{ explicitJoins: true }` to be told instead of helped — the build throws,
+	 * naming the gateways it would have inserted, and you declare them yourself
+	 * with `.connectTo(joinId)`.
+	 *
+	 * A join you declare only counts if it *matches the split*: an exclusive split
+	 * converging on a parallel gateway is not the gateway inference would have
+	 * added, so it is still inferred — and with `explicitJoins` that refusal is the
+	 * only thing that tells you.
+	 *
+	 * {@link ProcessBuilder.from} never infers joins at all, whatever this option
+	 * says: inference reads the whole topology, and on a document you were handed
+	 * that means rewriting edges you never touched.
+	 *
+	 * @param options - `explicitJoins` refuses inferred join gateways. `strict` is
+	 *   the former name for it and still works.
 	 */
-	build(options?: { strict?: boolean }): BpmnDefinitions {
+	build(options?: BuildOptions): BpmnDefinitions {
 		this.resolvePendingSplice()
 		const beforeCount = this.flowElements.length
 		// Continuing a document never infers joins. `insertJoinGateways` reads the
@@ -2683,13 +2725,14 @@ export class ProcessBuilder {
 		// that needs a join here means saying so with `.connectTo(joinId)`.
 		if (this._source === undefined) insertJoinGateways(this.flowElements, this.sequenceFlows)
 
-		if (options?.strict && this.flowElements.length > beforeCount) {
+		const explicitJoins = options?.explicitJoins ?? options?.strict ?? false
+		if (explicitJoins && this.flowElements.length > beforeCount) {
 			const inserted = this.flowElements
 				.slice(beforeCount)
 				.map((e) => e.id)
 				.join(", ")
 			throw new Error(
-				`auto-join gateways were inserted: ${inserted}. Use explicit .connectTo(joinId) to make gateway topology explicit, or remove { strict: true }.`,
+				`Inferred join gateways: ${inserted}. Declare them with .connectTo(joinId), or drop { explicitJoins: true } to keep the inference.`,
 			)
 		}
 

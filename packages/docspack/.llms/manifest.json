@@ -1953,7 +1953,7 @@
 		{
 			"id": "packages.core.installation-processbuilder-methods",
 			"file": "chunks/packages.core.installation-processbuilder-methods.md",
-			"tokens": 415,
+			"tokens": 412,
 			"tags": [
 				"packages",
 				"core",
@@ -1964,6 +1964,26 @@
 			"entities": [
 				"addStartEvent",
 				"BpmnDefinitions"
+			]
+		},
+		{
+			"id": "packages.core.installation-joins-inferred-by-default-or-declared",
+			"file": "chunks/packages.core.installation-joins-inferred-by-default-or-declared.md",
+			"tokens": 314,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"joins",
+				"inferred",
+				"default",
+				"declared"
+			],
+			"entities": [
+				"build()",
+				"explicitJoins",
+				"Bpmn.continueProcess()",
+				"applyBpmnOperations"
 			]
 		},
 		{

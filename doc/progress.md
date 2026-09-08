@@ -1,5 +1,53 @@
 # Progress
 
+## 2026-09-07 — A budget on what the API costs to write, and joins you can insist on
+
+A11, the last item in the adoption plan.
+
+**The wall-clock half was not worth asserting as the plan wrote it.** Each example spends one
+to three milliseconds inside the SDK; the rest of its ~1.4 seconds is `tsx` starting up. A
+budget on the script's wall clock would have been a flaky test of someone else's tool, and
+CLAUDE.md forbids timing-dependent tests outright. The examples are imported in-process and
+timed there instead, against a ceiling roughly 100x the real figure — enough to catch a change
+in the shape of the layout algorithm, not enough to fire on a slow machine.
+
+**The size half is a ratchet on two numbers rather than one.** Lines alone can always be
+lowered by deleting content, so each example is pinned to its non-comment line count *and* to
+the element count of the model it builds, both checked for equality. A longer file fails as a
+regression; a shorter one fails as a budget that needs tightening. Deleting a user task from
+example 01 fails with `{ lines: 61, elements: 20 }` against `{ lines: 65, elements: 22 }` —
+you cannot buy headroom by shrinking the diagram. A global lines-per-element ceiling backs
+that up in case someone waves the per-file numbers through.
+
+Comments are excluded from the count on purpose. A budget on raw lines rewards deleting the
+explanations, which is the opposite of what these files are for.
+
+**`{ explicitJoins: true }` turned out to already exist, as `{ strict: true }`.** The behaviour
+was there; the name was the problem. "Strict" says nothing about what it is strict *about*, and
+`applyBpmnOperations` takes a `strict` that means something else entirely — throw, or report
+problems. `explicitJoins` is now the documented name, `strict` still works and is marked
+deprecated, and the message names the gateways it would have inserted rather than just saying
+that it would have: that id is what you pass to `.connectTo()`.
+
+Writing the tests surfaced a subtlety worth stating in the contract. A join you declare only
+satisfies the check if it **matches the split** — an exclusive split converging on a parallel
+gateway is not the gateway inference would have added, so it is still inferred, and with
+`explicitJoins` the refusal is the only thing that tells you. That is exactly the case
+generated code gets wrong.
+
+**Found while measuring: every example script was broken from a clean checkout.** Only
+`run-all.ts` created `output/`, so `pnpm --filter @bpmnkit/examples 02` — one of six documented
+scripts — crashed on the write. Each example now creates its own output directory. The budget
+test would have had to work around this, which is how it came up.
+
+782 tests in `@bpmnkit/core` (8 new) and 14 in `@bpmnkit/examples`, which had no tests before;
+`biome check` clean across 860 files; core, cli, plugins and proxy typecheck. `@bpmnkit/engine`
+does not typecheck, before or after this change — `@bpmnkit/reebe-wasm` is unbuilt in this
+environment.
+
+That closes A1 through A12. Every gap in the §7.1 matrix is marked shipped.
+
+
 ## 2026-09-07 — The publish gate now opens the tarball
 
 A10. `check-packages.mjs` reads package.json and can only tell you the metadata is present. It

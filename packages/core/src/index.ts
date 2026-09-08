@@ -57,6 +57,10 @@ export { planeForElement, listPlaneElementIds } from "./bpmn/di-planes.js"
 export { DiagramBuilder, ProcessBuilder } from "./bpmn/bpmn-builder.js"
 export type {
 	BranchBuilder,
+	BuildOptions,
+	MessageFlowOptions,
+	ParticipantOptions,
+	DiagramMessageOptions,
 	SubProcessContentBuilder,
 	ServiceTaskOptions,
 	ScriptTaskOptions,
