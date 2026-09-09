@@ -84,6 +84,49 @@ body {
 	pointer-events: none;
 }
 
+/* ── Simulation ──────────────────────────────────────────────────────────────
+ * The transport bar and the play panel are the process runner's own DOM; all
+ * this does is give them somewhere to sit that does not steal height from the
+ * diagram until the user starts a run.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.stage {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+
+.stage .viewer {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.sim-bar {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	border-bottom: 1px solid var(--bpmnkit-border);
+	background: var(--bpmnkit-surface);
+}
+
+.sim-panel {
+	flex: 0 0 auto;
+	max-height: 45%;
+	overflow: auto;
+	border-top: 1px solid var(--bpmnkit-border);
+	background: var(--bpmnkit-surface);
+}
+
+/* ── FEEL playground ─────────────────────────────────────────────────────── */
+
+.feel-root {
+	height: 100%;
+	overflow: auto;
+}
+
 /* ── Diff ────────────────────────────────────────────────────────────────── */
 
 .diff-bar {

@@ -473,14 +473,49 @@ palette and fails when picked.
 - [ ] No page on `bpmnkit.com/docs` yet — the Marketplace README is the only user-facing
       documentation for the extension
 
-### Phase 6 — VS Code extension, what only this stack can do
+### Phase 6 — VS Code extension, what only this stack can do ✅
 
-Differentiation, not parity. None of this exists in the Marketplace today.
+Differentiation, not parity. None of this exists in the Marketplace today. Like Phase 5,
+almost all of it was assembly: the capabilities already existed as packages, and the work was
+deciding where each one belongs in an editor.
 
-- [ ] Step-through simulation of the open diagram with `@bpmnkit/engine` and token highlighting
-- [ ] FEEL playground as a webview panel
-- [ ] Deploy and start an instance against a `casen` profile
-- [ ] ASCII rendering of a diagram, for pasting into a code review
+- [x] Step-through simulation of the open diagram with `@bpmnkit/engine` and token
+      highlighting. `@bpmnkit/plugins/process-runner` mounted in the webview rather than a
+      second runner written for this host — Run, One Step, Cancel, live variables, FEEL
+      evaluations, the replay timeline. The engine is TypeScript with no server and no Node
+      dependency, so the diagram on screen executes inside the editor and nothing is deployed
+- [x] FEEL playground as a webview panel, seeded from the editor's **selection** — the
+      difference between a playground and a debugger. One panel, re-seeded rather than
+      stacked, because the expression under the cursor changes far more often than the wish
+      for another tab
+- [x] Deploy and start an instance against a `casen` profile. The profile store the CLI
+      writes is the only source of clusters, so there is no second place to configure one and
+      no credentials in workspace settings. Deployment posts multipart the way `casen deploy`
+      does; starting goes through the generated client, by definition **key** so the instance
+      runs the version this deploy produced. More than one profile always asks
+- [x] ASCII rendering of a diagram, for pasting into a code review. Fenced, because every
+      destination collapses runs of spaces, and dedented — which meant dropping the title
+      first, since a title at column zero leaves no shared indent to remove
+
+**Two defects that only reuse could have found**, both fixed in `@bpmnkit/plugins` rather than
+worked around in the host:
+
+- The process runner offered a **Tests tab to a host that cannot run a scenario**, and it
+  opened onto "Pass runScenario in options to enable the Tests tab" — an instruction addressed
+  to whoever wrote the host, shown to its users. The tab is now conditional on there being a
+  runner behind it
+- `buildFeelPlaygroundPanel()` **built DOM without its stylesheet**. Both existing callers
+  happened to inject it separately; a new one got a working evaluator that rendered as
+  unstyled form controls. The builder now brings its own, which is id-guarded and therefore
+  free for callers that still inject
+
+**Left open, deliberately:**
+
+- [ ] Scenario tests in the editor. The runner's Tests tab needs `runScenario` **and**
+      somewhere to keep scenarios; in an editor that is a `.bpmn.tests.json` sidecar beside
+      the diagram — the same file `casen test` already reads — not the IndexedDB the studio
+      uses because it has no filesystem. That is a feature with a story of its own, not a
+      checkbox on this phase, and hiding the tab is the honest interim
 
 ### Phase 7 — Deferred
 

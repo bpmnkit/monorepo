@@ -29,7 +29,11 @@ class ViewerDocument implements vscode.CustomDocument {
 	dispose(): void {}
 }
 
-const BODY = `<div id="root" class="viewer"></div>
+const BODY = `<div class="stage">
+<div id="toolbar" class="sim-bar" hidden></div>
+<div id="root" class="viewer"></div>
+<div id="play" class="sim-panel" hidden></div>
+</div>
 <div id="status" class="status" hidden></div>`
 
 export class ViewerEditorProvider implements vscode.CustomReadonlyEditorProvider<ViewerDocument> {
@@ -81,6 +85,7 @@ export class ViewerEditorProvider implements vscode.CustomReadonlyEditorProvider
 				theme: currentTheme(),
 				grid: settings.get<boolean>("viewer.grid", true),
 				minimap: settings.get<boolean>("viewer.minimap", true),
+				simulate: kind === "bpmn" && settings.get<boolean>("simulation.enabled", true),
 			})
 		}
 

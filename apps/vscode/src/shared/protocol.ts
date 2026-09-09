@@ -25,6 +25,12 @@ export type HostMessage =
 			readonly theme: ViewerTheme
 			readonly grid: boolean
 			readonly minimap: boolean
+			/**
+			 * Whether to offer step-through simulation. BPMN only, and off when
+			 * the user has turned it off — the engine is bundled either way, but a
+			 * plain preview should not grow a transport bar nobody asked for.
+			 */
+			readonly simulate: boolean
 	  }
 	| {
 			readonly type: "diff"
@@ -35,6 +41,12 @@ export type HostMessage =
 			readonly afterLabel: string
 			readonly theme: ViewerTheme
 			readonly grid: boolean
+	  }
+	| {
+			readonly type: "feel"
+			/** Pre-fills the expression box — the editor's selection, when there was one. */
+			readonly expression: string
+			readonly theme: ViewerTheme
 	  }
 	/** The theme changed while the view was open; re-render in place. */
 	| { readonly type: "theme"; readonly theme: ViewerTheme }

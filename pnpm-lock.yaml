@@ -372,15 +372,24 @@ importers:
 
   apps/vscode:
     dependencies:
+      '@bpmnkit/ascii':
+        specifier: workspace:*
+        version: link:../../packages/ascii
       '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@bpmnkit/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins
+      '@bpmnkit/profiles':
+        specifier: workspace:*
+        version: link:../../packages/profiles
       '@bpmnkit/ui':
         specifier: workspace:*
         version: link:../../packages/ui

@@ -76,6 +76,12 @@ export function buildFeelPlaygroundPanel(
 	onClose?: () => void,
 	initialExpression?: string,
 ): HTMLDivElement {
+	// The panel styles itself. It used to be the caller's job, and every caller
+	// had to remember a second import to get DOM that was not unstyled — a host
+	// that forgot got a working evaluator that looked broken. Injection is
+	// id-guarded, so calling it here costs nothing when the caller also does.
+	injectPlaygroundStyles()
+
 	let mode: "expression" | "unary-tests" = "expression"
 	let exprEl: HTMLTextAreaElement | null = null
 	let contextEl: HTMLTextAreaElement | null = null
@@ -309,7 +315,6 @@ export function createFeelPlaygroundPlugin(): FeelPlaygroundPlugin {
 		name: "feel-playground",
 
 		install(api) {
-			injectPlaygroundStyles()
 			overlay = document.createElement("div")
 			overlay.className = "feel-playground-overlay"
 			overlay.style.display = "none"

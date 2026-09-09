@@ -22,7 +22,7 @@ function nonce(): string {
 
 export interface WebviewShellOptions {
 	/** The bundle under `dist/webview/`, without the extension. */
-	readonly script: "viewer" | "diff"
+	readonly script: "viewer" | "diff" | "feel"
 	/** Body markup. Static only — everything dynamic arrives by `postMessage`. */
 	readonly body: string
 	readonly title: string

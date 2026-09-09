@@ -390,8 +390,14 @@ export function createProcessRunnerPlugin(
 	const feelTabBtn = makeTabBtn("FEEL", false)
 	const errorsTabBtn = makeTabBtn("Errors", false)
 	const inputTabBtn = makeTabBtn("Input", false)
-	// Tests sub-tab only shown when there is no dedicated testsContainer
-	const testsTabBtn = options.testsContainer === undefined ? makeTabBtn("Tests", false) : null
+	// Tests sub-tab only shown when there is no dedicated testsContainer *and*
+	// the host can actually run a scenario. Without a runner the tab opened onto
+	// an instruction addressed to whoever wrote the host, which is not something
+	// a user of that host should ever be shown.
+	const testsTabBtn =
+		options.testsContainer === undefined && options.runScenario !== undefined
+			? makeTabBtn("Tests", false)
+			: null
 
 	playTabBarEl.appendChild(varTabBtn)
 	playTabBarEl.appendChild(feelTabBtn)

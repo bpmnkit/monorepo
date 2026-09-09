@@ -1,5 +1,33 @@
 # Features
 
+## Simulation, FEEL and deployment inside VS Code (2026-09-09)
+
+Phase 6 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the
+part of the editor experience that exists because of what is in this repository rather than in
+spite of it.
+
+**Step-through simulation.** `@bpmnkit/engine` is a BPMN engine in TypeScript with no server
+behind it, so the preview executes the diagram on screen: Run, One Step, Cancel, tokens drawn on
+the elements holding them, live variables and FEEL evaluations, a replay timeline. Nothing is
+deployed and nothing leaves the machine. Turned off with `bpmnkit.simulation.enabled`.
+
+**FEEL playground on the selection.** Select an expression in the XML and the playground opens
+pre-filled, evaluating against an editable context as you type — expressions and unary tests
+both. One panel, re-seeded on each invocation rather than stacked.
+
+**Deploy and start against a `casen` profile.** The clusters are the ones the CLI already knows;
+the extension reads the same profile store rather than adding a second place to configure a
+connection or holding credentials in workspace settings. Deploy the open resource, or deploy and
+start an instance with variables and get its key back. Starting is by process definition key, so
+the instance runs the version that deploy just produced.
+
+**Copy Diagram as ASCII.** `@bpmnkit/ascii` rendering, fenced and dedented, for a pull request
+or an issue — the places a picture cannot go.
+
+**Two fixes in `@bpmnkit/plugins`, found by mounting them in a new host.** The process runner no
+longer offers a Tests tab to a host that cannot run a scenario, and `buildFeelPlaygroundPanel()`
+now injects its own stylesheet instead of depending on every caller to remember.
+
 ## BPMN Kit for VS Code (2026-09-09)
 
 Phase 5 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the

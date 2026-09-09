@@ -1,5 +1,51 @@
 # Progress
 
+## 2026-09-09 — Reuse is a test, and two packages failed it
+
+Phase 6 complete: the VS Code extension gains the four things nothing else in the Marketplace
+does — step-through simulation, a FEEL playground on the selection, deploy-and-start against a
+`casen` profile, and ASCII rendering for a code review.
+
+**Almost none of this was new code.** The simulator is
+`@bpmnkit/plugins/process-runner` mounted in the webview with `@bpmnkit/engine` behind it, not a
+second runner written for this host; the playground is `buildFeelPlaygroundPanel()` unchanged;
+the ASCII is `renderBpmnAscii`; the clusters are the profile store `casen` already writes. What
+the extension contributes is placement — where each of those belongs in an editor, and what the
+editor knows that the studio does not.
+
+**Mounting them somewhere new is what found the bugs.** Two, both in `@bpmnkit/plugins`, both
+fixed at the source rather than worked around:
+
+- The process runner offered a **Tests tab to a host with no scenario runner**, and the tab
+  opened onto "Pass runScenario in options to enable the Tests tab" — an instruction addressed
+  to whoever wrote the host, rendered for its users. The studio never saw it because it passes
+  both a runner and its own container. The tab is now conditional on there being something
+  behind it.
+- `buildFeelPlaygroundPanel()` **returned DOM without its stylesheet.** Both existing callers
+  injected it separately and neither noticed the coupling; the first caller that only imported
+  the builder got a working evaluator that rendered as unstyled form controls. A screenshot from
+  the browser run is what showed it. The builder now injects its own, id-guarded so the existing
+  callers cost nothing.
+
+That is the argument for a fourth host stated more precisely than Phase 5 could state it: the
+value of reuse is not only that you write less, it is that a second mounting is an experiment
+the first one cannot run.
+
+**Small decisions worth recording.** Deployment posts multipart the way `casen deploy` does,
+while starting an instance goes through the generated client — each endpoint gets the tool that
+fits it. The instance starts by process **key**, not id, so it runs the version this deploy
+produced rather than whatever someone else deployed a second ago. One profile is not a choice
+and is not offered as one; more than one always asks, because picking the wrong cluster matters.
+And the ASCII is dedented, which meant dropping the title first: a title line at column zero
+leaves no shared indent for a dedent to remove, so it would have silently done nothing.
+
+Credentials never leave the profile store: they are read to sign one request and nothing in the
+extension stores, displays or logs them.
+
+17 new tests (7 in `apps/vscode`, 8 in `@bpmnkit/plugins`, both plugin fixes proved load-bearing
+by reverting them), and the browser check grew from 18 to 27 — it now runs a process instance in
+Chromium and asserts tokens land on the diagram.
+
 ## 2026-09-09 — The editor was the easy half; the manifest was not
 
 Phase 5 complete: `apps/vscode` — read-only custom editors for `.bpmn`, `.dmn` and `.form`, a

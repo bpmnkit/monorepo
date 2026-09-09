@@ -27,7 +27,11 @@ await build({
 })
 
 await build({
-	entryPoints: { viewer: "src/webview/viewer.ts", diff: "src/webview/diff.ts" },
+	entryPoints: {
+		viewer: "src/webview/viewer.ts",
+		diff: "src/webview/diff.ts",
+		feel: "src/webview/feel.ts",
+	},
 	bundle: true,
 	format: "esm",
 	platform: "browser",

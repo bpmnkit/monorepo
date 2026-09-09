@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0
+
+- **Step-through simulation.** The BPMN preview runs the diagram through
+  `@bpmnkit/engine` with token highlighting: Run, One Step, Cancel, live variables and a
+  replay timeline. Entirely local — nothing is deployed.
+- **FEEL playground**, opened as its own panel and pre-filled from the editor selection.
+- **Deploy to Camunda 8**, and deploy-and-start with variables, against the clusters
+  `casen` already knows about. Credentials are read to sign the request and nothing else.
+- **Copy Diagram as ASCII**, dedented and fenced for pasting into a code review.
+- Fixed: the simulator no longer offers a Tests tab a host cannot serve, and the FEEL
+  playground brings its own stylesheet (both fixed in `@bpmnkit/plugins`).
+
 ## 0.1.0
 
 First release.
