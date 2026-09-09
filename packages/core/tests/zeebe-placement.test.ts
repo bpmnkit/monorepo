@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process"
 import { readFileSync, readdirSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
+import { computePlacementTable } from "../scripts/zeebe-placement-table.js"
 import type { BpmnDefinitions, BpmnFlowElement, BpmnProcess } from "../src/bpmn/bpmn-model.js"
 import { OperationError, applyBpmnOperations } from "../src/bpmn/full-operations.js"
 import {
@@ -12,6 +12,7 @@ import {
 	ensureZeebeExtension,
 	isZeebePlacementAllowed,
 } from "../src/bpmn/zeebe-extensions.js"
+import { ZEEBE_PLACEMENT } from "../src/bpmn/zeebe-placement.js"
 import { Bpmn } from "../src/index.js"
 import type { XmlElement } from "../src/types/xml-element.js"
 
@@ -185,17 +186,22 @@ describe("everything we write is placeable where we write it", () => {
 /**
  * A descriptor bump that moves the surface must fail the build rather than leave
  * the table quietly describing the previous release.
+ *
+ * This calls the same resolution the generator does, rather than spawning it:
+ * the first version shelled out to `npx tsx`, which cost six seconds of cold
+ * start on CI and failed the suite's timeout. A test whose result depends on how
+ * fast the machine starts a subprocess is not testing the table.
  */
 describe("the generated table", () => {
 	it("still matches the descriptors", () => {
-		const script = join(HERE, "..", "scripts", "generate-zeebe-placement.ts")
-		expect(() =>
-			execFileSync("npx", ["tsx", script, "--check"], {
-				cwd: join(HERE, ".."),
-				encoding: "utf-8",
-				stdio: "pipe",
-			}),
-		).not.toThrow()
+		const expected = Object.fromEntries(computePlacementTable())
+		const actual = Object.fromEntries(
+			Object.entries(ZEEBE_PLACEMENT).sort(([left], [right]) => left.localeCompare(right)),
+		)
+		expect(
+			actual,
+			"The descriptors and the checked-in table disagree. Run: pnpm --filter @bpmnkit/core generate:placement",
+		).toEqual(expected)
 	})
 })
 
