@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+  id="Definitions_roots" targetNamespace="http://bpmn.io/schema/bpmn"
+  exporter="BPMN Kit" exporterVersion="0.1.0"
+  modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.6.0">
+  <bpmn:documentation>Definitions-level documentation.</bpmn:documentation>
+  <bpmn:message id="Message_order_placed" name="OrderPlaced">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=orderId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:message id="Message_cancelled" name="OrderCancelled">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=cancellationId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:error id="Error_payment" name="PaymentFailed" errorCode="PAYMENT_FAILED" />
+  <bpmn:escalation id="Escalation_manual" name="NeedsManualReview" escalationCode="MANUAL_REVIEW" />
+  <bpmn:signal id="Signal_halt" name="HaltProcessing" />
+  <bpmn:process id="Process_roots" name="Root element carrier" isExecutable="true">
+    <bpmn:documentation>Process-level documentation.</bpmn:documentation>
+    <bpmn:extensionElements>
+      <zeebe:versionTag value="v3" />
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="Start_order">
+      <bpmn:messageEventDefinition id="MED_start" messageRef="Message_order_placed" />
+      <bpmn:outgoing>Flow_start_end</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="End_done">
+      <bpmn:incoming>Flow_start_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_start_end" sourceRef="Start_order" targetRef="End_done" />
+  </bpmn:process>
+</bpmn:definitions>

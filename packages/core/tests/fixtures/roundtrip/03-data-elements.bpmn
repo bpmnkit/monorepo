@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  id="Definitions_data" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_data" name="Data wiring" isExecutable="true">
+    <bpmn:dataObject id="DataObject_invoice" name="Invoice" />
+    <bpmn:dataObjectReference id="DataObjectRef_invoice" name="Invoice" dataObjectRef="DataObject_invoice" />
+    <bpmn:dataStoreReference id="DataStore_ledger" name="Ledger" />
+    <bpmn:startEvent id="Start_data">
+      <bpmn:outgoing>Flow_d1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_post" name="Post to ledger">
+      <bpmn:incoming>Flow_d1</bpmn:incoming>
+      <bpmn:outgoing>Flow_d2</bpmn:outgoing>
+      <bpmn:property id="Property_target" name="__targetRef_placeholder" />
+      <bpmn:dataInputAssociation id="DataInputAssoc_1">
+        <bpmn:sourceRef>DataObjectRef_invoice</bpmn:sourceRef>
+        <bpmn:targetRef>Property_target</bpmn:targetRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="DataOutputAssoc_1">
+        <bpmn:targetRef>DataStore_ledger</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="End_data">
+      <bpmn:incoming>Flow_d2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_d1" sourceRef="Start_data" targetRef="Task_post" />
+    <bpmn:sequenceFlow id="Flow_d2" sourceRef="Task_post" targetRef="End_data" />
+  </bpmn:process>
+</bpmn:definitions>

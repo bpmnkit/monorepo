@@ -23,7 +23,7 @@ All builder methods return `this` for chaining.
 | `.defaults(options)` | Set process-wide defaults (e.g. `{ serviceTask: { retries: "5" } }`) applied to all subsequent tasks |
 | `.disconnectedStartEvent(id?, options?)` | Add a start event with no auto-connection to the current cursor — alias for `addStartEvent` |
 | `.withAutoLayout()` | Apply Sugiyama layout before building |
-| `.build(options?)` | Return the completed `BpmnDefinitions`. Pass `{ strict: true }` to throw if auto-join gateways are inserted (encourages explicit topology) |
+| `.build(options?)` | Return the completed `BpmnDefinitions`. Pass `{ explicitJoins: true }` to refuse inferred join gateways — see below |
 
 ---
 Source: https://bpmnkit.com/docs/packages/core

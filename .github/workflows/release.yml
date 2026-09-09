@@ -57,6 +57,14 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Opens each tarball and consumes it the way npm users will: every path the
+      # manifest declares must be in the package, it must import from ESM, and
+      # its shipped declarations must compile under strict NodeNext. Metadata
+      # checks cannot see a `types` entry pointing at a file that never got
+      # packed — which is how @bpmnkit/proxy shipped without its declarations.
+      - name: Check packages are consumable
+        run: pnpm check:consumable
+
       - name: Create Release Pull Request or Publish
         uses: changesets/action@v1
         with:

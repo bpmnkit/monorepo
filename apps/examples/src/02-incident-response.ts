@@ -8,7 +8,7 @@
  * - Multiple end events for different outcomes
  */
 
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { Bpmn } from "@bpmnkit/core"
 
 const definitions = Bpmn.createProcess("IncidentResponse")
@@ -123,5 +123,7 @@ const definitions = Bpmn.createProcess("IncidentResponse")
 	.build()
 
 const xml = Bpmn.export(definitions)
+
+mkdirSync("output", { recursive: true })
 writeFileSync("output/02-incident-response.bpmn", xml)
 console.log("✓ 02-incident-response.bpmn")

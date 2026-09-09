@@ -38,7 +38,9 @@
 			"apps/reebe-wasm/**",
 			"apps/reebe/crates/**",
 			"apps/reebe/packages/reebe-wasm/src/wasm/**",
-			"**/public/drop/assets/**"
+			"**/public/drop/assets/**",
+			"packages/core/descriptors/**",
+			"descriptors/**"
 		]
 	}
 }

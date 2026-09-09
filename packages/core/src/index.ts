@@ -1,4 +1,10 @@
-export { BpmnSdkError, ParseError, ValidationError } from "./errors.js"
+export {
+	BpmnSdkError,
+	ParseError,
+	ValidationError,
+	WriteError,
+	WriteVerificationError,
+} from "./errors.js"
 export type { ErrorCode } from "./errors.js"
 export {
 	isBpmnActivity,
@@ -42,13 +48,19 @@ export {
 } from "./bpmn/utils.js"
 export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export { applyAutoLayout } from "./bpmn/auto-layout.js"
+export { diffSemantics, projectSemantics, semanticHash } from "./bpmn/semantic-hash.js"
+export type { JsonValue, SemanticDiff, SemanticProjection } from "./bpmn/semantic-hash.js"
+export { sha256Hex } from "./bpmn/sha256.js"
 export { checkDiCompleteness } from "./bpmn/di-check.js"
 export type { DiCompleteness } from "./bpmn/di-check.js"
 export { planeForElement, listPlaneElementIds } from "./bpmn/di-planes.js"
-export { DiagramBuilder } from "./bpmn/bpmn-builder.js"
+export { DiagramBuilder, ProcessBuilder } from "./bpmn/bpmn-builder.js"
 export type {
-	ProcessBuilder,
 	BranchBuilder,
+	BuildOptions,
+	MessageFlowOptions,
+	ParticipantOptions,
+	DiagramMessageOptions,
 	SubProcessContentBuilder,
 	ServiceTaskOptions,
 	ScriptTaskOptions,
@@ -153,7 +165,15 @@ export type {
 	ZeebePriorityDefinition,
 	ZeebeSubscription,
 } from "./bpmn/zeebe-extensions.js"
-export { zeebeExtensionsToXmlElements } from "./bpmn/zeebe-extensions.js"
+export {
+	assertZeebePlacement,
+	bpmnElementName,
+	ensureZeebeExtension,
+	isZeebePlacementAllowed,
+	ZeebePlacementError,
+	zeebeExtensionsToXmlElements,
+} from "./bpmn/zeebe-extensions.js"
+export { ZEEBE_PLACEMENT } from "./bpmn/zeebe-placement.js"
 export {
 	buildAiAgentSubProcess,
 	AI_AGENT_JOB_WORKER_TASK_TYPE,
@@ -288,6 +308,12 @@ export { ELEMENT_SIZES, GRID_CELL_HEIGHT, GRID_CELL_WIDTH } from "./layout/index
 export { compactify, expand } from "./bpmn/compact.js"
 export { applyOperations } from "./bpmn/operations.js"
 export type { BpmnOperation } from "./bpmn/operations.js"
+export { applyBpmnOperations, reconcileCompact, OperationError } from "./bpmn/full-operations.js"
+export type {
+	ApplyBpmnOperationsOptions,
+	ApplyBpmnOperationsResult,
+	OperationProblem,
+} from "./bpmn/full-operations.js"
 export {
 	buildValidationDmn,
 	findValidationStructure,

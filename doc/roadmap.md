@@ -277,6 +277,119 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## Core Model Fidelity
+
+> Full analysis, evidence and sequencing: [`doc/bpmn-sdk-comparison.md`](bpmn-sdk-comparison.md)
+> — measured against `philippfromme/bpmn-sdk` (2026-09-07). `Bpmn.parse()` → `Bpmn.export()`
+> loses data on 11 of 12 real Camunda blueprints, including 22 `zeebe:subscription`
+> correlation keys across 9 files.
+>
+> **Every gap is closed by an item below — none is optional.** The reference SDK is
+> all-rights-reserved, so this is re-implementation from the written specification and from
+> the MIT moddle descriptors, never a port: see §7.0 (clean-room rule) and §7.1 (the
+> gap → item → verification matrix, G1–G21) in the analysis. Done means A1's allow-list is
+> empty, A12's `dropped` set contains nothing but reviewed probe artifacts, and every
+> §7.1 verification exists and passes.
+
+### Phase 1 — Stop the silent loss
+
+- [x] **A1** Round-trip fidelity corpus + gate — `packages/core/tests/roundtrip-corpus.test.ts`
+      over `tests/fixtures/roundtrip/` with `PROVENANCE.md`. Structural signature computed by
+      an independent scanner (`tests/support/xml-signature.ts`, not `src/xml`), landed
+      red-listed so each fix deletes an allow-list entry, and a stale entry fails too. Corpus
+      is 6 hand-written fixtures covering every §4 loss plus the parser's declared surface;
+      it found two further gaps (G22, G23). **Still to add:** real-world models, which need a
+      licensing decision per file — see the directory's PROVENANCE.md
+- [x] **A5a** `casen generate bpmn --input` must not overwrite its input by default —
+      require `--output` or `--force` (`apps/cli/src/commands/generate.ts`). The guard also
+      runs before stdin is read, so an unwritable target fails fast
+- [x] **A6** Correct the round-trip claim in
+      `apps/landing/src/content/docs/getting-started/concepts.md` (asserted a guarantee we do
+      not hold) and its `definitions.rootElements` example; the same falsehood in
+      `guides/ai.md` and `packages/core.md` corrected too; docspack rebuilt
+- [x] **A2** `semantic-hash.ts` — DI-excluded canonical projection, sync in-repo SHA-256
+      (no `node:crypto`, no `crypto.subtle`, so `packages/core` stays browser-safe and callers
+      stay synchronous), `diffSemantics()` attributing changes to the element that changed.
+      Auto-layout invariance asserted across the whole corpus, plus golden hashes to catch a
+      silent change to what counts as semantics
+- [x] **A3** Close the model gaps the corpus exposes — `extensionElements` + `documentation`
+      on root/collaboration/artifact/lane types, `bpmn:category`/`categoryValue`, data
+      associations, multi-instance `loopCardinality`/`completionCondition` (G22), and an
+      `unknownChildren` catch-all on `definitions`, `process`, `collaboration` and flow nodes.
+      All nine A3 rows in §7.1 closed; the allow-list holds only the two `normalised` entries.
+      **Not covered:** unmodelled children of lanes, artifacts and root elements (they carry
+      `documentation` + `extensionElements` only), and a second `documentation` on one element
+
+### Phase 2 — A verified write boundary
+
+- [x] **A4** `writeBpmn()` — serialize, re-parse, compare semantic hash, write atomically;
+      returns `{ destination, bytes, outputSha256, semanticHash, changes }` behind the
+      `@bpmnkit/core/node` subpath. Refuses to replace without `force`, keeps the replaced
+      file's permissions, and uses a hard link so two concurrent creates cannot both win.
+      **No opt-out of verification** — see the module header for why. Note the boundary
+      cannot catch *parser* losses (absent from both sides of the comparison); that stays A1's
+      job
+- [x] **A5b** Unresolved ids fail loudly. `applyBpmnOperations` is strict by default and
+      all-or-nothing; `strict: false` returns typed problems instead. The old compact
+      `applyOperations` is left as-is and is now documented as legacy — nothing calls it
+- [x] **A5c** Operations re-targeted at `BpmnDefinitions` (`applyBpmnOperations`), plus
+      `reconcileCompact` for applying a compact diagram as changes rather than expanding it
+      over the model. `compactify()` documented as a read-only view. Call sites moved: the CLI
+      `--patch` path, the proxy `/improve` (now takes `{ xml }`, compact only for the prompt),
+      and the MCP `replace_diagram`. **The MCP mutation tools already applied to the full
+      model** — the plan was wrong about that. **Remaining:** the MCP server writes with
+      `writeFileSync`, not `writeBpmn`, because its code-mode bridge calls tools synchronously
+      inside a `vm`; it now verifies the round trip inline, but adopting A4 there needs an
+      async bridge first
+
+### Phase 3 — Capability gaps
+
+- [x] **A7** Descriptor-checked Zeebe extension writes — `scripts/generate-zeebe-placement.ts`
+      resolves `zeebe.json`'s `meta.allowedIn` against the BPMN type graph into
+      `src/bpmn/zeebe-placement.ts` (26 extensions). `ensureZeebeExtension` refuses a
+      placement the schema forbids; `applyBpmnOperations` reports one as an operation problem
+      without touching the element. `pnpm --filter @bpmnkit/core check:placement` fails on a
+      descriptor bump that moves the surface, and a test runs it. Extensions the descriptor
+      declares no owner for (`zeebe:subscription`, `zeebe:properties`) are allowed — the check
+      rejects only what the schema positively forbids
+- [x] **A12** Descriptor coverage check for the BPMN core model —
+      `packages/core/tests/descriptor-coverage.test.ts` over the vendored `bpmn.json`,
+      `bpmndi.json`, `dc.json`, `di.json`, `zeebe.json`. Round-trips a probe document per
+      type and labels it `modelled` / `preserved` / `dropped`; CI fails on any drop outside
+      a reviewed accept-list, and on an accept-list entry that no longer drops.
+      151 types: 109 / 34 / 6 / 2 unprobed. `pnpm --filter @bpmnkit/core check:descriptors`
+      prints the report. This is what stops the model drifting from the spec again after A3
+      closed today's gaps
+- [x] **A9** `ProcessBuilder.from(defs, processId)` (also `Bpmn.continueProcess`) with
+      `.at(nodeId)` and `.insertAfter(nodeId)` — continue an existing model fluently instead of
+      regenerating it. `build()` returns the source document with that process replaced;
+      collaboration, lanes, diagram interchange, other processes and unmodelled content all
+      survive. Continue mode never infers join gateways, and refuses to rewire a flow the
+      document already had
+- [x] **A8** Collaboration builder — `.participant()`, `.message()`, `.messageFlow()` and
+      `.collaborationId()` on `DiagramBuilder`, ids verbatim, black-box participants
+      supported. No participants means no collaboration element. `build()` refuses a
+      collaboration a modeler would not open — reporting every problem at once — including a
+      message flow that does not cross a pool boundary
+
+### Phase 4 — Gates and ergonomics
+
+- [x] **A10** Publish gate that packs, installs and type-checks each tarball —
+      `scripts/check-package-consumable.mjs`, wired into the release workflow before publish.
+      Checks every path a manifest declares is in the tarball, that no `workspace:` range
+      survived packing, that each ESM entry imports, and that the shipped declarations compile
+      under `strict` + `NodeNext` with `skipLibCheck` off. Found `@bpmnkit/proxy` shipping no
+      `.d.ts` despite declaring `exports.types`, and three `plugins-cli` packages importing
+      `@bpmnkit/cli-sdk` without declaring it
+- [x] **A11** Script-size budget on the example scripts (`apps/examples/tests/budget.test.ts`,
+      a ratchet in both directions on lines *and* elements, so neither verbosity nor deleting
+      content passes) plus a generous per-example time ceiling; `{ explicitJoins: true }` on
+      `build()` refuses inferred join gateways and names them, with `strict` kept as a
+      deprecated alias. Also fixed: every example failed from a clean checkout because only
+      `run-all` created `output/`
+
+---
+
 ## Completed
 
 *(Items moved here from above as they ship)*

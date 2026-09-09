@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises"
-import { Bpmn, compactify, expand } from "@bpmnkit/core"
-import type { CompactDiagram, CompactElement, CompactFlow } from "@bpmnkit/core"
+import { resolve } from "node:path"
+import { Bpmn, applyAutoLayout, applyBpmnOperations, compactify, expand } from "@bpmnkit/core"
+import type { BpmnOperation, CompactDiagram, CompactElement, CompactFlow } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
 
 // ── JSON schema reference ─────────────────────────────────────────────────────
@@ -487,6 +488,49 @@ async function readStdin(): Promise<string> {
 	return Buffer.concat(chunks).toString("utf-8").trim()
 }
 
+// ── Output path guard ─────────────────────────────────────────────────────────
+
+/**
+ * Decide where `--input` mode writes, refusing to replace the input file unless
+ * the caller asked for it explicitly.
+ *
+ * The patch itself is applied to the full model, so nothing outside it is lost.
+ * Replacing the source is still destructive — the diagram is re-laid out, and a
+ * mistaken patch has nowhere to be compared against — so in-place replacement
+ * has to be asked for by name.
+ *
+ * @param inputFile - The `--input` path.
+ * @param outputFlag - The `--output` path, if any. `-` (stdout) is handled by the caller.
+ * @param force - Whether `--force` was passed.
+ * @returns The path to write to.
+ * @throws If the write would replace `inputFile` and `force` is false.
+ */
+export function resolveModifyOutputPath({
+	inputFile,
+	outputFlag,
+	force,
+}: {
+	inputFile: string
+	outputFlag: string | undefined
+	force: boolean
+}): string {
+	const output = typeof outputFlag === "string" && outputFlag.length > 0 ? outputFlag : undefined
+	const inPlace = output === undefined || resolve(output) === resolve(inputFile)
+
+	if (inPlace && !force) {
+		throw new Error(
+			[
+				`Refusing to overwrite ${inputFile}.`,
+				"The patch applies to the full model, so nothing is dropped, but the diagram is " +
+					"re-laid out and the original is gone once it is replaced.",
+				`Write elsewhere with --output <file>, or pass --force to replace ${inputFile} anyway.`,
+			].join("\n"),
+		)
+	}
+
+	return output ?? inputFile
+}
+
 // ── Command ───────────────────────────────────────────────────────────────────
 
 const generateBpmnCmd: Command = {
@@ -534,7 +578,10 @@ const generateBpmnCmd: Command = {
 		{
 			name: "input",
 			short: "f",
-			description: "Existing .bpmn file to load and modify",
+			description:
+				"Existing .bpmn file to load and modify. The patch is applied to the full model, so " +
+				"pools, lanes, data wiring and Zeebe detail are preserved; the diagram is re-laid " +
+				"out. Requires --output, or --force to replace it in place.",
 			type: "string",
 		},
 		{
@@ -547,6 +594,11 @@ const generateBpmnCmd: Command = {
 			name: "dump-compact",
 			description:
 				"Print the CompactDiagram JSON of --input and exit (for AI inspection of existing files)",
+			type: "boolean",
+		},
+		{
+			name: "force",
+			description: "Allow --input to be replaced in place. Prefer --output <file>.",
 			type: "boolean",
 		},
 	],
@@ -591,11 +643,12 @@ const generateBpmnCmd: Command = {
 		{
 			description: "Add a new gateway path to an existing file",
 			command:
-				'casen generate bpmn --input order.bpmn --patch \'{"elements":[{"id":"notify","type":"serviceTask","name":"Notify","jobType":"notify-worker"},{"id":"end2","type":"endEvent","name":"Notified"}],"flows":[{"id":"fn1","from":"gw","to":"notify","condition":"= urgent"},{"id":"fn2","from":"notify","to":"end2"}]}\'',
+				'casen generate bpmn --input order.bpmn --output order.patched.bpmn --patch \'{"elements":[{"id":"notify","type":"serviceTask","name":"Notify","jobType":"notify-worker"},{"id":"end2","type":"endEvent","name":"Notified"}],"flows":[{"id":"fn1","from":"gw","to":"notify","condition":"= urgent"},{"id":"fn2","from":"notify","to":"end2"}]}\'',
 		},
 		{
 			description: "Pipe a patch from AI output",
-			command: 'echo \'{"elements":[...],"flows":[...]}\' | casen generate bpmn --input order.bpmn',
+			command:
+				'echo \'{"elements":[...],"flows":[...]}\' | casen generate bpmn --input order.bpmn --output order.patched.bpmn',
 		},
 		{
 			description: "Re-apply auto-layout to an existing file",
@@ -620,13 +673,23 @@ const generateBpmnCmd: Command = {
 		if (inputFile) {
 			const xml = await readFile(inputFile, "utf-8")
 			const defs = Bpmn.parse(xml)
-			const compact = compactify(defs)
 
 			// --dump-compact: print JSON for AI inspection and exit
 			if (ctx.flags["dump-compact"]) {
-				process.stdout.write(`${JSON.stringify(compact, null, 2)}\n`)
+				process.stdout.write(`${JSON.stringify(compactify(defs), null, 2)}\n`)
 				return
 			}
+
+			// Settle the destination before reading stdin or building the patch, so an
+			// unwritable target fails immediately instead of after the work is done.
+			const outputPath =
+				outputFlag === "-"
+					? null
+					: resolveModifyOutputPath({
+							inputFile,
+							outputFlag,
+							force: ctx.flags.force === true,
+						})
 
 			// Resolve patch from --patch flag or stdin
 			let patch: CompactPatch | null = null
@@ -649,23 +712,48 @@ const generateBpmnCmd: Command = {
 				}
 			}
 
-			// Apply patch to first process (covers all single-process cases)
+			// Apply the patch to the full model, not to the compact view of it: an
+			// element added this way leaves the document's pools, lanes, data
+			// wiring and Zeebe detail exactly where they were.
+			let edited = defs
 			if (patch) {
-				const proc = compact.processes[0]
-				if (!proc) throw new Error("Input BPMN has no processes")
-				if (patch.elements?.length) proc.elements.push(...patch.elements)
-				if (patch.flows?.length) proc.flows.push(...patch.flows)
+				const process = defs.processes[0]
+				if (!process) throw new Error("Input BPMN has no processes")
+
+				const operations: BpmnOperation[] = [
+					...(patch.elements ?? []).map(
+						(element): BpmnOperation => ({ op: "insert", element, parent: process.id }),
+					),
+					...(patch.flows ?? []).map(
+						(flow): BpmnOperation => ({
+							op: "add_flow",
+							id: flow.id,
+							parent: process.id,
+							from: flow.from,
+							to: flow.to,
+							name: flow.name,
+							condition: flow.condition,
+						}),
+					),
+				]
+
+				try {
+					edited = applyBpmnOperations(defs, operations).definitions
+				} catch (error) {
+					// Unresolved ids used to be skipped in silence, so a patch naming a
+					// misspelled element reported success and changed nothing.
+					throw new Error(
+						`Patch could not be applied: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				}
 			}
 
-			const patched = Bpmn.export(expand(compact))
+			const patched = Bpmn.export(applyAutoLayout(edited))
 
-			if (outputFlag === "-") {
+			if (outputPath === null) {
 				process.stdout.write(patched)
 				return
 			}
-
-			const outputPath =
-				typeof outputFlag === "string" && outputFlag.length > 0 ? outputFlag : inputFile
 
 			await writeFile(outputPath, patched, "utf-8")
 			ctx.output.ok(

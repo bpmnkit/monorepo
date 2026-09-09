@@ -5,8 +5,11 @@ import type {
 	BpmnAssociation,
 	BpmnBoundaryEvent,
 	BpmnBounds,
+	BpmnCategory,
+	BpmnCategoryValue,
 	BpmnCollaboration,
 	BpmnConditionExpression,
+	BpmnDataAssociation,
 	BpmnDefinitions,
 	BpmnDiEdge,
 	BpmnDiLabel,
@@ -26,6 +29,7 @@ import type {
 	BpmnMultiInstanceLoopCharacteristics,
 	BpmnParticipant,
 	BpmnProcess,
+	BpmnProperty,
 	BpmnSequenceFlow,
 	BpmnSignal,
 	BpmnTextAnnotation,
@@ -92,6 +96,7 @@ const KNOWN_ATTRS = new Set([
 	"exporter",
 	"exporterVersion",
 	"processRef",
+	"messageRef",
 	"dataObjectRef",
 	"dataStoreRef",
 	"isCollection",
@@ -199,6 +204,7 @@ const SLOT_TIME_DURATION = 7
 const SLOT_TIME_DATE = 8
 const SLOT_TIME_CYCLE = 9
 const SLOT_CONDITION = 10
+const SLOT_LOOP_CARDINALITY = 13
 
 interface TextOwner {
 	setText(slot: number, text: string | undefined, attrs: Attrs): void
@@ -231,7 +237,15 @@ class TreeFrame extends Frame {
 	override readonly wantsText = true
 	private readonly stack: XmlElement[] = []
 
-	constructor(private readonly target: XmlElement[]) {
+	/**
+	 * @param target - Where top-level children are appended.
+	 * @param owner - Element receiving character data directly inside it, when
+	 *   the frame stands for an element rather than a bare child list.
+	 */
+	constructor(
+		private readonly target: XmlElement[],
+		private readonly owner?: XmlElement,
+	) {
 		super()
 	}
 
@@ -245,12 +259,117 @@ class TreeFrame extends Frame {
 	}
 
 	override text(text: string): void {
-		const el = this.stack[this.stack.length - 1]
+		const el = this.stack[this.stack.length - 1] ?? this.owner
 		if (el) el.text = el.text === undefined ? text : el.text + text
 	}
 
 	finish(): void {
-		this.stack.pop()
+		dropLayoutWhitespace(this.stack.pop() ?? this.owner)
+	}
+}
+
+/**
+ * Clears an element's text when it is only the indentation between its child
+ * elements. Without this, re-serialising a nested extension or captured subtree
+ * re-emits that indentation as content and it grows on every round trip.
+ */
+function dropLayoutWhitespace(element: XmlElement | undefined): void {
+	if (element === undefined) return
+	if (element.children.length > 0 && element.text !== undefined && element.text.trim() === "") {
+		element.text = undefined
+	}
+}
+
+/** The `documentation` and `extensionElements` every `tBaseElement` may carry. */
+interface BaseFields {
+	documentation?: string
+	extensionElements?: XmlElement[]
+}
+
+/**
+ * Shared handling of the two children every BPMN base element may have.
+ *
+ * Subclasses call {@link baseChild} first and fall through to their own cases,
+ * and read {@link baseFields} when building their model object. Frames that
+ * also collect text children override {@link baseText}.
+ */
+abstract class BaseElementFrame extends Frame implements TextOwner {
+	private documentation: string | undefined
+	private documentationSeen = false
+	private extensions: XmlElement[] | null = null
+
+	/** A base child's frame, or `undefined` when `local` is not one. */
+	protected baseChild(local: string, attrs: Attrs): Frame | null | undefined {
+		switch (local) {
+			case "documentation":
+				if (this.documentationSeen) return null
+				this.documentationSeen = true
+				return new TextFrame(this, SLOT_DOCUMENTATION, attrs)
+			case "extensionElements":
+				if (this.extensions !== null) return null
+				this.extensions = []
+				return new TreeFrame(this.extensions)
+			default:
+				return undefined
+		}
+	}
+
+	/** Only defined keys, so model objects keep the shape they had before. */
+	protected baseFields(): BaseFields {
+		const fields: BaseFields = {}
+		if (this.documentation !== undefined) fields.documentation = this.documentation
+		if (this.extensions !== null && this.extensions.length > 0) {
+			fields.extensionElements = this.extensions
+		}
+		return fields
+	}
+
+	setText(slot: number, text: string | undefined, attrs: Attrs): void {
+		if (slot === SLOT_DOCUMENTATION) {
+			this.documentation = text
+			return
+		}
+		this.baseText(slot, text, attrs)
+	}
+
+	/** Text children other than `documentation`. */
+	protected baseText(_slot: number, _text: string | undefined, _attrs: Attrs): void {}
+}
+
+/**
+ * Captures an unrecognised child subtree verbatim so a round trip does not
+ * discard it.
+ *
+ * Only ever called from a frame's `default:` branch — the path that means "this
+ * element is not part of the model". Children a frame recognises but chooses
+ * not to store (a second `documentation`, a loop on a type that cannot loop)
+ * keep returning `null`, so nothing is captured twice.
+ */
+function captureUnknown(target: XmlElement[], name: string, attrs: Attrs): Frame {
+	const element: XmlElement = { name, attributes: attrs, children: [] }
+	target.push(element)
+	return new TreeFrame(element.children, element)
+}
+
+/**
+ * A frame for an element whose only children are `documentation` and
+ * `extensionElements`; everything else it needs comes from its attributes.
+ */
+class BaseOnlyFrame<T> extends BaseElementFrame {
+	constructor(
+		private readonly attrs: Attrs,
+		private readonly build: (attrs: Attrs, base: BaseFields) => T,
+		private readonly target: T[],
+	) {
+		super()
+	}
+
+	override child(local: string, _name: string, attrs: Attrs): Frame | null {
+		return this.baseChild(local, attrs) ?? null
+	}
+
+	finish(): void {
+		this.target.push(this.build(this.attrs, this.baseFields()))
 	}
 }
 
@@ -258,71 +377,83 @@ class TreeFrame extends Frame {
 // Attribute-only elements
 // ---------------------------------------------------------------------------
 
-function parseAssociation(name: string, attrs: Attrs): BpmnAssociation {
+function parseAssociation(name: string, attrs: Attrs, base: BaseFields = {}): BpmnAssociation {
 	return {
 		id: requiredAttr(attrs, "id", name),
 		sourceRef: requiredAttr(attrs, "sourceRef", name),
 		targetRef: requiredAttr(attrs, "targetRef", name),
 		associationDirection: attr(attrs, "associationDirection"),
+		...base,
 		unknownAttributes: unknownAttrs(attrs),
 	}
 }
 
-function parseGroup(name: string, attrs: Attrs): BpmnGroup {
+function parseGroup(name: string, attrs: Attrs, base: BaseFields = {}): BpmnGroup {
 	return {
 		id: requiredAttr(attrs, "id", name),
 		categoryValueRef: attr(attrs, "categoryValueRef"),
+		...base,
 		unknownAttributes: unknownAttrs(attrs),
 	}
 }
 
-function parseParticipant(name: string, attrs: Attrs): BpmnParticipant {
+function parseParticipant(name: string, attrs: Attrs, base: BaseFields = {}): BpmnParticipant {
 	return {
 		id: requiredAttr(attrs, "id", name),
 		name: attr(attrs, "name"),
 		processRef: attr(attrs, "processRef"),
+		...base,
 		unknownAttributes: unknownAttrs(attrs),
 	}
 }
 
-function parseMessageFlow(name: string, attrs: Attrs): BpmnMessageFlow {
+function parseMessageFlow(name: string, attrs: Attrs, base: BaseFields = {}): BpmnMessageFlow {
 	return {
 		id: requiredAttr(attrs, "id", name),
 		name: attr(attrs, "name"),
 		sourceRef: requiredAttr(attrs, "sourceRef", name),
 		targetRef: requiredAttr(attrs, "targetRef", name),
+		messageRef: attr(attrs, "messageRef"),
+		...base,
 		unknownAttributes: unknownAttrs(attrs),
 	}
 }
 
-function parseError(name: string, attrs: Attrs): BpmnError {
+function parseError(name: string, attrs: Attrs, base: BaseFields = {}): BpmnError {
 	return {
 		id: requiredAttr(attrs, "id", name),
 		name: attr(attrs, "name"),
 		errorCode: attr(attrs, "errorCode"),
-	}
-}
-
-function parseEscalation(name: string, attrs: Attrs): BpmnEscalation {
-	return {
-		id: requiredAttr(attrs, "id", name),
-		name: attr(attrs, "name"),
-		escalationCode: attr(attrs, "escalationCode"),
-	}
-}
-
-function parseMessage(name: string, attrs: Attrs): BpmnMessage {
-	return {
-		id: requiredAttr(attrs, "id", name),
-		name: attr(attrs, "name"),
+		...base,
 		unknownAttributes: unknownAttrs(attrs),
 	}
 }
 
-function parseSignal(name: string, attrs: Attrs): BpmnSignal {
+function parseEscalation(name: string, attrs: Attrs, base: BaseFields = {}): BpmnEscalation {
 	return {
 		id: requiredAttr(attrs, "id", name),
 		name: attr(attrs, "name"),
+		escalationCode: attr(attrs, "escalationCode"),
+		...base,
+		unknownAttributes: unknownAttrs(attrs),
+	}
+}
+
+function parseMessage(name: string, attrs: Attrs, base: BaseFields = {}): BpmnMessage {
+	return {
+		id: requiredAttr(attrs, "id", name),
+		name: attr(attrs, "name"),
+		...base,
+		unknownAttributes: unknownAttrs(attrs),
+	}
+}
+
+function parseSignal(name: string, attrs: Attrs, base: BaseFields = {}): BpmnSignal {
+	return {
+		id: requiredAttr(attrs, "id", name),
+		name: attr(attrs, "name"),
+		...base,
+		unknownAttributes: unknownAttrs(attrs),
 	}
 }
 
@@ -351,12 +482,19 @@ function newContents(): ProcessContents {
 	return { flowElements: [], sequenceFlows: [], textAnnotations: [], associations: [], groups: [] }
 }
 
+/**
+ * A frame for a child of a flow-element container.
+ *
+ * Returns `null` when the child is recognised but needs no frame, and
+ * `undefined` when it is not part of the model — the caller keeps the latter
+ * verbatim, so the two cases must stay distinct.
+ */
 function contentsChild(
 	contents: ProcessContents,
 	local: string,
 	name: string,
 	attrs: Attrs,
-): Frame | null {
+): Frame | null | undefined {
 	if (FLOW_ELEMENT_TYPES.has(local)) {
 		return new FlowNodeFrame(local as BpmnElementType, name, attrs, contents)
 	}
@@ -366,13 +504,15 @@ function contentsChild(
 		case "textAnnotation":
 			return new TextAnnotationFrame(name, attrs, contents.textAnnotations)
 		case "association":
-			contents.associations.push(parseAssociation(name, attrs))
-			return null
+			return new BaseOnlyFrame(
+				attrs,
+				(a, base) => parseAssociation(name, a, base),
+				contents.associations,
+			)
 		case "group":
-			contents.groups.push(parseGroup(name, attrs))
-			return null
+			return new BaseOnlyFrame(attrs, (a, base) => parseGroup(name, a, base), contents.groups)
 		default:
-			return null
+			return undefined
 	}
 }
 
@@ -465,6 +605,10 @@ class FlowNodeFrame extends Frame implements TextOwner {
 	private loopSeen = false
 	private completionCondition: BpmnConditionExpression | undefined
 	private completionSeen = false
+	private readonly unknownChildren: XmlElement[] = []
+	private readonly properties: BpmnProperty[] = []
+	private readonly dataInputAssociations: BpmnDataAssociation[] = []
+	private readonly dataOutputAssociations: BpmnDataAssociation[] = []
 	private readonly contents: ProcessContents | null
 
 	constructor(
@@ -501,14 +645,29 @@ class FlowNodeFrame extends Frame implements TextOwner {
 				if (this.type !== "adHocSubProcess" || this.completionSeen) return null
 				this.completionSeen = true
 				return new TextFrame(this, SLOT_COMPLETION_CONDITION, attrs)
+			case "property":
+				this.properties.push({
+					id: attr(attrs, "id"),
+					name: attr(attrs, "name"),
+					itemSubjectRef: attr(attrs, "itemSubjectRef"),
+					unknownAttributes: unknownAttrs(attrs),
+				})
+				return null
+			case "dataInputAssociation":
+				return new DataAssociationFrame(attrs, this.dataInputAssociations)
+			case "dataOutputAssociation":
+				return new DataAssociationFrame(attrs, this.dataOutputAssociations)
 			default:
 				break
 		}
 		if (this.eventDefinitions !== null && EVENT_DEFINITION_TYPES.has(local)) {
 			return eventDefinitionFrame(local, attrs, this.eventDefinitions)
 		}
-		if (this.contents !== null) return contentsChild(this.contents, local, name, attrs)
-		return null
+		if (this.contents !== null) {
+			const child = contentsChild(this.contents, local, name, attrs)
+			if (child !== undefined) return child
+		}
+		return captureUnknown(this.unknownChildren, name, attrs)
 	}
 
 	setText(slot: number, text: string | undefined, attrs: Attrs): void {
@@ -542,6 +701,14 @@ class FlowNodeFrame extends Frame implements TextOwner {
 		const attrs = this.attrs
 		const base = {
 			id: this.id,
+			...(this.properties.length > 0 ? { properties: this.properties } : {}),
+			...(this.dataInputAssociations.length > 0
+				? { dataInputAssociations: this.dataInputAssociations }
+				: {}),
+			...(this.dataOutputAssociations.length > 0
+				? { dataOutputAssociations: this.dataOutputAssociations }
+				: {}),
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 			name: attr(attrs, "name"),
 			incoming: this.incoming,
 			outgoing: this.outgoing,
@@ -849,8 +1016,13 @@ class ConditionalDefinitionFrame extends Frame implements TextOwner {
 // Multi-instance loop
 // ---------------------------------------------------------------------------
 
-class LoopFrame extends Frame {
+class LoopFrame extends Frame implements TextOwner {
+	private readonly unknownChildren: XmlElement[] = []
 	private extensionElements: XmlElement[] | null = null
+	private loopCardinality: BpmnConditionExpression | undefined
+	private cardinalitySeen = false
+	private completionCondition: BpmnConditionExpression | undefined
+	private completionSeen = false
 
 	constructor(
 		private readonly attrs: Attrs,
@@ -859,16 +1031,38 @@ class LoopFrame extends Frame {
 		super()
 	}
 
-	override child(local: string): Frame | null {
-		if (local !== "extensionElements" || this.extensionElements !== null) return null
-		this.extensionElements = []
-		return new TreeFrame(this.extensionElements)
+	override child(local: string, _name: string, attrs: Attrs): Frame | null {
+		switch (local) {
+			case "extensionElements":
+				if (this.extensionElements !== null) return null
+				this.extensionElements = []
+				return new TreeFrame(this.extensionElements)
+			case "loopCardinality":
+				if (this.cardinalitySeen) return null
+				this.cardinalitySeen = true
+				return new TextFrame(this, SLOT_LOOP_CARDINALITY, attrs)
+			case "completionCondition":
+				if (this.completionSeen) return null
+				this.completionSeen = true
+				return new TextFrame(this, SLOT_COMPLETION_CONDITION, attrs)
+			default:
+				return captureUnknown(this.unknownChildren, _name, attrs)
+		}
+	}
+
+	setText(slot: number, text: string | undefined, attrs: Attrs): void {
+		const expression = { text: text ?? "", attributes: { ...attrs } }
+		if (slot === SLOT_LOOP_CARDINALITY) this.loopCardinality = expression
+		else if (slot === SLOT_COMPLETION_CONDITION) this.completionCondition = expression
 	}
 
 	finish(): void {
 		this.owner.setLoopCharacteristics({
 			isSequential: this.attrs.isSequential === "true" ? true : undefined,
+			loopCardinality: this.loopCardinality,
+			completionCondition: this.completionCondition,
 			extensionElements: this.extensionElements ?? [],
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		})
 	}
 }
@@ -928,7 +1122,7 @@ class SequenceFlowFrame extends Frame implements TextOwner {
 	}
 }
 
-class TextAnnotationFrame extends Frame implements TextOwner {
+class TextAnnotationFrame extends BaseElementFrame {
 	private textSeen = false
 	private value: string | undefined
 
@@ -941,12 +1135,14 @@ class TextAnnotationFrame extends Frame implements TextOwner {
 	}
 
 	override child(local: string, _name: string, attrs: Attrs): Frame | null {
+		const base = this.baseChild(local, attrs)
+		if (base !== undefined) return base
 		if (local !== "text" || this.textSeen) return null
 		this.textSeen = true
 		return new TextFrame(this, SLOT_TEXT, attrs)
 	}
 
-	setText(_slot: number, text: string | undefined): void {
+	protected override baseText(_slot: number, text: string | undefined): void {
 		this.value = text
 	}
 
@@ -954,7 +1150,95 @@ class TextAnnotationFrame extends Frame implements TextOwner {
 		this.target.push({
 			id: requiredAttr(this.attrs, "id", this.name),
 			text: this.value,
+			...this.baseFields(),
 			unknownAttributes: unknownAttrs(this.attrs),
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
+/** A root `bpmn:category`; its values supply the labels groups point at. */
+class CategoryFrame extends BaseElementFrame {
+	private readonly categoryValues: BpmnCategoryValue[] = []
+
+	constructor(
+		private readonly attrs: Attrs,
+		private readonly target: BpmnCategory[],
+	) {
+		super()
+	}
+
+	override child(local: string, _name: string, attrs: Attrs): Frame | null {
+		const base = this.baseChild(local, attrs)
+		if (base !== undefined) return base
+		if (local === "categoryValue") {
+			const id = attr(attrs, "id")
+			if (id !== undefined) {
+				this.categoryValues.push({
+					id,
+					value: attr(attrs, "value"),
+					unknownAttributes: unknownAttrs(attrs),
+				})
+			}
+		}
+		return null
+	}
+
+	finish(): void {
+		this.target.push({
+			id: attr(this.attrs, "id"),
+			name: attr(this.attrs, "name"),
+			categoryValues: this.categoryValues,
+			unknownAttributes: unknownAttrs(this.attrs),
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Data associations
+// ---------------------------------------------------------------------------
+
+const SLOT_SOURCE_REF = 11
+const SLOT_TARGET_REF = 12
+
+/** A `dataInputAssociation` or `dataOutputAssociation` and its ref children. */
+class DataAssociationFrame extends BaseElementFrame {
+	private readonly sourceRefs: string[] = []
+	private readonly unknownChildren: XmlElement[] = []
+	private targetRef: string | undefined
+
+	constructor(
+		private readonly attrs: Attrs,
+		private readonly target: BpmnDataAssociation[],
+	) {
+		super()
+	}
+
+	override child(local: string, name: string, attrs: Attrs): Frame | null {
+		const base = this.baseChild(local, attrs)
+		if (base !== undefined) return base
+		if (local === "sourceRef") return new TextFrame(this, SLOT_SOURCE_REF, attrs)
+		if (local === "targetRef") return new TextFrame(this, SLOT_TARGET_REF, attrs)
+		return captureUnknown(this.unknownChildren, name, attrs)
+	}
+
+	protected override baseText(slot: number, text: string | undefined): void {
+		const ref = text?.trim()
+		if (!ref) return
+		if (slot === SLOT_SOURCE_REF) this.sourceRefs.push(ref)
+		else if (slot === SLOT_TARGET_REF) this.targetRef = ref
+	}
+
+	finish(): void {
+		this.target.push({
+			id: attr(this.attrs, "id"),
+			sourceRefs: this.sourceRefs,
+			targetRef: this.targetRef,
+			unknownAttributes: unknownAttrs(this.attrs),
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		})
 	}
 }
@@ -982,11 +1266,16 @@ class LaneSetFrame extends Frame {
 	}
 
 	finish(): void {
-		this.owner.setLaneSet({ id: attr(this.attrs, "id"), lanes: this.lanes })
+		this.owner.setLaneSet({
+			id: attr(this.attrs, "id"),
+			name: attr(this.attrs, "name"),
+			lanes: this.lanes,
+			unknownAttributes: unknownAttrs(this.attrs),
+		})
 	}
 }
 
-class LaneFrame extends Frame implements TextOwner, LaneSetOwner {
+class LaneFrame extends BaseElementFrame implements LaneSetOwner {
 	private readonly flowNodeRefs: string[] = []
 	private childLaneSet: BpmnLaneSet | undefined
 	private childLaneSetSeen = false
@@ -1000,6 +1289,8 @@ class LaneFrame extends Frame implements TextOwner, LaneSetOwner {
 	}
 
 	override child(local: string, _name: string, attrs: Attrs): Frame | null {
+		const base = this.baseChild(local, attrs)
+		if (base !== undefined) return base
 		switch (local) {
 			case "flowNodeRef":
 				return new TextFrame(this, SLOT_FLOW_NODE_REF, attrs)
@@ -1012,7 +1303,7 @@ class LaneFrame extends Frame implements TextOwner, LaneSetOwner {
 		}
 	}
 
-	setText(_slot: number, text: string | undefined): void {
+	protected override baseText(_slot: number, text: string | undefined): void {
 		const ref = text?.trim()
 		if (ref) this.flowNodeRefs.push(ref)
 	}
@@ -1027,6 +1318,7 @@ class LaneFrame extends Frame implements TextOwner, LaneSetOwner {
 			name: attr(this.attrs, "name"),
 			flowNodeRefs: this.flowNodeRefs,
 			childLaneSet: this.childLaneSet,
+			...this.baseFields(),
 			unknownAttributes: unknownAttrs(this.attrs),
 		})
 	}
@@ -1036,8 +1328,11 @@ class LaneFrame extends Frame implements TextOwner, LaneSetOwner {
 // Process
 // ---------------------------------------------------------------------------
 
-class ProcessFrame extends Frame implements LaneSetOwner {
+class ProcessFrame extends Frame implements LaneSetOwner, TextOwner {
 	private readonly id: string
+	private readonly unknownChildren: XmlElement[] = []
+	private documentation: string | undefined
+	private documentationSeen = false
 	private extensionElements: XmlElement[] | null = null
 	private laneSet: BpmnLaneSet | undefined
 	private laneSetSeen = false
@@ -1054,6 +1349,10 @@ class ProcessFrame extends Frame implements LaneSetOwner {
 
 	override child(local: string, name: string, attrs: Attrs): Frame | null {
 		switch (local) {
+			case "documentation":
+				if (this.documentationSeen) return null
+				this.documentationSeen = true
+				return new TextFrame(this, SLOT_DOCUMENTATION, attrs)
 			case "extensionElements":
 				if (this.extensionElements !== null) return null
 				this.extensionElements = []
@@ -1062,9 +1361,15 @@ class ProcessFrame extends Frame implements LaneSetOwner {
 				if (this.laneSetSeen) return null
 				this.laneSetSeen = true
 				return new LaneSetFrame(attrs, this)
-			default:
-				return contentsChild(this.contents, local, name, attrs)
+			default: {
+				const child = contentsChild(this.contents, local, name, attrs)
+				return child === undefined ? captureUnknown(this.unknownChildren, name, attrs) : child
+			}
 		}
+	}
+
+	setText(slot: number, text: string | undefined): void {
+		if (slot === SLOT_DOCUMENTATION) this.documentation = text
 	}
 
 	setLaneSet(laneSet: BpmnLaneSet): void {
@@ -1077,9 +1382,11 @@ class ProcessFrame extends Frame implements LaneSetOwner {
 			id: this.id,
 			name: attr(attrs, "name"),
 			isExecutable: attr(attrs, "isExecutable") === "true" ? true : undefined,
+			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(attrs),
 			laneSet: this.laneSet,
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 			...this.contents,
 		})
 	}
@@ -1096,6 +1403,7 @@ class CollaborationFrame extends Frame {
 	private readonly textAnnotations: BpmnTextAnnotation[] = []
 	private readonly associations: BpmnAssociation[] = []
 	private readonly groups: BpmnGroup[] = []
+	private readonly unknownChildren: XmlElement[] = []
 	private extensionElements: XmlElement[] | null = null
 
 	constructor(
@@ -1110,25 +1418,33 @@ class CollaborationFrame extends Frame {
 	override child(local: string, name: string, attrs: Attrs): Frame | null {
 		switch (local) {
 			case "participant":
-				this.participants.push(parseParticipant(name, attrs))
-				return null
+				return new BaseOnlyFrame(
+					attrs,
+					(a, base) => parseParticipant(name, a, base),
+					this.participants,
+				)
 			case "messageFlow":
-				this.messageFlows.push(parseMessageFlow(name, attrs))
-				return null
+				return new BaseOnlyFrame(
+					attrs,
+					(a, base) => parseMessageFlow(name, a, base),
+					this.messageFlows,
+				)
 			case "textAnnotation":
 				return new TextAnnotationFrame(name, attrs, this.textAnnotations)
 			case "association":
-				this.associations.push(parseAssociation(name, attrs))
-				return null
+				return new BaseOnlyFrame(
+					attrs,
+					(a, base) => parseAssociation(name, a, base),
+					this.associations,
+				)
 			case "group":
-				this.groups.push(parseGroup(name, attrs))
-				return null
+				return new BaseOnlyFrame(attrs, (a, base) => parseGroup(name, a, base), this.groups)
 			case "extensionElements":
 				if (this.extensionElements !== null) return null
 				this.extensionElements = []
 				return new TreeFrame(this.extensionElements)
 			default:
-				return null
+				return captureUnknown(this.unknownChildren, name, attrs)
 		}
 	}
 
@@ -1142,6 +1458,7 @@ class CollaborationFrame extends Frame {
 			groups: this.groups,
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(this.attrs),
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		})
 	}
 }
@@ -1339,7 +1656,10 @@ class DiagramFrame extends Frame {
 // Definitions (document root)
 // ---------------------------------------------------------------------------
 
-class DefinitionsFrame extends Frame {
+class DefinitionsFrame extends Frame implements TextOwner {
+	private readonly categories: BpmnCategory[] = []
+	private documentation: string | undefined
+	private documentationSeen = false
 	private readonly errors: BpmnError[] = []
 	private readonly escalations: BpmnEscalation[] = []
 	private readonly messages: BpmnMessage[] = []
@@ -1347,6 +1667,7 @@ class DefinitionsFrame extends Frame {
 	private readonly collaborations: BpmnCollaboration[] = []
 	private readonly processes: BpmnProcess[] = []
 	private readonly diagrams: BpmnDiagram[] = []
+	private readonly unknownChildren: XmlElement[] = []
 
 	constructor(
 		private readonly name: string,
@@ -1358,18 +1679,24 @@ class DefinitionsFrame extends Frame {
 
 	override child(local: string, name: string, attrs: Attrs): Frame | null {
 		switch (local) {
+			case "documentation":
+				if (this.documentationSeen) return null
+				this.documentationSeen = true
+				return new TextFrame(this, SLOT_DOCUMENTATION, attrs)
 			case "error":
-				this.errors.push(parseError(name, attrs))
-				return null
+				return new BaseOnlyFrame(attrs, (a, base) => parseError(name, a, base), this.errors)
 			case "escalation":
-				this.escalations.push(parseEscalation(name, attrs))
-				return null
+				return new BaseOnlyFrame(
+					attrs,
+					(a, base) => parseEscalation(name, a, base),
+					this.escalations,
+				)
 			case "message":
-				this.messages.push(parseMessage(name, attrs))
-				return null
+				return new BaseOnlyFrame(attrs, (a, base) => parseMessage(name, a, base), this.messages)
 			case "signal":
-				this.signals.push(parseSignal(name, attrs))
-				return null
+				return new BaseOnlyFrame(attrs, (a, base) => parseSignal(name, a, base), this.signals)
+			case "category":
+				return new CategoryFrame(attrs, this.categories)
 			case "collaboration":
 				return new CollaborationFrame(name, attrs, this.collaborations)
 			case "process":
@@ -1377,8 +1704,12 @@ class DefinitionsFrame extends Frame {
 			case "BPMNDiagram":
 				return new DiagramFrame(name, attrs, this.diagrams)
 			default:
-				return null
+				return captureUnknown(this.unknownChildren, name, attrs)
 		}
+	}
+
+	setText(slot: number, text: string | undefined): void {
+		if (slot === SLOT_DOCUMENTATION) this.documentation = text
 	}
 
 	finish(): void {
@@ -1405,6 +1736,8 @@ class DefinitionsFrame extends Frame {
 			exporterVersion: attr(attrs, "exporterVersion"),
 			namespaces,
 			unknownAttributes,
+			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
+			...(this.categories.length > 0 ? { categories: this.categories } : {}),
 			errors: this.errors,
 			escalations: this.escalations,
 			messages: this.messages,
@@ -1412,6 +1745,7 @@ class DefinitionsFrame extends Frame {
 			collaborations: this.collaborations,
 			processes: this.processes,
 			diagrams: this.diagrams,
+			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
 		}
 	}
 }

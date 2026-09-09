@@ -563,26 +563,40 @@
 		{
 			"id": "getting-started.concepts.parsing-and-serializing",
 			"file": "chunks/getting-started.concepts.parsing-and-serializing.md",
-			"tokens": 149,
+			"tokens": 687,
 			"tags": [
 				"getting-started",
 				"concepts",
 				"parsing",
 				"serializing"
 			],
-			"entities": []
+			"entities": [
+				"Bpmn.parse()",
+				"Bpmn.export()",
+				"unknownAttributes",
+				"multiInstanceLoopCharacteristics",
+				"unknownChildren",
+				"extensionElements",
+				"XmlElement",
+				"packages/core/tests/roundtrip-corpus.test.ts",
+				"packages/core/tests/descriptor-coverage.test.ts"
+			]
 		},
 		{
 			"id": "getting-started.concepts.ai-compact-format",
 			"file": "chunks/getting-started.concepts.ai-compact-format.md",
-			"tokens": 182,
+			"tokens": 359,
 			"tags": [
 				"getting-started",
 				"concepts",
 				"ai-compact",
 				"format"
 			],
-			"entities": []
+			"entities": [
+				"compactify()",
+				"CompactElement",
+				"BpmnDefinitions"
+			]
 		},
 		{
 			"id": "getting-started.concepts.zeebe-extensions",
@@ -854,12 +868,18 @@
 		{
 			"id": "guides.ai",
 			"file": "chunks/guides.ai.md",
-			"tokens": 227,
+			"tokens": 478,
 			"tags": [
 				"guides",
 				"ai"
 			],
-			"entities": []
+			"entities": [
+				"expand()",
+				"compactify()",
+				"CompactElement",
+				"reconcileCompact",
+				"applyBpmnOperations"
+			]
 		},
 		{
 			"id": "guides.ai.minimal-empty-diagram",
@@ -1640,7 +1660,7 @@
 		{
 			"id": "packages.core.overview",
 			"file": "chunks/packages.core.overview.md",
-			"tokens": 135,
+			"tokens": 136,
 			"tags": [
 				"packages",
 				"core",
@@ -1677,6 +1697,25 @@
 			]
 		},
 		{
+			"id": "packages.core.installation-bpmn.continueprocess-definitions-processid",
+			"file": "chunks/packages.core.installation-bpmn.continueprocess-definitions-processid.md",
+			"tokens": 517,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"bpmn.continueprocess",
+				"definitions",
+				"processid"
+			],
+			"entities": [
+				"build()",
+				"ProcessBuilder",
+				"applyAutoLayout()",
+				"isExecutable"
+			]
+		},
+		{
 			"id": "packages.core.installation-bpmn.creatediagram-id",
 			"file": "chunks/packages.core.installation-bpmn.creatediagram-id.md",
 			"tokens": 107,
@@ -1688,6 +1727,22 @@
 			],
 			"entities": [
 				"DiagramBuilder"
+			]
+		},
+		{
+			"id": "packages.core.installation-diagrambuilder-collaborations",
+			"file": "chunks/packages.core.installation-diagrambuilder-collaborations.md",
+			"tokens": 404,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"diagrambuilder",
+				"collaborations"
+			],
+			"entities": [
+				"applyAutoLayout",
+				"build()"
 			]
 		},
 		{
@@ -1747,9 +1802,110 @@
 			"entities": []
 		},
 		{
+			"id": "packages.core.installation-semantichash-definitions",
+			"file": "chunks/packages.core.installation-semantichash-definitions.md",
+			"tokens": 193,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"semantichash",
+				"definitions"
+			],
+			"entities": [
+				"exporterVersion"
+			]
+		},
+		{
+			"id": "packages.core.installation-projectsemantics-definitions",
+			"file": "chunks/packages.core.installation-projectsemantics-definitions.md",
+			"tokens": 54,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"projectsemantics",
+				"definitions"
+			],
+			"entities": [
+				"semanticHash"
+			]
+		},
+		{
+			"id": "packages.core.installation-diffsemantics-before-after",
+			"file": "chunks/packages.core.installation-diffsemantics-before-after.md",
+			"tokens": 121,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"diffsemantics",
+				"before",
+				"after"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.core.installation-applybpmnoperations-definitions-operations-options",
+			"file": "chunks/packages.core.installation-applybpmnoperations-definitions-operations-options.md",
+			"tokens": 235,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"applybpmnoperations",
+				"definitions",
+				"operations",
+				"options"
+			],
+			"entities": [
+				"CompactDiagram",
+				"OperationError"
+			]
+		},
+		{
+			"id": "packages.core.installation-ensurezeebeextension-owner-extension",
+			"file": "chunks/packages.core.installation-ensurezeebeextension-owner-extension.md",
+			"tokens": 323,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"ensurezeebeextension",
+				"owner",
+				"extension"
+			],
+			"entities": [
+				"extensionElements",
+				"ZeebePlacementError",
+				"ownerElement",
+				"allowedOn",
+				"zeebe.json",
+				"meta.allowedIn",
+				"applyBpmnOperations"
+			]
+		},
+		{
+			"id": "packages.core.installation-reconcilecompact-definitions-compact-options",
+			"file": "chunks/packages.core.installation-reconcilecompact-definitions-compact-options.md",
+			"tokens": 129,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"reconcilecompact",
+				"definitions",
+				"compact",
+				"options"
+			],
+			"entities": [
+				"CompactDiagram"
+			]
+		},
+		{
 			"id": "packages.core.installation-compactify-definitions",
 			"file": "chunks/packages.core.installation-compactify-definitions.md",
-			"tokens": 62,
+			"tokens": 111,
 			"tags": [
 				"packages",
 				"core",
@@ -1765,7 +1921,7 @@
 		{
 			"id": "packages.core.installation-expand-compact",
 			"file": "chunks/packages.core.installation-expand-compact.md",
-			"tokens": 57,
+			"tokens": 106,
 			"tags": [
 				"packages",
 				"core",
@@ -1774,8 +1930,8 @@
 				"compact"
 			],
 			"entities": [
-				"CompactDiagram",
-				"BpmnDefinitions"
+				"BpmnDefinitions",
+				"CompactDiagram"
 			]
 		},
 		{
@@ -1797,7 +1953,7 @@
 		{
 			"id": "packages.core.installation-processbuilder-methods",
 			"file": "chunks/packages.core.installation-processbuilder-methods.md",
-			"tokens": 415,
+			"tokens": 412,
 			"tags": [
 				"packages",
 				"core",
@@ -1808,6 +1964,46 @@
 			"entities": [
 				"addStartEvent",
 				"BpmnDefinitions"
+			]
+		},
+		{
+			"id": "packages.core.installation-joins-inferred-by-default-or-declared",
+			"file": "chunks/packages.core.installation-joins-inferred-by-default-or-declared.md",
+			"tokens": 314,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"joins",
+				"inferred",
+				"default",
+				"declared"
+			],
+			"entities": [
+				"build()",
+				"explicitJoins",
+				"Bpmn.continueProcess()",
+				"applyBpmnOperations"
+			]
+		},
+		{
+			"id": "packages.core.writing-files-bpmnkit-core-node",
+			"file": "chunks/packages.core.writing-files-bpmnkit-core-node.md",
+			"tokens": 474,
+			"tags": [
+				"packages",
+				"core",
+				"writing",
+				"files",
+				"bpmnkit",
+				"node"
+			],
+			"entities": [
+				"@bpmnkit/core/node",
+				"@bpmnkit/core",
+				"WriteVerificationError",
+				"WriteError",
+				"Bpmn.export()"
 			]
 		},
 		{

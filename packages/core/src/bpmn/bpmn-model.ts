@@ -157,7 +157,16 @@ export type BpmnEventDefinition =
 export interface BpmnMultiInstanceLoopCharacteristics {
 	/** When true, iterations run one at a time (sequential). When false or absent, runs in parallel. */
 	isSequential?: boolean
+	/** How many instances to create. Losing this turns a bounded loop into an unbounded one. */
+	loopCardinality?: BpmnConditionExpression
+	/** Stops the loop early once it evaluates true. */
+	completionCondition?: BpmnConditionExpression
 	extensionElements: XmlElement[]
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +192,17 @@ interface BpmnFlowNodeBase {
 	extensionElements: XmlElement[]
 	unknownAttributes: Record<string, string>
 	isForCompensation?: boolean
+	/** `bpmn:property` children — placeholders data input associations target. */
+	properties?: BpmnProperty[]
+	/** `bpmn:dataInputAssociation` children. */
+	dataInputAssociations?: BpmnDataAssociation[]
+	/** `bpmn:dataOutputAssociation` children. */
+	dataOutputAssociations?: BpmnDataAssociation[]
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
@@ -440,6 +460,39 @@ export interface BpmnSequenceFlow {
 }
 
 // ---------------------------------------------------------------------------
+// Data associations
+// ---------------------------------------------------------------------------
+
+/**
+ * A `bpmn:property` on a flow node. Modellers emit one per data input
+ * association as the association's `targetRef` placeholder.
+ */
+export interface BpmnProperty {
+	id?: string
+	name?: string
+	itemSubjectRef?: string
+	unknownAttributes: Record<string, string>
+}
+
+/**
+ * A `dataInputAssociation` or `dataOutputAssociation` — the wiring between a
+ * flow node and a data object, data store or property.
+ */
+export interface BpmnDataAssociation {
+	id?: string
+	/** Ids named by `<bpmn:sourceRef>` child elements. */
+	sourceRefs: string[]
+	/** Id named by the `<bpmn:targetRef>` child element. */
+	targetRef?: string
+	unknownAttributes: Record<string, string>
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
+}
+
+// ---------------------------------------------------------------------------
 // Annotations
 // ---------------------------------------------------------------------------
 
@@ -447,6 +500,8 @@ export interface BpmnSequenceFlow {
 export interface BpmnTextAnnotation {
 	id: string
 	text?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
 
@@ -456,6 +511,8 @@ export interface BpmnAssociation {
 	sourceRef: string
 	targetRef: string
 	associationDirection?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
 
@@ -464,6 +521,27 @@ export interface BpmnGroup {
 	id: string
 	/** Id of the `categoryValue` supplying the group's label, if any. */
 	categoryValueRef?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
+	unknownAttributes: Record<string, string>
+}
+
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
+/** A label a {@link BpmnGroup} can point at through `categoryValueRef`. */
+export interface BpmnCategoryValue {
+	id: string
+	value?: string
+	unknownAttributes: Record<string, string>
+}
+
+/** A root-level container of {@link BpmnCategoryValue}s — the source of group labels. */
+export interface BpmnCategory {
+	id?: string
+	name?: string
+	categoryValues: BpmnCategoryValue[]
 	unknownAttributes: Record<string, string>
 }
 
@@ -477,13 +555,17 @@ export interface BpmnLane {
 	name?: string
 	flowNodeRefs: string[]
 	childLaneSet?: BpmnLaneSet
+	documentation?: string
+	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
 
 /** Container for lanes within a pool or sub-process. */
 export interface BpmnLaneSet {
 	id?: string
+	name?: string
 	lanes: BpmnLane[]
+	unknownAttributes?: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -502,6 +584,7 @@ export interface BpmnProcess {
 	id: string
 	name?: string
 	isExecutable?: boolean
+	documentation?: string
 	extensionElements: XmlElement[]
 	flowElements: BpmnFlowElement[]
 	sequenceFlows: BpmnSequenceFlow[]
@@ -510,6 +593,11 @@ export interface BpmnProcess {
 	groups: BpmnGroup[]
 	laneSet?: BpmnLaneSet
 	unknownAttributes: Record<string, string>
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
@@ -521,6 +609,8 @@ export interface BpmnParticipant {
 	id: string
 	name?: string
 	processRef?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
 
@@ -530,6 +620,10 @@ export interface BpmnMessageFlow {
 	name?: string
 	sourceRef: string
 	targetRef: string
+	/** Id of the {@link BpmnMessage} carried by this flow. */
+	messageRef?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
 
@@ -543,6 +637,11 @@ export interface BpmnCollaboration {
 	groups: BpmnGroup[]
 	extensionElements: XmlElement[]
 	unknownAttributes: Record<string, string>
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
@@ -554,6 +653,9 @@ export interface BpmnError {
 	id: string
 	name?: string
 	errorCode?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
+	unknownAttributes?: Record<string, string>
 }
 
 /** A root-level BPMN escalation definition referenced by escalation events. */
@@ -561,12 +663,21 @@ export interface BpmnEscalation {
 	id: string
 	name?: string
 	escalationCode?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
+	unknownAttributes?: Record<string, string>
 }
 
 /** A root-level BPMN message definition referenced by message events. */
 export interface BpmnMessage {
 	id: string
 	name?: string
+	documentation?: string
+	/**
+	 * Carries `zeebe:subscription`, whose `correlationKey` is what Camunda 8
+	 * correlates published messages on.
+	 */
+	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
 
@@ -574,6 +685,9 @@ export interface BpmnMessage {
 export interface BpmnSignal {
 	id: string
 	name?: string
+	documentation?: string
+	extensionElements?: XmlElement[]
+	unknownAttributes?: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +761,9 @@ export interface BpmnDefinitions {
 	namespaces: Record<string, string>
 	/** Namespace-qualified attributes not directly modeled */
 	unknownAttributes: Record<string, string>
+	documentation?: string
+	/** Root-level category containers supplying {@link BpmnGroup} labels. */
+	categories?: BpmnCategory[]
 	errors: BpmnError[]
 	escalations: BpmnEscalation[]
 	messages: BpmnMessage[]
@@ -654,4 +771,9 @@ export interface BpmnDefinitions {
 	collaborations: BpmnCollaboration[]
 	processes: BpmnProcess[]
 	diagrams: BpmnDiagram[]
+	/**
+	 * Children the SDK does not model, kept verbatim and re-emitted after the
+	 * modelled ones so a round trip cannot silently discard them.
+	 */
+	unknownChildren?: XmlElement[]
 }

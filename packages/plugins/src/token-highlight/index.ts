@@ -1,6 +1,6 @@
 import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
 import type { BpmnDefinitions } from "@bpmnkit/core"
-import { injectTokenHighlightStyles } from "./css"
+import { injectTokenHighlightStyles } from "./css.js"
 
 // ── Structural type — no hard dep on @bpmnkit/engine ─────────────────────────
 

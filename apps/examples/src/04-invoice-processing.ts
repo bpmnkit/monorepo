@@ -8,7 +8,7 @@
  * - Call activity to reuse the payment process
  */
 
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { Bpmn } from "@bpmnkit/core"
 
 const definitions = Bpmn.createProcess("InvoiceProcessing")
@@ -145,5 +145,7 @@ const definitions = Bpmn.createProcess("InvoiceProcessing")
 	.build()
 
 const xml = Bpmn.export(definitions)
+
+mkdirSync("output", { recursive: true })
 writeFileSync("output/04-invoice-processing.bpmn", xml)
 console.log("✓ 04-invoice-processing.bpmn")

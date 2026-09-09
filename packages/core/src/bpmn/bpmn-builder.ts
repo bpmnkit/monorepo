@@ -3,6 +3,7 @@ import type { XmlElement } from "../types/xml-element.js"
 import { applyAutoLayout } from "./auto-layout.js"
 import type {
 	BpmnAssociation,
+	BpmnCollaboration,
 	BpmnConditionExpression,
 	BpmnDefinitions,
 	BpmnElementType,
@@ -11,7 +12,9 @@ import type {
 	BpmnEventDefinition,
 	BpmnFlowElement,
 	BpmnMessage,
+	BpmnMessageFlow,
 	BpmnMultiInstanceLoopCharacteristics,
+	BpmnParticipant,
 	BpmnProcess,
 	BpmnReceiveTask,
 	BpmnSendTask,
@@ -26,7 +29,11 @@ import {
 	restConnectorToIoMappingInputs,
 	restConnectorToTaskHeaders,
 } from "./rest-connector.js"
-import { type ZeebeExtensions, zeebeExtensionsToXmlElements } from "./zeebe-extensions.js"
+import {
+	type ZeebeExtensions,
+	ensureZeebeExtension,
+	zeebeExtensionsToXmlElements,
+} from "./zeebe-extensions.js"
 
 // Keep in sync with packages/core/package.json version
 const EXPORTER_VERSION = "0.0.23"
@@ -179,6 +186,56 @@ export interface BusinessRuleTaskOptions {
 export interface GatewayOptions extends ElementOptions {
 	/** ID of the default sequence flow (set manually; prefer branch().defaultFlow()). */
 	defaultFlow?: string
+}
+
+/** Options for {@link ProcessBuilder.build}. */
+export interface BuildOptions {
+	/**
+	 * Refuse to infer join gateways, so converging branches must be declared.
+	 *
+	 * Generated code should set this: the builder's inference is a help to someone
+	 * reading the chain they just wrote, and a silent topology change to a model
+	 * that cannot see what it did not emit.
+	 */
+	explicitJoins?: boolean
+	/**
+	 * The former name for {@link BuildOptions.explicitJoins}, still honoured.
+	 *
+	 * Renamed because "strict" says nothing about what it is strict *about*, and
+	 * because `applyBpmnOperations` takes a `strict` that means something else
+	 * entirely — whether to throw or report problems.
+	 *
+	 * @deprecated Use `explicitJoins`.
+	 */
+	strict?: boolean
+}
+
+/** Options for a collaboration participant (a pool). */
+export interface ParticipantOptions {
+	/** Pool label. */
+	name?: string
+	/** Id of the process this pool executes. Omit for a black box. */
+	processId?: string
+}
+
+/** Options for a root-level message declared on a diagram. */
+export interface DiagramMessageOptions {
+	/** Message name, which is what Camunda 8 publishes against. */
+	name?: string
+	/** FEEL expression Camunda 8 correlates published messages on (`zeebe:subscription`). */
+	correlationKey?: string
+}
+
+/** Options for a message flow between two pools. */
+export interface MessageFlowOptions {
+	/** Id of the participant, or of a flow node inside one, the message leaves. */
+	source: string
+	/** Id of the participant, or of a flow node inside one, the message reaches. */
+	target: string
+	/** Flow label. */
+	name?: string
+	/** Id of a message declared with `.message()`. */
+	messageRef?: string
 }
 
 /** Options for an intermediate catch event. */
@@ -537,6 +594,19 @@ function buildAdHocLoopCharacteristics(lc: {
 			},
 		],
 	}
+}
+
+const GATEWAY_ELEMENT_TYPES = new Set<BpmnElementType>([
+	"exclusiveGateway",
+	"parallelGateway",
+	"inclusiveGateway",
+	"eventBasedGateway",
+	"complexGateway",
+])
+
+/** Gateways are the elements for which several outgoing flows are the point. */
+function isGatewayType(type: BpmnElementType): boolean {
+	return GATEWAY_ELEMENT_TYPES.has(type)
 }
 
 function recomputeIncomingOutgoing(elements: BpmnFlowElement[], flows: BpmnSequenceFlow[]): void {
@@ -1867,6 +1937,8 @@ export class ProcessBuilder {
 	private readonly processId: string
 	private processName?: string
 	private _isExecutable = true
+	/** Whether `executable()` was called, so continue-mode leaves it alone if not. */
+	private _executableSet = false
 	private _versionTag?: string
 	private readonly flowElements: BpmnFlowElement[] = []
 	/** Ids in `flowElements`, for O(1) duplicate and existence checks. */
@@ -1886,9 +1958,163 @@ export class ProcessBuilder {
 	private _executionPlatformVersion = "8.9.0"
 	private _serviceTaskDefaults: { retries?: string } = {}
 	private _savedMainFlowId: string | undefined = undefined
+	/** Set by {@link ProcessBuilder.from}; makes `build()` update rather than generate. */
+	private _source?: { definitions: BpmnDefinitions; process: BpmnProcess }
+	/** Pre-existing flow endpoints, so `build()` can prove it did not rewire them. */
+	private _sourceFlowTargets = new Map<string, string>()
+	/** An `insertAfter` flow waiting to be reattached to what gets built next. */
+	private _pendingSpliceFlowId: string | undefined
+	/** Flows the caller deliberately spliced, exempt from the rewiring guard. */
+	private readonly _splicedFlowIds = new Set<string>()
 
 	constructor(processId: string) {
 		this.processId = processId
+	}
+
+	/**
+	 * Continues an existing model rather than generating a new one.
+	 *
+	 * `build()` then returns *that document* with this process's contents
+	 * replaced, so everything the builder has no opinion about — other processes,
+	 * the collaboration, lanes, diagram interchange, root elements, imports,
+	 * unmodelled content — is still there afterwards. Generating a replacement
+	 * from scratch is what loses those.
+	 *
+	 * The input is not mutated; the builder works on a copy.
+	 *
+	 * @param definitions - The parsed model to continue.
+	 * @param processId - Which process to continue. Named explicitly, because
+	 *   "the first process" is a guess that goes wrong on a collaboration.
+	 * @example
+	 * ```typescript
+	 * const updated = ProcessBuilder.from(Bpmn.parse(xml), "order")
+	 *   .at("validate")
+	 *   .serviceTask("notify", { name: "Notify", taskType: "notify" })
+	 *   .build()
+	 * ```
+	 */
+	static from(definitions: BpmnDefinitions, processId: string): ProcessBuilder {
+		const copy = structuredClone(definitions) as BpmnDefinitions
+		const process = copy.processes.find((candidate) => candidate.id === processId)
+		if (process === undefined) {
+			const available = copy.processes.map((candidate) => candidate.id)
+			throw new Error(
+				`Process "${processId}" is not in this document. It contains: ${
+					available.length > 0 ? available.map((id) => `"${id}"`).join(", ") : "no processes"
+				}`,
+			)
+		}
+
+		const builder = new ProcessBuilder(processId)
+		builder._source = { definitions: copy, process }
+		builder.processName = process.name
+		builder.flowElements.push(...process.flowElements)
+		for (const element of process.flowElements) builder.elementIds.add(element.id)
+		builder.sequenceFlows.push(...process.sequenceFlows)
+		builder._textAnnotations.push(...process.textAnnotations)
+		builder._associations.push(...process.associations)
+		// Seeded so a message event reuses the document's existing message rather
+		// than declaring a second one with the same name.
+		builder.rootErrors.push(...copy.errors)
+		builder.rootMessages.push(...copy.messages)
+		builder.rootSignals.push(...copy.signals)
+		builder.rootEscalations.push(...copy.escalations)
+		builder._sourceFlowTargets = new Map(
+			process.sequenceFlows.map((flow) => [flow.id, `${flow.sourceRef}→${flow.targetRef}`]),
+		)
+		return builder
+	}
+
+	/**
+	 * Moves the cursor to an existing flow node, so the next call chains from it.
+	 *
+	 * @param nodeId - A flow node directly contained by this process. Nodes inside
+	 *   a sub-process are not reachable: continuing into one means building that
+	 *   sub-process, not this one.
+	 */
+	at(nodeId: string): this {
+		const node = this.flowElements.find((element) => element.id === nodeId)
+		if (node === undefined) {
+			throw new Error(
+				`"${nodeId}" is not a flow node in process "${this.processId}". Nodes inside a sub-process cannot be continued from here.`,
+			)
+		}
+		if (node.type === "endEvent") {
+			throw new Error(
+				`Cannot continue from end event "${nodeId}": an end event has no outgoing sequence flow.`,
+			)
+		}
+
+		const hasOutgoing = this.sequenceFlows.some((flow) => flow.sourceRef === nodeId)
+		if (hasOutgoing && !isGatewayType(node.type)) {
+			throw new Error(
+				`"${nodeId}" already has an outgoing sequence flow. Continuing from it would give a ${node.type} two outgoing flows, which is an uncontrolled split. Use insertAfter("${nodeId}") to splice into that path instead.`,
+			)
+		}
+
+		this.moveCursor(node)
+		return this
+	}
+
+	/**
+	 * Splices what you build next into the path leaving an existing node.
+	 *
+	 * `insertAfter("validate")` followed by `.serviceTask("notify", …)` turns
+	 * `validate → end` into `validate → notify → end`. The existing flow keeps its
+	 * id and its target and only changes where it starts, so an edge nobody asked
+	 * to move keeps its identity in the diagram and in a diff.
+	 *
+	 * This is the counterpart to {@link at}, which continues from a node whose
+	 * path is open. Which one you mean is not guessable, so it is not guessed.
+	 *
+	 * @param nodeId - A flow node with exactly one outgoing sequence flow.
+	 */
+	insertAfter(nodeId: string): this {
+		const node = this.flowElements.find((element) => element.id === nodeId)
+		if (node === undefined) {
+			throw new Error(`"${nodeId}" is not a flow node in process "${this.processId}".`)
+		}
+
+		const outgoing = this.sequenceFlows.filter((flow) => flow.sourceRef === nodeId)
+		if (outgoing.length === 0) {
+			throw new Error(
+				`"${nodeId}" has no outgoing sequence flow, so there is nothing to insert into. Use at("${nodeId}") to continue from it.`,
+			)
+		}
+		if (outgoing.length > 1) {
+			throw new Error(
+				`"${nodeId}" has ${outgoing.length} outgoing sequence flows, so "after" is ambiguous. Name the flow's target and insert before that instead.`,
+			)
+		}
+
+		this.resolvePendingSplice()
+		const flow = outgoing[0] as BpmnSequenceFlow
+		this._pendingSpliceFlowId = flow.id
+		this._splicedFlowIds.add(flow.id)
+		this.moveCursor(node)
+		return this
+	}
+
+	/** Points the cursor at an existing node and forgets any branch state. */
+	private moveCursor(node: BpmnFlowElement): void {
+		this.lastNodeId = node.id
+		this.currentGatewayId = isGatewayType(node.type) ? node.id : undefined
+		this.openBranchEnds = []
+		this._savedMainFlowId = undefined
+	}
+
+	/**
+	 * Reattaches the flow a pending `insertAfter` detached, to whatever the cursor
+	 * has reached. With nothing built in between the cursor has not moved and this
+	 * is a no-op, which is the right answer for `insertAfter(x)` followed by
+	 * nothing.
+	 */
+	private resolvePendingSplice(): void {
+		const flowId = this._pendingSpliceFlowId
+		if (flowId === undefined) return
+		this._pendingSpliceFlowId = undefined
+		const flow = this.sequenceFlows.find((candidate) => candidate.id === flowId)
+		if (flow !== undefined && this.lastNodeId !== undefined) flow.sourceRef = this.lastNodeId
 	}
 
 	/** Enable auto-layout: `build()` will run the layout engine and populate diagram interchange data. */
@@ -1919,6 +2145,7 @@ export class ProcessBuilder {
 	/** Set whether this process is executable. */
 	executable(value: boolean): this {
 		this._isExecutable = value
+		this._executableSet = true
 		return this
 	}
 
@@ -2467,23 +2694,53 @@ export class ProcessBuilder {
 	 *
 	 * Resolves all forward-referenced `incoming` / `outgoing` arrays and wraps
 	 * the process in a {@link BpmnDefinitions} ready for XML serialization.
+	 *
+	 * **The join contract.** Branches built with `.branch()` converge implicitly:
+	 * where several paths from one gateway reach the same element, a matching join
+	 * gateway is inserted for you. That is convenient by hand and a trap for
+	 * generated code, which cannot see the element it did not write. Pass
+	 * `{ explicitJoins: true }` to be told instead of helped — the build throws,
+	 * naming the gateways it would have inserted, and you declare them yourself
+	 * with `.connectTo(joinId)`.
+	 *
+	 * A join you declare only counts if it *matches the split*: an exclusive split
+	 * converging on a parallel gateway is not the gateway inference would have
+	 * added, so it is still inferred — and with `explicitJoins` that refusal is the
+	 * only thing that tells you.
+	 *
+	 * {@link ProcessBuilder.from} never infers joins at all, whatever this option
+	 * says: inference reads the whole topology, and on a document you were handed
+	 * that means rewriting edges you never touched.
+	 *
+	 * @param options - `explicitJoins` refuses inferred join gateways. `strict` is
+	 *   the former name for it and still works.
 	 */
-	build(options?: { strict?: boolean }): BpmnDefinitions {
+	build(options?: BuildOptions): BpmnDefinitions {
+		this.resolvePendingSplice()
 		const beforeCount = this.flowElements.length
-		insertJoinGateways(this.flowElements, this.sequenceFlows)
+		// Continuing a document never infers joins. `insertJoinGateways` reads the
+		// whole topology, so on a parsed model it retargets edges the caller never
+		// touched — the corpus has a document where a no-op continue would have
+		// invented a join gateway and rerouted two flows into it. Building a branch
+		// that needs a join here means saying so with `.connectTo(joinId)`.
+		if (this._source === undefined) insertJoinGateways(this.flowElements, this.sequenceFlows)
 
-		if (options?.strict && this.flowElements.length > beforeCount) {
+		const explicitJoins = options?.explicitJoins ?? options?.strict ?? false
+		if (explicitJoins && this.flowElements.length > beforeCount) {
 			const inserted = this.flowElements
 				.slice(beforeCount)
 				.map((e) => e.id)
 				.join(", ")
 			throw new Error(
-				`auto-join gateways were inserted: ${inserted}. Use explicit .connectTo(joinId) to make gateway topology explicit, or remove { strict: true }.`,
+				`Inferred join gateways: ${inserted}. Declare them with .connectTo(joinId), or drop { explicitJoins: true } to keep the inference.`,
 			)
 		}
 
 		this.validate()
+		this.assertSourceTopologyIntact()
 		recomputeIncomingOutgoing(this.flowElements, this.sequenceFlows)
+
+		if (this._source !== undefined) return this.buildOntoSource(this._source)
 
 		const extensionElements: XmlElement[] = []
 		if (this._versionTag) {
@@ -2548,6 +2805,87 @@ export class ProcessBuilder {
 		}
 
 		return this._autoLayout ? applyAutoLayout(defs) : defs
+	}
+
+	/**
+	 * Writes this process's contents back into the document it came from.
+	 *
+	 * Everything not listed here is kept by identity — other processes, the
+	 * collaboration, diagram interchange, root elements, the process's own lanes,
+	 * documentation, extensions and unmodelled content. That is the whole point of
+	 * continuing rather than regenerating.
+	 *
+	 * Diagram interchange is *not* regenerated: existing shapes keep their
+	 * positions, and elements added here have none until `withAutoLayout()` or a
+	 * later `applyAutoLayout()` gives them one.
+	 */
+	private buildOntoSource(source: {
+		definitions: BpmnDefinitions
+		process: BpmnProcess
+	}): BpmnDefinitions {
+		const { definitions, process } = source
+
+		process.flowElements = this.flowElements
+		process.sequenceFlows = this.sequenceFlows
+		process.textAnnotations = this._textAnnotations
+		process.associations = this._associations
+		if (this.processName !== undefined) process.name = this.processName
+		// Only when asked. BPMN reads an absent `isExecutable` as false, so writing
+		// the builder's `true` default onto a process that never carried it makes a
+		// non-executable process executable — a change nobody requested.
+		if (this._executableSet) process.isExecutable = this._isExecutable
+		if (this._versionTag !== undefined) {
+			// Set the attribute on the existing element rather than replacing the
+			// bag: a real process carries other extensions next to it.
+			ensureZeebeExtension(
+				{ type: "process", extensionElements: process.extensionElements },
+				"zeebe:versionTag",
+			).attributes.value = this._versionTag
+		}
+
+		definitions.errors = this.rootErrors
+		definitions.messages = this.rootMessages
+		definitions.signals = this.rootSignals
+		definitions.escalations = this.rootEscalations
+
+		return this._autoLayout ? applyAutoLayout(definitions) : definitions
+	}
+
+	/**
+	 * Refuses to rewire a flow that was already in the document.
+	 *
+	 * `insertJoinGateways` retargets converging flows, which is right for a
+	 * topology this builder just created and wrong for one it was handed: a
+	 * document would come back with edges the caller never touched pointing
+	 * somewhere else. Continuing a model has to leave the model alone.
+	 */
+	private assertSourceTopologyIntact(): void {
+		if (this._source === undefined) return
+		const rewired: string[] = []
+		const byId = new Map(this.sequenceFlows.map((flow) => [flow.id, flow]))
+		for (const [id, endpoints] of this._sourceFlowTargets) {
+			const flow = byId.get(id)
+			if (flow === undefined) {
+				rewired.push(`${id} (removed)`)
+				continue
+			}
+			// A spliced flow was moved on purpose, but only its source may move:
+			// `insertAfter` inserts into a path, it does not redirect one.
+			const [, target] = endpoints.split("→")
+			if (this._splicedFlowIds.has(id)) {
+				if (flow.targetRef !== target) {
+					rewired.push(`${id} (spliced flow now targets ${flow.targetRef}, not ${target})`)
+				}
+				continue
+			}
+			const now = `${flow.sourceRef}→${flow.targetRef}`
+			if (now !== endpoints) rewired.push(`${id} (${endpoints} became ${now})`)
+		}
+		if (rewired.length > 0) {
+			throw new Error(
+				`Building would rewire sequence flows this document already had: ${rewired.join(", ")}. Continuing a model must not change the part you did not touch.`,
+			)
+		}
 	}
 
 	private validate(): void {
@@ -2639,6 +2977,9 @@ export class DiagramBuilder {
 	private readonly _processes: BpmnProcess[] = []
 	private readonly _errors: BpmnError[] = []
 	private readonly _messages: BpmnMessage[] = []
+	private readonly _participants: BpmnParticipant[] = []
+	private readonly _messageFlows: BpmnMessageFlow[] = []
+	private _collaborationId = "Collaboration_1"
 	private _executionPlatformVersion = "8.9.0"
 
 	constructor(id: string) {
@@ -2659,6 +3000,169 @@ export class DiagramBuilder {
 		this._errors.push(...defs.errors)
 		this._messages.push(...defs.messages)
 		return this
+	}
+
+	/** Renames the collaboration element. Defaults to `"Collaboration_1"`. */
+	collaborationId(id: string): this {
+		this._collaborationId = id
+		return this
+	}
+
+	/**
+	 * Adds a pool.
+	 *
+	 * Omit `processId` for a black box — a participant whose internals are not
+	 * modelled. That is a real BPMN construct, not an incomplete one: it is how
+	 * you draw the counterparty you exchange messages with but do not execute.
+	 *
+	 * @param id - The participant's element id, used verbatim.
+	 */
+	participant(id: string, options: ParticipantOptions = {}): this {
+		const participant: BpmnParticipant = { id, unknownAttributes: {} }
+		if (options.name !== undefined) participant.name = options.name
+		if (options.processId !== undefined) participant.processRef = options.processId
+		this._participants.push(participant)
+		return this
+	}
+
+	/**
+	 * Declares a root-level message, which a message flow may name and a Camunda 8
+	 * message subscription correlates on.
+	 *
+	 * `ProcessBuilder` already creates messages by name for message events, so
+	 * only call this for a message no event declared — typically one carried by a
+	 * message flow between pools.
+	 *
+	 * @param id - The message's element id, used verbatim.
+	 */
+	message(id: string, options: DiagramMessageOptions = {}): this {
+		const message: BpmnMessage = { id, unknownAttributes: {} }
+		if (options.name !== undefined) message.name = options.name
+		const extensions = zeebeExtensionsToXmlElements(
+			options.correlationKey === undefined
+				? {}
+				: { subscription: { correlationKey: options.correlationKey } },
+		)
+		if (extensions.length > 0) message.extensionElements = extensions
+		this._messages.push(message)
+		return this
+	}
+
+	/**
+	 * Connects two pools.
+	 *
+	 * `source` and `target` name either participants or flow nodes inside them.
+	 * Both forms are valid BPMN and the layout engine reads either, but they must
+	 * be in *different* pools — a message flow is what crosses a pool boundary,
+	 * and one that does not is the error this catches.
+	 *
+	 * @param id - The message flow's element id, used verbatim.
+	 */
+	messageFlow(id: string, options: MessageFlowOptions): this {
+		const flow: BpmnMessageFlow = {
+			id,
+			sourceRef: options.source,
+			targetRef: options.target,
+			unknownAttributes: {},
+		}
+		if (options.name !== undefined) flow.name = options.name
+		if (options.messageRef !== undefined) flow.messageRef = options.messageRef
+		this._messageFlows.push(flow)
+		return this
+	}
+
+	/**
+	 * Reports every way the declared collaboration would not survive contact with
+	 * a modeler, so `build()` can refuse rather than emit a file that opens broken.
+	 */
+	private collaborationProblems(): string[] {
+		const problems: string[] = []
+
+		const seen = new Set<string>()
+		for (const id of [
+			...this._participants.map((p) => p.id),
+			...this._messageFlows.map((f) => f.id),
+		]) {
+			if (seen.has(id)) problems.push(`Duplicate element ID "${id}"`)
+			seen.add(id)
+		}
+
+		const processIds = new Set(this._processes.map((process) => process.id))
+		const claimed = new Map<string, string>()
+		for (const participant of this._participants) {
+			const processId = participant.processRef
+			if (processId === undefined) continue
+			if (!processIds.has(processId)) {
+				problems.push(
+					`Participant "${participant.id}" references process "${processId}", which this diagram does not contain`,
+				)
+				continue
+			}
+			const owner = claimed.get(processId)
+			if (owner !== undefined) {
+				problems.push(
+					`Participants "${owner}" and "${participant.id}" both reference process "${processId}"; a process belongs to one pool`,
+				)
+			}
+			claimed.set(processId, participant.id)
+		}
+
+		const owningParticipant = this.participantIndex()
+		const messageIds = new Set(this._messages.map((message) => message.id))
+		for (const flow of this._messageFlows) {
+			for (const [role, ref] of [
+				["source", flow.sourceRef],
+				["target", flow.targetRef],
+			] as const) {
+				if (!owningParticipant.has(ref)) {
+					problems.push(
+						`Message flow "${flow.id}" names ${role} "${ref}", which is not a participant or a flow node in one`,
+					)
+				}
+			}
+
+			const from = owningParticipant.get(flow.sourceRef)
+			const to = owningParticipant.get(flow.targetRef)
+			if (from !== undefined && from === to) {
+				problems.push(
+					`Message flow "${flow.id}" starts and ends in participant "${from}"; a message flow crosses pools, a sequence flow stays inside one`,
+				)
+			}
+
+			if (flow.messageRef !== undefined && !messageIds.has(flow.messageRef)) {
+				problems.push(
+					`Message flow "${flow.id}" references message "${flow.messageRef}", which this diagram does not declare`,
+				)
+			}
+		}
+
+		return problems
+	}
+
+	/** Maps every participant id and every flow node id to its owning participant. */
+	private participantIndex(): Map<string, string> {
+		const index = new Map<string, string>()
+		const byProcess = new Map<string, string>()
+		for (const participant of this._participants) {
+			index.set(participant.id, participant.id)
+			if (participant.processRef !== undefined)
+				byProcess.set(participant.processRef, participant.id)
+		}
+
+		const walk = (elements: BpmnFlowElement[], owner: string): void => {
+			for (const element of elements) {
+				index.set(element.id, owner)
+				if ("flowElements" in element && Array.isArray(element.flowElements)) {
+					walk(element.flowElements, owner)
+				}
+			}
+		}
+
+		for (const process of this._processes) {
+			const owner = byProcess.get(process.id)
+			if (owner !== undefined) walk(process.flowElements, owner)
+		}
+		return index
 	}
 
 	build(): BpmnDefinitions {
@@ -2684,9 +3188,36 @@ export class DiagramBuilder {
 			escalations: [],
 			messages: this._messages,
 			signals: [],
-			collaborations: [],
+			collaborations: this.buildCollaborations(),
 			processes: this._processes,
 			diagrams: [],
 		}
+	}
+
+	/**
+	 * A document with no participants has no collaboration — an empty
+	 * `<bpmn:collaboration/>` is not a neutral addition, it makes every process a
+	 * pool-less participant in a modeler.
+	 */
+	private buildCollaborations(): BpmnCollaboration[] {
+		if (this._participants.length === 0 && this._messageFlows.length === 0) return []
+
+		const problems = this.collaborationProblems()
+		if (problems.length > 0) {
+			throw new Error(`Invalid collaboration:\n  ${problems.join("\n  ")}`)
+		}
+
+		return [
+			{
+				id: this._collaborationId,
+				participants: this._participants,
+				messageFlows: this._messageFlows,
+				textAnnotations: [],
+				associations: [],
+				groups: [],
+				extensionElements: [],
+				unknownAttributes: {},
+			},
+		]
 	}
 }

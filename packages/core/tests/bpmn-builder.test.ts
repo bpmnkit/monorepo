@@ -3227,7 +3227,7 @@ describe("build-time validation", () => {
 				.serviceTask("after", { name: "After", taskType: "z" })
 				.endEvent("end")
 				.build({ strict: true }),
-		).toThrow(/auto-join/)
+		).toThrow(/Inferred join gateways/)
 	})
 
 	it("strict mode passes when join gateway is explicit", () => {

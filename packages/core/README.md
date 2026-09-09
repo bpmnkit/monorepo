@@ -139,6 +139,35 @@ const outXml = Bpmn.export(restored)
 | `Bpmn.makeEmpty(processId?, name?)` | Minimal BPMN XML with one start event |
 | `Bpmn.SAMPLE_XML` | 3-node sample diagram string |
 
+### Semantics
+
+| Export | Description |
+|--------|-------------|
+| `semanticHash(defs)` | SHA-256 of the model, excluding the diagram. Unchanged by layout |
+| `projectSemantics(defs)` | The canonical, presentation-free projection the hash covers |
+| `diffSemantics(a, b)` | What changed between two models, keyed by element id |
+
+### Editing
+
+| Export | Description |
+|--------|-------------|
+| `applyBpmnOperations(defs, ops)` | Apply edit operations to the full model. Strict: unresolved ids throw |
+| `reconcileCompact(defs, compact)` | Apply a compact diagram as changes, keeping what compact cannot carry |
+| `compactify(defs)` | Read-only token-efficient view for LLM prompts. Lossy — not an edit path |
+
+### Writing files (`@bpmnkit/core/node`)
+
+| Export | Description |
+|--------|-------------|
+| `writeBpmn(defs, opts)` | Serialize, read back, verify the model survived, then write atomically |
+
+```typescript
+import { writeBpmn } from "@bpmnkit/core/node"
+
+// Refuses rather than overwrite; pass force: true to replace.
+const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
+```
+
 ### DMN
 
 | Export | Description |

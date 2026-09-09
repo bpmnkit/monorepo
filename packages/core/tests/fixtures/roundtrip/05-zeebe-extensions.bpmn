@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+  id="Definitions_zeebe" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_zeebe" name="Zeebe surface" isExecutable="true">
+    <bpmn:startEvent id="Start_z">
+      <bpmn:outgoing>Flow_z1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_service" name="Call API">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda:http-json:1" retries="5" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=customer.id" target="customerId" />
+          <zeebe:input source="=order.total" target="amount" />
+          <zeebe:output source="=response.body" target="apiResult" />
+        </zeebe:ioMapping>
+        <zeebe:taskHeaders>
+          <zeebe:header key="url" value="https://example.invalid/orders" />
+          <zeebe:header key="method" value="POST" />
+        </zeebe:taskHeaders>
+        <zeebe:properties>
+          <zeebe:property name="team" value="payments" />
+        </zeebe:properties>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_z1</bpmn:incoming>
+      <bpmn:outgoing>Flow_z2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_human" name="Approve">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:formDefinition formId="approval-form" />
+        <zeebe:assignmentDefinition assignee="=requester" candidateGroups="approvers" />
+        <zeebe:taskSchedule dueDate="=now() + duration(&#34;P1D&#34;)" followUpDate="=now()" />
+        <zeebe:priorityDefinition priority="=order.priority" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_z2</bpmn:incoming>
+      <bpmn:outgoing>Flow_z3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:businessRuleTask id="Task_decide" name="Decide">
+      <bpmn:extensionElements>
+        <zeebe:calledDecision decisionId="risk-decision" resultVariable="risk" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_z3</bpmn:incoming>
+      <bpmn:outgoing>Flow_z4</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:callActivity id="Task_call" name="Fulfil">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="fulfilment" propagateAllChildVariables="false" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_z4</bpmn:incoming>
+      <bpmn:outgoing>Flow_z5</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:scriptTask id="Task_script" name="Summarise">
+      <bpmn:extensionElements>
+        <zeebe:script expression="=risk &gt; 5" resultVariable="highRisk" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_z5</bpmn:incoming>
+      <bpmn:outgoing>Flow_z6</bpmn:outgoing>
+    </bpmn:scriptTask>
+    <bpmn:endEvent id="End_z">
+      <bpmn:incoming>Flow_z6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_z1" sourceRef="Start_z" targetRef="Task_service" />
+    <bpmn:sequenceFlow id="Flow_z2" sourceRef="Task_service" targetRef="Task_human" />
+    <bpmn:sequenceFlow id="Flow_z3" sourceRef="Task_human" targetRef="Task_decide" />
+    <bpmn:sequenceFlow id="Flow_z4" sourceRef="Task_decide" targetRef="Task_call" />
+    <bpmn:sequenceFlow id="Flow_z5" sourceRef="Task_call" targetRef="Task_script" />
+    <bpmn:sequenceFlow id="Flow_z6" sourceRef="Task_script" targetRef="End_z" />
+  </bpmn:process>
+</bpmn:definitions>

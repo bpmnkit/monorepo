@@ -91,6 +91,28 @@ export const Bpmn = {
 	},
 
 	/**
+	 * Continue an existing model instead of generating a replacement for it.
+	 *
+	 * `build()` returns that document with the named process's contents replaced,
+	 * so other processes, the collaboration, lanes, diagram interchange, root
+	 * elements and unmodelled content all survive. The input is not mutated.
+	 *
+	 * @param definitions - The parsed model to continue.
+	 * @param processId - Which process to continue, named explicitly.
+	 *
+	 * @example
+	 * ```typescript
+	 * const updated = Bpmn.continueProcess(Bpmn.parse(xml), "order-process")
+	 *   .at("validate")
+	 *   .serviceTask("notify", { name: "Notify", taskType: "notify" })
+	 *   .build()
+	 * ```
+	 */
+	continueProcess(definitions: BpmnDefinitions, processId: string): ProcessBuilder {
+		return ProcessBuilder.from(definitions, processId)
+	},
+
+	/**
 	 * Create a multi-process BPMN definitions document using the fluent builder API.
 	 *
 	 * @param id - Unique identifier for the definitions element (defaults to `"Definitions_1"`).

@@ -9,7 +9,7 @@
  * - Multiple terminal outcomes
  */
 
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { Bpmn } from "@bpmnkit/core"
 
 const definitions = Bpmn.createProcess("ContentPublishing")
@@ -174,5 +174,7 @@ const definitions = Bpmn.createProcess("ContentPublishing")
 	.build()
 
 const xml = Bpmn.export(definitions)
+
+mkdirSync("output", { recursive: true })
 writeFileSync("output/05-content-publishing.bpmn", xml)
 console.log("✓ 05-content-publishing.bpmn")

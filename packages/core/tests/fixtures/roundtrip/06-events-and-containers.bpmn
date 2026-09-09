@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+  id="Definitions_events" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="Message_wake" name="Wake" />
+  <bpmn:error id="Error_boom" name="Boom" errorCode="BOOM" />
+  <bpmn:escalation id="Escalation_up" name="Up" escalationCode="UP" />
+  <bpmn:signal id="Signal_go" name="Go" />
+  <bpmn:process id="Process_events" name="Events and containers" isExecutable="true">
+    <bpmn:startEvent id="Start_e">
+      <bpmn:outgoing>Flow_e1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:subProcess id="Sub_work" name="Do the work">
+      <bpmn:incoming>Flow_e1</bpmn:incoming>
+      <bpmn:outgoing>Flow_e2</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false">
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=items" inputElement="item" outputCollection="results" outputElement="=result" />
+        </bpmn:extensionElements>
+        <bpmn:loopCardinality xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=count(items)</bpmn:loopCardinality>
+        <bpmn:completionCondition xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=done &gt;= 1</bpmn:completionCondition>
+      </bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:startEvent id="Start_inner">
+        <bpmn:outgoing>Flow_i1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:intermediateCatchEvent id="Catch_wait">
+        <bpmn:incoming>Flow_i1</bpmn:incoming>
+        <bpmn:outgoing>Flow_i2</bpmn:outgoing>
+        <bpmn:timerEventDefinition id="TED_wait">
+          <bpmn:timeDuration xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">PT5M</bpmn:timeDuration>
+        </bpmn:timerEventDefinition>
+      </bpmn:intermediateCatchEvent>
+      <bpmn:endEvent id="End_inner">
+        <bpmn:incoming>Flow_i2</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_i1" sourceRef="Start_inner" targetRef="Catch_wait" />
+      <bpmn:sequenceFlow id="Flow_i2" sourceRef="Catch_wait" targetRef="End_inner" />
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="Boundary_error" attachedToRef="Sub_work">
+      <bpmn:outgoing>Flow_err</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="EED_1" errorRef="Error_boom" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Boundary_timer" cancelActivity="false" attachedToRef="Sub_work">
+      <bpmn:outgoing>Flow_late</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TED_late">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">R/PT1H</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:exclusiveGateway id="Gateway_check" name="Escalate?" default="Flow_no">
+      <bpmn:incoming>Flow_e2</bpmn:incoming>
+      <bpmn:outgoing>Flow_yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:intermediateThrowEvent id="Throw_escalate">
+      <bpmn:incoming>Flow_yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_e3</bpmn:outgoing>
+      <bpmn:escalationEventDefinition id="EscED_1" escalationRef="Escalation_up" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="End_ok">
+      <bpmn:incoming>Flow_no</bpmn:incoming>
+      <bpmn:incoming>Flow_e3</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_err">
+      <bpmn:incoming>Flow_err</bpmn:incoming>
+      <bpmn:terminateEventDefinition id="TerED_1" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_late">
+      <bpmn:incoming>Flow_late</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="Sub_event" name="On signal" triggeredByEvent="true">
+      <bpmn:startEvent id="Start_signal" isInterrupting="false">
+        <bpmn:outgoing>Flow_sig</bpmn:outgoing>
+        <bpmn:signalEventDefinition id="SED_1" signalRef="Signal_go" />
+      </bpmn:startEvent>
+      <bpmn:endEvent id="End_signal">
+        <bpmn:incoming>Flow_sig</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_sig" sourceRef="Start_signal" targetRef="End_signal" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_e1" sourceRef="Start_e" targetRef="Sub_work" />
+    <bpmn:sequenceFlow id="Flow_e2" sourceRef="Sub_work" targetRef="Gateway_check" />
+    <bpmn:sequenceFlow id="Flow_yes" name="Yes" sourceRef="Gateway_check" targetRef="Throw_escalate">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">=overdue</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_no" name="No" sourceRef="Gateway_check" targetRef="End_ok" />
+    <bpmn:sequenceFlow id="Flow_e3" sourceRef="Throw_escalate" targetRef="End_ok" />
+    <bpmn:sequenceFlow id="Flow_err" sourceRef="Boundary_error" targetRef="End_err" />
+    <bpmn:sequenceFlow id="Flow_late" sourceRef="Boundary_timer" targetRef="End_late" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_events">
+      <bpmndi:BPMNShape id="Start_e_di" bpmnElement="Start_e">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sub_work_di" bpmnElement="Sub_work" isExpanded="false">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_e1_di" bpmnElement="Flow_e1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

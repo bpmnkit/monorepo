@@ -42,6 +42,8 @@ import {
 	expandForm,
 	layoutDmn,
 	layoutProcess,
+	reconcileCompact,
+	semanticHash,
 } from "@bpmnkit/core"
 import type { CompactDmn, CompactForm } from "@bpmnkit/core"
 import { handleSdkExecute, handleSdkSearch } from "./sdk-code-mode.js"
@@ -124,11 +126,28 @@ function buildBpmnDiagram(proc: BpmnProcess): BpmnDiagram {
 	}
 }
 
+/**
+ * Writes the current model out.
+ *
+ * BPMN goes through the same check `writeBpmn` makes — serialise, parse back,
+ * compare the semantic hash — so a serialisation that lost something fails the
+ * tool call instead of quietly replacing the user's file. It cannot call
+ * `writeBpmn` itself: the code-mode bridge invokes tools synchronously inside a
+ * `vm` context, and that function is async. Adopting it here means giving the
+ * bridge an async path first.
+ */
 function saveState(): void {
 	if (!outputFile) return
 	if (state.kind === "bpmn") {
 		state.data.diagrams = state.data.processes.map((proc) => buildBpmnDiagram(proc))
-		writeFileSync(outputFile, Bpmn.export(state.data))
+		const xml = Bpmn.export(state.data)
+		const expected = semanticHash(state.data)
+		if (semanticHash(Bpmn.parse(xml)) !== expected) {
+			throw new Error(
+				"Serialising the model did not reproduce it; nothing was written. This is a bug in @bpmnkit/core — please report the model that triggered it.",
+			)
+		}
+		writeFileSync(outputFile, xml)
 	} else if (state.kind === "dmn") {
 		const laid = layoutDmn(state.data)
 		writeFileSync(outputFile, Dmn.export(laid))
@@ -595,7 +614,18 @@ function callTool(name: string, args: Record<string, unknown>): string {
 			} else if (state.kind === "form") {
 				state = { kind: "form", data: expandForm(raw as CompactForm) }
 			} else {
-				state = { kind: "bpmn", data: expand(raw as CompactDiagram) }
+				// Reconcile rather than expand. `expand` would rebuild the whole
+				// document from the compact view, discarding the pools, lanes, data
+				// wiring and Zeebe detail that view cannot describe; this applies the
+				// same input as changes to the model already loaded.
+				const result = reconcileCompact(state.data, raw as CompactDiagram, { strict: false })
+				state = { kind: "bpmn", data: result.definitions }
+				saveState()
+				return result.problems.length === 0
+					? "Diagram updated."
+					: `Diagram updated, ${result.problems.length} change(s) skipped: ${result.problems
+							.map((problem) => problem.reason)
+							.join("; ")}`
 			}
 			saveState()
 			return "Diagram replaced."

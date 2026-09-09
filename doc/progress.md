@@ -1,5 +1,725 @@
 # Progress
 
+## 2026-09-07 — A budget on what the API costs to write, and joins you can insist on
+
+A11, the last item in the adoption plan.
+
+**The wall-clock half was not worth asserting as the plan wrote it.** Each example spends one
+to three milliseconds inside the SDK; the rest of its ~1.4 seconds is `tsx` starting up. A
+budget on the script's wall clock would have been a flaky test of someone else's tool, and
+CLAUDE.md forbids timing-dependent tests outright. The examples are imported in-process and
+timed there instead, against a ceiling roughly 100x the real figure — enough to catch a change
+in the shape of the layout algorithm, not enough to fire on a slow machine.
+
+**The size half is a ratchet on two numbers rather than one.** Lines alone can always be
+lowered by deleting content, so each example is pinned to its non-comment line count *and* to
+the element count of the model it builds, both checked for equality. A longer file fails as a
+regression; a shorter one fails as a budget that needs tightening. Deleting a user task from
+example 01 fails with `{ lines: 61, elements: 20 }` against `{ lines: 65, elements: 22 }` —
+you cannot buy headroom by shrinking the diagram. A global lines-per-element ceiling backs
+that up in case someone waves the per-file numbers through.
+
+Comments are excluded from the count on purpose. A budget on raw lines rewards deleting the
+explanations, which is the opposite of what these files are for.
+
+**`{ explicitJoins: true }` turned out to already exist, as `{ strict: true }`.** The behaviour
+was there; the name was the problem. "Strict" says nothing about what it is strict *about*, and
+`applyBpmnOperations` takes a `strict` that means something else entirely — throw, or report
+problems. `explicitJoins` is now the documented name, `strict` still works and is marked
+deprecated, and the message names the gateways it would have inserted rather than just saying
+that it would have: that id is what you pass to `.connectTo()`.
+
+Writing the tests surfaced a subtlety worth stating in the contract. A join you declare only
+satisfies the check if it **matches the split** — an exclusive split converging on a parallel
+gateway is not the gateway inference would have added, so it is still inferred, and with
+`explicitJoins` the refusal is the only thing that tells you. That is exactly the case
+generated code gets wrong.
+
+**Found while measuring: every example script was broken from a clean checkout.** Only
+`run-all.ts` created `output/`, so `pnpm --filter @bpmnkit/examples 02` — one of six documented
+scripts — crashed on the write. Each example now creates its own output directory. The budget
+test would have had to work around this, which is how it came up.
+
+782 tests in `@bpmnkit/core` (8 new) and 14 in `@bpmnkit/examples`, which had no tests before;
+`biome check` clean across 860 files; core, cli, plugins and proxy typecheck. `@bpmnkit/engine`
+does not typecheck, before or after this change — `@bpmnkit/reebe-wasm` is unbuilt in this
+environment.
+
+That closes A1 through A12. Every gap in the §7.1 matrix is marked shipped.
+
+
+## 2026-09-07 — The publish gate now opens the tarball
+
+A10. `check-packages.mjs` reads package.json and can only tell you the metadata is present. It
+cannot tell you that `exports` points at a file the tarball does not contain, that the `.d.ts`
+never got built, or that the shipped declarations do not compile. Those ship silently and are
+found by whoever installs the release.
+
+`scripts/check-package-consumable.mjs` packs each of the 23 published packages, checks every
+path its manifest declares is actually in the tarball, installs it into a throwaway project
+with sibling `@bpmnkit/*` tarballs overriding the registry, imports every ESM entry point, and
+type-checks a consumer under `strict` + `NodeNext` with **`skipLibCheck` off** — the point being
+to compile the declarations we ship rather than take their word for it. It runs in the release
+workflow between the build and the publish.
+
+**Four real bugs on the first run, all of which would have shipped:**
+
+1. **`@bpmnkit/proxy` shipped no types.** It declared `exports["."].types` while its `files`
+   listed only `dist/**/*.js`. The declarations were built and never packed. This is precisely
+   the failure the item was written for.
+2. **`@bpmnkit/plugins` could not be imported.** `dist/token-highlight/index.js` carried
+   `import … from "./css"` — extensionless, which Node ESM does not resolve, and which this
+   repo's own ESM rule forbids. `@bpmnkit/plugins/token-highlight` threw, and `@bpmnkit/operate`
+   threw with it. One character.
+3. **`@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai` import `@bpmnkit/cli-sdk` and
+   declared no dependencies at all**, so npm never installs it and importing them fails.
+4. **`@bpmnkit/casen-report` has the same undeclared dependency in its `.d.ts`**, plus an
+   undeclared `@bpmnkit/api`. Its published types do not resolve.
+
+All four are fixed. Every published package now packs, installs, imports and type-checks, with
+one exception noted below.
+
+**Three things the plan got wrong, and the runs said so.**
+
+`npm pack` is the wrong tool: it leaves `workspace:*` in the packed manifest, which installs
+nowhere. `pnpm pack` rewrites it. The gate now also fails any tarball whose manifest still
+carries a `workspace:` range, since that is the thing that silently breaks a publish.
+
+A filtered run has to pack *everything* anyway. The overrides that make a consumer resolve
+`@bpmnkit/*` to this build must cover the whole set — packing only the filtered packages leaves
+their siblings resolving from the registry, so a filtered run quietly tests the last published
+version of half the tree. An early run failed with a 404 that looked like a broken package and
+was a broken harness. `--filter` now narrows only what gets consumed.
+
+And the cheapest check finds most of it. Before any install: does every path the manifest
+declares actually exist in the tarball? Offline, one second, and it caught the proxy bug.
+
+**A green tick that verified nothing is a false green.** `@bpmnkit/astro-shared` ships `.ts` and
+`.astro` source for a bundler to read, so nothing about it is importable from Node and nothing
+is type-checkable. It passes — correctly — but the line now reads `~ … nothing to consume from
+Node` rather than a tick, so a package that quietly stops exporting anything cannot hide there.
+
+**Verified the gate is not vacuous** by breaking things on purpose: appending a reference to an
+undefined type to `@bpmnkit/feel`'s shipped `index.d.ts` fails the typecheck with the file and
+line; making its `index.js` throw at import time fails the import step.
+
+**Left as a finding, not a change.** `@bpmnkit/cli-sdk` is published on npm at 0.0.9 but is not
+in `PUBLISHED`, so it gets no LICENSE sync, no generated README, no metadata check and is not
+part of the changesets release. The three packages above now depend on it as `workspace:*`,
+which `pnpm pack` resolves to the workspace version — if that is bumped without a publish,
+their tarballs will reference a version npm does not have. Adding it to the release set changes
+what gets published, which is not a call to make from here.
+
+`PUBLISHED` moved to `scripts/published-packages.mjs`; `sync-license.mjs`, `check-packages.mjs`
+and the new gate all read it. A fourth copy of that list is exactly the drift a publish gate
+exists to prevent, and CLAUDE.md's "Adding a New Package" steps drop from three list edits to
+one.
+
+The full run ends 22 of 23 clean: every published package packs, installs, imports and
+type-checks, including all 30 entry points of `@bpmnkit/plugins`. `@bpmnkit/reebe-wasm` is the
+exception and not a real one — it is a Rust crate built with wasm-pack, and crates.io returns
+503 through this environment's proxy. The release workflow builds it before the gate runs, so
+CI covers it.
+
+Two packages report `~ nothing to consume from Node` rather than a tick: `@bpmnkit/astro-shared`
+ships `.ts` and `.astro` source for a bundler, and `@bpmnkit/cli` is bin-only. A `bin` entry is
+checked for being in the tarball but not executed — running a package's CLI to see whether it
+starts has side effects this gate has no business causing — so for those two the coverage is
+the manifest check alone, and the line says so.
+
+
+## 2026-09-07 — Extending a file no longer means regenerating it
+
+A9. `Bpmn.continueProcess(defs, processId)` — `ProcessBuilder.from(...)` for anyone who prefers
+the static — seeds the fluent builder from a parsed model, and `build()` returns *that
+document* with the named process's contents replaced. Everything the builder has no opinion
+about is still there afterwards: other processes, the collaboration, lanes, diagram
+interchange, root elements, unmodelled content. Regenerating a replacement is what loses those,
+and that was the only way to extend a file before this.
+
+**`at()` alone would not have been a usable feature.** The plan specified
+`from(defs, id).at(nodeId)`, and a strict `at()` — refusing a node that already has an outgoing
+flow, because continuing from it makes an uncontrolled split — refuses on *every* node of a
+linear `start → task → end` except the end event. Splicing into an existing path is the common
+case and deserves its own verb. `insertAfter()` moves the existing flow's **source** and
+nothing else, so the edge keeps its id and its target: it stays the same edge in the diagram,
+and in a diff it reads as one changed endpoint rather than a delete and an add. Which of the
+two verbs you mean is not guessable from the call, so it is not guessed — `at()`'s refusal
+names `insertAfter` in the message.
+
+**One assertion found both real bugs**: continue every process in every corpus fixture, build
+without adding anything, and require an empty `diffSemantics`.
+
+The first was serious. `insertJoinGateways` reads the whole topology, so on a parsed model it
+retargets edges nobody touched. `06-events-and-containers.bpmn` is such a document — a **no-op**
+continue would have invented a `Gateway_check_join` and rerouted two existing flows into it.
+Continue mode no longer runs it at all: a branch that needs a join here says so with
+`.connectTo(joinId)`, which is the explicitness this item was supposed to have. The guard that
+caught it stays as a backstop, refusing any build that would rewire a pre-existing flow.
+
+The second was quieter and worse in its way. The builder defaults `isExecutable` to `true`, and
+writing that onto a process that never carried the attribute makes a non-executable process
+executable — BPMN reads the absent attribute as false. A no-op continue on the seller process
+of `02-collaboration.bpmn` did exactly that. `isExecutable` and the process name are now left
+alone unless `executable()` or `name()` is called.
+
+Diagram interchange is deliberately not regenerated: existing shapes keep their positions, and
+elements added here have none until `.withAutoLayout()` or a later `applyAutoLayout()`. A
+version tag sets its attribute on the existing extension rather than replacing the bag, and the
+document's root messages, errors, signals and escalations are seeded into the builder so a new
+message event reuses the message already declared instead of adding a second with the same
+name.
+
+Blanking any of the four guards — the skipped auto-join, the `isExecutable` check, the splice
+reattachment, the rewiring backstop — fails between one and three tests.
+
+774 tests in `@bpmnkit/core` (28 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 855 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
+## 2026-09-07 — Pooled diagrams can be built, not only parsed
+
+A8. `DiagramBuilder` hard-coded `collaborations: []`, so a collaboration was the one shape the
+SDK could parse, lay out and render but not build. `.participant()`, `.message()`,
+`.messageFlow()` and `.collaborationId()` close that, taking ids verbatim so a generated
+diagram can be referred to by the ids you chose. Black-box participants — a pool with no
+process — are a first-class case rather than an incomplete one: it is how you draw the
+counterparty you exchange messages with but do not execute.
+
+Message flow endpoints may name either participants or flow nodes inside them. Both are valid
+BPMN and the layout engine already reads either, so restricting the builder to one would have
+been our rule rather than the spec's.
+
+**No participants means no collaboration element.** Emitting an empty `<bpmn:collaboration/>`
+looks like a harmless default and is not — a modeler reads it as "this document is pooled" and
+renders every process pool-less.
+
+**`build()` refuses rather than emitting a document that opens broken**, and reports every
+problem at once instead of the first: a participant naming a process the diagram does not
+contain, two participants claiming the same process, a duplicate id, a message flow whose
+endpoint does not exist or which names an undeclared message. The rule worth having is the
+last one — a message flow must cross a pool boundary. One that starts and ends in the same
+pool is a sequence flow, and it is easy to write by accident. Blanking the validator fails
+seven tests.
+
+`ProcessBuilder.build()`'s own `collaborations: []` stays. A single-process build has no
+collaboration, and that line was never the bug.
+
+**The round-trip assertion found a model bug that had nothing to do with the builder.**
+`messageRef` was missing from the parser's known-attribute list, so a parsed message flow
+carried it twice — in the typed `BpmnMessageFlow.messageRef` and again in
+`unknownAttributes`. Harmless on the wire, which is why the A1 corpus gate never saw it: the
+serialiser assigns the typed field after spreading the unknown bag, so the XML was right
+either way. But it makes `unknownAttributes` untrue about what the SDK models, which is the
+one thing that field is for. Fixed. One golden semantic hash moved —
+`02-collaboration.bpmn`, the only fixture carrying a `messageRef`, and the only golden that
+moved, which is what confirms the change is scoped to it.
+
+**Eleven more attributes are stored the same way and are deliberately left alone**:
+`activityRef`, `cancelRemainingInstances`, `isInterrupting`, `itemSubjectRef`, `signalRef`,
+`triggeredByEvent`, and the generic `height`, `value`, `width`, `x`, `y`. The generic five
+cannot simply join the known-attribute set, because that set is global rather than
+per-element: adding `x` would silently drop a non-spec `x` on a task, turning a cosmetic
+problem into a real loss. Closing it properly means per-element known-attribute sets, which is
+a larger change than this item.
+
+746 tests in `@bpmnkit/core` (18 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 854 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
+## 2026-09-07 — Zeebe extensions can no longer be written where they do not belong
+
+A7. `zeebe:calledDecision` on a service task deploys, then fails in Camunda with an error that
+names neither the element nor the code that wrote it. `scripts/generate-zeebe-placement.ts`
+resolves `zeebe.json`'s `meta.allowedIn` — much of which names abstract BPMN types
+(`bpmn:Event`, `bpmn:Activity`) or Zeebe aliases (`zeebe:ZeebeServiceTask`) — against
+`bpmn.json`'s type graph, and writes out the concrete element names. 26 extensions. All the
+descriptor reasoning happens at generation time, so `packages/core/src` still reads no
+descriptor, and none ship.
+
+`ensureZeebeExtension(owner, extension)` refuses a placement the schema forbids and leaves the
+element untouched when it does. `ZeebePlacementError` carries the owners that would have been
+valid, because "not allowed here" without "allowed there" is a worse message than none.
+
+**The plan's own example turned out to be uncheckable.** It named `zeebe:subscription` as the
+case to catch — "only on a message". The descriptor declares no `allowedIn` for it, nor for
+`zeebe:properties`. So the rule is *reject only what the descriptor positively forbids*: an
+extension the table does not mention is allowed. Asserting the missing rule from memory would
+have put our opinion in the one place this item exists to keep it out of — and would have
+rejected the `zeebe:subscription` correlation keys A3 went to some trouble to stop losing.
+
+**On the operations path a misplacement is a problem, not an exception.** Operations arrive
+from a model, so a bad placement is a thing that will happen rather than a programmer error,
+and `applyBpmnOperations` already has a vocabulary for that. Wiring the throwing helper in
+directly would have aborted a whole non-strict batch on one bad field, and worse, thrown
+half-way through a patch with the earlier fields already applied. It now checks placement
+*before* writing anything: strict mode throws `OperationError` as for any other bad operation,
+and a non-strict caller gets a problem naming the extension and the owner while the rest of
+the batch applies.
+
+**The strongest test is not the rejection tests.** A table can be confidently wrong, so every
+`zeebe:` element in the round-trip corpus and in builder output is checked against it — 12
+placements in `05-zeebe-extensions.bpmn` across service, user, business-rule, script and call
+elements, 5 more from the builder. A wrong entry shows up as an existing, working document
+being declared invalid. Removing `bpmn:userTask` from `zeebe:formDefinition` fails three
+independent tests: the direct assertion, the corpus evidence, and the drift check.
+
+`--check` compares the parsed table rather than the file's bytes. Biome owns the generated
+file's formatting, and a check that reports a stale table every time a line wraps differently
+is a check somebody disables.
+
+`pnpm --filter @bpmnkit/core check:placement` runs it; a test runs it too, so a descriptor
+bump that moves the surface fails the build rather than leaving the table describing the
+previous release.
+
+728 tests in `@bpmnkit/core` (23 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 853 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
+## 2026-09-07 — A gate that asks the descriptors what we are missing
+
+A12. `bpmn.json`, `bpmndi.json`, `dc.json`, `di.json` and `zeebe.json` are vendored under
+`packages/core/descriptors/` with their MIT notices (`bpmn-moddle` 10.2.0,
+`zeebe-bpmn-moddle` 2.0.0). They are not in `files`, so nothing ships. A new gate walks all
+151 types they define and requires each one to survive a round trip.
+
+**It probes rather than compares names.** The plan called for a script that walks the
+descriptors and labels each type against our fields. That check would have passed while the
+parser silently dropped the type — precisely the blindness that let the losses in §4
+accumulate. Instead the gate builds a minimal document containing the type, runs it through
+`Bpmn.parse` → `Bpmn.export`, and reads the answer off the output: `modelled` when it comes
+back as a typed field, `preserved` when it comes back inside an `unknownChildren` array,
+`dropped` when it does not come back. Nothing is asserted that was not observed.
+
+**Result: 109 modelled, 34 preserved, 6 dropped, 2 unprobed.**
+
+**The probe found a real gap.** `bpmn:complexBehaviorDefinition` was dropped from multi-
+instance loop characteristics — it had no typed field and no catch-all to fall into.
+`unknownChildren` now extends to `BpmnMultiInstanceLoopCharacteristics` and
+`BpmnDataAssociation`, which closes it and the two containers' whole future surface with it.
+
+**The six drops are probe artifacts, and proving that is most of the work.** They are base
+types the descriptors do not mark abstract but which never appear as elements in a real
+document — you write `dataInputAssociation`, never `dataAssociation`; `dataObject`, never
+`itemAwareElement`. The probe has nowhere real to put them, so it puts them in the most
+permissive slot the schema allows and they do not come back. Each sits in `ACCEPTED_DROPS`
+with a reason, and a second test parses a document containing the concrete forms
+(`bpmn:assignment`, `bpmn:complexBehaviorDefinition`, `bpmn:condition`, `bpmn:event`,
+`bpmn:dataState`, `bpmn:dataInputAssociation`) and asserts each survives export. Without that
+the accept-list would be an assertion; with it, it is a finding.
+
+**The accept-lists are checked in both directions.** A new drop fails, as intended — but so
+does an accept-list entry that has *stopped* dropping. An ignore-list that outlives its cause
+is how a gate quietly stops gating, and deleting an entry is the record that something
+improved.
+
+**Getting the probe to tell the truth took four rounds.** The first run reported 70 modelled
+and 37 unprobed, and every number was wrong for a different reason: Zeebe types were reported
+as having no containment path (they attach through `extensionElements`, which no descriptor
+declares); `bpmn:Lane` was winning as the parent of everything because `partitionElement`
+accepts `BaseElement`, so parents are now ranked by how *specific* their declared property is;
+elements whose only content is body text looked dropped because the probe gave them none; and
+reference attributes were emitted empty, so the parser discarded the element as malformed. A
+probe that reports a loss it caused itself is worse than no probe, so each was fixed before the
+result was believed.
+
+**One name for "presentation".** `PRESENTATION_PREFIXES` now lives in `semantic-hash.ts` and
+the coverage check imports it, so the two cannot disagree about which namespaces the diagram
+model owns. Sharing it is where a mistake nearly went in: folding the hash's attribute filter
+into the same list widened it from `bioc`/`color` to include `bpmndi`/`dc`/`di`, which no test
+caught — the corpus has no such attribute on a semantic element — and which contradicts the
+documented contract. The two exclusions are different mechanisms (the diagram goes wholesale
+via the `diagrams` key; `bioc`/`color` go by attribute name) and are now written as such. The
+golden hashes are unchanged.
+
+`pnpm --filter @bpmnkit/core check:descriptors` prints the report behind the gate; the
+vendored JSONs are excluded from Biome so they stay byte-identical to upstream.
+
+Verified the gate is not vacuous by removing the `unknownChildren` re-emit from the
+multi-instance serializer: `bpmn:ComplexBehaviorDefinition` reappears as an unaccepted drop
+and four tests fail.
+
+705 tests in `@bpmnkit/core` (12 new), all passing; core, cli, plugins and proxy typecheck;
+`biome check` clean across 850 files. `@bpmnkit/engine` does not typecheck, before or after
+this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
+
+
+## 2026-09-07 — The edit path finally leaves the lossy projection behind
+
+A5c, and A5b with it. `applyBpmnOperations` applies the same operation vocabulary an LLM
+produces directly to `BpmnDefinitions`, and `reconcileCompact` applies a whole compact diagram
+as *changes* rather than expanding it over the model. Every edit call site moved onto them:
+the CLI `--patch` path, the proxy's `/improve`, and the MCP `replace_diagram`.
+
+**The survey corrected the plan twice.** `applyOperations` was called in exactly one place —
+the proxy — while five other files only imported the `BpmnOperation` *type* for describing
+operations in UIs. And the MCP mutation tools (`add_elements`, `remove_elements`,
+`update_element`, `set_condition`, `add_http_call`) already mutated the full model; the plan
+said they did not. Only `replace_diagram` expanded compact over the whole document. §7.1 now
+records the correction.
+
+**The proxy needed its wire contract changed, not just its apply call.** `/improve` received a
+`CompactDiagram` from the client, so re-targeting the server alone would have fixed nothing —
+the loss happened before the request. It now takes `{ xml }`, compactifies only for the prompt,
+and applies the returned operations to the full model. The old `{ context }` shape still works
+for clients that have not been updated, with a warning that says what it costs.
+
+**Two bugs the tests found rather than review.**
+
+The first was ordering. `delete` cascades to the flows attached to an element, so a reconcile
+that derived `delete` before `redirect_flow` left the redirect pointing at a flow that no
+longer existed. Flows are now settled first, and any flow a removal would take with it is
+re-added instead of redirected.
+
+The second was the more interesting one, because it was the exact class of bug this work
+exists to remove. `patchElement` rebuilt a whole extension element from the compact fields, so
+patching `jobType` dropped the `retries` sitting next to it on the same `zeebe:taskDefinition`.
+It now sets one attribute rather than replacing one element. Chasing that surfaced an
+asymmetry too: `compactify` reads `resultVariable` from an ioMapping's single output whatever
+its source, while the writer only matched `source="= response"` — so a fixture with
+`source="=response.body"` grew a second output on every pass. The writer now updates the same
+output the reader read.
+
+Both were caught by one assertion worth more than the rest: **feeding a model its own compact
+view back must change nothing**, across every fixture in the corpus. Any asymmetry between what
+`compactify` reads and what the patch writes shows up there as drift. A second test applies it
+twice, so a mapping that grows rather than settles fails too.
+
+**A5a's refusal message was a casualty and had to be corrected.** It told users that modifying
+a file re-serialises it from a compact model that drops pools and lanes. That is no longer
+true, so the message now says what is actually still destructive: the diagram is re-laid out,
+and the original is gone once replaced. The guard itself stays — overwriting an input without
+being asked is worth refusing regardless of fidelity.
+
+**One thing left undone, and why.** The MCP server still writes with `writeFileSync` rather
+than A4's `writeBpmn`: its code-mode bridge calls tools synchronously inside a `vm`, and
+`writeBpmn` is async. Making the write async means giving the bridge an async path first. It
+now performs the same verification inline — serialise, parse back, compare the semantic hash,
+throw rather than write — so the safety property is there even though the function is not.
+
+693 tests in `@bpmnkit/core` (31 new), 14 in the CLI, 134 in plugins; core, cli, proxy,
+plugins, editor and canvas all typecheck; `biome check` clean across 847 files.
+
+
+## 2026-09-07 — A write boundary that reads back what it wrote
+
+A4. `writeBpmn` in `packages/core/src/node/write.ts` is now the only supported way to write a
+BPMN file, and the only one that checks the result. It serialises the model, **parses the
+output back**, compares the two semantic hashes from A2, and refuses the write if they differ
+— naming the elements that diverged and carrying the diff on the error.
+
+**Behind the `@bpmnkit/core/node` subpath**, which settles open question 3 from the analysis.
+A separate `@bpmnkit/io` package would have meant the whole new-package checklist for one
+module; the subpath costs an `exports` entry, and `tsc` already emits `dist/node/`. Browser
+safety is not asserted here but measured: walking the 71 modules reachable from
+`dist/index.js`, none imports a `node:` builtin.
+
+**No option to skip verification**, which departs from the plan's sketch of a `validate` flag.
+An off switch on this check would only ever be reached for by someone trying to get past the
+bug it exists to report. Callers who want unchecked serialisation still have `Bpmn.export()`.
+
+**Layout is `preserve` by default, not `auto`.** The reference SDK has only two modes and both
+discard the diagram; preserving a hand-arranged layout is one of the places we are ahead
+(§5), so the default keeps it and `"auto"` opts into regeneration. `applyAutoLayout` returns a
+new model rather than mutating, which a test pins so the caller's object is never touched.
+
+**What the boundary does not cover, stated in the module and the docs.** It compares the model
+in memory against the model read back, so it catches the serialiser losing something. It
+cannot catch the *parser* having dropped something on the way in — that content is absent from
+both sides and the hashes agree. That remains A1's job, and saying so is the difference
+between a guarantee and a comforting story.
+
+**Atomicity, and the part that is only reachable under a race.** Contents go to a temporary
+file in the destination's own directory, then get linked or renamed into place. Without
+`force` the final step is `link`, which fails with EEXIST rather than replacing — the guard
+against a file appearing between the existence check and the write. That path is unreachable
+by ordinary calls, so it is tested with an actual race: two concurrent `writeBpmn` calls to
+the same new path, exactly one of which may win. Forced replacement keeps the permissions the
+old file had, which a plain rename would not.
+
+The lossy-serialiser test the plan asked for replaces the serialiser with one that drops an
+end event, and asserts six things: the write is refused, the error names `E`, the diff is on
+the error, no file and no temporary are left behind, and a good file already on disk is not
+replaced by the damaged one.
+
+662 tests in `@bpmnkit/core`; canvas, editor, plugins and operate typecheck; `biome check`
+clean across 845 files; `check-packages` passes with the new subpath.
+
+
+## 2026-09-07 — A semantic hash, so "the layout moved" stops looking like "the model changed"
+
+A2. `packages/core/src/bpmn/semantic-hash.ts` gives three things: `semanticHash(defs)`,
+`projectSemantics(defs)` and `diffSemantics(before, after)`. The point is the one assertion
+the module exists for — **re-running auto-layout cannot change the hash** — which turns a
+claim into a test.
+
+**Synchronous and dependency-free, which decided the design.** `node:crypto` would break the
+browser build that `@bpmnkit/canvas`, `@bpmnkit/editor` and `@bpmnkit/plugins` depend on;
+`crypto.subtle` is async and unavailable outside secure contexts, and would force `async`
+through every caller including the write boundary A4 will put on top. So SHA-256 is
+implemented in-repo — about eighty lines, checked against the published NIST vectors and
+against `node:crypto` at the 55/56/57 and 63/64/65-byte padding boundaries, on UTF-8 beyond
+the BMP, and on BPMN-shaped JSON. `node:crypto` appears in the test as an oracle only;
+`packages/core/src` still imports nothing from `node:`.
+
+**What the projection excludes**, and the one place this departs from the reference SDK:
+diagram interchange with its `bioc`/`color` extensions, `zeebe:modelerTemplateIcon` (a base64
+blob that would otherwise dominate every diff it appears in), and `exporter`/`exporterVersion`
+— which tool wrote the file is not what the file says. `modeler:executionPlatform` is
+deliberately **kept**: it names the engine the model targets, so changing it is a real change.
+That is a judgement call, documented at the top of the module so it can be reversed
+deliberately rather than discovered.
+
+Ordering carries no meaning in BPMN, so collections are sorted by their own canonical form and
+object keys by name. `diffSemantics` projects each element *shallowly* — descendants that
+carry their own id appear as that id — so renaming a task reports the task, not the task and
+its process and its definitions.
+
+**Verified rather than assumed.** The layout-invariance test would pass vacuously if
+`applyAutoLayout` did nothing to these fixtures, so I checked: it creates between 3 and 25 DI
+elements per fixture and moves positions in every one, and the hash holds throughout. Then ten
+adversarial pairs, because a hash that sorts arrays is exactly the kind of thing that quietly
+collides: two tasks swapping names, a sequence flow rewired, a nested `zeebe:input` source, a
+gateway's default flow, an element's type — all must differ; declaration order, attribute
+order and task-header order — all must match. The six sharpest are now permanent tests.
+
+Golden hashes per fixture sit alongside the invariance tests, because those are relative —
+both sides move together if the projection rules change — and a golden is absolute. Quietly
+dropping a field from the projection now fails.
+
+Also softened one more "full fidelity" overclaim in `packages/core.md`, the same class of
+sentence A6 fixed in `concepts.md`.
+
+641 tests in `@bpmnkit/core`; canvas, editor, plugins, ascii and operate all typecheck against
+the new exports; `biome check` clean across 841 files.
+
+
+## 2026-09-07 — A3: the model no longer drops what it does not name
+
+Nine gaps closed in `packages/core`, all nine allow-list entries in the A1 gate deleted, and
+the two `normalised` entries are all that remain. `zeebe:subscription` correlation keys,
+`bpmn:category`/`categoryValue`, data input/output associations with their `bpmn:property`
+placeholders, `documentation` on `definitions` and `process`, multi-instance
+`loopCardinality`/`completionCondition`, and `extensionElements` on collaborations and on
+root-level `message`/`error`/`escalation`/`signal` all round-trip now. The two minimal
+reproductions from the original analysis come back byte-identical.
+
+**The gaps were parser-side, serialiser-side, or both, and the split was not obvious.**
+`CollaborationFrame` already parsed `extensionElements`; nothing emitted them. The root
+elements were the reverse — `parseMessage` and friends were attribute-only functions that
+never saw their children. Eight elements needed the same `documentation` + `extensionElements`
+handling, which earned a shared `BaseElementFrame` rather than eight copies of the same
+switch; a `BaseOnlyFrame` covers the elements whose only children are those two.
+
+**The catch-all (G7) is scoped to four containers**, not everything. `definitions`, `process`,
+`collaboration` and flow nodes keep unrecognised children verbatim in `unknownChildren`, which
+covers `bpmn:import`, `itemDefinition`, `resource`, `ioSpecification`, `correlationKey`,
+`potentialOwner` and vendor elements outside `extensionElements` — a new fixture exercises all
+of them, nested content included. Lanes, artifacts and root elements get `documentation` and
+`extensionElements` but not arbitrary children; that limit is documented rather than hidden.
+
+**Two things the work turned up that were not in the plan.**
+
+First, the catch-all immediately broke `04-artifacts` by emitting associations and groups
+twice. `contentsChild` was using `null` for two different things — "recognised, no frame
+needed" and "not recognised at all" — so the capture path could not tell them apart. It now
+returns `undefined` for the second case only. The gate caught this on the first run, which is
+precisely what it was built for.
+
+Second, `TreeFrame` was recording the indentation between child elements as the parent's text
+content, so every nested extension re-emitted blank lines that grew on each round trip. That
+predates this work — it reproduces on a clean tree — but the catch-all made it apply to every
+captured subtree, so it is fixed here: whitespace-only text on an element that has children is
+dropped.
+
+**Docs rewritten to the guarantee now held**, replacing the accurate-but-temporary list of
+losses from the earlier A6 pass: what round-trips, the two deliberate normalisations, and what
+is still not preserved. Docspack rebuilt.
+
+Also noted, not touched: `KNOWN_FLOW_CHILDREN` and `KNOWN_PROCESS_CHILDREN` in the parser are
+dead code — defined, never referenced. I had edited them before realising, and reverted.
+
+609 tests in `@bpmnkit/core`, plus canvas (76), editor (97), plugins (134) and connectors (16)
+all pass; `biome check` clean across 837 files; every package that consumes `@bpmnkit/core`
+typechecks. `@bpmnkit/engine` still cannot build here — it needs `@bpmnkit/reebe-wasm` and a
+Rust toolchain — which is unchanged from before.
+
+
+## 2026-09-07 — A round-trip fidelity gate, and two more gaps it immediately found
+
+A1 of *Core Model Fidelity*. `packages/core/tests/roundtrip-corpus.test.ts` now asserts that
+`Bpmn.parse()` → `Bpmn.export()` preserves the document, with today's known losses listed
+explicitly. Nothing else in the plan can be verified without it.
+
+**The signature is computed without `src/xml`.** A gate that measured fidelity with the SDK's
+own parser would be blind to exactly what it exists to find: content that parser drops would
+be absent from both sides of the comparison and the diff would come back clean. So
+`tests/support/xml-signature.ts` walks the raw text with its own scanner and counts four
+things — elements, per-element attribute names, parent→child pairs, and elements carrying
+non-whitespace text. That catches dropped elements, dropped attributes, reparenting, and lost
+`documentation` bodies and FEEL condition text. It is order-independent, because BPMN gives
+no meaning to the order of `flowElements` or attributes; dropping them is what matters. The
+scanner is hand-rolled, so it has 11 tests of its own — markup inside attribute values,
+CDATA, comments, the doctype — before it is trusted to judge anything.
+
+**It is a ratchet, not a snapshot.** Each fixture's allow-list is checked in both directions:
+an unlisted change fails as a new loss, and a listed change that no longer happens fails as a
+stale entry to delete. That second half is how A3 will record progress — closing a gap means
+deleting lines from this file until only the `normalised` entries remain. Both directions were
+verified by deliberately breaking each one. Entries are typed `gap` (A3 must close it) or
+`normalised` (deliberate and permanent — `isExecutable="false"` and `isSequential="false"` are
+serialised only when true, which BPMN treats as identical and which round-trips stably). A
+third assertion per fixture pins that a second export is a fixed point, so a save cannot keep
+producing fresh diffs.
+
+**The corpus is six fixtures we wrote, not blueprints.** The plan called for real Camunda
+models from the marketplace. I did not add them: redistribution terms are a licensing decision
+per file that needs a human, and this session's GitHub access is scoped to this repository.
+What is here instead was authored from the BPMN 2.0 spec and the MIT `zeebe-bpmn-moddle`
+descriptor, each file isolating one construct group so a failure names its own cause. It
+reproduces every loss §4 measured against the blueprints. The harness globs the fixture
+directory, so adding real models later is files plus PROVENANCE rows and no code change; the
+directory's PROVENANCE.md records what is there and what to check before adding more.
+
+**It found two gaps §4 could not see.** The blueprints happened to use multi-instance
+activities without a cardinality or completion condition, and carried no collaboration-level
+extensions:
+
+- **G22 — `bpmn:loopCardinality` and `bpmn:completionCondition` are not modelled at all.** A
+  multi-instance activity loses both on round trip. A bounded or conditional loop silently
+  becomes an unbounded one; this is the most serious finding since `zeebe:subscription`.
+- **G23 — `extensionElements` are dropped on `bpmn:collaboration`.**
+
+Both added to §7.1 of `doc/bpmn-sdk-comparison.md` and to A3's scope. That is the argument for
+keeping both kinds of fixture: the hand-written corpus covers what the parser claims to
+handle, real files cover what nobody thought to look for.
+
+606 tests pass in `@bpmnkit/core`, `biome check` is clean across 837 files, and
+`tsc --noEmit` passes. Worth knowing for later: `packages/core/tsconfig.json` scopes
+`include` to `src`, so test files are transpiled by vitest but never type-checked.
+
+
+## 2026-09-07 — Stop the CLI destroying BPMN files, stop the docs promising it can't
+
+First two items of *Core Model Fidelity* — the two that depend on nothing and were both
+actively harmful.
+
+**A5a — `casen generate bpmn --input` no longer overwrites its input.** It used to rebuild
+the file from the compact model and write the result straight back over the source, with no
+backup, no `--force`, and a `Patched and written to x.bpmn` success line. On a real Camunda
+blueprint that silently drops pools, lanes, message correlation keys and ioMapping detail.
+It now refuses unless you pass `--output <file>` or `--force`, and the refusal names what
+would be lost so the message is actionable rather than bureaucratic. `--output` pointing back
+at the input counts as in-place, resolved paths compared, so `--output flows/../flows/x.bpmn`
+cannot sneak past.
+
+The guard moved **above** the stdin read. It used to be the last thing before `writeFile`,
+which meant the command parsed the file, blocked waiting for a patch on stdin, applied it and
+serialised the result before discovering it had nowhere to write. Now an unwritable target
+fails immediately. That reordering is also what made the path testable: `generate.test.ts`
+covers the pure resolver and drives the real command against a temp copy of a sample file,
+asserting the input is byte-identical after a refusal.
+
+Two `--input` examples in the command's own help wrote in place and would now fail; both
+gained an `--output`.
+
+**A6 — the docs asserted the opposite of what the code does.** `concepts.md` claimed "the
+parser preserves all attributes, extensions, and vendor-specific elements. Exporting the
+parsed object produces XML that is semantically equivalent to the input." Measured: 11 of 12
+real blueprints lose something. Its example also used `definitions.rootElements.find(el =>
+el.$type === "bpmn:Process")` — that is `bpmn-moddle`'s API, not ours; `BpmnDefinitions`
+exposes `processes`. Replaced with an explicit two-list contract of what survives and what is
+dropped today, `zeebe:subscription` named first because losing it breaks message correlation
+while the model still deploys and still looks right. The corrected example was executed
+against a sample file before shipping.
+
+The same falsehood lived in two more places, both corrected rather than left for later:
+`guides/ai.md` presented parse → compactify → LLM edit → expand → export as a safe loop for
+an existing file, which is the most destructive path we ship; and `packages/core.md`
+described `expand()` as converting a compact diagram "back", implying symmetry. Both now say
+plainly that `expand(compactify(d))` is not `d`, and that editing a file authored elsewhere
+means writing to a new path and diffing. `concepts.md` carries the same warning on the
+compact section. Docspack rebuilt, so agents asking about round-trip fidelity now get the
+real answer.
+
+Note for whoever picks up A1: the landing site and the CLI test suite cannot be built here —
+`@bpmnkit/engine` needs `@bpmnkit/reebe-wasm`, which needs a Rust/wasm-pack toolchain. Both
+failures reproduce on a clean tree. `generate.test.ts` (12 tests), the docspack suite and
+`biome check` all pass.
+
+
+## 2026-09-07 — What `bpmn-sdk` has that we don't: the model layer round-trips, ours doesn't
+
+Analysed [`philippfromme/bpmn-sdk`](https://github.com/philippfromme/bpmn-sdk) (10.7k LOC,
+v0.1.0) against `packages/core` (23k LOC). On breadth it is not close — no DMN, no forms,
+no FEEL, no layout engine, no browser support, no engine, no CLI. It is ahead on one axis,
+and it is the one that matters most: **correctness of the model layer**.
+
+It is built on `bpmn-moddle`, so its object model *is* the BPMN and Zeebe moddle
+descriptors — everything they define round-trips by construction. Ours is a hand-written
+TypeScript subset, so anything the subset does not name is dropped on write, silently.
+
+**Measured, not inferred.** Twelve real Camunda 8 blueprints through
+`Bpmn.parse()` → `Bpmn.export()`: **eleven of twelve lose data**, including **22
+`zeebe:subscription` elements across nine files**. That element is the message correlation
+key. A process round-tripped through BPMN Kit today deploys fine, opens fine in a modeler,
+and never correlates a message again. Also dropped: `bpmn:category`/`categoryValue` (group
+labels), data input/output associations, and process-level `documentation`. Root cause is
+narrow and fixable — `BpmnMessage`, `BpmnError`, `BpmnSignal`, `BpmnParticipant`,
+`BpmnLane` and the artifact types have no `extensionElements` field at all.
+
+**The compact path is far worse, and it is the one the AI loop runs on.**
+`compactify → applyOperations → expand` discards every collaboration, participant, message
+flow, lane, data store, artifact and root message/error, plus all `ioMapping` detail
+(`zeebe:input` 91 → 0 in one blueprint) and most DI. `applyOperations()` compounds it by
+no-op'ing silently on any unresolved ID. Sharpest edge: `casen generate bpmn --input x.bpmn`
+with no `--output` **overwrites the input in place** with that lossy round trip, no backup,
+no `--force`, and prints `Patched and written to x.bpmn`.
+
+**Our docs assert the opposite.** `concepts.md` claims "the parser preserves all attributes,
+extensions, and vendor-specific elements" — false as measured — and its example uses
+`definitions.rootElements`, which is `bpmn-moddle`'s API, not ours. It ships in docspack, so
+agents are being told the guarantee holds.
+
+**Four ideas worth taking, none of which requires `bpmn-moddle`:** a fidelity corpus that
+gates round-trip losses in CI; a DI-excluded semantic hash (which makes "layout never
+changes semantics" an assertion, and gives every write a real change report); a write
+boundary that serializes, *re-parses*, compares the hash and only then writes atomically;
+and a publish gate that actually packs, installs and type-checks the tarball. Written up
+with evidence, sequencing and eleven costed action items in
+[`doc/bpmn-sdk-comparison.md`](bpmn-sdk-comparison.md), tracked under
+*Core Model Fidelity* in [`doc/roadmap.md`](roadmap.md).
+
+**Re-implementation, not a port.** The SDK ships no LICENSE, so it is all-rights-reserved
+and cannot be a source — only the problem statement can be. The plan now carries an explicit
+clean-room rule (§7.0): build from this document and from the moddle JSON descriptors, which
+are independently licensed (`bpmn-moddle` and `zeebe-bpmn-moddle` are both **MIT**, verified
+— the earlier draft said Apache-2.0 for the Zeebe one, which was wrong and changes the
+attribution the vendored file needs). Fixtures come from Camunda's marketplace with recorded
+provenance, not from that repository.
+
+**And the gaps are now a checklist, not a narrative.** §7.1 traces all 21 measured gaps
+(G1–G21) to the item that closes each and the test that proves it, so "all gaps implemented"
+is verifiable rather than asserted. Auditing that matrix surfaced one gap nothing covered:
+A3 fixes today's model holes and the `unknownChildren` catch-all preserves whatever it
+misses, but nothing detects the model falling behind the spec *again*. Added **A12** — vendor
+the BPMN/DI descriptors and emit a coverage report labelling every descriptor type and
+property `modelled` / `preserved` / `dropped`, with CI failing on any `dropped`. We can't
+generate our types from the descriptors the way the SDK does without taking `bpmn-moddle` at
+runtime; the adaptable half is the check, not the generation. Twelve items, ~26 days, none
+optional.
+
+Explicitly **not** adopting: `bpmn-moddle` at runtime (kills browser support and the
+zero-dependency promise), discarding DI on write (`bpmn-sdk` has no mode that preserves a
+hand-arranged diagram — a regression for us), and `bpmn-auto-layout` (already evaluated and
+declined in `doc/bpmn-auto-layout-evaluation.md`). The SDK ships no LICENSE, so nothing —
+code, tests or fixtures — may be copied from it; the blueprint corpus gets sourced from
+Camunda's marketplace with recorded provenance.
+
+
 ## 2026-09-06 — Landing hero: lead with the contrast, prove it above the fold
 
 The hero opened with a positioning line (*BPMN diagrams from code, not clicks*) that only lands
