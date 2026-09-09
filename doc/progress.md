@@ -1,5 +1,43 @@
 # Progress
 
+## 2026-09-09 — Lint on the canvas, and a rule chosen by measurement
+
+Phase 3 complete: markers per element, a counting control that steps through findings, a
+debounced re-lint, and a report shape a host can forward.
+
+**The interesting decision was which rules to run.** The roadmap said "the engine layer picked
+from the model's detected execution platform", which sounds like a policy question. It is not —
+it is answerable. Running the full analysis over an engine-neutral model produces exactly one
+misleading finding: `deploy` reporting *"Charge card (serviceTask) has no zeebe:taskDefinition
+type"* as an **error**, on a diagram that never claimed it would be deployed to Zeebe. Every
+other category either stays quiet without Zeebe extensions or reports something structural that
+holds regardless. So the rule is narrow and grounded: drop `deploy`, `connector` and `agentic`
+when no platform is stamped, keep everything else. `forceEngineRules` opts back in.
+
+That rule now lives in one place. `casen lint` cannot use `lintDiagram` — it needs the `applyFix`
+closures that `LintDiagnostic` deliberately drops — so both surfaces call `lintCategories`
+instead of each carrying their own list of what counts as an engine rule. **This changes existing
+CLI behaviour**: a neutral model no longer fails `casen lint`, and the command says why rather
+than silently running fewer rules. `--profile deploy` forces the engine layer back on, since
+asking for the deploy gate is asking for those rules.
+
+`LintDiagnostic` exists for one concrete reason: `OptimizationFinding.applyFix` is a function, so
+a finding cannot cross a `postMessage` or a JSON boundary. That is precisely the boundary a VS
+Code extension host sits behind, which is why Phase 5's Problems-panel item lists this as its
+prerequisite. A test asserts the round trip rather than trusting it.
+
+Verified in the browser as well as in tests: a Camunda Cloud model in the studio shows `✖ 1 ⚠ 1`,
+the service task outlined red, the start event amber, and clicking the control focuses the
+element. The same model with the platform attribute removed shows neither the error nor the
+marker.
+
+**Noted, not changed.** `pattern-advisor` already drew severity rings for its own category, and
+now overlaps this plugin's markers. Nothing installs it, and it is a side-panel workflow with
+apply-fix and dismiss rather than canvas decoration, so it was left alone rather than gutted —
+but if both were ever installed together the diagram would carry two sets of rings.
+
+46 new tests. Whole monorepo builds, typechecks and passes.
+
 ## 2026-09-09 — A project's own connectors, and two things the tests found
 
 Phase 2 complete: `.camunda/element-templates/*.json` is discovered by convention, validated,

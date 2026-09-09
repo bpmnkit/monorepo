@@ -692,6 +692,7 @@ npm install @bpmnkit/plugins
 | \`/ascii-view\` | \`createAsciiViewPlugin()\` | Toggle ASCII art rendering |
 | \`/zoom-controls\` | \`createZoomControlsPlugin()\` | On-canvas +/− zoom buttons |
 | \`/diff\` | \`createBpmnDiff(options)\` | Side-by-side visual diff of two diagrams |
+| \`/lint\` | \`createLintPlugin(options)\` | Static-analysis markers, a counting control, and a report for a host |
 
 ### File Management
 

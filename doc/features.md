@@ -1,5 +1,37 @@
 # Features
 
+## Static analysis on the canvas (2026-09-09)
+
+`casen lint` has had five categories of rules built on `packages/core/src/bpmn/optimize/` for a
+while, and none of them were visible while modelling. Phase 3 of
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md).
+
+**`@bpmnkit/plugins/lint`** marks every offending element with its worst severity — a task with
+an error and three warnings reads as an error, because drawing both would say neither — and puts
+a control in the top-left corner counting them. Clicking it centres the next offending element
+and pulses it, wrapping around. It says how many findings sit on a plane the canvas is not
+showing, and re-lints after an edit on a 300 ms debounce, so typing a name does not re-run the
+analysis on every keystroke. `setEnabled(false)` turns it off for a host that wants a toggle.
+
+**`lintDiagram()` in `@bpmnkit/core`** is the host-facing seam, and does two things calling
+`optimize` directly does not:
+
+- **The result is serialisable.** An `OptimizationFinding` carries an `applyFix` function and so
+  cannot cross a `postMessage` or a JSON boundary; a `LintDiagnostic` reports `fixable: true` and
+  leaves the fix where it can still be called. Each diagnostic also names the diagram plane its
+  elements are drawn on.
+- **The rules match the model.** A diagram naming no `modeler:executionPlatform` is not judged
+  against Camunda 8 deployability. Measured rather than assumed: on an engine-neutral model every
+  other category either stays quiet or reports something structural that holds regardless, while
+  `deploy` calls a plain service task an **error** for having no `zeebe:taskDefinition`.
+
+**`casen lint` follows the same rule** — it skips the engine categories on a neutral model and
+says why, and `--profile deploy` forces them back on. Both surfaces ask `lintCategories` rather
+than keeping separate lists.
+
+The plugin is installed in the studio editor, so the findings show up where the modelling
+happens.
+
 ## Element templates by convention (2026-09-09)
 
 Drop element templates in `.camunda/element-templates/` and the tools pick them up — no project

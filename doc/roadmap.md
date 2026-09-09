@@ -346,18 +346,33 @@ reach the editor at all.
       file correctly, the editor does not. Needs the config panel to re-resolve as the open file
       changes
 
-### Phase 3 — Findings on the canvas
+### Phase 3 — Findings on the canvas ✅
 
-`casen lint` has five categories built on `packages/core/src/bpmn/optimize/` — arguably a better
-rule set than bpmnlint's — and none of it is visible while modeling.
+`casen lint` had five categories built on `packages/core/src/bpmn/optimize/` — arguably a better
+rule set than bpmnlint's — and none of it was visible while modelling.
 
-- [ ] Lint overlay plugin: severity badge per offending element, driven by existing
-      `OptimizationFinding` output
-- [ ] Canvas summary control with error/warning counts; click to cycle findings
-- [ ] Re-lint on `diagram:change`, debounced, with the engine layer picked from the model's
-      detected execution platform
-- [ ] A lint result shape a host can forward to its own problem list without a canvas —
-      the seam the VS Code Problems panel needs in Phase 5
+- [x] `@bpmnkit/plugins/lint` — a marker per offending element, worst severity winning, so a task
+      with an error and three warnings reads as an error
+- [x] Corner control counting each severity; clicking centres the next offending element and
+      pulses it, wrapping around. Names how many findings sit on a plane the canvas is not showing
+- [x] Debounced re-lint on `diagram:change` (300 ms default), and the engine layer picked from
+      the model's `modeler:executionPlatform`
+- [x] `lintDiagram()` in `@bpmnkit/core` — the host-facing seam. `LintDiagnostic` is plain data
+      that survives a `postMessage`, which `OptimizationFinding` cannot because of its `applyFix`
+      closure, and each diagnostic names the plane its elements are on
+- [x] `casen lint` follows the same engine rule and says why it skipped the deployability
+      categories; `--profile deploy` forces them back on. Both surfaces ask `lintCategories`
+      rather than keeping separate lists
+- [x] Installed in the studio editor, so findings appear where the modelling happens
+
+**The engine rule was measured, not assumed.** On an engine-neutral model the full analysis
+produces exactly one misleading finding — `deploy` calling a plain service task an error for
+having no `zeebe:taskDefinition` — so only `deploy`, `connector` and `agentic` are dropped when
+no platform is stamped.
+
+**Noted:** `pattern-advisor` draws its own severity rings for the `pattern` category and now
+overlaps this plugin's markers. Nothing installs it and it is a side-panel workflow rather than
+canvas decoration, so it was left alone; installing both would double the rings.
 
 ### Phase 4 — Editor invariants and navigation
 

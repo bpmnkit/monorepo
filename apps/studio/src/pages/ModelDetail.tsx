@@ -8,6 +8,7 @@ import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel"
 import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn"
 import { createConnectorCatalogPlugin } from "@bpmnkit/plugins/connector-catalog"
 import { DmnEditor } from "@bpmnkit/plugins/dmn-editor"
+import { createLintPlugin } from "@bpmnkit/plugins/lint"
 import { type PresentationApi, createPresentationPlugin } from "@bpmnkit/plugins/presentation"
 import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
 import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
@@ -888,6 +889,9 @@ export function ModelDetail() {
 		// ── Process runner ────────────────────────────────────────────────────
 		const engine = new Engine()
 		const tokenHighlight = createTokenHighlightPlugin()
+		// Static analysis on the canvas: a marker per offending element and a
+		// control that counts them and steps through them.
+		const lint = createLintPlugin()
 		// FS-mode scenario callbacks — persist to sidecar file instead of IndexedDB
 		const fsAdapter = getFsAdapter()
 		const modelPath = model.path
@@ -1093,6 +1097,7 @@ export function ModelDetail() {
 				presentation,
 				tokenHighlight,
 				processRunner,
+				lint,
 			],
 		})
 		// XML view button — placed in bottom-left HUD panel

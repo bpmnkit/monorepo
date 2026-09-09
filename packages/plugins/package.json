@@ -68,6 +68,10 @@
 			"import": "./dist/history/index.js",
 			"types": "./dist/history/index.d.ts"
 		},
+		"./lint": {
+			"import": "./dist/lint/index.js",
+			"types": "./dist/lint/index.d.ts"
+		},
 		"./main-menu": {
 			"import": "./dist/main-menu/index.js",
 			"types": "./dist/main-menu/index.d.ts"
