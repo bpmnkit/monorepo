@@ -1,5 +1,12 @@
 # @bpmnkit/engine
 
+## 0.1.31
+
+### Patch Changes
+
+- Updated dependencies [00a65f5]
+  - @bpmnkit/core@0.2.0
+
 ## 0.1.30
 
 ### Patch Changes
