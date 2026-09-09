@@ -1,5 +1,42 @@
 # Progress
 
+## 2026-09-09 — The diff reaches the product
+
+Phase 1 of the IDE-resident modeling roadmap, complete: the diff engine that landed this morning
+as a library is now a CLI command, a studio page, a drop route, and it understands planes.
+
+**`diffDiagram` moved to `@bpmnkit/core`.** It was in the plugin, which was right when the plugin
+was its only consumer. The CLI is a second one, and a CLI has no business depending on a
+canvas-plugin package — so it now sits in `src/bpmn/diagram-diff.ts` beside `diffSemantics`,
+which is also where a reader would look for it. Renamed from `computeBpmnDiff` while nothing is
+published: `diffSemantics` / `diffDiagram` teaches the model-vs-diagram distinction at a glance.
+The plugin re-exports it, so its consumers are unchanged.
+
+**Planes.** The result now carries a per-plane breakdown. A canvas draws one plane at a time, so
+a change inside a collapsed sub-process is invisible until the reader drills in — the legend says
+`N on other planes` and the CLI names them. Verified in a browser: a drop whose only addition is
+inside a collapsed sub-process paints no markers on the root plane and shows exactly that note.
+
+**`casen diff bpmn`** rather than the `casen bpmn diff` the roadmap first proposed. The pinned
+CLI groups are verbs (`view`, `lint`, `generate`, `deploy`), and there is no `bpmn` group to join;
+`casen diff bpmn` mirrors `casen view bpmn` and leaves room for `casen diff dmn`. It names
+elements instead of printing bare ids, which is most of what makes the output usable.
+
+**What did not get built.** The roadmap's "or a file against its last saved version" for the
+studio is not there: nothing in the studio's storage keeps a previous version, so there is no
+second side to compare against. Recorded on the roadmap rather than faked.
+
+Verified beyond the test suite: both browser surfaces were driven in headless Chromium against
+real fixtures — markers, legends, viewport alignment and the off-plane note all confirmed. 60
+tests across the four surfaces; the whole monorepo builds, typechecks and passes.
+
+One environment note: `@bpmnkit/engine` and everything behind it (studio included) could not
+build here until `@bpmnkit/reebe-wasm` existed, so the wasm was built locally with `wasm-pack
+--dev` — `wasm-opt` needs a binaryen download the proxy blocks. The artifacts are gitignored and
+nothing about the release path changed. A side effect worth knowing: a local Rust build leaves
+`apps/reebe/target/`, which `pnpm biome check .` then scans and reports about a thousand
+diagnostics on. Those are build outputs, not source, but `biome.json` has no ignore for them.
+
 ## 2026-09-09 — The Miragon findings become a checkable roadmap
 
 `doc/roadmap.md` gains an **IDE-Resident Modeling** section: seven phases ordered by value per

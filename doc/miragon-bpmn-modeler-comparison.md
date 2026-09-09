@@ -132,8 +132,8 @@ is the single most common real-world Camunda 8 need it currently cannot serve. S
 large surface-area gain. The `casen` CLI can validate them against the same schema.
 
 **B. Visual BPMN diff.** — **shipped 2026-09-09** as `@bpmnkit/plugins/diff`. Two canvases,
-four categories, legend, synchronised viewports, and `computeBpmnDiff()` standalone for callers
-with no canvas. `diffSemantics` supplied the semantic half; the `moved` category is computed
+four categories, legend, synchronised viewports, and `diffDiagram()` in `@bpmnkit/core` for
+callers with no canvas. `diffSemantics` supplied the semantic half; the `moved` category is computed
 here from diagram interchange, which is what separates a diagram diff from a model diff.
 Still to do: the CLI and studio surfaces that make it reachable — see
 [`doc/roadmap.md`](roadmap.md) §IDE-Resident Modeling, Phase 1.

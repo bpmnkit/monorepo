@@ -1,52 +1,42 @@
 # Features
 
-## Visual BPMN diff as a canvas plugin (2026-09-09)
+## Visual BPMN diff — engine, CLI, studio and drop (2026-09-09)
 
-`@bpmnkit/plugins/diff` renders two versions of a diagram side by side and marks what changed
-between them — the first item from [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md)
-to ship.
+Two versions of a diagram compared side by side, with every element marked added, removed,
+changed or moved. The first phase of
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md), complete.
 
-`createBpmnDiff()` returns a pair of canvas plugins rather than one, because a diff needs both
-models before it can say anything: each side publishes the model its canvas loaded and the
-result is computed once both have arrived, in whichever order they do. Elements are marked on
-the side that can show them — removed only exists in the earlier version, added only in the
-later, changed and moved on both — a legend in the top-right counts each category, and panning
-or zooming either canvas moves the other.
+**`diffDiagram(before, after)`** in `@bpmnkit/core` (`src/bpmn/diagram-diff.ts`) sits beside
+`diffSemantics`, which excludes diagram interchange by design — so a task somebody dragged reads
+there as no change at all. `diffDiagram` adds that half back as its own `moved` category,
+computed from DI: bounds, waypoints, label placement, and flags such as collapsed/expanded. That
+is the difference between a model diff and a *diagram* diff. An element that both changed and
+moved is reported as changed, since a semantic change is what a reviewer needs first. The result
+covers only elements carrying DI on one side or the other — a changed `targetNamespace` has
+nothing to draw — and carries a per-plane breakdown.
 
-- **Four categories.** The semantic half is `diffSemantics` from `@bpmnkit/core`, which drops
-  diagram interchange by design, so a task that only moved reads there as no change at all.
-  The plugin adds that half back as `moved`, computed from DI geometry — bounds, waypoints,
-  label placement and flags like collapsed/expanded — which is the difference between a model
-  diff and a *diagram* diff. An element that did both is reported as changed, since that is
-  what a reviewer needs to see first.
-- **Only what can be drawn.** The result covers elements carrying diagram interchange on one
-  side or the other, so a changed `targetNamespace` does not inflate a count against nothing
-  visible.
-- **Untrusted ids never reach a selector.** Elements are looked up through `getShapes()` /
-  `getEdges()` rather than an attribute selector built from an id read out of a file.
-- **Viewport sync settles instead of echoing.** The canvas applies a viewport on the next
-  animation frame and fires `viewport:change` only then, so a re-entrancy flag around
-  `setViewport` is already cleared when the echo arrives and guards nothing. Skipping a write
-  that changes nothing ends every exchange after one hop — and stops a no-op push from
-  scheduling a frame whose event would carry a newer pan back the other way and undo it. Both
-  properties are covered by tests; removing the guard fails them.
-- `computeBpmnDiff(before, after)` is exported on its own, so the CLI or a host can have the
-  element ids without a canvas.
+**`@bpmnkit/plugins/diff`** renders it. `createBpmnDiff()` returns a *pair* of canvas plugins,
+because a canvas plugin only ever sees its own canvas: each side publishes the model it loaded,
+and the diff computes once both have arrived, in whichever order. Elements are marked on the side
+that can show them, a legend counts each category, and panning or zooming either canvas moves the
+other. Element lookup goes through `getShapes()` / `getEdges()` rather than an attribute selector
+built from an id read out of a file.
 
-35 tests across the pure diff and the two-canvas DOM behaviour. Colours are the existing brand
-tokens with hex fallbacks: `--bpmnkit-success` added, `--bpmnkit-danger` removed,
-`--bpmnkit-warn` changed, `--bpmnkit-accent` moved.
+**`casen diff bpmn <before> <after>`** reports the same thing in a terminal, naming elements
+rather than printing bare ids, with `--format json`, `--ascii`, and `--exit-code` to gate a
+pipeline.
 
-## Landing hero rewritten around the XML/TypeScript contrast (2026-09-06)
+**`apps/studio`** gets `/models/diff`: two pickers, a swap button, a summary bar, and a
+**Compare** entry point on the Models page. **`apps/drop`** gets `/drop/:a/diff/:b`, resolving
+both drops server-side so an expired share is a 404 rather than half a comparison, and pairing
+files by name with a picker per side.
 
-The homepage hero leads with *41 lines of BPMN XML. Or 13 lines of TypeScript.* over a
-one-sentence lede, and the demo panel that types a builder call and renders the resulting diagram
-now sits above the fold on a phone: the hero's left column splits into text and action rows so
-the stacked order is headline → demo → install/CTAs, with the code panel masked at 152px and the
-diagram at 180px below 760px. The primary call to action is the on-page playground (*Run it in
-the browser*) rather than the docs, and the `0 deps · ESM · MIT pre-1.0` stat row is replaced by
-three value claims — deploys to Camunda 8, opens in any modeler, zero dependencies.
+**Planes.** A canvas draws one plane at a time, so a change inside a collapsed sub-process is
+invisible until the reader drills in. The legend says `N on other planes`, and the CLI names
+them.
 
+Colours are brand tokens with hex fallbacks: `--bpmnkit-success` added, `--bpmnkit-danger`
+removed, `--bpmnkit-warn` changed, `--bpmnkit-accent` moved.
 
 ## Documentation served from the landing site at `/docs` (2026-08-29)
 

@@ -124,6 +124,10 @@ export const DIFF_CSS = `
   font-weight: 600;
   color: var(--bpmnkit-fg-muted, #6666a0);
 }
+.bpmnkit-diff-legend-note {
+  color: var(--bpmnkit-fg-muted, #6666a0);
+  font-style: italic;
+}
 .bpmnkit-diff-legend-row {
   display: flex;
   align-items: center;

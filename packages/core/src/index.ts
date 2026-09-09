@@ -50,6 +50,12 @@ export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export { applyAutoLayout } from "./bpmn/auto-layout.js"
 export { diffSemantics, projectSemantics, semanticHash } from "./bpmn/semantic-hash.js"
 export type { JsonValue, SemanticDiff, SemanticProjection } from "./bpmn/semantic-hash.js"
+export { diffDiagram } from "./bpmn/diagram-diff.js"
+export type {
+	BpmnDiffCategory,
+	BpmnDiffPlaneSummary,
+	BpmnDiffResult,
+} from "./bpmn/diagram-diff.js"
 export { sha256Hex } from "./bpmn/sha256.js"
 export { checkDiCompleteness } from "./bpmn/di-check.js"
 export type { DiCompleteness } from "./bpmn/di-check.js"

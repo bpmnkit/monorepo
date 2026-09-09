@@ -287,23 +287,29 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 Phases are ordered by value per unit of work, with dependencies respected. Each phase is
 shippable on its own — nothing later is a prerequisite for the value of anything earlier.
 
-### Phase 1 — Make the diff reachable
+### Phase 1 — Make the diff reachable ✅
 
-The diff engine landed as a library; nothing in the product exposes it yet. This is the
-cheapest value left on the board, and every later phase reuses one of these surfaces.
+The diff engine landed as a library; nothing in the product exposed it. Every later phase
+reuses one of these surfaces.
 
 - [x] `@bpmnkit/plugins/diff` — `createBpmnDiff()` paired canvas plugins, four categories,
-      legend, synchronised viewports; `computeBpmnDiff()` exported standalone
-- [ ] `casen bpmn diff <before> <after>` (`apps/cli/src/commands/bpmn.ts`) — category counts and
-      per-element ids, `--json` for scripting, non-zero exit under `--exit-code` so it can gate a
-      pipeline. Renders the two diagrams through `@bpmnkit/ascii` when a terminal wants a picture
-- [ ] Two-pane diff view in `apps/studio` — pick two files from the workspace, or a file against
-      its last saved version
-- [ ] Diff a shared drop against another (`apps/drop`) — the review case the drop viewer was
-      built for
-- [ ] Sub-process planes: the plugin repaints on `plane:change`, but a diff *inside* a collapsed
-      sub-process is only visible after drilling in. Surface a per-plane count so the reviewer
-      knows to look
+      legend, synchronised viewports
+- [x] `diffDiagram()` promoted to `@bpmnkit/core` (`src/bpmn/diagram-diff.ts`), beside
+      `diffSemantics` — the CLI should not depend on a canvas-plugin package, and that is where
+      a reader looks for it. The plugin re-exports it
+- [x] `casen diff bpmn <before> <after>` (`apps/cli/src/commands/diff.ts`) — names elements
+      rather than printing bare ids, `--format json` for scripting, `--exit-code` to gate a
+      pipeline, `--ascii` to render both diagrams. Its own group, mirroring `casen view bpmn`,
+      rather than the `casen bpmn diff` this list first proposed: the pinned groups are verbs
+- [x] Two-pane diff view in `apps/studio` (`src/pages/ModelDiff.tsx`, `/models/diff`) — two
+      pickers, a swap button, a summary bar, and a **Compare** entry point on the Models page.
+      Comparing a file against *its own last saved version* is not included: nothing in the
+      studio's storage keeps a previous version to compare against
+- [x] Diff a shared drop against another (`apps/drop`) — `/drop/:a/diff/:b`, both drops resolved
+      server-side so an expired share is a 404 rather than half a comparison; files paired by
+      name with a picker per side
+- [x] Sub-process planes — `diffDiagram` returns a per-plane breakdown, the legend says how many
+      differences sit on a plane the canvas is not showing, and the CLI names the planes
 
 ### Phase 2 — Element templates by convention
 

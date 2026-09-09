@@ -20,19 +20,19 @@
  * new BpmnCanvas({ container: leftEl,  xml: oldXml, plugins: [diff.before] });
  * new BpmnCanvas({ container: rightEl, xml: newXml, plugins: [diff.after] });
  *
- * diff.api.getResult(); // { added, removed, changed, moved, total }
+ * diff.api.getResult(); // { added, removed, changed, moved, total, planes }
  * ```
  *
  * @packageDocumentation
  */
 
 import type { CanvasApi, CanvasPlugin, ViewportState } from "@bpmnkit/canvas"
-import type { BpmnDefinitions } from "@bpmnkit/core"
+import type { BpmnDefinitions, BpmnDiffCategory, BpmnDiffResult } from "@bpmnkit/core"
+import { diffDiagram } from "@bpmnkit/core"
 import { injectDiffStyles } from "./css.js"
-import { type BpmnDiffCategory, type BpmnDiffResult, computeBpmnDiff } from "./diff.js"
 
-export { computeBpmnDiff } from "./diff.js"
-export type { BpmnDiffCategory, BpmnDiffResult } from "./diff.js"
+export { diffDiagram } from "@bpmnkit/core"
+export type { BpmnDiffCategory, BpmnDiffPlaneSummary, BpmnDiffResult } from "@bpmnkit/core"
 export { DIFF_CSS, DIFF_STYLE_ID, injectDiffStyles } from "./css.js"
 
 /** Which version of the diagram a canvas holds. */
@@ -85,6 +85,8 @@ interface Side {
 	api: CanvasApi | null
 	definitions: BpmnDefinitions | null
 	legendEl: HTMLDivElement | null
+	/** The plane this canvas is currently showing, as a DI `bpmnElement`. */
+	plane: string | null
 	unsubs: Array<() => void>
 }
 
@@ -109,8 +111,15 @@ export function createBpmnDiff(options: BpmnDiffOptions = {}): BpmnDiffPair {
 	const syncViewports = options.syncViewports ?? true
 
 	const sides: Record<BpmnDiffSide, Side> = {
-		before: { kind: "before", api: null, definitions: null, legendEl: null, unsubs: [] },
-		after: { kind: "after", api: null, definitions: null, legendEl: null, unsubs: [] },
+		before: {
+			kind: "before",
+			api: null,
+			definitions: null,
+			legendEl: null,
+			plane: null,
+			unsubs: [],
+		},
+		after: { kind: "after", api: null, definitions: null, legendEl: null, plane: null, unsubs: [] },
 	}
 
 	let result: BpmnDiffResult | null = null
@@ -177,6 +186,24 @@ export function createBpmnDiff(options: BpmnDiffOptions = {}): BpmnDiffPair {
 			row.append(swatch, label)
 			el.appendChild(row)
 		}
+
+		// A canvas draws one plane at a time, so a change inside a collapsed
+		// sub-process is invisible until the reader drills in. Say it is there.
+		const elsewhere = offPlaneCount(side)
+		if (elsewhere > 0) {
+			const note = document.createElement("div")
+			note.className = "bpmnkit-diff-legend-note"
+			note.textContent = `${elsewhere} on other planes`
+			el.appendChild(note)
+		}
+	}
+
+	/** Differences that fall on a plane this canvas is not currently showing. */
+	function offPlaneCount(side: Side): number {
+		if (result === null || side.plane === null) return 0
+		return result.planes
+			.filter((plane) => plane.id !== side.plane)
+			.reduce((sum, plane) => sum + plane.total, 0)
 	}
 
 	// ── Diff lifecycle ───────────────────────────────────────────────────────
@@ -184,7 +211,7 @@ export function createBpmnDiff(options: BpmnDiffOptions = {}): BpmnDiffPair {
 	function recompute(): void {
 		const before = sides.before.definitions
 		const after = sides.after.definitions
-		result = before !== null && after !== null ? computeBpmnDiff(before, after) : null
+		result = before !== null && after !== null ? diffDiagram(before, after) : null
 
 		for (const side of [sides.before, sides.after]) {
 			paint(side)
@@ -259,16 +286,20 @@ export function createBpmnDiff(options: BpmnDiffOptions = {}): BpmnDiffPair {
 				side.unsubs.push(
 					api.on("diagram:load", (defs: BpmnDefinitions) => {
 						side.definitions = defs
+						side.plane = defs.diagrams[0]?.plane.bpmnElement ?? null
 						recompute()
 					}),
 					api.on("diagram:clear", () => {
 						side.definitions = null
+						side.plane = null
 						recompute()
 					}),
 					// The canvas re-renders when drilling into a sub-process, which drops
 					// the markers along with the old DOM.
-					api.on("plane:change", () => {
+					api.on("plane:change", (_from: string, to: string) => {
+						side.plane = to
 						paint(side)
+						renderLegend(side)
 					}),
 					api.on("viewport:change", (state: ViewportState) => {
 						mirrorViewport(side, state)
@@ -284,6 +315,7 @@ export function createBpmnDiff(options: BpmnDiffOptions = {}): BpmnDiffPair {
 				side.legendEl = null
 				side.api = null
 				side.definitions = null
+				side.plane = null
 				// One pane gone means there is no diff left to show on the other.
 				recompute()
 			},

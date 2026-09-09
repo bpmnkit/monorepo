@@ -1,6 +1,6 @@
-import { Bpmn } from "@bpmnkit/core"
 import { describe, expect, it } from "vitest"
-import { computeBpmnDiff } from "../../src/diff/diff.js"
+import { diffDiagram } from "../src/bpmn/diagram-diff.js"
+import { Bpmn } from "../src/bpmn/index.js"
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -74,15 +74,16 @@ function makeXml(
 }
 
 function diff(beforeXml: string, afterXml: string) {
-	return computeBpmnDiff(Bpmn.parse(beforeXml), Bpmn.parse(afterXml))
+	return diffDiagram(Bpmn.parse(beforeXml), Bpmn.parse(afterXml))
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("computeBpmnDiff", () => {
+describe("diffDiagram", () => {
 	it("reports nothing for two identical models", () => {
 		const result = diff(makeXml(), makeXml())
 		expect(result).toMatchObject({ added: [], removed: [], changed: [], moved: [], total: 0 })
+		expect(result.planes).toEqual([])
 	})
 
 	it("reports an element present only in the later model as added", () => {
@@ -166,5 +167,88 @@ describe("computeBpmnDiff", () => {
 		)
 		expect(result.removed).toEqual(["extra"])
 		expect(result.changed).toEqual(["task"])
+	})
+})
+
+// ── Planes ────────────────────────────────────────────────────────────────────
+
+/**
+ * A model whose collapsed sub-process gets a plane of its own — the shape a
+ * viewer shows one at a time, so a change inside it is invisible until the
+ * reader drills in.
+ */
+function makeSubProcessXml(options: { innerName?: string; extraInner?: boolean } = {}): string {
+	const { innerName = "Inner", extraInner = false } = options
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:startEvent id="start" name="Start"/>
+    <bpmn:subProcess id="sub" name="Sub">
+      <bpmn:task id="inner" name="${innerName}"/>
+      ${extraInner ? '<bpmn:task id="inner2" name="Inner 2"/>' : ""}
+    </bpmn:subProcess>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="diagram1">
+    <bpmndi:BPMNPlane id="plane1" bpmnElement="proc">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start">
+        <dc:Bounds x="100" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sub_di" bpmnElement="sub" isExpanded="false">
+        <dc:Bounds x="200" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="diagram2">
+    <bpmndi:BPMNPlane id="plane2" bpmnElement="sub">
+      <bpmndi:BPMNShape id="inner_di" bpmnElement="inner">
+        <dc:Bounds x="160" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      ${
+				extraInner
+					? `<bpmndi:BPMNShape id="inner2_di" bpmnElement="inner2">
+        <dc:Bounds x="320" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>`
+					: ""
+			}
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+}
+
+describe("diffDiagram — planes", () => {
+	it("attributes a change to the plane that draws it", () => {
+		const result = diff(makeSubProcessXml(), makeSubProcessXml({ innerName: "Renamed" }))
+		expect(result.changed).toEqual(["inner"])
+		expect(result.planes).toEqual([
+			{ id: "sub", added: 0, removed: 0, changed: 1, moved: 0, total: 1 },
+		])
+	})
+
+	it("reports the sub-process plane separately from the root", () => {
+		const result = diff(
+			makeSubProcessXml(),
+			makeSubProcessXml({ innerName: "Renamed", extraInner: true }),
+		)
+		expect(result.total).toBe(3)
+		// `sub` itself changed — it gained a child — and is drawn on the root plane;
+		// the rename and the new task land on the plane `sub` opens.
+		expect(result.planes).toEqual([
+			{ id: "proc", added: 0, removed: 0, changed: 1, moved: 0, total: 1 },
+			{ id: "sub", added: 1, removed: 0, changed: 1, moved: 0, total: 2 },
+		])
+	})
+
+	it("attributes a removal to the plane that used to draw it", () => {
+		const result = diff(makeSubProcessXml({ extraInner: true }), makeSubProcessXml())
+		expect(result.removed).toEqual(["inner2"])
+		expect(result.planes.find((p) => p.id === "sub")?.removed).toBe(1)
+	})
+
+	it("omits planes with no differences", () => {
+		const result = diff(makeSubProcessXml(), makeSubProcessXml({ innerName: "Renamed" }))
+		expect(result.planes.map((p) => p.id)).not.toContain("proc")
 	})
 })

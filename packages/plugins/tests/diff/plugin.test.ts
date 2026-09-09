@@ -48,6 +48,34 @@ function makeXml(options: { taskX?: number; taskName?: string; extraTask?: boole
 </bpmn:definitions>`
 }
 
+/** A model whose collapsed sub-process gets a plane of its own. */
+function makeSubProcessXml(options: { innerName?: string } = {}): string {
+	const { innerName = "Inner" } = options
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:startEvent id="start" name="Start"/>
+    <bpmn:subProcess id="sub" name="Sub">
+      <bpmn:task id="inner" name="${innerName}"/>
+    </bpmn:subProcess>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="d1">
+    <bpmndi:BPMNPlane id="p1" bpmnElement="proc">
+      <bpmndi:BPMNShape id="s1" bpmnElement="start"><dc:Bounds x="100" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s2" bpmnElement="sub" isExpanded="false"><dc:Bounds x="200" y="80" width="100" height="80"/></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="d2">
+    <bpmndi:BPMNPlane id="p2" bpmnElement="sub">
+      <bpmndi:BPMNShape id="s3" bpmnElement="inner"><dc:Bounds x="160" y="80" width="100" height="80"/></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeContainer(): HTMLElement {
@@ -202,6 +230,21 @@ describe("createBpmnDiff", () => {
 	it("says so when there are no changes", () => {
 		const { leftEl } = mountPair(makeXml(), makeXml())
 		expect(leftEl.querySelector(".bpmnkit-diff-legend-title")?.textContent).toBe("No changes")
+	})
+
+	it("says how many differences sit on a plane this canvas is not showing", () => {
+		const { rightEl } = mountPair(makeSubProcessXml(), makeSubProcessXml({ innerName: "Renamed" }))
+		// The canvas opens on the root plane; the rename is inside the collapsed
+		// sub-process, so nothing is marked here and the note is the only signal.
+		expect(markersIn(rightEl)).toHaveLength(0)
+		expect(rightEl.querySelector(".bpmnkit-diff-legend-note")?.textContent).toBe(
+			"1 on other planes",
+		)
+	})
+
+	it("omits the note when every difference is on the visible plane", () => {
+		const { rightEl } = mountPair(makeXml(), makeXml({ taskName: "Renamed" }))
+		expect(rightEl.querySelector(".bpmnkit-diff-legend-note")).toBeNull()
 	})
 
 	it("omits the legend when asked", () => {

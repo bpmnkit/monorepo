@@ -1,19 +1,24 @@
 ---
+"@bpmnkit/core": minor
 "@bpmnkit/plugins": minor
+"@bpmnkit/cli": minor
 ---
 
-New `@bpmnkit/plugins/diff` subpath — a side-by-side visual BPMN diff.
+Visual BPMN diff — a diagram diff, not a model diff.
 
-`createBpmnDiff()` returns a pair of canvas plugins, one per version. Install them on two
-canvases and every element that was added, removed, changed or moved is marked on the side
-that can show it, a legend counts each category, and panning or zooming either canvas moves
-the other.
+`diffDiagram(before, after)` joins `diffSemantics` in `@bpmnkit/core`. The semantic half
+excludes diagram interchange by design, so a task somebody dragged reads there as no change at
+all; `diffDiagram` adds the layout half back as its own `moved` category, computed from DI
+(bounds, waypoints, label placement, and flags such as collapsed/expanded). An element that
+both changed and moved is reported as changed. The result covers only elements carrying DI on
+one side or the other — a changed `targetNamespace` has nothing to draw — and carries a
+per-plane breakdown, since a viewer shows one plane at a time and a change inside a collapsed
+sub-process is otherwise invisible.
 
-The semantic half comes from `diffSemantics` in `@bpmnkit/core`, which excludes diagram
-interchange by design — so a pure layout change reads there as no change at all. The plugin
-adds that half back as its own `moved` category, which is what separates a *diagram* diff
-from a model diff. An element that both changed and moved is reported as changed.
+`@bpmnkit/plugins/diff` renders it: `createBpmnDiff()` returns a pair of canvas plugins, one
+per version. Install them on two canvases and every element is marked on the side that can
+show it, a legend counts each category and names how many differences sit on a plane the
+canvas is not currently showing, and panning or zooming either canvas moves the other.
 
-`computeBpmnDiff(before, after)` is exported on its own for callers that want the element
-ids without a canvas. Its result covers only elements carrying diagram interchange on one
-side or the other, so the counts match what is actually drawn.
+`casen diff bpmn <before> <after>` reports the same thing in a terminal, naming elements rather
+than printing bare ids, with `--format json`, `--ascii`, and `--exit-code` to gate a pipeline.

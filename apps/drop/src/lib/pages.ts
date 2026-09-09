@@ -212,6 +212,9 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 dialog label{display:block;font-size:14px;font-weight:600;margin:12px 0 4px}
 dialog select,dialog textarea,dialog input{width:100%;padding:8px 10px;border:1px solid var(--bpmnkit-border,#d0d0e8);border-radius:9px;background:var(--bpmnkit-bg,#f4f4f8);color:var(--bpmnkit-fg,#1a1a2e);font:inherit}
 .admin-table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}
+.diff-stage{display:flex}
+.diff-pane{flex:1;min-width:0;position:relative}
+.diff-pane+.diff-pane{border-left:1px solid var(--bpmnkit-border,#d0d0e8)}
 .admin-table th,.admin-table td{text-align:left;padding:8px;border-bottom:1px solid var(--bpmnkit-border,#d0d0e8);vertical-align:top}
 `
 
@@ -432,6 +435,52 @@ ${reportDialog()}`
 			},
 		},
 		scriptSrc: "/drop/assets/viewer.js",
+	})
+}
+
+/**
+ * Two drops compared side by side. Both file lists are BPMN-only — the caller
+ * filters — and each side gets a picker so a multi-file drop can be aimed.
+ */
+export function diffPage(aId: string, bId: string, aFiles: FileInfo[], bFiles: FileInfo[]): string {
+	const options = (files: FileInfo[]): string =>
+		files
+			.map((f, i) => `<option value="${i}">${escapeHtml(f.name || f.filename)}</option>`)
+			.join("")
+
+	const main = `<div class="ed-topbar">
+	<div class="ed-tools" style="margin-right:auto">
+		<select id="leftPick" class="btn" aria-label="Earlier diagram">${options(aFiles)}</select>
+		<span class="dot">&rarr;</span>
+		<select id="rightPick" class="btn" aria-label="Later diagram">${options(bFiles)}</select>
+	</div>
+	<div class="ed-tools">
+		<span class="ed-info" id="diffSummary">Comparing&hellip;</span>
+		<a class="btn" href="/drop/${escapeHtml(aId)}">Open left</a>
+		<a class="btn" href="/drop/${escapeHtml(bId)}">Open right</a>
+		<a class="ed-brand" href="/drop">BPMN Kit</a>
+	</div>
+</div>
+<div class="stage diff-stage">
+	<div id="leftPane" class="viewer diff-pane"><div class="viewer-msg">Loading&hellip;</div></div>
+	<div id="rightPane" class="viewer diff-pane"><div class="viewer-msg">Loading&hellip;</div></div>
+</div>`
+
+	return shell({
+		title: "Compare diagrams — BPMN Kit Drop",
+		description: "Two shared BPMN diagrams compared side by side on BPMN Kit Drop.",
+		main,
+		bodyClass: "share",
+		hideTopbar: true,
+		noindex: true,
+		bootstrap: {
+			id: "diff-data",
+			data: {
+				left: { shareId: aId, files: aFiles.map((f) => f.filename) },
+				right: { shareId: bId, files: bFiles.map((f) => f.filename) },
+			},
+		},
+		scriptSrc: "/drop/assets/diff.js",
 	})
 }
 
