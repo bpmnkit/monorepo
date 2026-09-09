@@ -1,5 +1,41 @@
 # Progress
 
+## 2026-09-09 — What the Miragon modeler solved that we have not
+
+`doc/miragon-bpmn-modeler-comparison.md` studies [Miragon/bpmn-modeler](https://github.com/Miragon/bpmn-modeler),
+the Apache-2.0 monorepo behind the `miragon-gmbh.vs-code-bpmn-modeler` Marketplace extension,
+and answers two questions: what is worth adapting, and does a BPMN Kit VS Code extension make
+sense.
+
+It is the mirror image of this repo — a bpmn.io *integration* (bpmn-js, dmn-js, form-js,
+bpmnlint, bpmn-js-differ) whose own 14 libs are host wiring, against our zero-dependency
+reimplementation of the whole stack. So nothing is liftable; the value is in which problems
+they found worth solving across three hosts (VS Code, Theia, IntelliJ) and 29 ADRs.
+
+Five Tier-1 gaps, ranked by value per unit of work: **element templates by convention**
+(`@bpmnkit/connectors` understands the Zeebe template schema but can only load its own
+generated catalogue — a user's `.camunda/element-templates/` never gets read, which is the
+most common real Camunda 8 need we cannot serve); a **visual BPMN diff** (nothing renders one,
+though `semantic-hash.ts` and `@bpmnkit/canvas` are both already in place); the
+**View/Design/Implement invariant** that opening an engine-neutral model must never stamp an
+execution platform on it; **keyboard flow navigation**; and **go-to-reference** generalised out
+of what `apps/drop` already does within a drop. Camunda 7 features, the clipboard bridge and
+the template marketplace are argued as explicitly not worth adapting.
+
+On the extension: **yes, but scoped read-and-review first.** The prerequisites are unusually
+well met — `@bpmnkit/canvas` is already framework-agnostic plain DOM with CSS-variable
+theming, `apps/drop` proves the stack bundles to browser ESM and `apps/desktop` proves editor
+plus plugins compose into a host shell, so this is a third host over two existing proofs. What
+is *not* solved anywhere yet is VS Code's custom-editor document protocol (dirty state, hot
+exit, external edits), which is why Phase 1 is read-only editors plus the diff in Source
+Control plus `casen lint` in the Problems panel, and editing waits. The recommendation is to
+adopt Miragon's port pattern before writing any of it — every feature a plugin talking to an
+injected port, the extension contributing host wiring only — since studio, desktop and drop
+would each benefit from the same discipline.
+
+Analysis only — no code changes, and no roadmap items added.
+
+
 ## 2026-09-09 — The model-fidelity work gets the release notes it never wrote
 
 #161 shipped 104 files and no changeset, so none of it would have been published. Five
