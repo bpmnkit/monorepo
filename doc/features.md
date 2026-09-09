@@ -1,5 +1,38 @@
 # Features
 
+## Keyboard navigation, go-to-reference, and the port pattern (2026-09-09)
+
+Phase 4 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the
+phase that establishes how a plugin talks to whatever application is hosting it.
+
+**`@bpmnkit/plugins/flow-navigation`** adds the traversal keyboard modelling was missing. Tab
+follows a sequence flow out, Shift+Tab follows it back, and at a fan-out Tab selects between the
+outgoing flows rather than guessing which branch was meant; Enter follows the choice, or drills
+into a collapsed sub-process, and `u` drills back out. The canvas already binds Tab to document
+order, so the plugin intercepts in the capture phase and stops the event **only when it moved** —
+an element with no outgoing flow still falls through to that walk instead of trapping the user.
+
+**`@bpmnkit/plugins/model-navigation`** jumps from a Call Activity to its process, a Business
+Rule Task to its decision, a User Task to its form — reading both the Camunda 8 extension shape
+and the Camunda 7 attribute one. Following a reference means opening a file, and a canvas has no
+idea what a file is, so the plugin does the model half and takes the rest as an injected
+`ReferencePort`. Availability is optimistic and then corrected: a link shows as soon as the
+model states it and is withdrawn only once the host says it does not resolve.
+
+**[`doc/port-pattern.md`](port-pattern.md)** writes the pattern down — the four rules, the ports
+already in this repo, the two shapes that look like ports and are not, and where the seam sits
+when a plugin produces data a host forwards.
+
+**`CanvasApi` gains `getPlanes()` and `showPlane()`.** `BpmnCanvas` had both and plugins could
+not reach them, so no plugin could drill into a sub-process.
+
+**A serializer fix.** Verifying that an engine-neutral model stays engine-neutral turned up the
+opposite defect: the writer emitted only the namespaces a model was parsed with, so a neutral
+diagram given a `zeebe:taskDefinition` exported a prefix bound to nothing — not
+namespace-well-formed. Extension prefixes the document uses are now declared; ones the model
+already bound anywhere are left alone. The structural prefixes the serializer emits itself are a
+separate gap, recorded on the roadmap.
+
 ## Static analysis on the canvas (2026-09-09)
 
 `casen lint` has had five categories of rules built on `packages/core/src/bpmn/optimize/` for a

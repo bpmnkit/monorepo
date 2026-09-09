@@ -1,5 +1,57 @@
 # Progress
 
+## 2026-09-09 — The invariant held; the thing beside it did not
+
+Phase 4 complete: keyboard flow traversal, go-to-reference behind a port, the port pattern
+written down, and the engine-neutrality invariant locked in.
+
+**Item 1 asked me to stop a bug that was not there.** The roadmap said opening an engine-neutral
+model must never stamp an execution platform on it, and warned we were exposed. We were not:
+parse → export, parse → edit → export, and `createEmptyDefinitions` all leave the document
+alone. What the verification *did* turn up was the mirror-image defect. Give a neutral model a
+`zeebe:taskDefinition` — which is exactly what applying a connector template does — and the
+writer emitted `<zeebe:taskDefinition/>` with no `xmlns:zeebe`, because it only ever declared
+the namespaces the model was parsed with. That document is not namespace-well-formed and a
+conforming reader may refuse it. The serializer now declares extension prefixes the document
+uses, and leaves alone any the model already bound *anywhere* — the first attempt looked only at
+the root and hoisted a duplicate `xsi` declaration out of a nested element, which the round-trip
+fidelity tests caught immediately.
+
+The repair is scoped to extension namespaces. Widening it to the structural ones surfaced a
+second, older gap — `applyAutoLayout` on a model parsed without a diagram produces DI whose
+prefixes nothing declares — and every way of fixing *that* collides with a contract
+`semanticHash` or the `writeBpmn` boundary holds constant on purpose. That is a decision to take
+deliberately, not in passing, so it is recorded on the roadmap and left alone. Seven tests cover
+both directions of the invariant and the fix.
+
+**A capture-phase assumption, checked rather than assumed.** Flow navigation has to intercept
+Tab, which the canvas already binds to document order — and both listeners sit on the same node
+with the canvas registered first. My reading of the DOM spec said at-target listeners run in
+registration order, which would have made the whole design unworkable. Rather than argue with
+myself I ran it: in happy-dom *and* in real Chromium, a capture listener runs first regardless of
+registration order, and `stopPropagation()` there suppresses the bubble listener beside it. The
+design is sound; the source now says so and names where it was verified.
+
+**The tests were right and still missed it.** Both plugins tracked `element:click` to follow the
+user, and all 39 unit tests passed — because they mount `BpmnCanvas`, which emits it. The studio
+mounts `BpmnEditor`, which emits `editor:select` instead. A browser run caught the cursor stuck
+on the start event; the unit tests never could. Both plugins now follow selection too, ignoring a
+multi-selection since it has no single place to continue from, and there are regression tests for
+the path the browser exercised.
+
+**`CanvasApi` gained `getPlanes()` and `showPlane()`.** `BpmnCanvas` had both and never exposed
+them, so no plugin could drill into a sub-process. The editor implements them honestly rather
+than pretending — it works on one plane and says so, which is what makes flow navigation decline
+to drill there instead of appearing to and doing nothing.
+
+`doc/port-pattern.md` is the phase's real deliverable: four rules, the ports already in the repo,
+the two shapes that look like ports and are not, and the note that anything a host forwards must
+be plain data — the reason `LintDiagnostic` exists at all.
+
+49 new tests. Verified in the browser: in the studio, the call activity pointing at a process the
+workspace has is marked and the one pointing at a missing process is withdrawn by the port;
+clicking a gateway and pressing Tab selects its first outgoing flow.
+
 ## 2026-09-09 — Lint on the canvas, and a rule chosen by measurement
 
 Phase 3 complete: markers per element, a counting control that steps through findings, a

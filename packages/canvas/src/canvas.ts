@@ -932,6 +932,8 @@ export class BpmnCanvas {
 			zoom: (scaleOrFit, center) => this.zoom(scaleOrFit, center),
 			viewbox: () => this.viewbox(),
 			scrollToElement: (id) => this.scrollToElement(id),
+			getPlanes: () => this.getPlanes(),
+			showPlane: (planeElementId) => this.showPlane(planeElementId),
 			getAbsoluteBBox: (id) => this.getAbsoluteBBox(id),
 			on: (event, handler) => this.on(event, handler),
 			emit: (event, ...args) => this._emit(event, ...args),

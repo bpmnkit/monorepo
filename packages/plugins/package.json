@@ -16,10 +16,6 @@
 			"import": "./dist/command-palette/index.js",
 			"types": "./dist/command-palette/index.d.ts"
 		},
-		"./connector-catalog": {
-			"import": "./dist/connector-catalog/index.js",
-			"types": "./dist/connector-catalog/index.d.ts"
-		},
 		"./command-palette-editor": {
 			"import": "./dist/command-palette-editor/index.js",
 			"types": "./dist/command-palette-editor/index.d.ts"
@@ -32,9 +28,9 @@
 			"import": "./dist/config-panel-bpmn/index.js",
 			"types": "./dist/config-panel-bpmn/index.d.ts"
 		},
-		"./element-docs": {
-			"import": "./dist/element-docs/index.js",
-			"types": "./dist/element-docs/index.d.ts"
+		"./connector-catalog": {
+			"import": "./dist/connector-catalog/index.js",
+			"types": "./dist/connector-catalog/index.d.ts"
 		},
 		"./deploy": {
 			"import": "./dist/deploy/index.js",
@@ -52,9 +48,17 @@
 			"import": "./dist/dmn-viewer/index.js",
 			"types": "./dist/dmn-viewer/index.d.ts"
 		},
+		"./element-docs": {
+			"import": "./dist/element-docs/index.js",
+			"types": "./dist/element-docs/index.d.ts"
+		},
 		"./feel-playground": {
 			"import": "./dist/feel-playground/index.js",
 			"types": "./dist/feel-playground/index.d.ts"
+		},
+		"./flow-navigation": {
+			"import": "./dist/flow-navigation/index.js",
+			"types": "./dist/flow-navigation/index.d.ts"
 		},
 		"./form-editor": {
 			"import": "./dist/form-editor/index.js",
@@ -72,6 +76,10 @@
 			"import": "./dist/lint/index.js",
 			"types": "./dist/lint/index.d.ts"
 		},
+		"./live-mode": {
+			"import": "./dist/live-mode/index.js",
+			"types": "./dist/live-mode/index.d.ts"
+		},
 		"./main-menu": {
 			"import": "./dist/main-menu/index.js",
 			"types": "./dist/main-menu/index.d.ts"
@@ -79,6 +87,10 @@
 		"./minimap": {
 			"import": "./dist/minimap/index.js",
 			"types": "./dist/minimap/index.d.ts"
+		},
+		"./model-navigation": {
+			"import": "./dist/model-navigation/index.js",
+			"types": "./dist/model-navigation/index.d.ts"
 		},
 		"./optimize": {
 			"import": "./dist/optimize/index.js",
@@ -104,6 +116,10 @@
 			"import": "./dist/storage-tabs-bridge/index.js",
 			"types": "./dist/storage-tabs-bridge/index.d.ts"
 		},
+		"./story-view": {
+			"import": "./dist/story-view/index.js",
+			"types": "./dist/story-view/index.d.ts"
+		},
 		"./tabs": {
 			"import": "./dist/tabs/index.js",
 			"types": "./dist/tabs/index.d.ts"
@@ -115,14 +131,6 @@
 		"./variable-flow": {
 			"import": "./dist/variable-flow/index.js",
 			"types": "./dist/variable-flow/index.d.ts"
-		},
-		"./live-mode": {
-			"import": "./dist/live-mode/index.js",
-			"types": "./dist/live-mode/index.d.ts"
-		},
-		"./story-view": {
-			"import": "./dist/story-view/index.js",
-			"types": "./dist/story-view/index.d.ts"
 		},
 		"./watermark": {
 			"import": "./dist/watermark/index.js",

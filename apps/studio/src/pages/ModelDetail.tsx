@@ -8,7 +8,9 @@ import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel"
 import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn"
 import { createConnectorCatalogPlugin } from "@bpmnkit/plugins/connector-catalog"
 import { DmnEditor } from "@bpmnkit/plugins/dmn-editor"
+import { createFlowNavigationPlugin } from "@bpmnkit/plugins/flow-navigation"
 import { createLintPlugin } from "@bpmnkit/plugins/lint"
+import { createModelNavigationPlugin } from "@bpmnkit/plugins/model-navigation"
 import { type PresentationApi, createPresentationPlugin } from "@bpmnkit/plugins/presentation"
 import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
 import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
@@ -892,6 +894,26 @@ export function ModelDetail() {
 		// Static analysis on the canvas: a marker per offending element and a
 		// control that counts them and steps through them.
 		const lint = createLintPlugin()
+		// Keyboard traversal along sequence flows.
+		const flowNavigation = createFlowNavigationPlugin()
+		// Go-to-reference. The plugin reads what an element points at; this port
+		// is the studio's half — a reference resolves when a model in the
+		// workspace declares that process id, and opening it is a route change.
+		const findReferenced = (ref: string) =>
+			useModelsStore.getState().models.find((m) => m.processDefinitionId === ref || m.name === ref)
+		const modelNavigation = createModelNavigationPlugin({
+			port: {
+				open(reference) {
+					const target = findReferenced(reference.ref)
+					if (target !== undefined) navigate(`/models/${target.id}`)
+				},
+				resolve(references) {
+					return references
+						.filter((reference) => findReferenced(reference.ref) !== undefined)
+						.map((reference) => reference.elementId)
+				},
+			},
+		})
 		// FS-mode scenario callbacks — persist to sidecar file instead of IndexedDB
 		const fsAdapter = getFsAdapter()
 		const modelPath = model.path
@@ -1098,6 +1120,8 @@ export function ModelDetail() {
 				tokenHighlight,
 				processRunner,
 				lint,
+				flowNavigation,
+				modelNavigation,
 			],
 		})
 		// XML view button — placed in bottom-left HUD panel

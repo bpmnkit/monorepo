@@ -374,24 +374,49 @@ no platform is stamped.
 overlaps this plugin's markers. Nothing installs it and it is a side-panel workflow rather than
 canvas decoration, so it was left alone; installing both would double the rings.
 
-### Phase 4 — Editor invariants and navigation
+### Phase 4 — Editor invariants and navigation ✅
 
 Small, self-contained, and collectively what makes the editor feel like a tool rather than a
 canvas. This phase also establishes the **port pattern** every later host depends on: a feature
 is a plugin talking to an injected port, never to a host API.
 
-- [ ] **Engine-neutral models stay engine-neutral** — opening a model with no execution platform
-      must never stamp one on. Today we are exposed to silent contamination of a diagram authored
-      elsewhere. Adopt as an invariant in `@bpmnkit/editor` with a regression test, whether or not
-      a View/Design/Implement mode strip is ever built
-- [ ] Keyboard flow navigation: Tab / Shift+Tab along sequence flows, cycle the outgoing flows at
-      a fan-out, Enter to follow, drill in and out of sub-processes. Extends the keyboard and ARIA
-      commitment `@bpmnkit/canvas` already advertises
-- [ ] Go-to-reference through an injected resolver port — Call Activity → process, Business Rule
-      Task → DMN, User Task → form. Generalises what `apps/drop` already does within a drop; the
-      action hides itself when the target does not resolve
-- [ ] Document the port pattern once, in `doc/`, so studio, desktop, drop and any extension wire
-      features the same way
+- [x] **Engine-neutral models stay engine-neutral.** The invariant held already — parse → export,
+      parse → edit → export, and a new diagram all leave the document alone — and is now covered
+      in both directions: a neutral model never gains a platform, one that names an engine keeps
+      it verbatim
+- [x] **Serializer fix, found while verifying that.** The writer emitted only the namespaces a
+      model was parsed with, so a neutral diagram given a `zeebe:taskDefinition` exported a prefix
+      bound to nothing — not namespace-well-formed. Prefixes the document uses are now declared;
+      ones the model already bound are left alone
+- [x] `@bpmnkit/plugins/flow-navigation` — Tab / Shift+Tab along sequence flows, a choice rather
+      than a guess at a fan-out, Enter to follow or drill in, `u` to drill out. Intercepts in the
+      capture phase and only swallows the key when it moved, so a dead end falls through to the
+      canvas's own document-order Tab
+- [x] `@bpmnkit/plugins/model-navigation` — Call Activity → process, Business Rule Task →
+      decision, User Task → form, in both the Camunda 8 extension shape and the Camunda 7
+      attribute one, through an injected `ReferencePort`. Optimistic then corrected; a resolve
+      that lands after the diagram changed is discarded
+- [x] `CanvasApi` gains `getPlanes()` / `showPlane()` — `BpmnCanvas` had both and no plugin could
+      reach them, so none could drill into a sub-process
+- [x] [`doc/port-pattern.md`](port-pattern.md) — the four rules, the ports already in this repo,
+      the two shapes that are not ports, and where the seam sits for data a host forwards
+- [x] Both plugins installed in the studio editor
+
+**Left open, deliberately:**
+
+- [ ] A model that gains *diagram interchange* it never declared namespaces for still exports
+      `bpmndi`/`dc`/`di` prefixes bound to nothing — `applyAutoLayout` on a model parsed without a
+      diagram is the reachable case. The extension-prefix repair above deliberately excludes the
+      structural prefixes: fixing them means either the serializer changing the model a round trip
+      produces, or `applyAutoLayout` declaring them, and both collide with contracts
+      `semanticHash` and the `writeBpmn` boundary hold constant on purpose. It wants its own
+      decision, not a fix in passing
+
+**Two things worth carrying forward.** A capture-phase listener runs before a bubble listener on
+the same node regardless of registration order, and `stopPropagation()` there suppresses it —
+verified in Chromium, not assumed, because the interception design depends on it. And unit tests
+that mount `BpmnCanvas` do not exercise `BpmnEditor`: the editor reports `editor:select` where the
+viewer reports `element:click`, and only a browser run caught the difference.
 
 ### Phase 5 — VS Code extension, read and review
 

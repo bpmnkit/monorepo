@@ -693,6 +693,8 @@ npm install @bpmnkit/plugins
 | \`/zoom-controls\` | \`createZoomControlsPlugin()\` | On-canvas +/− zoom buttons |
 | \`/diff\` | \`createBpmnDiff(options)\` | Side-by-side visual diff of two diagrams |
 | \`/lint\` | \`createLintPlugin(options)\` | Static-analysis markers, a counting control, and a report for a host |
+| \`/flow-navigation\` | \`createFlowNavigationPlugin(options)\` | Tab/Shift+Tab traversal along sequence flows |
+| \`/model-navigation\` | \`createModelNavigationPlugin(options)\` | Go-to-reference through an injected host port |
 
 ### File Management
 
