@@ -1,5 +1,13 @@
 # @bpmnkit/editor
 
+## 0.0.34
+
+### Patch Changes
+
+- Updated dependencies [00a65f5]
+  - @bpmnkit/core@0.2.0
+  - @bpmnkit/canvas@0.0.31
+
 ## 0.0.33
 
 ### Patch Changes

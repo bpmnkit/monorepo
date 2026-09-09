@@ -1,5 +1,36 @@
 # @bpmnkit/ai-server
 
+## 0.1.0
+
+### Minor Changes
+
+- 00a65f5: The AI edit path applies operations to the full model instead of a compact projection.
+  - `proxy`: `POST /improve` accepts `{ xml }` — the whole model — and applies the generated
+    operations to it, so pools, lanes, data wiring and `ioMapping` detail survive an edit. The
+    prompt still receives the compact view, which is what it is for. The older `{ context }`
+    shape keeps working for clients that have not been updated, with a warning naming what it
+    cannot describe. Operations that reference a missing element are reported over the stream as
+    a `problems` event rather than skipped in silence.
+  - `plugins`: the AI bridge panel sends the exported XML rather than a compact diagram. It
+    therefore needs a proxy that understands `{ xml }`.
+
+### Patch Changes
+
+- 00a65f5: Four packaging bugs found by opening the published tarballs and installing them.
+  - `proxy`: declared `exports["."].types` while `files` listed only `dist/**/*.js`, so the
+    declarations were built and never packed. It now ships its `.d.ts` files.
+  - `plugins`: `dist/token-highlight/index.js` imported `./css` without an extension, which Node
+    ESM does not resolve — `@bpmnkit/plugins/token-highlight` threw on import, and
+    `@bpmnkit/operate` threw with it.
+  - `casen-worker-http` and `casen-worker-ai`: import `@bpmnkit/cli-sdk` and declared no
+    dependencies at all, so npm never installed it and importing them failed.
+  - `casen-report`: the same undeclared `@bpmnkit/cli-sdk` in its `.d.ts`, plus an undeclared
+    `@bpmnkit/api`, so its published types did not resolve.
+
+- Updated dependencies [00a65f5]
+  - @bpmnkit/core@0.2.0
+  - @bpmnkit/engine@0.1.31
+
 ## 0.0.33
 
 ### Patch Changes
