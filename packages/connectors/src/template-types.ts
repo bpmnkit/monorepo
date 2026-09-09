@@ -83,6 +83,15 @@ export type TemplateBinding =
 			type: "zeebe:adHoc"
 			property: "outputCollection" | "outputElement" | "activeElementsCollection"
 	  }
+	/**
+	 * Inbound-connector bindings, and the linked-resource binding used by RPA
+	 * templates. The bundled catalogue uses all three, so they belong in the
+	 * union — but `applyElementTemplate` does not write them yet, and
+	 * `validateElementTemplate` warns when a template depends on one.
+	 */
+	| { type: "bpmn:Message#property"; name: string }
+	| { type: "bpmn:Message#zeebe:subscription#property"; name: string }
+	| { type: "zeebe:linkedResource"; property: string; linkName: string }
 
 /** Condition controlling whether a property is shown in the UI. */
 export type TemplateCondition =

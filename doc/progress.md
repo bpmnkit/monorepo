@@ -1,5 +1,51 @@
 # Progress
 
+## 2026-09-09 — A project's own connectors, and two things the tests found
+
+Phase 2 complete: `.camunda/element-templates/*.json` is discovered by convention, validated,
+merged into the catalogue with the workspace winning, checkable in CI, and reachable from a
+browser host that has no filesystem.
+
+The shape that matters is the split between two walks. `discoverElementTemplates` climbs from a
+diagram to the project root — that is *resolution*, and nearest wins.
+`collectElementTemplates` descends from the root — that is *validation*, and order is
+irrelevant. Conflating them would have produced a CI check that passed a project whose broken
+template sat one folder down, which is exactly what the first end-to-end run of
+`casen connector validate` did before the second walk existed.
+
+Validation is hand-rolled rather than a JSON-schema engine. The dependency policy pushed that
+way, but the messages settle it: `properties[3].binding.type: unknown binding type
+"zeebe:nonsense"` is worth more than "must match exactly one schema in oneOf".
+
+**Two findings, both from the test that validates the bundled catalogue against the new
+validator** — a test written on the theory that if the validator rejects the package's own
+templates, one of the two is wrong:
+
+- **The `TemplateBinding` union was lying.** The bundle uses `bpmn:Message#property`,
+  `bpmn:Message#zeebe:subscription#property` and `zeebe:linkedResource` across 98 properties,
+  and the union admitted none of them — nor does `applyElementTemplate` write them. The union
+  now matches what ships, and a new warnings channel says so out loud instead of letting such a
+  template apply to nothing. Making inbound bindings actually apply is a separate piece of work
+  and is not done here.
+- **A rule I invented was wrong.** I added a duplicate-property-id check on the theory that two
+  properties writing the same key is a silent overwrite. HubSpot.v1 has four properties keyed
+  `operationId`, each guarded by a mutually exclusive condition — the documented Camunda pattern
+  for one logical field with per-resource variants. The rule was removed rather than narrowed:
+  it is not in the schema, it failed on first contact with real data, and the narrowed version
+  would guard a case I have no evidence occurs.
+
+A third fix came from reviewing my own test file rather than from a run: three of the CLI tests
+asserted nothing useful, because the harness threw away captured output whenever the command
+threw — and the failure path is the interesting one, since it prints findings for a human before
+throwing the exit signal for a pipeline. The harness now returns both.
+
+**Known limitation.** A browser host registers one merged set for the whole project (deeper
+directories win, by the breadth-first order), which is not the same as per-file resolution. The
+CLI resolves per file correctly; the editor does not yet. Recorded on the roadmap.
+
+55 new tests. Whole monorepo builds, typechecks and passes; `@bpmnkit/connectors` ships its new
+`/node` subpath through the tarball gate.
+
 ## 2026-09-09 — The diff reaches the product
 
 Phase 1 of the IDE-resident modeling roadmap, complete: the diff engine that landed this morning

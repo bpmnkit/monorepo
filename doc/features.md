@@ -1,5 +1,41 @@
 # Features
 
+## Element templates by convention (2026-09-09)
+
+Drop element templates in `.camunda/element-templates/` and the tools pick them up — no project
+configuration, no registration step. Phase 2 of
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md), and the largest
+capability gap it found: `@bpmnkit/connectors` understood the Zeebe element-template schema but
+could only ever load its own generated catalogue, so a team's in-house connectors could not
+reach the editor at all.
+
+**Discovery** (`@bpmnkit/connectors/node`) walks up from a diagram to the project root,
+collecting templates at every level. Nearest wins: a template beside the diagram overrides one
+at the project root, which overrides the bundled version of the same id. The folder name follows
+a `configFolder` setting rather than being hard-coded. `collectElementTemplates({ root })` is
+the opposite walk — the one a CI check wants, since a project whose broken template sits beside
+a sub-folder's diagrams would otherwise pass a check that only read the root.
+
+**Validation** is structural rather than a JSON-schema engine: the rules the published schema
+enforces, checked against the shapes this package already declares, so a message names
+`properties[3].binding.type` instead of "must match exactly one schema in oneOf". Every problem
+is reported at once, a rejected template is named and skipped, and one bad file never costs the
+good ones beside it. A separate warnings channel flags a binding the schema allows but
+`applyElementTemplate` does not write yet, so a template cannot fail silently at apply time.
+
+**`casen connector validate`** runs the same check in CI — a whole project or one `.json` file,
+`--format json`, non-zero exit on a problem, warnings that do not fail. `list`, `search` and
+`show` now include the project's own templates.
+
+**The browser path** does not assume a filesystem. The proxy serves `GET /element-templates?root=…`
+and the connector-catalog plugin takes `workspaceRoot` (fetch via proxy) or `workspaceTemplates`
+(supplied directly), registering them after the built-ins so a project's version wins. The
+studio passes its active project's path.
+
+`TemplateBinding` also gains the three binding types the bundled catalogue uses across 98
+properties but the union did not admit: `bpmn:Message#property`,
+`bpmn:Message#zeebe:subscription#property`, and `zeebe:linkedResource`.
+
 ## Visual BPMN diff — engine, CLI, studio and drop (2026-09-09)
 
 Two versions of a diagram compared side by side, with every element marked added, removed,

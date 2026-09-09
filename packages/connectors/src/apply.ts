@@ -86,6 +86,25 @@ function resolveValues(
 	return resolved
 }
 
+/**
+ * The binding types `applyBinding` below writes.
+ *
+ * Declared beside the switch so the two are edited together: anything the
+ * switch gains belongs here, and `validateElementTemplate` warns about every
+ * binding that is valid but absent from this set — otherwise a template using
+ * one would apply silently and do nothing.
+ */
+export const APPLIED_BINDING_TYPES: ReadonlySet<string> = new Set([
+	"zeebe:input",
+	"zeebe:output",
+	"zeebe:taskHeader",
+	"zeebe:taskDefinition",
+	"zeebe:taskDefinition:type",
+	"zeebe:property",
+	"zeebe:adHoc",
+	"property",
+])
+
 function applyBinding(binding: TemplateBinding, value: string, accum: Accumulator): void {
 	switch (binding.type) {
 		case "zeebe:input":

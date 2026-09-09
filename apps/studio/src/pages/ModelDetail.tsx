@@ -48,6 +48,7 @@ import { getFsAdapter } from "../storage/index.js"
 import type { ModelFile } from "../storage/types.js"
 import { useClusterStore } from "../stores/cluster.js"
 import { useModelsStore } from "../stores/models.js"
+import { useProjectsStore } from "../stores/projects.js"
 import { useThemeStore } from "../stores/theme.js"
 import { toast } from "../stores/toast.js"
 import { useUiStore } from "../stores/ui.js"
@@ -1053,8 +1054,18 @@ export function ModelDetail() {
 			bridgePalette,
 			() => editorRef.current,
 		)
+		// In FS mode the project's own .camunda/element-templates/ are discovered by
+		// the proxy and handed over — the browser cannot walk a filesystem itself.
+		const projectStore = useProjectsStore.getState()
+		const workspaceRoot =
+			projectStore.projects.find((project) => project.id === projectStore.activeProjectId)?.path ??
+			""
 		const connectorCatalog = createConnectorCatalogPlugin(configPanelBpmn, bridgePalette, {
 			proxyUrl: useClusterStore.getState().proxyUrl,
+			workspaceRoot,
+			onWorkspaceProblem: (problem) => {
+				console.warn(`[element-templates] ${problem.file} ${problem.path}: ${problem.message}`)
+			},
 		})
 		const presentation = createPresentationPlugin({
 			palette: bridgePalette,

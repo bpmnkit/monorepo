@@ -130,19 +130,59 @@ function summarize(template: ElementTemplate): ConnectorSummary {
 	}
 }
 
+/**
+ * Templates a host has registered on top of the bundled catalogue — a project's
+ * own `.camunda/element-templates/`, or anything else it has that the bundle
+ * does not.
+ *
+ * Kept separate rather than merged into one array so the bundle stays the
+ * constant it is declared to be, and so `clearRegisteredTemplates()` is exact.
+ */
+const registered = new Map<string, ElementTemplate>()
+
 let cachedSummaries: ConnectorSummary[] | undefined
 
-/** All bundled Camunda 8 out-of-the-box connector templates, reduced to a compact summary. */
+/**
+ * Adds templates to the catalogue, replacing any bundled template with the same
+ * id.
+ *
+ * The workspace wins deliberately: a project that ships its own version of a
+ * connector means it, and the bundle is the fallback. Registering the same id
+ * twice keeps the later one, so a nearer directory can override a further one.
+ *
+ * @param templates - Validated templates. Nothing is checked here; run
+ *   `validateElementTemplate` (or `readTemplateDocument`) at the boundary where
+ *   the JSON was read, so a bad file is reported against its own path.
+ */
+export function registerElementTemplates(templates: readonly ElementTemplate[]): void {
+	for (const template of templates) registered.set(template.id, template)
+	cachedSummaries = undefined
+}
+
+/** Drops every registered template, leaving only the bundled catalogue. */
+export function clearRegisteredTemplates(): void {
+	registered.clear()
+	cachedSummaries = undefined
+}
+
+/** The bundled templates plus registered ones, the latter winning on id. */
+function allTemplates(): ElementTemplate[] {
+	if (registered.size === 0) return CAMUNDA_CONNECTOR_TEMPLATES
+	const bundled = CAMUNDA_CONNECTOR_TEMPLATES.filter((t) => !registered.has(t.id))
+	return [...bundled, ...registered.values()]
+}
+
+/** Every connector template — bundled and registered — as a compact summary. */
 export function listConnectors(): ConnectorSummary[] {
 	if (!cachedSummaries) {
-		cachedSummaries = CAMUNDA_CONNECTOR_TEMPLATES.map(summarize)
+		cachedSummaries = allTemplates().map(summarize)
 	}
 	return cachedSummaries
 }
 
-/** The full element template for a given template id, if bundled. */
+/** The full element template for a given template id, registered or bundled. */
 export function getTemplate(id: string): ElementTemplate | undefined {
-	return CAMUNDA_CONNECTOR_TEMPLATES.find((t) => t.id === id)
+	return registered.get(id) ?? CAMUNDA_CONNECTOR_TEMPLATES.find((t) => t.id === id)
 }
 
 /** Tie-break preference when two templates score equally — outbound "do this" connectors are the common case. */

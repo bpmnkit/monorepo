@@ -3,6 +3,8 @@ export {
 	searchConnectors,
 	getTemplate,
 	propertyKey,
+	registerElementTemplates,
+	clearRegisteredTemplates,
 } from "./catalog.js"
 export type { ConnectorSummary, ConnectorInputSpec, ConnectorDirection } from "./catalog.js"
 export { applyConnectorTemplate, applyElementTemplate } from "./apply.js"
@@ -15,3 +17,9 @@ export type {
 	TemplateBinding,
 	TemplateCondition,
 } from "./template-types.js"
+export { validateElementTemplate, readTemplateDocument } from "./validate.js"
+export type {
+	TemplateProblem,
+	TemplateValidation,
+	TemplateDocumentResult,
+} from "./validate.js"

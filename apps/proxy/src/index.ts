@@ -15,6 +15,7 @@ import http from "node:http"
 import { homedir, tmpdir } from "node:os"
 import { basename, dirname, extname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { collectElementTemplates } from "@bpmnkit/connectors/node"
 import { Bpmn, applyBpmnOperations, compactify, expand, optimize } from "@bpmnkit/core"
 import type { BpmnDefinitions, BpmnOperation, CompactDiagram } from "@bpmnkit/core"
 import { createClientFromProfile } from "@bpmnkit/profiles"
@@ -313,6 +314,26 @@ const server = http.createServer(async (req, res) => {
 	if (url.pathname === "/worker-templates" && req.method === "GET") {
 		res.writeHead(200, { "Content-Type": "application/json" })
 		res.end(JSON.stringify(WORKER_TEMPLATES))
+		return
+	}
+
+	// ── GET /element-templates?root=<abs> — a project's own templates ─────────
+	// The browser cannot walk a filesystem, so the discovery an editor needs
+	// happens here and the result is handed over. Same `?root=` convention the
+	// /fs/ routes use.
+	if (url.pathname === "/element-templates" && req.method === "GET") {
+		const root = expandHome(url.searchParams.get("root") ?? "")
+		if (root === "" || !existsSync(root)) {
+			res.writeHead(400, { "Content-Type": "application/json" })
+			res.end(JSON.stringify({ error: "root query parameter must name an existing directory" }))
+			return
+		}
+		const configFolderParam = url.searchParams.get("configFolder")
+		const { templates, problems } = await collectElementTemplates(
+			configFolderParam ? { root, configFolder: configFolderParam } : { root },
+		)
+		res.writeHead(200, { "Content-Type": "application/json" })
+		res.end(JSON.stringify({ templates, problems }))
 		return
 	}
 

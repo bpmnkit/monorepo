@@ -311,22 +311,40 @@ reuses one of these surfaces.
 - [x] Sub-process planes — `diffDiagram` returns a per-plane breakdown, the legend says how many
       differences sit on a plane the canvas is not showing, and the CLI names the planes
 
-### Phase 2 — Element templates by convention
+### Phase 2 — Element templates by convention ✅
 
-The largest capability gap found. `@bpmnkit/connectors` already parses the Zeebe element-template
-JSON schema, but templates only ever come from the generated built-in catalogue — a user's own
-connectors cannot reach the editor at all. This is the most common real Camunda 8 need we do not
-serve.
+The largest capability gap found. `@bpmnkit/connectors` parsed the Zeebe element-template JSON
+schema but only ever loaded the generated built-in catalogue — a user's own connectors could not
+reach the editor at all.
 
-- [ ] Discover `.camunda/element-templates/*.json`, walking up from the file to the project root;
-      the folder name follows a `configFolder` setting rather than being hard-coded
-- [ ] Validate against the Zeebe element-template schema on load; a malformed template is named
-      and skipped, never silently dropped
-- [ ] Merge workspace templates with the built-in catalogue in `connector-catalog`, with the
-      workspace winning on an id collision
-- [ ] `casen connector validate <path>` so the same check runs in CI
-- [ ] A browser path that does not assume a filesystem (studio/drop: templates supplied by the
-      host, not discovered)
+- [x] Discover `.camunda/element-templates/*.json` (`@bpmnkit/connectors/node`), walking up from
+      the diagram to the project root, nearest winning; folder name follows `configFolder`
+- [x] `collectElementTemplates({ root })` — the opposite, downward walk. Resolution and
+      validation are different questions: a CI check that only read the root would pass a project
+      whose broken template sits beside a sub-folder's diagrams
+- [x] Validation with paths (`properties[3].binding.type`) rather than a JSON-schema engine's
+      `oneOf` noise; every problem at once, a rejected template named and skipped, one bad file
+      never costing the good ones beside it. Warnings are separate from problems
+- [x] Merge into the catalogue via `registerElementTemplates`, later registration winning on an
+      id collision, so `listConnectors` / `getTemplate` / `searchConnectors` see a project's own
+- [x] `casen connector validate [path]` — whole project or one file, `--format json`, non-zero
+      exit for CI. `list` / `search` / `show` include workspace templates, with `--workspace`
+      and `--config-folder`
+- [x] Browser path: `GET /element-templates?root=…` on the proxy, `workspaceRoot` /
+      `workspaceTemplates` on the connector-catalog plugin, wired from the studio's active project
+- [x] `TemplateBinding` gains `bpmn:Message#property`,
+      `bpmn:Message#zeebe:subscription#property` and `zeebe:linkedResource` — used by the bundled
+      catalogue across 98 properties, admitted by neither the union nor `applyElementTemplate`
+
+**Left open, deliberately:**
+
+- [ ] Apply the inbound-message and linked-resource bindings. They validate and warn today; a
+      template that depends on one still applies to nothing. This is inbound-connector support,
+      a feature of its own rather than part of this phase
+- [ ] Per-file template resolution in a browser host. A host registers one merged set for the
+      whole project (deeper directories win, by the breadth-first order); the CLI resolves per
+      file correctly, the editor does not. Needs the config panel to re-resolve as the open file
+      changes
 
 ### Phase 3 — Findings on the canvas
 

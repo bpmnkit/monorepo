@@ -248,6 +248,9 @@ importers:
       '@bpmnkit/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@bpmnkit/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
