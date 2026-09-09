@@ -1,5 +1,30 @@
 # Progress
 
+## 2026-09-09 — The model-fidelity work gets the release notes it never wrote
+
+#161 shipped 104 files and no changeset, so none of it would have been published. Five
+changesets now cover it, split by what a consumer of each package actually sees:
+
+- `@bpmnkit/core` **minor** — the full-fidelity round trip, `Bpmn.continueProcess`,
+  `applyBpmnOperations`/`reconcileCompact`, the `@bpmnkit/core/node` write boundary, the
+  semantic hash, the Zeebe placement table, collaboration building, and `explicitJoins`.
+- `@bpmnkit/cli` **minor** — `generate bpmn --input` refuses to replace its input without
+  `--output` or `--force`. A flag that used to be optional is now required, which is a
+  break for anyone scripting it.
+- `@bpmnkit/proxy` + `@bpmnkit/plugins` **minor** — `/improve` takes `{ xml }` and the AI
+  bridge sends it. `{ context }` still works, but a plugins build now expects the newer
+  proxy, so this is not a patch on either side.
+- The four packaging bugs the tarball gate found (`proxy`, `plugins`, and the three
+  `casen-*` plugins) **patch**, and the docspack rebuild **patch**.
+
+Changesets fans the core bump out to `ascii`, `canvas`, `connectors`, `editor`, `engine`,
+`operate` and `user-tasks` as dependents; `changeset status` confirms the resolved set.
+
+`@bpmnkit/cli-sdk` is still outside `PUBLISHED`, and the three `casen-*` plugins now depend
+on it as `workspace:*` — the finding recorded with A10 stands, and no changeset here can
+close it.
+
+
 ## 2026-09-07 — A budget on what the API costs to write, and joins you can insist on
 
 A11, the last item in the adoption plan.
