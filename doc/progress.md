@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-09-09 — The Miragon findings become a checkable roadmap
+
+`doc/roadmap.md` gains an **IDE-Resident Modeling** section: seven phases ordered by value per
+unit of work, with dependencies respected, covering everything
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) recommended.
+
+The ordering is not the comparison's tier list re-typed. Two things moved:
+
+- **Surfacing the diff is now Phase 1, ahead of every remaining Tier-1 item.** The engine landed
+  today but nothing in the product reaches it — no CLI command, no studio view. Finishing work
+  already paid for beats starting the next thing, and the later phases each reuse one of those
+  surfaces. It also names a gap the plugin has: a diff inside a collapsed sub-process only
+  appears once the reviewer drills in, so a per-plane count is on the list.
+- **Editor invariants and navigation moved behind lint-on-canvas**, because that phase is where
+  the **port pattern** gets established — a feature is a plugin talking to an injected port,
+  never to a host API — and the VS Code phases depend on that discipline existing first. It is
+  what let one Miragon codebase serve VS Code, Theia and IntelliJ, and studio, desktop and drop
+  would each benefit from it here.
+
+Phase 2 is element templates by convention, still the largest capability gap: `@bpmnkit/connectors`
+parses the Zeebe template schema but can only load its own generated catalogue, so a user's own
+connectors cannot reach the editor at all. Phase 3 puts `casen lint`'s five categories on the
+canvas, and gives them a host-facing shape the VS Code Problems panel later consumes. Phases 5
+and 6 are the extension, read-and-review first and the differentiators second; Phase 7 collects
+what is deferred, VS Code editing included, since the custom-editor document protocol is its own
+piece of work.
+
+The comparison doc's item B is marked shipped and now points at the roadmap for what remains,
+so a later reader does not re-plan finished work.
+
 ## 2026-09-09 — A diagram diff, not a model diff
 
 `@bpmnkit/plugins/diff` ships the first Tier-1 item from the Miragon comparison: two canvases

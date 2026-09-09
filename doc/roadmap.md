@@ -277,6 +277,134 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## IDE-Resident Modeling
+
+> Full analysis and rationale: [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md)
+> — measured against `Miragon/bpmn-modeler` (2026-09-09), the bpmn.io-based monorepo behind the
+> `miragon-gmbh.vs-code-bpmn-modeler` Marketplace extension. Nothing there is liftable (it wraps
+> bpmn.io; we reimplement it), so these are the *problems* worth solving, not code to copy.
+
+Phases are ordered by value per unit of work, with dependencies respected. Each phase is
+shippable on its own — nothing later is a prerequisite for the value of anything earlier.
+
+### Phase 1 — Make the diff reachable
+
+The diff engine landed as a library; nothing in the product exposes it yet. This is the
+cheapest value left on the board, and every later phase reuses one of these surfaces.
+
+- [x] `@bpmnkit/plugins/diff` — `createBpmnDiff()` paired canvas plugins, four categories,
+      legend, synchronised viewports; `computeBpmnDiff()` exported standalone
+- [ ] `casen bpmn diff <before> <after>` (`apps/cli/src/commands/bpmn.ts`) — category counts and
+      per-element ids, `--json` for scripting, non-zero exit under `--exit-code` so it can gate a
+      pipeline. Renders the two diagrams through `@bpmnkit/ascii` when a terminal wants a picture
+- [ ] Two-pane diff view in `apps/studio` — pick two files from the workspace, or a file against
+      its last saved version
+- [ ] Diff a shared drop against another (`apps/drop`) — the review case the drop viewer was
+      built for
+- [ ] Sub-process planes: the plugin repaints on `plane:change`, but a diff *inside* a collapsed
+      sub-process is only visible after drilling in. Surface a per-plane count so the reviewer
+      knows to look
+
+### Phase 2 — Element templates by convention
+
+The largest capability gap found. `@bpmnkit/connectors` already parses the Zeebe element-template
+JSON schema, but templates only ever come from the generated built-in catalogue — a user's own
+connectors cannot reach the editor at all. This is the most common real Camunda 8 need we do not
+serve.
+
+- [ ] Discover `.camunda/element-templates/*.json`, walking up from the file to the project root;
+      the folder name follows a `configFolder` setting rather than being hard-coded
+- [ ] Validate against the Zeebe element-template schema on load; a malformed template is named
+      and skipped, never silently dropped
+- [ ] Merge workspace templates with the built-in catalogue in `connector-catalog`, with the
+      workspace winning on an id collision
+- [ ] `casen connector validate <path>` so the same check runs in CI
+- [ ] A browser path that does not assume a filesystem (studio/drop: templates supplied by the
+      host, not discovered)
+
+### Phase 3 — Findings on the canvas
+
+`casen lint` has five categories built on `packages/core/src/bpmn/optimize/` — arguably a better
+rule set than bpmnlint's — and none of it is visible while modeling.
+
+- [ ] Lint overlay plugin: severity badge per offending element, driven by existing
+      `OptimizationFinding` output
+- [ ] Canvas summary control with error/warning counts; click to cycle findings
+- [ ] Re-lint on `diagram:change`, debounced, with the engine layer picked from the model's
+      detected execution platform
+- [ ] A lint result shape a host can forward to its own problem list without a canvas —
+      the seam the VS Code Problems panel needs in Phase 5
+
+### Phase 4 — Editor invariants and navigation
+
+Small, self-contained, and collectively what makes the editor feel like a tool rather than a
+canvas. This phase also establishes the **port pattern** every later host depends on: a feature
+is a plugin talking to an injected port, never to a host API.
+
+- [ ] **Engine-neutral models stay engine-neutral** — opening a model with no execution platform
+      must never stamp one on. Today we are exposed to silent contamination of a diagram authored
+      elsewhere. Adopt as an invariant in `@bpmnkit/editor` with a regression test, whether or not
+      a View/Design/Implement mode strip is ever built
+- [ ] Keyboard flow navigation: Tab / Shift+Tab along sequence flows, cycle the outgoing flows at
+      a fan-out, Enter to follow, drill in and out of sub-processes. Extends the keyboard and ARIA
+      commitment `@bpmnkit/canvas` already advertises
+- [ ] Go-to-reference through an injected resolver port — Call Activity → process, Business Rule
+      Task → DMN, User Task → form. Generalises what `apps/drop` already does within a drop; the
+      action hides itself when the target does not resolve
+- [ ] Document the port pattern once, in `doc/`, so studio, desktop, drop and any extension wire
+      features the same way
+
+### Phase 5 — VS Code extension, read and review
+
+Scoped deliberately to what read-only unlocks. The prerequisites are unusually well met:
+`@bpmnkit/canvas` is framework-agnostic plain DOM with CSS-variable theming, `apps/drop` proves
+the stack bundles to browser ESM, `apps/desktop` proves editor plus plugins compose into a host
+shell. A read-only extension sidesteps VS Code's custom-editor document protocol entirely, which
+is the part that looks trivial and is not.
+
+- [ ] Extension host scaffold + webview message protocol (`apps/vscode`)
+- [ ] Read-only custom editors for `.bpmn`, `.dmn`, `.form` via `@bpmnkit/canvas` and the
+      `dmn-viewer` / `form-viewer` plugins, plus minimap and zoom
+- [ ] Visual diff for `.bpmn` in the Source Control panel and from an Explorer two-file compare
+      (Phase 1's engine, wired to the host)
+- [ ] `casen lint` findings in the Problems panel, run in the extension host where Node is
+      available and `@bpmnkit/core` runs unchanged (Phase 3's host-facing seam)
+- [ ] Theme follows the active VS Code theme
+- [ ] Marketplace listing, README, and a support posture stated up front given the pre-1.0 badge
+
+### Phase 6 — VS Code extension, what only this stack can do
+
+Differentiation, not parity. None of this exists in the Marketplace today.
+
+- [ ] Step-through simulation of the open diagram with `@bpmnkit/engine` and token highlighting
+- [ ] FEEL playground as a webview panel
+- [ ] Deploy and start an instance against a `casen` profile
+- [ ] ASCII rendering of a diagram, for pasting into a code review
+
+### Phase 7 — Deferred
+
+Real, but each is either lower value or presumes something that does not exist yet.
+
+- [ ] Payload files discovered from `.camunda/payloads/`, so starting an instance with test data
+      is a pick rather than a paste
+- [ ] UI localisation. The hook exists (`@bpmnkit/editor`'s `Translate`) and ships English only.
+      The adaptable part is the *method*: harvest the strings the running editor actually
+      requests and treat any key the harvest never observed as dead
+- [ ] Detail cards in the connector/template picker — implementation binding and property preview
+      before applying
+- [ ] VS Code editing. Only after Phase 4 lands, and only with the custom-editor document
+      protocol (dirty state, hot exit, external edits, conflicting text-editor edits) treated as
+      its own piece of work
+- [ ] Template marketplace — elegant, but it presumes an established base of shared template
+      repositories. Phase 2 has to come first, and prove demand
+
+**Not adapting:** anything Camunda 7 (inline scripting, C7 properties, C7 deploy endpoints,
+transaction boundaries) — this is a Camunda 8 toolkit; the clipboard bridge, which only exists
+because bpmn-js assumes the system clipboard; and any bpmn.io dependency, which is the
+differentiator itself.
+
+---
+
 ## Core Model Fidelity
 
 > Full analysis, evidence and sequencing: [`doc/bpmn-sdk-comparison.md`](bpmn-sdk-comparison.md)

@@ -131,12 +131,12 @@ project root — would make the `connector-catalog` plugin work with in-house co
 is the single most common real-world Camunda 8 need it currently cannot serve. Small change,
 large surface-area gain. The `casen` CLI can validate them against the same schema.
 
-**B. Visual BPMN diff.** Nothing in this repo renders a diagram diff, yet the pieces are all
-present: `packages/core/src/bpmn/semantic-hash.ts` for element-level change detection, and
-`@bpmnkit/canvas` for two synchronised read-only viewers. A `diff` canvas plugin plus
-`casen bpmn diff a.bpmn b.bpmn` would serve the repo's own review workflow, the Drop viewer,
-the studio, *and* be the headline feature of a VS Code extension if one is built. This is the
-highest-leverage single item on the list.
+**B. Visual BPMN diff.** — **shipped 2026-09-09** as `@bpmnkit/plugins/diff`. Two canvases,
+four categories, legend, synchronised viewports, and `computeBpmnDiff()` standalone for callers
+with no canvas. `diffSemantics` supplied the semantic half; the `moved` category is computed
+here from diagram interchange, which is what separates a diagram diff from a model diff.
+Still to do: the CLI and studio surfaces that make it reachable — see
+[`doc/roadmap.md`](roadmap.md) §IDE-Resident Modeling, Phase 1.
 
 **C. Editor modes (View / Design / Implement).** The rule that matters is not the three-way
 switch, it is the invariant: *opening an engine-neutral model never stamps an execution
@@ -258,6 +258,8 @@ benefit from the same discipline.
 
 Phase 1 is on the order of a two-to-three-week build for one person: the extension host
 scaffold, a webview message protocol, three read-only editors, the diff view, and the
-Problems-panel integration — *assuming* item B (diff) lands in `@bpmnkit/canvas` first as a
-plugin usable from the studio and Drop too. That ordering matters: the diff is worth building
-whether or not the extension ever ships.
+Problems-panel integration. Its diff dependency is already met — item B shipped as a canvas
+plugin usable from the studio and Drop too, which was the point of building it first.
+
+The full sequencing of everything above, as checkable items, is in
+[`doc/roadmap.md`](roadmap.md) under **IDE-Resident Modeling**.
