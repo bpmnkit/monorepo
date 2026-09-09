@@ -1,5 +1,55 @@
 # Progress
 
+## 2026-09-09 — The editor was the easy half; the manifest was not
+
+Phase 5 complete: `apps/vscode` — read-only custom editors for `.bpmn`, `.dmn` and `.form`, a
+visual diff reachable from Source Control and the Explorer, analysis findings in the Problems
+panel, and a Marketplace-ready package.
+
+**The stack was ready and the seams held.** `@bpmnkit/canvas` is plain DOM with CSS-variable
+theming, `apps/drop` had already proved it bundles to browser ESM, and `lintDiagram()` was built
+in Phase 3 precisely so a finding could cross a `postMessage`. None of that needed changing: the
+extension is 900 lines of host code and two webview entry points, and not one package was
+modified to accommodate it. The `vscode` module appears in seven files and in none of the ones
+that hold a decision — `locate.ts`, `diagnostics.ts`, `documents.ts` and `command-args.ts` are
+`vscode`-free on purpose, which is what lets 47 tests run without an editor.
+
+**Findings needed a *place*, not just a message.** `lintDiagram()` reports element ids; the
+Problems panel needs a range. `Bpmn.parse()` deliberately discards source positions, and the file
+on screen is routinely mid-edit and unparseable anyway, so placement is a scanner over the raw
+text that never has to be right about the document's meaning — only about where a piece of it was
+typed. It skips comments, CDATA and processing instructions, survives a `>` inside a FEEL
+condition, and prefers the semantic tag when diagram interchange reuses an id. A finding that
+names no element falls back to its process, then to the file.
+
+**Read-only is the scope, and it is also the better shape.** The preview opens *beside* the text
+editor rather than replacing it, the way Markdown preview does, and follows the buffer as it is
+typed rather than only on save. When the XML is momentarily invalid it keeps the last drawing
+that parsed and says so — which costs one extra parse per redraw, because `BpmnCanvas` parses
+internally and would otherwise tear down a good view before discovering the new text is broken.
+
+**Two bugs the unit tests structurally could not find.** VS Code will not run in this
+environment, so the webview bundles were loaded in Chromium with a stubbed `acquireVsCodeApi` —
+18 checks against the real bundles. That run caught the theme mapping: every `--bpmnkit-*` token
+was re-pointed at a `--vscode-*` variable with no literal at the end of the chain, and a missing
+custom property does not fall through to the value underneath, it poisons the declaration. On any
+theme that skips one colour the panel chrome would have rendered as unstyled white. The chain is
+now written once per polarity with the `@bpmnkit/ui` value as its last link, and the browser run
+asserts both directions.
+
+The second is the class of bug `vsce package` cannot see: a command contributed in the manifest
+with no handler registered appears in the palette and fails when picked. `tests/activation.test.ts`
+runs `activate()` against a recorder and asserts the manifest and the implementation agree in both
+directions — proved load-bearing by deleting a registration and watching it fail.
+
+**Not adapting VS Code's diff editor.** It pairs two *text* editors and a custom editor cannot
+stand in for either side, so the visual comparison is its own panel reached from the menus a
+reader already uses for a comparison. The text diff stays exactly where it was.
+
+47 tests in `apps/vscode`, 18 browser checks against the built bundles, and `vsce package`
+produces a 205 KB `.vsix` — which is also the only automated validation of the manifest that
+exists.
+
 ## 2026-09-09 — The invariant held; the thing beside it did not
 
 Phase 4 complete: keyboard flow traversal, go-to-reference behind a port, the port pattern

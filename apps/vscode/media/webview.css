@@ -1,0 +1,132 @@
+/* ── Following the editor's theme ─────────────────────────────────────────────
+ * Every `--vscode-*` reference ends in a literal, because a variable that is
+ * missing does not fall through to the value underneath — it poisons the whole
+ * declaration, and the token resolves to nothing at all. So the chain is
+ * written twice, once per polarity, with the `@bpmnkit/ui` value as the last
+ * link: an older VS Code, or a theme that skips a colour, degrades to the BPMN
+ * Kit palette instead of to blank.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+:root:root {
+	--bpmnkit-bg: var(--vscode-editor-background, #f4f4f8);
+	--bpmnkit-surface: var(--vscode-editorWidget-background, var(--vscode-editor-background, #ffffff));
+	--bpmnkit-surface-2: var(--vscode-editorHoverWidget-background, #eeeef8);
+	--bpmnkit-border: var(--vscode-editorWidget-border, var(--vscode-panel-border, #d0d0e8));
+	--bpmnkit-fg: var(--vscode-editor-foreground, #1a1a2e);
+	--bpmnkit-fg-muted: var(--vscode-descriptionForeground, #6666a0);
+	--bpmnkit-panel-bg: var(--vscode-editorWidget-background, rgba(255, 255, 255, 0.92));
+	--bpmnkit-panel-border: var(--vscode-editorWidget-border, rgba(0, 0, 0, 0.08));
+
+	/* Interactive colour follows the link colour, the one a VS Code theme always
+	 * defines and always means "you can click this". */
+	--bpmnkit-accent: var(--vscode-textLink-foreground, #1a56db);
+	--bpmnkit-accent-bright: var(--vscode-textLink-activeForeground, #3b82f6);
+	--bpmnkit-accent-fg: var(--vscode-button-foreground, #ffffff);
+
+	/* Severity stays the editor's, so a marker in the diagram is the same red as
+	 * the squiggle in the XML beside it. */
+	--bpmnkit-danger: var(--vscode-editorError-foreground, #dc2626);
+	--bpmnkit-warn: var(--vscode-editorWarning-foreground, #d97706);
+	--bpmnkit-success: var(--vscode-testing-iconPassed, #16a34a);
+
+	--bpmnkit-font: var(--vscode-font-family, system-ui, -apple-system, sans-serif);
+	--bpmnkit-font-mono: var(--vscode-editor-font-family, ui-monospace, "Cascadia Code", monospace);
+}
+
+:root:root[data-theme="dark"] {
+	--bpmnkit-bg: var(--vscode-editor-background, #0d0d16);
+	--bpmnkit-surface: var(--vscode-editorWidget-background, var(--vscode-editor-background, #161626));
+	--bpmnkit-surface-2: var(--vscode-editorHoverWidget-background, #1e1e2e);
+	--bpmnkit-border: var(--vscode-editorWidget-border, var(--vscode-panel-border, #2a2a42));
+	--bpmnkit-fg: var(--vscode-editor-foreground, #cdd6f4);
+	--bpmnkit-fg-muted: var(--vscode-descriptionForeground, #8888a8);
+	--bpmnkit-panel-bg: var(--vscode-editorWidget-background, rgba(13, 13, 22, 0.92));
+	--bpmnkit-panel-border: var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.08));
+	--bpmnkit-accent: var(--vscode-textLink-foreground, #6b9df7);
+	--bpmnkit-accent-bright: var(--vscode-textLink-activeForeground, #89b4fa);
+	--bpmnkit-danger: var(--vscode-editorError-foreground, #f87171);
+	--bpmnkit-warn: var(--vscode-editorWarning-foreground, #f59e0b);
+	--bpmnkit-success: var(--vscode-testing-iconPassed, #22c55e);
+}
+
+html,
+body {
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background: var(--bpmnkit-bg);
+	color: var(--bpmnkit-fg);
+	font-family: var(--bpmnkit-font);
+	font-size: var(--vscode-font-size, 13px);
+}
+
+.viewer {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+}
+
+/* ── Status line ─────────────────────────────────────────────────────────── */
+
+.status {
+	position: absolute;
+	right: 12px;
+	bottom: 12px;
+	max-width: 60%;
+	padding: 6px 10px;
+	border: 1px solid var(--vscode-inputValidation-warningBorder, var(--bpmnkit-border));
+	border-radius: 4px;
+	background: var(--vscode-inputValidation-warningBackground, var(--bpmnkit-surface));
+	color: var(--bpmnkit-fg);
+	font-size: 0.9em;
+	pointer-events: none;
+}
+
+/* ── Diff ────────────────────────────────────────────────────────────────── */
+
+.diff-bar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	height: 28px;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--bpmnkit-border);
+	background: var(--bpmnkit-surface);
+}
+
+.diff-summary {
+	font-weight: 600;
+}
+
+.diff-panes {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1px;
+	height: calc(100% - 28px);
+	background: var(--bpmnkit-border);
+}
+
+.diff-pane {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	background: var(--bpmnkit-bg);
+}
+
+.diff-pane-label {
+	flex: 0 0 auto;
+	overflow: hidden;
+	padding: 4px 12px;
+	border-bottom: 1px solid var(--bpmnkit-border);
+	color: var(--bpmnkit-fg-muted);
+	font-size: 0.9em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.diff-pane .viewer {
+	flex: 1 1 auto;
+	min-height: 0;
+}

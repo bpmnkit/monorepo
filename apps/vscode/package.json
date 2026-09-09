@@ -1,0 +1,148 @@
+{
+	"name": "bpmnkit",
+	"displayName": "BPMN Kit",
+	"description": "View, diff and lint BPMN, DMN and Camunda Forms in VS Code — no bpmn.io, no round-trip rewrites of your XML.",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"publisher": "bpmnkit",
+	"license": "MIT",
+	"icon": "media/icon.png",
+	"engines": {
+		"vscode": "^1.90.0"
+	},
+	"categories": ["Visualization", "Linters", "Other"],
+	"keywords": ["bpmn", "dmn", "camunda", "zeebe", "workflow"],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
+	},
+	"main": "./dist/extension.cjs",
+	"scripts": {
+		"build": "node scripts/build.mjs",
+		"package": "vsce package --no-dependencies --out bpmnkit.vsix",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"activationEvents": ["workspaceContains:**/*.bpmn"],
+	"contributes": {
+		"customEditors": [
+			{
+				"viewType": "bpmnkit.bpmn",
+				"displayName": "BPMN Kit Diagram",
+				"selector": [{ "filenamePattern": "*.bpmn" }],
+				"priority": "option"
+			},
+			{
+				"viewType": "bpmnkit.dmn",
+				"displayName": "BPMN Kit Decision Table",
+				"selector": [{ "filenamePattern": "*.dmn" }],
+				"priority": "option"
+			},
+			{
+				"viewType": "bpmnkit.form",
+				"displayName": "BPMN Kit Form",
+				"selector": [{ "filenamePattern": "*.form" }],
+				"priority": "option"
+			}
+		],
+		"commands": [
+			{
+				"command": "bpmnkit.openPreview",
+				"title": "Open Preview to the Side",
+				"category": "BPMN Kit",
+				"icon": "$(open-preview)"
+			},
+			{
+				"command": "bpmnkit.diffWithHead",
+				"title": "Compare Diagram with HEAD",
+				"category": "BPMN Kit",
+				"icon": "$(git-compare)"
+			},
+			{
+				"command": "bpmnkit.compareSelected",
+				"title": "Compare Diagrams Visually",
+				"category": "BPMN Kit"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{ "command": "bpmnkit.openPreview", "when": "resourceExtname =~ /^\\.(bpmn|dmn|form)$/" },
+				{ "command": "bpmnkit.diffWithHead", "when": "resourceExtname == .bpmn" },
+				{ "command": "bpmnkit.compareSelected", "when": "false" }
+			],
+			"editor/title": [
+				{
+					"command": "bpmnkit.openPreview",
+					"when": "resourceExtname =~ /^\\.(bpmn|dmn|form)$/ && activeEditor == workbench.editors.files.textFileEditor",
+					"group": "navigation"
+				},
+				{
+					"command": "bpmnkit.diffWithHead",
+					"when": "resourceExtname == .bpmn",
+					"group": "navigation"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "bpmnkit.compareSelected",
+					"when": "listMultiSelection && resourceExtname == .bpmn",
+					"group": "3_compare"
+				}
+			],
+			"scm/resourceState/context": [
+				{
+					"command": "bpmnkit.diffWithHead",
+					"when": "scmProvider == git && resourceExtname == .bpmn",
+					"group": "inline"
+				}
+			]
+		},
+		"configuration": {
+			"title": "BPMN Kit",
+			"properties": {
+				"bpmnkit.lint.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Report BPMN static-analysis findings in the Problems panel."
+				},
+				"bpmnkit.lint.run": {
+					"type": "string",
+					"enum": ["onType", "onSave"],
+					"default": "onType",
+					"enumDescriptions": [
+						"Re-analyse as you edit, after a short pause.",
+						"Re-analyse only when the file is saved."
+					],
+					"description": "When to re-run the analysis on an open diagram."
+				},
+				"bpmnkit.lint.forceEngineRules": {
+					"type": "boolean",
+					"default": false,
+					"description": "Apply Camunda 8 deployability rules even to a diagram that names no execution platform. Off by default: an engine-neutral diagram should not be told it is undeployable."
+				},
+				"bpmnkit.viewer.grid": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show the dot grid behind a diagram."
+				},
+				"bpmnkit.viewer.minimap": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show the minimap in the diagram viewer."
+				}
+			}
+		}
+	},
+	"dependencies": {
+		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/plugins": "workspace:*",
+		"@bpmnkit/ui": "workspace:*"
+	}
+}

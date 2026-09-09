@@ -3,10 +3,12 @@
 How a canvas plugin talks to the application hosting it, without knowing what that
 application is.
 
-BPMN Kit now runs the same plugins in four places — the studio, the desktop app, Drop, and
-(per [`doc/roadmap.md`](roadmap.md)) a VS Code extension. They disagree about almost
+BPMN Kit runs the same plugins in four places — the studio, the desktop app, Drop, and a VS
+Code extension (`apps/vscode`, shipped 2026-09-09). They disagree about almost
 everything: what a file is, where templates come from, whether there is a filesystem, what
 "open this" means. A plugin that knew any of that would work in one of them.
+
+The fourth host is the pattern's receipt: **not one package changed to accommodate it.**
 
 The rule is one sentence: **a plugin computes what it can from the model, and takes everything
 else as an injected function.** That injected function is a *port*.

@@ -34,7 +34,7 @@
 			"**/src/generated/**",
 			"**/.llms/**",
 			"**/swagger/**",
-			"apps/proxy-rs/target/**",
+			"**/target/**",
 			"apps/reebe-wasm/**",
 			"apps/reebe/crates/**",
 			"apps/reebe/packages/reebe-wasm/src/wasm/**",

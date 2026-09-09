@@ -1,5 +1,37 @@
 # Features
 
+## BPMN Kit for VS Code (2026-09-09)
+
+Phase 5 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the
+toolkit, resident in the editor. `apps/vscode` is a VS Code extension built entirely from the
+packages in this repository; nothing in it wraps bpmn.io, so the files it shows are the files git
+has, byte for byte.
+
+**Read-only custom editors for `.bpmn`, `.dmn` and `.form`**, rendered by `@bpmnkit/canvas` and
+the `dmn-viewer` / `form-viewer` plugins, with minimap and zoom for BPMN. The preview opens
+*beside* the text editor rather than replacing it, follows the buffer as it is typed rather than
+only on save, and keeps the last drawing that parsed when the XML is momentarily invalid.
+
+**Visual BPMN diff**, from the Source Control panel against `HEAD` and from an Explorer two-file
+selection. Phase 1's `diffDiagram()` and `@bpmnkit/plugins/diff` unchanged, driving two
+synchronised canvases. VS Code's diff editor pairs two *text* editors and a custom editor cannot
+stand in for either side, so this is a second view of the same change rather than a replacement
+for the first.
+
+**Analysis findings in the Problems panel**, from Phase 3's `lintDiagram()` running in the
+extension host where `@bpmnkit/core` runs unchanged. Each finding is placed on the element that
+caused it by a scanner over the raw XML — a parser would be the obvious tool and the wrong one,
+since the file on screen is routinely mid-edit and unparseable. The engine rule is the same one
+every other surface applies: a diagram naming no execution platform is not judged against Camunda
+8 deployability unless `bpmnkit.lint.forceEngineRules` says so.
+
+**Colours follow the active VS Code theme**, with the `@bpmnkit/ui` palette as the last link in
+every fallback chain, so a theme that skips a colour degrades to the brand value rather than to
+nothing.
+
+`vsce package` produces the `.vsix`; the extension is pre-1.0 and community-supported, and
+`apps/vscode/README.md` is the Marketplace listing that says so.
+
 ## Keyboard navigation, go-to-reference, and the port pattern (2026-09-09)
 
 Phase 4 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the

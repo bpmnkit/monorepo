@@ -261,5 +261,13 @@ scaffold, a webview message protocol, three read-only editors, the diff view, an
 Problems-panel integration. Its diff dependency is already met — item B shipped as a canvas
 plugin usable from the studio and Drop too, which was the point of building it first.
 
+> **Shipped 2026-09-09** as `apps/vscode`, and it came in well under that estimate for the
+> reason this section predicted: the port advice above was taken first. Everything the
+> extension needed already existed as a seam — `diffDiagram()` in core, `lintDiagram()`
+> returning plain data, `@bpmnkit/canvas` themed by CSS variables — so **no package was
+> modified to accommodate a fourth host**. The extension contributes host wiring and nothing
+> else. See [`doc/roadmap.md`](roadmap.md) §IDE-Resident Modeling, Phase 5, and
+> [`doc/port-pattern.md`](port-pattern.md).
+
 The full sequencing of everything above, as checkable items, is in
 [`doc/roadmap.md`](roadmap.md) under **IDE-Resident Modeling**.

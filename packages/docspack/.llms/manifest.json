@@ -1,7 +1,7 @@
 {
 	"$schema": "https://docspack.dev/schema/v1.json",
 	"name": "@bpmnkit/docspack",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"documents": [
 		"@bpmnkit/core",
 		"@bpmnkit/canvas",

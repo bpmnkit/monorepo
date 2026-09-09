@@ -418,23 +418,60 @@ verified in Chromium, not assumed, because the interception design depends on it
 that mount `BpmnCanvas` do not exercise `BpmnEditor`: the editor reports `editor:select` where the
 viewer reports `element:click`, and only a browser run caught the difference.
 
-### Phase 5 — VS Code extension, read and review
+### Phase 5 — VS Code extension, read and review ✅
 
-Scoped deliberately to what read-only unlocks. The prerequisites are unusually well met:
+Scoped deliberately to what read-only unlocks. The prerequisites were unusually well met:
 `@bpmnkit/canvas` is framework-agnostic plain DOM with CSS-variable theming, `apps/drop` proves
 the stack bundles to browser ESM, `apps/desktop` proves editor plus plugins compose into a host
 shell. A read-only extension sidesteps VS Code's custom-editor document protocol entirely, which
-is the part that looks trivial and is not.
+is the part that looks trivial and is not. **No package was changed to accommodate the
+extension** — the seams Phases 1–4 built were the whole of what it needed.
 
-- [ ] Extension host scaffold + webview message protocol (`apps/vscode`)
-- [ ] Read-only custom editors for `.bpmn`, `.dmn`, `.form` via `@bpmnkit/canvas` and the
-      `dmn-viewer` / `form-viewer` plugins, plus minimap and zoom
-- [ ] Visual diff for `.bpmn` in the Source Control panel and from an Explorer two-file compare
-      (Phase 1's engine, wired to the host)
-- [ ] `casen lint` findings in the Problems panel, run in the extension host where Node is
-      available and `@bpmnkit/core` runs unchanged (Phase 3's host-facing seam)
-- [ ] Theme follows the active VS Code theme
-- [ ] Marketplace listing, README, and a support posture stated up front given the pre-1.0 badge
+- [x] Extension host scaffold + webview message protocol (`apps/vscode`, package name `bpmnkit`
+      because a VS Code manifest name cannot carry an npm scope). esbuild builds two bundles with
+      nothing in common: the host as CommonJS for Node with `vscode` external, the webviews as
+      browser ESM. `src/shared/protocol.ts` names no `vscode` type and no DOM type, which is why
+      both tsconfigs can include it
+- [x] Read-only custom editors for `.bpmn`, `.dmn`, `.form` via `@bpmnkit/canvas` and the
+      `dmn-viewer` / `form-viewer` plugins, plus minimap and zoom. `priority: "option"`, not
+      `"default"`: the preview opens *beside* the text editor the way Markdown preview does,
+      rather than taking over opening a file the extension cannot edit. It follows the open
+      buffer as it is typed, and keeps the last drawing that parsed when the file is momentarily
+      invalid
+- [x] Visual diff for `.bpmn` from the Source Control panel and an Explorer two-file compare
+      (Phase 1's engine, wired to the host). A webview panel rather than a diff editor: VS Code's
+      diff editor pairs two *text* editors and a custom editor cannot stand in for either side.
+      `HEAD` comes from the built-in Git extension's API, whose two needed methods are declared
+      structurally rather than by adding a dependency
+- [x] `casen lint` findings in the Problems panel, run in the extension host where Node is
+      available and `@bpmnkit/core` runs unchanged (Phase 3's host-facing seam). Each finding is
+      placed on the element that caused it by `src/host/locate.ts`, a scanner over the raw text —
+      a parser is the wrong tool here, since `Bpmn.parse()` discards source positions and the file
+      on screen is routinely mid-edit
+- [x] Theme follows the active VS Code theme. Every `--bpmnkit-*` token is re-pointed at a
+      `--vscode-*` variable **with a literal at the end of the chain**, written once per polarity:
+      a missing custom property does not fall through to the value underneath, it poisons the
+      declaration, and the first version would have rendered unstyled on any theme missing one
+      colour
+- [x] Marketplace listing, README, and a support posture stated up front given the pre-1.0 badge.
+      `vsce package` produces a 205 KB `.vsix`; the icon is rendered from the site favicon and the
+      licence copied from the repository root, so neither can drift
+
+**Verified without VS Code.** The editor cannot run in this environment, so the built webview
+bundles are loaded in Chromium with a stubbed `acquireVsCodeApi` — 18 checks covering all three
+artifact kinds, the diff, the invalid-file path and both directions of the theme fallback. That
+run is what caught the theme defect above. `tests/activation.test.ts` runs `activate()` against a
+recorder and asserts the manifest and the implementation agree in both directions, which is the
+one class of bug `vsce package` cannot see: a contributed command with no handler appears in the
+palette and fails when picked.
+
+**Left open, deliberately:**
+
+- [ ] A `.bpmn` file the editor has not loaded as a text document is not analysed, so the Problems
+      panel covers open files only. That is what every other VS Code linter does; analysing a
+      whole workspace on activation is a different feature with a different cost
+- [ ] No page on `bpmnkit.com/docs` yet — the Marketplace README is the only user-facing
+      documentation for the extension
 
 ### Phase 6 — VS Code extension, what only this stack can do
 
