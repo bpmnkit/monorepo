@@ -1,5 +1,42 @@
 # Features
 
+## Visual BPMN diff as a canvas plugin (2026-09-09)
+
+`@bpmnkit/plugins/diff` renders two versions of a diagram side by side and marks what changed
+between them — the first item from [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md)
+to ship.
+
+`createBpmnDiff()` returns a pair of canvas plugins rather than one, because a diff needs both
+models before it can say anything: each side publishes the model its canvas loaded and the
+result is computed once both have arrived, in whichever order they do. Elements are marked on
+the side that can show them — removed only exists in the earlier version, added only in the
+later, changed and moved on both — a legend in the top-right counts each category, and panning
+or zooming either canvas moves the other.
+
+- **Four categories.** The semantic half is `diffSemantics` from `@bpmnkit/core`, which drops
+  diagram interchange by design, so a task that only moved reads there as no change at all.
+  The plugin adds that half back as `moved`, computed from DI geometry — bounds, waypoints,
+  label placement and flags like collapsed/expanded — which is the difference between a model
+  diff and a *diagram* diff. An element that did both is reported as changed, since that is
+  what a reviewer needs to see first.
+- **Only what can be drawn.** The result covers elements carrying diagram interchange on one
+  side or the other, so a changed `targetNamespace` does not inflate a count against nothing
+  visible.
+- **Untrusted ids never reach a selector.** Elements are looked up through `getShapes()` /
+  `getEdges()` rather than an attribute selector built from an id read out of a file.
+- **Viewport sync settles instead of echoing.** The canvas applies a viewport on the next
+  animation frame and fires `viewport:change` only then, so a re-entrancy flag around
+  `setViewport` is already cleared when the echo arrives and guards nothing. Skipping a write
+  that changes nothing ends every exchange after one hop — and stops a no-op push from
+  scheduling a frame whose event would carry a newer pan back the other way and undo it. Both
+  properties are covered by tests; removing the guard fails them.
+- `computeBpmnDiff(before, after)` is exported on its own, so the CLI or a host can have the
+  element ids without a canvas.
+
+35 tests across the pure diff and the two-canvas DOM behaviour. Colours are the existing brand
+tokens with hex fallbacks: `--bpmnkit-success` added, `--bpmnkit-danger` removed,
+`--bpmnkit-warn` changed, `--bpmnkit-accent` moved.
+
 ## Landing hero rewritten around the XML/TypeScript contrast (2026-09-06)
 
 The homepage hero leads with *41 lines of BPMN XML. Or 13 lines of TypeScript.* over a

@@ -40,6 +40,10 @@
 			"import": "./dist/deploy/index.js",
 			"types": "./dist/deploy/index.d.ts"
 		},
+		"./diff": {
+			"import": "./dist/diff/index.js",
+			"types": "./dist/diff/index.d.ts"
+		},
 		"./dmn-editor": {
 			"import": "./dist/dmn-editor/index.js",
 			"types": "./dist/dmn-editor/index.d.ts"

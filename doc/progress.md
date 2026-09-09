@@ -1,5 +1,46 @@
 # Progress
 
+## 2026-09-09 — A diagram diff, not a model diff
+
+`@bpmnkit/plugins/diff` ships the first Tier-1 item from the Miragon comparison: two canvases
+side by side, every element marked added / removed / changed / moved, a legend counting each,
+and synchronised pan and zoom.
+
+`createBpmnDiff()` returns a *pair* of plugins because a canvas plugin only ever sees its own
+canvas. Each side publishes the model it loaded into shared state; the diff computes and paints
+once both have arrived, in whichever order they do, which is also what makes a reload of either
+side just work.
+
+The category that justifies the feature is `moved`. `diffSemantics` in `@bpmnkit/core`
+deliberately drops diagram interchange — that is what makes its hash stable across re-layout —
+so a task somebody dragged reads there as no change whatsoever. The plugin computes the layout
+half itself from DI (bounds, waypoints, label placement, and flags like collapsed/expanded) and
+reports it separately; an element that changed *and* moved is reported as changed, because a
+semantic change is what a reviewer needs first. The result is also restricted to elements that
+carry DI on one side or the other, so a changed `targetNamespace` cannot add to a count that has
+nothing on screen to point at.
+
+Two things worth recording, because the tests found them rather than the design:
+
+- **The viewport sync had a real bug.** A canvas applies a viewport on the next animation frame
+  and fires `viewport:change` only then, so the obvious re-entrancy flag around `setViewport` is
+  already cleared by the time the echo arrives — it guards nothing, and the two canvases hand the
+  same viewport back and forth every frame. The fix is to skip a write that changes nothing:
+  every exchange then ends after one hop, and a no-op push can no longer schedule a frame whose
+  event carries a newer pan back the other way and undoes it. Deleting that one condition fails
+  the tests.
+- **The second fix was not needed.** Having diagnosed a stale-echo race, I added push tracking
+  to recognise the plugin's own echoes — and then could not write a test that distinguished it,
+  because the canvas coalesces sets and emits current state at apply time, never a stale value.
+  It came back out. The remaining guard is one comparison.
+
+Element lookup goes through `getShapes()` / `getEdges()` rather than an attribute selector built
+from an element id, since ids come from a parsed file.
+
+35 tests. `@bpmnkit/plugins` passes the tarball gate with the new subpath — 31 subpaths imported
+and type-checked under strict NodeNext. The nine failures the gate still reports are the
+pre-existing `cli-sdk`/wasm ones already recorded with A10, in packages that do not build here.
+
 ## 2026-09-09 — What the Miragon modeler solved that we have not
 
 `doc/miragon-bpmn-modeler-comparison.md` studies [Miragon/bpmn-modeler](https://github.com/Miragon/bpmn-modeler),

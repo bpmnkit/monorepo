@@ -34,6 +34,7 @@ npm install @bpmnkit/plugins
 | `/watermark` | `createWatermarkPlugin(text)` | Corner watermark overlay |
 | `/ascii-view` | `createAsciiViewPlugin()` | Toggle ASCII art rendering |
 | `/zoom-controls` | `createZoomControlsPlugin()` | On-canvas +/− zoom buttons |
+| `/diff` | `createBpmnDiff(options)` | Side-by-side visual diff of two diagrams |
 
 ### File Management
 
