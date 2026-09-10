@@ -365,6 +365,8 @@ function diffChildren(
 			updated.slice(child.start, child.end),
 			indentAt(updated, child.start),
 			indent,
+			indentUnit(updated),
+			indentUnit(original),
 		)
 		edits.push({ start: at, end: at, text: `\n${indent}${written}` })
 	}
@@ -399,10 +401,34 @@ function indentUnit(source: string): string {
 	return match?.[1] ?? "  "
 }
 
-/** Re-indents a block written at one depth so it sits at another. */
-function reindent(text: string, from: string, to: string): string {
-	if (from === to || from === "") return text
-	return text.split(`\n${from}`).join(`\n${to}`)
+/**
+ * Re-indents a block written at one depth so it sits at another.
+ *
+ * By depth, not by string replacement: the two documents may not indent with
+ * the same characters at all, and a block moved from a two-space update into a
+ * tab-indented file has to have its *inner* lines converted too, or it arrives
+ * with tabs outside and spaces inside.
+ */
+function reindent(
+	text: string,
+	from: string,
+	to: string,
+	fromUnit: string,
+	toUnit: string,
+): string {
+	if (from === to && fromUnit === toUnit) return text
+	const lines = text.split("\n")
+	return lines
+		.map((line, index) => {
+			if (index === 0) return line
+			const body = line.trimStart()
+			const indent = line.slice(0, line.length - body.length)
+			if (!indent.startsWith(from)) return line
+			const deeper = indent.slice(from.length)
+			const depth = fromUnit === "" ? 0 : Math.floor(deeper.length / fromUnit.length)
+			return `${to}${toUnit.repeat(depth)}${body}`
+		})
+		.join("\n")
 }
 
 /** Applies edits to the source, refusing any pair that overlaps. */

@@ -1,5 +1,26 @@
 # Features
 
+## Formatting-preserving writes for form files (2026-09-10)
+
+The JSON counterpart of yesterday's XML writer. `exportForm` writes
+`JSON.stringify(…, null, 2)` in its own key order, so a form indented with tabs came back with
+every line rewritten the first time anyone touched it. Now it comes back with the line they
+touched.
+
+- **`preserveJsonFormatting(original, updated)`** in `@bpmnkit/core` — keeps the file's
+  indentation, key order, number and string spellings, and trailing newline. Numbers and
+  strings are compared by *value*, so `1.0` is never rewritten as `1` and `\u00e9` never as `é`.
+- **`exportFormPreserving()`** for `.form` files.
+- **It checks itself**, and needs no strategy and no injected reader: an object is an unordered
+  collection and an array is an ordered sequence (RFC 8259), so deep equality with those rules
+  states exactly what "unchanged" means for JSON. The XML writer cannot make that claim, which
+  is why it asks the caller to verify instead.
+- Wired into the VS Code form editor.
+
+Measured on one form written four ways — as the modeler writes it, tab-indented, four-space and
+minified: opening and saving changes **0** lines in every case (against 21, 109, 101 and 57),
+and relabelling one field changes **one**.
+
 ## Formatting-preserving writes (2026-09-10)
 
 A visual editor serialises the whole model, so saving a diagram used to reformat the file to

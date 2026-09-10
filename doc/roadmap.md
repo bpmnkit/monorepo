@@ -613,10 +613,19 @@ saves a BPMN file from reshuffling would silently undo that edit, and the only t
 between those two cases is parsing the result and comparing. There is a test for exactly that:
 reordering DMN rules comes back reordered, with the outcome reported as `reordered`.
 
-**Left open:**
+- [x] `preserveJsonFormatting(original, updated)` and `exportFormPreserving()` — the same for
+      form files, which are JSON. `exportForm` writes `JSON.stringify(…, null, 2)` in its own
+      key order, so a form indented with tabs came back with **every line rewritten** the first
+      time anyone touched it: 109 changed lines on a 57-line file, 101 with four-space
+      indentation, and a minified form blown out to 57 lines. All of them are **0** now, and
+      relabelling one field changes **one line** whichever way the file is written
 
-- [ ] Form files are JSON, not XML, and the form editor writes them with its own indentation.
-      The same problem, a different parser, and none of this applies to it
+**Why the JSON one needs no strategies and no injected reader.** The XML version cannot know
+whether sibling order carries meaning in a particular document, so it offers strategies and
+makes the caller check. JSON has no schema-dependent semantics to be wrong about: an object is
+an unordered collection of members and an array is an ordered sequence, both by RFC 8259. That
+makes deep equality — key order ignored, item order respected — an *exact* statement of "this
+says what the update says", so the patch checks itself and the form wrapper supplies nothing.
 
 ---
 

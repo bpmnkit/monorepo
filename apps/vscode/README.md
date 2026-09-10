@@ -76,7 +76,8 @@ normally reformat the file on the first change and bury one edit in a rewrite of
 The editor writes the file that was already there instead: renaming a task changes the line
 with the task on it, moving a box changes two numbers, and your indentation, attribute order
 and comments come back untouched. Opening a diagram and saving it without editing anything
-leaves the file byte for byte.
+leaves the file byte for byte. Form files get the same treatment — their indentation, key
+order and trailing newline all survive a save.
 
 ## Commands
 

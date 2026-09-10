@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- **Form files preserve their formatting too.** Saving a `.form` now keeps its indentation,
+  key order and trailing newline; relabelling one field changes one line, whether the file is
+  indented with tabs, two spaces, four, or not at all. Completes what 0.4.0 did for `.bpmn`
+  and `.dmn`.
+
 ## 0.4.0
 
 - **Saving preserves the file.** Edits are written into the document that was already there

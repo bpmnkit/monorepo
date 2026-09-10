@@ -24,7 +24,14 @@
 
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import type { CanvasPlugin } from "@bpmnkit/canvas"
-import { Bpmn, Dmn, Form, preserveBpmnFormatting, preserveDmnFormatting } from "@bpmnkit/core"
+import {
+	Bpmn,
+	Dmn,
+	Form,
+	preserveBpmnFormatting,
+	preserveDmnFormatting,
+	preserveFormFormatting,
+} from "@bpmnkit/core"
 import { BpmnEditor } from "@bpmnkit/editor"
 import { Engine } from "@bpmnkit/engine"
 import { DmnEditor } from "@bpmnkit/plugins/dmn-editor"
@@ -208,7 +215,11 @@ function renderForm(message: Extract<HostMessage, { type: "render" }>): void {
 	mounted = editor
 	void editor.loadSchema(schema).then(() => {
 		editor.onChange(() => {
-			edited(() => `${JSON.stringify(editor.getSchema(), null, 2)}\n`)
+			// `getSchema()` is the form as this toolkit would write it; preserving
+			// turns that into the form as *this file* is written — its indentation,
+			// its key order, its trailing newline.
+			const written = JSON.stringify(editor.getSchema(), null, 2)
+			edited(() => keep(preserveFormFormatting(baseline, written).json))
 		})
 	})
 }

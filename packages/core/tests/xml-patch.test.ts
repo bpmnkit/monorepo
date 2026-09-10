@@ -114,11 +114,14 @@ describe("preserveFormatting", () => {
 		expect(result).toBe(`<a>\n    <b id="1"/>\n    <c id="2"/>\n</a>`)
 	})
 
-	it("re-indents a nested block it inserts", () => {
+	it("re-indents a nested block it inserts, in the original's own step", () => {
+		// The update indents two spaces and the original four, so the inserted
+		// block's inner line lands at eight — one of *this* file's steps deeper —
+		// rather than keeping the update's two.
 		const original = `<a>\n    <b id="1"/>\n</a>`
 		const updated = `<a>\n  <b id="1"/>\n  <c id="2">\n    <d id="3"/>\n  </c>\n</a>`
 		expect(patch(original, updated)).toBe(
-			`<a>\n    <b id="1"/>\n    <c id="2">\n      <d id="3"/>\n    </c>\n</a>`,
+			`<a>\n    <b id="1"/>\n    <c id="2">\n        <d id="3"/>\n    </c>\n</a>`,
 		)
 	})
 

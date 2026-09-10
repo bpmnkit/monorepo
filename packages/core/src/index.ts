@@ -307,6 +307,9 @@ export type {
 	SpannedElement,
 	VerifiedPreserve,
 } from "./xml/index.js"
+export { parseJsonSpans, preserveJsonFormatting } from "./json/index.js"
+export { exportFormPreserving, preserveFormFormatting } from "./form/preserving-writer.js"
+export type { JsonKind, JsonMember, JsonNode, PreservedJson } from "./json/index.js"
 export { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from "./bpmn/di-color.js"
 export type { DiColor } from "./bpmn/di-color.js"
 export { optimize } from "./bpmn/optimize/index.js"

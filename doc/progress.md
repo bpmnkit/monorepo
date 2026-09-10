@@ -1,5 +1,46 @@
 # Progress
 
+## 2026-09-10 — The same for forms, where the format answers the question
+
+Form files are JSON, so yesterday's preserving writer did not apply to them and the item was
+left open. Closed.
+
+**The problem was worse here than for BPMN.** `exportForm` writes
+`JSON.stringify(…, null, 2)` in its own key order, so a form indented with tabs came back with
+every line rewritten the first time anyone touched it — 109 changed lines on a 57-line file,
+101 with four-space indentation, and a minified form blown out to 57 lines. All of those are
+**0** now, and relabelling one field changes **one line** whichever way the file is written.
+Verified end to end: in Chromium, editing a label in the real form editor changes one line of a
+tab-indented file, and the tabs and the trailing newline both survive.
+
+**And the architecture is simpler, because JSON answers the question XML cannot.** The XML
+writer has to offer strategies — keep the file's sibling order, keep an attribute the
+serializer dropped — and make the caller verify, because whether element order carries meaning
+is a fact about a *schema* and nothing generic can know it. JSON has no such fact to be wrong
+about: an object is an unordered collection of members and an array is an ordered sequence,
+both by RFC 8259. So key order is always kept, item order always followed, and deep equality
+with those rules is an *exact* statement of "this says what the update says". The patch checks
+itself against it; `exportFormPreserving` supplies nothing and chooses nothing.
+
+**One thing the measurement caught that a unit test would not have.** The first version keyed
+array items by their source text, so an item indented with tabs in the file and two spaces in
+the update never matched itself — every array in the document was rewritten wholesale. The key
+is now the item's *value*, canonicalised. That took the tab-indented identity save from 18
+changed lines to 0.
+
+**And one mistake the browser run caught.** My edit to the form branch of the webview silently
+did not apply — the import landed, the body did not, and everything still compiled. The
+Chromium check reported the saved text as two-space indented and the failure was unmissable. A
+unit test of the library would have passed, because the library was right; only running the
+thing end to end showed that nothing was calling it.
+
+While there, both patchers stopped re-indenting inserted blocks by string replacement and
+started doing it by depth. The old way carried the *update's* inner indentation into the file —
+which is invisible when both use two spaces, and produces tabs outside with spaces inside when
+they do not.
+
+64 new tests.
+
 ## 2026-09-10 — A visual edit that reads as an edit
 
 The item left open at the end of Phase 7: a visual editor serialises the whole model, so the
