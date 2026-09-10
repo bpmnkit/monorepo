@@ -2662,6 +2662,14 @@ export class BpmnEditor {
 			scrollToElement(id) {
 				self.scrollToElement(id)
 			},
+			// The editor works on one plane — `diagrams[0]` — and has no drill-in.
+			// Saying so honestly is what lets a navigation plugin decline to drill
+			// here, rather than appearing to and doing nothing.
+			getPlanes() {
+				const plane = self._defs?.diagrams[0]?.plane
+				return plane === undefined ? [] : [{ id: plane.bpmnElement, name: plane.bpmnElement }]
+			},
+			showPlane() {},
 			getAbsoluteBBox(id) {
 				return self._absoluteBBox(id)
 			},

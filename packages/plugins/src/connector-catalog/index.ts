@@ -56,11 +56,32 @@ export interface ConnectorCatalogOptions {
 	 * built-in worker templates are fetched from `<proxyUrl>/worker-templates`
 	 * and registered automatically on plugin install. */
 	proxyUrl?: string
+	/**
+	 * The project root whose own `.camunda/element-templates/` should be loaded,
+	 * via `<proxyUrl>/element-templates`. Requires `proxyUrl` — a browser cannot
+	 * walk a filesystem, so the proxy does the discovery and hands over the
+	 * result.
+	 */
+	workspaceRoot?: string
+	/**
+	 * Templates supplied directly by the host, for a host that has them by some
+	 * other route than the proxy — its own storage, an extension host, a
+	 * download. Registered after the built-ins, so a project's own version of a
+	 * connector wins.
+	 */
+	workspaceTemplates?: ElementTemplate[]
+	/** Called when a workspace template could not be loaded, so a host can surface it. */
+	onWorkspaceProblem?: (problem: { file: string; path: string; message: string }) => void
 }
 
 /** Extended plugin interface — exposes `openCatalog()` for programmatic use. */
 export interface ConnectorCatalogPlugin extends CanvasPlugin {
 	openCatalog(): void
+	/**
+	 * Registers more workspace templates after install — for a host that learns
+	 * about them later, or whose project root changed.
+	 */
+	addWorkspaceTemplates(templates: ElementTemplate[]): void
 }
 
 // ── Toast helper ──────────────────────────────────────────────────────────────
@@ -154,6 +175,32 @@ function loadFromFile(registrar: TemplateRegistrar): void {
 	input.click()
 }
 
+/**
+ * Pulls a project's own element templates from the proxy and registers them.
+ *
+ * Registered after the built-ins so a workspace template with the same id wins
+ * — a project that ships its own version of a connector means it.
+ */
+async function loadWorkspaceTemplates(
+	proxyUrl: string,
+	root: string,
+	registrar: TemplateRegistrar,
+	onProblem?: ConnectorCatalogOptions["onWorkspaceProblem"],
+): Promise<void> {
+	try {
+		const res = await fetch(`${proxyUrl}/element-templates?root=${encodeURIComponent(root)}`)
+		if (!res.ok) return
+		const body = (await res.json()) as {
+			templates?: ElementTemplate[]
+			problems?: Array<{ file: string; path: string; message: string }>
+		}
+		for (const t of body.templates ?? []) registrar.registerTemplate(t)
+		if (onProblem) for (const p of body.problems ?? []) onProblem(p)
+	} catch {
+		// proxy unavailable — the project's templates simply aren't registered
+	}
+}
+
 async function loadBuiltinWorkers(proxyUrl: string, registrar: TemplateRegistrar): Promise<void> {
 	try {
 		const res = await fetch(`${proxyUrl}/worker-templates`)
@@ -232,6 +279,19 @@ export function createConnectorCatalogPlugin(
 			// Also fetch from proxy if configured (may add more or updated templates)
 			if (options?.proxyUrl) {
 				void loadBuiltinWorkers(options.proxyUrl, registrar)
+				if (options.workspaceRoot !== undefined && options.workspaceRoot !== "") {
+					void loadWorkspaceTemplates(
+						options.proxyUrl,
+						options.workspaceRoot,
+						registrar,
+						options.onWorkspaceProblem,
+					)
+				}
+			}
+
+			// Templates the host already has, whatever route they came by.
+			for (const template of options?.workspaceTemplates ?? []) {
+				registrar.registerTemplate(template)
 			}
 
 			// Build the visual catalog panel (lazy — created on first open)
@@ -310,6 +370,10 @@ export function createConnectorCatalogPlugin(
 
 		openCatalog() {
 			_panel?.open()
+		},
+
+		addWorkspaceTemplates(templates: ElementTemplate[]) {
+			for (const template of templates) registrar.registerTemplate(template)
 		},
 	}
 

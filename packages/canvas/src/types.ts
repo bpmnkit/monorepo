@@ -243,6 +243,16 @@ export interface CanvasApi {
 	/** Pans (without changing zoom) so the element with the given id is centred. */
 	scrollToElement(id: string): void
 
+	/** Every plane the loaded diagram has — the process, plus one per collapsed sub-process. */
+	getPlanes(): PlaneInfo[]
+
+	/**
+	 * Shows the plane identified by a DI plane `bpmnElement`. Drilling into a
+	 * sub-process extends the breadcrumb; navigating to an ancestor trims it.
+	 * No-op if the id has no plane. Fires `plane:change`.
+	 */
+	showPlane(planeElementId: string): void
+
 	/**
 	 * Returns the element's bounding box in screen pixels relative to the host,
 	 * or `null` if the element is not found.

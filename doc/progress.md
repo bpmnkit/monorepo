@@ -1,5 +1,564 @@
 # Progress
 
+## 2026-09-10 — DMN files, where "already done" was not the same as done
+
+DMN has had a preserving writer since the first cut, so the honest thing was to measure it
+rather than tick it off. It did not deliver. Two real Camunda decisions — a risk score and a
+loan eligibility table, both with a `dmndi:DMNDI` diagram section — came back from a save that
+changed nothing with **six and eighteen lines rewritten**, whichever way the file was
+indented. Both are **0** now, and editing a single rule changes **two** lines instead of
+between 12 and 90.
+
+**Two defects, neither of which any existing test could see**, because the tests used a
+hand-written DMN with no diagram section and one hit policy.
+
+- **The patcher refused to pair an element with an `id` in the file and none in the update.**
+  The rule was there to stop a deliberate *move* being undone, and it was too broad. Two
+  elements can only have been matched by id in the first place if they both carry one, so one
+  side lacking an id means there is no move to preserve — it is simply the everyday case where
+  the model does not carry an id the file does. DMN is exactly that case: `DMNDiagram` and
+  `DMNShape` are named in the file and not in the model, so the whole `DMNDI` block was deleted
+  and written out again on every save. Narrowed to "leave the pair alone only when *both*
+  sides have an id"; the rule-reorder test that motivated it still passes.
+- **`serializeDmn` dropped `hitPolicy="UNIQUE"` as the schema default while `parseDmn` read
+  it.** So `parse(export(m))` no longer equalled `m` — and a preserving write checks itself
+  against exactly that comparison before it uses anything it kept. One omitted attribute cost
+  the file *every* other thing the write was preserving. Fixed at the source rather than
+  worked around in the patcher, with round-trip tests over `UNIQUE`, `FIRST` and `COLLECT`,
+  and one for a model that genuinely has no hit policy.
+
+Both fixes were proved load-bearing by reverting them: each takes six tests red.
+
+**What the tests now hold.** Two fixtures written the way Camunda writes them, each run twice
+— as the modeler writes it and tab-indented — asserting the file comes back byte for byte on
+an identity save, that editing one rule stays on one line, and that every `dmndi` id in the
+file is still there afterwards. That last one is the regression test for the first defect, and
+it is stated in terms of the file rather than the patcher, so it stays meaningful if the
+pairing rule changes again.
+
+BPMN was re-measured with the narrowed rule in place: no regression — renaming an element
+across ten diagrams is still 294 changed lines with a plain write and 20 with this one.
+
+## 2026-09-10 — The same for forms, where the format answers the question
+
+Form files are JSON, so yesterday's preserving writer did not apply to them and the item was
+left open. Closed.
+
+**The problem was worse here than for BPMN.** `exportForm` writes
+`JSON.stringify(…, null, 2)` in its own key order, so a form indented with tabs came back with
+every line rewritten the first time anyone touched it — 109 changed lines on a 57-line file,
+101 with four-space indentation, and a minified form blown out to 57 lines. All of those are
+**0** now, and relabelling one field changes **one line** whichever way the file is written.
+Verified end to end: in Chromium, editing a label in the real form editor changes one line of a
+tab-indented file, and the tabs and the trailing newline both survive.
+
+**And the architecture is simpler, because JSON answers the question XML cannot.** The XML
+writer has to offer strategies — keep the file's sibling order, keep an attribute the
+serializer dropped — and make the caller verify, because whether element order carries meaning
+is a fact about a *schema* and nothing generic can know it. JSON has no such fact to be wrong
+about: an object is an unordered collection of members and an array is an ordered sequence,
+both by RFC 8259. So key order is always kept, item order always followed, and deep equality
+with those rules is an *exact* statement of "this says what the update says". The patch checks
+itself against it; `exportFormPreserving` supplies nothing and chooses nothing.
+
+**One thing the measurement caught that a unit test would not have.** The first version keyed
+array items by their source text, so an item indented with tabs in the file and two spaces in
+the update never matched itself — every array in the document was rewritten wholesale. The key
+is now the item's *value*, canonicalised. That took the tab-indented identity save from 18
+changed lines to 0.
+
+**And one mistake the browser run caught.** My edit to the form branch of the webview silently
+did not apply — the import landed, the body did not, and everything still compiled. The
+Chromium check reported the saved text as two-space indented and the failure was unmissable. A
+unit test of the library would have passed, because the library was right; only running the
+thing end to end showed that nothing was calling it.
+
+While there, both patchers stopped re-indenting inserted blocks by string replacement and
+started doing it by depth. The old way carried the *update's* inner indentation into the file —
+which is invisible when both use two spaces, and produces tabs outside with spaces inside when
+they do not.
+
+64 new tests.
+
+## 2026-09-10 — A visual edit that reads as an edit
+
+The item left open at the end of Phase 7: a visual editor serialises the whole model, so the
+first change reformats the file and the commit says "the whole diagram" when it means "a box
+moved". Closed.
+
+**The measurement, over sixteen real diagrams.** Renaming one element: **313 changed lines
+with a plain write, 32 with a preserving one** — two per file, the line before and the line
+after. Opening and saving without editing anything: **0 lines on every file**, against up to
+62. In the browser, deleting an element through the real editor now removes nineteen lines and
+adds none.
+
+**The architecture keeps the model out of it.** `preserveFormatting(original, updated)` takes
+the file as it stands and the file as the serializer would write it, and returns the second's
+content carried by the first's bytes. No model, no schema, no BPMN — which is why the same
+function serves DMN, and would serve anything else this toolkit learns to write. What it needs
+is offsets, so the existing scanner learned to record them behind an opt-in `XmlCursor`: sinks
+that do not ask for spans pay nothing, and parsing is the hottest path here.
+
+**The strategies that pay off are exactly the ones no generic tool may assume.** Preserving
+indentation is worth almost nothing on its own. What matters is keeping the file's own sibling
+order — the model holds `flowElements` and `sequenceFlows` in separate lists, so *every* write
+reshuffles a file that interleaved them — and keeping an attribute the serializer drops as a
+schema default, which is why `isExecutable="false"` disappears from a file that said it out
+loud. Both are wrong in general. Sibling order carries meaning in plenty of XML.
+
+So neither is assumed. `preserveFormattingVerified` tries each strategy, **parses the result
+with the caller's own reader and compares it against a plain write**, and uses the first that
+reads the same. The plain write is the floor, so this is never worse than not calling it.
+
+**DMN is the case that proves it is not ceremony.** Under hit policy `FIRST` the first matching
+rule wins, so rule order *is* the decision. The strategy that saves a BPMN file from
+reshuffling would silently undo a user who dragged a rule upwards, and the only thing between
+those two cases is parsing the result. There is a test for exactly that: reordering DMN rules
+comes back reordered, with the outcome reported as `reordered` rather than `preserved`.
+
+**Two things I got wrong on the way.** Pairing leftover children by tag name — which is what
+stops an id-less `dc:Bounds` or `multiInstanceLoopCharacteristics` from being deleted and
+written out again — quietly undid deliberate reordering, because it re-paired the very
+elements the alignment had left unmatched to express a move. The rule that fixes it is the
+honest one: an element carrying an `id` has an identity, so one the alignment could not place
+really did move; an element without one is known by where it sits.
+
+And my first measurement said a deletion changed a hundred lines. It compared line *i* to line
+*i*, so every line after a deletion counted as changed. The numbers above are a real diff.
+
+62 new tests, including the invariant over every round-trip fixture: whatever the patch does to
+the bytes, the document it produces parses to exactly what a plain write produces.
+
+## 2026-09-10 — The deferred list, and a caution aimed at the wrong protocol
+
+Phase 7 complete: editing in VS Code, payload files, detail cards in the template picker, a
+localisation harvest — and one item declined rather than deferred again.
+
+**The reason editing was deferred turned out not to apply.** The roadmap warned that VS Code
+editing meant taking on dirty state, hot exit, external edits and a text editor that can
+disagree with you, and it was right — about `CustomEditorProvider`, which hands you an opaque
+document and makes you implement all of it. These files are text. A
+**`CustomTextEditorProvider`** is backed by the same `TextDocument` a text editor opens, so
+every one of those problems belongs to VS Code, and the text editor beside the diagram stops
+being a conflicting copy and becomes a second view of one document. What was left was a
+two-way sync with an echo in it: one piece of state, seven tests, `document-sync.ts`.
+
+The hazard that *is* real is subtler and is not in the host at all. Editors report a change
+when they are loaded, which is correct for them and catastrophic here — if a load counted as
+an edit, opening a diagram would write a re-serialised copy of it back over the file, and
+every diagram anyone ever looked at would come back modified. The webview attaches its change
+handler **after** loading rather than guarding with a flag: ordering is right by construction,
+where a flag has to be right about when three different editors emit. The browser run asserts
+it directly, both for a first load and for a rebuild after a foreign document change.
+
+**The localisation item asked for a method, and the method produced a number.** A recorder
+`Translate` plus a test that runs a real editor and presses every button it can reach:
+**the running editor asks for 58 strings; a grep over the source finds 11.** A conventional
+extractor would have shipped a full-looking catalogue covering under a fifth of the UI,
+because the editor builds most of its labels from element types at runtime. `i18n/en.json` is
+now harvested rather than written, the test keeps it in step, and greppable keys the harvest
+never reached are reported rather than deleted — dead, or reachable only by a path the
+exercise misses, and a grep cannot tell you which.
+
+**Two items were smaller than they looked because the work already existed.** `summarizeTemplate()`
+had been computed for every catalogue listing since Phase 2 and was merely private; exporting
+it meant the picker's new detail card reasons about templates through the same code
+`casen connector show` does, instead of a second copy written in DOM. And payload discovery is
+the element-template walk with a different folder name — deliberately copied rather than
+shared, because thirty lines and one consumer do not justify widening a published API.
+
+**Declined: the template marketplace.** Not deferred again. Applying an element template writes
+the extension elements that decide what a task executes, so a registry of third-party templates
+is a supply-chain surface, and it needs provenance and publisher identity before it needs a
+search box. What the item actually wanted is already served: `.camunda/element-templates/` puts
+a project's templates under version control where their review is the repository's review, and
+the picker imports from a URL for the one-off. The reasoning is on the roadmap so the question
+is not silently reopened.
+
+Left open and written down: a visual editor writes the whole document, so the first change
+reformats the file. Every BPMN modeler does this; a formatting-preserving writer would make
+diagrams reviewable in a way none of them are, and that is a piece of work, not a caveat.
+
+33 new tests. The Chromium check of the built bundles grew from 27 to 36 and now round-trips a
+real edit: it deletes an element in the editor and asserts the reported document both parses
+and no longer contains it.
+
+## 2026-09-09 — Reuse is a test, and two packages failed it
+
+Phase 6 complete: the VS Code extension gains the four things nothing else in the Marketplace
+does — step-through simulation, a FEEL playground on the selection, deploy-and-start against a
+`casen` profile, and ASCII rendering for a code review.
+
+**Almost none of this was new code.** The simulator is
+`@bpmnkit/plugins/process-runner` mounted in the webview with `@bpmnkit/engine` behind it, not a
+second runner written for this host; the playground is `buildFeelPlaygroundPanel()` unchanged;
+the ASCII is `renderBpmnAscii`; the clusters are the profile store `casen` already writes. What
+the extension contributes is placement — where each of those belongs in an editor, and what the
+editor knows that the studio does not.
+
+**Mounting them somewhere new is what found the bugs.** Two, both in `@bpmnkit/plugins`, both
+fixed at the source rather than worked around:
+
+- The process runner offered a **Tests tab to a host with no scenario runner**, and the tab
+  opened onto "Pass runScenario in options to enable the Tests tab" — an instruction addressed
+  to whoever wrote the host, rendered for its users. The studio never saw it because it passes
+  both a runner and its own container. The tab is now conditional on there being something
+  behind it.
+- `buildFeelPlaygroundPanel()` **returned DOM without its stylesheet.** Both existing callers
+  injected it separately and neither noticed the coupling; the first caller that only imported
+  the builder got a working evaluator that rendered as unstyled form controls. A screenshot from
+  the browser run is what showed it. The builder now injects its own, id-guarded so the existing
+  callers cost nothing.
+
+That is the argument for a fourth host stated more precisely than Phase 5 could state it: the
+value of reuse is not only that you write less, it is that a second mounting is an experiment
+the first one cannot run.
+
+**Small decisions worth recording.** Deployment posts multipart the way `casen deploy` does,
+while starting an instance goes through the generated client — each endpoint gets the tool that
+fits it. The instance starts by process **key**, not id, so it runs the version this deploy
+produced rather than whatever someone else deployed a second ago. One profile is not a choice
+and is not offered as one; more than one always asks, because picking the wrong cluster matters.
+And the ASCII is dedented, which meant dropping the title first: a title line at column zero
+leaves no shared indent for a dedent to remove, so it would have silently done nothing.
+
+Credentials never leave the profile store: they are read to sign one request and nothing in the
+extension stores, displays or logs them.
+
+17 new tests (7 in `apps/vscode`, 8 in `@bpmnkit/plugins`, both plugin fixes proved load-bearing
+by reverting them), and the browser check grew from 18 to 27 — it now runs a process instance in
+Chromium and asserts tokens land on the diagram.
+
+## 2026-09-09 — The editor was the easy half; the manifest was not
+
+Phase 5 complete: `apps/vscode` — read-only custom editors for `.bpmn`, `.dmn` and `.form`, a
+visual diff reachable from Source Control and the Explorer, analysis findings in the Problems
+panel, and a Marketplace-ready package.
+
+**The stack was ready and the seams held.** `@bpmnkit/canvas` is plain DOM with CSS-variable
+theming, `apps/drop` had already proved it bundles to browser ESM, and `lintDiagram()` was built
+in Phase 3 precisely so a finding could cross a `postMessage`. None of that needed changing: the
+extension is 900 lines of host code and two webview entry points, and not one package was
+modified to accommodate it. The `vscode` module appears in seven files and in none of the ones
+that hold a decision — `locate.ts`, `diagnostics.ts`, `documents.ts` and `command-args.ts` are
+`vscode`-free on purpose, which is what lets 47 tests run without an editor.
+
+**Findings needed a *place*, not just a message.** `lintDiagram()` reports element ids; the
+Problems panel needs a range. `Bpmn.parse()` deliberately discards source positions, and the file
+on screen is routinely mid-edit and unparseable anyway, so placement is a scanner over the raw
+text that never has to be right about the document's meaning — only about where a piece of it was
+typed. It skips comments, CDATA and processing instructions, survives a `>` inside a FEEL
+condition, and prefers the semantic tag when diagram interchange reuses an id. A finding that
+names no element falls back to its process, then to the file.
+
+**Read-only is the scope, and it is also the better shape.** The preview opens *beside* the text
+editor rather than replacing it, the way Markdown preview does, and follows the buffer as it is
+typed rather than only on save. When the XML is momentarily invalid it keeps the last drawing
+that parsed and says so — which costs one extra parse per redraw, because `BpmnCanvas` parses
+internally and would otherwise tear down a good view before discovering the new text is broken.
+
+**Two bugs the unit tests structurally could not find.** VS Code will not run in this
+environment, so the webview bundles were loaded in Chromium with a stubbed `acquireVsCodeApi` —
+18 checks against the real bundles. That run caught the theme mapping: every `--bpmnkit-*` token
+was re-pointed at a `--vscode-*` variable with no literal at the end of the chain, and a missing
+custom property does not fall through to the value underneath, it poisons the declaration. On any
+theme that skips one colour the panel chrome would have rendered as unstyled white. The chain is
+now written once per polarity with the `@bpmnkit/ui` value as its last link, and the browser run
+asserts both directions.
+
+The second is the class of bug `vsce package` cannot see: a command contributed in the manifest
+with no handler registered appears in the palette and fails when picked. `tests/activation.test.ts`
+runs `activate()` against a recorder and asserts the manifest and the implementation agree in both
+directions — proved load-bearing by deleting a registration and watching it fail.
+
+**Not adapting VS Code's diff editor.** It pairs two *text* editors and a custom editor cannot
+stand in for either side, so the visual comparison is its own panel reached from the menus a
+reader already uses for a comparison. The text diff stays exactly where it was.
+
+47 tests in `apps/vscode`, 18 browser checks against the built bundles, and `vsce package`
+produces a 205 KB `.vsix` — which is also the only automated validation of the manifest that
+exists.
+
+## 2026-09-09 — The invariant held; the thing beside it did not
+
+Phase 4 complete: keyboard flow traversal, go-to-reference behind a port, the port pattern
+written down, and the engine-neutrality invariant locked in.
+
+**Item 1 asked me to stop a bug that was not there.** The roadmap said opening an engine-neutral
+model must never stamp an execution platform on it, and warned we were exposed. We were not:
+parse → export, parse → edit → export, and `createEmptyDefinitions` all leave the document
+alone. What the verification *did* turn up was the mirror-image defect. Give a neutral model a
+`zeebe:taskDefinition` — which is exactly what applying a connector template does — and the
+writer emitted `<zeebe:taskDefinition/>` with no `xmlns:zeebe`, because it only ever declared
+the namespaces the model was parsed with. That document is not namespace-well-formed and a
+conforming reader may refuse it. The serializer now declares extension prefixes the document
+uses, and leaves alone any the model already bound *anywhere* — the first attempt looked only at
+the root and hoisted a duplicate `xsi` declaration out of a nested element, which the round-trip
+fidelity tests caught immediately.
+
+The repair is scoped to extension namespaces. Widening it to the structural ones surfaced a
+second, older gap — `applyAutoLayout` on a model parsed without a diagram produces DI whose
+prefixes nothing declares — and every way of fixing *that* collides with a contract
+`semanticHash` or the `writeBpmn` boundary holds constant on purpose. That is a decision to take
+deliberately, not in passing, so it is recorded on the roadmap and left alone. Seven tests cover
+both directions of the invariant and the fix.
+
+**A capture-phase assumption, checked rather than assumed.** Flow navigation has to intercept
+Tab, which the canvas already binds to document order — and both listeners sit on the same node
+with the canvas registered first. My reading of the DOM spec said at-target listeners run in
+registration order, which would have made the whole design unworkable. Rather than argue with
+myself I ran it: in happy-dom *and* in real Chromium, a capture listener runs first regardless of
+registration order, and `stopPropagation()` there suppresses the bubble listener beside it. The
+design is sound; the source now says so and names where it was verified.
+
+**The tests were right and still missed it.** Both plugins tracked `element:click` to follow the
+user, and all 39 unit tests passed — because they mount `BpmnCanvas`, which emits it. The studio
+mounts `BpmnEditor`, which emits `editor:select` instead. A browser run caught the cursor stuck
+on the start event; the unit tests never could. Both plugins now follow selection too, ignoring a
+multi-selection since it has no single place to continue from, and there are regression tests for
+the path the browser exercised.
+
+**`CanvasApi` gained `getPlanes()` and `showPlane()`.** `BpmnCanvas` had both and never exposed
+them, so no plugin could drill into a sub-process. The editor implements them honestly rather
+than pretending — it works on one plane and says so, which is what makes flow navigation decline
+to drill there instead of appearing to and doing nothing.
+
+`doc/port-pattern.md` is the phase's real deliverable: four rules, the ports already in the repo,
+the two shapes that look like ports and are not, and the note that anything a host forwards must
+be plain data — the reason `LintDiagnostic` exists at all.
+
+49 new tests. Verified in the browser: in the studio, the call activity pointing at a process the
+workspace has is marked and the one pointing at a missing process is withdrawn by the port;
+clicking a gateway and pressing Tab selects its first outgoing flow.
+
+## 2026-09-09 — Lint on the canvas, and a rule chosen by measurement
+
+Phase 3 complete: markers per element, a counting control that steps through findings, a
+debounced re-lint, and a report shape a host can forward.
+
+**The interesting decision was which rules to run.** The roadmap said "the engine layer picked
+from the model's detected execution platform", which sounds like a policy question. It is not —
+it is answerable. Running the full analysis over an engine-neutral model produces exactly one
+misleading finding: `deploy` reporting *"Charge card (serviceTask) has no zeebe:taskDefinition
+type"* as an **error**, on a diagram that never claimed it would be deployed to Zeebe. Every
+other category either stays quiet without Zeebe extensions or reports something structural that
+holds regardless. So the rule is narrow and grounded: drop `deploy`, `connector` and `agentic`
+when no platform is stamped, keep everything else. `forceEngineRules` opts back in.
+
+That rule now lives in one place. `casen lint` cannot use `lintDiagram` — it needs the `applyFix`
+closures that `LintDiagnostic` deliberately drops — so both surfaces call `lintCategories`
+instead of each carrying their own list of what counts as an engine rule. **This changes existing
+CLI behaviour**: a neutral model no longer fails `casen lint`, and the command says why rather
+than silently running fewer rules. `--profile deploy` forces the engine layer back on, since
+asking for the deploy gate is asking for those rules.
+
+`LintDiagnostic` exists for one concrete reason: `OptimizationFinding.applyFix` is a function, so
+a finding cannot cross a `postMessage` or a JSON boundary. That is precisely the boundary a VS
+Code extension host sits behind, which is why Phase 5's Problems-panel item lists this as its
+prerequisite. A test asserts the round trip rather than trusting it.
+
+Verified in the browser as well as in tests: a Camunda Cloud model in the studio shows `✖ 1 ⚠ 1`,
+the service task outlined red, the start event amber, and clicking the control focuses the
+element. The same model with the platform attribute removed shows neither the error nor the
+marker.
+
+**Noted, not changed.** `pattern-advisor` already drew severity rings for its own category, and
+now overlaps this plugin's markers. Nothing installs it, and it is a side-panel workflow with
+apply-fix and dismiss rather than canvas decoration, so it was left alone rather than gutted —
+but if both were ever installed together the diagram would carry two sets of rings.
+
+46 new tests. Whole monorepo builds, typechecks and passes.
+
+## 2026-09-09 — A project's own connectors, and two things the tests found
+
+Phase 2 complete: `.camunda/element-templates/*.json` is discovered by convention, validated,
+merged into the catalogue with the workspace winning, checkable in CI, and reachable from a
+browser host that has no filesystem.
+
+The shape that matters is the split between two walks. `discoverElementTemplates` climbs from a
+diagram to the project root — that is *resolution*, and nearest wins.
+`collectElementTemplates` descends from the root — that is *validation*, and order is
+irrelevant. Conflating them would have produced a CI check that passed a project whose broken
+template sat one folder down, which is exactly what the first end-to-end run of
+`casen connector validate` did before the second walk existed.
+
+Validation is hand-rolled rather than a JSON-schema engine. The dependency policy pushed that
+way, but the messages settle it: `properties[3].binding.type: unknown binding type
+"zeebe:nonsense"` is worth more than "must match exactly one schema in oneOf".
+
+**Two findings, both from the test that validates the bundled catalogue against the new
+validator** — a test written on the theory that if the validator rejects the package's own
+templates, one of the two is wrong:
+
+- **The `TemplateBinding` union was lying.** The bundle uses `bpmn:Message#property`,
+  `bpmn:Message#zeebe:subscription#property` and `zeebe:linkedResource` across 98 properties,
+  and the union admitted none of them — nor does `applyElementTemplate` write them. The union
+  now matches what ships, and a new warnings channel says so out loud instead of letting such a
+  template apply to nothing. Making inbound bindings actually apply is a separate piece of work
+  and is not done here.
+- **A rule I invented was wrong.** I added a duplicate-property-id check on the theory that two
+  properties writing the same key is a silent overwrite. HubSpot.v1 has four properties keyed
+  `operationId`, each guarded by a mutually exclusive condition — the documented Camunda pattern
+  for one logical field with per-resource variants. The rule was removed rather than narrowed:
+  it is not in the schema, it failed on first contact with real data, and the narrowed version
+  would guard a case I have no evidence occurs.
+
+A third fix came from reviewing my own test file rather than from a run: three of the CLI tests
+asserted nothing useful, because the harness threw away captured output whenever the command
+threw — and the failure path is the interesting one, since it prints findings for a human before
+throwing the exit signal for a pipeline. The harness now returns both.
+
+**Known limitation.** A browser host registers one merged set for the whole project (deeper
+directories win, by the breadth-first order), which is not the same as per-file resolution. The
+CLI resolves per file correctly; the editor does not yet. Recorded on the roadmap.
+
+55 new tests. Whole monorepo builds, typechecks and passes; `@bpmnkit/connectors` ships its new
+`/node` subpath through the tarball gate.
+
+## 2026-09-09 — The diff reaches the product
+
+Phase 1 of the IDE-resident modeling roadmap, complete: the diff engine that landed this morning
+as a library is now a CLI command, a studio page, a drop route, and it understands planes.
+
+**`diffDiagram` moved to `@bpmnkit/core`.** It was in the plugin, which was right when the plugin
+was its only consumer. The CLI is a second one, and a CLI has no business depending on a
+canvas-plugin package — so it now sits in `src/bpmn/diagram-diff.ts` beside `diffSemantics`,
+which is also where a reader would look for it. Renamed from `computeBpmnDiff` while nothing is
+published: `diffSemantics` / `diffDiagram` teaches the model-vs-diagram distinction at a glance.
+The plugin re-exports it, so its consumers are unchanged.
+
+**Planes.** The result now carries a per-plane breakdown. A canvas draws one plane at a time, so
+a change inside a collapsed sub-process is invisible until the reader drills in — the legend says
+`N on other planes` and the CLI names them. Verified in a browser: a drop whose only addition is
+inside a collapsed sub-process paints no markers on the root plane and shows exactly that note.
+
+**`casen diff bpmn`** rather than the `casen bpmn diff` the roadmap first proposed. The pinned
+CLI groups are verbs (`view`, `lint`, `generate`, `deploy`), and there is no `bpmn` group to join;
+`casen diff bpmn` mirrors `casen view bpmn` and leaves room for `casen diff dmn`. It names
+elements instead of printing bare ids, which is most of what makes the output usable.
+
+**What did not get built.** The roadmap's "or a file against its last saved version" for the
+studio is not there: nothing in the studio's storage keeps a previous version, so there is no
+second side to compare against. Recorded on the roadmap rather than faked.
+
+Verified beyond the test suite: both browser surfaces were driven in headless Chromium against
+real fixtures — markers, legends, viewport alignment and the off-plane note all confirmed. 60
+tests across the four surfaces; the whole monorepo builds, typechecks and passes.
+
+One environment note: `@bpmnkit/engine` and everything behind it (studio included) could not
+build here until `@bpmnkit/reebe-wasm` existed, so the wasm was built locally with `wasm-pack
+--dev` — `wasm-opt` needs a binaryen download the proxy blocks. The artifacts are gitignored and
+nothing about the release path changed. A side effect worth knowing: a local Rust build leaves
+`apps/reebe/target/`, which `pnpm biome check .` then scans and reports about a thousand
+diagnostics on. Those are build outputs, not source, but `biome.json` has no ignore for them.
+
+## 2026-09-09 — The Miragon findings become a checkable roadmap
+
+`doc/roadmap.md` gains an **IDE-Resident Modeling** section: seven phases ordered by value per
+unit of work, with dependencies respected, covering everything
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) recommended.
+
+The ordering is not the comparison's tier list re-typed. Two things moved:
+
+- **Surfacing the diff is now Phase 1, ahead of every remaining Tier-1 item.** The engine landed
+  today but nothing in the product reaches it — no CLI command, no studio view. Finishing work
+  already paid for beats starting the next thing, and the later phases each reuse one of those
+  surfaces. It also names a gap the plugin has: a diff inside a collapsed sub-process only
+  appears once the reviewer drills in, so a per-plane count is on the list.
+- **Editor invariants and navigation moved behind lint-on-canvas**, because that phase is where
+  the **port pattern** gets established — a feature is a plugin talking to an injected port,
+  never to a host API — and the VS Code phases depend on that discipline existing first. It is
+  what let one Miragon codebase serve VS Code, Theia and IntelliJ, and studio, desktop and drop
+  would each benefit from it here.
+
+Phase 2 is element templates by convention, still the largest capability gap: `@bpmnkit/connectors`
+parses the Zeebe template schema but can only load its own generated catalogue, so a user's own
+connectors cannot reach the editor at all. Phase 3 puts `casen lint`'s five categories on the
+canvas, and gives them a host-facing shape the VS Code Problems panel later consumes. Phases 5
+and 6 are the extension, read-and-review first and the differentiators second; Phase 7 collects
+what is deferred, VS Code editing included, since the custom-editor document protocol is its own
+piece of work.
+
+The comparison doc's item B is marked shipped and now points at the roadmap for what remains,
+so a later reader does not re-plan finished work.
+
+## 2026-09-09 — A diagram diff, not a model diff
+
+`@bpmnkit/plugins/diff` ships the first Tier-1 item from the Miragon comparison: two canvases
+side by side, every element marked added / removed / changed / moved, a legend counting each,
+and synchronised pan and zoom.
+
+`createBpmnDiff()` returns a *pair* of plugins because a canvas plugin only ever sees its own
+canvas. Each side publishes the model it loaded into shared state; the diff computes and paints
+once both have arrived, in whichever order they do, which is also what makes a reload of either
+side just work.
+
+The category that justifies the feature is `moved`. `diffSemantics` in `@bpmnkit/core`
+deliberately drops diagram interchange — that is what makes its hash stable across re-layout —
+so a task somebody dragged reads there as no change whatsoever. The plugin computes the layout
+half itself from DI (bounds, waypoints, label placement, and flags like collapsed/expanded) and
+reports it separately; an element that changed *and* moved is reported as changed, because a
+semantic change is what a reviewer needs first. The result is also restricted to elements that
+carry DI on one side or the other, so a changed `targetNamespace` cannot add to a count that has
+nothing on screen to point at.
+
+Two things worth recording, because the tests found them rather than the design:
+
+- **The viewport sync had a real bug.** A canvas applies a viewport on the next animation frame
+  and fires `viewport:change` only then, so the obvious re-entrancy flag around `setViewport` is
+  already cleared by the time the echo arrives — it guards nothing, and the two canvases hand the
+  same viewport back and forth every frame. The fix is to skip a write that changes nothing:
+  every exchange then ends after one hop, and a no-op push can no longer schedule a frame whose
+  event carries a newer pan back the other way and undoes it. Deleting that one condition fails
+  the tests.
+- **The second fix was not needed.** Having diagnosed a stale-echo race, I added push tracking
+  to recognise the plugin's own echoes — and then could not write a test that distinguished it,
+  because the canvas coalesces sets and emits current state at apply time, never a stale value.
+  It came back out. The remaining guard is one comparison.
+
+Element lookup goes through `getShapes()` / `getEdges()` rather than an attribute selector built
+from an element id, since ids come from a parsed file.
+
+35 tests. `@bpmnkit/plugins` passes the tarball gate with the new subpath — 31 subpaths imported
+and type-checked under strict NodeNext. The nine failures the gate still reports are the
+pre-existing `cli-sdk`/wasm ones already recorded with A10, in packages that do not build here.
+
+## 2026-09-09 — What the Miragon modeler solved that we have not
+
+`doc/miragon-bpmn-modeler-comparison.md` studies [Miragon/bpmn-modeler](https://github.com/Miragon/bpmn-modeler),
+the Apache-2.0 monorepo behind the `miragon-gmbh.vs-code-bpmn-modeler` Marketplace extension,
+and answers two questions: what is worth adapting, and does a BPMN Kit VS Code extension make
+sense.
+
+It is the mirror image of this repo — a bpmn.io *integration* (bpmn-js, dmn-js, form-js,
+bpmnlint, bpmn-js-differ) whose own 14 libs are host wiring, against our zero-dependency
+reimplementation of the whole stack. So nothing is liftable; the value is in which problems
+they found worth solving across three hosts (VS Code, Theia, IntelliJ) and 29 ADRs.
+
+Five Tier-1 gaps, ranked by value per unit of work: **element templates by convention**
+(`@bpmnkit/connectors` understands the Zeebe template schema but can only load its own
+generated catalogue — a user's `.camunda/element-templates/` never gets read, which is the
+most common real Camunda 8 need we cannot serve); a **visual BPMN diff** (nothing renders one,
+though `semantic-hash.ts` and `@bpmnkit/canvas` are both already in place); the
+**View/Design/Implement invariant** that opening an engine-neutral model must never stamp an
+execution platform on it; **keyboard flow navigation**; and **go-to-reference** generalised out
+of what `apps/drop` already does within a drop. Camunda 7 features, the clipboard bridge and
+the template marketplace are argued as explicitly not worth adapting.
+
+On the extension: **yes, but scoped read-and-review first.** The prerequisites are unusually
+well met — `@bpmnkit/canvas` is already framework-agnostic plain DOM with CSS-variable
+theming, `apps/drop` proves the stack bundles to browser ESM and `apps/desktop` proves editor
+plus plugins compose into a host shell, so this is a third host over two existing proofs. What
+is *not* solved anywhere yet is VS Code's custom-editor document protocol (dirty state, hot
+exit, external edits), which is why Phase 1 is read-only editors plus the diff in Source
+Control plus `casen lint` in the Problems panel, and editing waits. The recommendation is to
+adopt Miragon's port pattern before writing any of it — every feature a plugin talking to an
+injected port, the extension contributing host wiring only — since studio, desktop and drop
+would each benefit from the same discipline.
+
+Analysis only — no code changes, and no roadmap items added.
+
+
 ## 2026-09-09 — The model-fidelity work gets the release notes it never wrote
 
 #161 shipped 104 files and no changeset, so none of it would have been published. Five

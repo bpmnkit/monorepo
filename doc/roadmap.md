@@ -277,6 +277,380 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 ---
 
+## IDE-Resident Modeling
+
+> Full analysis and rationale: [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md)
+> — measured against `Miragon/bpmn-modeler` (2026-09-09), the bpmn.io-based monorepo behind the
+> `miragon-gmbh.vs-code-bpmn-modeler` Marketplace extension. Nothing there is liftable (it wraps
+> bpmn.io; we reimplement it), so these are the *problems* worth solving, not code to copy.
+
+Phases are ordered by value per unit of work, with dependencies respected. Each phase is
+shippable on its own — nothing later is a prerequisite for the value of anything earlier.
+
+### Phase 1 — Make the diff reachable ✅
+
+The diff engine landed as a library; nothing in the product exposed it. Every later phase
+reuses one of these surfaces.
+
+- [x] `@bpmnkit/plugins/diff` — `createBpmnDiff()` paired canvas plugins, four categories,
+      legend, synchronised viewports
+- [x] `diffDiagram()` promoted to `@bpmnkit/core` (`src/bpmn/diagram-diff.ts`), beside
+      `diffSemantics` — the CLI should not depend on a canvas-plugin package, and that is where
+      a reader looks for it. The plugin re-exports it
+- [x] `casen diff bpmn <before> <after>` (`apps/cli/src/commands/diff.ts`) — names elements
+      rather than printing bare ids, `--format json` for scripting, `--exit-code` to gate a
+      pipeline, `--ascii` to render both diagrams. Its own group, mirroring `casen view bpmn`,
+      rather than the `casen bpmn diff` this list first proposed: the pinned groups are verbs
+- [x] Two-pane diff view in `apps/studio` (`src/pages/ModelDiff.tsx`, `/models/diff`) — two
+      pickers, a swap button, a summary bar, and a **Compare** entry point on the Models page.
+      Comparing a file against *its own last saved version* is not included: nothing in the
+      studio's storage keeps a previous version to compare against
+- [x] Diff a shared drop against another (`apps/drop`) — `/drop/:a/diff/:b`, both drops resolved
+      server-side so an expired share is a 404 rather than half a comparison; files paired by
+      name with a picker per side
+- [x] Sub-process planes — `diffDiagram` returns a per-plane breakdown, the legend says how many
+      differences sit on a plane the canvas is not showing, and the CLI names the planes
+
+### Phase 2 — Element templates by convention ✅
+
+The largest capability gap found. `@bpmnkit/connectors` parsed the Zeebe element-template JSON
+schema but only ever loaded the generated built-in catalogue — a user's own connectors could not
+reach the editor at all.
+
+- [x] Discover `.camunda/element-templates/*.json` (`@bpmnkit/connectors/node`), walking up from
+      the diagram to the project root, nearest winning; folder name follows `configFolder`
+- [x] `collectElementTemplates({ root })` — the opposite, downward walk. Resolution and
+      validation are different questions: a CI check that only read the root would pass a project
+      whose broken template sits beside a sub-folder's diagrams
+- [x] Validation with paths (`properties[3].binding.type`) rather than a JSON-schema engine's
+      `oneOf` noise; every problem at once, a rejected template named and skipped, one bad file
+      never costing the good ones beside it. Warnings are separate from problems
+- [x] Merge into the catalogue via `registerElementTemplates`, later registration winning on an
+      id collision, so `listConnectors` / `getTemplate` / `searchConnectors` see a project's own
+- [x] `casen connector validate [path]` — whole project or one file, `--format json`, non-zero
+      exit for CI. `list` / `search` / `show` include workspace templates, with `--workspace`
+      and `--config-folder`
+- [x] Browser path: `GET /element-templates?root=…` on the proxy, `workspaceRoot` /
+      `workspaceTemplates` on the connector-catalog plugin, wired from the studio's active project
+- [x] `TemplateBinding` gains `bpmn:Message#property`,
+      `bpmn:Message#zeebe:subscription#property` and `zeebe:linkedResource` — used by the bundled
+      catalogue across 98 properties, admitted by neither the union nor `applyElementTemplate`
+
+**Left open, deliberately:**
+
+- [ ] Apply the inbound-message and linked-resource bindings. They validate and warn today; a
+      template that depends on one still applies to nothing. This is inbound-connector support,
+      a feature of its own rather than part of this phase
+- [ ] Per-file template resolution in a browser host. A host registers one merged set for the
+      whole project (deeper directories win, by the breadth-first order); the CLI resolves per
+      file correctly, the editor does not. Needs the config panel to re-resolve as the open file
+      changes
+
+### Phase 3 — Findings on the canvas ✅
+
+`casen lint` had five categories built on `packages/core/src/bpmn/optimize/` — arguably a better
+rule set than bpmnlint's — and none of it was visible while modelling.
+
+- [x] `@bpmnkit/plugins/lint` — a marker per offending element, worst severity winning, so a task
+      with an error and three warnings reads as an error
+- [x] Corner control counting each severity; clicking centres the next offending element and
+      pulses it, wrapping around. Names how many findings sit on a plane the canvas is not showing
+- [x] Debounced re-lint on `diagram:change` (300 ms default), and the engine layer picked from
+      the model's `modeler:executionPlatform`
+- [x] `lintDiagram()` in `@bpmnkit/core` — the host-facing seam. `LintDiagnostic` is plain data
+      that survives a `postMessage`, which `OptimizationFinding` cannot because of its `applyFix`
+      closure, and each diagnostic names the plane its elements are on
+- [x] `casen lint` follows the same engine rule and says why it skipped the deployability
+      categories; `--profile deploy` forces them back on. Both surfaces ask `lintCategories`
+      rather than keeping separate lists
+- [x] Installed in the studio editor, so findings appear where the modelling happens
+
+**The engine rule was measured, not assumed.** On an engine-neutral model the full analysis
+produces exactly one misleading finding — `deploy` calling a plain service task an error for
+having no `zeebe:taskDefinition` — so only `deploy`, `connector` and `agentic` are dropped when
+no platform is stamped.
+
+**Noted:** `pattern-advisor` draws its own severity rings for the `pattern` category and now
+overlaps this plugin's markers. Nothing installs it and it is a side-panel workflow rather than
+canvas decoration, so it was left alone; installing both would double the rings.
+
+### Phase 4 — Editor invariants and navigation ✅
+
+Small, self-contained, and collectively what makes the editor feel like a tool rather than a
+canvas. This phase also establishes the **port pattern** every later host depends on: a feature
+is a plugin talking to an injected port, never to a host API.
+
+- [x] **Engine-neutral models stay engine-neutral.** The invariant held already — parse → export,
+      parse → edit → export, and a new diagram all leave the document alone — and is now covered
+      in both directions: a neutral model never gains a platform, one that names an engine keeps
+      it verbatim
+- [x] **Serializer fix, found while verifying that.** The writer emitted only the namespaces a
+      model was parsed with, so a neutral diagram given a `zeebe:taskDefinition` exported a prefix
+      bound to nothing — not namespace-well-formed. Prefixes the document uses are now declared;
+      ones the model already bound are left alone
+- [x] `@bpmnkit/plugins/flow-navigation` — Tab / Shift+Tab along sequence flows, a choice rather
+      than a guess at a fan-out, Enter to follow or drill in, `u` to drill out. Intercepts in the
+      capture phase and only swallows the key when it moved, so a dead end falls through to the
+      canvas's own document-order Tab
+- [x] `@bpmnkit/plugins/model-navigation` — Call Activity → process, Business Rule Task →
+      decision, User Task → form, in both the Camunda 8 extension shape and the Camunda 7
+      attribute one, through an injected `ReferencePort`. Optimistic then corrected; a resolve
+      that lands after the diagram changed is discarded
+- [x] `CanvasApi` gains `getPlanes()` / `showPlane()` — `BpmnCanvas` had both and no plugin could
+      reach them, so none could drill into a sub-process
+- [x] [`doc/port-pattern.md`](port-pattern.md) — the four rules, the ports already in this repo,
+      the two shapes that are not ports, and where the seam sits for data a host forwards
+- [x] Both plugins installed in the studio editor
+
+**Left open, deliberately:**
+
+- [ ] A model that gains *diagram interchange* it never declared namespaces for still exports
+      `bpmndi`/`dc`/`di` prefixes bound to nothing — `applyAutoLayout` on a model parsed without a
+      diagram is the reachable case. The extension-prefix repair above deliberately excludes the
+      structural prefixes: fixing them means either the serializer changing the model a round trip
+      produces, or `applyAutoLayout` declaring them, and both collide with contracts
+      `semanticHash` and the `writeBpmn` boundary hold constant on purpose. It wants its own
+      decision, not a fix in passing
+
+**Two things worth carrying forward.** A capture-phase listener runs before a bubble listener on
+the same node regardless of registration order, and `stopPropagation()` there suppresses it —
+verified in Chromium, not assumed, because the interception design depends on it. And unit tests
+that mount `BpmnCanvas` do not exercise `BpmnEditor`: the editor reports `editor:select` where the
+viewer reports `element:click`, and only a browser run caught the difference.
+
+### Phase 5 — VS Code extension, read and review ✅
+
+Scoped deliberately to what read-only unlocks. The prerequisites were unusually well met:
+`@bpmnkit/canvas` is framework-agnostic plain DOM with CSS-variable theming, `apps/drop` proves
+the stack bundles to browser ESM, `apps/desktop` proves editor plus plugins compose into a host
+shell. A read-only extension sidesteps VS Code's custom-editor document protocol entirely, which
+is the part that looks trivial and is not. **No package was changed to accommodate the
+extension** — the seams Phases 1–4 built were the whole of what it needed.
+
+- [x] Extension host scaffold + webview message protocol (`apps/vscode`, package name `bpmnkit`
+      because a VS Code manifest name cannot carry an npm scope). esbuild builds two bundles with
+      nothing in common: the host as CommonJS for Node with `vscode` external, the webviews as
+      browser ESM. `src/shared/protocol.ts` names no `vscode` type and no DOM type, which is why
+      both tsconfigs can include it
+- [x] Read-only custom editors for `.bpmn`, `.dmn`, `.form` via `@bpmnkit/canvas` and the
+      `dmn-viewer` / `form-viewer` plugins, plus minimap and zoom. `priority: "option"`, not
+      `"default"`: the preview opens *beside* the text editor the way Markdown preview does,
+      rather than taking over opening a file the extension cannot edit. It follows the open
+      buffer as it is typed, and keeps the last drawing that parsed when the file is momentarily
+      invalid
+- [x] Visual diff for `.bpmn` from the Source Control panel and an Explorer two-file compare
+      (Phase 1's engine, wired to the host). A webview panel rather than a diff editor: VS Code's
+      diff editor pairs two *text* editors and a custom editor cannot stand in for either side.
+      `HEAD` comes from the built-in Git extension's API, whose two needed methods are declared
+      structurally rather than by adding a dependency
+- [x] `casen lint` findings in the Problems panel, run in the extension host where Node is
+      available and `@bpmnkit/core` runs unchanged (Phase 3's host-facing seam). Each finding is
+      placed on the element that caused it by `src/host/locate.ts`, a scanner over the raw text —
+      a parser is the wrong tool here, since `Bpmn.parse()` discards source positions and the file
+      on screen is routinely mid-edit
+- [x] Theme follows the active VS Code theme. Every `--bpmnkit-*` token is re-pointed at a
+      `--vscode-*` variable **with a literal at the end of the chain**, written once per polarity:
+      a missing custom property does not fall through to the value underneath, it poisons the
+      declaration, and the first version would have rendered unstyled on any theme missing one
+      colour
+- [x] Marketplace listing, README, and a support posture stated up front given the pre-1.0 badge.
+      `vsce package` produces a 205 KB `.vsix`; the icon is rendered from the site favicon and the
+      licence copied from the repository root, so neither can drift
+
+**Verified without VS Code.** The editor cannot run in this environment, so the built webview
+bundles are loaded in Chromium with a stubbed `acquireVsCodeApi` — 18 checks covering all three
+artifact kinds, the diff, the invalid-file path and both directions of the theme fallback. That
+run is what caught the theme defect above. `tests/activation.test.ts` runs `activate()` against a
+recorder and asserts the manifest and the implementation agree in both directions, which is the
+one class of bug `vsce package` cannot see: a contributed command with no handler appears in the
+palette and fails when picked.
+
+**Left open, deliberately:**
+
+- [ ] A `.bpmn` file the editor has not loaded as a text document is not analysed, so the Problems
+      panel covers open files only. That is what every other VS Code linter does; analysing a
+      whole workspace on activation is a different feature with a different cost
+- [ ] No page on `bpmnkit.com/docs` yet — the Marketplace README is the only user-facing
+      documentation for the extension
+
+### Phase 6 — VS Code extension, what only this stack can do ✅
+
+Differentiation, not parity. None of this exists in the Marketplace today. Like Phase 5,
+almost all of it was assembly: the capabilities already existed as packages, and the work was
+deciding where each one belongs in an editor.
+
+- [x] Step-through simulation of the open diagram with `@bpmnkit/engine` and token
+      highlighting. `@bpmnkit/plugins/process-runner` mounted in the webview rather than a
+      second runner written for this host — Run, One Step, Cancel, live variables, FEEL
+      evaluations, the replay timeline. The engine is TypeScript with no server and no Node
+      dependency, so the diagram on screen executes inside the editor and nothing is deployed
+- [x] FEEL playground as a webview panel, seeded from the editor's **selection** — the
+      difference between a playground and a debugger. One panel, re-seeded rather than
+      stacked, because the expression under the cursor changes far more often than the wish
+      for another tab
+- [x] Deploy and start an instance against a `casen` profile. The profile store the CLI
+      writes is the only source of clusters, so there is no second place to configure one and
+      no credentials in workspace settings. Deployment posts multipart the way `casen deploy`
+      does; starting goes through the generated client, by definition **key** so the instance
+      runs the version this deploy produced. More than one profile always asks
+- [x] ASCII rendering of a diagram, for pasting into a code review. Fenced, because every
+      destination collapses runs of spaces, and dedented — which meant dropping the title
+      first, since a title at column zero leaves no shared indent to remove
+
+**Two defects that only reuse could have found**, both fixed in `@bpmnkit/plugins` rather than
+worked around in the host:
+
+- The process runner offered a **Tests tab to a host that cannot run a scenario**, and it
+  opened onto "Pass runScenario in options to enable the Tests tab" — an instruction addressed
+  to whoever wrote the host, shown to its users. The tab is now conditional on there being a
+  runner behind it
+- `buildFeelPlaygroundPanel()` **built DOM without its stylesheet**. Both existing callers
+  happened to inject it separately; a new one got a working evaluator that rendered as
+  unstyled form controls. The builder now brings its own, which is id-guarded and therefore
+  free for callers that still inject
+
+**Left open, deliberately:**
+
+- [ ] Scenario tests in the editor. The runner's Tests tab needs `runScenario` **and**
+      somewhere to keep scenarios; in an editor that is a `.bpmn.tests.json` sidecar beside
+      the diagram — the same file `casen test` already reads — not the IndexedDB the studio
+      uses because it has no filesystem. That is a feature with a story of its own, not a
+      checkbox on this phase, and hiding the tab is the honest interim
+
+### Phase 7 — The deferred list, worked through ✅
+
+Filed as "real, but lower value or presuming something that does not exist yet". Four of the
+five turned out to be buildable now; the fifth is a decision, recorded below rather than left
+as a box nobody will ever tick.
+
+- [x] **Payload files discovered from `.camunda/payloads/`**, so starting an instance with
+      test data is a pick rather than a paste. Same walk-up convention as element templates —
+      root-first, so a payload beside the diagram overrides one at the project root sharing
+      its name — and a file that is not a JSON **object** is reported rather than quietly
+      starting an instance with nothing. The walk is deliberately *not* shared with
+      `@bpmnkit/connectors/node`: it is thirty lines, the two conventions could diverge, and
+      one consumer does not justify widening a published package's API. A second consumer
+      (`casen deploy`, most likely) is when that changes
+- [x] **UI localisation — the method, which was the adaptable part.** `createTranslationRecorder()`
+      in `@bpmnkit/editor` is a `Translate` that records what it is asked for; the harvest in
+      `tests/i18n-harvest.test.ts` runs a real editor, presses every button it can reach, and
+      writes `packages/editor/i18n/en.json`. **The measurement is the point: the running
+      editor asks for 58 strings and a grep over the source finds 11.** A conventional
+      extractor would have shipped a full-looking catalogue covering under a fifth of the UI,
+      because the editor builds most of its labels from element types at runtime. The test
+      keeps the catalogue in step (`UPDATE_I18N=1` regenerates) and reports any greppable key
+      the harvest never reached — dead, or reachable only by a path the exercise misses, and
+      not safe to delete on a grep's say-so either way
+- [x] **Detail cards in the connector/template picker** — implementation binding and property
+      preview before applying. `summarizeTemplate()` was already computed for every catalogue
+      listing and merely private; exporting it meant the panel reasons about templates through
+      the same code the CLI does rather than a second copy in DOM. Selecting a card now opens
+      the detail; the card's own button still applies straight away, for a reader who already
+      knows. Fields whose name reads like a credential are marked there, before the template
+      is applied rather than after
+- [x] **VS Code editing.** The caution in this list was aimed at the wrong protocol.
+      `CustomEditorProvider` hands you an opaque document and makes you implement dirty state,
+      undo, hot exit, backup and external-change reconciliation — which is what "its own piece
+      of work" meant. But these files are text, and a **`CustomTextEditorProvider`** is backed
+      by the same `TextDocument` a text editor opens: every one of those problems is VS Code's,
+      and a text editor open on the same file stops being a conflicting copy and becomes a
+      second view of one document. What remained was a two-way sync with an echo in it, which
+      is `document-sync.ts` and seven tests. `bpmnkit.editing.enabled` mounts the same editors
+      with editing switched off
+
+**Decided against: the template marketplace.** Not deferred again — declined, so nobody
+re-opens the question without new information.
+
+The stated precondition ("Phase 2 first, and prove demand") is now half met: Phase 2 shipped,
+demand did not appear. But the real objection is the one the original entry did not name.
+Applying an element template writes the extension elements that decide **what a task
+executes**. A registry of third-party templates is therefore a supply-chain surface, and
+building one needs provenance, publisher identity, versioning and a moderation story before
+it needs a search box. What the entry actually wanted — templates that are not written by
+hand — is already served twice over: `.camunda/element-templates/` puts a project's own
+templates under version control where their review is the repository's review, and the
+picker imports from a URL or a file for the one-off case. Revisit only with a concrete
+publisher asking to distribute templates, and answer trust before search.
+
+**Closed after the fact:**
+
+- [x] **A formatting-preserving writer**, so a visual edit reads as an edit. Left open with
+      this phase and built next — see the section below.
+
+## Formatting-Preserving Writes
+
+> Implemented 2026-09-10. `packages/core/src/xml/xml-patch.ts`,
+> `packages/core/src/{bpmn,dmn}/preserving-writer.ts`.
+
+A serializer given a model writes its own formatting, which is right for a new document and
+wrong for an existing file: the first visual edit reformats every line, and the commit says
+"the whole diagram" when it means "a box moved". Measured over sixteen real diagrams,
+renaming one element changed **313 lines with a plain write and 32 with a preserving one** —
+two per file, the line before and the line after. Opening and saving without editing anything
+changed **0** lines on every one of them, against up to 62.
+
+- [x] `parseXmlSpans()` — the document as a tree that remembers its own offsets. The existing
+      scanner learned to record them behind an opt-in `XmlCursor`, so the parse every other
+      part of the toolkit runs pays nothing
+- [x] `preserveFormatting(original, updated)` — takes the file as it is and the file as the
+      serializer would write it, and returns the second's content carried by the first's
+      bytes. Attribute values are compared **decoded**, so `&#10;` is not rewritten as
+      `&#xA;`; comments survive; an inserted element is re-indented to its new siblings
+- [x] `preserveFormattingVerified(original, updated, read)` — the strategies that pay off
+      most are the ones no generic XML tool may assume: keeping the file's own sibling order,
+      and keeping an attribute the serializer dropped as a schema default. Both are **tried
+      and then checked** with the caller's own reader, and the plain write is the floor
+- [x] `exportPreserving()` for BPMN and `exportDmnPreserving()` for DMN, each supplying its
+      own parser as the check
+- [x] **DMN brought to parity.** It shipped with the first cut and was measurably worse:
+      two real Camunda decisions came back with six and eighteen lines changed on a save that
+      changed nothing, however the file was indented. Both are **0** now, and editing one rule
+      changes **two** lines. Two defects, both found by measuring rather than by a failing
+      test:
+      - The patcher never paired an element that carries an `id` in the file and none in the
+        update. That rule existed to stop a deliberate *move* being undone, and it was too
+        broad: two elements can only have been matched by id if they both have one, so one
+        side lacking an id means there is no move to preserve. Until this, a DMN file's entire
+        `DMNDI` section — which names its `DMNDiagram` and `DMNShape`, where the model does
+        not — was deleted and written out again on every save
+      - `serializeDmn` dropped `hitPolicy="UNIQUE"` as the schema default while `parseDmn`
+        read it, so `parse(export(m))` no longer equalled `m`. The preserving write checks
+        itself against exactly that, so one dropped attribute cost the file *every* other
+        thing the write was keeping. Fixed at the source, with a round-trip test
+- [x] Wired into the VS Code editor: each edit is written against the document as it stands,
+      and becomes the base for the next
+
+**Why the check is not ceremony.** The model cannot represent the order a file writes its
+children in — a process holds `flowElements` and `sequenceFlows` separately — so keeping the
+file's order is worth more than keeping its indentation. But **DMN rule order is the
+decision**: under hit policy `FIRST`, moving a rule changes the answer. The same strategy that
+saves a BPMN file from reshuffling would silently undo that edit, and the only thing standing
+between those two cases is parsing the result and comparing. There is a test for exactly that:
+reordering DMN rules comes back reordered, with the outcome reported as `reordered`.
+
+- [x] `preserveJsonFormatting(original, updated)` and `exportFormPreserving()` — the same for
+      form files, which are JSON. `exportForm` writes `JSON.stringify(…, null, 2)` in its own
+      key order, so a form indented with tabs came back with **every line rewritten** the first
+      time anyone touched it: 109 changed lines on a 57-line file, 101 with four-space
+      indentation, and a minified form blown out to 57 lines. All of them are **0** now, and
+      relabelling one field changes **one line** whichever way the file is written
+
+**Why the JSON one needs no strategies and no injected reader.** The XML version cannot know
+whether sibling order carries meaning in a particular document, so it offers strategies and
+makes the caller check. JSON has no schema-dependent semantics to be wrong about: an object is
+an unordered collection of members and an array is an ordered sequence, both by RFC 8259. That
+makes deep equality — key order ignored, item order respected — an *exact* statement of "this
+says what the update says", so the patch checks itself and the form wrapper supplies nothing.
+
+---
+
+**Not adapting:** anything Camunda 7 (inline scripting, C7 properties, C7 deploy endpoints,
+transaction boundaries) — this is a Camunda 8 toolkit; the clipboard bridge, which only exists
+because bpmn-js assumes the system clipboard; and any bpmn.io dependency, which is the
+differentiator itself.
+
+---
+
 ## Core Model Fidelity
 
 > Full analysis, evidence and sequencing: [`doc/bpmn-sdk-comparison.md`](bpmn-sdk-comparison.md)

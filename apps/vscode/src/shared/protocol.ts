@@ -1,0 +1,80 @@
+/**
+ * What crosses the extension-host / webview boundary.
+ *
+ * The boundary is a `postMessage`, so everything here is plain data — the rule
+ * `doc/port-pattern.md` states for anything a host forwards. Neither side
+ * imports the other's world: this file names no `vscode` type and no DOM type,
+ * which is why both `tsconfig.json` and `tsconfig.webview.json` can include it.
+ *
+ * @packageDocumentation
+ */
+
+/** The three artifact kinds the extension can show. */
+export type ViewerKind = "bpmn" | "dmn" | "form"
+
+/** Which colour scheme the webview should render in. */
+export type ViewerTheme = "light" | "dark"
+
+/** Extension host → webview. */
+export type HostMessage =
+	| {
+			readonly type: "render"
+			readonly kind: ViewerKind
+			/** The file's text, exactly as it is on disk. */
+			readonly text: string
+			readonly theme: ViewerTheme
+			readonly grid: boolean
+			readonly minimap: boolean
+			/**
+			 * Whether to offer step-through simulation. BPMN only, and off when
+			 * the user has turned it off — the engine is bundled either way, but a
+			 * plain preview should not grow a transport bar nobody asked for.
+			 */
+			readonly simulate: boolean
+			/**
+			 * Whether the view may change the document. False mounts the same
+			 * editors with their editing disabled rather than a different viewer,
+			 * so what the reader sees does not depend on whether they may touch it.
+			 */
+			readonly editable: boolean
+	  }
+	| {
+			readonly type: "diff"
+			readonly before: string
+			readonly after: string
+			/** Human labels for the two sides, e.g. `"HEAD"` and `"working tree"`. */
+			readonly beforeLabel: string
+			readonly afterLabel: string
+			readonly theme: ViewerTheme
+			readonly grid: boolean
+	  }
+	| {
+			readonly type: "feel"
+			/** Pre-fills the expression box — the editor's selection, when there was one. */
+			readonly expression: string
+			readonly theme: ViewerTheme
+	  }
+	/** The theme changed while the view was open; re-render in place. */
+	| { readonly type: "theme"; readonly theme: ViewerTheme }
+
+/** Webview → extension host. */
+export type WebviewMessage =
+	/**
+	 * The webview's script has run and is listening. The host must not send
+	 * content before this arrives — a message posted into a webview that has not
+	 * finished loading is dropped, and the view stays blank.
+	 */
+	| { readonly type: "ready" }
+	/**
+	 * Rendering failed. The host surfaces this, so a malformed file reads as an
+	 * error the user can act on instead of an empty panel.
+	 */
+	| { readonly type: "error"; readonly message: string }
+	/**
+	 * The user changed the diagram, and this is the document text that follows.
+	 *
+	 * Sent only for a change a person made. Loading a document into an editor
+	 * is not an edit, and reporting it as one would write a re-serialised copy
+	 * of the file back over the file every time it was opened.
+	 */
+	| { readonly type: "edit"; readonly text: string }

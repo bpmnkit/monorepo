@@ -8,6 +8,9 @@ import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel"
 import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn"
 import { createConnectorCatalogPlugin } from "@bpmnkit/plugins/connector-catalog"
 import { DmnEditor } from "@bpmnkit/plugins/dmn-editor"
+import { createFlowNavigationPlugin } from "@bpmnkit/plugins/flow-navigation"
+import { createLintPlugin } from "@bpmnkit/plugins/lint"
+import { createModelNavigationPlugin } from "@bpmnkit/plugins/model-navigation"
 import { type PresentationApi, createPresentationPlugin } from "@bpmnkit/plugins/presentation"
 import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
 import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
@@ -48,6 +51,7 @@ import { getFsAdapter } from "../storage/index.js"
 import type { ModelFile } from "../storage/types.js"
 import { useClusterStore } from "../stores/cluster.js"
 import { useModelsStore } from "../stores/models.js"
+import { useProjectsStore } from "../stores/projects.js"
 import { useThemeStore } from "../stores/theme.js"
 import { toast } from "../stores/toast.js"
 import { useUiStore } from "../stores/ui.js"
@@ -887,6 +891,29 @@ export function ModelDetail() {
 		// ── Process runner ────────────────────────────────────────────────────
 		const engine = new Engine()
 		const tokenHighlight = createTokenHighlightPlugin()
+		// Static analysis on the canvas: a marker per offending element and a
+		// control that counts them and steps through them.
+		const lint = createLintPlugin()
+		// Keyboard traversal along sequence flows.
+		const flowNavigation = createFlowNavigationPlugin()
+		// Go-to-reference. The plugin reads what an element points at; this port
+		// is the studio's half — a reference resolves when a model in the
+		// workspace declares that process id, and opening it is a route change.
+		const findReferenced = (ref: string) =>
+			useModelsStore.getState().models.find((m) => m.processDefinitionId === ref || m.name === ref)
+		const modelNavigation = createModelNavigationPlugin({
+			port: {
+				open(reference) {
+					const target = findReferenced(reference.ref)
+					if (target !== undefined) navigate(`/models/${target.id}`)
+				},
+				resolve(references) {
+					return references
+						.filter((reference) => findReferenced(reference.ref) !== undefined)
+						.map((reference) => reference.elementId)
+				},
+			},
+		})
 		// FS-mode scenario callbacks — persist to sidecar file instead of IndexedDB
 		const fsAdapter = getFsAdapter()
 		const modelPath = model.path
@@ -1053,8 +1080,18 @@ export function ModelDetail() {
 			bridgePalette,
 			() => editorRef.current,
 		)
+		// In FS mode the project's own .camunda/element-templates/ are discovered by
+		// the proxy and handed over — the browser cannot walk a filesystem itself.
+		const projectStore = useProjectsStore.getState()
+		const workspaceRoot =
+			projectStore.projects.find((project) => project.id === projectStore.activeProjectId)?.path ??
+			""
 		const connectorCatalog = createConnectorCatalogPlugin(configPanelBpmn, bridgePalette, {
 			proxyUrl: useClusterStore.getState().proxyUrl,
+			workspaceRoot,
+			onWorkspaceProblem: (problem) => {
+				console.warn(`[element-templates] ${problem.file} ${problem.path}: ${problem.message}`)
+			},
 		})
 		const presentation = createPresentationPlugin({
 			palette: bridgePalette,
@@ -1082,6 +1119,9 @@ export function ModelDetail() {
 				presentation,
 				tokenHighlight,
 				processRunner,
+				lint,
+				flowNavigation,
+				modelNavigation,
 			],
 		})
 		// XML view button — placed in bottom-left HUD panel

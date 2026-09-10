@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" id="Definitions_loan" name="Loan eligibility" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="5.28.0">
+  <inputData id="InputData_income" name="Income" />
+  <decision id="eligibility" name="Eligibility">
+    <informationRequirement id="InformationRequirement_1">
+      <requiredInput href="#InputData_income" />
+    </informationRequirement>
+    <decisionTable id="DecisionTable_loan" hitPolicy="UNIQUE">
+      <input id="Input_income" label="Monthly income">
+        <inputExpression id="InputExpression_income" typeRef="number">
+          <text>income</text>
+        </inputExpression>
+      </input>
+      <output id="Output_eligible" label="Eligible" name="eligible" typeRef="boolean" />
+      <rule id="Rule_low">
+        <inputEntry id="Unary_low">
+          <text>&lt; 2000</text>
+        </inputEntry>
+        <outputEntry id="Literal_low">
+          <text>false</text>
+        </outputEntry>
+      </rule>
+      <rule id="Rule_high">
+        <inputEntry id="Unary_high">
+          <text>&gt;= 2000</text>
+        </inputEntry>
+        <outputEntry id="Literal_high">
+          <text>true</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_loan">
+      <dmndi:DMNShape id="DMNShape_eligibility" dmnElementRef="eligibility">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="DMNShape_income" dmnElementRef="InputData_income">
+        <dc:Bounds height="45" width="125" x="187" y="240" />
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="DMNEdge_1" dmnElementRef="InformationRequirement_1">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" x="250" y="240" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" x="250" y="180" />
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

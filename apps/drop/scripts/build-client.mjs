@@ -9,6 +9,7 @@ await build({
 	entryPoints: {
 		drop: "src/client/drop.ts",
 		viewer: "src/client/viewer.ts",
+		diff: "src/client/diff.ts",
 		admin: "src/client/admin.ts",
 		landing: "src/client/landing.ts",
 	},

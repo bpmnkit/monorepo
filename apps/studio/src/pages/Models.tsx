@@ -9,6 +9,7 @@ import {
 	Folder,
 	FolderOpen,
 	FolderPlus,
+	GitCompare,
 	Grid,
 	List,
 	Move,
@@ -628,6 +629,10 @@ export function Models() {
 						{/* Header */}
 						<div className="flex items-center justify-end mb-6">
 							<div className="flex items-center gap-2">
+								<Button variant="outline" size="sm" onClick={() => navigate("/models/diff")}>
+									<GitCompare size={14} />
+									Compare
+								</Button>
 								<Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
 									<Upload size={14} />
 									Import

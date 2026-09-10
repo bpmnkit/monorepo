@@ -143,6 +143,37 @@ describe("Dmn", () => {
 		})
 	})
 
+	describe("round trip", () => {
+		const withHitPolicy = (policy: string): string => `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="Def_1" name="DRD" namespace="urn:x">
+  <decision id="Dec_1" name="Test">
+    <decisionTable id="DT_1" hitPolicy="${policy}">
+      <input id="In_1" label="input">
+        <inputExpression id="IE_1" typeRef="string">
+          <text>myVar</text>
+        </inputExpression>
+      </input>
+      <output id="Out_1" label="output" name="result" typeRef="string" />
+    </decisionTable>
+  </decision>
+</definitions>`
+
+		it.each(["UNIQUE", "FIRST", "COLLECT"])("keeps hitPolicy %s", (policy) => {
+			// `UNIQUE` is the schema default, and omitting it on the way out looked
+			// tidy: the parser reads it into the model, so the model came back
+			// different from the one that was written.
+			const once = Dmn.parse(withHitPolicy(policy))
+			expect(once.decisions[0]?.decisionTable.hitPolicy).toBe(policy)
+			expect(Dmn.parse(Dmn.export(once))).toEqual(once)
+		})
+
+		it("writes no hitPolicy for a model that has none", () => {
+			const model = Dmn.parse(withHitPolicy("UNIQUE").replace(' hitPolicy="UNIQUE"', ""))
+			expect(model.decisions[0]?.decisionTable.hitPolicy).toBeUndefined()
+			expect(Dmn.export(model)).not.toContain("hitPolicy")
+		})
+	})
+
 	describe("parse", () => {
 		it("parses a simple DMN XML", () => {
 			const xml = `<?xml version="1.0" encoding="UTF-8"?>

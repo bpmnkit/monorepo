@@ -16,6 +16,7 @@ import { Incidents } from "./pages/Incidents.js"
 import { InstanceDetail } from "./pages/InstanceDetail.js"
 import { Instances } from "./pages/Instances.js"
 import { ModelDetail } from "./pages/ModelDetail.js"
+import { ModelDiff } from "./pages/ModelDiff.js"
 import { Models } from "./pages/Models.js"
 import { NotFound } from "./pages/NotFound.js"
 import { RunHistory } from "./pages/RunHistory.js"
@@ -45,6 +46,7 @@ export function App() {
 							<Switch>
 								<Route path="/" component={Dashboard} />
 								<Route path="/models" component={Models} />
+								<Route path="/models/diff" component={ModelDiff} />
 								<Route path="/models/:id" component={ModelDetail} />
 								<Route path="/definitions" component={Definitions} />
 								<Route path="/definitions/:key" component={DefinitionDetail} />

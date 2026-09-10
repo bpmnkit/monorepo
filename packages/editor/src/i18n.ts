@@ -21,3 +21,61 @@ export function interpolate(template: string, vars?: TranslateVars): string {
 export function defaultTranslate(template: string, vars?: TranslateVars): string {
 	return interpolate(template, vars)
 }
+
+/**
+ * A translator that also records what it was asked for.
+ *
+ * Localising a UI starts with knowing which strings it has, and the usual
+ * answer — grep the source for the translation call — produces a list nobody
+ * can trust: it includes strings behind code that no longer runs, and misses
+ * any built by concatenation. Harvesting from a *running* editor inverts that.
+ * Every key it observes is real by construction, and a key the harvest never
+ * observes is either dead or reachable only through a path the harvest does
+ * not exercise. Both are worth knowing, and neither is knowable from the
+ * source alone.
+ *
+ * @param base - The translator to delegate to. Defaults to identity, which is
+ *   what a harvest wants; pass a real one to record a live session instead.
+ *
+ * @example
+ * ```typescript
+ * const recorder = createTranslationRecorder();
+ * const editor = new BpmnEditor({ container, translate: recorder.translate });
+ * initEditorHud(editor);
+ * recorder.keys(); // every string the editor asked for while starting up
+ * ```
+ */
+export function createTranslationRecorder(base: Translate = defaultTranslate): TranslationRecorder {
+	// Insertion-ordered, so the harvest reads in the order the UI asks.
+	const seen = new Map<string, Set<string>>()
+
+	return {
+		translate(template, vars) {
+			const names = seen.get(template) ?? new Set<string>()
+			for (const name of Object.keys(vars ?? {})) names.add(name)
+			seen.set(template, names)
+			return base(template, vars)
+		},
+		keys() {
+			return [...seen.keys()]
+		},
+		placeholders(template) {
+			return [...(seen.get(template) ?? [])].sort()
+		},
+		reset() {
+			seen.clear()
+		},
+	}
+}
+
+/** A {@link Translate} that remembers every template it was given. */
+export interface TranslationRecorder {
+	/** Pass this to the editor as its `translate` option. */
+	translate: Translate
+	/** Every template requested, in the order it was first asked for. */
+	keys(): string[]
+	/** The interpolation variables a template was given, sorted. */
+	placeholders(template: string): string[]
+	/** Forgets everything observed so far. */
+	reset(): void
+}

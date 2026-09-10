@@ -1,0 +1,12 @@
+# Everything the extension does not need at runtime. The published .vsix is
+# `dist/` (bundled host + webview code), `media/` and the listing files.
+.vscode/**
+src/**
+tests/**
+scripts/**
+node_modules/**
+tsconfig*.json
+vitest.config.ts
+turbo.json
+.turbo/**
+**/*.map

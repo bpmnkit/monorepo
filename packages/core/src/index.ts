@@ -50,6 +50,27 @@ export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export { applyAutoLayout } from "./bpmn/auto-layout.js"
 export { diffSemantics, projectSemantics, semanticHash } from "./bpmn/semantic-hash.js"
 export type { JsonValue, SemanticDiff, SemanticProjection } from "./bpmn/semantic-hash.js"
+export { detectExecutionPlatform, lintCategories, lintDiagram } from "./bpmn/lint.js"
+export type {
+	DetectedPlatform,
+	ExecutionPlatform,
+	LintDiagnostic,
+	LintOptions,
+	LintReport,
+} from "./bpmn/lint.js"
+export { diffDiagram } from "./bpmn/diagram-diff.js"
+export {
+	exportPreserving,
+	exportPreservingResult,
+	preserveBpmnFormatting,
+} from "./bpmn/preserving-writer.js"
+export type { PreservingWriteResult } from "./bpmn/preserving-writer.js"
+export { exportDmnPreserving, preserveDmnFormatting } from "./dmn/preserving-writer.js"
+export type {
+	BpmnDiffCategory,
+	BpmnDiffPlaneSummary,
+	BpmnDiffResult,
+} from "./bpmn/diagram-diff.js"
 export { sha256Hex } from "./bpmn/sha256.js"
 export { checkDiCompleteness } from "./bpmn/di-check.js"
 export type { DiCompleteness } from "./bpmn/di-check.js"
@@ -272,7 +293,23 @@ export type {
 } from "./dmn/dmn-model.js"
 export type { XmlElement } from "./types/xml-element.js"
 export { generateId, resetIdCounter } from "./types/id-generator.js"
-export { parseXml, serializeXml } from "./xml/index.js"
+export {
+	parseXml,
+	parseXmlSpans,
+	preserveFormatting,
+	preserveFormattingVerified,
+	serializeXml,
+} from "./xml/index.js"
+export type {
+	PreserveOptions,
+	SiblingOrder,
+	SpannedAttribute,
+	SpannedElement,
+	VerifiedPreserve,
+} from "./xml/index.js"
+export { parseJsonSpans, preserveJsonFormatting } from "./json/index.js"
+export { exportFormPreserving, preserveFormFormatting } from "./form/preserving-writer.js"
+export type { JsonKind, JsonMember, JsonNode, PreservedJson } from "./json/index.js"
 export { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from "./bpmn/di-color.js"
 export type { DiColor } from "./bpmn/di-color.js"
 export { optimize } from "./bpmn/optimize/index.js"

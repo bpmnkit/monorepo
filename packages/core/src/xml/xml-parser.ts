@@ -19,8 +19,41 @@ export const Visit = {
 } as const
 export type Visit = (typeof Visit)[keyof typeof Visit]
 
+/**
+ * Where the tag currently being reported sits in the source.
+ *
+ * A sink that wants source positions asks for them once, by implementing
+ * {@link XmlSink.cursor}; the scanner then records offsets as it goes. Sinks
+ * that do not ask pay nothing — recording attribute spans in particular costs
+ * a map write per attribute, and parsing is the hottest path in this toolkit.
+ *
+ * The values are only meaningful inside the `start` or `end` call they were
+ * reported for; the scanner overwrites them on the next tag.
+ */
+export interface XmlCursor {
+	/** Offset of the `<` opening the start tag reported by `start`. */
+	readonly tagStart: number
+	/** Offset just past the `>` closing that start tag. */
+	readonly tagEnd: number
+	/** Offset of the `<` opening the end tag reported by `end`. */
+	readonly endTagStart: number
+	/** Offset just past the `>` closing that end tag. */
+	readonly endTagEnd: number
+	/**
+	 * Where an attribute's value sits, between its quotes and excluding them.
+	 * Only valid during the `start` call that reported the attribute.
+	 */
+	attributeSpan(name: string): { readonly start: number; readonly end: number } | undefined
+}
+
 /** Receives the events of one XML document from {@link scanXml}. */
 export interface XmlSink {
+	/**
+	 * Called once before scanning, when implemented, to hand the sink a cursor
+	 * onto the source. Implementing it switches the scanner into recording
+	 * source offsets; leaving it out is the fast path.
+	 */
+	cursor?(cursor: XmlCursor): void
 	/**
 	 * @param name qualified name, e.g. "bpmn:task"
 	 * @param local name without its prefix, e.g. "task" (same string as `name` when unprefixed)
@@ -108,12 +141,29 @@ class XmlScanner {
 	/** Position of the next "&" at or after the last place we looked, or -1 for none. */
 	private nextAmp = 0
 
+	// ── Source positions, recorded only for a sink that asked (XmlCursor) ────
+	private wantSpans = false
+	tagStart = 0
+	tagEnd = 0
+	endTagStart = 0
+	endTagEnd = 0
+	/** Attribute name → value span, rebuilt for each start tag. */
+	private readonly attrSpans = new Map<string, { start: number; end: number }>()
+
+	attributeSpan(name: string): { readonly start: number; readonly end: number } | undefined {
+		return this.attrSpans.get(name)
+	}
+
 	constructor(source: string) {
 		this.s = source
 		this.n = source.length
 	}
 
 	scan(sink: XmlSink): boolean {
+		if (sink.cursor !== undefined) {
+			this.wantSpans = true
+			sink.cursor(this)
+		}
 		while (this.i < this.n) {
 			this.skipWhitespace()
 			if (this.i >= this.n) break
@@ -154,6 +204,7 @@ class XmlScanner {
 			}
 			const next = s.charCodeAt(this.i + 1)
 			if (next === SLASH) {
+				const endTagStart = this.i
 				this.i += 2
 				const closing = this.readName()
 				const name = open[open.length - 1] as string
@@ -164,6 +215,10 @@ class XmlScanner {
 				this.expectChar(GT, ">")
 				open.pop()
 				wantText.pop()
+				if (this.wantSpans) {
+					this.endTagStart = endTagStart
+					this.endTagEnd = this.i
+				}
 				sink.end(name)
 			} else if (next === BANG) {
 				if (s.startsWith("<!--", this.i)) {
@@ -190,20 +245,34 @@ class XmlScanner {
 	 */
 	private openTag(sink: XmlSink, open: string[], wantText: boolean[]): number {
 		const s = this.s
+		const tagStart = this.i
 		this.i++ // <
 		const name = this.readName()
 		const local = this.colon >= 0 ? s.substring(this.colon + 1, this.i) : name
 		const attributes: Record<string, string> = {}
+		if (this.wantSpans) this.attrSpans.clear()
 		this.readAttributes(attributes)
 		this.skipWhitespace()
 
 		if (s.charCodeAt(this.i) === SLASH && s.charCodeAt(this.i + 1) === GT) {
 			this.i += 2
+			if (this.wantSpans) {
+				this.tagStart = tagStart
+				// A self-closing tag is its own end tag; both spans name the same text
+				// so a sink does not have to special-case it.
+				this.tagEnd = this.i
+				this.endTagStart = this.i
+				this.endTagEnd = this.i
+			}
 			if (sink.start(name, local, attributes, true) !== Visit.Skip) sink.end(name)
 			return open.length
 		}
 
 		this.expectChar(GT, ">")
+		if (this.wantSpans) {
+			this.tagStart = tagStart
+			this.tagEnd = this.i
+		}
 		const visit = sink.start(name, local, attributes, false)
 		if (visit === Visit.Skip) {
 			this.skipContent(name)
@@ -296,7 +365,10 @@ class XmlScanner {
 			this.skipWhitespace()
 			this.expectChar(EQ, "=")
 			this.skipWhitespace()
+			const valueStart = this.i + 1
 			attrs[key] = this.readAttrValue()
+			// `readAttrValue` leaves `i` just past the closing quote.
+			if (this.wantSpans) this.attrSpans.set(key, { start: valueStart, end: this.i - 1 })
 		}
 	}
 
@@ -541,12 +613,14 @@ function escapeChar(ch: string): string {
 	return ESCAPES[ch] ?? ch
 }
 
-function escapeAttr(value: string): string {
+/** Escapes a value for use between attribute quotes. */
+export function escapeAttr(value: string): string {
 	if (!ATTR_ESCAPE_RE.test(value)) return value
 	return value.replace(ATTR_ESCAPE_ALL_RE, escapeChar)
 }
 
-function escapeText(value: string): string {
+/** Escapes a value for use as character data. */
+export function escapeText(value: string): string {
 	if (!TEXT_ESCAPE_RE.test(value)) return value
 	return value.replace(TEXT_ESCAPE_ALL_RE, escapeChar)
 }

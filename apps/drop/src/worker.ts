@@ -6,6 +6,7 @@ import { PresenceRoom } from "./presence.js"
 import { handleAdmin } from "./routes/admin.js"
 import { handleAiReview } from "./routes/ai-review.js"
 import {
+	handleDiffPage,
 	handleJson,
 	handleManifest,
 	handleRaw,
@@ -84,6 +85,12 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 		return url.searchParams.get("format") === "json"
 			? handleJson(shareId, filename, env)
 			: handleRaw(shareId, filename, env)
+	}
+	const diff = rest.match(/^\/([\w-]+)\/diff\/([\w-]+)$/)
+	if (diff) {
+		return request.method === "GET"
+			? handleDiffPage(diff[1] as string, diff[2] as string, env)
+			: methodNotAllowed()
 	}
 	const share = rest.match(/^\/([\w-]+)$/)
 	if (share) {

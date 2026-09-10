@@ -12,3 +12,5 @@ apps/reebe-wasm/snippets/
 apps/reebe/target/
 .superpowers
 tmp
+# VS Code extension package
+*.vsix

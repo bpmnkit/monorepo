@@ -1,15 +1,291 @@
 # Features
 
-## Landing hero rewritten around the XML/TypeScript contrast (2026-09-06)
+## Formatting-preserving writes for DMN, measured (2026-09-10)
 
-The homepage hero leads with *41 lines of BPMN XML. Or 13 lines of TypeScript.* over a
-one-sentence lede, and the demo panel that types a builder call and renders the resulting diagram
-now sits above the fold on a phone: the hero's left column splits into text and action rows so
-the stacked order is headline → demo → install/CTAs, with the code panel masked at 152px and the
-diagram at 180px below 760px. The primary call to action is the on-page playground (*Run it in
-the browser*) rather than the docs, and the `0 deps · ESM · MIT pre-1.0` stat row is replaced by
-three value claims — deploys to Camunda 8, opens in any modeler, zero dependencies.
+DMN shipped with the first cut of the preserving writer and did not deliver: a real Camunda
+decision came back from a save that changed nothing with six to eighteen lines rewritten. Two
+defects fixed — one in the XML patcher, one in `serializeDmn` — and the numbers are now the
+same as for BPMN and forms.
 
+- **An element with an id in the file and none in the update is paired again.** A DMN file's
+  `dmndi:DMNDI` section names its `DMNDiagram` and `DMNShape` where the model does not, so the
+  whole diagram block used to be deleted and rewritten on every save.
+- **`hitPolicy` is written whenever the model has one, `UNIQUE` included.** The parser reads
+  it, so omitting it as a schema default broke `parse(export(m)) === m` — the comparison a
+  preserving write checks itself against before it uses anything it kept.
+
+Measured on two decision tables, each as the modeler writes it and tab-indented: an identity
+save changes **0** lines in all four cases (against 6 and 18 before, and 10 to 90 for a plain
+write), and editing one rule changes **two**.
+
+## Formatting-preserving writes for form files (2026-09-10)
+
+The JSON counterpart of yesterday's XML writer. `exportForm` writes
+`JSON.stringify(…, null, 2)` in its own key order, so a form indented with tabs came back with
+every line rewritten the first time anyone touched it. Now it comes back with the line they
+touched.
+
+- **`preserveJsonFormatting(original, updated)`** in `@bpmnkit/core` — keeps the file's
+  indentation, key order, number and string spellings, and trailing newline. Numbers and
+  strings are compared by *value*, so `1.0` is never rewritten as `1` and `\u00e9` never as `é`.
+- **`exportFormPreserving()`** for `.form` files.
+- **It checks itself**, and needs no strategy and no injected reader: an object is an unordered
+  collection and an array is an ordered sequence (RFC 8259), so deep equality with those rules
+  states exactly what "unchanged" means for JSON. The XML writer cannot make that claim, which
+  is why it asks the caller to verify instead.
+- Wired into the VS Code form editor.
+
+Measured on one form written four ways — as the modeler writes it, tab-indented, four-space and
+minified: opening and saving changes **0** lines in every case (against 21, 109, 101 and 57),
+and relabelling one field changes **one**.
+
+## Formatting-preserving writes (2026-09-10)
+
+A visual editor serialises the whole model, so saving a diagram used to reformat the file to
+this toolkit's output and bury one change in a rewrite of everything. `exportPreserving()`
+writes the file that was already there and changes only what the model changed. Renaming one
+element across sixteen real diagrams: **313 changed lines before, 32 after**. Opening and
+saving without editing: **0**.
+
+- **`preserveFormatting(original, updated)`** in `@bpmnkit/core` — generic XML, no model
+  involved. Attribute values are compared decoded, so `&#10;` is never rewritten as `&#xA;`;
+  comments survive; an inserted element is re-indented to match its new siblings.
+- **`preserveFormattingVerified(original, updated, read)`** — the strategies worth having are
+  ones no generic tool may assume: keeping the file's own sibling order, and keeping an
+  attribute the serializer drops as a schema default. Each is tried, then the result is parsed
+  with the caller's own reader and compared against a plain write. The plain write is the
+  floor.
+- **`exportPreserving()`** for BPMN and **`exportDmnPreserving()`** for DMN, each supplying its
+  own parser as the check — which is what stops the order-keeping strategy from undoing a
+  reordering of DMN rules, where order is the decision rather than the layout.
+- Wired into the VS Code editor, so a save is a diff a reviewer can read.
+
+## Editing in VS Code, and the rest of the deferred list (2026-09-10)
+
+Phase 7 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md).
+
+**BPMN, DMN and forms are edited in VS Code, not only read.** The custom editors are *text*
+custom editors, backed by the same `TextDocument` a text editor opens — so the file is dirty
+when the document is, Ctrl+S saves, hot exit restores, undo is the editor's undo, and a text
+editor open on the same file is a second view rather than a competing copy. Type in the XML
+and the diagram follows; move a box and the XML follows. `bpmnkit.editing.enabled` mounts the
+same editors with editing switched off.
+
+**Test data from the repository.** Deploy-and-start offers the payloads found in
+`.camunda/payloads/*.json`, walking up from the diagram the way element templates already do.
+A payload is a JSON object of process variables named by its file; one beside the diagram
+overrides one at the project root sharing its name.
+
+**Detail cards in the connector picker.** Selecting a template shows what it binds — the job
+type, the element type it applies to and converts to — and every property it will ask for,
+with the ones that read like credentials marked, before anything is applied. `summarizeTemplate()`
+is now exported from `@bpmnkit/connectors`, so the picker and `casen connector show` describe a
+template through the same code.
+
+**A localisation harvest, and what it measured.** `createTranslationRecorder()` is a `Translate`
+that records what it is asked for; a test runs a real editor, presses every button it can reach,
+and writes `packages/editor/i18n/en.json`. The running editor asks for **58** strings; a grep
+over the source finds **11**. Localising from the grep would have shipped a mostly-English
+editor with a full-looking catalogue.
+
+## Simulation, FEEL and deployment inside VS Code (2026-09-09)
+
+Phase 6 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the
+part of the editor experience that exists because of what is in this repository rather than in
+spite of it.
+
+**Step-through simulation.** `@bpmnkit/engine` is a BPMN engine in TypeScript with no server
+behind it, so the preview executes the diagram on screen: Run, One Step, Cancel, tokens drawn on
+the elements holding them, live variables and FEEL evaluations, a replay timeline. Nothing is
+deployed and nothing leaves the machine. Turned off with `bpmnkit.simulation.enabled`.
+
+**FEEL playground on the selection.** Select an expression in the XML and the playground opens
+pre-filled, evaluating against an editable context as you type — expressions and unary tests
+both. One panel, re-seeded on each invocation rather than stacked.
+
+**Deploy and start against a `casen` profile.** The clusters are the ones the CLI already knows;
+the extension reads the same profile store rather than adding a second place to configure a
+connection or holding credentials in workspace settings. Deploy the open resource, or deploy and
+start an instance with variables and get its key back. Starting is by process definition key, so
+the instance runs the version that deploy just produced.
+
+**Copy Diagram as ASCII.** `@bpmnkit/ascii` rendering, fenced and dedented, for a pull request
+or an issue — the places a picture cannot go.
+
+**Two fixes in `@bpmnkit/plugins`, found by mounting them in a new host.** The process runner no
+longer offers a Tests tab to a host that cannot run a scenario, and `buildFeelPlaygroundPanel()`
+now injects its own stylesheet instead of depending on every caller to remember.
+
+## BPMN Kit for VS Code (2026-09-09)
+
+Phase 5 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the
+toolkit, resident in the editor. `apps/vscode` is a VS Code extension built entirely from the
+packages in this repository; nothing in it wraps bpmn.io, so the files it shows are the files git
+has, byte for byte.
+
+**Read-only custom editors for `.bpmn`, `.dmn` and `.form`**, rendered by `@bpmnkit/canvas` and
+the `dmn-viewer` / `form-viewer` plugins, with minimap and zoom for BPMN. The preview opens
+*beside* the text editor rather than replacing it, follows the buffer as it is typed rather than
+only on save, and keeps the last drawing that parsed when the XML is momentarily invalid.
+
+**Visual BPMN diff**, from the Source Control panel against `HEAD` and from an Explorer two-file
+selection. Phase 1's `diffDiagram()` and `@bpmnkit/plugins/diff` unchanged, driving two
+synchronised canvases. VS Code's diff editor pairs two *text* editors and a custom editor cannot
+stand in for either side, so this is a second view of the same change rather than a replacement
+for the first.
+
+**Analysis findings in the Problems panel**, from Phase 3's `lintDiagram()` running in the
+extension host where `@bpmnkit/core` runs unchanged. Each finding is placed on the element that
+caused it by a scanner over the raw XML — a parser would be the obvious tool and the wrong one,
+since the file on screen is routinely mid-edit and unparseable. The engine rule is the same one
+every other surface applies: a diagram naming no execution platform is not judged against Camunda
+8 deployability unless `bpmnkit.lint.forceEngineRules` says so.
+
+**Colours follow the active VS Code theme**, with the `@bpmnkit/ui` palette as the last link in
+every fallback chain, so a theme that skips a colour degrades to the brand value rather than to
+nothing.
+
+`vsce package` produces the `.vsix`; the extension is pre-1.0 and community-supported, and
+`apps/vscode/README.md` is the Marketplace listing that says so.
+
+## Keyboard navigation, go-to-reference, and the port pattern (2026-09-09)
+
+Phase 4 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the
+phase that establishes how a plugin talks to whatever application is hosting it.
+
+**`@bpmnkit/plugins/flow-navigation`** adds the traversal keyboard modelling was missing. Tab
+follows a sequence flow out, Shift+Tab follows it back, and at a fan-out Tab selects between the
+outgoing flows rather than guessing which branch was meant; Enter follows the choice, or drills
+into a collapsed sub-process, and `u` drills back out. The canvas already binds Tab to document
+order, so the plugin intercepts in the capture phase and stops the event **only when it moved** —
+an element with no outgoing flow still falls through to that walk instead of trapping the user.
+
+**`@bpmnkit/plugins/model-navigation`** jumps from a Call Activity to its process, a Business
+Rule Task to its decision, a User Task to its form — reading both the Camunda 8 extension shape
+and the Camunda 7 attribute one. Following a reference means opening a file, and a canvas has no
+idea what a file is, so the plugin does the model half and takes the rest as an injected
+`ReferencePort`. Availability is optimistic and then corrected: a link shows as soon as the
+model states it and is withdrawn only once the host says it does not resolve.
+
+**[`doc/port-pattern.md`](port-pattern.md)** writes the pattern down — the four rules, the ports
+already in this repo, the two shapes that look like ports and are not, and where the seam sits
+when a plugin produces data a host forwards.
+
+**`CanvasApi` gains `getPlanes()` and `showPlane()`.** `BpmnCanvas` had both and plugins could
+not reach them, so no plugin could drill into a sub-process.
+
+**A serializer fix.** Verifying that an engine-neutral model stays engine-neutral turned up the
+opposite defect: the writer emitted only the namespaces a model was parsed with, so a neutral
+diagram given a `zeebe:taskDefinition` exported a prefix bound to nothing — not
+namespace-well-formed. Extension prefixes the document uses are now declared; ones the model
+already bound anywhere are left alone. The structural prefixes the serializer emits itself are a
+separate gap, recorded on the roadmap.
+
+## Static analysis on the canvas (2026-09-09)
+
+`casen lint` has had five categories of rules built on `packages/core/src/bpmn/optimize/` for a
+while, and none of them were visible while modelling. Phase 3 of
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md).
+
+**`@bpmnkit/plugins/lint`** marks every offending element with its worst severity — a task with
+an error and three warnings reads as an error, because drawing both would say neither — and puts
+a control in the top-left corner counting them. Clicking it centres the next offending element
+and pulses it, wrapping around. It says how many findings sit on a plane the canvas is not
+showing, and re-lints after an edit on a 300 ms debounce, so typing a name does not re-run the
+analysis on every keystroke. `setEnabled(false)` turns it off for a host that wants a toggle.
+
+**`lintDiagram()` in `@bpmnkit/core`** is the host-facing seam, and does two things calling
+`optimize` directly does not:
+
+- **The result is serialisable.** An `OptimizationFinding` carries an `applyFix` function and so
+  cannot cross a `postMessage` or a JSON boundary; a `LintDiagnostic` reports `fixable: true` and
+  leaves the fix where it can still be called. Each diagnostic also names the diagram plane its
+  elements are drawn on.
+- **The rules match the model.** A diagram naming no `modeler:executionPlatform` is not judged
+  against Camunda 8 deployability. Measured rather than assumed: on an engine-neutral model every
+  other category either stays quiet or reports something structural that holds regardless, while
+  `deploy` calls a plain service task an **error** for having no `zeebe:taskDefinition`.
+
+**`casen lint` follows the same rule** — it skips the engine categories on a neutral model and
+says why, and `--profile deploy` forces them back on. Both surfaces ask `lintCategories` rather
+than keeping separate lists.
+
+The plugin is installed in the studio editor, so the findings show up where the modelling
+happens.
+
+## Element templates by convention (2026-09-09)
+
+Drop element templates in `.camunda/element-templates/` and the tools pick them up — no project
+configuration, no registration step. Phase 2 of
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md), and the largest
+capability gap it found: `@bpmnkit/connectors` understood the Zeebe element-template schema but
+could only ever load its own generated catalogue, so a team's in-house connectors could not
+reach the editor at all.
+
+**Discovery** (`@bpmnkit/connectors/node`) walks up from a diagram to the project root,
+collecting templates at every level. Nearest wins: a template beside the diagram overrides one
+at the project root, which overrides the bundled version of the same id. The folder name follows
+a `configFolder` setting rather than being hard-coded. `collectElementTemplates({ root })` is
+the opposite walk — the one a CI check wants, since a project whose broken template sits beside
+a sub-folder's diagrams would otherwise pass a check that only read the root.
+
+**Validation** is structural rather than a JSON-schema engine: the rules the published schema
+enforces, checked against the shapes this package already declares, so a message names
+`properties[3].binding.type` instead of "must match exactly one schema in oneOf". Every problem
+is reported at once, a rejected template is named and skipped, and one bad file never costs the
+good ones beside it. A separate warnings channel flags a binding the schema allows but
+`applyElementTemplate` does not write yet, so a template cannot fail silently at apply time.
+
+**`casen connector validate`** runs the same check in CI — a whole project or one `.json` file,
+`--format json`, non-zero exit on a problem, warnings that do not fail. `list`, `search` and
+`show` now include the project's own templates.
+
+**The browser path** does not assume a filesystem. The proxy serves `GET /element-templates?root=…`
+and the connector-catalog plugin takes `workspaceRoot` (fetch via proxy) or `workspaceTemplates`
+(supplied directly), registering them after the built-ins so a project's version wins. The
+studio passes its active project's path.
+
+`TemplateBinding` also gains the three binding types the bundled catalogue uses across 98
+properties but the union did not admit: `bpmn:Message#property`,
+`bpmn:Message#zeebe:subscription#property`, and `zeebe:linkedResource`.
+
+## Visual BPMN diff — engine, CLI, studio and drop (2026-09-09)
+
+Two versions of a diagram compared side by side, with every element marked added, removed,
+changed or moved. The first phase of
+[`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md), complete.
+
+**`diffDiagram(before, after)`** in `@bpmnkit/core` (`src/bpmn/diagram-diff.ts`) sits beside
+`diffSemantics`, which excludes diagram interchange by design — so a task somebody dragged reads
+there as no change at all. `diffDiagram` adds that half back as its own `moved` category,
+computed from DI: bounds, waypoints, label placement, and flags such as collapsed/expanded. That
+is the difference between a model diff and a *diagram* diff. An element that both changed and
+moved is reported as changed, since a semantic change is what a reviewer needs first. The result
+covers only elements carrying DI on one side or the other — a changed `targetNamespace` has
+nothing to draw — and carries a per-plane breakdown.
+
+**`@bpmnkit/plugins/diff`** renders it. `createBpmnDiff()` returns a *pair* of canvas plugins,
+because a canvas plugin only ever sees its own canvas: each side publishes the model it loaded,
+and the diff computes once both have arrived, in whichever order. Elements are marked on the side
+that can show them, a legend counts each category, and panning or zooming either canvas moves the
+other. Element lookup goes through `getShapes()` / `getEdges()` rather than an attribute selector
+built from an id read out of a file.
+
+**`casen diff bpmn <before> <after>`** reports the same thing in a terminal, naming elements
+rather than printing bare ids, with `--format json`, `--ascii`, and `--exit-code` to gate a
+pipeline.
+
+**`apps/studio`** gets `/models/diff`: two pickers, a swap button, a summary bar, and a
+**Compare** entry point on the Models page. **`apps/drop`** gets `/drop/:a/diff/:b`, resolving
+both drops server-side so an expired share is a 404 rather than half a comparison, and pairing
+files by name with a picker per side.
+
+**Planes.** A canvas draws one plane at a time, so a change inside a collapsed sub-process is
+invisible until the reader drills in. The legend says `N on other planes`, and the CLI names
+them.
+
+Colours are brand tokens with hex fallbacks: `--bpmnkit-success` added, `--bpmnkit-danger`
+removed, `--bpmnkit-warn` changed, `--bpmnkit-accent` moved.
 
 ## Documentation served from the landing site at `/docs` (2026-08-29)
 

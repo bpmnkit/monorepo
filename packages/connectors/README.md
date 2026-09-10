@@ -54,15 +54,47 @@ const defs = Bpmn.createProcess("proc")
   .build()
 ```
 
+## Your project's own templates
+
+Drop element templates in `.camunda/element-templates/` and they join the bundled catalogue —
+no project configuration, no registration step. A template nearer the diagram wins over one at
+the project root, which wins over the bundled version of the same id.
+
+```typescript
+import { registerElementTemplates } from "@bpmnkit/connectors"
+import { discoverElementTemplates } from "@bpmnkit/connectors/node"
+
+const { templates, problems } = await discoverElementTemplates({
+  from: "processes/orders/order.bpmn",
+  root: process.cwd(),
+})
+registerElementTemplates(templates)
+// `problems` names every template that was rejected, and why — nothing is dropped silently.
+```
+
+The filesystem half lives behind `@bpmnkit/connectors/node`, so the main entry stays
+importable in a browser: a studio or a viewer takes templates from its host instead.
+
+Validate them in CI with `casen connector validate`.
+
 ## API Reference
 
 ```typescript
 function listConnectors(): ConnectorSummary[]
 function searchConnectors(query: string): ConnectorSummary[]
 function getTemplate(id: string): ElementTemplate | undefined
+function registerElementTemplates(templates: readonly ElementTemplate[]): void
+function clearRegisteredTemplates(): void
+
+function validateElementTemplate(value: unknown): TemplateValidation
+function readTemplateDocument(value: unknown): TemplateDocumentResult
 
 function applyConnectorTemplate(templateId: string, values?: Record<string, string>): ApplyResult
 function applyElementTemplate(template: ElementTemplate, values?: Record<string, string>): ApplyResult
+
+// @bpmnkit/connectors/node
+function discoverElementTemplates(options: DiscoverOptions): Promise<DiscoveryResult>
+function collectElementTemplates(options: { root: string; configFolder?: string }): Promise<DiscoveryResult>
 
 interface ApplyResult {
   serviceTask?: ServiceTaskOptions

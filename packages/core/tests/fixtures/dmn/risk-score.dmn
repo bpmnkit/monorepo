@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0y9k2xh" name="DRD" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="5.28.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.6.0">
+  <!-- Ordered by intent: the first match wins. -->
+  <decision id="risk_score" name="Risk score">
+    <decisionTable id="DecisionTable_09p6b1n" hitPolicy="FIRST">
+      <input id="Input_1" label="Amount">
+        <inputExpression id="InputExpression_1" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_1jt5c6d" label="Country">
+        <inputExpression id="LiteralExpression_1c5rr1i" typeRef="string">
+          <text>country</text>
+        </inputExpression>
+      </input>
+      <output id="Output_1" label="Risk" name="risk" typeRef="string" />
+      <rule id="DecisionRule_0lqw1jd">
+        <inputEntry id="UnaryTests_1cq5cpb">
+          <text>&lt; 1000</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_0u1nbmn">
+          <text>"DE", "AT"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1s7v0mz">
+          <text>"low"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_1n5vqz8">
+        <inputEntry id="UnaryTests_0dqk8jz">
+          <text>&gt;= 1000</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1p9xk4b">
+          <text></text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_0y2jw4n">
+          <text>"high"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_1jk0d3v">
+      <dmndi:DMNShape id="DMNShape_1qc0kz5" dmnElementRef="risk_score">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

@@ -799,5 +799,75 @@ export function serializeBpmn(definitions: BpmnDefinitions): string {
 	}
 
 	const root = el(`${bp}:definitions`, attrs, children)
+	declareUsedNamespaces(root, attrs)
 	return serializeXml(root)
+}
+
+/**
+ * URIs for the extension prefixes a document can acquire after it was parsed.
+ *
+ * Scoped deliberately to extension namespaces — the ones that arrive on content
+ * the serializer keeps verbatim, where nothing else is in a position to declare
+ * them. A caller adds a `zeebe:taskDefinition` to an element and has no handle
+ * on the definitions to declare `zeebe` with.
+ *
+ * The structural prefixes (`bpmn`, `bpmndi`, `dc`, `di`) are deliberately
+ * absent. The serializer emits those itself, so a model carrying a diagram it
+ * never declared namespaces for is a different gap with a different owner —
+ * and repairing it here would change the model a round trip produces, which
+ * `semanticHash` and the `writeBpmn` boundary both hold constant on purpose.
+ * Recorded in doc/roadmap.md rather than fixed in passing.
+ */
+const KNOWN_NAMESPACE_URIS: Readonly<Record<string, string>> = {
+	zeebe: "http://camunda.org/schema/zeebe/1.0",
+	camunda: "http://camunda.org/schema/1.0/bpmn",
+	modeler: "http://camunda.org/schema/modeler/1.0",
+	bioc: "http://bpmn.io/schema/bpmn/biocolor/1.0",
+	color: "http://www.omg.org/spec/BPMN/non-normative/color/1.0",
+}
+
+/** Prefixes an element tree uses, and prefixes it declares — at any depth. */
+function collectPrefixes(node: XmlElement, used: Set<string>, declared: Set<string>): void {
+	const nameParts = node.name.split(":")
+	if (nameParts.length > 1 && nameParts[0] !== undefined) used.add(nameParts[0])
+
+	for (const key of Object.keys(node.attributes)) {
+		if (key.startsWith("xmlns:")) {
+			declared.add(key.slice("xmlns:".length))
+			continue
+		}
+		if (key === "xmlns") continue
+		const parts = key.split(":")
+		if (parts.length > 1 && parts[0] !== undefined) used.add(parts[0])
+	}
+
+	for (const child of node.children) collectPrefixes(child, used, declared)
+}
+
+/**
+ * Declares any namespace the document uses but does not announce.
+ *
+ * A model parsed from a vendor-neutral file has no `zeebe` declaration; give
+ * one of its tasks a `zeebe:taskDefinition` — which is what applying a
+ * connector template does — and the export would otherwise carry a prefix
+ * bound to nothing. That is not merely untidy: the document is no longer
+ * namespace-well-formed, and a conforming reader is entitled to reject it.
+ *
+ * Only prefixes with a known URI are repaired, and only when the model has not
+ * already bound them; a document that declares its own mapping keeps it.
+ */
+function declareUsedNamespaces(root: XmlElement, attrs: Record<string, string>): void {
+	const used = new Set<string>()
+	const declared = new Set<string>()
+	collectPrefixes(root, used, declared)
+
+	for (const prefix of used) {
+		// Declared anywhere counts. A model can bind a prefix on a nested element
+		// — `xsi` on an `extensionElements` child is common — and the parser keeps
+		// only root-level bindings in `namespaces`, so looking at the root alone
+		// would hoist a duplicate declaration and change a document that was fine.
+		if (declared.has(prefix)) continue
+		const uri = KNOWN_NAMESPACE_URIS[prefix]
+		if (uri !== undefined) attrs[`xmlns:${prefix}`] = uri
+	}
 }

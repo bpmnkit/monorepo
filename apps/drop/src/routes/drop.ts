@@ -1,8 +1,9 @@
 import type { Env } from "../env.js"
+import type { FileInfo } from "../lib/db.js"
 import { getDrop, getFileBody, getStats, recordView } from "../lib/db.js"
 import { demoDrop, demoFileBody, isDemo } from "../lib/demo.js"
 import { html, json, securityHeaders } from "../lib/http.js"
-import { notFoundPage, sharePage } from "../lib/pages.js"
+import { diffPage, notFoundPage, sharePage } from "../lib/pages.js"
 
 /** GET /drop/api/stats — public drop/view counters, cached at the edge for 60s. */
 export async function handleStats(env: Env): Promise<Response> {
@@ -82,4 +83,25 @@ export async function handleJson(shareId: string, filename: string, env: Env): P
 			...securityHeaders(),
 		},
 	})
+}
+
+/**
+ * GET /drop/:a/diff/:b — compare the BPMN in two drops side by side.
+ *
+ * Both drops are fetched here rather than in the browser so a missing or
+ * expired share is a 404 page instead of a half-rendered comparison.
+ */
+export async function handleDiffPage(aId: string, bId: string, env: Env): Promise<Response> {
+	const [left, right] = await Promise.all([
+		isDemo(aId) ? demoDrop() : getDrop(env.DB, aId),
+		isDemo(bId) ? demoDrop() : getDrop(env.DB, bId),
+	])
+	if (!left || !right) return html(notFoundPage(), { status: 404, noindex: true })
+
+	const bpmnOf = (files: FileInfo[]): FileInfo[] => files.filter((f) => f.kind === "bpmn")
+	if (bpmnOf(left.files).length === 0 || bpmnOf(right.files).length === 0) {
+		return html(notFoundPage(), { status: 404, noindex: true })
+	}
+
+	return html(diffPage(aId, bId, bpmnOf(left.files), bpmnOf(right.files)), { noindex: true })
 }

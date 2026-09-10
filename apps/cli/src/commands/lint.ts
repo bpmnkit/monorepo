@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { applyConnectorTemplate } from "@bpmnkit/connectors"
-import { Bpmn, compactify, optimize } from "@bpmnkit/core"
+import { Bpmn, compactify, detectExecutionPlatform, lintCategories, optimize } from "@bpmnkit/core"
 import type { BpmnOperation, OptimizationCategory } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
 
@@ -72,8 +72,19 @@ const lintCmd: Command = {
 				: undefined
 		const deployProfile = ctx.flags.profile === "deploy"
 
-		const report = optimize(defs, {
+		// A model that names no execution platform is not judged against Camunda 8
+		// deployability — otherwise a diagram authored in a neutral tool opens
+		// covered in errors about extensions it was never going to have. Asking for
+		// the deploy gate is asking for those rules anyway, so the profile forces
+		// them back on. The canvas plugin asks `lintCategories` the same question.
+		const platform = detectExecutionPlatform(defs)
+		const resolvedCategories = lintCategories(defs, {
 			...(categories !== undefined ? { categories } : {}),
+			forceEngineRules: deployProfile,
+		})
+
+		const report = optimize(defs, {
+			categories: resolvedCategories,
 			resolveConnectorRequirements,
 		})
 		const findings = deployProfile
@@ -103,6 +114,11 @@ const lintCmd: Command = {
 
 		if (findings.length === 0) {
 			ctx.output.ok("No issues found.")
+			if (platform.id === "none" && !deployProfile) {
+				ctx.output.info(
+					"This model names no execution platform, so deployability rules were skipped. Use --profile deploy to run them anyway.",
+				)
+			}
 			return
 		}
 
@@ -119,6 +135,11 @@ const lintCmd: Command = {
 		ctx.output.info(
 			`\n${total} finding${total !== 1 ? "s" : ""}: ${errorCount} error${errorCount !== 1 ? "s" : ""}, ${warnCount} warning${warnCount !== 1 ? "s" : ""}, ${infoCount} info`,
 		)
+		if (platform.id === "none" && !deployProfile) {
+			ctx.output.info(
+				"No execution platform on this model — deployability rules were skipped. Use --profile deploy to run them anyway.",
+			)
+		}
 
 		if (errorCount > 0) {
 			throw new Error(`Lint failed with ${errorCount} error${errorCount !== 1 ? "s" : ""}`)
