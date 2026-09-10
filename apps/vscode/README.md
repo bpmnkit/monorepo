@@ -71,9 +71,12 @@ yourself through `workbench.editorAssociations`. Set `bpmnkit.editing.enabled` t
 for the same editors with editing switched off, when a diagram should be openable with no
 chance of changing it.
 
-One thing to expect: a visual editor writes the whole document. The first change you make
-reformats the file to this toolkit's output, so review that commit rather than assuming it
-is a one-line diff.
+Saving writes a diff you can read. A visual editor serialises the whole model, which would
+normally reformat the file on the first change and bury one edit in a rewrite of everything.
+The editor writes the file that was already there instead: renaming a task changes the line
+with the task on it, moving a box changes two numbers, and your indentation, attribute order
+and comments come back untouched. Opening a diagram and saving it without editing anything
+leaves the file byte for byte.
 
 ## Commands
 

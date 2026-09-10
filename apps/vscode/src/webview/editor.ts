@@ -24,7 +24,7 @@
 
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import type { CanvasPlugin } from "@bpmnkit/canvas"
-import { Bpmn, Dmn, Form } from "@bpmnkit/core"
+import { Bpmn, Dmn, Form, preserveBpmnFormatting, preserveDmnFormatting } from "@bpmnkit/core"
 import { BpmnEditor } from "@bpmnkit/editor"
 import { Engine } from "@bpmnkit/engine"
 import { DmnEditor } from "@bpmnkit/plugins/dmn-editor"
@@ -53,6 +53,17 @@ interface Mounted {
 
 let mounted: Mounted | null = null
 let theme: ViewerTheme = "dark"
+
+/**
+ * The document as the host last knew it — what an edit is written against.
+ *
+ * A visual editor serialises the whole model, so without this every save
+ * reformats the file to this toolkit's own output and the commit says "the
+ * whole diagram" when it means "a box moved". `preserve*Formatting` writes the
+ * change into the document that was already there; each edit then becomes the
+ * base for the next, so a run of edits stays as small as the first.
+ */
+let baseline = ""
 
 function reason(error: unknown): string {
 	return error instanceof Error ? error.message : String(error)
@@ -156,7 +167,7 @@ function renderBpmn(message: Extract<HostMessage, { type: "render" }>): void {
 	})
 	editor.load(message.text)
 	editor.on("diagram:change", () => {
-		edited(() => editor.exportXml())
+		edited(() => keep(preserveBpmnFormatting(baseline, editor.exportXml()).xml))
 	})
 	mounted = editor
 }
@@ -181,7 +192,7 @@ function renderDmn(message: Extract<HostMessage, { type: "render" }>): void {
 	void editor.loadXML(message.text).then(() => {
 		editor.onChange(() => {
 			void editor.getXML().then((xml) => {
-				edited(() => xml)
+				edited(() => keep(preserveDmnFormatting(baseline, xml).xml))
 			})
 		})
 	})
@@ -202,9 +213,16 @@ function renderForm(message: Extract<HostMessage, { type: "render" }>): void {
 	})
 }
 
+/** Records what the document now says, so the next edit is written against it. */
+function keep(xml: string): string {
+	baseline = xml
+	return xml
+}
+
 function render(message: Extract<HostMessage, { type: "render" }>): void {
 	theme = message.theme
 	applyTheme(theme)
+	baseline = message.text
 	try {
 		if (message.kind === "bpmn") renderBpmn(message)
 		else if (message.kind === "dmn") renderDmn(message)

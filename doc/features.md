@@ -1,5 +1,26 @@
 # Features
 
+## Formatting-preserving writes (2026-09-10)
+
+A visual editor serialises the whole model, so saving a diagram used to reformat the file to
+this toolkit's output and bury one change in a rewrite of everything. `exportPreserving()`
+writes the file that was already there and changes only what the model changed. Renaming one
+element across sixteen real diagrams: **313 changed lines before, 32 after**. Opening and
+saving without editing: **0**.
+
+- **`preserveFormatting(original, updated)`** in `@bpmnkit/core` — generic XML, no model
+  involved. Attribute values are compared decoded, so `&#10;` is never rewritten as `&#xA;`;
+  comments survive; an inserted element is re-indented to match its new siblings.
+- **`preserveFormattingVerified(original, updated, read)`** — the strategies worth having are
+  ones no generic tool may assume: keeping the file's own sibling order, and keeping an
+  attribute the serializer drops as a schema default. Each is tried, then the result is parsed
+  with the caller's own reader and compared against a plain write. The plain write is the
+  floor.
+- **`exportPreserving()`** for BPMN and **`exportDmnPreserving()`** for DMN, each supplying its
+  own parser as the check — which is what stops the order-keeping strategy from undoing a
+  reordering of DMN rules, where order is the decision rather than the layout.
+- Wired into the VS Code editor, so a save is a diff a reviewer can read.
+
 ## Editing in VS Code, and the rest of the deferred list (2026-09-10)
 
 Phase 7 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md).

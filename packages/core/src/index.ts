@@ -59,6 +59,13 @@ export type {
 	LintReport,
 } from "./bpmn/lint.js"
 export { diffDiagram } from "./bpmn/diagram-diff.js"
+export {
+	exportPreserving,
+	exportPreservingResult,
+	preserveBpmnFormatting,
+} from "./bpmn/preserving-writer.js"
+export type { PreservingWriteResult } from "./bpmn/preserving-writer.js"
+export { exportDmnPreserving, preserveDmnFormatting } from "./dmn/preserving-writer.js"
 export type {
 	BpmnDiffCategory,
 	BpmnDiffPlaneSummary,
@@ -286,7 +293,20 @@ export type {
 } from "./dmn/dmn-model.js"
 export type { XmlElement } from "./types/xml-element.js"
 export { generateId, resetIdCounter } from "./types/id-generator.js"
-export { parseXml, serializeXml } from "./xml/index.js"
+export {
+	parseXml,
+	parseXmlSpans,
+	preserveFormatting,
+	preserveFormattingVerified,
+	serializeXml,
+} from "./xml/index.js"
+export type {
+	PreserveOptions,
+	SiblingOrder,
+	SpannedAttribute,
+	SpannedElement,
+	VerifiedPreserve,
+} from "./xml/index.js"
 export { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from "./bpmn/di-color.js"
 export type { DiColor } from "./bpmn/di-color.js"
 export { optimize } from "./bpmn/optimize/index.js"

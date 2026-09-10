@@ -1,5 +1,54 @@
 # Progress
 
+## 2026-09-10 — A visual edit that reads as an edit
+
+The item left open at the end of Phase 7: a visual editor serialises the whole model, so the
+first change reformats the file and the commit says "the whole diagram" when it means "a box
+moved". Closed.
+
+**The measurement, over sixteen real diagrams.** Renaming one element: **313 changed lines
+with a plain write, 32 with a preserving one** — two per file, the line before and the line
+after. Opening and saving without editing anything: **0 lines on every file**, against up to
+62. In the browser, deleting an element through the real editor now removes nineteen lines and
+adds none.
+
+**The architecture keeps the model out of it.** `preserveFormatting(original, updated)` takes
+the file as it stands and the file as the serializer would write it, and returns the second's
+content carried by the first's bytes. No model, no schema, no BPMN — which is why the same
+function serves DMN, and would serve anything else this toolkit learns to write. What it needs
+is offsets, so the existing scanner learned to record them behind an opt-in `XmlCursor`: sinks
+that do not ask for spans pay nothing, and parsing is the hottest path here.
+
+**The strategies that pay off are exactly the ones no generic tool may assume.** Preserving
+indentation is worth almost nothing on its own. What matters is keeping the file's own sibling
+order — the model holds `flowElements` and `sequenceFlows` in separate lists, so *every* write
+reshuffles a file that interleaved them — and keeping an attribute the serializer drops as a
+schema default, which is why `isExecutable="false"` disappears from a file that said it out
+loud. Both are wrong in general. Sibling order carries meaning in plenty of XML.
+
+So neither is assumed. `preserveFormattingVerified` tries each strategy, **parses the result
+with the caller's own reader and compares it against a plain write**, and uses the first that
+reads the same. The plain write is the floor, so this is never worse than not calling it.
+
+**DMN is the case that proves it is not ceremony.** Under hit policy `FIRST` the first matching
+rule wins, so rule order *is* the decision. The strategy that saves a BPMN file from
+reshuffling would silently undo a user who dragged a rule upwards, and the only thing between
+those two cases is parsing the result. There is a test for exactly that: reordering DMN rules
+comes back reordered, with the outcome reported as `reordered` rather than `preserved`.
+
+**Two things I got wrong on the way.** Pairing leftover children by tag name — which is what
+stops an id-less `dc:Bounds` or `multiInstanceLoopCharacteristics` from being deleted and
+written out again — quietly undid deliberate reordering, because it re-paired the very
+elements the alignment had left unmatched to express a move. The rule that fixes it is the
+honest one: an element carrying an `id` has an identity, so one the alignment could not place
+really did move; an element without one is known by where it sits.
+
+And my first measurement said a deletion changed a hundred lines. It compared line *i* to line
+*i*, so every line after a deletion counted as changed. The numbers above are a real diff.
+
+62 new tests, including the invariant over every round-trip fixture: whatever the patch does to
+the bytes, the document it produces parses to exactly what a plain write produces.
+
 ## 2026-09-10 — The deferred list, and a caution aimed at the wrong protocol
 
 Phase 7 complete: editing in VS Code, payload files, detail cards in the template picker, a

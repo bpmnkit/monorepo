@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- **Saving preserves the file.** Edits are written into the document that was already there
+  rather than reformatting it to this toolkit's output: renaming a task changes one line,
+  moving a box changes two numbers, and indentation, attribute order and comments survive.
+  Opening a diagram and saving it unchanged leaves the file byte for byte. Applies to `.bpmn`
+  and `.dmn`; form files are JSON and still reformat.
+
 ## 0.3.0
 
 - **Editing.** `.bpmn`, `.dmn` and `.form` are now edited, not only read. The editors are

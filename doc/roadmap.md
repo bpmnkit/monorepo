@@ -572,13 +572,53 @@ templates under version control where their review is the repository's review, a
 picker imports from a URL or a file for the one-off case. Revisit only with a concrete
 publisher asking to distribute templates, and answer trust before search.
 
+**Closed after the fact:**
+
+- [x] **A formatting-preserving writer**, so a visual edit reads as an edit. Left open with
+      this phase and built next — see the section below.
+
+## Formatting-Preserving Writes
+
+> Implemented 2026-09-10. `packages/core/src/xml/xml-patch.ts`,
+> `packages/core/src/{bpmn,dmn}/preserving-writer.ts`.
+
+A serializer given a model writes its own formatting, which is right for a new document and
+wrong for an existing file: the first visual edit reformats every line, and the commit says
+"the whole diagram" when it means "a box moved". Measured over sixteen real diagrams,
+renaming one element changed **313 lines with a plain write and 32 with a preserving one** —
+two per file, the line before and the line after. Opening and saving without editing anything
+changed **0** lines on every one of them, against up to 62.
+
+- [x] `parseXmlSpans()` — the document as a tree that remembers its own offsets. The existing
+      scanner learned to record them behind an opt-in `XmlCursor`, so the parse every other
+      part of the toolkit runs pays nothing
+- [x] `preserveFormatting(original, updated)` — takes the file as it is and the file as the
+      serializer would write it, and returns the second's content carried by the first's
+      bytes. Attribute values are compared **decoded**, so `&#10;` is not rewritten as
+      `&#xA;`; comments survive; an inserted element is re-indented to its new siblings
+- [x] `preserveFormattingVerified(original, updated, read)` — the strategies that pay off
+      most are the ones no generic XML tool may assume: keeping the file's own sibling order,
+      and keeping an attribute the serializer dropped as a schema default. Both are **tried
+      and then checked** with the caller's own reader, and the plain write is the floor
+- [x] `exportPreserving()` for BPMN and `exportDmnPreserving()` for DMN, each supplying its
+      own parser as the check
+- [x] Wired into the VS Code editor: each edit is written against the document as it stands,
+      and becomes the base for the next
+
+**Why the check is not ceremony.** The model cannot represent the order a file writes its
+children in — a process holds `flowElements` and `sequenceFlows` separately — so keeping the
+file's order is worth more than keeping its indentation. But **DMN rule order is the
+decision**: under hit policy `FIRST`, moving a rule changes the answer. The same strategy that
+saves a BPMN file from reshuffling would silently undo that edit, and the only thing standing
+between those two cases is parsing the result and comparing. There is a test for exactly that:
+reordering DMN rules comes back reordered, with the outcome reported as `reordered`.
+
 **Left open:**
 
-- [ ] A visual editor writes the whole document, so the first change reformats the file to
-      this toolkit's output. Inherent to editing a text format visually, and every BPMN
-      modeler does it — but a formatting-preserving writer would make diagrams reviewable in
-      a way none of them are, and it is a real piece of work rather than a limitation to
-      accept quietly
+- [ ] Form files are JSON, not XML, and the form editor writes them with its own indentation.
+      The same problem, a different parser, and none of this applies to it
+
+---
 
 **Not adapting:** anything Camunda 7 (inline scripting, C7 properties, C7 deploy endpoints,
 transaction boundaries) — this is a Camunda 8 toolkit; the clipboard bridge, which only exists
