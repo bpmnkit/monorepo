@@ -1,5 +1,33 @@
 # Features
 
+## Editing in VS Code, and the rest of the deferred list (2026-09-10)
+
+Phase 7 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md).
+
+**BPMN, DMN and forms are edited in VS Code, not only read.** The custom editors are *text*
+custom editors, backed by the same `TextDocument` a text editor opens — so the file is dirty
+when the document is, Ctrl+S saves, hot exit restores, undo is the editor's undo, and a text
+editor open on the same file is a second view rather than a competing copy. Type in the XML
+and the diagram follows; move a box and the XML follows. `bpmnkit.editing.enabled` mounts the
+same editors with editing switched off.
+
+**Test data from the repository.** Deploy-and-start offers the payloads found in
+`.camunda/payloads/*.json`, walking up from the diagram the way element templates already do.
+A payload is a JSON object of process variables named by its file; one beside the diagram
+overrides one at the project root sharing its name.
+
+**Detail cards in the connector picker.** Selecting a template shows what it binds — the job
+type, the element type it applies to and converts to — and every property it will ask for,
+with the ones that read like credentials marked, before anything is applied. `summarizeTemplate()`
+is now exported from `@bpmnkit/connectors`, so the picker and `casen connector show` describe a
+template through the same code.
+
+**A localisation harvest, and what it measured.** `createTranslationRecorder()` is a `Translate`
+that records what it is asked for; a test runs a real editor, presses every button it can reach,
+and writes `packages/editor/i18n/en.json`. The running editor asks for **58** strings; a grep
+over the source finds **11**. Localising from the grep would have shipped a mostly-English
+editor with a full-looking catalogue.
+
 ## Simulation, FEEL and deployment inside VS Code (2026-09-09)
 
 Phase 6 of [`doc/miragon-bpmn-modeler-comparison.md`](miragon-bpmn-modeler-comparison.md) — the

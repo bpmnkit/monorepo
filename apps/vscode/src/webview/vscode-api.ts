@@ -28,6 +28,16 @@ export function reportError(error: unknown): void {
 	})
 }
 
+/**
+ * Reports an edit the user made, as the document text that follows from it.
+ *
+ * The host writes this into the `TextDocument`, so sending text the user did
+ * not ask for — a re-serialised copy after a load, say — rewrites their file.
+ */
+export function reportEdit(text: string): void {
+	api.postMessage({ type: "edit", text })
+}
+
 /** Subscribes to messages from the extension host. */
 export function onHostMessage(handler: (message: HostMessage) => void): void {
 	window.addEventListener("message", (event: MessageEvent<HostMessage>) => {

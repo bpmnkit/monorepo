@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+- **Editing.** `.bpmn`, `.dmn` and `.form` are now edited, not only read. The editors are
+  **text** custom editors backed by the same `TextDocument` a text editor opens, so dirty
+  state, save, hot exit, undo and a concurrent text editor are VS Code's rather than
+  reimplemented — and typing in the XML updates the diagram as you go. Set
+  `bpmnkit.editing.enabled` to `false` for the same editors with editing switched off.
+- **Test data from the repository.** Deploy-and-start offers the payloads it finds in
+  `.camunda/payloads/*.json`, walking up from the diagram the way element templates do.
+- **Detail cards in the connector picker.** Selecting a template shows what it binds and
+  what it will ask for — including which fields read like credentials — before it is
+  applied. The card's own button still applies straight away.
+- The command **Open Preview to the Side** is now **Open Diagram to the Side**; its id is
+  unchanged, so any keybinding still works.
+
 ## 0.2.0
 
 - **Step-through simulation.** The BPMN preview runs the diagram through

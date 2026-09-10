@@ -1,8 +1,8 @@
 {
 	"name": "bpmnkit",
 	"displayName": "BPMN Kit",
-	"description": "View, diff and lint BPMN, DMN and Camunda Forms in VS Code \u2014 no bpmn.io, no round-trip rewrites of your XML.",
-	"version": "0.2.0",
+	"description": "Edit, compare and analyse BPMN, DMN and Camunda Forms in VS Code \u2014 no bpmn.io, no round-trip rewrites of your XML.",
+	"version": "0.3.0",
 	"private": true,
 	"type": "module",
 	"publisher": "bpmnkit",
@@ -34,7 +34,7 @@
 		"customEditors": [
 			{
 				"viewType": "bpmnkit.bpmn",
-				"displayName": "BPMN Kit Diagram",
+				"displayName": "BPMN Kit Diagram Editor",
 				"selector": [
 					{
 						"filenamePattern": "*.bpmn"
@@ -66,9 +66,9 @@
 		"commands": [
 			{
 				"command": "bpmnkit.openPreview",
-				"title": "Open Preview to the Side",
+				"title": "Open Diagram to the Side",
 				"category": "BPMN Kit",
-				"icon": "$(open-preview)"
+				"icon": "$(type-hierarchy)"
 			},
 			{
 				"command": "bpmnkit.diffWithHead",
@@ -175,10 +175,20 @@
 		"configuration": {
 			"title": "BPMN Kit",
 			"properties": {
+				"bpmnkit.editing.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Let the diagram editor change the file. Off shows the same editors with editing disabled, so a diagram can be opened without any chance of modifying it."
+				},
 				"bpmnkit.lint.enabled": {
 					"type": "boolean",
 					"default": true,
 					"description": "Report BPMN static-analysis findings in the Problems panel."
+				},
+				"bpmnkit.lint.forceEngineRules": {
+					"type": "boolean",
+					"default": false,
+					"description": "Apply Camunda 8 deployability rules even to a diagram that names no execution platform. Off by default: an engine-neutral diagram should not be told it is undeployable."
 				},
 				"bpmnkit.lint.run": {
 					"type": "string",
@@ -190,10 +200,10 @@
 					],
 					"description": "When to re-run the analysis on an open diagram."
 				},
-				"bpmnkit.lint.forceEngineRules": {
+				"bpmnkit.simulation.enabled": {
 					"type": "boolean",
-					"default": false,
-					"description": "Apply Camunda 8 deployability rules even to a diagram that names no execution platform. Off by default: an engine-neutral diagram should not be told it is undeployable."
+					"default": true,
+					"description": "Offer step-through simulation in the BPMN preview. The process engine runs entirely inside the editor \u2014 nothing is deployed."
 				},
 				"bpmnkit.viewer.grid": {
 					"type": "boolean",
@@ -204,11 +214,6 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Show the minimap in the diagram viewer."
-				},
-				"bpmnkit.simulation.enabled": {
-					"type": "boolean",
-					"default": true,
-					"description": "Offer step-through simulation in the BPMN preview. The process engine runs entirely inside the editor \u2014 nothing is deployed."
 				}
 			}
 		}
@@ -217,6 +222,7 @@
 		"@bpmnkit/ascii": "workspace:*",
 		"@bpmnkit/canvas": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",
 		"@bpmnkit/plugins": "workspace:*",
 		"@bpmnkit/profiles": "workspace:*",

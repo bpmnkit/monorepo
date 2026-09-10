@@ -20,17 +20,18 @@ import {
 	startInstance,
 } from "./host/camunda.js"
 import { pairFromCommandArgs, uriFromCommandArg } from "./host/command-args.js"
+import { DiagramEditorProvider } from "./host/diagram-editor.js"
 import { openDiffPanel } from "./host/diff-panel.js"
 import { kindForPath, viewTypeFor } from "./host/documents.js"
 import { openFeelPanel, selectedExpression } from "./host/feel-panel.js"
 import { basename, readText } from "./host/files.js"
 import { GitUnavailableError, readAtRef } from "./host/git.js"
 import { LintProvider } from "./host/lint-provider.js"
-import { ViewerEditorProvider } from "./host/viewer-editor.js"
+import { type Payload, discoverPayloads } from "./host/payloads.js"
 
 export function activate(context: vscode.ExtensionContext): void {
 	context.subscriptions.push(
-		...ViewerEditorProvider.register(context),
+		...DiagramEditorProvider.register(context),
 		...LintProvider.register(),
 		vscode.commands.registerCommand("bpmnkit.openPreview", (arg: unknown) => openPreview(arg)),
 		vscode.commands.registerCommand("bpmnkit.diffWithHead", (arg: unknown) =>
@@ -176,7 +177,7 @@ async function deploy(arg: unknown, andStart: boolean): Promise<void> {
 			void vscode.window.showInformationMessage(describeDeployment(deployed, profile.name))
 			return
 		}
-		await start(deployed, profile)
+		await start(deployed, profile, uri)
 	} catch (error) {
 		void vscode.window.showErrorMessage(
 			error instanceof DeployError ? error.message : `Deploy failed: ${String(error)}`,
@@ -200,7 +201,11 @@ function describeDeployment(deployed: DeployedProcess[], profileName: string): s
  * produced, so the instance runs the diagram on screen even if someone else
  * deployed a newer one a second ago.
  */
-async function start(deployed: DeployedProcess[], profile: DeployTarget): Promise<void> {
+async function start(
+	deployed: DeployedProcess[],
+	profile: DeployTarget,
+	uri: vscode.Uri,
+): Promise<void> {
 	const first = deployed[0]
 	if (first === undefined) {
 		void vscode.window.showInformationMessage(
@@ -220,22 +225,10 @@ async function start(deployed: DeployedProcess[], profile: DeployTarget): Promis
 				)?.process
 	if (chosen === undefined) return
 
-	const typed = await vscode.window.showInputBox({
-		title: `Variables for ${chosen.processDefinitionId}`,
-		prompt: "JSON object, or empty for none",
-		placeHolder: '{"amount": 100}',
-		validateInput: (value) => {
-			try {
-				parseVariables(value)
-				return null
-			} catch (error) {
-				return error instanceof Error ? error.message : String(error)
-			}
-		},
-	})
-	if (typed === undefined) return
+	const variables = await pickVariables(uri, chosen.processDefinitionId)
+	if (variables === null) return
 
-	const key = await startInstance(profile.name, chosen.processDefinitionKey, parseVariables(typed))
+	const key = await startInstance(profile.name, chosen.processDefinitionKey, variables)
 	void vscode.window.showInformationMessage(
 		`Started ${chosen.processDefinitionId} on ${profile.name} — instance ${key}.`,
 	)
@@ -272,3 +265,56 @@ async function pickProfile(): Promise<DeployTarget | null> {
 }
 
 export function deactivate(): void {}
+
+/**
+ * The variables to start with: a payload from the repository, or typed in.
+ *
+ * Payloads found beside the diagram lead, because a process is tried with the
+ * same three or four inputs over and over and none of them should have to be
+ * retyped. Typing stays available, and is the only option when there are none —
+ * a picker whose one entry says "type it" is a worse prompt than the box.
+ */
+async function pickVariables(
+	uri: vscode.Uri,
+	processDefinitionId: string,
+): Promise<Record<string, unknown> | null> {
+	const folder = vscode.workspace.getWorkspaceFolder(uri)
+	const { payloads, problems } = await discoverPayloads(uri.fsPath, folder?.uri.fsPath)
+	for (const problem of problems) {
+		void vscode.window.showWarningMessage(`Ignoring ${problem.path}: ${problem.message}`)
+	}
+
+	if (payloads.length > 0) {
+		const picked = await vscode.window.showQuickPick(
+			[
+				...payloads.map((payload: Payload) => ({
+					label: payload.name,
+					description: `${Object.keys(payload.variables).length} variables`,
+					detail: payload.path,
+					payload: payload as Payload | null | undefined,
+				})),
+				{ label: "$(edit) Type variables…", payload: null },
+				{ label: "$(circle-slash) No variables", payload: undefined },
+			],
+			{ title: `Start ${processDefinitionId} with`, matchOnDetail: true },
+		)
+		if (picked === undefined) return null
+		if (picked.payload === undefined) return {}
+		if (picked.payload !== null) return picked.payload.variables
+	}
+
+	const typed = await vscode.window.showInputBox({
+		title: `Variables for ${processDefinitionId}`,
+		prompt: "JSON object, or empty for none",
+		placeHolder: '{"amount": 100}',
+		validateInput: (value) => {
+			try {
+				parseVariables(value)
+				return null
+			} catch (error) {
+				return error instanceof Error ? error.message : String(error)
+			}
+		},
+	})
+	return typed === undefined ? null : parseVariables(typed)
+}

@@ -2,9 +2,14 @@
 // `vscode` module injected, the webviews run in a browser with no Node at all.
 // esbuild rather than tsc because both halves pull in workspace packages that
 // ship ESM only, and the host has to end up as CommonJS.
-import { copyFile } from "node:fs/promises"
+import { copyFile, rm } from "node:fs/promises"
 import { build } from "esbuild"
 import "./gen-icon.mjs"
+
+// Clear the output first. esbuild writes over what it produces and leaves
+// everything else, so a renamed entry point stays in dist/ and gets packaged —
+// a dead bundle in the .vsix that nothing loads and every user downloads.
+await rm(new URL("../dist/", import.meta.url), { recursive: true, force: true })
 
 // The .vsix carries its own licence; copying the repository's keeps the two from
 // ever disagreeing, the same reason the Marketplace icon is rendered rather than
@@ -28,7 +33,7 @@ await build({
 
 await build({
 	entryPoints: {
-		viewer: "src/webview/viewer.ts",
+		editor: "src/webview/editor.ts",
 		diff: "src/webview/diff.ts",
 		feel: "src/webview/feel.ts",
 	},

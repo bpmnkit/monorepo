@@ -1,5 +1,59 @@
 # Progress
 
+## 2026-09-10 — The deferred list, and a caution aimed at the wrong protocol
+
+Phase 7 complete: editing in VS Code, payload files, detail cards in the template picker, a
+localisation harvest — and one item declined rather than deferred again.
+
+**The reason editing was deferred turned out not to apply.** The roadmap warned that VS Code
+editing meant taking on dirty state, hot exit, external edits and a text editor that can
+disagree with you, and it was right — about `CustomEditorProvider`, which hands you an opaque
+document and makes you implement all of it. These files are text. A
+**`CustomTextEditorProvider`** is backed by the same `TextDocument` a text editor opens, so
+every one of those problems belongs to VS Code, and the text editor beside the diagram stops
+being a conflicting copy and becomes a second view of one document. What was left was a
+two-way sync with an echo in it: one piece of state, seven tests, `document-sync.ts`.
+
+The hazard that *is* real is subtler and is not in the host at all. Editors report a change
+when they are loaded, which is correct for them and catastrophic here — if a load counted as
+an edit, opening a diagram would write a re-serialised copy of it back over the file, and
+every diagram anyone ever looked at would come back modified. The webview attaches its change
+handler **after** loading rather than guarding with a flag: ordering is right by construction,
+where a flag has to be right about when three different editors emit. The browser run asserts
+it directly, both for a first load and for a rebuild after a foreign document change.
+
+**The localisation item asked for a method, and the method produced a number.** A recorder
+`Translate` plus a test that runs a real editor and presses every button it can reach:
+**the running editor asks for 58 strings; a grep over the source finds 11.** A conventional
+extractor would have shipped a full-looking catalogue covering under a fifth of the UI,
+because the editor builds most of its labels from element types at runtime. `i18n/en.json` is
+now harvested rather than written, the test keeps it in step, and greppable keys the harvest
+never reached are reported rather than deleted — dead, or reachable only by a path the
+exercise misses, and a grep cannot tell you which.
+
+**Two items were smaller than they looked because the work already existed.** `summarizeTemplate()`
+had been computed for every catalogue listing since Phase 2 and was merely private; exporting
+it meant the picker's new detail card reasons about templates through the same code
+`casen connector show` does, instead of a second copy written in DOM. And payload discovery is
+the element-template walk with a different folder name — deliberately copied rather than
+shared, because thirty lines and one consumer do not justify widening a published API.
+
+**Declined: the template marketplace.** Not deferred again. Applying an element template writes
+the extension elements that decide what a task executes, so a registry of third-party templates
+is a supply-chain surface, and it needs provenance and publisher identity before it needs a
+search box. What the item actually wanted is already served: `.camunda/element-templates/` puts
+a project's templates under version control where their review is the repository's review, and
+the picker imports from a URL for the one-off. The reasoning is on the roadmap so the question
+is not silently reopened.
+
+Left open and written down: a visual editor writes the whole document, so the first change
+reformats the file. Every BPMN modeler does this; a formatting-preserving writer would make
+diagrams reviewable in a way none of them are, and that is a piece of work, not a caveat.
+
+33 new tests. The Chromium check of the built bundles grew from 27 to 36 and now round-trips a
+real edit: it deletes an element in the editor and asserts the reported document both parses
+and no longer contains it.
+
 ## 2026-09-09 — Reuse is a test, and two packages failed it
 
 Phase 6 complete: the VS Code extension gains the four things nothing else in the Marketplace

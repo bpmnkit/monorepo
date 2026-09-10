@@ -115,7 +115,17 @@ function keywordsOf(template: ElementTemplate): string[] {
 	return [...words]
 }
 
-function summarize(template: ElementTemplate): ConnectorSummary {
+/**
+ * What a template will do, without applying it.
+ *
+ * The catalogue computes this for every listing already; it is exported because
+ * anything offering a template to a person needs to be able to say what it
+ * binds and what it will ask for — a picker that applies on the first click is
+ * asking someone to choose blind.
+ *
+ * @param template - The template to describe.
+ */
+export function summarizeTemplate(template: ElementTemplate): ConnectorSummary {
 	const visible = template.properties.filter((p) => p.type !== "Hidden")
 	return {
 		id: template.id,
@@ -175,7 +185,7 @@ function allTemplates(): ElementTemplate[] {
 /** Every connector template — bundled and registered — as a compact summary. */
 export function listConnectors(): ConnectorSummary[] {
 	if (!cachedSummaries) {
-		cachedSummaries = allTemplates().map(summarize)
+		cachedSummaries = allTemplates().map(summarizeTemplate)
 	}
 	return cachedSummaries
 }

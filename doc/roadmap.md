@@ -517,22 +517,68 @@ worked around in the host:
       uses because it has no filesystem. That is a feature with a story of its own, not a
       checkbox on this phase, and hiding the tab is the honest interim
 
-### Phase 7 — Deferred
+### Phase 7 — The deferred list, worked through ✅
 
-Real, but each is either lower value or presumes something that does not exist yet.
+Filed as "real, but lower value or presuming something that does not exist yet". Four of the
+five turned out to be buildable now; the fifth is a decision, recorded below rather than left
+as a box nobody will ever tick.
 
-- [ ] Payload files discovered from `.camunda/payloads/`, so starting an instance with test data
-      is a pick rather than a paste
-- [ ] UI localisation. The hook exists (`@bpmnkit/editor`'s `Translate`) and ships English only.
-      The adaptable part is the *method*: harvest the strings the running editor actually
-      requests and treat any key the harvest never observed as dead
-- [ ] Detail cards in the connector/template picker — implementation binding and property preview
-      before applying
-- [ ] VS Code editing. Only after Phase 4 lands, and only with the custom-editor document
-      protocol (dirty state, hot exit, external edits, conflicting text-editor edits) treated as
-      its own piece of work
-- [ ] Template marketplace — elegant, but it presumes an established base of shared template
-      repositories. Phase 2 has to come first, and prove demand
+- [x] **Payload files discovered from `.camunda/payloads/`**, so starting an instance with
+      test data is a pick rather than a paste. Same walk-up convention as element templates —
+      root-first, so a payload beside the diagram overrides one at the project root sharing
+      its name — and a file that is not a JSON **object** is reported rather than quietly
+      starting an instance with nothing. The walk is deliberately *not* shared with
+      `@bpmnkit/connectors/node`: it is thirty lines, the two conventions could diverge, and
+      one consumer does not justify widening a published package's API. A second consumer
+      (`casen deploy`, most likely) is when that changes
+- [x] **UI localisation — the method, which was the adaptable part.** `createTranslationRecorder()`
+      in `@bpmnkit/editor` is a `Translate` that records what it is asked for; the harvest in
+      `tests/i18n-harvest.test.ts` runs a real editor, presses every button it can reach, and
+      writes `packages/editor/i18n/en.json`. **The measurement is the point: the running
+      editor asks for 58 strings and a grep over the source finds 11.** A conventional
+      extractor would have shipped a full-looking catalogue covering under a fifth of the UI,
+      because the editor builds most of its labels from element types at runtime. The test
+      keeps the catalogue in step (`UPDATE_I18N=1` regenerates) and reports any greppable key
+      the harvest never reached — dead, or reachable only by a path the exercise misses, and
+      not safe to delete on a grep's say-so either way
+- [x] **Detail cards in the connector/template picker** — implementation binding and property
+      preview before applying. `summarizeTemplate()` was already computed for every catalogue
+      listing and merely private; exporting it meant the panel reasons about templates through
+      the same code the CLI does rather than a second copy in DOM. Selecting a card now opens
+      the detail; the card's own button still applies straight away, for a reader who already
+      knows. Fields whose name reads like a credential are marked there, before the template
+      is applied rather than after
+- [x] **VS Code editing.** The caution in this list was aimed at the wrong protocol.
+      `CustomEditorProvider` hands you an opaque document and makes you implement dirty state,
+      undo, hot exit, backup and external-change reconciliation — which is what "its own piece
+      of work" meant. But these files are text, and a **`CustomTextEditorProvider`** is backed
+      by the same `TextDocument` a text editor opens: every one of those problems is VS Code's,
+      and a text editor open on the same file stops being a conflicting copy and becomes a
+      second view of one document. What remained was a two-way sync with an echo in it, which
+      is `document-sync.ts` and seven tests. `bpmnkit.editing.enabled` mounts the same editors
+      with editing switched off
+
+**Decided against: the template marketplace.** Not deferred again — declined, so nobody
+re-opens the question without new information.
+
+The stated precondition ("Phase 2 first, and prove demand") is now half met: Phase 2 shipped,
+demand did not appear. But the real objection is the one the original entry did not name.
+Applying an element template writes the extension elements that decide **what a task
+executes**. A registry of third-party templates is therefore a supply-chain surface, and
+building one needs provenance, publisher identity, versioning and a moderation story before
+it needs a search box. What the entry actually wanted — templates that are not written by
+hand — is already served twice over: `.camunda/element-templates/` puts a project's own
+templates under version control where their review is the repository's review, and the
+picker imports from a URL or a file for the one-off case. Revisit only with a concrete
+publisher asking to distribute templates, and answer trust before search.
+
+**Left open:**
+
+- [ ] A visual editor writes the whole document, so the first change reformats the file to
+      this toolkit's output. Inherent to editing a text format visually, and every BPMN
+      modeler does it — but a formatting-preserving writer would make diagrams reviewable in
+      a way none of them are, and it is a real piece of work rather than a limitation to
+      accept quietly
 
 **Not adapting:** anything Camunda 7 (inline scripting, C7 properties, C7 deploy endpoints,
 transaction boundaries) — this is a Camunda 8 toolkit; the clipboard bridge, which only exists

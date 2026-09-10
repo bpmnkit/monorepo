@@ -4,12 +4,20 @@
  *   • Built-in Workers  — bpmnkit workers, always available (no proxy needed)
  *   • Community APIs    — OpenAPI-generated connectors from the catalog
  *
+ * Selecting a worker opens a detail view before anything is applied: what job
+ * type it binds, what it will ask for, and which of those look like
+ * credentials. Applying a template rewrites an element's extensions, and a
+ * picker that does that on the first click is asking someone to choose blind.
+ * The card's own button still applies straight away, for the case where the
+ * reader already knows.
+ *
  * Usage:
  *   const panel = new CatalogPanel(registrar, onLoadCatalogEntry, onLoadFromUrl)
  *   panel.open()
  */
 import type { CatalogEntry } from "@bpmnkit/connector-gen/browser"
-import type { ElementTemplate } from "@bpmnkit/connectors"
+import type { ConnectorInputSpec, ElementTemplate } from "@bpmnkit/connectors"
+import { summarizeTemplate } from "@bpmnkit/connectors"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +51,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 function renderBuiltinCard(
 	template: ElementTemplate,
 	onUse: (t: ElementTemplate) => void,
+	onInspect: (t: ElementTemplate) => void,
 ): HTMLElement {
 	const card = el("div", { class: "bpmnkit-cc-card" })
 
@@ -69,8 +78,8 @@ function renderBuiltinCard(
 	})
 	card.append(btn)
 
-	// Whole card is also clickable
-	card.addEventListener("click", () => onUse(template))
+	// The card opens the detail view; only the button applies.
+	card.addEventListener("click", () => onInspect(template))
 
 	return card
 }
@@ -97,6 +106,132 @@ function renderCommunityRow(entry: CatalogEntry, onLoad: (id: string) => void): 
 	return row
 }
 
+// ── Detail view ───────────────────────────────────────────────────────────────
+
+function field(spec: ConnectorInputSpec, required: boolean): HTMLElement {
+	const row = el("div", { class: "bpmnkit-cc-field" })
+	const name = el("div", { class: "bpmnkit-cc-field__name" }, spec.label)
+	if (required) name.append(el("span", { class: "bpmnkit-cc-field__req", title: "Required" }, "*"))
+	if (spec.isSecret) {
+		// Worth calling out before the template is applied: a secret field is one
+		// the modeller must not paste a literal into.
+		name.append(el("span", { class: "bpmnkit-cc-field__secret" }, "secret"))
+	}
+	if (spec.isFeel) name.append(el("span", { class: "bpmnkit-cc-field__feel" }, "FEEL"))
+	row.append(name)
+
+	const meta: string[] = [spec.key]
+	if (spec.default !== undefined && spec.default !== "")
+		meta.push(`default ${String(spec.default)}`)
+	// A conditional field is not always asked for, and saying "required" of one
+	// that only appears for a particular choice would be wrong.
+	if (spec.condition !== undefined) meta.push("shown for some options")
+	row.append(el("div", { class: "bpmnkit-cc-field__meta" }, meta.join(" · ")))
+
+	if (spec.description) {
+		row.append(el("div", { class: "bpmnkit-cc-field__desc" }, spec.description))
+	}
+	return row
+}
+
+function section(
+	title: string,
+	specs: ConnectorInputSpec[],
+	required: boolean,
+): HTMLElement | null {
+	if (specs.length === 0) return null
+	const wrap = el("div", { class: "bpmnkit-cc-detail__section" })
+	wrap.append(el("div", { class: "bpmnkit-cc-detail__section-title" }, title))
+	for (const spec of specs) wrap.append(field(spec, required))
+	return wrap
+}
+
+function renderDetail(
+	template: ElementTemplate,
+	onApply: () => void,
+	onBack: () => void,
+): HTMLElement {
+	const summary = summarizeTemplate(template)
+	const detail = el("div", { class: "bpmnkit-cc-detail" })
+
+	const head = el("div", { class: "bpmnkit-cc-detail__head" })
+	const back = el(
+		"button",
+		{ class: "bpmnkit-cc-detail__back", type: "button" },
+		"\u2190 All workers",
+	)
+	back.addEventListener("click", onBack)
+	head.append(back)
+	detail.append(head)
+
+	const title = el("div", { class: "bpmnkit-cc-detail__title" })
+	if (template.icon?.contents) {
+		const icon = el("div", { class: "bpmnkit-cc-detail__icon" })
+		icon.innerHTML = template.icon.contents
+		title.append(icon)
+	}
+	const heading = el("div")
+	heading.append(el("div", { class: "bpmnkit-cc-detail__name" }, template.name))
+	heading.append(
+		el(
+			"div",
+			{ class: "bpmnkit-cc-detail__id" },
+			template.version === undefined ? template.id : `${template.id} · v${template.version}`,
+		),
+	)
+	title.append(heading)
+	detail.append(title)
+
+	if (template.description) {
+		detail.append(el("div", { class: "bpmnkit-cc-detail__desc" }, template.description))
+	}
+
+	// What applying it actually does to the element.
+	const binding = el("dl", { class: "bpmnkit-cc-detail__binding" })
+	const pair = (term: string, value: string): void => {
+		binding.append(el("dt", {}, term), el("dd", {}, value))
+	}
+	pair("Applies to", summary.appliesTo.join(", ") || "any element")
+	if (template.elementType?.value !== undefined)
+		pair("Converts element to", template.elementType.value)
+	pair(
+		"Implementation",
+		summary.taskType !== undefined
+			? `job worker · ${summary.taskType}`
+			: `${summary.direction} · no job type`,
+	)
+	detail.append(binding)
+
+	const required = section("Required inputs", summary.requiredInputs, true)
+	if (required !== null) detail.append(required)
+	const optional = section("Optional inputs", summary.optionalInputs, false)
+	if (optional !== null) detail.append(optional)
+	if (required === null && optional === null) {
+		detail.append(el("div", { class: "bpmnkit-cc-empty" }, "This template asks for nothing."))
+	}
+
+	const actions = el("div", { class: "bpmnkit-cc-detail__actions" })
+	if (template.documentationRef !== undefined) {
+		const docs = el(
+			"a",
+			{
+				class: "bpmnkit-cc-detail__docs",
+				href: template.documentationRef,
+				target: "_blank",
+				rel: "noreferrer",
+			},
+			"Documentation",
+		)
+		actions.append(docs)
+	}
+	const apply = el("button", { class: "bpmnkit-cc-detail__apply", type: "button" }, "Apply")
+	apply.addEventListener("click", onApply)
+	actions.append(apply)
+	detail.append(actions)
+
+	return detail
+}
+
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
 export class CatalogPanel {
@@ -104,14 +239,19 @@ export class CatalogPanel {
 	private overlay: HTMLElement | null = null
 	private activeTab: "builtin" | "community" = "builtin"
 	private query = ""
+	/** The worker being inspected, or null when the grid is showing. */
+	private detail: ElementTemplate | null = null
 
 	constructor(opts: CatalogPanelOptions) {
 		this.opts = opts
 	}
 
 	open(): void {
+		this.detail = null
 		if (this.overlay) {
 			this.overlay.style.display = "flex"
+			const content = this.overlay.querySelector<HTMLElement>(".bpmnkit-cc-panel__content")
+			if (content) this.renderContent(content)
 			return
 		}
 		this.overlay = this.build()
@@ -253,6 +393,25 @@ export class CatalogPanel {
 	private renderContent(container: HTMLElement): void {
 		container.innerHTML = ""
 
+		if (this.detail !== null) {
+			container.append(
+				renderDetail(
+					this.detail,
+					() => {
+						const template = this.detail
+						this.detail = null
+						if (template !== null) this.opts.onUseBuiltin(template)
+						this.close()
+					},
+					() => {
+						this.detail = null
+						this.renderContent(container)
+					},
+				),
+			)
+			return
+		}
+
 		if (this.activeTab === "builtin") {
 			this.renderBuiltins(container)
 		} else {
@@ -277,10 +436,17 @@ export class CatalogPanel {
 		const grid = el("div", { class: "bpmnkit-cc-grid" })
 		for (const template of filtered) {
 			grid.append(
-				renderBuiltinCard(template, (t) => {
-					this.opts.onUseBuiltin(t)
-					this.close()
-				}),
+				renderBuiltinCard(
+					template,
+					(t) => {
+						this.opts.onUseBuiltin(t)
+						this.close()
+					},
+					(t) => {
+						this.detail = t
+						this.renderContent(container)
+					},
+				),
 			)
 		}
 		container.append(grid)

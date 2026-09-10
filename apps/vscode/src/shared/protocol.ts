@@ -31,6 +31,12 @@ export type HostMessage =
 			 * plain preview should not grow a transport bar nobody asked for.
 			 */
 			readonly simulate: boolean
+			/**
+			 * Whether the view may change the document. False mounts the same
+			 * editors with their editing disabled rather than a different viewer,
+			 * so what the reader sees does not depend on whether they may touch it.
+			 */
+			readonly editable: boolean
 	  }
 	| {
 			readonly type: "diff"
@@ -64,3 +70,11 @@ export type WebviewMessage =
 	 * error the user can act on instead of an empty panel.
 	 */
 	| { readonly type: "error"; readonly message: string }
+	/**
+	 * The user changed the diagram, and this is the document text that follows.
+	 *
+	 * Sent only for a change a person made. Loading a document into an editor
+	 * is not an edit, and reporting it as one would write a re-serialised copy
+	 * of the file back over the file every time it was opened.
+	 */
+	| { readonly type: "edit"; readonly text: string }

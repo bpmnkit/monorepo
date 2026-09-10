@@ -5,6 +5,7 @@ export {
 	propertyKey,
 	registerElementTemplates,
 	clearRegisteredTemplates,
+	summarizeTemplate,
 } from "./catalog.js"
 export type { ConnectorSummary, ConnectorInputSpec, ConnectorDirection } from "./catalog.js"
 export { applyConnectorTemplate, applyElementTemplate } from "./apply.js"

@@ -51,20 +51,35 @@ back in a notification.
 rendered into a fenced block that pastes into a pull request, an issue or a commit
 message, dedented so the diagram is not mostly margin.
 
-## It is read-only, deliberately
+**Test data from the repository.** Deploy-and-start offers the payloads it finds in
+`.camunda/payloads/*.json` — walking up from the diagram the way element templates already
+do — so the four inputs a process is always tried with are a pick rather than a paste. Each
+file is a JSON object of process variables, named by its filename, and a payload beside the
+diagram overrides one at the project root that shares its name. Typing stays available.
 
-The diagram is a view; the XML is the document. Editing through a webview means taking on
-VS Code's custom-document protocol — dirty state, hot exit, external edits, and a text
-editor open on the same file that can disagree with you — and that is its own piece of
-work rather than a checkbox on this one. Until it lands, the preview opens *beside* the
-text editor instead of replacing it, and the text editor stays the default for every file
-type here.
+## Editing, backed by the document
+
+The diagram editor is a **text** custom editor: it edits the same `TextDocument` a text
+editor would open. So the file is dirty when the document is, Ctrl+S saves it, hot exit
+restores it, undo is the editor's own undo, and a text editor open on the same file is not
+a conflicting copy — it is a second view of one document. Type in the XML and the diagram
+follows; move a box and the XML follows.
+
+The text editor stays the default for `.bpmn`, `.dmn` and `.form`. Open the diagram with
+**BPMN Kit: Open Diagram to the Side**, or "Reopen Editor With…", or make it the default
+yourself through `workbench.editorAssociations`. Set `bpmnkit.editing.enabled` to `false`
+for the same editors with editing switched off, when a diagram should be openable with no
+chance of changing it.
+
+One thing to expect: a visual editor writes the whole document. The first change you make
+reformats the file to this toolkit's output, so review that commit rather than assuming it
+is a one-line diff.
 
 ## Commands
 
 | Command | Where |
 |---|---|
-| **BPMN Kit: Open Preview to the Side** | Editor title bar, command palette |
+| **BPMN Kit: Open Diagram to the Side** | Editor title bar, command palette |
 | **BPMN Kit: Compare Diagram with HEAD** | Source Control context menu, editor title bar |
 | **BPMN Kit: Compare Diagrams Visually** | Explorer, with exactly two `.bpmn` files selected |
 | **BPMN Kit: Open FEEL Playground** | Command palette — pre-filled from the selection |
@@ -72,8 +87,7 @@ type here.
 | **BPMN Kit: Deploy to Camunda 8** | Command palette |
 | **BPMN Kit: Deploy and Start Instance** | Explorer, command palette |
 
-"Reopen Editor With… → BPMN Kit Diagram" works too, and `workbench.editorAssociations`
-will make it the default for `*.bpmn` if that is what you want.
+"Reopen Editor With… → BPMN Kit Diagram Editor" works too.
 
 ## Settings
 
@@ -85,6 +99,7 @@ will make it the default for `*.bpmn` if that is what you want.
 | `bpmnkit.viewer.grid` | `true` | Dot grid behind the diagram |
 | `bpmnkit.viewer.minimap` | `true` | Minimap in the BPMN viewer |
 | `bpmnkit.simulation.enabled` | `true` | Offer step-through simulation in the preview |
+| `bpmnkit.editing.enabled` | `true` | Let the diagram editor change the file |
 
 Findings are reported for `.bpmn` files that are open. A file the editor has not loaded is
 not analysed — same as every other linter in VS Code.
