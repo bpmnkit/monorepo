@@ -258,6 +258,29 @@ All brand colors and design tokens are defined in **`packages/ui`** (`@bpmnkit/u
 | `--bpmnkit-font` | `system-ui, -apple-system, sans-serif` | same | UI font |
 | `--bpmnkit-font-mono` | `ui-monospace, "Cascadia Code", "JetBrains Mono", monospace` | same | Monospace font |
 
+### Design-system tokens (`--bpmnkit-ds-*`)
+
+The bpmnkit.com landing system — flat, square, hairline-ruled, one terracotta accent — lives
+alongside the product palette in the same two files, under the `--bpmnkit-ds-` prefix. It is a
+**separate, additive set**: changing it never moves `--bpmnkit-accent` and friends.
+
+- Used by `apps/landing`, `apps/drop` and the `@bpmnkit/editor` chrome. Everything else stays
+  on the product palette above.
+- Rules the set encodes, and that consumers must keep: `border-radius: 0` on all chrome; no
+  `box-shadow`, `linear-gradient` or `backdrop-filter`; depth is 1px hairlines only; one
+  accent (`--bpmnkit-ds-accent`, `--bpmnkit-ds-accent-on-dark` on dark grounds); two type
+  roles — `--bpmnkit-ds-font-sans` for prose, `--bpmnkit-ds-font-mono` for every label,
+  eyebrow, filename, version and status readout, with any uppercase label in mono.
+- Card grids are **one** bordered box subdivided by `--bpmnkit-ds-line-soft`, never gapped
+  cards. Toolbars and palettes follow the same rule.
+- Diagram rendering is out of scope for the set: BPMN/DMN strokes, rounded task shapes and
+  labels belong to the renderer. Selection is a dashed accent halo *around* a shape, never a
+  recolour of it.
+- Semantic state (`--bpmnkit-success` / `-warn` / `-danger`, execution-state and syntax
+  colours) stays exempt, as above.
+- Drop serves Space Grotesk and Space Mono from `/drop/fonts/`, copied out of
+  `apps/landing/public/fonts` by `apps/drop/scripts/build-client.mjs`.
+
 ## TypeScript Practices
 
 - Prefer compile-time (type-level) guarantees over runtime checks

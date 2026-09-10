@@ -1,5 +1,51 @@
 # Progress
 
+## 2026-09-10 — Drop and the Editor chrome move onto the landing design system
+
+The design team's brief asked for one visual language across bpmnkit.com, Drop and the Editor.
+Drop ran gradients, rounded cards and a blue/teal/purple palette; the Editor's HUD ran rounded,
+blurred, shadowed panels with a Camunda-blue accent. Both now read as the landing page does:
+flat, square, hairline-ruled, one accent.
+
+**The tokens live in `packages/ui`, not in either app.** The brief shipped a drop-in
+`tokens.css` with unprefixed names (`--bg`, `--ink`, `--line`); this repo's rule is that
+`packages/ui` is the single source of truth and every public token carries the `--bpmnkit-`
+prefix. So the system landed as a `--bpmnkit-ds-*` set in `tokens.css` and the mirrored
+`UI_TOKENS_CSS` string, **additive** — nothing that reads `--bpmnkit-accent` changed colour, so
+studio, demo, desktop and the VS Code extension are untouched. Consuming Drop and the Editor
+was then a matter of reading the new names.
+
+**Drop.** `pages.ts` rewritten to the page spec: sticky hairline nav with the `v1.0` chip, split
+hero with a vertical rule between the columns, two-tone 60px headline, square dashed dropzone,
+hairline-divided step and feature grids, a single full-bleed dark band for the use cases, a
+`--dark-code` API panel, and a single-open accordion (native `<details name>` — no JS). The
+share viewer, diff, moderation and policy pages went with it, so no `border-radius`,
+`box-shadow` or `linear-gradient` survives anywhere in the app's CSS, and no hex outside the
+token block. Space Grotesk and Space Mono are copied out of the landing app at build time and
+served from `/drop/fonts/` — Drop is a Worker on the same zone, but depending on the marketing
+site's routes for its own type would have been a hidden coupling.
+
+**Editor.** `EDITOR_CSS`, `HUD_CSS`, the side dock and the input modal, all flattened: toolbars
+and the palette are now one bordered box with internal hairlines rather than gapped pills,
+labels are mono uppercase, and selection is a **dashed accent halo around** the shape — the
+shape's own stroke is never recoloured, per the brief's hard line about the renderer. The
+`--hud-*` variables the sheet now resolves against are declared once per theme, which is what
+made it possible to keep the dark and neon grounds intact while changing the form underneath
+them.
+
+**What is deliberately not done.** The brief's Editor mock is a *light* shell. Making the light
+ground the default would strand thirteen `@bpmnkit/plugins` surfaces (command palette, element
+docs, config panel, process runner, main menu, …) on their own dark chrome — 5,200 lines that
+are outside this change. The Editor therefore keeps its per-theme grounds and takes the
+system's form and accent; flipping the ground is a follow-up, gated on the same pass through
+`@bpmnkit/plugins`. The top file-tab bar and the canvas dot grid live in `@bpmnkit/plugins` and
+`@bpmnkit/canvas` for the same reason. The dock has no footer row: the brief's save/lines
+status has no source in this package.
+
+Cascivo was considered and not used. It is a React package; `apps/drop` renders HTML strings in
+a Worker and `@bpmnkit/editor` is a dependency-free DOM library, and its three-tier token
+system is a different visual language from the one the brief specifies.
+
 ## 2026-09-10 — DMN files, where "already done" was not the same as done
 
 DMN has had a preserving writer since the first cut, so the honest thing was to measure it

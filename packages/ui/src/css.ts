@@ -81,6 +81,85 @@ export const UI_TOKENS_CSS = `
   --bpmnkit-nav-bg: oklch(8% 0.025 270);
   --bpmnkit-nav-fg: oklch(55% 0.06 270);
 }
+
+/* ── BPMN Kit design system ──────────────────────────────────────────────────
+ * The bpmnkit.com landing-page system, used by Drop and the Editor chrome:
+ * flat (no shadows, gradients or glows), square, hairline-ruled, one accent.
+ * Independent of the product palette above — an app opts in by reading the
+ * --bpmnkit-ds-* tokens, so nothing that reads --bpmnkit-accent changes.
+ * The two type families are self-hosted by the consuming app.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Ground */
+  --bpmnkit-ds-bg: #f4f5f7;
+  --bpmnkit-ds-surface: #ffffff;
+  --bpmnkit-ds-canvas: #fbfbfc;
+  --bpmnkit-ds-dark: #14161a;
+  --bpmnkit-ds-dark-code: #0f1114;
+
+  /* Ink */
+  --bpmnkit-ds-ink: #14161a;
+  --bpmnkit-ds-ink-2: #4b5158;
+  --bpmnkit-ds-ink-3: #5c6470;
+  --bpmnkit-ds-ink-4: #8b929c;
+  --bpmnkit-ds-ink-muted: #9aa1aa;
+  --bpmnkit-ds-ink-on-dark: #f4f5f7;
+  --bpmnkit-ds-ink-on-dark-2: #c8ccd2;
+  /* BPMN strokes and labels — owned by the diagram renderer, not the chrome */
+  --bpmnkit-ds-diagram-ink: #22242a;
+
+  /* Accent — the only chromatic color in the system */
+  --bpmnkit-ds-accent: #a8503a;
+  --bpmnkit-ds-accent-hover: #8f412e;
+  --bpmnkit-ds-accent-on-dark: #c9755c;
+
+  /* Lines — the system's only depth cue */
+  --bpmnkit-ds-line: #d8dbe0;
+  --bpmnkit-ds-line-soft: #e4e6ea;
+  --bpmnkit-ds-line-strong: #14161a;
+  --bpmnkit-ds-line-dark: #2c3038;
+
+  /* Code panel syntax */
+  --bpmnkit-ds-code-text: #e7e9ec;
+  --bpmnkit-ds-code-comment: #6b7280;
+  --bpmnkit-ds-code-string: #8fbf9f;
+  --bpmnkit-ds-code-prompt: #c9755c;
+
+  /* Type — two roles only: sans for prose, mono for every label and datum */
+  --bpmnkit-ds-font-sans: 'Space Grotesk', 'Helvetica Neue', Helvetica, sans-serif;
+  --bpmnkit-ds-font-mono: 'Space Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Type scale — sans */
+  --bpmnkit-ds-t-display: 60px;
+  --bpmnkit-ds-t-h2: 30px;
+  --bpmnkit-ds-t-lead: 18px;
+  --bpmnkit-ds-t-body: 15.5px;
+  --bpmnkit-ds-t-body-sm: 14.5px;
+  --bpmnkit-ds-t-ui: 14px;
+
+  /* Type scale — mono, uppercase except code and filenames */
+  --bpmnkit-ds-t-mono-eyebrow: 12px;
+  --bpmnkit-ds-t-mono-label: 11.5px;
+  --bpmnkit-ds-t-mono-micro: 10.5px;
+  --bpmnkit-ds-t-code: 13px;
+
+  /* Spacing */
+  --bpmnkit-ds-sp-1: 6px;
+  --bpmnkit-ds-sp-2: 10px;
+  --bpmnkit-ds-sp-3: 14px;
+  --bpmnkit-ds-sp-4: 20px;
+  --bpmnkit-ds-sp-5: 26px;
+  --bpmnkit-ds-sp-6: 34px;
+  --bpmnkit-ds-sp-7: 48px;
+  --bpmnkit-ds-sp-8: 64px;
+
+  /* Layout */
+  --bpmnkit-ds-page-max: 1200px;
+  --bpmnkit-ds-page-gutter: 28px;
+  --bpmnkit-ds-panel-width: 340px;
+  --bpmnkit-ds-topbar-height: 46px;
+}
 `
 
 /** CSS for shared components: badge, card, table, theme-switcher. */

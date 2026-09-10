@@ -15,6 +15,7 @@ const openBtn = $<HTMLAnchorElement>("openBtn")
 const preview = $<HTMLIFrameElement>("preview")
 const copyBtn = $<HTMLButtonElement>("copyBtn")
 const overlay = $("dropOverlay")
+const previewPanel = $("previewPanel")
 
 function showErrors(messages: string[]): void {
 	errorsBox.innerHTML = `<strong>Couldn't upload:</strong><ul>${messages
@@ -76,6 +77,8 @@ function showResult(path: string): void {
 	openBtn.href = path
 	preview.src = path
 	result.classList.remove("hidden")
+	// The result and the demo preview occupy the same slot in the hero column.
+	previewPanel.classList.add("hidden")
 	result.scrollIntoView({ behavior: "smooth", block: "nearest" })
 }
 

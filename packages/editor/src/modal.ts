@@ -7,76 +7,54 @@ function injectModalStyles(): void {
 	style.textContent = `
 .bpmnkit-hud-modal-overlay {
   position: fixed; inset: 0; z-index: 300;
-  background: rgba(0,0,0,0.5);
+  background: color-mix(in srgb, var(--bpmnkit-ds-dark, #14161a) 55%, transparent);
   display: flex; align-items: center; justify-content: center;
 }
 .bpmnkit-hud-modal {
-  background: rgba(22, 22, 30, 0.97);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px;
-  padding: 20px;
-  min-width: 300px; max-width: 90vw;
-  color: rgba(255,255,255,0.85);
-  font-family: system-ui, -apple-system, sans-serif;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
-  display: flex; flex-direction: column; gap: 12px;
+  background: var(--hud-ground, #0d0d16);
+  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
+  padding: 24px 26px;
+  min-width: 320px; max-width: 90vw;
+  color: var(--hud-ink-2, #c8ccd2);
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
+  display: flex; flex-direction: column; gap: 14px;
 }
 .bpmnkit-hud-modal-title {
-  font-size: 14px; font-weight: 600;
-  color: rgba(255,255,255,0.95);
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--hud-ink-4, #9aa1aa);
 }
 .bpmnkit-hud-modal-input {
-  width: 100%; padding: 6px 10px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
-  color: rgba(255,255,255,0.9);
-  font-size: 13px;
+  width: 100%; padding: 7px 9px;
+  background: transparent;
+  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
+  color: var(--hud-ink, #f4f5f7);
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 12.5px;
   outline: none;
   box-sizing: border-box;
 }
-.bpmnkit-hud-modal-input:focus { border-color: rgba(60,120,220,0.6); }
-.bpmnkit-hud-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.bpmnkit-hud-modal-input:focus { border-color: var(--hud-accent, #c9755c); }
+.bpmnkit-hud-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .bpmnkit-hud-modal-btn {
-  font-size: 13px; padding: 6px 14px; border-radius: 6px;
-  cursor: pointer; font-weight: 500;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.8);
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 12px; padding: 7px 16px;
+  cursor: pointer;
+  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
+  background: transparent;
+  color: var(--hud-ink-2, #c8ccd2);
 }
-.bpmnkit-hud-modal-btn:hover { background: rgba(255,255,255,0.1); }
+.bpmnkit-hud-modal-btn:hover { background: var(--hud-hover, rgba(255,255,255,0.07)); color: var(--hud-ink, #f4f5f7); }
 .bpmnkit-hud-modal-btn--primary {
-  background: rgba(60,120,220,0.5);
-  border-color: rgba(60,120,220,0.7);
+  background: var(--bpmnkit-ds-accent, #a8503a);
+  border-color: var(--bpmnkit-ds-accent, #a8503a);
   color: #fff;
 }
-.bpmnkit-hud-modal-btn--primary:hover { background: rgba(60,120,220,0.65); }
-/* Light theme */
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal {
-  background: rgba(252,252,254,0.98);
-  border-color: rgba(0,0,0,0.1);
-  color: rgba(0,0,0,0.8);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal-title { color: rgba(0,0,0,0.88); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal-input {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.15);
-  color: rgba(0,0,0,0.9);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal-input:focus { border-color: rgba(0,80,200,0.4); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal-btn {
-  border-color: rgba(0,0,0,0.12);
-  background: rgba(0,0,0,0.04);
-  color: rgba(0,0,0,0.7);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal-btn:hover { background: rgba(0,0,0,0.08); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal-btn--primary {
-  background: rgba(0,80,200,0.85);
-  border-color: rgba(0,80,200,0.9);
+.bpmnkit-hud-modal-btn--primary:hover {
+  background: var(--bpmnkit-ds-accent-hover, #8f412e);
+  border-color: var(--bpmnkit-ds-accent-hover, #8f412e);
   color: #fff;
 }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hud-modal-btn--primary:hover { background: rgba(0,80,200,1); }
 `
 	document.head.appendChild(style)
 }

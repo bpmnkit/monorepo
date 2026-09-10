@@ -275,6 +275,28 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + attempt limiting, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, localStorage persistence)
 - [x] Polish: suggestion→canvas element highlighting (hover + click), model attribution, docs
 
+### Design consistency — Drop + Editor on the landing system
+
+> Design brief: flat, square, hairline-ruled, one terracotta accent, two type roles.
+> Tokens live in `packages/ui` as `--bpmnkit-ds-*` (additive; the product palette is unchanged).
+
+- [x] `--bpmnkit-ds-*` token set in `packages/ui` (`tokens.css` + mirrored `UI_TOKENS_CSS`)
+- [x] Drop landing page rebuilt to the page spec — split hero, square dashed dropzone,
+      hairline card grids, one dark band, code panel, single-open accordion, hairline footer
+- [x] Drop's share viewer, diff, moderation and policy pages on the same system; no
+      `border-radius` / `box-shadow` / `linear-gradient` and no hex outside the token block
+- [x] Space Grotesk + Space Mono copied from the landing app into `public/drop/fonts/` at build
+- [x] Editor chrome (`EDITOR_CSS`, `HUD_CSS`, side dock, input modal) flattened and squared;
+      bordered groups with internal hairlines; mono uppercase labels; dashed accent selection
+      halo that leaves the shape's own stroke alone
+- [ ] `@bpmnkit/plugins` panel chrome (command palette, element docs, config panel, process
+      runner, main menu, deploy, history, AI bridge, connector catalog, ascii view, live mode,
+      optimize, storage dialog) — 13 stylesheets still on their own rounded/shadowed chrome
+- [ ] Flip the Editor shell to the light `--canvas` ground of the brief's mock — blocked on the
+      plugins pass above, or the two halves disagree
+- [ ] Top file-tab bar (`@bpmnkit/plugins/tabs`) and the canvas dot grid (`@bpmnkit/canvas`)
+- [ ] Properties-dock footer row (mono save/lines status + `Deploy ▶`) — no data source yet
+
 ---
 
 ## IDE-Resident Modeling

@@ -1,5 +1,29 @@
 # Features
 
+## One design system across Drop and the Editor (2026-09-10)
+
+The bpmnkit.com landing system — flat, square, hairline-ruled, terracotta accent, Space Grotesk
+for prose and Space Mono for every label and datum — now covers `apps/drop` and the
+`@bpmnkit/editor` chrome as well as the marketing site.
+
+- **`--bpmnkit-ds-*` in `packages/ui`.** The system's grounds, ink scale, hairlines, code-panel
+  syntax colours, type scale and layout metrics, in `tokens.css` and the mirrored
+  `UI_TOKENS_CSS`. Additive: the existing `--bpmnkit-*` product palette is unchanged, so no
+  other app shifts colour.
+- **Drop's pages rebuilt on it.** Split hero with a vertical hairline, square dashed dropzone,
+  hairline-divided card grids, one full-bleed dark band, a `--dark-code` API panel, and a
+  single-open FAQ using native `<details name>`. The share viewer, diff, moderation and policy
+  pages match. No `border-radius`, `box-shadow` or `linear-gradient` remains in the app's CSS.
+- **Self-hosted type.** Space Grotesk and Space Mono are copied from the landing app into
+  `public/drop/fonts/` at build time, licences included, so Drop serves its own faces.
+- **Editor chrome flattened.** Toolbars, the tool palette and the zoom cluster are each a single
+  bordered box with internal hairlines instead of gapped rounded pills; panel labels are mono
+  uppercase; the properties dock tabs carry a 2px accent underline on the row rule; the input
+  modal and shortcut sheet are square and unshadowed. Icon buttons set
+  `font-variant-emoji: text` so no glyph is promoted to a colour emoji.
+- **Selection is a halo, not a recolour.** A selected element gets a dashed accent outline
+  *around* the shape; the BPMN stroke, its rounded task corners and its labels are untouched.
+
 ## Formatting-preserving writes for DMN, measured (2026-09-10)
 
 DMN shipped with the first cut of the preserving writer and did not deliver: a real Camunda
