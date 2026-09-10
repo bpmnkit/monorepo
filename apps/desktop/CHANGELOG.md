@@ -1,5 +1,20 @@
 # @bpmnkit/desktop
 
+## 0.1.34
+
+### Patch Changes
+
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+  - @bpmnkit/core@0.3.0
+  - @bpmnkit/canvas@0.1.0
+  - @bpmnkit/plugins@0.2.0
+  - @bpmnkit/editor@0.0.35
+
 ## 0.1.33
 
 ### Patch Changes

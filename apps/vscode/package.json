@@ -1,8 +1,8 @@
 {
 	"name": "bpmnkit",
 	"displayName": "BPMN Kit",
-	"description": "Edit, compare and analyse BPMN, DMN and Camunda Forms in VS Code \u2014 no bpmn.io, no round-trip rewrites of your XML.",
-	"version": "0.4.2",
+	"description": "Edit, compare and analyse BPMN, DMN and Camunda Forms in VS Code — no bpmn.io, no round-trip rewrites of your XML.",
+	"version": "0.4.3",
 	"private": true,
 	"type": "module",
 	"publisher": "bpmnkit",
@@ -203,7 +203,7 @@
 				"bpmnkit.simulation.enabled": {
 					"type": "boolean",
 					"default": true,
-					"description": "Offer step-through simulation in the BPMN preview. The process engine runs entirely inside the editor \u2014 nothing is deployed."
+					"description": "Offer step-through simulation in the BPMN preview. The process engine runs entirely inside the editor — nothing is deployed."
 				},
 				"bpmnkit.viewer.grid": {
 					"type": "boolean",

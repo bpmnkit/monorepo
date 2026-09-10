@@ -1,5 +1,162 @@
 # @bpmnkit/core
 
+## 0.3.0
+
+### Minor Changes
+
+- 1d2ec66: Writing a model back to a file is now an edit, not a rewrite.
+
+  A visual editor serialises the whole model, so saving a diagram used to reformat the file to
+  this toolkit's output and bury one change in a rewrite of everything. The new writers put the
+  serialiser's _content_ into the file's own _bytes_: what the model changed changes, and
+  nothing else does. Over sixteen real diagrams, renaming one element is **313 changed lines
+  with a plain write and 32 with this one**, and opening a file and saving it unchanged is
+  **0** — byte for byte.
+
+  **XML — `preserveFormatting(original, updated, options)` and
+  `preserveFormattingVerified(original, updated, read)`.** A span-annotated parse of both
+  documents, a structural diff, and text edits spliced into the original. Indentation,
+  attribute order, namespace prefixes, comments and processing instructions all survive.
+  Attribute values are compared _decoded_, so `&#10;` is never rewritten as `&#xA;`; an
+  inserted element is re-indented by depth to the siblings it lands among.
+
+  The two strategies that pay off most are ones no generic XML tool may assume: keeping the
+  file's own sibling order, and keeping an attribute the serialiser dropped as a schema
+  default. Whether either is correct is a fact about a _schema_. So `preserveFormattingVerified`
+  **tries and then checks** — it parses its own output with the caller's reader, compares it to
+  a plain write, and falls back a rung when they disagree, with the plain write as the floor.
+  That check is not ceremony: DMN rule order is the decision under hit policy `FIRST`, and it is
+  what stops the sibling-order strategy silently undoing a deliberate reordering of rules.
+
+  **JSON — `preserveJsonFormatting(original, updated)`.** The file's indentation, key order and
+  trailing newline are kept, and numbers and strings are compared by _value_, so `1.0` is never
+  rewritten as `1` nor `\u00e9` as `é`. It needs no strategies and no injected reader, because
+  JSON answers generically what XML cannot: an object is an unordered collection of members and
+  an array is an ordered sequence (RFC 8259), so key order is always kept, item order always
+  followed, and deep equality under those rules is an exact statement of "this says what the
+  update says". The patch checks itself against it.
+
+  **Per format**, each supplying its own parser as the check:
+  - `exportPreserving()` / `exportPreservingResult()` / `preserveBpmnFormatting()` for BPMN
+  - `exportDmnPreserving()` / `preserveDmnFormatting()` for DMN
+  - `exportFormPreserving()` / `preserveFormFormatting()` for `.form` files, which are JSON and
+    were the worst case: `exportForm` writes `JSON.stringify(…, null, 2)` in its own key order,
+    so a form indented with tabs came back with all 109 of its lines rewritten the first time
+    anyone touched it. That, and the four-space and minified cases, are all **0** now, and
+    relabelling one field changes **one line** whichever way the file is written.
+
+  **Also exported**, for a caller that wants the layer underneath: `parseXmlSpans` /
+  `parseJsonSpans` and their node types, and `escapeAttr` / `escapeText`. The XML parser now
+  takes an optional `cursor` sink that reports source offsets, off by default so the hot parse
+  path pays nothing for it.
+
+  Every writer falls back to a plain write rather than guessing when the original will not parse
+  or is a different document entirely, and reports which it did.
+
+- 1d2ec66: Static analysis reaches the canvas, and stops accusing engine-neutral diagrams.
+
+  `casen lint` has had five categories of rules for a while and none of them were visible while
+  modelling. `@bpmnkit/plugins/lint` puts them on the diagram: a marker on every offending
+  element (worst severity wins, so a task with an error and three warnings reads as an error), a
+  control in the corner counting them, and clicking it steps through them one at a time. It
+  re-lints after an edit, debounced, so typing a name does not re-run the analysis per keystroke.
+
+  **`lintDiagram(defs, options)` in `@bpmnkit/core`** is the seam a host needs. Two things it adds
+  over calling `optimize` directly, both about handing findings somewhere else:
+  - The result is **serialisable**. An `OptimizationFinding` carries an `applyFix` function, so it
+    cannot cross a `postMessage` or a JSON boundary; a `LintDiagnostic` says `fixable: true` and
+    leaves the fix where it can still be called. It also names the diagram plane each finding is
+    on, since a viewer shows one plane at a time.
+  - The **rules match the model**. A diagram that names no `modeler:executionPlatform` is no longer
+    judged against Camunda 8 deployability. This was measured, not assumed: on an engine-neutral
+    model every other category either stays quiet or reports something structural that holds
+    regardless, while `deploy` calls a plain service task an **error** for having no
+    `zeebe:taskDefinition` — a demand its author never signed up for.
+
+  **`casen lint` changes behaviour** to match: on a model with no execution platform it skips the
+  `deploy`, `connector` and `agentic` categories and says why. `--profile deploy` forces them back
+  on, since asking for the deploy gate is asking for those rules. Both surfaces ask
+  `lintCategories` the same question rather than each keeping their own list.
+
+- 1d2ec66: Visual BPMN diff — a diagram diff, not a model diff.
+
+  `diffDiagram(before, after)` joins `diffSemantics` in `@bpmnkit/core`. The semantic half
+  excludes diagram interchange by design, so a task somebody dragged reads there as no change at
+  all; `diffDiagram` adds the layout half back as its own `moved` category, computed from DI
+  (bounds, waypoints, label placement, and flags such as collapsed/expanded). An element that
+  both changed and moved is reported as changed. The result covers only elements carrying DI on
+  one side or the other — a changed `targetNamespace` has nothing to draw — and carries a
+  per-plane breakdown, since a viewer shows one plane at a time and a change inside a collapsed
+  sub-process is otherwise invisible.
+
+  `@bpmnkit/plugins/diff` renders it: `createBpmnDiff()` returns a pair of canvas plugins, one
+  per version. Install them on two canvases and every element is marked on the side that can
+  show it, a legend counts each category and names how many differences sit on a plane the
+  canvas is not currently showing, and panning or zooming either canvas moves the other.
+
+  `casen diff bpmn <before> <after>` reports the same thing in a terminal, naming elements rather
+  than printing bare ids, with `--format json`, `--ascii`, and `--exit-code` to gate a pipeline.
+
+### Patch Changes
+
+- 1d2ec66: The DMN preserving write now preserves the file.
+
+  `exportDmnPreserving` shipped with the first cut of the preserving writer and did not deliver
+  what it claimed. Measured on two real Camunda decisions — a risk score and a loan eligibility
+  table, each with a `dmndi:DMNDI` diagram section — a save that changed nothing came back with
+  **six and eighteen lines rewritten**, whichever way the file was indented. Both are **0** now,
+  and editing a single rule changes **two** lines instead of between 12 and 90.
+
+  Two defects, neither of which the existing tests could see, because they used a hand-written
+  decision with no diagram section and one hit policy:
+  - **`preserveFormatting` refused to pair an element carrying an `id` in the file and none in
+    the update.** The rule was there to stop a deliberate _move_ being undone, and it was too
+    broad: two elements can only have been matched by id in the first place if they both carry
+    one, so one side lacking an id means there is no move to preserve — it is simply the
+    everyday case where the model does not hold an id the file does. DMN is exactly that case:
+    `DMNDiagram` and `DMNShape` are named in the file and not in the model, so a decision's
+    entire `DMNDI` block was deleted and written out again on every save. Narrowed to "leave the
+    pair alone only when _both_ sides have an id".
+  - **`serializeDmn` dropped `hitPolicy="UNIQUE"` as the schema default while `parseDmn` read
+    it**, so `parse(export(m))` no longer equalled `m`. A preserving write checks itself against
+    exactly that comparison before it uses anything it kept, so one omitted attribute cost the
+    file _every_ other thing the write was preserving. `hitPolicy` is now written whenever the
+    model has one. This is the only change visible to a caller that does not use the preserving
+    writer: `serializeDmn` emits an attribute on `decisionTable` that it previously left out,
+    and the value is the one the model already carried.
+
+  BPMN was re-measured with the narrowed pairing rule in place: no regression.
+
+- 1d2ec66: Keyboard navigation, go-to-reference, and a namespace the writer was forgetting.
+
+  **`@bpmnkit/plugins/flow-navigation`** — Tab follows a sequence flow out, Shift+Tab follows it
+  back, and at a fan-out Tab picks between the outgoing flows rather than guessing. Enter follows
+  the selected flow or drills into a collapsed sub-process; `u` drills back out. The canvas binds
+  Tab itself, to document order, so this intercepts in the capture phase and only stops the event
+  when it has somewhere to go — a dead end still falls through rather than trapping the user.
+
+  **`@bpmnkit/plugins/model-navigation`** — jump from a Call Activity to its process, a Business
+  Rule Task to its decision, a User Task to its form. The plugin reads what an element points at;
+  an injected `ReferencePort` decides whether that resolves and what opening it means, so the
+  same plugin serves the studio, a drop and an editor extension without knowing what a file is.
+  Availability is optimistic and then corrected, and a resolve that lands after the diagram
+  changed is discarded rather than applied.
+
+  **`CanvasApi` gains `getPlanes()` and `showPlane()`.** `BpmnCanvas` had both; plugins could not
+  reach them, so no plugin could drill into a sub-process.
+
+  **A serializer fix, found while verifying that an engine-neutral model stays engine-neutral.**
+  The writer emitted only the namespaces a model was parsed with, so giving a neutral diagram a
+  `zeebe:taskDefinition` — which is what applying a connector template does — exported a prefix
+  bound to nothing. That document is not namespace-well-formed and a conforming reader may reject
+  it. Extension prefixes the document uses are now declared, and one the model already bound
+  anywhere — including on a nested element — is left alone. Scoped to extension namespaces on
+  purpose: the structural ones the serializer emits itself are a separate gap, recorded on the
+  roadmap, because repairing them here would change the model a round trip produces.
+
+  The invariant itself held and is now covered: opening a neutral model and writing it back never
+  stamps `modeler:executionPlatform` on it, and a model that does name an engine keeps it verbatim.
+
 ## 0.2.0
 
 ### Minor Changes
