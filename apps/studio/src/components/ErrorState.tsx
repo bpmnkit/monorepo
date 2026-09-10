@@ -16,7 +16,7 @@ export function ErrorState({ title, description, hint, onRetry, settingsHint }: 
 	const [, navigate] = useLocation()
 	return (
 		<div className="flex flex-col items-center justify-center h-full gap-5 text-center p-8">
-			<div className="rounded-full bg-danger/10 p-3.5">
+			<div className="bg-danger/10 p-3.5">
 				<AlertTriangle size={22} className="text-danger" />
 			</div>
 			<div className="max-w-xs">

@@ -289,12 +289,20 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] Editor chrome (`EDITOR_CSS`, `HUD_CSS`, side dock, input modal) flattened and squared;
       bordered groups with internal hairlines; mono uppercase labels; dashed accent selection
       halo that leaves the shape's own stroke alone
-- [ ] `@bpmnkit/plugins` panel chrome (command palette, element docs, config panel, process
-      runner, main menu, deploy, history, AI bridge, connector catalog, ascii view, live mode,
-      optimize, storage dialog) — 13 stylesheets still on their own rounded/shadowed chrome
+- [x] Editor start page + file-tab bar (`@bpmnkit/plugins/tabs`) — welcome panel, examples list
+      as one bordered box, mono file-type marks in the one accent, wordmark in place of the logo
+      lockup, tab underline on the row's own rule, dialogs and dropdown flattened
+- [x] `apps/studio` — `src/styles/design-system.css` re-points `--bpmnkit-*` onto the
+      design-system set (one seam for cascivo, Tailwind and the embedded editor); radius and
+      shadow collapsed at the scale; circular marks kept; fonts self-hosted; default theme moved
+      from `neon` to `light`
+- [ ] Remaining `@bpmnkit/plugins` panel chrome (command palette, element docs, config panel,
+      process runner, main menu, deploy, history, AI bridge, connector catalog, ascii view,
+      live mode, optimize, storage dialog) — 12 stylesheets still on their own rounded/shadowed
+      chrome
 - [ ] Flip the Editor shell to the light `--canvas` ground of the brief's mock — blocked on the
       plugins pass above, or the two halves disagree
-- [ ] Top file-tab bar (`@bpmnkit/plugins/tabs`) and the canvas dot grid (`@bpmnkit/canvas`)
+- [ ] Canvas dot grid (`@bpmnkit/canvas`)
 - [ ] Properties-dock footer row (mono save/lines status + `Deploy ▶`) — no data source yet
 
 ---

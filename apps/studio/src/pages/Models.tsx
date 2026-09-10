@@ -940,7 +940,7 @@ export function Models() {
 						>
 							<div className="text-sm font-medium text-fg">{tpl.name}</div>
 							<div className="text-xs text-muted mt-1">{tpl.description}</div>
-							<div className="mt-2 inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted capitalize">
+							<div className="mt-2 inline-flex items-center bg-surface-2 px-2 py-0.5 text-[11px] text-muted capitalize">
 								{tpl.category}
 							</div>
 						</button>

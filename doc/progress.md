@@ -1,5 +1,52 @@
 # Progress
 
+## 2026-09-10 — The editor's start page and the studio join the design system
+
+Two more surfaces onto the bpmnkit.com system, using the `--bpmnkit-ds-*` tokens added
+earlier today.
+
+**The editor's start page** lives in `@bpmnkit/plugins/tabs`, together with the file-tab bar
+above it — so both went, or neither would have read as one screen. The welcome panel is now
+flat and square: the actions stack into a single bordered box divided by hairlines, the
+examples list is one bordered box rather than gapped cards, every label and datum is mono, and
+the file-type badges — which carried a blue / purple / amber / green taxonomy — are mono marks
+in the one accent. The tab bar takes the accent underline with `margin-bottom: -1px` so it
+sits on the row's own rule, and its type chip follows the badges. Dialogs and the group
+dropdown lost their radii and shadows.
+
+The 4 KB logo lockup at the top of the start page is replaced by the `bpmn**kit**` wordmark
+the design brief specifies for editor chrome. That is a visible product change, made because
+the lockup's magenta is a second brand colour and the system's fourth principle allows exactly
+one.
+
+**The studio** was the larger surface and needed the least code. Every part of it — cascivo
+components, the Tailwind `@theme` block, and the embedded editor / canvas / plugins — already
+reads `--bpmnkit-*`, so `src/styles/design-system.css` re-points those tokens at the
+design-system set and the whole app follows from one seam. Radius and shadow are collapsed at
+the *scale* (Tailwind's `--radius-*` / `--shadow-*`, cascivo's 20 radius and 6 shadow tokens)
+rather than by editing 164 utility classes across 27 files; the ten `rounded-full` that were
+pills on chrome were squared by hand, and the ones that draw circular marks — status dots, the
+ping, step markers — were left round, because a square dot is not a dot. Space Grotesk and
+Space Mono are copied from the landing app at build time, as Drop does.
+
+**The studio's default theme moves from `neon` to `light`.** This is worth stating plainly: the
+studio opened purple, so leaving the default alone would have made the whole change invisible
+to a new visitor. `neon` remains in the switcher.
+
+**Two defects found by measuring rather than looking.** `design-system.css` is imported after
+`@bpmnkit/ui`'s tokens, so its `:root` block outranked their `[data-theme=…]` blocks on source
+order and leaked the light palette into dark and neon — the neon rail ended up with dark ink on
+a dark ground. Scoping it to `:root:not([data-theme="dark"]):not([data-theme="neon"])` fixes
+it. Separately, cascivo's `SideNav` takes its text from the *global* text tokens, so the dark
+nav rail this change first gave the light theme rendered #14161a on #14161a. The rail is now
+separated by a hairline instead of a second ground, which is what the system does anyway.
+
+`tests/tabs/welcome-chrome.test.ts` and `apps/studio/tests/theme.test.ts` lock both down —
+flatness, the one accent, the mono role, the single bordered box, the tab underline sitting on
+the rule, every theme defining its own variables, the scoped light bridge, the collapsed
+scales, and the default theme. Every assertion was checked against the pre-change source; they
+all go red there.
+
 ## 2026-09-10 — Drop and the Editor chrome move onto the landing design system
 
 The design team's brief asked for one visual language across bpmnkit.com, Drop and the Editor.

@@ -60,7 +60,7 @@ export function WelcomeModal() {
 	return (
 		<Modal open={showWelcomeModal} onClose={dismiss} className="max-w-lg">
 			<div className="flex flex-col items-center text-center gap-3 pt-4 pb-2">
-				<div className="flex items-center justify-center w-16 h-16 rounded-full bg-accent/15 mb-1">
+				<div className="flex items-center justify-center w-16 h-16 bg-accent/15 mb-1">
 					<Rocket size={28} className="text-accent" />
 				</div>
 				<h2 className="text-2xl font-semibold text-fg">Welcome to BPMNkit Studio</h2>

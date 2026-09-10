@@ -85,9 +85,7 @@ function StatePill({ state }: { state: string }) {
 				? "bg-danger/15 text-danger"
 				: "bg-warn/15 text-warn"
 	return (
-		<span
-			className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
-		>
+		<span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${cls}`}>
 			{state === "completed" ? (
 				<CheckCircle2 size={10} />
 			) : state === "failed" ? (

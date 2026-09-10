@@ -106,4 +106,36 @@
 	--cascivo-font-sans: var(--bpmnkit-font);
 	--cascivo-font-display: var(--bpmnkit-font);
 	--cascivo-font-mono: var(--bpmnkit-font-mono);
+
+	/* ── Geometry: square, and flat ──────────────────────────────────────
+	 * The design system's depth cue is a 1px hairline and nothing else, so
+	 * cascivo's radius and shadow scales are collapsed at the token level
+	 * rather than fought component by component. `radius-full` is left alone:
+	 * it draws circular *marks* (status dots, avatars), not chrome. */
+	--cascivo-radius-none: 0;
+	--cascivo-radius-sm: 0;
+	--cascivo-radius-base: 0;
+	--cascivo-radius-md: 0;
+	--cascivo-radius-lg: 0;
+	--cascivo-radius-xl: 0;
+	--cascivo-radius-2xl: 0;
+	--cascivo-radius-badge: 0;
+	--cascivo-radius-button: 0;
+	--cascivo-radius-card: 0;
+	--cascivo-radius-component: 0;
+	--cascivo-radius-control: 0;
+	--cascivo-radius-field: 0;
+	--cascivo-radius-indicator: 0;
+	--cascivo-radius-input: 0;
+	--cascivo-radius-item: 0;
+	--cascivo-radius-modal: 0;
+	--cascivo-radius-overlay: 0;
+	--cascivo-radius-surface: 0;
+
+	--cascivo-shadow-xs: none;
+	--cascivo-shadow-sm: none;
+	--cascivo-shadow-md: none;
+	--cascivo-shadow-lg: none;
+	--cascivo-shadow-xl: none;
+	--cascivo-shadow-overlay: none;
 }

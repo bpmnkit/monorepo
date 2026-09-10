@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@bpmnkit/ui/tokens.css";
 @import "./cascivo.css";
+@import "./design-system.css";
 
 @theme inline {
 	--color-bg: var(--bpmnkit-bg);
@@ -24,6 +25,30 @@
 	--font-sans: var(--bpmnkit-font);
 	--font-mono: var(--bpmnkit-font-mono);
 	--radius: var(--bpmnkit-radius);
+
+	/* Square and flat, at the scale rather than per call site: every
+	 * `rounded-*` and `shadow-*` utility in the app resolves to nothing.
+	 * `rounded-full` is a literal in Tailwind v4 and stays round, which is
+	 * what the circular marks (status dots, spinners) want. */
+	--radius-xs: 0;
+	--radius-sm: 0;
+	--radius-md: 0;
+	--radius-lg: 0;
+	--radius-xl: 0;
+	--radius-2xl: 0;
+	--radius-3xl: 0;
+	--radius-4xl: 0;
+
+	--shadow-2xs: none;
+	--shadow-xs: none;
+	--shadow-sm: none;
+	--shadow-md: none;
+	--shadow-lg: none;
+	--shadow-xl: none;
+	--shadow-2xl: none;
+	--inset-shadow-2xs: none;
+	--inset-shadow-xs: none;
+	--inset-shadow-sm: none;
 }
 
 * {
@@ -61,7 +86,6 @@ body {
 
 ::-webkit-scrollbar-thumb {
 	background: var(--bpmnkit-border);
-	border-radius: 3px;
 }
 
 button,

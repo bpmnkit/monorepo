@@ -9,7 +9,7 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>()((set) => ({
-	theme: "neon",
+	theme: "light",
 
 	setTheme(t) {
 		set({ theme: t })
@@ -20,7 +20,7 @@ export const useThemeStore = create<ThemeState>()((set) => ({
 	init() {
 		const persisted = loadPersistedTheme()
 		const resolved: "light" | "dark" | "neon" =
-			persisted === "light" || persisted === "dark" || persisted === "neon" ? persisted : "neon"
+			persisted === "light" || persisted === "dark" || persisted === "neon" ? persisted : "light"
 		set({ theme: resolved })
 		applyTheme(document.documentElement, resolved as Theme)
 	},

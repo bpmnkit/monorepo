@@ -453,7 +453,7 @@ export function WasmInstanceDetail({
 					<p className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-1.5">
 						Variables
 						{variables.length > 0 && (
-							<span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">
+							<span className="bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">
 								{variables.length}
 							</span>
 						)}

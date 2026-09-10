@@ -1,5 +1,19 @@
 # Features
 
+## The design system reaches the editor's start page and the studio (2026-09-10)
+
+- **Editor start page** (`@bpmnkit/plugins/tabs`) — flat, square, hairline-ruled: actions in one
+  bordered box, examples in one bordered box divided by hairlines rather than gapped cards, mono
+  labels and file-type marks in the single accent, and the `bpmn**kit**` wordmark in place of the
+  logo lockup. The file-tab bar above it matches, with the accent underline sitting on the row's
+  own rule.
+- **Studio** — one seam (`src/styles/design-system.css`) re-points the `--bpmnkit-*` tokens the
+  whole app already reads onto `--bpmnkit-ds-*`, so cascivo components, Tailwind utilities and
+  the embedded editor all follow. Radius and shadow are collapsed at the scale rather than at
+  164 call sites; circular marks keep their shape. Space Grotesk and Space Mono are self-hosted.
+- **The studio now opens in the design system**, not the `neon` white-label theme, which remains
+  available in the switcher.
+
 ## One design system across Drop and the Editor (2026-09-10)
 
 The bpmnkit.com landing system — flat, square, hairline-ruled, terracotta accent, Space Grotesk

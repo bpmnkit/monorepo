@@ -360,7 +360,7 @@ export function IncidentDetail() {
 						>
 							Variables
 							{variables.length > 0 && (
-								<span className="ml-1.5 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">
+								<span className="ml-1.5 bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">
 									{variables.length}
 								</span>
 							)}
