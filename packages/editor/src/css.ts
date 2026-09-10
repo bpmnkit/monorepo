@@ -319,29 +319,20 @@ export const HUD_CSS = `
   display: flex; align-items: stretch;
   background: var(--hud-ground);
   border: 1px solid var(--hud-line);
+  /* Stated, not inherited: hosts differ on whether they set a global reset. */
+  box-sizing: border-box;
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
 }
 
+
 /* ── HUD positions ───────────────────────────────────────────────── */
-/* Height matches the tab bar it sits inside; the 28px buttons centre in it. */
-#hud-top-center    { top: 0; left: 50%; transform: translateX(-50%); height: 36px; align-items: center; }
+/* Sits in the tab bar's centre slot: a 28px group with 4px clear of the bar's
+   own rules top and bottom, so the two borders never sit on each other. */
+#hud-top-center    { top: 3px; left: 50%; transform: translateX(-50%); height: 30px; }
 #hud-bottom-left   { bottom: 16px; left: 16px; }
 #hud-bottom-center { bottom: 16px; left: 50%; transform: translateX(-50%); }
 #ctx-toolbar { display: none; transform: translateX(-50%); }
 #cfg-toolbar { display: none; transform: translate(-50%, -100%); }
-
-/* Top centre sits in the tab bar's centre slot, so it carries no box. */
-#hud-top-center.panel {
-  background: transparent;
-  border: none;
-  /* Pass clicks through the transparent background to the tab bar center slot. */
-  pointer-events: none;
-}
-#hud-top-center.panel > * { pointer-events: auto; }
-#hud-top-center .hud-btn,
-#hud-top-center #btn-zoom-current,
-#hud-top-center .ref-link-btn { border: 1px solid var(--hud-line); border-left-width: 0; }
-#hud-top-center > *:first-child { border-left-width: 1px; }
 
 /* ── Icon buttons ────────────────────────────────────────────────── */
 .hud-btn {
@@ -349,7 +340,6 @@ export const HUD_CSS = `
   width: 34px; height: 28px;
   background: transparent;
   border: none;
-  border-right: 1px solid var(--hud-line-soft);
   color: var(--hud-ink-2);
   cursor: pointer;
   padding: 0; flex-shrink: 0;
@@ -358,15 +348,28 @@ export const HUD_CSS = `
   /* Never let a Unicode glyph be promoted to a colour emoji. */
   font-variant-emoji: text;
 }
-.hud-btn:last-child { border-right: none; }
 .hud-btn:hover  { background: var(--hud-hover); color: var(--hud-ink); }
 .hud-btn.active { background: var(--hud-accent); color: var(--hud-accent-fg); }
 .hud-btn:disabled { opacity: 0.3; cursor: default; }
 .hud-btn:disabled:hover { background: transparent; color: var(--hud-ink-2); }
 .hud-btn svg { width: 16px; height: 16px; pointer-events: none; }
 
-/* The palette's targets are a touch larger than the toolbar's. */
+/* The palette's targets are a touch larger than the toolbar's; the zoom
+   cluster shares the palette's height so the bottom strip reads as one row. */
 #hud-bottom-center .hud-btn { width: 36px; height: 32px; }
+#hud-bottom-left .hud-btn { height: 32px; }
+
+/* One hairline BETWEEN adjacent items, never on a group's outer edge — so a
+   group's ends stay clean and an explicit .hud-sep never doubles up with one.
+   Declared after the button rules on purpose: they zero their own borders, and
+   the .panel-plus-id form outranks the id-scoped zoom buttons. */
+.panel > * + *,
+.panel #tool-groups > * + *,
+.panel #zoom-expanded > * + * { border-left: 1px solid var(--hud-line-soft); }
+/* The mobile collapse toggles are hidden siblings on desktop, so the item after
+   one would otherwise draw a hairline flush against the group's own border. */
+#hud-top-center > #btn-tc-toggle + *,
+#hud-bottom-center > #btn-bc-toggle + * { border-left: none; }
 
 /* ── Group button: small marker at the bottom-right corner ───────── */
 .hud-btn[data-group] { position: relative; }
@@ -383,12 +386,17 @@ export const HUD_CSS = `
 #tool-groups { display: flex; align-items: stretch; }
 
 /* ── Separator — a structural rule, not a soft internal one ──────── */
-.hud-sep { width: 1px; background: var(--hud-line); flex-shrink: 0; }
+.hud-sep {
+  width: 1px; flex: none; align-self: stretch;
+  background: var(--hud-line);
+  border-left: none;
+}
+.panel > .hud-sep + * { border-left: none; }
 
 /* ── Zoom widget ─────────────────────────────────────────────────── */
 #btn-zoom-current {
-  padding: 0 12px;
-  background: transparent; border: none; border-right: 1px solid var(--hud-line-soft);
+  padding: 0 12px; height: 32px;
+  background: transparent; border: none;
   color: var(--hud-ink-2); cursor: pointer;
   font-family: inherit; font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -400,8 +408,8 @@ export const HUD_CSS = `
 #zoom-expanded.open { display: flex; }
 
 #btn-zoom-pct {
-  padding: 0 10px;
-  background: transparent; border: none; border-right: 1px solid var(--hud-line-soft);
+  padding: 0 10px; height: 32px;
+  background: transparent; border: none;
   color: var(--hud-ink-2); cursor: pointer;
   font-family: inherit; font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -461,7 +469,7 @@ export const HUD_CSS = `
 .ref-link-btn {
   height: 28px; padding: 0 10px;
   background: transparent;
-  border: none; border-right: 1px solid var(--hud-line-soft);
+  border: none;
   color: var(--hud-ink-2);
   cursor: pointer;
   font-family: inherit; font-size: 12px;
@@ -578,7 +586,7 @@ export const HUD_CSS = `
 #hud-top-center::-webkit-scrollbar { display: none; }
 
 /* ── Push HUD toolbar down when simulation banner is visible ─────── */
-.bpmnkit-sim-active #hud-top-center { top: 36px; }
+.bpmnkit-sim-active #hud-top-center { top: 39px; }
 
 /* ── Simulation active banner ────────────────────────────────────── */
 #bpmnkit-sim-banner {
@@ -689,6 +697,7 @@ export const HUD_CSS = `
   }
 
   #btn-bc-toggle { display: flex; }
+  #hud-bottom-center > #btn-bc-toggle + * { border-left: 1px solid var(--hud-line-soft); }
 
   /* Collapsed: hide all children except the toggle button */
   #hud-bottom-center:not(.expanded) > *:not(#btn-bc-toggle) { display: none; }

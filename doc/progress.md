@@ -46,6 +46,32 @@ Cascivo was considered and not used. It is a React package; `apps/drop` renders 
 a Worker and `@bpmnkit/editor` is a dependency-free DOM library, and its three-tier token
 system is a different visual language from the one the brief specifies.
 
+**Follow-up: three regressions in the editor chrome, and the check that should have caught
+them.** The restyle read as "the top toolbar is gone". Nothing was gone — a before/after
+inventory of every HUD node's geometry and visibility showed the same 48 elements, none newly
+hidden — but three CSS mistakes made the group unreadable. `.hud-sep` lost its explicit height
+and sat inside an `align-items: center` row, so all six separators computed to 1×0. The
+group's left cap keyed off `:first-child`, which is the *mobile* collapse toggle and is
+`display: none` on desktop, so the run of buttons had no left edge. And the top group was left
+transparent from the old "merge into the tab bar" treatment, so what remained was a few
+disconnected hairline fragments. Dividers also doubled up wherever a button's own
+`border-right` met an explicit separator.
+
+Fixed by making the top group a real bordered box — which is what the brief's mock shows —
+and by moving the divider off the buttons onto a `.panel > * + *` rule, with
+`.panel > .hud-sep + *` cancelling it so a hairline never lands next to a separator, and
+`align-self: stretch` on the separator so it survives any `align-items`. The zoom cluster now
+shares the palette's 32px button height, so the two halves of the bottom strip line up.
+
+`tests/hud-chrome.test.ts` locks this down: every control is asserted present in its group by
+id, and the sheets are asserted flat and square, separator-stretching, divider-correct, and
+still selecting with a dashed halo. Each assertion was checked against the pre-redesign CSS
+and the broken intermediate — all of them go red there.
+
+One process note worth keeping: the build was broken for a while by a backtick inside a CSS
+comment in a template literal, and it went unnoticed because the build output was piped to
+`/dev/null` while iterating. `tsc` reports it plainly. Don't silence the build.
+
 ## 2026-09-10 — DMN files, where "already done" was not the same as done
 
 DMN has had a preserving writer since the first cut, so the honest thing was to measure it
