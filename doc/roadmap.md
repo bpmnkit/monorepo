@@ -602,6 +602,21 @@ changed **0** lines on every one of them, against up to 62.
       and then checked** with the caller's own reader, and the plain write is the floor
 - [x] `exportPreserving()` for BPMN and `exportDmnPreserving()` for DMN, each supplying its
       own parser as the check
+- [x] **DMN brought to parity.** It shipped with the first cut and was measurably worse:
+      two real Camunda decisions came back with six and eighteen lines changed on a save that
+      changed nothing, however the file was indented. Both are **0** now, and editing one rule
+      changes **two** lines. Two defects, both found by measuring rather than by a failing
+      test:
+      - The patcher never paired an element that carries an `id` in the file and none in the
+        update. That rule existed to stop a deliberate *move* being undone, and it was too
+        broad: two elements can only have been matched by id if they both have one, so one
+        side lacking an id means there is no move to preserve. Until this, a DMN file's entire
+        `DMNDI` section — which names its `DMNDiagram` and `DMNShape`, where the model does
+        not — was deleted and written out again on every save
+      - `serializeDmn` dropped `hitPolicy="UNIQUE"` as the schema default while `parseDmn`
+        read it, so `parse(export(m))` no longer equalled `m`. The preserving write checks
+        itself against exactly that, so one dropped attribute cost the file *every* other
+        thing the write was keeping. Fixed at the source, with a round-trip test
 - [x] Wired into the VS Code editor: each edit is written against the document as it stands,
       and becomes the base for the next
 

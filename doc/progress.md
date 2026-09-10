@@ -1,5 +1,44 @@
 # Progress
 
+## 2026-09-10 — DMN files, where "already done" was not the same as done
+
+DMN has had a preserving writer since the first cut, so the honest thing was to measure it
+rather than tick it off. It did not deliver. Two real Camunda decisions — a risk score and a
+loan eligibility table, both with a `dmndi:DMNDI` diagram section — came back from a save that
+changed nothing with **six and eighteen lines rewritten**, whichever way the file was
+indented. Both are **0** now, and editing a single rule changes **two** lines instead of
+between 12 and 90.
+
+**Two defects, neither of which any existing test could see**, because the tests used a
+hand-written DMN with no diagram section and one hit policy.
+
+- **The patcher refused to pair an element with an `id` in the file and none in the update.**
+  The rule was there to stop a deliberate *move* being undone, and it was too broad. Two
+  elements can only have been matched by id in the first place if they both carry one, so one
+  side lacking an id means there is no move to preserve — it is simply the everyday case where
+  the model does not carry an id the file does. DMN is exactly that case: `DMNDiagram` and
+  `DMNShape` are named in the file and not in the model, so the whole `DMNDI` block was deleted
+  and written out again on every save. Narrowed to "leave the pair alone only when *both*
+  sides have an id"; the rule-reorder test that motivated it still passes.
+- **`serializeDmn` dropped `hitPolicy="UNIQUE"` as the schema default while `parseDmn` read
+  it.** So `parse(export(m))` no longer equalled `m` — and a preserving write checks itself
+  against exactly that comparison before it uses anything it kept. One omitted attribute cost
+  the file *every* other thing the write was preserving. Fixed at the source rather than
+  worked around in the patcher, with round-trip tests over `UNIQUE`, `FIRST` and `COLLECT`,
+  and one for a model that genuinely has no hit policy.
+
+Both fixes were proved load-bearing by reverting them: each takes six tests red.
+
+**What the tests now hold.** Two fixtures written the way Camunda writes them, each run twice
+— as the modeler writes it and tab-indented — asserting the file comes back byte for byte on
+an identity save, that editing one rule stays on one line, and that every `dmndi` id in the
+file is still there afterwards. That last one is the regression test for the first defect, and
+it is stated in terms of the file rather than the patcher, so it stays meaningful if the
+pairing rule changes again.
+
+BPMN was re-measured with the narrowed rule in place: no regression — renaming an element
+across ten diagrams is still 294 changed lines with a plain write and 20 with this one.
+
 ## 2026-09-10 — The same for forms, where the format answers the question
 
 Form files are JSON, so yesterday's preserving writer did not apply to them and the item was

@@ -201,11 +201,17 @@ function matchByKey(a: readonly string[], b: readonly string[]): number[] {
  * which throws away the formatting of everything inside them. Pairing them
  * turns that back into an attribute edit.
  *
- * Only elements *without* an `id` are paired here, and that restriction is what
- * keeps it from undoing a deliberate move: an element carrying an id has an
- * identity, so one the earlier pass could not place really did change position
- * and has to be moved. An element without one is known by where it sits, so a
- * leftover in the same relative position is the same element, changed.
+ * A pair where *both* sides carry an `id` is left alone, and that restriction is
+ * what keeps this from undoing a deliberate move: two elements with ids that
+ * the earlier pass could not put together are two different elements, and one
+ * of them really did change position.
+ *
+ * One side having an id and the other not is a different situation, and pairing
+ * them is right. They cannot have been matched by id in the first place, so
+ * there is no move to preserve — and it is the everyday case wherever a model
+ * does not carry an id the file has. A DMN file names its `DMNDiagram` and
+ * `DMNShape`; the model does not; without this the whole diagram section is
+ * deleted and written out again on every save.
  *
  * Both lists are walked forward only, so the pairs this adds never cross the
  * ones already made and the resulting edits stay in document order.
@@ -223,10 +229,10 @@ function pairRemainingByName(
 			cursor = Math.max(cursor, (pairing[index] as number) + 1)
 			continue
 		}
-		if (child.attributes.has("id")) continue
 		for (let j = cursor; j < b.length; j += 1) {
 			const candidate = b[j] as SpannedElement
-			if (taken.has(j) || candidate.name !== child.name || candidate.attributes.has("id")) continue
+			if (taken.has(j) || candidate.name !== child.name) continue
+			if (child.attributes.has("id") && candidate.attributes.has("id")) continue
 			pairing[index] = j
 			taken.add(j)
 			cursor = j + 1

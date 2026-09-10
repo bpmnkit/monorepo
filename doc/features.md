@@ -1,5 +1,23 @@
 # Features
 
+## Formatting-preserving writes for DMN, measured (2026-09-10)
+
+DMN shipped with the first cut of the preserving writer and did not deliver: a real Camunda
+decision came back from a save that changed nothing with six to eighteen lines rewritten. Two
+defects fixed — one in the XML patcher, one in `serializeDmn` — and the numbers are now the
+same as for BPMN and forms.
+
+- **An element with an id in the file and none in the update is paired again.** A DMN file's
+  `dmndi:DMNDI` section names its `DMNDiagram` and `DMNShape` where the model does not, so the
+  whole diagram block used to be deleted and rewritten on every save.
+- **`hitPolicy` is written whenever the model has one, `UNIQUE` included.** The parser reads
+  it, so omitting it as a schema default broke `parse(export(m)) === m` — the comparison a
+  preserving write checks itself against before it uses anything it kept.
+
+Measured on two decision tables, each as the modeler writes it and tab-indented: an identity
+save changes **0** lines in all four cases (against 6 and 18 before, and 10 to 90 for a plain
+write), and editing one rule changes **two**.
+
 ## Formatting-preserving writes for form files (2026-09-10)
 
 The JSON counterpart of yesterday's XML writer. `exportForm` writes

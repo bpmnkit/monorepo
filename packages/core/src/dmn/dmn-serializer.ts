@@ -94,9 +94,13 @@ function serializeRule(rule: DmnRule): XmlElement {
 
 function serializeDecisionTable(table: DmnDecisionTable): XmlElement {
 	const attrs: Record<string, string> = { id: table.id }
-	if (table.hitPolicy && table.hitPolicy !== "UNIQUE") {
-		attrs.hitPolicy = table.hitPolicy
-	}
+	// Written whenever the model has one, including `UNIQUE`. Omitting the
+	// schema default looked tidy and broke the round trip: the parser reads
+	// `hitPolicy="UNIQUE"` into the model, so dropping it here meant
+	// `parse(export(m))` no longer equalled `m` — and a preserving write, which
+	// checks itself against exactly that, had to throw away everything else it
+	// was keeping about the file.
+	if (table.hitPolicy) attrs.hitPolicy = table.hitPolicy
 	if (table.aggregation) attrs.aggregation = table.aggregation
 
 	const children: XmlElement[] = [

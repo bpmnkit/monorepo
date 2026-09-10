@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2
+
+- **Saving a `.dmn` really does preserve the file now.** It was claimed in 0.4.0 and did not
+  hold: a decision with a diagram section came back with its whole `dmndi` block rewritten,
+  and a table with hit policy `UNIQUE` lost everything the write was keeping. Opening a
+  decision and saving it unchanged now leaves the file byte for byte, and editing one rule
+  changes two lines.
+
 ## 0.4.1
 
 - **Form files preserve their formatting too.** Saving a `.form` now keeps its indentation,
