@@ -1,5 +1,99 @@
 # @bpmnkit/cli
 
+## 0.2.0
+
+### Minor Changes
+
+- 1d2ec66: Element templates by convention — a project's own connectors reach the tools.
+
+  `@bpmnkit/connectors` could parse the Zeebe element-template schema but only ever loaded its
+  own generated catalogue, so a team's in-house connectors could not reach the editor at all.
+  Now they can:
+  - **`@bpmnkit/connectors/node`** — `discoverElementTemplates({ from, root, configFolder })`
+    walks up from a diagram to the project root collecting `.camunda/element-templates/*.json`,
+    nearest last so a template beside the diagram overrides one at the root, which overrides the
+    bundle. `collectElementTemplates({ root })` is the opposite walk, for checking a whole
+    project. The filesystem half sits behind its own entry point so the main package stays
+    importable in a browser.
+  - **`validateElementTemplate` / `readTemplateDocument`** — structural validation with paths
+    (`properties[3].binding.type`) rather than a JSON-schema engine's `oneOf` noise. Every
+    problem is reported at once, a file that fails is named and skipped rather than silently
+    dropped, and one bad template never costs the good ones beside it. A separate `warnings`
+    channel flags a binding the schema allows that `applyElementTemplate` does not write yet.
+  - **`registerElementTemplates` / `clearRegisteredTemplates`** — merge templates into the
+    catalogue, later registration winning on an id collision, so `listConnectors`, `getTemplate`
+    and `searchConnectors` see a project's own.
+  - **`casen connector validate [path]`** — validates a whole project (scanning downward, so a
+    template beside a sub-folder's diagrams is checked too) or a single `.json` file, with
+    `--format json` and a non-zero exit for CI. `list`, `search` and `show` now include the
+    project's templates, with `--workspace` and `--config-folder`.
+  - **`GET /element-templates?root=…`** on the proxy, and `workspaceRoot` / `workspaceTemplates`
+    on the connector-catalog plugin — the browser path, where the host supplies templates rather
+    than reaching for a filesystem.
+
+  `TemplateBinding` also gains `bpmn:Message#property`,
+  `bpmn:Message#zeebe:subscription#property` and `zeebe:linkedResource`. The bundled catalogue
+  uses all three across 98 properties; the union did not admit them, and `applyElementTemplate`
+  still does not write them — which is now what the new warning says out loud.
+
+- 1d2ec66: Static analysis reaches the canvas, and stops accusing engine-neutral diagrams.
+
+  `casen lint` has had five categories of rules for a while and none of them were visible while
+  modelling. `@bpmnkit/plugins/lint` puts them on the diagram: a marker on every offending
+  element (worst severity wins, so a task with an error and three warnings reads as an error), a
+  control in the corner counting them, and clicking it steps through them one at a time. It
+  re-lints after an edit, debounced, so typing a name does not re-run the analysis per keystroke.
+
+  **`lintDiagram(defs, options)` in `@bpmnkit/core`** is the seam a host needs. Two things it adds
+  over calling `optimize` directly, both about handing findings somewhere else:
+  - The result is **serialisable**. An `OptimizationFinding` carries an `applyFix` function, so it
+    cannot cross a `postMessage` or a JSON boundary; a `LintDiagnostic` says `fixable: true` and
+    leaves the fix where it can still be called. It also names the diagram plane each finding is
+    on, since a viewer shows one plane at a time.
+  - The **rules match the model**. A diagram that names no `modeler:executionPlatform` is no longer
+    judged against Camunda 8 deployability. This was measured, not assumed: on an engine-neutral
+    model every other category either stays quiet or reports something structural that holds
+    regardless, while `deploy` calls a plain service task an **error** for having no
+    `zeebe:taskDefinition` — a demand its author never signed up for.
+
+  **`casen lint` changes behaviour** to match: on a model with no execution platform it skips the
+  `deploy`, `connector` and `agentic` categories and says why. `--profile deploy` forces them back
+  on, since asking for the deploy gate is asking for those rules. Both surfaces ask
+  `lintCategories` the same question rather than each keeping their own list.
+
+- 1d2ec66: Visual BPMN diff — a diagram diff, not a model diff.
+
+  `diffDiagram(before, after)` joins `diffSemantics` in `@bpmnkit/core`. The semantic half
+  excludes diagram interchange by design, so a task somebody dragged reads there as no change at
+  all; `diffDiagram` adds the layout half back as its own `moved` category, computed from DI
+  (bounds, waypoints, label placement, and flags such as collapsed/expanded). An element that
+  both changed and moved is reported as changed. The result covers only elements carrying DI on
+  one side or the other — a changed `targetNamespace` has nothing to draw — and carries a
+  per-plane breakdown, since a viewer shows one plane at a time and a change inside a collapsed
+  sub-process is otherwise invisible.
+
+  `@bpmnkit/plugins/diff` renders it: `createBpmnDiff()` returns a pair of canvas plugins, one
+  per version. Install them on two canvases and every element is marked on the side that can
+  show it, a legend counts each category and names how many differences sit on a plane the
+  canvas is not currently showing, and panning or zooming either canvas moves the other.
+
+  `casen diff bpmn <before> <after>` reports the same thing in a terminal, naming elements rather
+  than printing bare ids, with `--format json`, `--ascii`, and `--exit-code` to gate a pipeline.
+
+### Patch Changes
+
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+- Updated dependencies [1d2ec66]
+  - @bpmnkit/core@0.3.0
+  - @bpmnkit/connectors@0.1.0
+  - @bpmnkit/proxy@0.2.0
+  - @bpmnkit/ascii@0.0.32
+  - @bpmnkit/engine@0.1.32
+
 ## 0.1.0
 
 ### Minor Changes

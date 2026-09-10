@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/proxy",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Local proxy server for BPMN Kit — AI bridge (SSE/MCP) and Camunda API proxy using stored CLI profiles",
 	"type": "module",
 	"bin": {
