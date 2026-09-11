@@ -1,5 +1,47 @@
 # Progress
 
+## 2026-09-11 — A1: the editor can hand a diagram straight to Drop
+
+First task off `doc/drop-live-editing-plan.md`. `bpmnkit.com/editor` gains **Share as a drop** in
+the main menu, so a drop can start from a diagram you just drew rather than only from a file you
+already had.
+
+**The server side is nothing, and that was the point of scoping it first.** It posts to the same
+`POST /drop/api/drops` the drop page uses, as one multipart `files` field, so an authored diagram
+clears exactly the gate a dropped one does — same parser, same caps, same recorded `tos_version`.
+Verified against a local `wrangler dev`: 201 with `{ shareId, url }`, the link renders the
+diagram, and the XML round-trips byte-exact. A deliberately broken file comes back 400 with the
+`details[]` array the dialog surfaces in place of the summary.
+
+**Same-origin in dev as well as production, so no CORS and no Worker change.** `bpmnkit.com/drop*`
+is carved out to the Worker in production; `astro.config.mjs` now proxies the same prefix to a
+local `wrangler dev` (`DROP_DEV_ORIGIN`, default `:8787`). Checked by posting through the Astro
+dev server on `:4321` and getting a 201 back. Adding CORS to the Worker would have been the other
+way to do it, and worse: `connect-src 'self'` in Drop's CSP says the same thing.
+
+**Transport split from the dialog.** `share-drop.ts` is `dropFileName` / `uploadErrorMessage` /
+`shareToDrop` with no imports at all, so its 13 tests run without building a single workspace
+package; `share-drop-dialog.ts` holds the DOM. The first cut had them together and the test
+needed `@bpmnkit/editor` built just to check a filename.
+
+**Two bugs the browser found that neither the unit tests nor a reading would have.** Driving the
+real page with Playwright showed the link row visible before anything was shared, and the dialog
+pinned to the top-left. Both are the same shape of mistake: an explicit `display: flex` outranks
+the UA's `[hidden] { display: none }`, and the editor page's `* { margin: 0 }` reset removes the
+`margin: auto` a modal `<dialog>` centres itself with. Fixed with `.sd-link-row[hidden]`,
+`.sd-btn[hidden]` and an explicit `margin: auto`, then re-driven.
+
+**Gated on a BPMN tab.** `exportXml()` never returns null — it falls back to empty definitions —
+so on a DMN or Form tab it would have handed back whatever BPMN was last loaded. `currentFileName`
+is the signal the app already uses for exactly this, and the dialog says why it cannot share
+rather than hiding the menu item.
+
+**Deployability.** `apps/landing`, `apps/studio`, `apps/demo` and `apps/learn` each gained the
+`deploy` script `apps/drop` already had, matching the command CI runs, with a table in the README.
+Every Cloudflare app is now `pnpm turbo build --filter <app>` then `pnpm --filter <app> deploy`.
+
+Build, typecheck, 13 new tests and Biome across 962 files all pass.
+
 ## 2026-09-11 — Live editing action plan, and a correction to yesterday's suppression rule
 
 `doc/drop-live-editing-plan.md` turns the design into ordered work, and settles the version log

@@ -1,5 +1,28 @@
 # Features
 
+## Author a diagram, then share it as a drop (2026-09-11)
+
+`bpmnkit.com/editor` gains **Share as a drop** in the main menu: it posts the open diagram
+straight to BPMN Kit Drop and hands back a link that renders it. Until now a drop could only
+start from a file you already had.
+
+- **No Worker changes.** It posts to the same `POST /drop/api/drops` the drop page uses, as a
+  single multipart file, so an authored diagram clears exactly the gate a dropped one does —
+  same parser, same size caps, same recorded `tos_version`.
+- **Same-origin in both environments.** `bpmnkit.com/drop*` is carved out to the Drop Worker in
+  production; `apps/landing/astro.config.mjs` proxies the same prefix to a local `wrangler dev`,
+  so the browser never makes a cross-origin request and nothing needs CORS.
+- **Gated on a BPMN tab.** `currentFileName` is the app's existing "a BPMN diagram is on screen"
+  signal; without it, `exportXml()` would hand back the last BPMN from behind a DMN tab.
+- The dialog reads the `--bpmnkit-chrome-*` tokens the editor already injects, so it follows the
+  canvas through light, dark and neon without restating a palette.
+
+## Every Cloudflare app deploys from the CLI (2026-09-11)
+
+`apps/landing`, `apps/studio`, `apps/demo` and `apps/learn` each gained a `deploy` script
+matching the command CI already runs, alongside the one `apps/drop` had. A release is now
+`pnpm turbo build --filter <app>` then `pnpm --filter <app> deploy`, documented in the README.
+
 ## One design system across every editor panel (2026-09-11)
 
 The `@bpmnkit/plugins` panels — command palette, config panel, process runner, AI bridge,

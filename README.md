@@ -256,6 +256,29 @@ pnpm install
 | `pnpm proxy` | Start local AI bridge and API proxy (port 3033) |
 | `pnpm desktop:dev` | Start Tauri desktop app in dev mode |
 
+### Deploying to Cloudflare
+
+Every deployable app ships with a `deploy` script, so a release can be driven entirely from
+the CLI — the same commands CI runs in `.github/workflows/deploy-*.yml`. Authenticate once
+with `wrangler login`, build, then deploy:
+
+| App | Target | Command |
+|---|---|---|
+| `apps/landing` | Pages — `bpmn-sdk-landing` | `pnpm --filter @bpmnkit/landing deploy` |
+| `apps/drop` | Worker + D1 | `pnpm --filter @bpmnkit/drop deploy` |
+| `apps/studio` | Pages — `bpmnkit-studio` | `pnpm --filter @bpmnkit/studio deploy` |
+| `apps/demo` | Pages — `bpmnkit-demo` | `pnpm --filter @bpmnkit/demo deploy` |
+| `apps/learn` | Pages — `bpmn-sdk-learn` | `pnpm --filter @bpmnkit/learn deploy` |
+
+```sh
+pnpm turbo build --filter @bpmnkit/landing   # build the app and its workspace deps first
+pnpm --filter @bpmnkit/landing deploy        # wrangler pages deploy dist
+```
+
+Drop additionally needs its D1 migrations applied before the Worker goes out — see
+[`apps/drop/README.md`](apps/drop/README.md), which documents the one-shot provisioning
+script as well.
+
 ### Releasing
 
 This monorepo uses [Changesets](https://github.com/changesets/changesets) for versioning and publishing.

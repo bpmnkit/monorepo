@@ -275,6 +275,54 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + attempt limiting, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, localStorage persistence)
 - [x] Polish: suggestion→canvas element highlighting (hover + click), model attribution, docs
 
+### Drop v3 — authoring and live single-writer editing
+
+> Analysis, design and ordered plan: [`doc/drop-collaborative-editing-analysis.md`](drop-collaborative-editing-analysis.md),
+> [`doc/drop-live-editing-design.md`](drop-live-editing-design.md),
+> [`doc/drop-live-editing-plan.md`](drop-live-editing-plan.md). Simultaneous multi-writer editing
+> was analysed and deliberately not chosen; one live writer with the others watching was.
+
+**Track A — author, then drop**
+
+- [x] A1 — "Share as a drop" in the `/editor` main menu: posts the open diagram to the existing
+      `POST /drop/api/drops` (no Worker changes), dev-proxied so it stays same-origin
+- [ ] A2 — localStorage draft on `/editor`, so a refresh before the first share keeps the work
+
+**Track B — the version log** (blocks every task that writes to a drop)
+
+- [ ] B1 — `rep = 'current'` in `file_content` (never write `'original'`), `file_versions`,
+      `drops.updated_at`; serve current-else-original and pin the Original download
+- [ ] B2 — `appendMilestone()`: `(hour, session)` bucket, `content_hash` suppression, prune to 10
+      — the pinned original plus ten milestones, eleven recoverable states per file, forever
+- [ ] B3 — history list, version fetch, and per-milestone "layout only" / "model changed" labels
+      from `diffDiagram` / `diffSemantics`
+- [ ] B4 — restore, as an append rather than a rewind
+
+**Track C — browser history** — wiring `@bpmnkit/plugins/history` to `(shareId, filename)`
+
+- [ ] C1 — `saveCheckpoint` on the editor's change handler, debounced
+- [ ] C2 — `createHistoryPanel`, kept visibly separate from the server milestones
+
+**Track D — the room** (requires B)
+
+- [ ] D1 — `PresenceRoom` → `DocRoom`, plus the debounced `view_count` write `drop-spec.md` §6
+      described and never shipped
+- [ ] D2 — the edit baton: claim / granted / denied / release, idle reclaim via
+      `getWebSocketAutoResponseTimestamp` (keyed on operations, not pings)
+- [ ] D3 — `@bpmnkit/editor`: injectable ids, an op-describing change event, public viewport
+- [ ] D4 — op protocol and server-side replay of the same `modeling.ts` functions
+- [ ] D5 — watcher replay with a hash check and resync
+- [ ] D6 — editor loaded on claim via dynamic `import()`, viewport carried across the swap
+- [ ] D7 — autosave: 30 s alarm → `exportPreserving` → `'current'`, milestone on hour and release
+
+**Track E — hardening**
+
+- [ ] E1 — ban re-check and size cap on save; version-derived ETag
+- [ ] E2 — Turnstile on `claim`
+- [ ] E3 — demo and pinned drops read-only; Edit gated on `processes.length === 1`
+- [ ] E4 — retention slides on edit as well as view
+- [ ] E5 — reports carry the version the reporter saw
+
 ### Design consistency — Drop + Editor on the landing system
 
 > Design brief: flat, square, hairline-ruled, one terracotta accent, two type roles.
