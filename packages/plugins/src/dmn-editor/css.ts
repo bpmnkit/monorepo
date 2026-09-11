@@ -1,3 +1,5 @@
+import { injectChromeStyles } from "@bpmnkit/editor"
+
 export const DMN_EDITOR_CSS = `
 .dmn-editor {
   font-family: Arial, sans-serif;
@@ -38,13 +40,13 @@ export const DMN_EDITOR_CSS = `
   --dme-btn-hover: #cbd5e1;
   --dme-input-cell-bg: transparent;
   --dme-input-cell-fg: #1c1c1c;
-  --dme-accent: var(--bpmnkit-accent, #1a56db);
+  --dme-accent: var(--bpmnkit-chrome-accent);
   --dme-divider: 3px double #aaa;
 }
 
 /* ── Dark theme ── */
 .dmn-editor.dark {
-  --dme-bg: var(--bpmnkit-surface-2, #1e1e2e);
+  --dme-bg: var(--bpmnkit-chrome-ground-2);
   --dme-fg: #cdd6f4;
   --dme-border: #313244;
   --dme-hp-bg: #1e1e3a;
@@ -60,7 +62,7 @@ export const DMN_EDITOR_CSS = `
   --dme-btn-hover: #45475a;
   --dme-input-cell-bg: transparent;
   --dme-input-cell-fg: #cdd6f4;
-  --dme-accent: var(--bpmnkit-accent-bright, #89b4fa);
+  --dme-accent: var(--bpmnkit-chrome-accent);
   --dme-divider: 3px double #444;
 }
 
@@ -121,7 +123,7 @@ export const DMN_EDITOR_CSS = `
 /* Dark theme DRD variables */
 .dmn-editor.dark {
   --drd-canvas-bg: #1a1a24;
-  --drd-grid: rgba(255, 255, 255, 0.07);
+  --drd-grid: var(--bpmnkit-chrome-hover);
   --drd-node-fill: #252535;
   --drd-node-stroke: #9ca3af;
   --drd-decision-fill: #1e2a42;
@@ -144,18 +146,14 @@ export const DMN_EDITOR_CSS = `
   gap: 2px;
   padding: 4px;
   background: rgba(255, 255, 255, 0.93);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--bpmnkit-panel-border, rgba(0,0,0,0.08));
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--bpmnkit-chrome-line);
   z-index: 10;
   pointer-events: all;
 }
 
 .dmn-editor.dark .drd-bar {
-  background: var(--bpmnkit-panel-bg, rgba(13,13,22,0.92));
-  border-color: var(--bpmnkit-panel-border, rgba(255,255,255,0.08));
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  background: var(--bpmnkit-chrome-ground);
+  border-color: var(--bpmnkit-chrome-line);
 }
 
 /* Bottom-center palette */
@@ -181,7 +179,6 @@ export const DMN_EDITOR_CSS = `
   height: 32px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
   color: #374151;
   cursor: pointer;
   padding: 0;
@@ -194,9 +191,9 @@ export const DMN_EDITOR_CSS = `
 }
 
 .drd-bar-btn.active {
-  background: var(--bpmnkit-accent-subtle, rgba(26,86,219,0.12));
-  color: var(--bpmnkit-accent, #1a56db);
-  border-color: var(--bpmnkit-accent-subtle, rgba(26,86,219,0.12));
+  background: var(--bpmnkit-chrome-accent-subtle);
+  color: var(--bpmnkit-chrome-accent);
+  border-color: var(--bpmnkit-chrome-accent-subtle);
 }
 
 .drd-bar-btn svg {
@@ -206,18 +203,18 @@ export const DMN_EDITOR_CSS = `
 }
 
 .dmn-editor.dark .drd-bar-btn {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--bpmnkit-chrome-ink-2);
 }
 
 .dmn-editor.dark .drd-bar-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bpmnkit-chrome-line-soft);
   color: #fff;
 }
 
 .dmn-editor.dark .drd-bar-btn.active {
-  background: var(--bpmnkit-accent-subtle, rgba(107,157,247,0.15));
-  color: var(--bpmnkit-accent-bright, #89b4fa);
-  border-color: var(--bpmnkit-accent-subtle, rgba(107,157,247,0.15));
+  background: var(--bpmnkit-chrome-accent-subtle);
+  color: var(--bpmnkit-chrome-accent);
+  border-color: var(--bpmnkit-chrome-accent-subtle);
 }
 
 .drd-bar-sep {
@@ -229,12 +226,12 @@ export const DMN_EDITOR_CSS = `
 }
 
 .dmn-editor.dark .drd-bar-sep {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bpmnkit-chrome-line);
 }
 
 /* Snap alignment guide lines */
 .drd-align-guide {
-  stroke: var(--bpmnkit-accent, #6b9df7);
+  stroke: var(--bpmnkit-chrome-accent);
   stroke-width: 1;
   stroke-dasharray: 4 2;
   pointer-events: none;
@@ -289,7 +286,7 @@ export const DMN_EDITOR_CSS = `
 /* Connect mode hover highlight */
 .drd-connect-hi {
   fill: none;
-  stroke: var(--bpmnkit-accent-bright, #3b82f6);
+  stroke: var(--bpmnkit-chrome-accent);
   stroke-width: 2;
   stroke-dasharray: 4,3;
   opacity: 0;
@@ -328,7 +325,7 @@ export const DMN_EDITOR_CSS = `
 }
 
 .drd-edge--selected .drd-edge-line {
-  stroke: var(--bpmnkit-accent-bright, #3b82f6);
+  stroke: var(--bpmnkit-chrome-accent);
   stroke-width: 2.5;
 }
 
@@ -349,7 +346,6 @@ export const DMN_EDITOR_CSS = `
 .drd-inline-edit {
   box-sizing: border-box;
   border: 2px solid var(--dme-accent);
-  border-radius: 2px;
   background: var(--dme-bg);
   color: var(--dme-fg);
   font-size: 12px;
@@ -477,6 +473,7 @@ export const DMN_EDITOR_CSS = `
 
 /* ── Clause label (When / And / Then / Annotation) ── */
 .dme-clause {
+  font-family: var(--bpmnkit-chrome-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -535,7 +532,6 @@ export const DMN_EDITOR_CSS = `
   background: var(--dme-bg);
   color: var(--dme-fg);
   border: 1px solid var(--dme-border);
-  border-radius: 3px;
   padding: 1px 3px;
   outline: none;
   cursor: pointer;
@@ -596,7 +592,6 @@ export const DMN_EDITOR_CSS = `
   background: var(--dme-btn-bg);
   color: var(--dme-btn-fg);
   border: none;
-  border-radius: 3px;
   font-size: 12px;
   padding: 2px 6px;
   cursor: pointer;
@@ -612,7 +607,6 @@ export const DMN_EDITOR_CSS = `
   width: 20px;
   height: 20px;
   padding: 2px;
-  border-radius: 3px;
 }
 
 .dme-add-rule {
@@ -632,8 +626,6 @@ export const DMN_EDITOR_CSS = `
   z-index: 9999;
   background: var(--dme-bg);
   border: 1px solid var(--dme-border);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   min-width: 160px;
   padding: 3px 0;
   font-size: 13px;
@@ -659,6 +651,7 @@ export const DMN_EDITOR_CSS = `
 const STYLE_ID = "bpmn-sdk-dmn-editor-css"
 
 export function injectDmnEditorStyles(): void {
+	injectChromeStyles()
 	if (document.getElementById(STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = STYLE_ID

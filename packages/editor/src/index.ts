@@ -1,4 +1,6 @@
 export { BpmnEditor } from "./editor.js"
+export { CHROME_CSS, CHROME_STYLE_ID, injectChromeStyles } from "./chrome.js"
+export { injectStyle } from "./inject.js"
 export { createEmptyDefinitions } from "./modeling.js"
 export type {
 	EditorEvents,

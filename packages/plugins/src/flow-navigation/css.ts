@@ -1,7 +1,12 @@
 /** ID used to prevent duplicate style injection. */
 export const FLOW_NAVIGATION_STYLE_ID = "bpmnkit-flow-navigation-styles-v1"
 
-/** CSS for the flow-navigation plugin, injected once into `<head>`. */
+/** CSS for the flow-navigation plugin, injected once into `<head>`.
+ *
+ * Note: the keyboard cursor recolours the shape's own stroke. The design brief
+ * asks for a halo *around* a shape rather than a recolour; doing that here needs
+ * a rendered overlay, not a CSS change, so it is tracked in doc/roadmap.md. This
+ * at least spends the system's accent rather than a second brand hue. */
 export const FLOW_NAVIGATION_CSS = `
 .bpmnkit-flownav-cursor .bpmnkit-shape-body,
 .bpmnkit-flownav-cursor .bpmnkit-callactivity-body,
@@ -11,7 +16,7 @@ export const FLOW_NAVIGATION_CSS = `
 .bpmnkit-flownav-cursor .bpmnkit-gw-body,
 .bpmnkit-flownav-cursor .bpmnkit-data-body,
 .bpmnkit-flownav-cursor .bpmnkit-datastore-body {
-  stroke: var(--bpmnkit-accent-bright, #3b82f6) !important;
+  stroke: var(--bpmnkit-ds-accent, #a8503a) !important;
   stroke-width: 3 !important;
 }
 
@@ -21,13 +26,13 @@ export const FLOW_NAVIGATION_CSS = `
   to { stroke-dashoffset: -12; }
 }
 .bpmnkit-flownav-candidate .bpmnkit-edge-path {
-  stroke: var(--bpmnkit-accent-bright, #3b82f6) !important;
+  stroke: var(--bpmnkit-ds-accent, #a8503a) !important;
   stroke-width: 3 !important;
   stroke-dasharray: 8 4;
   animation: bpmnkit-flownav-march 0.5s linear infinite;
 }
 .bpmnkit-flownav-candidate .bpmnkit-arrow-fill {
-  fill: var(--bpmnkit-accent-bright, #3b82f6) !important;
+  fill: var(--bpmnkit-ds-accent, #a8503a) !important;
 }
 `
 

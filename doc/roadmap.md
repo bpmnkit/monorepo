@@ -296,14 +296,23 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       design-system set (one seam for cascivo, Tailwind and the embedded editor); radius and
       shadow collapsed at the scale; circular marks kept; fonts self-hosted; default theme moved
       from `neon` to `light`
-- [ ] Remaining `@bpmnkit/plugins` panel chrome (command palette, element docs, config panel,
-      process runner, main menu, deploy, history, AI bridge, connector catalog, ascii view,
-      live mode, optimize, storage dialog) — 12 stylesheets still on their own rounded/shadowed
-      chrome
-- [ ] Flip the Editor shell to the light `--canvas` ground of the brief's mock — blocked on the
-      plugins pass above, or the two halves disagree
+- [x] `--bpmnkit-chrome-*` tokens in `packages/editor/src/chrome.ts` — the per-theme ground,
+      line, ink, accent and scrim every piece of editor chrome reads, declared once (the
+      editor's `--hud-*` names were renamed into this set)
+- [x] All remaining `@bpmnkit/plugins` panel chrome — the 12 tracked here plus 11 more found by
+      sweeping for shadows rather than theme blocks (diff, lint, minimap, story-view,
+      variable-flow, pattern-advisor, zoom-controls, presentation, feel-playground, dmn-editor,
+      config-panel-bpmn). 1,060 lines net removed; invariants held by
+      `tests/chrome-invariants.test.ts`
+- [ ] Flip the Editor shell to the light `--canvas` ground of the brief's mock — the plugins
+      pass above is done, so this is now unblocked
 - [ ] Canvas dot grid (`@bpmnkit/canvas`)
 - [ ] Properties-dock footer row (mono save/lines status + `Deploy ▶`) — no data source yet
+- [ ] `flow-navigation` draws its keyboard cursor by recolouring the shape's own stroke; the
+      brief wants a dashed halo *around* the shape, which needs a rendered overlay rather than
+      a CSS change
+- [ ] `story-view`'s `bpmnkit-sv-card--*` type modifiers are emitted nowhere in the repo —
+      either wire them up or drop the rules
 
 ---
 

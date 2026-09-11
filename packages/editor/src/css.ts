@@ -1,3 +1,5 @@
+import { injectChromeStyles } from "./chrome.js"
+
 /** ID used to prevent duplicate style injection. */
 export const EDITOR_STYLE_ID = "bpmnkit-editor-styles-v1"
 
@@ -257,6 +259,7 @@ export const EDITOR_CSS = `
 /** Injects the editor stylesheet into `<head>` if not already present. */
 export function injectEditorStyles(): void {
 	if (typeof document === "undefined") return
+	injectChromeStyles()
 	if (document.getElementById(EDITOR_STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = EDITOR_STYLE_ID
@@ -272,53 +275,17 @@ export const HUD_CSS = `
 /* ── HUD chrome ──────────────────────────────────────────────────────
    The bpmnkit.com design system applied to the editor's chrome: flat
    (no shadow, gradient or blur), square, and bounded by 1px hairlines.
-   Grounds stay per-theme — dark by default, light and neon on
-   data-bpmnkit-hud-theme — while form and accent are the system's.
+   The per-theme grounds it reads are declared once in chrome.ts.
    The diagram itself is renderer-owned and untouched by this sheet.
    ──────────────────────────────────────────────────────────────────── */
-:root {
-  --hud-ground: var(--bpmnkit-panel-bg, #0d0d16);
-  --hud-line: var(--bpmnkit-panel-border, rgba(255, 255, 255, 0.14));
-  --hud-line-soft: rgba(255, 255, 255, 0.08);
-  --hud-ink: var(--bpmnkit-ds-ink-on-dark, #f4f5f7);
-  --hud-ink-2: var(--bpmnkit-ds-ink-on-dark-2, #c8ccd2);
-  --hud-ink-4: var(--bpmnkit-ds-ink-muted, #9aa1aa);
-  --hud-accent: var(--bpmnkit-ds-accent-on-dark, #c9755c);
-  --hud-accent-fg: var(--bpmnkit-ds-ink-on-dark, #f4f5f7);
-  --hud-hover: rgba(255, 255, 255, 0.07);
-}
-[data-bpmnkit-hud-theme="light"] {
-  --hud-ground: var(--bpmnkit-ds-surface, #ffffff);
-  --hud-line: var(--bpmnkit-ds-line, #d8dbe0);
-  --hud-line-soft: var(--bpmnkit-ds-line-soft, #e4e6ea);
-  --hud-ink: var(--bpmnkit-ds-ink, #14161a);
-  --hud-ink-2: var(--bpmnkit-ds-ink-2, #4b5158);
-  --hud-ink-4: var(--bpmnkit-ds-ink-4, #8b929c);
-  --hud-accent: var(--bpmnkit-ds-accent, #a8503a);
-  --hud-accent-fg: var(--bpmnkit-ds-surface, #ffffff);
-  --hud-hover: var(--bpmnkit-ds-bg, #f4f5f7);
-}
-/* Neon is a deliberate white-label theme and keeps its own hue. */
-[data-bpmnkit-hud-theme="neon"] {
-  --hud-ground: oklch(8% 0.03 270 / 0.98);
-  --hud-line: oklch(65% 0.28 280 / 0.28);
-  --hud-line-soft: oklch(65% 0.28 280 / 0.15);
-  --hud-ink: oklch(88% 0.02 270);
-  --hud-ink-2: oklch(73% 0.16 280);
-  --hud-ink-4: oklch(50% 0.06 280);
-  --hud-accent: oklch(72% 0.18 185);
-  --hud-accent-fg: oklch(8% 0.03 270);
-  --hud-hover: oklch(65% 0.28 280 / 0.12);
-}
-
 .hud { position: absolute; z-index: 100; }
 
 /* A toolbar or palette is ONE bordered box with internal hairlines —
    never individually bordered buttons and never gaps. */
 .panel {
   display: flex; align-items: stretch;
-  background: var(--hud-ground);
-  border: 1px solid var(--hud-line);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
   /* Stated, not inherited: hosts differ on whether they set a global reset. */
   box-sizing: border-box;
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
@@ -340,7 +307,7 @@ export const HUD_CSS = `
   width: 34px; height: 28px;
   background: transparent;
   border: none;
-  color: var(--hud-ink-2);
+  color: var(--bpmnkit-chrome-ink-2);
   cursor: pointer;
   padding: 0; flex-shrink: 0;
   font-family: inherit;
@@ -348,10 +315,10 @@ export const HUD_CSS = `
   /* Never let a Unicode glyph be promoted to a colour emoji. */
   font-variant-emoji: text;
 }
-.hud-btn:hover  { background: var(--hud-hover); color: var(--hud-ink); }
-.hud-btn.active { background: var(--hud-accent); color: var(--hud-accent-fg); }
+.hud-btn:hover  { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-ink); }
+.hud-btn.active { background: var(--bpmnkit-chrome-accent); color: var(--bpmnkit-chrome-accent-fg); }
 .hud-btn:disabled { opacity: 0.3; cursor: default; }
-.hud-btn:disabled:hover { background: transparent; color: var(--hud-ink-2); }
+.hud-btn:disabled:hover { background: transparent; color: var(--bpmnkit-chrome-ink-2); }
 .hud-btn svg { width: 16px; height: 16px; pointer-events: none; }
 
 /* The palette's targets are a touch larger than the toolbar's; the zoom
@@ -365,7 +332,7 @@ export const HUD_CSS = `
    the .panel-plus-id form outranks the id-scoped zoom buttons. */
 .panel > * + *,
 .panel #tool-groups > * + *,
-.panel #zoom-expanded > * + * { border-left: 1px solid var(--hud-line-soft); }
+.panel #zoom-expanded > * + * { border-left: 1px solid var(--bpmnkit-chrome-line-soft); }
 /* The mobile collapse toggles are hidden siblings on desktop, so the item after
    one would otherwise draw a hairline flush against the group's own border. */
 #hud-top-center > #btn-tc-toggle + *,
@@ -388,7 +355,7 @@ export const HUD_CSS = `
 /* ── Separator — a structural rule, not a soft internal one ──────── */
 .hud-sep {
   width: 1px; flex: none; align-self: stretch;
-  background: var(--hud-line);
+  background: var(--bpmnkit-chrome-line);
   border-left: none;
 }
 .panel > .hud-sep + * { border-left: none; }
@@ -397,12 +364,12 @@ export const HUD_CSS = `
 #btn-zoom-current {
   padding: 0 12px; height: 32px;
   background: transparent; border: none;
-  color: var(--hud-ink-2); cursor: pointer;
+  color: var(--bpmnkit-chrome-ink-2); cursor: pointer;
   font-family: inherit; font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-#btn-zoom-current:hover { background: var(--hud-hover); color: var(--hud-ink); }
+#btn-zoom-current:hover { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-ink); }
 
 #zoom-expanded { display: none; align-items: stretch; }
 #zoom-expanded.open { display: flex; }
@@ -410,19 +377,19 @@ export const HUD_CSS = `
 #btn-zoom-pct {
   padding: 0 10px; height: 32px;
   background: transparent; border: none;
-  color: var(--hud-ink-2); cursor: pointer;
+  color: var(--bpmnkit-chrome-ink-2); cursor: pointer;
   font-family: inherit; font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap; min-width: 60px; text-align: center;
 }
-#btn-zoom-pct:hover { background: var(--hud-hover); color: var(--hud-ink); }
+#btn-zoom-pct:hover { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-ink); }
 
 /* ── Dropdown menus ──────────────────────────────────────────────── */
 .dropdown {
   position: absolute; display: none; flex-direction: column;
   padding: 0;
-  background: var(--hud-ground);
-  border: 1px solid var(--hud-line);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
   z-index: 200; min-width: 170px;
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
 }
@@ -432,27 +399,27 @@ export const HUD_CSS = `
   display: flex; align-items: center; gap: 9px;
   padding: 8px 12px;
   border: none; background: transparent;
-  color: var(--hud-ink-2); cursor: pointer;
+  color: var(--bpmnkit-chrome-ink-2); cursor: pointer;
   font-family: inherit; font-size: 12px; text-align: left; width: 100%;
   font-variant-emoji: text;
 }
-.drop-item:hover { background: var(--hud-hover); color: var(--hud-ink); }
-.drop-item .di-check { width: 14px; height: 14px; flex-shrink: 0; color: var(--hud-accent); }
+.drop-item:hover { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-ink); }
+.drop-item .di-check { width: 14px; height: 14px; flex-shrink: 0; color: var(--bpmnkit-chrome-accent); }
 .drop-item .di-icon  { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7; }
 .drop-item svg { width: 14px; height: 14px; }
-.drop-sep { height: 1px; background: var(--hud-line-soft); }
+.drop-sep { height: 1px; background: var(--bpmnkit-chrome-line-soft); }
 .drop-label {
   padding: 8px 12px 6px;
   font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
-  color: var(--hud-ink-4); text-transform: uppercase;
+  color: var(--bpmnkit-chrome-ink-4); text-transform: uppercase;
 }
 
 /* ── Group element picker ────────────────────────────────────────── */
 .group-picker {
   position: absolute;
   display: flex; flex-direction: row; align-items: stretch;
-  background: var(--hud-ground);
-  border: 1px solid var(--hud-line);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
   z-index: 300;
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
 }
@@ -460,9 +427,9 @@ export const HUD_CSS = `
   display: flex; align-items: center;
   padding: 0 10px;
   font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
-  color: var(--hud-ink-4); text-transform: uppercase;
+  color: var(--bpmnkit-chrome-ink-4); text-transform: uppercase;
   white-space: nowrap;
-  border-right: 1px solid var(--hud-line);
+  border-right: 1px solid var(--bpmnkit-chrome-line);
 }
 
 /* ── Reference link button (wider text variant of hud-btn) ──────── */
@@ -470,7 +437,7 @@ export const HUD_CSS = `
   height: 28px; padding: 0 10px;
   background: transparent;
   border: none;
-  color: var(--hud-ink-2);
+  color: var(--bpmnkit-chrome-ink-2);
   cursor: pointer;
   font-family: inherit; font-size: 12px;
   max-width: 160px;
@@ -479,16 +446,16 @@ export const HUD_CSS = `
   white-space: nowrap;
   flex-shrink: 0;
 }
-.ref-link-btn:hover { background: var(--hud-hover); color: var(--hud-ink); }
+.ref-link-btn:hover { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-ink); }
 
 /* ── Colour swatches — element fills, exempt from the one-accent rule ── */
 .bpmnkit-color-swatches { display: flex; gap: 4px; padding: 0 8px; align-items: center; }
 .bpmnkit-color-swatch {
   width: 16px; height: 16px; cursor: pointer;
-  border: 1px solid var(--hud-line); flex-shrink: 0;
+  border: 1px solid var(--bpmnkit-chrome-line); flex-shrink: 0;
   padding: 0;
 }
-.bpmnkit-color-swatch.active { border-color: var(--hud-accent); }
+.bpmnkit-color-swatch.active { border-color: var(--bpmnkit-chrome-accent); }
 .bpmnkit-color-swatch--default {
   background: transparent;
   position: relative; overflow: hidden;
@@ -497,12 +464,12 @@ export const HUD_CSS = `
   content: ''; position: absolute;
   top: 0; left: 50%; transform: translateX(-50%) rotate(-45deg);
   width: 1px; height: 100%;
-  background: currentColor; color: var(--hud-ink-4);
+  background: currentColor; color: var(--bpmnkit-chrome-ink-4);
 }
 
 /* ── Contextual Ask-AI button ────────────────────────────────────── */
-.ctx-ask-ai-btn { color: var(--hud-accent); }
-.ctx-ask-ai-btn:hover { background: var(--hud-hover); color: var(--hud-accent); }
+.ctx-ask-ai-btn { color: var(--bpmnkit-chrome-accent); }
+.ctx-ask-ai-btn:hover { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-accent); }
 
 /* ── New-diagram onboarding overlay ──────────────────────────────── */
 #bpmnkit-empty-state {
@@ -520,59 +487,59 @@ export const HUD_CSS = `
 }
 .bpmnkit-onboard-header { text-align: center; }
 .bpmnkit-onboard-title {
-  color: var(--hud-ink); font-size: 17px; font-weight: 700;
+  color: var(--bpmnkit-chrome-ink); font-size: 17px; font-weight: 700;
   letter-spacing: -0.025em; margin: 0 0 8px;
 }
 .bpmnkit-onboard-sub {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: var(--bpmnkit-ds-t-mono-label, 11.5px); letter-spacing: 0.08em;
-  color: var(--hud-ink-4); margin: 0;
+  color: var(--bpmnkit-chrome-ink-4); margin: 0;
 }
 
 /* One bordered box subdivided by hairlines — not gapped cards. */
 .bpmnkit-onboard-actions {
   display: flex; width: 100%;
-  border: 1px solid var(--hud-line); background: var(--hud-ground);
+  border: 1px solid var(--bpmnkit-chrome-line); background: var(--bpmnkit-chrome-ground);
 }
 
 .bpmnkit-onboard-btn {
   flex: 1; display: flex; flex-direction: column; align-items: flex-start;
   gap: 12px; padding: 18px 16px;
   background: transparent;
-  border: none; border-right: 1px solid var(--hud-line-soft);
+  border: none; border-right: 1px solid var(--bpmnkit-chrome-line-soft);
   cursor: pointer; text-align: left;
   color: inherit;
 }
 .bpmnkit-onboard-btn:last-child { border-right: none; }
-.bpmnkit-onboard-btn:hover { background: var(--hud-hover); }
+.bpmnkit-onboard-btn:hover { background: var(--bpmnkit-chrome-hover); }
 
 .bpmnkit-onboard-btn-icon {
   display: flex; align-items: center; justify-content: center;
   width: 32px; height: 32px;
-  border: 1px solid var(--hud-line); color: var(--hud-ink-2); flex-shrink: 0;
+  border: 1px solid var(--bpmnkit-chrome-line); color: var(--bpmnkit-chrome-ink-2); flex-shrink: 0;
 }
 .bpmnkit-onboard-btn-icon svg { width: 16px; height: 16px; pointer-events: none; }
-.bpmnkit-onboard-btn--ai .bpmnkit-onboard-btn-icon { color: var(--hud-accent); border-color: var(--hud-accent); }
+.bpmnkit-onboard-btn--ai .bpmnkit-onboard-btn-icon { color: var(--bpmnkit-chrome-accent); border-color: var(--bpmnkit-chrome-accent); }
 
 .bpmnkit-onboard-btn-label { display: flex; flex-direction: column; gap: 4px; }
 .bpmnkit-onboard-btn-title {
-  font-size: 14px; font-weight: 700; color: var(--hud-ink); margin: 0;
+  font-size: 14px; font-weight: 700; color: var(--bpmnkit-chrome-ink); margin: 0;
 }
 .bpmnkit-onboard-btn-desc {
-  font-size: 12px; color: var(--hud-ink-4); margin: 0; line-height: 1.5;
+  font-size: 12px; color: var(--bpmnkit-chrome-ink-4); margin: 0; line-height: 1.5;
 }
 
 .bpmnkit-onboard-links { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
 .bpmnkit-onboard-links a {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
-  color: var(--hud-ink-4); font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  color: var(--bpmnkit-chrome-ink-4); font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
   letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
 }
-.bpmnkit-onboard-links a:hover { color: var(--hud-accent); }
+.bpmnkit-onboard-links a:hover { color: var(--bpmnkit-chrome-accent); }
 
 @media (max-width: 520px) {
   .bpmnkit-onboard-actions { flex-direction: column; }
-  .bpmnkit-onboard-btn { flex-direction: row; align-items: center; gap: 12px; border-right: none; border-bottom: 1px solid var(--hud-line-soft); }
+  .bpmnkit-onboard-btn { flex-direction: row; align-items: center; gap: 12px; border-right: none; border-bottom: 1px solid var(--bpmnkit-chrome-line-soft); }
   .bpmnkit-onboard-btn:last-child { border-bottom: none; }
   .bpmnkit-onboard-btn-label { flex-direction: column; }
 }
@@ -595,23 +562,23 @@ export const HUD_CSS = `
   z-index: 150;
   display: flex; align-items: center; justify-content: center; gap: 14px;
   padding: 8px 16px;
-  background: var(--hud-ground);
-  border-bottom: 1px solid var(--hud-accent);
+  background: var(--bpmnkit-chrome-ground);
+  border-bottom: 1px solid var(--bpmnkit-chrome-accent);
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: var(--bpmnkit-ds-t-mono-label, 11.5px); letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--hud-accent);
+  color: var(--bpmnkit-chrome-accent);
   pointer-events: auto;
 }
 #bpmnkit-sim-banner.hidden { display: none; }
 #bpmnkit-sim-banner-exit {
   padding: 4px 12px;
   background: transparent;
-  border: 1px solid var(--hud-accent);
+  border: 1px solid var(--bpmnkit-chrome-accent);
   color: inherit; cursor: pointer;
   font-family: inherit; font-size: inherit; letter-spacing: inherit;
 }
-#bpmnkit-sim-banner-exit:hover { background: var(--hud-accent); color: var(--hud-accent-fg); }
+#bpmnkit-sim-banner-exit:hover { background: var(--bpmnkit-chrome-accent); color: var(--bpmnkit-chrome-accent-fg); }
 
 /* ── Context menu ────────────────────────────────────────────────── */
 #bpmnkit-ctx-menu { min-width: 170px; }
@@ -623,27 +590,27 @@ export const HUD_CSS = `
   z-index: 120;
   display: flex; align-items: center; gap: 10px;
   padding: 6px 12px;
-  background: var(--hud-ground);
-  border: 1px solid var(--hud-line);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
 }
 #bpmnkit-search-bar.hidden { display: none; }
 #bpmnkit-search-input {
   width: 220px; padding: 2px 0;
   background: transparent; border: none;
-  color: var(--hud-ink); font-family: inherit; font-size: 12.5px; outline: none;
+  color: var(--bpmnkit-chrome-ink); font-family: inherit; font-size: 12.5px; outline: none;
 }
-#bpmnkit-search-input::placeholder { color: var(--hud-ink-4); }
+#bpmnkit-search-input::placeholder { color: var(--bpmnkit-chrome-ink-4); }
 #bpmnkit-search-count {
   font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
-  color: var(--hud-ink-4); white-space: nowrap; min-width: 44px;
+  color: var(--bpmnkit-chrome-ink-4); white-space: nowrap; min-width: 44px;
 }
 #bpmnkit-search-close {
-  background: transparent; border: none; color: var(--hud-ink-4);
+  background: transparent; border: none; color: var(--bpmnkit-chrome-ink-4);
   cursor: pointer; font-family: inherit; font-size: 14px; line-height: 1; padding: 0 2px;
   font-variant-emoji: text;
 }
-#bpmnkit-search-close:hover { color: var(--hud-ink); }
+#bpmnkit-search-close:hover { color: var(--bpmnkit-chrome-ink); }
 
 /* ── Keyboard shortcuts modal ────────────────────────────────────── */
 #bpmnkit-shortcuts-modal {
@@ -653,27 +620,27 @@ export const HUD_CSS = `
 }
 #bpmnkit-shortcuts-modal.hidden { display: none; }
 #bpmnkit-shortcuts-inner {
-  background: var(--hud-ground);
-  border: 1px solid var(--hud-line);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
   padding: 24px 26px;
   min-width: 320px; max-width: 480px;
-  color: var(--hud-ink-2);
+  color: var(--bpmnkit-chrome-ink-2);
 }
 #bpmnkit-shortcuts-inner h3 {
   margin: 0 0 16px;
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
-  text-transform: uppercase; font-weight: 400; color: var(--hud-ink-4);
+  text-transform: uppercase; font-weight: 400; color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-sc-row {
   display: flex; justify-content: space-between; align-items: center; gap: 24px;
-  padding: 7px 0; border-bottom: 1px solid var(--hud-line-soft); font-size: 12.5px;
+  padding: 7px 0; border-bottom: 1px solid var(--bpmnkit-chrome-line-soft); font-size: 12.5px;
 }
 .bpmnkit-sc-row:last-child { border-bottom: none; }
 .bpmnkit-sc-key {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
-  border: 1px solid var(--hud-line);
-  padding: 1px 7px; font-size: 11px; color: var(--hud-ink);
+  border: 1px solid var(--bpmnkit-chrome-line);
+  padding: 1px 7px; font-size: 11px; color: var(--bpmnkit-chrome-ink);
   white-space: nowrap;
 }
 #bpmnkit-shortcuts-close {
@@ -697,14 +664,14 @@ export const HUD_CSS = `
   }
 
   #btn-bc-toggle { display: flex; }
-  #hud-bottom-center > #btn-bc-toggle + * { border-left: 1px solid var(--hud-line-soft); }
+  #hud-bottom-center > #btn-bc-toggle + * { border-left: 1px solid var(--bpmnkit-chrome-line-soft); }
 
   /* Collapsed: hide all children except the toggle button */
   #hud-bottom-center:not(.expanded) > *:not(#btn-bc-toggle) { display: none; }
 
   /* Expanded: highlight the toggle button as a close affordance */
   #hud-bottom-center.expanded #btn-bc-toggle {
-    background: var(--hud-accent); color: var(--hud-accent-fg);
+    background: var(--bpmnkit-chrome-accent); color: var(--bpmnkit-chrome-accent-fg);
   }
 }
 
@@ -715,6 +682,7 @@ export const HUD_CSS = `
 /** Injects the HUD stylesheet into `<head>` if not already present. */
 export function injectHudStyles(): void {
 	if (typeof document === "undefined") return
+	injectChromeStyles()
 	if (document.getElementById(HUD_STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = HUD_STYLE_ID

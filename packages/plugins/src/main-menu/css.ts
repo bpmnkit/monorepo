@@ -1,5 +1,10 @@
+import { injectChromeStyles } from "@bpmnkit/editor"
+
 export const MAIN_MENU_STYLE_ID = "bpmnkit-main-menu-styles-v2"
 
+/* Flat, square, hairline-ruled. The bar sits inside the tab row, so it carries
+   no ground of its own — a left hairline is the whole separation, which is what
+   removes the three per-theme copies this sheet used to need. */
 export const MAIN_MENU_CSS = `
 .bpmnkit-main-menu-panel {
   position: absolute;
@@ -8,59 +13,48 @@ export const MAIN_MENU_CSS = `
   height: 36px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 0 6px;
-  background: #f0f4f8;
+  background: transparent;
   border: none;
-  border-left: 1px solid #d0d0d0;
-  border-radius: 0;
-  box-shadow: none;
+  border-left: 1px solid var(--bpmnkit-chrome-line);
   z-index: 10000;
-}
-[data-theme="dark"] .bpmnkit-main-menu-panel {
-  background: var(--bpmnkit-surface-2, #1e1e2e);
-  border-left-color: #313244;
-}
-[data-theme="neon"] .bpmnkit-main-menu-panel {
-  background: oklch(7% 0.035 280);
-  border-left-color: oklch(65% 0.28 280 / 0.2);
 }
 .bpmnkit-canvas-host:has(.bpmnkit-main-menu-panel:not([style*="none"])) .bpmnkit-tabs {
   padding-right: 160px;
 }
 .bpmnkit-main-menu-title {
-  padding: 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: system-ui, sans-serif;
-  color: var(--bpmnkit-text, #333333);
+  padding: 0 12px;
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bpmnkit-chrome-ink-4);
   white-space: nowrap;
   user-select: none;
-  opacity: 0.75;
 }
 .bpmnkit-main-menu-sep {
   width: 1px;
-  height: 16px;
-  background: var(--bpmnkit-overlay-border, var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08)));
+  align-self: stretch;
+  background: var(--bpmnkit-chrome-line);
   flex-shrink: 0;
 }
 .bpmnkit-menu-btn {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: var(--bpmnkit-text, #333333);
+  border: none;
+  border-left: 1px solid var(--bpmnkit-chrome-line-soft);
+  color: var(--bpmnkit-chrome-ink-2);
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.1s;
+  font-variant-emoji: text;
 }
 .bpmnkit-menu-btn:hover {
-  background: var(--bpmnkit-overlay-border, var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08)));
+  background: var(--bpmnkit-chrome-hover);
+  color: var(--bpmnkit-chrome-ink);
 }
 .bpmnkit-menu-btn svg {
   width: 16px;
@@ -71,20 +65,17 @@ export const MAIN_MENU_CSS = `
   position: fixed;
   display: none;
   flex-direction: column;
-  background: var(--bpmnkit-overlay-bg, rgba(248, 249, 250, 0.96));
-  border: 1px solid var(--bpmnkit-overlay-border, var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08)));
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
   z-index: 10001;
-  min-width: 220px;
+  min-width: 240px;
   overflow: hidden;
+  font-family: var(--bpmnkit-chrome-font);
 }
 .bpmnkit-menu-dropdown.open { display: flex; }
 .bpmnkit-menu-level {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 4px;
   position: relative;
   z-index: 1;
 }
@@ -109,45 +100,44 @@ export const MAIN_MENU_CSS = `
 .bpmnkit-menu-level--out-left  { animation: bpmnkit-menu-out-left  150ms ease-in  forwards; }
 .bpmnkit-menu-level--out-right { animation: bpmnkit-menu-out-right 150ms ease-in  forwards; }
 .bpmnkit-menu-drop-label {
-  padding: 3px 8px 1px;
-  font-size: 10px;
-  font-weight: 600;
-  font-family: system-ui, sans-serif;
-  letter-spacing: 0.06em;
+  padding: 12px 12px 6px;
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--bpmnkit-text, #333333);
-  opacity: 0.45;
+  color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 12px;
   background: transparent;
   border: none;
-  border-radius: 5px;
-  color: var(--bpmnkit-text, #333333);
+  border-bottom: 1px solid var(--bpmnkit-chrome-line-soft);
+  color: var(--bpmnkit-chrome-ink-2);
   cursor: pointer;
-  font-family: system-ui, sans-serif;
-  font-size: 12px;
+  font-family: inherit;
+  font-size: 12.5px;
   text-align: left;
   width: 100%;
-  transition: background 0.1s;
 }
+.bpmnkit-menu-item:last-child { border-bottom: none; }
 .bpmnkit-menu-item:hover {
-  background: var(--bpmnkit-overlay-border, rgba(0, 0, 0, 0.06));
+  background: var(--bpmnkit-chrome-hover);
+  color: var(--bpmnkit-chrome-ink);
 }
 .bpmnkit-menu-item-check {
   width: 12px;
   height: 12px;
   flex-shrink: 0;
-  color: var(--bpmnkit-highlight, var(--bpmnkit-accent, #1a56db));
+  color: var(--bpmnkit-chrome-accent);
 }
 .bpmnkit-menu-item-icon {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  opacity: 0.65;
+  color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-menu-item-label {
   flex: 1;
@@ -156,7 +146,7 @@ export const MAIN_MENU_CSS = `
   width: 12px;
   height: 12px;
   flex-shrink: 0;
-  opacity: 0.45;
+  color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-menu-item-icon svg,
 .bpmnkit-menu-item-check svg,
@@ -167,8 +157,10 @@ export const MAIN_MENU_CSS = `
 .bpmnkit-menu-back-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 4px;
+  gap: 8px;
+  padding: 0 8px;
+  height: 34px;
+  border-bottom: 1px solid var(--bpmnkit-chrome-line);
 }
 .bpmnkit-menu-back-btn {
   width: 24px;
@@ -178,15 +170,14 @@ export const MAIN_MENU_CSS = `
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  color: var(--bpmnkit-text, #333333);
+  color: var(--bpmnkit-chrome-ink-2);
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.1s;
 }
 .bpmnkit-menu-back-btn:hover {
-  background: var(--bpmnkit-overlay-border, rgba(0, 0, 0, 0.06));
+  background: var(--bpmnkit-chrome-hover);
+  color: var(--bpmnkit-chrome-ink);
 }
 .bpmnkit-menu-back-btn svg {
   width: 12px;
@@ -194,21 +185,22 @@ export const MAIN_MENU_CSS = `
   pointer-events: none;
 }
 .bpmnkit-menu-level-title {
-  font-size: 12px;
-  font-weight: 600;
-  font-family: system-ui, sans-serif;
-  color: var(--bpmnkit-text, #333333);
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bpmnkit-chrome-ink-4);
   flex: 1;
 }
 .bpmnkit-menu-info-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  font-family: system-ui, sans-serif;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bpmnkit-chrome-line-soft);
+  font-family: var(--bpmnkit-chrome-mono);
   font-size: 12px;
-  color: var(--bpmnkit-text, #333333);
-  opacity: 0.75;
+  color: var(--bpmnkit-chrome-ink-2);
 }
 .bpmnkit-menu-info-text {
   flex: 1;
@@ -218,82 +210,27 @@ export const MAIN_MENU_CSS = `
 }
 .bpmnkit-menu-info-action {
   flex-shrink: 0;
-  border: 1px solid var(--bpmnkit-overlay-border, var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08)));
-  border-radius: 4px;
+  border: 1px solid var(--bpmnkit-chrome-line);
   background: transparent;
-  color: var(--bpmnkit-text, #333333);
+  color: var(--bpmnkit-chrome-ink-2);
   cursor: pointer;
-  padding: 2px 7px;
+  padding: 3px 9px;
   font-size: 11px;
-  font-family: system-ui, sans-serif;
-  transition: background 0.1s;
+  font-family: var(--bpmnkit-chrome-mono);
 }
 .bpmnkit-menu-info-action:hover {
-  background: var(--bpmnkit-overlay-border, rgba(0, 0, 0, 0.06));
+  background: var(--bpmnkit-chrome-hover);
+  color: var(--bpmnkit-chrome-ink);
 }
 .bpmnkit-menu-drop-sep {
   height: 1px;
-  background: var(--bpmnkit-overlay-border, rgba(0,0,0,0.1));
-  margin: 3px 4px;
-}
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-dropdown {
-  background: var(--bpmnkit-panel-bg, rgba(13,13,22,0.92));
-  border-color: var(--bpmnkit-panel-border, rgba(255, 255, 255, 0.08));
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-item,
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-back-btn,
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-level-title,
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-info-row,
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-info-action,
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-drop-label {
-  color: rgba(205, 214, 244, 0.9);
-}
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-item:hover,
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-back-btn:hover,
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-info-action:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-info-action {
-  border-color: rgba(255, 255, 255, 0.15);
-}
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-drop-sep {
-  background: var(--bpmnkit-panel-border, rgba(255, 255, 255, 0.08));
-}
-[data-bpmnkit-hud-theme="dark"] .bpmnkit-menu-item-check {
-  color: var(--bpmnkit-accent-bright, #89b4fa);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-dropdown {
-  background: oklch(8% 0.03 270 / 0.96);
-  border-color: oklch(65% 0.28 280 / 0.2);
-  box-shadow: 0 4px 20px oklch(0% 0 0 / 0.6), 0 0 0 1px oklch(65% 0.28 280 / 0.1);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-item,
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-back-btn,
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-level-title,
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-info-row,
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-info-action,
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-drop-label {
-  color: oklch(73% 0.16 280);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-item:hover,
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-back-btn:hover,
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-info-action:hover {
-  background: oklch(65% 0.28 280 / 0.1);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-info-action {
-  border-color: oklch(65% 0.28 280 / 0.2);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-drop-sep {
-  background: oklch(65% 0.28 280 / 0.15);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-menu-item-check {
-  color: oklch(72% 0.18 185);
+  background: var(--bpmnkit-chrome-line);
 }
 `
 
 export function injectMainMenuStyles(): void {
 	if (typeof document === "undefined") return
+	injectChromeStyles()
 	if (document.getElementById(MAIN_MENU_STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = MAIN_MENU_STYLE_ID

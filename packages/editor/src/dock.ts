@@ -1,3 +1,4 @@
+import { injectChromeStyles } from "./chrome.js"
 const DOCK_STYLE_ID = "bpmnkit-side-dock-styles-v1"
 const STORAGE_KEY_WIDTH = "bpmnkit-side-dock-width"
 const STORAGE_KEY_COLLAPSED = "bpmnkit-side-dock-collapsed"
@@ -14,8 +15,8 @@ const DOCK_CSS = `
 .bpmnkit-side-dock {
   position: fixed; right: 0; top: 36px; bottom: 0;
   z-index: 9999; display: flex; flex-direction: column;
-  background: var(--hud-ground, #0d0d16);
-  border-left: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
+  background: var(--bpmnkit-chrome-ground, #0d0d16);
+  border-left: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
   font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
   transition: width 0.22s ease;
 }
@@ -23,27 +24,27 @@ const DOCK_CSS = `
 .bpmnkit-side-dock__collapse-handle {
   position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
   width: 20px; height: 52px;
-  background: var(--hud-ground, #0d0d16);
-  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14)); border-right: none;
+  background: var(--bpmnkit-chrome-ground, #0d0d16);
+  border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14)); border-right: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 1;
-  color: var(--hud-ink-4, #9aa1aa);
+  color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: 13px; line-height: 1;
   font-variant-emoji: text;
   user-select: none;
 }
-.bpmnkit-side-dock__collapse-handle:hover { color: var(--hud-ink, #f4f5f7); background: var(--hud-hover, rgba(255,255,255,0.07)); }
+.bpmnkit-side-dock__collapse-handle:hover { color: var(--bpmnkit-chrome-ink, #f4f5f7); background: var(--bpmnkit-chrome-hover, rgba(255,255,255,0.07)); }
 .bpmnkit-side-dock__resize-handle {
   position: absolute; left: 0; top: 0; bottom: 0;
   width: 5px; cursor: ew-resize; z-index: 2;
 }
-.bpmnkit-side-dock__resize-handle:hover { background: var(--hud-accent, #c9755c); }
+.bpmnkit-side-dock__resize-handle:hover { background: var(--bpmnkit-chrome-accent, #c9755c); }
 
 /* ── Tabs — equal-width row, the underline sits on the row's own rule ── */
 .bpmnkit-side-dock__tab-strip {
   display: flex; align-items: stretch; height: 34px; flex-shrink: 0;
-  border-bottom: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
+  border-bottom: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
   overflow-x: auto; scrollbar-width: none;
 }
 .bpmnkit-side-dock__tab-strip::-webkit-scrollbar { display: none; }
@@ -51,16 +52,16 @@ const DOCK_CSS = `
 .bpmnkit-side-dock__tab {
   flex: 1 0 auto;
   padding: 0 10px; height: 100%; background: none; border: none;
-  border-bottom: 2px solid transparent; color: var(--hud-ink-4, #9aa1aa);
+  border-bottom: 2px solid transparent; color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
   cursor: pointer; white-space: nowrap;
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
   letter-spacing: 0.08em; text-transform: uppercase;
 }
-.bpmnkit-side-dock__tab:hover { color: var(--hud-ink-2, #c8ccd2); }
+.bpmnkit-side-dock__tab:hover { color: var(--bpmnkit-chrome-ink-2, #c8ccd2); }
 .bpmnkit-side-dock__tab.active {
-  color: var(--hud-ink, #f4f5f7);
-  border-bottom-color: var(--hud-accent, #c9755c);
+  color: var(--bpmnkit-chrome-ink, #f4f5f7);
+  border-bottom-color: var(--bpmnkit-chrome-accent, #c9755c);
   margin-bottom: -1px;
 }
 .bpmnkit-side-dock__tab:disabled { opacity: 0.3; cursor: default; }
@@ -77,23 +78,23 @@ const DOCK_CSS = `
 .bpmnkit-side-dock__info-row {
   display: flex; flex-direction: column;
   padding: 14px 0;
-  border-bottom: 1px solid var(--hud-line-soft, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--bpmnkit-chrome-line-soft, rgba(255, 255, 255, 0.08));
   gap: 7px;
 }
 .bpmnkit-side-dock__info-label {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--hud-ink-4, #9aa1aa);
+  text-transform: uppercase; color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
 }
 .bpmnkit-side-dock__info-value {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
-  font-size: 12.5px; color: var(--hud-ink-2, #c8ccd2); word-break: break-word;
+  font-size: 12.5px; color: var(--bpmnkit-chrome-ink-2, #c8ccd2); word-break: break-word;
 }
 /* A sentence, not a label — --ink-4 does not clear 4.5:1 on a light ground. */
 .bpmnkit-side-dock__empty-hint {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: var(--bpmnkit-ds-t-mono-label, 11.5px); letter-spacing: 0.04em;
-  color: var(--hud-ink-2, #c8ccd2);
+  color: var(--bpmnkit-chrome-ink-2, #c8ccd2);
   padding: 24px 0;
 }
 /* Collapsed state — only the handle remains visible */
@@ -104,6 +105,7 @@ const DOCK_CSS = `
 `
 
 function injectDockStyles(): void {
+	injectChromeStyles()
 	if (document.getElementById(DOCK_STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = DOCK_STYLE_ID

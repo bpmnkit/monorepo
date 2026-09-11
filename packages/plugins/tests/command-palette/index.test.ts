@@ -175,11 +175,18 @@ describe("createCommandPalettePlugin", () => {
 		expect(document.getElementById("bpmnkit-command-palette-styles-v1")).not.toBeNull()
 	})
 
-	it("applies light theme class when theme is light", () => {
+	it("marks the overlay light so the chrome tokens resolve light", () => {
 		install("light")
 		ctrlK()
 		const overlay = document.querySelector(".bpmnkit-palette-overlay")
-		expect(overlay?.classList.contains("bpmnkit-palette--light")).toBe(true)
+		expect(overlay?.getAttribute("data-bpmnkit-hud-theme")).toBe("light")
+	})
+
+	it("leaves dark and neon inheriting the chrome theme from the body", () => {
+		install("dark")
+		ctrlK()
+		const overlay = document.querySelector(".bpmnkit-palette-overlay")
+		expect(overlay?.hasAttribute("data-bpmnkit-hud-theme")).toBe(false)
 	})
 
 	it("uninstall closes open palette and cleans up", () => {

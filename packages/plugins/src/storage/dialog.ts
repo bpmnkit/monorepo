@@ -1,98 +1,76 @@
+import { injectChromeStyles } from "@bpmnkit/editor"
+
 const STYLE_ID = "stor-dialog-styles"
 
 function injectStyles(): void {
+	if (typeof document === "undefined") return
+	injectChromeStyles()
 	if (document.getElementById(STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = STYLE_ID
+	/* Flat, square, hairline-ruled; grounds come from the shared chrome tokens,
+	   so this is one set of rules rather than a dark one plus a light copy. */
 	style.textContent = `
 .stor-dialog-overlay {
   position: fixed; inset: 0; z-index: 500;
-  background: rgba(0,0,0,0.5);
+  background: var(--bpmnkit-chrome-scrim);
   display: flex; align-items: center; justify-content: center;
 }
 .stor-dialog {
-  background: rgba(22, 22, 30, 0.97);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px;
-  padding: 20px;
-  min-width: 300px; max-width: 90vw;
-  color: rgba(255,255,255,0.85);
-  font-family: system-ui, -apple-system, sans-serif;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
-  display: flex; flex-direction: column; gap: 12px;
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
+  padding: 24px 26px;
+  min-width: 320px; max-width: 90vw;
+  color: var(--bpmnkit-chrome-ink-2);
+  font-family: var(--bpmnkit-chrome-font);
+  display: flex; flex-direction: column; gap: 14px;
 }
 .stor-dialog-title {
-  font-size: 14px; font-weight: 600;
-  color: rgba(255,255,255,0.95);
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--bpmnkit-chrome-ink-4);
 }
 .stor-dialog-msg {
-  font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.4;
+  font-size: var(--bpmnkit-ds-t-body-sm, 14.5px);
+  color: var(--bpmnkit-chrome-ink-2); line-height: 1.5;
 }
 .stor-dialog-input {
-  width: 100%; padding: 6px 10px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
-  color: rgba(255,255,255,0.9);
-  font-size: 13px;
+  width: 100%; padding: 7px 9px;
+  background: transparent;
+  border: 1px solid var(--bpmnkit-chrome-line);
+  color: var(--bpmnkit-chrome-ink);
+  font-family: var(--bpmnkit-chrome-mono); font-size: 12.5px;
   outline: none;
   box-sizing: border-box;
 }
-.stor-dialog-input:focus { border-color: rgba(60,120,220,0.6); }
-.stor-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.stor-dialog-input:focus { border-color: var(--bpmnkit-chrome-accent); }
+.stor-dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .stor-dialog-btn {
-  font-size: 13px; padding: 6px 14px; border-radius: 6px;
-  cursor: pointer; font-weight: 500;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.8);
+  font-family: var(--bpmnkit-chrome-mono); font-size: 12px; padding: 7px 16px;
+  cursor: pointer;
+  border: 1px solid var(--bpmnkit-chrome-line);
+  background: transparent;
+  color: var(--bpmnkit-chrome-ink-2);
 }
-.stor-dialog-btn:hover { background: rgba(255,255,255,0.1); }
+.stor-dialog-btn:hover { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-ink); }
 .stor-dialog-btn--primary {
-  background: rgba(60,120,220,0.5);
-  border-color: rgba(60,120,220,0.7);
-  color: #fff;
+  background: var(--bpmnkit-chrome-accent);
+  border-color: var(--bpmnkit-chrome-accent);
+  color: var(--bpmnkit-chrome-accent-fg);
 }
-.stor-dialog-btn--primary:hover { background: rgba(60,120,220,0.65); }
+.stor-dialog-btn--primary:hover {
+  background: var(--bpmnkit-ds-accent-hover, #8f412e);
+  border-color: var(--bpmnkit-ds-accent-hover, #8f412e);
+  color: var(--bpmnkit-chrome-accent-fg);
+}
+/* Destructive is semantic state, exempt from the one-accent rule. */
 .stor-dialog-btn--danger {
-  background: rgba(200,40,40,0.5);
-  border-color: rgba(200,40,40,0.7);
-  color: #fff;
+  background: var(--bpmnkit-danger, #dc2626);
+  border-color: var(--bpmnkit-danger, #dc2626);
+  color: var(--bpmnkit-chrome-accent-fg);
 }
-.stor-dialog-btn--danger:hover { background: rgba(200,40,40,0.65); }
-/* Light theme */
-[data-bpmnkit-hud-theme="light"] .stor-dialog {
-  background: rgba(252,252,254,0.98);
-  border-color: rgba(0,0,0,0.1);
-  color: rgba(0,0,0,0.8);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-}
-[data-bpmnkit-hud-theme="light"] .stor-dialog-title { color: rgba(0,0,0,0.88); }
-[data-bpmnkit-hud-theme="light"] .stor-dialog-msg { color: rgba(0,0,0,0.55); }
-[data-bpmnkit-hud-theme="light"] .stor-dialog-input {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.15);
-  color: rgba(0,0,0,0.9);
-}
-[data-bpmnkit-hud-theme="light"] .stor-dialog-input:focus { border-color: rgba(0,80,200,0.4); }
-[data-bpmnkit-hud-theme="light"] .stor-dialog-btn {
-  border-color: rgba(0,0,0,0.12);
-  background: rgba(0,0,0,0.04);
-  color: rgba(0,0,0,0.7);
-}
-[data-bpmnkit-hud-theme="light"] .stor-dialog-btn:hover { background: rgba(0,0,0,0.08); }
-[data-bpmnkit-hud-theme="light"] .stor-dialog-btn--primary {
-  background: rgba(0,80,200,0.85);
-  border-color: rgba(0,80,200,0.9);
-  color: #fff;
-}
-[data-bpmnkit-hud-theme="light"] .stor-dialog-btn--primary:hover { background: rgba(0,80,200,1); }
-[data-bpmnkit-hud-theme="light"] .stor-dialog-btn--danger {
-  background: rgba(180,30,30,0.85);
-  border-color: rgba(180,30,30,0.9);
-  color: #fff;
-}
-[data-bpmnkit-hud-theme="light"] .stor-dialog-btn--danger:hover { background: rgba(180,30,30,1); }
+.stor-dialog-btn--danger:hover { background: var(--bpmnkit-danger, #dc2626); color: var(--bpmnkit-chrome-accent-fg); }
 `
 	document.head.appendChild(style)
 }

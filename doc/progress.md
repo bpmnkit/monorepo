@@ -1,5 +1,59 @@
 # Progress
 
+## 2026-09-11 — The rest of the plugin chrome, and one shared set of theme tokens
+
+The remaining `@bpmnkit/plugins` panels move onto the design system, which finishes the pass
+that Drop, the editor chrome, the start page and the studio began. **1,060 lines net came out**
+of 32 files, because the work was mostly deletion.
+
+**Why it shrank.** Every panel carried the same shape: a dark default, then a
+`[data-bpmnkit-hud-theme="light"]` copy restating the same roles in light rgba, then often a
+`"neon"` copy on top — 454 theme-override selectors across the package. Those exist only
+because there was nowhere to say "this is the panel ground" once. So the first change was
+`packages/editor/src/chrome.ts`: a `--bpmnkit-chrome-*` set declared once per theme, which the
+HUD, the side dock, the modal and now every plugin sheet read. The per-theme copies then had
+nothing left to say and went. The editor's own `--hud-*` names were renamed into that set,
+since they are public surface in a published package and were never HUD-specific.
+
+**What the panels lost.** 42 `box-shadow`, 5 `backdrop-filter`, 142 non-circular
+`border-radius`, and the blue/purple/teal ramps that a one-accent system has no room for.
+Kept: circular marks (a status dot is a dot, not chrome), semantic state — success, warning,
+danger — and the two document palettes the brief exempts alongside the BPMN diagram: the DMN
+decision table's own semantics and the FEEL syntax classes.
+
+**Scope was wider than the roadmap said.** The roadmap tracked 12 files, found by grepping for
+theme blocks. Sweeping for shadows instead turned up 11 more panels that never had theme blocks
+and so were never counted — diff, lint, minimap, story-view, variable-flow, pattern-advisor,
+zoom-controls, presentation, feel-playground, dmn-editor and config-panel-bpmn. They are done
+too; leaving them would have meant shadowed panels sitting beside flat ones.
+
+**The mechanical pass, and the two things it got wrong.** Rewriting 5,000 lines by hand was not
+sensible, so a script did the classifiable part — drop radius/shadow/blur, map the rgba ramps
+and the `--bpmnkit-*` product tokens onto the chrome roles, put uppercase labels in the mono
+role, delete the theme blocks — and *reported* whatever it could not classify rather than
+guessing. Two defects came out of it, both found by checking rather than reading:
+
+- A `var(--x, var(--y, #z))` fallback has a nested paren, and the token regex stopped at the
+  first `)`, leaving **38 declarations with a stray `)`** — silently dead CSS. A balance check
+  over every changed line found them all.
+- The "insert the import after the last import" step matched the *first line* of a multi-line
+  import in `config-panel-bpmn`, splitting it and breaking the build.
+
+Afterwards every CSS template literal was parsed with the browser's own parser and its rule
+count compared against the selectors in source: **all 23 stylesheets parse 1:1**, so nothing was
+dropped or malformed.
+
+**What holds it.** `tests/chrome-invariants.test.ts` walks the package and asserts no shadow, no
+blur, no gradient, no non-circular radius, no per-theme block, no raw hex outside a `var()`
+fallback, no read of the blue product accent, and mono for every uppercase label. Measured
+against the pre-change sources those assertions account for 42 + 5 + 454 + 142 violations, so
+they are load-bearing rather than decorative.
+
+**Still open.** `flow-navigation` recolours the shape's own stroke for its keyboard cursor; the
+brief wants a halo *around* the shape, which needs a rendered overlay rather than a CSS change.
+It at least spends the system's accent now. Noted in the roadmap, as is the observation that
+`story-view`'s `bpmnkit-sv-card--*` modifiers are emitted nowhere in the repo.
+
 ## 2026-09-10 — The editor's start page and the studio join the design system
 
 Two more surfaces onto the bpmnkit.com system, using the `--bpmnkit-ds-*` tokens added

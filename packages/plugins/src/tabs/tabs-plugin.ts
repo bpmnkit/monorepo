@@ -353,6 +353,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		const dialog = document.createElement("div")
 		dialog.className = "bpmnkit-close-dialog"
 		dialog.dataset.theme = theme
+		dialog.dataset.bpmnkitHudTheme = theme
 
 		const titleEl = document.createElement("div")
 		titleEl.className = "bpmnkit-close-dialog-title"
@@ -422,6 +423,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		const el = document.createElement("div")
 		el.className = "bpmnkit-welcome"
 		el.dataset.theme = theme
+		el.dataset.bpmnkitHudTheme = theme
 		el.style.display = "none"
 
 		const inner = document.createElement("div")
@@ -699,6 +701,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		if (!dropdownEl) return
 		dropdownEl.innerHTML = ""
 		dropdownEl.dataset.theme = theme
+		dropdownEl.dataset.bpmnkitHudTheme = theme
 
 		for (const tab of group) {
 			const item = document.createElement("div")
@@ -750,6 +753,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		if (!dropdownEl) return
 		dropdownEl.innerHTML = ""
 		dropdownEl.dataset.theme = theme
+		dropdownEl.dataset.bpmnkitHudTheme = theme
 
 		for (const type of GROUP_TYPES) {
 			const group = tabs.filter((t) => t.config.type === type)
@@ -1367,6 +1371,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			tabBar = document.createElement("div")
 			tabBar.className = "bpmnkit-tabs"
 			tabBar.dataset.theme = theme
+			tabBar.dataset.bpmnkitHudTheme = theme
 			container.appendChild(tabBar)
 
 			if (options.centerSlot) {
@@ -1390,6 +1395,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			rawPaneEl = document.createElement("div")
 			rawPaneEl.className = "bpmnkit-raw-pane"
 			rawPaneEl.dataset.theme = theme
+			rawPaneEl.dataset.bpmnkitHudTheme = theme
 			rawPaneEl.style.display = "none"
 			const rawCopyBtn = document.createElement("button")
 			rawCopyBtn.type = "button"
@@ -1431,6 +1437,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			dropdownEl = document.createElement("div")
 			dropdownEl.className = "bpmnkit-tab-dropdown"
 			dropdownEl.dataset.theme = theme
+			dropdownEl.dataset.bpmnkitHudTheme = theme
 			document.body.appendChild(dropdownEl)
 
 			// Close dropdown when clicking outside the tab bar or dropdown
@@ -1499,10 +1506,22 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			const observer = new MutationObserver(() => {
 				const t = container.dataset.theme
 				theme = t === "dark" || t === "neon" ? t : "light"
-				if (tabBar) tabBar.dataset.theme = theme
-				if (welcomeEl) welcomeEl.dataset.theme = theme
-				if (dropdownEl) dropdownEl.dataset.theme = theme
-				if (rawPaneEl) rawPaneEl.dataset.theme = theme
+				if (tabBar) {
+					tabBar.dataset.theme = theme
+					tabBar.dataset.bpmnkitHudTheme = theme
+				}
+				if (welcomeEl) {
+					welcomeEl.dataset.theme = theme
+					welcomeEl.dataset.bpmnkitHudTheme = theme
+				}
+				if (dropdownEl) {
+					dropdownEl.dataset.theme = theme
+					dropdownEl.dataset.bpmnkitHudTheme = theme
+				}
+				if (rawPaneEl) {
+					rawPaneEl.dataset.theme = theme
+					rawPaneEl.dataset.bpmnkitHudTheme = theme
+				}
 				for (const tab of tabs) applyThemeToTab(tab)
 			})
 			observer.observe(container, { attributes: true, attributeFilter: ["data-theme"] })

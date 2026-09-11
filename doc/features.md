@@ -1,5 +1,20 @@
 # Features
 
+## One design system across every editor panel (2026-09-11)
+
+The `@bpmnkit/plugins` panels — command palette, config panel, process runner, AI bridge,
+element docs, connector catalog, main menu, history, deploy, optimize, storage, ascii view,
+live mode, diff, lint, minimap, story view, variable flow, pattern advisor, zoom controls,
+presentation and feel playground — are flat, square and hairline-ruled, on one accent.
+
+- **`--bpmnkit-chrome-*`, declared once.** `packages/editor/src/chrome.ts` holds the per-theme
+  ground, line, ink, accent and scrim that every piece of editor chrome reads. A panel
+  stylesheet is now one set of rules; the dark/light/neon copies it used to carry are gone.
+- **1,060 lines net removed** across 32 files, almost all of it duplicated theming.
+- **Exempt, deliberately**: circular marks, semantic state (success / warning / danger), and the
+  two document palettes the brief leaves to their renderers — the DMN decision table and the
+  FEEL syntax classes.
+
 ## The design system reaches the editor's start page and the studio (2026-09-10)
 
 - **Editor start page** (`@bpmnkit/plugins/tabs`) — flat, square, hairline-ruled: actions in one

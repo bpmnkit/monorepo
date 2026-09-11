@@ -1,3 +1,5 @@
+import { injectChromeStyles } from "@bpmnkit/editor"
+
 /** ID used to prevent duplicate style injection. */
 export const LINT_STYLE_ID = "bpmnkit-lint-styles-v1"
 
@@ -51,14 +53,14 @@ export const LINT_CSS = `
 .bpmnkit-lint-info .bpmnkit-data-body,
 .bpmnkit-lint-info .bpmnkit-datastore-body,
 .bpmnkit-lint-info .bpmnkit-group-body {
-  stroke: var(--bpmnkit-accent, #1a56db) !important;
+  stroke: var(--bpmnkit-chrome-accent) !important;
   stroke-dasharray: 4 3 !important;
 }
 
 /* The element the summary control last stepped to. */
 @keyframes bpmnkit-lint-focus-pulse {
   0%, 100% { filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0)); }
-  50%      { filter: drop-shadow(0 0 10px var(--bpmnkit-accent, #1a56db)); }
+  50%      { filter: drop-shadow(0 0 10px var(--bpmnkit-chrome-accent)); }
 }
 .bpmnkit-lint-focus {
   animation: bpmnkit-lint-focus-pulse 0.6s ease-in-out 2;
@@ -75,22 +77,20 @@ export const LINT_CSS = `
   align-items: center;
   gap: 10px;
   padding: 6px 10px;
-  border-radius: 6px;
-  background: var(--bpmnkit-panel-bg, rgba(255, 255, 255, 0.92));
-  border: 1px solid var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  font-family: var(--bpmnkit-font, system-ui, -apple-system, sans-serif);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
+  font-family: var(--bpmnkit-chrome-font);
   font-size: 11px;
   line-height: 1.4;
-  color: var(--bpmnkit-fg, #1a1a2e);
+  color: var(--bpmnkit-chrome-ink);
   cursor: pointer;
   user-select: none;
 }
 .bpmnkit-lint-summary:hover {
-  background: var(--bpmnkit-surface-2, #eeeef8);
+  background: var(--bpmnkit-chrome-ground-2);
 }
 .bpmnkit-lint-summary:focus-visible {
-  outline: 2px solid var(--bpmnkit-accent, #1a56db);
+  outline: 2px solid var(--bpmnkit-chrome-accent);
   outline-offset: 1px;
 }
 /* Our own display:flex outranks the UA stylesheet's [hidden] rule. */
@@ -110,24 +110,25 @@ export const LINT_CSS = `
   color: var(--bpmnkit-warn, #d97706);
 }
 .bpmnkit-lint-count[data-severity="info"] {
-  color: var(--bpmnkit-accent, #1a56db);
+  color: var(--bpmnkit-chrome-accent);
 }
 .bpmnkit-lint-clean {
   color: var(--bpmnkit-success, #16a34a);
 }
 .bpmnkit-lint-note {
-  color: var(--bpmnkit-fg-muted, #6666a0);
+  color: var(--bpmnkit-chrome-ink-4);
   font-style: italic;
 }
 .bpmnkit-lint-platform {
-  color: var(--bpmnkit-fg-muted, #6666a0);
-  border-left: 1px solid var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08));
+  color: var(--bpmnkit-chrome-ink-4);
+  border-left: 1px solid var(--bpmnkit-chrome-line);
   padding-left: 8px;
 }
 `
 
 /** Injects {@link LINT_CSS} into `<head>` once per document. */
 export function injectLintStyles(): void {
+	injectChromeStyles()
 	if (typeof document === "undefined") return
 	if (document.getElementById(LINT_STYLE_ID) !== null) return
 	const style = document.createElement("style")

@@ -1,42 +1,29 @@
+import { injectChromeStyles } from "@bpmnkit/editor"
+
 export const FEEL_PLAYGROUND_STYLE_ID = "feel-playground-styles"
 
 export const FEEL_PLAYGROUND_CSS = `
-/* ── Light-theme defaults ─────────────────────────────────────────── */
+/* ── Chrome ───────────────────────────────────────────────────────────
+   The panel's own variables now resolve from the shared chrome tokens, so
+   the light and dark copies below collapsed into this one block. The
+   .feel-* syntax classes further down keep their own palette: syntax
+   highlighting is exempt from the one-accent rule. */
 .feel-playground {
-  --fp-bg: #fafafa;
-  --fp-header-bg: #f0f0f0;
-  --fp-border: #e0e0e0;
-  --fp-text: #333333;
-  --fp-muted: #666666;
-  --fp-input-bg: #ffffff;
-  --fp-result-bg: #f5f5f5;
-  --fp-error-bg: #fff2f2;
-  --fp-error-text: #cc0000;
-  --fp-active-btn-bg: #0062ff;
-  --fp-active-btn-fg: #ffffff;
-  --fp-inactive-btn-bg: #e8e8e8;
-  --fp-inactive-btn-border: #d0d0d0;
-  --fp-inactive-btn-fg: #444444;
-  --fp-select-bg: #ffffff;
-}
-
-/* ── Dark-theme overrides ─────────────────────────────────────────── */
-[data-theme="dark"] .feel-playground {
-  --fp-bg: #1e1e1e;
-  --fp-header-bg: #252526;
-  --fp-border: #3c3c3c;
-  --fp-text: #d4d4d4;
-  --fp-muted: #888888;
-  --fp-input-bg: #1e1e1e;
-  --fp-result-bg: #252526;
-  --fp-error-bg: #3c1e1e;
-  --fp-error-text: #f44747;
-  --fp-active-btn-bg: #0e639c;
-  --fp-active-btn-fg: #ffffff;
-  --fp-inactive-btn-bg: #3c3c3c;
-  --fp-inactive-btn-border: #555555;
-  --fp-inactive-btn-fg: #cccccc;
-  --fp-select-bg: #3c3c3c;
+  --fp-bg: var(--bpmnkit-chrome-ground);
+  --fp-header-bg: var(--bpmnkit-chrome-ground-2);
+  --fp-border: var(--bpmnkit-chrome-line);
+  --fp-text: var(--bpmnkit-chrome-ink);
+  --fp-muted: var(--bpmnkit-chrome-ink-4);
+  --fp-input-bg: var(--bpmnkit-chrome-ground);
+  --fp-result-bg: var(--bpmnkit-chrome-ground-2);
+  --fp-error-bg: transparent;
+  --fp-error-text: var(--bpmnkit-danger, #dc2626);
+  --fp-active-btn-bg: var(--bpmnkit-chrome-accent);
+  --fp-active-btn-fg: var(--bpmnkit-chrome-accent-fg);
+  --fp-inactive-btn-bg: transparent;
+  --fp-inactive-btn-border: var(--bpmnkit-chrome-line);
+  --fp-inactive-btn-fg: var(--bpmnkit-chrome-ink-2);
+  --fp-select-bg: var(--bpmnkit-chrome-ground);
 }
 
 .feel-playground {
@@ -44,7 +31,7 @@ export const FEEL_PLAYGROUND_CSS = `
   height: 100%;
   background: var(--fp-bg);
   color: var(--fp-text);
-  font-family: monospace;
+  font-family: var(--bpmnkit-chrome-mono);
   font-size: 13px;
   display: flex;
   flex-direction: column;
@@ -65,13 +52,8 @@ export const FEEL_PLAYGROUND_CSS = `
   border-right: none;
   border-bottom: none;
   overflow: hidden;
-  box-shadow: -4px -4px 20px rgba(0, 0, 0, 0.15);
 }
 
-[data-theme="dark"] .feel-playground-overlay {
-  border-color: #3c3c3c;
-  box-shadow: -4px -4px 20px rgba(0, 0, 0, 0.4);
-}
 
 .feel-playground__header {
   display: flex;
@@ -92,7 +74,7 @@ export const FEEL_PLAYGROUND_CSS = `
   color: var(--fp-text);
   font-size: 12px;
   flex: 1;
-  font-family: system-ui, sans-serif;
+  font-family: var(--bpmnkit-chrome-font);
 }
 
 .feel-playground__close {
@@ -116,7 +98,6 @@ export const FEEL_PLAYGROUND_CSS = `
   background: var(--fp-inactive-btn-bg);
   border: 1px solid var(--fp-inactive-btn-border);
   color: var(--fp-inactive-btn-fg);
-  border-radius: 3px;
   padding: 2px 8px;
   font-size: 11px;
   cursor: pointer;
@@ -143,13 +124,12 @@ export const FEEL_PLAYGROUND_CSS = `
   font-size: 11px;
   color: var(--fp-muted);
   margin-bottom: 2px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--bpmnkit-chrome-font);
 }
 
 .feel-playground__input-wrap {
   position: relative;
   border: 1px solid var(--fp-border);
-  border-radius: 3px;
   background: var(--fp-input-bg);
 }
 
@@ -192,7 +172,6 @@ export const FEEL_PLAYGROUND_CSS = `
   box-sizing: border-box;
   background: var(--fp-input-bg);
   border: 1px solid var(--fp-border);
-  border-radius: 3px;
   color: var(--fp-text);
   padding: 5px 8px;
   font: inherit;
@@ -209,11 +188,10 @@ export const FEEL_PLAYGROUND_CSS = `
   padding: 6px 8px;
   background: var(--fp-result-bg);
   border: 1px solid var(--fp-border);
-  border-radius: 3px;
   min-height: 28px;
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: system-ui, sans-serif;
+  font-family: var(--bpmnkit-chrome-font);
 }
 
 .feel-playground__result.null-val  { color: var(--fp-muted); font-style: italic; }
@@ -235,8 +213,7 @@ export const FEEL_PLAYGROUND_CSS = `
   color: var(--fp-error-text);
   padding: 4px 6px;
   background: var(--fp-error-bg);
-  border-radius: 3px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--bpmnkit-chrome-font);
 }
 
 .feel-playground__examples {
@@ -251,9 +228,8 @@ export const FEEL_PLAYGROUND_CSS = `
   border: 1px solid var(--fp-border);
   color: var(--fp-text);
   padding: 3px 6px;
-  border-radius: 3px;
   font-size: 12px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--bpmnkit-chrome-font);
 }
 
 /* ── FEEL syntax highlighting — light theme ───────────────────────── */
@@ -284,6 +260,7 @@ export const FEEL_PLAYGROUND_CSS = `
 `
 
 export function injectPlaygroundStyles(): void {
+	injectChromeStyles()
 	if (document.getElementById(FEEL_PLAYGROUND_STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = FEEL_PLAYGROUND_STYLE_ID

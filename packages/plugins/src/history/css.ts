@@ -1,129 +1,114 @@
+import { injectChromeStyles } from "@bpmnkit/editor"
+
 const STYLE_ID = "bpmnkit-history-styles"
 
 export function injectHistoryStyles(): void {
+	if (typeof document === "undefined") return
+	injectChromeStyles()
 	if (document.getElementById(STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = STYLE_ID
+	/* Flat, square, hairline-ruled. Grounds come from the shared chrome tokens,
+	   so this is one set of rules rather than a dark one plus a light copy. */
 	style.textContent = `
 /* ── History pane ────────────────────────────────────────────────────────── */
 .bpmnkit-hist-pane {
   display: flex; flex-direction: column; height: 100%; overflow: hidden;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--bpmnkit-chrome-font);
 }
 .bpmnkit-hist-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px 9px; flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 14px; height: 34px; flex-shrink: 0;
+  border-bottom: 1px solid var(--bpmnkit-chrome-line);
 }
 .bpmnkit-hist-header-title {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: rgba(255,255,255,0.3);
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-hist-refresh {
-  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
-  background: transparent; border: none; border-radius: 4px;
-  color: rgba(255,255,255,0.35); cursor: pointer; font-size: 14px; line-height: 1;
-  transition: color 0.1s, background 0.1s;
+  width: 24px; height: 22px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  color: var(--bpmnkit-chrome-ink-4); cursor: pointer;
+  font-family: var(--bpmnkit-chrome-mono); font-size: 13px; line-height: 1;
+  font-variant-emoji: text;
 }
-.bpmnkit-hist-refresh:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.07); }
+.bpmnkit-hist-refresh:hover { color: var(--bpmnkit-chrome-ink); background: var(--bpmnkit-chrome-hover); }
 .bpmnkit-hist-list {
-  flex: 1; overflow-y: auto; padding: 4px 0 8px;
+  flex: 1; overflow-y: auto; padding: 0 0 8px;
 }
 .bpmnkit-hist-list::-webkit-scrollbar { width: 4px; }
 .bpmnkit-hist-list::-webkit-scrollbar-track { background: transparent; }
-.bpmnkit-hist-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 2px; }
+.bpmnkit-hist-list::-webkit-scrollbar-thumb { background: var(--bpmnkit-chrome-line); }
 .bpmnkit-hist-group-label {
-  padding: 10px 14px 3px;
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.07em; color: rgba(255,255,255,0.28);
+  padding: 14px 14px 6px;
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-hist-item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 5px 14px; gap: 10px;
-  transition: background 0.1s;
+  padding: 7px 14px; gap: 10px;
+  border-bottom: 1px solid var(--bpmnkit-chrome-line-soft);
 }
-.bpmnkit-hist-item:hover { background: rgba(255,255,255,0.04); }
+.bpmnkit-hist-item:hover { background: var(--bpmnkit-chrome-hover); }
 .bpmnkit-hist-item-time {
-  font-size: 12.5px; color: rgba(255,255,255,0.65);
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: 12.5px; color: var(--bpmnkit-chrome-ink-2);
   font-variant-numeric: tabular-nums; flex: 1;
 }
 .bpmnkit-hist-restore {
-  flex-shrink: 0; font-size: 11px; padding: 3px 9px;
-  background: var(--bpmnkit-accent-subtle, rgba(107,157,247,0.15)); border: 1px solid rgba(76,142,247,0.3);
-  border-radius: 4px; color: rgba(140,185,255,0.85);
-  cursor: pointer; font-family: inherit;
-  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  flex-shrink: 0;
+  font-family: var(--bpmnkit-chrome-mono); font-size: 11px; padding: 3px 10px;
+  background: transparent; border: 1px solid var(--bpmnkit-chrome-accent);
+  color: var(--bpmnkit-chrome-accent);
+  cursor: pointer;
 }
 .bpmnkit-hist-restore:hover {
-  background: rgba(76,142,247,0.26); border-color: rgba(76,142,247,0.52);
-  color: rgba(180,210,255,0.95);
+  background: var(--bpmnkit-chrome-accent); color: var(--bpmnkit-chrome-accent-fg);
 }
 .bpmnkit-hist-empty {
   padding: 32px 20px; text-align: center;
-  color: rgba(255,255,255,0.28); font-size: 12px; line-height: 1.65;
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: var(--bpmnkit-ds-t-mono-label, 11.5px); letter-spacing: 0.04em;
+  color: var(--bpmnkit-chrome-ink-4); line-height: 1.65;
 }
 /* ── Confirm dialog ──────────────────────────────────────────────────────── */
 .bpmnkit-hist-confirm-overlay {
   position: fixed; inset: 0; z-index: 10100;
-  background: rgba(0,0,0,0.55);
+  background: var(--bpmnkit-chrome-scrim);
   display: flex; align-items: center; justify-content: center;
 }
 .bpmnkit-hist-confirm-panel {
-  background: var(--bpmnkit-panel-bg, rgba(13,13,22,0.92)); border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px; padding: 20px 22px; width: 300px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bpmnkit-chrome-ground); border: 1px solid var(--bpmnkit-chrome-line);
+  padding: 24px 26px; width: 320px;
+  font-family: var(--bpmnkit-chrome-font);
 }
 .bpmnkit-hist-confirm-title {
-  font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,0.9); margin-bottom: 7px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--bpmnkit-chrome-ink); margin-bottom: 8px;
 }
 .bpmnkit-hist-confirm-body {
-  font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.55; margin-bottom: 18px;
+  font-size: var(--bpmnkit-ds-t-body-sm, 14.5px);
+  color: var(--bpmnkit-chrome-ink-2); line-height: 1.55; margin-bottom: 20px;
 }
-.bpmnkit-hist-confirm-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.bpmnkit-hist-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .bpmnkit-hist-confirm-cancel {
-  padding: 5px 13px; background: transparent;
-  border: 1px solid rgba(255,255,255,0.14); border-radius: 6px;
-  color: rgba(255,255,255,0.55); font-size: 12px; cursor: pointer; font-family: inherit;
-  transition: background 0.1s, color 0.1s;
+  padding: 7px 16px; background: transparent;
+  border: 1px solid var(--bpmnkit-chrome-line);
+  color: var(--bpmnkit-chrome-ink-2);
+  font-family: var(--bpmnkit-chrome-mono); font-size: 12px; cursor: pointer;
 }
-.bpmnkit-hist-confirm-cancel:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
+.bpmnkit-hist-confirm-cancel:hover { background: var(--bpmnkit-chrome-hover); color: var(--bpmnkit-chrome-ink); }
 .bpmnkit-hist-confirm-ok {
-  padding: 5px 13px; background: var(--bpmnkit-accent, #6b9df7);
-  border: 1px solid var(--bpmnkit-accent, #6b9df7); border-radius: 6px;
-  color: #fff; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit;
-  transition: background 0.1s;
+  padding: 7px 16px; background: var(--bpmnkit-chrome-accent);
+  border: 1px solid var(--bpmnkit-chrome-accent);
+  color: var(--bpmnkit-chrome-accent-fg);
+  font-family: var(--bpmnkit-chrome-mono); font-size: 12px; cursor: pointer;
 }
-.bpmnkit-hist-confirm-ok:hover { background: var(--bpmnkit-accent, #6b9df7); }
-/* ── Light theme ─────────────────────────────────────────────────────────── */
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-header { border-bottom-color: var(--bpmnkit-panel-border, rgba(0,0,0,0.08)); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-header-title { color: rgba(0,0,0,0.3); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-refresh { color: rgba(0,0,0,0.35); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-refresh:hover { color: rgba(0,0,0,0.75); background: rgba(0,0,0,0.06); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-group-label { color: rgba(0,0,0,0.3); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-item:hover { background: rgba(0,0,0,0.035); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-item-time { color: rgba(0,0,0,0.65); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-restore {
-  background: var(--bpmnkit-accent-subtle, rgba(26,86,219,0.12)); border-color: rgba(26,86,219,0.25); color: rgba(26,86,219,0.9);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-restore:hover {
-  background: rgba(26,86,219,0.16); border-color: rgba(26,86,219,0.45); color: rgba(26,86,219,1);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-empty { color: rgba(0,0,0,0.3); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-confirm-panel {
-  background: rgba(252,252,255,0.99); border-color: rgba(0,0,0,0.1);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-confirm-title { color: rgba(0,0,0,0.88); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-confirm-body { color: rgba(0,0,0,0.5); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-confirm-cancel {
-  border-color: rgba(0,0,0,0.14); color: rgba(0,0,0,0.55);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-confirm-cancel:hover {
-  background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.8);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-confirm-ok { background: var(--bpmnkit-accent, #1a56db); border-color: var(--bpmnkit-accent, #1a56db); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-hist-confirm-ok:hover { background: #1648c2; }
+.bpmnkit-hist-confirm-ok:hover { background: var(--bpmnkit-ds-accent-hover, #8f412e); border-color: var(--bpmnkit-ds-accent-hover, #8f412e); color: var(--bpmnkit-chrome-accent-fg); }
 `
 	document.head.appendChild(style)
 }

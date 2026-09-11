@@ -19,7 +19,7 @@ export const MODEL_NAVIGATION_CSS = `
 .bpmnkit-modelnav-available .bpmnkit-label {
   text-decoration: underline;
   text-decoration-style: dotted;
-  text-decoration-color: var(--bpmnkit-accent-bright, #3b82f6);
+  text-decoration-color: var(--bpmnkit-ds-accent, #a8503a);
   text-underline-offset: 2px;
 }
 `

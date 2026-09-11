@@ -1,6 +1,8 @@
+import { injectChromeStyles } from "./chrome.js"
 const MODAL_STYLE_ID = "bpmnkit-hud-modal-styles"
 
 function injectModalStyles(): void {
+	injectChromeStyles()
 	if (document.getElementById(MODAL_STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = MODAL_STYLE_ID
@@ -11,40 +13,40 @@ function injectModalStyles(): void {
   display: flex; align-items: center; justify-content: center;
 }
 .bpmnkit-hud-modal {
-  background: var(--hud-ground, #0d0d16);
-  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
+  background: var(--bpmnkit-chrome-ground, #0d0d16);
+  border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
   padding: 24px 26px;
   min-width: 320px; max-width: 90vw;
-  color: var(--hud-ink-2, #c8ccd2);
+  color: var(--bpmnkit-chrome-ink-2, #c8ccd2);
   font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
   display: flex; flex-direction: column; gap: 14px;
 }
 .bpmnkit-hud-modal-title {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--hud-ink-4, #9aa1aa);
+  text-transform: uppercase; color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
 }
 .bpmnkit-hud-modal-input {
   width: 100%; padding: 7px 9px;
   background: transparent;
-  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
-  color: var(--hud-ink, #f4f5f7);
+  border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
+  color: var(--bpmnkit-chrome-ink, #f4f5f7);
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: 12.5px;
   outline: none;
   box-sizing: border-box;
 }
-.bpmnkit-hud-modal-input:focus { border-color: var(--hud-accent, #c9755c); }
+.bpmnkit-hud-modal-input:focus { border-color: var(--bpmnkit-chrome-accent, #c9755c); }
 .bpmnkit-hud-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .bpmnkit-hud-modal-btn {
   font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
   font-size: 12px; padding: 7px 16px;
   cursor: pointer;
-  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.14));
+  border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
   background: transparent;
-  color: var(--hud-ink-2, #c8ccd2);
+  color: var(--bpmnkit-chrome-ink-2, #c8ccd2);
 }
-.bpmnkit-hud-modal-btn:hover { background: var(--hud-hover, rgba(255,255,255,0.07)); color: var(--hud-ink, #f4f5f7); }
+.bpmnkit-hud-modal-btn:hover { background: var(--bpmnkit-chrome-hover, rgba(255,255,255,0.07)); color: var(--bpmnkit-chrome-ink, #f4f5f7); }
 .bpmnkit-hud-modal-btn--primary {
   background: var(--bpmnkit-ds-accent, #a8503a);
   border-color: var(--bpmnkit-ds-accent, #a8503a);
