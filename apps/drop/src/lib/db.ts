@@ -141,7 +141,13 @@ export async function getDrop(
 	return { drop, files }
 }
 
-/** Fetch one stored representation of a file by drop + filename. Returns null if unknown. */
+/**
+ * Fetch one *uploaded* representation of a file — the pinned original, whatever
+ * has been edited since. Nothing ever writes to these rows, which is what makes
+ * "the original survives" a property of the schema rather than a promise.
+ *
+ * For what the file says *now*, use {@link getCurrentBody}.
+ */
 export async function getFileBody(
 	db: D1Database,
 	shareId: string,
@@ -157,6 +163,56 @@ export async function getFileBody(
 		.bind(shareId, filename, rep)
 		.first<{ kind: FileKind; hash: string; body: string }>()
 	return row ? { kind: row.kind, body: row.body, hash: row.hash } : null
+}
+
+/**
+ * Fetch a file's current state: the edited body when the drop has been edited,
+ * and the uploaded one when it has not.
+ *
+ * The hash comes from the same row as the body, so the ETag tracks what is
+ * actually served rather than what was once uploaded.
+ */
+export async function getCurrentBody(
+	db: D1Database,
+	shareId: string,
+	filename: string,
+	rep: "original" | "json",
+): Promise<{ kind: FileKind; body: string; hash: string } | null> {
+	const row = await db
+		.prepare(
+			`SELECT f.kind AS kind,
+			        COALESCE(cur.content_hash, f.content_hash) AS hash,
+			        COALESCE(${rep === "json" ? "cur.json" : "cur.body"}, c.body) AS body
+			 FROM files f
+			 JOIN file_content c ON c.file_id = f.id AND c.rep = ?
+			 LEFT JOIN file_current cur ON cur.file_id = f.id
+			 WHERE f.drop_id = ? AND f.filename = ?`,
+		)
+		.bind(rep, shareId, filename)
+		.first<{ kind: FileKind; hash: string; body: string }>()
+	return row ? { kind: row.kind, body: row.body, hash: row.hash } : null
+}
+
+/** Resolve a file's row id and upload metadata, for the version-log routes. */
+export async function getFileRef(
+	db: D1Database,
+	shareId: string,
+	filename: string,
+): Promise<{ id: string; kind: FileKind; contentHash: string; sizeOriginal: number } | null> {
+	const row = await db
+		.prepare(
+			"SELECT id, kind, content_hash, size_original FROM files WHERE drop_id = ? AND filename = ?",
+		)
+		.bind(shareId, filename)
+		.first<{ id: string; kind: FileKind; content_hash: string; size_original: number }>()
+	return row
+		? {
+				id: row.id,
+				kind: row.kind,
+				contentHash: row.content_hash,
+				sizeOriginal: row.size_original,
+			}
+		: null
 }
 
 /** Record a view: bump the counter and slide the retention window forward. */
@@ -202,10 +258,11 @@ export async function deleteDrop(
 		)
 	}
 
+	const children = "(SELECT id FROM files WHERE drop_id = ?)"
 	statements.push(
-		db
-			.prepare("DELETE FROM file_content WHERE file_id IN (SELECT id FROM files WHERE drop_id = ?)")
-			.bind(shareId),
+		db.prepare(`DELETE FROM file_versions WHERE file_id IN ${children}`).bind(shareId),
+		db.prepare(`DELETE FROM file_current WHERE file_id IN ${children}`).bind(shareId),
+		db.prepare(`DELETE FROM file_content WHERE file_id IN ${children}`).bind(shareId),
 		db.prepare("DELETE FROM files WHERE drop_id = ?").bind(shareId),
 		db.prepare("DELETE FROM drops WHERE id = ?").bind(shareId),
 	)
@@ -232,12 +289,11 @@ export async function deleteExpired(db: D1Database, now: number): Promise<number
 
 	const ids = results.map((r) => r.id)
 	const placeholders = ids.map(() => "?").join(", ")
+	const children = `(SELECT id FROM files WHERE drop_id IN (${placeholders}))`
 	await db.batch([
-		db
-			.prepare(
-				`DELETE FROM file_content WHERE file_id IN (SELECT id FROM files WHERE drop_id IN (${placeholders}))`,
-			)
-			.bind(...ids),
+		db.prepare(`DELETE FROM file_versions WHERE file_id IN ${children}`).bind(...ids),
+		db.prepare(`DELETE FROM file_current WHERE file_id IN ${children}`).bind(...ids),
+		db.prepare(`DELETE FROM file_content WHERE file_id IN ${children}`).bind(...ids),
 		db.prepare(`DELETE FROM files WHERE drop_id IN (${placeholders})`).bind(...ids),
 		db.prepare(`DELETE FROM drops WHERE id IN (${placeholders})`).bind(...ids),
 	])

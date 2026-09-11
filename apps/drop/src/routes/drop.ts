@@ -1,9 +1,19 @@
 import type { Env } from "../env.js"
 import type { FileInfo } from "../lib/db.js"
-import { getDrop, getFileBody, getStats, recordView } from "../lib/db.js"
+import {
+	getCurrentBody,
+	getDrop,
+	getFileBody,
+	getFileRef,
+	getStats,
+	recordView,
+} from "../lib/db.js"
 import { demoDrop, demoFileBody, isDemo } from "../lib/demo.js"
 import { html, json, securityHeaders } from "../lib/http.js"
 import { diffPage, notFoundPage, sharePage } from "../lib/pages.js"
+import { getVersionBody } from "../lib/versions.js"
+import type { FileKind } from "../shared/constants.js"
+import { ORIGINAL_SEQ } from "../shared/constants.js"
 
 /** GET /drop/api/stats — public drop/view counters, cached at the edge for 60s. */
 export async function handleStats(env: Env): Promise<Response> {
@@ -53,11 +63,22 @@ export async function handleManifest(shareId: string, env: Env): Promise<Respons
 	})
 }
 
-/** GET /drop/:shareId/f/:filename — the original bytes as a safe download. */
-export async function handleRaw(shareId: string, filename: string, env: Env): Promise<Response> {
+/**
+ * GET /drop/:shareId/f/:filename — the file's bytes as a safe download.
+ *
+ * Serves the current state by default. `?v=0` pins the request to the uploaded
+ * original, which is what the share page's "Original" link asks for; `?v=n`
+ * serves milestone n, while it is still in the ring.
+ */
+export async function handleRaw(
+	shareId: string,
+	filename: string,
+	env: Env,
+	version?: number,
+): Promise<Response> {
 	const row = isDemo(shareId)
 		? await demoFileBody(filename, "original")
-		: await getFileBody(env.DB, shareId, filename, "original")
+		: await readVersion(env, shareId, filename, "original", version)
 	if (!row) return json({ error: "not found" }, { status: 404 })
 	return new Response(row.body, {
 		headers: {
@@ -70,11 +91,16 @@ export async function handleRaw(shareId: string, filename: string, env: Env): Pr
 	})
 }
 
-/** GET /drop/:shareId/f/:filename.json — the stored JSON model. */
-export async function handleJson(shareId: string, filename: string, env: Env): Promise<Response> {
+/** GET /drop/:shareId/f/:filename?format=json — the JSON model of the same state. */
+export async function handleJson(
+	shareId: string,
+	filename: string,
+	env: Env,
+	version?: number,
+): Promise<Response> {
 	const row = isDemo(shareId)
 		? await demoFileBody(filename, "json")
-		: await getFileBody(env.DB, shareId, filename, "json")
+		: await readVersion(env, shareId, filename, "json", version)
 	if (!row) return json({ error: "not found" }, { status: 404 })
 	return new Response(row.body, {
 		headers: {
@@ -83,6 +109,34 @@ export async function handleJson(shareId: string, filename: string, env: Env): P
 			...securityHeaders(),
 		},
 	})
+}
+
+/**
+ * Resolves which state of a file to serve.
+ *
+ * No `?v=` means "what this file says now". `?v=0` is the uploaded original, and
+ * is the one request whose answer can never change. A milestone is served from
+ * the ring, and 404s once it has rolled out of it — the history UI says the
+ * bound out loud so that is an expected answer rather than a surprise.
+ */
+async function readVersion(
+	env: Env,
+	shareId: string,
+	filename: string,
+	rep: "original" | "json",
+	version?: number,
+): Promise<{ kind: FileKind; body: string; hash: string } | null> {
+	if (version === undefined) return await getCurrentBody(env.DB, shareId, filename, rep)
+	if (version === ORIGINAL_SEQ) return await getFileBody(env.DB, shareId, filename, rep)
+
+	const ref = await getFileRef(env.DB, shareId, filename)
+	if (!ref) return null
+	const stored = await getVersionBody(env.DB, ref.id, version)
+	if (!stored) return null
+	// Milestones keep the source only; a JSON view of one would mean re-parsing
+	// a superseded document on every request, for a panel that links to sources.
+	if (rep === "json") return null
+	return { kind: ref.kind, body: stored.body, hash: stored.hash }
 }
 
 /**

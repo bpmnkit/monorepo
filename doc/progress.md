@@ -1,5 +1,49 @@
 # Progress
 
+## 2026-09-11 — Track B: the version log, and the bound written down as a test
+
+Third task off `doc/drop-live-editing-plan.md`, and the one that blocks every task that writes to
+a drop. A file now has at most eleven recoverable states: the uploaded original, plus ten rolling
+milestones.
+
+**One deviation from the design, for a migration reason.** The design said edits would live at
+`file_content.rep = 'current'`. That column carries `CHECK (rep IN ('original', 'json'))`, and
+SQLite cannot alter a CHECK without rewriting the table under live data. Edits go to a new
+`file_current` table instead — purely additive, and it makes "nothing ever writes to
+`file_content`" literally true rather than merely intended. The design document is patched.
+
+**The bound is a test before it is a feature.** `tests/versions.test.ts` drives 500 saves across
+40 hours and 12 sessions and asserts exactly ten rows survive, that the ones pruned are gone
+rather than hidden, and that the upload is byte-identical afterwards. Running real SQL needed a
+real database: `tests/d1.ts` is a ~90-line D1 stand-in over Node's built-in `node:sqlite` that
+applies the actual migration files, so the upsert, the prune and the FK cascades are exercised
+rather than stubbed. No new dependency — the existing route stubs return canned values, which
+proves nothing about a bucket key.
+
+**Collapsing is keyed on `(hour, session)`.** An hour of one session is one milestone; a new
+session always starts its own, so the 10:45 case — a stranger wrecking a drop in the same hour
+the previous editor worked in — cannot overwrite that editor's milestone. Suppression keys on
+`content_hash`: a claim-and-leave that changed nothing never consumes a slot, and, per the
+correction already recorded, a layout-only hour is *not* suppressed.
+
+**Three things the new mutability quietly broke, fixed here.** `deleteDrop` and `deleteExpired`
+delete explicitly rather than by cascade, so both now take `file_versions` and `file_current`
+with them — otherwise an expired drop would leave its history behind forever, which is the
+opposite of bounded. And the AI review read `rep = 'original'`: reviewing an upload the reader is
+not looking at would be wrong, so it reads the current state, which also keeps its content-hash
+cache honest for free.
+
+**A TDZ bug the typechecker could not see.** The history panel's elements are `const`s near the
+bottom of `viewer.ts`, and `select()` — called at module top level, above them — now reaches into
+them. The first render would have thrown before painting anything. The initial `select()` call
+moved to the end of the file, where it belongs.
+
+Verified against a live Worker with all three migrations applied: an edited drop still serves its
+upload at `?v=0`, restoring the original appends the replaced state as a milestone first, and
+restoring that milestone grows the timeline to three rather than rewinding it. The panel was
+driven in a browser — view a version on the canvas without making it current, back out, and the
+Original link pointing at `?v=0`. 58 drop tests, Biome across 968 files, build and typecheck pass.
+
 ## 2026-09-11 — A2: a refresh no longer costs you the diagram
 
 Second task off `doc/drop-live-editing-plan.md`. The editor now keeps a single localStorage draft

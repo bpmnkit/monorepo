@@ -15,6 +15,7 @@ import {
 } from "./routes/drop.js"
 import { handleReport } from "./routes/reports.js"
 import { handleUpload } from "./routes/upload.js"
+import { handleHistory, handleRestore } from "./routes/versions.js"
 
 function methodNotAllowed(): Response {
 	return json({ error: "method not allowed" }, { status: 405 })
@@ -77,14 +78,38 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 			? handleManifest(manifest[1] as string, env)
 			: methodNotAllowed()
 	}
+	// History and restore sit above the file route so `/history/...` cannot be
+	// read as a filename.
+	const history = rest.match(/^\/([\w-]+)\/history\/(.+)$/)
+	if (history) {
+		if (request.method !== "GET") return methodNotAllowed()
+		return handleHistory(history[1] as string, decodeURIComponent(history[2] as string), env)
+	}
+	const restore = rest.match(/^\/([\w-]+)\/restore\/(.+)\/(\d+)$/)
+	if (restore) {
+		if (request.method !== "POST") return methodNotAllowed()
+		return handleRestore(
+			restore[1] as string,
+			decodeURIComponent(restore[2] as string),
+			Number(restore[3]),
+			env,
+			now,
+		)
+	}
 	const file = rest.match(/^\/([\w-]+)\/f\/(.+)$/)
 	if (file) {
 		if (request.method !== "GET") return methodNotAllowed()
 		const shareId = file[1] as string
 		const filename = decodeURIComponent(file[2] as string)
+		// `?v=` selects a stored state: 0 is the upload, n a milestone, absent is now.
+		const raw = url.searchParams.get("v")
+		const version = raw === null ? undefined : Number(raw)
+		if (version !== undefined && !Number.isInteger(version)) {
+			return json({ error: "bad version" }, { status: 400 })
+		}
 		return url.searchParams.get("format") === "json"
-			? handleJson(shareId, filename, env)
-			: handleRaw(shareId, filename, env)
+			? handleJson(shareId, filename, env, version)
+			: handleRaw(shareId, filename, env, version)
 	}
 	const diff = rest.match(/^\/([\w-]+)\/diff\/([\w-]+)$/)
 	if (diff) {

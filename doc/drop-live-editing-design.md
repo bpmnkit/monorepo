@@ -261,6 +261,11 @@ Conflating them is the trap. Durability and history want very different frequenc
 "unsaved" — close the tab mid-session and the last committed command is already durable. There
 is no save button because there is nothing for it to do.
 
+> **Correction (implemented in track B).** This document and the plan both said edits would live
+> at `file_content.rep = 'current'`. That column carries a CHECK constraint, and SQLite cannot
+> alter one without rewriting the table under live data, so edits go to a separate `file_current`
+> table. The invariant is unchanged and in fact stronger: nothing ever writes to `file_content`.
+
 **The flush** is the alarm, ~2 seconds after the first dirty op: flatten the current defs with
 `exportPreserving(original, defs)` — so the uploader's formatting and comments survive rather
 than the file being reserialised wholesale — re-hash, re-check `banned_hashes`, and update D1's

@@ -1,5 +1,29 @@
 # Features
 
+## Version history for a drop — eleven states, forever (2026-09-11)
+
+Drops can now hold more than one state, and the number they hold is fixed: **the uploaded
+original, kept forever, plus at most ten rolling milestones**. This is the safety net that makes
+the coming "anyone with the link may edit" rule survivable — anyone can overwrite a drop, nobody
+can destroy what it was.
+
+- **The original is untouchable by construction.** Edits go to a new `file_current` table;
+  nothing ever writes to `file_content` after the upload, so "the original survives" is a
+  property one grep confirms rather than a promise. `?v=0` serves it, and the share page's
+  **Original** download is pinned to that.
+- **Bounded, and the panel says so.** A milestone is keyed by `<hour>:<session>`, so an hour of
+  one editing session collapses to one entry and a new session always starts its own — a
+  stranger's save at 10:45 cannot overwrite the previous editor's 10:30 work. Everything past
+  the newest ten is pruned in the same batch as the write.
+- **Suppression keys on `content_hash`, never on `semanticHash`**, which excludes all diagram
+  interchange: an hour spent purely on layout hashes identically and would have been thrown away
+  as a no-op. `semanticHash` instead *labels* each entry **Layout only** or **Model changed**, at
+  no cost, from hashes already stored.
+- **Restoring appends, never rewinds.** The state being replaced becomes a milestone first, so
+  restoring can never be the thing that loses work; undoing a restore is another restore.
+- **History panel** on the share page: view any kept version on the canvas without making it
+  current, or restore it. The demo drop and admin-pinned drops are read-only, enforced server-side.
+
 ## An unsaved diagram survives a refresh (2026-09-11)
 
 `bpmnkit.com/editor` keeps a single localStorage draft of the open diagram and offers it back

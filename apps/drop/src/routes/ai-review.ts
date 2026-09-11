@@ -10,7 +10,7 @@ import {
 	recordFailedUnlock,
 	runLlmReview,
 } from "../lib/ai.js"
-import { getFileBody } from "../lib/db.js"
+import { getCurrentBody } from "../lib/db.js"
 import { demoFileBody, isDemo } from "../lib/demo.js"
 import { clientIp, json, timingSafeEqual } from "../lib/http.js"
 import { hashIp } from "../lib/ids.js"
@@ -33,9 +33,11 @@ export async function handleAiReview(
 ): Promise<Response> {
 	if (env.AI_PASSCODE === undefined) return json({ error: "not found" }, { status: 404 })
 
+	// The current state, not the upload: a review of a diagram the reader is not
+	// looking at would be wrong, and the content-hash cache follows for free.
 	const file = isDemo(shareId)
 		? await demoFileBody(filename, "original")
-		: await getFileBody(env.DB, shareId, filename, "original")
+		: await getCurrentBody(env.DB, shareId, filename, "original")
 	if (!file) return json({ error: "not found" }, { status: 404 })
 	if (file.kind !== "bpmn") {
 		return json({ error: "AI review is only available for BPMN files" }, { status: 400 })

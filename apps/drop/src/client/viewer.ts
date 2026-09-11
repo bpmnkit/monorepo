@@ -4,7 +4,7 @@ import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
 import type { ReviewResult, Suggestion } from "../lib/review.js"
-import { AI_CODE_STORAGE_KEY, type FileKind } from "../shared/constants.js"
+import { AI_CODE_STORAGE_KEY, DEMO_SHARE_ID, type FileKind } from "../shared/constants.js"
 
 interface DropFile {
 	filename: string
@@ -50,9 +50,13 @@ function setActiveReviewFile(file: DropFile | null): void {
 	aiBody?.replaceChildren()
 }
 
-function contentUrl(file: DropFile, format?: "json"): string {
+function contentUrl(file: DropFile, format?: "json", version?: number): string {
 	const base = `/drop/${data.shareId}/f/${encodeURIComponent(file.filename)}`
-	return format ? `${base}?format=json` : base
+	const params = new URLSearchParams()
+	if (format) params.set("format", format)
+	if (version !== undefined) params.set("v", String(version))
+	const query = params.toString()
+	return query ? `${base}?${query}` : base
 }
 
 function message(text: string): void {
@@ -142,13 +146,17 @@ async function select(index: number): Promise<void> {
 	for (const tab of document.querySelectorAll<HTMLElement>(".ed-tab")) {
 		tab.classList.toggle("active", Number(tab.dataset.index) === index)
 	}
-	dlOriginal.href = contentUrl(file)
+	// `?v=0` is the uploaded file, not the current one — the label says "Original"
+	// and a mutable drop has to make that literally true.
+	dlOriginal.href = contentUrl(file, undefined, 0)
 	dlOriginal.setAttribute("download", file.filename)
 	dlJson.href = contentUrl(file, "json")
 	dlJson.setAttribute("download", `${file.filename}.json`)
 
 	// AI review applies to BPMN only; reset per-file review state on switch.
 	setActiveReviewFile(file.kind === "bpmn" ? file : null)
+	exitVersionPreview()
+	if (historyPanel && !historyPanel.hidden) void loadHistory()
 
 	current?.destroy()
 	current = null
@@ -169,8 +177,6 @@ async function select(index: number): Promise<void> {
 for (const tab of document.querySelectorAll<HTMLElement>(".ed-tab")) {
 	tab.addEventListener("click", () => void select(Number(tab.dataset.index)))
 }
-
-void select(data.primaryIndex)
 
 // ── Zoom controls (BPMN canvas only) ────────────────────────────────────────
 
@@ -336,6 +342,170 @@ document.getElementById("aiClose")?.addEventListener("click", () => {
 	if (aiPanel) aiPanel.hidden = true
 })
 
+// ── Version history ─────────────────────────────────────────────────────────
+// The bound is the feature: the pinned original plus a fixed number of rolling
+// milestones. The panel says so out loud, so a missing older entry reads as the
+// design rather than as data loss.
+
+interface VersionEntry {
+	seq: number
+	createdAt: number
+	label: "original" | "layout" | "model"
+	bytes: number
+	opCount: number
+}
+
+const historyBtn = document.getElementById("historyBtn") as HTMLButtonElement | null
+const historyPanel = document.getElementById("historyPanel") as HTMLElement | null
+const historyBody = document.getElementById("historyBody") as HTMLElement | null
+const historyBound = document.getElementById("historyBound") as HTMLElement | null
+const historyBanner = document.getElementById("historyBanner") as HTMLElement | null
+const historyBannerText = document.getElementById("historyBannerText") as HTMLElement | null
+
+/** Which stored version the canvas is showing, or null for the live one. */
+let previewing: number | null = null
+
+// The demo drop is served from memory and has no rows to keep history in.
+if (historyBtn && data.shareId !== DEMO_SHARE_ID) historyBtn.hidden = false
+
+function when(ms: number): string {
+	return new Date(ms).toISOString().slice(0, 16).replace("T", " ")
+}
+
+function labelText(entry: VersionEntry): string {
+	if (entry.label === "original") return "Original"
+	if (entry.label === "layout") return "Layout only"
+	return "Model changed"
+}
+
+function historyMessage(text: string): void {
+	historyBody?.replaceChildren(
+		Object.assign(document.createElement("div"), { className: "ai-msg", textContent: text }),
+	)
+}
+
+function exitVersionPreview(): void {
+	previewing = null
+	if (historyBanner) historyBanner.hidden = true
+}
+
+/** Renders a stored version on the canvas, without making it current. */
+async function previewVersion(entry: VersionEntry): Promise<void> {
+	const file = data.files[activeIndex]
+	if (!file || file.kind !== "bpmn") return
+	message("Loading…")
+	try {
+		const xml = await (await fetch(contentUrl(file, undefined, entry.seq))).text()
+		await renderBpmn(xml)
+		previewing = entry.seq
+		if (historyBanner && historyBannerText) {
+			historyBannerText.textContent =
+				entry.seq === 0
+					? `Showing the original, from ${when(entry.createdAt)}`
+					: `Showing version ${entry.seq}, from ${when(entry.createdAt)}`
+			historyBanner.hidden = false
+		}
+	} catch {
+		message("That version could not be loaded.")
+	}
+}
+
+async function restoreVersion(entry: VersionEntry): Promise<void> {
+	const file = data.files[activeIndex]
+	if (!file) return
+	const res = await fetch(
+		`/drop/${data.shareId}/restore/${encodeURIComponent(file.filename)}/${entry.seq}`,
+		{ method: "POST" },
+	)
+	if (!res.ok) {
+		const body = (await res.json().catch(() => null)) as { error?: string } | null
+		historyMessage(body?.error ?? "That version could not be restored.")
+		return
+	}
+	// Restoring appends rather than rewinds, so the timeline is longer afterwards.
+	location.reload()
+}
+
+function versionRow(entry: VersionEntry, isCurrent: boolean): HTMLElement {
+	const wrap = document.createElement("div")
+
+	const row = document.createElement("div")
+	row.className = isCurrent ? "hv-row current" : "hv-row"
+	const seq = document.createElement("span")
+	seq.className = "hv-seq"
+	seq.textContent = entry.seq === 0 ? "ORIG" : `v${entry.seq}`
+	const time = document.createElement("span")
+	time.className = "hv-when"
+	time.textContent = when(entry.createdAt)
+	const tag = document.createElement("span")
+	tag.className = entry.label === "model" ? "hv-tag model" : "hv-tag"
+	tag.textContent = labelText(entry)
+	row.append(seq, time, tag)
+
+	const actions = document.createElement("div")
+	actions.className = "hv-actions"
+	const file = data.files[activeIndex]
+	if (file?.kind === "bpmn") {
+		const view = document.createElement("button")
+		view.className = "hv-btn"
+		view.type = "button"
+		view.textContent = "View"
+		view.addEventListener("click", () => void previewVersion(entry))
+		actions.append(view)
+	}
+	const restore = document.createElement("button")
+	restore.className = "hv-btn"
+	restore.type = "button"
+	restore.textContent = "Restore"
+	restore.addEventListener("click", () => void restoreVersion(entry))
+	actions.append(restore)
+
+	wrap.append(row, actions)
+	return wrap
+}
+
+async function loadHistory(): Promise<void> {
+	const file = data.files[activeIndex]
+	if (!file || !historyBody) return
+	historyMessage("Loading…")
+	try {
+		const res = await fetch(`/drop/${data.shareId}/history/${encodeURIComponent(file.filename)}`)
+		if (!res.ok) {
+			historyMessage("No history for this file.")
+			return
+		}
+		const { entries, maxMilestones } = (await res.json()) as {
+			entries: VersionEntry[]
+			maxMilestones: number
+		}
+		historyBody.replaceChildren()
+		entries.forEach((entry, i) => historyBody.append(versionRow(entry, i === 0)))
+		if (historyBound) {
+			historyBound.textContent = `The original is kept forever, plus the last ${maxMilestones} milestones. Repeated saves inside an hour count as one.`
+		}
+	} catch {
+		historyMessage("Couldn't load the history. Please try again.")
+	}
+}
+
+historyBtn?.addEventListener("click", () => {
+	if (!historyPanel) return
+	historyPanel.hidden = !historyPanel.hidden
+	if (!historyPanel.hidden) void loadHistory()
+})
+document.getElementById("historyClose")?.addEventListener("click", () => {
+	if (historyPanel) historyPanel.hidden = true
+})
+document.getElementById("historyExit")?.addEventListener("click", () => {
+	exitVersionPreview()
+	const file = data.files[activeIndex]
+	if (file?.kind === "bpmn") {
+		void fetch(contentUrl(file))
+			.then((r) => r.text())
+			.then((xml) => renderBpmn(xml))
+	}
+})
+
 // ── Presence & actions ──────────────────────────────────────────────────────
 
 const presenceEl = document.getElementById("presence") as HTMLElement
@@ -376,3 +546,9 @@ document.getElementById("reportSubmit")?.addEventListener("click", (e) => {
 	dialog.close()
 	alert("Thanks — your report has been submitted.")
 })
+
+// ── Start ───────────────────────────────────────────────────────────────────
+// Last, deliberately: `select` touches the panels declared above it in this
+// file, and a `const` is not readable before its declaration has run.
+
+void select(data.primaryIndex)

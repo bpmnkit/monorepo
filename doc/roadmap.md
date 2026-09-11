@@ -291,13 +291,13 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 **Track B — the version log** (blocks every task that writes to a drop)
 
-- [ ] B1 — `rep = 'current'` in `file_content` (never write `'original'`), `file_versions`,
-      `drops.updated_at`; serve current-else-original and pin the Original download
-- [ ] B2 — `appendMilestone()`: `(hour, session)` bucket, `content_hash` suppression, prune to 10
+- [x] B1 — a `file_current` table (never write `file_content`), `file_versions`,
+      `drops.updated_at`; serve current-else-original, `?v=0` pins the Original download
+- [x] B2 — `appendMilestone()`: `(hour, session)` bucket, `content_hash` suppression, prune to 10
       — the pinned original plus ten milestones, eleven recoverable states per file, forever
-- [ ] B3 — history list, version fetch, and per-milestone "layout only" / "model changed" labels
-      from `diffDiagram` / `diffSemantics`
-- [ ] B4 — restore, as an append rather than a rewind
+- [x] B3 — history panel, `?v=n` version fetch, and per-milestone "layout only" / "model changed"
+      labels derived from the stored hashes (no re-parse), with the bound stated in the panel
+- [x] B4 — restore, as an append rather than a rewind
 
 **Track C — browser history** — wiring `@bpmnkit/plugins/history` to `(shareId, filename)`
 

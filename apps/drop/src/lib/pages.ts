@@ -244,6 +244,19 @@ select.ed-select{height:28px;border:1px solid var(--bpmnkit-ds-line);background:
 .ai-dot.info{color:var(--bpmnkit-ds-ink-4)}
 .ai-why{font-size:var(--bpmnkit-ds-t-body-sm);color:var(--bpmnkit-ds-ink-2);margin-top:5px;line-height:1.55}
 .ai-msg{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label);color:var(--bpmnkit-ds-ink-3);padding:8px 0}
+.hv-row{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--bpmnkit-ds-line);padding:10px 0;font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label)}
+.hv-row.current{background:var(--bpmnkit-ds-bg)}
+.hv-seq{flex:none;width:2.4em;color:var(--bpmnkit-ds-accent)}
+.hv-when{flex:1 1 auto;color:var(--bpmnkit-ds-ink-2)}
+.hv-tag{flex:none;letter-spacing:.08em;text-transform:uppercase;font-size:var(--bpmnkit-ds-t-mono-micro);color:var(--bpmnkit-ds-ink-4)}
+.hv-tag.model{color:var(--bpmnkit-ds-accent)}
+.hv-actions{display:flex;gap:6px;padding-top:6px}
+.hv-btn{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink-2);padding:4px 8px;cursor:pointer}
+.hv-btn:hover{background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-ink)}
+.hv-banner{position:absolute;top:var(--bpmnkit-ds-topbar-height);left:0;right:0;z-index:7;display:flex;align-items:center;gap:12px;padding:8px var(--bpmnkit-ds-sp-4);background:var(--bpmnkit-ds-dark);color:var(--bpmnkit-ds-ink-on-dark);font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label)}
+.hv-banner[hidden]{display:none}
+.hv-banner .hv-btn{border-color:var(--bpmnkit-ds-line-dark);background:none;color:var(--bpmnkit-ds-ink-on-dark-2)}
+.hv-banner .hv-btn:hover{background:rgba(255,255,255,.08);color:var(--bpmnkit-ds-ink-on-dark)}
 .ai-passcode input{width:100%;padding:8px 10px;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;margin:12px 0}
 .ai-passcode.err input{border-color:var(--bpmnkit-danger)}
 
@@ -484,6 +497,7 @@ export function sharePage(
 		<span class="ed-info" title="Created ${created} · expires ${expires}"><span id="viewCount">${drop.view_count}</span> VIEWS · <span id="presence" hidden>0 VIEWING</span> · EXPIRES ${expires}</span>
 		<div class="ed-group">
 			${aiEnabled ? `<button id="aiReviewBtn" type="button" hidden>AI review</button>` : ""}
+			<button id="historyBtn" type="button" hidden>History</button>
 			<a id="dlOriginal" href="#" download>Original</a>
 			<a id="dlJson" href="#" download>JSON</a>
 			<button id="copyLink" type="button">Copy link</button>
@@ -500,6 +514,12 @@ export function sharePage(
 		<button id="zoomIn" type="button" aria-label="Zoom in">+</button>
 		<button id="zoomFit" type="button" aria-label="Fit diagram" title="Fit diagram">FIT</button>
 	</div>
+	<div id="historyBanner" class="hv-banner" hidden><span id="historyBannerText"></span><button id="historyExit" class="hv-btn" type="button">Back to current</button></div>
+	<aside id="historyPanel" class="ai-panel" hidden>
+		<header class="ai-head"><span>Version history</span><button id="historyClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
+		<div id="historyBody" class="ai-body"></div>
+		<footer class="ai-foot"><span id="historyBound"></span></footer>
+	</aside>
 	<a class="ed-github" href="https://github.com/bpmnkit/monorepo" target="_blank" rel="noopener"><img class="logo" src="${FAVICON}" alt="">GitHub</a>
 	${
 		aiEnabled

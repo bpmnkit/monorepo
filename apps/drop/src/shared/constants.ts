@@ -15,8 +15,24 @@ export const MAX_FILES_PER_DROP = 20
 /** Max total original bytes across a drop. */
 export const MAX_DROP_BYTES = 5_000_000
 
-/** Retention: a drop expires this long after it was last viewed. */
+/** Retention: a drop expires this long after it was last viewed or edited. */
 export const RETENTION_MS = 90 * 24 * 60 * 60 * 1000
+
+/**
+ * How many milestones the version log keeps per file, on top of the pinned
+ * original. Eleven recoverable states per file, forever — see
+ * `doc/drop-live-editing-plan.md` §2.3.
+ */
+export const MAX_MILESTONES = 10
+
+/**
+ * The window inside which repeated saves collapse into one milestone. An hour
+ * of continuous editing leaves one entry, not hundreds.
+ */
+export const MILESTONE_BUCKET_MS = 60 * 60 * 1000
+
+/** `seq` of the uploaded original. Not a `file_versions` row — it is the untouched `file_content`. */
+export const ORIGINAL_SEQ = 0
 
 /** Accepted file extensions in the drop zone. */
 export const ACCEPTED_EXTENSIONS = [".bpmn", ".dmn", ".form", ".xml", ".json"] as const
