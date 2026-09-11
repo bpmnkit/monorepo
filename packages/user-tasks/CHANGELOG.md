@@ -1,5 +1,15 @@
 # @bpmnkit/user-tasks
 
+## 0.0.20
+
+### Patch Changes
+
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+  - @bpmnkit/plugins@0.3.0
+  - @bpmnkit/ui@0.1.0
+
 ## 0.0.19
 
 ### Patch Changes

@@ -2,7 +2,7 @@
 	"name": "bpmnkit",
 	"displayName": "BPMN Kit",
 	"description": "Edit, compare and analyse BPMN, DMN and Camunda Forms in VS Code — no bpmn.io, no round-trip rewrites of your XML.",
-	"version": "0.4.3",
+	"version": "0.4.4",
 	"private": true,
 	"type": "module",
 	"publisher": "bpmnkit",
