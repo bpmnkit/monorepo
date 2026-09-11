@@ -273,11 +273,18 @@ A checkpoint per flush would be hundreds of rows an hour. Cut one when:
 - the baton is released (explicitly, on disconnect, or on idle) — the natural "an edit session
   ended" boundary;
 - or every ~10 minutes of continuous editing, so a long session is not one undoable lump;
-- and **never** when `semanticHash(defs)` is unchanged since the last checkpoint — which
-  already exists in `@bpmnkit/core` and cheaply suppresses "opened it, panned around, left".
+- and **never** when `content_hash` is unchanged since the last checkpoint, which cheaply
+  suppresses "opened it, panned around, left".
 
-That lands at roughly one to five versions per real session. Retain version 0 forever plus a
-bounded window (last 20, or 30 days) and prune the middle.
+> **Correction (see `drop-live-editing-plan.md` §2.5).** This bullet originally said to suppress
+> on `semanticHash`. That is wrong: `semanticHash` deliberately excludes all diagram interchange,
+> so an hour spent purely on layout hashes identically and would have been discarded as a no-op.
+> Suppress on `content_hash`; `semanticHash` is still worth storing, to *label* a milestone
+> "layout only" versus "model changed".
+
+That lands at roughly one to five versions per real session. Retention is settled in
+`drop-live-editing-plan.md` §2.3: the original is pinned and never stored in this table at all,
+plus a hard ring of **10** milestones — eleven recoverable states per file, forever.
 
 ```sql
 CREATE TABLE file_versions (

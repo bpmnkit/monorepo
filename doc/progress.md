@@ -1,5 +1,42 @@
 # Progress
 
+## 2026-09-11 — Live editing action plan, and a correction to yesterday's suppression rule
+
+`doc/drop-live-editing-plan.md` turns the design into ordered work, and settles the version log
+against a requirement that it be visibly bounded: the first version kept always, about ten
+milestones after it, browser-held history not stored on the server, changes inside an hour
+collapsing to one milestone, all inside the free tier.
+
+**The design document was wrong about one thing, and the code says so.** It said to suppress a
+checkpoint when `semanticHash` is unchanged. `semanticHash` deliberately excludes all diagram
+interchange — its own header promises two documents that mean the same thing hash the same
+"however they are laid out" — so an hour spent purely on layout hashes identically and would have
+been discarded as a no-op. Suppression keys on `content_hash` instead. `semanticHash` keeps its
+place by *labelling* a milestone "layout only" versus "model changed", which the history list
+wants anyway and which costs one column. Both documents are patched.
+
+**The original does not need a row.** Nothing in the codebase ever updates `file_content` at
+`rep = 'original'` — `insertDrop` writes it once and only deletion removes it. So editing adds
+`rep = 'current'` and never touches that row, and the version log holds only milestones 1–10.
+"The original survives" stops being a promise and becomes a property one grep and one test pin
+down, at half the storage. Eleven recoverable states per file, forever.
+
+**The hour bucket needed one addition.** Hour-only collapsing means a stranger who wrecks a drop
+at 10:45 overwrites the previous editor's 10:30 milestone — the original survives, but the half
+hour before the vandalism does not, in exactly the window the log exists for. Bucketing on
+`(hour, session)` means a new editing session always starts a new milestone.
+
+**The flush moved from 2 seconds to 30.** The room's own SQLite is the durability layer and is
+unbilled on the free plan; D1 only needs to be fresh, and a joiner's `welcome` corrects any
+staleness on connect. That lands the whole write path at ~242 D1 writes per active editing hour,
+or ~410 room-hours a day against the free tier. Meanwhile the room's debounced view counting
+*removes* a D1 write per page view, which is likely more than editing will ever add.
+
+**The browser half is already written.** `@bpmnkit/plugins/history` takes opaque
+`(projectId, fileId)` strings, so Drop passes `(shareId, filename)`, and its retention is already
+bounded at 50 checkpoints today plus one a day for ten days. Track C is wiring, not building.
+Ordered so nothing that writes to a drop ships before the version log. No code changed.
+
 ## 2026-09-11 — Live editing design: the baton, and why autosave forces a version log
 
 Follow-up to the co-editing analysis, after four decisions came back: author before dropping,
