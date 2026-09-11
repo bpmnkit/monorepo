@@ -1,5 +1,39 @@
 # Progress
 
+## 2026-09-11 — Live editing design: the baton, and why autosave forces a version log
+
+Follow-up to the co-editing analysis, after four decisions came back: author before dropping,
+one live writer with everyone else watching, anyone-with-the-link may edit, and no save button
+ever. `doc/drop-live-editing-design.md` designs that; where it disagrees with the analysis, it is
+current.
+
+**Three of the four agree with the analysis. Together they overturn its main recommendation.**
+Fork-on-edit was the way to keep every invariant the schema leans on, and it cannot survive
+either live watching (watchers would be left on a share id the writer has already left) or
+autosave (no save button means no moment at which to fork). So drops become mutable — and
+anonymous plus mutable plus autosave plus no history is a link a stranger can quietly empty with
+nothing to restore from. An append-only `file_versions` log is what makes anyone-with-the-link
+safe, so it is the one part of the design that is not optional. `diffDiagram` and the shipped
+`/drop/:a/diff/:b` route mean the history UI is nearly free once the rows exist.
+
+**Measured, so the bundle question is settled.** A watcher needs the modeling functions to replay
+ops, not a new document per commit: canvas + core + `modeling.ts` is 59 KB gzipped against
+today's 56 KB. So everyone pays +3 KB and the 96 KB editor is a dynamic import fetched only on
+claim. Mounting the editor read-only for everyone was the tempting alternative — one code path,
+instant switch — but it costs every watcher +40 KB and `initEditorHud` has no read-only awareness
+at all, so the palette would render live while every click no-ops at `_executeCommand`.
+
+**Cloudflare has the exact primitive for a dead writer.** `setWebSocketAutoResponse` answers
+heartbeats without waking the object, and `getWebSocketAutoResponseTimestamp` lets the autosave
+alarm check liveness for free. The natural mistake is keying the idle timer on those pings: they
+prove the socket is open, not that a human is there, so reclaiming an absent writer's baton keys
+on operations instead.
+
+Autosave is two clocks, not one — per-op durability into DO SQLite, coarse checkpoints into D1,
+suppressed by `semanticHash` when nothing actually changed. Phased so that "share as a drop" and
+the version log ship before any realtime code, because autosave before the version log is the
+reckless order. No code changed.
+
 ## 2026-09-11 — Analysis: what editing, and co-editing, would cost Drop
 
 Two questions about `apps/drop`: could it also *edit*, not just drop and view, and could several
