@@ -1,5 +1,34 @@
 # Features
 
+## The room edits the document (2026-09-11)
+
+A drop's room is now the authority on what the drop *is* while anyone has it open. The holder's
+ops arrive over the socket, and the room runs them itself.
+
+- **Ops are replayed, not trusted.** The room imports the same `applyOp` the browser ran, from
+  the new DOM-free `@bpmnkit/editor/headless` entry. A client cannot write anything it could not
+  have reached by editing, and what everyone sees is the room's document rather than a writer's
+  claim about it.
+- **The permission model is one line, server-side.** An op from someone who does not hold the
+  baton is refused — not by hiding a button.
+- **A document is judged after the replay, never before.** `checkIntegrity` asks one question:
+  *may this be stored?* Two elements under one id, a flow pointing at nothing, an element with no
+  shape to draw it — each comes back to the writer as a reason (`"a reference would point at
+  nothing (flow2 → end)"`), not as a silent no-op. Judging the *result* rather than the op is
+  what keeps the check free of any knowledge of what individual ops do.
+- **Untrusted input is shaped before it reaches the modeling layer.** `parseOp` checks that
+  `kind` is one the editor knows and every field it will read is the type expected, with bounds
+  on strings and arrays. Whether the edit makes *sense* is the integrity check's job; this one
+  only stops a crash.
+- **The whole document lives in Durable Object storage**, rewritten on every applied op. A
+  SQLite-backed object allows 2 MB per key and value together — comfortably above the 900 KB file
+  cap — so waking a hibernated room costs one read and one parse, with no op log to replay and
+  nothing that grows without bound. D1 is where a cold room starts and stays behind until the
+  autosave checkpoint; the room is ahead, and the room is right.
+- **One canonical serialisation.** The hash the room broadcasts, the XML it stores, and the body
+  a resync sends are all `Bpmn.export(defs)`, so a hash mismatch means a real divergence rather
+  than a formatting difference.
+
 ## Editor operations: an edit that can be replayed (2026-09-11)
 
 Every edit the editor makes now also *describes itself*. `diagram:op` fires alongside

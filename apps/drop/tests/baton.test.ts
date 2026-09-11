@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Env } from "../src/env.js"
 import { DocRoom } from "../src/room.js"
 import { BATON_IDLE_MS, BATON_WARN_MS, SOCKET_DEAD_MS } from "../src/shared/room-protocol.js"
-import { migratedDb } from "./d1.js"
+import { migratedDb, seedFile } from "./d1.js"
 import { type FakeSocket, FakeState, stubWebSocketGlobals } from "./do-state.js"
+import { SEEDED_FILE, SIMPLE_BPMN } from "./fixtures.js"
 
 stubWebSocketGlobals()
 
@@ -18,7 +19,12 @@ beforeEach(() => {
 	vi.useFakeTimers()
 	vi.setSystemTime(T0)
 	state = new FakeState()
-	room = new DocRoom(state as unknown as DurableObjectState, { DB: migratedDb() } as unknown as Env)
+	const db = migratedDb()
+	const seeded = seedFile(db, { body: SIMPLE_BPMN })
+	// `fetch` records this on the first connection; the tests accept sockets
+	// directly, so the room is told which drop it belongs to here instead.
+	void state.storage.put("shareId", seeded.shareId)
+	room = new DocRoom(state as unknown as DurableObjectState, { DB: db } as unknown as Env)
 })
 
 afterEach(() => {
@@ -27,7 +33,8 @@ afterEach(() => {
 
 /** Sends a client message the way the runtime delivers one. */
 function send(ws: FakeSocket, type: "claim" | "release") {
-	return room.webSocketMessage(ws as unknown as WebSocket, JSON.stringify({ type }))
+	const message = type === "claim" ? { type, filename: SEEDED_FILE } : { type }
+	return room.webSocketMessage(ws as unknown as WebSocket, JSON.stringify(message))
 }
 
 /**
@@ -54,7 +61,12 @@ describe("claiming", () => {
 		const anna = state.join("anna")
 		await send(anna, "claim")
 
-		expect(anna.last("granted")).toMatchObject({ holder: "anna", idleMs: BATON_IDLE_MS })
+		expect(anna.last("granted")).toMatchObject({
+			holder: "anna",
+			idleMs: BATON_IDLE_MS,
+			filename: SEEDED_FILE,
+			version: 0,
+		})
 		expect(await state.storage.get("holder")).toBe("anna")
 	})
 

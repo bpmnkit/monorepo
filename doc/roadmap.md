@@ -320,7 +320,10 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       beside `diagram:change`, and `getViewport`/`setViewport` public on both the canvas and the
       editor. `applyOp` is the editor's own mutation path too, so a local edit and its replay
       cannot drift
-- [ ] D4 — op protocol and server-side replay of the same `modeling.ts` functions
+- [x] D4 — op protocol and server-side replay: the room runs the writer's op itself through
+      `@bpmnkit/editor/headless`, judges the document that comes out (`checkIntegrity`), and only
+      then makes it the state; the whole document lives in DO storage, so a hibernated room
+      needs no op log to catch up
 - [ ] D5 — watcher replay with a hash check and resync
 - [ ] D6 — editor loaded on claim via dynamic `import()`, viewport carried across the swap;
       brings track C with it (local checkpoints + panel, beside the server history)

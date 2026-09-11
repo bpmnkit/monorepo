@@ -92,10 +92,18 @@ function wrap(db: DatabaseSync): D1Database {
 /** Inserts a drop with one file, matching what `insertDrop` writes. */
 export function seedFile(
 	db: D1Database,
-	opts: { shareId?: string; fileId?: string; body?: string; hash?: string; now?: number } = {},
-): { shareId: string; fileId: string; hash: string; body: string; now: number } {
+	opts: {
+		shareId?: string
+		fileId?: string
+		filename?: string
+		body?: string
+		hash?: string
+		now?: number
+	} = {},
+): { shareId: string; fileId: string; filename: string; hash: string; body: string; now: number } {
 	const shareId = opts.shareId ?? "share1"
 	const fileId = opts.fileId ?? "file1"
+	const filename = opts.filename ?? "order.bpmn"
 	const body = opts.body ?? "<definitions/>"
 	const hash = opts.hash ?? "hash-original"
 	const now = opts.now ?? 1_000_000
@@ -113,9 +121,9 @@ export function seedFile(
 	void raw
 		.prepare(
 			`INSERT INTO files (id, drop_id, position, kind, filename, name, content_hash, size_original, size_json, meta)
-			 VALUES (?, ?, 0, 'bpmn', 'order.bpmn', 'Order', ?, ?, ?, '{}')`,
+			 VALUES (?, ?, 0, 'bpmn', ?, 'Order', ?, ?, ?, '{}')`,
 		)
-		.bind(fileId, shareId, hash, body.length, body.length)
+		.bind(fileId, shareId, filename, hash, body.length, body.length)
 		.run()
 	void raw
 		.prepare("INSERT INTO file_content (file_id, rep, body) VALUES (?, 'original', ?)")
@@ -126,7 +134,7 @@ export function seedFile(
 		.bind(fileId, "{}")
 		.run()
 
-	return { shareId, fileId, hash, body, now }
+	return { shareId, fileId, filename, hash, body, now }
 }
 
 /** Counts a file's stored milestones — the number the bound is stated in. */

@@ -1,5 +1,45 @@
 # Progress
 
+## 2026-09-11 — D4: the room replays the op
+
+D3 made an edit describable; this makes the room the one that decides whether it happened.
+
+**Getting `applyOp` into a Worker needed a door.** `@bpmnkit/editor`'s root import reaches for
+`document` — it is an editor. The operations layer never does, so the package grew a
+`./headless` subpath exporting exactly the pure surface. The dry-run bundle confirms it: zero
+occurrences of `BpmnEditor`, `OverlayRenderer` or `document.createElement` in the Worker, for
++72 KiB raw / +14 KiB gzip. D5's watcher will use the same door.
+
+**The design said to keep an op log in DO SQLite. It does not need one.** That sketch existed to
+answer "what survives hibernation", and I went looking for the storage limit before writing the
+replay path. SQLite-backed Durable Objects allow **2 MB per key and value together** — the
+128 KiB figure is the legacy KV backend — and `MAX_FILE_BYTES` is 900 KB. So the whole document
+fits in one value, written on every applied op, and waking is one read and one parse. No op log,
+no replay-on-wake, and nothing that grows for the length of a session. Recording it here because
+the design is now wrong on this point and the reason is a number, not a preference.
+
+**The order of the checks is the interesting part.** Permission, then shape, then replay, then
+judgement — and the judgement is of the *document*, never of the op. Asking "is this op safe?"
+would mean teaching the validator what all twenty ops do, which is the duplication D3 existed to
+remove. Asking "is this document storable?" needs no such knowledge and catches things no
+per-op rule would, including a regression in `deleteElements`' cascade.
+
+**`checkIntegrity`'s real risk is strictness, not permissiveness.** A rule that refuses documents
+the editor legitimately produces would surface as a mysterious rejection mid-drag. So the first
+tests are that the SDK's showcase file passes, that an auto-laid-out copy passes, and that six
+real ops each leave a document that still passes — and only then the things that must fail.
+
+**Two smaller decisions.** The baton stays per-drop rather than per-file, so `claim` now names
+the file it means and the room remembers it; one room per drop keeps view counting correct and
+one writer per drop is what "this drop is being edited" already meant. And `claim` loads the
+document *before* granting, so Edit fails loudly on a file the room cannot write instead of
+succeeding and rejecting the first op.
+
+**A mistake worth recording:** I created `apps/drop/tests/fixtures.ts` without looking, clobbering
+the one already there, and five upload tests went red. `git checkout --` and an append fixed it.
+The tests caught it immediately, which is the system working, but the file existed and I should
+have read before writing.
+
 ## 2026-09-11 — D3: the editor describes its edits
 
 The acceptance criterion was the design: *the same op replayed on two machines yields

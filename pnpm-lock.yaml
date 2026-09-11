@@ -178,6 +178,9 @@ importers:
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@bpmnkit/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
       '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins

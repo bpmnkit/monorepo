@@ -15,6 +15,7 @@
 	"dependencies": {
 		"@bpmnkit/canvas": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/plugins": "workspace:*",
 		"@bpmnkit/ui": "workspace:*"
 	}

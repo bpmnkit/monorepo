@@ -1,5 +1,9 @@
+import type { EditorOp } from "@bpmnkit/editor/headless"
 import type { Env } from "./env.js"
 import { recordViews } from "./lib/db.js"
+import { type RoomDoc, advance, loadDocFromDb, readStoredDoc, writeDoc } from "./lib/doc.js"
+import { describeProblem } from "./lib/integrity.js"
+import { parseOp } from "./lib/op-guard.js"
 import { RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
 import {
 	BATON_IDLE_MS,
@@ -7,6 +11,7 @@ import {
 	type ClientMessage,
 	PING,
 	PONG,
+	type RejectReason,
 	type RevokeReason,
 	SOCKET_DEAD_MS,
 	type ServerMessage,
@@ -36,10 +41,27 @@ interface Attachment {
  * another claim. That single-writer rule is what lets the rest of this system
  * skip operational transform entirely.
  *
+ * **Editing.** The holder's ops are replayed here, not trusted: the room runs
+ * the same `applyOp` the browser ran, checks the document that comes out is one
+ * it can store, and only then does that become the drop's state. So a client
+ * cannot write anything it could not have reached by editing, and the state
+ * everyone sees is the room's, never a writer's claim about it.
+ *
  * Nothing in memory is trusted across events. Every field the room needs after a
- * wake lives in storage or on a socket's attachment.
+ * wake lives in storage or on a socket's attachment — including the document,
+ * which is why a hibernated room can accept the next op without asking anyone
+ * what happened while it was asleep.
  */
 export class DocRoom implements DurableObject {
+	/**
+	 * The loaded documents, by filename.
+	 *
+	 * A cache and never the truth: hibernation clears it without warning, and
+	 * every entry is reconstructible from storage. It exists so a drag does not
+	 * re-parse the document on every frame.
+	 */
+	private readonly docs = new Map<string, RoomDoc>()
+
 	constructor(
 		private readonly state: DurableObjectState,
 		private readonly env: Env,
@@ -94,10 +116,11 @@ export class DocRoom implements DurableObject {
 		// the object, so anything that does is something a person did.
 		await this.state.storage.put("lastActivityAt", Date.now())
 
-		if (message.type === "claim") await this.claim(ws, actor)
+		if (message.type === "claim") await this.claim(ws, actor, message.filename)
 		else if (message.type === "release" && (await this.release(actor, "released"))) {
 			await this.broadcastPresence()
-		}
+		} else if (message.type === "op") await this.handleOp(ws, actor, message)
+		else if (message.type === "resync") await this.sendState(ws, message.filename)
 		await this.rearm()
 	}
 
@@ -126,21 +149,41 @@ export class DocRoom implements DurableObject {
 
 	// ── The baton ──────────────────────────────────────────────────────────────
 
-	private async claim(ws: WebSocket, actor: string): Promise<void> {
+	private async claim(ws: WebSocket, actor: string, filename: string): Promise<void> {
 		const holder = await this.holder()
 		if (holder !== null && holder !== actor) {
 			this.send(ws, { type: "denied", holder })
 			return
 		}
-		await this.state.storage.put({ holder: actor, lastActivityAt: Date.now() })
+
+		// Loading before granting means "Edit" fails loudly on a file the room
+		// cannot write, rather than succeeding and rejecting the first op.
+		const doc = await this.doc(filename)
+		if (!doc) {
+			this.send(ws, { type: "rejected", seq: 0, reason: "no-document" })
+			return
+		}
+
+		await this.state.storage.put({
+			holder: actor,
+			holderFile: filename,
+			lastActivityAt: Date.now(),
+		})
 		await this.state.storage.delete("warnedAt")
-		this.send(ws, { type: "granted", holder: actor, idleMs: BATON_IDLE_MS })
+		this.send(ws, {
+			type: "granted",
+			holder: actor,
+			idleMs: BATON_IDLE_MS,
+			filename,
+			version: doc.version,
+			hash: doc.hash,
+		})
 		await this.broadcastPresence()
 	}
 
 	private async release(actor: string, reason: RevokeReason): Promise<boolean> {
 		if ((await this.holder()) !== actor) return false
-		await this.state.storage.delete(["holder", "warnedAt"])
+		await this.state.storage.delete(["holder", "holderFile", "warnedAt"])
 		for (const ws of this.state.getWebSockets(actor)) {
 			this.send(ws, { type: "revoked", reason })
 		}
@@ -197,6 +240,98 @@ export class DocRoom implements DurableObject {
 
 	private async holder(): Promise<string | null> {
 		return (await this.state.storage.get<string>("holder")) ?? null
+	}
+
+	// ── Editing ────────────────────────────────────────────────────────────────
+
+	/**
+	 * Replays one op and, if the result is storable, makes it the document.
+	 *
+	 * Four things can stop an op, and each is answered rather than ignored: the
+	 * sender does not hold the baton, the message is not an op, replaying it
+	 * throws, or the document it produces is one the room will not serve. Only
+	 * the last needs the replay to have happened, which is why the order is
+	 * permission, shape, replay, judgement.
+	 */
+	private async handleOp(
+		ws: WebSocket,
+		actor: string,
+		message: { seq: number; op: EditorOp },
+	): Promise<void> {
+		const { seq } = message
+		if ((await this.holder()) !== actor) return this.reject(ws, seq, "not-holder")
+
+		const op = parseOp(message.op)
+		if (!op) return this.reject(ws, seq, "malformed")
+
+		const filename = await this.state.storage.get<string>("holderFile")
+		const doc = filename ? await this.doc(filename) : null
+		if (!doc) return this.reject(ws, seq, "no-document")
+
+		const result = await advance(doc, op)
+		if (!result.ok) {
+			return result.reason === "integrity"
+				? this.reject(ws, seq, "integrity", describeProblem(result.problem))
+				: this.reject(ws, seq, "invalid", result.detail)
+		}
+
+		// Storage first, then the broadcast. A room that told everyone about an op
+		// it had not kept would be claiming a state it could lose on eviction.
+		this.docs.set(doc.filename, result.doc)
+		await writeDoc(this.state.storage, result.doc)
+
+		this.broadcast({
+			type: "applied",
+			version: result.doc.version,
+			seq,
+			filename: result.doc.filename,
+			op,
+			hash: result.doc.hash,
+		})
+	}
+
+	/** Sends a file's current state to one socket — the answer to a divergence. */
+	private async sendState(ws: WebSocket, filename: string): Promise<void> {
+		const doc = await this.doc(filename)
+		if (!doc) return this.reject(ws, 0, "no-document")
+		this.send(ws, {
+			type: "state",
+			filename: doc.filename,
+			version: doc.version,
+			xml: doc.xml,
+			hash: doc.hash,
+		})
+	}
+
+	/**
+	 * The document for a file: from memory, else storage, else D1.
+	 *
+	 * The three tiers are one fact each. Memory is a cache. Storage is what
+	 * survives hibernation, and is ahead of D1 for as long as anyone is editing.
+	 * D1 is where a cold room starts, and catches up at the autosave checkpoint.
+	 */
+	private async doc(filename: string): Promise<RoomDoc | null> {
+		const cached = this.docs.get(filename)
+		if (cached) return cached
+
+		const stored = await readStoredDoc(this.state.storage, filename)
+		if (stored) {
+			this.docs.set(filename, stored)
+			return stored
+		}
+
+		const shareId = await this.state.storage.get<string>("shareId")
+		if (!shareId) return null
+		const loaded = await loadDocFromDb(this.env.DB, shareId, filename)
+		if (!loaded) return null
+		// Not written to storage here: nothing has changed yet, and a room that
+		// only ever gets looked at should leave no document behind.
+		this.docs.set(filename, loaded)
+		return loaded
+	}
+
+	private reject(ws: WebSocket, seq: number, reason: RejectReason, detail?: string): void {
+		this.send(ws, { type: "rejected", seq, reason, ...(detail ? { detail } : {}) })
 	}
 
 	// ── Views ──────────────────────────────────────────────────────────────────
@@ -266,6 +401,11 @@ export class DocRoom implements DurableObject {
 		} catch {
 			// socket already gone — ignore
 		}
+	}
+
+	/** Sends to every connected socket. */
+	private broadcast(message: ServerMessage): void {
+		for (const ws of this.state.getWebSockets()) this.send(ws, message)
 	}
 
 	private async broadcastPresence(excluding?: WebSocket): Promise<void> {

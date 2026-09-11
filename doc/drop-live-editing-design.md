@@ -261,6 +261,14 @@ Conflating them is the trap. Durability and history want very different frequenc
 "unsaved" — close the tab mid-session and the last committed command is already durable. There
 is no save button because there is nothing for it to do.
 
+> **Correction (implemented in track D4).** The op log this paragraph describes is not needed,
+> and D4 does not build one. It existed to answer "what survives hibernation", on the assumption
+> that a whole document could not. It can: SQLite-backed Durable Objects allow **2 MB per key
+> and value together** — the 128 KiB limit belongs to the legacy key-value backend — and
+> `MAX_FILE_BYTES` is 900 KB. So the room writes the whole document on every applied op and a
+> wake costs one read and one parse, with no log to replay and nothing that grows for the
+> length of a session. The durability claim above is unchanged; only the mechanism is.
+
 > **Correction (implemented in track B).** This document and the plan both said edits would live
 > at `file_content.rep = 'current'`. That column carries a CHECK constraint, and SQLite cannot
 > alter one without rewriting the table under live data, so edits go to a separate `file_current`

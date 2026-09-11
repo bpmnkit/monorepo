@@ -1,3 +1,5 @@
+import type { EditorOp } from "@bpmnkit/editor/headless"
+
 /**
  * The messages a drop's room and its viewers exchange.
  *
@@ -11,7 +13,19 @@
  */
 
 /** Sent by a viewer. */
-export type ClientMessage = { type: "claim" } | { type: "release" }
+export type ClientMessage =
+	/** "Edit". `filename` is which of the drop's files you mean to write. */
+	| { type: "claim"; filename: string }
+	| { type: "release" }
+	/**
+	 * An edit, from the holder. `seq` is the sender's own counter, echoed back on
+	 * a rejection so a writer can tell which of its ops the room refused — the
+	 * room never orders by it, because with one writer and a Durable Object's
+	 * input gate the ops cannot arrive interleaved in the first place.
+	 */
+	| { type: "op"; seq: number; op: EditorOp }
+	/** "I have lost track of the document" — ask for the current state outright. */
+	| { type: "resync"; filename: string }
 
 /** Sent by the room. */
 export type ServerMessage =
@@ -19,17 +33,58 @@ export type ServerMessage =
 	| { type: "hello"; actor: string; viewers: number; holder: string | null }
 	/** Someone joined or left, or the baton moved. */
 	| { type: "presence"; viewers: number; holder: string | null }
-	/** You hold the baton. `idleMs` is how long you may sit still before losing it. */
-	| { type: "granted"; holder: string; idleMs: number }
+	/**
+	 * You hold the baton. `idleMs` is how long you may sit still before losing it;
+	 * `version` and `hash` say what the room believes the file currently is, so a
+	 * writer can tell at once whether the page it is holding is still the truth.
+	 */
+	| {
+			type: "granted"
+			holder: string
+			idleMs: number
+			filename: string
+			version: number
+			hash: string
+	  }
 	/** Someone else holds it. */
 	| { type: "denied"; holder: string }
 	/** You are about to lose the baton for being idle. Any action keeps it. */
 	| { type: "warning"; secondsLeft: number }
 	/** You no longer hold the baton. */
 	| { type: "revoked"; reason: RevokeReason }
+	/**
+	 * An op became the document. Sent to everyone, the writer included — the
+	 * writer has already applied it locally and uses this to confirm the room
+	 * agreed, the watchers to replay it. `hash` is what the document should hash
+	 * to afterwards; anyone who computes something else has diverged and should
+	 * ask to resync.
+	 */
+	| { type: "applied"; version: number; seq: number; filename: string; op: EditorOp; hash: string }
+	/**
+	 * Your op did not happen. Only the sender sees this. `seq` echoes the op's
+	 * own; it is 0 when the refusal was not about a numbered op — a claim on a
+	 * file the room cannot edit, or a resync of one.
+	 */
+	| { type: "rejected"; seq: number; reason: RejectReason; detail?: string }
+	/** The current document, whole. The answer to a resync, and to a divergence. */
+	| { type: "state"; filename: string; version: number; xml: string; hash: string }
 
 /** Why a holder stopped holding. */
 export type RevokeReason = "released" | "idle" | "disconnected"
+
+/**
+ * Why an op did not happen.
+ *
+ * - `not-holder` — someone without the baton tried to write. This is the entire
+ *   permission model, and it is enforced here rather than by hiding a button.
+ * - `malformed` — the message was not a recognisable op.
+ * - `no-document` — the room could not load the file: gone, or not a BPMN.
+ * - `invalid` — replaying the op threw.
+ * - `integrity` — the op replayed, but the document it produced could not be
+ *   stored (a dangling reference, a duplicate id, an element with nothing to
+ *   draw it). `detail` says which.
+ */
+export type RejectReason = "not-holder" | "malformed" | "no-document" | "invalid" | "integrity"
 
 /**
  * The heartbeat. Cloudflare answers this without waking the object, so a room
