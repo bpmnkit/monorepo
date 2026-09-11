@@ -286,7 +286,8 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 
 - [x] A1 — "Share as a drop" in the `/editor` main menu: posts the open diagram to the existing
       `POST /drop/api/drops` (no Worker changes), dev-proxied so it stays same-origin
-- [ ] A2 — localStorage draft on `/editor`, so a refresh before the first share keeps the work
+- [x] A2 — localStorage draft on `/editor`: written 1 s after the last edit and flushed on
+      `pagehide`, offered back once per tab, cleared on a successful share
 
 **Track B — the version log** (blocks every task that writes to a drop)
 

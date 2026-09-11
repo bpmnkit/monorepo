@@ -1,5 +1,27 @@
 # Features
 
+## An unsaved diagram survives a refresh (2026-09-11)
+
+`bpmnkit.com/editor` keeps a single localStorage draft of the open diagram and offers it back
+after a reload. It closes one specific hole: `@bpmnkit/plugins/storage` autosaves to IndexedDB
+only for files that live in a project — both of its save paths return early without a file id —
+so a diagram opened straight from the welcome screen persisted **nowhere**, and a refresh brought
+the welcome screen back. Confirmed in the browser before building anything: localStorage was
+empty and the work was gone.
+
+- **Three gates, each ruling out a wrong draft rather than a redundant one**: a non-BPMN tab has
+  no XML; a project file is already autosaved and a second copy would compete with it behind the
+  prompt; and an untouched diagram is not work. The third needs a dirty flag — without it the
+  `pagehide` flush drafted a diagram nobody had touched, so merely opening the editor earned you
+  a restore prompt on the next visit.
+- **Declining never deletes.** The prompt is answered once per tab via `sessionStorage`; the draft
+  itself survives, to be overwritten by the next edit or cleared by a successful share. A stray
+  click cannot destroy the only copy of someone's work.
+- **Bounded**: one slot, a 7-day age limit, and malformed or expired values are cleared on read
+  rather than left to prompt forever.
+- Reuses `showConfirmDialog` from `@bpmnkit/plugins/storage`, so the prompt is the app's existing
+  dialog rather than a second one.
+
 ## Author a diagram, then share it as a drop (2026-09-11)
 
 `bpmnkit.com/editor` gains **Share as a drop** in the main menu: it posts the open diagram

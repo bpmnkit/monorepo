@@ -1,5 +1,42 @@
 # Progress
 
+## 2026-09-11 — A2: a refresh no longer costs you the diagram
+
+Second task off `doc/drop-live-editing-plan.md`. The editor now keeps a single localStorage draft
+of the open diagram and offers it back after a reload.
+
+**The gap was verified before it was filled.** `@bpmnkit/plugins/storage` autosaves to IndexedDB,
+but both of its save paths return early without a current file id, so only files inside a project
+persist. Driving the real page: create a diagram from the welcome screen, and `localStorage` is
+empty, `indexedDB` holds the storage plugin's database with nothing of yours in it, and a reload
+returns the welcome screen. The work is simply gone.
+
+**The draft is gated three ways, and the third gate was a bug I found by running it.** Skip a
+non-BPMN tab, skip a file that lives in a project (a second copy would compete with the
+IndexedDB one behind a confusing prompt), and skip an untouched diagram. The first browser run
+showed a draft appearing for a diagram nobody had edited: the `pagehide` flush fires
+unconditionally, and the welcome screen's "New diagram" loads the *example*, which is not empty,
+so `isNewEmptyDiagram` did not catch it. A `dirtySinceLoad` flag fixes it — raised only in
+`diagram:change`, cleared on tab activation and after a share. Loading a diagram does not emit
+`diagram:change`, so the flag cannot rise on its own.
+
+**Declining must never delete.** The prompt is remembered per tab in `sessionStorage`, and the
+draft survives a decline — overwritten by the next edit, or cleared once the diagram is shared.
+The alternative, "Cancel discards", puts the only copy of someone's work one stray click from
+gone. `readDraft` also clears malformed or aged-out values on the way past, so nothing can sit in
+storage prompting forever; one slot, seven days.
+
+**Reused rather than rebuilt.** `showConfirmDialog` already exists in `@bpmnkit/plugins/storage`,
+already on the design system, so the prompt is the app's dialog rather than a second one — and
+the share dialog's CSS did not need extracting.
+
+Verified in the browser end to end: no draft and no prompt for an untouched diagram; an edit is
+drafted within a second; a reload prompts with the right age; Restore reopens the five-shape
+diagram in its tab; a second reload does not ask again. 18 new tests cover the storage module
+against a stubbed `Storage`, including quota failure, storage being absent entirely, unparseable
+JSON, and a well-formed object that is not a draft. Biome across 964 files, build, typecheck and
+31 tests all pass.
+
 ## 2026-09-11 — A1: the editor can hand a diagram straight to Drop
 
 First task off `doc/drop-live-editing-plan.md`. `bpmnkit.com/editor` gains **Share as a drop** in

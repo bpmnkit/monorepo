@@ -13,6 +13,8 @@ export interface ShareTarget {
 	getXml(): string | null
 	/** The open file's name, or null for an unsaved diagram. */
 	getFileName(): string | null
+	/** Called once the diagram has a URL — the caller's cue that it is no longer unsaved. */
+	onShared?(): void
 }
 
 // Flat, square and hairline-ruled, on the `--bpmnkit-chrome-*` tokens the editor
@@ -228,6 +230,7 @@ export function openShareDropDialog(target: ShareTarget): void {
 	}
 
 	function succeed(path: string): void {
+		target.onShared?.()
 		const href = new URL(path, location.href).href
 		link.value = href
 		open.href = href

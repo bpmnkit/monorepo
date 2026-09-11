@@ -16,9 +16,18 @@ import { createHistoryPanel, saveCheckpoint } from "@bpmnkit/plugins/history"
 import { createMainMenuPlugin } from "@bpmnkit/plugins/main-menu"
 import { createOptimizePlugin } from "@bpmnkit/plugins/optimize"
 import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
+import { showConfirmDialog } from "@bpmnkit/plugins/storage"
 import { InMemoryFileResolver, createStorageTabsBridge } from "@bpmnkit/plugins/storage-tabs-bridge"
 import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
 import { createWatermarkPlugin } from "@bpmnkit/plugins/watermark"
+import {
+	clearDraft,
+	describeAge,
+	dismissPrompt,
+	isPromptDismissed,
+	readDraft,
+	saveDraft,
+} from "./draft.js"
 import { makeExamples } from "./examples.js"
 import { savePng, saveSvg } from "./export.js"
 import { openShareDropDialog } from "./share-drop-dialog.js"
@@ -52,6 +61,15 @@ const resolver = new InMemoryFileResolver()
 
 let editorRef: BpmnEditor | null = null
 let currentFileName: string | null = null
+/**
+ * Whether the open diagram has been edited since it was loaded.
+ *
+ * Without it the `pagehide` flush drafts a diagram nobody touched — opening the
+ * editor and closing the tab would be enough to be offered "restore your unsaved
+ * diagram?" on the next visit. Loading does not emit `diagram:change`, so the
+ * flag only ever rises on a real edit.
+ */
+let dirtySinceLoad = false
 let hudRef: {
 	setActive(active: boolean): void
 	showOnboarding(): void
@@ -182,6 +200,11 @@ const mainMenuPlugin = createMainMenuPlugin({
 					// the gate, `exportXml()` would hand back the last BPMN behind a DMN tab.
 					getXml: () => (currentFileName === null ? null : (editorRef?.exportXml() ?? null)),
 					getFileName: () => currentFileName,
+					// The work now has a URL, so the unsaved-draft slot has nothing to protect.
+					onShared: () => {
+						clearDraft()
+						dirtySinceLoad = false
+					},
 				}),
 		},
 		{
@@ -348,6 +371,7 @@ const bridge = createStorageTabsBridge({
 			editorRef?.setSelection([])
 		}
 		currentFileName = isBpmn ? (config.name ?? null) : null
+		dirtySinceLoad = false
 		dock.setDiagramInfo(
 			isBpmn ? (editorRef?.getDefinitions()?.processes[0]?.name ?? null) : null,
 			currentFileName,
@@ -510,9 +534,38 @@ editorRef = editor
 type AnyOn = (event: string, handler: (...args: unknown[]) => void) => () => void
 const editorOn = (editor as unknown as { on: AnyOn }).on.bind(editor)
 
+/**
+ * Writes the unsaved-diagram draft, when there is one worth writing.
+ *
+ * Three gates, each ruling out a case where a draft would be wrong rather than
+ * merely redundant: a non-BPMN tab has no XML to draft; a file that lives in a
+ * project is already autosaved to IndexedDB by the storage plugin, and a second
+ * copy would compete with it behind the restore prompt; and an untouched empty
+ * diagram is not work anyone wants offered back.
+ */
+function saveDraftIfUnsaved(): void {
+	if (!dirtySinceLoad) return
+	if (currentFileName === null) return
+	if (bridge.storagePlugin.api.getCurrentContext()) return
+	const xml = editorRef?.exportXml()
+	if (!xml || isNewEmptyDiagram(xml)) return
+	saveDraft(xml, currentFileName)
+}
+
 let _checkpointTimer: ReturnType<typeof setTimeout> | null = null
+let _draftTimer: ReturnType<typeof setTimeout> | null = null
 editorOn("diagram:change", () => {
 	dock.setDiagramInfo(editorRef?.getDefinitions()?.processes[0]?.name ?? null, currentFileName)
+
+	dirtySinceLoad = true
+
+	// Draft the diagram ~1 s after the last change. Cheap enough to be generous
+	// with, and the only thing standing between an unsaved diagram and a refresh.
+	if (_draftTimer !== null) clearTimeout(_draftTimer)
+	_draftTimer = setTimeout(() => {
+		_draftTimer = null
+		saveDraftIfUnsaved()
+	}, 1000)
 
 	// Save a checkpoint ~600 ms after the last change (auto-save runs at 500 ms).
 	// Only for files that are persisted in storage (context must be available).
@@ -568,6 +621,37 @@ hudRef = initEditorHud(editor, {
 	},
 })
 
+// A tab can be closed inside the draft debounce window, and `pagehide` is the one
+// event that still fires when it is (unlike `beforeunload` on mobile Safari).
+window.addEventListener("pagehide", () => {
+	if (_draftTimer !== null) clearTimeout(_draftTimer)
+	saveDraftIfUnsaved()
+})
+
+// ── Restore an unsaved diagram ────────────────────────────────────────────────
+// Declining keeps the draft rather than deleting it — a stray click must not be
+// able to destroy the only copy of someone's work — so the answer is remembered
+// for the tab instead, and the draft is overwritten by the next edit anyway.
+async function offerDraftRestore(): Promise<void> {
+	if (isPromptDismissed()) return
+	const draft = readDraft()
+	if (!draft) return
+	dismissPrompt()
+
+	const restore = await showConfirmDialog({
+		title: "Restore unsaved diagram?",
+		message: `You have a diagram from ${describeAge(draft.savedAt)} that was never shared or saved to a project. Restoring opens it in a new tab; declining keeps it until your next edit.`,
+		confirmLabel: "Restore",
+	})
+	if (!restore) return
+
+	bridge.tabsPlugin.api.openTab({
+		type: "bpmn",
+		xml: draft.xml,
+		name: draft.name ?? "Restored diagram",
+	})
+}
+
 // ── Open diagram forwarded from Operate ───────────────────────────────────────
 // Deferred via rAF so it runs AFTER the welcome-screen's own rAF callback
 // (which hides the HUD/dock). Both rAFs queue in the same frame; ours fires
@@ -579,8 +663,10 @@ requestAnimationFrame(() => {
 			sessionStorage.removeItem("bpmnkit-from-operate")
 			const { xml, name } = JSON.parse(raw) as { xml: string; name: string }
 			bridge.tabsPlugin.api.openTab({ type: "bpmn", xml, name })
+			return // an explicit hand-off outranks the draft prompt
 		}
 	} catch {
 		// sessionStorage unavailable or malformed JSON — ignore
 	}
+	void offerDraftRestore()
 })
