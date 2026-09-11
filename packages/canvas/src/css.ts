@@ -292,7 +292,8 @@ export const CANVAS_CSS = `
 
 /* ── Light theme (default) ───────────────────────────────────────── */
 .bpmnkit-canvas-host {
-  --bpmnkit-bg: #f8f9fa;
+  /* The design system's --canvas ground, which the editor shell sits on. */
+  --bpmnkit-bg: var(--bpmnkit-ds-canvas, #fbfbfc);
   --bpmnkit-grid: rgba(0, 0, 0, 0.14);
   --bpmnkit-shape-fill: #ffffff;
   --bpmnkit-shape-stroke: #404040;

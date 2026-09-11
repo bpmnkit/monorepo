@@ -269,8 +269,8 @@ export function injectEditorStyles(): void {
 
 /** CSS for the editor HUD — panels, buttons, dropdowns, group picker.
  *  Flat, square and hairline-ruled per the bpmnkit.com design system.
- *  Dark ground is the default; `data-bpmnkit-hud-theme="light"` (or
- *  `"neon"`) on `document.body` switches it. */
+ *  The light `--canvas` ground is the default; `data-bpmnkit-hud-theme="dark"`
+ *  (or `"neon"`) on `document.body` switches it. */
 export const HUD_CSS = `
 /* ── HUD chrome ──────────────────────────────────────────────────────
    The bpmnkit.com design system applied to the editor's chrome: flat
@@ -476,9 +476,9 @@ export const HUD_CSS = `
   position: absolute; z-index: 50;
   top: 36px; left: 0; bottom: 0; right: 0;
   display: flex; align-items: center; justify-content: center;
-  background: var(--bpmnkit-bg, #0d0d16);
+  background: var(--bpmnkit-ds-canvas, #fbfbfc);
 }
-[data-bpmnkit-hud-theme="light"] #bpmnkit-empty-state { background: var(--bpmnkit-ds-canvas, #fbfbfc); }
+[data-bpmnkit-hud-theme="dark"] #bpmnkit-empty-state { background: var(--bpmnkit-bg, #0d0d16); }
 [data-bpmnkit-hud-theme="neon"] #bpmnkit-empty-state { background: oklch(5% 0.025 270); }
 
 .bpmnkit-onboard-inner {

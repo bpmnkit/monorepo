@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest"
+import { CHROME_CSS } from "../src/chrome.js"
 import { EDITOR_CSS, HUD_CSS } from "../src/css.js"
 import { BpmnEditor } from "../src/editor.js"
 import { initEditorHud } from "../src/hud.js"
@@ -142,5 +143,53 @@ describe("design-system invariants", () => {
 		const rule = /\.bpmnkit-sel-indicator\s*\{([^}]*)\}/.exec(EDITOR_CSS)?.[1] ?? ""
 		expect(rule).toContain("stroke-dasharray")
 		expect(rule).toContain("fill: none")
+	})
+})
+
+/**
+ * The shell sits on the design system's light `--canvas` ground. Dark and the
+ * `neon` white-label theme are opt-in from there, so a host that names no theme
+ * — and any chrome rendered before the HUD stamps the body — reads light.
+ */
+describe("chrome ground", () => {
+	/** The declarations a selector opens in CHROME_CSS. */
+	function block(selector: string): string {
+		const at = CHROME_CSS.indexOf(`${selector} {`)
+		expect(at, `${selector} declares no block`).toBeGreaterThan(-1)
+		return CHROME_CSS.slice(at, CHROME_CSS.indexOf("}", at))
+	}
+
+	it("puts the light design-system ground on the themeless default", () => {
+		const root = block(":root")
+		expect(root).toContain("--bpmnkit-chrome-ground: var(--bpmnkit-ds-surface, #ffffff)")
+		expect(root).toContain("--bpmnkit-chrome-ink: var(--bpmnkit-ds-ink, #14161a)")
+	})
+
+	it("makes dark and neon opt in, and drops the old light opt-in", () => {
+		expect(block('[data-bpmnkit-hud-theme="dark"]')).toContain(
+			"--bpmnkit-chrome-ground: var(--bpmnkit-panel-bg, #0d0d16)",
+		)
+		expect(CHROME_CSS).toContain('[data-bpmnkit-hud-theme="neon"]')
+		expect(CHROME_CSS).not.toContain('[data-bpmnkit-hud-theme="light"]')
+	})
+
+	it("comes up light when the host names no theme", () => {
+		const container = makeContainer()
+		const editor = new BpmnEditor({ container, xml: XML, grid: false })
+		expect(editor.getTheme()).toBe("light")
+		// Light is the themeless default in @bpmnkit/canvas too, so it sets nothing.
+		expect(editor.container.hasAttribute("data-theme")).toBe(false)
+		editor.destroy()
+	})
+
+	it("stamps the canvas theme on the body so chrome and canvas agree", () => {
+		const { destroy } = mount()
+		expect(document.body.dataset.bpmnkitHudTheme).toBe("light")
+		destroy()
+	})
+
+	it("lands the new-diagram overlay on the --canvas ground", () => {
+		expect(HUD_CSS).toMatch(/#bpmnkit-empty-state\s*\{[^}]*background:\s*var\(--bpmnkit-ds-canvas/)
+		expect(HUD_CSS).toContain('[data-bpmnkit-hud-theme="dark"] #bpmnkit-empty-state')
 	})
 })

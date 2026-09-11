@@ -7,8 +7,8 @@ export const TABS_CSS = `
   height: 36px;
   display: flex;
   align-items: stretch;
-  background: var(--tabs-bg, var(--bpmnkit-ds-dark, #14161a));
-  border-bottom: 1px solid var(--tabs-border, #2c3038);
+  background: var(--tabs-bg, var(--bpmnkit-ds-bg, #f4f5f7));
+  border-bottom: 1px solid var(--tabs-border, var(--bpmnkit-ds-line, #d8dbe0));
   font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
   z-index: 100;
   overflow-x: auto;
@@ -186,7 +186,7 @@ export const TABS_CSS = `
   align-items: center;
   justify-content: center;
   font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
-  background: var(--welcome-bg, var(--bpmnkit-ds-dark, #14161a));
+  background: var(--welcome-bg, var(--bpmnkit-ds-canvas, #fbfbfc));
 }
 
 .bpmnkit-welcome[data-theme="light"] {

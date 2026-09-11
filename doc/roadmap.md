@@ -304,8 +304,10 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       variable-flow, pattern-advisor, zoom-controls, presentation, feel-playground, dmn-editor,
       config-panel-bpmn). 1,060 lines net removed; invariants held by
       `tests/chrome-invariants.test.ts`
-- [ ] Flip the Editor shell to the light `--canvas` ground of the brief's mock — the plugins
-      pass above is done, so this is now unblocked
+- [x] Flip the Editor shell to the light `--canvas` ground of the brief's mock — `:root` now
+      carries the design system's light chrome, `BpmnEditor` defaults to `light`, and
+      `@bpmnkit/canvas`'s light ground reads `--bpmnkit-ds-canvas`; `dark` and `neon` are
+      opt-in from there
 - [ ] Canvas dot grid (`@bpmnkit/canvas`)
 - [ ] Properties-dock footer row (mono save/lines status + `Deploy ▶`) — no data source yet
 - [ ] `flow-navigation` draws its keyboard cursor by recolouring the shape's own stroke; the

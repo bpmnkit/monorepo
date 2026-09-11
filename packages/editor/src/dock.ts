@@ -15,7 +15,7 @@ const DOCK_CSS = `
 .bpmnkit-side-dock {
   position: fixed; right: 0; top: 36px; bottom: 0;
   z-index: 9999; display: flex; flex-direction: column;
-  background: var(--bpmnkit-chrome-ground, #0d0d16);
+  background: var(--bpmnkit-chrome-ground, #ffffff);
   border-left: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
   font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
   transition: width 0.22s ease;
@@ -24,7 +24,7 @@ const DOCK_CSS = `
 .bpmnkit-side-dock__collapse-handle {
   position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
   width: 20px; height: 52px;
-  background: var(--bpmnkit-chrome-ground, #0d0d16);
+  background: var(--bpmnkit-chrome-ground, #ffffff);
   border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14)); border-right: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 1;

@@ -13,7 +13,7 @@ function injectModalStyles(): void {
   display: flex; align-items: center; justify-content: center;
 }
 .bpmnkit-hud-modal {
-  background: var(--bpmnkit-chrome-ground, #0d0d16);
+  background: var(--bpmnkit-chrome-ground, #ffffff);
   border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
   padding: 24px 26px;
   min-width: 320px; max-width: 90vw;

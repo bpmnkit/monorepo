@@ -1,5 +1,47 @@
 # Progress
 
+## 2026-09-11 — The editor shell moves onto the light `--canvas` ground
+
+The brief's editor mock sits on `--canvas` (`#fbfbfc`) with light chrome; the shell shipped a
+dark default with light as an opt-in. That is now inverted, and the flip is a change of
+*defaults*, not of themes: dark and the `neon` white-label theme are both intact and both still
+one call away.
+
+**Where the default lived.** In three places, all of which said "dark" independently:
+
+- `packages/editor/src/chrome.ts` put the dark palette on bare `:root` and light behind
+  `[data-bpmnkit-hud-theme="light"]`. The two blocks swapped: `:root` is now the design
+  system's light ground, and `[data-bpmnkit-hud-theme="dark"]` carries what `:root` held. The
+  scrim stays on `:root` — a scrim is a dark veil over either ground, not a per-theme value.
+- `BpmnEditor`'s constructor resolved `options.theme ?? "neon"`. It now resolves to `"light"`.
+  `persistTheme` is untouched, so anyone who already chose a theme keeps it, and the hosts that
+  name `theme: "neon"` outright — the embed docs page, `apps/learn` — are unaffected.
+- Two ground fallbacks stated dark for the themeless case: `#bpmnkit-empty-state` in `HUD_CSS`
+  and `.bpmnkit-tabs` / `.bpmnkit-welcome` in the tabs plugin. All three now fall back light.
+
+**The canvas ground itself.** `@bpmnkit/canvas` already treated light as the themeless default,
+but its light ground was the stock `#f8f9fa`, not the brief's `--canvas`. It now reads
+`var(--bpmnkit-ds-canvas, #fbfbfc)`, so the chrome and the ground it floats on come from the
+same token. Verified in the browser: the host computes to `rgb(251, 251, 252)`.
+
+**One latent bug the flip exposed.** The command palette deliberately stamped
+`data-bpmnkit-hud-theme="light"` only for light, letting dark and neon inherit from the body.
+That was safe only while dark was the inherited default. It now states the canvas theme
+outright — which is what the surrounding comment always claimed it did — because the palette
+follows the canvas it belongs to, and the body may disagree.
+
+**Checked, not assumed.** A Playwright probe drives `setTheme` through all four states and
+reads the computed ground of the canvas host and each HUD group; dark still resolves
+`rgb(13, 13, 22)` and neon its own oklch. Five assertions in `packages/editor/tests/
+hud-chrome.test.ts` pin the flip: the light values on `:root`, dark and neon as opt-ins, the
+absence of the old `"light"` block, a themeless editor reporting `getTheme() === "light"` with
+no `data-theme` on the host, and the HUD stamping `light` on the body. The palette test now
+runs all three themes instead of asserting the old inherit-for-dark behaviour.
+
+Pre-existing and unrelated: `@bpmnkit/engine` cannot build without `@bpmnkit/reebe-wasm`, which
+is absent from the repo, so `turbo test` stops there and studio's `scenario-runner.test.ts`
+fails to resolve. Everything downstream of the changed packages was run directly instead.
+
 ## 2026-09-11 — The rest of the plugin chrome, and one shared set of theme tokens
 
 The remaining `@bpmnkit/plugins` panels move onto the design system, which finishes the pass
