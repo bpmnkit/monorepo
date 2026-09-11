@@ -5,6 +5,7 @@ import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
 import type { ReviewResult, Suggestion } from "../lib/review.js"
 import { AI_CODE_STORAGE_KEY, DEMO_SHARE_ID, type FileKind } from "../shared/constants.js"
+import { PING, PING_INTERVAL_MS, PONG, type ServerMessage } from "../shared/room-protocol.js"
 
 interface DropFile {
 	filename: string
@@ -512,10 +513,36 @@ const presenceEl = document.getElementById("presence") as HTMLElement
 try {
 	const proto = location.protocol === "https:" ? "wss" : "ws"
 	const ws = new WebSocket(`${proto}://${location.host}/drop/api/presence/${data.shareId}`)
+
+	// The heartbeat the room answers without waking up. It is what lets a later
+	// alarm notice a socket that has gone quiet — a closed laptop lid sends no
+	// close event — so the edit baton is never stuck on a holder who has gone.
+	let heartbeat: ReturnType<typeof setInterval> | null = null
+	ws.addEventListener("open", () => {
+		heartbeat = setInterval(() => {
+			if (ws.readyState === WebSocket.OPEN) ws.send(PING)
+		}, PING_INTERVAL_MS)
+	})
+	const stopHeartbeat = () => {
+		if (heartbeat !== null) clearInterval(heartbeat)
+		heartbeat = null
+	}
+	ws.addEventListener("close", stopHeartbeat)
+	ws.addEventListener("error", stopHeartbeat)
+
 	ws.addEventListener("message", (e) => {
-		const { viewers } = JSON.parse(e.data as string) as { viewers: number }
-		presenceEl.textContent = `${viewers} VIEWING`
-		presenceEl.hidden = viewers < 1
+		const raw = e.data as string
+		if (raw === PONG) return // the auto-response; it carries nothing to render
+		let message: ServerMessage
+		try {
+			message = JSON.parse(raw) as ServerMessage
+		} catch {
+			return
+		}
+		if (message.type === "hello" || message.type === "presence") {
+			presenceEl.textContent = `${message.viewers} VIEWING`
+			presenceEl.hidden = message.viewers < 1
+		}
 	})
 } catch {
 	// presence is decorative — ignore failures

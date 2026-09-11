@@ -1,5 +1,49 @@
 # Progress
 
+## 2026-09-11 — D2: the edit baton
+
+The room hands out a single write token. This is the task the whole design rests on: with one
+writer there is nothing to merge, which is why no part of this codebase does operational
+transform.
+
+**Claiming needs no lock, and that is a property of the platform rather than of this code.**
+Durable Object input gates deliver one message at a time, so the read-then-write inside the
+handler cannot interleave with another claim. Two sockets claiming in the same tick against a
+live Worker: one granted, one denied, and the third participant saw the winner as holder.
+
+**A constraint shaped the identity design.** `acceptWebSocket(ws, tags)` fixes tags at accept
+time — there is no setter — so the holder cannot be tagged when it claims. Instead every socket
+is tagged with its own actor id, which is what lets `getWebSockets(holder)` find the holder's
+socket after the object has been evicted from memory. The id doubles as the attachment.
+
+**Two reclaims, and conflating them would have been the easy mistake.** A closed laptop lid sends
+no close event at all, so the socket stops pinging and the baton is taken immediately; a holder
+who is connected but absent is warned a minute first. The idle clock therefore keys on messages
+that *wake* the room, never on heartbeats — `setWebSocketAutoResponse` answers pings without
+waking the object, so a ping proves the socket is open and nothing more.
+
+**One alarm, several deadlines.** A Durable Object has a single timer, so the view flush from D1
+and both baton deadlines share one scheduler: the earliest arms it, each firing re-arms for the
+next, and a room with no holder and no pending views clears it entirely.
+
+**Testing the timing needed a fake.** Waiting out a ten-minute idle window live would make the
+suite take a quarter of an hour, so `tests/do-state.ts` is a `DurableObjectState` stand-in and
+the room is driven against it on a controlled clock. Two of my own test bugs were worth the
+trouble of finding: the first recorded a claim on the real clock and fired the alarm on a mocked
+one, which read as millions of minutes idle; the second pinged once and then jumped ten minutes,
+so every "idle" case was actually exercising the dead-socket path. Separating `fire` (heartbeats
+healthy — the human is absent) from `fireSilent` (nothing heard — the socket is gone) is what
+makes the two paths distinguishable at all.
+
+**One test was deleted rather than fixed.** A `Promise.all` of two claims passed only because the
+fake has no input gate; it was asserting the fake's behaviour, not the room's. That guarantee is
+workerd's, so it moved to the live-Worker script where the real gate applies.
+
+The client now sends a heartbeat every 30s — without it the dead-socket check has nothing to
+measure — and parses the new message shapes. Verified in a browser that the presence badge still
+counts up and down across two tabs. 82 drop tests, Biome across 972 files, build and typecheck
+pass.
+
 ## 2026-09-11 — Track C folded into D6; D1 makes Drop cheaper
 
 **Track C could not be built where the plan put it.** Its two tasks attach a change handler and

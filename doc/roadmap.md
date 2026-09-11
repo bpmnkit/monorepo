@@ -312,8 +312,10 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
 - [x] D1 — `PresenceRoom` → `DocRoom` (wrangler `renamed_classes`), plus the debounced
       `view_count` / `expires_at` write `drop-spec.md` §6 described and never shipped: a socket
       join is the view, batched in the room's storage and flushed to D1 on a 60s alarm
-- [ ] D2 — the edit baton: claim / granted / denied / release, idle reclaim via
-      `getWebSocketAutoResponseTimestamp` (keyed on operations, not pings)
+- [x] D2 — the edit baton: claim / granted / denied / release / warning / revoked, with two
+      distinct reclaims — a socket that stopped pinging (`getWebSocketAutoResponseTimestamp`)
+      and a holder who is present but idle, the latter warned first and keyed on messages that
+      wake the room rather than on heartbeats
 - [ ] D3 — `@bpmnkit/editor`: injectable ids, an op-describing change event, public viewport
 - [ ] D4 — op protocol and server-side replay of the same `modeling.ts` functions
 - [ ] D5 — watcher replay with a hash check and resync

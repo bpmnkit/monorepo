@@ -1,5 +1,28 @@
 # Features
 
+## The edit baton (2026-09-11)
+
+A drop's room now hands out a single write token. At most one participant may edit at a time,
+which is the whole concurrency story — with one writer there is nothing to merge, and no
+operational transform anywhere in the codebase.
+
+- **Claiming is race-free without a lock.** Durable Object input gates deliver one message at a
+  time, so a read-then-write inside the handler cannot interleave with another claim. Two sockets
+  claiming in the same tick against a live Worker: one granted, one denied.
+- **Identity is per-connection and opaque** — there are no accounts. The actor id is also the
+  socket's tag, because tags are fixed at accept time and tagging by actor is what lets a later
+  alarm find the holder's socket after the object has been evicted from memory.
+- **Two kinds of reclaim, deliberately different.** A closed laptop lid sends no close event, so
+  the holder's socket simply stops pinging and the baton is taken at once. A holder who is still
+  connected but has done nothing is **warned a minute first**, because they are there and a
+  keystroke should keep it.
+- **The idle clock keys on messages that wake the room, never on heartbeats.** Pings are answered
+  by the runtime without waking the object — they prove the socket is open, not that a human is
+  behind it.
+- **One alarm, many deadlines.** A Durable Object has a single timer, so the view flush and both
+  baton deadlines share it: whichever is due next arms it, each firing re-arms for the one after,
+  and a quiet room holds no timer at all.
+
 ## The presence room becomes the document room (2026-09-11)
 
 `PresenceRoom` is now `DocRoom`, and it has taken over view counting — the idea

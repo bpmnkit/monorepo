@@ -1,31 +1,54 @@
 import type { Env } from "./env.js"
 import { recordViews } from "./lib/db.js"
 import { RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
+import {
+	BATON_IDLE_MS,
+	BATON_WARN_MS,
+	type ClientMessage,
+	PING,
+	PONG,
+	type RevokeReason,
+	SOCKET_DEAD_MS,
+	type ServerMessage,
+} from "./shared/room-protocol.js"
+
+/** Per-connection state, kept on the socket so it survives hibernation. */
+interface Attachment {
+	actor: string
+}
 
 /**
  * One instance per shareId: the room a drop's viewers share.
  *
- * Today it does two things. It keeps the live head-count, using the WebSocket
- * Hibernation API so idle viewers cost nothing — the instance is evicted from
- * memory between events while the sockets stay connected. And it owns view
- * counting, which used to be a D1 write on *every* page load.
+ * It does three things.
  *
- * Counting here is what `doc/drop-spec.md` §6 described and never built, and it
- * costs no extra requests: the viewer already opens this socket, so a join is a
- * view the room can see without anyone asking it. Views accumulate in the
- * object's own storage and reach D1 on an alarm, so fifty people opening a drop
- * in the same minute is one write rather than fifty.
+ * **Presence.** A live head-count over hibernating WebSockets, so idle viewers
+ * cost nothing — the instance is evicted from memory between events while the
+ * sockets stay connected.
  *
- * The trade is that a "view" now means a browser that connected, not every HTTP
- * request for the page. That excludes bots and JS-less fetches — which is a more
- * honest count, and the share page renders client-side anyway, so a request that
- * never runs the script never saw the diagram.
+ * **View counting.** A socket join is a view. They accumulate in the object's
+ * own storage and reach D1 on an alarm, so fifty people opening a drop in the
+ * same minute is one write rather than fifty.
+ *
+ * **The edit baton.** At most one participant may write at a time. Claiming is
+ * race-free without any locking: Durable Object input gates deliver one message
+ * at a time, so a read-then-write inside a handler cannot interleave with
+ * another claim. That single-writer rule is what lets the rest of this system
+ * skip operational transform entirely.
+ *
+ * Nothing in memory is trusted across events. Every field the room needs after a
+ * wake lives in storage or on a socket's attachment.
  */
 export class DocRoom implements DurableObject {
 	constructor(
 		private readonly state: DurableObjectState,
 		private readonly env: Env,
-	) {}
+	) {
+		// Answered by the runtime without waking this object, so a heartbeat costs
+		// neither duration nor a request — while still leaving a timestamp an alarm
+		// can read to spot a socket that has gone quiet.
+		this.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG))
+	}
 
 	async fetch(request: Request): Promise<Response> {
 		if (request.headers.get("Upgrade") !== "websocket") {
@@ -40,53 +63,216 @@ export class DocRoom implements DurableObject {
 		const pair = new WebSocketPair()
 		const client = pair[0]
 		const server = pair[1]
-		this.state.acceptWebSocket(server)
-		this.broadcast()
+
+		// There are no accounts, so identity is per-connection and opaque. It is the
+		// socket's tag as well as its attachment: tags are fixed at accept time, and
+		// tagging by actor is what lets a later alarm find the holder's socket after
+		// the object has been evicted from memory.
+		const actor = crypto.randomUUID().slice(0, 8)
+		this.state.acceptWebSocket(server, [actor])
+		server.serializeAttachment({ actor } satisfies Attachment)
+
+		const holder = await this.holder()
+		this.send(server, { type: "hello", actor, viewers: this.state.getWebSockets().length, holder })
+		await this.broadcastPresence()
 		return new Response(null, { status: 101, webSocket: client })
 	}
 
-	// Presence is read-only; inbound messages are ignored.
-	async webSocketMessage(): Promise<void> {}
+	async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+		if (typeof raw !== "string") return
+		let message: ClientMessage
+		try {
+			message = JSON.parse(raw) as ClientMessage
+		} catch {
+			return
+		}
+
+		const actor = this.actorOf(ws)
+		if (!actor) return
+
+		// Reaching this handler at all is activity: auto-response pings never wake
+		// the object, so anything that does is something a person did.
+		await this.state.storage.put("lastActivityAt", Date.now())
+
+		if (message.type === "claim") await this.claim(ws, actor)
+		else if (message.type === "release" && (await this.release(actor, "released"))) {
+			await this.broadcastPresence()
+		}
+		await this.rearm()
+	}
 
 	async webSocketClose(ws: WebSocket): Promise<void> {
-		this.broadcast(ws)
+		const actor = this.actorOf(ws)
+		if (actor) await this.release(actor, "disconnected")
+		await this.broadcastPresence(ws)
+		await this.rearm()
 	}
 
 	async webSocketError(ws: WebSocket): Promise<void> {
-		this.broadcast(ws)
+		await this.webSocketClose(ws)
 	}
 
-	/** Flushes the pending views to D1. Also what wakes the object from hibernation. */
+	/**
+	 * The room's single timer. A Durable Object has one alarm, so every deadline
+	 * shares it: whichever is due next arms it, and each firing re-arms for the
+	 * one after.
+	 */
 	async alarm(): Promise<void> {
-		const pending = (await this.state.storage.get<number>("pendingViews")) ?? 0
-		const shareId = await this.state.storage.get<string>("shareId")
-		if (pending === 0 || !shareId) return
-
-		// Zero the counter first: a failed write costs a few counted views, while a
-		// failed reset would count them again on the next alarm.
-		await this.state.storage.put("pendingViews", 0)
 		const now = Date.now()
-		await recordViews(this.env.DB, shareId, pending, now, now + RETENTION_MS)
+		await this.flushViews(now)
+		await this.checkBaton(now)
+		await this.rearm(now)
 	}
+
+	// ── The baton ──────────────────────────────────────────────────────────────
+
+	private async claim(ws: WebSocket, actor: string): Promise<void> {
+		const holder = await this.holder()
+		if (holder !== null && holder !== actor) {
+			this.send(ws, { type: "denied", holder })
+			return
+		}
+		await this.state.storage.put({ holder: actor, lastActivityAt: Date.now() })
+		await this.state.storage.delete("warnedAt")
+		this.send(ws, { type: "granted", holder: actor, idleMs: BATON_IDLE_MS })
+		await this.broadcastPresence()
+	}
+
+	private async release(actor: string, reason: RevokeReason): Promise<boolean> {
+		if ((await this.holder()) !== actor) return false
+		await this.state.storage.delete(["holder", "warnedAt"])
+		for (const ws of this.state.getWebSockets(actor)) {
+			this.send(ws, { type: "revoked", reason })
+		}
+		return true
+	}
+
+	/**
+	 * Reclaims the baton from a holder who is gone or merely absent.
+	 *
+	 * Two different failures, deliberately distinguished. A closed laptop lid
+	 * sends no close event, so the holder's socket goes quiet — its heartbeat
+	 * timestamp stops advancing and the baton is taken immediately. A holder who
+	 * is still connected but has done nothing is warned first, because they are
+	 * there and a keystroke should keep it.
+	 */
+	private async checkBaton(now: number): Promise<void> {
+		const holder = await this.holder()
+		if (!holder) return
+
+		const sockets = this.state.getWebSockets(holder)
+		if (sockets.length === 0 || this.silentFor(sockets, now) > SOCKET_DEAD_MS) {
+			await this.release(holder, "disconnected")
+			await this.broadcastPresence()
+			return
+		}
+
+		const idleFor = now - ((await this.state.storage.get<number>("lastActivityAt")) ?? now)
+		if (idleFor >= BATON_IDLE_MS) {
+			await this.release(holder, "idle")
+			await this.broadcastPresence()
+			return
+		}
+		if (idleFor >= BATON_IDLE_MS - BATON_WARN_MS && !(await this.state.storage.get("warnedAt"))) {
+			await this.state.storage.put("warnedAt", now)
+			for (const ws of sockets) {
+				this.send(ws, {
+					type: "warning",
+					secondsLeft: Math.max(0, Math.round((BATON_IDLE_MS - idleFor) / 1000)),
+				})
+			}
+		}
+	}
+
+	/** How long the holder's quietest socket has gone without a heartbeat. */
+	private silentFor(sockets: WebSocket[], now: number): number {
+		let quietest = 0
+		for (const ws of sockets) {
+			const last = this.state.getWebSocketAutoResponseTimestamp(ws)
+			// Never pinged yet: measure from the claim rather than calling it dead.
+			quietest = Math.max(quietest, last ? now - last.getTime() : 0)
+		}
+		return quietest
+	}
+
+	private async holder(): Promise<string | null> {
+		return (await this.state.storage.get<string>("holder")) ?? null
+	}
+
+	// ── Views ──────────────────────────────────────────────────────────────────
 
 	private async noteView(shareId: string): Promise<void> {
 		const pending = (await this.state.storage.get<number>("pendingViews")) ?? 0
 		await this.state.storage.put({ pendingViews: pending + 1, shareId })
-		// One alarm per window, not one per view — the whole point of batching.
-		if ((await this.state.storage.getAlarm()) === null) {
-			await this.state.storage.setAlarm(Date.now() + VIEW_FLUSH_MS)
+		if (pending === 0) {
+			await this.state.storage.put("viewFlushAt", Date.now() + VIEW_FLUSH_MS)
+		}
+		await this.rearm()
+	}
+
+	private async flushViews(now: number): Promise<void> {
+		const due = await this.state.storage.get<number>("viewFlushAt")
+		if (due === undefined || now < due) return
+
+		const pending = (await this.state.storage.get<number>("pendingViews")) ?? 0
+		const shareId = await this.state.storage.get<string>("shareId")
+		// Zero the counter first: a failed write costs a few counted views, while a
+		// failed reset would count them again on the next alarm.
+		await this.state.storage.put("pendingViews", 0)
+		await this.state.storage.delete("viewFlushAt")
+		if (pending === 0 || !shareId) return
+		await recordViews(this.env.DB, shareId, pending, now, now + RETENTION_MS)
+	}
+
+	// ── Plumbing ───────────────────────────────────────────────────────────────
+
+	/**
+	 * Points the single alarm at the earliest thing waiting to happen, and clears
+	 * it when nothing is. Called after anything that creates or resolves a
+	 * deadline, so a quiet room holds no timer at all.
+	 */
+	private async rearm(now = Date.now()): Promise<void> {
+		const deadlines: number[] = []
+
+		const viewFlushAt = await this.state.storage.get<number>("viewFlushAt")
+		if (viewFlushAt !== undefined) deadlines.push(viewFlushAt)
+
+		if ((await this.holder()) !== null) {
+			const since = (await this.state.storage.get<number>("lastActivityAt")) ?? now
+			deadlines.push(since + BATON_IDLE_MS - BATON_WARN_MS, since + BATON_IDLE_MS)
+			// A dead socket is spotted between heartbeats, not at the idle deadline.
+			deadlines.push(now + SOCKET_DEAD_MS)
+		}
+
+		const next = deadlines.filter((d) => d > now).sort((a, b) => a - b)[0]
+		if (next === undefined) {
+			await this.state.storage.deleteAlarm()
+			return
+		}
+		const current = await this.state.storage.getAlarm()
+		if (current === null || current > next) await this.state.storage.setAlarm(next)
+	}
+
+	private actorOf(ws: WebSocket): string | null {
+		const attached = ws.deserializeAttachment() as Attachment | null
+		if (attached?.actor) return attached.actor
+		// Attachments survive hibernation, but tags are the belt to that braces.
+		return this.state.getTags(ws)[0] ?? null
+	}
+
+	private send(ws: WebSocket, message: ServerMessage): void {
+		try {
+			ws.send(JSON.stringify(message))
+		} catch {
+			// socket already gone — ignore
 		}
 	}
 
-	private broadcast(excluding?: WebSocket): void {
+	private async broadcastPresence(excluding?: WebSocket): Promise<void> {
+		const holder = await this.holder()
 		const sockets = this.state.getWebSockets().filter((ws) => ws !== excluding)
-		const payload = JSON.stringify({ viewers: sockets.length })
 		for (const ws of sockets) {
-			try {
-				ws.send(payload)
-			} catch {
-				// socket already gone — ignore
-			}
+			this.send(ws, { type: "presence", viewers: sockets.length, holder })
 		}
 	}
 }
