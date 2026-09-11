@@ -1,5 +1,36 @@
 # Progress
 
+## 2026-09-11 — Analysis: what editing, and co-editing, would cost Drop
+
+Two questions about `apps/drop`: could it also *edit*, not just drop and view, and could several
+people edit the same file at once. `doc/drop-collaborative-editing-analysis.md` answers both from
+the code rather than from intuition, and they turn out to be different sizes of problem.
+
+**Editing is mostly a product decision.** `@bpmnkit/editor` already exists, its chrome is already
+on Drop's design system, and it measures +40 KB gzipped over today's viewer bundle. What decides
+the cost is whether a drop stays immutable: fork-on-edit keeps every invariant the schema leans
+on — `content_hash` as both ban key and ETag, write-once `insertDrop`, view-sliding retention —
+while editing in place revisits all of them, plus the moderation and caching consequences the
+document collects in §8.
+
+**Co-editing is harder, and not because of the transport.** A Durable Object already gives you the
+single authority that is normally the hard part. What remains is BPMN's: `moveShapes` re-routes
+unrelated edges, so a move is not a local change and merges element-wise into routes no router
+would produce; a converged document can still be invalid BPMN (a flow into a concurrently deleted
+task) that `Bpmn.export` writes and an engine rejects; and `CommandStack` stores whole snapshots,
+so one user's Ctrl-Z reverts everyone's work — the same compromise Camunda's Web Modeler
+documents.
+
+**One finding changed the recommendation.** `modeling.ts`, `geometry.ts`, `rules.ts` and `id.ts`
+contain zero DOM references, so the editor's 21 pure modeling functions can run *inside* the
+Durable Object. That makes a server-authoritative operation log — client sends intent, the
+authority replays the same function, validates, and broadcasts — cost no second implementation,
+and it re-routes and validates where a CRDT can only converge. Yjs is covered and argued against
+for this model specifically, with the offline case named as what would reverse it.
+
+Phased as fork-to-edit → live read-only follow → edit baton → multi-writer, so the cheap two
+thirds stand alone. No code changed.
+
 ## 2026-09-11 — The editor shell moves onto the light `--canvas` ground
 
 The brief's editor mock sits on `--canvas` (`#fbfbfc`) with light chrome; the shell shipped a
