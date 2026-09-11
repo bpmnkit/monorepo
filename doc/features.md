@@ -1,5 +1,31 @@
 # Features
 
+## Editor operations: an edit that can be replayed (2026-09-11)
+
+Every edit the editor makes now also *describes itself*. `diagram:op` fires alongside
+`diagram:change` carrying an `EditorOp` — a move is a few hundred bytes where the document it
+produced is hundreds of kilobytes, which is the difference between sending an edit over a wire
+and not.
+
+- **`applyOp(defs, op)` performs an op, and is how the editor performs its own edits.** There is
+  no separate local path: if the editor composed the modeling calls itself and `applyOp` composed
+  them again, the two could drift, and the entire promise is that they do not.
+- **Ids travel in the op.** `Math.random()` is right for one person editing one diagram and wrong
+  the moment the same edit happens twice. Creating ops carry a seed; `createIdFactory(seed)`
+  mints the same sequence of ids on every machine, and the `modeling.ts` functions take an
+  optional `IdFactory`. The same op yields **byte-identical XML** wherever it runs.
+- **Placement and routing travel too.** Where the editor decides a position from what is on
+  screen — smart placement, obstacle-avoiding waypoints, a snapped drop point — the decision is
+  in the op rather than recomputed on replay, which would need the same screen to agree.
+- **Undo, redo and `loadDefinitions` stay silent.** They replace the document rather than advance
+  it, so they are not ops.
+- **One escape hatch.** `applyChange(fn)` takes an arbitrary function, which cannot be replayed,
+  so it emits a whole-document `snapshot` op. Under a single writer that is still correct — just
+  larger on the wire.
+- **`getViewport()` / `setViewport()`** are public on `BpmnCanvas` and `BpmnEditor`, so a view
+  survives being handed from a viewer to an editor taking its place, instead of jumping on a
+  re-fit.
+
 ## The edit baton (2026-09-11)
 
 A drop's room now hands out a single write token. At most one participant may edit at a time,

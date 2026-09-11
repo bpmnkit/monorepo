@@ -1,6 +1,7 @@
 import type { CanvasEvents, CanvasOptions } from "@bpmnkit/canvas"
 import type { BpmnDefinitions } from "@bpmnkit/core"
 import type { Translate } from "./i18n.js"
+import type { EditorOp } from "./ops.js"
 
 export type CreateShapeType =
 	| "startEvent"
@@ -88,6 +89,15 @@ export type EditorOptions = CanvasOptions & {
 
 export interface EditorEvents extends CanvasEvents {
 	"diagram:change": (defs: BpmnDefinitions) => void
+	/**
+	 * The same change, described rather than materialised.
+	 *
+	 * Fires immediately after `diagram:change` for every edit — but not for undo,
+	 * redo or `loadDefinitions`, which replace the document wholesale rather than
+	 * advancing it. A listener relaying edits to other people wants this one; a
+	 * listener that just needs the current document wants `diagram:change`.
+	 */
+	"diagram:op": (op: EditorOp, defs: BpmnDefinitions) => void
 	"editor:select": (ids: string[]) => void
 	"editor:tool": (tool: Tool) => void
 	"editor:drag": (dragging: boolean) => void

@@ -553,6 +553,20 @@ describe("viewport API", () => {
 		expect(canvas.viewbox().scale).toBe(2)
 	})
 
+	it("getViewport round-trips through setViewport", () => {
+		canvas.zoom(2, { x: 0, y: 0 })
+		canvas.scrollToElement("task")
+		const saved = canvas.getViewport()
+
+		canvas.zoom(0.5, { x: 0, y: 0 })
+		expect(canvas.getViewport()).not.toEqual(saved)
+
+		// Handing the transform back restores the view exactly — what a viewer does
+		// when an editor takes its place, so the diagram does not jump.
+		canvas.setViewport(saved)
+		expect(canvas.getViewport()).toEqual(saved)
+	})
+
 	it("getAbsoluteBBox transforms diagram bounds into screen space", () => {
 		canvas.zoom(2, { x: 0, y: 0 })
 		// task bounds are x=200 y=60 w=100 h=80 in SIMPLE_XML; at scale 2, tx=ty=0.

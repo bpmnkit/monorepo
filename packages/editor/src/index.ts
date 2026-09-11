@@ -2,6 +2,10 @@ export { BpmnEditor } from "./editor.js"
 export { CHROME_CSS, CHROME_STYLE_ID, injectChromeStyles } from "./chrome.js"
 export { injectStyle } from "./inject.js"
 export { createEmptyDefinitions } from "./modeling.js"
+export { applyOp } from "./ops.js"
+export type { EditorOp, OpResult, ShapeMove } from "./ops.js"
+export { createIdFactory, genId, newIdSeed } from "./id.js"
+export type { IdFactory } from "./id.js"
 export type {
 	EditorEvents,
 	EditorOptions,

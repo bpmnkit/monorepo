@@ -23,7 +23,7 @@ import {
 	routeOrthogonal,
 	waypointsIntersectObstacles,
 } from "./geometry.js"
-import { genId } from "./id.js"
+import { type IdFactory, genId } from "./id.js"
 import type { CreateShapeType, PortDir } from "./types.js"
 
 // ── Empty definitions ─────────────────────────────────────────────────────────
@@ -426,9 +426,10 @@ export function createShape(
 	type: CreateShapeType,
 	bounds: BpmnBounds,
 	name?: string,
+	ids: IdFactory = genId,
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId(type)
-	const shapeId = genId(`${type}_di`)
+	const id = ids(type)
+	const shapeId = ids(`${type}_di`)
 	const flowElement = makeFlowElement(type, id, name)
 
 	const process = defs.processes[0]
@@ -483,9 +484,10 @@ export function createBoundaryEvent(
 	eventDefType: string | null,
 	bounds: BpmnBounds,
 	cancelActivity = true,
+	ids: IdFactory = genId,
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId("BoundaryEvent")
-	const shapeId = genId("BoundaryEvent_di")
+	const id = ids("BoundaryEvent")
+	const shapeId = ids("BoundaryEvent_di")
 
 	const process = defs.processes[0]
 	if (!process) return { defs, id }
@@ -544,9 +546,10 @@ export function createConnection(
 	sourceId: string,
 	targetId: string,
 	waypoints: BpmnWaypoint[],
+	ids: IdFactory = genId,
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId("Flow")
-	const edgeId = genId("Flow_di")
+	const id = ids("Flow")
+	const edgeId = ids("Flow_di")
 
 	const process = defs.processes[0]
 	if (!process) return { defs, id }
@@ -1649,14 +1652,14 @@ export function copyElements(defs: BpmnDefinitions, ids: string[]): Clipboard {
 }
 
 /** Assigns a fresh id to `el` and every descendant / nested edge, recording the mapping. */
-function buildIdMap(el: BpmnFlowElement, map: Map<string, string>): void {
-	map.set(el.id, genId(el.type))
+function buildIdMap(el: BpmnFlowElement, map: Map<string, string>, ids: IdFactory): void {
+	map.set(el.id, ids(el.type))
 	if (hasChildren(el)) {
-		for (const child of el.flowElements) buildIdMap(child, map)
-		for (const sf of el.sequenceFlows) map.set(sf.id, genId("Flow"))
-		for (const ta of el.textAnnotations) map.set(ta.id, genId("TextAnnotation"))
-		for (const a of el.associations) map.set(a.id, genId("Association"))
-		for (const g of el.groups) map.set(g.id, genId("Group"))
+		for (const child of el.flowElements) buildIdMap(child, map, ids)
+		for (const sf of el.sequenceFlows) map.set(sf.id, ids("Flow"))
+		for (const ta of el.textAnnotations) map.set(ta.id, ids("TextAnnotation"))
+		for (const a of el.associations) map.set(a.id, ids("Association"))
+		for (const g of el.groups) map.set(g.id, ids("Group"))
 	}
 }
 
@@ -1703,12 +1706,13 @@ export function pasteElements(
 	clipboard: Clipboard,
 	offsetX: number,
 	offsetY: number,
+	ids: IdFactory = genId,
 ): { defs: BpmnDefinitions; newIds: Map<string, string>; topLevelIds: string[] } {
 	const newIds = new Map<string, string>()
 
 	// Generate new IDs for every element (recursively) and top-level flow.
-	for (const el of clipboard.elements) buildIdMap(el, newIds)
-	for (const sf of clipboard.flows) newIds.set(sf.id, genId("Flow"))
+	for (const el of clipboard.elements) buildIdMap(el, newIds, ids)
+	for (const sf of clipboard.flows) newIds.set(sf.id, ids("Flow"))
 
 	const process = defs.processes[0]
 	const diagram = defs.diagrams[0]
@@ -1722,7 +1726,7 @@ export function pasteElements(
 		const newElId = newIds.get(s.bpmnElement) ?? s.bpmnElement
 		return {
 			...s,
-			id: genId(`${newElId}_di`),
+			id: ids(`${newElId}_di`),
 			bpmnElement: newElId,
 			bounds: {
 				...s.bounds,
@@ -1737,7 +1741,7 @@ export function pasteElements(
 		const newFlowId = newIds.get(e.bpmnElement) ?? e.bpmnElement
 		return {
 			...e,
-			id: genId(`${newFlowId}_di`),
+			id: ids(`${newFlowId}_di`),
 			bpmnElement: newFlowId,
 			waypoints: e.waypoints.map((wp) => ({
 				x: wp.x + offsetX,
@@ -1782,9 +1786,10 @@ export function createAnnotation(
 	defs: BpmnDefinitions,
 	bounds: BpmnBounds,
 	text?: string,
+	ids: IdFactory = genId,
 ): { defs: BpmnDefinitions; id: string } {
-	const id = genId("TextAnnotation")
-	const shapeId = genId("TextAnnotation_di")
+	const id = ids("TextAnnotation")
+	const shapeId = ids("TextAnnotation_di")
 
 	const annotation: BpmnTextAnnotation = { id, text, unknownAttributes: {} }
 	const diShape: BpmnDiShape = { id: shapeId, bpmnElement: id, bounds, unknownAttributes: {} }
@@ -1819,11 +1824,12 @@ export function createAnnotationWithLink(
 	sourceId: string,
 	sourceBounds: BpmnBounds,
 	text?: string,
+	ids: IdFactory = genId,
 ): { defs: BpmnDefinitions; annotationId: string; associationId: string } {
-	const annotResult = createAnnotation(defs, bounds, text)
+	const annotResult = createAnnotation(defs, bounds, text, ids)
 	const annotationId = annotResult.id
-	const assocId = genId("Association")
-	const edgeId = genId("Association_di")
+	const assocId = ids("Association")
+	const edgeId = ids("Association_di")
 
 	const assoc: BpmnAssociation = {
 		id: assocId,

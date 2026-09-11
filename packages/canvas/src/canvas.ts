@@ -567,6 +567,24 @@ export class BpmnCanvas {
 		if (current > 0) this._viewport.zoomAt(cx, cy, scaleOrFit / current)
 	}
 
+	/**
+	 * The raw pan and zoom, for restoring it later.
+	 *
+	 * `viewbox()` describes what is visible, which depends on the element's size;
+	 * this is the transform itself, so handing it back to {@link setViewport}
+	 * reproduces the view exactly — including across a swap from one canvas to
+	 * another, where a re-fit would jump.
+	 */
+	getViewport(): ViewportState {
+		return this._viewport.state
+	}
+
+	/** Restores a viewport captured by {@link getViewport}. */
+	setViewport(state: Partial<ViewportState>): void {
+		this._userMovedViewport = true
+		this._viewport.set(state)
+	}
+
 	/** Returns the visible region in diagram coordinates plus the zoom scale. */
 	viewbox(): Viewbox {
 		const { tx, ty, scale } = this._viewport.state

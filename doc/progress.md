@@ -1,5 +1,43 @@
 # Progress
 
+## 2026-09-11 — D3: the editor describes its edits
+
+The acceptance criterion was the design: *the same op replayed on two machines yields
+byte-identical XML*. Two things stood between the editor and that, and both were about where a
+decision gets made.
+
+**Ids were the obvious one.** `genId` is `Math.random()`, which is exactly right for one person
+editing one diagram and wrong the moment the same edit has to happen twice. The fix is not a
+different random source but moving the decision into the op: it carries a seed, both sides build
+the same `createIdFactory(seed)` from it, and the factory is deterministic *in call order* —
+which is the contract a replay actually relies on, since the same function given the same
+arguments asks for the same prefixes in the same order. The six minting functions in
+`modeling.ts` take it as a trailing optional parameter, so every existing caller is unchanged.
+
+**Geometry was the one I nearly missed.** `addConnectedElement` picks a position by looking at
+what is on screen, and `_doCreate` snaps to a hovered boundary. A replay recomputing either would
+need the same shapes in the same viewport to reach the same answer. So the computed bounds and
+waypoints travel *in* the op, and `applyOp` never recomputes them. That is also why
+`createConnected` exists as its own op kind rather than two: the pair is one undo step, and both
+halves must share one id sequence.
+
+**The structural decision: `applyOp` is the editor's own mutation path.** The tempting shape is
+an editor that does its edit and separately describes it, but then there are two implementations
+of every operation and nothing keeps them honest. `_executeCommand` — which took a closure, so it
+could never say what it did — is gone, and `_executeOp(op, options)` replaced all 19 of its call
+sites plus the six creation paths that had been hand-rolling `push` + `render` + `emit` inline.
+Those six are now three lines each.
+
+**`applyChange(fn)` is the one thing that cannot be described**, because it takes an arbitrary
+function and the properties panel uses it. It emits a whole-document `snapshot` op. Under a
+single writer that is perfectly correct — it just costs more on the wire — so nothing in the
+editor is unreplayable.
+
+**The test that matters** drives the real editor through eight public APIs (colour, morph, label
+position, add-connected, annotate, duplicate, auto-layout, delete), collects the ops it emitted,
+replays them onto a freshly parsed copy of the starting XML, and asserts the result equals
+`editor.exportXml()` as a string. Not equivalent — identical.
+
 ## 2026-09-11 — D2: the edit baton
 
 The room hands out a single write token. This is the task the whole design rests on: with one

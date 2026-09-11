@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { EDITOR_CSS } from "../src/css.js"
 import { BpmnEditor } from "../src/editor.js"
 import { defaultTranslate, interpolate } from "../src/i18n.js"
+import { type EditorOp, applyOp } from "../src/ops.js"
 
 // ── Fixture ───────────────────────────────────────────────────────────────────
 
@@ -613,6 +614,82 @@ describe("rules wiring", () => {
 		// userTask → gateway is not — the element is left unchanged.
 		ed.changeElementType("task", "exclusiveGateway")
 		expect(typeOf(ed, "task")).toBe("userTask")
+		ed.destroy()
+	})
+})
+
+describe("the op stream", () => {
+	/** Collects every op the editor describes, alongside the document it produced. */
+	function recorder(ed: BpmnEditor) {
+		const ops: EditorOp[] = []
+		ed.on("diagram:op", (op) => ops.push(op))
+		return ops
+	}
+
+	/**
+	 * The point of the whole exercise: what the editor did, replayed elsewhere,
+	 * has to come out the same down to the byte — not merely equivalent.
+	 */
+	it("replays to byte-identical XML", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		const start = Bpmn.parse(SIMPLE_XML)
+		const ops = recorder(ed)
+
+		ed.setSelection(["task"])
+		ed.updateColor("task", { fill: "#e0f2f1", stroke: "#00695c" })
+		ed.changeElementType("task", "userTask")
+		ed.setLabelPosition("start", "top")
+		ed.addConnectedElement("task", "exclusiveGateway", "Decide?")
+		ed.createAnnotationFor("task")
+		ed.setSelection(["task"])
+		ed.duplicate()
+		ed.autoLayout()
+		ed.setSelection(["end"])
+		ed.deleteSelected()
+
+		expect(ops.length).toBe(8)
+		const replayed = ops.reduce((defs, op) => applyOp(defs, op).defs, start)
+		expect(Bpmn.export(replayed)).toBe(ed.exportXml())
+		ed.destroy()
+	})
+
+	it("describes an edit as the edit, not as a snapshot", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		const ops = recorder(ed)
+		ed.setSelection(["task"])
+		ed.deleteSelected()
+		expect(ops[0]).toEqual({ kind: "delete", ids: ["task"] })
+		ed.destroy()
+	})
+
+	it("falls back to a snapshot for applyChange, which has nothing to describe", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		const ops = recorder(ed)
+		ed.applyChange((d) => ({ ...d, id: "renamed" }))
+		expect(ops[0]?.kind).toBe("snapshot")
+		ed.destroy()
+	})
+
+	it("says nothing on undo, redo or load — those replace rather than advance", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		ed.setSelection(["task"])
+		ed.deleteSelected()
+		const ops = recorder(ed)
+		ed.undo()
+		ed.redo()
+		ed.load(SIMPLE_XML)
+		expect(ops).toEqual([])
+		ed.destroy()
+	})
+
+	it("says nothing while read-only", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		ed.setReadOnly(true)
+		const ops = recorder(ed)
+		ed.setSelection(["task"])
+		ed.deleteSelected()
+		ed.autoLayout()
+		expect(ops).toEqual([])
 		ed.destroy()
 	})
 })

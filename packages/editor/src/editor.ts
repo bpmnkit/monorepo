@@ -17,8 +17,9 @@ import type {
 	RenderedShape,
 	ScreenBox,
 	Theme,
+	ViewportState,
 } from "@bpmnkit/canvas"
-import { Bpmn, applyAutoLayout } from "@bpmnkit/core"
+import { Bpmn } from "@bpmnkit/core"
 import type {
 	BpmnBounds,
 	BpmnDefinitions,
@@ -40,31 +41,17 @@ import {
 } from "./geometry.js"
 import { defaultTranslate } from "./i18n.js"
 import type { Translate } from "./i18n.js"
+import { newIdSeed } from "./id.js"
 import { LabelEditor } from "./label-editor.js"
 import {
-	changeElementType as changeElementTypeFn,
 	copyElements,
-	createAnnotation,
-	createAnnotationWithLink,
-	createBoundaryEvent,
-	createConnection,
 	createEmptyDefinitions,
-	createShape,
-	deleteElements,
 	insertEdgeWaypoint,
-	insertShapeOnEdge,
 	moveEdgeSegment,
 	moveEdgeWaypoint,
-	moveShapes,
-	pasteElements,
-	removeCollinearWaypoints,
-	resizeShape,
-	updateEdgeEndpoint,
-	updateLabel,
-	updateLabelPosition,
-	updateShapeColor,
 } from "./modeling.js"
 import type { Clipboard } from "./modeling.js"
+import { type EditorOp, applyOp } from "./ops.js"
 import { OverlayRenderer } from "./overlay.js"
 import { canAttach, canConnect, canMorph, canResize } from "./rules.js"
 import { EditorStateMachine } from "./state-machine.js"
@@ -490,7 +477,7 @@ export class BpmnEditor {
 			previewResize: (bounds) => this._overlay.setResizePreview(bounds),
 			commitResize: (id, bounds) => {
 				this._overlay.setResizePreview(null)
-				this._executeCommand((d) => resizeShape(d, id, bounds), "Resize")
+				this._executeOp({ kind: "resize", id, bounds }, { label: "Resize" })
 			},
 			previewConnect: (ghostEnd, targetId) => {
 				const src = this._connectSourceBounds()
@@ -515,7 +502,7 @@ export class BpmnEditor {
 			startLabelEdit: (id) => this._startLabelEdit(id),
 			setHovered: (id) => this._overlay.setHovered(id, this._shapes),
 			executeDelete: (ids) => {
-				this._executeCommand((d) => deleteElements(d, ids), "Delete")
+				this._executeOp({ kind: "delete", ids }, { label: "Delete" })
 				this._setSelection([])
 			},
 			executeCopy: () => this._doCopy(),
@@ -546,9 +533,9 @@ export class BpmnEditor {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
 				const snap = this._snapWaypoint(pt)
-				this._executeCommand(
-					(d) => removeCollinearWaypoints(insertEdgeWaypoint(d, edgeId, segIdx, snap.pt), edgeId),
-					"Add waypoint",
+				this._executeOp(
+					{ kind: "insertWaypoint", edgeId, segIdx, point: snap.pt },
+					{ label: "Add waypoint" },
 				)
 			},
 			cancelWaypointInsert: () => {
@@ -567,9 +554,9 @@ export class BpmnEditor {
 				this._overlay.setEndpointDragGhost(null)
 				this._overlay.setAlignmentGuides([])
 				const snap = this._snapWaypoint(pt)
-				this._executeCommand(
-					(d) => removeCollinearWaypoints(moveEdgeWaypoint(d, edgeId, wpIdx, snap.pt), edgeId),
-					"Move waypoint",
+				this._executeOp(
+					{ kind: "moveWaypoint", edgeId, wpIdx, point: snap.pt },
+					{ label: "Move waypoint" },
 				)
 			},
 			cancelWaypointMove: () => {
@@ -584,10 +571,9 @@ export class BpmnEditor {
 			},
 			commitSegmentMove: (edgeId, segIdx, isHoriz, delta) => {
 				this._overlay.setEndpointDragGhost(null)
-				this._executeCommand(
-					(d) =>
-						removeCollinearWaypoints(moveEdgeSegment(d, edgeId, segIdx, isHoriz, delta), edgeId),
-					"Move segment",
+				this._executeOp(
+					{ kind: "moveSegment", edgeId, segIdx, isHoriz, delta },
+					{ label: "Move segment" },
 				)
 			},
 			cancelSegmentMove: () => {
@@ -617,7 +603,10 @@ export class BpmnEditor {
 		this._labelEditor = new LabelEditor(
 			this._host,
 			(id, text) => {
-				this._executeCommand((d) => updateLabel(d, id, text), "Rename", `label:${id}`)
+				this._executeOp(
+					{ kind: "rename", id, name: text },
+					{ label: "Rename", coalesceKey: `label:${id}` },
+				)
 				this._stateMachine.setMode({ mode: "select", sub: { name: "idle", hoveredId: null } })
 			},
 			() => {
@@ -694,7 +683,7 @@ export class BpmnEditor {
 	 * The operation is undoable.
 	 */
 	autoLayout(): void {
-		this._executeCommand(applyAutoLayout, "Auto-layout")
+		this._executeOp({ kind: "autoLayout" }, { label: "Auto-layout" })
 		this.fitView()
 	}
 
@@ -766,7 +755,7 @@ export class BpmnEditor {
 	deleteSelected(): void {
 		if (this._selectedIds.length === 0) return
 		const ids = [...this._selectedIds]
-		this._executeCommand((d) => deleteElements(d, ids), "Delete")
+		this._executeOp({ kind: "delete", ids }, { label: "Delete" })
 		this._setSelection([])
 	}
 
@@ -824,7 +813,7 @@ export class BpmnEditor {
 			}
 			if (dx !== 0 || dy !== 0) moves.push({ id: b.id, dx, dy })
 		}
-		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves), "Align")
+		if (moves.length > 0) this._executeOp({ kind: "move", moves }, { label: "Align" })
 	}
 
 	/**
@@ -858,7 +847,7 @@ export class BpmnEditor {
 			}
 			cursor += size(b) + gap
 		}
-		if (moves.length > 0) this._executeCommand((d) => moveShapes(d, moves), "Distribute")
+		if (moves.length > 0) this._executeOp({ kind: "move", moves }, { label: "Distribute" })
 	}
 
 	/**
@@ -928,7 +917,24 @@ export class BpmnEditor {
 	}
 
 	applyChange(fn: (defs: BpmnDefinitions) => BpmnDefinitions): void {
-		this._executeCommand(fn)
+		if (this._readOnly || !this._defs) return
+		this._executeOp({ kind: "snapshot", defs: fn(this._defs) })
+	}
+
+	/**
+	 * The raw pan and zoom, for restoring it later.
+	 *
+	 * Paired with {@link setViewport} so a viewer can hand its view to an editor
+	 * taking its place — without it the swap re-fits, and the diagram jumps under
+	 * the cursor at the moment someone starts editing.
+	 */
+	getViewport(): ViewportState {
+		return this._viewport.state
+	}
+
+	/** Restores a viewport captured by {@link getViewport}. */
+	setViewport(state: Partial<ViewportState>): void {
+		this._viewport.set(state)
 	}
 
 	fitView(padding = 40): void {
@@ -1159,17 +1165,31 @@ export class BpmnEditor {
 		this._emit("diagram:load", defs, { missingShapes: [], missingEdges: [] })
 	}
 
-	private _executeCommand(
-		fn: (d: BpmnDefinitions) => BpmnDefinitions,
-		label = "",
-		coalesceKey?: string,
-	): void {
-		if (this._readOnly || !this._defs) return
-		const newDefs = fn(this._defs)
-		this._commandStack.push(newDefs, label, coalesceKey)
-		this._renderDefs(newDefs)
-		if (label) this._announce(this._t(label))
-		this._emit("diagram:change", newDefs)
+	/**
+	 * Performs an edit: the editor's single mutation path.
+	 *
+	 * Every change goes through {@link applyOp}, including the ones typed right
+	 * here — see `ops.ts` for why local edits are not allowed their own shortcut.
+	 * Returns the ids the op brought into being, which a caller may need for a
+	 * follow-up (starting a label edit on a fresh annotation, say).
+	 */
+	private _executeOp(
+		op: EditorOp,
+		options: { label?: string; coalesceKey?: string; select?: "all" | "first" } = {},
+	): string[] {
+		if (this._readOnly || !this._defs) return []
+		const { defs, created } = applyOp(this._defs, op)
+		// Selection is set before the render so the new element comes up selected.
+		const select =
+			options.select === "all" ? created : options.select === "first" ? created.slice(0, 1) : null
+		if (select) this._selectedIds = select
+		this._commandStack.push(defs, options.label ?? "", options.coalesceKey)
+		this._renderDefs(defs)
+		if (options.label) this._announce(this._t(options.label))
+		this._emit("diagram:change", defs)
+		this._emit("diagram:op", op, defs)
+		if (select) this._emit("editor:select", select)
+		return created
 	}
 
 	/** Label of the change `undo()` would revert (for HUD tooltips), or null. */
@@ -1285,12 +1305,12 @@ export class BpmnEditor {
 		const moves = this._selectedIds.map((id) => ({ id, dx: snap.dx, dy: snap.dy }))
 		const shapeId = this._selectedIds.length === 1 ? this._selectedIds[0] : undefined
 		if (edgeDropId && shapeId) {
-			this._executeCommand(
-				(d) => insertShapeOnEdge(moveShapes(d, moves), edgeDropId, shapeId),
-				"Insert on flow",
+			this._executeOp(
+				{ kind: "move", moves, onEdge: { edgeId: edgeDropId, shapeId } },
+				{ label: "Insert on flow" },
 			)
 		} else {
-			this._executeCommand((d) => moveShapes(d, moves), "Move")
+			this._executeOp({ kind: "move", moves }, { label: "Move" })
 		}
 		if (this._isDragging) {
 			this._isDragging = false
@@ -1361,7 +1381,7 @@ export class BpmnEditor {
 		}
 
 		if (moves.length > 0) {
-			this._executeCommand((d) => moveShapes(d, moves), "Move")
+			this._executeOp({ kind: "move", moves }, { label: "Move" })
 		}
 	}
 
@@ -1385,13 +1405,11 @@ export class BpmnEditor {
 		const bounds = defaultBounds(type, actualCenter.x, actualCenter.y)
 
 		if (type === "textAnnotation") {
-			const result = createAnnotation(this._defs, bounds)
-			this._selectedIds = [result.id]
-			this._commandStack.push(result.defs)
-			this._renderDefs(result.defs)
-			this._emit("diagram:change", result.defs)
-			this._emit("editor:select", [result.id])
-			this._startLabelEdit(result.id)
+			const [id] = this._executeOp(
+				{ kind: "createAnnotation", bounds, seed: newIdSeed() },
+				{ select: "first" },
+			)
+			if (id) this._startLabelEdit(id)
 			return
 		}
 
@@ -1407,25 +1425,30 @@ export class BpmnEditor {
 				const eventBounds = snapToBoundary(actualCenter, hostBounds, 18)
 				// Map palette type to event definition type
 				const eventDefType = intermediateEventDefType(type)
-				const result = createBoundaryEvent(this._defs, boundaryHostId, eventDefType, eventBounds)
-				this._selectedIds = [result.id]
-				this._commandStack.push(result.defs)
-				this._renderDefs(result.defs)
-				this._emit("diagram:change", result.defs)
-				this._emit("editor:select", [result.id])
+				this._executeOp(
+					{
+						kind: "createBoundaryEvent",
+						hostId: boundaryHostId,
+						eventDefType,
+						bounds: eventBounds,
+						seed: newIdSeed(),
+					},
+					{ select: "first" },
+				)
 				return
 			}
 		}
 
-		const result = createShape(this._defs, type, bounds)
-		this._selectedIds = [result.id]
-		const finalDefs = pendingEdgeDrop
-			? insertShapeOnEdge(result.defs, pendingEdgeDrop, result.id)
-			: result.defs
-		this._commandStack.push(finalDefs)
-		this._renderDefs(finalDefs)
-		this._emit("diagram:change", finalDefs)
-		this._emit("editor:select", [result.id])
+		this._executeOp(
+			{
+				kind: "createShape",
+				type,
+				bounds,
+				onEdge: pendingEdgeDrop ?? undefined,
+				seed: newIdSeed(),
+			},
+			{ select: "first" },
+		)
 	}
 
 	private _doConnect(srcId: string, tgtId: string): void {
@@ -1443,7 +1466,10 @@ export class BpmnEditor {
 			tgtShape.shape.bounds,
 			obstacles,
 		)
-		this._executeCommand((d) => createConnection(d, srcId, tgtId, waypoints).defs, "Connect")
+		this._executeOp(
+			{ kind: "createConnection", sourceId: srcId, targetId: tgtId, waypoints, seed: newIdSeed() },
+			{ label: "Connect" },
+		)
 	}
 
 	private _doCopy(): void {
@@ -1453,20 +1479,17 @@ export class BpmnEditor {
 
 	private _doPaste(): void {
 		if (!this._clipboard) return
-		const base = this._defs ?? createEmptyDefinitions()
-		const result = pasteElements(base, this._clipboard, 20, 20)
-		this._selectedIds = result.topLevelIds
-		this._commandStack.push(result.defs, "Paste")
-		this._renderDefs(result.defs)
-		this._emit("diagram:change", result.defs)
-		this._emit("editor:select", result.topLevelIds)
+		this._executeOp(
+			{ kind: "paste", clipboard: this._clipboard, offsetX: 20, offsetY: 20, seed: newIdSeed() },
+			{ label: "Paste", select: "all" },
+		)
 	}
 
 	private _doCut(): void {
 		if (!this._defs || this._selectedIds.length === 0) return
 		this._doCopy()
 		const ids = [...this._selectedIds]
-		this._executeCommand((d) => deleteElements(d, ids), "Cut")
+		this._executeOp({ kind: "delete", ids }, { label: "Cut" })
 		this._setSelection([])
 	}
 
@@ -1584,16 +1607,20 @@ export class BpmnEditor {
 
 		const newBounds = this._smartPlaceBounds(srcBounds, sourceId, w, h)
 		const obstacles = this._shapes.filter((s) => s.id !== sourceId).map((s) => s.shape.bounds)
-		const r1 = createShape(this._defs, type, newBounds, name)
 		const waypoints = computeWaypointsAvoiding(srcBounds, newBounds, obstacles)
-		const r2 = createConnection(r1.defs, sourceId, r1.id, waypoints)
-
-		this._selectedIds = [r1.id]
-		this._commandStack.push(r2.defs)
-		this._renderDefs(r2.defs)
-		this._emit("diagram:change", r2.defs)
-		this._emit("editor:select", [r1.id])
-		return r1.id
+		const [id] = this._executeOp(
+			{
+				kind: "createConnected",
+				sourceId,
+				type,
+				name,
+				bounds: newBounds,
+				waypoints,
+				seed: newIdSeed(),
+			},
+			{ select: "first" },
+		)
+		return id ?? null
 	}
 
 	private _smartPlaceBounds(
@@ -1700,7 +1727,10 @@ export class BpmnEditor {
 		const shape = this._shapeById.get(shapeId)
 		if (!shape) return
 		const labelBounds = labelBoundsForPosition(shape.shape.bounds, position)
-		this._executeCommand((d) => updateLabelPosition(d, shapeId, labelBounds), "Move label")
+		this._executeOp(
+			{ kind: "labelPosition", id: shapeId, bounds: labelBounds },
+			{ label: "Move label" },
+		)
 	}
 
 	/** Starts inline label editing for the element with the given id. */
@@ -1745,18 +1775,25 @@ export class BpmnEditor {
 			height: annH,
 		}
 
-		const result = createAnnotationWithLink(this._defs, annBounds, sourceId, srcBounds)
-		this._selectedIds = [result.annotationId]
-		this._commandStack.push(result.defs)
-		this._renderDefs(result.defs)
-		this._emit("diagram:change", result.defs)
-		this._emit("editor:select", [result.annotationId])
-		this._startLabelEdit(result.annotationId)
+		const [id] = this._executeOp(
+			{
+				kind: "createAnnotationFor",
+				sourceId,
+				bounds: annBounds,
+				sourceBounds: srcBounds,
+				seed: newIdSeed(),
+			},
+			{ select: "first" },
+		)
+		if (id) this._startLabelEdit(id)
 	}
 
 	/** Updates the color of a shape in the diagram. Pass `{}` to clear colors. */
 	updateColor(id: string, color: DiColor): void {
-		this._executeCommand((d) => updateShapeColor(d, id, color), "Change colour", `color:${id}`)
+		this._executeOp(
+			{ kind: "color", id, color },
+			{ label: "Change colour", coalesceKey: `color:${id}` },
+		)
 	}
 
 	// ── Private helpers ────────────────────────────────────────────────
@@ -1782,7 +1819,7 @@ export class BpmnEditor {
 	changeElementType(id: string, newType: CreateShapeType): void {
 		const current = this._shapeById.get(id)?.flowElement?.type
 		if (current && !canMorph(current, newType)) return
-		this._executeCommand((d) => changeElementTypeFn(d, id, newType), "Change type")
+		this._executeOp({ kind: "changeType", id, type: newType }, { label: "Change type" })
 	}
 
 	private _findEdgeDropTarget(dx: number, dy: number): string | null {
@@ -1880,7 +1917,7 @@ export class BpmnEditor {
 		const newPort = isStart
 			? closestPort(diagPoint, srcDi.bounds)
 			: closestPort(diagPoint, tgtDi.bounds)
-		this._executeCommand((d) => updateEdgeEndpoint(d, edgeId, isStart, newPort), "Reconnect")
+		this._executeOp({ kind: "reconnect", edgeId, isStart, port: newPort }, { label: "Reconnect" })
 	}
 
 	private _isResizable(id: string): boolean {

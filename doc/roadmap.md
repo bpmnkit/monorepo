@@ -316,7 +316,10 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       distinct reclaims — a socket that stopped pinging (`getWebSocketAutoResponseTimestamp`)
       and a holder who is present but idle, the latter warned first and keyed on messages that
       wake the room rather than on heartbeats
-- [ ] D3 — `@bpmnkit/editor`: injectable ids, an op-describing change event, public viewport
+- [x] D3 — `@bpmnkit/editor`: ids minted from a seed carried in the op, a `diagram:op` event
+      beside `diagram:change`, and `getViewport`/`setViewport` public on both the canvas and the
+      editor. `applyOp` is the editor's own mutation path too, so a local edit and its replay
+      cannot drift
 - [ ] D4 — op protocol and server-side replay of the same `modeling.ts` functions
 - [ ] D5 — watcher replay with a hash check and resync
 - [ ] D6 — editor loaded on claim via dynamic `import()`, viewport carried across the swap;
