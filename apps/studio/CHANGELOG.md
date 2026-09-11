@@ -1,5 +1,18 @@
 # @bpmnkit/studio
 
+## 0.0.22
+
+### Patch Changes
+
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+  - @bpmnkit/editor@0.1.0
+  - @bpmnkit/plugins@0.3.0
+  - @bpmnkit/ui@0.1.0
+  - @bpmnkit/operate@0.0.33
+  - @bpmnkit/user-tasks@0.0.20
+
 ## 0.0.21
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @bpmnkit/operate
 
+## 0.0.33
+
+### Patch Changes
+
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+  - @bpmnkit/plugins@0.3.0
+  - @bpmnkit/ui@0.1.0
+
 ## 0.0.32
 
 ### Patch Changes

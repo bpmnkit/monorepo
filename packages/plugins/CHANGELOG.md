@@ -1,5 +1,37 @@
 # @bpmnkit/plugins
 
+## 0.3.0
+
+### Minor Changes
+
+- dc33af9: Move every editor panel onto the bpmnkit.com design system: flat (no shadow, gradient or blur),
+  square, hairline-ruled, one accent, two type roles.
+
+  `@bpmnkit/editor` gains `injectChromeStyles()` and a `--bpmnkit-chrome-*` token set, declared
+  once per theme, that the HUD, the side dock, the modal and every plugin panel now read. The
+  editor's internal `--hud-*` variables were renamed into it, since they are public surface in a
+  published package and were never HUD-specific.
+
+  `@bpmnkit/plugins` sheds 42 `box-shadow`, 5 `backdrop-filter`, 142 non-circular `border-radius`
+  and 454 per-theme override selectors across 23 panel stylesheets — the dark/light/neon copies
+  existed only because there was nowhere to state a panel's ground once. Circular marks, semantic
+  state (success / warning / danger) and the two document palettes the design brief leaves to
+  their renderers — the DMN decision table and the FEEL syntax classes — are unchanged.
+
+- dc33af9: Move the editor's start page and file-tab bar onto the bpmnkit.com design system: flat, square,
+  hairline-ruled, one accent, mono for every label and datum. The welcome actions and examples
+  each become a single bordered box divided by hairlines rather than gapped cards; the file-type
+  badges and tab chips drop their blue/purple/amber/green taxonomy for mono marks in the accent;
+  the active tab's underline sits on the tab row's own rule; and dialogs and the group dropdown
+  lose their radii and shadows. The logo lockup at the top of the start page is replaced by the
+  `bpmnkit` wordmark, since the lockup's second brand colour has no place in a one-accent system.
+
+### Patch Changes
+
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+  - @bpmnkit/editor@0.1.0
+
 ## 0.2.0
 
 ### Minor Changes

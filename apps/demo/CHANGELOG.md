@@ -1,5 +1,12 @@
 # @bpmnkit/demo
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [dc33af9]
+  - @bpmnkit/ui@0.1.0
+
 ## 0.0.6
 
 ### Patch Changes

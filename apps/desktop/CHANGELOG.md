@@ -1,5 +1,15 @@
 # @bpmnkit/desktop
 
+## 0.1.35
+
+### Patch Changes
+
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+- Updated dependencies [dc33af9]
+  - @bpmnkit/editor@0.1.0
+  - @bpmnkit/plugins@0.3.0
+
 ## 0.1.34
 
 ### Patch Changes
