@@ -276,7 +276,7 @@ function showPasscodeForm(error = false): void {
 	input.placeholder = "Access code"
 	input.autocomplete = "off"
 	const submit = document.createElement("button")
-	submit.className = "btn primary"
+	submit.className = "btn-primary"
 	submit.textContent = "Unlock"
 	const go = () => {
 		const code = input.value.trim()
@@ -344,7 +344,7 @@ try {
 	const ws = new WebSocket(`${proto}://${location.host}/drop/api/presence/${data.shareId}`)
 	ws.addEventListener("message", (e) => {
 		const { viewers } = JSON.parse(e.data as string) as { viewers: number }
-		presenceEl.textContent = `${viewers} viewing`
+		presenceEl.textContent = `${viewers} VIEWING`
 		presenceEl.hidden = viewers < 1
 	})
 } catch {

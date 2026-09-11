@@ -45,6 +45,7 @@ import {
 	zeebeExtensionsToXmlElements,
 } from "@bpmnkit/core"
 import type { InputVariableDef, ValidationVariableType } from "@bpmnkit/core"
+import { injectChromeStyles } from "@bpmnkit/editor"
 import { ELEMENT_TYPE_LABELS } from "@bpmnkit/editor"
 import type { CreateShapeType } from "@bpmnkit/editor"
 import type {
@@ -1525,44 +1526,43 @@ const BOUNDARY_EVENT_ADAPTER: PanelAdapter = {
 
 const VALIDATION_MODAL_CSS = `
 .bpmnkit-val-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  position: fixed; inset: 0; background: var(--bpmnkit-chrome-scrim);
   display: flex; align-items: center; justify-content: center; z-index: 99999;
 }
 .bpmnkit-val-dialog {
-  background: var(--bpmnkit-surface, #161626);
-  border: 1px solid var(--bpmnkit-border, #2a2a42);
-  border-radius: 10px; padding: 20px; width: 680px; max-width: 95vw; max-height: 85vh;
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line); padding: 20px; width: 680px; max-width: 95vw; max-height: 85vh;
   display: flex; flex-direction: column; gap: 14px;
-  font-family: var(--bpmnkit-font, system-ui, sans-serif);
-  font-size: 13px; color: var(--bpmnkit-fg, #cdd6f4);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  font-family: var(--bpmnkit-chrome-font);
+  font-size: 13px; color: var(--bpmnkit-chrome-ink);
 }
 .bpmnkit-val-dialog h2 {
   font-size: 14px; font-weight: 600; margin: 0;
-  color: var(--bpmnkit-fg, #cdd6f4);
+  color: var(--bpmnkit-chrome-ink);
 }
 .bpmnkit-val-dialog p.hint {
-  font-size: 12px; color: var(--bpmnkit-fg-muted, #8888a8); margin: 0;
+  font-size: 12px; color: var(--bpmnkit-chrome-ink-4); margin: 0;
 }
 .bpmnkit-val-table { overflow-y: auto; flex: 1; }
 .bpmnkit-val-table table {
   width: 100%; border-collapse: collapse; font-size: 12px;
 }
 .bpmnkit-val-table th {
+  letter-spacing: 0.12em;
+  font-family: var(--bpmnkit-chrome-mono);
   text-align: left; padding: 6px 8px; font-weight: 500;
-  color: var(--bpmnkit-fg-muted, #8888a8); font-size: 11px; text-transform: uppercase;
-  border-bottom: 1px solid var(--bpmnkit-border, #2a2a42);
+  color: var(--bpmnkit-chrome-ink-4); font-size: 11px; text-transform: uppercase;
+  border-bottom: 1px solid var(--bpmnkit-chrome-line);
 }
 .bpmnkit-val-table td { padding: 4px 4px; vertical-align: middle; }
 .bpmnkit-val-table input[type=text], .bpmnkit-val-table input[type=number], .bpmnkit-val-table select {
-  background: var(--bpmnkit-surface-2, #1e1e2e);
-  border: 1px solid var(--bpmnkit-border, #2a2a42);
-  border-radius: 4px; padding: 4px 7px; font-size: 12px;
-  color: var(--bpmnkit-fg, #cdd6f4); width: 100%; box-sizing: border-box;
+  background: var(--bpmnkit-chrome-ground-2);
+  border: 1px solid var(--bpmnkit-chrome-line); padding: 4px 7px; font-size: 12px;
+  color: var(--bpmnkit-chrome-ink); width: 100%; box-sizing: border-box;
 }
 .bpmnkit-val-table input[type=text]:focus, .bpmnkit-val-table input[type=number]:focus,
 .bpmnkit-val-table select:focus {
-  outline: none; border-color: var(--bpmnkit-accent, #6b9df7);
+  outline: none; border-color: var(--bpmnkit-chrome-accent);
 }
 .bpmnkit-val-table input:disabled, .bpmnkit-val-table select:disabled {
   opacity: 0.35; cursor: not-allowed;
@@ -1570,45 +1570,46 @@ const VALIDATION_MODAL_CSS = `
 .bpmnkit-val-chk { display: flex; align-items: center; justify-content: center; }
 .bpmnkit-val-chk input[type=checkbox] { width: 14px; height: 14px; cursor: pointer; }
 .bpmnkit-val-del {
-  background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px;
-  color: var(--bpmnkit-fg-muted, #8888a8); font-size: 14px; line-height: 1;
+  background: none; border: none; cursor: pointer; padding: 2px 6px;
+  color: var(--bpmnkit-chrome-ink-4); font-size: 14px; line-height: 1;
 }
-.bpmnkit-val-del:hover { color: var(--bpmnkit-danger, #f87171); background: var(--bpmnkit-surface-2, #1e1e2e); }
+.bpmnkit-val-del:hover { color: var(--bpmnkit-danger, #f87171); background: var(--bpmnkit-chrome-ground-2); }
 .bpmnkit-val-add {
-  background: none; border: 1px dashed var(--bpmnkit-border, #2a2a42); border-radius: 6px;
+  background: none; border: 1px dashed var(--bpmnkit-chrome-line);
   padding: 6px 12px; font-size: 12px; cursor: pointer; width: 100%;
-  color: var(--bpmnkit-fg-muted, #8888a8); margin-top: 4px;
+  color: var(--bpmnkit-chrome-ink-4); margin-top: 4px;
 }
-.bpmnkit-val-add:hover { border-color: var(--bpmnkit-accent, #6b9df7); color: var(--bpmnkit-accent, #6b9df7); }
+.bpmnkit-val-add:hover { border-color: var(--bpmnkit-chrome-accent); color: var(--bpmnkit-chrome-accent); }
 .bpmnkit-val-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .bpmnkit-val-btn {
-  padding: 6px 16px; border-radius: 6px; font-size: 12px; font-weight: 500;
-  cursor: pointer; border: 1px solid var(--bpmnkit-border, #2a2a42);
-  background: var(--bpmnkit-surface-2, #1e1e2e); color: var(--bpmnkit-fg, #cdd6f4);
+  padding: 6px 16px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--bpmnkit-chrome-line);
+  background: var(--bpmnkit-chrome-ground-2); color: var(--bpmnkit-chrome-ink);
 }
-.bpmnkit-val-btn:hover { background: var(--bpmnkit-accent-subtle, rgba(107,157,247,0.15)); }
+.bpmnkit-val-btn:hover { background: var(--bpmnkit-chrome-accent-subtle); }
 .bpmnkit-val-btn--primary {
-  background: var(--bpmnkit-accent, #6b9df7); color: #fff; border-color: var(--bpmnkit-accent, #6b9df7);
+  background: var(--bpmnkit-chrome-accent); color: var(--bpmnkit-chrome-accent-fg); border-color: var(--bpmnkit-chrome-accent);
 }
 .bpmnkit-val-btn--primary:hover { filter: brightness(1.1); }
 .bpmnkit-val-summary {
-  background: var(--bpmnkit-surface-2, #1e1e2e); border-radius: 6px; padding: 8px 10px;
+  background: var(--bpmnkit-chrome-ground-2); padding: 8px 10px;
   font-size: 12px; display: flex; flex-direction: column; gap: 3px;
 }
 .bpmnkit-val-summary-row { display: flex; gap: 6px; align-items: baseline; }
-.bpmnkit-val-summary-name { color: var(--bpmnkit-accent-bright, #89b4fa); font-weight: 500; }
-.bpmnkit-val-summary-meta { color: var(--bpmnkit-fg-muted, #8888a8); }
+.bpmnkit-val-summary-name { color: var(--bpmnkit-chrome-accent); font-weight: 500; }
+.bpmnkit-val-summary-meta { color: var(--bpmnkit-chrome-ink-4); }
 .bpmnkit-val-summary-badge {
-  font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: 500;
-  background: var(--bpmnkit-accent-subtle, rgba(107,157,247,0.15));
-  color: var(--bpmnkit-accent-bright, #89b4fa);
+  font-size: 10px; padding: 1px 5px; font-weight: 500;
+  background: var(--bpmnkit-chrome-accent-subtle);
+  color: var(--bpmnkit-chrome-accent);
 }
 .bpmnkit-val-summary-badge--req {
-  background: rgba(249,115,22,0.15); color: #fb923c;
+  color: var(--bpmnkit-warn, #d97706);
 }
 `
 
 function injectValidationModalCss(): void {
+	injectChromeStyles()
 	const id = "bpmnkit-validation-modal-css"
 	if (document.getElementById(id)) return
 	const style = document.createElement("style")

@@ -391,8 +391,10 @@ export class BpmnEditor {
 		this._id = String(_instanceCounter++)
 		this._t = options.translate ?? defaultTranslate
 
-		// Resolve initial theme — localStorage overrides the options.theme when persistTheme is on
-		let initialTheme = options.theme ?? "neon"
+		// Resolve initial theme — localStorage overrides the options.theme when persistTheme is on.
+		// The shell's default is the design system's light `--canvas` ground; `neon` stays a
+		// white-label theme a host opts into.
+		let initialTheme = options.theme ?? "light"
 		if (options.persistTheme) {
 			try {
 				const stored = localStorage.getItem("bpmnkit-theme")

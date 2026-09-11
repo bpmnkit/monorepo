@@ -54,9 +54,9 @@ async function loadReports(): Promise<void> {
 <td>${esc(r.reason)}</td>
 <td>${esc(r.details ?? "")}</td>
 <td>
-<button class="btn" data-act="del" data-id="${esc(r.drop_id)}">Delete</button>
-<button class="btn" data-act="ban" data-id="${esc(r.drop_id)}">Delete+ban</button>
-<button class="btn" data-act="dismiss" data-report="${r.id}">Dismiss</button>
+<button class="btn-ghost" data-act="del" data-id="${esc(r.drop_id)}">Delete</button>
+<button class="btn-ghost" data-act="ban" data-id="${esc(r.drop_id)}">Delete+ban</button>
+<button class="btn-ghost" data-act="dismiss" data-report="${r.id}">Dismiss</button>
 </td></tr>`,
 		)
 		.join("")}</tbody></table>`

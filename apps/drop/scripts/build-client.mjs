@@ -1,7 +1,9 @@
 // Bundles the browser client entry points into public/drop/assets/ with esbuild,
-// and generates the use-case mini-diagram SVGs at build time (no runtime cost).
+// generates the use-case mini-diagram SVGs at build time (no runtime cost), and
+// copies the design-system webfonts out of the landing app so Drop serves them
+// from its own origin instead of depending on the marketing site's routes.
 // The Worker itself is bundled by wrangler at deploy time.
-import { mkdir, writeFile } from "node:fs/promises"
+import { cp, mkdir, writeFile } from "node:fs/promises"
 import { expand, exportSvg } from "@bpmnkit/core"
 import { build } from "esbuild"
 
@@ -83,4 +85,8 @@ const usecases = {
 await mkdir("public/drop/assets", { recursive: true })
 await writeFile("public/drop/assets/usecases.json", JSON.stringify(usecases))
 
-console.log("client bundles + usecases.json written to public/drop/assets/")
+// ── Webfonts (Space Grotesk + Space Mono, both OFL 1.1) ─────────────────────
+// Copied verbatim, licences included, from the single set the landing app owns.
+await cp("../landing/public/fonts", "public/drop/fonts", { recursive: true })
+
+console.log("client bundles + usecases.json + fonts written to public/drop/")

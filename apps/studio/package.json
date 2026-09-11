@@ -4,8 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite --port 5174",
-		"build": "vite build",
+		"dev": "node scripts/copy-fonts.mjs && vite --port 5174",
+		"build": "node scripts/copy-fonts.mjs && vite build",
 		"preview": "vite preview",
 		"typecheck": "tsc --noEmit",
 		"check": "biome check .",

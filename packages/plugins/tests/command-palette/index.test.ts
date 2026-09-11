@@ -4,7 +4,7 @@ import { createCommandPalettePlugin } from "../../src/command-palette/index.js"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function makeApi(theme: "dark" | "light" = "dark"): CanvasApi {
+function makeApi(theme: "dark" | "light" | "neon" = "dark"): CanvasApi {
 	const container = document.createElement("div")
 	document.body.appendChild(container)
 	const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
@@ -35,7 +35,7 @@ function pressEscape(): void {
 // Track plugins so we can uninstall after each test to prevent listener leaks
 let installed: Array<ReturnType<typeof createCommandPalettePlugin>> = []
 
-function install(theme: "dark" | "light" = "dark") {
+function install(theme: "dark" | "light" | "neon" = "dark") {
 	const plugin = createCommandPalettePlugin()
 	plugin.install(makeApi(theme))
 	installed.push(plugin)
@@ -175,12 +175,17 @@ describe("createCommandPalettePlugin", () => {
 		expect(document.getElementById("bpmnkit-command-palette-styles-v1")).not.toBeNull()
 	})
 
-	it("applies light theme class when theme is light", () => {
-		install("light")
-		ctrlK()
-		const overlay = document.querySelector(".bpmnkit-palette-overlay")
-		expect(overlay?.classList.contains("bpmnkit-palette--light")).toBe(true)
-	})
+	it.each(["light", "dark", "neon"] as const)(
+		"states the canvas theme (%s) on the overlay so the chrome tokens resolve",
+		(theme) => {
+			// The body may carry a different theme than the canvas the palette belongs
+			// to, and the chrome tokens now default to light, so inheriting is not safe.
+			install(theme)
+			ctrlK()
+			const overlay = document.querySelector(".bpmnkit-palette-overlay")
+			expect(overlay?.getAttribute("data-bpmnkit-hud-theme")).toBe(theme)
+		},
+	)
 
 	it("uninstall closes open palette and cleans up", () => {
 		const plugin = install()

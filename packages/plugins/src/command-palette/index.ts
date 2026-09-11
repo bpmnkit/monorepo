@@ -556,12 +556,17 @@ export function createCommandPalettePlugin(
 
 		startProxyCheck()
 
-		const isDark = resolveTheme(_api.getTheme()) === "dark"
+		const canvasTheme = _api.getTheme()
 
 		const overlay = document.createElement("div")
-		overlay.className = isDark
-			? "bpmnkit-palette-overlay"
-			: "bpmnkit-palette-overlay bpmnkit-palette--light"
+		overlay.className = "bpmnkit-palette-overlay"
+		// The palette follows the canvas theme, not the body's, so it states the
+		// chrome theme outright rather than inheriting one that may disagree.
+		// `neon` is its own ground; everything else resolves to light or dark.
+		overlay.setAttribute(
+			"data-bpmnkit-hud-theme",
+			canvasTheme === "neon" ? "neon" : resolveTheme(canvasTheme),
+		)
 		overlay.setAttribute("role", "dialog")
 		overlay.setAttribute("aria-modal", "true")
 		overlay.setAttribute("aria-label", "Command palette")

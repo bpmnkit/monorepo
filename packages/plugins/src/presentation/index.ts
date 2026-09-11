@@ -1,5 +1,6 @@
 import type { CanvasApi, CanvasPlugin, ViewportState } from "@bpmnkit/canvas"
 import type { BpmnDefinitions } from "@bpmnkit/core"
+import { injectChromeStyles } from "@bpmnkit/editor"
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
 
@@ -79,33 +80,29 @@ const CSS = `
 .bpmnkit-pres-overlay {
   position: absolute; inset: 0; pointer-events: none; z-index: 500;
   user-select: none;
-  font-family: var(--bpmnkit-font, system-ui, -apple-system, sans-serif);
+  font-family: var(--bpmnkit-chrome-font);
 }
 .bpmnkit-pres-progress {
   position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: rgba(128,128,128,0.18);
+  background: var(--bpmnkit-chrome-line);
 }
 .bpmnkit-pres-progress-fill {
-  height: 100%; background: var(--bpmnkit-accent, #1a56db);
+  height: 100%; background: var(--bpmnkit-chrome-accent);
   transition: width 0.35s ease;
 }
 .bpmnkit-pres-stat {
   position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
-  font-size: 11px; color: var(--bpmnkit-fg-muted, #6666a0);
-  background: var(--bpmnkit-surface, #fff);
-  border: 1px solid var(--bpmnkit-border, #d0d0e8);
-  border-radius: 4px; padding: 2px 10px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  font-size: 11px; color: var(--bpmnkit-chrome-ink-4);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line); padding: 2px 10px;
   white-space: nowrap;
 }
 .bpmnkit-pres-minimap {
   position: absolute; bottom: 12px; right: 12px;
   width: 160px; height: 100px;
   pointer-events: auto;
-  background: var(--bpmnkit-surface, #fff);
-  border: 1px solid var(--bpmnkit-border, #d0d0e8);
-  border-radius: 6px; overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line); overflow: hidden;
   cursor: crosshair;
 }
 .bpmnkit-pres-minimap > svg {
@@ -117,22 +114,20 @@ const CSS = `
 }
 .bpmnkit-pres-hint {
   display: inline-flex; align-items: center; gap: 5px;
-  background: var(--bpmnkit-surface, #fff);
-  border: 1px solid var(--bpmnkit-border, #d0d0e8);
-  border-radius: 4px; padding: 3px 8px;
-  font-size: 11px; color: var(--bpmnkit-fg-muted, #6666a0);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line); padding: 3px 8px;
+  font-size: 11px; color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-pres-hint kbd {
-  font-family: var(--bpmnkit-font-mono, monospace);
-  font-size: 10px; color: var(--bpmnkit-fg, #1a1a2e);
-  background: var(--bpmnkit-surface-2, #eeeef8);
-  border: 1px solid var(--bpmnkit-border, #d0d0e8);
-  border-radius: 3px; padding: 1px 5px;
+  font-family: var(--bpmnkit-chrome-mono);
+  font-size: 10px; color: var(--bpmnkit-chrome-ink);
+  background: var(--bpmnkit-chrome-ground-2);
+  border: 1px solid var(--bpmnkit-chrome-line); padding: 1px 5px;
 }
 `
 
 function injectPresStyles(): void {
+	injectChromeStyles()
 	if (typeof document === "undefined") return
 	if (document.getElementById(CSS_ID)) return
 	const style = document.createElement("style")
@@ -228,7 +223,7 @@ class PresentationMinimap {
 		this.vpRect = svgEl("rect")
 		attrs(this.vpRect, {
 			fill: "none",
-			stroke: "var(--bpmnkit-accent,#1a56db)",
+			stroke: "var(--bpmnkit-chrome-accent)",
 			"stroke-width": "1.5",
 			rx: "1",
 			opacity: "0.7",
@@ -348,7 +343,7 @@ class PresentationMinimap {
 	highlight(currentId: string | null, visited: ReadonlySet<string>): void {
 		for (const [id, el] of this.shapeMap) {
 			if (id === currentId) {
-				el.setAttribute("fill", "var(--bpmnkit-accent,#1a56db)")
+				el.setAttribute("fill", "var(--bpmnkit-chrome-accent)")
 				el.setAttribute("opacity", "0.9")
 			} else if (visited.has(id)) {
 				el.setAttribute("fill", "var(--bpmnkit-success,#16a34a)")
@@ -615,7 +610,7 @@ class PresentationMode {
 			attrs(g, { transform: `translate(${cx},${cy})` })
 
 			const circle = svgEl("circle")
-			attrs(circle, { r: 14, fill: "var(--bpmnkit-accent,#1a56db)" })
+			attrs(circle, { r: 14, fill: "var(--bpmnkit-chrome-accent)" })
 
 			const num = svgEl("text")
 			attrs(num, {
@@ -624,7 +619,7 @@ class PresentationMode {
 				fill: "white",
 				"font-size": "13",
 				"font-weight": "bold",
-				"font-family": "var(--bpmnkit-font,system-ui)",
+				"font-family": "var(--bpmnkit-chrome-font)",
 			})
 			num.textContent = String(i + 1)
 
@@ -641,16 +636,16 @@ class PresentationMode {
 					width: 80,
 					height: 15,
 					rx: 3,
-					fill: "var(--bpmnkit-surface,#fff)",
-					stroke: "var(--bpmnkit-border,#d0d0e8)",
+					fill: "var(--bpmnkit-chrome-ground)",
+					stroke: "var(--bpmnkit-chrome-line)",
 				})
 				const lt = svgEl("text")
 				attrs(lt, {
 					"text-anchor": "middle",
 					y: 26,
 					"font-size": "9",
-					fill: "var(--bpmnkit-fg-muted,#6666a0)",
-					"font-family": "var(--bpmnkit-font,system-ui)",
+					fill: "var(--bpmnkit-chrome-ink-4)",
+					"font-family": "var(--bpmnkit-chrome-font)",
 				})
 				lt.textContent = truncated
 				g.appendChild(lbg)

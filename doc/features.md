@@ -1,5 +1,58 @@
 # Features
 
+## One design system across every editor panel (2026-09-11)
+
+The `@bpmnkit/plugins` panels — command palette, config panel, process runner, AI bridge,
+element docs, connector catalog, main menu, history, deploy, optimize, storage, ascii view,
+live mode, diff, lint, minimap, story view, variable flow, pattern advisor, zoom controls,
+presentation and feel playground — are flat, square and hairline-ruled, on one accent.
+
+- **`--bpmnkit-chrome-*`, declared once.** `packages/editor/src/chrome.ts` holds the per-theme
+  ground, line, ink, accent and scrim that every piece of editor chrome reads. A panel
+  stylesheet is now one set of rules; the dark/light/neon copies it used to carry are gone.
+- **1,060 lines net removed** across 32 files, almost all of it duplicated theming.
+- **Exempt, deliberately**: circular marks, semantic state (success / warning / danger), and the
+  two document palettes the brief leaves to their renderers — the DMN decision table and the
+  FEEL syntax classes.
+
+## The design system reaches the editor's start page and the studio (2026-09-10)
+
+- **Editor start page** (`@bpmnkit/plugins/tabs`) — flat, square, hairline-ruled: actions in one
+  bordered box, examples in one bordered box divided by hairlines rather than gapped cards, mono
+  labels and file-type marks in the single accent, and the `bpmn**kit**` wordmark in place of the
+  logo lockup. The file-tab bar above it matches, with the accent underline sitting on the row's
+  own rule.
+- **Studio** — one seam (`src/styles/design-system.css`) re-points the `--bpmnkit-*` tokens the
+  whole app already reads onto `--bpmnkit-ds-*`, so cascivo components, Tailwind utilities and
+  the embedded editor all follow. Radius and shadow are collapsed at the scale rather than at
+  164 call sites; circular marks keep their shape. Space Grotesk and Space Mono are self-hosted.
+- **The studio now opens in the design system**, not the `neon` white-label theme, which remains
+  available in the switcher.
+
+## One design system across Drop and the Editor (2026-09-10)
+
+The bpmnkit.com landing system — flat, square, hairline-ruled, terracotta accent, Space Grotesk
+for prose and Space Mono for every label and datum — now covers `apps/drop` and the
+`@bpmnkit/editor` chrome as well as the marketing site.
+
+- **`--bpmnkit-ds-*` in `packages/ui`.** The system's grounds, ink scale, hairlines, code-panel
+  syntax colours, type scale and layout metrics, in `tokens.css` and the mirrored
+  `UI_TOKENS_CSS`. Additive: the existing `--bpmnkit-*` product palette is unchanged, so no
+  other app shifts colour.
+- **Drop's pages rebuilt on it.** Split hero with a vertical hairline, square dashed dropzone,
+  hairline-divided card grids, one full-bleed dark band, a `--dark-code` API panel, and a
+  single-open FAQ using native `<details name>`. The share viewer, diff, moderation and policy
+  pages match. No `border-radius`, `box-shadow` or `linear-gradient` remains in the app's CSS.
+- **Self-hosted type.** Space Grotesk and Space Mono are copied from the landing app into
+  `public/drop/fonts/` at build time, licences included, so Drop serves its own faces.
+- **Editor chrome flattened.** Toolbars, the tool palette and the zoom cluster are each a single
+  bordered box with internal hairlines instead of gapped rounded pills; panel labels are mono
+  uppercase; the properties dock tabs carry a 2px accent underline on the row rule; the input
+  modal and shortcut sheet are square and unshadowed. Icon buttons set
+  `font-variant-emoji: text` so no glyph is promoted to a colour emoji.
+- **Selection is a halo, not a recolour.** A selected element gets a dashed accent outline
+  *around* the shape; the BPMN stroke, its rounded task corners and its labels are untouched.
+
 ## Formatting-preserving writes for DMN, measured (2026-09-10)
 
 DMN shipped with the first cut of the preserving writer and did not deliver: a real Camunda

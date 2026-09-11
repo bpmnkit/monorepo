@@ -2,8 +2,8 @@ const STYLE_ID = "bpmnkit-token-highlight-v1"
 
 const CSS = `
 @keyframes bpmnkit-token-pulse {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.9)); }
-  50%       { filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.25)); }
+  0%, 100% { filter: drop-shadow(0 0 4px var(--bpmnkit-warn, #d97706)); }
+  50%       { filter: drop-shadow(0 0 10px var(--bpmnkit-warn, #d97706)); }
 }
 @keyframes bpmnkit-token-flow {
   to { stroke-dashoffset: -12; }
@@ -21,7 +21,7 @@ const CSS = `
 .bpmnkit-token-active .bpmnkit-gw-body {
   stroke: #f59e0b !important;
   stroke-width: 2.5 !important;
-  fill: rgba(245, 158, 11, 0.12) !important;
+  fill: var(--bpmnkit-warn, #d97706) !important;
 }
 
 /* ── Visited shapes (token has passed through) ──────────────────────────── */

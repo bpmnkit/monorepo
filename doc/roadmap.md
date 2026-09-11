@@ -275,6 +275,47 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + attempt limiting, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, localStorage persistence)
 - [x] Polish: suggestion→canvas element highlighting (hover + click), model attribution, docs
 
+### Design consistency — Drop + Editor on the landing system
+
+> Design brief: flat, square, hairline-ruled, one terracotta accent, two type roles.
+> Tokens live in `packages/ui` as `--bpmnkit-ds-*` (additive; the product palette is unchanged).
+
+- [x] `--bpmnkit-ds-*` token set in `packages/ui` (`tokens.css` + mirrored `UI_TOKENS_CSS`)
+- [x] Drop landing page rebuilt to the page spec — split hero, square dashed dropzone,
+      hairline card grids, one dark band, code panel, single-open accordion, hairline footer
+- [x] Drop's share viewer, diff, moderation and policy pages on the same system; no
+      `border-radius` / `box-shadow` / `linear-gradient` and no hex outside the token block
+- [x] Space Grotesk + Space Mono copied from the landing app into `public/drop/fonts/` at build
+- [x] Editor chrome (`EDITOR_CSS`, `HUD_CSS`, side dock, input modal) flattened and squared;
+      bordered groups with internal hairlines; mono uppercase labels; dashed accent selection
+      halo that leaves the shape's own stroke alone
+- [x] Editor start page + file-tab bar (`@bpmnkit/plugins/tabs`) — welcome panel, examples list
+      as one bordered box, mono file-type marks in the one accent, wordmark in place of the logo
+      lockup, tab underline on the row's own rule, dialogs and dropdown flattened
+- [x] `apps/studio` — `src/styles/design-system.css` re-points `--bpmnkit-*` onto the
+      design-system set (one seam for cascivo, Tailwind and the embedded editor); radius and
+      shadow collapsed at the scale; circular marks kept; fonts self-hosted; default theme moved
+      from `neon` to `light`
+- [x] `--bpmnkit-chrome-*` tokens in `packages/editor/src/chrome.ts` — the per-theme ground,
+      line, ink, accent and scrim every piece of editor chrome reads, declared once (the
+      editor's `--hud-*` names were renamed into this set)
+- [x] All remaining `@bpmnkit/plugins` panel chrome — the 12 tracked here plus 11 more found by
+      sweeping for shadows rather than theme blocks (diff, lint, minimap, story-view,
+      variable-flow, pattern-advisor, zoom-controls, presentation, feel-playground, dmn-editor,
+      config-panel-bpmn). 1,060 lines net removed; invariants held by
+      `tests/chrome-invariants.test.ts`
+- [x] Flip the Editor shell to the light `--canvas` ground of the brief's mock — `:root` now
+      carries the design system's light chrome, `BpmnEditor` defaults to `light`, and
+      `@bpmnkit/canvas`'s light ground reads `--bpmnkit-ds-canvas`; `dark` and `neon` are
+      opt-in from there
+- [ ] Canvas dot grid (`@bpmnkit/canvas`)
+- [ ] Properties-dock footer row (mono save/lines status + `Deploy ▶`) — no data source yet
+- [ ] `flow-navigation` draws its keyboard cursor by recolouring the shape's own stroke; the
+      brief wants a dashed halo *around* the shape, which needs a rendered overlay rather than
+      a CSS change
+- [ ] `story-view`'s `bpmnkit-sv-card--*` type modifiers are emitted nowhere in the repo —
+      either wire them up or drop the rules
+
 ---
 
 ## IDE-Resident Modeling

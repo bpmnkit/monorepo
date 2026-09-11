@@ -15,7 +15,7 @@ export const WATERMARK_CSS = `
 }
 .bpmnkit-watermark-link {
   font-size: 11px;
-  color: var(--bpmnkit-overlay-text, rgba(60, 60, 60, 0.7));
+  color: var(--bpmnkit-overlay-text, var(--bpmnkit-ds-ink-4, #8b929c));
   text-decoration: none;
   font-family: system-ui, sans-serif;
   opacity: 0.7;

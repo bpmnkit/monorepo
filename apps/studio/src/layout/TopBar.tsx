@@ -28,7 +28,7 @@ export function TopBar({ onMenuClick, menuExpanded }: TopBarProps) {
 				className="flex shrink-0 items-center gap-2 transition-opacity duration-150 hover:opacity-80 active:opacity-60"
 				aria-label="Studio home"
 			>
-				<BpmnkitLogo height={30} />
+				<BpmnkitLogo />
 				<span className="font-semibold text-fg text-sm">Studio</span>
 			</Link>
 

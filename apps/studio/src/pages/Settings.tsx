@@ -180,7 +180,7 @@ export function Settings() {
 						<button
 							type="button"
 							onClick={() => handleSwitchProject(null)}
-							className={`text-xs px-2 py-0.5 rounded-full transition-colors shrink-0 ${
+							className={`text-xs px-2 py-0.5 transition-colors shrink-0 ${
 								activeProjectId === null ? "bg-accent/20 text-accent" : "text-muted hover:text-fg"
 							}`}
 							aria-pressed={activeProjectId === null}
@@ -209,7 +209,7 @@ export function Settings() {
 								<button
 									type="button"
 									onClick={() => handleSwitchProject(project.id)}
-									className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+									className={`text-xs px-2 py-0.5 transition-colors ${
 										project.id === activeProjectId
 											? "bg-accent/20 text-accent"
 											: "text-muted hover:text-fg"
@@ -286,7 +286,7 @@ export function Settings() {
 											<button
 												type="button"
 												onClick={() => setActiveProfile(p.name)}
-												className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+												className={`text-xs px-2 py-0.5 transition-colors ${
 													p.name === activeProfile
 														? "bg-accent/20 text-accent"
 														: "text-muted hover:text-fg"

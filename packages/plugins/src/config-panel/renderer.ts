@@ -533,13 +533,13 @@ export class ConfigPanelRenderer {
 			const circle = document.createElementNS(SVG_NS, "circle")
 			circle.setAttribute("r", "7")
 			circle.setAttribute("fill", "#f87171")
-			circle.setAttribute("stroke", "#fff")
+			circle.setAttribute("stroke", "var(--bpmnkit-chrome-accent-fg)")
 			circle.setAttribute("stroke-width", "1.5")
 
 			const text = document.createElementNS(SVG_NS, "text")
 			text.setAttribute("text-anchor", "middle")
 			text.setAttribute("dominant-baseline", "central")
-			text.setAttribute("fill", "#fff")
+			text.setAttribute("fill", "var(--bpmnkit-chrome-accent-fg)")
 			text.setAttribute("font-size", "9")
 			text.setAttribute("font-weight", "bold")
 			text.setAttribute("font-family", "system-ui, sans-serif")
@@ -1312,11 +1312,11 @@ export class ConfigPanelRenderer {
 			_activeDropdownClose?.()
 
 			const rect = trigger.getBoundingClientRect()
-			const hudTheme = document.body.dataset.bpmnkitHudTheme ?? ""
 
+			// The dropdown is appended to <body>, so it inherits the chrome tokens
+			// from whatever theme the body carries — no copy needed.
 			const panel = document.createElement("div")
 			panel.className = "bpmnkit-cfg-ss-dropdown"
-			if (hudTheme === "light" || hudTheme === "neon") panel.setAttribute("data-theme", hudTheme)
 
 			// Position: prefer below, flip above if not enough room
 			const spaceBelow = window.innerHeight - rect.bottom

@@ -1,0 +1,148 @@
+/*
+ * bpmnkit.com design system, applied to the studio.
+ *
+ * The system is flat (no shadow, gradient or blur), square, hairline-ruled,
+ * with one terracotta accent and two type roles. Rather than restyling every
+ * component, this file re-points the `--bpmnkit-*` brand tokens the whole app
+ * already reads — cascivo (via styles/cascivo.css), Tailwind (via the @theme
+ * block in globals.css), and the embedded editor / canvas / plugins — onto the
+ * `--bpmnkit-ds-*` set that `@bpmnkit/ui` owns. One seam, no component churn.
+ *
+ * Scope: this override lives in the studio only. `@bpmnkit/ui` still ships the
+ * product palette unchanged, so no other app moves.
+ *
+ * Themes: light and dark are both expressed in design-system tokens. `neon` is
+ * a deliberate white-label theme and keeps its own hue — it inherits the
+ * system's form (square, flat, hairlines) but not its colour.
+ */
+
+/* ── Type ───────────────────────────────────────────────────────────────
+   Self-hosted; copied from the landing app by scripts/copy-fonts.mjs so the
+   studio serves its own faces rather than depending on the marketing site.
+   Both families are OFL 1.1; licences ship alongside the files. */
+
+@font-face {
+	font-family: "Space Grotesk";
+	font-style: normal;
+	font-weight: 300 700;
+	font-display: swap;
+	src: url("/fonts/space-grotesk-latin-var.woff2") format("woff2");
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+	font-family: "Space Grotesk";
+	font-style: normal;
+	font-weight: 300 700;
+	font-display: swap;
+	src: url("/fonts/space-grotesk-latin-ext-var.woff2") format("woff2");
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F,
+		U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+	font-family: "Space Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("/fonts/space-mono-latin-400.woff2") format("woff2");
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+	font-family: "Space Mono";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("/fonts/space-mono-latin-700.woff2") format("woff2");
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── Brand tokens → design-system tokens ──────────────────────────────
+   This file is imported after `@bpmnkit/ui`'s tokens, so a bare `:root` here
+   would outrank their `[data-theme=…]` blocks — equal specificity, later in
+   source order — and leak the light palette into dark and neon. Excluding the
+   themed roots keeps this block the light default it is meant to be. */
+
+:root:not([data-theme="dark"]):not([data-theme="neon"]) {
+	--bpmnkit-bg: var(--bpmnkit-ds-bg);
+	--bpmnkit-surface: var(--bpmnkit-ds-surface);
+	--bpmnkit-surface-2: var(--bpmnkit-ds-bg);
+	--bpmnkit-border: var(--bpmnkit-ds-line);
+	--bpmnkit-fg: var(--bpmnkit-ds-ink);
+	--bpmnkit-fg-muted: var(--bpmnkit-ds-ink-3);
+
+	--bpmnkit-accent: var(--bpmnkit-ds-accent);
+	--bpmnkit-accent-bright: var(--bpmnkit-ds-accent-hover);
+	--bpmnkit-accent-subtle: color-mix(in srgb, var(--bpmnkit-ds-accent) 10%, transparent);
+	--bpmnkit-accent-fg: #ffffff;
+
+	/* The system has one accent, so the secondary brand colour resolves to it. */
+	--bpmnkit-teal: var(--bpmnkit-ds-accent);
+
+	/* Floating panels are opaque and bounded by a hairline, never blurred. */
+	--bpmnkit-panel-bg: var(--bpmnkit-ds-surface);
+	--bpmnkit-panel-border: var(--bpmnkit-ds-line);
+
+	/* Square: the only rounded things belong to the diagram renderer. */
+	--bpmnkit-radius: 0;
+	--bpmnkit-radius-sm: 0;
+	--bpmnkit-radius-lg: 0;
+
+	/* The rail is separated by a hairline, not by a second ground: cascivo's
+	 * SideNav takes its text from the global text tokens, so a dark rail under
+	 * a light theme renders dark ink on a dark ground. */
+	--bpmnkit-nav-bg: var(--bpmnkit-ds-surface);
+	--bpmnkit-nav-fg: var(--bpmnkit-ds-ink-3);
+	--bpmnkit-nav-fg-active: var(--bpmnkit-ds-ink);
+
+	--bpmnkit-font: var(--bpmnkit-ds-font-sans);
+	--bpmnkit-font-mono: var(--bpmnkit-ds-font-mono);
+}
+
+[data-theme="dark"] {
+	--bpmnkit-bg: var(--bpmnkit-ds-dark);
+	--bpmnkit-surface: var(--bpmnkit-ds-dark);
+	--bpmnkit-surface-2: color-mix(in srgb, var(--bpmnkit-ds-ink-on-dark) 5%, var(--bpmnkit-ds-dark));
+	--bpmnkit-border: var(--bpmnkit-ds-line-dark);
+	--bpmnkit-fg: var(--bpmnkit-ds-ink-on-dark);
+	--bpmnkit-fg-muted: var(--bpmnkit-ds-ink-muted);
+
+	--bpmnkit-accent: var(--bpmnkit-ds-accent-on-dark);
+	--bpmnkit-accent-bright: var(--bpmnkit-ds-accent-on-dark);
+	--bpmnkit-accent-subtle: color-mix(in srgb, var(--bpmnkit-ds-accent-on-dark) 15%, transparent);
+	--bpmnkit-accent-fg: var(--bpmnkit-ds-dark);
+
+	--bpmnkit-teal: var(--bpmnkit-ds-accent-on-dark);
+
+	--bpmnkit-panel-bg: var(--bpmnkit-ds-dark);
+	--bpmnkit-panel-border: var(--bpmnkit-ds-line-dark);
+
+	--bpmnkit-nav-bg: var(--bpmnkit-ds-dark);
+	--bpmnkit-nav-fg: var(--bpmnkit-ds-ink-muted);
+	--bpmnkit-nav-fg-active: var(--bpmnkit-ds-ink-on-dark);
+}
+
+/* Neon keeps its palette; it only picks up the square geometry. */
+[data-theme="neon"] {
+	--bpmnkit-radius: 0;
+	--bpmnkit-radius-sm: 0;
+	--bpmnkit-radius-lg: 0;
+	--bpmnkit-font: var(--bpmnkit-ds-font-sans);
+	--bpmnkit-font-mono: var(--bpmnkit-ds-font-mono);
+}
+
+/* ── Uppercase is mono, always ──────────────────────────────────────── */
+
+.uppercase,
+[class*="uppercase"] {
+	font-family: var(--bpmnkit-ds-font-mono);
+	letter-spacing: 0.12em;
+}

@@ -1,133 +1,111 @@
+import { injectChromeStyles } from "./chrome.js"
 const DOCK_STYLE_ID = "bpmnkit-side-dock-styles-v1"
 const STORAGE_KEY_WIDTH = "bpmnkit-side-dock-width"
 const STORAGE_KEY_COLLAPSED = "bpmnkit-side-dock-collapsed"
 const MIN_WIDTH = 280
 const MAX_WIDTH = 700
-const DEFAULT_WIDTH = 360
+const DEFAULT_WIDTH = 340
 
 const DOCK_CSS = `
-/* ── Side Dock ──────────────────────────────────────────────────────────── */
-.bpmnkit-side-dock__tab:disabled { opacity: 0.3; cursor: default; }
+/* ── Side dock ───────────────────────────────────────────────────────────
+   The properties panel, in the bpmnkit.com design system: flat, square,
+   hairline-bounded, mono uppercase labels. Grounds follow the HUD theme
+   variables declared in css.ts, so the two read as one piece of chrome.
+   ──────────────────────────────────────────────────────────────────────── */
 .bpmnkit-side-dock {
   position: fixed; right: 0; top: 36px; bottom: 0;
   z-index: 9999; display: flex; flex-direction: column;
-  background: rgba(18, 18, 26, 0.98);
-  border-left: 1px solid rgba(255,255,255,0.1);
-  box-shadow: -8px 0 40px rgba(0,0,0,0.6);
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bpmnkit-chrome-ground, #ffffff);
+  border-left: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
   transition: width 0.22s ease;
 }
-/* Pill handle — sticks out from the left edge; always visible + clickable */
+/* Square handle — sticks out from the left edge; always visible + clickable */
 .bpmnkit-side-dock__collapse-handle {
   position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
   width: 20px; height: 52px;
-  background: rgba(18, 18, 26, 0.98);
-  border: 1px solid rgba(255,255,255,0.1); border-right: none;
-  border-radius: 8px 0 0 8px;
+  background: var(--bpmnkit-chrome-ground, #ffffff);
+  border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14)); border-right: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 1;
-  color: rgba(255,255,255,0.45); font-size: 14px; line-height: 1;
-  transition: color 0.1s, background 0.1s;
+  color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 13px; line-height: 1;
+  font-variant-emoji: text;
   user-select: none;
 }
-.bpmnkit-side-dock__collapse-handle:hover { color: #fff; background: rgba(40,40,60,0.99); }
+.bpmnkit-side-dock__collapse-handle:hover { color: var(--bpmnkit-chrome-ink, #f4f5f7); background: var(--bpmnkit-chrome-hover, rgba(255,255,255,0.07)); }
 .bpmnkit-side-dock__resize-handle {
   position: absolute; left: 0; top: 0; bottom: 0;
   width: 5px; cursor: ew-resize; z-index: 2;
 }
-.bpmnkit-side-dock__resize-handle:hover { background: rgba(76,142,247,0.35); }
+.bpmnkit-side-dock__resize-handle:hover { background: var(--bpmnkit-chrome-accent, #c9755c); }
+
+/* ── Tabs — equal-width row, the underline sits on the row's own rule ── */
 .bpmnkit-side-dock__tab-strip {
-  display: flex; align-items: center; height: 38px; flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: stretch; height: 34px; flex-shrink: 0;
+  border-bottom: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
+  overflow-x: auto; scrollbar-width: none;
 }
+.bpmnkit-side-dock__tab-strip::-webkit-scrollbar { display: none; }
+/* Equal-width while the labels fit; the strip scrolls rather than clipping them. */
 .bpmnkit-side-dock__tab {
-  padding: 0 16px; height: 100%; background: none; border: none;
-  border-bottom: 2px solid transparent; color: rgba(255,255,255,0.4);
-  cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap;
-  transition: color 0.1s, border-color 0.1s;
-  font-family: system-ui, -apple-system, sans-serif;
+  flex: 1 0 auto;
+  padding: 0 10px; height: 100%; background: none; border: none;
+  border-bottom: 2px solid transparent; color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
+  cursor: pointer; white-space: nowrap;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.08em; text-transform: uppercase;
 }
-.bpmnkit-side-dock__tab:hover { color: rgba(255,255,255,0.75); }
-.bpmnkit-side-dock__tab.active { color: #4c8ef7; border-bottom-color: #4c8ef7; }
+.bpmnkit-side-dock__tab:hover { color: var(--bpmnkit-chrome-ink-2, #c8ccd2); }
+.bpmnkit-side-dock__tab.active {
+  color: var(--bpmnkit-chrome-ink, #f4f5f7);
+  border-bottom-color: var(--bpmnkit-chrome-accent, #c9755c);
+  margin-bottom: -1px;
+}
+.bpmnkit-side-dock__tab:disabled { opacity: 0.3; cursor: default; }
 .bpmnkit-side-dock__pane {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
 }
 .bpmnkit-side-dock__pane--hidden { display: none; }
-/* Empty state — info widget + hint, shown when no element is selected */
+
+/* ── Empty state — info rows + hint, shown when nothing is selected ── */
 .bpmnkit-side-dock__empty {
   flex: 1; display: flex; flex-direction: column;
-  overflow-y: auto; padding: 14px 16px;
-  gap: 0;
+  overflow-y: auto; padding: 0 20px;
 }
 .bpmnkit-side-dock__info-row {
   display: flex; flex-direction: column;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  gap: 3px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--bpmnkit-chrome-line-soft, rgba(255, 255, 255, 0.08));
+  gap: 7px;
 }
 .bpmnkit-side-dock__info-label {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: rgba(255,255,255,0.3);
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px); letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
 }
 .bpmnkit-side-dock__info-value {
-  font-size: 13px; color: rgba(255,255,255,0.75); word-break: break-word;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 12.5px; color: var(--bpmnkit-chrome-ink-2, #c8ccd2); word-break: break-word;
 }
+/* A sentence, not a label — --ink-4 does not clear 4.5:1 on a light ground. */
 .bpmnkit-side-dock__empty-hint {
-  font-size: 12px; color: rgba(255,255,255,0.25);
-  text-align: center; padding: 20px 0;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-label, 11.5px); letter-spacing: 0.04em;
+  color: var(--bpmnkit-chrome-ink-2, #c8ccd2);
+  padding: 24px 0;
 }
-/* Collapsed state — only the pill handle remains visible */
+/* Collapsed state — only the handle remains visible */
 .bpmnkit-side-dock--collapsed .bpmnkit-side-dock__tab-strip,
 .bpmnkit-side-dock--collapsed .bpmnkit-side-dock__pane { display: none; }
 /* Push watermark left of the dock using a CSS variable updated by JS */
 .bpmnkit-watermark { right: calc(var(--bpmnkit-dock-width, 0px) + 8px) !important; }
-/* Light theme */
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock {
-  background: rgba(248,248,252,0.99); border-left-color: rgba(0,0,0,0.08);
-  box-shadow: -8px 0 40px rgba(0,0,0,0.12);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__collapse-handle {
-  background: rgba(248,248,252,0.99); border-color: rgba(0,0,0,0.08); color: rgba(0,0,0,0.4);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__collapse-handle:hover {
-  background: rgba(235,235,242,0.99); color: rgba(0,0,0,0.9);
-}
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__tab-strip { border-bottom-color: rgba(0,0,0,0.07); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__tab { color: rgba(0,0,0,0.4); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__tab:hover { color: rgba(0,0,0,0.7); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__tab.active { color: #1a56db; border-bottom-color: #1a56db; }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__resize-handle:hover { background: rgba(26,86,219,0.2); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__info-label { color: rgba(0,0,0,0.3); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__info-value { color: rgba(0,0,0,0.75); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__info-row { border-bottom-color: rgba(0,0,0,0.06); }
-[data-bpmnkit-hud-theme="light"] .bpmnkit-side-dock__empty-hint { color: rgba(0,0,0,0.25); }
-/* Neon theme */
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock {
-  background: oklch(6% 0.04 280);
-  border-left: 1px solid oklch(65% 0.28 280 / 0.35);
-  box-shadow: -8px 0 40px oklch(0% 0 0 / 0.8), -1px 0 20px oklch(65% 0.28 280 / 0.12);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__collapse-handle {
-  background: oklch(6% 0.04 280);
-  border-color: oklch(65% 0.28 280 / 0.35);
-  color: oklch(65% 0.28 280 / 0.6);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__collapse-handle:hover {
-  background: oklch(12% 0.04 270 / 0.99);
-  color: oklch(73% 0.16 280);
-}
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__tab-strip { border-bottom-color: oklch(65% 0.28 280 / 0.25); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__tab { color: oklch(50% 0.1 280); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__tab:hover { color: oklch(73% 0.16 280); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__tab.active { color: oklch(72% 0.18 185); border-bottom-color: oklch(72% 0.18 185); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__resize-handle:hover { background: oklch(65% 0.28 280 / 0.25); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__info-label { color: oklch(50% 0.06 280); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__info-value { color: oklch(73% 0.16 280); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__info-row { border-bottom-color: oklch(65% 0.28 280 / 0.1); }
-[data-bpmnkit-hud-theme="neon"] .bpmnkit-side-dock__empty-hint { color: oklch(45% 0.08 280); }
 `
 
 function injectDockStyles(): void {
+	injectChromeStyles()
 	if (document.getElementById(DOCK_STYLE_ID)) return
 	const style = document.createElement("style")
 	style.id = DOCK_STYLE_ID

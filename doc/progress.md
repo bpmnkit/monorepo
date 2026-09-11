@@ -1,5 +1,220 @@
 # Progress
 
+## 2026-09-11 — The editor shell moves onto the light `--canvas` ground
+
+The brief's editor mock sits on `--canvas` (`#fbfbfc`) with light chrome; the shell shipped a
+dark default with light as an opt-in. That is now inverted, and the flip is a change of
+*defaults*, not of themes: dark and the `neon` white-label theme are both intact and both still
+one call away.
+
+**Where the default lived.** In three places, all of which said "dark" independently:
+
+- `packages/editor/src/chrome.ts` put the dark palette on bare `:root` and light behind
+  `[data-bpmnkit-hud-theme="light"]`. The two blocks swapped: `:root` is now the design
+  system's light ground, and `[data-bpmnkit-hud-theme="dark"]` carries what `:root` held. The
+  scrim stays on `:root` — a scrim is a dark veil over either ground, not a per-theme value.
+- `BpmnEditor`'s constructor resolved `options.theme ?? "neon"`. It now resolves to `"light"`.
+  `persistTheme` is untouched, so anyone who already chose a theme keeps it, and the hosts that
+  name `theme: "neon"` outright — the embed docs page, `apps/learn` — are unaffected.
+- Two ground fallbacks stated dark for the themeless case: `#bpmnkit-empty-state` in `HUD_CSS`
+  and `.bpmnkit-tabs` / `.bpmnkit-welcome` in the tabs plugin. All three now fall back light.
+
+**The canvas ground itself.** `@bpmnkit/canvas` already treated light as the themeless default,
+but its light ground was the stock `#f8f9fa`, not the brief's `--canvas`. It now reads
+`var(--bpmnkit-ds-canvas, #fbfbfc)`, so the chrome and the ground it floats on come from the
+same token. Verified in the browser: the host computes to `rgb(251, 251, 252)`.
+
+**One latent bug the flip exposed.** The command palette deliberately stamped
+`data-bpmnkit-hud-theme="light"` only for light, letting dark and neon inherit from the body.
+That was safe only while dark was the inherited default. It now states the canvas theme
+outright — which is what the surrounding comment always claimed it did — because the palette
+follows the canvas it belongs to, and the body may disagree.
+
+**Checked, not assumed.** A Playwright probe drives `setTheme` through all four states and
+reads the computed ground of the canvas host and each HUD group; dark still resolves
+`rgb(13, 13, 22)` and neon its own oklch. Five assertions in `packages/editor/tests/
+hud-chrome.test.ts` pin the flip: the light values on `:root`, dark and neon as opt-ins, the
+absence of the old `"light"` block, a themeless editor reporting `getTheme() === "light"` with
+no `data-theme` on the host, and the HUD stamping `light` on the body. The palette test now
+runs all three themes instead of asserting the old inherit-for-dark behaviour.
+
+Pre-existing and unrelated: `@bpmnkit/engine` cannot build without `@bpmnkit/reebe-wasm`, which
+is absent from the repo, so `turbo test` stops there and studio's `scenario-runner.test.ts`
+fails to resolve. Everything downstream of the changed packages was run directly instead.
+
+## 2026-09-11 — The rest of the plugin chrome, and one shared set of theme tokens
+
+The remaining `@bpmnkit/plugins` panels move onto the design system, which finishes the pass
+that Drop, the editor chrome, the start page and the studio began. **1,060 lines net came out**
+of 32 files, because the work was mostly deletion.
+
+**Why it shrank.** Every panel carried the same shape: a dark default, then a
+`[data-bpmnkit-hud-theme="light"]` copy restating the same roles in light rgba, then often a
+`"neon"` copy on top — 454 theme-override selectors across the package. Those exist only
+because there was nowhere to say "this is the panel ground" once. So the first change was
+`packages/editor/src/chrome.ts`: a `--bpmnkit-chrome-*` set declared once per theme, which the
+HUD, the side dock, the modal and now every plugin sheet read. The per-theme copies then had
+nothing left to say and went. The editor's own `--hud-*` names were renamed into that set,
+since they are public surface in a published package and were never HUD-specific.
+
+**What the panels lost.** 42 `box-shadow`, 5 `backdrop-filter`, 142 non-circular
+`border-radius`, and the blue/purple/teal ramps that a one-accent system has no room for.
+Kept: circular marks (a status dot is a dot, not chrome), semantic state — success, warning,
+danger — and the two document palettes the brief exempts alongside the BPMN diagram: the DMN
+decision table's own semantics and the FEEL syntax classes.
+
+**Scope was wider than the roadmap said.** The roadmap tracked 12 files, found by grepping for
+theme blocks. Sweeping for shadows instead turned up 11 more panels that never had theme blocks
+and so were never counted — diff, lint, minimap, story-view, variable-flow, pattern-advisor,
+zoom-controls, presentation, feel-playground, dmn-editor and config-panel-bpmn. They are done
+too; leaving them would have meant shadowed panels sitting beside flat ones.
+
+**The mechanical pass, and the two things it got wrong.** Rewriting 5,000 lines by hand was not
+sensible, so a script did the classifiable part — drop radius/shadow/blur, map the rgba ramps
+and the `--bpmnkit-*` product tokens onto the chrome roles, put uppercase labels in the mono
+role, delete the theme blocks — and *reported* whatever it could not classify rather than
+guessing. Two defects came out of it, both found by checking rather than reading:
+
+- A `var(--x, var(--y, #z))` fallback has a nested paren, and the token regex stopped at the
+  first `)`, leaving **38 declarations with a stray `)`** — silently dead CSS. A balance check
+  over every changed line found them all.
+- The "insert the import after the last import" step matched the *first line* of a multi-line
+  import in `config-panel-bpmn`, splitting it and breaking the build.
+
+Afterwards every CSS template literal was parsed with the browser's own parser and its rule
+count compared against the selectors in source: **all 23 stylesheets parse 1:1**, so nothing was
+dropped or malformed.
+
+**What holds it.** `tests/chrome-invariants.test.ts` walks the package and asserts no shadow, no
+blur, no gradient, no non-circular radius, no per-theme block, no raw hex outside a `var()`
+fallback, no read of the blue product accent, and mono for every uppercase label. Measured
+against the pre-change sources those assertions account for 42 + 5 + 454 + 142 violations, so
+they are load-bearing rather than decorative.
+
+**Still open.** `flow-navigation` recolours the shape's own stroke for its keyboard cursor; the
+brief wants a halo *around* the shape, which needs a rendered overlay rather than a CSS change.
+It at least spends the system's accent now. Noted in the roadmap, as is the observation that
+`story-view`'s `bpmnkit-sv-card--*` modifiers are emitted nowhere in the repo.
+
+## 2026-09-10 — The editor's start page and the studio join the design system
+
+Two more surfaces onto the bpmnkit.com system, using the `--bpmnkit-ds-*` tokens added
+earlier today.
+
+**The editor's start page** lives in `@bpmnkit/plugins/tabs`, together with the file-tab bar
+above it — so both went, or neither would have read as one screen. The welcome panel is now
+flat and square: the actions stack into a single bordered box divided by hairlines, the
+examples list is one bordered box rather than gapped cards, every label and datum is mono, and
+the file-type badges — which carried a blue / purple / amber / green taxonomy — are mono marks
+in the one accent. The tab bar takes the accent underline with `margin-bottom: -1px` so it
+sits on the row's own rule, and its type chip follows the badges. Dialogs and the group
+dropdown lost their radii and shadows.
+
+The 4 KB logo lockup at the top of the start page is replaced by the `bpmn**kit**` wordmark
+the design brief specifies for editor chrome. That is a visible product change, made because
+the lockup's magenta is a second brand colour and the system's fourth principle allows exactly
+one.
+
+**The studio** was the larger surface and needed the least code. Every part of it — cascivo
+components, the Tailwind `@theme` block, and the embedded editor / canvas / plugins — already
+reads `--bpmnkit-*`, so `src/styles/design-system.css` re-points those tokens at the
+design-system set and the whole app follows from one seam. Radius and shadow are collapsed at
+the *scale* (Tailwind's `--radius-*` / `--shadow-*`, cascivo's 20 radius and 6 shadow tokens)
+rather than by editing 164 utility classes across 27 files; the ten `rounded-full` that were
+pills on chrome were squared by hand, and the ones that draw circular marks — status dots, the
+ping, step markers — were left round, because a square dot is not a dot. Space Grotesk and
+Space Mono are copied from the landing app at build time, as Drop does.
+
+**The studio's default theme moves from `neon` to `light`.** This is worth stating plainly: the
+studio opened purple, so leaving the default alone would have made the whole change invisible
+to a new visitor. `neon` remains in the switcher.
+
+**Two defects found by measuring rather than looking.** `design-system.css` is imported after
+`@bpmnkit/ui`'s tokens, so its `:root` block outranked their `[data-theme=…]` blocks on source
+order and leaked the light palette into dark and neon — the neon rail ended up with dark ink on
+a dark ground. Scoping it to `:root:not([data-theme="dark"]):not([data-theme="neon"])` fixes
+it. Separately, cascivo's `SideNav` takes its text from the *global* text tokens, so the dark
+nav rail this change first gave the light theme rendered #14161a on #14161a. The rail is now
+separated by a hairline instead of a second ground, which is what the system does anyway.
+
+`tests/tabs/welcome-chrome.test.ts` and `apps/studio/tests/theme.test.ts` lock both down —
+flatness, the one accent, the mono role, the single bordered box, the tab underline sitting on
+the rule, every theme defining its own variables, the scoped light bridge, the collapsed
+scales, and the default theme. Every assertion was checked against the pre-change source; they
+all go red there.
+
+## 2026-09-10 — Drop and the Editor chrome move onto the landing design system
+
+The design team's brief asked for one visual language across bpmnkit.com, Drop and the Editor.
+Drop ran gradients, rounded cards and a blue/teal/purple palette; the Editor's HUD ran rounded,
+blurred, shadowed panels with a Camunda-blue accent. Both now read as the landing page does:
+flat, square, hairline-ruled, one accent.
+
+**The tokens live in `packages/ui`, not in either app.** The brief shipped a drop-in
+`tokens.css` with unprefixed names (`--bg`, `--ink`, `--line`); this repo's rule is that
+`packages/ui` is the single source of truth and every public token carries the `--bpmnkit-`
+prefix. So the system landed as a `--bpmnkit-ds-*` set in `tokens.css` and the mirrored
+`UI_TOKENS_CSS` string, **additive** — nothing that reads `--bpmnkit-accent` changed colour, so
+studio, demo, desktop and the VS Code extension are untouched. Consuming Drop and the Editor
+was then a matter of reading the new names.
+
+**Drop.** `pages.ts` rewritten to the page spec: sticky hairline nav with the `v1.0` chip, split
+hero with a vertical rule between the columns, two-tone 60px headline, square dashed dropzone,
+hairline-divided step and feature grids, a single full-bleed dark band for the use cases, a
+`--dark-code` API panel, and a single-open accordion (native `<details name>` — no JS). The
+share viewer, diff, moderation and policy pages went with it, so no `border-radius`,
+`box-shadow` or `linear-gradient` survives anywhere in the app's CSS, and no hex outside the
+token block. Space Grotesk and Space Mono are copied out of the landing app at build time and
+served from `/drop/fonts/` — Drop is a Worker on the same zone, but depending on the marketing
+site's routes for its own type would have been a hidden coupling.
+
+**Editor.** `EDITOR_CSS`, `HUD_CSS`, the side dock and the input modal, all flattened: toolbars
+and the palette are now one bordered box with internal hairlines rather than gapped pills,
+labels are mono uppercase, and selection is a **dashed accent halo around** the shape — the
+shape's own stroke is never recoloured, per the brief's hard line about the renderer. The
+`--hud-*` variables the sheet now resolves against are declared once per theme, which is what
+made it possible to keep the dark and neon grounds intact while changing the form underneath
+them.
+
+**What is deliberately not done.** The brief's Editor mock is a *light* shell. Making the light
+ground the default would strand thirteen `@bpmnkit/plugins` surfaces (command palette, element
+docs, config panel, process runner, main menu, …) on their own dark chrome — 5,200 lines that
+are outside this change. The Editor therefore keeps its per-theme grounds and takes the
+system's form and accent; flipping the ground is a follow-up, gated on the same pass through
+`@bpmnkit/plugins`. The top file-tab bar and the canvas dot grid live in `@bpmnkit/plugins` and
+`@bpmnkit/canvas` for the same reason. The dock has no footer row: the brief's save/lines
+status has no source in this package.
+
+Cascivo was considered and not used. It is a React package; `apps/drop` renders HTML strings in
+a Worker and `@bpmnkit/editor` is a dependency-free DOM library, and its three-tier token
+system is a different visual language from the one the brief specifies.
+
+**Follow-up: three regressions in the editor chrome, and the check that should have caught
+them.** The restyle read as "the top toolbar is gone". Nothing was gone — a before/after
+inventory of every HUD node's geometry and visibility showed the same 48 elements, none newly
+hidden — but three CSS mistakes made the group unreadable. `.hud-sep` lost its explicit height
+and sat inside an `align-items: center` row, so all six separators computed to 1×0. The
+group's left cap keyed off `:first-child`, which is the *mobile* collapse toggle and is
+`display: none` on desktop, so the run of buttons had no left edge. And the top group was left
+transparent from the old "merge into the tab bar" treatment, so what remained was a few
+disconnected hairline fragments. Dividers also doubled up wherever a button's own
+`border-right` met an explicit separator.
+
+Fixed by making the top group a real bordered box — which is what the brief's mock shows —
+and by moving the divider off the buttons onto a `.panel > * + *` rule, with
+`.panel > .hud-sep + *` cancelling it so a hairline never lands next to a separator, and
+`align-self: stretch` on the separator so it survives any `align-items`. The zoom cluster now
+shares the palette's 32px button height, so the two halves of the bottom strip line up.
+
+`tests/hud-chrome.test.ts` locks this down: every control is asserted present in its group by
+id, and the sheets are asserted flat and square, separator-stretching, divider-correct, and
+still selecting with a dashed halo. Each assertion was checked against the pre-redesign CSS
+and the broken intermediate — all of them go red there.
+
+One process note worth keeping: the build was broken for a while by a backtick inside a CSS
+comment in a template literal, and it went unnoticed because the build output was piped to
+`/dev/null` while iterating. `tsc` reports it plainly. Don't silence the build.
+
 ## 2026-09-10 — DMN files, where "already done" was not the same as done
 
 DMN has had a preserving writer since the first cut, so the honest thing was to measure it

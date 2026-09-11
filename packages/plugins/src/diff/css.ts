@@ -1,3 +1,5 @@
+import { injectChromeStyles } from "@bpmnkit/editor"
+
 /** ID used to prevent duplicate style injection. */
 export const DIFF_STYLE_ID = "bpmnkit-diff-styles-v1"
 
@@ -82,17 +84,17 @@ export const DIFF_CSS = `
 .bpmnkit-diff-moved .bpmnkit-data-body,
 .bpmnkit-diff-moved .bpmnkit-datastore-body,
 .bpmnkit-diff-moved .bpmnkit-group-body {
-  stroke: var(--bpmnkit-accent, #1a56db) !important;
+  stroke: var(--bpmnkit-chrome-accent) !important;
   stroke-width: 2 !important;
   stroke-dasharray: 3 3 !important;
 }
 .bpmnkit-diff-moved .bpmnkit-edge-path {
-  stroke: var(--bpmnkit-accent, #1a56db) !important;
+  stroke: var(--bpmnkit-chrome-accent) !important;
   stroke-width: 2 !important;
   stroke-dasharray: 3 3 !important;
 }
 .bpmnkit-diff-moved .bpmnkit-arrow-fill {
-  fill: var(--bpmnkit-accent, #1a56db) !important;
+  fill: var(--bpmnkit-chrome-accent) !important;
 }
 
 /* ── Legend ──────────────────────────────────────────────────────────────── */
@@ -106,14 +108,12 @@ export const DIFF_CSS = `
   flex-direction: column;
   gap: 4px;
   padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--bpmnkit-panel-bg, rgba(255, 255, 255, 0.92));
-  border: 1px solid var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  font-family: var(--bpmnkit-font, system-ui, -apple-system, sans-serif);
+  background: var(--bpmnkit-chrome-ground);
+  border: 1px solid var(--bpmnkit-chrome-line);
+  font-family: var(--bpmnkit-chrome-font);
   font-size: 11px;
   line-height: 1.4;
-  color: var(--bpmnkit-fg, #1a1a2e);
+  color: var(--bpmnkit-chrome-ink);
   pointer-events: none;
 }
 /* Our own display:flex outranks the UA stylesheet's [hidden] rule. */
@@ -122,10 +122,10 @@ export const DIFF_CSS = `
 }
 .bpmnkit-diff-legend-title {
   font-weight: 600;
-  color: var(--bpmnkit-fg-muted, #6666a0);
+  color: var(--bpmnkit-chrome-ink-4);
 }
 .bpmnkit-diff-legend-note {
-  color: var(--bpmnkit-fg-muted, #6666a0);
+  color: var(--bpmnkit-chrome-ink-4);
   font-style: italic;
 }
 .bpmnkit-diff-legend-row {
@@ -137,7 +137,6 @@ export const DIFF_CSS = `
 .bpmnkit-diff-legend-swatch {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
   flex: none;
 }
 .bpmnkit-diff-legend-swatch[data-category="added"] {
@@ -150,12 +149,13 @@ export const DIFF_CSS = `
   background: var(--bpmnkit-warn, #d97706);
 }
 .bpmnkit-diff-legend-swatch[data-category="moved"] {
-  background: var(--bpmnkit-accent, #1a56db);
+  background: var(--bpmnkit-chrome-accent);
 }
 `
 
 /** Injects {@link DIFF_CSS} into `<head>` once per document. */
 export function injectDiffStyles(): void {
+	injectChromeStyles()
 	if (typeof document === "undefined") return
 	if (document.getElementById(DIFF_STYLE_ID) !== null) return
 	const style = document.createElement("style")

@@ -336,7 +336,7 @@ function OfflinePanel({
 }) {
 	return (
 		<div className="flex flex-col items-center gap-5 rounded-xl border border-border bg-surface p-10 text-center">
-			<div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2">
+			<div className="flex h-14 w-14 items-center justify-center bg-surface-2">
 				<WifiOff size={26} className="text-muted" />
 			</div>
 			<div className="flex flex-col gap-1.5">
