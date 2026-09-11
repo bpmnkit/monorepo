@@ -2,7 +2,7 @@ import type { Env } from "./env.js"
 import { deleteExpired } from "./lib/db.js"
 import { html, json } from "./lib/http.js"
 import { adminPage, dropPage, policyPage } from "./lib/pages.js"
-import { PresenceRoom } from "./presence.js"
+import { DocRoom } from "./room.js"
 import { handleAdmin } from "./routes/admin.js"
 import { handleAiReview } from "./routes/ai-review.js"
 import {
@@ -21,7 +21,7 @@ function methodNotAllowed(): Response {
 	return json({ error: "method not allowed" }, { status: 405 })
 }
 
-async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function route(request: Request, env: Env): Promise<Response> {
 	const url = new URL(request.url)
 	const now = Date.now()
 	// Everything this Worker owns lives under /drop.
@@ -67,7 +67,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 	const presence = rest.match(/^\/api\/presence\/([\w-]+)$/)
 	if (presence) {
 		const shareId = presence[1] as string
-		const stub = env.PRESENCE.get(env.PRESENCE.idFromName(shareId))
+		const stub = env.ROOM.get(env.ROOM.idFromName(shareId))
 		return stub.fetch(request)
 	}
 
@@ -119,21 +119,19 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 	}
 	const share = rest.match(/^\/([\w-]+)$/)
 	if (share) {
-		return request.method === "GET"
-			? handleSharePage(share[1] as string, env, ctx, now)
-			: methodNotAllowed()
+		return request.method === "GET" ? handleSharePage(share[1] as string, env) : methodNotAllowed()
 	}
 
 	return json({ error: "not found" }, { status: 404 })
 }
 
 export default {
-	fetch(request, env, ctx) {
-		return route(request, env, ctx)
+	fetch(request, env) {
+		return route(request, env)
 	},
 	scheduled(_event, env, ctx) {
 		ctx.waitUntil(deleteExpired(env.DB, Date.now()))
 	},
 } satisfies ExportedHandler<Env>
 
-export { PresenceRoom }
+export { DocRoom }

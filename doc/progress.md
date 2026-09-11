@@ -1,5 +1,37 @@
 # Progress
 
+## 2026-09-11 — Track C folded into D6; D1 makes Drop cheaper
+
+**Track C could not be built where the plan put it.** Its two tasks attach a change handler and
+a history panel to "the drop editor" — and `apps/drop` has no editor at all; `@bpmnkit/editor`
+is not even a dependency. The panel is also only worth building next to the server history it
+has to be distinguished from. Both arrive with D6, so C is folded into it: the plugin takes
+opaque `(projectId, fileId)` strings, so Drop passes `(shareId, filename)` when there is an
+editor to pass them from. The roadmap records it rather than leaving two tasks that cannot pass
+their own acceptance.
+
+**D1 instead, and it is the rare change that reduces load.** `PresenceRoom` becomes `DocRoom`
+and takes over view counting. `recordView` fired a D1 `UPDATE` on *every* share-page load; joins
+now accumulate in the room's storage and flush on a 60-second alarm. Against a live Worker: 50
+page loads wrote nothing, 51 sockets joined, and after the alarm the counter read 51 — one write.
+Presence is untouched, and the broadcast still reported 51 viewers.
+
+**Counting on the socket costs nothing extra.** The alternative — the page handler calling the
+room — would swap one D1 write per view for one DO request per view, which is no saving at all.
+The viewer already opens the socket, so the join is a view the room sees for free. The trade is
+that a "view" is now a browser that connected rather than every HTTP request; that drops bots and
+JS-less fetches, and since the share page renders client-side, a request that never ran the
+script never saw the diagram.
+
+Renamed through a wrangler `renamed_classes` migration so existing instances and their stored
+counters carry over. `recordView` became `recordViews(db, shareId, count, now, expiresAt)`, which
+no-ops on an empty window — an alarm firing with nothing pending must not slide retention for a
+drop nobody opened. Six tests cover it against real SQL, including that and a negative count.
+`handleSharePage` lost the `ctx` and `now` parameters it only had to schedule the old write, and
+`route()` lost `ctx` with them. README and onboarding layouts and route tables updated, including
+`?v=`, `/history/` and `/restore/` from track B. 64 drop tests, Biome across 969 files, build and
+typecheck pass.
+
 ## 2026-09-11 — Track B: the version log, and the bound written down as a test
 
 Third task off `doc/drop-live-editing-plan.md`, and the one that blocks every task that writes to

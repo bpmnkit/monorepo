@@ -215,13 +215,25 @@ export async function getFileRef(
 		: null
 }
 
-/** Record a view: bump the counter and slide the retention window forward. */
-export async function recordView(db: D1Database, shareId: string, now: number): Promise<void> {
+/**
+ * Record views in bulk and slide the retention window forward.
+ *
+ * Called from the room's alarm rather than from the page handler, so a busy drop
+ * costs one write per flush window instead of one per view.
+ */
+export async function recordViews(
+	db: D1Database,
+	shareId: string,
+	count: number,
+	now: number,
+	expiresAt: number,
+): Promise<void> {
+	if (count <= 0) return
 	await db
 		.prepare(
-			"UPDATE drops SET view_count = view_count + 1, last_viewed_at = ?, expires_at = ? WHERE id = ?",
+			"UPDATE drops SET view_count = view_count + ?, last_viewed_at = ?, expires_at = ? WHERE id = ?",
 		)
-		.bind(now, now + RETENTION_MS, shareId)
+		.bind(count, now, expiresAt, shareId)
 		.run()
 }
 

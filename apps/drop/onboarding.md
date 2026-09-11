@@ -150,18 +150,19 @@ pnpm --filter @bpmnkit/drop check       # biome (tabs, double quotes)
 
 ```
 src/
-  worker.ts        Worker entry: router + scheduled (retention) + PresenceRoom export
-  presence.ts      Durable Object — hibernating-WebSocket viewer count
+  worker.ts        Worker entry: router + scheduled (retention) + DocRoom export
+  room.ts          Durable Object — hibernating-WebSocket viewer count, plus the
+                   batched view/retention write flushed to D1 on an alarm
   env.ts           Binding + var types
   routes/          upload, share pages (drop.ts), raw/json download, reports,
-                   admin, ai-review, stats
-  lib/             ids, validate, meta, db (D1), http, pages (HTML), demo
-                   (in-memory demo drop), review (deterministic optimizer pass),
-                   ai (Workers AI + D1 cache/budget)
+                   admin, ai-review, stats, versions (history + restore)
+  lib/             ids, validate, meta, db (D1), versions (the milestone ring),
+                   http, pages (HTML), demo (in-memory demo drop), review
+                   (deterministic optimizer pass), ai (Workers AI + D1 cache/budget)
   client/          browser bundles: drop, viewer, admin, landing
                    (built to public/drop/assets — gitignored)
   shared/          constants used by both Worker and client
-migrations/        D1 schema (0001 core, 0002 AI review)
+migrations/        D1 schema (0001 core, 0002 AI review, 0003 version log)
 scripts/           build-client.mjs (esbuild + generates usecases.json)
 public/            static assets served by the ASSETS binding
 ```
@@ -176,11 +177,13 @@ Everything the Worker owns is under `/drop`:
 | `POST /drop/api/drops` | Upload — returns `{ shareId, url, files }` |
 | `GET /drop/:id` | Share (viewer) page |
 | `GET /drop/:id/manifest.json` | File manifest for a share |
-| `GET /drop/:id/f/:filename` | Original bytes (add `?format=json` for the model) |
+| `GET /drop/:id/f/:filename` | Current bytes (`?format=json` for the model, `?v=0` for the upload, `?v=n` for a milestone) |
+| `GET /drop/:id/history/:filename` | Version timeline — the pinned original plus the milestone ring |
+| `POST /drop/:id/restore/:filename/:seq` | Make an earlier state current (appends, never rewinds) |
 | `GET /drop/api/stats` | Live counters (60s cache) |
 | `POST /drop/api/reports` | File an abuse report |
 | `POST /drop/api/ai-review/:id/:filename` | AI review (closed beta; 404 if off) |
-| `GET /drop/api/presence/:id` | WebSocket upgrade → Durable Object |
+| `GET /drop/api/presence/:id` | WebSocket upgrade → `DocRoom` (head-count; a join is also a counted view) |
 | `/drop/api/admin/*` | Admin API (Bearer `DROP_ADMIN_TOKEN`) |
 | `GET /drop/terms`, `/drop/privacy`, `/drop/admin` | Static pages |
 
@@ -192,8 +195,10 @@ curl -s -X POST http://localhost:8787/drop/api/drops \
   -F files=@../../bpmn-samples/order-process.bpmn
 # then, with the shareId:
 curl -s http://localhost:8787/drop/<shareId>/manifest.json
-curl -s "http://localhost:8787/drop/<shareId>/f/order-process.bpmn"               # original
+curl -s "http://localhost:8787/drop/<shareId>/f/order-process.bpmn"               # current
+curl -s "http://localhost:8787/drop/<shareId>/f/order-process.bpmn?v=0"           # the upload
 curl -s "http://localhost:8787/drop/<shareId>/f/order-process.bpmn?format=json"   # model
+curl -s "http://localhost:8787/drop/<shareId>/history/order-process.bpmn"         # timeline
 
 # AI review (needs --var AI_PASSCODE:devcode running):
 curl -s -X POST http://localhost:8787/drop/api/ai-review/<shareId>/order-process.bpmn \

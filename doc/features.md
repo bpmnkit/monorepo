@@ -1,5 +1,22 @@
 # Features
 
+## The presence room becomes the document room (2026-09-11)
+
+`PresenceRoom` is now `DocRoom`, and it has taken over view counting — the idea
+`doc/drop-spec.md` §6 described and never built. The head-count behaves exactly as before.
+
+- **Fifty people opening a drop is one D1 write, not fifty.** `recordView` used to fire on every
+  share-page load. Joins now accumulate in the room's own storage and reach D1 on a 60-second
+  alarm, which also slides `expires_at`. Measured against a live Worker: 51 sockets, one write.
+- **It costs no extra requests.** The viewer already opens this socket, so a join is a view the
+  room can see without anyone asking it — no Durable Object request is added to trade against
+  the D1 write removed.
+- **A "view" now means a browser that connected**, not every HTTP request for the page. That
+  excludes bots and JS-less fetches, and the share page renders client-side anyway, so a request
+  that never runs the script never saw the diagram.
+- Renamed via a wrangler `renamed_classes` migration, so existing instances and their stored
+  counters carry over rather than starting fresh.
+
 ## Version history for a drop — eleven states, forever (2026-09-11)
 
 Drops can now hold more than one state, and the number they hold is fixed: **the uploaded

@@ -299,21 +299,26 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
       labels derived from the stored hashes (no re-parse), with the bound stated in the panel
 - [x] B4 — restore, as an append rather than a rewind
 
-**Track C — browser history** — wiring `@bpmnkit/plugins/history` to `(shareId, filename)`
+**Track C — browser history** — folded into D6. `apps/drop` has no editor to attach a change
+handler to until the editor is loaded on claim, and the panel is only worth building next to the
+server history it must be distinguished from. `@bpmnkit/plugins/history` takes opaque
+`(projectId, fileId)` strings, so Drop passes `(shareId, filename)` when D6 lands.
 
-- [ ] C1 — `saveCheckpoint` on the editor's change handler, debounced
-- [ ] C2 — `createHistoryPanel`, kept visibly separate from the server milestones
+- [ ] C1 — `saveCheckpoint` on the editor's change handler, debounced *(with D6)*
+- [ ] C2 — `createHistoryPanel`, kept visibly separate from the server milestones *(with D6)*
 
 **Track D — the room** (requires B)
 
-- [ ] D1 — `PresenceRoom` → `DocRoom`, plus the debounced `view_count` write `drop-spec.md` §6
-      described and never shipped
+- [x] D1 — `PresenceRoom` → `DocRoom` (wrangler `renamed_classes`), plus the debounced
+      `view_count` / `expires_at` write `drop-spec.md` §6 described and never shipped: a socket
+      join is the view, batched in the room's storage and flushed to D1 on a 60s alarm
 - [ ] D2 — the edit baton: claim / granted / denied / release, idle reclaim via
       `getWebSocketAutoResponseTimestamp` (keyed on operations, not pings)
 - [ ] D3 — `@bpmnkit/editor`: injectable ids, an op-describing change event, public viewport
 - [ ] D4 — op protocol and server-side replay of the same `modeling.ts` functions
 - [ ] D5 — watcher replay with a hash check and resync
-- [ ] D6 — editor loaded on claim via dynamic `import()`, viewport carried across the swap
+- [ ] D6 — editor loaded on claim via dynamic `import()`, viewport carried across the swap;
+      brings track C with it (local checkpoints + panel, beside the server history)
 - [ ] D7 — autosave: 30 s alarm → `exportPreserving` → `'current'`, milestone on hour and release
 
 **Track E — hardening**

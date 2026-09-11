@@ -2,8 +2,8 @@
 export interface Env {
 	/** D1 database holding drops, files, content, reports, and bans. */
 	DB: D1Database
-	/** Durable Object namespace — one PresenceRoom instance per shareId. */
-	PRESENCE: DurableObjectNamespace
+	/** Durable Object namespace — one DocRoom instance per shareId. */
+	ROOM: DurableObjectNamespace
 	/** Static assets (client bundles, CSS) served from ./public. */
 	ASSETS: Fetcher
 	/** Terms/Privacy version recorded on each drop. */

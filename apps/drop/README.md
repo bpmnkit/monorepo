@@ -17,15 +17,18 @@ and [`doc/drop-v2-spec.md`](../../doc/drop-v2-spec.md).
 
 ```
 src/
-  worker.ts        Worker entry: router + scheduled (retention) + PresenceRoom export
-  presence.ts      Durable Object — hibernating-WebSocket viewer count
+  worker.ts        Worker entry: router + scheduled (retention) + DocRoom export
+  room.ts          Durable Object — hibernating-WebSocket viewer count, and the
+                   batched view/retention write it flushes to D1 on an alarm
   env.ts           Binding types
-  routes/          upload, share pages, raw/json download, reports, admin, ai-review
-  lib/             ids, validate, meta, db (D1), http, pages (HTML), demo (in-memory
-                   demo drop), review (deterministic optimizer pass), ai (Workers AI + cache)
+  routes/          upload, share pages, raw/json download, reports, admin, ai-review,
+                   versions (history + restore)
+  lib/             ids, validate, meta, db (D1), versions (the milestone ring), http,
+                   pages (HTML), demo (in-memory demo drop), review (deterministic
+                   optimizer pass), ai (Workers AI + cache)
   client/          browser bundles: drop, viewer, admin, landing (built to public/drop/assets)
   shared/          constants used by both Worker and client
-migrations/        D1 schema (0001 core, 0002 AI review)
+migrations/        D1 schema (0001 core, 0002 AI review, 0003 version log)
 ```
 
 ## Develop
@@ -33,7 +36,8 @@ migrations/        D1 schema (0001 core, 0002 AI review)
 ```sh
 pnpm --filter @bpmnkit/drop build       # bundle client (esbuild) + build workspace deps
 pnpm --filter @bpmnkit/drop typecheck   # worker (workers-types) + client (DOM) tsconfigs
-pnpm --filter @bpmnkit/drop test        # vitest — validation, ids, security regressions
+pnpm --filter @bpmnkit/drop test        # vitest — validation, ids, security, the version
+                                        # log and view batching (real SQL via node:sqlite)
 pnpm --filter @bpmnkit/drop check       # biome
 ```
 

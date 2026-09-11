@@ -1,13 +1,6 @@
 import type { Env } from "../env.js"
 import type { FileInfo } from "../lib/db.js"
-import {
-	getCurrentBody,
-	getDrop,
-	getFileBody,
-	getFileRef,
-	getStats,
-	recordView,
-} from "../lib/db.js"
+import { getCurrentBody, getDrop, getFileBody, getFileRef, getStats } from "../lib/db.js"
 import { demoDrop, demoFileBody, isDemo } from "../lib/demo.js"
 import { html, json, securityHeaders } from "../lib/http.js"
 import { diffPage, notFoundPage, sharePage } from "../lib/pages.js"
@@ -28,12 +21,7 @@ export async function handleStats(env: Env): Promise<Response> {
 }
 
 /** GET /drop/:shareId — the read-only viewer page. */
-export async function handleSharePage(
-	shareId: string,
-	env: Env,
-	ctx: ExecutionContext,
-	now: number,
-): Promise<Response> {
+export async function handleSharePage(shareId: string, env: Env): Promise<Response> {
 	const aiEnabled = env.AI_PASSCODE !== undefined
 	if (isDemo(shareId)) {
 		const demo = await demoDrop()
@@ -41,7 +29,8 @@ export async function handleSharePage(
 	}
 	const found = await getDrop(env.DB, shareId)
 	if (!found) return html(notFoundPage(), { status: 404, noindex: true })
-	ctx.waitUntil(recordView(env.DB, shareId, now))
+	// Views are counted by the room when the viewer's socket joins, and written to
+	// D1 on its alarm — one write per window rather than one per page load.
 	return html(sharePage(shareId, found.drop, found.files, aiEnabled), { noindex: true })
 }
 

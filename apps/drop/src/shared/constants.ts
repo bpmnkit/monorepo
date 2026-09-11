@@ -31,6 +31,12 @@ export const MAX_MILESTONES = 10
  */
 export const MILESTONE_BUCKET_MS = 60 * 60 * 1000
 
+/**
+ * How long the room lets views accumulate before writing them to D1. One write
+ * per window per drop, however many people open it in that window.
+ */
+export const VIEW_FLUSH_MS = 60_000
+
 /** `seq` of the uploaded original. Not a `file_versions` row — it is the untouched `file_content`. */
 export const ORIGINAL_SEQ = 0
 
