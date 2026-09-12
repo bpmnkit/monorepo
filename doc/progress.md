@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-09-12 — the stable-id work gets its changeset
+
+#170 landed the derived sequence-flow and root-definition ids, and the `.message()` /
+`.error()` / `.signal()` / `.escalation()` declarations, without a changeset — so none of it
+would have been released.
+
+One changeset, `@bpmnkit/core` **minor**: the ids a consumer sees in built XML change shape, and
+the builder gains four methods. Changesets fans the bump out to the packages that depend on core.
+
 ## 2026-09-12 — the builder stops renaming edges nobody moved
 
 `generateId("Flow")` gave every sequence flow a random id, so rebuilding an unchanged model
