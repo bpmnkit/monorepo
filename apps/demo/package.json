@@ -7,6 +7,7 @@
 		"dev": "concurrently \"tsx watch server/index.ts\" \"vite --port 3000\"",
 		"build": "vite build",
 		"preview": "vite preview",
+		"deploy": "wrangler pages deploy dist --project-name=bpmnkit-demo",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
 		"check": "biome check .",
 		"test": "vitest run"

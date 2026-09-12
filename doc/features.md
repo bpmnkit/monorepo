@@ -1,5 +1,323 @@
 # Features
 
+## A report points at a state (2026-09-12)
+
+Drops became editable, which quietly broke an assumption the abuse queue had never had to state:
+that what an operator reviews is what was reported.
+
+- **A report records the content as filed** — every file's hash at that moment.
+- **The queue says *edited since reported*** when the drop has moved on, so an operator judges
+  the report on its description and the history rather than on a page showing something else.
+  Reports filed before this say *not recorded*, rather than guessing.
+- **A ban acts on the reported content too.** The ban list is keyed on content and re-checked on
+  every save, so content edited away to dodge a report is refused the moment anyone edits it
+  back. Editing away from a report is not an escape.
+- **And on the uploaded bytes as well as the current ones.** Delete-and-ban was reading the
+  *upload* hash alone, which since drops became mutable meant an operator banning an edited drop
+  was banning the wrong bytes, leaving the offending form free to be re-uploaded.
+
+## Three drops the editor will not write (2026-09-12)
+
+Anyone with the link can edit a drop — except three kinds, each for its own reason, and all three
+enforced on the socket rather than by hiding a button. A hidden button is a suggestion; a socket
+is an API, and anyone who opens devtools has one.
+
+- **The demo** is served from memory with no row behind it, so there is nothing to save to. Its
+  button says **Edit a copy** and makes you a real drop of your own from the same diagram — which
+  the upload endpoint already does, with no new server code.
+- **A pinned drop** — one an operator marked as never expiring — is a fixture or a reference.
+  Anyone-with-the-link editing is right for an ordinary drop and wrong for that one.
+- **More than one process** is past what the editor addresses. It edits one process; a file with
+  several would come back with the others intact but unreachable, which is worse than declining.
+
+The button is **disabled with the reason in its tooltip** rather than removed, because a button
+that is not there looks like a feature you do not have rather than one this file cannot use. The
+room says the same thing back if a claim arrives anyway, and a read-only drop stays perfectly
+readable.
+
+## One challenge per editing session (2026-09-12)
+
+A drop is editable by anyone with the link, so taking the edit baton can be challenged with
+Turnstile.
+
+- **On the claim, not on the op.** A person takes the baton once and edits for half an hour; a
+  script that wants to rewrite other people's drops pays for every one it touches. Challenging
+  each keystroke instead would be invisible to the script — which batches anyway — and maddening
+  for the person.
+- **The widget appears when Edit is pressed**, not on the page. Almost everyone who opens a drop
+  is reading it, and a challenge to look at for a diagram you came to read is a worse page for no
+  benefit.
+- **The content policy is widened only where the widget can appear**, and only when a key is
+  configured. A policy that is loose everywhere because one page needs it protects nothing.
+- **A verification outage is a refusal, not a pass.** Failing open would mean anyone who can
+  cause one can skip the check.
+- **A connection that keeps failing stops being served.** Verification is an outbound request
+  made inside the room's handler, so it stalls the room while it runs — fair once a session, and
+  not something a prober gets to make the room pay repeatedly.
+- **A challenge that cannot be shown says so.** An extension blocking `challenges.cloudflare.com`
+  would otherwise leave Edit doing nothing at all, silently.
+- **Off by default.** No key, no widget, no challenge — so local development and a self-hosted
+  deployment need no Cloudflare account. Set the secret without the site key and every claim
+  fails, which is the right way round for a check whose job is to say no.
+
+## The checks follow the edits (2026-09-12)
+
+Every safety check Drop had was a check on an *upload*. A document that changes needs them at
+edit time too.
+
+- **Banned content cannot walk back in through the editor.** The ban list is keyed on content,
+  and a mutable document's content moves — so a drop could be uploaded clean and then *edited
+  into* something banned. Every save re-checks. On a hit nothing is written, the baton is taken
+  away, and the room refuses edits from then on; the drop stays readable and reportable.
+- **The row cap is enforced on the edit, not just the save.** A change that would push the file
+  past what a D1 row holds is refused with the size in the message, while it is still the last
+  thing you did — rather than failing silently thirty seconds later with nothing useful to say
+  about which change caused it. The save re-checks the stored forms as a backstop, since the JSON
+  model is several times the XML.
+- **The entity tag names what it identifies.** It was the content hash, which meant the XML and
+  the JSON model of one state were served under the *same* tag — different bytes, one name. It
+  now carries the version and the format, so `?format=json` and `?v=0` are distinct, the current
+  tag moves as the file is edited, and the original's never does.
+- **`If-None-Match` is honoured**, so an unchanged file costs a 304 instead of a download. Weak
+  tags, lists and `*` all work.
+
+## Autosave, and no save button (2026-09-12)
+
+Edits reach the store of record without anyone asking, and the version log fills itself in.
+
+- **Nothing is ever unsaved.** The Durable Object's own storage takes every op as it is verified,
+  so losing a tab loses nothing. D1 is the store of record and only has to be *fresh*: it is
+  brought level thirty seconds after the first unsaved edit, and at once when the baton is put
+  down or the writer's connection drops.
+- **The debounce bounds staleness; it does not wait for a lull.** The deadline is set by the
+  first unsaved edit and never pushed back by the ones after it, so a room edited continuously
+  still saves every thirty seconds rather than never.
+- **An edited drop is not reformatted.** Saves go through `exportPreserving`, so a real edit is a
+  handful of changed lines against the upload rather than a whole-file rewrite — a drag of one
+  task leaves a five-line diff. Each save becomes the next one's source, so formatting survives a
+  session ending as well as an op.
+- **One milestone per hour of each editing session**, cut the first time that hour is saved and
+  refreshed when the baton is released — so an hour of continuous editing leaves one row holding
+  the state that hour ended in, at two D1 writes rather than a hundred.
+- **One person's hour cannot overwrite another's.** The collapse key carries the baton grant, so
+  a stranger editing forty minutes after you leaves your milestone standing.
+- **Retention slides on an edit**, not only on a view, so an actively edited drop cannot expire.
+- **The uploaded original is never written to.** `?v=0` is the bytes that were uploaded, however
+  many times the drop has been edited since.
+
+## Editing a drop (2026-09-12)
+
+A drop is now editable in place. Press **Edit**, and the read-only canvas becomes a full editor —
+palette, toolbar, undo — with everyone else watching it change.
+
+- **Readers never download the editor.** It is reached through a dynamic `import()` and arrives
+  as its own 25 KB chunk when Edit is pressed. The overwhelming majority of people who open a
+  drop are reading it, and should not pay for a palette they will never click.
+- **The diagram does not move when the editor mounts.** The view is carried across the swap by
+  hand, so the corner you had zoomed into is the corner you are still looking at.
+- **No HUD to hide from watchers.** A reader's page never constructs an editor at all, so the
+  question of a disabled palette does not arise.
+- **Undo reaches everyone.** An undo describes itself as a whole-document op, because the command
+  stack records states rather than inverses — a watcher that never heard about one would be
+  silently wrong from then on.
+- **A second claimant is told, not ignored.** "Someone else is editing this drop right now", and
+  no editor opens.
+- **Idle warnings, and a graceful exit.** A minute before the baton is reclaimed the writer is
+  told; when it goes, the page says why and returns to reading.
+- **Two histories, never merged.** *On this device* lists local checkpoints — written to
+  IndexedDB after 30 seconds of dirty editing and when the page is hidden, bounded at 50 today
+  plus one a day for ten days, and visible to nobody else. *Saved milestones* is the shared,
+  server-side log. A merged list would quietly imply the local ones are shared. They are not.
+
+## Watching someone else edit (2026-09-12)
+
+Open a drop while someone is editing it and the diagram now changes under you, live.
+
+- **Watchers are sent the op, not the document.** A move is a few hundred bytes where the
+  document is tens of kilobytes, so the watcher runs the same `applyOp` the writer and the room
+  both ran. Three machines, one function, ids travelling in the op — all three land on
+  byte-identical XML.
+- **Which is a claim, so every `applied` carries a hash.** The watcher re-serialises what it
+  produced and compares. Disagreement is not resolved by guessing which side is right: the room
+  is right, and the watcher throws its document away and asks for the current one. One round
+  trip, and it is correct again rather than subtly wrong forever.
+- **Exactly one resync per divergence.** Ops keep arriving while the answer is in flight, and
+  replaying them onto a document already declared lost would produce more mismatches and more
+  requests. A watcher awaiting `state` drops everything until it arrives.
+- **A quiet drop costs nothing.** The watcher asks for state only when the room reports a holder
+  *for the file it is showing* — so viewers of an unedited drop, and viewers on another tab of an
+  edited one, never wake the room.
+- **The view holds still.** The canvas replaces the document with `keepViewport`, so someone
+  zoomed into one corner stays there while it changes around them.
+- **Changed elements flash.** The op says what it altered; `applyOp` reports what it created.
+  Amber for changed, green for new, for just over a second.
+- **The header says why.** `4 VIEWING · 1 EDITING`, so a diagram moving on its own is legible
+  rather than unsettling.
+
+## The room edits the document (2026-09-11)
+
+A drop's room is now the authority on what the drop *is* while anyone has it open. The holder's
+ops arrive over the socket, and the room runs them itself.
+
+- **Ops are replayed, not trusted.** The room imports the same `applyOp` the browser ran, from
+  the new DOM-free `@bpmnkit/editor/headless` entry. A client cannot write anything it could not
+  have reached by editing, and what everyone sees is the room's document rather than a writer's
+  claim about it.
+- **The permission model is one line, server-side.** An op from someone who does not hold the
+  baton is refused — not by hiding a button.
+- **A document is judged after the replay, never before.** `checkIntegrity` asks one question:
+  *may this be stored?* Two elements under one id, a flow pointing at nothing, an element with no
+  shape to draw it — each comes back to the writer as a reason (`"a reference would point at
+  nothing (flow2 → end)"`), not as a silent no-op. Judging the *result* rather than the op is
+  what keeps the check free of any knowledge of what individual ops do.
+- **Untrusted input is shaped before it reaches the modeling layer.** `parseOp` checks that
+  `kind` is one the editor knows and every field it will read is the type expected, with bounds
+  on strings and arrays. Whether the edit makes *sense* is the integrity check's job; this one
+  only stops a crash.
+- **The whole document lives in Durable Object storage**, rewritten on every applied op. A
+  SQLite-backed object allows 2 MB per key and value together — comfortably above the 900 KB file
+  cap — so waking a hibernated room costs one read and one parse, with no op log to replay and
+  nothing that grows without bound. D1 is where a cold room starts and stays behind until the
+  autosave checkpoint; the room is ahead, and the room is right.
+- **One canonical serialisation.** The hash the room broadcasts, the XML it stores, and the body
+  a resync sends are all `Bpmn.export(defs)`, so a hash mismatch means a real divergence rather
+  than a formatting difference.
+
+## Editor operations: an edit that can be replayed (2026-09-11)
+
+Every edit the editor makes now also *describes itself*. `diagram:op` fires alongside
+`diagram:change` carrying an `EditorOp` — a move is a few hundred bytes where the document it
+produced is hundreds of kilobytes, which is the difference between sending an edit over a wire
+and not.
+
+- **`applyOp(defs, op)` performs an op, and is how the editor performs its own edits.** There is
+  no separate local path: if the editor composed the modeling calls itself and `applyOp` composed
+  them again, the two could drift, and the entire promise is that they do not.
+- **Ids travel in the op.** `Math.random()` is right for one person editing one diagram and wrong
+  the moment the same edit happens twice. Creating ops carry a seed; `createIdFactory(seed)`
+  mints the same sequence of ids on every machine, and the `modeling.ts` functions take an
+  optional `IdFactory`. The same op yields **byte-identical XML** wherever it runs.
+- **Placement and routing travel too.** Where the editor decides a position from what is on
+  screen — smart placement, obstacle-avoiding waypoints, a snapped drop point — the decision is
+  in the op rather than recomputed on replay, which would need the same screen to agree.
+- **Undo, redo and `loadDefinitions` stay silent.** They replace the document rather than advance
+  it, so they are not ops.
+- **One escape hatch.** `applyChange(fn)` takes an arbitrary function, which cannot be replayed,
+  so it emits a whole-document `snapshot` op. Under a single writer that is still correct — just
+  larger on the wire.
+- **`getViewport()` / `setViewport()`** are public on `BpmnCanvas` and `BpmnEditor`, so a view
+  survives being handed from a viewer to an editor taking its place, instead of jumping on a
+  re-fit.
+
+## The edit baton (2026-09-11)
+
+A drop's room now hands out a single write token. At most one participant may edit at a time,
+which is the whole concurrency story — with one writer there is nothing to merge, and no
+operational transform anywhere in the codebase.
+
+- **Claiming is race-free without a lock.** Durable Object input gates deliver one message at a
+  time, so a read-then-write inside the handler cannot interleave with another claim. Two sockets
+  claiming in the same tick against a live Worker: one granted, one denied.
+- **Identity is per-connection and opaque** — there are no accounts. The actor id is also the
+  socket's tag, because tags are fixed at accept time and tagging by actor is what lets a later
+  alarm find the holder's socket after the object has been evicted from memory.
+- **Two kinds of reclaim, deliberately different.** A closed laptop lid sends no close event, so
+  the holder's socket simply stops pinging and the baton is taken at once. A holder who is still
+  connected but has done nothing is **warned a minute first**, because they are there and a
+  keystroke should keep it.
+- **The idle clock keys on messages that wake the room, never on heartbeats.** Pings are answered
+  by the runtime without waking the object — they prove the socket is open, not that a human is
+  behind it.
+- **One alarm, many deadlines.** A Durable Object has a single timer, so the view flush and both
+  baton deadlines share it: whichever is due next arms it, each firing re-arms for the one after,
+  and a quiet room holds no timer at all.
+
+## The presence room becomes the document room (2026-09-11)
+
+`PresenceRoom` is now `DocRoom`, and it has taken over view counting — the idea
+`doc/drop-spec.md` §6 described and never built. The head-count behaves exactly as before.
+
+- **Fifty people opening a drop is one D1 write, not fifty.** `recordView` used to fire on every
+  share-page load. Joins now accumulate in the room's own storage and reach D1 on a 60-second
+  alarm, which also slides `expires_at`. Measured against a live Worker: 51 sockets, one write.
+- **It costs no extra requests.** The viewer already opens this socket, so a join is a view the
+  room can see without anyone asking it — no Durable Object request is added to trade against
+  the D1 write removed.
+- **A "view" now means a browser that connected**, not every HTTP request for the page. That
+  excludes bots and JS-less fetches, and the share page renders client-side anyway, so a request
+  that never runs the script never saw the diagram.
+- Renamed via a wrangler `renamed_classes` migration, so existing instances and their stored
+  counters carry over rather than starting fresh.
+
+## Version history for a drop — eleven states, forever (2026-09-11)
+
+Drops can now hold more than one state, and the number they hold is fixed: **the uploaded
+original, kept forever, plus at most ten rolling milestones**. This is the safety net that makes
+the coming "anyone with the link may edit" rule survivable — anyone can overwrite a drop, nobody
+can destroy what it was.
+
+- **The original is untouchable by construction.** Edits go to a new `file_current` table;
+  nothing ever writes to `file_content` after the upload, so "the original survives" is a
+  property one grep confirms rather than a promise. `?v=0` serves it, and the share page's
+  **Original** download is pinned to that.
+- **Bounded, and the panel says so.** A milestone is keyed by `<hour>:<session>`, so an hour of
+  one editing session collapses to one entry and a new session always starts its own — a
+  stranger's save at 10:45 cannot overwrite the previous editor's 10:30 work. Everything past
+  the newest ten is pruned in the same batch as the write.
+- **Suppression keys on `content_hash`, never on `semanticHash`**, which excludes all diagram
+  interchange: an hour spent purely on layout hashes identically and would have been thrown away
+  as a no-op. `semanticHash` instead *labels* each entry **Layout only** or **Model changed**, at
+  no cost, from hashes already stored.
+- **Restoring appends, never rewinds.** The state being replaced becomes a milestone first, so
+  restoring can never be the thing that loses work; undoing a restore is another restore.
+- **History panel** on the share page: view any kept version on the canvas without making it
+  current, or restore it. The demo drop and admin-pinned drops are read-only, enforced server-side.
+
+## An unsaved diagram survives a refresh (2026-09-11)
+
+`bpmnkit.com/editor` keeps a single localStorage draft of the open diagram and offers it back
+after a reload. It closes one specific hole: `@bpmnkit/plugins/storage` autosaves to IndexedDB
+only for files that live in a project — both of its save paths return early without a file id —
+so a diagram opened straight from the welcome screen persisted **nowhere**, and a refresh brought
+the welcome screen back. Confirmed in the browser before building anything: localStorage was
+empty and the work was gone.
+
+- **Three gates, each ruling out a wrong draft rather than a redundant one**: a non-BPMN tab has
+  no XML; a project file is already autosaved and a second copy would compete with it behind the
+  prompt; and an untouched diagram is not work. The third needs a dirty flag — without it the
+  `pagehide` flush drafted a diagram nobody had touched, so merely opening the editor earned you
+  a restore prompt on the next visit.
+- **Declining never deletes.** The prompt is answered once per tab via `sessionStorage`; the draft
+  itself survives, to be overwritten by the next edit or cleared by a successful share. A stray
+  click cannot destroy the only copy of someone's work.
+- **Bounded**: one slot, a 7-day age limit, and malformed or expired values are cleared on read
+  rather than left to prompt forever.
+- Reuses `showConfirmDialog` from `@bpmnkit/plugins/storage`, so the prompt is the app's existing
+  dialog rather than a second one.
+
+## Author a diagram, then share it as a drop (2026-09-11)
+
+`bpmnkit.com/editor` gains **Share as a drop** in the main menu: it posts the open diagram
+straight to BPMN Kit Drop and hands back a link that renders it. Until now a drop could only
+start from a file you already had.
+
+- **No Worker changes.** It posts to the same `POST /drop/api/drops` the drop page uses, as a
+  single multipart file, so an authored diagram clears exactly the gate a dropped one does —
+  same parser, same size caps, same recorded `tos_version`.
+- **Same-origin in both environments.** `bpmnkit.com/drop*` is carved out to the Drop Worker in
+  production; `apps/landing/astro.config.mjs` proxies the same prefix to a local `wrangler dev`,
+  so the browser never makes a cross-origin request and nothing needs CORS.
+- **Gated on a BPMN tab.** `currentFileName` is the app's existing "a BPMN diagram is on screen"
+  signal; without it, `exportXml()` would hand back the last BPMN from behind a DMN tab.
+- The dialog reads the `--bpmnkit-chrome-*` tokens the editor already injects, so it follows the
+  canvas through light, dark and neon without restating a palette.
+
+## Every Cloudflare app deploys from the CLI (2026-09-11)
+
+`apps/landing`, `apps/studio`, `apps/demo` and `apps/learn` each gained a `deploy` script
+matching the command CI already runs, alongside the one `apps/drop` had. A release is now
+`pnpm turbo build --filter <app>` then `pnpm --filter <app> deploy`, documented in the README.
+
 ## Change an element's type without touching the XML (2026-09-12)
 
 - **`retypeElement(element, type)`** in `@bpmnkit/core` — swaps an element's type while keeping

@@ -14,5 +14,5 @@
 		"verbatimModuleSyntax": false
 	},
 	"include": ["src", "tests"],
-	"exclude": ["src/client"]
+	"exclude": ["src/client", "tests/round-trip.test.ts"]
 }

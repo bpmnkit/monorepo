@@ -17,15 +17,18 @@ and [`doc/drop-v2-spec.md`](../../doc/drop-v2-spec.md).
 
 ```
 src/
-  worker.ts        Worker entry: router + scheduled (retention) + PresenceRoom export
-  presence.ts      Durable Object — hibernating-WebSocket viewer count
+  worker.ts        Worker entry: router + scheduled (retention) + DocRoom export
+  room.ts          Durable Object — hibernating-WebSocket viewer count, and the
+                   batched view/retention write it flushes to D1 on an alarm
   env.ts           Binding types
-  routes/          upload, share pages, raw/json download, reports, admin, ai-review
-  lib/             ids, validate, meta, db (D1), http, pages (HTML), demo (in-memory
-                   demo drop), review (deterministic optimizer pass), ai (Workers AI + cache)
+  routes/          upload, share pages, raw/json download, reports, admin, ai-review,
+                   versions (history + restore)
+  lib/             ids, validate, meta, db (D1), versions (the milestone ring), http,
+                   pages (HTML), demo (in-memory demo drop), review (deterministic
+                   optimizer pass), ai (Workers AI + cache)
   client/          browser bundles: drop, viewer, admin, landing (built to public/drop/assets)
   shared/          constants used by both Worker and client
-migrations/        D1 schema (0001 core, 0002 AI review)
+migrations/        D1 schema (0001 core, 0002 AI review, 0003 version log)
 ```
 
 ## Develop
@@ -33,7 +36,8 @@ migrations/        D1 schema (0001 core, 0002 AI review)
 ```sh
 pnpm --filter @bpmnkit/drop build       # bundle client (esbuild) + build workspace deps
 pnpm --filter @bpmnkit/drop typecheck   # worker (workers-types) + client (DOM) tsconfigs
-pnpm --filter @bpmnkit/drop test        # vitest — validation, ids, security regressions
+pnpm --filter @bpmnkit/drop test        # vitest — validation, ids, security, the version
+                                        # log and view batching (real SQL via node:sqlite)
 pnpm --filter @bpmnkit/drop check       # biome
 ```
 
@@ -52,6 +56,18 @@ wrangler dev --local --port 8787 \
 Then open <http://localhost:8787/drop>, drop a file from `bpmn-samples/`, and follow the
 short link. The admin page is at <http://localhost:8787/drop/admin> (paste `devtoken`).
 The built-in demo drop is at <http://localhost:8787/drop/demo-loan-approval>.
+
+To exercise the **edit challenge** locally, add Cloudflare's documented test keys — they work
+against the real `siteverify` and always pass:
+
+```sh
+--var TURNSTILE_SITE_KEY:1x00000000000000000000AA \
+--var TURNSTILE_SECRET:1x0000000000000000000000000000000AA
+```
+
+Swap in `2x00000000000000000000AB` / `2x0000000000000000000000000000000AA` for a challenge that
+always fails. With neither var set, claims are not challenged and the widget never loads — which
+is the default, so editing works offline with no Cloudflare account.
 
 To exercise the **AI review** locally, add `--var AI_PASSCODE:devcode`. The passcode gate,
 D1 caching, budget guard, and deterministic findings all work offline; the LLM narrative
@@ -75,13 +91,34 @@ The local D1 lives under `.wrangler/state` (gitignored); delete it to reset.
 
 ## Deploy
 
-Fastest path — after `wrangler login`, run the idempotent provisioning script, which
-creates the D1 database, applies migrations, builds, deploys, and sets the secrets
-(auto-generating the admin token and IP salt, prompting for the optional `AI_PASSCODE`):
+**[DEPLOY.md](./DEPLOY.md) is the step-by-step runbook** — what to have ready before you start,
+what the script asks, and how to check it worked. The short version follows.
+
+Fastest path — after `wrangler login`, run the idempotent provisioning script:
 
 ```sh
 pnpm --filter @bpmnkit/drop provision
 ```
+
+It creates the D1 database, applies every migration, builds the client bundles, deploys the
+Worker, and sets everything up. Re-running skips whatever is already in place, so it is safe
+to use as a repair tool as well as a first-run one. In order it:
+
+| Step | What it does |
+|---|---|
+| D1 | Creates `bpmnkit-drop` if missing and writes the id into `wrangler.jsonc` |
+| Migrations | `d1 migrations apply --remote` — the whole `migrations/` directory |
+| Route | Offers to enable `bpmnkit.com/drop*` (skip it and you get the `*.workers.dev` URL) |
+| Deploy | Builds and deploys the Worker, its Durable Object and the assets |
+| `DROP_ADMIN_TOKEN` | Generated and set; printed once at the end |
+| `REPORT_IP_SALT` | Generated and set |
+| `AI_PASSCODE` | Prompted, optional — unset leaves AI review off |
+| `TURNSTILE_SECRET` + site key | Prompted, optional — unset leaves **editing unchallenged** |
+| GitHub secrets | If `gh` is authenticated, offers to set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_DROP_API_TOKEN` so the deploy workflow works |
+
+The one thing it cannot do for you is mint the Cloudflare API token — their API will not issue a
+scoped token without one that already has permission to — so it asks you to paste it and prints
+the exact scopes to give it.
 
 ### One-time setup (what the script automates)
 
@@ -90,6 +127,16 @@ pnpm --filter @bpmnkit/drop provision
 3. `wrangler secret put REPORT_IP_SALT` — salt for hashing reporter IPs.
 4. Bump `TOS_VERSION` in `wrangler.jsonc` whenever the Terms/Privacy pages change.
 5. Enable the `bpmnkit.com/drop*` route in `wrangler.jsonc` (`routes`).
+
+**Edit challenge (optional, recommended in production):** a drop is editable by anyone with the
+link, so `claim` — taking the edit baton — is challenged with
+[Turnstile](https://developers.cloudflare.com/turnstile/). One challenge per editing session, not
+per keystroke: invisible to a person who takes the baton once and edits for half an hour, and a
+real cost to a script that wants to rewrite every drop it can find. Add `TURNSTILE_SITE_KEY` to
+the `vars` in `wrangler.jsonc` (it is public and rendered into the page) and
+`wrangler secret put TURNSTILE_SECRET`. With neither, claims are not challenged. **With the
+secret but no site key, every claim fails** — deliberately, since a half-configured check that
+quietly disabled itself would be worse than one that is loudly broken.
 
 **AI review (optional, closed beta):** unset by default — the feature is off and its
 button never renders. To open it to invited users, `wrangler secret put AI_PASSCODE` and

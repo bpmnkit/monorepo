@@ -141,7 +141,13 @@ export async function getDrop(
 	return { drop, files }
 }
 
-/** Fetch one stored representation of a file by drop + filename. Returns null if unknown. */
+/**
+ * Fetch one *uploaded* representation of a file — the pinned original, whatever
+ * has been edited since. Nothing ever writes to these rows, which is what makes
+ * "the original survives" a property of the schema rather than a promise.
+ *
+ * For what the file says *now*, use {@link getCurrentBody}.
+ */
 export async function getFileBody(
 	db: D1Database,
 	shareId: string,
@@ -159,13 +165,75 @@ export async function getFileBody(
 	return row ? { kind: row.kind, body: row.body, hash: row.hash } : null
 }
 
-/** Record a view: bump the counter and slide the retention window forward. */
-export async function recordView(db: D1Database, shareId: string, now: number): Promise<void> {
+/**
+ * Fetch a file's current state: the edited body when the drop has been edited,
+ * and the uploaded one when it has not.
+ *
+ * The hash comes from the same row as the body, so the ETag tracks what is
+ * actually served rather than what was once uploaded.
+ */
+export async function getCurrentBody(
+	db: D1Database,
+	shareId: string,
+	filename: string,
+	rep: "original" | "json",
+): Promise<{ kind: FileKind; body: string; hash: string } | null> {
+	const row = await db
+		.prepare(
+			`SELECT f.kind AS kind,
+			        COALESCE(cur.content_hash, f.content_hash) AS hash,
+			        COALESCE(${rep === "json" ? "cur.json" : "cur.body"}, c.body) AS body
+			 FROM files f
+			 JOIN file_content c ON c.file_id = f.id AND c.rep = ?
+			 LEFT JOIN file_current cur ON cur.file_id = f.id
+			 WHERE f.drop_id = ? AND f.filename = ?`,
+		)
+		.bind(rep, shareId, filename)
+		.first<{ kind: FileKind; hash: string; body: string }>()
+	return row ? { kind: row.kind, body: row.body, hash: row.hash } : null
+}
+
+/** Resolve a file's row id and upload metadata, for the version-log routes. */
+export async function getFileRef(
+	db: D1Database,
+	shareId: string,
+	filename: string,
+): Promise<{ id: string; kind: FileKind; contentHash: string; sizeOriginal: number } | null> {
+	const row = await db
+		.prepare(
+			"SELECT id, kind, content_hash, size_original FROM files WHERE drop_id = ? AND filename = ?",
+		)
+		.bind(shareId, filename)
+		.first<{ id: string; kind: FileKind; content_hash: string; size_original: number }>()
+	return row
+		? {
+				id: row.id,
+				kind: row.kind,
+				contentHash: row.content_hash,
+				sizeOriginal: row.size_original,
+			}
+		: null
+}
+
+/**
+ * Record views in bulk and slide the retention window forward.
+ *
+ * Called from the room's alarm rather than from the page handler, so a busy drop
+ * costs one write per flush window instead of one per view.
+ */
+export async function recordViews(
+	db: D1Database,
+	shareId: string,
+	count: number,
+	now: number,
+	expiresAt: number,
+): Promise<void> {
+	if (count <= 0) return
 	await db
 		.prepare(
-			"UPDATE drops SET view_count = view_count + 1, last_viewed_at = ?, expires_at = ? WHERE id = ?",
+			"UPDATE drops SET view_count = view_count + ?, last_viewed_at = ?, expires_at = ? WHERE id = ?",
 		)
-		.bind(now, now + RETENTION_MS, shareId)
+		.bind(count, now, expiresAt, shareId)
 		.run()
 }
 
@@ -185,7 +253,12 @@ export async function deleteDrop(
 	const statements: D1PreparedStatement[] = []
 
 	if (options.ban) {
-		const hashes = [...new Set(await hashesForDrop(db, shareId))]
+		// The reported hashes as well as the live ones: content edited away to
+		// dodge a report is refused the moment anyone edits it back, because the
+		// ban list is keyed on content and re-checked on every save.
+		const hashes = [
+			...new Set([...(await hashesForDrop(db, shareId)), ...(await reportedHashes(db, shareId))]),
+		]
 		for (const hash of hashes) {
 			statements.push(
 				db
@@ -202,10 +275,11 @@ export async function deleteDrop(
 		)
 	}
 
+	const children = "(SELECT id FROM files WHERE drop_id = ?)"
 	statements.push(
-		db
-			.prepare("DELETE FROM file_content WHERE file_id IN (SELECT id FROM files WHERE drop_id = ?)")
-			.bind(shareId),
+		db.prepare(`DELETE FROM file_versions WHERE file_id IN ${children}`).bind(shareId),
+		db.prepare(`DELETE FROM file_current WHERE file_id IN ${children}`).bind(shareId),
+		db.prepare(`DELETE FROM file_content WHERE file_id IN ${children}`).bind(shareId),
 		db.prepare("DELETE FROM files WHERE drop_id = ?").bind(shareId),
 		db.prepare("DELETE FROM drops WHERE id = ?").bind(shareId),
 	)
@@ -214,12 +288,54 @@ export async function deleteDrop(
 	return true
 }
 
+/**
+ * Every content hash a drop has worn: what was uploaded, and what it is now.
+ *
+ * Both, because a mutable drop has two answers and banning either alone leaves
+ * a way back in — ban only the upload and the edited form can be re-uploaded
+ * freely; ban only the current form and the original can. This was reading
+ * `files.content_hash` alone, which since track D has meant the *upload*, so an
+ * operator banning an edited drop was banning the wrong bytes.
+ */
 async function hashesForDrop(db: D1Database, shareId: string): Promise<string[]> {
 	const { results } = await db
-		.prepare("SELECT content_hash FROM files WHERE drop_id = ?")
+		.prepare(
+			`SELECT f.content_hash AS uploaded, cur.content_hash AS current
+			 FROM files f LEFT JOIN file_current cur ON cur.file_id = f.id
+			 WHERE f.drop_id = ?`,
+		)
 		.bind(shareId)
-		.all<{ content_hash: string }>()
-	return results.map((r) => r.content_hash)
+		.all<{ uploaded: string; current: string | null }>()
+	return results.flatMap((r) => (r.current ? [r.uploaded, r.current] : [r.uploaded]))
+}
+
+/** Every state anyone has reported this drop in. */
+async function reportedHashes(db: D1Database, shareId: string): Promise<string[]> {
+	const { results } = await db
+		.prepare("SELECT content_hashes FROM reports WHERE drop_id = ? AND content_hashes IS NOT NULL")
+		.bind(shareId)
+		.all<{ content_hashes: string }>()
+	return results.flatMap((r) => {
+		try {
+			const parsed = JSON.parse(r.content_hashes) as unknown
+			return Array.isArray(parsed) ? parsed.filter((h): h is string => typeof h === "string") : []
+		} catch {
+			return []
+		}
+	})
+}
+
+/** What a drop's files currently hash to — the state a reporter is looking at. */
+export async function currentHashes(db: D1Database, shareId: string): Promise<string[]> {
+	const { results } = await db
+		.prepare(
+			`SELECT COALESCE(cur.content_hash, f.content_hash) AS hash
+			 FROM files f LEFT JOIN file_current cur ON cur.file_id = f.id
+			 WHERE f.drop_id = ? ORDER BY f.position`,
+		)
+		.bind(shareId)
+		.all<{ hash: string }>()
+	return results.map((r) => r.hash)
 }
 
 /** Delete every drop whose sliding TTL has elapsed. Returns the number removed. */
@@ -232,12 +348,11 @@ export async function deleteExpired(db: D1Database, now: number): Promise<number
 
 	const ids = results.map((r) => r.id)
 	const placeholders = ids.map(() => "?").join(", ")
+	const children = `(SELECT id FROM files WHERE drop_id IN (${placeholders}))`
 	await db.batch([
-		db
-			.prepare(
-				`DELETE FROM file_content WHERE file_id IN (SELECT id FROM files WHERE drop_id IN (${placeholders}))`,
-			)
-			.bind(...ids),
+		db.prepare(`DELETE FROM file_versions WHERE file_id IN ${children}`).bind(...ids),
+		db.prepare(`DELETE FROM file_current WHERE file_id IN ${children}`).bind(...ids),
+		db.prepare(`DELETE FROM file_content WHERE file_id IN ${children}`).bind(...ids),
 		db.prepare(`DELETE FROM files WHERE drop_id IN (${placeholders})`).bind(...ids),
 		db.prepare(`DELETE FROM drops WHERE id IN (${placeholders})`).bind(...ids),
 	])
@@ -252,16 +367,25 @@ export async function insertReport(
 		reason: ReportReason
 		details: string | null
 		reporterHash: string | null
+		/** What the drop's files hashed to when this was filed. */
+		contentHashes: string[]
 		now: number
 	},
 ): Promise<boolean> {
 	try {
 		await db
 			.prepare(
-				`INSERT INTO reports (drop_id, reason, details, reporter, status, created_at)
-				 VALUES (?, ?, ?, ?, 'open', ?)`,
+				`INSERT INTO reports (drop_id, reason, details, reporter, status, created_at, content_hashes)
+				 VALUES (?, ?, ?, ?, 'open', ?, ?)`,
 			)
-			.bind(params.shareId, params.reason, params.details, params.reporterHash, params.now)
+			.bind(
+				params.shareId,
+				params.reason,
+				params.details,
+				params.reporterHash,
+				params.now,
+				JSON.stringify(params.contentHashes),
+			)
 			.run()
 		return true
 	} catch (err) {
@@ -280,6 +404,14 @@ export interface ReportView {
 	status: string
 	created_at: number
 	drop_exists: number
+	/**
+	 * Whether the drop still holds the content that was reported.
+	 *
+	 * `"same"` — what you will see is what was reported. `"edited"` — it has
+	 * changed since, so judge the report on its description and the history, not
+	 * on what the page shows now. `"unknown"` — filed before reports recorded it.
+	 */
+	reported_state: "same" | "edited" | "unknown"
 }
 
 /** List reports by status (default open), newest first. */
@@ -290,13 +422,43 @@ export async function listReports(
 ): Promise<ReportView[]> {
 	const { results } = await db
 		.prepare(
-			`SELECT r.id, r.drop_id, r.reason, r.details, r.status, r.created_at,
+			`SELECT r.id, r.drop_id, r.reason, r.details, r.status, r.created_at, r.content_hashes,
 			        (SELECT COUNT(*) FROM drops d WHERE d.id = r.drop_id) AS drop_exists
 			 FROM reports r WHERE r.status = ? ORDER BY r.created_at DESC LIMIT ?`,
 		)
 		.bind(status, limit)
-		.all<ReportView>()
-	return results
+		.all<Omit<ReportView, "reported_state"> & { content_hashes: string | null }>()
+
+	// Compared per report rather than in SQL: the set is small, and the answer is
+	// about two lists being equal, which SQL states badly.
+	return await Promise.all(
+		results.map(async ({ content_hashes, ...row }) => ({
+			...row,
+			reported_state: await compareReported(db, row.drop_id, content_hashes),
+		})),
+	)
+}
+
+/** Whether a drop still holds what a report recorded. */
+async function compareReported(
+	db: D1Database,
+	shareId: string,
+	recorded: string | null,
+): Promise<"same" | "edited" | "unknown"> {
+	if (!recorded) return "unknown"
+	let reported: string[]
+	try {
+		reported = JSON.parse(recorded) as string[]
+	} catch {
+		return "unknown"
+	}
+	const now = await currentHashes(db, shareId)
+	// A deleted drop has no current state to differ from; the report stands as
+	// filed, which is what "same" means here.
+	if (now.length === 0) return "same"
+	return reported.length === now.length && reported.every((h, i) => h === now[i])
+		? "same"
+		: "edited"
 }
 
 /** Update a report's status. Returns false if the id was unknown. */

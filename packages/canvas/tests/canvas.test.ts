@@ -553,6 +553,50 @@ describe("viewport API", () => {
 		expect(canvas.viewbox().scale).toBe(2)
 	})
 
+	/** Lets a deferred fit run, so the next assertion is not racing one. */
+	const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+
+	it("keeps the view across a document replacement when asked", async () => {
+		// The constructor's own fit is still queued; letting it run first is what
+		// makes this about the *replacement* rather than about construction.
+		await nextFrame()
+		// Set explicitly rather than by panning: `getBoundingClientRect` is all
+		// zeroes under happy-dom, so a viewport derived from layout is NaN and an
+		// assertion against it would pass for the wrong reason.
+		canvas.setViewport({ tx: -320, ty: -140, scale: 2.5 })
+		const held = canvas.getViewport()
+		expect(held).toEqual({ tx: -320, ty: -140, scale: 2.5 })
+
+		canvas.load(SIMPLE_XML, { keepViewport: true })
+		// The fit is deferred a frame, which is exactly the trap: a caller that
+		// restored the viewport itself would be overwritten a moment later.
+		await nextFrame()
+		expect(canvas.getViewport()).toEqual(held)
+	})
+
+	it("frames a replacement document by default", async () => {
+		await nextFrame()
+		canvas.setViewport({ tx: -320, ty: -140, scale: 2.5 })
+		const held = canvas.getViewport()
+		canvas.load(SIMPLE_XML)
+		await nextFrame()
+		expect(canvas.getViewport()).not.toEqual(held)
+	})
+
+	it("getViewport round-trips through setViewport", () => {
+		canvas.setViewport({ tx: -320, ty: -140, scale: 2.5 })
+		const saved = canvas.getViewport()
+		expect(saved).toEqual({ tx: -320, ty: -140, scale: 2.5 })
+
+		canvas.zoom(0.5, { x: 0, y: 0 })
+		expect(canvas.getViewport()).not.toEqual(saved)
+
+		// Handing the transform back restores the view exactly — what a viewer does
+		// when an editor takes its place, so the diagram does not jump.
+		canvas.setViewport(saved)
+		expect(canvas.getViewport()).toEqual(saved)
+	})
+
 	it("getAbsoluteBBox transforms diagram bounds into screen space", () => {
 		canvas.zoom(2, { x: 0, y: 0 })
 		// task bounds are x=200 y=60 w=100 h=80 in SIMPLE_XML; at scale 2, tx=ty=0.

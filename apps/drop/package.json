@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "node scripts/build-client.mjs",
-		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
 		"check": "biome check .",
 		"test": "vitest run",
 		"dev": "node scripts/build-client.mjs && wrangler dev",
@@ -15,6 +15,7 @@
 	"dependencies": {
 		"@bpmnkit/canvas": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/plugins": "workspace:*",
 		"@bpmnkit/ui": "workspace:*"
 	}

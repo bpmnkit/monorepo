@@ -208,6 +208,10 @@ body.app{height:100vh;min-height:420px;display:flex;flex-direction:column;overfl
 .ed-group>*:hover{background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-ink)}
 .ed-group>*.active{background:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-surface)}
 .ed-group>*[hidden]{display:none}
+.ed-group>*:disabled{color:var(--bpmnkit-ds-ink-4);cursor:not-allowed;background:transparent}
+.rep-edited{margin-top:6px;padding:6px 8px;border-left:2px solid var(--bpmnkit-warn);color:var(--bpmnkit-ds-ink-2);font-size:var(--bpmnkit-ds-t-ui)}
+.rep-unknown{margin-top:6px;color:var(--bpmnkit-ds-ink-4);font-size:var(--bpmnkit-ds-t-ui)}
+.ed-group[hidden]{display:none}
 .ed-brand{font-size:var(--bpmnkit-ds-t-ui);font-weight:700;letter-spacing:-.02em;color:var(--bpmnkit-ds-ink)}
 .ed-brand b{color:var(--bpmnkit-ds-accent)}
 .stage{flex:1 1 auto;min-height:0;position:relative}
@@ -244,6 +248,25 @@ select.ed-select{height:28px;border:1px solid var(--bpmnkit-ds-line);background:
 .ai-dot.info{color:var(--bpmnkit-ds-ink-4)}
 .ai-why{font-size:var(--bpmnkit-ds-t-body-sm);color:var(--bpmnkit-ds-ink-2);margin-top:5px;line-height:1.55}
 .ai-msg{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label);color:var(--bpmnkit-ds-ink-3);padding:8px 0}
+.hv-row{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--bpmnkit-ds-line);padding:10px 0;font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label)}
+.hv-row.current{background:var(--bpmnkit-ds-bg)}
+.hv-seq{flex:none;width:2.4em;color:var(--bpmnkit-ds-accent)}
+.hv-when{flex:1 1 auto;color:var(--bpmnkit-ds-ink-2)}
+.hv-tag{flex:none;letter-spacing:.08em;text-transform:uppercase;font-size:var(--bpmnkit-ds-t-mono-micro);color:var(--bpmnkit-ds-ink-4)}
+.hv-tag.model{color:var(--bpmnkit-ds-accent)}
+.hv-actions{display:flex;gap:6px;padding-top:6px}
+.hv-btn{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink-2);padding:4px 8px;cursor:pointer}
+.hv-btn:hover{background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-ink)}
+.hv-banner{position:absolute;top:var(--bpmnkit-ds-topbar-height);left:0;right:0;z-index:7;display:flex;align-items:center;gap:12px;padding:8px var(--bpmnkit-ds-sp-4);background:var(--bpmnkit-ds-dark);color:var(--bpmnkit-ds-ink-on-dark);font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label)}
+.hv-banner[hidden]{display:none}
+.ts-dialog{margin:auto;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);padding:var(--bpmnkit-ds-sp-4);font-family:inherit;min-width:320px}
+.ts-dialog::backdrop{background:rgba(0,0,0,.35)}
+.ts-title{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label);text-transform:uppercase;color:var(--bpmnkit-ds-ink-3);margin-bottom:var(--bpmnkit-ds-sp-3)}
+.ts-error{margin-top:var(--bpmnkit-ds-sp-3);color:var(--bpmnkit-danger);font-size:var(--bpmnkit-ds-t-ui)}
+.ts-error[hidden]{display:none}
+.ts-cancel{margin-top:var(--bpmnkit-ds-sp-3);border:1px solid var(--bpmnkit-ds-line);background:transparent;color:var(--bpmnkit-ds-ink-2);cursor:pointer;font-family:var(--bpmnkit-ds-font-mono);font-size:12px;height:28px;padding:0 11px}
+.hv-banner .hv-btn{border-color:var(--bpmnkit-ds-line-dark);background:none;color:var(--bpmnkit-ds-ink-on-dark-2)}
+.hv-banner .hv-btn:hover{background:rgba(255,255,255,.08);color:var(--bpmnkit-ds-ink-on-dark)}
 .ai-passcode input{width:100%;padding:8px 10px;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;margin:12px 0}
 .ai-passcode.err input{border-color:var(--bpmnkit-danger)}
 
@@ -465,6 +488,7 @@ export function sharePage(
 	drop: DropRow,
 	files: FileInfo[],
 	aiEnabled = false,
+	turnstileKey?: string,
 ): string {
 	const primary = primaryIndex(files)
 	const title = files[primary]?.name || files[primary]?.filename || "Shared diagram"
@@ -484,6 +508,10 @@ export function sharePage(
 		<span class="ed-info" title="Created ${created} · expires ${expires}"><span id="viewCount">${drop.view_count}</span> VIEWS · <span id="presence" hidden>0 VIEWING</span> · EXPIRES ${expires}</span>
 		<div class="ed-group">
 			${aiEnabled ? `<button id="aiReviewBtn" type="button" hidden>AI review</button>` : ""}
+			<button id="editBtn" type="button" hidden>Edit</button>
+			<button id="doneBtn" type="button" hidden>Done</button>
+			<button id="localHistoryBtn" type="button" hidden>On this device</button>
+			<button id="historyBtn" type="button" hidden>History</button>
 			<a id="dlOriginal" href="#" download>Original</a>
 			<a id="dlJson" href="#" download>JSON</a>
 			<button id="copyLink" type="button">Copy link</button>
@@ -500,6 +528,24 @@ export function sharePage(
 		<button id="zoomIn" type="button" aria-label="Zoom in">+</button>
 		<button id="zoomFit" type="button" aria-label="Fit diagram" title="Fit diagram">FIT</button>
 	</div>
+	<div id="historyBanner" class="hv-banner" hidden><span id="historyBannerText"></span><button id="historyExit" class="hv-btn" type="button">Back to current</button></div>
+	<div id="editNotice" class="hv-banner" hidden><span id="editNoticeText"></span></div>
+	<dialog id="turnstileDialog" class="ts-dialog">
+		<div class="ts-title">One check before you edit</div>
+		<div id="turnstileWidget"></div>
+		<div id="turnstileError" class="ts-error" hidden>That did not go through — close this and try again.</div>
+		<button id="turnstileCancel" class="ts-cancel" type="button">Cancel</button>
+	</dialog>
+	<aside id="localHistoryPanel" class="ai-panel" hidden>
+		<header class="ai-head"><span>On this device</span><button id="localHistoryClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
+		<div id="localHistoryBody" class="ai-body"></div>
+		<footer class="ai-foot">Checkpoints in this browser only — nobody else can see them, and clearing site data removes them.</footer>
+	</aside>
+	<aside id="historyPanel" class="ai-panel" hidden>
+		<header class="ai-head"><span>Saved milestones</span><button id="historyClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
+		<div id="historyBody" class="ai-body"></div>
+		<footer class="ai-foot"><span id="historyBound"></span></footer>
+	</aside>
 	<a class="ed-github" href="https://github.com/bpmnkit/monorepo" target="_blank" rel="noopener"><img class="logo" src="${FAVICON}" alt="">GitHub</a>
 	${
 		aiEnabled
@@ -511,7 +557,14 @@ export function sharePage(
 			: ""
 	}
 </div>
-${reportDialog()}`
+${reportDialog()}
+${
+	// Loaded on the share page only, and only when a key is configured — which is
+	// also the only page whose content policy has been widened to allow it.
+	turnstileKey
+		? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>`
+		: ""
+}`
 
 	return shell({
 		title: `${title} — BPMN Kit Drop`,
@@ -528,8 +581,15 @@ ${reportDialog()}`
 					kind: f.kind,
 					name: f.name,
 					decisionIds: f.meta.decisionIds ?? [],
+					// The editor addresses one process; the page says so up front
+					// rather than offering Edit and having the room turn it down.
+					processes: f.meta.processes ?? 1,
 				})),
 				primaryIndex: primary,
+				// An operator marked this drop as never expiring, which also makes it
+				// read-only — anyone-with-the-link editing is wrong for a fixture.
+				pinned: drop.expires_at === null,
+				turnstileKey,
 			},
 		},
 		scriptSrc: "/drop/assets/viewer.js",

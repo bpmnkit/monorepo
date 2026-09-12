@@ -213,7 +213,6 @@ bpmnkit/monorepo
 │   ├── cli/            # casen CLI tool
 │   ├── proxy/          # Local AI + API proxy server
 │   ├── desktop/        # Tauri native desktop app
-│   ├── vscode/         # BPMN Kit for VS Code — view, diff and lint in the editor
 │   ├── landing/        # bpmnkit.com — site + docs at /docs (Astro)
 │   ├── learn/          # Interactive learning center (Astro)
 │   └── examples/       # Runnable BPMN workflow examples

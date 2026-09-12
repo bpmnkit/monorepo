@@ -2,7 +2,7 @@ import type { Env } from "./env.js"
 import { deleteExpired } from "./lib/db.js"
 import { html, json } from "./lib/http.js"
 import { adminPage, dropPage, policyPage } from "./lib/pages.js"
-import { PresenceRoom } from "./presence.js"
+import { DocRoom } from "./room.js"
 import { handleAdmin } from "./routes/admin.js"
 import { handleAiReview } from "./routes/ai-review.js"
 import {
@@ -15,12 +15,13 @@ import {
 } from "./routes/drop.js"
 import { handleReport } from "./routes/reports.js"
 import { handleUpload } from "./routes/upload.js"
+import { handleHistory, handleRestore } from "./routes/versions.js"
 
 function methodNotAllowed(): Response {
 	return json({ error: "method not allowed" }, { status: 405 })
 }
 
-async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function route(request: Request, env: Env): Promise<Response> {
 	const url = new URL(request.url)
 	const now = Date.now()
 	// Everything this Worker owns lives under /drop.
@@ -66,7 +67,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 	const presence = rest.match(/^\/api\/presence\/([\w-]+)$/)
 	if (presence) {
 		const shareId = presence[1] as string
-		const stub = env.PRESENCE.get(env.PRESENCE.idFromName(shareId))
+		const stub = env.ROOM.get(env.ROOM.idFromName(shareId))
 		return stub.fetch(request)
 	}
 
@@ -77,14 +78,38 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 			? handleManifest(manifest[1] as string, env)
 			: methodNotAllowed()
 	}
+	// History and restore sit above the file route so `/history/...` cannot be
+	// read as a filename.
+	const history = rest.match(/^\/([\w-]+)\/history\/(.+)$/)
+	if (history) {
+		if (request.method !== "GET") return methodNotAllowed()
+		return handleHistory(history[1] as string, decodeURIComponent(history[2] as string), env)
+	}
+	const restore = rest.match(/^\/([\w-]+)\/restore\/(.+)\/(\d+)$/)
+	if (restore) {
+		if (request.method !== "POST") return methodNotAllowed()
+		return handleRestore(
+			restore[1] as string,
+			decodeURIComponent(restore[2] as string),
+			Number(restore[3]),
+			env,
+			now,
+		)
+	}
 	const file = rest.match(/^\/([\w-]+)\/f\/(.+)$/)
 	if (file) {
 		if (request.method !== "GET") return methodNotAllowed()
 		const shareId = file[1] as string
 		const filename = decodeURIComponent(file[2] as string)
+		// `?v=` selects a stored state: 0 is the upload, n a milestone, absent is now.
+		const raw = url.searchParams.get("v")
+		const version = raw === null ? undefined : Number(raw)
+		if (version !== undefined && !Number.isInteger(version)) {
+			return json({ error: "bad version" }, { status: 400 })
+		}
 		return url.searchParams.get("format") === "json"
-			? handleJson(shareId, filename, env)
-			: handleRaw(shareId, filename, env)
+			? handleJson(request, shareId, filename, env, version)
+			: handleRaw(request, shareId, filename, env, version)
 	}
 	const diff = rest.match(/^\/([\w-]+)\/diff\/([\w-]+)$/)
 	if (diff) {
@@ -94,21 +119,19 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 	}
 	const share = rest.match(/^\/([\w-]+)$/)
 	if (share) {
-		return request.method === "GET"
-			? handleSharePage(share[1] as string, env, ctx, now)
-			: methodNotAllowed()
+		return request.method === "GET" ? handleSharePage(share[1] as string, env) : methodNotAllowed()
 	}
 
 	return json({ error: "not found" }, { status: 404 })
 }
 
 export default {
-	fetch(request, env, ctx) {
-		return route(request, env, ctx)
+	fetch(request, env) {
+		return route(request, env)
 	},
 	scheduled(_event, env, ctx) {
 		ctx.waitUntil(deleteExpired(env.DB, Date.now()))
 	},
 } satisfies ExportedHandler<Env>
 
-export { PresenceRoom }
+export { DocRoom }

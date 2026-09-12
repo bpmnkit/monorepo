@@ -1,0 +1,16 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"types": ["@cloudflare/workers-types"],
+		"declaration": false,
+		"declarationMap": false,
+		"noEmit": true,
+		"rootDir": ".",
+		"verbatimModuleSyntax": false,
+		"skipLibCheck": true
+	},
+	"include": ["tests/round-trip.test.ts"]
+}

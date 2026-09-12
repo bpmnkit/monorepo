@@ -15,7 +15,12 @@
 		"TOS_VERSION": "2026-07-09",
 		// AI process review. AI_PASSCODE is a secret (wrangler secret put) — unset = feature off.
 		"AI_MODEL": "@cf/openai/gpt-oss-120b",
-		"AI_DAILY_BUDGET": "8000"
+		"AI_DAILY_BUDGET": "8000",
+		"TURNSTILE_SITE_KEY": "0x4AAAAAAExoiG_f6MSVcEiN"
+		// Turnstile on the edit claim. Add TURNSTILE_SITE_KEY here (it is public and
+		// rendered into the page) and `wrangler secret put TURNSTILE_SECRET`. With
+		// neither, claims are not challenged; with the secret alone, every claim
+		// fails — which is the right way round for a check whose job is to say no.
 	},
 	"ai": {
 		"binding": "AI"
@@ -32,8 +37,8 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"name": "PRESENCE",
-				"class_name": "PresenceRoom"
+				"name": "ROOM",
+				"class_name": "DocRoom"
 			}
 		]
 	},
@@ -41,6 +46,12 @@
 		{
 			"tag": "v1",
 			"new_sqlite_classes": ["PresenceRoom"]
+		},
+		// The presence room grew into the document room; renaming keeps the existing
+		// instances (and their stored view counters) rather than starting fresh ones.
+		{
+			"tag": "v2",
+			"renamed_classes": [{ "from": "PresenceRoom", "to": "DocRoom" }]
 		}
 	],
 	"triggers": {

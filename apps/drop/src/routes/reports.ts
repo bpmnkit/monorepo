@@ -1,5 +1,5 @@
 import type { Env } from "../env.js"
-import { getDrop, insertReport } from "../lib/db.js"
+import { currentHashes, getDrop, insertReport } from "../lib/db.js"
 import { clientIp, json } from "../lib/http.js"
 import { hashIp } from "../lib/ids.js"
 import { REPORT_REASONS, type ReportReason } from "../shared/constants.js"
@@ -35,6 +35,10 @@ export async function handleReport(request: Request, env: Env, now: number): Pro
 		reason: body.reason as ReportReason,
 		details,
 		reporterHash,
+		// What the reporter is looking at. A drop can be edited by anyone with the
+		// link, so without this the queue would show an operator something else
+		// and let them draw the wrong conclusion from it.
+		contentHashes: await currentHashes(env.DB, body.shareId),
 		now,
 	})
 	return json({ ok: true }, { status: 201 })

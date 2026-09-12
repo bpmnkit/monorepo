@@ -275,6 +275,84 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] AI review LLM: Workers AI binding (`@cf/openai/gpt-oss-120b`), JSON-schema output, `ai_reviews` content-hash cache, `ai_budget` daily guard + attempt limiting, `AI_PASSCODE` secret gate (closed beta: `X-Drop-AI-Code` header, constant-time check, localStorage persistence)
 - [x] Polish: suggestion→canvas element highlighting (hover + click), model attribution, docs
 
+### Drop v3 — authoring and live single-writer editing
+
+> Analysis, design and ordered plan: [`doc/drop-collaborative-editing-analysis.md`](drop-collaborative-editing-analysis.md),
+> [`doc/drop-live-editing-design.md`](drop-live-editing-design.md),
+> [`doc/drop-live-editing-plan.md`](drop-live-editing-plan.md). Simultaneous multi-writer editing
+> was analysed and deliberately not chosen; one live writer with the others watching was.
+
+**Track A — author, then drop**
+
+- [x] A1 — "Share as a drop" in the `/editor` main menu: posts the open diagram to the existing
+      `POST /drop/api/drops` (no Worker changes), dev-proxied so it stays same-origin
+- [x] A2 — localStorage draft on `/editor`: written 1 s after the last edit and flushed on
+      `pagehide`, offered back once per tab, cleared on a successful share
+
+**Track B — the version log** (blocks every task that writes to a drop)
+
+- [x] B1 — a `file_current` table (never write `file_content`), `file_versions`,
+      `drops.updated_at`; serve current-else-original, `?v=0` pins the Original download
+- [x] B2 — `appendMilestone()`: `(hour, session)` bucket, `content_hash` suppression, prune to 10
+      — the pinned original plus ten milestones, eleven recoverable states per file, forever
+- [x] B3 — history panel, `?v=n` version fetch, and per-milestone "layout only" / "model changed"
+      labels derived from the stored hashes (no re-parse), with the bound stated in the panel
+- [x] B4 — restore, as an append rather than a rewind
+
+**Track C — browser history** — folded into D6. `apps/drop` has no editor to attach a change
+handler to until the editor is loaded on claim, and the panel is only worth building next to the
+server history it must be distinguished from. `@bpmnkit/plugins/history` takes opaque
+`(projectId, fileId)` strings, so Drop passes `(shareId, filename)` when D6 lands.
+
+- [x] C1 — `saveCheckpoint` on the editor's change handler, debounced *(landed with D6)*
+- [x] C2 — `createHistoryPanel`, kept visibly separate from the server milestones *(landed with D6)*
+
+**Track D — the room** (requires B)
+
+- [x] D1 — `PresenceRoom` → `DocRoom` (wrangler `renamed_classes`), plus the debounced
+      `view_count` / `expires_at` write `drop-spec.md` §6 described and never shipped: a socket
+      join is the view, batched in the room's storage and flushed to D1 on a 60s alarm
+- [x] D2 — the edit baton: claim / granted / denied / release / warning / revoked, with two
+      distinct reclaims — a socket that stopped pinging (`getWebSocketAutoResponseTimestamp`)
+      and a holder who is present but idle, the latter warned first and keyed on messages that
+      wake the room rather than on heartbeats
+- [x] D3 — `@bpmnkit/editor`: ids minted from a seed carried in the op, a `diagram:op` event
+      beside `diagram:change`, and `getViewport`/`setViewport` public on both the canvas and the
+      editor. `applyOp` is the editor's own mutation path too, so a local edit and its replay
+      cannot drift
+- [x] D4 — op protocol and server-side replay: the room runs the writer's op itself through
+      `@bpmnkit/editor/headless`, judges the document that comes out (`checkIntegrity`), and only
+      then makes it the state; the whole document lives in DO storage, so a hibernated room
+      needs no op log to catch up
+- [x] D5 — watcher replay with a hash check and resync: `DocWatcher` runs the same `applyOp` the
+      writer and the room ran, compares the room's hash, and on any divergence throws its document
+      away and asks for the current one — exactly once, however many ops arrive while it waits
+- [x] D6 — editor loaded on claim via dynamic `import()` (25 KB gzipped, fetched on Edit and
+      never by a reader), viewport carried across the swap, HUD only ever built for the writer;
+      brings track C with it — local checkpoints every 30 s of dirty editing and an *On this
+      device* panel beside *Saved milestones*, never merged
+- [x] D7 — autosave: the object's storage takes every op, D1 is brought level 30 s after the
+      first unsaved edit via `exportPreserving` (so an edited drop is not reformatted top to
+      bottom), and a milestone is cut once per `(hour, session)` and refreshed on release
+
+**Track E — hardening**
+
+- [x] E1 — the three upload-time checks moved to edit time: the ban list is re-checked on every
+      save (and the room halts on a hit), the row cap is enforced on the op rather than only on
+      the save, and the entity tag names the version and the representation instead of being the
+      content hash — which the XML and the JSON were sharing
+- [x] E2 — Turnstile on `claim`: one challenge per editing session, verified in the room, with
+      the widget rendered on Edit rather than on the page and the content policy widened only
+      where it can appear. Off unless `TURNSTILE_SECRET` is set; set without a site key, every
+      claim fails
+- [x] E3 — three carve-outs enforced on the socket, not by hiding a button: the demo (no row to
+      write to) offers *Edit a copy*, a pinned drop is read-only, and a file with more than one
+      process is past what the editor addresses. Each refusal carries the reason
+- [ ] E4 — retention slides on edit as well as view
+- [x] E5 — a report records what its reporter was looking at, the queue says *edited since
+      reported* when the drop has moved on, and a ban acts on the reported hashes as well as the
+      current ones — so editing away from a report is not an escape the reporter saw
+
 ### Design consistency — Drop + Editor on the landing system
 
 > Design brief: flat, square, hairline-ruled, one terracotta accent, two type roles.

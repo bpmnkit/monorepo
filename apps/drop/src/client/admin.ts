@@ -9,6 +9,26 @@ interface Report {
 	details: string | null
 	created_at: number
 	drop_exists: number
+	/** Whether the drop still holds what was reported — see `ReportView`. */
+	reported_state: "same" | "edited" | "unknown"
+}
+
+/**
+ * What the queue says about the content behind a report.
+ *
+ * Anyone with the link can edit a drop, so opening one from the queue does not
+ * necessarily show what was reported. Saying nothing would be the worst of the
+ * options: an operator would act on the wrong thing and never know.
+ */
+function stateNote(state: Report["reported_state"]): string {
+	if (state === "edited") {
+		return `<div class="rep-edited">Edited since reported — the page will not show what was
+			reported. Delete+ban still bans the reported content.</div>`
+	}
+	if (state === "unknown") {
+		return `<div class="rep-unknown">Filed before reports recorded the content.</div>`
+	}
+	return ""
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -52,7 +72,7 @@ async function loadReports(): Promise<void> {
 			(r) => `<tr>
 <td><a href="/drop/${esc(r.drop_id)}" target="_blank">${esc(r.drop_id)}</a>${r.drop_exists ? "" : " (deleted)"}</td>
 <td>${esc(r.reason)}</td>
-<td>${esc(r.details ?? "")}</td>
+<td>${esc(r.details ?? "")}${stateNote(r.reported_state)}</td>
 <td>
 <button class="btn-ghost" data-act="del" data-id="${esc(r.drop_id)}">Delete</button>
 <button class="btn-ghost" data-act="ban" data-id="${esc(r.drop_id)}">Delete+ban</button>

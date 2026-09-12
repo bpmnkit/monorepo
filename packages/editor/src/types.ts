@@ -1,6 +1,7 @@
 import type { CanvasEvents, CanvasOptions } from "@bpmnkit/canvas"
 import type { BpmnDefinitions } from "@bpmnkit/core"
 import type { Translate } from "./i18n.js"
+import type { EditorOp } from "./ops.js"
 
 export type CreateShapeType =
 	| "startEvent"
@@ -88,6 +89,21 @@ export type EditorOptions = CanvasOptions & {
 
 export interface EditorEvents extends CanvasEvents {
 	"diagram:change": (defs: BpmnDefinitions) => void
+	/**
+	 * The same change, described rather than materialised.
+	 *
+	 * Fires immediately after `diagram:change` for every change to the document,
+	 * undo and redo included — those arrive as a whole-document `snapshot` op,
+	 * because the stack records states rather than inverses and a relay that
+	 * never heard about an undo would be silently wrong from then on.
+	 *
+	 * The exception is `loadDefinitions`, which is the host replacing the
+	 * document rather than the user changing it, and says nothing.
+	 *
+	 * A listener relaying edits to other people wants this event; a listener that
+	 * just needs the current document wants `diagram:change`.
+	 */
+	"diagram:op": (op: EditorOp, defs: BpmnDefinitions) => void
 	"editor:select": (ids: string[]) => void
 	"editor:tool": (tool: Tool) => void
 	"editor:drag": (dragging: boolean) => void

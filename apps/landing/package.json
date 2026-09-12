@@ -9,8 +9,10 @@
 		"prebuild": "node ../../scripts/generate-plugins-doc.mjs",
 		"build": "astro build",
 		"preview": "astro preview",
+		"deploy": "wrangler pages deploy dist --project-name=bpmn-sdk-landing",
 		"typecheck": "tsc --noEmit",
-		"check": "biome check ."
+		"check": "biome check .",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@bpmnkit/astro-shared": "workspace:*",

@@ -16,11 +16,21 @@ import { createHistoryPanel, saveCheckpoint } from "@bpmnkit/plugins/history"
 import { createMainMenuPlugin } from "@bpmnkit/plugins/main-menu"
 import { createOptimizePlugin } from "@bpmnkit/plugins/optimize"
 import { createProcessRunnerPlugin } from "@bpmnkit/plugins/process-runner"
+import { showConfirmDialog } from "@bpmnkit/plugins/storage"
 import { InMemoryFileResolver, createStorageTabsBridge } from "@bpmnkit/plugins/storage-tabs-bridge"
 import { createTokenHighlightPlugin } from "@bpmnkit/plugins/token-highlight"
 import { createWatermarkPlugin } from "@bpmnkit/plugins/watermark"
+import {
+	clearDraft,
+	describeAge,
+	dismissPrompt,
+	isPromptDismissed,
+	readDraft,
+	saveDraft,
+} from "./draft.js"
 import { makeExamples } from "./examples.js"
 import { savePng, saveSvg } from "./export.js"
+import { openShareDropDialog } from "./share-drop-dialog.js"
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><path fill="#060609" d="m0 166.67c0 -92.0493 74.6207 -166.67 166.67 -166.67l666.66003 0c44.203613 0 86.5968 17.559824 117.853455 48.816513c31.256714 31.256691 48.81653 73.64986 48.81653 117.853485l0 666.66003c0 92.049255 -74.62073 166.66998 -166.66998 166.66998l-666.66003 0c-92.0493 0 -166.67 -74.62073 -166.67 -166.66998z" fill-rule="evenodd"/><path fill="#e954c2" d="m80.49353 127.48857l84.734375 0q42.71875 0 63.03125 20.578125q20.3125 20.578125 20.3125 61.828125l0 13.0625q0 26.96875 -9.1875 44.812485q-9.171875 17.828125 -29.8125 20.0625l-0.09375 -0.9375q44.234375 8.796875 44.234375 69.0625l0 28.0q0 40.8125 -21.96875 62.78125q-21.96875 21.96875 -63.25 21.96875l-88.0 0l0 -341.21875zm78.671875 132.99998q12.328125 0 17.921875 -5.7656097q5.59375 -5.78125 5.59375 -21.484375l0 -18.203125q0 -15.203125 -4.421875 -20.765625q-4.40625 -5.5625 -14.421875 -5.5625l-17.453125 0l0 71.781235l12.78125 0zm9.328125 146.98438q10.296875 0 14.8125 -4.984375q4.515625 -5.0 4.515625 -19.921875l0 -28.46875q0 -19.625 -5.703125 -26.0q-5.6875 -6.390625 -20.15625 -6.390625l-15.578125 0l0 85.765625l22.109375 0zm115.10724 -279.98438l82.875 0q41.4375 0 62.625 22.75q21.1875 22.734375 21.1875 65.265625l0 32.1875q0 42.531235 -21.1875 65.281235q-21.1875 22.734375 -62.625 22.734375l-16.984375 0l0 133.0l-65.890625 0l0 -341.21875zm82.875 146.99998q9.359375 0 13.640625 -4.75q4.28125 -4.765625 4.28125 -18.781235l0 -38.71875q0 -14.015625 -4.28125 -18.765625q-4.28125 -4.765625 -13.640625 -4.765625l-16.984375 0l0 85.781235l16.984375 0zm111.83243 -146.99998l86.859406 0l27.28125 239.99998l-0.9375 0l27.265625 -239.99998l86.875 0l0 341.21875l-63.09375 0l6.359375 -253.68748l0.921875 0.15625l-32.0 253.53123l-55.453125 0l-32.0 -253.53123l0.921875 -0.15625l6.359375 253.68748l-59.359406 0l0 -341.21875zm265.6392 0l77.328125 0l45.203125 201.62498l-0.921875 0.265625l-6.359375 -201.89061l60.296875 0l0 341.21875l-65.65625 0l-56.890625 -244.54686l0.9375 -0.265625l6.34375 244.81248l-60.28125 0l0 -341.21875z" fill-rule="nonzero"/><path fill="#ffffff" d="m270.9452 522.1202l65.890625 0l0 112.609375l53.4375 -112.609375l67.828125 0l-65.203125 127.90625l64.03125 213.3125l-68.875 0l-39.65625 -133.03125l-11.5625 23.390625l0 109.640625l-65.890625 0l0 -341.21875zm207.7738 0l65.890625 0l0 341.21875l-65.890625 0l0 -341.21875zm144.30109 61.21875l-53.671875 0l0 -61.21875l173.23438 0l0 61.21875l-53.671875 0l0 280.0l-65.890625 0l0 -280.0z" fill-rule="nonzero"/></svg>`
 
@@ -29,6 +39,9 @@ const IMPORT_ICON =
 
 const EXPORT_ICON =
 	'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 7l3 3 3-3"/><path d="M2 13h12"/></svg>'
+
+const SHARE_ICON =
+	'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 9.5l3-3"/><path d="M7.5 4.5l1-1a2.8 2.8 0 014 4l-1 1"/><path d="M8.5 11.5l-1 1a2.8 2.8 0 01-4-4l1-1"/></svg>'
 
 // Captures the CanvasApi once installed so export callbacks can use it.
 let _exportApi: CanvasApi | null = null
@@ -48,6 +61,15 @@ const resolver = new InMemoryFileResolver()
 
 let editorRef: BpmnEditor | null = null
 let currentFileName: string | null = null
+/**
+ * Whether the open diagram has been edited since it was loaded.
+ *
+ * Without it the `pagehide` flush drafts a diagram nobody touched — opening the
+ * editor and closing the tab would be enough to be offered "restore your unsaved
+ * diagram?" on the next visit. Loading does not emit `diagram:change`, so the
+ * flag only ever rises on a real edit.
+ */
+let dirtySinceLoad = false
 let hudRef: {
 	setActive(active: boolean): void
 	showOnboarding(): void
@@ -167,6 +189,23 @@ const mainMenuPlugin = createMainMenuPlugin({
 					},
 				]
 			},
+		},
+		{
+			label: "Share as a drop\u2026",
+			icon: SHARE_ICON,
+			onClick: () =>
+				openShareDropDialog({
+					// `currentFileName` is the app's existing "a BPMN diagram is on screen"
+					// signal — null on a DMN/Form/FEEL tab, and on the welcome screen. Without
+					// the gate, `exportXml()` would hand back the last BPMN behind a DMN tab.
+					getXml: () => (currentFileName === null ? null : (editorRef?.exportXml() ?? null)),
+					getFileName: () => currentFileName,
+					// The work now has a URL, so the unsaved-draft slot has nothing to protect.
+					onShared: () => {
+						clearDraft()
+						dirtySinceLoad = false
+					},
+				}),
 		},
 		{
 			label: "FEEL Playground",
@@ -332,6 +371,7 @@ const bridge = createStorageTabsBridge({
 			editorRef?.setSelection([])
 		}
 		currentFileName = isBpmn ? (config.name ?? null) : null
+		dirtySinceLoad = false
 		dock.setDiagramInfo(
 			isBpmn ? (editorRef?.getDefinitions()?.processes[0]?.name ?? null) : null,
 			currentFileName,
@@ -494,9 +534,38 @@ editorRef = editor
 type AnyOn = (event: string, handler: (...args: unknown[]) => void) => () => void
 const editorOn = (editor as unknown as { on: AnyOn }).on.bind(editor)
 
+/**
+ * Writes the unsaved-diagram draft, when there is one worth writing.
+ *
+ * Three gates, each ruling out a case where a draft would be wrong rather than
+ * merely redundant: a non-BPMN tab has no XML to draft; a file that lives in a
+ * project is already autosaved to IndexedDB by the storage plugin, and a second
+ * copy would compete with it behind the restore prompt; and an untouched empty
+ * diagram is not work anyone wants offered back.
+ */
+function saveDraftIfUnsaved(): void {
+	if (!dirtySinceLoad) return
+	if (currentFileName === null) return
+	if (bridge.storagePlugin.api.getCurrentContext()) return
+	const xml = editorRef?.exportXml()
+	if (!xml || isNewEmptyDiagram(xml)) return
+	saveDraft(xml, currentFileName)
+}
+
 let _checkpointTimer: ReturnType<typeof setTimeout> | null = null
+let _draftTimer: ReturnType<typeof setTimeout> | null = null
 editorOn("diagram:change", () => {
 	dock.setDiagramInfo(editorRef?.getDefinitions()?.processes[0]?.name ?? null, currentFileName)
+
+	dirtySinceLoad = true
+
+	// Draft the diagram ~1 s after the last change. Cheap enough to be generous
+	// with, and the only thing standing between an unsaved diagram and a refresh.
+	if (_draftTimer !== null) clearTimeout(_draftTimer)
+	_draftTimer = setTimeout(() => {
+		_draftTimer = null
+		saveDraftIfUnsaved()
+	}, 1000)
 
 	// Save a checkpoint ~600 ms after the last change (auto-save runs at 500 ms).
 	// Only for files that are persisted in storage (context must be available).
@@ -552,6 +621,37 @@ hudRef = initEditorHud(editor, {
 	},
 })
 
+// A tab can be closed inside the draft debounce window, and `pagehide` is the one
+// event that still fires when it is (unlike `beforeunload` on mobile Safari).
+window.addEventListener("pagehide", () => {
+	if (_draftTimer !== null) clearTimeout(_draftTimer)
+	saveDraftIfUnsaved()
+})
+
+// ── Restore an unsaved diagram ────────────────────────────────────────────────
+// Declining keeps the draft rather than deleting it — a stray click must not be
+// able to destroy the only copy of someone's work — so the answer is remembered
+// for the tab instead, and the draft is overwritten by the next edit anyway.
+async function offerDraftRestore(): Promise<void> {
+	if (isPromptDismissed()) return
+	const draft = readDraft()
+	if (!draft) return
+	dismissPrompt()
+
+	const restore = await showConfirmDialog({
+		title: "Restore unsaved diagram?",
+		message: `You have a diagram from ${describeAge(draft.savedAt)} that was never shared or saved to a project. Restoring opens it in a new tab; declining keeps it until your next edit.`,
+		confirmLabel: "Restore",
+	})
+	if (!restore) return
+
+	bridge.tabsPlugin.api.openTab({
+		type: "bpmn",
+		xml: draft.xml,
+		name: draft.name ?? "Restored diagram",
+	})
+}
+
 // ── Open diagram forwarded from Operate ───────────────────────────────────────
 // Deferred via rAF so it runs AFTER the welcome-screen's own rAF callback
 // (which hides the HUD/dock). Both rAFs queue in the same frame; ours fires
@@ -563,8 +663,10 @@ requestAnimationFrame(() => {
 			sessionStorage.removeItem("bpmnkit-from-operate")
 			const { xml, name } = JSON.parse(raw) as { xml: string; name: string }
 			bridge.tabsPlugin.api.openTab({ type: "bpmn", xml, name })
+			return // an explicit hand-off outranks the draft prompt
 		}
 	} catch {
 		// sessionStorage unavailable or malformed JSON — ignore
 	}
+	void offerDraftRestore()
 })

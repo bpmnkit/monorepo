@@ -1,5 +1,701 @@
 # Progress
 
+## 2026-09-12 — a runbook, and a script that proves its own work
+
+`apps/drop/DEPLOY.md`: fresh clone to live, in six steps.
+
+**The usability fix is the ordering, not the prose.** The script asks for a Turnstile site key
+and a Cloudflare API token, both of which come from the dashboard — so being told to fetch them
+*after* starting means aborting halfway. The runbook puts both before the script runs, which is
+the difference between one pass and three.
+
+**"Done" now means something.** The script ends by making three requests against what it just
+deployed: the stats endpoint (which reads D1), the demo page (served from memory, renders the
+viewer), and `viewer.js` (what a browser actually loads). Three ticks covers the Worker, the
+database and the assets. Getting the URL to test needed reading it out of what `wrangler deploy`
+prints — captured rather than streamed, since the shape of `deployments list` moves between
+versions. The extraction was checked against all four output shapes it can produce, including
+having neither a route nor a workers.dev URL, where it degrades to saying so.
+
+**And a hand-verification list, because a smoke test only proves it answers.** Upload, edit in
+two tabs, watch the second follow, press Done, reload, open the history. That sequence exercises
+every track in this work, and it is the thing to run before believing any of it.
+
+## 2026-09-12 — provisioning covers the live-editing work
+
+`scripts/provision.mjs` already created the D1 database, applied migrations, deployed, and set
+the admin token and IP salt. It knew nothing about the two things this work added.
+
+**Turnstile, in the order that keeps the window safe.** `wrangler secret put` needs the Worker to
+exist, so the challenge cannot be configured before the first deploy. Publishing the *site key*
+first would leave a stretch where the page shows a challenge and the room ignores it — a secret
+is what enforces, and without one `verifyClaim` returns true. So the secret goes in first, then
+the key, then one more deploy. A `vars` entry only ships with a deploy; a secret takes effect on
+its own, which is why that second deploy happens only when a site key was actually added.
+
+**GitHub Actions secrets, because CI without them is worse than no CI.** `deploy-drop.yml` runs on
+every push to `main` and fails at the first wrangler step without `CLOUDFLARE_ACCOUNT_ID` and
+`CLOUDFLARE_DROP_API_TOKEN` — which looks like it is working. The script now offers to set both
+through `gh`, lifting the account id out of `wrangler whoami` and asking for the token, since
+Cloudflare's API will not mint a scoped token without one that already has permission to. Offered
+only when `gh` is authenticated: it is the one step that touches another system.
+
+**The ending says what it left off.** Finishing with "Editing is NOT challenged — anyone with a
+link can edit" in yellow is the honest summary of a deployment that skipped Turnstile, and better
+than a green "done" that hides it.
+
+## 2026-09-12 — CI audit for the live-editing work
+
+Checking whether everything the last nine commits added actually deploys, rather than assuming
+it. The pipeline itself is sound — `deploy-drop.yml` builds the client bundles, applies D1
+migrations (`0003_versions`, `0004_report_state` included, since it runs the whole directory) and
+deploys the Worker with the Durable Object and its `renamed_classes` migration. A forced clean
+build followed by `wrangler deploy --dry-run` produces exactly the right asset set and bundles.
+
+Three real gaps, all found by looking rather than reasoning:
+
+**The deploy trigger did not list `packages/editor`.** Drop gained that dependency in D4 — the
+room replays ops through `@bpmnkit/editor/headless`, and the browser loads the editor itself on
+claim. The workflow enumerates its workspace dependencies by path, so an editor-only change would
+have shipped to npm and never reached the Worker.
+
+**`apps/drop/turbo.json` declared only `public/drop/assets/**` as an output**, while the build
+also writes `public/drop/fonts/**`. No workflow configures remote caching and CI checks out
+fresh, so it cannot bite today — but it bit me locally within a minute of looking, and it would
+bite CI the moment anyone caches `.turbo`.
+
+**A missing editor chunk killed the Edit button silently.** Code splitting in D6 means the editor
+arrives at the click, and a deploy between page load and click leaves a cached bundle asking for
+a chunk hash that no longer exists. `enterEditMode` destroyed the canvas *before* awaiting the
+import, so a rejection left the baton held, the canvas gone and the page blank, with nothing
+said. The import now happens first, so a failure costs nothing; the baton goes straight back, and
+the reader keeps the canvas they had. Verified by aborting the chunk request in a browser: the
+diagram survives, Edit stays offered, no uncaught errors, and another tab can still claim.
+
+A fourth thing surfaced while fixing the third: handing the baton back earns a `revoked` from the
+room whose own message replaced the real reason, so the user was told "You are reading again"
+instead of why. A release we asked for ourselves now stays quiet.
+
+## 2026-09-12 — E5: a report points at a state
+
+The last item in the plan, and the last consequence of drops becoming mutable: an abuse report
+named a drop, and a drop is now a moving target.
+
+**Recording the hash is the small part; what to do with it is the point.** The obvious use is the
+queue saying *edited since reported*, which it now does. The better one is that a ban acts on the
+reported hashes as well as the live ones — the ban list is keyed on content and E1 re-checks it
+on every save, so content edited away to dodge a report is refused the moment anyone edits it
+back. Editing away from a report stops being an escape.
+
+**A bug fell out of writing that.** `hashesForDrop`, which delete-and-ban uses, reads
+`files.content_hash` — the *upload*. Since track D that has not been what the drop contains, so
+an operator banning an edited drop was banning bytes nobody was serving, leaving the offending
+form free to be re-uploaded. It now bans both forms, because banning either alone leaves a way
+back in.
+
+**A test that passed for the wrong reason, caught by asking what it proved.** My first version of
+"bans the reported content even after it was edited away" reported the drop *before* any edit, so
+the reported hash was also the upload hash — which `hashesForDrop` already covers. It would have
+passed with the feature deleted. The real shape needs three distinct states: uploaded, reported,
+current. Confirmed by removing `reportedHashes` from the ban and watching that one test, and only
+that one, go red.
+
+**A snapshot was considered and rejected.** Storing the reported *body* would let an operator see
+exactly what was reported even after ten edits — and would also let anyone fill the database by
+reporting a 900 KB drop repeatedly. The hash plus an honest "this has changed" is the
+proportionate answer, and the ban behaviour above is what makes it sufficient.
+
+## 2026-09-12 — E3: the three carve-outs
+
+The demo, a pinned drop, and a file with more than one process, all refused in the room.
+
+**The demo was already refused, but for the wrong reason.** I said last time that the room did
+not enforce it; checking rather than assuming, the claim did fail — `loadDocFromDb` misses on a
+drop with no D1 row, and the room answered `no-document`. Correct outcome, misleading message,
+and it would have started reading as a bug the moment anything else could produce the same
+answer. The demo is now refused by name, before the room goes looking.
+
+**Each refusal carries its reason, and that shaped the UI too.** `read-only` with a sentence
+attached, so the page can say *"the editor handles one process at a time, and this file has
+several"* rather than shrugging. The button is disabled with that in its tooltip rather than
+hidden: a button that is not there looks like a feature you do not have, where a disabled one
+with a reason is a fact about this file.
+
+**The demo needed an affordance, not just a refusal.** The plan asked for *edit a copy*, and the
+upload endpoint already does exactly that — fetch the demo's XML, post it back, follow the new
+share id. Ten lines, no new server code, and the copy is a drop you own. Driven in a browser: the
+button reads **Edit a copy**, and following it lands on a fresh drop whose own button reads
+**Edit** and is enabled.
+
+**Verified as an API, not as a page.** Each case was driven twice — once through the topbar, once
+by opening a socket and claiming directly, which is what devtools gives anyone. Pinned and
+two-process both come back `read-only` with their reason; an ordinary drop comes back `granted`.
+
+## 2026-09-12 — E2: challenging the claim
+
+Turnstile on `claim`, which is the placement the design argued for and the one worth restating:
+a person is asked once per editing session, a script pays per drop it wants to rewrite.
+
+**Verifying in the room is the simple choice and it has a cost worth naming.** The alternative —
+a Worker endpoint that verifies and hands back a signed pass the room checks offline — avoids an
+outbound request inside a Durable Object handler, which stalls that room for its duration. But
+the stall happens once per session, in a room where nobody holds the baton at that moment, and
+the pass design is roughly three times the code. What the stall does deserve is a guard against
+being made to happen repeatedly, so a connection that fails three challenges stops earning one.
+
+**The content policy needed widening, and only just.** `script-src 'self'` and `frame-src 'self'`
+both have to admit `challenges.cloudflare.com` for the widget. That is now conditional on the
+share page *and* on a key being configured, rather than applied to every response — a policy
+loosened everywhere because one page needs it is not a policy.
+
+**Driving the page found a dead button.** This sandbox's browser cannot reach
+challenges.cloudflare.com, which turned out to be exactly the case I had not handled: with no
+`turnstile` global, `challenge()` resolved with no token, and Edit returned silently. No dialog,
+no message, nothing — the same thing an ad blocker would produce for a real user. The result type
+now distinguishes "cancelled" from "could not be shown", and the second says so.
+
+**What is and is not verified live.** A scripted claim with no token is refused by the real room
+(`{"reason":"unverified"}`). The happy path was driven with Cloudflare's widget stubbed and its
+`siteverify` real, using the documented always-passes test secret — so the dialog, the token
+reaching the room, and the room's verification request are all exercised against the real
+endpoint, and the editor opens at the end of it. Cloudflare's own widget rendering is the one
+part this environment cannot reach, and is not claimed as tested.
+
+## 2026-09-12 — E1: the checks follow the edits
+
+Three checks that were only ever run on an upload, moved to where a mutable document needs them.
+
+**A wrong test taught me what the ban re-check is actually for.** My first version banned the
+hash of the last save and expected the next one to be refused — which it was not, because the
+next save has a different hash. That is not a bug, it is the point: the re-check exists for the
+case where banned content is *re-entered*. Ban something, upload something else, edit it into the
+banned thing, and without a re-check it is back in the store. The test now does exactly that, and
+leans on a rename being a single attribute spliced in place — so returning to a name returns to
+the same bytes, which is what makes the scenario expressible at all.
+
+**The size cap went on the op, and the tests said why it could not go in the guard.** My first
+attempt at an oversized edit was rejected as *malformed*, because `parseOp` caps a string at 4 KB
+and a list at 5,000 entries. That is the guard working. It also means the only op that can
+outgrow a row in one step is `snapshot`, which carries a document wholesale — and a document can
+only be measured after it has been built. So the cap lives after the replay, next to the
+integrity check, and the writer hears about it on the op rather than on the save.
+
+**The entity tag was wrong in a way nobody would have noticed until it mattered.** It was the
+content hash, so `/f/x.bpmn` and `/f/x.bpmn?format=json` — different bytes under one name — were
+served with the *same* tag. A tag has to identify the representation, so the version and the
+format are in it now, and `If-None-Match` is honoured rather than the tag being decorative.
+Verified live: the current tag moves on an edit, `?v=0`'s does not, a stale tag serves the body
+and a fresh one 304s, and the XML tag does not satisfy a JSON request.
+
+Worth noting in passing, not fixed: `HEAD` on a file route returns 405, because the router tests
+`method !== "GET"`. It predates this work and nothing in the product issues one.
+
+## 2026-09-12 — D7: autosave, and the gap D6 left
+
+D6 ended with a real hole: a reader who loaded the page after everyone had gone still saw the
+pre-edit file, because nothing wrote to D1. This closes it. The acceptance ran end to end in a
+browser — edit, close the writer's tab without pressing Done, reload, and the edit is there.
+
+**`exportPreserving` needed the source text, which D4 had thrown away.** D4 canonicalises on
+load, for a good reason: the hash a watcher compares has to be reproducible from the op alone,
+and no watcher can reproduce the uploader's whitespace. But that meant the first save would have
+reformatted the whole file, turning every diff against the original into noise. The fix is to
+keep both — canonical for the wire, faithful for storage — with the source under its own storage
+key rather than inside the document. Two reasons for that split, and both are about cost: the
+document is written on every op where the source is written once per load, and a Durable Object
+caps a key and its value at 2 MB *together*, which two 900 KB bodies in one value would come
+uncomfortably close to. Each save then becomes the next one's source, so preservation survives a
+session ending. A drag of one task now leaves a five-line diff against a 42-line upload.
+
+**The milestone rule turned out to be two lines.** `appendMilestone` already collapses by
+`(hour, session)` and suppresses an unchanged one, so the room only has to decide *when to ask*:
+the first save in a new bucket, and again on release. The release call lands on the same bucket,
+so it updates that row rather than adding one — the log ends up holding the state each hour of
+each session ended in, for one insert and one update.
+
+**A row count would not have tested that.** A milestone written on every save would also leave
+one row per hour, at four times the writes, and the plan's whole free-tier budget rests on the
+rate. So the D1 test double now counts row-changing statements, and the test asserts ten writes
+for four saves: two per save, plus the milestone's insert and its prune on the first one.
+
+**A precedence bug the types could not catch.** `(await get("opsSinceMilestone")) ?? 0 + 1` parses
+as `x ?? 1`, because `??` binds looser than `+` — so the op counter would have read 1 for ever.
+Caught while re-reading rather than by a test, which is worth noting: the test that covers it was
+written afterwards.
+
+**One browser assertion was wrong rather than the code.** I checked preservation by comparing
+line counts, and a move fails that — re-routing a flow legitimately adds dogleg waypoints. The
+real check is the diff, which is five lines: the moved bounds and the two re-routed edges,
+everything else byte-identical to the upload. The history panel then showed the milestone
+labelled **layout only**, which is `semanticHash` doing exactly what the correction at the start
+of this work said it should: label a milestone, never suppress one.
+
+## 2026-09-12 — D6: the editor arrives on demand, and track C with it
+
+The Edit button works. Pressing it claims the baton, fetches the editor as a separate chunk, and
+swaps it in without the diagram moving.
+
+**A correction to D3, and it is the interesting part.** D3 decided undo and redo should not emit
+`diagram:op`, on the reasoning that they replace the document rather than advance it. That was
+wrong the moment a second machine was listening: a watcher that never heard about an undo is
+silently wrong from then on. The command stack records states rather than inverses, so there is
+no smaller description than a whole-document `snapshot` — which is exactly what the escape hatch
+was for. `loadDefinitions` still says nothing, because that is the host replacing the document
+rather than the user changing it. The browser run caught this: the writer's undo moved the shape
+back and the watcher's did not.
+
+**Splitting the bundle needed measuring, not assuming.** Turning `splitting: true` on for all five
+entries made the viewer's path *worse* — 90 KB gzipped, up from 77.5 KB — because esbuild
+fragments shared code into chunks and gzip compresses several small files noticeably worse than
+one large one. Splitting only the viewer, the one entry with a dynamic import, gives 80 KB for
+readers and a 25 KB chunk fetched on Edit. The browser run confirms the chunk is requested at the
+click and not before.
+
+**Three bugs, all found by driving the page rather than by tests.**
+
+1. The palette never appeared. `BpmnEditor` is a bare editing canvas; the HUD is a separate
+   `initEditorHud(editor)` call the edit session had to make.
+2. Undo appeared not to work, and the reason was that I had changed `undo()` but not rebuilt
+   `@bpmnkit/editor`'s `dist`, which is what the client bundles from. The test suite passed
+   throughout — it runs against source.
+3. Two zoom controls overlapped. `zoombar.hidden = true` has never worked: `.ed-group` sets
+   `display:flex`, which outranks the `hidden` attribute, and the existing rule covered the
+   group's *children* rather than the group. That is a pre-existing bug — the drop zoombar has
+   been sitting over DMN and form tabs all along — fixed here with one line.
+
+**`Done` shows the editor's document, not the server's.** Re-reading would have shown the
+*pre-edit* file, because D1 does not catch up until the autosave checkpoint D7 adds. The room is
+the authority and the editor was in step with it, so the page keeps what it has. The remaining
+gap is real and is D7's: a reader who loads the page after everyone has left still sees D1's
+copy until that checkpoint exists.
+
+**One test now covers the whole pipeline.** A real `BpmnEditor` driven through its public API, a
+real `DocRoom` judging each op, a real `DocWatcher` keeping up — and all three asserted
+byte-identical at the end. Two harness bugs had to be fixed before it meant anything: an
+`onDrift` hook that threw aborted the watcher's own queue and hid the failure it was meant to
+report, and the six editor ops raced inside the room because `FakeState` has no input gate. The
+second is worth stating plainly — workerd serialises messages per object, which is why the baton
+needs no lock, so the test now serialises them itself rather than papering over the difference.
+
+## 2026-09-12 — D5: watchers replay the writer's ops
+
+The three-machine claim from D3 and D4 now has its third machine. A watcher runs `applyOp` and
+compares the hash the room broadcast — the check is what makes "byte-identical wherever it runs"
+a property rather than an intention.
+
+**The state machine is small; the subtle part is what happens after a mismatch.** Ops keep
+arriving while the resync is in flight, and replaying them onto a document already declared lost
+would produce more mismatches and more requests. So a watcher awaiting `state` drops everything
+until it arrives — which is what makes "exactly one resync" true rather than aspirational. The
+races both resolve correctly for the same reason: one socket, ordered delivery. If the room
+answers the resync before the next op, the watcher adopts version V and the op is V+1; if after,
+the op is dropped and the state already includes it.
+
+**Driving it in a browser found the bug the tests could not.** Two watcher tabs and a writer:
+both replayed the move and the rename, both flashed, presence read `4 VIEWING · 1 EDITING` — and
+the viewport shifted on every op. `loadDefinitions` schedules its fit in a `requestAnimationFrame`
+so the SVG has been laid out, so restoring the viewport right after the call lands *first* and is
+overwritten a frame later. Every consumer would hit that, so the fix is in the canvas rather than
+in Drop: `load`/`loadDefinitions` take `keepViewport`, which suppresses that one fit. Re-driven,
+the viewport is now identical before and after — `translate(220 207) scale(1)` both times.
+
+**The failing canvas test then exposed a weaker one I wrote two commits ago.** `getBoundingClientRect`
+is all zeroes under happy-dom, so a viewport derived from `scrollToElement` is `NaN` — and
+`toEqual` treats `NaN` as equal to `NaN`, so D3's round-trip test had been passing without
+asserting anything. Both now set the viewport explicitly. The new test also has to let the
+*constructor's* queued fit run before it starts, or it races that instead of the replacement.
+
+**One protocol addition came out of a failing test rather than a design.** A watcher on a
+different tab of the same drop was resyncing whenever any file was edited, because `presence`
+said someone held the baton but not what they held. It now carries `file`, and a viewer with
+nothing to watch stays quiet.
+
+**Cost:** the viewer bundle goes from 69 KB to 77.5 KB gzipped, +8.5 KB. The plan estimated +3 KB;
+that figure was the marginal cost of `modeling.ts` on a bare viewer, and Drop's carries the AI
+panel and the DMN and form viewers too. A metafile pass confirms nothing unexpected came in —
+`modeling.js` is 24.7 KB minified and is the replay vocabulary itself. Worth noting in passing:
+`bpmn-builder.js` is the single largest input at 41 KB and the viewer does not appear to use it;
+it arrives through the `@bpmnkit/core` barrel, and predates this change.
+
+## 2026-09-11 — D4: the room replays the op
+
+D3 made an edit describable; this makes the room the one that decides whether it happened.
+
+**Getting `applyOp` into a Worker needed a door.** `@bpmnkit/editor`'s root import reaches for
+`document` — it is an editor. The operations layer never does, so the package grew a
+`./headless` subpath exporting exactly the pure surface. The dry-run bundle confirms it: zero
+occurrences of `BpmnEditor`, `OverlayRenderer` or `document.createElement` in the Worker, for
++72 KiB raw / +14 KiB gzip. D5's watcher will use the same door.
+
+**The design said to keep an op log in DO SQLite. It does not need one.** That sketch existed to
+answer "what survives hibernation", and I went looking for the storage limit before writing the
+replay path. SQLite-backed Durable Objects allow **2 MB per key and value together** — the
+128 KiB figure is the legacy KV backend — and `MAX_FILE_BYTES` is 900 KB. So the whole document
+fits in one value, written on every applied op, and waking is one read and one parse. No op log,
+no replay-on-wake, and nothing that grows for the length of a session. Recording it here because
+the design is now wrong on this point and the reason is a number, not a preference.
+
+**The order of the checks is the interesting part.** Permission, then shape, then replay, then
+judgement — and the judgement is of the *document*, never of the op. Asking "is this op safe?"
+would mean teaching the validator what all twenty ops do, which is the duplication D3 existed to
+remove. Asking "is this document storable?" needs no such knowledge and catches things no
+per-op rule would, including a regression in `deleteElements`' cascade.
+
+**`checkIntegrity`'s real risk is strictness, not permissiveness.** A rule that refuses documents
+the editor legitimately produces would surface as a mysterious rejection mid-drag. So the first
+tests are that the SDK's showcase file passes, that an auto-laid-out copy passes, and that six
+real ops each leave a document that still passes — and only then the things that must fail.
+
+**Two smaller decisions.** The baton stays per-drop rather than per-file, so `claim` now names
+the file it means and the room remembers it; one room per drop keeps view counting correct and
+one writer per drop is what "this drop is being edited" already meant. And `claim` loads the
+document *before* granting, so Edit fails loudly on a file the room cannot write instead of
+succeeding and rejecting the first op.
+
+**A mistake worth recording:** I created `apps/drop/tests/fixtures.ts` without looking, clobbering
+the one already there, and five upload tests went red. `git checkout --` and an append fixed it.
+The tests caught it immediately, which is the system working, but the file existed and I should
+have read before writing.
+
+## 2026-09-11 — D3: the editor describes its edits
+
+The acceptance criterion was the design: *the same op replayed on two machines yields
+byte-identical XML*. Two things stood between the editor and that, and both were about where a
+decision gets made.
+
+**Ids were the obvious one.** `genId` is `Math.random()`, which is exactly right for one person
+editing one diagram and wrong the moment the same edit has to happen twice. The fix is not a
+different random source but moving the decision into the op: it carries a seed, both sides build
+the same `createIdFactory(seed)` from it, and the factory is deterministic *in call order* —
+which is the contract a replay actually relies on, since the same function given the same
+arguments asks for the same prefixes in the same order. The six minting functions in
+`modeling.ts` take it as a trailing optional parameter, so every existing caller is unchanged.
+
+**Geometry was the one I nearly missed.** `addConnectedElement` picks a position by looking at
+what is on screen, and `_doCreate` snaps to a hovered boundary. A replay recomputing either would
+need the same shapes in the same viewport to reach the same answer. So the computed bounds and
+waypoints travel *in* the op, and `applyOp` never recomputes them. That is also why
+`createConnected` exists as its own op kind rather than two: the pair is one undo step, and both
+halves must share one id sequence.
+
+**The structural decision: `applyOp` is the editor's own mutation path.** The tempting shape is
+an editor that does its edit and separately describes it, but then there are two implementations
+of every operation and nothing keeps them honest. `_executeCommand` — which took a closure, so it
+could never say what it did — is gone, and `_executeOp(op, options)` replaced all 19 of its call
+sites plus the six creation paths that had been hand-rolling `push` + `render` + `emit` inline.
+Those six are now three lines each.
+
+**`applyChange(fn)` is the one thing that cannot be described**, because it takes an arbitrary
+function and the properties panel uses it. It emits a whole-document `snapshot` op. Under a
+single writer that is perfectly correct — it just costs more on the wire — so nothing in the
+editor is unreplayable.
+
+**The test that matters** drives the real editor through eight public APIs (colour, morph, label
+position, add-connected, annotate, duplicate, auto-layout, delete), collects the ops it emitted,
+replays them onto a freshly parsed copy of the starting XML, and asserts the result equals
+`editor.exportXml()` as a string. Not equivalent — identical.
+
+## 2026-09-11 — D2: the edit baton
+
+The room hands out a single write token. This is the task the whole design rests on: with one
+writer there is nothing to merge, which is why no part of this codebase does operational
+transform.
+
+**Claiming needs no lock, and that is a property of the platform rather than of this code.**
+Durable Object input gates deliver one message at a time, so the read-then-write inside the
+handler cannot interleave with another claim. Two sockets claiming in the same tick against a
+live Worker: one granted, one denied, and the third participant saw the winner as holder.
+
+**A constraint shaped the identity design.** `acceptWebSocket(ws, tags)` fixes tags at accept
+time — there is no setter — so the holder cannot be tagged when it claims. Instead every socket
+is tagged with its own actor id, which is what lets `getWebSockets(holder)` find the holder's
+socket after the object has been evicted from memory. The id doubles as the attachment.
+
+**Two reclaims, and conflating them would have been the easy mistake.** A closed laptop lid sends
+no close event at all, so the socket stops pinging and the baton is taken immediately; a holder
+who is connected but absent is warned a minute first. The idle clock therefore keys on messages
+that *wake* the room, never on heartbeats — `setWebSocketAutoResponse` answers pings without
+waking the object, so a ping proves the socket is open and nothing more.
+
+**One alarm, several deadlines.** A Durable Object has a single timer, so the view flush from D1
+and both baton deadlines share one scheduler: the earliest arms it, each firing re-arms for the
+next, and a room with no holder and no pending views clears it entirely.
+
+**Testing the timing needed a fake.** Waiting out a ten-minute idle window live would make the
+suite take a quarter of an hour, so `tests/do-state.ts` is a `DurableObjectState` stand-in and
+the room is driven against it on a controlled clock. Two of my own test bugs were worth the
+trouble of finding: the first recorded a claim on the real clock and fired the alarm on a mocked
+one, which read as millions of minutes idle; the second pinged once and then jumped ten minutes,
+so every "idle" case was actually exercising the dead-socket path. Separating `fire` (heartbeats
+healthy — the human is absent) from `fireSilent` (nothing heard — the socket is gone) is what
+makes the two paths distinguishable at all.
+
+**One test was deleted rather than fixed.** A `Promise.all` of two claims passed only because the
+fake has no input gate; it was asserting the fake's behaviour, not the room's. That guarantee is
+workerd's, so it moved to the live-Worker script where the real gate applies.
+
+The client now sends a heartbeat every 30s — without it the dead-socket check has nothing to
+measure — and parses the new message shapes. Verified in a browser that the presence badge still
+counts up and down across two tabs. 82 drop tests, Biome across 972 files, build and typecheck
+pass.
+
+## 2026-09-11 — Track C folded into D6; D1 makes Drop cheaper
+
+**Track C could not be built where the plan put it.** Its two tasks attach a change handler and
+a history panel to "the drop editor" — and `apps/drop` has no editor at all; `@bpmnkit/editor`
+is not even a dependency. The panel is also only worth building next to the server history it
+has to be distinguished from. Both arrive with D6, so C is folded into it: the plugin takes
+opaque `(projectId, fileId)` strings, so Drop passes `(shareId, filename)` when there is an
+editor to pass them from. The roadmap records it rather than leaving two tasks that cannot pass
+their own acceptance.
+
+**D1 instead, and it is the rare change that reduces load.** `PresenceRoom` becomes `DocRoom`
+and takes over view counting. `recordView` fired a D1 `UPDATE` on *every* share-page load; joins
+now accumulate in the room's storage and flush on a 60-second alarm. Against a live Worker: 50
+page loads wrote nothing, 51 sockets joined, and after the alarm the counter read 51 — one write.
+Presence is untouched, and the broadcast still reported 51 viewers.
+
+**Counting on the socket costs nothing extra.** The alternative — the page handler calling the
+room — would swap one D1 write per view for one DO request per view, which is no saving at all.
+The viewer already opens the socket, so the join is a view the room sees for free. The trade is
+that a "view" is now a browser that connected rather than every HTTP request; that drops bots and
+JS-less fetches, and since the share page renders client-side, a request that never ran the
+script never saw the diagram.
+
+Renamed through a wrangler `renamed_classes` migration so existing instances and their stored
+counters carry over. `recordView` became `recordViews(db, shareId, count, now, expiresAt)`, which
+no-ops on an empty window — an alarm firing with nothing pending must not slide retention for a
+drop nobody opened. Six tests cover it against real SQL, including that and a negative count.
+`handleSharePage` lost the `ctx` and `now` parameters it only had to schedule the old write, and
+`route()` lost `ctx` with them. README and onboarding layouts and route tables updated, including
+`?v=`, `/history/` and `/restore/` from track B. 64 drop tests, Biome across 969 files, build and
+typecheck pass.
+
+## 2026-09-11 — Track B: the version log, and the bound written down as a test
+
+Third task off `doc/drop-live-editing-plan.md`, and the one that blocks every task that writes to
+a drop. A file now has at most eleven recoverable states: the uploaded original, plus ten rolling
+milestones.
+
+**One deviation from the design, for a migration reason.** The design said edits would live at
+`file_content.rep = 'current'`. That column carries `CHECK (rep IN ('original', 'json'))`, and
+SQLite cannot alter a CHECK without rewriting the table under live data. Edits go to a new
+`file_current` table instead — purely additive, and it makes "nothing ever writes to
+`file_content`" literally true rather than merely intended. The design document is patched.
+
+**The bound is a test before it is a feature.** `tests/versions.test.ts` drives 500 saves across
+40 hours and 12 sessions and asserts exactly ten rows survive, that the ones pruned are gone
+rather than hidden, and that the upload is byte-identical afterwards. Running real SQL needed a
+real database: `tests/d1.ts` is a ~90-line D1 stand-in over Node's built-in `node:sqlite` that
+applies the actual migration files, so the upsert, the prune and the FK cascades are exercised
+rather than stubbed. No new dependency — the existing route stubs return canned values, which
+proves nothing about a bucket key.
+
+**Collapsing is keyed on `(hour, session)`.** An hour of one session is one milestone; a new
+session always starts its own, so the 10:45 case — a stranger wrecking a drop in the same hour
+the previous editor worked in — cannot overwrite that editor's milestone. Suppression keys on
+`content_hash`: a claim-and-leave that changed nothing never consumes a slot, and, per the
+correction already recorded, a layout-only hour is *not* suppressed.
+
+**Three things the new mutability quietly broke, fixed here.** `deleteDrop` and `deleteExpired`
+delete explicitly rather than by cascade, so both now take `file_versions` and `file_current`
+with them — otherwise an expired drop would leave its history behind forever, which is the
+opposite of bounded. And the AI review read `rep = 'original'`: reviewing an upload the reader is
+not looking at would be wrong, so it reads the current state, which also keeps its content-hash
+cache honest for free.
+
+**A TDZ bug the typechecker could not see.** The history panel's elements are `const`s near the
+bottom of `viewer.ts`, and `select()` — called at module top level, above them — now reaches into
+them. The first render would have thrown before painting anything. The initial `select()` call
+moved to the end of the file, where it belongs.
+
+Verified against a live Worker with all three migrations applied: an edited drop still serves its
+upload at `?v=0`, restoring the original appends the replaced state as a milestone first, and
+restoring that milestone grows the timeline to three rather than rewinding it. The panel was
+driven in a browser — view a version on the canvas without making it current, back out, and the
+Original link pointing at `?v=0`. 58 drop tests, Biome across 968 files, build and typecheck pass.
+
+## 2026-09-11 — A2: a refresh no longer costs you the diagram
+
+Second task off `doc/drop-live-editing-plan.md`. The editor now keeps a single localStorage draft
+of the open diagram and offers it back after a reload.
+
+**The gap was verified before it was filled.** `@bpmnkit/plugins/storage` autosaves to IndexedDB,
+but both of its save paths return early without a current file id, so only files inside a project
+persist. Driving the real page: create a diagram from the welcome screen, and `localStorage` is
+empty, `indexedDB` holds the storage plugin's database with nothing of yours in it, and a reload
+returns the welcome screen. The work is simply gone.
+
+**The draft is gated three ways, and the third gate was a bug I found by running it.** Skip a
+non-BPMN tab, skip a file that lives in a project (a second copy would compete with the
+IndexedDB one behind a confusing prompt), and skip an untouched diagram. The first browser run
+showed a draft appearing for a diagram nobody had edited: the `pagehide` flush fires
+unconditionally, and the welcome screen's "New diagram" loads the *example*, which is not empty,
+so `isNewEmptyDiagram` did not catch it. A `dirtySinceLoad` flag fixes it — raised only in
+`diagram:change`, cleared on tab activation and after a share. Loading a diagram does not emit
+`diagram:change`, so the flag cannot rise on its own.
+
+**Declining must never delete.** The prompt is remembered per tab in `sessionStorage`, and the
+draft survives a decline — overwritten by the next edit, or cleared once the diagram is shared.
+The alternative, "Cancel discards", puts the only copy of someone's work one stray click from
+gone. `readDraft` also clears malformed or aged-out values on the way past, so nothing can sit in
+storage prompting forever; one slot, seven days.
+
+**Reused rather than rebuilt.** `showConfirmDialog` already exists in `@bpmnkit/plugins/storage`,
+already on the design system, so the prompt is the app's dialog rather than a second one — and
+the share dialog's CSS did not need extracting.
+
+Verified in the browser end to end: no draft and no prompt for an untouched diagram; an edit is
+drafted within a second; a reload prompts with the right age; Restore reopens the five-shape
+diagram in its tab; a second reload does not ask again. 18 new tests cover the storage module
+against a stubbed `Storage`, including quota failure, storage being absent entirely, unparseable
+JSON, and a well-formed object that is not a draft. Biome across 964 files, build, typecheck and
+31 tests all pass.
+
+## 2026-09-11 — A1: the editor can hand a diagram straight to Drop
+
+First task off `doc/drop-live-editing-plan.md`. `bpmnkit.com/editor` gains **Share as a drop** in
+the main menu, so a drop can start from a diagram you just drew rather than only from a file you
+already had.
+
+**The server side is nothing, and that was the point of scoping it first.** It posts to the same
+`POST /drop/api/drops` the drop page uses, as one multipart `files` field, so an authored diagram
+clears exactly the gate a dropped one does — same parser, same caps, same recorded `tos_version`.
+Verified against a local `wrangler dev`: 201 with `{ shareId, url }`, the link renders the
+diagram, and the XML round-trips byte-exact. A deliberately broken file comes back 400 with the
+`details[]` array the dialog surfaces in place of the summary.
+
+**Same-origin in dev as well as production, so no CORS and no Worker change.** `bpmnkit.com/drop*`
+is carved out to the Worker in production; `astro.config.mjs` now proxies the same prefix to a
+local `wrangler dev` (`DROP_DEV_ORIGIN`, default `:8787`). Checked by posting through the Astro
+dev server on `:4321` and getting a 201 back. Adding CORS to the Worker would have been the other
+way to do it, and worse: `connect-src 'self'` in Drop's CSP says the same thing.
+
+**Transport split from the dialog.** `share-drop.ts` is `dropFileName` / `uploadErrorMessage` /
+`shareToDrop` with no imports at all, so its 13 tests run without building a single workspace
+package; `share-drop-dialog.ts` holds the DOM. The first cut had them together and the test
+needed `@bpmnkit/editor` built just to check a filename.
+
+**Two bugs the browser found that neither the unit tests nor a reading would have.** Driving the
+real page with Playwright showed the link row visible before anything was shared, and the dialog
+pinned to the top-left. Both are the same shape of mistake: an explicit `display: flex` outranks
+the UA's `[hidden] { display: none }`, and the editor page's `* { margin: 0 }` reset removes the
+`margin: auto` a modal `<dialog>` centres itself with. Fixed with `.sd-link-row[hidden]`,
+`.sd-btn[hidden]` and an explicit `margin: auto`, then re-driven.
+
+**Gated on a BPMN tab.** `exportXml()` never returns null — it falls back to empty definitions —
+so on a DMN or Form tab it would have handed back whatever BPMN was last loaded. `currentFileName`
+is the signal the app already uses for exactly this, and the dialog says why it cannot share
+rather than hiding the menu item.
+
+**Deployability.** `apps/landing`, `apps/studio`, `apps/demo` and `apps/learn` each gained the
+`deploy` script `apps/drop` already had, matching the command CI runs, with a table in the README.
+Every Cloudflare app is now `pnpm turbo build --filter <app>` then `pnpm --filter <app> deploy`.
+
+Build, typecheck, 13 new tests and Biome across 962 files all pass.
+
+## 2026-09-11 — Live editing action plan, and a correction to yesterday's suppression rule
+
+`doc/drop-live-editing-plan.md` turns the design into ordered work, and settles the version log
+against a requirement that it be visibly bounded: the first version kept always, about ten
+milestones after it, browser-held history not stored on the server, changes inside an hour
+collapsing to one milestone, all inside the free tier.
+
+**The design document was wrong about one thing, and the code says so.** It said to suppress a
+checkpoint when `semanticHash` is unchanged. `semanticHash` deliberately excludes all diagram
+interchange — its own header promises two documents that mean the same thing hash the same
+"however they are laid out" — so an hour spent purely on layout hashes identically and would have
+been discarded as a no-op. Suppression keys on `content_hash` instead. `semanticHash` keeps its
+place by *labelling* a milestone "layout only" versus "model changed", which the history list
+wants anyway and which costs one column. Both documents are patched.
+
+**The original does not need a row.** Nothing in the codebase ever updates `file_content` at
+`rep = 'original'` — `insertDrop` writes it once and only deletion removes it. So editing adds
+`rep = 'current'` and never touches that row, and the version log holds only milestones 1–10.
+"The original survives" stops being a promise and becomes a property one grep and one test pin
+down, at half the storage. Eleven recoverable states per file, forever.
+
+**The hour bucket needed one addition.** Hour-only collapsing means a stranger who wrecks a drop
+at 10:45 overwrites the previous editor's 10:30 milestone — the original survives, but the half
+hour before the vandalism does not, in exactly the window the log exists for. Bucketing on
+`(hour, session)` means a new editing session always starts a new milestone.
+
+**The flush moved from 2 seconds to 30.** The room's own SQLite is the durability layer and is
+unbilled on the free plan; D1 only needs to be fresh, and a joiner's `welcome` corrects any
+staleness on connect. That lands the whole write path at ~242 D1 writes per active editing hour,
+or ~410 room-hours a day against the free tier. Meanwhile the room's debounced view counting
+*removes* a D1 write per page view, which is likely more than editing will ever add.
+
+**The browser half is already written.** `@bpmnkit/plugins/history` takes opaque
+`(projectId, fileId)` strings, so Drop passes `(shareId, filename)`, and its retention is already
+bounded at 50 checkpoints today plus one a day for ten days. Track C is wiring, not building.
+Ordered so nothing that writes to a drop ships before the version log. No code changed.
+
+## 2026-09-11 — Live editing design: the baton, and why autosave forces a version log
+
+Follow-up to the co-editing analysis, after four decisions came back: author before dropping,
+one live writer with everyone else watching, anyone-with-the-link may edit, and no save button
+ever. `doc/drop-live-editing-design.md` designs that; where it disagrees with the analysis, it is
+current.
+
+**Three of the four agree with the analysis. Together they overturn its main recommendation.**
+Fork-on-edit was the way to keep every invariant the schema leans on, and it cannot survive
+either live watching (watchers would be left on a share id the writer has already left) or
+autosave (no save button means no moment at which to fork). So drops become mutable — and
+anonymous plus mutable plus autosave plus no history is a link a stranger can quietly empty with
+nothing to restore from. An append-only `file_versions` log is what makes anyone-with-the-link
+safe, so it is the one part of the design that is not optional. `diffDiagram` and the shipped
+`/drop/:a/diff/:b` route mean the history UI is nearly free once the rows exist.
+
+**Measured, so the bundle question is settled.** A watcher needs the modeling functions to replay
+ops, not a new document per commit: canvas + core + `modeling.ts` is 59 KB gzipped against
+today's 56 KB. So everyone pays +3 KB and the 96 KB editor is a dynamic import fetched only on
+claim. Mounting the editor read-only for everyone was the tempting alternative — one code path,
+instant switch — but it costs every watcher +40 KB and `initEditorHud` has no read-only awareness
+at all, so the palette would render live while every click no-ops at `_executeCommand`.
+
+**Cloudflare has the exact primitive for a dead writer.** `setWebSocketAutoResponse` answers
+heartbeats without waking the object, and `getWebSocketAutoResponseTimestamp` lets the autosave
+alarm check liveness for free. The natural mistake is keying the idle timer on those pings: they
+prove the socket is open, not that a human is there, so reclaiming an absent writer's baton keys
+on operations instead.
+
+Autosave is two clocks, not one — per-op durability into DO SQLite, coarse checkpoints into D1,
+suppressed by `semanticHash` when nothing actually changed. Phased so that "share as a drop" and
+the version log ship before any realtime code, because autosave before the version log is the
+reckless order. No code changed.
+
+## 2026-09-11 — Analysis: what editing, and co-editing, would cost Drop
+
+Two questions about `apps/drop`: could it also *edit*, not just drop and view, and could several
+people edit the same file at once. `doc/drop-collaborative-editing-analysis.md` answers both from
+the code rather than from intuition, and they turn out to be different sizes of problem.
+
+**Editing is mostly a product decision.** `@bpmnkit/editor` already exists, its chrome is already
+on Drop's design system, and it measures +40 KB gzipped over today's viewer bundle. What decides
+the cost is whether a drop stays immutable: fork-on-edit keeps every invariant the schema leans
+on — `content_hash` as both ban key and ETag, write-once `insertDrop`, view-sliding retention —
+while editing in place revisits all of them, plus the moderation and caching consequences the
+document collects in §8.
+
+**Co-editing is harder, and not because of the transport.** A Durable Object already gives you the
+single authority that is normally the hard part. What remains is BPMN's: `moveShapes` re-routes
+unrelated edges, so a move is not a local change and merges element-wise into routes no router
+would produce; a converged document can still be invalid BPMN (a flow into a concurrently deleted
+task) that `Bpmn.export` writes and an engine rejects; and `CommandStack` stores whole snapshots,
+so one user's Ctrl-Z reverts everyone's work — the same compromise Camunda's Web Modeler
+documents.
+
+**One finding changed the recommendation.** `modeling.ts`, `geometry.ts`, `rules.ts` and `id.ts`
+contain zero DOM references, so the editor's 21 pure modeling functions can run *inside* the
+Durable Object. That makes a server-authoritative operation log — client sends intent, the
+authority replays the same function, validates, and broadcasts — cost no second implementation,
+and it re-routes and validates where a CRDT can only converge. Yjs is covered and argued against
+for this model specifically, with the offline case named as what would reverse it.
+
+Phased as fork-to-edit → live read-only follow → edit baton → multi-writer, so the cheap two
+thirds stand alone. No code changed.
+
 ## 2026-09-12 — Retyping an element, data elements through the compact format, and one list of element types
 
 Three surfaces left open by the builder-coverage change, each a different way the same defect
