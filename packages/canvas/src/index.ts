@@ -79,6 +79,7 @@ export type {
 	CanvasApi,
 	CanvasEvents,
 	CanvasOptions,
+	LoadOptions,
 	CanvasPlugin,
 	FitMode,
 	ImportWarnings,

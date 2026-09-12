@@ -5,7 +5,14 @@ import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
 import type { ReviewResult, Suggestion } from "../lib/review.js"
 import { AI_CODE_STORAGE_KEY, DEMO_SHARE_ID, type FileKind } from "../shared/constants.js"
-import { PING, PING_INTERVAL_MS, PONG, type ServerMessage } from "../shared/room-protocol.js"
+import {
+	type ClientMessage,
+	PING,
+	PING_INTERVAL_MS,
+	PONG,
+	type ServerMessage,
+} from "../shared/room-protocol.js"
+import { type Change, DocWatcher, type WatcherDoc } from "./watcher.js"
 
 interface DropFile {
 	filename: string
@@ -62,6 +69,33 @@ function contentUrl(file: DropFile, format?: "json", version?: number): string {
 
 function message(text: string): void {
 	viewer.innerHTML = `<div class="viewer-msg">${text.replace(/[<>&]/g, (c) => `&#${c.charCodeAt(0)};`)}</div>`
+}
+
+/** How long a live edit stays flashed on a watcher's screen. */
+const FLASH_MS = 1_200
+
+let flashTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Redraws the canvas with a document the room has moved on to.
+ *
+ * `keepViewport` is the whole point of the call: a new document is normally
+ * framed, and re-framing on every op would yank the diagram out from under
+ * someone who had zoomed in to watch one corner of it.
+ */
+function showLiveUpdate(doc: WatcherDoc, change: Change | null): void {
+	const canvas = current
+	const file = data.files[activeIndex]
+	if (!canvas || file?.filename !== doc.filename) return
+
+	canvas.loadDefinitions(doc.defs, { keepViewport: true })
+
+	if (flashTimer !== null) clearTimeout(flashTimer)
+	if (change) {
+		canvas.highlight(change.touched, "changed")
+		canvas.highlight(change.created, "new")
+		flashTimer = setTimeout(() => canvas.clearHighlights(), FLASH_MS)
+	}
 }
 
 async function renderBpmn(xml: string): Promise<void> {
@@ -156,6 +190,8 @@ async function select(index: number): Promise<void> {
 
 	// AI review applies to BPMN only; reset per-file review state on switch.
 	setActiveReviewFile(file.kind === "bpmn" ? file : null)
+	// Only BPMN has an op vocabulary, so a DMN or form tab watches nothing.
+	watcher.watch(file.kind === "bpmn" ? file.filename : null)
 	exitVersionPreview()
 	if (historyPanel && !historyPanel.hidden) void loadHistory()
 
@@ -510,9 +546,29 @@ document.getElementById("historyExit")?.addEventListener("click", () => {
 // ── Presence & actions ──────────────────────────────────────────────────────
 
 const presenceEl = document.getElementById("presence") as HTMLElement
+
+/**
+ * The live document, replayed from the writer's ops.
+ *
+ * Created before the socket so `select()` can point it at a file whatever order
+ * the two happen to run in — the page renders before the socket opens.
+ */
+let watcherSend: (message: ClientMessage) => void = () => {
+	// Until the socket exists a resync would be sent into nothing. Dropping it is
+	// safe: the watcher only asks in response to a message, so there is always a
+	// live socket by the time it does.
+}
+const watcher = new DocWatcher({
+	send: (message) => watcherSend(message),
+	render: showLiveUpdate,
+})
+
 try {
 	const proto = location.protocol === "https:" ? "wss" : "ws"
 	const ws = new WebSocket(`${proto}://${location.host}/drop/api/presence/${data.shareId}`)
+	watcherSend = (message) => {
+		if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message))
+	}
 
 	// The heartbeat the room answers without waking up. It is what lets a later
 	// alarm notice a socket that has gone quiet — a closed laptop lid sends no
@@ -540,9 +596,13 @@ try {
 			return
 		}
 		if (message.type === "hello" || message.type === "presence") {
-			presenceEl.textContent = `${message.viewers} VIEWING`
+			// Saying someone is editing is what makes a diagram changing under the
+			// reader's eyes legible rather than unsettling.
+			const editing = message.holder === null ? "" : " · 1 EDITING"
+			presenceEl.textContent = `${message.viewers} VIEWING${editing}`
 			presenceEl.hidden = message.viewers < 1
 		}
+		watcher.handle(message)
 	})
 } catch {
 	// presence is decorative — ignore failures

@@ -95,7 +95,13 @@ export class DocRoom implements DurableObject {
 		server.serializeAttachment({ actor } satisfies Attachment)
 
 		const holder = await this.holder()
-		this.send(server, { type: "hello", actor, viewers: this.state.getWebSockets().length, holder })
+		this.send(server, {
+			type: "hello",
+			actor,
+			viewers: this.state.getWebSockets().length,
+			holder,
+			file: await this.holderFile(),
+		})
 		await this.broadcastPresence()
 		return new Response(null, { status: 101, webSocket: client })
 	}
@@ -242,6 +248,11 @@ export class DocRoom implements DurableObject {
 		return (await this.state.storage.get<string>("holder")) ?? null
 	}
 
+	/** The file the holder claimed, or null when nobody holds the baton. */
+	private async holderFile(): Promise<string | null> {
+		return (await this.state.storage.get<string>("holderFile")) ?? null
+	}
+
 	// ── Editing ────────────────────────────────────────────────────────────────
 
 	/**
@@ -264,7 +275,7 @@ export class DocRoom implements DurableObject {
 		const op = parseOp(message.op)
 		if (!op) return this.reject(ws, seq, "malformed")
 
-		const filename = await this.state.storage.get<string>("holderFile")
+		const filename = await this.holderFile()
 		const doc = filename ? await this.doc(filename) : null
 		if (!doc) return this.reject(ws, seq, "no-document")
 
@@ -410,9 +421,10 @@ export class DocRoom implements DurableObject {
 
 	private async broadcastPresence(excluding?: WebSocket): Promise<void> {
 		const holder = await this.holder()
+		const file = await this.holderFile()
 		const sockets = this.state.getWebSockets().filter((ws) => ws !== excluding)
 		for (const ws of sockets) {
-			this.send(ws, { type: "presence", viewers: sockets.length, holder })
+			this.send(ws, { type: "presence", viewers: sockets.length, holder, file })
 		}
 	}
 }

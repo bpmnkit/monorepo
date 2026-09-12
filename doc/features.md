@@ -1,5 +1,30 @@
 # Features
 
+## Watching someone else edit (2026-09-12)
+
+Open a drop while someone is editing it and the diagram now changes under you, live.
+
+- **Watchers are sent the op, not the document.** A move is a few hundred bytes where the
+  document is tens of kilobytes, so the watcher runs the same `applyOp` the writer and the room
+  both ran. Three machines, one function, ids travelling in the op — all three land on
+  byte-identical XML.
+- **Which is a claim, so every `applied` carries a hash.** The watcher re-serialises what it
+  produced and compares. Disagreement is not resolved by guessing which side is right: the room
+  is right, and the watcher throws its document away and asks for the current one. One round
+  trip, and it is correct again rather than subtly wrong forever.
+- **Exactly one resync per divergence.** Ops keep arriving while the answer is in flight, and
+  replaying them onto a document already declared lost would produce more mismatches and more
+  requests. A watcher awaiting `state` drops everything until it arrives.
+- **A quiet drop costs nothing.** The watcher asks for state only when the room reports a holder
+  *for the file it is showing* — so viewers of an unedited drop, and viewers on another tab of an
+  edited one, never wake the room.
+- **The view holds still.** The canvas replaces the document with `keepViewport`, so someone
+  zoomed into one corner stays there while it changes around them.
+- **Changed elements flash.** The op says what it altered; `applyOp` reports what it created.
+  Amber for changed, green for new, for just over a second.
+- **The header says why.** `4 VIEWING · 1 EDITING`, so a diagram moving on its own is legible
+  rather than unsettling.
+
 ## The room edits the document (2026-09-11)
 
 A drop's room is now the authority on what the drop *is* while anyone has it open. The holder's

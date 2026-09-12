@@ -23,6 +23,19 @@ export type Theme = "light" | "dark" | "auto" | "neon"
 export type FitMode = "contain" | "center" | "none"
 
 /** Configuration options for {@link BpmnCanvas}. */
+/** Options for {@link BpmnCanvas.load} and {@link BpmnCanvas.loadDefinitions}. */
+export interface LoadOptions {
+	/**
+	 * Keep the current pan and zoom instead of framing the new document.
+	 *
+	 * For replacing the document under a view someone is already looking at — a
+	 * live diagram being edited elsewhere, say — where re-framing on every change
+	 * would pull the canvas out from under them. Off by default: a diagram loaded
+	 * into a fresh canvas should be framed.
+	 */
+	keepViewport?: boolean
+}
+
 export interface CanvasOptions {
 	/** The DOM element to mount the canvas into. */
 	container: HTMLElement

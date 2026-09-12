@@ -12,6 +12,7 @@ import type {
 	CanvasPlugin,
 	FitMode,
 	ImportWarnings,
+	LoadOptions,
 	PlaneInfo,
 	RenderedEdge,
 	RenderedShape,
@@ -88,6 +89,14 @@ export class BpmnCanvas {
 
 	// ── Sub-systems ───────────────────────────────────────────────────
 	private readonly _viewport: ViewportController
+	/**
+	 * Suppresses the fit the next render would otherwise schedule.
+	 *
+	 * The fit is deferred a frame so the SVG has been laid out, which means a
+	 * caller cannot simply restore the viewport afterwards — its own call would
+	 * land first and be overwritten a frame later.
+	 */
+	private _skipNextFit = false
 	private readonly _keyboard: KeyboardHandler
 	private readonly _overlays: OverlayManager
 	private readonly _scene: Scene
@@ -310,16 +319,16 @@ export class BpmnCanvas {
 	 *
 	 * @throws {Error} If the XML cannot be parsed.
 	 */
-	load(xml: string): void {
+	load(xml: string, options?: LoadOptions): void {
 		const defs = Bpmn.parse(xml)
-		this.loadDefinitions(defs)
+		this.loadDefinitions(defs, options)
 	}
 
 	/**
 	 * Renders an already-parsed `BpmnDefinitions` model.
 	 * Use this when you already have the parsed model from `@bpmnkit/core`.
 	 */
-	loadDefinitions(defs: BpmnDefinitions): void {
+	loadDefinitions(defs: BpmnDefinitions, options?: LoadOptions): void {
 		// Report elements that have no diagram interchange (they would otherwise
 		// be invisible). Warnings describe the *source* model, even when we
 		// auto-layout below.
@@ -348,8 +357,12 @@ export class BpmnCanvas {
 			? [{ id: root.bpmnElement, name: this._planeName(root.bpmnElement) }]
 			: []
 
-		// A freshly loaded diagram should auto-fit again until the user interacts.
-		this._userMovedViewport = false
+		// A freshly loaded diagram should auto-fit again until the user interacts —
+		// unless the caller is replacing the document under a view someone is
+		// already looking at, in which case re-framing it is the bug.
+		const keep = options?.keepViewport === true
+		this._userMovedViewport = keep
+		this._skipNextFit = keep
 		this._renderPlane(root ?? null)
 
 		this._emit("diagram:load", rendered, this._importWarnings)
@@ -426,7 +439,11 @@ export class BpmnCanvas {
 		this._keyboard.setShapes(this._shapes)
 		this._updateBreadcrumb()
 
-		if (this._fit !== "none") {
+		// Consumed here rather than read: it applies to the one render that was
+		// asked to keep the view, never to a later plane change.
+		const skipFit = this._skipNextFit
+		this._skipNextFit = false
+		if (this._fit !== "none" && !skipFit) {
 			// Defer fit to next frame so the SVG has been laid out
 			requestAnimationFrame(() => this.fitView())
 		}

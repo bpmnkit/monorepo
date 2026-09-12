@@ -30,9 +30,13 @@ export type ClientMessage =
 /** Sent by the room. */
 export type ServerMessage =
 	/** First message on every connection: who you are, and what the room looks like. */
-	| { type: "hello"; actor: string; viewers: number; holder: string | null }
-	/** Someone joined or left, or the baton moved. */
-	| { type: "presence"; viewers: number; holder: string | null }
+	| { type: "hello"; actor: string; viewers: number; holder: string | null; file: string | null }
+	/**
+	 * Someone joined or left, or the baton moved. `file` is what the holder
+	 * claimed — a drop has many files and the baton covers one at a time, so a
+	 * viewer on a different tab knows there is nothing here for it to watch.
+	 */
+	| { type: "presence"; viewers: number; holder: string | null; file: string | null }
 	/**
 	 * You hold the baton. `idleMs` is how long you may sit still before losing it;
 	 * `version` and `hash` say what the room believes the file currently is, so a

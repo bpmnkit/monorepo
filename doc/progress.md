@@ -1,5 +1,45 @@
 # Progress
 
+## 2026-09-12 — D5: watchers replay the writer's ops
+
+The three-machine claim from D3 and D4 now has its third machine. A watcher runs `applyOp` and
+compares the hash the room broadcast — the check is what makes "byte-identical wherever it runs"
+a property rather than an intention.
+
+**The state machine is small; the subtle part is what happens after a mismatch.** Ops keep
+arriving while the resync is in flight, and replaying them onto a document already declared lost
+would produce more mismatches and more requests. So a watcher awaiting `state` drops everything
+until it arrives — which is what makes "exactly one resync" true rather than aspirational. The
+races both resolve correctly for the same reason: one socket, ordered delivery. If the room
+answers the resync before the next op, the watcher adopts version V and the op is V+1; if after,
+the op is dropped and the state already includes it.
+
+**Driving it in a browser found the bug the tests could not.** Two watcher tabs and a writer:
+both replayed the move and the rename, both flashed, presence read `4 VIEWING · 1 EDITING` — and
+the viewport shifted on every op. `loadDefinitions` schedules its fit in a `requestAnimationFrame`
+so the SVG has been laid out, so restoring the viewport right after the call lands *first* and is
+overwritten a frame later. Every consumer would hit that, so the fix is in the canvas rather than
+in Drop: `load`/`loadDefinitions` take `keepViewport`, which suppresses that one fit. Re-driven,
+the viewport is now identical before and after — `translate(220 207) scale(1)` both times.
+
+**The failing canvas test then exposed a weaker one I wrote two commits ago.** `getBoundingClientRect`
+is all zeroes under happy-dom, so a viewport derived from `scrollToElement` is `NaN` — and
+`toEqual` treats `NaN` as equal to `NaN`, so D3's round-trip test had been passing without
+asserting anything. Both now set the viewport explicitly. The new test also has to let the
+*constructor's* queued fit run before it starts, or it races that instead of the replacement.
+
+**One protocol addition came out of a failing test rather than a design.** A watcher on a
+different tab of the same drop was resyncing whenever any file was edited, because `presence`
+said someone held the baton but not what they held. It now carries `file`, and a viewer with
+nothing to watch stays quiet.
+
+**Cost:** the viewer bundle goes from 69 KB to 77.5 KB gzipped, +8.5 KB. The plan estimated +3 KB;
+that figure was the marginal cost of `modeling.ts` on a bare viewer, and Drop's carries the AI
+panel and the DMN and form viewers too. A metafile pass confirms nothing unexpected came in —
+`modeling.js` is 24.7 KB minified and is the replay vocabulary itself. Worth noting in passing:
+`bpmn-builder.js` is the single largest input at 41 KB and the viewer does not appear to use it;
+it arrives through the `@bpmnkit/core` barrel, and predates this change.
+
 ## 2026-09-11 — D4: the room replays the op
 
 D3 made an edit describable; this makes the room the one that decides whether it happened.

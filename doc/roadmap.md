@@ -324,7 +324,9 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       `@bpmnkit/editor/headless`, judges the document that comes out (`checkIntegrity`), and only
       then makes it the state; the whole document lives in DO storage, so a hibernated room
       needs no op log to catch up
-- [ ] D5 — watcher replay with a hash check and resync
+- [x] D5 — watcher replay with a hash check and resync: `DocWatcher` runs the same `applyOp` the
+      writer and the room ran, compares the room's hash, and on any divergence throws its document
+      away and asks for the current one — exactly once, however many ops arrive while it waits
 - [ ] D6 — editor loaded on claim via dynamic `import()`, viewport carried across the swap;
       brings track C with it (local checkpoints + panel, beside the server history)
 - [ ] D7 — autosave: 30 s alarm → `exportPreserving` → `'current'`, milestone on hour and release
