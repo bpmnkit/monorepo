@@ -91,13 +91,31 @@ The local D1 lives under `.wrangler/state` (gitignored); delete it to reset.
 
 ## Deploy
 
-Fastest path — after `wrangler login`, run the idempotent provisioning script, which
-creates the D1 database, applies migrations, builds, deploys, and sets the secrets
-(auto-generating the admin token and IP salt, prompting for the optional `AI_PASSCODE`):
+Fastest path — after `wrangler login`, run the idempotent provisioning script:
 
 ```sh
 pnpm --filter @bpmnkit/drop provision
 ```
+
+It creates the D1 database, applies every migration, builds the client bundles, deploys the
+Worker, and sets everything up. Re-running skips whatever is already in place, so it is safe
+to use as a repair tool as well as a first-run one. In order it:
+
+| Step | What it does |
+|---|---|
+| D1 | Creates `bpmnkit-drop` if missing and writes the id into `wrangler.jsonc` |
+| Migrations | `d1 migrations apply --remote` — the whole `migrations/` directory |
+| Route | Offers to enable `bpmnkit.com/drop*` (skip it and you get the `*.workers.dev` URL) |
+| Deploy | Builds and deploys the Worker, its Durable Object and the assets |
+| `DROP_ADMIN_TOKEN` | Generated and set; printed once at the end |
+| `REPORT_IP_SALT` | Generated and set |
+| `AI_PASSCODE` | Prompted, optional — unset leaves AI review off |
+| `TURNSTILE_SECRET` + site key | Prompted, optional — unset leaves **editing unchallenged** |
+| GitHub secrets | If `gh` is authenticated, offers to set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_DROP_API_TOKEN` so the deploy workflow works |
+
+The one thing it cannot do for you is mint the Cloudflare API token — their API will not issue a
+scoped token without one that already has permission to — so it asks you to paste it and prints
+the exact scopes to give it.
 
 ### One-time setup (what the script automates)
 

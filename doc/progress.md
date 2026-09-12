@@ -1,5 +1,28 @@
 # Progress
 
+## 2026-09-12 — provisioning covers the live-editing work
+
+`scripts/provision.mjs` already created the D1 database, applied migrations, deployed, and set
+the admin token and IP salt. It knew nothing about the two things this work added.
+
+**Turnstile, in the order that keeps the window safe.** `wrangler secret put` needs the Worker to
+exist, so the challenge cannot be configured before the first deploy. Publishing the *site key*
+first would leave a stretch where the page shows a challenge and the room ignores it — a secret
+is what enforces, and without one `verifyClaim` returns true. So the secret goes in first, then
+the key, then one more deploy. A `vars` entry only ships with a deploy; a secret takes effect on
+its own, which is why that second deploy happens only when a site key was actually added.
+
+**GitHub Actions secrets, because CI without them is worse than no CI.** `deploy-drop.yml` runs on
+every push to `main` and fails at the first wrangler step without `CLOUDFLARE_ACCOUNT_ID` and
+`CLOUDFLARE_DROP_API_TOKEN` — which looks like it is working. The script now offers to set both
+through `gh`, lifting the account id out of `wrangler whoami` and asking for the token, since
+Cloudflare's API will not mint a scoped token without one that already has permission to. Offered
+only when `gh` is authenticated: it is the one step that touches another system.
+
+**The ending says what it left off.** Finishing with "Editing is NOT challenged — anyone with a
+link can edit" in yellow is the honest summary of a deployment that skipped Turnstile, and better
+than a green "done" that hides it.
+
 ## 2026-09-12 — CI audit for the live-editing work
 
 Checking whether everything the last nine commits added actually deploys, rather than assuming
