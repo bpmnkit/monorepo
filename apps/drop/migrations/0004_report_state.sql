@@ -1,0 +1,20 @@
+-- BPMN Kit Drop — a report points at a state, not at a moving target.
+--
+-- Drops became mutable in track D, which broke an assumption the report queue
+-- had never had to state: that the content an operator reviews is the content
+-- that was reported. It is not, once anyone can edit a drop after reporting it.
+--
+-- So a report records the content hashes of every file as they were when it was
+-- filed. Two things follow, and the second is the one that matters:
+--
+--   1. The queue can say "edited since reported", instead of quietly showing
+--      something else and letting the operator draw the wrong conclusion.
+--   2. Banning acts on the *reported* hashes as well as the current ones. The
+--      ban list is keyed on content and re-checked on every save, so content
+--      that was edited away to dodge a report is refused the moment anyone
+--      edits it back.
+--
+-- A JSON array rather than a join table: it is written once, read whole with
+-- its report, and never queried across rows. Null for reports filed before this
+-- migration, which the queue renders as "not recorded" rather than guessing.
+ALTER TABLE reports ADD COLUMN content_hashes TEXT;

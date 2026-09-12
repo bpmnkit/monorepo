@@ -253,7 +253,12 @@ export async function deleteDrop(
 	const statements: D1PreparedStatement[] = []
 
 	if (options.ban) {
-		const hashes = [...new Set(await hashesForDrop(db, shareId))]
+		// The reported hashes as well as the live ones: content edited away to
+		// dodge a report is refused the moment anyone edits it back, because the
+		// ban list is keyed on content and re-checked on every save.
+		const hashes = [
+			...new Set([...(await hashesForDrop(db, shareId)), ...(await reportedHashes(db, shareId))]),
+		]
 		for (const hash of hashes) {
 			statements.push(
 				db
@@ -283,12 +288,54 @@ export async function deleteDrop(
 	return true
 }
 
+/**
+ * Every content hash a drop has worn: what was uploaded, and what it is now.
+ *
+ * Both, because a mutable drop has two answers and banning either alone leaves
+ * a way back in — ban only the upload and the edited form can be re-uploaded
+ * freely; ban only the current form and the original can. This was reading
+ * `files.content_hash` alone, which since track D has meant the *upload*, so an
+ * operator banning an edited drop was banning the wrong bytes.
+ */
 async function hashesForDrop(db: D1Database, shareId: string): Promise<string[]> {
 	const { results } = await db
-		.prepare("SELECT content_hash FROM files WHERE drop_id = ?")
+		.prepare(
+			`SELECT f.content_hash AS uploaded, cur.content_hash AS current
+			 FROM files f LEFT JOIN file_current cur ON cur.file_id = f.id
+			 WHERE f.drop_id = ?`,
+		)
 		.bind(shareId)
-		.all<{ content_hash: string }>()
-	return results.map((r) => r.content_hash)
+		.all<{ uploaded: string; current: string | null }>()
+	return results.flatMap((r) => (r.current ? [r.uploaded, r.current] : [r.uploaded]))
+}
+
+/** Every state anyone has reported this drop in. */
+async function reportedHashes(db: D1Database, shareId: string): Promise<string[]> {
+	const { results } = await db
+		.prepare("SELECT content_hashes FROM reports WHERE drop_id = ? AND content_hashes IS NOT NULL")
+		.bind(shareId)
+		.all<{ content_hashes: string }>()
+	return results.flatMap((r) => {
+		try {
+			const parsed = JSON.parse(r.content_hashes) as unknown
+			return Array.isArray(parsed) ? parsed.filter((h): h is string => typeof h === "string") : []
+		} catch {
+			return []
+		}
+	})
+}
+
+/** What a drop's files currently hash to — the state a reporter is looking at. */
+export async function currentHashes(db: D1Database, shareId: string): Promise<string[]> {
+	const { results } = await db
+		.prepare(
+			`SELECT COALESCE(cur.content_hash, f.content_hash) AS hash
+			 FROM files f LEFT JOIN file_current cur ON cur.file_id = f.id
+			 WHERE f.drop_id = ? ORDER BY f.position`,
+		)
+		.bind(shareId)
+		.all<{ hash: string }>()
+	return results.map((r) => r.hash)
 }
 
 /** Delete every drop whose sliding TTL has elapsed. Returns the number removed. */
@@ -320,16 +367,25 @@ export async function insertReport(
 		reason: ReportReason
 		details: string | null
 		reporterHash: string | null
+		/** What the drop's files hashed to when this was filed. */
+		contentHashes: string[]
 		now: number
 	},
 ): Promise<boolean> {
 	try {
 		await db
 			.prepare(
-				`INSERT INTO reports (drop_id, reason, details, reporter, status, created_at)
-				 VALUES (?, ?, ?, ?, 'open', ?)`,
+				`INSERT INTO reports (drop_id, reason, details, reporter, status, created_at, content_hashes)
+				 VALUES (?, ?, ?, ?, 'open', ?, ?)`,
 			)
-			.bind(params.shareId, params.reason, params.details, params.reporterHash, params.now)
+			.bind(
+				params.shareId,
+				params.reason,
+				params.details,
+				params.reporterHash,
+				params.now,
+				JSON.stringify(params.contentHashes),
+			)
 			.run()
 		return true
 	} catch (err) {
@@ -348,6 +404,14 @@ export interface ReportView {
 	status: string
 	created_at: number
 	drop_exists: number
+	/**
+	 * Whether the drop still holds the content that was reported.
+	 *
+	 * `"same"` — what you will see is what was reported. `"edited"` — it has
+	 * changed since, so judge the report on its description and the history, not
+	 * on what the page shows now. `"unknown"` — filed before reports recorded it.
+	 */
+	reported_state: "same" | "edited" | "unknown"
 }
 
 /** List reports by status (default open), newest first. */
@@ -358,13 +422,43 @@ export async function listReports(
 ): Promise<ReportView[]> {
 	const { results } = await db
 		.prepare(
-			`SELECT r.id, r.drop_id, r.reason, r.details, r.status, r.created_at,
+			`SELECT r.id, r.drop_id, r.reason, r.details, r.status, r.created_at, r.content_hashes,
 			        (SELECT COUNT(*) FROM drops d WHERE d.id = r.drop_id) AS drop_exists
 			 FROM reports r WHERE r.status = ? ORDER BY r.created_at DESC LIMIT ?`,
 		)
 		.bind(status, limit)
-		.all<ReportView>()
-	return results
+		.all<Omit<ReportView, "reported_state"> & { content_hashes: string | null }>()
+
+	// Compared per report rather than in SQL: the set is small, and the answer is
+	// about two lists being equal, which SQL states badly.
+	return await Promise.all(
+		results.map(async ({ content_hashes, ...row }) => ({
+			...row,
+			reported_state: await compareReported(db, row.drop_id, content_hashes),
+		})),
+	)
+}
+
+/** Whether a drop still holds what a report recorded. */
+async function compareReported(
+	db: D1Database,
+	shareId: string,
+	recorded: string | null,
+): Promise<"same" | "edited" | "unknown"> {
+	if (!recorded) return "unknown"
+	let reported: string[]
+	try {
+		reported = JSON.parse(recorded) as string[]
+	} catch {
+		return "unknown"
+	}
+	const now = await currentHashes(db, shareId)
+	// A deleted drop has no current state to differ from; the report stands as
+	// filed, which is what "same" means here.
+	if (now.length === 0) return "same"
+	return reported.length === now.length && reported.every((h, i) => h === now[i])
+		? "same"
+		: "edited"
 }
 
 /** Update a report's status. Returns false if the id was unknown. */

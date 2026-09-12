@@ -1,5 +1,21 @@
 # Features
 
+## A report points at a state (2026-09-12)
+
+Drops became editable, which quietly broke an assumption the abuse queue had never had to state:
+that what an operator reviews is what was reported.
+
+- **A report records the content as filed** — every file's hash at that moment.
+- **The queue says *edited since reported*** when the drop has moved on, so an operator judges
+  the report on its description and the history rather than on a page showing something else.
+  Reports filed before this say *not recorded*, rather than guessing.
+- **A ban acts on the reported content too.** The ban list is keyed on content and re-checked on
+  every save, so content edited away to dodge a report is refused the moment anyone edits it
+  back. Editing away from a report is not an escape.
+- **And on the uploaded bytes as well as the current ones.** Delete-and-ban was reading the
+  *upload* hash alone, which since drops became mutable meant an operator banning an edited drop
+  was banning the wrong bytes, leaving the offending form free to be re-uploaded.
+
 ## Three drops the editor will not write (2026-09-12)
 
 Anyone with the link can edit a drop — except three kinds, each for its own reason, and all three

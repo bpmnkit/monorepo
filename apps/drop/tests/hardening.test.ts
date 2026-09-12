@@ -9,7 +9,14 @@
 import { Bpmn } from "@bpmnkit/core"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Env } from "../src/env.js"
-import { getCurrentBody } from "../src/lib/db.js"
+import {
+	currentHashes,
+	deleteDrop,
+	findBannedHashes,
+	getCurrentBody,
+	insertReport,
+	listReports,
+} from "../src/lib/db.js"
 import { DocRoom } from "../src/room.js"
 import { handleJson, handleRaw } from "../src/routes/drop.js"
 import { AUTOSAVE_MS, DEMO_SHARE_ID, MAX_ROW_BYTES } from "../src/shared/constants.js"
@@ -461,5 +468,107 @@ describe("what the editor may not write", () => {
 		await deliver(anna, { type: "resync", filename: SEEDED_FILE })
 		// Read-only means read-only, not invisible.
 		expect(anna.last<{ xml: string }>("state")?.xml).toContain('id="task"')
+	})
+})
+
+describe("a report points at a state", () => {
+	/** The reporting flow, as the route runs it. */
+	async function report(shareId: string, at: number) {
+		await insertReport(db, {
+			shareId,
+			reason: "malicious",
+			details: "look at this",
+			reporterHash: null,
+			contentHashes: await currentHashes(db, shareId),
+			now: at,
+		})
+	}
+
+	/** Edits the drop through the room and saves, so D1 moves on. */
+	async function editAndSave(name: string, at: number) {
+		const anna = state.join(`anna-${at}`)
+		await claim(anna)
+		vi.setSystemTime(at)
+		await op(anna, { kind: "rename", id: "task", name })
+		await deliver(anna, { type: "release" })
+	}
+
+	beforeEach(async () => {
+		state = new FakeState()
+		db = migratedDb()
+		seedFile(db, { body: SIMPLE_BPMN })
+		await state.storage.put("shareId", "share1")
+		env = { DB: db } as unknown as Env
+		room = new DocRoom(state as unknown as DurableObjectState, env)
+	})
+
+	it("records what the reporter was looking at", async () => {
+		await report("share1", T0)
+		const row = await db
+			.prepare("SELECT content_hashes FROM reports WHERE drop_id = 'share1'")
+			.first<{ content_hashes: string }>()
+		expect(JSON.parse(row?.content_hashes ?? "[]")).toEqual(await currentHashes(db, "share1"))
+	})
+
+	it("says the content is unchanged when it is", async () => {
+		await report("share1", T0)
+		const [open] = await listReports(db, "open")
+		expect(open?.reported_state).toBe("same")
+	})
+
+	it("says so when the drop has been edited since", async () => {
+		await report("share1", T0)
+		await editAndSave("Edited after the report", T0 + 60_000)
+
+		const [open] = await listReports(db, "open")
+		// Without this the queue would show an operator a different document and
+		// let them judge the report on it.
+		expect(open?.reported_state).toBe("edited")
+	})
+
+	it("admits it does not know for a report filed before this existed", async () => {
+		await db
+			.prepare(
+				`INSERT INTO reports (drop_id, reason, details, reporter, status, created_at)
+				 VALUES ('share1', 'other', NULL, NULL, 'open', ?)`,
+			)
+			.bind(T0)
+			.run()
+		const [open] = await listReports(db, "open")
+		expect(open?.reported_state).toBe("unknown")
+	})
+
+	it("bans the reported content even after it was edited away", async () => {
+		// The state that was reported has to be neither the upload nor the current
+		// content, or `hashesForDrop` would cover it and this would prove nothing.
+		const uploaded = await currentHashes(db, "share1")
+		await editAndSave("The reported state", T0 + 30_000)
+		const reported = await currentHashes(db, "share1")
+		await report("share1", T0 + 40_000)
+		await editAndSave("Edited to dodge the report", T0 + 60_000)
+		const current = await currentHashes(db, "share1")
+
+		expect(new Set([...uploaded, ...reported, ...current]).size).toBe(3)
+
+		await deleteDrop(db, "share1", { ban: true, now: T0 + 120_000 })
+
+		// All three: what was uploaded, what was reported, and what it was edited
+		// into. Editing away from a report is not an escape, because the ban list
+		// is keyed on content and re-checked on every save.
+		expect(await findBannedHashes(db, uploaded)).toEqual(uploaded)
+		expect(await findBannedHashes(db, reported)).toEqual(reported)
+		expect(await findBannedHashes(db, current)).toEqual(current)
+	})
+
+	it("bans the uploaded bytes as well as the current ones", async () => {
+		const uploaded = await currentHashes(db, "share1")
+		await editAndSave("Edited", T0 + 60_000)
+		const edited = await currentHashes(db, "share1")
+
+		await deleteDrop(db, "share1", { ban: true, now: T0 + 120_000 })
+
+		// Banning only one leaves a way back in: re-upload the other form.
+		expect(await findBannedHashes(db, uploaded)).toEqual(uploaded)
+		expect(await findBannedHashes(db, edited)).toEqual(edited)
 	})
 })

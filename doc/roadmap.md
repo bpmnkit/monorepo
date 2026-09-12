@@ -349,7 +349,9 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       write to) offers *Edit a copy*, a pinned drop is read-only, and a file with more than one
       process is past what the editor addresses. Each refusal carries the reason
 - [ ] E4 — retention slides on edit as well as view
-- [ ] E5 — reports carry the version the reporter saw
+- [x] E5 — a report records what its reporter was looking at, the queue says *edited since
+      reported* when the drop has moved on, and a ban acts on the reported hashes as well as the
+      current ones — so editing away from a report is not an escape the reporter saw
 
 ### Design consistency — Drop + Editor on the landing system
 

@@ -152,7 +152,8 @@ CREATE TABLE reports (                       -- abuse reports (§9.4)
   details     TEXT,
   reporter    TEXT,                          -- salted SHA-256 of reporter IP (dedup/rate-limit)
   status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
-  created_at  INTEGER NOT NULL
+  created_at  INTEGER NOT NULL,
+  content_hashes TEXT                        -- JSON array: the state as reported (0004)
 );
 
 CREATE TABLE banned_hashes (                 -- deleted-for-cause content can't come back (§9.5)

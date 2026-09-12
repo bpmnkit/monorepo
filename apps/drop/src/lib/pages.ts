@@ -209,6 +209,8 @@ body.app{height:100vh;min-height:420px;display:flex;flex-direction:column;overfl
 .ed-group>*.active{background:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-surface)}
 .ed-group>*[hidden]{display:none}
 .ed-group>*:disabled{color:var(--bpmnkit-ds-ink-4);cursor:not-allowed;background:transparent}
+.rep-edited{margin-top:6px;padding:6px 8px;border-left:2px solid var(--bpmnkit-warn);color:var(--bpmnkit-ds-ink-2);font-size:var(--bpmnkit-ds-t-ui)}
+.rep-unknown{margin-top:6px;color:var(--bpmnkit-ds-ink-4);font-size:var(--bpmnkit-ds-t-ui)}
 .ed-group[hidden]{display:none}
 .ed-brand{font-size:var(--bpmnkit-ds-t-ui);font-weight:700;letter-spacing:-.02em;color:var(--bpmnkit-ds-ink)}
 .ed-brand b{color:var(--bpmnkit-ds-accent)}

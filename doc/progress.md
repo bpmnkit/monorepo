@@ -1,5 +1,34 @@
 # Progress
 
+## 2026-09-12 — E5: a report points at a state
+
+The last item in the plan, and the last consequence of drops becoming mutable: an abuse report
+named a drop, and a drop is now a moving target.
+
+**Recording the hash is the small part; what to do with it is the point.** The obvious use is the
+queue saying *edited since reported*, which it now does. The better one is that a ban acts on the
+reported hashes as well as the live ones — the ban list is keyed on content and E1 re-checks it
+on every save, so content edited away to dodge a report is refused the moment anyone edits it
+back. Editing away from a report stops being an escape.
+
+**A bug fell out of writing that.** `hashesForDrop`, which delete-and-ban uses, reads
+`files.content_hash` — the *upload*. Since track D that has not been what the drop contains, so
+an operator banning an edited drop was banning bytes nobody was serving, leaving the offending
+form free to be re-uploaded. It now bans both forms, because banning either alone leaves a way
+back in.
+
+**A test that passed for the wrong reason, caught by asking what it proved.** My first version of
+"bans the reported content even after it was edited away" reported the drop *before* any edit, so
+the reported hash was also the upload hash — which `hashesForDrop` already covers. It would have
+passed with the feature deleted. The real shape needs three distinct states: uploaded, reported,
+current. Confirmed by removing `reportedHashes` from the ban and watching that one test, and only
+that one, go red.
+
+**A snapshot was considered and rejected.** Storing the reported *body* would let an operator see
+exactly what was reported even after ten edits — and would also let anyone fill the database by
+reporting a 900 KB drop repeatedly. The hash plus an honest "this has changed" is the
+proportionate answer, and the ban behaviour above is what makes it sufficient.
+
 ## 2026-09-12 — E3: the three carve-outs
 
 The demo, a pinned drop, and a file with more than one process, all refused in the room.
