@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-09-12 — the builder stops renaming edges nobody moved
+
+`generateId("Flow")` gave every sequence flow a random id, so rebuilding an unchanged model
+produced a different file every time. For generated BPMN — which is regenerated constantly and
+read as a diff — that buries the one edge that did change under a page of edges that did not.
+
+**The id now comes from the connection.** `Flow_<source>_<target>`, derived from element ids the
+caller already chose, so the same connection is the same id on every build and an element added
+elsewhere changes nothing. Root definitions follow: `Message_Order_Received` from the message
+name, and `Error_`/`Signal_`/`Escalation_` from the code or name they are looked up by.
+
+**Assigned in a pass, not at creation.** A flow's endpoints are not final when it is made —
+`insertAfter()` re-points its source, join inference re-points its target — so an id derived on
+the spot would describe a connection the flow no longer has. `assignStableFlowIds` runs once per
+scope after the topology settles, rewrites the gateway `default` attributes that name the flows
+it renamed, and then `incoming`/`outgoing` are rebuilt from the final ids.
+
+**Several flows between one pair need telling apart, without order deciding it.** Branches
+converging on a join all connect the same two elements. Each gets a discriminator — the branch
+name, else a hash of its condition — and *every* member of the group gets one, so declaring the
+branches the other way round does not swap two ids. Only genuinely identical edges fall back to
+numbering.
+
+**What continuing a document is allowed to touch.** Flows the builder did not create keep their
+ids, reserved so a derived id cannot land on one. `continueProcess()` already refused to rewire
+the untouched remainder; it does not renumber it either.
+
+One consequence worth stating: ids are only as stable as the elements they name. `.startEvent()`
+with no id still gets a random one, and the flows around it inherit that.
+
 ## 2026-09-12 — a runbook, and a script that proves its own work
 
 `apps/drop/DEPLOY.md`: fresh clone to live, in six steps.

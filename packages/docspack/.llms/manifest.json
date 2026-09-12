@@ -1009,13 +1009,16 @@
 		{
 			"id": "guides.building-processes.multi-instance",
 			"file": "chunks/guides.building-processes.multi-instance.md",
-			"tokens": 92,
+			"tokens": 490,
 			"tags": [
 				"guides",
 				"building-processes",
 				"multi-instance"
 			],
-			"entities": []
+			"entities": [
+				"defaultFlow",
+				"continueProcess()"
+			]
 		},
 		{
 			"id": "guides.claude-code-plugin",

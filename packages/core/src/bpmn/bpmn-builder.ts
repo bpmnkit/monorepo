@@ -30,6 +30,7 @@ import {
 	restConnectorToIoMappingInputs,
 	restConnectorToTaskHeaders,
 } from "./rest-connector.js"
+import { assignStableFlowIds, rootDefinitionId } from "./stable-ids.js"
 import {
 	type ZeebeExtensions,
 	ensureZeebeExtension,
@@ -371,7 +372,11 @@ export interface AdHocSubProcessOptions extends ElementOptions {
 function resolveMessage(messageName: string, rootMessages: BpmnMessage[]): string {
 	let existing = rootMessages.find((m) => m.name === messageName)
 	if (!existing) {
-		existing = { id: generateId("Message"), name: messageName, unknownAttributes: {} }
+		existing = {
+			id: rootDefinitionId("Message", messageName, rootMessages),
+			name: messageName,
+			unknownAttributes: {},
+		}
 		rootMessages.push(existing)
 	}
 	return existing.id
@@ -416,7 +421,11 @@ function buildEventDefinitions(
 		if (codeOrRef !== undefined && rootErrors) {
 			let existing = rootErrors.find((e) => e.errorCode === codeOrRef || e.name === codeOrRef)
 			if (!existing) {
-				existing = { id: generateId("Error"), name: codeOrRef, errorCode: codeOrRef }
+				existing = {
+					id: rootDefinitionId("Error", codeOrRef, rootErrors),
+					name: codeOrRef,
+					errorCode: codeOrRef,
+				}
 				rootErrors.push(existing)
 			}
 			errorRef = existing.id
@@ -436,7 +445,10 @@ function buildEventDefinitions(
 		if (rootSignals) {
 			let existing = rootSignals.find((s) => s.name === opts.signalName)
 			if (!existing) {
-				existing = { id: generateId("Signal"), name: opts.signalName }
+				existing = {
+					id: rootDefinitionId("Signal", opts.signalName, rootSignals),
+					name: opts.signalName,
+				}
 				rootSignals.push(existing)
 			}
 			signalRef = existing.id
@@ -449,7 +461,7 @@ function buildEventDefinitions(
 			let existing = rootEscalations.find((e) => e.escalationCode === opts.escalationCode)
 			if (!existing) {
 				existing = {
-					id: generateId("Escalation"),
+					id: rootDefinitionId("Escalation", opts.escalationCode, rootEscalations),
 					name: opts.escalationCode,
 					escalationCode: opts.escalationCode,
 				}
@@ -838,8 +850,7 @@ function makeTransactionEl(
 	const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
 	const sub = new SubProcessContentBuilder(rootMessages)
 	resolved.content(sub)
-	insertJoinGateways(sub._elements, sub._flows)
-	recomputeIncomingOutgoing(sub._elements, sub._flows)
+	finalizeScope(sub._elements, sub._flows)
 
 	const element = makeFlowElement(id, "transaction", resolved.options)
 	if (element.type === "transaction") {
@@ -922,6 +933,18 @@ function insertJoinGateways(elements: BpmnFlowElement[], flows: BpmnSequenceFlow
 			})
 		}
 	}
+}
+
+/**
+ * Settles a finished scope: infer the joins its branches imply, name its
+ * sequence flows after what they connect, then rebuild the `incoming`/
+ * `outgoing` lists the ids feed. Order matters — a flow's endpoints are not
+ * final until join inference has run, and its id is not final until this pass.
+ */
+function finalizeScope(elements: BpmnFlowElement[], flows: BpmnSequenceFlow[]): void {
+	insertJoinGateways(elements, flows)
+	assignStableFlowIds(elements, flows)
+	recomputeIncomingOutgoing(elements, flows)
 }
 
 function traceBackToSplit(
@@ -1352,8 +1375,7 @@ export class BranchBuilder {
 		const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
@@ -1386,8 +1408,7 @@ export class BranchBuilder {
 		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const { extensionElements, completionCondition } = buildAdHocSubProcessExtensions(
 			resolved.options,
@@ -1410,8 +1431,7 @@ export class BranchBuilder {
 		const resolved = resolveSubProcessArgs<ElementOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
@@ -1857,8 +1877,7 @@ export class SubProcessContentBuilder {
 		const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
@@ -1891,8 +1910,7 @@ export class SubProcessContentBuilder {
 		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const { extensionElements, completionCondition } = buildAdHocSubProcessExtensions(
 			resolved.options,
@@ -1915,8 +1933,7 @@ export class SubProcessContentBuilder {
 		const resolved = resolveSubProcessArgs<ElementOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
@@ -2610,8 +2627,7 @@ export class ProcessBuilder {
 		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const { extensionElements, completionCondition } = buildAdHocSubProcessExtensions(
 			resolved.options,
@@ -2635,8 +2651,7 @@ export class ProcessBuilder {
 		const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
@@ -2671,8 +2686,7 @@ export class ProcessBuilder {
 		const resolved = resolveSubProcessArgs<ElementOptions>(content, options)
 		const sub = new SubProcessContentBuilder(this.rootMessages)
 		resolved.content(sub)
-		insertJoinGateways(sub._elements, sub._flows)
-		recomputeIncomingOutgoing(sub._elements, sub._flows)
+		finalizeScope(sub._elements, sub._flows)
 
 		const element = makeFlowElement(id, "subProcess", resolved.options)
 		if (element.type === "subProcess") {
@@ -2773,6 +2787,13 @@ export class ProcessBuilder {
 
 		this.validate()
 		this.assertSourceTopologyIntact()
+		// Flows the document already had keep their ids: continuing a model must
+		// not renumber the part the caller did not touch.
+		assignStableFlowIds(
+			this.flowElements,
+			this.sequenceFlows,
+			this._source === undefined ? undefined : new Set(this._sourceFlowTargets.keys()),
+		)
 		recomputeIncomingOutgoing(this.flowElements, this.sequenceFlows)
 
 		if (this._source !== undefined) return this.buildOntoSource(this._source)
@@ -3003,6 +3024,16 @@ export class ProcessBuilder {
 // Diagram builder — multi-process support
 // ---------------------------------------------------------------------------
 
+/** Appends the root definitions the document does not already declare, matched by id. */
+function mergeRootDefinitions<T extends { id: string }>(into: T[], incoming: readonly T[]): void {
+	const present = new Set(into.map((definition) => definition.id))
+	for (const definition of incoming) {
+		if (present.has(definition.id)) continue
+		present.add(definition.id)
+		into.push(definition)
+	}
+}
+
 /**
  * Builder for a complete BPMN definitions document containing one or more processes.
  * Use `Bpmn.createDiagram(id?)` to obtain an instance.
@@ -3032,8 +3063,11 @@ export class DiagramBuilder {
 		callback(builder)
 		const defs = builder.build()
 		this._processes.push(...defs.processes)
-		this._errors.push(...defs.errors)
-		this._messages.push(...defs.messages)
+		// Root definitions are named after the message or error code they carry, so
+		// two pools declaring the same one produce the same definition twice. The
+		// document needs it once.
+		mergeRootDefinitions(this._errors, defs.errors)
+		mergeRootDefinitions(this._messages, defs.messages)
 		return this
 	}
 
