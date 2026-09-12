@@ -22,6 +22,7 @@ import type {
 	BpmnSignal,
 	BpmnTextAnnotation,
 } from "./bpmn-model.js"
+import { createFlowElement } from "./element-shape.js"
 import type { RestConnectorConfig } from "./rest-connector.js"
 import {
 	restConnectorRetries,
@@ -464,94 +465,19 @@ function buildEventDefinitions(
 	return defs
 }
 
+/**
+ * Build an empty flow element.
+ *
+ * Delegates to `createFlowElement`, which holds the exhaustive type → shape
+ * switch; this wrapper exists so the builder's many call sites keep their
+ * shorter local name.
+ */
 function makeFlowElement(
 	id: string,
 	type: BpmnElementType,
 	options?: { name?: string; extensionElements?: XmlElement[]; documentation?: string },
 ): BpmnFlowElement {
-	const base = {
-		id,
-		name: options?.name,
-		incoming: [] as string[],
-		outgoing: [] as string[],
-		documentation: options?.documentation,
-		extensionElements: options?.extensionElements ?? [],
-		unknownAttributes: {} as Record<string, string>,
-	}
-
-	switch (type) {
-		case "startEvent":
-		case "endEvent":
-		case "intermediateThrowEvent":
-		case "intermediateCatchEvent":
-			return { ...base, type, eventDefinitions: [] }
-		case "boundaryEvent":
-			return {
-				...base,
-				type: "boundaryEvent",
-				attachedToRef: "",
-				eventDefinitions: [],
-			}
-		case "task":
-		case "serviceTask":
-		case "scriptTask":
-		case "userTask":
-		case "sendTask":
-		case "receiveTask":
-		case "businessRuleTask":
-		case "manualTask":
-		case "callActivity":
-			return { ...base, type } as BpmnFlowElement
-		case "exclusiveGateway":
-		case "inclusiveGateway":
-		case "complexGateway":
-			return { ...base, type } as BpmnFlowElement
-		case "parallelGateway":
-		case "eventBasedGateway":
-			return { ...base, type } as BpmnFlowElement
-		case "subProcess":
-			return {
-				...base,
-				type: "subProcess",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		case "adHocSubProcess":
-			return {
-				...base,
-				type: "adHocSubProcess",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		case "eventSubProcess":
-			return {
-				...base,
-				type: "eventSubProcess",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		case "transaction":
-			return {
-				...base,
-				type: "transaction",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		default:
-			return { ...base, type } as BpmnFlowElement
-	}
+	return createFlowElement(id, type, options)
 }
 
 function buildMultiInstance(options: MultiInstanceOptions): BpmnMultiInstanceLoopCharacteristics {

@@ -1,5 +1,22 @@
 # Features
 
+## Change an element's type without touching the XML (2026-09-12)
+
+- **`retypeElement(element, type)`** in `@bpmnkit/core` — swaps an element's type while keeping
+  its id, name, documentation and its incoming/outgoing sequence flows. Carries nested content
+  between containers and a multi-instance marker between types that allow one; drops Zeebe
+  extensions the new type cannot legally hold, using the `ZEEBE_PLACEMENT` table.
+- **MCP `update_element` applies `name` and `type`**, and refuses any other key instead of
+  accepting it and doing nothing.
+- **`createFlowElement(id, type, options?)`** — the one place that knows each type's shape; the
+  fluent builder uses it too.
+- **Data elements survive the compact format.** `dataObject`, `dataObjectReference` and
+  `dataStoreReference` expand to themselves with `dataObjectRef` / `dataStoreRef` /
+  `isCollection` intact, instead of arriving as bare tasks.
+- **`ELEMENT_TYPE_GROUPS`** — one grouped list of every element type. Tool schemas render from
+  it, so a schema can no longer advertise fewer types than the SDK accepts.
+
+
 ## Every element type is reachable from the builder, and stays that way (2026-09-12)
 
 The fluent builder now covers 23 of the 26 `BpmnElementType` members, and a compile-time table

@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 0.0.3. 163 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 0.0.3. 166 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -158,7 +158,10 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/core — Installation — `ensureZeebeExtension(owner, extension)`](.llms/chunks/packages.core.installation-ensurezeebeextension-owner-extension.md) — 323 tokens
 - [@bpmnkit/core — Installation — `reconcileCompact(definitions, compact, options?)`](.llms/chunks/packages.core.installation-reconcilecompact-definitions-compact-options.md) — 129 tokens
 - [@bpmnkit/core — Installation — `compactify(definitions)`](.llms/chunks/packages.core.installation-compactify-definitions.md) — 111 tokens
-- [@bpmnkit/core — Installation — `expand(compact)`](.llms/chunks/packages.core.installation-expand-compact.md) — 106 tokens
+- [@bpmnkit/core — Installation — `expand(compact)`](.llms/chunks/packages.core.installation-expand-compact.md) — 164 tokens
+- [@bpmnkit/core — Installation — `retypeElement(element, type)`](.llms/chunks/packages.core.installation-retypeelement-element-type.md) — 189 tokens
+- [@bpmnkit/core — Installation — `createFlowElement(id, type, options?)`](.llms/chunks/packages.core.installation-createflowelement-id-type-options.md) — 61 tokens
+- [@bpmnkit/core — Installation — Element catalog](.llms/chunks/packages.core.installation-element-catalog.md) — 96 tokens
 - [@bpmnkit/core — Installation — `layoutProcess(process)`](.llms/chunks/packages.core.installation-layoutprocess-process.md) — 85 tokens
 - [@bpmnkit/core — Installation — ProcessBuilder methods](.llms/chunks/packages.core.installation-processbuilder-methods.md) — 685 tokens
 - [@bpmnkit/core — Installation — Joins: inferred by default, or declared](.llms/chunks/packages.core.installation-joins-inferred-by-default-or-declared.md) — 314 tokens

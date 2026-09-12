@@ -1921,7 +1921,7 @@
 		{
 			"id": "packages.core.installation-expand-compact",
 			"file": "chunks/packages.core.installation-expand-compact.md",
-			"tokens": 106,
+			"tokens": 164,
 			"tags": [
 				"packages",
 				"core",
@@ -1931,7 +1931,61 @@
 			],
 			"entities": [
 				"BpmnDefinitions",
-				"CompactDiagram"
+				"CompactDiagram",
+				"BpmnElementType",
+				"dataObject",
+				"dataObjectReference",
+				"dataStoreReference"
+			]
+		},
+		{
+			"id": "packages.core.installation-retypeelement-element-type",
+			"file": "chunks/packages.core.installation-retypeelement-element-type.md",
+			"tokens": 189,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"retypeelement",
+				"element",
+				"type"
+			],
+			"entities": [
+				"ensureZeebeExtension",
+				"serviceTask",
+				"manualTask"
+			]
+		},
+		{
+			"id": "packages.core.installation-createflowelement-id-type-options",
+			"file": "chunks/packages.core.installation-createflowelement-id-type-options.md",
+			"tokens": 61,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"createflowelement",
+				"type",
+				"options"
+			],
+			"entities": [
+				"BpmnElementType"
+			]
+		},
+		{
+			"id": "packages.core.installation-element-catalog",
+			"file": "chunks/packages.core.installation-element-catalog.md",
+			"tokens": 96,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"element",
+				"catalog"
+			],
+			"entities": [
+				"BpmnElementType",
+				"allElementTypes()"
 			]
 		},
 		{

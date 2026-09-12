@@ -283,6 +283,41 @@ const definitions = expand(compactDiagram);
 const xml = Bpmn.export(definitions);
 ```
 
+Every element type the model knows expands to itself, data elements included. The switch is
+exhaustive, so a new `BpmnElementType` fails the build here rather than silently arriving as a
+`task` — which is how `dataObject`, `dataObjectReference` and `dataStoreReference` were lost.
+
+### `retypeElement(element, type)`
+
+Returns a copy of a flow element with a different `type`, keeping its id, name, documentation
+and — crucially — its incoming and outgoing sequence flows. Use this to change a task's type
+instead of removing and re-adding the element, which drops the wiring.
+
+```typescript
+import { retypeElement } from "@bpmnkit/core";
+
+const index = process.flowElements.findIndex((el) => el.id === "charge");
+process.flowElements[index] = retypeElement(process.flowElements[index], "manualTask");
+```
+
+Nested content is carried between container types, and a multi-instance marker between types
+that both allow one. Zeebe extensions the new type cannot legally hold are dropped, using the
+same placement table `ensureZeebeExtension` enforces — so a `serviceTask` retyped to
+`manualTask` does not keep a job worker the engine would refuse.
+
+### `createFlowElement(id, type, options?)`
+
+Builds an empty flow element of any `BpmnElementType`, with the right shape for that type.
+This is the single place that mapping lives; the fluent builder uses it too.
+
+### Element catalog
+
+`ELEMENT_TYPE_GROUPS` maps every `BpmnElementType` to one of `event`, `task`, `gateway`,
+`container` or `data`, with `allElementTypes()` and `elementTypesInGroup(group)` over it. Tool
+schemas and prompts render their type lists from this rather than hard-coding one — a
+hand-written list is how the MCP schema came to advertise 18 types while the compact path
+accepted 23.
+
 ### `layoutProcess(process)`
 
 Runs the Sugiyama auto-layout algorithm on a `BpmnProcess` object.
