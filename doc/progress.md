@@ -1,5 +1,37 @@
 # Progress
 
+## 2026-09-12 — CI audit for the live-editing work
+
+Checking whether everything the last nine commits added actually deploys, rather than assuming
+it. The pipeline itself is sound — `deploy-drop.yml` builds the client bundles, applies D1
+migrations (`0003_versions`, `0004_report_state` included, since it runs the whole directory) and
+deploys the Worker with the Durable Object and its `renamed_classes` migration. A forced clean
+build followed by `wrangler deploy --dry-run` produces exactly the right asset set and bundles.
+
+Three real gaps, all found by looking rather than reasoning:
+
+**The deploy trigger did not list `packages/editor`.** Drop gained that dependency in D4 — the
+room replays ops through `@bpmnkit/editor/headless`, and the browser loads the editor itself on
+claim. The workflow enumerates its workspace dependencies by path, so an editor-only change would
+have shipped to npm and never reached the Worker.
+
+**`apps/drop/turbo.json` declared only `public/drop/assets/**` as an output**, while the build
+also writes `public/drop/fonts/**`. No workflow configures remote caching and CI checks out
+fresh, so it cannot bite today — but it bit me locally within a minute of looking, and it would
+bite CI the moment anyone caches `.turbo`.
+
+**A missing editor chunk killed the Edit button silently.** Code splitting in D6 means the editor
+arrives at the click, and a deploy between page load and click leaves a cached bundle asking for
+a chunk hash that no longer exists. `enterEditMode` destroyed the canvas *before* awaiting the
+import, so a rejection left the baton held, the canvas gone and the page blank, with nothing
+said. The import now happens first, so a failure costs nothing; the baton goes straight back, and
+the reader keeps the canvas they had. Verified by aborting the chunk request in a browser: the
+diagram survives, Edit stays offered, no uncaught errors, and another tab can still claim.
+
+A fourth thing surfaced while fixing the third: handing the baton back earns a `revoked` from the
+room whose own message replaced the real reason, so the user was told "You are reading again"
+instead of why. A release we asked for ourselves now stays quiet.
+
 ## 2026-09-12 — E5: a report points at a state
 
 The last item in the plan, and the last consequence of drops becoming mutable: an abuse report

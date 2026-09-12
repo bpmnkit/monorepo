@@ -7,6 +7,10 @@ on:
       - "apps/drop/**"
       - "packages/core/**"
       - "packages/canvas/**"
+      # The room replays the writer's ops through @bpmnkit/editor/headless, and
+      # the browser loads the editor itself on claim — a change to either is a
+      # change to what Drop serves.
+      - "packages/editor/**"
       - "packages/plugins/**"
       - "packages/ui/**"
   workflow_dispatch:

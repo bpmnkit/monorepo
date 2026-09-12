@@ -668,6 +668,8 @@ let widgetId: string | null = null
 let session: import("./edit-session.js").EditSession | null = null
 /** The file the editor is open on, for going back to it afterwards. */
 let editingFile: string | null = null
+/** Set when we let the baton go ourselves and have already said why. */
+let quietRelease = false
 /** Numbers this writer's ops, so a rejection can name the one it refused. */
 let opSeq = 0
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
@@ -752,6 +754,23 @@ async function dropACopy(file: DropFile): Promise<void> {
  * in the diagram at the moment you start editing is disorienting.
  */
 async function enterEditMode(granted: { filename: string; xml: string }): Promise<void> {
+	// Fetched before anything is torn down, because it can fail to arrive: a
+	// deploy between this page loading and this click leaves the cached bundle
+	// asking for a chunk hash that no longer exists. Loading first means a
+	// failure costs nothing — the reader keeps the canvas they had.
+	let startEditSession: typeof import("./edit-session.js").startEditSession
+	try {
+		;({ startEditSession } = await import("./edit-session.js"))
+	} catch {
+		// Hand the baton straight back, or the drop stays locked by a tab that
+		// never got an editor. The release earns a `revoked` whose own message
+		// would otherwise replace this one — the reason is what matters here.
+		quietRelease = true
+		watcherSend({ type: "release" })
+		notice("Couldn't load the editor. Reload the page and try again.", 8_000)
+		return
+	}
+
 	const viewport = current?.getViewport() ?? { tx: 0, ty: 0, scale: 1 }
 	// The watcher and the editor must not both be driving the canvas.
 	watcher.watch(null)
@@ -760,7 +779,6 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	viewer.innerHTML = ""
 
 	editingFile = granted.filename
-	const { startEditSession } = await import("./edit-session.js")
 	session = startEditSession({
 		container: viewer,
 		xml: granted.xml,
@@ -828,7 +846,8 @@ function handleEditMessage(message: ServerMessage): void {
 			)
 			return
 		case "revoked":
-			notice(REVOKE_TEXT[message.reason] ?? "Editing ended.")
+			if (quietRelease && message.reason === "released") quietRelease = false
+			else notice(REVOKE_TEXT[message.reason] ?? "Editing ended.")
 			leaveEditMode()
 			return
 		case "rejected":
