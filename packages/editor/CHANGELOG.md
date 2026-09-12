@@ -1,5 +1,50 @@
 # @bpmnkit/editor
 
+## 0.2.0
+
+### Minor Changes
+
+- e4c16a9: Add a `@bpmnkit/editor/headless` entry point: `applyOp`, the id factories, and
+  the types an op is built from, with nothing that touches the DOM.
+
+  The package root reaches for `document` the moment it is imported — it is an
+  editor. The part that decides _what an edit does_ never does, and has to run
+  where there is no DOM at all: a server replaying a writer's op to verify it, or
+  a viewer applying one without an editor loaded. Importing the root there would
+  pull the canvas in behind it; this subpath will not.
+
+- e4c16a9: `undo()` and `redo()` now emit `diagram:op` as a whole-document `snapshot`.
+
+  They previously said nothing, on the reasoning that they replace the document
+  rather than advance it. That was wrong for the case the event exists to serve:
+  a listener relaying edits to other people never heard about an undo, and was
+  silently wrong from then on. The command stack records states, not inverses, so
+  a snapshot is the smallest honest description available.
+
+  `loadDefinitions` still says nothing — that is the host replacing the document,
+  not the user changing it.
+
+- e4c16a9: Editor edits now describe themselves, so the same edit can be replayed elsewhere.
+  - `diagram:op` fires alongside `diagram:change` for every edit, carrying an
+    `EditorOp` — a few hundred bytes where the document is hundreds of kilobytes.
+    Undo, redo and `loadDefinitions` replace the document rather than advance it,
+    and stay silent.
+  - `applyOp(defs, op)` performs an op. It is also how the editor performs its own
+    edits, so a local edit and its replay cannot drift.
+  - Element ids travel in the op as a seed: `createIdFactory(seed)` mints the same
+    sequence on every machine, and the modeling functions take an optional
+    `IdFactory`. The same op yields byte-identical XML wherever it runs.
+  - `getViewport()` / `setViewport()` are public on `BpmnCanvas` and `BpmnEditor`,
+    so a view survives being handed from one to the other without a re-fit.
+
+### Patch Changes
+
+- Updated dependencies [8fdc6d4]
+- Updated dependencies [e4c16a9]
+- Updated dependencies [e4c16a9]
+  - @bpmnkit/core@0.4.0
+  - @bpmnkit/canvas@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

@@ -1,5 +1,12 @@
 # @bpmnkit/ascii
 
+## 0.0.33
+
+### Patch Changes
+
+- Updated dependencies [8fdc6d4]
+  - @bpmnkit/core@0.4.0
+
 ## 0.0.32
 
 ### Patch Changes

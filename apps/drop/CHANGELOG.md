@@ -1,5 +1,19 @@
 # @bpmnkit/drop
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [8fdc6d4]
+- Updated dependencies [e4c16a9]
+- Updated dependencies [e4c16a9]
+- Updated dependencies [e4c16a9]
+- Updated dependencies [e4c16a9]
+  - @bpmnkit/core@0.4.0
+  - @bpmnkit/canvas@0.2.0
+  - @bpmnkit/editor@0.2.0
+  - @bpmnkit/plugins@0.3.1
+
 ## 0.0.4
 
 ### Patch Changes
