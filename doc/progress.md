@@ -1,5 +1,31 @@
 # Progress
 
+## 2026-09-12 — E3: the three carve-outs
+
+The demo, a pinned drop, and a file with more than one process, all refused in the room.
+
+**The demo was already refused, but for the wrong reason.** I said last time that the room did
+not enforce it; checking rather than assuming, the claim did fail — `loadDocFromDb` misses on a
+drop with no D1 row, and the room answered `no-document`. Correct outcome, misleading message,
+and it would have started reading as a bug the moment anything else could produce the same
+answer. The demo is now refused by name, before the room goes looking.
+
+**Each refusal carries its reason, and that shaped the UI too.** `read-only` with a sentence
+attached, so the page can say *"the editor handles one process at a time, and this file has
+several"* rather than shrugging. The button is disabled with that in its tooltip rather than
+hidden: a button that is not there looks like a feature you do not have, where a disabled one
+with a reason is a fact about this file.
+
+**The demo needed an affordance, not just a refusal.** The plan asked for *edit a copy*, and the
+upload endpoint already does exactly that — fetch the demo's XML, post it back, follow the new
+share id. Ten lines, no new server code, and the copy is a drop you own. Driven in a browser: the
+button reads **Edit a copy**, and following it lands on a fresh drop whose own button reads
+**Edit** and is enabled.
+
+**Verified as an API, not as a page.** Each case was driven twice — once through the topbar, once
+by opening a socket and claiming directly, which is what devtools gives anyone. Pinned and
+two-process both come back `read-only` with their reason; an ordinary drop comes back `granted`.
+
 ## 2026-09-12 — E2: challenging the claim
 
 Turnstile on `claim`, which is the placement the design argued for and the one worth restating:

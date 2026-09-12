@@ -12,7 +12,7 @@ import type { Env } from "../src/env.js"
 import { getCurrentBody } from "../src/lib/db.js"
 import { DocRoom } from "../src/room.js"
 import { handleJson, handleRaw } from "../src/routes/drop.js"
-import { AUTOSAVE_MS, MAX_ROW_BYTES } from "../src/shared/constants.js"
+import { AUTOSAVE_MS, DEMO_SHARE_ID, MAX_ROW_BYTES } from "../src/shared/constants.js"
 import { migratedDb, seedFile } from "./d1.js"
 import { type FakeSocket, FakeState, stubWebSocketGlobals } from "./do-state.js"
 import { SEEDED_FILE, SIMPLE_BPMN } from "./fixtures.js"
@@ -374,5 +374,92 @@ describe("challenging the claim", () => {
 		await deliver(anna, { type: "claim", filename: SEEDED_FILE, token: "good" })
 		// Failing open would mean anyone who can cause an outage can skip the check.
 		expect(anna.last("rejected")).toMatchObject({ reason: "unverified" })
+	})
+})
+
+describe("what the editor may not write", () => {
+	/** A BPMN document with two processes, which the editor cannot address. */
+	const TWO_PROCESSES = SIMPLE_BPMN.replace(
+		"</bpmn:process>",
+		`</bpmn:process>
+  <bpmn:process id="second" isExecutable="false">
+    <bpmn:startEvent id="start2" name="Second"/>
+  </bpmn:process>`,
+	).replace(
+		'<bpmndi:BPMNShape id="start_di"',
+		`<bpmndi:BPMNShape id="start2_di" bpmnElement="start2">
+        <dc:Bounds x="82" y="300" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="start_di"`,
+	)
+
+	/** Points the room at a differently-seeded drop. */
+	async function reseed(opts: { shareId?: string; body?: string; pinned?: boolean }) {
+		state = new FakeState()
+		db = migratedDb()
+		const shareId = opts.shareId ?? "share1"
+		seedFile(db, { shareId, body: opts.body ?? SIMPLE_BPMN })
+		if (opts.pinned) {
+			await db.prepare("UPDATE drops SET expires_at = NULL WHERE id = ?").bind(shareId).run()
+		}
+		await state.storage.put("shareId", shareId)
+		env = { DB: db } as unknown as Env
+		room = new DocRoom(state as unknown as DurableObjectState, env)
+	}
+
+	it("refuses the demo drop, which has nothing to write to", async () => {
+		await reseed({ shareId: DEMO_SHARE_ID })
+		const anna = state.join("anna")
+		await claim(anna)
+
+		expect(anna.last("rejected")).toMatchObject({ reason: "read-only" })
+		expect(anna.last<{ detail: string }>("rejected")?.detail).toContain("demo")
+		expect(anna.last("granted")).toBeUndefined()
+		expect(await state.storage.get("holder")).toBeUndefined()
+	})
+
+	it("refuses a pinned drop", async () => {
+		await reseed({ pinned: true })
+		const anna = state.join("anna")
+		await claim(anna)
+
+		expect(anna.last("rejected")).toMatchObject({ reason: "read-only" })
+		expect(anna.last<{ detail: string }>("rejected")?.detail).toContain("pinned")
+	})
+
+	it("refuses a file with more than one process", async () => {
+		await reseed({ body: TWO_PROCESSES })
+		const anna = state.join("anna")
+		await claim(anna)
+
+		expect(anna.last("rejected")).toMatchObject({ reason: "read-only" })
+		expect(anna.last<{ detail: string }>("rejected")?.detail).toContain("one process")
+	})
+
+	it("still allows an ordinary single-process drop", async () => {
+		await reseed({})
+		const anna = state.join("anna")
+		await claim(anna)
+		expect(anna.last("granted")).toBeDefined()
+		expect(anna.last("rejected")).toBeUndefined()
+	})
+
+	it("enforces it on the socket, not by hiding a button", async () => {
+		// The page's own check is a courtesy. This is the one that counts: a claim
+		// straight over the socket, which is what devtools gives anyone.
+		await reseed({ pinned: true })
+		const anna = state.join("anna")
+		await claim(anna)
+		await move(anna)
+		expect(anna.last("applied")).toBeUndefined()
+		expect(anna.last("rejected")).toMatchObject({ reason: "not-holder" })
+	})
+
+	it("leaves a pinned drop readable", async () => {
+		await reseed({ pinned: true })
+		const anna = state.join("anna")
+		await deliver(anna, { type: "resync", filename: SEEDED_FILE })
+		// Read-only means read-only, not invisible.
+		expect(anna.last<{ xml: string }>("state")?.xml).toContain('id="task"')
 	})
 })

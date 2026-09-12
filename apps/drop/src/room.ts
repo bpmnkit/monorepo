@@ -11,6 +11,13 @@ import {
 	storedBody,
 	writeDoc,
 } from "./lib/doc.js"
+import {
+	type ReadOnlyReason,
+	describeReadOnly,
+	isDemoShare,
+	isMultiProcess,
+	isPinned,
+} from "./lib/editable.js"
 import { describeProblem } from "./lib/integrity.js"
 import { parseOp } from "./lib/op-guard.js"
 import { verifyTurnstile } from "./lib/turnstile.js"
@@ -200,6 +207,12 @@ export class DocRoom implements DurableObject {
 
 		if (!(await this.verifyClaim(ws, token))) return
 
+		const shareId = (await this.state.storage.get<string>("shareId")) ?? ""
+		// The demo has no row to write to, so it is refused before the room even
+		// looks for a document — the miss would otherwise read as "not found".
+		if (isDemoShare(shareId)) return this.refuse(ws, "demo")
+		if (await isPinned(this.env.DB, shareId)) return this.refuse(ws, "pinned")
+
 		// Loading before granting means "Edit" fails loudly on a file the room
 		// cannot write, rather than succeeding and rejecting the first op.
 		const doc = await this.doc(filename)
@@ -207,6 +220,7 @@ export class DocRoom implements DurableObject {
 			this.send(ws, { type: "rejected", seq: 0, reason: "no-document" })
 			return
 		}
+		if (isMultiProcess(doc.defs)) return this.refuse(ws, "multi-process")
 
 		// The session id is what keeps one person's milestone from being overwritten
 		// by the next person's inside the same hour — see the plan's §2.4.
@@ -443,6 +457,11 @@ export class DocRoom implements DurableObject {
 		await this.state.storage.put(sourceKey(filename), loaded.source)
 		this.docs.set(filename, loaded.doc)
 		return loaded.doc
+	}
+
+	/** Turns down a claim for a file the editor may not write, with the reason. */
+	private refuse(ws: WebSocket, reason: ReadOnlyReason): void {
+		this.reject(ws, 0, "read-only", describeReadOnly(reason))
 	}
 
 	private reject(ws: WebSocket, seq: number, reason: RejectReason, detail?: string): void {

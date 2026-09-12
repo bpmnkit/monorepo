@@ -345,7 +345,9 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       the widget rendered on Edit rather than on the page and the content policy widened only
       where it can appear. Off unless `TURNSTILE_SECRET` is set; set without a site key, every
       claim fails
-- [ ] E3 — demo and pinned drops read-only; Edit gated on `processes.length === 1`
+- [x] E3 — three carve-outs enforced on the socket, not by hiding a button: the demo (no row to
+      write to) offers *Edit a copy*, a pinned drop is read-only, and a file with more than one
+      process is past what the editor addresses. Each refusal carries the reason
 - [ ] E4 — retention slides on edit as well as view
 - [ ] E5 — reports carry the version the reporter saw
 

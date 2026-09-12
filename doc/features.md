@@ -1,5 +1,24 @@
 # Features
 
+## Three drops the editor will not write (2026-09-12)
+
+Anyone with the link can edit a drop — except three kinds, each for its own reason, and all three
+enforced on the socket rather than by hiding a button. A hidden button is a suggestion; a socket
+is an API, and anyone who opens devtools has one.
+
+- **The demo** is served from memory with no row behind it, so there is nothing to save to. Its
+  button says **Edit a copy** and makes you a real drop of your own from the same diagram — which
+  the upload endpoint already does, with no new server code.
+- **A pinned drop** — one an operator marked as never expiring — is a fixture or a reference.
+  Anyone-with-the-link editing is right for an ordinary drop and wrong for that one.
+- **More than one process** is past what the editor addresses. It edits one process; a file with
+  several would come back with the others intact but unreachable, which is worse than declining.
+
+The button is **disabled with the reason in its tooltip** rather than removed, because a button
+that is not there looks like a feature you do not have rather than one this file cannot use. The
+room says the same thing back if a claim arrives anyway, and a read-only drop stays perfectly
+readable.
+
 ## One challenge per editing session (2026-09-12)
 
 A drop is editable by anyone with the link, so taking the edit baton can be challenged with

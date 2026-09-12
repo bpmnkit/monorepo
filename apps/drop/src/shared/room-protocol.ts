@@ -113,6 +113,9 @@ export type RevokeReason = "released" | "idle" | "disconnected" | "banned" | "to
  *   the room has stopped taking edits.
  * - `unverified` — the claim carried no Turnstile token, or one Cloudflare did
  *   not accept. The page asks again; a script has to solve one per drop.
+ * - `read-only` — this file is not one the editor may write: the built-in demo,
+ *   a drop an operator has pinned, or a diagram with more than one process.
+ *   `detail` says which, because "no" without a reason reads as a bug.
  */
 export type RejectReason =
 	| "not-holder"
@@ -123,6 +126,7 @@ export type RejectReason =
 	| "too-large"
 	| "banned"
 	| "unverified"
+	| "read-only"
 
 /**
  * The heartbeat. Cloudflare answers this without waking the object, so a room

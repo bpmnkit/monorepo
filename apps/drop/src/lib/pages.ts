@@ -208,6 +208,7 @@ body.app{height:100vh;min-height:420px;display:flex;flex-direction:column;overfl
 .ed-group>*:hover{background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-ink)}
 .ed-group>*.active{background:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-surface)}
 .ed-group>*[hidden]{display:none}
+.ed-group>*:disabled{color:var(--bpmnkit-ds-ink-4);cursor:not-allowed;background:transparent}
 .ed-group[hidden]{display:none}
 .ed-brand{font-size:var(--bpmnkit-ds-t-ui);font-weight:700;letter-spacing:-.02em;color:var(--bpmnkit-ds-ink)}
 .ed-brand b{color:var(--bpmnkit-ds-accent)}
@@ -578,8 +579,14 @@ ${
 					kind: f.kind,
 					name: f.name,
 					decisionIds: f.meta.decisionIds ?? [],
+					// The editor addresses one process; the page says so up front
+					// rather than offering Edit and having the room turn it down.
+					processes: f.meta.processes ?? 1,
 				})),
 				primaryIndex: primary,
+				// An operator marked this drop as never expiring, which also makes it
+				// read-only — anyone-with-the-link editing is wrong for a fixture.
+				pinned: drop.expires_at === null,
 				turnstileKey,
 			},
 		},

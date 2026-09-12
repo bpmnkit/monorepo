@@ -19,11 +19,15 @@ interface DropFile {
 	kind: FileKind
 	name: string | null
 	decisionIds: string[]
+	/** BPMN process count. The editor addresses one; several means read-only. */
+	processes: number
 }
 interface DropData {
 	shareId: string
 	files: DropFile[]
 	primaryIndex: number
+	/** Pinned by an operator: never expires, and read-only for the same reason. */
+	pinned?: boolean
 	/** Turnstile site key, when the deployment challenges claims. Absent = it does not. */
 	turnstileKey?: string
 }
@@ -48,6 +52,12 @@ injectUiStyles()
 const data = JSON.parse(
 	(document.getElementById("drop-data") as HTMLScriptElement).textContent ?? "{}",
 ) as DropData
+
+/** The built-in demo: served from memory, with no row behind it to write to. */
+const isDemo = data.shareId === DEMO_SHARE_ID
+
+/** Where a new drop is created. The same endpoint the drop zone posts to. */
+const DROP_UPLOAD_PATH = "/drop/api/drops"
 
 const viewer = document.getElementById("viewer") as HTMLDivElement
 const dlOriginal = document.getElementById("dlOriginal") as HTMLAnchorElement
@@ -672,13 +682,65 @@ function notice(text: string, holdMs = 4_000): void {
 	}, holdMs)
 }
 
-/** Edit is offered for BPMN files of a real drop — the demo has nowhere to save. */
+/**
+ * Why this file cannot be edited, or null when it can.
+ *
+ * The same three rules the room enforces, asked here so the button can say no
+ * before the click rather than after it. The room is what actually decides —
+ * this is the courtesy, not the control.
+ */
+function readOnlyReason(file: DropFile | undefined): string | null {
+	if (!file || file.kind !== "bpmn") return null
+	if (isDemo) return "The demo cannot be edited — take a copy to make one you own."
+	if (data.pinned) return "This drop is pinned by an operator and is read-only."
+	if (file.processes !== 1) {
+		return "The editor handles one process at a time, and this file has several."
+	}
+	return null
+}
+
+/**
+ * Puts the topbar into reading, editing, or cannot-edit.
+ *
+ * The demo gets a working button rather than a disabled one: there *is*
+ * something useful to do with it, which is to take a copy you own.
+ */
 function updateEditAffordance(): void {
 	const file = data.files[activeIndex]
-	const editable = file?.kind === "bpmn" && data.shareId !== DEMO_SHARE_ID
-	if (editBtn) editBtn.hidden = !editable || session !== null
+	const isBpmn = file?.kind === "bpmn"
+	const blocked = readOnlyReason(file)
+
+	if (editBtn) {
+		editBtn.hidden = !isBpmn || session !== null
+		editBtn.textContent = isDemo ? "Edit a copy" : "Edit"
+		// Disabled with a reason beats hidden: a button that is not there looks
+		// like a feature you do not have, rather than one this file cannot use.
+		editBtn.disabled = blocked !== null && !isDemo
+		editBtn.title = blocked ?? ""
+	}
 	if (doneBtn) doneBtn.hidden = session === null
 	if (localHistoryBtn) localHistoryBtn.hidden = session === null
+}
+
+/**
+ * Uploads the demo's contents as a new drop and goes there.
+ *
+ * The demo has no row to write to, so "edit" has to mean "make one you own" —
+ * which the existing upload endpoint already does, with no new server code.
+ */
+async function dropACopy(file: DropFile): Promise<void> {
+	notice("Making you a copy…", 10_000)
+	try {
+		const xml = await (await fetch(contentUrl(file))).text()
+		const body = new FormData()
+		body.append("files", new File([xml], file.filename, { type: "application/xml" }), file.filename)
+		const res = await fetch(DROP_UPLOAD_PATH, { method: "POST", body })
+		if (!res.ok) throw new Error(String(res.status))
+		const created = (await res.json()) as { url: string }
+		location.href = created.url
+	} catch {
+		notice("Couldn't make a copy. Please try again.")
+	}
 }
 
 /**
@@ -774,6 +836,12 @@ function handleEditMessage(message: ServerMessage): void {
 				notice("That check did not go through. Try Edit again.")
 				return
 			}
+			if (message.reason === "read-only") {
+				// The room decides, and it says why — the button's own check is only
+				// a courtesy and can be out of date with what the server believes.
+				notice(message.detail ?? "This file cannot be edited.")
+				return
+			}
 			// The editor applied this locally already, so the local document is now
 			// ahead of the truth. Rather than guess at an inverse, take the room's.
 			if (session && editingFile) {
@@ -858,6 +926,7 @@ function challenge(): Promise<ChallengeResult> {
 editBtn?.addEventListener("click", () => {
 	const file = data.files[activeIndex]
 	if (!file) return
+	if (isDemo) return void dropACopy(file)
 	void challenge().then((result) => {
 		if (!result.ok) {
 			// Cancelling is a decision and needs no comment; a challenge that could
