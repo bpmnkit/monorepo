@@ -113,6 +113,26 @@ function applyMigrations() {
 	interactive(["d1", "migrations", "apply", DB_NAME, "--remote"])
 }
 
+/**
+ * Deploys, and reads the Worker's address out of what wrangler prints.
+ *
+ * Captured rather than streamed because the URL is the one thing the rest of
+ * this script needs and there is no other reliable way to ask for it — the
+ * shape of `wrangler deployments list` moves between versions. The output is
+ * printed either way, so nothing is hidden.
+ */
+function deploy() {
+	const r = spawnSync("wrangler", ["deploy"], { cwd: appDir, encoding: "utf8" })
+	if (r.error) throw r.error
+	const output = `${r.stdout ?? ""}${r.stderr ?? ""}`
+	process.stdout.write(output)
+	if (r.status !== 0) throw new Error("wrangler deploy failed")
+
+	const workersDev = /https:\/\/\S+\.workers\.dev/.exec(output)?.[0]
+	const route = /\b([\w.-]+\.\w+)\/drop\*/.exec(output)?.[1]
+	return route ? `https://${route}` : (workersDev ?? null)
+}
+
 function buildAndDeploy() {
 	log("Building client bundles")
 	const build = spawnSync("pnpm", ["turbo", "build", "--filter", "@bpmnkit/drop"], {
@@ -122,7 +142,36 @@ function buildAndDeploy() {
 	if (build.status !== 0) throw new Error("build failed")
 
 	log("Deploying Worker")
-	interactive(["deploy"])
+	return deploy()
+}
+
+/**
+ * Asks the deployment to prove it is alive before calling any of this done.
+ *
+ * Three requests, each covering a different half of the stack: the stats
+ * endpoint reads D1, the demo page is served from memory and renders the
+ * viewer, and the asset is what the browser actually loads. A green "done"
+ * that never touched the thing it deployed is not worth printing.
+ */
+async function smokeTest(baseUrl) {
+	if (!baseUrl) {
+		console.log("  could not work out the Worker URL — check it by hand")
+		return
+	}
+	const checks = [
+		["D1 + Worker", `${baseUrl}/drop/api/stats`],
+		["demo page", `${baseUrl}/drop/demo-loan-approval`],
+		["client bundle", `${baseUrl}/drop/assets/viewer.js`],
+	]
+	for (const [what, url] of checks) {
+		try {
+			const res = await fetch(url, { redirect: "follow" })
+			const mark = res.ok ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m"
+			console.log(`  ${mark} ${what} — ${res.status} ${url}`)
+		} catch (err) {
+			console.log(`  \x1b[31m✗\x1b[0m ${what} — ${err.message}`)
+		}
+	}
 }
 
 function putSecret(name, value) {
@@ -284,7 +333,7 @@ async function main() {
 	ensureDatabase()
 	applyMigrations()
 	await maybeEnableRoute()
-	buildAndDeploy()
+	let url = buildAndDeploy()
 	const { adminToken, existing } = await configureSecrets()
 	const turnstileAdded = await configureTurnstile(existing)
 
@@ -292,13 +341,16 @@ async function main() {
 	// deploy, so this is here for the site key and nothing else.
 	if (turnstileAdded) {
 		log("Deploying again, to publish the Turnstile site key")
-		interactive(["deploy"])
+		url = deploy() ?? url
 	}
 
 	await configureCiSecrets()
 
+	log("Checking the deployment answers")
+	await smokeTest(url)
+
 	log("Done")
-	console.log("The Worker is deployed. Its URL is printed in the deploy output above.")
+	if (url) console.log(`Drop is live at ${url}/drop`)
 	if (turnstileAdded) console.log("Editing is challenged with Turnstile.")
 	else console.log("\x1b[33mEditing is NOT challenged — anyone with a link can edit.\x1b[0m")
 	if (adminToken) {
@@ -306,7 +358,7 @@ async function main() {
 		console.log(`  DROP_ADMIN_TOKEN = ${adminToken}`)
 		console.log("Use it to log in at /drop/admin.")
 	}
-	console.log("\nDemo drop: <worker-url>/drop/demo-loan-approval")
+	if (url) console.log(`\nDemo drop: ${url}/drop/demo-loan-approval`)
 }
 
 try {

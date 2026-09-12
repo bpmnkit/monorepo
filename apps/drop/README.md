@@ -91,6 +91,9 @@ The local D1 lives under `.wrangler/state` (gitignored); delete it to reset.
 
 ## Deploy
 
+**[DEPLOY.md](./DEPLOY.md) is the step-by-step runbook** — what to have ready before you start,
+what the script asks, and how to check it worked. The short version follows.
+
 Fastest path — after `wrangler login`, run the idempotent provisioning script:
 
 ```sh

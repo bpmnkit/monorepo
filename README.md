@@ -265,7 +265,7 @@ with `wrangler login`, build, then deploy:
 | App | Target | Command |
 |---|---|---|
 | `apps/landing` | Pages — `bpmn-sdk-landing` | `pnpm --filter @bpmnkit/landing deploy` |
-| `apps/drop` | Worker + D1 | `pnpm --filter @bpmnkit/drop deploy` |
+| `apps/drop` | Worker + D1 + Durable Object | `pnpm --filter @bpmnkit/drop provision` — see [DEPLOY.md](apps/drop/DEPLOY.md) |
 | `apps/studio` | Pages — `bpmnkit-studio` | `pnpm --filter @bpmnkit/studio deploy` |
 | `apps/demo` | Pages — `bpmnkit-demo` | `pnpm --filter @bpmnkit/demo deploy` |
 | `apps/learn` | Pages — `bpmn-sdk-learn` | `pnpm --filter @bpmnkit/learn deploy` |

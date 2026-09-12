@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-09-12 — a runbook, and a script that proves its own work
+
+`apps/drop/DEPLOY.md`: fresh clone to live, in six steps.
+
+**The usability fix is the ordering, not the prose.** The script asks for a Turnstile site key
+and a Cloudflare API token, both of which come from the dashboard — so being told to fetch them
+*after* starting means aborting halfway. The runbook puts both before the script runs, which is
+the difference between one pass and three.
+
+**"Done" now means something.** The script ends by making three requests against what it just
+deployed: the stats endpoint (which reads D1), the demo page (served from memory, renders the
+viewer), and `viewer.js` (what a browser actually loads). Three ticks covers the Worker, the
+database and the assets. Getting the URL to test needed reading it out of what `wrangler deploy`
+prints — captured rather than streamed, since the shape of `deployments list` moves between
+versions. The extraction was checked against all four output shapes it can produce, including
+having neither a route nor a workers.dev URL, where it degrades to saying so.
+
+**And a hand-verification list, because a smoke test only proves it answers.** Upload, edit in
+two tabs, watch the second follow, press Done, reload, open the history. That sequence exercises
+every track in this work, and it is the thing to run before believing any of it.
+
 ## 2026-09-12 — provisioning covers the live-editing work
 
 `scripts/provision.mjs` already created the D1 database, applied migrations, deployed, and set
