@@ -24,6 +24,23 @@ interface DropData {
 	shareId: string
 	files: DropFile[]
 	primaryIndex: number
+	/** Turnstile site key, when the deployment challenges claims. Absent = it does not. */
+	turnstileKey?: string
+}
+
+/** The slice of Turnstile's global this page uses. */
+interface Turnstile {
+	render(
+		el: HTMLElement,
+		options: {
+			sitekey: string
+			callback(token: string): void
+			"error-callback"?(): void
+			"expired-callback"?(): void
+			theme?: "light" | "dark"
+		},
+	): string
+	remove(widgetId: string): void
 }
 
 injectUiStyles()
@@ -627,6 +644,15 @@ const localHistoryPanel = document.getElementById("localHistoryPanel") as HTMLEl
 const localHistoryBody = document.getElementById("localHistoryBody") as HTMLElement | null
 const editNotice = document.getElementById("editNotice") as HTMLElement | null
 const editNoticeText = document.getElementById("editNoticeText") as HTMLElement | null
+const turnstileDialog = document.getElementById("turnstileDialog") as HTMLDialogElement | null
+const turnstileWidget = document.getElementById("turnstileWidget") as HTMLElement | null
+const turnstileError = document.getElementById("turnstileError") as HTMLElement | null
+document
+	.getElementById("turnstileCancel")
+	?.addEventListener("click", () => turnstileDialog?.close())
+
+/** The rendered challenge, so it can be torn down rather than stacking up. */
+let widgetId: string | null = null
 
 /** The editor, once someone has claimed the baton. Null while reading. */
 let session: import("./edit-session.js").EditSession | null = null
@@ -744,6 +770,10 @@ function handleEditMessage(message: ServerMessage): void {
 			leaveEditMode()
 			return
 		case "rejected":
+			if (message.reason === "unverified") {
+				notice("That check did not go through. Try Edit again.")
+				return
+			}
 			// The editor applied this locally already, so the local document is now
 			// ahead of the truth. Rather than guess at an inverse, take the room's.
 			if (session && editingFile) {
@@ -761,10 +791,88 @@ function handleEditMessage(message: ServerMessage): void {
 	}
 }
 
+/**
+ * The outcome of asking someone to prove they are a person.
+ *
+ * Three outcomes, not two, and the third is the one worth naming: the challenge
+ * could not be *shown*. An extension that blocks challenges.cloudflare.com, or
+ * a network that drops it, would otherwise leave Edit doing nothing at all —
+ * silently, because there is no token and no error either.
+ */
+type ChallengeResult =
+	| { ok: true; token: string | null }
+	| { ok: false; reason: "cancelled" | "unavailable" }
+
+/**
+ * Gets a Turnstile token, when the deployment asks for one.
+ *
+ * The widget is rendered on Edit rather than sitting on the page: the
+ * overwhelming majority of people who open a drop never edit it, and a
+ * challenge to look at for a diagram they came to read is a worse page for no
+ * benefit. With no key configured it resolves immediately with no token, so the
+ * whole thing disappears from a deployment that does not use it.
+ */
+function challenge(): Promise<ChallengeResult> {
+	const sitekey = data.turnstileKey
+	if (!sitekey) return Promise.resolve({ ok: true, token: null })
+
+	const api = (globalThis as { turnstile?: Turnstile }).turnstile
+	if (!api || !turnstileDialog || !turnstileWidget) {
+		return Promise.resolve({ ok: false, reason: "unavailable" })
+	}
+
+	return new Promise((resolve) => {
+		let settled = false
+		const finish = (result: ChallengeResult) => {
+			if (settled) return
+			settled = true
+			if (widgetId) api.remove(widgetId)
+			widgetId = null
+			turnstileDialog.close()
+			resolve(result)
+		}
+
+		if (turnstileError) turnstileError.hidden = true
+		turnstileWidget.replaceChildren()
+		turnstileDialog.showModal()
+		// Cancelling is the escape hatch for a challenge that will not resolve —
+		// Escape closes the dialog, and `close` is what both paths end at.
+		turnstileDialog.addEventListener("close", () => finish({ ok: false, reason: "cancelled" }), {
+			once: true,
+		})
+
+		widgetId = api.render(turnstileWidget, {
+			sitekey,
+			theme,
+			callback: (token) => finish({ ok: true, token }),
+			"error-callback": () => {
+				if (turnstileError) turnstileError.hidden = false
+			},
+			"expired-callback": () => {
+				if (turnstileError) turnstileError.hidden = false
+			},
+		})
+	})
+}
+
 editBtn?.addEventListener("click", () => {
 	const file = data.files[activeIndex]
 	if (!file) return
-	watcherSend({ type: "claim", filename: file.filename })
+	void challenge().then((result) => {
+		if (!result.ok) {
+			// Cancelling is a decision and needs no comment; a challenge that could
+			// not be shown does, or Edit is a button that does nothing.
+			if (result.reason === "unavailable") {
+				notice(
+					"Couldn't load the human check. Reload the page, or allow challenges.cloudflare.com.",
+					8_000,
+				)
+			}
+			return
+		}
+		const token = result.token
+		watcherSend({ type: "claim", filename: file.filename, ...(token ? { token } : {}) })
+	})
 })
 
 doneBtn?.addEventListener("click", () => {

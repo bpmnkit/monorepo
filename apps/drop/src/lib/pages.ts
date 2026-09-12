@@ -256,6 +256,12 @@ select.ed-select{height:28px;border:1px solid var(--bpmnkit-ds-line);background:
 .hv-btn:hover{background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-ink)}
 .hv-banner{position:absolute;top:var(--bpmnkit-ds-topbar-height);left:0;right:0;z-index:7;display:flex;align-items:center;gap:12px;padding:8px var(--bpmnkit-ds-sp-4);background:var(--bpmnkit-ds-dark);color:var(--bpmnkit-ds-ink-on-dark);font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label)}
 .hv-banner[hidden]{display:none}
+.ts-dialog{margin:auto;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);padding:var(--bpmnkit-ds-sp-4);font-family:inherit;min-width:320px}
+.ts-dialog::backdrop{background:rgba(0,0,0,.35)}
+.ts-title{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label);text-transform:uppercase;color:var(--bpmnkit-ds-ink-3);margin-bottom:var(--bpmnkit-ds-sp-3)}
+.ts-error{margin-top:var(--bpmnkit-ds-sp-3);color:var(--bpmnkit-danger);font-size:var(--bpmnkit-ds-t-ui)}
+.ts-error[hidden]{display:none}
+.ts-cancel{margin-top:var(--bpmnkit-ds-sp-3);border:1px solid var(--bpmnkit-ds-line);background:transparent;color:var(--bpmnkit-ds-ink-2);cursor:pointer;font-family:var(--bpmnkit-ds-font-mono);font-size:12px;height:28px;padding:0 11px}
 .hv-banner .hv-btn{border-color:var(--bpmnkit-ds-line-dark);background:none;color:var(--bpmnkit-ds-ink-on-dark-2)}
 .hv-banner .hv-btn:hover{background:rgba(255,255,255,.08);color:var(--bpmnkit-ds-ink-on-dark)}
 .ai-passcode input{width:100%;padding:8px 10px;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;margin:12px 0}
@@ -479,6 +485,7 @@ export function sharePage(
 	drop: DropRow,
 	files: FileInfo[],
 	aiEnabled = false,
+	turnstileKey?: string,
 ): string {
 	const primary = primaryIndex(files)
 	const title = files[primary]?.name || files[primary]?.filename || "Shared diagram"
@@ -520,6 +527,12 @@ export function sharePage(
 	</div>
 	<div id="historyBanner" class="hv-banner" hidden><span id="historyBannerText"></span><button id="historyExit" class="hv-btn" type="button">Back to current</button></div>
 	<div id="editNotice" class="hv-banner" hidden><span id="editNoticeText"></span></div>
+	<dialog id="turnstileDialog" class="ts-dialog">
+		<div class="ts-title">One check before you edit</div>
+		<div id="turnstileWidget"></div>
+		<div id="turnstileError" class="ts-error" hidden>That did not go through — close this and try again.</div>
+		<button id="turnstileCancel" class="ts-cancel" type="button">Cancel</button>
+	</dialog>
 	<aside id="localHistoryPanel" class="ai-panel" hidden>
 		<header class="ai-head"><span>On this device</span><button id="localHistoryClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
 		<div id="localHistoryBody" class="ai-body"></div>
@@ -541,7 +554,14 @@ export function sharePage(
 			: ""
 	}
 </div>
-${reportDialog()}`
+${reportDialog()}
+${
+	// Loaded on the share page only, and only when a key is configured — which is
+	// also the only page whose content policy has been widened to allow it.
+	turnstileKey
+		? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>`
+		: ""
+}`
 
 	return shell({
 		title: `${title} — BPMN Kit Drop`,
@@ -560,6 +580,7 @@ ${reportDialog()}`
 					decisionIds: f.meta.decisionIds ?? [],
 				})),
 				primaryIndex: primary,
+				turnstileKey,
 			},
 		},
 		scriptSrc: "/drop/assets/viewer.js",

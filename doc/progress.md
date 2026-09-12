@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-09-12 — E2: challenging the claim
+
+Turnstile on `claim`, which is the placement the design argued for and the one worth restating:
+a person is asked once per editing session, a script pays per drop it wants to rewrite.
+
+**Verifying in the room is the simple choice and it has a cost worth naming.** The alternative —
+a Worker endpoint that verifies and hands back a signed pass the room checks offline — avoids an
+outbound request inside a Durable Object handler, which stalls that room for its duration. But
+the stall happens once per session, in a room where nobody holds the baton at that moment, and
+the pass design is roughly three times the code. What the stall does deserve is a guard against
+being made to happen repeatedly, so a connection that fails three challenges stops earning one.
+
+**The content policy needed widening, and only just.** `script-src 'self'` and `frame-src 'self'`
+both have to admit `challenges.cloudflare.com` for the widget. That is now conditional on the
+share page *and* on a key being configured, rather than applied to every response — a policy
+loosened everywhere because one page needs it is not a policy.
+
+**Driving the page found a dead button.** This sandbox's browser cannot reach
+challenges.cloudflare.com, which turned out to be exactly the case I had not handled: with no
+`turnstile` global, `challenge()` resolved with no token, and Edit returned silently. No dialog,
+no message, nothing — the same thing an ad blocker would produce for a real user. The result type
+now distinguishes "cancelled" from "could not be shown", and the second says so.
+
+**What is and is not verified live.** A scripted claim with no token is refused by the real room
+(`{"reason":"unverified"}`). The happy path was driven with Cloudflare's widget stubbed and its
+`siteverify` real, using the documented always-passes test secret — so the dialog, the token
+reaching the room, and the room's verification request are all exercised against the real
+endpoint, and the editor opens at the end of it. Cloudflare's own widget rendering is the one
+part this environment cannot reach, and is not claimed as tested.
+
 ## 2026-09-12 — E1: the checks follow the edits
 
 Three checks that were only ever run on an upload, moved to where a mutable document needs them.

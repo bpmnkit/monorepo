@@ -14,8 +14,15 @@ import type { EditorOp } from "@bpmnkit/editor/headless"
 
 /** Sent by a viewer. */
 export type ClientMessage =
-	/** "Edit". `filename` is which of the drop's files you mean to write. */
-	| { type: "claim"; filename: string }
+	/**
+	 * "Edit". `filename` is which of the drop's files you mean to write.
+	 *
+	 * `token` is a Turnstile response, required when the deployment is configured
+	 * for it. One challenge per editing session: invisible to a person taking the
+	 * baton once, and a real cost to a script wanting to rewrite every drop it can
+	 * find a link to.
+	 */
+	| { type: "claim"; filename: string; token?: string }
 	| { type: "release" }
 	/**
 	 * An edit, from the holder. `seq` is the sender's own counter, echoed back on
@@ -104,6 +111,8 @@ export type RevokeReason = "released" | "idle" | "disconnected" | "banned" | "to
  *   arrives while the change is still undoable.
  * - `banned` — the drop's content has been banned since the session began, and
  *   the room has stopped taking edits.
+ * - `unverified` — the claim carried no Turnstile token, or one Cloudflare did
+ *   not accept. The page asks again; a script has to solve one per drop.
  */
 export type RejectReason =
 	| "not-holder"
@@ -113,6 +122,7 @@ export type RejectReason =
 	| "integrity"
 	| "too-large"
 	| "banned"
+	| "unverified"
 
 /**
  * The heartbeat. Cloudflare answers this without waking the object, so a room

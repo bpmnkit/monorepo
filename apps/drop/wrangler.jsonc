@@ -16,6 +16,10 @@
 		// AI process review. AI_PASSCODE is a secret (wrangler secret put) — unset = feature off.
 		"AI_MODEL": "@cf/openai/gpt-oss-120b",
 		"AI_DAILY_BUDGET": "8000"
+		// Turnstile on the edit claim. Add TURNSTILE_SITE_KEY here (it is public and
+		// rendered into the page) and `wrangler secret put TURNSTILE_SECRET`. With
+		// neither, claims are not challenged; with the secret alone, every claim
+		// fails — which is the right way round for a check whose job is to say no.
 	},
 	"ai": {
 		"binding": "AI"

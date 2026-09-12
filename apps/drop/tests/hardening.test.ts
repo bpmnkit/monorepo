@@ -7,7 +7,7 @@
  * are the three that had to move from upload time to edit time.
  */
 import { Bpmn } from "@bpmnkit/core"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Env } from "../src/env.js"
 import { getCurrentBody } from "../src/lib/db.js"
 import { DocRoom } from "../src/room.js"
@@ -271,5 +271,108 @@ describe("the entity tag identifies the representation", () => {
 	it("does not answer a JSON request from an XML tag", async () => {
 		const xmlTag = (await get("raw")).headers.get("ETag") ?? ""
 		expect((await get("json", undefined, { "If-None-Match": xmlTag })).status).toBe(200)
+	})
+})
+
+describe("challenging the claim", () => {
+	/** Answers `siteverify` for the duration of one test. */
+	function siteverify(success: boolean) {
+		const calls: Array<Record<string, string>> = []
+		vi.stubGlobal("fetch", async (_url: string, init: { body: FormData }) => {
+			calls.push(Object.fromEntries(init.body as unknown as Iterable<[string, string]>))
+			return new Response(JSON.stringify({ success }), { status: 200 })
+		})
+		return calls
+	}
+
+	/** A room whose deployment asks for a token. */
+	function guarded() {
+		env = { DB: db, TURNSTILE_SECRET: "sekret" } as unknown as Env
+		room = new DocRoom(state as unknown as DurableObjectState, env)
+	}
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	it("refuses a claim with no token at all", async () => {
+		guarded()
+		const calls = siteverify(true)
+		const anna = state.join("anna")
+		await claim(anna)
+
+		expect(anna.last("rejected")).toMatchObject({ reason: "unverified" })
+		expect(anna.last("granted")).toBeUndefined()
+		expect(await state.storage.get("holder")).toBeUndefined()
+		// A missing token is refused without asking Cloudflare about it.
+		expect(calls).toHaveLength(0)
+	})
+
+	it("refuses a token Cloudflare does not accept", async () => {
+		guarded()
+		const calls = siteverify(false)
+		const anna = state.join("anna")
+		await deliver(anna, { type: "claim", filename: SEEDED_FILE, token: "forged" })
+
+		expect(anna.last("rejected")).toMatchObject({ reason: "unverified" })
+		expect(calls[0]).toMatchObject({ secret: "sekret", response: "forged" })
+	})
+
+	it("grants the baton on a good token", async () => {
+		guarded()
+		siteverify(true)
+		const anna = state.join("anna")
+		await deliver(anna, { type: "claim", filename: SEEDED_FILE, token: "good" })
+
+		expect(anna.last("granted")).toMatchObject({ holder: "anna" })
+		expect(anna.last("rejected")).toBeUndefined()
+	})
+
+	it("challenges once a session, not once an op", async () => {
+		guarded()
+		const calls = siteverify(true)
+		const anna = state.join("anna")
+		await deliver(anna, { type: "claim", filename: SEEDED_FILE, token: "good" })
+		await move(anna)
+		await move(anna)
+		await move(anna)
+
+		expect(anna.count("applied")).toBe(3)
+		// The whole point of the placement: a person is asked once and edits for
+		// half an hour; a script pays per drop it wants to rewrite.
+		expect(calls).toHaveLength(1)
+	})
+
+	it("stops answering a socket that keeps failing", async () => {
+		guarded()
+		const calls = siteverify(false)
+		const anna = state.join("anna")
+		for (let i = 0; i < 6; i++) {
+			await deliver(anna, { type: "claim", filename: SEEDED_FILE, token: `try-${i}` })
+		}
+		// Verification is an outbound request made inside the handler, so it stalls
+		// the room. Three is what a prober gets before the connection stops earning
+		// one; the rest are refused for free.
+		expect(calls).toHaveLength(3)
+		expect(anna.count("rejected")).toBe(6)
+	})
+
+	it("does not challenge at all when no secret is configured", async () => {
+		const calls = siteverify(true)
+		const anna = state.join("anna")
+		await claim(anna)
+		expect(anna.last("granted")).toBeDefined()
+		expect(calls).toHaveLength(0)
+	})
+
+	it("treats a verification outage as a refusal, not a pass", async () => {
+		guarded()
+		vi.stubGlobal("fetch", async () => {
+			throw new Error("network down")
+		})
+		const anna = state.join("anna")
+		await deliver(anna, { type: "claim", filename: SEEDED_FILE, token: "good" })
+		// Failing open would mean anyone who can cause an outage can skip the check.
+		expect(anna.last("rejected")).toMatchObject({ reason: "unverified" })
 	})
 })

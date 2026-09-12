@@ -13,6 +13,7 @@ import {
 } from "./lib/doc.js"
 import { describeProblem } from "./lib/integrity.js"
 import { parseOp } from "./lib/op-guard.js"
+import { verifyTurnstile } from "./lib/turnstile.js"
 import { byteLength } from "./lib/validate.js"
 import { appendMilestone, bucketKey, setCurrent } from "./lib/versions.js"
 import { AUTOSAVE_MS, MAX_ROW_BYTES, RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
@@ -31,7 +32,12 @@ import {
 /** Per-connection state, kept on the socket so it survives hibernation. */
 interface Attachment {
 	actor: string
+	/** Rejected Turnstile tokens on this connection, so a prober can be cut off. */
+	failedClaims?: number
 }
+
+/** How many failed challenges one connection gets before it is ignored. */
+const MAX_FAILED_CLAIMS = 3
 
 /**
  * One instance per shareId: the room a drop's viewers share.
@@ -140,7 +146,7 @@ export class DocRoom implements DurableObject {
 		// the object, so anything that does is something a person did.
 		await this.state.storage.put("lastActivityAt", Date.now())
 
-		if (message.type === "claim") await this.claim(ws, actor, message.filename)
+		if (message.type === "claim") await this.claim(ws, actor, message.filename, message.token)
 		else if (message.type === "release" && (await this.release(actor, "released"))) {
 			await this.broadcastPresence()
 		} else if (message.type === "op") await this.handleOp(ws, actor, message)
@@ -174,7 +180,12 @@ export class DocRoom implements DurableObject {
 
 	// ── The baton ──────────────────────────────────────────────────────────────
 
-	private async claim(ws: WebSocket, actor: string, filename: string): Promise<void> {
+	private async claim(
+		ws: WebSocket,
+		actor: string,
+		filename: string,
+		token?: string,
+	): Promise<void> {
 		// A drop banned mid-session stays banned: the content is still there to be
 		// read and reported, but nobody gets to add to it.
 		if (await this.banned()) {
@@ -186,6 +197,8 @@ export class DocRoom implements DurableObject {
 			this.send(ws, { type: "denied", holder })
 			return
 		}
+
+		if (!(await this.verifyClaim(ws, token))) return
 
 		// Loading before granting means "Edit" fails loudly on a file the room
 		// cannot write, rather than succeeding and rejecting the first op.
@@ -214,6 +227,37 @@ export class DocRoom implements DurableObject {
 			xml: doc.xml,
 		})
 		await this.broadcastPresence()
+	}
+
+	/**
+	 * Checks the human-ness of a claim, when the deployment asks for one.
+	 *
+	 * The verification is an outbound request made inside the handler, so the
+	 * room is stalled for its duration — a Durable Object handles one message at
+	 * a time, which is the property the baton relies on everywhere else. That is
+	 * a fair price once per editing session, and a bad one if someone can make
+	 * the room pay it repeatedly: a socket that keeps failing is cut off rather
+	 * than served. The counter lives on the connection, so it cannot be reset by
+	 * reconnecting any cheaper than the handshake already costs.
+	 */
+	private async verifyClaim(ws: WebSocket, token?: string): Promise<boolean> {
+		const secret = this.env.TURNSTILE_SECRET
+		if (!secret) return true
+
+		const attached = (ws.deserializeAttachment() as Attachment | null) ?? { actor: "" }
+		if ((attached.failedClaims ?? 0) >= MAX_FAILED_CLAIMS) {
+			this.send(ws, { type: "rejected", seq: 0, reason: "unverified" })
+			return false
+		}
+
+		if (token && (await verifyTurnstile(secret, token))) {
+			if (attached.failedClaims) ws.serializeAttachment({ ...attached, failedClaims: 0 })
+			return true
+		}
+
+		ws.serializeAttachment({ ...attached, failedClaims: (attached.failedClaims ?? 0) + 1 })
+		this.send(ws, { type: "rejected", seq: 0, reason: "unverified" })
+		return false
 	}
 
 	private async release(actor: string, reason: RevokeReason): Promise<boolean> {

@@ -20,4 +20,14 @@ export interface Env {
 	AI_MODEL: string
 	/** Daily neuron budget for AI reviews (var; string, parsed at the edge). */
 	AI_DAILY_BUDGET: string
+	/**
+	 * Turnstile site key (var; public, rendered into the page). Unset = no widget.
+	 *
+	 * Paired with {@link TURNSTILE_SECRET}, which is what actually enforces. Set
+	 * the secret without this and every claim fails — which is the right way round
+	 * for a check whose job is to say no.
+	 */
+	TURNSTILE_SITE_KEY?: string
+	/** Turnstile secret (`wrangler secret put TURNSTILE_SECRET`). Unset = claims are not challenged. */
+	TURNSTILE_SECRET?: string
 }

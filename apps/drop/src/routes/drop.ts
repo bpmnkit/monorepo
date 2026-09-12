@@ -23,15 +23,18 @@ export async function handleStats(env: Env): Promise<Response> {
 /** GET /drop/:shareId — the read-only viewer page. */
 export async function handleSharePage(shareId: string, env: Env): Promise<Response> {
 	const aiEnabled = env.AI_PASSCODE !== undefined
+	const turnstileKey = env.TURNSTILE_SITE_KEY
+	// The policy is widened for the widget only where the widget can appear.
+	const init = { noindex: true, turnstile: turnstileKey !== undefined }
 	if (isDemo(shareId)) {
 		const demo = await demoDrop()
-		return html(sharePage(shareId, demo.drop, demo.files, aiEnabled), { noindex: true })
+		return html(sharePage(shareId, demo.drop, demo.files, aiEnabled, turnstileKey), init)
 	}
 	const found = await getDrop(env.DB, shareId)
 	if (!found) return html(notFoundPage(), { status: 404, noindex: true })
 	// Views are counted by the room when the viewer's socket joins, and written to
 	// D1 on its alarm — one write per window rather than one per page load.
-	return html(sharePage(shareId, found.drop, found.files, aiEnabled), { noindex: true })
+	return html(sharePage(shareId, found.drop, found.files, aiEnabled, turnstileKey), init)
 }
 
 /** GET /drop/:shareId/manifest.json — metadata and file list. */

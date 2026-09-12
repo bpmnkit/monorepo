@@ -1,5 +1,30 @@
 # Features
 
+## One challenge per editing session (2026-09-12)
+
+A drop is editable by anyone with the link, so taking the edit baton can be challenged with
+Turnstile.
+
+- **On the claim, not on the op.** A person takes the baton once and edits for half an hour; a
+  script that wants to rewrite other people's drops pays for every one it touches. Challenging
+  each keystroke instead would be invisible to the script — which batches anyway — and maddening
+  for the person.
+- **The widget appears when Edit is pressed**, not on the page. Almost everyone who opens a drop
+  is reading it, and a challenge to look at for a diagram you came to read is a worse page for no
+  benefit.
+- **The content policy is widened only where the widget can appear**, and only when a key is
+  configured. A policy that is loose everywhere because one page needs it protects nothing.
+- **A verification outage is a refusal, not a pass.** Failing open would mean anyone who can
+  cause one can skip the check.
+- **A connection that keeps failing stops being served.** Verification is an outbound request
+  made inside the room's handler, so it stalls the room while it runs — fair once a session, and
+  not something a prober gets to make the room pay repeatedly.
+- **A challenge that cannot be shown says so.** An extension blocking `challenges.cloudflare.com`
+  would otherwise leave Edit doing nothing at all, silently.
+- **Off by default.** No key, no widget, no challenge — so local development and a self-hosted
+  deployment need no Cloudflare account. Set the secret without the site key and every claim
+  fails, which is the right way round for a check whose job is to say no.
+
 ## The checks follow the edits (2026-09-12)
 
 Every safety check Drop had was a check on an *upload*. A document that changes needs them at

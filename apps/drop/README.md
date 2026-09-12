@@ -57,6 +57,18 @@ Then open <http://localhost:8787/drop>, drop a file from `bpmn-samples/`, and fo
 short link. The admin page is at <http://localhost:8787/drop/admin> (paste `devtoken`).
 The built-in demo drop is at <http://localhost:8787/drop/demo-loan-approval>.
 
+To exercise the **edit challenge** locally, add Cloudflare's documented test keys — they work
+against the real `siteverify` and always pass:
+
+```sh
+--var TURNSTILE_SITE_KEY:1x00000000000000000000AA \
+--var TURNSTILE_SECRET:1x0000000000000000000000000000000AA
+```
+
+Swap in `2x00000000000000000000AB` / `2x0000000000000000000000000000000AA` for a challenge that
+always fails. With neither var set, claims are not challenged and the widget never loads — which
+is the default, so editing works offline with no Cloudflare account.
+
 To exercise the **AI review** locally, add `--var AI_PASSCODE:devcode`. The passcode gate,
 D1 caching, budget guard, and deterministic findings all work offline; the LLM narrative
 itself needs a real Cloudflare account for the `AI` binding, so locally it gracefully
@@ -94,6 +106,16 @@ pnpm --filter @bpmnkit/drop provision
 3. `wrangler secret put REPORT_IP_SALT` — salt for hashing reporter IPs.
 4. Bump `TOS_VERSION` in `wrangler.jsonc` whenever the Terms/Privacy pages change.
 5. Enable the `bpmnkit.com/drop*` route in `wrangler.jsonc` (`routes`).
+
+**Edit challenge (optional, recommended in production):** a drop is editable by anyone with the
+link, so `claim` — taking the edit baton — is challenged with
+[Turnstile](https://developers.cloudflare.com/turnstile/). One challenge per editing session, not
+per keystroke: invisible to a person who takes the baton once and edits for half an hour, and a
+real cost to a script that wants to rewrite every drop it can find. Add `TURNSTILE_SITE_KEY` to
+the `vars` in `wrangler.jsonc` (it is public and rendered into the page) and
+`wrangler secret put TURNSTILE_SECRET`. With neither, claims are not challenged. **With the
+secret but no site key, every claim fails** — deliberately, since a half-configured check that
+quietly disabled itself would be worse than one that is loudly broken.
 
 **AI review (optional, closed beta):** unset by default — the feature is off and its
 button never renders. To open it to invited users, `wrangler secret put AI_PASSCODE` and

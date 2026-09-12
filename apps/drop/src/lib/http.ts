@@ -19,21 +19,31 @@ export function jsonForScript(data: unknown): string {
 		.replaceAll("\u2029", "\\u2029")
 }
 
-const CSP = [
-	"default-src 'self'",
-	"img-src 'self' data:",
-	"style-src 'self' 'unsafe-inline'",
-	"script-src 'self'",
-	"connect-src 'self'",
-	"frame-src 'self'",
-	"base-uri 'none'",
-	"form-action 'self'",
-].join("; ")
+/** Where Turnstile's widget script and its iframe come from. */
+const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com"
+
+function csp(allowTurnstile: boolean): string {
+	// Widened only for the one page that can show the widget, and only when the
+	// feature is configured. A content policy that is loose everywhere because
+	// one page needs it is a policy that protects nothing.
+	const script = allowTurnstile ? `script-src 'self' ${TURNSTILE_ORIGIN}` : "script-src 'self'"
+	const frame = allowTurnstile ? `frame-src 'self' ${TURNSTILE_ORIGIN}` : "frame-src 'self'"
+	return [
+		"default-src 'self'",
+		"img-src 'self' data:",
+		"style-src 'self' 'unsafe-inline'",
+		script,
+		"connect-src 'self'",
+		frame,
+		"base-uri 'none'",
+		"form-action 'self'",
+	].join("; ")
+}
 
 /** Baseline security headers applied to every response. */
-export function securityHeaders(): Record<string, string> {
+export function securityHeaders(options: { turnstile?: boolean } = {}): Record<string, string> {
 	return {
-		"Content-Security-Policy": CSP,
+		"Content-Security-Policy": csp(options.turnstile === true),
 		"X-Content-Type-Options": "nosniff",
 		"Referrer-Policy": "no-referrer",
 		"X-Frame-Options": "SAMEORIGIN",
@@ -41,10 +51,13 @@ export function securityHeaders(): Record<string, string> {
 }
 
 /** Build an HTML response with security headers and an optional `noindex` directive. */
-export function html(body: string, init: { status?: number; noindex?: boolean } = {}): Response {
+export function html(
+	body: string,
+	init: { status?: number; noindex?: boolean; turnstile?: boolean } = {},
+): Response {
 	const headers: Record<string, string> = {
 		"Content-Type": "text/html; charset=utf-8",
-		...securityHeaders(),
+		...securityHeaders({ turnstile: init.turnstile }),
 	}
 	if (init.noindex) headers["X-Robots-Tag"] = "noindex"
 	return new Response(body, { status: init.status ?? 200, headers })

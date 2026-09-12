@@ -341,7 +341,10 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       save (and the room halts on a hit), the row cap is enforced on the op rather than only on
       the save, and the entity tag names the version and the representation instead of being the
       content hash — which the XML and the JSON were sharing
-- [ ] E2 — Turnstile on `claim`
+- [x] E2 — Turnstile on `claim`: one challenge per editing session, verified in the room, with
+      the widget rendered on Edit rather than on the page and the content policy widened only
+      where it can appear. Off unless `TURNSTILE_SECRET` is set; set without a site key, every
+      claim fails
 - [ ] E3 — demo and pinned drops read-only; Edit gated on `processes.length === 1`
 - [ ] E4 — retention slides on edit as well as view
 - [ ] E5 — reports carry the version the reporter saw
