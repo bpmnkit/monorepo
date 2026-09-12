@@ -26,8 +26,10 @@
  */
 import { Bpmn, type BpmnDefinitions, exportPreserving, sha256Hex } from "@bpmnkit/core"
 import { type EditorOp, applyOp } from "@bpmnkit/editor/headless"
+import { MAX_ROW_BYTES } from "../shared/constants.js"
 import { getCurrentBody } from "./db.js"
 import { type IntegrityProblem, checkIntegrity } from "./integrity.js"
+import { byteLength } from "./validate.js"
 
 /** A file's live state inside the room. */
 export interface RoomDoc {
@@ -60,6 +62,7 @@ export type ApplyResult =
 	| { ok: true; doc: RoomDoc }
 	| { ok: false; reason: "invalid"; detail: string }
 	| { ok: false; reason: "integrity"; problem: IntegrityProblem }
+	| { ok: false; reason: "too-large"; bytes: number }
 
 /** Storage key for one file's document. Scoped by filename: one room, many files. */
 export function docKey(filename: string): string {
@@ -179,6 +182,13 @@ export async function advance(doc: RoomDoc, op: EditorOp): Promise<ApplyResult> 
 	if (problem) return { ok: false, reason: "integrity", problem }
 
 	const xml = Bpmn.export(next)
+	// Checked on the edit rather than only on the save. A document past the cap is
+	// one D1 will refuse, and a room that discovered that thirty seconds later
+	// would have nothing useful to say about which change caused it — where here
+	// the answer arrives while that change is still the last thing the writer did.
+	const bytes = byteLength(xml)
+	if (bytes > MAX_ROW_BYTES) return { ok: false, reason: "too-large", bytes }
+
 	return {
 		ok: true,
 		doc: {

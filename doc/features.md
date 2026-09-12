@@ -1,5 +1,26 @@
 # Features
 
+## The checks follow the edits (2026-09-12)
+
+Every safety check Drop had was a check on an *upload*. A document that changes needs them at
+edit time too.
+
+- **Banned content cannot walk back in through the editor.** The ban list is keyed on content,
+  and a mutable document's content moves — so a drop could be uploaded clean and then *edited
+  into* something banned. Every save re-checks. On a hit nothing is written, the baton is taken
+  away, and the room refuses edits from then on; the drop stays readable and reportable.
+- **The row cap is enforced on the edit, not just the save.** A change that would push the file
+  past what a D1 row holds is refused with the size in the message, while it is still the last
+  thing you did — rather than failing silently thirty seconds later with nothing useful to say
+  about which change caused it. The save re-checks the stored forms as a backstop, since the JSON
+  model is several times the XML.
+- **The entity tag names what it identifies.** It was the content hash, which meant the XML and
+  the JSON model of one state were served under the *same* tag — different bytes, one name. It
+  now carries the version and the format, so `?format=json` and `?v=0` are distinct, the current
+  tag moves as the file is edited, and the original's never does.
+- **`If-None-Match` is honoured**, so an unchanged file costs a 304 instead of a download. Weak
+  tags, lists and `*` all work.
+
 ## Autosave, and no save button (2026-09-12)
 
 Edits reach the store of record without anyone asking, and the version log fills itself in.

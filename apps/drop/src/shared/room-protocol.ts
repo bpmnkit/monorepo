@@ -78,8 +78,15 @@ export type ServerMessage =
 	/** The current document, whole. The answer to a resync, and to a divergence. */
 	| { type: "state"; filename: string; version: number; xml: string; hash: string }
 
-/** Why a holder stopped holding. */
-export type RevokeReason = "released" | "idle" | "disconnected"
+/**
+ * Why a holder stopped holding.
+ *
+ * The last two are the room taking the baton away rather than losing track of
+ * it: `banned` when the saved content turns out to be on the ban list, and
+ * `too-large` when what the room holds is past what can be stored. Both are
+ * discovered at save time, because both are facts about the stored form.
+ */
+export type RevokeReason = "released" | "idle" | "disconnected" | "banned" | "too-large"
 
 /**
  * Why an op did not happen.
@@ -92,8 +99,20 @@ export type RevokeReason = "released" | "idle" | "disconnected"
  * - `integrity` — the op replayed, but the document it produced could not be
  *   stored (a dangling reference, a duplicate id, an element with nothing to
  *   draw it). `detail` says which.
+ * - `too-large` — the document it produced is past what a D1 row will hold. The
+ *   cap is checked on the edit rather than only on the save, so the answer
+ *   arrives while the change is still undoable.
+ * - `banned` — the drop's content has been banned since the session began, and
+ *   the room has stopped taking edits.
  */
-export type RejectReason = "not-holder" | "malformed" | "no-document" | "invalid" | "integrity"
+export type RejectReason =
+	| "not-holder"
+	| "malformed"
+	| "no-document"
+	| "invalid"
+	| "integrity"
+	| "too-large"
+	| "banned"
 
 /**
  * The heartbeat. Cloudflare answers this without waking the object, so a room

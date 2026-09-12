@@ -53,6 +53,38 @@ export async function handleManifest(shareId: string, env: Env): Promise<Respons
 }
 
 /**
+ * The entity tag for one representation of one state of a file.
+ *
+ * The content hash alone is not an entity tag, and using it as one was a bug:
+ * the same hash was served for the XML and for the JSON model of the same
+ * state, which are different bytes under the same name. A tag has to identify
+ * the *representation*, so the version and the format go into it.
+ *
+ * A drop is mutable now, so `v=current` genuinely changes as the file is
+ * edited — the hash underneath it is the current row's, not the upload's. `v=0`
+ * and a milestone never change, because those states never do.
+ */
+function etag(version: number | undefined, rep: "original" | "json", hash: string): string {
+	return `"${version === undefined ? "current" : `v${version}`}.${rep}.${hash}"`
+}
+
+/**
+ * Answers a conditional request, or `null` when there is nothing to answer.
+ *
+ * `If-None-Match` is a list, and a weak comparison is the right one for a plain
+ * GET — a proxy is free to have weakened the tag it stored.
+ */
+function notModified(request: Request, tag: string): Response | null {
+	const header = request.headers.get("If-None-Match")
+	if (!header) return null
+	const bare = (t: string) => t.trim().replace(/^W\//, "")
+	const matched = header.split(",").some((t) => bare(t) === "*" || bare(t) === bare(tag))
+	return matched
+		? new Response(null, { status: 304, headers: { ETag: tag, ...securityHeaders() } })
+		: null
+}
+
+/**
  * GET /drop/:shareId/f/:filename — the file's bytes as a safe download.
  *
  * Serves the current state by default. `?v=0` pins the request to the uploaded
@@ -60,6 +92,7 @@ export async function handleManifest(shareId: string, env: Env): Promise<Respons
  * serves milestone n, while it is still in the ring.
  */
 export async function handleRaw(
+	request: Request,
 	shareId: string,
 	filename: string,
 	env: Env,
@@ -69,19 +102,24 @@ export async function handleRaw(
 		? await demoFileBody(filename, "original")
 		: await readVersion(env, shareId, filename, "original", version)
 	if (!row) return json({ error: "not found" }, { status: 404 })
-	return new Response(row.body, {
-		headers: {
-			// Never let a browser render an uploaded document inline.
-			"Content-Type": "application/octet-stream",
-			"Content-Disposition": `attachment; filename="${filename}"`,
-			ETag: `"${row.hash}"`,
-			...securityHeaders(),
-		},
-	})
+	const tag = etag(version, "original", row.hash)
+	return (
+		notModified(request, tag) ??
+		new Response(row.body, {
+			headers: {
+				// Never let a browser render an uploaded document inline.
+				"Content-Type": "application/octet-stream",
+				"Content-Disposition": `attachment; filename="${filename}"`,
+				ETag: tag,
+				...securityHeaders(),
+			},
+		})
+	)
 }
 
 /** GET /drop/:shareId/f/:filename?format=json — the JSON model of the same state. */
 export async function handleJson(
+	request: Request,
 	shareId: string,
 	filename: string,
 	env: Env,
@@ -91,13 +129,17 @@ export async function handleJson(
 		? await demoFileBody(filename, "json")
 		: await readVersion(env, shareId, filename, "json", version)
 	if (!row) return json({ error: "not found" }, { status: 404 })
-	return new Response(row.body, {
-		headers: {
-			"Content-Type": "application/json; charset=utf-8",
-			ETag: `"${row.hash}"`,
-			...securityHeaders(),
-		},
-	})
+	const tag = etag(version, "json", row.hash)
+	return (
+		notModified(request, tag) ??
+		new Response(row.body, {
+			headers: {
+				"Content-Type": "application/json; charset=utf-8",
+				ETag: tag,
+				...securityHeaders(),
+			},
+		})
+	)
 }
 
 /**

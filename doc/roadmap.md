@@ -337,7 +337,10 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
 
 **Track E — hardening**
 
-- [ ] E1 — ban re-check and size cap on save; version-derived ETag
+- [x] E1 — the three upload-time checks moved to edit time: the ban list is re-checked on every
+      save (and the room halts on a hit), the row cap is enforced on the op rather than only on
+      the save, and the entity tag names the version and the representation instead of being the
+      content hash — which the XML and the JSON were sharing
 - [ ] E2 — Turnstile on `claim`
 - [ ] E3 — demo and pinned drops read-only; Edit gated on `processes.length === 1`
 - [ ] E4 — retention slides on edit as well as view

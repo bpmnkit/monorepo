@@ -108,8 +108,8 @@ async function route(request: Request, env: Env): Promise<Response> {
 			return json({ error: "bad version" }, { status: 400 })
 		}
 		return url.searchParams.get("format") === "json"
-			? handleJson(shareId, filename, env, version)
-			: handleRaw(shareId, filename, env, version)
+			? handleJson(request, shareId, filename, env, version)
+			: handleRaw(request, shareId, filename, env, version)
 	}
 	const diff = rest.match(/^\/([\w-]+)\/diff\/([\w-]+)$/)
 	if (diff) {

@@ -1,7 +1,7 @@
 import { semanticHash, sha256Hex } from "@bpmnkit/core"
 import type { EditorOp } from "@bpmnkit/editor/headless"
 import type { Env } from "./env.js"
-import { getFileRef, recordViews } from "./lib/db.js"
+import { findBannedHashes, getFileRef, recordViews } from "./lib/db.js"
 import {
 	type RoomDoc,
 	advance,
@@ -13,8 +13,9 @@ import {
 } from "./lib/doc.js"
 import { describeProblem } from "./lib/integrity.js"
 import { parseOp } from "./lib/op-guard.js"
+import { byteLength } from "./lib/validate.js"
 import { appendMilestone, bucketKey, setCurrent } from "./lib/versions.js"
-import { AUTOSAVE_MS, RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
+import { AUTOSAVE_MS, MAX_ROW_BYTES, RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
 import {
 	BATON_IDLE_MS,
 	BATON_WARN_MS,
@@ -174,6 +175,12 @@ export class DocRoom implements DurableObject {
 	// ── The baton ──────────────────────────────────────────────────────────────
 
 	private async claim(ws: WebSocket, actor: string, filename: string): Promise<void> {
+		// A drop banned mid-session stays banned: the content is still there to be
+		// read and reported, but nobody gets to add to it.
+		if (await this.banned()) {
+			this.send(ws, { type: "rejected", seq: 0, reason: "banned" })
+			return
+		}
 		const holder = await this.holder()
 		if (holder !== null && holder !== actor) {
 			this.send(ws, { type: "denied", holder })
@@ -269,6 +276,18 @@ export class DocRoom implements DurableObject {
 		return quietest
 	}
 
+	/** True once a save found the drop's content on the ban list. */
+	private async banned(): Promise<boolean> {
+		return (await this.state.storage.get<number>("bannedAt")) !== undefined
+	}
+
+	/** Takes the baton away and tells everyone, whoever is holding it. */
+	private async revokeAll(reason: RevokeReason): Promise<void> {
+		const holder = await this.holder()
+		if (holder) await this.release(holder, reason)
+		await this.broadcastPresence()
+	}
+
 	private async holder(): Promise<string | null> {
 		return (await this.state.storage.get<string>("holder")) ?? null
 	}
@@ -295,6 +314,7 @@ export class DocRoom implements DurableObject {
 		message: { seq: number; op: EditorOp },
 	): Promise<void> {
 		const { seq } = message
+		if (await this.banned()) return this.reject(ws, seq, "banned")
 		if ((await this.holder()) !== actor) return this.reject(ws, seq, "not-holder")
 
 		const op = parseOp(message.op)
@@ -306,9 +326,20 @@ export class DocRoom implements DurableObject {
 
 		const result = await advance(doc, op)
 		if (!result.ok) {
-			return result.reason === "integrity"
-				? this.reject(ws, seq, "integrity", describeProblem(result.problem))
-				: this.reject(ws, seq, "invalid", result.detail)
+			if (result.reason === "integrity") {
+				return this.reject(ws, seq, "integrity", describeProblem(result.problem))
+			}
+			if (result.reason === "too-large") {
+				return this.reject(
+					ws,
+					seq,
+					"too-large",
+					`the file would be ${Math.round(result.bytes / 1024)} KB, past the ${Math.round(
+						MAX_ROW_BYTES / 1024,
+					)} KB limit`,
+				)
+			}
+			return this.reject(ws, seq, "invalid", result.detail)
 		}
 
 		// Storage first, then the broadcast. A room that told everyone about an op
@@ -452,11 +483,31 @@ export class DocRoom implements DurableObject {
 		// This save becomes the next one's source, so formatting keeps surviving.
 		await this.state.storage.put(sourceKey(filename), body)
 
+		// The ban list is keyed on content, and a mutable document's content moves:
+		// the hash checked at upload is not the hash being stored now. Re-checking
+		// here is what stops an edit from walking a banned diagram back into the
+		// store one op at a time.
+		if ((await findBannedHashes(this.env.DB, [contentHash])).length > 0) {
+			await this.state.storage.put("bannedAt", now)
+			await this.revokeAll("banned")
+			return
+		}
+
+		const json = JSON.stringify(doc.defs)
+		// `advance` caps the document on every op, so reaching this is the derived
+		// forms outgrowing the source — the JSON model is several times the XML.
+		// Nothing is written, the last good save stands, and the writer is told;
+		// editing back down is what makes the next save work.
+		if (byteLength(body) > MAX_ROW_BYTES || byteLength(json) > MAX_ROW_BYTES) {
+			await this.revokeAll("too-large")
+			return
+		}
+
 		await setCurrent(this.env.DB, {
 			fileId: file.id,
 			shareId,
 			body,
-			json: JSON.stringify(doc.defs),
+			json,
 			contentHash,
 			expiresAt: now + RETENTION_MS,
 			now,

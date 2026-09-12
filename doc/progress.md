@@ -1,5 +1,34 @@
 # Progress
 
+## 2026-09-12 — E1: the checks follow the edits
+
+Three checks that were only ever run on an upload, moved to where a mutable document needs them.
+
+**A wrong test taught me what the ban re-check is actually for.** My first version banned the
+hash of the last save and expected the next one to be refused — which it was not, because the
+next save has a different hash. That is not a bug, it is the point: the re-check exists for the
+case where banned content is *re-entered*. Ban something, upload something else, edit it into the
+banned thing, and without a re-check it is back in the store. The test now does exactly that, and
+leans on a rename being a single attribute spliced in place — so returning to a name returns to
+the same bytes, which is what makes the scenario expressible at all.
+
+**The size cap went on the op, and the tests said why it could not go in the guard.** My first
+attempt at an oversized edit was rejected as *malformed*, because `parseOp` caps a string at 4 KB
+and a list at 5,000 entries. That is the guard working. It also means the only op that can
+outgrow a row in one step is `snapshot`, which carries a document wholesale — and a document can
+only be measured after it has been built. So the cap lives after the replay, next to the
+integrity check, and the writer hears about it on the op rather than on the save.
+
+**The entity tag was wrong in a way nobody would have noticed until it mattered.** It was the
+content hash, so `/f/x.bpmn` and `/f/x.bpmn?format=json` — different bytes under one name — were
+served with the *same* tag. A tag has to identify the representation, so the version and the
+format are in it now, and `If-None-Match` is honoured rather than the tag being decorative.
+Verified live: the current tag moves on an edit, `?v=0`'s does not, a stale tag serves the body
+and a fresh one 304s, and the XML tag does not satisfy a JSON request.
+
+Worth noting in passing, not fixed: `HEAD` on a file route returns 405, because the router tests
+`method !== "GET"`. It predates this work and nothing in the product issues one.
+
 ## 2026-09-12 — D7: autosave, and the gap D6 left
 
 D6 ended with a real hole: a reader who loaded the page after everyone had gone still saw the
