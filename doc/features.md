@@ -1,5 +1,25 @@
 # Features
 
+## Generated BPMN that diffs (2026-09-12)
+
+The fluent builder names the parts you do not: sequence flows, and the root messages, errors,
+signals and escalations that event options declare. Those names now come from the model rather
+than from a random generator, so regenerating an unchanged process yields an unchanged file.
+
+- **A flow is named after what it connects** — `Flow_start_validate`. Adding or reordering an
+  unrelated element leaves it alone.
+- **Branches that converge carry a discriminator** taken from the branch name, or from the
+  condition when the branch is unnamed — assigned to every flow in the group, so the order the
+  branches were declared in cannot swap two ids.
+- **Root definitions are named after their name or code** — `Message_Order_Received`,
+  `Error_OUT_OF_STOCK` — and a message two pools both declare is written once.
+- **Continuing a parsed document renumbers nothing** it was handed; new flows avoid the ids
+  already in the file.
+- **`defaultFlow` is usable by hand now**, since the id it names is one you can predict.
+- **Or dictate the id**, where something outside the process already refers to it: `.message()`,
+  `.error()`, `.signal()` and `.escalation()` declare a root definition with the id you choose,
+  and the name/code-based event options go on working unchanged.
+
 ## A report points at a state (2026-09-12)
 
 Drops became editable, which quietly broke an assumption the abuse queue had never had to state:
