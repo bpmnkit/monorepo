@@ -696,6 +696,105 @@ for this model specifically, with the offline case named as what would reverse i
 Phased as fork-to-edit → live read-only follow → edit baton → multi-writer, so the cheap two
 thirds stand alone. No code changed.
 
+## 2026-09-12 — Retyping an element, data elements through the compact format, and one list of element types
+
+Three surfaces left open by the builder-coverage change, each a different way the same defect
+showed up: something the model supports that a caller cannot reach or cannot discover.
+
+**Retyping an element was impossible through any tool.** The reported symptom was an agent
+hand-editing XML "to change the task type", and the MCP `update_element` tool applied only
+`changes.name` — every other key was accepted and silently dropped, so a caller could not tell
+a no-op from a success. `retypeElement(el, type)` now lives in core: it returns a copy with the
+new type, keeping id, name, documentation and — the point — the incoming and outgoing sequence
+flows, so retyping is no longer remove-and-re-add with the wiring lost. Nested content carries
+between container types, a multi-instance marker between types that both allow one, event
+definitions between event types. Zeebe extensions the new type cannot legally hold are dropped,
+filtered through the same `ZEEBE_PLACEMENT` table `ensureZeebeExtension` enforces, so a
+`serviceTask` retyped to `manualTask` does not keep a job worker the engine would refuse.
+`update_element` now applies `name` and `type`, and **refuses** any other key rather than
+ignoring it.
+
+**The compact format lost the three data types.** `expand()` ended in
+`default: return { ...base, type: "task" }`, so `dataObject`, `dataObjectReference` and
+`dataStoreReference` round-tripped as bare tasks — and `CompactElement` had nowhere to put
+`dataObjectRef`, `dataStoreRef` or `isCollection` in the first place. All three now expand to
+themselves with their references intact, and the `default` branch assigns to `never`: a new
+`BpmnElementType` fails the build instead of quietly becoming a task.
+
+**Every hand-written list of element types is gone.** The MCP tool schema advertised 18 types
+while the compact path accepted 23 — `receiveTask`, `task`, `complexGateway`, `transaction` and
+`eventSubProcess` worked, but nothing told a caller they existed. `ELEMENT_TYPE_GROUPS` is a
+total `Record<BpmnElementType, ElementTypeGroup>`, and the tool schemas render their lists from
+it. The compact-format prompt keeps its hand-written per-type hints ("add formId", "add
+decisionId") but a test now fails if it omits a type, because a type the prompt never names is
+one the model will not emit.
+
+**One place knows the shape of each type.** `createFlowElement` holds the exhaustive
+type → shape switch, and the builder's `makeFlowElement` delegates to it — the two used to be
+separate switches that could disagree.
+
+Four compile-time gates now guard the element model, each verified by adding a fake member to
+`BpmnElementType` and watching it fail: `BUILDER_COVERAGE` and `ELEMENT_TYPE_GROUPS` (total
+`Record`s), `createFlowElement` and `expand()` (`never` in the default branch).
+
+Verified end to end by driving the built MCP server over stdio: a `serviceTask` retyped to
+`manualTask` keeps both sequence flows, loses `zeebe:taskDefinition`, and the three error paths
+(unsupported key, unknown type, no-op) each report what happened.
+
+Core: 1,012 tests. Proxy: 66.
+
+
+## 2026-09-12 — The fluent builder is held to the element model by the compiler
+
+Feedback from a user of the SDK: bpmnkit "doesn't have a manual task as part of its API, so
+occasionally the agent will just go in there and hand-edit the bpmn file to change the task
+type". The first half was true of exactly one surface, and the reason it was true is the part
+worth fixing.
+
+**What was actually missing.** `manualTask` was in `BpmnElementType`, in the parser, the
+serialiser, the layout sizing table, the SVG renderer, the compact/JSON path, the MCP tool
+schema and the editor palette. The one place it was absent was `ProcessBuilder` — and its two
+siblings, `BranchBuilder` and `SubProcessContentBuilder`. Auditing the union against the three
+builders turned up two more of the same kind: `complexGateway` and `transaction`, both equally
+supported everywhere else, neither reachable from a chain. `addElement` is private and
+`element()` moves the cursor rather than creating anything, so there was no escape hatch: a
+caller who wanted a manual task had to leave the SDK and edit XML.
+
+**Why it drifted.** Nothing connected the hand-written builder to the hand-written model. A new
+element type could be threaded through parse, serialise, layout and render — each of which has
+a `switch` the compiler checks — and still miss the builder, which has no exhaustive construct
+to fail.
+
+**The mechanism.** `packages/core/src/bpmn/builder-coverage.ts` declares
+`BUILDER_COVERAGE: Record<BpmnElementType, BuilderSupport>`. Because a `Record` over a string
+literal union is total, **adding a member to `BpmnElementType` now fails `tsc` until the new
+type is either given a builder method or exempted with a written reason.** The gate is
+compile-time and cannot be skipped. `tests/builder-coverage.test.ts` carries the half the
+compiler cannot see, in the shape `descriptor-coverage.test.ts` established: every named method
+must exist on all three flow builders, and every exemption must *still* have no method — so an
+exemption someone outgrows fails rather than lingers. All three directions were verified by
+breaking them on purpose.
+
+**Exempt, deliberately.** `dataObject`, `dataObjectReference` and `dataStoreReference`. Each
+builder method appends to the chain and wires a sequence flow from the previous node; data
+elements are connected by data associations instead, and the builder has no data-association
+API, so a method would emit invalid BPMN or leave an orphan. Parsing and serialising keep them.
+
+**One recorded exception.** `eventSubProcess` is covered by `.eventSubProcess()`, which emits
+`subProcess triggeredByEvent="true"` — the spec form; BPMN 2.0 has no `bpmn:eventSubProcess`
+element. The table records that under `emits`, so the mismatch reads as a decision rather than
+a bug.
+
+`pnpm --filter @bpmnkit/core check:builder` prints the table: 26 element types, 23 reachable
+from a builder chain.
+
+**Still open, and not this change.** The reported symptom was *changing* a task's type, and the
+MCP `update_element` tool applies only `changes.name` — it silently ignores every other key, so
+no agent-facing tool can retype an element. The capability exists one layer down, in
+`applyBpmnOperations`' `update` op; it is simply not wired up. Separately, the compact/JSON
+`expand()` falls through to `task` for the three data types.
+
+
 ## 2026-09-11 — The editor shell moves onto the light `--canvas` ground
 
 The brief's editor mock sits on `--canvas` (`#fbfbfc`) with light chrome; the shell shipped a

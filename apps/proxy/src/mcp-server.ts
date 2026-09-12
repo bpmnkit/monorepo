@@ -34,6 +34,7 @@ import {
 	Form,
 	type FormDefinition,
 	type RestConnectorConfig,
+	allElementTypes,
 	compactify,
 	compactifyDmn,
 	compactifyForm,
@@ -43,9 +44,11 @@ import {
 	layoutDmn,
 	layoutProcess,
 	reconcileCompact,
+	retypeElement,
 	semanticHash,
 } from "@bpmnkit/core"
-import type { CompactDmn, CompactForm } from "@bpmnkit/core"
+import type { BpmnElementType, CompactDmn, CompactForm } from "@bpmnkit/core"
+import { elementTypeDescription } from "./element-vocabulary.js"
 import { handleSdkExecute, handleSdkSearch } from "./sdk-code-mode.js"
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
@@ -204,11 +207,8 @@ const ELEMENT_SCHEMA = {
 		id: { type: "string", description: "Unique element ID" },
 		type: {
 			type: "string",
-			description:
-				"BPMN element type. Events: startEvent | endEvent | intermediateThrowEvent | intermediateCatchEvent | boundaryEvent. " +
-				"Tasks: serviceTask | userTask | businessRuleTask | callActivity | scriptTask | sendTask | manualTask. " +
-				"Gateways: exclusiveGateway | parallelGateway | inclusiveGateway | eventBasedGateway. " +
-				"Containers: subProcess | adHocSubProcess.",
+			enum: allElementTypes(),
+			description: elementTypeDescription(),
 		},
 		name: { type: "string", description: "Display name shown on the diagram" },
 		eventType: {
@@ -344,7 +344,10 @@ const BPMN_TOOLS = [
 	},
 	{
 		name: "update_element",
-		description: "Rename an existing BPMN element or change its display name.",
+		description:
+			"Change an existing BPMN element's display name or its element type. " +
+			"Retyping keeps the element's id and its incoming/outgoing sequence flows, " +
+			"so use this instead of removing and re-adding — that would drop the wiring.",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -352,7 +355,14 @@ const BPMN_TOOLS = [
 				elementId: { type: "string" },
 				changes: {
 					type: "object",
-					properties: { name: { type: "string" } },
+					properties: {
+						name: { type: "string", description: "New display name" },
+						type: {
+							type: "string",
+							enum: allElementTypes(),
+							description: `New element type. ${elementTypeDescription()}`,
+						},
+					},
 				},
 			},
 			required: ["processId", "elementId", "changes"],
@@ -557,13 +567,48 @@ function callTool(name: string, args: Record<string, unknown>): string {
 		case "update_element": {
 			const proc = findProcess(args.processId as string)
 			if (!proc) return `Process ${args.processId as string} not found.`
-			const el = proc.flowElements.find((e) => e.id === (args.elementId as string))
-			if (!el)
-				return `Element ${args.elementId as string} not found in ${args.processId as string}.`
+			const elementId = args.elementId as string
+			const index = proc.flowElements.findIndex((e) => e.id === elementId)
+			if (index < 0)
+				return `Element ${elementId} not found in ${args.processId as string}. Note: only top-level elements can be updated; one nested in a sub-process is not reachable here.`
+
 			const changes = args.changes as Record<string, unknown>
-			if (changes.name !== undefined) el.name = changes.name as string
+
+			// Refuse keys this tool does not apply rather than accepting them and
+			// doing nothing — a silent no-op reads as success to the caller.
+			const unsupported = Object.keys(changes).filter((key) => key !== "name" && key !== "type")
+			if (unsupported.length > 0) {
+				return `update_element does not change ${unsupported.join(", ")}. It applies "name" and "type" only.`
+			}
+
+			const applied: string[] = []
+
+			if (changes.type !== undefined) {
+				const nextType = changes.type as BpmnElementType
+				if (!allElementTypes().includes(nextType)) {
+					return `Unknown element type "${String(changes.type)}". ${elementTypeDescription()}`
+				}
+				const current = proc.flowElements[index]
+				if (!current) return `Element ${elementId} not found in ${args.processId as string}.`
+				if (current.type !== nextType) {
+					proc.flowElements[index] = retypeElement(current, nextType)
+					applied.push(`type ${current.type} → ${nextType}`)
+				}
+			}
+
+			if (changes.name !== undefined) {
+				const target = proc.flowElements[index]
+				if (target) {
+					target.name = changes.name as string
+					applied.push("name")
+				}
+			}
+
+			if (applied.length === 0) return `Element ${elementId} already matches those changes.`
+
+			recomputeIncomingOutgoing(proc)
 			saveState()
-			return `Updated element ${args.elementId as string}.`
+			return `Updated element ${elementId}: ${applied.join(", ")}.`
 		}
 
 		case "set_condition": {

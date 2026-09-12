@@ -24,6 +24,12 @@ export interface CompactElement {
 	name?: string
 	/** Zeebe job type (serviceTask: zeebe:taskDefinition.type) */
 	jobType?: string
+	/** dataObjectReference: id of the dataObject it points at. */
+	dataObjectRef?: string
+	/** dataStoreReference: id of the data store it points at. */
+	dataStoreRef?: string
+	/** dataObject / dataObjectReference: marks a collection. */
+	isCollection?: boolean
 	/**
 	 * Zeebe task headers (key→value).
 	 * For the Camunda HTTP connector use jobType "io.camunda:http-json:1" and set:
@@ -146,6 +152,16 @@ function compactifyElement(el: BpmnFlowElement): CompactElement {
 	if (el.type === "boundaryEvent") {
 		result.attachedTo = el.attachedToRef
 		if (el.cancelActivity === false) result.interrupting = false
+	}
+
+	if (el.type === "dataObjectReference" && el.dataObjectRef !== undefined) {
+		result.dataObjectRef = el.dataObjectRef
+	}
+	if (el.type === "dataStoreReference" && el.dataStoreRef !== undefined) {
+		result.dataStoreRef = el.dataStoreRef
+	}
+	if ((el.type === "dataObject" || el.type === "dataObjectReference") && el.isCollection) {
+		result.isCollection = true
 	}
 
 	// Recurse into sub-process container children
@@ -400,8 +416,36 @@ export function buildFlowElement(
 			return { ...base, type: "eventBasedGateway" }
 		case "complexGateway":
 			return { ...base, type: "complexGateway" }
-		default:
-			return { ...base, type: "task" }
+
+		// Data elements are not sequence-flow participants; they carry a
+		// reference instead, and dropping that reference is what made them
+		// round-trip as bare tasks before.
+		case "dataObject":
+			return {
+				...base,
+				type: "dataObject",
+				...(el.isCollection !== undefined ? { isCollection: el.isCollection } : {}),
+			}
+		case "dataObjectReference":
+			return {
+				...base,
+				type: "dataObjectReference",
+				...(el.dataObjectRef !== undefined ? { dataObjectRef: el.dataObjectRef } : {}),
+				...(el.isCollection !== undefined ? { isCollection: el.isCollection } : {}),
+			}
+		case "dataStoreReference":
+			return {
+				...base,
+				type: "dataStoreReference",
+				...(el.dataStoreRef !== undefined ? { dataStoreRef: el.dataStoreRef } : {}),
+			}
+
+		default: {
+			// Exhaustive: a new BpmnElementType fails here rather than silently
+			// expanding to a task, which is how the data types were lost.
+			const unhandled: never = el.type
+			throw new Error(`Unhandled BPMN element type in expand(): ${String(unhandled)}`)
+		}
 	}
 }
 

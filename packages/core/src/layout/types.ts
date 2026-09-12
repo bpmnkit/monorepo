@@ -26,6 +26,10 @@ export const ELEMENT_SIZES: Record<string, { width: number; height: number }> = 
 	adHocSubProcess: { width: 100, height: 80 },
 	eventSubProcess: { width: 100, height: 80 },
 	transaction: { width: 100, height: 80 },
+	// Data elements are drawn as the page and cylinder glyphs, not as activities.
+	dataObject: { width: 36, height: 50 },
+	dataObjectReference: { width: 36, height: 50 },
+	dataStoreReference: { width: 50, height: 50 },
 }
 
 /** Virtual grid cell dimensions for element placement. */

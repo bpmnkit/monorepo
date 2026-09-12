@@ -21,6 +21,7 @@
 		"check": "biome check .",
 		"test": "vitest run",
 		"check:descriptors": "tsx scripts/descriptor-report.ts",
+		"check:builder": "tsx scripts/builder-report.ts",
 		"generate:placement": "tsx scripts/generate-zeebe-placement.ts",
 		"check:placement": "tsx scripts/generate-zeebe-placement.ts --check",
 		"format-bpmn": "node scripts/format-bpmn.mjs"
