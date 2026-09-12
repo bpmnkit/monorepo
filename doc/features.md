@@ -1,5 +1,29 @@
 # Features
 
+## Editing a drop (2026-09-12)
+
+A drop is now editable in place. Press **Edit**, and the read-only canvas becomes a full editor —
+palette, toolbar, undo — with everyone else watching it change.
+
+- **Readers never download the editor.** It is reached through a dynamic `import()` and arrives
+  as its own 25 KB chunk when Edit is pressed. The overwhelming majority of people who open a
+  drop are reading it, and should not pay for a palette they will never click.
+- **The diagram does not move when the editor mounts.** The view is carried across the swap by
+  hand, so the corner you had zoomed into is the corner you are still looking at.
+- **No HUD to hide from watchers.** A reader's page never constructs an editor at all, so the
+  question of a disabled palette does not arise.
+- **Undo reaches everyone.** An undo describes itself as a whole-document op, because the command
+  stack records states rather than inverses — a watcher that never heard about one would be
+  silently wrong from then on.
+- **A second claimant is told, not ignored.** "Someone else is editing this drop right now", and
+  no editor opens.
+- **Idle warnings, and a graceful exit.** A minute before the baton is reclaimed the writer is
+  told; when it goes, the page says why and returns to reading.
+- **Two histories, never merged.** *On this device* lists local checkpoints — written to
+  IndexedDB after 30 seconds of dirty editing and when the page is hidden, bounded at 50 today
+  plus one a day for ten days, and visible to nobody else. *Saved milestones* is the shared,
+  server-side log. A merged list would quietly imply the local ones are shared. They are not.
+
 ## Watching someone else edit (2026-09-12)
 
 Open a drop while someone is editing it and the diagram now changes under you, live.

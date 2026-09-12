@@ -304,8 +304,8 @@ handler to until the editor is loaded on claim, and the panel is only worth buil
 server history it must be distinguished from. `@bpmnkit/plugins/history` takes opaque
 `(projectId, fileId)` strings, so Drop passes `(shareId, filename)` when D6 lands.
 
-- [ ] C1 — `saveCheckpoint` on the editor's change handler, debounced *(with D6)*
-- [ ] C2 — `createHistoryPanel`, kept visibly separate from the server milestones *(with D6)*
+- [x] C1 — `saveCheckpoint` on the editor's change handler, debounced *(landed with D6)*
+- [x] C2 — `createHistoryPanel`, kept visibly separate from the server milestones *(landed with D6)*
 
 **Track D — the room** (requires B)
 
@@ -327,8 +327,10 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
 - [x] D5 — watcher replay with a hash check and resync: `DocWatcher` runs the same `applyOp` the
       writer and the room ran, compares the room's hash, and on any divergence throws its document
       away and asks for the current one — exactly once, however many ops arrive while it waits
-- [ ] D6 — editor loaded on claim via dynamic `import()`, viewport carried across the swap;
-      brings track C with it (local checkpoints + panel, beside the server history)
+- [x] D6 — editor loaded on claim via dynamic `import()` (25 KB gzipped, fetched on Edit and
+      never by a reader), viewport carried across the swap, HUD only ever built for the writer;
+      brings track C with it — local checkpoints every 30 s of dirty editing and an *On this
+      device* panel beside *Saved milestones*, never merged
 - [ ] D7 — autosave: 30 s alarm → `exportPreserving` → `'current'`, milestone on hour and release
 
 **Track E — hardening**

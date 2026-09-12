@@ -1,5 +1,52 @@
 # Progress
 
+## 2026-09-12 — D6: the editor arrives on demand, and track C with it
+
+The Edit button works. Pressing it claims the baton, fetches the editor as a separate chunk, and
+swaps it in without the diagram moving.
+
+**A correction to D3, and it is the interesting part.** D3 decided undo and redo should not emit
+`diagram:op`, on the reasoning that they replace the document rather than advance it. That was
+wrong the moment a second machine was listening: a watcher that never heard about an undo is
+silently wrong from then on. The command stack records states rather than inverses, so there is
+no smaller description than a whole-document `snapshot` — which is exactly what the escape hatch
+was for. `loadDefinitions` still says nothing, because that is the host replacing the document
+rather than the user changing it. The browser run caught this: the writer's undo moved the shape
+back and the watcher's did not.
+
+**Splitting the bundle needed measuring, not assuming.** Turning `splitting: true` on for all five
+entries made the viewer's path *worse* — 90 KB gzipped, up from 77.5 KB — because esbuild
+fragments shared code into chunks and gzip compresses several small files noticeably worse than
+one large one. Splitting only the viewer, the one entry with a dynamic import, gives 80 KB for
+readers and a 25 KB chunk fetched on Edit. The browser run confirms the chunk is requested at the
+click and not before.
+
+**Three bugs, all found by driving the page rather than by tests.**
+
+1. The palette never appeared. `BpmnEditor` is a bare editing canvas; the HUD is a separate
+   `initEditorHud(editor)` call the edit session had to make.
+2. Undo appeared not to work, and the reason was that I had changed `undo()` but not rebuilt
+   `@bpmnkit/editor`'s `dist`, which is what the client bundles from. The test suite passed
+   throughout — it runs against source.
+3. Two zoom controls overlapped. `zoombar.hidden = true` has never worked: `.ed-group` sets
+   `display:flex`, which outranks the `hidden` attribute, and the existing rule covered the
+   group's *children* rather than the group. That is a pre-existing bug — the drop zoombar has
+   been sitting over DMN and form tabs all along — fixed here with one line.
+
+**`Done` shows the editor's document, not the server's.** Re-reading would have shown the
+*pre-edit* file, because D1 does not catch up until the autosave checkpoint D7 adds. The room is
+the authority and the editor was in step with it, so the page keeps what it has. The remaining
+gap is real and is D7's: a reader who loads the page after everyone has left still sees D1's
+copy until that checkpoint exists.
+
+**One test now covers the whole pipeline.** A real `BpmnEditor` driven through its public API, a
+real `DocRoom` judging each op, a real `DocWatcher` keeping up — and all three asserted
+byte-identical at the end. Two harness bugs had to be fixed before it meant anything: an
+`onDrift` hook that threw aborted the watcher's own queue and hid the failure it was meant to
+report, and the six editor ops raced inside the room because `FakeState` has no input gate. The
+second is worth stating plainly — workerd serialises messages per object, which is why the baton
+needs no lock, so the test now serialises them itself rather than papering over the difference.
+
 ## 2026-09-12 — D5: watchers replay the writer's ops
 
 The three-machine claim from D3 and D4 now has its third machine. A watcher runs `applyOp` and

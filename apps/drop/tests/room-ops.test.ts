@@ -112,12 +112,31 @@ describe("applying", () => {
 		expect(anna.last<{ version: number }>("applied")?.version).toBe(3)
 	})
 
-	it("hands the writer the room's version and hash when granting the baton", async () => {
+	it("hands the writer the document itself when granting the baton", async () => {
 		const anna = state.join("anna")
 		await claim(anna)
-		const granted = anna.last<{ version: number; hash: string; filename: string }>("granted")
+		const granted = anna.last<{ version: number; hash: string; filename: string; xml: string }>(
+			"granted",
+		)
 		expect(granted).toMatchObject({ version: 0, filename: SEEDED_FILE })
 		expect(granted?.hash).toMatch(/^[0-9a-f]{64}$/)
+		// The room had to load it to answer the claim, so sending it costs nothing
+		// and saves the round trip between pressing Edit and the editor appearing.
+		expect(granted?.xml).toContain('id="task"')
+		expect(await currentXml()).toBe(granted?.xml)
+	})
+
+	it("grants the document as it is now, not as it was uploaded", async () => {
+		const anna = state.join("anna")
+		await claim(anna)
+		await sendOp(anna, 1, MOVE)
+		await deliver(anna, { type: "release" })
+
+		const ben = state.join("ben")
+		await claim(ben)
+		const granted = ben.last<{ version: number; xml: string }>("granted")
+		expect(granted?.version).toBe(1)
+		expect(granted?.xml).toBe(await currentXml())
 	})
 
 	it("broadcasts a hash that matches replaying the op locally", async () => {

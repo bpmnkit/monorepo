@@ -172,7 +172,15 @@ function collectRefs(
 	}
 }
 
-async function select(index: number): Promise<void> {
+/**
+ * Shows one of the drop's files.
+ *
+ * `xml` short-circuits the fetch, for the one case where the page already has
+ * something newer than the server: the moment a writer puts the baton down. The
+ * room is the authority and the editor was in step with it, so re-reading would
+ * only risk showing something staler.
+ */
+async function select(index: number, xml?: string): Promise<void> {
 	if (index === activeIndex) return
 	const file = data.files[index]
 	if (!file) return
@@ -192,6 +200,7 @@ async function select(index: number): Promise<void> {
 	setActiveReviewFile(file.kind === "bpmn" ? file : null)
 	// Only BPMN has an op vocabulary, so a DMN or form tab watches nothing.
 	watcher.watch(file.kind === "bpmn" ? file.filename : null)
+	updateEditAffordance()
 	exitVersionPreview()
 	if (historyPanel && !historyPanel.hidden) void loadHistory()
 
@@ -200,7 +209,7 @@ async function select(index: number): Promise<void> {
 	message("Loading…")
 	try {
 		if (file.kind === "bpmn") {
-			await renderBpmn(await (await fetch(contentUrl(file))).text())
+			await renderBpmn(xml ?? (await (await fetch(contentUrl(file))).text()))
 		} else if (file.kind === "dmn") {
 			renderDmn(await (await fetch(contentUrl(file, "json"))).text())
 		} else {
@@ -602,11 +611,175 @@ try {
 			presenceEl.textContent = `${message.viewers} VIEWING${editing}`
 			presenceEl.hidden = message.viewers < 1
 		}
+		handleEditMessage(message)
 		watcher.handle(message)
 	})
 } catch {
 	// presence is decorative — ignore failures
 }
+
+// ── Edit mode ───────────────────────────────────────────────────────────────
+
+const editBtn = document.getElementById("editBtn") as HTMLButtonElement | null
+const doneBtn = document.getElementById("doneBtn") as HTMLButtonElement | null
+const localHistoryBtn = document.getElementById("localHistoryBtn") as HTMLButtonElement | null
+const localHistoryPanel = document.getElementById("localHistoryPanel") as HTMLElement | null
+const localHistoryBody = document.getElementById("localHistoryBody") as HTMLElement | null
+const editNotice = document.getElementById("editNotice") as HTMLElement | null
+const editNoticeText = document.getElementById("editNoticeText") as HTMLElement | null
+
+/** The editor, once someone has claimed the baton. Null while reading. */
+let session: import("./edit-session.js").EditSession | null = null
+/** The file the editor is open on, for going back to it afterwards. */
+let editingFile: string | null = null
+/** Numbers this writer's ops, so a rejection can name the one it refused. */
+let opSeq = 0
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+
+function notice(text: string, holdMs = 4_000): void {
+	if (!editNotice || !editNoticeText) return
+	editNoticeText.textContent = text
+	editNotice.hidden = false
+	if (noticeTimer !== null) clearTimeout(noticeTimer)
+	noticeTimer = setTimeout(() => {
+		if (editNotice) editNotice.hidden = true
+	}, holdMs)
+}
+
+/** Edit is offered for BPMN files of a real drop — the demo has nowhere to save. */
+function updateEditAffordance(): void {
+	const file = data.files[activeIndex]
+	const editable = file?.kind === "bpmn" && data.shareId !== DEMO_SHARE_ID
+	if (editBtn) editBtn.hidden = !editable || session !== null
+	if (doneBtn) doneBtn.hidden = session === null
+	if (localHistoryBtn) localHistoryBtn.hidden = session === null
+}
+
+/**
+ * Swaps the read-only canvas for an editor, in place.
+ *
+ * The editor chunk is fetched here and nowhere else, so a reader never
+ * downloads it. The view comes across by hand — the whole reason
+ * `getViewport`/`setViewport` are public — because being dropped somewhere else
+ * in the diagram at the moment you start editing is disorienting.
+ */
+async function enterEditMode(granted: { filename: string; xml: string }): Promise<void> {
+	const viewport = current?.getViewport() ?? { tx: 0, ty: 0, scale: 1 }
+	// The watcher and the editor must not both be driving the canvas.
+	watcher.watch(null)
+	current?.destroy()
+	current = null
+	viewer.innerHTML = ""
+
+	editingFile = granted.filename
+	const { startEditSession } = await import("./edit-session.js")
+	session = startEditSession({
+		container: viewer,
+		xml: granted.xml,
+		viewport,
+		theme,
+		shareId: data.shareId,
+		filename: granted.filename,
+		sendOp: (op) => {
+			opSeq += 1
+			watcherSend({ type: "op", seq: opSeq, op })
+		},
+	})
+	localHistoryBody?.replaceChildren(session.historyPanel)
+	void session.refreshHistory()
+	zoombar.hidden = true
+	updateEditAffordance()
+}
+
+/** Puts the baton down and goes back to reading. */
+function leaveEditMode(): void {
+	if (!session) return
+	const edited = session.currentXml()
+	session.destroy()
+	session = null
+	localHistoryBody?.replaceChildren()
+	if (localHistoryPanel) localHistoryPanel.hidden = true
+
+	// Back to the reading view, showing what was just edited rather than what the
+	// server has: the room is the authority, the editor was in step with it, and
+	// D1 does not catch up until the autosave checkpoint. `activeIndex` is
+	// cleared so `select` does not treat this as a no-op.
+	const index = data.files.findIndex((f) => f.filename === editingFile)
+	editingFile = null
+	activeIndex = -1
+	updateEditAffordance()
+	void select(index >= 0 ? index : 0, index >= 0 ? edited : undefined)
+}
+
+/** Why the baton went away, in the writer's words. */
+const REVOKE_TEXT: Record<string, string> = {
+	released: "You are reading again.",
+	idle: "Editing ended — the drop was idle, so anyone can take it now.",
+	disconnected: "Editing ended — the connection dropped.",
+}
+
+/**
+ * Everything the room says that concerns the writer rather than the watcher.
+ *
+ * Kept apart from `DocWatcher` on purpose: the watcher's job is to keep a
+ * read-only document correct, and while this tab holds the baton it is not
+ * watching at all — the editor is the thing driving the canvas.
+ */
+function handleEditMessage(message: ServerMessage): void {
+	switch (message.type) {
+		case "granted":
+			void enterEditMode(message)
+			return
+		case "denied":
+			notice("Someone else is editing this drop right now.")
+			return
+		case "warning":
+			notice(
+				`Editing ends in ${message.secondsLeft}s unless you change something.`,
+				message.secondsLeft * 1000,
+			)
+			return
+		case "revoked":
+			notice(REVOKE_TEXT[message.reason] ?? "Editing ended.")
+			leaveEditMode()
+			return
+		case "rejected":
+			// The editor applied this locally already, so the local document is now
+			// ahead of the truth. Rather than guess at an inverse, take the room's.
+			if (session && editingFile) {
+				notice(`That change was not saved: ${message.detail ?? message.reason}.`)
+				watcherSend({ type: "resync", filename: editingFile })
+			} else if (message.reason === "no-document") {
+				notice("This file cannot be edited.")
+			}
+			return
+		case "state":
+			if (session && message.filename === editingFile) session.replace(message.xml)
+			return
+		default:
+			return
+	}
+}
+
+editBtn?.addEventListener("click", () => {
+	const file = data.files[activeIndex]
+	if (!file) return
+	watcherSend({ type: "claim", filename: file.filename })
+})
+
+doneBtn?.addEventListener("click", () => {
+	watcherSend({ type: "release" })
+	leaveEditMode()
+})
+
+localHistoryBtn?.addEventListener("click", () => {
+	if (!localHistoryPanel) return
+	localHistoryPanel.hidden = !localHistoryPanel.hidden
+	if (!localHistoryPanel.hidden) void session?.refreshHistory()
+})
+document.getElementById("localHistoryClose")?.addEventListener("click", () => {
+	if (localHistoryPanel) localHistoryPanel.hidden = true
+})
 
 document.getElementById("copyLink")?.addEventListener("click", async () => {
 	await navigator.clipboard.writeText(location.href)

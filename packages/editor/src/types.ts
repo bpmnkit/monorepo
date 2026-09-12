@@ -92,10 +92,16 @@ export interface EditorEvents extends CanvasEvents {
 	/**
 	 * The same change, described rather than materialised.
 	 *
-	 * Fires immediately after `diagram:change` for every edit — but not for undo,
-	 * redo or `loadDefinitions`, which replace the document wholesale rather than
-	 * advancing it. A listener relaying edits to other people wants this one; a
-	 * listener that just needs the current document wants `diagram:change`.
+	 * Fires immediately after `diagram:change` for every change to the document,
+	 * undo and redo included — those arrive as a whole-document `snapshot` op,
+	 * because the stack records states rather than inverses and a relay that
+	 * never heard about an undo would be silently wrong from then on.
+	 *
+	 * The exception is `loadDefinitions`, which is the host replacing the
+	 * document rather than the user changing it, and says nothing.
+	 *
+	 * A listener relaying edits to other people wants this event; a listener that
+	 * just needs the current document wants `diagram:change`.
 	 */
 	"diagram:op": (op: EditorOp, defs: BpmnDefinitions) => void
 	"editor:select": (ids: string[]) => void

@@ -890,18 +890,27 @@ export class BpmnEditor {
 
 	undo(): void {
 		const prev = this._commandStack.undo()
-		if (prev) {
-			this._renderDefs(prev)
-			this._emit("diagram:change", prev)
-		}
+		if (prev) this._stepTo(prev)
 	}
 
 	redo(): void {
 		const next = this._commandStack.redo()
-		if (next) {
-			this._renderDefs(next)
-			this._emit("diagram:change", next)
-		}
+		if (next) this._stepTo(next)
+	}
+
+	/**
+	 * Moves to a document already on the command stack — an undo or a redo.
+	 *
+	 * It describes itself as a `snapshot` op, which is the only honest option: a
+	 * step back through the stack is a state change like any other, and a
+	 * listener relaying edits elsewhere that never heard about it would be
+	 * silently wrong from then on. There is no smaller description available —
+	 * the inverse of an op is not something the stack records.
+	 */
+	private _stepTo(defs: BpmnDefinitions): void {
+		this._renderDefs(defs)
+		this._emit("diagram:change", defs)
+		this._emit("diagram:op", { kind: "snapshot", defs }, defs)
 	}
 
 	canUndo(): boolean {

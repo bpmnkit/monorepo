@@ -38,9 +38,13 @@ export type ServerMessage =
 	 */
 	| { type: "presence"; viewers: number; holder: string | null; file: string | null }
 	/**
-	 * You hold the baton. `idleMs` is how long you may sit still before losing it;
-	 * `version` and `hash` say what the room believes the file currently is, so a
-	 * writer can tell at once whether the page it is holding is still the truth.
+	 * You hold the baton, and here is what you are editing.
+	 *
+	 * The document comes with the grant rather than being asked for afterwards:
+	 * the room had to load it to answer the claim at all, and a second round trip
+	 * between pressing Edit and the editor appearing is the one place in this
+	 * product where latency is felt. `idleMs` is how long you may sit still
+	 * before losing the baton.
 	 */
 	| {
 			type: "granted"
@@ -49,6 +53,7 @@ export type ServerMessage =
 			filename: string
 			version: number
 			hash: string
+			xml: string
 	  }
 	/** Someone else holds it. */
 	| { type: "denied"; holder: string }

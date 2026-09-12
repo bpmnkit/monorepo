@@ -183,6 +183,7 @@ export class DocRoom implements DurableObject {
 			filename,
 			version: doc.version,
 			hash: doc.hash,
+			xml: doc.xml,
 		})
 		await this.broadcastPresence()
 	}

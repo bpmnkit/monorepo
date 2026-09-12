@@ -3,16 +3,14 @@
 	"compilerOptions": {
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		"lib": ["ES2022"],
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"types": ["@cloudflare/workers-types"],
 		"declaration": false,
 		"declarationMap": false,
-		"sourceMap": false,
 		"noEmit": true,
-		"outDir": "dist",
 		"rootDir": ".",
-		"verbatimModuleSyntax": false
+		"verbatimModuleSyntax": false,
+		"skipLibCheck": true
 	},
-	"include": ["src", "tests"],
-	"exclude": ["src/client", "tests/round-trip.test.ts"]
+	"include": ["tests/round-trip.test.ts"]
 }

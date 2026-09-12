@@ -208,6 +208,7 @@ body.app{height:100vh;min-height:420px;display:flex;flex-direction:column;overfl
 .ed-group>*:hover{background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-ink)}
 .ed-group>*.active{background:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-surface)}
 .ed-group>*[hidden]{display:none}
+.ed-group[hidden]{display:none}
 .ed-brand{font-size:var(--bpmnkit-ds-t-ui);font-weight:700;letter-spacing:-.02em;color:var(--bpmnkit-ds-ink)}
 .ed-brand b{color:var(--bpmnkit-ds-accent)}
 .stage{flex:1 1 auto;min-height:0;position:relative}
@@ -497,6 +498,9 @@ export function sharePage(
 		<span class="ed-info" title="Created ${created} · expires ${expires}"><span id="viewCount">${drop.view_count}</span> VIEWS · <span id="presence" hidden>0 VIEWING</span> · EXPIRES ${expires}</span>
 		<div class="ed-group">
 			${aiEnabled ? `<button id="aiReviewBtn" type="button" hidden>AI review</button>` : ""}
+			<button id="editBtn" type="button" hidden>Edit</button>
+			<button id="doneBtn" type="button" hidden>Done</button>
+			<button id="localHistoryBtn" type="button" hidden>On this device</button>
 			<button id="historyBtn" type="button" hidden>History</button>
 			<a id="dlOriginal" href="#" download>Original</a>
 			<a id="dlJson" href="#" download>JSON</a>
@@ -515,8 +519,14 @@ export function sharePage(
 		<button id="zoomFit" type="button" aria-label="Fit diagram" title="Fit diagram">FIT</button>
 	</div>
 	<div id="historyBanner" class="hv-banner" hidden><span id="historyBannerText"></span><button id="historyExit" class="hv-btn" type="button">Back to current</button></div>
+	<div id="editNotice" class="hv-banner" hidden><span id="editNoticeText"></span></div>
+	<aside id="localHistoryPanel" class="ai-panel" hidden>
+		<header class="ai-head"><span>On this device</span><button id="localHistoryClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
+		<div id="localHistoryBody" class="ai-body"></div>
+		<footer class="ai-foot">Checkpoints in this browser only — nobody else can see them, and clearing site data removes them.</footer>
+	</aside>
 	<aside id="historyPanel" class="ai-panel" hidden>
-		<header class="ai-head"><span>Version history</span><button id="historyClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
+		<header class="ai-head"><span>Saved milestones</span><button id="historyClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
 		<div id="historyBody" class="ai-body"></div>
 		<footer class="ai-foot"><span id="historyBound"></span></footer>
 	</aside>

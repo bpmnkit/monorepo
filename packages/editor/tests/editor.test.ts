@@ -670,15 +670,37 @@ describe("the op stream", () => {
 		ed.destroy()
 	})
 
-	it("says nothing on undo, redo or load — those replace rather than advance", () => {
+	it("describes undo and redo as snapshots — a relay must hear about them", () => {
 		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
 		ed.setSelection(["task"])
 		ed.deleteSelected()
 		const ops = recorder(ed)
 		ed.undo()
 		ed.redo()
+		expect(ops.map((op) => op.kind)).toEqual(["snapshot", "snapshot"])
+		// And each carries the document it moved to, not the one it moved from.
+		const undone = ops[0]
+		expect(undone?.kind === "snapshot" && Bpmn.export(undone.defs)).toContain('id="task"')
+		ed.destroy()
+	})
+
+	it("says nothing on load — that is the host replacing the document, not an edit", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		const ops = recorder(ed)
 		ed.load(SIMPLE_XML)
 		expect(ops).toEqual([])
+		ed.destroy()
+	})
+
+	it("keeps a replayed undo byte-identical", () => {
+		const ed = new BpmnEditor({ container: makeContainer(), xml: SIMPLE_XML, grid: false })
+		const start = Bpmn.parse(SIMPLE_XML)
+		const ops = recorder(ed)
+		ed.setSelection(["task"])
+		ed.deleteSelected()
+		ed.undo()
+		const replayed = ops.reduce((defs, op) => applyOp(defs, op).defs, start)
+		expect(Bpmn.export(replayed)).toBe(ed.exportXml())
 		ed.destroy()
 	})
 
