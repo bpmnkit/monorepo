@@ -1,5 +1,24 @@
 # Features
 
+## Every element type is reachable from the builder, and stays that way (2026-09-12)
+
+The fluent builder now covers 23 of the 26 `BpmnElementType` members, and a compile-time table
+keeps it that way.
+
+- **Three new methods**, on `ProcessBuilder`, `BranchBuilder` and `SubProcessContentBuilder`
+  alike: `.manualTask(id, options?)`, `.complexGateway(id, options?)` and
+  `.transaction(id, builder, options?)`. All three were already supported by the parser, the
+  serialiser, the layout, the renderer and the compact/JSON path — only the builder lacked them,
+  which is what sent callers to hand-edit XML.
+- **`BUILDER_COVERAGE`**, a `Record<BpmnElementType, BuilderSupport>`: adding an element type
+  without a builder method is a build failure, not a review catch.
+- **Exempt, deliberately**: the three data types (`dataObject`, `dataObjectReference`,
+  `dataStoreReference`) — connected by data associations, not sequence flows, so a chain method
+  has nowhere to put them. Each exemption carries a written reason, and a test fails if one goes
+  stale.
+- **`pnpm --filter @bpmnkit/core check:builder`** prints the coverage table.
+
+
 ## One design system across every editor panel (2026-09-11)
 
 The `@bpmnkit/plugins` panels — command palette, config panel, process runner, AI bridge,

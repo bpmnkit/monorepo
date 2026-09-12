@@ -1953,7 +1953,7 @@
 		{
 			"id": "packages.core.installation-processbuilder-methods",
 			"file": "chunks/packages.core.installation-processbuilder-methods.md",
-			"tokens": 412,
+			"tokens": 685,
 			"tags": [
 				"packages",
 				"core",
@@ -1963,7 +1963,10 @@
 			],
 			"entities": [
 				"addStartEvent",
-				"BpmnDefinitions"
+				"BpmnDefinitions",
+				"dataObject",
+				"dataObjectReference",
+				"dataStoreReference"
 			]
 		},
 		{
