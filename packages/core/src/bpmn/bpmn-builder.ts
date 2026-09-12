@@ -369,6 +369,34 @@ export interface AdHocSubProcessOptions extends ElementOptions {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Decides whether an explicit root declaration can be recorded.
+ *
+ * Returns false when the identical declaration is already there, so declaring
+ * twice is harmless. Throws when it contradicts one the document already
+ * carries: events resolve these by name, so the ones built before this call
+ * hold the *other* id, and keeping two definitions of one message is how a
+ * `messageRef` ends up naming the wrong one.
+ */
+function canDeclareRoot(
+	kind: string,
+	label: string,
+	id: string,
+	existing: { id: string } | undefined,
+	all: ReadonlyArray<{ id: string }>,
+): boolean {
+	if (existing !== undefined) {
+		if (existing.id === id) return false
+		throw new Error(
+			`${kind} "${label}" is already declared as "${existing.id}". Declare it before the events that use it, or name that id instead.`,
+		)
+	}
+	if (all.some((definition) => definition.id === id)) {
+		throw new Error(`Duplicate ${kind} id "${id}".`)
+	}
+	return true
+}
+
 function resolveMessage(messageName: string, rootMessages: BpmnMessage[]): string {
 	let existing = rootMessages.find((m) => m.name === messageName)
 	if (!existing) {
@@ -2179,6 +2207,89 @@ export class ProcessBuilder {
 	/** Set the process version tag. */
 	versionTag(tag: string): this {
 		this._versionTag = tag
+		return this
+	}
+
+	// ---- Root definitions ----
+
+	/**
+	 * Declares the root `bpmn:message` for a message name, with the id you choose.
+	 *
+	 * Events name messages by name — `{ messageName: "Order Received" }` — and the
+	 * builder declares one on first use, deriving its id from that name. Call this
+	 * first when the id itself matters, typically because something outside this
+	 * process already refers to it.
+	 *
+	 * @param id - The message's element id, used verbatim.
+	 * @throws If a message with this name is already declared under another id,
+	 *   which the events built before this call already point at.
+	 * @example
+	 * ```typescript
+	 * Bpmn.createProcess("orders")
+	 *   .message("Msg_OrderReceived", { name: "Order Received" })
+	 *   .startEvent("start", { messageName: "Order Received" })
+	 * ```
+	 */
+	message(id: string, options: { name: string }): this {
+		const existing = this.rootMessages.find((message) => message.name === options.name)
+		if (canDeclareRoot("Message", options.name, id, existing, this.rootMessages)) {
+			this.rootMessages.push({ id, name: options.name, unknownAttributes: {} })
+		}
+		return this
+	}
+
+	/**
+	 * Declares the root `bpmn:error` for an error code, with the id you choose.
+	 *
+	 * @param id - The error's element id, used verbatim.
+	 * @param options - The `code` events match on, and the display `name`, which
+	 *   defaults to the code.
+	 * @throws If this code is already declared under another id.
+	 */
+	error(id: string, options: { code: string; name?: string }): this {
+		const existing = this.rootErrors.find(
+			(error) => error.errorCode === options.code || error.name === options.code,
+		)
+		if (canDeclareRoot("Error", options.code, id, existing, this.rootErrors)) {
+			this.rootErrors.push({ id, name: options.name ?? options.code, errorCode: options.code })
+		}
+		return this
+	}
+
+	/**
+	 * Declares the root `bpmn:signal` for a signal name, with the id you choose.
+	 *
+	 * @param id - The signal's element id, used verbatim.
+	 * @throws If this name is already declared under another id.
+	 */
+	signal(id: string, options: { name: string }): this {
+		const existing = this.rootSignals.find((signal) => signal.name === options.name)
+		if (canDeclareRoot("Signal", options.name, id, existing, this.rootSignals)) {
+			this.rootSignals.push({ id, name: options.name })
+		}
+		return this
+	}
+
+	/**
+	 * Declares the root `bpmn:escalation` for an escalation code, with the id you
+	 * choose.
+	 *
+	 * @param id - The escalation's element id, used verbatim.
+	 * @param options - The `code` events match on, and the display `name`, which
+	 *   defaults to the code.
+	 * @throws If this code is already declared under another id.
+	 */
+	escalation(id: string, options: { code: string; name?: string }): this {
+		const existing = this.rootEscalations.find(
+			(escalation) => escalation.escalationCode === options.code,
+		)
+		if (canDeclareRoot("Escalation", options.code, id, existing, this.rootEscalations)) {
+			this.rootEscalations.push({
+				id,
+				name: options.name ?? options.code,
+				escalationCode: options.code,
+			})
+		}
 		return this
 	}
 

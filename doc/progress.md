@@ -30,6 +30,13 @@ the untouched remainder; it does not renumber it either.
 One consequence worth stating: ids are only as stable as the elements they name. `.startEvent()`
 with no id still gets a random one, and the flows around it inherit that.
 
+**And an id you can dictate, for the definitions something else already names.** A worker, a
+deployed process or another pool's message flow may refer to a message by an id this process does
+not get to choose. `.message()`, `.error()`, `.signal()` and `.escalation()` declare one up front;
+events go on naming them by name or code, resolving to the declared id. Declaring after the event
+that already created one throws, naming the id it resolved to — the alternative is two definitions
+of one message and a `messageRef` pointing at whichever came first.
+
 ## 2026-09-12 — a runbook, and a script that proves its own work
 
 `apps/drop/DEPLOY.md`: fresh clone to live, in six steps.

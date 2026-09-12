@@ -16,6 +16,9 @@ than from a random generator, so regenerating an unchanged process yields an unc
 - **Continuing a parsed document renumbers nothing** it was handed; new flows avoid the ids
   already in the file.
 - **`defaultFlow` is usable by hand now**, since the id it names is one you can predict.
+- **Or dictate the id**, where something outside the process already refers to it: `.message()`,
+  `.error()`, `.signal()` and `.escalation()` declare a root definition with the id you choose,
+  and the name/code-based event options go on working unchanged.
 
 ## A report points at a state (2026-09-12)
 

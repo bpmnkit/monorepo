@@ -280,7 +280,7 @@ describe("stable root definition ids", () => {
 		const defs = Bpmn.createProcess("p")
 			.startEvent("start")
 			.serviceTask("work", { taskType: "work" })
-			.boundaryEvent("boundary", { attachedToRef: "work", errorCode: "OUT_OF_STOCK" })
+			.boundaryEvent("boundary", { attachedTo: "work", errorCode: "OUT_OF_STOCK" })
 			.endEvent("signalled", { signalName: "Order Cancelled" })
 			.element("work")
 			.endEvent("escalated", { escalationCode: "NEEDS_REVIEW" })
@@ -311,5 +311,91 @@ describe("stable root definition ids", () => {
 			.build()
 
 		expect(defs.messages.map((message) => message.id)).toEqual(["Message_Order"])
+	})
+})
+
+describe("explicit root definition ids", () => {
+	it("uses the declared id for events that name the message", () => {
+		const defs = Bpmn.createProcess("p")
+			.message("Msg_OrderReceived", { name: "Order Received" })
+			.startEvent("start", { messageName: "Order Received" })
+			.endEvent("done")
+			.build()
+
+		expect(defs.messages).toEqual([
+			{ id: "Msg_OrderReceived", name: "Order Received", unknownAttributes: {} },
+		])
+		const start = defined(firstProcess(defs).flowElements.find((el) => el.id === "start"))
+		const eventDefinition = defined(start.eventDefinitions?.[0])
+		expect(eventDefinition.type === "message" ? eventDefinition.messageRef : undefined).toBe(
+			"Msg_OrderReceived",
+		)
+	})
+
+	it("uses the declared ids for errors, signals and escalations", () => {
+		const defs = Bpmn.createProcess("p")
+			.error("Err_OutOfStock", { code: "OUT_OF_STOCK", name: "Out of stock" })
+			.signal("Sig_Cancelled", { name: "Order Cancelled" })
+			.escalation("Esc_Review", { code: "NEEDS_REVIEW" })
+			.startEvent("start")
+			.serviceTask("work", { taskType: "work" })
+			.boundaryEvent("boundary", { attachedTo: "work", errorCode: "OUT_OF_STOCK" })
+			.endEvent("signalled", { signalName: "Order Cancelled" })
+			.element("work")
+			.endEvent("escalated", { escalationCode: "NEEDS_REVIEW" })
+			.build()
+
+		expect(defs.errors).toEqual([
+			{ id: "Err_OutOfStock", name: "Out of stock", errorCode: "OUT_OF_STOCK" },
+		])
+		expect(defs.signals).toEqual([{ id: "Sig_Cancelled", name: "Order Cancelled" }])
+		expect(defs.escalations).toEqual([
+			{ id: "Esc_Review", name: "NEEDS_REVIEW", escalationCode: "NEEDS_REVIEW" },
+		])
+	})
+
+	it("declares nothing twice when the same declaration is repeated", () => {
+		const defs = Bpmn.createProcess("p")
+			.message("Msg_Order", { name: "Order" })
+			.message("Msg_Order", { name: "Order" })
+			.startEvent("start", { messageName: "Order" })
+			.build()
+
+		expect(defs.messages).toHaveLength(1)
+	})
+
+	it("refuses a declaration the events already resolved to another id", () => {
+		expect(() =>
+			Bpmn.createProcess("p")
+				.startEvent("start", { messageName: "Order" })
+				.message("Msg_Order", { name: "Order" })
+				.build(),
+		).toThrow(/already declared as "Message_Order"/)
+	})
+
+	it("refuses to reuse one id for two definitions", () => {
+		expect(() =>
+			Bpmn.createProcess("p").message("Msg", { name: "Order" }).message("Msg", { name: "Refund" }),
+		).toThrow(/Duplicate Message id "Msg"/)
+	})
+
+	it("keeps the id a continued document already gave the message", () => {
+		const source = Bpmn.createProcess("p")
+			.message("Msg_Order", { name: "Order" })
+			.startEvent("start", { messageName: "Order" })
+			.endEvent("done")
+			.build()
+
+		const continued = Bpmn.continueProcess(source, "p")
+			.insertAfter("start")
+			.intermediateCatchEvent("await", { messageName: "Order", correlationKey: "= orderId" })
+			.build()
+
+		expect(continued.messages).toHaveLength(1)
+		const awaitEvent = defined(firstProcess(continued).flowElements.find((el) => el.id === "await"))
+		const eventDefinition = defined(awaitEvent.eventDefinitions?.[0])
+		expect(eventDefinition.type === "message" ? eventDefinition.messageRef : undefined).toBe(
+			"Msg_Order",
+		)
 	})
 })

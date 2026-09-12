@@ -90,7 +90,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Building Processes — Boundary Events](.llms/chunks/guides.building-processes.boundary-events.md) — 294 tokens
 - [Building Processes — Call Activities](.llms/chunks/guides.building-processes.call-activities.md) — 216 tokens
 - [Building Processes — Task Defaults](.llms/chunks/guides.building-processes.task-defaults.md) — 141 tokens
-- [Building Processes — Multi-Instance](.llms/chunks/guides.building-processes.multi-instance.md) — 490 tokens
+- [Building Processes — Multi-Instance](.llms/chunks/guides.building-processes.multi-instance.md) — 687 tokens
 - [Claude Code Plugin](.llms/chunks/guides.claude-code-plugin.md) — 205 tokens
 - [Claude Code Plugin — Configuration](.llms/chunks/guides.claude-code-plugin.configuration.md) — 592 tokens
 - [Claude Code Plugin — Reference docs](.llms/chunks/guides.claude-code-plugin.reference-docs.md) — 412 tokens

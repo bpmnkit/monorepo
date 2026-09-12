@@ -62,5 +62,25 @@ Two consequences worth knowing:
 `continueProcess()` never renumbers what the document arrived with: flows the builder did not
 create keep their ids, and new ones avoid them.
 
+### Naming a root definition yourself
+
+When the id of a message, error, signal or escalation matters — because a message flow in another
+pool, a worker, or a deployed process already refers to it — declare it before the events that
+use it:
+
+```typescript
+Bpmn.createProcess("orders")
+  .message("Msg_OrderReceived", { name: "Order Received" })
+  .error("Err_OutOfStock", { code: "OUT_OF_STOCK", name: "Out of stock" })
+  .signal("Sig_Cancelled", { name: "Order Cancelled" })
+  .escalation("Esc_Review", { code: "NEEDS_REVIEW" })
+  .startEvent("start", { messageName: "Order Received" })   // messageRef: Msg_OrderReceived
+```
+
+Events still name these by name or code, exactly as before — the declaration only decides the id
+they resolve to. Order matters: an event built first declares the definition itself, and
+declaring it afterwards under a different id throws rather than leaving two definitions of one
+message behind.
+
 ---
 Source: https://bpmnkit.com/docs/guides/building-processes
