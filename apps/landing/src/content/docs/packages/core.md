@@ -283,6 +283,41 @@ const definitions = expand(compactDiagram);
 const xml = Bpmn.export(definitions);
 ```
 
+Every element type the model knows expands to itself, data elements included. The switch is
+exhaustive, so a new `BpmnElementType` fails the build here rather than silently arriving as a
+`task` — which is how `dataObject`, `dataObjectReference` and `dataStoreReference` were lost.
+
+### `retypeElement(element, type)`
+
+Returns a copy of a flow element with a different `type`, keeping its id, name, documentation
+and — crucially — its incoming and outgoing sequence flows. Use this to change a task's type
+instead of removing and re-adding the element, which drops the wiring.
+
+```typescript
+import { retypeElement } from "@bpmnkit/core";
+
+const index = process.flowElements.findIndex((el) => el.id === "charge");
+process.flowElements[index] = retypeElement(process.flowElements[index], "manualTask");
+```
+
+Nested content is carried between container types, and a multi-instance marker between types
+that both allow one. Zeebe extensions the new type cannot legally hold are dropped, using the
+same placement table `ensureZeebeExtension` enforces — so a `serviceTask` retyped to
+`manualTask` does not keep a job worker the engine would refuse.
+
+### `createFlowElement(id, type, options?)`
+
+Builds an empty flow element of any `BpmnElementType`, with the right shape for that type.
+This is the single place that mapping lives; the fluent builder uses it too.
+
+### Element catalog
+
+`ELEMENT_TYPE_GROUPS` maps every `BpmnElementType` to one of `event`, `task`, `gateway`,
+`container` or `data`, with `allElementTypes()` and `elementTypesInGroup(group)` over it. Tool
+schemas and prompts render their type lists from this rather than hard-coding one — a
+hand-written list is how the MCP schema came to advertise 18 types while the compact path
+accepted 23.
+
 ### `layoutProcess(process)`
 
 Runs the Sugiyama auto-layout algorithm on a `BpmnProcess` object.
@@ -307,11 +342,20 @@ All builder methods return `this` for chaining.
 | `.serviceTask(id, options?)` | Add a service task |
 | `.userTask(id, options?)` | Add a user task |
 | `.scriptTask(id, options?)` | Add a script task |
+| `.sendTask(id, options?)` | Add a send task |
+| `.receiveTask(id, options?)` | Add a receive task |
+| `.businessRuleTask(id, options?)` | Add a business rule task |
+| `.manualTask(id, options?)` | Add a manual task — work done outside the engine, no job worker |
+| `.task(id, options?)` | Add an abstract task with no Zeebe extensions |
 | `.exclusiveGateway(id, options?)` | Add an XOR gateway |
 | `.parallelGateway(id, options?)` | Add a parallel gateway |
 | `.inclusiveGateway(id, options?)` | Add an inclusive gateway |
 | `.eventBasedGateway(id, options?)` | Add an event-based gateway |
+| `.complexGateway(id, options?)` | Add a complex gateway (aspirational — Zeebe does not execute these) |
 | `.subProcess(id, builder, options?)` | Add an embedded sub-process |
+| `.adHocSubProcess(id, builder, options?)` | Add an ad-hoc sub-process |
+| `.eventSubProcess(id, builder, options?)` | Add an event sub-process (emits `subProcess triggeredByEvent="true"`) |
+| `.transaction(id, builder, options?)` | Add a transaction sub-process (atomic scope) |
 | `.callActivity(id, options?)` | Add a call activity |
 | `.intermediateCatchEvent(id, options?)` | Add a catch event |
 | `.intermediateThrowEvent(id, options?)` | Add a throw event |
@@ -322,6 +366,12 @@ All builder methods return `this` for chaining.
 | `.disconnectedStartEvent(id?, options?)` | Add a start event with no auto-connection to the current cursor — alias for `addStartEvent` |
 | `.withAutoLayout()` | Apply Sugiyama layout before building |
 | `.build(options?)` | Return the completed `BpmnDefinitions`. Pass `{ explicitJoins: true }` to refuse inferred join gateways — see below |
+
+Every BPMN element type the model knows is reachable from a builder chain, except the three
+data types (`dataObject`, `dataObjectReference`, `dataStoreReference`) — those are wired by
+data associations rather than sequence flows, so the chain has nowhere to put them. A
+compile-time table, `BUILDER_COVERAGE`, holds the SDK to that: adding an element type without
+a builder method fails the build. Run `pnpm --filter @bpmnkit/core check:builder` to print it.
 
 ### Joins: inferred by default, or declared
 

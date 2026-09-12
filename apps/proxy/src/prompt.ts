@@ -2,7 +2,7 @@ import type { CompactDiagram } from "@bpmnkit/core"
 
 // ── Shared format blocks (used by non-MCP fallback adapters) ──────────────────
 
-const COMPACT_FORMAT = [
+export const COMPACT_FORMAT = [
 	"CompactDiagram JSON format:",
 	"```json",
 	"{",
@@ -19,8 +19,10 @@ const COMPACT_FORMAT = [
 	"}",
 	"```",
 	"Element types — Events: startEvent, endEvent, intermediateThrowEvent, intermediateCatchEvent (add eventType: timer|message|signal|error), boundaryEvent (add attachedTo + eventType)",
-	"Tasks: serviceTask, userTask (add formId), businessRuleTask (add decisionId+resultVariable), callActivity (add calledProcess), scriptTask, sendTask, manualTask",
-	"Gateways: exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway  |  Containers: subProcess, adHocSubProcess",
+	"Tasks: serviceTask, userTask (add formId), businessRuleTask (add decisionId+resultVariable), callActivity (add calledProcess), scriptTask, sendTask, receiveTask, manualTask (no worker — done outside the engine), task (abstract)",
+	"Gateways: exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway, complexGateway",
+	"Containers: subProcess, adHocSubProcess, eventSubProcess, transaction",
+	"Data: dataObject, dataObjectReference (add dataObjectRef), dataStoreReference (add dataStoreRef) — wired by data associations, not sequence flows",
 	'HTTP REST calls: always use jobType: "io.camunda:http-json:1" with taskHeaders {url, method, headers?, body?} and resultVariable.',
 ].join("\n")
 

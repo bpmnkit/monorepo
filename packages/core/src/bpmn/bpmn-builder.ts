@@ -22,6 +22,7 @@ import type {
 	BpmnSignal,
 	BpmnTextAnnotation,
 } from "./bpmn-model.js"
+import { createFlowElement } from "./element-shape.js"
 import type { RestConnectorConfig } from "./rest-connector.js"
 import {
 	restConnectorRetries,
@@ -464,94 +465,19 @@ function buildEventDefinitions(
 	return defs
 }
 
+/**
+ * Build an empty flow element.
+ *
+ * Delegates to `createFlowElement`, which holds the exhaustive type → shape
+ * switch; this wrapper exists so the builder's many call sites keep their
+ * shorter local name.
+ */
 function makeFlowElement(
 	id: string,
 	type: BpmnElementType,
 	options?: { name?: string; extensionElements?: XmlElement[]; documentation?: string },
 ): BpmnFlowElement {
-	const base = {
-		id,
-		name: options?.name,
-		incoming: [] as string[],
-		outgoing: [] as string[],
-		documentation: options?.documentation,
-		extensionElements: options?.extensionElements ?? [],
-		unknownAttributes: {} as Record<string, string>,
-	}
-
-	switch (type) {
-		case "startEvent":
-		case "endEvent":
-		case "intermediateThrowEvent":
-		case "intermediateCatchEvent":
-			return { ...base, type, eventDefinitions: [] }
-		case "boundaryEvent":
-			return {
-				...base,
-				type: "boundaryEvent",
-				attachedToRef: "",
-				eventDefinitions: [],
-			}
-		case "task":
-		case "serviceTask":
-		case "scriptTask":
-		case "userTask":
-		case "sendTask":
-		case "receiveTask":
-		case "businessRuleTask":
-		case "manualTask":
-		case "callActivity":
-			return { ...base, type } as BpmnFlowElement
-		case "exclusiveGateway":
-		case "inclusiveGateway":
-		case "complexGateway":
-			return { ...base, type } as BpmnFlowElement
-		case "parallelGateway":
-		case "eventBasedGateway":
-			return { ...base, type } as BpmnFlowElement
-		case "subProcess":
-			return {
-				...base,
-				type: "subProcess",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		case "adHocSubProcess":
-			return {
-				...base,
-				type: "adHocSubProcess",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		case "eventSubProcess":
-			return {
-				...base,
-				type: "eventSubProcess",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		case "transaction":
-			return {
-				...base,
-				type: "transaction",
-				flowElements: [],
-				sequenceFlows: [],
-				textAnnotations: [],
-				associations: [],
-				groups: [],
-			}
-		default:
-			return { ...base, type } as BpmnFlowElement
-	}
+	return createFlowElement(id, type, options)
 }
 
 function buildMultiInstance(options: MultiInstanceOptions): BpmnMultiInstanceLoopCharacteristics {
@@ -857,6 +783,14 @@ function makeInclusiveGatewayEl(id: string, options?: GatewayOptions): BpmnFlowE
 	return el
 }
 
+function makeComplexGatewayEl(id: string, options?: GatewayOptions): BpmnFlowElement {
+	const el = makeFlowElement(id, "complexGateway", options)
+	if (options?.defaultFlow && el.type === "complexGateway") {
+		;(el as { default?: string }).default = options.defaultFlow
+	}
+	return el
+}
+
 /**
  * `subProcess`/`eventSubProcess`/`adHocSubProcess` all take a required content
  * callback as their 2nd argument and an optional options object as their 3rd.
@@ -884,6 +818,40 @@ function resolveSubProcessArgs<TOptions>(
 		}
 	}
 	throw new TypeError("subProcess() requires a content callback function")
+}
+
+/**
+ * Build a transaction element from a content callback.
+ *
+ * A transaction is a sub-process with atomic semantics: the same container
+ * shape and the same content builder, under a distinct element name so a cancel
+ * boundary event has a scope to attach to. Shared by all three flow builders —
+ * unlike `subProcess`, whose cursor handling differs per class, nothing here
+ * varies between them.
+ */
+function makeTransactionEl(
+	id: string,
+	content: unknown,
+	options: unknown,
+	rootMessages: BpmnMessage[],
+): BpmnFlowElement {
+	const resolved = resolveSubProcessArgs<SubProcessOptions>(content, options)
+	const sub = new SubProcessContentBuilder(rootMessages)
+	resolved.content(sub)
+	insertJoinGateways(sub._elements, sub._flows)
+	recomputeIncomingOutgoing(sub._elements, sub._flows)
+
+	const element = makeFlowElement(id, "transaction", resolved.options)
+	if (element.type === "transaction") {
+		element.flowElements = sub._elements
+		element.sequenceFlows = sub._flows
+		element.textAnnotations = sub._textAnnotations
+		element.associations = sub._associations
+		if (resolved.options?.multiInstance) {
+			element.loopCharacteristics = buildMultiInstance(resolved.options.multiInstance)
+		}
+	}
+	return element
 }
 
 // ---------------------------------------------------------------------------
@@ -1188,6 +1156,13 @@ export class BranchBuilder {
 		return this.addElement(makeCallActivityEl(id, options))
 	}
 
+	/** Add a manual task — work performed outside the engine, with no job worker. */
+	manualTask(id: string, options?: ElementOptions): this {
+		const el = makeFlowElement(id, "manualTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
+	}
+
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
 		const el = makeFlowElement(id, "task", options)
@@ -1280,6 +1255,11 @@ export class BranchBuilder {
 	eventBasedGateway(id: string, options?: ElementOptions): this {
 		this.currentGatewayId = id
 		return this.addElement(makeFlowElement(id, "eventBasedGateway", options))
+	}
+
+	complexGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
+		return this.addElement(makeComplexGatewayEl(id, options))
 	}
 
 	/**
@@ -1386,6 +1366,15 @@ export class BranchBuilder {
 			}
 		}
 		return this.addElement(element)
+	}
+
+	/** Add a transaction sub-process (mirrors `ProcessBuilder.transaction`). */
+	transaction(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: SubProcessOptions,
+	): this {
+		return this.addElement(makeTransactionEl(id, content, options, this.rootMessages))
 	}
 
 	/** Add an ad-hoc sub-process (mirrors `ProcessBuilder.adHocSubProcess`). */
@@ -1651,6 +1640,13 @@ export class SubProcessContentBuilder {
 		return this.addElement(el)
 	}
 
+	/** Add a manual task — work performed outside the engine, with no job worker. */
+	manualTask(id: string, options?: ElementOptions): this {
+		const el = makeFlowElement(id, "manualTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		return this.addElement(el)
+	}
+
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
 		const el = makeFlowElement(id, "task", options)
@@ -1678,6 +1674,11 @@ export class SubProcessContentBuilder {
 	eventBasedGateway(id: string, options?: ElementOptions): this {
 		this.currentGatewayId = id
 		return this.addElement(makeFlowElement(id, "eventBasedGateway", options))
+	}
+
+	complexGateway(id: string, options?: GatewayOptions): this {
+		this.currentGatewayId = id
+		return this.addElement(makeComplexGatewayEl(id, options))
 	}
 
 	// ---- Annotations ----
@@ -1870,6 +1871,15 @@ export class SubProcessContentBuilder {
 			}
 		}
 		return this.addElement(element)
+	}
+
+	/** Add a transaction sub-process nested inside this sub-process's content. */
+	transaction(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: SubProcessOptions,
+	): this {
+		return this.addElement(makeTransactionEl(id, content, options, this.rootMessages))
 	}
 
 	/** Add an ad-hoc sub-process nested inside this sub-process's content. */
@@ -2431,6 +2441,14 @@ export class ProcessBuilder {
 		return this
 	}
 
+	/** Add a manual task — work performed outside the engine, with no job worker. */
+	manualTask(id: string, options?: ElementOptions): this {
+		const el = makeFlowElement(id, "manualTask", options)
+		if (options?.isForCompensation) el.isForCompensation = true
+		this.addFlowElement(el)
+		return this
+	}
+
 	/** Add an abstract task with no Zeebe extensions. */
 	task(id: string, options?: ElementOptions): this {
 		const el = makeFlowElement(id, "task", options)
@@ -2465,6 +2483,13 @@ export class ProcessBuilder {
 	/** Add an event-based gateway. Aspirational. */
 	eventBasedGateway(id: string, options?: ElementOptions): this {
 		this.addFlowElement(makeFlowElement(id, "eventBasedGateway", options))
+		this.currentGatewayId = id
+		return this
+	}
+
+	/** Add a complex gateway. Aspirational — Zeebe does not execute these. */
+	complexGateway(id: string, options?: GatewayOptions): this {
+		this.addFlowElement(makeComplexGatewayEl(id, options))
 		this.currentGatewayId = id
 		return this
 	}
@@ -2624,6 +2649,16 @@ export class ProcessBuilder {
 			}
 		}
 		this.addFlowElement(element)
+		return this
+	}
+
+	/** Add a transaction sub-process — a sub-process with atomic semantics. */
+	transaction(
+		id: string,
+		content: (b: SubProcessContentBuilder) => void,
+		options?: SubProcessOptions,
+	): this {
+		this.addFlowElement(makeTransactionEl(id, content, options, this.rootMessages))
 		return this
 	}
 
