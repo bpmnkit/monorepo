@@ -331,7 +331,9 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       never by a reader), viewport carried across the swap, HUD only ever built for the writer;
       brings track C with it — local checkpoints every 30 s of dirty editing and an *On this
       device* panel beside *Saved milestones*, never merged
-- [ ] D7 — autosave: 30 s alarm → `exportPreserving` → `'current'`, milestone on hour and release
+- [x] D7 — autosave: the object's storage takes every op, D1 is brought level 30 s after the
+      first unsaved edit via `exportPreserving` (so an edited drop is not reformatted top to
+      bottom), and a milestone is cut once per `(hour, session)` and refreshed on release
 
 **Track E — hardening**
 

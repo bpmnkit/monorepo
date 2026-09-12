@@ -24,7 +24,7 @@
  * for all three, so a mismatch means a real divergence rather than a formatting
  * difference.
  */
-import { Bpmn, type BpmnDefinitions, sha256Hex } from "@bpmnkit/core"
+import { Bpmn, type BpmnDefinitions, exportPreserving, sha256Hex } from "@bpmnkit/core"
 import { type EditorOp, applyOp } from "@bpmnkit/editor/headless"
 import { getCurrentBody } from "./db.js"
 import { type IntegrityProblem, checkIntegrity } from "./integrity.js"
@@ -34,6 +34,14 @@ export interface RoomDoc {
 	filename: string
 	/** Ops applied since the document was first loaded. Monotonic, never reused. */
 	version: number
+	/**
+	 * The canonical serialisation: what is hashed, broadcast and resynced.
+	 *
+	 * Canonical rather than faithful on purpose — a watcher has to be able to
+	 * reproduce it from the op alone, and it has no way to reproduce the
+	 * uploader's whitespace. What reaches D1 is the faithful one; see
+	 * {@link storedBody}.
+	 */
 	xml: string
 	hash: string
 	defs: BpmnDefinitions
@@ -56,6 +64,39 @@ export type ApplyResult =
 /** Storage key for one file's document. Scoped by filename: one room, many files. */
 export function docKey(filename: string): string {
 	return `doc:${filename}`
+}
+
+/**
+ * Storage key for the file's source text — the bytes the room last read.
+ *
+ * Kept apart from the document rather than inside it for two reasons. It is
+ * written once per load where the document is written on every op, so bundling
+ * them would serialise a second copy of the file on every keystroke. And a
+ * Durable Object caps a key and its value at 2 MB together, which two 900 KB
+ * bodies in one value would come uncomfortably close to.
+ */
+export function sourceKey(filename: string): string {
+	return `src:${filename}`
+}
+
+/**
+ * What gets written to D1: the edit, spliced into the text it came from.
+ *
+ * `Bpmn.export` would reformat the whole file, so a drop that someone edits
+ * once would come back reindented from top to bottom — every diff against the
+ * original would be noise, and any comment or hand-alignment in the upload
+ * would be gone. `exportPreserving` rewrites only what changed.
+ *
+ * Each save becomes the source for the next, so formatting survives a session
+ * ending as well as an op.
+ */
+export function storedBody(source: string, defs: BpmnDefinitions): string {
+	try {
+		return exportPreserving(source, defs)
+	} catch {
+		// A source the splicer cannot work with must not cost the edit itself.
+		return Bpmn.export(defs)
+	}
 }
 
 /** Builds a `RoomDoc` from XML, parsing and hashing it once. */
@@ -88,17 +129,23 @@ export async function readStoredDoc(
 	return await docFromXml(stored.filename, stored.xml, stored.version)
 }
 
-/** Loads a file's current state from D1 — the cold-start path. */
+/**
+ * Loads a file's current state from D1 — the cold-start path.
+ *
+ * Returns the source bytes alongside the document: they are what a later save
+ * splices its changes into, and this is the only moment they are in hand.
+ */
 export async function loadDocFromDb(
 	db: D1Database,
 	shareId: string,
 	filename: string,
-): Promise<RoomDoc | null> {
+): Promise<{ doc: RoomDoc; source: string } | null> {
 	const file = await getCurrentBody(db, shareId, filename, "original")
 	// Only BPMN has an op vocabulary; a DMN or form in the same drop is viewable
 	// but not editable, and saying so here keeps the room from half-supporting it.
 	if (!file || file.kind !== "bpmn") return null
-	return await docFromXml(filename, file.body, 0)
+	const doc = await docFromXml(filename, file.body, 0)
+	return doc ? { doc, source: file.body } : null
 }
 
 /** Persists a document, replacing whatever the room held for that file. */

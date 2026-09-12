@@ -1,5 +1,29 @@
 # Features
 
+## Autosave, and no save button (2026-09-12)
+
+Edits reach the store of record without anyone asking, and the version log fills itself in.
+
+- **Nothing is ever unsaved.** The Durable Object's own storage takes every op as it is verified,
+  so losing a tab loses nothing. D1 is the store of record and only has to be *fresh*: it is
+  brought level thirty seconds after the first unsaved edit, and at once when the baton is put
+  down or the writer's connection drops.
+- **The debounce bounds staleness; it does not wait for a lull.** The deadline is set by the
+  first unsaved edit and never pushed back by the ones after it, so a room edited continuously
+  still saves every thirty seconds rather than never.
+- **An edited drop is not reformatted.** Saves go through `exportPreserving`, so a real edit is a
+  handful of changed lines against the upload rather than a whole-file rewrite — a drag of one
+  task leaves a five-line diff. Each save becomes the next one's source, so formatting survives a
+  session ending as well as an op.
+- **One milestone per hour of each editing session**, cut the first time that hour is saved and
+  refreshed when the baton is released — so an hour of continuous editing leaves one row holding
+  the state that hour ended in, at two D1 writes rather than a hundred.
+- **One person's hour cannot overwrite another's.** The collapse key carries the baton grant, so
+  a stranger editing forty minutes after you leaves your milestone standing.
+- **Retention slides on an edit**, not only on a view, so an actively edited drop cannot expire.
+- **The uploaded original is never written to.** `?v=0` is the bytes that were uploaded, however
+  many times the drop has been edited since.
+
 ## Editing a drop (2026-09-12)
 
 A drop is now editable in place. Press **Edit**, and the read-only canvas becomes a full editor —

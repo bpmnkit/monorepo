@@ -30,7 +30,26 @@ export function migratedDb(): D1Database {
 	return wrap(db)
 }
 
+/** Counts the statements that actually changed something — see {@link writeCount}. */
+const WRITES = Symbol.for("bpmnkit.test.d1.writes")
+
+/**
+ * How many rows-changing statements a database has run.
+ *
+ * The autosave's whole design is a claim about write *rate* — one save per
+ * thirty seconds, at most two milestone writes an hour — and a row count cannot
+ * tell a single insert from an insert followed by a hundred updates. This can.
+ */
+export function writeCount(db: D1Database): number {
+	return (db as unknown as Record<symbol, number>)[WRITES] ?? 0
+}
+
 function wrap(db: DatabaseSync): D1Database {
+	const counter = { n: 0 }
+	const count = (sql: string) => {
+		if (/^\s*(INSERT|UPDATE|DELETE)/i.test(sql)) counter.n += 1
+	}
+
 	function prepare(sql: string): D1PreparedStatement {
 		let params: unknown[] = []
 		const stmt: D1PreparedStatement = {
@@ -50,6 +69,7 @@ function wrap(db: DatabaseSync): D1Database {
 				return { results, success: true, meta: {} } as D1Result<T>
 			},
 			async run<T>() {
+				count(sql)
 				const info = db.prepare(sql).run(...(params as never[]))
 				return {
 					results: [] as T[],
@@ -63,6 +83,9 @@ function wrap(db: DatabaseSync): D1Database {
 	}
 
 	return {
+		get [WRITES]() {
+			return counter.n
+		},
 		prepare,
 		async batch<T>(statements: D1PreparedStatement[]) {
 			// D1 runs a batch as one transaction; so does this, so a half-applied

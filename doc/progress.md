@@ -1,5 +1,45 @@
 # Progress
 
+## 2026-09-12 — D7: autosave, and the gap D6 left
+
+D6 ended with a real hole: a reader who loaded the page after everyone had gone still saw the
+pre-edit file, because nothing wrote to D1. This closes it. The acceptance ran end to end in a
+browser — edit, close the writer's tab without pressing Done, reload, and the edit is there.
+
+**`exportPreserving` needed the source text, which D4 had thrown away.** D4 canonicalises on
+load, for a good reason: the hash a watcher compares has to be reproducible from the op alone,
+and no watcher can reproduce the uploader's whitespace. But that meant the first save would have
+reformatted the whole file, turning every diff against the original into noise. The fix is to
+keep both — canonical for the wire, faithful for storage — with the source under its own storage
+key rather than inside the document. Two reasons for that split, and both are about cost: the
+document is written on every op where the source is written once per load, and a Durable Object
+caps a key and its value at 2 MB *together*, which two 900 KB bodies in one value would come
+uncomfortably close to. Each save then becomes the next one's source, so preservation survives a
+session ending. A drag of one task now leaves a five-line diff against a 42-line upload.
+
+**The milestone rule turned out to be two lines.** `appendMilestone` already collapses by
+`(hour, session)` and suppresses an unchanged one, so the room only has to decide *when to ask*:
+the first save in a new bucket, and again on release. The release call lands on the same bucket,
+so it updates that row rather than adding one — the log ends up holding the state each hour of
+each session ended in, for one insert and one update.
+
+**A row count would not have tested that.** A milestone written on every save would also leave
+one row per hour, at four times the writes, and the plan's whole free-tier budget rests on the
+rate. So the D1 test double now counts row-changing statements, and the test asserts ten writes
+for four saves: two per save, plus the milestone's insert and its prune on the first one.
+
+**A precedence bug the types could not catch.** `(await get("opsSinceMilestone")) ?? 0 + 1` parses
+as `x ?? 1`, because `??` binds looser than `+` — so the op counter would have read 1 for ever.
+Caught while re-reading rather than by a test, which is worth noting: the test that covers it was
+written afterwards.
+
+**One browser assertion was wrong rather than the code.** I checked preservation by comparing
+line counts, and a move fails that — re-routing a flow legitimately adds dogleg waypoints. The
+real check is the diff, which is five lines: the moved bounds and the two re-routed edges,
+everything else byte-identical to the upload. The history panel then showed the milestone
+labelled **layout only**, which is `semanticHash` doing exactly what the correction at the start
+of this work said it should: label a milestone, never suppress one.
+
 ## 2026-09-12 — D6: the editor arrives on demand, and track C with it
 
 The Edit button works. Pressing it claims the baton, fetches the editor as a separate chunk, and

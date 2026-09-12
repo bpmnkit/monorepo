@@ -37,6 +37,17 @@ export const MILESTONE_BUCKET_MS = 60 * 60 * 1000
  */
 export const VIEW_FLUSH_MS = 60_000
 
+/**
+ * How long after the first unsaved edit the room writes the document to D1.
+ *
+ * Deliberately not per-op. The Durable Object's own storage is the durability
+ * layer and is written on every op, so nothing is ever unsaved; D1 is the store
+ * of record and only has to be *fresh*. Thirty seconds keeps a busy room to
+ * roughly 120 D1 writes an hour rather than one per keystroke — see
+ * `doc/drop-live-editing-plan.md` §2.7.
+ */
+export const AUTOSAVE_MS = 30_000
+
 /** `seq` of the uploaded original. Not a `file_versions` row — it is the untouched `file_content`. */
 export const ORIGINAL_SEQ = 0
 

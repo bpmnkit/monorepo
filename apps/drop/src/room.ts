@@ -1,10 +1,20 @@
+import { semanticHash, sha256Hex } from "@bpmnkit/core"
 import type { EditorOp } from "@bpmnkit/editor/headless"
 import type { Env } from "./env.js"
-import { recordViews } from "./lib/db.js"
-import { type RoomDoc, advance, loadDocFromDb, readStoredDoc, writeDoc } from "./lib/doc.js"
+import { getFileRef, recordViews } from "./lib/db.js"
+import {
+	type RoomDoc,
+	advance,
+	loadDocFromDb,
+	readStoredDoc,
+	sourceKey,
+	storedBody,
+	writeDoc,
+} from "./lib/doc.js"
 import { describeProblem } from "./lib/integrity.js"
 import { parseOp } from "./lib/op-guard.js"
-import { RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
+import { appendMilestone, bucketKey, setCurrent } from "./lib/versions.js"
+import { AUTOSAVE_MS, RETENTION_MS, VIEW_FLUSH_MS } from "./shared/constants.js"
 import {
 	BATON_IDLE_MS,
 	BATON_WARN_MS,
@@ -46,6 +56,13 @@ interface Attachment {
  * it can store, and only then does that become the drop's state. So a client
  * cannot write anything it could not have reached by editing, and the state
  * everyone sees is the room's, never a writer's claim about it.
+ *
+ * **Autosave.** There is no save button because there is nothing for it to do.
+ * The object's own storage takes every op, so nothing is ever unsaved; D1 is
+ * brought level on an alarm thirty seconds after the first unsaved edit, which
+ * is the difference between roughly 120 writes an hour and one per keystroke.
+ * A milestone joins the version log once per hour of each editing session, and
+ * once more when the baton is put down.
  *
  * Nothing in memory is trusted across events. Every field the room needs after a
  * wake lives in storage or on a socket's attachment — including the document,
@@ -149,6 +166,7 @@ export class DocRoom implements DurableObject {
 	async alarm(): Promise<void> {
 		const now = Date.now()
 		await this.flushViews(now)
+		await this.flushDoc(now)
 		await this.checkBaton(now)
 		await this.rearm(now)
 	}
@@ -170,9 +188,12 @@ export class DocRoom implements DurableObject {
 			return
 		}
 
+		// The session id is what keeps one person's milestone from being overwritten
+		// by the next person's inside the same hour — see the plan's §2.4.
 		await this.state.storage.put({
 			holder: actor,
 			holderFile: filename,
+			sessionId: actor,
 			lastActivityAt: Date.now(),
 		})
 		await this.state.storage.delete("warnedAt")
@@ -190,6 +211,9 @@ export class DocRoom implements DurableObject {
 
 	private async release(actor: string, reason: RevokeReason): Promise<boolean> {
 		if ((await this.holder()) !== actor) return false
+		// Save before letting go, and cut a milestone: the session is over, and the
+		// state it ended in is the one worth being able to come back to.
+		await this.flushDoc(Date.now(), { force: true, milestone: true })
 		await this.state.storage.delete(["holder", "holderFile", "warnedAt"])
 		for (const ws of this.state.getWebSockets(actor)) {
 			this.send(ws, { type: "revoked", reason })
@@ -291,6 +315,7 @@ export class DocRoom implements DurableObject {
 		// it had not kept would be claiming a state it could lose on eviction.
 		this.docs.set(doc.filename, result.doc)
 		await writeDoc(this.state.storage, result.doc)
+		await this.markDirty(result.doc.filename)
 
 		this.broadcast({
 			type: "applied",
@@ -336,10 +361,13 @@ export class DocRoom implements DurableObject {
 		if (!shareId) return null
 		const loaded = await loadDocFromDb(this.env.DB, shareId, filename)
 		if (!loaded) return null
-		// Not written to storage here: nothing has changed yet, and a room that
-		// only ever gets looked at should leave no document behind.
-		this.docs.set(filename, loaded)
-		return loaded
+		// The source is kept because a later save splices into it, and this is the
+		// only moment the uploaded bytes are in hand. The *document* is not written
+		// here: nothing has changed yet, and a room only ever looked at should
+		// leave no document behind.
+		await this.state.storage.put(sourceKey(filename), loaded.source)
+		this.docs.set(filename, loaded.doc)
+		return loaded.doc
 	}
 
 	private reject(ws: WebSocket, seq: number, reason: RejectReason, detail?: string): void {
@@ -371,6 +399,87 @@ export class DocRoom implements DurableObject {
 		await recordViews(this.env.DB, shareId, pending, now, now + RETENTION_MS)
 	}
 
+	// ── Autosave ───────────────────────────────────────────────────────────────
+
+	/**
+	 * Notes that D1 is behind, and when it should stop being.
+	 *
+	 * The deadline is set by the *first* unsaved edit and not pushed back by the
+	 * ones after it. Refreshing it on every op would mean a room edited
+	 * continuously never saved at all, which is the opposite of what a debounce
+	 * is for here: the aim is to bound how stale D1 gets, not to wait for a lull.
+	 */
+	private async markDirty(filename: string): Promise<void> {
+		const pending = await this.state.storage.get<number>("docFlushAt")
+		if (pending === undefined) {
+			await this.state.storage.put("docFlushAt", Date.now() + AUTOSAVE_MS)
+		}
+		const counted = (await this.state.storage.get<number>("opsSinceMilestone")) ?? 0
+		await this.state.storage.put({ dirtyFile: filename, opsSinceMilestone: counted + 1 })
+		await this.rearm()
+	}
+
+	/**
+	 * Brings D1 level with the room, and cuts a milestone when one is due.
+	 *
+	 * A milestone is written the first time a given `(hour, session)` is saved,
+	 * and refreshed when the baton is put down — so an hour of continuous editing
+	 * leaves exactly one row, holding the state that hour ended in.
+	 * `appendMilestone` does the collapsing and the pruning; this only decides
+	 * when to ask.
+	 */
+	private async flushDoc(
+		now: number,
+		options: { force?: boolean; milestone?: boolean } = {},
+	): Promise<void> {
+		const due = await this.state.storage.get<number>("docFlushAt")
+		if (due === undefined || (!options.force && now < due)) return
+
+		const filename = await this.state.storage.get<string>("dirtyFile")
+		const shareId = await this.state.storage.get<string>("shareId")
+		// Cleared first: a failed write costs one more stale window, while a failed
+		// reset would retry the same save on every alarm from now on.
+		await this.state.storage.delete("docFlushAt")
+		if (!filename || !shareId) return
+
+		const doc = await this.doc(filename)
+		const file = await getFileRef(this.env.DB, shareId, filename)
+		if (!doc || !file) return
+
+		const source = (await this.state.storage.get<string>(sourceKey(filename))) ?? doc.xml
+		const body = storedBody(source, doc.defs)
+		const contentHash = await sha256Hex(body)
+		// This save becomes the next one's source, so formatting keeps surviving.
+		await this.state.storage.put(sourceKey(filename), body)
+
+		await setCurrent(this.env.DB, {
+			fileId: file.id,
+			shareId,
+			body,
+			json: JSON.stringify(doc.defs),
+			contentHash,
+			expiresAt: now + RETENTION_MS,
+			now,
+		})
+
+		const sessionId = (await this.state.storage.get<string>("sessionId")) ?? "anon"
+		const bucket = bucketKey(now, sessionId)
+		const lastBucket = await this.state.storage.get<string>("milestoneBucket")
+		if (options.milestone || bucket !== lastBucket) {
+			await appendMilestone(this.env.DB, {
+				fileId: file.id,
+				body,
+				contentHash,
+				semanticHash: semanticHash(doc.defs),
+				sessionId,
+				opCount: (await this.state.storage.get<number>("opsSinceMilestone")) ?? 0,
+				now,
+			})
+			await this.state.storage.put("milestoneBucket", bucket)
+			await this.state.storage.put("opsSinceMilestone", 0)
+		}
+	}
+
 	// ── Plumbing ───────────────────────────────────────────────────────────────
 
 	/**
@@ -383,6 +492,9 @@ export class DocRoom implements DurableObject {
 
 		const viewFlushAt = await this.state.storage.get<number>("viewFlushAt")
 		if (viewFlushAt !== undefined) deadlines.push(viewFlushAt)
+
+		const docFlushAt = await this.state.storage.get<number>("docFlushAt")
+		if (docFlushAt !== undefined) deadlines.push(docFlushAt)
 
 		if ((await this.holder()) !== null) {
 			const since = (await this.state.storage.get<number>("lastActivityAt")) ?? now
