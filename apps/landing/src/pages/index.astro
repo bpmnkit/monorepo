@@ -618,6 +618,143 @@ const CAPABILITIES = [
     </div>
   </section>
 
+
+  <!-- ── 09 · Share & review ───────────────────────────────────────────────── -->
+  <section class="section section--alt" id="share">
+    <div class="section-wrap">
+      <div class="section-head section-head--tight">
+        <span class="section-num">09</span>
+        <h2 class="section-h2">Share it. Review it. Together.</h2>
+      </div>
+      <p class="section-sub">
+        A process diagram is only worth anything once the people who own the process can see it.
+        <strong>Drop</strong> turns a file into a link anyone can open — and edit, one writer at a
+        time, with everyone else watching it change. The <strong>VS&nbsp;Code extension</strong>
+        puts the same renderer, the same analysis and a visual diff next to the code.
+      </p>
+
+      <div class="camunda-layout camunda-layout--flip">
+        <div class="camunda-side">
+          <div class="inset-card">
+            <div class="inset-card-label">bpmnkit.com/drop</div>
+            <p>
+              Drag a <code>.bpmn</code>, <code>.dmn</code> or <code>.form</code> file onto the page —
+              or paste one — and get a short link back. Whoever opens it sees the diagram rendered,
+              with no account, no modeler install and no Camunda cluster anywhere in the story.
+              Analysts, support, the person who asked for the change: send the link.
+            </p>
+          </div>
+          <div class="chips">
+            <span class="chip">No account</span>
+            <span class="chip">Up to 20 files</span>
+            <span class="chip">BPMN · DMN · Forms</span>
+            <span class="chip">90-day retention</span>
+            <span class="chip">Open source Worker</span>
+          </div>
+          <div class="share-ctas">
+            <a href="/drop" class="btn-primary">Open Drop</a>
+            <a href="/drop/demo-loan-approval" class="btn-link">See an example drop</a>
+          </div>
+        </div>
+
+        <div class="hair-grid hair-grid--2">
+          <div class="cap-card">
+            <h3>Live, and legible</h3>
+            <p>
+              The share page counts who has it open, and says when one of them is editing — so a
+              diagram moving under your eyes reads as a colleague, not a glitch.
+            </p>
+            <div class="cap-api">12 viewing · 1 editing</div>
+          </div>
+          <div class="cap-card">
+            <h3>One writer at a time</h3>
+            <p>
+              Editing is a baton. Whoever takes it can change the diagram and everyone else watches
+              the change arrive. No merge dialog, because there is nothing to merge.
+            </p>
+            <div class="cap-api">Edit → Done</div>
+          </div>
+          <div class="cap-card">
+            <h3>No save button</h3>
+            <p>
+              Changes persist as you make them. Every file keeps the original it was uploaded as,
+              pinned, plus its last ten milestones — and restoring one appends rather than rewinds.
+            </p>
+            <div class="cap-api">original + 10 milestones</div>
+          </div>
+          <div class="cap-card">
+            <h3>Diff two versions</h3>
+            <p>
+              Put two drops side by side: added, removed, changed and <em>moved</em> elements marked
+              on synchronised canvases, pan and zoom locked together.
+            </p>
+            <div class="cap-api">/drop/:before/diff/:after</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="camunda-layout camunda-layout--flip">
+        <div class="camunda-side">
+          <div class="inset-card">
+            <div class="inset-card-label">BPMN Kit for VS Code</div>
+            <p>
+              The renderer is <code>@bpmnkit/canvas</code> — there is no bpmn.io anywhere in the
+              extension, which is the point: the files it shows you are the files git has, byte for
+              byte. Editing is backed by the same <code>TextDocument</code> a text editor opens, so
+              Ctrl+S saves, undo is the editor's own undo, and a diagram open beside the XML is a
+              second view of one document rather than a competing copy.
+            </p>
+          </div>
+          <div class="chips">
+            <span class="chip">Step-through simulation</span>
+            <span class="chip">FEEL playground</span>
+            <span class="chip">Deploy from casen profiles</span>
+            <span class="chip">Copy diagram as ASCII</span>
+            <span class="chip">MIT</span>
+          </div>
+          <div class="share-ctas">
+            <a href="/docs/guides/vscode" class="btn-link">Install the extension →</a>
+          </div>
+        </div>
+
+        <div class="hair-grid hair-grid--2">
+          <div class="cap-card">
+            <h3>Preview beside the source</h3>
+            <p>
+              <code>.bpmn</code>, <code>.dmn</code> and <code>.form</code> render as you type, not on
+              save — and XML that is momentarily unparseable keeps the last drawing that worked.
+            </p>
+            <div class="cap-api">Open Diagram to the Side</div>
+          </div>
+          <div class="cap-card">
+            <h3>Findings in the Problems panel</h3>
+            <p>
+              The same static analysis <code>casen lint</code> runs, reported against the element
+              that caused it. An engine-neutral diagram is not judged against Camunda 8 rules.
+            </p>
+            <div class="cap-api">bpmnkit.lint.run</div>
+          </div>
+          <div class="cap-card">
+            <h3>Compare with HEAD</h3>
+            <p>
+              A second view of the change the text diff already shows, in Source Control — where a
+              box somebody dragged reads as <em>moved</em>, not as two unrelated pictures.
+            </p>
+            <div class="cap-api">casen diff bpmn a.bpmn b.bpmn</div>
+          </div>
+          <div class="cap-card">
+            <h3>Saves a diff you can read</h3>
+            <p>
+              A visual editor usually reformats the whole file on the first change. This one writes
+              the file that was already there: rename a task, change the line with the task on it.
+            </p>
+            <div class="cap-api">exportPreserving(onDisk, defs)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   </main>
 
   <!-- ── CTA ───────────────────────────────────────────────────────────────── -->

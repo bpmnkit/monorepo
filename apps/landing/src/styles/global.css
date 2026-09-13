@@ -897,10 +897,16 @@ pre {
 
 .anim-code-panel {
 	background: var(--code-bg);
-	min-height: 232px;
 }
 
+/* Height is reserved, not grown into. The animation clears the panel and types
+   the example back one line at a time, so a panel sized to its content would
+   pump the diagram — and every section below it — up and down on every cycle.
+   The box is the tallest thing it ever holds: the 17-line snippet rendered on
+   the server (the animated examples top out at 15), at 13px x 1.65 plus the
+   vertical padding. A taller snippet is clipped rather than moving the page. */
 .anim-code-body {
+	height: calc(17 * 13px * 1.65 + 40px);
 	padding: 20px 22px;
 	overflow: hidden;
 }
@@ -1298,6 +1304,15 @@ pre {
 	background: none;
 }
 
+/* ── 09 · Share & review ────────────────────────────────────────── */
+/* Not .hero-ctas: that one is reordered inside the stacked hero on a phone. */
+.share-ctas {
+	display: flex;
+	gap: 14px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
 /* ── casen terminal ─────────────────────────────────────────────── */
 .cli-terminal-wrap {
 	position: relative;
@@ -1321,12 +1336,17 @@ pre {
 	color: var(--ink-fg-muted);
 }
 
+/* Fixed rather than min: the tallest frame comes to 236px, so this is the size
+   the terminal already had — but as a floor it was one added row away from
+   letting a frame push the page down mid-animation, the way the hero panel
+   above did. */
 .cli-content {
 	font-family: var(--font-mono);
 	font-size: 12px;
 	line-height: 1.7;
 	padding: 16px 18px;
-	min-height: 240px;
+	height: 240px;
+	overflow: hidden;
 	color: var(--code-fg);
 	transition: opacity 0.18s ease;
 }
@@ -2046,12 +2066,8 @@ kbd {
 
 	/* The code is the setup, the diagram is the payoff — on a phone the
 	   snippet is masked after a few lines so the diagram stays in view. */
-	.anim-code-panel {
-		min-height: 0;
-	}
-
 	.anim-code-body {
-		max-height: 152px;
+		height: 152px;
 		padding: 16px 18px;
 		-webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
 		mask-image: linear-gradient(to bottom, #000 78%, transparent);

@@ -2,7 +2,7 @@
 title: casen Plugin Authoring
 description: Build and publish plugins that extend the casen CLI with new command groups.
 sidebar:
-  order: 7
+  order: 8
 ---
 
 casen plugins are ordinary npm packages that export a `CasenPlugin` object. Once installed, their

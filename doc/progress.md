@@ -1,5 +1,43 @@
 # Progress
 
+## 2026-09-13 — the two things nobody could find, and a hero that stopped moving
+
+An audit of the merged work against what the website actually says found two features with a
+complete implementation and no user-facing presence: **Drop** (#145, #165, #168) and the
+**VS Code extension** (#163). Neither was named anywhere on bpmnkit.com — not the homepage, not
+the nav, not the footer, not a single docs page. `casen diff bpmn` and the format-preserving
+writers, both from #163, were undocumented too.
+
+**Homepage §09 — "Share it. Review it. Together."** Two rows in the section-04 pattern: Drop
+(drag a file, get a link, live viewers, the edit baton, the pinned original plus ten milestones,
+the two-drop diff) and the extension (preview beside the source, findings in the Problems panel,
+compare with HEAD, a save that writes a readable diff). Drop and Editor join the nav's Tools
+menu; Drop joins the footer. No new CSS beyond `.share-ctas` — the hero's own `.hero-ctas` is
+reordered inside the stacked hero on a phone, so reusing it would have shuffled these rows.
+
+Both rows lead with the lede and follow with the card grid, because a one-column phone renders
+DOM order: leading with the grid put four unlabelled cards ahead of the thing they describe.
+
+**Docs.** `guides/drop.md` and `guides/vscode.md` are new. `cli/diff.md` documents
+`casen diff bpmn` — including why `moved` is the category that earns the command — and takes
+sidebar slot 4, next to `view`, with connector/skills/plugins/plugin-authoring shifted by one.
+`packages/core.md` gains `diffDiagram()` and `exportPreserving()`, the latter with the stable-id
+note from #170 beside it, since "rebuilding an unchanged model produces the same file" and
+"writing a model back changes only what changed" are halves of one promise. Closes the roadmap's
+open item under §IDE-Resident Modeling Phase 5.
+
+**The hero stopped pumping.** `.anim-code-body` had a `min-height` and grew past it. The
+animation clears the panel and types the example back one line at a time, so the box ran from
+61px to 362px and back, five times a cycle, moving the diagram under it and the whole page below
+it — measured in Chromium at 1440x900: **14 distinct heights, a 301px spread, and a document
+height that moved 69px** while a visitor read the hero. It is now sized to the tallest thing it
+ever holds (the 17-line server-rendered snippet; the animated examples reach 15) with
+`overflow: hidden`. Re-measured: one height, zero movement, on desktop and at 400px.
+
+The casen terminal got the same treatment, but as a no-op: its frames reach 236px against a
+240px floor — empty rows are empty `<div>`s and collapse to nothing — so `min-height: 240px`
+became `height: 240px`. Same pixels today, and one added row away from the same bug tomorrow.
+
 ## 2026-09-12 — the stable-id work gets its changeset
 
 #170 landed the derived sequence-flow and root-definition ids, and the `.message()` /

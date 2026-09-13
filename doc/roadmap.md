@@ -589,8 +589,9 @@ palette and fails when picked.
 - [ ] A `.bpmn` file the editor has not loaded as a text document is not analysed, so the Problems
       panel covers open files only. That is what every other VS Code linter does; analysing a
       whole workspace on activation is a different feature with a different cost
-- [ ] No page on `bpmnkit.com/docs` yet — the Marketplace README is the only user-facing
-      documentation for the extension
+- [x] No page on `bpmnkit.com/docs` yet — the Marketplace README is the only user-facing
+      documentation for the extension → `guides/vscode.md`, plus the extension's half of the
+      homepage's §09
 
 ### Phase 6 — VS Code extension, what only this stack can do ✅
 

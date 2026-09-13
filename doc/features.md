@@ -1,5 +1,33 @@
 # Features
 
+## Drop and the VS Code extension, on the website (2026-09-13)
+
+Both shipped without ever being mentioned to anyone who had not read the commit log. They now
+have a place on the homepage and a page in the docs.
+
+- **Homepage §09, "Share it. Review it. Together."** — Drop (a link anyone can open, live
+  viewers, one writer at a time, the pinned original plus ten milestones, a two-drop diff) and
+  the VS Code extension (preview beside the source, findings in the Problems panel, compare with
+  `HEAD`, a save that writes a readable diff).
+- **`/docs/guides/drop`** — sharing, the edit baton, the version log, the diff URL, the limits
+  and retention, running your own Worker, and what Drop deliberately is not (a permission system,
+  storage, a modeler).
+- **`/docs/guides/vscode`** — what the extension does, how to build and install the `.vsix`, the
+  command and setting tables, and where its Camunda 8 profiles come from.
+- **`/docs/cli/diff`** — `casen diff bpmn`, its three flags, the JSON shape, and why `moved` is
+  the category the command exists for.
+- **`@bpmnkit/core` reference** — `diffDiagram()` and `exportPreserving()`, which had no docs
+  page between them.
+- **Drop and Editor in the nav's Tools menu**, Drop in the footer.
+
+## A landing page that holds still (2026-09-13)
+
+The hero's code panel is sized to the tallest snippet it will ever show instead of growing into
+whatever is being typed into it. The animation clears the panel and re-types an example line by
+line, five examples on a loop, which moved the diagram beneath it and every section below that —
+14 distinct panel heights across a 301px spread, and 69px of document height, measured in a real
+browser. It is now one height, and the page does not move while the animation runs.
+
 ## Generated BPMN that diffs (2026-09-12)
 
 The fluent builder names the parts you do not: sequence flows, and the root messages, errors,

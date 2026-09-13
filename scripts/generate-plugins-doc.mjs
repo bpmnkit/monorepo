@@ -67,7 +67,7 @@ const output = `---
 title: casen Plugins
 description: Official casen CLI plugins shipped with the BPMN Kit monorepo.
 sidebar:
-  order: 6
+  order: 7
 ---
 
 > **Auto-generated** — this page is built from \`plugins-cli/*/package.json\` during the site
