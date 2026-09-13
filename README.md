@@ -234,11 +234,22 @@ bpmnkit/monorepo
 | Tool | Version |
 |------|---------|
 | [Node.js](https://nodejs.org/) | 18+ (latest LTS recommended) |
-| [pnpm](https://pnpm.io/) | 10+ |
+| [pnpm](https://pnpm.io/) | 12.4.1 — the version pinned in `packageManager`, installed up front |
+
+pnpm has to be installed **before** the first `pnpm install`. Normally the
+`packageManager` pin lets whatever pnpm you have provision the right version on its
+own, but pnpm 12.4.1 cannot be provisioned that way: the bootstrap runs
+`pnpm add pnpm@12.4.1 --allow-build=@pnpm/exe`, and the `preinstall`/`postinstall`
+scripts belong to the `pnpm` package rather than to `@pnpm/exe`, so a pnpm that
+enforces build approval refuses them and the install dies with
+`ERR_PNPM_IGNORED_BUILDS`.
 
 ### Setup
 
 ```sh
+corepack enable              # reads the packageManager pin, fetches the right binary
+# or: npm install -g pnpm@12.4.1
+
 git clone https://github.com/bpmnkit/monorepo.git
 cd monorepo
 pnpm install
