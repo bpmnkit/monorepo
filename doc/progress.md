@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-09-13 — turbo 2.10.12
+
+`turbo` moves from `^2.9.18` to `^2.10.12`. The floor was the only thing that
+moved: `^2.9.18` already resolved to 2.10.12, so the lockfile changes by exactly
+the one specifier line.
+
+`@turbo/codemod migrate` reports **no required codemods** for the jump. The one
+transform it runs anyway rewrites `$schema` in `turbo.json` to the version-pinned
+`https://v2-10-12.turborepo.dev/schema.json` — the form turbo has published the
+schema in since 2.7.5. An editor now validates the file against the exact version
+the repo pins rather than against whatever is current, which is the point: a key
+that only exists in a later turbo stops reading as valid here.
+
+Nothing else in the 2.7 → 2.10 notes reaches this repo. The daemon 2.9 removed
+from `turbo run` and `turbo watch` was never configured; `--parallel`,
+`turbo-ignore` and the web UI mode 2.10 dropped appear nowhere in the workspace
+or in CI.
+
 ## 2026-09-13 — Operate joins the rest of the product
 
 Operate was the last surface still on the old palette: a dark neon-purple shell
