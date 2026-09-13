@@ -5,19 +5,10 @@ import Seo from "@bpmnkit/astro-shared/Seo.astro"
 import { organizationJsonLd, softwareApplicationJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import { CONNECTOR_STATS } from "@bpmnkit/connector-gen"
 import { Bpmn, exportSvg } from "@bpmnkit/core"
+import FeelPlayground from "../components/FeelPlayground.astro"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
-import { CODE_HTML, ECOSYSTEM } from "../data/content"
-
-// The header carries the five destinations a cold visitor needs; everything
-// else is reachable from the footer.
-const navLinks = [
-	{ href: "#why", label: "Why" },
-	{ href: "#packages", label: "Packages" },
-	{ href: "#camunda", label: "Camunda 8" },
-	{ href: "#start", label: "Quickstart" },
-	{ href: "/docs", label: "Docs" },
-]
+import { CODE_HTML, CORE_VERSION, ECOSYSTEM } from "../data/content"
 
 const jsonLd = [
 	organizationJsonLd(),
@@ -26,10 +17,14 @@ const jsonLd = [
 		description: SITE.description,
 		url: SITE.url,
 		applicationCategory: "DeveloperApplication",
-		softwareVersion: ECOSYSTEM.find((pkg) => pkg.name === "@bpmnkit/core")?.version,
+		softwareVersion: CORE_VERSION,
 		license: "https://opensource.org/license/mit",
 	}),
 ]
+
+// Six packages lead; the other seventeen are one click away rather than a wall.
+const featuredPackages = ECOSYSTEM.filter((pkg) => pkg.featured)
+const restPackages = ECOSYSTEM.filter((pkg) => !pkg.featured)
 
 // The hero diagram is the real `exportSvg()` output of the hero snippet, built
 // here so the code and the picture beside it can never drift apart. Once the
@@ -117,7 +112,7 @@ const CAPABILITIES = [
   <a href="#main-content" class="skip-link">Skip to content</a>
   <div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
 
-  <Nav links={navLinks} showHomeLink={false} />
+  <Nav showHomeLink={false} />
 
   <main id="main-content">
 
@@ -259,15 +254,15 @@ const CAPABILITIES = [
     <div class="section-wrap">
       <div class="section-head section-head--tight">
         <span class="section-num">03</span>
-        <h2 class="section-h2">Six packages, pick what you need</h2>
+        <h2 class="section-h2">{ECOSYSTEM.length} packages, pick what you need</h2>
       </div>
       <p class="section-sub">
-        Independently versioned and pre-1.0, developed in the open under MIT. Everything
-        below is installable today.
+        Independently versioned and pre-1.0, developed in the open under MIT. Every version
+        below is the one on npm — each row links to it.
       </p>
       <div class="pkg-grid">
-        {ECOSYSTEM.map((pkg) => (
-          <a class="pkg-row" href={pkg.url} target="_blank" rel="noopener">
+        {featuredPackages.map((pkg) => (
+          <a class="pkg-row" href={pkg.npm} target="_blank" rel="noopener">
             <div class="pkg-main">
               <div class="pkg-name">{pkg.name}</div>
               <div class="pkg-role">
@@ -278,7 +273,28 @@ const CAPABILITIES = [
             <div class="pkg-version">v{pkg.version}</div>
           </a>
         ))}
+        {restPackages.map((pkg) => (
+          <a class="pkg-row pkg-row--more" href={pkg.npm} target="_blank" rel="noopener" hidden>
+            <div class="pkg-main">
+              <div class="pkg-name">{pkg.name}</div>
+              <div class="pkg-role">{pkg.role}</div>
+            </div>
+            <div class="pkg-version">v{pkg.version}</div>
+          </a>
+        ))}
+        {/* An odd count leaves the last cell of the two-column grid empty, and an
+            empty cell is the rule colour showing through rather than a row. */}
+        {ECOSYSTEM.length % 2 === 1 && <div class="pkg-row pkg-row--more" aria-hidden="true" hidden></div>}
       </div>
+      <button
+        type="button"
+        class="pkg-more"
+        id="pkg-more"
+        aria-expanded="false"
+        aria-controls="packages"
+        data-more={`Show all ${ECOSYSTEM.length} packages`}
+        data-less="Show the six to start with"
+      >Show all {ECOSYSTEM.length} packages</button>
       <div class="pkg-links">
         <a href={`${SITE.github}/releases`} target="_blank" rel="noopener">Changelog &amp; releases</a>
         <a href={`${SITE.github}/issues`} target="_blank" rel="noopener">Report an issue</a>
@@ -583,13 +599,32 @@ const CAPABILITIES = [
     </div>
   </section>
 
-  <!-- ── 08 · For process teams ────────────────────────────────────────────── -->
-  <section class="section" id="teams">
+  <!-- ── 08 · FEEL playground ──────────────────────────────────────────────── -->
+  <section class="section" id="feel">
+    <div class="section-wrap">
+      <div class="section-head section-head--tight">
+        <span class="section-num">08</span>
+        <h2 class="section-h2">FEEL, evaluated as you type</h2>
+      </div>
+      <p class="section-sub">
+        FEEL is the expression language a DMN decision table and a BPMN gateway condition are
+        written in. This is <code>@bpmnkit/feel</code> — a zero-dependency parser and evaluator —
+        running in your browser, not a sandbox on a server. Switch to <strong>unary tests</strong>
+        for the form a decision-table input entry takes. <a href="/feel-functions">All built-in
+        functions →</a>
+      </p>
+
+      <FeelPlayground id="feel-playground" />
+    </div>
+  </section>
+
+  <!-- ── 09 · For process teams ────────────────────────────────────────────── -->
+  <section class="section section--alt" id="teams">
     <div class="section-wrap">
       <div class="teams-layout">
         <div class="teams-lede">
           <div class="section-head section-head--tight">
-            <span class="section-num">08</span>
+            <span class="section-num">09</span>
             <span class="hero-eyebrow" style="margin:0">For process teams</span>
           </div>
           <h2>Analysts model it. Developers ship it.</h2>
@@ -619,11 +654,11 @@ const CAPABILITIES = [
   </section>
 
 
-  <!-- ── 09 · Share & review ───────────────────────────────────────────────── -->
-  <section class="section section--alt" id="share">
+  <!-- ── 10 · Share & review ───────────────────────────────────────────────── -->
+  <section class="section" id="share">
     <div class="section-wrap">
       <div class="section-head section-head--tight">
-        <span class="section-num">09</span>
+        <span class="section-num">10</span>
         <h2 class="section-h2">Share it. Review it. Together.</h2>
       </div>
       <p class="section-sub">

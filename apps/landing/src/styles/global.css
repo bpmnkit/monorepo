@@ -107,6 +107,9 @@
 	--code-str: #9fb8a4;
 	--code-fn: #d99a7c;
 	--code-comment: #6b7280;
+	/* Numbers and temporals — FEEL leans on both, and nothing else on the site
+	   had a literal worth colouring apart from a string. */
+	--code-num: #8fa8b8;
 
 	/* Semantic state — exempt from the one-accent rule */
 	--state-good: #2f6f5b;
@@ -1206,6 +1209,24 @@ pre {
 	flex-shrink: 0;
 }
 
+/* The tail of the package list is hidden rather than absent, so the button only
+   flips an attribute and the rows are in the DOM for search and for no-JS. */
+.pkg-more {
+	margin-top: 18px;
+	padding: 9px 14px;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--ink-body);
+	background: none;
+	border: 1px solid var(--ink-rule);
+	cursor: pointer;
+}
+
+.pkg-more:hover {
+	color: var(--accent-on-ink);
+	border-color: var(--accent-on-ink);
+}
+
 .pkg-links {
 	display: flex;
 	flex-wrap: wrap;
@@ -1302,6 +1323,213 @@ pre {
 	padding: 5px 9px;
 	color: var(--ink-body-soft);
 	background: none;
+}
+
+/* ── 08 · FEEL playground ───────────────────────────────────────── */
+.fp {
+	display: grid;
+	grid-template-columns: 1.15fr 1fr;
+	gap: 20px;
+	align-items: start;
+}
+
+.fp-panel {
+	display: flex;
+	flex-direction: column;
+	background: var(--code-bg);
+	min-width: 0;
+}
+
+.fp-topbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 9px 14px;
+	border-bottom: 1px solid var(--ink-rule);
+}
+
+.fp-topbar-title {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--ink-fg-muted);
+	flex: 1;
+}
+
+.fp-mode {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	background: none;
+	border: 1px solid var(--ink-rule);
+	color: var(--ink-fg-muted);
+	padding: 4px 9px;
+	cursor: pointer;
+}
+
+.fp-mode + .fp-mode {
+	margin-left: 6px;
+}
+
+.fp-mode.active,
+.fp-mode:hover {
+	color: var(--accent-on-ink);
+	border-color: var(--accent-on-ink);
+}
+
+/* Painted tokens and the caret have to agree, so the two layers share every
+   metric — the same arrangement the builder playground above uses. */
+.fp-code-wrap {
+	position: relative;
+	min-height: 120px;
+	flex: 1;
+}
+
+.fp-highlight,
+.fp-input {
+	position: absolute;
+	inset: 0;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	line-height: 1.7;
+	padding: 14px 16px;
+	margin: 0;
+	border: 0;
+	white-space: pre-wrap;
+	overflow: auto;
+	tab-size: 2;
+}
+
+.fp-highlight {
+	color: var(--code-fg);
+	pointer-events: none;
+}
+
+.fp-input {
+	background: transparent;
+	color: transparent;
+	caret-color: var(--accent-on-ink);
+	resize: none;
+	outline: none;
+}
+
+.fp-error {
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	color: var(--state-bad);
+	padding: 0 16px;
+	white-space: pre-wrap;
+}
+
+.fp-error:not(:empty) {
+	padding: 10px 16px;
+	border-top: 1px solid var(--ink-rule);
+}
+
+.fp-side {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+
+.fp-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.fp-label {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--ink-meta);
+}
+
+.fp-context {
+	font-family: var(--font-mono);
+	font-size: 12.5px;
+	line-height: 1.6;
+	padding: 12px 14px;
+	border: 1px solid var(--rule);
+	background: var(--panel);
+	color: var(--ink-body);
+	resize: vertical;
+	outline-offset: -2px;
+}
+
+.fp-result {
+	display: block;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	line-height: 1.6;
+	padding: 12px 14px;
+	border: 1px solid var(--rule);
+	background: var(--panel);
+	color: var(--accent);
+	white-space: pre-wrap;
+	word-break: break-word;
+	min-height: 44px;
+}
+
+.fp-examples {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.fp-example-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.fp-example {
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	padding: 5px 9px;
+	border: 1px solid var(--rule);
+	background: none;
+	color: var(--ink-body-soft);
+	cursor: pointer;
+}
+
+.fp-example:hover {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+
+/* Syntax colours emitted by @bpmnkit/feel's highlighter. Highlighting is
+   exempt from the one-accent rule, so these are the tokens' own palette,
+   mapped onto the code panel this site already paints. */
+.feel-keyword,
+.feel-literal-bool,
+.feel-literal-null {
+	color: var(--code-kw);
+}
+
+.feel-literal-string {
+	color: var(--code-str);
+}
+
+.feel-builtin {
+	color: var(--code-fn);
+}
+
+.feel-comment {
+	color: var(--code-comment);
+	font-style: italic;
+}
+
+.feel-literal-number,
+.feel-literal-temporal {
+	color: var(--code-num);
+}
+
+.feel-variable,
+.feel-operator,
+.feel-punctuation,
+.feel-empty {
+	color: var(--code-fg);
 }
 
 /* ── 09 · Share & review ────────────────────────────────────────── */
@@ -1988,9 +2216,23 @@ kbd {
 	.camunda-layout,
 	.dmn-layout,
 	.playground-wrap,
+	.fp,
 	.teams-layout {
 		grid-template-columns: 1fr;
 		gap: 24px;
+	}
+
+	/* Stacked, the filename and the mode buttons no longer fit on one line. */
+	.fp-topbar {
+		flex-wrap: wrap;
+	}
+
+	.fp-topbar-title {
+		flex: none;
+	}
+
+	.fp-modes {
+		margin-left: auto;
 	}
 
 	.steps-grid {

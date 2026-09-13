@@ -1,5 +1,39 @@
 # Features
 
+## The package list stops drifting (2026-09-13)
+
+- **Versions are generated, not typed** — `scripts/generate-ecosystem.mjs` reads every
+  manifest named in `scripts/published-packages.mjs` on each `dev` and `build`. The homepage
+  had been advertising `@bpmnkit/core` v0.1.1 against a published v0.4.0.
+- **All 23 published packages**, six leading and the rest behind a disclosure that only flips
+  an attribute — the rows are in the HTML for find-in-page and for no-JS readers.
+- **Every row links to npm**, which is where the version it quotes comes from.
+- **A test that names the drift** — `tests/ecosystem.test.ts` fails with the package and both
+  versions if the generated file and a manifest ever disagree.
+- **One line to add a package** — a package with no editorial line renders its manifest
+  description, so `PUBLISHED` is the only list to update.
+
+## A FEEL playground on the landing page (2026-09-13)
+
+`@bpmnkit/feel` evaluating in the page, in the site's own chrome rather than the editor's —
+homepage §08, and above the function reference at `/feel-functions`.
+
+- **Expression mode and unary tests** — the second is the form a decision-table input entry
+  takes, with the value under test bound to `?`.
+- **An editable JSON context**, a live result, and a parse or evaluation error that says which
+  of the two boxes is wrong.
+- **Syntax highlighting** from the same `highlightToHtml` the editor panel uses, painted in
+  the landing site's code palette.
+- **Seven worked examples** — an order total, a routing condition, a list filter, built-ins,
+  `every … satisfies`, and both decision-table forms.
+- **Loaded on scroll**, as its own chunk: a visitor who stops at the hero never downloads the
+  parser.
+
+## One navbar on every page (2026-09-13)
+
+The homepage was the only page overriding the header's links, so arriving at `/compare/bpmn-js`
+from it looked like arriving at a different site. Every page now renders the same header.
+
 ## Drop and the VS Code extension, on the website (2026-09-13)
 
 Both shipped without ever being mentioned to anyone who had not read the commit log. They now

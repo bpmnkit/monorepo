@@ -1,5 +1,53 @@
 # Progress
 
+## 2026-09-13 — a version nobody has to remember, one navbar, and FEEL in the page
+
+Three things the site was getting wrong, reported from a screenshot of §03.
+
+**The package list was advertising the wrong versions.** `ECOSYSTEM` in
+`content.ts` carried a hand-maintained `version` on each of six packages, with a
+comment asking whoever bumped a package to remember to come back. Nobody did:
+the homepage said `@bpmnkit/core` v0.1.1 against a published v0.4.0, and
+`@bpmnkit/api` v0.0.19 against v0.0.20. A number typed in two places is a number
+that drifts.
+
+`scripts/generate-ecosystem.mjs` now reads `scripts/published-packages.mjs` and
+each package's own manifest — the one changesets bumps — and writes
+`apps/landing/src/generated/ecosystem.ts` on every `dev` and `build`, beside the
+plugins page that already worked this way. Under `src/generated/`, which biome
+ignores repo-wide, as `packages/api` does with its generated resources. The
+editorial half stays in `content.ts`: which six lead, and what each package is
+*for*. A package with no line written for it renders the description from its own
+manifest, so adding to `PUBLISHED` cannot leave a blank row. The nav's version
+badge reads from the same place, and `tests/ecosystem.test.ts` fails — naming the
+package and both versions — if the generated file and a manifest ever disagree.
+
+All 23 published packages are on the page now, not six: the six lead, the rest are
+behind "Show all 23 packages". The hidden rows ship in the HTML rather than being
+built on click, so they are there for find-in-page and for a reader with no
+JavaScript. Every row links to its npm page rather than to GitHub — a version is
+a claim about what is published, so it should lead to the thing it claims about.
+
+**One navbar.** The homepage passed its own `links` — in-page anchors for Why /
+Packages / Camunda 8 / Quickstart — and every other page of the site took the
+component's default. So `/compare/bpmn-js` looked like a different site than the
+page that linked to it. The override is gone; there is one header everywhere.
+
+**FEEL is playable without finding the editor first.** Trying an expression meant
+opening `/editor` and knowing the playground was in there. Homepage §08 now runs
+`@bpmnkit/feel` in the page — expression mode and unary tests, a JSON context, a
+live result, seven worked examples — and `/feel-functions` carries the same
+component above the reference it belongs with.
+
+It is the site's own chrome over the same evaluator, not a second implementation:
+`parseExpression` / `evaluate` / `evaluateUnaryTests` / `highlightToHtml` are what
+the editor's panel calls too. Embedding that panel was the obvious move and the
+wrong one — `injectPlaygroundStyles()` pulls `injectChromeStyles` from
+`@bpmnkit/editor`, 1.1 MB of editor for a textarea, and its chrome is the editor's
+rather than this page's. The homepage imports the playground dynamically when the
+section comes into view, so it is its own chunk and a visitor who stops at the
+hero never downloads the parser.
+
 ## 2026-09-13 — the two things nobody could find, and a hero that stopped moving
 
 An audit of the merged work against what the website actually says found two features with a
