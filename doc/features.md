@@ -1,5 +1,59 @@
 # Features
 
+## Benchmark replay: what the library changed, measured (2026-09-13)
+
+- **`scripts/bench-ai-replay.mjs`** re-runs every recorded `with-sdk` generation
+  against the current `@bpmnkit/core`, scored the same way as the originals.
+  Because the model's code is frozen in the recordings, this separates the
+  library's contribution from the model's.
+- **9/12 → 12/12 usable overall; quote-to-cash 2/5 → 5/5**, with 3 runs recovered
+  and 0 regressed against `@bpmnkit/core` 0.4.0.
+- **A "Since measured" block on the landing page** carries those figures from the
+  generated data, leaving the measured July table exactly as it was, and states
+  what a replay cannot say — nothing about time, tokens, or how a fresh
+  generation would go against the improved prompt.
+- **Regression guard** — the replay test fails if a run that passed when recorded
+  stops passing.
+
+## Sub-processes and boundary events, documented and forgiving (2026-09-13)
+
+Closing the gap that made the SDK path fail on the benchmark's hardest scenario.
+
+- **The core README documents sub-processes, boundary events, multi-instance and
+  event-based gateways** — constructs it previously never mentioned, in a file
+  that doubles as the LLM system prompt for SDK generation.
+- **A process builder API table** with the real `(id, options)` shapes, plus the
+  event-definition option names (`timerDuration`, `messageName` +
+  `correlationKey`, `errorCode`), since an unknown option is dropped silently.
+- **The Quick Start compiles again** — it called `.sequenceFlow()` and
+  `layoutProcess(...).defs`, neither of which exists.
+- **`boundaryEvent(id, hostId, options)`** is accepted alongside
+  `boundaryEvent(id, { attachedTo })`.
+- **A boundary event with no host throws `ValidationError`** at the call site,
+  instead of exporting BPMN that `Bpmn.parse` refuses to read.
+- **README examples are type-checked in CI** (`tests/readme-examples.test.ts`),
+  so the prompt cannot drift from the API again.
+
+## AI generation benchmark on the homepage (2026-09-13)
+
+Section 09 of the landing page measures what it used to only assert: how three
+ways of getting a BPMN diagram out of an LLM actually compare.
+
+- **Three strategies, same prompts** — raw BPMN 2.0 XML, a `@bpmnkit/core`
+  builder chain, and BPMN Kit's compact notation, over 29 runs from the twelve
+  sessions in `apps/demo/recordings/` (`claude-opus-4-8`, 1–3 July 2026).
+- **Scored by `@bpmnkit/core`** — `Bpmn.parse`, `checkDiCompleteness` and
+  `lintDiagram`. "Usable" means it produced XML, it parses, and every element has
+  a shape to draw.
+- **Headline** — compact notation against raw XML, per scenario: 3.9–7.4× faster,
+  5.3–11.9× fewer output tokens, 5/5 runs renderable against 10/12.
+- **The losses are on the page too** — the builder path failed to compile in 3 of
+  5 quote-to-cash runs, and its ~10k-token prompt costs more total tokens than
+  raw XML on the simplest scenario. Lint counts were comparable across all three,
+  so no modelling-quality claim is made.
+- **Reproducible** — `node scripts/bench-ai-generation.mjs` regenerates
+  `apps/landing/src/generated/ai-benchmark.ts` from the recordings.
+
 ## Operate on the design system (2026-09-13)
 
 The monitoring frontend now looks like the product it ships with, rather than a

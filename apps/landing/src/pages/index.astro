@@ -8,6 +8,7 @@ import { Bpmn, exportSvg } from "@bpmnkit/core"
 import FeelPlayground from "../components/FeelPlayground.astro"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
+import { HEADLINE, META, RELIABILITY, REPLAY, ROWS, STRATEGIES } from "../data/ai-benchmark"
 import { CODE_HTML, CORE_VERSION, ECOSYSTEM } from "../data/content"
 
 const jsonLd = [
@@ -54,6 +55,15 @@ const dmnTableCode = CODE_HTML.dmnTable
 const formExampleCode = CODE_HTML.formExample
 const bpmnWithCompanionsCode = CODE_HTML.bpmnWithCompanions
 
+// ── AI benchmark formatting ───────────────────────────────────────────────────
+// Figures come from `data/ai-benchmark.ts`, which derives them from recorded
+// runs; nothing below rounds a number into a better one than was measured.
+const fmtRatio = (r: { low: number; high: number }): string =>
+	`${r.low.toFixed(1)}–${r.high.toFixed(1)}×`
+const fmtSeconds = (s: number): string => (s >= 100 ? `${Math.round(s)}s` : `${s.toFixed(1)}s`)
+const fmtTokens = (t: number | null): string =>
+	t === null ? "—" : Math.round(t).toLocaleString("en-US")
+
 const CAPABILITIES = [
 	{
 		title: "Auto-layout",
@@ -89,7 +99,7 @@ const CAPABILITIES = [
 		title: "LLM-friendly format",
 		body: "A compact intermediate form fits a whole diagram in one prompt. The SDK validates and renders what the model returns.",
 		api: "compactify(defs) / expand(c)",
-		href: null,
+		href: "#ai-benchmark",
 	},
 ]
 ---
@@ -618,13 +628,148 @@ const CAPABILITIES = [
     </div>
   </section>
 
-  <!-- ── 09 · For process teams ────────────────────────────────────────────── -->
+  <!-- ── 09 · AI generation benchmark ──────────────────────────────────────── -->
+  <section class="section" id="ai-benchmark">
+    <div class="section-wrap">
+      <div class="section-head section-head--tight">
+        <span class="section-num">09</span>
+        <h2 class="section-h2">Ask an LLM for a diagram. Measured three ways.</h2>
+      </div>
+      <p class="section-sub">
+        The same three prompts, run against the same model, asking for the same Camunda 8
+        processes — once as raw BPMN&nbsp;2.0 XML, once as a <code>@bpmnkit/core</code> builder
+        chain, once as BPMN Kit's compact notation. Every diagram that came back was scored by
+        <code>@bpmnkit/core</code> itself: does it parse, and does every element have the diagram
+        interchange it needs to actually open in a modeler.
+      </p>
+
+      <div class="hair-grid hair-grid--3 bench-heads">
+        <div class="bench-head">
+          <div class="bench-head-num">{fmtRatio(HEADLINE.speedup)}</div>
+          <div class="bench-head-label">Faster to a diagram</div>
+          <p>Median wall-clock time, compact notation against raw XML, per scenario.</p>
+        </div>
+        <div class="bench-head">
+          <div class="bench-head-num">{fmtRatio(HEADLINE.outputRatio)}</div>
+          <div class="bench-head-label">Fewer output tokens</div>
+          <p>The model writes one line per element instead of a full XML document with coordinates.</p>
+        </div>
+        <div class="bench-head">
+          <div class="bench-head-num">{`${RELIABILITY[2]?.usable}/${RELIABILITY[2]?.runs}`}</div>
+          <div class="bench-head-label">Runs that rendered</div>
+          <p>
+            Against {RELIABILITY[0]?.usable}/{RELIABILITY[0]?.runs} for raw XML, where two runs
+            returned a process with elements that had no shape to draw.
+          </p>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="bench-table">
+          <caption class="sr-only">
+            Median time and token use per scenario, for each of the three generation strategies.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Strategy</th>
+              <th scope="col" class="bench-num">Time</th>
+              <th scope="col" class="bench-num">Output tokens</th>
+              <th scope="col" class="bench-num">Total tokens</th>
+              <th scope="col" class="bench-num">Usable</th>
+            </tr>
+          </thead>
+          {ROWS.map((row) => (
+            <tbody>
+              <tr class="bench-scenario">
+                <th scope="colgroup" colspan="5">
+                  {row.scenario.label}
+                  <span class="bench-scenario-blurb">{row.scenario.blurb}</span>
+                </th>
+              </tr>
+              {row.cells.map((c, i) => (
+                <tr class={c && !STRATEGIES[i]?.baseline ? "bench-kit" : undefined}>
+                  <td>
+                    <span class="bench-strategy">{STRATEGIES[i]?.label}</span>
+                    <span class="bench-runs">n={c ? c.runs : 0}</span>
+                  </td>
+                  <td class="bench-num">{c ? fmtSeconds(c.seconds) : "—"}</td>
+                  <td class="bench-num">{c ? fmtTokens(c.medianOutputTokens) : "—"}</td>
+                  <td class="bench-num">{c ? fmtTokens(c.medianTotalTokens) : "—"}</td>
+                  <td class="bench-num">{c ? `${c.usable}/${c.runs}` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          ))}
+        </table>
+      </div>
+
+      <div class="bench-since">
+        <div class="panel-label panel-label--accent">Since measured</div>
+        <p>
+          The builder column is the weakest here, and the reason was ours, not the model's: all
+          three quote-to-cash failures were the same API surface — a sub-process or boundary event
+          inside a branch — and the prompt the model was given, which is
+          <code>@bpmnkit/core</code>'s README, documented none of those constructs.
+          That has been fixed, and so has the builder: it now accepts a boundary event's host
+          positionally and refuses one with no host, rather than exporting a diagram its own parser
+          cannot read.
+        </p>
+        <p>
+          Re-running <strong>the same recorded code</strong> against
+          <code>@bpmnkit/core {REPLAY.coreVersion}</code> — the model's output is frozen in the
+          recordings, so this isolates the library's contribution — takes the builder from
+          {" "}{REPLAY.originallyUsable}/{REPLAY.totalRuns} to {REPLAY.usable}/{REPLAY.totalRuns}
+          usable, and quote-to-cash from {REPLAY.quoteToCash?.originallyUsable}/{REPLAY.quoteToCash?.runs}
+          {" "}to {REPLAY.quoteToCash?.usable}/{REPLAY.quoteToCash?.runs}. {REPLAY.recovered} runs
+          recovered, {REPLAY.regressed} regressed.
+        </p>
+        <p>
+          The table above is left as measured. A replay is not a re-run: it says what the library
+          now does with July's code, not what the model would write against today's prompt — the
+          time and token columns in particular are untouched by it, and the improved prompt is
+          about 10,000 characters longer, which will cost input tokens. Re-recording is the only
+          thing that settles those, and it has not been done yet.
+        </p>
+      </div>
+
+      <div class="bench-method">
+        <div class="panel-label">Method, and what this does not claim</div>
+        <p>
+          {META.totalRuns} runs across {META.recordings} recorded sessions and {META.scenarios.length}
+          scenarios, generated with <code>{META.model}</code> between {META.recordedFrom} and
+          {META.recordedTo}. Medians, not means — the cells are small and one 364-second run should
+          not become the headline. Compared per scenario rather than pooled, because the three
+          strategies were not run the same number of times on each one: the compact path has
+          {" "}{RELIABILITY[2]?.runs} runs in total and only one on quote-to-cash.
+        </p>
+        <p>
+          Two results cut against BPMN Kit and belong here. The builder path failed to compile in
+          three of five quote-to-cash runs — the hardest scenario, with a multi-instance subprocess
+          and timer boundary events — which is why it shows
+          {" "}{RELIABILITY[1]?.usable}/{RELIABILITY[1]?.runs} usable overall — see above for what
+          has since changed. And on the full
+          prompt, the builder's own documentation costs about 10,000 input tokens, so on the
+          simplest scenario it spends more total tokens than raw XML does; only the compact
+          notation is ahead on every scenario.
+        </p>
+        <p>
+          This measures time, token cost and whether the diagram renders. It does not claim better
+          modelling: lint error counts were comparable across all three strategies, and the findings
+          were the same kind — missing default flows, HTTP tasks with no error boundary — in every
+          case. Regenerate with <code>node scripts/bench-ai-generation.mjs</code>; replay with
+          <code>node scripts/bench-ai-replay.mjs</code>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 10 · For process teams ────────────────────────────────────────────── -->
   <section class="section section--alt" id="teams">
     <div class="section-wrap">
       <div class="teams-layout">
         <div class="teams-lede">
           <div class="section-head section-head--tight">
-            <span class="section-num">09</span>
+            <span class="section-num">10</span>
             <span class="hero-eyebrow" style="margin:0">For process teams</span>
           </div>
           <h2>Analysts model it. Developers ship it.</h2>
@@ -654,11 +799,11 @@ const CAPABILITIES = [
   </section>
 
 
-  <!-- ── 10 · Share & review ───────────────────────────────────────────────── -->
+  <!-- ── 11 · Share & review ───────────────────────────────────────────────── -->
   <section class="section" id="share">
     <div class="section-wrap">
       <div class="section-head section-head--tight">
-        <span class="section-num">10</span>
+        <span class="section-num">11</span>
         <h2 class="section-h2">Share it. Review it. Together.</h2>
       </div>
       <p class="section-sub">

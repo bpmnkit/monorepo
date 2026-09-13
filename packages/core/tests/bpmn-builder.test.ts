@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest"
-import { Bpmn, resetIdCounter } from "../src/index.js"
+import { Bpmn, ValidationError, resetIdCounter } from "../src/index.js"
 
 /** Extracts the first process from BpmnDefinitions with a runtime assertion. */
 function firstProcess(defs: ReturnType<ReturnType<typeof Bpmn.createProcess>["build"]>) {
@@ -1556,6 +1556,60 @@ describe("BpmnProcessBuilder", () => {
 				expect(boundary.cancelActivity).toBe(false)
 				expect(boundary.eventDefinitions).toHaveLength(1)
 				expect(boundary.eventDefinitions[0]?.type).toBe("timer")
+			}
+		})
+
+		it("tolerates the host passed positionally (id, hostId, options)", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.serviceTask("task1", { taskType: "slow" })
+					.boundaryEvent("timer-boundary", "task1", { timerDuration: "PT1H" })
+					.endEvent("timeout-end")
+					.build(),
+			)
+
+			const boundary = defined(process.flowElements.find((n) => n.id === "timer-boundary"))
+			if (boundary.type === "boundaryEvent") {
+				expect(boundary.attachedToRef).toBe("task1")
+				expect(boundary.eventDefinitions[0]?.type).toBe("timer")
+			}
+		})
+
+		/**
+		 * A boundary event with no host used to export as
+		 * `<bpmn:boundaryEvent id="…">` with no `attachedToRef` — invalid BPMN that
+		 * this library's own parser then refused to read, far from the call that
+		 * caused it.
+		 */
+		it("rejects a boundary event with no host instead of exporting invalid BPMN", () => {
+			const build = () =>
+				Bpmn.createProcess("proc")
+					.serviceTask("task1", { taskType: "work" })
+					// biome-ignore lint/suspicious/noExplicitAny: the point is an untyped caller
+					.boundaryEvent("orphan", {} as any)
+					.build()
+
+			expect(build).toThrow(ValidationError)
+			expect(build).toThrow(/requires the id of the activity it attaches to/)
+		})
+
+		it("attaches inside a branch, where the host is the preceding task", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.exclusiveGateway("gw")
+					.branch("retry", (b) => {
+						b.defaultFlow()
+							.receiveTask("wait", { taskType: "await-payment" })
+							.boundaryEvent("reminder", "wait", { timerDuration: "P7D" })
+							.endEvent("escalated")
+					})
+					.build(),
+			)
+
+			const boundary = defined(process.flowElements.find((n) => n.id === "reminder"))
+			if (boundary.type === "boundaryEvent") {
+				expect(boundary.attachedToRef).toBe("wait")
 			}
 		})
 	})
