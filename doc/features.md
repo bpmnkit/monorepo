@@ -1,5 +1,28 @@
 # Features
 
+## Operate on the design system (2026-09-13)
+
+The monitoring frontend now looks like the product it ships with, rather than a
+dashboard that happens to ship beside it.
+
+- **`--bpmnkit-ds-*` throughout** — the same tokens the landing site, Drop and the
+  editor chrome read.
+- **Themes by redeclaration** — dark and `neon` redefine the DS tokens on
+  `.op-root`, so every rule and every shared component follows with no second set
+  of variables, and nothing outside Operate is affected.
+- **`light` is the default**, not `neon`.
+- **Square and flat** — no `border-radius`, no `box-shadow`; depth is a 1px
+  hairline. Metric and action grids are one bordered box subdivided by hairlines.
+- **Mono for every label, count and id**; sans for prose. The header title keeps
+  mono without uppercasing, because it carries an instance key.
+- **The site's wordmark** in the nav, in place of the pink app-icon SVG.
+- **`@bpmnkit/ui`'s badge, card, table and theme switcher** redrawn to the same
+  rules, with status colour kept semantic and given light values as well as dark
+  (`--bpmnkit-state-*`).
+- **`/operate` loads the design system's type** — the `@font-face` block moved to
+  `apps/landing/src/styles/fonts.css` so an app page can take the faces without
+  the whole site stylesheet.
+
 ## The package list stops drifting (2026-09-13)
 
 - **Versions are generated, not typed** — `scripts/generate-ecosystem.mjs` reads every

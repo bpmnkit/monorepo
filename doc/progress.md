@@ -1,5 +1,65 @@
 # Progress
 
+## 2026-09-13 — Operate joins the rest of the product
+
+Operate was the last surface still on the old palette: a dark neon-purple shell
+with rounded cards, filled status pills and a pink app-icon lockup, reached from
+a site that is flat, square, hairline-ruled and terracotta. The landing page
+links to it, so the seam was one click from the homepage.
+
+**One token vocabulary, not two.** `packages/operate/src/css.ts` now reads the
+`--bpmnkit-ds-*` tokens `@bpmnkit/ui` owns — the set the landing site, Drop and
+the editor chrome already read — everywhere it used to read `--bpmnkit-accent`,
+`--bpmnkit-surface` and friends.
+
+**Themes redeclare the tokens rather than shadow them.** Dark and the white-label
+`neon` theme are blocks on `.op-root[data-theme=…]` that redefine
+`--bpmnkit-ds-bg`, `-ink`, `-line`, `-accent` and the rest. Every rule in the file
+then themes itself, and so does every shared `@bpmnkit/ui` component rendered
+inside the root, with no second set of variables to keep in step — the trick the
+editor's `--bpmnkit-chrome-*` layer could not use, since its panels render into
+`document.body`. Scoping to `.op-root` is what makes it safe: nothing outside
+Operate sees the declaration.
+
+**Form, applied throughout.** Every `border-radius` and `box-shadow` is gone; the
+nav is a rail on the page ground with a hairline and an accent rule on the active
+item rather than a dark slab with a filled pill; the dashboard's five metrics and
+the message actions are each one bordered box subdivided by hairlines instead of
+gapped cards; every uppercase label is set in mono, mechanically, by walking the
+rule blocks and giving each one that declares `text-transform: uppercase` the mono
+family at a mono size, unbolded. The pink app-icon SVG is replaced by the site's
+own wordmark.
+
+The header title is the one place that keeps mono without uppercasing: on a detail
+page it carries an instance key, and `pi-1` is not `PI-1`.
+
+**The shared components came too.** `@bpmnkit/ui`'s badge, stats card, data table
+and theme switcher are Operate's alone — nothing else in the repo renders those
+class names — so they were redrawn in place rather than overridden: square,
+hairline, mono labels, no shadow or blur on the dropdown. Status colour stays
+semantic and now has light values as well as dark, as `--bpmnkit-state-*`, since
+a badge designed for a dark slab is illegible on white.
+
+**The default theme is `light`.** It was `neon`, which is why `/operate` on
+bpmnkit.com was purple; the landing page was also passing `theme: "neon"`
+explicitly, and no longer does. The page loads Space Grotesk and Space Mono, which
+it never had — `global.css`'s `@font-face` block moved to `styles/fonts.css` so a
+page that ships an app rather than the site chrome can take the faces without the
+stylesheet. (`/editor` has the same gap and still renders the DS in Helvetica; it
+is one import away now, and not in this change.)
+
+**Also fixed, found on the way:** the two README highlights added for Drop and the
+VS Code extension yesterday were written straight into `README.md`, which
+`scripts/generate-readmes.mjs` also generates — so the next `node
+scripts/generate-readmes.mjs` deleted them, as it did during this change. They now
+live in the generator, and the file it writes is byte-identical to the one in the
+repository.
+
+Verified against every view in a real browser — dashboard, the six tables, search,
+an instance detail with its canvas and variables panel — in light, dark and neon,
+and through the theme switcher rather than by setting the attribute, so the canvas
+re-themes with the chrome.
+
 ## 2026-09-13 — a version nobody has to remember, one navbar, and FEEL in the page
 
 Three things the site was getting wrong, reported from a screenshot of §03.

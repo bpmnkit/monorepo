@@ -1,4 +1,5 @@
 ---
+import "../styles/fonts.css"
 import Seo from "@bpmnkit/astro-shared/Seo.astro"
 ---
 
@@ -13,8 +14,18 @@ import Seo from "@bpmnkit/astro-shared/Seo.astro"
       description="Monitor and operate running Camunda 8 process instances — a lightweight Operate-style dashboard powered by @bpmnkit/operate."
     />
     <style is:global>
+      /* @bpmnkit/operate brings its own chrome, on the same design system as the
+         rest of the site. The page only has to hand it the ground, the type and
+         the whole viewport. */
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      html, body { height: 100%; overflow: hidden; font-family: system-ui, sans-serif; font-size: 13px; }
+      html, body {
+        height: 100%;
+        overflow: hidden;
+        background: var(--bpmnkit-ds-bg, #f4f5f7);
+        color: var(--bpmnkit-ds-ink, #14161a);
+        font-family: var(--bpmnkit-ds-font-sans, "Space Grotesk", system-ui, sans-serif);
+        font-size: 14.5px;
+      }
       #operate-container { position: fixed; inset: 0; }
       #operate-container .op-root { height: 100%; }
     </style>
