@@ -7,6 +7,7 @@
  * invents a figure — every value is read from the generated dataset.
  */
 
+import { AI_BENCHMARK_REPLAY } from "../generated/ai-benchmark-replay.js"
 import { AI_BENCHMARK, type BenchmarkSummary } from "../generated/ai-benchmark.js"
 
 /** The baseline every ratio is measured against: asking the model for raw XML. */
@@ -140,5 +141,25 @@ export const RELIABILITY = STRATEGIES.flatMap((strategy) => {
 	const summary = AI_BENCHMARK.byStrategy[strategy.id]
 	return summary ? [{ strategy, ...summary }] : []
 })
+
+/**
+ * What the same recorded code does against today's `@bpmnkit/core`.
+ *
+ * The recordings are frozen, so re-running the model's own output separates the
+ * library's contribution from the model's. Every `with-sdk` run is replayed, not
+ * just the ones that failed, so a fix that broke a working run would show here.
+ *
+ * This says nothing about a *fresh* generation: the prompt has changed too, and
+ * that needs re-recording to measure.
+ */
+export const REPLAY = {
+	...AI_BENCHMARK_REPLAY,
+	/** The scenario the original failures were concentrated in. */
+	quoteToCash: AI_BENCHMARK_REPLAY.byScenario["quote-to-cash"],
+	/** Runs that failed when recorded and pass now. */
+	recovered: AI_BENCHMARK_REPLAY.runs.filter((r) => !r.originallyUsable && r.usable).length,
+	/** Runs that passed when recorded and fail now — a regression, and should be 0. */
+	regressed: AI_BENCHMARK_REPLAY.runs.filter((r) => r.originallyUsable && !r.usable).length,
+} as const
 
 export const META = AI_BENCHMARK

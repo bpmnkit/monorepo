@@ -1,5 +1,20 @@
 # Features
 
+## Benchmark replay: what the library changed, measured (2026-09-13)
+
+- **`scripts/bench-ai-replay.mjs`** re-runs every recorded `with-sdk` generation
+  against the current `@bpmnkit/core`, scored the same way as the originals.
+  Because the model's code is frozen in the recordings, this separates the
+  library's contribution from the model's.
+- **9/12 → 12/12 usable overall; quote-to-cash 2/5 → 5/5**, with 3 runs recovered
+  and 0 regressed against `@bpmnkit/core` 0.4.0.
+- **A "Since measured" block on the landing page** carries those figures from the
+  generated data, leaving the measured July table exactly as it was, and states
+  what a replay cannot say — nothing about time, tokens, or how a fresh
+  generation would go against the improved prompt.
+- **Regression guard** — the replay test fails if a run that passed when recorded
+  stops passing.
+
 ## Sub-processes and boundary events, documented and forgiving (2026-09-13)
 
 Closing the gap that made the SDK path fail on the benchmark's hardest scenario.

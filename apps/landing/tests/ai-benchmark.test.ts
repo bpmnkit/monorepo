@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { HEADLINE, META, RELIABILITY, ROWS, STRATEGIES } from "../src/data/ai-benchmark.js"
+import { HEADLINE, META, RELIABILITY, REPLAY, ROWS, STRATEGIES } from "../src/data/ai-benchmark.js"
 import { AI_BENCHMARK, type BenchmarkRun } from "../src/generated/ai-benchmark.js"
 
 /**
@@ -108,5 +108,45 @@ describe("derived figures the homepage quotes", () => {
 			expect(cell.speedup, row.scenario.id).toBeGreaterThan(1)
 			expect(cell.outputRatio ?? 0, row.scenario.id).toBeGreaterThan(1)
 		}
+	})
+})
+
+/**
+ * The replay is the one figure on the page that is not from the recordings: it
+ * re-runs their code against the current build. It is quoted next to the
+ * measured table, so it has to stay consistent with the runs it summarises — and
+ * with the recordings, which say how many `with-sdk` runs there were to replay.
+ */
+describe("replay against the current build", () => {
+	it("summarises the runs it ships", () => {
+		expect(REPLAY.runs).toHaveLength(REPLAY.totalRuns)
+		expect(REPLAY.usable).toBe(REPLAY.runs.filter((r) => r.usable).length)
+		expect(REPLAY.originallyUsable).toBe(REPLAY.runs.filter((r) => r.originallyUsable).length)
+		expect(REPLAY.recovered).toBe(REPLAY.runs.filter((r) => !r.originallyUsable && r.usable).length)
+	})
+
+	it("covers every recorded builder run", () => {
+		const recorded = AI_BENCHMARK.runs.filter((r) => r.strategy === "with-sdk")
+		expect(REPLAY.totalRuns).toBe(recorded.length)
+		expect([...REPLAY.runs].map((r) => r.recording).sort()).toEqual(
+			[...recorded].map((r) => r.recording.replace(/\.json$/, "")).sort(),
+		)
+	})
+
+	it("agrees with the measured table on what originally worked", () => {
+		const usableWhenRecorded = AI_BENCHMARK.runs.filter(
+			(r) => r.strategy === "with-sdk" && r.produced && r.parsed && r.diComplete,
+		).length
+		expect(REPLAY.originallyUsable).toBe(usableWhenRecorded)
+	})
+
+	it("regresses nothing — a run that passed when recorded still passes", () => {
+		const regressions = REPLAY.runs.filter((r) => r.originallyUsable && !r.usable)
+		expect(regressions.map((r) => `${r.recording}: ${r.error}`)).toEqual([])
+		expect(REPLAY.regressed).toBe(0)
+	})
+
+	it("names the core version it ran against", () => {
+		expect(REPLAY.coreVersion).toMatch(/^\d+\.\d+\.\d+/)
 	})
 })

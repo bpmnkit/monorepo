@@ -8,7 +8,7 @@ import { Bpmn, exportSvg } from "@bpmnkit/core"
 import FeelPlayground from "../components/FeelPlayground.astro"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
-import { HEADLINE, META, RELIABILITY, ROWS, STRATEGIES } from "../data/ai-benchmark"
+import { HEADLINE, META, RELIABILITY, REPLAY, ROWS, STRATEGIES } from "../data/ai-benchmark"
 import { CODE_HTML, CORE_VERSION, ECOSYSTEM } from "../data/content"
 
 const jsonLd = [
@@ -703,6 +703,35 @@ const CAPABILITIES = [
         </table>
       </div>
 
+      <div class="bench-since">
+        <div class="panel-label panel-label--accent">Since measured</div>
+        <p>
+          The builder column is the weakest here, and the reason was ours, not the model's: all
+          three quote-to-cash failures were the same API surface — a sub-process or boundary event
+          inside a branch — and the prompt the model was given, which is
+          <code>@bpmnkit/core</code>'s README, documented none of those constructs.
+          That has been fixed, and so has the builder: it now accepts a boundary event's host
+          positionally and refuses one with no host, rather than exporting a diagram its own parser
+          cannot read.
+        </p>
+        <p>
+          Re-running <strong>the same recorded code</strong> against
+          <code>@bpmnkit/core {REPLAY.coreVersion}</code> — the model's output is frozen in the
+          recordings, so this isolates the library's contribution — takes the builder from
+          {" "}{REPLAY.originallyUsable}/{REPLAY.totalRuns} to {REPLAY.usable}/{REPLAY.totalRuns}
+          usable, and quote-to-cash from {REPLAY.quoteToCash?.originallyUsable}/{REPLAY.quoteToCash?.runs}
+          {" "}to {REPLAY.quoteToCash?.usable}/{REPLAY.quoteToCash?.runs}. {REPLAY.recovered} runs
+          recovered, {REPLAY.regressed} regressed.
+        </p>
+        <p>
+          The table above is left as measured. A replay is not a re-run: it says what the library
+          now does with July's code, not what the model would write against today's prompt — the
+          time and token columns in particular are untouched by it, and the improved prompt is
+          about 10,000 characters longer, which will cost input tokens. Re-recording is the only
+          thing that settles those, and it has not been done yet.
+        </p>
+      </div>
+
       <div class="bench-method">
         <div class="panel-label">Method, and what this does not claim</div>
         <p>
@@ -717,7 +746,8 @@ const CAPABILITIES = [
           Two results cut against BPMN Kit and belong here. The builder path failed to compile in
           three of five quote-to-cash runs — the hardest scenario, with a multi-instance subprocess
           and timer boundary events — which is why it shows
-          {" "}{RELIABILITY[1]?.usable}/{RELIABILITY[1]?.runs} usable overall. And on the full
+          {" "}{RELIABILITY[1]?.usable}/{RELIABILITY[1]?.runs} usable overall — see above for what
+          has since changed. And on the full
           prompt, the builder's own documentation costs about 10,000 input tokens, so on the
           simplest scenario it spends more total tokens than raw XML does; only the compact
           notation is ahead on every scenario.
@@ -726,7 +756,8 @@ const CAPABILITIES = [
           This measures time, token cost and whether the diagram renders. It does not claim better
           modelling: lint error counts were comparable across all three strategies, and the findings
           were the same kind — missing default flows, HTTP tasks with no error boundary — in every
-          case. Regenerate with <code>node scripts/bench-ai-generation.mjs</code>.
+          case. Regenerate with <code>node scripts/bench-ai-generation.mjs</code>; replay with
+          <code>node scripts/bench-ai-replay.mjs</code>.
         </p>
       </div>
     </div>

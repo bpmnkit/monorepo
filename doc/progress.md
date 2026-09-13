@@ -1,5 +1,44 @@
 # Progress
 
+## 2026-09-13 — The benchmark says what the fixes changed, without restating the measurement
+
+The landing page reported the builder path at 2/5 usable on quote-to-cash. The
+two fixes made since close that, but the honest way to show it is not to edit the
+measured table — those numbers are what happened in July, and they stay.
+
+**A replay is its own measurement.** `scripts/bench-ai-replay.mjs` re-runs each
+recorded `with-sdk` generation's TypeScript against the current
+`@bpmnkit/core` and scores it exactly as `bench-ai-generation.mjs` scores the
+originals. The model's output is frozen in the recordings, so re-running it
+isolates what the *library* changed from what the model would write differently
+today. Results go to `apps/landing/src/generated/ai-benchmark-replay.ts`.
+
+Every builder run is replayed, not only the three that failed, so a fix that
+broke a working run would surface rather than hide. It did not:
+
+| | recorded | replayed against 0.4.0 |
+|---|---|---|
+| overall | 9/12 | **12/12** |
+| quote-to-cash | 2/5 | **5/5** |
+| recovered / regressed | — | 3 / 0 |
+
+**The page gains a "Since measured" block** between the table and the method
+note, carrying those figures from the generated data — no number is typed into
+the markup. It says plainly what a replay is not: it says what the library does
+with July's code, not what the model would write against today's prompt. The
+time and token columns are untouched by it, and the improved prompt is ~10,000
+characters longer, which will cost input tokens. Only re-recording settles those,
+and the block says that has not been done.
+
+The measured table, the headline figures and the method note are unchanged, apart
+from a pointer from the builder's 9/12 to the block above it.
+
+`tests/ai-benchmark.test.ts` gains five assertions: the replay summarises its own
+runs, covers exactly the recorded builder runs, agrees with the measured table on
+what originally worked, names the core version it ran against, and regresses
+nothing — that last one fails loudly with the offending run and its error if a
+future change breaks a generation that used to work.
+
 ## 2026-09-13 — Why the SDK lost on the hardest scenario, and the two things that caused it
 
 The AI benchmark shipped earlier today reported the `@bpmnkit/core` builder path

@@ -2201,6 +2201,26 @@ kbd {
 	color: var(--ink-meta);
 }
 
+.bench-since {
+	border: 1px solid var(--rule);
+	border-bottom: none;
+	border-left: 2px solid var(--accent);
+	background: var(--panel);
+	padding: 20px 22px;
+}
+
+.bench-since p {
+	font-size: 13px;
+	line-height: 1.7;
+	color: var(--ink-body);
+	margin: 0 0 10px;
+}
+
+.bench-since p:last-child {
+	margin-bottom: 0;
+	color: var(--ink-body-soft);
+}
+
 .bench-method {
 	border: 1px solid var(--rule);
 	border-top: none;
