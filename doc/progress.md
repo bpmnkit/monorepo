@@ -40,6 +40,162 @@ Triaged alongside these: **#151** (the fluent builder cannot set `documentation`
 `ElementOptions.documentation` exists and serialises, and the terracotta design system
 that replaced the palette in the issue's screenshots puts links and inline code at
 4.75:1 to 5.24:1 against their backgrounds, above the 4.5:1 AA threshold.
+## 2026-09-13 — The benchmark says what the fixes changed, without restating the measurement
+
+The landing page reported the builder path at 2/5 usable on quote-to-cash. The
+two fixes made since close that, but the honest way to show it is not to edit the
+measured table — those numbers are what happened in July, and they stay.
+
+**A replay is its own measurement.** `scripts/bench-ai-replay.mjs` re-runs each
+recorded `with-sdk` generation's TypeScript against the current
+`@bpmnkit/core` and scores it exactly as `bench-ai-generation.mjs` scores the
+originals. The model's output is frozen in the recordings, so re-running it
+isolates what the *library* changed from what the model would write differently
+today. Results go to `apps/landing/src/generated/ai-benchmark-replay.ts`.
+
+Every builder run is replayed, not only the three that failed, so a fix that
+broke a working run would surface rather than hide. It did not:
+
+| | recorded | replayed against 0.4.0 |
+|---|---|---|
+| overall | 9/12 | **12/12** |
+| quote-to-cash | 2/5 | **5/5** |
+| recovered / regressed | — | 3 / 0 |
+
+**The page gains a "Since measured" block** between the table and the method
+note, carrying those figures from the generated data — no number is typed into
+the markup. It says plainly what a replay is not: it says what the library does
+with July's code, not what the model would write against today's prompt. The
+time and token columns are untouched by it, and the improved prompt is ~10,000
+characters longer, which will cost input tokens. Only re-recording settles those,
+and the block says that has not been done.
+
+The measured table, the headline figures and the method note are unchanged, apart
+from a pointer from the builder's 9/12 to the block above it.
+
+`tests/ai-benchmark.test.ts` gains five assertions: the replay summarises its own
+runs, covers exactly the recorded builder runs, agrees with the measured table on
+what originally worked, names the core version it ran against, and regresses
+nothing — that last one fails loudly with the offending run and its error if a
+future change breaks a generation that used to work.
+
+## 2026-09-13 — Why the SDK lost on the hardest scenario, and the two things that caused it
+
+The AI benchmark shipped earlier today reported the `@bpmnkit/core` builder path
+as **2/5 usable** on quote-to-cash — worse than asking the model for raw XML. That
+number had two causes, and neither was the model being unreliable.
+
+**All three failures were one API surface.** Every failed run died on
+`subProcess` or `boundaryEvent` inside a `.branch()`:
+`b.defaultFlow(...).subProcess is not a function` twice, and
+`content is not a function` once.
+
+**Root cause: the prompt documented none of it.** `apps/demo` feeds
+`packages/core/README.md` to the model verbatim as the SDK system prompt. That
+prompt was 20,744 characters and contained **zero** occurrences of `subProcess`,
+`boundaryEvent`, `attachedTo`, `withBoundary`, `multiInstance` or
+`eventBasedGateway` — every construct quote-to-cash asks for. The model guessed
+the shapes, and guessed wrong exactly where the prompt was silent. That is also
+why only quote-to-cash failed: loan-approval and KYC need nothing the README
+omitted.
+
+**The README's own Quick Start did not compile.** It called `.sequenceFlow()`, a
+method `ProcessBuilder` has never had, and `layoutProcess(...).defs`, a property
+`LayoutResult` does not have. The prompt was teaching an API that does not exist.
+
+### What changed
+
+**The README now documents what the scenario needs** — `scripts/generate-readmes.mjs`
+gained a "Sub-processes, boundary events and multi-instance" section and a process
+builder API table, and its broken Quick Start was rewritten around `.branch()` /
+`.connectTo()`. Event definitions are named options (`timerDuration`,
+`messageName` + `correlationKey`, `errorCode`), which the section states
+explicitly, because an unknown option is dropped silently: the model's
+`timer: { duration: "P7D" }` produced a boundary event with no timer on it. The
+SDK prompt goes from 20,744 to 30,562 characters — about 2.5k more input tokens
+per run, the cost of the fix.
+
+**`boundaryEvent` accepts its host positionally and rejects not having one.**
+`boundaryEvent(id, hostId, options)` now works alongside
+`boundaryEvent(id, { attachedTo })`, resolved by `resolveBoundaryEventArgs` on
+the same reasoning as the existing `resolveSubProcessArgs`. A boundary event with
+no host now throws `ValidationError` at the call site instead of exporting
+`<bpmn:boundaryEvent id="…">` with no `attachedToRef` — invalid BPMN that
+`Bpmn.parse` then refused to read, far from the call that caused it.
+
+**`tests/readme-examples.test.ts` type-checks every complete README example**
+against the current source. Type-checking rather than running: it needs no
+fixtures and no file I/O, and it catches a wrong *option* name, which execution
+silently ignores. It found two live errors on its first run — one of them in the
+new example this very change added (`sequential`, where `MultiInstanceOptions`
+says `isSequential`).
+
+### Measured effect
+
+The three failing runs' generated code, replayed against the current build:
+
+| Run | July | Now |
+|---|---|---|
+| quote-to-cash-2026-07-01 | compile error | ✅ 38 elements, DI complete |
+| quote-to-cash-2026-07-02 | compile error | ✅ 31 elements, DI complete |
+| quote-to-cash-2026-07-02b | compile error | ✅ 37 elements, DI complete |
+
+Quote-to-cash goes from **2/5 to 5/5** on the same generated code — two of the
+three were already fixed by earlier work (`BranchBuilder.subProcess`,
+`resolveSubProcessArgs`), the third by the `boundaryEvent` change here. The
+landing page still reports the July numbers, since re-recording needs the demo's
+`claude` CLI; the prompt fix is untested against a fresh generation and its
+effect on the token columns is not yet measured.
+
+## 2026-09-13 — The AI generation claim, measured
+
+The homepage asserted that a compact intermediate format makes BPMN Kit good to
+generate diagrams with, and offered nothing to check it against. Section 09,
+`#ai-benchmark`, now carries the measurement, and the capability card that makes
+the claim links to it.
+
+**The data was already in the repo.** `apps/demo/recordings/` holds twelve
+recorded sessions — real streamed runs of the same three Camunda 8 prompts
+against `claude-opus-4-8`, 1–3 July 2026 — each one racing up to three
+strategies: raw BPMN 2.0 XML, a `@bpmnkit/core` builder chain, and BPMN Kit's
+compact notation. Twenty-nine strategy runs in all. Nothing new was generated;
+what was missing was scoring.
+
+**Scored by the SDK itself.** `scripts/bench-ai-generation.mjs` parses every
+recorded output with `Bpmn.parse`, checks its diagram interchange with
+`checkDiCompleteness` and lints it with `lintDiagram({ forceEngineRules: true })`
+— engine rules forced on because every prompt asks for Camunda 8. A run counts
+as *usable* only if it produced XML, that XML parses, **and** every element has a
+shape: a process whose elements cannot be drawn does not open in a modeler,
+whatever else is right about it. The reduced result is generated into
+`apps/landing/src/generated/ai-benchmark.ts`; the recordings carry ~1.4 MB of
+token stream, so the page reads the summary. It is a frozen measurement rather
+than a live fact, so unlike `ecosystem.ts` it is not regenerated on every build.
+
+**What it shows.** Per scenario, compact notation against raw XML: 3.9–7.4×
+faster to a diagram, 5.3–11.9× fewer output tokens, 1.8–3.8× fewer total tokens,
+5/5 runs renderable against 10/12.
+
+**What it shows that does not flatter us**, and which the section states rather
+than buries:
+
+- The builder path failed to compile in three of five quote-to-cash runs — the
+  hardest scenario, with a multi-instance subprocess and timer boundary events —
+  so it is 9/12 usable overall, below raw XML's 10/12.
+- The builder's own documentation costs ~10,000 input tokens, so on the simplest
+  scenario it spends *more* total tokens than raw XML. Only the compact notation
+  is ahead on every scenario.
+- Lint error counts were comparable across all three strategies, and the findings
+  were the same kind — missing default flows, HTTP tasks with no error boundary.
+  The benchmark measures time, token cost and whether the diagram renders; it
+  makes no claim about better modelling, and says so.
+
+Figures are medians, not means, and compared per scenario rather than pooled: the
+strategies were not run the same number of times on each scenario — compact has
+five runs in total and one on quote-to-cash — so a pooled median would compare
+different workloads. The section prints `n` for every cell.
+
+Sections 09 and 10 shifted to 10 and 11.
 
 ## 2026-09-13 — turbo 2.10.12
 
