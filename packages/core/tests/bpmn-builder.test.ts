@@ -792,10 +792,13 @@ describe("BpmnProcessBuilder", () => {
 
 			if (adhoc.type === "adHocSubProcess") {
 				expect(adhoc.flowElements).toHaveLength(3)
-				expect(adhoc.sequenceFlows).toHaveLength(2)
+				// Ad-hoc children are an unordered set — sequential calls are siblings.
+				expect(adhoc.sequenceFlows).toHaveLength(0)
 
 				const subTask = defined(adhoc.flowElements.find((n) => n.id === "sub-task"))
 				expect(subTask.type).toBe("serviceTask")
+				expect(subTask.incoming).toEqual([])
+				expect(subTask.outgoing).toEqual([])
 			}
 		})
 
@@ -877,6 +880,129 @@ describe("BpmnProcessBuilder", () => {
 			if (adhoc.type === "adHocSubProcess") {
 				expect(adhoc.flowElements).toHaveLength(3)
 			}
+		})
+
+		// Camunda 8 reads a child *with* an incoming flow as part of an internal
+		// sub-flow rather than an LLM-invocable tool, so a fabricated chain here
+		// silently turns a three-tool agent into one tool plus a two-step sub-flow.
+		it("leaves sequential children unconnected — they are tools, not a chain", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.adHocSubProcess(
+					"AIAgent_H",
+					(sub) => {
+						sub.serviceTask("Tool_ListUsers", { taskType: "io.camunda:http-json:1" })
+						sub.serviceTask("Tool_LoadUser", { taskType: "io.camunda:http-json:1" })
+						sub.serviceTask("Tool_CreateUser", { taskType: "io.camunda:http-json:1" })
+					},
+					{ name: "Handle request" },
+				)
+				.endEvent("e")
+				.withAutoLayout()
+				.build()
+
+			const adhoc = defined(firstProcess(defs).flowElements.find((n) => n.id === "AIAgent_H"))
+			if (adhoc.type !== "adHocSubProcess") throw new Error("expected adHocSubProcess")
+
+			expect(adhoc.sequenceFlows).toEqual([])
+			for (const tool of adhoc.flowElements) {
+				expect(tool.incoming).toEqual([])
+				expect(tool.outgoing).toEqual([])
+			}
+
+			// No fabricated flow means no orphaned <bpmndi:BPMNEdge> either.
+			const toolIds = new Set(adhoc.flowElements.map((t) => t.id))
+			for (const diagram of defs.diagrams) {
+				for (const edge of diagram.plane.edges) {
+					expect(toolIds.has(edge.bpmnElement)).toBe(false)
+				}
+			}
+
+			// The container itself still lays out as an expanded box around its children.
+			const shape = defined(
+				defs.diagrams[0]?.plane.shapes.find((sh) => sh.bpmnElement === "AIAgent_H"),
+			)
+			expect(shape.isExpanded).toBe(true)
+			for (const tool of adhoc.flowElements) {
+				const child = defined(
+					defs.diagrams[0]?.plane.shapes.find((sh) => sh.bpmnElement === tool.id),
+				)
+				expect(child.bounds.x).toBeGreaterThanOrEqual(shape.bounds.x)
+				expect(child.bounds.y).toBeGreaterThanOrEqual(shape.bounds.y)
+				expect(child.bounds.x + child.bounds.width).toBeLessThanOrEqual(
+					shape.bounds.x + shape.bounds.width,
+				)
+				expect(child.bounds.y + child.bounds.height).toBeLessThanOrEqual(
+					shape.bounds.y + shape.bounds.height,
+				)
+			}
+		})
+
+		it("still creates a flow when connectTo() asks for one", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.adHocSubProcess("AIAgent_H", (sub) => {
+						sub.serviceTask("Tool_A", { taskType: "io.camunda:http-json:1" })
+						sub.serviceTask("Step_1", { taskType: "work" }).connectTo("Step_2")
+						sub.serviceTask("Step_2", { taskType: "work" })
+					})
+					.endEvent("e")
+					.build(),
+			)
+
+			const adhoc = defined(process.flowElements.find((n) => n.id === "AIAgent_H"))
+			if (adhoc.type !== "adHocSubProcess") throw new Error("expected adHocSubProcess")
+
+			expect(adhoc.sequenceFlows.map((f) => `${f.sourceRef} -> ${f.targetRef}`)).toEqual([
+				"Step_1 -> Step_2",
+			])
+			expect(defined(adhoc.flowElements.find((n) => n.id === "Tool_A")).incoming).toEqual([])
+		})
+
+		it("does not chain children of a nested ad-hoc sub-process either", () => {
+			const process = firstProcess(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.subProcess("outer", (outer) => {
+						outer.adHocSubProcess("inner-agent", (sub) => {
+							sub.serviceTask("Tool_A", { taskType: "io.camunda:http-json:1" })
+							sub.serviceTask("Tool_B", { taskType: "io.camunda:http-json:1" })
+						})
+					})
+					.endEvent("e")
+					.build(),
+			)
+
+			const outer = defined(process.flowElements.find((n) => n.id === "outer"))
+			if (outer.type !== "subProcess") throw new Error("expected subProcess")
+			const inner = defined(outer.flowElements.find((n) => n.id === "inner-agent"))
+			if (inner.type !== "adHocSubProcess") throw new Error("expected adHocSubProcess")
+
+			expect(inner.sequenceFlows).toEqual([])
+			for (const tool of inner.flowElements) expect(tool.incoming).toEqual([])
+		})
+
+		it("round-trips unconnected children through parse → export", () => {
+			const xml = Bpmn.export(
+				Bpmn.createProcess("proc")
+					.startEvent("s")
+					.adHocSubProcess("AIAgent_H", (sub) => {
+						sub.serviceTask("Tool_A", { taskType: "io.camunda:http-json:1" })
+						sub.serviceTask("Tool_B", { taskType: "io.camunda:http-json:1" })
+					})
+					.endEvent("e")
+					.withAutoLayout()
+					.build(),
+			)
+
+			const adhoc = defined(
+				firstProcess(Bpmn.parse(xml)).flowElements.find((n) => n.id === "AIAgent_H"),
+			)
+			if (adhoc.type !== "adHocSubProcess") throw new Error("expected adHocSubProcess")
+			expect(adhoc.sequenceFlows).toEqual([])
+			expect(adhoc.flowElements.map((t) => t.id)).toEqual(["Tool_A", "Tool_B"])
+			expect(Bpmn.export(Bpmn.parse(xml))).toBe(xml)
 		})
 	})
 

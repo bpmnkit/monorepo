@@ -2214,7 +2214,7 @@
 		{
 			"id": "packages.core.installation-compactify-definitions",
 			"file": "chunks/packages.core.installation-compactify-definitions.md",
-			"tokens": 111,
+			"tokens": 204,
 			"tags": [
 				"packages",
 				"core",
@@ -2316,7 +2316,7 @@
 		{
 			"id": "packages.core.installation-processbuilder-methods",
 			"file": "chunks/packages.core.installation-processbuilder-methods.md",
-			"tokens": 685,
+			"tokens": 698,
 			"tags": [
 				"packages",
 				"core",
@@ -2331,6 +2331,23 @@
 				"dataObjectReference",
 				"dataStoreReference"
 			]
+		},
+		{
+			"id": "packages.core.installation-ad-hoc-sub-processes-children-are-a-set-not-a-chain",
+			"file": "chunks/packages.core.installation-ad-hoc-sub-processes-children-are-a-set-not-a-chain.md",
+			"tokens": 368,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"ad-hoc",
+				"sub-processes",
+				"children",
+				"set",
+				"not",
+				"chain"
+			],
+			"entities": []
 		},
 		{
 			"id": "packages.core.installation-joins-inferred-by-default-or-declared",
