@@ -2107,6 +2107,118 @@ kbd {
 }
 
 /* ── Responsive ─────────────────────────────────────────────────── */
+/* ── AI generation benchmark ────────────────────────────────────── */
+.bench-heads {
+	margin-bottom: 28px;
+}
+
+.bench-head {
+	background: var(--panel);
+	padding: 24px 22px;
+}
+
+.bench-head-num {
+	font-family: var(--font-mono);
+	font-size: 30px;
+	line-height: 1.1;
+	color: var(--accent);
+}
+
+.bench-head-label {
+	font-family: var(--font-mono);
+	font-size: 10.5px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--ink-meta);
+	margin-top: 8px;
+}
+
+.bench-head p {
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--ink-body-soft);
+	margin: 10px 0 0;
+}
+
+.bench-table {
+	width: 100%;
+	border-collapse: collapse;
+	border: 1px solid var(--rule);
+	background: var(--panel);
+	font-size: 13.5px;
+}
+
+.bench-table th,
+.bench-table td {
+	text-align: left;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--rule);
+}
+
+.bench-table thead th {
+	font-family: var(--font-mono);
+	font-size: 10.5px;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--ink-meta);
+}
+
+/* Numeric columns line up on the digit, not the word. */
+.bench-table .bench-num {
+	text-align: right;
+	font-family: var(--font-mono);
+	white-space: nowrap;
+}
+
+.bench-scenario th {
+	background: var(--ground-alt);
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.bench-scenario-blurb {
+	display: block;
+	font-weight: 400;
+	font-size: 12px;
+	color: var(--ink-body-soft);
+	margin-top: 3px;
+}
+
+.bench-strategy {
+	display: block;
+}
+
+/* The two BPMN Kit rows carry the accent; the baseline row stays plain. */
+.bench-kit .bench-strategy {
+	color: var(--accent);
+}
+
+.bench-runs {
+	font-family: var(--font-mono);
+	font-size: 10.5px;
+	color: var(--ink-meta);
+}
+
+.bench-method {
+	border: 1px solid var(--rule);
+	border-top: none;
+	background: var(--ground-alt);
+	padding: 20px 22px;
+}
+
+.bench-method p {
+	font-size: 13px;
+	line-height: 1.7;
+	color: var(--ink-body-soft);
+	margin: 0 0 10px;
+}
+
+.bench-method p:last-child {
+	margin-bottom: 0;
+}
+
 @media (max-width: 1040px) {
 	.hero-body {
 		grid-template-columns: 1fr;
@@ -2301,6 +2413,13 @@ kbd {
 
 	.teams-lede h2 {
 		font-size: 22px;
+	}
+	.bench-heads.hair-grid--3 {
+		grid-template-columns: 1fr;
+	}
+
+	.bench-head-num {
+		font-size: 26px;
 	}
 }
 

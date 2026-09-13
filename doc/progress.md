@@ -1,5 +1,55 @@
 # Progress
 
+## 2026-09-13 — The AI generation claim, measured
+
+The homepage asserted that a compact intermediate format makes BPMN Kit good to
+generate diagrams with, and offered nothing to check it against. Section 09,
+`#ai-benchmark`, now carries the measurement, and the capability card that makes
+the claim links to it.
+
+**The data was already in the repo.** `apps/demo/recordings/` holds twelve
+recorded sessions — real streamed runs of the same three Camunda 8 prompts
+against `claude-opus-4-8`, 1–3 July 2026 — each one racing up to three
+strategies: raw BPMN 2.0 XML, a `@bpmnkit/core` builder chain, and BPMN Kit's
+compact notation. Twenty-nine strategy runs in all. Nothing new was generated;
+what was missing was scoring.
+
+**Scored by the SDK itself.** `scripts/bench-ai-generation.mjs` parses every
+recorded output with `Bpmn.parse`, checks its diagram interchange with
+`checkDiCompleteness` and lints it with `lintDiagram({ forceEngineRules: true })`
+— engine rules forced on because every prompt asks for Camunda 8. A run counts
+as *usable* only if it produced XML, that XML parses, **and** every element has a
+shape: a process whose elements cannot be drawn does not open in a modeler,
+whatever else is right about it. The reduced result is generated into
+`apps/landing/src/generated/ai-benchmark.ts`; the recordings carry ~1.4 MB of
+token stream, so the page reads the summary. It is a frozen measurement rather
+than a live fact, so unlike `ecosystem.ts` it is not regenerated on every build.
+
+**What it shows.** Per scenario, compact notation against raw XML: 3.9–7.4×
+faster to a diagram, 5.3–11.9× fewer output tokens, 1.8–3.8× fewer total tokens,
+5/5 runs renderable against 10/12.
+
+**What it shows that does not flatter us**, and which the section states rather
+than buries:
+
+- The builder path failed to compile in three of five quote-to-cash runs — the
+  hardest scenario, with a multi-instance subprocess and timer boundary events —
+  so it is 9/12 usable overall, below raw XML's 10/12.
+- The builder's own documentation costs ~10,000 input tokens, so on the simplest
+  scenario it spends *more* total tokens than raw XML. Only the compact notation
+  is ahead on every scenario.
+- Lint error counts were comparable across all three strategies, and the findings
+  were the same kind — missing default flows, HTTP tasks with no error boundary.
+  The benchmark measures time, token cost and whether the diagram renders; it
+  makes no claim about better modelling, and says so.
+
+Figures are medians, not means, and compared per scenario rather than pooled: the
+strategies were not run the same number of times on each scenario — compact has
+five runs in total and one on quote-to-cash — so a pooled median would compare
+different workloads. The section prints `n` for every cell.
+
+Sections 09 and 10 shifted to 10 and 11.
+
 ## 2026-09-13 — Operate joins the rest of the product
 
 Operate was the last surface still on the old palette: a dark neon-purple shell

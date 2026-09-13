@@ -1,5 +1,25 @@
 # Features
 
+## AI generation benchmark on the homepage (2026-09-13)
+
+Section 09 of the landing page measures what it used to only assert: how three
+ways of getting a BPMN diagram out of an LLM actually compare.
+
+- **Three strategies, same prompts** — raw BPMN 2.0 XML, a `@bpmnkit/core`
+  builder chain, and BPMN Kit's compact notation, over 29 runs from the twelve
+  sessions in `apps/demo/recordings/` (`claude-opus-4-8`, 1–3 July 2026).
+- **Scored by `@bpmnkit/core`** — `Bpmn.parse`, `checkDiCompleteness` and
+  `lintDiagram`. "Usable" means it produced XML, it parses, and every element has
+  a shape to draw.
+- **Headline** — compact notation against raw XML, per scenario: 3.9–7.4× faster,
+  5.3–11.9× fewer output tokens, 5/5 runs renderable against 10/12.
+- **The losses are on the page too** — the builder path failed to compile in 3 of
+  5 quote-to-cash runs, and its ~10k-token prompt costs more total tokens than
+  raw XML on the simplest scenario. Lint counts were comparable across all three,
+  so no modelling-quality claim is made.
+- **Reproducible** — `node scripts/bench-ai-generation.mjs` regenerates
+  `apps/landing/src/generated/ai-benchmark.ts` from the recordings.
+
 ## Operate on the design system (2026-09-13)
 
 The monitoring frontend now looks like the product it ships with, rather than a
