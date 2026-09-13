@@ -1,5 +1,54 @@
 # Progress
 
+## 2026-09-13 — What 1.0.0 needs, and the broken pipeline found on the way
+
+An assessment of what stands between this repo and a stable 1.0.0, written up in
+[`doc/release-1.0.0.md`](release-1.0.0.md) with a checklist in
+[`doc/roadmap.md`](roadmap.md). Every claim in it was verified by running the thing:
+a full install, a Rust/wasm build, then build, typecheck, Biome and the test suite —
+**2,499 tests across 20 packages, all green**.
+
+The code is not what is holding 1.0 back. Across every published source there is one
+`TODO` and two `@deprecated` markers; the libraries carry no external runtime
+dependencies at all except `yaml` in `connector-gen` and four in `proxy`; and the 12
+roadmap items still unchecked are every one of them filed under an explicit *"Left open,
+deliberately"* heading. What is missing is release engineering and a written contract —
+chiefly a stability policy, which does not exist in the repo or on the site, while
+`README.md` still carries a `status: experimental` badge.
+
+**The release pipeline was broken, and had published nothing for days.** Runs #132 and
+#133 — the last two merges to `main` — both failed at *Check packages are consumable*,
+which sits before `changesets/action` and so skipped the publish step entirely. Two
+changesets have been stranded on `main` since, including the `@bpmnkit/core` fix for
+#149 and #150: merged, and not on npm.
+
+The cause was three `package.json` files. `plugins-cli/casen-report`,
+`casen-worker-http` and `casen-worker-ai` were the only published packages with no
+`files` field, and without one `pnpm pack` honours the repo-root `.gitignore`, whose
+second line is `dist`. Each tarball shipped `src/`, `tsconfig.json` and
+`.turbo/turbo-build.log` while omitting the build output its own `exports` pointed at.
+One `files` line each, matching the other twenty packages, and
+`pnpm check:consumable` now reports `✓ 23 package(s) consumable.`
+
+Also found, left for its own change rather than fixed in passing: `@bpmnkit/cli-sdk`,
+`@bpmnkit/user-tasks` and `@bpmnkit/create-casen-plugin` are published to npm but absent
+from `scripts/published-packages.mjs` — the one list `sync-license.mjs`,
+`check-packages.mjs` and `check-package-consumable.mjs` all read. All three name
+`LICENSE` in their `files` array and have no LICENSE file on disk, so each ships as MIT
+with no licence text; `user-tasks` additionally has a hand-written README that the next
+generator run would delete. That is precisely the drift the list exists to catch, and
+the list had drifted.
+
+Two structural items for the tag itself. Internal dependencies are `workspace:*`, which
+publishes an *exact* pin — verified: `@bpmnkit/plugins@0.3.1` depends on
+`@bpmnkit/core@0.4.0`, not `^0.4.0`. At 0.x that is harmless lockstep; at 1.0 a consumer
+on mismatched versions gets two copies of core and every `instanceof` quietly stops
+matching. It has to become `workspace:^` before the tag, because afterwards the change
+is itself breaking. And `ci.yml` never runs `check:consumable`, which is why the
+packaging break reached `main` behind a green PR — `--pack-only` is offline and takes
+about a second.
+
+
 ## 2026-09-13 — Ad-hoc children stop being a chain; documentation stops being dropped
 
 Two open issues against `@bpmnkit/core`, both hit while authoring a Camunda 8

@@ -884,6 +884,57 @@ differentiator itself.
 
 ---
 
+## Road to 1.0.0
+
+> Full assessment, with the evidence behind each item:
+> [`doc/release-1.0.0.md`](release-1.0.0.md)
+
+Build, typecheck, lint and 2,499 tests across 20 packages are green, and the 12 roadmap
+items still open are all filed under an explicit *"Left open, deliberately"* heading.
+What stands between this repo and 1.0.0 is release engineering and a written contract,
+not code.
+
+### Blockers
+
+- [x] Give the three `plugins-cli/casen-*` packages a `files` field. Without one,
+      `pnpm pack` honours the repo-root `.gitignore` and drops `dist/`, so
+      `check:consumable` failed and **release runs #132 and #133 published nothing**
+- [ ] Merge and confirm the two changesets stranded on `main` actually publish —
+      the `@bpmnkit/core` fix for #149 / #150 is merged and not on npm
+- [ ] Run `check:consumable --pack-only` in CI. It is offline and takes about a second;
+      leaving it to the release workflow is what let the break reach `main`
+- [ ] Add `@bpmnkit/cli-sdk`, `@bpmnkit/user-tasks` and `@bpmnkit/create-casen-plugin`
+      to `scripts/published-packages.mjs`. All three are on npm, none is in the list, and
+      all three declare `LICENSE` in `files` while having no LICENSE file on disk
+- [ ] Add a `packages/user-tasks` entry to `scripts/generate-readmes.mjs` — its README is
+      hand-written today, which the next generator run would delete
+- [ ] Switch internal dependencies from `workspace:*` to `workspace:^`. `*` publishes an
+      exact pin, so a consumer on mismatched versions gets two copies of `@bpmnkit/core`.
+      Must land before the tag; after it, the change is itself breaking
+- [ ] Write and publish a stability policy: what is public API, what counts as breaking
+      (generated BPMN XML included — 0.4.0 changed every element ID as a *minor*), the
+      Node and browser ranges, and how deprecations run
+
+### Before the tag
+
+- [ ] Decide the 1.0 set. Nine published packages ship with zero tests
+      (`ui`, `profiles`, `operate`, `astro-shared`, `patterns`, `worker-client`, and the
+      three `casen-*`) — those stay 0.x
+- [ ] Documentation pages for `@bpmnkit/plugins` and `@bpmnkit/feel`; 15 of 23 published
+      packages have no page at all
+- [ ] `engines.node` on every published package — 4 of 23 declare one
+- [ ] Commit an API-surface snapshot and diff it in CI, so a removed export fails the build
+- [ ] Refresh `PUBLISHING.md`; it still names the `@bpmn-sdk` org and `bpmn-sdk/monorepo`
+- [ ] Add `SECURITY.md`, `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`
+- [ ] `CHANGELOG.md` for `apps/reebe-wasm`, the only published package without one
+- [ ] Document or remove `@bpmnkit/proxy`'s native-module install requirement —
+      `isolated-vm` and `better-sqlite3` need a compiler, and the failure is not friendly
+- [ ] Remove the two `@deprecated` markers (`ProcessBuilder.explicitJoins`, the connector
+      template field); 1.0 is the moment for it
+- [ ] Drop the `status: experimental` badge from `README.md`
+
+---
+
 ## Completed
 
 *(Items moved here from above as they ship)*
