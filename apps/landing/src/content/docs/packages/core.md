@@ -290,10 +290,15 @@ Processes are only added, never removed: sending one process of a multi-process 
 ### `compactify(definitions)`
 
 Projects a `BpmnDefinitions` object onto a `CompactDiagram` — a small JSON object suitable
-for LLM prompts. **Lossy:** it keeps topology, names and the common Zeebe bindings, and drops
-collaborations, participants, message flows, lanes, data stores, artifacts, root-level
-messages and errors, multi-instance loop characteristics, full `zeebe:ioMapping` entries and
-diagram interchange.
+for LLM prompts. **Lossy:** it keeps topology, names, `<bpmn:documentation>` and the common
+Zeebe bindings, and drops collaborations, participants, message flows, lanes, data stores,
+artifacts, root-level messages and errors, multi-instance loop characteristics, full
+`zeebe:ioMapping` entries and diagram interchange.
+
+`documentation` is carried on every element and on the process itself, because in Camunda 8 it
+is not decoration: on an ad-hoc sub-process child it is the tool description handed to the LLM,
+and on a start event it is where the process input contract is written. It had been dropped, so
+a single `rename` operation cost a file the documentation of every element in it.
 
 ```typescript
 import { compactify } from "@bpmnkit/core";
@@ -384,7 +389,7 @@ All builder methods return `this` for chaining.
 | `.eventBasedGateway(id, options?)` | Add an event-based gateway |
 | `.complexGateway(id, options?)` | Add a complex gateway (aspirational — Zeebe does not execute these) |
 | `.subProcess(id, builder, options?)` | Add an embedded sub-process |
-| `.adHocSubProcess(id, builder, options?)` | Add an ad-hoc sub-process |
+| `.adHocSubProcess(id, builder, options?)` | Add an ad-hoc sub-process — its children are **not** auto-chained, see below |
 | `.eventSubProcess(id, builder, options?)` | Add an event sub-process (emits `subProcess triggeredByEvent="true"`) |
 | `.transaction(id, builder, options?)` | Add a transaction sub-process (atomic scope) |
 | `.callActivity(id, options?)` | Add a call activity |
@@ -403,6 +408,46 @@ data types (`dataObject`, `dataObjectReference`, `dataStoreReference`) — those
 data associations rather than sequence flows, so the chain has nowhere to put them. A
 compile-time table, `BUILDER_COVERAGE`, holds the SDK to that: adding an element type without
 a builder method fails the build. Run `pnpm --filter @bpmnkit/core check:builder` to print it.
+
+### Ad-hoc sub-processes: children are a set, not a chain
+
+Sequential calls in a builder chain auto-connect with sequence flows. Inside
+`.adHocSubProcess()` they do not: BPMN defines an ad-hoc sub-process's children as an unordered
+set of independently-invocable activities, and Camunda 8's agentic AI runtime reads that
+structurally — a child *without* an incoming flow is an LLM-invocable tool, a child *with* one
+is part of an internal sub-flow and not a tool at all.
+
+```typescript
+.adHocSubProcess("agent", (s) => {
+  s.serviceTask("listUsers",  { taskType: "io.camunda:http-json:1" });
+  s.serviceTask("loadUser",   { taskType: "io.camunda:http-json:1" });
+  s.serviceTask("createUser", { taskType: "io.camunda:http-json:1" });
+}, { name: "Handle request" })
+// → three tools, no sequence flows, no <bpmndi:BPMNEdge> between them
+```
+
+Auto-chaining them produced a file that lints clean and deploys, while the agent saw one tool
+and a two-step sub-flow — so the default is off rather than opt-out.
+
+An internal sub-flow inside the container stays expressible: say so with `.connectTo()`, which
+still creates a flow from the cursor.
+
+```typescript
+.adHocSubProcess("agent", (s) => {
+  s.serviceTask("listUsers", { taskType: "io.camunda:http-json:1" });   // a tool
+  s.serviceTask("step1", { taskType: "work" }).connectTo("step2");      // an internal sub-flow
+  s.serviceTask("step2", { taskType: "work" });
+})
+```
+
+Each child's LLM-facing description is its `documentation`, which every builder method accepts:
+
+```typescript
+s.serviceTask("listUsers", {
+  taskType: "io.camunda:http-json:1",
+  documentation: "Call this to retrieve all users. Returns id, name, email.",
+});
+```
 
 ### Joins: inferred by default, or declared
 

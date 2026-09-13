@@ -270,6 +270,7 @@ function patchElement(
 	if (misplaced !== undefined) return misplaced
 
 	if (patch.name !== undefined) element.name = patch.name
+	if (patch.documentation !== undefined) element.documentation = patch.documentation
 	if (patch.attachedTo !== undefined && "attachedToRef" in element) {
 		element.attachedToRef = patch.attachedTo
 	}

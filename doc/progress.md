@@ -1,5 +1,45 @@
 # Progress
 
+## 2026-09-13 — Ad-hoc children stop being a chain; documentation stops being dropped
+
+Two open issues against `@bpmnkit/core`, both hit while authoring a Camunda 8
+agentic-AI process through the SDK, and both silent.
+
+**`.adHocSubProcess()` fabricated sequence flows between its children (#149).**
+The content callback auto-chained its calls like any other builder chain. For an
+ad-hoc sub-process that is the wrong default twice over: BPMN defines its children
+as an unordered set of independently-invocable activities, and Camunda 8's agentic
+runtime reads the distinction structurally — a child *without* an incoming flow is
+an LLM-invocable tool, a child *with* one is part of an internal sub-flow and not a
+tool at all. Declaring three tools therefore produced one tool plus a two-step
+sub-flow, in a file that lints clean and deploys. `withAutoLayout()` drew a
+`<bpmndi:BPMNEdge>` for each fabricated flow, so the workaround had to reach into
+the DI plane as well as the model.
+
+`SubProcessContentBuilder` now takes an `autoConnect` flag, off for the three
+`adHocSubProcess()` call sites and on everywhere else. The cursor still moves when
+nothing is wired, so `.connectTo()` after an activity keeps naming it as the flow's
+source — an internal sub-flow inside the container stays expressible, it just has to
+be asked for. The old behaviour was not kept behind an opt-out: it produces files
+that misbehave at runtime rather than files with a different shape.
+
+**`compactify()` dropped every `<bpmn:documentation>` (#150).** The compact model
+had no field for it, so `expand()` could not put it back and the text left the
+document with no error and no warning. That is data loss on the API whose stated
+purpose is surgical edits: one `rename` op cost the file the documentation of every
+element in it. `bpmn-parser.ts`, `bpmn-model.ts` and `bpmn-serializer.ts` all
+handled it already — only the projection did not.
+
+`CompactElement` and `CompactProcess` now carry `documentation`, `compactifyElement`
+copies it out and `buildFlowElement` puts it back. `patchElement` in
+`full-operations.ts` gained the same field, so `{ op: "update", patch: { documentation } }`
+writes it on the full model instead of being quietly ignored there too.
+
+Triaged alongside these: **#151** (the fluent builder cannot set `documentation`) and
+**#148** (low-contrast links and inline code on the docs site) no longer reproduce —
+`ElementOptions.documentation` exists and serialises, and the terracotta design system
+that replaced the palette in the issue's screenshots puts links and inline code at
+4.75:1 to 5.24:1 against their backgrounds, above the 4.5:1 AA threshold.
 ## 2026-09-13 — The benchmark says what the fixes changed, without restating the measurement
 
 The landing page reported the builder path at 2/5 usable on quote-to-cash. The

@@ -22,6 +22,12 @@ export interface CompactElement {
 	id: string
 	type: BpmnElementType
 	name?: string
+	/**
+	 * Free-text `<bpmn:documentation>`. Not decoration: on an ad-hoc sub-process
+	 * child it is the tool description the AI Agent connector hands the LLM, and
+	 * on a start event it is where the process input contract is written.
+	 */
+	documentation?: string
 	/** Zeebe job type (serviceTask: zeebe:taskDefinition.type) */
 	jobType?: string
 	/** dataObjectReference: id of the dataObject it points at. */
@@ -72,6 +78,8 @@ export interface CompactFlow {
 export interface CompactProcess {
 	id: string
 	name?: string
+	/** Free-text `<bpmn:documentation>` on the process itself. */
+	documentation?: string
 	elements: CompactElement[]
 	flows: CompactFlow[]
 }
@@ -106,6 +114,7 @@ function compactifyElement(el: BpmnFlowElement): CompactElement {
 	const ext = el.extensionElements
 	const result: CompactElement = { id: el.id, type: el.type }
 	if (el.name) result.name = el.name
+	if (el.documentation) result.documentation = el.documentation
 
 	const jobType = findAttr(ext, "zeebe:taskDefinition", "type")
 	if (jobType) result.jobType = jobType
@@ -207,6 +216,7 @@ export function compactify(defs: BpmnDefinitions): CompactDiagram {
 		processes: defs.processes.map((process) => ({
 			id: process.id,
 			name: process.name,
+			documentation: process.documentation,
 			elements: process.flowElements.map(compactifyElement),
 			flows: process.sequenceFlows.map((sf) => {
 				const f: CompactFlow = { id: sf.id, from: sf.sourceRef, to: sf.targetRef }
@@ -354,6 +364,7 @@ export function buildFlowElement(
 	const base = {
 		id: el.id,
 		name: el.name,
+		documentation: el.documentation,
 		incoming,
 		outgoing,
 		extensionElements: makeExtensions(el),
@@ -505,6 +516,7 @@ function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram
 	const process: BpmnProcess = {
 		id: compact.id,
 		name: compact.name,
+		documentation: compact.documentation,
 		isExecutable: true,
 		extensionElements: [],
 		flowElements,

@@ -1,5 +1,23 @@
 # Features
 
+## Ad-hoc sub-process children are tools, not a chain (2026-09-13)
+
+- **`.adHocSubProcess()` no longer auto-connects its children** — sequential calls in
+  the content callback produce siblings with no sequence flow, no
+  `bpmn:incoming`/`bpmn:outgoing` and no `<bpmndi:BPMNEdge>`, which is what Camunda 8
+  requires of an LLM-invocable tool.
+- **`.connectTo()` still creates a flow**, so an internal sub-flow inside the
+  container stays expressible — it just has to be asked for.
+- **Nested ad-hoc sub-processes behave the same**, and `withAutoLayout()` still lays
+  the container out `isExpanded="true"` around its unconnected children.
+
+## `<bpmn:documentation>` survives the operations API (2026-09-13)
+
+- **`compactify()`/`expand()` carry `documentation`** on every element type, nested
+  ones included, and on the process itself. It used to be dropped silently, so a
+  single `rename` cost a file the documentation of every element in it.
+- **`{ op: "update", patch: { documentation } }` sets it**, on the compact model and
+  on the full one.
 ## Benchmark replay: what the library changed, measured (2026-09-13)
 
 - **`scripts/bench-ai-replay.mjs`** re-runs every recorded `with-sdk` generation

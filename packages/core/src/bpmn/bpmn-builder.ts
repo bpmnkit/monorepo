@@ -1462,14 +1462,22 @@ export class BranchBuilder {
 		return this.addElement(makeTransactionEl(id, content, options, this.rootMessages))
 	}
 
-	/** Add an ad-hoc sub-process (mirrors `ProcessBuilder.adHocSubProcess`). */
+	/**
+	 * Add an ad-hoc sub-process (mirrors `ProcessBuilder.adHocSubProcess`).
+	 *
+	 * Its children are **not** auto-chained: BPMN defines them as an unordered set
+	 * of independently-invocable activities, and Camunda 8 reads a child with an
+	 * incoming flow as part of an internal sub-flow rather than an LLM-invocable
+	 * tool. Use `connectTo()` inside the callback to state ordering you do want.
+	 */
 	adHocSubProcess(
 		id: string,
 		content: (b: SubProcessContentBuilder) => void,
 		options?: AdHocSubProcessOptions,
 	): this {
 		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
-		const sub = new SubProcessContentBuilder(this.rootMessages)
+		// Ad-hoc sub-process children are unordered — see SubProcessContentBuilder.autoConnect.
+		const sub = new SubProcessContentBuilder(this.rootMessages, false)
 		resolved.content(sub)
 		finalizeScope(sub._elements, sub._flows)
 
@@ -1593,10 +1601,23 @@ export class SubProcessContentBuilder {
 	private currentGatewayId: string | undefined
 	private openBranchEnds: string[] = []
 	private readonly rootMessages: BpmnMessage[]
+	/**
+	 * Whether sequential calls chain themselves with sequence flows.
+	 *
+	 * False inside an ad-hoc sub-process, whose children BPMN defines as an
+	 * unordered set of independently-invocable activities. Chaining them there is
+	 * not merely redundant: Camunda 8 reads a child *with* an incoming flow as
+	 * part of an internal sub-flow rather than an LLM-invocable tool, so the
+	 * fabricated flows silently turned a three-tool agent into one tool and a
+	 * two-step sub-flow. Ordering inside such a container is stated explicitly
+	 * with `connectTo()`.
+	 */
+	private readonly autoConnect: boolean
 
 	/** @internal */
-	constructor(rootMessages: BpmnMessage[] = []) {
+	constructor(rootMessages: BpmnMessage[] = [], autoConnect = true) {
 		this.rootMessages = rootMessages
+		this.autoConnect = autoConnect
 	}
 
 	private addElement(element: BpmnFlowElement): this {
@@ -1605,25 +1626,29 @@ export class SubProcessContentBuilder {
 		}
 		this._elements.push(element)
 		this._ids.add(element.id)
-		if (this.lastNodeId) {
-			this._flows.push({
-				id: generateId("Flow"),
-				sourceRef: this.lastNodeId,
-				targetRef: element.id,
-				extensionElements: [],
-				unknownAttributes: {},
-			})
+		if (this.autoConnect) {
+			if (this.lastNodeId) {
+				this._flows.push({
+					id: generateId("Flow"),
+					sourceRef: this.lastNodeId,
+					targetRef: element.id,
+					extensionElements: [],
+					unknownAttributes: {},
+				})
+			}
+			for (const branchEnd of this.openBranchEnds) {
+				this._flows.push({
+					id: generateId("Flow"),
+					sourceRef: branchEnd,
+					targetRef: element.id,
+					extensionElements: [],
+					unknownAttributes: {},
+				})
+			}
+			this.openBranchEnds = []
 		}
-		for (const branchEnd of this.openBranchEnds) {
-			this._flows.push({
-				id: generateId("Flow"),
-				sourceRef: branchEnd,
-				targetRef: element.id,
-				extensionElements: [],
-				unknownAttributes: {},
-			})
-		}
-		this.openBranchEnds = []
+		// The cursor still moves even when nothing is wired, so `connectTo()` after
+		// an activity keeps naming that activity as the flow's source.
 		this.lastNodeId = element.id
 		return this
 	}
@@ -1969,14 +1994,22 @@ export class SubProcessContentBuilder {
 		return this.addElement(makeTransactionEl(id, content, options, this.rootMessages))
 	}
 
-	/** Add an ad-hoc sub-process nested inside this sub-process's content. */
+	/**
+	 * Add an ad-hoc sub-process nested inside this sub-process's content.
+	 *
+	 * Its children are **not** auto-chained: BPMN defines them as an unordered set
+	 * of independently-invocable activities, and Camunda 8 reads a child with an
+	 * incoming flow as part of an internal sub-flow rather than an LLM-invocable
+	 * tool. Use `connectTo()` inside the callback to state ordering you do want.
+	 */
 	adHocSubProcess(
 		id: string,
 		content: (b: SubProcessContentBuilder) => void,
 		options?: AdHocSubProcessOptions,
 	): this {
 		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
-		const sub = new SubProcessContentBuilder(this.rootMessages)
+		// Ad-hoc sub-process children are unordered — see SubProcessContentBuilder.autoConnect.
+		const sub = new SubProcessContentBuilder(this.rootMessages, false)
 		resolved.content(sub)
 		finalizeScope(sub._elements, sub._flows)
 
@@ -2774,14 +2807,22 @@ export class ProcessBuilder {
 
 	// ---- Sub-processes ----
 
-	/** Add an ad-hoc sub-process with optional AI agent or multi-instance configuration. */
+	/**
+	 * Add an ad-hoc sub-process with optional AI agent or multi-instance configuration.
+	 *
+	 * Its children are **not** auto-chained: BPMN defines them as an unordered set
+	 * of independently-invocable activities, and Camunda 8 reads a child with an
+	 * incoming flow as part of an internal sub-flow rather than an LLM-invocable
+	 * tool. Use `connectTo()` inside the callback to state ordering you do want.
+	 */
 	adHocSubProcess(
 		id: string,
 		content: (b: SubProcessContentBuilder) => void,
 		options?: AdHocSubProcessOptions,
 	): this {
 		const resolved = resolveSubProcessArgs<AdHocSubProcessOptions>(content, options)
-		const sub = new SubProcessContentBuilder(this.rootMessages)
+		// Ad-hoc sub-process children are unordered — see SubProcessContentBuilder.autoConnect.
+		const sub = new SubProcessContentBuilder(this.rootMessages, false)
 		resolved.content(sub)
 		finalizeScope(sub._elements, sub._flows)
 
