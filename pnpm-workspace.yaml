@@ -3,13 +3,21 @@ packages:
   - apps/*
   - plugins-cli/*
 
-onlyBuiltDependencies:
-  - '@biomejs/biome'
-  - better-sqlite3
-  - esbuild
-  - isolated-vm
-  - sharp
-  - workerd
+# pnpm 11 removed the `onlyBuiltDependencies` allowlist: every dependency that
+# ships a build script now needs an explicit yes or no here, and an unanswered
+# one fails the install. The three that were never on the old allowlist are
+# answered `false`, which is the behaviour they already had.
+allowBuilds:
+  '@biomejs/biome': true
+  better-sqlite3: true
+  esbuild: true
+  isolated-vm: true
+  sharp: true
+  workerd: true
+  # Marketplace publishing tooling; the signing binary is only needed by `vsce publish`.
+  '@vscode/vsce-sign': false
+  # Native keychain binding pulled in by the VS Code extension tooling — unused here.
+  keytar: false
 
 patchedDependencies:
   '@preact/signals-react@2.3.0': patches/@preact__signals-react@2.3.0.patch
