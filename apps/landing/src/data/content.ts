@@ -1,4 +1,6 @@
 import { SITE } from "@bpmnkit/astro-shared"
+import { PACKAGE_FACTS } from "../generated/ecosystem"
+import type { PackageFact } from "../generated/ecosystem"
 import { tokenize } from "../lib/highlight"
 
 // ── Site metadata ──────────────────────────────────────────────────────────────
@@ -57,58 +59,90 @@ export const PACKAGES = [
 ] as const
 
 // ── Ecosystem map (for the homepage "project status" section) ─────────────────
-// Versions are hand-maintained — update when a package is version-bumped.
+// Versions, npm URLs and fallback descriptions come from `ecosystem.ts`, which is
+// generated from each package's own manifest — nothing here is a number anyone
+// has to remember to update. What lives here is the editorial half: which
+// packages lead the list, and what each one is *for* rather than what it is.
 
-export const ECOSYSTEM = [
-	{
-		name: "@bpmnkit/core",
-		version: "0.1.1",
-		role: "Author & parse BPMN, DMN, and Forms",
-		note: null,
-		url: `${SITE.github}/tree/main/packages/core`,
-		npm: "https://www.npmjs.com/package/@bpmnkit/core",
-	},
+/** Short "what it is for" line, and the order the leading packages appear in. */
+const FEATURED: ReadonlyArray<{ name: string; role: string; note?: string }> = [
+	{ name: "@bpmnkit/core", role: "Author & parse BPMN, DMN, and Forms" },
 	{
 		name: "@bpmnkit/engine",
-		version: "0.1.29",
 		role: "Simulate a process in-process",
 		note: "experimental, not a production runtime",
-		url: `${SITE.github}/tree/main/packages/engine`,
-		npm: "https://www.npmjs.com/package/@bpmnkit/engine",
 	},
-	{
-		name: "@bpmnkit/api",
-		version: "0.0.19",
-		role: "Deploy & operate on Camunda 8",
-		note: null,
-		url: `${SITE.github}/tree/main/packages/api`,
-		npm: "https://www.npmjs.com/package/@bpmnkit/api",
-	},
-	{
-		name: "@bpmnkit/canvas",
-		version: "0.0.29",
-		role: "View a diagram (SVG, pan/zoom)",
-		note: null,
-		url: `${SITE.github}/tree/main/packages/canvas`,
-		npm: "https://www.npmjs.com/package/@bpmnkit/canvas",
-	},
-	{
-		name: "@bpmnkit/editor",
-		version: "0.0.32",
-		role: "Edit a diagram in the browser",
-		note: null,
-		url: `${SITE.github}/tree/main/packages/editor`,
-		npm: "https://www.npmjs.com/package/@bpmnkit/editor",
-	},
-	{
-		name: "casen (CLI)",
-		version: "0.0.36",
-		role: "Operate Camunda 8 from the terminal",
-		note: null,
-		url: `${SITE.github}/tree/main/apps/cli`,
-		npm: "https://www.npmjs.com/package/@bpmnkit/cli",
-	},
-] as const
+	{ name: "@bpmnkit/api", role: "Deploy & operate on Camunda 8" },
+	{ name: "@bpmnkit/canvas", role: "View a diagram (SVG, pan/zoom)" },
+	{ name: "@bpmnkit/editor", role: "Edit a diagram in the browser" },
+	{ name: "@bpmnkit/cli", role: "Operate Camunda 8 from the terminal — the `casen` command" },
+]
+
+/** Roles for the rest, where the manifest description is longer than the row. */
+const ROLES: Readonly<Record<string, string>> = {
+	"@bpmnkit/feel": "Parse & evaluate FEEL expressions",
+	"@bpmnkit/plugins": "Composable canvas plugins — minimap, lint, diff, history",
+	"@bpmnkit/ascii": "Render a diagram as ASCII art",
+	"@bpmnkit/ui": "Brand tokens and theme switching",
+	"@bpmnkit/docspack": "These docs, offline and version-locked, for AI agents",
+	"@bpmnkit/profiles": "Cluster profiles shared by the CLI and the proxy",
+	"@bpmnkit/operate": "Monitoring frontend for a Camunda 8 cluster",
+	"@bpmnkit/astro-shared": "Shared site chrome for the BPMN Kit Astro apps",
+	"@bpmnkit/connector-gen": "Generate connector templates from OpenAPI specs",
+	"@bpmnkit/connectors": "The Camunda 8 out-of-the-box connector catalog",
+	"@bpmnkit/patterns": "Domain process patterns for the AI pipeline",
+	"@bpmnkit/worker-client": "Thin Zeebe client for standalone workers",
+	"@bpmnkit/proxy": "Local AI bridge and Camunda API proxy",
+	"@bpmnkit/reebe-wasm": "The Reebe engine, compiled to WebAssembly",
+	"@bpmnkit/casen-report": "casen plugin — HTML incident and SLA reports",
+	"@bpmnkit/casen-worker-http": "casen plugin — an HTTP connector job worker",
+	"@bpmnkit/casen-worker-ai": "casen plugin — classify, summarize and extract",
+}
+
+export interface EcosystemEntry {
+	readonly name: string
+	readonly version: string
+	readonly role: string
+	readonly note: string | null
+	readonly url: string
+	readonly npm: string
+	/** Leads the homepage list; the rest sit behind "show all". */
+	readonly featured: boolean
+}
+
+function entry(
+	fact: PackageFact,
+	role: string | undefined,
+	featured: boolean,
+	note?: string,
+): EcosystemEntry {
+	return {
+		name: fact.name,
+		version: fact.version,
+		// A package with no line written for it still renders, with the one its
+		// own manifest carries — so adding to PUBLISHED cannot leave a blank row.
+		role: role ?? fact.description,
+		note: note ?? null,
+		url: fact.github,
+		npm: fact.npm,
+		featured,
+	}
+}
+
+const byName = new Map(PACKAGE_FACTS.map((fact) => [fact.name, fact]))
+const featuredNames = new Set(FEATURED.map((f) => f.name))
+
+export const ECOSYSTEM: readonly EcosystemEntry[] = [
+	...FEATURED.flatMap((f) => {
+		const fact = byName.get(f.name)
+		return fact ? [entry(fact, f.role, true, f.note)] : []
+	}),
+	...PACKAGE_FACTS.filter((fact) => !featuredNames.has(fact.name)).map((fact) =>
+		entry(fact, ROLES[fact.name], false),
+	),
+]
+
+export const CORE_VERSION = byName.get("@bpmnkit/core")?.version ?? ""
 
 // ── Feature bullets (for llms.txt) ────────────────────────────────────────────
 

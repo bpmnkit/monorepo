@@ -1,7 +1,5 @@
 ---
-import { ECOSYSTEM } from "../data/content"
-
-const coreVersion = ECOSYSTEM.find((pkg) => pkg.name === "@bpmnkit/core")?.version
+import { CORE_VERSION } from "../data/content"
 
 interface NavLink {
 	href: string
@@ -42,6 +40,9 @@ const {
 		{
 			label: "Tools",
 			items: [
+				{ href: "/drop", label: "Drop" },
+				{ href: "/editor", label: "Editor" },
+				{ href: "/feel-functions", label: "FEEL Playground" },
 				{ href: "/operate", label: "Operate" },
 				{ href: "/connectors", label: "Connectors" },
 				{ href: "/integrations", label: "Integrations" },
@@ -56,7 +57,7 @@ const {
   <div class="nav-inner">
     <a href="/" class="nav-logo" aria-label="BPMN Kit home">
       <span>bpmn<span class="logo-kit">kit</span></span>
-      {coreVersion && <span class="nav-version">v{coreVersion}</span>}
+      {CORE_VERSION && <span class="nav-version">v{CORE_VERSION}</span>}
     </a>
     <div class="nav-links">
       {links.map((entry) => (

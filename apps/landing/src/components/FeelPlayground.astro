@@ -1,0 +1,67 @@
+---
+/**
+ * The FEEL playground's markup, shared by the homepage and /feel-functions so
+ * the two are the same thing rather than two things that resemble each other.
+ *
+ * It ships inert: `mountFeelPlayground()` from `../scripts/feel-playground.ts`
+ * wires it up, and each page decides when to import that — the homepage waits
+ * until the section is on screen.
+ */
+interface Props {
+	/** Marks the mount point; must be unique on the page. */
+	id: string
+}
+const { id } = Astro.props
+---
+
+<div class="fp" id={id} data-feel-playground>
+  <div class="fp-panel">
+    <div class="fp-topbar">
+      <span class="fp-topbar-title">expression.feel</span>
+      <div class="fp-modes" role="group" aria-label="Evaluation mode">
+        <button type="button" class="fp-mode active" data-fp-mode="expression" aria-pressed="true">Expression</button>
+        <button type="button" class="fp-mode" data-fp-mode="unary-tests" aria-pressed="false">Unary tests</button>
+      </div>
+    </div>
+
+    <div class="fp-code-wrap">
+      <div class="fp-highlight" data-fp-highlight aria-hidden="true"></div>
+      <textarea
+        class="fp-input"
+        data-fp-expr
+        rows="3"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        aria-label="FEEL expression"
+      ></textarea>
+    </div>
+
+    <div class="fp-error" data-fp-error role="status" aria-live="polite"></div>
+  </div>
+
+  <div class="fp-side">
+    <div class="fp-field">
+      <label class="fp-label" for={`${id}-context`}>Context — JSON the expression reads</label>
+      <textarea
+        class="fp-context"
+        id={`${id}-context`}
+        data-fp-context
+        rows="4"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+      ></textarea>
+    </div>
+
+    <div class="fp-field">
+      <span class="fp-label">Result</span>
+      <output class="fp-result" data-fp-result></output>
+    </div>
+  </div>
+
+  <div class="fp-examples">
+    <span class="fp-label">Examples</span>
+    <div class="fp-example-row" data-fp-examples></div>
+  </div>
+</div>

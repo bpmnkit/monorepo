@@ -380,6 +380,9 @@ importers:
       '@bpmnkit/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@bpmnkit/feel':
+        specifier: workspace:*
+        version: link:../../packages/feel
       '@bpmnkit/operate':
         specifier: workspace:*
         version: link:../../packages/operate

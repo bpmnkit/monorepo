@@ -35,7 +35,6 @@ try {
 createOperate({
 	container,
 	mock,
-	theme: "neon",
 	pollInterval: 15_000,
 	...(mock ? {} : { proxyUrl: PROXY_URL, profile }),
 	onOpenInEditor(xml, name) {

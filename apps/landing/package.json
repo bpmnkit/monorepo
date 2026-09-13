@@ -4,9 +4,9 @@
 	"version": "0.0.38",
 	"type": "module",
 	"scripts": {
-		"predev": "node ../../scripts/generate-plugins-doc.mjs",
+		"predev": "node ../../scripts/generate-plugins-doc.mjs && node ../../scripts/generate-ecosystem.mjs",
 		"dev": "astro dev",
-		"prebuild": "node ../../scripts/generate-plugins-doc.mjs",
+		"prebuild": "node ../../scripts/generate-plugins-doc.mjs && node ../../scripts/generate-ecosystem.mjs",
 		"build": "astro build",
 		"preview": "astro preview",
 		"deploy": "wrangler pages deploy dist --project-name=bpmn-sdk-landing",
@@ -22,6 +22,7 @@
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",
+		"@bpmnkit/feel": "workspace:*",
 		"@bpmnkit/operate": "workspace:*",
 		"@bpmnkit/plugins": "workspace:*"
 	}

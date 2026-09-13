@@ -72,6 +72,31 @@ function setupPkgTabs(): void {
 	}
 }
 
+/**
+ * Reveals the rest of the package list.
+ *
+ * The hidden rows ship in the HTML rather than being built here, so they are in
+ * the page for find-in-page and for a reader with no JavaScript — this only
+ * flips `hidden` and the button's own label.
+ */
+function setupPackageDisclosure(): void {
+	const btn = document.getElementById("pkg-more")
+	if (!btn) return
+	const rows = document.querySelectorAll<HTMLElement>(".pkg-row--more")
+	if (rows.length === 0) {
+		btn.hidden = true
+		return
+	}
+
+	btn.addEventListener("click", () => {
+		const expanded = btn.getAttribute("aria-expanded") === "true"
+		for (const row of rows) row.hidden = expanded
+		btn.setAttribute("aria-expanded", expanded ? "false" : "true")
+		const label = expanded ? btn.dataset.more : btn.dataset.less
+		if (label) btn.textContent = label
+	})
+}
+
 // ── Copy buttons ───────────────────────────────────────────────────────
 
 function setupCopyButtons(): void {
@@ -740,10 +765,40 @@ function setupAnimation(): void {
 	observer.observe(demo)
 }
 
+/**
+ * Loads the FEEL playground the first time its section comes into view.
+ *
+ * The parser and evaluator are a real download, and a visitor who stops at the
+ * hero should not pay for a section they never reached — so the import is
+ * deferred rather than the mount.
+ */
+function setupFeelPlayground(): void {
+	const root = document.getElementById("feel-playground")
+	if (!root) return
+
+	let loaded = false
+	const observer = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (!entry.isIntersecting || loaded) continue
+				loaded = true
+				observer.disconnect()
+				void import("./feel-playground.js").then(({ mountFeelPlayground }) => {
+					mountFeelPlayground(root)
+				})
+			}
+		},
+		{ rootMargin: "200px" },
+	)
+	observer.observe(root)
+}
+
 // ── Init ───────────────────────────────────────────────────────────────
 // Mobile nav is handled by Nav.astro's own inline script.
 
 setupCopyButtons()
 setupPkgTabs()
+setupPackageDisclosure()
 setupInstallButton()
+setupFeelPlayground()
 setupAnimation()

@@ -7,73 +7,7 @@
    blur on the page. Radius exists only on diagram task nodes.
    ------------------------------------------------------------------ */
 
-/* ── Type ───────────────────────────────────────────────────────────
-   Self-hosted so the first paint needs no third-party request. Both
-   families are OFL 1.1; the files, their licences and how to refresh them
-   are documented in public/fonts/README.md. Space Grotesk is one variable
-   file per subset covering the whole 300–700 range; the unicode-ranges
-   keep a page that never leaves ASCII from fetching the extended subsets.
-   ------------------------------------------------------------------ */
-
-@font-face {
-	font-family: "Space Grotesk";
-	font-style: normal;
-	font-weight: 300 700;
-	font-display: swap;
-	src: url("/fonts/space-grotesk-latin-var.woff2") format("woff2");
-	unicode-range:
-		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-	font-family: "Space Grotesk";
-	font-style: normal;
-	font-weight: 300 700;
-	font-display: swap;
-	src: url("/fonts/space-grotesk-latin-ext-var.woff2") format("woff2");
-	unicode-range:
-		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
-@font-face {
-	font-family: "Space Mono";
-	font-style: normal;
-	font-weight: 400;
-	font-display: swap;
-	src: url("/fonts/space-mono-latin-400.woff2") format("woff2");
-	unicode-range:
-		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-	font-family: "Space Mono";
-	font-style: normal;
-	font-weight: 400;
-	font-display: swap;
-	src: url("/fonts/space-mono-latin-ext-400.woff2") format("woff2");
-	unicode-range:
-		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
-@font-face {
-	font-family: "Space Mono";
-	font-style: normal;
-	font-weight: 700;
-	font-display: swap;
-	src: url("/fonts/space-mono-latin-700.woff2") format("woff2");
-	unicode-range:
-		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-	font-family: "Space Mono";
-	font-style: normal;
-	font-weight: 700;
-	font-display: swap;
-	src: url("/fonts/space-mono-latin-ext-700.woff2") format("woff2");
-	unicode-range:
-		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
+@import "./fonts.css";
 
 /* ── Design tokens ──────────────────────────────────────────────── */
 :root {
@@ -107,6 +41,9 @@
 	--code-str: #9fb8a4;
 	--code-fn: #d99a7c;
 	--code-comment: #6b7280;
+	/* Numbers and temporals — FEEL leans on both, and nothing else on the site
+	   had a literal worth colouring apart from a string. */
+	--code-num: #8fa8b8;
 
 	/* Semantic state — exempt from the one-accent rule */
 	--state-good: #2f6f5b;
@@ -897,10 +834,16 @@ pre {
 
 .anim-code-panel {
 	background: var(--code-bg);
-	min-height: 232px;
 }
 
+/* Height is reserved, not grown into. The animation clears the panel and types
+   the example back one line at a time, so a panel sized to its content would
+   pump the diagram — and every section below it — up and down on every cycle.
+   The box is the tallest thing it ever holds: the 17-line snippet rendered on
+   the server (the animated examples top out at 15), at 13px x 1.65 plus the
+   vertical padding. A taller snippet is clipped rather than moving the page. */
 .anim-code-body {
+	height: calc(17 * 13px * 1.65 + 40px);
 	padding: 20px 22px;
 	overflow: hidden;
 }
@@ -1200,6 +1143,24 @@ pre {
 	flex-shrink: 0;
 }
 
+/* The tail of the package list is hidden rather than absent, so the button only
+   flips an attribute and the rows are in the DOM for search and for no-JS. */
+.pkg-more {
+	margin-top: 18px;
+	padding: 9px 14px;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--ink-body);
+	background: none;
+	border: 1px solid var(--ink-rule);
+	cursor: pointer;
+}
+
+.pkg-more:hover {
+	color: var(--accent-on-ink);
+	border-color: var(--accent-on-ink);
+}
+
 .pkg-links {
 	display: flex;
 	flex-wrap: wrap;
@@ -1298,6 +1259,222 @@ pre {
 	background: none;
 }
 
+/* ── 08 · FEEL playground ───────────────────────────────────────── */
+.fp {
+	display: grid;
+	grid-template-columns: 1.15fr 1fr;
+	gap: 20px;
+	align-items: start;
+}
+
+.fp-panel {
+	display: flex;
+	flex-direction: column;
+	background: var(--code-bg);
+	min-width: 0;
+}
+
+.fp-topbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 9px 14px;
+	border-bottom: 1px solid var(--ink-rule);
+}
+
+.fp-topbar-title {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--ink-fg-muted);
+	flex: 1;
+}
+
+.fp-mode {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	background: none;
+	border: 1px solid var(--ink-rule);
+	color: var(--ink-fg-muted);
+	padding: 4px 9px;
+	cursor: pointer;
+}
+
+.fp-mode + .fp-mode {
+	margin-left: 6px;
+}
+
+.fp-mode.active,
+.fp-mode:hover {
+	color: var(--accent-on-ink);
+	border-color: var(--accent-on-ink);
+}
+
+/* Painted tokens and the caret have to agree, so the two layers share every
+   metric — the same arrangement the builder playground above uses. */
+.fp-code-wrap {
+	position: relative;
+	min-height: 120px;
+	flex: 1;
+}
+
+.fp-highlight,
+.fp-input {
+	position: absolute;
+	inset: 0;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	line-height: 1.7;
+	padding: 14px 16px;
+	margin: 0;
+	border: 0;
+	white-space: pre-wrap;
+	overflow: auto;
+	tab-size: 2;
+}
+
+.fp-highlight {
+	color: var(--code-fg);
+	pointer-events: none;
+}
+
+.fp-input {
+	background: transparent;
+	color: transparent;
+	caret-color: var(--accent-on-ink);
+	resize: none;
+	outline: none;
+}
+
+.fp-error {
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	color: var(--state-bad);
+	padding: 0 16px;
+	white-space: pre-wrap;
+}
+
+.fp-error:not(:empty) {
+	padding: 10px 16px;
+	border-top: 1px solid var(--ink-rule);
+}
+
+.fp-side {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+
+.fp-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.fp-label {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--ink-meta);
+}
+
+.fp-context {
+	font-family: var(--font-mono);
+	font-size: 12.5px;
+	line-height: 1.6;
+	padding: 12px 14px;
+	border: 1px solid var(--rule);
+	background: var(--panel);
+	color: var(--ink-body);
+	resize: vertical;
+	outline-offset: -2px;
+}
+
+.fp-result {
+	display: block;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	line-height: 1.6;
+	padding: 12px 14px;
+	border: 1px solid var(--rule);
+	background: var(--panel);
+	color: var(--accent);
+	white-space: pre-wrap;
+	word-break: break-word;
+	min-height: 44px;
+}
+
+.fp-examples {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.fp-example-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.fp-example {
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	padding: 5px 9px;
+	border: 1px solid var(--rule);
+	background: none;
+	color: var(--ink-body-soft);
+	cursor: pointer;
+}
+
+.fp-example:hover {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+
+/* Syntax colours emitted by @bpmnkit/feel's highlighter. Highlighting is
+   exempt from the one-accent rule, so these are the tokens' own palette,
+   mapped onto the code panel this site already paints. */
+.feel-keyword,
+.feel-literal-bool,
+.feel-literal-null {
+	color: var(--code-kw);
+}
+
+.feel-literal-string {
+	color: var(--code-str);
+}
+
+.feel-builtin {
+	color: var(--code-fn);
+}
+
+.feel-comment {
+	color: var(--code-comment);
+	font-style: italic;
+}
+
+.feel-literal-number,
+.feel-literal-temporal {
+	color: var(--code-num);
+}
+
+.feel-variable,
+.feel-operator,
+.feel-punctuation,
+.feel-empty {
+	color: var(--code-fg);
+}
+
+/* ── 09 · Share & review ────────────────────────────────────────── */
+/* Not .hero-ctas: that one is reordered inside the stacked hero on a phone. */
+.share-ctas {
+	display: flex;
+	gap: 14px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
 /* ── casen terminal ─────────────────────────────────────────────── */
 .cli-terminal-wrap {
 	position: relative;
@@ -1321,12 +1498,17 @@ pre {
 	color: var(--ink-fg-muted);
 }
 
+/* Fixed rather than min: the tallest frame comes to 236px, so this is the size
+   the terminal already had — but as a floor it was one added row away from
+   letting a frame push the page down mid-animation, the way the hero panel
+   above did. */
 .cli-content {
 	font-family: var(--font-mono);
 	font-size: 12px;
 	line-height: 1.7;
 	padding: 16px 18px;
-	min-height: 240px;
+	height: 240px;
+	overflow: hidden;
 	color: var(--code-fg);
 	transition: opacity 0.18s ease;
 }
@@ -1968,9 +2150,23 @@ kbd {
 	.camunda-layout,
 	.dmn-layout,
 	.playground-wrap,
+	.fp,
 	.teams-layout {
 		grid-template-columns: 1fr;
 		gap: 24px;
+	}
+
+	/* Stacked, the filename and the mode buttons no longer fit on one line. */
+	.fp-topbar {
+		flex-wrap: wrap;
+	}
+
+	.fp-topbar-title {
+		flex: none;
+	}
+
+	.fp-modes {
+		margin-left: auto;
 	}
 
 	.steps-grid {
@@ -2046,12 +2242,8 @@ kbd {
 
 	/* The code is the setup, the diagram is the payoff — on a phone the
 	   snippet is masked after a few lines so the diagram stays in view. */
-	.anim-code-panel {
-		min-height: 0;
-	}
-
 	.anim-code-body {
-		max-height: 152px;
+		height: 152px;
 		padding: 16px 18px;
 		-webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
 		mask-image: linear-gradient(to bottom, #000 78%, transparent);

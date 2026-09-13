@@ -2,13 +2,14 @@
 import "../styles/global.css"
 import Seo from "@bpmnkit/astro-shared/Seo.astro"
 import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
+import FeelPlayground from "../components/FeelPlayground.astro"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
 import { FEEL_CATEGORIES, FEEL_FUNCTION_COUNT } from "../data/feel-functions"
 
 const jsonLd = breadcrumbJsonLd([
 	{ name: "Home", url: "https://bpmnkit.com" },
-	{ name: "FEEL Functions", url: "https://bpmnkit.com/feel-functions" },
+	{ name: "FEEL Playground", url: "https://bpmnkit.com/feel-functions" },
 ])
 ---
 
@@ -19,8 +20,8 @@ const jsonLd = breadcrumbJsonLd([
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <Seo
-    title={`FEEL Function Reference — ${FEEL_FUNCTION_COUNT} Built-in Functions — BPMN Kit`}
-    description={`Every FEEL built-in function implemented by @bpmnkit/feel — ${FEEL_FUNCTION_COUNT} functions across string, list, numeric, date/time, interval, and context operations, with examples.`}
+    title={`FEEL Playground — Evaluate FEEL Online, ${FEEL_FUNCTION_COUNT} Built-in Functions — BPMN Kit`}
+    description={`Evaluate FEEL expressions and unary tests in the browser, and browse every built-in @bpmnkit/feel implements — ${FEEL_FUNCTION_COUNT} functions across string, list, numeric, date/time, interval, and context operations, with examples.`}
     jsonLd={jsonLd}
   />
   <style is:global>
@@ -28,6 +29,8 @@ const jsonLd = breadcrumbJsonLd([
     .feel-main { flex: 1; max-width: 880px; margin: 0 auto; width: 100%; padding: calc(var(--nav-h) + 56px) 24px 80px; }
     .feel-main h1 { font-size: clamp(1.7rem, 3.8vw, 2.3rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
     .feel-lede { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 20px; }
+    .fp { margin-bottom: 40px; }
+    .feel-reference-head { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 14px; scroll-margin-top: 80px; }
     .feel-toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
     .feel-toc a { font-family: var(--font-mono); font-size: 0.72rem; padding: 5px 9px; border: 1px solid var(--border); color: var(--text-muted); text-decoration: none; }
     .feel-toc a:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
@@ -46,13 +49,17 @@ const jsonLd = breadcrumbJsonLd([
   <Nav />
   <div class="feel-wrap">
     <main class="feel-main">
-      <h1>FEEL Function Reference</h1>
+      <h1>FEEL Playground &amp; Function Reference</h1>
       <p class="feel-lede">
         <code>@bpmnkit/feel</code> is a zero-dependency FEEL (Friendly Enough Expression
         Language) parser and evaluator — the expression language DMN decision tables and
-        BPMN gateway conditions use. All {FEEL_FUNCTION_COUNT} built-in functions below are
-        implemented and callable today.
+        BPMN gateway conditions use. Try an expression below; all {FEEL_FUNCTION_COUNT}
+        built-in functions further down are implemented and callable today.
       </p>
+
+      <FeelPlayground id="feel-playground" />
+
+      <h2 class="feel-reference-head" id="reference">Function reference</h2>
 
       <div class="feel-toc">
         {FEEL_CATEGORIES.map((cat) => (
@@ -81,5 +88,11 @@ const jsonLd = breadcrumbJsonLd([
     </main>
     <Footer />
   </div>
+
+  <script>
+    import { mountFeelPlayground } from "../scripts/feel-playground.ts";
+    const root = document.getElementById("feel-playground");
+    if (root) mountFeelPlayground(root);
+  </script>
 </body>
 </html>
