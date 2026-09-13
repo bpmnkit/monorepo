@@ -4,8 +4,12 @@ import type { DashboardData } from "../types.js"
 
 type MetricKey = "activeInstances" | "openIncidents" | "activeJobs" | "pendingTasks"
 
+// Four bars need four distinguishable fills, which the design system's single
+// accent cannot give — the same exemption syntax highlighting and execution
+// state get. The accent leads, and `--op-c-*` carry the rest; Operate's CSS
+// tunes all three to sit beside it rather than compete with it.
 const METRICS: ReadonlyArray<{ key: MetricKey; label: string; cssVar: string }> = [
-	{ key: "activeInstances", label: "Active Instances", cssVar: "--bpmnkit-accent" },
+	{ key: "activeInstances", label: "Active Instances", cssVar: "--bpmnkit-ds-accent" },
 	{ key: "openIncidents", label: "Open Incidents", cssVar: "--op-c-amber" },
 	{ key: "activeJobs", label: "Active Jobs", cssVar: "--op-c-green" },
 	{ key: "pendingTasks", label: "Pending Tasks", cssVar: "--op-c-purple" },

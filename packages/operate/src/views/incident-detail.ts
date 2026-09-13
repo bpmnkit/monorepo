@@ -38,7 +38,7 @@ function metaRow(label: string, value: string, amber = false): HTMLElement {
 	const v = document.createElement("span")
 	v.className = "op-task-meta-value"
 	v.textContent = value
-	if (amber) v.style.color = "var(--op-c-amber)"
+	if (amber) v.style.color = "var(--bpmnkit-state-warn)"
 	row.appendChild(l)
 	row.appendChild(v)
 	return row

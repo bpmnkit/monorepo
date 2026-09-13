@@ -1,5 +1,151 @@
 # Progress
 
+## 2026-09-13 — Operate joins the rest of the product
+
+Operate was the last surface still on the old palette: a dark neon-purple shell
+with rounded cards, filled status pills and a pink app-icon lockup, reached from
+a site that is flat, square, hairline-ruled and terracotta. The landing page
+links to it, so the seam was one click from the homepage.
+
+**One token vocabulary, not two.** `packages/operate/src/css.ts` now reads the
+`--bpmnkit-ds-*` tokens `@bpmnkit/ui` owns — the set the landing site, Drop and
+the editor chrome already read — everywhere it used to read `--bpmnkit-accent`,
+`--bpmnkit-surface` and friends.
+
+**Themes redeclare the tokens rather than shadow them.** Dark and the white-label
+`neon` theme are blocks on `.op-root[data-theme=…]` that redefine
+`--bpmnkit-ds-bg`, `-ink`, `-line`, `-accent` and the rest. Every rule in the file
+then themes itself, and so does every shared `@bpmnkit/ui` component rendered
+inside the root, with no second set of variables to keep in step — the trick the
+editor's `--bpmnkit-chrome-*` layer could not use, since its panels render into
+`document.body`. Scoping to `.op-root` is what makes it safe: nothing outside
+Operate sees the declaration.
+
+**Form, applied throughout.** Every `border-radius` and `box-shadow` is gone; the
+nav is a rail on the page ground with a hairline and an accent rule on the active
+item rather than a dark slab with a filled pill; the dashboard's five metrics and
+the message actions are each one bordered box subdivided by hairlines instead of
+gapped cards; every uppercase label is set in mono, mechanically, by walking the
+rule blocks and giving each one that declares `text-transform: uppercase` the mono
+family at a mono size, unbolded. The pink app-icon SVG is replaced by the site's
+own wordmark.
+
+The header title is the one place that keeps mono without uppercasing: on a detail
+page it carries an instance key, and `pi-1` is not `PI-1`.
+
+**The shared components came too.** `@bpmnkit/ui`'s badge, stats card, data table
+and theme switcher are Operate's alone — nothing else in the repo renders those
+class names — so they were redrawn in place rather than overridden: square,
+hairline, mono labels, no shadow or blur on the dropdown. Status colour stays
+semantic and now has light values as well as dark, as `--bpmnkit-state-*`, since
+a badge designed for a dark slab is illegible on white.
+
+**The default theme is `light`.** It was `neon`, which is why `/operate` on
+bpmnkit.com was purple; the landing page was also passing `theme: "neon"`
+explicitly, and no longer does. The page loads Space Grotesk and Space Mono, which
+it never had — `global.css`'s `@font-face` block moved to `styles/fonts.css` so a
+page that ships an app rather than the site chrome can take the faces without the
+stylesheet. (`/editor` has the same gap and still renders the DS in Helvetica; it
+is one import away now, and not in this change.)
+
+**Also fixed, found on the way:** the two README highlights added for Drop and the
+VS Code extension yesterday were written straight into `README.md`, which
+`scripts/generate-readmes.mjs` also generates — so the next `node
+scripts/generate-readmes.mjs` deleted them, as it did during this change. They now
+live in the generator, and the file it writes is byte-identical to the one in the
+repository.
+
+Verified against every view in a real browser — dashboard, the six tables, search,
+an instance detail with its canvas and variables panel — in light, dark and neon,
+and through the theme switcher rather than by setting the attribute, so the canvas
+re-themes with the chrome.
+
+## 2026-09-13 — a version nobody has to remember, one navbar, and FEEL in the page
+
+Three things the site was getting wrong, reported from a screenshot of §03.
+
+**The package list was advertising the wrong versions.** `ECOSYSTEM` in
+`content.ts` carried a hand-maintained `version` on each of six packages, with a
+comment asking whoever bumped a package to remember to come back. Nobody did:
+the homepage said `@bpmnkit/core` v0.1.1 against a published v0.4.0, and
+`@bpmnkit/api` v0.0.19 against v0.0.20. A number typed in two places is a number
+that drifts.
+
+`scripts/generate-ecosystem.mjs` now reads `scripts/published-packages.mjs` and
+each package's own manifest — the one changesets bumps — and writes
+`apps/landing/src/generated/ecosystem.ts` on every `dev` and `build`, beside the
+plugins page that already worked this way. Under `src/generated/`, which biome
+ignores repo-wide, as `packages/api` does with its generated resources. The
+editorial half stays in `content.ts`: which six lead, and what each package is
+*for*. A package with no line written for it renders the description from its own
+manifest, so adding to `PUBLISHED` cannot leave a blank row. The nav's version
+badge reads from the same place, and `tests/ecosystem.test.ts` fails — naming the
+package and both versions — if the generated file and a manifest ever disagree.
+
+All 23 published packages are on the page now, not six: the six lead, the rest are
+behind "Show all 23 packages". The hidden rows ship in the HTML rather than being
+built on click, so they are there for find-in-page and for a reader with no
+JavaScript. Every row links to its npm page rather than to GitHub — a version is
+a claim about what is published, so it should lead to the thing it claims about.
+
+**One navbar.** The homepage passed its own `links` — in-page anchors for Why /
+Packages / Camunda 8 / Quickstart — and every other page of the site took the
+component's default. So `/compare/bpmn-js` looked like a different site than the
+page that linked to it. The override is gone; there is one header everywhere.
+
+**FEEL is playable without finding the editor first.** Trying an expression meant
+opening `/editor` and knowing the playground was in there. Homepage §08 now runs
+`@bpmnkit/feel` in the page — expression mode and unary tests, a JSON context, a
+live result, seven worked examples — and `/feel-functions` carries the same
+component above the reference it belongs with.
+
+It is the site's own chrome over the same evaluator, not a second implementation:
+`parseExpression` / `evaluate` / `evaluateUnaryTests` / `highlightToHtml` are what
+the editor's panel calls too. Embedding that panel was the obvious move and the
+wrong one — `injectPlaygroundStyles()` pulls `injectChromeStyles` from
+`@bpmnkit/editor`, 1.1 MB of editor for a textarea, and its chrome is the editor's
+rather than this page's. The homepage imports the playground dynamically when the
+section comes into view, so it is its own chunk and a visitor who stops at the
+hero never downloads the parser.
+
+## 2026-09-13 — the two things nobody could find, and a hero that stopped moving
+
+An audit of the merged work against what the website actually says found two features with a
+complete implementation and no user-facing presence: **Drop** (#145, #165, #168) and the
+**VS Code extension** (#163). Neither was named anywhere on bpmnkit.com — not the homepage, not
+the nav, not the footer, not a single docs page. `casen diff bpmn` and the format-preserving
+writers, both from #163, were undocumented too.
+
+**Homepage §09 — "Share it. Review it. Together."** Two rows in the section-04 pattern: Drop
+(drag a file, get a link, live viewers, the edit baton, the pinned original plus ten milestones,
+the two-drop diff) and the extension (preview beside the source, findings in the Problems panel,
+compare with HEAD, a save that writes a readable diff). Drop and Editor join the nav's Tools
+menu; Drop joins the footer. No new CSS beyond `.share-ctas` — the hero's own `.hero-ctas` is
+reordered inside the stacked hero on a phone, so reusing it would have shuffled these rows.
+
+Both rows lead with the lede and follow with the card grid, because a one-column phone renders
+DOM order: leading with the grid put four unlabelled cards ahead of the thing they describe.
+
+**Docs.** `guides/drop.md` and `guides/vscode.md` are new. `cli/diff.md` documents
+`casen diff bpmn` — including why `moved` is the category that earns the command — and takes
+sidebar slot 4, next to `view`, with connector/skills/plugins/plugin-authoring shifted by one.
+`packages/core.md` gains `diffDiagram()` and `exportPreserving()`, the latter with the stable-id
+note from #170 beside it, since "rebuilding an unchanged model produces the same file" and
+"writing a model back changes only what changed" are halves of one promise. Closes the roadmap's
+open item under §IDE-Resident Modeling Phase 5.
+
+**The hero stopped pumping.** `.anim-code-body` had a `min-height` and grew past it. The
+animation clears the panel and types the example back one line at a time, so the box ran from
+61px to 362px and back, five times a cycle, moving the diagram under it and the whole page below
+it — measured in Chromium at 1440x900: **14 distinct heights, a 301px spread, and a document
+height that moved 69px** while a visitor read the hero. It is now sized to the tallest thing it
+ever holds (the 17-line server-rendered snippet; the animated examples reach 15) with
+`overflow: hidden`. Re-measured: one height, zero movement, on desktop and at 400px.
+
+The casen terminal got the same treatment, but as a no-op: its frames reach 236px against a
+240px floor — empty rows are empty `<div>`s and collapse to nothing — so `min-height: 240px`
+became `height: 240px`. Same pixels today, and one added row away from the same bug tomorrow.
+
 ## 2026-09-12 — the stable-id work gets its changeset
 
 #170 landed the derived sequence-flow and root-definition ids, and the `.message()` /

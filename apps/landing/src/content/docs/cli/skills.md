@@ -2,7 +2,7 @@
 title: AIKit Skills
 description: Claude Code slash commands for AI-driven process implementation, review, testing, and deployment.
 sidebar:
-  order: 5
+  order: 6
 ---
 
 `casen` ships four lightweight Claude Code slash commands that automate the process

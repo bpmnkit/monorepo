@@ -2,7 +2,7 @@
 title: casen connector
 description: Browse the bundled Camunda 8 connector catalog, or generate connector element templates from OpenAPI specs, via the casen CLI.
 sidebar:
-  order: 4
+  order: 5
 ---
 
 `casen connector` has two independent jobs: **browse** the 116 bundled Camunda 8 out-of-the-box

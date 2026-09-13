@@ -78,7 +78,7 @@ interface OperateOptions {
   container: HTMLElement
   proxyUrl?: string        // default: "http://localhost:3033"
   profile?: string         // profile name; uses active profile if omitted
-  theme?: "light" | "dark" | "auto"  // default: "auto"
+  theme?: "light" | "dark" | "auto" | "neon"  // default: "light"
   pollInterval?: number    // ms between polls; default: 30 000
   mock?: boolean           // use built-in fixture data; default: false
 }

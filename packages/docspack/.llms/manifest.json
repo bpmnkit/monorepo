@@ -231,6 +231,47 @@
 			]
 		},
 		{
+			"id": "cli.diff",
+			"file": "chunks/cli.diff.md",
+			"tokens": 412,
+			"tags": [
+				"cli",
+				"diff"
+			],
+			"entities": [
+				"diffSemantics()",
+				"targetNamespace"
+			]
+		},
+		{
+			"id": "cli.diff.flags",
+			"file": "chunks/cli.diff.flags.md",
+			"tokens": 301,
+			"tags": [
+				"cli",
+				"diff",
+				"flags"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.diff.the-same-diff-elsewhere",
+			"file": "chunks/cli.diff.the-same-diff-elsewhere.md",
+			"tokens": 128,
+			"tags": [
+				"cli",
+				"diff",
+				"same",
+				"elsewhere"
+			],
+			"entities": [
+				"diffDiagram()",
+				"@bpmnkit/core",
+				"createBpmnDiff()",
+				"@bpmnkit/plugins"
+			]
+		},
+		{
 			"id": "cli.generate",
 			"file": "chunks/cli.generate.md",
 			"tokens": 508,
@@ -1139,6 +1180,69 @@
 			"entities": []
 		},
 		{
+			"id": "guides.drop",
+			"file": "chunks/guides.drop.md",
+			"tokens": 141,
+			"tags": [
+				"guides",
+				"drop"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.drop.sharing-a-file",
+			"file": "chunks/guides.drop.sharing-a-file.md",
+			"tokens": 410,
+			"tags": [
+				"guides",
+				"drop",
+				"sharing",
+				"file"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.drop.reviewing-it-together",
+			"file": "chunks/guides.drop.reviewing-it-together.md",
+			"tokens": 604,
+			"tags": [
+				"guides",
+				"drop",
+				"reviewing",
+				"together"
+			],
+			"entities": [
+				"@bpmnkit/plugins"
+			]
+		},
+		{
+			"id": "guides.drop.running-your-own",
+			"file": "chunks/guides.drop.running-your-own.md",
+			"tokens": 200,
+			"tags": [
+				"guides",
+				"drop",
+				"running",
+				"own"
+			],
+			"entities": [
+				"apps/drop",
+				"@bpmnkit/core",
+				"apps/drop/DEPLOY.md"
+			]
+		},
+		{
+			"id": "guides.drop.what-drop-is-not",
+			"file": "chunks/guides.drop.what-drop-is-not.md",
+			"tokens": 136,
+			"tags": [
+				"guides",
+				"drop",
+				"not"
+			],
+			"entities": []
+		},
+		{
 			"id": "guides.gateways.exclusive-gateway-xor",
 			"file": "chunks/guides.gateways.exclusive-gateway-xor.md",
 			"tokens": 218,
@@ -1349,6 +1453,189 @@
 			"entities": [
 				"engine.getDeployedProcesses()"
 			]
+		},
+		{
+			"id": "guides.vscode",
+			"file": "chunks/guides.vscode.md",
+			"tokens": 139,
+			"tags": [
+				"guides",
+				"vscode"
+			],
+			"entities": [
+				"@bpmnkit/canvas"
+			]
+		},
+		{
+			"id": "guides.vscode.installing",
+			"file": "chunks/guides.vscode.installing.md",
+			"tokens": 140,
+			"tags": [
+				"guides",
+				"vscode",
+				"installing"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.vscode.what-it-does-preview-beside-the-source",
+			"file": "chunks/guides.vscode.what-it-does-preview-beside-the-source.md",
+			"tokens": 131,
+			"tags": [
+				"guides",
+				"vscode",
+				"preview",
+				"beside",
+				"source"
+			],
+			"entities": [
+				"workbench.editorAssociations"
+			]
+		},
+		{
+			"id": "guides.vscode.what-it-does-editing-that-leaves-a-readable-diff",
+			"file": "chunks/guides.vscode.what-it-does-editing-that-leaves-a-readable-diff.md",
+			"tokens": 302,
+			"tags": [
+				"guides",
+				"vscode",
+				"editing",
+				"leaves",
+				"readable",
+				"diff"
+			],
+			"entities": [
+				"TextDocument",
+				"exportPreserving()",
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "guides.vscode.what-it-does-findings-in-the-problems-panel",
+			"file": "chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md",
+			"tokens": 150,
+			"tags": [
+				"guides",
+				"vscode",
+				"findings",
+				"problems",
+				"panel"
+			],
+			"entities": [
+				"bpmnkit.lint.forceEngineRules"
+			]
+		},
+		{
+			"id": "guides.vscode.what-it-does-a-visual-diff-in-source-control",
+			"file": "chunks/guides.vscode.what-it-does-a-visual-diff-in-source-control.md",
+			"tokens": 146,
+			"tags": [
+				"guides",
+				"vscode",
+				"visual",
+				"diff",
+				"source",
+				"control"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.vscode.what-it-does-run-the-diagram-in-the-editor",
+			"file": "chunks/guides.vscode.what-it-does-run-the-diagram-in-the-editor.md",
+			"tokens": 105,
+			"tags": [
+				"guides",
+				"vscode",
+				"run",
+				"diagram",
+				"editor"
+			],
+			"entities": [
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "guides.vscode.what-it-does-a-feel-playground-on-your-selection",
+			"file": "chunks/guides.vscode.what-it-does-a-feel-playground-on-your-selection.md",
+			"tokens": 75,
+			"tags": [
+				"guides",
+				"vscode",
+				"feel",
+				"playground",
+				"selection"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.vscode.what-it-does-deploy-against-your-own-clusters",
+			"file": "chunks/guides.vscode.what-it-does-deploy-against-your-own-clusters.md",
+			"tokens": 208,
+			"tags": [
+				"guides",
+				"vscode",
+				"deploy",
+				"against",
+				"own",
+				"clusters"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.vscode.what-it-does-copy-the-diagram-as-text",
+			"file": "chunks/guides.vscode.what-it-does-copy-the-diagram-as-text.md",
+			"tokens": 84,
+			"tags": [
+				"guides",
+				"vscode",
+				"copy",
+				"diagram",
+				"text"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.vscode.commands",
+			"file": "chunks/guides.vscode.commands.md",
+			"tokens": 181,
+			"tags": [
+				"guides",
+				"vscode",
+				"commands"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.vscode.settings",
+			"file": "chunks/guides.vscode.settings.md",
+			"tokens": 241,
+			"tags": [
+				"guides",
+				"vscode",
+				"settings"
+			],
+			"entities": [
+				"bpmnkit.lint.enabled",
+				"bpmnkit.lint.run",
+				"onType",
+				"onSave",
+				"bpmnkit.lint.forceEngineRules",
+				"bpmnkit.viewer.grid",
+				"bpmnkit.viewer.minimap",
+				"bpmnkit.simulation.enabled",
+				"bpmnkit.editing.enabled"
+			]
+		},
+		{
+			"id": "guides.vscode.support",
+			"file": "chunks/guides.vscode.support.md",
+			"tokens": 99,
+			"tags": [
+				"guides",
+				"vscode",
+				"support"
+			],
+			"entities": []
 		},
 		{
 			"id": "guides.workers-standalone",
@@ -1849,6 +2136,25 @@
 			"entities": []
 		},
 		{
+			"id": "packages.core.installation-diffdiagram-before-after",
+			"file": "chunks/packages.core.installation-diffdiagram-before-after.md",
+			"tokens": 331,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"diffdiagram",
+				"before",
+				"after"
+			],
+			"entities": [
+				"diffSemantics()",
+				"targetNamespace",
+				"createBpmnDiff()",
+				"@bpmnkit/plugins"
+			]
+		},
+		{
 			"id": "packages.core.installation-applybpmnoperations-definitions-operations-options",
 			"file": "chunks/packages.core.installation-applybpmnoperations-definitions-operations-options.md",
 			"tokens": 235,
@@ -2049,7 +2355,7 @@
 		{
 			"id": "packages.core.writing-files-bpmnkit-core-node",
 			"file": "chunks/packages.core.writing-files-bpmnkit-core-node.md",
-			"tokens": 474,
+			"tokens": 52,
 			"tags": [
 				"packages",
 				"core",
@@ -2060,10 +2366,55 @@
 			],
 			"entities": [
 				"@bpmnkit/core/node",
-				"@bpmnkit/core",
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "packages.core.writing-files-bpmnkit-core-node-writebpmn-definitions-options",
+			"file": "chunks/packages.core.writing-files-bpmnkit-core-node-writebpmn-definitions-options.md",
+			"tokens": 440,
+			"tags": [
+				"packages",
+				"core",
+				"writing",
+				"files",
+				"bpmnkit",
+				"node",
+				"writebpmn",
+				"definitions",
+				"options"
+			],
+			"entities": [
 				"WriteVerificationError",
 				"WriteError",
 				"Bpmn.export()"
+			]
+		},
+		{
+			"id": "packages.core.writing-files-bpmnkit-core-node-exportpreserving-original-definitions",
+			"file": "chunks/packages.core.writing-files-bpmnkit-core-node-exportpreserving-original-definitions.md",
+			"tokens": 598,
+			"tags": [
+				"packages",
+				"core",
+				"writing",
+				"files",
+				"bpmnkit",
+				"node",
+				"exportpreserving",
+				"original",
+				"definitions"
+			],
+			"entities": [
+				"Bpmn.export()",
+				"@bpmnkit/core",
+				"flowElements",
+				"sequenceFlows",
+				"exportXml()",
+				"exportDmnPreserving",
+				"preserveDmnFormatting",
+				"exportFormPreserving",
+				"preserveFormFormatting"
 			]
 		},
 		{

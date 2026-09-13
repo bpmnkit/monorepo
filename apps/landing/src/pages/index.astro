@@ -5,19 +5,10 @@ import Seo from "@bpmnkit/astro-shared/Seo.astro"
 import { organizationJsonLd, softwareApplicationJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import { CONNECTOR_STATS } from "@bpmnkit/connector-gen"
 import { Bpmn, exportSvg } from "@bpmnkit/core"
+import FeelPlayground from "../components/FeelPlayground.astro"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
-import { CODE_HTML, ECOSYSTEM } from "../data/content"
-
-// The header carries the five destinations a cold visitor needs; everything
-// else is reachable from the footer.
-const navLinks = [
-	{ href: "#why", label: "Why" },
-	{ href: "#packages", label: "Packages" },
-	{ href: "#camunda", label: "Camunda 8" },
-	{ href: "#start", label: "Quickstart" },
-	{ href: "/docs", label: "Docs" },
-]
+import { CODE_HTML, CORE_VERSION, ECOSYSTEM } from "../data/content"
 
 const jsonLd = [
 	organizationJsonLd(),
@@ -26,10 +17,14 @@ const jsonLd = [
 		description: SITE.description,
 		url: SITE.url,
 		applicationCategory: "DeveloperApplication",
-		softwareVersion: ECOSYSTEM.find((pkg) => pkg.name === "@bpmnkit/core")?.version,
+		softwareVersion: CORE_VERSION,
 		license: "https://opensource.org/license/mit",
 	}),
 ]
+
+// Six packages lead; the other seventeen are one click away rather than a wall.
+const featuredPackages = ECOSYSTEM.filter((pkg) => pkg.featured)
+const restPackages = ECOSYSTEM.filter((pkg) => !pkg.featured)
 
 // The hero diagram is the real `exportSvg()` output of the hero snippet, built
 // here so the code and the picture beside it can never drift apart. Once the
@@ -117,7 +112,7 @@ const CAPABILITIES = [
   <a href="#main-content" class="skip-link">Skip to content</a>
   <div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
 
-  <Nav links={navLinks} showHomeLink={false} />
+  <Nav showHomeLink={false} />
 
   <main id="main-content">
 
@@ -259,15 +254,15 @@ const CAPABILITIES = [
     <div class="section-wrap">
       <div class="section-head section-head--tight">
         <span class="section-num">03</span>
-        <h2 class="section-h2">Six packages, pick what you need</h2>
+        <h2 class="section-h2">{ECOSYSTEM.length} packages, pick what you need</h2>
       </div>
       <p class="section-sub">
-        Independently versioned and pre-1.0, developed in the open under MIT. Everything
-        below is installable today.
+        Independently versioned and pre-1.0, developed in the open under MIT. Every version
+        below is the one on npm — each row links to it.
       </p>
       <div class="pkg-grid">
-        {ECOSYSTEM.map((pkg) => (
-          <a class="pkg-row" href={pkg.url} target="_blank" rel="noopener">
+        {featuredPackages.map((pkg) => (
+          <a class="pkg-row" href={pkg.npm} target="_blank" rel="noopener">
             <div class="pkg-main">
               <div class="pkg-name">{pkg.name}</div>
               <div class="pkg-role">
@@ -278,7 +273,28 @@ const CAPABILITIES = [
             <div class="pkg-version">v{pkg.version}</div>
           </a>
         ))}
+        {restPackages.map((pkg) => (
+          <a class="pkg-row pkg-row--more" href={pkg.npm} target="_blank" rel="noopener" hidden>
+            <div class="pkg-main">
+              <div class="pkg-name">{pkg.name}</div>
+              <div class="pkg-role">{pkg.role}</div>
+            </div>
+            <div class="pkg-version">v{pkg.version}</div>
+          </a>
+        ))}
+        {/* An odd count leaves the last cell of the two-column grid empty, and an
+            empty cell is the rule colour showing through rather than a row. */}
+        {ECOSYSTEM.length % 2 === 1 && <div class="pkg-row pkg-row--more" aria-hidden="true" hidden></div>}
       </div>
+      <button
+        type="button"
+        class="pkg-more"
+        id="pkg-more"
+        aria-expanded="false"
+        aria-controls="packages"
+        data-more={`Show all ${ECOSYSTEM.length} packages`}
+        data-less="Show the six to start with"
+      >Show all {ECOSYSTEM.length} packages</button>
       <div class="pkg-links">
         <a href={`${SITE.github}/releases`} target="_blank" rel="noopener">Changelog &amp; releases</a>
         <a href={`${SITE.github}/issues`} target="_blank" rel="noopener">Report an issue</a>
@@ -583,13 +599,32 @@ const CAPABILITIES = [
     </div>
   </section>
 
-  <!-- ── 08 · For process teams ────────────────────────────────────────────── -->
-  <section class="section" id="teams">
+  <!-- ── 08 · FEEL playground ──────────────────────────────────────────────── -->
+  <section class="section" id="feel">
+    <div class="section-wrap">
+      <div class="section-head section-head--tight">
+        <span class="section-num">08</span>
+        <h2 class="section-h2">FEEL, evaluated as you type</h2>
+      </div>
+      <p class="section-sub">
+        FEEL is the expression language a DMN decision table and a BPMN gateway condition are
+        written in. This is <code>@bpmnkit/feel</code> — a zero-dependency parser and evaluator —
+        running in your browser, not a sandbox on a server. Switch to <strong>unary tests</strong>
+        for the form a decision-table input entry takes. <a href="/feel-functions">All built-in
+        functions →</a>
+      </p>
+
+      <FeelPlayground id="feel-playground" />
+    </div>
+  </section>
+
+  <!-- ── 09 · For process teams ────────────────────────────────────────────── -->
+  <section class="section section--alt" id="teams">
     <div class="section-wrap">
       <div class="teams-layout">
         <div class="teams-lede">
           <div class="section-head section-head--tight">
-            <span class="section-num">08</span>
+            <span class="section-num">09</span>
             <span class="hero-eyebrow" style="margin:0">For process teams</span>
           </div>
           <h2>Analysts model it. Developers ship it.</h2>
@@ -612,6 +647,143 @@ const CAPABILITIES = [
           <div class="teams-card">
             <h3>No license fees</h3>
             <p>MIT, open source, standard files. Leave whenever you want.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── 10 · Share & review ───────────────────────────────────────────────── -->
+  <section class="section" id="share">
+    <div class="section-wrap">
+      <div class="section-head section-head--tight">
+        <span class="section-num">10</span>
+        <h2 class="section-h2">Share it. Review it. Together.</h2>
+      </div>
+      <p class="section-sub">
+        A process diagram is only worth anything once the people who own the process can see it.
+        <strong>Drop</strong> turns a file into a link anyone can open — and edit, one writer at a
+        time, with everyone else watching it change. The <strong>VS&nbsp;Code extension</strong>
+        puts the same renderer, the same analysis and a visual diff next to the code.
+      </p>
+
+      <div class="camunda-layout camunda-layout--flip">
+        <div class="camunda-side">
+          <div class="inset-card">
+            <div class="inset-card-label">bpmnkit.com/drop</div>
+            <p>
+              Drag a <code>.bpmn</code>, <code>.dmn</code> or <code>.form</code> file onto the page —
+              or paste one — and get a short link back. Whoever opens it sees the diagram rendered,
+              with no account, no modeler install and no Camunda cluster anywhere in the story.
+              Analysts, support, the person who asked for the change: send the link.
+            </p>
+          </div>
+          <div class="chips">
+            <span class="chip">No account</span>
+            <span class="chip">Up to 20 files</span>
+            <span class="chip">BPMN · DMN · Forms</span>
+            <span class="chip">90-day retention</span>
+            <span class="chip">Open source Worker</span>
+          </div>
+          <div class="share-ctas">
+            <a href="/drop" class="btn-primary">Open Drop</a>
+            <a href="/drop/demo-loan-approval" class="btn-link">See an example drop</a>
+          </div>
+        </div>
+
+        <div class="hair-grid hair-grid--2">
+          <div class="cap-card">
+            <h3>Live, and legible</h3>
+            <p>
+              The share page counts who has it open, and says when one of them is editing — so a
+              diagram moving under your eyes reads as a colleague, not a glitch.
+            </p>
+            <div class="cap-api">12 viewing · 1 editing</div>
+          </div>
+          <div class="cap-card">
+            <h3>One writer at a time</h3>
+            <p>
+              Editing is a baton. Whoever takes it can change the diagram and everyone else watches
+              the change arrive. No merge dialog, because there is nothing to merge.
+            </p>
+            <div class="cap-api">Edit → Done</div>
+          </div>
+          <div class="cap-card">
+            <h3>No save button</h3>
+            <p>
+              Changes persist as you make them. Every file keeps the original it was uploaded as,
+              pinned, plus its last ten milestones — and restoring one appends rather than rewinds.
+            </p>
+            <div class="cap-api">original + 10 milestones</div>
+          </div>
+          <div class="cap-card">
+            <h3>Diff two versions</h3>
+            <p>
+              Put two drops side by side: added, removed, changed and <em>moved</em> elements marked
+              on synchronised canvases, pan and zoom locked together.
+            </p>
+            <div class="cap-api">/drop/:before/diff/:after</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="camunda-layout camunda-layout--flip">
+        <div class="camunda-side">
+          <div class="inset-card">
+            <div class="inset-card-label">BPMN Kit for VS Code</div>
+            <p>
+              The renderer is <code>@bpmnkit/canvas</code> — there is no bpmn.io anywhere in the
+              extension, which is the point: the files it shows you are the files git has, byte for
+              byte. Editing is backed by the same <code>TextDocument</code> a text editor opens, so
+              Ctrl+S saves, undo is the editor's own undo, and a diagram open beside the XML is a
+              second view of one document rather than a competing copy.
+            </p>
+          </div>
+          <div class="chips">
+            <span class="chip">Step-through simulation</span>
+            <span class="chip">FEEL playground</span>
+            <span class="chip">Deploy from casen profiles</span>
+            <span class="chip">Copy diagram as ASCII</span>
+            <span class="chip">MIT</span>
+          </div>
+          <div class="share-ctas">
+            <a href="/docs/guides/vscode" class="btn-link">Install the extension →</a>
+          </div>
+        </div>
+
+        <div class="hair-grid hair-grid--2">
+          <div class="cap-card">
+            <h3>Preview beside the source</h3>
+            <p>
+              <code>.bpmn</code>, <code>.dmn</code> and <code>.form</code> render as you type, not on
+              save — and XML that is momentarily unparseable keeps the last drawing that worked.
+            </p>
+            <div class="cap-api">Open Diagram to the Side</div>
+          </div>
+          <div class="cap-card">
+            <h3>Findings in the Problems panel</h3>
+            <p>
+              The same static analysis <code>casen lint</code> runs, reported against the element
+              that caused it. An engine-neutral diagram is not judged against Camunda 8 rules.
+            </p>
+            <div class="cap-api">bpmnkit.lint.run</div>
+          </div>
+          <div class="cap-card">
+            <h3>Compare with HEAD</h3>
+            <p>
+              A second view of the change the text diff already shows, in Source Control — where a
+              box somebody dragged reads as <em>moved</em>, not as two unrelated pictures.
+            </p>
+            <div class="cap-api">casen diff bpmn a.bpmn b.bpmn</div>
+          </div>
+          <div class="cap-card">
+            <h3>Saves a diff you can read</h3>
+            <p>
+              A visual editor usually reformats the whole file on the first change. This one writes
+              the file that was already there: rename a task, change the line with the task on it.
+            </p>
+            <div class="cap-api">exportPreserving(onDisk, defs)</div>
           </div>
         </div>
       </div>

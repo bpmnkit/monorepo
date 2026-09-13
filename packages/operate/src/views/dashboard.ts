@@ -107,12 +107,12 @@ export function createDashboardView(
 				"Active Instances",
 				d?.activeInstances ?? "—",
 				IC_UI.instances,
-				"var(--bpmnkit-accent)",
+				"var(--bpmnkit-ds-accent)",
 				() => onNavigate("/instances"),
 			),
 		)
 
-		const incAccent = d?.openIncidents ? "var(--op-c-amber)" : "var(--bpmnkit-accent)"
+		const incAccent = d?.openIncidents ? "var(--bpmnkit-state-warn)" : "var(--bpmnkit-ds-ink)"
 		grid.appendChild(
 			createDashboardCard(
 				"Open Incidents",
@@ -128,7 +128,7 @@ export function createDashboardView(
 				"Active Jobs",
 				d?.activeJobs ?? "—",
 				IC_UI.jobs,
-				"var(--op-c-green)",
+				"var(--bpmnkit-ds-ink)",
 				() => onNavigate("/jobs"),
 			),
 		)
@@ -138,7 +138,7 @@ export function createDashboardView(
 				"Pending Tasks",
 				d?.pendingTasks ?? "—",
 				IC_UI.tasks,
-				"var(--op-c-purple)",
+				"var(--bpmnkit-ds-ink)",
 				() => onNavigate("/tasks"),
 			),
 		)
@@ -148,7 +148,7 @@ export function createDashboardView(
 				"Deployed Processes",
 				d?.definitions ?? "—",
 				IC_UI.processes,
-				"var(--bpmnkit-fg-muted)",
+				"var(--bpmnkit-ds-ink)",
 				() => onNavigate("/definitions"),
 			),
 		)

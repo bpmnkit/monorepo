@@ -162,81 +162,140 @@ export const UI_TOKENS_CSS = `
 }
 `
 
-/** CSS for shared components: badge, card, table, theme-switcher. */
+/**
+ * CSS for the shared components: badge, card, table, theme-switcher.
+ *
+ * These render inside `@bpmnkit/operate`, which reads the bpmnkit.com design
+ * system, so they are drawn to its rules: square, hairline-ruled, no shadow or
+ * blur, one accent, and mono for every label, count and id. Values resolve from
+ * the `--bpmnkit-ds-*` tokens above, with a literal fallback so a package still
+ * works standalone.
+ *
+ * A consumer themes them by redeclaring those tokens on its own root — which is
+ * what Operate's dark and neon themes do — rather than by adding a second set.
+ *
+ * Status colour is the exception, as semantic colour is throughout this repo:
+ * the `--bpmnkit-state-*` pairs below carry it, and are the only chromatic
+ * values here besides the accent.
+ */
 export const UI_COMPONENTS_CSS = `
+/* ── Status colour — semantic, and exempt from the one-accent rule ───────── */
+:root {
+  --bpmnkit-state-ok: #2f6f5b;
+  --bpmnkit-state-info: #3c5a9a;
+  --bpmnkit-state-warn: #96640f;
+  --bpmnkit-state-bad: #a33a34;
+  --bpmnkit-state-idle: #5c6470;
+}
+[data-theme="dark"],
+[data-theme="neon"] {
+  --bpmnkit-state-ok: #4fbd8b;
+  --bpmnkit-state-info: #7ea2e0;
+  --bpmnkit-state-warn: #e0a44e;
+  --bpmnkit-state-bad: #e07b76;
+  --bpmnkit-state-idle: #8b929c;
+}
+
 /* ── Badge ───────────────────────────────────────────────────────────────── */
+/* A hairline chip, not a filled pill: the state is carried by the word and its
+   colour, and the box is drawn the way every other box in the system is. */
 .bpmnkit-badge {
   display: inline-block;
-  padding: 2px 7px;
-  border-radius: var(--bpmnkit-radius-sm, 4px);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  background: var(--bpmnkit-surface-2);
-  color: var(--bpmnkit-fg-muted);
+  padding: 1px 6px;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-micro, 10.5px);
+  letter-spacing: 0.06em;
+  color: var(--bpmnkit-state-idle);
+  border: 1px solid color-mix(in srgb, var(--bpmnkit-state-idle) 35%, transparent);
+  background: color-mix(in srgb, var(--bpmnkit-state-idle) 8%, transparent);
   text-transform: uppercase;
   white-space: nowrap;
-  font-family: var(--bpmnkit-font, system-ui, sans-serif);
 }
-.bpmnkit-badge--active       { background: rgba(34,197,94,0.15);   color: #22c55e; }
-.bpmnkit-badge--completed    { background: rgba(99,102,241,0.15);  color: #a5b4fc; }
-.bpmnkit-badge--terminated   { background: rgba(239,68,68,0.15);   color: #f87171; }
-.bpmnkit-badge--failed       { background: rgba(239,68,68,0.15);   color: #f87171; }
-.bpmnkit-badge--error_thrown { background: rgba(239,68,68,0.15);   color: #f87171; }
-.bpmnkit-badge--created      { background: rgba(76,142,247,0.15);  color: #93c5fd; }
-.bpmnkit-badge--resolved     { background: rgba(34,197,94,0.15);   color: #86efac; }
-.bpmnkit-badge--pending      { background: rgba(245,158,11,0.18);  color: #fbbf24; }
-.bpmnkit-badge--migrated     { background: rgba(139,92,246,0.15);  color: #c4b5fd; }
-.bpmnkit-badge--timed_out    { background: rgba(245,158,11,0.18);  color: #fbbf24; }
-.bpmnkit-badge--retries_updated { background: rgba(76,142,247,0.15); color: #93c5fd; }
-.bpmnkit-badge--tenant       { background: rgba(255,255,255,0.06); color: var(--bpmnkit-fg-muted); font-weight: 400; }
-.bpmnkit-badge--incident-dot { background: rgba(245,158,11,0.18); color: var(--bpmnkit-warn); margin-left: 6px; padding: 2px 5px; }
+.bpmnkit-badge--active,
+.bpmnkit-badge--resolved {
+  color: var(--bpmnkit-state-ok);
+  border-color: color-mix(in srgb, var(--bpmnkit-state-ok) 35%, transparent);
+  background: color-mix(in srgb, var(--bpmnkit-state-ok) 8%, transparent);
+}
+.bpmnkit-badge--completed,
+.bpmnkit-badge--created,
+.bpmnkit-badge--migrated,
+.bpmnkit-badge--retries_updated {
+  color: var(--bpmnkit-state-info);
+  border-color: color-mix(in srgb, var(--bpmnkit-state-info) 35%, transparent);
+  background: color-mix(in srgb, var(--bpmnkit-state-info) 8%, transparent);
+}
+.bpmnkit-badge--pending,
+.bpmnkit-badge--timed_out {
+  color: var(--bpmnkit-state-warn);
+  border-color: color-mix(in srgb, var(--bpmnkit-state-warn) 35%, transparent);
+  background: color-mix(in srgb, var(--bpmnkit-state-warn) 8%, transparent);
+}
+.bpmnkit-badge--terminated,
+.bpmnkit-badge--failed,
+.bpmnkit-badge--error_thrown {
+  color: var(--bpmnkit-state-bad);
+  border-color: color-mix(in srgb, var(--bpmnkit-state-bad) 35%, transparent);
+  background: color-mix(in srgb, var(--bpmnkit-state-bad) 8%, transparent);
+}
+.bpmnkit-badge--tenant {
+  color: var(--bpmnkit-ds-ink-4, #8b929c);
+  border-color: var(--bpmnkit-ds-line, #d8dbe0);
+  background: transparent;
+}
+.bpmnkit-badge--incident-dot {
+  color: var(--bpmnkit-state-warn);
+  border-color: color-mix(in srgb, var(--bpmnkit-state-warn) 35%, transparent);
+  background: color-mix(in srgb, var(--bpmnkit-state-warn) 8%, transparent);
+  margin-left: 6px;
+}
 .bpmnkit-badge-wrap { display: flex; align-items: center; }
 
 /* ── Stats card ──────────────────────────────────────────────────────────── */
+/* Borderless on purpose: cards sit in a grid that draws its own hairlines, so a
+   border here would double every rule. */
 .bpmnkit-card {
-  background: var(--bpmnkit-surface);
-  border: 1px solid var(--bpmnkit-border);
-  border-radius: var(--bpmnkit-radius-lg, 10px);
-  padding: 20px 18px;
-  transition: border-color 0.15s;
+  background: var(--bpmnkit-ds-surface, #ffffff);
+  padding: var(--bpmnkit-ds-sp-4, 20px);
+  transition: background 0.15s;
 }
 .bpmnkit-card--clickable { cursor: pointer; }
-.bpmnkit-card--clickable:hover { border-color: var(--bpmnkit-accent); }
-.bpmnkit-card--warn .bpmnkit-card-value { color: var(--bpmnkit-warn); }
+.bpmnkit-card--clickable:hover { background: var(--bpmnkit-ds-bg, #f4f5f7); }
+.bpmnkit-card--warn .bpmnkit-card-value { color: var(--bpmnkit-state-warn); }
 .bpmnkit-card-value {
-  font-size: 28px;
-  font-weight: 700;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 30px;
   line-height: 1;
-  color: var(--bpmnkit-accent);
-  margin-bottom: 6px;
+  color: var(--bpmnkit-ds-ink, #14161a);
+  margin-bottom: var(--bpmnkit-ds-sp-2, 10px);
+  letter-spacing: -0.02em;
 }
 .bpmnkit-card-label {
-  font-size: 12px;
-  color: var(--bpmnkit-fg-muted);
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-label, 11.5px);
+  color: var(--bpmnkit-ds-ink-4, #8b929c);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 /* ── Data table ──────────────────────────────────────────────────────────── */
 .bpmnkit-table-wrap {
-  background: var(--bpmnkit-surface);
-  border: 1px solid var(--bpmnkit-border);
-  border-radius: var(--bpmnkit-radius, 6px);
+  background: var(--bpmnkit-ds-surface, #ffffff);
+  border: 1px solid var(--bpmnkit-ds-line, #d8dbe0);
   overflow: hidden;
 }
 .bpmnkit-table-header {
   display: flex;
-  background: var(--bpmnkit-surface-2);
-  border-bottom: 1px solid var(--bpmnkit-border);
+  background: var(--bpmnkit-ds-bg, #f4f5f7);
+  border-bottom: 1px solid var(--bpmnkit-ds-line, #d8dbe0);
 }
 .bpmnkit-table-th {
-  padding: 9px 14px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--bpmnkit-fg-muted);
+  padding: 8px 14px;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-label, 11.5px);
+  color: var(--bpmnkit-ds-ink-4, #8b929c);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -249,15 +308,16 @@ export const UI_COMPONENTS_CSS = `
 .bpmnkit-table-row {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--bpmnkit-border);
+  border-bottom: 1px solid var(--bpmnkit-ds-line-soft, #e4e6ea);
   transition: background 0.1s;
 }
 .bpmnkit-table-row:last-child { border-bottom: none; }
 .bpmnkit-table-row--clickable { cursor: pointer; }
-.bpmnkit-table-row--clickable:hover { background: var(--bpmnkit-surface-2); }
+.bpmnkit-table-row--clickable:hover { background: var(--bpmnkit-ds-bg, #f4f5f7); }
 .bpmnkit-table-td {
-  padding: 7px 14px;
-  font-size: 13px;
+  padding: 8px 14px;
+  font-size: var(--bpmnkit-ds-t-body-sm, 14.5px);
+  color: var(--bpmnkit-ds-ink-2, #4b5158);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -267,69 +327,74 @@ export const UI_COMPONENTS_CSS = `
 .bpmnkit-table-empty {
   padding: 28px 20px;
   text-align: center;
-  color: var(--bpmnkit-fg-muted);
-  font-size: 13px;
+  color: var(--bpmnkit-ds-ink-4, #8b929c);
+  font-size: var(--bpmnkit-ds-t-body-sm, 14.5px);
 }
 
 /* ── Theme switcher button ───────────────────────────────────────────────── */
 .bpmnkit-theme-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px;
+  width: 28px; height: 28px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--bpmnkit-radius, 6px);
-  color: var(--bpmnkit-fg-muted, #6666a0);
+  color: var(--bpmnkit-ds-ink-4, #8b929c);
   cursor: pointer;
   padding: 0; flex-shrink: 0;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  transition: color 0.1s, border-color 0.1s;
 }
 .bpmnkit-theme-btn:hover {
-  background: var(--bpmnkit-surface-2);
-  color: var(--bpmnkit-fg);
-  border-color: var(--bpmnkit-border);
+  color: var(--bpmnkit-ds-ink, #14161a);
+  border-color: var(--bpmnkit-ds-line, #d8dbe0);
 }
 .bpmnkit-theme-btn svg { width: 15px; height: 15px; pointer-events: none; }
 
 /* ── Theme dropdown ──────────────────────────────────────────────────────── */
+/* Fixed-position, so it escapes the consumer's root and cannot inherit a theme
+   redeclared there — the two dark variants below are set on the element itself
+   by the switcher. Depth is a hairline, as everywhere else: no shadow, no blur. */
 .bpmnkit-theme-dropdown {
   position: fixed;
   display: flex; flex-direction: column;
-  gap: 1px; padding: 4px;
-  background: var(--bpmnkit-panel-bg, rgba(255, 255, 255, 0.92));
-  border: 1px solid var(--bpmnkit-panel-border, rgba(0, 0, 0, 0.08));
-  border-radius: var(--bpmnkit-radius-lg, 10px);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.15);
-  z-index: 10000; min-width: 140px;
-  backdrop-filter: blur(12px);
+  padding: 0;
+  background: var(--bpmnkit-ds-surface, #ffffff);
+  border: 1px solid var(--bpmnkit-ds-line-strong, #14161a);
+  z-index: 10000; min-width: 148px;
 }
 .bpmnkit-theme-dropdown[data-theme="dark"] {
-  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  background: #16181d;
+  border-color: #3a3f48;
 }
 .bpmnkit-theme-dropdown[data-theme="neon"] {
-  box-shadow: 0 6px 24px oklch(0% 0 0 / 0.6), 0 0 0 1px oklch(65% 0.28 280 / 0.1);
+  background: oklch(11% 0.03 270);
+  border-color: oklch(65% 0.28 280 / 0.45);
 }
 .bpmnkit-theme-item {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px;
   border: none; background: transparent;
-  color: var(--bpmnkit-fg, #1a1a2e);
+  color: var(--bpmnkit-ds-ink, #14161a);
   cursor: pointer;
-  border-radius: calc(var(--bpmnkit-radius, 6px) - 2px);
-  font-size: 12px; text-align: left; width: 100%;
-  font-family: var(--bpmnkit-font, system-ui, sans-serif);
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--bpmnkit-ds-t-mono-label, 11.5px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left; width: 100%;
   transition: background 0.1s;
 }
-.bpmnkit-theme-item:hover { background: var(--bpmnkit-surface-2); }
-.bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item { color: rgba(255,255,255,0.75); }
-.bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item:hover { background: rgba(255,255,255,0.08); }
-.bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item { color: oklch(73% 0.16 280); }
+.bpmnkit-theme-item + .bpmnkit-theme-item { border-top: 1px solid var(--bpmnkit-ds-line-soft, #e4e6ea); }
+.bpmnkit-theme-item:hover { background: var(--bpmnkit-ds-bg, #f4f5f7); }
+.bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item { color: #f4f5f7; }
+.bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item + .bpmnkit-theme-item { border-top-color: #2c3038; }
+.bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item:hover { background: #0f1114; }
+.bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item { color: oklch(76% 0.06 275); }
+.bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item + .bpmnkit-theme-item { border-top-color: oklch(65% 0.28 280 / 0.14); }
 .bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item:hover { background: oklch(65% 0.28 280 / 0.1); }
 .bpmnkit-theme-item-check {
   width: 12px; height: 12px; flex-shrink: 0;
-  color: var(--bpmnkit-accent, #1a56db);
+  color: var(--bpmnkit-ds-accent, #a8503a);
   display: flex; align-items: center;
 }
-.bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item-check { color: var(--bpmnkit-accent, #6b9df7); }
+.bpmnkit-theme-dropdown[data-theme="dark"] .bpmnkit-theme-item-check { color: #c9755c; }
 .bpmnkit-theme-dropdown[data-theme="neon"] .bpmnkit-theme-item-check { color: oklch(72% 0.18 185); }
 .bpmnkit-theme-item-icon {
   width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7;

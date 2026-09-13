@@ -39,7 +39,9 @@ export function createOperate(options: OperateOptions): OperateApi {
 	} = options
 
 	let profile: string | null = options.profile ?? null
-	const initialTheme: Theme = loadPersistedTheme() ?? options.theme ?? "neon"
+	// The design system is light-first, as bpmnkit.com is; dark and the
+	// white-label neon theme are opt-in.
+	const initialTheme: Theme = loadPersistedTheme() ?? options.theme ?? "light"
 
 	// ── Root element ──────────────────────────────────────────────────────────
 

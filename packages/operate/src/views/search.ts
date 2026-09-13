@@ -801,7 +801,7 @@ export function createSearchView(
 				render: (row) => {
 					const span = document.createElement("span")
 					span.className = "op-mono-cell"
-					span.style.color = "var(--bpmnkit-fg)"
+					span.style.color = "var(--bpmnkit-ds-ink)"
 					span.textContent = row.name
 					return span
 				},

@@ -43,6 +43,8 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 - **`casen` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
 - **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
 - **Native desktop app** — 3–5 MB Tauri installer for Windows, macOS, and Linux
+- **Share a diagram as a link** — [Drop](https://bpmnkit.com/drop) renders a BPMN/DMN/Form file for anyone with the link, live, and lets one of them edit it at a time
+- **VS Code extension** — preview, edit, lint, simulate and visually diff `.bpmn`, `.dmn` and `.form` beside the code, with no bpmn.io and no reformatting on save
 - **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
 
 ## Packages
