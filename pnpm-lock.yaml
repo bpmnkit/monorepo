@@ -233,7 +233,7 @@ importers:
         specifier: ^4.0.0
         version: 4.21.0
       turbo:
-        specifier: ^2.9.18
+        specifier: ^2.10.12
         version: 2.10.12
       typescript:
         specifier: ^5.7.3
