@@ -1,3 +1,4 @@
+import { ValidationError } from "../errors.js"
 import { generateId } from "../types/id-generator.js"
 import type { XmlElement } from "../types/xml-element.js"
 import { applyAutoLayout } from "./auto-layout.js"
@@ -861,6 +862,35 @@ function resolveSubProcessArgs<TOptions>(
 }
 
 /**
+ * `boundaryEvent` takes its host activity in `options.attachedTo`, but the
+ * positional shape `boundaryEvent(id, hostId, options)` reads just as naturally
+ * and is what callers reach for when they have only seen the parameter names.
+ * Accept both, for the same reason `resolveSubProcessArgs` accepts a reversed
+ * pair: the alternative was emitting a boundary event with no `attachedToRef`,
+ * which is invalid BPMN that this library's own parser then refuses to read.
+ *
+ * A missing host is a genuine error rather than a shape to guess at, so it
+ * throws here — at the call that caused it — instead of at export time.
+ */
+function resolveBoundaryEventArgs(
+	id: string,
+	attachedToOrOptions: string | BoundaryEventOptions,
+	maybeOptions: Omit<BoundaryEventOptions, "attachedTo"> | undefined,
+): BoundaryEventOptions {
+	const options: BoundaryEventOptions =
+		typeof attachedToOrOptions === "string"
+			? ({ ...maybeOptions, attachedTo: attachedToOrOptions } as BoundaryEventOptions)
+			: attachedToOrOptions
+
+	if (typeof options?.attachedTo !== "string" || options.attachedTo === "") {
+		throw new ValidationError(
+			`boundaryEvent("${id}") requires the id of the activity it attaches to. Pass it as options.attachedTo, as boundaryEvent("${id}", hostId, options), or use withBoundary() to attach to the preceding activity.`,
+		)
+	}
+	return options
+}
+
+/**
  * Build a transaction element from a content callback.
  *
  * A transaction is a sub-process with atomic semantics: the same container
@@ -1321,7 +1351,12 @@ export class BranchBuilder {
 	 * subsequent elements chain from it. Use `withBoundary()` if you want the
 	 * cursor to return to the task afterward.
 	 */
-	boundaryEvent(id: string, options: BoundaryEventOptions): this {
+	boundaryEvent(
+		id: string,
+		attachedToOrOptions: string | BoundaryEventOptions,
+		maybeOptions?: Omit<BoundaryEventOptions, "attachedTo">,
+	): this {
+		const options = resolveBoundaryEventArgs(id, attachedToOrOptions, maybeOptions)
 		const element = makeFlowElement(id, "boundaryEvent", {
 			...options,
 			extensionElements: buildMessageSubscriptionExt(options.correlationKey),
@@ -1832,7 +1867,12 @@ export class SubProcessContentBuilder {
 	 * subsequent elements chain from it. Use `withBoundary()` if you want the
 	 * cursor to return to the task afterward.
 	 */
-	boundaryEvent(id: string, options: BoundaryEventOptions): this {
+	boundaryEvent(
+		id: string,
+		attachedToOrOptions: string | BoundaryEventOptions,
+		maybeOptions?: Omit<BoundaryEventOptions, "attachedTo">,
+	): this {
+		const options = resolveBoundaryEventArgs(id, attachedToOrOptions, maybeOptions)
 		const element = makeFlowElement(id, "boundaryEvent", {
 			...options,
 			extensionElements: buildMessageSubscriptionExt(options.correlationKey),
@@ -2415,7 +2455,12 @@ export class ProcessBuilder {
 	 * Boundary events do not auto-connect from the previous element.
 	 * They start a new outgoing chain from the boundary event itself.
 	 */
-	boundaryEvent(id: string, options: BoundaryEventOptions): this {
+	boundaryEvent(
+		id: string,
+		attachedToOrOptions: string | BoundaryEventOptions,
+		maybeOptions?: Omit<BoundaryEventOptions, "attachedTo">,
+	): this {
+		const options = resolveBoundaryEventArgs(id, attachedToOrOptions, maybeOptions)
 		const element = makeFlowElement(id, "boundaryEvent", {
 			...options,
 			extensionElements: buildMessageSubscriptionExt(options.correlationKey),

@@ -44,26 +44,106 @@ pnpm add @bpmnkit/core
 
 ### Build a process from code
 
+Every element takes `(id, options)`. Branches off a gateway are declared with
+`.branch()`, not by wiring flows by hand — the builder creates the sequence flows.
+
 ```typescript
 import { Bpmn } from "@bpmnkit/core"
 
-const process = Bpmn.createProcess("order-flow", "Order Flow")
-  .startEvent("start", "Order Received")
-  .serviceTask("validate", "Validate Order", {
-    type: "order-validator",
-    inputs: [{ source: "=order", target: "order" }],
-    outputs: [{ source: "=valid", target: "isValid" }],
+const defs = Bpmn.createProcess("order-flow")
+  .name("Order Flow")
+  .startEvent("start", { name: "Order Received" })
+  .serviceTask("validate", {
+    name: "Validate Order",
+    taskType: "order-validator",
+    ioMapping: {
+      inputs: [{ source: "=order", target: "order" }],
+      outputs: [{ source: "=valid", target: "isValid" }],
+    },
   })
-  .exclusiveGateway("check", "Order Valid?")
-  .sequenceFlow("check", "fulfill", "=isValid = true")
-  .serviceTask("fulfill", "Fulfill Order", { type: "fulfillment-service" })
-  .endEvent("end", "Order Complete")
-  .sequenceFlow("check", "reject", "=isValid = false")
-  .endEvent("reject-end", "Order Rejected")
+  .exclusiveGateway("check", { name: "Order Valid?" })
+  .branch("valid", (b) =>
+    b
+      .condition("=isValid = true")
+      .serviceTask("fulfill", { name: "Fulfill Order", taskType: "fulfillment-service" })
+      .endEvent("end", { name: "Order Complete" }),
+  )
+  .branch("invalid", (b) =>
+    b.defaultFlow().endEvent("reject-end", { name: "Order Rejected" }),
+  )
+  .withAutoLayout()
   .build()
 
-const xml = Bpmn.export(process)
+const xml = Bpmn.export(defs)
 ```
+
+### Sub-processes, boundary events and multi-instance
+
+These are the constructs most often reached for and most often guessed at, so the
+exact shapes are worth stating. `subProcess` takes its body as a **callback**
+(second argument) and options third. A boundary event needs the id of the activity
+it attaches to; `withBoundary` supplies it from the preceding activity for you.
+
+```typescript
+import { Bpmn } from "@bpmnkit/core"
+
+const defs = Bpmn.createProcess("fulfilment")
+  .name("Fulfilment")
+  .startEvent("start")
+
+  // Sub-process: id, content callback, then options.
+  // multiInstance runs the body once per item in the collection.
+  .subProcess(
+    "provision",
+    (sub) => {
+      sub
+        .startEvent("p-start")
+        .serviceTask("provision-line", { name: "Provision Line", taskType: "provision" })
+        .endEvent("p-end")
+    },
+    {
+      name: "Provision Each Line",
+      multiInstance: { collection: "=order.lines", elementVariable: "line", isSequential: false },
+    },
+  )
+
+  // withBoundary attaches to the activity just added — no id repeated.
+  .serviceTask("charge", { name: "Charge Payment", taskType: "payment" })
+  .withBoundary("charge-failed", { errorCode: "PAYMENT_FAILED" }, (b) => {
+    b.serviceTask("retry-charge", { name: "Retry Charge", taskType: "payment" }).endEvent("gave-up")
+  })
+
+  // Wait for whichever event arrives first.
+  .eventBasedGateway("await-payment", { name: "Paid?" })
+  .branch("paid", (b) =>
+    b
+      .intermediateCatchEvent("payment-confirmed", {
+        messageName: "PaymentConfirmed",
+        correlationKey: "=orderId",
+      })
+      .endEvent("done"),
+  )
+  .branch("timeout", (b) =>
+    b.intermediateCatchEvent("payment-timeout", { timerDuration: "P14D" }).endEvent("written-off"),
+  )
+  .withAutoLayout()
+  .build()
+```
+
+Attach a boundary event explicitly when it is not the preceding activity — both
+forms below are accepted, and a boundary event with no host throws rather than
+exporting BPMN that cannot be read back:
+
+```typescript
+.boundaryEvent("timeout", { attachedTo: "charge", timerDuration: "PT30M" })
+.boundaryEvent("timeout", "charge", { timerDuration: "PT30M" })
+```
+
+Event definitions are named options, not nested objects — `timerDuration`,
+`timerDate`, `timerCycle`, `messageName` (with `correlationKey`),
+`errorCode`, `signalName`, `compensation`. An option the builder does not
+know is dropped silently, so `timer: { duration: "P7D" }` produces a boundary
+event with no timer on it.
 
 ### Parse and modify existing BPMN
 
@@ -85,12 +165,10 @@ const updated = Bpmn.export(defs)
 ### Auto-layout a process
 
 ```typescript
-import { Bpmn, layoutProcess } from "@bpmnkit/core"
+import { applyAutoLayout, Bpmn } from "@bpmnkit/core"
 
-const defs = Bpmn.parse(xml)
-const result = layoutProcess(defs.processes[0])
-// result.defs now has updated DI coordinates
-const laid = Bpmn.export(result.defs)
+// Lays out every process and writes the diagram interchange back onto the model.
+const laid = Bpmn.export(applyAutoLayout(Bpmn.parse(xml)))
 ```
 
 ### Optimize a diagram
@@ -135,9 +213,39 @@ const outXml = Bpmn.export(restored)
 |--------|-------------|
 | `Bpmn.parse(xml)` | Parse BPMN XML → `BpmnDefinitions` |
 | `Bpmn.export(defs)` | Serialize `BpmnDefinitions` → XML |
-| `Bpmn.createProcess(id, name?)` | Start a `ProcessBuilder` |
+| `Bpmn.createProcess(id)` | Start a `ProcessBuilder`; set the name with `.name(…)` |
 | `Bpmn.makeEmpty(processId?, name?)` | Minimal BPMN XML with one start event |
 | `Bpmn.SAMPLE_XML` | 3-node sample diagram string |
+
+### Process builder
+
+Every element method is `(id, options)` and returns the builder. The same methods
+exist inside `.branch()` and inside a sub-process body.
+
+| Method | Description |
+|--------|-------------|
+| `.name(name)` / `.versionTag(v)` | Process-level metadata |
+| `.startEvent(id?, options?)` / `.endEvent(id?, options?)` | Events; `options.name` labels them |
+| `.serviceTask(id, { taskType, ioMapping?, taskHeaders? })` | Zeebe job worker task |
+| `.userTask(id, opts)` / `.businessRuleTask(id, { decisionRef })` / `.scriptTask(id, opts)` | Other task types |
+| `.receiveTask(id, { message })` / `.sendTask(id, opts)` / `.callActivity(id, opts)` | Message and call activities |
+| `.restConnector(id, { method, url, … })` | Camunda 8 HTTP connector task |
+| `.exclusiveGateway(id, opts)` / `.parallelGateway` / `.inclusiveGateway` / `.eventBasedGateway` | Gateways |
+| `.branch(name, b => …)` | One path off the preceding gateway |
+| `b.condition(feel)` / `b.defaultFlow()` | Mark a branch's condition, or make it the default |
+| `.connectTo(id)` | Flow to an existing or later element — merges and loops |
+| `.subProcess(id, content, options?)` | Embedded sub-process; `content` is a callback |
+| `.transaction(id, content, options?)` / `.eventSubProcess` / `.adHocSubProcess` | Other containers |
+| `.withBoundary(id, options, handler)` | Boundary event on the preceding activity, plus its path |
+| `.boundaryEvent(id, options)` | Boundary event naming its host in `options.attachedTo` |
+| `.intermediateCatchEvent(id, opts)` / `.intermediateThrowEvent(id, opts)` | Intermediate events |
+| `.withAutoLayout()` | Compute coordinates on `build()` — no x/y by hand |
+| `.build()` | Produce `BpmnDefinitions`; pass to `Bpmn.export` |
+
+Event definitions are options on the element: `timerDuration`, `timerDate`,
+`timerCycle`, `messageName` + `correlationKey`, `errorCode`, `signalName`,
+`compensation`. Multi-instance is `options.multiInstance =
+{ collection, elementVariable, isSequential? }`.
 
 ### Semantics
 

@@ -1,5 +1,24 @@
 # Features
 
+## Sub-processes and boundary events, documented and forgiving (2026-09-13)
+
+Closing the gap that made the SDK path fail on the benchmark's hardest scenario.
+
+- **The core README documents sub-processes, boundary events, multi-instance and
+  event-based gateways** — constructs it previously never mentioned, in a file
+  that doubles as the LLM system prompt for SDK generation.
+- **A process builder API table** with the real `(id, options)` shapes, plus the
+  event-definition option names (`timerDuration`, `messageName` +
+  `correlationKey`, `errorCode`), since an unknown option is dropped silently.
+- **The Quick Start compiles again** — it called `.sequenceFlow()` and
+  `layoutProcess(...).defs`, neither of which exists.
+- **`boundaryEvent(id, hostId, options)`** is accepted alongside
+  `boundaryEvent(id, { attachedTo })`.
+- **A boundary event with no host throws `ValidationError`** at the call site,
+  instead of exporting BPMN that `Bpmn.parse` refuses to read.
+- **README examples are type-checked in CI** (`tests/readme-examples.test.ts`),
+  so the prompt cannot drift from the API again.
+
 ## AI generation benchmark on the homepage (2026-09-13)
 
 Section 09 of the landing page measures what it used to only assert: how three

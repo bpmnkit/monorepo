@@ -1,5 +1,73 @@
 # Progress
 
+## 2026-09-13 — Why the SDK lost on the hardest scenario, and the two things that caused it
+
+The AI benchmark shipped earlier today reported the `@bpmnkit/core` builder path
+as **2/5 usable** on quote-to-cash — worse than asking the model for raw XML. That
+number had two causes, and neither was the model being unreliable.
+
+**All three failures were one API surface.** Every failed run died on
+`subProcess` or `boundaryEvent` inside a `.branch()`:
+`b.defaultFlow(...).subProcess is not a function` twice, and
+`content is not a function` once.
+
+**Root cause: the prompt documented none of it.** `apps/demo` feeds
+`packages/core/README.md` to the model verbatim as the SDK system prompt. That
+prompt was 20,744 characters and contained **zero** occurrences of `subProcess`,
+`boundaryEvent`, `attachedTo`, `withBoundary`, `multiInstance` or
+`eventBasedGateway` — every construct quote-to-cash asks for. The model guessed
+the shapes, and guessed wrong exactly where the prompt was silent. That is also
+why only quote-to-cash failed: loan-approval and KYC need nothing the README
+omitted.
+
+**The README's own Quick Start did not compile.** It called `.sequenceFlow()`, a
+method `ProcessBuilder` has never had, and `layoutProcess(...).defs`, a property
+`LayoutResult` does not have. The prompt was teaching an API that does not exist.
+
+### What changed
+
+**The README now documents what the scenario needs** — `scripts/generate-readmes.mjs`
+gained a "Sub-processes, boundary events and multi-instance" section and a process
+builder API table, and its broken Quick Start was rewritten around `.branch()` /
+`.connectTo()`. Event definitions are named options (`timerDuration`,
+`messageName` + `correlationKey`, `errorCode`), which the section states
+explicitly, because an unknown option is dropped silently: the model's
+`timer: { duration: "P7D" }` produced a boundary event with no timer on it. The
+SDK prompt goes from 20,744 to 30,562 characters — about 2.5k more input tokens
+per run, the cost of the fix.
+
+**`boundaryEvent` accepts its host positionally and rejects not having one.**
+`boundaryEvent(id, hostId, options)` now works alongside
+`boundaryEvent(id, { attachedTo })`, resolved by `resolveBoundaryEventArgs` on
+the same reasoning as the existing `resolveSubProcessArgs`. A boundary event with
+no host now throws `ValidationError` at the call site instead of exporting
+`<bpmn:boundaryEvent id="…">` with no `attachedToRef` — invalid BPMN that
+`Bpmn.parse` then refused to read, far from the call that caused it.
+
+**`tests/readme-examples.test.ts` type-checks every complete README example**
+against the current source. Type-checking rather than running: it needs no
+fixtures and no file I/O, and it catches a wrong *option* name, which execution
+silently ignores. It found two live errors on its first run — one of them in the
+new example this very change added (`sequential`, where `MultiInstanceOptions`
+says `isSequential`).
+
+### Measured effect
+
+The three failing runs' generated code, replayed against the current build:
+
+| Run | July | Now |
+|---|---|---|
+| quote-to-cash-2026-07-01 | compile error | ✅ 38 elements, DI complete |
+| quote-to-cash-2026-07-02 | compile error | ✅ 31 elements, DI complete |
+| quote-to-cash-2026-07-02b | compile error | ✅ 37 elements, DI complete |
+
+Quote-to-cash goes from **2/5 to 5/5** on the same generated code — two of the
+three were already fixed by earlier work (`BranchBuilder.subProcess`,
+`resolveSubProcessArgs`), the third by the `boundaryEvent` change here. The
+landing page still reports the July numbers, since re-recording needs the demo's
+`claude` CLI; the prompt fix is untested against a fresh generation and its
+effect on the token columns is not yet measured.
+
 ## 2026-09-13 — The AI generation claim, measured
 
 The homepage asserted that a compact intermediate format makes BPMN Kit good to
