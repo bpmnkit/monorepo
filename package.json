@@ -2,7 +2,7 @@
 	"name": "@bpmnkit/monorepo",
 	"private": true,
 	"type": "module",
-	"packageManager": "pnpm@10.21.0",
+	"packageManager": "pnpm@12.4.1",
 	"scripts": {
 		"build": "node scripts/sync-license.mjs && node scripts/generate-readmes.mjs && node scripts/check-packages.mjs && pnpm turbo build",
 		"check:consumable": "node scripts/check-package-consumable.mjs",
@@ -49,7 +49,7 @@
 		"happy-dom": "^20.7.0",
 		"tailwindcss": "^4.0.0",
 		"tsx": "^4.0.0",
-		"turbo": "^2.4.4",
+		"turbo": "^2.9.18",
 		"typescript": "^5.7.3",
 		"vite": "^8.0.3",
 		"vitest": "^3.0.5",
