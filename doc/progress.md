@@ -1,5 +1,29 @@
 # Progress
 
+## 2026-09-14 — The casen plugins pack their declarations
+
+**The release workflow's tarball check failed on `@bpmnkit/casen-report`,
+`@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai`**, each for
+`exports["."].types` pointing at a `./dist/index.d.ts` that was not in the tarball.
+
+None of the three declared `files`. Packing then falls back to the ignore rules, and the
+root `.gitignore` ignores `dist` — so the build was ignored wholesale. What hid it is
+npm's rule that the file named in `main` is included whatever the ignores say: every
+tarball carried `dist/index.js` and nothing else from `dist`. The JS entry point resolved,
+the declarations did not, and `casen-report` was additionally missing `dist/report.js` and
+`dist/commands/*.js`, which are every module its own entry point imports. `src/` and
+`tsconfig.json` were packed in their place.
+
+Each now carries the line every other published package already has:
+`"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"]`. This is the same
+bug `@bpmnkit/proxy` shipped in 0.1.9 — a `files` list that did not cover what `exports`
+promised — arriving this time through no list at all.
+
+`node scripts/check-package-consumable.mjs --filter casen-report --filter casen-worker-http
+--filter casen-worker-ai` now reports all three consumable: packed, installed from the
+tarball into a throwaway project, imported from ESM, and their declarations type-checked
+under strict `NodeNext`.
+
 ## 2026-09-14 — Three packages that publish but were never in the published list
 
 `changeset publish` releases every non-private workspace package, but
