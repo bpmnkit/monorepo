@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 0.0.3. 191 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 0.0.3. 198 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -68,6 +68,13 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Quick Start — Step 2: Simulate locally](.llms/chunks/getting-started.quick-start.step-2-simulate-locally.md) — 157 tokens
 - [Quick Start — Step 3: Deploy to Camunda 8](.llms/chunks/getting-started.quick-start.step-3-deploy-to-camunda-8.md) — 151 tokens
 - [Quick Start — What's next?](.llms/chunks/getting-started.quick-start.what-s-next.md) — 140 tokens
+- [Stability and Versioning — What this page is for](.llms/chunks/getting-started.stability.what-this-page-is-for.md) — 231 tokens
+- [Stability and Versioning — Versions are per package, not per repo](.llms/chunks/getting-started.stability.versions-are-per-package-not-per-repo.md) — 179 tokens
+- [Stability and Versioning — What counts as public API](.llms/chunks/getting-started.stability.what-counts-as-public-api.md) — 276 tokens
+- [Stability and Versioning — What is a breaking change](.llms/chunks/getting-started.stability.what-is-a-breaking-change.md) — 776 tokens
+- [Stability and Versioning — What is not a breaking change](.llms/chunks/getting-started.stability.what-is-not-a-breaking-change.md) — 262 tokens
+- [Stability and Versioning — Deprecation](.llms/chunks/getting-started.stability.deprecation.md) — 142 tokens
+- [Stability and Versioning — Support window](.llms/chunks/getting-started.stability.support-window.md) — 217 tokens
 
 ## guides
 

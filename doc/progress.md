@@ -1,5 +1,52 @@
 # Progress
 
+## 2026-09-14 — The stability policy, and what `semanticHash` turns out to settle
+
+The last of the five 1.0.0 blockers, and the only one no script could close:
+[`docs/getting-started/stability`](https://bpmnkit.com/docs/getting-started/stability),
+linked from `README.md` and indexed in docspack, which grows 191 → 198 chunks.
+
+A version number is a promise about breakage, and semver leaves open the part that actually
+matters for a toolkit that also emits XML, writes state to disk and speaks HTTP. The page
+closes those gaps: public API is what the `exports` entry points export minus `@internal`,
+and nothing else — not deep `dist/` paths, not what happens to be reachable through a `.d.ts`.
+Type-level changes are graded by direction, because it runs opposite for values we hand you
+and values you hand us: adding a member to a union the library *returns* is a major, since an
+exhaustive `switch` stops compiling, while adding one to a union it *accepts* is a minor.
+
+**The generated-document rule is `semanticHash`, and that turned out to be the whole answer.**
+The obvious framings both fail — "the bytes are the contract" makes every layout improvement a
+major, and "only the TypeScript API counts" ignores that people diff generated files in review
+and deploy them by id. But `@bpmnkit/core` already exports a canonical, presentation-free
+projection built for exactly this question, so the rule is: **breaking when `semanticHash` moves
+for the same input, not when only the bytes move.**
+
+Four invariants checked against the current build rather than taken from the docstring: the
+same input rebuilt hashes the same; `applyAutoLayout` does not move it; renaming an element
+does; and changing an element **id** does. That last one is what makes the rule bite, and it
+settles the `@bpmnkit/core` 0.4.0 precedent on the record — deriving element ids from the model
+moved the hash for every document and shipped as a *minor*. Under this policy it is a major,
+and 0.x is the only reason it was not.
+
+Also written down, because each is a contract with no TypeScript signature to describe it: the
+`.bpmn.tests.json` sidecar, profile storage under `~/.config/casen` and its platform
+equivalents, the proxy's documented HTTP routes, and element-template validation. Plus the
+runtime floor and how it moves (dropping a Node major still in LTS is a major; dropping one
+past end-of-life is a minor), the deprecation run — `@deprecated` first, at least one minor of
+overlap, removal only in a major — and a six-month security window on the previous major.
+
+Writing it surfaced one contradiction that has to be fixed before the tag rather than after:
+`@bpmnkit/proxy` exports the subpath `"./dist/aikit-mcp.js"`, naming a build path as public API
+on a page that says `dist/` paths are not. It needs a real subpath name now; kept as it is, the
+first stable release either breaks it later or contradicts its own policy on day one. Filed on
+the roadmap.
+
+One deliberate omission: the page defines *when* a package is covered — at 1.0.0 and not
+before — and does not name which packages those will be. That is a release decision, and a
+policy that lists them goes stale the first time the list changes. Deciding the 1.0 set is now
+the critical path; everything left after it is mechanical.
+
+
 ## 2026-09-14 — Three more 1.0.0 blockers closed
 
 Follow-up to yesterday's assessment ([`doc/release-1.0.0.md`](release-1.0.0.md)),

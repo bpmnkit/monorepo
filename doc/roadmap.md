@@ -914,9 +914,12 @@ not code.
       exact pin, so a consumer on mismatched versions gets two copies of `@bpmnkit/core`.
       Must land before the tag; after it, the change is itself breaking — 51 ranges across
       16 published packages; the eight private apps keep `workspace:*`
-- [ ] Write and publish a stability policy: what is public API, what counts as breaking
+- [x] Write and publish a stability policy: what is public API, what counts as breaking
       (generated BPMN XML included — 0.4.0 changed every element ID as a *minor*), the
-      Node and browser ranges, and how deprecations run
+      Node and browser ranges, and how deprecations run →
+      `docs/getting-started/stability`, linked from `README.md` and indexed in docspack.
+      The generated-document rule is `semanticHash`: breaking when it moves for the same
+      input, not when only the bytes move
 
 ### Before the tag
 
@@ -925,7 +928,13 @@ not code.
       three `casen-*`) — those stay 0.x
 - [ ] Documentation pages for `@bpmnkit/plugins` and `@bpmnkit/feel`; 15 of 23 published
       packages have no page at all
-- [ ] `engines.node` on every published package — 4 of 23 declare one
+- [ ] `engines.node` on every published package — 5 of 26 declare one. The stability policy
+      now states the floor (Node 20 LTS) and the rule for raising it, so the manifests are
+      the only place it is still unsaid
+- [ ] `@bpmnkit/proxy` exports the subpath `"./dist/aikit-mcp.js"`, naming a build path as
+      public API — which the stability policy explicitly says `dist/` paths are not. Give it
+      a real subpath name before 1.0; the current spelling cannot be kept without either
+      breaking it later or contradicting the policy on day one
 - [ ] Commit an API-surface snapshot and diff it in CI, so a removed export fails the build
 - [ ] Refresh `PUBLISHING.md`; it still names the `@bpmn-sdk` org and `bpmn-sdk/monorepo`
 - [ ] Add `SECURITY.md`, `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`

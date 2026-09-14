@@ -750,6 +750,116 @@
 			"entities": []
 		},
 		{
+			"id": "getting-started.stability.what-this-page-is-for",
+			"file": "chunks/getting-started.stability.what-this-page-is-for.md",
+			"tokens": 231,
+			"tags": [
+				"getting-started",
+				"stability",
+				"page"
+			],
+			"entities": [
+				"package.json"
+			]
+		},
+		{
+			"id": "getting-started.stability.versions-are-per-package-not-per-repo",
+			"file": "chunks/getting-started.stability.versions-are-per-package-not-per-repo.md",
+			"tokens": 179,
+			"tags": [
+				"getting-started",
+				"stability",
+				"versions",
+				"per",
+				"package",
+				"not",
+				"repo"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"@bpmnkit/canvas",
+				"@bpmnkit/plugins",
+				"CHANGELOG.md"
+			]
+		},
+		{
+			"id": "getting-started.stability.what-counts-as-public-api",
+			"file": "chunks/getting-started.stability.what-counts-as-public-api.md",
+			"tokens": 276,
+			"tags": [
+				"getting-started",
+				"stability",
+				"counts",
+				"public",
+				"api"
+			],
+			"entities": [
+				"dist/",
+				"ProcessBuilder",
+				"src/",
+				"@bpmnkit/plugins"
+			]
+		},
+		{
+			"id": "getting-started.stability.what-is-a-breaking-change",
+			"file": "chunks/getting-started.stability.what-is-a-breaking-change.md",
+			"tokens": 776,
+			"tags": [
+				"getting-started",
+				"stability",
+				"breaking",
+				"change"
+			],
+			"entities": [
+				"semanticHash",
+				"applyAutoLayout",
+				"@bpmnkit/core",
+				"@bpmnkit/proxy"
+			]
+		},
+		{
+			"id": "getting-started.stability.what-is-not-a-breaking-change",
+			"file": "chunks/getting-started.stability.what-is-not-a-breaking-change.md",
+			"tokens": 262,
+			"tags": [
+				"getting-started",
+				"stability",
+				"not",
+				"breaking",
+				"change"
+			],
+			"entities": [
+				"semanticHash",
+				"@bpmnkit/docspack"
+			]
+		},
+		{
+			"id": "getting-started.stability.deprecation",
+			"file": "chunks/getting-started.stability.deprecation.md",
+			"tokens": 142,
+			"tags": [
+				"getting-started",
+				"stability",
+				"deprecation"
+			],
+			"entities": [
+				"ProcessBuilder",
+				"explicitJoins"
+			]
+		},
+		{
+			"id": "getting-started.stability.support-window",
+			"file": "chunks/getting-started.stability.support-window.md",
+			"tokens": 217,
+			"tags": [
+				"getting-started",
+				"stability",
+				"support",
+				"window"
+			],
+			"entities": []
+		},
+		{
 			"id": "guides.ai-agents",
 			"file": "chunks/guides.ai-agents.md",
 			"tokens": 145,

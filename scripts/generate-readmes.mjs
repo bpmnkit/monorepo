@@ -3059,6 +3059,16 @@ pnpm release            # Build and publish all changed packages to npm
 
 Every PR that changes a published package **must** include a changeset. Use \`patch\` for bug fixes, \`minor\` for new features, \`major\` for breaking changes.
 
+## Versioning
+
+Every package is on **0.x**, which under semver promises nothing about compatibility — pin an
+exact version if that matters to you today.
+
+[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) is the contract
+each package takes on when it reaches 1.0.0: what counts as public API, what makes a change
+breaking (including when generated BPMN counts as one), which runtimes are supported, and how
+deprecations run.
+
 ## Contributing
 
 Contributions are welcome — bug reports, feature requests, documentation improvements, and pull requests.

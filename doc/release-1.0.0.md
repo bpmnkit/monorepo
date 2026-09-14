@@ -2,8 +2,8 @@
 
 An assessment of what stands between this repo and a 1.0.0 its users can rely on.
 Written against `53a9e25` (2026-09-13), with every claim below verified by running
-the thing rather than reading about it. Blockers 1–4 have since been fixed; each is
-kept here with what it was and how it was closed, because the reasoning is the part
+the thing rather than reading about it. All five blockers have since been fixed; each
+is kept here with what it was and how it was closed, because the reasoning is the part
 worth keeping.
 
 ---
@@ -52,8 +52,8 @@ the project said what it is promising".
 
 ## Blockers
 
-Four of the five are now closed. The fifth — the stability policy — is the one that
-cannot be fixed by a script.
+All five are now closed. What is left is on the list below it: decisions and coverage,
+not defects.
 
 ### 1. The release pipeline is broken. Nothing has published for days. ✅ *(fixed)*
 
@@ -147,22 +147,41 @@ exactly why it had to land *before* the tag rather than with it: at 1.0 the same
 become `^1.0.0` and start deduplicating, without the first stable release also being the
 one that rewrites every manifest.
 
-### 5. There is no stability policy, anywhere
+### 5. There is no stability policy, anywhere ✅ *(fixed)*
 
 There is no page, in the repo or on bpmnkit.com, that says what semver means here —
 what counts as breaking, what the support window is, what is public API and what is
 internal. `README.md` still carries a **`status: experimental`** badge.
 
-A 1.0.0 without that document is a number, not a promise. This is the single highest-
-value item on the list, and it is an afternoon of writing.
+A 1.0.0 without that document is a number, not a promise.
 
-It should answer at least:
+**Fixed.** [`docs/getting-started/stability`][policy] now states the contract each package
+takes on at 1.0.0, linked from `README.md` and indexed in docspack (191 → 198 chunks). It
+answers:
 
-- What is public API? (`exports` entry points only — not deep `dist/` paths.)
-- Is the **generated BPMN XML** part of the contract? This matters more here than in
-  most libraries: `@bpmnkit/core` 0.4.0 changed every generated element ID, which is a
-  breaking change for anyone diffing or deploying generated files, and shipped as a
-  *minor*. Under 1.0 that is a major — say so explicitly.
+- **What is public API** — what the `exports` entry points export, minus `@internal`.
+  Deep `dist/` paths are not.
+- **Generated documents** — the rule is `semanticHash`: a change is breaking when it moves
+  the hash for the same input, and not when only the bytes move. That splits the cases
+  cleanly, because the hash is already invariant under layout and formatting and *is*
+  sensitive to element ids — all four invariants verified against the current build while
+  writing the page. It also settles the `@bpmnkit/core` 0.4.0 precedent on the record:
+  deriving element ids moved the hash for every document and shipped as a *minor*; under
+  1.0 it is a major.
+- **Type-level changes**, graded by direction — adding to a union the library *returns* is
+  major (exhaustive switches stop compiling), adding to one it *accepts* is minor.
+- **Formats outside the package** — the `.bpmn.tests.json` sidecar, on-disk profile
+  storage, and the proxy's documented HTTP routes are contracts too.
+- **Runtime support and how the floor moves** — dropping a Node major still in LTS is
+  major, dropping one past end-of-life is minor.
+- **Deprecation and the support window** — `@deprecated` first, at least one minor of
+  overlap, removal only in a major; six months of security fixes on the previous major.
+
+Writing it surfaced one contradiction to fix before the tag: `@bpmnkit/proxy` exports the
+subpath `"./dist/aikit-mcp.js"`, which names a build path as public API on a page that says
+`dist/` paths are not. It needs a real subpath name now rather than a break later.
+
+[policy]: https://bpmnkit.com/docs/getting-started/stability
 - What about the `.bpmn.tests.json` sidecar format, profile storage, and the proxy's
   HTTP surface? Each is a contract someone depends on.
 - Node and browser support ranges.
@@ -249,8 +268,9 @@ Recorded so they are not re-litigated:
 3. ~~Add `--pack-only` to CI so this cannot recur.~~ — **done**
 4. ~~Add the three missing packages to `PUBLISHED`; regenerate licences and READMEs.~~ — **done**
 5. ~~Switch internal deps to `workspace:^`.~~ — **done**
-6. Write the stability policy. Publish it on bpmnkit.com and link it from `README.md`.
-   **This is now the last blocker.**
+6. ~~Write the stability policy. Publish it on bpmnkit.com and link it from `README.md`.~~ — **done**
 7. Decide the 1.0 set; write docs pages for `plugins` and `feel` at minimum.
-8. Add `engines.node` everywhere; refresh `PUBLISHING.md`; add `SECURITY.md`.
-9. Cut 1.0.0 with a single changeset, and drop the `experimental` badge.
+   **This is now the critical path** — everything below is mechanical once it is settled.
+8. Rename the `@bpmnkit/proxy` `./dist/aikit-mcp.js` subpath.
+9. Add `engines.node` everywhere; refresh `PUBLISHING.md`; add `SECURITY.md`.
+10. Cut 1.0.0 with a single changeset, and drop the `experimental` badge.
