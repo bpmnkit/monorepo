@@ -1,5 +1,30 @@
 # Progress
 
+## 2026-09-14 — A start event built through the fluent API keeps its documentation
+
+**`ElementOptions.documentation` never reached a start event (#178).** `ProcessBuilder`'s
+`startEvent()` is the one event method that hand-builds its options literal instead of
+forwarding the caller's — it needs somewhere to put the `zeebe:properties` a webhook start
+event carries — and that literal listed `name` and `extensionElements` only. The typed API
+accepted `documentation`, raised nothing, and dropped it before the model was built. Every
+other element method, the start events inside sub-processes and event sub-processes
+included, forwards its options whole and was never affected.
+
+It bit hardest on the one element the optimizer asks callers to document: the
+`pattern/start-no-documentation` rule reads `el.documentation` and tells the caller to
+"add documentation listing the process input variables". A caller who followed that advice
+through the builder got the same warning back on a diagram that looked like it complied.
+
+The literal now carries `documentation` through, next to `name`. Tests cover the start
+event on its own, together with a message event definition and Zeebe properties (the
+reason the literal exists), nested in a sub-process and an event sub-process, the rule
+falling silent, and a table walking every element method that takes `documentation` so the
+next hand-built literal is caught by the suite rather than by a diff of exported XML.
+
+Checked while here: `compactify()`/`expand()` carry `documentation` correctly on `main`
+(#150). The report that it still reproduces is against the published `@bpmnkit/core@0.4.0`
+— the fix landed after that release and has not shipped yet.
+
 ## 2026-09-14 — Every built form component carries a layout
 
 **`FormBuilder` left `layout` off unless the caller passed one (#177).** Each component
