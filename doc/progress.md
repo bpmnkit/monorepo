@@ -1,5 +1,26 @@
 # Progress
 
+## 2026-09-14 — Every built form component carries a layout
+
+**`FormBuilder` left `layout` off unless the caller passed one (#177).** Each component
+builder set `layout` only when `options.layout` was present, so a form built without
+naming a layout on every field serialised with no `layout` attribute at all. Camunda's
+Desktop Modeler and the `form-js` importer read a missing `layout` as a legacy schema and
+backfill a `row`/`columns` pair on open — the file therefore came back dirty the first
+time it was opened, with a diff on every component and no content change behind it.
+
+`resolveLayout()` now fills the gap the same way the component `id` is already filled: a
+generated `Row_…` id when the caller gives no row, `columns: null` when they give no
+column span, and the caller's values untouched when they do. Each component lands in its
+own row, matching what the Modeler produces for a field added to the end of a form, and a
+partial layout (`{ columns: 4 }`) keeps its span and gains a row rather than being passed
+through half-built. `GroupBuilder` shares the helper, so nested children and the group
+component itself are covered.
+
+The model keeps `layout?: FormLayout` optional — a parsed legacy form genuinely has no
+layout, and the parser must stay able to represent that. The guarantee belongs to the
+builder, which is what writes the files.
+
 ## 2026-09-13 — Ad-hoc children stop being a chain; documentation stops being dropped
 
 Two open issues against `@bpmnkit/core`, both hit while authoring a Camunda 8
