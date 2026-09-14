@@ -18,7 +18,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmnkit/core": "workspace:*"
+		"@bpmnkit/core": "workspace:^"
 	},
 	"description": "Render BPMN diagrams as Unicode box-drawing ASCII art — perfect for terminals and docs",
 	"keywords": ["bpmn", "ascii", "terminal", "diagram", "typescript", "unicode"],

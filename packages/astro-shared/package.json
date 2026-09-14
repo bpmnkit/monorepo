@@ -16,7 +16,7 @@
 	},
 	"keywords": ["bpmn", "astro", "design-tokens", "shared", "seo", "css", "typescript"],
 	"dependencies": {
-		"@bpmnkit/ui": "workspace:*"
+		"@bpmnkit/ui": "workspace:^"
 	},
 	"license": "MIT",
 	"publishConfig": {

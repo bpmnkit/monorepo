@@ -22,8 +22,8 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmnkit/canvas": "workspace:*",
-		"@bpmnkit/core": "workspace:*"
+		"@bpmnkit/canvas": "workspace:^",
+		"@bpmnkit/core": "workspace:^"
 	},
 	"description": "Full-featured interactive BPMN editor with undo/redo, HUD, and side-dock UI",
 	"keywords": ["bpmn", "editor", "workflow", "typescript", "canvas", "camunda"],

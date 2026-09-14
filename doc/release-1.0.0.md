@@ -2,7 +2,9 @@
 
 An assessment of what stands between this repo and a 1.0.0 its users can rely on.
 Written against `53a9e25` (2026-09-13), with every claim below verified by running
-the thing rather than reading about it.
+the thing rather than reading about it. Blockers 1–4 have since been fixed; each is
+kept here with what it was and how it was closed, because the reasoning is the part
+worth keeping.
 
 ---
 
@@ -28,7 +30,7 @@ Verified on this branch with a full install, a Rust/wasm build and the whole pip
 | `pnpm -r typecheck` | ✅ zero errors |
 | `pnpm lint` (Biome) | ✅ zero warnings |
 | `pnpm -r test` | ✅ **2,499 tests across 20 packages**, all passing |
-| `pnpm check:consumable` | ❌ 3 failures — see Blocker 1 |
+| `pnpm check:consumable --pack-only` | ✅ 26 packages (was 23, and failing — Blockers 1–3) |
 
 Other things the sweep turned up, all of which argue *for* a 1.0:
 
@@ -48,9 +50,12 @@ the project said what it is promising".
 
 ---
 
-## Blockers — these must be fixed before any 1.0.0
+## Blockers
 
-### 1. The release pipeline is broken. Nothing has published for days. ⚠️ *(fixed in this change)*
+Four of the five are now closed. The fifth — the stability policy — is the one that
+cannot be fixed by a script.
+
+### 1. The release pipeline is broken. Nothing has published for days. ✅ *(fixed)*
 
 Release workflow runs **#132** and **#133** — the last two merges to `main` — both
 failed at the *Check packages are consumable* step, which **skips the publish step
@@ -72,14 +77,14 @@ build output its own `exports` points at.
 fix for issues **#149** and **#150** is merged and **is not on npm**. Any 1.0.0 cut
 today would fail the same way.
 
-**Fix applied here:** one `files` line per package, matching the other twenty. Verified
-— `pnpm check:consumable` now reports `✓ 23 package(s) consumable.`
+**Fixed.** One `files` line per package, matching the other twenty. `check:consumable`
+went from three failures to `✓ 26 package(s) consumable.`
 
 The live 0.1.x tarballs on npm are not broken (the real publish path uses `npm pack`,
 which does not walk up to the root `.gitignore`), but they do ship source and build
 logs. This change cleans that up too.
 
-### 2. Three published packages bypass every release check
+### 2. Three published packages bypass every release check ✅ *(fixed)*
 
 `scripts/published-packages.mjs` is documented as the single list that
 `sync-license.mjs`, `check-packages.mjs` and `check-package-consumable.mjs` all read.
@@ -99,10 +104,13 @@ ever had its tarball opened by the consumability check.
 `scripts/generate-readmes.mjs` — which `CLAUDE.md` forbids outright, because the next
 generator run overwrites it.
 
-**Fix:** add all three to `PUBLISHED`, add a `user-tasks` entry to the README
-generator, then run `sync-license.mjs`, `generate-readmes.mjs` and `check-packages.mjs`.
+**Fixed.** All three are in `PUBLISHED`, `user-tasks` has a generator entry, and the
+scripts did the rest: `check-packages.mjs` and `check:consumable` now cover **26**
+packages rather than 23, and all three have a LICENSE. The list also feeds
+`scripts/generate-ecosystem.mjs`, so the same three were missing from bpmnkit.com's
+package list and now appear there.
 
-### 3. CI cannot see a packaging break
+### 3. CI cannot see a packaging break ✅ *(fixed)*
 
 `.github/workflows/ci.yml` runs build, typecheck, check and test. It does **not** run
 `check:consumable` — that lives only in `release.yml`. This is exactly how Blocker 1
@@ -110,11 +118,13 @@ reached `main`: the PR was green, and the break only surfaced after merge, where
 silently stopped publishing.
 
 The script's own header explains the omission (steps 3–5 install from the network,
-23 packages, one project each — too slow for every PR). But `--pack-only` skips those
-steps entirely, is offline, and runs in about a second. **It catches this whole class
-of bug and belongs in CI.**
+one project per package — too slow for every PR). But `--pack-only` skips those steps
+entirely, is offline, and runs in about a second.
 
-### 4. Sibling packages publish as exact pins
+**Fixed.** `ci.yml` gained a *Check packages are packable* step running
+`pnpm check:consumable --pack-only`. The release workflow keeps the full check.
+
+### 4. Sibling packages publish as exact pins ✅ *(fixed)*
 
 Every internal dependency is `workspace:*`, which publishes as an **exact** version:
 
@@ -127,8 +137,15 @@ consumer who upgrades `@bpmnkit/core` to `1.1.0` but not `@bpmnkit/plugins` gets
 **two copies of core** in their tree, and `instanceof` checks, singletons and type
 identity all quietly stop matching.
 
-**Fix:** switch internal deps to `workspace:^`, which publishes `^1.0.0`. Do this
-*before* the 1.0 tag — after it, the change is itself breaking.
+**Fixed.** 51 ranges across 16 published packages are now `workspace:^`, verified by
+packing `@bpmnkit/plugins` and reading the manifest back: `"@bpmnkit/core": "^0.4.0"`.
+The eight private apps keep `workspace:*` — they are never published, so the range has
+no consumer to reach.
+
+At 0.x a caret buys less than it looks like (`^0.4.0` admits only `0.4.x`), which is
+exactly why it had to land *before* the tag rather than with it: at 1.0 the same ranges
+become `^1.0.0` and start deduplicating, without the first stable release also being the
+one that rewrites every manifest.
 
 ### 5. There is no stability policy, anywhere
 
@@ -229,10 +246,11 @@ Recorded so they are not re-litigated:
 
 1. ~~Fix the three `files` fields~~ — **done in this change**; the pipeline is unblocked.
 2. Merge, and confirm the pending changesets actually publish.
-3. Add `--pack-only` to CI so this cannot recur.
-4. Add the three missing packages to `PUBLISHED`; regenerate licences and READMEs.
-5. Write the stability policy. Publish it on bpmnkit.com and link it from `README.md`.
-6. Switch internal deps to `workspace:^`.
+3. ~~Add `--pack-only` to CI so this cannot recur.~~ — **done**
+4. ~~Add the three missing packages to `PUBLISHED`; regenerate licences and READMEs.~~ — **done**
+5. ~~Switch internal deps to `workspace:^`.~~ — **done**
+6. Write the stability policy. Publish it on bpmnkit.com and link it from `README.md`.
+   **This is now the last blocker.**
 7. Decide the 1.0 set; write docs pages for `plugins` and `feel` at minimum.
 8. Add `engines.node` everywhere; refresh `PUBLISHING.md`; add `SECURITY.md`.
 9. Cut 1.0.0 with a single changeset, and drop the `experimental` badge.

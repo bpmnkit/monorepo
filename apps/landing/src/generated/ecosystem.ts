@@ -88,6 +88,14 @@ export const PACKAGE_FACTS: readonly PackageFact[] = [
 		github: "https://github.com/bpmnkit/monorepo/tree/main/apps/cli",
 	},
 	{
+		dir: "packages/cli-sdk",
+		name: "@bpmnkit/cli-sdk",
+		version: "0.0.9",
+		description: "Plugin authoring SDK for the casen CLI",
+		npm: "https://www.npmjs.com/package/@bpmnkit/cli-sdk",
+		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/cli-sdk",
+	},
+	{
 		dir: "packages/connector-gen",
 		name: "@bpmnkit/connector-gen",
 		version: "0.0.15",
@@ -110,6 +118,14 @@ export const PACKAGE_FACTS: readonly PackageFact[] = [
 		description: "TypeScript-first BPMN 2.0 SDK — parse, build, layout, and optimize diagrams",
 		npm: "https://www.npmjs.com/package/@bpmnkit/core",
 		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/core",
+	},
+	{
+		dir: "packages/create-casen-plugin",
+		name: "@bpmnkit/create-casen-plugin",
+		version: "0.0.9",
+		description: "Scaffold a new casen CLI plugin in seconds",
+		npm: "https://www.npmjs.com/package/@bpmnkit/create-casen-plugin",
+		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/create-casen-plugin",
 	},
 	{
 		dir: "packages/docspack",
@@ -198,6 +214,14 @@ export const PACKAGE_FACTS: readonly PackageFact[] = [
 		description: "Shared design tokens, theme management, and UI components for BPMN Kit packages",
 		npm: "https://www.npmjs.com/package/@bpmnkit/ui",
 		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/ui",
+	},
+	{
+		dir: "packages/user-tasks",
+		name: "@bpmnkit/user-tasks",
+		version: "0.0.21",
+		description: "Embeddable user task widget for Camunda 8 — form rendering, claim/complete actions, zero dependencies",
+		npm: "https://www.npmjs.com/package/@bpmnkit/user-tasks",
+		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/user-tasks",
 	},
 	{
 		dir: "packages/worker-client",

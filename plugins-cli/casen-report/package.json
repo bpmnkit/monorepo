@@ -45,11 +45,11 @@
 		"test": "echo \"no tests\""
 	},
 	"devDependencies": {
-		"@bpmnkit/api": "workspace:*",
-		"@bpmnkit/cli-sdk": "workspace:*"
+		"@bpmnkit/api": "workspace:^",
+		"@bpmnkit/cli-sdk": "workspace:^"
 	},
 	"dependencies": {
-		"@bpmnkit/api": "workspace:*",
-		"@bpmnkit/cli-sdk": "workspace:*"
+		"@bpmnkit/api": "workspace:^",
+		"@bpmnkit/cli-sdk": "workspace:^"
 	}
 }

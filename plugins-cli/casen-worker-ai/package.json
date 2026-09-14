@@ -63,9 +63,9 @@
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.40.0",
-		"@bpmnkit/cli-sdk": "workspace:*"
+		"@bpmnkit/cli-sdk": "workspace:^"
 	},
 	"devDependencies": {
-		"@bpmnkit/cli-sdk": "workspace:*"
+		"@bpmnkit/cli-sdk": "workspace:^"
 	}
 }

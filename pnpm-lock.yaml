@@ -254,31 +254,31 @@ importers:
   apps/cli:
     dependencies:
       '@bpmnkit/api':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/api
       '@bpmnkit/ascii':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ascii
       '@bpmnkit/connector-gen':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/connector-gen
       '@bpmnkit/connectors':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/connectors
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/core
       '@bpmnkit/engine':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/engine
       '@bpmnkit/patterns':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/patterns
       '@bpmnkit/profiles':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/profiles
       '@bpmnkit/proxy':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../proxy
 
   apps/demo:
@@ -414,22 +414,22 @@ importers:
   apps/proxy:
     dependencies:
       '@bpmnkit/api':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/api
       '@bpmnkit/connectors':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/connectors
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/core
       '@bpmnkit/engine':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/engine
       '@bpmnkit/patterns':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/patterns
       '@bpmnkit/profiles':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/profiles
       better-sqlite3:
         specifier: ^12.8.0
@@ -564,19 +564,19 @@ importers:
   packages/ascii:
     dependencies:
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/astro-shared:
     dependencies:
       '@bpmnkit/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../ui
 
   packages/canvas:
     dependencies:
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/cli-sdk: {}
@@ -590,16 +590,16 @@ importers:
   packages/connectors:
     dependencies:
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@bpmnkit/feel':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../feel
 
   packages/core:
     dependencies:
       '@bpmnkit/feel':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../feel
 
   packages/create-casen-plugin: {}
@@ -609,23 +609,23 @@ importers:
   packages/editor:
     dependencies:
       '@bpmnkit/canvas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../canvas
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/engine:
     dependencies:
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@bpmnkit/feel':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../feel
     optionalDependencies:
       '@bpmnkit/reebe-wasm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../apps/reebe-wasm
 
   packages/feel: {}
@@ -633,19 +633,19 @@ importers:
   packages/operate:
     dependencies:
       '@bpmnkit/api':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../api
       '@bpmnkit/canvas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../canvas
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@bpmnkit/plugins':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../plugins
       '@bpmnkit/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../ui
 
   packages/patterns: {}
@@ -653,31 +653,31 @@ importers:
   packages/plugins:
     dependencies:
       '@bpmnkit/ascii':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../ascii
       '@bpmnkit/canvas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../canvas
       '@bpmnkit/connector-gen':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../connector-gen
       '@bpmnkit/connectors':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../connectors
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@bpmnkit/editor':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../editor
       '@bpmnkit/feel':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../feel
 
   packages/profiles:
     dependencies:
       '@bpmnkit/api':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../api
 
   packages/ui: {}
@@ -685,16 +685,16 @@ importers:
   packages/user-tasks:
     dependencies:
       '@bpmnkit/api':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../api
       '@bpmnkit/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@bpmnkit/plugins':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../plugins
       '@bpmnkit/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../ui
 
   packages/worker-client: {}
@@ -702,10 +702,10 @@ importers:
   plugins-cli/casen-report:
     dependencies:
       '@bpmnkit/api':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/api
       '@bpmnkit/cli-sdk':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/cli-sdk
 
   plugins-cli/casen-worker-ai:
@@ -714,13 +714,13 @@ importers:
         specifier: ^0.40.0
         version: 0.40.1
       '@bpmnkit/cli-sdk':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/cli-sdk
 
   plugins-cli/casen-worker-http:
     dependencies:
       '@bpmnkit/cli-sdk':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/cli-sdk
 
 packages:

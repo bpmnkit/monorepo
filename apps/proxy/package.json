@@ -20,12 +20,12 @@
 		"node": ">=20"
 	},
 	"dependencies": {
-		"@bpmnkit/api": "workspace:*",
-		"@bpmnkit/connectors": "workspace:*",
-		"@bpmnkit/core": "workspace:*",
-		"@bpmnkit/engine": "workspace:*",
-		"@bpmnkit/patterns": "workspace:*",
-		"@bpmnkit/profiles": "workspace:*",
+		"@bpmnkit/api": "workspace:^",
+		"@bpmnkit/connectors": "workspace:^",
+		"@bpmnkit/core": "workspace:^",
+		"@bpmnkit/engine": "workspace:^",
+		"@bpmnkit/patterns": "workspace:^",
+		"@bpmnkit/profiles": "workspace:^",
 		"better-sqlite3": "^12.8.0",
 		"imapflow": "^1.2.18",
 		"isolated-vm": "^7.0.0",

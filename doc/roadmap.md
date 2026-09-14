@@ -901,16 +901,19 @@ not code.
       `check:consumable` failed and **release runs #132 and #133 published nothing**
 - [ ] Merge and confirm the two changesets stranded on `main` actually publish —
       the `@bpmnkit/core` fix for #149 / #150 is merged and not on npm
-- [ ] Run `check:consumable --pack-only` in CI. It is offline and takes about a second;
+- [x] Run `check:consumable --pack-only` in CI. It is offline and takes about a second;
       leaving it to the release workflow is what let the break reach `main`
-- [ ] Add `@bpmnkit/cli-sdk`, `@bpmnkit/user-tasks` and `@bpmnkit/create-casen-plugin`
+- [x] Add `@bpmnkit/cli-sdk`, `@bpmnkit/user-tasks` and `@bpmnkit/create-casen-plugin`
       to `scripts/published-packages.mjs`. All three are on npm, none is in the list, and
-      all three declare `LICENSE` in `files` while having no LICENSE file on disk
-- [ ] Add a `packages/user-tasks` entry to `scripts/generate-readmes.mjs` — its README is
+      all three declare `LICENSE` in `files` while having no LICENSE file on disk — the
+      list also feeds the landing site's ecosystem page, so all three were missing from
+      bpmnkit.com too
+- [x] Add a `packages/user-tasks` entry to `scripts/generate-readmes.mjs` — its README is
       hand-written today, which the next generator run would delete
-- [ ] Switch internal dependencies from `workspace:*` to `workspace:^`. `*` publishes an
+- [x] Switch internal dependencies from `workspace:*` to `workspace:^`. `*` publishes an
       exact pin, so a consumer on mismatched versions gets two copies of `@bpmnkit/core`.
-      Must land before the tag; after it, the change is itself breaking
+      Must land before the tag; after it, the change is itself breaking — 51 ranges across
+      16 published packages; the eight private apps keep `workspace:*`
 - [ ] Write and publish a stability policy: what is public API, what counts as breaking
       (generated BPMN XML included — 0.4.0 changed every element ID as a *minor*), the
       Node and browser ranges, and how deprecations run

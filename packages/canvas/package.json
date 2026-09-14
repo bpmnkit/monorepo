@@ -18,7 +18,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmnkit/core": "workspace:*"
+		"@bpmnkit/core": "workspace:^"
 	},
 	"description": "Zero-dependency SVG BPMN viewer with pan/zoom, theming, and a plugin API",
 	"keywords": ["bpmn", "viewer", "svg", "canvas", "workflow", "typescript"],

@@ -41,9 +41,9 @@
 		"test": "echo \"no tests\""
 	},
 	"devDependencies": {
-		"@bpmnkit/cli-sdk": "workspace:*"
+		"@bpmnkit/cli-sdk": "workspace:^"
 	},
 	"dependencies": {
-		"@bpmnkit/cli-sdk": "workspace:*"
+		"@bpmnkit/cli-sdk": "workspace:^"
 	}
 }

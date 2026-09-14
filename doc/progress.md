@@ -1,5 +1,62 @@
 # Progress
 
+## 2026-09-14 — Three more 1.0.0 blockers closed
+
+Follow-up to yesterday's assessment ([`doc/release-1.0.0.md`](release-1.0.0.md)),
+taking blockers 2, 3 and 4. Four of the five are now closed; the one left is the
+stability policy, which is the one no script can write.
+
+**Sibling packages stop publishing exact pins.** Every internal dependency was
+`workspace:*`, which publishes as an exact version — `@bpmnkit/plugins` depended on
+`@bpmnkit/core` at `0.4.0`, not `^0.4.0`. In a lockstep 0.x that is invisible, and it
+stops being invisible the moment two BPMN Kit packages in one tree disagree about a
+third: npm and pnpm both satisfy that by installing two copies, and a second copy of
+`@bpmnkit/core` is not a duplicate of the first — class identity, `instanceof`,
+module-level registries and types at the boundary all quietly stop matching.
+
+51 ranges across 16 published packages are now `workspace:^`, checked by packing
+`@bpmnkit/plugins` and reading the manifest back out of the tarball: `"@bpmnkit/core":
+"^0.4.0"`. The eight private apps keep `workspace:*`, having no consumer to reach. At
+0.x a caret admits only `0.4.x`, so this buys little today — which is precisely why it
+had to land before the tag rather than with it. At 1.0 the same ranges become `^1.0.0`
+and start deduplicating, and the first stable release is not also the one that rewrites
+every manifest.
+
+**The list that three scripts read had drifted, and it had drifted for months.**
+`@bpmnkit/cli-sdk`, `@bpmnkit/user-tasks` and `@bpmnkit/create-casen-plugin` are
+non-private and have been publishing to npm for months, and none of them was in
+`scripts/published-packages.mjs`. Each declared `"LICENSE"` in its `files` array with no
+LICENSE file on disk, so each reached npm marked MIT with the licence text missing; none
+was metadata-checked; none had its tarball opened before release. Adding the three to
+the list was the whole fix — `sync-license.mjs` wrote the licences and the checks went
+from 23 packages to 26.
+
+It also turned up a fourth consumer of that list nobody had counted:
+`scripts/generate-ecosystem.mjs` builds the landing site's package page from it, so the
+same three were absent from bpmnkit.com as well and now appear there.
+
+`@bpmnkit/user-tasks` additionally had a hand-written README — written convincingly in
+the generator's own style, which is what hid it — with no entry in
+`scripts/generate-readmes.mjs`. The next `pnpm build` would have deleted it. Its content
+is now in the generator, so the file it writes carries the same Overview, Features,
+Quick Start and API Reference, with a related-packages table that is no longer four
+packages out of date and a `docs.bpmnkit.com` link that no longer points at a retired
+host. `worker-client` and `user-tasks` were also the only published packages missing
+from the root README's own tables; both are now in the Camunda Integration one.
+
+**CI can now see a packaging break.** `ci.yml` runs build, typecheck, check and test,
+and never ran `check:consumable` — that lived only in `release.yml`, which is exactly
+how yesterday's break reached `main` behind a green PR and then silently stopped
+publishing. The full check installs and type-checks every tarball from the network and
+has no business running on a PR, but `--pack-only` skips all of that, is offline, and
+takes about a second. CI gained a *Check packages are packable* step; the release
+workflow keeps the full one.
+
+Verified end to end after the change: build, typecheck and Biome clean, **2,499 tests
+across 20 packages** still passing, `check-packages.mjs` and `check:consumable` green
+across all 26.
+
+
 ## 2026-09-13 — What 1.0.0 needs, and the broken pipeline found on the way
 
 An assessment of what stands between this repo and a stable 1.0.0, written up in

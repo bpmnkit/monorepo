@@ -22,11 +22,11 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmnkit/core": "workspace:*",
-		"@bpmnkit/feel": "workspace:*"
+		"@bpmnkit/core": "workspace:^",
+		"@bpmnkit/feel": "workspace:^"
 	},
 	"optionalDependencies": {
-		"@bpmnkit/reebe-wasm": "workspace:*"
+		"@bpmnkit/reebe-wasm": "workspace:^"
 	},
 	"description": "Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
 	"keywords": ["bpmn", "engine", "simulation", "workflow", "typescript", "dmn", "camunda"],

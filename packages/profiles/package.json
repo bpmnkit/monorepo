@@ -21,7 +21,7 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmnkit/api": "workspace:*"
+		"@bpmnkit/api": "workspace:^"
 	},
 	"keywords": ["bpmn", "camunda", "profiles", "authentication", "oauth2", "cli", "typescript"],
 	"publishConfig": {
