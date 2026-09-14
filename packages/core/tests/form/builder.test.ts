@@ -256,6 +256,90 @@ describe("FormBuilder", () => {
 		expect(at(reparsed.components, 2).type).toBe("group")
 	})
 
+	it("defaults layout on every component", () => {
+		const form = new FormBuilder("f1")
+			.text("Header")
+			.textfield("Name", "name")
+			.textarea("Desc", "desc")
+			.select("Type", "type")
+			.radio("Confirm", "confirm", [{ label: "Yes", value: "y" }])
+			.checkbox("Accept", "accept")
+			.checklist("Options", "opts", [{ label: "X", value: "x" }])
+			.group("Group", (g) => g.text("Inside"))
+			.build()
+
+		for (const c of form.components) {
+			expect(c.layout?.row).toMatch(/^Row_/)
+			expect(c.layout?.columns).toBeNull()
+		}
+	})
+
+	it("gives each component its own row", () => {
+		const form = new FormBuilder("f1").text("A").text("B").text("C").build()
+		const rows = new Set(form.components.map((c) => c.layout?.row))
+		expect(rows.size).toBe(3)
+	})
+
+	it("defaults layout on nested group children", () => {
+		const form = new FormBuilder("f1")
+			.group("Outer", (outer) => {
+				outer.group("Inner", (inner) => {
+					inner.textfield("Name", "name")
+				})
+			})
+			.build()
+
+		const outer = asGroup(at(form.components, 0))
+		const inner = asGroup(at(outer.components, 0))
+		const field = at(inner.components, 0)
+		expect(outer.layout?.row).toMatch(/^Row_/)
+		expect(inner.layout?.row).toMatch(/^Row_/)
+		expect(field.layout?.row).toMatch(/^Row_/)
+	})
+
+	it("keeps a caller-supplied layout and fills only what is missing", () => {
+		const form = new FormBuilder("f1")
+			.textfield("Full", "full", { layout: { row: "Row_custom", columns: 8 } })
+			.textfield("Row only", "rowOnly", { layout: { row: "Row_custom" } })
+			.textfield("Columns only", "colsOnly", { layout: { columns: 4 } })
+			.build()
+
+		expect(at(form.components, 0).layout).toEqual({ row: "Row_custom", columns: 8 })
+		expect(at(form.components, 1).layout).toEqual({ row: "Row_custom", columns: null })
+		expect(at(form.components, 2).layout?.columns).toBe(4)
+		expect(at(form.components, 2).layout?.row).toMatch(/^Row_/)
+	})
+
+	it("produces deterministic layout rows with a reset id counter", () => {
+		const build = () => new FormBuilder("f1").textfield("Name", "name").build()
+		resetIdCounter()
+		const first = build()
+		resetIdCounter()
+		const second = build()
+		expect(at(second.components, 0).layout).toEqual(at(first.components, 0).layout)
+	})
+
+	it("exports a layout with row and columns for every component", () => {
+		const form = new FormBuilder("f1")
+			.textfield("Name", "name")
+			.group("Settings", (g) => g.checkbox("Notify", "notify"))
+			.build()
+
+		const exported = JSON.parse(exportForm(form)) as {
+			components: Array<{
+				layout: { row: string; columns: number | null }
+				components?: Array<{ layout: { row: string; columns: number | null } }>
+			}>
+		}
+		const field = at(exported.components, 0)
+		const group = at(exported.components, 1)
+		expect(Object.keys(field.layout).sort()).toEqual(["columns", "row"])
+		expect(field.layout.row).toMatch(/^Row_/)
+		expect(field.layout.columns).toBeNull()
+		expect(group.layout.row).toMatch(/^Row_/)
+		expect(at(group.components ?? [], 0).layout.columns).toBeNull()
+	})
+
 	it("group builder supports all component types", () => {
 		const form = new FormBuilder("f1")
 			.group("All types", (g) => {

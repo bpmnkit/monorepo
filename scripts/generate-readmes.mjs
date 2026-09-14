@@ -63,6 +63,7 @@ function footer(currentPkg) {
 		{ name: "@bpmnkit/patterns", desc: "Domain process patterns for BPMNKit AIKit" },
 		{ name: "@bpmnkit/reebe-wasm", desc: "WebAssembly BPMN engine for browser simulation" },
 		{ name: "@bpmnkit/worker-client", desc: "Thin Zeebe REST client for standalone workers" },
+		{ name: "@bpmnkit/user-tasks", desc: "Embeddable user task widget for Camunda 8" },
 		{ name: "@bpmnkit/cli-sdk", desc: "Plugin authoring SDK for the casen CLI" },
 		{ name: "@bpmnkit/create-casen-plugin", desc: "Scaffold a new casen CLI plugin in seconds" },
 		{ name: "@bpmnkit/casen-report", desc: "HTML reports from Camunda 8 incident and SLA data" },
@@ -2573,6 +2574,129 @@ See the [Standalone Workers guide](https://bpmnkit.com/docs/guides/workers-stand
 `,
 	},
 
+	// ── user-tasks ────────────────────────────────────────────────────────────
+	"packages/user-tasks": {
+		name: "@bpmnkit/user-tasks",
+		description:
+			"Embeddable user task widget for Camunda 8 — form rendering, claim/complete actions, zero dependencies",
+		content: `## Overview
+
+\`@bpmnkit/user-tasks\` renders a Camunda 8 user task, and the actions that go with it, into any
+HTML element. Mount it and you get the task's linked Camunda Form, its metadata, and buttons for
+claim, complete and — when you ask for it — reject.
+
+It talks to a running [\`@bpmnkit/proxy\`](https://www.npmjs.com/package/@bpmnkit/proxy), which
+holds the credentials and forwards to the Camunda REST API, so no cluster secret reaches the page.
+
+## Features
+
+- **Form rendering** — loads the task's linked Camunda Form and renders it through \`@bpmnkit/plugins/form-viewer\`
+- **Claim / unclaim** — sets or clears the task assignee
+- **Complete** — submits the form's collected variables
+- **Reject** — an optional return action with a reason; the button is hidden unless you pass \`onReject\`
+- **Metadata** — assignee, priority, and a due date that highlights once it is overdue
+- **Themed** — \`light\`, \`dark\`, \`auto\` or \`neon\`, drawn with the \`@bpmnkit/ui\` design tokens
+- **No framework** — a function and an \`HTMLElement\`; it works inside React, Vue, Astro or a plain page
+
+## Installation
+
+\`\`\`sh
+npm install @bpmnkit/user-tasks
+\`\`\`
+
+## Quick Start
+
+\`\`\`typescript
+import { createUserTaskWidget } from "@bpmnkit/user-tasks"
+
+const widget = createUserTaskWidget({
+  container: document.getElementById("task-panel")!,
+  task: {
+    userTaskKey: "2251799813685281",
+    name: "Review order",
+    assignee: "alice",
+    dueDate: "2025-06-01T12:00:00Z",
+    priority: 50,
+  },
+  proxyUrl: "http://localhost:3033", // default
+  theme: "dark",
+  onComplete(variables) {
+    console.log("Task completed with", variables)
+  },
+  onClaim() {
+    console.log("Task claimed")
+  },
+  onUnclaim() {
+    console.log("Task unclaimed")
+  },
+  onReject(reason) {
+    console.log("Task rejected:", reason)
+  },
+})
+
+// Show a different task in the same widget — the form reloads.
+widget.setTask({ userTaskKey: "2251799813685999", name: "Approve invoice" })
+
+// Remove it from the DOM.
+widget.destroy()
+\`\`\`
+
+## API Reference
+
+### \`createUserTaskWidget(options)\`
+
+\`\`\`typescript
+interface UserTaskWidgetOptions {
+  /** The container element to render the widget into. */
+  container: HTMLElement
+  /** The user task to display. */
+  task: UserTask
+  /** Base URL of the proxy server. Default: "http://localhost:3033" */
+  proxyUrl?: string
+  /** Active profile name, sent as the x-profile header. */
+  profile?: string | null
+  /** Visual theme (\`Theme\` from @bpmnkit/ui). Default: "neon" */
+  theme?: "light" | "dark" | "auto" | "neon"
+  /** Called when the user completes the task. */
+  onComplete(variables: Record<string, unknown>): void
+  /** Called when the user claims the task. */
+  onClaim(): void
+  /** Called when the user unclaims the task. */
+  onUnclaim(): void
+  /** Called when the user rejects the task. Omit to hide the Reject button. */
+  onReject?(reason: string): void
+}
+\`\`\`
+
+Returns a \`UserTaskWidgetApi\`:
+
+\`\`\`typescript
+interface UserTaskWidgetApi {
+  /** Show a different task and reload its form. */
+  setTask(task: UserTask): void
+  /** Remove the widget from the DOM and clean up. */
+  destroy(): void
+}
+\`\`\`
+
+### \`UserTask\`
+
+\`\`\`typescript
+interface UserTask {
+  userTaskKey: string
+  name?: string
+  assignee?: string
+  candidateGroups?: string[]
+  dueDate?: string // ISO 8601
+  priority?: number
+  processInstanceKey?: string
+  processDefinitionKey?: string
+  formKey?: string
+}
+\`\`\`
+`,
+	},
+
 	// ── reebe-wasm ────────────────────────────────────────────────────────────
 	"apps/reebe-wasm": {
 		name: "@bpmnkit/reebe-wasm",
@@ -2721,6 +2845,7 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [\`@bpmnkit/api\`](packages/api) | [![npm](https://img.shields.io/npm/v/@bpmnkit/api?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API client — 180 typed operations, OAuth2, retries |
 | [\`@bpmnkit/connector-gen\`](packages/connector-gen) | [![npm](https://img.shields.io/npm/v/@bpmnkit/connector-gen?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs (100 built-in) |
 | [\`@bpmnkit/profiles\`](packages/profiles) | [![npm](https://img.shields.io/npm/v/@bpmnkit/profiles?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/profiles) | Auth & profile storage shared between CLI and proxy |
+| [\`@bpmnkit/user-tasks\`](packages/user-tasks) | [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget — form rendering, claim/complete |
 
 ### Apps & CLI
 

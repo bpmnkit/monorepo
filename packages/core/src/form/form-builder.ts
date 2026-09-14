@@ -16,6 +16,18 @@ import type {
 	FormValueOption,
 } from "./form-model.js"
 
+/**
+ * Every generated component carries a layout. Camunda Modeler and the form-js importer
+ * treat a missing `layout` as a legacy schema and backfill a row/columns pair on open,
+ * which would show up as a spurious diff on a form this builder just produced.
+ */
+function resolveLayout(layout?: FormLayout): FormLayout {
+	return {
+		row: layout?.row ?? generateId("Row"),
+		columns: layout?.columns ?? null,
+	}
+}
+
 /** Builder for constructing Camunda Forms programmatically. */
 export class FormBuilder {
 	private _id: string
@@ -75,7 +87,7 @@ export class FormBuilder {
 			text,
 		}
 		if (options?.label !== undefined) component.label = options.label
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -90,7 +102,7 @@ export class FormBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -105,7 +117,7 @@ export class FormBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -123,7 +135,7 @@ export class FormBuilder {
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.searchable !== undefined) component.searchable = options.searchable
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -139,7 +151,7 @@ export class FormBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -154,7 +166,7 @@ export class FormBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -174,7 +186,7 @@ export class FormBuilder {
 			values,
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -190,7 +202,7 @@ export class FormBuilder {
 			components: groupBuilder._components,
 		}
 		if (options?.showOutline !== undefined) component.showOutline = options.showOutline
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -233,7 +245,7 @@ export class GroupBuilder {
 			text,
 		}
 		if (options?.label !== undefined) component.label = options.label
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -247,7 +259,7 @@ export class GroupBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -261,7 +273,7 @@ export class GroupBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -278,7 +290,7 @@ export class GroupBuilder {
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.searchable !== undefined) component.searchable = options.searchable
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -293,7 +305,7 @@ export class GroupBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -307,7 +319,7 @@ export class GroupBuilder {
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
 		if (options?.defaultValue !== undefined) component.defaultValue = options.defaultValue
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -326,7 +338,7 @@ export class GroupBuilder {
 			values,
 		}
 		if (options?.validate !== undefined) component.validate = options.validate
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}
@@ -341,7 +353,7 @@ export class GroupBuilder {
 			components: groupBuilder._components,
 		}
 		if (options?.showOutline !== undefined) component.showOutline = options.showOutline
-		if (options?.layout !== undefined) component.layout = options.layout
+		component.layout = resolveLayout(options?.layout)
 		this._components.push(component)
 		return this
 	}

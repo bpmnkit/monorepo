@@ -1,5 +1,75 @@
 # Progress
 
+## 2026-09-14 — Three packages that publish but were never in the published list
+
+`changeset publish` releases every non-private workspace package, but
+`scripts/published-packages.mjs` — the one list `sync-license.mjs`,
+`generate-readmes.mjs`, `check-packages.mjs` and `check-package-consumable.mjs` all read —
+named only 23 of the 26. `@bpmnkit/cli-sdk`, `@bpmnkit/create-casen-plugin` and
+`@bpmnkit/user-tasks` were going to npm without a `LICENSE` in the tarball and without the
+metadata or consumable checks the release workflow runs over everything else.
+
+All three are in the list now. The first two already had generator entries, so they only
+needed the LICENSE and the checks. `@bpmnkit/user-tasks` had neither an entry nor a footer
+row: its README was hand-written, still pointed at `docs.bpmnkit.com`, and its related
+packages table was a stale snapshot missing six packages. It is generated now, and the row
+for it was added to `footer()` and to the root README's Camunda Integration table, which is
+why every other package README gained one line.
+
+`node scripts/check-packages.mjs` passes for all 26. The tarball check passes for the three
+in `--pack-only` mode; its install-and-typecheck stages need a registry and run in the
+release workflow.
+
+Left alone, and worth a look: `packages/astro-shared` is in `PUBLISHED` but has no
+`footer()` row, and `@bpmnkit/user-tasks` describes itself as having "zero dependencies"
+while declaring four `@bpmnkit/*` runtime dependencies.
+
+## 2026-09-14 — A start event built through the fluent API keeps its documentation
+
+**`ElementOptions.documentation` never reached a start event (#178).** `ProcessBuilder`'s
+`startEvent()` is the one event method that hand-builds its options literal instead of
+forwarding the caller's — it needs somewhere to put the `zeebe:properties` a webhook start
+event carries — and that literal listed `name` and `extensionElements` only. The typed API
+accepted `documentation`, raised nothing, and dropped it before the model was built. Every
+other element method, the start events inside sub-processes and event sub-processes
+included, forwards its options whole and was never affected.
+
+It bit hardest on the one element the optimizer asks callers to document: the
+`pattern/start-no-documentation` rule reads `el.documentation` and tells the caller to
+"add documentation listing the process input variables". A caller who followed that advice
+through the builder got the same warning back on a diagram that looked like it complied.
+
+The literal now carries `documentation` through, next to `name`. Tests cover the start
+event on its own, together with a message event definition and Zeebe properties (the
+reason the literal exists), nested in a sub-process and an event sub-process, the rule
+falling silent, and a table walking every element method that takes `documentation` so the
+next hand-built literal is caught by the suite rather than by a diff of exported XML.
+
+Checked while here: `compactify()`/`expand()` carry `documentation` correctly on `main`
+(#150). The report that it still reproduces is against the published `@bpmnkit/core@0.4.0`
+— the fix landed after that release and has not shipped yet.
+
+## 2026-09-14 — Every built form component carries a layout
+
+**`FormBuilder` left `layout` off unless the caller passed one (#177).** Each component
+builder set `layout` only when `options.layout` was present, so a form built without
+naming a layout on every field serialised with no `layout` attribute at all. Camunda's
+Desktop Modeler and the `form-js` importer read a missing `layout` as a legacy schema and
+backfill a `row`/`columns` pair on open — the file therefore came back dirty the first
+time it was opened, with a diff on every component and no content change behind it.
+
+`resolveLayout()` now fills the gap the same way the component `id` is already filled: a
+generated `Row_…` id when the caller gives no row, `columns: null` when they give no
+column span, and the caller's values untouched when they do. Each component lands in its
+own row, matching what the Modeler produces for a field added to the end of a form, and a
+partial layout (`{ columns: 4 }`) keeps its span and gains a row rather than being passed
+through half-built. `GroupBuilder` shares the helper, so nested children and the group
+component itself are covered.
+
+The model keeps `layout?: FormLayout` optional — a parsed legacy form genuinely has no
+layout, and the parser must stay able to represent that. The guarantee belongs to the
+builder, which is what writes the files.
+
 ## 2026-09-13 — Ad-hoc children stop being a chain; documentation stops being dropped
 
 Two open issues against `@bpmnkit/core`, both hit while authoring a Camunda 8

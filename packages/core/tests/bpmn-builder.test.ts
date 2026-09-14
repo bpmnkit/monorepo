@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest"
-import { Bpmn, ValidationError, resetIdCounter } from "../src/index.js"
+import { Bpmn, ValidationError, optimize, resetIdCounter } from "../src/index.js"
 
 /** Extracts the first process from BpmnDefinitions with a runtime assertion. */
 function firstProcess(defs: ReturnType<ReturnType<typeof Bpmn.createProcess>["build"]>) {
@@ -2949,6 +2949,118 @@ describe("BpmnProcessBuilder", () => {
 			expect(parsed.processes[0]?.flowElements.find((n) => n.id === "t")?.documentation).toBe(
 				"Searches the KB.",
 			)
+		})
+
+		it("emits <bpmn:documentation> on a start event", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s", { name: "Order received", documentation: "Input: orderId (string)" })
+				.serviceTask("t", { name: "Tool", taskType: "http:1" })
+				.endEvent("e")
+				.build()
+
+			const start = defined(firstProcess(defs).flowElements.find((n) => n.id === "s"))
+			expect(start.documentation).toBe("Input: orderId (string)")
+
+			const xml = Bpmn.export(defs)
+			expect(xml).toContain("<bpmn:documentation>Input: orderId (string)</bpmn:documentation>")
+
+			const parsed = Bpmn.parse(xml)
+			expect(parsed.processes[0]?.flowElements.find((n) => n.id === "s")?.documentation).toBe(
+				"Input: orderId (string)",
+			)
+		})
+
+		it("keeps start-event documentation alongside the event definition and Zeebe properties", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s", {
+					name: "Order received",
+					documentation: "Input: orderId (string)",
+					messageName: "OrderReceived",
+					zeebeProperties: [{ name: "inbound", value: "webhook" }],
+				})
+				.endEvent("e")
+				.build()
+
+			const start = defined(firstProcess(defs).flowElements.find((n) => n.id === "s"))
+			expect(start.documentation).toBe("Input: orderId (string)")
+			if (start.type !== "startEvent") throw new Error("unreachable")
+			expect(start.eventDefinitions.map((d) => d.type)).toEqual(["message"])
+			expect(start.extensionElements.some((e) => e.name === "zeebe:properties")).toBe(true)
+		})
+
+		it("documents a start event well enough to satisfy pattern/start-no-documentation", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s", {
+					name: "s",
+					documentation: "Input: orderId (string), amount (number)",
+				})
+				.serviceTask("t", { name: "t", taskType: "x" })
+				.endEvent("e", { name: "e" })
+				.executable(true)
+				.build()
+
+			const report = optimize(defs)
+			const hits = report.findings.filter((f) => f.id === "pattern/start-no-documentation")
+			expect(hits).toEqual([])
+		})
+
+		it("emits <bpmn:documentation> on start events nested in sub-processes", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.subProcess("sub", (sub) => {
+					sub.startEvent("subStart", { documentation: "DOC_SUB_START" }).endEvent("subEnd")
+				})
+				.eventSubProcess("esub", (esub) => {
+					esub.startEvent("esubStart", { documentation: "DOC_ESUB_START" }).endEvent("esubEnd")
+				})
+				.endEvent("e")
+				.build()
+
+			const xml = Bpmn.export(defs)
+			expect(xml).toContain("<bpmn:documentation>DOC_SUB_START</bpmn:documentation>")
+			expect(xml).toContain("<bpmn:documentation>DOC_ESUB_START</bpmn:documentation>")
+		})
+
+		it("emits <bpmn:documentation> from every element method that accepts it", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s", { documentation: "DOC_start" })
+				.serviceTask("svc", { name: "svc", taskType: "x", documentation: "DOC_service" })
+				.scriptTask("script", {
+					expression: "=1",
+					resultVariable: "r",
+					documentation: "DOC_script",
+				})
+				.userTask("user", { documentation: "DOC_user" })
+				.businessRuleTask("rule", { decisionId: "d", documentation: "DOC_rule" })
+				.callActivity("call", { processId: "other", documentation: "DOC_call" })
+				.manualTask("manual", { documentation: "DOC_manual" })
+				.task("plain", { documentation: "DOC_task" })
+				.sendTask("send", { documentation: "DOC_send" })
+				.receiveTask("receive", { documentation: "DOC_receive" })
+				.intermediateThrowEvent("throw", { documentation: "DOC_throw" })
+				.intermediateCatchEvent("catch", { timerDuration: "PT1M", documentation: "DOC_catch" })
+				.exclusiveGateway("gw", { documentation: "DOC_gateway" })
+				.endEvent("e", { documentation: "DOC_end" })
+				.build()
+
+			const xml = Bpmn.export(defs)
+			const missing = [
+				"start",
+				"service",
+				"script",
+				"user",
+				"rule",
+				"call",
+				"manual",
+				"task",
+				"send",
+				"receive",
+				"throw",
+				"catch",
+				"gateway",
+				"end",
+			].filter((key) => !xml.includes(`<bpmn:documentation>DOC_${key}</bpmn:documentation>`))
+			expect(missing).toEqual([])
 		})
 
 		it("emits zeebe:assignmentDefinition, zeebe:taskSchedule, zeebe:priorityDefinition on a user task", () => {

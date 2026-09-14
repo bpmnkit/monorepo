@@ -2381,6 +2381,7 @@ export class ProcessBuilder {
 		}
 		const element = makeFlowElement(nodeId, "startEvent", {
 			name: options?.name,
+			documentation: options?.documentation,
 			extensionElements: extElements,
 		})
 		if (element.type === "startEvent" && options) {
