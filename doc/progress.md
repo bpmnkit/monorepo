@@ -1,5 +1,29 @@
 # Progress
 
+## 2026-09-14 — Three packages that publish but were never in the published list
+
+`changeset publish` releases every non-private workspace package, but
+`scripts/published-packages.mjs` — the one list `sync-license.mjs`,
+`generate-readmes.mjs`, `check-packages.mjs` and `check-package-consumable.mjs` all read —
+named only 23 of the 26. `@bpmnkit/cli-sdk`, `@bpmnkit/create-casen-plugin` and
+`@bpmnkit/user-tasks` were going to npm without a `LICENSE` in the tarball and without the
+metadata or consumable checks the release workflow runs over everything else.
+
+All three are in the list now. The first two already had generator entries, so they only
+needed the LICENSE and the checks. `@bpmnkit/user-tasks` had neither an entry nor a footer
+row: its README was hand-written, still pointed at `docs.bpmnkit.com`, and its related
+packages table was a stale snapshot missing six packages. It is generated now, and the row
+for it was added to `footer()` and to the root README's Camunda Integration table, which is
+why every other package README gained one line.
+
+`node scripts/check-packages.mjs` passes for all 26. The tarball check passes for the three
+in `--pack-only` mode; its install-and-typecheck stages need a registry and run in the
+release workflow.
+
+Left alone, and worth a look: `packages/astro-shared` is in `PUBLISHED` but has no
+`footer()` row, and `@bpmnkit/user-tasks` describes itself as having "zero dependencies"
+while declaring four `@bpmnkit/*` runtime dependencies.
+
 ## 2026-09-14 — A start event built through the fluent API keeps its documentation
 
 **`ElementOptions.documentation` never reached a start event (#178).** `ProcessBuilder`'s

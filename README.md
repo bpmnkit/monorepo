@@ -68,6 +68,7 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [`@bpmnkit/api`](packages/api) | [![npm](https://img.shields.io/npm/v/@bpmnkit/api?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API client — 180 typed operations, OAuth2, retries |
 | [`@bpmnkit/connector-gen`](packages/connector-gen) | [![npm](https://img.shields.io/npm/v/@bpmnkit/connector-gen?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs (100 built-in) |
 | [`@bpmnkit/profiles`](packages/profiles) | [![npm](https://img.shields.io/npm/v/@bpmnkit/profiles?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/profiles) | Auth & profile storage shared between CLI and proxy |
+| [`@bpmnkit/user-tasks`](packages/user-tasks) | [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget — form rendering, claim/complete |
 
 ### Apps & CLI
 
