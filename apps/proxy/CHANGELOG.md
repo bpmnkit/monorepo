@@ -1,5 +1,14 @@
 # @bpmnkit/ai-server
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [e096585]
+  - @bpmnkit/core@0.7.0
+  - @bpmnkit/connectors@0.1.4
+  - @bpmnkit/engine@0.1.36
+
 ## 0.2.3
 
 ### Patch Changes
