@@ -1,5 +1,24 @@
 # Features
 
+## Form component ids and rows are derived, not drawn (2026-09-15)
+
+- **Generated ids and layout rows come from the component's own identity** — the
+  composite key `scope:type:identity`, hashed. A rebuild of an unchanged form is
+  byte-identical, with no `resetIdCounter()` and no explicitly passed `layout.row`.
+- **Reordering fields moves only their order.** Neither value is derived from an array
+  index, an insertion counter or a random source, all of which move when the model does
+  not.
+- **`scope` is the enclosing form, or the enclosing group for nested children**, so one
+  field key means different ids in two different forms — and in two different groups.
+- **The row lives in its own `"row"` namespace**, so a component's row can never equal
+  its id.
+- **`layout.row: null` means unset** and is replaced with a generated row; renderers
+  collapse every `row: null` field into one shared row, which is not what omitting a row
+  asks for. **`layout.columns: null` is intentional** — one field per row — and is kept.
+  The new `FormLayoutInput` type documents the asymmetry at the builder boundary.
+- **`stableToken(prefix, segments)` and `compositeKey(segments)` are exported from
+  `@bpmnkit/core`** for anywhere else a deterministic id or grouping token is needed.
+
 ## Ad-hoc sub-process children are tools, not a chain (2026-09-13)
 
 - **`.adHocSubProcess()` no longer auto-connects its children** — sequential calls in
