@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-09-15 — The operations API rejects the wrong document
+
+`applyOperations(diagram, ops)` is typed for a `CompactDiagram` and checked nothing at
+runtime. Raw BPMN XML is the easy thing to hand it — `Bpmn.parse()` next door takes
+exactly that — and it behaved two different ways depending on the op list. With
+operations it threw `TypeError: diagram.processes is not iterable`, which names a private
+field rather than the mistake and points at no fix. With an empty list it returned the
+input untouched, which reads as "the pipeline ran and preserved everything" when nothing
+ran at all. That second case is how the false all-clear in #150 was produced: a
+preservation test written against it goes green and means nothing.
+
+Both document types are now checked at the boundary of every entry point that takes one —
+`applyOperations`, `expand`, `compactify`, `applyBpmnOperations` and `reconcileCompact` —
+in `packages/core/src/bpmn/argument-guards.ts`. A wrong one throws a `TypeError` naming
+the function, what arrived and the way in:
+`applyOperations expects a CompactDiagram, received a string. Pass
+compactify(Bpmn.parse(xml)) if you have raw XML.` A half-done conversion is named as such:
+a `BpmnDefinitions` where a compact diagram belongs says `Pass compactify(defs).`, and a
+compact diagram where the parsed model belongs says to pass the model, not the projection.
+
+The check is structural, not a schema: `processes` must be an array and each process must
+carry the two arrays the code walks (`elements`/`flows`, or
+`flowElements`/`sequenceFlows`). Well-formed input is unaffected, an empty `processes`
+list included. Everything it now rejects either crashed inside the walk or returned a
+result that had not been edited, so nothing that worked stops working.
+
+Worth a look, not touched here: the compact projections for DMN and forms (`expandDmn`,
+`compactifyDmn`, `expandForm`, `compactifyForm`) have the same open boundary. So does the
+`ops` argument itself — `applyOperations(compact)` still fails with `ops is not iterable`.
+
 ## 2026-09-15 — A missing `files[]` is now an error, not a skipped check
 
 The three casen plugins that shipped without their declarations (below) reached `main`

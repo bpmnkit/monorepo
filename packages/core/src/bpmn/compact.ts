@@ -1,5 +1,6 @@
 import { layoutProcess } from "../layout/index.js"
 import type { XmlElement } from "../types/xml-element.js"
+import { assertBpmnDefinitions, assertCompactDiagram } from "./argument-guards.js"
 import type {
 	BpmnAssociation,
 	BpmnDefinitions,
@@ -211,6 +212,7 @@ function compactifyElement(el: BpmnFlowElement): CompactElement {
  * ```
  */
 export function compactify(defs: BpmnDefinitions): CompactDiagram {
+	assertBpmnDefinitions(defs, "compactify")
 	return {
 		id: defs.id,
 		processes: defs.processes.map((process) => ({
@@ -543,6 +545,7 @@ function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram
  * ```
  */
 export function expand(compact: CompactDiagram): BpmnDefinitions {
+	assertCompactDiagram(compact, "expand")
 	const processes: BpmnProcess[] = []
 	const diagrams: BpmnDiagram[] = []
 	for (const cp of compact.processes) {
