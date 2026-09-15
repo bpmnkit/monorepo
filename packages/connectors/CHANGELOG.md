@@ -1,5 +1,12 @@
 # @bpmnkit/connectors
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [780e39d]
+  - @bpmnkit/core@0.6.0
+
 ## 0.1.2
 
 ### Patch Changes

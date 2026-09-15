@@ -1,5 +1,14 @@
 # @bpmnkit/operate
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [780e39d]
+  - @bpmnkit/core@0.6.0
+  - @bpmnkit/canvas@0.2.2
+  - @bpmnkit/plugins@0.3.3
+
 ## 0.1.0
 
 ### Minor Changes
