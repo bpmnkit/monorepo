@@ -1,5 +1,25 @@
 # @bpmnkit/studio
 
+## 0.0.24
+
+### Patch Changes
+
+- Updated dependencies [53a9e25]
+- Updated dependencies [9d412da]
+- Updated dependencies [2cdc7f9]
+- Updated dependencies [9d412da]
+  - @bpmnkit/core@0.5.0
+  - @bpmnkit/operate@0.1.0
+  - @bpmnkit/ui@0.2.0
+  - @bpmnkit/reebe-wasm@0.1.7
+  - @bpmnkit/api@0.0.21
+  - @bpmnkit/canvas@0.2.1
+  - @bpmnkit/editor@0.2.1
+  - @bpmnkit/engine@0.1.34
+  - @bpmnkit/plugins@0.3.2
+  - @bpmnkit/profiles@0.0.19
+  - @bpmnkit/user-tasks@0.0.22
+
 ## 0.0.23
 
 ### Patch Changes
