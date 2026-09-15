@@ -11,6 +11,7 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
+	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"keywords": ["casen-plugin", "casen-worker", "camunda", "worker", "http", "bpmnkit"],
 	"license": "MIT",
 	"repository": {

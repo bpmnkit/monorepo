@@ -91,8 +91,14 @@ function check(dir) {
 		)
 	}
 
-	// README.md in files[]
-	if (Array.isArray(pkg.files) && !pkg.files.includes("README.md")) {
+	// files[] — without it the tarball falls back to the ignore rules, and the root
+	// .gitignore excludes "dist". The entry point survives because npm always packs
+	// "main", so the package looks publishable while shipping no declarations at all.
+	if (!Array.isArray(pkg.files)) {
+		issues.push(
+			'missing "files[]" — the published tarball would drop "dist" (only "main" survives the root .gitignore)',
+		)
+	} else if (!pkg.files.includes("README.md")) {
 		issues.push('"README.md" not listed in "files[]" — it won\'t be included in the npm publish')
 	}
 

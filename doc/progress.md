@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-09-15 — The release that never ran: three tarballs without their declarations
+
+`@bpmnkit/casen-report`, `@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai` were
+the only published packages with no `files` field. Without one the tarball falls back to the
+ignore rules and the root `.gitignore` drops `dist`, so the `dist/index.d.ts` that
+`exports["."].types` names was never packed. `dist/index.js` still was — npm packs whatever
+`main` names whatever the ignore rules say — which is exactly the shape that survives a
+smoke test: the package imports, and it carries no types.
+
+pnpm 10 packed those ignored files anyway, so it never showed. The pnpm 12 upgrade (#172,
+merged 13 Sep) stopped, and `check:consumable` has failed on every push to `main` since:
+#173, #176 and #179. That step runs before `changesets/action`, so the job died first and no
+version PR was ever opened — which is why #179's changeset merged and nothing shipped. The
+last release is still 12 Sep, with four changesets queued behind it.
+
+All three now declare the same `files[]` as every other package, so `dist/**/*.js` and
+`dist/**/*.d.ts` are packed and the `src` and `tsconfig.json` they had been shipping by
+accident are not. `check-package-consumable.mjs --pack-only` passes for the three.
+
+`check-packages.mjs` was blind to this by construction: it checked that `README.md` was
+listed in `files[]` only `if (Array.isArray(pkg.files))`, so a package with no `files` field
+skipped the check instead of failing it. A missing `files[]` is now an error in its own
+right. That script runs inside `pnpm build`, which CI runs, so the next package added this
+way fails on the pull request rather than in the release job after the merge.
+
+Worth a look, not touched here: the Release workflow only triggers on pushes that touch
+`.changeset/**`, so a fix like this one reaches `main` without starting a release. It is a
+changeset here that restarts it. And CI never runs `check:consumable` — the packaging
+contract is only ever tested after a merge.
+
 ## 2026-09-14 — Three packages that publish but were never in the published list
 
 `changeset publish` releases every non-private workspace package, but
