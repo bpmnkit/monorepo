@@ -1,5 +1,55 @@
 # Progress
 
+## 2026-09-15 — Form component ids and rows are derived from the field, not drawn
+
+`FormBuilder` fills in a `layout` on every component it generates (#177), but both the
+component id and the row inside that layout came from `generateId()` — a random draw, or
+a counter under `resetIdCounter()`. Neither is a function of the form. Rebuilding an
+unchanged form therefore produced a different file every time: every id and every row
+moved, so a diff of generated output showed everything changed and said nothing about
+what actually did. The counter is no better than the random draw for this, only quieter
+about it — it moves the moment a field is inserted, removed or reordered, which
+renumbers every field after it.
+
+Both values now come from the component itself. `packages/core/src/types/stable-key.ts`
+assembles a composite key `scope:type:identity` and hashes it:
+
+```
+identity     = the field key, or the text of a static block, or a group's label
+scope        = the enclosing form id — or the enclosing group's id, for nested children
+generated id = stableToken("Field", [scope, type, identity])
+generated row = stableToken("Row", [scope, type, identity, "row"])
+```
+
+Because the input is purely a function of what the field *is*, a rerun is byte-identical
+and reordering two fields moves nothing but their order. `scope` keeps the same field key
+in two different forms — and in two different groups of one form — from colliding. The
+`"row"` namespace keeps a component's row from ever equalling its id. Segments are
+escaped before they are joined, so `["a:b", "c"]` and `["a", "b:c"]` cannot assemble the
+same key.
+
+Identity cannot separate two components that are genuinely indistinguishable — the same
+type with the same key or text — so those are numbered within their scope in the order
+they were added, which is what the builder script fixes anyway.
+
+The two `null`s in a layout now mean opposite things, deliberately, and the new
+`FormLayoutInput` type says so at the builder boundary:
+
+- `row: null` is **not set** and is replaced with a generated row. Renderers collapse
+  every `row: null` field into one shared row, so `null` is not trusted here as an
+  intentional value.
+- `columns: null` **is** intentional — the Camunda default of one field per row — and is
+  preserved as given.
+
+A caller-supplied `id` or `layout` still wins, and a partial layout is completed rather
+than passed through half-built. `FormComponentBase.layout` stays optional: a parsed
+legacy form genuinely has none, and the parser has to keep being able to represent that.
+
+`stableToken(prefix, segments)` and `compositeKey(segments)` are exported from
+`@bpmnkit/core`. The technique generalises to any deterministic ordinal or grouping
+token: derive it from the entity's stable identity plus a distinguishing namespace,
+never from an array index, insertion order or a random source.
+
 ## 2026-09-15 — The operations API rejects the wrong document
 
 `applyOperations(diagram, ops)` is typed for a `CompactDiagram` and checked nothing at

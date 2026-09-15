@@ -72,6 +72,7 @@ export type {
 	BpmnDiffResult,
 } from "./bpmn/diagram-diff.js"
 export { sha256Hex } from "./bpmn/sha256.js"
+export { compositeKey, stableToken } from "./types/stable-key.js"
 export { checkDiCompleteness } from "./bpmn/di-check.js"
 export type { DiCompleteness } from "./bpmn/di-check.js"
 export { planeForElement, listPlaneElementIds } from "./bpmn/di-planes.js"
@@ -237,6 +238,7 @@ export type {
 	FormExporter,
 	FormGroupComponent,
 	FormLayout,
+	FormLayoutInput,
 	FormRadioComponent,
 	FormSelectComponent,
 	FormTextAreaComponent,
