@@ -1,34 +1,46 @@
 # Progress
 
-## 2026-09-15 — The release that never ran: three tarballs without their declarations
+## 2026-09-15 — A missing `files[]` is now an error, not a skipped check
 
-`@bpmnkit/casen-report`, `@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai` were
-the only published packages with no `files` field. Without one the tarball falls back to the
-ignore rules and the root `.gitignore` drops `dist`, so the `dist/index.d.ts` that
-`exports["."].types` names was never packed. `dist/index.js` still was — npm packs whatever
-`main` names whatever the ignore rules say — which is exactly the shape that survives a
-smoke test: the package imports, and it carries no types.
+The three casen plugins that shipped without their declarations (below) reached `main`
+past `check-packages.mjs`, which is the script whose job is to catch exactly that. It
+validated that `README.md` was listed in `files[]` only `if (Array.isArray(pkg.files))`,
+so a package with no `files` field at all skipped the check instead of failing it — the
+one case that actually breaks the tarball was the one case it did not look at.
 
-pnpm 10 packed those ignored files anyway, so it never showed. The pnpm 12 upgrade (#172,
-merged 13 Sep) stopped, and `check:consumable` has failed on every push to `main` since:
-#173, #176 and #179. That step runs before `changesets/action`, so the job died first and no
-version PR was ever opened — which is why #179's changeset merged and nothing shipped. The
-last release is still 12 Sep, with four changesets queued behind it.
+A missing `files[]` is now an error in its own right. The script runs inside `pnpm build`,
+which CI runs on every pull request, so the next package added this way fails there rather
+than in the release job after the merge — which is where this one surfaced, taking the
+#173, #176 and #179 changesets down with it for two days.
 
-All three now declare the same `files[]` as every other package, so `dist/**/*.js` and
-`dist/**/*.d.ts` are packed and the `src` and `tsconfig.json` they had been shipping by
-accident are not. `check-package-consumable.mjs --pack-only` passes for the three.
+Worth a look, not touched here: CI never runs `check:consumable`, so the packing contract
+itself is still only tested after a merge. And the Release workflow only triggers on pushes
+touching `.changeset/**`, so a release-infra fix that carries no changeset reaches `main`
+without starting a release.
 
-`check-packages.mjs` was blind to this by construction: it checked that `README.md` was
-listed in `files[]` only `if (Array.isArray(pkg.files))`, so a package with no `files` field
-skipped the check instead of failing it. A missing `files[]` is now an error in its own
-right. That script runs inside `pnpm build`, which CI runs, so the next package added this
-way fails on the pull request rather than in the release job after the merge.
+## 2026-09-14 — The casen plugins pack their declarations
 
-Worth a look, not touched here: the Release workflow only triggers on pushes that touch
-`.changeset/**`, so a fix like this one reaches `main` without starting a release. It is a
-changeset here that restarts it. And CI never runs `check:consumable` — the packaging
-contract is only ever tested after a merge.
+**The release workflow's tarball check failed on `@bpmnkit/casen-report`,
+`@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai`**, each for
+`exports["."].types` pointing at a `./dist/index.d.ts` that was not in the tarball.
+
+None of the three declared `files`. Packing then falls back to the ignore rules, and the
+root `.gitignore` ignores `dist` — so the build was ignored wholesale. What hid it is
+npm's rule that the file named in `main` is included whatever the ignores say: every
+tarball carried `dist/index.js` and nothing else from `dist`. The JS entry point resolved,
+the declarations did not, and `casen-report` was additionally missing `dist/report.js` and
+`dist/commands/*.js`, which are every module its own entry point imports. `src/` and
+`tsconfig.json` were packed in their place.
+
+Each now carries the line every other published package already has:
+`"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"]`. This is the same
+bug `@bpmnkit/proxy` shipped in 0.1.9 — a `files` list that did not cover what `exports`
+promised — arriving this time through no list at all.
+
+`node scripts/check-package-consumable.mjs --filter casen-report --filter casen-worker-http
+--filter casen-worker-ai` now reports all three consumable: packed, installed from the
+tarball into a throwaway project, imported from ESM, and their declarations type-checked
+under strict `NodeNext`.
 
 ## 2026-09-14 — Three packages that publish but were never in the published list
 
