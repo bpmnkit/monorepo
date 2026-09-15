@@ -1,3 +1,4 @@
+import { assertCompactDiagram } from "./argument-guards.js"
 import type { CompactDiagram, CompactElement, CompactFlow, CompactProcess } from "./compact.js"
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -176,8 +177,12 @@ function applyOne(diagram: CompactDiagram, op: BpmnOperation): void {
  * ])
  * const xml = Bpmn.export(expand(updated))
  * ```
+ *
+ * @throws {TypeError} When `diagram` is not a CompactDiagram. Raw XML is the
+ *   easy mistake — `compactify(Bpmn.parse(xml))` is the way in.
  */
 export function applyOperations(diagram: CompactDiagram, ops: BpmnOperation[]): CompactDiagram {
+	assertCompactDiagram(diagram, "applyOperations")
 	const result: CompactDiagram = structuredClone(diagram)
 	for (const op of ops) {
 		applyOne(result, op)

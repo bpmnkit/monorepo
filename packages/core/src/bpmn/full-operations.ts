@@ -1,4 +1,5 @@
 import type { XmlElement } from "../types/xml-element.js"
+import { assertBpmnDefinitions, assertCompactDiagram } from "./argument-guards.js"
 import type { BpmnDefinitions, BpmnFlowElement, BpmnSequenceFlow } from "./bpmn-model.js"
 import {
 	type CompactDiagram,
@@ -327,6 +328,7 @@ export function applyBpmnOperations(
 	operations: readonly BpmnOperation[],
 	options: ApplyBpmnOperationsOptions = {},
 ): ApplyBpmnOperationsResult {
+	assertBpmnDefinitions(definitions, "applyBpmnOperations")
 	const draft = structuredClone(definitions) as BpmnDefinitions
 	const problems: OperationProblem[] = []
 	let applied = 0
@@ -492,6 +494,8 @@ export function reconcileCompact(
 	compact: CompactDiagram,
 	options: ApplyBpmnOperationsOptions = {},
 ): ApplyBpmnOperationsResult {
+	assertBpmnDefinitions(definitions, "reconcileCompact")
+	assertCompactDiagram(compact, "reconcileCompact")
 	const draft = structuredClone(definitions) as BpmnDefinitions
 
 	for (const compactProcess of compact.processes) {
