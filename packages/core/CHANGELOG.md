@@ -1,5 +1,69 @@
 # @bpmnkit/core
 
+## 0.5.0
+
+### Minor Changes
+
+- 53a9e25: Ad-hoc sub-process children are a set, not a chain — and documentation survives the operations API
+
+  Two silent failures, both hit while authoring a Camunda 8 agentic-AI process through
+  the SDK.
+  - **`.adHocSubProcess()` no longer auto-connects its children.** It used to chain them
+    like any other builder chain. BPMN defines an ad-hoc sub-process's children as an
+    unordered set of independently-invocable activities, and Camunda 8's agentic runtime
+    reads that structurally: a child _without_ an incoming flow is an LLM-invocable tool,
+    a child _with_ one is part of an internal sub-flow and not a tool. Declaring three
+    tools produced one tool plus a two-step sub-flow, in a file that lints clean and
+    deploys. Sequential calls now emit no sequence flow, no `bpmn:incoming`/`bpmn:outgoing`
+    and no `<bpmndi:BPMNEdge>`.
+
+    **Breaking for anyone who relied on the chaining.** An internal sub-flow inside the
+    container stays expressible with `.connectTo()`, which still creates a flow from the
+    cursor.
+
+  - **`compactify()`/`expand()` carry `<bpmn:documentation>`.** The compact model had no
+    field for it, so the text left the document with no error and no warning — one
+    `rename` op cost a file the documentation of every element in it, on the API whose
+    purpose is surgical edits. It is now carried on every element type, nested ones
+    included, and on the process itself. `{ op: "update", patch: { documentation } }`
+    sets it, on the compact model and on the full one.
+
+### Patch Changes
+
+- 9d412da: Two silent drops in the builders: form component layout, and start event documentation
+  - **`FormBuilder` defaults `layout` on every component.** The component builders set
+    `layout` only when the caller passed one, so a form built without naming a layout on
+    each field serialised with no `layout` attribute at all. Camunda's Desktop Modeler and
+    the `form-js` importer read a missing `layout` as a legacy schema and backfill a
+    `row`/`columns` pair when the form is opened — a freshly built form therefore came back
+    dirty on first open, with a diff on every component and no content change behind it. It
+    is now filled the way the component `id` already was: a generated `Row_…` when no row is
+    given, `columns: null` when no span is, and the caller's own values untouched when they
+    supply them. Each component lands in its own row, and a partial layout keeps its span
+    while gaining a row. `GroupBuilder` does the same, so nested children and the group
+    component itself are covered.
+  - **`documentation` reaches a start event.** `ProcessBuilder.startEvent()` hand-builds its
+    options literal so it has somewhere to put a webhook start event's `zeebe:properties`,
+    and that literal listed `name` and `extensionElements` only. `ElementOptions.documentation`
+    was accepted by the typed API and dropped before the model was built, with no error. It
+    bit hardest on the one element bpmnkit's own optimizer asks callers to document — a
+    caller who followed the `pattern/start-no-documentation` suggestion through the builder
+    got the same warning back. Start events nested in sub-processes and event sub-processes
+    forward their options whole and were never affected.
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
+- Updated dependencies [9d412da]
+  - @bpmnkit/feel@0.0.21
+
 ## 0.4.0
 
 ### Minor Changes

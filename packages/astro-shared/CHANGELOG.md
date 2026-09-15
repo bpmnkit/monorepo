@@ -1,5 +1,23 @@
 # @bpmnkit/astro-shared
 
+## 0.0.17
+
+### Patch Changes
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
+- Updated dependencies [2cdc7f9]
+- Updated dependencies [9d412da]
+  - @bpmnkit/ui@0.2.0
+
 ## 0.0.16
 
 ### Patch Changes

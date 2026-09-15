@@ -1,5 +1,24 @@
 # @bpmnkit/landing
 
+## 0.0.39
+
+### Patch Changes
+
+- Updated dependencies [53a9e25]
+- Updated dependencies [9d412da]
+- Updated dependencies [2cdc7f9]
+- Updated dependencies [9d412da]
+  - @bpmnkit/core@0.5.0
+  - @bpmnkit/operate@0.1.0
+  - @bpmnkit/astro-shared@0.0.17
+  - @bpmnkit/canvas@0.2.1
+  - @bpmnkit/connector-gen@0.0.16
+  - @bpmnkit/connectors@0.1.2
+  - @bpmnkit/editor@0.2.1
+  - @bpmnkit/engine@0.1.34
+  - @bpmnkit/feel@0.0.21
+  - @bpmnkit/plugins@0.3.2
+
 ## 0.0.38
 
 ### Patch Changes
