@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-09-15 — A missing `files[]` is now an error, not a skipped check
+
+The three casen plugins that shipped without their declarations (below) reached `main`
+past `check-packages.mjs`, which is the script whose job is to catch exactly that. It
+validated that `README.md` was listed in `files[]` only `if (Array.isArray(pkg.files))`,
+so a package with no `files` field at all skipped the check instead of failing it — the
+one case that actually breaks the tarball was the one case it did not look at.
+
+A missing `files[]` is now an error in its own right. The script runs inside `pnpm build`,
+which CI runs on every pull request, so the next package added this way fails there rather
+than in the release job after the merge — which is where this one surfaced, taking the
+#173, #176 and #179 changesets down with it for two days.
+
+Worth a look, not touched here: CI never runs `check:consumable`, so the packing contract
+itself is still only tested after a merge. And the Release workflow only triggers on pushes
+touching `.changeset/**`, so a release-infra fix that carries no changeset reaches `main`
+without starting a release.
+
 ## 2026-09-14 — The casen plugins pack their declarations
 
 **The release workflow's tarball check failed on `@bpmnkit/casen-report`,
