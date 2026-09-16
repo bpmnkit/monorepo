@@ -2,7 +2,7 @@
 title: Drop — Share & Co-edit
 description: Turn a BPMN, DMN or Camunda Form file into a link anyone can open, watch live, and edit one writer at a time — no account, no modeler install, no Camunda cluster.
 sidebar:
-  order: 11
+  order: 12
 ---
 
 [BPMN Kit Drop](/drop) is the shortest path between a diagram on your machine and the

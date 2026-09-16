@@ -1,7 +1,7 @@
 {
 	"$schema": "https://docspack.dev/schema/v1.json",
 	"name": "@bpmnkit/docspack",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"documents": [
 		"@bpmnkit/core",
 		"@bpmnkit/canvas",
@@ -925,7 +925,7 @@
 		{
 			"id": "guides.ai.minimal-empty-diagram",
 			"file": "chunks/guides.ai.minimal-empty-diagram.md",
-			"tokens": 229,
+			"tokens": 247,
 			"tags": [
 				"guides",
 				"ai",
@@ -1455,6 +1455,159 @@
 			]
 		},
 		{
+			"id": "guides.using-bpmnkit-with-ai",
+			"file": "chunks/guides.using-bpmnkit-with-ai.md",
+			"tokens": 210,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai"
+			],
+			"entities": [
+				"@bpmnkit/docspack",
+				"@bpmnkit/camunda-docspack"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.the-two-packs-bpmn-kit-ships",
+			"file": "chunks/guides.using-bpmnkit-with-ai.the-two-packs-bpmn-kit-ships.md",
+			"tokens": 147,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"two",
+				"packs",
+				"bpmn",
+				"kit",
+				"ships"
+			],
+			"entities": [
+				"@bpmnkit/docspack",
+				"@bpmnkit/camunda-docspack"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.telling-an-agent-they-exist",
+			"file": "chunks/guides.using-bpmnkit-with-ai.telling-an-agent-they-exist.md",
+			"tokens": 224,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"telling",
+				"agent",
+				"they",
+				"exist"
+			],
+			"entities": [
+				"AGENTS.md",
+				"CLAUDE.md"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.asking",
+			"file": "chunks/guides.using-bpmnkit-with-ai.asking.md",
+			"tokens": 314,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"asking"
+			],
+			"entities": [
+				"BpmnDefinitions",
+				"CompactDiagram"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli",
+			"file": "chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli.md",
+			"tokens": 706,
+			"tags": [
+				"carrier",
+				"refused",
+				"dispatcher",
+				"guides",
+				"using-bpmnkit-with-ai",
+				"library",
+				"instead",
+				"cli"
+			],
+			"entities": [
+				"minTokens",
+				"package.json",
+				"@bpmnkit/docspack"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index",
+			"file": "chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index.md",
+			"tokens": 551,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"library",
+				"instead",
+				"cli",
+				"other",
+				"route",
+				"docspack",
+				"index"
+			],
+			"entities": [
+				"@bpmnkit/camunda-docspack"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.the-whole-loop-five-markdown-files-to-a-bpmn-diagram",
+			"file": "chunks/guides.using-bpmnkit-with-ai.the-whole-loop-five-markdown-files-to-a-bpmn-diagram.md",
+			"tokens": 604,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"whole",
+				"loop",
+				"five",
+				"markdown",
+				"files",
+				"bpmn",
+				"diagram"
+			],
+			"entities": [
+				"@bpmnkit/docspack",
+				"@bpmnkit/camunda-docspack",
+				"CompactDiagram",
+				"isDefault",
+				"reconcileCompact"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.runnable-examples",
+			"file": "chunks/guides.using-bpmnkit-with-ai.runnable-examples.md",
+			"tokens": 312,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"runnable",
+				"examples"
+			],
+			"entities": [
+				"apps/examples/src/ai",
+				"output/order-fulfilment.bpmn",
+				"indexPacks"
+			]
+		},
+		{
+			"id": "guides.using-bpmnkit-with-ai.where-to-go-next",
+			"file": "chunks/guides.using-bpmnkit-with-ai.where-to-go-next.md",
+			"tokens": 117,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"next"
+			],
+			"entities": [
+				"ProcessPlan"
+			]
+		},
+		{
 			"id": "guides.vscode",
 			"file": "chunks/guides.vscode.md",
 			"tokens": 139,
@@ -1787,6 +1940,80 @@
 				"events"
 			],
 			"entities": []
+		},
+		{
+			"id": "packages.camunda-docspack.overview",
+			"file": "chunks/packages.camunda-docspack.overview.md",
+			"tokens": 308,
+			"tags": [
+				"packages",
+				"camunda-docspack",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/camunda-docspack",
+				"@bpmnkit/docspack",
+				"docs/"
+			]
+		},
+		{
+			"id": "packages.camunda-docspack.installation",
+			"file": "chunks/packages.camunda-docspack.installation.md",
+			"tokens": 252,
+			"tags": [
+				"packages",
+				"camunda-docspack",
+				"installation"
+			],
+			"entities": [
+				"@bpmnkit/docspack",
+				"AGENTS.md",
+				"CLAUDE.md"
+			]
+		},
+		{
+			"id": "packages.camunda-docspack.what-makes-this-corpus-different",
+			"file": "chunks/packages.camunda-docspack.what-makes-this-corpus-different.md",
+			"tokens": 192,
+			"tags": [
+				"packages",
+				"camunda-docspack",
+				"makes",
+				"corpus",
+				"different"
+			],
+			"entities": [
+				"docs.camunda.io"
+			]
+		},
+		{
+			"id": "packages.camunda-docspack.rebuilding-it",
+			"file": "chunks/packages.camunda-docspack.rebuilding-it.md",
+			"tokens": 227,
+			"tags": [
+				"packages",
+				"camunda-docspack",
+				"rebuilding"
+			],
+			"entities": [
+				"docs.camunda.io"
+			]
+		},
+		{
+			"id": "packages.camunda-docspack.a-note-on-the-pack-s-name",
+			"file": "chunks/packages.camunda-docspack.a-note-on-the-pack-s-name.md",
+			"tokens": 165,
+			"tags": [
+				"packages",
+				"camunda-docspack",
+				"note",
+				"pack",
+				"name"
+			],
+			"entities": [
+				"@bpmnkit/camunda-docspack",
+				"@bpmnkit/docspack"
+			]
 		},
 		{
 			"id": "packages.canvas.overview",
@@ -2214,7 +2441,7 @@
 		{
 			"id": "packages.core.installation-compactify-definitions",
 			"file": "chunks/packages.core.installation-compactify-definitions.md",
-			"tokens": 204,
+			"tokens": 342,
 			"tags": [
 				"packages",
 				"core",
@@ -2224,7 +2451,8 @@
 			],
 			"entities": [
 				"BpmnDefinitions",
-				"CompactDiagram"
+				"CompactDiagram",
+				"isDefault"
 			]
 		},
 		{
@@ -2463,13 +2691,29 @@
 			]
 		},
 		{
-			"id": "packages.docspack.installation",
-			"file": "chunks/packages.docspack.installation.md",
-			"tokens": 251,
+			"id": "packages.docspack.the-other-pack",
+			"file": "chunks/packages.docspack.the-other-pack.md",
+			"tokens": 145,
 			"tags": [
 				"packages",
 				"docspack",
-				"installation"
+				"other",
+				"pack"
+			],
+			"entities": [
+				"@bpmnkit/camunda-docspack"
+			]
+		},
+		{
+			"id": "packages.docspack.giving-an-agent-access",
+			"file": "chunks/packages.docspack.giving-an-agent-access.md",
+			"tokens": 268,
+			"tags": [
+				"packages",
+				"docspack",
+				"giving",
+				"agent",
+				"access"
 			],
 			"entities": [
 				"AGENTS.md",
@@ -2479,7 +2723,7 @@
 		{
 			"id": "packages.docspack.reading-it-yourself",
 			"file": "chunks/packages.docspack.reading-it-yourself.md",
-			"tokens": 252,
+			"tokens": 329,
 			"tags": [
 				"packages",
 				"docspack",

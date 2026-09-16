@@ -2,7 +2,7 @@
 title: AI Integration
 description: Use BPMN Kit with LLMs to generate and modify process diagrams from natural language.
 sidebar:
-  order: 7
+  order: 8
 ---
 
 BPMN Kit is designed from the ground up to work with AI agents. The compact intermediate
@@ -80,6 +80,7 @@ Rules:
 - Use camelCase IDs
 - Every service task needs a taskType string (the Zeebe worker subscription)
 - Use FEEL expressions for gateway conditions (start with "= ")
+- Every exclusive gateway needs one branch with no condition and `isDefault: true`
 - Always include a start event and at least one end event
 - Do not add fields that are not part of the CompactDiagram schema
 ```

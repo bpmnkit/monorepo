@@ -10,11 +10,16 @@
 		"04": "tsx src/04-invoice-processing.ts",
 		"05": "tsx src/05-content-publishing.ts",
 		"06": "tsx src/06-ai-code-review-agent.ts",
+		"ai:ask": "tsx src/ai/ask-the-docs.ts",
+		"ai:index": "tsx src/ai/index-your-own-corpus.ts",
+		"ai:bpmn": "tsx src/ai/corpus-to-bpmn.ts",
 		"all": "tsx src/run-all.ts",
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmnkit/core": "workspace:*"
+		"@bpmnkit/camunda-docspack": "workspace:*",
+		"@bpmnkit/core": "workspace:*",
+		"@bpmnkit/docspack": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.0.0",

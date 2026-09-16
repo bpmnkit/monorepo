@@ -2,7 +2,7 @@
 title: VS Code Extension
 description: View, edit, compare and analyse BPMN, DMN and Camunda Form files inside VS Code — the same renderer, linter and engine the rest of BPMN Kit uses, with no bpmn.io and no round-trip rewrites of your XML.
 sidebar:
-  order: 12
+  order: 13
 ---
 
 **BPMN Kit for VS Code** puts the toolkit where the code already is. It renders `.bpmn`,

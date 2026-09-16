@@ -26,7 +26,7 @@
 		"node": ">=20"
 	},
 	"scripts": {
-		"build": "tsc",
+		"build": "tsc && node scripts/sync-version.mjs",
 		"build:pack": "tsc && node ./dist/cli.js",
 		"typecheck": "tsc --noEmit",
 		"check": "biome check .",

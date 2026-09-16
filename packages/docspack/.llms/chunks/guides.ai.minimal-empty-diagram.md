@@ -24,6 +24,7 @@ Rules:
 - Use camelCase IDs
 - Every service task needs a taskType string (the Zeebe worker subscription)
 - Use FEEL expressions for gateway conditions (start with "= ")
+- Every exclusive gateway needs one branch with no condition and `isDefault: true`
 - Always include a start event and at least one end event
 - Do not add fields that are not part of the CompactDiagram schema
 ```

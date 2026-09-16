@@ -1,5 +1,120 @@
 # Progress
 
+## 2026-09-16 — The pack version stopped lying, and upstream took the suffix
+
+`@bpmnkit/camunda-docspack@0.1.0` shipped a `.llms/manifest.json` claiming
+version `0.0.0`. This pack's payload is committed rather than rebuilt at release
+— the rebuild needs a `camunda-docs` checkout only the weekly workflow has, so
+its `build` was `tsc` and nothing else — while `changeset version` moved
+`package.json` on. `docspack doctor` fails that package outright, and
+`docspack list` reports the disagreement to every consumer. `@bpmnkit/docspack`
+was never affected: its `build` regenerates the manifest from `package.json`.
+
+`build` now runs `scripts/sync-version.mjs`, which rewrites the version in
+`manifest.json` and the `Version …` header line in `llms.txt` and touches nothing
+else — the chunks are Camunda's documentation and not the script's business.
+Verified by simulating a release bump: `doctor` goes from `error … manifest says
+0.0.0` to `ok 1054 chunks`. The published `0.1.0` stays wrong until the next
+release carries the fix.
+
+**`docspack@1.2.0`** adopted `@<vendor>/<name>-docspack`, the shape we had
+implemented locally and written up for them. Both packs are now discovered by the
+upstream CLI — `1054 chunks indexed` rather than `0 chunks (declarations)` — so
+`bpmnkit-docs`'s suffix matching stopped being a divergence and became the same
+rule, and a Camunda question stops being answered out of the wrong pack.
+
+1.2.0 also closed the silent-failure hole the write-up asked about, at both ends:
+`doctor` now refuses a pack whose name the indexer will not discover, naming the
+three shapes, and `sync` reports an installed-but-unindexed pack in `problems`
+instead of dropping it. It is what caught our own version drift in the first
+place.
+
+The one thing 1.2.0 costs us is a floor: a `docspack` older than 1.2.0 still
+answers Camunda questions out of `@bpmnkit/docspack`, so the pack's page and the
+AI guide both state the version. `bpmnkit-docs` has no such floor.
+
+## 2026-09-16 — A model can name a gateway's default flow, and upstream shipped `docspack index`
+
+`CompactFlow` carried `condition` and had no field for `bpmn:default`. A model
+returning a `CompactDiagram` — the format BPMN Kit asks it for — therefore could
+not mark a fallthrough branch however well it had read the documentation saying
+it must, and an exclusive gateway whose conditions are all false and which has no
+default deadlocks at runtime. `compactify` dropped an existing one too, so a
+round trip lost it silently.
+
+The mark sits on the flow (`isDefault: true`), not on the gateway, because that
+is where its alternative already sits. A model writing the branches of a decision
+marks one of them rather than pointing back at a flow id from the gateway — and
+it is the spelling the `ProcessPlan` format already uses for the same thing on a
+branch. `expand` turns it into the attribute, `compactify` reads it back, and
+`reconcileCompact` sets or clears it on a model it did not author, so editing a
+file somebody else wrote can add a default that was never there.
+
+Both failure modes throw rather than being dropped: a flow marked `isDefault`
+that does not leave an exclusive, inclusive or complex gateway has nowhere to go
+in this model, and a gateway marking two is ambiguous. A default that goes
+missing surfaces as a deadlock at runtime with no trace back to here, which is
+the wrong place to be lenient.
+
+The AI example stopped needing its workaround — the four fallthrough branches now
+carry `isDefault` in the compact object and `expand` does the rest.
+
+**`docspack@1.1.0`** shipped `index` and `recall`, the own-corpus commands
+docspack.dev documented while `1.0.0` exited 2 on both. Checked against the real
+CLI: `docspack index --from ./flow-docs` indexes in ~380ms, `recall` answers,
+`--from-json -` takes rows from any query, a re-run with nothing changed is a
+no-op, a stale source produces a leading warning rather than a confidently wrong
+passage, and the index is gitignored on the tool's behalf. Pinned as a dev
+dependency and documented as the second route in the guide.
+
+It does **not** fix the discovery gap. `docspack sync` reads
+`@bpmnkit/camunda-docspack` as an ordinary dependency and indexes its type
+declarations — `0 chunks (declarations)` — so a Camunda question answers out of
+`@bpmnkit/docspack` instead. One pack per npm scope is still the spec, our
+`-docspack` suffix is still the only way to reach those 1,054 chunks, and the
+caveat on the pack's page is now verified against 1.1.0 rather than 1.0.0.
+
+## 2026-09-16 — The Camunda pack was never discoverable, and now the AI path is documented end to end
+
+`@bpmnkit/camunda-docspack` shipped, was documented in `CLAUDE.md`, `AGENTS.md` and its own
+README, and could not be found. `discoverPacks` implements the docspack spec's naming rule
+literally — `@<vendor>/docspack` and `@docspack-community/*` — and the spec is explicit that
+one pack per scope is deliberate. So every documented command against the Camunda pack
+returned `No documentation matches "…"`: not an error, an answer, and the wrong one.
+
+Discovery now reads `@<vendor>/<name>-docspack` as well. It is still a pure name check
+inside a scope the vendor owns, so the trust argument behind the spec's rule is unchanged;
+a spec-strict reader (the upstream `docspack` CLI) still sees only `@bpmnkit/docspack`, and
+the Camunda pack's page says so.
+
+Two more things that were quietly wrong:
+
+- **`--pack` with a name that is not installed answered nothing.** Indistinguishable from
+  "the documentation does not cover this", which is what a model would conclude. Both the
+  CLI and `search()` now fail with the names that *are* indexed.
+- **`--pack` narrowed after indexing, not before.** Every chunk of every pack was read off
+  disk to build an index that was then filtered down to one. Scoping first took a BPMN Kit
+  question across both packs from ~650ms to ~150ms.
+
+The docs side was the larger gap. Nothing under `apps/landing/src/content/docs` mentioned
+the Camunda pack, so `@bpmnkit/docspack` — the thing an agent asks — contained no evidence
+it existed. Added `packages/camunda-docspack.md`, a section on the `docspack` page, and
+`guides/using-bpmnkit-with-ai.md`: the three kinds of knowledge an agent needs (this
+library, the engine, and the team's own prose), how to index that third one as a pack of
+its own, and the loop from five Markdown files to a laid-out `.bpmn`. The agent-facing
+paragraph in the generated README and the `/bpmnkit:implement` skill now name both packs —
+an agent told about one never thinks to ask for the other.
+
+Three runnable examples under `apps/examples/src/ai` back the guide: ask both packs, index
+your own corpus, and corpus → `CompactDiagram` → BPMN. No API key, no network, ~3s for all
+three.
+
+Two gaps found and left standing, both stated in the guide: `CompactFlow` has no field for
+a gateway's default flow, so a model cannot return one and it has to be set on the full
+model after `expand`; and upstream's `docspack index` / `docspack recall` are documented at
+docspack.dev but exit 2 in the published `docspack@1.0.0`, so `bpmnkit-docs build` is the
+route that works today.
+
 ## 2026-09-16 — FEEL taken to 94% of the DMN TCK, and the TCK put on a weekly run
 
 The TCK harness landed earlier today reported 1,282 of 2,053 FEEL cases passing. Ten
@@ -396,6 +511,7 @@ Triaged alongside these: **#151** (the fluent builder cannot set `documentation`
 `ElementOptions.documentation` exists and serialises, and the terracotta design system
 that replaced the palette in the issue's screenshots puts links and inline code at
 4.75:1 to 5.24:1 against their backgrounds, above the 4.5:1 AA threshold.
+
 ## 2026-09-13 — The benchmark says what the fixes changed, without restating the measurement
 
 The landing page reported the builder path at 2/5 usable on quote-to-cash. The

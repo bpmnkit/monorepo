@@ -10,6 +10,21 @@ npm install -g @bpmnkit/cli
 
 That's it — this plugin is **CLI-first**: every skill drives `casen` via Bash. No MCP server, no proxy daemon, no nested LLM required. (The `@bpmnkit/proxy` MCP server still exists separately for Studio/other AI hosts — it's unrelated to this plugin.)
 
+## Documentation lookup
+
+Two packs answer offline, from the versions a project installed, and both are read by the
+same command:
+
+```sh
+npm i -D @bpmnkit/docspack @bpmnkit/camunda-docspack
+
+npx bpmnkit-docs ask "what does compactify drop from a diagram"
+npx bpmnkit-docs ask "FEEL string concatenation" --pack @bpmnkit/camunda-docspack
+```
+
+Ask the first how to drive BPMN Kit, the second what the engine does. See
+[Using BPMN Kit with AI](https://bpmnkit.com/docs/guides/using-bpmnkit-with-ai).
+
 ## Installation
 
 **From marketplace:**

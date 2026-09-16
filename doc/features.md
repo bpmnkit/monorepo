@@ -1,5 +1,53 @@
 # Features
 
+## The Camunda pack reads correctly everywhere (2026-09-16)
+
+- **`build` syncs the pack version.** A payload that is committed rather than
+  rebuilt at release no longer publishes a manifest claiming an older version —
+  the failure that made `@bpmnkit/camunda-docspack@0.1.0` fail `docspack doctor`.
+- **`docspack@1.2.0` discovers `@<vendor>/<name>-docspack`.** Upstream adopted the
+  shape `bpmnkit-docs` already read, so both readers now index the Camunda pack's
+  1,054 chunks. Pinned; a CLI older than 1.2.0 is a documented floor.
+- **An unusable pack is no longer silent, upstream either.** `doctor` refuses a
+  name the indexer will not discover and `sync` reports an installed-but-unindexed
+  pack, which is how the version drift above surfaced.
+
+## A gateway's default flow survives the compact form (2026-09-16)
+
+- **`CompactFlow.isDefault`** — the fallthrough branch of an exclusive, inclusive
+  or complex gateway is marked on the flow, beside the `condition` it replaces.
+  `expand` writes `bpmn:default`, `compactify` reads it back, `reconcileCompact`
+  sets or clears it on a model it did not author.
+- **Both misuses throw.** A flow marked default that leaves anything else, and a
+  gateway marking two, fail loudly — a lost default is a deadlock at runtime with
+  nothing pointing back at the cause.
+- **`defaultFlows(elements, flows)`** is exported for callers deriving the same
+  mapping; `buildFlowElement` takes the flow id as an optional fourth argument.
+- **`docspack@1.1.0` pinned.** Its `index` / `recall` own-corpus commands work, so
+  the guide documents both routes: build a pack when one answer should draw on
+  your corpus and the installed packs together, or `docspack index` when the
+  corpus is a database or you want its staleness check.
+
+## Using BPMN Kit with AI, documented end to end (2026-09-16)
+
+- **`guides/using-bpmnkit-with-ai.md`** — the three kinds of knowledge an agent needs to
+  build a process (this library, the Camunda engine, the team's own prose), each answered
+  offline, plus the loop from five Markdown files to a laid-out `.bpmn`.
+- **`packages/camunda-docspack.md`** — the Camunda pack has a page, so an agent asking
+  `@bpmnkit/docspack` can discover that Camunda documentation is installable at all.
+- **`@<vendor>/<name>-docspack` is discovered.** `@bpmnkit/camunda-docspack` was published,
+  documented and unreachable: the spec allows one pack per scope, and `discoverPacks`
+  implemented exactly that.
+- **A `--pack` name that is not installed is an error**, listing what is, instead of an
+  empty answer that reads as "the documentation does not cover this".
+- **`--pack` narrows before indexing**, not after — ~150ms against ~650ms for a BPMN Kit
+  question with both packs installed.
+- **Index your own corpus.** `bpmnkit-docs build --cwd <dir>` turns any folder of Markdown
+  into a pack an agent can ask, searched alongside the installed ones. Five documents in
+  about 9ms, no model, no network, no tokens.
+- **Three runnable examples** (`apps/examples/src/ai`) — `ai:ask`, `ai:index`, `ai:bpmn` —
+  with no API key and no network, about three seconds for all three.
+
 ## FEEL at 94% of the DMN TCK (2026-09-16)
 
 - **1,939 of 2,053 DMN TCK FEEL cases pass**, up from 1,282 before today. The `in`
@@ -86,6 +134,7 @@
   single `rename` cost a file the documentation of every element in it.
 - **`{ op: "update", patch: { documentation } }` sets it**, on the compact model and
   on the full one.
+
 ## Benchmark replay: what the library changed, measured (2026-09-13)
 
 - **`scripts/bench-ai-replay.mjs`** re-runs every recorded `with-sdk` generation

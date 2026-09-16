@@ -80,17 +80,35 @@ export function buildIndex(inputs: IndexInput[]): DocsIndex {
 export interface SearchOptions {
 	/** Maximum hits to return. */
 	limit?: number
-	/** Restrict to these package names — a project asks only about what it installed. */
+	/**
+	 * Restrict to these package names — a project asks only about what it
+	 * installed. A name that was never indexed throws rather than returning
+	 * nothing, so a typo cannot pass for an absence of documentation.
+	 */
 	packs?: readonly string[]
 }
 
 /** Rank every chunk that shares a term with the query. Ties break on chunk id. */
 export function search(index: DocsIndex, query: string, options: SearchOptions = {}): SearchHit[] {
 	const limit = options.limit ?? 3
+	const allowed = options.packs ? new Set(options.packs) : null
+	if (allowed) {
+		// Narrowing to a package that was never indexed would otherwise come back
+		// as an empty result, which reads as "the documentation does not cover
+		// this" — a different answer, and the wrong one to hand a model.
+		const indexed = new Set(index.chunks.map((candidate) => candidate.pack.name))
+		for (const name of allowed) {
+			if (!indexed.has(name)) {
+				throw new Error(
+					`No documentation package named "${name}". Indexed: ${[...indexed].sort().join(", ")}`,
+				)
+			}
+		}
+	}
+
 	const queryTerms = terms(query)
 	if (queryTerms.length === 0) return []
 
-	const allowed = options.packs ? new Set(options.packs) : null
 	const total = index.chunks.length
 	const hits: SearchHit[] = []
 
