@@ -34,22 +34,29 @@ function childCtx(parent: EvalContext, vars: Record<string, FeelValue> = {}): Ev
 
 /**
  * Expands the domain of a `for`/`some`/`every` binding into the values to
- * iterate. A numeric range yields its whole integer span, counting down when
- * it runs backwards; anything else iterates as a single-element list.
+ * iterate. A numeric or date range yields its whole span, counting down when
+ * it runs backwards; anything else iterates as a single-element list. A range
+ * over values that cannot be stepped through has no iteration, which is null.
  */
-function iterationValues(domain: FeelValue): FeelValue[] {
+function iterationValues(domain: FeelValue): FeelValue[] | null {
 	if (isFeelList(domain)) return domain
-	if (isFeelRange(domain)) {
-		const { start, end } = domain
-		if (typeof start !== "number" || typeof end !== "number") return []
-		const from = domain.startIncluded ? start : start + 1
-		const to = domain.endIncluded ? end : end - 1
-		const step = from <= to ? 1 : -1
-		const values: FeelValue[] = []
-		for (let v = from; step > 0 ? v <= to : v >= to; v += step) values.push(v)
-		return values
+	if (!isFeelRange(domain)) return [domain]
+	const { start, end } = domain
+	if (typeof start === "number" && typeof end === "number") {
+		return span(start, end).map((n) => n as FeelValue)
 	}
-	return [domain]
+	if (isFeelDate(start) && isFeelDate(end)) {
+		return span(dateToEpochDays(start), dateToEpochDays(end)).map((d) => epochDaysToDate(d))
+	}
+	return null
+}
+
+/** Every integer from `from` to `to`, in whichever direction that runs. */
+function span(from: number, to: number): number[] {
+	const step = from <= to ? 1 : -1
+	const values: number[] = []
+	for (let v = from; step > 0 ? v <= to : v >= to; v += step) values.push(v)
+	return values
 }
 
 // -------------------------------------------------------------------------
@@ -311,31 +318,12 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			return cond === true ? evaluate(node.then, ctx) : evaluate(node.else, ctx)
 		}
 
-		case "for": {
-			const domains: FeelValue[][] = []
-			for (const binding of node.bindings) {
-				domains.push(iterationValues(evaluate(binding.domain, ctx)))
-			}
-			const partial: FeelValue[] = []
-			const results = evalCartesian(node.bindings, domains, 0, ctx, node, partial)
-			return results
-		}
+		case "for":
+			return evalFor(node.bindings, node.body, ctx)
 
-		case "some": {
-			const domains: FeelValue[][] = []
-			for (const binding of node.bindings) {
-				domains.push(iterationValues(evaluate(binding.domain, ctx)))
-			}
-			return evalQuantifier("some", node.bindings, domains, 0, ctx, node.satisfies)
-		}
-
-		case "every": {
-			const domains: FeelValue[][] = []
-			for (const binding of node.bindings) {
-				domains.push(iterationValues(evaluate(binding.domain, ctx)))
-			}
-			return evalQuantifier("every", node.bindings, domains, 0, ctx, node.satisfies)
-		}
+		case "some":
+		case "every":
+			return evalQuantifier(node.kind, node.bindings, node.satisfies, ctx)
 
 		case "between": {
 			const val = evaluate(node.value, ctx)
@@ -509,69 +497,84 @@ function evalCall(callee: string, argNodes: FeelNode[], ctx: EvalContext): FeelV
 	return (fn as FeelFunction).call(args)
 }
 
-function evalCartesian(
-	bindings: Array<{ name: string; domain: FeelNode }>,
-	domains: FeelValue[][],
-	idx: number,
-	ctx: EvalContext,
-	forNode: FeelNode & { kind: "for"; body: FeelNode },
-	partial: FeelValue[],
-): FeelValue[] {
-	if (idx === bindings.length) {
-		const vars: Record<string, FeelValue> = { partial: [...partial] }
-		const binding = bindings[idx - 1]
-		if (binding) vars[binding.name] = partial[partial.length - 1] ?? null
-		const result = evaluate(forNode.body, childCtx(ctx, vars))
-		partial.push(result)
-		return [result]
-	}
-	const binding = bindings[idx]
-	if (!binding) return []
-	const domain = domains[idx] ?? []
+type Binding = { name: string; domain: FeelNode }
+
+/**
+ * Evaluates a `for`. Each binding's domain is evaluated with the bindings to
+ * its left already in scope, so `for x in xs, y in x` works, and the body sees
+ * the results produced so far as `partial`.
+ */
+function evalFor(bindings: Binding[], body: FeelNode, ctx: EvalContext): FeelValue {
 	const results: FeelValue[] = []
-	for (const val of domain) {
-		const vars: Record<string, FeelValue> = { partial: [...partial] }
-		vars[binding.name] = val
-		// Propagate earlier bindings too
-		for (let i = 0; i < idx; i++) {
-			const b = bindings[i]
-			if (b) vars[b.name] = partial[i] ?? null
+	let failed = false
+
+	const iterate = (idx: number, scope: EvalContext): void => {
+		if (failed) return
+		if (idx === bindings.length) {
+			results.push(evaluate(body, childCtx(scope, { partial: [...results] })))
+			return
 		}
-		const sub = evalCartesian(bindings, domains, idx + 1, childCtx(ctx, vars), forNode, [
-			...partial,
-			val,
-		])
-		results.push(...sub)
+		const binding = bindings[idx]
+		if (!binding) return
+		const domain = iterationValues(evaluate(binding.domain, scope))
+		if (domain === null) {
+			failed = true
+			return
+		}
+		for (const value of domain) {
+			iterate(idx + 1, childCtx(scope, { [binding.name]: value }))
+		}
 	}
-	return results
+
+	iterate(0, ctx)
+	return failed ? null : results
 }
 
+/**
+ * Evaluates `some`/`every`. A definite answer wins over an unknown one: one
+ * true satisfies `some` whatever else the domain holds, and one false settles
+ * `every`. Otherwise an unknown anywhere makes the whole answer unknown.
+ */
 function evalQuantifier(
 	kind: "some" | "every",
-	bindings: Array<{ name: string; domain: FeelNode }>,
-	domains: FeelValue[][],
-	idx: number,
-	ctx: EvalContext,
+	bindings: Binding[],
 	satisfies: FeelNode,
+	ctx: EvalContext,
 ): FeelValue {
-	if (idx === bindings.length) {
-		return evaluate(satisfies, ctx)
+	let sawTrue = false
+	let sawFalse = false
+	let sawUnknown = false
+	let failed = false
+
+	const visit = (idx: number, scope: EvalContext): void => {
+		if (failed) return
+		if (idx === bindings.length) {
+			const result = asBoolean(evaluate(satisfies, scope))
+			if (result === true) sawTrue = true
+			else if (result === false) sawFalse = true
+			else sawUnknown = true
+			return
+		}
+		const binding = bindings[idx]
+		if (!binding) return
+		const domain = iterationValues(evaluate(binding.domain, scope))
+		if (domain === null) {
+			failed = true
+			return
+		}
+		for (const value of domain) {
+			visit(idx + 1, childCtx(scope, { [binding.name]: value }))
+		}
 	}
-	const binding = bindings[idx]
-	if (!binding) return kind === "every"
-	const domain = domains[idx] ?? []
-	if (domain.length === 0) return kind === "every"
-	let hasNull = false
-	for (const val of domain) {
-		const vars: Record<string, FeelValue> = {}
-		vars[binding.name] = val
-		const r = evalQuantifier(kind, bindings, domains, idx + 1, childCtx(ctx, vars), satisfies)
-		if (kind === "some" && r === true) return true
-		if (kind === "every" && r === false) return false
-		if (r === null) hasNull = true
-	}
-	if (kind === "some") return hasNull ? null : false
-	return hasNull ? null : true
+
+	visit(0, ctx)
+	if (failed) return null
+	if (kind === "some") return sawTrue ? true : sawUnknown ? null : false
+	return sawFalse ? false : sawUnknown ? null : true
+}
+
+function asBoolean(v: FeelValue): boolean | null {
+	return typeof v === "boolean" ? v : null
 }
 
 /** True for the values that name a point in time or a length of it. */
