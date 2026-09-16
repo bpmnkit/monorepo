@@ -85,6 +85,11 @@ export interface ParseOptions {
 	names?: Iterable<string>
 }
 
+// The property names FEEL spells with a space. A path key is matched against
+// this fixed set rather than joining words greedily, so `a.b and c` still
+// reads as a conjunction.
+const MULTIWORD_PROPERTIES = ["time offset", "start included", "end included"]
+
 // Multi-word type names, longest first: a prefix must not win over the whole name.
 const MULTIWORD_TYPES = ["years and months duration", "days and time duration", "date and time"]
 
@@ -316,8 +321,16 @@ class Parser {
 				this.errors.push({ message: "Expected name after '.'", start: tok.start, end: tok.end })
 				return null
 			}
-			this.advance()
-			return { kind: "path", base: left, key: nameTok.value, start: left.start, end: nameTok.end }
+			let key = nameTok.value
+			let end = nameTok.end
+			const multiword = MULTIWORD_PROPERTIES.find((p) => this.tryConsumeWords(p))
+			if (multiword) {
+				key = multiword
+				end = this.tokens[this.pos - 1]?.end ?? nameTok.end
+			} else {
+				this.advance()
+			}
+			return { kind: "path", base: left, key, start: left.start, end }
 		}
 
 		// Invocation of a function-valued expression: expr(args)
@@ -756,9 +769,13 @@ class Parser {
 					if (!t) return false
 					key = unescapeString(t.value.slice(1, -1))
 				} else if (this.check("name") || this.check("keyword")) {
-					const t = this.advance()
-					if (!t) return false
-					key = t.value
+					// A key runs up to the colon, so its words can be joined safely.
+					const words: string[] = []
+					while (this.check("name") || this.check("keyword")) {
+						const word = this.advance()
+						if (word) words.push(word.value)
+					}
+					key = words.join(" ")
 				} else {
 					const t = this.peek()
 					this.errors.push({

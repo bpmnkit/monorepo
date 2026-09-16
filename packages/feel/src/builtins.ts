@@ -66,23 +66,43 @@ function epochDaysToDate(days: number): FeelDate {
 	return { type: "date", year, month, day: remaining + 1 }
 }
 
+// The widest year XSD's date types allow, which bounds DMN's too.
+const MAX_YEAR = 999999999
+
 /** Builds a date, or null when the day does not exist in that month. */
 function makeDate(year: number, month: number, day: number): FeelDate | null {
 	if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null
+	if (Math.abs(year) > MAX_YEAR) return null
 	if (month < 1 || month > 12) return null
 	if (day < 1 || day > daysInMonth(year, month)) return null
 	return { type: "date", year, month, day }
 }
 
 function parseDate(s: string): FeelDate | null {
-	const m = /^-?(\d{4,})-(\d{2})-(\d{2})$/.exec(s)
+	// Exactly four year digits: "01211" carries a leading zero and
+	// "9999999999" is past any calendar, and neither is a date.
+	const m = /^(-?)(\d{4})-(\d{2})-(\d{2})$/.exec(s)
 	if (!m) return null
-	const year = Number(m[1]) * (s.startsWith("-") ? -1 : 1)
-	return makeDate(year, Number(m[2]), Number(m[3]))
+	const year = Number(m[2]) * (m[1] === "-" ? -1 : 1)
+	return makeDate(year, Number(m[3]), Number(m[4]))
+}
+
+// The largest UTC offset XSD allows.
+const MAX_OFFSET_SECONDS = 18 * 3600
+
+/** True for a zone name the platform's time zone database knows. */
+function isKnownTimezone(name: string): boolean {
+	try {
+		new Intl.DateTimeFormat("en-US", { timeZone: name })
+		return true
+	} catch {
+		return false
+	}
 }
 
 function parseTime(s: string): FeelTime | null {
-	const m = /^(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)(?:([+-])(\d{2}):(\d{2})|Z)?(@(.+))?$/.exec(s)
+	const m =
+		/^(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)(?:([+-])(\d{2}):(\d{2})(?::(\d{2}))?|Z)?(?:@(.+))?$/.exec(s)
 	if (!m) return null
 	const hour = Number(m[1])
 	const minute = Number(m[2])
@@ -91,11 +111,17 @@ function parseTime(s: string): FeelTime | null {
 	let timezone: string | undefined
 	if (m[4]) {
 		const sign = m[4] === "+" ? 1 : -1
-		offsetSeconds = sign * (Number(m[5]) * 3600 + Number(m[6]) * 60)
-	} else if (m[3] && s.includes("Z")) {
+		offsetSeconds = sign * (Number(m[5]) * 3600 + Number(m[6]) * 60 + (m[7] ? Number(m[7]) : 0))
+		if (Math.abs(offsetSeconds) > MAX_OFFSET_SECONDS) return null
+	} else if (s.includes("Z")) {
 		offsetSeconds = 0
 	}
-	if (m[8]) timezone = m[8]
+	if (m[8]) {
+		// A zone and an offset name the same thing twice, and may disagree.
+		if (offsetSeconds !== undefined) return null
+		if (!isKnownTimezone(m[8])) return null
+		timezone = m[8]
+	}
 	if (!isValidTime(hour, minute, second)) return null
 	return { type: "time", hour, minute, second, offsetSeconds, timezone }
 }
@@ -108,7 +134,12 @@ function isValidTime(hour: number, minute: number, second: number): boolean {
 
 function parseDateTime(s: string): FeelDateTime | null {
 	const idx = s.indexOf("T")
-	if (idx < 0) return null
+	if (idx < 0) {
+		const dateOnly = parseDate(s)
+		return dateOnly
+			? { type: "date-time", date: dateOnly, time: { type: "time", hour: 0, minute: 0, second: 0 } }
+			: null
+	}
 	const d = parseDate(s.slice(0, idx))
 	const t = parseTime(s.slice(idx + 1))
 	if (!d || !t) return null
@@ -118,14 +149,14 @@ function parseDateTime(s: string): FeelDateTime | null {
 function parseDuration(s: string): FeelDayTimeDuration | FeelYearsMonthsDuration | null {
 	// P[n]Y[n]M or P[n]DT[n]H[n]M[n]S
 	const ymMatch = /^-?P(\d+Y)?(\d+M)?$/.exec(s)
-	if (ymMatch) {
+	if (ymMatch && /\d/.test(s)) {
 		const sign = s.startsWith("-") ? -1 : 1
 		const years = ymMatch[1] ? Number(ymMatch[1].slice(0, -1)) : 0
 		const months = ymMatch[2] ? Number(ymMatch[2].slice(0, -1)) : 0
 		return { type: "years-months-duration", months: sign * (years * 12 + months) }
 	}
-	const dtMatch = /^-?P(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d+)?S)?)?$/.exec(s)
-	if (dtMatch && s.length > 1) {
+	const dtMatch = /^-?P(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d*)?S)?)?$/.exec(s)
+	if (dtMatch && /\d/.test(s)) {
 		const sign = s.startsWith("-") ? -1 : 1
 		const days = dtMatch[1] ? Number(dtMatch[1].slice(0, -1)) : 0
 		const hours = dtMatch[2] ? Number(dtMatch[2].slice(0, -1)) : 0
@@ -157,15 +188,25 @@ function formatDate(d: FeelDate): string {
 	return `${String(d.year).padStart(4, "0")}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`
 }
 
+/** Two digits before the decimal point, and the fraction as written. */
+function formatSeconds(second: number): string {
+	const whole = Math.floor(second)
+	const fraction = `${second}`.split(".")[1]
+	return String(whole).padStart(2, "0") + (fraction ? `.${fraction}` : "")
+}
+
 function formatTime(t: FeelTime): string {
-	let s = `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}:${String(t.second).padStart(2, "0")}`
+	let s = `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}:${formatSeconds(t.second)}`
 	if (t.offsetSeconds !== undefined) {
 		if (t.offsetSeconds === 0) {
 			s += "Z"
 		} else {
 			const sign = t.offsetSeconds >= 0 ? "+" : "-"
 			const abs = Math.abs(t.offsetSeconds)
-			s += `${sign}${String(Math.floor(abs / 3600)).padStart(2, "0")}:${String(Math.floor((abs % 3600) / 60)).padStart(2, "0")}`
+			const pad = (n: number) => String(n).padStart(2, "0")
+			s += `${sign}${pad(Math.floor(abs / 3600))}:${pad(Math.floor((abs % 3600) / 60))}`
+			// Offsets are written to the second only when they have one.
+			if (abs % 60 !== 0) s += `:${pad(abs % 60)}`
 		}
 	}
 	if (t.timezone) s += `@${t.timezone}`
@@ -188,13 +229,54 @@ function dayOfYear(d: FeelDate): number {
 // Helpers
 // -------------------------------------------------------------------------
 
+/**
+ * A number argument. FEEL does not coerce, so "1.5" is not a number here;
+ * number() is the way to convert one.
+ */
 function toNum(v: FeelValue): number | null {
-	if (typeof v === "number") return v
-	if (typeof v === "string") {
-		const n = Number(v)
-		return Number.isNaN(n) ? null : n
-	}
-	return null
+	return typeof v === "number" && Number.isFinite(v) ? v : null
+}
+
+/**
+ * A rounding scale: an optional integer. Absent means 0, but an explicitly
+ * null or non-numeric scale is an error. Beyond float64's reach the value is
+ * already exact at that scale, so it is returned unrounded.
+ */
+const SCALE_LIMIT = 300
+
+function toScale(v: FeelValue | undefined): number | null {
+	if (v === undefined) return 0
+	const n = toNum(v)
+	return n === null ? null : Math.trunc(n)
+}
+
+/** Rounds `n` at `scale` with the given rounding of a value exactly halfway. */
+function roundAt(n: number, scale: number, round: (x: number) => number): number {
+	if (Math.abs(scale) > SCALE_LIMIT) return n
+	const factor = 10 ** scale
+	// Re-reading the scaled value through its decimal form keeps a product like
+	// 1.005 * 100 from landing just under the halfway point it should sit on.
+	const scaled = Number(`${n}e${scale}`)
+	return Number(`${round(scaled)}e${-scale}`) || round(scaled) / factor
+}
+
+/** Round half to even, the rounding DMN's decimal() uses. */
+function roundHalfEven(x: number): number {
+	const floor = Math.floor(x)
+	const diff = x - floor
+	if (diff > 0.5) return floor + 1
+	if (diff < 0.5) return floor
+	return floor % 2 === 0 ? floor : floor + 1
+}
+
+/** Round half away from zero. */
+function roundHalfUp(x: number): number {
+	return x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5)
+}
+
+/** Round half toward zero. */
+function roundHalfDown(x: number): number {
+	return x >= 0 ? Math.ceil(x - 0.5) : Math.floor(x + 0.5)
 }
 
 function toStr(v: FeelValue): string | null {
@@ -537,66 +619,51 @@ function separatorArg(v: FeelValue | undefined, allowed: string[]): string | nul
 
 reg("decimal", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale)
-	if (num === null || sc === null) return null
-	const factor = 10 ** sc
-	return Math.round(num * factor) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null || scale === undefined) return null
+	return roundAt(num, sc, roundHalfEven)
 })
 
 reg("floor", (n, scale) => {
 	const num = toNum(n)
-	if (num === null) return null
-	if (scale !== undefined && scale !== null) {
-		const sc = toNum(scale) ?? 0
-		const factor = 10 ** sc
-		return Math.floor(num * factor) / factor
-	}
-	return Math.floor(num)
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, Math.floor)
 })
 
 reg("ceiling", (n, scale) => {
 	const num = toNum(n)
-	if (num === null) return null
-	if (scale !== undefined && scale !== null) {
-		const sc = toNum(scale) ?? 0
-		const factor = 10 ** sc
-		return Math.ceil(num * factor) / factor
-	}
-	return Math.ceil(num)
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, Math.ceil)
 })
 
 reg("round half up", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	return Math.round(num * factor) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, roundHalfUp)
 })
 
 reg("round half down", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	const scaled = num * factor
-	return (scaled > 0 ? Math.ceil(scaled - 0.5) : Math.floor(scaled + 0.5)) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, roundHalfDown)
 })
 
 reg("round up", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	const scaled = num * factor
-	return (scaled > 0 ? Math.ceil(scaled) : Math.floor(scaled)) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, (x) => (x >= 0 ? Math.ceil(x) : Math.floor(x)))
 })
 
 reg("round down", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	return Math.trunc(num * factor) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, Math.trunc)
 })
 
 reg("abs", (n) => {
@@ -971,6 +1038,7 @@ reg("date", (...args) => {
 		const v = at(args, 0)
 		if (typeof v === "string") return parseDate(v)
 		if (isFeelDateTime(v)) return v.date
+		if (isFeelDate(v)) return v
 		return null
 	}
 	if (args.length === 3) {
@@ -988,6 +1056,8 @@ reg("time", (...args) => {
 		const v = at(args, 0)
 		if (typeof v === "string") return parseTime(v)
 		if (isFeelDateTime(v)) return v.time
+		if (isFeelTime(v)) return v
+		if (isFeelDate(v)) return { type: "time", hour: 0, minute: 0, second: 0 }
 		return null
 	}
 	if (args.length >= 3) {
@@ -1508,6 +1578,34 @@ const PARAM_SIGNATURES: Record<string, string[][]> = {
 	],
 }
 
+// Built-ins DMN also defines over a bare argument list, so that max(1,2,3)
+// means max([1,2,3]). Their arity is not checked; everything else's is.
+const VARIADIC = new Set([
+	"min",
+	"max",
+	"sum",
+	"product",
+	"mean",
+	"median",
+	"stddev",
+	"mode",
+	"all",
+	"any",
+	"count",
+	"append",
+	"concatenate",
+	"union",
+	"context merge",
+])
+
+/** The argument counts a built-in accepts, or undefined when it takes any. */
+function aritiesOf(name: string): Set<number> | undefined {
+	if (VARIADIC.has(name)) return undefined
+	const signatures = PARAM_SIGNATURES[name]
+	if (!signatures) return undefined
+	return new Set(signatures.map((params) => params.length))
+}
+
 /**
  * Orders the arguments of a named invocation to match a built-in's signature.
  * Returns, for each parameter position, the index of the argument supplying
@@ -1540,7 +1638,13 @@ export function getBuiltin(name: string): FeelFunction | undefined {
 	if (cached) return cached
 	const fn = builtinMap.get(name)
 	if (!fn) return undefined
-	const wrapper: FeelFunction = { type: "function", call: (args) => fn(...args) }
+	const arities = aritiesOf(name)
+	const wrapper: FeelFunction = {
+		type: "function",
+		// Calling a built-in with a number of arguments no signature accepts is
+		// an error, and FEEL reports an error as null.
+		call: (args) => (arities && !arities.has(args.length) ? null : fn(...args)),
+	}
 	builtinWrappers.set(name, wrapper)
 	return wrapper
 }
