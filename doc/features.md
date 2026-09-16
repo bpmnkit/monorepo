@@ -1,5 +1,19 @@
 # Features
 
+## FEEL spec fixes and a DMN TCK harness (2026-09-16)
+
+- **Ten divergences from the DMN spec and Camunda's FEEL engine fixed** in
+  `@bpmnkit/feel`, found by differential testing against `@bpmn-io/feelin`: string escape
+  decoding, named arguments binding by name, context entries seeing earlier entries,
+  calendar validation and month-end clamping, range iteration domains, invoking a
+  function-valued expression, `**` associativity, multi-word names in scope, `string()`
+  and `count()` null handling, `number()` separators, and XPath regex flags.
+- **`parseExpression(input, { names })`** — names in scope are now an input to parsing, so
+  a variable called `total order amount` reads as one name rather than four.
+- **DMN TCK harness** — `tasks/extract-tck-tests.mjs` turns a dmn-tck checkout into 2,053
+  runnable cases; `pnpm --filter @bpmnkit/feel tck` extracts and runs them. 1,395 pass,
+  up from 1,282 before the fixes.
+
 ## Camunda 8 docs as an offline searchable pack (2026-09-16)
 
 - **`@bpmnkit/camunda-docspack`** — the Camunda 8.10 (next) documentation as a docspack

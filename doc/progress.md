@@ -1,5 +1,53 @@
 # Progress
 
+## 2026-09-16 — FEEL measured against the DMN TCK, ten spec divergences fixed
+
+`@bpmnkit/feel` was compared expression by expression against `@bpmn-io/feelin` 6.1.0,
+the bpmn-io FEEL interpreter, over ~145 hand-written expressions. Of the ten divergences
+that turned out to be ours, two returned a plausible wrong answer rather than failing:
+
+```
+"a\nb"                                          → a\nb, not a newline
+replace(replacement: "x", pattern: "b", input: "abc") → "x", not "axc"
+```
+
+Named arguments were passed to built-ins in the order they were written, so any call
+whose arguments were not already in declaration order silently computed something else.
+They now bind by name against a table of every built-in's signatures, parameter names
+with spaces included, and an undeclared name yields null instead of a mis-ordered call.
+String literals now decode every escape FEEL defines — `\n \r \t \' \" \\ \uXXXX
+\UXXXXXX` — in values and in context keys, and `string length`/`substring` count
+characters rather than UTF-16 units.
+
+The other eight: context entries now see the entries before them (`{a: 1, b: a + 1}`);
+`date()` and `time()` reject values no calendar or clock has, and adding months clamps
+the day, so `date("2020-01-31") + duration("P1M")` is 2020-02-29 rather than a February
+31st; `for`/`some`/`every` take an undelimited range domain (`for i in 1..3`); a
+function-valued expression can be invoked (`{f: function(a) a}.f(1)`); `**` is
+left-associative as FEEL specifies for every infix operator, so `2 ** 3 ** 2` is 64;
+`parseExpression` accepts the names in scope so a variable named `a b` parses as one
+name; `string(null)` is null and `string()` renders lists and contexts; `count(null)` is
+null; `number()` takes grouping and decimal separators; and regex flags follow XPath,
+with `x` and `q` applied to the pattern and any other flag yielding null.
+
+**The DMN TCK now runs against the package.** `tasks/extract-tck-tests.mjs` reads a
+dmn-tck checkout and rewrites its FEEL test cases — 2,053 of them across 79 tests — into
+JSON that `tests/tck.test.ts` evaluates, the approach feelin uses, with the XML parsing
+written in-repo rather than adding `saxen` and `fast-glob`. The extracted cases are not
+committed, so the harness is two commands:
+
+```sh
+pnpm --filter @bpmnkit/feel tck
+```
+
+The ten fixes moved the TCK from 1,282/2,053 (62.4%) to 1,395/2,053 (67.9%). The
+remaining 658 are real gaps, the largest groups being unary-test operands in `in`
+(`1 in <= 10`, 181 cases), `instance of` over type arguments (51), the `is()` function
+(49), and equality across types returning null rather than false (42). Three groups
+cannot pass here at all and are counted as failures rather than dropped, because the TCK
+tests whole decision models where this package implements only the expression language:
+typeRef coercion, decisions invoking other decisions, and external Java functions.
+
 ## 2026-09-16 — Camunda 8 documentation packaged as a searchable pack
 
 `@bpmnkit/camunda-docspack` builds the Camunda 8.10 (next) documentation into a docspack
