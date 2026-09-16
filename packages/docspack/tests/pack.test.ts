@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { buildPack } from "../src/build.js"
-import { chunkPath, indexPacks, loadPack } from "../src/load.js"
+import { chunkPath, discoverPacks, indexPacks, loadPack } from "../src/load.js"
 import { answer, search } from "../src/search.js"
 
 const CHUNK_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
@@ -188,8 +188,17 @@ describe("search", () => {
 	})
 
 	it("restricts to the requested package", () => {
+		const index = indexPacks([loadPack(packDir), loadPack(communityPack("@other/docspack"))])
+		const hits = search(index, "gateway", { packs: ["@acme/docspack"] })
+		expect(hits.length).toBeGreaterThan(0)
+		for (const hit of hits) expect(hit.pack.name).toBe("@acme/docspack")
+	})
+
+	it("refuses a pack name that was never indexed", () => {
 		const index = indexPacks([loadPack(packDir)])
-		expect(search(index, "gateway", { packs: ["@other/docspack"] })).toEqual([])
+		expect(() => search(index, "gateway", { packs: ["@acme/typo-docspack"] })).toThrow(
+			/No documentation package named "@acme\/typo-docspack"/,
+		)
 	})
 })
 
@@ -204,6 +213,27 @@ describe("answer", () => {
 	it("returns at most the requested number of chunks", () => {
 		const index = indexPacks([loadPack(packDir)])
 		expect(answer(index, "gateway signature process", { limit: 1 }).hits).toHaveLength(1)
+	})
+})
+
+describe("discoverPacks", () => {
+	it("finds a vendor's second pack, published as @<vendor>/<name>-docspack", () => {
+		// The regression: @bpmnkit/camunda-docspack shipped, was documented, and was
+		// never discovered, so `--pack @bpmnkit/camunda-docspack` answered "no match".
+		const project = join(root, "project")
+		const scope = join(project, "node_modules", "@acme")
+		mkdirSync(scope, { recursive: true })
+		writeFileSync(join(project, "package.json"), JSON.stringify({ name: "consumer" }))
+		cpSync(communityPack("@acme/docspack"), join(scope, "docspack"), { recursive: true })
+		cpSync(communityPack("@acme/camunda-docspack"), join(scope, "camunda-docspack"), {
+			recursive: true,
+		})
+		cpSync(communityPack("@acme/sdk"), join(scope, "sdk"), { recursive: true })
+
+		expect(discoverPacks(project).map((pack) => pack.name)).toEqual([
+			"@acme/camunda-docspack",
+			"@acme/docspack",
+		])
 	})
 })
 

@@ -1,5 +1,46 @@
 # Progress
 
+## 2026-09-16 — The Camunda pack was never discoverable, and now the AI path is documented end to end
+
+`@bpmnkit/camunda-docspack` shipped, was documented in `CLAUDE.md`, `AGENTS.md` and its own
+README, and could not be found. `discoverPacks` implements the docspack spec's naming rule
+literally — `@<vendor>/docspack` and `@docspack-community/*` — and the spec is explicit that
+one pack per scope is deliberate. So every documented command against the Camunda pack
+returned `No documentation matches "…"`: not an error, an answer, and the wrong one.
+
+Discovery now reads `@<vendor>/<name>-docspack` as well. It is still a pure name check
+inside a scope the vendor owns, so the trust argument behind the spec's rule is unchanged;
+a spec-strict reader (the upstream `docspack` CLI) still sees only `@bpmnkit/docspack`, and
+the Camunda pack's page says so.
+
+Two more things that were quietly wrong:
+
+- **`--pack` with a name that is not installed answered nothing.** Indistinguishable from
+  "the documentation does not cover this", which is what a model would conclude. Both the
+  CLI and `search()` now fail with the names that *are* indexed.
+- **`--pack` narrowed after indexing, not before.** Every chunk of every pack was read off
+  disk to build an index that was then filtered down to one. Scoping first took a BPMN Kit
+  question across both packs from ~650ms to ~150ms.
+
+The docs side was the larger gap. Nothing under `apps/landing/src/content/docs` mentioned
+the Camunda pack, so `@bpmnkit/docspack` — the thing an agent asks — contained no evidence
+it existed. Added `packages/camunda-docspack.md`, a section on the `docspack` page, and
+`guides/using-bpmnkit-with-ai.md`: the three kinds of knowledge an agent needs (this
+library, the engine, and the team's own prose), how to index that third one as a pack of
+its own, and the loop from five Markdown files to a laid-out `.bpmn`. The agent-facing
+paragraph in the generated README and the `/bpmnkit:implement` skill now name both packs —
+an agent told about one never thinks to ask for the other.
+
+Three runnable examples under `apps/examples/src/ai` back the guide: ask both packs, index
+your own corpus, and corpus → `CompactDiagram` → BPMN. No API key, no network, ~3s for all
+three.
+
+Two gaps found and left standing, both stated in the guide: `CompactFlow` has no field for
+a gateway's default flow, so a model cannot return one and it has to be set on the full
+model after `expand`; and upstream's `docspack index` / `docspack recall` are documented at
+docspack.dev but exit 2 in the published `docspack@1.0.0`, so `bpmnkit-docs build` is the
+route that works today.
+
 ## 2026-09-16 — Camunda 8 documentation packaged as a searchable pack
 
 `@bpmnkit/camunda-docspack` builds the Camunda 8.10 (next) documentation into a docspack

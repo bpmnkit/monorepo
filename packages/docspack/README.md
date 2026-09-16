@@ -22,6 +22,8 @@ An agent installs it, asks a question, and gets back the two or three passages t
 
 It follows the [docspack package format](https://docspack.dev/spec), so the upstream `docspack` CLI discovers and indexes it like any other vendor pack. The bundled `bpmnkit-docs` command does the same job with no extra tooling.
 
+It also reads [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) — the Camunda 8 documentation in the same format. Install both and ask this one how to drive the library, that one what the engine does.
+
 ```
 Markdown docs → chunks + manifest → BM25 index → three passages
 ```
@@ -44,17 +46,20 @@ npm install -D @bpmnkit/docspack
 
 ## Quick Start
 
-Give an agent one line in `AGENTS.md` or `CLAUDE.md`:
+Give an agent one paragraph in `AGENTS.md` or `CLAUDE.md` — naming both packs, because an agent told only about the first will never think to ask the second:
 
 ```
-Run \`npx bpmnkit-docs ask "<question>"\` for BPMN Kit documentation.
-It answers from the version this project installed.
+Run `npx bpmnkit-docs ask "<question>"` for BPMN Kit documentation, and
+`npx bpmnkit-docs ask "<question>" --pack @bpmnkit/camunda-docspack` for
+Camunda 8 documentation — BPMN semantics, FEEL, engine behaviour, the REST API.
+Both answer from the versions this project installed.
 ```
 
 Then:
 
 ```sh
 npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+npx bpmnkit-docs ask "what happens when no gateway condition is true" --pack @bpmnkit/camunda-docspack
 npx bpmnkit-docs search "exclusive gateway"
 npx bpmnkit-docs list
 ```
@@ -110,6 +115,8 @@ function loadPack(dir: string): Pack
 | `bpmnkit-docs build` | Regenerate this package's `.llms/` payload from the docs source |
 
 Options: `--limit <n>`, `--max-tokens <n>`, `--pack <name>`, `--cwd <dir>`.
+
+`--pack` narrows before the index is built, not after, so asking one pack a question does not pay for reading the others. A name that is not installed is an error listing what is, rather than an empty answer that would read as "the documentation does not cover this".
 
 ---
 

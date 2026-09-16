@@ -30,5 +30,11 @@ with the versions installed.
 
 Options: `--limit <n>`, `--max-tokens <n>`, `--pack <name>`, `--cwd <dir>`.
 
+`--pack` narrows before the index is built, not after, so asking one pack a
+question does not pay for reading the others — roughly 150ms against 650ms
+across both packs. A name that is not installed is an error listing what is,
+rather than an empty answer that would read as "the documentation does not cover
+this".
+
 ---
 Source: https://bpmnkit.com/docs/packages/docspack

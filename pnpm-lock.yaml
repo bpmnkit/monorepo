@@ -346,9 +346,15 @@ importers:
 
   apps/examples:
     dependencies:
+      '@bpmnkit/camunda-docspack':
+        specifier: workspace:*
+        version: link:../../packages/camunda-docspack
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@bpmnkit/docspack':
+        specifier: workspace:*
+        version: link:../../packages/docspack
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

@@ -1,5 +1,25 @@
 # Features
 
+## Using BPMN Kit with AI, documented end to end (2026-09-16)
+
+- **`guides/using-bpmnkit-with-ai.md`** — the three kinds of knowledge an agent needs to
+  build a process (this library, the Camunda engine, the team's own prose), each answered
+  offline, plus the loop from five Markdown files to a laid-out `.bpmn`.
+- **`packages/camunda-docspack.md`** — the Camunda pack has a page, so an agent asking
+  `@bpmnkit/docspack` can discover that Camunda documentation is installable at all.
+- **`@<vendor>/<name>-docspack` is discovered.** `@bpmnkit/camunda-docspack` was published,
+  documented and unreachable: the spec allows one pack per scope, and `discoverPacks`
+  implemented exactly that.
+- **A `--pack` name that is not installed is an error**, listing what is, instead of an
+  empty answer that reads as "the documentation does not cover this".
+- **`--pack` narrows before indexing**, not after — ~150ms against ~650ms for a BPMN Kit
+  question with both packs installed.
+- **Index your own corpus.** `bpmnkit-docs build --cwd <dir>` turns any folder of Markdown
+  into a pack an agent can ask, searched alongside the installed ones. Five documents in
+  about 9ms, no model, no network, no tokens.
+- **Three runnable examples** (`apps/examples/src/ai`) — `ai:ask`, `ai:index`, `ai:bpmn` —
+  with no API key and no network, about three seconds for all three.
+
 ## Camunda 8 docs as an offline searchable pack (2026-09-16)
 
 - **`@bpmnkit/camunda-docspack`** — the Camunda 8.10 (next) documentation as a docspack

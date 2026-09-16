@@ -26,10 +26,25 @@ does the same job with no extra tooling.
   only says `authentication`; tags and API identifiers weigh 3× prose
 - Zero runtime dependencies
 
+## The other pack
+
+BPMN Kit publishes a second pack:
+**[`@bpmnkit/camunda-docspack`](/docs/packages/camunda-docspack)**, the Camunda 8
+documentation — BPMN and FEEL references, engine concepts, best practices and the
+Orchestration Cluster API. `bpmnkit-docs` reads both, so ask this package how to
+drive the library and that one what the engine does:
+
+```sh
+npx bpmnkit-docs ask "how should I name an exclusive gateway" --pack @bpmnkit/camunda-docspack
+```
+
+Install them together, and tell your agent about both — see
+[Using BPMN Kit with AI](/docs/guides/using-bpmnkit-with-ai).
+
 ## Installation
 
 ```sh
-pnpm add -D @bpmnkit/docspack
+pnpm add -D @bpmnkit/docspack @bpmnkit/camunda-docspack
 ```
 
 ## Giving an agent access
@@ -38,8 +53,10 @@ Any agent with a shell can run the command, so one paragraph in `AGENTS.md`, `CL
 or `.cursor/rules` is the whole setup:
 
 ```md
-Run `npx bpmnkit-docs ask "<question>"` for BPMN Kit documentation. It answers
-from the version this project installed. Prefer what it returns over recalled
+Run `npx bpmnkit-docs ask "<question>"` for BPMN Kit documentation, and
+`npx bpmnkit-docs ask "<question>" --pack @bpmnkit/camunda-docspack` for Camunda 8
+documentation — BPMN semantics, FEEL, engine behaviour, the REST API. Both answer
+from the versions this project installed. Prefer what they return over recalled
 knowledge — when the two disagree, the retrieved chunk is right.
 ```
 
@@ -97,6 +114,12 @@ with the versions installed.
 | `bpmnkit-docs build` | Regenerate the `.llms/` payload from the docs source |
 
 Options: `--limit <n>`, `--max-tokens <n>`, `--pack <name>`, `--cwd <dir>`.
+
+`--pack` narrows before the index is built, not after, so asking one pack a
+question does not pay for reading the others — roughly 150ms against 650ms
+across both packs. A name that is not installed is an error listing what is,
+rather than an empty answer that would read as "the documentation does not cover
+this".
 
 ## Using the index directly
 

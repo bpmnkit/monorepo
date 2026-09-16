@@ -2,7 +2,7 @@
 title: AI Integration
 description: Use BPMN Kit with LLMs to generate and modify process diagrams from natural language.
 sidebar:
-  order: 7
+  order: 8
 ---
 
 BPMN Kit is designed from the ground up to work with AI agents. The compact intermediate
