@@ -228,13 +228,30 @@ function inRange(v: FeelValue, r: import("./types.js").FeelRange): boolean {
 	return startOk && endOk
 }
 
+/**
+ * Seconds since midnight, shifted to UTC when the time carries an offset, so
+ * that two times are compared on the same line. A time without an offset is
+ * local and compares against other local times only.
+ */
+function timeToSeconds(t: FeelTime): number {
+	return t.hour * 3600 + t.minute * 60 + t.second - (t.offsetSeconds ?? 0)
+}
+
 function compareValues(a: FeelValue, b: FeelValue): number | null {
 	if (typeof a === "number" && typeof b === "number") return a - b
 	if (typeof a === "string" && typeof b === "string") return a < b ? -1 : a > b ? 1 : 0
 	if (isFeelDate(a) && isFeelDate(b)) return dateToEpochDays(a) - dateToEpochDays(b)
+	if (isFeelTime(a) && isFeelTime(b)) return timeToSeconds(a) - timeToSeconds(b)
+	if (isFeelDateTime(a) && isFeelDateTime(b)) {
+		return dateTimeToSeconds(a) - dateTimeToSeconds(b)
+	}
 	if (isFeelDayTimeDuration(a) && isFeelDayTimeDuration(b)) return a.seconds - b.seconds
 	if (isFeelYearsMonthsDuration(a) && isFeelYearsMonthsDuration(b)) return a.months - b.months
 	return null
+}
+
+function dateTimeToSeconds(dt: FeelDateTime): number {
+	return dateToEpochDays(dt.date) * 86400 + timeToSeconds(dt.time)
 }
 
 // -------------------------------------------------------------------------
@@ -1260,6 +1277,67 @@ reg("finished by", (a, b) => {
 	return cmpPts(ae, be, "end") === 0 && cmpPts(as_, bs, "start") <= 0
 })
 
+/**
+ * DMN's is(): whether two values are the same value, not merely equal ones.
+ * Temporal values differ when they are written differently even where they
+ * name the same instant, so a local time is not the same value as one at
+ * UTC, and a zone is not the same value as the offset it currently has.
+ */
+reg("is", (a, b, ...rest) => {
+	if (rest.length > 0) return null
+	if (b === undefined) return false
+	if (a === null || b === null) return a === null && b === null
+	if (isFeelTime(a) || isFeelDateTime(a) || isFeelTime(b) || isFeelDateTime(b)) {
+		return sameTemporal(a, b)
+	}
+	if (valueType(a) !== valueType(b)) return false
+	return compareValues(a, b) === 0 || deepEquals(a, b)
+})
+
+/** Compares the written form of a time or date-time, field by field. */
+function sameTemporal(a: FeelValue, b: FeelValue): boolean {
+	if (isFeelTime(a) && isFeelTime(b)) {
+		return (
+			a.hour === b.hour &&
+			a.minute === b.minute &&
+			a.second === b.second &&
+			a.offsetSeconds === b.offsetSeconds &&
+			a.timezone === b.timezone
+		)
+	}
+	if (isFeelDateTime(a) && isFeelDateTime(b)) {
+		return (
+			a.date.year === b.date.year &&
+			a.date.month === b.date.month &&
+			a.date.day === b.date.day &&
+			sameTemporal(a.time, b.time)
+		)
+	}
+	return false
+}
+
+/** The FEEL type of a value, for deciding whether two values are the same kind. */
+function valueType(v: FeelValue): string {
+	if (v === null) return "null"
+	if (Array.isArray(v)) return "list"
+	if (typeof v !== "object") return typeof v
+	const tagged = (v as { type?: unknown }).type
+	return typeof tagged === "string" ? tagged : "context"
+}
+
+function deepEquals(a: FeelValue, b: FeelValue): boolean {
+	if (a === b) return true
+	if (Array.isArray(a) && Array.isArray(b)) {
+		return a.length === b.length && a.every((x, i) => deepEquals(x, b[i] ?? null))
+	}
+	if (isFeelContext(a) && isFeelContext(b)) {
+		const keys = Object.keys(a)
+		if (keys.length !== Object.keys(b).length) return false
+		return keys.every((k) => deepEquals(a[k] ?? null, b[k] ?? null))
+	}
+	return false
+}
+
 reg("coincides", (a, b) => {
 	if (isFeelRange(a) && isFeelRange(b)) {
 		return cmpPts(startOf(a), startOf(b), "start") === 0 && cmpPts(endOf(a), endOf(b), "end") === 0
@@ -1294,6 +1372,7 @@ const PARAM_SIGNATURES: Record<string, string[][]> = {
 	"years and months duration": [["from", "to"]],
 	// Boolean
 	not: [["negand"]],
+	is: [["value1"], ["value2"], ["value1", "value2"]],
 	"is defined": [["value"]],
 	"get or else": [["value", "default"]],
 	// String

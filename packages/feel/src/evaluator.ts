@@ -265,13 +265,11 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 		}
 
 		case "filter": {
-			const base = evaluate(node.base, ctx)
-			if (!isFeelList(base)) {
-				if (base === null) return []
-				// single value
-				const result = evaluate(node.condition, childCtx(ctx, { item: base }))
-				return typeof result === "number" ? [base] : result ? [base] : []
-			}
+			const value = evaluate(node.base, ctx)
+			if (value === null) return []
+			// A value that is not a list is filtered as a list holding just it,
+			// so `true[1]` is true and `true[0]` is null.
+			const base = isFeelList(value) ? value : [value]
 			// Numeric index filter
 			const first = evaluate(node.condition, childCtx(ctx, { item: base[0] ?? null }))
 			if (typeof first === "number") {
@@ -350,9 +348,9 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 		}
 
 		case "in-test": {
-			const val = evaluate(node.value, ctx)
-			const test = evaluate(node.test, ctx)
-			return testIncludes(test, val)
+			// The right-hand side is a unary test, evaluated with the left-hand
+			// value as its implicit input.
+			return evaluateUnaryTest(node.test, evaluate(node.value, ctx), ctx)
 		}
 
 		case "instance-of": {
@@ -408,23 +406,27 @@ function evalBinary(
 		if (l === false) return false
 		const r = evaluate(rightNode, ctx)
 		if (r === false) return false
-		if (l === null || r === null) return null
-		return true
+		// Anything that is not a boolean leaves the result unknown.
+		return l === true && r === true ? true : null
 	}
 	if (op === "or") {
 		const l = evaluate(leftNode, ctx)
 		if (l === true) return true
 		const r = evaluate(rightNode, ctx)
 		if (r === true) return true
-		if (l === null || r === null) return null
-		return false
+		return l === false && r === false ? false : null
 	}
 
 	const left = evaluate(leftNode, ctx)
 	const right = evaluate(rightNode, ctx)
 
-	if (op === "=") return deepEqual(left, right)
-	if (op === "!=") return !deepEqual(left, right)
+	if (op === "=" || op === "!=") {
+		// Comparing values of different types says nothing, so it is null
+		// rather than false. Comparing against null stays a real answer.
+		if (left !== null && right !== null && typeTag(left) !== typeTag(right)) return null
+		const equal = deepEqual(left, right)
+		return op === "=" ? equal : !equal
+	}
 
 	if (left === null || right === null) return null
 
@@ -569,6 +571,16 @@ function evalQuantifier(
 	return hasNull ? null : true
 }
 
+/** The FEEL type of a value, for deciding whether two values are comparable. */
+function typeTag(v: FeelValue): string {
+	if (v === null) return "null"
+	if (Array.isArray(v)) return "list"
+	const t = typeof v
+	if (t !== "object") return t
+	const tagged = (v as { type?: unknown }).type
+	return typeof tagged === "string" ? tagged : "context"
+}
+
 function deepEqual(a: FeelValue, b: FeelValue): boolean {
 	if (a === b) return true
 	if (a === null || b === null) return false
@@ -614,6 +626,9 @@ function testIncludes(test: FeelValue, val: FeelValue): FeelValue {
 }
 
 function checkInstanceOf(val: FeelValue, typeName: string): boolean {
+	// null is not an instance of anything, Any included: it is the absence of
+	// a value rather than a value of some type.
+	if (val === null) return typeName === "null" || typeName === "Null"
 	switch (typeName) {
 		case "number":
 			return typeof val === "number"
@@ -628,8 +643,10 @@ function checkInstanceOf(val: FeelValue, typeName: string): boolean {
 		case "date and time":
 			return isFeelDateTime(val)
 		case "days and time duration":
+		case "dayTimeDuration":
 			return isFeelDayTimeDuration(val)
 		case "years and months duration":
+		case "yearMonthDuration":
 			return isFeelYearsMonthsDuration(val)
 		case "list":
 			return Array.isArray(val)
@@ -638,9 +655,11 @@ function checkInstanceOf(val: FeelValue, typeName: string): boolean {
 		case "function":
 			return typeof val === "object" && val !== null && "call" in val
 		case "Any":
+		case "any":
 			return true
 		case "null":
-			return val === null
+		case "Null":
+			return false
 		default:
 			return false
 	}

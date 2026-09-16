@@ -85,6 +85,9 @@ export interface ParseOptions {
 	names?: Iterable<string>
 }
 
+// Multi-word type names, longest first: a prefix must not win over the whole name.
+const MULTIWORD_TYPES = ["years and months duration", "days and time duration", "date and time"]
+
 class Parser {
 	private tokens: FeelToken[]
 	private pos = 0
@@ -784,58 +787,119 @@ class Parser {
 		return { kind: "context", entries, start, end: close?.end ?? start }
 	}
 
+	/**
+	 * Parses the right-hand side of `in`, which FEEL defines as a positive
+	 * unary test rather than an expression: `x in <= 10`, `x in [1..5]`,
+	 * `x in (1, < 5, >= 10)`, `x in y`.
+	 */
 	private parseInTestExpr(): FeelNode | null {
-		// x in (a, b, c) or x in [1..5] or x in expr
-		if (this.check("punct", "(")) {
-			// Parenthesized list of tests or a range
-			return this.parseParenOrRange()
-		}
-		if (this.check("punct", "[")) {
-			return this.parseListOrRange()
-		}
-		return this.parseExpression(30)
+		if (this.check("punct", "(")) return this.parseInParen()
+		return this.parseOneUnaryTest()
 	}
 
+	/**
+	 * A parenthesized `in` operand is a range, a comma-separated list of unary
+	 * tests, or a plain grouped expression.
+	 */
+	private parseInParen(): FeelNode | null {
+		const open = this.peek()
+		if (!open) return null
+		const start = open.start
+		this.advance() // consume (
+
+		const first = this.parseOneUnaryTest()
+		if (!first) return null
+
+		if (this.check("op", "..")) {
+			this.advance()
+			const high = this.parseExpression(0)
+			if (!high) return null
+			const close = this.advance()
+			return {
+				kind: "range",
+				startIncluded: false,
+				low: first,
+				high,
+				endIncluded: close?.value === "]",
+				start,
+				end: close?.end ?? high.end,
+			}
+		}
+
+		if (this.check("punct", ",")) {
+			const tests: FeelNode[] = [first]
+			while (this.consume("punct", ",")) {
+				const test = this.parseOneUnaryTest()
+				if (test) tests.push(test)
+			}
+			const close = this.expect("punct", ")")
+			return {
+				kind: "unary-test-list",
+				tests,
+				start,
+				end: close?.end ?? tests[tests.length - 1]?.end ?? start,
+			}
+		}
+
+		this.expect("punct", ")")
+		return first
+	}
+
+	/**
+	 * Parses a type name after `instance of`. Multi-word names are tried
+	 * longest-first, since "date" is also the start of "date and time". Type
+	 * arguments (`list<number>`, `function<number> -> string`) are consumed and
+	 * ignored: this package checks the outer type only.
+	 */
 	private parseTypeName(): string | null {
 		const tok = this.peek()
 		if (!tok || (tok.kind !== "name" && tok.kind !== "keyword")) return null
-		this.advance()
-		const name = tok.value
-		// Handle multi-word type names: "date and time", "years and months duration", etc.
-		const multiTypes: Record<string, string> = {
-			date: "date",
-			time: "time",
-			number: "number",
-			string: "string",
-			boolean: "boolean",
-			context: "context",
-			list: "list",
-			function: "function",
-			duration: "duration",
-			Any: "Any",
-		}
-		if (multiTypes[name]) return name
-		// Try to extend: "date and time", "years and months duration"
-		const next1 = this.peek()
-		if (next1?.kind === "keyword" && next1.value === "and") {
-			const saved = this.pos
-			this.advance() // consume "and"
-			const next2 = this.peek()
-			if (next2?.kind === "name" && next2.value === "time") {
-				this.advance()
-				return "date and time"
+
+		let name: string | null = null
+		for (const candidate of MULTIWORD_TYPES) {
+			if (this.tryConsumeWords(candidate)) {
+				name = candidate
+				break
 			}
-			if (next2?.kind === "name" && next2.value === "months") {
-				this.advance()
-				const next3 = this.peek()
-				if (next3?.kind === "name" && next3.value === "duration") {
-					this.advance()
-					return "years and months duration"
-				}
-			}
-			this.pos = saved
 		}
+		if (name === null) {
+			this.advance()
+			name = tok.value
+		}
+
+		this.skipTypeArguments()
 		return name
+	}
+
+	/** Consumes the tokens spelling `phrase`, or nothing if they do not follow. */
+	private tryConsumeWords(phrase: string): boolean {
+		const words = phrase.split(" ")
+		for (let i = 0; i < words.length; i++) {
+			const tok = this.peek(i)
+			if (!tok || (tok.kind !== "name" && tok.kind !== "keyword") || tok.value !== words[i]) {
+				return false
+			}
+		}
+		this.pos += words.length
+		return true
+	}
+
+	/** Skips `<...>` type arguments and a `-> type` function result. */
+	private skipTypeArguments(): void {
+		if (this.check("op", "<")) {
+			let depth = 0
+			while (this.peek()) {
+				if (this.check("op", "<")) depth++
+				else if (this.check("op", ">")) depth--
+				else if (this.check("op", ">=")) depth-- // ">>" lexes as one token pair
+				this.advance()
+				if (depth === 0) break
+			}
+		}
+		if (this.check("op", "->")) {
+			this.advance()
+			this.parseTypeName()
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -890,10 +954,15 @@ class Parser {
 			return { kind: "unary-not", tests: inner, start, end: close?.end ?? start }
 		}
 
-		// Comparison operator prefix: < 5, >= 10, etc.
+		// Comparison operator prefix: < 5, >= 10, = 3, != 4
 		if (
 			tok.kind === "op" &&
-			(tok.value === "<" || tok.value === "<=" || tok.value === ">" || tok.value === ">=")
+			(tok.value === "<" ||
+				tok.value === "<=" ||
+				tok.value === ">" ||
+				tok.value === ">=" ||
+				tok.value === "=" ||
+				tok.value === "!=")
 		) {
 			const start = tok.start
 			this.advance()
