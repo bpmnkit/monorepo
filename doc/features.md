@@ -1,5 +1,17 @@
 # Features
 
+## The Camunda pack reads correctly everywhere (2026-09-16)
+
+- **`build` syncs the pack version.** A payload that is committed rather than
+  rebuilt at release no longer publishes a manifest claiming an older version —
+  the failure that made `@bpmnkit/camunda-docspack@0.1.0` fail `docspack doctor`.
+- **`docspack@1.2.0` discovers `@<vendor>/<name>-docspack`.** Upstream adopted the
+  shape `bpmnkit-docs` already read, so both readers now index the Camunda pack's
+  1,054 chunks. Pinned; a CLI older than 1.2.0 is a documented floor.
+- **An unusable pack is no longer silent, upstream either.** `doctor` refuses a
+  name the indexer will not discover and `sync` reports an installed-but-unindexed
+  pack, which is how the version drift above surfaced.
+
 ## A gateway's default flow survives the compact form (2026-09-16)
 
 - **`CompactFlow.isDefault`** — the fallthrough branch of an exclusive, inclusive

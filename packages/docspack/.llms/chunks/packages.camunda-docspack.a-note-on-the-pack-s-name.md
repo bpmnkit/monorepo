@@ -1,12 +1,15 @@
 # @bpmnkit/camunda-docspack — A note on the pack's name
 
-The docspack spec names one pack per npm scope, `@<vendor>/docspack`. A vendor
-that also redistributes somebody else's documentation has nowhere to put it under
-that rule, so this pack is `@bpmnkit/camunda-docspack` and `bpmnkit-docs` reads
-the `-docspack` suffix as well as the bare name. It stays a pure name check
-inside a scope BPMN Kit owns, so the pack carries the same trust as
-`@bpmnkit/docspack`. A spec-strict reader — the upstream `docspack` CLI — will
-only see `@bpmnkit/docspack`, so use `bpmnkit-docs` for this one.
+A vendor that redistributes somebody else's documentation needs a second pack, so
+this one is `@bpmnkit/camunda-docspack` rather than a second `@bpmnkit/docspack`.
+The name is still a pure check inside a scope BPMN Kit owns, so the pack carries
+the same trust as `@bpmnkit/docspack`.
+
+The docspack spec originally named one pack per npm scope, and `bpmnkit-docs`
+read the `-docspack` suffix ahead of it. Upstream adopted the shape in
+**`docspack@1.2.0`**, so both readers now find this pack — but a `docspack` CLI
+older than 1.2.0 will not, and will answer Camunda questions out of
+`@bpmnkit/docspack` instead. `bpmnkit-docs` has no such floor.
 
 ---
 Source: https://bpmnkit.com/docs/packages/camunda-docspack

@@ -1,5 +1,38 @@
 # Progress
 
+## 2026-09-16 — The pack version stopped lying, and upstream took the suffix
+
+`@bpmnkit/camunda-docspack@0.1.0` shipped a `.llms/manifest.json` claiming
+version `0.0.0`. This pack's payload is committed rather than rebuilt at release
+— the rebuild needs a `camunda-docs` checkout only the weekly workflow has, so
+its `build` was `tsc` and nothing else — while `changeset version` moved
+`package.json` on. `docspack doctor` fails that package outright, and
+`docspack list` reports the disagreement to every consumer. `@bpmnkit/docspack`
+was never affected: its `build` regenerates the manifest from `package.json`.
+
+`build` now runs `scripts/sync-version.mjs`, which rewrites the version in
+`manifest.json` and the `Version …` header line in `llms.txt` and touches nothing
+else — the chunks are Camunda's documentation and not the script's business.
+Verified by simulating a release bump: `doctor` goes from `error … manifest says
+0.0.0` to `ok 1054 chunks`. The published `0.1.0` stays wrong until the next
+release carries the fix.
+
+**`docspack@1.2.0`** adopted `@<vendor>/<name>-docspack`, the shape we had
+implemented locally and written up for them. Both packs are now discovered by the
+upstream CLI — `1054 chunks indexed` rather than `0 chunks (declarations)` — so
+`bpmnkit-docs`'s suffix matching stopped being a divergence and became the same
+rule, and a Camunda question stops being answered out of the wrong pack.
+
+1.2.0 also closed the silent-failure hole the write-up asked about, at both ends:
+`doctor` now refuses a pack whose name the indexer will not discover, naming the
+three shapes, and `sync` reports an installed-but-unindexed pack in `problems`
+instead of dropping it. It is what caught our own version drift in the first
+place.
+
+The one thing 1.2.0 costs us is a floor: a `docspack` older than 1.2.0 still
+answers Camunda questions out of `@bpmnkit/docspack`, so the pack's page and the
+AI guide both state the version. `bpmnkit-docs` has no such floor.
+
 ## 2026-09-16 — A model can name a gateway's default flow, and upstream shipped `docspack index`
 
 `CompactFlow` carried `condition` and had no field for `bpmn:default`. A model

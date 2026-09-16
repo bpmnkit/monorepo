@@ -129,7 +129,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Using BPMN Kit with AI — Telling an agent they exist](.llms/chunks/guides.using-bpmnkit-with-ai.telling-an-agent-they-exist.md) — 224 tokens
 - [Using BPMN Kit with AI — Asking](.llms/chunks/guides.using-bpmnkit-with-ai.asking.md) — 314 tokens
 - [Using BPMN Kit with AI — From the library instead of the CLI](.llms/chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli.md) — 706 tokens
-- [Using BPMN Kit with AI — From the library instead of the CLI — The other route: `docspack index`](.llms/chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index.md) — 531 tokens
+- [Using BPMN Kit with AI — From the library instead of the CLI — The other route: `docspack index`](.llms/chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index.md) — 551 tokens
 - [Using BPMN Kit with AI — The whole loop: five Markdown files to a BPMN diagram](.llms/chunks/guides.using-bpmnkit-with-ai.the-whole-loop-five-markdown-files-to-a-bpmn-diagram.md) — 604 tokens
 - [Using BPMN Kit with AI — Runnable examples](.llms/chunks/guides.using-bpmnkit-with-ai.runnable-examples.md) — 312 tokens
 - [Using BPMN Kit with AI — Where to go next](.llms/chunks/guides.using-bpmnkit-with-ai.where-to-go-next.md) — 117 tokens
@@ -164,7 +164,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/camunda-docspack — Installation](.llms/chunks/packages.camunda-docspack.installation.md) — 252 tokens
 - [@bpmnkit/camunda-docspack — What makes this corpus different](.llms/chunks/packages.camunda-docspack.what-makes-this-corpus-different.md) — 192 tokens
 - [@bpmnkit/camunda-docspack — Rebuilding it](.llms/chunks/packages.camunda-docspack.rebuilding-it.md) — 227 tokens
-- [@bpmnkit/camunda-docspack — A note on the pack's name](.llms/chunks/packages.camunda-docspack.a-note-on-the-pack-s-name.md) — 142 tokens
+- [@bpmnkit/camunda-docspack — A note on the pack's name](.llms/chunks/packages.camunda-docspack.a-note-on-the-pack-s-name.md) — 165 tokens
 - [@bpmnkit/canvas — Overview](.llms/chunks/packages.canvas.overview.md) — 161 tokens
 - [@bpmnkit/canvas — Options](.llms/chunks/packages.canvas.options.md) — 147 tokens
 - [@bpmnkit/canvas — Events](.llms/chunks/packages.canvas.events.md) — 269 tokens

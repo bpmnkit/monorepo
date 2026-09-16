@@ -1,6 +1,11 @@
 # docspack — feedback: a vendor with two corpora in one scope
 
-**Status:** open — to file as a Discussion on [docspack/docspack](https://github.com/docspack/docspack)
+**Status:** ✅ Resolved in `docspack@1.2.0` — it discovers
+`@<vendor>/<name>-docspack` (request 1, as proposed) and reports an
+installed-but-unusable pack in `problems` (request 4). Never filed; upstream
+shipped both while this was being written. Kept for the reasoning, and because
+the version floor it establishes is documented on the pack's page.
+
 **Filed against:** `docspack@1.1.0`, spec v1 (`https://docspack.dev/schema/v1.json`)
 **Reporter:** BPMN Kit — publisher of `@bpmnkit/docspack` and `@bpmnkit/camunda-docspack`
 
@@ -238,16 +243,14 @@ Silence here is what turns a naming disagreement into a wrong answer.
 ## What we shipped in the meantime
 
 We could not leave our users with commands that return the wrong corpus, so
-`@bpmnkit/docspack`'s bundled reader (`bpmnkit-docs`) implements proposal 1
+`@bpmnkit/docspack`'s bundled reader (`bpmnkit-docs`) implemented proposal 1
 locally: within each scope it accepts `docspack` and `*-docspack`. It stays a
 pure name check inside a scope the vendor owns, so the trust argument above holds
 unchanged.
 
-This is a divergence from the spec and we would rather not carry it. We will drop
-it the day upstream supports the shape, and we have documented the caveat so our
-users know the Camunda pack is reachable through `bpmnkit-docs` and not through
-`docspack`. Flagging it here rather than quietly maintaining a fork: if the
-answer is no, we would rather hear it and take option 2 or 3.
+At the time this was a divergence from the spec and we said we would drop it the
+day upstream supported the shape. Upstream chose the same shape, so there is
+nothing to drop — the two readers now agree.
 
 ---
 
@@ -288,6 +291,59 @@ npx docspack ask   --store ./store.db "dead letter queue dlq.extra-docspack retr
 Expected: the answer comes from `@acme/extra-docspack`, or the tool says why it
 cannot. Actual: `@acme/docspack`'s chunk, naming a different queue, exit 0.
 
+## What 1.2.0 actually shipped
+
+Both packs are found, and the version drift this document's own reproduction
+tripped over is now reported rather than silent:
+
+```console
+$ npx docspack sync
+indexing @bpmnkit/camunda-docspack@0.1.0
+indexing @bpmnkit/docspack@0.0.5
++ @bpmnkit/camunda-docspack@0.1.0  1054 chunks  indexed
++ @bpmnkit/docspack@0.0.5           191 chunks  indexed
+! @bpmnkit/camunda-docspack: manifest says version 0.0.0, package.json says 0.1.0; using 0.1.0
+
+$ npx docspack ask -p camunda "how should I name an exclusive gateway"
+## @bpmnkit/camunda-docspack@0.1.0/components.modeler.bpmn.exclusive-gateways.exclusive-gateways.conditions
+```
+
+`docspack --help` now reads "packages named `@vendor/docspack`,
+`@vendor/<name>-docspack` or `@docspack-community/<name>`", and `list --json`
+carries the warning in `problems` rather than reporting `[]`.
+
+Two notes on what this does and does not change for us:
+
+- The `bpmnkit-docs` reader keeps its own `-docspack` matching. It is no longer a
+  divergence — it is the same rule upstream now implements — and it means the
+  pack is reachable without the upstream CLI installed.
+- A `docspack` older than 1.2.0 still answers Camunda questions out of
+  `@bpmnkit/docspack`, so 1.2.0 is a floor worth stating, and the pack's
+  documentation states it.
+
+Requests 2 and 3 are moot. Request 4 landed in both halves — a pack whose name is
+still outside the discoverable shapes now fails `doctor` with the remedy, and is
+reported by `sync` instead of vanishing:
+
+```console
+$ npx docspack doctor --cwd node_modules/@acme/mydocs
+error  "@acme/mydocs" is not a name the indexer discovers; the package would
+       install and never be read     package.json
+       Rename it to one of @vendor/docspack, @vendor/<name>-docspack or
+       @docspack-community/<name>.
+failed the package is not ready to publish
+
+$ npx docspack sync
+! @acme/mydocs ships .llms/manifest.json with 2 chunks but was not indexed: its
+  name is not a discoverable pack shape (@vendor/docspack,
+  @vendor/<name>-docspack or @docspack-community/<name>)
+```
+
+That is the silent-failure hole closed at both ends: a publisher cannot ship an
+unreadable pack, and a consumer who installs one is told.
+
+---
+
 ## Summary
 
 One pack per scope is a good rule for a vendor documenting its own products. It
@@ -300,3 +356,5 @@ today that does not either misattribute the content or mislabel it as untrusted.
 protects — offline, no registry call, a function of `package.json`, and trusted
 through scope ownership. Failing that, an explicit opt-in works. Failing both,
 please at least make the current behaviour say something.
+
+**Resolved:** `docspack@1.2.0` took the first option and the last one.

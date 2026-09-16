@@ -1539,7 +1539,7 @@
 		{
 			"id": "guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index",
 			"file": "chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index.md",
-			"tokens": 531,
+			"tokens": 551,
 			"tags": [
 				"guides",
 				"using-bpmnkit-with-ai",
@@ -2002,7 +2002,7 @@
 		{
 			"id": "packages.camunda-docspack.a-note-on-the-pack-s-name",
 			"file": "chunks/packages.camunda-docspack.a-note-on-the-pack-s-name.md",
-			"tokens": 142,
+			"tokens": 165,
 			"tags": [
 				"packages",
 				"camunda-docspack",

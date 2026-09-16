@@ -45,11 +45,12 @@ keeps them in separate query paths on purpose. Build a pack when you want one
 answer drawn from both; use `docspack index` when the corpus is a database, or
 when you want the staleness check.
 
-> **Upstream still cannot see `@bpmnkit/camunda-docspack`.** `docspack sync` reads
-> it as an ordinary dependency and indexes its type declarations —
-> `0 chunks (declarations)` — because the spec names one pack per npm scope and
-> a second one under the same scope is not a pack to it. Its 1,054 chunks are
-> reachable through `bpmnkit-docs` only. Verified against `docspack@1.1.0`.
+> **Use `docspack@1.2.0` or newer for the Camunda pack.** Earlier versions named
+> one pack per npm scope, so `docspack sync` read `@bpmnkit/camunda-docspack` as
+> an ordinary dependency and indexed its type declarations — `0 chunks
+> (declarations)` — leaving a Camunda question to be answered out of the wrong
+> pack. 1.2.0 discovers `@<vendor>/<name>-docspack` and indexes all 1,054 chunks.
+> `bpmnkit-docs` has read the suffix from the start and needs no version floor.
 
 ---
 Source: https://bpmnkit.com/docs/guides/using-bpmnkit-with-ai

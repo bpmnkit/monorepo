@@ -19,15 +19,16 @@ allowBuilds:
   # Native keychain binding pulled in by the VS Code extension tooling — unused here.
   keytar: false
 
-# pnpm 12 holds a freshly published version back by default. `docspack` 1.1.0 is
-# the release that added the `index`/`recall` own-corpus commands the AI guide
-# documents, and it went out the same day, so these three are named here to take
-# it now rather than waiting the cooling-off period out. Drop the exclusions once
-# the versions have aged past it.
+# pnpm 12 holds a freshly published version back by default. `docspack` 1.2.0 is
+# the release that discovers `@<vendor>/<name>-docspack`, which is what makes
+# `@bpmnkit/camunda-docspack` reachable from the upstream CLI at all, and it went
+# out the same day. These three are named here to take it now rather than waiting
+# the cooling-off period out. Drop the exclusions once the versions have aged
+# past it.
 minimumReleaseAgeExclude:
   - '@docspack/lapis@0.2.0'
   - '@docspack/openapi@0.2.0'
-  - docspack@1.1.0
+  - docspack@1.2.0
 
 patchedDependencies:
   '@preact/signals-react@2.3.0': patches/@preact__signals-react@2.3.0.patch

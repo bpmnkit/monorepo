@@ -221,8 +221,8 @@ importers:
         specifier: ^9.0.0
         version: 9.2.3
       docspack:
-        specifier: ^1.1.0
-        version: 1.1.0(supports-color@10.2.2)
+        specifier: ^1.2.0
+        version: 1.2.0(supports-color@10.2.2)
       esbuild:
         specifier: ^0.27.0
         version: 0.27.3
@@ -3351,8 +3351,8 @@ packages:
   dlv@1.1.3:
     resolution: {integrity: sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==}
 
-  docspack@1.1.0:
-    resolution: {integrity: sha512-X4pIzCtB/zvj0UoKA3nuDYVfZVy55tB266ddIxGma0w5e/DaGYHoucaqBOLVPgVNDC6m8iQjJAxNbAvMVTXo9w==}
+  docspack@1.2.0:
+    resolution: {integrity: sha512-B9MDa7AnJa2MT/3XX/ss6ZCrGTnFmZH9KjQ/OYSWB0G3z9Tw16m/eOl2O5dobdx6PM5NoaWoUnpHM0RZjvKehQ==}
     engines: {node: '>=22.5.0'}
     hasBin: true
 
@@ -8428,7 +8428,7 @@ snapshots:
 
   dlv@1.1.3: {}
 
-  docspack@1.1.0(supports-color@10.2.2):
+  docspack@1.2.0(supports-color@10.2.2):
     dependencies:
       '@docspack/lapis': 0.2.0
       '@docspack/openapi': 0.2.0
