@@ -1,5 +1,5 @@
 import type { FeelNode } from "./ast.js"
-import { compareValues, getBuiltin, parseTemporal } from "./builtins.js"
+import { compareValues, getBuiltin, orderNamedArgs, parseTemporal } from "./builtins.js"
 import type { FeelContext, FeelFunction, FeelValue } from "./types.js"
 import {
 	getProperty,
@@ -7,6 +7,7 @@ import {
 	isFeelDate,
 	isFeelDateTime,
 	isFeelDayTimeDuration,
+	isFeelFunction,
 	isFeelList,
 	isFeelRange,
 	isFeelTime,
@@ -31,17 +32,67 @@ function childCtx(parent: EvalContext, vars: Record<string, FeelValue> = {}): Ev
 	return { vars, parent, input: parent.input }
 }
 
+/**
+ * The scope a filter condition runs in. The element is bound to `item`, and
+ * when it is a context its entries are in scope directly, so a list of
+ * records filters on their fields: `[{a: 1}, {a: 2}][a >= 2]`. An entry
+ * called `item` is the element's own, not the element.
+ */
+function filterCtx(parent: EvalContext, item: FeelValue): EvalContext {
+	const vars: Record<string, FeelValue> = { item }
+	if (isFeelContext(item)) Object.assign(vars, item)
+	return childCtx(parent, vars)
+}
+
+/**
+ * Expands the domain of a `for`/`some`/`every` binding into the values to
+ * iterate. A numeric or date range yields its whole span, counting down when
+ * it runs backwards; anything else iterates as a single-element list. A range
+ * over values that cannot be stepped through has no iteration, which is null.
+ */
+function iterationValues(domain: FeelValue): FeelValue[] | null {
+	if (isFeelList(domain)) return domain
+	if (!isFeelRange(domain)) return [domain]
+	const { start, end } = domain
+	if (typeof start === "number" && typeof end === "number") {
+		return span(start, end).map((n) => n as FeelValue)
+	}
+	if (isFeelDate(start) && isFeelDate(end)) {
+		return span(dateToEpochDays(start), dateToEpochDays(end)).map((d) => epochDaysToDate(d))
+	}
+	return null
+}
+
+/** Every integer from `from` to `to`, in whichever direction that runs. */
+function span(from: number, to: number): number[] {
+	const step = from <= to ? 1 : -1
+	const values: number[] = []
+	for (let v = from; step > 0 ? v <= to : v >= to; v += step) values.push(v)
+	return values
+}
+
 // -------------------------------------------------------------------------
 // Arithmetic helpers for temporal types
 // -------------------------------------------------------------------------
 
+/**
+ * Shifts a date by whole months. The day is clamped to the length of the
+ * month it lands in, so 2020-01-31 plus P1M is 2020-02-29 rather than a
+ * February 31st that no calendar has.
+ */
+function shiftMonths(
+	date: import("./types.js").FeelDate,
+	months: number,
+): import("./types.js").FeelDate {
+	const total = date.month + months
+	const year = date.year + Math.floor((total - 1) / 12)
+	const month = ((((total - 1) % 12) + 12) % 12) + 1
+	return { type: "date", year, month, day: Math.min(date.day, DAYS_IN_MONTH_TABLE(year, month)) }
+}
+
 function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 	if (isFeelDate(date) && isFeelYearsMonthsDuration(dur)) {
-		let m = date.month + dur.months
-		let y = date.year
-		y += Math.floor((m - 1) / 12)
-		m = ((m - 1 + 1200) % 12) + 1
-		return { type: "date", year: y, month: m, day: date.day }
+		return shiftMonths(date, dur.months)
 	}
 	if (isFeelDate(date) && isFeelDayTimeDuration(dur)) {
 		const EPOCH = dateToEpochDays(date)
@@ -53,16 +104,7 @@ function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 		return epochSecondsToDateTime(totalSec, date.time.offsetSeconds, date.time.timezone)
 	}
 	if (isFeelDateTime(date) && isFeelYearsMonthsDuration(dur)) {
-		const d = date.date
-		let m = d.month + dur.months
-		let y = d.year
-		y += Math.floor((m - 1) / 12)
-		m = ((m - 1 + 1200) % 12) + 1
-		return {
-			type: "date-time",
-			date: { type: "date", year: y, month: m, day: d.day },
-			time: date.time,
-		}
+		return { type: "date-time", date: shiftMonths(date.date, dur.months), time: date.time }
 	}
 	if (isFeelDayTimeDuration(date) && isFeelDayTimeDuration(dur)) {
 		return { type: "days-time-duration", seconds: date.seconds + dur.seconds }
@@ -209,9 +251,15 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			return node.items.map((item) => evaluate(item, ctx))
 
 		case "context": {
+			// Entries are evaluated in order in a scope that already holds the
+			// preceding ones, so `{a: 1, b: a + 1}` resolves `a` in `b`.
 			const result: FeelContext = {}
+			const entryCtx = childCtx(ctx, result)
 			for (const entry of node.entries) {
-				result[entry.key] = evaluate(entry.value, ctx)
+				// A key given twice names two different values, which is not a
+				// context at all.
+				if (entry.key in result) return null
+				result[entry.key] = evaluate(entry.value, entryCtx)
 			}
 			return result
 		}
@@ -239,40 +287,42 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 		}
 
 		case "filter": {
-			const base = evaluate(node.base, ctx)
-			if (!isFeelList(base)) {
-				if (base === null) return []
-				// single value
-				const result = evaluate(node.condition, childCtx(ctx, { item: base }))
-				return typeof result === "number" ? [base] : result ? [base] : []
-			}
+			const value = evaluate(node.base, ctx)
+			if (value === null) return []
+			// A value that is not a list is filtered as a list holding just it,
+			// so `true[1]` is true and `true[0]` is null.
+			const base = isFeelList(value) ? value : [value]
 			// Numeric index filter
-			const first = evaluate(node.condition, childCtx(ctx, { item: base[0] ?? null }))
+			const first = evaluate(node.condition, filterCtx(ctx, base[0] ?? null))
 			if (typeof first === "number") {
 				const idx = first > 0 ? first - 1 : base.length + first
 				const val = base[Math.floor(idx)]
 				return val !== undefined ? val : null
 			}
-			return base.filter((item) => {
-				const r = evaluate(node.condition, childCtx(ctx, { item }))
-				return r === true || (r !== false && r !== null)
-			})
+			return base.filter((item) => evaluate(node.condition, filterCtx(ctx, item)) === true)
 		}
 
 		case "call":
 			return evalCall(node.callee, node.args, ctx)
 
+		case "call-expr": {
+			const target = evaluate(node.target, ctx)
+			if (!isFeelFunction(target)) return null
+			return target.call(node.args.map((a) => evaluate(a, ctx)))
+		}
+
 		case "call-named": {
+			const argNames = node.args.map((a) => a.name)
+			const values = node.args.map((a) => evaluate(a.value, ctx))
 			const builtin = getBuiltin(node.callee)
-			if (!builtin) {
-				const fn = lookupVar(ctx, node.callee)
-				if (fn === null || typeof fn !== "object" || !("call" in fn)) return null
-				const args = node.args.map((a) => evaluate(a.value, ctx))
-				return (fn as FeelFunction).call(args)
+			if (builtin) {
+				const order = orderNamedArgs(node.callee, argNames)
+				if (order === null) return null
+				return builtin.call(order.map((idx) => values[idx] ?? null))
 			}
-			// Map named args to positional (built-ins don't declare param names in registry)
-			const args = node.args.map((a) => evaluate(a.value, ctx))
-			return builtin.call(args)
+			const fn = lookupVar(ctx, node.callee)
+			if (!isFeelFunction(fn)) return null
+			return fn.call(orderArgs(fn.paramNames, argNames, values))
 		}
 
 		case "if": {
@@ -280,34 +330,12 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			return cond === true ? evaluate(node.then, ctx) : evaluate(node.else, ctx)
 		}
 
-		case "for": {
-			const domains: FeelValue[][] = []
-			for (const binding of node.bindings) {
-				const d = evaluate(binding.domain, ctx)
-				domains.push(isFeelList(d) ? d : [d])
-			}
-			const partial: FeelValue[] = []
-			const results = evalCartesian(node.bindings, domains, 0, ctx, node, partial)
-			return results
-		}
+		case "for":
+			return evalFor(node.bindings, node.body, ctx)
 
-		case "some": {
-			const domains: FeelValue[][] = []
-			for (const binding of node.bindings) {
-				const d = evaluate(binding.domain, ctx)
-				domains.push(isFeelList(d) ? d : [d])
-			}
-			return evalQuantifier("some", node.bindings, domains, 0, ctx, node.satisfies)
-		}
-
-		case "every": {
-			const domains: FeelValue[][] = []
-			for (const binding of node.bindings) {
-				const d = evaluate(binding.domain, ctx)
-				domains.push(isFeelList(d) ? d : [d])
-			}
-			return evalQuantifier("every", node.bindings, domains, 0, ctx, node.satisfies)
-		}
+		case "some":
+		case "every":
+			return evalQuantifier(node.kind, node.bindings, node.satisfies, ctx)
 
 		case "between": {
 			const val = evaluate(node.value, ctx)
@@ -319,11 +347,11 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			return cmpLow >= 0 && cmpHigh <= 0
 		}
 
-		case "in-test": {
-			const val = evaluate(node.value, ctx)
-			const test = evaluate(node.test, ctx)
-			return testIncludes(test, val)
-		}
+		case "in-test":
+			// The right-hand side is a unary test, evaluated with the left-hand
+			// value as its implicit input. Unlike a decision table's test, this
+			// one keeps an unknown answer unknown.
+			return unaryTestValue(node.test, evaluate(node.value, ctx), ctx)
 
 		case "instance-of": {
 			const val = evaluate(node.value, ctx)
@@ -378,23 +406,30 @@ function evalBinary(
 		if (l === false) return false
 		const r = evaluate(rightNode, ctx)
 		if (r === false) return false
-		if (l === null || r === null) return null
-		return true
+		// Anything that is not a boolean leaves the result unknown.
+		return l === true && r === true ? true : null
 	}
 	if (op === "or") {
 		const l = evaluate(leftNode, ctx)
 		if (l === true) return true
 		const r = evaluate(rightNode, ctx)
 		if (r === true) return true
-		if (l === null || r === null) return null
-		return false
+		return l === false && r === false ? false : null
 	}
 
 	const left = evaluate(leftNode, ctx)
 	const right = evaluate(rightNode, ctx)
 
-	if (op === "=") return deepEqual(left, right)
-	if (op === "!=") return !deepEqual(left, right)
+	if (op === "=" || op === "!=") {
+		// Comparing values of different types says nothing, so it is null
+		// rather than false. Comparing against null stays a real answer.
+		if (left !== null && right !== null && typeTag(left) !== typeTag(right)) return null
+		// Temporal values are equal when they name the same point, however
+		// each was written: 12:00-01:00 and 17:00+04:00 are one instant.
+		const instant = isTemporal(left) ? compareValues(left, right) : null
+		const equal = instant !== null ? instant === 0 : deepEqual(left, right)
+		return op === "=" ? equal : !equal
+	}
 
 	if (left === null || right === null) return null
 
@@ -445,6 +480,23 @@ function evalBinary(
 	return null
 }
 
+/**
+ * Orders the arguments of a named invocation of a user-defined function. A
+ * function that declares no parameter names, or that is handed a name it does
+ * not declare, gets nulls rather than a silently mis-ordered argument list.
+ */
+function orderArgs(
+	paramNames: string[] | undefined,
+	argNames: string[],
+	values: FeelValue[],
+): FeelValue[] {
+	if (!paramNames) return []
+	return paramNames.map((param) => {
+		const idx = argNames.indexOf(param)
+		return idx >= 0 ? (values[idx] ?? null) : null
+	})
+}
+
 function evalCall(callee: string, argNodes: FeelNode[], ctx: EvalContext): FeelValue {
 	const builtin = getBuiltin(callee)
 	if (builtin) {
@@ -457,69 +509,105 @@ function evalCall(callee: string, argNodes: FeelNode[], ctx: EvalContext): FeelV
 	return (fn as FeelFunction).call(args)
 }
 
-function evalCartesian(
-	bindings: Array<{ name: string; domain: FeelNode }>,
-	domains: FeelValue[][],
-	idx: number,
-	ctx: EvalContext,
-	forNode: FeelNode & { kind: "for"; body: FeelNode },
-	partial: FeelValue[],
-): FeelValue[] {
-	if (idx === bindings.length) {
-		const vars: Record<string, FeelValue> = { partial: [...partial] }
-		const binding = bindings[idx - 1]
-		if (binding) vars[binding.name] = partial[partial.length - 1] ?? null
-		const result = evaluate(forNode.body, childCtx(ctx, vars))
-		partial.push(result)
-		return [result]
-	}
-	const binding = bindings[idx]
-	if (!binding) return []
-	const domain = domains[idx] ?? []
+type Binding = { name: string; domain: FeelNode }
+
+/**
+ * Evaluates a `for`. Each binding's domain is evaluated with the bindings to
+ * its left already in scope, so `for x in xs, y in x` works, and the body sees
+ * the results produced so far as `partial`.
+ */
+function evalFor(bindings: Binding[], body: FeelNode, ctx: EvalContext): FeelValue {
 	const results: FeelValue[] = []
-	for (const val of domain) {
-		const vars: Record<string, FeelValue> = { partial: [...partial] }
-		vars[binding.name] = val
-		// Propagate earlier bindings too
-		for (let i = 0; i < idx; i++) {
-			const b = bindings[i]
-			if (b) vars[b.name] = partial[i] ?? null
+	let failed = false
+
+	const iterate = (idx: number, scope: EvalContext): void => {
+		if (failed) return
+		if (idx === bindings.length) {
+			results.push(evaluate(body, childCtx(scope, { partial: [...results] })))
+			return
 		}
-		const sub = evalCartesian(bindings, domains, idx + 1, childCtx(ctx, vars), forNode, [
-			...partial,
-			val,
-		])
-		results.push(...sub)
+		const binding = bindings[idx]
+		if (!binding) return
+		const domain = iterationValues(evaluate(binding.domain, scope))
+		if (domain === null) {
+			failed = true
+			return
+		}
+		for (const value of domain) {
+			iterate(idx + 1, childCtx(scope, { [binding.name]: value }))
+		}
 	}
-	return results
+
+	iterate(0, ctx)
+	return failed ? null : results
 }
 
+/**
+ * Evaluates `some`/`every`. A definite answer wins over an unknown one: one
+ * true satisfies `some` whatever else the domain holds, and one false settles
+ * `every`. Otherwise an unknown anywhere makes the whole answer unknown.
+ */
 function evalQuantifier(
 	kind: "some" | "every",
-	bindings: Array<{ name: string; domain: FeelNode }>,
-	domains: FeelValue[][],
-	idx: number,
-	ctx: EvalContext,
+	bindings: Binding[],
 	satisfies: FeelNode,
+	ctx: EvalContext,
 ): FeelValue {
-	if (idx === bindings.length) {
-		return evaluate(satisfies, ctx)
+	let sawTrue = false
+	let sawFalse = false
+	let sawUnknown = false
+	let failed = false
+
+	const visit = (idx: number, scope: EvalContext): void => {
+		if (failed) return
+		if (idx === bindings.length) {
+			const result = asBoolean(evaluate(satisfies, scope))
+			if (result === true) sawTrue = true
+			else if (result === false) sawFalse = true
+			else sawUnknown = true
+			return
+		}
+		const binding = bindings[idx]
+		if (!binding) return
+		const domain = iterationValues(evaluate(binding.domain, scope))
+		if (domain === null) {
+			failed = true
+			return
+		}
+		for (const value of domain) {
+			visit(idx + 1, childCtx(scope, { [binding.name]: value }))
+		}
 	}
-	const binding = bindings[idx]
-	if (!binding) return kind === "every"
-	const domain = domains[idx] ?? []
-	if (domain.length === 0) return kind === "every"
-	let hasNull = false
-	for (const val of domain) {
-		const vars: Record<string, FeelValue> = {}
-		vars[binding.name] = val
-		const r = evalQuantifier(kind, bindings, domains, idx + 1, childCtx(ctx, vars), satisfies)
-		if (kind === "some" && r === true) return true
-		if (kind === "every" && r === false) return false
-		if (r === null) hasNull = true
-	}
-	if (kind === "some") return hasNull ? null : false
-	return hasNull ? null : true
+
+	visit(0, ctx)
+	if (failed) return null
+	if (kind === "some") return sawTrue ? true : sawUnknown ? null : false
+	return sawFalse ? false : sawUnknown ? null : true
+}
+
+function asBoolean(v: FeelValue): boolean | null {
+	return typeof v === "boolean" ? v : null
+}
+
+/** True for the values that name a point in time or a length of it. */
+function isTemporal(v: FeelValue): boolean {
+	return (
+		isFeelDate(v) ||
+		isFeelTime(v) ||
+		isFeelDateTime(v) ||
+		isFeelDayTimeDuration(v) ||
+		isFeelYearsMonthsDuration(v)
+	)
+}
+
+/** The FEEL type of a value, for deciding whether two values are comparable. */
+function typeTag(v: FeelValue): string {
+	if (v === null) return "null"
+	if (Array.isArray(v)) return "list"
+	const t = typeof v
+	if (t !== "object") return t
+	const tagged = (v as { type?: unknown }).type
+	return typeof tagged === "string" ? tagged : "context"
 }
 
 function deepEqual(a: FeelValue, b: FeelValue): boolean {
@@ -548,6 +636,9 @@ function deepEqual(a: FeelValue, b: FeelValue): boolean {
 }
 
 function testIncludes(test: FeelValue, val: FeelValue): FeelValue {
+	// Two lists are compared, not searched: [1,2,3] is a member of
+	// [[1,2,3,4], [1,2,3]] rather than of its elements.
+	if (isFeelList(test) && isFeelList(val)) return deepEqual(test, val)
 	if (isFeelRange(test)) {
 		const cmpStart = compareValues(val, test.start)
 		const cmpEnd = compareValues(val, test.end)
@@ -567,6 +658,9 @@ function testIncludes(test: FeelValue, val: FeelValue): FeelValue {
 }
 
 function checkInstanceOf(val: FeelValue, typeName: string): boolean {
+	// null is not an instance of anything, Any included: it is the absence of
+	// a value rather than a value of some type.
+	if (val === null) return typeName === "null" || typeName === "Null"
 	switch (typeName) {
 		case "number":
 			return typeof val === "number"
@@ -581,8 +675,10 @@ function checkInstanceOf(val: FeelValue, typeName: string): boolean {
 		case "date and time":
 			return isFeelDateTime(val)
 		case "days and time duration":
+		case "dayTimeDuration":
 			return isFeelDayTimeDuration(val)
 		case "years and months duration":
+		case "yearMonthDuration":
 			return isFeelYearsMonthsDuration(val)
 		case "list":
 			return Array.isArray(val)
@@ -591,28 +687,49 @@ function checkInstanceOf(val: FeelValue, typeName: string): boolean {
 		case "function":
 			return typeof val === "object" && val !== null && "call" in val
 		case "Any":
+		case "any":
 			return true
 		case "null":
-			return val === null
+		case "Null":
+			return false
 		default:
 			return false
 	}
 }
 
-/** Evaluate a unary test against an input value. Returns boolean. */
-export function evaluateUnaryTest(node: FeelNode, input: FeelValue, ctx: EvalContext): boolean {
+/**
+ * Evaluates a unary test, keeping an unknown answer unknown. A range whose
+ * bound is null, or an input of null, says nothing about membership.
+ */
+function unaryTestValue(node: FeelNode, input: FeelValue, ctx: EvalContext): FeelValue {
 	const withInput: EvalContext = { ...ctx, input }
 	const result = evaluate(node, withInput)
 	if (typeof result === "boolean") return result
 	// Range result in unary-test context → membership test
-	if (isFeelRange(result)) return testIncludes(result, input) === true
+	if (isFeelRange(result)) return testIncludes(result, input)
 	// List result → any element matches
-	if (isFeelList(result)) return result.some((r) => testIncludes(r, input) === true)
+	if (isFeelList(result)) {
+		let unknown = false
+		for (const item of result) {
+			const match = testIncludes(item, input)
+			if (match === true) return true
+			if (match === null) unknown = true
+		}
+		return unknown ? null : false
+	}
 	// A plain expression in unary test mode is an equality test.
 	// When the result is null: only match if the node itself is the null literal
 	// (null arithmetic in comparisons also yields null but must not match anything).
 	if (result !== null) return deepEqual(result, input)
 	return node.kind === "null" ? input === null : false
+}
+
+/**
+ * Evaluates a unary test against an input value. A decision table's rule
+ * either matches or it does not, so an unknown answer is not a match.
+ */
+export function evaluateUnaryTest(node: FeelNode, input: FeelValue, ctx: EvalContext): boolean {
+	return unaryTestValue(node, input, ctx) === true
 }
 
 /** Evaluate a full unary-test node (the root returned by parseUnaryTests). */

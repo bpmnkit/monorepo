@@ -132,6 +132,10 @@ function collectNames(node: FeelNode, out: Set<string>): void {
 		case "call":
 			for (const arg of node.args) collectNames(arg, out)
 			break
+		case "call-expr":
+			collectNames(node.target, out)
+			for (const arg of node.args) collectNames(arg, out)
+			break
 		case "call-named":
 			for (const arg of node.args) collectNames(arg.value, out)
 			break

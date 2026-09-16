@@ -66,14 +66,43 @@ function epochDaysToDate(days: number): FeelDate {
 	return { type: "date", year, month, day: remaining + 1 }
 }
 
+// The widest year XSD's date types allow, which bounds DMN's too.
+const MAX_YEAR = 999999999
+
+/** Builds a date, or null when the day does not exist in that month. */
+function makeDate(year: number, month: number, day: number): FeelDate | null {
+	if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null
+	if (Math.abs(year) > MAX_YEAR) return null
+	if (month < 1 || month > 12) return null
+	if (day < 1 || day > daysInMonth(year, month)) return null
+	return { type: "date", year, month, day }
+}
+
 function parseDate(s: string): FeelDate | null {
-	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+	// Exactly four year digits: "01211" carries a leading zero and
+	// "9999999999" is past any calendar, and neither is a date.
+	const m = /^(-?)(\d{4})-(\d{2})-(\d{2})$/.exec(s)
 	if (!m) return null
-	return { type: "date", year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) }
+	const year = Number(m[2]) * (m[1] === "-" ? -1 : 1)
+	return makeDate(year, Number(m[3]), Number(m[4]))
+}
+
+// The largest UTC offset XSD allows.
+const MAX_OFFSET_SECONDS = 18 * 3600
+
+/** True for a zone name the platform's time zone database knows. */
+function isKnownTimezone(name: string): boolean {
+	try {
+		new Intl.DateTimeFormat("en-US", { timeZone: name })
+		return true
+	} catch {
+		return false
+	}
 }
 
 function parseTime(s: string): FeelTime | null {
-	const m = /^(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)(?:([+-])(\d{2}):(\d{2})|Z)?(@(.+))?$/.exec(s)
+	const m =
+		/^(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)(?:([+-])(\d{2}):(\d{2})(?::(\d{2}))?|Z)?(?:@(.+))?$/.exec(s)
 	if (!m) return null
 	const hour = Number(m[1])
 	const minute = Number(m[2])
@@ -82,17 +111,35 @@ function parseTime(s: string): FeelTime | null {
 	let timezone: string | undefined
 	if (m[4]) {
 		const sign = m[4] === "+" ? 1 : -1
-		offsetSeconds = sign * (Number(m[5]) * 3600 + Number(m[6]) * 60)
-	} else if (m[3] && s.includes("Z")) {
+		offsetSeconds = sign * (Number(m[5]) * 3600 + Number(m[6]) * 60 + (m[7] ? Number(m[7]) : 0))
+		if (Math.abs(offsetSeconds) > MAX_OFFSET_SECONDS) return null
+	} else if (s.includes("Z")) {
 		offsetSeconds = 0
 	}
-	if (m[8]) timezone = m[8]
+	if (m[8]) {
+		// A zone and an offset name the same thing twice, and may disagree.
+		if (offsetSeconds !== undefined) return null
+		if (!isKnownTimezone(m[8])) return null
+		timezone = m[8]
+	}
+	if (!isValidTime(hour, minute, second)) return null
 	return { type: "time", hour, minute, second, offsetSeconds, timezone }
+}
+
+/** 24:00:00 is the end-of-day form the ISO calendar allows; 24:00:01 is not. */
+function isValidTime(hour: number, minute: number, second: number): boolean {
+	if (hour < 0 || hour > 24 || minute < 0 || minute > 59 || second < 0 || second >= 60) return false
+	return hour !== 24 || (minute === 0 && second === 0)
 }
 
 function parseDateTime(s: string): FeelDateTime | null {
 	const idx = s.indexOf("T")
-	if (idx < 0) return null
+	if (idx < 0) {
+		const dateOnly = parseDate(s)
+		return dateOnly
+			? { type: "date-time", date: dateOnly, time: { type: "time", hour: 0, minute: 0, second: 0 } }
+			: null
+	}
 	const d = parseDate(s.slice(0, idx))
 	const t = parseTime(s.slice(idx + 1))
 	if (!d || !t) return null
@@ -102,14 +149,15 @@ function parseDateTime(s: string): FeelDateTime | null {
 function parseDuration(s: string): FeelDayTimeDuration | FeelYearsMonthsDuration | null {
 	// P[n]Y[n]M or P[n]DT[n]H[n]M[n]S
 	const ymMatch = /^-?P(\d+Y)?(\d+M)?$/.exec(s)
-	if (ymMatch) {
+	if (ymMatch && /\d/.test(s)) {
 		const sign = s.startsWith("-") ? -1 : 1
 		const years = ymMatch[1] ? Number(ymMatch[1].slice(0, -1)) : 0
 		const months = ymMatch[2] ? Number(ymMatch[2].slice(0, -1)) : 0
-		return { type: "years-months-duration", months: sign * (years * 12 + months) }
+		// "|| 0" keeps a negative zero out: -P0M is the same duration as P0M.
+		return { type: "years-months-duration", months: sign * (years * 12 + months) || 0 }
 	}
-	const dtMatch = /^-?P(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d+)?S)?)?$/.exec(s)
-	if (dtMatch && s.length > 1) {
+	const dtMatch = /^-?P(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d*)?S)?)?$/.exec(s)
+	if (dtMatch && /\d/.test(s)) {
 		const sign = s.startsWith("-") ? -1 : 1
 		const days = dtMatch[1] ? Number(dtMatch[1].slice(0, -1)) : 0
 		const hours = dtMatch[2] ? Number(dtMatch[2].slice(0, -1)) : 0
@@ -117,7 +165,7 @@ function parseDuration(s: string): FeelDayTimeDuration | FeelYearsMonthsDuration
 		const seconds = dtMatch[4] ? Number(dtMatch[4].slice(0, -1)) : 0
 		return {
 			type: "days-time-duration",
-			seconds: sign * (days * 86400 + hours * 3600 + minutes * 60 + seconds),
+			seconds: sign * (days * 86400 + hours * 3600 + minutes * 60 + seconds) || 0,
 		}
 	}
 	return null
@@ -141,15 +189,25 @@ function formatDate(d: FeelDate): string {
 	return `${String(d.year).padStart(4, "0")}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`
 }
 
+/** Two digits before the decimal point, and the fraction as written. */
+function formatSeconds(second: number): string {
+	const whole = Math.floor(second)
+	const fraction = `${second}`.split(".")[1]
+	return String(whole).padStart(2, "0") + (fraction ? `.${fraction}` : "")
+}
+
 function formatTime(t: FeelTime): string {
-	let s = `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}:${String(t.second).padStart(2, "0")}`
+	let s = `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}:${formatSeconds(t.second)}`
 	if (t.offsetSeconds !== undefined) {
 		if (t.offsetSeconds === 0) {
 			s += "Z"
 		} else {
 			const sign = t.offsetSeconds >= 0 ? "+" : "-"
 			const abs = Math.abs(t.offsetSeconds)
-			s += `${sign}${String(Math.floor(abs / 3600)).padStart(2, "0")}:${String(Math.floor((abs % 3600) / 60)).padStart(2, "0")}`
+			const pad = (n: number) => String(n).padStart(2, "0")
+			s += `${sign}${pad(Math.floor(abs / 3600))}:${pad(Math.floor((abs % 3600) / 60))}`
+			// Offsets are written to the second only when they have one.
+			if (abs % 60 !== 0) s += `:${pad(abs % 60)}`
 		}
 	}
 	if (t.timezone) s += `@${t.timezone}`
@@ -172,13 +230,58 @@ function dayOfYear(d: FeelDate): number {
 // Helpers
 // -------------------------------------------------------------------------
 
+/**
+ * A number argument. FEEL does not coerce, so "1.5" is not a number here;
+ * number() is the way to convert one.
+ */
 function toNum(v: FeelValue): number | null {
-	if (typeof v === "number") return v
-	if (typeof v === "string") {
-		const n = Number(v)
-		return Number.isNaN(n) ? null : n
-	}
-	return null
+	return typeof v === "number" && Number.isFinite(v) ? v : null
+}
+
+/**
+ * A rounding scale: an optional integer. Absent means 0, but an explicitly
+ * null or non-numeric scale is an error. Beyond float64's reach the value is
+ * already exact at that scale, so it is returned unrounded.
+ */
+const MIN_SCALE = -6111
+const MAX_SCALE = 6176
+const SCALE_LIMIT = 300
+
+function toScale(v: FeelValue | undefined): number | null {
+	if (v === undefined) return 0
+	const n = toNum(v)
+	if (n === null) return null
+	const scale = Math.trunc(n)
+	return scale < MIN_SCALE || scale > MAX_SCALE ? null : scale
+}
+
+/** Rounds `n` at `scale` with the given rounding of a value exactly halfway. */
+function roundAt(n: number, scale: number, round: (x: number) => number): number {
+	if (Math.abs(scale) > SCALE_LIMIT) return n
+	const factor = 10 ** scale
+	// Re-reading the scaled value through its decimal form keeps a product like
+	// 1.005 * 100 from landing just under the halfway point it should sit on.
+	const scaled = Number(`${n}e${scale}`)
+	return Number(`${round(scaled)}e${-scale}`) || round(scaled) / factor
+}
+
+/** Round half to even, the rounding DMN's decimal() uses. */
+function roundHalfEven(x: number): number {
+	const floor = Math.floor(x)
+	const diff = x - floor
+	if (diff > 0.5) return floor + 1
+	if (diff < 0.5) return floor
+	return floor % 2 === 0 ? floor : floor + 1
+}
+
+/** Round half away from zero. */
+function roundHalfUp(x: number): number {
+	return x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5)
+}
+
+/** Round half toward zero. */
+function roundHalfDown(x: number): number {
+	return x >= 0 ? Math.ceil(x - 0.5) : Math.floor(x + 0.5)
 }
 
 function toStr(v: FeelValue): string | null {
@@ -212,13 +315,78 @@ function inRange(v: FeelValue, r: import("./types.js").FeelRange): boolean {
 	return startOk && endOk
 }
 
+const offsetCache = new Map<string, number>()
+
+/**
+ * The UTC offset a zone is on at the given wall-clock day. Resolved through
+ * the platform's time zone database, so it follows daylight saving: Melbourne
+ * is +11:00 in April and +10:00 in October.
+ */
+function zoneOffsetSeconds(timezone: string, epochDays: number): number {
+	const key = `${timezone}/${epochDays}`
+	const cached = offsetCache.get(key)
+	if (cached !== undefined) return cached
+	let offset = 0
+	try {
+		const parts = new Intl.DateTimeFormat("en-US", {
+			timeZone: timezone,
+			timeZoneName: "longOffset",
+		}).formatToParts(new Date(epochDays * 86400_000))
+		const name = parts.find((part) => part.type === "timeZoneName")?.value ?? ""
+		const m = /GMT([+-])(\d{2}):(\d{2})/.exec(name)
+		if (m) offset = (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 3600 + Number(m[3]) * 60)
+	} catch {
+		offset = 0
+	}
+	if (offsetCache.size > 512) offsetCache.clear()
+	offsetCache.set(key, offset)
+	return offset
+}
+
+/** The offset a time is on, or undefined when it is a local time. */
+function offsetOf(t: FeelTime, epochDays: number): number | undefined {
+	if (t.offsetSeconds !== undefined) return t.offsetSeconds
+	if (t.timezone !== undefined) return zoneOffsetSeconds(t.timezone, epochDays)
+	return undefined
+}
+
+/**
+ * Seconds since midnight, shifted to UTC where the time says which UTC it
+ * means. A local time carries no offset, so it is left where it is.
+ */
+function timeToSeconds(t: FeelTime, epochDays = 0): number {
+	return t.hour * 3600 + t.minute * 60 + t.second - (offsetOf(t, epochDays) ?? 0)
+}
+
+/** True when both times are local, or both say which UTC they mean. */
+function sameTimeKind(a: FeelTime, b: FeelTime, epochA: number, epochB: number): boolean {
+	return (offsetOf(a, epochA) === undefined) === (offsetOf(b, epochB) === undefined)
+}
+
 function compareValues(a: FeelValue, b: FeelValue): number | null {
 	if (typeof a === "number" && typeof b === "number") return a - b
 	if (typeof a === "string" && typeof b === "string") return a < b ? -1 : a > b ? 1 : 0
 	if (isFeelDate(a) && isFeelDate(b)) return dateToEpochDays(a) - dateToEpochDays(b)
+	if (isFeelTime(a) && isFeelTime(b)) {
+		// A local time and one at a known offset name different things and
+		// cannot be ordered against each other.
+		if (!sameTimeKind(a, b, 0, 0)) return null
+		return timeToSeconds(a) - timeToSeconds(b)
+	}
+	if (isFeelDateTime(a) && isFeelDateTime(b)) {
+		const epochA = dateToEpochDays(a.date)
+		const epochB = dateToEpochDays(b.date)
+		if (!sameTimeKind(a.time, b.time, epochA, epochB)) return null
+		return dateTimeToSeconds(a) - dateTimeToSeconds(b)
+	}
 	if (isFeelDayTimeDuration(a) && isFeelDayTimeDuration(b)) return a.seconds - b.seconds
 	if (isFeelYearsMonthsDuration(a) && isFeelYearsMonthsDuration(b)) return a.months - b.months
 	return null
+}
+
+function dateTimeToSeconds(dt: FeelDateTime): number {
+	const epochDays = dateToEpochDays(dt.date)
+	return epochDays * 86400 + timeToSeconds(dt.time, epochDays)
 }
 
 // -------------------------------------------------------------------------
@@ -238,7 +406,29 @@ function reg(name: string, fn: BuiltinFn): void {
 // -------------------------------------------------------------------------
 
 reg("string", (v) => {
-	if (v === null) return "null"
+	if (v === undefined) return null
+	return stringify(v, false)
+})
+
+/**
+ * Renders a value the way FEEL's string() does. Strings nested inside a list
+ * or context are quoted; a string rendered on its own is not.
+ */
+function stringify(v: FeelValue, nested: boolean): FeelValue {
+	if (v === null) return null
+	if (typeof v === "string") return nested ? JSON.stringify(v) : v
+	if (isFeelList(v)) {
+		const parts = v.map((item) => stringify(item, true) ?? "null")
+		return `[${parts.join(", ")}]`
+	}
+	if (isFeelContext(v)) {
+		const parts = Object.entries(v).map(([k, value]) => `${k}: ${stringify(value, true) ?? "null"}`)
+		return `{${parts.join(", ")}}`
+	}
+	return scalarToString(v)
+}
+
+function scalarToString(v: FeelValue): FeelValue {
 	if (typeof v === "string") return v
 	if (typeof v === "number") return String(v)
 	if (typeof v === "boolean") return String(v)
@@ -268,11 +458,12 @@ reg("string", (v) => {
 		return r
 	}
 	return null
-})
+}
 
 reg("string length", (s) => {
 	const str = toStr(s)
-	return str === null ? null : str.length
+	// FEEL counts characters, so an astral character counts once, not twice.
+	return str === null ? null : [...str].length
 })
 
 reg("substring", (str, start, length) => {
@@ -280,14 +471,16 @@ reg("substring", (str, start, length) => {
 	if (s === null) return null
 	const st = toNum(start)
 	if (st === null) return null
-	// FEEL substring is 1-based, negative counts from end
-	const idx = st > 0 ? st - 1 : Math.max(0, s.length + st)
+	// FEEL substring is 1-based over characters, and a negative start counts
+	// back from the end.
+	const chars = [...s]
+	const idx = st > 0 ? st - 1 : Math.max(0, chars.length + st)
 	if (length !== undefined && length !== null) {
 		const len = toNum(length)
 		if (len === null) return null
-		return s.slice(idx, idx + len)
+		return chars.slice(idx, idx + len).join("")
 	}
-	return s.slice(idx)
+	return chars.slice(idx).join("")
 })
 
 reg("substring before", (str, match) => {
@@ -343,16 +536,58 @@ const REGEX_CACHE_LIMIT = 256
 const regexCache = new Map<string, RegExp | null>()
 
 /** Compiled regex for `pattern`/`flags`, or null when the pattern is invalid. */
+/**
+ * Translates the XPath flags FEEL uses into a JavaScript regex. "i", "s" and
+ * "m" map straight across; "x" (ignore whitespace in the pattern) and "q"
+ * (treat the pattern as a literal) have no JavaScript equivalent and are
+ * applied to the pattern instead. Any other flag makes the call fail.
+ */
+function toJsRegExp(pattern: string, flags: string): RegExp | null {
+	let jsFlags = ""
+	for (const flag of flags) {
+		if (flag === "i" || flag === "s" || flag === "m" || flag === "g") {
+			if (!jsFlags.includes(flag)) jsFlags += flag
+			continue
+		}
+		if (flag !== "x" && flag !== "q") return null
+	}
+	let source = pattern
+	if (flags.includes("q")) {
+		source = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+	} else if (flags.includes("x")) {
+		source = stripPatternWhitespace(pattern)
+	}
+	try {
+		return new RegExp(source, jsFlags)
+	} catch {
+		return null
+	}
+}
+
+/** Removes the whitespace an "x"-flagged pattern ignores, keeping character classes intact. */
+function stripPatternWhitespace(pattern: string): string {
+	let out = ""
+	let inClass = false
+	for (let i = 0; i < pattern.length; i++) {
+		const c = pattern[i] as string
+		if (c === "\\" && i + 1 < pattern.length) {
+			out += c + pattern[i + 1]
+			i++
+			continue
+		}
+		if (c === "[") inClass = true
+		else if (c === "]") inClass = false
+		if (!inClass && /\s/.test(c)) continue
+		out += c
+	}
+	return out
+}
+
 function cachedRegExp(pattern: string, flags: string): RegExp | null {
 	const key = `${flags}/${pattern}`
 	const hit = regexCache.get(key)
 	if (hit !== undefined) return hit
-	let re: RegExp | null
-	try {
-		re = new RegExp(pattern, flags)
-	} catch {
-		re = null
-	}
+	const re = toJsRegExp(pattern, flags)
 	if (regexCache.size >= REGEX_CACHE_LIMIT) regexCache.clear()
 	regexCache.set(key, re)
 	return re
@@ -378,7 +613,8 @@ reg("replace", (str, pattern, replacement, flags) => {
 	const re = cachedRegExp(p, f.includes("g") ? f : `${f}g`)
 	if (re === null) return null
 	re.lastIndex = 0
-	return s.replace(re, r)
+	// $0 is XPath's whole match, which JavaScript spells $&.
+	return s.replace(re, r.replace(/\$&/g, "$$$$&").replace(/\$0/g, "$$&"))
 })
 
 reg("split", (str, delimiter) => {
@@ -389,101 +625,102 @@ reg("split", (str, delimiter) => {
 	return re === null ? s.split(d) : s.split(re)
 })
 
-reg("string join", (...args) => {
-	const flat = flattenToList(args)
-	// string join(list) or string join(list, delimiter) or string join(list, delimiter, prefix, suffix)
-	let list: FeelValue[]
-	let delimiter = ""
-	const first = flat[0]
-	if (flat.length >= 1 && first !== undefined && isFeelList(first)) {
-		list = first
-		delimiter = flat.length >= 2 ? (toStr(at(flat, 1)) ?? "") : ""
-	} else {
-		list = flat
-	}
+reg("string join", (value, delimiter, prefix, suffix) => {
+	// A value that is not a list joins as a list of one, so the delimiter
+	// never appears. A null, or anything in the list that is not a string,
+	// has no joined form.
+	if (value === null || value === undefined) return null
+	const list = isFeelList(value) ? value : [value]
 	const parts: string[] = []
 	for (const v of list) {
-		const s = toStr(v)
-		if (s !== null) parts.push(s)
+		// Nulls are skipped; any other non-string is an error.
+		if (v === null) continue
+		const text = toStr(v)
+		if (text === null) return null
+		parts.push(text)
 	}
-	return parts.join(delimiter)
+	const between = delimiter === undefined || delimiter === null ? "" : toStr(delimiter)
+	if (between === null) return null
+	const head = prefix === undefined || prefix === null ? "" : toStr(prefix)
+	const tail = suffix === undefined || suffix === null ? "" : toStr(suffix)
+	if (head === null || tail === null) return null
+	return head + parts.join(between) + tail
 })
 
 // -------------------------------------------------------------------------
 // Number functions
 // -------------------------------------------------------------------------
 
-reg("number", (v) => {
-	if (typeof v === "number") return v
-	if (typeof v === "string") {
-		const n = Number(v)
-		return Number.isNaN(n) ? null : n
-	}
-	return null
+reg("number", (v, groupingSeparator, decimalSeparator) => {
+	const hasSeparators = groupingSeparator !== undefined || decimalSeparator !== undefined
+	if (typeof v === "number") return hasSeparators ? null : v
+	if (typeof v !== "string") return null
+	const grouping = separatorArg(groupingSeparator, [" ", ",", "."])
+	const decimal = separatorArg(decimalSeparator, [",", "."])
+	if (grouping === undefined || decimal === undefined) return null
+	if (grouping !== null && grouping === decimal) return null
+	let text = v
+	if (grouping !== null) text = text.split(grouping).join("")
+	if (decimal !== null) text = text.split(decimal).join(".")
+	if (text.trim() === "") return null
+	const n = Number(text)
+	return Number.isNaN(n) ? null : n
 })
+
+/** Reads a number() separator argument: null when absent, undefined when invalid. */
+function separatorArg(v: FeelValue | undefined, allowed: string[]): string | null | undefined {
+	if (v === undefined || v === null) return null
+	if (typeof v !== "string" || !allowed.includes(v)) return undefined
+	return v
+}
 
 reg("decimal", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale)
-	if (num === null || sc === null) return null
-	const factor = 10 ** sc
-	return Math.round(num * factor) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null || scale === undefined) return null
+	return roundAt(num, sc, roundHalfEven)
 })
 
 reg("floor", (n, scale) => {
 	const num = toNum(n)
-	if (num === null) return null
-	if (scale !== undefined && scale !== null) {
-		const sc = toNum(scale) ?? 0
-		const factor = 10 ** sc
-		return Math.floor(num * factor) / factor
-	}
-	return Math.floor(num)
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, Math.floor)
 })
 
 reg("ceiling", (n, scale) => {
 	const num = toNum(n)
-	if (num === null) return null
-	if (scale !== undefined && scale !== null) {
-		const sc = toNum(scale) ?? 0
-		const factor = 10 ** sc
-		return Math.ceil(num * factor) / factor
-	}
-	return Math.ceil(num)
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, Math.ceil)
 })
 
 reg("round half up", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	return Math.round(num * factor) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, roundHalfUp)
 })
 
 reg("round half down", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	const scaled = num * factor
-	return (scaled > 0 ? Math.ceil(scaled - 0.5) : Math.floor(scaled + 0.5)) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, roundHalfDown)
 })
 
 reg("round up", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	const scaled = num * factor
-	return (scaled > 0 ? Math.ceil(scaled) : Math.floor(scaled)) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, (x) => (x >= 0 ? Math.ceil(x) : Math.floor(x)))
 })
 
 reg("round down", (n, scale) => {
 	const num = toNum(n)
-	const sc = toNum(scale) ?? 0
-	if (num === null) return null
-	const factor = 10 ** sc
-	return Math.trunc(num * factor) / factor
+	const sc = toScale(scale)
+	if (num === null || sc === null) return null
+	return roundAt(num, sc, Math.trunc)
 })
 
 reg("abs", (n) => {
@@ -533,6 +770,8 @@ reg("random number", () => Math.random())
 // -------------------------------------------------------------------------
 
 reg("count", (...args) => {
+	// count() takes a list; a null argument is a type error, not a one-item list.
+	if (args.length === 1 && args[0] === null) return null
 	const list = flattenToList(args)
 	const first = list[0]
 	if (list.length === 1 && first !== undefined && isFeelList(first)) return first.length
@@ -586,7 +825,9 @@ reg("sum", (...args) => {
 })
 
 reg("product", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
+	if (list.length === 0) return null
 	let p = 1
 	for (const v of list) {
 		const n = toNum(v)
@@ -637,38 +878,43 @@ reg("stddev", (...args) => {
 })
 
 reg("mode", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
-	const counts = new Map<FeelValue, number>()
+	const counts = new Map<number, number>()
 	for (const v of list) {
-		counts.set(v, (counts.get(v) ?? 0) + 1)
+		const n = toNum(v)
+		if (n === null) return null
+		counts.set(n, (counts.get(n) ?? 0) + 1)
 	}
-	let maxCount = 0
-	for (const cnt of counts.values()) {
-		if (cnt > maxCount) maxCount = cnt
-	}
-	const modes: FeelValue[] = []
-	for (const [v, cnt] of counts) {
-		if (cnt === maxCount) modes.push(v)
-	}
-	return modes
+	if (counts.size === 0) return []
+	const maxCount = Math.max(...counts.values())
+	// The most frequent values, in ascending order.
+	return [...counts]
+		.filter(([, count]) => count === maxCount)
+		.map(([value]) => value)
+		.sort((a, b) => a - b)
 })
 
 reg("all", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
 	let hasNull = false
 	for (const v of list) {
 		if (v === false) return false
 		if (v === null) hasNull = true
+		else if (typeof v !== "boolean") return null
 	}
 	return hasNull ? null : true
 })
 
 reg("any", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
 	let hasNull = false
 	for (const v of list) {
 		if (v === true) return true
 		if (v === null) hasNull = true
+		else if (typeof v !== "boolean") return null
 	}
 	return hasNull ? null : false
 })
@@ -805,10 +1051,17 @@ reg("get or else", (v, defaultVal) => {
 
 reg("get value", (ctx, key) => {
 	if (!isFeelContext(ctx)) return null
-	const k = toStr(key)
-	if (k === null) return null
-	const val = ctx[k]
-	return val !== undefined ? val : null
+	// A list of keys walks into nested contexts: get value(c, ["y", "a"]).
+	const path = isFeelList(key) ? key : [key]
+	let current: FeelValue = ctx
+	for (const step of path) {
+		const name = toStr(step)
+		if (name === null || !isFeelContext(current)) return null
+		const next: FeelValue | undefined = current[name]
+		if (next === undefined) return null
+		current = next
+	}
+	return current
 })
 
 reg("get entries", (ctx) => {
@@ -818,31 +1071,54 @@ reg("get entries", (ctx) => {
 
 reg("context put", (ctx, key, value) => {
 	if (!isFeelContext(ctx)) return null
-	const k = toStr(key)
-	if (k === null) return null
-	const result: FeelContext = {}
-	for (const [ck, cv] of Object.entries(ctx)) result[ck] = cv
-	result[k] = value ?? null
-	return result
+	if (value === undefined) return null
+	const path = isFeelList(key) ? key : [key]
+	if (path.length === 0) return null
+	return putPath(ctx, path, value)
 })
 
+/** Copies a context with `path` set to `value`, creating contexts on the way. */
+function putPath(ctx: FeelContext, path: FeelValue[], value: FeelValue): FeelValue {
+	const name = toStr(path[0] ?? null)
+	if (name === null) return null
+	const result: FeelContext = { ...ctx }
+	if (path.length === 1) {
+		result[name] = value
+		return result
+	}
+	const nested: FeelValue | undefined = result[name]
+	// A step onto something that is not a context has nowhere to go.
+	if (nested !== undefined && !isFeelContext(nested)) return null
+	const inner = putPath(nested ?? {}, path.slice(1), value)
+	if (inner === null) return null
+	result[name] = inner
+	return result
+}
+
 reg("context merge", (...args) => {
+	// The signature is one list of contexts; a bare argument list is accepted
+	// too, the way the other list built-ins are.
+	const first = args[0] ?? null
+	const contexts = args.length === 1 && isFeelList(first) ? first : args
+	if (contexts.length === 0) return null
 	const result: FeelContext = {}
-	for (const v of args) {
+	for (const v of contexts) {
 		if (!isFeelContext(v)) return null
 		for (const [k, cv] of Object.entries(v)) result[k] = cv
 	}
 	return result
 })
 
-reg("context", (list) => {
-	if (!isFeelList(list)) return null
+reg("context", (entries) => {
+	const list = isFeelList(entries) ? entries : [entries]
 	const result: FeelContext = {}
 	for (const item of list) {
 		if (!isFeelContext(item)) return null
 		const k = item.key
-		const v = item.value
-		if (typeof k === "string") result[k] = v !== undefined ? v : null
+		if (typeof k !== "string") return null
+		// An entry naming a key already set is a conflict, not an overwrite.
+		if (k in result) return null
+		result[k] = item.value !== undefined ? item.value : null
 	}
 	return result
 })
@@ -856,6 +1132,7 @@ reg("date", (...args) => {
 		const v = at(args, 0)
 		if (typeof v === "string") return parseDate(v)
 		if (isFeelDateTime(v)) return v.date
+		if (isFeelDate(v)) return v
 		return null
 	}
 	if (args.length === 3) {
@@ -863,7 +1140,7 @@ reg("date", (...args) => {
 		const m = toNum(at(args, 1))
 		const d = toNum(at(args, 2))
 		if (y === null || m === null || d === null) return null
-		return { type: "date", year: y, month: m, day: d }
+		return makeDate(y, m, d)
 	}
 	return null
 })
@@ -873,6 +1150,8 @@ reg("time", (...args) => {
 		const v = at(args, 0)
 		if (typeof v === "string") return parseTime(v)
 		if (isFeelDateTime(v)) return v.time
+		if (isFeelTime(v)) return v
+		if (isFeelDate(v)) return { type: "time", hour: 0, minute: 0, second: 0 }
 		return null
 	}
 	if (args.length >= 3) {
@@ -880,6 +1159,7 @@ reg("time", (...args) => {
 		const m = toNum(at(args, 1))
 		const s = toNum(at(args, 2))
 		if (h === null || m === null || s === null) return null
+		if (!isValidTime(h, m, s)) return null
 		const t: FeelTime = { type: "time", hour: h, minute: m, second: s }
 		const off = at(args, 3)
 		if (off !== null && isFeelDayTimeDuration(off)) t.offsetSeconds = off.seconds
@@ -917,9 +1197,26 @@ reg("years and months duration", (from, to) => {
 	if (isFeelDate(to)) d2 = to
 	else if (isFeelDateTime(to)) d2 = to.date
 	if (!d1 || !d2) return null
-	const months = (d2.year - d1.year) * 12 + (d2.month - d1.month)
+	let months = (d2.year - d1.year) * 12 + (d2.month - d1.month)
+	// Only whole months count, so a end that has not yet reached the start's
+	// day-and-time within the month gives back the month it was counted.
+	const remainder = compareWithinMonth(from, to)
+	if (months > 0 && remainder < 0) months -= 1
+	else if (months < 0 && remainder > 0) months += 1
 	return { type: "years-months-duration", months }
 })
+
+/** Orders two temporals by day of month and time of day, ignoring year and month. */
+function compareWithinMonth(a: FeelValue, b: FeelValue): number {
+	const partsOf = (v: FeelValue): [number, number] => {
+		if (isFeelDate(v)) return [v.day, 0]
+		if (isFeelDateTime(v)) return [v.date.day, timeToSeconds(v.time)]
+		return [0, 0]
+	}
+	const [dayA, secA] = partsOf(a)
+	const [dayB, secB] = partsOf(b)
+	return dayB - dayA || secB - secA
+}
 
 // -------------------------------------------------------------------------
 // Temporal utility functions
@@ -974,16 +1271,26 @@ reg("week of year", (d) => {
 	if (isFeelDate(d)) date = d
 	else if (isFeelDateTime(d)) date = d.date
 	if (!date) return null
-	// ISO week number
-	const epochDays = dateToEpochDays(date)
-	// 1970-01-01 was Thursday (dow=4), ISO week 1
-	const jan4 = dateToEpochDays({ type: "date", year: date.year, month: 1, day: 4 })
-	const jan4dow = ((jan4 % 7) + 7 + 4) % 7 // Monday=0
-	const weekStart = jan4 - ((jan4dow + 6) % 7)
-	const week = Math.floor((epochDays - weekStart) / 7) + 1
-	if (week < 1) return 52 // last week of previous year (simplified)
+	// ISO 8601: week 1 is the one holding the first Thursday, so the turn of
+	// the year can fall in the neighbouring year's last or first week.
+	const weekday = isoWeekday(date)
+	const week = Math.floor((dayOfYear(date) - weekday + 10) / 7)
+	if (week < 1) return isoWeeksInYear(date.year - 1)
+	if (week > isoWeeksInYear(date.year)) return 1
 	return week
 })
+
+/** Monday is 1, Sunday is 7. Epoch day 0, 1970-01-01, was a Thursday. */
+function isoWeekday(d: FeelDate): number {
+	return ((((dateToEpochDays(d) + 3) % 7) + 7) % 7) + 1
+}
+
+/** 52 or 53, whichever ISO 8601 gives the year. */
+function isoWeeksInYear(year: number): number {
+	const jan1 = isoWeekday({ type: "date", year, month: 1, day: 1 })
+	const long = jan1 === 4 || (isLeapYear(year) && jan1 === 3)
+	return long ? 53 : 52
+}
 
 reg("month of year", (d) => {
 	const MONTH_NAMES = [
@@ -1126,40 +1433,99 @@ reg("includes", (a, b) => {
 })
 
 reg("starts", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	const ae = endOf(a)
-	const be = endOf(b)
-	return cmpPts(as_, bs, "start") === 0 && cmpPts(ae, be, "end") <= 0
+	// starts(point, range): the range begins at that point, inclusively.
+	if (!isFeelRange(b)) return null
+	if (!isFeelRange(a)) {
+		return b.startIncluded && compareValues(a, b.start) === 0
+	}
+	return cmpPts(startOf(a), startOf(b), "start") === 0 && cmpPts(endOf(a), endOf(b), "end") <= 0
 })
 
 reg("started by", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	const ae = endOf(a)
-	const be = endOf(b)
-	return cmpPts(as_, bs, "start") === 0 && cmpPts(be, ae, "end") <= 0
+	if (!isFeelRange(a)) return null
+	if (!isFeelRange(b)) {
+		return a.startIncluded && compareValues(a.start, b) === 0
+	}
+	return cmpPts(startOf(a), startOf(b), "start") === 0 && cmpPts(endOf(b), endOf(a), "end") <= 0
 })
 
 reg("finishes", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const ae = endOf(a)
-	const be = endOf(b)
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	return cmpPts(ae, be, "end") === 0 && cmpPts(bs, as_, "start") <= 0
+	// finishes(point, range): the range ends at that point, inclusively.
+	if (!isFeelRange(b)) return null
+	if (!isFeelRange(a)) {
+		return b.endIncluded && compareValues(a, b.end) === 0
+	}
+	return cmpPts(endOf(a), endOf(b), "end") === 0 && cmpPts(startOf(b), startOf(a), "start") <= 0
 })
 
 reg("finished by", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const ae = endOf(a)
-	const be = endOf(b)
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	return cmpPts(ae, be, "end") === 0 && cmpPts(as_, bs, "start") <= 0
+	if (!isFeelRange(a)) return null
+	if (!isFeelRange(b)) {
+		return a.endIncluded && compareValues(a.end, b) === 0
+	}
+	return cmpPts(endOf(a), endOf(b), "end") === 0 && cmpPts(startOf(a), startOf(b), "start") <= 0
 })
+
+/**
+ * DMN's is(): whether two values are the same value, not merely equal ones.
+ * Temporal values differ when they are written differently even where they
+ * name the same instant, so a local time is not the same value as one at
+ * UTC, and a zone is not the same value as the offset it currently has.
+ */
+reg("is", (a, b, ...rest) => {
+	if (rest.length > 0) return null
+	if (b === undefined) return false
+	if (a === null || b === null) return a === null && b === null
+	if (isFeelTime(a) || isFeelDateTime(a) || isFeelTime(b) || isFeelDateTime(b)) {
+		return sameTemporal(a, b)
+	}
+	if (valueType(a) !== valueType(b)) return false
+	return compareValues(a, b) === 0 || deepEquals(a, b)
+})
+
+/** Compares the written form of a time or date-time, field by field. */
+function sameTemporal(a: FeelValue, b: FeelValue): boolean {
+	if (isFeelTime(a) && isFeelTime(b)) {
+		return (
+			a.hour === b.hour &&
+			a.minute === b.minute &&
+			a.second === b.second &&
+			a.offsetSeconds === b.offsetSeconds &&
+			a.timezone === b.timezone
+		)
+	}
+	if (isFeelDateTime(a) && isFeelDateTime(b)) {
+		return (
+			a.date.year === b.date.year &&
+			a.date.month === b.date.month &&
+			a.date.day === b.date.day &&
+			sameTemporal(a.time, b.time)
+		)
+	}
+	return false
+}
+
+/** The FEEL type of a value, for deciding whether two values are the same kind. */
+function valueType(v: FeelValue): string {
+	if (v === null) return "null"
+	if (Array.isArray(v)) return "list"
+	if (typeof v !== "object") return typeof v
+	const tagged = (v as { type?: unknown }).type
+	return typeof tagged === "string" ? tagged : "context"
+}
+
+function deepEquals(a: FeelValue, b: FeelValue): boolean {
+	if (a === b) return true
+	if (Array.isArray(a) && Array.isArray(b)) {
+		return a.length === b.length && a.every((x, i) => deepEquals(x, b[i] ?? null))
+	}
+	if (isFeelContext(a) && isFeelContext(b)) {
+		const keys = Object.keys(a)
+		if (keys.length !== Object.keys(b).length) return false
+		return keys.every((k) => deepEquals(a[k] ?? null, b[k] ?? null))
+	}
+	return false
+}
 
 reg("coincides", (a, b) => {
 	if (isFeelRange(a) && isFeelRange(b)) {
@@ -1170,6 +1536,213 @@ reg("coincides", (a, b) => {
 	}
 	return null
 })
+
+// -------------------------------------------------------------------------
+// Parameter names
+// -------------------------------------------------------------------------
+
+// Parameter names of every built-in, in declaration order, so that a named
+// invocation such as `substring(start position: 2, string: "hello")` binds by
+// name rather than by the order the arguments happen to appear in. Built-ins
+// with several signatures list one entry per signature.
+const PARAM_SIGNATURES: Record<string, string[][]> = {
+	// Conversion
+	string: [["from"]],
+	number: [
+		["from"],
+		["from", "grouping separator"],
+		["from", "grouping separator", "decimal separator"],
+	],
+	context: [["entries"]],
+	date: [["from"], ["year", "month", "day"]],
+	time: [["from"], ["hour", "minute", "second"], ["hour", "minute", "second", "offset"]],
+	"date and time": [["from"], ["date", "time"], ["date", "timezone"]],
+	duration: [["from"]],
+	"years and months duration": [["from", "to"]],
+	// Boolean
+	not: [["negand"]],
+	is: [["value1"], ["value2"], ["value1", "value2"]],
+	"is defined": [["value"]],
+	"get or else": [["value", "default"]],
+	// String
+	substring: [
+		["string", "start position"],
+		["string", "start position", "length"],
+	],
+	"string length": [["string"]],
+	"upper case": [["string"]],
+	"lower case": [["string"]],
+	"substring before": [["string", "match"]],
+	"substring after": [["string", "match"]],
+	contains: [["string", "match"]],
+	"starts with": [["string", "match"]],
+	"ends with": [["string", "match"]],
+	matches: [
+		["input", "pattern"],
+		["input", "pattern", "flags"],
+	],
+	replace: [
+		["input", "pattern", "replacement"],
+		["input", "pattern", "replacement", "flags"],
+	],
+	split: [["string", "delimiter"]],
+	"string join": [["list"], ["list", "delimiter"], ["list", "delimiter", "prefix", "suffix"]],
+	// List
+	"list contains": [["list", "element"]],
+	count: [["list"]],
+	min: [["list"]],
+	max: [["list"]],
+	sum: [["list"]],
+	product: [["list"]],
+	mean: [["list"]],
+	median: [["list"]],
+	stddev: [["list"]],
+	mode: [["list"]],
+	all: [["list"]],
+	any: [["list"]],
+	sublist: [
+		["list", "start position"],
+		["list", "start position", "length"],
+	],
+	append: [["list", "items"]],
+	concatenate: [["lists"]],
+	"insert before": [["list", "position", "newItem"]],
+	remove: [["list", "position"]],
+	reverse: [["list"]],
+	"index of": [["list", "match"]],
+	union: [["list"]],
+	"distinct values": [["list"]],
+	flatten: [["list"]],
+	sort: [["list", "precedes"]],
+	// Numeric
+	decimal: [["n", "scale"]],
+	floor: [["n"], ["n", "scale"]],
+	ceiling: [["n"], ["n", "scale"]],
+	"round up": [["n", "scale"]],
+	"round down": [["n", "scale"]],
+	"round half up": [["n", "scale"]],
+	"round half down": [["n", "scale"]],
+	abs: [["number"], ["n"]],
+	modulo: [["dividend", "divisor"]],
+	sqrt: [["number"]],
+	log: [["number"]],
+	exp: [["number"]],
+	odd: [["number"]],
+	even: [["number"]],
+	"random number": [[]],
+	// Context
+	"get value": [
+		["context", "key"],
+		["context", "keys"],
+		["m", "key"],
+		["m", "keys"],
+	],
+	"get entries": [["context"], ["m"]],
+	"context put": [
+		["context", "key", "value"],
+		["context", "keys", "value"],
+	],
+	"context merge": [["contexts"]],
+	// Temporal
+	now: [[]],
+	today: [[]],
+	"day of week": [["date"]],
+	"day of year": [["date"]],
+	"week of year": [["date"]],
+	"month of year": [["date"]],
+	"last day of month": [["date"]],
+	// Range
+	before: [
+		["point1", "point2"],
+		["range", "point"],
+		["point", "range"],
+		["range1", "range2"],
+	],
+	after: [
+		["point1", "point2"],
+		["range", "point"],
+		["point", "range"],
+		["range1", "range2"],
+	],
+	meets: [["range1", "range2"]],
+	"met by": [["range1", "range2"]],
+	overlaps: [["range1", "range2"]],
+	"overlaps before": [["range1", "range2"]],
+	"overlaps after": [["range1", "range2"]],
+	finishes: [
+		["point", "range"],
+		["range1", "range2"],
+	],
+	"finished by": [
+		["range", "point"],
+		["range1", "range2"],
+	],
+	includes: [
+		["range", "point"],
+		["range1", "range2"],
+	],
+	during: [
+		["point", "range"],
+		["range1", "range2"],
+	],
+	starts: [
+		["point", "range"],
+		["range1", "range2"],
+	],
+	"started by": [
+		["range", "point"],
+		["range1", "range2"],
+	],
+	coincides: [
+		["point1", "point2"],
+		["range1", "range2"],
+	],
+}
+
+// Built-ins DMN also defines over a bare argument list, so that max(1,2,3)
+// means max([1,2,3]). Their arity is not checked; everything else's is.
+const VARIADIC = new Set([
+	"min",
+	"max",
+	"sum",
+	"product",
+	"mean",
+	"median",
+	"stddev",
+	"mode",
+	"all",
+	"any",
+	"count",
+	"append",
+	"concatenate",
+	"union",
+	"context merge",
+])
+
+/** The argument counts a built-in accepts, or undefined when it takes any. */
+function aritiesOf(name: string): Set<number> | undefined {
+	if (VARIADIC.has(name)) return undefined
+	const signatures = PARAM_SIGNATURES[name]
+	if (!signatures) return undefined
+	return new Set(signatures.map((params) => params.length))
+}
+
+/**
+ * Orders the arguments of a named invocation to match a built-in's signature.
+ * Returns, for each parameter position, the index of the argument supplying
+ * it, or null when no signature of the built-in accepts exactly these names —
+ * which FEEL treats as an invocation error rather than a positional call.
+ */
+export function orderNamedArgs(name: string, argNames: string[]): number[] | null {
+	const signatures = PARAM_SIGNATURES[name]
+	if (!signatures) return null
+	for (const params of signatures) {
+		if (params.length !== argNames.length) continue
+		const order = params.map((param) => argNames.indexOf(param))
+		if (order.every((idx) => idx >= 0)) return order
+	}
+	return null
+}
 
 // -------------------------------------------------------------------------
 // Exports
@@ -1186,7 +1759,13 @@ export function getBuiltin(name: string): FeelFunction | undefined {
 	if (cached) return cached
 	const fn = builtinMap.get(name)
 	if (!fn) return undefined
-	const wrapper: FeelFunction = { type: "function", call: (args) => fn(...args) }
+	const arities = aritiesOf(name)
+	const wrapper: FeelFunction = {
+		type: "function",
+		// Calling a built-in with a number of arguments no signature accepts is
+		// an error, and FEEL reports an error as null.
+		call: (args) => (arities && !arities.has(args.length) ? null : fn(...args)),
+	}
 	builtinWrappers.set(name, wrapper)
 	return wrapper
 }

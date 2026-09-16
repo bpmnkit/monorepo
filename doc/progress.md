@@ -1,5 +1,107 @@
 # Progress
 
+## 2026-09-16 — FEEL taken to 94% of the DMN TCK, and the TCK put on a weekly run
+
+The TCK harness landed earlier today reported 1,282 of 2,053 FEEL cases passing. Ten
+fixes from the feelin comparison took that to 1,395; working the remaining failures by
+group took it to **1,939**.
+
+The largest single gap was the `in` operator, 181 cases: FEEL defines its right-hand
+side as a positive unary test, not an expression, so `1 in <= 10` and
+`10 in (1, < 5, >= 10)` were parse errors. Next largest was `is()`, which did not exist
+(49), and `instance of`, where `null instance of Any` answered true and a multi-word type
+name was read as a conjunction — `@"..." instance of date and time` parsed as
+`(x instance of date) and time`.
+
+Three groups were systematic rather than local:
+
+- **Ternary logic.** `and`/`or` returned true for a non-boolean operand where DMN leaves
+  the result unknown, and equality across two different types answered false rather than
+  null. Temporal equality compares the point in time now, so `12:00-01:00` equals
+  `17:00+04:00`, and a zone resolves through the platform's database to the offset it is
+  actually on that day — Melbourne is +11:00 in January and +10:00 in July.
+- **Built-in arity and types.** FEEL does not coerce, so `sqrt("4")` is null, and calling
+  a built-in with an argument count no signature accepts is null. Rounding follows the
+  spec: `decimal()` rounds half to even, `round half up` goes away from zero, and a scale
+  outside DMN's bounds has no result.
+- **Scoping.** A filter condition sees a context element's entries, so a list of records
+  filters on its fields; a `for` binding's domain sees the bindings to its left; and the
+  body sees the results so far as `partial`, which is what makes the factorial idiom work.
+
+The extractor grew with it. A decision that reads another decision, or a business
+knowledge model, now has that value in scope, and boxed function definitions become
+function literals — which is what turned the lambda group from "cannot pass here" into
+cases that pass.
+
+**What is left is 114 cases in 18 groups**, each listed in `tests/tck.test.ts` with the
+reason it is held back, and the suite fails if one of them starts passing so the list
+cannot drift. The two largest are the decision model rather than the expression language:
+typeRef coercion (26) and external Java functions (18). Then XPath regular expression
+features V8 does not have, such as character class subtraction (15), and types the model
+declares through `itemDefinition` (15). The rest is a tail of range literal spellings
+(`]1..10]`, `(<10)`), offsets carrying seconds, and numbers past float64.
+
+Numbers compare to a relative 1e-9. DMN specifies decimal arithmetic to 34 significant
+digits and this package computes in float64, which agrees to about 15; the TCK also
+records its own expected values at a precision of its choosing (`exp(4)` as
+`54.59815003`). Closing that gap means a decimal implementation, which would cost the
+11x parse-and-evaluate advantage the package has over feelin, so it is a deliberate
+divergence rather than an oversight.
+
+`.github/workflows/dmn-tck.yml` runs the suite weekly. Not per pull request: the cases
+are not in this repository, so every run clones ~400MB, and what the suite catches is
+either a regression the package's own tests already cover or an upstream case that is new
+to us — a weekly reading rather than a merge blocker. The 232 tests in
+`tests/spec.test.ts` are what protect the fixes on every pull request.
+
+## 2026-09-16 — FEEL measured against the DMN TCK, ten spec divergences fixed
+
+`@bpmnkit/feel` was compared expression by expression against `@bpmn-io/feelin` 6.1.0,
+the bpmn-io FEEL interpreter, over ~145 hand-written expressions. Of the ten divergences
+that turned out to be ours, two returned a plausible wrong answer rather than failing:
+
+```
+"a\nb"                                          → a\nb, not a newline
+replace(replacement: "x", pattern: "b", input: "abc") → "x", not "axc"
+```
+
+Named arguments were passed to built-ins in the order they were written, so any call
+whose arguments were not already in declaration order silently computed something else.
+They now bind by name against a table of every built-in's signatures, parameter names
+with spaces included, and an undeclared name yields null instead of a mis-ordered call.
+String literals now decode every escape FEEL defines — `\n \r \t \' \" \\ \uXXXX
+\UXXXXXX` — in values and in context keys, and `string length`/`substring` count
+characters rather than UTF-16 units.
+
+The other eight: context entries now see the entries before them (`{a: 1, b: a + 1}`);
+`date()` and `time()` reject values no calendar or clock has, and adding months clamps
+the day, so `date("2020-01-31") + duration("P1M")` is 2020-02-29 rather than a February
+31st; `for`/`some`/`every` take an undelimited range domain (`for i in 1..3`); a
+function-valued expression can be invoked (`{f: function(a) a}.f(1)`); `**` is
+left-associative as FEEL specifies for every infix operator, so `2 ** 3 ** 2` is 64;
+`parseExpression` accepts the names in scope so a variable named `a b` parses as one
+name; `string(null)` is null and `string()` renders lists and contexts; `count(null)` is
+null; `number()` takes grouping and decimal separators; and regex flags follow XPath,
+with `x` and `q` applied to the pattern and any other flag yielding null.
+
+**The DMN TCK now runs against the package.** `tasks/extract-tck-tests.mjs` reads a
+dmn-tck checkout and rewrites its FEEL test cases — 2,053 of them across 79 tests — into
+JSON that `tests/tck.test.ts` evaluates, the approach feelin uses, with the XML parsing
+written in-repo rather than adding `saxen` and `fast-glob`. The extracted cases are not
+committed, so the harness is two commands:
+
+```sh
+pnpm --filter @bpmnkit/feel tck
+```
+
+The ten fixes moved the TCK from 1,282/2,053 (62.4%) to 1,395/2,053 (67.9%). The
+remaining 658 are real gaps, the largest groups being unary-test operands in `in`
+(`1 in <= 10`, 181 cases), `instance of` over type arguments (51), the `is()` function
+(49), and equality across types returning null rather than false (42). Three groups
+cannot pass here at all and are counted as failures rather than dropped, because the TCK
+tests whole decision models where this package implements only the expression language:
+typeRef coercion, decisions invoking other decisions, and external Java functions.
+
 ## 2026-09-16 — Camunda 8 documentation packaged as a searchable pack
 
 `@bpmnkit/camunda-docspack` builds the Camunda 8.10 (next) documentation into a docspack
