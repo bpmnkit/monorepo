@@ -242,12 +242,16 @@ function toNum(v: FeelValue): number | null {
  * null or non-numeric scale is an error. Beyond float64's reach the value is
  * already exact at that scale, so it is returned unrounded.
  */
+const MIN_SCALE = -6111
+const MAX_SCALE = 6176
 const SCALE_LIMIT = 300
 
 function toScale(v: FeelValue | undefined): number | null {
 	if (v === undefined) return 0
 	const n = toNum(v)
-	return n === null ? null : Math.trunc(n)
+	if (n === null) return null
+	const scale = Math.trunc(n)
+	return scale < MIN_SCALE || scale > MAX_SCALE ? null : scale
 }
 
 /** Rounds `n` at `scale` with the given rounding of a value exactly halfway. */
@@ -310,21 +314,68 @@ function inRange(v: FeelValue, r: import("./types.js").FeelRange): boolean {
 	return startOk && endOk
 }
 
+const offsetCache = new Map<string, number>()
+
 /**
- * Seconds since midnight, shifted to UTC when the time carries an offset, so
- * that two times are compared on the same line. A time without an offset is
- * local and compares against other local times only.
+ * The UTC offset a zone is on at the given wall-clock day. Resolved through
+ * the platform's time zone database, so it follows daylight saving: Melbourne
+ * is +11:00 in April and +10:00 in October.
  */
-function timeToSeconds(t: FeelTime): number {
-	return t.hour * 3600 + t.minute * 60 + t.second - (t.offsetSeconds ?? 0)
+function zoneOffsetSeconds(timezone: string, epochDays: number): number {
+	const key = `${timezone}/${epochDays}`
+	const cached = offsetCache.get(key)
+	if (cached !== undefined) return cached
+	let offset = 0
+	try {
+		const parts = new Intl.DateTimeFormat("en-US", {
+			timeZone: timezone,
+			timeZoneName: "longOffset",
+		}).formatToParts(new Date(epochDays * 86400_000))
+		const name = parts.find((part) => part.type === "timeZoneName")?.value ?? ""
+		const m = /GMT([+-])(\d{2}):(\d{2})/.exec(name)
+		if (m) offset = (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 3600 + Number(m[3]) * 60)
+	} catch {
+		offset = 0
+	}
+	if (offsetCache.size > 512) offsetCache.clear()
+	offsetCache.set(key, offset)
+	return offset
+}
+
+/** The offset a time is on, or undefined when it is a local time. */
+function offsetOf(t: FeelTime, epochDays: number): number | undefined {
+	if (t.offsetSeconds !== undefined) return t.offsetSeconds
+	if (t.timezone !== undefined) return zoneOffsetSeconds(t.timezone, epochDays)
+	return undefined
+}
+
+/**
+ * Seconds since midnight, shifted to UTC where the time says which UTC it
+ * means. A local time carries no offset, so it is left where it is.
+ */
+function timeToSeconds(t: FeelTime, epochDays = 0): number {
+	return t.hour * 3600 + t.minute * 60 + t.second - (offsetOf(t, epochDays) ?? 0)
+}
+
+/** True when both times are local, or both say which UTC they mean. */
+function sameTimeKind(a: FeelTime, b: FeelTime, epochA: number, epochB: number): boolean {
+	return (offsetOf(a, epochA) === undefined) === (offsetOf(b, epochB) === undefined)
 }
 
 function compareValues(a: FeelValue, b: FeelValue): number | null {
 	if (typeof a === "number" && typeof b === "number") return a - b
 	if (typeof a === "string" && typeof b === "string") return a < b ? -1 : a > b ? 1 : 0
 	if (isFeelDate(a) && isFeelDate(b)) return dateToEpochDays(a) - dateToEpochDays(b)
-	if (isFeelTime(a) && isFeelTime(b)) return timeToSeconds(a) - timeToSeconds(b)
+	if (isFeelTime(a) && isFeelTime(b)) {
+		// A local time and one at a known offset name different things and
+		// cannot be ordered against each other.
+		if (!sameTimeKind(a, b, 0, 0)) return null
+		return timeToSeconds(a) - timeToSeconds(b)
+	}
 	if (isFeelDateTime(a) && isFeelDateTime(b)) {
+		const epochA = dateToEpochDays(a.date)
+		const epochB = dateToEpochDays(b.date)
+		if (!sameTimeKind(a.time, b.time, epochA, epochB)) return null
 		return dateTimeToSeconds(a) - dateTimeToSeconds(b)
 	}
 	if (isFeelDayTimeDuration(a) && isFeelDayTimeDuration(b)) return a.seconds - b.seconds
@@ -333,7 +384,8 @@ function compareValues(a: FeelValue, b: FeelValue): number | null {
 }
 
 function dateTimeToSeconds(dt: FeelDateTime): number {
-	return dateToEpochDays(dt.date) * 86400 + timeToSeconds(dt.time)
+	const epochDays = dateToEpochDays(dt.date)
+	return epochDays * 86400 + timeToSeconds(dt.time, epochDays)
 }
 
 // -------------------------------------------------------------------------
@@ -560,7 +612,8 @@ reg("replace", (str, pattern, replacement, flags) => {
 	const re = cachedRegExp(p, f.includes("g") ? f : `${f}g`)
 	if (re === null) return null
 	re.lastIndex = 0
-	return s.replace(re, r)
+	// $0 is XPath's whole match, which JavaScript spells $&.
+	return s.replace(re, r.replace(/\$&/g, "$$$$&").replace(/\$0/g, "$$&"))
 })
 
 reg("split", (str, delimiter) => {
@@ -598,7 +651,8 @@ reg("string join", (value, delimiter, prefix, suffix) => {
 // -------------------------------------------------------------------------
 
 reg("number", (v, groupingSeparator, decimalSeparator) => {
-	if (typeof v === "number") return v
+	const hasSeparators = groupingSeparator !== undefined || decimalSeparator !== undefined
+	if (typeof v === "number") return hasSeparators ? null : v
 	if (typeof v !== "string") return null
 	const grouping = separatorArg(groupingSeparator, [" ", ",", "."])
 	const decimal = separatorArg(decimalSeparator, [",", "."])
@@ -1032,8 +1086,9 @@ function putPath(ctx: FeelContext, path: FeelValue[], value: FeelValue): FeelVal
 		return result
 	}
 	const nested: FeelValue | undefined = result[name]
-	const base = nested !== undefined && isFeelContext(nested) ? nested : {}
-	const inner = putPath(base, path.slice(1), value)
+	// A step onto something that is not a context has nowhere to go.
+	if (nested !== undefined && !isFeelContext(nested)) return null
+	const inner = putPath(nested ?? {}, path.slice(1), value)
 	if (inner === null) return null
 	result[name] = inner
 	return result
@@ -1224,9 +1279,9 @@ reg("week of year", (d) => {
 	return week
 })
 
-/** Monday is 1, Sunday is 7. */
+/** Monday is 1, Sunday is 7. Epoch day 0, 1970-01-01, was a Thursday. */
 function isoWeekday(d: FeelDate): number {
-	return (((dateToEpochDays(d) + 3) % 7) + 7) % 7 || 7
+	return ((((dateToEpochDays(d) + 3) % 7) + 7) % 7) + 1
 }
 
 /** 52 or 53, whichever ISO 8601 gives the year. */
@@ -1578,8 +1633,10 @@ const PARAM_SIGNATURES: Record<string, string[][]> = {
 	"get value": [
 		["context", "key"],
 		["context", "keys"],
+		["m", "key"],
+		["m", "keys"],
 	],
-	"get entries": [["context"]],
+	"get entries": [["context"], ["m"]],
 	"context put": [
 		["context", "key", "value"],
 		["context", "keys", "value"],

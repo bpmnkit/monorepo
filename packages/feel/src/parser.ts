@@ -90,6 +90,9 @@ export interface ParseOptions {
 // reads as a conjunction.
 const MULTIWORD_PROPERTIES = ["time offset", "start included", "end included"]
 
+// The symbols a FEEL name may contain besides letters, digits and spaces.
+const NAME_SYMBOLS = new Set([".", "/", "-", "'", "+", "*"])
+
 // Multi-word type names, longest first: a prefix must not win over the whole name.
 const MULTIWORD_TYPES = ["years and months duration", "days and time duration", "date and time"]
 
@@ -576,6 +579,30 @@ class Parser {
 		}
 	}
 
+	/**
+	 * Reads a context key, which runs up to the colon and so can be gathered
+	 * without ambiguity. A FEEL name may hold spaces and the symbols listed in
+	 * NAME_SYMBOLS, which is what lets `{_2021-01-11: ...}` and `{foo+bar: ...}`
+	 * be keys rather than arithmetic.
+	 */
+	private parseContextKey(): string {
+		let key = ""
+		let previousWasWord = false
+		while (true) {
+			const tok = this.peek()
+			if (!tok) break
+			const isWord = tok.kind === "name" || tok.kind === "keyword" || tok.kind === "number"
+			const isSymbol = tok.kind === "op" && NAME_SYMBOLS.has(tok.value)
+			if (!isWord && !isSymbol) break
+			// Two words in a row are separated by the space that separated them.
+			if (isWord && previousWasWord) key += " "
+			key += tok.value
+			previousWasWord = isWord
+			this.advance()
+		}
+		return key
+	}
+
 	private parseIf(): FeelNode | null {
 		const start = this.peek()?.start ?? 0
 		this.advance() // consume "if"
@@ -772,13 +799,7 @@ class Parser {
 					if (!t) return false
 					key = unescapeString(t.value.slice(1, -1))
 				} else if (this.check("name") || this.check("keyword")) {
-					// A key runs up to the colon, so its words can be joined safely.
-					const words: string[] = []
-					while (this.check("name") || this.check("keyword")) {
-						const word = this.advance()
-						if (word) words.push(word.value)
-					}
-					key = words.join(" ")
+					key = this.parseContextKey()
 				} else {
 					const t = this.peek()
 					this.errors.push({

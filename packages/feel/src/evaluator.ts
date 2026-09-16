@@ -33,6 +33,18 @@ function childCtx(parent: EvalContext, vars: Record<string, FeelValue> = {}): Ev
 }
 
 /**
+ * The scope a filter condition runs in. The element is bound to `item`, and
+ * when it is a context its entries are in scope directly, so a list of
+ * records filters on their fields: `[{a: 1}, {a: 2}][a >= 2]`. An entry
+ * called `item` is the element's own, not the element.
+ */
+function filterCtx(parent: EvalContext, item: FeelValue): EvalContext {
+	const vars: Record<string, FeelValue> = { item }
+	if (isFeelContext(item)) Object.assign(vars, item)
+	return childCtx(parent, vars)
+}
+
+/**
  * Expands the domain of a `for`/`some`/`every` binding into the values to
  * iterate. A numeric or date range yields its whole span, counting down when
  * it runs backwards; anything else iterates as a single-element list. A range
@@ -244,6 +256,9 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			const result: FeelContext = {}
 			const entryCtx = childCtx(ctx, result)
 			for (const entry of node.entries) {
+				// A key given twice names two different values, which is not a
+				// context at all.
+				if (entry.key in result) return null
 				result[entry.key] = evaluate(entry.value, entryCtx)
 			}
 			return result
@@ -278,16 +293,13 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			// so `true[1]` is true and `true[0]` is null.
 			const base = isFeelList(value) ? value : [value]
 			// Numeric index filter
-			const first = evaluate(node.condition, childCtx(ctx, { item: base[0] ?? null }))
+			const first = evaluate(node.condition, filterCtx(ctx, base[0] ?? null))
 			if (typeof first === "number") {
 				const idx = first > 0 ? first - 1 : base.length + first
 				const val = base[Math.floor(idx)]
 				return val !== undefined ? val : null
 			}
-			return base.filter((item) => {
-				const r = evaluate(node.condition, childCtx(ctx, { item }))
-				return r === true || (r !== false && r !== null)
-			})
+			return base.filter((item) => evaluate(node.condition, filterCtx(ctx, item)) === true)
 		}
 
 		case "call":

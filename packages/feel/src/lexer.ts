@@ -67,7 +67,10 @@ function isDigit(c: number): boolean {
 }
 
 function isLetter(c: number): boolean {
-	return (c >= 0x61 && c <= 0x7a) || (c >= 0x41 && c <= 0x5a)
+	if ((c >= 0x61 && c <= 0x7a) || (c >= 0x41 && c <= 0x5a)) return true
+	// FEEL names are not limited to ASCII: anything above the ASCII range is
+	// a name character, which covers accented letters and emoji alike.
+	return c > 0x7f
 }
 
 function isWhitespace(c: number): boolean {

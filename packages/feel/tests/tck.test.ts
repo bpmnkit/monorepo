@@ -51,6 +51,47 @@ function loadSuites(): TckSuite[] {
 /** Cases the package does not pass yet, each with the reason it is held back. */
 const KNOWN_FAILURES: Record<string, string> = {}
 
+/**
+ * DMN specifies decimal arithmetic to 34 significant digits, and this package
+ * computes in float64, so results agree to roughly 15. The TCK also writes its
+ * expected values at a precision of its own choosing (exp(4) is recorded as
+ * 54.59815003). Numbers therefore compare to a relative 1e-9, which is far
+ * inside that gap and far outside any real disagreement.
+ */
+const NUMERIC_TOLERANCE = 1e-9
+
+function matches(actual: FeelValue, expected: FeelValue): boolean {
+	if (typeof actual === "number" && typeof expected === "number") {
+		if (actual === expected) return true
+		const scale = Math.max(Math.abs(actual), Math.abs(expected), 1)
+		return Math.abs(actual - expected) / scale < NUMERIC_TOLERANCE
+	}
+	if (Array.isArray(actual) && Array.isArray(expected)) {
+		return (
+			actual.length === expected.length &&
+			actual.every((item, i) => matches(item, expected[i] ?? null))
+		)
+	}
+	if (
+		actual !== null &&
+		expected !== null &&
+		typeof actual === "object" &&
+		typeof expected === "object" &&
+		!Array.isArray(actual) &&
+		!Array.isArray(expected)
+	) {
+		const keys = Object.keys(actual)
+		if (keys.length !== Object.keys(expected).length) return false
+		return keys.every((key) =>
+			matches(
+				(actual as Record<string, FeelValue>)[key] ?? null,
+				(expected as Record<string, FeelValue>)[key] ?? null,
+			),
+		)
+	}
+	return Object.is(actual, expected)
+}
+
 function evalFeel(expression: string, vars: FeelContext = {}): FeelValue {
 	const { ast, errors } = parseExpression(expression, { names: Object.keys(vars) })
 	if (!ast || errors.length > 0) {
@@ -74,7 +115,8 @@ describe.skipIf(suites.length === 0)("DMN TCK", () => {
 				it.skipIf(reason !== undefined)(label, () => {
 					const vars = tckCase.context ? (evalFeel(tckCase.context) as FeelContext) : {}
 					const expected = evalFeel(tckCase.expected)
-					expect(evalFeel(tckCase.expression, vars)).toEqual(expected)
+					const actual = evalFeel(tckCase.expression, vars)
+					if (!matches(actual, expected)) expect(actual).toEqual(expected)
 				})
 			}
 		})
