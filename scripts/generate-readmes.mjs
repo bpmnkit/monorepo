@@ -1200,6 +1200,8 @@ interface RenderOptions {
 
 It is built from the \`docs/\` tree of [camunda/camunda-docs](https://github.com/camunda/camunda-docs), which is the unreleased **8.10** documentation, plus the Orchestration Cluster API specification.
 
+> **This is Camunda's documentation, not BPMN Kit's.** The content is the work of Camunda Services GmbH and copyright in it remains with them; this package contains no documentation written by BPMN Kit and claims no rights over what it carries. All it adds is the tooling that stages, chunks and indexes that content so an AI agent can retrieve it offline. BPMN Kit is not affiliated with, endorsed by, or sponsored by Camunda. It is a convenience copy pinned to one upstream commit, so for canonical and current documentation prefer [docs.camunda.io](https://docs.camunda.io).
+
 ## Features
 
 - **Diagrams as text** — the best-practice pages argue through embedded BPMN diagrams. Camunda's own Markdown export drops them; this renders each one as a flow description, so a page about naming gateways still contains the gateway, its question and its conditions.
@@ -1250,9 +1252,14 @@ node packages/camunda-docspack/dist/cli.js --camunda-docs ../camunda-docs
 
 ## Licence
 
-The documentation content is adapted from camunda/camunda-docs, © Camunda Services GmbH, licensed **CC BY-SA 3.0**. ShareAlike requires this adaptation to carry the same terms, so this package is CC BY-SA 3.0 rather than MIT like the rest of BPMN Kit. See \`NOTICE\` for the attribution and the list of changes.
+**The documentation content belongs to Camunda.** It is the work of Camunda Services GmbH, taken from camunda/camunda-docs, and copyright in it remains with them. BPMN Kit claims no ownership of it and asserts no rights over it; its own contribution is the build tooling in \`src/\` and nothing else.
 
-BPMN Kit is not affiliated with or endorsed by Camunda Services GmbH.`,
+Camunda publishes that documentation under **CC BY-SA 3.0**, and this package redistributes it under those same terms, unchanged. Chunking the prose and rendering its embedded diagrams as text make this an Adaptation under §1 of that licence rather than a mere Collection, so ShareAlike applies and the package as a whole is CC BY-SA 3.0 rather than MIT like the rest of BPMN Kit.
+
+Those terms grant you rights, and nothing here narrows them: you may share and adapt this content, provided you credit Camunda, state what you changed, and license your result alike. See \`NOTICE\` for the attribution, the upstream commit, and the list of changes made.
+
+BPMN Kit is not affiliated with, endorsed by, or sponsored by Camunda Services GmbH. "Camunda" is a trademark of its owner, used here only to state truthfully whose documentation this is. For canonical and current documentation, prefer [docs.camunda.io](https://docs.camunda.io).
+`,
 	},
 	"packages/docspack": {
 		name: "@bpmnkit/docspack",

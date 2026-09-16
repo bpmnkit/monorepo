@@ -1,14 +1,42 @@
 Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
 
-The documentation content in this package (llms.txt and .llms/) is adapted from
-camunda/camunda-docs, (C) Camunda Services GmbH, which is licensed under the
-Creative Commons Attribution-ShareAlike 3.0 Unported licence.
+WHAT THIS PACKAGE IS
+
+This package repackages existing Camunda documentation for offline retrieval by
+AI agents. It contains no documentation written by BPMN Kit.
+
+The documentation content (llms.txt and .llms/) is the work of Camunda Services
+GmbH, taken from camunda/camunda-docs and published at https://docs.camunda.io.
+Copyright in that content remains with Camunda Services GmbH. BPMN Kit claims no
+ownership of it and asserts no rights over it.
+
+BPMN Kit's own contribution is the build tooling in src/ — the code that stages,
+chunks and indexes that content — and nothing more.
+
+THE LICENCE
+
+Camunda publishes its documentation under the Creative Commons
+Attribution-ShareAlike 3.0 Unported licence, and this package redistributes it
+under those same terms, unchanged.
 
 Full licence text: https://creativecommons.org/licenses/by-sa/3.0/legalcode
 
-That licence requires an Adaptation to be distributed under the same terms, so
-this package as a whole is distributed under CC BY-SA 3.0 rather than under the
-MIT licence used elsewhere in this repository. See NOTICE for the attribution
-and the list of changes made to the original work.
+Chunking the prose, rendering embedded BPMN diagrams as text and rewriting links
+make this package an Adaptation under §1 of that licence rather than a mere
+Collection. ShareAlike therefore applies, and this package as a whole is
+distributed under CC BY-SA 3.0 rather than the MIT licence used elsewhere in this
+repository. See NOTICE for the attribution and the list of changes made.
 
-BPMN Kit is not affiliated with or endorsed by Camunda Services GmbH.
+That licence grants you rights: you may share and adapt this content, provided
+you credit Camunda, say what you changed, and license your result under the same
+terms. Nothing here withdraws or narrows those rights.
+
+NO AFFILIATION
+
+BPMN Kit is not affiliated with, endorsed by, or sponsored by Camunda Services
+GmbH. "Camunda" is a trademark of its owner and is used here only to state
+truthfully whose documentation this is.
+
+This package is a convenience copy, pinned to one upstream commit and therefore
+always some distance behind. For canonical and current documentation, prefer
+https://docs.camunda.io.

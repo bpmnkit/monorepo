@@ -23,17 +23,25 @@ const CHANGES = [
 
 export function notice(commit: string): string {
 	return `${[
-		"This package contains documentation from camunda/camunda-docs,",
-		"(C) Camunda Services GmbH, licensed under CC BY-SA 3.0:",
-		LICENCE_URL,
+		"This package repackages existing Camunda documentation for offline retrieval by",
+		"AI agents. It contains no documentation written by BPMN Kit.",
+		"",
+		"The documentation content is the work of Camunda Services GmbH. Copyright in it",
+		"remains with Camunda Services GmbH; BPMN Kit claims no ownership of it and",
+		"asserts no rights over it. BPMN Kit's contribution is the build tooling only.",
 		"",
 		`Source: ${UPSTREAM} @ ${commit}`,
 		"Published at: https://docs.camunda.io/docs/next/",
+		`Licensed by Camunda under CC BY-SA 3.0: ${LICENCE_URL}`,
 		"",
 		"The original work has been modified. Changes:",
 		...CHANGES.map((change) => `  - ${change}`),
 		"",
-		"This adaptation is distributed under CC BY-SA 3.0, as that licence requires.",
-		"BPMN Kit is not affiliated with or endorsed by Camunda Services GmbH.",
+		"This adaptation is redistributed under CC BY-SA 3.0, as that licence requires.",
+		"Those terms are unchanged: you may share and adapt this content, provided you",
+		"credit Camunda, state what you changed, and license your result alike.",
+		"",
+		"BPMN Kit is not affiliated with, endorsed by, or sponsored by Camunda Services",
+		"GmbH. For canonical and current documentation, prefer https://docs.camunda.io.",
 	].join("\n")}\n`
 }

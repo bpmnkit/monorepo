@@ -41,11 +41,11 @@ export const PUBLISHED = [
 /**
  * Published packages whose licence is not the repo's MIT, and the licence they carry instead.
  *
- * `@bpmnkit/camunda-docspack` contains documentation adapted from camunda/camunda-docs, which
- * is CC BY-SA 3.0. Chunking that prose and rendering its embedded diagrams as text make the
- * package an Adaptation under §1 of that licence, and ShareAlike then requires the result to
- * carry the same terms — so it cannot be relicensed MIT, and `sync-license.mjs` must not copy
- * the root LICENCE over the one it ships.
+ * `@bpmnkit/camunda-docspack` carries documentation that belongs to Camunda Services GmbH, not
+ * to BPMN Kit, published by them under CC BY-SA 3.0. Chunking that prose and rendering its
+ * embedded diagrams as text make the package an Adaptation under §1 of that licence, and
+ * ShareAlike then requires the result to carry the same terms — so it cannot be relicensed
+ * MIT, and `sync-license.mjs` must not copy the root LICENCE over the one it ships.
  *
  * Keep this empty unless a package genuinely cannot be MIT. It is an exception, not an option.
  */
