@@ -57,6 +57,7 @@ const DOT = 0x2e
 const GT = 0x3e
 const LT = 0x3c
 const BANG = 0x21
+const PLUS = 0x2b
 const MINUS = 0x2d
 const EQ = 0x3d
 const UNDERSCORE = 0x5f
@@ -66,7 +67,10 @@ function isDigit(c: number): boolean {
 }
 
 function isLetter(c: number): boolean {
-	return (c >= 0x61 && c <= 0x7a) || (c >= 0x41 && c <= 0x5a)
+	if ((c >= 0x61 && c <= 0x7a) || (c >= 0x41 && c <= 0x5a)) return true
+	// FEEL names are not limited to ASCII: anything above the ASCII range is
+	// a name character, which covers accented letters and emoji alike.
+	return c > 0x7f
 }
 
 function isWhitespace(c: number): boolean {
@@ -75,6 +79,18 @@ function isWhitespace(c: number): boolean {
 
 const SINGLE_OPS = new Set("+-*/=<>?".split("").map((c) => c.charCodeAt(0)))
 const PUNCT = new Set("()[]{},:".split("").map((c) => c.charCodeAt(0)))
+
+/** End of an exponent starting at `i` ("e4", "e+4", "e-4"), or `i` if none. */
+function readExponent(input: string, i: number): number {
+	const c = input.charCodeAt(i)
+	if (c !== 0x65 && c !== 0x45) return i
+	let j = i + 1
+	const sign = input.charCodeAt(j)
+	if (sign === PLUS || sign === MINUS) j++
+	if (!isDigit(input.charCodeAt(j))) return i
+	while (j < input.length && isDigit(input.charCodeAt(j))) j++
+	return j
+}
 
 export function tokenize(input: string): FeelToken[] {
 	const tokens: FeelToken[] = []
@@ -183,21 +199,24 @@ export function tokenize(input: string): FeelToken[] {
 			continue
 		}
 
-		// Dot (not ..)
-		if (c === DOT) {
+		// Dot (not ".." and not the start of a number like ".872")
+		if (c === DOT && !isDigit(next)) {
 			tokens.push({ kind: "punct", value: ".", start, end: i + 1 })
 			i++
 			continue
 		}
 
-		// Number (only consume one decimal point, and only if followed by a digit)
-		if (isDigit(c)) {
+		// Number: digits, an optional fraction, an optional exponent. A leading
+		// "." is allowed (".872"), and ".." is never part of a number.
+		if (isDigit(c) || (c === DOT && isDigit(next))) {
 			while (i < len && isDigit(input.charCodeAt(i))) i++
 			// Consume decimal fraction only if next char is '.' followed by a digit (not '..')
 			if (i + 1 < len && input.charCodeAt(i) === DOT && isDigit(input.charCodeAt(i + 1))) {
 				i++ // consume the '.'
 				while (i < len && isDigit(input.charCodeAt(i))) i++
 			}
+			const exponent = readExponent(input, i)
+			if (exponent > i) i = exponent
 			tokens.push({ kind: "number", value: input.slice(start, i), start, end: i })
 			continue
 		}
@@ -222,4 +241,67 @@ export function tokenize(input: string): FeelToken[] {
 	}
 
 	return tokens
+}
+
+const SIMPLE_ESCAPES: Record<string, string> = {
+	"'": "'",
+	'"': '"',
+	"\\": "\\",
+	n: "\n",
+	r: "\r",
+	t: "\t",
+}
+
+/** Decodes a \u/\U escape at `i`, or returns null when it is not a valid one. */
+function readCodePoint(body: string, i: number): { text: string; length: number } | null {
+	const kind = body[i + 1]
+	const maxDigits = kind === "u" ? 4 : 6
+	const digits = /^[0-9a-fA-F]+/.exec(body.slice(i + 2, i + 2 + maxDigits))?.[0] ?? ""
+	// \u takes exactly four digits; \U takes as many as still form a code point,
+	// so "\U101EF0" is \U101EF followed by a literal "0".
+	const minLength = kind === "u" ? 4 : 1
+	for (let len = digits.length; len >= minLength; len--) {
+		if (kind === "u" && len !== 4) break
+		const code = Number.parseInt(digits.slice(0, len), 16)
+		if (code <= 0x10ffff) return { text: String.fromCodePoint(code), length: 2 + len }
+	}
+	return null
+}
+
+/**
+ * Decodes the escape sequences of a FEEL string literal body (the text between
+ * the quotes). Recognizes \' \" \\ \n \r \t, \uXXXX and the extended
+ * \UXXXXXX form; an unrecognized sequence is left as written, since dropping
+ * the backslash would silently alter the author's data.
+ */
+export function unescapeString(body: string): string {
+	if (!body.includes("\\")) return body
+	let out = ""
+	let i = 0
+	while (i < body.length) {
+		const c = body[i] as string
+		if (c !== "\\" || i + 1 >= body.length) {
+			out += c
+			i++
+			continue
+		}
+		const simple = SIMPLE_ESCAPES[body[i + 1] as string]
+		if (simple !== undefined) {
+			out += simple
+			i += 2
+			continue
+		}
+		const next = body[i + 1]
+		if (next === "u" || next === "U") {
+			const decoded = readCodePoint(body, i)
+			if (decoded) {
+				out += decoded.text
+				i += decoded.length
+				continue
+			}
+		}
+		out += c
+		i++
+	}
+	return out
 }

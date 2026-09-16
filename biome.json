@@ -40,6 +40,7 @@
 			"apps/reebe/packages/reebe-wasm/src/wasm/**",
 			"**/public/drop/assets/**",
 			"packages/core/descriptors/**",
+			"packages/feel/tests/tck/**",
 			"descriptors/**"
 		]
 	}

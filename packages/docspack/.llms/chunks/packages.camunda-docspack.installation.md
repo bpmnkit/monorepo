@@ -29,8 +29,8 @@ npx bpmnkit-docs list
 ```
 
 ```
-@bpmnkit/camunda-docspack@0.0.0  1054 chunks
-@bpmnkit/docspack@0.0.4  206 chunks
+@bpmnkit/camunda-docspack@0.1.1  1054 chunks
+@bpmnkit/docspack@0.0.5  206 chunks
 ```
 
 A pack missing from that list is a pack no answer can come from. See

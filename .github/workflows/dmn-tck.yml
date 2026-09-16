@@ -1,0 +1,63 @@
+name: DMN TCK
+
+# Runs the FEEL test cases of the DMN TCK against @bpmnkit/feel.
+#
+# Weekly rather than on every pull request, for two reasons. The cases are not in this
+# repository — they are extracted from a dmn-tck checkout by
+# packages/feel/tasks/extract-tck-tests.mjs — so every run clones ~400MB that the normal
+# CI has no reason to fetch. And the suite moves on someone else's schedule: what it
+# catches is either a change here that regressed conformance, which the package's own
+# tests already cover, or an upstream case that is new to us, which is a weekly reading
+# rather than a merge blocker.
+#
+# The run is a check, not a rebuild: nothing is committed, and a red job means either a
+# regression or a new upstream case to look at. workflow_dispatch covers checking a
+# branch on demand.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1" # Monday 04:00 UTC
+  workflow_dispatch:
+
+jobs:
+  tck:
+    name: Run the TCK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout dmn-tck
+        uses: actions/checkout@v4
+        with:
+          repository: dmn-tck/tck
+          path: .dmn-tck
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Extract the FEEL test cases
+        working-directory: packages/feel
+        run: node tasks/extract-tck-tests.mjs --tck "$GITHUB_WORKSPACE/.dmn-tck"
+
+      # Cases the package does not pass are listed in tests/tck.test.ts with the reason
+      # they are held back, so a failure here is a case that used to pass, or one the
+      # TCK has added. The suite also fails when a listed case starts passing, which
+      # keeps that list describing what is actually left.
+      - name: Run
+        working-directory: packages/feel
+        run: pnpm run tck:run
+
+      - name: Report upstream revision
+        if: always()
+        run: echo "dmn-tck@$(git -C .dmn-tck rev-parse --short HEAD)" >> "$GITHUB_STEP_SUMMARY"

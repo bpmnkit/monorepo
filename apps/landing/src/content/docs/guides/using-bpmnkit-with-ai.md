@@ -64,7 +64,7 @@ npx bpmnkit-docs ask "what does compactify drop from a diagram"
 ```
 
 ```
-## @bpmnkit/docspack@0.0.4/packages.core.installation-compactify-definitions
+## @bpmnkit/docspack@0.0.5/packages.core.installation-compactify-definitions
 
 Projects a `BpmnDefinitions` object onto a `CompactDiagram` — a small JSON
 object suitable for LLM prompts. **Lossy:** it keeps topology, names …
@@ -98,8 +98,8 @@ npx bpmnkit-docs list
 ```
 
 ```
-@bpmnkit/camunda-docspack@0.0.0  1054 chunks
-@bpmnkit/docspack@0.0.4  206 chunks
+@bpmnkit/camunda-docspack@0.1.1  1054 chunks
+@bpmnkit/docspack@0.0.5  206 chunks
 ```
 
 ## From the library instead of the CLI

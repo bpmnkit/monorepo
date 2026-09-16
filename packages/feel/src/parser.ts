@@ -1,5 +1,5 @@
 import type { BinaryOp, FeelNode } from "./ast.js"
-import { tokenize } from "./lexer.js"
+import { tokenize, unescapeString } from "./lexer.js"
 import type { FeelToken } from "./lexer.js"
 
 export interface ParseError {
@@ -64,13 +64,58 @@ const BUILTIN_PREFIXES = ((): Set<string> => {
 	return s
 })()
 
+/** Every strict prefix of the given multi-word names. */
+function prefixesOf(names: Iterable<string>): Set<string> {
+	const prefixes = new Set<string>()
+	for (const name of names) {
+		if (!name.includes(" ")) continue
+		const parts = name.split(" ")
+		for (let i = 1; i < parts.length; i++) prefixes.add(parts.slice(0, i).join(" "))
+	}
+	return prefixes
+}
+
+export interface ParseOptions {
+	/**
+	 * Names that are in scope where the expression is evaluated. FEEL names may
+	 * contain spaces, so `a b + 1` can only be read as a reference to `a b`
+	 * when the parser is told that `a b` exists. Without this, only multi-word
+	 * built-in names are recognized.
+	 */
+	names?: Iterable<string>
+}
+
+// The property names FEEL spells with a space. A path key is matched against
+// this fixed set rather than joining words greedily, so `a.b and c` still
+// reads as a conjunction.
+const MULTIWORD_PROPERTIES = ["time offset", "start included", "end included"]
+
+// The symbols a FEEL name may contain besides letters, digits and spaces.
+const NAME_SYMBOLS = new Set([".", "/", "-", "'", "+", "*"])
+
+// Multi-word type names, longest first: a prefix must not win over the whole name.
+const MULTIWORD_TYPES = ["years and months duration", "days and time duration", "date and time"]
+
 class Parser {
 	private tokens: FeelToken[]
 	private pos = 0
+	private readonly names: ReadonlySet<string>
+	private readonly namePrefixes: ReadonlySet<string>
 	readonly errors: ParseError[] = []
 
-	constructor(input: string) {
+	constructor(input: string, options: ParseOptions = {}) {
 		this.tokens = tokenize(input).filter((t) => t.kind !== "whitespace" && t.kind !== "comment")
+		const scopeNames = options.names ? [...options.names].filter((n) => n.includes(" ")) : []
+		this.names = new Set(scopeNames)
+		this.namePrefixes = prefixesOf(scopeNames)
+	}
+
+	private isKnownName(name: string): boolean {
+		return BUILTIN_NAMES.has(name) || this.names.has(name)
+	}
+
+	private isKnownPrefix(name: string): boolean {
+		return BUILTIN_PREFIXES.has(name) || this.namePrefixes.has(name)
 	}
 
 	private peek(offset = 0): FeelToken | undefined {
@@ -105,23 +150,30 @@ class Parser {
 		return tok
 	}
 
-	/** Try to extend a single name token into a multi-word built-in name. */
+	/**
+	 * Extends a single name token into the longest multi-word name in scope,
+	 * built-in or supplied by the caller. Words consumed while reaching for a
+	 * longer name that does not exist are given back, so `date and` falls back
+	 * to `date` rather than becoming a name nothing can resolve.
+	 */
 	private resolveMultiwordName(first: string): string {
 		let name = first
-		while (true) {
-			// Only try to extend if current is a known prefix
-			if (!BUILTIN_PREFIXES.has(name)) break
+		let longest = first
+		let longestPos = this.pos
+		while (this.isKnownPrefix(name)) {
 			const next = this.peek()
 			if (!next || (next.kind !== "name" && next.kind !== "keyword")) break
 			const extended = `${name} ${next.value}`
-			if (BUILTIN_NAMES.has(extended) || BUILTIN_PREFIXES.has(extended)) {
-				this.advance()
-				name = extended
-			} else {
-				break
+			if (!this.isKnownName(extended) && !this.isKnownPrefix(extended)) break
+			this.advance()
+			name = extended
+			if (this.isKnownName(name)) {
+				longest = name
+				longestPos = this.pos
 			}
 		}
-		return name
+		this.pos = longestPos
+		return longest
 	}
 
 	// -------------------------------------------------------------------------
@@ -170,6 +222,7 @@ class Parser {
 		}
 		if (tok.kind === "punct" && tok.value === ".") return 80
 		if (tok.kind === "punct" && tok.value === "[") return 80
+		if (tok.kind === "punct" && tok.value === "(") return 80
 		return 0
 	}
 
@@ -214,9 +267,9 @@ class Parser {
 		) {
 			this.advance()
 			const op = tok.value as BinaryOp
-			// ** is right-associative
-			const rightPrec = op === "**" ? prec - 1 : prec
-			const right = this.parseExpression(rightPrec)
+			// FEEL makes every infix operator left-associative, "**" included:
+			// 2 ** 3 ** 2 is (2 ** 3) ** 2.
+			const right = this.parseExpression(prec)
 			if (!right) {
 				const pos = tok.end
 				this.errors.push({
@@ -271,8 +324,38 @@ class Parser {
 				this.errors.push({ message: "Expected name after '.'", start: tok.start, end: tok.end })
 				return null
 			}
+			let key = nameTok.value
+			let end = nameTok.end
+			const multiword = MULTIWORD_PROPERTIES.find((p) => this.tryConsumeWords(p))
+			if (multiword) {
+				key = multiword
+				end = this.tokens[this.pos - 1]?.end ?? nameTok.end
+			} else {
+				this.advance()
+			}
+			return { kind: "path", base: left, key, start: left.start, end }
+		}
+
+		// Invocation of a function-valued expression: expr(args)
+		if (tok.kind === "punct" && tok.value === "(") {
 			this.advance()
-			return { kind: "path", base: left, key: nameTok.value, start: left.start, end: nameTok.end }
+			const args: FeelNode[] = []
+			if (!this.check("punct", ")")) {
+				const arg = this.parseExpression(0)
+				if (arg) args.push(arg)
+				while (this.consume("punct", ",")) {
+					const a = this.parseExpression(0)
+					if (a) args.push(a)
+				}
+			}
+			const close = this.expect("punct", ")")
+			return {
+				kind: "call-expr",
+				target: left,
+				args,
+				start: left.start,
+				end: close?.end ?? args[args.length - 1]?.end ?? left.end,
+			}
 		}
 
 		// Filter: expr[condition]
@@ -314,7 +397,7 @@ class Parser {
 		// String literal
 		if (tok.kind === "string") {
 			this.advance()
-			const raw = tok.value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\")
+			const raw = unescapeString(tok.value.slice(1, -1))
 			return { kind: "string", value: raw, start: tok.start, end: tok.end }
 		}
 
@@ -428,28 +511,41 @@ class Parser {
 	}
 
 	private isNamedArgList(): boolean {
-		// Peek: name colon value pattern?
-		const t0 = this.peek(0)
-		const t1 = this.peek(1)
-		return !!(
-			t0 &&
-			(t0.kind === "name" || t0.kind === "keyword") &&
-			t1 &&
-			t1.kind === "punct" &&
-			t1.value === ":"
-		)
+		// Peek: one or more name words followed by a colon? Parameter names may
+		// have spaces, as in `substring(start position: 2, string: "hello")`.
+		let offset = 0
+		while (true) {
+			const tok = this.peek(offset)
+			if (!tok || (tok.kind !== "name" && tok.kind !== "keyword")) break
+			offset++
+		}
+		if (offset === 0) return false
+		const after = this.peek(offset)
+		return after?.kind === "punct" && after.value === ":"
 	}
 
 	private parseNamedCall(callee: string, start: number): FeelNode | null {
 		const args: Array<{ name: string; value: FeelNode }> = []
 		if (!this.check("punct", ")")) {
 			const parsePair = (): boolean => {
-				const nameTok = this.advance()
-				if (!nameTok) return false
+				const words: string[] = []
+				while (this.check("name") || this.check("keyword")) {
+					const word = this.advance()
+					if (word) words.push(word.value)
+				}
+				if (words.length === 0) {
+					const t = this.peek()
+					this.errors.push({
+						message: "Expected parameter name",
+						start: t?.start ?? 0,
+						end: t?.end ?? 0,
+					})
+					return false
+				}
 				if (!this.expect("punct", ":")) return false
 				const val = this.parseExpression(0)
 				if (!val) return false
-				args.push({ name: nameTok.value, value: val })
+				args.push({ name: words.join(" "), value: val })
 				return true
 			}
 			if (!parsePair()) return null
@@ -459,6 +555,52 @@ class Parser {
 		}
 		const close = this.expect("punct", ")")
 		return { kind: "call-named", callee, args, start, end: close?.end ?? start }
+	}
+
+	/**
+	 * Parses the domain of a `for`/`some`/`every` binding. Unlike other
+	 * positions, a range may appear here undelimited: `for i in 1..3`.
+	 */
+	private parseIterationDomain(): FeelNode | null {
+		const domain = this.parseExpression(0)
+		if (!domain) return null
+		if (!this.check("op", "..")) return domain
+		this.advance()
+		const high = this.parseExpression(0)
+		if (!high) return null
+		return {
+			kind: "range",
+			startIncluded: true,
+			low: domain,
+			high,
+			endIncluded: true,
+			start: domain.start,
+			end: high.end,
+		}
+	}
+
+	/**
+	 * Reads a context key, which runs up to the colon and so can be gathered
+	 * without ambiguity. A FEEL name may hold spaces and the symbols listed in
+	 * NAME_SYMBOLS, which is what lets `{_2021-01-11: ...}` and `{foo+bar: ...}`
+	 * be keys rather than arithmetic.
+	 */
+	private parseContextKey(): string {
+		let key = ""
+		let previousWasWord = false
+		while (true) {
+			const tok = this.peek()
+			if (!tok) break
+			const isWord = tok.kind === "name" || tok.kind === "keyword" || tok.kind === "number"
+			const isSymbol = tok.kind === "op" && NAME_SYMBOLS.has(tok.value)
+			if (!isWord && !isSymbol) break
+			// Two words in a row are separated by the space that separated them.
+			if (isWord && previousWasWord) key += " "
+			key += tok.value
+			previousWasWord = isWord
+			this.advance()
+		}
+		return key
 	}
 
 	private parseIf(): FeelNode | null {
@@ -484,7 +626,7 @@ class Parser {
 			if (!nameTok || (nameTok.kind !== "name" && nameTok.kind !== "backtick")) return false
 			const varName = nameTok.value
 			if (!this.expect("keyword", "in")) return false
-			const domain = this.parseExpression(0)
+			const domain = this.parseIterationDomain()
 			if (!domain) return false
 			bindings.push({ name: varName, domain })
 			return true
@@ -508,7 +650,7 @@ class Parser {
 			if (!nameTok || (nameTok.kind !== "name" && nameTok.kind !== "backtick")) return false
 			const varName = nameTok.value
 			if (!this.expect("keyword", "in")) return false
-			const domain = this.parseExpression(0)
+			const domain = this.parseIterationDomain()
 			if (!domain) return false
 			bindings.push({ name: varName, domain })
 			return true
@@ -528,13 +670,16 @@ class Parser {
 		this.advance() // consume "function"
 		if (!this.expect("punct", "(")) return null
 		const params: string[] = []
+		// A parameter may declare a type, which this package does not check:
+		// `function(a: number) a + 1`.
+		const parseParam = (): void => {
+			const name = this.advance()
+			if (name) params.push(name.value)
+			if (this.consume("punct", ":")) this.parseTypeName()
+		}
 		if (!this.check("punct", ")")) {
-			const p = this.advance()
-			if (p) params.push(p.value)
-			while (this.consume("punct", ",")) {
-				const q = this.advance()
-				if (q) params.push(q.value)
-			}
+			parseParam()
+			while (this.consume("punct", ",")) parseParam()
 		}
 		if (!this.expect("punct", ")")) return null
 		const body = this.parseExpression(0)
@@ -652,11 +797,9 @@ class Parser {
 				if (this.check("string")) {
 					const t = this.advance()
 					if (!t) return false
-					key = t.value.slice(1, -1)
+					key = unescapeString(t.value.slice(1, -1))
 				} else if (this.check("name") || this.check("keyword")) {
-					const t = this.advance()
-					if (!t) return false
-					key = t.value
+					key = this.parseContextKey()
 				} else {
 					const t = this.peek()
 					this.errors.push({
@@ -685,58 +828,119 @@ class Parser {
 		return { kind: "context", entries, start, end: close?.end ?? start }
 	}
 
+	/**
+	 * Parses the right-hand side of `in`, which FEEL defines as a positive
+	 * unary test rather than an expression: `x in <= 10`, `x in [1..5]`,
+	 * `x in (1, < 5, >= 10)`, `x in y`.
+	 */
 	private parseInTestExpr(): FeelNode | null {
-		// x in (a, b, c) or x in [1..5] or x in expr
-		if (this.check("punct", "(")) {
-			// Parenthesized list of tests or a range
-			return this.parseParenOrRange()
-		}
-		if (this.check("punct", "[")) {
-			return this.parseListOrRange()
-		}
-		return this.parseExpression(30)
+		if (this.check("punct", "(")) return this.parseInParen()
+		return this.parseOneUnaryTest()
 	}
 
+	/**
+	 * A parenthesized `in` operand is a range, a comma-separated list of unary
+	 * tests, or a plain grouped expression.
+	 */
+	private parseInParen(): FeelNode | null {
+		const open = this.peek()
+		if (!open) return null
+		const start = open.start
+		this.advance() // consume (
+
+		const first = this.parseOneUnaryTest()
+		if (!first) return null
+
+		if (this.check("op", "..")) {
+			this.advance()
+			const high = this.parseExpression(0)
+			if (!high) return null
+			const close = this.advance()
+			return {
+				kind: "range",
+				startIncluded: false,
+				low: first,
+				high,
+				endIncluded: close?.value === "]",
+				start,
+				end: close?.end ?? high.end,
+			}
+		}
+
+		if (this.check("punct", ",")) {
+			const tests: FeelNode[] = [first]
+			while (this.consume("punct", ",")) {
+				const test = this.parseOneUnaryTest()
+				if (test) tests.push(test)
+			}
+			const close = this.expect("punct", ")")
+			return {
+				kind: "unary-test-list",
+				tests,
+				start,
+				end: close?.end ?? tests[tests.length - 1]?.end ?? start,
+			}
+		}
+
+		this.expect("punct", ")")
+		return first
+	}
+
+	/**
+	 * Parses a type name after `instance of`. Multi-word names are tried
+	 * longest-first, since "date" is also the start of "date and time". Type
+	 * arguments (`list<number>`, `function<number> -> string`) are consumed and
+	 * ignored: this package checks the outer type only.
+	 */
 	private parseTypeName(): string | null {
 		const tok = this.peek()
 		if (!tok || (tok.kind !== "name" && tok.kind !== "keyword")) return null
-		this.advance()
-		const name = tok.value
-		// Handle multi-word type names: "date and time", "years and months duration", etc.
-		const multiTypes: Record<string, string> = {
-			date: "date",
-			time: "time",
-			number: "number",
-			string: "string",
-			boolean: "boolean",
-			context: "context",
-			list: "list",
-			function: "function",
-			duration: "duration",
-			Any: "Any",
-		}
-		if (multiTypes[name]) return name
-		// Try to extend: "date and time", "years and months duration"
-		const next1 = this.peek()
-		if (next1?.kind === "keyword" && next1.value === "and") {
-			const saved = this.pos
-			this.advance() // consume "and"
-			const next2 = this.peek()
-			if (next2?.kind === "name" && next2.value === "time") {
-				this.advance()
-				return "date and time"
+
+		let name: string | null = null
+		for (const candidate of MULTIWORD_TYPES) {
+			if (this.tryConsumeWords(candidate)) {
+				name = candidate
+				break
 			}
-			if (next2?.kind === "name" && next2.value === "months") {
-				this.advance()
-				const next3 = this.peek()
-				if (next3?.kind === "name" && next3.value === "duration") {
-					this.advance()
-					return "years and months duration"
-				}
-			}
-			this.pos = saved
 		}
+		if (name === null) {
+			this.advance()
+			name = tok.value
+		}
+
+		this.skipTypeArguments()
 		return name
+	}
+
+	/** Consumes the tokens spelling `phrase`, or nothing if they do not follow. */
+	private tryConsumeWords(phrase: string): boolean {
+		const words = phrase.split(" ")
+		for (let i = 0; i < words.length; i++) {
+			const tok = this.peek(i)
+			if (!tok || (tok.kind !== "name" && tok.kind !== "keyword") || tok.value !== words[i]) {
+				return false
+			}
+		}
+		this.pos += words.length
+		return true
+	}
+
+	/** Skips `<...>` type arguments and a `-> type` function result. */
+	private skipTypeArguments(): void {
+		if (this.check("op", "<")) {
+			let depth = 0
+			while (this.peek()) {
+				if (this.check("op", "<")) depth++
+				else if (this.check("op", ">")) depth--
+				else if (this.check("op", ">=")) depth-- // ">>" lexes as one token pair
+				this.advance()
+				if (depth === 0) break
+			}
+		}
+		if (this.check("op", "->")) {
+			this.advance()
+			this.parseTypeName()
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -791,10 +995,15 @@ class Parser {
 			return { kind: "unary-not", tests: inner, start, end: close?.end ?? start }
 		}
 
-		// Comparison operator prefix: < 5, >= 10, etc.
+		// Comparison operator prefix: < 5, >= 10, = 3, != 4
 		if (
 			tok.kind === "op" &&
-			(tok.value === "<" || tok.value === "<=" || tok.value === ">" || tok.value === ">=")
+			(tok.value === "<" ||
+				tok.value === "<=" ||
+				tok.value === ">" ||
+				tok.value === ">=" ||
+				tok.value === "=" ||
+				tok.value === "!=")
 		) {
 			const start = tok.start
 			this.advance()
@@ -863,35 +1072,44 @@ const PARSE_CACHE_LIMIT = 2048
 const expressionCache = new Map<string, ParseResult>()
 const unaryTestsCache = new Map<string, ParseResult>()
 
-function remember(
-	cache: Map<string, ParseResult>,
-	input: string,
-	result: ParseResult,
-): ParseResult {
+function remember(cache: Map<string, ParseResult>, key: string, result: ParseResult): ParseResult {
 	if (cache.size >= PARSE_CACHE_LIMIT) cache.clear()
-	cache.set(input, result)
+	cache.set(key, result)
 	return result
 }
 
-export function parseExpression(input: string): ParseResult {
-	const cached = expressionCache.get(input)
-	if (cached !== undefined) return cached
-	const p = new Parser(input)
-	const ast = p.parseExpression(0)
-	p.checkDone()
-	return remember(expressionCache, input, { ast, errors: p.errors })
+/**
+ * Cache key for a parse. Scope names change how an expression parses, so they
+ * are part of the key; only names with spaces can, so the rest are left out to
+ * keep the key small.
+ */
+function cacheKey(input: string, options: ParseOptions | undefined): string {
+	if (!options?.names) return input
+	const relevant = [...options.names].filter((n) => n.includes(" ")).sort()
+	return relevant.length === 0 ? input : `${input}\u0000${relevant.join("\u0001")}`
 }
 
-export function parseUnaryTests(input: string): ParseResult {
-	const cached = unaryTestsCache.get(input)
+export function parseExpression(input: string, options?: ParseOptions): ParseResult {
+	const key = cacheKey(input, options)
+	const cached = expressionCache.get(key)
+	if (cached !== undefined) return cached
+	const p = new Parser(input, options)
+	const ast = p.parseExpression(0)
+	p.checkDone()
+	return remember(expressionCache, key, { ast, errors: p.errors })
+}
+
+export function parseUnaryTests(input: string, options?: ParseOptions): ParseResult {
+	const key = cacheKey(input, options)
+	const cached = unaryTestsCache.get(key)
 	if (cached !== undefined) return cached
 	if (input.trim() === "-") {
-		return remember(unaryTestsCache, input, {
+		return remember(unaryTestsCache, key, {
 			ast: { kind: "any-input", start: 0, end: input.length },
 			errors: [],
 		})
 	}
-	const p = new Parser(input)
+	const p = new Parser(input, options)
 	const ast = p.parseUnaryTests()
-	return remember(unaryTestsCache, input, { ast, errors: p.errors })
+	return remember(unaryTestsCache, key, { ast, errors: p.errors })
 }
