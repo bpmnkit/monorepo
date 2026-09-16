@@ -1,5 +1,67 @@
 # Progress
 
+## 2026-09-16 — Camunda 8 documentation packaged as a searchable pack
+
+`@bpmnkit/camunda-docspack` builds the Camunda 8.10 (next) documentation into a docspack
+pack: best practices, the BPMN and FEEL references, engine concepts, and the
+Orchestration Cluster API. 1,054 chunks from 373 documents (302,249 tokens), built with
+`@bpmnkit/docspack`'s own `buildPack`, so it is searchable through the same
+`bpmnkit-docs ask` an agent already has.
+
+The staging pass is the whole reason this is not a file copy. Camunda's own
+`docusaurus-plugin-llms` export removes every construct it does not recognise, and the
+best-practice pages argue *through* their diagrams — so all 113 embedded BPMN diagrams
+disappear from its output while the prose goes on referring to elements that are no
+longer in the text, with the `<span className="callout">1</span>` markers left as bare
+digits pointing at nothing. Each embed is now rendered from the parsed model instead:
+
+```
+Diagram (BPMN):
+  start "Invoice to be checked" → "Check invoice" → exclusive gateway "Invoice correct?"
+    — [Yes: =correct] "Pay invoice" → end "Invoice paid"
+    — [No: =not(correct)] "Reject payment of invoice" → end "Invoice rejected"
+```
+
+`@bpmnkit/ascii` was the obvious thing to reuse and was measured against instead: it
+truncates element labels to the box width (`Reject payment of in…`) and omits condition
+expressions — the two things these pages teach — at ~420 tokens per diagram against ~82
+here.
+
+The 227 API operations are read from the specification rather than from the generated
+reference pages, which are a base64 blob wrapped in React imports. Each digest decodes
+the `[[REQUIRED_PERMISSIONS:…]]` marker Camunda encodes as base64 JSON, so a digest
+answers "what may call this?" and not only "what does it take?". Each is staged at the
+path Camunda publishes that operation at, so the chunk's source link opens the real
+reference page.
+
+Two rules the pass enforces. **Nothing is dropped silently**: an unrecognised MDX
+component fails the build by file and line, which is what caught five imported Markdown
+partials that carry real prerequisites and setup prose, now inlined rather than lost.
+And **links are resolved by the rule Docusaurus actually uses** — a `.md` link against
+the file's directory, an extensionless one against the page's trailing-slash URL.
+Applying either rule to both forms leaves ~30% of the corpus's links dangling; 11
+remain unresolved and are broken upstream, which the build reports.
+
+The pack is licensed CC BY-SA 3.0, not MIT. Chunking Camunda's prose and rendering its
+diagrams make it an Adaptation under §1 of that licence, and ShareAlike then requires the
+same terms. `scripts/published-packages.mjs` grew a `LICENSE_OVERRIDES` map so
+`sync-license.mjs` does not copy the root MIT text over it and `check-packages.mjs`
+expects the licence it actually carries. `NOTICE` is generated on every build with the
+upstream commit and the list of changes, because a hand-maintained one states last
+month's commit.
+
+`.github/workflows/camunda-docspack.yml` rebuilds it weekly and opens a pull request. It
+verifies the build twice and diffs the result, and reports chunk ids that departed — a
+renamed upstream heading renames a chunk, and anything pinning the old id stops
+resolving. Built here against `camunda/camunda-docs@acbf680` and verified
+byte-identical across two runs.
+
+Also fixed in `@bpmnkit/docspack`: a document whose preamble is shorter than `minTokens`
+is merged into the section after it and keeps that preamble's empty heading, which the
+title composition passed straight through — `Naming BPMN elements —  — Naming gateways`.
+Its own pack was unaffected; this corpus hit it, and the built pack now has 0 such
+titles across all 1,054 chunks.
+
 ## 2026-09-15 — Form component ids and rows are derived from the field, not drawn
 
 `FormBuilder` fills in a `layout` on every component it generates (#177), but both the

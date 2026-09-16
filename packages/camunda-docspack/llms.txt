@@ -1,0 +1,1070 @@
+# @bpmnkit/camunda-docspack
+
+> Camunda 8 documentation as an offline, version-locked docspack package for AI agents
+
+Version 0.0.0. 1054 chunks documenting camunda@8.10.
+
+```sh
+npm i -D @bpmnkit/camunda-docspack
+npx bpmnkit-docs ask "how do I deploy a process"
+```
+
+## apis-tools
+
+- [Intermediate tutorial](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.md) — 153 tokens
+- [Intermediate tutorial — Prerequisites](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites.md) — 610 tokens
+- [Intermediate tutorial — Prerequisites — Set up authentication](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.prerequisites-set-up-authentication.md) — 371 tokens
+- [Intermediate tutorial — Deploy resources (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.deploy-resources-post.md) — 746 tokens
+- [Intermediate tutorial — Create and start a process instance (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.create-and-start-a-process-instance-post.md) — 310 tokens
+- [Intermediate tutorial — Retrieve a process instance (GET)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.retrieve-a-process-instance-get.md) — 233 tokens
+- [Intermediate tutorial — Troubleshooting](.llms/chunks/apis-tools.orchestration-cluster-api-rest.intermediate-tutorial.troubleshooting.md) — 101 tokens
+- [Authentication](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.md) — 347 tokens
+- [Authentication — Authenticate API calls](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.authenticate-api-calls.md) — 206 tokens
+- [Authentication — Using a token (OIDC/JWT)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-authentication.using-a-token-oidc-jwt.md) — 731 tokens
+- [Data fetching](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.md) — 189 tokens
+- [Data fetching — Supported operations](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.supported-operations.md) — 433 tokens
+- [Data fetching — User task support](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.user-task-support.md) — 87 tokens
+- [Data fetching — User task support — Filter](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.user-task-support-filter.md) — 149 tokens
+- [Data fetching — User task support — Sort](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.user-task-support-sort.md) — 104 tokens
+- [Data fetching — User task support — Page](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.user-task-support-page.md) — 330 tokens
+- [Data fetching — User task support — Advanced search filters](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.user-task-support-advanced-search-filters.md) — 895 tokens
+- [Data fetching — User task support — Advanced search filters (2)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.user-task-support-advanced-search-filters-2.md) — 310 tokens
+- [Data fetching — Search responses](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.search-responses.md) — 315 tokens
+- [Data fetching — Search example](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-data-fetching.search-example.md) — 432 tokens
+- [Orchestration Cluster REST API](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.md) — 224 tokens
+- [Orchestration Cluster REST API — Key features](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.key-features.md) — 339 tokens
+- [Orchestration Cluster REST API — Getting started](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.getting-started.md) — 724 tokens
+- [Orchestration Cluster REST API — API reference](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference.md) — 48 tokens
+- [Orchestration Cluster REST API — API reference — Base URLs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-base-urls.md) — 192 tokens
+- [Orchestration Cluster REST API — API reference — Versioning](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-versioning.md) — 172 tokens
+- [Orchestration Cluster REST API — API reference — Request size limits](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-request-size-limits.md) — 85 tokens
+- [Orchestration Cluster REST API — API reference — Naming conventions](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-naming-conventions.md) — 462 tokens
+- [Orchestration Cluster REST API — API reference — HTTP status codes & error handling](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-http-status-codes-error-handling.md) — 510 tokens
+- [Orchestration Cluster REST API — API reference — Date formats](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-date-formats.md) — 67 tokens
+- [Orchestration Cluster REST API — API reference — Variables](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.api-reference-variables.md) — 77 tokens
+- [Orchestration Cluster REST API — What's next?](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-overview.what-s-next.md) — 127 tokens
+- [Secrets](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-secrets.md) — 144 tokens
+- [Secrets — Understand resolve responses](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-secrets.understand-resolve-responses.md) — 388 tokens
+- [Secrets — List secrets](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-secrets.list-secrets.md) — 153 tokens
+- [Try with Swagger](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.md) — 188 tokens
+- [Try with Swagger — Prerequisites](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.prerequisites.md) — 297 tokens
+- [Try with Swagger — Authentication in Swagger UI](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.authentication-in-swagger-ui.md) — 270 tokens
+- [Try with Swagger — Using Swagger UI effectively](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.using-swagger-ui-effectively.md) — 315 tokens
+- [Try with Swagger — Managing Swagger UI availability](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.managing-swagger-ui-availability.md) — 157 tokens
+- [Try with Swagger — Next steps](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.next-steps.md) — 176 tokens
+- [Activate activities within an ad-hoc sub-process](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.activate-ad-hoc-sub-process-activities.api.md) — 324 tokens
+- [Activate jobs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.activate-jobs.api.md) — 498 tokens
+- [Assign a client to a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-client-to-group.api.md) — 287 tokens
+- [Assign a client to a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-client-to-tenant.api.md) — 252 tokens
+- [Assign a group to a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-group-to-tenant.api.md) — 261 tokens
+- [Assign a mapping rule to a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-mapping-rule-to-group.api.md) — 271 tokens
+- [Assign a mapping rule to a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-mapping-rule-to-tenant.api.md) — 250 tokens
+- [Assign business id to process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-process-instance-business-id.api.md) — 393 tokens
+- [Assign a role to a client](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-role-to-client.api.md) — 276 tokens
+- [Assign a role to a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-role-to-group.api.md) — 287 tokens
+- [Assign a role to a mapping rule](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-role-to-mapping-rule.api.md) — 271 tokens
+- [Assign a role to a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-role-to-tenant.api.md) — 275 tokens
+- [Assign a role to a user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-role-to-user.api.md) — 281 tokens
+- [Assign user task](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-user-task.api.md) — 592 tokens
+- [Assign a user to a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-user-to-group.api.md) — 291 tokens
+- [Assign a user to a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.assign-user-to-tenant.api.md) — 259 tokens
+- [Broadcast signal](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.broadcast-signal.api.md) — 240 tokens
+- [Cancel Batch operation](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.cancel-batch-operation.api.md) — 159 tokens
+- [Cancel process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.cancel-process-instance.api.md) — 465 tokens
+- [Cancel process instances (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.cancel-process-instances-batch-operation.api.md) — 209 tokens
+- [Change the cluster mode of one or every physical tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.change-cluster-mode-as-cluster-admin.api.md) — 258 tokens
+- [Change cluster mode](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.change-cluster-mode.api.md) — 215 tokens
+- [Complete job](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.complete-job.api.md) — 356 tokens
+- [Complete user task](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.complete-user-task.api.md) — 530 tokens
+- [Correlate message](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.correlate-message.api.md) — 357 tokens
+- [Create admin user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-admin-user.api.md) — 298 tokens
+- [Create agent instance history item](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-agent-instance-history-item.api.md) — 523 tokens
+- [Create agent instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-agent-instance.api.md) — 365 tokens
+- [Create authorization](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-authorization.api.md) — 227 tokens
+- [Deploy resources](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-deployment.api.md) — 304 tokens
+- [Create document link](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-document-link.api.md) — 147 tokens
+- [Upload document](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-document.api.md) — 175 tokens
+- [Upload multiple documents](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-documents.api.md) — 448 tokens
+- [Update element instance variables](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-element-instance-variables.api.md) — 520 tokens
+- [Create a global-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-global-cluster-variable.api.md) — 264 tokens
+- [Create global user task listener](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-global-task-listener.api.md) — 250 tokens
+- [Create group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-group.api.md) — 424 tokens
+- [Create mapping rule](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-mapping-rule.api.md) — 172 tokens
+- [Create process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-process-instance.api.md) — 397 tokens
+- [Create role](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-role.api.md) — 271 tokens
+- [Create a tenant-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-tenant-cluster-variable.api.md) — 300 tokens
+- [Create tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-tenant.api.md) — 305 tokens
+- [Create user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.create-user.api.md) — 282 tokens
+- [Delete authorization](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-authorization.api.md) — 211 tokens
+- [Delete decision instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-decision-instance.api.md) — 238 tokens
+- [Delete decision instances (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-decision-instances-batch-operation.api.md) — 189 tokens
+- [Delete document](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-document.api.md) — 138 tokens
+- [Delete a global-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-global-cluster-variable.api.md) — 137 tokens
+- [Delete global user task listener](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-global-task-listener.api.md) — 241 tokens
+- [Delete group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-group.api.md) — 213 tokens
+- [Delete history backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-history-backup.api.md) — 301 tokens
+- [Delete a mapping rule](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-mapping-rule.api.md) — 218 tokens
+- [Delete process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-process-instance.api.md) — 269 tokens
+- [Delete process instances (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-process-instances-batch-operation.api.md) — 207 tokens
+- [Delete resource](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-resource.api.md) — 485 tokens
+- [Delete role](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-role.api.md) — 211 tokens
+- [Delete runtime backup state](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-runtime-backup-state.api.md) — 237 tokens
+- [Delete runtime backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-runtime-backup.api.md) — 213 tokens
+- [Delete a tenant-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-tenant-cluster-variable.api.md) — 144 tokens
+- [Delete tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-tenant.api.md) — 219 tokens
+- [Delete user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.delete-user.api.md) — 202 tokens
+- [Evaluate root level conditional start events](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.evaluate-conditionals.api.md) — 434 tokens
+- [Evaluate decision](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.evaluate-decision.api.md) — 249 tokens
+- [Evaluate an expression](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.evaluate-expression.api.md) — 587 tokens
+- [Fail job](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.fail-job.api.md) — 438 tokens
+- [Get agent definition](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-agent-definition.api.md) — 157 tokens
+- [Get agent instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-agent-instance.api.md) — 251 tokens
+- [Get audit log](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-audit-log.api.md) — 137 tokens
+- [Get current user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-authentication.api.md) — 95 tokens
+- [Get authorization](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-authorization.api.md) — 130 tokens
+- [Get batch operation](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-batch-operation.api.md) — 114 tokens
+- [Get the status of the whole cluster](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-cluster-status.api.md) — 170 tokens
+- [Get the topology of the whole cluster](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-cluster-topology.api.md) — 215 tokens
+- [Get decision definition XML](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-decision-definition-xml.api.md) — 162 tokens
+- [Get decision definition](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-decision-definition.api.md) — 157 tokens
+- [Get decision instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-decision-instance.api.md) — 155 tokens
+- [Get decision requirements XML](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-decision-requirements-xml.api.md) — 162 tokens
+- [Get decision requirements](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-decision-requirements.api.md) — 156 tokens
+- [Download document](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-document.api.md) — 144 tokens
+- [Get element instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-element-instance.api.md) — 156 tokens
+- [Get exporting status](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-exporting-status.api.md) — 296 tokens
+- [Get form by key](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-form-by-key.api.md) — 148 tokens
+- [Get a global-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-global-cluster-variable.api.md) — 137 tokens
+- [Global job statistics](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-global-job-statistics.api.md) — 151 tokens
+- [Get global user task listener](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-global-task-listener.api.md) — 147 tokens
+- [Get group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-group.api.md) — 130 tokens
+- [Get history backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-history-backup.api.md) — 291 tokens
+- [Get incident](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-incident.api.md) — 140 tokens
+- [Get error metrics for a job type](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-job-error-statistics.api.md) — 151 tokens
+- [Get time-series metrics for a job type](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-job-time-series-statistics.api.md) — 188 tokens
+- [Get job statistics by type](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-job-type-statistics.api.md) — 146 tokens
+- [Get job statistics by worker](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-job-worker-statistics.api.md) — 153 tokens
+- [Get license status](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-license.api.md) — 74 tokens
+- [Get a mapping rule](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-mapping-rule.api.md) — 124 tokens
+- [Get process instance statistics](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-definition-instance-statistics.api.md) — 155 tokens
+- [Get process instance statistics by version](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-definition-instance-version-statistics.api.md) — 201 tokens
+- [Get message subscription statistics](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-definition-message-subscription-statistics.api.md) — 153 tokens
+- [Get process definition statistics](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-definition-statistics.api.md) — 162 tokens
+- [Get process definition XML](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-definition-xml.api.md) — 179 tokens
+- [Get process definition](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-definition.api.md) — 156 tokens
+- [Get call hierarchy](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-instance-call-hierarchy.api.md) — 158 tokens
+- [Get sequence flows](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-instance-sequence-flows.api.md) — 133 tokens
+- [Get process instance statistics by definition](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-instance-statistics-by-definition.api.md) — 232 tokens
+- [Get process instance statistics by error](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-instance-statistics-by-error.api.md) — 196 tokens
+- [Get element instance statistics](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-instance-statistics.api.md) — 134 tokens
+- [Get wait state statistics](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-instance-wait-state-statistics.api.md) — 146 tokens
+- [Get process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-process-instance.api.md) — 151 tokens
+- [Get resource content as binary](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-resource-content-binary.api.md) — 160 tokens
+- [Get RPA resource content (deprecated)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-resource-content.api.md) — 189 tokens
+- [Get resource](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-resource.api.md) — 143 tokens
+- [Get the status of the restore that is currently in progress](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-restore-status.api.md) — 187 tokens
+- [Get role](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-role.api.md) — 130 tokens
+- [Get runtime backup state](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-runtime-backup-state.api.md) — 253 tokens
+- [Get runtime backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-runtime-backup.api.md) — 231 tokens
+- [Get process start form](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-start-process-form.api.md) — 177 tokens
+- [Get physical tenant status](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-status.api.md) — 265 tokens
+- [System configuration (alpha)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-system-configuration.api.md) — 129 tokens
+- [Get a tenant-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-tenant-cluster-variable.api.md) — 144 tokens
+- [Get tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-tenant.api.md) — 136 tokens
+- [Get cluster topology](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-topology.api.md) — 102 tokens
+- [Get usage metrics](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-usage-metrics.api.md) — 146 tokens
+- [Get user task form](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-user-task-form.api.md) — 170 tokens
+- [Get user task](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-user-task.api.md) — 142 tokens
+- [Get user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-user.api.md) — 130 tokens
+- [Get variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.get-variable.api.md) — 168 tokens
+- [List history backups](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.list-history-backups.api.md) — 312 tokens
+- [List runtime backups](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.list-runtime-backups.api.md) — 245 tokens
+- [List secrets (alpha)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.list-secrets.api.md) — 333 tokens
+- [Migrate process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.migrate-process-instance.api.md) — 362 tokens
+- [Migrate process instances (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.migrate-process-instances-batch-operation.api.md) — 218 tokens
+- [Modify process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.modify-process-instance.api.md) — 351 tokens
+- [Modify process instances (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.modify-process-instances-batch-operation.api.md) — 266 tokens
+- [Pause exporting](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.pause-exporting.api.md) — 294 tokens
+- [Pin internal clock (alpha)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.pin-clock.api.md) — 294 tokens
+- [Publish message](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.publish-message.api.md) — 388 tokens
+- [Reset internal clock (alpha)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.reset-clock.api.md) — 252 tokens
+- [Resolve incident](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resolve-incident.api.md) — 276 tokens
+- [Resolve related incidents (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resolve-incidents-batch-operation.api.md) — 209 tokens
+- [Resolve related incidents](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resolve-process-instance-incidents.api.md) — 237 tokens
+- [Resolve secrets (alpha)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resolve-secrets.api.md) — 469 tokens
+- [Restore one or every physical tenant from a backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.restore-as-cluster-admin.api.md) — 422 tokens
+- [Restore from a backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.restore.api.md) — 298 tokens
+- [Resume Batch operation](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resume-batch-operation.api.md) — 255 tokens
+- [Resume exporting](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resume-exporting.api.md) — 209 tokens
+- [Resume process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resume-process-instance.api.md) — 275 tokens
+- [Resume process instances (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.resume-process-instances-batch-operation.api.md) — 209 tokens
+- [Search agent definitions](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-agent-definitions.api.md) — 149 tokens
+- [Search agent instance history](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-agent-instance-history.api.md) — 198 tokens
+- [Search agent instances](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-agent-instances.api.md) — 149 tokens
+- [Search audit logs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-audit-logs.api.md) — 148 tokens
+- [Search authorizations](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-authorizations.api.md) — 143 tokens
+- [Search batch operation items](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-batch-operation-items.api.md) — 129 tokens
+- [Search batch operations](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-batch-operations.api.md) — 124 tokens
+- [Search group clients](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-clients-for-group.api.md) — 162 tokens
+- [Search role clients](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-clients-for-role.api.md) — 160 tokens
+- [Search clients for tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-clients-for-tenant.api.md) — 105 tokens
+- [searchClusterVariables](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-cluster-variables.api.md) — 167 tokens
+- [Search correlated message subscriptions](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-correlated-message-subscriptions.api.md) — 154 tokens
+- [Search decision definitions](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-decision-definitions.api.md) — 149 tokens
+- [Search decision instances](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-decision-instances.api.md) — 149 tokens
+- [Search decision requirements](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-decision-requirements.api.md) — 149 tokens
+- [Search for incidents of a specific element instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-element-instance-incidents.api.md) — 288 tokens
+- [Search element instance wait states](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-element-instance-wait-states.api.md) — 160 tokens
+- [Search element instances](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-element-instances.api.md) — 149 tokens
+- [Search global user task listeners](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-global-task-listeners.api.md) — 158 tokens
+- [Search groups for tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-group-ids-for-tenant.api.md) — 105 tokens
+- [Search role groups](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-groups-for-role.api.md) — 159 tokens
+- [Search groups](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-groups.api.md) — 143 tokens
+- [Search incidents](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-incidents.api.md) — 143 tokens
+- [Search jobs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-jobs.api.md) — 143 tokens
+- [Search mapping rules](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-mapping-rule.api.md) — 149 tokens
+- [Search group mapping rules](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-mapping-rules-for-group.api.md) — 178 tokens
+- [Search role mapping rules](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-mapping-rules-for-role.api.md) — 175 tokens
+- [Search mapping rules for tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-mapping-rules-for-tenant.api.md) — 119 tokens
+- [Search message subscriptions](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-message-subscriptions.api.md) — 284 tokens
+- [Search own authorizations](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-own-authorizations.api.md) — 160 tokens
+- [Search process definition variable names](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-process-definition-variable-names.api.md) — 168 tokens
+- [Search process definitions](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-process-definitions.api.md) — 149 tokens
+- [Search related incidents](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-process-instance-incidents.api.md) — 270 tokens
+- [Search process instances](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-process-instances.api.md) — 149 tokens
+- [Search resources](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-resources.api.md) — 187 tokens
+- [Search group roles](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-roles-for-group.api.md) — 172 tokens
+- [Search roles for tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-roles-for-tenant.api.md) — 115 tokens
+- [Search roles](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-roles.api.md) — 143 tokens
+- [Search tenants](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-tenants.api.md) — 151 tokens
+- [Search user task audit logs](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-user-task-audit-logs.api.md) — 125 tokens
+- [Search user task effective variables](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-user-task-effective-variables.api.md) — 244 tokens
+- [Search user task variables](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-user-task-variables.api.md) — 233 tokens
+- [Search user tasks](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-user-tasks.api.md) — 141 tokens
+- [Search group users](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-users-for-group.api.md) — 162 tokens
+- [Search role users](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-users-for-role.api.md) — 160 tokens
+- [Search users for tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-users-for-tenant.api.md) — 105 tokens
+- [Search users](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-users.api.md) — 143 tokens
+- [Search variables](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.search-variables.api.md) — 229 tokens
+- [Suspend Batch operation](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.suspend-batch-operation.api.md) — 255 tokens
+- [Suspend process instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.suspend-process-instance.api.md) — 272 tokens
+- [Suspend process instances (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.suspend-process-instances-batch-operation.api.md) — 209 tokens
+- [Force-write runtime backup state](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.sync-runtime-backup-state.api.md) — 251 tokens
+- [Take a history backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.take-history-backup.api.md) — 405 tokens
+- [Take a runtime backup](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.take-runtime-backup.api.md) — 346 tokens
+- [Throw error for job](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.throw-job-error.api.md) — 375 tokens
+- [Unassign a client from a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-client-from-group.api.md) — 278 tokens
+- [Unassign a client from a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-client-from-tenant.api.md) — 258 tokens
+- [Unassign a group from a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-group-from-tenant.api.md) — 276 tokens
+- [Unassign a mapping rule from a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-mapping-rule-from-group.api.md) — 263 tokens
+- [Unassign a mapping rule from a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-mapping-rule-from-tenant.api.md) — 255 tokens
+- [Unassign a role from a client](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-role-from-client.api.md) — 264 tokens
+- [Unassign a role from a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-role-from-group.api.md) — 265 tokens
+- [Unassign a role from a mapping rule](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-role-from-mapping-rule.api.md) — 250 tokens
+- [Unassign a role from a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-role-from-tenant.api.md) — 280 tokens
+- [Unassign a role from a user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-role-from-user.api.md) — 262 tokens
+- [Unassign a user from a group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-user-from-group.api.md) — 280 tokens
+- [Unassign a user from a tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-user-from-tenant.api.md) — 253 tokens
+- [Unassign user task](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.unassign-user-task.api.md) — 472 tokens
+- [Update agent instance](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-agent-instance.api.md) — 446 tokens
+- [Update authorization](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-authorization.api.md) — 219 tokens
+- [Update a global-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-global-cluster-variable.api.md) — 240 tokens
+- [Update global user task listener](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-global-task-listener.api.md) — 251 tokens
+- [Update group](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-group.api.md) — 262 tokens
+- [Update job](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-job.api.md) — 294 tokens
+- [Update jobs (batch)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-jobs-batch-operation.api.md) — 224 tokens
+- [Update mapping rule](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-mapping-rule.api.md) — 246 tokens
+- [Update role](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-role.api.md) — 262 tokens
+- [Update a tenant-scoped cluster variable](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-tenant-cluster-variable.api.md) — 248 tokens
+- [Update tenant](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-tenant.api.md) — 256 tokens
+- [Update user task](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-user-task.api.md) — 517 tokens
+- [Update user](.llms/chunks/apis-tools.orchestration-cluster-api-rest.specifications.update-user.api.md) — 267 tokens
+- [Beginner tutorial](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.md) — 276 tokens
+- [Beginner tutorial — Getting started](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.getting-started.md) — 394 tokens
+- [Beginner tutorial — List all roles (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.list-all-roles-post.md) — 564 tokens
+- [Beginner tutorial — Create a role (POST)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.create-a-role-post.md) — 175 tokens
+- [Beginner tutorial — Retrieve a role (GET)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.retrieve-a-role-get.md) — 167 tokens
+- [Beginner tutorial — Delete a role (DELETE)](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.delete-a-role-delete.md) — 177 tokens
+- [Beginner tutorial — If you get stuck](.llms/chunks/apis-tools.orchestration-cluster-api-rest.tutorial.if-you-get-stuck.md) — 104 tokens
+
+## components
+
+- [Data flow](.llms/chunks/components.best-practices.architecture.data-flow.md) — 322 tokens
+- [Data flow — Command processing path](.llms/chunks/components.best-practices.architecture.data-flow.command-processing-path.md) — 321 tokens
+- [Data flow — Export pipeline](.llms/chunks/components.best-practices.architecture.data-flow.export-pipeline.md) — 471 tokens
+- [Data flow — Query path](.llms/chunks/components.best-practices.architecture.data-flow.query-path.md) — 191 tokens
+- [Data flow — Optimize data flow](.llms/chunks/components.best-practices.architecture.data-flow.optimize-data-flow.md) — 567 tokens
+- [Data flow — Performance and sizing factors](.llms/chunks/components.best-practices.architecture.data-flow.performance-and-sizing-factors.md) — 162 tokens
+- [Deciding about your stack](.llms/chunks/components.best-practices.architecture.deciding-about-your-stack.md) — 736 tokens
+- [Deciding about your stack — Customize your stack](.llms/chunks/components.best-practices.architecture.deciding-about-your-stack.customize-your-stack.md) — 215 tokens
+- [Run benchmarks](.llms/chunks/components.best-practices.architecture.sizing-benchmarks.md) — 247 tokens
+- [Run benchmarks — Run your own benchmarks](.llms/chunks/components.best-practices.architecture.sizing-benchmarks.run-your-own-benchmarks.md) — 282 tokens
+- [Run benchmarks — When to benchmark](.llms/chunks/components.best-practices.architecture.sizing-benchmarks.when-to-benchmark.md) — 149 tokens
+- [Run benchmarks — What to measure](.llms/chunks/components.best-practices.architecture.sizing-benchmarks.what-to-measure.md) — 286 tokens
+- [Size your SaaS cluster](.llms/chunks/components.best-practices.architecture.sizing-saas.md) — 196 tokens
+- [Size your SaaS cluster — Sizing tables](.llms/chunks/components.best-practices.architecture.sizing-saas.sizing-tables.md) — 744 tokens
+- [Size your SaaS cluster — Data retention](.llms/chunks/components.best-practices.architecture.sizing-saas.data-retention.md) — 315 tokens
+- [Size your SaaS cluster — Next steps](.llms/chunks/components.best-practices.architecture.sizing-saas.next-steps.md) — 37 tokens
+- [Self-Managed resource planning](.llms/chunks/components.best-practices.architecture.sizing-self-managed.md) — 510 tokens
+- [Self-Managed resource planning — Baseline performance](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-performance.md) — 282 tokens
+- [Self-Managed resource planning — Baseline resource configuration](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration.md) — 58 tokens
+- [Self-Managed resource planning — Baseline resource configuration — without-optimize](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-without-optimize.md) — 337 tokens
+- [Self-Managed resource planning — Baseline resource configuration — with-optimize](.llms/chunks/components.best-practices.architecture.sizing-self-managed.baseline-resource-configuration-with-optimize.md) — 468 tokens
+- [Self-Managed resource planning — Primary storage](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage.md) — 183 tokens
+- [Self-Managed resource planning — Primary storage — Disk space](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-disk-space.md) — 755 tokens
+- [Self-Managed resource planning — Primary storage — Event log](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-event-log.md) — 236 tokens
+- [Self-Managed resource planning — Primary storage — Snapshots](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-snapshots.md) — 142 tokens
+- [Self-Managed resource planning — Primary storage — RocksDB](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-rocksdb.md) — 130 tokens
+- [Self-Managed resource planning — Primary storage — Effects on disk growth](.llms/chunks/components.best-practices.architecture.sizing-self-managed.primary-storage-effects-on-disk-growth.md) — 418 tokens
+- [Self-Managed resource planning — Memory](.llms/chunks/components.best-practices.architecture.sizing-self-managed.memory.md) — 756 tokens
+- [Self-Managed resource planning — Scale your cluster](.llms/chunks/components.best-practices.architecture.sizing-self-managed.scale-your-cluster.md) — 444 tokens
+- [Self-Managed resource planning — Secondary storage considerations](.llms/chunks/components.best-practices.architecture.sizing-self-managed.secondary-storage-considerations.md) — 183 tokens
+- [Self-Managed resource planning — Next steps](.llms/chunks/components.best-practices.architecture.sizing-self-managed.next-steps.md) — 36 tokens
+- [Size your environment](.llms/chunks/components.best-practices.architecture.sizing-your-environment.md) — 141 tokens
+- [Size your environment — Sizing requirements and influencing factors](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors.md) — 39 tokens
+- [Size your environment — Sizing requirements and influencing factors — Data availability latency](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-data-availability-latency.md) — 160 tokens
+- [Size your environment — Sizing requirements and influencing factors — Disk space](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-disk-space.md) — 119 tokens
+- [Size your environment — Sizing requirements and influencing factors — Impact of Optimize](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-impact-of-optimize.md) — 853 tokens
+- [Size your environment — Sizing requirements and influencing factors — Impact of Optimize (2)](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-impact-of-optimize-2.md) — 943 tokens
+- [Size your environment — Sizing requirements and influencing factors — Impact of Optimize (3)](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-impact-of-optimize-3.md) — 640 tokens
+- [Size your environment — Sizing requirements and influencing factors — Latency and cycle time](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-latency-and-cycle-time.md) — 636 tokens
+- [Size your environment — Sizing requirements and influencing factors — Payload size](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-payload-size.md) — 487 tokens
+- [Size your environment — Sizing requirements and influencing factors — Peak loads](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-peak-loads.md) — 158 tokens
+- [Size your environment — Sizing requirements and influencing factors — Job worker capacity](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-job-worker-capacity.md) — 289 tokens
+- [Size your environment — Sizing requirements and influencing factors — Secondary storage](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-secondary-storage.md) — 369 tokens
+- [Size your environment — Sizing requirements and influencing factors — Throughput](.llms/chunks/components.best-practices.architecture.sizing-your-environment.sizing-requirements-and-influencing-factors-throughput.md) — 560 tokens
+- [Size your environment — Plan non-production environments](.llms/chunks/components.best-practices.architecture.sizing-your-environment.plan-non-production-environments.md) — 164 tokens
+- [Size your environment — Next steps](.llms/chunks/components.best-practices.architecture.sizing-your-environment.next-steps.md) — 119 tokens
+- [Understanding human task management](.llms/chunks/components.best-practices.architecture.understanding-human-tasks-management.md) — 421 tokens
+- [Understanding human task management — Deciding about your task list frontend](.llms/chunks/components.best-practices.architecture.understanding-human-tasks-management.deciding-about-your-task-list-frontend.md) — 288 tokens
+- [Understanding human task management — Deciding about your task list frontend — Considerations for developing custom task lists](.llms/chunks/components.best-practices.architecture.understanding-human-tasks-management.deciding-about-your-task-list-frontend-considerations-for-developing-custom-task-lists.md) — 152 tokens
+- [Understanding human task management — Deciding about your task list frontend — Considerations for using third party task lists](.llms/chunks/components.best-practices.architecture.understanding-human-tasks-management.deciding-about-your-task-list-frontend-considerations-for-using-third-party-task-lists.md) — 492 tokens
+- [Understanding human task management — Deciding about your task list frontend — Task lists may not look like task lists](.llms/chunks/components.best-practices.architecture.understanding-human-tasks-management.deciding-about-your-task-list-frontend-task-lists-may-not-look-like-task-lists.md) — 416 tokens
+- [Best Practices](.llms/chunks/components.best-practices.best-practices-overview.md) — 173 tokens
+- [Best Practices — Project management](.llms/chunks/components.best-practices.best-practices-overview.project-management.md) — 35 tokens
+- [Element templates at scale](.llms/chunks/components.best-practices.cicd-guidelines.element-templates-at-scale.md) — 161 tokens
+- [Element templates at scale — Prerequisites](.llms/chunks/components.best-practices.cicd-guidelines.element-templates-at-scale.prerequisites.md) — 332 tokens
+- [Element templates at scale — Runtime provisioning](.llms/chunks/components.best-practices.cicd-guidelines.element-templates-at-scale.runtime-provisioning.md) — 528 tokens
+- [Element templates at scale — Make templates available in Camunda Hub](.llms/chunks/components.best-practices.cicd-guidelines.element-templates-at-scale.make-templates-available-in-camunda-hub.md) — 311 tokens
+- [Element templates at scale — Making templates available in Desktop Modeler](.llms/chunks/components.best-practices.cicd-guidelines.element-templates-at-scale.making-templates-available-in-desktop-modeler.md) — 165 tokens
+- [Element templates at scale — Next steps](.llms/chunks/components.best-practices.cicd-guidelines.element-templates-at-scale.next-steps.md) — 42 tokens
+- [Connecting the workflow engine with your world](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.md) — 244 tokens
+- [Connecting the workflow engine with your world — Programming glue code](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.programming-glue-code.md) — 193 tokens
+- [Connecting the workflow engine with your world — Programming glue code — Calling Zeebe](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.programming-glue-code-calling-zeebe.md) — 331 tokens
+- [Connecting the workflow engine with your world — Programming glue code — Subscribing to tasks using a job worker](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.programming-glue-code-subscribing-to-tasks-using-a-job-worker.md) — 456 tokens
+- [Connecting the workflow engine with your world — Technology examples](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.technology-examples.md) — 773 tokens
+- [Connecting the workflow engine with your world — Designing process solutions containing all glue code](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.designing-process-solutions-containing-all-glue-code.md) — 235 tokens
+- [Connecting the workflow engine with your world — Connectors](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.connectors.md) — 622 tokens
+- [Connecting the workflow engine with your world — Recommendation](.llms/chunks/components.best-practices.development.connecting-the-workflow-engine-with-your-world.recommendation.md) — 312 tokens
+- [Dealing with problems and exceptions](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.md) — 619 tokens
+- [Dealing with problems and exceptions — Handling exceptions on a technical level — Leveraging retries](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-exceptions-on-a-technical-level-leveraging-retries.md) — 328 tokens
+- [Dealing with problems and exceptions — Handling exceptions on a technical level — Using incidents](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-exceptions-on-a-technical-level-using-incidents.md) — 134 tokens
+- [Dealing with problems and exceptions — Handling exceptions on a technical level — Writing idempotent workers](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-exceptions-on-a-technical-level-writing-idempotent-workers.md) — 527 tokens
+- [Dealing with problems and exceptions — Handling errors on the process level](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-errors-on-the-process-level.md) — 59 tokens
+- [Dealing with problems and exceptions — Handling errors on the process level — Using BPMN error events](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-errors-on-the-process-level-using-bpmn-error-events.md) — 214 tokens
+- [Dealing with problems and exceptions — Handling errors on the process level — Throwing and handling BPMN errors](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-errors-on-the-process-level-throwing-and-handling-bpmn-errors.md) — 262 tokens
+- [Dealing with problems and exceptions — Handling errors on the process level — Thinking about unhandled BPMN exceptions](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-errors-on-the-process-level-thinking-about-unhandled-bpmn-exceptions.md) — 205 tokens
+- [Dealing with problems and exceptions — Handling errors on the process level — Distinguishing between exceptions and results](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-errors-on-the-process-level-distinguishing-between-exceptions-and-results.md) — 435 tokens
+- [Dealing with problems and exceptions — Handling errors on the process level — Business vs. technical errors](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.handling-errors-on-the-process-level-business-vs.-technical-errors.md) — 381 tokens
+- [Dealing with problems and exceptions — Embracing business transactions and eventual consistency — Technical vs business transactions](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.embracing-business-transactions-and-eventual-consistency-technical-vs-business-transactions.md) — 326 tokens
+- [Dealing with problems and exceptions — Embracing business transactions and eventual consistency — Eventual consistency](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.embracing-business-transactions-and-eventual-consistency-eventual-consistency.md) — 247 tokens
+- [Dealing with problems and exceptions — Embracing business transactions and eventual consistency — Business strategies to handle inconsistency](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.embracing-business-transactions-and-eventual-consistency-business-strategies-to-handle-inconsistency.md) — 239 tokens
+- [Dealing with problems and exceptions — Embracing business transactions and eventual consistency — The Saga pattern and BPMN compensation](.llms/chunks/components.best-practices.development.dealing-with-problems-and-exceptions.embracing-business-transactions-and-eventual-consistency-the-saga-pattern-and-bpmn-compensation.md) — 293 tokens
+- [Handling data in processes](.llms/chunks/components.best-practices.development.handling-data-in-processes.md) — 157 tokens
+- [Handling data in processes — Understanding data handling in Camunda](.llms/chunks/components.best-practices.development.handling-data-in-processes.understanding-data-handling-in-camunda.md) — 582 tokens
+- [Handling data in processes — Storing just the relevant data](.llms/chunks/components.best-practices.development.handling-data-in-processes.storing-just-the-relevant-data.md) — 652 tokens
+- [Handling data in processes — Using constants and data accessors](.llms/chunks/components.best-practices.development.handling-data-in-processes.using-constants-and-data-accessors.md) — 532 tokens
+- [Handling data in processes — Complex data as entities](.llms/chunks/components.best-practices.development.handling-data-in-processes.complex-data-as-entities.md) — 246 tokens
+- [Local development with element templates and Camunda 8 Run](.llms/chunks/components.best-practices.development.local-development-with-element-templates.md) — 152 tokens
+- [Local development with element templates and Camunda 8 Run — Provisioning secrets](.llms/chunks/components.best-practices.development.local-development-with-element-templates.provisioning-secrets.md) — 195 tokens
+- [Local development with element templates and Camunda 8 Run — Provisioning a custom connector runtime](.llms/chunks/components.best-practices.development.local-development-with-element-templates.provisioning-a-custom-connector-runtime.md) — 235 tokens
+- [Local development with element templates and Camunda 8 Run — Provisioning other dependencies](.llms/chunks/components.best-practices.development.local-development-with-element-templates.provisioning-other-dependencies.md) — 255 tokens
+- [Local development with element templates and Camunda 8 Run — Configure element templates in Desktop Modeler](.llms/chunks/components.best-practices.development.local-development-with-element-templates.configure-element-templates-in-desktop-modeler.md) — 105 tokens
+- [Routing events to processes](.llms/chunks/components.best-practices.development.routing-events-to-processes.md) — 138 tokens
+- [Routing events to processes — Choosing the right BPMN event — Start events](.llms/chunks/components.best-practices.development.routing-events-to-processes.choosing-the-right-bpmn-event-start-events.md) — 639 tokens
+- [Routing events to processes — Choosing the right BPMN event — Intermediate events](.llms/chunks/components.best-practices.development.routing-events-to-processes.choosing-the-right-bpmn-event-intermediate-events.md) — 550 tokens
+- [Routing events to processes — Reacting to process-internal events](.llms/chunks/components.best-practices.development.routing-events-to-processes.reacting-to-process-internal-events.md) — 389 tokens
+- [Routing events to processes — Routing events from the outside to the workflow engine](.llms/chunks/components.best-practices.development.routing-events-to-processes.routing-events-from-the-outside-to-the-workflow-engine.md) — 721 tokens
+- [Routing events to processes — Technology examples for messages sent by external systems](.llms/chunks/components.best-practices.development.routing-events-to-processes.technology-examples-for-messages-sent-by-external-systems.md) — 213 tokens
+- [Routing events to processes — Using the Camunda BPMN framework](.llms/chunks/components.best-practices.development.routing-events-to-processes.using-the-camunda-bpmn-framework.md) — 307 tokens
+- [Routing events to processes — Sending messages to other processes](.llms/chunks/components.best-practices.development.routing-events-to-processes.sending-messages-to-other-processes.md) — 382 tokens
+- [Routing events to processes — Handling messages sent by a user](.llms/chunks/components.best-practices.development.routing-events-to-processes.handling-messages-sent-by-a-user.md) — 454 tokens
+- [Service integration patterns with BPMN](.llms/chunks/components.best-practices.development.service-integration-patterns.md) — 498 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN tasks](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-tasks.md) — 48 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN tasks — Service task](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-tasks-service-task.md) — 79 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN tasks — Send task](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-tasks-send-task.md) — 485 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN tasks — Receive task](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-tasks-receive-task.md) — 99 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN tasks — Service task vs. send/receive task combo](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-tasks-service-task-vs.-send-receive-task-combo.md) — 853 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN tasks — Service task vs. send/receive task combo (2)](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-tasks-service-task-vs.-send-receive-task-combo-2.md) — 1216 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN events](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-events.md) — 88 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN events — Tasks vs. events](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-events-tasks-vs.-events.md) — 547 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN events — Handling different response messages](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-events-handling-different-response-messages.md) — 866 tokens
+- [Service integration patterns with BPMN — Integrating services with BPMN events — Message type on the wire != BPMN message type](.llms/chunks/components.best-practices.development.service-integration-patterns.integrating-services-with-bpmn-events-message-type-on-the-wire-bpmn-message-type.md) — 265 tokens
+- [Service integration patterns with BPMN — Hiding technical complexity behind call activities](.llms/chunks/components.best-practices.development.service-integration-patterns.hiding-technical-complexity-behind-call-activities.md) — 234 tokens
+- [Testing process definitions](.llms/chunks/components.best-practices.development.testing-process-definitions.md) — 296 tokens
+- [Testing process definitions — Testing scopes](.llms/chunks/components.best-practices.development.testing-process-definitions.testing-scopes.md) — 191 tokens
+- [Testing process definitions — Writing process tests in Java](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-process-tests-in-java.md) — 187 tokens
+- [Testing process definitions — Writing process tests in Java — Technical setup using Spring](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-process-tests-in-java-technical-setup-using-spring.md) — 566 tokens
+- [Testing process definitions — Writing process tests in Java — Test scope and mocking](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-process-tests-in-java-test-scope-and-mocking.md) — 910 tokens
+- [Testing process definitions — Writing process tests in Java — Drive the process and assert the state](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-process-tests-in-java-drive-the-process-and-assert-the-state.md) — 482 tokens
+- [Testing process definitions — Writing process tests in Java — Testing your process in chunks](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-process-tests-in-java-testing-your-process-in-chunks.md) — 858 tokens
+- [Testing process definitions — Writing process tests in Java — Testing your process in chunks (2)](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-process-tests-in-java-testing-your-process-in-chunks-2.md) — 234 tokens
+- [Testing process definitions — Writing polyglot process tests](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-polyglot-process-tests.md) — 286 tokens
+- [Testing process definitions — Writing polyglot process tests — Mocking REST calls](.llms/chunks/components.best-practices.development.testing-process-definitions.writing-polyglot-process-tests-mocking-rest-calls.md) — 559 tokens
+- [Writing good workers](.llms/chunks/components.best-practices.development.writing-good-workers.md) — 193 tokens
+- [Writing good workers — Organizing glue code and workers in process solutions](.llms/chunks/components.best-practices.development.writing-good-workers.organizing-glue-code-and-workers-in-process-solutions.md) — 587 tokens
+- [Writing good workers — Thinking about transactions, exceptions and idempotency of workers](.llms/chunks/components.best-practices.development.writing-good-workers.thinking-about-transactions-exceptions-and-idempotency-of-workers.md) — 473 tokens
+- [Writing good workers — Scaling workers](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers.md) — 363 tokens
+- [Writing good workers — Scaling workers — Blocking / synchronous code and thread pools](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers-blocking-synchronous-code-and-thread-pools.md) — 307 tokens
+- [Writing good workers — Scaling workers — Blocking code with virtual threads](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers-blocking-code-with-virtual-threads.md) — 160 tokens
+- [Writing good workers — Scaling workers — Non-blocking / reactive code](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers-non-blocking-reactive-code.md) — 127 tokens
+- [Writing good workers — Scaling workers — Recommendation](.llms/chunks/components.best-practices.development.writing-good-workers.scaling-workers-recommendation.md) — 107 tokens
+- [Writing good workers — Performance best-practices](.llms/chunks/components.best-practices.development.writing-good-workers.performance-best-practices.md) — 265 tokens
+- [Writing good workers — Client library examples](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples.md) — 72 tokens
+- [Writing good workers — Client library examples — Java](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples-java.md) — 847 tokens
+- [Writing good workers — Client library examples — Java (2)](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples-java-2.md) — 871 tokens
+- [Writing good workers — Client library examples — Java (3)](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples-java-3.md) — 318 tokens
+- [Writing good workers — Client library examples — Node.js client](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples-node.js-client.md) — 310 tokens
+- [Writing good workers — Client library examples — C#](.llms/chunks/components.best-practices.development.writing-good-workers.client-library-examples-c.md) — 795 tokens
+- [Doing a proper POC](.llms/chunks/components.best-practices.management.doing-a-proper-poc.md) — 377 tokens
+- [Doing a proper POC — Defining and focusing on specific goals](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-and-focusing-on-specific-goals.md) — 229 tokens
+- [Doing a proper POC — Defining a scope relevant to your business](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business.md) — 106 tokens
+- [Doing a proper POC — Defining a scope relevant to your business — Involving the right people](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-involving-the-right-people.md) — 284 tokens
+- [Doing a proper POC — Defining a scope relevant to your business — Planning the technical environment](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-planning-the-technical-environment.md) — 345 tokens
+- [Doing a proper POC — Defining a scope relevant to your business — Selecting the time frame](.llms/chunks/components.best-practices.management.doing-a-proper-poc.defining-a-scope-relevant-to-your-business-selecting-the-time-frame.md) — 186 tokens
+- [Doing a proper POC — Presenting the results](.llms/chunks/components.best-practices.management.doing-a-proper-poc.presenting-the-results.md) — 802 tokens
+- [Following the customer success path](.llms/chunks/components.best-practices.management.following-the-customer-success-path.md) — 827 tokens
+- [Following the customer success path — (2)](.llms/chunks/components.best-practices.management.following-the-customer-success-path.2.md) — 315 tokens
+- [Following the customer success path — Estimating effort](.llms/chunks/components.best-practices.management.following-the-customer-success-path.estimating-effort.md) — 642 tokens
+- [Building flexibility into BPMN models](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.md) — 157 tokens
+- [Building flexibility into BPMN models — Use events as triggers](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.use-events-as-triggers.md) — 90 tokens
+- [Building flexibility into BPMN models — Boundary events to add activities on triggers](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.boundary-events-to-add-activities-on-triggers.md) — 169 tokens
+- [Building flexibility into BPMN models — Subprocesses with boundary events](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.subprocesses-with-boundary-events.md) — 146 tokens
+- [Building flexibility into BPMN models — Event subprocesses](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.event-subprocesses.md) — 129 tokens
+- [Building flexibility into BPMN models — Escalation events](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.escalation-events.md) — 174 tokens
+- [Building flexibility into BPMN models — Terminate end events](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.terminate-end-events.md) — 173 tokens
+- [Building flexibility into BPMN models — Ad-hoc sub-processes](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.ad-hoc-sub-processes.md) — 212 tokens
+- [Building flexibility into BPMN models — Examples](.llms/chunks/components.best-practices.modeling.building-flexibility-into-bpmn-models.examples.md) — 537 tokens
+- [Choosing the DMN hit policy](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.md) — 140 tokens
+- [Choosing the DMN hit policy — Knowing the DMN hit policy basics](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.knowing-the-dmn-hit-policy-basics.md) — 420 tokens
+- [Choosing the DMN hit policy — Knowing the DMN hit policy basics — Single result decision tables](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.knowing-the-dmn-hit-policy-basics-single-result-decision-tables.md) — 366 tokens
+- [Choosing the DMN hit policy — Knowing the DMN hit policy basics — Multiple result decision tables](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.knowing-the-dmn-hit-policy-basics-multiple-result-decision-tables.md) — 243 tokens
+- [Choosing the DMN hit policy — Understanding DMN hit policy use cases](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.understanding-dmn-hit-policy-use-cases.md) — 86 tokens
+- [Choosing the DMN hit policy — Understanding DMN hit policy use cases — Unique: granting categories of customers a specified discount](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.understanding-dmn-hit-policy-use-cases-unique-granting-categories-of-customers-a-specified-discount.md) — 213 tokens
+- [Choosing the DMN hit policy — Understanding DMN hit policy use cases — First: accepting a customer based on hard criteria](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.understanding-dmn-hit-policy-use-cases-first-accepting-a-customer-based-on-hard-criteria.md) — 419 tokens
+- [Choosing the DMN hit policy — Understanding DMN hit policy use cases — Collect: deciding which groups of people may review an order](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.understanding-dmn-hit-policy-use-cases-collect-deciding-which-groups-of-people-may-review-an-order.md) — 225 tokens
+- [Choosing the DMN hit policy — Understanding DMN hit policy use cases — Sum: accepting a customer based on soft criteria](.llms/chunks/components.best-practices.modeling.choosing-the-dmn-hit-policy.understanding-dmn-hit-policy-use-cases-sum-accepting-a-customer-based-on-soft-criteria.md) — 351 tokens
+- [Choosing the resource binding type](.llms/chunks/components.best-practices.modeling.choosing-the-resource-binding-type.md) — 227 tokens
+- [Choosing the resource binding type — Supported binding types](.llms/chunks/components.best-practices.modeling.choosing-the-resource-binding-type.supported-binding-types.md) — 653 tokens
+- [Creating readable process models](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.md) — 325 tokens
+- [Creating readable process models — Recommended practices — Modeling symmetrically](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-modeling-symmetrically.md) — 309 tokens
+- [Creating readable process models — Recommended practices — Modeling from left to right](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-modeling-from-left-to-right.md) — 264 tokens
+- [Creating readable process models — Recommended practices — Creating readable sequence flows](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-creating-readable-sequence-flows.md) — 763 tokens
+- [Creating readable process models — Recommended practices — Modeling explicitly](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-modeling-explicitly.md) — 837 tokens
+- [Creating readable process models — Recommended practices — Modeling explicitly (2)](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-modeling-explicitly-2.md) — 893 tokens
+- [Creating readable process models — Recommended practices — Modeling explicitly (3)](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-modeling-explicitly-3.md) — 414 tokens
+- [Creating readable process models — Recommended practices — Avoiding lanes](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.recommended-practices-avoiding-lanes.md) — 395 tokens
+- [Creating readable process models — Helpful practices — Emphasizing the happy path](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.helpful-practices-emphasizing-the-happy-path.md) — 183 tokens
+- [Creating readable process models — Helpful practices — Avoid modeling retry behavior](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.helpful-practices-avoid-modeling-retry-behavior.md) — 138 tokens
+- [Creating readable process models — Helpful practices — Using collaboration diagrams](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.helpful-practices-using-collaboration-diagrams.md) — 641 tokens
+- [Creating readable process models — Helpful practices — Showing interaction with systems](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.helpful-practices-showing-interaction-with-systems.md) — 563 tokens
+- [Creating readable process models — Helpful practices — Avoiding excessive usage of data objects](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.helpful-practices-avoiding-excessive-usage-of-data-objects.md) — 504 tokens
+- [Creating readable process models — Helpful practices — Avoiding changes to symbol size and color](.llms/chunks/components.best-practices.modeling.creating-readable-process-models.helpful-practices-avoiding-changes-to-symbol-size-and-color.md) — 308 tokens
+- [Modeling beyond the happy path](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.md) — 600 tokens
+- [Modeling beyond the happy path — Forking off at a particular point](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-at-a-particular-point.md) — 49 tokens
+- [Modeling beyond the happy path — Forking off at a particular point — Dealing with results](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-at-a-particular-point-dealing-with-results.md) — 376 tokens
+- [Modeling beyond the happy path — Forking off at a particular point — Dealing with events](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-at-a-particular-point-dealing-with-events.md) — 301 tokens
+- [Modeling beyond the happy path — Forking off at a particular point — Dealing with missing results via timeouts](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-at-a-particular-point-dealing-with-missing-results-via-timeouts.md) — 300 tokens
+- [Modeling beyond the happy path — Forking off during (one or several) activities](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.forking-off-during-one-or-several-activities.md) — 801 tokens
+- [Modeling beyond the happy path — Being able to react all the time](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.being-able-to-react-all-the-time.md) — 494 tokens
+- [Modeling beyond the happy path — Boundary events as alternative for event based gateways — Using receive tasks with boundary events](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.boundary-events-as-alternative-for-event-based-gateways-using-receive-tasks-with-boundary-events.md) — 347 tokens
+- [Modeling beyond the happy path — Boundary events as alternative for event based gateways — Modeling a multi phase escalation path](.llms/chunks/components.best-practices.modeling.modeling-beyond-the-happy-path.boundary-events-as-alternative-for-event-based-gateways-modeling-a-multi-phase-escalation-path.md) — 726 tokens
+- [Modeling with situation patterns](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.md) — 136 tokens
+- [Modeling with situation patterns — Escalating a situation step by step](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.escalating-a-situation-step-by-step.md) — 249 tokens
+- [Modeling with situation patterns — Escalating a situation step by step — Option 1: Using event-based gateways](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.escalating-a-situation-step-by-step-option-1-using-event-based-gateways.md) — 496 tokens
+- [Modeling with situation patterns — Escalating a situation step by step — Option 2: Using gateways forming a loop](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.escalating-a-situation-step-by-step-option-2-using-gateways-forming-a-loop.md) — 549 tokens
+- [Modeling with situation patterns — Escalating a situation step by step — Option 3: Using boundary events](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.escalating-a-situation-step-by-step-option-3-using-boundary-events.md) — 405 tokens
+- [Modeling with situation patterns — Requiring a second set of eyes](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.requiring-a-second-set-of-eyes.md) — 246 tokens
+- [Modeling with situation patterns — Requiring a second set of eyes — Option 1: Using separate tasks](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.requiring-a-second-set-of-eyes-option-1-using-separate-tasks.md) — 534 tokens
+- [Modeling with situation patterns — Requiring a second set of eyes — Option 2: Using a loop](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.requiring-a-second-set-of-eyes-option-2-using-a-loop.md) — 432 tokens
+- [Modeling with situation patterns — Requiring a second set of eyes — Option 3: Using a multi-instance task](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.requiring-a-second-set-of-eyes-option-3-using-a-multi-instance-task.md) — 408 tokens
+- [Modeling with situation patterns — Measuring key performance indicators (KPIs)](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.measuring-key-performance-indicators-kpis.md) — 281 tokens
+- [Modeling with situation patterns — Measuring key performance indicators (KPIs) — Option 1: Showing milestones](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.measuring-key-performance-indicators-kpis-option-1-showing-milestones.md) — 608 tokens
+- [Modeling with situation patterns — Measuring key performance indicators (KPIs) — Option 2: Emphasizing process phases](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.measuring-key-performance-indicators-kpis-option-2-emphasizing-process-phases.md) — 261 tokens
+- [Modeling with situation patterns — Evaluating decisions in processes](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.evaluating-decisions-in-processes.md) — 712 tokens
+- [Modeling with situation patterns — Distinguishing undesired results from fatal problems](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.distinguishing-undesired-results-from-fatal-problems.md) — 155 tokens
+- [Modeling with situation patterns — Distinguishing undesired results from fatal problems — Option 1: Using gateways to check for undesired results](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.distinguishing-undesired-results-from-fatal-problems-option-1-using-gateways-to-check-for-undesired-results.md) — 179 tokens
+- [Modeling with situation patterns — Distinguishing undesired results from fatal problems — Option 2: Using boundary error events to check for fatal problems](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.distinguishing-undesired-results-from-fatal-problems-option-2-using-boundary-error-events-to-check-for-fatal-problems.md) — 285 tokens
+- [Modeling with situation patterns — Distinguishing undesired results from fatal problems — Understanding the definition of the result](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.distinguishing-undesired-results-from-fatal-problems-understanding-the-definition-of-the-result.md) — 428 tokens
+- [Modeling with situation patterns — Asking multiple recipients for a single reply](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.asking-multiple-recipients-for-a-single-reply.md) — 436 tokens
+- [Modeling with situation patterns — Processing a batch of objects](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.processing-a-batch-of-objects.md) — 676 tokens
+- [Modeling with situation patterns — Concurring dependent instances](.llms/chunks/components.best-practices.modeling.modeling-with-situation-patterns.concurring-dependent-instances.md) — 696 tokens
+- [Naming BPMN elements](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.md) — 123 tokens
+- [Naming BPMN elements — Naming activities](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.naming-activities.md) — 162 tokens
+- [Naming BPMN elements — Naming events](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.naming-events.md) — 298 tokens
+- [Naming BPMN elements — Naming gateways](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.naming-gateways.md) — 387 tokens
+- [Naming BPMN elements — Naming processes](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.naming-processes.md) — 209 tokens
+- [Naming BPMN elements — Recommended practices](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.recommended-practices.md) — 169 tokens
+- [Naming BPMN elements — Helpful practices](.llms/chunks/components.best-practices.modeling.naming-bpmn-elements.helpful-practices.md) — 115 tokens
+- [Naming technically relevant IDs](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.md) — 200 tokens
+- [Naming technically relevant IDs — Using naming conventions for BPMN IDs](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids.md) — 590 tokens
+- [Naming technically relevant IDs — Using naming conventions for BPMN IDs — Editing IDs with Camunda Modeler](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-editing-ids-with-camunda-modeler.md) — 431 tokens
+- [Naming technically relevant IDs — Using naming conventions for BPMN IDs — Aligning the BPMN file name with the process ID](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.using-naming-conventions-for-bpmn-ids-aligning-the-bpmn-file-name-with-the-process-id.md) — 83 tokens
+- [Naming technically relevant IDs — Generating ID constants classes](.llms/chunks/components.best-practices.modeling.naming-technically-relevant-ids.generating-id-constants-classes.md) — 175 tokens
+- [Reporting about processes](.llms/chunks/components.best-practices.operations.reporting-about-processes.md) — 687 tokens
+- [Reporting about processes — History architecture](.llms/chunks/components.best-practices.operations.reporting-about-processes.history-architecture.md) — 396 tokens
+- [Reporting about processes — Connecting custom business intelligence systems (BI), data warehouses (DWH), or monitoring solutions](.llms/chunks/components.best-practices.operations.reporting-about-processes.connecting-custom-business-intelligence-systems-bi-data-warehouses-dwh-or-monitoring-solutions.md) — 190 tokens
+- [Versioning process definitions](.llms/chunks/components.best-practices.operations.versioning-process-definitions.md) — 166 tokens
+- [Versioning process definitions — Understanding versioning](.llms/chunks/components.best-practices.operations.versioning-process-definitions.understanding-versioning.md) — 160 tokens
+- [Versioning process definitions — Selecting the best versioning approach — Running versions in parallel](.llms/chunks/components.best-practices.operations.versioning-process-definitions.selecting-the-best-versioning-approach-running-versions-in-parallel.md) — 232 tokens
+- [Versioning process definitions — Selecting the best versioning approach — Migrating process instances to a new version](.llms/chunks/components.best-practices.operations.versioning-process-definitions.selecting-the-best-versioning-approach-migrating-process-instances-to-a-new-version.md) — 268 tokens
+- [Versioning process definitions — Selecting the best versioning approach — Things to consider before migration](.llms/chunks/components.best-practices.operations.versioning-process-definitions.selecting-the-best-versioning-approach-things-to-consider-before-migration.md) — 449 tokens
+- [Versioning process definitions — Avoid versioning of dependant artifacts](.llms/chunks/components.best-practices.operations.versioning-process-definitions.avoid-versioning-of-dependant-artifacts.md) — 605 tokens
+- [Versioning process definitions — Dealing with long running processes](.llms/chunks/components.best-practices.operations.versioning-process-definitions.dealing-with-long-running-processes.md) — 195 tokens
+- [Versioning process definitions — Dealing with long running processes — Cutting very long running processes into pieces](.llms/chunks/components.best-practices.operations.versioning-process-definitions.dealing-with-long-running-processes-cutting-very-long-running-processes-into-pieces.md) — 483 tokens
+- [Versioning process definitions — Dealing with long running processes — Using call activities to influence versioning behaviour of pieces](.llms/chunks/components.best-practices.operations.versioning-process-definitions.dealing-with-long-running-processes-using-call-activities-to-influence-versioning-behaviour-of-pieces.md) — 375 tokens
+- [Identity and access management in Camunda 8](.llms/chunks/components.concepts.access-control.access-control-overview.md) — 280 tokens
+- [Identity and access management in Camunda 8 — Identity provider (IdP) integration](.llms/chunks/components.concepts.access-control.access-control-overview.identity-provider-idp-integration.md) — 268 tokens
+- [Identity and access management in Camunda 8 — Authentication vs. authorization](.llms/chunks/components.concepts.access-control.access-control-overview.authentication-vs.-authorization.md) — 416 tokens
+- [Identity and access management in Camunda 8 — Authentication methods](.llms/chunks/components.concepts.access-control.access-control-overview.authentication-methods.md) — 618 tokens
+- [Identity and access management in Camunda 8 — How to obtain tokens](.llms/chunks/components.concepts.access-control.access-control-overview.how-to-obtain-tokens.md) — 195 tokens
+- [Orchestration Cluster authorization](.llms/chunks/components.concepts.access-control.authorizations.md) — 150 tokens
+- [Orchestration Cluster authorization — How authorization works](.llms/chunks/components.concepts.access-control.authorizations.how-authorization-works.md) — 337 tokens
+- [Orchestration Cluster authorization — Available resources](.llms/chunks/components.concepts.access-control.authorizations.available-resources.md) — 949 tokens
+- [Orchestration Cluster authorization — Available resources — Secret authorizations don't cover broker-side resolution](.llms/chunks/components.concepts.access-control.authorizations.available-resources-secret-authorizations-don-t-cover-broker-side-resolution.md) — 179 tokens
+- [Orchestration Cluster authorization — Available resources — User task authorizations](.llms/chunks/components.concepts.access-control.authorizations.available-resources-user-task-authorizations.md) — 107 tokens
+- [Orchestration Cluster authorization — Configuration](.llms/chunks/components.concepts.access-control.authorizations.configuration.md) — 146 tokens
+- [Orchestration Cluster authorization — Security considerations](.llms/chunks/components.concepts.access-control.authorizations.security-considerations.md) — 65 tokens
+- [Orchestration Cluster authorization — Security considerations — `CREATE` permission for the Resource (deployment)](.llms/chunks/components.concepts.access-control.authorizations.security-considerations-create-permission-for-the-resource-deployment.md) — 111 tokens
+- [Orchestration Cluster authorization — Security considerations — `CREATE`/`UPDATE` permissions for the User](.llms/chunks/components.concepts.access-control.authorizations.security-considerations-create-update-permissions-for-the-user.md) — 87 tokens
+- [Orchestration Cluster authorization — Security considerations — System access permissions](.llms/chunks/components.concepts.access-control.authorizations.security-considerations-system-access-permissions.md) — 88 tokens
+- [Orchestration Cluster authorization — Security considerations — `REVEAL` permission for the Secret](.llms/chunks/components.concepts.access-control.authorizations.security-considerations-reveal-permission-for-the-secret.md) — 174 tokens
+- [Orchestration Cluster authorization — Security considerations — Authorization disabled and secret resolution](.llms/chunks/components.concepts.access-control.authorizations.security-considerations-authorization-disabled-and-secret-resolution.md) — 83 tokens
+- [Orchestration Cluster authorization — Security considerations — No validation of owner and resource IDs](.llms/chunks/components.concepts.access-control.authorizations.security-considerations-no-validation-of-owner-and-resource-ids.md) — 196 tokens
+- [Orchestration Cluster authorization — Security considerations — Process-level vs. task-level task permissions](.llms/chunks/components.concepts.access-control.authorizations.security-considerations-process-level-vs.-task-level-task-permissions.md) — 174 tokens
+- [Orchestration Cluster authorization — Default roles](.llms/chunks/components.concepts.access-control.authorizations.default-roles.md) — 532 tokens
+- [Orchestration Cluster authorization — Common authorization use cases](.llms/chunks/components.concepts.access-control.authorizations.common-authorization-use-cases.md) — 432 tokens
+- [Connect to an Identity Provider](.llms/chunks/components.concepts.access-control.connect-to-identity-provider.md) — 223 tokens
+- [Connect to an Identity Provider — SaaS](.llms/chunks/components.concepts.access-control.connect-to-identity-provider.saas.md) — 59 tokens
+- [Mapping rules](.llms/chunks/components.concepts.access-control.mapping-rules.md) — 295 tokens
+- [Mapping rules — How to use mapping rules](.llms/chunks/components.concepts.access-control.mapping-rules.how-to-use-mapping-rules.md) — 387 tokens
+- [Mapping rules — References](.llms/chunks/components.concepts.access-control.mapping-rules.references.md) — 77 tokens
+- [Batch operations](.llms/chunks/components.concepts.batch-operations.md) — 292 tokens
+- [Batch operations — Types](.llms/chunks/components.concepts.batch-operations.types.md) — 268 tokens
+- [Batch operations — States](.llms/chunks/components.concepts.batch-operations.states.md) — 269 tokens
+- [Batch operations — Authorization](.llms/chunks/components.concepts.batch-operations.authorization.md) — 158 tokens
+- [Batch operations — Next steps](.llms/chunks/components.concepts.batch-operations.next-steps.md) — 159 tokens
+- [BPMN, DMN, and FEEL](.llms/chunks/components.concepts.bpmn-dmn-feel.md) — 207 tokens
+- [BPMN, DMN, and FEEL — FEEL expressions](.llms/chunks/components.concepts.bpmn-dmn-feel.feel-expressions.md) — 92 tokens
+- [Clusters](.llms/chunks/components.concepts.clusters.md) — 626 tokens
+- [Clusters — Cluster size](.llms/chunks/components.concepts.clusters.cluster-size.md) — 242 tokens
+- [Clusters — Free Trial clusters](.llms/chunks/components.concepts.clusters.free-trial-clusters.md) — 362 tokens
+- [Introduction to Camunda 8](.llms/chunks/components.concepts.concepts-overview.md) — 538 tokens
+- [Introduction to Camunda 8 — Camunda 8 use cases](.llms/chunks/components.concepts.concepts-overview.camunda-8-use-cases.md) — 625 tokens
+- [Introduction to Camunda 8 — What are the core quality attributes of Camunda 8?](.llms/chunks/components.concepts.concepts-overview.what-are-the-core-quality-attributes-of-camunda-8.md) — 374 tokens
+- [Introduction to Camunda 8 — What are the Camunda 8 components?](.llms/chunks/components.concepts.concepts-overview.what-are-the-camunda-8-components.md) — 672 tokens
+- [Introduction to Camunda 8 — How does Camunda 8 compare to other solutions?](.llms/chunks/components.concepts.concepts-overview.how-does-camunda-8-compare-to-other-solutions.md) — 329 tokens
+- [Introduction to Camunda 8 — Next steps](.llms/chunks/components.concepts.concepts-overview.next-steps.md) — 112 tokens
+- [Conditionals](.llms/chunks/components.concepts.conditionals.md) — 146 tokens
+- [Conditionals — Conditional event triggers](.llms/chunks/components.concepts.conditionals.conditional-event-triggers.md) — 148 tokens
+- [Conditionals — Conditional event triggers — On scope activation](.llms/chunks/components.concepts.conditionals.conditional-event-triggers-on-scope-activation.md) — 194 tokens
+- [Conditionals — Conditional event triggers — On variable changes](.llms/chunks/components.concepts.conditionals.conditional-event-triggers-on-variable-changes.md) — 858 tokens
+- [Conditionals — Conditional event triggers — On variable changes (2)](.llms/chunks/components.concepts.conditionals.conditional-event-triggers-on-variable-changes-2.md) — 682 tokens
+- [Conditionals — Trigger root-level conditional start events via API](.llms/chunks/components.concepts.conditionals.trigger-root-level-conditional-start-events-via-api.md) — 339 tokens
+- [Decision instance deletion](.llms/chunks/components.concepts.decision-instance-deletion.md) — 161 tokens
+- [Decision instance deletion — Technical details](.llms/chunks/components.concepts.decision-instance-deletion.technical-details.md) — 300 tokens
+- [Element templates](.llms/chunks/components.concepts.element-templates.md) — 281 tokens
+- [Element templates — Next steps](.llms/chunks/components.concepts.element-templates.next-steps.md) — 72 tokens
+- [Execution listeners](.llms/chunks/components.concepts.execution-listeners.md) — 218 tokens
+- [Execution listeners — Define an execution listener](.llms/chunks/components.concepts.execution-listeners.define-an-execution-listener.md) — 353 tokens
+- [Execution listeners — Task headers](.llms/chunks/components.concepts.execution-listeners.task-headers.md) — 242 tokens
+- [Execution listeners — Variables in an execution listener](.llms/chunks/components.concepts.execution-listeners.variables-in-an-execution-listener.md) — 75 tokens
+- [Execution listeners — Variables in an execution listener — `beforeAll` listeners](.llms/chunks/components.concepts.execution-listeners.variables-in-an-execution-listener-beforeall-listeners.md) — 355 tokens
+- [Execution listeners — Variables in an execution listener — `start` listeners](.llms/chunks/components.concepts.execution-listeners.variables-in-an-execution-listener-start-listeners.md) — 560 tokens
+- [Execution listeners — Variables in an execution listener — `end` listeners](.llms/chunks/components.concepts.execution-listeners.variables-in-an-execution-listener-end-listeners.md) — 119 tokens
+- [Execution listeners — Variables in an execution listener — `cancel` listeners](.llms/chunks/components.concepts.execution-listeners.variables-in-an-execution-listener-cancel-listeners.md) — 104 tokens
+- [Execution listeners — Incident recovery](.llms/chunks/components.concepts.execution-listeners.incident-recovery.md) — 242 tokens
+- [Execution listeners — Limitations](.llms/chunks/components.concepts.execution-listeners.limitations.md) — 396 tokens
+- [Execution listeners — Related resources](.llms/chunks/components.concepts.execution-listeners.related-resources.md) — 70 tokens
+- [Expressions](.llms/chunks/components.concepts.expressions.md) — 164 tokens
+- [Expressions — Expressions vs. static values](.llms/chunks/components.concepts.expressions.expressions-vs.-static-values.md) — 235 tokens
+- [Expressions — The expression language](.llms/chunks/components.concepts.expressions.the-expression-language.md) — 249 tokens
+- [Expressions — Next steps](.llms/chunks/components.concepts.expressions.next-steps.md) — 95 tokens
+- [Access control for global user task listeners](.llms/chunks/components.concepts.global-user-task-listeners.access-control.md) — 210 tokens
+- [Access control for global user task listeners — Required permissions](.llms/chunks/components.concepts.global-user-task-listeners.access-control.required-permissions.md) — 349 tokens
+- [Configure global user task listeners](.llms/chunks/components.concepts.global-user-task-listeners.configuration.md) — 258 tokens
+- [Configure global user task listeners — Configure through Unified Configuration](.llms/chunks/components.concepts.global-user-task-listeners.configuration.configure-through-unified-configuration.md) — 593 tokens
+- [Configure global user task listeners — Configure via Orchestration Cluster API](.llms/chunks/components.concepts.global-user-task-listeners.configuration.configure-via-orchestration-cluster-api.md) — 194 tokens
+- [Configure global user task listeners — Configure via Admin UI](.llms/chunks/components.concepts.global-user-task-listeners.configuration.configure-via-admin-ui.md) — 187 tokens
+- [Global user task listeners](.llms/chunks/components.concepts.global-user-task-listeners.md) — 214 tokens
+- [Global user task listeners — Global listener definition](.llms/chunks/components.concepts.global-user-task-listeners.global-listener-definition.md) — 598 tokens
+- [Global user task listeners — Execution order](.llms/chunks/components.concepts.global-user-task-listeners.execution-order.md) — 314 tokens
+- [Global user task listeners — Limitations](.llms/chunks/components.concepts.global-user-task-listeners.limitations.md) — 108 tokens
+- [Incidents](.llms/chunks/components.concepts.incidents.md) — 220 tokens
+- [Incidents — Resolving](.llms/chunks/components.concepts.incidents.resolving.md) — 518 tokens
+- [Job workers](.llms/chunks/components.concepts.job-workers.md) — 467 tokens
+- [Job workers — Requesting jobs](.llms/chunks/components.concepts.job-workers.requesting-jobs.md) — 773 tokens
+- [Job workers — Completing or failing jobs](.llms/chunks/components.concepts.job-workers.completing-or-failing-jobs.md) — 593 tokens
+- [Job workers — Completing or failing jobs — Using job result](.llms/chunks/components.concepts.job-workers.completing-or-failing-jobs-using-job-result.md) — 332 tokens
+- [Job workers — Timeouts](.llms/chunks/components.concepts.job-workers.timeouts.md) — 574 tokens
+- [Job workers — Job streaming](.llms/chunks/components.concepts.job-workers.job-streaming.md) — 65 tokens
+- [Job workers — Job streaming — How it works](.llms/chunks/components.concepts.job-workers.job-streaming-how-it-works.md) — 467 tokens
+- [Job workers — Job streaming — How job streaming and polling deliver jobs](.llms/chunks/components.concepts.job-workers.job-streaming-how-job-streaming-and-polling-deliver-jobs.md) — 297 tokens
+- [Job workers — Job streaming — Backpressure](.llms/chunks/components.concepts.job-workers.job-streaming-backpressure.md) — 809 tokens
+- [Job workers — Job streaming — Proxying](.llms/chunks/components.concepts.job-workers.job-streaming-proxying.md) — 89 tokens
+- [Job workers — Job streaming — Troubleshooting](.llms/chunks/components.concepts.job-workers.job-streaming-troubleshooting.md) — 774 tokens
+- [Job workers — Job prioritization](.llms/chunks/components.concepts.job-workers.job-prioritization.md) — 654 tokens
+- [Job workers — Tags](.llms/chunks/components.concepts.job-workers.tags.md) — 227 tokens
+- [Job workers — Job leasing](.llms/chunks/components.concepts.job-workers.job-leasing.md) — 746 tokens
+- [Job workers — Job leasing — How job leasing works](.llms/chunks/components.concepts.job-workers.job-leasing-how-job-leasing-works.md) — 128 tokens
+- [Job workers — Job leasing — Enforcement and rejections](.llms/chunks/components.concepts.job-workers.job-leasing-enforcement-and-rejections.md) — 171 tokens
+- [Job workers — Job leasing — Leasing is permanent for a job](.llms/chunks/components.concepts.job-workers.job-leasing-leasing-is-permanent-for-a-job.md) — 346 tokens
+- [Job workers — Job leasing — Example](.llms/chunks/components.concepts.job-workers.job-leasing-example.md) — 179 tokens
+- [Message aggregation](.llms/chunks/components.concepts.message-aggregation.md) — 230 tokens
+- [Message aggregation — How it works](.llms/chunks/components.concepts.message-aggregation.how-it-works.md) — 158 tokens
+- [Message aggregation — Example use case](.llms/chunks/components.concepts.message-aggregation.example-use-case.md) — 306 tokens
+- [Message aggregation — Behavior](.llms/chunks/components.concepts.message-aggregation.behavior.md) — 190 tokens
+- [Message aggregation — Troubleshooting](.llms/chunks/components.concepts.message-aggregation.troubleshooting.md) — 220 tokens
+- [Message aggregation — Best practices](.llms/chunks/components.concepts.message-aggregation.best-practices.md) — 112 tokens
+- [Messages](.llms/chunks/components.concepts.messages.md) — 614 tokens
+- [Messages — Message buffering](.llms/chunks/components.concepts.messages.message-buffering.md) — 268 tokens
+- [Messages — Message cardinality](.llms/chunks/components.concepts.messages.message-cardinality.md) — 304 tokens
+- [Messages — Message uniqueness](.llms/chunks/components.concepts.messages.message-uniqueness.md) — 245 tokens
+- [Messages — Message correlation overview](.llms/chunks/components.concepts.messages.message-correlation-overview.md) — 930 tokens
+- [Messages — Business ID in message correlation](.llms/chunks/components.concepts.messages.business-id-in-message-correlation.md) — 769 tokens
+- [Messages — Message patterns](.llms/chunks/components.concepts.messages.message-patterns.md) — 546 tokens
+- [Messages — Message response](.llms/chunks/components.concepts.messages.message-response.md) — 251 tokens
+- [Multi-tenancy](.llms/chunks/components.concepts.multi-tenancy.md) — 200 tokens
+- [Multi-tenancy — How multi-tenancy works](.llms/chunks/components.concepts.multi-tenancy.how-multi-tenancy-works.md) — 387 tokens
+- [Multi-tenancy — Example: tenant membership in action](.llms/chunks/components.concepts.multi-tenancy.example-tenant-membership-in-action.md) — 173 tokens
+- [Multi-tenancy — Enable multi-tenancy checks](.llms/chunks/components.concepts.multi-tenancy.enable-multi-tenancy-checks.md) — 225 tokens
+- [Multi-tenancy — Manage tenants](.llms/chunks/components.concepts.multi-tenancy.manage-tenants.md) — 267 tokens
+- [Outbound connectors vs. job workers](.llms/chunks/components.concepts.outbound-connectors-job-workers.md) — 167 tokens
+- [Outbound connectors vs. job workers — Delivery](.llms/chunks/components.concepts.outbound-connectors-job-workers.delivery.md) — 413 tokens
+- [Outbound connectors vs. job workers — Focus](.llms/chunks/components.concepts.outbound-connectors-job-workers.focus.md) — 165 tokens
+- [Outbound connectors vs. job workers — Context](.llms/chunks/components.concepts.outbound-connectors-job-workers.context.md) — 250 tokens
+- [Outbound connectors vs. job workers — Which one should you choose?](.llms/chunks/components.concepts.outbound-connectors-job-workers.which-one-should-you-choose.md) — 163 tokens
+- [Outbound connectors vs. job workers — Learn more](.llms/chunks/components.concepts.outbound-connectors-job-workers.learn-more.md) — 54 tokens
+- [Projects](.llms/chunks/components.concepts.process-applications.md) — 230 tokens
+- [Projects — Next steps](.llms/chunks/components.concepts.process-applications.next-steps.md) — 41 tokens
+- [Process instance creation](.llms/chunks/components.concepts.process-instance-creation.md) — 137 tokens
+- [Process instance creation — Create and execute asynchronously](.llms/chunks/components.concepts.process-instance-creation.create-and-execute-asynchronously.md) — 199 tokens
+- [Process instance creation — Create and await results](.llms/chunks/components.concepts.process-instance-creation.create-and-await-results.md) — 481 tokens
+- [Process instance creation — Run process segment](.llms/chunks/components.concepts.process-instance-creation.run-process-segment.md) — 612 tokens
+- [Process instance creation — Events](.llms/chunks/components.concepts.process-instance-creation.events.md) — 151 tokens
+- [Process instance creation — FEEL context variables](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables.md) — 113 tokens
+- [Process instance creation — FEEL context variables — What is a business ID?](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-what-is-a-business-id.md) — 366 tokens
+- [Process instance creation — FEEL context variables — Propagation to child instances](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-propagation-to-child-instances.md) — 167 tokens
+- [Process instance creation — FEEL context variables — Searching and filtering by business ID](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-searching-and-filtering-by-business-id.md) — 737 tokens
+- [Process instance creation — FEEL context variables — Late Business ID assignment](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-late-business-id-assignment.md) — 586 tokens
+- [Process instance creation — FEEL context variables — Uniqueness control](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-uniqueness-control.md) — 508 tokens
+- [Process instance creation — FEEL context variables — Process instance migration](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-process-instance-migration.md) — 247 tokens
+- [Process instance creation — FEEL context variables — Limitations](.llms/chunks/components.concepts.process-instance-creation.feel-context-variables-limitations.md) — 113 tokens
+- [Process instance creation — Tags](.llms/chunks/components.concepts.process-instance-creation.tags.md) — 594 tokens
+- [Process instance creation — Next steps](.llms/chunks/components.concepts.process-instance-creation.next-steps.md) — 41 tokens
+- [Process instance deletion](.llms/chunks/components.concepts.process-instance-deletion.md) — 135 tokens
+- [Process instance deletion — Limitations](.llms/chunks/components.concepts.process-instance-deletion.limitations.md) — 251 tokens
+- [Process instance deletion — Eventual consistency](.llms/chunks/components.concepts.process-instance-deletion.eventual-consistency.md) — 352 tokens
+- [Process instance migration](.llms/chunks/components.concepts.process-instance-migration.md) — 233 tokens
+- [Process instance migration — Migrating from Camunda 7](.llms/chunks/components.concepts.process-instance-migration.migrating-from-camunda-7.md) — 665 tokens
+- [Process instance migration — Change the active elements](.llms/chunks/components.concepts.process-instance-migration.change-the-active-elements.md) — 441 tokens
+- [Process instance migration — Correct mistakes in a process instance](.llms/chunks/components.concepts.process-instance-migration.correct-mistakes-in-a-process-instance.md) — 303 tokens
+- [Process instance migration — Migrate active elements inside subprocesses](.llms/chunks/components.concepts.process-instance-migration.migrate-active-elements-inside-subprocesses.md) — 258 tokens
+- [Process instance migration — Migrate active elements inside ad-hoc subprocesses](.llms/chunks/components.concepts.process-instance-migration.migrate-active-elements-inside-ad-hoc-subprocesses.md) — 196 tokens
+- [Process instance migration — Migrate job worker user tasks to Camunda user tasks](.llms/chunks/components.concepts.process-instance-migration.migrate-job-worker-user-tasks-to-camunda-user-tasks.md) — 252 tokens
+- [Process instance migration — Deal with catch events](.llms/chunks/components.concepts.process-instance-migration.deal-with-catch-events.md) — 226 tokens
+- [Process instance migration — Deal with catch events — Migrate catch events](.llms/chunks/components.concepts.process-instance-migration.deal-with-catch-events-migrate-catch-events.md) — 831 tokens
+- [Process instance migration — Deal with catch events — Migrate catch events (2)](.llms/chunks/components.concepts.process-instance-migration.deal-with-catch-events-migrate-catch-events-2.md) — 272 tokens
+- [Process instance migration — Deal with catch events — Add or remove catch events](.llms/chunks/components.concepts.process-instance-migration.deal-with-catch-events-add-or-remove-catch-events.md) — 435 tokens
+- [Process instance migration — Deal with catch events — Compensation boundary events](.llms/chunks/components.concepts.process-instance-migration.deal-with-catch-events-compensation-boundary-events.md) — 271 tokens
+- [Process instance migration — Deal with gateways](.llms/chunks/components.concepts.process-instance-migration.deal-with-gateways.md) — 395 tokens
+- [Process instance migration — Process definitions and versions](.llms/chunks/components.concepts.process-instance-migration.process-definitions-and-versions.md) — 353 tokens
+- [Process instance migration — Internal Execution](.llms/chunks/components.concepts.process-instance-migration.internal-execution.md) — 746 tokens
+- [Process instance migration — Limitations](.llms/chunks/components.concepts.process-instance-migration.limitations.md) — 820 tokens
+- [Process instance migration — Limitations (2)](.llms/chunks/components.concepts.process-instance-migration.limitations-2.md) — 135 tokens
+- [Process instance migration — Limitations — Supported BPMN elements](.llms/chunks/components.concepts.process-instance-migration.limitations-supported-bpmn-elements.md) — 80 tokens
+- [Process instance migration — Use at your own risk](.llms/chunks/components.concepts.process-instance-migration.use-at-your-own-risk.md) — 419 tokens
+- [Process instance modification](.llms/chunks/components.concepts.process-instance-modification.md) — 485 tokens
+- [Process instance modification — Activate an element](.llms/chunks/components.concepts.process-instance-modification.activate-an-element.md) — 262 tokens
+- [Process instance modification — Activate a nested element](.llms/chunks/components.concepts.process-instance-modification.activate-a-nested-element.md) — 413 tokens
+- [Process instance modification — Activate an interrupting event subprocess](.llms/chunks/components.concepts.process-instance-modification.activate-an-interrupting-event-subprocess.md) — 274 tokens
+- [Process instance modification — Set variables](.llms/chunks/components.concepts.process-instance-modification.set-variables.md) — 331 tokens
+- [Process instance modification — Terminate an element instance](.llms/chunks/components.concepts.process-instance-modification.terminate-an-element-instance.md) — 485 tokens
+- [Process instance modification — Move an element instance](.llms/chunks/components.concepts.process-instance-modification.move-an-element-instance.md) — 491 tokens
+- [Process instance modification — Execute the modification instructions](.llms/chunks/components.concepts.process-instance-modification.execute-the-modification-instructions.md) — 223 tokens
+- [Process instance modification — Limitations](.llms/chunks/components.concepts.process-instance-modification.limitations.md) — 398 tokens
+- [Processes](.llms/chunks/components.concepts.processes.md) — 336 tokens
+- [Processes — BPMN](.llms/chunks/components.concepts.processes.bpmn.md) — 226 tokens
+- [Processes — Process execution](.llms/chunks/components.concepts.processes.process-execution.md) — 575 tokens
+- [Resource deletion](.llms/chunks/components.concepts.resource-deletion.md) — 163 tokens
+- [Resource deletion — Deleting a process definition](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition.md) — 592 tokens
+- [Resource deletion — Deleting a decision requirements graph](.llms/chunks/components.concepts.resource-deletion.deleting-a-decision-requirements-graph.md) — 333 tokens
+- [Secret resolution and job activation](.llms/chunks/components.concepts.secret-resolution-and-job-activation.md) — 297 tokens
+- [Secret resolution and job activation — Availability](.llms/chunks/components.concepts.secret-resolution-and-job-activation.availability.md) — 256 tokens
+- [Secret resolution and job activation — Resolve references before activation](.llms/chunks/components.concepts.secret-resolution-and-job-activation.resolve-references-before-activation.md) — 734 tokens
+- [Secret resolution and job activation — Activate a job that references secrets](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets.md) — 268 tokens
+- [Secret resolution and job activation — Activate a job that references secrets — Long polling](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets-long-polling.md) — 357 tokens
+- [Secret resolution and job activation — Activate a job that references secrets — Job push](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets-job-push.md) — 166 tokens
+- [Secret resolution and job activation — Activate a job that references secrets — Understand what a job worker receives](.llms/chunks/components.concepts.secret-resolution-and-job-activation.activate-a-job-that-references-secrets-understand-what-a-job-worker-receives.md) — 427 tokens
+- [Secret resolution and job activation — Secret values location](.llms/chunks/components.concepts.secret-resolution-and-job-activation.secret-values-location.md) — 256 tokens
+- [Secret resolution and job activation — Understand why a job is not activated](.llms/chunks/components.concepts.secret-resolution-and-job-activation.understand-why-a-job-is-not-activated.md) — 314 tokens
+- [Secret resolution and job activation — Tune the resolution scheduler](.llms/chunks/components.concepts.secret-resolution-and-job-activation.tune-the-resolution-scheduler.md) — 553 tokens
+- [Secret resolution and job activation — Secret resolution across physical tenants](.llms/chunks/components.concepts.secret-resolution-and-job-activation.secret-resolution-across-physical-tenants.md) — 235 tokens
+- [Secret resolution and job activation — Related resources](.llms/chunks/components.concepts.secret-resolution-and-job-activation.related-resources.md) — 110 tokens
+- [Troubleshoot secret resolution failures](.llms/chunks/components.concepts.secret-resolution-incidents.md) — 183 tokens
+- [Troubleshoot secret resolution failures — Find your symptom](.llms/chunks/components.concepts.secret-resolution-incidents.find-your-symptom.md) — 519 tokens
+- [Troubleshoot secret resolution failures — Resolve secret lookup failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-lookup-failures.md) — 393 tokens
+- [Troubleshoot secret resolution failures — Resolve secret injection failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-injection-failures.md) — 551 tokens
+- [Troubleshoot secret resolution failures — Reduce oversized secret values](.llms/chunks/components.concepts.secret-resolution-incidents.reduce-oversized-secret-values.md) — 325 tokens
+- [Troubleshoot secret resolution failures — Identify failures that raise no incident](.llms/chunks/components.concepts.secret-resolution-incidents.identify-failures-that-raise-no-incident.md) — 441 tokens
+- [Troubleshoot secret resolution failures — Resume a suspended job after secret resolution](.llms/chunks/components.concepts.secret-resolution-incidents.resume-a-suspended-job-after-secret-resolution.md) — 173 tokens
+- [Troubleshoot secret resolution failures — Diagnose the cause](.llms/chunks/components.concepts.secret-resolution-incidents.diagnose-the-cause.md) — 849 tokens
+- [Troubleshoot secret resolution failures — Diagnose the cause (2)](.llms/chunks/components.concepts.secret-resolution-incidents.diagnose-the-cause-2.md) — 279 tokens
+- [Troubleshoot secret resolution failures — Retry after fixing the cause](.llms/chunks/components.concepts.secret-resolution-incidents.retry-after-fixing-the-cause.md) — 327 tokens
+- [Troubleshoot secret resolution failures — Related resources](.llms/chunks/components.concepts.secret-resolution-incidents.related-resources.md) — 106 tokens
+- [Secret resolution](.llms/chunks/components.concepts.secret-resolution.md) — 307 tokens
+- [Secret resolution — Reference syntax](.llms/chunks/components.concepts.secret-resolution.reference-syntax.md) — 421 tokens
+- [Secret resolution — Two resolution paths](.llms/chunks/components.concepts.secret-resolution.two-resolution-paths.md) — 341 tokens
+- [Secret resolution — Physical-tenant scope](.llms/chunks/components.concepts.secret-resolution.physical-tenant-scope.md) — 150 tokens
+- [Secret resolution — Cache behavior](.llms/chunks/components.concepts.secret-resolution.cache-behavior.md) — 237 tokens
+- [Secret resolution — Related resources](.llms/chunks/components.concepts.secret-resolution.related-resources.md) — 124 tokens
+- [Signals](.llms/chunks/components.concepts.signals.md) — 165 tokens
+- [Signals — Signal subscriptions](.llms/chunks/components.concepts.signals.signal-subscriptions.md) — 244 tokens
+- [Example user task listener](.llms/chunks/components.concepts.user-task-listeners-guide.md) — 173 tokens
+- [Example user task listener — Prerequisites](.llms/chunks/components.concepts.user-task-listeners-guide.prerequisites.md) — 433 tokens
+- [Example user task listener — Step 1: Create a process with a user task in Hub](.llms/chunks/components.concepts.user-task-listeners-guide.step-1-create-a-process-with-a-user-task-in-hub.md) — 280 tokens
+- [Example user task listener — Step 4: Create a cluster](.llms/chunks/components.concepts.user-task-listeners-guide.step-4-create-a-cluster.md) — 322 tokens
+- [Example user task listener — Step 5: Deploy and run the process](.llms/chunks/components.concepts.user-task-listeners-guide.step-5-deploy-and-run-the-process.md) — 334 tokens
+- [Example user task listener — Step 7: Implement the listener](.llms/chunks/components.concepts.user-task-listeners-guide.step-7-implement-the-listener.md) — 443 tokens
+- [Example user task listener — Step 8: Verify the result in Operate and Tasklist](.llms/chunks/components.concepts.user-task-listeners-guide.step-8-verify-the-result-in-operate-and-tasklist.md) — 381 tokens
+- [Example user task listener — Additional resources and next steps](.llms/chunks/components.concepts.user-task-listeners-guide.additional-resources-and-next-steps.md) — 92 tokens
+- [User task listeners](.llms/chunks/components.concepts.user-task-listeners.md) — 471 tokens
+- [User task listeners — Trigger a user task listener](.llms/chunks/components.concepts.user-task-listeners.trigger-a-user-task-listener.md) — 562 tokens
+- [User task listeners — Define a user task listener](.llms/chunks/components.concepts.user-task-listeners.define-a-user-task-listener.md) — 489 tokens
+- [User task listeners — Implement a user task listener](.llms/chunks/components.concepts.user-task-listeners.implement-a-user-task-listener.md) — 109 tokens
+- [User task listeners — Implement a user task listener — Accessing user task data](.llms/chunks/components.concepts.user-task-listeners.implement-a-user-task-listener-accessing-user-task-data.md) — 786 tokens
+- [User task listeners — Implement a user task listener — Correcting user task data](.llms/chunks/components.concepts.user-task-listeners.implement-a-user-task-listener-correcting-user-task-data.md) — 435 tokens
+- [User task listeners — Implement a user task listener — Denying the lifecycle transition](.llms/chunks/components.concepts.user-task-listeners.implement-a-user-task-listener-denying-the-lifecycle-transition.md) — 295 tokens
+- [User task listeners — Expression evaluation and incident behavior](.llms/chunks/components.concepts.user-task-listeners.expression-evaluation-and-incident-behavior.md) — 230 tokens
+- [User task listeners — Limitations](.llms/chunks/components.concepts.user-task-listeners.limitations.md) — 397 tokens
+- [User task listeners — Related resources](.llms/chunks/components.concepts.user-task-listeners.related-resources.md) — 74 tokens
+- [Variables](.llms/chunks/components.concepts.variables.md) — 154 tokens
+- [Variables — Variable names](.llms/chunks/components.concepts.variables.variable-names.md) — 341 tokens
+- [Variables — Variable values](.llms/chunks/components.concepts.variables.variable-values.md) — 199 tokens
+- [Variables — Variable size limitation](.llms/chunks/components.concepts.variables.variable-size-limitation.md) — 211 tokens
+- [Variables — Variable scopes](.llms/chunks/components.concepts.variables.variable-scopes.md) — 309 tokens
+- [Variables — Variable scopes — Variable propagation](.llms/chunks/components.concepts.variables.variable-scopes-variable-propagation.md) — 221 tokens
+- [Variables — Variable scopes — Variable propagation by BPMN element](.llms/chunks/components.concepts.variables.variable-scopes-variable-propagation-by-bpmn-element.md) — 609 tokens
+- [Variables — Variable scopes — Internal engine variables](.llms/chunks/components.concepts.variables.variable-scopes-internal-engine-variables.md) — 159 tokens
+- [Variables — Variable scopes — Local variables](.llms/chunks/components.concepts.variables.variable-scopes-local-variables.md) — 84 tokens
+- [Variables — Variable scopes — Define local variables](.llms/chunks/components.concepts.variables.variable-scopes-define-local-variables.md) — 124 tokens
+- [Variables — Variable scopes — Scope behavior in common modeling patterns](.llms/chunks/components.concepts.variables.variable-scopes-scope-behavior-in-common-modeling-patterns.md) — 522 tokens
+- [Variables — Input/output variable mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings.md) — 327 tokens
+- [Variables — Input/output variable mappings — Input mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-input-mappings.md) — 470 tokens
+- [Variables — Input/output variable mappings — Secret references in input mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-secret-references-in-input-mappings.md) — 922 tokens
+- [Variables — Input/output variable mappings — Secret references in input mappings (2)](.llms/chunks/components.concepts.variables.input-output-variable-mappings-secret-references-in-input-mappings-2.md) — 429 tokens
+- [Variables — Input/output variable mappings — Output mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-output-mappings.md) — 683 tokens
+- [Variables — Input/output variable mappings — Nested variables in mappings](.llms/chunks/components.concepts.variables.input-output-variable-mappings-nested-variables-in-mappings.md) — 161 tokens
+- [Variables — Input/output variable mappings — Context variable](.llms/chunks/components.concepts.variables.input-output-variable-mappings-context-variable.md) — 212 tokens
+- [Variables — Next steps](.llms/chunks/components.concepts.variables.next-steps.md) — 49 tokens
+- [Workflow patterns](.llms/chunks/components.concepts.workflow-patterns.md) — 453 tokens
+- [Workflow patterns — Routing](.llms/chunks/components.concepts.workflow-patterns.routing.md) — 39 tokens
+- [Workflow patterns — Routing — Sequence](.llms/chunks/components.concepts.workflow-patterns.routing-sequence.md) — 127 tokens
+- [Workflow patterns — Routing — Conditions (if/then)](.llms/chunks/components.concepts.workflow-patterns.routing-conditions-if-then.md) — 155 tokens
+- [Workflow patterns — Routing — Invoke subworkflows](.llms/chunks/components.concepts.workflow-patterns.routing-invoke-subworkflows.md) — 143 tokens
+- [Workflow patterns — Routing — Loop](.llms/chunks/components.concepts.workflow-patterns.routing-loop.md) — 145 tokens
+- [Workflow patterns — Routing — Static parallel branches](.llms/chunks/components.concepts.workflow-patterns.routing-static-parallel-branches.md) — 250 tokens
+- [Workflow patterns — Routing — Dynamic parallel branches](.llms/chunks/components.concepts.workflow-patterns.routing-dynamic-parallel-branches.md) — 223 tokens
+- [Workflow patterns — Routing — Wait](.llms/chunks/components.concepts.workflow-patterns.routing-wait.md) — 300 tokens
+- [Workflow patterns — Reacting to events](.llms/chunks/components.concepts.workflow-patterns.reacting-to-events.md) — 104 tokens
+- [Workflow patterns — Reacting to events — Time based](.llms/chunks/components.concepts.workflow-patterns.reacting-to-events-time-based.md) — 474 tokens
+- [Workflow patterns — Reacting to events — External messages/events](.llms/chunks/components.concepts.workflow-patterns.reacting-to-events-external-messages-events.md) — 314 tokens
+- [Workflow patterns — Reacting to events — Correlation mechanisms](.llms/chunks/components.concepts.workflow-patterns.reacting-to-events-correlation-mechanisms.md) — 194 tokens
+- [Workflow patterns — Reacting to events — Events from subprocesses](.llms/chunks/components.concepts.workflow-patterns.reacting-to-events-events-from-subprocesses.md) — 233 tokens
+- [Workflow patterns — Reacting to events — Broadcasts and engine-wide events](.llms/chunks/components.concepts.workflow-patterns.reacting-to-events-broadcasts-and-engine-wide-events.md) — 150 tokens
+- [Workflow patterns — Handling errors](.llms/chunks/components.concepts.workflow-patterns.handling-errors.md) — 366 tokens
+- [Workflow patterns — Business transactions](.llms/chunks/components.concepts.workflow-patterns.business-transactions.md) — 440 tokens
+- [Ad-hoc sub-processes](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.md) — 329 tokens
+- [Ad-hoc sub-processes — BPMN implementation](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.bpmn-implementation.md) — 493 tokens
+- [Ad-hoc sub-processes — Job worker implementation](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.job-worker-implementation.md) — 574 tokens
+- [Ad-hoc sub-processes — Collect output](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.collect-output.md) — 220 tokens
+- [Ad-hoc sub-processes — Special ad-hoc sub-process variables](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.special-ad-hoc-sub-process-variables.md) — 172 tokens
+- [Ad-hoc sub-processes — Variable mappings](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.variable-mappings.md) — 204 tokens
+- [Ad-hoc sub-processes — XML representation](.llms/chunks/components.modeler.bpmn.ad-hoc-subprocesses.ad-hoc-subprocesses.xml-representation.md) — 104 tokens
+- [](.llms/chunks/components.modeler.bpmn.assets.react-components.iso-8601-date-time.md) — 100 tokens
+- [Design a process using BPMN](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.md) — 288 tokens
+- [Design a process using BPMN — Set up](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.set-up.md) — 773 tokens
+- [Design a process using BPMN — Execute your process diagram](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.execute-your-process-diagram.md) — 234 tokens
+- [Design a process using BPMN — Additional resources and next steps](.llms/chunks/components.modeler.bpmn.automating-a-process-using-bpmn.additional-resources-and-next-steps.md) — 87 tokens
+- [BPMN coverage](.llms/chunks/components.modeler.bpmn.bpmn-coverage.md) — 156 tokens
+- [BPMN primer](.llms/chunks/components.modeler.bpmn.bpmn-primer.md) — 831 tokens
+- [BPMN primer — Modeling BPMN diagrams](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams.md) — 74 tokens
+- [BPMN primer — Modeling BPMN diagrams — Sequence flow: Controlling the flow of execution](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-sequence-flow-controlling-the-flow-of-execution.md) — 202 tokens
+- [BPMN primer — Modeling BPMN diagrams — Tasks: Units of work](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-tasks-units-of-work.md) — 219 tokens
+- [BPMN primer — Modeling BPMN diagrams — Gateways: Steering flow](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-gateways-steering-flow.md) — 143 tokens
+- [BPMN primer — Modeling BPMN diagrams — Events: Waiting for something to happen](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-events-waiting-for-something-to-happen.md) — 202 tokens
+- [BPMN primer — Modeling BPMN diagrams — Subprocesses: Grouping elements](.llms/chunks/components.modeler.bpmn.bpmn-primer.modeling-bpmn-diagrams-subprocesses-grouping-elements.md) — 153 tokens
+- [BPMN primer — Additional resources](.llms/chunks/components.modeler.bpmn.bpmn-primer.additional-resources.md) — 48 tokens
+- [BPMN in Modeler](.llms/chunks/components.modeler.bpmn.bpmn.md) — 141 tokens
+- [BPMN in Modeler — Start modeling](.llms/chunks/components.modeler.bpmn.bpmn.start-modeling.md) — 262 tokens
+- [BPMN in Modeler — BPMN 2.0 properties for execution](.llms/chunks/components.modeler.bpmn.bpmn.bpmn-2.0-properties-for-execution.md) — 53 tokens
+- [Business rule tasks](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.md) — 323 tokens
+- [Business rule tasks — Defining a called decision {#defining-a-task}](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.defining-a-called-decision-defining-a-task.md) — 477 tokens
+- [Business rule tasks — Variable mappings](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.variable-mappings.md) — 201 tokens
+- [Business rule tasks — Job worker implementation](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.job-worker-implementation.md) — 437 tokens
+- [Business rule tasks — Additional resources](.llms/chunks/components.modeler.bpmn.business-rule-tasks.business-rule-tasks.additional-resources.md) — 359 tokens
+- [Call activities](.llms/chunks/components.modeler.bpmn.call-activities.call-activities.md) — 186 tokens
+- [Call activities — Defining the called process](.llms/chunks/components.modeler.bpmn.call-activities.call-activities.defining-the-called-process.md) — 239 tokens
+- [Call activities — Boundary events](.llms/chunks/components.modeler.bpmn.call-activities.call-activities.boundary-events.md) — 502 tokens
+- [Call activities — Business ID propagation](.llms/chunks/components.modeler.bpmn.call-activities.call-activities.business-id-propagation.md) — 589 tokens
+- [Call activities — Additional resources](.llms/chunks/components.modeler.bpmn.call-activities.call-activities.additional-resources.md) — 259 tokens
+- [Compensation events](.llms/chunks/components.modeler.bpmn.compensation-events.compensation-events.md) — 231 tokens
+- [Compensation events — Triggering compensation](.llms/chunks/components.modeler.bpmn.compensation-events.compensation-events.triggering-compensation.md) — 141 tokens
+- [Compensation events — Compensating embedded subprocesses](.llms/chunks/components.modeler.bpmn.compensation-events.compensation-events.compensating-embedded-subprocesses.md) — 199 tokens
+- [Compensation events — Compensating multi-instance activities](.llms/chunks/components.modeler.bpmn.compensation-events.compensation-events.compensating-multi-instance-activities.md) — 147 tokens
+- [Compensation events — Triggering compensation for a specific activity](.llms/chunks/components.modeler.bpmn.compensation-events.compensation-events.triggering-compensation-for-a-specific-activity.md) — 147 tokens
+- [Compensation events — Triggering compensation from an event subprocess](.llms/chunks/components.modeler.bpmn.compensation-events.compensation-events.triggering-compensation-from-an-event-subprocess.md) — 166 tokens
+- [Compensation](.llms/chunks/components.modeler.bpmn.compensation-handler.compensation-handler.md) — 158 tokens
+- [Compensation — Embedded subprocess as compensation handler](.llms/chunks/components.modeler.bpmn.compensation-handler.compensation-handler.embedded-subprocess-as-compensation-handler.md) — 142 tokens
+- [Compensation — Multi-instance activity as compensation handler](.llms/chunks/components.modeler.bpmn.compensation-handler.compensation-handler.multi-instance-activity-as-compensation-handler.md) — 247 tokens
+- [Compensation — Variable mappings](.llms/chunks/components.modeler.bpmn.compensation-handler.compensation-handler.variable-mappings.md) — 159 tokens
+- [Conditional events](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.md) — 477 tokens
+- [Conditional events — Conditional start events](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.conditional-start-events.md) — 222 tokens
+- [Conditional events — Event sub-process conditional start events](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.event-sub-process-conditional-start-events.md) — 254 tokens
+- [Conditional events — Intermediate conditional catch events](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.intermediate-conditional-catch-events.md) — 330 tokens
+- [Conditional events — Define conditions and variable filters](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.define-conditions-and-variable-filters.md) — 314 tokens
+- [Conditional events — Modeling conditional events in Modeler](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.modeling-conditional-events-in-modeler.md) — 201 tokens
+- [Conditional events — XML representation](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.xml-representation.md) — 138 tokens
+- [Conditional events — Additional resources](.llms/chunks/components.modeler.bpmn.conditional-events.conditional-events.additional-resources.md) — 27 tokens
+- [Data flow](.llms/chunks/components.modeler.bpmn.data-flow.md) — 267 tokens
+- [Data flow — Variable scopes vs. token-based data](.llms/chunks/components.modeler.bpmn.data-flow.variable-scopes-vs.-token-based-data.md) — 142 tokens
+- [Data flow — Concurrency considerations](.llms/chunks/components.modeler.bpmn.data-flow.concurrency-considerations.md) — 222 tokens
+- [Data flow — Additional resources](.llms/chunks/components.modeler.bpmn.data-flow.additional-resources.md) — 53 tokens
+- [Embedded subprocess](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.md) — 209 tokens
+- [Embedded subprocess — Collapsed subprocesses](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.collapsed-subprocesses.md) — 228 tokens
+- [Embedded subprocess — Variable mappings](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.variable-mappings.md) — 212 tokens
+- [Embedded subprocess — Additional resources](.llms/chunks/components.modeler.bpmn.embedded-subprocesses.embedded-subprocesses.additional-resources.md) — 74 tokens
+- [Error events](.llms/chunks/components.modeler.bpmn.error-events.error-events.md) — 141 tokens
+- [Error events — Defining the error](.llms/chunks/components.modeler.bpmn.error-events.error-events.defining-the-error.md) — 201 tokens
+- [Error events — Throwing the error](.llms/chunks/components.modeler.bpmn.error-events.error-events.throwing-the-error.md) — 140 tokens
+- [Error events — Catching the error](.llms/chunks/components.modeler.bpmn.error-events.error-events.catching-the-error.md) — 352 tokens
+- [Error events — Unhandled errors](.llms/chunks/components.modeler.bpmn.error-events.error-events.unhandled-errors.md) — 174 tokens
+- [Error events — Business error vs. technical error](.llms/chunks/components.modeler.bpmn.error-events.error-events.business-error-vs.-technical-error.md) — 319 tokens
+- [Error events — Variable mappings](.llms/chunks/components.modeler.bpmn.error-events.error-events.variable-mappings.md) — 184 tokens
+- [Escalation events](.llms/chunks/components.modeler.bpmn.escalation-events.escalation-events.md) — 199 tokens
+- [Escalation events — Defining an escalation](.llms/chunks/components.modeler.bpmn.escalation-events.escalation-events.defining-an-escalation.md) — 184 tokens
+- [Escalation events — Throwing the escalation](.llms/chunks/components.modeler.bpmn.escalation-events.escalation-events.throwing-the-escalation.md) — 335 tokens
+- [Escalation events — Additional resources](.llms/chunks/components.modeler.bpmn.escalation-events.escalation-events.additional-resources.md) — 132 tokens
+- [Event-based gateway](.llms/chunks/components.modeler.bpmn.event-based-gateways.event-based-gateways.md) — 166 tokens
+- [Event-based gateway — Additional resources](.llms/chunks/components.modeler.bpmn.event-based-gateways.event-based-gateways.additional-resources.md) — 145 tokens
+- [Event subprocess](.llms/chunks/components.modeler.bpmn.event-subprocesses.event-subprocesses.md) — 285 tokens
+- [Event subprocess — Variables](.llms/chunks/components.modeler.bpmn.event-subprocesses.event-subprocesses.variables.md) — 189 tokens
+- [Event subprocess — Additional resources](.llms/chunks/components.modeler.bpmn.event-subprocesses.event-subprocesses.additional-resources.md) — 90 tokens
+- [Overview](.llms/chunks/components.modeler.bpmn.events.md) — 271 tokens
+- [Overview — Events in general](.llms/chunks/components.modeler.bpmn.events.events-in-general.md) — 320 tokens
+- [Overview — Intermediate events](.llms/chunks/components.modeler.bpmn.events.intermediate-events.md) — 185 tokens
+- [Exclusive gateway](.llms/chunks/components.modeler.bpmn.exclusive-gateways.exclusive-gateways.md) — 369 tokens
+- [Exclusive gateway — Conditions](.llms/chunks/components.modeler.bpmn.exclusive-gateways.exclusive-gateways.conditions.md) — 225 tokens
+- [Overview](.llms/chunks/components.modeler.bpmn.gateways.md) — 127 tokens
+- [Inclusive gateway](.llms/chunks/components.modeler.bpmn.inclusive-gateways.inclusive-gateways.md) — 609 tokens
+- [Inclusive gateway — Conditions](.llms/chunks/components.modeler.bpmn.inclusive-gateways.inclusive-gateways.conditions.md) — 138 tokens
+- [Inclusive gateway — Additional resources](.llms/chunks/components.modeler.bpmn.inclusive-gateways.inclusive-gateways.additional-resources.md) — 162 tokens
+- [Link events](.llms/chunks/components.modeler.bpmn.link-events.link-events.md) — 406 tokens
+- [Link events — Additional resources](.llms/chunks/components.modeler.bpmn.link-events.link-events.additional-resources.md) — 85 tokens
+- [Manual tasks](.llms/chunks/components.modeler.bpmn.manual-tasks.manual-tasks.md) — 208 tokens
+- [Overview](.llms/chunks/components.modeler.bpmn.markers.md) — 239 tokens
+- [Message events](.llms/chunks/components.modeler.bpmn.message-events.message-events.md) — 237 tokens
+- [Message events — Message start events](.llms/chunks/components.modeler.bpmn.message-events.message-events.message-start-events.md) — 538 tokens
+- [Message events — Intermediate message catch events](.llms/chunks/components.modeler.bpmn.message-events.message-events.intermediate-message-catch-events.md) — 199 tokens
+- [Message events — Message boundary events](.llms/chunks/components.modeler.bpmn.message-events.message-events.message-boundary-events.md) — 299 tokens
+- [Message events — Message throw events](.llms/chunks/components.modeler.bpmn.message-events.message-events.message-throw-events.md) — 290 tokens
+- [Message events — Messages](.llms/chunks/components.modeler.bpmn.message-events.message-events.messages.md) — 316 tokens
+- [Message events — Variable mappings](.llms/chunks/components.modeler.bpmn.message-events.message-events.variable-mappings.md) — 250 tokens
+- [Multi-instance](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.md) — 237 tokens
+- [Multi-instance — Sequential vs. parallel](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.sequential-vs.-parallel.md) — 163 tokens
+- [Multi-instance — Defining the collection to iterate over](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.defining-the-collection-to-iterate-over.md) — 238 tokens
+- [Multi-instance — Collecting the output](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.collecting-the-output.md) — 357 tokens
+- [Multi-instance — Boundary events](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.boundary-events.md) — 163 tokens
+- [Multi-instance — Execution listeners in multi-instance bodies](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.execution-listeners-in-multi-instance-bodies.md) — 651 tokens
+- [Multi-instance — Completion condition](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.completion-condition.md) — 328 tokens
+- [Multi-instance — Additional resources](.llms/chunks/components.modeler.bpmn.multi-instance.multi-instance.additional-resources.md) — 109 tokens
+- [None events](.llms/chunks/components.modeler.bpmn.none-events.none-events.md) — 226 tokens
+- [None events — Intermediate none events (throwing)](.llms/chunks/components.modeler.bpmn.none-events.none-events.intermediate-none-events-throwing.md) — 192 tokens
+- [Parallel gateway](.llms/chunks/components.modeler.bpmn.parallel-gateways.parallel-gateways.md) — 172 tokens
+- [Parallel gateway — Additional resources](.llms/chunks/components.modeler.bpmn.parallel-gateways.parallel-gateways.additional-resources.md) — 66 tokens
+- [Receive tasks](.llms/chunks/components.modeler.bpmn.receive-tasks.receive-tasks.md) — 171 tokens
+- [Receive tasks — Messages](.llms/chunks/components.modeler.bpmn.receive-tasks.receive-tasks.messages.md) — 263 tokens
+- [Receive tasks — Variable mappings](.llms/chunks/components.modeler.bpmn.receive-tasks.receive-tasks.variable-mappings.md) — 189 tokens
+- [Script tasks](.llms/chunks/components.modeler.bpmn.script-tasks.script-tasks.md) — 222 tokens
+- [Script tasks — Defining a script task {#defining-a-task}](.llms/chunks/components.modeler.bpmn.script-tasks.script-tasks.defining-a-script-task-defining-a-task.md) — 297 tokens
+- [Script tasks — Job worker implementation](.llms/chunks/components.modeler.bpmn.script-tasks.script-tasks.job-worker-implementation.md) — 331 tokens
+- [Script tasks — Job priority](.llms/chunks/components.modeler.bpmn.script-tasks.script-tasks.job-priority.md) — 263 tokens
+- [Send tasks](.llms/chunks/components.modeler.bpmn.send-tasks.send-tasks.md) — 212 tokens
+- [Send tasks — Defining a task](.llms/chunks/components.modeler.bpmn.send-tasks.send-tasks.defining-a-task.md) — 155 tokens
+- [Send tasks — Job priority](.llms/chunks/components.modeler.bpmn.send-tasks.send-tasks.job-priority.md) — 208 tokens
+- [Service tasks](.llms/chunks/components.modeler.bpmn.service-tasks.service-tasks.md) — 158 tokens
+- [Service tasks — Task definition](.llms/chunks/components.modeler.bpmn.service-tasks.service-tasks.task-definition.md) — 226 tokens
+- [Service tasks — Task headers](.llms/chunks/components.modeler.bpmn.service-tasks.service-tasks.task-headers.md) — 142 tokens
+- [Service tasks — Job priority](.llms/chunks/components.modeler.bpmn.service-tasks.service-tasks.job-priority.md) — 207 tokens
+- [Signal events](.llms/chunks/components.modeler.bpmn.signal-events.signal-events.md) — 248 tokens
+- [Signal events — Signal start events](.llms/chunks/components.modeler.bpmn.signal-events.signal-events.signal-start-events.md) — 207 tokens
+- [Signal events — Signal intermediate catch events](.llms/chunks/components.modeler.bpmn.signal-events.signal-events.signal-intermediate-catch-events.md) — 207 tokens
+- [Signal events — Signal throw events](.llms/chunks/components.modeler.bpmn.signal-events.signal-events.signal-throw-events.md) — 249 tokens
+- [Signal events — Variable mappings](.llms/chunks/components.modeler.bpmn.signal-events.signal-events.variable-mappings.md) — 297 tokens
+- [Overview](.llms/chunks/components.modeler.bpmn.subprocesses.md) — 117 tokens
+- [Overview](.llms/chunks/components.modeler.bpmn.tasks.md) — 253 tokens
+- [Terminate events](.llms/chunks/components.modeler.bpmn.terminate-events.terminate-events.md) — 151 tokens
+- [Terminate events — On the process scope](.llms/chunks/components.modeler.bpmn.terminate-events.terminate-events.on-the-process-scope.md) — 253 tokens
+- [Terminate events — Additional resources](.llms/chunks/components.modeler.bpmn.terminate-events.terminate-events.additional-resources.md) — 49 tokens
+- [Timer events](.llms/chunks/components.modeler.bpmn.timer-events.timer-events.md) — 171 tokens
+- [Timer events — Intermediate timer catch events](.llms/chunks/components.modeler.bpmn.timer-events.timer-events.intermediate-timer-catch-events.md) — 376 tokens
+- [Timer events — Timers](.llms/chunks/components.modeler.bpmn.timer-events.timer-events.timers.md) — 273 tokens
+- [Timer events — Timers — Time date](.llms/chunks/components.modeler.bpmn.timer-events.timer-events.timers-time-date.md) — 130 tokens
+- [Timer events — Timers — Time duration](.llms/chunks/components.modeler.bpmn.timer-events.timer-events.timers-time-duration.md) — 397 tokens
+- [Timer events — Timers — Time cycle](.llms/chunks/components.modeler.bpmn.timer-events.timer-events.timers-time-cycle.md) — 282 tokens
+- [Timer events — Additional resources](.llms/chunks/components.modeler.bpmn.timer-events.timer-events.additional-resources.md) — 137 tokens
+- [Undefined tasks](.llms/chunks/components.modeler.bpmn.undefined-tasks.undefined-tasks.md) — 233 tokens
+- [Undefined tasks — Additional resources](.llms/chunks/components.modeler.bpmn.undefined-tasks.undefined-tasks.additional-resources.md) — 41 tokens
+- [User tasks](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.md) — 223 tokens
+- [User tasks — User task implementation types](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types.md) — 158 tokens
+- [User tasks — User task implementation types — Assignments](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-assignments.md) — 690 tokens
+- [User tasks — User task implementation types — Scheduling](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-scheduling.md) — 324 tokens
+- [User tasks — User task implementation types — Define user task priority](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-define-user-task-priority.md) — 191 tokens
+- [User tasks — User task implementation types — Variable mappings](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-variable-mappings.md) — 185 tokens
+- [User tasks — User task implementation types — User task forms](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-user-task-forms.md) — 663 tokens
+- [User tasks — User task implementation types — Task headers](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-task-headers.md) — 68 tokens
+- [User tasks — User task implementation types — User task listeners](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.user-task-implementation-types-user-task-listeners.md) — 242 tokens
+- [User tasks — Job worker implementation](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.job-worker-implementation.md) — 599 tokens
+- [User tasks — Additional resources](.llms/chunks/components.modeler.bpmn.user-tasks.user-tasks.additional-resources.md) — 540 tokens
+- [AI agent functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.md) — 210 tokens
+- [AI agent functions — fromAi(value, description)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.fromai-value-description.md) — 148 tokens
+- [AI agent functions — fromAi(value, description, type)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.fromai-value-description-type.md) — 183 tokens
+- [AI agent functions — fromAi(value, description, type, schema)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.fromai-value-description-type-schema.md) — 347 tokens
+- [AI agent functions — fromAi(value, description, type, schema, options)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-ai-agent.fromai-value-description-type-schema-options.md) — 200 tokens
+- [Boolean functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-boolean.md) — 266 tokens
+- [Boolean functions — get or else(value, default)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-boolean.get-or-else-value-default.md) — 229 tokens
+- [Boolean functions — assert(value, condition, cause)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-boolean.assert-value-condition-cause.md) — 177 tokens
+- [Context functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-context.md) — 257 tokens
+- [Context functions — get entries(context)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-context.get-entries-context.md) — 230 tokens
+- [Context functions — context put(context, keys, value)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-context.context-put-context-keys-value.md) — 207 tokens
+- [Context functions — context merge(contexts)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-context.context-merge-contexts.md) — 168 tokens
+- [Conversion functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.md) — 137 tokens
+- [Conversion functions — number(from, grouping separator)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.number-from-grouping-separator.md) — 166 tokens
+- [Conversion functions — context(entries)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.context-entries.md) — 188 tokens
+- [Conversion functions — date(from)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.date-from.md) — 219 tokens
+- [Conversion functions — time(from)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.time-from.md) — 155 tokens
+- [Conversion functions — time(hour, minute, second, offset)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.time-hour-minute-second-offset.md) — 279 tokens
+- [Conversion functions — date and time(date, time)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.date-and-time-date-time.md) — 143 tokens
+- [Conversion functions — date and time(date, timezone)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.date-and-time-date-timezone.md) — 221 tokens
+- [Conversion functions — years and months duration(from, to)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.years-and-months-duration-from-to.md) — 192 tokens
+- [Conversion functions — to json(value)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-conversion.to-json-value.md) — 156 tokens
+- [Introduction](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-introduction.md) — 259 tokens
+- [List functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.md) — 208 tokens
+- [List functions — max(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.max-list.md) — 165 tokens
+- [List functions — product(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.product-list.md) — 162 tokens
+- [List functions — median(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.median-list.md) — 174 tokens
+- [List functions — mode(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.mode-list.md) — 218 tokens
+- [List functions — any(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.any-list.md) — 211 tokens
+- [List functions — sublist(list, start position, length)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.sublist-list-start-position-length.md) — 165 tokens
+- [List functions — concatenate(lists)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.concatenate-lists.md) — 158 tokens
+- [List functions — remove(list, position)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.remove-list-position.md) — 176 tokens
+- [List functions — union(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.union-list.md) — 171 tokens
+- [List functions — flatten(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.flatten-list.md) — 266 tokens
+- [List functions — string join(list, delimiter)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.string-join-list-delimiter.md) — 164 tokens
+- [List functions — string join(list, delimiter, prefix, suffix)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.string-join-list-delimiter-prefix-suffix.md) — 185 tokens
+- [List functions — is empty(list)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-list.is-empty-list.md) — 178 tokens
+- [Numeric functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-numeric.md) — 178 tokens
+- [Numeric functions — ceiling(n)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-numeric.ceiling-n.md) — 194 tokens
+- [Numeric functions — round down(n, scale)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-numeric.round-down-n-scale.md) — 194 tokens
+- [Numeric functions — round half down(n, scale)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-numeric.round-half-down-n-scale.md) — 158 tokens
+- [Numeric functions — modulo(dividend, divisor)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-numeric.modulo-dividend-divisor.md) — 146 tokens
+- [Numeric functions — exp(number)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-numeric.exp-number.md) — 162 tokens
+- [Numeric functions — random number()](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-numeric.random-number.md) — 63 tokens
+- [Range functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.md) — 150 tokens
+- [Range functions — before(range, point)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.before-range-point.md) — 175 tokens
+- [Range functions — after(range, point)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.after-range-point.md) — 200 tokens
+- [Range functions — met by(range1, range2)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.met-by-range1-range2.md) — 172 tokens
+- [Range functions — overlaps before(range1, range2)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.overlaps-before-range1-range2.md) — 181 tokens
+- [Range functions — finishes(point, range)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.finishes-point-range.md) — 165 tokens
+- [Range functions — finished by(range1, range2)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.finished-by-range1-range2.md) — 177 tokens
+- [Range functions — during(point, range)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.during-point-range.md) — 158 tokens
+- [Range functions — starts(range1, range2)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.starts-range1-range2.md) — 183 tokens
+- [Range functions — coincides(point1, point2)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-range.coincides-point1-point2.md) — 112 tokens
+- [String functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.md) — 243 tokens
+- [String functions — string length(string)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.string-length-string.md) — 152 tokens
+- [String functions — substring before(string, match)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.substring-before-string-match.md) — 188 tokens
+- [String functions — starts with(string, match)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.starts-with-string-match.md) — 207 tokens
+- [String functions — matches(input, pattern, flags)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.matches-input-pattern-flags.md) — 265 tokens
+- [String functions — replace(input, pattern, replacement, flags)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.replace-input-pattern-replacement-flags.md) — 178 tokens
+- [String functions — split(string, delimiter)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.split-string-delimiter.md) — 205 tokens
+- [String functions — trim(string)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.trim-string.md) — 175 tokens
+- [String functions — from base64(value)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-string.from-base64-value.md) — 142 tokens
+- [Temporal functions](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-temporal.md) — 204 tokens
+- [Temporal functions — day of year(date)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-temporal.day-of-year-date.md) — 178 tokens
+- [Temporal functions — month of year(date)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-temporal.month-of-year-date.md) — 195 tokens
+- [Temporal functions — last day of month(date)](.llms/chunks/components.modeler.feel.builtin-functions.feel-built-in-functions-temporal.last-day-of-month-date.md) — 120 tokens
+- [Supported data types](.llms/chunks/components.modeler.feel.cluster-variable.data-types.md) — 351 tokens
+- [Supported data types — Where references can appear in a value](.llms/chunks/components.modeler.feel.cluster-variable.data-types.where-references-can-appear-in-a-value.md) — 267 tokens
+- [Supported data types — Create a variable of kind `SECRET_REFERENCE`](.llms/chunks/components.modeler.feel.cluster-variable.data-types.create-a-variable-of-kind-secret_reference.md) — 151 tokens
+- [Supported data types — Read a variable of kind `SECRET_REFERENCE`](.llms/chunks/components.modeler.feel.cluster-variable.data-types.read-a-variable-of-kind-secret_reference.md) — 144 tokens
+- [Supported data types — Required permissions](.llms/chunks/components.modeler.feel.cluster-variable.data-types.required-permissions.md) — 187 tokens
+- [Common use cases](.llms/chunks/components.modeler.feel.cluster-variable.examples.md) — 199 tokens
+- [Common use cases — Feature flags](.llms/chunks/components.modeler.feel.cluster-variable.examples.feature-flags.md) — 151 tokens
+- [Common use cases — Multi-tenant SLA configuration](.llms/chunks/components.modeler.feel.cluster-variable.examples.multi-tenant-sla-configuration.md) — 219 tokens
+- [Common use cases — Integration credentials and endpoints](.llms/chunks/components.modeler.feel.cluster-variable.examples.integration-credentials-and-endpoints.md) — 212 tokens
+- [Get started with cluster variables](.llms/chunks/components.modeler.feel.cluster-variable.get-started.md) — 202 tokens
+- [Get started with cluster variables — Step 2: Override for a specific tenant](.llms/chunks/components.modeler.feel.cluster-variable.get-started.step-2-override-for-a-specific-tenant.md) — 372 tokens
+- [Get started with cluster variables — Step 4: Deploy and test your process](.llms/chunks/components.modeler.feel.cluster-variable.get-started.step-4-deploy-and-test-your-process.md) — 200 tokens
+- [Get started with cluster variables — Next steps](.llms/chunks/components.modeler.feel.cluster-variable.get-started.next-steps.md) — 64 tokens
+- [Metadata](.llms/chunks/components.modeler.feel.cluster-variable.metadata.md) — 204 tokens
+- [Metadata — Structure and constraints](.llms/chunks/components.modeler.feel.cluster-variable.metadata.structure-and-constraints.md) — 215 tokens
+- [Metadata — Set metadata](.llms/chunks/components.modeler.feel.cluster-variable.metadata.set-metadata.md) — 154 tokens
+- [Namespace collisions](.llms/chunks/components.modeler.feel.cluster-variable.namespace-collisions.md) — 146 tokens
+- [Namespace collisions — Collision types](.llms/chunks/components.modeler.feel.cluster-variable.namespace-collisions.collision-types.md) — 734 tokens
+- [Namespace collisions — Prevent namespace collisions](.llms/chunks/components.modeler.feel.cluster-variable.namespace-collisions.prevent-namespace-collisions.md) — 329 tokens
+- [Namespace collisions — Process variable namespace best practices](.llms/chunks/components.modeler.feel.cluster-variable.namespace-collisions.process-variable-namespace-best-practices.md) — 133 tokens
+- [Cluster variables](.llms/chunks/components.modeler.feel.cluster-variable.overview.md) — 344 tokens
+- [Cluster variables — Get started](.llms/chunks/components.modeler.feel.cluster-variable.overview.get-started.md) — 74 tokens
+- [Scope resolution](.llms/chunks/components.modeler.feel.cluster-variable.scope-and-priority.md) — 292 tokens
+- [Scope resolution — Resolution priority](.llms/chunks/components.modeler.feel.cluster-variable.scope-and-priority.resolution-priority.md) — 528 tokens
+- [Scope resolution — Multi-tenant considerations](.llms/chunks/components.modeler.feel.cluster-variable.scope-and-priority.multi-tenant-considerations.md) — 227 tokens
+- [How to use cluster variables](.llms/chunks/components.modeler.feel.cluster-variable.usage-guide.md) — 631 tokens
+- [How to use cluster variables — Access using FEEL expressions](.llms/chunks/components.modeler.feel.cluster-variable.usage-guide.access-using-feel-expressions.md) — 480 tokens
+- [How to use cluster variables — Usage best practices](.llms/chunks/components.modeler.feel.cluster-variable.usage-guide.usage-best-practices.md) — 156 tokens
+- [FEEL Playground](.llms/chunks/components.modeler.feel.feel-playground.md) — 371 tokens
+- [FEEL Playground — Validate your FEEL expression {#validate}](.llms/chunks/components.modeler.feel.feel-playground.validate-your-feel-expression-validate.md) — 477 tokens
+- [FEEL Playground — Validation examples](.llms/chunks/components.modeler.feel.feel-playground.validation-examples.md) — 360 tokens
+- [FEEL Playground — Prompting in FEEL Playground {#prompting}](.llms/chunks/components.modeler.feel.feel-playground.prompting-in-feel-playground-prompting.md) — 188 tokens
+- [Boolean expressions](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.md) — 23 tokens
+- [Boolean expressions — Literal](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.literal.md) — 31 tokens
+- [Boolean expressions — Comparison](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.comparison.md) — 290 tokens
+- [Boolean expressions — Null check](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.null-check.md) — 159 tokens
+- [Boolean expressions — Conjunction/and](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.conjunction-and.md) — 126 tokens
+- [Boolean expressions — Disjunction/or](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.disjunction-or.md) — 129 tokens
+- [Boolean expressions — Instance of](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.instance-of.md) — 169 tokens
+- [Boolean expressions — Unary-tests/in](.llms/chunks/components.modeler.feel.language-guide.feel-boolean-expressions.unary-tests-in.md) — 89 tokens
+- [Context expressions](.llms/chunks/components.modeler.feel.language-guide.feel-context-expressions.md) — 660 tokens
+- [Context expressions — Examples](.llms/chunks/components.modeler.feel.language-guide.feel-context-expressions.examples.md) — 156 tokens
+- [Control flow](.llms/chunks/components.modeler.feel.language-guide.feel-control-flow.md) — 483 tokens
+- [Data types](.llms/chunks/components.modeler.feel.language-guide.feel-data-types.md) — 734 tokens
+- [Error handling](.llms/chunks/components.modeler.feel.language-guide.feel-error-handling.md) — 377 tokens
+- [Introduction](.llms/chunks/components.modeler.feel.language-guide.feel-expressions-introduction.md) — 338 tokens
+- [Functions](.llms/chunks/components.modeler.feel.language-guide.feel-functions.md) — 271 tokens
+- [List expressions](.llms/chunks/components.modeler.feel.language-guide.feel-list-expressions.md) — 680 tokens
+- [List expressions — Examples](.llms/chunks/components.modeler.feel.language-guide.feel-list-expressions.examples.md) — 486 tokens
+- [Numeric expressions](.llms/chunks/components.modeler.feel.language-guide.feel-numeric-expressions.md) — 174 tokens
+- [String expressions](.llms/chunks/components.modeler.feel.language-guide.feel-string-expressions.md) — 132 tokens
+- [Temporal expressions](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.md) — 63 tokens
+- [Temporal expressions — Literal](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.literal.md) — 188 tokens
+- [Temporal expressions — Addition](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.addition.md) — 145 tokens
+- [Temporal expressions — Subtraction](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.subtraction.md) — 203 tokens
+- [Temporal expressions — Multiplication](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.multiplication.md) — 102 tokens
+- [Temporal expressions — Division](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.division.md) — 122 tokens
+- [Temporal expressions — Properties](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.properties.md) — 337 tokens
+- [Temporal expressions — Examples](.llms/chunks/components.modeler.feel.language-guide.feel-temporal-expressions.examples.md) — 470 tokens
+- [Unary-tests](.llms/chunks/components.modeler.feel.language-guide.feel-unary-tests.md) — 753 tokens
+- [Variables](.llms/chunks/components.modeler.feel.language-guide.feel-variables.md) — 292 tokens
+- [Variables — Variable names](.llms/chunks/components.modeler.feel.language-guide.feel-variables.variable-names.md) — 360 tokens
+- [Introduction](.llms/chunks/components.modeler.feel.language-guide.language-guide-introduction.md) — 135 tokens
+- [What is FEEL?](.llms/chunks/components.modeler.feel.what-is-feel.md) — 146 tokens
+- [What is FEEL? — Learning FEEL](.llms/chunks/components.modeler.feel.what-is-feel.learning-feel.md) — 350 tokens

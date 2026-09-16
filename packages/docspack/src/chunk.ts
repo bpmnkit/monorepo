@@ -63,7 +63,7 @@ export function chunkDocument(doc: SourceDoc, options: ChunkOptions = {}): Built
 			if (text === "") continue
 
 			const directives = readDirectives(part.lines)
-			const chunkTitle = part.heading === "" ? title : `${title} — ${part.heading}`
+			const chunkTitle = joinHeadings(title, part.heading)
 			const source = options.siteUrl ? `\n\n---\nSource: ${options.siteUrl}/${doc.slug}` : ""
 			const bodyText = `# ${chunkTitle}\n\n${stripDirectives(text)}${source}\n`
 
@@ -165,8 +165,12 @@ function subdivide(section: Section, maxTokens: number): Section[] {
 
 	const parts: Section[] = []
 	for (const sub of splitByHeading(section.lines.join("\n"), 3)) {
-		const heading = sub.heading === "" ? section.heading : `${section.heading} — ${sub.heading}`
-		parts.push(...byParagraph({ heading, lines: sub.lines }, maxTokens))
+		parts.push(
+			...byParagraph(
+				{ heading: joinHeadings(section.heading, sub.heading), lines: sub.lines },
+				maxTokens,
+			),
+		)
 	}
 	return parts.length > 0 ? parts : [section]
 }
@@ -182,7 +186,7 @@ function byParagraph(section: Section, maxTokens: number): Section[] {
 	const flush = () => {
 		if (current.join("").trim() === "") return
 		const suffix = parts.length === 0 ? "" : ` (${parts.length + 1})`
-		parts.push({ heading: `${section.heading}${suffix}`, lines: current })
+		parts.push({ heading: `${section.heading}${suffix}`.trim(), lines: current })
 		current = []
 	}
 
@@ -225,6 +229,18 @@ function stripDirectives(text: string): string {
 		.filter((line) => !DIRECTIVE.test(line.trim()))
 		.join("\n")
 		.trim()
+}
+
+/**
+ * Join a chunk's heading trail, dropping the levels that have no heading of their own.
+ *
+ * A document whose text before the first `##` is shorter than `minTokens` is merged into the
+ * section after it, and the merged section keeps the preamble's empty heading. Composing that
+ * blindly produced a hole in the middle of the trail — `Naming BPMN elements —  — Naming
+ * gateways` — which is what a reader sees at the top of the chunk and what an answer cites.
+ */
+function joinHeadings(...parts: string[]): string {
+	return parts.filter((part) => part.trim() !== "").join(" — ")
 }
 
 /** Heading words carry the topic; function words carry nothing worth weighting 3x. */

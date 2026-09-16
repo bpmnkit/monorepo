@@ -120,4 +120,34 @@ which keeps the test about splitting instead of about packing.
 		)
 		expect(first?.body).toContain("Source: https://bpmnkit.com/docs/guides/ai")
 	})
+
+	// A short preamble is merged into the section after it, and the merged section carries the
+	// preamble's empty heading. Composing the trail blindly left a hole in the middle of it.
+	it("leaves no empty level in a heading trail after a short preamble is merged", () => {
+		const markdown = [
+			"---",
+			'title: "Naming BPMN elements"',
+			"---",
+			"",
+			"Short lead paragraph.",
+			"",
+			"## Essential practices",
+			"",
+			"### Naming gateways",
+			"",
+			Array.from({ length: 40 }, (_, i) => `Sentence ${i} with a handful of words in it.`).join(
+				"\n\n",
+			),
+			"",
+		].join("\n")
+
+		const chunks = chunkDocument({ slug: "modeling/naming", markdown }, { maxTokens: 100 })
+		const gateways = chunks.find((chunk) => chunk.title.includes("Naming gateways"))
+		expect(gateways?.title).toBe("Naming BPMN elements — Naming gateways")
+		for (const chunk of chunks) {
+			expect(chunk.title).not.toMatch(/—\s+—/)
+			expect(chunk.title).not.toMatch(/—\s+\(\d+\)/)
+			expect(chunk.title.trim()).toBe(chunk.title)
+		}
+	})
 })
