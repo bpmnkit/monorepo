@@ -57,6 +57,7 @@ const DOT = 0x2e
 const GT = 0x3e
 const LT = 0x3c
 const BANG = 0x21
+const PLUS = 0x2b
 const MINUS = 0x2d
 const EQ = 0x3d
 const UNDERSCORE = 0x5f
@@ -75,6 +76,18 @@ function isWhitespace(c: number): boolean {
 
 const SINGLE_OPS = new Set("+-*/=<>?".split("").map((c) => c.charCodeAt(0)))
 const PUNCT = new Set("()[]{},:".split("").map((c) => c.charCodeAt(0)))
+
+/** End of an exponent starting at `i` ("e4", "e+4", "e-4"), or `i` if none. */
+function readExponent(input: string, i: number): number {
+	const c = input.charCodeAt(i)
+	if (c !== 0x65 && c !== 0x45) return i
+	let j = i + 1
+	const sign = input.charCodeAt(j)
+	if (sign === PLUS || sign === MINUS) j++
+	if (!isDigit(input.charCodeAt(j))) return i
+	while (j < input.length && isDigit(input.charCodeAt(j))) j++
+	return j
+}
 
 export function tokenize(input: string): FeelToken[] {
 	const tokens: FeelToken[] = []
@@ -190,14 +203,17 @@ export function tokenize(input: string): FeelToken[] {
 			continue
 		}
 
-		// Number (only consume one decimal point, and only if followed by a digit)
-		if (isDigit(c)) {
+		// Number: digits, an optional fraction, an optional exponent. A leading
+		// "." is allowed (".872"), and ".." is never part of a number.
+		if (isDigit(c) || (c === DOT && isDigit(next))) {
 			while (i < len && isDigit(input.charCodeAt(i))) i++
 			// Consume decimal fraction only if next char is '.' followed by a digit (not '..')
 			if (i + 1 < len && input.charCodeAt(i) === DOT && isDigit(input.charCodeAt(i + 1))) {
 				i++ // consume the '.'
 				while (i < len && isDigit(input.charCodeAt(i))) i++
 			}
+			const exponent = readExponent(input, i)
+			if (exponent > i) i = exponent
 			tokens.push({ kind: "number", value: input.slice(start, i), start, end: i })
 			continue
 		}

@@ -643,13 +643,16 @@ class Parser {
 		this.advance() // consume "function"
 		if (!this.expect("punct", "(")) return null
 		const params: string[] = []
+		// A parameter may declare a type, which this package does not check:
+		// `function(a: number) a + 1`.
+		const parseParam = (): void => {
+			const name = this.advance()
+			if (name) params.push(name.value)
+			if (this.consume("punct", ":")) this.parseTypeName()
+		}
 		if (!this.check("punct", ")")) {
-			const p = this.advance()
-			if (p) params.push(p.value)
-			while (this.consume("punct", ",")) {
-				const q = this.advance()
-				if (q) params.push(q.value)
-			}
+			parseParam()
+			while (this.consume("punct", ",")) parseParam()
 		}
 		if (!this.expect("punct", ")")) return null
 		const body = this.parseExpression(0)

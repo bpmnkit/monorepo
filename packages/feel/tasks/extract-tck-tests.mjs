@@ -152,6 +152,13 @@ function isModelNs(uri) {
 // Model file: the FEEL expression behind each decision
 // ---------------------------------------------------------------------------
 
+/** Ends an open formal-parameter list, so the body follows the ")". */
+function closeParams(frame) {
+	if (!frame?.inParams) return
+	frame.text += ") "
+	frame.inParams = false
+}
+
 function parseModelFile(file) {
 	const decisions = []
 	const stack = []
@@ -162,15 +169,40 @@ function parseModelFile(file) {
 		openTag(el) {
 			if (!isModelNs(el.uri)) return
 			switch (el.local) {
+				case "businessKnowledgeModel":
 				case "decision":
 					stack.push({
 						kind: "decision",
+						id: el.attrs.id,
 						name: el.attrs.name,
 						text: "",
 						description: "",
 						listDepth: 0,
+						requires: [],
 					})
 					break
+				case "encapsulatedLogic":
+				case "functionDefinition":
+					// Both are function literals; a BKM is invoked as one.
+					if (current()) {
+						current().text += "function("
+						current().inParams = true
+					}
+					break
+				case "formalParameter":
+					if (current()?.inParams) {
+						if (!current().text.endsWith("function(")) current().text += ", "
+						current().text += el.attrs.name ?? ""
+					}
+					break
+				case "requiredKnowledge":
+				case "requiredDecision": {
+					// The decision this one reads; its value has to be in scope.
+					const decision = stack.find((frame) => frame.kind === "decision")
+					const href = el.attrs.href ?? ""
+					if (decision && href.startsWith("#")) decision.requires.push(href.slice(1))
+					break
+				}
 				case "contextEntry":
 					stack.push({ kind: "contextEntry", name: "", text: "", listDepth: 0 })
 					break
@@ -178,6 +210,7 @@ function parseModelFile(file) {
 					if (current()?.kind === "contextEntry") current().name = el.attrs.name
 					break
 				case "context":
+					closeParams(current())
 					if (current()) current().text += "{ "
 					break
 				case "list":
@@ -187,6 +220,7 @@ function parseModelFile(file) {
 					}
 					break
 				case "literalExpression":
+					closeParams(current())
 					// A list's items are separated where they begin, since each
 					// item is itself an expression that may contain more text.
 					if (current()?.listDepth > 0 && !current().text.endsWith("[ ")) {
@@ -230,6 +264,12 @@ function parseModelFile(file) {
 					parent.text += `${entry.name || '""'}: ${entry.text}`
 					break
 				}
+				case "encapsulatedLogic":
+				case "functionDefinition":
+					// A function with no body still needs its list closed.
+					closeParams(current())
+					break
+				case "businessKnowledgeModel":
 				case "decision": {
 					const decision = stack.pop()
 					if (decision) decisions.push(decision)
@@ -392,17 +432,39 @@ function parseTestFile(file) {
 // Merge and write
 // ---------------------------------------------------------------------------
 
+/**
+ * The decisions `decision` reads, and those they read in turn, ordered so that
+ * each comes after what it depends on. A cycle is not a decision model, so a
+ * decision already on the path is skipped rather than followed.
+ */
+function requiredDecisions(decision, byId, seen = new Set()) {
+	const ordered = []
+	for (const id of decision.requires ?? []) {
+		if (seen.has(id)) continue
+		seen.add(id)
+		const required = byId.get(id)
+		if (!required?.text.trim()) continue
+		ordered.push(...requiredDecisions(required, byId, seen), required)
+	}
+	return ordered
+}
+
 function toRuns(test, decisions) {
+	const byId = new Map(decisions.filter((d) => d.id).map((d) => [d.id, d]))
 	const runs = []
 	for (const testCase of test.cases) {
-		const context = testCase.inputNodes.map(({ name, value }) => `"${name}": ${value}`).join(", ")
+		const inputs = testCase.inputNodes.map(({ name, value }) => `"${name}": ${value}`)
 		for (const resultNode of testCase.resultNodes) {
 			const decision = decisions.find((d) => d.name === resultNode.name)
 			if (!decision?.text.trim()) continue
+			// A decision reading another decision needs that one's value in
+			// scope, so it becomes a context entry ahead of the expression.
+			const required = requiredDecisions(decision, byId).map((d) => `"${d.name}": ${d.text.trim()}`)
+			const entries = [...inputs, ...required]
 			runs.push({
 				id: `${testCase.id}/${resultNode.name}`,
 				description: testCase.description.trim() || decision.description.trim(),
-				context: context ? `{ ${context} }` : null,
+				context: entries.length > 0 ? `{ ${entries.join(", ")} }` : null,
 				expression: decision.text.trim(),
 				expected: resultNode.value ?? "null",
 			})

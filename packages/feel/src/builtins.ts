@@ -836,21 +836,25 @@ reg("mode", (...args) => {
 })
 
 reg("all", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
 	let hasNull = false
 	for (const v of list) {
 		if (v === false) return false
 		if (v === null) hasNull = true
+		else if (typeof v !== "boolean") return null
 	}
 	return hasNull ? null : true
 })
 
 reg("any", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
 	let hasNull = false
 	for (const v of list) {
 		if (v === true) return true
 		if (v === null) hasNull = true
+		else if (typeof v !== "boolean") return null
 	}
 	return hasNull ? null : false
 })
@@ -987,10 +991,17 @@ reg("get or else", (v, defaultVal) => {
 
 reg("get value", (ctx, key) => {
 	if (!isFeelContext(ctx)) return null
-	const k = toStr(key)
-	if (k === null) return null
-	const val = ctx[k]
-	return val !== undefined ? val : null
+	// A list of keys walks into nested contexts: get value(c, ["y", "a"]).
+	const path = isFeelList(key) ? key : [key]
+	let current: FeelValue = ctx
+	for (const step of path) {
+		const name = toStr(step)
+		if (name === null || !isFeelContext(current)) return null
+		const next: FeelValue | undefined = current[name]
+		if (next === undefined) return null
+		current = next
+	}
+	return current
 })
 
 reg("get entries", (ctx) => {
@@ -1000,31 +1011,53 @@ reg("get entries", (ctx) => {
 
 reg("context put", (ctx, key, value) => {
 	if (!isFeelContext(ctx)) return null
-	const k = toStr(key)
-	if (k === null) return null
-	const result: FeelContext = {}
-	for (const [ck, cv] of Object.entries(ctx)) result[ck] = cv
-	result[k] = value ?? null
-	return result
+	if (value === undefined) return null
+	const path = isFeelList(key) ? key : [key]
+	if (path.length === 0) return null
+	return putPath(ctx, path, value)
 })
 
+/** Copies a context with `path` set to `value`, creating contexts on the way. */
+function putPath(ctx: FeelContext, path: FeelValue[], value: FeelValue): FeelValue {
+	const name = toStr(path[0] ?? null)
+	if (name === null) return null
+	const result: FeelContext = { ...ctx }
+	if (path.length === 1) {
+		result[name] = value
+		return result
+	}
+	const nested: FeelValue | undefined = result[name]
+	const base = nested !== undefined && isFeelContext(nested) ? nested : {}
+	const inner = putPath(base, path.slice(1), value)
+	if (inner === null) return null
+	result[name] = inner
+	return result
+}
+
 reg("context merge", (...args) => {
+	// The signature is one list of contexts; a bare argument list is accepted
+	// too, the way the other list built-ins are.
+	const first = args[0] ?? null
+	const contexts = args.length === 1 && isFeelList(first) ? first : args
+	if (contexts.length === 0) return null
 	const result: FeelContext = {}
-	for (const v of args) {
+	for (const v of contexts) {
 		if (!isFeelContext(v)) return null
 		for (const [k, cv] of Object.entries(v)) result[k] = cv
 	}
 	return result
 })
 
-reg("context", (list) => {
-	if (!isFeelList(list)) return null
+reg("context", (entries) => {
+	const list = isFeelList(entries) ? entries : [entries]
 	const result: FeelContext = {}
 	for (const item of list) {
 		if (!isFeelContext(item)) return null
 		const k = item.key
-		const v = item.value
-		if (typeof k === "string") result[k] = v !== undefined ? v : null
+		if (typeof k !== "string") return null
+		// An entry naming a key already set is a conflict, not an overwrite.
+		if (k in result) return null
+		result[k] = item.value !== undefined ? item.value : null
 	}
 	return result
 })

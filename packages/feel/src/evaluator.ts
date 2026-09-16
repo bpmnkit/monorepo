@@ -424,7 +424,10 @@ function evalBinary(
 		// Comparing values of different types says nothing, so it is null
 		// rather than false. Comparing against null stays a real answer.
 		if (left !== null && right !== null && typeTag(left) !== typeTag(right)) return null
-		const equal = deepEqual(left, right)
+		// Temporal values are equal when they name the same point, however
+		// each was written: 12:00-01:00 and 17:00+04:00 are one instant.
+		const instant = isTemporal(left) ? compareValues(left, right) : null
+		const equal = instant !== null ? instant === 0 : deepEqual(left, right)
 		return op === "=" ? equal : !equal
 	}
 
@@ -569,6 +572,17 @@ function evalQuantifier(
 	}
 	if (kind === "some") return hasNull ? null : false
 	return hasNull ? null : true
+}
+
+/** True for the values that name a point in time or a length of it. */
+function isTemporal(v: FeelValue): boolean {
+	return (
+		isFeelDate(v) ||
+		isFeelTime(v) ||
+		isFeelDateTime(v) ||
+		isFeelDayTimeDuration(v) ||
+		isFeelYearsMonthsDuration(v)
+	)
 }
 
 /** The FEEL type of a value, for deciding whether two values are comparable. */
