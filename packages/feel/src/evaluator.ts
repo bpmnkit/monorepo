@@ -1,5 +1,5 @@
 import type { FeelNode } from "./ast.js"
-import { compareValues, getBuiltin, parseTemporal } from "./builtins.js"
+import { compareValues, getBuiltin, orderNamedArgs, parseTemporal } from "./builtins.js"
 import type { FeelContext, FeelFunction, FeelValue } from "./types.js"
 import {
 	getProperty,
@@ -7,6 +7,7 @@ import {
 	isFeelDate,
 	isFeelDateTime,
 	isFeelDayTimeDuration,
+	isFeelFunction,
 	isFeelList,
 	isFeelRange,
 	isFeelTime,
@@ -31,17 +32,48 @@ function childCtx(parent: EvalContext, vars: Record<string, FeelValue> = {}): Ev
 	return { vars, parent, input: parent.input }
 }
 
+/**
+ * Expands the domain of a `for`/`some`/`every` binding into the values to
+ * iterate. A numeric range yields its whole integer span, counting down when
+ * it runs backwards; anything else iterates as a single-element list.
+ */
+function iterationValues(domain: FeelValue): FeelValue[] {
+	if (isFeelList(domain)) return domain
+	if (isFeelRange(domain)) {
+		const { start, end } = domain
+		if (typeof start !== "number" || typeof end !== "number") return []
+		const from = domain.startIncluded ? start : start + 1
+		const to = domain.endIncluded ? end : end - 1
+		const step = from <= to ? 1 : -1
+		const values: FeelValue[] = []
+		for (let v = from; step > 0 ? v <= to : v >= to; v += step) values.push(v)
+		return values
+	}
+	return [domain]
+}
+
 // -------------------------------------------------------------------------
 // Arithmetic helpers for temporal types
 // -------------------------------------------------------------------------
 
+/**
+ * Shifts a date by whole months. The day is clamped to the length of the
+ * month it lands in, so 2020-01-31 plus P1M is 2020-02-29 rather than a
+ * February 31st that no calendar has.
+ */
+function shiftMonths(
+	date: import("./types.js").FeelDate,
+	months: number,
+): import("./types.js").FeelDate {
+	const total = date.month + months
+	const year = date.year + Math.floor((total - 1) / 12)
+	const month = ((((total - 1) % 12) + 12) % 12) + 1
+	return { type: "date", year, month, day: Math.min(date.day, DAYS_IN_MONTH_TABLE(year, month)) }
+}
+
 function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 	if (isFeelDate(date) && isFeelYearsMonthsDuration(dur)) {
-		let m = date.month + dur.months
-		let y = date.year
-		y += Math.floor((m - 1) / 12)
-		m = ((m - 1 + 1200) % 12) + 1
-		return { type: "date", year: y, month: m, day: date.day }
+		return shiftMonths(date, dur.months)
 	}
 	if (isFeelDate(date) && isFeelDayTimeDuration(dur)) {
 		const EPOCH = dateToEpochDays(date)
@@ -53,16 +85,7 @@ function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 		return epochSecondsToDateTime(totalSec, date.time.offsetSeconds, date.time.timezone)
 	}
 	if (isFeelDateTime(date) && isFeelYearsMonthsDuration(dur)) {
-		const d = date.date
-		let m = d.month + dur.months
-		let y = d.year
-		y += Math.floor((m - 1) / 12)
-		m = ((m - 1 + 1200) % 12) + 1
-		return {
-			type: "date-time",
-			date: { type: "date", year: y, month: m, day: d.day },
-			time: date.time,
-		}
+		return { type: "date-time", date: shiftMonths(date.date, dur.months), time: date.time }
 	}
 	if (isFeelDayTimeDuration(date) && isFeelDayTimeDuration(dur)) {
 		return { type: "days-time-duration", seconds: date.seconds + dur.seconds }
@@ -209,9 +232,12 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			return node.items.map((item) => evaluate(item, ctx))
 
 		case "context": {
+			// Entries are evaluated in order in a scope that already holds the
+			// preceding ones, so `{a: 1, b: a + 1}` resolves `a` in `b`.
 			const result: FeelContext = {}
+			const entryCtx = childCtx(ctx, result)
 			for (const entry of node.entries) {
-				result[entry.key] = evaluate(entry.value, ctx)
+				result[entry.key] = evaluate(entry.value, entryCtx)
 			}
 			return result
 		}
@@ -262,17 +288,24 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 		case "call":
 			return evalCall(node.callee, node.args, ctx)
 
+		case "call-expr": {
+			const target = evaluate(node.target, ctx)
+			if (!isFeelFunction(target)) return null
+			return target.call(node.args.map((a) => evaluate(a, ctx)))
+		}
+
 		case "call-named": {
+			const argNames = node.args.map((a) => a.name)
+			const values = node.args.map((a) => evaluate(a.value, ctx))
 			const builtin = getBuiltin(node.callee)
-			if (!builtin) {
-				const fn = lookupVar(ctx, node.callee)
-				if (fn === null || typeof fn !== "object" || !("call" in fn)) return null
-				const args = node.args.map((a) => evaluate(a.value, ctx))
-				return (fn as FeelFunction).call(args)
+			if (builtin) {
+				const order = orderNamedArgs(node.callee, argNames)
+				if (order === null) return null
+				return builtin.call(order.map((idx) => values[idx] ?? null))
 			}
-			// Map named args to positional (built-ins don't declare param names in registry)
-			const args = node.args.map((a) => evaluate(a.value, ctx))
-			return builtin.call(args)
+			const fn = lookupVar(ctx, node.callee)
+			if (!isFeelFunction(fn)) return null
+			return fn.call(orderArgs(fn.paramNames, argNames, values))
 		}
 
 		case "if": {
@@ -283,8 +316,7 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 		case "for": {
 			const domains: FeelValue[][] = []
 			for (const binding of node.bindings) {
-				const d = evaluate(binding.domain, ctx)
-				domains.push(isFeelList(d) ? d : [d])
+				domains.push(iterationValues(evaluate(binding.domain, ctx)))
 			}
 			const partial: FeelValue[] = []
 			const results = evalCartesian(node.bindings, domains, 0, ctx, node, partial)
@@ -294,8 +326,7 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 		case "some": {
 			const domains: FeelValue[][] = []
 			for (const binding of node.bindings) {
-				const d = evaluate(binding.domain, ctx)
-				domains.push(isFeelList(d) ? d : [d])
+				domains.push(iterationValues(evaluate(binding.domain, ctx)))
 			}
 			return evalQuantifier("some", node.bindings, domains, 0, ctx, node.satisfies)
 		}
@@ -303,8 +334,7 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 		case "every": {
 			const domains: FeelValue[][] = []
 			for (const binding of node.bindings) {
-				const d = evaluate(binding.domain, ctx)
-				domains.push(isFeelList(d) ? d : [d])
+				domains.push(iterationValues(evaluate(binding.domain, ctx)))
 			}
 			return evalQuantifier("every", node.bindings, domains, 0, ctx, node.satisfies)
 		}
@@ -443,6 +473,23 @@ function evalBinary(
 	if (op === ">") return cmp > 0
 	if (op === ">=") return cmp >= 0
 	return null
+}
+
+/**
+ * Orders the arguments of a named invocation of a user-defined function. A
+ * function that declares no parameter names, or that is handed a name it does
+ * not declare, gets nulls rather than a silently mis-ordered argument list.
+ */
+function orderArgs(
+	paramNames: string[] | undefined,
+	argNames: string[],
+	values: FeelValue[],
+): FeelValue[] {
+	if (!paramNames) return []
+	return paramNames.map((param) => {
+		const idx = argNames.indexOf(param)
+		return idx >= 0 ? (values[idx] ?? null) : null
+	})
 }
 
 function evalCall(callee: string, argNodes: FeelNode[], ctx: EvalContext): FeelValue {

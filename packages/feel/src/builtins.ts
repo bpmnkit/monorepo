@@ -66,10 +66,19 @@ function epochDaysToDate(days: number): FeelDate {
 	return { type: "date", year, month, day: remaining + 1 }
 }
 
+/** Builds a date, or null when the day does not exist in that month. */
+function makeDate(year: number, month: number, day: number): FeelDate | null {
+	if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null
+	if (month < 1 || month > 12) return null
+	if (day < 1 || day > daysInMonth(year, month)) return null
+	return { type: "date", year, month, day }
+}
+
 function parseDate(s: string): FeelDate | null {
-	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+	const m = /^-?(\d{4,})-(\d{2})-(\d{2})$/.exec(s)
 	if (!m) return null
-	return { type: "date", year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) }
+	const year = Number(m[1]) * (s.startsWith("-") ? -1 : 1)
+	return makeDate(year, Number(m[2]), Number(m[3]))
 }
 
 function parseTime(s: string): FeelTime | null {
@@ -87,7 +96,14 @@ function parseTime(s: string): FeelTime | null {
 		offsetSeconds = 0
 	}
 	if (m[8]) timezone = m[8]
+	if (!isValidTime(hour, minute, second)) return null
 	return { type: "time", hour, minute, second, offsetSeconds, timezone }
+}
+
+/** 24:00:00 is the end-of-day form the ISO calendar allows; 24:00:01 is not. */
+function isValidTime(hour: number, minute: number, second: number): boolean {
+	if (hour < 0 || hour > 24 || minute < 0 || minute > 59 || second < 0 || second >= 60) return false
+	return hour !== 24 || (minute === 0 && second === 0)
 }
 
 function parseDateTime(s: string): FeelDateTime | null {
@@ -238,7 +254,29 @@ function reg(name: string, fn: BuiltinFn): void {
 // -------------------------------------------------------------------------
 
 reg("string", (v) => {
-	if (v === null) return "null"
+	if (v === undefined) return null
+	return stringify(v, false)
+})
+
+/**
+ * Renders a value the way FEEL's string() does. Strings nested inside a list
+ * or context are quoted; a string rendered on its own is not.
+ */
+function stringify(v: FeelValue, nested: boolean): FeelValue {
+	if (v === null) return null
+	if (typeof v === "string") return nested ? JSON.stringify(v) : v
+	if (isFeelList(v)) {
+		const parts = v.map((item) => stringify(item, true) ?? "null")
+		return `[${parts.join(", ")}]`
+	}
+	if (isFeelContext(v)) {
+		const parts = Object.entries(v).map(([k, value]) => `${k}: ${stringify(value, true) ?? "null"}`)
+		return `{${parts.join(", ")}}`
+	}
+	return scalarToString(v)
+}
+
+function scalarToString(v: FeelValue): FeelValue {
 	if (typeof v === "string") return v
 	if (typeof v === "number") return String(v)
 	if (typeof v === "boolean") return String(v)
@@ -268,11 +306,12 @@ reg("string", (v) => {
 		return r
 	}
 	return null
-})
+}
 
 reg("string length", (s) => {
 	const str = toStr(s)
-	return str === null ? null : str.length
+	// FEEL counts characters, so an astral character counts once, not twice.
+	return str === null ? null : [...str].length
 })
 
 reg("substring", (str, start, length) => {
@@ -280,14 +319,16 @@ reg("substring", (str, start, length) => {
 	if (s === null) return null
 	const st = toNum(start)
 	if (st === null) return null
-	// FEEL substring is 1-based, negative counts from end
-	const idx = st > 0 ? st - 1 : Math.max(0, s.length + st)
+	// FEEL substring is 1-based over characters, and a negative start counts
+	// back from the end.
+	const chars = [...s]
+	const idx = st > 0 ? st - 1 : Math.max(0, chars.length + st)
 	if (length !== undefined && length !== null) {
 		const len = toNum(length)
 		if (len === null) return null
-		return s.slice(idx, idx + len)
+		return chars.slice(idx, idx + len).join("")
 	}
-	return s.slice(idx)
+	return chars.slice(idx).join("")
 })
 
 reg("substring before", (str, match) => {
@@ -343,16 +384,58 @@ const REGEX_CACHE_LIMIT = 256
 const regexCache = new Map<string, RegExp | null>()
 
 /** Compiled regex for `pattern`/`flags`, or null when the pattern is invalid. */
+/**
+ * Translates the XPath flags FEEL uses into a JavaScript regex. "i", "s" and
+ * "m" map straight across; "x" (ignore whitespace in the pattern) and "q"
+ * (treat the pattern as a literal) have no JavaScript equivalent and are
+ * applied to the pattern instead. Any other flag makes the call fail.
+ */
+function toJsRegExp(pattern: string, flags: string): RegExp | null {
+	let jsFlags = ""
+	for (const flag of flags) {
+		if (flag === "i" || flag === "s" || flag === "m" || flag === "g") {
+			if (!jsFlags.includes(flag)) jsFlags += flag
+			continue
+		}
+		if (flag !== "x" && flag !== "q") return null
+	}
+	let source = pattern
+	if (flags.includes("q")) {
+		source = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+	} else if (flags.includes("x")) {
+		source = stripPatternWhitespace(pattern)
+	}
+	try {
+		return new RegExp(source, jsFlags)
+	} catch {
+		return null
+	}
+}
+
+/** Removes the whitespace an "x"-flagged pattern ignores, keeping character classes intact. */
+function stripPatternWhitespace(pattern: string): string {
+	let out = ""
+	let inClass = false
+	for (let i = 0; i < pattern.length; i++) {
+		const c = pattern[i] as string
+		if (c === "\\" && i + 1 < pattern.length) {
+			out += c + pattern[i + 1]
+			i++
+			continue
+		}
+		if (c === "[") inClass = true
+		else if (c === "]") inClass = false
+		if (!inClass && /\s/.test(c)) continue
+		out += c
+	}
+	return out
+}
+
 function cachedRegExp(pattern: string, flags: string): RegExp | null {
 	const key = `${flags}/${pattern}`
 	const hit = regexCache.get(key)
 	if (hit !== undefined) return hit
-	let re: RegExp | null
-	try {
-		re = new RegExp(pattern, flags)
-	} catch {
-		re = null
-	}
+	const re = toJsRegExp(pattern, flags)
 	if (regexCache.size >= REGEX_CACHE_LIMIT) regexCache.clear()
 	regexCache.set(key, re)
 	return re
@@ -413,14 +496,27 @@ reg("string join", (...args) => {
 // Number functions
 // -------------------------------------------------------------------------
 
-reg("number", (v) => {
+reg("number", (v, groupingSeparator, decimalSeparator) => {
 	if (typeof v === "number") return v
-	if (typeof v === "string") {
-		const n = Number(v)
-		return Number.isNaN(n) ? null : n
-	}
-	return null
+	if (typeof v !== "string") return null
+	const grouping = separatorArg(groupingSeparator, [" ", ",", "."])
+	const decimal = separatorArg(decimalSeparator, [",", "."])
+	if (grouping === undefined || decimal === undefined) return null
+	if (grouping !== null && grouping === decimal) return null
+	let text = v
+	if (grouping !== null) text = text.split(grouping).join("")
+	if (decimal !== null) text = text.split(decimal).join(".")
+	if (text.trim() === "") return null
+	const n = Number(text)
+	return Number.isNaN(n) ? null : n
 })
+
+/** Reads a number() separator argument: null when absent, undefined when invalid. */
+function separatorArg(v: FeelValue | undefined, allowed: string[]): string | null | undefined {
+	if (v === undefined || v === null) return null
+	if (typeof v !== "string" || !allowed.includes(v)) return undefined
+	return v
+}
 
 reg("decimal", (n, scale) => {
 	const num = toNum(n)
@@ -533,6 +629,8 @@ reg("random number", () => Math.random())
 // -------------------------------------------------------------------------
 
 reg("count", (...args) => {
+	// count() takes a list; a null argument is a type error, not a one-item list.
+	if (args.length === 1 && args[0] === null) return null
 	const list = flattenToList(args)
 	const first = list[0]
 	if (list.length === 1 && first !== undefined && isFeelList(first)) return first.length
@@ -863,7 +961,7 @@ reg("date", (...args) => {
 		const m = toNum(at(args, 1))
 		const d = toNum(at(args, 2))
 		if (y === null || m === null || d === null) return null
-		return { type: "date", year: y, month: m, day: d }
+		return makeDate(y, m, d)
 	}
 	return null
 })
@@ -880,6 +978,7 @@ reg("time", (...args) => {
 		const m = toNum(at(args, 1))
 		const s = toNum(at(args, 2))
 		if (h === null || m === null || s === null) return null
+		if (!isValidTime(h, m, s)) return null
 		const t: FeelTime = { type: "time", hour: h, minute: m, second: s }
 		const off = at(args, 3)
 		if (off !== null && isFeelDayTimeDuration(off)) t.offsetSeconds = off.seconds
@@ -1170,6 +1269,182 @@ reg("coincides", (a, b) => {
 	}
 	return null
 })
+
+// -------------------------------------------------------------------------
+// Parameter names
+// -------------------------------------------------------------------------
+
+// Parameter names of every built-in, in declaration order, so that a named
+// invocation such as `substring(start position: 2, string: "hello")` binds by
+// name rather than by the order the arguments happen to appear in. Built-ins
+// with several signatures list one entry per signature.
+const PARAM_SIGNATURES: Record<string, string[][]> = {
+	// Conversion
+	string: [["from"]],
+	number: [
+		["from"],
+		["from", "grouping separator"],
+		["from", "grouping separator", "decimal separator"],
+	],
+	context: [["entries"]],
+	date: [["from"], ["year", "month", "day"]],
+	time: [["from"], ["hour", "minute", "second"], ["hour", "minute", "second", "offset"]],
+	"date and time": [["from"], ["date", "time"], ["date", "timezone"]],
+	duration: [["from"]],
+	"years and months duration": [["from", "to"]],
+	// Boolean
+	not: [["negand"]],
+	"is defined": [["value"]],
+	"get or else": [["value", "default"]],
+	// String
+	substring: [
+		["string", "start position"],
+		["string", "start position", "length"],
+	],
+	"string length": [["string"]],
+	"upper case": [["string"]],
+	"lower case": [["string"]],
+	"substring before": [["string", "match"]],
+	"substring after": [["string", "match"]],
+	contains: [["string", "match"]],
+	"starts with": [["string", "match"]],
+	"ends with": [["string", "match"]],
+	matches: [
+		["input", "pattern"],
+		["input", "pattern", "flags"],
+	],
+	replace: [
+		["input", "pattern", "replacement"],
+		["input", "pattern", "replacement", "flags"],
+	],
+	split: [["string", "delimiter"]],
+	"string join": [["list"], ["list", "delimiter"], ["list", "delimiter", "prefix", "suffix"]],
+	// List
+	"list contains": [["list", "element"]],
+	count: [["list"]],
+	min: [["list"]],
+	max: [["list"]],
+	sum: [["list"]],
+	product: [["list"]],
+	mean: [["list"]],
+	median: [["list"]],
+	stddev: [["list"]],
+	mode: [["list"]],
+	all: [["list"]],
+	any: [["list"]],
+	sublist: [
+		["list", "start position"],
+		["list", "start position", "length"],
+	],
+	append: [["list", "items"]],
+	concatenate: [["lists"]],
+	"insert before": [["list", "position", "newItem"]],
+	remove: [["list", "position"]],
+	reverse: [["list"]],
+	"index of": [["list", "match"]],
+	union: [["list"]],
+	"distinct values": [["list"]],
+	flatten: [["list"]],
+	sort: [["list", "precedes"]],
+	// Numeric
+	decimal: [["n", "scale"]],
+	floor: [["n"], ["n", "scale"]],
+	ceiling: [["n"], ["n", "scale"]],
+	"round up": [["n", "scale"]],
+	"round down": [["n", "scale"]],
+	"round half up": [["n", "scale"]],
+	"round half down": [["n", "scale"]],
+	abs: [["number"], ["n"]],
+	modulo: [["dividend", "divisor"]],
+	sqrt: [["number"]],
+	log: [["number"]],
+	exp: [["number"]],
+	odd: [["number"]],
+	even: [["number"]],
+	"random number": [[]],
+	// Context
+	"get value": [
+		["context", "key"],
+		["context", "keys"],
+	],
+	"get entries": [["context"]],
+	"context put": [
+		["context", "key", "value"],
+		["context", "keys", "value"],
+	],
+	"context merge": [["contexts"]],
+	// Temporal
+	now: [[]],
+	today: [[]],
+	"day of week": [["date"]],
+	"day of year": [["date"]],
+	"week of year": [["date"]],
+	"month of year": [["date"]],
+	"last day of month": [["date"]],
+	// Range
+	before: [
+		["point1", "point2"],
+		["range", "point"],
+		["point", "range"],
+		["range1", "range2"],
+	],
+	after: [
+		["point1", "point2"],
+		["range", "point"],
+		["point", "range"],
+		["range1", "range2"],
+	],
+	meets: [["range1", "range2"]],
+	"met by": [["range1", "range2"]],
+	overlaps: [["range1", "range2"]],
+	"overlaps before": [["range1", "range2"]],
+	"overlaps after": [["range1", "range2"]],
+	finishes: [
+		["point", "range"],
+		["range1", "range2"],
+	],
+	"finished by": [
+		["range", "point"],
+		["range1", "range2"],
+	],
+	includes: [
+		["range", "point"],
+		["range1", "range2"],
+	],
+	during: [
+		["point", "range"],
+		["range1", "range2"],
+	],
+	starts: [
+		["point", "range"],
+		["range1", "range2"],
+	],
+	"started by": [
+		["range", "point"],
+		["range1", "range2"],
+	],
+	coincides: [
+		["point1", "point2"],
+		["range1", "range2"],
+	],
+}
+
+/**
+ * Orders the arguments of a named invocation to match a built-in's signature.
+ * Returns, for each parameter position, the index of the argument supplying
+ * it, or null when no signature of the built-in accepts exactly these names —
+ * which FEEL treats as an invocation error rather than a positional call.
+ */
+export function orderNamedArgs(name: string, argNames: string[]): number[] | null {
+	const signatures = PARAM_SIGNATURES[name]
+	if (!signatures) return null
+	for (const params of signatures) {
+		if (params.length !== argNames.length) continue
+		const order = params.map((param) => argNames.indexOf(param))
+		if (order.every((idx) => idx >= 0)) return order
+	}
+	return null
+}
 
 // -------------------------------------------------------------------------
 // Exports

@@ -223,3 +223,66 @@ export function tokenize(input: string): FeelToken[] {
 
 	return tokens
 }
+
+const SIMPLE_ESCAPES: Record<string, string> = {
+	"'": "'",
+	'"': '"',
+	"\\": "\\",
+	n: "\n",
+	r: "\r",
+	t: "\t",
+}
+
+/** Decodes a \u/\U escape at `i`, or returns null when it is not a valid one. */
+function readCodePoint(body: string, i: number): { text: string; length: number } | null {
+	const kind = body[i + 1]
+	const maxDigits = kind === "u" ? 4 : 6
+	const digits = /^[0-9a-fA-F]+/.exec(body.slice(i + 2, i + 2 + maxDigits))?.[0] ?? ""
+	// \u takes exactly four digits; \U takes as many as still form a code point,
+	// so "\U101EF0" is \U101EF followed by a literal "0".
+	const minLength = kind === "u" ? 4 : 1
+	for (let len = digits.length; len >= minLength; len--) {
+		if (kind === "u" && len !== 4) break
+		const code = Number.parseInt(digits.slice(0, len), 16)
+		if (code <= 0x10ffff) return { text: String.fromCodePoint(code), length: 2 + len }
+	}
+	return null
+}
+
+/**
+ * Decodes the escape sequences of a FEEL string literal body (the text between
+ * the quotes). Recognizes \' \" \\ \n \r \t, \uXXXX and the extended
+ * \UXXXXXX form; an unrecognized sequence is left as written, since dropping
+ * the backslash would silently alter the author's data.
+ */
+export function unescapeString(body: string): string {
+	if (!body.includes("\\")) return body
+	let out = ""
+	let i = 0
+	while (i < body.length) {
+		const c = body[i] as string
+		if (c !== "\\" || i + 1 >= body.length) {
+			out += c
+			i++
+			continue
+		}
+		const simple = SIMPLE_ESCAPES[body[i + 1] as string]
+		if (simple !== undefined) {
+			out += simple
+			i += 2
+			continue
+		}
+		const next = body[i + 1]
+		if (next === "u" || next === "U") {
+			const decoded = readCodePoint(body, i)
+			if (decoded) {
+				out += decoded.text
+				i += decoded.length
+				continue
+			}
+		}
+		out += c
+		i++
+	}
+	return out
+}

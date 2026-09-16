@@ -59,9 +59,10 @@ describe("parseExpression", () => {
 			const n = ast("1 + 2 * 3")
 			expect(n).toMatchObject({ kind: "binary", op: "+", right: { kind: "binary", op: "*" } })
 		})
-		it("parses exponentiation right-associative", () => {
+		// FEEL makes every infix operator left-associative, "**" included.
+		it("parses exponentiation left-associative", () => {
 			const n = ast("2 ** 3 ** 4")
-			expect(n).toMatchObject({ kind: "binary", op: "**", right: { kind: "binary", op: "**" } })
+			expect(n).toMatchObject({ kind: "binary", op: "**", left: { kind: "binary", op: "**" } })
 		})
 	})
 
