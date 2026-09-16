@@ -11,7 +11,7 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { PUBLISHED } from "./published-packages.mjs"
+import { LICENSE_OVERRIDES, PUBLISHED } from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "")
 
@@ -62,9 +62,12 @@ function check(dir) {
 		)
 	}
 
-	// license
-	if (pkg.license !== "MIT") {
-		issues.push(`"license" must be "MIT" (got: ${JSON.stringify(pkg.license)})`)
+	// license — MIT, unless the package is listed in LICENSE_OVERRIDES with its reason
+	const expectedLicense = LICENSE_OVERRIDES[dir] ?? "MIT"
+	if (pkg.license !== expectedLicense) {
+		issues.push(
+			`"license" must be ${JSON.stringify(expectedLicense)} (got: ${JSON.stringify(pkg.license)})`,
+		)
 	}
 
 	// homepage

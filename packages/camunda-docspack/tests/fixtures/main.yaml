@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info:
+  title: Test API
+  version: "1"
+paths:
+  /jobs/activation:
+    $ref: "jobs.yaml#/paths/~1jobs~1activation"
+  /jobs/{jobKey}:
+    $ref: "jobs.yaml#/paths/~1jobs~1{jobKey}"

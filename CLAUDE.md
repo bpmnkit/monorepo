@@ -23,6 +23,20 @@ npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
 After changing anything under `apps/landing/src/content/docs/`, rebuild the pack so the
 index does not go stale: `pnpm --filter @bpmnkit/docspack build`.
 
+This repo also ships **`@bpmnkit/camunda-docspack`** (`packages/camunda-docspack`), the
+Camunda 8 documentation in the same format — BPMN and FEEL references, engine concepts,
+best practices and the Orchestration Cluster API. Ask it for anything about *Camunda*
+rather than about BPMN Kit's own APIs, and use `--pack` when a question could match both:
+
+```sh
+npx bpmnkit-docs ask "how should I name an exclusive gateway" --pack @bpmnkit/camunda-docspack
+npx bpmnkit-docs ask "POST /jobs/activation" --pack @bpmnkit/camunda-docspack
+```
+
+It is rebuilt weekly from camunda-docs by `.github/workflows/camunda-docspack.yml`; to
+rebuild it by hand you need a camunda-docs checkout:
+`node packages/camunda-docspack/dist/cli.js --camunda-docs ../camunda-docs`.
+
 <!-- Part 1 & 2: Portable across repos. Do NOT add repo-specific rules here. -->
 <!-- Repo-specific instructions go in .github/instructions/repo.instructions.md -->
 

@@ -1,0 +1,11 @@
+components:
+  responses:
+    InvalidData:
+      description: The provided data is not valid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+  schemas:
+    ProblemDetail:
+      type: object

@@ -1,0 +1,14 @@
+Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
+
+The documentation content in this package (llms.txt and .llms/) is adapted from
+camunda/camunda-docs, (C) Camunda Services GmbH, which is licensed under the
+Creative Commons Attribution-ShareAlike 3.0 Unported licence.
+
+Full licence text: https://creativecommons.org/licenses/by-sa/3.0/legalcode
+
+That licence requires an Adaptation to be distributed under the same terms, so
+this package as a whole is distributed under CC BY-SA 3.0 rather than under the
+MIT licence used elsewhere in this repository. See NOTICE for the attribution
+and the list of changes made to the original work.
+
+BPMN Kit is not affiliated with or endorsed by Camunda Services GmbH.

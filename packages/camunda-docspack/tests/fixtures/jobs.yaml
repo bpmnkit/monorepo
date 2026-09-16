@@ -1,0 +1,55 @@
+paths:
+  /jobs/activation:
+    post:
+      tags:
+        - Job
+      operationId: activateJobs
+      security:
+        - bearerAuth: []
+        - basicAuth: []
+      summary: Activate jobs
+      description: "\n\n[[REQUIRED_PERMISSIONS:eyJwZXJtaXNzaW9ucyI6W3sicmVzb3VyY2VUeXBlIjoiUFJPQ0VTU19ERUZJTklUSU9OIiwicGVybWlzc2lvblR5cGUiOiJVUERBVEVfUFJPQ0VTU19JTlNUQU5DRSJ9XSwiZW5mb3JjZW1lbnQiOiJmaWx0ZXIifQ]]\n\n[[ADDED_IN_VERSION:8.6]]\n\n[[CONSISTENCY:STRONG]]\n\nIterate through all known partitions."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobActivationRequest"
+      responses:
+        "200":
+          description: The list of activated jobs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobActivationResult"
+        "400":
+          $ref: "common.yaml#/components/responses/InvalidData"
+  /jobs/{jobKey}:
+    get:
+      operationId: getJob
+      summary: Get job
+      parameters:
+        - name: jobKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Found.
+components:
+  schemas:
+    JobActivationRequest:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: The job type, as defined in the BPMN process (e.g. a payment service) and used to route each unit of work to the worker implementation that has registered for exactly that type.
+        tenantIds:
+          type: array
+          items:
+            type: string
+    JobActivationResult:
+      type: object

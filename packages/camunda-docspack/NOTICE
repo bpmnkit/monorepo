@@ -1,0 +1,16 @@
+This package contains documentation from camunda/camunda-docs,
+(C) Camunda Services GmbH, licensed under CC BY-SA 3.0:
+https://creativecommons.org/licenses/by-sa/3.0/
+
+Source: https://github.com/camunda/camunda-docs @ acbf6806758ce4036eba3791bd884ad114552860
+Published at: https://docs.camunda.io/docs/next/
+
+The original work has been modified. Changes:
+  - pages split into retrieval chunks
+  - embedded BPMN diagrams rendered as text flow descriptions
+  - MDX components removed or reduced to text, and Markdown partials inlined
+  - relative links rewritten to absolute docs.camunda.io URLs
+  - page descriptions promoted into the body text
+
+This adaptation is distributed under CC BY-SA 3.0, as that licence requires.
+BPMN Kit is not affiliated with or endorsed by Camunda Services GmbH.

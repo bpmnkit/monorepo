@@ -1,5 +1,26 @@
 # Features
 
+## Camunda 8 docs as an offline searchable pack (2026-09-16)
+
+- **`@bpmnkit/camunda-docspack`** — the Camunda 8.10 (next) documentation as a docspack
+  pack: best practices, BPMN and FEEL references, engine concepts and the Orchestration
+  Cluster API. 1,054 chunks, searched with the `bpmnkit-docs ask` that already ships.
+- **Embedded BPMN diagrams become text.** All 113 `<div bpmn>` embeds are rendered from
+  the parsed model as a flow description with every element name whole and every
+  condition expression kept — the part Camunda's own Markdown export drops entirely.
+- **227 API operation digests**, read from the specification rather than the generated
+  reference pages, with required permissions decoded from Camunda's base64 marker, the
+  version each appeared in, and its consistency guarantee.
+- **Every chunk cites its published page.** Links are rewritten to absolute
+  `docs.camunda.io` URLs by the rule Docusaurus actually applies, which differs between
+  `.md` and extensionless links.
+- **An unrecognised MDX component fails the build**, by file and line, instead of
+  quietly thinning the corpus.
+- **Rebuilt weekly** by a workflow that verifies the build is byte-reproducible and
+  reports departed chunk ids before opening a pull request.
+- **CC BY-SA 3.0**, as ShareAlike requires for an adaptation of camunda-docs, with a
+  generated `NOTICE` naming the upstream commit and every change made.
+
 ## Form component ids and rows are derived, not drawn (2026-09-15)
 
 - **Generated ids and layout rows come from the component's own identity** — the
