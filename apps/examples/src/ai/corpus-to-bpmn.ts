@@ -9,6 +9,11 @@
  *   3. ask @bpmnkit/camunda-docspack whatever the engine, not the library,
  *      decides — gateway semantics, FEEL, job types
  *
+ * Each gateway's fallthrough branch carries `isDefault` rather than a condition.
+ * An exclusive gateway whose conditions are all false and which has no default
+ * deadlocks at runtime, and the compact form is where a model says which branch
+ * that is — `expand` turns it into the gateway's `bpmn:default`.
+ *
  * Only step 4 needs a model, and the object it returns is a CompactDiagram:
  * about 40 lines of JSON rather than 200 lines of XML. `expand` turns that into
  * a laid-out, exportable model deterministically, which is why a model that has
@@ -142,7 +147,7 @@ const compact: CompactDiagram = {
 					name: "blocked",
 					condition: "= screening.blocked",
 				},
-				{ id: "f4", from: "blocked", to: "needsApproval", name: "clear" },
+				{ id: "f4", from: "blocked", to: "needsApproval", name: "clear", isDefault: true },
 				{
 					id: "f5",
 					from: "needsApproval",
@@ -150,7 +155,7 @@ const compact: CompactDiagram = {
 					name: "over 10,000",
 					condition: "= total > 10000",
 				},
-				{ id: "f6", from: "needsApproval", to: "splitWork", name: "at or under" },
+				{ id: "f6", from: "needsApproval", to: "splitWork", name: "at or under", isDefault: true },
 				{ id: "f7", from: "approveOrder", to: "approved" },
 				{
 					id: "f8",
@@ -159,7 +164,7 @@ const compact: CompactDiagram = {
 					name: "rejected",
 					condition: "= not(approval.approved)",
 				},
-				{ id: "f9", from: "approved", to: "splitWork", name: "approved" },
+				{ id: "f9", from: "approved", to: "splitWork", name: "approved", isDefault: true },
 				{ id: "f10", from: "splitWork", to: "pick" },
 				{ id: "f11", from: "pick", to: "pack" },
 				{ id: "f12", from: "pack", to: "joinWork" },
@@ -175,7 +180,13 @@ const compact: CompactDiagram = {
 					condition: "= not(booking.accepted)",
 				},
 				{ id: "f18", from: "dispatchByHand", to: "notifyCustomer" },
-				{ id: "f19", from: "carrierAccepted", to: "notifyCustomer", name: "accepted" },
+				{
+					id: "f19",
+					from: "carrierAccepted",
+					to: "notifyCustomer",
+					name: "accepted",
+					isDefault: true,
+				},
 				{ id: "f20", from: "notifyCustomer", to: "shipped" },
 			],
 		},
@@ -184,26 +195,7 @@ const compact: CompactDiagram = {
 
 // ── 5. Deterministic from here on ────────────────────────────────────────────
 
-const definitions = expand(compact)
-
-// The compact form has no field for a gateway's default flow, so a model cannot
-// return one however well it understood the documentation it just read. Set it
-// on the full model, which does: an exclusive gateway whose conditions are all
-// false and which has no default deadlocks at runtime.
-const DEFAULTS: Record<string, string> = {
-	blocked: "f4",
-	needsApproval: "f6",
-	approved: "f9",
-	carrierAccepted: "f19",
-}
-for (const process of definitions.processes) {
-	for (const element of process.flowElements) {
-		const flow = DEFAULTS[element.id]
-		if (flow !== undefined && element.type === "exclusiveGateway") element.default = flow
-	}
-}
-
-const xml = Bpmn.export(definitions)
+const xml = Bpmn.export(expand(compact))
 
 writeFileSync(OUT, xml)
 

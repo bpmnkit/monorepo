@@ -925,7 +925,7 @@
 		{
 			"id": "guides.ai.minimal-empty-diagram",
 			"file": "chunks/guides.ai.minimal-empty-diagram.md",
-			"tokens": 229,
+			"tokens": 247,
 			"tags": [
 				"guides",
 				"ai",
@@ -1519,7 +1519,7 @@
 		{
 			"id": "guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli",
 			"file": "chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli.md",
-			"tokens": 806,
+			"tokens": 706,
 			"tags": [
 				"carrier",
 				"refused",
@@ -1537,9 +1537,28 @@
 			]
 		},
 		{
+			"id": "guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index",
+			"file": "chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index.md",
+			"tokens": 531,
+			"tags": [
+				"guides",
+				"using-bpmnkit-with-ai",
+				"library",
+				"instead",
+				"cli",
+				"other",
+				"route",
+				"docspack",
+				"index"
+			],
+			"entities": [
+				"@bpmnkit/camunda-docspack"
+			]
+		},
+		{
 			"id": "guides.using-bpmnkit-with-ai.the-whole-loop-five-markdown-files-to-a-bpmn-diagram",
 			"file": "chunks/guides.using-bpmnkit-with-ai.the-whole-loop-five-markdown-files-to-a-bpmn-diagram.md",
-			"tokens": 602,
+			"tokens": 604,
 			"tags": [
 				"guides",
 				"using-bpmnkit-with-ai",
@@ -1555,7 +1574,7 @@
 				"@bpmnkit/docspack",
 				"@bpmnkit/camunda-docspack",
 				"CompactDiagram",
-				"CompactFlow",
+				"isDefault",
 				"reconcileCompact"
 			]
 		},
@@ -2422,7 +2441,7 @@
 		{
 			"id": "packages.core.installation-compactify-definitions",
 			"file": "chunks/packages.core.installation-compactify-definitions.md",
-			"tokens": 204,
+			"tokens": 342,
 			"tags": [
 				"packages",
 				"core",
@@ -2432,7 +2451,8 @@
 			],
 			"entities": [
 				"BpmnDefinitions",
-				"CompactDiagram"
+				"CompactDiagram",
+				"isDefault"
 			]
 		},
 		{

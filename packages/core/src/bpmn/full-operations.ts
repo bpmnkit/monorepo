@@ -5,6 +5,7 @@ import {
 	type CompactDiagram,
 	type CompactElement,
 	buildFlowElement,
+	defaultFlows,
 	makeEventDef,
 } from "./compact.js"
 import type { BpmnOperation } from "./operations.js"
@@ -514,7 +515,37 @@ export function reconcileCompact(
 		}
 	}
 
-	return applyBpmnOperations(draft, operationsForCompact(draft, compact), options)
+	const result = applyBpmnOperations(draft, operationsForCompact(draft, compact), options)
+	reconcileDefaultFlows(result.definitions, compact)
+	return result
+}
+
+/**
+ * Brings each gateway's `bpmn:default` in line with the flow the compact input
+ * marks, clearing one the input no longer marks.
+ *
+ * It runs after the operations rather than as one of them because the attribute
+ * names a flow: a default can only be set once the flow it points at exists, and
+ * a flow that is being replaced is deleted and re-added under the same id.
+ */
+function reconcileDefaultFlows(definitions: BpmnDefinitions, compact: CompactDiagram): void {
+	for (const compactProcess of compact.processes) {
+		const process = definitions.processes.find((candidate) => candidate.id === compactProcess.id)
+		if (!process) continue
+		const wanted = defaultFlows(compactProcess.elements, compactProcess.flows)
+		for (const element of process.flowElements) {
+			// By type, not by `"default" in element`: a gateway built without the
+			// attribute has no such key, and skipping it would drop a wanted default.
+			if (
+				element.type !== "exclusiveGateway" &&
+				element.type !== "inclusiveGateway" &&
+				element.type !== "complexGateway"
+			) {
+				continue
+			}
+			element.default = wanted.get(element.id)
+		}
+	}
 }
 
 /**

@@ -40,25 +40,25 @@ const definitions = expand(compact);
 const xml = Bpmn.export(definitions);
 ```
 
-> **The compact form cannot name a gateway's default flow.** `CompactFlow`
-> carries `condition` but has no field for `bpmn:default`, so a model cannot
-> return one however well it understood the documentation it just read — and an
-> exclusive gateway whose conditions are all false and which has no default
-> deadlocks at runtime. Set it on the full model after `expand`, before export:
->
-> ```typescript
-> for (const process of definitions.processes) {
->   for (const element of process.flowElements) {
->     if (element.type === "exclusiveGateway" && element.id === "approved") {
->       element.default = "f9";
->     }
->   }
-> }
-> ```
->
-> The same applies to everything else `CompactDiagram` does not model. See
-> [AI Integration](/docs/guides/ai) for the full list, and use `reconcileCompact`
-> rather than `expand` when you are editing a file somebody else authored.
+**Mark every gateway's fallthrough branch.** An exclusive gateway whose
+conditions are all false and which has no default deadlocks at runtime, so the
+branch without a condition carries `isDefault` instead:
+
+```typescript
+flows: [
+  { id: "f5", from: "needsApproval", to: "approveOrder", condition: "= total > 10000" },
+  { id: "f6", from: "needsApproval", to: "splitWork", name: "at or under", isDefault: true },
+]
+```
+
+`expand` turns it into the gateway's `bpmn:default` attribute, `compactify` reads
+it back, and `reconcileCompact` sets it on a file somebody else authored. A flow
+marked `isDefault` that does not leave an exclusive, inclusive or complex
+gateway, or a gateway with two of them, throws rather than being dropped.
+
+> `CompactDiagram` still does not model everything. See
+> [AI Integration](/docs/guides/ai) for what it drops, and use `reconcileCompact`
+> rather than `expand` when you are editing a file you need to keep.
 
 ---
 Source: https://bpmnkit.com/docs/guides/using-bpmnkit-with-ai

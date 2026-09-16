@@ -82,12 +82,5 @@ A few things decide whether the result is any good:
 
   ```
 
-> The upstream [docspack](https://docspack.dev) project documents a second route
-> for this — `docspack index --from ./notes` and `docspack recall "…"`, which
-> keep an SQLite index of loose sources rather than building a pack. It is
-> [documented](https://docspack.dev/docs/your-own-corpus/) but not yet in the
-> published `docspack@1.0.0` CLI, which exits 2 on both commands. Until it ships,
-> `bpmnkit-docs build` is the route that works.
-
 ---
 Source: https://bpmnkit.com/docs/guides/using-bpmnkit-with-ai

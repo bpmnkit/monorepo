@@ -73,6 +73,17 @@ export interface CompactFlow {
 	name?: string
 	/** FEEL condition expression */
 	condition?: string
+	/**
+	 * Marks this flow as its gateway's default — the path taken when no other
+	 * condition is true. Only an exclusive, inclusive or complex gateway has one,
+	 * and it has at most one.
+	 *
+	 * It sits on the flow rather than on the gateway because that is where its
+	 * alternative, `condition`, sits: a model writing the branches of a decision
+	 * marks one of them instead of having to point back at a flow id. `expand`
+	 * turns it into the gateway's `bpmn:default` attribute.
+	 */
+	isDefault?: boolean
 }
 
 /** A single process in compact form. */
@@ -103,6 +114,52 @@ export interface CompactProcess {
 export interface CompactDiagram {
 	id: string
 	processes: CompactProcess[]
+}
+
+// ── Default flows ────────────────────────────────────────────────────────────
+
+/**
+ * The gateway types that carry a `bpmn:default`. No other element in this model
+ * has the attribute, so a flow marked default anywhere else has nowhere to go.
+ */
+const DEFAULTABLE = new Set<BpmnElementType>([
+	"exclusiveGateway",
+	"inclusiveGateway",
+	"complexGateway",
+])
+
+/**
+ * The flow each gateway marks as its default, keyed by the gateway's id.
+ *
+ * Both failures throw rather than being dropped: a diagram whose default went
+ * missing is one whose gateway deadlocks the first time every condition is
+ * false, and that is a runtime failure with no trace back to here.
+ */
+export function defaultFlows(
+	elements: readonly CompactElement[],
+	flows: readonly CompactFlow[],
+): Map<string, string> {
+	const types = new Map(elements.map((element) => [element.id, element.type]))
+	const defaults = new Map<string, string>()
+	for (const flow of flows) {
+		if (!flow.isDefault) continue
+		const type = types.get(flow.from)
+		if (type === undefined || !DEFAULTABLE.has(type)) {
+			throw new Error(
+				`flow "${flow.id}" is marked isDefault but leaves ${
+					type === undefined ? `unknown element "${flow.from}"` : `a ${type}`
+				}. Only an exclusive, inclusive or complex gateway has a default flow.`,
+			)
+		}
+		const already = defaults.get(flow.from)
+		if (already !== undefined) {
+			throw new Error(
+				`gateway "${flow.from}" marks two flows as default, "${already}" and "${flow.id}". A gateway has at most one.`,
+			)
+		}
+		defaults.set(flow.from, flow.id)
+	}
+	return defaults
 }
 
 // ── Compactify ───────────────────────────────────────────────────────────────
@@ -180,16 +237,34 @@ function compactifyElement(el: BpmnFlowElement): CompactElement {
 			"sequenceFlows" in el && Array.isArray(el.sequenceFlows) ? el.sequenceFlows : []
 		result.children = {
 			elements: el.flowElements.map(compactifyElement),
-			flows: seqFlows.map((sf) => {
-				const f: CompactFlow = { id: sf.id, from: sf.sourceRef, to: sf.targetRef }
-				if (sf.name) f.name = sf.name
-				if (sf.conditionExpression) f.condition = sf.conditionExpression.text
-				return f
-			}),
+			flows: compactifyFlows(el.flowElements, seqFlows),
 		}
 	}
 
 	return result
+}
+
+/**
+ * Projects sequence flows, marking the one each gateway points at with
+ * `bpmn:default`. The gateways are read here rather than in
+ * {@link compactifyElement} because the attribute names a sibling flow.
+ */
+function compactifyFlows(
+	elements: readonly BpmnFlowElement[],
+	sequenceFlows: readonly BpmnSequenceFlow[],
+): CompactFlow[] {
+	const marked = new Set(
+		elements.flatMap((element) =>
+			"default" in element && element.default !== undefined ? [element.default] : [],
+		),
+	)
+	return sequenceFlows.map((sf) => {
+		const flow: CompactFlow = { id: sf.id, from: sf.sourceRef, to: sf.targetRef }
+		if (sf.name) flow.name = sf.name
+		if (sf.conditionExpression) flow.condition = sf.conditionExpression.text
+		if (marked.has(sf.id)) flow.isDefault = true
+		return flow
+	})
 }
 
 /**
@@ -220,12 +295,7 @@ export function compactify(defs: BpmnDefinitions): CompactDiagram {
 			name: process.name,
 			documentation: process.documentation,
 			elements: process.flowElements.map(compactifyElement),
-			flows: process.sequenceFlows.map((sf) => {
-				const f: CompactFlow = { id: sf.id, from: sf.sourceRef, to: sf.targetRef }
-				if (sf.name) f.name = sf.name
-				if (sf.conditionExpression) f.condition = sf.conditionExpression.text
-				return f
-			}),
+			flows: compactifyFlows(process.flowElements, process.sequenceFlows),
 		})),
 	}
 }
@@ -339,9 +409,15 @@ function buildSubContent(
 		i.push(f.id)
 		inc.set(f.to, i)
 	}
+	const defaults = defaultFlows(children.elements, children.flows)
 	return {
 		flowElements: children.elements.map((child) =>
-			buildFlowElement(child, inc.get(child.id) ?? [], out.get(child.id) ?? []),
+			buildFlowElement(
+				child,
+				inc.get(child.id) ?? [],
+				out.get(child.id) ?? [],
+				defaults.get(child.id),
+			),
 		),
 		sequenceFlows: children.flows.map((f) => ({
 			id: f.id,
@@ -362,6 +438,8 @@ export function buildFlowElement(
 	el: CompactElement,
 	incoming: string[],
 	outgoing: string[],
+	/** Id of the outgoing flow marked `isDefault`, for a gateway that has one. */
+	defaultFlow?: string,
 ): BpmnFlowElement {
 	const base = {
 		id: el.id,
@@ -420,15 +498,15 @@ export function buildFlowElement(
 		case "transaction":
 			return { ...base, type: "transaction", ...subContent }
 		case "exclusiveGateway":
-			return { ...base, type: "exclusiveGateway" }
+			return { ...base, type: "exclusiveGateway", default: defaultFlow }
 		case "parallelGateway":
 			return { ...base, type: "parallelGateway" }
 		case "inclusiveGateway":
-			return { ...base, type: "inclusiveGateway" }
+			return { ...base, type: "inclusiveGateway", default: defaultFlow }
 		case "eventBasedGateway":
 			return { ...base, type: "eventBasedGateway" }
 		case "complexGateway":
-			return { ...base, type: "complexGateway" }
+			return { ...base, type: "complexGateway", default: defaultFlow }
 
 		// Data elements are not sequence-flow participants; they carry a
 		// reference instead, and dropping that reference is what made them
@@ -501,8 +579,9 @@ function expandProcess(compact: CompactProcess): { process: BpmnProcess; diagram
 		incoming.set(f.to, inc)
 	}
 
+	const defaults = defaultFlows(compact.elements, compact.flows)
 	const flowElements: BpmnFlowElement[] = compact.elements.map((el) =>
-		buildFlowElement(el, incoming.get(el.id) ?? [], outgoing.get(el.id) ?? []),
+		buildFlowElement(el, incoming.get(el.id) ?? [], outgoing.get(el.id) ?? [], defaults.get(el.id)),
 	)
 
 	const sequenceFlows: BpmnSequenceFlow[] = compact.flows.map((f) => ({

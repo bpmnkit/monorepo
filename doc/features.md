@@ -1,5 +1,21 @@
 # Features
 
+## A gateway's default flow survives the compact form (2026-09-16)
+
+- **`CompactFlow.isDefault`** — the fallthrough branch of an exclusive, inclusive
+  or complex gateway is marked on the flow, beside the `condition` it replaces.
+  `expand` writes `bpmn:default`, `compactify` reads it back, `reconcileCompact`
+  sets or clears it on a model it did not author.
+- **Both misuses throw.** A flow marked default that leaves anything else, and a
+  gateway marking two, fail loudly — a lost default is a deadlock at runtime with
+  nothing pointing back at the cause.
+- **`defaultFlows(elements, flows)`** is exported for callers deriving the same
+  mapping; `buildFlowElement` takes the flow id as an optional fourth argument.
+- **`docspack@1.1.0` pinned.** Its `index` / `recall` own-corpus commands work, so
+  the guide documents both routes: build a pack when one answer should draw on
+  your corpus and the installed packs together, or `docspack index` when the
+  corpus is a database or you want its staleness check.
+
 ## Using BPMN Kit with AI, documented end to end (2026-09-16)
 
 - **`guides/using-bpmnkit-with-ai.md`** — the three kinds of knowledge an agent needs to

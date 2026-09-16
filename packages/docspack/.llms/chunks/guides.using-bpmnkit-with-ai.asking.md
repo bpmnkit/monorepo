@@ -40,7 +40,7 @@ npx bpmnkit-docs list
 
 ```
 @bpmnkit/camunda-docspack@0.0.0  1054 chunks
-@bpmnkit/docspack@0.0.4  205 chunks
+@bpmnkit/docspack@0.0.4  206 chunks
 ```
 
 ---

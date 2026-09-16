@@ -99,7 +99,7 @@ npx bpmnkit-docs list
 
 ```
 @bpmnkit/camunda-docspack@0.0.0  1054 chunks
-@bpmnkit/docspack@0.0.4  205 chunks
+@bpmnkit/docspack@0.0.4  206 chunks
 ```
 
 ## From the library instead of the CLI
@@ -186,12 +186,58 @@ A few things decide whether the result is any good:
   <!-- docspack: tags=carrier,refused,dispatcher -->
   ```
 
-> The upstream [docspack](https://docspack.dev) project documents a second route
-> for this — `docspack index --from ./notes` and `docspack recall "…"`, which
-> keep an SQLite index of loose sources rather than building a pack. It is
-> [documented](https://docspack.dev/docs/your-own-corpus/) but not yet in the
-> published `docspack@1.0.0` CLI, which exits 2 on both commands. Until it ships,
-> `bpmnkit-docs build` is the route that works.
+### The other route: `docspack index`
+
+Upstream [docspack](https://docspack.dev) 1.1.0 added
+[a second way to do this](https://docspack.dev/docs/your-own-corpus/). Rather than
+building a pack, it keeps an SQLite index of loose sources, and answers from it
+with `recall` instead of `ask`:
+
+```sh
+npm i -D docspack
+
+npx docspack index --from ./flow-docs
+npx docspack recall "when does an order need manager approval"
+```
+
+```
+indexing @local/flow-docs
++ @local/flow-docs  10 chunks  ~527 tokens
+```
+
+Pick it over `bpmnkit-docs build` when the corpus is not a folder of Markdown.
+Anything that emits JSON can be indexed without a database driver:
+
+```sh
+sqlite3 -json shop.db 'select id, title, body as text from orders'   | npx docspack index --from-json -
+```
+
+It also tracks each source's size, mtime and hash, so a re-run does nothing when
+nothing changed, and `recall` leads with a warning rather than quoting a passage
+that has since been edited:
+
+```
+NOTE: the corpus is out of date. 1 indexed source has changed since it was
+built: flow-docs/04-shipping.md. The passages below may be superseded — run
+`docspack index` again before relying on them.
+```
+
+`recall` is deliberately not `ask`: your notes are never an installed version, so
+a corpus cannot reach an answer about a dependency and a dependency cannot reach
+an answer about your notes. The index lands in `.docspack/local.db` as plaintext
+and the tool writes a `.gitignore` beside it.
+
+The two routes do not merge. `bpmnkit-docs` searches your corpus and the
+installed packs together because a pack directory is just a directory; upstream
+keeps them in separate query paths on purpose. Build a pack when you want one
+answer drawn from both; use `docspack index` when the corpus is a database, or
+when you want the staleness check.
+
+> **Upstream still cannot see `@bpmnkit/camunda-docspack`.** `docspack sync` reads
+> it as an ordinary dependency and indexes its type declarations —
+> `0 chunks (declarations)` — because the spec names one pack per npm scope and
+> a second one under the same scope is not a pack to it. Its 1,054 chunks are
+> reachable through `bpmnkit-docs` only. Verified against `docspack@1.1.0`.
 
 ## The whole loop: five Markdown files to a BPMN diagram
 
@@ -235,25 +281,25 @@ const definitions = expand(compact);
 const xml = Bpmn.export(definitions);
 ```
 
-> **The compact form cannot name a gateway's default flow.** `CompactFlow`
-> carries `condition` but has no field for `bpmn:default`, so a model cannot
-> return one however well it understood the documentation it just read — and an
-> exclusive gateway whose conditions are all false and which has no default
-> deadlocks at runtime. Set it on the full model after `expand`, before export:
->
-> ```typescript
-> for (const process of definitions.processes) {
->   for (const element of process.flowElements) {
->     if (element.type === "exclusiveGateway" && element.id === "approved") {
->       element.default = "f9";
->     }
->   }
-> }
-> ```
->
-> The same applies to everything else `CompactDiagram` does not model. See
-> [AI Integration](/docs/guides/ai) for the full list, and use `reconcileCompact`
-> rather than `expand` when you are editing a file somebody else authored.
+**Mark every gateway's fallthrough branch.** An exclusive gateway whose
+conditions are all false and which has no default deadlocks at runtime, so the
+branch without a condition carries `isDefault` instead:
+
+```typescript
+flows: [
+  { id: "f5", from: "needsApproval", to: "approveOrder", condition: "= total > 10000" },
+  { id: "f6", from: "needsApproval", to: "splitWork", name: "at or under", isDefault: true },
+]
+```
+
+`expand` turns it into the gateway's `bpmn:default` attribute, `compactify` reads
+it back, and `reconcileCompact` sets it on a file somebody else authored. A flow
+marked `isDefault` that does not leave an exclusive, inclusive or complex
+gateway, or a gateway with two of them, throws rather than being dropped.
+
+> `CompactDiagram` still does not model everything. See
+> [AI Integration](/docs/guides/ai) for what it drops, and use `reconcileCompact`
+> rather than `expand` when you are editing a file you need to keep.
 
 ## Runnable examples
 

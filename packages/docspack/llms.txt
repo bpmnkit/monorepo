@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 0.0.4. 205 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 0.0.4. 206 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -83,7 +83,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Building Processes with AI — Deploying](.llms/chunks/guides.ai-implement.deploying.md) — 255 tokens
 - [Building Processes with AI — Extending an existing process](.llms/chunks/guides.ai-implement.extending-an-existing-process.md) — 100 tokens
 - [AI Integration](.llms/chunks/guides.ai.md) — 478 tokens
-- [AI Integration — Minimal Empty Diagram](.llms/chunks/guides.ai.minimal-empty-diagram.md) — 229 tokens
+- [AI Integration — Minimal Empty Diagram](.llms/chunks/guides.ai.minimal-empty-diagram.md) — 247 tokens
 - [AI Integration — Claude API Example](.llms/chunks/guides.ai.claude-api-example.md) — 226 tokens
 - [AI Integration — OpenAI Function Calling](.llms/chunks/guides.ai.openai-function-calling.md) — 192 tokens
 - [AI Integration — MCP Server](.llms/chunks/guides.ai.mcp-server.md) — 151 tokens
@@ -128,8 +128,9 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Using BPMN Kit with AI — The two packs BPMN Kit ships](.llms/chunks/guides.using-bpmnkit-with-ai.the-two-packs-bpmn-kit-ships.md) — 147 tokens
 - [Using BPMN Kit with AI — Telling an agent they exist](.llms/chunks/guides.using-bpmnkit-with-ai.telling-an-agent-they-exist.md) — 224 tokens
 - [Using BPMN Kit with AI — Asking](.llms/chunks/guides.using-bpmnkit-with-ai.asking.md) — 314 tokens
-- [Using BPMN Kit with AI — From the library instead of the CLI](.llms/chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli.md) — 806 tokens
-- [Using BPMN Kit with AI — The whole loop: five Markdown files to a BPMN diagram](.llms/chunks/guides.using-bpmnkit-with-ai.the-whole-loop-five-markdown-files-to-a-bpmn-diagram.md) — 602 tokens
+- [Using BPMN Kit with AI — From the library instead of the CLI](.llms/chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli.md) — 706 tokens
+- [Using BPMN Kit with AI — From the library instead of the CLI — The other route: `docspack index`](.llms/chunks/guides.using-bpmnkit-with-ai.from-the-library-instead-of-the-cli-the-other-route-docspack-index.md) — 531 tokens
+- [Using BPMN Kit with AI — The whole loop: five Markdown files to a BPMN diagram](.llms/chunks/guides.using-bpmnkit-with-ai.the-whole-loop-five-markdown-files-to-a-bpmn-diagram.md) — 604 tokens
 - [Using BPMN Kit with AI — Runnable examples](.llms/chunks/guides.using-bpmnkit-with-ai.runnable-examples.md) — 312 tokens
 - [Using BPMN Kit with AI — Where to go next](.llms/chunks/guides.using-bpmnkit-with-ai.where-to-go-next.md) — 117 tokens
 - [VS Code Extension](.llms/chunks/guides.vscode.md) — 139 tokens
@@ -192,7 +193,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/core — Installation — `applyBpmnOperations(definitions, operations, options?)`](.llms/chunks/packages.core.installation-applybpmnoperations-definitions-operations-options.md) — 235 tokens
 - [@bpmnkit/core — Installation — `ensureZeebeExtension(owner, extension)`](.llms/chunks/packages.core.installation-ensurezeebeextension-owner-extension.md) — 323 tokens
 - [@bpmnkit/core — Installation — `reconcileCompact(definitions, compact, options?)`](.llms/chunks/packages.core.installation-reconcilecompact-definitions-compact-options.md) — 129 tokens
-- [@bpmnkit/core — Installation — `compactify(definitions)`](.llms/chunks/packages.core.installation-compactify-definitions.md) — 204 tokens
+- [@bpmnkit/core — Installation — `compactify(definitions)`](.llms/chunks/packages.core.installation-compactify-definitions.md) — 342 tokens
 - [@bpmnkit/core — Installation — `expand(compact)`](.llms/chunks/packages.core.installation-expand-compact.md) — 164 tokens
 - [@bpmnkit/core — Installation — `retypeElement(element, type)`](.llms/chunks/packages.core.installation-retypeelement-element-type.md) — 189 tokens
 - [@bpmnkit/core — Installation — `createFlowElement(id, type, options?)`](.llms/chunks/packages.core.installation-createflowelement-id-type-options.md) — 61 tokens

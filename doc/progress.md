@@ -1,5 +1,46 @@
 # Progress
 
+## 2026-09-16 — A model can name a gateway's default flow, and upstream shipped `docspack index`
+
+`CompactFlow` carried `condition` and had no field for `bpmn:default`. A model
+returning a `CompactDiagram` — the format BPMN Kit asks it for — therefore could
+not mark a fallthrough branch however well it had read the documentation saying
+it must, and an exclusive gateway whose conditions are all false and which has no
+default deadlocks at runtime. `compactify` dropped an existing one too, so a
+round trip lost it silently.
+
+The mark sits on the flow (`isDefault: true`), not on the gateway, because that
+is where its alternative already sits. A model writing the branches of a decision
+marks one of them rather than pointing back at a flow id from the gateway — and
+it is the spelling the `ProcessPlan` format already uses for the same thing on a
+branch. `expand` turns it into the attribute, `compactify` reads it back, and
+`reconcileCompact` sets or clears it on a model it did not author, so editing a
+file somebody else wrote can add a default that was never there.
+
+Both failure modes throw rather than being dropped: a flow marked `isDefault`
+that does not leave an exclusive, inclusive or complex gateway has nowhere to go
+in this model, and a gateway marking two is ambiguous. A default that goes
+missing surfaces as a deadlock at runtime with no trace back to here, which is
+the wrong place to be lenient.
+
+The AI example stopped needing its workaround — the four fallthrough branches now
+carry `isDefault` in the compact object and `expand` does the rest.
+
+**`docspack@1.1.0`** shipped `index` and `recall`, the own-corpus commands
+docspack.dev documented while `1.0.0` exited 2 on both. Checked against the real
+CLI: `docspack index --from ./flow-docs` indexes in ~380ms, `recall` answers,
+`--from-json -` takes rows from any query, a re-run with nothing changed is a
+no-op, a stale source produces a leading warning rather than a confidently wrong
+passage, and the index is gitignored on the tool's behalf. Pinned as a dev
+dependency and documented as the second route in the guide.
+
+It does **not** fix the discovery gap. `docspack sync` reads
+`@bpmnkit/camunda-docspack` as an ordinary dependency and indexes its type
+declarations — `0 chunks (declarations)` — so a Camunda question answers out of
+`@bpmnkit/docspack` instead. One pack per npm scope is still the spec, our
+`-docspack` suffix is still the only way to reach those 1,054 chunks, and the
+caveat on the pack's page is now verified against 1.1.0 rather than 1.0.0.
+
 ## 2026-09-16 — The Camunda pack was never discoverable, and now the AI path is documented end to end
 
 `@bpmnkit/camunda-docspack` shipped, was documented in `CLAUDE.md`, `AGENTS.md` and its own
