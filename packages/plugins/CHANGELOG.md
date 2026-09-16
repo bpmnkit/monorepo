@@ -1,5 +1,17 @@
 # @bpmnkit/plugins
 
+## 0.3.5
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/feel@0.1.0
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/connectors@0.1.5
+  - @bpmnkit/ascii@0.0.37
+  - @bpmnkit/canvas@0.2.4
+  - @bpmnkit/editor@0.2.4
+
 ## 0.3.4
 
 ### Patch Changes

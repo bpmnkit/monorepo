@@ -1,5 +1,13 @@
 # @bpmnkit/demo
 
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/canvas@0.2.4
+
 ## 0.0.11
 
 ### Patch Changes
