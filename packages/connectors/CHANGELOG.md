@@ -1,5 +1,13 @@
 # @bpmnkit/connectors
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/feel@0.1.0
+  - @bpmnkit/core@0.7.1
+
 ## 0.1.4
 
 ### Patch Changes

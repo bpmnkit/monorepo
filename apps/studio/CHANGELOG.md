@@ -1,5 +1,18 @@
 # @bpmnkit/studio
 
+## 0.0.27
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/engine@0.1.37
+  - @bpmnkit/plugins@0.3.5
+  - @bpmnkit/canvas@0.2.4
+  - @bpmnkit/editor@0.2.4
+  - @bpmnkit/operate@0.1.3
+  - @bpmnkit/user-tasks@0.0.25
+
 ## 0.0.26
 
 ### Patch Changes

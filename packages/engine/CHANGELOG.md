@@ -1,5 +1,13 @@
 # @bpmnkit/engine
 
+## 0.1.37
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/feel@0.1.0
+  - @bpmnkit/core@0.7.1
+
 ## 0.1.36
 
 ### Patch Changes

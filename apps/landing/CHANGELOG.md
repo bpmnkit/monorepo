@@ -1,5 +1,19 @@
 # @bpmnkit/landing
 
+## 0.0.42
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/feel@0.1.0
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/connectors@0.1.5
+  - @bpmnkit/engine@0.1.37
+  - @bpmnkit/plugins@0.3.5
+  - @bpmnkit/canvas@0.2.4
+  - @bpmnkit/editor@0.2.4
+  - @bpmnkit/operate@0.1.3
+
 ## 0.0.41
 
 ### Patch Changes
