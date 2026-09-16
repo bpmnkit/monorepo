@@ -18,7 +18,8 @@
 		"check": "biome check .",
 		"test": "vitest run",
 		"tck:extract": "node tasks/extract-tck-tests.mjs",
-		"tck": "node tasks/extract-tck-tests.mjs && vitest run tests/tck.test.ts"
+		"tck": "node tasks/extract-tck-tests.mjs && vitest run tests/tck.test.ts",
+		"tck:run": "vitest run tests/tck.test.ts"
 	},
 	"dependencies": {},
 	"description": "Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",

@@ -347,11 +347,11 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 			return cmpLow >= 0 && cmpHigh <= 0
 		}
 
-		case "in-test": {
+		case "in-test":
 			// The right-hand side is a unary test, evaluated with the left-hand
-			// value as its implicit input.
-			return evaluateUnaryTest(node.test, evaluate(node.value, ctx), ctx)
-		}
+			// value as its implicit input. Unlike a decision table's test, this
+			// one keeps an unknown answer unknown.
+			return unaryTestValue(node.test, evaluate(node.value, ctx), ctx)
 
 		case "instance-of": {
 			const val = evaluate(node.value, ctx)
@@ -636,6 +636,9 @@ function deepEqual(a: FeelValue, b: FeelValue): boolean {
 }
 
 function testIncludes(test: FeelValue, val: FeelValue): FeelValue {
+	// Two lists are compared, not searched: [1,2,3] is a member of
+	// [[1,2,3,4], [1,2,3]] rather than of its elements.
+	if (isFeelList(test) && isFeelList(val)) return deepEqual(test, val)
 	if (isFeelRange(test)) {
 		const cmpStart = compareValues(val, test.start)
 		const cmpEnd = compareValues(val, test.end)
@@ -694,20 +697,39 @@ function checkInstanceOf(val: FeelValue, typeName: string): boolean {
 	}
 }
 
-/** Evaluate a unary test against an input value. Returns boolean. */
-export function evaluateUnaryTest(node: FeelNode, input: FeelValue, ctx: EvalContext): boolean {
+/**
+ * Evaluates a unary test, keeping an unknown answer unknown. A range whose
+ * bound is null, or an input of null, says nothing about membership.
+ */
+function unaryTestValue(node: FeelNode, input: FeelValue, ctx: EvalContext): FeelValue {
 	const withInput: EvalContext = { ...ctx, input }
 	const result = evaluate(node, withInput)
 	if (typeof result === "boolean") return result
 	// Range result in unary-test context → membership test
-	if (isFeelRange(result)) return testIncludes(result, input) === true
+	if (isFeelRange(result)) return testIncludes(result, input)
 	// List result → any element matches
-	if (isFeelList(result)) return result.some((r) => testIncludes(r, input) === true)
+	if (isFeelList(result)) {
+		let unknown = false
+		for (const item of result) {
+			const match = testIncludes(item, input)
+			if (match === true) return true
+			if (match === null) unknown = true
+		}
+		return unknown ? null : false
+	}
 	// A plain expression in unary test mode is an equality test.
 	// When the result is null: only match if the node itself is the null literal
 	// (null arithmetic in comparisons also yields null but must not match anything).
 	if (result !== null) return deepEqual(result, input)
 	return node.kind === "null" ? input === null : false
+}
+
+/**
+ * Evaluates a unary test against an input value. A decision table's rule
+ * either matches or it does not, so an unknown answer is not a match.
+ */
+export function evaluateUnaryTest(node: FeelNode, input: FeelValue, ctx: EvalContext): boolean {
+	return unaryTestValue(node, input, ctx) === true
 }
 
 /** Evaluate a full unary-test node (the root returned by parseUnaryTests). */

@@ -1,5 +1,19 @@
 # Features
 
+## FEEL at 94% of the DMN TCK (2026-09-16)
+
+- **1,940 of 2,053 DMN TCK FEEL cases pass**, up from 1,282 before today. The `in`
+  operator takes a unary test (`1 in <= 10`), `is()` exists, `instance of` reads
+  multi-word type names, ternary logic and equality follow DMN, built-ins check their
+  arity and argument types, filters see a context element's entries, and `for` bindings
+  see each other and their results so far.
+- **Time zones resolve** through the platform's database, so a zoned time compares as the
+  instant it names and follows daylight saving.
+- **Weekly TCK run** — `.github/workflows/dmn-tck.yml` clones dmn-tck, extracts the cases
+  and runs them every Monday; `pnpm --filter @bpmnkit/feel tck` does the same locally.
+- **The 114 cases that remain are listed with their reasons** in `tests/tck.test.ts`, and
+  the suite fails if one starts passing, so the list cannot drift.
+
 ## FEEL spec fixes and a DMN TCK harness (2026-09-16)
 
 - **Ten divergences from the DMN spec and Camunda's FEEL engine fixed** in

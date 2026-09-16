@@ -153,7 +153,8 @@ function parseDuration(s: string): FeelDayTimeDuration | FeelYearsMonthsDuration
 		const sign = s.startsWith("-") ? -1 : 1
 		const years = ymMatch[1] ? Number(ymMatch[1].slice(0, -1)) : 0
 		const months = ymMatch[2] ? Number(ymMatch[2].slice(0, -1)) : 0
-		return { type: "years-months-duration", months: sign * (years * 12 + months) }
+		// "|| 0" keeps a negative zero out: -P0M is the same duration as P0M.
+		return { type: "years-months-duration", months: sign * (years * 12 + months) || 0 }
 	}
 	const dtMatch = /^-?P(\d+D)?(?:T(\d+H)?(\d+M)?(\d+(?:\.\d*)?S)?)?$/.exec(s)
 	if (dtMatch && /\d/.test(s)) {
@@ -164,7 +165,7 @@ function parseDuration(s: string): FeelDayTimeDuration | FeelYearsMonthsDuration
 		const seconds = dtMatch[4] ? Number(dtMatch[4].slice(0, -1)) : 0
 		return {
 			type: "days-time-duration",
-			seconds: sign * (days * 86400 + hours * 3600 + minutes * 60 + seconds),
+			seconds: sign * (days * 86400 + hours * 3600 + minutes * 60 + seconds) || 0,
 		}
 	}
 	return null

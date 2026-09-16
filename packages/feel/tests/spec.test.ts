@@ -225,3 +225,168 @@ describe("spec compliance", () => {
 		})
 	})
 })
+
+// A second round, found by running the DMN TCK against the package.
+describe("DMN semantics", () => {
+	describe("the in operator", () => {
+		it("takes a unary test on the right", () => {
+			expect(eval_("1 in <= 10")).toBe(true)
+			expect(eval_("11 in <= 10")).toBe(false)
+			expect(eval_("10 in =10")).toBe(true)
+			expect(eval_("10 in (1, < 5, >= 10)")).toBe(true)
+			expect(eval_("7 in (1, < 5, >= 10)")).toBe(false)
+		})
+		it("still takes ranges and lists", () => {
+			expect(eval_("5 in [1..10]")).toBe(true)
+			expect(eval_("5 in [1, 5, 9]")).toBe(true)
+		})
+		it("compares lists rather than searching them", () => {
+			expect(eval_("[1,2,3] in [[1,2,3,4], [1,2,3]]")).toBe(true)
+		})
+		it("is unknown where a bound or the input is null", () => {
+			expect(eval_("null in [1..10]")).toBe(null)
+			expect(eval_("5 in [null..10]")).toBe(null)
+		})
+	})
+
+	describe("ternary logic", () => {
+		it("is unknown when an operand is not a boolean", () => {
+			expect(eval_("true and 123")).toBe(null)
+			expect(eval_('false or "true"')).toBe(null)
+		})
+		it("keeps the answer a definite operand settles", () => {
+			expect(eval_("false and 123")).toBe(false)
+			expect(eval_("true or 123")).toBe(true)
+		})
+	})
+
+	describe("equality", () => {
+		it("is unknown across two different types", () => {
+			expect(eval_("false = 0")).toBe(null)
+			expect(eval_('100 = "100"')).toBe(null)
+			expect(eval_("{} = []")).toBe(null)
+		})
+		it("compares temporal values as the point they name", () => {
+			expect(eval_('@"2002-04-02T12:00:00-01:00" = @"2002-04-02T17:00:00+04:00"')).toBe(true)
+			expect(eval_('date and time("2018-12-08") = date and time("2018-12-08T00:00:00")')).toBe(true)
+		})
+		it("does not equate a local time with one at a known offset", () => {
+			expect(eval_('@"2018-12-08T10:00:00" = @"2018-12-08T10:00:00Z"')).toBe(false)
+		})
+	})
+
+	describe("is()", () => {
+		it("tells apart values written differently", () => {
+			expect(eval_('is(@"23:00:50Z", @"23:00:50+00:00")')).toBe(true)
+			expect(eval_('is(@"23:00:50", @"23:00:50Z")')).toBe(false)
+			expect(eval_('is(@"P1D", @"PT24H")')).toBe(true)
+			expect(eval_('is(@"P0Y", @"P0D")')).toBe(false)
+		})
+	})
+
+	describe("instance of", () => {
+		it("holds for nothing when the value is null", () => {
+			expect(eval_("null instance of Any")).toBe(false)
+			expect(eval_("null instance of number")).toBe(false)
+		})
+		it("reads multi-word type names whole", () => {
+			expect(eval_('@"2018-12-08T10:30:11" instance of date and time')).toBe(true)
+			expect(eval_('@"P10D" instance of days and time duration')).toBe(true)
+		})
+	})
+
+	describe("built-in arity and types", () => {
+		it("rejects an argument count no signature accepts", () => {
+			expect(eval_("exp(4, 4)")).toBe(null)
+			expect(eval_("sqrt(4, 4)")).toBe(null)
+		})
+		it("does not coerce text to a number", () => {
+			expect(eval_('sqrt("4")')).toBe(null)
+			expect(eval_('floor("1.5")')).toBe(null)
+		})
+		it("rounds the way DMN says", () => {
+			expect(eval_("decimal(2.5, 0)")).toBe(2)
+			expect(eval_("decimal(3.5, 0)")).toBe(4)
+			expect(eval_("round half up(-5.5, 0)")).toBe(-6)
+			expect(eval_("round half down(5.5, 0)")).toBe(5)
+		})
+		it("rejects a scale outside DMN's bounds", () => {
+			expect(eval_("round up(5.5, 6177)")).toBe(null)
+			expect(eval_("floor(1.56, null)")).toBe(null)
+		})
+	})
+
+	describe("filters", () => {
+		it("sees the entries of a context element", () => {
+			expect(eval_("[{a: 1}, {a: 2}, {a: 3}][a >= 2]")).toEqual([{ a: 2 }, { a: 3 }])
+		})
+		it("indexes a value that is not a list as a list of one", () => {
+			expect(eval_("true[1]")).toBe(true)
+			expect(eval_("true[0]")).toBe(null)
+		})
+	})
+
+	describe("for", () => {
+		it("evaluates a domain with the bindings to its left in scope", () => {
+			expect(eval_("for x in [[1,2],[3,4]], y in x return y")).toEqual([1, 2, 3, 4])
+		})
+		it("gives the body the results so far as partial", () => {
+			expect(eval_("for i in 0..4 return if i = 0 then 1 else i * partial[-1]")).toEqual([
+				1, 1, 2, 6, 24,
+			])
+		})
+		it("iterates a range of dates", () => {
+			expect(eval_('count(for i in @"1980-01-01"..@"1980-01-03" return i)')).toBe(3)
+		})
+		it("has no iteration over a range it cannot step through", () => {
+			expect(eval_('for i in "a".."z" return i')).toBe(null)
+		})
+	})
+
+	describe("names and keys", () => {
+		it("accepts the symbols the name grammar allows in a key", () => {
+			expect(eval_('{_2021-01-11: "Monday"}')).toEqual({ "_2021-01-11": "Monday" })
+			expect(eval_('{foo+bar: "foo"}')).toEqual({ "foo+bar": "foo" })
+		})
+		it("accepts names beyond ASCII", () => {
+			expect(eval_('{🐎: "bar"}')).toEqual({ "🐎": "bar" })
+		})
+		it("has no value for a context naming a key twice", () => {
+			expect(eval_('{foo: "bar", foo: "baz"}')).toBe(null)
+		})
+	})
+
+	describe("dates and times", () => {
+		it("numbers weeks the way ISO 8601 does", () => {
+			expect(eval_('week of year(@"2003-12-29")')).toBe(1)
+			expect(eval_('week of year(@"2010-01-01")')).toBe(53)
+			expect(eval_("week of year(date(2005, 1, 1))")).toBe(53)
+		})
+		it("counts whole months only", () => {
+			expect(
+				eval_('string(years and months duration(@"2016-09-30T23:25:00", @"2017-12-30T23:24:00"))'),
+			).toBe("P1Y2M")
+		})
+		it("resolves a zone to the offset it is on that day", () => {
+			// Melbourne keeps daylight saving in January and drops it in July.
+			expect(
+				eval_('@"2002-01-02T12:00:00@Australia/Melbourne" = @"2002-01-02T12:00:00+11:00"'),
+			).toBe(true)
+			expect(
+				eval_('@"2002-07-02T12:00:00@Australia/Melbourne" = @"2002-07-02T12:00:00+10:00"'),
+			).toBe(true)
+		})
+		it("rejects a zone the platform does not know", () => {
+			expect(eval_('date and time("2017-12-31T13:20:00@xyz/abc")')).toBe(null)
+			expect(eval_('date and time("2017-12-31T13:20:00+19:00")')).toBe(null)
+		})
+	})
+
+	describe("numbers", () => {
+		it("reads an exponent and a leading decimal point", () => {
+			expect(eval_("12300 = 1.23e4")).toBe(true)
+			expect(eval_("0.000123 = 1.23e-4")).toBe(true)
+			expect(eval_(".872")).toBe(0.872)
+		})
+	})
+})

@@ -199,8 +199,8 @@ export function tokenize(input: string): FeelToken[] {
 			continue
 		}
 
-		// Dot (not ..)
-		if (c === DOT) {
+		// Dot (not ".." and not the start of a number like ".872")
+		if (c === DOT && !isDigit(next)) {
 			tokens.push({ kind: "punct", value: ".", start, end: i + 1 })
 			i++
 			continue

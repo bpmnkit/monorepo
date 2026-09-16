@@ -1,5 +1,59 @@
 # Progress
 
+## 2026-09-16 — FEEL taken to 94% of the DMN TCK, and the TCK put on a weekly run
+
+The TCK harness landed earlier today reported 1,282 of 2,053 FEEL cases passing. Ten
+fixes from the feelin comparison took that to 1,395; working the remaining failures by
+group took it to **1,940**.
+
+The largest single gap was the `in` operator, 181 cases: FEEL defines its right-hand
+side as a positive unary test, not an expression, so `1 in <= 10` and
+`10 in (1, < 5, >= 10)` were parse errors. Next largest was `is()`, which did not exist
+(49), and `instance of`, where `null instance of Any` answered true and a multi-word type
+name was read as a conjunction — `@"..." instance of date and time` parsed as
+`(x instance of date) and time`.
+
+Three groups were systematic rather than local:
+
+- **Ternary logic.** `and`/`or` returned true for a non-boolean operand where DMN leaves
+  the result unknown, and equality across two different types answered false rather than
+  null. Temporal equality compares the point in time now, so `12:00-01:00` equals
+  `17:00+04:00`, and a zone resolves through the platform's database to the offset it is
+  actually on that day — Melbourne is +11:00 in January and +10:00 in July.
+- **Built-in arity and types.** FEEL does not coerce, so `sqrt("4")` is null, and calling
+  a built-in with an argument count no signature accepts is null. Rounding follows the
+  spec: `decimal()` rounds half to even, `round half up` goes away from zero, and a scale
+  outside DMN's bounds has no result.
+- **Scoping.** A filter condition sees a context element's entries, so a list of records
+  filters on its fields; a `for` binding's domain sees the bindings to its left; and the
+  body sees the results so far as `partial`, which is what makes the factorial idiom work.
+
+The extractor grew with it. A decision that reads another decision, or a business
+knowledge model, now has that value in scope, and boxed function definitions become
+function literals — which is what turned the lambda group from "cannot pass here" into
+cases that pass.
+
+**What is left is 114 cases in 18 groups**, each listed in `tests/tck.test.ts` with the
+reason it is held back, and the suite fails if one of them starts passing so the list
+cannot drift. The two largest are the decision model rather than the expression language:
+typeRef coercion (26) and external Java functions (18). Then XPath regular expression
+features V8 does not have, such as character class subtraction (15), and types the model
+declares through `itemDefinition` (15). The rest is a tail of range literal spellings
+(`]1..10]`, `(<10)`), offsets carrying seconds, and numbers past float64.
+
+Numbers compare to a relative 1e-9. DMN specifies decimal arithmetic to 34 significant
+digits and this package computes in float64, which agrees to about 15; the TCK also
+records its own expected values at a precision of its choosing (`exp(4)` as
+`54.59815003`). Closing that gap means a decimal implementation, which would cost the
+11x parse-and-evaluate advantage the package has over feelin, so it is a deliberate
+divergence rather than an oversight.
+
+`.github/workflows/dmn-tck.yml` runs the suite weekly. Not per pull request: the cases
+are not in this repository, so every run clones ~400MB, and what the suite catches is
+either a regression the package's own tests already cover or an upstream case that is new
+to us — a weekly reading rather than a merge blocker. The 232 tests in
+`tests/spec.test.ts` are what protect the fixes on every pull request.
+
 ## 2026-09-16 — FEEL measured against the DMN TCK, ten spec divergences fixed
 
 `@bpmnkit/feel` was compared expression by expression against `@bpmn-io/feelin` 6.1.0,
