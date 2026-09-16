@@ -2,7 +2,7 @@
 
 ## FEEL at 94% of the DMN TCK (2026-09-16)
 
-- **1,940 of 2,053 DMN TCK FEEL cases pass**, up from 1,282 before today. The `in`
+- **1,939 of 2,053 DMN TCK FEEL cases pass**, up from 1,282 before today. The `in`
   operator takes a unary test (`1 in <= 10`), `is()` exists, `instance of` reads
   multi-word type names, ternary logic and equality follow DMN, built-ins check their
   arity and argument types, filters see a context element's entries, and `for` bindings

@@ -4,7 +4,7 @@
 
 The TCK harness landed earlier today reported 1,282 of 2,053 FEEL cases passing. Ten
 fixes from the feelin comparison took that to 1,395; working the remaining failures by
-group took it to **1,940**.
+group took it to **1,939**.
 
 The largest single gap was the `in` operator, 181 cases: FEEL defines its right-hand
 side as a positive unary test, not an expression, so `1 in <= 10` and
