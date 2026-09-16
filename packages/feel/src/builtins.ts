@@ -571,24 +571,26 @@ reg("split", (str, delimiter) => {
 	return re === null ? s.split(d) : s.split(re)
 })
 
-reg("string join", (...args) => {
-	const flat = flattenToList(args)
-	// string join(list) or string join(list, delimiter) or string join(list, delimiter, prefix, suffix)
-	let list: FeelValue[]
-	let delimiter = ""
-	const first = flat[0]
-	if (flat.length >= 1 && first !== undefined && isFeelList(first)) {
-		list = first
-		delimiter = flat.length >= 2 ? (toStr(at(flat, 1)) ?? "") : ""
-	} else {
-		list = flat
-	}
+reg("string join", (value, delimiter, prefix, suffix) => {
+	// A value that is not a list joins as a list of one, so the delimiter
+	// never appears. A null, or anything in the list that is not a string,
+	// has no joined form.
+	if (value === null || value === undefined) return null
+	const list = isFeelList(value) ? value : [value]
 	const parts: string[] = []
 	for (const v of list) {
-		const s = toStr(v)
-		if (s !== null) parts.push(s)
+		// Nulls are skipped; any other non-string is an error.
+		if (v === null) continue
+		const text = toStr(v)
+		if (text === null) return null
+		parts.push(text)
 	}
-	return parts.join(delimiter)
+	const between = delimiter === undefined || delimiter === null ? "" : toStr(delimiter)
+	if (between === null) return null
+	const head = prefix === undefined || prefix === null ? "" : toStr(prefix)
+	const tail = suffix === undefined || suffix === null ? "" : toStr(suffix)
+	if (head === null || tail === null) return null
+	return head + parts.join(between) + tail
 })
 
 // -------------------------------------------------------------------------
@@ -768,7 +770,9 @@ reg("sum", (...args) => {
 })
 
 reg("product", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
+	if (list.length === 0) return null
 	let p = 1
 	for (const v of list) {
 		const n = toNum(v)
@@ -819,20 +823,21 @@ reg("stddev", (...args) => {
 })
 
 reg("mode", (...args) => {
+	if (args.length === 0) return null
 	const list = unwrapList(flattenToList(args))
-	const counts = new Map<FeelValue, number>()
+	const counts = new Map<number, number>()
 	for (const v of list) {
-		counts.set(v, (counts.get(v) ?? 0) + 1)
+		const n = toNum(v)
+		if (n === null) return null
+		counts.set(n, (counts.get(n) ?? 0) + 1)
 	}
-	let maxCount = 0
-	for (const cnt of counts.values()) {
-		if (cnt > maxCount) maxCount = cnt
-	}
-	const modes: FeelValue[] = []
-	for (const [v, cnt] of counts) {
-		if (cnt === maxCount) modes.push(v)
-	}
-	return modes
+	if (counts.size === 0) return []
+	const maxCount = Math.max(...counts.values())
+	// The most frequent values, in ascending order.
+	return [...counts]
+		.filter(([, count]) => count === maxCount)
+		.map(([value]) => value)
+		.sort((a, b) => a - b)
 })
 
 reg("all", (...args) => {
@@ -1136,9 +1141,26 @@ reg("years and months duration", (from, to) => {
 	if (isFeelDate(to)) d2 = to
 	else if (isFeelDateTime(to)) d2 = to.date
 	if (!d1 || !d2) return null
-	const months = (d2.year - d1.year) * 12 + (d2.month - d1.month)
+	let months = (d2.year - d1.year) * 12 + (d2.month - d1.month)
+	// Only whole months count, so a end that has not yet reached the start's
+	// day-and-time within the month gives back the month it was counted.
+	const remainder = compareWithinMonth(from, to)
+	if (months > 0 && remainder < 0) months -= 1
+	else if (months < 0 && remainder > 0) months += 1
 	return { type: "years-months-duration", months }
 })
+
+/** Orders two temporals by day of month and time of day, ignoring year and month. */
+function compareWithinMonth(a: FeelValue, b: FeelValue): number {
+	const partsOf = (v: FeelValue): [number, number] => {
+		if (isFeelDate(v)) return [v.day, 0]
+		if (isFeelDateTime(v)) return [v.date.day, timeToSeconds(v.time)]
+		return [0, 0]
+	}
+	const [dayA, secA] = partsOf(a)
+	const [dayB, secB] = partsOf(b)
+	return dayB - dayA || secB - secA
+}
 
 // -------------------------------------------------------------------------
 // Temporal utility functions
@@ -1193,16 +1215,26 @@ reg("week of year", (d) => {
 	if (isFeelDate(d)) date = d
 	else if (isFeelDateTime(d)) date = d.date
 	if (!date) return null
-	// ISO week number
-	const epochDays = dateToEpochDays(date)
-	// 1970-01-01 was Thursday (dow=4), ISO week 1
-	const jan4 = dateToEpochDays({ type: "date", year: date.year, month: 1, day: 4 })
-	const jan4dow = ((jan4 % 7) + 7 + 4) % 7 // Monday=0
-	const weekStart = jan4 - ((jan4dow + 6) % 7)
-	const week = Math.floor((epochDays - weekStart) / 7) + 1
-	if (week < 1) return 52 // last week of previous year (simplified)
+	// ISO 8601: week 1 is the one holding the first Thursday, so the turn of
+	// the year can fall in the neighbouring year's last or first week.
+	const weekday = isoWeekday(date)
+	const week = Math.floor((dayOfYear(date) - weekday + 10) / 7)
+	if (week < 1) return isoWeeksInYear(date.year - 1)
+	if (week > isoWeeksInYear(date.year)) return 1
 	return week
 })
+
+/** Monday is 1, Sunday is 7. */
+function isoWeekday(d: FeelDate): number {
+	return (((dateToEpochDays(d) + 3) % 7) + 7) % 7 || 7
+}
+
+/** 52 or 53, whichever ISO 8601 gives the year. */
+function isoWeeksInYear(year: number): number {
+	const jan1 = isoWeekday({ type: "date", year, month: 1, day: 1 })
+	const long = jan1 === 4 || (isLeapYear(year) && jan1 === 3)
+	return long ? 53 : 52
+}
 
 reg("month of year", (d) => {
 	const MONTH_NAMES = [
@@ -1345,39 +1377,37 @@ reg("includes", (a, b) => {
 })
 
 reg("starts", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	const ae = endOf(a)
-	const be = endOf(b)
-	return cmpPts(as_, bs, "start") === 0 && cmpPts(ae, be, "end") <= 0
+	// starts(point, range): the range begins at that point, inclusively.
+	if (!isFeelRange(b)) return null
+	if (!isFeelRange(a)) {
+		return b.startIncluded && compareValues(a, b.start) === 0
+	}
+	return cmpPts(startOf(a), startOf(b), "start") === 0 && cmpPts(endOf(a), endOf(b), "end") <= 0
 })
 
 reg("started by", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	const ae = endOf(a)
-	const be = endOf(b)
-	return cmpPts(as_, bs, "start") === 0 && cmpPts(be, ae, "end") <= 0
+	if (!isFeelRange(a)) return null
+	if (!isFeelRange(b)) {
+		return a.startIncluded && compareValues(a.start, b) === 0
+	}
+	return cmpPts(startOf(a), startOf(b), "start") === 0 && cmpPts(endOf(b), endOf(a), "end") <= 0
 })
 
 reg("finishes", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const ae = endOf(a)
-	const be = endOf(b)
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	return cmpPts(ae, be, "end") === 0 && cmpPts(bs, as_, "start") <= 0
+	// finishes(point, range): the range ends at that point, inclusively.
+	if (!isFeelRange(b)) return null
+	if (!isFeelRange(a)) {
+		return b.endIncluded && compareValues(a, b.end) === 0
+	}
+	return cmpPts(endOf(a), endOf(b), "end") === 0 && cmpPts(startOf(b), startOf(a), "start") <= 0
 })
 
 reg("finished by", (a, b) => {
-	if (!isFeelRange(a) || !isFeelRange(b)) return null
-	const ae = endOf(a)
-	const be = endOf(b)
-	const as_ = startOf(a)
-	const bs = startOf(b)
-	return cmpPts(ae, be, "end") === 0 && cmpPts(as_, bs, "start") <= 0
+	if (!isFeelRange(a)) return null
+	if (!isFeelRange(b)) {
+		return a.endIncluded && compareValues(a.end, b) === 0
+	}
+	return cmpPts(endOf(a), endOf(b), "end") === 0 && cmpPts(startOf(a), startOf(b), "start") <= 0
 })
 
 /**
