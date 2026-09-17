@@ -28,6 +28,12 @@ This gives it the system's form.
 - **Dark and neon redeclare `--bpmnkit-ds-*`** rather than aliasing it, the way Operate
   does, so a rule that reads a design-system token directly themes correctly. Neon takes
   `@bpmnkit/ui`'s own palette and keeps its one accent.
+- **Verified against a build of the previous commit**, page by page in both themes and
+  at phone width, with a scripted tour driving the filters, dialogs, palette, theme picker
+  and mode toggle against each. Four regressions in the new layer were found and fixed
+  there: `auto-fit` stretched a lone card across the page, a short last row read as a
+  filled block, a table header's ground stopped short where a column is `sr-only`, and
+  mono's extra tracking ellipsised a project name in the rail.
 - **Two pre-existing chrome bugs fixed**, both Tailwind preflight against markup it
   does not own: `*{margin:0}` beat the user agent's `dialog{margin:auto}` so every modal
   opened top-left, and `svg{display:block}` stacked the icon above the label in every

@@ -260,7 +260,7 @@ export function Settings() {
 					<div className="ds-box">
 						<table className="w-full text-sm">
 							<thead>
-								<tr className="border-border border-b text-left">
+								<tr className="border-border border-b bg-bg text-left">
 									<th className="px-4 py-2">Name</th>
 									<th className="px-4 py-2">Tags</th>
 									<th className="px-4 py-2">Type</th>

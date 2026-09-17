@@ -142,7 +142,7 @@ export function Definitions() {
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-[520px] text-sm">
 						<thead>
-							<tr className="border-border border-b text-left">
+							<tr className="border-border border-b bg-bg text-left">
 								<th className="w-8 px-4 py-2.5" />
 								<th className="px-4 py-2.5">Process</th>
 								<th className="px-4 py-2.5">Versions</th>

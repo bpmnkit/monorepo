@@ -22,3 +22,11 @@ Two pre-existing chrome bugs are fixed with it, both Tailwind's preflight agains
 not own: `*{margin:0}` beat the user agent's `dialog{margin:auto}`, so every modal opened against
 the top-left corner, and `svg{display:block}` stacked the icon above the label in every cascivo
 button.
+
+The result was verified page by page against a build of the previous commit, in both themes and
+at phone width, with a scripted tour driving the filters, dialogs, palette, theme picker and mode
+toggle against each build and comparing the outcomes. Four regressions in the new layer were
+found and fixed there: `auto-fit` collapsed the empty tracks and stretched a lone model card
+across the page, a short last row rendered the missing cell as a filled block, a table header's
+ground stopped short of its frame where a column is `sr-only`, and mono's extra tracking
+ellipsised a project name in the rail.

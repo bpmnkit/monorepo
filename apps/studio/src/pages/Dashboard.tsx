@@ -192,17 +192,22 @@ function StatCard({
 
 			<Link
 				href={href}
-				className="flex items-start gap-3 p-4 transition-colors duration-150 hover:bg-bg"
+				className="flex flex-col gap-2.5 p-4 transition-colors duration-150 hover:bg-bg"
 			>
-				<Icon
-					size={16}
-					className={`mt-0.5 shrink-0 ${isDangerous ? "text-danger" : "text-muted"}`}
-					aria-hidden="true"
-				/>
-				<div className="min-w-0 flex-1">
-					<div className="ds-label">{label}</div>
+				{/* Label left, icon right — the icon is a mark, not a tile, and it
+				    takes the card's own accent so an alarming metric reads before
+				    the number does. */}
+				<div className="flex items-start justify-between gap-2">
+					<span className="ds-label min-w-0">{label}</span>
+					<Icon
+						size={15}
+						className={`mt-px shrink-0 ${isDangerous ? "text-danger" : "text-muted"}`}
+						aria-hidden="true"
+					/>
+				</div>
+				<div className="flex items-end justify-between gap-2">
 					<div
-						className={`ds-datum mt-1.5 text-[28px] leading-none ${
+						className={`ds-datum text-[28px] leading-none ${
 							isDangerous ? "text-danger" : "text-fg"
 						}`}
 					>
@@ -214,8 +219,8 @@ function StatCard({
 							value.toLocaleString()
 						)}
 					</div>
+					{!offline && sparkline}
 				</div>
-				{!offline && sparkline}
 			</Link>
 
 			<div className="flex flex-1 flex-col gap-1 border-t border-border/60 px-4 py-3">

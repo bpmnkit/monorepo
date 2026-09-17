@@ -389,7 +389,7 @@ export function WasmInstanceDetail({
 						<div className="ds-box">
 							<table className="w-full text-xs">
 								<thead>
-									<tr className="border-border border-b">
+									<tr className="border-border border-b bg-bg">
 										<th className="px-3 py-2 text-left">Element</th>
 										<th className="px-3 py-2 text-left">Result</th>
 									</tr>
@@ -424,7 +424,7 @@ export function WasmInstanceDetail({
 						<div className="ds-box border-l-2 border-l-danger">
 							<table className="w-full text-xs">
 								<thead>
-									<tr className="border-border border-b">
+									<tr className="border-border border-b bg-bg">
 										<th className="px-3 py-2 text-left">Type</th>
 										<th className="px-3 py-2 text-left">Element</th>
 									</tr>

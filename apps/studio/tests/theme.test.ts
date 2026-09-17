@@ -65,9 +65,15 @@ describe("the .ds-* component layer", () => {
 
 	it("draws a grid as one bordered box subdivided by hairlines", () => {
 		const grid = css.slice(css.indexOf(".ds-grid {"), css.indexOf(".ds-cell {"))
-		expect(grid).toContain("gap: 1px")
-		expect(grid).toContain("background: var(--bpmnkit-ds-line-soft)")
 		expect(grid).toContain("border: 1px solid var(--bpmnkit-ds-line)")
+		// Dividers are borders on the children, not a `gap` over a coloured
+		// ground: a short last row has to leave surface behind, not a block.
+		expect(grid).not.toContain("gap:")
+		expect(grid).toContain("border-right: 1px solid var(--bpmnkit-ds-line-soft)")
+		// `auto-fit` collapses empty tracks and stretches a lone card across
+		// the page; `auto-fill` keeps them, so a card stays card-sized.
+		expect(grid).toContain("auto-fill")
+		expect(grid).not.toContain("auto-fit")
 	})
 
 	it("keeps the chrome square and flat", () => {

@@ -274,18 +274,29 @@
 		border-bottom: 1px solid var(--bpmnkit-ds-line);
 	}
 
-	/* One bordered box subdivided by hairlines: the 1px gap over the soft line
-	   colour is how the system draws a grid. Gapped cards with their own
-	   borders would read as six objects where there is one readout. The
-	   divider is `line-soft` and the frame is `line`, per the rule in
-	   CLAUDE.md — which also keeps an incomplete last row from reading as a
-	   filled block, since the empty slot shows the divider, not the frame. */
+	/* One bordered box subdivided by hairlines, never gapped cards: the frame
+	   is `line` and the dividers are `line-soft`, per the rule in CLAUDE.md.
+	   Two details earn their keep:
+
+	   · The dividers are borders on the children rather than a `gap` over a
+	     coloured ground. A grid whose last row is short — five templates in
+	     two columns — would otherwise end in a filled block where the missing
+	     cell is; drawn this way the leftover is simply surface.
+	   · `auto-fill`, not `auto-fit`. `auto-fit` collapses the empty tracks, so
+	     a gallery holding one model stretched that card the full width of the
+	     page. `auto-fill` keeps the tracks, so a card stays card-sized however
+	     few there are. */
 	.ds-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(var(--ds-col, 200px), 1fr));
-		gap: 1px;
-		background: var(--bpmnkit-ds-line-soft);
+		grid-template-columns: repeat(auto-fill, minmax(var(--ds-col, 200px), 1fr));
+		background: var(--bpmnkit-ds-surface);
 		border: 1px solid var(--bpmnkit-ds-line);
+	}
+
+	.ds-grid > * {
+		border-right: 1px solid var(--bpmnkit-ds-line-soft);
+		border-bottom: 1px solid var(--bpmnkit-ds-line-soft);
+		min-width: 0;
 	}
 
 	.ds-cell {
@@ -582,7 +593,6 @@ thead th {
 	font-weight: 400;
 	letter-spacing: 0.1em;
 	color: var(--bpmnkit-ds-ink-4);
-	background: var(--bpmnkit-ds-bg);
 }
 
 /* The rail. cascivo already marks the active item with an accent rule on the
@@ -595,11 +605,14 @@ nav[aria-label="Main navigation"] a,
 nav[aria-label="Main navigation"] button {
 	font-family: var(--bpmnkit-ds-font-mono);
 	font-size: var(--bpmnkit-ds-t-mono-label);
-	letter-spacing: 0.06em;
 }
 
+/* Tracking belongs to the uppercase, which is why it is set here and not
+   above: spacing the pickers too pushed a project name past the rail's width
+   and ellipsised it. */
 nav[aria-label="Main navigation"] a {
 	text-transform: uppercase;
+	letter-spacing: 0.06em;
 }
 
 /* cascivo's Button wraps its children in one unclassed `<span>`, and Tailwind's

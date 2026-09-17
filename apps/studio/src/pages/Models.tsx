@@ -746,7 +746,7 @@ export function Models() {
 								</Button>
 							</div>
 						) : viewMode === "grid" ? (
-							<div className="ds-grid [--ds-col:190px]">
+							<div className="ds-grid [--ds-col:230px]">
 								{filtered.map((model) => (
 									<ProcessCard
 										key={model.id}
@@ -759,7 +759,7 @@ export function Models() {
 						) : (
 							<table className="ds-box w-full text-sm">
 								<thead>
-									<tr className="border-border border-b text-left">
+									<tr className="border-border border-b bg-bg text-left">
 										<th className="px-3 py-2">Name</th>
 										<th className="px-3 py-2">Type</th>
 										<th className="px-3 py-2">{fsMode ? "Path" : "Process ID"}</th>

@@ -197,7 +197,7 @@ function WasmDefinitionDetail({ definitionKey }: { definitionKey: string }) {
 						<div className="ds-box">
 							<table className="w-full text-xs">
 								<thead>
-									<tr className="border-border border-b">
+									<tr className="border-border border-b bg-bg">
 										<th className="px-3 py-2 text-left">Key</th>
 										<th className="px-3 py-2 text-left">State</th>
 									</tr>

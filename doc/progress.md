@@ -1,5 +1,48 @@
 # Progress
 
+## 2026-09-17 — What the before/after pass caught
+
+The design change was verified page by page against a build of the commit before
+it — both served side by side, the same scripted tour run against each, and every
+pair stitched into one image. It caught four things the code review had not, all
+in the new `.ds-*` layer rather than in any page.
+
+**A lone card stretched the width of the page.** `.ds-grid` used
+`repeat(auto-fit, …)`, and `auto-fit` collapses the tracks it has no items for —
+so the models gallery holding one model rendered it as a full-bleed banner with a
+thumbnail lost in the middle of it. `auto-fill` keeps the tracks. The gallery had
+fixed column counts before this work; `auto-fill` restores that behaviour without
+giving up the one-box frame.
+
+**A short last row read as a filled block.** The grid drew its dividers as a 1px
+`gap` over a coloured ground, which is how Operate does it — fine for a readout
+whose items always fill the box, wrong for five templates in two columns, where
+the missing sixth cell showed as a solid panel. The dividers are now borders on
+the children, so the leftover is surface.
+
+**A table header's ground stopped short of its frame.** Moving the header ground
+from the row to `thead th` looked equivalent until a table had an `sr-only`
+column: there is no header cell there, so the ground ended and the frame ran on
+for another 70px. Definitions and the models list both showed it. The ground is
+back on the row, where it covers the full width whatever the columns do.
+
+**The rail ellipsised a project name.** Mono at the same size is about a tenth
+wider than sans, and the extra 0.06em of tracking pushed "Local (IndexedDB)" past
+the rail. Tracking is for uppercase, so it now applies only to the nine uppercase
+destinations and not to the pickers, which read out a name.
+
+One more change came out of seeing the dashboard with a cluster attached, which
+no static reading would have shown: the stat card put the sparkline beside the
+*label* rather than the number, because the row was top-aligned. The card now
+follows Operate's — label and icon mark on one line, the number under it with the
+sparkline beside it.
+
+Behaviour was checked too, not just appearance: the same script drives the state
+filters, the type filter, search, the grid/list toggle, the folder dialog, the
+command palette's navigation, the theme picker and the mode toggle against both
+builds and compares the results. All thirteen match, and both builds log the same
+76 console errors — every one of them the absent proxy.
+
 ## 2026-09-17 — The studio wears the design system, not just its colours
 
 #165 put the studio on the bpmnkit.com design system through one seam: a token
