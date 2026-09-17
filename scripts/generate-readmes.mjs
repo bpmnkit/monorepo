@@ -1577,10 +1577,10 @@ interface OperateApi {
 	"packages/astro-shared": {
 		name: "@bpmnkit/astro-shared",
 		description:
-			"Shared CSS design tokens, aurora background, site metadata, and SEO helpers for BPMN Kit Astro apps",
+			"Shared CSS design tokens, page ground, site metadata, and SEO helpers for BPMN Kit Astro apps",
 		content: `## Overview
 
-\`@bpmnkit/astro-shared\` provides shared CSS imports, site metadata, and SEO building blocks used across BPMN Kit's Astro-based apps (landing page, docs, learn, blog). It re-exports the design tokens from \`@bpmnkit/ui\`, adds a global aurora background animation, and ships a \`<Seo>\` head component plus schema.org JSON-LD helpers so every site emits consistent titles, canonicals, Open Graph tags, and structured data.
+\`@bpmnkit/astro-shared\` provides shared CSS imports, site metadata, and SEO building blocks used across BPMN Kit's Astro-based apps (landing page, docs, learn, blog). It exposes the bpmnkit.com design system's tokens — derived from the \`--bpmnkit-ds-*\` set \`@bpmnkit/ui\` owns, under the same short names the landing site reads — sets the flat page ground, and ships a \`<Seo>\` head component plus schema.org JSON-LD helpers so every site emits consistent titles, canonicals, Open Graph tags, and structured data.
 
 This package is primarily intended for internal use by BPMN Kit's own Astro applications.
 

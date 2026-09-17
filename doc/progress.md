@@ -1,5 +1,77 @@
 # Progress
 
+## 2026-09-17 — The rest of the repo joins the design system
+
+With the studio on the system, an audit of what still was not turned up a
+smaller list than expected, and one much louder item than expected.
+
+**`apps/learn` was still wearing the 2025 brand.** A deployed sibling of
+bpmnkit.com — three blurred gradient orbs drifting on a loop, a masked dot grid,
+a fractal-noise grain layer, gradient-clipped headings, glow overlays on hover,
+8–20px radii, `translateY` lifts, pill badges and a magenta third brand colour —
+so a visitor clicking "Learn" from the site crossed a hard boundary. It is now
+the same system: flat paper ground, hairline rules, one terracotta accent, Space
+Grotesk for prose and Space Mono for every label, count and level. The catalogue
+and the glossary are one bordered box subdivided by hairlines rather than gapped
+cards; steps and prerequisites are hairline-divided rows; the progress bar is a
+1px rule that fills; hint levels escalate by accent weight rather than by hue,
+because there is no third colour to spend. The embedded editor moved from the
+`neon` white-label theme to the system's light one.
+
+`packages/astro-shared` is what made that possible in one place. It used to map
+short names onto the *product* palette and carry the aurora's layout tokens — a
+14px radius and a `--pink` — beside it. It now exposes the landing site's own
+vocabulary with the landing site's own values, derived from `--bpmnkit-ds-*`, so
+the two sites read one token set. `background.css` is one rule: the ground.
+`.aurora`, `.orb`, `.dots` and `.grain` are deliberately undefined, so a layout
+that still renders those elements renders nothing rather than keeping the old
+brand alive in a corner.
+
+Two values the landing had hardcoded — its alternate ground and its accent tint
+— became `--bpmnkit-ds-bg-alt` and `--bpmnkit-ds-accent-tint` in `@bpmnkit/ui`,
+so sharing them did not mean duplicating them. The landing now reads them too.
+
+**The editor plugins were almost all there already.** Counting which token layer
+each one reads — `--bpmnkit-chrome-*` (the editor's bridge onto the system) or
+`--bpmnkit-*` (the product palette) — showed 24 of 31 fully on the chrome layer.
+The holdouts were `form-viewer` and `form-editor`, which restated palettes of
+their own (a Catppuccin dark and a Tailwind light) beside a system font stack
+and carried 31 non-zero radii between them; `dmn-viewer`, same shape; and one
+`--bpmnkit-teal` in `variable-flow`. All four are on the design-system set now,
+with hex fallbacks so they still theme when mounted outside the editor and its
+chrome tokens are absent. The DMN input/output tints and the FEEL syntax colours
+stay as they were, exempt as they always have been.
+
+`variable-flow`'s "both" mark is the one that needed a decision rather than a
+swap: it marked a variable that is read *and* written with the product palette's
+secondary brand colour, which the system does not have. It is now mixed from the
+two states it means — the accent a read is marked with and the green a write is
+marked with — so it follows the theme instead of pinning a fourth hue.
+
+**`apps/demo`** opened in the `neon` white-label theme on the product palette and carried the
+pre-rename "BPMN SDK" in its title. It is drawn with inline `var(--bpmnkit-*)` references rather
+than classes, so it takes the same one seam the studio does: the brand tokens re-point onto the
+design-system set and 760 lines of markup stay put. Its three comparison variants keep success,
+warn and danger, which is what they mean.
+
+**`@bpmnkit/user-tasks`** was the seam inside the app the previous change
+converted: the studio's task page is on the system and the widget it mounts was
+not. Square, hairline-ruled and mono in the meta line now, and it defaults to
+`light` rather than `neon`.
+
+**The canvas's focus ring** was a hardcoded `#0066cc`. A keyboard focus ring is
+interaction chrome rather than the diagram's own ink, so it takes the accent.
+The strokes, fills and labels around it stay the renderer's, which the system
+leaves alone by design.
+
+Verified by building Learn before and after and comparing every page in both
+states, and by driving the studio's editor to confirm selection still reads as
+the dashed accent halo the brief asks for. `packages/astro-shared` gained a test
+suite whose four assertions are the things that made it one system again: the
+tokens derive from the design-system set and not the product palette, the radius
+is zero and `--pink` is gone, the ground draws no blur or gradient, and the
+aurora's elements are no longer defined.
+
 ## 2026-09-17 — What the before/after pass caught
 
 The design change was verified page by page against a build of the commit before

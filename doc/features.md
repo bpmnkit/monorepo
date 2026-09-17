@@ -1,5 +1,35 @@
 # Features
 
+## Learn, the forms and the last plugins join the design system (2026-09-17)
+
+- **`apps/learn` is on the system.** The 2025 aurora — drifting blurred orbs, a dot
+  grid, a grain layer, gradient headings, glow hovers, 8–20px radii, lifts, pill badges
+  and a magenta third brand colour — is replaced by the flat, square, hairline-ruled
+  paper ground bpmnkit.com wears. Catalogue and glossary are one bordered box divided by
+  hairlines; the progress bar is a rule that fills; the embedded editor moved from the
+  `neon` white-label theme to the system's light one.
+- **`@bpmnkit/astro-shared` exposes the landing site's own vocabulary**, with the landing
+  site's own values, derived from `--bpmnkit-ds-*` — so the two sites read one token set.
+  `background.css` is now one rule, and the aurora's classes are deliberately undefined.
+- **Two values became tokens.** `--bpmnkit-ds-bg-alt` and `--bpmnkit-ds-accent-tint` join
+  `@bpmnkit/ui`, so the landing and the Astro layer share them instead of restating them.
+- **`form-viewer`, `form-editor` and `dmn-viewer`** stop restating palettes of their own
+  (a Catppuccin dark and a Tailwind light) and read the design-system set with hex
+  fallbacks, so a form or a decision table matches the dock it sits in. 31 non-zero radii
+  are gone; the DMN section tints and the FEEL syntax colours stay exempt.
+- **`apps/demo`** opened in the `neon` white-label theme and was still titled "BPMN SDK". It
+  now wears the system through the same one-seam token bridge the studio uses, so its 760 lines
+  of inline `var(--bpmnkit-*)` markup did not have to move.
+- **`variable-flow`'s "both" mark** is mixed from the accent a read is marked with and the
+  green a write is marked with, in place of the product palette's secondary brand colour.
+- **`@bpmnkit/user-tasks`** is square, hairline-ruled and mono in its meta line, and
+  defaults to `light` — it mounts inside the studio's task page, which is on the system.
+- **The canvas focus ring** takes the accent in place of a hardcoded `#0066cc`; the
+  renderer's strokes, fills and labels are untouched.
+- **Guarded**: `packages/astro-shared` gains four assertions — the tokens derive from the
+  design-system set, the radius is zero and `--pink` is gone, the ground draws no blur or
+  gradient, and `.aurora` / `.orb` / `.dots` / `.grain` are no longer defined.
+
 ## The studio wears the design system (2026-09-17)
 
 The token bridge from #165 gave the studio the palette and the two type families.
