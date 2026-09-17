@@ -1,5 +1,16 @@
 # @bpmnkit/examples
 
+## 0.0.38
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+- Updated dependencies [191d4d2]
+- Updated dependencies [191d4d2]
+  - @bpmnkit/camunda-docspack@0.1.2
+  - @bpmnkit/core@0.8.0
+  - @bpmnkit/docspack@0.0.6
+
 ## 0.0.37
 
 ### Patch Changes

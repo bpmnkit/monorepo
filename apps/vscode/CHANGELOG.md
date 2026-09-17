@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.10
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+- Updated dependencies [f0a0ea2]
+  - @bpmnkit/core@0.8.0
+  - @bpmnkit/ui@0.3.0
+  - @bpmnkit/plugins@0.4.0
+  - @bpmnkit/canvas@0.2.5
+  - @bpmnkit/ascii@0.0.38
+  - @bpmnkit/editor@0.2.5
+  - @bpmnkit/engine@0.1.38
+
 ## 0.4.9
 
 ### Patch Changes
