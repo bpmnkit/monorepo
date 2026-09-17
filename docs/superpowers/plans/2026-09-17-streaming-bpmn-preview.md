@@ -1,6 +1,6 @@
 # Streaming BPMN preview — render the diagram while the model is still writing it
 
-**Status:** phases 1 and 2 shipped; phase 3 shipped except element highlighting
+**Status:** shipped
 **Date:** 2026-09-17
 
 ## The question
@@ -139,7 +139,7 @@ Adapters without partial tool input degrade to the text path automatically — t
 extractor does not care where the characters came from. `supportsMcp` already
 distinguishes the adapters, so no capability plumbing is needed.
 
-**Phase 3 — the client (shipped, less the highlighting).** In `panel.ts`, handle `preview` in the SSE
+**Phase 3 — the client (shipped).** In `panel.ts`, handle `preview` in the SSE
 loop (the switch at `panel.ts:86`), mount the `BpmnCanvas` on the first frame
 instead of on finalize, and call `loadDefinitions(defs, {keepViewport: true})`
 plus `highlight(newIds, "new")` on each subsequent one. `finalizeAiMessage`
@@ -203,6 +203,14 @@ reasoning about one:
 Phase 1's own limit turned out to decide how the two interact: streamed frames
 stop as soon as the MCP server has written state, because its frames are the same
 diagram from the model rather than a guess at an unfinished document.
+
+- **Highlighting the last frame's arrivals was the wrong rule.** It is a 100 ms
+  flash per element and a canvas that never settles, and it answers a question
+  nobody asked: the shapes appearing is already the signal that something
+  arrived. `additionsToMark` compares against the diagram the request started
+  from instead, which distinguishes the AI's work from the user's. It marks
+  nothing when that diagram has no sequence flow — a new file is one unconnected
+  start event, and a from-scratch build is new all the way through.
 
 ## Verification
 

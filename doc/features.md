@@ -1,5 +1,16 @@
 # Features
 
+## A preview says which part of the diagram the AI added (2026-09-17)
+
+- **Additions outlined, the rest left plain** (`packages/plugins/ai-bridge`) — every
+  preview frame marks the elements the diagram being edited does not have, so an
+  edit no longer reads the same as a rewrite. Re-applied per frame, since `load`
+  clears highlights, and to the final authoritative render as well.
+- **`additionsToMark(before, rendered)`** returns nothing when there is no process
+  to contrast with, read as *no sequence flow* rather than no element: a new file
+  in the editor is one unconnected start event, and marking everything the model
+  writes says no more than marking none of it.
+
 ## The diagram is read out of the tokens as the model writes it (2026-09-17)
 
 - **`createCompactStream()`** (`@bpmnkit/core`) — takes complete `{...}` literals

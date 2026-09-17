@@ -1,6 +1,12 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form, compactify, optimize } from "@bpmnkit/core"
-import type { BpmnDefinitions, BpmnOperation, CompactDiagram } from "@bpmnkit/core"
+import type {
+	BpmnDefinitions,
+	BpmnOperation,
+	CompactDiagram,
+	CompactElement,
+	CompactFlow,
+} from "@bpmnkit/core"
 import { saveCheckpoint } from "../history/index.js"
 import { injectAiBridgeStyles } from "./css.js"
 
@@ -353,6 +359,50 @@ function buildVariableFlowContext(defs: BpmnDefinitions): Record<string, unknown
 	return { byElement, undefinedVars, deadOutputs }
 }
 
+/** Every id in a compact process, container contents included. */
+function collectIds(
+	elements: readonly CompactElement[],
+	flows: readonly CompactFlow[],
+	into: Set<string>,
+): void {
+	for (const element of elements) {
+		into.add(element.id)
+		if (element.children) collectIds(element.children.elements, element.children.flows, into)
+	}
+	for (const flow of flows) into.add(flow.id)
+}
+
+/**
+ * Which of the rendered ids to mark as the AI's additions — the ones the diagram
+ * it was handed does not have.
+ *
+ * Empty when there is no process to contrast them with. A process being built
+ * from scratch is new the whole way through, and a diagram marked everywhere
+ * says no more than one marked nowhere; it would also mean the marking flickered
+ * on for the length of every stream and off again at the end of it.
+ *
+ * "No process" is read as no sequence flow, not as no element: a new file in the
+ * editor is a single unconnected start event, which is a blank canvas rather
+ * than something a diagram can be new *relative to*.
+ *
+ * @param before - The diagram as the editor has it, before anything is applied.
+ * @param rendered - The ids a preview actually drew.
+ */
+export function additionsToMark(
+	before: BpmnDefinitions | null,
+	rendered: readonly string[],
+): string[] {
+	if (!before) return []
+	const known = new Set<string>()
+	let connected = false
+	for (const process of compactify(before).processes) {
+		collectIds(process.elements, process.flows, known)
+		if (process.flows.length > 0) connected = true
+	}
+	if (!connected) return []
+	return rendered.filter((id) => !known.has(id))
+}
+
 function buildContext(defs: BpmnDefinitions): Record<string, unknown> {
 	return { ...compactify(defs), variableFlow: buildVariableFlowContext(defs) }
 }
@@ -515,6 +565,13 @@ export function createAiPanel(options: PanelOptions): {
 	let _refs: ContextRef[] = []
 	let _abortCtrl: AbortController | null = null
 	let _hasMessages = false
+
+	/** Outlines what the AI added, leaving the diagram it started from plain. */
+	function markAdditions(canvas: BpmnCanvas): void {
+		const rendered: string[] = []
+		canvas.forEachElement((el) => rendered.push(el.id))
+		canvas.highlight(additionsToMark(options.getDefinitions(), rendered), "new")
+	}
 
 	// ── Server status check ──
 	async function checkStatus(): Promise<void> {
@@ -772,6 +829,7 @@ export function createAiPanel(options: PanelOptions): {
 				theme: options.getTheme?.() ?? "dark",
 			})
 			_previewCanvases.push(canvas)
+			markAdditions(canvas)
 			msgEl.append(previewEl)
 		}
 
@@ -999,6 +1057,7 @@ export function createAiPanel(options: PanelOptions): {
 		function showPreview(xml: string): void {
 			if (live.canvas) {
 				live.canvas.load(xml, { keepViewport: true })
+				markAdditions(live.canvas)
 				return
 			}
 			const previewEl = document.createElement("div")
@@ -1011,6 +1070,7 @@ export function createAiPanel(options: PanelOptions): {
 				fit: "contain",
 				theme: options.getTheme?.() ?? "dark",
 			})
+			markAdditions(live.canvas)
 		}
 
 		try {

@@ -1,5 +1,34 @@
 # Progress
 
+## 2026-09-17 — Marking what the AI added, and only when that means something
+
+A preview frame shows the process being written but says nothing about which part
+of it was already there, so asking for one more task read the same as asking for
+a rewrite. Each frame now outlines the elements the diagram being edited does not
+have. `load` clears highlights, so the marking is re-applied per frame; it is
+also applied to the authoritative render at the end of the message, or it would
+disappear at the moment the result arrived.
+
+The plan said to mark the elements that arrived in the last frame. Written out,
+that is a 100 ms flash per element and a canvas that never settles — and it
+answers a question nobody asked, since the shapes appearing is already the signal
+that something arrived. What is worth distinguishing is the AI's work from the
+user's, so `additionsToMark` compares against the diagram the request started
+from instead.
+
+That only means anything when there is a diagram to compare against, and
+"non-empty" turned out to be the wrong test: `Bpmn.makeEmpty` is a single
+unconnected start event, so a process built from scratch in a fresh file would
+have had everything but that start event marked. The test is no sequence flow —
+nothing is connected yet, so there is no process for anything to be new relative
+to — and a from-scratch build is left unmarked.
+
+A happy-dom test renders a real canvas and asserts the class lands straight after
+`load`, which is what lets the panel mark synchronously rather than out of a
+`requestAnimationFrame` the way the improve flow beside it does.
+
+This finishes `docs/superpowers/plans/2026-09-17-streaming-bpmn-preview.md`.
+
 ## 2026-09-17 — Reading the diagram out of the tokens, before the document closes
 
 Watching the MCP output file covered diagrams built over several tool calls, and
