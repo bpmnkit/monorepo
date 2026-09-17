@@ -25,9 +25,6 @@ import BaseLayout from "../../layouts/BaseLayout.astro"
 </BaseLayout>
 
 <style>
-  .glossary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-  .glossary-card { display: block; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); text-decoration: none; transition: border-color 0.2s, transform 0.2s; }
-  .glossary-card:hover { border-color: var(--accent-bright); transform: translateY(-2px); text-decoration: none; }
-  .glossary-card h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
-  .glossary-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
+  /* The grid and the card are on the design system in `styles/learn.css`,
+     beside the tutorial catalogue they share a shape with. */
 </style>

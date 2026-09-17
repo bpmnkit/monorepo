@@ -2,11 +2,13 @@ import { Link } from "wouter"
 
 export function NotFound() {
 	return (
-		<div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-			<h1 className="text-4xl font-bold text-muted">404</h1>
-			<p className="text-lg text-fg">Page not found</p>
-			<p className="text-sm text-muted">The page you're looking for doesn't exist.</p>
-			<Link href="/" className="text-sm text-accent hover:underline">
+		<div className="ds-empty h-full">
+			<span className="ds-datum text-5xl text-muted">404</span>
+			<div>
+				<p className="ds-title">Page not found</p>
+				<p className="ds-lede mt-1">The page you're looking for doesn't exist.</p>
+			</div>
+			<Link href="/" className="text-accent text-sm hover:underline">
 				← Back to Dashboard
 			</Link>
 		</div>

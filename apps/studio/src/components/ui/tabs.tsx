@@ -11,10 +11,7 @@ export const TabsList = forwardRef<
 >(({ className, ...props }, ref) => (
 	<TabsPrimitive.List
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
-		className={cn(
-			"inline-flex h-9 items-center gap-1 rounded-md bg-surface-2 p-1 text-muted",
-			className,
-		)}
+		className={cn("ds-tabs", className)}
 		{...props}
 	/>
 ))
@@ -27,9 +24,8 @@ export const TabsTrigger = forwardRef<
 	<TabsPrimitive.Trigger
 		ref={ref as unknown as React.RefObject<HTMLButtonElement>}
 		className={cn(
-			"inline-flex items-center justify-center rounded px-3 py-1 text-sm font-medium transition-colors",
+			"ds-tab",
 			"focus-visible:outline-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-50",
-			"data-[state=active]:bg-surface data-[state=active]:text-fg data-[state=active]:shadow-sm",
 			className,
 		)}
 		{...props}
@@ -43,7 +39,7 @@ export const TabsContent = forwardRef<
 >(({ className, ...props }, ref) => (
 	<TabsPrimitive.Content
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
-		className={cn("mt-2 focus-visible:outline-2 focus-visible:outline-accent", className)}
+		className={cn("mt-3 focus-visible:outline-2 focus-visible:outline-accent", className)}
 		{...props}
 	/>
 ))

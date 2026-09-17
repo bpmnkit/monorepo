@@ -4,9 +4,74 @@
 @import "@cascivo/themes/base.css";
 @import "@cascivo/react/styles.css";
 
+/* ── Type ───────────────────────────────────────────────────────────────
+   The design system's two families, self-hosted; copied from the landing app
+   by scripts/copy-fonts.mjs so the demo serves its own faces. Both are
+   OFL 1.1; the licences ship alongside the files. */
+
+@font-face {
+	font-family: "Space Grotesk";
+	font-style: normal;
+	font-weight: 300 700;
+	font-display: swap;
+	src: url("/fonts/space-grotesk-latin-var.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Space Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("/fonts/space-mono-latin-400.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Space Mono";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("/fonts/space-mono-latin-700.woff2") format("woff2");
+}
+
+/* ── Brand tokens → design-system tokens ────────────────────────────────
+   The page is drawn with inline `var(--bpmnkit-*)` references, so rather than
+   edit 760 lines of markup this re-points the brand tokens onto the
+   `--bpmnkit-ds-*` set — the same one seam the studio uses. The demo used to
+   open in the `neon` white-label theme on the product palette; it now wears
+   the system the rest of the site does.
+
+   Semantic state is exempt, as everywhere: the three comparison variants are
+   marked with success / warn / danger, which is what they mean. */
+
+:root {
+	--bpmnkit-bg: var(--bpmnkit-ds-bg);
+	--bpmnkit-surface: var(--bpmnkit-ds-surface);
+	--bpmnkit-surface-2: var(--bpmnkit-ds-bg-alt);
+	--bpmnkit-border: var(--bpmnkit-ds-line);
+	--bpmnkit-fg: var(--bpmnkit-ds-ink);
+	--bpmnkit-fg-muted: var(--bpmnkit-ds-ink-3);
+
+	--bpmnkit-accent: var(--bpmnkit-ds-accent);
+	--bpmnkit-accent-bright: var(--bpmnkit-ds-accent-hover);
+	--bpmnkit-accent-subtle: var(--bpmnkit-ds-accent-tint);
+	--bpmnkit-accent-fg: #ffffff;
+	--bpmnkit-teal: var(--bpmnkit-ds-accent);
+
+	--bpmnkit-panel-bg: var(--bpmnkit-ds-surface);
+	--bpmnkit-panel-border: var(--bpmnkit-ds-line);
+
+	/* Square: the only rounded things belong to the diagram renderer. */
+	--bpmnkit-radius: 0;
+	--bpmnkit-radius-sm: 0;
+	--bpmnkit-radius-lg: 0;
+
+	--bpmnkit-font: var(--bpmnkit-ds-font-sans);
+	--bpmnkit-font-mono: var(--bpmnkit-ds-font-mono);
+}
+
 /* Brand bridge: cascivo semantic color tokens → @bpmnkit/ui brand tokens.
- * Mirrors apps/studio/src/styles/cascivo.css so Cascivo components pick up
- * this app's dark theme for free. */
+ * Mirrors apps/studio/src/styles/cascivo.css, so cascivo components follow the
+ * design-system mapping above for free. */
 :root {
 	--cascivo-color-bg: var(--bpmnkit-bg);
 	--cascivo-color-background: var(--bpmnkit-bg);
@@ -81,6 +146,65 @@
 	--cascivo-font-sans: var(--bpmnkit-font);
 	--cascivo-font-display: var(--bpmnkit-font);
 	--cascivo-font-mono: var(--bpmnkit-font-mono);
+
+	/* The system's depth cue is a 1px hairline and nothing else, so cascivo's
+	 * radius and shadow scales are collapsed at the token level rather than
+	 * fought component by component. `radius-full` is left alone: it draws
+	 * circular marks, not chrome. */
+	--cascivo-radius-sm: 0;
+	--cascivo-radius-base: 0;
+	--cascivo-radius-md: 0;
+	--cascivo-radius-lg: 0;
+	--cascivo-radius-xl: 0;
+	--cascivo-radius-2xl: 0;
+	--cascivo-radius-badge: 0;
+	--cascivo-radius-button: 0;
+	--cascivo-radius-card: 0;
+	--cascivo-radius-control: 0;
+	--cascivo-radius-field: 0;
+	--cascivo-radius-input: 0;
+	--cascivo-radius-item: 0;
+	--cascivo-radius-modal: 0;
+	--cascivo-radius-overlay: 0;
+	--cascivo-radius-surface: 0;
+
+	--cascivo-shadow-xs: none;
+	--cascivo-shadow-sm: none;
+	--cascivo-shadow-md: none;
+	--cascivo-shadow-lg: none;
+	--cascivo-shadow-xl: none;
+	--cascivo-shadow-overlay: none;
+}
+
+@theme inline {
+	/* Every `rounded-*` and `shadow-*` utility resolves to nothing; the
+	 * circular marks that use `rounded-full` keep their shape. */
+	--radius-xs: 0;
+	--radius-sm: 0;
+	--radius-md: 0;
+	--radius-lg: 0;
+	--radius-xl: 0;
+	--radius-2xl: 0;
+	--shadow-xs: none;
+	--shadow-sm: none;
+	--shadow-md: none;
+	--shadow-lg: none;
+	--shadow-xl: none;
+}
+
+/* cascivo's Button wraps its children in one unclassed `<span>`, and Tailwind's
+   preflight makes every `<svg>` a block, so an icon beside a label stacked
+   above it. Same fix as the studio's, by the component's own DOM contract. */
+button[data-variant][data-size] > span {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* A `<dialog>` in the top layer is centred by the user agent's `margin: auto`,
+   which Tailwind's preflight resets on every element. */
+dialog:modal {
+	margin: auto;
 }
 
 @keyframes blink {
@@ -107,6 +231,6 @@ body,
 
 body {
 	font-family: var(--bpmnkit-font, system-ui, sans-serif);
-	background: var(--bpmnkit-bg, #0d0d16);
-	color: var(--bpmnkit-fg, #cdd6f4);
+	background: var(--bpmnkit-bg, #f4f5f7);
+	color: var(--bpmnkit-fg, #14161a);
 }

@@ -55,7 +55,7 @@ function BackendSelector() {
 			<select
 				value={aiBackend}
 				onChange={(e) => setAiBackend((e.target as HTMLSelectElement).value as AiBackend)}
-				className="appearance-none bg-surface-2 border border-border rounded px-2 py-0.5 text-[11px] text-muted hover:text-fg cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent pr-5"
+				className="ds-field ds-datum cursor-pointer appearance-none py-0.5 pr-5 text-[11px] text-muted hover:text-fg"
 				aria-label="Select AI backend"
 			>
 				<option value="auto">
@@ -98,7 +98,7 @@ function XmlPreview({ xml }: { xml: string }) {
 	return (
 		<div
 			ref={containerRef}
-			className="mt-2 rounded border border-border overflow-hidden"
+			className="ds-box mt-2 overflow-hidden bg-canvas"
 			style={{ height: 160 }}
 		/>
 	)
@@ -134,8 +134,8 @@ function EditorAiPanel({ onClose }: { onClose(): void }) {
 		<div className="flex w-full md:w-[360px] flex-col h-full border-l border-border">
 			<div className="flex items-center justify-between border-b border-border px-3 py-2 shrink-0">
 				<div>
-					<div className="text-sm font-medium text-fg">AI Assistant</div>
-					<div className="text-xs text-muted">Talking about: Model</div>
+					<div className="ds-eyebrow">AI Assistant</div>
+					<div className="ds-datum text-muted text-xs">Talking about: Model</div>
 				</div>
 				<button
 					type="button"
@@ -264,8 +264,8 @@ function TextChat({ contextLabel, onClose }: { contextLabel: string; onClose(): 
 			{/* Header */}
 			<div className="flex items-center justify-between border-b border-border px-3 py-2 shrink-0">
 				<div>
-					<div className="text-sm font-medium text-fg">AI Assistant</div>
-					<div className="text-xs text-muted">Talking about: {contextLabel}</div>
+					<div className="ds-eyebrow">AI Assistant</div>
+					<div className="ds-datum text-muted text-xs">Talking about: {contextLabel}</div>
 				</div>
 				<div className="flex items-center gap-1.5">
 					<BackendSelector />
@@ -283,7 +283,7 @@ function TextChat({ contextLabel, onClose }: { contextLabel: string; onClose(): 
 			{/* Messages */}
 			<div className="flex-1 overflow-y-auto p-3 space-y-3" aria-live="polite" aria-atomic="false">
 				{aiMessages.length === 0 && (
-					<p className="text-center text-xs text-muted mt-8">
+					<p className="ds-lede mt-8 text-center text-xs">
 						Ask anything about your processes, instances, or incidents.
 					</p>
 				)}
@@ -293,8 +293,10 @@ function TextChat({ contextLabel, onClose }: { contextLabel: string; onClose(): 
 						className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
 					>
 						<div
-							className={`max-w-[90%] rounded-lg px-3 py-2 text-sm ${
-								msg.role === "user" ? "bg-accent text-accent-fg" : "bg-surface-2 text-fg"
+							className={`max-w-[90%] px-3 py-2 text-sm ${
+								msg.role === "user"
+									? "border-accent border-r-2 bg-accent/10 text-fg"
+									: "border-border border-l-2 bg-surface-2 text-fg"
 							}`}
 						>
 							{msg.content && msg.content}
@@ -304,11 +306,11 @@ function TextChat({ contextLabel, onClose }: { contextLabel: string; onClose(): 
 							<div className="w-full mt-1">
 								<XmlPreview xml={msg.xml} />
 								<div className="flex items-center justify-between mt-1 px-1">
-									<span className="text-[11px] text-muted">Diagram ready</span>
+									<span className="ds-label ds-label--micro">Diagram ready</span>
 									<button
 										type="button"
 										onClick={() => msg.xml && editorAiContext.loadXml(msg.xml)}
-										className="text-[11px] font-medium text-accent hover:underline"
+										className="ds-label ds-label--micro text-accent hover:underline"
 									>
 										Apply to editor
 									</button>
@@ -328,21 +330,17 @@ function TextChat({ contextLabel, onClose }: { contextLabel: string; onClose(): 
 					onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
 					onKeyDown={handleKeyDown}
 					placeholder="Ask AI… (Enter to send)"
-					className="flex-1 w-full resize-none rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-fg placeholder:text-muted focus-visible:outline-2 focus-visible:outline-accent"
+					className="ds-field w-full flex-1 resize-none text-sm"
 					rows={2}
 					disabled={loading}
 					aria-label="Message input"
 				/>
 				<div className="mt-1 flex justify-between items-center">
-					<span className="text-xs text-muted">Shift+Enter for newline</span>
+					<span className="ds-label ds-label--micro">Shift+Enter for newline</span>
 					<div className="flex items-center gap-2">
-						{loading && <span className="text-xs text-accent animate-pulse">Thinking…</span>}
+						{loading && <span className="ds-label animate-pulse text-accent">Thinking…</span>}
 						{aiMessages.length > 0 && !loading && (
-							<button
-								type="button"
-								onClick={clearAiMessages}
-								className="text-xs text-muted hover:text-fg"
-							>
+							<button type="button" onClick={clearAiMessages} className="ds-label hover:text-fg">
 								Clear
 							</button>
 						)}

@@ -1,5 +1,77 @@
 # Features
 
+## Learn, the forms and the last plugins join the design system (2026-09-17)
+
+- **`apps/learn` is on the system.** The 2025 aurora — drifting blurred orbs, a dot
+  grid, a grain layer, gradient headings, glow hovers, 8–20px radii, lifts, pill badges
+  and a magenta third brand colour — is replaced by the flat, square, hairline-ruled
+  paper ground bpmnkit.com wears. Catalogue and glossary are one bordered box divided by
+  hairlines; the progress bar is a rule that fills; the embedded editor moved from the
+  `neon` white-label theme to the system's light one.
+- **`@bpmnkit/astro-shared` exposes the landing site's own vocabulary**, with the landing
+  site's own values, derived from `--bpmnkit-ds-*` — so the two sites read one token set.
+  `background.css` is now one rule, and the aurora's classes are deliberately undefined.
+- **Two values became tokens.** `--bpmnkit-ds-bg-alt` and `--bpmnkit-ds-accent-tint` join
+  `@bpmnkit/ui`, so the landing and the Astro layer share them instead of restating them.
+- **`form-viewer`, `form-editor` and `dmn-viewer`** stop restating palettes of their own
+  (a Catppuccin dark and a Tailwind light) and read the design-system set with hex
+  fallbacks, so a form or a decision table matches the dock it sits in. 31 non-zero radii
+  are gone; the DMN section tints and the FEEL syntax colours stay exempt.
+- **`apps/demo`** opened in the `neon` white-label theme and was still titled "BPMN SDK". It
+  now wears the system through the same one-seam token bridge the studio uses, so its 760 lines
+  of inline `var(--bpmnkit-*)` markup did not have to move.
+- **`variable-flow`'s "both" mark** is mixed from the accent a read is marked with and the
+  green a write is marked with, in place of the product palette's secondary brand colour.
+- **`@bpmnkit/user-tasks`** is square, hairline-ruled and mono in its meta line, and
+  defaults to `light` — it mounts inside the studio's task page, which is on the system.
+- **The canvas focus ring** takes the accent in place of a hardcoded `#0066cc`; the
+  renderer's strokes, fills and labels are untouched.
+- **Guarded**: `packages/astro-shared` gains four assertions — the tokens derive from the
+  design-system set, the radius is zero and `--pink` is gone, the ground draws no blur or
+  gradient, and `.aurora` / `.orb` / `.dots` / `.grain` are no longer defined.
+
+## The studio wears the design system (2026-09-17)
+
+The token bridge from #165 gave the studio the palette and the two type families.
+This gives it the system's form.
+
+- **A `.ds-*` component vocabulary** (`apps/studio/src/styles/design-system.css`), in
+  Tailwind's `components` layer so a utility at a call site still overrides it: the
+  hairline-subdivided grid (`.ds-grid` / `.ds-cell`), the bordered box, the mono label,
+  eyebrow and datum, the tinted state mark, the square control, the segmented control,
+  the accent-ruled tab, the field, the note, the code block, the empty state.
+- **The dashboard is one readout, not six cards.** Six metrics in a single bordered box
+  divided by 1px hairlines; the icon is a 16px mark rather than a filled tile, the value
+  is mono, the label is mono uppercase, and nothing lifts or casts a shadow on hover.
+- **Status is text, not a button.** `StatusPill`, `ProfileTag`, priorities, candidate
+  groups and model types are tinted mono marks. `components/ui/badge.tsx` is gone with them.
+- **Every list page has a head** — mono eyebrow, count as a datum, filters as a
+  hairline-divided segmented control — and every key, id, version, path and timestamp in
+  the app is mono.
+- **Settings reads like a specification**: five numbered sections (`01`–`05`) over
+  hairlines, and one `ActiveToggle` in place of three copies of the same control.
+- **Two rules enforced at the seam, not the call site.** cascivo ships hashed CSS-module
+  class names, so column heads become mono through `thead th`, and the rail's nine
+  destinations through `nav[aria-label="Main navigation"] a` — scoped by the `ariaLabel`
+  the Sidebar passes rather than by a hash. The rail's profile and project pickers stay in
+  natural case: they read out a name.
+- **Dark and neon redeclare `--bpmnkit-ds-*`** rather than aliasing it, the way Operate
+  does, so a rule that reads a design-system token directly themes correctly. Neon takes
+  `@bpmnkit/ui`'s own palette and keeps its one accent.
+- **Verified against a build of the previous commit**, page by page in both themes and
+  at phone width, with a scripted tour driving the filters, dialogs, palette, theme picker
+  and mode toggle against each. Four regressions in the new layer were found and fixed
+  there: `auto-fit` stretched a lone card across the page, a short last row read as a
+  filled block, a table header's ground stopped short where a column is `sr-only`, and
+  mono's extra tracking ellipsised a project name in the rail.
+- **Two pre-existing chrome bugs fixed**, both Tailwind preflight against markup it
+  does not own: `*{margin:0}` beat the user agent's `dialog{margin:auto}` so every modal
+  opened top-left, and `svg{display:block}` stacked the icon above the label in every
+  cascivo button.
+- **Zero `rounded-*` (bar circular marks), `shadow-*`, `backdrop-blur` or `bg-gradient`**
+  left in the studio's 40 components, guarded by three new assertions in
+  `tests/theme.test.ts`.
+
 ## The Camunda pack reads correctly everywhere (2026-09-16)
 
 - **`build` syncs the pack version.** A payload that is committed rather than

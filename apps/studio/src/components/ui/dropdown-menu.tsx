@@ -32,7 +32,7 @@ export const DropdownMenuContent = forwardRef<
 			ref={ref as unknown as React.RefObject<HTMLDivElement>}
 			sideOffset={sideOffset}
 			className={cn(
-				"z-50 min-w-32 overflow-hidden rounded-md border border-border bg-panel p-1 shadow-lg",
+				"z-50 min-w-32 overflow-hidden border border-border bg-panel p-1",
 				"data-[state=open]:animate-in data-[state=closed]:animate-out",
 				"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
 				"data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -51,7 +51,7 @@ export const DropdownMenuItem = forwardRef<
 	<DropdownMenuPrimitive.Item
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
 		className={cn(
-			"relative flex cursor-pointer select-none items-center gap-2 rounded px-2 py-1.5 text-sm text-fg outline-none",
+			"relative flex cursor-pointer select-none items-center gap-2 px-2 py-1.5 text-sm text-fg outline-none",
 			"focus:bg-surface-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
 			inset && "pl-8",
 			className,
@@ -67,7 +67,7 @@ export const DropdownMenuLabel = forwardRef<
 >(({ className, inset, ...props }, ref) => (
 	<DropdownMenuPrimitive.Label
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
-		className={cn("px-2 py-1.5 text-xs font-semibold text-muted", inset && "pl-8", className)}
+		className={cn("ds-label px-2 py-1.5", inset && "pl-8", className)}
 		{...props}
 	/>
 ))
@@ -80,7 +80,7 @@ export const DropdownMenuCheckboxItem = forwardRef<
 	<DropdownMenuPrimitive.CheckboxItem
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
 		className={cn(
-			"relative flex cursor-pointer select-none items-center rounded py-1.5 pl-8 pr-2 text-sm text-fg outline-none",
+			"relative flex cursor-pointer select-none items-center py-1.5 pl-8 pr-2 text-sm text-fg outline-none",
 			"focus:bg-surface-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
 			className,
 		)}
@@ -104,7 +104,7 @@ export const DropdownMenuRadioItem = forwardRef<
 	<DropdownMenuPrimitive.RadioItem
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
 		className={cn(
-			"relative flex cursor-pointer select-none items-center rounded py-1.5 pl-8 pr-2 text-sm text-fg outline-none",
+			"relative flex cursor-pointer select-none items-center py-1.5 pl-8 pr-2 text-sm text-fg outline-none",
 			"focus:bg-surface-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
 			className,
 		)}
@@ -127,7 +127,7 @@ export const DropdownMenuSubTrigger = forwardRef<
 	<DropdownMenuPrimitive.SubTrigger
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
 		className={cn(
-			"flex cursor-default select-none items-center gap-2 rounded px-2 py-1.5 text-sm text-fg outline-none focus:bg-surface-2",
+			"flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm text-fg outline-none focus:bg-surface-2",
 			inset && "pl-8",
 			className,
 		)}
@@ -146,7 +146,7 @@ export const DropdownMenuSubContent = forwardRef<
 	<DropdownMenuPrimitive.SubContent
 		ref={ref as unknown as React.RefObject<HTMLDivElement>}
 		className={cn(
-			"z-50 min-w-32 overflow-hidden rounded-md border border-border bg-panel p-1 shadow-lg",
+			"z-50 min-w-32 overflow-hidden border border-border bg-panel p-1",
 			"data-[state=open]:animate-in data-[state=closed]:animate-out",
 			className,
 		)}

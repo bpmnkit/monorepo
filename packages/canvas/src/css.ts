@@ -300,7 +300,7 @@ export const CANVAS_CSS = `
   --bpmnkit-flow-stroke: #404040;
   --bpmnkit-text: var(--bpmnkit-fg, #333333);
   --bpmnkit-highlight: var(--bpmnkit-accent, #1a56db);
-  --bpmnkit-focus: #0066cc;
+  --bpmnkit-focus: var(--bpmnkit-ds-accent, #a8503a);
   --bpmnkit-overlay-bg: rgba(248, 249, 250, 0.92);
   --bpmnkit-overlay-border: rgba(0, 0, 0, 0.12);
 }
@@ -314,7 +314,7 @@ export const CANVAS_CSS = `
   --bpmnkit-flow-stroke: #7777aa;
   --bpmnkit-text: var(--bpmnkit-fg, #cdd6f4);
   --bpmnkit-highlight: var(--bpmnkit-accent-bright, #89b4fa);
-  --bpmnkit-focus: #89b4fa;
+  --bpmnkit-focus: var(--bpmnkit-ds-accent-on-dark, #c9755c);
   --bpmnkit-overlay-bg: rgba(30, 30, 46, 0.92);
   --bpmnkit-overlay-border: rgba(255, 255, 255, 0.1);
 }

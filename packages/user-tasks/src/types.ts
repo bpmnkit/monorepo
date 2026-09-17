@@ -21,7 +21,7 @@ export interface UserTaskWidgetOptions {
 	proxyUrl?: string
 	/** Active profile name for x-profile header. */
 	profile?: string | null
-	/** Visual theme. Defaults to "neon". */
+	/** Visual theme. Defaults to "light", the design system's own. */
 	theme?: Theme
 	/** Called when the user completes the task. */
 	onComplete(variables: Record<string, unknown>): void

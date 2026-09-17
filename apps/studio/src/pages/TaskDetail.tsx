@@ -77,7 +77,7 @@ export function TaskDetail() {
 				{isLoading ? (
 					<div className="p-6 space-y-4">
 						{(["s0", "s1", "s2", "s3"] as const).map((sk) => (
-							<div key={sk} className="h-8 animate-pulse rounded bg-surface-2" />
+							<div key={sk} className="h-8 animate-pulse bg-surface-2" />
 						))}
 					</div>
 				) : (

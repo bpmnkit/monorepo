@@ -80,12 +80,12 @@ function JobTypeIcon({ jobType }: { jobType: string }) {
 function StatePill({ state }: { state: string }) {
 	const cls =
 		state === "completed"
-			? "bg-success/15 text-success"
+			? "ds-mark--success"
 			: state === "failed"
-				? "bg-danger/15 text-danger"
-				: "bg-warn/15 text-warn"
+				? "ds-mark--danger"
+				: "ds-mark--warn"
 	return (
-		<span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium ${cls}`}>
+		<span className={`ds-mark ${cls}`}>
 			{state === "completed" ? (
 				<CheckCircle2 size={10} />
 			) : state === "failed" ? (
@@ -106,11 +106,7 @@ function JsonBlock({ data }: { data: unknown }) {
 	if (!text || text === "{}" || text === "null")
 		return <span className="text-muted text-xs">—</span>
 
-	return (
-		<pre className="text-xs font-mono bg-surface-2 rounded p-2 overflow-x-auto max-h-48 whitespace-pre-wrap break-all">
-			{text}
-		</pre>
-	)
+	return <pre className="ds-code max-h-48 break-all">{text}</pre>
 }
 
 // ── Step detail ───────────────────────────────────────────────────────────────
@@ -123,23 +119,19 @@ function StepCard({ step }: { step: RunHistoryStep }) {
 	const isCli = step.jobType === "io.bpmnkit:cli:1"
 
 	return (
-		<div
-			className={`rounded-lg border ${step.state === "failed" ? "border-danger/40 bg-danger/5" : "border-border bg-surface"}`}
-		>
+		<div className={`ds-box ${step.state === "failed" ? "border-l-2 border-l-danger" : ""}`}>
 			{/* Header */}
 			<button
 				type="button"
-				className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2 rounded-lg"
+				className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-bg"
 				onClick={() => setOpen((v) => !v)}
 				aria-expanded={open}
 			>
 				<JobTypeIcon jobType={step.jobType} />
-				<span className="text-xs font-medium text-muted uppercase tracking-wide">
-					{jobTypeLabel(step.jobType)}
-				</span>
-				<span className="flex-1 font-mono text-xs text-muted truncate">{step.elementId}</span>
+				<span className="ds-label">{jobTypeLabel(step.jobType)}</span>
+				<span className="ds-datum flex-1 truncate text-muted text-xs">{step.elementId}</span>
 				<StatePill state={step.state} />
-				<span className="text-xs text-muted ml-1">{formatDuration(step.durationMs)}</span>
+				<span className="ds-datum ml-1 text-muted text-xs">{formatDuration(step.durationMs)}</span>
 				{open ? (
 					<ChevronDown size={14} className="text-muted" />
 				) : (
@@ -149,29 +141,29 @@ function StepCard({ step }: { step: RunHistoryStep }) {
 
 			{/* Expanded body */}
 			{open && (
-				<div className="px-4 pb-4 space-y-3 border-t border-border">
+				<div className="space-y-3 border-border border-t px-3 pb-3">
 					{/* Error */}
 					{step.errorMessage && (
 						<div className="mt-3 flex items-start gap-2 text-danger text-sm">
 							<AlertCircle size={14} className="mt-0.5 shrink-0" />
-							<span className="font-mono text-xs break-all">{step.errorMessage}</span>
+							<span className="ds-datum break-all text-xs">{step.errorMessage}</span>
 						</div>
 					)}
 
 					{/* Timing */}
-					<div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
+					<div className="ds-datum mt-3 grid grid-cols-3 gap-2 text-muted text-xs">
 						<div>
-							<div className="font-medium text-fg/60 mb-0.5">Started</div>
+							<div className="ds-label mb-0.5">Started</div>
 							{formatTime(step.startedAt)}
 						</div>
 						{step.endedAt && (
 							<div>
-								<div className="font-medium text-fg/60 mb-0.5">Ended</div>
+								<div className="ds-label mb-0.5">Ended</div>
 								{formatTime(step.endedAt)}
 							</div>
 						)}
 						<div>
-							<div className="font-medium text-fg/60 mb-0.5">Duration</div>
+							<div className="ds-label mb-0.5">Duration</div>
 							{formatDuration(step.durationMs)}
 						</div>
 					</div>
@@ -181,24 +173,24 @@ function StepCard({ step }: { step: RunHistoryStep }) {
 						<div className="space-y-2">
 							{(inputs as Record<string, unknown>).prompt && (
 								<div>
-									<div className="text-xs font-medium text-muted mb-1">Prompt</div>
-									<pre className="text-xs bg-surface-2 rounded p-2 overflow-x-auto max-h-40 whitespace-pre-wrap break-all">
+									<div className="ds-label mb-1">Prompt</div>
+									<pre className="ds-code max-h-40 break-all">
 										{String((inputs as Record<string, unknown>).prompt)}
 									</pre>
 								</div>
 							)}
 							{(inputs as Record<string, unknown>).system && (
 								<div>
-									<div className="text-xs font-medium text-muted mb-1">System prompt</div>
-									<pre className="text-xs bg-surface-2 rounded p-2 overflow-x-auto max-h-24 whitespace-pre-wrap break-all">
+									<div className="ds-label mb-1">System prompt</div>
+									<pre className="ds-code max-h-24 break-all">
 										{String((inputs as Record<string, unknown>).system)}
 									</pre>
 								</div>
 							)}
 							{typeof outputs === "object" && outputs !== null && (
 								<div>
-									<div className="text-xs font-medium text-accent mb-1">Response</div>
-									<pre className="text-xs bg-accent/5 border border-accent/20 rounded p-2 overflow-x-auto max-h-48 whitespace-pre-wrap break-all">
+									<div className="ds-label mb-1 text-accent">Response</div>
+									<pre className="ds-code max-h-48 break-all border-l-2 border-l-accent">
 										{String(Object.values(outputs as Record<string, unknown>)[0] ?? "")}
 									</pre>
 								</div>
@@ -210,21 +202,21 @@ function StepCard({ step }: { step: RunHistoryStep }) {
 					{isCli && typeof inputs === "object" && inputs !== null && (
 						<div className="space-y-2">
 							<div>
-								<div className="text-xs font-medium text-muted mb-1">Command</div>
-								<pre className="text-xs font-mono bg-surface-2 rounded p-2 overflow-x-auto">
+								<div className="ds-label mb-1">Command</div>
+								<pre className="ds-code">
 									{String((inputs as Record<string, unknown>).command ?? "")}
 								</pre>
 							</div>
 							{typeof outputs === "object" && outputs !== null && (
 								<div>
-									<div className="text-xs font-medium text-muted mb-1">Output</div>
+									<div className="ds-label mb-1">Output</div>
 									{(outputs as Record<string, unknown>).stdout && (
-										<pre className="text-xs font-mono bg-surface-2 rounded p-2 overflow-x-auto max-h-32 text-success/80 whitespace-pre-wrap">
+										<pre className="ds-code max-h-32 text-success">
 											{String((outputs as Record<string, unknown>).stdout)}
 										</pre>
 									)}
 									{(outputs as Record<string, unknown>).stderr && (
-										<pre className="text-xs font-mono bg-danger/5 border border-danger/20 rounded p-2 overflow-x-auto max-h-32 text-danger/80 whitespace-pre-wrap">
+										<pre className="ds-code max-h-32 border-l-2 border-l-danger text-danger">
 											{String((outputs as Record<string, unknown>).stderr)}
 										</pre>
 									)}
@@ -237,11 +229,11 @@ function StepCard({ step }: { step: RunHistoryStep }) {
 					{!isLlm && !isCli && (
 						<div className="grid grid-cols-2 gap-3">
 							<div>
-								<div className="text-xs font-medium text-muted mb-1">Inputs</div>
+								<div className="ds-label mb-1">Inputs</div>
 								<JsonBlock data={inputs} />
 							</div>
 							<div>
-								<div className="text-xs font-medium text-muted mb-1">Outputs</div>
+								<div className="ds-label mb-1">Outputs</div>
 								<JsonBlock data={outputs} />
 							</div>
 						</div>
@@ -263,14 +255,14 @@ function RunDetail({ runId, onClose }: { runId: string; onClose: () => void }) {
 				<button
 					type="button"
 					onClick={onClose}
-					className="text-muted hover:text-fg text-xs"
+					className="ds-label transition-colors hover:text-fg"
 					aria-label="Close detail"
 				>
 					← Back
 				</button>
 				{data && (
 					<>
-						<span className="font-mono text-xs text-muted truncate flex-1">
+						<span className="ds-datum flex-1 truncate text-muted text-xs">
 							{data.processInstanceKey}
 						</span>
 						<StatePill state={data.state} />
@@ -288,19 +280,19 @@ function RunDetail({ runId, onClose }: { runId: string; onClose: () => void }) {
 				{data && (
 					<>
 						{/* Run metadata */}
-						<div className="grid grid-cols-3 gap-3 text-xs text-muted bg-surface-2 rounded-lg p-3">
-							<div>
-								<div className="font-medium text-fg/60 mb-0.5">Started</div>
+						<div className="ds-datum ds-grid [--ds-col:110px] text-muted text-xs">
+							<div className="ds-cell">
+								<div className="ds-label mb-0.5">Started</div>
 								{formatDate(data.startedAt)}
 							</div>
 							{data.endedAt && (
-								<div>
-									<div className="font-medium text-fg/60 mb-0.5">Ended</div>
+								<div className="ds-cell">
+									<div className="ds-label mb-0.5">Ended</div>
 									{formatDate(data.endedAt)}
 								</div>
 							)}
-							<div>
-								<div className="font-medium text-fg/60 mb-0.5">Steps</div>
+							<div className="ds-cell">
+								<div className="ds-label mb-0.5">Steps</div>
 								{data.steps?.length ?? 0}
 								{(data.failedSteps ?? 0) > 0 && (
 									<span className="ml-1 text-danger">({data.failedSteps} failed)</span>
@@ -360,13 +352,13 @@ function RerunDialog({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-			<div className="bg-surface rounded-xl border border-border shadow-lg w-full max-w-lg p-6 space-y-4">
-				<h2 className="text-sm font-semibold">Re-run process</h2>
-				<p className="text-xs text-muted">
+			<div className="ds-box w-full max-w-lg space-y-4 p-6">
+				<h2 className="ds-title text-base">Re-run process</h2>
+				<p className="ds-lede text-xs">
 					Edit variables below then confirm to start a new process instance.
 				</p>
 				<textarea
-					className="w-full font-mono text-xs bg-surface-2 border border-border rounded-lg p-3 resize-y h-48 focus:outline-none focus:ring-1 focus:ring-accent"
+					className="ds-field ds-datum h-48 w-full resize-y text-xs"
 					value={vars}
 					onInput={(e) => setVars((e.target as HTMLTextAreaElement).value)}
 					spellcheck={false}
@@ -404,16 +396,16 @@ function RunRow({
 			<button
 				type="button"
 				onClick={onClick}
-				className={`flex w-full items-center gap-3 px-4 py-3 text-left border-b border-border/50 hover:bg-surface-2 transition-colors ${
+				className={`flex w-full items-center gap-3 border-border/60 border-b px-4 py-3 text-left transition-colors hover:bg-bg ${
 					active ? "bg-accent/10" : ""
 				}`}
 			>
 				<StatePill state={run.state} />
 				<div className="flex-1 min-w-0">
-					<div className="font-mono text-xs text-muted truncate">{run.processInstanceKey}</div>
-					<div className="text-xs text-muted/60 mt-0.5">{formatDate(run.startedAt)}</div>
+					<div className="ds-datum truncate text-muted text-xs">{run.processInstanceKey}</div>
+					<div className="ds-datum mt-0.5 text-[11px] text-muted">{formatDate(run.startedAt)}</div>
 				</div>
-				<div className="text-xs text-muted text-right shrink-0">
+				<div className="ds-datum shrink-0 text-right text-muted text-xs">
 					<div>{run.stepCount ?? 0} steps</div>
 					{(run.failedSteps ?? 0) > 0 && (
 						<div className="text-danger">{run.failedSteps} failed</div>
@@ -423,7 +415,7 @@ function RunRow({
 					<button
 						type="button"
 						aria-label="Re-run"
-						className="shrink-0 p-1 rounded hover:bg-accent/10 text-muted hover:text-accent transition-colors"
+						className="shrink-0 p-1 text-muted transition-colors hover:text-accent"
 						onClick={(e) => {
 							e.stopPropagation()
 							setShowRerun(true)
@@ -482,11 +474,11 @@ export function RunHistory() {
 				className={`flex flex-col shrink-0 border-r border-border ${selectedId ? "w-80" : "flex-1"}`}
 			>
 				{/* Header */}
-				<div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+				<div className="flex shrink-0 items-center justify-between border-border border-b px-4 py-2.5">
 					<div>
-						<h1 className="text-sm font-semibold">Run History</h1>
+						<h1 className="ds-eyebrow">Run History</h1>
 						{!isLoading && (
-							<p className="text-xs text-muted mt-0.5">
+							<p className="ds-datum mt-0.5 text-muted text-xs">
 								{runs.length} run{runs.length !== 1 ? "s" : ""}
 							</p>
 						)}

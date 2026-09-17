@@ -40,4 +40,45 @@ describe("design-system wiring", () => {
 		expect(css).toContain("--bpmnkit-font: var(--bpmnkit-ds-font-sans)")
 		expect(css).toContain("--bpmnkit-font-mono: var(--bpmnkit-ds-font-mono)")
 	})
+
+	it("redeclares the design-system set for dark and neon", () => {
+		// A `.ds-*` rule reads `--bpmnkit-ds-*` directly, so aliasing the brand
+		// tokens is not enough: without this, dark renders the light ink.
+		for (const theme of ['[data-theme="dark"]', '[data-theme="neon"]']) {
+			const block = css.slice(css.indexOf(theme))
+			expect(block, `${theme} does not redeclare --bpmnkit-ds-ink-3`).toContain(
+				"--bpmnkit-ds-ink-3:",
+			)
+			expect(block, `${theme} does not redeclare --bpmnkit-ds-line`).toContain("--bpmnkit-ds-line:")
+		}
+	})
+})
+
+/**
+ * The component vocabulary the pages compose with. These guard the two shapes
+ * that carry the system's form, and the layer that keeps them overridable.
+ */
+describe("the .ds-* component layer", () => {
+	it("lives in Tailwind's components layer, so a utility still wins", () => {
+		expect(css).toMatch(/@layer components \{/)
+	})
+
+	it("draws a grid as one bordered box subdivided by hairlines", () => {
+		const grid = css.slice(css.indexOf(".ds-grid {"), css.indexOf(".ds-cell {"))
+		expect(grid).toContain("border: 1px solid var(--bpmnkit-ds-line)")
+		// Dividers are borders on the children, not a `gap` over a coloured
+		// ground: a short last row has to leave surface behind, not a block.
+		expect(grid).not.toContain("gap:")
+		expect(grid).toContain("border-right: 1px solid var(--bpmnkit-ds-line-soft)")
+		// `auto-fit` collapses empty tracks and stretches a lone card across
+		// the page; `auto-fill` keeps them, so a card stays card-sized.
+		expect(grid).toContain("auto-fill")
+		expect(grid).not.toContain("auto-fit")
+	})
+
+	it("keeps the chrome square and flat", () => {
+		const layer = css.slice(css.indexOf("@layer components {"))
+		expect(layer).not.toMatch(/border-radius:(?! 0)/)
+		expect(layer).not.toMatch(/box-shadow|linear-gradient|backdrop-filter/)
+	})
 })

@@ -8,7 +8,7 @@ interface LogoProps {
  */
 export function BpmnkitLogo({ className = "" }: LogoProps) {
 	return (
-		<span className={`font-bold text-fg text-lg tracking-tight ${className}`}>
+		<span className={`font-mono font-bold text-fg text-[15px] tracking-tight ${className}`}>
 			bpmn<span className="text-accent">kit</span>
 		</span>
 	)

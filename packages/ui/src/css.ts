@@ -93,6 +93,7 @@ export const UI_TOKENS_CSS = `
 :root {
   /* Ground */
   --bpmnkit-ds-bg: #f4f5f7;
+  --bpmnkit-ds-bg-alt: #eef0f3;
   --bpmnkit-ds-surface: #ffffff;
   --bpmnkit-ds-canvas: #fbfbfc;
   --bpmnkit-ds-dark: #14161a;
@@ -113,6 +114,7 @@ export const UI_TOKENS_CSS = `
   --bpmnkit-ds-accent: #a8503a;
   --bpmnkit-ds-accent-hover: #8f412e;
   --bpmnkit-ds-accent-on-dark: #c9755c;
+  --bpmnkit-ds-accent-tint: #fdf3ef;
 
   /* Lines — the system's only depth cue */
   --bpmnkit-ds-line: #d8dbe0;
