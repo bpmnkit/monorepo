@@ -1,5 +1,37 @@
 # Progress
 
+## 2026-09-17 — The diagram stopped waiting for the model to stop talking
+
+`/chat` read the MCP server's output file once, after `adapter.stream()` resolved,
+and emitted it as the `xml` event. The MCP server writes that file on every
+mutating tool call, so for a diagram built over several calls the process was
+complete on disk seconds before anything looked at it. The user watched prose
+scroll past while the thing worth seeing sat in a temp directory.
+
+`watchOutputFile` watches the directory rather than the file — the file does not
+exist until the first tool call, and `watch` throws on a path that is not there —
+and reports each complete, changed write as a `preview` event. Against the real
+MCP server over stdio, a two-call conversation produced two frames, each a
+parseable diagram, the second carrying the first plus what the second call added.
+
+The guard that matters is what it does with a bad read. A read can land between
+the open and the flush, so a frame is validated by parsing it and dropped if it
+fails; the next write carries the whole file. That is affordable because previews
+are advisory — the `xml` event still follows and is still authoritative — and it
+is the same property that lets the panel render a frame without checking it
+against anything.
+
+In the panel, frames go into a canvas above the reply, updated with `keepViewport`
+so the diagram grows in place instead of re-framing on every change, and the
+streaming text moved into its own child element so a frame arriving mid-stream is
+not wiped by the next token. `finalizeAiMessage` replaces the live canvas with the
+authoritative render, unchanged.
+
+This is the first phase of `docs/superpowers/plans/2026-09-17-streaming-bpmn-preview.md`.
+It covers diagrams built through several tool calls. A from-scratch build that the
+model does in one `compose_diagram` call is still one frame at the end — that is
+what phase two, streaming the tool argument itself, is for.
+
 ## 2026-09-16 — The pack version stopped lying, and upstream took the suffix
 
 `@bpmnkit/camunda-docspack@0.1.0` shipped a `.llms/manifest.json` claiming

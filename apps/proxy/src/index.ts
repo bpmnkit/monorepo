@@ -29,6 +29,7 @@ import {
 import * as claude from "./adapters/claude.js"
 import * as copilot from "./adapters/copilot.js"
 import * as gemini from "./adapters/gemini.js"
+import { watchOutputFile } from "./preview-watch.js"
 import type { FindingInfo, ImproveContext } from "./prompt.js"
 import {
 	buildDmnCreateSystemPrompt,
@@ -570,6 +571,14 @@ const server = http.createServer(async (req, res) => {
 		})
 
 		const accumulated: string[] = []
+		let previewCount = 0
+		const stopWatching =
+			tmpDir && outputFile
+				? watchOutputFile(tmpDir, outputFile, (xml) => {
+						previewCount++
+						res.write(`data: ${JSON.stringify({ type: "preview", xml })}\n\n`)
+					})
+				: null
 		try {
 			await detected.adapter.stream(messages, systemPrompt, mcpConfigFile, (token) => {
 				accumulated.push(token)
@@ -579,6 +588,11 @@ const server = http.createServer(async (req, res) => {
 			const msg = err instanceof Error ? err.message : String(err)
 			console.error(`[server] adapter error: ${msg}`)
 			res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`)
+		}
+
+		if (stopWatching) {
+			stopWatching()
+			console.log(`[server] emitted ${previewCount} preview frame(s)`)
 		}
 
 		// ── Post-process: get final diagram and emit XML ──────────────────────────

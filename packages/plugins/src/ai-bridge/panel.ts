@@ -42,6 +42,7 @@ async function* streamChat(
 	signal: AbortSignal,
 	action?: string,
 	onXml?: (xml: string) => void,
+	onPreview?: (xml: string) => void,
 ): AsyncGenerator<string> {
 	let res: Response
 	try {
@@ -84,6 +85,7 @@ async function* streamChat(
 						xml?: string
 					}
 					if (event.type === "token" && event.text) yield event.text
+					if (event.type === "preview" && event.xml) onPreview?.(event.xml)
 					if (event.type === "xml" && event.xml) onXml?.(event.xml)
 					if (event.type === "done") return
 					if (event.type === "error") throw new Error(event.message ?? event.text ?? "AI error")
@@ -984,6 +986,33 @@ export function createAiPanel(options: PanelOptions): {
 	): Promise<{ fullText: string; resultXml: string | undefined }> {
 		let fullText = ""
 		let resultXml: string | undefined
+
+		// Text lives in its own child so a preview frame arriving mid-stream is not
+		// wiped by the next token.
+		const textEl = document.createElement("div")
+		aiMsgEl.append(textEl)
+
+		// The diagram as the server has it so far. Shown above the text, where the
+		// eye already is, and dropped once finalizeAiMessage renders the
+		// authoritative result in its place.
+		const live: { canvas: BpmnCanvas | null } = { canvas: null }
+		function showPreview(xml: string): void {
+			if (live.canvas) {
+				live.canvas.load(xml, { keepViewport: true })
+				return
+			}
+			const previewEl = document.createElement("div")
+			previewEl.className = "ai-msg-preview"
+			aiMsgEl.prepend(previewEl)
+			live.canvas = new BpmnCanvas({
+				container: previewEl,
+				xml,
+				grid: false,
+				fit: "contain",
+				theme: options.getTheme?.() ?? "dark",
+			})
+		}
+
 		try {
 			for await (const token of streamChat(
 				options.serverUrl,
@@ -995,15 +1024,18 @@ export function createAiPanel(options: PanelOptions): {
 				(xml) => {
 					resultXml = xml
 				},
+				showPreview,
 			)) {
 				fullText += token
-				aiMsgEl.textContent = fullText
+				textEl.textContent = fullText
 				messagesEl.scrollTop = messagesEl.scrollHeight
 			}
 		} catch (err) {
 			if (!signal.aborted) {
 				fullText = `${fullText ? `${fullText}\n\n` : ""}Error: ${err instanceof Error ? err.message : String(err)}`
 			}
+		} finally {
+			live.canvas?.destroy()
 		}
 		return { fullText, resultXml }
 	}

@@ -1,5 +1,19 @@
 # Features
 
+## The AI diagram is watchable while the model writes it (2026-09-17)
+
+- **`preview` SSE event on `/chat`** — the proxy watches the MCP server's output
+  file, which is rewritten on every mutating tool call, and reports each complete
+  write. A diagram built over several calls arrives as frames instead of appearing
+  only once the adapter stream resolves.
+- **Advisory by design.** A read that lands mid-write is dropped, not repaired —
+  the next write carries the whole file, and the `xml` event at the end of the
+  stream stays the authoritative result.
+- **Live canvas in the AI panel** (`packages/plugins/ai-bridge`) — frames render
+  into a canvas above the reply, updated with `keepViewport` so the diagram grows
+  in place rather than re-framing on every change, then replaced by the
+  authoritative render when the message finalises.
+
 ## The Camunda pack reads correctly everywhere (2026-09-16)
 
 - **`build` syncs the pack version.** A payload that is committed rather than
