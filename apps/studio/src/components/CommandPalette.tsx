@@ -46,7 +46,7 @@ function HighlightLabel({ label, query }: { label: string; query: string }) {
 	return (
 		<>
 			{label.slice(0, idx)}
-			<span className="font-semibold text-accent">{label.slice(idx, idx + q.length)}</span>
+			<span className="text-accent">{label.slice(idx, idx + q.length)}</span>
 			{label.slice(idx + q.length)}
 		</>
 	)
@@ -59,10 +59,7 @@ function ShortcutBadge({ shortcut }: { shortcut: string }) {
 	return (
 		<span className="flex items-center gap-0.5 shrink-0 ml-4">
 			{parts.map((part, i) => (
-				<kbd
-					key={String(i)}
-					className="inline-flex h-[18px] items-center rounded bg-surface-2 border border-border px-1.5 text-[10px] font-mono text-muted leading-none"
-				>
+				<kbd key={String(i)} className="ds-kbd inline-flex h-[18px] items-center">
 					{part}
 				</kbd>
 			))}
@@ -73,11 +70,7 @@ function ShortcutBadge({ shortcut }: { shortcut: string }) {
 // ── Footer hint ───────────────────────────────────────────────────────────────
 
 function HintKbd({ children }: { children: string }) {
-	return (
-		<kbd className="inline-flex h-4 items-center rounded border border-border bg-surface-2 px-1 text-[10px] font-mono text-muted leading-none">
-			{children}
-		</kbd>
-	)
+	return <kbd className="ds-kbd inline-flex h-4 items-center">{children}</kbd>
 }
 
 // ── Thinking indicator ────────────────────────────────────────────────────────
@@ -119,7 +112,7 @@ function BackendSelector() {
 			<select
 				value={aiBackend}
 				onChange={(e) => setAiBackend((e.target as HTMLSelectElement).value as AiBackend)}
-				className="appearance-none bg-surface-2 border border-border rounded px-2 py-0.5 text-[11px] text-muted hover:text-fg cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent pr-5"
+				className="ds-field ds-datum cursor-pointer appearance-none py-0.5 pr-5 text-[11px] text-muted hover:text-fg"
 				aria-label="Select AI backend"
 			>
 				<option value="auto">
@@ -162,7 +155,7 @@ function XmlPreview({ xml }: { xml: string }) {
 	return (
 		<div
 			ref={containerRef}
-			className="mt-2 rounded border border-border overflow-hidden"
+			className="ds-box mt-2 overflow-hidden bg-canvas"
 			style={{ height: 160 }}
 		/>
 	)
@@ -314,12 +307,12 @@ function InlineAiChat({ initialQuery, onOpenInSidebar, onBack }: InlineAiChatPro
 					<ChevronLeft size={16} />
 				</button>
 				<Sparkles size={13} className="text-accent shrink-0" />
-				<span className="text-sm font-medium text-fg flex-1">AI Chat</span>
+				<span className="ds-eyebrow flex-1">AI Chat</span>
 				<BackendSelector />
 				<button
 					type="button"
 					onClick={onOpenInSidebar}
-					className="flex items-center gap-1 text-xs text-muted hover:text-fg transition-colors shrink-0 ml-1"
+					className="ds-label ml-1 flex shrink-0 items-center gap-1 transition-colors hover:text-fg"
 					title="Continue in sidebar"
 				>
 					<ArrowUpRight size={13} />
@@ -330,7 +323,7 @@ function InlineAiChat({ initialQuery, onOpenInSidebar, onBack }: InlineAiChatPro
 			{/* Messages */}
 			<div className="overflow-y-auto p-3 space-y-2.5 min-h-0" style={{ maxHeight: 340 }}>
 				{aiMessages.length === 0 && (
-					<p className="text-center text-xs text-muted py-6">Ask anything…</p>
+					<p className="ds-lede py-6 text-center text-xs">Ask anything…</p>
 				)}
 				{aiMessages.map((msg) => (
 					<div
@@ -338,7 +331,7 @@ function InlineAiChat({ initialQuery, onOpenInSidebar, onBack }: InlineAiChatPro
 						className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
 					>
 						<div
-							className={`max-w-[88%] rounded-lg px-3 py-2 text-sm ${
+							className={`max-w-[88%] px-3 py-2 text-sm ${
 								msg.role === "user" ? "bg-accent text-accent-fg" : "bg-surface-2 text-fg"
 							}`}
 						>
@@ -350,11 +343,11 @@ function InlineAiChat({ initialQuery, onOpenInSidebar, onBack }: InlineAiChatPro
 							<div className="w-full max-w-full mt-1">
 								<XmlPreview xml={msg.xml} />
 								<div className="flex items-center justify-between mt-1 px-1">
-									<span className="text-[11px] text-muted">Diagram ready</span>
+									<span className="ds-label ds-label--micro">Diagram ready</span>
 									<button
 										type="button"
 										onClick={() => msg.xml && editorAiContext.loadXml(msg.xml)}
-										className="text-[11px] font-medium text-accent hover:underline"
+										className="ds-label ds-label--micro text-accent hover:underline"
 									>
 										Apply to editor
 									</button>
@@ -365,9 +358,9 @@ function InlineAiChat({ initialQuery, onOpenInSidebar, onBack }: InlineAiChatPro
 				))}
 				{/* Apply button for last xml if not already shown (non-editor context shouldn't happen but safe) */}
 				{lastXmlMsg?.xml && !editorAiContext && (
-					<div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm">
-						<Sparkles size={13} className="text-accent shrink-0" />
-						<span className="text-fg flex-1 text-xs">Diagram ready</span>
+					<div className="ds-note text-sm">
+						<Sparkles size={13} className="shrink-0 text-accent" />
+						<span className="flex-1 text-fg text-xs">Diagram ready</span>
 					</div>
 				)}
 				<div ref={messagesEndRef} />
@@ -381,13 +374,15 @@ function InlineAiChat({ initialQuery, onOpenInSidebar, onBack }: InlineAiChatPro
 					onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
 					onKeyDown={handleKeyDown}
 					placeholder="Follow up… (Enter to send)"
-					className="w-full resize-none rounded border border-border bg-surface-2 px-2.5 py-1.5 text-sm text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+					className="ds-field w-full resize-none text-sm"
 					rows={2}
 					disabled={loading}
 				/>
 				<div className="mt-1 flex items-center justify-between">
-					<span className="text-[11px] text-muted">Shift+Enter for newline · Esc to go back</span>
-					{loading && <span className="text-[11px] text-accent animate-pulse">Thinking…</span>}
+					<span className="ds-label ds-label--micro">Shift+Enter for newline · Esc to go back</span>
+					{loading && (
+						<span className="ds-label ds-label--micro animate-pulse text-accent">Thinking…</span>
+					)}
 				</div>
 			</div>
 		</div>
@@ -542,11 +537,11 @@ function InlineImproveMode({ onBack, onOpenInSidebar }: InlineImproveModeProps) 
 					<ChevronLeft size={16} />
 				</button>
 				<Sparkles size={13} className="text-accent shrink-0" />
-				<span className="text-sm font-medium text-fg flex-1">Improve Diagram</span>
+				<span className="ds-eyebrow flex-1">Improve Diagram</span>
 				<button
 					type="button"
 					onClick={onOpenInSidebar}
-					className="flex items-center gap-1 text-xs text-muted hover:text-fg transition-colors shrink-0 ml-1"
+					className="ds-label ml-1 flex shrink-0 items-center gap-1 transition-colors hover:text-fg"
 					title="Open AI sidebar"
 				>
 					<ArrowUpRight size={13} />
@@ -558,23 +553,20 @@ function InlineImproveMode({ onBack, onOpenInSidebar }: InlineImproveModeProps) 
 			<div className="overflow-y-auto p-3 space-y-2.5 min-h-0" style={{ maxHeight: 420 }}>
 				{/* Explanation text */}
 				{(text || streaming) && (
-					<div className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-fg whitespace-pre-wrap">
+					<div className="whitespace-pre-wrap border-border border-l-2 bg-surface-2 px-3 py-2 text-fg text-sm">
 						{text || <ThinkingDots />}
 					</div>
 				)}
 
 				{errorMsg && (
-					<div
-						className="rounded-lg px-3 py-2 text-sm"
-						style={{ color: "var(--bpmnkit-danger, #dc2626)" }}
-					>
+					<div className="px-3 py-2 text-sm" style={{ color: "var(--bpmnkit-danger, #dc2626)" }}>
 						{errorMsg}
 					</div>
 				)}
 
 				{/* Diff list */}
 				{(autoFixCount > 0 || ops.length > 0) && (
-					<div className="rounded-lg border border-border overflow-hidden text-xs">
+					<div className="ds-box text-xs">
 						{autoFixCount > 0 && (
 							<div
 								className="px-3 py-1.5 border-b border-border"
@@ -603,7 +595,7 @@ function InlineImproveMode({ onBack, onOpenInSidebar }: InlineImproveModeProps) 
 												: "var(--bpmnkit-warn, #d97706)"
 									return (
 										<li key={String(i)} className="flex items-start gap-2 px-3 py-1.5 text-fg/80">
-											<span className="font-mono font-bold shrink-0" style={{ color }}>
+											<span className="ds-datum shrink-0 font-bold" style={{ color }}>
 												{prefix}
 											</span>
 											<span>{describeOpInline(op)}</span>
@@ -620,15 +612,15 @@ function InlineImproveMode({ onBack, onOpenInSidebar }: InlineImproveModeProps) 
 					<div>
 						<div
 							ref={canvasContainerRef}
-							className="rounded border border-border overflow-hidden"
+							className="ds-box overflow-hidden bg-canvas"
 							style={{ height: 160 }}
 						/>
 						<div className="flex items-center justify-between mt-1 px-0.5">
-							<span className="text-[11px] text-muted">Improved diagram</span>
+							<span className="ds-label ds-label--micro">Improved diagram</span>
 							<button
 								type="button"
 								onClick={() => editorAiContext?.loadXml(xml)}
-								className="text-[11px] font-medium text-accent hover:underline"
+								className="ds-label ds-label--micro text-accent hover:underline"
 							>
 								Apply to editor
 							</button>
@@ -637,7 +629,7 @@ function InlineImproveMode({ onBack, onOpenInSidebar }: InlineImproveModeProps) 
 				)}
 
 				{!streaming && !xml && !errorMsg && (
-					<p className="text-xs text-muted text-center py-2">No changes suggested.</p>
+					<p className="ds-lede py-2 text-center text-xs">No changes suggested.</p>
 				)}
 			</div>
 		</div>
@@ -889,13 +881,13 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 		>
 			<DialogPrimitive.Portal>
 				{/* Backdrop — above everything including the editor dock (z-9999) */}
-				<DialogPrimitive.Overlay className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200" />
+				<DialogPrimitive.Overlay className="fixed inset-0 z-[10000] bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200" />
 
 				{/* Panel */}
 				<DialogPrimitive.Content
 					onKeyDown={chatMode || improveMode ? undefined : handleKeyDown}
 					aria-label="Command palette"
-					className="fixed left-1/2 top-[16%] z-[10001] w-[calc(100%-2rem)] max-w-[620px] -translate-x-1/2 rounded-xl border border-border bg-surface shadow-2xl ring-1 ring-black/5 focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-4 data-[state=closed]:slide-out-to-top-2 duration-200"
+					className="fixed top-[16%] left-1/2 z-[10001] w-[calc(100%-2rem)] max-w-[620px] -translate-x-1/2 border border-border bg-surface focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-4 data-[state=closed]:slide-out-to-top-2 duration-200"
 				>
 					<DialogPrimitive.Title className="sr-only">Command Palette</DialogPrimitive.Title>
 					<DialogPrimitive.Description className="sr-only">
@@ -931,9 +923,7 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 									<Search size={15} className="text-muted shrink-0" />
 								)}
 								{isCommandMode && (
-									<span className="shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-[11px] font-medium text-accent leading-none">
-										Commands
-									</span>
+									<span className="ds-mark ds-mark--accent shrink-0">Commands</span>
 								)}
 								<input
 									ref={inputRef}
@@ -944,9 +934,7 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 									aria-label="Command palette search"
 									aria-autocomplete="list"
 								/>
-								<kbd className="hidden sm:inline-flex h-5 items-center rounded border border-border bg-surface-2 px-1.5 text-[10px] font-mono text-muted leading-none shrink-0">
-									Esc
-								</kbd>
+								<kbd className="ds-kbd hidden h-5 shrink-0 items-center sm:inline-flex">Esc</kbd>
 							</div>
 
 							{/* Command list */}
@@ -955,12 +943,12 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 									{filtered.length === 0 && !showAskAi && (
 										<div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
 											<Search size={18} className="text-muted/40" />
-											<p className="text-sm text-muted">No results for &ldquo;{query}&rdquo;</p>
+											<p className="ds-lede">No results for &ldquo;{query}&rdquo;</p>
 										</div>
 									)}
 
 									{filtered.length === 0 && showAskAi && (
-										<div className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted/60 select-none">
+										<div className="ds-label ds-label--micro select-none px-3 pt-2.5 pb-1">
 											No matching commands
 										</div>
 									)}
@@ -976,17 +964,17 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 														data-selected={isSelected}
 														onClick={() => execute(item)}
 														onMouseEnter={() => setSelectedIdx(idx)}
-														className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left transition-colors ${
-															isSelected ? "bg-accent/10 text-fg" : "text-fg hover:bg-surface-2"
+														className={`flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left text-sm transition-colors ${
+															isSelected
+																? "border-accent bg-accent/10 text-fg"
+																: "border-transparent text-fg hover:bg-bg"
 														}`}
 													>
 														<span className="flex-1 truncate">
 															<HighlightLabel label={item.label} query={effectiveQuery} />
 														</span>
 														{"description" in item && item.description && (
-															<span className="text-xs text-muted shrink-0 ml-4">
-																{item.description}
-															</span>
+															<span className="ds-label ml-4 shrink-0">{item.description}</span>
 														)}
 													</button>
 												)
@@ -995,7 +983,7 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 												const groupItems = filtered.filter((i) => i.group === group)
 												return (
 													<div key={group} className="mb-0.5 last:mb-0">
-														<div className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted/60 select-none">
+														<div className="ds-label ds-label--micro select-none px-3 pt-2.5 pb-1">
 															{group}
 														</div>
 														{groupItems.map((item) => {
@@ -1009,10 +997,10 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 																	data-selected={isSelected}
 																	onClick={() => execute(item)}
 																	onMouseEnter={() => setSelectedIdx(idx)}
-																	className={`flex w-full items-center rounded-lg px-3 py-2 text-sm text-left transition-colors ${
+																	className={`flex w-full items-center border-l-2 px-3 py-2 text-left text-sm transition-colors ${
 																		isSelected
-																			? "bg-accent/10 text-fg"
-																			: "text-fg hover:bg-surface-2"
+																			? "border-accent bg-accent/10 text-fg"
+																			: "border-transparent text-fg hover:bg-bg"
 																	}`}
 																>
 																	<span className="flex-1 truncate">
@@ -1021,7 +1009,7 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 																	{"shortcut" in item && item.shortcut ? (
 																		<ShortcutBadge shortcut={item.shortcut} />
 																	) : "description" in item && item.description ? (
-																		<span className="text-xs text-muted shrink-0 ml-4">
+																		<span className="ds-label ml-4 shrink-0">
 																			{item.description}
 																		</span>
 																	) : null}
@@ -1043,10 +1031,10 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 												data-selected={selectedIdx === askAiIdx}
 												onClick={executeAskAi}
 												onMouseEnter={() => setSelectedIdx(askAiIdx)}
-												className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-left transition-colors ${
+												className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2 text-left text-sm transition-colors ${
 													selectedIdx === askAiIdx
-														? "bg-accent/10 text-fg"
-														: "text-fg hover:bg-surface-2"
+														? "border-accent bg-accent/10 text-fg"
+														: "border-transparent text-fg hover:bg-bg"
 												}`}
 											>
 												<Sparkles size={14} className="text-accent shrink-0" />
@@ -1074,13 +1062,9 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
 							{isTextInput && (
 								<div className="flex items-center gap-1.5 px-4 py-3 text-xs text-muted">
 									Press
-									<kbd className="inline-flex h-[18px] items-center rounded border border-border bg-surface-2 px-1.5 text-[10px] font-mono leading-none">
-										↵
-									</kbd>
+									<kbd className="ds-kbd inline-flex h-[18px] items-center">↵</kbd>
 									to confirm,
-									<kbd className="inline-flex h-[18px] items-center rounded border border-border bg-surface-2 px-1.5 text-[10px] font-mono leading-none">
-										Esc
-									</kbd>
+									<kbd className="ds-kbd inline-flex h-[18px] items-center">Esc</kbd>
 									to go back
 								</div>
 							)}

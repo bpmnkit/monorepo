@@ -2,11 +2,20 @@
  * bpmnkit.com design system, applied to the studio.
  *
  * The system is flat (no shadow, gradient or blur), square, hairline-ruled,
- * with one terracotta accent and two type roles. Rather than restyling every
- * component, this file re-points the `--bpmnkit-*` brand tokens the whole app
- * already reads — cascivo (via styles/cascivo.css), Tailwind (via the @theme
- * block in globals.css), and the embedded editor / canvas / plugins — onto the
- * `--bpmnkit-ds-*` set that `@bpmnkit/ui` owns. One seam, no component churn.
+ * with one terracotta accent and two type roles. This file carries the whole
+ * adoption, in three parts:
+ *
+ *   1. Type — the two families, self-hosted.
+ *   2. Tokens — the `--bpmnkit-ds-*` set is redeclared per theme, then the
+ *      `--bpmnkit-*` brand tokens the app already reads (cascivo via
+ *      styles/cascivo.css, Tailwind via the @theme block in globals.css, and
+ *      the embedded editor / canvas / plugins) are pointed at it. Redeclaring
+ *      rather than aliasing is what lets a rule below read a `--bpmnkit-ds-*`
+ *      token directly and still theme correctly, the way Operate does.
+ *   3. `.ds-*` — the component vocabulary the pages compose with: the
+ *      hairline-subdivided grid, the bordered box, the mono label, the square
+ *      control. Tailwind utilities still win over it, so a call site can tune
+ *      one instance without a new class.
  *
  * Scope: this override lives in the studio only. `@bpmnkit/ui` still ships the
  * product palette unchanged, so no other app moves.
@@ -107,31 +116,68 @@
 	--bpmnkit-font-mono: var(--bpmnkit-ds-font-mono);
 }
 
+/* Dark and neon redeclare the design-system set itself, the way Operate does,
+   so every `.ds-*` rule below — and every shared component that reads a
+   `--bpmnkit-ds-*` token — themes with no second vocabulary. The `--bpmnkit-*`
+   bridge then stays one mapping rather than three. */
+
 [data-theme="dark"] {
-	--bpmnkit-bg: var(--bpmnkit-ds-dark);
-	--bpmnkit-surface: var(--bpmnkit-ds-dark);
-	--bpmnkit-surface-2: color-mix(in srgb, var(--bpmnkit-ds-ink-on-dark) 5%, var(--bpmnkit-ds-dark));
-	--bpmnkit-border: var(--bpmnkit-ds-line-dark);
-	--bpmnkit-fg: var(--bpmnkit-ds-ink-on-dark);
-	--bpmnkit-fg-muted: var(--bpmnkit-ds-ink-muted);
+	--bpmnkit-ds-bg: #0f1114;
+	--bpmnkit-ds-surface: #16181d;
+	--bpmnkit-ds-canvas: #16181d;
+	--bpmnkit-ds-ink: #f4f5f7;
+	--bpmnkit-ds-ink-2: #c8ccd2;
+	--bpmnkit-ds-ink-3: #a6acb5;
+	--bpmnkit-ds-ink-4: #8b929c;
+	--bpmnkit-ds-ink-muted: #8b929c;
+	--bpmnkit-ds-line: #2c3038;
+	--bpmnkit-ds-line-soft: #22252b;
+	--bpmnkit-ds-line-strong: #3a3f48;
+	--bpmnkit-ds-accent: #c9755c;
+	--bpmnkit-ds-accent-hover: #d98a72;
 
-	--bpmnkit-accent: var(--bpmnkit-ds-accent-on-dark);
-	--bpmnkit-accent-bright: var(--bpmnkit-ds-accent-on-dark);
-	--bpmnkit-accent-subtle: color-mix(in srgb, var(--bpmnkit-ds-accent-on-dark) 15%, transparent);
-	--bpmnkit-accent-fg: var(--bpmnkit-ds-dark);
+	--bpmnkit-bg: var(--bpmnkit-ds-bg);
+	--bpmnkit-surface: var(--bpmnkit-ds-surface);
+	--bpmnkit-surface-2: var(--bpmnkit-ds-line-soft);
+	--bpmnkit-border: var(--bpmnkit-ds-line);
+	--bpmnkit-fg: var(--bpmnkit-ds-ink);
+	--bpmnkit-fg-muted: var(--bpmnkit-ds-ink-3);
 
-	--bpmnkit-teal: var(--bpmnkit-ds-accent-on-dark);
+	--bpmnkit-accent: var(--bpmnkit-ds-accent);
+	--bpmnkit-accent-bright: var(--bpmnkit-ds-accent-hover);
+	--bpmnkit-accent-subtle: color-mix(in srgb, var(--bpmnkit-ds-accent) 14%, transparent);
+	--bpmnkit-accent-fg: #ffffff;
 
-	--bpmnkit-panel-bg: var(--bpmnkit-ds-dark);
-	--bpmnkit-panel-border: var(--bpmnkit-ds-line-dark);
+	--bpmnkit-teal: var(--bpmnkit-ds-accent);
 
-	--bpmnkit-nav-bg: var(--bpmnkit-ds-dark);
-	--bpmnkit-nav-fg: var(--bpmnkit-ds-ink-muted);
-	--bpmnkit-nav-fg-active: var(--bpmnkit-ds-ink-on-dark);
+	--bpmnkit-panel-bg: var(--bpmnkit-ds-surface);
+	--bpmnkit-panel-border: var(--bpmnkit-ds-line);
+
+	--bpmnkit-nav-bg: var(--bpmnkit-ds-bg);
+	--bpmnkit-nav-fg: var(--bpmnkit-ds-ink-3);
+	--bpmnkit-nav-fg-active: var(--bpmnkit-ds-ink);
 }
 
-/* Neon keeps its palette; it only picks up the square geometry. */
+/* Neon is a white-label theme: it takes the system's form — square, flat,
+   hairline-ruled, mono labels — and keeps its own hue. Redeclaring the DS set
+   with `@bpmnkit/ui`'s neon values is what makes the two agree, so the app
+   still shows one accent rather than a terracotta one leaking through. */
 [data-theme="neon"] {
+	--bpmnkit-ds-bg: oklch(11% 0.025 270);
+	--bpmnkit-ds-surface: oklch(15% 0.025 270);
+	--bpmnkit-ds-canvas: oklch(15% 0.025 270);
+	--bpmnkit-ds-ink: oklch(88% 0.02 270);
+	--bpmnkit-ds-ink-2: oklch(74% 0.03 270);
+	--bpmnkit-ds-ink-3: oklch(64% 0.04 270);
+	--bpmnkit-ds-ink-4: oklch(56% 0.05 270);
+	--bpmnkit-ds-ink-muted: oklch(60% 0.04 270);
+	--bpmnkit-ds-line: oklch(65% 0.24 280 / 0.2);
+	--bpmnkit-ds-line-soft: oklch(65% 0.24 280 / 0.11);
+	--bpmnkit-ds-line-strong: oklch(65% 0.24 280 / 0.42);
+	--bpmnkit-ds-accent: oklch(65% 0.22 280);
+	--bpmnkit-ds-accent-hover: oklch(76% 0.16 280);
+	--bpmnkit-ds-accent-on-dark: oklch(76% 0.16 280);
+
 	--bpmnkit-radius: 0;
 	--bpmnkit-radius-sm: 0;
 	--bpmnkit-radius-lg: 0;
@@ -145,4 +191,432 @@
 [class*="uppercase"] {
 	font-family: var(--bpmnkit-ds-font-mono);
 	letter-spacing: 0.12em;
+}
+
+/* ── The component vocabulary ─────────────────────────────────────────
+   Everything below lives in Tailwind's `components` layer, so a utility at a
+   call site still wins: a page can say `.ds-cell p-2` without a new class.
+
+   The rules the system encodes, and that these classes exist to keep:
+     · square — no `border-radius` in the chrome
+     · flat — no shadow, gradient or blur; depth is a 1px hairline
+     · one accent, and mono for every label, count, key and status readout
+     · grids are one bordered box subdivided by hairlines, never gapped cards
+   Semantic state — success / warn / danger, and the BPMN renderer's own
+   strokes — is exempt, as it is everywhere else in the repo. */
+
+@layer components {
+	/* ── Type ────────────────────────────────────────────────────────── */
+
+	/* The section marker above a page title, spaced like the site's eyebrows. */
+	.ds-eyebrow {
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-size: var(--bpmnkit-ds-t-mono-eyebrow);
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--bpmnkit-ds-accent);
+	}
+
+	/* Every label, column head and unit caption in the app. */
+	.ds-label {
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-size: var(--bpmnkit-ds-t-mono-label);
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--bpmnkit-ds-ink-4);
+		line-height: 1.4;
+	}
+
+	.ds-label--micro {
+		font-size: var(--bpmnkit-ds-t-mono-micro);
+	}
+
+	/* A datum: key, count, version, duration, id. Never uppercased — an
+	   instance key is not an abbreviation. */
+	.ds-datum {
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.ds-title {
+		font-family: var(--bpmnkit-ds-font-sans);
+		font-size: 19px;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		line-height: 1.2;
+		color: var(--bpmnkit-ds-ink);
+		margin: 0;
+	}
+
+	.ds-lede {
+		font-size: var(--bpmnkit-ds-t-body-sm);
+		line-height: 1.6;
+		color: var(--bpmnkit-ds-ink-3);
+		margin: 0;
+	}
+
+	/* ── Structure ───────────────────────────────────────────────────── */
+
+	.ds-page {
+		max-width: var(--bpmnkit-ds-page-max);
+		margin: 0 auto;
+		padding: var(--bpmnkit-ds-sp-4) var(--bpmnkit-ds-page-gutter) var(--bpmnkit-ds-sp-7);
+	}
+
+	/* Page head: eyebrow and controls on one baseline over a hairline. */
+	.ds-head {
+		display: flex;
+		align-items: center;
+		gap: var(--bpmnkit-ds-sp-3);
+		flex-wrap: wrap;
+		padding-bottom: var(--bpmnkit-ds-sp-2);
+		margin-bottom: var(--bpmnkit-ds-sp-4);
+		border-bottom: 1px solid var(--bpmnkit-ds-line);
+	}
+
+	/* One bordered box subdivided by hairlines: the 1px gap over the soft line
+	   colour is how the system draws a grid. Gapped cards with their own
+	   borders would read as six objects where there is one readout. The
+	   divider is `line-soft` and the frame is `line`, per the rule in
+	   CLAUDE.md — which also keeps an incomplete last row from reading as a
+	   filled block, since the empty slot shows the divider, not the frame. */
+	.ds-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(var(--ds-col, 200px), 1fr));
+		gap: 1px;
+		background: var(--bpmnkit-ds-line-soft);
+		border: 1px solid var(--bpmnkit-ds-line);
+	}
+
+	.ds-cell {
+		background: var(--bpmnkit-ds-surface);
+		padding: var(--bpmnkit-ds-sp-3) var(--bpmnkit-ds-sp-4);
+		min-width: 0;
+	}
+
+	/* A plain bordered surface: panel, sidebar, canvas frame, dialog body. */
+	.ds-box {
+		background: var(--bpmnkit-ds-surface);
+		border: 1px solid var(--bpmnkit-ds-line);
+		min-width: 0;
+	}
+
+	.ds-box-head {
+		display: flex;
+		align-items: center;
+		gap: var(--bpmnkit-ds-sp-2);
+		padding: var(--bpmnkit-ds-sp-2) var(--bpmnkit-ds-sp-3);
+		border-bottom: 1px solid var(--bpmnkit-ds-line);
+	}
+
+	/* Rows inside a box, divided by the same hairline — never by a gap. */
+	.ds-rows > * + * {
+		border-top: 1px solid var(--bpmnkit-ds-line-soft);
+	}
+
+	.ds-row {
+		display: flex;
+		align-items: center;
+		gap: var(--bpmnkit-ds-sp-2);
+		padding: var(--bpmnkit-ds-sp-1) var(--bpmnkit-ds-sp-3);
+		min-width: 0;
+		color: inherit;
+		text-decoration: none;
+		transition: background 0.12s;
+	}
+
+	a.ds-row:hover,
+	button.ds-row:hover {
+		background: var(--bpmnkit-ds-bg);
+	}
+
+	/* ── Controls ────────────────────────────────────────────────────── */
+
+	/* Square, hairline-bounded, sans — the site's `.btn-ghost`. */
+	.ds-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 4px 10px;
+		background: var(--bpmnkit-ds-surface);
+		border: 1px solid var(--bpmnkit-ds-line);
+		color: var(--bpmnkit-ds-ink-3);
+		font-family: var(--bpmnkit-ds-font-sans);
+		font-size: var(--bpmnkit-ds-t-ui);
+		line-height: 1.5;
+		white-space: nowrap;
+		transition: color 0.12s, border-color 0.12s, background 0.12s;
+	}
+
+	.ds-btn:hover:not(:disabled) {
+		color: var(--bpmnkit-ds-ink);
+		border-color: var(--bpmnkit-ds-line-strong);
+	}
+
+	.ds-btn:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.ds-btn--on {
+		background: color-mix(in srgb, var(--bpmnkit-ds-accent) 10%, transparent);
+		border-color: var(--bpmnkit-ds-accent);
+		color: var(--bpmnkit-ds-accent);
+	}
+
+	.ds-btn--on:hover:not(:disabled) {
+		color: var(--bpmnkit-ds-accent);
+		border-color: var(--bpmnkit-ds-accent);
+	}
+
+	.ds-btn--primary {
+		background: var(--bpmnkit-ds-accent);
+		border-color: var(--bpmnkit-ds-accent);
+		color: #ffffff;
+	}
+
+	.ds-btn--primary:hover:not(:disabled) {
+		background: var(--bpmnkit-ds-accent-hover);
+		border-color: var(--bpmnkit-ds-accent-hover);
+		color: #ffffff;
+	}
+
+	.ds-btn--quiet {
+		background: none;
+		border-color: transparent;
+	}
+
+	.ds-btn--quiet:hover:not(:disabled) {
+		border-color: var(--bpmnkit-ds-line);
+	}
+
+	.ds-btn--icon {
+		padding: 4px;
+		width: 26px;
+		height: 26px;
+	}
+
+	/* A segmented control is a grid too: one box, hairline-divided. */
+	.ds-seg {
+		display: inline-flex;
+		gap: 1px;
+		background: var(--bpmnkit-ds-line);
+		border: 1px solid var(--bpmnkit-ds-line);
+	}
+
+	.ds-seg-btn {
+		padding: 3px 10px;
+		background: var(--bpmnkit-ds-surface);
+		border: none;
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-size: var(--bpmnkit-ds-t-mono-label);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--bpmnkit-ds-ink-4);
+		transition: color 0.12s, background 0.12s;
+	}
+
+	.ds-seg-btn:hover {
+		color: var(--bpmnkit-ds-ink);
+	}
+
+	.ds-seg-btn--on {
+		background: var(--bpmnkit-ds-accent);
+		color: #ffffff;
+	}
+
+	.ds-field {
+		background: var(--bpmnkit-ds-surface);
+		border: 1px solid var(--bpmnkit-ds-line);
+		padding: 5px 10px;
+		font-family: var(--bpmnkit-ds-font-sans);
+		font-size: var(--bpmnkit-ds-t-body-sm);
+		color: var(--bpmnkit-ds-ink);
+		outline: none;
+		min-width: 0;
+	}
+
+	.ds-field::placeholder {
+		color: var(--bpmnkit-ds-ink-4);
+	}
+
+	.ds-field:focus {
+		border-color: var(--bpmnkit-ds-accent);
+	}
+
+	/* Tabs are marked by an accent rule under the label, not a filled pill. */
+	.ds-tabs {
+		display: flex;
+		gap: var(--bpmnkit-ds-sp-3);
+		border-bottom: 1px solid var(--bpmnkit-ds-line);
+	}
+
+	.ds-tab {
+		padding: 6px 0;
+		background: none;
+		border: none;
+		border-bottom: 2px solid transparent;
+		margin-bottom: -1px;
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-size: var(--bpmnkit-ds-t-mono-label);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--bpmnkit-ds-ink-4);
+		transition: color 0.12s, border-color 0.12s;
+	}
+
+	.ds-tab:hover {
+		color: var(--bpmnkit-ds-ink);
+	}
+
+	.ds-tab--on,
+	.ds-tab[data-state="active"] {
+		color: var(--bpmnkit-ds-accent);
+		border-bottom-color: var(--bpmnkit-ds-accent);
+	}
+
+	.ds-kbd {
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-size: var(--bpmnkit-ds-t-mono-micro);
+		color: var(--bpmnkit-ds-ink-4);
+		border: 1px solid var(--bpmnkit-ds-line);
+		padding: 1px 4px;
+		line-height: 1.4;
+		white-space: nowrap;
+	}
+
+	/* ── Readouts ────────────────────────────────────────────────────── */
+
+	/* Status, type and tag marks. Mono and uppercase, tinted rather than
+	   filled, so a table of them reads as text and not as a row of buttons.
+	   `--ds-tone` carries the semantic colour; it defaults to the ink. */
+	.ds-mark {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 1px 6px;
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-size: var(--bpmnkit-ds-t-mono-micro);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		line-height: 1.6;
+		white-space: nowrap;
+		color: var(--ds-tone, var(--bpmnkit-ds-ink-3));
+		background: color-mix(in srgb, var(--ds-tone, var(--bpmnkit-ds-ink-4)) 12%, transparent);
+	}
+
+	.ds-mark--success {
+		--ds-tone: var(--bpmnkit-success);
+	}
+	.ds-mark--warn {
+		--ds-tone: var(--bpmnkit-warn);
+	}
+	.ds-mark--danger {
+		--ds-tone: var(--bpmnkit-danger);
+	}
+	.ds-mark--accent {
+		--ds-tone: var(--bpmnkit-ds-accent);
+	}
+
+	/* A banner. One hairline box with an accent rule on the leading edge —
+	   the system's way of raising a voice without a fill or a shadow. */
+	.ds-note {
+		display: flex;
+		align-items: center;
+		gap: var(--bpmnkit-ds-sp-2);
+		padding: var(--bpmnkit-ds-sp-2) var(--bpmnkit-ds-sp-3);
+		background: var(--bpmnkit-ds-surface);
+		border: 1px solid var(--bpmnkit-ds-line);
+		border-left: 2px solid var(--ds-tone, var(--bpmnkit-ds-accent));
+		font-size: var(--bpmnkit-ds-t-body-sm);
+		color: var(--bpmnkit-ds-ink-2);
+	}
+
+	.ds-note--danger {
+		--ds-tone: var(--bpmnkit-danger);
+	}
+	.ds-note--warn {
+		--ds-tone: var(--bpmnkit-warn);
+	}
+	.ds-note--success {
+		--ds-tone: var(--bpmnkit-success);
+	}
+
+	.ds-code {
+		display: block;
+		font-family: var(--bpmnkit-ds-font-mono);
+		font-size: var(--bpmnkit-ds-t-code);
+		line-height: 1.6;
+		color: var(--bpmnkit-ds-code-text);
+		background: var(--bpmnkit-ds-dark-code);
+		border: 1px solid var(--bpmnkit-ds-line-dark);
+		padding: var(--bpmnkit-ds-sp-2) var(--bpmnkit-ds-sp-3);
+		overflow-x: auto;
+		white-space: pre-wrap;
+	}
+
+	.ds-empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: var(--bpmnkit-ds-sp-3);
+		padding: var(--bpmnkit-ds-sp-8) var(--bpmnkit-ds-sp-4);
+		text-align: center;
+		color: var(--bpmnkit-ds-ink-3);
+	}
+}
+
+/* ── Third-party chrome ──────────────────────────────────────────────────
+   cascivo ships its components as CSS modules with hashed class names, so
+   they cannot be selected by class. Colour, radius and shadow already come
+   from the bridge in `cascivo.css`; what is left is the type roles, which the
+   element selectors below supply. Unlayered on purpose: these have to beat
+   cascivo's own `@layer cascivo.component` defaults. */
+
+/* A column head is a label, and every label in the system is mono. */
+thead th {
+	font-family: var(--bpmnkit-ds-font-mono);
+	font-size: var(--bpmnkit-ds-t-mono-label);
+	font-weight: 400;
+	letter-spacing: 0.1em;
+	color: var(--bpmnkit-ds-ink-4);
+	background: var(--bpmnkit-ds-bg);
+}
+
+/* The rail. cascivo already marks the active item with an accent rule on the
+   leading edge, which is what the system asks for; what it cannot know is that
+   a nav item is a label. Scoped by the `ariaLabel` the Sidebar passes, not by a
+   hashed module class. The nine destinations are anchors and take the uppercase
+   with it; the pickers and actions are buttons and stay in natural case,
+   because they read out a profile or a project name. */
+nav[aria-label="Main navigation"] a,
+nav[aria-label="Main navigation"] button {
+	font-family: var(--bpmnkit-ds-font-mono);
+	font-size: var(--bpmnkit-ds-t-mono-label);
+	letter-spacing: 0.06em;
+}
+
+nav[aria-label="Main navigation"] a {
+	text-transform: uppercase;
+}
+
+/* cascivo's Button wraps its children in one unclassed `<span>`, and Tailwind's
+   preflight makes every `<svg>` a block. An icon beside a label therefore
+   stacked above it in every cascivo button in the app. Selected by the
+   `data-variant` / `data-size` pair the component sets — its own DOM contract,
+   not a module hash — so the span lays its children out on one line again. */
+button[data-variant][data-size] > span {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bpmnkit-ds-sp-1);
+}
+
+/* A `<dialog>` in the top layer is centred by the user agent's `margin: auto`,
+   and Tailwind's preflight resets `margin` on every element — so every cascivo
+   Modal in the app opened against the top-left corner. Restored for modal
+   dialogs only, which is the one case the UA rule exists for. */
+dialog:modal {
+	margin: auto;
 }

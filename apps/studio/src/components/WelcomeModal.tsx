@@ -59,38 +59,35 @@ export function WelcomeModal() {
 
 	return (
 		<Modal open={showWelcomeModal} onClose={dismiss} className="max-w-lg">
-			<div className="flex flex-col items-center text-center gap-3 pt-4 pb-2">
-				<div className="flex items-center justify-center w-16 h-16 bg-accent/15 mb-1">
-					<Rocket size={28} className="text-accent" />
-				</div>
-				<h2 className="text-2xl font-semibold text-fg">Welcome to BPMNkit Studio</h2>
-				<p className="text-sm text-muted max-w-sm">
+			<div className="flex flex-col gap-2 pt-2 pb-4">
+				<span className="ds-eyebrow flex items-center gap-2">
+					<Rocket size={13} />
+					Welcome
+				</span>
+				<h2 className="ds-title text-2xl">BPMN Kit Studio</h2>
+				<p className="ds-lede max-w-sm">
 					Design, deploy, and monitor BPMN processes for Zeebe workflows.
 				</p>
 			</div>
 
-			<div className="grid grid-cols-2 gap-4 mt-4">
+			<div className="ds-grid [--ds-col:200px]">
 				<button
 					type="button"
 					onClick={() => void handleOpenExample()}
-					className="flex flex-col items-start gap-2 rounded-lg border border-accent bg-accent/10 p-5 text-left hover:bg-accent/15 transition-colors"
+					className="ds-cell flex flex-col items-start gap-2 border-accent border-l-2 p-5 text-left transition-colors hover:bg-bg"
 				>
-					<Sparkles size={20} className="text-accent" />
-					<span className="text-sm font-medium text-fg">Open example process</span>
-					<span className="text-xs text-muted leading-relaxed">
-						HTTP request + AI summarise — ready to explore
-					</span>
+					<Sparkles size={18} className="text-accent" />
+					<span className="text-fg text-sm">Open example process</span>
+					<span className="ds-lede text-xs">HTTP request + AI summarise — ready to explore</span>
 				</button>
 				<button
 					type="button"
 					onClick={handleStartScratch}
-					className="flex flex-col items-start gap-2 rounded-lg border border-border bg-surface p-5 text-left hover:bg-surface-2 transition-colors"
+					className="ds-cell flex flex-col items-start gap-2 p-5 text-left transition-colors hover:bg-bg"
 				>
-					<FilePlus2 size={20} className="text-fg" />
-					<span className="text-sm font-medium text-fg">Start from scratch</span>
-					<span className="text-xs text-muted leading-relaxed">
-						Open the editor and design your own process
-					</span>
+					<FilePlus2 size={18} className="text-fg" />
+					<span className="text-fg text-sm">Start from scratch</span>
+					<span className="ds-lede text-xs">Open the editor and design your own process</span>
 				</button>
 			</div>
 
@@ -105,7 +102,7 @@ export function WelcomeModal() {
 				<button
 					type="button"
 					onClick={dismiss}
-					className="text-xs text-muted hover:text-fg transition-colors"
+					className="ds-label transition-colors hover:text-fg"
 				>
 					Skip for now
 				</button>

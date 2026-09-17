@@ -40,4 +40,39 @@ describe("design-system wiring", () => {
 		expect(css).toContain("--bpmnkit-font: var(--bpmnkit-ds-font-sans)")
 		expect(css).toContain("--bpmnkit-font-mono: var(--bpmnkit-ds-font-mono)")
 	})
+
+	it("redeclares the design-system set for dark and neon", () => {
+		// A `.ds-*` rule reads `--bpmnkit-ds-*` directly, so aliasing the brand
+		// tokens is not enough: without this, dark renders the light ink.
+		for (const theme of ['[data-theme="dark"]', '[data-theme="neon"]']) {
+			const block = css.slice(css.indexOf(theme))
+			expect(block, `${theme} does not redeclare --bpmnkit-ds-ink-3`).toContain(
+				"--bpmnkit-ds-ink-3:",
+			)
+			expect(block, `${theme} does not redeclare --bpmnkit-ds-line`).toContain("--bpmnkit-ds-line:")
+		}
+	})
+})
+
+/**
+ * The component vocabulary the pages compose with. These guard the two shapes
+ * that carry the system's form, and the layer that keeps them overridable.
+ */
+describe("the .ds-* component layer", () => {
+	it("lives in Tailwind's components layer, so a utility still wins", () => {
+		expect(css).toMatch(/@layer components \{/)
+	})
+
+	it("draws a grid as one bordered box subdivided by hairlines", () => {
+		const grid = css.slice(css.indexOf(".ds-grid {"), css.indexOf(".ds-cell {"))
+		expect(grid).toContain("gap: 1px")
+		expect(grid).toContain("background: var(--bpmnkit-ds-line-soft)")
+		expect(grid).toContain("border: 1px solid var(--bpmnkit-ds-line)")
+	})
+
+	it("keeps the chrome square and flat", () => {
+		const layer = css.slice(css.indexOf("@layer components {"))
+		expect(layer).not.toMatch(/border-radius:(?! 0)/)
+		expect(layer).not.toMatch(/box-shadow|linear-gradient|backdrop-filter/)
+	})
 })

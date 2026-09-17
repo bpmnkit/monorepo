@@ -26,7 +26,7 @@ const columns: Column<ProcessInstance>[] = [
 		render: (inst) => (
 			<Link
 				href={`/instances/${inst.processInstanceKey}`}
-				className="font-mono text-muted text-xs hover:text-fg"
+				className="ds-datum text-muted text-xs hover:text-fg"
 			>
 				{inst.processDefinitionId}
 			</Link>
@@ -38,7 +38,7 @@ const columns: Column<ProcessInstance>[] = [
 		render: (inst) => (
 			<Link
 				href={`/instances/${inst.processInstanceKey}`}
-				className="font-mono text-muted text-xs hover:text-accent"
+				className="ds-datum text-muted text-xs hover:text-accent"
 			>
 				{inst.processInstanceKey}
 			</Link>
@@ -48,7 +48,7 @@ const columns: Column<ProcessInstance>[] = [
 		key: "started",
 		header: "Started",
 		render: (inst) => (
-			<span className="text-muted text-xs">
+			<span className="ds-datum text-muted text-xs">
 				{inst.startDate ? new Date(inst.startDate).toLocaleString() : "—"}
 			</span>
 		),
@@ -57,7 +57,7 @@ const columns: Column<ProcessInstance>[] = [
 		key: "ended",
 		header: "Ended",
 		render: (inst) => (
-			<span className="text-muted text-xs">
+			<span className="ds-datum text-muted text-xs">
 				{inst.endDate ? new Date(inst.endDate).toLocaleString() : "—"}
 			</span>
 		),
@@ -109,19 +109,30 @@ export function Instances() {
 	}
 
 	return (
-		<div className="p-6 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
-			<div className="flex items-center justify-between mb-6">
-				<div>
-					{!isLoading && (
-						<p className="text-xs text-muted">
-							{filtered?.length ?? 0} instance{(filtered?.length ?? 0) !== 1 ? "s" : ""}
-						</p>
-					)}
+		<div className="ds-page animate-in fade-in slide-in-from-bottom-2 duration-300">
+			<div className="ds-head">
+				<h1 className="ds-eyebrow">Instances</h1>
+				{!isLoading && (
+					<span className="ds-datum text-muted text-xs">
+						{filtered?.length ?? 0} instance{(filtered?.length ?? 0) !== 1 ? "s" : ""}
+					</span>
+				)}
+				<div className="ds-seg ml-auto">
+					{(["all", "ACTIVE", "COMPLETED", "TERMINATED"] as StateFilter[]).map((s) => (
+						<button
+							key={s}
+							type="button"
+							onClick={() => setStateFilter(s)}
+							className={`ds-seg-btn ${stateFilter === s ? "ds-seg-btn--on" : ""}`}
+							aria-pressed={stateFilter === s}
+						>
+							{s === "all" ? "All" : s}
+						</button>
+					))}
 				</div>
 			</div>
 
-			{/* Filters */}
-			<div className="flex items-center gap-3 mb-4">
+			<div className="mb-3">
 				<Search
 					placeholder="Search by process ID or key..."
 					value={search}
@@ -129,21 +140,6 @@ export function Instances() {
 					className="w-full max-w-80"
 					label="Search instances"
 				/>
-				<div className="flex rounded border border-border bg-surface-2 text-xs overflow-hidden">
-					{(["all", "ACTIVE", "COMPLETED", "TERMINATED"] as StateFilter[]).map((s) => (
-						<button
-							key={s}
-							type="button"
-							onClick={() => setStateFilter(s)}
-							className={`px-3 py-1.5 capitalize transition-colors ${
-								stateFilter === s ? "bg-surface text-fg" : "text-muted hover:text-fg"
-							}`}
-							aria-pressed={stateFilter === s}
-						>
-							{s === "all" ? "All" : s}
-						</button>
-					))}
-				</div>
 			</div>
 
 			<DataTable

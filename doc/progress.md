@@ -1,5 +1,73 @@
 # Progress
 
+## 2026-09-17 — The studio wears the design system, not just its colours
+
+#165 put the studio on the bpmnkit.com design system through one seam: a token
+bridge that re-pointed the `--bpmnkit-*` set the app already read onto
+`--bpmnkit-ds-*`, explicitly "no component churn". That bought the palette, the
+two type families, square corners and no shadows. It could not buy the system's
+*form*, which lives in the markup: gapped cards with their own borders, sans
+labels where the system uses mono, filled state pills, hover-lift on the
+dashboard, a 40px icon tile on every metric. The studio read as a generic console
+in terracotta.
+
+Three things closed the gap.
+
+**The `--bpmnkit-ds-*` set is now redeclared per theme**, the way Operate does it,
+rather than aliased. Aliasing was enough while only the brand tokens were read;
+it breaks the moment a rule reads `var(--bpmnkit-ds-ink-3)` directly, because
+dark and neon inherited the light value. Dark takes Operate's tuned values, and
+neon takes `@bpmnkit/ui`'s own neon palette so the white-label theme keeps one
+accent instead of leaking terracotta through the new rules.
+
+**A `.ds-*` component vocabulary** in `styles/design-system.css`, inside
+Tailwind's `components` layer so a utility at a call site still wins and no
+`!important` is needed anywhere. Twenty-odd classes, each one a rule of the
+system rather than a widget: `.ds-grid` + `.ds-cell` (one bordered box
+subdivided by 1px hairlines — the thing gapped cards were doing wrong),
+`.ds-box`, `.ds-rows`, `.ds-label`, `.ds-eyebrow`, `.ds-datum`, `.ds-mark`,
+`.ds-btn`, `.ds-seg`, `.ds-tab`, `.ds-field`, `.ds-note`, `.ds-code`,
+`.ds-kbd`, `.ds-empty`.
+
+**Every page rewritten against it.** The dashboard's six metrics are one box now,
+not six floating cards; the icon is a 16px mark rather than a tile, the number is
+mono at 28px, the label is mono uppercase, and nothing lifts on hover — an
+alarming metric is marked by its accent and its pulse. `StatusPill` and
+`ProfileTag` became tinted mono marks (`.ds-mark`), which is why a table of them
+reads as text rather than a column of buttons; that orphaned `components/ui/badge.tsx`,
+so it is gone. Every list page grew a real head: a mono eyebrow naming the page, the
+count as a datum, filters as a hairline-divided segmented control. Settings' five
+sections are numbered `01`–`05` the way the landing page numbers its bands, and
+its three copies of the "● Active / Switch" control collapsed into one
+`ActiveToggle`. `Separator` is unused as a result and dropped from the import.
+
+Two rules are enforced where they cannot be forgotten rather than at each call
+site: cascivo renders as CSS modules with hashed class names, so a column head
+becomes mono through `thead th`, and the rail's nine destinations become mono
+uppercase through `nav[aria-label="Main navigation"] a` — scoped by the
+`ariaLabel` the Sidebar passes, which is ours, not by a hash that changes with
+cascivo's next build. The rail's pickers stay in natural case: they read out a
+profile or a project name, and `pi-1` is not `PI-1`.
+
+Driving the built app in a browser to check the result turned up two chrome bugs
+that predate this work, both the same collision: Tailwind's preflight against
+markup it does not own. `*{margin:0}` beat the user agent's `dialog{margin:auto}`,
+so every cascivo Modal in the studio opened against the top-left corner instead
+of centred; and `svg{display:block}` stacked the icon above the label inside the
+single unclassed `<span>` cascivo's Button wraps its children in, in every button
+in the app. Two rules fix both — `dialog:modal{margin:auto}` and a flex row on
+`button[data-variant][data-size] > span`, selected by the component's own DOM
+contract rather than a module hash. They are not design-system changes; they are
+what the screenshots showed once there was a design worth looking at.
+
+The sweep is complete in the literal sense — `rounded-*` (bar `rounded-full`,
+which draws circular *marks*), `shadow-*`, `backdrop-blur` and `bg-gradient`
+now appear zero times across the studio's 40 components, and so do `font-medium`,
+`font-semibold` and hand-rolled `uppercase tracking-wider` labels.
+`tests/theme.test.ts` gained three assertions that keep it that way: the layer
+exists, `.ds-grid` is still a 1px-gap box over the line colour, and nothing in
+the layer grows a radius, a shadow, a gradient or a blur.
+
 ## 2026-09-16 — The pack version stopped lying, and upstream took the suffix
 
 `@bpmnkit/camunda-docspack@0.1.0` shipped a `.llms/manifest.json` claiming

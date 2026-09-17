@@ -1,5 +1,41 @@
 # Features
 
+## The studio wears the design system (2026-09-17)
+
+The token bridge from #165 gave the studio the palette and the two type families.
+This gives it the system's form.
+
+- **A `.ds-*` component vocabulary** (`apps/studio/src/styles/design-system.css`), in
+  Tailwind's `components` layer so a utility at a call site still overrides it: the
+  hairline-subdivided grid (`.ds-grid` / `.ds-cell`), the bordered box, the mono label,
+  eyebrow and datum, the tinted state mark, the square control, the segmented control,
+  the accent-ruled tab, the field, the note, the code block, the empty state.
+- **The dashboard is one readout, not six cards.** Six metrics in a single bordered box
+  divided by 1px hairlines; the icon is a 16px mark rather than a filled tile, the value
+  is mono, the label is mono uppercase, and nothing lifts or casts a shadow on hover.
+- **Status is text, not a button.** `StatusPill`, `ProfileTag`, priorities, candidate
+  groups and model types are tinted mono marks. `components/ui/badge.tsx` is gone with them.
+- **Every list page has a head** — mono eyebrow, count as a datum, filters as a
+  hairline-divided segmented control — and every key, id, version, path and timestamp in
+  the app is mono.
+- **Settings reads like a specification**: five numbered sections (`01`–`05`) over
+  hairlines, and one `ActiveToggle` in place of three copies of the same control.
+- **Two rules enforced at the seam, not the call site.** cascivo ships hashed CSS-module
+  class names, so column heads become mono through `thead th`, and the rail's nine
+  destinations through `nav[aria-label="Main navigation"] a` — scoped by the `ariaLabel`
+  the Sidebar passes rather than by a hash. The rail's profile and project pickers stay in
+  natural case: they read out a name.
+- **Dark and neon redeclare `--bpmnkit-ds-*`** rather than aliasing it, the way Operate
+  does, so a rule that reads a design-system token directly themes correctly. Neon takes
+  `@bpmnkit/ui`'s own palette and keeps its one accent.
+- **Two pre-existing chrome bugs fixed**, both Tailwind preflight against markup it
+  does not own: `*{margin:0}` beat the user agent's `dialog{margin:auto}` so every modal
+  opened top-left, and `svg{display:block}` stacked the icon above the label in every
+  cascivo button.
+- **Zero `rounded-*` (bar circular marks), `shadow-*`, `backdrop-blur` or `bg-gradient`**
+  left in the studio's 40 components, guarded by three new assertions in
+  `tests/theme.test.ts`.
+
 ## The Camunda pack reads correctly everywhere (2026-09-16)
 
 - **`build` syncs the pack version.** A payload that is committed rather than
