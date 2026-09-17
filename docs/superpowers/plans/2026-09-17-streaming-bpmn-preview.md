@@ -1,6 +1,6 @@
 # Streaming BPMN preview — render the diagram while the model is still writing it
 
-**Status:** proposal
+**Status:** phases 1 and 2 shipped; phase 3 shipped except element highlighting
 **Date:** 2026-09-17
 
 ## The question
@@ -115,7 +115,7 @@ acceptable.
 
 ### Wiring, in three phases
 
-**Phase 1 — preview per tool call (half a day).** The MCP server already rewrites
+**Phase 1 — preview per tool call (shipped).** The MCP server already rewrites
 the output file on every mutating tool call (`saveState`,
 `apps/proxy/src/mcp-server.ts:143`). Watch that file in the `/chat` handler and
 emit `{type:"preview", xml}` on each write. ~15 lines, no new parsing, no adapter
@@ -127,7 +127,7 @@ mechanism can back a live preview for *external* agents (Claude Code driving
 Its limit: `compose_diagram` is one call, so a from-scratch build is still a
 single frame at the end. That is what Phase 2 is for.
 
-**Phase 2 — preview per token (1–2 days).** Add `--include-partial-messages` to
+**Phase 2 — preview per token (shipped).** Add `--include-partial-messages` to
 the claude adapter (`apps/proxy/src/adapters/claude.ts:55`; the flag is confirmed
 present in the installed CLI and emits `stream_event` envelopes carrying raw
 `content_block_delta` events). Forward `input_json_delta.partial_json` on a
@@ -139,7 +139,7 @@ Adapters without partial tool input degrade to the text path automatically — t
 extractor does not care where the characters came from. `supportsMcp` already
 distinguishes the adapters, so no capability plumbing is needed.
 
-**Phase 3 — the client (half a day).** In `panel.ts`, handle `preview` in the SSE
+**Phase 3 — the client (shipped, less the highlighting).** In `panel.ts`, handle `preview` in the SSE
 loop (the switch at `panel.ts:86`), mount the `BpmnCanvas` on the first frame
 instead of on finalize, and call `loadDefinitions(defs, {keepViewport: true})`
 plus `highlight(newIds, "new")` on each subsequent one. `finalizeAiMessage`
@@ -183,6 +183,26 @@ path. Worth noting as a follow-up, not part of this proposal's scope.
   builds would make the streamed bytes clean JSON. Cheaper than partial-message
   plumbing, but it trades away the batching that `compose_diagram` exists for.
   Worth testing before committing to Phase 2.
+
+## What shipping it changed about the plan
+
+Two things the plan got wrong, both found by capturing a real run rather than
+reasoning about one:
+
+- **The model reached for `replace_diagram`, not `compose_diagram`.** So the
+  streamed bytes were clean, quoted JSON, and the lenient parsing the plan
+  worried about was never needed. The scavenger handles the `compose_diagram`
+  case anyway; it has simply not been the one that occurs.
+- **Scanning forward from the last literal taken loses a sub-process.** Its
+  children close before it does, the cursor moves past them, and the container
+  itself is never seen. The scanner is a single pass over a brace stack instead:
+  every character looked at once, every literal considered once, innermost
+  first — which is both linear and the order that lets a container reclaim the
+  children already sitting at the top level.
+
+Phase 1's own limit turned out to decide how the two interact: streamed frames
+stop as soon as the MCP server has written state, because its frames are the same
+diagram from the model rather than a guess at an unfinished document.
 
 ## Verification
 

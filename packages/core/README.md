@@ -205,6 +205,29 @@ const restored = expand(JSON.parse(json))
 const outXml = Bpmn.export(restored)
 ```
 
+### Rendering while the model is still writing
+
+A model emits a diagram one token at a time, and the outermost `}` — the one
+`JSON.parse` waits for — is the last character it sends. `createCompactStream`
+reads the elements out of the text as their own literals close, so there is
+something to draw long before the document is finished:
+
+```typescript
+import { createCompactStream } from "@bpmnkit/core"
+
+// `base` is the diagram being edited, so a frame shows the whole thing rather
+// than the fragment the model is adding to it. Omit it to build from nothing.
+const diagramStream = createCompactStream({ base: null })
+
+function onModelChunk(chunk: string): void {
+  const frame = diagramStream.push(chunk) // null until the frame changes
+  if (frame) console.log("elements so far:", frame.processes[0]?.flowElements.length)
+}
+```
+
+Frames are a guess at an unfinished document: `push` never throws, drops what it
+cannot place, and expects the caller to have an authoritative result coming.
+
 ## API Reference
 
 ### BPMN
@@ -301,6 +324,7 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | `optimize(defs)` | Run all optimization rules; returns `OptimizeReport` |
 | `compactify(defs)` | Convert to compact `CompactDiagram` |
 | `expand(compact)` | Restore full `BpmnDefinitions` |
+| `createCompactStream(opts?)` | Read a diagram out of a model's token stream, frame by frame |
 | `generateId(prefix)` | Generate a unique short ID |
 
 ---

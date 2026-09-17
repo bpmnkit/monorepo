@@ -1,5 +1,49 @@
 # Progress
 
+## 2026-09-17 — Reading the diagram out of the tokens, before the document closes
+
+Watching the MCP output file covered diagrams built over several tool calls, and
+left the common case untouched: asked to build a process from scratch, the model
+makes one `replace_diagram` call, and nothing reaches disk until it returns. A
+capture settled what that call actually looks like — 1,580 characters of clean,
+quoted JSON in 94 deltas, opening `{"diagram": {` and not closing it until the
+final two characters. Parsing is therefore useless for the whole of it, which is
+exactly the stretch worth showing.
+
+`createCompactStream` does not parse the document. It takes complete `{...}`
+literals as they close and keeps the ones shaped like a `CompactElement` or a
+`CompactFlow` — the innermost objects, and so the first to finish. On that
+capture the first renderable frame arrives 260 characters in, 16% of the way,
+with 15 frames following; feeding the whole thing one character at a time, with
+an export per frame, costs 13 ms.
+
+The first attempt scanned from the last literal it had taken, which loses a
+sub-process: its children close before it does, the cursor moves past them, and
+the container itself is never seen. Replaced with a single pass over a brace
+stack — every character looked at once, every literal considered once, innermost
+first — which is both linear and the order that lets a container reclaim the
+children already sitting at the top level.
+
+Two things throw in `expand` and are handled rather than caught: a flow marked
+`isDefault` whose gateway has not been written yet, and an element whose `type`
+has not finished arriving. The first loses its marker in previews, the second is
+not taken until its type is one the catalog knows.
+
+The claude adapter asks for `--include-partial-messages` only when something is
+listening, and forwards `input_json_delta` fragments for `mcp__bpmn__*` calls
+only. Keying on the content-block index matters: the recorded run reached for two
+of its own tools before the diagram one, and their arguments stream through the
+same channel. `readStreamJsonLine` is split out so that ordering can be replayed
+in a test instead of asserted about a subprocess.
+
+`/chat` feeds those fragments to one stream per request, seeded with the diagram
+being edited so a frame shows the whole process rather than the fragment being
+added, and throttles frames to 100 ms — a limit set by the canvas laying the
+diagram out again at the other end, not by the 1 ms it costs to build one. Once
+the MCP server has written real state the streamed frames stop: its frames are
+the same diagram, from the model rather than from a guess at an unfinished
+document.
+
 ## 2026-09-17 — The diagram stopped waiting for the model to stop talking
 
 `/chat` read the MCP server's output file once, after `adapter.stream()` resolved,

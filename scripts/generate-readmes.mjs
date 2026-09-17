@@ -301,6 +301,29 @@ const restored = expand(JSON.parse(json))
 const outXml = Bpmn.export(restored)
 \`\`\`
 
+### Rendering while the model is still writing
+
+A model emits a diagram one token at a time, and the outermost \`}\` — the one
+\`JSON.parse\` waits for — is the last character it sends. \`createCompactStream\`
+reads the elements out of the text as their own literals close, so there is
+something to draw long before the document is finished:
+
+\`\`\`typescript
+import { createCompactStream } from "@bpmnkit/core"
+
+// \`base\` is the diagram being edited, so a frame shows the whole thing rather
+// than the fragment the model is adding to it. Omit it to build from nothing.
+const diagramStream = createCompactStream({ base: null })
+
+function onModelChunk(chunk: string): void {
+  const frame = diagramStream.push(chunk) // null until the frame changes
+  if (frame) console.log("elements so far:", frame.processes[0]?.flowElements.length)
+}
+\`\`\`
+
+Frames are a guess at an unfinished document: \`push\` never throws, drops what it
+cannot place, and expects the caller to have an authoritative result coming.
+
 ## API Reference
 
 ### BPMN
@@ -397,6 +420,7 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | \`optimize(defs)\` | Run all optimization rules; returns \`OptimizeReport\` |
 | \`compactify(defs)\` | Convert to compact \`CompactDiagram\` |
 | \`expand(compact)\` | Restore full \`BpmnDefinitions\` |
+| \`createCompactStream(opts?)\` | Read a diagram out of a model's token stream, frame by frame |
 | \`generateId(prefix)\` | Generate a unique short ID |
 `,
 	},
@@ -2129,9 +2153,11 @@ All plugins with \`"casen-plugin"\` in their \`keywords\` appear in \`casen plug
 - **MCP server** — Model Context Protocol server for AI agent integrations (\`stdio\` transport)
 - **Camunda API proxy** — transparent HTTP proxy that injects auth from your \`casen\` CLI profiles
 
-While the AI is working, \`/chat\` emits a \`preview\` event carrying the diagram as it
-stands after each tool call, so a client can render the process being drawn instead of
-waiting for the model to stop. Previews are advisory — the \`xml\` event sent once the
+While the AI is working, \`/chat\` emits \`preview\` events carrying the diagram as it
+stands, so a client can render the process being drawn instead of waiting for the model
+to stop. They come from two places: the diagram the model is writing into a tool call,
+read out of the tokens themselves, and — once the MCP server has written real state —
+that state, after each tool call. Previews are advisory; the \`xml\` event sent once the
 stream ends is the authoritative result.
 
 The proxy reads authentication from profiles stored by the \`@bpmnkit/cli\` (\`~/.config/casen/config.json\`), so you don't need to configure credentials separately.

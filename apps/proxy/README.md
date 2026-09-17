@@ -22,9 +22,11 @@
 - **MCP server** — Model Context Protocol server for AI agent integrations (`stdio` transport)
 - **Camunda API proxy** — transparent HTTP proxy that injects auth from your `casen` CLI profiles
 
-While the AI is working, `/chat` emits a `preview` event carrying the diagram as it
-stands after each tool call, so a client can render the process being drawn instead of
-waiting for the model to stop. Previews are advisory — the `xml` event sent once the
+While the AI is working, `/chat` emits `preview` events carrying the diagram as it
+stands, so a client can render the process being drawn instead of waiting for the model
+to stop. They come from two places: the diagram the model is writing into a tool call,
+read out of the tokens themselves, and — once the MCP server has written real state —
+that state, after each tool call. Previews are advisory; the `xml` event sent once the
 stream ends is the authoritative result.
 
 The proxy reads authentication from profiles stored by the `@bpmnkit/cli` (`~/.config/casen/config.json`), so you don't need to configure credentials separately.
