@@ -1,5 +1,62 @@
 # Progress
 
+## 2026-09-18 — The rest of the 1.0 list
+
+Everything left on the checklist except the merge itself.
+
+**The public API is now enforced, not just promised.** `scripts/api-surface.mjs` records the
+name and kind of every export of every package in `STABLE` — 1,484 of them across the eleven
+that ship declarations — read from the built `.d.ts` through the TypeScript compiler, so it is
+the surface consumers actually get rather than what `src/index.ts` appears to say. `pnpm
+check:api` diffs it in CI. Nothing else in the repo could see a removed export: `tsc` is happy
+when one disappears, tests only cover what they import, and `check:consumable` checks that
+entry points resolve, not what is behind them. Verified the only way worth trusting — deleted
+`formatFeel` from `@bpmnkit/feel`, watched CI's check name it and exit 1, put it back.
+
+Writing it surfaced a bug in itself. The first snapshot recorded 36 values and 1,448 types, with
+`Bpmn`, `ProcessBuilder` and `ParseError` all filed as types. An entry point is a barrel, so
+nearly every symbol is an *alias*, and an alias carries `SymbolFlags.Alias` and nothing else —
+reading its flags directly calls every re-exported class and function a type. Resolving through
+`getAliasedSymbol` gives 405 values to 1,079 types. Left unfixed, the value/type half of the
+check would have been worse than useless: silent, and wrong in one direction only.
+
+**Parse failures throw `ParseError`.** `errors.ts` has always told callers to write
+`if (err instanceof ParseError)`, and that branch never ran: the BPMN, DMN and Form parsers
+threw a bare `Error` at 35 of their 36 throw sites. Nothing failed loudly, because a bare
+`Error` is still caught — which is exactly how it survived to the eve of a 1.0. The fix is
+additive (`ParseError extends BpmnSdkError extends Error`), so code that caught `Error` is
+unaffected and the documented check starts working. Eight regression tests, per parser and per
+failure shape, because swapping one back breaks no other test in the repo.
+
+**Both `@deprecated` markers resolved, and they wanted opposite treatment.**
+`BuildOptions.strict` was our own alias for `explicitJoins` and is **removed** — 1.0 is the
+only chance before a 2.0, and carrying a deprecated alias into a brand-new stable release is
+the wrong way round. The connector `zeebe:taskDefinition:type` binding is **kept**: it is
+Camunda's legacy spelling, still used by templates in the wild and by the bundled catalogue,
+and `apply`, `catalog` and `validate` all handle it. Removing it would stop valid templates
+validating, which the stability policy explicitly forbids. Under that policy `@deprecated`
+means "will be removed in a major", so the marker was making a promise the package must not
+keep; it is now a plain note. Zero `@deprecated` markers left in the repo.
+
+**The status badge tells the truth per package.** It read `experimental` on all twenty-six for
+as long as it existed, which stopped being true the moment twelve reached 1.0. It is generated
+from `STABLE` — the same list the release checks read — so it cannot disagree with the promise.
+
+**`@bpmnkit/proxy/dist/aikit-mcp.js` is now `@bpmnkit/proxy/aikit-mcp`**, taken while the
+package is still 0.x and the rename is free. Once it reached 1.0 the choice would have been
+between breaking it later and publishing a policy its own manifest contradicts.
+
+Also: `SECURITY.md`, `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`, which a 1.0 library with no
+security contact had no business being without. `PUBLISHING.md` refreshed — it still told the
+reader to create a `bpmn-sdk` npm organisation, two rebrands out of date, and its
+first-publish instructions were wrong; it now documents the five gates in front of publish and
+that a red release workflow publishes nothing and says so nowhere but the Actions tab.
+`@bpmnkit/proxy`'s native-module prerequisites are written down, per platform, with the
+`node-gyp` errors they produce. `apps/reebe-wasm` has the changelog it was the only published
+package to lack. Twenty-nine plugin docstrings stopped naming `@bpmnkit/canvas-plugin-*`
+packages that have not existed for three renames.
+
+
 ## 2026-09-18 — The 1.0 set: twelve in, fourteen out
 
 The decision the remaining 1.0.0 work was waiting on, and the changeset that acts on it.

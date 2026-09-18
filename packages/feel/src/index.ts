@@ -43,6 +43,9 @@ export type { EvalContext } from "./evaluator.js"
 export { formatFeel } from "./formatter.js"
 export type { FormatOptions } from "./formatter.js"
 
+// Built-ins
+export { builtinNames, getBuiltin } from "./builtins.js"
+
 // Highlighter
 export { annotate, highlightToHtml, highlightFeel } from "./highlighter.js"
 export type { AnnotatedToken, HighlightKind } from "./highlighter.js"

@@ -42,7 +42,7 @@ const mcpCmd: Command = {
 		},
 	],
 	async run(_ctx) {
-		const aitKitMcpUrl = import.meta.resolve("@bpmnkit/proxy/dist/aikit-mcp.js")
+		const aitKitMcpUrl = import.meta.resolve("@bpmnkit/proxy/aikit-mcp")
 		const aitKitMcpPath = fileURLToPath(aitKitMcpUrl)
 
 		await new Promise<void>((resolve, reject) => {

@@ -3406,11 +3406,11 @@ describe("build-time validation", () => {
 				.branch("b", (b) => b.defaultFlow().connectTo("after"))
 				.serviceTask("after", { name: "After", taskType: "z" })
 				.endEvent("end")
-				.build({ strict: true }),
+				.build({ explicitJoins: true }),
 		).toThrow(/Inferred join gateways/)
 	})
 
-	it("strict mode passes when join gateway is explicit", () => {
+	it("explicitJoins passes when join gateway is explicit", () => {
 		expect(() =>
 			Bpmn.createProcess("proc")
 				.startEvent("s")
@@ -3421,7 +3421,7 @@ describe("build-time validation", () => {
 				.branch("b", (b) => b.defaultFlow().connectTo("join"))
 				.exclusiveGateway("join")
 				.endEvent("end")
-				.build({ strict: true }),
+				.build({ explicitJoins: true }),
 		).not.toThrow()
 	})
 })

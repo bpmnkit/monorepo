@@ -8,7 +8,7 @@
   [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
   [![turborepo](https://img.shields.io/badge/Turborepo-monorepo-ef4444?style=flat-square&logo=turborepo&logoColor=white)](https://turbo.build/)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)
+  [![stable](https://img.shields.io/badge/core%20packages-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](https://github.com/bpmnkit/monorepo)
 </div>

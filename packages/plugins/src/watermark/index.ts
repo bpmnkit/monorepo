@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-watermark — bottom-right attribution bar for `@bpmnkit/canvas`.
+ * @bpmnkit/plugins/watermark — bottom-right attribution bar for `@bpmnkit/canvas`.
  *
  * Renders configurable links and an optional logo in the bottom-right corner.
  * Links are left of the logo; the logo is always the rightmost element.
@@ -7,7 +7,7 @@
  * ## Usage
  * ```typescript
  * import { BpmnCanvas } from "@bpmnkit/canvas";
- * import { createWatermarkPlugin } from "@bpmnkit/canvas-plugin-watermark";
+ * import { createWatermarkPlugin } from "@bpmnkit/plugins/watermark";
  *
  * const canvas = new BpmnCanvas({
  *   container,

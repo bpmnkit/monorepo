@@ -206,7 +206,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/core — Installation — `layoutProcess(process)`](.llms/chunks/packages.core.installation-layoutprocess-process.md) — 85 tokens
 - [@bpmnkit/core — Installation — ProcessBuilder methods](.llms/chunks/packages.core.installation-processbuilder-methods.md) — 698 tokens
 - [@bpmnkit/core — Installation — Ad-hoc sub-processes: children are a set, not a chain](.llms/chunks/packages.core.installation-ad-hoc-sub-processes-children-are-a-set-not-a-chain.md) — 368 tokens
-- [@bpmnkit/core — Installation — Joins: inferred by default, or declared](.llms/chunks/packages.core.installation-joins-inferred-by-default-or-declared.md) — 314 tokens
+- [@bpmnkit/core — Installation — Joins: inferred by default, or declared](.llms/chunks/packages.core.installation-joins-inferred-by-default-or-declared.md) — 324 tokens
 - [@bpmnkit/core — Writing files — `@bpmnkit/core/node`](.llms/chunks/packages.core.writing-files-bpmnkit-core-node.md) — 52 tokens
 - [@bpmnkit/core — Writing files — `@bpmnkit/core/node` — `writeBpmn(definitions, options)`](.llms/chunks/packages.core.writing-files-bpmnkit-core-node-writebpmn-definitions-options.md) — 440 tokens
 - [@bpmnkit/core — Writing files — `@bpmnkit/core/node` — `exportPreserving(original, definitions)`](.llms/chunks/packages.core.writing-files-bpmnkit-core-node-exportpreserving-original-definitions.md) — 598 tokens

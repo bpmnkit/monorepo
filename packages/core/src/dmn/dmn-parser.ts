@@ -1,3 +1,4 @@
+import { ParseError } from "../errors.js"
 import type { XmlElement } from "../types/xml-element.js"
 import { parseXml } from "../xml/xml-parser.js"
 import type {
@@ -58,7 +59,7 @@ function attr(element: XmlElement, name: string): string | undefined {
 function requiredAttr(element: XmlElement, name: string): string {
 	const value = attr(element, name)
 	if (value === undefined) {
-		throw new Error(`Missing required attribute "${name}" on element <${element.name}>`)
+		throw new ParseError(`Missing required attribute "${name}" on element <${element.name}>`)
 	}
 	return value
 }
@@ -91,7 +92,7 @@ function parseInputExpression(el: XmlElement): DmnInput["inputExpression"] {
 function parseInput(el: XmlElement): DmnInput {
 	const exprEl = findChild(el, "inputExpression")
 	if (!exprEl) {
-		throw new Error(`Missing <inputExpression> in input "${attr(el, "id")}"`)
+		throw new ParseError(`Missing <inputExpression> in input "${attr(el, "id")}"`)
 	}
 	return {
 		id: requiredAttr(el, "id"),
@@ -288,7 +289,7 @@ export function parseDmn(xml: string): DmnDefinitions {
 	const root = parseXml(xml)
 
 	if (localName(root.name) !== "definitions") {
-		throw new Error(`Expected <definitions> root element, got <${root.name}>`)
+		throw new ParseError(`Expected <definitions> root element, got <${root.name}>`)
 	}
 
 	// Extract namespace declarations

@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-model-navigation — jump from an element to what it references.
+ * @bpmnkit/plugins/model-navigation — jump from an element to what it references.
  *
  * A Call Activity names a process, a Business Rule Task names a decision, a
  * User Task names a form. Following one of those means opening a *file*, and a

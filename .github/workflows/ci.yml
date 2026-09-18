@@ -66,3 +66,11 @@ jobs:
       # surfaced in the release workflow, where it silently stopped publishing.
       - name: Check packages are packable
         run: pnpm check:consumable --pack-only
+
+      # The 1.0 promise is that these packages' exports do not change shape without
+      # a major. Nothing else here can see that happen: tsc is happy when an export
+      # disappears, tests only cover what they import, and the packable check looks
+      # at whether entry points resolve, not what is behind them. This diffs the
+      # built declarations against the committed snapshot.
+      - name: Check the public API surface
+        run: pnpm check:api

@@ -1,12 +1,12 @@
 /**
- * @bpmnkit/canvas-plugin-zoom-controls — zoom controls plugin for `@bpmnkit/canvas`.
+ * @bpmnkit/plugins/zoom-controls — zoom controls plugin for `@bpmnkit/canvas`.
  *
  * Adds +, −, and fit-diagram buttons in the bottom-left corner of the canvas.
  *
  * ## Usage
  * ```typescript
  * import { BpmnCanvas } from "@bpmnkit/canvas";
- * import { createZoomControlsPlugin } from "@bpmnkit/canvas-plugin-zoom-controls";
+ * import { createZoomControlsPlugin } from "@bpmnkit/plugins/zoom-controls";
  *
  * const canvas = new BpmnCanvas({
  *   container: document.getElementById("app")!,

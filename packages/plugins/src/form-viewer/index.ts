@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-form-viewer — read-only Camunda Form viewer.
+ * @bpmnkit/plugins/form-viewer — read-only Camunda Form viewer.
  *
  * Renders all Camunda Form component types as a static HTML preview.
  * Built entirely in-repo — no dependency on @bpmnkit-io/form-js.

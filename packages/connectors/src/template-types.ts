@@ -72,7 +72,17 @@ export interface TemplateProperty {
 /** All supported binding types. */
 export type TemplateBinding =
 	| { type: "property"; name: string }
-	/** @deprecated Use zeebe:taskDefinition with property field instead. */
+	/**
+	 * Camunda's legacy spelling of the binding below, superseded upstream by
+	 * `{ type: "zeebe:taskDefinition", property: "type" }`.
+	 *
+	 * Not deprecated *here*, and not going anywhere: templates in the wild — the
+	 * bundled catalogue included — still use it, and `apply`, `catalog` and
+	 * `validate` all handle it. Under the stability policy a template that
+	 * validates today does not stop validating, so this member stays in the union
+	 * however long upstream keeps the form alive. Prefer the newer spelling when
+	 * authoring; expect this one when reading.
+	 */
 	| { type: "zeebe:taskDefinition:type" }
 	| { type: "zeebe:taskDefinition"; property: "type" | "retries" }
 	| { type: "zeebe:input"; name: string }

@@ -932,32 +932,40 @@ not code.
       page are all 0.x
 - [x] `engines.node` on every package in the 1.0 set — was 2 of 12, now 12 of 12. The
       fourteen 0.x packages still mostly lack one; worth doing as each joins
-- [ ] `@bpmnkit/proxy` exports the subpath `"./dist/aikit-mcp.js"`, naming a build path as
+- [x] `@bpmnkit/proxy` exports the subpath `"./dist/aikit-mcp.js"`, naming a build path as
       public API — which the stability policy explicitly says `dist/` paths are not. Give it
       a real subpath name before 1.0; the current spelling cannot be kept without either
       breaking it later or contradicting the policy on day one
-- [ ] Commit an API-surface snapshot and diff it in CI, so a removed export fails the build
-- [ ] Refresh `PUBLISHING.md`; it still names the `@bpmn-sdk` org and `bpmn-sdk/monorepo`
-- [ ] Add `SECURITY.md`, `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`
-- [ ] `CHANGELOG.md` for `apps/reebe-wasm`, the only published package without one
-- [ ] Document or remove `@bpmnkit/proxy`'s native-module install requirement —
+- [x] Commit an API-surface snapshot and diff it in CI, so a removed export fails the build —
+      `scripts/api-surface.mjs` + `api-surface.json`, 1,484 exports across the eleven set
+      members that ship declarations; `pnpm check:api` in CI. Verified by deleting an export
+      and watching it fail
+- [x] Refresh `PUBLISHING.md`; it still names the `@bpmn-sdk` org and `bpmn-sdk/monorepo`
+- [x] Add `SECURITY.md`, `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`
+- [x] `CHANGELOG.md` for `apps/reebe-wasm`, the only published package without one
+- [x] Document `@bpmnkit/proxy`'s native-module install requirement —
       `isolated-vm` and `better-sqlite3` need a compiler, and the failure is not friendly
-- [ ] Remove the two `@deprecated` markers (`ProcessBuilder.strict`, the connector template
-      field); 1.0 is the moment for it
-- [ ] `@bpmnkit/core` exports `ParseError` and documents `instanceof ParseError` as the way to
+- [x] Resolve the two `@deprecated` markers; 1.0 is the moment for it. `BuildOptions.strict`
+      is **removed** — it was our own alias for `explicitJoins`. The connector
+      `zeebe:taskDefinition:type` binding is **kept**: it is Camunda's legacy spelling, still
+      used by templates in the wild and by the bundled catalogue, so removing it would stop
+      valid templates validating. Its marker was the wrong tool and is now a plain note
+- [x] `@bpmnkit/core` exports `ParseError` and documents `instanceof ParseError` as the way to
       handle a bad file — but `bpmn-parser.ts` throws a plain `Error` in four places and
       `ParseError` is constructed once in the whole package. Verified: `Bpmn.parse("<nonsense/>")`
       throws something for which `e instanceof ParseError` is `false`. The documented
       error-handling contract does not hold on the main parse path. Fixing it is additive
       (`ParseError extends Error`, so existing `catch` keeps working and `instanceof` starts
       working where it was promised), so it can land after 1.0 — but it should land
-- [ ] `@bpmnkit/feel` does not re-export `builtinNames()` / `getBuiltin()` from its entry
+- [x] `@bpmnkit/feel` does not re-export `builtinNames()` / `getBuiltin()` from its entry
       point, so an editor cannot enumerate the 87 built-ins without reaching into `dist/`,
       which the stability policy says is not API. Additive; worth exporting
-- [ ] Plugin source docstrings still name packages that no longer exist — `minimap/index.ts`
+- [x] Plugin source docstrings still name packages that no longer exist — `minimap/index.ts`
       documents itself as `@bpmnkit/canvas-plugin-minimap`, three renames out of date. Cosmetic,
       but it is what a reader sees on hover
-- [ ] Drop the `status: experimental` badge from `README.md`
+- [x] Drop the `status: experimental` badge from `README.md` — the badge is now generated per
+      package from `STABLE`, so it reads `stable` on the twelve and `experimental` on the rest
+      rather than claiming one status for the whole repo
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-storage-tabs-bridge
+ * @bpmnkit/plugins/storage-tabs-bridge
  *
  * Wires the storage plugin and tabs plugin together, handling:
  * - Tab ↔ storage file mapping

@@ -1,16 +1,16 @@
 /**
- * @bpmnkit/canvas-plugin-command-palette-editor — editor extension for the
+ * @bpmnkit/plugins/command-palette-editor — editor extension for the
  * command palette plugin. Adds one command per BPMN element type. When
  * executed, shows a second-step picker listing candidate source nodes to
  * connect after. Falls back to `setTool` (free-click placement) when the
  * diagram is empty.
  *
- * Must be used together with `@bpmnkit/canvas-plugin-command-palette`.
+ * Must be used together with `@bpmnkit/plugins/command-palette`.
  *
  * ## Usage
  * ```typescript
- * import { createCommandPalettePlugin } from "@bpmnkit/canvas-plugin-command-palette";
- * import { createCommandPaletteEditorPlugin } from "@bpmnkit/canvas-plugin-command-palette-editor";
+ * import { createCommandPalettePlugin } from "@bpmnkit/plugins/command-palette";
+ * import { createCommandPaletteEditorPlugin } from "@bpmnkit/plugins/command-palette-editor";
  *
  * let editorRef: BpmnEditor | null = null;
  * const palette = createCommandPalettePlugin({ ... });

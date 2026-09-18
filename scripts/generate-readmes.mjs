@@ -4,6 +4,7 @@
 
 import { writeFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { STABLE } from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname
 const LOGO_URL = "https://bpmnkit.com/favicon.svg"
@@ -12,7 +13,20 @@ const DOCS = "https://bpmnkit.com/docs"
 
 // ── Shared header / footer ────────────────────────────────────────────────────
 
-function header({ name, description, extra = "", dir = "packages" }) {
+/**
+ * The status badge tells the truth per package rather than per repo.
+ *
+ * It read `experimental` on all twenty-six for as long as it existed, which stopped
+ * being true the moment twelve of them reached 1.0. `STABLE` is the same list the
+ * release checks read, so the badge cannot disagree with the promise.
+ */
+function statusBadge(pkgPath) {
+	return STABLE.includes(pkgPath)
+		? `[![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](${DOCS}/getting-started/stability)`
+		: `[![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](${DOCS}/getting-started/stability)`
+}
+
+function header({ name, description, extra = "", dir = "packages", pkgPath = "" }) {
 	const pkg = name.replace("@bpmnkit/", "")
 	const changelogPath = `${dir}/${pkg}/CHANGELOG.md`
 	return `<div align="center">
@@ -24,7 +38,7 @@ function header({ name, description, extra = "", dir = "packages" }) {
   [![license](https://img.shields.io/npm/l/${name}?style=flat-square)](${GITHUB}/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](${GITHUB})
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](${GITHUB})
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](${GITHUB})
+  ${statusBadge(pkgPath)}
 
   [Website](https://bpmnkit.com) · [Documentation](${DOCS}) · [GitHub](${GITHUB}) · [Changelog](${GITHUB}/blob/main/${changelogPath})
 </div>
@@ -2063,6 +2077,23 @@ npm install -g @bpmnkit/proxy
 pnpm proxy
 \`\`\`
 
+### Prerequisites
+
+Unlike the rest of BPMN Kit, this package has **native dependencies** — \`isolated-vm\` (the
+sandbox the AI bridge evaluates code in), \`better-sqlite3\`, \`imapflow\` and \`nodemailer\`.
+\`isolated-vm\` and \`better-sqlite3\` are compiled at install time, so the machine needs a
+toolchain:
+
+| | |
+|---|---|
+| **Linux** | \`python3\`, \`make\`, \`g++\` (\`build-essential\`) |
+| **macOS** | Xcode Command Line Tools — \`xcode-select --install\` |
+| **Windows** | Visual Studio Build Tools with the C++ workload |
+
+Without them the install fails at \`node-gyp rebuild\` with \`gyp ERR! find Python\` or
+\`spawn node-gyp ENOENT\`. Nothing else in the workspace needs this — every library package
+here is dependency-free.
+
 ## Quick Start
 
 \`\`\`sh
@@ -2788,7 +2819,7 @@ const rootReadme = `<div align="center">
   [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
   [![turborepo](https://img.shields.io/badge/Turborepo-monorepo-ef4444?style=flat-square&logo=turborepo&logoColor=white)](https://turbo.build/)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](${GITHUB})
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](${GITHUB})
+  [![stable](https://img.shields.io/badge/core%20packages-stable-16a34a?style=flat-square)](${DOCS}/getting-started/stability)
 
   [Website](https://bpmnkit.com) · [Documentation](${DOCS}) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](${GITHUB})
 </div>
@@ -3108,7 +3139,9 @@ console.log(`✓  ${rootPath}`)
 for (const [pkgPath, { name, description, content, dir = "packages" }] of Object.entries(
 	packages,
 )) {
-	const fullContent = [header({ name, description, dir }), content, footer(name)].join("\n")
+	const fullContent = [header({ name, description, dir, pkgPath }), content, footer(name)].join(
+		"\n",
+	)
 
 	const outputPath = resolve(ROOT, pkgPath, "README.md")
 	writeFileSync(outputPath, fullContent, "utf8")
