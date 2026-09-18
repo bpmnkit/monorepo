@@ -964,6 +964,25 @@
 			"entities": []
 		},
 		{
+			"id": "guides.ai.previewing-while-the-model-writes",
+			"file": "chunks/guides.ai.previewing-while-the-model-writes.md",
+			"tokens": 687,
+			"tags": [
+				"guides",
+				"ai",
+				"previewing",
+				"while",
+				"model",
+				"writes"
+			],
+			"entities": [
+				"JSON.parse",
+				"createCompactStream",
+				"keepViewport",
+				"isDefault"
+			]
+		},
+		{
 			"id": "guides.ai.mcp-server",
 			"file": "chunks/guides.ai.mcp-server.md",
 			"tokens": 151,
@@ -2473,6 +2492,24 @@
 				"dataObject",
 				"dataObjectReference",
 				"dataStoreReference"
+			]
+		},
+		{
+			"id": "packages.core.installation-createcompactstream-options",
+			"file": "chunks/packages.core.installation-createcompactstream-options.md",
+			"tokens": 502,
+			"tags": [
+				"packages",
+				"core",
+				"installation",
+				"createcompactstream",
+				"options"
+			],
+			"entities": [
+				"JSON.parse",
+				"CompactElement",
+				"CompactFlow",
+				"isDefault"
 			]
 		},
 		{

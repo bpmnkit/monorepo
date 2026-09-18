@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-09-18 — The preview reached the docs, and the pack that agents actually read
+
+Three commits of streaming preview had landed in the generated READMEs and in
+`doc/`, and nowhere a user or an agent looks. The docspack gap was the sharp one:
+this repo's own CLAUDE.md tells every agent to ask `bpmnkit-docs` before
+answering from memory and to trust a chunk over recall, so an agent asking how to
+preview a diagram mid-generation got nothing and fell through to training that
+predates the API.
+
+`guides/ai.md` gains "Previewing While the Model Writes" — why a half-written
+document cannot be parsed, what `base` and `keepViewport` are for, that frames are
+advisory, and where the proxy's two kinds of `preview` frame come from. That guide
+is also the only home the `preview` SSE event has: there is no docs page for
+`@bpmnkit/proxy` or `@bpmnkit/plugins`. `packages/core.md` gains
+`createCompactStream(options?)` beside `compactify` and `expand`.
+
+The pack rebuilt to 208 chunks from 206, and both new chunks come back from a real
+`ask` against the built index.
+
+On the landing page the streaming preview goes where the claim it qualifies
+already is: the AI benchmark section leads with "faster to a diagram", and a panel
+after it says the wait is now something to watch rather than sit through. It
+reuses the section's hairline-panel stacking — `border-top`/`border-bottom: none`
+with an accent left rule — so the box stays one box.
+
+One thing left alone: `apps/landing/src/generated/ecosystem.ts` has
+`packages/ascii` at 0.0.36 against a manifest reading 0.0.37, which fails
+`tests/ecosystem.test.ts`. It is committed stale and unrelated to any of this —
+`node scripts/generate-ecosystem.mjs` fixes it.
+
 ## 2026-09-17 — Marking what the AI added, and only when that means something
 
 A preview frame shows the process being written but says nothing about which part
