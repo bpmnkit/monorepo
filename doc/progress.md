@@ -1,5 +1,72 @@
 # Progress
 
+## 2026-09-18 — The 1.0 set: twelve in, fourteen out
+
+The decision the remaining 1.0.0 work was waiting on, and the changeset that acts on it.
+
+**Twelve packages** take the promise: `core`, `feel`, `canvas`, `editor`, `engine`, `api`,
+`ascii`, `connectors`, `connector-gen`, `docspack`, `plugins` and `cli`. **Fourteen stay on
+0.x**, deliberately. The bar is the three conditions the stability policy already states —
+tests, a documentation page, an API worth defending for a year — applied strictly, because the
+two possible mistakes are not symmetric: joining later costs nothing, since 0.x → 1.0 breaks
+no one, while a premature 1.0 either forces an early 2.0 or quietly breaks the promise. Every
+tie-break therefore went to waiting.
+
+Four calls needed judgement rather than arithmetic. **`plugins` is in** despite being the
+largest surface in the repo — 34 entry points and no root export — because 257 tests pin it
+and adding a plugin is a minor, so the surface grows without breaking. **`cli` is in** despite
+exporting nothing at all: its contract is the command surface, which is a promise worth
+making, and the policy was extended to say so. **`proxy` is out** — no docs page, four native
+dependencies that need a compiler, and an `exports` subpath literally named
+`./dist/aikit-mcp.js`, which the policy says is not API; stabilising that spelling would
+enshrine the contradiction. **`worker-client` is out** and that one is uncomfortable: it has a
+docs page and it is the only runtime dependency of every scaffolded worker, but it has zero
+tests, and the first condition is not one to waive for the package where breakage is most
+expensive. It and `cli-sdk` are first in the queue to join.
+
+**The set is enforced, not just written down.** It lives in `STABLE` in
+`scripts/published-packages.mjs`, and `check-packages.mjs` now checks both directions: nothing
+on the list may lack a test script or a documentation page, and nothing at 1.0.0 or above may
+be missing from the list. A stray `major` changeset fails a check instead of reaching npm. The
+check earned itself immediately — it named the four packages in the set with no documentation
+page, which is how the next piece of work got scoped.
+
+**Four documentation pages**, for `plugins`, `feel`, `connectors` and `ascii`. Every example on
+them was executed against the built package rather than copied from a README, which turned out
+to matter: **`@bpmnkit/feel`'s published README does not work.** Its Quick Start passes a bare
+object to `evaluate`, which takes an `EvalContext` and throws on `ctx.vars[name]`; it documents
+`highlightFeel` as returning tokens to iterate when it returns an HTML string; `formatFeel` is
+documented as taking source text when it takes a parsed node; `annotate` is called an AST when
+it returns tokens; and `ParseError` is documented as `{ message, position }` when it is
+`{ message, start, end }`. Four of eight rows in its API table were wrong. All corrected in the
+generator, so the fix reaches npm. The connectors page was nearly wrong the same way — the
+assumption that `applyConnectorTemplate` mutates an element survived until it was run, and the
+real design is better than the guess: it returns builder options keyed by element kind, with
+problems alongside, and never throws.
+
+**`engines.node` on the whole set**, 2 of 12 to 12 of 12. The policy names Node 20 LTS as the
+floor; now the manifests do too.
+
+**One flaky gate, found and fixed.** `apps/examples` asserted that each example builds in under
+250ms, on a comment claiming it "cannot fire by accident". It can: under `pnpm -r test` with
+every suite running at once, example 06 took 304ms and failed a tree that passed three times
+out of three when run alone. The measurement times `await import(...)`, so it is dominated by
+transform cost and is a property of the machine, not the code — and a flaky gate on `main`
+blocks releases at random, which is precisely what this branch spent its time unblocking. The
+ceiling is 8s and the comment now says what is actually being measured.
+
+Filed rather than fixed, because each wants its own change: **`@bpmnkit/core` exports
+`ParseError` and documents `instanceof ParseError` as the way to handle a bad file, but the
+parser throws a plain `Error`** — verified, `Bpmn.parse("<nonsense/>")` throws something for
+which the check is `false`. The fix is additive and can land after 1.0, but it should land.
+Also: `@bpmnkit/feel` does not re-export `builtinNames()`, so enumerating its 87 built-ins
+means reaching into `dist/`; and several plugin docstrings still name packages three renames
+out of date.
+
+The changeset is dry-run verified: all twelve land on exactly `1.0.0`, no other package crosses
+1.0, and `check-packages.mjs` passes against the versioned tree.
+
+
 ## 2026-09-14 — The stability policy, and what `semanticHash` turns out to settle
 
 The last of the five 1.0.0 blockers, and the only one no script could close:

@@ -212,10 +212,47 @@ Measured against the first two:
 `reebe-wasm` and the three `casen-*`. `@bpmnkit/plugins` and `@bpmnkit/feel` being on
 that list is the surprise — both are large, mature, well-tested public API.
 
-**Recommendation.** Cut 1.0.0 for the ready set and **leave the rest on 0.x on
-purpose**. A mixed-version monorepo is normal and honest; a blanket 1.0 is neither.
-The `casen-*` packages are worked examples and `create-casen-plugin` is a scaffolder —
-they have no API to stabilise and should stay 0.x indefinitely.
+**Decided: twelve in, fourteen out.**
+
+The bar is the three conditions the stability policy states — tests, a documentation page, and
+an API worth defending for a year. Applied strictly, because **joining later costs nothing**:
+a package going 0.x → 1.0 breaks no one, while a premature 1.0 either forces an early 2.0 or
+quietly breaks the promise. There is no symmetry between the two mistakes, so the tie-break
+always goes to waiting.
+
+**In (12):** `core`, `feel`, `canvas`, `editor`, `engine`, `api`, `ascii`, `connectors`,
+`connector-gen`, `docspack`, `plugins`, `cli`.
+
+**Out (14):** `ui`, `profiles`, `operate`, `astro-shared`, `patterns`, `worker-client`,
+`user-tasks`, `cli-sdk`, `create-casen-plugin`, `proxy`, `reebe-wasm`, and the three
+`casen-*` examples.
+
+The calls that needed judgement rather than arithmetic:
+
+- **`plugins` — in**, despite being the largest surface in the repo (34 entry points, no root
+  export). 257 tests pin the behaviour, and *adding* a plugin is a minor under the policy, so
+  the surface grows without breaking. Leaving the package most consumers actually compose with
+  at 0.x while `core` is 1.0 would send a worse signal than the risk of an eventual 2.0.
+- **`cli` — in**, even though it exports nothing at all. Its contract is the command surface,
+  not a TypeScript API, and that is a promise worth making; the policy was extended to say so.
+  It is documented by a whole `docs/cli/` section rather than a package page, which the
+  enforcement check accepts.
+- **`proxy` — out.** 66 tests but no documentation page, four native runtime dependencies that
+  need a compiler to install, and an `exports` subpath literally named `./dist/aikit-mcp.js` —
+  which the stability policy says is not API. Stabilising that spelling would enshrine the
+  contradiction.
+- **`worker-client` — out**, and this is the uncomfortable one. It has a docs page, and it is
+  the *only* runtime dependency of every worker the `/implement` skill scaffolds, so its
+  stability matters more than most. But it has **zero tests**, and the first condition is not
+  one to waive for the package where breakage would be most expensive. It should be first in
+  the queue to join.
+- **`cli-sdk` — out**, which leaves a real gap: `casen` is 1.0 while the SDK its plugin authors
+  compile against is not. It has no tests and no docs page. Same queue as `worker-client`.
+
+**Enforcement, not just prose.** The set lives in `STABLE` in
+`scripts/published-packages.mjs`, and `check-packages.mjs` checks both directions: nothing on
+the list may lack a test script or a documentation page, and nothing at 1.0.0 or above may be
+missing from the list. A stray `major` changeset now fails a check rather than reaching npm.
 
 ---
 
@@ -269,8 +306,10 @@ Recorded so they are not re-litigated:
 4. ~~Add the three missing packages to `PUBLISHED`; regenerate licences and READMEs.~~ — **done**
 5. ~~Switch internal deps to `workspace:^`.~~ — **done**
 6. ~~Write the stability policy. Publish it on bpmnkit.com and link it from `README.md`.~~ — **done**
-7. Decide the 1.0 set; write docs pages for `plugins` and `feel` at minimum.
-   **This is now the critical path** — everything below is mechanical once it is settled.
-8. Rename the `@bpmnkit/proxy` `./dist/aikit-mcp.js` subpath.
-9. Add `engines.node` everywhere; refresh `PUBLISHING.md`; add `SECURITY.md`.
-10. Cut 1.0.0 with a single changeset, and drop the `experimental` badge.
+7. ~~Decide the 1.0 set; write docs pages for `plugins` and `feel`.~~ — **done**, plus
+   `connectors` and `ascii`, and `engines.node` across the set.
+8. ~~Cut 1.0.0 with a single changeset.~~ — **done**; the changeset is written and dry-run
+   verified to land all twelve on exactly `1.0.0`, with no other package crossing 1.0.
+9. Drop the `experimental` badge from `README.md` once the release actually publishes.
+10. Refresh `PUBLISHING.md`; add `SECURITY.md`; rename the `@bpmnkit/proxy`
+    `./dist/aikit-mcp.js` subpath before *it* ever goes 1.0.

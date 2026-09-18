@@ -142,6 +142,9 @@
 		}
 	},
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"engines": {
+		"node": ">=20"
+	},
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",

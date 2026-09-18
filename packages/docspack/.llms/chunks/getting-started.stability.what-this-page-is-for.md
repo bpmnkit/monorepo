@@ -9,14 +9,13 @@ is the part semver leaves open: what counts as *the API* in a toolkit that also 
 files, writes state to disk and speaks HTTP.
 
 
-## Where things stand today
+## What is covered today
 
-Every package is still on **0.x**, and under semver 0.x makes no compatibility promise at
-all. In practice releases have been additive, but *in practice* is not a contract — pin an
-exact version if that matters to you today.
-
-The promises below take effect for a given package **when it reaches 1.0.0**. A package still
-on 0.x is not covered by them, even after other packages in the workspace reach 1.0.
+The promises below take effect for a given package **when it reaches 1.0.0**. Twelve packages
+do — they are listed at the end of this page. A package still on 0.x is **not** covered by
+them, even though other packages in the workspace are: under semver, 0.x makes no
+compatibility promise at all. Releases of those have been additive in practice, but *in
+practice* is not a contract, so pin an exact version if one of them matters to you.
 
 ---
 Source: https://bpmnkit.com/docs/getting-started/stability

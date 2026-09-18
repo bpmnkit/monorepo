@@ -923,14 +923,15 @@ not code.
 
 ### Before the tag
 
-- [ ] Decide the 1.0 set. Nine published packages ship with zero tests
-      (`ui`, `profiles`, `operate`, `astro-shared`, `patterns`, `worker-client`, and the
-      three `casen-*`) — those stay 0.x
-- [ ] Documentation pages for `@bpmnkit/plugins` and `@bpmnkit/feel`; 15 of 23 published
-      packages have no page at all
-- [ ] `engines.node` on every published package — 5 of 26 declare one. The stability policy
-      now states the floor (Node 20 LTS) and the rule for raising it, so the manifests are
-      the only place it is still unsaid
+- [x] Decide the 1.0 set → **twelve packages**: `core`, `feel`, `canvas`, `editor`, `engine`,
+      `api`, `ascii`, `connectors`, `connector-gen`, `docspack`, `plugins`, `cli`. The other
+      fourteen stay 0.x. Membership lives in `STABLE` in `scripts/published-packages.mjs` and
+      `check-packages.mjs` enforces it both ways, so a 1.0 cannot arrive by accident
+- [x] Documentation pages for `@bpmnkit/plugins`, `@bpmnkit/feel`, `@bpmnkit/connectors` and
+      `@bpmnkit/ascii` — every package in the 1.0 set now has one. The eleven still without a
+      page are all 0.x
+- [x] `engines.node` on every package in the 1.0 set — was 2 of 12, now 12 of 12. The
+      fourteen 0.x packages still mostly lack one; worth doing as each joins
 - [ ] `@bpmnkit/proxy` exports the subpath `"./dist/aikit-mcp.js"`, naming a build path as
       public API — which the stability policy explicitly says `dist/` paths are not. Give it
       a real subpath name before 1.0; the current spelling cannot be kept without either
@@ -941,8 +942,21 @@ not code.
 - [ ] `CHANGELOG.md` for `apps/reebe-wasm`, the only published package without one
 - [ ] Document or remove `@bpmnkit/proxy`'s native-module install requirement —
       `isolated-vm` and `better-sqlite3` need a compiler, and the failure is not friendly
-- [ ] Remove the two `@deprecated` markers (`ProcessBuilder.explicitJoins`, the connector
-      template field); 1.0 is the moment for it
+- [ ] Remove the two `@deprecated` markers (`ProcessBuilder.strict`, the connector template
+      field); 1.0 is the moment for it
+- [ ] `@bpmnkit/core` exports `ParseError` and documents `instanceof ParseError` as the way to
+      handle a bad file — but `bpmn-parser.ts` throws a plain `Error` in four places and
+      `ParseError` is constructed once in the whole package. Verified: `Bpmn.parse("<nonsense/>")`
+      throws something for which `e instanceof ParseError` is `false`. The documented
+      error-handling contract does not hold on the main parse path. Fixing it is additive
+      (`ParseError extends Error`, so existing `catch` keeps working and `instanceof` starts
+      working where it was promised), so it can land after 1.0 — but it should land
+- [ ] `@bpmnkit/feel` does not re-export `builtinNames()` / `getBuiltin()` from its entry
+      point, so an editor cannot enumerate the 87 built-ins without reaching into `dist/`,
+      which the stability policy says is not API. Additive; worth exporting
+- [ ] Plugin source docstrings still name packages that no longer exist — `minimap/index.ts`
+      documents itself as `@bpmnkit/canvas-plugin-minimap`, three renames out of date. Cosmetic,
+      but it is what a reader sees on hover
 - [ ] Drop the `status: experimental` badge from `README.md`
 
 ---

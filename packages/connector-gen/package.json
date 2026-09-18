@@ -16,6 +16,9 @@
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"engines": {
+		"node": ">=20"
+	},
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",

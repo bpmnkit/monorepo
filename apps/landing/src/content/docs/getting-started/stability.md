@@ -15,14 +15,13 @@ Every package follows [Semantic Versioning 2.0.0](https://semver.org). The rest 
 is the part semver leaves open: what counts as *the API* in a toolkit that also emits XML
 files, writes state to disk and speaks HTTP.
 
-## Where things stand today
+## What is covered today
 
-Every package is still on **0.x**, and under semver 0.x makes no compatibility promise at
-all. In practice releases have been additive, but *in practice* is not a contract — pin an
-exact version if that matters to you today.
-
-The promises below take effect for a given package **when it reaches 1.0.0**. A package still
-on 0.x is not covered by them, even after other packages in the workspace reach 1.0.
+The promises below take effect for a given package **when it reaches 1.0.0**. Twelve packages
+do — they are listed at the end of this page. A package still on 0.x is **not** covered by
+them, even though other packages in the workspace are: under semver, 0.x makes no
+compatibility promise at all. Releases of those have been additive in practice, but *in
+practice* is not a contract, so pin an exact version if one of them matters to you.
 
 ## Versions are per package, not per repo
 
@@ -60,6 +59,15 @@ These are **not** API, and may change in any release:
 
 Each package's entry points are listed in its `exports` map. `@bpmnkit/plugins` is the one to
 watch: it has **no root export**, only 34 subpaths, one per plugin.
+
+**For a package whose product is a command**, `exports` says nothing — `@bpmnkit/cli` has none
+at all. Its public API is instead its **documented commands**: the command and flag names, the
+meaning of its exit codes, and the shape of any `--format json` output. Prose written to a
+terminal for a human to read is not API, and neither is the exact wording of an error.
+
+For a package that renders UI, the **rendered DOM and its class names are not API** either.
+Style through the documented CSS custom properties; a panel's internal markup can change in a
+minor.
 
 ## What is a breaking change
 
@@ -177,8 +185,35 @@ Security issues should be reported through
 A package is covered by this page once it is at **1.0.0 or above**, and not before. The
 distinction is deliberate: several packages are published, useful, and not yet ready to freeze
 an API — shipping them as 1.0 to make the list tidy would be a promise the project could not
-keep.
+keep. Joining later costs nothing, because going from 0.x to 1.0 breaks no one, so the bar is
+applied strictly rather than generously.
 
-To reach 1.0.0 a package needs an API worth defending for a year, a test suite that would
-catch its own breakage, and a documentation page. Check any package's current version on
-[npm](https://www.npmjs.com/org/bpmnkit) — the number is the answer.
+Three conditions, all of which must hold:
+
+1. **A test suite that would catch its own breakage.**
+2. **A documentation page** on this site.
+3. **An API worth defending for a year.**
+
+**Twelve packages** meet them today and carry the promise:
+
+| | |
+|---|---|
+| [`@bpmnkit/core`](/docs/packages/core) | [`@bpmnkit/feel`](/docs/packages/feel) |
+| [`@bpmnkit/canvas`](/docs/packages/canvas) | [`@bpmnkit/editor`](/docs/packages/editor) |
+| [`@bpmnkit/engine`](/docs/packages/engine) | [`@bpmnkit/plugins`](/docs/packages/plugins) |
+| [`@bpmnkit/api`](/docs/packages/api) | [`@bpmnkit/ascii`](/docs/packages/ascii) |
+| [`@bpmnkit/connectors`](/docs/packages/connectors) | [`@bpmnkit/connector-gen`](/docs/packages/connector-gen) |
+| [`@bpmnkit/docspack`](/docs/packages/docspack) | [`@bpmnkit/cli`](/docs/cli/casen) |
+
+The other fourteen published packages stay on 0.x on purpose, and make no promise. Most are
+short of the first two conditions; the rest are worked examples, scaffolders, or generated
+builds with no API of their own to freeze.
+
+The membership is not only prose. It lives in `STABLE` in
+[`scripts/published-packages.mjs`](https://github.com/bpmnkit/monorepo/blob/main/scripts/published-packages.mjs),
+and the repo's own checks enforce both directions of it: nothing on the list may lack tests or
+a documentation page, and nothing at 1.0.0 or above may be missing from the list. A major
+version cannot arrive by accident.
+
+Whatever this page says, a package's current version on
+[npm](https://www.npmjs.com/org/bpmnkit) is the authoritative answer.

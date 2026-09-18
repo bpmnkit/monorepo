@@ -752,7 +752,7 @@
 		{
 			"id": "getting-started.stability.what-this-page-is-for",
 			"file": "chunks/getting-started.stability.what-this-page-is-for.md",
-			"tokens": 231,
+			"tokens": 241,
 			"tags": [
 				"getting-started",
 				"stability",
@@ -785,7 +785,7 @@
 		{
 			"id": "getting-started.stability.what-counts-as-public-api",
 			"file": "chunks/getting-started.stability.what-counts-as-public-api.md",
-			"tokens": 276,
+			"tokens": 416,
 			"tags": [
 				"getting-started",
 				"stability",
@@ -797,7 +797,8 @@
 				"dist/",
 				"ProcessBuilder",
 				"src/",
-				"@bpmnkit/plugins"
+				"@bpmnkit/plugins",
+				"@bpmnkit/cli"
 			]
 		},
 		{
@@ -850,14 +851,27 @@
 		{
 			"id": "getting-started.stability.support-window",
 			"file": "chunks/getting-started.stability.support-window.md",
-			"tokens": 217,
+			"tokens": 497,
 			"tags": [
 				"getting-started",
 				"stability",
 				"support",
 				"window"
 			],
-			"entities": []
+			"entities": [
+				"@bpmnkit/core",
+				"@bpmnkit/feel",
+				"@bpmnkit/canvas",
+				"@bpmnkit/editor",
+				"@bpmnkit/engine",
+				"@bpmnkit/plugins",
+				"@bpmnkit/api",
+				"@bpmnkit/ascii",
+				"@bpmnkit/connectors",
+				"@bpmnkit/connector-gen",
+				"@bpmnkit/docspack",
+				"@bpmnkit/cli"
+			]
 		},
 		{
 			"id": "guides.ai-agents",
@@ -1899,6 +1913,79 @@
 			"entities": []
 		},
 		{
+			"id": "packages.ascii.overview",
+			"file": "chunks/packages.ascii.overview.md",
+			"tokens": 170,
+			"tags": [
+				"packages",
+				"ascii",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/ascii",
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "packages.ascii.installation",
+			"file": "chunks/packages.ascii.installation.md",
+			"tokens": 303,
+			"tags": [
+				"packages",
+				"ascii",
+				"installation"
+			],
+			"entities": [
+				"applyAutoLayout",
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "packages.ascii.rendering-a-decision-table",
+			"file": "chunks/packages.ascii.rendering-a-decision-table.md",
+			"tokens": 197,
+			"tags": [
+				"packages",
+				"ascii",
+				"rendering",
+				"decision",
+				"table"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.ascii.rendering-a-form",
+			"file": "chunks/packages.ascii.rendering-a-form.md",
+			"tokens": 262,
+			"tags": [
+				"packages",
+				"ascii",
+				"rendering",
+				"form"
+			],
+			"entities": [
+				"renderBpmnAscii",
+				"renderDmnAscii",
+				"renderFormAscii",
+				"RenderOptions"
+			]
+		},
+		{
+			"id": "packages.ascii.from-the-command-line",
+			"file": "chunks/packages.ascii.from-the-command-line.md",
+			"tokens": 152,
+			"tags": [
+				"packages",
+				"ascii",
+				"command",
+				"line"
+			],
+			"entities": [
+				"@bpmnkit/ascii",
+				"RenderOptions"
+			]
+		},
+		{
 			"id": "packages.canvas.overview",
 			"file": "chunks/packages.canvas.overview.md",
 			"tokens": 161,
@@ -2056,6 +2143,121 @@
 				"type"
 			],
 			"entities": []
+		},
+		{
+			"id": "packages.connectors.overview",
+			"file": "chunks/packages.connectors.overview.md",
+			"tokens": 146,
+			"tags": [
+				"packages",
+				"connectors",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/connectors",
+				"@bpmnkit/connectors/node"
+			]
+		},
+		{
+			"id": "packages.connectors.installation",
+			"file": "chunks/packages.connectors.installation.md",
+			"tokens": 240,
+			"tags": [
+				"packages",
+				"connectors",
+				"installation"
+			],
+			"entities": [
+				"listConnectors",
+				"searchConnectors",
+				"ConnectorSummary",
+				"ConnectorInputSpec",
+				"isSecret",
+				"isFeel",
+				"summarizeTemplate"
+			]
+		},
+		{
+			"id": "packages.connectors.applying-a-template",
+			"file": "chunks/packages.connectors.applying-a-template.md",
+			"tokens": 432,
+			"tags": [
+				"packages",
+				"connectors",
+				"applying",
+				"template"
+			],
+			"entities": [
+				"@bpmnkit/core"
+			]
+		},
+		{
+			"id": "packages.connectors.workspace-templates",
+			"file": "chunks/packages.connectors.workspace-templates.md",
+			"tokens": 189,
+			"tags": [
+				"packages",
+				"connectors",
+				"workspace",
+				"templates"
+			],
+			"entities": [
+				"discoverElementTemplates",
+				"collectElementTemplates",
+				"registerElementTemplates",
+				"listConnectors",
+				"searchConnectors",
+				"getTemplate",
+				"clearRegisteredTemplates"
+			]
+		},
+		{
+			"id": "packages.connectors.validating-a-template",
+			"file": "chunks/packages.connectors.validating-a-template.md",
+			"tokens": 213,
+			"tags": [
+				"packages",
+				"connectors",
+				"validating",
+				"template"
+			],
+			"entities": [
+				"oneOf",
+				"readTemplateDocument"
+			]
+		},
+		{
+			"id": "packages.connectors.api-reference",
+			"file": "chunks/packages.connectors.api-reference.md",
+			"tokens": 230,
+			"tags": [
+				"packages",
+				"connectors",
+				"api",
+				"reference"
+			],
+			"entities": [
+				"listConnectors()",
+				"ElementTemplate",
+				"ConnectorSummary",
+				"clearRegisteredTemplates()",
+				"@bpmnkit/connectors/node",
+				"discoverElementTemplates",
+				"collectElementTemplates"
+			]
+		},
+		{
+			"id": "packages.connectors.stability",
+			"file": "chunks/packages.connectors.stability.md",
+			"tokens": 137,
+			"tags": [
+				"packages",
+				"connectors",
+				"stability"
+			],
+			"entities": [
+				"@bpmnkit/connectors"
+			]
 		},
 		{
 			"id": "packages.core.overview",
@@ -2738,6 +2940,166 @@
 				"setLocal",
 				"setTimeout",
 				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "packages.feel.overview",
+			"file": "chunks/packages.feel.overview.md",
+			"tokens": 152,
+			"tags": [
+				"packages",
+				"feel",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/feel",
+				"@bpmnkit/core",
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "packages.feel.installation",
+			"file": "chunks/packages.feel.installation.md",
+			"tokens": 264,
+			"tags": [
+				"packages",
+				"feel",
+				"installation"
+			],
+			"entities": [
+				"EvalContext"
+			]
+		},
+		{
+			"id": "packages.feel.unary-tests",
+			"file": "chunks/packages.feel.unary-tests.md",
+			"tokens": 425,
+			"tags": [
+				"packages",
+				"feel",
+				"unary",
+				"tests"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.feel.formatting-and-highlighting",
+			"file": "chunks/packages.feel.formatting-and-highlighting.md",
+			"tokens": 151,
+			"tags": [
+				"packages",
+				"feel",
+				"formatting",
+				"highlighting"
+			],
+			"entities": [
+				"formatFeel",
+				"highlightToHtml",
+				"highlightFeel"
+			]
+		},
+		{
+			"id": "packages.feel.api-reference",
+			"file": "chunks/packages.feel.api-reference.md",
+			"tokens": 356,
+			"tags": [
+				"packages",
+				"feel",
+				"api",
+				"reference"
+			],
+			"entities": [
+				"parseExpression",
+				"parseUnaryTests",
+				"evaluateUnaryTests",
+				"evaluateUnaryTest",
+				"formatFeel",
+				"highlightToHtml",
+				"highlightFeel",
+				"ParseResult",
+				"FeelValue",
+				"FeelDate",
+				"FeelTime",
+				"FeelDateTime"
+			]
+		},
+		{
+			"id": "packages.feel.stability",
+			"file": "chunks/packages.feel.stability.md",
+			"tokens": 39,
+			"tags": [
+				"packages",
+				"feel",
+				"stability"
+			],
+			"entities": [
+				"@bpmnkit/feel"
+			]
+		},
+		{
+			"id": "packages.plugins.overview",
+			"file": "chunks/packages.plugins.overview.md",
+			"tokens": 162,
+			"tags": [
+				"packages",
+				"plugins",
+				"overview"
+			],
+			"entities": [
+				"@bpmnkit/plugins",
+				"@bpmnkit/canvas",
+				"@bpmnkit/editor",
+				"CanvasApi"
+			]
+		},
+		{
+			"id": "packages.plugins.installation",
+			"file": "chunks/packages.plugins.installation.md",
+			"tokens": 134,
+			"tags": [
+				"packages",
+				"plugins",
+				"installation"
+			],
+			"entities": []
+		},
+		{
+			"id": "packages.plugins.what-is-available",
+			"file": "chunks/packages.plugins.what-is-available.md",
+			"tokens": 738,
+			"tags": [
+				"packages",
+				"plugins",
+				"available"
+			],
+			"entities": [
+				"createMinimapPlugin",
+				"createZoomControlsPlugin",
+				"createFlowNavigationPlugin",
+				"createModelNavigationPlugin",
+				"createPresentationPlugin",
+				"createStoryViewPlugin",
+				"createAsciiViewPlugin",
+				"@bpmnkit/ascii",
+				"createWatermarkPlugin",
+				"createConfigPanelPlugin",
+				"createConfigPanelBpmnPlugin",
+				"createCommandPalettePlugin"
+			]
+		},
+		{
+			"id": "packages.plugins.styles",
+			"file": "chunks/packages.plugins.styles.md",
+			"tokens": 247,
+			"tags": [
+				"packages",
+				"plugins",
+				"styles"
+			],
+			"entities": [
+				"injectFormViewerStyles",
+				"@bpmnkit/ui",
+				"@bpmnkit/plugins"
 			]
 		},
 		{
