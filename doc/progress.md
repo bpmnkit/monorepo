@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-09-18 — The package table on the homepage had drifted a whole release
+
+`tests/ecosystem.test.ts` reported one stale version, `packages/ascii` at 0.0.36
+against a manifest reading 0.0.37. It asserts per package in a loop and stops at
+the first mismatch, so what it was actually reporting was **14** of the 27
+packages behind — core, canvas, editor, plugins, engine, feel, cli, proxy and the
+rest — the homepage having missed a release rather than a package having missed
+an edit.
+
+`@bpmnkit/camunda-docspack` is the one worth naming: the table had it at 0.0.0,
+which is the same version-that-lies failure written up on 2026-09-16, surviving in
+a second place after the manifest itself was fixed.
+
+Regenerated with `node scripts/generate-ecosystem.mjs`; the whole diff is version
+strings. `generate-plugins-doc.mjs`, the other generator `prebuild` runs, was
+already current, so the drift was this file alone.
+
 ## 2026-09-18 — The preview reached the docs, and the pack that agents actually read
 
 Three commits of streaming preview had landed in the generated READMEs and in
@@ -25,10 +42,8 @@ after it says the wait is now something to watch rather than sit through. It
 reuses the section's hairline-panel stacking — `border-top`/`border-bottom: none`
 with an accent left rule — so the box stays one box.
 
-One thing left alone: `apps/landing/src/generated/ecosystem.ts` has
-`packages/ascii` at 0.0.36 against a manifest reading 0.0.37, which fails
-`tests/ecosystem.test.ts`. It is committed stale and unrelated to any of this —
-`node scripts/generate-ecosystem.mjs` fixes it.
+`apps/landing/src/generated/ecosystem.ts` was committed stale and failing
+`tests/ecosystem.test.ts`, which is unrelated to any of this and is fixed below.
 
 ## 2026-09-17 — Marking what the AI added, and only when that means something
 
