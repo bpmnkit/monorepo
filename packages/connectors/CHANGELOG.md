@@ -1,5 +1,54 @@
 # @bpmnkit/connectors
 
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+  - @bpmnkit/core@0.8.0
+
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/feel@0.1.0
+  - @bpmnkit/core@0.7.1
+
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [e096585]
+  - @bpmnkit/core@0.7.0
+
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [780e39d]
+  - @bpmnkit/core@0.6.0
+
+## 0.1.2
+
+### Patch Changes
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
+- Updated dependencies [53a9e25]
+- Updated dependencies [9d412da]
+- Updated dependencies [9d412da]
+  - @bpmnkit/core@0.5.0
+  - @bpmnkit/feel@0.0.21
+
 ## 0.1.1
 
 ### Patch Changes

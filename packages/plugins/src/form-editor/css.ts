@@ -1,6 +1,18 @@
+/**
+ * Form editor styles, on the bpmnkit.com design system.
+ *
+ * The `--fe-*` layer used to restate a palette of its own — Tailwind greys and
+ * blues for light, Catppuccin for dark — beside a system font stack, so the
+ * editor's form designer was the one panel in the dock that did not match the
+ * chrome around it. It now derives from the `--bpmnkit-ds-*` set.
+ *
+ * Selection, drop targets and container outlines are all the one accent: the
+ * system has no second brand colour to spend on distinguishing them, and they
+ * never appear at the same time on the same element.
+ */
 export const FORM_EDITOR_CSS = `
 .form-editor {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, sans-serif);
   font-size: 13px;
   height: 100%;
   box-sizing: border-box;
@@ -8,60 +20,60 @@ export const FORM_EDITOR_CSS = `
   flex-direction: row;
   overflow: hidden;
   background: var(--fe-bg, #ffffff);
-  color: var(--fe-fg, #1c1c1c);
-  --fe-bg: #ffffff;
-  --fe-fg: #1c1c1c;
-  --fe-border: #e5e7eb;
-  --fe-panel-bg: #f9fafb;
-  --fe-row-hover: #f3f4f6;
-  --fe-badge-bg: #e5e7eb;
-  --fe-badge-fg: #374151;
-  --fe-btn-bg: #e5e7eb;
-  --fe-btn-fg: #374151;
-  --fe-btn-hover: #d1d5db;
-  --fe-input-bg: #ffffff;
-  --fe-input-border: #d1d5db;
-  --fe-label: #6b7280;
-  --fe-accent: var(--bpmnkit-accent, #1a56db);
-  --fe-danger: #dc2626;
-  --fe-section-fg: #9ca3af;
-  --fe-card-selected-bg: #eff3ff;
-  --fe-card-selected-border: #3d5afe;
-  --fe-card-hover-border: #93c5fd;
-  --fe-drop-active-bg: #dbeafe;
-  --fe-drop-active-border: #3b82f6;
-  --fe-container-border: #c4b5fd;
-  --fe-preview-input-bg: #f9fafb;
-  --fe-preview-input-border: #d1d5db;
-  --fe-preview-label: #6b7280;
+  color: var(--fe-fg, #14161a);
+  --fe-bg: var(--bpmnkit-ds-surface, #ffffff);
+  --fe-fg: var(--bpmnkit-ds-ink, #14161a);
+  --fe-border: var(--bpmnkit-ds-line, #d8dbe0);
+  --fe-panel-bg: var(--bpmnkit-ds-bg, #f4f5f7);
+  --fe-row-hover: var(--bpmnkit-ds-bg-alt, #eef0f3);
+  --fe-badge-bg: var(--bpmnkit-ds-bg-alt, #eef0f3);
+  --fe-badge-fg: var(--bpmnkit-ds-ink-3, #5c6470);
+  --fe-btn-bg: transparent;
+  --fe-btn-fg: var(--bpmnkit-ds-ink-3, #5c6470);
+  --fe-btn-hover: var(--bpmnkit-ds-bg-alt, #eef0f3);
+  --fe-input-bg: var(--bpmnkit-ds-surface, #ffffff);
+  --fe-input-border: var(--bpmnkit-ds-line, #d8dbe0);
+  --fe-label: var(--bpmnkit-ds-ink-4, #8b929c);
+  --fe-accent: var(--bpmnkit-ds-accent, #a8503a);
+  --fe-danger: var(--bpmnkit-danger, #dc2626);
+  --fe-section-fg: var(--bpmnkit-ds-ink-4, #8b929c);
+  --fe-card-selected-bg: var(--bpmnkit-ds-accent-tint, #fdf3ef);
+  --fe-card-selected-border: var(--bpmnkit-ds-accent, #a8503a);
+  --fe-card-hover-border: var(--bpmnkit-ds-line-strong, #14161a);
+  --fe-drop-active-bg: var(--bpmnkit-ds-accent-tint, #fdf3ef);
+  --fe-drop-active-border: var(--bpmnkit-ds-accent, #a8503a);
+  --fe-container-border: var(--bpmnkit-ds-line-strong, #14161a);
+  --fe-preview-input-bg: var(--bpmnkit-ds-bg, #f4f5f7);
+  --fe-preview-input-border: var(--bpmnkit-ds-line, #d8dbe0);
+  --fe-preview-label: var(--bpmnkit-ds-ink-4, #8b929c);
 }
 
 .form-editor.dark {
-  --fe-bg: var(--bpmnkit-surface-2, #1e1e2e);
-  --fe-fg: #cdd6f4;
-  --fe-border: #313244;
-  --fe-panel-bg: var(--bpmnkit-surface-2, #1e1e2e);
-  --fe-row-hover: #2a2a3e;
-  --fe-badge-bg: #313244;
-  --fe-badge-fg: #bac2de;
-  --fe-btn-bg: #313244;
-  --fe-btn-fg: #bac2de;
-  --fe-btn-hover: #45475a;
-  --fe-input-bg: #1e1e2e;
-  --fe-input-border: #45475a;
-  --fe-label: #bac2de;
-  --fe-accent: var(--bpmnkit-accent-bright, #89b4fa);
-  --fe-danger: #f38ba8;
-  --fe-section-fg: #6c7086;
-  --fe-card-selected-bg: #1e1e3a;
-  --fe-card-selected-border: #89b4fa;
-  --fe-card-hover-border: #585b70;
-  --fe-drop-active-bg: #1e2040;
-  --fe-drop-active-border: #89b4fa;
-  --fe-container-border: #7c6fd4;
-  --fe-preview-input-bg: #1e1e2e;
-  --fe-preview-input-border: #45475a;
-  --fe-preview-label: #7f849c;
+  --fe-bg: #16181d;
+  --fe-fg: #f4f5f7;
+  --fe-border: #2c3038;
+  --fe-panel-bg: #0f1114;
+  --fe-row-hover: #22252b;
+  --fe-badge-bg: #22252b;
+  --fe-badge-fg: #a6acb5;
+  --fe-btn-bg: transparent;
+  --fe-btn-fg: #a6acb5;
+  --fe-btn-hover: #22252b;
+  --fe-input-bg: #0f1114;
+  --fe-input-border: #2c3038;
+  --fe-label: #8b929c;
+  --fe-accent: var(--bpmnkit-ds-accent-on-dark, #c9755c);
+  --fe-danger: var(--bpmnkit-danger, #f87171);
+  --fe-section-fg: #8b929c;
+  --fe-card-selected-bg: rgba(201, 117, 92, 0.14);
+  --fe-card-selected-border: var(--bpmnkit-ds-accent-on-dark, #c9755c);
+  --fe-card-hover-border: #3a3f48;
+  --fe-drop-active-bg: rgba(201, 117, 92, 0.14);
+  --fe-drop-active-border: var(--bpmnkit-ds-accent-on-dark, #c9755c);
+  --fe-container-border: #3a3f48;
+  --fe-preview-input-bg: #0f1114;
+  --fe-preview-input-border: #2c3038;
+  --fe-preview-label: #8b929c;
 }
 
 /* ── Palette ────────────────────────────────────────────────────── */
@@ -143,7 +155,6 @@ export const FORM_EDITOR_CSS = `
   justify-content: center;
   gap: 4px;
   border: 1px solid transparent;
-  border-radius: 6px;
   cursor: grab;
   background: var(--fe-bg);
   padding: 6px 4px;
@@ -164,7 +175,6 @@ export const FORM_EDITOR_CSS = `
 .fe-palette-icon {
   width: 36px;
   height: 36px;
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -282,7 +292,6 @@ export const FORM_EDITOR_CSS = `
 /* Drop zones */
 .fe-drop-zone {
   height: 8px;
-  border-radius: 4px;
   transition: height 0.1s, background 0.1s;
   position: relative;
 }
@@ -295,7 +304,6 @@ export const FORM_EDITOR_CSS = `
   height: 36px !important;
   background: var(--fe-drop-active-bg);
   border: 2px dashed var(--fe-drop-active-border);
-  border-radius: 4px;
 }
 
 /* Cards */
@@ -304,7 +312,6 @@ export const FORM_EDITOR_CSS = `
   display: flex;
   align-items: stretch;
   border: 2px solid transparent;
-  border-radius: 6px;
   background: var(--fe-bg);
   cursor: pointer;
   transition: border-color 0.1s;
@@ -333,7 +340,6 @@ export const FORM_EDITOR_CSS = `
   font-size: 14px;
   opacity: 0.4;
   flex-shrink: 0;
-  border-radius: 4px 0 0 4px;
 }
 
 .fe-canvas-card:hover .fe-card-drag-handle {
@@ -357,7 +363,6 @@ export const FORM_EDITOR_CSS = `
   width: 20px;
   height: 20px;
   border: none;
-  border-radius: 3px;
   background: transparent;
   color: var(--fe-danger);
   font-size: 12px;
@@ -390,7 +395,6 @@ export const FORM_EDITOR_CSS = `
 .fe-container-empty {
   padding: 12px;
   border: 2px dashed var(--fe-border);
-  border-radius: 4px;
   color: var(--fe-section-fg);
   font-size: 12px;
   text-align: center;
@@ -419,21 +423,18 @@ export const FORM_EDITOR_CSS = `
 .fe-preview-input {
   height: 28px;
   border: 1px solid var(--fe-preview-input-border);
-  border-radius: 3px;
   background: var(--fe-preview-input-bg);
 }
 
 .fe-preview-textarea {
   height: 56px;
   border: 1px solid var(--fe-preview-input-border);
-  border-radius: 3px;
   background: var(--fe-preview-input-bg);
 }
 
 .fe-preview-select {
   height: 28px;
   border: 1px solid var(--fe-preview-input-border);
-  border-radius: 3px;
   background: var(--fe-preview-input-bg);
   display: flex;
   align-items: center;
@@ -454,7 +455,6 @@ export const FORM_EDITOR_CSS = `
   width: 14px;
   height: 14px;
   border: 1px solid var(--fe-preview-input-border);
-  border-radius: 2px;
   background: var(--fe-preview-input-bg);
   flex-shrink: 0;
 }
@@ -484,7 +484,6 @@ export const FORM_EDITOR_CSS = `
   padding: 0 16px;
   background: var(--fe-accent);
   color: #fff;
-  border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
 }
@@ -495,7 +494,6 @@ export const FORM_EDITOR_CSS = `
   padding: 2px 8px;
   background: var(--fe-badge-bg);
   color: var(--fe-badge-fg);
-  border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -528,7 +526,6 @@ export const FORM_EDITOR_CSS = `
   color: var(--fe-section-fg);
   padding: 8px;
   border: 1px dashed var(--fe-border);
-  border-radius: 3px;
 }
 
 .fe-preview-group-label {
@@ -565,7 +562,6 @@ export const FORM_EDITOR_CSS = `
 .fe-props-header-icon {
   width: 24px;
   height: 24px;
-  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -611,7 +607,6 @@ export const FORM_EDITOR_CSS = `
   box-sizing: border-box;
   padding: 6px 8px;
   border: 1px solid var(--fe-input-border);
-  border-radius: 4px;
   background: var(--fe-input-bg);
   color: var(--fe-fg);
   font-family: inherit;
@@ -668,7 +663,6 @@ export const FORM_EDITOR_CSS = `
   background: var(--fe-btn-bg);
   color: var(--fe-btn-fg);
   border: none;
-  border-radius: 3px;
   font-size: 12px;
   padding: 3px 8px;
   cursor: pointer;
@@ -688,7 +682,6 @@ export const FORM_EDITOR_CSS = `
   width: 22px;
   height: 22px;
   padding: 3px;
-  border-radius: 3px;
 }
 `.trim()
 

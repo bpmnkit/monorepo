@@ -7,6 +7,9 @@
 	--color-bg: var(--bpmnkit-bg);
 	--color-surface: var(--bpmnkit-surface);
 	--color-surface-2: var(--bpmnkit-surface-2);
+	/* The ground a diagram is drawn on — the design system names it separately
+	   from `surface` so a canvas frame does not read as a panel. */
+	--color-canvas: var(--bpmnkit-ds-canvas);
 	--color-border: var(--bpmnkit-border);
 	--color-fg: var(--bpmnkit-fg);
 	--color-muted: var(--bpmnkit-fg-muted);

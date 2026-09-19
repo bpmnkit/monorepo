@@ -1,5 +1,87 @@
 # @bpmnkit/operate
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+- Updated dependencies [f0a0ea2]
+  - @bpmnkit/core@0.8.0
+  - @bpmnkit/ui@0.3.0
+  - @bpmnkit/plugins@0.4.0
+  - @bpmnkit/canvas@0.2.5
+
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/plugins@0.3.5
+  - @bpmnkit/canvas@0.2.4
+
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [e096585]
+  - @bpmnkit/core@0.7.0
+  - @bpmnkit/canvas@0.2.3
+  - @bpmnkit/plugins@0.3.4
+
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [780e39d]
+  - @bpmnkit/core@0.6.0
+  - @bpmnkit/canvas@0.2.2
+  - @bpmnkit/plugins@0.3.3
+
+## 0.1.0
+
+### Minor Changes
+
+- 2cdc7f9: Operate moves onto the bpmnkit.com design system
+
+  Operate was the last surface still on the old product palette — a dark neon-purple
+  shell with rounded cards and filled pills, reached from a site that is flat, square
+  and hairline-ruled. It now reads as part of the same product.
+  - **Colour, type and spacing come from the `--bpmnkit-ds-*` tokens** `@bpmnkit/ui`
+    owns, the set the landing site, Drop and the editor chrome already read.
+  - **Dark and the white-label `neon` theme redeclare those tokens on `.op-root`**
+    rather than adding a second vocabulary, so every rule — and every shared
+    component rendered inside the root — themes itself, and nothing outside Operate
+    sees the declaration.
+  - **The default theme is now `light`**, not `neon`, matching the rest of the
+    product. Pass `theme` to keep the old look.
+  - **The shared components in `@bpmnkit/ui`** (badge, stats card, data table, theme
+    switcher) are drawn to the same rules: square, hairline-ruled, no shadow or blur,
+    and mono for every label, count and id. Status colour stays semantic, carried by
+    the new `--bpmnkit-state-*` pairs, which have a light and a dark value.
+
+### Patch Changes
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
+- Updated dependencies [53a9e25]
+- Updated dependencies [9d412da]
+- Updated dependencies [2cdc7f9]
+- Updated dependencies [9d412da]
+  - @bpmnkit/core@0.5.0
+  - @bpmnkit/ui@0.2.0
+  - @bpmnkit/api@0.0.21
+  - @bpmnkit/canvas@0.2.1
+  - @bpmnkit/plugins@0.3.2
+
 ## 0.0.34
 
 ### Patch Changes

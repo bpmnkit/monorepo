@@ -43,7 +43,7 @@ export function Incidents() {
 			render: (inc) => (
 				<Link
 					href={`/incidents/${inc.incidentKey}`}
-					className="font-mono text-danger text-xs hover:underline"
+					className="ds-datum text-danger text-xs hover:underline"
 				>
 					{inc.errorType}
 				</Link>
@@ -64,7 +64,7 @@ export function Incidents() {
 						key: "elementId",
 						header: "Element",
 						render: (inc: Incident) => (
-							<span className="font-mono text-muted text-xs">{inc.elementId}</span>
+							<span className="ds-datum text-muted text-xs">{inc.elementId}</span>
 						),
 					},
 				]
@@ -73,7 +73,7 @@ export function Incidents() {
 			key: "process",
 			header: "Process",
 			render: (inc) => (
-				<span className="font-mono text-muted text-xs">{inc.processDefinitionId}</span>
+				<span className="ds-datum text-muted text-xs">{inc.processDefinitionId}</span>
 			),
 		},
 		{
@@ -82,7 +82,7 @@ export function Incidents() {
 			render: (inc) => (
 				<Link
 					href={`/instances/${inc.processInstanceKey}`}
-					className="font-mono text-accent text-xs hover:underline"
+					className="ds-datum text-accent text-xs hover:underline"
 				>
 					{inc.processInstanceKey}
 				</Link>
@@ -92,7 +92,7 @@ export function Incidents() {
 			key: "age",
 			header: "Age",
 			render: (inc) => (
-				<span className="text-muted text-xs">
+				<span className="ds-datum text-muted text-xs">
 					{inc.creationTime ? new Date(inc.creationTime).toLocaleDateString() : "—"}
 				</span>
 			),
@@ -100,18 +100,17 @@ export function Incidents() {
 	]
 
 	return (
-		<div className="p-6 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
-			<div className="flex items-center justify-between mb-6">
-				<div>
-					{!isLoading && (
-						<p className="text-xs text-muted">
-							{filtered?.length ?? 0} incident{(filtered?.length ?? 0) !== 1 ? "s" : ""}
-						</p>
-					)}
-				</div>
+		<div className="ds-page animate-in fade-in slide-in-from-bottom-2 duration-300">
+			<div className="ds-head">
+				<h1 className="ds-eyebrow">Incidents</h1>
+				{!isLoading && (
+					<span className="ds-datum text-muted text-xs">
+						{filtered?.length ?? 0} incident{(filtered?.length ?? 0) !== 1 ? "s" : ""}
+					</span>
+				)}
 			</div>
 
-			<div className="mb-4">
+			<div className="mb-3">
 				<Search
 					placeholder="Search by error type or message..."
 					value={search}

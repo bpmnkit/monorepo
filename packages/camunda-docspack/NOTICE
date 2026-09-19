@@ -1,0 +1,24 @@
+This package repackages existing Camunda documentation for offline retrieval by
+AI agents. It contains no documentation written by BPMN Kit.
+
+The documentation content is the work of Camunda Services GmbH. Copyright in it
+remains with Camunda Services GmbH; BPMN Kit claims no ownership of it and
+asserts no rights over it. BPMN Kit's contribution is the build tooling only.
+
+Source: https://github.com/camunda/camunda-docs @ acbf6806758ce4036eba3791bd884ad114552860
+Published at: https://docs.camunda.io/docs/next/
+Licensed by Camunda under CC BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/
+
+The original work has been modified. Changes:
+  - pages split into retrieval chunks
+  - embedded BPMN diagrams rendered as text flow descriptions
+  - MDX components removed or reduced to text, and Markdown partials inlined
+  - relative links rewritten to absolute docs.camunda.io URLs
+  - page descriptions promoted into the body text
+
+This adaptation is redistributed under CC BY-SA 3.0, as that licence requires.
+Those terms are unchanged: you may share and adapt this content, provided you
+credit Camunda, state what you changed, and license your result alike.
+
+BPMN Kit is not affiliated with, endorsed by, or sponsored by Camunda Services
+GmbH. For canonical and current documentation, prefer https://docs.camunda.io.

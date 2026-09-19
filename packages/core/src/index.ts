@@ -72,6 +72,7 @@ export type {
 	BpmnDiffResult,
 } from "./bpmn/diagram-diff.js"
 export { sha256Hex } from "./bpmn/sha256.js"
+export { compositeKey, stableToken } from "./types/stable-key.js"
 export { checkDiCompleteness } from "./bpmn/di-check.js"
 export type { DiCompleteness } from "./bpmn/di-check.js"
 export { planeForElement, listPlaneElementIds } from "./bpmn/di-planes.js"
@@ -237,6 +238,7 @@ export type {
 	FormExporter,
 	FormGroupComponent,
 	FormLayout,
+	FormLayoutInput,
 	FormRadioComponent,
 	FormSelectComponent,
 	FormTextAreaComponent,
@@ -343,6 +345,8 @@ export type {
 export type { Bounds, LayoutEdge, LayoutNode, LayoutResult, Waypoint } from "./layout/index.js"
 export { ELEMENT_SIZES, GRID_CELL_HEIGHT, GRID_CELL_WIDTH } from "./layout/index.js"
 export { compactify, expand } from "./bpmn/compact.js"
+export { createCompactStream } from "./bpmn/compact-stream.js"
+export type { CompactStream, CompactStreamOptions } from "./bpmn/compact-stream.js"
 export {
 	ELEMENT_GROUP_ORDER,
 	ELEMENT_TYPE_GROUPS,

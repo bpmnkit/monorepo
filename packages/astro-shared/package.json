@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/astro-shared",
-	"version": "0.0.16",
+	"version": "0.1.0",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -12,9 +12,19 @@
 	},
 	"files": ["LICENSE", "README.md", "src/*.css", "src/site.ts", "src/seo.ts", "src/Seo.astro"],
 	"scripts": {
-		"check": "biome check ."
+		"check": "biome check .",
+		"test": "vitest run"
 	},
-	"keywords": ["bpmn", "astro", "design-tokens", "shared", "seo", "css", "typescript"],
+	"keywords": [
+		"bpmn",
+		"astro",
+		"design-tokens",
+		"design-system",
+		"shared",
+		"seo",
+		"css",
+		"typescript"
+	],
 	"dependencies": {
 		"@bpmnkit/ui": "workspace:^"
 	},
@@ -26,7 +36,7 @@
 		"type": "git",
 		"url": "https://github.com/bpmnkit/monorepo"
 	},
-	"description": "Shared CSS design tokens, aurora background, and site metadata for BPMN Kit Astro apps",
+	"description": "Shared CSS design tokens, page ground, and site metadata for BPMN Kit Astro apps",
 	"homepage": "https://bpmnkit.com",
 	"bugs": {
 		"url": "https://github.com/bpmnkit/monorepo/issues"

@@ -15,6 +15,7 @@ export type {
 	FormIframeComponent,
 	FormImageComponent,
 	FormLayout,
+	FormLayoutInput,
 	FormNumberComponent,
 	FormRadioComponent,
 	FormSelectComponent,

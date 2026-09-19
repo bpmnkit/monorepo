@@ -1,5 +1,232 @@
 # @bpmnkit/core
 
+## 0.8.0
+
+### Minor Changes
+
+- 191d4d2: `CompactFlow` can name a gateway's default flow. It carried `condition` but had no field for `bpmn:default`, so a model returning a `CompactDiagram` — the format BPMN Kit asks it for — could not mark a fallthrough branch however well it had read the documentation, and an exclusive gateway whose conditions are all false and which has no default deadlocks at runtime. `compactify` also dropped an existing default, so a round trip lost it.
+
+  The branch carries `isDefault: true` rather than the gateway pointing at a flow id, because that is where its alternative, `condition`, already sits:
+
+  ```typescript
+  flows: [
+    {
+      id: "f5",
+      from: "needsApproval",
+      to: "approve",
+      condition: "= total > 10000",
+    },
+    { id: "f6", from: "needsApproval", to: "fulfil", isDefault: true },
+  ];
+  ```
+
+  `expand` turns it into the attribute, `compactify` reads it back, and `reconcileCompact` sets or clears it on a model it did not author. A flow marked `isDefault` that does not leave an exclusive, inclusive or complex gateway, or a gateway marking two, throws rather than being dropped — a default that goes missing surfaces as a deadlock with no trace back to here.
+
+  `buildFlowElement` takes the default flow id as an optional fourth argument, and `defaultFlows(elements, flows)` is exported for callers deriving the same mapping.
+
+## 0.7.1
+
+### Patch Changes
+
+- c8ceaaa: FEEL conformance: 1,939 of the DMN TCK's 2,053 FEEL cases, up from 1,282
+
+  The package was compared expression by expression against `@bpmn-io/feelin`, and then
+  against the DMN TCK itself, which now runs from a dmn-tck checkout via
+  `pnpm --filter @bpmnkit/feel tck` and weekly in CI.
+
+  **This release changes what existing expressions evaluate to.** Where the package was
+  wrong, it was usually wrong by answering confidently rather than by failing, so expect
+  results to move:
+  - String literals decode every escape FEEL defines. `"a\nb"` was the six characters
+    `a`, `\`, `n`, `b` and is now a string with a newline in it. Only `\"` and `\\` were
+    decoded before.
+  - Named arguments bind by parameter name instead of by the order they were written, so
+    `replace(replacement: "x", pattern: "b", input: "abc")` is `"axc"` rather than `"x"`.
+    An argument name the built-in does not declare is now null.
+  - `and` and `or` follow DMN's ternary logic: a non-boolean operand leaves the result
+    unknown, so `true and 123` is null where it was true. Equality across two different
+    types is null, so `false = 0` is null where it was false. A condition that used to
+    come back true or false may now come back null, which an engine reads as not true.
+  - Numeric built-ins no longer coerce their arguments, so `sqrt("4")` is null; `number()`
+    is the way to convert. Calling a built-in with an argument count no signature accepts
+    is null rather than quietly ignoring the extras.
+  - `**` is left-associative, as FEEL specifies for every infix operator, so `2 ** 3 ** 2`
+    is 64 rather than 512.
+  - `date()` and `time()` reject values no calendar or clock has, and adding months clamps
+    the day: `date("2020-01-31") + duration("P1M")` is 2020-02-29, not a February 31st.
+  - `string(null)` is null rather than the text "null", `count(null)` is null, and
+    `string()` renders lists and contexts.
+
+  What the package could not do before, and now can: `in` takes a unary test
+  (`1 in <= 10`, `10 in (1, < 5, >= 10)`); `is()` exists; context entries see the entries
+  before them (`{a: 1, b: a + 1}`); `for`/`some`/`every` take a range domain
+  (`for i in 1..3`), each binding's domain sees the bindings to its left, and the body sees
+  the results so far as `partial`; a function-valued expression can be invoked
+  (`{f: function(a) a}.f(1)`); a filter condition sees a context element's entries
+  (`[{a: 1}, {a: 2}][a >= 2]`); time zones resolve to the offset they are on that day;
+  and names are not limited to ASCII.
+
+  Two additions to the API:
+  - `parseExpression(input, { names })` and `parseUnaryTests(input, { names })` take the
+    names in scope, so a variable called `total order amount` parses as one name rather
+    than three. Without it, only multi-word built-in names are recognized, as before.
+  - A `call-expr` AST node represents invoking a function-valued expression. Code that
+    switches exhaustively over `FeelNode["kind"]` needs a case for it; `@bpmnkit/core`'s
+    FEEL identifier extractor has one.
+
+  The 114 TCK cases that remain are listed in the package's `tests/tck.test.ts` with the
+  reason each is held back. The largest groups belong to the decision model rather than the
+  expression language — typeRef coercion and external Java functions — followed by XPath
+  regular expression features V8 does not have. Numbers are compared to a relative 1e-9:
+  DMN specifies decimal arithmetic to 34 significant digits and this package computes in
+  float64, which is a deliberate trade for its parse-and-evaluate speed.
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/feel@0.1.0
+
+## 0.7.0
+
+### Minor Changes
+
+- e096585: Form component ids and layout rows are derived from the field, not drawn
+
+  `FormBuilder` fills in a `layout` on every component it generates, but both the
+  component id and the row inside that layout came from `generateId()` — a random
+  draw, or a counter under `resetIdCounter()`. Neither is a function of the form,
+  so rebuilding an unchanged form produced a different file every time: every id
+  and every row moved, and a diff of generated output showed everything changed
+  while saying nothing about what actually did. The counter is no better for this,
+  only quieter — it moves the moment a field is inserted, removed or reordered,
+  renumbering every field after it.
+
+  Both values now come from the component itself — a composite key of the enclosing
+  scope, the component type and the field's own identity, hashed:
+
+  ```
+  identity      = the field key, or the text of a static block, or a group's label
+  scope         = the enclosing form id — or the group's id, for nested children
+  generated id  = stableToken("Field", [scope, type, identity])
+  generated row = stableToken("Row", [scope, type, identity, "row"])
+  ```
+
+  A rerun is byte-identical and reordering two fields moves nothing but their
+  order. `scope` keeps the same field key in two different forms — and in two
+  different groups of one form — from colliding, and the `"row"` namespace keeps a
+  component's row from ever equalling its id.
+
+  The two `null`s in a layout now mean opposite things, and the new
+  `FormLayoutInput` type documents the asymmetry where callers meet it:
+  - `row: null` is **not set** and is replaced with a generated row. Renderers
+    collapse every `row: null` field into one shared row, so `null` is not trusted
+    here as an intentional value.
+  - `columns: null` **is** intentional — the Camunda default of one field per row —
+    and is preserved as given.
+
+  A caller-supplied `id` or `layout` still wins, and a partial layout is completed
+  rather than passed through half-built. `FormComponentBase.layout` stays optional,
+  because a parsed legacy form genuinely has none.
+
+  `stableToken(prefix, segments)` and `compositeKey(segments)` are exported for
+  anywhere else a deterministic id or grouping token is needed: derive it from the
+  entity's stable identity plus a distinguishing namespace, never from an array
+  index, insertion order or a random source.
+
+## 0.6.0
+
+### Minor Changes
+
+- 780e39d: The operations API rejects the wrong document instead of half-running on it
+
+  `applyOperations(diagram, ops)` is typed for a `CompactDiagram` and checked
+  nothing at runtime, so passing raw BPMN XML — the easy mistake, since
+  `Bpmn.parse()` next door takes exactly that — behaved two different ways
+  depending on the op list. With operations it threw
+  `TypeError: diagram.processes is not iterable`, naming a private field rather
+  than the mistake. With an empty list it returned the input untouched, which
+  reads as "the pipeline ran and preserved everything" when nothing ran at all —
+  a preservation test written against it goes green and means nothing.
+
+  Both document types are now checked at the boundary of every entry point that
+  takes one — `applyOperations`, `expand`, `compactify`, `applyBpmnOperations`
+  and `reconcileCompact` — and a wrong one throws a `TypeError` that names the
+  function, what arrived, and the way in:
+
+  ```
+  applyOperations expects a CompactDiagram, received a string.
+  Pass compactify(Bpmn.parse(xml)) if you have raw XML.
+  ```
+
+  A half-done conversion is named as such: handing `Bpmn.parse(xml)` to
+  `applyOperations` says `received a BpmnDefinitions. Pass compactify(defs).`,
+  and handing a compact projection to `applyBpmnOperations` says to pass the
+  parsed model instead. Well-formed input is unaffected — the check reads
+  `processes` and, per process, that `elements`/`flows` (or
+  `flowElements`/`sequenceFlows`) are arrays.
+
+## 0.5.0
+
+### Minor Changes
+
+- 53a9e25: Ad-hoc sub-process children are a set, not a chain — and documentation survives the operations API
+
+  Two silent failures, both hit while authoring a Camunda 8 agentic-AI process through
+  the SDK.
+  - **`.adHocSubProcess()` no longer auto-connects its children.** It used to chain them
+    like any other builder chain. BPMN defines an ad-hoc sub-process's children as an
+    unordered set of independently-invocable activities, and Camunda 8's agentic runtime
+    reads that structurally: a child _without_ an incoming flow is an LLM-invocable tool,
+    a child _with_ one is part of an internal sub-flow and not a tool. Declaring three
+    tools produced one tool plus a two-step sub-flow, in a file that lints clean and
+    deploys. Sequential calls now emit no sequence flow, no `bpmn:incoming`/`bpmn:outgoing`
+    and no `<bpmndi:BPMNEdge>`.
+
+    **Breaking for anyone who relied on the chaining.** An internal sub-flow inside the
+    container stays expressible with `.connectTo()`, which still creates a flow from the
+    cursor.
+
+  - **`compactify()`/`expand()` carry `<bpmn:documentation>`.** The compact model had no
+    field for it, so the text left the document with no error and no warning — one
+    `rename` op cost a file the documentation of every element in it, on the API whose
+    purpose is surgical edits. It is now carried on every element type, nested ones
+    included, and on the process itself. `{ op: "update", patch: { documentation } }`
+    sets it, on the compact model and on the full one.
+
+### Patch Changes
+
+- 9d412da: Two silent drops in the builders: form component layout, and start event documentation
+  - **`FormBuilder` defaults `layout` on every component.** The component builders set
+    `layout` only when the caller passed one, so a form built without naming a layout on
+    each field serialised with no `layout` attribute at all. Camunda's Desktop Modeler and
+    the `form-js` importer read a missing `layout` as a legacy schema and backfill a
+    `row`/`columns` pair when the form is opened — a freshly built form therefore came back
+    dirty on first open, with a diff on every component and no content change behind it. It
+    is now filled the way the component `id` already was: a generated `Row_…` when no row is
+    given, `columns: null` when no span is, and the caller's own values untouched when they
+    supply them. Each component lands in its own row, and a partial layout keeps its span
+    while gaining a row. `GroupBuilder` does the same, so nested children and the group
+    component itself are covered.
+  - **`documentation` reaches a start event.** `ProcessBuilder.startEvent()` hand-builds its
+    options literal so it has somewhere to put a webhook start event's `zeebe:properties`,
+    and that literal listed `name` and `extensionElements` only. `ElementOptions.documentation`
+    was accepted by the typed API and dropped before the model was built, with no error. It
+    bit hardest on the one element bpmnkit's own optimizer asks callers to document — a
+    caller who followed the `pattern/start-no-documentation` suggestion through the builder
+    got the same warning back. Start events nested in sub-processes and event sub-processes
+    forward their options whole and were never affected.
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
+- Updated dependencies [9d412da]
+  - @bpmnkit/feel@0.0.21
+
 ## 0.4.0
 
 ### Minor Changes

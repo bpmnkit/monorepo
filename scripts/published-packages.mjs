@@ -19,6 +19,7 @@ export const PUBLISHED = [
 	"packages/api",
 	"packages/ascii",
 	"packages/docspack",
+	"packages/camunda-docspack",
 	"packages/profiles",
 	"packages/operate",
 	"packages/astro-shared",
@@ -27,15 +28,30 @@ export const PUBLISHED = [
 	"packages/patterns",
 	"packages/worker-client",
 	"packages/user-tasks",
+	"apps/cli",
 	"packages/cli-sdk",
 	"packages/create-casen-plugin",
-	"apps/cli",
 	"apps/proxy",
 	"apps/reebe-wasm",
 	"plugins-cli/casen-report",
 	"plugins-cli/casen-worker-http",
 	"plugins-cli/casen-worker-ai",
 ]
+
+/**
+ * Published packages whose licence is not the repo's MIT, and the licence they carry instead.
+ *
+ * `@bpmnkit/camunda-docspack` carries documentation that belongs to Camunda Services GmbH, not
+ * to BPMN Kit, published by them under CC BY-SA 3.0. Chunking that prose and rendering its
+ * embedded diagrams as text make the package an Adaptation under §1 of that licence, and
+ * ShareAlike then requires the result to carry the same terms — so it cannot be relicensed
+ * MIT, and `sync-license.mjs` must not copy the root LICENCE over the one it ships.
+ *
+ * Keep this empty unless a package genuinely cannot be MIT. It is an exception, not an option.
+ */
+export const LICENSE_OVERRIDES = {
+	"packages/camunda-docspack": "CC-BY-SA-3.0",
+}
 
 /**
  * The packages that carry the 1.0 stability promise.
@@ -54,8 +70,8 @@ export const PUBLISHED = [
  * the reasoning for each call is in `doc/release-1.0.0.md`.
  *
  * Joining later costs nothing — a package going 0.x → 1.0 breaks no one — so
- * the bar is applied strictly rather than generously. Fourteen published
- * packages are deliberately not here.
+ * the bar is applied strictly rather than generously. Most published packages
+ * are deliberately not here.
  */
 export const STABLE = [
 	"packages/core",

@@ -1,5 +1,79 @@
 # @bpmnkit/landing
 
+## 0.0.43
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+- Updated dependencies [f0a0ea2]
+  - @bpmnkit/core@0.8.0
+  - @bpmnkit/astro-shared@0.1.0
+  - @bpmnkit/plugins@0.4.0
+  - @bpmnkit/canvas@0.2.5
+  - @bpmnkit/connectors@0.1.6
+  - @bpmnkit/editor@0.2.5
+  - @bpmnkit/engine@0.1.38
+  - @bpmnkit/operate@0.1.4
+
+## 0.0.42
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/feel@0.1.0
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/connectors@0.1.5
+  - @bpmnkit/engine@0.1.37
+  - @bpmnkit/plugins@0.3.5
+  - @bpmnkit/canvas@0.2.4
+  - @bpmnkit/editor@0.2.4
+  - @bpmnkit/operate@0.1.3
+
+## 0.0.41
+
+### Patch Changes
+
+- Updated dependencies [e096585]
+  - @bpmnkit/core@0.7.0
+  - @bpmnkit/canvas@0.2.3
+  - @bpmnkit/connectors@0.1.4
+  - @bpmnkit/editor@0.2.3
+  - @bpmnkit/engine@0.1.36
+  - @bpmnkit/operate@0.1.2
+  - @bpmnkit/plugins@0.3.4
+
+## 0.0.40
+
+### Patch Changes
+
+- Updated dependencies [780e39d]
+  - @bpmnkit/core@0.6.0
+  - @bpmnkit/canvas@0.2.2
+  - @bpmnkit/connectors@0.1.3
+  - @bpmnkit/editor@0.2.2
+  - @bpmnkit/engine@0.1.35
+  - @bpmnkit/operate@0.1.1
+  - @bpmnkit/plugins@0.3.3
+
+## 0.0.39
+
+### Patch Changes
+
+- Updated dependencies [53a9e25]
+- Updated dependencies [9d412da]
+- Updated dependencies [2cdc7f9]
+- Updated dependencies [9d412da]
+  - @bpmnkit/core@0.5.0
+  - @bpmnkit/operate@0.1.0
+  - @bpmnkit/astro-shared@0.0.17
+  - @bpmnkit/canvas@0.2.1
+  - @bpmnkit/connector-gen@0.0.16
+  - @bpmnkit/connectors@0.1.2
+  - @bpmnkit/editor@0.2.1
+  - @bpmnkit/engine@0.1.34
+  - @bpmnkit/feel@0.0.21
+  - @bpmnkit/plugins@0.3.2
+
 ## 0.0.38
 
 ### Patch Changes

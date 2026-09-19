@@ -61,6 +61,10 @@ function footer(currentPkg) {
 			name: "@bpmnkit/docspack",
 			desc: "BPMN Kit docs as an offline docspack package for AI agents",
 		},
+		{
+			name: "@bpmnkit/camunda-docspack",
+			desc: "Camunda 8 docs as an offline docspack package for AI agents",
+		},
 		{ name: "@bpmnkit/ui", desc: "Shared design tokens and UI components" },
 		{
 			name: "@bpmnkit/profiles",
@@ -77,10 +81,7 @@ function footer(currentPkg) {
 		{ name: "@bpmnkit/patterns", desc: "Domain process patterns for BPMNKit AIKit" },
 		{ name: "@bpmnkit/reebe-wasm", desc: "WebAssembly BPMN engine for browser simulation" },
 		{ name: "@bpmnkit/worker-client", desc: "Thin Zeebe REST client for standalone workers" },
-		{
-			name: "@bpmnkit/user-tasks",
-			desc: "Embeddable Camunda 8 user task widget — form rendering, claim and complete",
-		},
+		{ name: "@bpmnkit/user-tasks", desc: "Embeddable user task widget for Camunda 8" },
 		{ name: "@bpmnkit/cli-sdk", desc: "Plugin authoring SDK for the casen CLI" },
 		{ name: "@bpmnkit/create-casen-plugin", desc: "Scaffold a new casen CLI plugin in seconds" },
 		{ name: "@bpmnkit/casen-report", desc: "HTML reports from Camunda 8 incident and SLA data" },
@@ -314,6 +315,29 @@ const restored = expand(JSON.parse(json))
 const outXml = Bpmn.export(restored)
 \`\`\`
 
+### Rendering while the model is still writing
+
+A model emits a diagram one token at a time, and the outermost \`}\` — the one
+\`JSON.parse\` waits for — is the last character it sends. \`createCompactStream\`
+reads the elements out of the text as their own literals close, so there is
+something to draw long before the document is finished:
+
+\`\`\`typescript
+import { createCompactStream } from "@bpmnkit/core"
+
+// \`base\` is the diagram being edited, so a frame shows the whole thing rather
+// than the fragment the model is adding to it. Omit it to build from nothing.
+const diagramStream = createCompactStream({ base: null })
+
+function onModelChunk(chunk: string): void {
+  const frame = diagramStream.push(chunk) // null until the frame changes
+  if (frame) console.log("elements so far:", frame.processes[0]?.flowElements.length)
+}
+\`\`\`
+
+Frames are a guess at an unfinished document: \`push\` never throws, drops what it
+cannot place, and expects the caller to have an authoritative result coming.
+
 ## API Reference
 
 ### BPMN
@@ -410,6 +434,7 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | \`optimize(defs)\` | Run all optimization rules; returns \`OptimizeReport\` |
 | \`compactify(defs)\` | Convert to compact \`CompactDiagram\` |
 | \`expand(compact)\` | Restore full \`BpmnDefinitions\` |
+| \`createCompactStream(opts?)\` | Read a diagram out of a model's token stream, frame by frame |
 | \`generateId(prefix)\` | Generate a unique short ID |
 `,
 	},
@@ -720,7 +745,7 @@ const instance = engine.start("my-process", {}, {
 - **Full FEEL grammar** — arithmetic, comparisons, logic, function calls, paths, filters
 - **Temporal types** — date, time, datetime, duration (ISO 8601, full spec compliance)
 - **Unary tests** — DMN input expression syntax (\`> 5\`, \`"gold", "silver"\`, \`[1..10]\`)
-- **Built-in functions** — 87 standard FEEL functions (string, list, numeric, date, context, range)
+- **Built-in functions** — 88 standard FEEL functions (string, list, numeric, date, context, range)
 - **Range expressions** — \`[1..10]\`, \`(0..1)\`, \`[today..end]\`
 - **Context literals** — \`{ key: value, nested: { x: 1 } }\`
 - **Syntax highlighting** — semantic token classification for editors
@@ -1206,6 +1231,77 @@ interface RenderOptions {
 	},
 
 	// ── docspack ──────────────────────────────────────────────────────────────
+	"packages/camunda-docspack": {
+		name: "@bpmnkit/camunda-docspack",
+		description:
+			"Camunda 8 documentation as an offline, version-locked docspack package for AI agents",
+		content: `## Overview
+
+\`@bpmnkit/camunda-docspack\` packages the Camunda 8 documentation — BPMN, FEEL, engine concepts and the Orchestration Cluster API — as a [docspack](https://docspack.dev/spec) pack you can search offline, with no network call and no MCP server.
+
+It is built from the \`docs/\` tree of [camunda/camunda-docs](https://github.com/camunda/camunda-docs), which is the unreleased **8.10** documentation, plus the Orchestration Cluster API specification.
+
+> **This is Camunda's documentation, not BPMN Kit's.** The content is the work of Camunda Services GmbH and copyright in it remains with them; this package contains no documentation written by BPMN Kit and claims no rights over what it carries. All it adds is the tooling that stages, chunks and indexes that content so an AI agent can retrieve it offline. BPMN Kit is not affiliated with, endorsed by, or sponsored by Camunda. It is a convenience copy pinned to one upstream commit, so for canonical and current documentation prefer [docs.camunda.io](https://docs.camunda.io).
+
+## Features
+
+- **Diagrams as text** — the best-practice pages argue through embedded BPMN diagrams. Camunda's own Markdown export drops them; this renders each one as a flow description, so a page about naming gateways still contains the gateway, its question and its conditions.
+- **227 API operations** — one digest per endpoint, read from the specification rather than from the generated reference pages, with required permissions decoded, the version it appeared in, and its consistency guarantee.
+- **Every chunk cites its page** — links are rewritten to absolute \`docs.camunda.io\` URLs, and each chunk ends with the page it came from.
+- **Nothing dropped silently** — an MDX component the build does not recognise fails the build by file and line instead of quietly thinning the corpus.
+- **Offline** — one SQLite-free local index; no server, nothing resident.
+
+## Installation
+
+\`\`\`sh
+npm i -D @bpmnkit/camunda-docspack
+pnpm add -D @bpmnkit/camunda-docspack
+\`\`\`
+
+## Quick Start
+
+Search it with the CLI that ships in \`@bpmnkit/docspack\`:
+
+\`\`\`sh
+npx bpmnkit-docs ask "how should I name an exclusive gateway"
+npx bpmnkit-docs ask "POST /jobs/activation"
+npx bpmnkit-docs ask "what permissions does creating a process instance need"
+npx bpmnkit-docs ask "FEEL string concatenation" --pack @bpmnkit/camunda-docspack
+\`\`\`
+
+Answers cap at 3 chunks / 3,000 tokens, so prefer several narrow questions to one broad one.
+
+## API Reference
+
+The published artefact is the \`.llms/\` payload. These exports are the build that produces it:
+
+| Export | Purpose |
+| --- | --- |
+| \`build(options)\` | Stage a camunda-docs checkout and write the \`.llms/\` payload |
+| \`stage(options)\` | Run the staging transforms only, to a directory |
+| \`bpmnToText(xml)\` | Render a BPMN diagram as a compact flow description |
+| \`readOperations(entry)\` | Read one digest per operation from an OpenAPI document |
+| \`stripMdx(source, options)\` | Reduce Camunda's MDX to indexable Markdown |
+| \`absoluteLinks(markdown, slug)\` | Rewrite relative links to \`docs.camunda.io\` URLs |
+| \`notice(commit)\` | The CC BY-SA 3.0 attribution written on every build |
+
+Rebuild the pack against a checkout:
+
+\`\`\`sh
+node packages/camunda-docspack/dist/cli.js --camunda-docs ../camunda-docs
+\`\`\`
+
+## Licence
+
+**The documentation content belongs to Camunda.** It is the work of Camunda Services GmbH, taken from camunda/camunda-docs, and copyright in it remains with them. BPMN Kit claims no ownership of it and asserts no rights over it; its own contribution is the build tooling in \`src/\` and nothing else.
+
+Camunda publishes that documentation under **CC BY-SA 3.0**, and this package redistributes it under those same terms, unchanged. Chunking the prose and rendering its embedded diagrams as text make this an Adaptation under §1 of that licence rather than a mere Collection, so ShareAlike applies and the package as a whole is CC BY-SA 3.0 rather than MIT like the rest of BPMN Kit.
+
+Those terms grant you rights, and nothing here narrows them: you may share and adapt this content, provided you credit Camunda, state what you changed, and license your result alike. See \`NOTICE\` for the attribution, the upstream commit, and the list of changes made.
+
+BPMN Kit is not affiliated with, endorsed by, or sponsored by Camunda Services GmbH. "Camunda" is a trademark of its owner, used here only to state truthfully whose documentation this is. For canonical and current documentation, prefer [docs.camunda.io](https://docs.camunda.io).
+`,
+	},
 	"packages/docspack": {
 		name: "@bpmnkit/docspack",
 		description:
@@ -1217,6 +1313,8 @@ interface RenderOptions {
 An agent installs it, asks a question, and gets back the two or three passages that answer it — not a whole documentation site, and not whatever the model remembers about an older release.
 
 It follows the [docspack package format](https://docspack.dev/spec), so the upstream \`docspack\` CLI discovers and indexes it like any other vendor pack. The bundled \`bpmnkit-docs\` command does the same job with no extra tooling.
+
+It also reads [\`@bpmnkit/camunda-docspack\`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) — the Camunda 8 documentation in the same format. Install both and ask this one how to drive the library, that one what the engine does.
 
 \`\`\`
 Markdown docs → chunks + manifest → BM25 index → three passages
@@ -1240,17 +1338,20 @@ npm install -D @bpmnkit/docspack
 
 ## Quick Start
 
-Give an agent one line in \`AGENTS.md\` or \`CLAUDE.md\`:
+Give an agent one paragraph in \`AGENTS.md\` or \`CLAUDE.md\` — naming both packs, because an agent told only about the first will never think to ask the second:
 
 \`\`\`
-Run \\\`npx bpmnkit-docs ask "<question>"\\\` for BPMN Kit documentation.
-It answers from the version this project installed.
+Run \`npx bpmnkit-docs ask "<question>"\` for BPMN Kit documentation, and
+\`npx bpmnkit-docs ask "<question>" --pack @bpmnkit/camunda-docspack\` for
+Camunda 8 documentation — BPMN semantics, FEEL, engine behaviour, the REST API.
+Both answer from the versions this project installed.
 \`\`\`
 
 Then:
 
 \`\`\`sh
 npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+npx bpmnkit-docs ask "what happens when no gateway condition is true" --pack @bpmnkit/camunda-docspack
 npx bpmnkit-docs search "exclusive gateway"
 npx bpmnkit-docs list
 \`\`\`
@@ -1306,6 +1407,8 @@ function loadPack(dir: string): Pack
 | \`bpmnkit-docs build\` | Regenerate this package's \`.llms/\` payload from the docs source |
 
 Options: \`--limit <n>\`, \`--max-tokens <n>\`, \`--pack <name>\`, \`--cwd <dir>\`.
+
+\`--pack\` narrows before the index is built, not after, so asking one pack a question does not pay for reading the others. A name that is not installed is an error listing what is, rather than an empty answer that would read as "the documentation does not cover this".
 `,
 	},
 
@@ -1515,10 +1618,10 @@ interface OperateApi {
 	"packages/astro-shared": {
 		name: "@bpmnkit/astro-shared",
 		description:
-			"Shared CSS design tokens, aurora background, site metadata, and SEO helpers for BPMN Kit Astro apps",
+			"Shared CSS design tokens, page ground, site metadata, and SEO helpers for BPMN Kit Astro apps",
 		content: `## Overview
 
-\`@bpmnkit/astro-shared\` provides shared CSS imports, site metadata, and SEO building blocks used across BPMN Kit's Astro-based apps (landing page, docs, learn, blog). It re-exports the design tokens from \`@bpmnkit/ui\`, adds a global aurora background animation, and ships a \`<Seo>\` head component plus schema.org JSON-LD helpers so every site emits consistent titles, canonicals, Open Graph tags, and structured data.
+\`@bpmnkit/astro-shared\` provides shared CSS imports, site metadata, and SEO building blocks used across BPMN Kit's Astro-based apps (landing page, docs, learn, blog). It exposes the bpmnkit.com design system's tokens — derived from the \`--bpmnkit-ds-*\` set \`@bpmnkit/ui\` owns, under the same short names the landing site reads — sets the flat page ground, and ships a \`<Seo>\` head component plus schema.org JSON-LD helpers so every site emits consistent titles, canonicals, Open Graph tags, and structured data.
 
 This package is primarily intended for internal use by BPMN Kit's own Astro applications.
 
@@ -2067,6 +2170,13 @@ All plugins with \`"casen-plugin"\` in their \`keywords\` appear in \`casen plug
 - **MCP server** — Model Context Protocol server for AI agent integrations (\`stdio\` transport)
 - **Camunda API proxy** — transparent HTTP proxy that injects auth from your \`casen\` CLI profiles
 
+While the AI is working, \`/chat\` emits \`preview\` events carrying the diagram as it
+stands, so a client can render the process being drawn instead of waiting for the model
+to stop. They come from two places: the diagram the model is writing into a tool call,
+read out of the tokens themselves, and — once the MCP server has written real state —
+that state, after each tool call. Previews are advisory; the \`xml\` event sent once the
+stream ends is the authoritative result.
+
 The proxy reads authentication from profiles stored by the \`@bpmnkit/cli\` (\`~/.config/casen/config.json\`), so you don't need to configure credentials separately.
 
 ## Installation
@@ -2109,7 +2219,7 @@ bpmn-mcp
 | Method | Path | Description |
 |--------|------|-------------|
 | \`GET\` | \`/status\` | Health check; returns server version and active profile |
-| \`POST\` | \`/chat\` | AI chat — SSE stream; sends \`data: { type, content }\` events |
+| \`POST\` | \`/chat\` | AI chat — SSE stream; sends \`token\`, \`preview\`, \`xml\`, \`error\` and \`done\` events |
 | \`GET\` | \`/profiles\` | List all configured \`casen\` profiles |
 | \`ALL\` | \`/api/*\` | Transparent proxy to your Camunda cluster (adds auth header) |
 | \`GET\` | \`/operate/stream\` | SSE stream for the \`@bpmnkit/operate\` monitoring frontend |
@@ -2618,24 +2728,27 @@ See the [Standalone Workers guide](https://bpmnkit.com/docs/guides/workers-stand
 			"Embeddable user task widget for Camunda 8 — form rendering, claim/complete actions, zero dependencies",
 		content: `## Overview
 
-\`@bpmnkit/user-tasks\` is a zero-dependency widget for rendering and interacting with Camunda 8 user tasks. Mount it into any HTML element to get a complete task UI — form rendering via \`@bpmnkit/plugins/form-viewer\`, claim/unclaim, complete, and optional reject actions.
+\`@bpmnkit/user-tasks\` renders a Camunda 8 user task, and the actions that go with it, into any
+HTML element. Mount it and you get the task's linked Camunda Form, its metadata, and buttons for
+claim, complete and — when you ask for it — reject.
 
-It connects to the \`@bpmnkit/proxy\` local server to fetch task forms and submit completions via the Camunda REST API.
+It talks to a running [\`@bpmnkit/proxy\`](https://www.npmjs.com/package/@bpmnkit/proxy), which
+holds the credentials and forwards to the Camunda REST API, so no cluster secret reaches the page.
 
 ## Features
 
-- **Form rendering** — loads the task's linked Camunda Form and renders it via \`@bpmnkit/plugins/form-viewer\`
-- **Claim / Unclaim** — assigns or removes the task assignee
-- **Complete** — submits collected form variables to the Camunda API
-- **Reject** — optional reject/return action with a reason prompt
-- **Metadata display** — assignee, due date (with overdue highlight), and priority
-- **Theme support** — \`light\`, \`dark\`, or \`neon\` via \`@bpmnkit/ui\` design tokens
-- **Zero dependencies** — no framework required; mounts into any \`HTMLElement\`
+- **Form rendering** — loads the task's linked Camunda Form and renders it through \`@bpmnkit/plugins/form-viewer\`
+- **Claim / unclaim** — sets or clears the task assignee
+- **Complete** — submits the form's collected variables
+- **Reject** — an optional return action with a reason; the button is hidden unless you pass \`onReject\`
+- **Metadata** — assignee, priority, and a due date that highlights once it is overdue
+- **Themed** — \`light\`, \`dark\`, \`auto\` or \`neon\`, drawn with the \`@bpmnkit/ui\` design tokens
+- **No framework** — a function and an \`HTMLElement\`; it works inside React, Vue, Astro or a plain page
 
 ## Installation
 
 \`\`\`sh
-npm install @bpmnkit/user-tasks @bpmnkit/proxy
+npm install @bpmnkit/user-tasks
 \`\`\`
 
 ## Quick Start
@@ -2652,7 +2765,7 @@ const widget = createUserTaskWidget({
     dueDate: "2025-06-01T12:00:00Z",
     priority: 50,
   },
-  proxyUrl: "http://localhost:3033",  // default
+  proxyUrl: "http://localhost:3033", // default
   theme: "dark",
   onComplete(variables) {
     console.log("Task completed with", variables)
@@ -2668,10 +2781,10 @@ const widget = createUserTaskWidget({
   },
 })
 
-// Later: update the displayed task
+// Show a different task in the same widget — the form reloads.
 widget.setTask({ userTaskKey: "2251799813685999", name: "Approve invoice" })
 
-// Clean up
+// Remove it from the DOM.
 widget.destroy()
 \`\`\`
 
@@ -2687,17 +2800,17 @@ interface UserTaskWidgetOptions {
   task: UserTask
   /** Base URL of the proxy server. Default: "http://localhost:3033" */
   proxyUrl?: string
-  /** Active profile name for x-profile header. */
+  /** Active profile name, sent as the x-profile header. */
   profile?: string | null
-  /** Visual theme. Default: "neon" */
-  theme?: "light" | "dark" | "neon"
+  /** Visual theme (\`Theme\` from @bpmnkit/ui). Default: "neon" */
+  theme?: "light" | "dark" | "auto" | "neon"
   /** Called when the user completes the task. */
   onComplete(variables: Record<string, unknown>): void
   /** Called when the user claims the task. */
   onClaim(): void
   /** Called when the user unclaims the task. */
   onUnclaim(): void
-  /** Called when the user rejects/returns the task. Optional — hides the Reject button if omitted. */
+  /** Called when the user rejects the task. Omit to hide the Reject button. */
   onReject?(reason: string): void
 }
 \`\`\`
@@ -2706,7 +2819,7 @@ Returns a \`UserTaskWidgetApi\`:
 
 \`\`\`typescript
 interface UserTaskWidgetApi {
-  /** Update the displayed task and reload its form. */
+  /** Show a different task and reload its form. */
   setTask(task: UserTask): void
   /** Remove the widget from the DOM and clean up. */
   destroy(): void
@@ -2721,7 +2834,7 @@ interface UserTask {
   name?: string
   assignee?: string
   candidateGroups?: string[]
-  dueDate?: string          // ISO 8601 date string
+  dueDate?: string // ISO 8601
   priority?: number
   processInstanceKey?: string
   processDefinitionKey?: string
@@ -2880,7 +2993,7 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [\`@bpmnkit/connector-gen\`](packages/connector-gen) | [![npm](https://img.shields.io/npm/v/@bpmnkit/connector-gen?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs (100 built-in) |
 | [\`@bpmnkit/profiles\`](packages/profiles) | [![npm](https://img.shields.io/npm/v/@bpmnkit/profiles?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/profiles) | Auth & profile storage shared between CLI and proxy |
 | [\`@bpmnkit/worker-client\`](packages/worker-client) | [![npm](https://img.shields.io/npm/v/@bpmnkit/worker-client?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
-| [\`@bpmnkit/user-tasks\`](packages/user-tasks) | [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget \u2014 form rendering, claim and complete |
+| [\`@bpmnkit/user-tasks\`](packages/user-tasks) | [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget — form rendering, claim/complete |
 
 ### Apps & CLI
 

@@ -43,6 +43,8 @@ type FeelNodeKind =
 	| { kind: "filter"; base: FeelNode; condition: FeelNode }
 	// Calls
 	| { kind: "call"; callee: string; args: FeelNode[] }
+	// Invocation of a function-valued expression: `ctx.fn(1)`, `(function(a) a)(1)`
+	| { kind: "call-expr"; target: FeelNode; args: FeelNode[] }
 	| { kind: "call-named"; callee: string; args: Array<{ name: string; value: FeelNode }> }
 	// Control flow
 	| { kind: "if"; condition: FeelNode; then: FeelNode; else: FeelNode }

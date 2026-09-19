@@ -13,7 +13,7 @@
 :root {
 	/* Ground */
 	--ground: #f4f5f7;
-	--ground-alt: #eef0f3;
+	--ground-alt: var(--bpmnkit-ds-bg-alt, #eef0f3);
 	--panel: #fbfbfc;
 
 	/* Ink */
@@ -27,7 +27,7 @@
 	/* Accent — one, and one only */
 	--accent: #a8503a;
 	--accent-on-ink: #d99a7c;
-	--accent-tint: #fdf3ef;
+	--accent-tint: var(--bpmnkit-ds-accent-tint, #fdf3ef);
 
 	/* Ink surfaces (code panels, dark bands, footer) */
 	--ink-rule: #2a2e36;
@@ -2217,6 +2217,27 @@ kbd {
 }
 
 .bench-since p:last-child {
+	margin-bottom: 0;
+	color: var(--ink-body-soft);
+}
+
+.bench-preview {
+	border: 1px solid var(--rule);
+	border-top: none;
+	border-bottom: none;
+	border-left: 2px solid var(--accent);
+	background: var(--panel);
+	padding: 20px 22px;
+}
+
+.bench-preview p {
+	font-size: 13px;
+	line-height: 1.7;
+	color: var(--ink-body);
+	margin: 0 0 10px;
+}
+
+.bench-preview p:last-child {
 	margin-bottom: 0;
 	color: var(--ink-body-soft);
 }

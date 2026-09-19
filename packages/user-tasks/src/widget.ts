@@ -15,23 +15,91 @@ function el<K extends keyof HTMLElementTagNameMap>(
 	return e
 }
 
+/**
+ * Widget styles, on the bpmnkit.com design system.
+ *
+ * Square, flat and hairline-ruled, with mono for the meta line and the two
+ * labels — the widget is mounted inside the studio's task page, whose chrome
+ * is on the same system, so a rounded filled button here read as a different
+ * product. Colour and type come from the `--bpmnkit-ds-*` set.
+ */
 const WIDGET_CSS = `
-.ut-root { font-family: var(--bpmnkit-font, system-ui, sans-serif); color: var(--bpmnkit-fg, #1a1a2e); }
-.ut-header { padding: 16px; border-bottom: 1px solid var(--bpmnkit-border, #d0d0e8); }
-.ut-name { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-.ut-meta { display: flex; gap: 12px; font-size: 13px; color: var(--bpmnkit-fg-muted, #6666a0); }
+.ut-root {
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, sans-serif);
+  color: var(--bpmnkit-ds-ink, #14161a);
+  background: var(--bpmnkit-ds-surface, #ffffff);
+}
+.ut-header { padding: 16px; border-bottom: 1px solid var(--bpmnkit-ds-line, #d8dbe0); }
+.ut-name { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }
+.ut-meta {
+  display: flex;
+  gap: 14px;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  color: var(--bpmnkit-ds-ink-4, #8b929c);
+}
 .ut-meta-item { display: flex; align-items: center; gap: 4px; }
 .ut-overdue { color: var(--bpmnkit-danger, #dc2626); }
 .ut-form { padding: 16px; flex: 1; overflow-y: auto; }
-.ut-form-placeholder { padding: 32px; text-align: center; color: var(--bpmnkit-fg-muted, #6666a0); font-size: 14px; }
-.ut-actions { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--bpmnkit-border, #d0d0e8); }
-.ut-btn { padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid transparent; transition: opacity 0.15s; }
-.ut-btn:hover { opacity: 0.85; }
+.ut-form-placeholder {
+  padding: 32px;
+  text-align: center;
+  color: var(--bpmnkit-ds-ink-3, #5c6470);
+  font-size: 14.5px;
+}
+.ut-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--bpmnkit-ds-line, #d8dbe0);
+}
+/* Square, and the label sits in the sans role the system gives a control. */
+.ut-btn {
+  padding: 7px 16px;
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
 .ut-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.ut-btn-primary { background: var(--bpmnkit-accent, #1a56db); color: var(--bpmnkit-accent-fg, #fff); }
-.ut-btn-secondary { background: transparent; border-color: var(--bpmnkit-border, #d0d0e8); color: var(--bpmnkit-fg, #1a1a2e); }
-.ut-btn-danger { background: var(--bpmnkit-danger, #dc2626); color: #fff; }
-.ut-error { padding: 8px 12px; background: color-mix(in srgb, var(--bpmnkit-danger, #dc2626) 15%, transparent); color: var(--bpmnkit-danger, #dc2626); border-radius: 4px; font-size: 13px; margin: 0 16px 8px; }
+.ut-btn-primary {
+  background: var(--bpmnkit-ds-accent, #a8503a);
+  border-color: var(--bpmnkit-ds-accent, #a8503a);
+  color: #ffffff;
+}
+.ut-btn-primary:hover:not(:disabled) {
+  background: var(--bpmnkit-ds-accent-hover, #8f412e);
+  border-color: var(--bpmnkit-ds-accent-hover, #8f412e);
+}
+.ut-btn-secondary {
+  background: none;
+  border-color: var(--bpmnkit-ds-line, #d8dbe0);
+  color: var(--bpmnkit-ds-ink-3, #5c6470);
+}
+.ut-btn-secondary:hover:not(:disabled) {
+  border-color: var(--bpmnkit-ds-line-strong, #14161a);
+  color: var(--bpmnkit-ds-ink, #14161a);
+}
+/* Destructive is semantic state, so it keeps its own colour — tinted and
+   ruled rather than filled, the way every state readout in the system is. */
+.ut-btn-danger {
+  background: color-mix(in srgb, var(--bpmnkit-danger, #dc2626) 12%, transparent);
+  border-color: var(--bpmnkit-danger, #dc2626);
+  color: var(--bpmnkit-danger, #dc2626);
+}
+.ut-btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bpmnkit-danger, #dc2626) 20%, transparent);
+}
+.ut-error {
+  padding: 8px 12px;
+  margin: 0 16px 8px;
+  border: 1px solid var(--bpmnkit-ds-line, #d8dbe0);
+  border-left: 2px solid var(--bpmnkit-danger, #dc2626);
+  color: var(--bpmnkit-danger, #dc2626);
+  font-size: 14px;
+}
 `
 
 function injectWidgetStyles(): void {
@@ -51,7 +119,7 @@ export function createUserTaskWidget(options: UserTaskWidgetOptions): UserTaskWi
 		container,
 		proxyUrl = "http://localhost:3033",
 		profile = null,
-		theme = "neon",
+		theme = "light",
 		onComplete,
 		onClaim,
 		onUnclaim,

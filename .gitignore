@@ -12,5 +12,8 @@ apps/reebe-wasm/snippets/
 apps/reebe/target/
 .superpowers
 tmp
+# DMN TCK cases, extracted from a dmn-tck checkout
+packages/feel/tests/tck/
+
 # VS Code extension package
 *.vsix

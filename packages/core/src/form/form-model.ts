@@ -4,6 +4,23 @@ export interface FormLayout {
 	columns?: number | null
 }
 
+/**
+ * A layout as a caller hands it to the builder. Both fields accept `null`, and
+ * the two mean opposite things — deliberately, and worth reading twice, because
+ * they are siblings in one object and easy to treat alike by mistake:
+ *
+ * - `row: null` is **not set**. A generated row is filled in. Renderers collapse
+ *   every `row: null` field into one shared row, which is essentially never what
+ *   a caller who declined to name a row was asking for, so `null` is not trusted
+ *   here as an intentional value.
+ * - `columns: null` **is** intentional — the field spans its own row, which is
+ *   the Camunda default — and is preserved as given.
+ */
+export interface FormLayoutInput {
+	row?: string | null
+	columns?: number | null
+}
+
 /** Validation constraints for a form field. */
 export interface FormValidation {
 	required?: boolean

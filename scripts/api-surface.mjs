@@ -221,10 +221,12 @@ console.error(
 		"Additions are a minor. Removals, renames and kind changes are a MAJOR —",
 		"see https://bpmnkit.com/docs/getting-started/stability.",
 		"",
-		"If this change is intended, refresh the snapshot and commit it:",
+		"Either way the snapshot has to be refreshed and committed, so the diff is",
+		"reviewed rather than accumulated: a stale baseline cannot catch the removal",
+		"of an export that was added after it was last written.",
 		"",
 		"    node scripts/api-surface.mjs",
 		"",
 	].join("\n"),
 )
-process.exit(removed.length > 0 || changed.length > 0 ? 1 : 0)
+process.exit(1)

@@ -2,7 +2,7 @@
 title: AI Agents
 description: Add a Camunda 8 AI Agent Sub-process to a BPMN process — an LLM-in-the-loop step that can call tools, generated deterministically like everything else in the pipeline.
 sidebar:
-  order: 9
+  order: 10
 ---
 
 Camunda 8's **AI Agent Sub-process** lets a single process step delegate to an LLM that can

@@ -56,7 +56,7 @@ renames one without saying so.
 ### Added
 
 - **`@bpmnkit/feel`** — `builtinNames()` and `getBuiltin()` are exported, so an editor can
-  enumerate the 87 built-in functions without reaching into `dist/`.
+  enumerate the 88 built-in functions without reaching into `dist/`.
 - Documentation pages for `@bpmnkit/plugins`, `@bpmnkit/feel`, `@bpmnkit/connectors` and
   `@bpmnkit/ascii`, which had none.
 - `engines.node` on every package in the set; only two declared one before.

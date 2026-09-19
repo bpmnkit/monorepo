@@ -19,7 +19,7 @@ export function ClusterPicker() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
-				className="flex items-center gap-1.5 rounded px-2 py-1 text-sm text-fg hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent"
+				className="ds-datum flex items-center gap-1.5 border border-border px-2 py-1 text-xs text-fg hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
 				aria-label="Select cluster profile"
 			>
 				<span className={`h-2 w-2 rounded-full shrink-0 ${statusColor}`} aria-hidden="true" />
@@ -50,7 +50,7 @@ export function ClusterPicker() {
 										</span>
 									)}
 									<span
-										className={`flex-1 truncate ${p.name === activeProfile ? "font-medium" : ""}`}
+										className={`ds-datum flex-1 truncate ${p.name === activeProfile ? "text-accent" : ""}`}
 									>
 										{p.name}
 									</span>

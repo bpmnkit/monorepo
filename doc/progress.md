@@ -56,7 +56,6 @@ that a red release workflow publishes nothing and says so nowhere but the Action
 package to lack. Twenty-nine plugin docstrings stopped naming `@bpmnkit/canvas-plugin-*`
 packages that have not existed for three renames.
 
-
 ## 2026-09-18 — The 1.0 set: twelve in, fourteen out
 
 The decision the remaining 1.0.0 work was waiting on, and the changeset that acts on it.
@@ -123,6 +122,715 @@ out of date.
 The changeset is dry-run verified: all twelve land on exactly `1.0.0`, no other package crosses
 1.0, and `check-packages.mjs` passes against the versioned tree.
 
+## 2026-09-18 — The package table on the homepage had drifted a whole release
+
+`tests/ecosystem.test.ts` reported one stale version, `packages/ascii` at 0.0.36
+against a manifest reading 0.0.37. It asserts per package in a loop and stops at
+the first mismatch, so what it was actually reporting was **14** of the 27
+packages behind — core, canvas, editor, plugins, engine, feel, cli, proxy and the
+rest — the homepage having missed a release rather than a package having missed
+an edit.
+
+`@bpmnkit/camunda-docspack` is the one worth naming: the table had it at 0.0.0,
+which is the same version-that-lies failure written up on 2026-09-16, surviving in
+a second place after the manifest itself was fixed.
+
+Regenerated with `node scripts/generate-ecosystem.mjs`; the whole diff is version
+strings. `generate-plugins-doc.mjs`, the other generator `prebuild` runs, was
+already current, so the drift was this file alone.
+
+## 2026-09-18 — The preview reached the docs, and the pack that agents actually read
+
+Three commits of streaming preview had landed in the generated READMEs and in
+`doc/`, and nowhere a user or an agent looks. The docspack gap was the sharp one:
+this repo's own CLAUDE.md tells every agent to ask `bpmnkit-docs` before
+answering from memory and to trust a chunk over recall, so an agent asking how to
+preview a diagram mid-generation got nothing and fell through to training that
+predates the API.
+
+`guides/ai.md` gains "Previewing While the Model Writes" — why a half-written
+document cannot be parsed, what `base` and `keepViewport` are for, that frames are
+advisory, and where the proxy's two kinds of `preview` frame come from. That guide
+is also the only home the `preview` SSE event has: there is no docs page for
+`@bpmnkit/proxy` or `@bpmnkit/plugins`. `packages/core.md` gains
+`createCompactStream(options?)` beside `compactify` and `expand`.
+
+The pack rebuilt to 208 chunks from 206, and both new chunks come back from a real
+`ask` against the built index.
+
+On the landing page the streaming preview goes where the claim it qualifies
+already is: the AI benchmark section leads with "faster to a diagram", and a panel
+after it says the wait is now something to watch rather than sit through. It
+reuses the section's hairline-panel stacking — `border-top`/`border-bottom: none`
+with an accent left rule — so the box stays one box.
+
+`apps/landing/src/generated/ecosystem.ts` was committed stale and failing
+`tests/ecosystem.test.ts`, which is unrelated to any of this and is fixed below.
+
+## 2026-09-17 — Marking what the AI added, and only when that means something
+
+A preview frame shows the process being written but says nothing about which part
+of it was already there, so asking for one more task read the same as asking for
+a rewrite. Each frame now outlines the elements the diagram being edited does not
+have. `load` clears highlights, so the marking is re-applied per frame; it is
+also applied to the authoritative render at the end of the message, or it would
+disappear at the moment the result arrived.
+
+The plan said to mark the elements that arrived in the last frame. Written out,
+that is a 100 ms flash per element and a canvas that never settles — and it
+answers a question nobody asked, since the shapes appearing is already the signal
+that something arrived. What is worth distinguishing is the AI's work from the
+user's, so `additionsToMark` compares against the diagram the request started
+from instead.
+
+That only means anything when there is a diagram to compare against, and
+"non-empty" turned out to be the wrong test: `Bpmn.makeEmpty` is a single
+unconnected start event, so a process built from scratch in a fresh file would
+have had everything but that start event marked. The test is no sequence flow —
+nothing is connected yet, so there is no process for anything to be new relative
+to — and a from-scratch build is left unmarked.
+
+A happy-dom test renders a real canvas and asserts the class lands straight after
+`load`, which is what lets the panel mark synchronously rather than out of a
+`requestAnimationFrame` the way the improve flow beside it does.
+
+This finishes `docs/superpowers/plans/2026-09-17-streaming-bpmn-preview.md`.
+
+## 2026-09-17 — Reading the diagram out of the tokens, before the document closes
+
+Watching the MCP output file covered diagrams built over several tool calls, and
+left the common case untouched: asked to build a process from scratch, the model
+makes one `replace_diagram` call, and nothing reaches disk until it returns. A
+capture settled what that call actually looks like — 1,580 characters of clean,
+quoted JSON in 94 deltas, opening `{"diagram": {` and not closing it until the
+final two characters. Parsing is therefore useless for the whole of it, which is
+exactly the stretch worth showing.
+
+`createCompactStream` does not parse the document. It takes complete `{...}`
+literals as they close and keeps the ones shaped like a `CompactElement` or a
+`CompactFlow` — the innermost objects, and so the first to finish. On that
+capture the first renderable frame arrives 260 characters in, 16% of the way,
+with 15 frames following; feeding the whole thing one character at a time, with
+an export per frame, costs 13 ms.
+
+The first attempt scanned from the last literal it had taken, which loses a
+sub-process: its children close before it does, the cursor moves past them, and
+the container itself is never seen. Replaced with a single pass over a brace
+stack — every character looked at once, every literal considered once, innermost
+first — which is both linear and the order that lets a container reclaim the
+children already sitting at the top level.
+
+Two things throw in `expand` and are handled rather than caught: a flow marked
+`isDefault` whose gateway has not been written yet, and an element whose `type`
+has not finished arriving. The first loses its marker in previews, the second is
+not taken until its type is one the catalog knows.
+
+The claude adapter asks for `--include-partial-messages` only when something is
+listening, and forwards `input_json_delta` fragments for `mcp__bpmn__*` calls
+only. Keying on the content-block index matters: the recorded run reached for two
+of its own tools before the diagram one, and their arguments stream through the
+same channel. `readStreamJsonLine` is split out so that ordering can be replayed
+in a test instead of asserted about a subprocess.
+
+`/chat` feeds those fragments to one stream per request, seeded with the diagram
+being edited so a frame shows the whole process rather than the fragment being
+added, and throttles frames to 100 ms — a limit set by the canvas laying the
+diagram out again at the other end, not by the 1 ms it costs to build one. Once
+the MCP server has written real state the streamed frames stop: its frames are
+the same diagram, from the model rather than from a guess at an unfinished
+document.
+
+## 2026-09-17 — The diagram stopped waiting for the model to stop talking
+
+`/chat` read the MCP server's output file once, after `adapter.stream()` resolved,
+and emitted it as the `xml` event. The MCP server writes that file on every
+mutating tool call, so for a diagram built over several calls the process was
+complete on disk seconds before anything looked at it. The user watched prose
+scroll past while the thing worth seeing sat in a temp directory.
+
+`watchOutputFile` watches the directory rather than the file — the file does not
+exist until the first tool call, and `watch` throws on a path that is not there —
+and reports each complete, changed write as a `preview` event. Against the real
+MCP server over stdio, a two-call conversation produced two frames, each a
+parseable diagram, the second carrying the first plus what the second call added.
+
+The guard that matters is what it does with a bad read. A read can land between
+the open and the flush, so a frame is validated by parsing it and dropped if it
+fails; the next write carries the whole file. That is affordable because previews
+are advisory — the `xml` event still follows and is still authoritative — and it
+is the same property that lets the panel render a frame without checking it
+against anything.
+
+In the panel, frames go into a canvas above the reply, updated with `keepViewport`
+so the diagram grows in place instead of re-framing on every change, and the
+streaming text moved into its own child element so a frame arriving mid-stream is
+not wiped by the next token. `finalizeAiMessage` replaces the live canvas with the
+authoritative render, unchanged.
+
+This is the first phase of `docs/superpowers/plans/2026-09-17-streaming-bpmn-preview.md`.
+It covers diagrams built through several tool calls. A from-scratch build that the
+model does in one `compose_diagram` call is still one frame at the end — that is
+what phase two, streaming the tool argument itself, is for.
+
+## 2026-09-17 — The rest of the repo joins the design system
+
+With the studio on the system, an audit of what still was not turned up a
+smaller list than expected, and one much louder item than expected.
+
+**`apps/learn` was still wearing the 2025 brand.** A deployed sibling of
+bpmnkit.com — three blurred gradient orbs drifting on a loop, a masked dot grid,
+a fractal-noise grain layer, gradient-clipped headings, glow overlays on hover,
+8–20px radii, `translateY` lifts, pill badges and a magenta third brand colour —
+so a visitor clicking "Learn" from the site crossed a hard boundary. It is now
+the same system: flat paper ground, hairline rules, one terracotta accent, Space
+Grotesk for prose and Space Mono for every label, count and level. The catalogue
+and the glossary are one bordered box subdivided by hairlines rather than gapped
+cards; steps and prerequisites are hairline-divided rows; the progress bar is a
+1px rule that fills; hint levels escalate by accent weight rather than by hue,
+because there is no third colour to spend. The embedded editor moved from the
+`neon` white-label theme to the system's light one.
+
+`packages/astro-shared` is what made that possible in one place. It used to map
+short names onto the *product* palette and carry the aurora's layout tokens — a
+14px radius and a `--pink` — beside it. It now exposes the landing site's own
+vocabulary with the landing site's own values, derived from `--bpmnkit-ds-*`, so
+the two sites read one token set. `background.css` is one rule: the ground.
+`.aurora`, `.orb`, `.dots` and `.grain` are deliberately undefined, so a layout
+that still renders those elements renders nothing rather than keeping the old
+brand alive in a corner.
+
+Two values the landing had hardcoded — its alternate ground and its accent tint
+— became `--bpmnkit-ds-bg-alt` and `--bpmnkit-ds-accent-tint` in `@bpmnkit/ui`,
+so sharing them did not mean duplicating them. The landing now reads them too.
+
+**The editor plugins were almost all there already.** Counting which token layer
+each one reads — `--bpmnkit-chrome-*` (the editor's bridge onto the system) or
+`--bpmnkit-*` (the product palette) — showed 24 of 31 fully on the chrome layer.
+The holdouts were `form-viewer` and `form-editor`, which restated palettes of
+their own (a Catppuccin dark and a Tailwind light) beside a system font stack
+and carried 31 non-zero radii between them; `dmn-viewer`, same shape; and one
+`--bpmnkit-teal` in `variable-flow`. All four are on the design-system set now,
+with hex fallbacks so they still theme when mounted outside the editor and its
+chrome tokens are absent. The DMN input/output tints and the FEEL syntax colours
+stay as they were, exempt as they always have been.
+
+`variable-flow`'s "both" mark is the one that needed a decision rather than a
+swap: it marked a variable that is read *and* written with the product palette's
+secondary brand colour, which the system does not have. It is now mixed from the
+two states it means — the accent a read is marked with and the green a write is
+marked with — so it follows the theme instead of pinning a fourth hue.
+
+**`apps/demo`** opened in the `neon` white-label theme on the product palette and carried the
+pre-rename "BPMN SDK" in its title. It is drawn with inline `var(--bpmnkit-*)` references rather
+than classes, so it takes the same one seam the studio does: the brand tokens re-point onto the
+design-system set and 760 lines of markup stay put. Its three comparison variants keep success,
+warn and danger, which is what they mean.
+
+**`@bpmnkit/user-tasks`** was the seam inside the app the previous change
+converted: the studio's task page is on the system and the widget it mounts was
+not. Square, hairline-ruled and mono in the meta line now, and it defaults to
+`light` rather than `neon`.
+
+**The canvas's focus ring** was a hardcoded `#0066cc`. A keyboard focus ring is
+interaction chrome rather than the diagram's own ink, so it takes the accent.
+The strokes, fills and labels around it stay the renderer's, which the system
+leaves alone by design.
+
+Verified by building Learn before and after and comparing every page in both
+states, and by driving the studio's editor to confirm selection still reads as
+the dashed accent halo the brief asks for. `packages/astro-shared` gained a test
+suite whose four assertions are the things that made it one system again: the
+tokens derive from the design-system set and not the product palette, the radius
+is zero and `--pink` is gone, the ground draws no blur or gradient, and the
+aurora's elements are no longer defined.
+
+## 2026-09-17 — What the before/after pass caught
+
+The design change was verified page by page against a build of the commit before
+it — both served side by side, the same scripted tour run against each, and every
+pair stitched into one image. It caught four things the code review had not, all
+in the new `.ds-*` layer rather than in any page.
+
+**A lone card stretched the width of the page.** `.ds-grid` used
+`repeat(auto-fit, …)`, and `auto-fit` collapses the tracks it has no items for —
+so the models gallery holding one model rendered it as a full-bleed banner with a
+thumbnail lost in the middle of it. `auto-fill` keeps the tracks. The gallery had
+fixed column counts before this work; `auto-fill` restores that behaviour without
+giving up the one-box frame.
+
+**A short last row read as a filled block.** The grid drew its dividers as a 1px
+`gap` over a coloured ground, which is how Operate does it — fine for a readout
+whose items always fill the box, wrong for five templates in two columns, where
+the missing sixth cell showed as a solid panel. The dividers are now borders on
+the children, so the leftover is surface.
+
+**A table header's ground stopped short of its frame.** Moving the header ground
+from the row to `thead th` looked equivalent until a table had an `sr-only`
+column: there is no header cell there, so the ground ended and the frame ran on
+for another 70px. Definitions and the models list both showed it. The ground is
+back on the row, where it covers the full width whatever the columns do.
+
+**The rail ellipsised a project name.** Mono at the same size is about a tenth
+wider than sans, and the extra 0.06em of tracking pushed "Local (IndexedDB)" past
+the rail. Tracking is for uppercase, so it now applies only to the nine uppercase
+destinations and not to the pickers, which read out a name.
+
+One more change came out of seeing the dashboard with a cluster attached, which
+no static reading would have shown: the stat card put the sparkline beside the
+*label* rather than the number, because the row was top-aligned. The card now
+follows Operate's — label and icon mark on one line, the number under it with the
+sparkline beside it.
+
+Behaviour was checked too, not just appearance: the same script drives the state
+filters, the type filter, search, the grid/list toggle, the folder dialog, the
+command palette's navigation, the theme picker and the mode toggle against both
+builds and compares the results. All thirteen match, and both builds log the same
+76 console errors — every one of them the absent proxy.
+
+## 2026-09-17 — The studio wears the design system, not just its colours
+
+#165 put the studio on the bpmnkit.com design system through one seam: a token
+bridge that re-pointed the `--bpmnkit-*` set the app already read onto
+`--bpmnkit-ds-*`, explicitly "no component churn". That bought the palette, the
+two type families, square corners and no shadows. It could not buy the system's
+*form*, which lives in the markup: gapped cards with their own borders, sans
+labels where the system uses mono, filled state pills, hover-lift on the
+dashboard, a 40px icon tile on every metric. The studio read as a generic console
+in terracotta.
+
+Three things closed the gap.
+
+**The `--bpmnkit-ds-*` set is now redeclared per theme**, the way Operate does it,
+rather than aliased. Aliasing was enough while only the brand tokens were read;
+it breaks the moment a rule reads `var(--bpmnkit-ds-ink-3)` directly, because
+dark and neon inherited the light value. Dark takes Operate's tuned values, and
+neon takes `@bpmnkit/ui`'s own neon palette so the white-label theme keeps one
+accent instead of leaking terracotta through the new rules.
+
+**A `.ds-*` component vocabulary** in `styles/design-system.css`, inside
+Tailwind's `components` layer so a utility at a call site still wins and no
+`!important` is needed anywhere. Twenty-odd classes, each one a rule of the
+system rather than a widget: `.ds-grid` + `.ds-cell` (one bordered box
+subdivided by 1px hairlines — the thing gapped cards were doing wrong),
+`.ds-box`, `.ds-rows`, `.ds-label`, `.ds-eyebrow`, `.ds-datum`, `.ds-mark`,
+`.ds-btn`, `.ds-seg`, `.ds-tab`, `.ds-field`, `.ds-note`, `.ds-code`,
+`.ds-kbd`, `.ds-empty`.
+
+**Every page rewritten against it.** The dashboard's six metrics are one box now,
+not six floating cards; the icon is a 16px mark rather than a tile, the number is
+mono at 28px, the label is mono uppercase, and nothing lifts on hover — an
+alarming metric is marked by its accent and its pulse. `StatusPill` and
+`ProfileTag` became tinted mono marks (`.ds-mark`), which is why a table of them
+reads as text rather than a column of buttons; that orphaned `components/ui/badge.tsx`,
+so it is gone. Every list page grew a real head: a mono eyebrow naming the page, the
+count as a datum, filters as a hairline-divided segmented control. Settings' five
+sections are numbered `01`–`05` the way the landing page numbers its bands, and
+its three copies of the "● Active / Switch" control collapsed into one
+`ActiveToggle`. `Separator` is unused as a result and dropped from the import.
+
+Two rules are enforced where they cannot be forgotten rather than at each call
+site: cascivo renders as CSS modules with hashed class names, so a column head
+becomes mono through `thead th`, and the rail's nine destinations become mono
+uppercase through `nav[aria-label="Main navigation"] a` — scoped by the
+`ariaLabel` the Sidebar passes, which is ours, not by a hash that changes with
+cascivo's next build. The rail's pickers stay in natural case: they read out a
+profile or a project name, and `pi-1` is not `PI-1`.
+
+Driving the built app in a browser to check the result turned up two chrome bugs
+that predate this work, both the same collision: Tailwind's preflight against
+markup it does not own. `*{margin:0}` beat the user agent's `dialog{margin:auto}`,
+so every cascivo Modal in the studio opened against the top-left corner instead
+of centred; and `svg{display:block}` stacked the icon above the label inside the
+single unclassed `<span>` cascivo's Button wraps its children in, in every button
+in the app. Two rules fix both — `dialog:modal{margin:auto}` and a flex row on
+`button[data-variant][data-size] > span`, selected by the component's own DOM
+contract rather than a module hash. They are not design-system changes; they are
+what the screenshots showed once there was a design worth looking at.
+
+The sweep is complete in the literal sense — `rounded-*` (bar `rounded-full`,
+which draws circular *marks*), `shadow-*`, `backdrop-blur` and `bg-gradient`
+now appear zero times across the studio's 40 components, and so do `font-medium`,
+`font-semibold` and hand-rolled `uppercase tracking-wider` labels.
+`tests/theme.test.ts` gained three assertions that keep it that way: the layer
+exists, `.ds-grid` is still a 1px-gap box over the line colour, and nothing in
+the layer grows a radius, a shadow, a gradient or a blur.
+
+## 2026-09-16 — The pack version stopped lying, and upstream took the suffix
+
+`@bpmnkit/camunda-docspack@0.1.0` shipped a `.llms/manifest.json` claiming
+version `0.0.0`. This pack's payload is committed rather than rebuilt at release
+— the rebuild needs a `camunda-docs` checkout only the weekly workflow has, so
+its `build` was `tsc` and nothing else — while `changeset version` moved
+`package.json` on. `docspack doctor` fails that package outright, and
+`docspack list` reports the disagreement to every consumer. `@bpmnkit/docspack`
+was never affected: its `build` regenerates the manifest from `package.json`.
+
+`build` now runs `scripts/sync-version.mjs`, which rewrites the version in
+`manifest.json` and the `Version …` header line in `llms.txt` and touches nothing
+else — the chunks are Camunda's documentation and not the script's business.
+Verified by simulating a release bump: `doctor` goes from `error … manifest says
+0.0.0` to `ok 1054 chunks`. The published `0.1.0` stays wrong until the next
+release carries the fix.
+
+**`docspack@1.2.0`** adopted `@<vendor>/<name>-docspack`, the shape we had
+implemented locally and written up for them. Both packs are now discovered by the
+upstream CLI — `1054 chunks indexed` rather than `0 chunks (declarations)` — so
+`bpmnkit-docs`'s suffix matching stopped being a divergence and became the same
+rule, and a Camunda question stops being answered out of the wrong pack.
+
+1.2.0 also closed the silent-failure hole the write-up asked about, at both ends:
+`doctor` now refuses a pack whose name the indexer will not discover, naming the
+three shapes, and `sync` reports an installed-but-unindexed pack in `problems`
+instead of dropping it. It is what caught our own version drift in the first
+place.
+
+The one thing 1.2.0 costs us is a floor: a `docspack` older than 1.2.0 still
+answers Camunda questions out of `@bpmnkit/docspack`, so the pack's page and the
+AI guide both state the version. `bpmnkit-docs` has no such floor.
+
+## 2026-09-16 — A model can name a gateway's default flow, and upstream shipped `docspack index`
+
+`CompactFlow` carried `condition` and had no field for `bpmn:default`. A model
+returning a `CompactDiagram` — the format BPMN Kit asks it for — therefore could
+not mark a fallthrough branch however well it had read the documentation saying
+it must, and an exclusive gateway whose conditions are all false and which has no
+default deadlocks at runtime. `compactify` dropped an existing one too, so a
+round trip lost it silently.
+
+The mark sits on the flow (`isDefault: true`), not on the gateway, because that
+is where its alternative already sits. A model writing the branches of a decision
+marks one of them rather than pointing back at a flow id from the gateway — and
+it is the spelling the `ProcessPlan` format already uses for the same thing on a
+branch. `expand` turns it into the attribute, `compactify` reads it back, and
+`reconcileCompact` sets or clears it on a model it did not author, so editing a
+file somebody else wrote can add a default that was never there.
+
+Both failure modes throw rather than being dropped: a flow marked `isDefault`
+that does not leave an exclusive, inclusive or complex gateway has nowhere to go
+in this model, and a gateway marking two is ambiguous. A default that goes
+missing surfaces as a deadlock at runtime with no trace back to here, which is
+the wrong place to be lenient.
+
+The AI example stopped needing its workaround — the four fallthrough branches now
+carry `isDefault` in the compact object and `expand` does the rest.
+
+**`docspack@1.1.0`** shipped `index` and `recall`, the own-corpus commands
+docspack.dev documented while `1.0.0` exited 2 on both. Checked against the real
+CLI: `docspack index --from ./flow-docs` indexes in ~380ms, `recall` answers,
+`--from-json -` takes rows from any query, a re-run with nothing changed is a
+no-op, a stale source produces a leading warning rather than a confidently wrong
+passage, and the index is gitignored on the tool's behalf. Pinned as a dev
+dependency and documented as the second route in the guide.
+
+It does **not** fix the discovery gap. `docspack sync` reads
+`@bpmnkit/camunda-docspack` as an ordinary dependency and indexes its type
+declarations — `0 chunks (declarations)` — so a Camunda question answers out of
+`@bpmnkit/docspack` instead. One pack per npm scope is still the spec, our
+`-docspack` suffix is still the only way to reach those 1,054 chunks, and the
+caveat on the pack's page is now verified against 1.1.0 rather than 1.0.0.
+
+## 2026-09-16 — The Camunda pack was never discoverable, and now the AI path is documented end to end
+
+`@bpmnkit/camunda-docspack` shipped, was documented in `CLAUDE.md`, `AGENTS.md` and its own
+README, and could not be found. `discoverPacks` implements the docspack spec's naming rule
+literally — `@<vendor>/docspack` and `@docspack-community/*` — and the spec is explicit that
+one pack per scope is deliberate. So every documented command against the Camunda pack
+returned `No documentation matches "…"`: not an error, an answer, and the wrong one.
+
+Discovery now reads `@<vendor>/<name>-docspack` as well. It is still a pure name check
+inside a scope the vendor owns, so the trust argument behind the spec's rule is unchanged;
+a spec-strict reader (the upstream `docspack` CLI) still sees only `@bpmnkit/docspack`, and
+the Camunda pack's page says so.
+
+Two more things that were quietly wrong:
+
+- **`--pack` with a name that is not installed answered nothing.** Indistinguishable from
+  "the documentation does not cover this", which is what a model would conclude. Both the
+  CLI and `search()` now fail with the names that *are* indexed.
+- **`--pack` narrowed after indexing, not before.** Every chunk of every pack was read off
+  disk to build an index that was then filtered down to one. Scoping first took a BPMN Kit
+  question across both packs from ~650ms to ~150ms.
+
+The docs side was the larger gap. Nothing under `apps/landing/src/content/docs` mentioned
+the Camunda pack, so `@bpmnkit/docspack` — the thing an agent asks — contained no evidence
+it existed. Added `packages/camunda-docspack.md`, a section on the `docspack` page, and
+`guides/using-bpmnkit-with-ai.md`: the three kinds of knowledge an agent needs (this
+library, the engine, and the team's own prose), how to index that third one as a pack of
+its own, and the loop from five Markdown files to a laid-out `.bpmn`. The agent-facing
+paragraph in the generated README and the `/bpmnkit:implement` skill now name both packs —
+an agent told about one never thinks to ask for the other.
+
+Three runnable examples under `apps/examples/src/ai` back the guide: ask both packs, index
+your own corpus, and corpus → `CompactDiagram` → BPMN. No API key, no network, ~3s for all
+three.
+
+Two gaps found and left standing, both stated in the guide: `CompactFlow` has no field for
+a gateway's default flow, so a model cannot return one and it has to be set on the full
+model after `expand`; and upstream's `docspack index` / `docspack recall` are documented at
+docspack.dev but exit 2 in the published `docspack@1.0.0`, so `bpmnkit-docs build` is the
+route that works today.
+
+## 2026-09-16 — FEEL taken to 94% of the DMN TCK, and the TCK put on a weekly run
+
+The TCK harness landed earlier today reported 1,282 of 2,053 FEEL cases passing. Ten
+fixes from the feelin comparison took that to 1,395; working the remaining failures by
+group took it to **1,939**.
+
+The largest single gap was the `in` operator, 181 cases: FEEL defines its right-hand
+side as a positive unary test, not an expression, so `1 in <= 10` and
+`10 in (1, < 5, >= 10)` were parse errors. Next largest was `is()`, which did not exist
+(49), and `instance of`, where `null instance of Any` answered true and a multi-word type
+name was read as a conjunction — `@"..." instance of date and time` parsed as
+`(x instance of date) and time`.
+
+Three groups were systematic rather than local:
+
+- **Ternary logic.** `and`/`or` returned true for a non-boolean operand where DMN leaves
+  the result unknown, and equality across two different types answered false rather than
+  null. Temporal equality compares the point in time now, so `12:00-01:00` equals
+  `17:00+04:00`, and a zone resolves through the platform's database to the offset it is
+  actually on that day — Melbourne is +11:00 in January and +10:00 in July.
+- **Built-in arity and types.** FEEL does not coerce, so `sqrt("4")` is null, and calling
+  a built-in with an argument count no signature accepts is null. Rounding follows the
+  spec: `decimal()` rounds half to even, `round half up` goes away from zero, and a scale
+  outside DMN's bounds has no result.
+- **Scoping.** A filter condition sees a context element's entries, so a list of records
+  filters on its fields; a `for` binding's domain sees the bindings to its left; and the
+  body sees the results so far as `partial`, which is what makes the factorial idiom work.
+
+The extractor grew with it. A decision that reads another decision, or a business
+knowledge model, now has that value in scope, and boxed function definitions become
+function literals — which is what turned the lambda group from "cannot pass here" into
+cases that pass.
+
+**What is left is 114 cases in 18 groups**, each listed in `tests/tck.test.ts` with the
+reason it is held back, and the suite fails if one of them starts passing so the list
+cannot drift. The two largest are the decision model rather than the expression language:
+typeRef coercion (26) and external Java functions (18). Then XPath regular expression
+features V8 does not have, such as character class subtraction (15), and types the model
+declares through `itemDefinition` (15). The rest is a tail of range literal spellings
+(`]1..10]`, `(<10)`), offsets carrying seconds, and numbers past float64.
+
+Numbers compare to a relative 1e-9. DMN specifies decimal arithmetic to 34 significant
+digits and this package computes in float64, which agrees to about 15; the TCK also
+records its own expected values at a precision of its choosing (`exp(4)` as
+`54.59815003`). Closing that gap means a decimal implementation, which would cost the
+11x parse-and-evaluate advantage the package has over feelin, so it is a deliberate
+divergence rather than an oversight.
+
+`.github/workflows/dmn-tck.yml` runs the suite weekly. Not per pull request: the cases
+are not in this repository, so every run clones ~400MB, and what the suite catches is
+either a regression the package's own tests already cover or an upstream case that is new
+to us — a weekly reading rather than a merge blocker. The 232 tests in
+`tests/spec.test.ts` are what protect the fixes on every pull request.
+
+## 2026-09-16 — FEEL measured against the DMN TCK, ten spec divergences fixed
+
+`@bpmnkit/feel` was compared expression by expression against `@bpmn-io/feelin` 6.1.0,
+the bpmn-io FEEL interpreter, over ~145 hand-written expressions. Of the ten divergences
+that turned out to be ours, two returned a plausible wrong answer rather than failing:
+
+```
+"a\nb"                                          → a\nb, not a newline
+replace(replacement: "x", pattern: "b", input: "abc") → "x", not "axc"
+```
+
+Named arguments were passed to built-ins in the order they were written, so any call
+whose arguments were not already in declaration order silently computed something else.
+They now bind by name against a table of every built-in's signatures, parameter names
+with spaces included, and an undeclared name yields null instead of a mis-ordered call.
+String literals now decode every escape FEEL defines — `\n \r \t \' \" \\ \uXXXX
+\UXXXXXX` — in values and in context keys, and `string length`/`substring` count
+characters rather than UTF-16 units.
+
+The other eight: context entries now see the entries before them (`{a: 1, b: a + 1}`);
+`date()` and `time()` reject values no calendar or clock has, and adding months clamps
+the day, so `date("2020-01-31") + duration("P1M")` is 2020-02-29 rather than a February
+31st; `for`/`some`/`every` take an undelimited range domain (`for i in 1..3`); a
+function-valued expression can be invoked (`{f: function(a) a}.f(1)`); `**` is
+left-associative as FEEL specifies for every infix operator, so `2 ** 3 ** 2` is 64;
+`parseExpression` accepts the names in scope so a variable named `a b` parses as one
+name; `string(null)` is null and `string()` renders lists and contexts; `count(null)` is
+null; `number()` takes grouping and decimal separators; and regex flags follow XPath,
+with `x` and `q` applied to the pattern and any other flag yielding null.
+
+**The DMN TCK now runs against the package.** `tasks/extract-tck-tests.mjs` reads a
+dmn-tck checkout and rewrites its FEEL test cases — 2,053 of them across 79 tests — into
+JSON that `tests/tck.test.ts` evaluates, the approach feelin uses, with the XML parsing
+written in-repo rather than adding `saxen` and `fast-glob`. The extracted cases are not
+committed, so the harness is two commands:
+
+```sh
+pnpm --filter @bpmnkit/feel tck
+```
+
+The ten fixes moved the TCK from 1,282/2,053 (62.4%) to 1,395/2,053 (67.9%). The
+remaining 658 are real gaps, the largest groups being unary-test operands in `in`
+(`1 in <= 10`, 181 cases), `instance of` over type arguments (51), the `is()` function
+(49), and equality across types returning null rather than false (42). Three groups
+cannot pass here at all and are counted as failures rather than dropped, because the TCK
+tests whole decision models where this package implements only the expression language:
+typeRef coercion, decisions invoking other decisions, and external Java functions.
+
+## 2026-09-16 — Camunda 8 documentation packaged as a searchable pack
+
+`@bpmnkit/camunda-docspack` builds the Camunda 8.10 (next) documentation into a docspack
+pack: best practices, the BPMN and FEEL references, engine concepts, and the
+Orchestration Cluster API. 1,054 chunks from 373 documents (302,249 tokens), built with
+`@bpmnkit/docspack`'s own `buildPack`, so it is searchable through the same
+`bpmnkit-docs ask` an agent already has.
+
+The staging pass is the whole reason this is not a file copy. Camunda's own
+`docusaurus-plugin-llms` export removes every construct it does not recognise, and the
+best-practice pages argue *through* their diagrams — so all 113 embedded BPMN diagrams
+disappear from its output while the prose goes on referring to elements that are no
+longer in the text, with the `<span className="callout">1</span>` markers left as bare
+digits pointing at nothing. Each embed is now rendered from the parsed model instead:
+
+```
+Diagram (BPMN):
+  start "Invoice to be checked" → "Check invoice" → exclusive gateway "Invoice correct?"
+    — [Yes: =correct] "Pay invoice" → end "Invoice paid"
+    — [No: =not(correct)] "Reject payment of invoice" → end "Invoice rejected"
+```
+
+`@bpmnkit/ascii` was the obvious thing to reuse and was measured against instead: it
+truncates element labels to the box width (`Reject payment of in…`) and omits condition
+expressions — the two things these pages teach — at ~420 tokens per diagram against ~82
+here.
+
+The 227 API operations are read from the specification rather than from the generated
+reference pages, which are a base64 blob wrapped in React imports. Each digest decodes
+the `[[REQUIRED_PERMISSIONS:…]]` marker Camunda encodes as base64 JSON, so a digest
+answers "what may call this?" and not only "what does it take?". Each is staged at the
+path Camunda publishes that operation at, so the chunk's source link opens the real
+reference page.
+
+Two rules the pass enforces. **Nothing is dropped silently**: an unrecognised MDX
+component fails the build by file and line, which is what caught five imported Markdown
+partials that carry real prerequisites and setup prose, now inlined rather than lost.
+And **links are resolved by the rule Docusaurus actually uses** — a `.md` link against
+the file's directory, an extensionless one against the page's trailing-slash URL.
+Applying either rule to both forms leaves ~30% of the corpus's links dangling; 11
+remain unresolved and are broken upstream, which the build reports.
+
+The pack is licensed CC BY-SA 3.0, not MIT. Chunking Camunda's prose and rendering its
+diagrams make it an Adaptation under §1 of that licence, and ShareAlike then requires the
+same terms. `scripts/published-packages.mjs` grew a `LICENSE_OVERRIDES` map so
+`sync-license.mjs` does not copy the root MIT text over it and `check-packages.mjs`
+expects the licence it actually carries. `NOTICE` is generated on every build with the
+upstream commit and the list of changes, because a hand-maintained one states last
+month's commit.
+
+`.github/workflows/camunda-docspack.yml` rebuilds it weekly and opens a pull request. It
+verifies the build twice and diffs the result, and reports chunk ids that departed — a
+renamed upstream heading renames a chunk, and anything pinning the old id stops
+resolving. Built here against `camunda/camunda-docs@acbf680` and verified
+byte-identical across two runs.
+
+Also fixed in `@bpmnkit/docspack`: a document whose preamble is shorter than `minTokens`
+is merged into the section after it and keeps that preamble's empty heading, which the
+title composition passed straight through — `Naming BPMN elements —  — Naming gateways`.
+Its own pack was unaffected; this corpus hit it, and the built pack now has 0 such
+titles across all 1,054 chunks.
+
+## 2026-09-15 — Form component ids and rows are derived from the field, not drawn
+
+`FormBuilder` fills in a `layout` on every component it generates (#177), but both the
+component id and the row inside that layout came from `generateId()` — a random draw, or
+a counter under `resetIdCounter()`. Neither is a function of the form. Rebuilding an
+unchanged form therefore produced a different file every time: every id and every row
+moved, so a diff of generated output showed everything changed and said nothing about
+what actually did. The counter is no better than the random draw for this, only quieter
+about it — it moves the moment a field is inserted, removed or reordered, which
+renumbers every field after it.
+
+Both values now come from the component itself. `packages/core/src/types/stable-key.ts`
+assembles a composite key `scope:type:identity` and hashes it:
+
+```
+identity     = the field key, or the text of a static block, or a group's label
+scope        = the enclosing form id — or the enclosing group's id, for nested children
+generated id = stableToken("Field", [scope, type, identity])
+generated row = stableToken("Row", [scope, type, identity, "row"])
+```
+
+Because the input is purely a function of what the field *is*, a rerun is byte-identical
+and reordering two fields moves nothing but their order. `scope` keeps the same field key
+in two different forms — and in two different groups of one form — from colliding. The
+`"row"` namespace keeps a component's row from ever equalling its id. Segments are
+escaped before they are joined, so `["a:b", "c"]` and `["a", "b:c"]` cannot assemble the
+same key.
+
+Identity cannot separate two components that are genuinely indistinguishable — the same
+type with the same key or text — so those are numbered within their scope in the order
+they were added, which is what the builder script fixes anyway.
+
+The two `null`s in a layout now mean opposite things, deliberately, and the new
+`FormLayoutInput` type says so at the builder boundary:
+
+- `row: null` is **not set** and is replaced with a generated row. Renderers collapse
+  every `row: null` field into one shared row, so `null` is not trusted here as an
+  intentional value.
+- `columns: null` **is** intentional — the Camunda default of one field per row — and is
+  preserved as given.
+
+A caller-supplied `id` or `layout` still wins, and a partial layout is completed rather
+than passed through half-built. `FormComponentBase.layout` stays optional: a parsed
+legacy form genuinely has none, and the parser has to keep being able to represent that.
+
+`stableToken(prefix, segments)` and `compositeKey(segments)` are exported from
+`@bpmnkit/core`. The technique generalises to any deterministic ordinal or grouping
+token: derive it from the entity's stable identity plus a distinguishing namespace,
+never from an array index, insertion order or a random source.
+
+## 2026-09-15 — The operations API rejects the wrong document
+
+`applyOperations(diagram, ops)` is typed for a `CompactDiagram` and checked nothing at
+runtime. Raw BPMN XML is the easy thing to hand it — `Bpmn.parse()` next door takes
+exactly that — and it behaved two different ways depending on the op list. With
+operations it threw `TypeError: diagram.processes is not iterable`, which names a private
+field rather than the mistake and points at no fix. With an empty list it returned the
+input untouched, which reads as "the pipeline ran and preserved everything" when nothing
+ran at all. That second case is how the false all-clear in #150 was produced: a
+preservation test written against it goes green and means nothing.
+
+Both document types are now checked at the boundary of every entry point that takes one —
+`applyOperations`, `expand`, `compactify`, `applyBpmnOperations` and `reconcileCompact` —
+in `packages/core/src/bpmn/argument-guards.ts`. A wrong one throws a `TypeError` naming
+the function, what arrived and the way in:
+`applyOperations expects a CompactDiagram, received a string. Pass
+compactify(Bpmn.parse(xml)) if you have raw XML.` A half-done conversion is named as such:
+a `BpmnDefinitions` where a compact diagram belongs says `Pass compactify(defs).`, and a
+compact diagram where the parsed model belongs says to pass the model, not the projection.
+
+The check is structural, not a schema: `processes` must be an array and each process must
+carry the two arrays the code walks (`elements`/`flows`, or
+`flowElements`/`sequenceFlows`). Well-formed input is unaffected, an empty `processes`
+list included. Everything it now rejects either crashed inside the walk or returned a
+result that had not been edited, so nothing that worked stops working.
+
+Worth a look, not touched here: the compact projections for DMN and forms (`expandDmn`,
+`compactifyDmn`, `expandForm`, `compactifyForm`) have the same open boundary. So does the
+`ops` argument itself — `applyOperations(compact)` still fails with `ops is not iterable`.
+
+## 2026-09-15 — A missing `files[]` is now an error, not a skipped check
+
+The three casen plugins that shipped without their declarations (below) reached `main`
+past `check-packages.mjs`, which is the script whose job is to catch exactly that. It
+validated that `README.md` was listed in `files[]` only `if (Array.isArray(pkg.files))`,
+so a package with no `files` field at all skipped the check instead of failing it — the
+one case that actually breaks the tarball was the one case it did not look at.
+
+A missing `files[]` is now an error in its own right. The script runs inside `pnpm build`,
+which CI runs on every pull request, so the next package added this way fails there rather
+than in the release job after the merge — which is where this one surfaced, taking the
+#173, #176 and #179 changesets down with it for two days.
+
+Worth a look, not touched here: CI never runs `check:consumable`, so the packing contract
+itself is still only tested after a merge. And the Release workflow only triggers on pushes
+touching `.changeset/**`, so a release-infra fix that carries no changeset reaches `main`
+without starting a release.
 
 ## 2026-09-14 — The stability policy, and what `semanticHash` turns out to settle
 
@@ -169,7 +877,6 @@ One deliberate omission: the page defines *when* a package is covered — at 1.0
 before — and does not name which packages those will be. That is a release decision, and a
 policy that lists them goes stale the first time the list changes. Deciding the 1.0 set is now
 the critical path; everything left after it is mechanical.
-
 
 ## 2026-09-14 — Three more 1.0.0 blockers closed
 
@@ -227,6 +934,99 @@ Verified end to end after the change: build, typecheck and Biome clean, **2,499 
 across 20 packages** still passing, `check-packages.mjs` and `check:consumable` green
 across all 26.
 
+## 2026-09-14 — The casen plugins pack their declarations
+
+**The release workflow's tarball check failed on `@bpmnkit/casen-report`,
+`@bpmnkit/casen-worker-http` and `@bpmnkit/casen-worker-ai`**, each for
+`exports["."].types` pointing at a `./dist/index.d.ts` that was not in the tarball.
+
+None of the three declared `files`. Packing then falls back to the ignore rules, and the
+root `.gitignore` ignores `dist` — so the build was ignored wholesale. What hid it is
+npm's rule that the file named in `main` is included whatever the ignores say: every
+tarball carried `dist/index.js` and nothing else from `dist`. The JS entry point resolved,
+the declarations did not, and `casen-report` was additionally missing `dist/report.js` and
+`dist/commands/*.js`, which are every module its own entry point imports. `src/` and
+`tsconfig.json` were packed in their place.
+
+Each now carries the line every other published package already has:
+`"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"]`. This is the same
+bug `@bpmnkit/proxy` shipped in 0.1.9 — a `files` list that did not cover what `exports`
+promised — arriving this time through no list at all.
+
+`node scripts/check-package-consumable.mjs --filter casen-report --filter casen-worker-http
+--filter casen-worker-ai` now reports all three consumable: packed, installed from the
+tarball into a throwaway project, imported from ESM, and their declarations type-checked
+under strict `NodeNext`.
+
+## 2026-09-14 — Three packages that publish but were never in the published list
+
+`changeset publish` releases every non-private workspace package, but
+`scripts/published-packages.mjs` — the one list `sync-license.mjs`,
+`generate-readmes.mjs`, `check-packages.mjs` and `check-package-consumable.mjs` all read —
+named only 23 of the 26. `@bpmnkit/cli-sdk`, `@bpmnkit/create-casen-plugin` and
+`@bpmnkit/user-tasks` were going to npm without a `LICENSE` in the tarball and without the
+metadata or consumable checks the release workflow runs over everything else.
+
+All three are in the list now. The first two already had generator entries, so they only
+needed the LICENSE and the checks. `@bpmnkit/user-tasks` had neither an entry nor a footer
+row: its README was hand-written, still pointed at `docs.bpmnkit.com`, and its related
+packages table was a stale snapshot missing six packages. It is generated now, and the row
+for it was added to `footer()` and to the root README's Camunda Integration table, which is
+why every other package README gained one line.
+
+`node scripts/check-packages.mjs` passes for all 26. The tarball check passes for the three
+in `--pack-only` mode; its install-and-typecheck stages need a registry and run in the
+release workflow.
+
+Left alone, and worth a look: `packages/astro-shared` is in `PUBLISHED` but has no
+`footer()` row, and `@bpmnkit/user-tasks` describes itself as having "zero dependencies"
+while declaring four `@bpmnkit/*` runtime dependencies.
+
+## 2026-09-14 — A start event built through the fluent API keeps its documentation
+
+**`ElementOptions.documentation` never reached a start event (#178).** `ProcessBuilder`'s
+`startEvent()` is the one event method that hand-builds its options literal instead of
+forwarding the caller's — it needs somewhere to put the `zeebe:properties` a webhook start
+event carries — and that literal listed `name` and `extensionElements` only. The typed API
+accepted `documentation`, raised nothing, and dropped it before the model was built. Every
+other element method, the start events inside sub-processes and event sub-processes
+included, forwards its options whole and was never affected.
+
+It bit hardest on the one element the optimizer asks callers to document: the
+`pattern/start-no-documentation` rule reads `el.documentation` and tells the caller to
+"add documentation listing the process input variables". A caller who followed that advice
+through the builder got the same warning back on a diagram that looked like it complied.
+
+The literal now carries `documentation` through, next to `name`. Tests cover the start
+event on its own, together with a message event definition and Zeebe properties (the
+reason the literal exists), nested in a sub-process and an event sub-process, the rule
+falling silent, and a table walking every element method that takes `documentation` so the
+next hand-built literal is caught by the suite rather than by a diff of exported XML.
+
+Checked while here: `compactify()`/`expand()` carry `documentation` correctly on `main`
+(#150). The report that it still reproduces is against the published `@bpmnkit/core@0.4.0`
+— the fix landed after that release and has not shipped yet.
+
+## 2026-09-14 — Every built form component carries a layout
+
+**`FormBuilder` left `layout` off unless the caller passed one (#177).** Each component
+builder set `layout` only when `options.layout` was present, so a form built without
+naming a layout on every field serialised with no `layout` attribute at all. Camunda's
+Desktop Modeler and the `form-js` importer read a missing `layout` as a legacy schema and
+backfill a `row`/`columns` pair on open — the file therefore came back dirty the first
+time it was opened, with a diff on every component and no content change behind it.
+
+`resolveLayout()` now fills the gap the same way the component `id` is already filled: a
+generated `Row_…` id when the caller gives no row, `columns: null` when they give no
+column span, and the caller's values untouched when they do. Each component lands in its
+own row, matching what the Modeler produces for a field added to the end of a form, and a
+partial layout (`{ columns: 4 }`) keeps its span and gains a row rather than being passed
+through half-built. `GroupBuilder` shares the helper, so nested children and the group
+component itself are covered.
+
+The model keeps `layout?: FormLayout` optional — a parsed legacy form genuinely has no
+layout, and the parser must stay able to represent that. The guarantee belongs to the
+builder, which is what writes the files.
 
 ## 2026-09-13 — What 1.0.0 needs, and the broken pipeline found on the way
 
@@ -276,7 +1076,6 @@ is itself breaking. And `ci.yml` never runs `check:consumable`, which is why the
 packaging break reached `main` behind a green PR — `--pack-only` is offline and takes
 about a second.
 
-
 ## 2026-09-13 — Ad-hoc children stop being a chain; documentation stops being dropped
 
 Two open issues against `@bpmnkit/core`, both hit while authoring a Camunda 8
@@ -317,6 +1116,7 @@ Triaged alongside these: **#151** (the fluent builder cannot set `documentation`
 `ElementOptions.documentation` exists and serialises, and the terracotta design system
 that replaced the palette in the issue's screenshots puts links and inline code at
 4.75:1 to 5.24:1 against their backgrounds, above the 4.5:1 AA threshold.
+
 ## 2026-09-13 — The benchmark says what the fixes changed, without restating the measurement
 
 The landing page reported the builder path at 2/5 usable on quote-to-cash. The
@@ -1001,6 +1801,103 @@ panel and the DMN and form viewers too. A metafile pass confirms nothing unexpec
 `bpmn-builder.js` is the single largest input at 41 KB and the viewer does not appear to use it;
 it arrives through the `@bpmnkit/core` barrel, and predates this change.
 
+## 2026-09-12 — Retyping an element, data elements through the compact format, and one list of element types
+
+Three surfaces left open by the builder-coverage change, each a different way the same defect
+showed up: something the model supports that a caller cannot reach or cannot discover.
+
+**Retyping an element was impossible through any tool.** The reported symptom was an agent
+hand-editing XML "to change the task type", and the MCP `update_element` tool applied only
+`changes.name` — every other key was accepted and silently dropped, so a caller could not tell
+a no-op from a success. `retypeElement(el, type)` now lives in core: it returns a copy with the
+new type, keeping id, name, documentation and — the point — the incoming and outgoing sequence
+flows, so retyping is no longer remove-and-re-add with the wiring lost. Nested content carries
+between container types, a multi-instance marker between types that both allow one, event
+definitions between event types. Zeebe extensions the new type cannot legally hold are dropped,
+filtered through the same `ZEEBE_PLACEMENT` table `ensureZeebeExtension` enforces, so a
+`serviceTask` retyped to `manualTask` does not keep a job worker the engine would refuse.
+`update_element` now applies `name` and `type`, and **refuses** any other key rather than
+ignoring it.
+
+**The compact format lost the three data types.** `expand()` ended in
+`default: return { ...base, type: "task" }`, so `dataObject`, `dataObjectReference` and
+`dataStoreReference` round-tripped as bare tasks — and `CompactElement` had nowhere to put
+`dataObjectRef`, `dataStoreRef` or `isCollection` in the first place. All three now expand to
+themselves with their references intact, and the `default` branch assigns to `never`: a new
+`BpmnElementType` fails the build instead of quietly becoming a task.
+
+**Every hand-written list of element types is gone.** The MCP tool schema advertised 18 types
+while the compact path accepted 23 — `receiveTask`, `task`, `complexGateway`, `transaction` and
+`eventSubProcess` worked, but nothing told a caller they existed. `ELEMENT_TYPE_GROUPS` is a
+total `Record<BpmnElementType, ElementTypeGroup>`, and the tool schemas render their lists from
+it. The compact-format prompt keeps its hand-written per-type hints ("add formId", "add
+decisionId") but a test now fails if it omits a type, because a type the prompt never names is
+one the model will not emit.
+
+**One place knows the shape of each type.** `createFlowElement` holds the exhaustive
+type → shape switch, and the builder's `makeFlowElement` delegates to it — the two used to be
+separate switches that could disagree.
+
+Four compile-time gates now guard the element model, each verified by adding a fake member to
+`BpmnElementType` and watching it fail: `BUILDER_COVERAGE` and `ELEMENT_TYPE_GROUPS` (total
+`Record`s), `createFlowElement` and `expand()` (`never` in the default branch).
+
+Verified end to end by driving the built MCP server over stdio: a `serviceTask` retyped to
+`manualTask` keeps both sequence flows, loses `zeebe:taskDefinition`, and the three error paths
+(unsupported key, unknown type, no-op) each report what happened.
+
+Core: 1,012 tests. Proxy: 66.
+
+## 2026-09-12 — The fluent builder is held to the element model by the compiler
+
+Feedback from a user of the SDK: bpmnkit "doesn't have a manual task as part of its API, so
+occasionally the agent will just go in there and hand-edit the bpmn file to change the task
+type". The first half was true of exactly one surface, and the reason it was true is the part
+worth fixing.
+
+**What was actually missing.** `manualTask` was in `BpmnElementType`, in the parser, the
+serialiser, the layout sizing table, the SVG renderer, the compact/JSON path, the MCP tool
+schema and the editor palette. The one place it was absent was `ProcessBuilder` — and its two
+siblings, `BranchBuilder` and `SubProcessContentBuilder`. Auditing the union against the three
+builders turned up two more of the same kind: `complexGateway` and `transaction`, both equally
+supported everywhere else, neither reachable from a chain. `addElement` is private and
+`element()` moves the cursor rather than creating anything, so there was no escape hatch: a
+caller who wanted a manual task had to leave the SDK and edit XML.
+
+**Why it drifted.** Nothing connected the hand-written builder to the hand-written model. A new
+element type could be threaded through parse, serialise, layout and render — each of which has
+a `switch` the compiler checks — and still miss the builder, which has no exhaustive construct
+to fail.
+
+**The mechanism.** `packages/core/src/bpmn/builder-coverage.ts` declares
+`BUILDER_COVERAGE: Record<BpmnElementType, BuilderSupport>`. Because a `Record` over a string
+literal union is total, **adding a member to `BpmnElementType` now fails `tsc` until the new
+type is either given a builder method or exempted with a written reason.** The gate is
+compile-time and cannot be skipped. `tests/builder-coverage.test.ts` carries the half the
+compiler cannot see, in the shape `descriptor-coverage.test.ts` established: every named method
+must exist on all three flow builders, and every exemption must *still* have no method — so an
+exemption someone outgrows fails rather than lingers. All three directions were verified by
+breaking them on purpose.
+
+**Exempt, deliberately.** `dataObject`, `dataObjectReference` and `dataStoreReference`. Each
+builder method appends to the chain and wires a sequence flow from the previous node; data
+elements are connected by data associations instead, and the builder has no data-association
+API, so a method would emit invalid BPMN or leave an orphan. Parsing and serialising keep them.
+
+**One recorded exception.** `eventSubProcess` is covered by `.eventSubProcess()`, which emits
+`subProcess triggeredByEvent="true"` — the spec form; BPMN 2.0 has no `bpmn:eventSubProcess`
+element. The table records that under `emits`, so the mismatch reads as a decision rather than
+a bug.
+
+`pnpm --filter @bpmnkit/core check:builder` prints the table: 26 element types, 23 reachable
+from a builder chain.
+
+**Still open, and not this change.** The reported symptom was *changing* a task's type, and the
+MCP `update_element` tool applies only `changes.name` — it silently ignores every other key, so
+no agent-facing tool can retype an element. The capability exists one layer down, in
+`applyBpmnOperations`' `update` op; it is simply not wired up. Separately, the compact/JSON
+`expand()` falls through to `task` for the three data types.
+
 ## 2026-09-11 — D4: the room replays the op
 
 D3 made an edit describable; this makes the room the one that decides whether it happened.
@@ -1379,105 +2276,6 @@ for this model specifically, with the offline case named as what would reverse i
 
 Phased as fork-to-edit → live read-only follow → edit baton → multi-writer, so the cheap two
 thirds stand alone. No code changed.
-
-## 2026-09-12 — Retyping an element, data elements through the compact format, and one list of element types
-
-Three surfaces left open by the builder-coverage change, each a different way the same defect
-showed up: something the model supports that a caller cannot reach or cannot discover.
-
-**Retyping an element was impossible through any tool.** The reported symptom was an agent
-hand-editing XML "to change the task type", and the MCP `update_element` tool applied only
-`changes.name` — every other key was accepted and silently dropped, so a caller could not tell
-a no-op from a success. `retypeElement(el, type)` now lives in core: it returns a copy with the
-new type, keeping id, name, documentation and — the point — the incoming and outgoing sequence
-flows, so retyping is no longer remove-and-re-add with the wiring lost. Nested content carries
-between container types, a multi-instance marker between types that both allow one, event
-definitions between event types. Zeebe extensions the new type cannot legally hold are dropped,
-filtered through the same `ZEEBE_PLACEMENT` table `ensureZeebeExtension` enforces, so a
-`serviceTask` retyped to `manualTask` does not keep a job worker the engine would refuse.
-`update_element` now applies `name` and `type`, and **refuses** any other key rather than
-ignoring it.
-
-**The compact format lost the three data types.** `expand()` ended in
-`default: return { ...base, type: "task" }`, so `dataObject`, `dataObjectReference` and
-`dataStoreReference` round-tripped as bare tasks — and `CompactElement` had nowhere to put
-`dataObjectRef`, `dataStoreRef` or `isCollection` in the first place. All three now expand to
-themselves with their references intact, and the `default` branch assigns to `never`: a new
-`BpmnElementType` fails the build instead of quietly becoming a task.
-
-**Every hand-written list of element types is gone.** The MCP tool schema advertised 18 types
-while the compact path accepted 23 — `receiveTask`, `task`, `complexGateway`, `transaction` and
-`eventSubProcess` worked, but nothing told a caller they existed. `ELEMENT_TYPE_GROUPS` is a
-total `Record<BpmnElementType, ElementTypeGroup>`, and the tool schemas render their lists from
-it. The compact-format prompt keeps its hand-written per-type hints ("add formId", "add
-decisionId") but a test now fails if it omits a type, because a type the prompt never names is
-one the model will not emit.
-
-**One place knows the shape of each type.** `createFlowElement` holds the exhaustive
-type → shape switch, and the builder's `makeFlowElement` delegates to it — the two used to be
-separate switches that could disagree.
-
-Four compile-time gates now guard the element model, each verified by adding a fake member to
-`BpmnElementType` and watching it fail: `BUILDER_COVERAGE` and `ELEMENT_TYPE_GROUPS` (total
-`Record`s), `createFlowElement` and `expand()` (`never` in the default branch).
-
-Verified end to end by driving the built MCP server over stdio: a `serviceTask` retyped to
-`manualTask` keeps both sequence flows, loses `zeebe:taskDefinition`, and the three error paths
-(unsupported key, unknown type, no-op) each report what happened.
-
-Core: 1,012 tests. Proxy: 66.
-
-
-## 2026-09-12 — The fluent builder is held to the element model by the compiler
-
-Feedback from a user of the SDK: bpmnkit "doesn't have a manual task as part of its API, so
-occasionally the agent will just go in there and hand-edit the bpmn file to change the task
-type". The first half was true of exactly one surface, and the reason it was true is the part
-worth fixing.
-
-**What was actually missing.** `manualTask` was in `BpmnElementType`, in the parser, the
-serialiser, the layout sizing table, the SVG renderer, the compact/JSON path, the MCP tool
-schema and the editor palette. The one place it was absent was `ProcessBuilder` — and its two
-siblings, `BranchBuilder` and `SubProcessContentBuilder`. Auditing the union against the three
-builders turned up two more of the same kind: `complexGateway` and `transaction`, both equally
-supported everywhere else, neither reachable from a chain. `addElement` is private and
-`element()` moves the cursor rather than creating anything, so there was no escape hatch: a
-caller who wanted a manual task had to leave the SDK and edit XML.
-
-**Why it drifted.** Nothing connected the hand-written builder to the hand-written model. A new
-element type could be threaded through parse, serialise, layout and render — each of which has
-a `switch` the compiler checks — and still miss the builder, which has no exhaustive construct
-to fail.
-
-**The mechanism.** `packages/core/src/bpmn/builder-coverage.ts` declares
-`BUILDER_COVERAGE: Record<BpmnElementType, BuilderSupport>`. Because a `Record` over a string
-literal union is total, **adding a member to `BpmnElementType` now fails `tsc` until the new
-type is either given a builder method or exempted with a written reason.** The gate is
-compile-time and cannot be skipped. `tests/builder-coverage.test.ts` carries the half the
-compiler cannot see, in the shape `descriptor-coverage.test.ts` established: every named method
-must exist on all three flow builders, and every exemption must *still* have no method — so an
-exemption someone outgrows fails rather than lingers. All three directions were verified by
-breaking them on purpose.
-
-**Exempt, deliberately.** `dataObject`, `dataObjectReference` and `dataStoreReference`. Each
-builder method appends to the chain and wires a sequence flow from the previous node; data
-elements are connected by data associations instead, and the builder has no data-association
-API, so a method would emit invalid BPMN or leave an orphan. Parsing and serialising keep them.
-
-**One recorded exception.** `eventSubProcess` is covered by `.eventSubProcess()`, which emits
-`subProcess triggeredByEvent="true"` — the spec form; BPMN 2.0 has no `bpmn:eventSubProcess`
-element. The table records that under `emits`, so the mismatch reads as a decision rather than
-a bug.
-
-`pnpm --filter @bpmnkit/core check:builder` prints the table: 26 element types, 23 reachable
-from a builder chain.
-
-**Still open, and not this change.** The reported symptom was *changing* a task's type, and the
-MCP `update_element` tool applies only `changes.name` — it silently ignores every other key, so
-no agent-facing tool can retype an element. The capability exists one layer down, in
-`applyBpmnOperations`' `update` op; it is simply not wired up. Separately, the compact/JSON
-`expand()` falls through to `task` for the three data types.
-
 
 ## 2026-09-11 — The editor shell moves onto the light `--canvas` ground
 
@@ -2252,7 +3050,6 @@ would each benefit from the same discipline.
 
 Analysis only — no code changes, and no roadmap items added.
 
-
 ## 2026-09-09 — The model-fidelity work gets the release notes it never wrote
 
 #161 shipped 104 files and no changeset, so none of it would have been published. Five
@@ -2276,7 +3073,6 @@ Changesets fans the core bump out to `ascii`, `canvas`, `connectors`, `editor`, 
 `@bpmnkit/cli-sdk` is still outside `PUBLISHED`, and the three `casen-*` plugins now depend
 on it as `workspace:*` — the finding recorded with A10 stands, and no changeset here can
 close it.
-
 
 ## 2026-09-07 — A budget on what the API costs to write, and joins you can insist on
 
@@ -2324,7 +3120,6 @@ does not typecheck, before or after this change — `@bpmnkit/reebe-wasm` is unb
 environment.
 
 That closes A1 through A12. Every gap in the §7.1 matrix is marked shipped.
-
 
 ## 2026-09-07 — The publish gate now opens the tarball
 
@@ -2405,7 +3200,6 @@ checked for being in the tarball but not executed — running a package's CLI to
 starts has side effects this gate has no business causing — so for those two the coverage is
 the manifest check alone, and the line says so.
 
-
 ## 2026-09-07 — Extending a file no longer means regenerating it
 
 A9. `Bpmn.continueProcess(defs, processId)` — `ProcessBuilder.from(...)` for anyone who prefers
@@ -2454,7 +3248,6 @@ reattachment, the rewiring backstop — fails between one and three tests.
 774 tests in `@bpmnkit/core` (28 new), all passing; core, cli, plugins and proxy typecheck;
 `biome check` clean across 855 files. `@bpmnkit/engine` does not typecheck, before or after
 this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
-
 
 ## 2026-09-07 — Pooled diagrams can be built, not only parsed
 
@@ -2506,7 +3299,6 @@ a larger change than this item.
 `biome check` clean across 854 files. `@bpmnkit/engine` does not typecheck, before or after
 this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
 
-
 ## 2026-09-07 — Zeebe extensions can no longer be written where they do not belong
 
 A7. `zeebe:calledDecision` on a service task deploys, then fails in Camunda with an error that
@@ -2555,7 +3347,6 @@ previous release.
 728 tests in `@bpmnkit/core` (23 new), all passing; core, cli, plugins and proxy typecheck;
 `biome check` clean across 853 files. `@bpmnkit/engine` does not typecheck, before or after
 this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
-
 
 ## 2026-09-07 — A gate that asks the descriptors what we are missing
 
@@ -2624,7 +3415,6 @@ and four tests fail.
 `biome check` clean across 850 files. `@bpmnkit/engine` does not typecheck, before or after
 this change — `@bpmnkit/reebe-wasm` is unbuilt in this environment.
 
-
 ## 2026-09-07 — The edit path finally leaves the lossy projection behind
 
 A5c, and A5b with it. `applyBpmnOperations` applies the same operation vocabulary an LLM
@@ -2681,7 +3471,6 @@ throw rather than write — so the safety property is there even though the func
 693 tests in `@bpmnkit/core` (31 new), 14 in the CLI, 134 in plugins; core, cli, proxy,
 plugins, editor and canvas all typecheck; `biome check` clean across 847 files.
 
-
 ## 2026-09-07 — A write boundary that reads back what it wrote
 
 A4. `writeBpmn` in `packages/core/src/node/write.ts` is now the only supported way to write a
@@ -2725,7 +3514,6 @@ replaced by the damaged one.
 
 662 tests in `@bpmnkit/core`; canvas, editor, plugins and operate typecheck; `biome check`
 clean across 845 files; `check-packages` passes with the new subpath.
-
 
 ## 2026-09-07 — A semantic hash, so "the layout moved" stops looking like "the model changed"
 
@@ -2773,7 +3561,6 @@ sentence A6 fixed in `concepts.md`.
 
 641 tests in `@bpmnkit/core`; canvas, editor, plugins, ascii and operate all typecheck against
 the new exports; `biome check` clean across 841 files.
-
 
 ## 2026-09-07 — A3: the model no longer drops what it does not name
 
@@ -2824,7 +3611,6 @@ dead code — defined, never referenced. I had edited them before realising, and
 all pass; `biome check` clean across 837 files; every package that consumes `@bpmnkit/core`
 typechecks. `@bpmnkit/engine` still cannot build here — it needs `@bpmnkit/reebe-wasm` and a
 Rust toolchain — which is unchanged from before.
-
 
 ## 2026-09-07 — A round-trip fidelity gate, and two more gaps it immediately found
 
@@ -2879,7 +3665,6 @@ handle, real files cover what nobody thought to look for.
 `tsc --noEmit` passes. Worth knowing for later: `packages/core/tsconfig.json` scopes
 `include` to `src`, so test files are transpiled by vitest but never type-checked.
 
-
 ## 2026-09-07 — Stop the CLI destroying BPMN files, stop the docs promising it can't
 
 First two items of *Core Model Fidelity* — the two that depend on nothing and were both
@@ -2927,7 +3712,6 @@ Note for whoever picks up A1: the landing site and the CLI test suite cannot be 
 `@bpmnkit/engine` needs `@bpmnkit/reebe-wasm`, which needs a Rust/wasm-pack toolchain. Both
 failures reproduce on a clean tree. `generate.test.ts` (12 tests), the docspack suite and
 `biome check` all pass.
-
 
 ## 2026-09-07 — What `bpmn-sdk` has that we don't: the model layer round-trips, ours doesn't
 
@@ -2997,7 +3781,6 @@ declined in `doc/bpmn-auto-layout-evaluation.md`). The SDK ships no LICENSE, so 
 code, tests or fixtures — may be copied from it; the blueprint corpus gets sourced from
 Camunda's marketplace with recorded provenance.
 
-
 ## 2026-09-06 — Landing hero: lead with the contrast, prove it above the fold
 
 The hero opened with a positioning line (*BPMN diagrams from code, not clicks*) that only lands
@@ -3023,7 +3806,6 @@ on-page playground; *Read the docs* is the quiet secondary. The editor link was 
 hero — the nav already carries it. The vanity stat row (`0 deps · ESM · MIT pre-1.0`, which put
 "pre-1.0" in the highest-value pixels of the site) is replaced by three claims that answer why
 the visitor needs this: deploys to Camunda 8, opens in any modeler, zero dependencies.
-
 
 ## 2026-09-05 — Streaming BPMN parser
 
@@ -4107,19 +4889,48 @@ Seven improvements to `packages/core/src/bpmn/bpmn-builder.ts`:
 
 **Result**: 360 tests pass. Zero type errors. Zero lint warnings. Full monorepo build clean.
 
-## 2026-04-30 — Fix: Gateway port routing & annotation spacing
+## 2026-06-13 — Feat: Code Mode MCP tools (camunda_search, camunda_execute, sdk_search, sdk_execute)
 
-**`packages/core/src/layout/routing.ts`** — gateway port improvements:
-- `assignGatewayPorts`: uses absolute direction (target CY vs gateway CY) instead of relative index ordering. Target above → top, below → bottom, same level → right. Fixes edges exiting the wrong side (e.g., bottom port for a target above the gateway).
-- `routeBackEdge`: back-edges entering a gateway now connect to the right side (since back-edges approach from the right). Non-gateway targets keep entering from the left.
-- Added `PORT_SAME_Y_TOLERANCE = 25` constant for same-level detection in source port assignment.
+Implements the Cloudflare "Code Mode" pattern for the BPMNKit MCP server: two meta-tools replace hundreds of enumerated tools by letting the AI write JS to introspect a spec and call APIs.
 
-**`packages/core/src/bpmn/auto-layout.ts`** — annotation spacing:
-- Increased `ANN_GAP` from 40 to 60 (initial gap from element to annotation).
-- Added `ANN_PADDING = 20` with new `hasOverlapPadded` function ensuring ~20px margin between annotations.
-- Increased push step from 60px to 100px and retry cap from 10 to 30.
+### Camunda REST API tools (`apps/proxy/src/aikit-mcp.ts`)
 
-**Result**: Gateway exit ports match direction (all exits verified correct). Back-edges enter gateways from the right. Minimum annotation-to-annotation gap improved from ~25px to 50px.
+**`apps/proxy/src/sandbox.ts`** (new):
+- `runSandboxed(code, ctx, timeoutMs)` — V8 isolate via `isolated-vm`; 64 MB memory limit, disposable per-call
+- `SandboxContext` — injects plain data (`ctx.data`) and host functions (`ctx.functions`) as `ivm.Reference`
+- Callers in isolate invoke host functions via `await __name.apply(undefined, [...args], { result: { promise: true, copy: true } })`
+
+**`apps/proxy/src/camunda-spec.ts`** (new, generated):
+- `CAMUNDA_SPEC: Record<string, Record<string, MethodSpec>>` — 34 resource groups, 179 methods
+- Each `MethodSpec`: `{ description, endpoint, params, returns }`
+- Generated by `node scripts/generate-camunda-spec.mjs` from `packages/api/src/generated/resources.ts`
+
+**`camunda_search` tool** — executes user-provided JS in a sandboxed isolate with `spec = CAMUNDA_SPEC` in scope; returns JSON of whatever the code returns. Used to filter/navigate the API spec before constructing an execute call.
+
+**`camunda_execute` tool** — executes user-provided JS with a `camunda` Proxy object in scope. The Proxy routes `camunda.resource.method(args)` calls through an `ivm.Reference` (`__dispatch`) to a real `CamundaClient` instance on the host. Requires an active profile.
+
+### TypeScript SDK tools (`apps/proxy/src/mcp-server.ts`)
+
+**`apps/proxy/src/sdk-spec.ts`** (new):
+- `SDK_SPEC` — spec object with `functions` (5 entries: `sdk.parse`, `sdk.exportXml`, `sdk.optimize`, `sdk.layout`, `sdk.analyzeVariables`) and `compactDiagram` shape reference
+- Each function: `description`, `params`, `returns`, `example`
+
+**`apps/proxy/src/sdk-code-mode.ts`** (new):
+- `handleSdkSearch(code)` — runs code in Node `vm` with `spec = SDK_SPEC` in scope; returns JSON
+- `handleSdkExecute(code, xml?)` — runs code in Node `vm` with `sdk.{parse, exportXml, optimize, layout, analyzeVariables}` helpers bound to `@bpmnkit/core`; all helpers take/return JSON strings
+- Uses Node `vm` (not `isolated-vm`) to avoid native-addon esbuild bundling constraints in `mcp-server.ts`
+
+**`sdk_search` tool** — spec introspection: find SDK functions, understand compact diagram shape.
+
+**`sdk_execute` tool** — run arbitrary JS against `@bpmnkit/core` SDK; generate/transform/analyze BPMN diagrams programmatically.
+
+### New dependencies
+- `isolated-vm@^7.0.0` added to `apps/proxy/package.json` (runtime dep; native addon)
+
+### Test coverage
+- `apps/proxy/tests/sandbox.test.ts` — 8 tests: sync/async return, data injection, bootstrap, timeout, process isolation, host async function, host function throws
+- `apps/proxy/tests/camunda-code-mode.test.ts` — 12 tests: CAMUNDA_SPEC shape/coverage (5), camunda_search (4), camunda_execute (3)
+- `apps/proxy/tests/sdk-code-mode.test.ts` — 9 tests: SDK_SPEC shape (2), sdk_search (3), sdk_execute (4)
 
 ## 2026-05-01 — Feat: Backbone-aware branch distribution & compaction
 
@@ -4135,6 +4946,20 @@ Seven improvements to `packages/core/src/bpmn/bpmn-builder.ts`:
 - Added Phase 4j: `compactBranches` → `resolveLayerOverlaps` → `alignBaselinePath` after distribution passes.
 
 **Result**: Approval process height reduced 46% (1532px → 823px), more compact than manually-adjusted version (1380px). L2 branch distance from baseline: +105px (was +1009px, manual +157px). Zero overlaps in both test processes. All 336 core tests pass.
+
+## 2026-04-30 — Fix: Gateway port routing & annotation spacing
+
+**`packages/core/src/layout/routing.ts`** — gateway port improvements:
+- `assignGatewayPorts`: uses absolute direction (target CY vs gateway CY) instead of relative index ordering. Target above → top, below → bottom, same level → right. Fixes edges exiting the wrong side (e.g., bottom port for a target above the gateway).
+- `routeBackEdge`: back-edges entering a gateway now connect to the right side (since back-edges approach from the right). Non-gateway targets keep entering from the left.
+- Added `PORT_SAME_Y_TOLERANCE = 25` constant for same-level detection in source port assignment.
+
+**`packages/core/src/bpmn/auto-layout.ts`** — annotation spacing:
+- Increased `ANN_GAP` from 40 to 60 (initial gap from element to annotation).
+- Added `ANN_PADDING = 20` with new `hasOverlapPadded` function ensuring ~20px margin between annotations.
+- Increased push step from 60px to 100px and retry cap from 10 to 30.
+
+**Result**: Gateway exit ports match direction (all exits verified correct). Back-edges enter gateways from the right. Minimum annotation-to-annotation gap improved from ~25px to 50px.
 
 ## 2026-04-30 — Feat: Y-row snapping for matrix-like alignment
 
@@ -4700,6 +5525,11 @@ Full spec: [`doc/automation-workflows.md`](automation-workflows.md)
 
 **`apps/studio/src/pages/Settings.tsx`**:
 - New "Connector Secrets" section: scans all BPMN models for `{{secrets.*}}` references, checks each against the proxy, displays configured/missing status with icons
+
+## 2026-04-02 — Fix: learn deploy builds reebe-wasm before Turbo
+
+- **`.github/workflows/deploy-learn.yml`**: Added the same Rust + `wasm-pack` bootstrap used by `ci.yml` and `deploy-studio.yml` (`rustup target add wasm32-unknown-unknown`, `Swatinem/rust-cache`, `jetli/wasm-pack-action`, then `wasm-pack build apps/reebe/crates/reebe-wasm --target web --out-dir "$GITHUB_WORKSPACE/apps/reebe-wasm"`) before `pnpm turbo build --filter @bpmnkit/learn`.
+- Root cause: `@bpmnkit/engine` imports `@bpmnkit/reebe-wasm`, but `apps/reebe-wasm` only commits the stub `package.json`; the generated `reebe_wasm.d.ts`/JS/WASM artifacts are ignored and therefore missing on GitHub Actions fresh checkouts unless the workflow builds them first.
 
 ## 2026-04-01 — Feat: File system persistence + project management
 
@@ -5278,11 +6108,6 @@ Two bugs combined to prevent intermediate timer events from completing:
 
 - **`apps/studio/src/api/wasm-adapter.ts`**: Fixed `create_process_instance` response parsing — the engine returns `{ processInstanceKey: "..." }` not `{ key: ... }`. Using the wrong field returned `"0"` for every instance key, making all created instances unfindable.
 - **`apps/studio/src/pages/InstanceDetail.tsx`**: Added `WasmInstanceDetail` component (mirrors `WasmDefinitionDetail` pattern). When the reebe-wasm profile is active, renders a native view showing instance state, incidents, variables, and a cancel button — instead of `createInstanceDetailView` from `@bpmnkit/operate` which makes raw HTTP calls to the proxy, bypassing the wasm adapter.
-
-## 2026-04-02 — Fix: learn deploy builds reebe-wasm before Turbo
-
-- **`.github/workflows/deploy-learn.yml`**: Added the same Rust + `wasm-pack` bootstrap used by `ci.yml` and `deploy-studio.yml` (`rustup target add wasm32-unknown-unknown`, `Swatinem/rust-cache`, `jetli/wasm-pack-action`, then `wasm-pack build apps/reebe/crates/reebe-wasm --target web --out-dir "$GITHUB_WORKSPACE/apps/reebe-wasm"`) before `pnpm turbo build --filter @bpmnkit/learn`.
-- Root cause: `@bpmnkit/engine` imports `@bpmnkit/reebe-wasm`, but `apps/reebe-wasm` only commits the stub `package.json`; the generated `reebe_wasm.d.ts`/JS/WASM artifacts are ignored and therefore missing on GitHub Actions fresh checkouts unless the workflow builds them first.
 
 ## 2026-03-26 — Fix: reebe-wasm serde_wasm_bindgen JSON serialization
 
@@ -9317,49 +10142,6 @@ Two new canvas plugin packages for schema-driven element property editing:
 - Updated `examples/create-workflow.ts` to use `.withAutoLayout()`
 - Regenerated `order-process.bpmn` example output with layout data
 
-## 2026-02-18
-
-### Builder errorCode→errorRef Fix
-- Fixed `buildEventDefinitions` to auto-generate a root `BpmnError` element when `errorCode` is provided without `errorRef`, ensuring boundary events built with only `errorCode` serialize with a valid `errorRef`
-
-### Review Fixes
-- Fixed `buildEventDefinitions` to pass `timeDate` and `timeCycle` into timer event definitions
-- Fixed `buildEventDefinitions` to store `messageName`/`signalName`/`escalationCode` as `messageRef`/`signalRef`/`escalationRef`
-- Added `timeDate`, `timeCycle` (and attribute maps) to `BpmnTimerEventDefinition` model type
-- Added `timeDate`/`timeCycle` parsing and serialization for XML roundtrip support
-- Added duplicate ID check when merging branch elements into the main process
-- Removed `.swarm` session artifacts from version control and added to `.gitignore`
-
-### Comprehensive README Rewrite
-- Rewrote root `README.md` with best-practices structure matching top-tier SDKs
-- Added "Why this SDK?" section with value propositions
-- Added feature matrix table (BPMN/DMN/Forms × Parse/Build/Export)
-- Added advanced examples: REST connector, parallel branches, boundary events, sub-processes, roundtrip workflow, type narrowing
-- Added "Best Practices" section: descriptive IDs, discriminated unions, branch patterns, roundtrip modifications, composable processes
-- Enhanced API reference with return types and categorized builder methods table
-- Added semantic versioning guidance to contributing section
-
-### Enhanced README and Changesets
-- Enhanced root `README.md` with badges (npm, TypeScript, license), table of contents, requirements section, yarn install option, expanded contributing guide with code quality expectations and release workflow
-- Added TypeScript usage section with discriminated union type narrowing examples
-- Added REST connector convenience builder example
-- Fixed README code examples to use correct `taskType` property name (was `type`)
-- Added MIT `LICENSE` file
-- Changesets (`@changesets/cli`, `@changesets/changelog-github`) configured for version management and publishing
-- Committed `.changeset/` directory with `config.json` and `README.md`
-- Fixed changeset config to use `@changesets/changelog-github` with repo setting for PR/author links
-- Added `changeset`, `version-packages`, and `release` scripts to root `package.json`
-- Removed accidentally committed `.swarm/` session artifacts from version control
-- Added `.swarm` to `.gitignore`
-- Added auto-layout feature to README feature list
-- Added GitHub Actions CI workflow (build, typecheck, lint, test on push/PR)
-- Added GitHub Actions Release workflow using `changesets/action` for automated version PRs and npm publishing
-
-### Timer Event Definition Attribute Roundtrip Fix
-- Added `timeDateAttributes` and `timeCycleAttributes` to `BpmnTimerEventDefinition` model
-- Parser now extracts attributes (e.g. `xsi:type`) from `timeDate` and `timeCycle` elements, matching existing `timeDuration` handling
-- Serializer now emits those attributes on roundtrip, preventing loss of `xsi:type`
-
 ## 2026-02-19
 
 ### Auto-Layout for ProcessBuilder
@@ -9419,6 +10201,49 @@ Two new canvas plugin packages for schema-driven element property editing:
 
 ## 2026-02-18
 
+### Builder errorCode→errorRef Fix
+- Fixed `buildEventDefinitions` to auto-generate a root `BpmnError` element when `errorCode` is provided without `errorRef`, ensuring boundary events built with only `errorCode` serialize with a valid `errorRef`
+
+### Review Fixes
+- Fixed `buildEventDefinitions` to pass `timeDate` and `timeCycle` into timer event definitions
+- Fixed `buildEventDefinitions` to store `messageName`/`signalName`/`escalationCode` as `messageRef`/`signalRef`/`escalationRef`
+- Added `timeDate`, `timeCycle` (and attribute maps) to `BpmnTimerEventDefinition` model type
+- Added `timeDate`/`timeCycle` parsing and serialization for XML roundtrip support
+- Added duplicate ID check when merging branch elements into the main process
+- Removed `.swarm` session artifacts from version control and added to `.gitignore`
+
+### Comprehensive README Rewrite
+- Rewrote root `README.md` with best-practices structure matching top-tier SDKs
+- Added "Why this SDK?" section with value propositions
+- Added feature matrix table (BPMN/DMN/Forms × Parse/Build/Export)
+- Added advanced examples: REST connector, parallel branches, boundary events, sub-processes, roundtrip workflow, type narrowing
+- Added "Best Practices" section: descriptive IDs, discriminated unions, branch patterns, roundtrip modifications, composable processes
+- Enhanced API reference with return types and categorized builder methods table
+- Added semantic versioning guidance to contributing section
+
+### Enhanced README and Changesets
+- Enhanced root `README.md` with badges (npm, TypeScript, license), table of contents, requirements section, yarn install option, expanded contributing guide with code quality expectations and release workflow
+- Added TypeScript usage section with discriminated union type narrowing examples
+- Added REST connector convenience builder example
+- Fixed README code examples to use correct `taskType` property name (was `type`)
+- Added MIT `LICENSE` file
+- Changesets (`@changesets/cli`, `@changesets/changelog-github`) configured for version management and publishing
+- Committed `.changeset/` directory with `config.json` and `README.md`
+- Fixed changeset config to use `@changesets/changelog-github` with repo setting for PR/author links
+- Added `changeset`, `version-packages`, and `release` scripts to root `package.json`
+- Removed accidentally committed `.swarm/` session artifacts from version control
+- Added `.swarm` to `.gitignore`
+- Added auto-layout feature to README feature list
+- Added GitHub Actions CI workflow (build, typecheck, lint, test on push/PR)
+- Added GitHub Actions Release workflow using `changesets/action` for automated version PRs and npm publishing
+
+### Timer Event Definition Attribute Roundtrip Fix
+- Added `timeDateAttributes` and `timeCycleAttributes` to `BpmnTimerEventDefinition` model
+- Parser now extracts attributes (e.g. `xsi:type`) from `timeDate` and `timeCycle` elements, matching existing `timeDuration` handling
+- Serializer now emits those attributes on roundtrip, preventing loss of `xsi:type`
+
+## 2026-02-18
+
 ### QA Fixes
 - Fixed duplicate `message`/`signal` switch cases in `bpmn-serializer.ts` (caused build failure)
 - Fixed sub-process child node positioning in layout engine — children now correctly track parent shifts after `reassignXCoordinates`
@@ -9468,46 +10293,3 @@ Two new canvas plugin packages for schema-driven element property editing:
 - 8 skills: generate, review, deploy, worker (developer); test, instances, incidents, ascii (operator)
 - 2 agents: process-builder (end-to-end design→deploy), incident-resolver (triage→resolve with approval gates)
 - Verified: `casen proxy mcp` MCP handshake returns 10 tools; plugin structure matches Claude Code format
-
-## 2026-06-13 — Feat: Code Mode MCP tools (camunda_search, camunda_execute, sdk_search, sdk_execute)
-
-Implements the Cloudflare "Code Mode" pattern for the BPMNKit MCP server: two meta-tools replace hundreds of enumerated tools by letting the AI write JS to introspect a spec and call APIs.
-
-### Camunda REST API tools (`apps/proxy/src/aikit-mcp.ts`)
-
-**`apps/proxy/src/sandbox.ts`** (new):
-- `runSandboxed(code, ctx, timeoutMs)` — V8 isolate via `isolated-vm`; 64 MB memory limit, disposable per-call
-- `SandboxContext` — injects plain data (`ctx.data`) and host functions (`ctx.functions`) as `ivm.Reference`
-- Callers in isolate invoke host functions via `await __name.apply(undefined, [...args], { result: { promise: true, copy: true } })`
-
-**`apps/proxy/src/camunda-spec.ts`** (new, generated):
-- `CAMUNDA_SPEC: Record<string, Record<string, MethodSpec>>` — 34 resource groups, 179 methods
-- Each `MethodSpec`: `{ description, endpoint, params, returns }`
-- Generated by `node scripts/generate-camunda-spec.mjs` from `packages/api/src/generated/resources.ts`
-
-**`camunda_search` tool** — executes user-provided JS in a sandboxed isolate with `spec = CAMUNDA_SPEC` in scope; returns JSON of whatever the code returns. Used to filter/navigate the API spec before constructing an execute call.
-
-**`camunda_execute` tool** — executes user-provided JS with a `camunda` Proxy object in scope. The Proxy routes `camunda.resource.method(args)` calls through an `ivm.Reference` (`__dispatch`) to a real `CamundaClient` instance on the host. Requires an active profile.
-
-### TypeScript SDK tools (`apps/proxy/src/mcp-server.ts`)
-
-**`apps/proxy/src/sdk-spec.ts`** (new):
-- `SDK_SPEC` — spec object with `functions` (5 entries: `sdk.parse`, `sdk.exportXml`, `sdk.optimize`, `sdk.layout`, `sdk.analyzeVariables`) and `compactDiagram` shape reference
-- Each function: `description`, `params`, `returns`, `example`
-
-**`apps/proxy/src/sdk-code-mode.ts`** (new):
-- `handleSdkSearch(code)` — runs code in Node `vm` with `spec = SDK_SPEC` in scope; returns JSON
-- `handleSdkExecute(code, xml?)` — runs code in Node `vm` with `sdk.{parse, exportXml, optimize, layout, analyzeVariables}` helpers bound to `@bpmnkit/core`; all helpers take/return JSON strings
-- Uses Node `vm` (not `isolated-vm`) to avoid native-addon esbuild bundling constraints in `mcp-server.ts`
-
-**`sdk_search` tool** — spec introspection: find SDK functions, understand compact diagram shape.
-
-**`sdk_execute` tool** — run arbitrary JS against `@bpmnkit/core` SDK; generate/transform/analyze BPMN diagrams programmatically.
-
-### New dependencies
-- `isolated-vm@^7.0.0` added to `apps/proxy/package.json` (runtime dep; native addon)
-
-### Test coverage
-- `apps/proxy/tests/sandbox.test.ts` — 8 tests: sync/async return, data injection, bootstrap, timeout, process isolation, host async function, host function throws
-- `apps/proxy/tests/camunda-code-mode.test.ts` — 12 tests: CAMUNDA_SPEC shape/coverage (5), camunda_search (4), camunda_execute (3)
-- `apps/proxy/tests/sdk-code-mode.test.ts` — 9 tests: SDK_SPEC shape (2), sdk_search (3), sdk_execute (4)

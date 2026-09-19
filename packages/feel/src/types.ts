@@ -135,13 +135,14 @@ export function getProperty(v: FeelValue, key: string): FeelValue {
 		if (key === "year") return v.year
 		if (key === "month") return v.month
 		if (key === "day") return v.day
+		if (key === "weekday") return weekdayOf(v)
 		return null
 	}
 	if (isFeelTime(v)) {
 		if (key === "hour") return v.hour
 		if (key === "minute") return v.minute
 		if (key === "second") return v.second
-		if (key === "time offset") return v.offsetSeconds !== undefined ? v.offsetSeconds / 3600 : null
+		if (key === "time offset") return offsetDuration(v.offsetSeconds)
 		if (key === "timezone") return v.timezone ?? null
 		return null
 	}
@@ -152,10 +153,10 @@ export function getProperty(v: FeelValue, key: string): FeelValue {
 		if (key === "hour") return v.time.hour
 		if (key === "minute") return v.time.minute
 		if (key === "second") return v.time.second
-		if (key === "time offset")
-			return v.time.offsetSeconds !== undefined ? v.time.offsetSeconds / 3600 : null
+		if (key === "time offset") return offsetDuration(v.time.offsetSeconds)
 		if (key === "timezone") return v.time.timezone ?? null
 		if (key === "time") return v.time
+		if (key === "weekday") return weekdayOf(v.date)
 		return null
 	}
 	if (isFeelDayTimeDuration(v)) {
@@ -171,7 +172,32 @@ export function getProperty(v: FeelValue, key: string): FeelValue {
 		if (key === "months") return v.months % 12
 		return null
 	}
+	if (isFeelRange(v)) {
+		if (key === "start") return v.start
+		if (key === "end") return v.end
+		if (key === "start included") return v.startIncluded
+		if (key === "end included") return v.endIncluded
+		return null
+	}
 	// FeelContext
 	const val = (v as FeelContext)[key]
 	return val !== undefined ? val : null
+}
+
+/** A time offset is a duration, not a number of hours. */
+function offsetDuration(offsetSeconds: number | undefined): FeelValue {
+	if (offsetSeconds === undefined) return null
+	return { type: "days-time-duration", seconds: offsetSeconds }
+}
+
+/** Day of the week as FEEL numbers them: Monday is 1, Sunday is 7. */
+function weekdayOf(d: FeelDate): number {
+	const y = d.year - 1
+	let days = 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400)
+	const monthLengths = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+	const leap = (d.year % 4 === 0 && d.year % 100 !== 0) || d.year % 400 === 0
+	for (let m = 1; m < d.month; m++) days += (m === 2 && leap ? 29 : monthLengths[m]) ?? 30
+	days += d.day
+	// 0001-01-01 was a Monday in the proleptic Gregorian calendar.
+	return ((days - 1) % 7) + 1
 }

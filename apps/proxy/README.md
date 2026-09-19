@@ -22,6 +22,13 @@
 - **MCP server** — Model Context Protocol server for AI agent integrations (`stdio` transport)
 - **Camunda API proxy** — transparent HTTP proxy that injects auth from your `casen` CLI profiles
 
+While the AI is working, `/chat` emits `preview` events carrying the diagram as it
+stands, so a client can render the process being drawn instead of waiting for the model
+to stop. They come from two places: the diagram the model is writing into a tool call,
+read out of the tokens themselves, and — once the MCP server has written real state —
+that state, after each tool call. Previews are advisory; the `xml` event sent once the
+stream ends is the authoritative result.
+
 The proxy reads authentication from profiles stored by the `@bpmnkit/cli` (`~/.config/casen/config.json`), so you don't need to configure credentials separately.
 
 ## Installation
@@ -64,7 +71,7 @@ bpmn-mcp
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/status` | Health check; returns server version and active profile |
-| `POST` | `/chat` | AI chat — SSE stream; sends `data: { type, content }` events |
+| `POST` | `/chat` | AI chat — SSE stream; sends `token`, `preview`, `xml`, `error` and `done` events |
 | `GET` | `/profiles` | List all configured `casen` profiles |
 | `ALL` | `/api/*` | Transparent proxy to your Camunda cluster (adds auth header) |
 | `GET` | `/operate/stream` | SSE stream for the `@bpmnkit/operate` monitoring frontend |
@@ -98,6 +105,7 @@ curl -H "X-Profile: production" http://localhost:3033/api/v2/process-definitions
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
+| [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
 | [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
 | [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
@@ -107,7 +115,7 @@ curl -H "X-Profile: production" http://localhost:3033/api/v2/process-definitions
 | [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |
 | [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |
 | [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
-| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable Camunda 8 user task widget — form rendering, claim and complete |
+| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget for Camunda 8 |
 | [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |
 | [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |
 | [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |

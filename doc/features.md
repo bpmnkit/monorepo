@@ -1,5 +1,236 @@
 # Features
 
+## A preview says which part of the diagram the AI added (2026-09-17)
+
+- **Additions outlined, the rest left plain** (`packages/plugins/ai-bridge`) — every
+  preview frame marks the elements the diagram being edited does not have, so an
+  edit no longer reads the same as a rewrite. Re-applied per frame, since `load`
+  clears highlights, and to the final authoritative render as well.
+- **`additionsToMark(before, rendered)`** returns nothing when there is no process
+  to contrast with, read as *no sequence flow* rather than no element: a new file
+  in the editor is one unconnected start event, and marking everything the model
+  writes says no more than marking none of it.
+
+## The diagram is read out of the tokens as the model writes it (2026-09-17)
+
+- **`createCompactStream()`** (`@bpmnkit/core`) — takes complete `{...}` literals
+  out of a text stream as they close and keeps the ones shaped like a
+  `CompactElement` or `CompactFlow`. It does not parse the document, so the
+  outermost brace — the last character a tool call sends — is not waited on.
+- **Indifferent to the source.** A `replace_diagram` argument, a fenced JSON
+  block in prose and a `compose_diagram` body all carry the same literals.
+- **One pass, one look per character.** A brace stack considers each literal once,
+  innermost first, so a sub-process is seen after the children it reclaims from
+  the top level.
+- **Never throws.** `push` drops what it cannot place and strips `isDefault` from
+  a flow whose gateway has not arrived, rather than failing the frame.
+- **`--include-partial-messages` in the claude adapter** — argument fragments of
+  `mcp__bpmn__*` calls are forwarded as they stream, keyed by content-block index
+  so another tool's arguments are never read as a diagram. Measured on a recorded
+  run: first renderable frame 16% into the tool argument, 15 frames in total.
+
+## The AI diagram is watchable while the model writes it (2026-09-17)
+
+- **`preview` SSE event on `/chat`** — the proxy watches the MCP server's output
+  file, which is rewritten on every mutating tool call, and reports each complete
+  write. A diagram built over several calls arrives as frames instead of appearing
+  only once the adapter stream resolves.
+- **Advisory by design.** A read that lands mid-write is dropped, not repaired —
+  the next write carries the whole file, and the `xml` event at the end of the
+  stream stays the authoritative result.
+- **Live canvas in the AI panel** (`packages/plugins/ai-bridge`) — frames render
+  into a canvas above the reply, updated with `keepViewport` so the diagram grows
+  in place rather than re-framing on every change, then replaced by the
+  authoritative render when the message finalises.
+
+## Learn, the forms and the last plugins join the design system (2026-09-17)
+
+- **`apps/learn` is on the system.** The 2025 aurora — drifting blurred orbs, a dot
+  grid, a grain layer, gradient headings, glow hovers, 8–20px radii, lifts, pill badges
+  and a magenta third brand colour — is replaced by the flat, square, hairline-ruled
+  paper ground bpmnkit.com wears. Catalogue and glossary are one bordered box divided by
+  hairlines; the progress bar is a rule that fills; the embedded editor moved from the
+  `neon` white-label theme to the system's light one.
+- **`@bpmnkit/astro-shared` exposes the landing site's own vocabulary**, with the landing
+  site's own values, derived from `--bpmnkit-ds-*` — so the two sites read one token set.
+  `background.css` is now one rule, and the aurora's classes are deliberately undefined.
+- **Two values became tokens.** `--bpmnkit-ds-bg-alt` and `--bpmnkit-ds-accent-tint` join
+  `@bpmnkit/ui`, so the landing and the Astro layer share them instead of restating them.
+- **`form-viewer`, `form-editor` and `dmn-viewer`** stop restating palettes of their own
+  (a Catppuccin dark and a Tailwind light) and read the design-system set with hex
+  fallbacks, so a form or a decision table matches the dock it sits in. 31 non-zero radii
+  are gone; the DMN section tints and the FEEL syntax colours stay exempt.
+- **`apps/demo`** opened in the `neon` white-label theme and was still titled "BPMN SDK". It
+  now wears the system through the same one-seam token bridge the studio uses, so its 760 lines
+  of inline `var(--bpmnkit-*)` markup did not have to move.
+- **`variable-flow`'s "both" mark** is mixed from the accent a read is marked with and the
+  green a write is marked with, in place of the product palette's secondary brand colour.
+- **`@bpmnkit/user-tasks`** is square, hairline-ruled and mono in its meta line, and
+  defaults to `light` — it mounts inside the studio's task page, which is on the system.
+- **The canvas focus ring** takes the accent in place of a hardcoded `#0066cc`; the
+  renderer's strokes, fills and labels are untouched.
+- **Guarded**: `packages/astro-shared` gains four assertions — the tokens derive from the
+  design-system set, the radius is zero and `--pink` is gone, the ground draws no blur or
+  gradient, and `.aurora` / `.orb` / `.dots` / `.grain` are no longer defined.
+
+## The studio wears the design system (2026-09-17)
+
+The token bridge from #165 gave the studio the palette and the two type families.
+This gives it the system's form.
+
+- **A `.ds-*` component vocabulary** (`apps/studio/src/styles/design-system.css`), in
+  Tailwind's `components` layer so a utility at a call site still overrides it: the
+  hairline-subdivided grid (`.ds-grid` / `.ds-cell`), the bordered box, the mono label,
+  eyebrow and datum, the tinted state mark, the square control, the segmented control,
+  the accent-ruled tab, the field, the note, the code block, the empty state.
+- **The dashboard is one readout, not six cards.** Six metrics in a single bordered box
+  divided by 1px hairlines; the icon is a 16px mark rather than a filled tile, the value
+  is mono, the label is mono uppercase, and nothing lifts or casts a shadow on hover.
+- **Status is text, not a button.** `StatusPill`, `ProfileTag`, priorities, candidate
+  groups and model types are tinted mono marks. `components/ui/badge.tsx` is gone with them.
+- **Every list page has a head** — mono eyebrow, count as a datum, filters as a
+  hairline-divided segmented control — and every key, id, version, path and timestamp in
+  the app is mono.
+- **Settings reads like a specification**: five numbered sections (`01`–`05`) over
+  hairlines, and one `ActiveToggle` in place of three copies of the same control.
+- **Two rules enforced at the seam, not the call site.** cascivo ships hashed CSS-module
+  class names, so column heads become mono through `thead th`, and the rail's nine
+  destinations through `nav[aria-label="Main navigation"] a` — scoped by the `ariaLabel`
+  the Sidebar passes rather than by a hash. The rail's profile and project pickers stay in
+  natural case: they read out a name.
+- **Dark and neon redeclare `--bpmnkit-ds-*`** rather than aliasing it, the way Operate
+  does, so a rule that reads a design-system token directly themes correctly. Neon takes
+  `@bpmnkit/ui`'s own palette and keeps its one accent.
+- **Verified against a build of the previous commit**, page by page in both themes and
+  at phone width, with a scripted tour driving the filters, dialogs, palette, theme picker
+  and mode toggle against each. Four regressions in the new layer were found and fixed
+  there: `auto-fit` stretched a lone card across the page, a short last row read as a
+  filled block, a table header's ground stopped short where a column is `sr-only`, and
+  mono's extra tracking ellipsised a project name in the rail.
+- **Two pre-existing chrome bugs fixed**, both Tailwind preflight against markup it
+  does not own: `*{margin:0}` beat the user agent's `dialog{margin:auto}` so every modal
+  opened top-left, and `svg{display:block}` stacked the icon above the label in every
+  cascivo button.
+- **Zero `rounded-*` (bar circular marks), `shadow-*`, `backdrop-blur` or `bg-gradient`**
+  left in the studio's 40 components, guarded by three new assertions in
+  `tests/theme.test.ts`.
+
+## The Camunda pack reads correctly everywhere (2026-09-16)
+
+- **`build` syncs the pack version.** A payload that is committed rather than
+  rebuilt at release no longer publishes a manifest claiming an older version —
+  the failure that made `@bpmnkit/camunda-docspack@0.1.0` fail `docspack doctor`.
+- **`docspack@1.2.0` discovers `@<vendor>/<name>-docspack`.** Upstream adopted the
+  shape `bpmnkit-docs` already read, so both readers now index the Camunda pack's
+  1,054 chunks. Pinned; a CLI older than 1.2.0 is a documented floor.
+- **An unusable pack is no longer silent, upstream either.** `doctor` refuses a
+  name the indexer will not discover and `sync` reports an installed-but-unindexed
+  pack, which is how the version drift above surfaced.
+
+## A gateway's default flow survives the compact form (2026-09-16)
+
+- **`CompactFlow.isDefault`** — the fallthrough branch of an exclusive, inclusive
+  or complex gateway is marked on the flow, beside the `condition` it replaces.
+  `expand` writes `bpmn:default`, `compactify` reads it back, `reconcileCompact`
+  sets or clears it on a model it did not author.
+- **Both misuses throw.** A flow marked default that leaves anything else, and a
+  gateway marking two, fail loudly — a lost default is a deadlock at runtime with
+  nothing pointing back at the cause.
+- **`defaultFlows(elements, flows)`** is exported for callers deriving the same
+  mapping; `buildFlowElement` takes the flow id as an optional fourth argument.
+- **`docspack@1.1.0` pinned.** Its `index` / `recall` own-corpus commands work, so
+  the guide documents both routes: build a pack when one answer should draw on
+  your corpus and the installed packs together, or `docspack index` when the
+  corpus is a database or you want its staleness check.
+
+## Using BPMN Kit with AI, documented end to end (2026-09-16)
+
+- **`guides/using-bpmnkit-with-ai.md`** — the three kinds of knowledge an agent needs to
+  build a process (this library, the Camunda engine, the team's own prose), each answered
+  offline, plus the loop from five Markdown files to a laid-out `.bpmn`.
+- **`packages/camunda-docspack.md`** — the Camunda pack has a page, so an agent asking
+  `@bpmnkit/docspack` can discover that Camunda documentation is installable at all.
+- **`@<vendor>/<name>-docspack` is discovered.** `@bpmnkit/camunda-docspack` was published,
+  documented and unreachable: the spec allows one pack per scope, and `discoverPacks`
+  implemented exactly that.
+- **A `--pack` name that is not installed is an error**, listing what is, instead of an
+  empty answer that reads as "the documentation does not cover this".
+- **`--pack` narrows before indexing**, not after — ~150ms against ~650ms for a BPMN Kit
+  question with both packs installed.
+- **Index your own corpus.** `bpmnkit-docs build --cwd <dir>` turns any folder of Markdown
+  into a pack an agent can ask, searched alongside the installed ones. Five documents in
+  about 9ms, no model, no network, no tokens.
+- **Three runnable examples** (`apps/examples/src/ai`) — `ai:ask`, `ai:index`, `ai:bpmn` —
+  with no API key and no network, about three seconds for all three.
+
+## FEEL at 94% of the DMN TCK (2026-09-16)
+
+- **1,939 of 2,053 DMN TCK FEEL cases pass**, up from 1,282 before today. The `in`
+  operator takes a unary test (`1 in <= 10`), `is()` exists, `instance of` reads
+  multi-word type names, ternary logic and equality follow DMN, built-ins check their
+  arity and argument types, filters see a context element's entries, and `for` bindings
+  see each other and their results so far.
+- **Time zones resolve** through the platform's database, so a zoned time compares as the
+  instant it names and follows daylight saving.
+- **Weekly TCK run** — `.github/workflows/dmn-tck.yml` clones dmn-tck, extracts the cases
+  and runs them every Monday; `pnpm --filter @bpmnkit/feel tck` does the same locally.
+- **The 114 cases that remain are listed with their reasons** in `tests/tck.test.ts`, and
+  the suite fails if one starts passing, so the list cannot drift.
+
+## FEEL spec fixes and a DMN TCK harness (2026-09-16)
+
+- **Ten divergences from the DMN spec and Camunda's FEEL engine fixed** in
+  `@bpmnkit/feel`, found by differential testing against `@bpmn-io/feelin`: string escape
+  decoding, named arguments binding by name, context entries seeing earlier entries,
+  calendar validation and month-end clamping, range iteration domains, invoking a
+  function-valued expression, `**` associativity, multi-word names in scope, `string()`
+  and `count()` null handling, `number()` separators, and XPath regex flags.
+- **`parseExpression(input, { names })`** — names in scope are now an input to parsing, so
+  a variable called `total order amount` reads as one name rather than four.
+- **DMN TCK harness** — `tasks/extract-tck-tests.mjs` turns a dmn-tck checkout into 2,053
+  runnable cases; `pnpm --filter @bpmnkit/feel tck` extracts and runs them. 1,395 pass,
+  up from 1,282 before the fixes.
+
+## Camunda 8 docs as an offline searchable pack (2026-09-16)
+
+- **`@bpmnkit/camunda-docspack`** — the Camunda 8.10 (next) documentation as a docspack
+  pack: best practices, BPMN and FEEL references, engine concepts and the Orchestration
+  Cluster API. 1,054 chunks, searched with the `bpmnkit-docs ask` that already ships.
+- **Embedded BPMN diagrams become text.** All 113 `<div bpmn>` embeds are rendered from
+  the parsed model as a flow description with every element name whole and every
+  condition expression kept — the part Camunda's own Markdown export drops entirely.
+- **227 API operation digests**, read from the specification rather than the generated
+  reference pages, with required permissions decoded from Camunda's base64 marker, the
+  version each appeared in, and its consistency guarantee.
+- **Every chunk cites its published page.** Links are rewritten to absolute
+  `docs.camunda.io` URLs by the rule Docusaurus actually applies, which differs between
+  `.md` and extensionless links.
+- **An unrecognised MDX component fails the build**, by file and line, instead of
+  quietly thinning the corpus.
+- **Rebuilt weekly** by a workflow that verifies the build is byte-reproducible and
+  reports departed chunk ids before opening a pull request.
+- **CC BY-SA 3.0**, as ShareAlike requires for an adaptation of camunda-docs, with a
+  generated `NOTICE` naming the upstream commit and every change made.
+
+## Form component ids and rows are derived, not drawn (2026-09-15)
+
+- **Generated ids and layout rows come from the component's own identity** — the
+  composite key `scope:type:identity`, hashed. A rebuild of an unchanged form is
+  byte-identical, with no `resetIdCounter()` and no explicitly passed `layout.row`.
+- **Reordering fields moves only their order.** Neither value is derived from an array
+  index, an insertion counter or a random source, all of which move when the model does
+  not.
+- **`scope` is the enclosing form, or the enclosing group for nested children**, so one
+  field key means different ids in two different forms — and in two different groups.
+- **The row lives in its own `"row"` namespace**, so a component's row can never equal
+  its id.
+- **`layout.row: null` means unset** and is replaced with a generated row; renderers
+  collapse every `row: null` field into one shared row, which is not what omitting a row
+  asks for. **`layout.columns: null` is intentional** — one field per row — and is kept.
+  The new `FormLayoutInput` type documents the asymmetry at the builder boundary.
+- **`stableToken(prefix, segments)` and `compositeKey(segments)` are exported from
+  `@bpmnkit/core`** for anywhere else a deterministic id or grouping token is needed.
+
 ## Ad-hoc sub-process children are tools, not a chain (2026-09-13)
 
 - **`.adHocSubProcess()` no longer auto-connects its children** — sequential calls in
@@ -18,6 +249,7 @@
   single `rename` cost a file the documentation of every element in it.
 - **`{ op: "update", patch: { documentation } }` sets it**, on the compact model and
   on the full one.
+
 ## Benchmark replay: what the library changed, measured (2026-09-13)
 
 - **`scripts/bench-ai-replay.mjs`** re-runs every recorded `with-sdk` generation

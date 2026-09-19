@@ -1,0 +1,2 @@
+# Copied from the landing app at build time (scripts/copy-fonts.mjs)
+public/fonts/

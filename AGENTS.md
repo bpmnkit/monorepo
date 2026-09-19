@@ -24,6 +24,20 @@ npx bpmnkit-docs list
 - Each answer is headed with `<package>@<version>/<chunk-id>`, so you can cite exactly
   what you used.
 
+This repo also ships **`@bpmnkit/camunda-docspack`** (`packages/camunda-docspack`), the
+Camunda 8 documentation in the same format — BPMN and FEEL references, engine concepts,
+best practices and the Orchestration Cluster API. Ask it for anything about *Camunda*
+rather than about BPMN Kit's own APIs, and use `--pack` when a question could match both:
+
+```sh
+npx bpmnkit-docs ask "how should I name an exclusive gateway" --pack @bpmnkit/camunda-docspack
+npx bpmnkit-docs ask "POST /jobs/activation" --pack @bpmnkit/camunda-docspack
+```
+
+It is rebuilt weekly from camunda-docs by `.github/workflows/camunda-docspack.yml`; to
+rebuild it by hand you need a camunda-docs checkout:
+`node packages/camunda-docspack/dist/cli.js --camunda-docs ../camunda-docs`.
+
 Working in a project that only *consumes* BPMN Kit? Install the pack there and get the
 same command:
 

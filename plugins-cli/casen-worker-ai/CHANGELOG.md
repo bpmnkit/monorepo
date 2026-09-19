@@ -1,5 +1,34 @@
 # @bpmnkit/casen-worker-ai
 
+## 0.1.9
+
+### Patch Changes
+
+- 88642f8: The three casen plugins ship their `dist/`, and stop shipping their sources
+
+  None of them declared `files`, so packing fell back to the ignore rules — and the root
+  `.gitignore` ignores `dist`. npm always includes the file named in `main` whatever the
+  ignores say, so `dist/index.js` was packed and the rest of the build was not: no
+  `dist/index.d.ts` for the `exports["."].types` each manifest declares, and for
+  `casen-report` no `dist/report.js` or `dist/commands/*.js` either, which is every module
+  its entry point imports. `src/` and `tsconfig.json` were packed in their place.
+
+  Each now lists `"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"]`, the
+  same line every other published package in the workspace carries.
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
+- Updated dependencies [9d412da]
+  - @bpmnkit/cli-sdk@0.0.10
+
 ## 0.1.8
 
 ### Patch Changes

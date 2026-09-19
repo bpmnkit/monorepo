@@ -1,5 +1,18 @@
 import { injectChromeStyles } from "@bpmnkit/editor"
 
+/**
+ * Variable-flow overlay styles.
+ *
+ * The three marks are a data encoding on the diagram, not chrome, so they are
+ * exempt from the one-accent rule the way Operate's chart series are. "Both"
+ * used to reach for the product palette's secondary brand colour, which the
+ * design system does not have; it is now mixed from the two states it means —
+ * the accent a read is marked with and the green a write is marked with — so
+ * it follows the theme instead of pinning a fourth hue.
+ */
+const VF_BOTH =
+	"color-mix(in srgb, var(--bpmnkit-chrome-accent) 55%, var(--bpmnkit-success, #16a34a))"
+
 const CSS = `
 .bpmnkit-vf-producer [data-bpmnkit-shape-bg],
 .bpmnkit-vf-producer rect.djs-outline {
@@ -13,7 +26,7 @@ const CSS = `
 }
 .bpmnkit-vf-both [data-bpmnkit-shape-bg],
 .bpmnkit-vf-both rect.djs-outline {
-  outline: 2px solid var(--bpmnkit-teal, #0d9488);
+  outline: 2px solid ${VF_BOTH};
   outline-offset: 2px;
 }
 
@@ -83,7 +96,7 @@ const CSS = `
 }
 .bpmnkit-vf-legend-dot-writes { background: var(--bpmnkit-success, #16a34a); }
 .bpmnkit-vf-legend-dot-reads  { background: var(--bpmnkit-chrome-accent); }
-.bpmnkit-vf-legend-dot-both   { background: var(--bpmnkit-teal, #0d9488); }
+.bpmnkit-vf-legend-dot-both   { background: ${VF_BOTH}; }
 `
 
 let injected = false

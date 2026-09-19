@@ -90,7 +90,7 @@ export function DiagramPreview({ xml, width, height, className }: DiagramPreview
 		<div ref={containerRef} style={{ width, height }} className={className}>
 			{error ? (
 				<div
-					className="flex h-full w-full items-center justify-center rounded bg-surface-2 text-muted"
+					className="flex h-full w-full items-center justify-center bg-canvas text-muted"
 					aria-label="Preview unavailable"
 				>
 					<FileText size={24} />
@@ -101,10 +101,10 @@ export function DiagramPreview({ xml, width, height, className }: DiagramPreview
 					alt="Diagram preview"
 					width={width}
 					height={height}
-					className="h-full w-full rounded object-contain"
+					className="h-full w-full object-contain"
 				/>
 			) : (
-				<div className="h-full w-full animate-pulse rounded bg-surface-2" />
+				<div className="h-full w-full animate-pulse bg-surface-2" />
 			)}
 		</div>
 	)

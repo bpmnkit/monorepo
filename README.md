@@ -69,7 +69,7 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [`@bpmnkit/connector-gen`](packages/connector-gen) | [![npm](https://img.shields.io/npm/v/@bpmnkit/connector-gen?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs (100 built-in) |
 | [`@bpmnkit/profiles`](packages/profiles) | [![npm](https://img.shields.io/npm/v/@bpmnkit/profiles?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/profiles) | Auth & profile storage shared between CLI and proxy |
 | [`@bpmnkit/worker-client`](packages/worker-client) | [![npm](https://img.shields.io/npm/v/@bpmnkit/worker-client?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
-| [`@bpmnkit/user-tasks`](packages/user-tasks) | [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget — form rendering, claim and complete |
+| [`@bpmnkit/user-tasks`](packages/user-tasks) | [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget — form rendering, claim/complete |
 
 ### Apps & CLI
 

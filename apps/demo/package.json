@@ -1,11 +1,11 @@
 {
 	"name": "@bpmnkit/demo",
-	"version": "0.0.8",
+	"version": "0.1.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "concurrently \"tsx watch server/index.ts\" \"vite --port 3000\"",
-		"build": "vite build",
+		"dev": "node scripts/copy-fonts.mjs && concurrently \"tsx watch server/index.ts\" \"vite --port 3000\"",
+		"build": "node scripts/copy-fonts.mjs && vite build",
 		"preview": "vite preview",
 		"deploy": "wrangler pages deploy dist --project-name=bpmnkit-demo",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",

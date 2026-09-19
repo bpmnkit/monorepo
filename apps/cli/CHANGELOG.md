@@ -1,5 +1,76 @@
 # @bpmnkit/cli
 
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+  - @bpmnkit/core@0.8.0
+  - @bpmnkit/proxy@0.2.6
+  - @bpmnkit/ascii@0.0.38
+  - @bpmnkit/connectors@0.1.6
+  - @bpmnkit/engine@0.1.38
+
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/connectors@0.1.5
+  - @bpmnkit/engine@0.1.37
+  - @bpmnkit/proxy@0.2.5
+  - @bpmnkit/ascii@0.0.37
+
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [e096585]
+  - @bpmnkit/core@0.7.0
+  - @bpmnkit/proxy@0.2.4
+  - @bpmnkit/ascii@0.0.36
+  - @bpmnkit/connectors@0.1.4
+  - @bpmnkit/engine@0.1.36
+
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [780e39d]
+  - @bpmnkit/core@0.6.0
+  - @bpmnkit/proxy@0.2.3
+  - @bpmnkit/ascii@0.0.35
+  - @bpmnkit/connectors@0.1.3
+  - @bpmnkit/engine@0.1.35
+
+## 0.2.2
+
+### Patch Changes
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
+- Updated dependencies [53a9e25]
+- Updated dependencies [9d412da]
+- Updated dependencies [9d412da]
+  - @bpmnkit/core@0.5.0
+  - @bpmnkit/proxy@0.2.2
+  - @bpmnkit/api@0.0.21
+  - @bpmnkit/ascii@0.0.34
+  - @bpmnkit/connector-gen@0.0.16
+  - @bpmnkit/connectors@0.1.2
+  - @bpmnkit/engine@0.1.34
+  - @bpmnkit/patterns@0.0.6
+  - @bpmnkit/profiles@0.0.19
+
 ## 0.2.1
 
 ### Patch Changes

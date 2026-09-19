@@ -1,5 +1,37 @@
 # @bpmnkit/docspack
 
+## 0.0.6
+
+### Patch Changes
+
+- 191d4d2: Discover a vendor's second pack. The docspack spec names one pack per npm scope, `@<vendor>/docspack`, so `@bpmnkit/camunda-docspack` was published, documented and never found — every `--pack @bpmnkit/camunda-docspack` command answered `No documentation matches`, which reads as an answer rather than a failure. `discoverPacks` now reads `@<vendor>/<name>-docspack` as well: still a pure name check, still inside a scope the vendor owns, still no registry call.
+
+  `--pack` naming a package that is not installed is now an error listing the packages that are, in both the CLI and `search()`. An empty result meant "the documentation does not cover this", which is a different claim and the wrong one to hand a model.
+
+  `--pack` also narrows before the index is built rather than after. Indexing reads every chunk of every pack off disk, so a question scoped to one pack no longer pays for the others — roughly 150ms against 650ms with both packs installed.
+
+## 0.0.5
+
+### Patch Changes
+
+- 677e58a: Add `@bpmnkit/camunda-docspack`: the Camunda 8.10 documentation — best practices, the BPMN and FEEL references, engine concepts and 227 Orchestration Cluster API operations — as an offline docspack pack, searchable with `bpmnkit-docs ask`. Embedded BPMN diagrams are rendered as text flow descriptions rather than dropped, and links are rewritten to absolute `docs.camunda.io` URLs. Licensed CC BY-SA 3.0, as ShareAlike requires for an adaptation of camunda-docs.
+
+  `@bpmnkit/docspack`: a chunk's heading trail no longer keeps an empty level when a short preamble is merged into the section after it (`Title —  — Section`).
+
+## 0.0.4
+
+### Patch Changes
+
+- 9d412da: Coordinated release of every published package
+
+  `@bpmnkit/core` carries fixes that have been on `main` since the last release but never
+  shipped — `compactify()`/`expand()` keeping `<bpmn:documentation>` through the operations
+  API (#150) among them, which is still reported as reproducing because the newest artifact
+  on npm predates the fix. Bumping every publishable package releases the workspace as one
+  set, so no consumer resolves a core that a sibling package was never built against.
+
+  Nothing here changes behaviour beyond what each package's own changesets describe.
+
 ## 0.0.3
 
 ### Patch Changes

@@ -119,9 +119,9 @@ function formatRelativeTime(date: string): string {
 function SkeletonList() {
 	return (
 		<>
-			<div className="h-5 animate-pulse rounded bg-surface-2" />
-			<div className="h-5 animate-pulse rounded bg-surface-2 w-5/6" />
-			<div className="h-5 animate-pulse rounded bg-surface-2 w-4/6" />
+			<div className="h-4 animate-pulse bg-surface-2" />
+			<div className="h-4 w-5/6 animate-pulse bg-surface-2" />
+			<div className="h-4 w-4/6 animate-pulse bg-surface-2" />
 		</>
 	)
 }
@@ -130,7 +130,7 @@ function MiniRow({ href, children }: { href: string; children: ComponentChildren
 	return (
 		<Link
 			href={href}
-			className="flex items-center gap-2 rounded-sm py-0.5 -mx-1 px-1 hover:bg-surface-2 transition-colors duration-100 text-xs"
+			className="ds-datum -mx-1 flex items-center gap-2 px-1 py-0.5 text-[11px] transition-colors duration-100 hover:bg-bg"
 		>
 			{children}
 		</Link>
@@ -155,6 +155,11 @@ function groupDefinitions(
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
+/**
+ * One reading in the dashboard grid. The grid is a single bordered box
+ * subdivided by hairlines, so the card draws no border of its own and does not
+ * lift on hover — an alarming metric is marked by its accent, not by depth.
+ */
 function StatCard({
 	icon: Icon,
 	value,
@@ -176,48 +181,50 @@ function StatCard({
 }) {
 	const isDangerous = !offline && danger && (value ?? 0) > 0
 	return (
-		<div
-			className={`relative flex flex-col rounded-lg border bg-surface overflow-hidden transition-all duration-200 ${
-				offline ? "opacity-60" : "hover:-translate-y-0.5 hover:shadow-lg"
-			} ${isDangerous ? "border-danger/50" : "border-border"}`}
-		>
+		<div className={`ds-cell relative flex flex-col p-0 ${offline ? "opacity-60" : ""}`}>
 			{/* Live alert indicator — pulses when danger state is active */}
 			{isDangerous && (
-				<span className="absolute top-3 right-3 flex h-2.5 w-2.5" aria-hidden="true">
-					<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-60" />
-					<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-danger" />
+				<span className="absolute top-3 right-3 flex h-2 w-2" aria-hidden="true">
+					<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-60" />
+					<span className="relative inline-flex h-2 w-2 rounded-full bg-danger" />
 				</span>
 			)}
 
 			<Link
 				href={href}
-				className="flex items-center gap-3 p-4 hover:bg-surface-2 transition-colors duration-150"
+				className="flex flex-col gap-2.5 p-4 transition-colors duration-150 hover:bg-bg"
 			>
-				<div
-					className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-						isDangerous ? "bg-danger/10 text-danger" : "bg-surface-2 text-muted"
-					}`}
-					aria-hidden="true"
-				>
-					<Icon size={20} />
+				{/* Label left, icon right — the icon is a mark, not a tile, and it
+				    takes the card's own accent so an alarming metric reads before
+				    the number does. */}
+				<div className="flex items-start justify-between gap-2">
+					<span className="ds-label min-w-0">{label}</span>
+					<Icon
+						size={15}
+						className={`mt-px shrink-0 ${isDangerous ? "text-danger" : "text-muted"}`}
+						aria-hidden="true"
+					/>
 				</div>
-				<div className="flex-1 min-w-0">
-					<div className="text-2xl font-bold text-fg">
+				<div className="flex items-end justify-between gap-2">
+					<div
+						className={`ds-datum text-[28px] leading-none ${
+							isDangerous ? "text-danger" : "text-fg"
+						}`}
+					>
 						{offline ? (
-							<span className="text-muted font-normal">—</span>
+							<span className="text-muted">—</span>
 						) : value === undefined ? (
-							<span className="h-7 w-12 animate-pulse rounded bg-surface-2 inline-block" />
+							<span className="inline-block h-6 w-12 animate-pulse bg-surface-2" />
 						) : (
 							value.toLocaleString()
 						)}
 					</div>
-					<div className="text-sm text-muted">{label}</div>
+					{!offline && sparkline}
 				</div>
-				{!offline && sparkline}
 			</Link>
 
-			<div className="border-t border-border/60 px-4 py-3 flex-1 flex flex-col gap-1.5">
-				{offline ? <p className="text-xs text-muted">No data — proxy not running.</p> : children}
+			<div className="flex flex-1 flex-col gap-1 border-t border-border/60 px-4 py-3">
+				{offline ? <p className="text-muted text-xs">No data — proxy not running.</p> : children}
 			</div>
 		</div>
 	)
@@ -263,32 +270,30 @@ function StatusHeader({
 			: null
 
 	return (
-		<div className="flex items-center gap-3">
-			<div className="flex items-center gap-2.5 flex-1 min-w-0">
-				<span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} aria-hidden="true" />
-				<span className="text-sm font-semibold text-fg truncate">
-					{activeProfile ?? "No profile selected"}
-				</span>
-				{profileTags && profileTags.length > 0 && (
-					<div className="flex items-center gap-1 shrink-0">
-						{profileTags.map((t) => (
-							<ProfileTag key={t} tag={t} />
-						))}
-					</div>
-				)}
-				<span className="text-xs text-muted shrink-0">{statusLabel}</span>
-				{updatedLabel && (
-					<span className="hidden text-xs text-muted/60 shrink-0 md:block">· {updatedLabel}</span>
-				)}
-			</div>
+		<div className="ds-head">
+			<span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} aria-hidden="true" />
+			<span className="ds-datum min-w-0 flex-1 truncate text-fg text-sm">
+				{activeProfile ?? "No profile selected"}
+			</span>
+			{profileTags && profileTags.length > 0 && (
+				<div className="flex shrink-0 items-center gap-1">
+					{profileTags.map((t) => (
+						<ProfileTag key={t} tag={t} />
+					))}
+				</div>
+			)}
+			<span className="ds-label shrink-0">{statusLabel}</span>
+			{updatedLabel && (
+				<span className="ds-label ds-label--micro hidden shrink-0 md:block">{updatedLabel}</span>
+			)}
 			<button
 				type="button"
 				onClick={onRefresh}
 				disabled={refreshing || status === "loading"}
-				className="flex items-center gap-1.5 rounded border border-border px-2.5 py-1 text-sm text-muted hover:text-fg disabled:opacity-50 transition-colors duration-150 shrink-0"
+				className="ds-btn ml-auto shrink-0 text-xs"
 				aria-label={status === "offline" ? "Retry proxy connection" : "Refresh dashboard"}
 			>
-				<RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+				<RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
 				{status === "offline" ? "Retry" : "Refresh"}
 			</button>
 		</div>
@@ -299,22 +304,19 @@ function StatusHeader({
 
 function IncidentBanner({ count, onDismiss }: { count: number; onDismiss: () => void }) {
 	return (
-		<div className="flex items-center gap-3 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3">
-			<AlertTriangle size={15} className="text-danger shrink-0" />
-			<span className="flex-1 text-sm font-medium text-danger">
+		<div className="ds-note ds-note--danger">
+			<AlertTriangle size={15} className="shrink-0 text-danger" />
+			<span className="flex-1 text-fg">
 				{count === 1 ? "1 active incident" : `${count.toLocaleString()} active incidents`} requiring
 				attention
 			</span>
-			<Link
-				href="/incidents"
-				className="shrink-0 whitespace-nowrap text-sm font-medium text-danger hover:underline"
-			>
+			<Link href="/incidents" className="shrink-0 whitespace-nowrap text-danger hover:underline">
 				View all →
 			</Link>
 			<button
 				type="button"
 				onClick={onDismiss}
-				className="ml-1 shrink-0 text-danger/50 hover:text-danger transition-colors duration-150"
+				className="ml-1 shrink-0 text-muted transition-colors duration-150 hover:text-danger"
 				aria-label="Dismiss alert"
 			>
 				<X size={14} />
@@ -335,37 +337,28 @@ function OfflinePanel({
 	retrying: boolean
 }) {
 	return (
-		<div className="flex flex-col items-center gap-5 rounded-xl border border-border bg-surface p-10 text-center">
-			<div className="flex h-14 w-14 items-center justify-center bg-surface-2">
-				<WifiOff size={26} className="text-muted" />
-			</div>
+		<div className="ds-box ds-empty">
+			<WifiOff size={24} className="text-muted" />
 			<div className="flex flex-col gap-1.5">
-				<h3 className="text-base font-semibold text-fg">Proxy not running</h3>
-				<p className="max-w-xs text-sm text-muted">
+				<h3 className="ds-title text-base">Proxy not running</h3>
+				<p className="ds-lede max-w-xs">
 					Start the proxy server to connect to your Camunda cluster and see live data.
 				</p>
 			</div>
 			<div className="flex flex-col items-center gap-2">
-				<code className="select-all rounded-md border border-border bg-surface-2 px-4 py-2 font-mono text-sm text-fg">
-					pnpm proxy
-				</code>
-				<span className="text-xs text-muted">
+				<code className="ds-code select-all">pnpm proxy</code>
+				<span className="text-muted text-xs">
 					or set a different URL in{" "}
 					<Link href="/settings" className="text-accent hover:underline">
 						Settings
 					</Link>
 				</span>
 			</div>
-			<button
-				type="button"
-				onClick={onRetry}
-				disabled={retrying}
-				className="flex items-center gap-2 rounded-lg border border-border px-5 py-2 text-sm font-medium text-fg hover:bg-surface-2 transition-colors duration-150 disabled:opacity-50"
-			>
+			<button type="button" onClick={onRetry} disabled={retrying} className="ds-btn">
 				<RefreshCw size={14} className={retrying ? "animate-spin" : ""} />
 				{retrying ? "Connecting…" : "Retry connection"}
 			</button>
-			<p className="text-xs text-muted/50">{proxyUrl}</p>
+			<p className="ds-datum text-[11px] text-muted">{proxyUrl}</p>
 		</div>
 	)
 }
@@ -456,7 +449,7 @@ function OnboardingChecklist() {
 			done: step2Done,
 			action: !step2Done ? (
 				<div className="flex flex-col gap-2 mt-2">
-					<pre className="rounded bg-surface-2 border border-border px-3 py-2 text-xs font-mono text-fg whitespace-pre-wrap leading-relaxed">{`# Install CLI
+					<pre className="ds-code">{`# Install CLI
 npm install -g @bpmnkit/cli
 
 # Add a Zeebe profile
@@ -507,47 +500,45 @@ casen studio --profile my-cluster`}</pre>
 	]
 
 	return (
-		<div className="rounded-lg border border-accent/30 bg-accent/5 overflow-hidden">
+		<div className="ds-box border-accent border-l-2">
 			{/* Header */}
-			<div className="flex items-center justify-between px-4 py-2.5">
+			<div className="ds-box-head">
 				<button
 					type="button"
 					onClick={handleToggleCollapse}
-					className="flex items-center gap-2 text-sm font-medium text-fg hover:text-accent transition-colors"
+					className="flex flex-1 items-center gap-2 text-fg transition-colors hover:text-accent"
 				>
 					{collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
 					{allDone ? (
-						<span className="text-success">✓ All set! You're ready to automate.</span>
+						<span className="ds-label text-success">All set — you're ready to automate</span>
 					) : (
 						<>
-							<span>Get started</span>
-							<span className="text-muted font-normal">
-								{completedCount}/{steps.length} steps complete
+							<span className="ds-label text-fg">Get started</span>
+							<span className="ds-datum text-[11px] text-muted">
+								{completedCount}/{steps.length}
 							</span>
 						</>
 					)}
 				</button>
-				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						onClick={() => openWelcomeModal()}
-						className="text-xs text-muted hover:text-fg transition-colors"
-					>
-						Welcome guide
-					</button>
-					<button
-						type="button"
-						onClick={handleHide}
-						className="text-muted hover:text-fg transition-colors"
-						aria-label="Hide checklist"
-					>
-						<X size={14} />
-					</button>
-				</div>
+				<button
+					type="button"
+					onClick={() => openWelcomeModal()}
+					className="ds-label transition-colors hover:text-fg"
+				>
+					Welcome guide
+				</button>
+				<button
+					type="button"
+					onClick={handleHide}
+					className="text-muted transition-colors hover:text-fg"
+					aria-label="Hide checklist"
+				>
+					<X size={14} />
+				</button>
 			</div>
 
-			{/* Progress bar */}
-			<div className="h-0.5 bg-border mx-4">
+			{/* Progress — a hairline that fills, not a bar with a shape */}
+			<div className="h-px bg-border">
 				<div
 					className="h-full bg-accent transition-all duration-500"
 					style={{ width: `${(completedCount / steps.length) * 100}%` }}
@@ -556,27 +547,22 @@ casen studio --profile my-cluster`}</pre>
 
 			{/* Steps */}
 			{!collapsed && (
-				<div className="px-4 py-3 flex flex-col gap-3">
+				<div className="ds-rows flex flex-col">
 					{steps.map((step) => (
-						<div key={step.label} className="flex gap-3">
-							<div className="mt-0.5 shrink-0">
-								{step.done ? (
-									<span className="flex items-center justify-center w-5 h-5 rounded-full bg-success/20 text-success text-xs">
-										✓
-									</span>
-								) : (
-									<span className="flex items-center justify-center w-5 h-5 rounded-full border border-border text-muted text-xs">
-										○
-									</span>
-								)}
-							</div>
+						<div key={step.label} className="flex gap-3 px-3 py-2.5">
+							<span
+								className={`ds-datum mt-px shrink-0 text-xs ${
+									step.done ? "text-success" : "text-muted"
+								}`}
+								aria-hidden="true"
+							>
+								{step.done ? "[x]" : "[ ]"}
+							</span>
 							<div className="flex flex-col gap-1">
-								<span
-									className={`text-sm font-medium ${step.done ? "text-muted line-through" : "text-fg"}`}
-								>
+								<span className={`text-sm ${step.done ? "text-muted line-through" : "text-fg"}`}>
 									{step.label}
 								</span>
-								{!step.done && <span className="text-xs text-muted">{step.description}</span>}
+								{!step.done && <span className="text-muted text-xs">{step.description}</span>}
 								{!step.done && step.action}
 							</div>
 						</div>
@@ -641,7 +627,7 @@ export function Dashboard() {
 	}
 
 	return (
-		<div className="flex flex-col gap-5 p-6 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+		<div className="ds-page flex animate-in flex-col gap-4 fade-in slide-in-from-bottom-2 duration-300">
 			<OnboardingChecklist />
 
 			{/* Status header */}
@@ -661,7 +647,7 @@ export function Dashboard() {
 
 			{isOffline ? (
 				/* ── Offline state ──────────────────────────────────────────────── */
-				<div className="flex flex-col gap-5">
+				<div className="flex flex-col gap-4">
 					<OfflinePanel
 						proxyUrl={proxyUrl}
 						onRetry={() => void handleRefresh()}
@@ -669,21 +655,15 @@ export function Dashboard() {
 					/>
 					{/* Local models are still accessible when offline */}
 					{mode === "developer" && models.length > 0 && (
-						<div className="flex flex-col gap-3">
-							<p className="text-[11px] font-semibold uppercase tracking-widest text-muted/60">
-								Local Models
-							</p>
-							<div className="overflow-hidden rounded-lg border border-border bg-surface">
+						<div className="ds-box">
+							<div className="ds-box-head">
+								<span className="ds-label">Local Models</span>
+							</div>
+							<div className="ds-rows">
 								{models.slice(0, 6).map((m) => (
-									<Link
-										key={m.id}
-										href={`/models/${m.id}`}
-										className="flex items-center gap-3 border-b border-border/50 px-4 py-2.5 text-sm transition-colors duration-100 hover:bg-surface-2 last:border-0"
-									>
+									<Link key={m.id} href={`/models/${m.id}`} className="ds-row py-2 text-sm">
 										<span className="flex-1 truncate text-fg">{m.name}</span>
-										<span className="shrink-0 text-[10px] uppercase tracking-wider text-muted">
-											{m.type}
-										</span>
+										<span className="ds-mark">{m.type}</span>
 									</Link>
 								))}
 							</div>
@@ -693,7 +673,7 @@ export function Dashboard() {
 			) : (
 				/* ── Connected state ────────────────────────────────────────────── */
 				<>
-					<div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+					<div className="ds-grid [--ds-col:230px]">
 						{/* Operator: tasks first — highest urgency */}
 						{mode === "operator" && (
 							<StatCard
@@ -754,7 +734,7 @@ export function Dashboard() {
 							) : (
 								activeIncidents.items.slice(0, 4).map((inc) => (
 									<MiniRow key={inc.incidentKey} href={`/incidents/${inc.incidentKey}`}>
-										<span className="flex-1 truncate font-mono text-danger">{inc.errorType}</span>
+										<span className="flex-1 truncate text-danger">{inc.errorType}</span>
 										{inc.creationTime && (
 											<span className="shrink-0 text-muted">
 												{formatRelativeTime(inc.creationTime)}
@@ -883,9 +863,9 @@ export function Dashboard() {
 											job.processInstanceKey ? `/instances/${job.processInstanceKey}` : "/instances"
 										}
 									>
-										<span className="flex-1 truncate font-mono text-fg">{job.type}</span>
+										<span className="flex-1 truncate text-fg">{job.type}</span>
 										{job.processInstanceKey && (
-											<span className="shrink-0 font-mono text-muted">
+											<span className="shrink-0 text-muted">
 												…{job.processInstanceKey.slice(-6)}
 											</span>
 										)}
@@ -909,9 +889,7 @@ export function Dashboard() {
 									models.slice(0, 4).map((m) => (
 										<MiniRow key={m.id} href={`/models/${m.id}`}>
 											<span className="flex-1 truncate text-fg">{m.name}</span>
-											<span className="shrink-0 text-[10px] uppercase tracking-wider text-muted">
-												{m.type}
-											</span>
+											<span className="ds-mark shrink-0">{m.type}</span>
 										</MiniRow>
 									))
 								)}

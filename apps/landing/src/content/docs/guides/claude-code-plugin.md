@@ -2,7 +2,7 @@
 title: Claude Code Plugin
 description: Install the bpmnkit plugin for Claude Code to get AI-first BPMN development and operations — generate diagrams, wire connectors, deploy, and resolve incidents from natural language.
 sidebar:
-  order: 10
+  order: 11
 ---
 
 The bpmnkit Claude Code plugin adds BPMN-aware slash commands, autonomous agents, and

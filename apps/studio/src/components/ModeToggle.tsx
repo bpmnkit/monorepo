@@ -4,13 +4,11 @@ export function ModeToggle() {
 	const { mode, setMode } = useModeStore()
 
 	return (
-		<div className="flex border border-border bg-surface-2 p-0.5 text-xs">
+		<div className="ds-seg">
 			<button
 				type="button"
 				onClick={() => setMode("developer")}
-				className={`px-2.5 py-0.5 transition-colors ${
-					mode === "developer" ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
-				}`}
+				className={`ds-seg-btn ${mode === "developer" ? "ds-seg-btn--on" : ""}`}
 				aria-pressed={mode === "developer"}
 				aria-label="Developer mode"
 			>
@@ -19,9 +17,7 @@ export function ModeToggle() {
 			<button
 				type="button"
 				onClick={() => setMode("operator")}
-				className={`px-2.5 py-0.5 transition-colors ${
-					mode === "operator" ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
-				}`}
+				className={`ds-seg-btn ${mode === "operator" ? "ds-seg-btn--on" : ""}`}
 				aria-pressed={mode === "operator"}
 				aria-label="Operator mode"
 			>

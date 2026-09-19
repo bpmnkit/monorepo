@@ -173,7 +173,7 @@ export function Sidebar() {
 		label: "Search...",
 		icon: <Search size={18} />,
 		onClick: () => openCommandPalette(),
-		trailing: <kbd className="text-muted text-xs">⌘K</kbd>,
+		trailing: <kbd className="ds-kbd">⌘K</kbd>,
 	})
 
 	// ── Help.

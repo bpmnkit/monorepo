@@ -2,7 +2,7 @@
 title: Building Processes with AI
 description: Go from a natural language description to a deployed, tested BPMN process — via a deterministic ProcessPlan pipeline, never hand-written XML.
 sidebar:
-  order: 8
+  order: 9
 ---
 
 BPMNKit's AI pipeline never asks an LLM to write BPMN XML. Every process is authored as a

@@ -41,27 +41,27 @@ function VersionsTable({ versions }: { versions: ProcessDefinition[] }) {
 	return (
 		<tr>
 			<td colSpan={5} className="p-0">
-				<div className="border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-150">
+				<div className="animate-in border-border border-t fade-in slide-in-from-top-1 duration-150">
 					<table className="w-full text-sm">
 						<tbody>
 							{versions.map((def) => (
 								<tr
 									key={def.processDefinitionKey}
-									className="border-b border-border/30 bg-surface-2/50 hover:bg-surface-2 transition-colors"
+									className="border-border/60 border-b bg-bg transition-colors hover:bg-surface"
 								>
-									<td className="pl-10 pr-4 py-2 w-12">
-										<span className="text-xs font-mono text-muted">v{def.version}</span>
+									<td className="w-12 py-2 pr-4 pl-10">
+										<span className="ds-datum text-muted text-xs">v{def.version}</span>
 									</td>
 									<td className="px-4 py-2">
 										<Link
 											href={`/definitions/${def.processDefinitionKey}`}
-											className="text-xs text-accent hover:underline"
+											className="ds-datum text-accent text-xs hover:underline"
 										>
 											{def.processDefinitionKey}
 										</Link>
 									</td>
-									<td className="px-4 py-2 text-xs text-muted">{def.tenantId ?? "—"}</td>
-									<td className="px-4 py-2 text-xs text-muted">
+									<td className="ds-datum px-4 py-2 text-muted text-xs">{def.tenantId ?? "—"}</td>
+									<td className="ds-datum px-4 py-2 text-muted text-xs">
 										{def.deploymentTime ? new Date(def.deploymentTime).toLocaleDateString() : "—"}
 									</td>
 									<td className="px-4 py-2" />
@@ -110,22 +110,25 @@ export function Definitions() {
 
 	if (isError) {
 		return (
-			<div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
-				<AlertTriangle size={32} className="text-danger" />
-				<p className="text-sm text-muted">Could not load definitions. Is the proxy running?</p>
+			<div className="ds-empty h-full">
+				<AlertTriangle size={24} className="text-danger" />
+				<p className="ds-lede">Could not load definitions. Is the proxy running?</p>
 			</div>
 		)
 	}
 
 	return (
-		<div className="p-6 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
-			{!isLoading && (
-				<p className="text-xs text-muted mb-6">
-					{filtered.length} process{filtered.length !== 1 ? "es" : ""}
-				</p>
-			)}
+		<div className="ds-page animate-in fade-in slide-in-from-bottom-2 duration-300">
+			<div className="ds-head">
+				<h1 className="ds-eyebrow">Definitions</h1>
+				{!isLoading && (
+					<span className="ds-datum text-muted text-xs">
+						{filtered.length} process{filtered.length !== 1 ? "es" : ""}
+					</span>
+				)}
+			</div>
 
-			<div className="mb-4">
+			<div className="mb-3">
 				<Search
 					placeholder="Search by name or process ID..."
 					value={search}
@@ -135,25 +138,25 @@ export function Definitions() {
 				/>
 			</div>
 
-			<div className="rounded-lg border border-border bg-surface overflow-hidden">
+			<div className="ds-box">
 				<div className="overflow-x-auto">
-					<table className="w-full text-sm min-w-[520px]">
+					<table className="w-full min-w-[520px] text-sm">
 						<thead>
-							<tr className="border-b border-border bg-surface-2 text-left text-xs text-muted">
-								<th className="px-4 py-3 font-medium w-8" />
-								<th className="px-4 py-3 font-medium">Process</th>
-								<th className="px-4 py-3 font-medium">Versions</th>
-								<th className="px-4 py-3 font-medium">Latest deployed</th>
-								<th className="px-4 py-3 font-medium sr-only">Actions</th>
+							<tr className="border-border border-b bg-bg text-left">
+								<th className="w-8 px-4 py-2.5" />
+								<th className="px-4 py-2.5">Process</th>
+								<th className="px-4 py-2.5">Versions</th>
+								<th className="px-4 py-2.5">Latest deployed</th>
+								<th className="sr-only px-4 py-2.5">Actions</th>
 							</tr>
 						</thead>
 						<tbody>
 							{isLoading &&
 								(["s0", "s1", "s2", "s3"] as const).map((sk) => (
-									<tr key={sk} className="border-b border-border/50">
+									<tr key={sk} className="border-border/60 border-b">
 										{(["a", "b", "c", "d", "e"] as const).map((col) => (
 											<td key={col} className="px-4 py-3">
-												<div className="h-4 animate-pulse rounded bg-surface-2" />
+												<div className="h-4 animate-pulse bg-surface-2" />
 											</td>
 										))}
 									</tr>
@@ -166,7 +169,7 @@ export function Definitions() {
 								return [
 									<tr
 										key={group.processDefinitionId}
-										className="border-b border-border/50 hover:bg-surface-2 transition-colors"
+										className="border-border/60 border-b transition-colors hover:bg-bg"
 									>
 										{/* Expand toggle */}
 										<td className="px-4 py-3">
@@ -186,11 +189,11 @@ export function Definitions() {
 										<td className="px-4 py-3">
 											<Link
 												href={`/definitions/${group.latest.processDefinitionKey}`}
-												className="font-medium text-fg hover:text-accent block transition-colors"
+												className="block text-fg transition-colors hover:text-accent"
 											>
 												{group.name}
 											</Link>
-											<span className="text-xs font-mono text-muted">
+											<span className="ds-datum text-muted text-xs">
 												{group.processDefinitionId}
 											</span>
 										</td>
@@ -207,12 +210,12 @@ export function Definitions() {
 													{group.versions.length} versions
 												</button>
 											) : (
-												<span className="text-xs text-muted">v{group.latest.version}</span>
+												<span className="ds-datum text-muted text-xs">v{group.latest.version}</span>
 											)}
 										</td>
 
 										{/* Latest deployment date */}
-										<td className="px-4 py-3 text-xs text-muted">
+										<td className="ds-datum px-4 py-3 text-muted text-xs">
 											{group.latest.deploymentTime
 												? new Date(group.latest.deploymentTime).toLocaleDateString()
 												: "—"}

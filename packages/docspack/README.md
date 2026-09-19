@@ -22,6 +22,8 @@ An agent installs it, asks a question, and gets back the two or three passages t
 
 It follows the [docspack package format](https://docspack.dev/spec), so the upstream `docspack` CLI discovers and indexes it like any other vendor pack. The bundled `bpmnkit-docs` command does the same job with no extra tooling.
 
+It also reads [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) — the Camunda 8 documentation in the same format. Install both and ask this one how to drive the library, that one what the engine does.
+
 ```
 Markdown docs → chunks + manifest → BM25 index → three passages
 ```
@@ -44,17 +46,20 @@ npm install -D @bpmnkit/docspack
 
 ## Quick Start
 
-Give an agent one line in `AGENTS.md` or `CLAUDE.md`:
+Give an agent one paragraph in `AGENTS.md` or `CLAUDE.md` — naming both packs, because an agent told only about the first will never think to ask the second:
 
 ```
-Run \`npx bpmnkit-docs ask "<question>"\` for BPMN Kit documentation.
-It answers from the version this project installed.
+Run `npx bpmnkit-docs ask "<question>"` for BPMN Kit documentation, and
+`npx bpmnkit-docs ask "<question>" --pack @bpmnkit/camunda-docspack` for
+Camunda 8 documentation — BPMN semantics, FEEL, engine behaviour, the REST API.
+Both answer from the versions this project installed.
 ```
 
 Then:
 
 ```sh
 npx bpmnkit-docs ask "how do I deploy a process to Camunda 8"
+npx bpmnkit-docs ask "what happens when no gateway condition is true" --pack @bpmnkit/camunda-docspack
 npx bpmnkit-docs search "exclusive gateway"
 npx bpmnkit-docs list
 ```
@@ -111,6 +116,8 @@ function loadPack(dir: string): Pack
 
 Options: `--limit <n>`, `--max-tokens <n>`, `--pack <name>`, `--cwd <dir>`.
 
+`--pack` narrows before the index is built, not after, so asking one pack a question does not pay for reading the others. A name that is not installed is an error listing what is, rather than an empty answer that would read as "the documentation does not cover this".
+
 ---
 
 ## Related Packages
@@ -125,6 +132,7 @@ Options: `--limit <n>`, `--max-tokens <n>`, `--pack <name>`, `--cwd <dir>`.
 | [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
+| [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
 | [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
 | [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
@@ -135,7 +143,7 @@ Options: `--limit <n>`, `--max-tokens <n>`, `--pack <name>`, `--cwd <dir>`.
 | [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |
 | [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |
 | [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
-| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable Camunda 8 user task widget — form rendering, claim and complete |
+| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget for Camunda 8 |
 | [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |
 | [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |
 | [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |

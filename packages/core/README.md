@@ -205,6 +205,29 @@ const restored = expand(JSON.parse(json))
 const outXml = Bpmn.export(restored)
 ```
 
+### Rendering while the model is still writing
+
+A model emits a diagram one token at a time, and the outermost `}` — the one
+`JSON.parse` waits for — is the last character it sends. `createCompactStream`
+reads the elements out of the text as their own literals close, so there is
+something to draw long before the document is finished:
+
+```typescript
+import { createCompactStream } from "@bpmnkit/core"
+
+// `base` is the diagram being edited, so a frame shows the whole thing rather
+// than the fragment the model is adding to it. Omit it to build from nothing.
+const diagramStream = createCompactStream({ base: null })
+
+function onModelChunk(chunk: string): void {
+  const frame = diagramStream.push(chunk) // null until the frame changes
+  if (frame) console.log("elements so far:", frame.processes[0]?.flowElements.length)
+}
+```
+
+Frames are a guess at an unfinished document: `push` never throws, drops what it
+cannot place, and expects the caller to have an authoritative result coming.
+
 ## API Reference
 
 ### BPMN
@@ -301,6 +324,7 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | `optimize(defs)` | Run all optimization rules; returns `OptimizeReport` |
 | `compactify(defs)` | Convert to compact `CompactDiagram` |
 | `expand(compact)` | Restore full `BpmnDefinitions` |
+| `createCompactStream(opts?)` | Read a diagram out of a model's token stream, frame by frame |
 | `generateId(prefix)` | Generate a unique short ID |
 
 ---
@@ -317,6 +341,7 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
+| [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
 | [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
 | [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
@@ -327,7 +352,7 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |
 | [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |
 | [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
-| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable Camunda 8 user task widget — form rendering, claim and complete |
+| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget for Camunda 8 |
 | [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |
 | [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |
 | [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |

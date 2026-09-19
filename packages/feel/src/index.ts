@@ -33,7 +33,7 @@ export type { FeelNode, BinaryOp } from "./ast.js"
 
 // Parser
 export { parseExpression, parseUnaryTests } from "./parser.js"
-export type { ParseResult, ParseError } from "./parser.js"
+export type { ParseResult, ParseError, ParseOptions } from "./parser.js"
 
 // Evaluator
 export { evaluate, evaluateUnaryTests, evaluateUnaryTest } from "./evaluator.js"

@@ -1,6 +1,6 @@
 {
 	"name": "@bpmnkit/ascii",
-	"version": "0.0.33",
+	"version": "0.0.38",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

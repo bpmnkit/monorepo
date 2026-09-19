@@ -1,4 +1,5 @@
 ---
+"@bpmnkit/camunda-docspack": patch
 "@bpmnkit/casen-worker-http": patch
 "@bpmnkit/casen-worker-ai": patch
 "@bpmnkit/astro-shared": patch
@@ -33,5 +34,5 @@ before 1.0.0 rather than with it: widening a published range is itself a change 
 manifest, and doing it as part of the 1.0 tag would mean the first stable release is also
 the one that moves everyone's dependency graph.
 
-The eight private apps in the workspace keep `workspace:*`. They are never published, so
-the range has no consumer to reach.
+The private apps in the workspace keep `workspace:*`. They are never published, so the
+range has no consumer to reach.

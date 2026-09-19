@@ -11,7 +11,7 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { PUBLISHED, STABLE } from "./published-packages.mjs"
+import { LICENSE_OVERRIDES, PUBLISHED, STABLE } from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "")
 
@@ -62,9 +62,12 @@ function check(dir) {
 		)
 	}
 
-	// license
-	if (pkg.license !== "MIT") {
-		issues.push(`"license" must be "MIT" (got: ${JSON.stringify(pkg.license)})`)
+	// license — MIT, unless the package is listed in LICENSE_OVERRIDES with its reason
+	const expectedLicense = LICENSE_OVERRIDES[dir] ?? "MIT"
+	if (pkg.license !== expectedLicense) {
+		issues.push(
+			`"license" must be ${JSON.stringify(expectedLicense)} (got: ${JSON.stringify(pkg.license)})`,
+		)
 	}
 
 	// homepage
@@ -91,8 +94,14 @@ function check(dir) {
 		)
 	}
 
-	// README.md in files[]
-	if (Array.isArray(pkg.files) && !pkg.files.includes("README.md")) {
+	// files[] — without it the tarball falls back to the ignore rules, and the root
+	// .gitignore excludes "dist". The entry point survives because npm always packs
+	// "main", so the package looks publishable while shipping no declarations at all.
+	if (!Array.isArray(pkg.files)) {
+		issues.push(
+			'missing "files[]" — the published tarball would drop "dist" (only "main" survives the root .gitignore)',
+		)
+	} else if (!pkg.files.includes("README.md")) {
 		issues.push('"README.md" not listed in "files[]" — it won\'t be included in the npm publish')
 	}
 

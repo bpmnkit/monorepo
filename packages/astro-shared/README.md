@@ -1,7 +1,7 @@
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="72" height="72" alt="BPMN Kit logo"></a>
   <h1>@bpmnkit/astro-shared</h1>
-  <p>Shared CSS design tokens, aurora background, site metadata, and SEO helpers for BPMN Kit Astro apps</p>
+  <p>Shared CSS design tokens, page ground, site metadata, and SEO helpers for BPMN Kit Astro apps</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/astro-shared?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/astro-shared)
   [![license](https://img.shields.io/npm/l/@bpmnkit/astro-shared?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
@@ -16,7 +16,7 @@
 
 ## Overview
 
-`@bpmnkit/astro-shared` provides shared CSS imports, site metadata, and SEO building blocks used across BPMN Kit's Astro-based apps (landing page, docs, learn, blog). It re-exports the design tokens from `@bpmnkit/ui`, adds a global aurora background animation, and ships a `<Seo>` head component plus schema.org JSON-LD helpers so every site emits consistent titles, canonicals, Open Graph tags, and structured data.
+`@bpmnkit/astro-shared` provides shared CSS imports, site metadata, and SEO building blocks used across BPMN Kit's Astro-based apps (landing page, docs, learn, blog). It exposes the bpmnkit.com design system's tokens — derived from the `--bpmnkit-ds-*` set `@bpmnkit/ui` owns, under the same short names the landing site reads — sets the flat page ground, and ships a `<Seo>` head component plus schema.org JSON-LD helpers so every site emits consistent titles, canonicals, Open Graph tags, and structured data.
 
 This package is primarily intended for internal use by BPMN Kit's own Astro applications.
 
@@ -95,6 +95,7 @@ import { articleJsonLd } from "@bpmnkit/astro-shared/seo.js"
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
+| [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
 | [`@bpmnkit/profiles`](https://www.npmjs.com/package/@bpmnkit/profiles) | Shared auth, profile storage, and client factories for CLI & proxy |
 | [`@bpmnkit/operate`](https://www.npmjs.com/package/@bpmnkit/operate) | Monitoring & operations frontend for Camunda clusters |
@@ -105,7 +106,7 @@ import { articleJsonLd } from "@bpmnkit/astro-shared/seo.js"
 | [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |
 | [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |
 | [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
-| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable Camunda 8 user task widget — form rendering, claim and complete |
+| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget for Camunda 8 |
 | [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |
 | [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |
 | [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |

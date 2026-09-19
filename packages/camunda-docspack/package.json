@@ -1,0 +1,61 @@
+{
+	"name": "@bpmnkit/camunda-docspack",
+	"version": "0.1.2",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"bin": {
+		"camunda-docspack-build": "./dist/cli.js"
+	},
+	"files": [
+		"LICENSE",
+		"NOTICE",
+		"README.md",
+		"llms.txt",
+		".llms",
+		"dist/**/*.js",
+		"dist/**/*.d.ts"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"build": "tsc && node scripts/sync-version.mjs",
+		"build:pack": "tsc && node ./dist/cli.js",
+		"typecheck": "tsc --noEmit",
+		"check": "biome check .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@bpmnkit/core": "workspace:^",
+		"@bpmnkit/docspack": "workspace:^",
+		"yaml": "^2.8.2"
+	},
+	"docspack": {
+		"source": "./build/staging",
+		"siteUrl": "https://docs.camunda.io/docs/next",
+		"maxTokens": 800,
+		"minTokens": 120,
+		"documents": ["camunda@8.10"]
+	},
+	"description": "Camunda 8 documentation as an offline, version-locked docspack package for AI agents",
+	"keywords": ["docspack", "camunda", "bpmn", "ai-agents", "documentation", "search", "llms-txt"],
+	"license": "CC-BY-SA-3.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bpmnkit/monorepo"
+	},
+	"homepage": "https://bpmnkit.com",
+	"bugs": {
+		"url": "https://github.com/bpmnkit/monorepo/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

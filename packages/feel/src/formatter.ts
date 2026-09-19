@@ -15,6 +15,19 @@ export function formatFeel(node: FeelNode, opts?: FormatOptions): string {
 	return fmt(node, o, 0)
 }
 
+const STRING_ESCAPES: Record<string, string> = {
+	"\\": "\\\\",
+	'"': '\\"',
+	"\n": "\\n",
+	"\r": "\\r",
+	"\t": "\\t",
+}
+
+/** Re-escapes a string literal's value, which the parser stores decoded. */
+function escapeString(value: string): string {
+	return value.replace(/[\\"\n\r\t]/g, (c) => STRING_ESCAPES[c] ?? c)
+}
+
 function fmt(node: FeelNode, o: Required<FormatOptions>, depth: number): string {
 	const ind = o.indent.repeat(depth)
 	const ind1 = o.indent.repeat(depth + 1)
@@ -27,7 +40,7 @@ function fmt(node: FeelNode, o: Required<FormatOptions>, depth: number): string 
 		case "number":
 			return String(node.value)
 		case "string":
-			return `"${node.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
+			return `"${escapeString(node.value)}"`
 		case "temporal":
 			return node.raw
 		case "name":
@@ -77,6 +90,11 @@ function fmt(node: FeelNode, o: Required<FormatOptions>, depth: number): string 
 		case "call": {
 			const args = node.args.map((a) => fmt(a, o, depth)).join(", ")
 			return `${node.callee}(${args})`
+		}
+
+		case "call-expr": {
+			const args = node.args.map((a) => fmt(a, o, depth)).join(", ")
+			return `${fmt(node.target, o, depth)}(${args})`
 		}
 
 		case "call-named": {

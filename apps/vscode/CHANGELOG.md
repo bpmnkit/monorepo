@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.4.10
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+- Updated dependencies [f0a0ea2]
+  - @bpmnkit/core@0.8.0
+  - @bpmnkit/ui@0.3.0
+  - @bpmnkit/plugins@0.4.0
+  - @bpmnkit/canvas@0.2.5
+  - @bpmnkit/ascii@0.0.38
+  - @bpmnkit/editor@0.2.5
+  - @bpmnkit/engine@0.1.38
+
+## 0.4.9
+
+### Patch Changes
+
+- Updated dependencies [c8ceaaa]
+  - @bpmnkit/core@0.7.1
+  - @bpmnkit/engine@0.1.37
+  - @bpmnkit/plugins@0.3.5
+  - @bpmnkit/ascii@0.0.37
+  - @bpmnkit/canvas@0.2.4
+  - @bpmnkit/editor@0.2.4
+
+## 0.4.8
+
+### Patch Changes
+
+- Updated dependencies [e096585]
+  - @bpmnkit/core@0.7.0
+  - @bpmnkit/ascii@0.0.36
+  - @bpmnkit/canvas@0.2.3
+  - @bpmnkit/editor@0.2.3
+  - @bpmnkit/engine@0.1.36
+  - @bpmnkit/plugins@0.3.4
+
+## 0.4.7
+
+### Patch Changes
+
+- Updated dependencies [780e39d]
+  - @bpmnkit/core@0.6.0
+  - @bpmnkit/ascii@0.0.35
+  - @bpmnkit/canvas@0.2.2
+  - @bpmnkit/editor@0.2.2
+  - @bpmnkit/engine@0.1.35
+  - @bpmnkit/plugins@0.3.3
+
+## 0.4.6
+
+### Patch Changes
+
+- Updated dependencies [53a9e25]
+- Updated dependencies [9d412da]
+- Updated dependencies [2cdc7f9]
+- Updated dependencies [9d412da]
+  - @bpmnkit/core@0.5.0
+  - @bpmnkit/ui@0.2.0
+  - @bpmnkit/ascii@0.0.34
+  - @bpmnkit/canvas@0.2.1
+  - @bpmnkit/editor@0.2.1
+  - @bpmnkit/engine@0.1.34
+  - @bpmnkit/plugins@0.3.2
+  - @bpmnkit/profiles@0.0.19
+
 ## 0.4.5
 
 ### Patch Changes

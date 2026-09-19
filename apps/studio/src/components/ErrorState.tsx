@@ -15,19 +15,13 @@ interface ErrorStateProps {
 export function ErrorState({ title, description, hint, onRetry, settingsHint }: ErrorStateProps) {
 	const [, navigate] = useLocation()
 	return (
-		<div className="flex flex-col items-center justify-center h-full gap-5 text-center p-8">
-			<div className="bg-danger/10 p-3.5">
-				<AlertTriangle size={22} className="text-danger" />
+		<div className="ds-empty h-full">
+			<AlertTriangle size={22} className="text-danger" />
+			<div className="max-w-sm">
+				<h2 className="ds-title text-base">{title}</h2>
+				<p className="ds-lede mt-1.5">{description}</p>
 			</div>
-			<div className="max-w-xs">
-				<h2 className="text-base font-semibold text-fg">{title}</h2>
-				<p className="text-sm text-muted mt-1.5 leading-relaxed">{description}</p>
-				{hint && (
-					<code className="mt-3 block rounded-md bg-surface-2 border border-border px-3 py-2 text-xs font-mono text-muted text-left">
-						{hint}
-					</code>
-				)}
-			</div>
+			{hint && <code className="ds-code w-full max-w-sm text-left">{hint}</code>}
 			<div className="flex items-center gap-2">
 				{onRetry && (
 					<Button variant="outline" size="sm" onClick={onRetry}>

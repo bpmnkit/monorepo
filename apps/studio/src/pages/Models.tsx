@@ -85,34 +85,32 @@ function ProcessCard({
 
 	return (
 		<article
-			className="relative rounded-lg border border-border bg-surface overflow-hidden hover:border-accent hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+			className="ds-cell relative overflow-hidden p-0 transition-colors duration-150"
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
 			aria-label={`Model: ${model.name}`}
 		>
-			<div className="h-36 bg-surface-2 overflow-hidden">
+			<div className="h-36 overflow-hidden border-border border-b bg-bg">
 				{model.type === "bpmn" && model.content ? (
 					<BpmnPreview xml={model.content} theme={theme} />
 				) : (
 					<div className="flex h-full items-center justify-center gap-2 text-muted">
-						<FileText size={22} />
-						<span className="text-xs uppercase tracking-wider">
-							{TYPE_LABELS[model.type as ModelType]}
-						</span>
+						<FileText size={20} />
+						<span className="ds-label">{TYPE_LABELS[model.type as ModelType]}</span>
 					</div>
 				)}
 			</div>
 			<div className="p-3">
 				<div className="flex items-center justify-between gap-2">
-					<span className="text-sm font-medium text-fg truncate">{model.name}</span>
-					<span className="text-xs rounded bg-surface-2 px-1.5 py-0.5 text-muted shrink-0">
-						{TYPE_LABELS[model.type as ModelType]}
-					</span>
+					<span className="truncate text-fg text-sm">{model.name}</span>
+					<span className="ds-mark shrink-0">{TYPE_LABELS[model.type as ModelType]}</span>
 				</div>
-				<p className="text-xs text-muted mt-1">{new Date(model.updatedAt).toLocaleDateString()}</p>
+				<p className="ds-datum mt-1 text-muted text-xs">
+					{new Date(model.updatedAt).toLocaleDateString()}
+				</p>
 			</div>
 			{hovered && (
-				<div className="absolute inset-0 flex items-center justify-center gap-2 bg-bg/70 animate-in fade-in duration-150">
+				<div className="absolute inset-0 flex animate-in items-center justify-center gap-2 bg-bg/80 fade-in duration-150">
 					<Button
 						size="sm"
 						onClick={(e) => {
@@ -173,8 +171,10 @@ function FolderTree({ entries, selected, expanded, onSelect, onToggle }: FolderT
 						<li key={entry.relativePath}>
 							<button
 								type="button"
-								className={`flex w-full items-center gap-1.5 px-2 py-1 rounded text-left transition-colors ${
-									isSelected ? "bg-accent/15 text-accent" : "text-fg hover:bg-surface-2"
+								className={`flex w-full items-center gap-1.5 border-l-2 py-1 pr-2 pl-1.5 text-left transition-colors ${
+									isSelected
+										? "border-accent text-accent"
+										: "border-transparent text-fg hover:bg-bg"
 								}`}
 								onClick={() => {
 									onToggle(entry.relativePath)
@@ -190,7 +190,7 @@ function FolderTree({ entries, selected, expanded, onSelect, onToggle }: FolderT
 								<span className="truncate">{entry.name}</span>
 							</button>
 							{isExpanded && entry.children && entry.children.length > 0 && (
-								<div className="ml-4 border-l border-border/40 pl-1">
+								<div className="ml-4 border-border border-l pl-1">
 									<FolderTree
 										entries={entry.children}
 										selected={selected}
@@ -263,13 +263,15 @@ function MoveDialog({
 	return (
 		<Modal open onClose={onClose} title={`Move "${model.name}"`}>
 			<div className="mt-4">
-				<p className="text-xs text-muted mb-2">Select destination folder:</p>
-				<div className="border border-border rounded p-2 max-h-48 overflow-y-auto">
+				<p className="ds-label mb-2">Destination folder</p>
+				<div className="max-h-48 overflow-y-auto border border-border p-2">
 					{/* Root option */}
 					<button
 						type="button"
-						className={`flex w-full items-center gap-1.5 px-2 py-1 rounded text-sm text-left transition-colors ${
-							selectedFolder === "" ? "bg-accent/15 text-accent" : "text-fg hover:bg-surface-2"
+						className={`flex w-full items-center gap-1.5 border-l-2 py-1 pr-2 pl-1.5 text-left text-sm transition-colors ${
+							selectedFolder === ""
+								? "border-accent text-accent"
+								: "border-transparent text-fg hover:bg-bg"
 						}`}
 						onClick={() => setSelectedFolder("")}
 					>
@@ -280,10 +282,10 @@ function MoveDialog({
 						<button
 							key={f.relativePath}
 							type="button"
-							className={`flex w-full items-center gap-1.5 px-2 py-1 rounded text-sm text-left transition-colors ${
+							className={`ds-datum flex w-full items-center gap-1.5 border-l-2 py-1 pr-2 pl-1.5 text-left text-sm transition-colors ${
 								selectedFolder === f.relativePath
-									? "bg-accent/15 text-accent"
-									: "text-fg hover:bg-surface-2"
+									? "border-accent text-accent"
+									: "border-transparent text-fg hover:bg-bg"
 							}`}
 							onClick={() => setSelectedFolder(f.relativePath)}
 						>
@@ -588,9 +590,9 @@ export function Models() {
 				}`}
 			>
 				{/* Folder tree sidebar — always visible */}
-				<aside className="w-52 shrink-0 border-r border-border bg-surface overflow-y-auto p-2">
-					<div className="flex items-center justify-between mb-2 px-1">
-						<span className="text-xs font-medium text-muted uppercase tracking-wider">
+				<aside className="w-52 shrink-0 overflow-y-auto border-border border-r bg-bg p-2">
+					<div className="mb-2 flex items-center justify-between px-1">
+						<span className="ds-label">
 							{fsMode ? (activeProject?.name ?? "Project") : "Local"}
 						</span>
 						<button
@@ -606,8 +608,10 @@ export function Models() {
 					{/* Root selection */}
 					<button
 						type="button"
-						className={`flex w-full items-center gap-1.5 px-2 py-1 rounded text-sm text-left transition-colors mb-0.5 ${
-							selectedFolder === "" ? "bg-accent/15 text-accent" : "text-fg hover:bg-surface-2"
+						className={`mb-0.5 flex w-full items-center gap-1.5 border-l-2 py-1 pr-2 pl-1.5 text-left text-sm transition-colors ${
+							selectedFolder === ""
+								? "border-accent text-accent"
+								: "border-transparent text-fg hover:bg-bg"
 						}`}
 						onClick={() => setSelectedFolder("")}
 					>
@@ -627,8 +631,12 @@ export function Models() {
 				<div className="flex-1 overflow-y-auto p-6">
 					<div className="max-w-6xl mx-auto">
 						{/* Header */}
-						<div className="flex items-center justify-end mb-6">
-							<div className="flex items-center gap-2">
+						<div className="ds-head">
+							<h1 className="ds-eyebrow">Models</h1>
+							<span className="ds-datum text-muted text-xs">
+								{filtered.length} model{filtered.length !== 1 ? "s" : ""}
+							</span>
+							<div className="ml-auto flex items-center gap-2">
 								<Button variant="outline" size="sm" onClick={() => navigate("/models/diff")}>
 									<GitCompare size={14} />
 									Compare
@@ -662,7 +670,7 @@ export function Models() {
 						</div>
 
 						{/* Filters */}
-						<div className="flex items-center gap-3 mb-4">
+						<div className="mb-3 flex items-center gap-3">
 							<Search
 								placeholder="Search models..."
 								value={search}
@@ -670,50 +678,48 @@ export function Models() {
 								className="max-w-64"
 								label="Search models"
 							/>
-							<div className="flex rounded border border-border bg-surface-2 text-xs overflow-hidden">
+							<div className="ds-seg">
 								{typeFilterOptions.map((t) => (
 									<button
 										key={t}
 										type="button"
 										onClick={() => setTypeFilter(t)}
-										className={`px-3 py-1.5 capitalize transition-colors ${
-											typeFilter === t ? "bg-surface text-fg" : "text-muted hover:text-fg"
-										}`}
+										className={`ds-seg-btn ${typeFilter === t ? "ds-seg-btn--on" : ""}`}
 										aria-pressed={typeFilter === t}
 									>
 										{t === "all" ? "All" : TYPE_LABELS[t as ModelType]}
 									</button>
 								))}
 							</div>
-							<div className="ml-auto flex gap-1">
+							<div className="ds-seg ml-auto">
 								<button
 									type="button"
 									onClick={() => setViewMode("grid")}
-									className={`p-1.5 rounded ${viewMode === "grid" ? "text-fg" : "text-muted hover:text-fg"}`}
+									className={`ds-seg-btn px-2 py-1 ${viewMode === "grid" ? "ds-seg-btn--on" : ""}`}
 									aria-label="Grid view"
 									aria-pressed={viewMode === "grid"}
 								>
-									<Grid size={16} />
+									<Grid size={14} />
 								</button>
 								<button
 									type="button"
 									onClick={() => setViewMode("list")}
-									className={`p-1.5 rounded ${viewMode === "list" ? "text-fg" : "text-muted hover:text-fg"}`}
+									className={`ds-seg-btn px-2 py-1 ${viewMode === "list" ? "ds-seg-btn--on" : ""}`}
 									aria-label="List view"
 									aria-pressed={viewMode === "list"}
 								>
-									<List size={16} />
+									<List size={14} />
 								</button>
 							</div>
 						</div>
 
 						{/* Content */}
 						{filtered.length === 0 ? (
-							<div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-								<FileText size={40} className="text-muted" />
+							<div className="ds-empty">
+								<FileText size={28} className="text-muted" />
 								<div>
-									<p className="text-base font-medium text-fg">No models yet</p>
-									<p className="text-sm text-muted mt-1">
+									<p className="ds-title text-base">No models yet</p>
+									<p className="ds-lede mt-1">
 										{fsMode
 											? "Create a model in this folder or import an existing file."
 											: "Create your first model or import an existing file."}
@@ -740,7 +746,7 @@ export function Models() {
 								</Button>
 							</div>
 						) : viewMode === "grid" ? (
-							<div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+							<div className="ds-grid [--ds-col:230px]">
 								{filtered.map((model) => (
 									<ProcessCard
 										key={model.id}
@@ -751,35 +757,35 @@ export function Models() {
 								))}
 							</div>
 						) : (
-							<table className="w-full text-sm">
+							<table className="ds-box w-full text-sm">
 								<thead>
-									<tr className="border-b border-border text-left text-xs text-muted">
-										<th className="pb-2 font-medium">Name</th>
-										<th className="pb-2 font-medium">Type</th>
-										<th className="pb-2 font-medium">{fsMode ? "Path" : "Process ID"}</th>
-										<th className="pb-2 font-medium">Modified</th>
-										<th className="pb-2 font-medium sr-only">Actions</th>
+									<tr className="border-border border-b bg-bg text-left">
+										<th className="px-3 py-2">Name</th>
+										<th className="px-3 py-2">Type</th>
+										<th className="px-3 py-2">{fsMode ? "Path" : "Process ID"}</th>
+										<th className="px-3 py-2">Modified</th>
+										<th className="sr-only px-3 py-2">Actions</th>
 									</tr>
 								</thead>
 								<tbody>
 									{filtered.map((model) => (
 										<tr
 											key={model.id}
-											className="border-b border-border/50 hover:bg-surface-2 cursor-pointer"
+											className="cursor-pointer border-border/60 border-b hover:bg-bg"
 											onClick={() => navigate(`/models/${model.id}`)}
 											onKeyDown={(e) => e.key === "Enter" && navigate(`/models/${model.id}`)}
 										>
-											<td className="py-2.5 pr-4 font-medium text-fg">{model.name}</td>
-											<td className="py-2.5 pr-4">
+											<td className="px-3 py-2.5 text-fg">{model.name}</td>
+											<td className="px-3 py-2.5">
 												<StatusPill state={TYPE_LABELS[model.type as ModelType]} />
 											</td>
-											<td className="py-2.5 pr-4 text-muted font-mono text-xs">
+											<td className="ds-datum px-3 py-2.5 text-muted text-xs">
 												{fsMode ? (model.path ?? "—") : (model.processDefinitionId ?? "—")}
 											</td>
-											<td className="py-2.5 pr-4 text-muted">
+											<td className="ds-datum px-3 py-2.5 text-muted text-xs">
 												{new Date(model.updatedAt).toLocaleDateString()}
 											</td>
-											<td className="py-2.5">
+											<td className="px-3 py-2.5">
 												<div className="flex gap-1">
 													{isFsMode() && (
 														<Button
@@ -829,12 +835,12 @@ export function Models() {
 						onKeyDown={(e) => e.key === "Enter" && void handleCreate()}
 					/>
 					{selectedFolder && (
-						<p className="text-xs text-muted">
-							Folder: <span className="font-mono text-fg">{selectedFolder}/</span>
+						<p className="ds-datum text-muted text-xs">
+							Folder: <span className="text-fg">{selectedFolder}/</span>
 						</p>
 					)}
 					<div>
-						<p className="text-sm text-muted mb-2">Type</p>
+						<p className="ds-label mb-2">Type</p>
 						<div className={`grid gap-2 ${fsMode ? "grid-cols-4" : "grid-cols-3"}`}>
 							{(fsMode
 								? (["bpmn", "dmn", "form", "md"] as const)
@@ -844,11 +850,7 @@ export function Models() {
 									key={t}
 									type="button"
 									onClick={() => setNewType(t)}
-									className={`rounded border p-3 text-center text-sm transition-colors ${
-										newType === t
-											? "border-accent bg-accent/10 text-accent"
-											: "border-border text-fg hover:bg-surface-2"
-									}`}
+									className={`ds-btn justify-center py-2.5 ${newType === t ? "ds-btn--on" : ""}`}
 									aria-pressed={newType === t}
 								>
 									{TYPE_LABELS[t]}
@@ -879,8 +881,8 @@ export function Models() {
 						onKeyDown={(e) => e.key === "Enter" && void handleCreateFolder()}
 					/>
 					{selectedFolder && (
-						<p className="text-xs text-muted">
-							Location: <span className="font-mono text-fg">{selectedFolder}/</span>
+						<p className="ds-datum text-muted text-xs">
+							Location: <span className="text-fg">{selectedFolder}/</span>
 						</p>
 					)}
 					<div className="flex justify-end gap-2">
@@ -896,7 +898,7 @@ export function Models() {
 
 			{/* Delete confirmation */}
 			<Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete Model">
-				<p className="text-sm text-muted mt-2">
+				<p className="ds-lede mt-2">
 					Are you sure you want to delete <strong className="text-fg">{confirmDelete?.name}</strong>
 					? This cannot be undone.
 				</p>
@@ -930,19 +932,17 @@ export function Models() {
 				title="Process Templates"
 				size="lg"
 			>
-				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-2">
+				<div className="ds-grid mt-2 [--ds-col:260px]">
 					{PROCESS_TEMPLATES.map((tpl) => (
 						<button
 							key={tpl.id}
 							type="button"
 							onClick={() => void handleCreateFromTemplate(tpl)}
-							className="text-left rounded-lg border border-border bg-surface p-4 hover:border-accent hover:bg-accent/5 transition-colors"
+							className="ds-cell p-4 text-left transition-colors hover:bg-bg"
 						>
-							<div className="text-sm font-medium text-fg">{tpl.name}</div>
-							<div className="text-xs text-muted mt-1">{tpl.description}</div>
-							<div className="mt-2 inline-flex items-center bg-surface-2 px-2 py-0.5 text-[11px] text-muted capitalize">
-								{tpl.category}
-							</div>
+							<div className="text-fg text-sm">{tpl.name}</div>
+							<div className="ds-lede mt-1 text-xs">{tpl.description}</div>
+							<div className="ds-mark mt-2">{tpl.category}</div>
 						</button>
 					))}
 				</div>

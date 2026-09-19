@@ -74,8 +74,16 @@ export function readChunk(pack: Pack, chunk: ManifestChunk): string {
 
 /**
  * Every documentation package reachable from `cwd`: the vendor-scoped
- * `@<vendor>/docspack` and community `@docspack-community/*` packages installed
- * in any `node_modules` up the tree, plus `cwd` itself when it is a pack.
+ * `@<vendor>/docspack`, its `@<vendor>/<name>-docspack` siblings, and community
+ * `@docspack-community/*` packages installed in any `node_modules` up the tree,
+ * plus `cwd` itself when it is a pack.
+ *
+ * The suffix is for a vendor that also redistributes somebody else's
+ * documentation — `@bpmnkit/camunda-docspack` is ours — and had nowhere to put
+ * it when the spec named one pack per scope. It is still a pure name check,
+ * inside a scope that vendor owns, so the pack carries the same trust as the
+ * bare name and nothing here has to reach the network to decide. Upstream
+ * adopted the same shape in `docspack@1.2.0`.
  */
 export function discoverPacks(cwd = process.cwd()): Pack[] {
 	const found = new Map<string, Pack>()
@@ -96,7 +104,11 @@ export function discoverPacks(cwd = process.cwd()): Pack[] {
 			if (scope === COMMUNITY_SCOPE) {
 				for (const name of listDirectory(join(modules, scope))) offer(join(modules, scope, name))
 			} else {
-				offer(join(modules, scope, "docspack"))
+				for (const name of listDirectory(join(modules, scope))) {
+					if (name === "docspack" || name.endsWith("-docspack")) {
+						offer(join(modules, scope, name))
+					}
+				}
 			}
 		}
 	}

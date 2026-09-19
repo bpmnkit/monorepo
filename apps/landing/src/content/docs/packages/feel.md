@@ -11,7 +11,7 @@ sidebar:
 expression language DMN decision tables and Camunda 8 condition expressions are written in.
 
 It is four things behind one entry point: a **lexer**, a recursive-descent **parser**, an AST
-**evaluator** with 87 built-in functions, and a **formatter** and **syntax highlighter** for
+**evaluator** with 88 built-in functions, and a **formatter** and **syntax highlighter** for
 editors. It has no dependencies and runs unchanged in Node.js and the browser.
 
 Everything else in BPMN Kit that has to understand an expression uses it — gateway conditions
@@ -100,7 +100,7 @@ run('string length("héllo")');       // 5       — code points, not bytes
 
 - **Ranges** — `[1..10]`, `(0..1)`, and the fourteen DMN range functions that compare them
   (`before`, `after`, `meets`, `met by`, `overlaps`, `during`, `includes`, `coincides`, …).
-- **87 built-in functions** across strings, numbers, lists, contexts and temporals.
+- **88 built-in functions** across strings, numbers, lists, contexts and temporals.
 - **Context literals and paths**, including nested access and filters.
 
 ## Formatting and highlighting

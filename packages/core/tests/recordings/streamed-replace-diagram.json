@@ -1,0 +1,28 @@
+{"diagram": {
+  "id": "customer-order-process",
+  "processes": [
+    {
+      "id": "Process_OrderFulfillment",
+      "name": "Customer Order Process",
+      "elements": [
+        { "id": "start_order_received", "type": "startEvent", "name": "Order Received" },
+        { "id": "task_check_stock", "type": "task", "name": "Check Stock" },
+        { "id": "gw_in_stock", "type": "exclusiveGateway", "name": "In Stock?" },
+        { "id": "task_charge_card", "type": "task", "name": "Charge Card" },
+        { "id": "task_ship_order", "type": "task", "name": "Ship Order" },
+        { "id": "task_notify_unavailable", "type": "task", "name": "Notify Customer of Unavailability" },
+        { "id": "end_fulfilled", "type": "endEvent", "name": "Order Fulfilled" },
+        { "id": "end_cancelled", "type": "endEvent", "name": "Order Cancelled" }
+      ],
+      "flows": [
+        { "id": "flow_1", "from": "start_order_received", "to": "task_check_stock" },
+        { "id": "flow_2", "from": "task_check_stock", "to": "gw_in_stock" },
+        { "id": "flow_3", "from": "gw_in_stock", "to": "task_charge_card", "name": "In Stock", "condition": "= stockAvailable = true" },
+        { "id": "flow_4", "from": "task_charge_card", "to": "task_ship_order" },
+        { "id": "flow_5", "from": "task_ship_order", "to": "end_fulfilled" },
+        { "id": "flow_6", "from": "gw_in_stock", "to": "task_notify_unavailable", "name": "Out of Stock", "condition": "= stockAvailable = false" },
+        { "id": "flow_7", "from": "task_notify_unavailable", "to": "end_cancelled" }
+      ]
+    }
+  ]
+}}
