@@ -1,6 +1,12 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form, compactify, optimize } from "@bpmnkit/core"
-import type { BpmnDefinitions, BpmnOperation, CompactDiagram } from "@bpmnkit/core"
+import type {
+	BpmnDefinitions,
+	BpmnOperation,
+	CompactDiagram,
+	CompactElement,
+	CompactFlow,
+} from "@bpmnkit/core"
 import { saveCheckpoint } from "../history/index.js"
 import { injectAiBridgeStyles } from "./css.js"
 
@@ -42,6 +48,7 @@ async function* streamChat(
 	signal: AbortSignal,
 	action?: string,
 	onXml?: (xml: string) => void,
+	onPreview?: (xml: string) => void,
 ): AsyncGenerator<string> {
 	let res: Response
 	try {
@@ -84,6 +91,7 @@ async function* streamChat(
 						xml?: string
 					}
 					if (event.type === "token" && event.text) yield event.text
+					if (event.type === "preview" && event.xml) onPreview?.(event.xml)
 					if (event.type === "xml" && event.xml) onXml?.(event.xml)
 					if (event.type === "done") return
 					if (event.type === "error") throw new Error(event.message ?? event.text ?? "AI error")
@@ -351,6 +359,50 @@ function buildVariableFlowContext(defs: BpmnDefinitions): Record<string, unknown
 	return { byElement, undefinedVars, deadOutputs }
 }
 
+/** Every id in a compact process, container contents included. */
+function collectIds(
+	elements: readonly CompactElement[],
+	flows: readonly CompactFlow[],
+	into: Set<string>,
+): void {
+	for (const element of elements) {
+		into.add(element.id)
+		if (element.children) collectIds(element.children.elements, element.children.flows, into)
+	}
+	for (const flow of flows) into.add(flow.id)
+}
+
+/**
+ * Which of the rendered ids to mark as the AI's additions — the ones the diagram
+ * it was handed does not have.
+ *
+ * Empty when there is no process to contrast them with. A process being built
+ * from scratch is new the whole way through, and a diagram marked everywhere
+ * says no more than one marked nowhere; it would also mean the marking flickered
+ * on for the length of every stream and off again at the end of it.
+ *
+ * "No process" is read as no sequence flow, not as no element: a new file in the
+ * editor is a single unconnected start event, which is a blank canvas rather
+ * than something a diagram can be new *relative to*.
+ *
+ * @param before - The diagram as the editor has it, before anything is applied.
+ * @param rendered - The ids a preview actually drew.
+ */
+export function additionsToMark(
+	before: BpmnDefinitions | null,
+	rendered: readonly string[],
+): string[] {
+	if (!before) return []
+	const known = new Set<string>()
+	let connected = false
+	for (const process of compactify(before).processes) {
+		collectIds(process.elements, process.flows, known)
+		if (process.flows.length > 0) connected = true
+	}
+	if (!connected) return []
+	return rendered.filter((id) => !known.has(id))
+}
+
 function buildContext(defs: BpmnDefinitions): Record<string, unknown> {
 	return { ...compactify(defs), variableFlow: buildVariableFlowContext(defs) }
 }
@@ -513,6 +565,13 @@ export function createAiPanel(options: PanelOptions): {
 	let _refs: ContextRef[] = []
 	let _abortCtrl: AbortController | null = null
 	let _hasMessages = false
+
+	/** Outlines what the AI added, leaving the diagram it started from plain. */
+	function markAdditions(canvas: BpmnCanvas): void {
+		const rendered: string[] = []
+		canvas.forEachElement((el) => rendered.push(el.id))
+		canvas.highlight(additionsToMark(options.getDefinitions(), rendered), "new")
+	}
 
 	// ── Server status check ──
 	async function checkStatus(): Promise<void> {
@@ -770,6 +829,7 @@ export function createAiPanel(options: PanelOptions): {
 				theme: options.getTheme?.() ?? "dark",
 			})
 			_previewCanvases.push(canvas)
+			markAdditions(canvas)
 			msgEl.append(previewEl)
 		}
 
@@ -984,6 +1044,35 @@ export function createAiPanel(options: PanelOptions): {
 	): Promise<{ fullText: string; resultXml: string | undefined }> {
 		let fullText = ""
 		let resultXml: string | undefined
+
+		// Text lives in its own child so a preview frame arriving mid-stream is not
+		// wiped by the next token.
+		const textEl = document.createElement("div")
+		aiMsgEl.append(textEl)
+
+		// The diagram as the server has it so far. Shown above the text, where the
+		// eye already is, and dropped once finalizeAiMessage renders the
+		// authoritative result in its place.
+		const live: { canvas: BpmnCanvas | null } = { canvas: null }
+		function showPreview(xml: string): void {
+			if (live.canvas) {
+				live.canvas.load(xml, { keepViewport: true })
+				markAdditions(live.canvas)
+				return
+			}
+			const previewEl = document.createElement("div")
+			previewEl.className = "ai-msg-preview"
+			aiMsgEl.prepend(previewEl)
+			live.canvas = new BpmnCanvas({
+				container: previewEl,
+				xml,
+				grid: false,
+				fit: "contain",
+				theme: options.getTheme?.() ?? "dark",
+			})
+			markAdditions(live.canvas)
+		}
+
 		try {
 			for await (const token of streamChat(
 				options.serverUrl,
@@ -995,15 +1084,18 @@ export function createAiPanel(options: PanelOptions): {
 				(xml) => {
 					resultXml = xml
 				},
+				showPreview,
 			)) {
 				fullText += token
-				aiMsgEl.textContent = fullText
+				textEl.textContent = fullText
 				messagesEl.scrollTop = messagesEl.scrollHeight
 			}
 		} catch (err) {
 			if (!signal.aborted) {
 				fullText = `${fullText ? `${fullText}\n\n` : ""}Error: ${err instanceof Error ? err.message : String(err)}`
 			}
+		} finally {
+			live.canvas?.destroy()
 		}
 		return { fullText, resultXml }
 	}

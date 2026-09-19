@@ -16,7 +16,14 @@ import { homedir, tmpdir } from "node:os"
 import { basename, dirname, extname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { collectElementTemplates } from "@bpmnkit/connectors/node"
-import { Bpmn, applyBpmnOperations, compactify, expand, optimize } from "@bpmnkit/core"
+import {
+	Bpmn,
+	applyBpmnOperations,
+	compactify,
+	createCompactStream,
+	expand,
+	optimize,
+} from "@bpmnkit/core"
 import type { BpmnDefinitions, BpmnOperation, CompactDiagram } from "@bpmnkit/core"
 import { createClientFromProfile } from "@bpmnkit/profiles"
 import {
@@ -29,6 +36,7 @@ import {
 import * as claude from "./adapters/claude.js"
 import * as copilot from "./adapters/copilot.js"
 import * as gemini from "./adapters/gemini.js"
+import { watchOutputFile } from "./preview-watch.js"
 import type { FindingInfo, ImproveContext } from "./prompt.js"
 import {
 	buildDmnCreateSystemPrompt,
@@ -58,6 +66,15 @@ import { startWorkerDaemon, workerState } from "./worker.js"
 
 const PORT = process.env.AI_SERVER_PORT ? Number(process.env.AI_SERVER_PORT) : 3033
 
+/**
+ * Smallest gap between two preview frames read out of the token stream.
+ *
+ * A frame costs about a millisecond to build, so this is not about the server;
+ * it is about the canvas at the other end, which has to lay the diagram out
+ * again for each one.
+ */
+const PREVIEW_FRAME_MS = 100
+
 // Resolve the compiled mcp-server entry point relative to this file.
 // When bundled as bundle.cjs, import.meta.url ends with .cjs → use mcp-server.cjs.
 // When compiled by tsc to dist/index.js → use mcp-server.js.
@@ -73,6 +90,7 @@ interface Adapter {
 		systemPrompt: string,
 		mcpConfigFile: string | null,
 		onToken: (text: string) => void,
+		onToolInput?: (text: string) => void,
 	): Promise<void>
 }
 type AdapterEntry = { adapter: Adapter; name: string }
@@ -570,15 +588,68 @@ const server = http.createServer(async (req, res) => {
 		})
 
 		const accumulated: string[] = []
+		let previewCount = 0
+		function sendPreview(xml: string): void {
+			previewCount++
+			res.write(`data: ${JSON.stringify({ type: "preview", xml })}\n\n`)
+		}
+
+		// Frames from the MCP server's own state, one per mutating tool call.
+		let mcpWrote = false
+		const stopWatching =
+			tmpDir && outputFile
+				? watchOutputFile(tmpDir, outputFile, (xml) => {
+						mcpWrote = true
+						sendPreview(xml)
+					})
+				: null
+
+		// Frames read out of the tokens, for the stretch before any of that exists.
+		// A process the model composes in a single tool call writes nothing to disk
+		// until the call returns, so without this the whole build is one frame at
+		// the end. Once the MCP server has written real state these stop: its
+		// frames are the same diagram, from the model rather than from a guess at
+		// an unfinished one.
+		const streamedDiagram = createCompactStream({ base: currentCompact })
+		let lastFrameAt = 0
+		function onStreamedText(text: string): void {
+			if (mcpWrote) return
+			const defs = streamedDiagram.push(text)
+			if (!defs) return
+			const now = Date.now()
+			if (now - lastFrameAt < PREVIEW_FRAME_MS) return
+			lastFrameAt = now
+			try {
+				sendPreview(Bpmn.export(defs))
+			} catch (err) {
+				console.error(`[server] preview frame dropped: ${String(err)}`)
+			}
+		}
+
 		try {
-			await detected.adapter.stream(messages, systemPrompt, mcpConfigFile, (token) => {
-				accumulated.push(token)
-				res.write(`data: ${JSON.stringify({ type: "token", text: token })}\n\n`)
-			})
+			await detected.adapter.stream(
+				messages,
+				systemPrompt,
+				mcpConfigFile,
+				(token) => {
+					accumulated.push(token)
+					res.write(`data: ${JSON.stringify({ type: "token", text: token })}\n\n`)
+					// An MCP adapter writes the diagram through tool calls and prose in
+					// the text, so only the tool arguments are worth reading. Without
+					// MCP the text is all there is.
+					if (!detected.adapter.supportsMcp) onStreamedText(token)
+				},
+				onStreamedText,
+			)
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err)
 			console.error(`[server] adapter error: ${msg}`)
 			res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`)
+		}
+
+		if (stopWatching) {
+			stopWatching()
+			console.log(`[server] emitted ${previewCount} preview frame(s)`)
 		}
 
 		// ── Post-process: get final diagram and emit XML ──────────────────────────

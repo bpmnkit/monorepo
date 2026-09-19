@@ -1,5 +1,155 @@
 # Progress
 
+## 2026-09-18 — The package table on the homepage had drifted a whole release
+
+`tests/ecosystem.test.ts` reported one stale version, `packages/ascii` at 0.0.36
+against a manifest reading 0.0.37. It asserts per package in a loop and stops at
+the first mismatch, so what it was actually reporting was **14** of the 27
+packages behind — core, canvas, editor, plugins, engine, feel, cli, proxy and the
+rest — the homepage having missed a release rather than a package having missed
+an edit.
+
+`@bpmnkit/camunda-docspack` is the one worth naming: the table had it at 0.0.0,
+which is the same version-that-lies failure written up on 2026-09-16, surviving in
+a second place after the manifest itself was fixed.
+
+Regenerated with `node scripts/generate-ecosystem.mjs`; the whole diff is version
+strings. `generate-plugins-doc.mjs`, the other generator `prebuild` runs, was
+already current, so the drift was this file alone.
+
+## 2026-09-18 — The preview reached the docs, and the pack that agents actually read
+
+Three commits of streaming preview had landed in the generated READMEs and in
+`doc/`, and nowhere a user or an agent looks. The docspack gap was the sharp one:
+this repo's own CLAUDE.md tells every agent to ask `bpmnkit-docs` before
+answering from memory and to trust a chunk over recall, so an agent asking how to
+preview a diagram mid-generation got nothing and fell through to training that
+predates the API.
+
+`guides/ai.md` gains "Previewing While the Model Writes" — why a half-written
+document cannot be parsed, what `base` and `keepViewport` are for, that frames are
+advisory, and where the proxy's two kinds of `preview` frame come from. That guide
+is also the only home the `preview` SSE event has: there is no docs page for
+`@bpmnkit/proxy` or `@bpmnkit/plugins`. `packages/core.md` gains
+`createCompactStream(options?)` beside `compactify` and `expand`.
+
+The pack rebuilt to 208 chunks from 206, and both new chunks come back from a real
+`ask` against the built index.
+
+On the landing page the streaming preview goes where the claim it qualifies
+already is: the AI benchmark section leads with "faster to a diagram", and a panel
+after it says the wait is now something to watch rather than sit through. It
+reuses the section's hairline-panel stacking — `border-top`/`border-bottom: none`
+with an accent left rule — so the box stays one box.
+
+`apps/landing/src/generated/ecosystem.ts` was committed stale and failing
+`tests/ecosystem.test.ts`, which is unrelated to any of this and is fixed below.
+
+## 2026-09-17 — Marking what the AI added, and only when that means something
+
+A preview frame shows the process being written but says nothing about which part
+of it was already there, so asking for one more task read the same as asking for
+a rewrite. Each frame now outlines the elements the diagram being edited does not
+have. `load` clears highlights, so the marking is re-applied per frame; it is
+also applied to the authoritative render at the end of the message, or it would
+disappear at the moment the result arrived.
+
+The plan said to mark the elements that arrived in the last frame. Written out,
+that is a 100 ms flash per element and a canvas that never settles — and it
+answers a question nobody asked, since the shapes appearing is already the signal
+that something arrived. What is worth distinguishing is the AI's work from the
+user's, so `additionsToMark` compares against the diagram the request started
+from instead.
+
+That only means anything when there is a diagram to compare against, and
+"non-empty" turned out to be the wrong test: `Bpmn.makeEmpty` is a single
+unconnected start event, so a process built from scratch in a fresh file would
+have had everything but that start event marked. The test is no sequence flow —
+nothing is connected yet, so there is no process for anything to be new relative
+to — and a from-scratch build is left unmarked.
+
+A happy-dom test renders a real canvas and asserts the class lands straight after
+`load`, which is what lets the panel mark synchronously rather than out of a
+`requestAnimationFrame` the way the improve flow beside it does.
+
+This finishes `docs/superpowers/plans/2026-09-17-streaming-bpmn-preview.md`.
+
+## 2026-09-17 — Reading the diagram out of the tokens, before the document closes
+
+Watching the MCP output file covered diagrams built over several tool calls, and
+left the common case untouched: asked to build a process from scratch, the model
+makes one `replace_diagram` call, and nothing reaches disk until it returns. A
+capture settled what that call actually looks like — 1,580 characters of clean,
+quoted JSON in 94 deltas, opening `{"diagram": {` and not closing it until the
+final two characters. Parsing is therefore useless for the whole of it, which is
+exactly the stretch worth showing.
+
+`createCompactStream` does not parse the document. It takes complete `{...}`
+literals as they close and keeps the ones shaped like a `CompactElement` or a
+`CompactFlow` — the innermost objects, and so the first to finish. On that
+capture the first renderable frame arrives 260 characters in, 16% of the way,
+with 15 frames following; feeding the whole thing one character at a time, with
+an export per frame, costs 13 ms.
+
+The first attempt scanned from the last literal it had taken, which loses a
+sub-process: its children close before it does, the cursor moves past them, and
+the container itself is never seen. Replaced with a single pass over a brace
+stack — every character looked at once, every literal considered once, innermost
+first — which is both linear and the order that lets a container reclaim the
+children already sitting at the top level.
+
+Two things throw in `expand` and are handled rather than caught: a flow marked
+`isDefault` whose gateway has not been written yet, and an element whose `type`
+has not finished arriving. The first loses its marker in previews, the second is
+not taken until its type is one the catalog knows.
+
+The claude adapter asks for `--include-partial-messages` only when something is
+listening, and forwards `input_json_delta` fragments for `mcp__bpmn__*` calls
+only. Keying on the content-block index matters: the recorded run reached for two
+of its own tools before the diagram one, and their arguments stream through the
+same channel. `readStreamJsonLine` is split out so that ordering can be replayed
+in a test instead of asserted about a subprocess.
+
+`/chat` feeds those fragments to one stream per request, seeded with the diagram
+being edited so a frame shows the whole process rather than the fragment being
+added, and throttles frames to 100 ms — a limit set by the canvas laying the
+diagram out again at the other end, not by the 1 ms it costs to build one. Once
+the MCP server has written real state the streamed frames stop: its frames are
+the same diagram, from the model rather than from a guess at an unfinished
+document.
+
+## 2026-09-17 — The diagram stopped waiting for the model to stop talking
+
+`/chat` read the MCP server's output file once, after `adapter.stream()` resolved,
+and emitted it as the `xml` event. The MCP server writes that file on every
+mutating tool call, so for a diagram built over several calls the process was
+complete on disk seconds before anything looked at it. The user watched prose
+scroll past while the thing worth seeing sat in a temp directory.
+
+`watchOutputFile` watches the directory rather than the file — the file does not
+exist until the first tool call, and `watch` throws on a path that is not there —
+and reports each complete, changed write as a `preview` event. Against the real
+MCP server over stdio, a two-call conversation produced two frames, each a
+parseable diagram, the second carrying the first plus what the second call added.
+
+The guard that matters is what it does with a bad read. A read can land between
+the open and the flush, so a frame is validated by parsing it and dropped if it
+fails; the next write carries the whole file. That is affordable because previews
+are advisory — the `xml` event still follows and is still authoritative — and it
+is the same property that lets the panel render a frame without checking it
+against anything.
+
+In the panel, frames go into a canvas above the reply, updated with `keepViewport`
+so the diagram grows in place instead of re-framing on every change, and the
+streaming text moved into its own child element so a frame arriving mid-stream is
+not wiped by the next token. `finalizeAiMessage` replaces the live canvas with the
+authoritative render, unchanged.
+
+This is the first phase of `docs/superpowers/plans/2026-09-17-streaming-bpmn-preview.md`.
+It covers diagrams built through several tool calls. A from-scratch build that the
+model does in one `compose_diagram` call is still one frame at the end — that is
+what phase two, streaming the tool argument itself, is for.
+
 ## 2026-09-17 — The rest of the repo joins the design system
 
 With the studio on the system, an audit of what still was not turned up a

@@ -1,5 +1,48 @@
 # Features
 
+## A preview says which part of the diagram the AI added (2026-09-17)
+
+- **Additions outlined, the rest left plain** (`packages/plugins/ai-bridge`) — every
+  preview frame marks the elements the diagram being edited does not have, so an
+  edit no longer reads the same as a rewrite. Re-applied per frame, since `load`
+  clears highlights, and to the final authoritative render as well.
+- **`additionsToMark(before, rendered)`** returns nothing when there is no process
+  to contrast with, read as *no sequence flow* rather than no element: a new file
+  in the editor is one unconnected start event, and marking everything the model
+  writes says no more than marking none of it.
+
+## The diagram is read out of the tokens as the model writes it (2026-09-17)
+
+- **`createCompactStream()`** (`@bpmnkit/core`) — takes complete `{...}` literals
+  out of a text stream as they close and keeps the ones shaped like a
+  `CompactElement` or `CompactFlow`. It does not parse the document, so the
+  outermost brace — the last character a tool call sends — is not waited on.
+- **Indifferent to the source.** A `replace_diagram` argument, a fenced JSON
+  block in prose and a `compose_diagram` body all carry the same literals.
+- **One pass, one look per character.** A brace stack considers each literal once,
+  innermost first, so a sub-process is seen after the children it reclaims from
+  the top level.
+- **Never throws.** `push` drops what it cannot place and strips `isDefault` from
+  a flow whose gateway has not arrived, rather than failing the frame.
+- **`--include-partial-messages` in the claude adapter** — argument fragments of
+  `mcp__bpmn__*` calls are forwarded as they stream, keyed by content-block index
+  so another tool's arguments are never read as a diagram. Measured on a recorded
+  run: first renderable frame 16% into the tool argument, 15 frames in total.
+
+## The AI diagram is watchable while the model writes it (2026-09-17)
+
+- **`preview` SSE event on `/chat`** — the proxy watches the MCP server's output
+  file, which is rewritten on every mutating tool call, and reports each complete
+  write. A diagram built over several calls arrives as frames instead of appearing
+  only once the adapter stream resolves.
+- **Advisory by design.** A read that lands mid-write is dropped, not repaired —
+  the next write carries the whole file, and the `xml` event at the end of the
+  stream stays the authoritative result.
+- **Live canvas in the AI panel** (`packages/plugins/ai-bridge`) — frames render
+  into a canvas above the reply, updated with `keepViewport` so the diagram grows
+  in place rather than re-framing on every change, then replaced by the
+  authoritative render when the message finalises.
+
 ## Learn, the forms and the last plugins join the design system (2026-09-17)
 
 - **`apps/learn` is on the system.** The 2025 aurora — drifting blurred orbs, a dot

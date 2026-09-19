@@ -732,6 +732,23 @@ const CAPABILITIES = [
         </p>
       </div>
 
+      <div class="bench-preview">
+        <div class="panel-label panel-label--accent">And the waiting</div>
+        <p>
+          Time to a diagram is the metric above, but a diagram is visual, and the model writes
+          one a character at a time. <code>createCompactStream</code> reads the elements out of
+          the stream as their own literals close, rather than waiting for the document's last
+          brace — so the process draws itself while the model is still writing it, instead of
+          appearing all at once when it stops.
+        </p>
+        <p>
+          On a recorded run writing a seven-element order process, the first frame that could be
+          rendered arrived 16% of the way into the model's output, with 14 more behind it. Every
+          frame is a guess at an unfinished document; the model's finished output is still what
+          gets saved. <a href="/docs/guides/ai">How it works →</a>
+        </p>
+      </div>
+
       <div class="bench-method">
         <div class="panel-label">Method, and what this does not claim</div>
         <p>
