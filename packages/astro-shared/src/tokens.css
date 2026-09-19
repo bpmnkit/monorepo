@@ -1,33 +1,86 @@
-/* ── BPMN SDK brand tokens (Astro apps) ─────────────────────────────────────
- * Imports the canonical --bpmnkit-* token set, then maps them to the shorter
- * --* names used by the landing / learn / docs layouts so those templates
- * don't need updating.  Aurora / layout tokens live here too.
+/* ── BPMN Kit design-system tokens (Astro apps) ──────────────────────────────
+ * Imports the canonical `--bpmnkit-*` token set, then exposes the short names
+ * that the Astro layouts read — the same vocabulary `apps/landing`'s
+ * `global.css` declares, with the same values, so a visitor moving between
+ * bpmnkit.com and a sibling site crosses no boundary.
+ *
+ * Everything here is derived from `--bpmnkit-ds-*` rather than restated, so
+ * `@bpmnkit/ui` stays the single source of truth for the system.
+ *
+ * This used to map onto the product palette (`--bpmnkit-bg`, `--bpmnkit-accent`
+ * …) and carried the 2025 aurora's layout tokens beside it: a 14px radius and a
+ * `--pink`. Both are gone. The system is square, flat and spends one accent.
  * ─────────────────────────────────────────────────────────────────────────── */
 
 @import "@bpmnkit/ui/tokens.css";
 
-/* Map --bpmnkit-* → short names used in Astro layout templates */
 :root {
-	--bg: var(--bpmnkit-bg);
-	--bg-card: var(--bpmnkit-surface);
-	--surface: var(--bpmnkit-surface);
-	--bg-code: var(--bpmnkit-surface-2);
-	--border: var(--bpmnkit-border);
-	--text: var(--bpmnkit-fg);
-	--text-muted: var(--bpmnkit-fg-muted);
-	--accent: var(--bpmnkit-accent);
-	--accent-bright: var(--bpmnkit-accent-bright);
-	--accent-glow: var(--bpmnkit-accent-subtle);
-	--teal: var(--bpmnkit-teal);
-	--success: var(--bpmnkit-success);
-	--warn: var(--bpmnkit-warn);
-	--danger: var(--bpmnkit-danger);
+	/* Ground */
+	--ground: var(--bpmnkit-ds-bg);
+	--ground-alt: var(--bpmnkit-ds-bg-alt);
+	--panel: var(--bpmnkit-ds-canvas);
 
-	/* Astro-specific layout tokens */
-	--pink: oklch(68% 0.22 340);
-	--font-mono: var(--bpmnkit-font-mono);
-	--font-sans: var(--bpmnkit-font);
-	--max-width: 1120px;
-	--nav-h: 60px;
-	--radius: 14px;
+	/* Ink */
+	--ink: var(--bpmnkit-ds-ink);
+	--ink-body: var(--bpmnkit-ds-ink-2);
+	--ink-body-soft: var(--bpmnkit-ds-ink-3);
+	--ink-meta: var(--bpmnkit-ds-ink-4);
+	--rule: var(--bpmnkit-ds-line);
+	--rule-soft: var(--bpmnkit-ds-line-soft);
+	--rule-strong: var(--bpmnkit-ds-line-strong);
+
+	/* Accent — one, and one only */
+	--accent: var(--bpmnkit-ds-accent);
+	--accent-hover: var(--bpmnkit-ds-accent-hover);
+	--accent-on-ink: var(--bpmnkit-ds-accent-on-dark);
+	--accent-tint: var(--bpmnkit-ds-accent-tint);
+
+	/* Ink surfaces (code panels, dark bands, footer) */
+	--ink-ground: var(--bpmnkit-ds-dark);
+	--ink-rule: var(--bpmnkit-ds-line-dark);
+	--ink-fg: var(--bpmnkit-ds-ink-on-dark);
+	--ink-fg-muted: var(--bpmnkit-ds-ink-on-dark-2);
+
+	/* Code on ink */
+	--code-bg: var(--bpmnkit-ds-dark-code);
+	--code-fg: var(--bpmnkit-ds-code-text);
+	--code-comment: var(--bpmnkit-ds-code-comment);
+	--code-str: var(--bpmnkit-ds-code-string);
+	--code-prompt: var(--bpmnkit-ds-code-prompt);
+
+	/* Semantic state — exempt from the one-accent rule */
+	--state-good: var(--bpmnkit-success);
+	--state-warn: var(--bpmnkit-warn);
+	--state-bad: var(--bpmnkit-danger);
+
+	/* Type — two roles: sans for prose, mono for every label and datum */
+	--font-sans: var(--bpmnkit-ds-font-sans);
+	--font-mono: var(--bpmnkit-ds-font-mono);
+
+	/* Layout */
+	--max-width: 1180px;
+	--gutter: var(--bpmnkit-ds-page-gutter);
+	--nav-h: 56px;
+	--section-pad: 64px;
+	--radius: 0;
+
+	/* Aliases the layouts and the packages they embed still read. */
+	--bg: var(--ground);
+	--bg-card: var(--panel);
+	--surface: var(--panel);
+	--bg-code: var(--code-bg);
+	--inline-code-bg: var(--ground-alt);
+	--border: var(--rule);
+	--text: var(--ink);
+	--text-muted: var(--ink-body-soft);
+	--accent-bright: var(--accent);
+	--accent-glow: var(--accent-tint);
+	--success: var(--state-good);
+	--warn: var(--state-warn);
+	--danger: var(--state-bad);
+	/* The system has one accent, so the second brand colour resolves to it. */
+	--teal: var(--accent);
+	/* BPMN strokes and labels belong to the diagram renderer, not the chrome:
+	   an illustration of a symbol takes this rather than the accent. */
+	--diagram-ink: var(--bpmnkit-ds-diagram-ink);
 }

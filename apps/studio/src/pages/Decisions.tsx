@@ -13,7 +13,7 @@ const columns: Column<DecisionDefinition>[] = [
 		render: (dec) => (
 			<Link
 				href={`/decisions/${dec.decisionDefinitionKey}`}
-				className="font-medium text-fg hover:text-accent"
+				className="text-fg text-sm hover:text-accent"
 			>
 				{dec.name || dec.decisionDefinitionId}
 			</Link>
@@ -23,18 +23,18 @@ const columns: Column<DecisionDefinition>[] = [
 		key: "decisionId",
 		header: "Decision ID",
 		render: (dec) => (
-			<span className="font-mono text-muted text-xs">{dec.decisionDefinitionId}</span>
+			<span className="ds-datum text-muted text-xs">{dec.decisionDefinitionId}</span>
 		),
 	},
 	{
 		key: "version",
 		header: "Version",
-		render: (dec) => <span className="text-muted">v{dec.version}</span>,
+		render: (dec) => <span className="ds-datum text-muted text-xs">v{dec.version}</span>,
 	},
 	{
 		key: "tenant",
 		header: "Tenant",
-		render: (dec) => <span className="text-muted">{dec.tenantId ?? "—"}</span>,
+		render: (dec) => <span className="ds-datum text-muted text-xs">{dec.tenantId ?? "—"}</span>,
 	},
 ]
 
@@ -66,14 +66,17 @@ export function Decisions() {
 	}
 
 	return (
-		<div className="p-6 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
-			{!isLoading && (
-				<p className="text-xs text-muted mb-6">
-					{filtered?.length ?? 0} decision{(filtered?.length ?? 0) !== 1 ? "s" : ""}
-				</p>
-			)}
+		<div className="ds-page animate-in fade-in slide-in-from-bottom-2 duration-300">
+			<div className="ds-head">
+				<h1 className="ds-eyebrow">Decisions</h1>
+				{!isLoading && (
+					<span className="ds-datum text-muted text-xs">
+						{filtered?.length ?? 0} decision{(filtered?.length ?? 0) !== 1 ? "s" : ""}
+					</span>
+				)}
+			</div>
 
-			<div className="mb-4">
+			<div className="mb-3">
 				<Search
 					placeholder="Search by name or decision ID..."
 					value={search}

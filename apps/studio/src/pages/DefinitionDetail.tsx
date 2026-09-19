@@ -11,6 +11,7 @@ import {
 	useDefinitionXml,
 	useInstances,
 } from "../api/queries.js"
+import { StatusPill } from "../components/StatusPill.js"
 import { Button } from "../components/ui/button.js"
 import { useModelsStore } from "../stores/models.js"
 import { useThemeStore } from "../stores/theme.js"
@@ -104,11 +105,11 @@ function WasmDefinitionDetail({ definitionKey }: { definitionKey: string }) {
 	return (
 		<div className="h-full flex">
 			{/* Left: BPMN canvas */}
-			<div className="flex-1 relative border-r border-border bg-surface-2">
+			<div className="relative flex-1 border-border border-r bg-canvas">
 				<div ref={canvasContainerRef} className="absolute inset-0" />
 				{!xmlData && (
 					<div className="absolute inset-0 flex items-center justify-center">
-						<p className="text-sm text-muted">No diagram available.</p>
+						<p className="ds-lede">No diagram available.</p>
 					</div>
 				)}
 				{xmlData && (
@@ -125,14 +126,12 @@ function WasmDefinitionDetail({ definitionKey }: { definitionKey: string }) {
 			<div className="w-80 flex flex-col overflow-y-auto p-5 gap-5">
 				{/* Header */}
 				<div>
-					<h2 className="text-base font-semibold text-fg">
+					<h2 className="ds-title text-base">
 						{def?.name ?? def?.processDefinitionId ?? definitionKey}
 					</h2>
-					<p className="text-xs text-muted mt-0.5">
-						{def?.processDefinitionId}
-						{def?.version != null && (
-							<span className="ml-2 bg-surface-2 px-1.5 py-0.5 rounded">v{def.version}</span>
-						)}
+					<p className="ds-datum mt-1 flex items-center gap-2 text-muted text-xs">
+						<span className="truncate">{def?.processDefinitionId}</span>
+						{def?.version != null && <span className="ds-mark">v{def.version}</span>}
 					</p>
 					{xmlData && (
 						<Button size="sm" variant="outline" onClick={handleOpenInEditor} className="mt-3">
@@ -142,13 +141,13 @@ function WasmDefinitionDetail({ definitionKey }: { definitionKey: string }) {
 				</div>
 
 				{/* Start Instance */}
-				<div className="border border-border rounded-lg p-3 flex flex-col gap-3">
-					<p className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-1.5">
+				<div className="ds-box flex flex-col gap-3 p-3">
+					<p className="ds-label flex items-center gap-1.5">
 						<Play size={11} />
 						Start Instance
 					</p>
 					<div className="flex flex-col gap-1">
-						<label className="text-xs text-muted" htmlFor="wasm-vars">
+						<label className="ds-label" htmlFor="wasm-vars">
 							Variables (JSON)
 						</label>
 						<textarea
@@ -156,13 +155,13 @@ function WasmDefinitionDetail({ definitionKey }: { definitionKey: string }) {
 							value={variables}
 							onInput={(e) => setVariables((e.target as HTMLTextAreaElement).value)}
 							rows={3}
-							className="w-full rounded-md border border-border bg-surface px-3 py-2 text-xs font-mono text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none"
+							className="ds-field ds-datum w-full resize-none text-xs"
 							placeholder="{}"
 						/>
 					</div>
 					{startError && <p className="text-xs text-danger">{startError}</p>}
 					{lastKey && (
-						<p className="text-xs text-success">
+						<p className="text-success text-xs">
 							Started —{" "}
 							<Link href={`/instances/${lastKey}`} className="underline hover:text-accent">
 								view #{lastKey}
@@ -191,44 +190,34 @@ function WasmDefinitionDetail({ definitionKey }: { definitionKey: string }) {
 
 				{/* Instances */}
 				<div className="flex flex-col gap-2">
-					<p className="text-xs font-semibold text-muted uppercase tracking-wider">Instances</p>
+					<p className="ds-label">Instances</p>
 					{instances.length === 0 ? (
-						<p className="text-xs text-muted">No instances yet.</p>
+						<p className="ds-lede text-xs">No instances yet.</p>
 					) : (
-						<div className="border border-border rounded-lg overflow-hidden">
+						<div className="ds-box">
 							<table className="w-full text-xs">
 								<thead>
-									<tr className="bg-surface-2 border-b border-border">
-										<th className="px-3 py-2 text-left font-medium text-muted">Key</th>
-										<th className="px-3 py-2 text-left font-medium text-muted">State</th>
+									<tr className="border-border border-b bg-bg">
+										<th className="px-3 py-2 text-left">Key</th>
+										<th className="px-3 py-2 text-left">State</th>
 									</tr>
 								</thead>
 								<tbody>
 									{instances.map((inst) => (
 										<tr
 											key={inst.processInstanceKey}
-											className="border-b border-border last:border-0 hover:bg-surface-2 transition-colors"
+											className="border-border border-b transition-colors last:border-0 hover:bg-bg"
 										>
 											<td className="px-3 py-2">
 												<Link
 													href={`/instances/${inst.processInstanceKey}`}
-													className="text-accent hover:underline font-mono"
+													className="ds-datum text-accent hover:underline"
 												>
 													{inst.processInstanceKey}
 												</Link>
 											</td>
 											<td className="px-3 py-2">
-												<span
-													className={
-														inst.state === "ACTIVE"
-															? "text-success"
-															: inst.state === "COMPLETED"
-																? "text-muted"
-																: "text-danger"
-													}
-												>
-													{inst.state}
-												</span>
+												<StatusPill state={inst.state} />
 											</td>
 										</tr>
 									))}

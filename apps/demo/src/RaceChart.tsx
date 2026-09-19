@@ -60,12 +60,9 @@ function Bar({ label, colorVar, data, axisMaxMs }: BarProps) {
 						` · ${formatTokenCount(data.usage.inputTokens)} in / ${formatTokenCount(data.usage.outputTokens)} out`}
 				</span>
 			</div>
-			<div
-				class="h-8 rounded overflow-hidden"
-				style="background: var(--bpmnkit-surface-2, #1e1e2e);"
-			>
+			<div class="h-8 overflow-hidden" style="background: var(--bpmnkit-surface-2, #1e1e2e);">
 				<div
-					class="h-full rounded transition-[width]"
+					class="h-full transition-[width]"
 					style={`width: ${widthPct}%; background: var(${colorVar});`}
 				/>
 			</div>

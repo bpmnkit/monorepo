@@ -58,7 +58,7 @@ function highlightText(text: string, query: string): JSX.Element {
 			{parts.map((part, i) =>
 				i % 2 === 1 ? (
 					// biome-ignore lint/suspicious/noArrayIndexKey: static highlight parts
-					<mark key={i} className="bg-accent/30 text-fg rounded-sm not-italic">
+					<mark key={i} className="bg-accent/30 text-fg not-italic">
 						{part}
 					</mark>
 				) : (
@@ -97,16 +97,14 @@ function VariableModal({
 	return (
 		// biome-ignore lint/a11y/useKeyWithClickEvents: ESC is handled via window keydown listener
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 			onClick={(e) => e.target === e.currentTarget && onClose()}
 		>
-			<div className="flex flex-col w-full max-w-2xl max-h-[80vh] rounded-lg border border-border bg-surface shadow-2xl overflow-hidden mx-4">
+			<div className="ds-box mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden">
 				<div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-					<span className="font-mono text-sm text-fg font-medium flex-1 truncate">
-						{variable.name}
-					</span>
+					<span className="ds-datum flex-1 truncate text-fg text-sm">{variable.name}</span>
 					{search.trim() && (
-						<span className="text-xs text-muted shrink-0">
+						<span className="ds-datum shrink-0 text-muted text-xs">
 							{visibleLines.length} / {lines.length} lines
 						</span>
 					)}
@@ -119,18 +117,18 @@ function VariableModal({
 						✕
 					</button>
 				</div>
-				<div className="px-4 py-2 border-b border-border/60 shrink-0">
+				<div className="shrink-0 border-border border-b px-4 py-2">
 					<input
 						ref={inputRef}
 						type="text"
 						value={search}
 						onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
 						placeholder="Search in value…"
-						className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-xs text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+						className="ds-field w-full text-xs"
 					/>
 				</div>
 				<div className="flex-1 overflow-auto p-4">
-					<pre className="font-mono text-xs text-fg leading-relaxed whitespace-pre-wrap break-all">
+					<pre className="ds-datum whitespace-pre-wrap break-all text-fg text-xs leading-relaxed">
 						{visibleLines.length === 0 ? (
 							<span className="text-muted italic">No lines match the search.</span>
 						) : search.trim() ? (
@@ -256,16 +254,16 @@ export function WasmInstanceDetail({
 
 	if (isLoading) {
 		return (
-			<div className="h-full flex items-center justify-center">
-				<p className="text-sm text-muted">Loading…</p>
+			<div className="ds-empty h-full">
+				<p className="ds-lede">Loading…</p>
 			</div>
 		)
 	}
 
 	if (!instance) {
 		return (
-			<div className="h-full flex items-center justify-center">
-				<p className="text-sm text-muted">Instance not found.</p>
+			<div className="ds-empty h-full">
+				<p className="ds-lede">Instance not found.</p>
 			</div>
 		)
 	}
@@ -282,11 +280,11 @@ export function WasmInstanceDetail({
 		<div className="h-full flex flex-col md:flex-row">
 			{modalVar && <VariableModal variable={modalVar} onClose={() => setModalVar(null)} />}
 			{/* BPMN canvas — hidden on mobile (too small to be useful), visible on desktop */}
-			<div className="hidden md:flex flex-1 relative border-r border-border bg-surface-2">
+			<div className="relative hidden flex-1 border-border border-r bg-canvas md:flex">
 				<div ref={canvasContainerRef} className="absolute inset-0" />
 				{!xmlData && (
 					<div className="absolute inset-0 flex items-center justify-center">
-						<p className="text-sm text-muted">No diagram available.</p>
+						<p className="ds-lede">No diagram available.</p>
 					</div>
 				)}
 			</div>
@@ -296,15 +294,13 @@ export function WasmInstanceDetail({
 				{/* Header */}
 				<div className="flex items-start justify-between gap-3">
 					<div>
-						<h2 className="text-sm font-semibold text-fg font-mono">
-							{instance.processInstanceKey}
-						</h2>
-						<p className="text-xs text-muted mt-0.5">{instance.processDefinitionId}</p>
+						<h2 className="ds-datum text-fg text-sm">{instance.processInstanceKey}</h2>
+						<p className="ds-datum mt-0.5 text-muted text-xs">{instance.processDefinitionId}</p>
 						<p className="text-xs mt-0.5">
-							<span className={`font-medium ${stateColor}`}>{instance.state}</span>
+							<span className={`ds-datum ${stateColor}`}>{instance.state}</span>
 						</p>
 						{instance.startDate && (
-							<p className="text-xs text-muted mt-0.5">
+							<p className="ds-datum mt-0.5 text-muted text-xs">
 								{new Date(instance.startDate).toLocaleString()}
 							</p>
 						)}
@@ -315,7 +311,7 @@ export function WasmInstanceDetail({
 							variant="outline"
 							onClick={() => void handleCancel()}
 							disabled={cancel.isPending}
-							className="text-danger border-danger hover:bg-danger/10 shrink-0"
+							className="shrink-0 border-danger text-danger hover:bg-danger/10"
 						>
 							{cancel.isPending ? (
 								<>
@@ -333,19 +329,19 @@ export function WasmInstanceDetail({
 				</div>
 
 				{/* Wasm simulation banner */}
-				<div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-muted">
-					<span className="font-semibold text-accent">Simulation mode</span> — Service tasks are
+				<div className="ds-note text-xs">
+					<span className="ds-label text-accent">Simulation mode</span> — Service tasks are
 					auto-completed; REST connectors execute real HTTP requests.
 				</div>
 
 				{/* Start new instance */}
-				<div className="border border-border rounded-lg p-3 flex flex-col gap-3">
-					<p className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-1.5">
+				<div className="ds-box flex flex-col gap-3 p-3">
+					<p className="ds-label flex items-center gap-1.5">
 						<Play size={11} />
 						Start new instance
 					</p>
 					<div className="flex flex-col gap-1">
-						<label className="text-xs text-muted" htmlFor="instance-vars">
+						<label className="ds-label" htmlFor="instance-vars">
 							Variables (JSON)
 						</label>
 						<textarea
@@ -353,13 +349,13 @@ export function WasmInstanceDetail({
 							value={startVars}
 							onInput={(e) => handleVarsChange((e.target as HTMLTextAreaElement).value)}
 							rows={2}
-							className="w-full rounded-md border border-border bg-surface px-3 py-2 text-xs font-mono text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none"
+							className="ds-field ds-datum w-full resize-none text-xs"
 							placeholder="{}"
 						/>
 					</div>
 					{startError && <p className="text-xs text-danger">{startError}</p>}
 					{startedKey && (
-						<p className="text-xs text-success">
+						<p className="text-success text-xs">
 							Started —{" "}
 							<Link href={`/instances/${startedKey}`} className="underline hover:text-accent">
 								view #{startedKey}
@@ -389,21 +385,19 @@ export function WasmInstanceDetail({
 				{/* Job executions */}
 				{jobExecutions.length > 0 && (
 					<div className="flex flex-col gap-2">
-						<p className="text-xs font-semibold text-muted uppercase tracking-wider">
-							Job executions
-						</p>
-						<div className="border border-border rounded-lg overflow-hidden">
+						<p className="ds-label">Job executions</p>
+						<div className="ds-box">
 							<table className="w-full text-xs">
 								<thead>
-									<tr className="bg-surface-2 border-b border-border">
-										<th className="px-3 py-2 text-left font-medium text-muted">Element</th>
-										<th className="px-3 py-2 text-left font-medium text-muted">Result</th>
+									<tr className="border-border border-b bg-bg">
+										<th className="px-3 py-2 text-left">Element</th>
+										<th className="px-3 py-2 text-left">Result</th>
 									</tr>
 								</thead>
 								<tbody>
 									{jobExecutions.map((r: JobResult) => (
-										<tr key={r.jobKey} className="border-b border-border last:border-0">
-											<td className="px-3 py-2 font-mono text-fg">{r.elementId}</td>
+										<tr key={r.jobKey} className="border-border border-b last:border-0">
+											<td className="ds-datum px-3 py-2 text-fg">{r.elementId}</td>
 											<td className="px-3 py-2">
 												{r.kind === "simulated" && <span className="text-muted">Simulated</span>}
 												{r.kind === "rest-ok" && (
@@ -426,20 +420,20 @@ export function WasmInstanceDetail({
 				{/* Incidents */}
 				{incidents.length > 0 && (
 					<div className="flex flex-col gap-2">
-						<p className="text-xs font-semibold text-muted uppercase tracking-wider">Incidents</p>
-						<div className="border border-danger/40 rounded-lg overflow-hidden">
+						<p className="ds-label">Incidents</p>
+						<div className="ds-box border-l-2 border-l-danger">
 							<table className="w-full text-xs">
 								<thead>
-									<tr className="bg-surface-2 border-b border-border">
-										<th className="px-3 py-2 text-left font-medium text-muted">Type</th>
-										<th className="px-3 py-2 text-left font-medium text-muted">Element</th>
+									<tr className="border-border border-b bg-bg">
+										<th className="px-3 py-2 text-left">Type</th>
+										<th className="px-3 py-2 text-left">Element</th>
 									</tr>
 								</thead>
 								<tbody>
 									{incidents.map((inc) => (
-										<tr key={inc.incidentKey} className="border-b border-border last:border-0">
+										<tr key={inc.incidentKey} className="border-border border-b last:border-0">
 											<td className="px-3 py-2 text-danger">{inc.errorType}</td>
-											<td className="px-3 py-2 font-mono text-muted">{inc.elementId}</td>
+											<td className="ds-datum px-3 py-2 text-muted">{inc.elementId}</td>
 										</tr>
 									))}
 								</tbody>
@@ -450,26 +444,22 @@ export function WasmInstanceDetail({
 
 				{/* Variables */}
 				<div className="flex flex-col gap-2">
-					<p className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-1.5">
+					<p className="ds-label flex items-center gap-1.5">
 						Variables
-						{variables.length > 0 && (
-							<span className="bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">
-								{variables.length}
-							</span>
-						)}
+						{variables.length > 0 && <span className="ds-mark">{variables.length}</span>}
 					</p>
-					<div className="border border-border rounded-lg overflow-hidden">
-						<div className="p-2 border-b border-border/60">
+					<div className="ds-box">
+						<div className="border-border border-b p-2">
 							<input
 								type="text"
 								value={varSearch}
 								onInput={(e) => setVarSearch((e.target as HTMLInputElement).value)}
 								placeholder="Filter by name or value…"
-								className="w-full rounded border border-border bg-surface-2 px-2.5 py-1 text-xs text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+								className="ds-field w-full text-xs"
 							/>
 						</div>
 						{filteredVars.length === 0 ? (
-							<p className="px-3 py-4 text-xs text-muted text-center">
+							<p className="px-3 py-4 text-center text-muted text-xs">
 								{variables.length === 0
 									? "No variables found for this instance."
 									: "No variables match the filter."}
@@ -482,10 +472,10 @@ export function WasmInstanceDetail({
 										key={v.name}
 										type="button"
 										onClick={() => setModalVar(v)}
-										className="w-full text-left px-3 py-2 border-b border-border/30 last:border-0 hover:bg-surface-2 transition-colors cursor-pointer group"
+										className="group w-full cursor-pointer border-border/60 border-b px-3 py-2 text-left transition-colors last:border-0 hover:bg-bg"
 									>
-										<div className="font-mono text-xs text-fg truncate">{v.name}</div>
-										<div className="font-mono text-xs text-muted truncate mt-0.5 group-hover:text-fg/70 transition-colors">
+										<div className="ds-datum truncate text-fg text-xs">{v.name}</div>
+										<div className="ds-datum mt-0.5 truncate text-muted text-xs transition-colors group-hover:text-fg/70">
 											{preview || <span className="italic">null</span>}
 										</div>
 									</button>
@@ -496,7 +486,7 @@ export function WasmInstanceDetail({
 				</div>
 
 				{!hideNavLink && (
-					<Link href="/instances" className="text-xs text-accent hover:underline self-start">
+					<Link href="/instances" className="self-start text-accent text-xs hover:underline">
 						← All instances
 					</Link>
 				)}

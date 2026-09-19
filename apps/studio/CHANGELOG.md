@@ -1,5 +1,51 @@
 # @bpmnkit/studio
 
+## 0.1.0
+
+### Minor Changes
+
+- f0a0ea2: Put the studio on the bpmnkit.com design system in full, not just its colours. The token bridge
+  added in #165 bought the palette, the two type families, square corners and no shadows; the
+  system's _form_ lives in the markup, and the app still read as a generic console in terracotta.
+
+  `styles/design-system.css` now carries a `.ds-*` component vocabulary — the hairline-subdivided
+  grid, the bordered box, the mono label, eyebrow and datum, the tinted state mark, the square
+  control, the segmented control, the accent-ruled tab, the field, the note, the code block, the
+  empty state — in Tailwind's `components` layer, so a utility at a call site still overrides it.
+  Every page is rewritten against it: the dashboard's six metrics are one bordered box divided by
+  hairlines rather than six cards that lift on hover, status and type readouts are tinted mono
+  marks rather than filled pills, every list page has a mono eyebrow and a hairline-divided filter,
+  and Settings reads as five numbered sections. Column heads and the nav rail become mono through
+  `thead th` and `nav[aria-label="Main navigation"]`, because cascivo ships hashed CSS-module
+  class names that cannot be selected. Dark and neon now redeclare `--bpmnkit-ds-*` rather than
+  aliasing it, so a rule reading a design-system token directly themes correctly.
+
+  Two pre-existing chrome bugs are fixed with it, both Tailwind's preflight against markup it does
+  not own: `*{margin:0}` beat the user agent's `dialog{margin:auto}`, so every modal opened against
+  the top-left corner, and `svg{display:block}` stacked the icon above the label in every cascivo
+  button.
+
+  The result was verified page by page against a build of the previous commit, in both themes and
+  at phone width, with a scripted tour driving the filters, dialogs, palette, theme picker and mode
+  toggle against each build and comparing the outcomes. Four regressions in the new layer were
+  found and fixed there: `auto-fit` collapsed the empty tracks and stretched a lone model card
+  across the page, a short last row rendered the missing cell as a filled block, a table header's
+  ground stopped short of its frame where a column is `sr-only`, and mono's extra tracking
+  ellipsised a project name in the rail.
+
+### Patch Changes
+
+- Updated dependencies [191d4d2]
+- Updated dependencies [f0a0ea2]
+  - @bpmnkit/core@0.8.0
+  - @bpmnkit/ui@0.3.0
+  - @bpmnkit/plugins@0.4.0
+  - @bpmnkit/user-tasks@0.1.0
+  - @bpmnkit/canvas@0.2.5
+  - @bpmnkit/editor@0.2.5
+  - @bpmnkit/engine@0.1.38
+  - @bpmnkit/operate@0.1.4
+
 ## 0.0.27
 
 ### Patch Changes

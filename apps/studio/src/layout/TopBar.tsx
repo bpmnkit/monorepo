@@ -22,20 +22,21 @@ export function TopBar({ onMenuClick, menuExpanded }: TopBarProps) {
 
 	const brand = (
 		<div className="flex min-w-0 items-center gap-3">
-			{/* Logo — links home */}
+			{/* Logo — links home. The app name rides beside the wordmark as a
+			    mono micro label, the way every app label in the system does. */}
 			<Link
 				href="/"
-				className="flex shrink-0 items-center gap-2 transition-opacity duration-150 hover:opacity-80 active:opacity-60"
+				className="flex shrink-0 items-baseline gap-2 transition-opacity duration-150 hover:opacity-80 active:opacity-60"
 				aria-label="Studio home"
 			>
 				<BpmnkitLogo />
-				<span className="font-semibold text-fg text-sm">Studio</span>
+				<span className="ds-label ds-label--micro">Studio</span>
 			</Link>
 
-			{/* Breadcrumb */}
+			{/* Breadcrumb — a path, so mono and in natural case. */}
 			{breadcrumbs.length > 0 && (
-				<nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
-					<span className="text-border" aria-hidden="true">
+				<nav aria-label="Breadcrumb" className="ds-datum flex min-w-0 items-center gap-1.5 text-xs">
+					<span className="text-muted/50" aria-hidden="true">
 						/
 					</span>
 					{breadcrumbs.map((crumb, i) => {
@@ -50,12 +51,12 @@ export function TopBar({ onMenuClick, menuExpanded }: TopBarProps) {
 										{crumb.label}
 									</Link>
 								) : (
-									<span className={`truncate ${isLast ? "font-medium text-fg" : "text-muted"}`}>
+									<span className={`truncate ${isLast ? "text-fg" : "text-muted"}`}>
 										{crumb.label}
 									</span>
 								)}
 								{!isLast && (
-									<span className="shrink-0 text-border" aria-hidden="true">
+									<span className="shrink-0 text-muted/50" aria-hidden="true">
 										/
 									</span>
 								)}
@@ -68,10 +69,10 @@ export function TopBar({ onMenuClick, menuExpanded }: TopBarProps) {
 			{activeProject && (
 				<Link
 					href="/settings"
-					className="ml-1 hidden items-center gap-1.5 rounded px-2 py-1 text-muted text-xs transition-colors hover:bg-surface-2 hover:text-fg sm:flex"
+					className="ds-datum ml-1 hidden shrink-0 items-center gap-1.5 border border-border px-2 py-0.5 text-[11px] text-muted transition-colors hover:border-accent hover:text-accent sm:flex"
 					title={`Project: ${activeProject.path}`}
 				>
-					<FolderOpen size={13} />
+					<FolderOpen size={12} />
 					<span className="max-w-48 truncate">{activeProject.name}</span>
 				</Link>
 			)}
@@ -84,16 +85,12 @@ export function TopBar({ onMenuClick, menuExpanded }: TopBarProps) {
 				<button
 					type="button"
 					onClick={() => setSimulationMode(!simulationMode)}
-					className={`flex h-8 items-center gap-1.5 rounded border px-2 text-xs transition-colors active:opacity-70 ${
-						simulationMode
-							? "border-warn bg-warn/10 text-warn"
-							: "border-border text-muted hover:text-fg"
-					}`}
+					className={`ds-btn h-7 text-xs ${simulationMode ? "ds-btn--on" : ""}`}
 					aria-label="Toggle simulation mode"
 					aria-pressed={simulationMode}
 					title="Simulation Mode: auto-complete service tasks instead of creating incidents"
 				>
-					<FlaskConical size={14} />
+					<FlaskConical size={13} />
 					<span>Simulate</span>
 				</button>
 			)}
@@ -101,15 +98,11 @@ export function TopBar({ onMenuClick, menuExpanded }: TopBarProps) {
 			<button
 				type="button"
 				onClick={toggleAI}
-				className={`flex h-8 w-8 items-center justify-center rounded border transition-colors active:opacity-70 ${
-					aiOpen
-						? "border-accent bg-accent/10 text-accent"
-						: "border-border text-muted hover:text-fg"
-				}`}
+				className={`ds-btn ds-btn--icon h-7 w-7 ${aiOpen ? "ds-btn--on" : ""}`}
 				aria-label="Toggle AI assistant"
 				aria-pressed={aiOpen}
 			>
-				<MessageSquare size={16} />
+				<MessageSquare size={15} />
 			</button>
 		</div>
 	)

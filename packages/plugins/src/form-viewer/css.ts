@@ -1,12 +1,24 @@
+/**
+ * Form viewer styles, on the bpmnkit.com design system.
+ *
+ * The `--fv-*` layer used to restate a palette of its own — a Catppuccin-ish
+ * dark and a Tailwind-ish light, both hardcoded — beside a system font stack.
+ * It now derives from the `--bpmnkit-ds-*` set `@bpmnkit/ui` owns, so a form
+ * preview matches the editor chrome it is docked inside and the user-task
+ * widget that embeds it.
+ *
+ * The viewer sets `light` / `dark` on its own root rather than reading an
+ * ancestor's `data-theme`, so the dark variant redeclares the ground here.
+ */
 export const FORM_VIEWER_CSS = `
 .form-viewer {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, sans-serif);
   font-size: 14px;
   overflow: auto;
   height: 100%;
   box-sizing: border-box;
-  background: var(--fv-bg, #1e1e2e);
-  color: var(--fv-fg, #cdd6f4);
+  background: var(--fv-bg, #ffffff);
+  color: var(--fv-fg, #14161a);
 }
 
 .form-viewer-body {
@@ -16,41 +28,41 @@ export const FORM_VIEWER_CSS = `
 }
 
 .form-viewer.light {
-  --fv-bg: #ffffff;
-  --fv-fg: #1c1c1c;
-  --fv-border: #d0d0d0;
-  --fv-input-bg: #f8f9fa;
-  --fv-label: #4b5563;
-  --fv-placeholder: #9ca3af;
-  --fv-badge-bg: #e2e8f0;
-  --fv-badge-fg: #334155;
-  --fv-accent: var(--bpmnkit-accent, #1a56db);
-  --fv-tag-bg: #dbeafe;
-  --fv-tag-fg: #1e40af;
-  --fv-group-bg: #f9fafb;
-  --fv-group-border: #e5e7eb;
-  --fv-separator: #e5e7eb;
-  --fv-btn-bg: var(--bpmnkit-accent, #1a56db);
+  --fv-bg: var(--bpmnkit-ds-surface, #ffffff);
+  --fv-fg: var(--bpmnkit-ds-ink, #14161a);
+  --fv-border: var(--bpmnkit-ds-line, #d8dbe0);
+  --fv-input-bg: var(--bpmnkit-ds-bg, #f4f5f7);
+  --fv-label: var(--bpmnkit-ds-ink-4, #8b929c);
+  --fv-placeholder: var(--bpmnkit-ds-ink-4, #8b929c);
+  --fv-badge-bg: var(--bpmnkit-ds-bg-alt, #eef0f3);
+  --fv-badge-fg: var(--bpmnkit-ds-ink-3, #5c6470);
+  --fv-accent: var(--bpmnkit-ds-accent, #a8503a);
+  --fv-tag-bg: var(--bpmnkit-ds-accent-tint, #fdf3ef);
+  --fv-tag-fg: var(--bpmnkit-ds-accent, #a8503a);
+  --fv-group-bg: var(--bpmnkit-ds-bg, #f4f5f7);
+  --fv-group-border: var(--bpmnkit-ds-line-soft, #e4e6ea);
+  --fv-separator: var(--bpmnkit-ds-line-soft, #e4e6ea);
+  --fv-btn-bg: var(--bpmnkit-ds-accent, #a8503a);
   --fv-btn-fg: #ffffff;
 }
 
 .form-viewer.dark {
-  --fv-bg: var(--bpmnkit-surface-2, #1e1e2e);
-  --fv-fg: #cdd6f4;
-  --fv-border: #313244;
-  --fv-input-bg: var(--bpmnkit-surface-2, #1e1e2e);
-  --fv-label: #bac2de;
-  --fv-placeholder: #6c7086;
-  --fv-badge-bg: #313244;
-  --fv-badge-fg: #bac2de;
-  --fv-accent: var(--bpmnkit-accent, #6b9df7);
-  --fv-tag-bg: #1e1e3a;
-  --fv-tag-fg: var(--bpmnkit-accent, #6b9df7);
-  --fv-group-bg: var(--bpmnkit-surface-2, #1e1e2e);
-  --fv-group-border: #313244;
-  --fv-separator: #313244;
-  --fv-btn-bg: var(--bpmnkit-accent, #6b9df7);
-  --fv-btn-fg: #1e1e2e;
+  --fv-bg: #16181d;
+  --fv-fg: #f4f5f7;
+  --fv-border: #2c3038;
+  --fv-input-bg: #0f1114;
+  --fv-label: #8b929c;
+  --fv-placeholder: #8b929c;
+  --fv-badge-bg: #22252b;
+  --fv-badge-fg: #a6acb5;
+  --fv-accent: var(--bpmnkit-ds-accent-on-dark, #c9755c);
+  --fv-tag-bg: rgba(201, 117, 92, 0.14);
+  --fv-tag-fg: var(--bpmnkit-ds-accent-on-dark, #c9755c);
+  --fv-group-bg: #0f1114;
+  --fv-group-border: #22252b;
+  --fv-separator: #22252b;
+  --fv-btn-bg: var(--bpmnkit-ds-accent-on-dark, #c9755c);
+  --fv-btn-fg: #14161a;
 }
 
 /* Grid rows */
@@ -70,12 +82,13 @@ export const FORM_VIEWER_CSS = `
 /* Labels */
 .fv-label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  font-weight: 400;
   color: var(--fv-label);
   margin-bottom: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
 }
 
 /* Input preview shell */
@@ -85,7 +98,6 @@ export const FORM_VIEWER_CSS = `
   box-sizing: border-box;
   padding: 8px 10px;
   border: 1px solid var(--fv-border);
-  border-radius: 4px;
   background: var(--fv-input-bg);
   color: var(--fv-placeholder);
   font-size: 13px;
@@ -119,7 +131,6 @@ export const FORM_VIEWER_CSS = `
   width: 14px;
   height: 14px;
   border: 2px solid var(--fv-border);
-  border-radius: 2px;
   flex-shrink: 0;
 }
 
@@ -134,11 +145,13 @@ export const FORM_VIEWER_CSS = `
 .fv-tag {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 1px 6px;
   background: var(--fv-tag-bg);
   color: var(--fv-tag-fg);
-  font-size: 12px;
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Table preview */
@@ -166,7 +179,6 @@ export const FORM_VIEWER_CSS = `
 /* Group container */
 .fv-group {
   border: 1px solid var(--fv-group-border);
-  border-radius: 6px;
   padding: 12px;
   background: var(--fv-group-bg);
 }
@@ -193,7 +205,6 @@ export const FORM_VIEWER_CSS = `
 .fv-iframe {
   width: 100%;
   border: 1px dashed var(--fv-border);
-  border-radius: 4px;
   padding: 16px;
   text-align: center;
   color: var(--fv-placeholder);
@@ -208,7 +219,6 @@ export const FORM_VIEWER_CSS = `
   justify-content: center;
   min-height: 60px;
   border: 1px dashed var(--fv-border);
-  border-radius: 4px;
   color: var(--fv-placeholder);
   font-size: 12px;
 }
@@ -220,7 +230,6 @@ export const FORM_VIEWER_CSS = `
   justify-content: center;
   min-height: 80px;
   border: 1px dashed var(--fv-border);
-  border-radius: 4px;
   color: var(--fv-placeholder);
   font-size: 12px;
 }
@@ -229,7 +238,6 @@ export const FORM_VIEWER_CSS = `
 .fv-expression {
   padding: 6px 10px;
   border: 1px solid var(--fv-border);
-  border-radius: 4px;
   background: var(--fv-input-bg);
   color: var(--fv-placeholder);
   font-family: "Fira Code", "Cascadia Code", monospace;
@@ -242,7 +250,6 @@ export const FORM_VIEWER_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 7px 16px;
-  border-radius: 4px;
   background: var(--fv-btn-bg);
   color: var(--fv-btn-fg);
   font-size: 13px;
@@ -270,7 +277,6 @@ export const FORM_VIEWER_CSS = `
 /* Dynamic list */
 .fv-dynamic-list {
   border: 1px solid var(--fv-group-border);
-  border-radius: 6px;
   padding: 12px;
   background: var(--fv-group-bg);
 }

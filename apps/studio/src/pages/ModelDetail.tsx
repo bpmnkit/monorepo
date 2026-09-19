@@ -142,12 +142,12 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 	return (
 		<div className="p-4 flex flex-col gap-5 overflow-y-auto h-full">
 			<div>
-				<p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+				<p className="ds-label mb-2 flex items-center gap-1">
 					<Rocket size={11} />
 					Deploy
 				</p>
 				{isDeployed && (
-					<p className="text-xs text-success flex items-center gap-1 mb-2">
+					<p className="mb-2 flex items-center gap-1 text-success text-xs">
 						<CheckCircle size={11} />
 						Deployed — v{latestDef.version}
 					</p>
@@ -163,9 +163,9 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 			</div>
 
 			{isDeployed && (
-				<div className="border border-border rounded-lg p-3 flex flex-col gap-3">
+				<div className="ds-box flex flex-col gap-3 p-3">
 					{/* Trigger mode selector */}
-					<div className="flex rounded-md border border-border overflow-hidden text-xs">
+					<div className="ds-seg flex">
 						{(
 							[
 								{ mode: "manual", label: "Manual", icon: <Play size={11} /> },
@@ -178,10 +178,8 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 								key={mode}
 								type="button"
 								onClick={() => setTriggerMode(mode)}
-								className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 transition-colors border-r border-border last:border-r-0 ${
-									triggerMode === mode
-										? "bg-accent text-white"
-										: "bg-surface text-muted hover:bg-surface-2"
+								className={`ds-seg-btn flex flex-1 items-center justify-center gap-1 px-2 py-1.5 ${
+									triggerMode === mode ? "ds-seg-btn--on" : ""
 								}`}
 							>
 								{icon}
@@ -194,7 +192,7 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 					{triggerMode === "manual" && (
 						<>
 							<div className="flex flex-col gap-1">
-								<label className="text-xs text-muted" htmlFor="deploy-pane-vars">
+								<label className="ds-label" htmlFor="deploy-pane-vars">
 									Variables (JSON)
 								</label>
 								<textarea
@@ -202,13 +200,13 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 									value={startVars}
 									onInput={(e) => setStartVars((e.target as HTMLTextAreaElement).value)}
 									rows={2}
-									className="w-full rounded-md border border-border bg-surface px-3 py-2 text-xs font-mono text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none"
+									className="ds-field ds-datum w-full resize-none text-xs"
 									placeholder="{}"
 								/>
 							</div>
 							{startError && <p className="text-xs text-danger">{startError}</p>}
 							{startedKey && (
-								<p className="text-xs text-success">
+								<p className="text-success text-xs">
 									Started —{" "}
 									<Link href={`/instances/${startedKey}`} className="underline hover:text-accent">
 										view #{startedKey}
@@ -243,7 +241,7 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 							return (
 								<>
 									<div className="flex items-center gap-1.5">
-										<code className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1.5 text-xs font-mono text-fg break-all">
+										<code className="ds-field ds-datum flex-1 break-all py-1.5 text-xs">
 											{webhookUrl}
 										</code>
 										<button
@@ -252,7 +250,7 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 												void navigator.clipboard.writeText(webhookUrl)
 												toast.success("Copied!")
 											}}
-											className="shrink-0 rounded-md border border-border bg-surface p-1.5 text-muted hover:bg-surface-2 hover:text-fg transition-colors"
+											className="ds-btn ds-btn--icon shrink-0"
 											aria-label="Copy webhook URL"
 										>
 											<Copy size={13} />
@@ -261,7 +259,7 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 									<p className="text-xs text-muted">
 										Send a POST request to this URL with your variables as the JSON body.
 									</p>
-									<pre className="rounded-md border border-border bg-surface-2 px-3 py-2 text-xs font-mono text-fg overflow-x-auto whitespace-pre-wrap break-all">
+									<pre className="ds-code break-all">
 										{`curl -X POST ${webhookUrl} \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`}
 									</pre>
 								</>
@@ -275,8 +273,8 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 								Timer triggers are configured directly in the BPMN diagram using Timer Start Events.
 							</p>
 							<p className="text-xs text-muted">
-								Use ISO 8601 duration (e.g. <code className="font-mono">PT1H</code> for hourly),
-								date, or cron cycle expressions.
+								Use ISO 8601 duration (e.g. <code className="ds-datum text-fg">PT1H</code> for
+								hourly), date, or cron cycle expressions.
 							</p>
 						</>
 					)}
@@ -290,7 +288,7 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 							</p>
 							<p className="text-xs text-muted">
 								The worker daemon polls for jobs of type{" "}
-								<code className="font-mono">io.bpmnkit:trigger:file-watch:1</code>.
+								<code className="ds-datum text-fg">io.bpmnkit:trigger:file-watch:1</code>.
 							</p>
 						</>
 					)}
@@ -298,7 +296,7 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 			)}
 
 			<div>
-				<p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+				<p className="ds-label mb-2 flex items-center gap-1">
 					<Link2 size={11} />
 					Link to Process ID
 				</p>
@@ -319,21 +317,19 @@ function StudioDeployPane({ modelId, getXml }: { modelId: string; getXml: () => 
 
 			{model?.processDefinitionId && (
 				<div>
-					<p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-						Deployed versions
-					</p>
+					<p className="ds-label mb-2">Deployed versions</p>
 					{!data?.items.length ? (
-						<p className="text-xs text-muted">No deployed versions found.</p>
+						<p className="ds-lede text-xs">No deployed versions found.</p>
 					) : (
-						<ul className="divide-y divide-border rounded border border-border">
+						<ul className="ds-box ds-rows">
 							{data.items.map((def) => (
-								<li key={def.processDefinitionKey} className="hover:bg-surface-2 transition-colors">
+								<li key={def.processDefinitionKey} className="transition-colors hover:bg-bg">
 									<Link
 										href={`/definitions/${def.processDefinitionKey}`}
 										className="flex items-center justify-between p-2 text-sm"
 									>
-										<span className="text-fg">v{def.version}</span>
-										<span className="text-xs text-muted">
+										<span className="ds-datum text-fg">v{def.version}</span>
+										<span className="ds-datum text-muted text-xs">
 											{def.deploymentTime ? new Date(def.deploymentTime).toLocaleDateString() : ""}
 										</span>
 									</Link>
@@ -590,7 +586,7 @@ function DocLink({ href, label }: { href: string; label: string }) {
 			href={href}
 			target="_blank"
 			rel="noreferrer"
-			className="flex items-center justify-between text-xs text-fg hover:text-accent py-1 px-2 rounded hover:bg-surface-2 transition-colors"
+			className="flex items-center justify-between px-2 py-1 text-fg text-xs transition-colors hover:bg-bg hover:text-accent"
 		>
 			{label}
 			<ExternalLink size={10} className="text-muted shrink-0" />
@@ -605,10 +601,8 @@ function StudioDocsPane({ elementType }: { elementType: string | null }) {
 		return (
 			<div className="p-4 flex flex-col gap-4 overflow-y-auto h-full">
 				<div>
-					<p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">
-						{doc.label}
-					</p>
-					<p className="text-xs text-fg leading-relaxed">{doc.description}</p>
+					<p className="ds-label mb-1">{doc.label}</p>
+					<p className="ds-lede text-xs">{doc.description}</p>
 				</div>
 				<div className="flex flex-col gap-0.5">
 					<DocLink href={doc.href} label="Camunda Docs ↗" />
@@ -624,12 +618,12 @@ function StudioDocsPane({ elementType }: { elementType: string | null }) {
 		<div className="p-4 flex flex-col gap-4 overflow-y-auto h-full">
 			<div className="flex items-center gap-1.5">
 				<BookOpen size={13} className="text-muted" />
-				<p className="text-xs font-semibold text-muted uppercase tracking-wider">BPMN Reference</p>
+				<p className="ds-label">BPMN Reference</p>
 			</div>
-			<p className="text-xs text-muted">Select an element to see its documentation.</p>
+			<p className="ds-lede text-xs">Select an element to see its documentation.</p>
 			{BPMN_REFERENCE.map((group) => (
 				<div key={group.section}>
-					<p className="text-xs font-semibold text-muted mb-1">{group.section}</p>
+					<p className="ds-label mb-1">{group.section}</p>
 					<ul className="flex flex-col gap-0.5">
 						{group.items.map((type) => {
 							const d = ELEMENT_DOCS[type]
@@ -1385,8 +1379,8 @@ export function ModelDetail() {
 
 	if (!model) {
 		return (
-			<div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-				<p className="text-lg font-medium text-fg">Model not found</p>
+			<div className="ds-empty h-full">
+				<p className="ds-title">Model not found</p>
 				<Link href="/models" className="text-sm text-accent hover:underline">
 					← Back to Models
 				</Link>
@@ -1409,7 +1403,7 @@ export function ModelDetail() {
 					) : (
 						<>
 							<span
-								className={`text-xs transition-colors ${
+								className={`ds-label transition-colors ${
 									saveStatus === "saved"
 										? "text-success"
 										: saveStatus === "saving"
@@ -1487,7 +1481,7 @@ export function ModelDetail() {
 			{/* Markdown editor */}
 			{model.type === "md" && (
 				<textarea
-					className="flex-1 min-h-0 resize-none p-4 font-mono text-sm text-fg bg-bg border-0 outline-none"
+					className="ds-datum min-h-0 flex-1 resize-none border-0 bg-bg p-4 text-fg text-sm outline-none"
 					value={mdContent}
 					onInput={(e) => {
 						const v = (e.target as HTMLTextAreaElement).value

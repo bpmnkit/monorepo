@@ -1,24 +1,30 @@
-import { Badge } from "./ui/badge.js"
-
 interface StatusPillProps {
 	state: string
 }
 
 const STATE_CONFIG: Record<
 	string,
-	{ label: string; variant: "success" | "muted" | "danger" | "warn" | "default" }
+	{ label: string; tone: "success" | "muted" | "danger" | "warn" }
 > = {
-	ACTIVE: { label: "Active", variant: "success" },
-	COMPLETED: { label: "Completed", variant: "muted" },
-	INCIDENT: { label: "Incident", variant: "danger" },
-	TERMINATED: { label: "Terminated", variant: "muted" },
-	CANCELED: { label: "Canceled", variant: "muted" },
-	FAILED: { label: "Failed", variant: "danger" },
-	RESOLVED: { label: "Resolved", variant: "muted" },
-	PENDING: { label: "Pending", variant: "warn" },
+	ACTIVE: { label: "Active", tone: "success" },
+	COMPLETED: { label: "Completed", tone: "muted" },
+	INCIDENT: { label: "Incident", tone: "danger" },
+	TERMINATED: { label: "Terminated", tone: "muted" },
+	CANCELED: { label: "Canceled", tone: "muted" },
+	FAILED: { label: "Failed", tone: "danger" },
+	RESOLVED: { label: "Resolved", tone: "muted" },
+	PENDING: { label: "Pending", tone: "warn" },
 }
 
+/**
+ * A state readout, which the design system sets in mono and tints rather than
+ * fills — a column of filled pills reads as a column of buttons.
+ */
 export function StatusPill({ state }: StatusPillProps) {
-	const config = STATE_CONFIG[state] ?? { label: state, variant: "default" as const }
-	return <Badge variant={config.variant}>{config.label}</Badge>
+	const config = STATE_CONFIG[state] ?? { label: state, tone: "muted" as const }
+	return (
+		<span className={config.tone === "muted" ? "ds-mark" : `ds-mark ds-mark--${config.tone}`}>
+			{config.label}
+		</span>
+	)
 }

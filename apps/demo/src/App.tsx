@@ -216,13 +216,16 @@ export function App() {
 		<div class="flex flex-col h-full">
 			<header
 				class="flex items-center justify-between px-6 py-3 shrink-0"
-				style="border-bottom: 1px solid var(--bpmnkit-border, #2a2a42); background: var(--bpmnkit-surface, #161626);"
+				style="border-bottom: 1px solid var(--bpmnkit-border, #d8dbe0); background: var(--bpmnkit-surface, #ffffff);"
 			>
 				<div class="flex items-center gap-3">
-					<span class="font-bold text-lg" style="color: var(--bpmnkit-fg, #cdd6f4);">
-						bpmnkit
+					<span
+						class="font-mono font-bold text-[15px] tracking-tight"
+						style="color: var(--bpmnkit-fg, #14161a);"
+					>
+						bpmn<span style="color: var(--bpmnkit-accent, #a8503a);">kit</span>
 					</span>
-					<span class="text-sm" style="color: var(--bpmnkit-fg-muted, #8888a8);">
+					<span class="text-sm" style="color: var(--bpmnkit-fg-muted, #5c6470);">
 						/ AI comparison — {scenarioLabel(activeScenarioId())} Process
 					</span>
 				</div>

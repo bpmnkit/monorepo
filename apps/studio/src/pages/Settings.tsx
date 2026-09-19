@@ -5,7 +5,6 @@ import { useProfiles } from "../api/queries.js"
 import { ProfileTag } from "../components/ProfileTag.js"
 import { ThemePicker } from "../components/ThemePicker.js"
 import { Button } from "../components/ui/button.js"
-import { Separator } from "../components/ui/separator.js"
 import { useClusterStore } from "../stores/cluster.js"
 import { useModelsStore } from "../stores/models.js"
 import { useProjectsStore } from "../stores/projects.js"
@@ -20,6 +19,25 @@ function extractSecretNames(text: string): string[] {
 		if (m[1]) found.add(m[1])
 	}
 	return [...found]
+}
+
+/**
+ * The active-selection control, which reads out a state and so is mono: an
+ * accent mark when the row is the active one, a square control when it is not.
+ */
+function ActiveToggle({
+	active,
+	onActivate,
+	inactiveLabel = "Switch",
+}: { active: boolean; onActivate: () => void; inactiveLabel?: string }) {
+	if (active) {
+		return <span className="ds-mark ds-mark--accent">Active</span>
+	}
+	return (
+		<button type="button" onClick={onActivate} className="ds-btn text-xs" aria-pressed={false}>
+			{inactiveLabel}
+		</button>
+	)
 }
 
 export function Settings() {
@@ -132,11 +150,14 @@ export function Settings() {
 	}
 
 	return (
-		<div className="p-6 max-w-2xl mx-auto">
+		<div className="ds-page max-w-3xl">
 			{/* Proxy URL */}
 			<section className="mb-6">
-				<h2 className="text-sm font-medium text-fg mb-1">Proxy Server</h2>
-				<p className="text-xs text-muted mb-3">
+				<div className="ds-head">
+					<span className="ds-eyebrow">01</span>
+					<h2 className="ds-title text-base">Proxy Server</h2>
+				</div>
+				<p className="ds-lede mb-3">
 					All Camunda API calls and file system access are routed through the proxy. Make sure it's
 					running.
 				</p>
@@ -150,74 +171,57 @@ export function Settings() {
 					/>
 					<Button onClick={handleSaveProxy}>Save</Button>
 				</div>
-				<code className="mt-2 block text-xs text-muted">pnpm proxy</code>
+				<code className="ds-code mt-2">pnpm proxy</code>
 			</section>
-
-			<Separator className="mb-6" />
 
 			{/* Projects */}
 			<section className="mb-6">
-				<div className="flex items-center justify-between mb-3">
-					<div>
-						<h2 className="text-sm font-medium text-fg">Projects</h2>
-						<p className="text-xs text-muted">
-							File system folders for storing models as files on disk
-						</p>
-					</div>
-					<Button variant="outline" size="sm" onClick={() => setAddingProject(true)}>
+				<div className="ds-head">
+					<span className="ds-eyebrow">02</span>
+					<h2 className="ds-title text-base">Projects</h2>
+					<Button
+						variant="outline"
+						size="sm"
+						className="ml-auto"
+						onClick={() => setAddingProject(true)}
+					>
 						<Plus size={14} />
 						Add Project
 					</Button>
 				</div>
+				<p className="ds-lede mb-3">File system folders for storing models as files on disk</p>
 
-				<div className="rounded-lg border border-border bg-surface overflow-hidden">
+				<div className="ds-box ds-rows">
 					{/* Local (IndexedDB) — always present */}
-					<div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
-						<div className="flex-1 min-w-0">
-							<div className="font-medium text-sm text-fg">Local (IndexedDB)</div>
-							<div className="text-xs text-muted">Browser storage — no file system required</div>
+					<div className="flex items-center gap-3 px-4 py-3">
+						<div className="min-w-0 flex-1">
+							<div className="text-fg text-sm">Local (IndexedDB)</div>
+							<div className="ds-lede text-xs">Browser storage — no file system required</div>
 						</div>
-						<button
-							type="button"
-							onClick={() => handleSwitchProject(null)}
-							className={`text-xs px-2 py-0.5 transition-colors shrink-0 ${
-								activeProjectId === null ? "bg-accent/20 text-accent" : "text-muted hover:text-fg"
-							}`}
-							aria-pressed={activeProjectId === null}
-						>
-							{activeProjectId === null ? "● Active" : "Switch"}
-						</button>
+						<ActiveToggle
+							active={activeProjectId === null}
+							onActivate={() => handleSwitchProject(null)}
+						/>
 					</div>
 
 					{projects.length === 0 && (
-						<div className="px-4 py-3 text-sm text-muted">
+						<div className="ds-lede px-4 py-3">
 							No projects configured. Add a project to store models as files on disk.
 						</div>
 					)}
 
 					{projects.map((project) => (
-						<div
-							key={project.id}
-							className="flex items-center gap-3 px-4 py-3 border-b border-border/50 last:border-0"
-						>
-							<Folder size={16} className="text-muted shrink-0" />
-							<div className="flex-1 min-w-0">
-								<div className="font-medium text-sm text-fg">{project.name}</div>
-								<div className="text-xs text-muted font-mono truncate">{project.path}</div>
+						<div key={project.id} className="flex items-center gap-3 px-4 py-3">
+							<Folder size={16} className="shrink-0 text-muted" />
+							<div className="min-w-0 flex-1">
+								<div className="text-fg text-sm">{project.name}</div>
+								<div className="ds-datum truncate text-muted text-xs">{project.path}</div>
 							</div>
-							<div className="flex items-center gap-2 shrink-0">
-								<button
-									type="button"
-									onClick={() => handleSwitchProject(project.id)}
-									className={`text-xs px-2 py-0.5 transition-colors ${
-										project.id === activeProjectId
-											? "bg-accent/20 text-accent"
-											: "text-muted hover:text-fg"
-									}`}
-									aria-pressed={project.id === activeProjectId}
-								>
-									{project.id === activeProjectId ? "● Active" : "Switch"}
-								</button>
+							<div className="flex shrink-0 items-center gap-2">
+								<ActiveToggle
+									active={project.id === activeProjectId}
+									onActivate={() => handleSwitchProject(project.id)}
+								/>
 								<Button
 									variant="ghost"
 									size="icon"
@@ -232,43 +236,43 @@ export function Settings() {
 				</div>
 			</section>
 
-			<Separator className="mb-6" />
-
 			{/* Profiles */}
 			<section className="mb-6">
-				<div className="flex items-center justify-between mb-3">
-					<div>
-						<h2 className="text-sm font-medium text-fg">Profiles</h2>
-						<p className="text-xs text-muted">Camunda cluster connections</p>
-					</div>
-					<Button variant="outline" size="sm" onClick={() => void handleRefreshProfiles()}>
+				<div className="ds-head">
+					<span className="ds-eyebrow">03</span>
+					<h2 className="ds-title text-base">Profiles</h2>
+					<Button
+						variant="outline"
+						size="sm"
+						className="ml-auto"
+						onClick={() => void handleRefreshProfiles()}
+					>
 						Refresh
 					</Button>
 				</div>
+				<p className="ds-lede mb-3">Camunda cluster connections</p>
 
 				{!profiles || profiles.length === 0 ? (
-					<p className="text-sm text-muted">
+					<p className="ds-lede">
 						No profiles found. Configure profiles in your proxy config file.
 					</p>
 				) : (
-					<div className="rounded-lg border border-border bg-surface overflow-hidden">
+					<div className="ds-box">
 						<table className="w-full text-sm">
 							<thead>
-								<tr className="border-b border-border bg-surface-2 text-left text-xs text-muted">
-									<th className="px-4 py-2 font-medium">Name</th>
-									<th className="px-4 py-2 font-medium">Tags</th>
-									<th className="px-4 py-2 font-medium">Type</th>
-									<th className="px-4 py-2 font-medium">Active</th>
+								<tr className="border-border border-b bg-bg text-left">
+									<th className="px-4 py-2">Name</th>
+									<th className="px-4 py-2">Tags</th>
+									<th className="px-4 py-2">Type</th>
+									<th className="px-4 py-2">Active</th>
 								</tr>
 							</thead>
 							<tbody>
 								{profiles.map((p) => (
-									<tr key={p.name} className="border-b border-border/50 last:border-0">
+									<tr key={p.name} className="border-border/60 border-b last:border-0">
 										<td className="px-4 py-2.5">
-											<div className="font-medium text-fg">{p.name}</div>
-											{p.description && (
-												<div className="text-xs text-muted mt-0.5">{p.description}</div>
-											)}
+											<div className="text-fg">{p.name}</div>
+											{p.description && <div className="ds-lede text-xs">{p.description}</div>}
 										</td>
 										<td className="px-4 py-2.5">
 											{p.tags && p.tags.length > 0 ? (
@@ -278,23 +282,16 @@ export function Settings() {
 													))}
 												</div>
 											) : (
-												<span className="text-xs text-muted">—</span>
+												<span className="ds-datum text-muted text-xs">—</span>
 											)}
 										</td>
-										<td className="px-4 py-2.5 text-muted text-xs">{p.apiType ?? "—"}</td>
+										<td className="ds-datum px-4 py-2.5 text-muted text-xs">{p.apiType ?? "—"}</td>
 										<td className="px-4 py-2.5">
-											<button
-												type="button"
-												onClick={() => setActiveProfile(p.name)}
-												className={`text-xs px-2 py-0.5 transition-colors ${
-													p.name === activeProfile
-														? "bg-accent/20 text-accent"
-														: "text-muted hover:text-fg"
-												}`}
-												aria-pressed={p.name === activeProfile}
-											>
-												{p.name === activeProfile ? "● Active" : "Set active"}
-											</button>
+											<ActiveToggle
+												active={p.name === activeProfile}
+												onActivate={() => setActiveProfile(p.name)}
+												inactiveLabel="Set active"
+											/>
 										</td>
 									</tr>
 								))}
@@ -304,21 +301,15 @@ export function Settings() {
 				)}
 			</section>
 
-			<Separator className="mb-6" />
-
 			{/* Connector Secrets */}
 			<section className="mb-6">
-				<div className="flex items-center justify-between mb-3">
-					<div>
-						<h2 className="text-sm font-medium text-fg">Connector Secrets</h2>
-						<p className="text-xs text-muted">
-							Use <code className="font-mono bg-surface-2 px-1 rounded">{"{{secrets.NAME}}"}</code>{" "}
-							in REST connector fields. The proxy resolves them from environment variables.
-						</p>
-					</div>
+				<div className="ds-head">
+					<span className="ds-eyebrow">04</span>
+					<h2 className="ds-title text-base">Connector Secrets</h2>
 					<Button
 						variant="outline"
 						size="sm"
+						className="ml-auto"
 						onClick={() => void handleCheckSecrets()}
 						disabled={checkingSecrets}
 					>
@@ -326,30 +317,31 @@ export function Settings() {
 						Scan Models
 					</Button>
 				</div>
+				<p className="ds-lede mb-3">
+					Use <code className="ds-datum text-fg">{"{{secrets.NAME}}"}</code> in REST connector
+					fields. The proxy resolves them from environment variables.
+				</p>
 
-				<div className="rounded-lg border border-border bg-surface overflow-hidden mb-3">
+				<div className="ds-box ds-rows mb-3">
 					{secretsStatus === null ? (
-						<div className="px-4 py-3 text-sm text-muted">
+						<div className="ds-lede px-4 py-3">
 							Click "Scan Models" to check which secrets are configured.
 						</div>
 					) : Object.keys(secretsStatus).length === 0 ? (
-						<div className="px-4 py-3 text-sm text-muted">
-							No <code className="font-mono text-xs">{"{{secrets.*}}"}</code> references found in
+						<div className="ds-lede px-4 py-3">
+							No <code className="ds-datum text-fg">{"{{secrets.*}}"}</code> references found in
 							your BPMN models.
 						</div>
 					) : (
 						Object.entries(secretsStatus).map(([name, exists]) => (
-							<div
-								key={name}
-								className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0"
-							>
+							<div key={name} className="flex items-center gap-3 px-4 py-2.5">
 								{exists ? (
-									<CheckCircle2 size={14} className="text-success shrink-0" />
+									<CheckCircle2 size={14} className="shrink-0 text-success" />
 								) : (
-									<XCircle size={14} className="text-danger shrink-0" />
+									<XCircle size={14} className="shrink-0 text-danger" />
 								)}
-								<code className="font-mono text-sm text-fg flex-1">{name}</code>
-								<span className={`text-xs ${exists ? "text-success" : "text-danger"}`}>
+								<code className="ds-datum flex-1 text-fg text-sm">{name}</code>
+								<span className={`ds-mark ${exists ? "ds-mark--success" : "ds-mark--danger"}`}>
 									{exists ? "configured" : "missing"}
 								</span>
 							</div>
@@ -357,17 +349,18 @@ export function Settings() {
 					)}
 				</div>
 
-				<p className="text-xs text-muted">
+				<p className="ds-lede text-xs">
 					Set secrets as environment variables on the proxy machine before starting it:
 				</p>
-				<code className="mt-1 block text-xs text-muted font-mono">MY_API_KEY=value pnpm proxy</code>
+				<code className="ds-code mt-1">MY_API_KEY=value pnpm proxy</code>
 			</section>
-
-			<Separator className="mb-6" />
 
 			{/* Theme */}
 			<section>
-				<h2 className="text-sm font-medium text-fg mb-3">Theme</h2>
+				<div className="ds-head">
+					<span className="ds-eyebrow">05</span>
+					<h2 className="ds-title text-base">Theme</h2>
+				</div>
 				<ThemePicker />
 			</section>
 

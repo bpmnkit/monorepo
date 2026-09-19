@@ -4,7 +4,6 @@ import { Link } from "wouter"
 import { useUserTasks } from "../api/queries.js"
 import type { UserTask } from "../api/types.js"
 import { ErrorState } from "../components/ErrorState.js"
-import { Badge } from "../components/ui/badge.js"
 import { useUiStore } from "../stores/ui.js"
 
 function isOverdue(dueDate?: string): boolean {
@@ -25,7 +24,7 @@ const columns: Column<UserTask>[] = [
 		key: "name",
 		header: "Name",
 		render: (task) => (
-			<Link href={`/tasks/${task.userTaskKey}`} className="font-medium text-fg hover:text-accent">
+			<Link href={`/tasks/${task.userTaskKey}`} className="text-fg text-sm hover:text-accent">
 				{task.name || `Task ${task.userTaskKey}`}
 			</Link>
 		),
@@ -46,9 +45,9 @@ const columns: Column<UserTask>[] = [
 		render: (task) => (
 			<div className="flex flex-wrap gap-1">
 				{task.candidateGroups?.map((g) => (
-					<Badge key={g} variant="default" className="text-xs">
+					<span key={g} className="ds-mark">
 						{g}
-					</Badge>
+					</span>
 				))}
 			</div>
 		),
@@ -59,7 +58,7 @@ const columns: Column<UserTask>[] = [
 		render: (task) => {
 			const overdue = isOverdue(task.dueDate)
 			return (
-				<span className={`text-xs ${overdue ? "text-danger" : "text-muted"}`}>
+				<span className={`ds-datum text-xs ${overdue ? "text-danger" : "text-muted"}`}>
 					{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "—"}
 					{overdue && <span className="ml-1">(overdue)</span>}
 				</span>
@@ -70,13 +69,17 @@ const columns: Column<UserTask>[] = [
 		key: "priority",
 		header: "Priority",
 		render: (task) => (
-			<Badge
-				variant={
-					(task.priority ?? 0) >= 60 ? "danger" : (task.priority ?? 0) >= 40 ? "warn" : "muted"
-				}
+			<span
+				className={`ds-mark ${
+					(task.priority ?? 0) >= 60
+						? "ds-mark--danger"
+						: (task.priority ?? 0) >= 40
+							? "ds-mark--warn"
+							: ""
+				}`}
 			>
 				{priorityLabel(task.priority)}
-			</Badge>
+			</span>
 		),
 	},
 ]
@@ -109,18 +112,17 @@ export function Tasks() {
 	}
 
 	return (
-		<div className="p-6 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
-			<div className="flex items-center justify-between mb-6">
-				<div>
-					{!isLoading && (
-						<p className="text-xs text-muted">
-							{filtered?.length ?? 0} task{(filtered?.length ?? 0) !== 1 ? "s" : ""}
-						</p>
-					)}
-				</div>
+		<div className="ds-page animate-in fade-in slide-in-from-bottom-2 duration-300">
+			<div className="ds-head">
+				<h1 className="ds-eyebrow">Tasks</h1>
+				{!isLoading && (
+					<span className="ds-datum text-muted text-xs">
+						{filtered?.length ?? 0} task{(filtered?.length ?? 0) !== 1 ? "s" : ""}
+					</span>
+				)}
 			</div>
 
-			<div className="mb-4">
+			<div className="mb-3">
 				<Search
 					placeholder="Search by name or assignee..."
 					value={search}

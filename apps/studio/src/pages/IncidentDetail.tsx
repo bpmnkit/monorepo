@@ -54,7 +54,7 @@ function highlightText(text: string, query: string): JSX.Element {
 			{parts.map((part, i) =>
 				i % 2 === 1 ? (
 					// biome-ignore lint/suspicious/noArrayIndexKey: static highlight parts
-					<mark key={i} className="bg-accent/30 text-fg rounded-sm not-italic">
+					<mark key={i} className="bg-accent/30 text-fg not-italic">
 						{part}
 					</mark>
 				) : (
@@ -95,17 +95,15 @@ function VariableModal({
 	return (
 		// biome-ignore lint/a11y/useKeyWithClickEvents: ESC is handled via window keydown listener
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 			onClick={(e) => e.target === e.currentTarget && onClose()}
 		>
-			<div className="flex flex-col w-full max-w-2xl max-h-[80vh] rounded-lg border border-border bg-surface shadow-2xl overflow-hidden mx-4">
+			<div className="ds-box mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden">
 				{/* Header */}
 				<div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-					<span className="font-mono text-sm text-fg font-medium flex-1 truncate">
-						{variable.name}
-					</span>
+					<span className="ds-datum flex-1 truncate text-fg text-sm">{variable.name}</span>
 					{search.trim() && (
-						<span className="text-xs text-muted shrink-0">
+						<span className="ds-datum shrink-0 text-muted text-xs">
 							{visibleLines.length} / {lines.length} lines
 						</span>
 					)}
@@ -120,20 +118,20 @@ function VariableModal({
 				</div>
 
 				{/* Search */}
-				<div className="px-4 py-2 border-b border-border/60 shrink-0">
+				<div className="shrink-0 border-border border-b px-4 py-2">
 					<input
 						ref={inputRef}
 						type="text"
 						value={search}
 						onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
 						placeholder="Search in value…"
-						className="w-full rounded border border-border bg-surface-2 px-2.5 py-1.5 text-xs text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+						className="ds-field w-full text-xs"
 					/>
 				</div>
 
 				{/* Value */}
 				<div className="flex-1 overflow-auto p-4">
-					<pre className="font-mono text-xs text-fg leading-relaxed whitespace-pre-wrap break-all">
+					<pre className="ds-datum whitespace-pre-wrap break-all text-fg text-xs leading-relaxed">
 						{visibleLines.length === 0 ? (
 							<span className="text-muted italic">No lines match the search.</span>
 						) : search.trim() ? (
@@ -321,11 +319,11 @@ export function IncidentDetail() {
 
 			<div className="flex flex-1 overflow-hidden">
 				{/* Canvas */}
-				<div ref={canvasContainerRef} className="flex-1 overflow-hidden bg-surface-2" />
+				<div ref={canvasContainerRef} className="flex-1 overflow-hidden bg-canvas" />
 
 				{/* Drag handle */}
 				<div
-					className="w-1 shrink-0 cursor-col-resize hover:bg-accent/40 transition-colors duration-150 bg-border"
+					className="w-px shrink-0 cursor-col-resize bg-border transition-colors duration-150 hover:bg-accent"
 					onMouseDown={onDragHandleDown}
 					tabIndex={-1}
 					role="separator"
@@ -335,42 +333,30 @@ export function IncidentDetail() {
 
 				{/* Sidebar */}
 				<div
-					className="shrink-0 border-l border-border bg-surface flex flex-col overflow-hidden"
+					className="flex shrink-0 flex-col overflow-hidden border-border border-l bg-surface"
 					style={{ width: sidebarW }}
 				>
 					{/* Tab bar */}
-					<div className="flex border-b border-border shrink-0">
+					<div className="ds-tabs shrink-0 gap-0">
 						<button
 							type="button"
 							onClick={() => setTab("error")}
-							className={`flex-1 py-2 text-xs font-medium transition-colors ${
-								tab === "error" ? "text-fg border-b-2 border-accent" : "text-muted hover:text-fg"
-							}`}
+							className={`ds-tab flex-1 ${tab === "error" ? "ds-tab--on" : ""}`}
 						>
 							Error
 						</button>
 						<button
 							type="button"
 							onClick={() => setTab("variables")}
-							className={`flex-1 py-2 text-xs font-medium transition-colors ${
-								tab === "variables"
-									? "text-fg border-b-2 border-accent"
-									: "text-muted hover:text-fg"
-							}`}
+							className={`ds-tab flex-1 ${tab === "variables" ? "ds-tab--on" : ""}`}
 						>
 							Variables
-							{variables.length > 0 && (
-								<span className="ml-1.5 bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">
-									{variables.length}
-								</span>
-							)}
+							{variables.length > 0 && <span className="ml-1.5">({variables.length})</span>}
 						</button>
 						<button
 							type="button"
 							onClick={() => setTab("ai")}
-							className={`flex-1 py-2 text-xs font-medium transition-colors ${
-								tab === "ai" ? "text-fg border-b-2 border-accent" : "text-muted hover:text-fg"
-							}`}
+							className={`ds-tab flex-1 ${tab === "ai" ? "ds-tab--on" : ""}`}
 						>
 							AI
 						</button>
@@ -390,7 +376,7 @@ export function IncidentDetail() {
 							{isLoading ? (
 								<div className="space-y-2">
 									{(["s0", "s1", "s2", "s3"] as const).map((sk) => (
-										<div key={sk} className="h-4 animate-pulse rounded bg-surface-2" />
+										<div key={sk} className="h-4 animate-pulse bg-surface-2" />
 									))}
 								</div>
 							) : incident ? (
@@ -401,7 +387,7 @@ export function IncidentDetail() {
 											id: "errorType",
 											label: "Error Type",
 											value: (
-												<span className="font-mono text-danger text-sm">{incident.errorType}</span>
+												<span className="ds-datum text-danger text-sm">{incident.errorType}</span>
 											),
 										},
 										{
@@ -417,7 +403,7 @@ export function IncidentDetail() {
 														id: "element",
 														label: "Element",
 														value: (
-															<span className="font-mono text-muted text-sm">
+															<span className="ds-datum text-muted text-sm">
 																{incident.elementId}
 															</span>
 														),
@@ -452,7 +438,7 @@ export function IncidentDetail() {
 														id: "created",
 														label: "Created",
 														value: (
-															<span className="text-muted text-sm">
+															<span className="ds-datum text-muted text-sm">
 																{new Date(incident.creationTime).toLocaleString()}
 															</span>
 														),
@@ -468,18 +454,18 @@ export function IncidentDetail() {
 					{/* Variables tab */}
 					{tab === "variables" && (
 						<div className="flex-1 flex flex-col overflow-hidden">
-							<div className="p-3 border-b border-border/60 shrink-0">
+							<div className="shrink-0 border-border border-b p-3">
 								<input
 									type="text"
 									value={varSearch}
 									onInput={(e) => setVarSearch((e.target as HTMLInputElement).value)}
 									placeholder="Filter by name or value…"
-									className="w-full rounded border border-border bg-surface-2 px-2.5 py-1 text-xs text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+									className="ds-field w-full text-xs"
 								/>
 							</div>
 							<div className="flex-1 overflow-y-auto">
 								{filteredVars.length === 0 ? (
-									<p className="p-4 text-xs text-muted text-center">
+									<p className="p-4 text-center text-muted text-xs">
 										{variables.length === 0
 											? "No variables found for this instance."
 											: "No variables match the filter."}
@@ -492,10 +478,10 @@ export function IncidentDetail() {
 												key={v.name}
 												type="button"
 												onClick={() => setModalVar(v)}
-												className="w-full text-left px-3 py-2 border-b border-border/30 hover:bg-surface-2 transition-colors cursor-pointer group"
+												className="group w-full cursor-pointer border-border/60 border-b px-3 py-2 text-left transition-colors hover:bg-bg"
 											>
-												<div className="font-mono text-xs text-fg truncate">{v.name}</div>
-												<div className="font-mono text-xs text-muted truncate mt-0.5 group-hover:text-fg/70 transition-colors">
+												<div className="ds-datum truncate text-fg text-xs">{v.name}</div>
+												<div className="ds-datum mt-0.5 truncate text-muted text-xs transition-colors group-hover:text-fg/70">
 													{preview || <span className="italic">null</span>}
 												</div>
 											</button>
@@ -513,17 +499,17 @@ export function IncidentDetail() {
 								type="button"
 								onClick={() => void analyzeIncident()}
 								disabled={aiLoading}
-								className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-xs text-fg hover:bg-accent/10 transition-colors disabled:opacity-50"
+								className="ds-btn w-full justify-center text-xs"
 							>
 								{aiLoading ? "Analyzing…" : aiAnalysis ? "Re-analyze" : "Analyze with AI"}
 							</button>
 							{aiAnalysis && (
-								<pre className="flex-1 overflow-y-auto text-xs text-fg font-sans leading-relaxed whitespace-pre-wrap break-words">
+								<pre className="flex-1 overflow-y-auto whitespace-pre-wrap break-words font-sans text-fg text-xs leading-relaxed">
 									{aiAnalysis}
 								</pre>
 							)}
 							{!aiAnalysis && !aiLoading && (
-								<p className="text-xs text-muted text-center mt-4">
+								<p className="mt-4 text-center text-muted text-xs">
 									AI will analyze the root cause, impact, and remediation steps.
 								</p>
 							)}

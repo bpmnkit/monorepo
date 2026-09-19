@@ -150,6 +150,189 @@ It covers diagrams built through several tool calls. A from-scratch build that t
 model does in one `compose_diagram` call is still one frame at the end — that is
 what phase two, streaming the tool argument itself, is for.
 
+## 2026-09-17 — The rest of the repo joins the design system
+
+With the studio on the system, an audit of what still was not turned up a
+smaller list than expected, and one much louder item than expected.
+
+**`apps/learn` was still wearing the 2025 brand.** A deployed sibling of
+bpmnkit.com — three blurred gradient orbs drifting on a loop, a masked dot grid,
+a fractal-noise grain layer, gradient-clipped headings, glow overlays on hover,
+8–20px radii, `translateY` lifts, pill badges and a magenta third brand colour —
+so a visitor clicking "Learn" from the site crossed a hard boundary. It is now
+the same system: flat paper ground, hairline rules, one terracotta accent, Space
+Grotesk for prose and Space Mono for every label, count and level. The catalogue
+and the glossary are one bordered box subdivided by hairlines rather than gapped
+cards; steps and prerequisites are hairline-divided rows; the progress bar is a
+1px rule that fills; hint levels escalate by accent weight rather than by hue,
+because there is no third colour to spend. The embedded editor moved from the
+`neon` white-label theme to the system's light one.
+
+`packages/astro-shared` is what made that possible in one place. It used to map
+short names onto the *product* palette and carry the aurora's layout tokens — a
+14px radius and a `--pink` — beside it. It now exposes the landing site's own
+vocabulary with the landing site's own values, derived from `--bpmnkit-ds-*`, so
+the two sites read one token set. `background.css` is one rule: the ground.
+`.aurora`, `.orb`, `.dots` and `.grain` are deliberately undefined, so a layout
+that still renders those elements renders nothing rather than keeping the old
+brand alive in a corner.
+
+Two values the landing had hardcoded — its alternate ground and its accent tint
+— became `--bpmnkit-ds-bg-alt` and `--bpmnkit-ds-accent-tint` in `@bpmnkit/ui`,
+so sharing them did not mean duplicating them. The landing now reads them too.
+
+**The editor plugins were almost all there already.** Counting which token layer
+each one reads — `--bpmnkit-chrome-*` (the editor's bridge onto the system) or
+`--bpmnkit-*` (the product palette) — showed 24 of 31 fully on the chrome layer.
+The holdouts were `form-viewer` and `form-editor`, which restated palettes of
+their own (a Catppuccin dark and a Tailwind light) beside a system font stack
+and carried 31 non-zero radii between them; `dmn-viewer`, same shape; and one
+`--bpmnkit-teal` in `variable-flow`. All four are on the design-system set now,
+with hex fallbacks so they still theme when mounted outside the editor and its
+chrome tokens are absent. The DMN input/output tints and the FEEL syntax colours
+stay as they were, exempt as they always have been.
+
+`variable-flow`'s "both" mark is the one that needed a decision rather than a
+swap: it marked a variable that is read *and* written with the product palette's
+secondary brand colour, which the system does not have. It is now mixed from the
+two states it means — the accent a read is marked with and the green a write is
+marked with — so it follows the theme instead of pinning a fourth hue.
+
+**`apps/demo`** opened in the `neon` white-label theme on the product palette and carried the
+pre-rename "BPMN SDK" in its title. It is drawn with inline `var(--bpmnkit-*)` references rather
+than classes, so it takes the same one seam the studio does: the brand tokens re-point onto the
+design-system set and 760 lines of markup stay put. Its three comparison variants keep success,
+warn and danger, which is what they mean.
+
+**`@bpmnkit/user-tasks`** was the seam inside the app the previous change
+converted: the studio's task page is on the system and the widget it mounts was
+not. Square, hairline-ruled and mono in the meta line now, and it defaults to
+`light` rather than `neon`.
+
+**The canvas's focus ring** was a hardcoded `#0066cc`. A keyboard focus ring is
+interaction chrome rather than the diagram's own ink, so it takes the accent.
+The strokes, fills and labels around it stay the renderer's, which the system
+leaves alone by design.
+
+Verified by building Learn before and after and comparing every page in both
+states, and by driving the studio's editor to confirm selection still reads as
+the dashed accent halo the brief asks for. `packages/astro-shared` gained a test
+suite whose four assertions are the things that made it one system again: the
+tokens derive from the design-system set and not the product palette, the radius
+is zero and `--pink` is gone, the ground draws no blur or gradient, and the
+aurora's elements are no longer defined.
+
+## 2026-09-17 — What the before/after pass caught
+
+The design change was verified page by page against a build of the commit before
+it — both served side by side, the same scripted tour run against each, and every
+pair stitched into one image. It caught four things the code review had not, all
+in the new `.ds-*` layer rather than in any page.
+
+**A lone card stretched the width of the page.** `.ds-grid` used
+`repeat(auto-fit, …)`, and `auto-fit` collapses the tracks it has no items for —
+so the models gallery holding one model rendered it as a full-bleed banner with a
+thumbnail lost in the middle of it. `auto-fill` keeps the tracks. The gallery had
+fixed column counts before this work; `auto-fill` restores that behaviour without
+giving up the one-box frame.
+
+**A short last row read as a filled block.** The grid drew its dividers as a 1px
+`gap` over a coloured ground, which is how Operate does it — fine for a readout
+whose items always fill the box, wrong for five templates in two columns, where
+the missing sixth cell showed as a solid panel. The dividers are now borders on
+the children, so the leftover is surface.
+
+**A table header's ground stopped short of its frame.** Moving the header ground
+from the row to `thead th` looked equivalent until a table had an `sr-only`
+column: there is no header cell there, so the ground ended and the frame ran on
+for another 70px. Definitions and the models list both showed it. The ground is
+back on the row, where it covers the full width whatever the columns do.
+
+**The rail ellipsised a project name.** Mono at the same size is about a tenth
+wider than sans, and the extra 0.06em of tracking pushed "Local (IndexedDB)" past
+the rail. Tracking is for uppercase, so it now applies only to the nine uppercase
+destinations and not to the pickers, which read out a name.
+
+One more change came out of seeing the dashboard with a cluster attached, which
+no static reading would have shown: the stat card put the sparkline beside the
+*label* rather than the number, because the row was top-aligned. The card now
+follows Operate's — label and icon mark on one line, the number under it with the
+sparkline beside it.
+
+Behaviour was checked too, not just appearance: the same script drives the state
+filters, the type filter, search, the grid/list toggle, the folder dialog, the
+command palette's navigation, the theme picker and the mode toggle against both
+builds and compares the results. All thirteen match, and both builds log the same
+76 console errors — every one of them the absent proxy.
+
+## 2026-09-17 — The studio wears the design system, not just its colours
+
+#165 put the studio on the bpmnkit.com design system through one seam: a token
+bridge that re-pointed the `--bpmnkit-*` set the app already read onto
+`--bpmnkit-ds-*`, explicitly "no component churn". That bought the palette, the
+two type families, square corners and no shadows. It could not buy the system's
+*form*, which lives in the markup: gapped cards with their own borders, sans
+labels where the system uses mono, filled state pills, hover-lift on the
+dashboard, a 40px icon tile on every metric. The studio read as a generic console
+in terracotta.
+
+Three things closed the gap.
+
+**The `--bpmnkit-ds-*` set is now redeclared per theme**, the way Operate does it,
+rather than aliased. Aliasing was enough while only the brand tokens were read;
+it breaks the moment a rule reads `var(--bpmnkit-ds-ink-3)` directly, because
+dark and neon inherited the light value. Dark takes Operate's tuned values, and
+neon takes `@bpmnkit/ui`'s own neon palette so the white-label theme keeps one
+accent instead of leaking terracotta through the new rules.
+
+**A `.ds-*` component vocabulary** in `styles/design-system.css`, inside
+Tailwind's `components` layer so a utility at a call site still wins and no
+`!important` is needed anywhere. Twenty-odd classes, each one a rule of the
+system rather than a widget: `.ds-grid` + `.ds-cell` (one bordered box
+subdivided by 1px hairlines — the thing gapped cards were doing wrong),
+`.ds-box`, `.ds-rows`, `.ds-label`, `.ds-eyebrow`, `.ds-datum`, `.ds-mark`,
+`.ds-btn`, `.ds-seg`, `.ds-tab`, `.ds-field`, `.ds-note`, `.ds-code`,
+`.ds-kbd`, `.ds-empty`.
+
+**Every page rewritten against it.** The dashboard's six metrics are one box now,
+not six floating cards; the icon is a 16px mark rather than a tile, the number is
+mono at 28px, the label is mono uppercase, and nothing lifts on hover — an
+alarming metric is marked by its accent and its pulse. `StatusPill` and
+`ProfileTag` became tinted mono marks (`.ds-mark`), which is why a table of them
+reads as text rather than a column of buttons; that orphaned `components/ui/badge.tsx`,
+so it is gone. Every list page grew a real head: a mono eyebrow naming the page, the
+count as a datum, filters as a hairline-divided segmented control. Settings' five
+sections are numbered `01`–`05` the way the landing page numbers its bands, and
+its three copies of the "● Active / Switch" control collapsed into one
+`ActiveToggle`. `Separator` is unused as a result and dropped from the import.
+
+Two rules are enforced where they cannot be forgotten rather than at each call
+site: cascivo renders as CSS modules with hashed class names, so a column head
+becomes mono through `thead th`, and the rail's nine destinations become mono
+uppercase through `nav[aria-label="Main navigation"] a` — scoped by the
+`ariaLabel` the Sidebar passes, which is ours, not by a hash that changes with
+cascivo's next build. The rail's pickers stay in natural case: they read out a
+profile or a project name, and `pi-1` is not `PI-1`.
+
+Driving the built app in a browser to check the result turned up two chrome bugs
+that predate this work, both the same collision: Tailwind's preflight against
+markup it does not own. `*{margin:0}` beat the user agent's `dialog{margin:auto}`,
+so every cascivo Modal in the studio opened against the top-left corner instead
+of centred; and `svg{display:block}` stacked the icon above the label inside the
+single unclassed `<span>` cascivo's Button wraps its children in, in every button
+in the app. Two rules fix both — `dialog:modal{margin:auto}` and a flex row on
+`button[data-variant][data-size] > span`, selected by the component's own DOM
+contract rather than a module hash. They are not design-system changes; they are
+what the screenshots showed once there was a design worth looking at.
+
+The sweep is complete in the literal sense — `rounded-*` (bar `rounded-full`,
+which draws circular *marks*), `shadow-*`, `backdrop-blur` and `bg-gradient`
+now appear zero times across the studio's 40 components, and so do `font-medium`,
+`font-semibold` and hand-rolled `uppercase tracking-wider` labels.
+`tests/theme.test.ts` gained three assertions that keep it that way: the layer
+exists, `.ds-grid` is still a 1px-gap box over the line colour, and nothing in
+the layer grows a radius, a shadow, a gradient or a blur.
+
 ## 2026-09-16 — The pack version stopped lying, and upstream took the suffix
 
 `@bpmnkit/camunda-docspack@0.1.0` shipped a `.llms/manifest.json` claiming

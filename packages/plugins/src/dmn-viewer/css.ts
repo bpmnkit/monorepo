@@ -1,12 +1,23 @@
+/**
+ * DMN viewer styles, on the bpmnkit.com design system.
+ *
+ * Grounds, ink, hairlines and type come from the `--bpmnkit-ds-*` set with hex
+ * fallbacks, so the table matches the chrome it is docked inside even when the
+ * viewer is mounted on its own and the editor's chrome tokens are absent.
+ *
+ * Two things stay as they were, and are exempt by the same rule they always
+ * were: the input / output section tints, which encode what a column *is*, and
+ * the FEEL syntax colours.
+ */
 export const DMN_VIEWER_CSS = `
 .dmn-viewer {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, sans-serif);
   font-size: 13px;
   overflow: auto;
   height: 100%;
   box-sizing: border-box;
-  background: var(--dmn-bg, #1e1e2e);
-  color: var(--dmn-fg, #cdd6f4);
+  background: var(--dmn-bg, #ffffff);
+  color: var(--dmn-fg, #14161a);
 }
 
 .dmn-viewer-body {
@@ -16,16 +27,16 @@ export const DMN_VIEWER_CSS = `
 }
 
 .dmn-viewer.light {
-  --dmn-bg: #ffffff;
-  --dmn-fg: #1c1c1c;
-  --dmn-border: #d0d0d0;
-  --dmn-header-bg: #f0f4f8;
+  --dmn-bg: var(--bpmnkit-ds-surface, #ffffff);
+  --dmn-fg: var(--bpmnkit-ds-ink, #14161a);
+  --dmn-border: var(--bpmnkit-ds-line, #d8dbe0);
+  --dmn-header-bg: var(--bpmnkit-ds-bg, #f4f5f7);
   --dmn-input-bg: #e8f0fe;
   --dmn-output-bg: #e8f5e9;
-  --dmn-row-hover: #f5f5f5;
-  --dmn-row-even: #fafafa;
-  --dmn-badge-bg: #e2e8f0;
-  --dmn-badge-fg: #334155;
+  --dmn-row-hover: var(--bpmnkit-ds-bg, #f4f5f7);
+  --dmn-row-even: var(--bpmnkit-ds-canvas, #fbfbfc);
+  --dmn-badge-bg: var(--bpmnkit-ds-bg-alt, #eef0f3);
+  --dmn-badge-fg: var(--bpmnkit-ds-ink-3, #5c6470);
   --feel-keyword: #7c3aed;
   --feel-string: #15803d;
   --feel-number: #b45309;
@@ -35,16 +46,16 @@ export const DMN_VIEWER_CSS = `
 }
 
 .dmn-viewer.dark {
-  --dmn-bg: var(--bpmnkit-surface-2, #1e1e2e);
-  --dmn-fg: #cdd6f4;
-  --dmn-border: #313244;
-  --dmn-header-bg: var(--bpmnkit-surface-2, #1e1e2e);
-  --dmn-input-bg: #1e1e3a;
-  --dmn-output-bg: #1a2e1a;
-  --dmn-row-hover: #2a2a3e;
-  --dmn-row-even: #252535;
-  --dmn-badge-bg: #313244;
-  --dmn-badge-fg: #bac2de;
+  --dmn-bg: #16181d;
+  --dmn-fg: #f4f5f7;
+  --dmn-border: #2c3038;
+  --dmn-header-bg: #0f1114;
+  --dmn-input-bg: #1e2a3a;
+  --dmn-output-bg: #172a1e;
+  --dmn-row-hover: #22252b;
+  --dmn-row-even: #191c21;
+  --dmn-badge-bg: #22252b;
+  --dmn-badge-fg: #a6acb5;
   --feel-keyword: #cba6f7;
   --feel-string: #a6e3a1;
   --feel-number: #fab387;
@@ -69,7 +80,6 @@ export const DMN_VIEWER_CSS = `
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 4px;
   background: var(--dmn-badge-bg);
   color: var(--dmn-badge-fg);
   font-size: 11px;

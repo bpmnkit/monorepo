@@ -118,8 +118,8 @@ export function ModelDiff() {
 
 	if (loaded && bpmnModels.length < 2) {
 		return (
-			<div className="h-full flex items-center justify-center">
-				<p className="text-sm text-muted">
+			<div className="ds-empty h-full">
+				<p className="ds-lede">
 					Two BPMN models are needed to compare. This workspace has {bpmnModels.length}.
 				</p>
 			</div>
@@ -128,11 +128,11 @@ export function ModelDiff() {
 
 	return (
 		<div className="h-full flex flex-col">
-			<div className="flex items-center gap-3 border-b border-border px-5 py-3">
+			<div className="flex items-center gap-3 border-border border-b px-5 py-2.5">
 				<GitCompare size={16} className="text-muted" />
 				<select
 					aria-label="Earlier version"
-					className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-fg"
+					className="ds-field py-1 text-xs"
 					value={beforeId ?? ""}
 					onChange={(e) => setBeforeId((e.target as HTMLSelectElement).value)}
 				>
@@ -148,14 +148,14 @@ export function ModelDiff() {
 					onClick={swap}
 					aria-label="Swap sides"
 					title="Swap sides"
-					className="rounded-md border border-border p-1 text-muted hover:text-fg"
+					className="ds-btn ds-btn--icon"
 				>
 					<ArrowLeftRight size={14} />
 				</button>
 
 				<select
 					aria-label="Later version"
-					className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-fg"
+					className="ds-field py-1 text-xs"
 					value={afterId ?? ""}
 					onChange={(e) => setAfterId((e.target as HTMLSelectElement).value)}
 				>
@@ -166,17 +166,14 @@ export function ModelDiff() {
 					))}
 				</select>
 
-				<div className="ml-auto flex items-center gap-3 text-xs">
+				<div className="ml-auto flex items-center gap-3">
 					{result === null ? null : result.total === 0 ? (
-						<span className="text-muted">No differences</span>
+						<span className="ds-label">No differences</span>
 					) : (
 						CATEGORY_STYLES.filter((c) => (result[c.key] as readonly string[]).length > 0).map(
 							(c) => (
-								<span key={c.label} className="flex items-center gap-1.5 text-fg">
-									<span
-										className="inline-block h-2.5 w-2.5 rounded-sm"
-										style={{ background: c.color }}
-									/>
+								<span key={c.label} className="ds-label flex items-center gap-1.5 text-fg">
+									<span className="inline-block h-2.5 w-2.5" style={{ background: c.color }} />
 									{(result[c.key] as readonly string[]).length} {c.label}
 								</span>
 							),
@@ -185,13 +182,11 @@ export function ModelDiff() {
 				</div>
 			</div>
 
-			{error === null ? null : (
-				<div className="border-b border-border px-5 py-2 text-xs text-danger">{error}</div>
-			)}
+			{error === null ? null : <div className="ds-note ds-note--danger text-xs">{error}</div>}
 
 			<div className="flex-1 flex min-h-0">
-				<div ref={beforeRef} className="flex-1 relative border-r border-border bg-surface-2" />
-				<div ref={afterRef} className="flex-1 relative bg-surface-2" />
+				<div ref={beforeRef} className="relative flex-1 border-border border-r bg-canvas" />
+				<div ref={afterRef} className="relative flex-1 bg-canvas" />
 			</div>
 		</div>
 	)
