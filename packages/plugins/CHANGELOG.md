@@ -1,5 +1,100 @@
 # @bpmnkit/plugins
 
+## 1.0.0
+
+### Major Changes
+
+- 0ba6ef6: **1.0.0.** These twelve packages now carry the stability promise at
+  https://bpmnkit.com/docs/getting-started/stability.
+
+  A 1.0.0 is not a rewrite, it is a commitment: from here, `^1` means an upgrade will not move
+  your code, and anything that would — a removed export, a narrowed return type, a generated
+  document whose `semanticHash` shifts for the same input — waits for a 2.0.
+
+  The bar was three things: a test suite that would catch the package's own breakage, a
+  documentation page, and an API worth defending for a year. Twelve of the twenty-six published
+  packages clear it. The other fourteen stay on 0.x deliberately — most are short of the first
+  two conditions, and the rest are worked examples, scaffolders or generated builds with no API
+  of their own to freeze. Joining later costs nothing, since 0.x → 1.0 breaks no one, so the bar
+  was applied strictly rather than generously.
+
+  Membership is not only prose: it lives in `STABLE` in `scripts/published-packages.mjs`, and
+  `check-packages.mjs` enforces both directions — nothing on the list may lack tests or a
+  documentation page, and nothing at 1.0.0 or above may be missing from the list. `api-surface.json`
+  records every export of every package in the set, and CI fails a pull request that removes or
+  renames one without saying so.
+
+  ### Breaking
+  - **`@bpmnkit/core`** — `BuildOptions.strict` is removed. It had been a deprecated alias for
+    `explicitJoins` since that option was renamed; rename the call and the behaviour is
+    identical. Deliberately taken now rather than carried into 1.0, where it would have been
+    stuck until a 2.0. (`applyBpmnOperations`' unrelated `strict` option is untouched.)
+
+  ### Fixed
+  - **`@bpmnkit/core`** — parse failures now throw `ParseError`, as the package has always
+    documented. They threw a bare `Error` at 35 of the 36 throw sites across the BPMN, DMN and
+    Form parsers, so the `if (err instanceof ParseError)` branch `errors.ts` tells callers to
+    write never ran. Additive: `ParseError extends BpmnSdkError extends Error`, so code that
+    caught `Error` is unaffected and the documented check starts working.
+  - **`@bpmnkit/feel`** — the README's Quick Start could not run. `evaluate` takes an
+    `EvalContext` (`{ vars }`), not a bare object; `highlightFeel` returns an HTML string rather
+    than tokens to iterate; `formatFeel` takes a parsed node, not source text; `annotate` returns
+    classified tokens, not an AST; and `ParseError` is `{ message, start, end }`. Four of eight
+    rows in its API table were wrong.
+
+  ### Added
+  - **`@bpmnkit/feel`** — `builtinNames()` and `getBuiltin()` are exported, so an editor can
+    enumerate the 88 built-in functions without reaching into `dist/`.
+  - Documentation pages for `@bpmnkit/plugins`, `@bpmnkit/feel`, `@bpmnkit/connectors` and
+    `@bpmnkit/ascii`, which had none.
+  - `engines.node` on every package in the set; only two declared one before.
+
+### Minor Changes
+
+- d910fae: `/chat` reports the diagram while the AI is still working. It read the MCP output file once, after the adapter stream resolved, so the diagram — the part of the answer that is worth looking at — appeared only when the model stopped talking. The MCP server rewrites that file on every mutating tool call, so the process was already on disk, several seconds early, with nothing watching it.
+
+  `watchOutputFile(dir, file, onWrite)` watches the directory (the file does not exist until the first tool call, and `watch` throws on a path that is not there) and reports each complete, changed write as a `preview` SSE event. A read that lands mid-write parses as nothing and is dropped rather than repaired: the next write carries the whole file, and the authoritative `xml` event still follows at the end of the stream. That is what makes a preview cheap — a frame that is wrong costs one render, never a wrong result.
+
+  The AI panel renders those frames into a canvas above the reply, updating it with `keepViewport` so the diagram grows in place instead of re-framing on every change, and replaces it with the authoritative render when the message finalises.
+
+- d910fae: The AI panel outlines what the AI is adding, leaving the diagram it was handed plain. A preview frame shows the process being written but not which part of it was already there, so an edit read the same as a rewrite.
+
+  The marking is applied to every frame, because `load` clears highlights, and to the authoritative render at the end of the message too — otherwise it would vanish at the moment the result arrives.
+
+  `additionsToMark(before, rendered)` decides it, and returns nothing when there is no process to contrast with. That is read as no sequence flow rather than no element: a new file in the editor is one unconnected start event, and marking everything the model then writes says no more than marking none of it, while flickering on for the length of every stream and off again at the end.
+
+### Patch Changes
+
+- 0ba6ef6: Depend on sibling packages by caret range instead of an exact version.
+
+  Every internal dependency was `workspace:*`, which publishes as an **exact** pin —
+  `@bpmnkit/plugins` depended on `@bpmnkit/core` at exactly `0.4.0`, not `^0.4.0`. In a
+  lockstep 0.x that is invisible. It stops being invisible the moment two BPMN Kit
+  packages in one dependency tree disagree about which version of a third they want: npm
+  and pnpm both satisfy that by installing **two copies**, and a second copy of
+  `@bpmnkit/core` is not a duplicate of the first. Class identity, `instanceof`, module-level
+  registries and TypeScript's structural-but-nominal-at-the-boundary types all quietly stop
+  matching across the seam.
+
+  `workspace:^` publishes `^0.4.0`, so a consumer resolves one copy. The change has to land
+  before 1.0.0 rather than with it: widening a published range is itself a change to every
+  manifest, and doing it as part of the 1.0 tag would mean the first stable release is also
+  the one that moves everyone's dependency graph.
+
+  The private apps in the workspace keep `workspace:*`. They are never published, so the
+  range has no consumer to reach.
+
+- Updated dependencies [0ba6ef6]
+- Updated dependencies [d910fae]
+- Updated dependencies [0ba6ef6]
+  - @bpmnkit/connector-gen@1.0.0
+  - @bpmnkit/connectors@1.0.0
+  - @bpmnkit/canvas@1.0.0
+  - @bpmnkit/editor@1.0.0
+  - @bpmnkit/ascii@1.0.0
+  - @bpmnkit/core@1.0.0
+  - @bpmnkit/feel@1.0.0
+
 ## 0.4.0
 
 ### Minor Changes

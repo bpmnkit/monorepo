@@ -1,5 +1,21 @@
 # @bpmnkit/learn
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [d910fae]
+- Updated dependencies [0ba6ef6]
+- Updated dependencies [d910fae]
+- Updated dependencies [d910fae]
+- Updated dependencies [0ba6ef6]
+  - @bpmnkit/plugins@1.0.0
+  - @bpmnkit/canvas@1.0.0
+  - @bpmnkit/editor@1.0.0
+  - @bpmnkit/engine@1.0.0
+  - @bpmnkit/core@1.0.0
+  - @bpmnkit/astro-shared@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
