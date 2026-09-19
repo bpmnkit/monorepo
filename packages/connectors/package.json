@@ -16,6 +16,9 @@
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
+	"engines": {
+		"node": ">=20"
+	},
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
@@ -23,8 +26,8 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmnkit/core": "workspace:*",
-		"@bpmnkit/feel": "workspace:*"
+		"@bpmnkit/core": "workspace:^",
+		"@bpmnkit/feel": "workspace:^"
 	},
 	"description": "Camunda 8 out-of-the-box connector catalog and deterministic element-template application for @bpmnkit/core",
 	"keywords": ["camunda", "connector", "element-template", "bpmn", "zeebe", "typescript"],

@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-tabs — multi-tab view management for BpmnCanvas/BpmnEditor.
+ * @bpmnkit/plugins/tabs — multi-tab view management for BpmnCanvas/BpmnEditor.
  *
  * Adds a tab bar overlay to the canvas container. Each tab can hold a BPMN,
  * DMN, or Form view. Includes a `FileResolver` abstraction for pluggable

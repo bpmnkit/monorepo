@@ -1525,7 +1525,7 @@ class ShapeFrame extends Frame implements LabelOwner {
 
 	finish(): void {
 		const attrs = this.attrs
-		if (!this.bounds) throw new Error(`Missing <dc:Bounds> in shape "${attr(attrs, "id")}"`)
+		if (!this.bounds) throw new ParseError(`Missing <dc:Bounds> in shape "${attr(attrs, "id")}"`)
 		this.target.push({
 			id: requiredAttr(attrs, "id", this.name),
 			bpmnElement: requiredAttr(attrs, "bpmnElement", this.name),
@@ -1639,7 +1639,7 @@ class DiagramFrame extends Frame {
 
 	finish(): void {
 		const plane = this.plane
-		if (!plane) throw new Error("Missing <bpmndi:BPMNPlane> in diagram")
+		if (!plane) throw new ParseError("Missing <bpmndi:BPMNPlane> in diagram")
 		this.target.push({
 			id: requiredAttr(this.attrs, "id", this.name),
 			plane: {
@@ -1790,9 +1790,9 @@ class BpmnSink implements XmlSink {
 /** Parse a BPMN XML string into a typed BpmnDefinitions model. */
 export function parseBpmn(xml: string): BpmnDefinitions {
 	const sink = new BpmnSink()
-	if (!scanXml(xml, sink)) throw new Error("Failed to parse XML: no root element found")
+	if (!scanXml(xml, sink)) throw new ParseError("Failed to parse XML: no root element found")
 	if (sink.rootName !== undefined) {
-		throw new Error(`Expected <definitions> root element, got <${sink.rootName}>`)
+		throw new ParseError(`Expected <definitions> root element, got <${sink.rootName}>`)
 	}
 	return sink.result as BpmnDefinitions
 }

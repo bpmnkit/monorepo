@@ -8,7 +8,7 @@
   [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
   [![turborepo](https://img.shields.io/badge/Turborepo-monorepo-ef4444?style=flat-square&logo=turborepo&logoColor=white)](https://turbo.build/)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)
+  [![stable](https://img.shields.io/badge/core%20packages-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [npm](https://www.npmjs.com/org/bpmnkit) · [GitHub](https://github.com/bpmnkit/monorepo)
 </div>
@@ -68,6 +68,7 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [`@bpmnkit/api`](packages/api) | [![npm](https://img.shields.io/npm/v/@bpmnkit/api?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API client — 180 typed operations, OAuth2, retries |
 | [`@bpmnkit/connector-gen`](packages/connector-gen) | [![npm](https://img.shields.io/npm/v/@bpmnkit/connector-gen?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/connector-gen) | Generate connector templates from OpenAPI specs (100 built-in) |
 | [`@bpmnkit/profiles`](packages/profiles) | [![npm](https://img.shields.io/npm/v/@bpmnkit/profiles?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/profiles) | Auth & profile storage shared between CLI and proxy |
+| [`@bpmnkit/worker-client`](packages/worker-client) | [![npm](https://img.shields.io/npm/v/@bpmnkit/worker-client?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
 | [`@bpmnkit/user-tasks`](packages/user-tasks) | [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget — form rendering, claim/complete |
 
 ### Apps & CLI
@@ -280,6 +281,16 @@ pnpm release            # Build and publish all changed packages to npm
 ```
 
 Every PR that changes a published package **must** include a changeset. Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes.
+
+## Versioning
+
+Every package is on **0.x**, which under semver promises nothing about compatibility — pin an
+exact version if that matters to you today.
+
+[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) is the contract
+each package takes on when it reaches 1.0.0: what counts as public API, what makes a change
+breaking (including when generated BPMN counts as one), which runtimes are supported, and how
+deprecations run.
 
 ## Contributing
 

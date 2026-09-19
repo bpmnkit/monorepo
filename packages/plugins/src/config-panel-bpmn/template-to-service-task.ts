@@ -18,7 +18,7 @@ import type { ServiceTaskOptions } from "@bpmnkit/core"
  * @example
  * ```typescript
  * import { Bpmn } from "@bpmnkit/core";
- * import { CAMUNDA_CONNECTOR_TEMPLATES, templateToServiceTaskOptions } from "@bpmnkit/canvas-plugin-config-panel-bpmn";
+ * import { CAMUNDA_CONNECTOR_TEMPLATES, templateToServiceTaskOptions } from "@bpmnkit/plugins/config-panel-bpmn";
  *
  * const kafka = CAMUNDA_CONNECTOR_TEMPLATES.find(t => t.id === "io.camunda.connectors.KAFKA.v1")!;
  * const defs = Bpmn.createProcess("proc")

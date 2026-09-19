@@ -1,7 +1,7 @@
 {
 	"$schema": "https://docspack.dev/schema/v1.json",
 	"name": "@bpmnkit/camunda-docspack",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"documents": [
 		"camunda@8.10"
 	],

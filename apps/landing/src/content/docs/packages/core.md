@@ -518,9 +518,9 @@ with `explicitJoins` that refusal is the only thing that tells you.
 the whole topology, and on a document you were handed that means rewriting edges you never
 touched.
 
-`{ strict: true }` is the former name for this option and still works. It was renamed because
-"strict" says nothing about what it is strict *about*, and because `applyBpmnOperations` takes
-a `strict` that means something else entirely.
+`{ strict: true }` was the former name for this option. It was removed in 1.0.0 — "strict"
+says nothing about what it is strict *about*, and `applyBpmnOperations` takes a `strict` that
+means something else entirely. Rename it to `explicitJoins`; the behaviour is identical.
 
 ## Writing files — `@bpmnkit/core/node`
 

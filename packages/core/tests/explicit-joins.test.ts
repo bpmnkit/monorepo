@@ -37,14 +37,6 @@ describe("explicitJoins", () => {
 		expect(() => converging({ explicitJoins: true })).toThrow(/gw_join/)
 	})
 
-	it("still honours the old name", () => {
-		expect(() => converging({ strict: true })).toThrow(/Inferred join gateways/)
-	})
-
-	it("prefers explicitJoins when both are given", () => {
-		expect(() => converging({ explicitJoins: false, strict: true })).not.toThrow()
-	})
-
 	function declaredJoin(joinType: "exclusiveGateway" | "parallelGateway") {
 		const builder = Bpmn.createProcess("proc")
 			.startEvent("s")

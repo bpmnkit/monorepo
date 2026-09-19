@@ -1,10 +1,10 @@
 /**
- * @bpmnkit/canvas-plugin-command-palette — Ctrl+K / ⌘K command palette for
+ * @bpmnkit/plugins/command-palette — Ctrl+K / ⌘K command palette for
  * `@bpmnkit/canvas` and `@bpmnkit/editor`.
  *
  * ## Usage
  * ```typescript
- * import { createCommandPalettePlugin } from "@bpmnkit/canvas-plugin-command-palette";
+ * import { createCommandPalettePlugin } from "@bpmnkit/plugins/command-palette";
  *
  * const palette = createCommandPalettePlugin({
  *   onZenModeChange: (active) => {

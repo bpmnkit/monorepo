@@ -1,3 +1,4 @@
+import { ParseError } from "../errors.js"
 import type {
 	FormComponent,
 	FormDefinition,
@@ -39,23 +40,23 @@ export function parseForm(json: string): FormDefinition {
 	try {
 		raw = JSON.parse(json)
 	} catch (e) {
-		throw new Error(`Failed to parse form JSON: ${(e as Error).message}`)
+		throw new ParseError(`Failed to parse form JSON: ${(e as Error).message}`)
 	}
 
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-		throw new Error("Form JSON must be an object")
+		throw new ParseError("Form JSON must be an object")
 	}
 
 	const obj = raw as Record<string, unknown>
 
 	if (typeof obj.id !== "string" || obj.id.length === 0) {
-		throw new Error("Form must have a non-empty 'id' string")
+		throw new ParseError("Form must have a non-empty 'id' string")
 	}
 	if (typeof obj.type !== "string") {
-		throw new Error("Form must have a 'type' string")
+		throw new ParseError("Form must have a 'type' string")
 	}
 	if (!Array.isArray(obj.components)) {
-		throw new Error("Form must have a 'components' array")
+		throw new ParseError("Form must have a 'components' array")
 	}
 
 	const definition: FormDefinition = {
@@ -91,16 +92,16 @@ export function parseForm(json: string): FormDefinition {
 
 function parseComponent(raw: unknown, path: string): FormComponent {
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-		throw new Error(`${path}: component must be an object`)
+		throw new ParseError(`${path}: component must be an object`)
 	}
 
 	const obj = raw as Record<string, unknown>
 
 	if (typeof obj.type !== "string") {
-		throw new Error(`${path}: component must have a 'type' string`)
+		throw new ParseError(`${path}: component must have a 'type' string`)
 	}
 	if (typeof obj.id !== "string" || obj.id.length === 0) {
-		throw new Error(`${path}: component must have a non-empty 'id'`)
+		throw new ParseError(`${path}: component must have a non-empty 'id'`)
 	}
 
 	const layout = parseLayout(obj.layout, path)
@@ -112,7 +113,7 @@ function parseComponent(raw: unknown, path: string): FormComponent {
 	switch (obj.type) {
 		case "text": {
 			if (typeof obj.text !== "string") {
-				throw new Error(`${path}: text component must have a 'text' string`)
+				throw new ParseError(`${path}: text component must have a 'text' string`)
 			}
 			const c: FormComponent = { type: "text", id: obj.id, text: obj.text }
 			if (typeof obj.label === "string") c.label = obj.label
@@ -169,7 +170,7 @@ function parseComponent(raw: unknown, path: string): FormComponent {
 function parseLayout(raw: unknown, path: string): FormLayout | undefined {
 	if (raw === undefined || raw === null) return undefined
 	if (typeof raw !== "object" || Array.isArray(raw)) {
-		throw new Error(`${path}.layout: must be an object`)
+		throw new ParseError(`${path}.layout: must be an object`)
 	}
 	const obj = raw as Record<string, unknown>
 	const layout: FormLayout = {}
@@ -185,7 +186,7 @@ function parseLayout(raw: unknown, path: string): FormLayout | undefined {
 function parseValidation(raw: unknown, path: string): FormValidation | undefined {
 	if (raw === undefined || raw === null) return undefined
 	if (typeof raw !== "object" || Array.isArray(raw)) {
-		throw new Error(`${path}.validate: must be an object`)
+		throw new ParseError(`${path}.validate: must be an object`)
 	}
 	const obj = raw as Record<string, unknown>
 	const v: FormValidation = {}
@@ -197,11 +198,11 @@ function parseValidation(raw: unknown, path: string): FormValidation | undefined
 
 function parseValues(raw: unknown, path: string): FormValueOption[] {
 	if (!Array.isArray(raw)) {
-		throw new Error(`${path}.values: must be an array`)
+		throw new ParseError(`${path}.values: must be an array`)
 	}
 	return raw.map((v: unknown, i: number) => {
 		if (typeof v !== "object" || v === null) {
-			throw new Error(`${path}.values[${i}]: must be an object`)
+			throw new ParseError(`${path}.values[${i}]: must be an object`)
 		}
 		const vo = v as Record<string, unknown>
 		return {
@@ -218,10 +219,10 @@ function parseFieldComponent(
 	layout: FormLayout | undefined,
 ): FormComponent {
 	if (typeof obj.label !== "string") {
-		throw new Error(`${path}: ${type} must have a 'label' string`)
+		throw new ParseError(`${path}: ${type} must have a 'label' string`)
 	}
 	if (typeof obj.key !== "string") {
-		throw new Error(`${path}: ${type} must have a 'key' string`)
+		throw new ParseError(`${path}: ${type} must have a 'key' string`)
 	}
 	const validate = parseValidation(obj.validate, path)
 	const base = {
@@ -242,10 +243,10 @@ function parseSelectComponent(
 	layout: FormLayout | undefined,
 ): FormComponent {
 	if (typeof obj.label !== "string") {
-		throw new Error(`${path}: select must have a 'label' string`)
+		throw new ParseError(`${path}: select must have a 'label' string`)
 	}
 	if (typeof obj.key !== "string") {
-		throw new Error(`${path}: select must have a 'key' string`)
+		throw new ParseError(`${path}: select must have a 'key' string`)
 	}
 	const c: FormComponent = {
 		type: "select",
@@ -272,10 +273,10 @@ function parseValuesComponent(
 	layout: FormLayout | undefined,
 ): FormComponent {
 	if (typeof obj.label !== "string") {
-		throw new Error(`${path}: ${type} must have a 'label' string`)
+		throw new ParseError(`${path}: ${type} must have a 'label' string`)
 	}
 	if (typeof obj.key !== "string") {
-		throw new Error(`${path}: ${type} must have a 'key' string`)
+		throw new ParseError(`${path}: ${type} must have a 'key' string`)
 	}
 	const values = Array.isArray(obj.values) ? parseValues(obj.values, path) : undefined
 
@@ -315,10 +316,10 @@ function parseCheckboxComponent(
 	layout: FormLayout | undefined,
 ): FormComponent {
 	if (typeof obj.label !== "string") {
-		throw new Error(`${path}: checkbox must have a 'label' string`)
+		throw new ParseError(`${path}: checkbox must have a 'label' string`)
 	}
 	if (typeof obj.key !== "string") {
-		throw new Error(`${path}: checkbox must have a 'key' string`)
+		throw new ParseError(`${path}: checkbox must have a 'key' string`)
 	}
 	const c: FormComponent = {
 		type: "checkbox",
@@ -339,10 +340,10 @@ function parseGroupComponent(
 	layout: FormLayout | undefined,
 ): FormComponent {
 	if (typeof obj.label !== "string") {
-		throw new Error(`${path}: group must have a 'label' string`)
+		throw new ParseError(`${path}: group must have a 'label' string`)
 	}
 	if (!Array.isArray(obj.components)) {
-		throw new Error(`${path}: group must have a 'components' array`)
+		throw new ParseError(`${path}: group must have a 'components' array`)
 	}
 	const components = obj.components.map((c: unknown, i: number) =>
 		parseComponent(c, `${path}.components[${i}]`),
@@ -363,8 +364,9 @@ function parseNumberComponent(
 	path: string,
 	layout: FormLayout | undefined,
 ): FormComponent {
-	if (typeof obj.label !== "string") throw new Error(`${path}: number must have a 'label' string`)
-	if (typeof obj.key !== "string") throw new Error(`${path}: number must have a 'key' string`)
+	if (typeof obj.label !== "string")
+		throw new ParseError(`${path}: number must have a 'label' string`)
+	if (typeof obj.key !== "string") throw new ParseError(`${path}: number must have a 'key' string`)
 	const c: FormComponent = { type: "number", id: obj.id as string, label: obj.label, key: obj.key }
 	const validate = parseValidation(obj.validate, path)
 	if (validate) c.validate = validate
@@ -391,7 +393,8 @@ function parseButtonComponent(
 	path: string,
 	layout: FormLayout | undefined,
 ): FormComponent {
-	if (typeof obj.label !== "string") throw new Error(`${path}: button must have a 'label' string`)
+	if (typeof obj.label !== "string")
+		throw new ParseError(`${path}: button must have a 'label' string`)
 	const c: FormComponent = { type: "button", id: obj.id as string, label: obj.label }
 	if (typeof obj.action === "string") c.action = obj.action
 	if (layout) c.layout = layout
@@ -403,8 +406,9 @@ function parseTaglistComponent(
 	path: string,
 	layout: FormLayout | undefined,
 ): FormComponent {
-	if (typeof obj.label !== "string") throw new Error(`${path}: taglist must have a 'label' string`)
-	if (typeof obj.key !== "string") throw new Error(`${path}: taglist must have a 'key' string`)
+	if (typeof obj.label !== "string")
+		throw new ParseError(`${path}: taglist must have a 'label' string`)
+	if (typeof obj.key !== "string") throw new ParseError(`${path}: taglist must have a 'key' string`)
 	const c: FormComponent = {
 		type: "taglist",
 		id: obj.id as string,

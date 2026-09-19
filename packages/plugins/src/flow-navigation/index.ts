@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-flow-navigation — keyboard traversal along sequence flows.
+ * @bpmnkit/plugins/flow-navigation — keyboard traversal along sequence flows.
  *
  * Keyboard modelling works until the first branch. After appending a task
  * behind a gateway the cursor sits on the new task, and there is no keyboard

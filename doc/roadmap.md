@@ -884,6 +884,91 @@ differentiator itself.
 
 ---
 
+## Road to 1.0.0
+
+> Full assessment, with the evidence behind each item:
+> [`doc/release-1.0.0.md`](release-1.0.0.md)
+
+Build, typecheck, lint and 2,499 tests across 20 packages are green, and the 12 roadmap
+items still open are all filed under an explicit *"Left open, deliberately"* heading.
+What stands between this repo and 1.0.0 is release engineering and a written contract,
+not code.
+
+### Blockers
+
+- [x] Give the three `plugins-cli/casen-*` packages a `files` field. Without one,
+      `pnpm pack` honours the repo-root `.gitignore` and drops `dist/`, so
+      `check:consumable` failed and **release runs #132 and #133 published nothing**
+- [ ] Merge and confirm the two changesets stranded on `main` actually publish —
+      the `@bpmnkit/core` fix for #149 / #150 is merged and not on npm
+- [x] Run `check:consumable --pack-only` in CI. It is offline and takes about a second;
+      leaving it to the release workflow is what let the break reach `main`
+- [x] Add `@bpmnkit/cli-sdk`, `@bpmnkit/user-tasks` and `@bpmnkit/create-casen-plugin`
+      to `scripts/published-packages.mjs`. All three are on npm, none is in the list, and
+      all three declare `LICENSE` in `files` while having no LICENSE file on disk — the
+      list also feeds the landing site's ecosystem page, so all three were missing from
+      bpmnkit.com too
+- [x] Add a `packages/user-tasks` entry to `scripts/generate-readmes.mjs` — its README is
+      hand-written today, which the next generator run would delete
+- [x] Switch internal dependencies from `workspace:*` to `workspace:^`. `*` publishes an
+      exact pin, so a consumer on mismatched versions gets two copies of `@bpmnkit/core`.
+      Must land before the tag; after it, the change is itself breaking — 51 ranges across
+      16 published packages; the eight private apps keep `workspace:*`
+- [x] Write and publish a stability policy: what is public API, what counts as breaking
+      (generated BPMN XML included — 0.4.0 changed every element ID as a *minor*), the
+      Node and browser ranges, and how deprecations run →
+      `docs/getting-started/stability`, linked from `README.md` and indexed in docspack.
+      The generated-document rule is `semanticHash`: breaking when it moves for the same
+      input, not when only the bytes move
+
+### Before the tag
+
+- [x] Decide the 1.0 set → **twelve packages**: `core`, `feel`, `canvas`, `editor`, `engine`,
+      `api`, `ascii`, `connectors`, `connector-gen`, `docspack`, `plugins`, `cli`. The other
+      fourteen stay 0.x. Membership lives in `STABLE` in `scripts/published-packages.mjs` and
+      `check-packages.mjs` enforces it both ways, so a 1.0 cannot arrive by accident
+- [x] Documentation pages for `@bpmnkit/plugins`, `@bpmnkit/feel`, `@bpmnkit/connectors` and
+      `@bpmnkit/ascii` — every package in the 1.0 set now has one. The eleven still without a
+      page are all 0.x
+- [x] `engines.node` on every package in the 1.0 set — was 2 of 12, now 12 of 12. The
+      fourteen 0.x packages still mostly lack one; worth doing as each joins
+- [x] `@bpmnkit/proxy` exports the subpath `"./dist/aikit-mcp.js"`, naming a build path as
+      public API — which the stability policy explicitly says `dist/` paths are not. Give it
+      a real subpath name before 1.0; the current spelling cannot be kept without either
+      breaking it later or contradicting the policy on day one
+- [x] Commit an API-surface snapshot and diff it in CI, so a removed export fails the build —
+      `scripts/api-surface.mjs` + `api-surface.json`, 1,484 exports across the eleven set
+      members that ship declarations; `pnpm check:api` in CI. Verified by deleting an export
+      and watching it fail
+- [x] Refresh `PUBLISHING.md`; it still names the `@bpmn-sdk` org and `bpmn-sdk/monorepo`
+- [x] Add `SECURITY.md`, `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`
+- [x] `CHANGELOG.md` for `apps/reebe-wasm`, the only published package without one
+- [x] Document `@bpmnkit/proxy`'s native-module install requirement —
+      `isolated-vm` and `better-sqlite3` need a compiler, and the failure is not friendly
+- [x] Resolve the two `@deprecated` markers; 1.0 is the moment for it. `BuildOptions.strict`
+      is **removed** — it was our own alias for `explicitJoins`. The connector
+      `zeebe:taskDefinition:type` binding is **kept**: it is Camunda's legacy spelling, still
+      used by templates in the wild and by the bundled catalogue, so removing it would stop
+      valid templates validating. Its marker was the wrong tool and is now a plain note
+- [x] `@bpmnkit/core` exports `ParseError` and documents `instanceof ParseError` as the way to
+      handle a bad file — but `bpmn-parser.ts` throws a plain `Error` in four places and
+      `ParseError` is constructed once in the whole package. Verified: `Bpmn.parse("<nonsense/>")`
+      throws something for which `e instanceof ParseError` is `false`. The documented
+      error-handling contract does not hold on the main parse path. Fixing it is additive
+      (`ParseError extends Error`, so existing `catch` keeps working and `instanceof` starts
+      working where it was promised), so it can land after 1.0 — but it should land
+- [x] `@bpmnkit/feel` does not re-export `builtinNames()` / `getBuiltin()` from its entry
+      point, so an editor cannot enumerate the 87 built-ins without reaching into `dist/`,
+      which the stability policy says is not API. Additive; worth exporting
+- [x] Plugin source docstrings still name packages that no longer exist — `minimap/index.ts`
+      documents itself as `@bpmnkit/canvas-plugin-minimap`, three renames out of date. Cosmetic,
+      but it is what a reader sees on hover
+- [x] Drop the `status: experimental` badge from `README.md` — the badge is now generated per
+      package from `STABLE`, so it reads `stable` on the twelve and `experimental` on the rest
+      rather than claiming one status for the whole repo
+
+---
+
 ## Completed
 
 *(Items moved here from above as they ship)*

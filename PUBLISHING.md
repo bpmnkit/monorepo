@@ -1,4 +1,7 @@
-# Publishing `@bpmnkit/core` to npm
+# Publishing to npm
+
+How the twenty-six published `@bpmnkit/*` packages reach the registry: the automated
+release flow, the gates in front of it, and the one-time setup behind it.
 
 This document covers the full publish lifecycle: one-time setup, the automated release flow, and how npm provenance (trusted publishing) works.
 
@@ -29,13 +32,11 @@ Every merge to `main` triggers the `release.yml` workflow. The `changesets/actio
 
 ## First-time setup
 
-### 1. Create the npm package scope
+### 1. The npm organization
 
-If `@bpmn-sdk` does not exist as an npm organization yet:
-
-1. Log in to [npmjs.com](https://www.npmjs.com)
-2. Go to **Organizations** → **Create Organization** → use `bpmn-sdk`
-3. The package `@bpmnkit/core` will publish under this org
+Everything publishes under the [`@bpmnkit`](https://www.npmjs.com/org/bpmnkit) npm
+organization, which already exists. A new package needs `publishConfig.access: "public"` in
+its manifest — `check-packages.mjs` enforces that — and nothing else.
 
 ### 2. Create an npm Automation token
 
@@ -43,35 +44,47 @@ Provenance attestation requires authentication via a token even though the build
 
 1. On npmjs.com → **Access Tokens** → **Generate New Token** → **Granular Access Token**
 2. Set:
-   - **Token name:** `github-actions-bpmn-sdk`
+   - **Token name:** `github-actions-bpmnkit`
    - **Expiration:** 365 days (or your org policy)
-   - **Packages and scopes:** Read and write access on `@bpmnkit/core`
+   - **Packages and scopes:** Read and write access on the `@bpmnkit` scope
    - **Organizations:** no org permission needed
 3. Copy the token
 
 ### 3. Add the token to GitHub Actions secrets
 
-In the GitHub repository (`bpmn-sdk/monorepo`):
+In the GitHub repository (`bpmnkit/monorepo`):
 
 1. **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 2. Name: `NPM_TOKEN`
 3. Value: the token from step 2
 
-### 4. Publish the package for the first time
+### 4. Publishing a package for the first time
 
-The changesets action will not publish a package that has never been published before without a version bump changeset. For the initial publish:
+Nothing special is required. A new package publishes through the automated flow like any
+other: add it to `scripts/published-packages.mjs`, give it a changeset, and merge the version
+PR. Changesets publishes every non-private workspace package it has a version bump for,
+whether or not the registry has seen it before.
 
-```bash
-# Make sure you're on main and everything is built
-pnpm install
-pnpm build
+---
 
-# Publish manually the first time
-cd packages/core
-npm publish --access public
-```
+## The gates in front of publish
 
-Or trigger it through the automated flow by creating a changeset and merging the Version PR (see below).
+`release.yml` runs these before `changesets/action`, and each one **skips the publish** if it
+fails. That is deliberate — a bad tarball is worse than a late one — but it also means a red
+release workflow publishes nothing at all and says so nowhere except the Actions tab. If a
+merge to `main` did not produce a release, look there first.
+
+| Step | What it catches |
+|---|---|
+| `pnpm build` | Anything that does not compile |
+| `node scripts/sync-license.mjs` | A published package with no LICENSE |
+| `node scripts/generate-readmes.mjs` | A hand-edited README about to be overwritten |
+| `node scripts/check-packages.mjs` | Missing manifest metadata; a package at 1.0 that is not in `STABLE`; a package in `STABLE` with no tests or documentation page |
+| `pnpm check:consumable` | A tarball missing a path its own `exports` declares, declarations that do not compile under `strict` + `NodeNext`, a surviving `workspace:` range |
+
+The last one is the reason it exists: three packages once shipped with no `dist/` because they
+had no `files` field, and the metadata checks could not see it. CI runs the fast half
+(`--pack-only`) on every pull request; the release workflow runs the whole thing.
 
 ---
 
@@ -86,7 +99,7 @@ pnpm changeset
 ```
 
 This interactive prompt asks:
-- Which packages changed (`@bpmnkit/core`)
+- Which packages changed
 - Bump type: `patch` (bug fix), `minor` (new feature), `major` (breaking change)
 - A short summary of the change
 
@@ -147,12 +160,12 @@ Or via the npm web UI on the package's **Code** tab.
 ## Troubleshooting
 
 **"Package not found" on publish**
-- The package name `@bpmnkit/core` must match the `name` field in `packages/core/package.json`.
-- The npm org `bpmn-sdk` must exist and your token must have write access.
+- The package name must match the `name` field in its `package.json`.
+- Your token must have write access to the `@bpmnkit` scope.
 
 **"You must be logged in" / 401 errors**
 - Check the `NPM_TOKEN` secret is set in the repository's Actions secrets.
-- Make sure the token has not expired and has write access to `@bpmnkit/core`.
+- Make sure the token has not expired and has write access to the `@bpmnkit` scope.
 
 **Provenance attestation fails**
 - Ensure `permissions: id-token: write` is present in the workflow job.

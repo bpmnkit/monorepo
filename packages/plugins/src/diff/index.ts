@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-diff — visual BPMN diff for `@bpmnkit/canvas`.
+ * @bpmnkit/plugins/diff — visual BPMN diff for `@bpmnkit/canvas`.
  *
  * Renders two versions of a diagram side by side as two canvases, marks every
  * element that was added, removed, changed or moved, and keeps both viewports in

@@ -7,7 +7,7 @@
   [![license](https://img.shields.io/npm/l/@bpmnkit/feel?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://github.com/bpmnkit/monorepo)
+  [![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/feel/CHANGELOG.md)
 </div>
@@ -23,7 +23,7 @@
 - **Full FEEL grammar** — arithmetic, comparisons, logic, function calls, paths, filters
 - **Temporal types** — date, time, datetime, duration (ISO 8601, full spec compliance)
 - **Unary tests** — DMN input expression syntax (`> 5`, `"gold", "silver"`, `[1..10]`)
-- **Built-in functions** — 50+ standard FEEL functions (string, list, numeric, date, context)
+- **Built-in functions** — 88 standard FEEL functions (string, list, numeric, date, context, range)
 - **Range expressions** — `[1..10]`, `(0..1)`, `[today..end]`
 - **Context literals** — `{ key: value, nested: { x: 1 } }`
 - **Syntax highlighting** — semantic token classification for editors
@@ -44,7 +44,8 @@ import { parseExpression, evaluate } from "@bpmnkit/feel"
 
 const parsed = parseExpression("amount * 1.2 + fee")
 if (!parsed.errors.length) {
-  const result = evaluate(parsed.ast!, { amount: 100, fee: 5 })
+  // `evaluate` takes an EvalContext — variables live under `vars`.
+  const result = evaluate(parsed.ast!, { vars: { amount: 100, fee: 5 } })
   console.log(result) // 125
 }
 ```
@@ -56,19 +57,20 @@ import { parseUnaryTests, evaluateUnaryTests } from "@bpmnkit/feel"
 
 // Does input value match any listed condition?
 const parsed = parseUnaryTests('"gold","silver"')
-const matches = evaluateUnaryTests(parsed.ast!, "gold", { /* context */ })
+const matches = evaluateUnaryTests(parsed.ast!, "gold", { vars: {} })
 console.log(matches) // true
 ```
 
 ### Syntax highlighting
 
 ```typescript
-import { highlightFeel } from "@bpmnkit/feel"
+import { annotate, highlightToHtml } from "@bpmnkit/feel"
 
-const tokens = highlightFeel('if x > 10 then "high" else "low"')
-for (const token of tokens) {
-  console.log(token.type, token.value) // keyword, number, string, ...
-}
+// Classified tokens, for an editor to style itself.
+annotate("x > 1")[0] // { kind: "variable", value: "x", start: 0, end: 1 }
+
+// Or the same tokens already wrapped in <span class="feel-…"> elements.
+highlightToHtml('if x > 10 then "high" else "low"')
 ```
 
 ## API Reference
@@ -77,19 +79,20 @@ for (const token of tokens) {
 |--------|-------------|
 | `parseExpression(src)` | Parse a FEEL expression → `ParseResult` |
 | `parseUnaryTests(src)` | Parse unary tests → `ParseResult` |
-| `evaluate(ast, ctx)` | Evaluate a parsed expression |
+| `evaluate(ast, ctx)` | Evaluate a parsed expression; `ctx` is `{ vars }` |
 | `evaluateUnaryTests(ast, input, ctx)` | Test input against unary tests |
-| `formatFeel(src)` | Pretty-print a FEEL expression |
-| `highlightFeel(src)` | Tokenize with semantic types for highlighting |
+| `formatFeel(node, opts?)` | Pretty-print a **parsed node**, not source text |
+| `highlightToHtml(src)` | Tokens wrapped in `<span class="feel-…">` elements |
+| `highlightFeel(src)` | Alias for `highlightToHtml` |
 | `tokenize(src)` | Raw token stream |
-| `annotate(src)` | Full AST with position metadata |
+| `annotate(src)` | Tokens classified for highlighting (`kind`, `value`, `start`, `end`) |
 
 ### ParseResult
 
 ```typescript
 interface ParseResult {
   ast: FeelNode | null
-  errors: ParseError[]   // { message, position }
+  errors: ParseError[]   // { message, start, end }
 }
 ```
 

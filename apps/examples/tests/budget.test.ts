@@ -57,14 +57,21 @@ const BUDGETS: Record<string, Budget> = {
 const MAX_LINES_PER_ELEMENT = 5
 
 /**
- * Ceiling on the time one example spends inside the SDK.
+ * Ceiling on what it costs to run one example, start to finish.
  *
- * Deliberately about 100x the real figure, which is one to three milliseconds.
- * A tight bound here would be a flaky test of the machine it runs on; this one
- * only fires on the kind of regression that changes the shape of the layout
- * algorithm, and it cannot fire by accident.
+ * This times `await import(...)`, so it measures resolving and transforming the
+ * script and its imports as well as the builder calls — and the transform
+ * dominates. It is therefore a backstop against a pathological regression, not
+ * a latency bound on the SDK, and the number has to leave room for the machine.
+ *
+ * It was 250ms, on the claim that this "cannot fire by accident". It can: under
+ * `pnpm -r test`, with every package's suite running at once, 06 took 304ms on a
+ * cold import and failed a green tree. A ceiling that trips on how loaded the
+ * runner is tests the runner, and a flaky gate on `main` blocks releases at
+ * random. Eight seconds is far above anything a loaded machine produces here and
+ * still an order of magnitude below a genuine algorithmic regression.
  */
-const MAX_BUILD_MS = 250
+const MAX_BUILD_MS = 8_000
 
 function codeLines(source: string): number {
 	let count = 0

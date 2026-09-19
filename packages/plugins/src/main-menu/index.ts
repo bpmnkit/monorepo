@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-main-menu — main menu plugin for `@bpmnkit/canvas`.
+ * @bpmnkit/plugins/main-menu — main menu plugin for `@bpmnkit/canvas`.
  *
  * Adds a panel in the top-right corner of the canvas with an optional title
  * and a menu button. The menu lets users switch between light, dark, and

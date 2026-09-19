@@ -56,3 +56,21 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      # Packs every published package and checks the tarball contains each path
+      # its manifest declares. The release workflow runs the full check, which
+      # also installs and type-checks each tarball from the network — far too
+      # slow for a PR. `--pack-only` is offline and takes about a second, and it
+      # is the half that catches a packaging break: three `plugins-cli` packages
+      # reached `main` behind a green PR shipping no `dist/`, and the failure
+      # surfaced in the release workflow, where it silently stopped publishing.
+      - name: Check packages are packable
+        run: pnpm check:consumable --pack-only
+
+      # The 1.0 promise is that these packages' exports do not change shape without
+      # a major. Nothing else here can see that happen: tsc is happy when an export
+      # disappears, tests only cover what they import, and the packable check looks
+      # at whether entry points resolve, not what is behind them. This diffs the
+      # built declarations against the committed snapshot.
+      - name: Check the public API surface
+        run: pnpm check:api

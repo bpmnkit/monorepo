@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-config-panel-bpmn — BPMN element schemas for the
+ * @bpmnkit/plugins/config-panel-bpmn — BPMN element schemas for the
  * config panel plugin.
  *
  * Registers config panel schemas for all standard BPMN element types. For
@@ -9,8 +9,8 @@
  *
  * ## Usage
  * ```typescript
- * import { createConfigPanelPlugin } from "@bpmnkit/canvas-plugin-config-panel";
- * import { createConfigPanelBpmnPlugin } from "@bpmnkit/canvas-plugin-config-panel-bpmn";
+ * import { createConfigPanelPlugin } from "@bpmnkit/plugins/config-panel";
+ * import { createConfigPanelBpmnPlugin } from "@bpmnkit/plugins/config-panel-bpmn";
  *
  * let editorRef: BpmnEditor | null = null;
  * const configPanel = createConfigPanelPlugin({

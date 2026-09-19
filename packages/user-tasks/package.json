@@ -18,10 +18,10 @@
 		"check": "biome check ."
 	},
 	"dependencies": {
-		"@bpmnkit/api": "workspace:*",
-		"@bpmnkit/core": "workspace:*",
-		"@bpmnkit/plugins": "workspace:*",
-		"@bpmnkit/ui": "workspace:*"
+		"@bpmnkit/api": "workspace:^",
+		"@bpmnkit/core": "workspace:^",
+		"@bpmnkit/plugins": "workspace:^",
+		"@bpmnkit/ui": "workspace:^"
 	},
 	"keywords": [
 		"bpmn",

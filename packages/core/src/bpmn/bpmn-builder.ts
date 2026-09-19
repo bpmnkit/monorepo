@@ -201,16 +201,6 @@ export interface BuildOptions {
 	 * that cannot see what it did not emit.
 	 */
 	explicitJoins?: boolean
-	/**
-	 * The former name for {@link BuildOptions.explicitJoins}, still honoured.
-	 *
-	 * Renamed because "strict" says nothing about what it is strict *about*, and
-	 * because `applyBpmnOperations` takes a `strict` that means something else
-	 * entirely — whether to throw or report problems.
-	 *
-	 * @deprecated Use `explicitJoins`.
-	 */
-	strict?: boolean
 }
 
 /** Options for a collaboration participant (a pool). */
@@ -2959,8 +2949,7 @@ export class ProcessBuilder {
 	 * says: inference reads the whole topology, and on a document you were handed
 	 * that means rewriting edges you never touched.
 	 *
-	 * @param options - `explicitJoins` refuses inferred join gateways. `strict` is
-	 *   the former name for it and still works.
+	 * @param options - `explicitJoins` refuses inferred join gateways.
 	 */
 	build(options?: BuildOptions): BpmnDefinitions {
 		this.resolvePendingSplice()
@@ -2972,7 +2961,7 @@ export class ProcessBuilder {
 		// that needs a join here means saying so with `.connectTo(joinId)`.
 		if (this._source === undefined) insertJoinGateways(this.flowElements, this.sequenceFlows)
 
-		const explicitJoins = options?.explicitJoins ?? options?.strict ?? false
+		const explicitJoins = options?.explicitJoins ?? false
 		if (explicitJoins && this.flowElements.length > beforeCount) {
 			const inserted = this.flowElements
 				.slice(beforeCount)

@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-connector-catalog — Import API connectors from
+ * @bpmnkit/plugins/connector-catalog — Import API connectors from
  * OpenAPI specs into the BPMN editor via the command palette and a visual
  * catalog panel.
  *

@@ -33,8 +33,8 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@bpmnkit/core": "workspace:*",
-		"@bpmnkit/docspack": "workspace:*",
+		"@bpmnkit/core": "workspace:^",
+		"@bpmnkit/docspack": "workspace:^",
 		"yaml": "^2.8.2"
 	},
 	"docspack": {

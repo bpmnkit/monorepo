@@ -1,5 +1,5 @@
 /**
- * @bpmnkit/canvas-plugin-lint — static analysis on the canvas.
+ * @bpmnkit/plugins/lint — static analysis on the canvas.
  *
  * `casen lint` has had five categories of rules for a while; none of them were
  * visible while modelling. This puts them on the diagram: a marker on every
