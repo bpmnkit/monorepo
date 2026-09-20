@@ -1,5 +1,42 @@
 # Progress
 
+## 2026-09-20 — A FEEL statement is a thing you can share, and Drop is easier to find
+
+**Drop takes a fourth kind: `feel`.** An expression on its own is unreadable —
+`order.amount * (1 + vat)` says nothing until you know what `order` and `vat` were — so a
+FEEL drop stores the expression *and* the context it runs against, and the share page
+evaluates the two in the reader's browser rather than displaying a value the uploader typed
+in. `.feel` files are accepted bare (just the expression) or as the JSON document
+`{ expression, context?, mode? }`; a bare one is stored as the document it became, so the
+Original download round-trips through the same parser. `mode: "unary-tests"` reads the
+statement the way a decision-table input entry is read, with `?` taken from the context.
+Expressions that do not parse are refused at upload, exactly as unparseable BPMN is.
+
+**Three ways in, one document out.** A composer on `/drop` (two boxes and a live result),
+**Share as a drop** in the [FEEL playground](/feel-functions), and dropping or `curl`-ing a
+`.feel` file. All three post the same file to the same endpoint, so a composed statement
+clears exactly the gate an uploaded one does. Pasting `{"expression": …}` anywhere on the
+drop page is recognised too.
+
+**Widening `files.kind` needed the table rebuilt, and the order matters.** SQLite cannot
+alter a CHECK in place. `file_content`, `file_current` and `file_versions` all reference
+`files(id) ON DELETE CASCADE`, and `DROP TABLE files` performs an implicit DELETE — with
+foreign keys on, that cascade would wipe every body in the database. So `0005_feel_kind.sql`
+copies and drops the *children* first: by the time `files` goes, nothing references it.
+Verified against the real migration SQL under `PRAGMA foreign_keys = ON` — rows preserved,
+the widened CHECK still rejecting an unknown kind, and the cascade still working afterwards.
+
+**The evaluation is shared, the rendering is not.** `shared/feel-eval.ts` has no DOM, so the
+share page, the composer's live preview and the tests all run the identical evaluator;
+`client/feel-view.ts` is the only part that touches `document`.
+
+**Two things on the landing page stopped being a scavenger hunt.** Drop and the AI guide are
+now top-level nav entries rather than one dropdown down, and an unnumbered "start here" strip
+sits directly under the hero pointing at both — Drop was nine numbered sections below the
+fold, and the AI guide was reachable only by knowing it existed. The AI benchmark section's
+link says "Read the AI guide" instead of "How it works".
+
+
 ## 2026-09-18 — The rest of the 1.0 list
 
 Everything left on the checklist except the merge itself.

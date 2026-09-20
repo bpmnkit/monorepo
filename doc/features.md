@@ -1,5 +1,31 @@
 # Features
 
+## Share a FEEL statement, with the variables it reads (2026-09-20)
+
+- **`feel` is a Drop file kind** (`apps/drop`) — `.feel` files, bare or as
+  `{ expression, context?, mode? }`, stored beside BPMN, DMN and Forms. The share
+  page renders the highlighted expression, the context, and the value the two
+  produce, evaluated by `@bpmnkit/feel` in the reader's browser.
+- **A composer on `/drop`** — two boxes and a result that updates as you type, then
+  one button for the link. For the common case of having an expression rather than
+  a file.
+- **"Share as a drop" in the FEEL playground** (`apps/landing`) — posts whatever is
+  in the expression and context boxes, through the same upload endpoint the editor's
+  own share uses.
+- **`mode: "unary-tests"`** reads the statement as a decision-table input entry, with
+  the value under test taken from the context's `?`.
+- **Refused at the door.** An expression that does not parse is rejected on upload,
+  the same gate unparseable BPMN meets — a link that renders a syntax error is not
+  worth sending.
+
+## Drop and the AI guide are one click from the homepage (2026-09-20)
+
+- **Top-level nav entries** for both, out of the Tools dropdown and out of nowhere
+  respectively.
+- **A "start here" strip under the hero** — unnumbered, because it is a signpost and
+  not a chapter — carrying the two things people arrive already looking for.
+
+
 ## A preview says which part of the diagram the AI added (2026-09-17)
 
 - **Additions outlined, the rest left plain** (`packages/plugins/ai-bridge`) — every

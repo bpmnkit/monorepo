@@ -11,6 +11,10 @@
  * Mounting is deliberately a function rather than a top-level side effect: the
  * homepage imports it only once the section is in view, so a visitor who never
  * scrolls that far never downloads the parser.
+ *
+ * An expression worth trying here is usually one worth showing somebody else,
+ * so "Share as a drop" posts both boxes — expression and context — to
+ * bpmnkit.com/drop and hands back a link that evaluates them the same way.
  */
 
 import {
@@ -21,6 +25,7 @@ import {
 	parseUnaryTests,
 } from "@bpmnkit/feel"
 import type { FeelValue } from "@bpmnkit/feel"
+import { shareFeelToDrop } from "./share-drop.js"
 
 type Mode = "expression" | "unary-tests"
 
@@ -196,6 +201,69 @@ export function mountFeelPlayground(root: HTMLElement): void {
 		}
 	}
 
+	wireShare(root, () => ({
+		expression: expr.value.trim(),
+		context: JSON.parse(context.value.trim() || "{}") as Record<string, unknown>,
+		mode,
+	}))
+
 	const first = EXAMPLES[0]
 	if (first) load(first)
+}
+
+/**
+ * Wires the share row, if the page rendered one.
+ *
+ * `read` throws when the context is not JSON — the same failure `run()` already
+ * reports in the result panel — so the button says so rather than posting a
+ * statement the Worker would reject for a reason the writer can see from here.
+ */
+function wireShare(
+	root: HTMLElement,
+	read: () => { expression: string; context: Record<string, unknown>; mode: Mode },
+): void {
+	const button = root.querySelector<HTMLButtonElement>("[data-fp-share]")
+	const out = root.querySelector<HTMLElement>("[data-fp-share-out]")
+	const url = root.querySelector<HTMLInputElement>("[data-fp-share-url]")
+	const open = root.querySelector<HTMLAnchorElement>("[data-fp-share-open]")
+	const copy = root.querySelector<HTMLButtonElement>("[data-fp-share-copy]")
+	const message = root.querySelector<HTMLElement>("[data-fp-share-msg]")
+	if (!button || !out || !url || !open || !copy || !message) return
+
+	button.addEventListener("click", async () => {
+		message.textContent = ""
+		let statement: ReturnType<typeof read>
+		try {
+			statement = read()
+		} catch {
+			message.textContent = "The context is not valid JSON."
+			return
+		}
+		if (statement.expression === "") {
+			message.textContent = "Write an expression to share."
+			return
+		}
+
+		button.disabled = true
+		try {
+			const outcome = await shareFeelToDrop(statement)
+			if (!outcome.ok) {
+				message.textContent = outcome.message
+				return
+			}
+			url.value = new URL(outcome.path, location.origin).href
+			open.href = outcome.path
+			out.hidden = false
+		} finally {
+			button.disabled = false
+		}
+	})
+
+	copy.addEventListener("click", async () => {
+		await navigator.clipboard.writeText(url.value)
+		copy.textContent = "Copied"
+		setTimeout(() => {
+			copy.textContent = "Copy"
+		}, 1500)
+	})
 }
