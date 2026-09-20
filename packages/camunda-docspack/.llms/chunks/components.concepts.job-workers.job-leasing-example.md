@@ -13,7 +13,7 @@ client
             jobClient
                 // highlight-start
                 .newCompleteCommand(job.getKey())
-                .withLeaseToken(job.getLeaseToken())
+                .withJobLeaseToken(job.getJobLeaseToken())
                 // highlight-end
                 .send();
         })

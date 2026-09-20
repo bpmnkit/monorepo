@@ -14,6 +14,10 @@ Camunda raises this incident only when the oversized job is first in the activat
 
 Resolve the incident only after reducing the size of the secret value or the job variables. Otherwise, the next activation attempt fails in the same way.
 
+Camunda checks the job size again only when a worker next activates the job. If no worker is connected for the job type, the broker does not activate the job or run the size check. As a result, the incident does not reappear even if the values are still too large.
+
+Keep a worker connected for the affected job type so Camunda can raise a new incident promptly if the job still exceeds the message-size limit.
+
 To reduce the job variables included in activation, adjust the worker's `fetchVariables` list. Variables the worker does not fetch are excluded from the activation and do not count toward the message-size limit.
 
 ---
