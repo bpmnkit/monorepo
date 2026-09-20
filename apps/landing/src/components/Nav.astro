@@ -27,6 +27,11 @@ interface Props {
 const {
 	links = [
 		{ href: "/docs", label: "Docs" },
+		// Two entries that were a dropdown away and are asked for by name: Drop is
+		// the fastest thing on the site to get value out of, and the AI guide is
+		// what people arrive looking for.
+		{ href: "/drop", label: "Drop" },
+		{ href: "/docs/guides/ai", label: "AI Guide" },
 		{
 			label: "Resources",
 			items: [
@@ -40,7 +45,6 @@ const {
 		{
 			label: "Tools",
 			items: [
-				{ href: "/drop", label: "Drop" },
 				{ href: "/editor", label: "Editor" },
 				{ href: "/feel-functions", label: "FEEL Playground" },
 				{ href: "/operate", label: "Operate" },

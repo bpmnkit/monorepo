@@ -1,8 +1,10 @@
 # @bpmnkit/drop
 
-BPMN Kit Drop — drop a BPMN, DMN, or Camunda Form file (or several) and get a short,
+BPMN Kit Drop — drop a BPMN, DMN, Camunda Form or FEEL file (or several) and get a short,
 shareable link at `bpmnkit.com/drop/:shareId` that renders it read-only in the browser,
-with a live "N viewing" indicator. Inspired by [Cloudflare Drop](https://www.cloudflare.com/drop/).
+with a live "N viewing" indicator. A FEEL drop carries the expression *and* the context it
+reads, and the share page evaluates them in the reader's browser; the landing page has a
+composer for writing one without a file. Inspired by [Cloudflare Drop](https://www.cloudflare.com/drop/).
 
 A single Cloudflare Worker serves the UI and API; files are stored in D1 as the typed
 JSON model from `@bpmnkit/core` alongside the byte-faithful original; presence is a
@@ -26,9 +28,12 @@ src/
   lib/             ids, validate, meta, db (D1), versions (the milestone ring), http,
                    pages (HTML), demo (in-memory demo drop), review (deterministic
                    optimizer pass), ai (Workers AI + cache)
-  client/          browser bundles: drop, viewer, admin, landing (built to public/drop/assets)
-  shared/          constants used by both Worker and client
-migrations/        D1 schema (0001 core, 0002 AI review, 0003 version log)
+  client/          browser bundles: drop, viewer, admin, landing (built to public/drop/assets),
+                   plus the FEEL view and composer
+  shared/          constants, and the FEEL document (shape, parse, evaluate) — used by
+                   both Worker and client
+migrations/        D1 schema (0001 core, 0002 AI review, 0003 version log,
+                   0004 report state, 0005 the FEEL kind)
 ```
 
 ## Develop

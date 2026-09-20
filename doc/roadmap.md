@@ -237,6 +237,9 @@ Supersedes Phase 1-4 of "AIKit — Intent-Driven Process Automation" above: the 
 - [x] **Phase 1 — Technical foundation**: shared `<Seo>` component + JSON-LD helpers (`packages/astro-shared`), `@astrojs/sitemap` wired into `landing`/`docs`/`learn`, `robots.txt` on all three, full canonical/OG/Twitter tags (fixed a `build.format: "file"` canonical bug — `Astro.url.pathname` resolved to literal `.html`/`.html` suffixes)
 - [x] **Phase 2 — Domain & brand unification**: docs renamed "BPMN SDK" → "BPMN Kit" and its `site` URL fixed from `bpmn-sdk-docs.pages.dev` to `docs.bpmnkit.com` (was also serving fake `@bpmn-sdk/*` package names on the docs homepage — corrected to real `@bpmnkit/*`); `learn` given a `site` URL for the first time; cross-site nav/footer linking added across all three apps
 - [x] **Phase 5 — Structured data**: `organizationJsonLd`/`softwareApplicationJsonLd`/`articleJsonLd`/`breadcrumbJsonLd`/`faqJsonLd` helpers, applied site-wide plus per-page on connectors, compare, blog, and glossary pages
+- [x] **Homepage signposting** — Drop and the AI guide promoted to top-level nav entries, and an
+  unnumbered "start here" strip under the hero pointing at both; neither was reachable without
+  knowing where to look
 - [x] **Phase 4 — Evergreen pages**: `/connectors` catalog (116 pages generated from `@bpmnkit/connectors`' real template data), `/compare/bpmn-js` + `/compare/camunda-modeler`, `/feel-functions` (all 87 real `@bpmnkit/feel` builtins, verified 1:1 against `builtinNames()`), `/use-cases` (4 pages: AI workflow generation, embedding the editor, Camunda 8 automation, process simulation), and a 12-entry `/glossary` on `learn.bpmnkit.com` (events, gateways, tasks, sub-processes, boundary events, message events, timer events, call activities — each with a generated diagram + runnable `@bpmnkit/core` example, cross-linked to the matching tutorial where one exists)
 - [x] **Phase 3 — Blog**: `bpmnkit.com/blog` (Astro content collection + RSS), all 10 posts from the `doc/seo-plan.md` editorial calendar written and published
 - [ ] **Phase 6 — Distribution & measurement**: can't be done from the repo (needs live domain/DNS access and third-party accounts) — full step-by-step checklist in [`doc/seo-phase6-checklist.md`](seo-phase6-checklist.md): Search Console + Bing Webmaster setup, analytics, backlink/outreach targets, and an ongoing measurement cadence
@@ -352,6 +355,17 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
 - [x] E5 — a report records what its reporter was looking at, the queue says *edited since
       reported* when the drop has moved on, and a ban acts on the reported hashes as well as the
       current ones — so editing away from a report is not an escape the reporter saw
+
+**Track F — shared FEEL statements**
+
+- [x] F1 — `feel` as a fourth file kind: `.feel` bare or as `{ expression, context?, mode? }`,
+      parsed at upload by `@bpmnkit/feel` so a statement that does not parse never becomes a link
+- [x] F2 — `0005_feel_kind.sql` widens the `files.kind` CHECK by rebuilding the table, children
+      copied and dropped before the parent so `DROP TABLE files` cannot cascade into the bodies
+- [x] F3 — the share view: highlighted expression, its context, and the value the two produce,
+      evaluated in the reader's browser (`shared/feel-eval.ts`, no DOM, shared with the tests)
+- [x] F4 — a composer on `/drop` and **Share as a drop** in the `/feel-functions` playground,
+      both posting the same document to the same `POST /drop/api/drops`
 
 ### Design consistency — Drop + Editor on the landing system
 

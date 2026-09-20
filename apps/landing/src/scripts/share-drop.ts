@@ -50,8 +50,32 @@ export function uploadErrorMessage(status: number, payload: UploadResponse | nul
 
 /** Posts one diagram to Drop as a single-file upload. */
 export async function shareToDrop(xml: string, filename: string): Promise<ShareOutcome> {
+	return await post(new File([xml], filename, { type: "application/xml" }))
+}
+
+/** What the FEEL playground shares: the expression, and the data it reads. */
+export interface FeelShare {
+	expression: string
+	context: Record<string, unknown>
+	mode: "expression" | "unary-tests"
+}
+
+/**
+ * Posts one FEEL statement to Drop, as the `.feel` document the Worker parses.
+ *
+ * The context travels with it deliberately: an expression on its own is a
+ * string anyone could have pasted into chat, and the reason to share a link is
+ * that the recipient sees the value it produces as well as the text.
+ */
+export async function shareFeelToDrop(statement: FeelShare): Promise<ShareOutcome> {
+	const name = "expression.feel"
+	const file = new File([JSON.stringify(statement, null, 2)], name, { type: "application/json" })
+	return await post(file)
+}
+
+async function post(file: File): Promise<ShareOutcome> {
 	const body = new FormData()
-	body.append("files", new File([xml], filename, { type: "application/xml" }), filename)
+	body.append("files", file, file.name)
 
 	let res: Response
 	try {

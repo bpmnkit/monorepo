@@ -128,10 +128,23 @@ const DEMO_DMN = `<?xml version="1.0" encoding="UTF-8"?>
 
 const DEMO_FORM = `{"components":[{"label":"Applicant name","type":"textfield","key":"applicantName","id":"Field_name","validate":{"required":true}},{"label":"Requested amount","type":"number","key":"amount","id":"Field_amount"},{"label":"Credit score","type":"number","key":"creditScore","id":"Field_score"},{"label":"Employment status","type":"select","key":"employment","id":"Field_emp","values":[{"label":"Employed","value":"employed"},{"label":"Self-employed","value":"self"},{"label":"Unemployed","value":"none"}]},{"label":"I confirm the information is accurate","type":"checkbox","key":"confirmed","id":"Field_confirm"}],"type":"default","id":"loanApplicationForm","executionPlatform":"Camunda Cloud","executionPlatformVersion":"8.5.0","schemaVersion":16}`
 
+// The condition on the gateway above, with the data it reads — so the demo
+// shows the fourth kind too, and shows why a FEEL drop carries its context.
+const DEMO_FEEL = JSON.stringify(
+	{
+		expression: 'if risk.score < 40 then "approve" else "refer to underwriting"',
+		context: { risk: { score: 22, band: "low" } },
+		mode: "expression",
+	},
+	null,
+	2,
+)
+
 const DEMO_FILES: Array<{ filename: string; content: string }> = [
 	{ filename: "loan-approval.bpmn", content: DEMO_BPMN },
 	{ filename: "credit-risk.dmn", content: DEMO_DMN },
 	{ filename: "loan-application.form", content: DEMO_FORM },
+	{ filename: "approval-condition.feel", content: DEMO_FEEL },
 ]
 
 // Fixed "created" date so the demo share page shows a stable timestamp.

@@ -1,7 +1,7 @@
 /** Constants shared between the Worker and the browser client. No DOM or Worker APIs. */
 
 /** Supported artifact kinds. */
-export type FileKind = "bpmn" | "dmn" | "form"
+export type FileKind = "bpmn" | "dmn" | "form" | "feel"
 
 /** Max size of a single uploaded file, in bytes. Kept below D1's 1 MiB row cap (1,048,576). */
 export const MAX_FILE_BYTES = 900_000
@@ -52,7 +52,7 @@ export const AUTOSAVE_MS = 30_000
 export const ORIGINAL_SEQ = 0
 
 /** Accepted file extensions in the drop zone. */
-export const ACCEPTED_EXTENSIONS = [".bpmn", ".dmn", ".form", ".xml", ".json"] as const
+export const ACCEPTED_EXTENSIONS = [".bpmn", ".dmn", ".form", ".feel", ".xml", ".json"] as const
 
 /** Abuse-report categories. */
 export const REPORT_REASONS = ["copyright", "malicious", "personal-data", "other"] as const
