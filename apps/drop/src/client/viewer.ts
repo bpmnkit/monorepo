@@ -1,11 +1,11 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
-import { Bpmn, compactify } from "@bpmnkit/core"
+import { Bpmn, compactify, sha256Hex } from "@bpmnkit/core"
 import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
 import type { ReviewResult, Suggestion } from "../lib/review.js"
 import { AI_CODE_STORAGE_KEY, DEMO_SHARE_ID, type FileKind } from "../shared/constants.js"
-import type { FeelDocument } from "../shared/feel-doc.js"
+import { type FeelDocument, feelLabel, serializeFeelDocument } from "../shared/feel-doc.js"
 import {
 	type ClientMessage,
 	PING,
@@ -13,6 +13,7 @@ import {
 	PONG,
 	type ServerMessage,
 } from "../shared/room-protocol.js"
+import { type FeelEditor, mountFeelEditor } from "./feel-edit.js"
 import { renderFeelDocument } from "./feel-view.js"
 import { type Change, DocWatcher, type WatcherDoc } from "./watcher.js"
 
@@ -160,9 +161,20 @@ function renderForm(json: string): void {
 	new FormViewer({ container: viewer, theme }).load(JSON.parse(json))
 }
 
-function renderFeel(json: string): void {
+/** The statement on the active tab, once its tab has loaded. */
+let feelDoc: FeelDocument | null = null
+/** The hash of that statement as stored, which the next save is made against. */
+let feelBase: string | null = null
+
+async function renderFeel(json: string): Promise<void> {
 	zoombar.hidden = true
-	renderFeelDocument(viewer, JSON.parse(json) as FeelDocument)
+	const doc = JSON.parse(json) as FeelDocument
+	feelDoc = doc
+	// A FEEL drop's stored bytes are always its document's canonical form — the
+	// upload stores that and so does a save — so the hash the server holds can be
+	// recomputed here instead of being carried in a header.
+	feelBase = await sha256Hex(serializeFeelDocument(doc))
+	renderFeelDocument(viewer, doc)
 }
 
 /** Make a clicked task that references a form/decision in this drop jump to its tab. */
@@ -234,6 +246,10 @@ async function select(index: number, xml?: string): Promise<void> {
 	setActiveReviewFile(file.kind === "bpmn" ? file : null)
 	// Only BPMN has an op vocabulary, so a DMN or form tab watches nothing.
 	watcher.watch(file.kind === "bpmn" ? file.filename : null)
+	feelEditor?.destroy()
+	feelEditor = null
+	feelDoc = null
+	feelBase = null
 	updateEditAffordance()
 	exitVersionPreview()
 	if (historyPanel && !historyPanel.hidden) void loadHistory()
@@ -247,7 +263,7 @@ async function select(index: number, xml?: string): Promise<void> {
 		} else if (file.kind === "dmn") {
 			renderDmn(await (await fetch(contentUrl(file, "json"))).text())
 		} else if (file.kind === "feel") {
-			renderFeel(await (await fetch(contentUrl(file, "json"))).text())
+			await renderFeel(await (await fetch(contentUrl(file, "json"))).text())
 		} else {
 			renderForm(await (await fetch(contentUrl(file, "json"))).text())
 		}
@@ -675,6 +691,8 @@ let widgetId: string | null = null
 
 /** The editor, once someone has claimed the baton. Null while reading. */
 let session: import("./edit-session.js").EditSession | null = null
+/** The statement editor, when a FEEL tab is open for editing. */
+let feelEditor: FeelEditor | null = null
 /** The file the editor is open on, for going back to it afterwards. */
 let editingFile: string | null = null
 /** Set when we let the baton go ourselves and have already said why. */
@@ -701,10 +719,10 @@ function notice(text: string, holdMs = 4_000): void {
  * this is the courtesy, not the control.
  */
 function readOnlyReason(file: DropFile | undefined): string | null {
-	if (!file || file.kind !== "bpmn") return null
+	if (!file || (file.kind !== "bpmn" && file.kind !== "feel")) return null
 	if (isDemo) return "The demo cannot be edited — take a copy to make one you own."
 	if (data.pinned) return "This drop is pinned by an operator and is read-only."
-	if (file.processes !== 1) {
+	if (file.kind === "bpmn" && file.processes !== 1) {
 		return "The editor handles one process at a time, and this file has several."
 	}
 	return null
@@ -719,17 +737,22 @@ function readOnlyReason(file: DropFile | undefined): string | null {
 function updateEditAffordance(): void {
 	const file = data.files[activeIndex]
 	const isBpmn = file?.kind === "bpmn"
+	const isFeel = file?.kind === "feel"
 	const blocked = readOnlyReason(file)
+	const editing = session !== null || feelEditor !== null
 
 	if (editBtn) {
-		editBtn.hidden = !isBpmn || session !== null
-		editBtn.textContent = isDemo ? "Edit a copy" : "Edit"
+		editBtn.hidden = !(isBpmn || isFeel) || editing
+		editBtn.textContent = isDemo && isBpmn ? "Edit a copy" : "Edit"
 		// Disabled with a reason beats hidden: a button that is not there looks
 		// like a feature you do not have, rather than one this file cannot use.
-		editBtn.disabled = blocked !== null && !isDemo
-		editBtn.title = blocked ?? ""
+		// A statement is the exception — it opens whatever the drop's state,
+		// because trying it with your own numbers writes nothing, and only Save
+		// is refused.
+		editBtn.disabled = blocked !== null && !isDemo && !isFeel
+		editBtn.title = isFeel ? "" : (blocked ?? "")
 	}
-	if (doneBtn) doneBtn.hidden = session === null
+	if (doneBtn) doneBtn.hidden = !editing
 	if (localHistoryBtn) localHistoryBtn.hidden = session === null
 }
 
@@ -752,6 +775,98 @@ async function dropACopy(file: DropFile): Promise<void> {
 	} catch {
 		notice("Couldn't make a copy. Please try again.")
 	}
+}
+
+// ── Editing a statement ─────────────────────────────────────────────────────
+// No baton and no ops: a statement is not a document the room can advance one
+// change at a time, it is two boxes of text. So editing it is local until the
+// writer says otherwise, and a save is one request that replaces the whole
+// thing — see `routes/feel.ts` for what that request has to get past.
+
+/** Scopes this tab's saves, so an hour of them collapses into one milestone. */
+const FEEL_SESSION = `feel-${Math.random().toString(36).slice(2, 10)}`
+
+function enterFeelEdit(file: DropFile): void {
+	const doc = feelDoc
+	if (!doc) return
+	feelEditor = mountFeelEditor({
+		container: viewer,
+		doc,
+		filename: file.filename,
+		readOnly: readOnlyReason(file),
+		save: (next) => saveFeel(file, next),
+		shareCopy: (next) => shareFeelCopy(file, next),
+	})
+	updateEditAffordance()
+}
+
+/** Back to reading, on whatever the drop says now rather than on the boxes. */
+function leaveFeelEdit(): void {
+	if (!feelEditor) return
+	const unsaved = feelEditor.dirty()
+	feelEditor.destroy()
+	feelEditor = null
+	updateEditAffordance()
+	if (feelDoc) renderFeelDocument(viewer, feelDoc)
+	if (unsaved) notice("Your changes were discarded — they were never saved.")
+}
+
+/**
+ * Writes the statement to the drop, or rejects with what to tell the writer.
+ *
+ * The challenge sits here rather than on Edit: playing with somebody's
+ * expression never leaves the browser, and asking a person to prove they are
+ * one for that would be a toll on the thing the feature is for.
+ */
+async function saveFeel(file: DropFile, doc: FeelDocument): Promise<void> {
+	const verified = await challenge()
+	if (!verified.ok) {
+		throw new Error(
+			verified.reason === "cancelled"
+				? "Saving needs that check — press Save again to retry."
+				: "Couldn't load the human check. Reload the page, or allow challenges.cloudflare.com.",
+		)
+	}
+
+	const res = await fetch(`/drop/${data.shareId}/feel/${encodeURIComponent(file.filename)}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			document: doc,
+			baseHash: feelBase,
+			sessionId: FEEL_SESSION,
+			...(verified.token ? { token: verified.token } : {}),
+		}),
+	})
+	const payload = (await res.json().catch(() => null)) as { hash?: string; error?: string } | null
+	if (!res.ok || !payload?.hash) throw new Error(payload?.error ?? "That could not be saved.")
+
+	feelDoc = doc
+	feelBase = payload.hash
+	// A statement's name is its expression, and the expression just changed — so
+	// the tab that carries it has to say the new one.
+	file.name = feelLabel(doc)
+	const tab = document.querySelector(`.ed-tab[data-index="${activeIndex}"] .ed-tab-name`)
+	if (tab) tab.textContent = file.name
+}
+
+/** Posts the statement as a drop of its own and goes there — the copy you kept. */
+async function shareFeelCopy(file: DropFile, doc: FeelDocument): Promise<void> {
+	const body = new FormData()
+	const copy = new File([JSON.stringify(doc, null, 2)], file.filename, {
+		type: "application/json",
+	})
+	body.append("files", copy, copy.name)
+	const res = await fetch(DROP_UPLOAD_PATH, { method: "POST", body })
+	const payload = (await res.json().catch(() => null)) as {
+		url?: string
+		error?: string
+		details?: string[]
+	} | null
+	if (!res.ok || !payload?.url) {
+		throw new Error(payload?.details?.join("\n") ?? payload?.error ?? "That could not be shared.")
+	}
+	location.href = payload.url
 }
 
 /**
@@ -954,6 +1069,9 @@ function challenge(): Promise<ChallengeResult> {
 editBtn?.addEventListener("click", () => {
 	const file = data.files[activeIndex]
 	if (!file) return
+	// A statement needs neither the baton nor the challenge to open: it opens
+	// locally, and the challenge is on the save.
+	if (file.kind === "feel") return enterFeelEdit(file)
 	if (isDemo) return void dropACopy(file)
 	void challenge().then((result) => {
 		if (!result.ok) {
@@ -973,6 +1091,7 @@ editBtn?.addEventListener("click", () => {
 })
 
 doneBtn?.addEventListener("click", () => {
+	if (feelEditor) return leaveFeelEdit()
 	watcherSend({ type: "release" })
 	leaveEditMode()
 })

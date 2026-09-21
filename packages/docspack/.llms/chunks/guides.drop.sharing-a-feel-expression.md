@@ -41,8 +41,7 @@ whatever the context bound to `?`:
 A bare expression is stored as the document it became, so the **Original** download always
 round-trips back through the same parser. Expressions that do not parse are refused at
 upload, exactly as unparseable BPMN is — a link that renders a syntax error is not worth
-sending. FEEL drops are read-only: the edit baton is for BPMN, which is the only kind with
-an op vocabulary.
+sending.
 
 ---
 Source: https://bpmnkit.com/docs/guides/drop

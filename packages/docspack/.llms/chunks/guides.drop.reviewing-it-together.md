@@ -28,9 +28,10 @@ removed, changed and *moved* elements marked on synchronised canvases, with pan 
 locked together. The same diff is available offline as
 [`casen diff bpmn`](/docs/cli/diff) and as a plugin in `@bpmnkit/plugins`.
 
-Editing is limited to BPMN files with a single process — the editor handles one process at
-a time — and the built-in demo drop is read-only, though **Edit a copy** will upload it as a
-drop of your own.
+Diagram editing is limited to BPMN files with a single process — the editor handles one
+process at a time — and the built-in demo drop is read-only, though **Edit a copy** will
+upload it as a drop of your own. A FEEL statement is edited differently and on its own
+terms; see [trying it with your own numbers](#trying-it-with-your-own-numbers) above.
 
 ### Rate limiting the edit baton
 

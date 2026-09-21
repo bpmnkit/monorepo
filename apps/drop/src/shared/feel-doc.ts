@@ -126,3 +126,38 @@ export function feelLabel(doc: FeelDocument): string {
 export function unaryInput(doc: FeelDocument): FeelValue {
 	return doc.context["?"] ?? null
 }
+
+/**
+ * Two boxes of text as a document, or the reason they are not one yet.
+ *
+ * The composer on `/drop` and the editor on a share page have the same pair of
+ * boxes and the same job: the context is JSON while the expression is FEEL, and
+ * a failure has to name which half is wrong — the expression is usually fine and
+ * the writer is looking at the other side of the panel.
+ *
+ * Shape only. Whether the expression *parses* is `parseExpression`'s answer and
+ * whether it *runs* is the evaluator's, and both are shown live beside the box
+ * rather than being raised here.
+ */
+export function composeFeelDocument(
+	expression: string,
+	contextText: string,
+	mode: FeelMode,
+): { ok: true; doc: FeelDocument } | { ok: false; message: string } {
+	const text = expression.trim()
+	if (text === "") return { ok: false, message: "Write an expression." }
+
+	const raw = contextText.trim()
+	let parsed: unknown = {}
+	if (raw !== "") {
+		try {
+			parsed = JSON.parse(raw)
+		} catch {
+			return { ok: false, message: "The context is not valid JSON." }
+		}
+	}
+	if (!isPlainObject(parsed)) {
+		return { ok: false, message: "The context must be a JSON object of variables." }
+	}
+	return { ok: true, doc: { expression: text, context: parsed as FeelContext, mode } }
+}

@@ -49,7 +49,12 @@ export async function handleUpload(request: Request, env: Env, now: number): Pro
 			for (let n = 2; usedNames.has(filename); n++) filename = dedupeName(v.filename, n)
 			usedNames.add(filename)
 			total += v.sizeOriginal
-			prepared.push({ ...v, filename, id: newFileId(), hash: await sha256Hex(text) })
+			// Hashed over what is *stored*, not over what arrived: a `.feel` upload is
+			// kept as the canonical document it became, and the content hash is what
+			// the entity tag names, what the ban list compares, and what an editor
+			// sends back as the state its save is based on. For every other kind the
+			// two are the same bytes.
+			prepared.push({ ...v, filename, id: newFileId(), hash: await sha256Hex(v.original) })
 		} catch (err) {
 			errors.push(
 				err instanceof ValidationError ? err.message : `${upload.name}: could not process`,

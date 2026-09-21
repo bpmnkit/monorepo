@@ -6,7 +6,8 @@ Whoever opens the link sees the diagram rendered in their browser — no account
 install, and no Camunda cluster anywhere in the story.
 
 It is also where a review happens. A drop is not frozen: anyone with the link can take the
-edit baton, change the diagram, and everyone else watching sees the change arrive.
+edit baton, change the diagram, and everyone else watching sees the change arrive — and a
+shared FEEL statement can be opened, run against different values, and saved back.
 
 ---
 Source: https://bpmnkit.com/docs/guides/drop

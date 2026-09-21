@@ -1,5 +1,48 @@
 # Progress
 
+## 2026-09-21 — A shared FEEL statement is something you can edit
+
+**The share page has an editor for statements.** Opening somebody's expression and being
+unable to try it against your own numbers is the wrong half of the feature: the usual
+reason to follow the link is to change the amount and see whether the gateway still goes
+the way they said it does. So **Edit** on a FEEL tab opens the composer's two boxes on
+whatever the drop currently says, evaluating in the browser as you type. Nothing leaves the
+page until a button says so — **Save to this drop** writes it back to the link, **Share as
+new** posts it as a drop of its own, and **Reset** puts the drop's own statement back.
+
+**No baton, because there is nothing to hand around.** A statement has no op vocabulary and
+no live replay, so the room is not involved at all: a save is one `PUT /drop/:id/feel/:file`
+that replaces the whole document. What the baton would have bought is bought by a
+precondition instead — the page sends the hash of the statement it opened, and a save made
+against a state that has since been replaced is refused with what the drop says now rather
+than applied on top of it. The page can recompute that hash rather than carry it in a
+header, because a FEEL drop's stored bytes are always its document's canonical form.
+
+**A save meets the gate an upload meets.** Same parser, same caps, same ban re-check, same
+carve-outs: the demo has no row to write to, and a pinned drop is not anyone's to rewrite.
+Turnstile sits on the *save* rather than on opening the editor — trying an expression out
+is never worth a challenge, and writing to somebody else's link is. A drop that cannot be
+written to still opens for editing; only Save is refused, and *Share as new* is the way out
+with the copy you made while playing.
+
+**The version log's promise holds for statements too.** A save cuts a milestone the way the
+room's autosave does — one per editing session per hour, holding the state that hour ended
+in — and the uploaded original stays pinned and reachable as **Original**. A statement is
+also the one kind whose *name* is its content, so a save renames the file: the tab strip
+would otherwise keep describing an expression the drop no longer has.
+
+**A `.feel` upload's content hash was of the wrong bytes.** It was taken over the text that
+arrived, while what is *stored* for a statement is the canonical document that text became —
+so for FEEL drops alone, `files.content_hash` named bytes nobody could fetch. It is now
+taken over the stored body, which is what the entity tag names, what the ban list compares,
+and what the editor sends back as the state its save is based on. Every other kind stores
+the bytes it received, so nothing else moves.
+
+**One function, two pairs of boxes.** `composeFeelDocument` in `shared/feel-doc.ts` is now
+what both the `/drop` composer and the share-page editor use to turn an expression box and
+a JSON context box into a document — including which of the two to blame when it is not one
+yet.
+
 ## 2026-09-20 — A FEEL statement is a thing you can share, and Drop is easier to find
 
 **Drop takes a fourth kind: `feel`.** An expression on its own is unreadable —

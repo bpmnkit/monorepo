@@ -11,7 +11,8 @@ Whoever opens the link sees the diagram rendered in their browser — no account
 install, and no Camunda cluster anywhere in the story.
 
 It is also where a review happens. A drop is not frozen: anyone with the link can take the
-edit baton, change the diagram, and everyone else watching sees the change arrive.
+edit baton, change the diagram, and everyone else watching sees the change arrive — and a
+shared FEEL statement can be opened, run against different values, and saved back.
 
 ## Sharing a file
 
@@ -103,8 +104,35 @@ whatever the context bound to `?`:
 A bare expression is stored as the document it became, so the **Original** download always
 round-trips back through the same parser. Expressions that do not parse are refused at
 upload, exactly as unparseable BPMN is — a link that renders a syntax error is not worth
-sending. FEEL drops are read-only: the edit baton is for BPMN, which is the only kind with
-an op vocabulary.
+sending.
+
+### Trying it with your own numbers
+
+The reason to open somebody else's expression is usually to run it against your own data:
+change the amount, see whether the gateway still goes the way they said it does. So the
+share page has an **Edit** button for a statement too, and it opens the same two boxes the
+composer has, on whatever the drop currently says. Everything you type there stays in your
+browser — it evaluates as you type, and the link is untouched until you press a button that
+says otherwise:
+
+- **Save to this drop** writes your statement back to the link, so everyone opening it
+  afterwards sees the new one. The statement it replaces becomes a milestone in the
+  [version log](#reviewing-it-together), and the expression the drop was uploaded with is
+  still there as **Original**, as always.
+- **Share as new** posts what is in the boxes as a drop of its own and takes you there. The
+  original link is left exactly as it was — this is the way out when you were only playing,
+  or when the drop is one you may not rewrite.
+- **Reset** puts the drop's own statement back in the boxes.
+
+A statement is not edited through the baton: there is no op vocabulary for two boxes of
+text, and no live replay to watch, so nothing is claimed and nothing is locked. What
+protects the drop instead is the save itself. A save carries the hash of the statement the
+page opened, and one made against a statement that has since been replaced is refused with
+what the drop says now — so two people editing the same link cannot quietly overwrite each
+other, and a reader who sees that message can reload, or keep theirs with **Share as new**.
+Where the deployment configures Turnstile, the challenge is on the save and not on opening
+the editor: trying an expression out is never worth a challenge, and writing to somebody
+else's link is.
 
 ## Reviewing it together
 
@@ -136,9 +164,10 @@ removed, changed and *moved* elements marked on synchronised canvases, with pan 
 locked together. The same diff is available offline as
 [`casen diff bpmn`](/docs/cli/diff) and as a plugin in `@bpmnkit/plugins`.
 
-Editing is limited to BPMN files with a single process — the editor handles one process at
-a time — and the built-in demo drop is read-only, though **Edit a copy** will upload it as a
-drop of your own.
+Diagram editing is limited to BPMN files with a single process — the editor handles one
+process at a time — and the built-in demo drop is read-only, though **Edit a copy** will
+upload it as a drop of your own. A FEEL statement is edited differently and on its own
+terms; see [trying it with your own numbers](#trying-it-with-your-own-numbers) above.
 
 ### Rate limiting the edit baton
 

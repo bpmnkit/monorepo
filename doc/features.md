@@ -1,5 +1,22 @@
 # Features
 
+## Edit a shared FEEL statement from its link (2026-09-21)
+
+- **Edit on a FEEL tab** (`apps/drop`) — the composer's two boxes, opened on what the drop
+  says, evaluating in the browser as you type. Nothing is sent anywhere until you press a
+  button that says so, so trying somebody's expression against your own values leaves
+  their link untouched.
+- **Save to this drop** — `PUT /drop/:id/feel/:filename` replaces the statement, cuts a
+  milestone for it, slides retention forward, and renames the file (a statement's name is
+  its expression). The uploaded original stays pinned as **Original**.
+- **Share as new** — posts what is in the boxes as a drop of its own, which is also what a
+  read-only drop (the demo, a pinned one) offers instead of saving.
+- **A hash, not a baton** — the save carries the hash of the statement the page opened, so
+  a save against a state somebody else has already replaced is refused rather than applied
+  over their edit.
+- **The challenge is on the write** — where Turnstile is configured it guards the save, not
+  the editor, so playing with an expression costs nothing.
+
 ## Share a FEEL statement, with the variables it reads (2026-09-20)
 
 - **`feel` is a Drop file kind** (`apps/drop`) — `.feel` files, bare or as
