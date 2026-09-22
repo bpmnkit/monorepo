@@ -2,7 +2,7 @@
 
 > Camunda 8 documentation as an offline, version-locked docspack package for AI agents
 
-Version 0.1.2. 1054 chunks documenting camunda@8.10.
+Version 0.1.3. 1055 chunks documenting camunda@8.10.
 
 ```sh
 npm i -D @bpmnkit/camunda-docspack
@@ -48,7 +48,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Secrets — List secrets](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-secrets.list-secrets.md) — 153 tokens
 - [Try with Swagger](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.md) — 188 tokens
 - [Try with Swagger — Prerequisites](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.prerequisites.md) — 297 tokens
-- [Try with Swagger — Authentication in Swagger UI](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.authentication-in-swagger-ui.md) — 270 tokens
+- [Try with Swagger — Authentication in Swagger UI](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.authentication-in-swagger-ui.md) — 268 tokens
 - [Try with Swagger — Using Swagger UI effectively](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.using-swagger-ui-effectively.md) — 315 tokens
 - [Try with Swagger — Managing Swagger UI availability](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.managing-swagger-ui-availability.md) — 157 tokens
 - [Try with Swagger — Next steps](.llms/chunks/apis-tools.orchestration-cluster-api-rest.orchestration-cluster-api-rest-swagger.next-steps.md) — 176 tokens
@@ -601,7 +601,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Global user task listeners — Execution order](.llms/chunks/components.concepts.global-user-task-listeners.execution-order.md) — 314 tokens
 - [Global user task listeners — Limitations](.llms/chunks/components.concepts.global-user-task-listeners.limitations.md) — 108 tokens
 - [Incidents](.llms/chunks/components.concepts.incidents.md) — 220 tokens
-- [Incidents — Resolving](.llms/chunks/components.concepts.incidents.resolving.md) — 518 tokens
+- [Incidents — Resolving](.llms/chunks/components.concepts.incidents.resolving.md) — 638 tokens
 - [Job workers](.llms/chunks/components.concepts.job-workers.md) — 467 tokens
 - [Job workers — Requesting jobs](.llms/chunks/components.concepts.job-workers.requesting-jobs.md) — 773 tokens
 - [Job workers — Completing or failing jobs](.llms/chunks/components.concepts.job-workers.completing-or-failing-jobs.md) — 593 tokens
@@ -645,8 +645,6 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Outbound connectors vs. job workers — Context](.llms/chunks/components.concepts.outbound-connectors-job-workers.context.md) — 250 tokens
 - [Outbound connectors vs. job workers — Which one should you choose?](.llms/chunks/components.concepts.outbound-connectors-job-workers.which-one-should-you-choose.md) — 163 tokens
 - [Outbound connectors vs. job workers — Learn more](.llms/chunks/components.concepts.outbound-connectors-job-workers.learn-more.md) — 54 tokens
-- [Projects](.llms/chunks/components.concepts.process-applications.md) — 230 tokens
-- [Projects — Next steps](.llms/chunks/components.concepts.process-applications.next-steps.md) — 41 tokens
 - [Process instance creation](.llms/chunks/components.concepts.process-instance-creation.md) — 137 tokens
 - [Process instance creation — Create and execute asynchronously](.llms/chunks/components.concepts.process-instance-creation.create-and-execute-asynchronously.md) — 199 tokens
 - [Process instance creation — Create and await results](.llms/chunks/components.concepts.process-instance-creation.create-and-await-results.md) — 481 tokens
@@ -696,6 +694,9 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Processes](.llms/chunks/components.concepts.processes.md) — 336 tokens
 - [Processes — BPMN](.llms/chunks/components.concepts.processes.bpmn.md) — 226 tokens
 - [Processes — Process execution](.llms/chunks/components.concepts.processes.process-execution.md) — 575 tokens
+- [Projects](.llms/chunks/components.concepts.projects.md) — 145 tokens
+- [Projects — Using projects](.llms/chunks/components.concepts.projects.using-projects.md) — 193 tokens
+- [Projects — Projects in Desktop Modeler](.llms/chunks/components.concepts.projects.projects-in-desktop-modeler.md) — 179 tokens
 - [Resource deletion](.llms/chunks/components.concepts.resource-deletion.md) — 163 tokens
 - [Resource deletion — Deleting a process definition](.llms/chunks/components.concepts.resource-deletion.deleting-a-process-definition.md) — 592 tokens
 - [Resource deletion — Deleting a decision requirements graph](.llms/chunks/components.concepts.resource-deletion.deleting-a-decision-requirements-graph.md) — 333 tokens
@@ -713,16 +714,16 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Secret resolution and job activation — Related resources](.llms/chunks/components.concepts.secret-resolution-and-job-activation.related-resources.md) — 110 tokens
 - [Troubleshoot secret resolution failures](.llms/chunks/components.concepts.secret-resolution-incidents.md) — 183 tokens
 - [Troubleshoot secret resolution failures — Find your symptom](.llms/chunks/components.concepts.secret-resolution-incidents.find-your-symptom.md) — 519 tokens
-- [Troubleshoot secret resolution failures — Resolve secret lookup failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-lookup-failures.md) — 393 tokens
-- [Troubleshoot secret resolution failures — Resolve secret injection failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-injection-failures.md) — 551 tokens
-- [Troubleshoot secret resolution failures — Reduce oversized secret values](.llms/chunks/components.concepts.secret-resolution-incidents.reduce-oversized-secret-values.md) — 325 tokens
+- [Troubleshoot secret resolution failures — Resolve secret lookup failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-lookup-failures.md) — 503 tokens
+- [Troubleshoot secret resolution failures — Resolve secret injection failures](.llms/chunks/components.concepts.secret-resolution-incidents.resolve-secret-injection-failures.md) — 640 tokens
+- [Troubleshoot secret resolution failures — Reduce oversized secret values](.llms/chunks/components.concepts.secret-resolution-incidents.reduce-oversized-secret-values.md) — 426 tokens
 - [Troubleshoot secret resolution failures — Identify failures that raise no incident](.llms/chunks/components.concepts.secret-resolution-incidents.identify-failures-that-raise-no-incident.md) — 441 tokens
 - [Troubleshoot secret resolution failures — Resume a suspended job after secret resolution](.llms/chunks/components.concepts.secret-resolution-incidents.resume-a-suspended-job-after-secret-resolution.md) — 173 tokens
 - [Troubleshoot secret resolution failures — Diagnose the cause](.llms/chunks/components.concepts.secret-resolution-incidents.diagnose-the-cause.md) — 849 tokens
 - [Troubleshoot secret resolution failures — Diagnose the cause (2)](.llms/chunks/components.concepts.secret-resolution-incidents.diagnose-the-cause-2.md) — 279 tokens
 - [Troubleshoot secret resolution failures — Retry after fixing the cause](.llms/chunks/components.concepts.secret-resolution-incidents.retry-after-fixing-the-cause.md) — 327 tokens
 - [Troubleshoot secret resolution failures — Related resources](.llms/chunks/components.concepts.secret-resolution-incidents.related-resources.md) — 106 tokens
-- [Secret resolution](.llms/chunks/components.concepts.secret-resolution.md) — 307 tokens
+- [Secret resolution](.llms/chunks/components.concepts.secret-resolution.md) — 347 tokens
 - [Secret resolution — Reference syntax](.llms/chunks/components.concepts.secret-resolution.reference-syntax.md) — 421 tokens
 - [Secret resolution — Two resolution paths](.llms/chunks/components.concepts.secret-resolution.two-resolution-paths.md) — 341 tokens
 - [Secret resolution — Physical-tenant scope](.llms/chunks/components.concepts.secret-resolution.physical-tenant-scope.md) — 150 tokens
