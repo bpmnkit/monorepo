@@ -64,4 +64,15 @@ const { id } = Astro.props
     <span class="fp-label">Examples</span>
     <div class="fp-example-row" data-fp-examples></div>
   </div>
+
+  <div class="fp-share">
+    <button type="button" class="fp-share-btn" data-fp-share>Share as a drop</button>
+    <span class="fp-share-note">Posts the expression <em>and</em> its context to bpmnkit.com/drop and hands back a link.</span>
+    <span class="fp-share-out" data-fp-share-out hidden>
+      <input class="fp-share-url" data-fp-share-url readonly aria-label="Share link">
+      <button type="button" class="fp-share-copy" data-fp-share-copy>Copy</button>
+      <a class="fp-share-open" data-fp-share-open href="#">Open &#8599;</a>
+    </span>
+    <span class="fp-share-msg" data-fp-share-msg role="status" aria-live="polite"></span>
+  </div>
 </div>

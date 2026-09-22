@@ -1,7 +1,7 @@
 {
 	"$schema": "https://docspack.dev/schema/v1.json",
 	"name": "@bpmnkit/docspack",
-	"version": "0.0.6",
+	"version": "1.0.0",
 	"documents": [
 		"@bpmnkit/core",
 		"@bpmnkit/canvas",
@@ -1335,12 +1335,25 @@
 		{
 			"id": "guides.drop.sharing-a-file",
 			"file": "chunks/guides.drop.sharing-a-file.md",
-			"tokens": 410,
+			"tokens": 464,
 			"tags": [
 				"guides",
 				"drop",
 				"sharing",
 				"file"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.drop.sharing-a-feel-expression",
+			"file": "chunks/guides.drop.sharing-a-feel-expression.md",
+			"tokens": 473,
+			"tags": [
+				"guides",
+				"drop",
+				"sharing",
+				"feel",
+				"expression"
 			],
 			"entities": []
 		},

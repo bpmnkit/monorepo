@@ -5,6 +5,7 @@ import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
 import type { ReviewResult, Suggestion } from "../lib/review.js"
 import { AI_CODE_STORAGE_KEY, DEMO_SHARE_ID, type FileKind } from "../shared/constants.js"
+import type { FeelDocument } from "../shared/feel-doc.js"
 import {
 	type ClientMessage,
 	PING,
@@ -12,6 +13,7 @@ import {
 	PONG,
 	type ServerMessage,
 } from "../shared/room-protocol.js"
+import { renderFeelDocument } from "./feel-view.js"
 import { type Change, DocWatcher, type WatcherDoc } from "./watcher.js"
 
 interface DropFile {
@@ -158,6 +160,11 @@ function renderForm(json: string): void {
 	new FormViewer({ container: viewer, theme }).load(JSON.parse(json))
 }
 
+function renderFeel(json: string): void {
+	zoombar.hidden = true
+	renderFeelDocument(viewer, JSON.parse(json) as FeelDocument)
+}
+
 /** Make a clicked task that references a form/decision in this drop jump to its tab. */
 function wireCrossFileLinks(xml: string, canvas: BpmnCanvas): void {
 	const refs = new Map<string, { formId?: string; decisionId?: string }>()
@@ -239,6 +246,8 @@ async function select(index: number, xml?: string): Promise<void> {
 			await renderBpmn(xml ?? (await (await fetch(contentUrl(file))).text()))
 		} else if (file.kind === "dmn") {
 			renderDmn(await (await fetch(contentUrl(file, "json"))).text())
+		} else if (file.kind === "feel") {
+			renderFeel(await (await fetch(contentUrl(file, "json"))).text())
 		} else {
 			renderForm(await (await fetch(contentUrl(file, "json"))).text())
 		}

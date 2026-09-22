@@ -270,6 +270,49 @@ select.ed-select{height:28px;border:1px solid var(--bpmnkit-ds-line);background:
 .ai-passcode input{width:100%;padding:8px 10px;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;margin:12px 0}
 .ai-passcode.err input{border-color:var(--bpmnkit-danger)}
 
+/* ── FEEL statements: the share view, and the composer on the landing ───── */
+.feel-doc{max-width:900px;margin:0 auto;padding:32px var(--bpmnkit-ds-sp-4) 40px}
+.feel-block+.feel-block,.feel-split{margin-top:20px}
+.feel-label{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--bpmnkit-ds-ink-4);margin-bottom:8px}
+.feel-split{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.feel-expr{margin:0;padding:18px 20px;background:var(--bpmnkit-ds-dark-code);color:var(--bpmnkit-ds-code-text);font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-code);line-height:1.7;white-space:pre-wrap;word-break:break-word;overflow-x:auto}
+.feel-json,.feel-result{margin:0;padding:14px 16px;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink-2);font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;min-height:3em}
+.feel-result{color:var(--bpmnkit-ds-ink)}
+.feel-result--err{color:var(--bpmnkit-danger);border-color:var(--bpmnkit-danger)}
+.feel-note{margin-top:18px;font-family:var(--bpmnkit-ds-font-mono);font-size:11.5px;color:var(--bpmnkit-ds-ink-4)}
+
+/* The highlighter's own palette. Syntax colour is semantic, not brand, so it
+   keeps its own scale rather than being folded into the one accent — the same
+   exemption the FEEL playground and the DMN viewer have. Tuned for the dark
+   code panel above. */
+.feel-keyword,.feel-literal-bool,.feel-literal-null{color:#c792ea}
+.feel-literal-string{color:#8fbf9f}
+.feel-builtin{color:#82aaff}
+.feel-literal-number,.feel-literal-temporal{color:#f7c873}
+.feel-comment{color:var(--bpmnkit-ds-code-comment);font-style:italic}
+.feel-variable,.feel-operator,.feel-punctuation,.feel-empty{color:var(--bpmnkit-ds-code-text)}
+
+.fc{display:grid;grid-template-columns:1fr 340px;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface)}
+/* The code panel fills its column: an expression box that stops short of the
+   context beside it reads as a rendering accident rather than a choice. */
+.fc-main{display:flex;flex-direction:column;min-width:0}
+.fc-main textarea{flex:1 1 auto}
+.fc-side{border-left:1px solid var(--bpmnkit-ds-line-soft);padding:14px 16px}
+.fc-modes{display:flex}
+.fc-modes button{border:1px solid var(--bpmnkit-ds-line);border-left-width:0;background:transparent;color:var(--bpmnkit-ds-ink-3);font-family:var(--bpmnkit-ds-font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;cursor:pointer}
+.fc-modes button:first-child{border-left-width:1px}
+.fc-modes button.active{background:var(--bpmnkit-ds-accent);border-color:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-surface)}
+.fc textarea{display:block;width:100%;border:none;background:var(--bpmnkit-ds-dark-code);color:var(--bpmnkit-ds-code-text);font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-code);line-height:1.7;padding:16px 18px;resize:vertical}
+.fc textarea:focus-visible{outline-offset:-2px}
+.fc-side textarea{border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-ink);font-size:12.5px;padding:9px 11px}
+.fc-side .feel-result{margin-top:8px}
+.fc-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px}
+.fc-examples{display:flex;gap:8px;flex-wrap:wrap}
+.fc-examples button{border:1px solid var(--bpmnkit-ds-line);background:transparent;color:var(--bpmnkit-ds-ink-3);font-family:var(--bpmnkit-ds-font-mono);font-size:11px;padding:5px 10px;cursor:pointer}
+.fc-examples button:hover{border-color:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-accent)}
+.fc-out{margin-top:18px}
+.fc-out.hidden{display:none}
+
 /* ── Form fields, dialog, table ─────────────────────────────────────────── */
 .field{padding:14px 0;border-bottom:1px solid var(--bpmnkit-ds-line)}
 .field label{display:block;font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--bpmnkit-ds-ink-4);margin-bottom:7px}
@@ -296,6 +339,8 @@ dialog strong{display:block;font-size:17px;margin-bottom:6px}
 @media (max-width:720px){
 	.nav-tagline{display:none}
 	.ai-panel{width:100%}
+	.feel-split,.fc{grid-template-columns:1fr}
+	.fc-side{border-left:none;border-top:1px solid var(--bpmnkit-ds-line-soft)}
 }
 `
 
@@ -371,11 +416,12 @@ export function dropPage(tosVersion: string): string {
 	<div class="hero-left">
 		<span class="eyebrow">Free &middot; no account &middot; live in seconds</span>
 		<h1><span class="dim">Drop a BPMN file.</span><br>Get a link that renders.</h1>
-		<p class="hero-lead">Share living diagrams — not screenshots — with anyone, in seconds. Drop BPMN, DMN, or Camunda Form files and we render them right in the browser. No account.</p>
-		<div class="chips"><span class="chip">BPMN</span><span class="chip">DMN</span><span class="chip">FORM</span></div>
+		<p class="hero-lead">Share living diagrams — not screenshots — with anyone, in seconds. Drop BPMN, DMN, or Camunda Form files and we render them right in the browser. Or write a FEEL expression below and share that. No account.</p>
+		<div class="chips"><span class="chip">BPMN</span><span class="chip">DMN</span><span class="chip">FORM</span><span class="chip">FEEL</span></div>
 		<div class="hero-ctas">
 			<a class="btn-primary" href="/drop/${DEMO_SHARE_ID}">Open the demo drop</a>
 			<a class="btn-link" href="#drop-zone">Drop a file instead</a>
+			<a class="btn-link" href="#feel">Share a FEEL expression</a>
 		</div>
 		<ul class="checklist">
 			<li>Renders in the browser — not a screenshot</li>
@@ -390,6 +436,7 @@ export function dropPage(tosVersion: string): string {
 			<div class="dz-icon">${ICON.upload}</div>
 			<h2>Drop files anywhere on this page</h2>
 			<p class="dz-sub">or <u>click to choose</u> &middot; paste BPMN XML &middot; up to ${MAX_FILES_PER_DROP} files &middot; ${kb} KB each</p>
+			<p class="dz-sub">.bpmn &middot; .dmn &middot; .form &middot; .feel</p>
 		</div>
 		<input id="fileInput" type="file" class="hidden" multiple accept="${accept}">
 		<div id="errors" class="errors hidden"></div>
@@ -410,7 +457,7 @@ export function dropPage(tosVersion: string): string {
 <section class="section"><div class="section-inner">
 	<div class="section-head"><span class="section-num">01</span><h2 class="section-h2">Three steps to a shared link</h2></div>
 	<div class="grid grid--rule">
-		<div class="cell"><span class="cell-num">01</span><h3>Drop your files</h3><p>BPMN, DMN &amp; Camunda Forms — one or many at once.</p></div>
+		<div class="cell"><span class="cell-num">01</span><h3>Drop your files</h3><p>BPMN, DMN, Camunda Forms &amp; FEEL statements — one or many at once.</p></div>
 		<div class="cell"><span class="cell-num">02</span><h3>Get a short link</h3><p>Validated, converted, and stored — ready in a second.</p></div>
 		<div class="cell"><span class="cell-num">03</span><h3>Share it anywhere</h3><p>Paste it in Slack, a PR, a ticket — it just renders.</p></div>
 	</div>
@@ -427,8 +474,33 @@ export function dropPage(tosVersion: string): string {
 	</div>
 </div></section>
 
+<section class="section" id="feel"><div class="section-inner">
+	<div class="section-head"><span class="section-num">02</span><h2 class="section-h2">Share a FEEL expression, with its variables</h2></div>
+	<p class="section-lead section-indent" style="margin-bottom:26px">A gateway condition or a decision-table entry is unreadable without the data it reads. Write the expression and the context it runs against, and share one link that shows both &mdash; and the value they produce, evaluated in the reader&rsquo;s browser.</p>
+	<div class="fc">
+		<div class="fc-main">
+			<div class="panel-bar"><span>expression.feel</span><span class="grow"></span><div class="fc-modes"><button type="button" data-fc-mode="expression" class="active" aria-pressed="true">Expression</button><button type="button" data-fc-mode="unary-tests" aria-pressed="false">Unary tests</button></div></div>
+			<textarea id="feelExpr" rows="5" spellcheck="false" autocomplete="off" autocorrect="off" aria-label="FEEL expression"></textarea>
+		</div>
+		<div class="fc-side">
+			<label class="feel-label" for="feelContext">Context &mdash; JSON the expression reads</label>
+			<textarea id="feelContext" rows="6" spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
+			<div class="feel-label" style="margin-top:14px">Result</div>
+			<pre id="feelResult" class="feel-result"></pre>
+		</div>
+	</div>
+	<div class="fc-actions">
+		<button id="feelShare" class="btn-primary" type="button">Get a share link</button>
+		<div class="fc-examples" id="feelExamples"></div>
+	</div>
+	<div id="feelOut" class="panel fc-out hidden">
+		<div class="link-row"><input id="feelUrl" readonly aria-label="Share link"><button id="feelCopy" class="btn-ghost" type="button">Copy</button><a id="feelOpen" class="btn-ghost" href="#">Open &#8599;</a></div>
+	</div>
+	<div id="feelErrors" class="errors hidden"></div>
+</div></section>
+
 <section class="section section--dark"><div class="section-inner">
-	<div class="section-head"><span class="section-num">02</span><h2 class="section-h2">What people drop</h2></div>
+	<div class="section-head"><span class="section-num">03</span><h2 class="section-h2">What people drop</h2></div>
 	<div class="grid grid--rule">
 		<div class="cell"><div class="uc-diagram" data-uc="review"></div><span class="cell-num">Code review</span><h3>Next to the PR</h3><p>Attach the process next to the PR that implements it.</p></div>
 		<div class="cell"><div class="uc-diagram" data-uc="incident"></div><span class="cell-num">Incident channel</span><h3>Stop describing it</h3><p>Stop describing the flow in Slack. Drop it.</p></div>
@@ -438,7 +510,7 @@ export function dropPage(tosVersion: string): string {
 </div></section>
 
 <section class="section"><div class="section-inner">
-	<div class="section-head"><span class="section-num">03</span><h2 class="section-h2">Has an API, too</h2></div>
+	<div class="section-head"><span class="section-num">04</span><h2 class="section-h2">Has an API, too</h2></div>
 	<p class="section-lead section-indent" style="margin-bottom:26px">No account, fully scriptable — drop straight from your terminal.</p>
 	<pre class="code"><span class="c-comment"># upload — returns a shareId and URL</span>
 <span class="c-prompt">$</span> curl -F files=@order.bpmn https://bpmnkit.com/drop/api/drops
@@ -446,15 +518,19 @@ export function dropPage(tosVersion: string): string {
 
 <span class="c-comment"># then, with the shareId</span>
 <span class="c-prompt">$</span> curl https://bpmnkit.com/drop/aB3xY7kQn2p/manifest.json
-<span class="c-prompt">$</span> curl <span class="c-string">"https://bpmnkit.com/drop/aB3xY7kQn2p/f/order.bpmn?format=json"</span></pre>
+<span class="c-prompt">$</span> curl <span class="c-string">"https://bpmnkit.com/drop/aB3xY7kQn2p/f/order.bpmn?format=json"</span>
+
+<span class="c-comment"># a FEEL statement is a file too — the expression and what it reads</span>
+<span class="c-prompt">$</span> echo <span class="c-string">'{"expression":"amount &gt; limit","context":{"amount":90,"limit":50}}'</span> \\
+    | curl -F <span class="c-string">"files=@-;filename=condition.feel"</span> https://bpmnkit.com/drop/api/drops</pre>
 </div></section>
 
 <section class="section"><div class="section-inner">
-	<div class="section-head"><span class="section-num">04</span><h2 class="section-h2">Questions</h2></div>
+	<div class="section-head"><span class="section-num">05</span><h2 class="section-h2">Questions</h2></div>
 	<div class="faq">
 		<details name="faq" open><summary>How long do links last?</summary><p>90 days after a drop is last opened. Every view slides the window forward, so links people actually use stay alive; abandoned ones clean themselves up.</p></details>
 		<details name="faq"><summary>Who can see my diagram?</summary><p>Anyone with the link. Links are unguessable (64 bits of randomness) and never listed anywhere, but they aren't otherwise access-controlled — don't drop confidential material.</p></details>
-		<details name="faq"><summary>What can I drop?</summary><p>BPMN 2.0, DMN, and Camunda Form files — up to ${MAX_FILES_PER_DROP} at once. Only files that parse are stored; this isn't a generic file host.</p></details>
+		<details name="faq"><summary>What can I drop?</summary><p>BPMN 2.0, DMN, Camunda Form and FEEL (<code>.feel</code>) files — up to ${MAX_FILES_PER_DROP} at once. Only files that parse are stored; this isn't a generic file host.</p></details>
 		<details name="faq"><summary>Is it really free?</summary><p>Yes. No account, no sign-up, no payment. Just drop and share.</p></details>
 		<details name="faq"><summary>Can I delete a drop?</summary><p>Drops expire on their own, and you can <a href="/drop/privacy">report</a> anything that shouldn't be up. Per-uploader deletion is on the roadmap.</p></details>
 	</div>
@@ -463,9 +539,9 @@ export function dropPage(tosVersion: string): string {
 </main>
 ${pageFooter()}`
 	return shell({
-		title: "BPMN Kit Drop — share BPMN, DMN & Form files",
+		title: "BPMN Kit Drop — share BPMN, DMN, Form & FEEL",
 		description:
-			"Drop a BPMN, DMN, or Camunda Form file and get a short shareable link that renders it in the browser.",
+			"Drop a BPMN, DMN, Camunda Form or FEEL file — or write a FEEL expression with its context — and get a short shareable link that renders it in the browser.",
 		main,
 		nav: true,
 		bootstrap: { id: "drop-config", data: { tosVersion } },
@@ -474,7 +550,7 @@ ${pageFooter()}`
 }
 
 function primaryIndex(files: FileInfo[]): number {
-	const order = ["bpmn", "dmn", "form"] as const
+	const order = ["bpmn", "dmn", "form", "feel"] as const
 	for (const kind of order) {
 		const i = files.findIndex((f) => f.kind === kind)
 		if (i >= 0) return i

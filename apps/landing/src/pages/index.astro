@@ -147,6 +147,10 @@ const CAPABILITIES = [
         <div class="hero-ctas">
           <a href="#playground" class="btn-primary">▶ Run it in the browser</a>
           <a href="/docs" class="btn-link">Read the docs</a>
+          {/* Above the fold on purpose — the strip below the hero repeats it for
+              anyone who scrolls, but Drop is the one thing here that pays off
+              before you have installed anything. */}
+          <a href="/drop" class="btn-link">Share a diagram as a link</a>
         </div>
 
         <ul class="hero-proof-points">
@@ -188,6 +192,37 @@ const CAPABILITIES = [
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Start here ────────────────────────────────────────────────────────── -->
+  <!-- Unnumbered on purpose: it is a signpost, not a chapter. Both destinations
+       were previously a dropdown or nine sections away, and both are what people
+       arrive already looking for. -->
+  <section class="quickstrip" aria-label="Start here">
+    <div class="section-wrap">
+      <div class="hair-grid hair-grid--2">
+        <a class="quick-card" href="/drop">
+          <span class="quick-eyebrow">bpmnkit.com/drop &middot; no account</span>
+          <h2>Send a diagram as a link</h2>
+          <p>
+            Drop a BPMN, DMN or Camunda Form file &mdash; or write a FEEL expression with the
+            variables it reads &mdash; and get a short link that renders it in anyone's browser.
+            Live viewer count, one-writer-at-a-time editing, no install.
+          </p>
+          <span class="quick-go">Open Drop &rarr;</span>
+        </a>
+        <a class="quick-card" href="/docs/guides/ai">
+          <span class="quick-eyebrow">docs/guides/ai</span>
+          <h2>The AI guide</h2>
+          <p>
+            The compact format that fits a whole diagram in one prompt, how to reconcile what a
+            model hands back without losing what it cannot describe, and the Claude Code plugin
+            that drives the whole pipeline. One page.
+          </p>
+          <span class="quick-go">Read the AI guide &rarr;</span>
+        </a>
       </div>
     </div>
   </section>
@@ -745,7 +780,7 @@ const CAPABILITIES = [
           On a recorded run writing a seven-element order process, the first frame that could be
           rendered arrived 16% of the way into the model's output, with 14 more behind it. Every
           frame is a guess at an unfinished document; the model's finished output is still what
-          gets saved. <a href="/docs/guides/ai">How it works →</a>
+          gets saved. <a href="/docs/guides/ai">Read the AI guide →</a>
         </p>
       </div>
 

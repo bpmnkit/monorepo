@@ -1,8 +1,8 @@
 # Drop — Share & Co-edit — Sharing a file
 
 Open <https://bpmnkit.com/drop> and drop a file onto the page — the whole page is the
-target — or paste one from the clipboard. `.bpmn`, `.dmn` and `.form` are all rendered;
-`.xml` and `.json` are accepted and sniffed for the kinds above.
+target — or paste one from the clipboard. `.bpmn`, `.dmn`, `.form` and `.feel` are all
+rendered; `.xml` and `.json` are accepted and sniffed for the kinds above.
 
 | Limit | Value |
 | --- | --- |
@@ -36,6 +36,13 @@ And the stored file comes back either as uploaded or as the parsed model:
 curl -s https://bpmnkit.com/drop/<shareId>/manifest.json
 curl -s "https://bpmnkit.com/drop/<shareId>/f/order-process.bpmn"                # original bytes
 curl -s "https://bpmnkit.com/drop/<shareId>/f/order-process.bpmn?format=json"    # @bpmnkit/core model
+```
+
+A FEEL statement is a file like any other, so the same upload carries one:
+
+```sh
+echo '{"expression":"amount > limit","context":{"amount":90,"limit":50}}' \
+  | curl -s -F "files=@-;filename=condition.feel" https://bpmnkit.com/drop/api/drops
 ```
 
 ---

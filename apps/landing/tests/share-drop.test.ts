@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
 	DROP_UPLOAD_PATH,
 	dropFileName,
+	shareFeelToDrop,
 	shareToDrop,
 	uploadErrorMessage,
 } from "../src/scripts/share-drop.js"
@@ -132,5 +133,36 @@ describe("shareToDrop", () => {
 			ok: false,
 			message: "Could not reach Drop. Check your connection and try again.",
 		})
+	})
+})
+
+describe("shareFeelToDrop", () => {
+	it("posts the expression and its context as one .feel document", async () => {
+		const fetchMock = stubFetch(201, { shareId: "aB3xY", url: "/drop/aB3xY" })
+
+		const outcome = await shareFeelToDrop({
+			expression: "amount > limit",
+			context: { amount: 90, limit: 50 },
+			mode: "expression",
+		})
+
+		expect(outcome).toEqual({ ok: true, path: "/drop/aB3xY" })
+		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+		const file = (init.body as FormData).getAll("files")[0] as File
+		expect(file.name).toBe("expression.feel")
+		// The context travelling with the expression is the whole point — a
+		// statement shared without it renders a value nobody can check.
+		expect(JSON.parse(await file.text())).toEqual({
+			expression: "amount > limit",
+			context: { amount: 90, limit: 50 },
+			mode: "expression",
+		})
+	})
+
+	it("surfaces a rejection the same way a diagram's does", async () => {
+		stubFetch(400, { error: "some files were rejected", details: ["expression.feel: 1 +"] })
+		await expect(
+			shareFeelToDrop({ expression: "1 +", context: {}, mode: "expression" }),
+		).resolves.toEqual({ ok: false, message: "expression.feel: 1 +" })
 	})
 })

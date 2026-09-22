@@ -1,6 +1,7 @@
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
 import type { FileKind } from "../shared/constants.js"
 import { MAX_FILE_BYTES, MAX_ROW_BYTES } from "../shared/constants.js"
+import { parseFeelDocument, serializeFeelDocument } from "../shared/feel-doc.js"
 import { type FileMeta, type ParsedModel, extractMeta } from "./meta.js"
 
 /** An input error that maps to a specific HTTP status. */
@@ -49,10 +50,15 @@ export function sniffKind(filename: string, text: string): FileKind | null {
 	if (ext === ".bpmn") return "bpmn"
 	if (ext === ".dmn") return "dmn"
 	if (ext === ".form") return "form"
+	if (ext === ".feel") return "feel"
 
 	const head = text.slice(0, 4000)
 	if (ext === ".json" || /^\s*[{[]/.test(head)) {
-		return /"components"\s*:/.test(head) ? "form" : null
+		if (/"components"\s*:/.test(head)) return "form"
+		// A shared FEEL statement is a JSON object with an `expression` — the
+		// shape the playground's Share button and the /drop composer post.
+		if (/"expression"\s*:/.test(head)) return "feel"
+		return null
 	}
 	// XML — namespace URIs are unambiguous; element names are the fallback.
 	if (head.includes("spec/DMN/")) return "dmn"
@@ -71,6 +77,8 @@ export function parseModel(kind: FileKind, text: string): ParsedModel {
 			return { kind, model: Dmn.parse(text) }
 		case "form":
 			return { kind, model: Form.parse(text) }
+		case "feel":
+			return { kind, model: parseFeelDocument(text) }
 	}
 }
 
@@ -88,7 +96,7 @@ export function validateFile(rawName: string, text: string): ValidatedFile {
 
 	const kind = sniffKind(filename, text)
 	if (!kind) {
-		throw new ValidationError(`${filename}: not a recognized BPMN, DMN, or Form file`, 400)
+		throw new ValidationError(`${filename}: not a recognized BPMN, DMN, Form, or FEEL file`, 400)
 	}
 
 	let parsed: ParsedModel
@@ -100,11 +108,24 @@ export function validateFile(rawName: string, text: string): ValidatedFile {
 	}
 
 	const { name, meta } = extractMeta(parsed)
+	// A FEEL upload may arrive as bare expression text; what is stored as the
+	// "original" is the document it became, so a download round-trips. Every
+	// other kind stores the uploaded bytes untouched.
+	const original = parsed.kind === "feel" ? serializeFeelDocument(parsed.model) : text
 	const json = JSON.stringify(parsed.model)
 	const sizeJson = byteLength(json)
 	if (sizeJson > MAX_ROW_BYTES) {
 		throw new ValidationError(`${filename}: converted model is too large to store`, 413)
 	}
 
-	return { kind, filename, original: text, json, name, meta, sizeOriginal, sizeJson }
+	return {
+		kind,
+		filename,
+		original,
+		json,
+		name,
+		meta,
+		sizeOriginal: parsed.kind === "feel" ? byteLength(original) : sizeOriginal,
+		sizeJson,
+	}
 }

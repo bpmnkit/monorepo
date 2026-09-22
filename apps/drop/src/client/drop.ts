@@ -1,8 +1,10 @@
 import { injectUiStyles } from "@bpmnkit/ui"
 import { ValidationError, validateFile } from "../lib/validate.js"
 import { MAX_FILES_PER_DROP } from "../shared/constants.js"
+import { mountFeelComposer } from "./feel-compose.js"
 
 injectUiStyles()
+mountFeelComposer()
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
@@ -126,7 +128,7 @@ window.addEventListener("drop", (e) => {
 	if (dropped?.length) void handleFiles([...dropped])
 })
 
-// ── Paste BPMN/DMN/Form content anywhere ────────────────────────────────────
+// ── Paste BPMN/DMN/Form/FEEL content anywhere ───────────────────────────────
 
 document.addEventListener("paste", (e) => {
 	const target = e.target
@@ -136,7 +138,13 @@ document.addEventListener("paste", (e) => {
 	const looksLikeDiagram = /^</.test(text) || /^[{[]/.test(text)
 	if (!looksLikeDiagram) return
 	e.preventDefault()
-	const name = /^[{[]/.test(text) ? "pasted.json" : "pasted.xml"
+	// A pasted `{ "expression": … }` is a FEEL statement someone copied out of
+	// the composer or the playground; everything else keeps its old spelling.
+	const name = /^[{[]/.test(text)
+		? /"expression"\s*:/.test(text)
+			? "pasted.feel"
+			: "pasted.json"
+		: "pasted.xml"
 	void handleFiles([new File([text], name, { type: "text/plain" })])
 })
 
