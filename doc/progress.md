@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-09-23 — Market & competitive analysis
+
+**`doc/market-analysis.md` maps BPMN Kit against the market.** It covers BPMN/DMN modelers and
+SDKs (the bpmn.io family, Camunda Desktop/Web Modeler/Hub, Miragon, Flowable Design, Signavio,
+Trisotech, Apache KIE, canvas SDKs), BPMN engines (Camunda 8.8–8.10, the Camunda 7 forks,
+Flowable, the JS engines), code-first durable execution (Temporal, Vercel Workflow, Inngest,
+Trigger.dev, Kestra), low-code/iPaaS (n8n and others), and AI agents/MCP, including the
+research on LLM-generated BPMN. It closes with a feature matrix, a SWOT, a presentation audit
+against leading developer-tool sites, a prioritised improvement list (P0–P4) and a
+positioning recommendation. It is a research document only; no code changed.
+
 ## 2026-09-21 — A shared FEEL statement is something you can edit
 
 **The share page has an editor for statements.** Opening somebody's expression and being
