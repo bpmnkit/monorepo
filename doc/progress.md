@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-09-23 — The FEEL share link gets the same bar as the upload link
+
+The link row under **Get a share link** rendered as browser defaults — a sunken input and
+two boxed buttons — because the `.link-row` styles were scoped to the upload result panel.
+They now apply to any `.link-row`, so the FEEL composer's link sits in one hairline-ruled
+bar with the mono URL and ruled **Copy** / **Open** cells; only the upload panel keeps the
+bottom rule that separates it from its preview.
+
 ## 2026-09-21 — A shared FEEL statement is something you can edit
 
 **The share page has an editor for statements.** Opening somebody's expression and being
