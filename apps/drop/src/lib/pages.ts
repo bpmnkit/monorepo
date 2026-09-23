@@ -132,9 +132,11 @@ p{margin:0}
 	@keyframes heroFade{from{opacity:0}to{opacity:1}}
 	@keyframes heroDraw{to{stroke-dashoffset:0}}
 }
-.result .link-row{display:flex;border-bottom:1px solid var(--bpmnkit-ds-line)}
-.result input{flex:1;min-width:0;font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;padding:9px 11px;border:none;background:transparent;color:var(--bpmnkit-ds-ink)}
-.result .link-row .btn-ghost{border:none;border-left:1px solid var(--bpmnkit-ds-line)}
+.link-row{display:flex}
+.link-row input{flex:1;min-width:0;font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;padding:9px 11px;border:none;background:transparent;color:var(--bpmnkit-ds-ink)}
+.link-row input:focus-visible{outline-offset:-2px}
+.link-row .btn-ghost{border:none;border-left:1px solid var(--bpmnkit-ds-line);padding:9px 16px;text-decoration:none}
+.result .link-row{border-bottom:1px solid var(--bpmnkit-ds-line)}
 .result iframe{display:block;width:100%;height:300px;border:none;background:var(--bpmnkit-ds-canvas)}
 
 /* ── Card / column grids ────────────────────────────────────────────────── */
