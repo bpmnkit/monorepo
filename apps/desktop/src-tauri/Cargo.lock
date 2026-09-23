@@ -128,7 +128,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bpmn-sdk-desktop"
+name = "bpmnkit-desktop"
 version = "0.1.0"
 dependencies = [
  "serde",

@@ -2,6 +2,7 @@
 	"name": "@bpmnkit/cli",
 	"version": "1.0.0",
 	"description": "Command-line interface for Camunda 8 — deploy, manage, and monitor processes from the terminal",
+	"mcpName": "io.github.bpmnkit/bpmnkit",
 	"type": "module",
 	"bin": {
 		"casen": "./dist/index.js"

@@ -52,9 +52,9 @@ function footer(currentPkg) {
 		{ name: "@bpmnkit/core", desc: "BPMN/DMN/Form parser, builder, layout engine" },
 		{ name: "@bpmnkit/canvas", desc: "Zero-dependency SVG BPMN viewer" },
 		{ name: "@bpmnkit/editor", desc: "Full-featured interactive BPMN editor" },
-		{ name: "@bpmnkit/engine", desc: "Lightweight BPMN process execution engine" },
+		{ name: "@bpmnkit/engine", desc: "Lightweight BPMN process simulator for tests and demos" },
 		{ name: "@bpmnkit/feel", desc: "FEEL expression language parser & evaluator" },
-		{ name: "@bpmnkit/plugins", desc: "22 composable canvas plugins" },
+		{ name: "@bpmnkit/plugins", desc: "34 composable canvas plugins" },
 		{ name: "@bpmnkit/api", desc: "Camunda 8 REST API TypeScript client" },
 		{ name: "@bpmnkit/ascii", desc: "Render BPMN diagrams as Unicode ASCII art" },
 		{
@@ -638,24 +638,33 @@ interface SideDock {
 	"packages/engine": {
 		name: "@bpmnkit/engine",
 		description:
-			"Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
+			"Lightweight BPMN 2.0 process simulator for tests and demos in browsers and Node.js — zero dependencies",
 		content: `## Overview
 
-\`@bpmnkit/engine\` simulates BPMN 2.0 process execution. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
+\`@bpmnkit/engine\` simulates BPMN 2.0 process execution — for tests, demos and debugging, not for running production processes. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
 
 Perfect for: workflow testing, visual debugging, interactive demos, offline simulation, and process-driven UI flows.
 
 ## Features
 
-- **Full control flow** — exclusive, parallel, inclusive, event-based, complex gateways
+- **Gateways** — exclusive (with default flow), parallel, inclusive
 - **Variable scopes** — hierarchical scope chain; FEEL expression evaluation for conditions/mappings
-- **All event types** — message, signal, timer (ISO 8601 duration/date/cycle), error, escalation, compensation
-- **Boundary events** — interrupting and non-interrupting error, timer, compensation
-- **Sub-processes** — embedded, call activity (process invocation by ID)
+- **Events** — none start; none, terminate and error end; timer (ISO 8601 duration/date/cycle) and message catch
+- **Boundary events** — interrupting timer, and error
+- **Sub-processes** — embedded sub-processes and transactions
 - **DMN decisions** — inline decision table evaluation via \`@bpmnkit/feel\`
-- **Job workers** — register handlers for service tasks by job type
+- **Job workers** — register handlers for service and user tasks by job type
 - **Step-by-step** — \`beforeComplete\` hook pauses between elements for debugging UIs
 - **Zero dependencies** — browser + Node.js, no server required
+
+### Not executed
+
+Call activities, event sub-processes, event-based and complex gateways, and ad-hoc
+sub-processes without a task definition are completed *without their semantics* — the token
+moves on. Signal, escalation, compensation, conditional and link events, multi-instance,
+message boundary events and non-interrupting boundary events are not modelled. For Zeebe
+semantics, \`@bpmnkit/engine/wasm-runner\` runs the same scenarios on the Reebe engine compiled
+to WebAssembly (experimental). See [Conformance](${DOCS}/getting-started/conformance).
 
 ## Installation
 
@@ -735,10 +744,10 @@ const instance = engine.start("my-process", {}, {
 	"packages/feel": {
 		name: "@bpmnkit/feel",
 		description:
-			"Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",
+			"FEEL (Friendly Enough Expression Language) parser, evaluator, formatter and highlighter — 94% DMN TCK conformance",
 		content: `## Overview
 
-\`@bpmnkit/feel\` is a complete implementation of the FEEL expression language used in DMN decision tables and BPMN condition expressions. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
+\`@bpmnkit/feel\` implements the FEEL expression language used in DMN decision tables and BPMN condition expressions, and passes 1,939 of the 2,053 FEEL cases in the [DMN TCK](https://dmn-tck.github.io/tck/) (94.4%) — the remaining cases are listed with their reasons in \`tests/tck.test.ts\`. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
 
 ## Features
 
@@ -824,10 +833,10 @@ interface ParseResult {
 	"packages/plugins": {
 		name: "@bpmnkit/plugins",
 		description:
-			"22 composable canvas plugins — minimap, AI chat, process simulation, storage, and more",
+			"34 composable canvas plugins — minimap, AI chat, process simulation, storage, and more",
 		content: `## Overview
 
-\`@bpmnkit/plugins\` is a single package containing 22 ready-made \`CanvasPlugin\` add-ons for \`@bpmnkit/canvas\` and \`@bpmnkit/editor\`. Each plugin is imported individually via subpath exports so you only bundle what you use.
+\`@bpmnkit/plugins\` is a single package containing 34 ready-made \`CanvasPlugin\` add-ons for \`@bpmnkit/canvas\` and \`@bpmnkit/editor\`. Each plugin is imported individually via subpath exports so you only bundle what you use.
 
 ## Installation
 
@@ -867,6 +876,9 @@ npm install @bpmnkit/plugins
 | \`/history\` | \`createHistoryPlugin()\` | Visual undo/redo history panel |
 | \`/config-panel\` | \`createConfigPanelPlugin(options)\` | Properties panel for selected elements |
 | \`/config-panel-bpmn\` | \`createConfigPanelBpmnPlugin(options)\` | BPMN-specific properties panel |
+| \`/connector-catalog\` | \`createConnectorCatalogPlugin(options)\` | Import API connectors from OpenAPI specs via a catalog panel |
+| \`/pattern-advisor\` | \`createPatternAdvisorPlugin(options)\` | Side panel flagging production-failure patterns, with fixes |
+| \`/variable-flow\` | \`createVariableFlowPlugin(options)\` | Overlay showing which elements read and write each variable |
 
 ### DMN & Forms
 
@@ -885,6 +897,8 @@ npm install @bpmnkit/plugins
 | \`/process-runner\` | \`createProcessRunnerPlugin(options)\` | Run BPMN instances with play/step/stop UI |
 | \`/token-highlight\` | \`createTokenHighlightPlugin()\` | Highlight active/visited elements during execution |
 | \`/optimize\` | \`createOptimizePlugin()\` | Show optimizer findings overlay |
+| \`/live-mode\` | \`createLiveModePlugin(options)\` | Keep a dev instance on a cluster in sync with the diagram as you edit |
+| \`/deploy\` | \`createDeployPlugin(options)\` | One-click deploy through the local proxy |
 
 ### AI & Navigation
 
@@ -893,6 +907,8 @@ npm install @bpmnkit/plugins
 | \`/ai-bridge\` | \`createAiBridgePlugin(options)\` | AI chat panel with diagram apply/checkpoint |
 | \`/element-docs\` | \`createElementDocsPlugin(options)\` | Built-in BPMN element reference docs |
 | \`/main-menu\` | \`createMainMenuPlugin(options)\` | File/Edit top-level menu |
+| \`/story-view\` | \`createStoryViewPlugin(options)\` | Read a process as a top-to-bottom story of cards |
+| \`/presentation\` | \`createPresentationPlugin(options)\` | Walk a process flow by flow, picking branches from the keyboard |
 
 ## Usage Examples
 
@@ -2962,11 +2978,11 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 
 - **Full-stack BPMN tooling** — parse, build, validate, auto-layout, and export BPMN 2.0 / DMN 1.3 / Camunda Forms with a fluent TypeScript API
 - **Interactive browser editor** — drag-and-drop BPMN editor with 40+ element types, undo/redo, multi-file tabs, AI chat, and in-browser process simulation
-- **22 composable plugins** — minimap, command palette, AI bridge, token highlight, storage, history, connector catalog, optimizer, and more
+- **34 composable plugins** — minimap, command palette, AI bridge, token highlight, storage, history, connector catalog, optimizer, and more
 - **100+ OpenAPI connectors** — generate Camunda REST connector templates from 100 built-in API specs (18,000+ endpoints: GitHub, Stripe, Slack, Jira, and more)
 - **\`casen\` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
 - **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
-- **Native desktop app** — 3–5 MB Tauri installer for Windows, macOS, and Linux
+- **Native desktop app** — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](${GITHUB}/releases?q=desktop)
 - **Share a diagram as a link** — [Drop](https://bpmnkit.com/drop) renders a BPMN/DMN/Form file for anyone with the link, live, and lets one of them edit it at a time
 - **VS Code extension** — preview, edit, lint, simulate and visually diff \`.bpmn\`, \`.dmn\` and \`.form\` beside the code, with no bpmn.io and no reformatting on save
 - **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
@@ -2980,8 +2996,8 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 | [\`@bpmnkit/core\`](packages/core) | [![npm](https://img.shields.io/npm/v/@bpmnkit/core?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/core) | BPMN/DMN/Form parser, builder, layout engine, optimizer |
 | [\`@bpmnkit/canvas\`](packages/canvas) | [![npm](https://img.shields.io/npm/v/@bpmnkit/canvas?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer with pan/zoom and plugin API |
 | [\`@bpmnkit/editor\`](packages/editor) | [![npm](https://img.shields.io/npm/v/@bpmnkit/editor?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
-| [\`@bpmnkit/engine\`](packages/engine) | [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine) | Lightweight zero-dependency BPMN execution engine |
-| [\`@bpmnkit/feel\`](packages/feel) | [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel) | Complete FEEL expression language — parser, evaluator, highlighter |
+| [\`@bpmnkit/engine\`](packages/engine) | [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine) | Zero-dependency BPMN simulator for tests and demos |
+| [\`@bpmnkit/feel\`](packages/feel) | [![npm](https://img.shields.io/npm/v/@bpmnkit/feel?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language — parser, evaluator, highlighter; 94% DMN TCK |
 | [\`@bpmnkit/plugins\`](packages/plugins) | [![npm](https://img.shields.io/npm/v/@bpmnkit/plugins?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
 | [\`@bpmnkit/ascii\`](packages/ascii) | [![npm](https://img.shields.io/npm/v/@bpmnkit/ascii?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 
@@ -3128,7 +3144,7 @@ bpmnkit/monorepo
 │   ├── editor/         # @bpmnkit/editor  — Interactive editor
 │   ├── engine/         # @bpmnkit/engine  — Process execution engine
 │   ├── feel/           # @bpmnkit/feel    — FEEL expression language
-│   ├── plugins/        # @bpmnkit/plugins — 22 canvas plugins
+│   ├── plugins/        # @bpmnkit/plugins — 34 canvas plugins
 │   ├── api/            # @bpmnkit/api     — Camunda 8 REST client
 │   ├── connector-gen/  # @bpmnkit/connector-gen — OpenAPI → connectors
 │   ├── operate/        # @bpmnkit/operate — Monitoring frontend
@@ -3137,7 +3153,7 @@ bpmnkit/monorepo
 │   ├── ascii/          # @bpmnkit/ascii   — ASCII art renderer
 │   ├── ui/             # @bpmnkit/ui      — Design tokens
 │   └── astro-shared/   # Shared Astro CSS/metadata
-├── apps/               # Non-published applications
+├── apps/               # Applications (cli, proxy and reebe-wasm are published)
 │   ├── cli/            # casen CLI tool
 │   ├── proxy/          # Local AI + API proxy server
 │   ├── desktop/        # Tauri native desktop app
@@ -3208,13 +3224,14 @@ Every PR that changes a published package **must** include a changeset. Use \`pa
 
 ## Versioning
 
-Every package is on **0.x**, which under semver promises nothing about compatibility — pin an
-exact version if that matters to you today.
+Packages version independently. Twelve are at **1.0** and covered by
+[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) — the contract
+that says what counts as public API, what makes a change breaking (including when generated
+BPMN counts as one), which runtimes are supported, and how deprecations run:
+${STABLE.map((p) => `\`@bpmnkit/${p.split("/")[1]}\``).join(", ")}.
 
-[Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability) is the contract
-each package takes on when it reaches 1.0.0: what counts as public API, what makes a change
-breaking (including when generated BPMN counts as one), which runtimes are supported, and how
-deprecations run.
+The other published packages are on **0.x**, which under semver promises nothing about
+compatibility — pin an exact version of those if that matters to you today.
 
 ## Contributing
 
@@ -3237,6 +3254,10 @@ Contributions are welcome — bug reports, feature requests, documentation impro
 ## License
 
 [MIT](./LICENSE) © BPMN Kit — made by [u11g](https://u11g.com)
+
+Two parts carry a different licence: the Reebe engine in [\`apps/reebe\`](apps/reebe) is
+Apache-2.0, and [\`@bpmnkit/camunda-docspack\`](packages/camunda-docspack) redistributes
+Camunda's documentation under CC-BY-SA-3.0 (see its \`NOTICE\`).
 
 <div align="center">
   <a href="https://bpmnkit.com"><img src="${LOGO_URL}" width="32" height="32" alt="BPMN Kit"></a>

@@ -31,7 +31,7 @@
 	"optionalDependencies": {
 		"@bpmnkit/reebe-wasm": "workspace:^"
 	},
-	"description": "Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
+	"description": "Lightweight BPMN 2.0 process simulator for tests and demos in browsers and Node.js — zero dependencies",
 	"keywords": ["bpmn", "engine", "simulation", "workflow", "typescript", "dmn", "camunda"],
 	"license": "MIT",
 	"repository": {

@@ -1,5 +1,67 @@
 # Progress
 
+## 2026-09-23 — P0 from the market analysis: claims that match the code, and ways to install
+
+**Every stale or overreaching claim that `doc/market-analysis.md` §13.1 listed is corrected at
+its source.**
+- README and homepage no longer say every package is 0.x or pre-1.0. They name the twelve 1.0
+  packages, generated from `STABLE`.
+- The plugin count is 34 everywhere; the plugins README documents the seven it left out.
+- FEEL is "94% DMN TCK", not "complete". The TCK was re-run locally: 1,939 of 2,053.
+- The round-trip card links to what is and is not preserved instead of promising no data loss.
+- The engine README and docs list what the simulator executes and what it completes
+  without semantics.
+- The Reebe README drops the pre-monorepo clone URL and the "no gRPC" row: the gateway
+  serves 22 RPCs on 26500. It gains an experimental, development-only status and a
+  LICENSE file.
+- The MCP docs name the real command, `casen proxy mcp`, and its real tool list.
+- The analyses that described work as unbuilt get status banners.
+
+`CLAUDE.md`'s React + Carbon stack section still does not match Studio (Preact, Radix,
+Tailwind). That section is the owner's policy, so it is left for them.
+
+**New pages.**
+- `docs/getting-started/conformance`: TCK figures, descriptor coverage (109 modelled,
+  34 preserved, 6 dropped), an element-by-component matrix and a single list of known
+  gaps.
+- A 1.0 launch post.
+- `/compare/bpmn-js`:
+  - opens with the licence row and quotes the bpmn.io watermark clause verbatim from the
+    bpmn-js LICENSE;
+  - stops claiming bpmn-js has no auto-layout or simulation — both exist as add-ons.
+- The homepage:
+  - adds "MIT, no watermark" to the proof points;
+  - adds a third start-here card for the MCP server.
+
+**Distribution.**
+- `release-vscode.yml` packages the extension whenever its version moves. It publishes to
+  the Marketplace and Open VSX when `VSCE_PAT` / `OVSX_PAT` are set, then tags a GitHub
+  Release with the `.vsix`.
+- `release-desktop.yml` builds Linux, Windows and both macOS installers into a draft
+  release, then publishes it. The builds are not code-signed.
+- The desktop build had been broken since the rename: `apps/proxy-rs/build.rs` filtered on
+  `@bpmn-sdk/proxy`, matched nothing, and failed to copy the bridge bundle.
+- The desktop app itself:
+  - is renamed BPMN Kit;
+  - has a full icon set generated from the favicon;
+  - resolves `ai-server.exe` on Windows (`tauri.windows.conf.json` plus `EXE_SUFFIX`).
+- Verified locally: the `.deb` builds (4.5 MB, both sidecars bundled) and the `.vsix` packages.
+- `publish-mcp.yml` lists `@bpmnkit/cli`'s MCP server in the MCP Registry as
+  `io.github.bpmnkit/bpmnkit`, using GitHub OIDC and `mcpName`.
+
+**Analytics.** `Seo.astro` loads the Cloudflare Web Analytics beacon (cookieless) only when
+`PUBLIC_CF_WEB_ANALYTICS_TOKEN` is set at build. `deploy-pages.yml` passes the
+`CF_WEB_ANALYTICS_TOKEN` repository variable. `apps/landing/turbo.json` declares the
+variable, so Turbo's strict env mode lets it through.
+
+**Needs the owner.**
+- Create the `bpmnkit` Marketplace publisher and Open VSX namespace, and add
+  `VSCE_PAT` / `OVSX_PAT`.
+- Add the `CF_WEB_ANALYTICS_TOKEN` variable.
+- Enable GitHub Discussions.
+- The VS Code guide calls the Marketplace and Open VSX listings "being set up" until the
+  tokens exist. Link them there once the first publish succeeds.
+
 ## 2026-09-23 — Market & competitive analysis
 
 **`doc/market-analysis.md` maps BPMN Kit against the market.** It covers BPMN/DMN modelers and

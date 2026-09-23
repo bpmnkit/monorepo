@@ -1,7 +1,7 @@
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="72" height="72" alt="BPMN Kit logo"></a>
   <h1>@bpmnkit/engine</h1>
-  <p>Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies</p>
+  <p>Lightweight BPMN 2.0 process simulator for tests and demos in browsers and Node.js — zero dependencies</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/engine?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/engine)
   [![license](https://img.shields.io/npm/l/@bpmnkit/engine?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
@@ -16,21 +16,30 @@
 
 ## Overview
 
-`@bpmnkit/engine` simulates BPMN 2.0 process execution. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
+`@bpmnkit/engine` simulates BPMN 2.0 process execution — for tests, demos and debugging, not for running production processes. Deploy a diagram, start instances, track active elements, evaluate DMN decisions, and step through execution — all without a Camunda cluster.
 
 Perfect for: workflow testing, visual debugging, interactive demos, offline simulation, and process-driven UI flows.
 
 ## Features
 
-- **Full control flow** — exclusive, parallel, inclusive, event-based, complex gateways
+- **Gateways** — exclusive (with default flow), parallel, inclusive
 - **Variable scopes** — hierarchical scope chain; FEEL expression evaluation for conditions/mappings
-- **All event types** — message, signal, timer (ISO 8601 duration/date/cycle), error, escalation, compensation
-- **Boundary events** — interrupting and non-interrupting error, timer, compensation
-- **Sub-processes** — embedded, call activity (process invocation by ID)
+- **Events** — none start; none, terminate and error end; timer (ISO 8601 duration/date/cycle) and message catch
+- **Boundary events** — interrupting timer, and error
+- **Sub-processes** — embedded sub-processes and transactions
 - **DMN decisions** — inline decision table evaluation via `@bpmnkit/feel`
-- **Job workers** — register handlers for service tasks by job type
+- **Job workers** — register handlers for service and user tasks by job type
 - **Step-by-step** — `beforeComplete` hook pauses between elements for debugging UIs
 - **Zero dependencies** — browser + Node.js, no server required
+
+### Not executed
+
+Call activities, event sub-processes, event-based and complex gateways, and ad-hoc
+sub-processes without a task definition are completed *without their semantics* — the token
+moves on. Signal, escalation, compensation, conditional and link events, multi-instance,
+message boundary events and non-interrupting boundary events are not modelled. For Zeebe
+semantics, `@bpmnkit/engine/wasm-runner` runs the same scenarios on the Reebe engine compiled
+to WebAssembly (experimental). See [Conformance](https://bpmnkit.com/docs/getting-started/conformance).
 
 ## Installation
 
@@ -114,7 +123,7 @@ const instance = engine.start("my-process", {}, {
 | [`@bpmnkit/canvas`](https://www.npmjs.com/package/@bpmnkit/canvas) | Zero-dependency SVG BPMN viewer |
 | [`@bpmnkit/editor`](https://www.npmjs.com/package/@bpmnkit/editor) | Full-featured interactive BPMN editor |
 | [`@bpmnkit/feel`](https://www.npmjs.com/package/@bpmnkit/feel) | FEEL expression language parser & evaluator |
-| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 22 composable canvas plugins |
+| [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |

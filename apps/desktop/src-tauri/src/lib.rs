@@ -19,8 +19,9 @@ fn spawn_ai_server(app: &tauri::App) {
     let Ok(resource_dir) = app.path().resource_dir() else {
         return;
     };
-    let server_path = resource_dir.join("ai-server");
-    let mcp_path = resource_dir.join("bpmn-mcp");
+    let exe = std::env::consts::EXE_SUFFIX;
+    let server_path = resource_dir.join(format!("ai-server{exe}"));
+    let mcp_path = resource_dir.join(format!("bpmn-mcp{exe}"));
     if server_path.exists() {
         let _ = std::process::Command::new(&server_path)
             .env("BPMN_MCP_PATH", &mcp_path)

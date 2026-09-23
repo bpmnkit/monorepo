@@ -1,5 +1,11 @@
 # Reebe WASM — Implementation Roadmap
 
+> **Status (2026-09-23): the checkboxes below were never maintained.** The crate
+> (`apps/reebe/crates/reebe-wasm`), its in-memory backend and clock exist and ship as
+> `@bpmnkit/reebe-wasm` (0.1.x, experimental), used by `@bpmnkit/engine/wasm-runner`, `casen test`
+> and Studio. `doc/progress.md` is the record of what was built; treat this file as the
+> original plan.
+
 > Deliver an interactive BPMN playground that runs entirely in the browser.
 > See `reebe-wasm-plan.md` for the full analysis and design rationale.
 

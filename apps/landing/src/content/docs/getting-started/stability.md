@@ -205,7 +205,7 @@ Three conditions, all of which must hold:
 | [`@bpmnkit/connectors`](/docs/packages/connectors) | [`@bpmnkit/connector-gen`](/docs/packages/connector-gen) |
 | [`@bpmnkit/docspack`](/docs/packages/docspack) | [`@bpmnkit/cli`](/docs/cli/casen) |
 
-The other fourteen published packages stay on 0.x on purpose, and make no promise. Most are
+The other fifteen published packages stay on 0.x on purpose, and make no promise. Most are
 short of the first two conditions; the rest are worked examples, scaffolders, or generated
 builds with no API of their own to freeze.
 

@@ -643,6 +643,14 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 
 ### P0 — Credibility & distribution (weeks, low effort, high leverage)
 
+> **Status (2026-09-23): done in code; four owner steps remain.** Items 1–4 and 6–8 are
+> implemented; see the matching `doc/progress.md` entry. The owner still has to:
+> - create the Marketplace publisher and Open VSX namespace, and add `VSCE_PAT` / `OVSX_PAT`
+>   (item 2);
+> - add the `CF_WEB_ANALYTICS_TOKEN` repository variable (item 6);
+> - enable GitHub Discussions (item 5);
+> - decide on `CLAUDE.md`'s stack section (§13.1 #10).
+
 1. **Fix every stale claim listed in §13.1.** The site's honest tone is its best asset;
    each overclaim undermines it.
 2. **Publish the VS Code extension** to the Marketplace and Open VSX. Miragon has 12.4k

@@ -1,7 +1,10 @@
 # @bpmnkit/feel — Overview
 
-`@bpmnkit/feel` is a complete implementation of FEEL (Friendly Enough Expression Language), the
-expression language DMN decision tables and Camunda 8 condition expressions are written in.
+`@bpmnkit/feel` implements FEEL (Friendly Enough Expression Language), the expression language
+DMN decision tables and Camunda 8 condition expressions are written in. It passes 1,939 of the
+2,053 FEEL cases in the [DMN TCK](https://dmn-tck.github.io/tck/) (94.4%); the cases it does
+not pass are listed, each with its reason, in `packages/feel/tests/tck.test.ts`, and
+[Conformance](/docs/getting-started/conformance) has the full picture.
 
 It is four things behind one entry point: a **lexer**, a recursive-descent **parser**, an AST
 **evaluator** with 88 built-in functions, and a **formatter** and **syntax highlighter** for

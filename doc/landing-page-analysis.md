@@ -1,5 +1,10 @@
 # BPMN Kit — Landing Page Analysis & Improvement Plan
 
+> **Status (2026-09-23): implemented, then superseded.** All six phases were implemented on
+> 2026-07-08 (see `doc/progress.md`), and the page was redesigned again afterwards. The
+> "nothing here is implemented yet" note below describes the document as written. For the
+> current gaps see `doc/market-analysis.md` §13.
+
 > **Purpose:** a hand-off plan for an implementing agent (Sonnet). Nothing here is
 > implemented yet. The landing page (`apps/landing/src/pages/index.astro` →
 > bpmnkit.com) was audited from four lenses — **Developer**, **Architect**,

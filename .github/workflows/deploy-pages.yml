@@ -51,6 +51,10 @@ jobs:
 
       - name: Build landing page
         run: pnpm turbo build --filter @bpmnkit/landing
+        env:
+          # Cloudflare Web Analytics beacon token (public — it ships in the page). Set it as
+          # a repository variable; without it the site builds with no analytics at all.
+          PUBLIC_CF_WEB_ANALYTICS_TOKEN: ${{ vars.CF_WEB_ANALYTICS_TOKEN }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

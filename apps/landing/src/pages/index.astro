@@ -79,9 +79,9 @@ const CAPABILITIES = [
 	},
 	{
 		title: "Roundtrip fidelity",
-		body: "Parse → modify → export with no data loss. Zeebe extensions, custom namespaces and DI preserved.",
-		api: "roundtrip test suite ↗",
-		href: `${SITE.github}/blob/main/packages/core/tests/xml/xml-roundtrip.test.ts`,
+		body: "Parse → modify → export keeps Zeebe extensions, custom namespaces and DI. A coverage gate fails the build if a new element type would be dropped; the few children still lost are listed.",
+		api: "what is preserved →",
+		href: "/docs/getting-started/concepts#round-trip-fidelity",
 	},
 	{
 		title: "Zero dependencies",
@@ -156,6 +156,7 @@ const CAPABILITIES = [
         <ul class="hero-proof-points">
           <li>Deploys to Camunda 8</li>
           <li>Opens in any modeler</li>
+          <li>MIT, no watermark</li>
           <li>Zero dependencies</li>
         </ul>
       </div>
@@ -202,7 +203,7 @@ const CAPABILITIES = [
        arrive already looking for. -->
   <section class="quickstrip" aria-label="Start here">
     <div class="section-wrap">
-      <div class="hair-grid hair-grid--2">
+      <div class="hair-grid hair-grid--3">
         <a class="quick-card" href="/drop">
           <span class="quick-eyebrow">bpmnkit.com/drop &middot; no account</span>
           <h2>Send a diagram as a link</h2>
@@ -222,6 +223,16 @@ const CAPABILITIES = [
             that drives the whole pipeline. One page.
           </p>
           <span class="quick-go">Read the AI guide &rarr;</span>
+        </a>
+        <a class="quick-card" href="/docs/guides/ai#mcp-server">
+          <span class="quick-eyebrow">casen proxy mcp &middot; stdio</span>
+          <h2>Hand it to your coding agent</h2>
+          <p>
+            An MCP server lets Claude Code, Cursor or VS Code create, validate, simulate and
+            deploy Camunda&nbsp;8 processes, and an offline docs pack answers its questions from
+            the version you installed &mdash; no network call.
+          </p>
+          <span class="quick-go">Set up the MCP server &rarr;</span>
         </a>
       </div>
     </div>
@@ -302,8 +313,10 @@ const CAPABILITIES = [
         <h2 class="section-h2">{ECOSYSTEM.length} packages, pick what you need</h2>
       </div>
       <p class="section-sub">
-        Independently versioned and pre-1.0, developed in the open under MIT. Every version
-        below is the one on npm — each row links to it.
+        Twelve core packages are at 1.0 and covered by the
+        <a href="/docs/getting-started/stability">stability policy</a>; the rest stay on 0.x and
+        say so. All MIT, developed in the open. Every version below is the one on npm — each row
+        links to it.
       </p>
       <div class="pkg-grid">
         {featuredPackages.map((pkg) => (

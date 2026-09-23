@@ -1,31 +1,40 @@
 # Reebe
 
-A drop-in REST API replacement for [Zeebe](https://zeebe.io/) (Camunda 8 process engine), written in Rust.
-Compatible with the Camunda 8 REST API v2.
+A BPMN workflow engine in Rust that implements the [Camunda 8](https://camunda.com/) Orchestration
+Cluster REST API (`/v2/*`) and the Zeebe gateway gRPC service — for local development, tests and
+CI, without a JVM or Elasticsearch.
+
+> **Status: experimental, single-node, for development and testing.** Reebe is a clean-room
+> implementation and is not affiliated with Camunda. It is not a production replacement for a
+> Camunda 8 cluster: there is no replication, no clustering and no exporter framework, and its
+> compatibility is checked by its own test suite rather than against Zeebe.
 
 ## What is Reebe?
 
-Reebe is a BPMN workflow engine that implements the Camunda 8 REST API (`/v2/*`) in Rust.
-It is designed as a direct replacement for the Zeebe broker — any HTTP client or SDK that targets
-the Camunda 8 REST API works unchanged against Reebe.
+Reebe implements the Camunda 8 REST API v2 and the Zeebe `gateway_protocol.Gateway` gRPC service,
+so a client or SDK that targets a Camunda 8 cluster can usually be pointed at it unchanged.
 
-Reebe uses PostgreSQL as its sole storage backend, replacing both RocksDB (the Zeebe journal) and
-Elasticsearch (the query side). The same append-only event log model that gives Zeebe its
-correctness guarantees is preserved, but implemented entirely in SQL.
+It stores everything in one SQL database — PostgreSQL, or SQLite embedded in the binary — in
+place of Zeebe's RocksDB journal and the Elasticsearch query side. The append-only event-log
+model Zeebe uses is kept, implemented in SQL.
 
 ## Why Reebe?
 
-| Property | Zeebe (Java) | Reebe (Rust) |
+| Property | Camunda 8 (self-managed) | Reebe |
 |---|---|---|
-| Memory usage | 1–2 GB (JVM heap) | ~50 MB |
-| Startup time | 15–30 s | < 1 s |
-| GC pauses | Yes (stop-the-world) | None |
-| Storage backends | RocksDB + Elasticsearch | PostgreSQL only |
-| Deployment | Multi-JAR + Elasticsearch cluster | Single binary |
-| gRPC API | Yes | No (REST only) |
+| Runtime | JVM | Single native binary |
+| Storage | RocksDB + Elasticsearch/OpenSearch or RDBMS | PostgreSQL, or embedded SQLite |
+| APIs | REST v2 + gRPC | REST v2 + gRPC gateway (port 26500) |
+| Clustering | Raft, multi-partition | Single node |
+| Licence | Camunda License 1.0 (production needs an Enterprise licence) | Apache-2.0 |
 
-Reebe is ideal for development environments, resource-constrained deployments, and any situation
-where running a full Camunda 8 stack is impractical.
+Reebe fits development machines, CI pipelines and demos — anywhere a full Camunda 8 stack is
+more than the job needs. `reebe-bench` measures throughput and latency on your own hardware;
+no benchmark figures are published yet.
+
+The same engine compiles to WebAssembly as
+[`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm), which
+`@bpmnkit/engine/wasm-runner` and `casen test` use to run scenarios in the browser and Node.js.
 
 ---
 
@@ -34,8 +43,8 @@ where running a full Camunda 8 stack is impractical.
 ### Option 1: Embedded SQLite (fastest, no dependencies)
 
 ```bash
-git clone https://github.com/urbanisierung/reebe
-cd reebe
+git clone https://github.com/bpmnkit/monorepo
+cd monorepo/apps/reebe
 just dev-embedded
 ```
 
@@ -44,8 +53,8 @@ Starts Reebe with a built-in SQLite database — no Docker or PostgreSQL needed.
 ### Option 2: Docker Compose (PostgreSQL)
 
 ```bash
-git clone https://github.com/urbanisierung/reebe
-cd reebe
+git clone https://github.com/bpmnkit/monorepo
+cd monorepo/apps/reebe
 docker-compose up
 ```
 
@@ -96,7 +105,8 @@ cargo build --release -p reebe-server
 
 ### Download binary
 
-Pre-built binaries will be available in future releases.
+There are no pre-built binaries yet; build from source as above, or with
+`cargo install --path crates/reebe-server`.
 
 ---
 
@@ -379,14 +389,16 @@ Reports PI/s (process instances per second), average latency, and error count.
 
 ### What is not supported
 
-- **gRPC API** — excluded by design; use the REST API instead
+- **gRPC API** — the gateway on port 26500 implements the Zeebe `Gateway` service's
+  job, instance, message, signal, variable, incident, decision and deployment calls; the
+  REST API is the better-tested surface
 - **Elasticsearch / OpenSearch exporters** — no exporter framework yet
 - **Camunda web apps** (Operate, Tasklist, Optimize) — not included
 - **Multi-node clustering (Raft)** — single-node only in current version
-- **Java gRPC SDK** — use a REST-based client or the Camunda 8 Java REST client
 
 ---
 
 ## License
 
-Apache 2.0 — see [LICENSE](./LICENSE) or https://www.apache.org/licenses/LICENSE-2.0
+Apache 2.0 — see [LICENSE](./LICENSE). The rest of the BPMN Kit monorepo is MIT; Reebe keeps the
+Apache-2.0 licence it was first published under.

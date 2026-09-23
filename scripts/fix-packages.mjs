@@ -76,7 +76,7 @@ const PACKAGES = [
 		"packages/engine",
 		{
 			description:
-				"Lightweight BPMN 2.0 process execution engine for browsers and Node.js — zero dependencies",
+				"Lightweight BPMN 2.0 process simulator for tests and demos in browsers and Node.js — zero dependencies",
 			keywords: ["bpmn", "engine", "simulation", "workflow", "typescript", "dmn", "camunda"],
 		},
 	],
@@ -84,7 +84,7 @@ const PACKAGES = [
 		"packages/feel",
 		{
 			description:
-				"Complete FEEL (Friendly Enough Expression Language) implementation — parser, evaluator, and highlighter",
+				"FEEL (Friendly Enough Expression Language) parser, evaluator, formatter and highlighter — 94% DMN TCK conformance",
 			keywords: ["feel", "dmn", "expression", "camunda", "bpmn", "typescript", "evaluator"],
 		},
 	],

@@ -1,0 +1,52 @@
+{
+	"$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+	"name": "io.github.bpmnkit/bpmnkit",
+	"title": "BPMN Kit",
+	"description": "Create, validate, simulate and deploy Camunda 8 BPMN processes, forms and DMN from an agent.",
+	"websiteUrl": "https://bpmnkit.com/docs/guides/ai#mcp-server",
+	"repository": {
+		"url": "https://github.com/bpmnkit/monorepo",
+		"source": "github",
+		"subfolder": "apps/cli"
+	},
+	"version": "1.0.0",
+	"packages": [
+		{
+			"registryType": "npm",
+			"registryBaseUrl": "https://registry.npmjs.org",
+			"identifier": "@bpmnkit/cli",
+			"version": "1.0.0",
+			"transport": {
+				"type": "stdio"
+			},
+			"packageArguments": [
+				{
+					"type": "positional",
+					"value": "proxy"
+				},
+				{
+					"type": "positional",
+					"value": "mcp"
+				}
+			],
+			"environmentVariables": [
+				{
+					"name": "ZEEBE_ADDRESS",
+					"description": "Camunda 8 / Reebe REST address when no casen profile is active (default http://localhost:26500)",
+					"isRequired": false
+				},
+				{
+					"name": "ZEEBE_CLIENT_ID",
+					"description": "OAuth client ID for Camunda SaaS",
+					"isRequired": false
+				},
+				{
+					"name": "ZEEBE_CLIENT_SECRET",
+					"description": "OAuth client secret for Camunda SaaS",
+					"isRequired": false,
+					"isSecret": true
+				}
+			]
+		}
+	]
+}

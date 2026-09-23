@@ -1,0 +1,137 @@
+name: Release VS Code extension
+
+# Publishes apps/vscode whenever its version changes on main — the Changesets release PR
+# bumps it like any other workspace — or on demand.
+#
+# Every run that finds an unreleased version attaches the .vsix to a GitHub Release tagged
+# vscode-v<version>. Publishing to the registries is gated on their tokens, so a fork or a
+# repo without them still gets the GitHub Release:
+#   VSCE_PAT — Azure DevOps PAT for the "bpmnkit" Visual Studio Marketplace publisher
+#   OVSX_PAT — Open VSX access token for the "bpmnkit" namespace
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/vscode/package.json
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release:
+    name: Package and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./apps/vscode/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=vscode-v$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/vscode-v$VERSION" >/dev/null; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "vscode-v$VERSION is already released — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup pnpm
+        if: steps.version.outputs.released == 'false'
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: steps.version.outputs.released == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.version.outputs.released == 'false'
+        run: pnpm install --frozen-lockfile
+
+      # @bpmnkit/engine type-checks against the reebe-wasm package, so it has to exist
+      # before the workspace builds — the same step ci.yml runs.
+      - name: Add wasm32 target
+        if: steps.version.outputs.released == 'false'
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Cache Rust build
+        if: steps.version.outputs.released == 'false'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/reebe -> target
+
+      - name: Install wasm-pack
+        if: steps.version.outputs.released == 'false'
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      - name: Build reebe-wasm
+        if: steps.version.outputs.released == 'false'
+        env:
+          CARGO_HTTP_MULTIPLEXING: false
+        run: |
+          WASM_VERSION=$(node -p "require('./apps/reebe-wasm/package.json').version")
+          wasm-pack build apps/reebe/crates/reebe-wasm --target web --scope bpmnkit --out-dir "$GITHUB_WORKSPACE/apps/reebe-wasm"
+          node scripts/patch-wasm-pkg.mjs "$WASM_VERSION"
+
+      - name: Build the extension and its workspace dependencies
+        if: steps.version.outputs.released == 'false'
+        run: pnpm turbo build --filter bpmnkit...
+
+      - name: Test
+        if: steps.version.outputs.released == 'false'
+        run: pnpm --filter bpmnkit test
+
+      - name: Package
+        if: steps.version.outputs.released == 'false'
+        working-directory: apps/vscode
+        run: |
+          pnpm exec vsce package --no-dependencies --out "bpmnkit-${{ steps.version.outputs.version }}.vsix"
+
+      - name: Publish to the Visual Studio Marketplace
+        if: steps.version.outputs.released == 'false' && env.VSCE_PAT != ''
+        working-directory: apps/vscode
+        run: pnpm exec vsce publish --no-dependencies --packagePath "bpmnkit-${{ steps.version.outputs.version }}.vsix" --pat "$VSCE_PAT"
+
+      - name: Publish to Open VSX
+        if: steps.version.outputs.released == 'false' && env.OVSX_PAT != ''
+        uses: HaaLeo/publish-vscode-extension@v2
+        with:
+          pat: ${{ secrets.OVSX_PAT }}
+          extensionFile: apps/vscode/bpmnkit-${{ steps.version.outputs.version }}.vsix
+
+      # Last, because the tag it creates is what marks the version released: a registry
+      # failure above leaves no tag, so re-running the workflow retries the whole release.
+      - name: GitHub Release
+        if: steps.version.outputs.released == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" --target "$GITHUB_SHA" \
+            "apps/vscode/bpmnkit-${{ steps.version.outputs.version }}.vsix" \
+            --title "BPMN Kit for VS Code ${{ steps.version.outputs.version }}" \
+            --notes "Install with \`code --install-extension bpmnkit-${{ steps.version.outputs.version }}.vsix\`. Changes: https://github.com/${{ github.repository }}/blob/main/apps/vscode/CHANGELOG.md"
+
+      - name: Summary
+        if: steps.version.outputs.released == 'false'
+        run: |
+          {
+            echo "Released ${{ steps.version.outputs.tag }}."
+            if [ -z "$VSCE_PAT" ]; then echo "- Marketplace: skipped (no VSCE_PAT secret)"; else echo "- Marketplace: published"; fi
+            if [ -z "$OVSX_PAT" ]; then echo "- Open VSX: skipped (no OVSX_PAT secret)"; else echo "- Open VSX: published"; fi
+          } >> "$GITHUB_STEP_SUMMARY"

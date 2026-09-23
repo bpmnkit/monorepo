@@ -3,8 +3,10 @@ fn main() {
     let root = std::path::PathBuf::from(&manifest).join("../..").canonicalize().unwrap();
 
     // Run pnpm bridge build (esbuild bundles bridge.ts → dist/bridge.bundle.js)
-    let status = std::process::Command::new("pnpm")
-        .args(["--filter", "@bpmn-sdk/proxy", "run", "bridge"])
+    // pnpm is a .cmd shim on Windows, which Command does not resolve on its own.
+    let pnpm = if cfg!(windows) { "pnpm.cmd" } else { "pnpm" };
+    let status = std::process::Command::new(pnpm)
+        .args(["--filter", "@bpmnkit/proxy", "run", "bridge"])
         .current_dir(&root)
         .status()
         .expect("failed to spawn pnpm bridge");

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    bpmn_sdk_desktop_lib::run()
+    bpmnkit_desktop_lib::run()
 }

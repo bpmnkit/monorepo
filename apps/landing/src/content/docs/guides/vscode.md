@@ -16,20 +16,26 @@ extension, which is the point: the files it shows you are the files git has, byt
 
 ## Installing
 
-The extension is **pre-1.0 and not on the Marketplace yet** — it is built from the monorepo
-and ships when the packages it is built from do:
+Every version is attached as a `.vsix` to a
+[GitHub Release](https://github.com/bpmnkit/monorepo/releases?q=vscode-v) tagged
+`vscode-v<version>`. Download it and install it with **Extensions → … → Install from VSIX…**,
+or from a terminal:
+
+```sh
+code --install-extension bpmnkit-<version>.vsix
+```
+
+The same release workflow publishes to the Visual Studio Marketplace and Open VSX as
+`bpmnkit.bpmnkit`; those listings are being set up, and this page will link them once they
+are live.
+
+To build it yourself from the monorepo:
 
 ```sh
 git clone https://github.com/bpmnkit/monorepo
 cd monorepo && pnpm install
-pnpm --filter bpmnkit build
+pnpm turbo build --filter bpmnkit...
 pnpm --filter bpmnkit package     # → apps/vscode/bpmnkit.vsix
-```
-
-Then install the `.vsix`: **Extensions → … → Install from VSIX…**, or
-
-```sh
-code --install-extension apps/vscode/bpmnkit.vsix
 ```
 
 It activates on a workspace containing a `.bpmn` file, and requires VS Code 1.90 or newer.

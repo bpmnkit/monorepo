@@ -2,7 +2,7 @@
 
 > Camunda 8 documentation as an offline, version-locked docspack package for AI agents
 
-Version 0.1.2. 1054 chunks documenting camunda@8.10.
+Version 0.1.3. 1054 chunks documenting camunda@8.10.
 
 ```sh
 npm i -D @bpmnkit/camunda-docspack

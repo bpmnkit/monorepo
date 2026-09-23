@@ -1,0 +1,8 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"env": ["PUBLIC_CF_WEB_ANALYTICS_TOKEN"]
+		}
+	}
+}

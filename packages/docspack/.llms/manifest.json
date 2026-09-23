@@ -108,7 +108,7 @@
 		{
 			"id": "cli.casen.mcp-server-mode",
 			"file": "chunks/cli.casen.mcp-server-mode.md",
-			"tokens": 140,
+			"tokens": 204,
 			"tags": [
 				"cli",
 				"casen",
@@ -652,6 +652,99 @@
 			"entities": []
 		},
 		{
+			"id": "getting-started.conformance",
+			"file": "chunks/getting-started.conformance.md",
+			"tokens": 270,
+			"tags": [
+				"getting-started",
+				"conformance"
+			],
+			"entities": [
+				"@bpmnkit/feel",
+				"packages/feel/tasks/extract-tck-tests.mjs",
+				"packages/feel/tests/tck.test.ts"
+			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-2.0-model-and-round-trip",
+			"file": "chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md",
+			"tokens": 301,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"2.0",
+				"model",
+				"round",
+				"trip"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"DataAssociation",
+				"FormalExpression",
+				"DataState",
+				"ItemAwareElement",
+				"ImplicitThrowEvent",
+				"packages/core/tests/descriptor-coverage.test.ts",
+				"packages/core/tests"
+			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-elements-by-component",
+			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
+			"tokens": 542,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"elements",
+				"component"
+			],
+			"entities": [
+				"@bpmnkit/engine/wasm-runner"
+			]
+		},
+		{
+			"id": "getting-started.conformance.zeebe-extensions",
+			"file": "chunks/getting-started.conformance.zeebe-extensions.md",
+			"tokens": 160,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"zeebe",
+				"extensions"
+			],
+			"entities": [
+				"packages/core/src/bpmn/zeebe-placement.ts"
+			]
+		},
+		{
+			"id": "getting-started.conformance.dmn-1.3",
+			"file": "chunks/getting-started.conformance.dmn-1.3.md",
+			"tokens": 135,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"dmn",
+				"1.3"
+			],
+			"entities": [
+				"typeRef"
+			]
+		},
+		{
+			"id": "getting-started.conformance.camunda-forms",
+			"file": "chunks/getting-started.conformance.camunda-forms.md",
+			"tokens": 197,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"camunda",
+				"forms"
+			],
+			"entities": []
+		},
+		{
 			"id": "getting-started.installation",
 			"file": "chunks/getting-started.installation.md",
 			"tokens": 140,
@@ -1109,14 +1202,17 @@
 		{
 			"id": "guides.ai.mcp-server",
 			"file": "chunks/guides.ai.mcp-server.md",
-			"tokens": 151,
+			"tokens": 319,
 			"tags": [
 				"guides",
 				"ai",
 				"mcp",
 				"server"
 			],
-			"entities": []
+			"entities": [
+				"io.github.bpmnkit/bpmnkit",
+				"@bpmnkit/patterns"
+			]
 		},
 		{
 			"id": "guides.building-processes.service-tasks",
@@ -1794,13 +1890,15 @@
 		{
 			"id": "guides.vscode.installing",
 			"file": "chunks/guides.vscode.installing.md",
-			"tokens": 140,
+			"tokens": 209,
 			"tags": [
 				"guides",
 				"vscode",
 				"installing"
 			],
-			"entities": []
+			"entities": [
+				"bpmnkit.bpmnkit"
+			]
 		},
 		{
 			"id": "guides.vscode.what-it-does-preview-beside-the-source",
@@ -3195,7 +3293,7 @@
 		{
 			"id": "packages.engine.overview",
 			"file": "chunks/packages.engine.overview.md",
-			"tokens": 140,
+			"tokens": 288,
 			"tags": [
 				"packages",
 				"engine",
@@ -3203,7 +3301,8 @@
 			],
 			"entities": [
 				"@bpmnkit/engine",
-				"@bpmnkit/core"
+				"@bpmnkit/feel",
+				"@bpmnkit/engine/wasm-runner"
 			]
 		},
 		{
@@ -3239,7 +3338,7 @@
 		{
 			"id": "packages.engine.variable-scoping",
 			"file": "chunks/packages.engine.variable-scoping.md",
-			"tokens": 148,
+			"tokens": 146,
 			"tags": [
 				"packages",
 				"engine",
@@ -3255,7 +3354,7 @@
 		{
 			"id": "packages.feel.overview",
 			"file": "chunks/packages.feel.overview.md",
-			"tokens": 152,
+			"tokens": 202,
 			"tags": [
 				"packages",
 				"feel",
@@ -3263,6 +3362,7 @@
 			],
 			"entities": [
 				"@bpmnkit/feel",
+				"packages/feel/tests/tck.test.ts",
 				"@bpmnkit/core",
 				"@bpmnkit/engine"
 			]

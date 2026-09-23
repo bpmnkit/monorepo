@@ -7,49 +7,73 @@ import Nav from "../../components/Nav.astro"
 
 const rows = [
 	[
+		"Licence",
+		"MIT, no conditions beyond the copyright notice. No watermark.",
+		"MIT-derived bpmn.io licence that requires the bpmn.io watermark to stay on every rendered diagram, unaltered and fully visible",
+	],
+	[
 		"Primary purpose",
-		"Fluent TypeScript builder that generates and executes BPMN 2.0 XML from code",
+		"TypeScript toolkit: generate, lint, simulate and deploy BPMN from code, plus a viewer and a full editor",
 		"Toolkit for rendering and interactively modeling BPMN diagrams in the browser",
 	],
 	[
 		"Runtime",
 		"Node.js, browsers, Deno, Bun, edge — zero runtime dependencies in core",
-		"Browser only (SVG/DOM-based rendering)",
+		"Browser (SVG/DOM rendering); bpmn-moddle parses XML in Node too",
 	],
 	[
 		"Generate a diagram from code",
-		"Yes — `Bpmn.createProcess().startEvent()...build()` with auto-layout (Sugiyama algorithm)",
-		"No built-in fluent builder; diagrams are typically authored via the GUI or by hand-editing the underlying diagram-js model",
+		"Yes — `Bpmn.createProcess().startEvent()...build()` with typed elements",
+		"No fluent builder; you script the diagram-js model or write XML",
 	],
 	[
 		"Auto-layout",
-		"Built in — no coordinate math required",
-		"Not included; you position elements yourself or rely on a modeling UI",
+		"Built in (`.withAutoLayout()`), runs synchronously in milliseconds; in our own measurement bpmn-auto-layout 2.0 still routes edges more cleanly",
+		"Separate package, bpmn-auto-layout",
 	],
 	[
-		"Simulation / execution",
-		"`@bpmnkit/engine` — zero-dep simulation engine, no Camunda required",
-		"Not included",
+		"Interactive editor",
+		"`@bpmnkit/editor` — palette, properties panel, undo/redo, copy/paste, align, touch, keyboard and screen-reader announcements",
+		"bpmn-js Modeler with bpmn-js-properties-panel — the most widely used BPMN modeler on the web",
+	],
+	[
+		"Simulation",
+		"`@bpmnkit/engine` executes the process — FEEL conditions, job-worker mocks, DMN, timers — with scenario tests",
+		"bpmn-js-token-simulation animates tokens; expressions and workers are not evaluated",
+	],
+	[
+		"Linting",
+		"Built-in optimizer (~40 rules), `casen lint`, VS Code Problems panel",
+		"bpmnlint with a plugin ecosystem and Camunda rules",
 	],
 	["Camunda 8 deployment", "`@bpmnkit/api` — 180-method typed REST client", "Not included"],
-	["DMN support", "`Dmn` builder in `@bpmnkit/core`", "Separate library (dmn-js)"],
+	[
+		"DMN and Forms",
+		"Same package (`Dmn`, `Form` builders), FEEL with 94% DMN TCK",
+		"Separate libraries (dmn-js, form-js)",
+	],
 	[
 		"AI / LLM-friendly",
-		"Compact intermediate format fits a diagram in one prompt; designed for AI agents",
+		"Compact intermediate format, MCP server, offline docs pack for agents",
 		"Not a design goal",
 	],
 	[
 		"Maturity & ecosystem",
-		"Newer, smaller ecosystem",
-		"Mature, widely adopted, large plugin ecosystem (bpmn.io)",
+		"Newer and much smaller; 12 core packages at 1.0",
+		"Mature, widely adopted, large extension ecosystem, near-daily releases",
 	],
 ]
 
 const jsonLd = faqJsonLd([
 	{
+		question: "Do I have to show a watermark when I embed BPMN Kit?",
+		answer:
+			"No. BPMN Kit is plain MIT: keep the copyright notice with the source and nothing else. bpmn-js, dmn-js and form-js use the bpmn.io licence, which requires the bpmn.io watermark to stay on every rendered diagram, unchanged and not overlapped by other elements.",
+	},
+	{
 		question: "Is BPMN Kit a replacement for bpmn-js?",
 		answer:
-			"Not exactly — they solve different problems. bpmn-js is a browser toolkit for rendering and interactively modeling BPMN diagrams. BPMN Kit is a TypeScript SDK for generating, simulating, and deploying BPMN diagrams from code, with zero runtime dependencies and no browser requirement. Some teams use BPMN Kit's canvas/editor packages for in-browser diagram display and bpmn-js for rich manual modeling — they are not mutually exclusive.",
+			"It can be. BPMN Kit has its own viewer and editor, so it can replace bpmn-js where you need a modeler without the watermark or a code-first workflow. bpmn-js has the larger ecosystem of extensions, lint rules and element-template tooling. The two read and write the same BPMN 2.0 XML, so they are not mutually exclusive.",
 	},
 	{
 		question: "Can I generate a BPMN diagram programmatically with bpmn-js?",
@@ -66,8 +90,8 @@ const jsonLd = faqJsonLd([
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <Seo
-    title="BPMN Kit vs. bpmn-js — Headless SDK vs. Browser Modeling Toolkit"
-    description="How @bpmnkit/core compares to bpmn-js: code-first generation with auto-layout and zero runtime dependencies vs. browser-based interactive BPMN modeling."
+    title="BPMN Kit vs. bpmn-js — licence, code-first BPMN and browser modeling"
+    description="How BPMN Kit compares to bpmn-js: plain MIT with no watermark, code-first generation with auto-layout, simulation and deployment, and its own editor, against the most widely used browser BPMN modeler."
     jsonLd={jsonLd}
   />
   <style is:global>
@@ -79,7 +103,10 @@ const jsonLd = faqJsonLd([
     .cmp-table th, .cmp-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
     .cmp-table th { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
     .cmp-table td:first-child { color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+    .cmp-faq { margin-bottom: 40px; }
     .cmp-faq h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; }
+    .cmp-note { font-size: 0.88rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 14px; }
+    .cmp-quote { margin: 0 0 14px; padding: 12px 16px; border-left: 2px solid var(--border); font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--text); }
     .cmp-faq-item { margin-bottom: 20px; }
     .cmp-faq-item h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
     .cmp-faq-item p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.65; }
@@ -93,9 +120,9 @@ const jsonLd = faqJsonLd([
       <p class="lede">
         <a href="https://github.com/bpmn-io/bpmn-js">bpmn-js</a> is a mature, widely-used
         open-source toolkit from bpmn.io for rendering and interactively modeling BPMN 2.0
-        diagrams in the browser. <strong>BPMN Kit</strong> is a TypeScript SDK for generating,
-        simulating, and deploying BPMN 2.0 diagrams from code. They target different jobs —
-        here's how they compare.
+        diagrams in the browser. <strong>BPMN Kit</strong> is a TypeScript toolkit for generating,
+        simulating and deploying BPMN 2.0 from code, with its own viewer and editor. Here's how
+        they compare.
       </p>
 
       <div class="table-scroll">
@@ -110,10 +137,34 @@ const jsonLd = faqJsonLd([
       </div>
 
       <div class="cmp-faq">
+        <h2>The licence difference</h2>
+        <p class="cmp-note">
+          bpmn-js is free to use, but its licence adds one condition to MIT. Quoted from the
+          <a href="https://github.com/bpmn-io/bpmn-js/blob/develop/LICENSE">bpmn-js LICENSE</a>:
+        </p>
+        <blockquote class="cmp-quote">
+          The source code responsible for displaying the bpmn.io project watermark that links
+          back to https://bpmn.io as part of rendered diagrams MUST NOT be removed or changed.
+          When this software is being used in a website or application, the watermark must stay
+          fully visible and not visually overlapped by other elements.
+        </blockquote>
+        <p class="cmp-note">
+          dmn-js and form-js carry the same condition. If you embed a BPMN editor in your own
+          product, that is a visible bpmn.io mark on every diagram your users see. BPMN Kit is
+          plain <a href="https://github.com/bpmnkit/monorepo/blob/main/LICENSE">MIT</a> — keep
+          the copyright notice with the source, and nothing else.
+        </p>
+      </div>
+
+      <div class="cmp-faq">
         <h2>Frequently asked</h2>
         <div class="cmp-faq-item">
+          <h3>Do I have to show a watermark when I embed BPMN Kit?</h3>
+          <p>No. BPMN Kit is plain MIT: keep the copyright notice with the source and nothing else. bpmn-js, dmn-js and form-js use the bpmn.io licence, which requires the bpmn.io watermark to stay on every rendered diagram, unchanged and not overlapped by other elements.</p>
+        </div>
+        <div class="cmp-faq-item">
           <h3>Is BPMN Kit a replacement for bpmn-js?</h3>
-          <p>Not exactly — they solve different problems. bpmn-js is a browser toolkit for rendering and interactively modeling BPMN diagrams. BPMN Kit is a TypeScript SDK for generating, simulating, and deploying BPMN diagrams from code, with zero runtime dependencies and no browser requirement. Some teams use BPMN Kit's canvas/editor packages for in-browser diagram display and bpmn-js for rich manual modeling — they are not mutually exclusive.</p>
+          <p>It can be. BPMN Kit has its own viewer and editor, so it can replace bpmn-js where you need a modeler without the watermark or a code-first workflow. bpmn-js has the larger ecosystem of extensions, lint rules and element-template tooling. The two read and write the same BPMN 2.0 XML, so they are not mutually exclusive.</p>
         </div>
         <div class="cmp-faq-item">
           <h3>Can I generate a BPMN diagram programmatically with bpmn-js?</h3>

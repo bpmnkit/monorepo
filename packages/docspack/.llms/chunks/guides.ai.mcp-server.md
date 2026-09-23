@@ -1,20 +1,40 @@
 # AI Integration — MCP Server
 
-BPMN Kit ships with a Model Context Protocol (MCP) server that exposes process editing
-tools to any MCP-compatible AI client (Claude Desktop, Cursor, etc.):
+BPMN Kit ships a Model Context Protocol (MCP) server that lets any MCP client — Claude Code,
+Claude Desktop, Cursor, VS Code — create, validate, simulate and deploy processes. It speaks
+stdio and is started by the CLI:
 
 ```sh
-# Start the MCP server
-casen mcp
+casen proxy mcp
 ```
 
-Available MCP tools:
-- `get_diagram` — returns the current diagram as CompactDiagram JSON
-- `update_diagram` — applies a CompactDiagram diff
-- `add_service_task` — adds a single service task with Zeebe config
-- `add_http_call` — adds a pre-configured Camunda HTTP connector task
-- `apply_layout` — re-runs auto-layout on the current diagram
-- `validate` — validates the diagram and returns any schema errors
+or, without installing the CLI first, in an MCP client's configuration:
+
+```json
+{
+  "mcpServers": {
+    "bpmnkit": { "command": "npx", "args": ["-y", "@bpmnkit/cli", "proxy", "mcp"] }
+  }
+}
+```
+
+It is listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as
+`io.github.bpmnkit/bpmnkit`.
+
+Tools:
+
+- `bpmn_create`, `bpmn_read`, `bpmn_update` — write and read `.bpmn` files through the compact
+  format, with auto-layout applied on write
+- `bpmn_validate` — run the optimizer's findings over a file
+- `bpmn_simulate`, `bpmn_run_history` — run a process on the local engine and read past runs
+  (needs the proxy running: `casen proxy start`)
+- `bpmn_deploy` — deploy to the active `casen` profile (Camunda 8 or a local Reebe)
+- `form_create`, `dmn_create` — Camunda Forms and DMN decision tables
+- `worker_list`, `worker_scaffold` — list and generate job workers
+- `pattern_list`, `pattern_get` — the domain patterns in `@bpmnkit/patterns`
+- `camunda_search`, `camunda_execute` — discover and call any Camunda 8 REST operation
+
+The [Claude Code plugin](/docs/guides/claude-code-plugin) configures this server for you.
 
 ---
 Source: https://bpmnkit.com/docs/guides/ai

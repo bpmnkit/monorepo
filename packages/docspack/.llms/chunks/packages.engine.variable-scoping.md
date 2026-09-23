@@ -3,7 +3,7 @@
 Variables follow hierarchical scope rules:
 
 - Global variables are set at the process level
-- Sub-processes and call activities create child scopes
+- Embedded sub-processes create child scopes
 - IO mappings move data between scopes on task entry/exit
 - `setLocal` writes to the innermost scope only
 
