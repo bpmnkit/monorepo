@@ -100,7 +100,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [AI Integration — Claude API Example](.llms/chunks/guides.ai.claude-api-example.md) — 226 tokens
 - [AI Integration — OpenAI Function Calling](.llms/chunks/guides.ai.openai-function-calling.md) — 192 tokens
 - [AI Integration — Previewing While the Model Writes](.llms/chunks/guides.ai.previewing-while-the-model-writes.md) — 687 tokens
-- [AI Integration — MCP Server](.llms/chunks/guides.ai.mcp-server.md) — 319 tokens
+- [AI Integration — MCP Server](.llms/chunks/guides.ai.mcp-server.md) — 322 tokens
 - [Building Processes — Service Tasks](.llms/chunks/guides.building-processes.service-tasks.md) — 202 tokens
 - [Building Processes — Events](.llms/chunks/guides.building-processes.events.md) — 244 tokens
 - [Building Processes — Sub-Processes](.llms/chunks/guides.building-processes.sub-processes.md) — 181 tokens
@@ -150,7 +150,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Using BPMN Kit with AI — Runnable examples](.llms/chunks/guides.using-bpmnkit-with-ai.runnable-examples.md) — 312 tokens
 - [Using BPMN Kit with AI — Where to go next](.llms/chunks/guides.using-bpmnkit-with-ai.where-to-go-next.md) — 117 tokens
 - [VS Code Extension](.llms/chunks/guides.vscode.md) — 139 tokens
-- [VS Code Extension — Installing](.llms/chunks/guides.vscode.installing.md) — 209 tokens
+- [VS Code Extension — Installing](.llms/chunks/guides.vscode.installing.md) — 185 tokens
 - [VS Code Extension — What it does — Preview beside the source](.llms/chunks/guides.vscode.what-it-does-preview-beside-the-source.md) — 131 tokens
 - [VS Code Extension — What it does — Editing that leaves a readable diff](.llms/chunks/guides.vscode.what-it-does-editing-that-leaves-a-readable-diff.md) — 302 tokens
 - [VS Code Extension — What it does — Findings in the Problems panel](.llms/chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md) — 150 tokens

@@ -1202,7 +1202,7 @@
 		{
 			"id": "guides.ai.mcp-server",
 			"file": "chunks/guides.ai.mcp-server.md",
-			"tokens": 319,
+			"tokens": 322,
 			"tags": [
 				"guides",
 				"ai",
@@ -1890,7 +1890,7 @@
 		{
 			"id": "guides.vscode.installing",
 			"file": "chunks/guides.vscode.installing.md",
-			"tokens": 209,
+			"tokens": 185,
 			"tags": [
 				"guides",
 				"vscode",

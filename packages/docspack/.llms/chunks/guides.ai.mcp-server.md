@@ -18,8 +18,8 @@ or, without installing the CLI first, in an MCP client's configuration:
 }
 ```
 
-It is listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as
-`io.github.bpmnkit/bpmnkit`.
+Each CLI release submits it to the [MCP Registry](https://registry.modelcontextprotocol.io)
+as `io.github.bpmnkit/bpmnkit`.
 
 Tools:
 

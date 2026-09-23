@@ -81,6 +81,14 @@ const jsonLd = faqJsonLd([
 			"bpmn-js exposes a lower-level diagram-js model you can script against, but it does not provide a fluent builder API or automatic layout for generating a complete, valid BPMN 2.0 process from code the way @bpmnkit/core does.",
 	},
 ])
+// Cells are static copy with `backticks` for code; escape everything else.
+const code = (text: string): string =>
+	text
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replace(/`([^`]+)`/g, "<code>$1</code>")
+
 ---
 
 <!DOCTYPE html>
@@ -102,6 +110,7 @@ const jsonLd = faqJsonLd([
     .cmp-table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.86rem; margin-bottom: 40px; }
     .cmp-table th, .cmp-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
     .cmp-table th { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .cmp-table code { font-family: var(--font-mono); font-size: 0.8rem; }
     .cmp-table td:first-child { color: var(--text-muted); white-space: nowrap; font-weight: 500; }
     .cmp-faq { margin-bottom: 40px; }
     .cmp-faq h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; }
@@ -130,7 +139,7 @@ const jsonLd = faqJsonLd([
         <thead><tr><th></th><th>BPMN Kit</th><th>bpmn-js</th></tr></thead>
         <tbody>
           {rows.map(([label, kit, other]) => (
-            <tr><td>{label}</td><td>{kit}</td><td>{other}</td></tr>
+            <tr><td>{label}</td><td set:html={code(kit)} /><td set:html={code(other)} /></tr>
           ))}
         </tbody>
       </table>
