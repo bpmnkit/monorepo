@@ -313,6 +313,14 @@ select.ed-select{height:28px;border:1px solid var(--bpmnkit-ds-line);background:
 .fc-out{margin-top:18px}
 .fc-out.hidden{display:none}
 
+/* The statement editor on a share page: the composer's two boxes, opened on
+   what the drop says, with the one accent on the action that writes. */
+.fe-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px}
+.fe-actions .hv-btn:disabled{opacity:.45;cursor:not-allowed}
+.hv-btn--go:not(:disabled){border-color:var(--bpmnkit-ds-accent);background:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-surface)}
+.fe-status{font-family:var(--bpmnkit-ds-font-mono);font-size:11.5px;color:var(--bpmnkit-ds-ink-4);margin-left:auto}
+.fe-status--err{color:var(--bpmnkit-danger)}
+
 /* ── Form fields, dialog, table ─────────────────────────────────────────── */
 .field{padding:14px 0;border-bottom:1px solid var(--bpmnkit-ds-line)}
 .field label{display:block;font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--bpmnkit-ds-ink-4);margin-bottom:7px}

@@ -366,6 +366,11 @@ server history it must be distinguished from. `@bpmnkit/plugins/history` takes o
       evaluated in the reader's browser (`shared/feel-eval.ts`, no DOM, shared with the tests)
 - [x] F4 — a composer on `/drop` and **Share as a drop** in the `/feel-functions` playground,
       both posting the same document to the same `POST /drop/api/drops`
+- [x] F5 — editing a shared statement: the composer's two boxes on the share page, local
+      until Save, with `PUT /:id/feel/:filename` replacing the document (same parser, caps,
+      ban re-check and carve-outs as an upload; Turnstile on the save rather than on the
+      editor), a content-hash precondition in place of the baton, a milestone per editing
+      session, and **Share as new** for a copy that leaves the original link alone
 
 ### Design consistency — Drop + Editor on the landing system
 

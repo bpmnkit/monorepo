@@ -1325,7 +1325,7 @@
 		{
 			"id": "guides.drop",
 			"file": "chunks/guides.drop.md",
-			"tokens": 141,
+			"tokens": 163,
 			"tags": [
 				"guides",
 				"drop"
@@ -1347,7 +1347,7 @@
 		{
 			"id": "guides.drop.sharing-a-feel-expression",
 			"file": "chunks/guides.drop.sharing-a-feel-expression.md",
-			"tokens": 473,
+			"tokens": 447,
 			"tags": [
 				"guides",
 				"drop",
@@ -1358,9 +1358,25 @@
 			"entities": []
 		},
 		{
+			"id": "guides.drop.sharing-a-feel-expression-trying-it-with-your-own-numbers",
+			"file": "chunks/guides.drop.sharing-a-feel-expression-trying-it-with-your-own-numbers.md",
+			"tokens": 479,
+			"tags": [
+				"guides",
+				"drop",
+				"sharing",
+				"feel",
+				"expression",
+				"trying",
+				"own",
+				"numbers"
+			],
+			"entities": []
+		},
+		{
 			"id": "guides.drop.reviewing-it-together",
 			"file": "chunks/guides.drop.reviewing-it-together.md",
-			"tokens": 604,
+			"tokens": 634,
 			"tags": [
 				"guides",
 				"drop",

@@ -13,6 +13,7 @@ import {
 	handleSharePage,
 	handleStats,
 } from "./routes/drop.js"
+import { handleFeelUpdate } from "./routes/feel.js"
 import { handleReport } from "./routes/reports.js"
 import { handleUpload } from "./routes/upload.js"
 import { handleHistory, handleRestore } from "./routes/versions.js"
@@ -92,6 +93,20 @@ async function route(request: Request, env: Env): Promise<Response> {
 			restore[1] as string,
 			decodeURIComponent(restore[2] as string),
 			Number(restore[3]),
+			env,
+			now,
+		)
+	}
+	// A FEEL statement is edited as a whole document rather than through the
+	// room's ops, so its save is a request of its own — above the file route for
+	// the same reason history and restore are.
+	const feel = rest.match(/^\/([\w-]+)\/feel\/(.+)$/)
+	if (feel) {
+		if (request.method !== "PUT") return methodNotAllowed()
+		return handleFeelUpdate(
+			request,
+			feel[1] as string,
+			decodeURIComponent(feel[2] as string),
 			env,
 			now,
 		)

@@ -10,8 +10,7 @@
  * composed statement clears exactly the gate an uploaded one does: same parser,
  * same caps, same Terms acknowledgment, same short link at the end.
  */
-import type { FeelContext } from "@bpmnkit/feel"
-import type { FeelDocument, FeelMode } from "../shared/feel-doc.js"
+import { type FeelDocument, type FeelMode, composeFeelDocument } from "../shared/feel-doc.js"
 import { evaluateFeelDocument } from "../shared/feel-eval.js"
 
 interface Example {
@@ -64,23 +63,7 @@ export function mountFeelComposer(): void {
 
 	/** The document as the boxes currently stand, or the reason it is not one yet. */
 	function read(): { ok: true; doc: FeelDocument } | { ok: false; message: string } {
-		const text = expr?.value.trim() ?? ""
-		if (text === "") return { ok: false, message: "Write an expression to share." }
-		const raw = context?.value.trim() ?? ""
-		let parsed: unknown = {}
-		if (raw !== "") {
-			try {
-				parsed = JSON.parse(raw)
-			} catch {
-				// Naming the offending box matters: the expression is usually fine
-				// and the reader is looking at the wrong half of the panel.
-				return { ok: false, message: "The context is not valid JSON." }
-			}
-		}
-		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-			return { ok: false, message: "The context must be a JSON object of variables." }
-		}
-		return { ok: true, doc: { expression: text, context: parsed as FeelContext, mode } }
+		return composeFeelDocument(expr?.value ?? "", context?.value ?? "", mode)
 	}
 
 	function run(): void {

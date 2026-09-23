@@ -11,6 +11,7 @@
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { DatabaseSync } from "node:sqlite"
+import type { FileKind } from "../src/shared/constants.js"
 
 type Row = Record<string, unknown>
 
@@ -119,17 +120,24 @@ export function seedFile(
 		shareId?: string
 		fileId?: string
 		filename?: string
+		kind?: FileKind
 		body?: string
+		json?: string
 		hash?: string
 		now?: number
+		/** Null pins the drop — an operator marked it as never expiring. */
+		expiresAt?: number | null
 	} = {},
 ): { shareId: string; fileId: string; filename: string; hash: string; body: string; now: number } {
 	const shareId = opts.shareId ?? "share1"
 	const fileId = opts.fileId ?? "file1"
 	const filename = opts.filename ?? "order.bpmn"
+	const kind = opts.kind ?? "bpmn"
 	const body = opts.body ?? "<definitions/>"
+	const json = opts.json ?? "{}"
 	const hash = opts.hash ?? "hash-original"
 	const now = opts.now ?? 1_000_000
+	const expiresAt = opts.expiresAt === undefined ? now + 1 : opts.expiresAt
 
 	const raw = db as unknown as {
 		prepare(sql: string): { bind(...a: unknown[]): { run(): Promise<unknown> } }
@@ -139,14 +147,14 @@ export function seedFile(
 			`INSERT INTO drops (id, file_count, size_total, tos_version, created_at, last_viewed_at, view_count, expires_at)
 			 VALUES (?, 1, ?, '2026-07-09', ?, ?, 0, ?)`,
 		)
-		.bind(shareId, body.length, now, now, now + 1)
+		.bind(shareId, body.length, now, now, expiresAt)
 		.run()
 	void raw
 		.prepare(
 			`INSERT INTO files (id, drop_id, position, kind, filename, name, content_hash, size_original, size_json, meta)
-			 VALUES (?, ?, 0, 'bpmn', ?, 'Order', ?, ?, ?, '{}')`,
+			 VALUES (?, ?, 0, ?, ?, 'Order', ?, ?, ?, '{}')`,
 		)
-		.bind(fileId, shareId, filename, hash, body.length, body.length)
+		.bind(fileId, shareId, kind, filename, hash, body.length, body.length)
 		.run()
 	void raw
 		.prepare("INSERT INTO file_content (file_id, rep, body) VALUES (?, 'original', ?)")
@@ -154,7 +162,7 @@ export function seedFile(
 		.run()
 	void raw
 		.prepare("INSERT INTO file_content (file_id, rep, body) VALUES (?, 'json', ?)")
-		.bind(fileId, "{}")
+		.bind(fileId, json)
 		.run()
 
 	return { shareId, fileId, filename, hash, body, now }

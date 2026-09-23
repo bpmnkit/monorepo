@@ -193,6 +193,26 @@ export async function getCurrentBody(
 	return row ? { kind: row.kind, body: row.body, hash: row.hash } : null
 }
 
+/**
+ * Rewrite a file's display name and metadata.
+ *
+ * Only a FEEL statement needs this. Every other kind carries a name of its own —
+ * a process id, a decision name — that an edit leaves alone, but a statement's
+ * name *is* its expression, so a saved edit that kept the old one would leave
+ * the tab strip and the page title describing something the drop no longer says.
+ */
+export async function setFileLabel(
+	db: D1Database,
+	fileId: string,
+	name: string | null,
+	meta: FileMeta,
+): Promise<void> {
+	await db
+		.prepare("UPDATE files SET name = ?, meta = ? WHERE id = ?")
+		.bind(name, JSON.stringify(meta), fileId)
+		.run()
+}
+
 /** Resolve a file's row id and upload metadata, for the version-log routes. */
 export async function getFileRef(
 	db: D1Database,
