@@ -58,6 +58,10 @@ function footer(currentPkg) {
 		{ name: "@bpmnkit/api", desc: "Camunda 8 REST API TypeScript client" },
 		{ name: "@bpmnkit/ascii", desc: "Render BPMN diagrams as Unicode ASCII art" },
 		{
+			name: "@bpmnkit/markdown",
+			desc: "BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering",
+		},
+		{
 			name: "@bpmnkit/docspack",
 			desc: "BPMN Kit docs as an offline docspack package for AI agents",
 		},
@@ -1294,6 +1298,104 @@ interface RenderOptions {
   showTypes?: boolean // Include element type in boxes. Default: false
 }
 \`\`\`
+`,
+	},
+
+	// ── markdown ──────────────────────────────────────────────────────────────
+	"packages/markdown": {
+		name: "@bpmnkit/markdown",
+		description:
+			"Real BPMN diagrams in Markdown — render bpmn and bpmn-compact code blocks to inline, themeable, accessible SVG",
+		content: `## Overview
+
+Mermaid has no BPMN, and PlantUML's BPMN is a sketch. \`@bpmnkit/markdown\` renders fenced \`\`\`bpmn\`\`\` (BPMN 2.0 XML) and \`\`\`bpmn-compact\`\`\` (compact JSON) code blocks to real BPMN diagrams — inline SVG, at build time, with no client-side JavaScript. Astro, Docusaurus, VitePress, Next.js MDX and GitHub READMEs are all covered.
+
+Every integration is a thin adapter over one function, \`renderBpmnBlock()\`, so a block renders the same everywhere.
+
+## Features
+
+- **Two input formats** — BPMN 2.0 XML (its own layout when it carries DI, auto-layout when it does not) and the compact JSON format from \`compactify()\`
+- **remark plugin** — Astro, Docusaurus, Next.js MDX, unified; emits hast, so it works in MDX too
+- **markdown-it plugin** — VitePress and other markdown-it sites
+- **HTML rewriter** — for pipelines with no plugin hook
+- **\`bpmnkit-md\` CLI** — pre-renders blocks in a README to committed SVG files, idempotently, with a \`--check\` mode for CI
+- **Themeable** — follows the page's \`--bpmnkit-*\` tokens, else the reader's colour scheme; or pin \`light\` / \`dark\`
+- **Accessible** — \`role="img"\`, a \`<title>\` from the process name and a \`<desc>\` listing its steps
+- **Build-safe errors** — an unparsable block renders as a readable error box, or fails the build if you prefer
+- **Deterministic** — the same block always yields the same bytes
+- **No dependencies** beyond \`@bpmnkit/core\` — no unified, no markdown-it
+
+## Installation
+
+\`\`\`sh
+npm install --save-dev @bpmnkit/markdown
+\`\`\`
+
+## Quick Start
+
+Write a block:
+
+\`\`\`\`md
+\`\`\`bpmn-compact title="Order fulfilment"
+{
+  "id": "order",
+  "elements": [
+    { "id": "start", "type": "startEvent", "name": "Order received" },
+    { "id": "ship", "type": "serviceTask", "name": "Ship order" },
+    { "id": "end", "type": "endEvent", "name": "Shipped" }
+  ],
+  "flows": [
+    { "id": "f1", "from": "start", "to": "ship" },
+    { "id": "f2", "from": "ship", "to": "end" }
+  ]
+}
+\`\`\`
+\`\`\`\`
+
+Then plug it in:
+
+\`\`\`typescript
+// Astro — astro.config.mjs
+import { remarkBpmn } from "@bpmnkit/markdown"
+export default defineConfig({ markdown: { remarkPlugins: [remarkBpmn] } })
+
+// VitePress — .vitepress/config.ts
+import { markdownItBpmn } from "@bpmnkit/markdown"
+export default defineConfig({ markdown: { config: (md) => md.use(markdownItBpmn) } })
+\`\`\`
+
+For a GitHub README, pre-render to committed SVGs:
+
+\`\`\`sh
+npx bpmnkit-md README.md          # rewrite blocks into image + folded source regions
+npx bpmnkit-md --check README.md  # CI: exit 1 when out of date
+\`\`\`
+
+## API Reference
+
+\`\`\`typescript
+function renderBpmnBlock(code: string, lang: BpmnLang, options?: RenderOptions): RenderResult
+function remarkBpmn(options?: RenderOptions): (tree, file?) => void
+function markdownItBpmn(md: MarkdownIt, options?: RenderOptions): void
+function renderBpmnInHtml(html: string, options?: RenderOptions): string
+function prerenderMarkdown(markdown: string, options?: PrerenderOptions): PrerenderResult
+
+type BpmnLang = "bpmn" | "bpmn-compact" | "bpmn-json"
+
+interface RenderOptions {
+  theme?: "auto" | "light" | "dark"   // default "auto"
+  maxWidth?: number                   // CSS px
+  title?: string                      // accessible name; default: the process name
+  link?: (d: { xml: string; title: string }) => string  // "Open in BPMN Kit" link, off by default
+  onError?: "render" | "throw"        // default "render"
+}
+
+type RenderResult =
+  | { ok: true; svg: string; html: string; title: string }
+  | { ok: false; error: string; html: string }
+\`\`\`
+
+Full guide: https://bpmnkit.com/docs/guides/bpmn-in-markdown
 `,
 	},
 

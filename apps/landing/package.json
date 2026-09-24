@@ -23,6 +23,7 @@
 		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",
 		"@bpmnkit/feel": "workspace:*",
+		"@bpmnkit/markdown": "workspace:*",
 		"@bpmnkit/operate": "workspace:*",
 		"@bpmnkit/plugins": "workspace:*"
 	}

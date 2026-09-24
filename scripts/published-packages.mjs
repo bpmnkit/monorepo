@@ -18,6 +18,7 @@ export const PUBLISHED = [
 	"packages/feel",
 	"packages/api",
 	"packages/ascii",
+	"packages/markdown",
 	"packages/docspack",
 	"packages/camunda-docspack",
 	"packages/profiles",

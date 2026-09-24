@@ -1,134 +1,109 @@
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="72" height="72" alt="BPMN Kit logo"></a>
-  <h1>@bpmnkit/user-tasks</h1>
-  <p>Embeddable user task widget for Camunda 8 — form rendering, claim/complete actions, zero dependencies</p>
+  <h1>@bpmnkit/markdown</h1>
+  <p>Real BPMN diagrams in Markdown — render bpmn and bpmn-compact code blocks to inline, themeable, accessible SVG</p>
 
-  [![npm](https://img.shields.io/npm/v/@bpmnkit/user-tasks?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/user-tasks)
-  [![license](https://img.shields.io/npm/l/@bpmnkit/user-tasks?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
+  [![npm](https://img.shields.io/npm/v/@bpmnkit/markdown?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/markdown)
+  [![license](https://img.shields.io/npm/l/@bpmnkit/markdown?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
   [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
 
-  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/user-tasks/CHANGELOG.md)
+  [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/packages/markdown/CHANGELOG.md)
 </div>
 
 ---
 
 ## Overview
 
-`@bpmnkit/user-tasks` renders a Camunda 8 user task, and the actions that go with it, into any
-HTML element. Mount it and you get the task's linked Camunda Form, its metadata, and buttons for
-claim, complete and — when you ask for it — reject.
+Mermaid has no BPMN, and PlantUML's BPMN is a sketch. `@bpmnkit/markdown` renders fenced ```bpmn``` (BPMN 2.0 XML) and ```bpmn-compact``` (compact JSON) code blocks to real BPMN diagrams — inline SVG, at build time, with no client-side JavaScript. Astro, Docusaurus, VitePress, Next.js MDX and GitHub READMEs are all covered.
 
-It talks to a running [`@bpmnkit/proxy`](https://www.npmjs.com/package/@bpmnkit/proxy), which
-holds the credentials and forwards to the Camunda REST API, so no cluster secret reaches the page.
+Every integration is a thin adapter over one function, `renderBpmnBlock()`, so a block renders the same everywhere.
 
 ## Features
 
-- **Form rendering** — loads the task's linked Camunda Form and renders it through `@bpmnkit/plugins/form-viewer`
-- **Claim / unclaim** — sets or clears the task assignee
-- **Complete** — submits the form's collected variables
-- **Reject** — an optional return action with a reason; the button is hidden unless you pass `onReject`
-- **Metadata** — assignee, priority, and a due date that highlights once it is overdue
-- **Themed** — `light`, `dark`, `auto` or `neon`, drawn with the `@bpmnkit/ui` design tokens
-- **No framework** — a function and an `HTMLElement`; it works inside React, Vue, Astro or a plain page
+- **Two input formats** — BPMN 2.0 XML (its own layout when it carries DI, auto-layout when it does not) and the compact JSON format from `compactify()`
+- **remark plugin** — Astro, Docusaurus, Next.js MDX, unified; emits hast, so it works in MDX too
+- **markdown-it plugin** — VitePress and other markdown-it sites
+- **HTML rewriter** — for pipelines with no plugin hook
+- **`bpmnkit-md` CLI** — pre-renders blocks in a README to committed SVG files, idempotently, with a `--check` mode for CI
+- **Themeable** — follows the page's `--bpmnkit-*` tokens, else the reader's colour scheme; or pin `light` / `dark`
+- **Accessible** — `role="img"`, a `<title>` from the process name and a `<desc>` listing its steps
+- **Build-safe errors** — an unparsable block renders as a readable error box, or fails the build if you prefer
+- **Deterministic** — the same block always yields the same bytes
+- **No dependencies** beyond `@bpmnkit/core` — no unified, no markdown-it
 
 ## Installation
 
 ```sh
-npm install @bpmnkit/user-tasks
+npm install --save-dev @bpmnkit/markdown
 ```
 
 ## Quick Start
 
+Write a block:
+
+````md
+```bpmn-compact title="Order fulfilment"
+{
+  "id": "order",
+  "elements": [
+    { "id": "start", "type": "startEvent", "name": "Order received" },
+    { "id": "ship", "type": "serviceTask", "name": "Ship order" },
+    { "id": "end", "type": "endEvent", "name": "Shipped" }
+  ],
+  "flows": [
+    { "id": "f1", "from": "start", "to": "ship" },
+    { "id": "f2", "from": "ship", "to": "end" }
+  ]
+}
+```
+````
+
+Then plug it in:
+
 ```typescript
-import { createUserTaskWidget } from "@bpmnkit/user-tasks"
+// Astro — astro.config.mjs
+import { remarkBpmn } from "@bpmnkit/markdown"
+export default defineConfig({ markdown: { remarkPlugins: [remarkBpmn] } })
 
-const widget = createUserTaskWidget({
-  container: document.getElementById("task-panel")!,
-  task: {
-    userTaskKey: "2251799813685281",
-    name: "Review order",
-    assignee: "alice",
-    dueDate: "2025-06-01T12:00:00Z",
-    priority: 50,
-  },
-  proxyUrl: "http://localhost:3033", // default
-  theme: "dark",
-  onComplete(variables) {
-    console.log("Task completed with", variables)
-  },
-  onClaim() {
-    console.log("Task claimed")
-  },
-  onUnclaim() {
-    console.log("Task unclaimed")
-  },
-  onReject(reason) {
-    console.log("Task rejected:", reason)
-  },
-})
+// VitePress — .vitepress/config.ts
+import { markdownItBpmn } from "@bpmnkit/markdown"
+export default defineConfig({ markdown: { config: (md) => md.use(markdownItBpmn) } })
+```
 
-// Show a different task in the same widget — the form reloads.
-widget.setTask({ userTaskKey: "2251799813685999", name: "Approve invoice" })
+For a GitHub README, pre-render to committed SVGs:
 
-// Remove it from the DOM.
-widget.destroy()
+```sh
+npx bpmnkit-md README.md          # rewrite blocks into image + folded source regions
+npx bpmnkit-md --check README.md  # CI: exit 1 when out of date
 ```
 
 ## API Reference
 
-### `createUserTaskWidget(options)`
-
 ```typescript
-interface UserTaskWidgetOptions {
-  /** The container element to render the widget into. */
-  container: HTMLElement
-  /** The user task to display. */
-  task: UserTask
-  /** Base URL of the proxy server. Default: "http://localhost:3033" */
-  proxyUrl?: string
-  /** Active profile name, sent as the x-profile header. */
-  profile?: string | null
-  /** Visual theme (`Theme` from @bpmnkit/ui). Default: "neon" */
-  theme?: "light" | "dark" | "auto" | "neon"
-  /** Called when the user completes the task. */
-  onComplete(variables: Record<string, unknown>): void
-  /** Called when the user claims the task. */
-  onClaim(): void
-  /** Called when the user unclaims the task. */
-  onUnclaim(): void
-  /** Called when the user rejects the task. Omit to hide the Reject button. */
-  onReject?(reason: string): void
+function renderBpmnBlock(code: string, lang: BpmnLang, options?: RenderOptions): RenderResult
+function remarkBpmn(options?: RenderOptions): (tree, file?) => void
+function markdownItBpmn(md: MarkdownIt, options?: RenderOptions): void
+function renderBpmnInHtml(html: string, options?: RenderOptions): string
+function prerenderMarkdown(markdown: string, options?: PrerenderOptions): PrerenderResult
+
+type BpmnLang = "bpmn" | "bpmn-compact" | "bpmn-json"
+
+interface RenderOptions {
+  theme?: "auto" | "light" | "dark"   // default "auto"
+  maxWidth?: number                   // CSS px
+  title?: string                      // accessible name; default: the process name
+  link?: (d: { xml: string; title: string }) => string  // "Open in BPMN Kit" link, off by default
+  onError?: "render" | "throw"        // default "render"
 }
+
+type RenderResult =
+  | { ok: true; svg: string; html: string; title: string }
+  | { ok: false; error: string; html: string }
 ```
 
-Returns a `UserTaskWidgetApi`:
-
-```typescript
-interface UserTaskWidgetApi {
-  /** Show a different task and reload its form. */
-  setTask(task: UserTask): void
-  /** Remove the widget from the DOM and clean up. */
-  destroy(): void
-}
-```
-
-### `UserTask`
-
-```typescript
-interface UserTask {
-  userTaskKey: string
-  name?: string
-  assignee?: string
-  candidateGroups?: string[]
-  dueDate?: string // ISO 8601
-  priority?: number
-  processInstanceKey?: string
-  processDefinitionKey?: string
-  formKey?: string
-}
-```
+Full guide: https://bpmnkit.com/docs/guides/bpmn-in-markdown
 
 ---
 
@@ -144,7 +119,6 @@ interface UserTask {
 | [`@bpmnkit/plugins`](https://www.npmjs.com/package/@bpmnkit/plugins) | 34 composable canvas plugins |
 | [`@bpmnkit/api`](https://www.npmjs.com/package/@bpmnkit/api) | Camunda 8 REST API TypeScript client |
 | [`@bpmnkit/ascii`](https://www.npmjs.com/package/@bpmnkit/ascii) | Render BPMN diagrams as Unicode ASCII art |
-| [`@bpmnkit/markdown`](https://www.npmjs.com/package/@bpmnkit/markdown) | BPMN diagrams in Markdown — remark, markdown-it and README pre-rendering |
 | [`@bpmnkit/docspack`](https://www.npmjs.com/package/@bpmnkit/docspack) | BPMN Kit docs as an offline docspack package for AI agents |
 | [`@bpmnkit/camunda-docspack`](https://www.npmjs.com/package/@bpmnkit/camunda-docspack) | Camunda 8 docs as an offline docspack package for AI agents |
 | [`@bpmnkit/ui`](https://www.npmjs.com/package/@bpmnkit/ui) | Shared design tokens and UI components |
@@ -157,6 +131,7 @@ interface UserTask {
 | [`@bpmnkit/patterns`](https://www.npmjs.com/package/@bpmnkit/patterns) | Domain process patterns for BPMNKit AIKit |
 | [`@bpmnkit/reebe-wasm`](https://www.npmjs.com/package/@bpmnkit/reebe-wasm) | WebAssembly BPMN engine for browser simulation |
 | [`@bpmnkit/worker-client`](https://www.npmjs.com/package/@bpmnkit/worker-client) | Thin Zeebe REST client for standalone workers |
+| [`@bpmnkit/user-tasks`](https://www.npmjs.com/package/@bpmnkit/user-tasks) | Embeddable user task widget for Camunda 8 |
 | [`@bpmnkit/cli-sdk`](https://www.npmjs.com/package/@bpmnkit/cli-sdk) | Plugin authoring SDK for the casen CLI |
 | [`@bpmnkit/create-casen-plugin`](https://www.npmjs.com/package/@bpmnkit/create-casen-plugin) | Scaffold a new casen CLI plugin in seconds |
 | [`@bpmnkit/casen-report`](https://www.npmjs.com/package/@bpmnkit/casen-report) | HTML reports from Camunda 8 incident and SLA data |
