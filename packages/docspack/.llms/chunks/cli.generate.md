@@ -7,8 +7,9 @@ modes: template, definition (full JSON), and modify-existing (patch). Auto-layou
 ## Commands
 
 ```
-casen generate
-└── bpmn    — generate or modify a BPMN file
+casen generate          (alias: casen gen)
+├── bpmn    — generate or modify a BPMN file
+└── types   — generate TypeScript types from BPMN; check workers against it
 ```
 
 

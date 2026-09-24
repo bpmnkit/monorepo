@@ -1,5 +1,139 @@
 # Progress
 
+## 2026-09-24 — Drop: review comments with @mentions; co-editing decision
+
+- **Comments** on a whole file or a BPMN element (anchored by element id), with replies, resolve/reopen, and edit/delete of your own comments. There are no accounts: a per-drop author token (the server stores only its hash) is issued on the first comment, after one Turnstile challenge where configured.
+- Stored in D1 (migration `0006_comments.sql`: `comments`, `comment_authors`, `comment_writes`) and sent live to everyone viewing through the drop's room. Comments are deleted with their drop (expiry, operator delete or ban).
+- Abuse rules: the demo and pinned drops are read-only for comments; banned content takes no new comments; 60 writes per IP hash per hour; 500 comments per drop; 2,000 characters per comment.
+- Numbered markers on the canvas (`@bpmnkit/canvas` overlays) and a comments panel. A comment whose element was removed stays listed as "on a removed element".
+- Viewers now have display names in presence. **@mention** suggestions come from people viewing now and people who have commented, and mentions are highlighted. A mentioned viewer who has the drop open gets an in-page notice. There is no email (documented).
+- Phone topbar: the tools get their own row that scrolls sideways. Privacy policy updated and `TOS_VERSION` bumped to 2026-09-24.
+- Decision record in `doc/drop-collaborative-editing-analysis.md`: no CRDT; any future multi-writer work extends the existing room and rejects stale edits; the first safe step is one baton per BPMN file.
+- Tests: 54 new (routes and D1, room fan-out and names, client rendering). The Drop guide has a new section on comments and mentions.
+
+## 2026-09-24 — @bpmnkit/markdown: BPMN diagrams in Markdown
+
+- New published package `@bpmnkit/markdown` (0.x). It renders ```` ```bpmn ```` (BPMN XML, auto-laid-out when it has no DI) and ```` ```bpmn-compact ```` / ```` ```bpmn-json ```` (compact JSON) fenced blocks to inline SVG at build time, via one core `renderBpmnBlock()`.
+- Adapters: `remarkBpmn` (Astro/Docusaurus/Next MDX; emits hast, so MDX works), `markdownItBpmn` (VitePress), `renderBpmnInHtml` (plain HTML), and the `bpmnkit-md` CLI, which pre-renders README blocks to committed SVGs between markers (idempotent, `--check` for CI).
+- Theme `auto`/`light`/`dark`: `--bpmnkit-*` tokens with `light-dark()` fallbacks, no `<style>` element. Output has `role="img"` + `<title>`/`<desc>`, is deterministic, has an optional editor link, and shows an error box or throws (`onError`).
+- Landing: `remarkBpmn` wired into `apps/landing/astro.config.mjs`. New guide `docs/guides/bpmn-in-markdown` renders its own example diagram.
+- Root devDependencies (tests only): `@types/mdast`, `@types/hast`, `@types/markdown-it`, `markdown-it`, `unified`, `remark-parse`, `remark-rehype`, `rehype-stringify`, `@mdx-js/mdx`.
+
+## 2026-09-24 — Reebe: messages correlate, job results reach the process
+
+The testing-helpers and `casen dev` work found that scenarios run on Reebe WASM dropped job outputs and never correlated a message. Five engine bugs, all fixed with tests (`reebe-bpmn` parser test, two in-memory engine tests, a `runScenarioWasm` test):
+
+- A completed job's variables were discarded when the task had no output mappings. Zeebe merges them into the process; Reebe now does too. The same code path serves the Reebe server.
+- The WASM `publish_message` sent `name`; the engine reads `messageName`, so every message was published without a name.
+- A `zeebe:subscription` correlation key was stored as its raw expression (`=orderId`). It is now evaluated with FEEL against the instance variables when the subscription opens.
+- The parser dropped an event's subscription when `extensionElements` came before the `messageEventDefinition` (the order BPMN Kit and Camunda Modeler write), and ignored a subscription on the root `<message>`. Receive tasks used the message id as its name and never had a key.
+- A correlated message's variables were not passed on to the completing element.
+
+## 2026-09-24 — Template gallery: runnable process templates
+
+- `@bpmnkit/patterns/templates`: 25 Camunda 8 templates — order to cash, approvals, onboarding,
+  incident & escalation, document processing, SLA & timers, sagas, human-in-the-loop, and seven
+  AI agent patterns (prompt chaining, routing, parallelization, orchestrator–workers,
+  evaluator–optimizer, human approval gate, AI Agent Sub-process tool loop). Built with the core
+  builder, with DMN/forms where used and `.bpmn.tests.json` scenarios (happy + alternative
+  paths). The gallery test builds, lints (no error findings), round-trips and runs every scenario
+  on `@bpmnkit/engine`'s `runScenario`.
+- `casen template list [--category]` / `casen template use <id> [dir] [--force]`.
+- Landing: `/templates` gallery with category filter, `/templates/<id>` pages (diagram,
+  scenarios, job types, files, Open in editor, Download .bpmn, copyable casen command),
+  `/editor?template=<id>` hand-off, nav/footer/llms.txt entries; `guides/templates.md`.
+- Core: `receiveTask` now writes `zeebe:subscription` for `correlationKey`.
+- Found: `casen test` (Reebe runner) does not mock native user tasks, cannot publish messages
+  to receive tasks, does not catch error end events from embedded sub-processes, and has no
+  ad-hoc support. The TS engine does not synchronise inclusive joins. `@bpmnkit/feel` treats
+  boolean literals in DMN unary tests as constants.
+
+## 2026-09-24 — The TypeScript simulator runs the BPMN it used to skip
+
+`@bpmnkit/engine` no longer completes call activities, event sub-processes and event-based
+gateways without their semantics, and models the events it used to ignore. Each item has a
+test in `packages/engine/tests/semantics.test.ts`:
+
+- **Boundary events.** A non-interrupting boundary event used to end its activity and never
+  start its own path. Now the activity keeps running, the path starts, and a timer cycle
+  fires once per repetition. Message and signal boundary events are new. A job's
+  `throwError` is caught by an error boundary event or error event sub-process.
+- **Event-based gateway**: the first message, timer or signal to arrive wins; the others are
+  cancelled.
+- **Call activities** run a process deployed in the same engine as a child instance, with
+  Zeebe's variable propagation and mappings. Errors and escalations the child does not catch
+  reach the call activity. A process that is not deployed raises an `element:warning`.
+- **Event sub-processes** (message, timer, signal, error, escalation; interrupting or not),
+  **signals** broadcast across the engine (`engine.broadcastSignal`), **escalations**
+  propagating like errors, **multi-instance** (parallel and sequential, collections,
+  cardinality, completion condition), **link** events, **compensation** in reverse
+  completion order, and a complex gateway that splits like an inclusive one.
+- **Messages** match by name, carry variables, honour `zeebe:subscription` correlation keys,
+  and reach call-activity children: `deliverMessage(name, variables?, correlationKey?)`.
+- **Variables follow Zeebe's propagation.** Input mappings are local to their element. A
+  result updates the nearest scope that defines the variable, or the process scope. With
+  output mappings, only the mapped variables leave the element.
+- **Two older bugs fixed.** A split whose first branch ended at once finished the scope
+  early. A job result that arrived after an interrupting event moved the token on.
+
+The engine page, the package README and the Conformance page's simulator column now say
+what runs. Still not modelled: conditional events, top-level message start events,
+transaction cancel, compensation event sub-processes, and waiting inclusive or complex joins.
+
+## 2026-09-24 — `casen dev`: one-command local development loop
+
+- **The command.** `casen dev [dir]` (`apps/cli/src/commands/dev.ts`, `apps/cli/src/dev/`) finds the `.bpmn`, `.dmn` and `.form` files and serves a local web UI on 127.0.0.1. It uses port 4747 or the next free one; `--port` and `--no-open` are available.
+- **The UI.** It opens each file in the BPMN Kit editor with in-browser simulation, a Tests tab bound to the `.bpmn.tests.json` sidecar, and the DMN and form editors.
+- **Saving.** Saves keep the file's formatting and are verified. The result is kept only if it reads back as the same model. Writes use a temp file and rename, are read back, and use etags to detect conflicts: a 409 shows a reload/overwrite banner.
+- **Live reload.** Changes arrive over SSE, with one `fs.watch` per directory. Node 22's recursive watcher on Linux stops reporting a file once it has been replaced by a rename, which is how editors save.
+- **Checks on every change.** Lint runs through `lintBpmn()`, shared with `casen lint` and including `.bpmnlintrc`. The scenarios run on the TS engine, or on Reebe WASM with `--engine wasm`. A DMN change re-runs the processes next to it. Results show in the browser's Checks panel and in a compact terminal list.
+- **Security.**
+  - Loopback only, with a Host-header check against DNS rebinding.
+  - A per-session API token.
+  - Paths confined to the project: no traversal, no hidden paths, no symlinks that escape.
+  - Only editable file kinds are accepted.
+- **Packaging.** esbuild bundles the UI at build time. It adds no runtime dependencies.
+- **Fix.** `openBrowser` no longer crashes when no opener is installed.
+- **Docs.** New page `docs/cli/dev`, a Quick Start mention, and the CLI README.
+
+## 2026-09-24 — `@bpmnkit/engine/testing`: Docker-free process tests for Vitest and Jest
+
+- **New entry point.** `@bpmnkit/engine/testing` provides `createProcessTest({ bpmn, dmn?, forms?, startTime? })`. It deploys models into the in-process simulator; each model can be parsed definitions, XML, a path or a `file:` URL.
+- **Jobs.** `mockJob` mocks a job type with a result, a failure, a thrown error or a handler, and offers `calls` and `restore()`. Job types with no mock wait for `run.completeJob`, `failJob` or `throwError(elementIdOrType)`. Camunda user tasks work the same way.
+- **Connectors.** `mockConnector(type, { response })` maps a fake response through `resultVariable` / `resultExpression`. `mapConnectorResponse` is exported.
+- **Messages.** `run.publishMessage(name)` correlates by message name, and throws when nothing is waiting for that message.
+- **Virtual clock.** Engine timers go through a swappable `TimerClock` (internal `setTimerClock` in `timers.ts`). `advanceTime("P1D")` fires due timers in order without real waiting.
+- **Matchers.** `toHaveCompleted`, `toHaveFailed`, `toBeWaitingAt`, `toHavePassed`, `toHavePassedInOrder`, `toHaveNotPassed` and `toHaveVariables`. Importing `@bpmnkit/engine/testing/vitest` registers them and extends Vitest's `Assertion` type; Jest uses `expect.extend(bpmnMatchers)`. `vitest` is an optional peer dependency.
+- **Path coverage.** `coverage()` and `formatCoverage()` report, per process, which flow nodes were entered and which sequence flows were taken; the flows are inferred.
+- **Packaging check.** `check-package-consumable.mjs` now installs a package's peers, optional ones included, into the test consumer.
+- **Docs.** New guide `guides/testing-processes.md`, an engine README section, and an example test in `apps/examples/tests/incident-response.process.test.ts`.
+- **`mode: "wasm"` is deferred.** The Reebe WASM build opened no message subscriptions and dropped the variables passed on job completion.
+
+## 2026-09-24 — Typed code generation from BPMN, worker ↔ BPMN contract check
+
+- **`@bpmnkit/core`**: `generateProcessTypes(defs | defs[])` renders TypeScript source for every executable process:
+  - process ids;
+  - per job type:
+    - variables, from `zeebe:input` targets, else the in-scope variables from the variable-flow analysis;
+    - output, from `zeebe:output` sources, else unset variables read downstream;
+    - task headers as literal types;
+    - catchable error codes;
+  - message names with correlation keys;
+  - signal, error and escalation codes;
+  - a `JobTypes` map.
+
+  `extractProcessContract` returns the same contract as data. Values are `unknown`, keys are exact, and the output is sorted and deterministic.
+- **CLI**: `casen generate types` (alias `casen gen types`) accepts files, directories or globs, with `--out`.
+  - `--check` exits 1 when the file is stale, for CI.
+  - `--check-workers <glob>` is a heuristic scan for worker registrations. It reports job types with no worker, and workers with no BPMN job type. `--strict` exits 1 on a mismatch. `io.camunda*` connector types are left to the connector runtime.
+  - The scan recognises `createWorker`, `taskType:`, `.createJobWorker({ jobType|type })`, `registerJobWorker` and `.poll`. The `createJobWorker({ jobType })` shape was checked against the type definitions of `@camunda8/orchestration-cluster-api` 9.1.5.
+- **`@bpmnkit/worker-client`**: `createWorkerClient<JobTypes>()` types `job.variables`, `complete()`, `throwError()` and the new `job.customHeaders` per job type. Without a type argument it stays untyped. The package gains tests and a test typecheck.
+- **Docs**:
+  - a new guide, `guides/typed-workers`;
+  - a "Typed code generation" section in `cli/generate`;
+  - the `cli/casen` command tree;
+  - README generator entries for core, cli and worker-client.
+
 ## 2026-09-24 — P1 integrated: the four streams checked against each other
 
 The FEEL, inbound-template and bpmnlint branches were merged onto the MIWG work, and the

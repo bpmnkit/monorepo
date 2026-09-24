@@ -64,6 +64,17 @@ engine.registerJobWorker("send-email", async (job) => {
 });
 ```
 
+### `engine.broadcastSignal(name, variables?)`
+
+Delivers a signal to every running instance of this engine, call-activity children included,
+and starts an instance of every deployed process whose top-level signal start event matches.
+`name` matches the signal's `name`, or its id when it has none. Returns the instances it
+started. A signal throw or end event inside an instance broadcasts the same way.
+
+```typescript
+engine.broadcastSignal("shutdown", { reason: "maintenance" });
+```
+
 ### `engine.getDeployedProcesses()`
 
 Returns metadata about all deployed process definitions:

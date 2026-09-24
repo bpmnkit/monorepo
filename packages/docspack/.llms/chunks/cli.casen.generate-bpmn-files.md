@@ -9,20 +9,16 @@ casen generate bpmn --input order.bpmn --dump-compact   # inspect as JSON for AI
 casen generate bpmn --input order.bpmn --patch '{"elements":[...],"flows":[...]}'
 ```
 
-See [casen generate](/docs/cli/generate) for full documentation.
-
-
-## View BPMN, DMN, and Form files
-
-`casen view` opens a local browser-based viewer. Accepts individual files, folders, or a mix.
+`casen gen types` turns BPMN files into TypeScript types for job workers — job types, their
+variables, output and headers, message names and error codes — and can check that every job type has
+a worker:
 
 ```sh
-casen view bpmn ./processes/     # all .bpmn files in a folder
-casen view dmn routing.dmn       # DMN decision table
-casen view open ./project/       # any mix of .bpmn/.dmn/.form
+casen gen types processes/ --out src/generated/bpmn-types.ts
+casen gen types processes/ --check-workers "src/**/*.ts" --strict
 ```
 
-See [casen view](/docs/cli/view) for full documentation.
+See [casen generate](/docs/cli/generate) for full documentation.
 
 ---
 Source: https://bpmnkit.com/docs/cli/casen

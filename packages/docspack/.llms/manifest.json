@@ -21,7 +21,7 @@
 		{
 			"id": "cli.casen",
 			"file": "chunks/cli.casen.md",
-			"tokens": 677,
+			"tokens": 698,
 			"tags": [
 				"cli",
 				"casen"
@@ -31,7 +31,7 @@
 		{
 			"id": "cli.casen.generate-bpmn-files",
 			"file": "chunks/cli.casen.generate-bpmn-files.md",
-			"tokens": 205,
+			"tokens": 195,
 			"tags": [
 				"cli",
 				"casen",
@@ -42,14 +42,42 @@
 			"entities": []
 		},
 		{
-			"id": "cli.casen.connection-profiles",
-			"file": "chunks/cli.casen.connection-profiles.md",
-			"tokens": 279,
+			"id": "cli.casen.start-from-a-gallery-template",
+			"file": "chunks/cli.casen.start-from-a-gallery-template.md",
+			"tokens": 151,
 			"tags": [
 				"cli",
 				"casen",
-				"connection",
-				"profiles"
+				"start",
+				"gallery",
+				"template"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.view-bpmn-dmn-and-form-files",
+			"file": "chunks/cli.casen.view-bpmn-dmn-and-form-files.md",
+			"tokens": 186,
+			"tags": [
+				"cli",
+				"casen",
+				"view",
+				"bpmn",
+				"dmn",
+				"form",
+				"files"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.casen.common-workflows",
+			"file": "chunks/cli.casen.common-workflows.md",
+			"tokens": 191,
+			"tags": [
+				"cli",
+				"casen",
+				"common",
+				"workflows"
 			],
 			"entities": []
 		},
@@ -231,6 +259,53 @@
 			]
 		},
 		{
+			"id": "cli.dev",
+			"file": "chunks/cli.dev.md",
+			"tokens": 185,
+			"tags": [
+				"cli",
+				"dev"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.dev.what-you-get",
+			"file": "chunks/cli.dev.what-you-get.md",
+			"tokens": 460,
+			"tags": [
+				"cli",
+				"dev",
+				"get"
+			],
+			"entities": [
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "cli.dev.flags",
+			"file": "chunks/cli.dev.flags.md",
+			"tokens": 158,
+			"tags": [
+				"cli",
+				"dev",
+				"flags"
+			],
+			"entities": [
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "cli.dev.deploying-and-ai",
+			"file": "chunks/cli.dev.deploying-and-ai.md",
+			"tokens": 205,
+			"tags": [
+				"cli",
+				"dev",
+				"deploying"
+			],
+			"entities": []
+		},
+		{
 			"id": "cli.diff",
 			"file": "chunks/cli.diff.md",
 			"tokens": 412,
@@ -274,7 +349,7 @@
 		{
 			"id": "cli.generate",
 			"file": "chunks/cli.generate.md",
-			"tokens": 508,
+			"tokens": 529,
 			"tags": [
 				"cli",
 				"generate"
@@ -326,12 +401,74 @@
 		{
 			"id": "cli.generate.typical-ai-workflow",
 			"file": "chunks/cli.generate.typical-ai-workflow.md",
-			"tokens": 106,
+			"tokens": 493,
 			"tags": [
 				"cli",
 				"generate",
 				"typical",
 				"workflow"
+			],
+			"entities": [
+				"processIds",
+				"ProcessId",
+				"jobTypes",
+				"JobType",
+				"messageNames",
+				"MessageName",
+				"signalNames",
+				"SignalName",
+				"errorCodes",
+				"ErrorCode",
+				"escalationCodes",
+				"EscalationCode"
+			]
+		},
+		{
+			"id": "cli.generate.typical-ai-workflow-keep-the-file-current-in-ci",
+			"file": "chunks/cli.generate.typical-ai-workflow-keep-the-file-current-in-ci.md",
+			"tokens": 77,
+			"tags": [
+				"cli",
+				"generate",
+				"typical",
+				"workflow",
+				"keep",
+				"file",
+				"current"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.generate.typical-ai-workflow-check-workers-against-the-bpmn",
+			"file": "chunks/cli.generate.typical-ai-workflow-check-workers-against-the-bpmn.md",
+			"tokens": 275,
+			"tags": [
+				"cli",
+				"generate",
+				"typical",
+				"workflow",
+				"check",
+				"workers",
+				"against",
+				"bpmn"
+			],
+			"entities": [
+				"@camunda8/sdk",
+				"@camunda8/orchestration-cluster-api",
+				"@bpmnkit/worker-client",
+				"io.camunda"
+			]
+		},
+		{
+			"id": "cli.generate.typical-ai-workflow-flags",
+			"file": "chunks/cli.generate.typical-ai-workflow-flags.md",
+			"tokens": 152,
+			"tags": [
+				"cli",
+				"generate",
+				"typical",
+				"workflow",
+				"flags"
 			],
 			"entities": []
 		},
@@ -730,7 +867,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 542,
+			"tokens": 727,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -739,6 +876,7 @@
 				"component"
 			],
 			"entities": [
+				"packages/engine/tests/semantics.test.ts",
 				"@bpmnkit/engine/wasm-runner"
 			]
 		},
@@ -787,7 +925,7 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 199,
+			"tokens": 211,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -862,7 +1000,7 @@
 		{
 			"id": "getting-started.quick-start.step-2-simulate-locally",
 			"file": "chunks/getting-started.quick-start.step-2-simulate-locally.md",
-			"tokens": 157,
+			"tokens": 217,
 			"tags": [
 				"getting-started",
 				"quick-start",
@@ -870,7 +1008,9 @@
 				"simulate",
 				"locally"
 			],
-			"entities": []
+			"entities": [
+				"hello.bpmn"
+			]
 		},
 		{
 			"id": "getting-started.quick-start.step-3-deploy-to-camunda-8",
@@ -1269,6 +1409,129 @@
 			]
 		},
 		{
+			"id": "guides.bpmn-in-markdown",
+			"file": "chunks/guides.bpmn-in-markdown.md",
+			"tokens": 660,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown"
+			],
+			"entities": [
+				"@bpmnkit/markdown"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.what-goes-in-a-block",
+			"file": "chunks/guides.bpmn-in-markdown.what-goes-in-a-block.md",
+			"tokens": 247,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"goes",
+				"block"
+			],
+			"entities": [
+				"compactify()"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.astro",
+			"file": "chunks/guides.bpmn-in-markdown.astro.md",
+			"tokens": 185,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"astro"
+			],
+			"entities": [
+				"@astrojs/mdx",
+				"docusaurus.config.js"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.vitepress",
+			"file": "chunks/guides.bpmn-in-markdown.vitepress.md",
+			"tokens": 291,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"vitepress"
+			],
+			"entities": [
+				"remarkBpmn"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.plain-html-pipelines",
+			"file": "chunks/guides.bpmn-in-markdown.plain-html-pipelines.md",
+			"tokens": 488,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"plain",
+				"html",
+				"pipelines"
+			],
+			"entities": [
+				"renderBpmnInHtml",
+				"file.svg"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.options",
+			"file": "chunks/guides.bpmn-in-markdown.options.md",
+			"tokens": 231,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"options"
+			],
+			"entities": [
+				"renderBpmnInHtml",
+				"renderBpmnBlock",
+				"maxWidth",
+				"onError"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.theming",
+			"file": "chunks/guides.bpmn-in-markdown.theming.md",
+			"tokens": 179,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"theming"
+			],
+			"entities": [
+				"light-dark()"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.accessibility",
+			"file": "chunks/guides.bpmn-in-markdown.accessibility.md",
+			"tokens": 201,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"accessibility"
+			],
+			"entities": [
+				"file.messages"
+			]
+		},
+		{
+			"id": "guides.bpmn-in-markdown.output-is-deterministic",
+			"file": "chunks/guides.bpmn-in-markdown.output-is-deterministic.md",
+			"tokens": 79,
+			"tags": [
+				"guides",
+				"bpmn-in-markdown",
+				"output",
+				"deterministic"
+			],
+			"entities": []
+		},
+		{
 			"id": "guides.bpmnlint",
 			"file": "chunks/guides.bpmnlint.md",
 			"tokens": 488,
@@ -1571,7 +1834,7 @@
 		{
 			"id": "guides.drop",
 			"file": "chunks/guides.drop.md",
-			"tokens": 163,
+			"tokens": 177,
 			"tags": [
 				"guides",
 				"drop"
@@ -1622,7 +1885,7 @@
 		{
 			"id": "guides.drop.reviewing-it-together",
 			"file": "chunks/guides.drop.reviewing-it-together.md",
-			"tokens": 634,
+			"tokens": 975,
 			"tags": [
 				"guides",
 				"drop",
@@ -1632,6 +1895,34 @@
 			"entities": [
 				"@bpmnkit/plugins"
 			]
+		},
+		{
+			"id": "guides.drop.reviewing-it-together-2",
+			"file": "chunks/guides.drop.reviewing-it-together-2.md",
+			"tokens": 242,
+			"tags": [
+				"guides",
+				"drop",
+				"reviewing",
+				"together"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.drop.reviewing-it-together-rate-limiting-the-edit-baton",
+			"file": "chunks/guides.drop.reviewing-it-together-rate-limiting-the-edit-baton.md",
+			"tokens": 139,
+			"tags": [
+				"guides",
+				"drop",
+				"reviewing",
+				"together",
+				"rate",
+				"limiting",
+				"edit",
+				"baton"
+			],
+			"entities": []
 		},
 		{
 			"id": "guides.drop.running-your-own",
@@ -1652,7 +1943,7 @@
 		{
 			"id": "guides.drop.what-drop-is-not",
 			"file": "chunks/guides.drop.what-drop-is-not.md",
-			"tokens": 136,
+			"tokens": 180,
 			"tags": [
 				"guides",
 				"drop",
@@ -1766,13 +2057,15 @@
 		{
 			"id": "guides.patterns.using-patterns-from-the-cli",
 			"file": "chunks/guides.patterns.using-patterns-from-the-cli.md",
-			"tokens": 139,
+			"tokens": 225,
 			"tags": [
 				"guides",
 				"patterns",
 				"cli"
 			],
-			"entities": []
+			"entities": [
+				"@bpmnkit/patterns/templates"
+			]
 		},
 		{
 			"id": "guides.patterns.pattern-schema",
@@ -1846,6 +2139,19 @@
 			]
 		},
 		{
+			"id": "guides.simulation.time-travel-in-the-editor",
+			"file": "chunks/guides.simulation.time-travel-in-the-editor.md",
+			"tokens": 230,
+			"tags": [
+				"guides",
+				"simulation",
+				"time",
+				"travel",
+				"editor"
+			],
+			"entities": []
+		},
+		{
 			"id": "guides.simulation.dmn-decision-evaluation",
 			"file": "chunks/guides.simulation.dmn-decision-evaluation.md",
 			"tokens": 251,
@@ -1870,6 +2176,327 @@
 			],
 			"entities": [
 				"engine.getDeployedProcesses()"
+			]
+		},
+		{
+			"id": "guides.templates",
+			"file": "chunks/guides.templates.md",
+			"tokens": 136,
+			"tags": [
+				"guides",
+				"templates"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"@bpmnkit/patterns/templates",
+				"@bpmnkit/engine"
+			]
+		},
+		{
+			"id": "guides.templates.what-is-in-the-gallery",
+			"file": "chunks/guides.templates.what-is-in-the-gallery.md",
+			"tokens": 261,
+			"tags": [
+				"guides",
+				"templates",
+				"gallery"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.templates.use-a-template",
+			"file": "chunks/guides.templates.use-a-template.md",
+			"tokens": 213,
+			"tags": [
+				"guides",
+				"templates",
+				"template"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.templates.run-the-scenarios",
+			"file": "chunks/guides.templates.run-the-scenarios.md",
+			"tokens": 525,
+			"tags": [
+				"guides",
+				"templates",
+				"run",
+				"scenarios"
+			],
+			"entities": [
+				"runScenario",
+				"@bpmnkit/engine",
+				"userTask",
+				"signatureStatus"
+			]
+		},
+		{
+			"id": "guides.templates.ai-templates-model-and-secrets",
+			"file": "chunks/guides.templates.ai-templates-model-and-secrets.md",
+			"tokens": 143,
+			"tags": [
+				"guides",
+				"templates",
+				"model",
+				"secrets"
+			],
+			"entities": [
+				"provider.anthropic.model.model",
+				"errorExpression"
+			]
+		},
+		{
+			"id": "guides.templates.from-code",
+			"file": "chunks/guides.templates.from-code.md",
+			"tokens": 137,
+			"tags": [
+				"guides",
+				"templates",
+				"code"
+			],
+			"entities": [
+				"build()",
+				"Bpmn.continueProcess"
+			]
+		},
+		{
+			"id": "guides.templates.add-a-template",
+			"file": "chunks/guides.templates.add-a-template.md",
+			"tokens": 103,
+			"tags": [
+				"guides",
+				"templates",
+				"add",
+				"template"
+			],
+			"entities": [
+				"packages/patterns/src/templates/",
+				"ProcessTemplate",
+				"index.ts",
+				"llms.txt"
+			]
+		},
+		{
+			"id": "guides.testing-processes",
+			"file": "chunks/guides.testing-processes.md",
+			"tokens": 255,
+			"tags": [
+				"guides",
+				"testing-processes"
+			],
+			"entities": [
+				"@bpmnkit/engine/testing",
+				"resultVariable",
+				"resultExpression",
+				"toHaveCompleted()"
+			]
+		},
+		{
+			"id": "guides.testing-processes.install",
+			"file": "chunks/guides.testing-processes.install.md",
+			"tokens": 693,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"install"
+			],
+			"entities": [
+				"@bpmnkit/engine/testing/vitest",
+				"createProcessTest",
+				"start()",
+				"completeJob",
+				"publishMessage",
+				"advanceTime",
+				"expect.extend",
+				"@types/jest"
+			]
+		},
+		{
+			"id": "guides.testing-processes.jobs",
+			"file": "chunks/guides.testing-processes.jobs.md",
+			"tokens": 355,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"jobs"
+			],
+			"entities": [
+				"userTask"
+			]
+		},
+		{
+			"id": "guides.testing-processes.connectors",
+			"file": "chunks/guides.testing-processes.connectors.md",
+			"tokens": 204,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"connectors"
+			],
+			"entities": [
+				"mockConnector",
+				"resultVariable",
+				"resultExpression",
+				"errorExpression"
+			]
+		},
+		{
+			"id": "guides.testing-processes.ai-agents",
+			"file": "chunks/guides.testing-processes.ai-agents.md",
+			"tokens": 224,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"agents"
+			],
+			"entities": [
+				"publishMessage"
+			]
+		},
+		{
+			"id": "guides.testing-processes.the-virtual-clock",
+			"file": "chunks/guides.testing-processes.the-virtual-clock.md",
+			"tokens": 261,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"virtual",
+				"clock"
+			],
+			"entities": [
+				"ProcessTest",
+				"advanceTime",
+				"startTime",
+				"timeDate",
+				"vi.useFakeTimers()",
+				"dispose()",
+				"afterAll"
+			]
+		},
+		{
+			"id": "guides.testing-processes.coverage",
+			"file": "chunks/guides.testing-processes.coverage.md",
+			"tokens": 207,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"coverage"
+			],
+			"entities": [
+				"t.coverage()"
+			]
+		},
+		{
+			"id": "guides.testing-processes.matchers",
+			"file": "chunks/guides.testing-processes.matchers.md",
+			"tokens": 197,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"matchers"
+			],
+			"entities": [
+				"toHaveCompleted()",
+				"RegExp"
+			]
+		},
+		{
+			"id": "guides.testing-processes.what-the-simulator-does-not-execute",
+			"file": "chunks/guides.testing-processes.what-the-simulator-does-not-execute.md",
+			"tokens": 348,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"simulator",
+				"not",
+				"execute"
+			],
+			"entities": [
+				"run.throwError",
+				"ProcessTest",
+				"beforeAll",
+				"@bpmnkit/engine/wasm-runner",
+				"createProcessTest"
+			]
+		},
+		{
+			"id": "guides.testing-processes.see-also",
+			"file": "chunks/guides.testing-processes.see-also.md",
+			"tokens": 55,
+			"tags": [
+				"guides",
+				"testing-processes",
+				"see",
+				"also"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.typed-workers",
+			"file": "chunks/guides.typed-workers.md",
+			"tokens": 413,
+			"tags": [
+				"guides",
+				"typed-workers"
+			],
+			"entities": [
+				"ProcessId",
+				"JobType",
+				"MessageName",
+				"SignalName",
+				"ErrorCode",
+				"EscalationCode",
+				"jobTypes",
+				"errorCodes"
+			]
+		},
+		{
+			"id": "guides.typed-workers.use-the-types-with-bpmnkit-worker-client",
+			"file": "chunks/guides.typed-workers.use-the-types-with-bpmnkit-worker-client.md",
+			"tokens": 196,
+			"tags": [
+				"guides",
+				"typed-workers",
+				"types",
+				"bpmnkit",
+				"worker-client"
+			],
+			"entities": [
+				"JobTypes",
+				"createWorkerClient"
+			]
+		},
+		{
+			"id": "guides.typed-workers.use-the-types-with-another-client",
+			"file": "chunks/guides.typed-workers.use-the-types-with-another-client.md",
+			"tokens": 314,
+			"tags": [
+				"guides",
+				"typed-workers",
+				"types",
+				"another",
+				"client"
+			],
+			"entities": [
+				"@camunda8/orchestration-cluster-api",
+				"JobTypes",
+				"io.camunda"
+			]
+		},
+		{
+			"id": "guides.typed-workers.how-the-types-are-derived",
+			"file": "chunks/guides.typed-workers.how-the-types-are-derived.md",
+			"tokens": 533,
+			"tags": [
+				"guides",
+				"typed-workers",
+				"types",
+				"derived"
+			],
+			"entities": [
+				"ShipOrder",
+				"ShipOrder2"
 			]
 		},
 		{
@@ -3473,7 +4100,7 @@
 		{
 			"id": "packages.engine.overview",
 			"file": "chunks/packages.engine.overview.md",
-			"tokens": 288,
+			"tokens": 840,
 			"tags": [
 				"packages",
 				"engine",
@@ -3481,14 +4108,34 @@
 			],
 			"entities": [
 				"@bpmnkit/engine",
-				"@bpmnkit/feel",
-				"@bpmnkit/engine/wasm-runner"
+				"broadcastSignal",
+				"propagateAllParentVariables",
+				"propagateAllChildVariables",
+				"inputCollection",
+				"inputElement",
+				"outputCollection",
+				"outputElement",
+				"loopCardinality",
+				"completionCondition",
+				"numberOfInstances",
+				"numberOfActiveInstances"
 			]
+		},
+		{
+			"id": "packages.engine.overview-2",
+			"file": "chunks/packages.engine.overview-2.md",
+			"tokens": 22,
+			"tags": [
+				"packages",
+				"engine",
+				"overview"
+			],
+			"entities": []
 		},
 		{
 			"id": "packages.engine.installation",
 			"file": "chunks/packages.engine.installation.md",
-			"tokens": 346,
+			"tokens": 446,
 			"tags": [
 				"packages",
 				"engine",
@@ -3503,7 +4150,7 @@
 		{
 			"id": "packages.engine.processinstance",
 			"file": "chunks/packages.engine.processinstance.md",
-			"tokens": 161,
+			"tokens": 331,
 			"tags": [
 				"packages",
 				"engine",
@@ -3512,13 +4159,15 @@
 			"entities": [
 				"activeElements",
 				"beforeComplete",
-				"instance.cancel()"
+				"instance.cancel()",
+				"correlationKey",
+				"onChange"
 			]
 		},
 		{
 			"id": "packages.engine.variable-scoping",
 			"file": "chunks/packages.engine.variable-scoping.md",
-			"tokens": 146,
+			"tokens": 190,
 			"tags": [
 				"packages",
 				"engine",
@@ -3526,7 +4175,22 @@
 				"scoping"
 			],
 			"entities": [
-				"setLocal",
+				"inputElement",
+				"loopCounter",
+				"outputCollection"
+			]
+		},
+		{
+			"id": "packages.engine.timer-scheduling",
+			"file": "chunks/packages.engine.timer-scheduling.md",
+			"tokens": 89,
+			"tags": [
+				"packages",
+				"engine",
+				"timer",
+				"scheduling"
+			],
+			"entities": [
 				"setTimeout",
 				"@bpmnkit/engine"
 			]

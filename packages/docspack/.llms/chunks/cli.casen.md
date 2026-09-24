@@ -24,8 +24,9 @@ The main menu appears. Use ↑ ↓ to navigate, Enter to select, Escape to go ba
 
 ```
 casen
-├── generate        — generate or modify BPMN files without the TUI
-│   └── bpmn        — templates, CompactDiagram JSON, or patch existing files
+├── generate        — generate or modify BPMN files without the TUI (alias: gen)
+│   ├── bpmn        — templates, CompactDiagram JSON, or patch existing files
+│   └── types       — TypeScript types for job workers, generated from BPMN
 ├── view            — view BPMN, DMN, and form files in the browser
 │   ├── open        — any mix of .bpmn/.dmn/.form files or folders (auto-detect)
 │   ├── bpmn        — BPMN diagrams rendered as SVG

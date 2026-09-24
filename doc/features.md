@@ -1,5 +1,42 @@
 # Features
 
+## BPMN in Markdown — `@bpmnkit/markdown` (2026-09-24)
+
+- ```` ```bpmn ```` and ```` ```bpmn-compact ```` fences rendered to accessible, themeable inline
+  SVG at build time: `remarkBpmn` (Astro, Docusaurus, MDX), `markdownItBpmn` (VitePress),
+  `renderBpmnInHtml`, and the `bpmnkit-md` CLI that pre-renders README diagrams (`--check` for CI).
+
+## Drop: review comments and @mentions (2026-09-24)
+
+- Element-anchored and whole-file comment threads with replies, resolve/reopen, live delivery,
+  canvas markers, display names and @mention notices for viewers who have the drop open.
+
+## Template gallery (2026-09-24)
+
+- 25 runnable Camunda 8 templates (18 business, 7 AI-agent patterns) in
+  `@bpmnkit/patterns/templates`, each with test scenarios; `casen template list|use`;
+  `/templates` gallery with "Open in editor" on bpmnkit.com.
+
+## TypeScript simulator: full BPMN semantics (2026-09-24)
+
+- Call activities, event sub-processes, event-based gateways, message/signal/non-interrupting
+  boundary events, signals, escalations, multi-instance, link events and compensation, with
+  Zeebe variable propagation; `engine.broadcastSignal`, `deliverMessage(name, vars, key)`.
+
+## Developer loop: `casen dev`, test helpers, typed codegen (2026-09-24)
+
+- **`casen dev`** — local engine, editor and checks panel in one command: lint and scenarios
+  re-run on every save, on the TS engine or Reebe WASM (`--engine wasm`).
+- **`@bpmnkit/engine/testing`** (+ `/testing/vitest`) — start instances, complete jobs, mock
+  connectors, assert paths and variables, control timers with a fake clock.
+- **`casen generate types`** — TypeScript types for job types, variables and messages from
+  BPMN, with `--check` / `--check-workers` contract checks and typed `worker-client` generics.
+
+## Reebe WASM: message correlation and job results (2026-09-24)
+
+- Messages correlate on FEEL-evaluated `zeebe:subscription` keys, and job and message
+  variables reach the process as in Zeebe.
+
 ## BPMN Model Interchange (MIWG) round trip (2026-09-24)
 
 - **All 22 OMG MIWG reference models** open, keep their diagram interchange and round-trip to

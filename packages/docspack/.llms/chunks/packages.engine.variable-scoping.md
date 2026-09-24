@@ -1,27 +1,18 @@
 # @bpmnkit/engine — Variable Scoping
 
-Variables follow hierarchical scope rules:
+Variables follow Zeebe's scope rules:
 
-- Global variables are set at the process level
-- Embedded sub-processes create child scopes
-- IO mappings move data between scopes on task entry/exit
-- `setLocal` writes to the innermost scope only
-
-
-## Timer Scheduling
-
-Timers use `setTimeout` internally and support ISO 8601 formats:
-
-```
-PT30S       → 30 seconds
-PT1H30M     → 1.5 hours
-P2D         → 2 days
-R3/PT1H     → repeat 3 times, every hour
-2026-12-01T09:00:00Z  → fire at absolute date
-```
-
-Call `parseDurationMs(str)` from `@bpmnkit/engine` to convert duration strings
-to milliseconds in your own code.
+- The process, each embedded or event sub-process, each multi-instance iteration and each
+  element with an IO mapping has its own scope
+- Input mappings create local variables of the element
+- A result — job variables, a script or decision result, a message or signal payload, a child
+  process's variables — updates the variable in the nearest scope that defines it, or creates
+  it in the process scope. With output mappings, the result stays local to the element and
+  only the mapped variables leave it
+- A sub-process's local variables are dropped when it completes unless an output mapping
+  carries them out
+- `inputElement` and `loopCounter` are local to a multi-instance iteration; the
+  `outputCollection` reaches the enclosing scope when the loop completes
 
 ---
 Source: https://bpmnkit.com/docs/packages/engine
