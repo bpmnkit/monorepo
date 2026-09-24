@@ -355,3 +355,27 @@ describe("evaluateUnaryTests", () => {
 		expect(evalUT("not(instance of number)", null)).toBe(true)
 	})
 })
+
+describe("boolean input entries and shadowed built-ins", () => {
+	it("compares a boolean literal with a boolean input", () => {
+		expect(evalUT("true", true)).toBe(true)
+		expect(evalUT("true", false)).toBe(false)
+		expect(evalUT("false", false)).toBe(true)
+		expect(evalUT("false", true)).toBe(false)
+		expect(evalUT("not(true)", false)).toBe(true)
+		expect(evalUT("not(true)", true)).toBe(false)
+		expect(evalUT("true, false", false)).toBe(true)
+	})
+
+	it("still treats a test that reads ? as the outcome", () => {
+		expect(evalUT("? = false", false)).toBe(true)
+		expect(evalUT("? != false", false)).toBe(false)
+	})
+
+	it("resolves a variable named like a built-in to the variable", () => {
+		expect(eval_("count", { count: 3 })).toBe(3)
+		expect(eval_("count + 1", { count: 3 })).toBe(4)
+		expect(eval_("count([1, 2])", { count: 3 })).toBe(2)
+		expect(eval_("sum", { sum: null })).toBeNull()
+	})
+})

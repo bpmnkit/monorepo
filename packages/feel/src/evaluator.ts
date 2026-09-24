@@ -28,6 +28,12 @@ function lookupVar(ctx: EvalContext, name: string): FeelValue {
 	return null
 }
 
+/** Whether `name` is bound in this scope or an enclosing one, even to `null`. */
+function isBound(ctx: EvalContext, name: string): boolean {
+	if (Object.hasOwn(ctx.vars, name)) return true
+	return ctx.parent ? isBound(ctx.parent, name) : false
+}
+
 function childCtx(parent: EvalContext, vars: Record<string, FeelValue> = {}): EvalContext {
 	return { vars, parent, input: parent.input }
 }
@@ -250,10 +256,10 @@ export function evaluate(node: FeelNode, ctx: EvalContext): FeelValue {
 
 		case "name": {
 			if (node.name === "?") return ctx.input ?? null
-			// Check built-in
-			const builtin = getBuiltin(node.name)
-			if (builtin) return builtin
-			return lookupVar(ctx, node.name)
+			// A variable shadows a built-in of the same name (`count`, `sum`); calls
+			// resolve their callee separately, so `count(xs)` still reaches the built-in.
+			if (isBound(ctx, node.name)) return lookupVar(ctx, node.name)
+			return getBuiltin(node.name) ?? null
 		}
 
 		case "unary-minus": {
@@ -727,9 +733,39 @@ function checkInstanceOf(val: FeelValue, typeName: string): boolean {
  * Evaluates a unary test, keeping an unknown answer unknown. A range whose
  * bound is null, or an input of null, says nothing about membership.
  */
+/** Whether an expression reads the unary-test input `?`, explicitly or implicitly. */
+function readsInput(node: FeelNode): boolean {
+	if (node.kind === "name") return node.name === "?"
+	// These already test the input; their boolean is the outcome.
+	if (node.kind === "unary-not" || node.kind === "unary-test-list" || node.kind === "any-input") {
+		return true
+	}
+	for (const value of Object.values(node)) {
+		if (Array.isArray(value)) {
+			if (value.some((item) => isNode(item) && readsInput(item))) return true
+		} else if (isNode(value) && readsInput(value)) {
+			return true
+		}
+	}
+	return false
+}
+
+function isNode(value: unknown): value is FeelNode {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		typeof (value as { kind?: unknown }).kind === "string"
+	)
+}
+
 function unaryTestValue(node: FeelNode, input: FeelValue, ctx: EvalContext): FeelValue {
 	const withInput: EvalContext = { ...ctx, input }
 	const result = evaluate(node, withInput)
+	// A boolean that does not depend on `?` (the literal `true` in a boolean input
+	// column) is a value to compare with, not the outcome of the test.
+	if (typeof result === "boolean" && typeof input === "boolean" && !readsInput(node)) {
+		return result === input
+	}
 	if (typeof result === "boolean") return result
 	// Range result in unary-test context → membership test
 	if (isFeelRange(result)) return testIncludes(result, input)
