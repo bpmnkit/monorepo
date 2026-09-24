@@ -295,6 +295,29 @@ Rust on top of PostgreSQL.
 cargo test --workspace
 ```
 
+The Postgres suites (`crates/reebe-engine/tests/integration.rs` and `compatibility.rs`) skip
+themselves unless `REEBE_DATABASE__URL` is set. To run them, start a throwaway PostgreSQL and
+point the tests at it:
+
+```bash
+docker run -d --rm --name reebe-test-pg -p 5432:5432 \
+  -e POSTGRES_USER=reebe -e POSTGRES_PASSWORD=reebe -e POSTGRES_DB=reebe postgres:16-alpine
+REEBE_DATABASE__URL=postgres://reebe:reebe@localhost:5432/reebe REEBE_REQUIRE_DB=1 \
+  cargo test --workspace
+```
+
+- Each test creates its own database (`reebe_test_*`) on that server, because the engine
+  replays every command on its partition when it starts. The user in the URL needs the
+  `CREATEDB` privilege. The databases are not dropped afterwards, so do not point the tests at
+  a server you care about.
+- `REEBE_REQUIRE_DB=1` makes the tests fail, not skip, when the URL is missing or the database
+  cannot be reached. CI (`.github/workflows/reebe.yml`) sets it.
+- Some tests are `#[ignore]`d with the reason in the attribute: engine gaps (timer boundary
+  events, event-based gateway exclusivity, multi-instance on tasks) and a throughput
+  benchmark. Run them with `cargo test --workspace -- --ignored`.
+- There is no SQLite test suite. CI only checks that the embedded build compiles
+  (`cargo check -p reebe-server --no-default-features --features embedded`).
+
 ### Running with Docker Compose
 
 ```bash

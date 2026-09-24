@@ -37,6 +37,25 @@ pnpm format       # Biome, writing fixes
 All four must pass before a pull request is ready. There are no warnings to triage: the bar is
 zero type errors and zero Biome findings.
 
+## Reebe tests
+
+`pnpm verify` runs the Rust tests of the Reebe engine (`apps/reebe`) through its `test` script,
+but without a database the Postgres suites skip themselves. The `Reebe` workflow runs them
+against PostgreSQL when a pull request touches `apps/reebe/**`, and once a week. To run them
+locally:
+
+```sh
+docker run -d --rm --name reebe-test-pg -p 5432:5432 \
+  -e POSTGRES_USER=reebe -e POSTGRES_PASSWORD=reebe -e POSTGRES_DB=reebe postgres:16-alpine
+REEBE_DATABASE__URL=postgres://reebe:reebe@localhost:5432/reebe REEBE_REQUIRE_DB=1 \
+  cargo test --manifest-path apps/reebe/Cargo.toml --workspace
+```
+
+Without `REEBE_DATABASE__URL` the Postgres tests skip themselves. `REEBE_REQUIRE_DB=1` makes
+them fail instead, as CI does. Each test creates its own `reebe_test_*` database, so use a
+throwaway server like the container above. The Reebe workspace is not yet clean under
+`cargo fmt --check` or `cargo clippy -D warnings`, so CI does not run either.
+
 ## Changesets
 
 **Every change that affects a published package needs a changeset**, or it never reaches npm:

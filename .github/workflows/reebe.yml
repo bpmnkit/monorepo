@@ -1,0 +1,72 @@
+name: Reebe
+
+# Rust tests for the Reebe engine against PostgreSQL. ci.yml already runs
+# `cargo test --workspace` through apps/reebe's `test` script, but with no
+# database, so the Postgres suites in crates/reebe-engine/tests skip there.
+# Path-filtered so docs-only and TypeScript-only PRs do not pay for a second
+# Rust build; the weekly run catches rot from dependency and toolchain drift
+# when nobody touches apps/reebe.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/reebe/**"
+      - ".github/workflows/reebe.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/reebe/**"
+      - ".github/workflows/reebe.yml"
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: reebe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Reebe tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Same image as apps/reebe/docker-compose.yml.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: reebe
+          POSTGRES_USER: reebe
+          POSTGRES_PASSWORD: reebe
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reebe -d reebe"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_HTTP_MULTIPLEXING: false
+      # Each Postgres test creates its own database from this server.
+      REEBE_DATABASE__URL: postgres://reebe:reebe@localhost:5432/reebe
+      # Without this the Postgres tests skip themselves when the URL is missing,
+      # and a misnamed variable would turn the suite green without running it.
+      REEBE_REQUIRE_DB: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/reebe -> target
+
+      # No `cargo fmt --check` or `cargo clippy -D warnings` yet: the workspace
+      # is not clean under either. See the "Reebe tests" note in CONTRIBUTING.md.
+
+      - name: Test
+        run: cargo test --manifest-path apps/reebe/Cargo.toml --workspace --locked
+
+      # Nothing tests the SQLite backend; at least keep the embedded build compiling.
+      - name: Check embedded (SQLite) build
+        run: cargo check --manifest-path apps/reebe/Cargo.toml -p reebe-server --no-default-features --features embedded --locked
