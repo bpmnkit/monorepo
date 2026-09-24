@@ -12,6 +12,7 @@ use crate::engine::EngineState;
 use crate::error::{EngineError, EngineResult};
 use crate::key_gen::KeyGenerator;
 use super::{CommandToWrite, EventToWrite, RecordProcessor, Writers};
+use super::throw_event::{throw_event, ThrowOutcome, Thrown};
 
 pub struct BpmnElementProcessor;
 
@@ -309,6 +310,23 @@ impl BpmnElementProcessor {
                         "tenantId": tenant_id,
                     }),
                 });
+
+                // An error or escalation end event throws before it completes. An error
+                // never completes the end event: it is caught (terminating the scope the
+                // end event is in) or it raises an incident.
+                let thrown = match element {
+                    reebe_bpmn::FlowElement::EndEvent(e) => Thrown::from_definition(e.event_definition.as_ref()),
+                    _ => None,
+                };
+                if let Some(thrown) = thrown {
+                    let thrower = ElementInstance { state: "ACTIVATED".to_string(), ..ei.clone() };
+                    let outcome = throw_event(state, writers, &thrower, &thrown, None).await?;
+                    if matches!(thrown, Thrown::Error { .. })
+                        || outcome == (ThrowOutcome::Caught { interrupted: true })
+                    {
+                        return Ok(());
+                    }
+                }
 
                 if is_compensation_end {
                     // Find all completed elements in this scope that have a compensation boundary event
@@ -940,6 +958,17 @@ impl BpmnElementProcessor {
                     }),
                 });
 
+                // Escalation throw: an interrupting catch ends this path; otherwise continue.
+                if let Some(thrown @ Thrown::Escalation { .. }) =
+                    Thrown::from_definition(ite.event_definition.as_ref())
+                {
+                    let thrower = ElementInstance { state: "ACTIVATED".to_string(), ..ei.clone() };
+                    let outcome = throw_event(state, writers, &thrower, &thrown, None).await?;
+                    if outcome == (ThrowOutcome::Caught { interrupted: true }) {
+                        return Ok(());
+                    }
+                }
+
                 // Signal throw: broadcast to all waiting catch events
                 if let Some(reebe_bpmn::EventDefinition::Signal(sig)) = &ite.event_definition {
                     writers.commands.push(CommandToWrite {
@@ -987,6 +1016,48 @@ impl BpmnElementProcessor {
                         "tenantId": tenant_id,
                     }),
                 });
+
+                // An ad-hoc sub-process with a job worker implementation (the AI Agent
+                // Sub-process connector) is driven by that job: the worker decides which
+                // inner elements to run. Completing the job completes the sub-process;
+                // activating inner elements from the job result is not supported.
+                if sp.ad_hoc {
+                    match &sp.task_definition {
+                        Some(td) => writers.commands.push(CommandToWrite {
+                            value_type: "JOB".to_string(),
+                            intent: "CREATE".to_string(),
+                            key: 0,
+                            payload: serde_json::json!({
+                                "jobType": td.job_type,
+                                "processInstanceKey": process_instance_key.to_string(),
+                                "elementInstanceKey": ei_key.to_string(),
+                                "processDefinitionKey": process_definition_key.to_string(),
+                                "bpmnProcessId": bpmn_process_id,
+                                "elementId": element_id,
+                                "retries": 3,
+                                "customHeaders": {},
+                                "tenantId": tenant_id,
+                            }),
+                        }),
+                        None => writers.commands.push(CommandToWrite {
+                            value_type: "INCIDENT".to_string(),
+                            intent: "CREATE".to_string(),
+                            key: 0,
+                            payload: serde_json::json!({
+                                "errorType": "UNKNOWN",
+                                "errorMessage": format!(
+                                    "Ad-hoc sub-process '{element_id}' has no job worker implementation \
+                                     (zeebe:taskDefinition); Reebe runs ad-hoc sub-processes only through their job"
+                                ),
+                                "processInstanceKey": process_instance_key.to_string(),
+                                "elementInstanceKey": ei_key.to_string(),
+                                "bpmnProcessId": bpmn_process_id,
+                                "tenantId": tenant_id,
+                            }),
+                        }),
+                    }
+                    return Ok(());
+                }
 
                 // Initialize multi-instance state if configured.
                 if let Some(mi) = &sp.multi_instance {
@@ -1195,6 +1266,14 @@ impl BpmnElementProcessor {
             .unwrap_or(process_instance_key);
         let tenant_id = record.tenant_id.clone();
 
+        // A job, message or timer can still arrive for an element that a caught error
+        // or escalation has terminated; it no longer completes anything.
+        if let Ok(current) = state.backend.get_element_instance_by_key(ei_key).await {
+            if current.state == "TERMINATED" {
+                return Ok(());
+            }
+        }
+
         // Transition through COMPLETING -> COMPLETED
         state.backend.update_element_instance_state(ei_key, "COMPLETING").await?;
         writers.events.push(EventToWrite {
@@ -1305,8 +1384,21 @@ impl BpmnElementProcessor {
             }),
         });
 
+        // An event sub-process that completes ends its flow scope like an end event.
+        let is_event_subprocess = element_type == "SUB_PROCESS" && {
+            let pd = state.backend.get_process_definition_by_key(process_definition_key).await?;
+            reebe_bpmn::parse_bpmn(&pd.bpmn_xml)
+                .ok()
+                .and_then(|ps| ps.into_iter().find(|p| p.id == bpmn_process_id || p.id == pd.bpmn_process_id))
+                .and_then(|p| match p.get_element_recursive(&element_id) {
+                    Some(reebe_bpmn::FlowElement::SubProcess(sp)) => Some(sp.triggered_by_event),
+                    _ => None,
+                })
+                .unwrap_or(false)
+        };
+
         // If this is an EndEvent, check if the process (or subprocess) is complete
-        if element_type == "END_EVENT" {
+        if element_type == "END_EVENT" || is_event_subprocess {
             // Detect whether this end event is inside an embedded subprocess by checking
             // if the flow scope element is a SUB_PROCESS rather than the root PROCESS.
             let scope_ei = state.backend.get_element_instance_by_key(flow_scope_key).await.ok();
@@ -1794,6 +1886,7 @@ fn element_type_string(element: &reebe_bpmn::FlowElement) -> String {
         reebe_bpmn::FlowElement::SendTask(_) => "SEND_TASK".to_string(),
         reebe_bpmn::FlowElement::BusinessRuleTask(_) => "BUSINESS_RULE_TASK".to_string(),
         reebe_bpmn::FlowElement::CallActivity(_) => "CALL_ACTIVITY".to_string(),
+        reebe_bpmn::FlowElement::SubProcess(sp) if sp.ad_hoc => "AD_HOC_SUB_PROCESS".to_string(),
         reebe_bpmn::FlowElement::SubProcess(_) => "SUB_PROCESS".to_string(),
         reebe_bpmn::FlowElement::ParallelGateway(_) => "PARALLEL_GATEWAY".to_string(),
         reebe_bpmn::FlowElement::ExclusiveGateway(_) => "EXCLUSIVE_GATEWAY".to_string(),

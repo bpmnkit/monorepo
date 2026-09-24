@@ -9,6 +9,7 @@ pub mod user_task;
 pub mod signal;
 pub mod identity;
 pub mod variable;
+pub(crate) mod throw_event;
 
 pub use deployment::DeploymentProcessor;
 pub use process_instance::{ProcessInstanceCreationProcessor, ProcessInstanceCancelProcessor};

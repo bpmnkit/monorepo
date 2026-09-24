@@ -33,7 +33,7 @@ mod tests {
         RecordProcessor, Writers,
         DeploymentProcessor, ProcessInstanceCreationProcessor,
         BpmnElementProcessor, JobProcessor, VariableDocumentProcessor,
-        UserTaskProcessor,
+        UserTaskProcessor, IncidentProcessor,
     };
     use crate::processor::signal::SignalProcessor;
     use crate::processor::timer::TimerProcessor;
@@ -70,6 +70,7 @@ mod tests {
                 Arc::new(SignalProcessor),
                 Arc::new(TimerProcessor),
                 Arc::new(MessageProcessor),
+                Arc::new(IncidentProcessor),
             ];
             Self { backend, state, processors }
         }
@@ -1327,7 +1328,8 @@ mod tests {
         h.start("proc", serde_json::json!({ "score": 900 })).await;
         assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
         let result = h.get_var("tierResult").expect("tierResult must be set");
-        assert_eq!(result["tier"], serde_json::json!("PLATINUM"),
+        // A single-output table yields the value itself, as in Zeebe.
+        assert_eq!(result, serde_json::json!("PLATINUM"),
             "FIRST hit: score=900 should match PLATINUM first; got: {result:?}");
 
         // score=500 → r1 does not match, r2 does not match, r3 matches first
@@ -1337,13 +1339,13 @@ mod tests {
         h2.start("proc", serde_json::json!({ "score": 500 })).await;
         assert_eq!(h2.process_state("proc").as_deref(), Some("COMPLETED"));
         let result2 = h2.get_var("tierResult").expect("tierResult must be set");
-        assert_eq!(result2["tier"], serde_json::json!("SILVER"),
+        assert_eq!(result2, serde_json::json!("SILVER"),
             "FIRST hit: score=500 should match SILVER; got: {result2:?}");
     }
 
     // ─────────────────────────────────────────────────────────────────
     // 26. BRT + DMN: result variable drives downstream gateway
-    //     (extracted field from UNIQUE-hit object used in condition)
+    //     (a single-output UNIQUE hit is the value itself)
     // ─────────────────────────────────────────────────────────────────
 
     #[tokio::test]
@@ -1389,7 +1391,7 @@ mod tests {
     <bpmn:sequenceFlow id="f1"          sourceRef="start" targetRef="brt1"/>
     <bpmn:sequenceFlow id="f2"          sourceRef="brt1"  targetRef="gw1"/>
     <bpmn:sequenceFlow id="f-eligible"  sourceRef="gw1"   targetRef="end-eligible">
-      <bpmn:conditionExpression>=eligibilityResult.eligible = true</bpmn:conditionExpression>
+      <bpmn:conditionExpression>=eligibilityResult = true</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="f-ineligible" sourceRef="gw1"  targetRef="end-ineligible"/>
 "#);
@@ -1662,7 +1664,7 @@ mod tests {
     <bpmn:sequenceFlow id="pf1" sourceRef="p-start" targetRef="p-call"/>
     <bpmn:sequenceFlow id="pf2" sourceRef="p-call"  targetRef="gw1"/>
     <bpmn:sequenceFlow id="f-vip" sourceRef="gw1"   targetRef="end-vip">
-      <bpmn:conditionExpression>=classification.tier = "VIP"</bpmn:conditionExpression>
+      <bpmn:conditionExpression>=classification = "VIP"</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="f-other" sourceRef="gw1" targetRef="end-other"/>
 "#);
@@ -1702,7 +1704,8 @@ mod tests {
         assert!(!h.visited("end-other"));
 
         let classification = h.get_var("classification").expect("classification must be in parent scope");
-        assert_eq!(classification["tier"], serde_json::json!("VIP"));
+        // A single-output table yields the value itself, as in Zeebe.
+        assert_eq!(classification, serde_json::json!("VIP"));
 
         // STANDARD path: score=500
         let h2 = Harness::new();
@@ -2259,5 +2262,385 @@ mod tests {
             "instances: {:?}", h.process_instances());
         assert_eq!(h.get_var("amount"), Some(serde_json::json!(10)));
     }
-}
 
+    // ─────────────────────────────────────────────────────────────────
+    // Errors and escalations: end events throw, the nearest scope catches
+    // ─────────────────────────────────────────────────────────────────
+
+    /// A definitions document with root declarations (errors, escalations) and one process.
+    fn wrap_definitions(roots: &str, process_id: &str, body: &str) -> String {
+        format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+{roots}
+  <bpmn:process id="{process_id}" isExecutable="true">
+{body}
+  </bpmn:process>
+</bpmn:definitions>"#)
+    }
+
+    fn element_state(h: &Harness, element_id: &str) -> Option<String> {
+        h.backend.list_element_instances().into_iter()
+            .find(|e| e.element_id == element_id)
+            .map(|e| e.state)
+    }
+
+    // The error's id differs from its code, so a match proves the ref resolves to the code.
+    const ERROR_ROOTS: &str = r#"  <bpmn:error id="Err_stock" name="Out of stock" errorCode="OUT_OF_STOCK"/>"#;
+
+    /// start → sub[ start → check → gw → (ok: end | no: error end) ] → done;
+    /// error boundary on sub → handled.
+    fn error_end_in_subprocess(boundary: bool) -> String {
+        let boundary_xml = if boundary {
+            r#"
+    <bpmn:boundaryEvent id="on-error" attachedToRef="sub">
+      <bpmn:outgoing>f-err</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="handled"><bpmn:incoming>f-err</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f-err" sourceRef="on-error" targetRef="handled"/>"#
+        } else {
+            ""
+        };
+        wrap_definitions(ERROR_ROOTS, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:serviceTask id="check">
+        <bpmn:extensionElements><zeebe:taskDefinition type="check"/></bpmn:extensionElements>
+        <bpmn:incoming>s1</bpmn:incoming><bpmn:outgoing>s2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="gw" default="s-no">
+        <bpmn:incoming>s2</bpmn:incoming><bpmn:outgoing>s-ok</bpmn:outgoing><bpmn:outgoing>s-no</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s-ok</bpmn:incoming></bpmn:endEvent>
+      <bpmn:endEvent id="s-error"><bpmn:incoming>s-no</bpmn:incoming>
+        <bpmn:errorEventDefinition errorRef="Err_stock"/>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="s1" sourceRef="s-start" targetRef="check"/>
+      <bpmn:sequenceFlow id="s2" sourceRef="check" targetRef="gw"/>
+      <bpmn:sequenceFlow id="s-ok" sourceRef="gw" targetRef="s-end">
+        <bpmn:conditionExpression>=available</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="s-no" sourceRef="gw" targetRef="s-error"/>
+    </bpmn:subProcess>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="sub"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="sub" targetRef="done"/>{boundary_xml}
+"#))
+    }
+
+    #[tokio::test]
+    async fn test_error_end_event_is_caught_by_boundary_on_enclosing_subprocess() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(true)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("check", serde_json::json!({ "available": false })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("on-error") && h.visited("handled"), "the boundary path must run");
+        assert!(!h.visited("done"), "the sub-process must not complete normally");
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("TERMINATED"));
+        assert_eq!(element_state(&h, "s-error").as_deref(), Some("TERMINATED"));
+        assert_eq!(h.get_var("errorCode"), None, "no variables leak from the throw");
+        assert!(h.incidents().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_error_end_event_happy_path_is_unaffected() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(true)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("check", serde_json::json!({ "available": true })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("done"));
+        assert!(!h.visited("on-error"));
+    }
+
+    #[tokio::test]
+    async fn test_uncaught_error_end_event_raises_incident() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(false)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("check", serde_json::json!({ "available": false })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"),
+            "an unhandled error stops the instance");
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1, "incidents: {incidents:?}");
+        assert_eq!(incidents[0].error_type, "UNHANDLED_ERROR_EVENT");
+        assert_eq!(incidents[0].element_id, "s-error");
+        assert!(incidents[0].error_message.as_deref().unwrap_or("").contains("OUT_OF_STOCK"));
+        assert!(!h.visited("done"));
+    }
+
+    #[tokio::test]
+    async fn test_job_error_is_caught_by_boundary_on_enclosing_subprocess() {
+        let h = Harness::new();
+        h.deploy(&error_end_in_subprocess(true)).await;
+        h.start("proc", serde_json::json!({})).await;
+        let job = h.activatable_job("check").expect("check job");
+        h.run("JOB", "THROW_ERROR", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "errorCode": "OUT_OF_STOCK",
+            "errorMessage": "none left",
+        })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("handled"));
+        assert_eq!(element_state(&h, "check").as_deref(), Some("TERMINATED"));
+        assert_eq!(element_state(&h, "sub").as_deref(), Some("TERMINATED"));
+    }
+
+    #[tokio::test]
+    async fn test_error_is_caught_by_error_event_subprocess_and_cancels_the_scope() {
+        let bpmn = wrap_definitions(ERROR_ROOTS, "proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:parallelGateway id="fork">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>fa</bpmn:outgoing><bpmn:outgoing>fb</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:serviceTask id="slow">
+      <bpmn:extensionElements><zeebe:taskDefinition type="slow"/></bpmn:extensionElements>
+      <bpmn:incoming>fa</bpmn:incoming><bpmn:outgoing>fa2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="slow-end"><bpmn:incoming>fa2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:serviceTask id="trigger">
+      <bpmn:extensionElements><zeebe:taskDefinition type="trigger"/></bpmn:extensionElements>
+      <bpmn:incoming>fb</bpmn:incoming><bpmn:outgoing>fb2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="fail"><bpmn:incoming>fb2</bpmn:incoming>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="on-error" triggeredByEvent="true">
+      <bpmn:startEvent id="err-start"><bpmn:outgoing>e1</bpmn:outgoing>
+        <bpmn:errorEventDefinition errorRef="Err_stock"/>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="err-end"><bpmn:incoming>e1</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="e1" sourceRef="err-start" targetRef="err-end"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="fork"/>
+    <bpmn:sequenceFlow id="fa" sourceRef="fork" targetRef="slow"/>
+    <bpmn:sequenceFlow id="fa2" sourceRef="slow" targetRef="slow-end"/>
+    <bpmn:sequenceFlow id="fb" sourceRef="fork" targetRef="trigger"/>
+    <bpmn:sequenceFlow id="fb2" sourceRef="trigger" targetRef="fail"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert!(h.activatable_job("slow").is_some());
+        h.complete_job("trigger", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "the event sub-process ends the process; instances: {:?}", h.process_instances());
+        assert!(h.visited("err-end"));
+        assert_eq!(element_state(&h, "slow").as_deref(), Some("TERMINATED"));
+        let job_state = h.backend.list_jobs().into_iter().find(|j| j.job_type == "slow").map(|j| j.state);
+        assert_eq!(job_state.as_deref(), Some("CANCELED"), "the interrupted task's job is canceled");
+        assert!(h.incidents().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_error_from_called_process_is_caught_on_the_call_activity() {
+        let child = wrap_definitions(ERROR_ROOTS, "child", r#"
+    <bpmn:startEvent id="c-start"><bpmn:outgoing>c1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:endEvent id="c-error"><bpmn:incoming>c1</bpmn:incoming>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="c1" sourceRef="c-start" targetRef="c-error"/>
+"#);
+        let parent = wrap_definitions(ERROR_ROOTS, "parent", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:callActivity id="call">
+      <bpmn:extensionElements><zeebe:calledElement processId="child"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:boundaryEvent id="on-error" attachedToRef="call">
+      <bpmn:outgoing>f-err</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Err_stock"/>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="handled"><bpmn:incoming>f-err</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="call"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="call" targetRef="done"/>
+    <bpmn:sequenceFlow id="f-err" sourceRef="on-error" targetRef="handled"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&child).await;
+        h.deploy(&parent).await;
+        h.start("parent", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("parent").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(h.process_state("child").as_deref(), Some("TERMINATED"));
+        assert!(h.visited("handled"));
+        assert!(!h.visited("done"));
+        assert_eq!(element_state(&h, "call").as_deref(), Some("TERMINATED"));
+    }
+
+    const ESCALATION_ROOTS: &str =
+        r#"  <bpmn:escalation id="Esc_late" name="Late" escalationCode="LATE"/>"#;
+
+    #[tokio::test]
+    async fn test_uncaught_escalation_end_event_is_not_an_incident() {
+        let bpmn = wrap_definitions(ESCALATION_ROOTS, "proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:endEvent id="escalate"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:escalationEventDefinition escalationRef="Esc_late"/>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="escalate"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "an uncaught escalation ends like a none end event");
+        assert!(h.incidents().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_escalation_throw_is_caught_by_non_interrupting_boundary() {
+        let bpmn = wrap_definitions(ESCALATION_ROOTS, "proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:startEvent id="s-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:intermediateThrowEvent id="notify-late"><bpmn:incoming>s1</bpmn:incoming><bpmn:outgoing>s2</bpmn:outgoing>
+        <bpmn:escalationEventDefinition escalationRef="Esc_late"/>
+      </bpmn:intermediateThrowEvent>
+      <bpmn:serviceTask id="finish">
+        <bpmn:extensionElements><zeebe:taskDefinition type="finish"/></bpmn:extensionElements>
+        <bpmn:incoming>s2</bpmn:incoming><bpmn:outgoing>s3</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="s-end"><bpmn:incoming>s3</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="s1" sourceRef="s-start" targetRef="notify-late"/>
+      <bpmn:sequenceFlow id="s2" sourceRef="notify-late" targetRef="finish"/>
+      <bpmn:sequenceFlow id="s3" sourceRef="finish" targetRef="s-end"/>
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="on-late" attachedToRef="sub" cancelActivity="false">
+      <bpmn:outgoing>f-late</bpmn:outgoing>
+      <bpmn:escalationEventDefinition escalationRef="Esc_late"/>
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="tell-customer">
+      <bpmn:extensionElements><zeebe:taskDefinition type="tell"/></bpmn:extensionElements>
+      <bpmn:incoming>f-late</bpmn:incoming><bpmn:outgoing>f-late2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="told"><bpmn:incoming>f-late2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="sub"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="sub" targetRef="done"/>
+    <bpmn:sequenceFlow id="f-late" sourceRef="on-late" targetRef="tell-customer"/>
+    <bpmn:sequenceFlow id="f-late2" sourceRef="tell-customer" targetRef="told"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        // Both paths are live: the escalation path and the sub-process that threw it.
+        assert!(h.activatable_job("tell").is_some(), "the boundary path must start");
+        assert!(h.activatable_job("finish").is_some(), "the thrower must carry on");
+        h.complete_job("tell", serde_json::json!({})).await;
+        h.complete_job("finish", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("told") && h.visited("done"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Ad-hoc sub-process with a job worker implementation (AI Agent)
+    // ─────────────────────────────────────────────────────────────────
+
+    fn ad_hoc_agent() -> String {
+        wrap_definitions(
+            r#"  <bpmn:error id="Err_agent" errorCode="AGENT_FAILED"/>"#,
+            "proc",
+            r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:adHocSubProcess id="agent">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="agent-worker"/>
+        <zeebe:ioMapping>
+          <zeebe:output source="=agent" target="agent"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:serviceTask id="tool">
+        <bpmn:extensionElements><zeebe:taskDefinition type="tool"/></bpmn:extensionElements>
+      </bpmn:serviceTask>
+    </bpmn:adHocSubProcess>
+    <bpmn:boundaryEvent id="agent-failed" attachedToRef="agent">
+      <bpmn:outgoing>f-err</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Err_agent"/>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="fallback"><bpmn:incoming>f-err</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="agent"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="agent" targetRef="done"/>
+    <bpmn:sequenceFlow id="f-err" sourceRef="agent-failed" targetRef="fallback"/>
+"#,
+        )
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_subprocess_runs_as_its_job() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_agent()).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        assert!(h.activatable_job("tool").is_none(), "inner tools are not activated by Reebe");
+        h.complete_job("agent-worker", serde_json::json!({ "agent": { "responseText": "done" } })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("done"));
+        assert_eq!(h.get_var("agent"), Some(serde_json::json!({ "responseText": "done" })));
+        let agent_type = h.backend.list_element_instances().into_iter()
+            .find(|e| e.element_id == "agent").map(|e| e.element_type);
+        assert_eq!(agent_type.as_deref(), Some("AD_HOC_SUB_PROCESS"));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_subprocess_job_error_takes_the_boundary() {
+        let h = Harness::new();
+        h.deploy(&ad_hoc_agent()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let job = h.activatable_job("agent-worker").expect("agent job");
+        h.run("JOB", "THROW_ERROR", serde_json::json!({
+            "jobKey": job.key.to_string(),
+            "errorCode": "AGENT_FAILED",
+        })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("fallback"));
+        assert!(!h.visited("done"));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_subprocess_without_job_raises_incident() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:adHocSubProcess id="tools">
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:task id="tool"/>
+    </bpmn:adHocSubProcess>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="tools"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="tools" targetRef="done"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1, "an unsupported ad-hoc sub-process must not hang silently");
+        assert_eq!(incidents[0].element_id, "tools");
+        assert!(!h.visited("done"));
+    }
+}

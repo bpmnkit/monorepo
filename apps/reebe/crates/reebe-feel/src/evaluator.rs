@@ -12,11 +12,8 @@ pub fn eval(expr: &Expr, ctx: &FeelContext) -> Result<FeelValue, FeelError> {
         Expr::Float(f) => Ok(FeelValue::Float(*f)),
         Expr::Str(s) => Ok(FeelValue::String(s.clone())),
 
-        Expr::Name(name) => {
-            ctx.get(name)
-                .cloned()
-                .ok_or_else(|| FeelError::UndefinedVariable(name.clone()))
-        }
+        // As in Zeebe's FEEL engine, a variable that does not exist is null.
+        Expr::Name(name) => Ok(ctx.get(name).cloned().unwrap_or(FeelValue::Null)),
 
         Expr::Add(lhs, rhs) => {
             let l = eval(lhs, ctx)?;

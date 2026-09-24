@@ -308,9 +308,8 @@ Vitest runs each file in isolation.
 
 `@bpmnkit/engine/wasm-runner` runs `.bpmn.tests.json` scenarios on Reebe, which has more
 of Zeebe's semantics. A `mode: "wasm"` option for `createProcessTest` is planned but not
-yet available. The runner drives a scenario from start to end in one call. Also, the
-current Reebe build does not open message subscriptions and does not record job variables
-in the way that step-by-step testing needs.
+yet available. The runner drives a scenario from start to end in one call; `casen test`
+uses it, and every scenario in the [template gallery](/templates) passes on it.
 
 ## See also
 
