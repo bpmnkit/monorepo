@@ -2643,4 +2643,487 @@ mod tests {
         assert_eq!(incidents[0].element_id, "tools");
         assert!(!h.visited("done"));
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Timer, message and signal boundary events
+    // ─────────────────────────────────────────────────────────────────
+
+    /// Fire the ACTIVE timer of `element_id` (a catch event or boundary event).
+    async fn fire_timer(h: &Harness, element_id: &str) -> Timer {
+        let timer = h.backend.list_timers().into_iter()
+            .find(|t| t.element_id == element_id && t.state == "ACTIVE")
+            .unwrap_or_else(|| panic!("no active timer for '{element_id}': {:?}", h.backend.list_timers()));
+        h.run("TIMER", "TRIGGER", serde_json::json!({ "timerKey": timer.key.to_string() })).await;
+        timer
+    }
+
+    fn timers_of(h: &Harness, element_id: &str) -> Vec<Timer> {
+        h.backend.list_timers().into_iter().filter(|t| t.element_id == element_id).collect()
+    }
+
+    fn job_state(h: &Harness, job_type: &str) -> Option<String> {
+        h.backend.list_jobs().into_iter().find(|j| j.job_type == job_type).map(|j| j.state)
+    }
+
+    /// start → task (work) → done, with a boundary on the task leading to `handle` → handled.
+    fn task_with_boundary(boundary_attrs: &str, definition: &str) -> String {
+        wrap_definitions(
+            r#"  <bpmn:message id="M_cancel" name="cancel">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:signal id="S_stop" name="stop"/>"#,
+            "proc",
+            &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="on-event" attachedToRef="task" {boundary_attrs}>
+      <bpmn:outgoing>f3</bpmn:outgoing>
+      {definition}
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="handle">
+      <bpmn:extensionElements><zeebe:taskDefinition type="handle"/></bpmn:extensionElements>
+      <bpmn:incoming>f3</bpmn:incoming><bpmn:outgoing>f4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="done"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="handled"><bpmn:incoming>f4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="done"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="on-event" targetRef="handle"/>
+    <bpmn:sequenceFlow id="f4" sourceRef="handle" targetRef="handled"/>
+"#),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_timer_boundary_terminates_the_task() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(
+            "",
+            r#"<bpmn:timerEventDefinition><bpmn:timeDuration>=duration("PT" + string(hours) + "H")</bpmn:timeDuration></bpmn:timerEventDefinition>"#,
+        )).await;
+        let before = chrono::Utc::now();
+        h.start("proc", serde_json::json!({ "hours": 2 })).await;
+
+        let timers = timers_of(&h, "on-event");
+        assert_eq!(timers.len(), 1, "the boundary timer arms when the task activates");
+        let due = timers[0].due_date - before;
+        assert!(due >= chrono::Duration::minutes(119) && due <= chrono::Duration::minutes(121),
+            "the due date is evaluated with FEEL against the instance variables: {due:?}");
+
+        fire_timer(&h, "on-event").await;
+
+        assert_eq!(element_state(&h, "task").as_deref(), Some("TERMINATED"));
+        assert_eq!(job_state(&h, "work").as_deref(), Some("CANCELED"), "the task's job is cancelled");
+        h.complete_job("handle", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("handled"));
+        assert!(!h.visited("done"));
+    }
+
+    #[tokio::test]
+    async fn test_non_interrupting_cycle_timer_boundary_repeats_and_keeps_the_task() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(
+            r#"cancelActivity="false""#,
+            r#"<bpmn:timerEventDefinition><bpmn:timeCycle>R2/PT10M</bpmn:timeCycle></bpmn:timerEventDefinition>"#,
+        )).await;
+        h.start("proc", serde_json::json!({})).await;
+
+        let first = fire_timer(&h, "on-event").await;
+        assert_eq!(first.repetitions, 2);
+        assert_eq!(job_state(&h, "work").as_deref(), Some("ACTIVATABLE"), "the task keeps running");
+        assert!(h.activatable_job("handle").is_some(), "the boundary path starts");
+
+        let second = fire_timer(&h, "on-event").await;
+        assert_eq!(second.repetitions, 1);
+        assert_eq!(second.due_date - first.due_date, chrono::Duration::minutes(10), "the cycle repeats every 10 minutes");
+        assert!(timers_of(&h, "on-event").iter().all(|t| t.state != "ACTIVE"), "R2 fires twice, then stops");
+        let handle_jobs = h.backend.list_jobs().into_iter().filter(|j| j.job_type == "handle").count();
+        assert_eq!(handle_jobs, 2);
+
+        h.complete_job("handle", serde_json::json!({})).await;
+        h.complete_job("handle", serde_json::json!({})).await;
+        h.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("done") && h.visited("handled"));
+    }
+
+    #[tokio::test]
+    async fn test_boundary_timers_and_subscriptions_close_when_the_task_completes() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(
+            "",
+            r#"<bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition>"#,
+        )).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert_eq!(timers_of(&h, "on-event")[0].state, "ACTIVE");
+
+        h.complete_job("work", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(timers_of(&h, "on-event")[0].state, "CANCELED");
+        // A timer that was already due when the task completed does nothing.
+        let t = &timers_of(&h, "on-event")[0];
+        h.run("TIMER", "TRIGGER", serde_json::json!({ "timerKey": t.key.to_string() })).await;
+        assert!(h.activatable_job("handle").is_none());
+    }
+
+    #[tokio::test]
+    async fn test_message_boundary_subscribes_on_activation_and_closes_on_completion() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary("", r#"<bpmn:messageEventDefinition messageRef="M_cancel"/>"#)).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+        let subs = h.backend.list_message_subscriptions();
+        assert_eq!(subs.len(), 1);
+        assert_eq!((subs[0].message_name.as_str(), subs[0].correlation_key.as_str(), subs[0].state.as_str()),
+            ("cancel", "o-1", "OPENED"));
+
+        h.publish_message("cancel", "o-1", serde_json::json!({ "reason": "customer" })).await;
+
+        assert_eq!(element_state(&h, "task").as_deref(), Some("TERMINATED"));
+        assert_eq!(job_state(&h, "work").as_deref(), Some("CANCELED"));
+        assert_eq!(h.get_var("reason"), Some(serde_json::json!("customer")), "message variables merge");
+        h.complete_job("handle", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+
+        // On the normal path, completing the task closes the subscription.
+        let h2 = Harness::new();
+        h2.deploy(&task_with_boundary("", r#"<bpmn:messageEventDefinition messageRef="M_cancel"/>"#)).await;
+        h2.start("proc", serde_json::json!({ "orderId": "o-2" })).await;
+        h2.complete_job("work", serde_json::json!({})).await;
+        assert_eq!(h2.backend.list_message_subscriptions()[0].state, "CLOSED");
+        h2.publish_message("cancel", "o-2", serde_json::json!({})).await;
+        assert!(h2.activatable_job("handle").is_none());
+        assert_eq!(h2.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_non_interrupting_signal_boundary_keeps_the_task() {
+        let h = Harness::new();
+        h.deploy(&task_with_boundary(r#"cancelActivity="false""#, r#"<bpmn:signalEventDefinition signalRef="S_stop"/>"#)).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.broadcast_signal("stop").await;
+        assert!(h.activatable_job("handle").is_some());
+        assert_eq!(job_state(&h, "work").as_deref(), Some("ACTIVATABLE"));
+        h.complete_job("work", serde_json::json!({})).await;
+        h.complete_job("handle", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Event-based gateway: the first event wins
+    // ─────────────────────────────────────────────────────────────────
+
+    fn event_gateway() -> String {
+        wrap_definitions(
+            r#"  <bpmn:message id="M_paid" name="paid">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>"#,
+            "proc",
+            r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:eventBasedGateway id="gw"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:outgoing>g-msg</bpmn:outgoing><bpmn:outgoing>g-timer</bpmn:outgoing></bpmn:eventBasedGateway>
+    <bpmn:intermediateCatchEvent id="paid"><bpmn:incoming>g-msg</bpmn:incoming><bpmn:outgoing>f-paid</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="M_paid"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="timeout"><bpmn:incoming>g-timer</bpmn:incoming><bpmn:outgoing>f-timeout</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>P1D</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="end-paid"><bpmn:incoming>f-paid</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="end-timeout"><bpmn:incoming>f-timeout</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="gw"/>
+    <bpmn:sequenceFlow id="g-msg" sourceRef="gw" targetRef="paid"/>
+    <bpmn:sequenceFlow id="g-timer" sourceRef="gw" targetRef="timeout"/>
+    <bpmn:sequenceFlow id="f-paid" sourceRef="paid" targetRef="end-paid"/>
+    <bpmn:sequenceFlow id="f-timeout" sourceRef="timeout" targetRef="end-timeout"/>
+"#,
+        )
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_waits_without_entering_its_events() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+        assert_eq!(element_state(&h, "gw").as_deref(), Some("ACTIVATED"));
+        assert!(!h.visited("paid") && !h.visited("timeout"), "the events are armed, not entered");
+        assert_eq!(timers_of(&h, "timeout").len(), 1);
+        assert_eq!(h.backend.list_message_subscriptions().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_won_by_a_message_cancels_the_timer() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        h.publish_message("paid", "o-1", serde_json::json!({ "amount": 5 })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert!(h.visited("end-paid"));
+        assert!(!h.visited("timeout") && !h.visited("end-timeout"));
+        assert_eq!(timers_of(&h, "timeout")[0].state, "CANCELED", "the losing timer is cancelled");
+        assert_eq!(h.get_var("amount"), Some(serde_json::json!(5)));
+        assert_eq!(element_state(&h, "gw").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_won_by_a_timer_closes_the_subscription() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        fire_timer(&h, "timeout").await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("end-timeout"));
+        assert_eq!(h.backend.list_message_subscriptions()[0].state, "CLOSED");
+        h.publish_message("paid", "o-1", serde_json::json!({})).await;
+        assert!(!h.visited("paid"), "a message after the timer won is not correlated");
+    }
+
+    #[tokio::test]
+    async fn test_event_based_gateway_correlates_a_buffered_message_at_once() {
+        let h = Harness::new();
+        h.deploy(&event_gateway()).await;
+        h.publish_message("paid", "o-1", serde_json::json!({})).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("end-paid"));
+        assert_eq!(timers_of(&h, "timeout")[0].state, "CANCELED");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Multi-instance on any activity
+    // ─────────────────────────────────────────────────────────────────
+
+    fn mi_service_task(sequential: bool, completion: &str) -> String {
+        let completion = if completion.is_empty() {
+            String::new()
+        } else {
+            format!("<bpmn:completionCondition>{completion}</bpmn:completionCondition>")
+        };
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="{sequential}">
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=items" inputElement="item"
+                                     outputCollection="results" outputElement="=result"/>
+        </bpmn:extensionElements>
+        {completion}
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#))
+    }
+
+    /// Activatable jobs of `job_type` with the inner instance's local variable `name`.
+    fn jobs_with_local(h: &Harness, job_type: &str, name: &str) -> Vec<(Job, Value)> {
+        let vars = h.backend.list_variables();
+        h.backend.list_jobs().into_iter()
+            .filter(|j| j.job_type == job_type && j.state == "ACTIVATABLE")
+            .map(|j| {
+                let v = vars.iter()
+                    .find(|v| v.scope_key == j.element_instance_key && v.name == name)
+                    .map(|v| v.value.clone())
+                    .unwrap_or(Value::Null);
+                (j, v)
+            })
+            .collect()
+    }
+
+    async fn complete_job_key(h: &Harness, key: i64, variables: Value) {
+        h.run("JOB", "COMPLETE", serde_json::json!({
+            "jobKey": key.to_string(),
+            "variables": variables,
+        })).await;
+    }
+
+    fn root_var(h: &Harness, name: &str) -> Option<Value> {
+        let pi = h.process_instances()[0].key;
+        h.backend.list_variables().into_iter()
+            .find(|v| v.scope_key == pi && v.name == name)
+            .map(|v| v.value)
+    }
+
+    #[tokio::test]
+    async fn test_parallel_multi_instance_service_task_collects_output_in_order() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, "")).await;
+        h.start("proc", serde_json::json!({ "items": [1, 2, 3] })).await;
+
+        let jobs = jobs_with_local(&h, "work", "item");
+        assert_eq!(jobs.len(), 3, "one job per item, all at once");
+        let mut items: Vec<Value> = jobs.iter().map(|(_, item)| item.clone()).collect();
+        items.sort_by_key(|v| v.as_i64());
+        assert_eq!(items, vec![serde_json::json!(1), serde_json::json!(2), serde_json::json!(3)],
+            "each inner instance has its own local inputElement");
+        let counters: Vec<Value> = jobs_with_local(&h, "work", "loopCounter").into_iter().map(|(_, c)| c).collect();
+        assert!(counters.contains(&serde_json::json!(1)) && counters.contains(&serde_json::json!(3)));
+
+        // Complete in reverse; the output keeps the input order.
+        let mut jobs = jobs;
+        jobs.sort_by_key(|(_, item)| -item.as_i64().unwrap());
+        for (job, item) in jobs {
+            complete_job_key(&h, job.key, serde_json::json!({ "result": item.as_i64().unwrap() * 10 })).await;
+        }
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!([10, 20, 30])));
+        assert_eq!(root_var(&h, "item"), None, "inputElement stays local to each instance");
+        assert_eq!(root_var(&h, "loopCounter"), None);
+        assert_eq!(root_var(&h, "result"), None, "the output element is local to each instance");
+    }
+
+    #[tokio::test]
+    async fn test_sequential_multi_instance_service_task_stops_at_completion_condition() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(true, "=numberOfCompletedInstances >= 2")).await;
+        h.start("proc", serde_json::json!({ "items": ["a", "b", "c"] })).await;
+
+        for expected in ["a", "b"] {
+            let jobs = jobs_with_local(&h, "work", "item");
+            assert_eq!(jobs.len(), 1, "one instance at a time");
+            assert_eq!(jobs[0].1, serde_json::json!(expected));
+            complete_job_key(&h, jobs[0].0.key, serde_json::json!({ "result": expected.to_uppercase() })).await;
+        }
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(h.backend.list_jobs().len(), 2, "the third instance never starts");
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["A", "B", null])));
+    }
+
+    #[tokio::test]
+    async fn test_parallel_multi_instance_completion_condition_terminates_the_rest() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, r#"=result = "found""#)).await;
+        h.start("proc", serde_json::json!({ "items": [1, 2, 3] })).await;
+
+        let jobs = jobs_with_local(&h, "work", "item");
+        complete_job_key(&h, jobs[1].0.key, serde_json::json!({ "result": "found" })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        let states: Vec<String> = h.backend.list_jobs().into_iter().map(|j| j.state).collect();
+        assert_eq!(states.iter().filter(|s| *s == "CANCELED").count(), 2, "jobs: {states:?}");
+        let terminated = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_id == "task" && e.state == "TERMINATED")
+            .count();
+        assert_eq!(terminated, 2);
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_with_an_empty_collection_is_skipped() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, "")).await;
+        h.start("proc", serde_json::json!({ "items": [] })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.backend.list_jobs().is_empty());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!([])));
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_user_task_and_sub_process() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:userTask id="review">
+      <bpmn:extensionElements><zeebe:userTask/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics>
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=reviewers" inputElement="reviewer"/>
+        </bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:userTask>
+    <bpmn:subProcess id="notify">
+      <bpmn:incoming>f2</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true">
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=reviewers" inputElement="reviewer"
+                                     outputCollection="sent" outputElement="=reviewer + &quot;!&quot;"/>
+        </bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:startEvent id="n-start"><bpmn:outgoing>n1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:serviceTask id="send">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="send"/>
+          <zeebe:ioMapping><zeebe:input source="=reviewer" target="to"/></zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:incoming>n1</bpmn:incoming><bpmn:outgoing>n2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="n-end"><bpmn:incoming>n2</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="n1" sourceRef="n-start" targetRef="send"/>
+      <bpmn:sequenceFlow id="n2" sourceRef="send" targetRef="n-end"/>
+    </bpmn:subProcess>
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="review"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="review" targetRef="notify"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="notify" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "reviewers": ["ann", "bob"] })).await;
+
+        assert_eq!(h.pending_user_tasks("review").len(), 2, "one user task per reviewer");
+        h.complete_user_task("review", serde_json::json!({})).await;
+        h.complete_user_task("review", serde_json::json!({})).await;
+
+        // The sub-process runs once per reviewer, one after the other, and its
+        // inner elements see the instance's local inputElement.
+        let vars = h.backend.list_variables();
+        let to_of = |j: &Job| vars.iter().find(|v| v.scope_key == j.element_instance_key && v.name == "to").map(|v| v.value.clone());
+        let first = h.activatable_job("send").expect("first send");
+        assert_eq!(to_of(&first), Some(serde_json::json!("ann")));
+        h.complete_job("send", serde_json::json!({})).await;
+        let vars = h.backend.list_variables();
+        let to_of = |j: &Job| vars.iter().find(|v| v.scope_key == j.element_instance_key && v.name == "to").map(|v| v.value.clone());
+        let second = h.activatable_job("send").expect("second send");
+        assert_eq!(to_of(&second), Some(serde_json::json!("bob")));
+        h.complete_job("send", serde_json::json!({})).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(root_var(&h, "sent"), Some(serde_json::json!(["ann!", "bob!"])));
+    }
+
+    #[tokio::test]
+    async fn test_interrupting_boundary_on_multi_instance_terminates_the_body() {
+        let bpmn = mi_service_task(false, "").replace(
+            r#"<bpmn:endEvent id="end">"#,
+            r#"<bpmn:boundaryEvent id="late" attachedToRef="task"><bpmn:outgoing>f-late</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="end-late"><bpmn:incoming>f-late</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f-late" sourceRef="late" targetRef="end-late"/>
+    <bpmn:endEvent id="end">"#,
+        );
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "items": [1, 2] })).await;
+        assert_eq!(timers_of(&h, "late").len(), 1, "the boundary belongs to the body, not each instance");
+
+        fire_timer(&h, "late").await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert!(h.visited("end-late"));
+        assert!(h.backend.list_jobs().iter().all(|j| j.state == "CANCELED"));
+        assert_eq!(root_var(&h, "results"), None, "no partial output");
+    }
 }

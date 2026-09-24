@@ -4,7 +4,8 @@ use reebe_db::records::DbRecord;
 use crate::engine::EngineState;
 use crate::error::EngineResult;
 use crate::key_gen::KeyGenerator;
-use super::{CommandToWrite, EventToWrite, RecordProcessor, Writers};
+use super::catch_event::{trigger, CatchRef, Triggered};
+use super::{EventToWrite, RecordProcessor, Writers};
 
 pub struct SignalProcessor;
 
@@ -48,26 +49,21 @@ impl RecordProcessor for SignalProcessor {
             .unwrap_or_default();
 
         for sub in subscriptions {
-            // Delete the subscription — it's consumed
-            let _ = state.backend.delete_signal_subscription(sub.key).await;
-
-            // Complete the waiting catch event element
-            writers.commands.push(CommandToWrite {
-                value_type: "PROCESS_INSTANCE".to_string(),
-                intent: "COMPLETE_ELEMENT".to_string(),
-                key: sub.element_instance_key,
-                payload: serde_json::json!({
-                    "elementInstanceKey": sub.element_instance_key.to_string(),
-                    "processInstanceKey": sub.process_instance_key.to_string(),
-                    "processDefinitionKey": sub.process_definition_key.to_string(),
-                    "elementId": sub.element_id,
-                    "elementType": "INTERMEDIATE_CATCH_EVENT",
-                    "bpmnProcessId": sub.bpmn_process_id,
-                    "flowScopeKey": sub.flow_scope_key.to_string(),
-                    "tenantId": tenant_id,
-                    "variables": variables,
-                }),
-            });
+            // The subscription's owner is the waiting catch event, an activity with a
+            // signal boundary event, or an event-based gateway.
+            let outcome = trigger(
+                state,
+                writers,
+                sub.element_instance_key,
+                CatchRef::Element(&sub.element_id),
+                variables.clone(),
+            )
+            .await?;
+            // A non-interrupting boundary event keeps waiting; otherwise the
+            // subscription is used up.
+            if outcome != Triggered::KeepWaiting {
+                let _ = state.backend.delete_signal_subscription(sub.key).await;
+            }
         }
 
         writers.response = Some(serde_json::json!({

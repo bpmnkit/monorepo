@@ -167,6 +167,39 @@ impl StateBackend for SqlxBackend {
         crate::state::jobs::cancel_jobs_by_element_instance(&self.pool, element_instance_key).await
     }
 
+    async fn cancel_element_instance_waits(&self, element_instance_key: i64) -> Result<()> {
+        let pool: &DbPool = &self.pool;
+        sqlx::query("UPDATE timers SET state = 'CANCELED' WHERE element_instance_key = $1 AND state = 'ACTIVE'")
+            .bind(element_instance_key)
+            .execute(pool)
+            .await?;
+        sqlx::query("UPDATE user_tasks SET state = 'CANCELED' WHERE element_instance_key = $1 AND state = 'CREATED'")
+            .bind(element_instance_key)
+            .execute(pool)
+            .await?;
+        sqlx::query(
+            "UPDATE message_subscriptions SET state = 'CLOSED' WHERE element_instance_key = $1 AND state IN ('OPENING', 'OPENED')",
+        )
+        .bind(element_instance_key)
+        .execute(pool)
+        .await?;
+        sqlx::query("DELETE FROM signal_subscriptions WHERE element_instance_key = $1")
+            .bind(element_instance_key)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn get_child_process_instance_keys(&self, parent_element_instance_key: i64) -> Result<Vec<i64>> {
+        let keys = sqlx::query_scalar::<_, i64>(
+            "SELECT key FROM process_instances WHERE parent_element_instance_key = $1 AND state = 'ACTIVE'",
+        )
+        .bind(parent_element_instance_key)
+        .fetch_all(&*self.pool)
+        .await?;
+        Ok(keys)
+    }
+
     async fn mark_timed_out_jobs(&self) -> Result<u64> {
         JobRepository::new(&self.pool).mark_timed_out().await
     }

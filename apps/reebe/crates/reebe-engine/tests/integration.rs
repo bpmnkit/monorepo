@@ -755,7 +755,6 @@ const EVENT_BASED_GW_BPMN: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </bpmn:definitions>"#;
 
 #[tokio::test]
-#[ignore = "engine gap: an event-based gateway takes every outgoing flow and never cancels the losing catch event, so the instance stays ACTIVE"]
 async fn test_event_based_gateway_message_path() {
     let Some(pool) = setup_db().await else {
         eprintln!("REEBE_DATABASE__URL not set — skipping integration test");
@@ -878,7 +877,6 @@ const TIMER_BOUNDARY_BPMN: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </bpmn:definitions>"#;
 
 #[tokio::test]
-#[ignore = "engine gap: timer boundary events are parsed, but no timer is created when the task activates"]
 async fn test_timer_boundary_event() {
     let Some(pool) = setup_db().await else {
         eprintln!("REEBE_DATABASE__URL not set — skipping integration test");

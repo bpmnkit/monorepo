@@ -65,6 +65,12 @@ pub trait StateBackend: Send + Sync {
     async fn update_job_deadline(&self, key: i64, deadline: DateTime<Utc>) -> Result<()>;
     async fn cancel_jobs_by_process_instance(&self, process_instance_key: i64) -> Result<u64>;
     async fn cancel_jobs_by_element_instance(&self, element_instance_key: i64) -> Result<u64>;
+    /// Stop everything an element instance waits on besides its jobs: cancel its active
+    /// timers and open user tasks, close its message subscriptions and delete its signal
+    /// subscriptions. Called when the element instance completes or is terminated.
+    async fn cancel_element_instance_waits(&self, element_instance_key: i64) -> Result<()>;
+    /// Keys of the active process instances a call activity instance started.
+    async fn get_child_process_instance_keys(&self, parent_element_instance_key: i64) -> Result<Vec<i64>>;
     async fn mark_timed_out_jobs(&self) -> Result<u64>;
     async fn count_active_jobs_by_type(&self) -> Result<Vec<(String, i64)>>;
 

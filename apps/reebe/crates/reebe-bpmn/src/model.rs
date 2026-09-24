@@ -167,6 +167,37 @@ impl FlowElement {
         }
     }
 
+    /// The multi-instance loop characteristics of an activity, if it has them.
+    pub fn multi_instance(&self) -> Option<&MultiInstanceLoopCharacteristics> {
+        match self {
+            FlowElement::ServiceTask(e) => e.multi_instance.as_ref(),
+            FlowElement::UserTask(e) => e.multi_instance.as_ref(),
+            FlowElement::ReceiveTask(e) => e.multi_instance.as_ref(),
+            FlowElement::ScriptTask(e) => e.multi_instance.as_ref(),
+            FlowElement::SendTask(e) => e.multi_instance.as_ref(),
+            FlowElement::BusinessRuleTask(e) => e.multi_instance.as_ref(),
+            FlowElement::CallActivity(e) => e.multi_instance.as_ref(),
+            FlowElement::SubProcess(e) => e.multi_instance.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Whether this is an activity (a task, sub-process or call activity), the
+    /// elements boundary events attach to.
+    pub fn is_activity(&self) -> bool {
+        matches!(
+            self,
+            FlowElement::ServiceTask(_)
+                | FlowElement::UserTask(_)
+                | FlowElement::ReceiveTask(_)
+                | FlowElement::ScriptTask(_)
+                | FlowElement::SendTask(_)
+                | FlowElement::BusinessRuleTask(_)
+                | FlowElement::CallActivity(_)
+                | FlowElement::SubProcess(_)
+        )
+    }
+
     pub fn bpmn_element_type(&self) -> &'static str {
         match self {
             FlowElement::StartEvent(_) => "START_EVENT",
