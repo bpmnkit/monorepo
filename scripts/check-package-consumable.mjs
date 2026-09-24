@@ -250,7 +250,14 @@ if (!packOnly) {
 					private: true,
 					version: "1.0.0",
 					type: "module",
-					dependencies: { [entry.name]: `file:${entry.tarball}`, typescript: "^5.0.0" },
+					// Peers too, optional ones included: an entry point built on an optional
+					// peer (`@bpmnkit/engine/testing/vitest`) is only consumable next to it,
+					// and npm does not install optional peers on its own.
+					dependencies: {
+						...entry.packedManifest.peerDependencies,
+						[entry.name]: `file:${entry.tarball}`,
+						typescript: "^5.0.0",
+					},
 					overrides,
 				},
 				null,

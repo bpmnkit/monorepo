@@ -12,6 +12,14 @@
 		"./wasm-runner": {
 			"types": "./dist/wasm-runner.d.ts",
 			"import": "./dist/wasm-runner.js"
+		},
+		"./testing": {
+			"types": "./dist/testing/index.d.ts",
+			"import": "./dist/testing/index.js"
+		},
+		"./testing/vitest": {
+			"types": "./dist/testing/vitest.d.ts",
+			"import": "./dist/testing/vitest.js"
 		}
 	},
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
@@ -30,6 +38,14 @@
 	},
 	"optionalDependencies": {
 		"@bpmnkit/reebe-wasm": "workspace:^"
+	},
+	"peerDependencies": {
+		"vitest": ">=2.0.0"
+	},
+	"peerDependenciesMeta": {
+		"vitest": {
+			"optional": true
+		}
 	},
 	"description": "Lightweight BPMN 2.0 process simulator for tests and demos in browsers and Node.js — zero dependencies",
 	"keywords": ["bpmn", "engine", "simulation", "workflow", "typescript", "dmn", "camunda"],

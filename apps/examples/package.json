@@ -19,7 +19,8 @@
 	"dependencies": {
 		"@bpmnkit/camunda-docspack": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
-		"@bpmnkit/docspack": "workspace:*"
+		"@bpmnkit/docspack": "workspace:*",
+		"@bpmnkit/engine": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^22.0.0",
