@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-09-24 — Reebe: condition incidents, adHocSubProcessElements, ad-hoc activation API, gRPC job results
+
+- Gateway conditions that do not evaluate to a boolean (null for a missing variable included) raise `EXTRACT_VALUE_ERROR` instead of counting as false; resolving the incident retries the gateway. Conditions on other elements' outgoing flows are ignored, as Zeebe does.
+- Every ad-hoc sub-process creates `adHocSubProcessElements` (name, documentation, `zeebe:properties`, `fromAi()` parameters); a patterns test checks that the TS engine and Reebe agree on `ai-agent-tool-loop`. Reebe FEEL evaluates `fromAi()`, with positional or named arguments.
+- New `POST /v2/element-instances/ad-hoc-activities/{key}/activation` (engine command `AD_HOC_SUB_PROCESS_INSTRUCTION`/`ACTIVATE`) with Zeebe's rejection messages and `cancelRemainingInstances`.
+- gRPC `CompleteJobRequest.result` (Zeebe's `JobResult`, field numbers taken from Zeebe's gateway.proto) is mapped to the REST completion payload; `CompleteJob` variables are now parsed as JSON.
+- Compensation: handlers run in the throw event's scope with no copy of the compensated activity's locals; a throw event in an event sub-process also compensates the event sub-process's own activities; a terminated handler lets its throw event continue (Zeebe would keep waiting; documented).
+- The complex-gateway deployment error now uses Zeebe's full message.
+- Known gaps: `adHocSubProcessElements` parameter names follow the TS engine (`orderId`, where Zeebe uses `toolCall.orderId`); completion conditions still treat non-booleans as false; other gRPC calls still drop their variables; self-closing flow elements are not parsed.
+
 ## 2026-09-24 — Reebe: link events, compensation, ad-hoc sub-process inner elements, Zeebe gateway rules
 
 - Link events: a link throw event continues at the link catch event of its name in the same scope; deployment rejects unpaired, duplicate and empty link names; inclusive-join reachability follows links.

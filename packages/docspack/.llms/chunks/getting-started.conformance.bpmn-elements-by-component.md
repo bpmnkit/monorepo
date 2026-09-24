@@ -36,13 +36,17 @@ sub-process, which receives the variables a job worker threw the error with. An 
 error raises an incident. An exclusive gateway with no matching condition and no default
 flow raises an incident, as does an inclusive split, and resolving it evaluates the gateway
 again; resolving any incident raised while an element was activating retries that element
-instance. Parallel gateways ignore conditions on their outgoing flows. A link throw event
-continues at the link catch event of its name in the same scope, and deployment rejects
+instance. A gateway condition that does not evaluate to a boolean (a missing variable is
+`null`) raises an `EXTRACT_VALUE_ERROR` incident instead of counting as false, and resolving
+it evaluates the gateway again. Parallel gateways, and every element other than an exclusive
+or inclusive gateway, ignore conditions on their outgoing flows, as Zeebe does. A link throw
+event continues at the link catch event of its name in the same scope, and deployment rejects
 links that do not pair up. A compensation throw or end event starts, all at once, the
 handlers of the activities that completed in its scope and in the completed sub-processes
 inside it (or only `activityRef`), and waits for them; a throw event in an event
-sub-process compensates the scope around it. Timer, message and signal boundary events
-are armed when their activity starts and cancelled when it ends. An interrupting one
+sub-process compensates the event sub-process and the scope around it. Every handler runs in
+the throw event's scope, as in Zeebe, and a handler terminated on its own no longer holds up
+the throw event. Timer, message and signal boundary events are armed when their activity starts and cancelled when it ends. An interrupting one
 terminates the activity; a non-interrupting one leaves it running, and a timer cycle repeats.
 An event-based gateway waits for the first of its events and cancels the others.
 The timer, message and signal start events of event sub-processes are armed when their
@@ -65,7 +69,11 @@ deployment, as in Zeebe, which does not execute it. An ad-hoc sub-process activa
 inner elements, each in its own activation, from `activeElementsCollection` or from the job
 result of its job worker implementation (such as the AI Agent Sub-process), completes by
 its `completionCondition` or the job result, and creates the job again after each
-activation. Every scenario of the [template gallery](/docs/guides/templates) passes on it.
+activation. It creates the `adHocSubProcessElements` variable with the elements it can
+activate and their `fromAi()` parameters, in the shape the TypeScript engine gives, and
+Reebe's REST API can activate elements of an active one
+(`POST /v2/element-instances/ad-hoc-activities/{key}/activation`). Every scenario of the
+[template gallery](/docs/guides/templates) passes on it.
 
 ---
 Source: https://bpmnkit.com/docs/getting-started/conformance
