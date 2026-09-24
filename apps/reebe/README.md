@@ -585,8 +585,9 @@ Reports PI/s (process instances per second), average latency, and error count.
   creation and answers with the instance key. `DeployProcess` and `DeployResource` deploy
   BPMN and DMN as the REST API does and answer process, decision and decision requirements
   metadata; a gRPC test deploys both and then runs the process and evaluates the decision.
-  Engine rejections are `NOT_FOUND`, `INVALID_ARGUMENT` (also a deployment that fails) or
-  `FAILED_PRECONDITION`, as Zeebe's gateway maps them
+  An engine rejection is `NOT_FOUND` for what does not exist and `INVALID_ARGUMENT` for an
+  invalid instruction or a deployment that fails, as Zeebe's gateway maps them (an invalid
+  state is `FAILED_PRECONDITION`)
 - Process instance modification, as Zeebe's `ProcessInstanceModificationModifyProcessor`
   does it, through `POST /v2/process-instances/{key}/modification` (204) and gRPC
   `ModifyProcessInstance`. Activate instructions activate an element in an instance of each

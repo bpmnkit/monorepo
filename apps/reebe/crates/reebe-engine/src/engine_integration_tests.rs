@@ -6002,11 +6002,20 @@ mod tests {
         assert_eq!(element_states(&h, "sp"), vec!["ACTIVATED"]);
         let c = keys_of(&h, "c")[0];
         assert_eq!(local_var(&h, c, "moved"), Some(serde_json::json!(true)));
+        // With a direct ancestor: c again, in the sub-process instance named.
+        let sp = keys_of(&h, "sp")[0];
+        modify(&h, serde_json::json!({
+            "moveInstructions": [{ "sourceElementId": "c", "targetElementId": "c", "ancestorScopeKey": sp.to_string() }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "c"), vec!["TERMINATED", "ACTIVATED"]);
+        let c = keys_of(&h, "c")[1];
+        let moved = h.backend.list_element_instances().into_iter().find(|e| e.key == c).unwrap();
+        assert_eq!(moved.flow_scope_key, Some(sp));
         // By key, out of the sub-process, which is then left with nothing to do.
         modify(&h, serde_json::json!({
             "moveInstructions": [{ "sourceElementInstanceKey": c.to_string(), "targetElementId": "after", "inferAncestorScopeFromSourceHierarchy": true }],
         })).await.unwrap();
-        assert_eq!(element_states(&h, "c"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "c"), vec!["TERMINATED", "TERMINATED"]);
         assert_eq!(element_states(&h, "sp"), vec!["TERMINATED"]);
         assert!(h.activatable_job("after").is_some());
         assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
