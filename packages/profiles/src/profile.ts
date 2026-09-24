@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, platform } from "node:os"
 import { join } from "node:path"
 import type { CamundaClientInput } from "@bpmnkit/api"
@@ -77,8 +77,11 @@ function readStore(): ConfigStore {
 
 function writeStore(store: ConfigStore): void {
 	const dir = configDir()
-	mkdirSync(dir, { recursive: true })
-	writeFileSync(configFilePath(), JSON.stringify(store, null, 2), "utf8")
+	mkdirSync(dir, { recursive: true, mode: 0o700 })
+	// The store holds client secrets and passwords: owner-only. `mode` applies
+	// only when the file is created, so chmod tightens a store written earlier.
+	writeFileSync(configFilePath(), JSON.stringify(store, null, 2), { encoding: "utf8", mode: 0o600 })
+	chmodSync(configFilePath(), 0o600)
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -165,6 +168,8 @@ export function deleteProfile(name: string): boolean {
 	if (!(name in store.profiles)) return false
 	const { [name]: _removed, ...rest } = store.profiles
 	store.profiles = rest
+	const { [name]: _removedMeta, ...restMeta } = store.meta
+	store.meta = restMeta
 	if (store.active === name) {
 		const remaining = Object.keys(store.profiles)
 		store.active = remaining.length > 0 ? (remaining[0] ?? null) : null

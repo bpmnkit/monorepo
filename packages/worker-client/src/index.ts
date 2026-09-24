@@ -64,7 +64,10 @@ export interface ActivatedJob<C extends JobContract = UntypedJobContract> {
 	customHeaders: C["headers"]
 	/** Complete the job, optionally returning output variables. */
 	complete(variables?: C["output"]): Promise<void>
-	/** Fail the job with an error message. Retries defaults to job.retries - 1. */
+	/**
+	 * Fail the job with an error message. `retries` defaults to 0, which raises an
+	 * incident; pass `job.retries - 1` to let the engine retry.
+	 */
 	fail(message: string, retries?: number): Promise<void>
 	/** Throw a BPMN error, which can be caught by an error boundary event. */
 	throwError(
@@ -158,6 +161,17 @@ export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
 		})
 	}
 
+	/** Settles a job; a refused call rejects rather than passing for success. */
+	async function settle(key: string, action: string, body: unknown): Promise<void> {
+		const res = await zeebePost(`/v2/jobs/${key}/${action}`, body)
+		if (!res.ok) {
+			const text = await res.text().catch(() => "")
+			throw new Error(
+				`Job ${key} ${action} failed: ${res.status} ${res.statusText}${text ? ` ${text}` : ""}`,
+			)
+		}
+	}
+
 	async function* poll<T extends keyof J & string>(
 		jobType: T,
 		pollOptions?: PollOptions,
@@ -194,17 +208,13 @@ export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
 					variables: (raw.variables as Record<string, unknown>) ?? {},
 					customHeaders: (raw.customHeaders as Record<string, string>) ?? {},
 					async complete(variables = {}) {
-						await zeebePost(`/v2/jobs/${key}/completion`, { variables })
+						await settle(key, "completion", { variables })
 					},
 					async fail(message, retries = 0) {
-						await zeebePost(`/v2/jobs/${key}/failure`, { errorMessage: message, retries })
+						await settle(key, "failure", { errorMessage: message, retries })
 					},
 					async throwError(errorCode, message, variables = {}) {
-						await zeebePost(`/v2/jobs/${key}/error`, {
-							errorCode,
-							errorMessage: message,
-							variables,
-						})
+						await settle(key, "error", { errorCode, errorMessage: message, variables })
 					},
 				}
 				// The contract is a compile-time promise the BPMN makes; the wire data is untyped.
