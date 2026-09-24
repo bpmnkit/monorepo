@@ -179,9 +179,6 @@ const KNOWN_FAILURES: Record<string, string> = {
 		KNOWN,
 	"1121-feel-years-and-months-duration-function/034_c2cc06724c/feel-years-and-months-duration-function_034_c2cc06724c":
 		KNOWN,
-	// range literals with an unbounded end (2)
-	"1130-feel-interval/overlaps after/overlaps after": KNOWN,
-	"1130-feel-interval/overlaps before/overlaps before": KNOWN,
 	// abs() names its parameter n in the spec and number in Camunda; this package accepts both (1)
 	"0050-feel-abs-function/007/decision007": KNOWN,
 	// decimal arithmetic beyond float64's precision (1)

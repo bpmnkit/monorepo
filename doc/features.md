@@ -1,5 +1,21 @@
 # Features
 
+## FEEL: Camunda parity suite and Camunda's built-ins (2026-09-24)
+
+- **Camunda parity** (`packages/feel/tests/camunda-parity.test.ts`) — every runnable worked
+  example in Camunda 8's FEEL documentation, read from `@bpmnkit/camunda-docspack` at test
+  time and compared with the documented result: 375 of 378 match, and the three that do not
+  are listed with reasons in `KNOWN_DIFFERENCES`.
+- **Example extractor** (`packages/feel/tasks/extract-camunda-examples.mjs`) — `--skipped`
+  lists every example that cannot run standalone, with the reason.
+- **Camunda built-ins** — `assert`, `is empty`, `partition`, `duplicate values`, `is blank`,
+  `trim`, `extract`, `uuid`, `to base64`, `from base64`, `to json`, `from json`, `fromAi` and
+  `date and time(value, timezone)`. 101 built-ins in all.
+- **Temporal fixes** — `last day of month` returns a date; time ± duration, time − time and
+  duration ÷ duration evaluate; `time("T…")` and `…+02:00[Europe/Berlin]` parse.
+- **DMN TCK** — 1,941 of 2,053 FEEL cases (from 1,939), after `overlaps before` /
+  `overlaps after` were brought in line with DMN at open range ends.
+
 ## Conformance page, release pipelines for VS Code and desktop, MCP Registry listing (2026-09-23)
 
 - **Conformance** (`/docs/getting-started/conformance`) — FEEL against the DMN TCK

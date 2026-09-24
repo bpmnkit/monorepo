@@ -1,5 +1,47 @@
 # Progress
 
+## 2026-09-24 — FEEL: measured against Camunda's documentation, and Camunda's built-ins
+
+**`@bpmnkit/feel` matches 375 of the 378 runnable examples in Camunda 8's FEEL docs.**
+Camunda's engine (feel-scala) adds built-ins and behaviour DMN does not define, and there is
+no test suite for that dialect. Its documentation is the next best thing: every function and
+operator page carries worked examples, `expression` then `// result`.
+- `packages/feel/tasks/extract-camunda-examples.mjs` reads them from the
+  `@bpmnkit/camunda-docspack` chunks. It handles multi-example blocks, `error` results,
+  results that depend on a variable (`// 4 - if x is 4` becomes a binding), the
+  "Evaluation context / Evaluation result" pairs, and three kinds of typographical slip in
+  the documented results, each recorded on the case. It skips 246 snippets (signatures, prose
+  results, clock-dependent examples); `--skipped` prints each one with its reason.
+- `packages/feel/tests/camunda-parity.test.ts` runs them. It follows `tck.test.ts`: a
+  `KNOWN_DIFFERENCES` map with reasons, and a guard that fails when a listed case starts
+  matching. A documented error matches `null`, since this package reports errors as `null`
+  the way DMN does.
+- Nothing extracted is committed. The docs are CC BY-SA 3.0, and a fixture copied into this
+  MIT package would carry the share-alike terms. The docspack is already in the repository,
+  so the test extracts at run time.
+
+**Starting point: 324 of 378.** The fixes:
+- New built-ins: `assert`, `is empty`, `partition`, `duplicate values`, `is blank`, `trim`,
+  `extract`, `uuid`, `to base64`, `from base64`, `to json`, `from json`, `fromAi`, and
+  `date and time(value, timezone)`. Base64 and UTF-8 are written out by hand so the package
+  still needs nothing beyond ES2022. `from json` keeps a `__proto__` key as an entry.
+- `last day of month` returned the day number; Camunda defines it as the date.
+- `time ± duration`, `time - time` and `duration / duration` returned `null`.
+- `time("T23:59:00")` (ISO's leading time designator) and Java's
+  `2018-04-29T09:30:00+02:00[Europe/Berlin]` form now parse.
+- `overlaps before` / `overlaps after` accepted ranges that only touch at an open end. They
+  now follow DMN's definition term by term. That also fixed two DMN TCK cases, so the TCK is
+  at **1,941 of 2,053** (from 1,939), and both came off `KNOWN_FAILURES`.
+
+**Left as known differences:**
+- `round up(5.5)` and `round up(-5.5)`: the page's own signature requires a scale.
+- `date and time(@"2020-07-31T14:27:30", "Z")`: the result depends on the engine's default
+  zone.
+
+The FEEL docs page gains a Camunda parity section. The Conformance page's FEEL section and the
+package README carry both numbers, and the playground's function reference lists the new
+built-ins.
+
 ## 2026-09-23 — P0 from the market analysis: claims that match the code, and ways to install
 
 **Every stale or overreaching claim that `doc/market-analysis.md` §13.1 listed is corrected at

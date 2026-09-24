@@ -39,7 +39,8 @@ run('string length("héllo")');       // 5       — code points, not bytes
 
 - **Ranges** — `[1..10]`, `(0..1)`, and the fourteen DMN range functions that compare them
   (`before`, `after`, `meets`, `met by`, `overlaps`, `during`, `includes`, `coincides`, …).
-- **88 built-in functions** across strings, numbers, lists, contexts and temporals.
+- **101 built-in functions** across strings, numbers, lists, contexts and temporals, including
+  Camunda's extensions to DMN (below).
 - **Context literals and paths**, including nested access and filters.
 
 ---

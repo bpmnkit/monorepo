@@ -16,14 +16,14 @@
 
 ## Overview
 
-`@bpmnkit/feel` implements the FEEL expression language used in DMN decision tables and BPMN condition expressions, and passes 1,939 of the 2,053 FEEL cases in the [DMN TCK](https://dmn-tck.github.io/tck/) (94.4%) — the remaining cases are listed with their reasons in `tests/tck.test.ts`. It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
+`@bpmnkit/feel` implements the FEEL expression language used in DMN decision tables and BPMN condition expressions, and passes 1,941 of the 2,053 FEEL cases in the [DMN TCK](https://dmn-tck.github.io/tck/) (94.5%) — the remaining cases are listed with their reasons in `tests/tck.test.ts`. It implements Camunda 8's extensions to FEEL too, and matches 375 of the 378 runnable examples in Camunda's FEEL documentation (`tests/camunda-parity.test.ts`). It includes a tokenizer, recursive-descent parser, AST evaluator, formatter, and syntax highlighter.
 
 ## Features
 
 - **Full FEEL grammar** — arithmetic, comparisons, logic, function calls, paths, filters
 - **Temporal types** — date, time, datetime, duration (ISO 8601, full spec compliance)
 - **Unary tests** — DMN input expression syntax (`> 5`, `"gold", "silver"`, `[1..10]`)
-- **Built-in functions** — 88 standard FEEL functions (string, list, numeric, date, context, range)
+- **Built-in functions** — 101 FEEL functions (string, list, numeric, date, context, range), including Camunda's extensions (`assert`, `partition`, `to json`, `fromAi`, …)
 - **Range expressions** — `[1..10]`, `(0..1)`, `[today..end]`
 - **Context literals** — `{ key: value, nested: { x: 1 } }`
 - **Syntax highlighting** — semantic token classification for editors
