@@ -39,11 +39,8 @@ interface Converted {
 	of(id: string): Camunda7Finding[]
 }
 
-function convert(xml: string, withSource = true): Converted {
-	const { definitions, report } = convertCamunda7(
-		Bpmn.parse(xml),
-		withSource ? { sourceXml: xml } : {},
-	)
+function convert(xml: string): Converted {
+	const { definitions, report } = convertCamunda7(Bpmn.parse(xml))
 	const all = (elements: BpmnFlowElement[]): BpmnFlowElement[] =>
 		elements.flatMap((element) =>
 			"flowElements" in element ? [element, ...all(element.flowElements)] : [element],
@@ -167,10 +164,29 @@ describe("service task implementations", () => {
 		const xml = c7(`<bpmn:endEvent id="e">
 		  <bpmn:messageEventDefinition id="md" camunda:type="external" camunda:topic="notify"/>
 		</bpmn:endEvent>`)
-		expect(convert(xml).ext("e", "zeebe:taskDefinition")?.attributes.type).toBe("notify")
-		const withoutSource = convert(xml, false)
-		expect(withoutSource.ext("e", "zeebe:taskDefinition")).toBeUndefined()
-		expect(severities(withoutSource.of("e"))).toEqual(["bpmn:messageEventDefinition:manual"])
+		const c = convert(xml)
+		expect(c.ext("e", "zeebe:taskDefinition")?.attributes.type).toBe("notify")
+		expect(severities(c.of("e"))).toEqual(["camunda:type=external:convertible"])
+		const element = c.element("e")
+		expect("eventDefinitions" in element && element.eventDefinitions[0]?.unknownAttributes).toEqual(
+			{},
+		)
+	})
+
+	it("keeps an event definition's implementation it cannot convert", () => {
+		const c = convert(
+			c7(`<bpmn:endEvent id="e">
+			  <bpmn:messageEventDefinition id="md" camunda:type="external" camunda:topic="\${pick()}"/>
+			</bpmn:endEvent>`),
+		)
+		const element = c.element("e")
+		expect("eventDefinitions" in element && element.eventDefinitions[0]?.unknownAttributes).toEqual(
+			{
+				"camunda:type": "external",
+				"camunda:topic": "${pick()}",
+			},
+		)
+		expect(severities(c.of("e"))).toEqual(["camunda:topic:manual"])
 	})
 })
 
@@ -648,8 +664,29 @@ describe("multi-instance", () => {
 		)
 	})
 
-	it("reports a loop it cannot see the collection of", () => {
-		const c = convert(loop('camunda:collection="${items}"'), false)
+	it("removes the converted loop attributes and keeps ones it cannot convert", () => {
+		const loopAttributes = (c: Converted) => {
+			const element = c.element("u")
+			return "loopCharacteristics" in element
+				? element.loopCharacteristics?.unknownAttributes
+				: undefined
+		}
+		expect(
+			loopAttributes(convert(loop('camunda:collection="${items}" camunda:elementVariable="i"'))),
+		).toEqual({})
+		const kept = convert(loop('camunda:collection="${items.filter()}" camunda:elementVariable="i"'))
+		expect(zeebeLoop(kept)).toBeUndefined()
+		expect(loopAttributes(kept)).toEqual({
+			"camunda:collection": "${items.filter()}",
+			"camunda:elementVariable": "i",
+		})
+		expect(severities(kept.of("u")).filter((s) => s.startsWith("camunda:"))).toEqual([
+			"camunda:collection:manual",
+		])
+	})
+
+	it("reports a loop that names no collection", () => {
+		const c = convert(loop(""))
 		expect(zeebeLoop(c)).toBeUndefined()
 		expect(c.of("u").at(-1)?.construct).toBe("multiInstanceLoopCharacteristics")
 	})
@@ -747,9 +784,7 @@ describe("process and document", () => {
 
 	it("analyzes with the same findings it converts with", () => {
 		const xml = c7('<bpmn:serviceTask id="t" camunda:class="com.acme.A"/>')
-		expect(analyzeCamunda7(Bpmn.parse(xml), { sourceXml: xml })).toEqual(
-			convertCamunda7(Bpmn.parse(xml), { sourceXml: xml }).report,
-		)
+		expect(analyzeCamunda7(Bpmn.parse(xml))).toEqual(convertCamunda7(Bpmn.parse(xml)).report)
 	})
 })
 
@@ -764,7 +799,7 @@ describe("fixture conversions", () => {
 	for (const name of FIXTURES) {
 		describe(name, () => {
 			const source = readFileSync(join(fixtureDirectory, name), "utf-8")
-			const { definitions, report } = convertCamunda7(Bpmn.parse(source), { sourceXml: source })
+			const { definitions, report } = convertCamunda7(Bpmn.parse(source))
 			const exported = Bpmn.export(definitions)
 
 			it("deploy-lints clean everywhere it reported nothing to do by hand", () => {
@@ -792,22 +827,48 @@ describe("fixture conversions", () => {
 				const applied = new Set(
 					report.findings.filter((f) => f.applied).map((f) => `${f.elementId} ${f.construct}`),
 				)
-				for (const process of definitions.processes) {
-					for (const element of process.flowElements) {
-						for (const key of Object.keys(element.unknownAttributes).filter((k) =>
-							k.startsWith("camunda:"),
-						)) {
-							expect(applied.has(`${element.id} ${key}`), `${element.id} ${key}`).toBe(false)
-						}
+				const reimported = Bpmn.parse(exported)
+				const all = (elements: BpmnFlowElement[]): BpmnFlowElement[] =>
+					elements.flatMap((e) => ("flowElements" in e ? [e, ...all(e.flowElements)] : [e]))
+				for (const element of all(reimported.processes.flatMap((p) => p.flowElements))) {
+					const holders: Array<Record<string, string> | undefined> = [
+						element.unknownAttributes,
+						...("eventDefinitions" in element
+							? element.eventDefinitions.map((d) => d.unknownAttributes)
+							: []),
+						"loopCharacteristics" in element
+							? element.loopCharacteristics?.unknownAttributes
+							: undefined,
+					]
+					for (const key of holders
+						.flatMap((h) => Object.keys(h ?? {}))
+						.filter((k) => k.startsWith("camunda:"))) {
+						expect(applied.has(`${element.id} ${key}`), `${element.id} ${key}`).toBe(false)
 					}
 				}
+			})
+
+			it("converts the same without the source XML, which is no longer needed", () => {
+				const withSource = convertCamunda7(Bpmn.parse(source), { sourceXml: source })
+				expect(withSource.report).toEqual(report)
+				expect(Bpmn.export(withSource.definitions)).toBe(exported)
 			})
 		})
 	}
 
+	it("removes the loop and event-definition attributes it converted from the claim model", () => {
+		const source = readFileSync(join(fixtureDirectory, "claim-handling.bpmn"), "utf-8")
+		const exported = Bpmn.export(convertCamunda7(Bpmn.parse(source)).definitions)
+		expect(exported).toContain('inputCollection="=claim.items"')
+		expect(exported).toContain('type="notify-claimant"')
+		for (const attribute of ["collection", "elementVariable", "type", "topic"]) {
+			expect(exported).not.toContain(`camunda:${attribute}=`)
+		}
+	})
+
 	it("converts the invoice model completely", () => {
 		const source = readFileSync(join(fixtureDirectory, "invoice-approval.bpmn"), "utf-8")
-		const { definitions, report } = convertCamunda7(Bpmn.parse(source), { sourceXml: source })
+		const { definitions, report } = convertCamunda7(Bpmn.parse(source))
 		expect(report.counts).toEqual({ convertible: 17, manual: 0, unsupported: 0 })
 		const lint = lintDiagram(definitions, { categories: ["deploy", "feel-syntax"] })
 		expect(lint.counts.error).toBe(0)
@@ -815,7 +876,7 @@ describe("fixture conversions", () => {
 
 	it("reports the order model's manual work", () => {
 		const source = readFileSync(join(fixtureDirectory, "order-fulfillment.bpmn"), "utf-8")
-		const report = analyzeCamunda7(Bpmn.parse(source), { sourceXml: source })
+		const report = analyzeCamunda7(Bpmn.parse(source))
 		expect(report.counts).toEqual({ convertible: 19, manual: 8, unsupported: 2 })
 		expect(
 			report.findings
