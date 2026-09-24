@@ -168,6 +168,14 @@ export const PACKAGE_FACTS: readonly PackageFact[] = [
 		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/feel",
 	},
 	{
+		dir: "packages/markdown",
+		name: "@bpmnkit/markdown",
+		version: "0.0.0",
+		description: "Real BPMN diagrams in Markdown — render bpmn and bpmn-compact code blocks to inline, themeable, accessible SVG",
+		npm: "https://www.npmjs.com/package/@bpmnkit/markdown",
+		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/markdown",
+	},
+	{
 		dir: "packages/operate",
 		name: "@bpmnkit/operate",
 		version: "0.1.5",
