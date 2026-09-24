@@ -225,6 +225,28 @@ describe("resizeShape", () => {
 })
 
 describe("deleteElements", () => {
+	it("clears a gateway's or activity's default when its default flow is deleted", () => {
+		const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" id="d" targetNamespace="t">
+  <bpmn:process id="proc">
+    <bpmn:exclusiveGateway id="g" default="f1"><bpmn:outgoing>f1</bpmn:outgoing><bpmn:outgoing>f2</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:task id="a" default="f3"><bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="b"><bpmn:incoming>f2</bpmn:incoming><bpmn:incoming>f3</bpmn:incoming></bpmn:task>
+    <bpmn:sequenceFlow id="f1" sourceRef="g" targetRef="a"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="g" targetRef="b"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="a" targetRef="b"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="dg"><bpmndi:BPMNPlane id="pl" bpmnElement="proc"/></bpmndi:BPMNDiagram>
+</bpmn:definitions>`
+		const after = deleteElements(Bpmn.parse(xml), ["f1", "f3"])
+		const els = after.processes[0]?.flowElements ?? []
+		const gateway = els.find((el) => el.id === "g")
+		expect(gateway && "default" in gateway ? gateway.default : "missing").toBeUndefined()
+		expect(els.find((el) => el.id === "a")?.unknownAttributes.default).toBeUndefined()
+		expect(Bpmn.export(after)).not.toContain('default="')
+	})
+
 	it("removes the shape and connected flows", () => {
 		let defs = createEmptyDefinitions()
 		const r1 = createShape(defs, "startEvent", { x: 0, y: 0, width: 36, height: 36 })

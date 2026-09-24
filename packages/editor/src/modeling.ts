@@ -379,6 +379,19 @@ function removeFromContainers(
 				incoming: el.incoming.filter((ref) => !allRemovedIds.has(ref)),
 				outgoing: el.outgoing.filter((ref) => !allRemovedIds.has(ref)),
 			} as BpmnFlowElement
+			// A default pointing at a removed flow would export as a dangling reference.
+			if (
+				"default" in cleaned &&
+				cleaned.default !== undefined &&
+				allRemovedIds.has(cleaned.default)
+			) {
+				cleaned.default = undefined
+			}
+			const activityDefault = cleaned.unknownAttributes.default
+			if (activityDefault !== undefined && allRemovedIds.has(activityDefault)) {
+				const { default: _removed, ...rest } = cleaned.unknownAttributes
+				cleaned.unknownAttributes = rest
+			}
 			if (
 				cleaned.type === "subProcess" ||
 				cleaned.type === "adHocSubProcess" ||
