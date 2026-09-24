@@ -321,3 +321,27 @@ describe("audit log", () => {
 		expect(existsSync(getConfigFilePath())).toBe(false)
 	})
 })
+
+describe("a store that cannot be read as one", () => {
+	it("refuses a corrupt file instead of overwriting it", () => {
+		mkdirSync(dirname(getConfigFilePath()), { recursive: true })
+		writeFileSync(getConfigFilePath(), '{"profiles": {"prod": ')
+		expect(() => listProfiles()).toThrow(/is not valid JSON.*it was not changed/)
+		expect(() => saveProfile("dev", local)).toThrow(/is not valid JSON/)
+		expect(readFileSync(getConfigFilePath(), "utf8")).toBe('{"profiles": {"prod": ')
+	})
+
+	it("refuses a file that is not a JSON object", () => {
+		writeStore([1, 2])
+		expect(() => getActiveName()).toThrow(/does not contain a JSON object/)
+	})
+
+	it("reads a store with missing keys as empty ones", () => {
+		writeStore({ settings: { theme: "dark" } })
+		expect(listProfiles().filter((p) => p.config === local)).toEqual([])
+		expect(getActiveName()).toBeNull()
+		saveProfile("dev", local)
+		expect(getProfile("dev")?.config).toEqual(local)
+		expect(readStore().settings).toEqual({ theme: "dark" })
+	})
+})

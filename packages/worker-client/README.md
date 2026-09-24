@@ -72,7 +72,8 @@ const client = createWorkerClient({
 
 ### `client.poll(jobType, options?)`
 
-Async generator. Continuously polls Zeebe. Pauses 5 seconds between polls when idle.
+Async generator. Continuously polls Zeebe with long polling (`requestTimeout`, default 20 s).
+Transient errors go to `onError` and are retried; rejected credentials or a 4xx answer end the loop by throwing.
 
 ```typescript
 for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_000 })) {
@@ -105,8 +106,8 @@ Without a type argument the client is untyped. See the [Typed Workers guide](htt
 // Return output variables to the process
 await job.complete({ approved: true })
 
-// Fail the job (Zeebe retries or raises incident at retries=0)
-await job.fail("upstream timeout", job.retries - 1)
+// Fail the job; retries default to job.retries - 1 (incident when none are left)
+await job.fail("upstream timeout")
 
 // Throw a BPMN error (caught by an error boundary event in the diagram)
 await job.throwError("PAYMENT_DECLINED", "Card issuer declined", { code: "05" })

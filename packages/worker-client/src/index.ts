@@ -65,8 +65,10 @@ export interface ActivatedJob<C extends JobContract = UntypedJobContract> {
 	/** Complete the job, optionally returning output variables. */
 	complete(variables?: C["output"]): Promise<void>
 	/**
-	 * Fail the job with an error message. `retries` defaults to 0, which raises an
-	 * incident; pass `job.retries - 1` to let the engine retry.
+	 * Fail the job with an error message. `retries` is how many retries the job has
+	 * left afterwards; it defaults to `job.retries - 1` (never below 0), so the engine
+	 * retries until the task's retries run out and then raises an incident. Pass `0`
+	 * to raise the incident at once.
 	 */
 	fail(message: string, retries?: number): Promise<void>
 	/** Throw a BPMN error, which can be caught by an error boundary event. */
@@ -82,7 +84,30 @@ export interface PollOptions {
 	maxJobs?: number
 	/** Job activation lock timeout in milliseconds. Default: 300_000 (5 minutes) */
 	timeout?: number
+	/**
+	 * How long the engine may hold an activation request open waiting for a job
+	 * (long polling), in milliseconds. Default: 20_000. `0` uses the engine's default.
+	 */
+	requestTimeout?: number
+	/**
+	 * Called with each transient error (network failure, 408, 429, 5xx, or a token
+	 * endpoint that is unreachable or failing) before the poll is retried. Default:
+	 * a warning on stderr. Other errors — bad credentials, 4xx responses — are not
+	 * retried: they end the `poll()` loop by throwing.
+	 */
+	onError?: (error: Error) => void
 }
+
+/** A failure that retrying cannot fix, such as rejected credentials. */
+class NonRetryableError extends Error {}
+
+/** Whether an HTTP status is worth retrying: timeouts, back-pressure and server errors. */
+function isTransientStatus(status: number): boolean {
+	return status === 408 || status === 429 || status >= 500
+}
+
+/** Minimum pause between two activation requests that returned no jobs. */
+const IDLE_POLL_MS = 5_000
 
 /**
  * Pass a generated `JobTypes` map as `J` to type each job's variables, output,
@@ -98,7 +123,10 @@ export interface PollOptions {
 export interface WorkerClient<J extends JobContractMap<J> = UntypedJobs> {
 	/**
 	 * Async generator that continuously polls for jobs of the given type.
-	 * Yields one ActivatedJob at a time. Pauses 5 seconds between polls when idle.
+	 * Yields one ActivatedJob at a time. Activation long-polls (`requestTimeout`);
+	 * an empty answer is followed by a pause, so two polls start at least 5 seconds
+	 * apart when idle. Transient errors are reported to `onError` and retried; an
+	 * error retrying cannot fix (rejected credentials, a 4xx answer) is thrown.
 	 *
 	 * @example
 	 * for await (const job of client.poll("com.example:my-task:1")) {
@@ -144,7 +172,10 @@ export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
 				audience,
 			}).toString(),
 		})
-		if (!res.ok) throw new Error(`OAuth2 token request failed: ${res.status}`)
+		if (!res.ok) {
+			const message = `OAuth2 token request failed: ${res.status}`
+			throw isTransientStatus(res.status) ? new Error(message) : new NonRetryableError(message)
+		}
 		const data = (await res.json()) as { access_token: string; expires_in: number }
 		tokenCache = { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1_000 }
 		return `Bearer ${tokenCache.token}`
@@ -178,8 +209,15 @@ export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
 	): AsyncGenerator<ActivatedJob<J[T]>> {
 		const maxJobs = pollOptions?.maxJobs ?? 5
 		const timeout = pollOptions?.timeout ?? 300_000
+		const requestTimeout = pollOptions?.requestTimeout ?? 20_000
+		const onError =
+			pollOptions?.onError ??
+			((error: Error) => {
+				console.warn(`[worker-client] ${error.message}; retrying`)
+			})
 
 		for (;;) {
+			const startedAt = Date.now()
 			let rawJobs: Array<Record<string, unknown>> = []
 			try {
 				const res = await zeebePost("/v2/jobs/activation", {
@@ -187,13 +225,20 @@ export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
 					maxJobsToActivate: maxJobs,
 					timeout,
 					worker: workerName,
+					requestTimeout,
 				})
 				if (res.ok) {
 					const data = (await res.json()) as { jobs?: Array<Record<string, unknown>> }
 					rawJobs = data.jobs ?? []
+				} else {
+					const text = await res.text().catch(() => "")
+					const message = `Job activation for "${jobType}" failed: ${res.status} ${res.statusText}${text ? ` ${text}` : ""}`
+					if (!isTransientStatus(res.status)) throw new NonRetryableError(message)
+					onError(new Error(message))
 				}
-			} catch {
-				/* network error — retry after delay */
+			} catch (err) {
+				if (err instanceof NonRetryableError) throw err
+				onError(err instanceof Error ? err : new Error(String(err)))
 			}
 
 			for (const raw of rawJobs) {
@@ -210,7 +255,7 @@ export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
 					async complete(variables = {}) {
 						await settle(key, "completion", { variables })
 					},
-					async fail(message, retries = 0) {
+					async fail(message, retries = Math.max(Number(raw.retries ?? 0) - 1, 0)) {
 						await settle(key, "failure", { errorMessage: message, retries })
 					},
 					async throwError(errorCode, message, variables = {}) {
@@ -222,7 +267,9 @@ export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
 			}
 
 			if (rawJobs.length === 0) {
-				await new Promise((r) => setTimeout(r, 5_000))
+				// A long poll that already waited its time needs no extra pause.
+				const pause = IDLE_POLL_MS - (Date.now() - startedAt)
+				if (pause > 0) await new Promise((r) => setTimeout(r, pause))
 			}
 		}
 	}

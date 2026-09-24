@@ -64,8 +64,14 @@ A `WorkerClient` object with a single `poll()` method.
 
 ## `client.poll(jobType, options?)`
 
-Async generator. Continuously polls Zeebe for jobs of the given type. Pauses 5 seconds
-between polls when no jobs are available.
+Async generator. Continuously polls Zeebe for jobs of the given type. Each activation request
+long-polls: the engine holds it open for up to `requestTimeout` until a job is available. When
+a poll comes back empty, the next one starts at least 5 seconds after it began.
+
+Transient failures — a network error, `408`, `429`, a `5xx`, or a token endpoint that is down —
+are passed to `onError` and retried. Anything retrying cannot fix, such as credentials the
+token endpoint rejects or a `401`/`403`/`400` from the engine, ends the loop: the generator
+throws, so a worker with a wrong secret stops with a message instead of idling forever.
 
 ```typescript
 for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_000 })) {
@@ -79,6 +85,8 @@ for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_00
 |---|---|---|---|
 | `maxJobs` | `number` | `5` | Maximum jobs to activate per poll request |
 | `timeout` | `number` | `300_000` | Activation lock timeout in milliseconds |
+| `requestTimeout` | `number` | `20_000` | How long the engine may hold an activation request open (long polling), in ms; `0` uses the engine default |
+| `onError` | `(error: Error) => void` | warning on stderr | Called with each transient error before the poll is retried |
 
 ### Yields `ActivatedJob`
 
@@ -110,11 +118,13 @@ await job.complete({ approved: true, reviewedAt: new Date().toISOString() })
 
 ## `job.fail(message, retries?)`
 
-Marks the job as failed. Zeebe will retry (or raise an incident if retries reach zero).
-`retries` defaults to `0` if not provided — pass `job.retries - 1` to decrement.
+Marks the job as failed. `retries` is how many retries the job has left afterwards. It
+defaults to `job.retries - 1` (never below `0`), so Zeebe retries until the task's retries are
+used up and then raises an incident. Pass `0` to raise the incident at once.
 
 ```typescript
-await job.fail("External API returned 503", job.retries - 1)
+await job.fail("External API returned 503")        // one retry fewer
+await job.fail("Invalid customer record", 0)       // incident now: retrying will not help
 ```
 
 ## `job.throwError(errorCode, message, variables?)`

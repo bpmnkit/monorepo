@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-09-24 — worker-client, profiles and api: follow-ups from the test pass
+
+- **worker-client:** `job.fail(message)` defaults `retries` to `job.retries - 1` (never below 0) instead of `0`, so one failure no longer raises an incident. `poll()` ends by throwing on errors retrying cannot fix (rejected credentials, 4xx from the engine) instead of retrying silently forever; transient errors (network, 408, 429, 5xx, a failing token endpoint) go to a new `onError` option (default: a warning on stderr) and are retried. Activation long-polls with `requestTimeout` (default 20 s); idle polls still start at least 5 s apart. Docs and README updated; 6 new tests.
+- **profiles:** a corrupt or non-object `config.json` raises an error naming the file and is left untouched; it used to read as empty, so the next save overwrote every profile. A store with missing keys reads them as empty instead of throwing a `TypeError`. 3 new tests.
+- **api:** the OAuth token cache is written 0600 in a 0700 directory, and an older cache is tightened on its next write. 2 new tests.
+
 ## 2026-09-24 — Test suites for profiles, worker-client, user-tasks, cli-sdk, ui and create-casen-plugin
 
 - Roadmap P4 item 30: the six published packages that had no tests (or one) now have Vitest suites — 168 tests — wired into each package's `test` script so `pnpm test` and CI run them, with a `tsconfig.test.json` that `typecheck` checks.

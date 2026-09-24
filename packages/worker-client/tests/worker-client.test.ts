@@ -100,6 +100,7 @@ describe("job activation", () => {
 			maxJobsToActivate: 5,
 			timeout: 300_000,
 			worker: "bpmnkit-worker",
+			requestTimeout: 20_000,
 		})
 	})
 
@@ -194,6 +195,68 @@ describe("idle and failing polls", () => {
 		expect(result.value?.key).toBe("2251799813685249")
 	})
 
+	it("sends requestTimeout and skips the pause after a long poll that used its time", async () => {
+		let polls = 0
+		const calls = stubFetch(() => {
+			if (++polls === 1) {
+				vi.advanceTimersByTime(20_000) // the engine held the request for its full timeout
+				return jobsReply([])
+			}
+			return jobsReply([rawJob()])
+		})
+		const gen = createWorkerClient().poll("send-email", { requestTimeout: 20_000 })
+		const next = gen.next()
+		await vi.advanceTimersByTimeAsync(0)
+		expect((await next).value?.key).toBe("2251799813685249")
+		expect(calls).toHaveLength(2)
+		expect(JSON.parse(calls[0]?.body ?? "").requestTimeout).toBe(20_000)
+	})
+
+	it("reports transient errors to onError before retrying", async () => {
+		let polls = 0
+		stubFetch(() => (++polls === 1 ? new Response("busy", { status: 503 }) : jobsReply([rawJob()])))
+		const errors: string[] = []
+		const gen = createWorkerClient().poll("send-email", { onError: (e) => errors.push(e.message) })
+		const result = await firstJobAfter(gen, 5_000)
+		expect(result.value?.key).toBe("2251799813685249")
+		expect(errors).toEqual(['Job activation for "send-email" failed: 503  busy'])
+	})
+
+	it("ends the poll on an error retrying cannot fix", async () => {
+		const calls = stubFetch(() => new Response("bad token", { status: 401 }))
+		const onError = vi.fn()
+		await expect(createWorkerClient().poll("send-email", { onError }).next()).rejects.toThrow(
+			'Job activation for "send-email" failed: 401  bad token',
+		)
+		expect(calls).toHaveLength(1)
+		expect(onError).not.toHaveBeenCalled()
+	})
+
+	it("ends the poll when the token endpoint rejects the credentials", async () => {
+		stubFetch(() => new Response("invalid_client", { status: 401 }))
+		const gen = createWorkerClient({ clientId: "id", clientSecret: "wrong" }).poll("send-email")
+		await expect(gen.next()).rejects.toThrow("OAuth2 token request failed: 401")
+	})
+
+	it("retries when the token endpoint is failing", async () => {
+		let calls = 0
+		stubFetch((call) => {
+			if (call.url.includes("oauth")) {
+				return ++calls === 1
+					? new Response("down", { status: 502 })
+					: Response.json({ access_token: "t", expires_in: 3600 })
+			}
+			return jobsReply([rawJob()])
+		})
+		const errors: string[] = []
+		const gen = createWorkerClient({ clientId: "id", clientSecret: "s" }).poll("send-email", {
+			onError: (e) => errors.push(e.message),
+		})
+		const result = await firstJobAfter(gen, 5_000)
+		expect(result.value?.key).toBe("2251799813685249")
+		expect(errors).toEqual(["OAuth2 token request failed: 502"])
+	})
+
 	it("retries after an error response", async () => {
 		let polls = 0
 		stubFetch(() => (++polls === 1 ? new Response("busy", { status: 503 }) : jobsReply([rawJob()])))
@@ -232,11 +295,18 @@ describe("settling a job", () => {
 		])
 	})
 
-	// As documented on the package page; the default raises an incident at once.
-	it("fails with 0 retries by default", async () => {
+	it("fails with one retry fewer than the job has by default", async () => {
 		const { job, settled } = await activate()
+		expect(job.retries).toBe(3)
 		await job.fail("SMTP down")
-		expect(settled()[0]?.body).toEqual({ errorMessage: "SMTP down", retries: 0 })
+		expect(settled()[0]?.body).toEqual({ errorMessage: "SMTP down", retries: 2 })
+	})
+
+	it("never defaults to negative retries", async () => {
+		const calls = zeebeWith([rawJob({ retries: 0 })])
+		const [job] = await take(createWorkerClient().poll("send-email"), 1)
+		await job?.fail("SMTP down")
+		expect(JSON.parse(calls[1]?.body ?? "")).toEqual({ errorMessage: "SMTP down", retries: 0 })
 	})
 
 	it("throws a BPMN error with a message and optional variables", async () => {

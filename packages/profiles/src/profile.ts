@@ -64,14 +64,45 @@ function configFilePath(): string {
 
 // ─── Read / write ─────────────────────────────────────────────────────────────
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Reads the store. A missing file is an empty store; a file that cannot be read
+ * as one throws, because treating it as empty would let the next save overwrite
+ * every profile in it.
+ */
 function readStore(): ConfigStore {
+	const path = configFilePath()
+	let raw: string
 	try {
-		const raw = readFileSync(configFilePath(), "utf8")
-		const store = JSON.parse(raw) as ConfigStore
-		if (!store.meta) store.meta = {}
-		return store
-	} catch {
-		return { profiles: {}, active: null, meta: {} }
+		raw = readFileSync(path, "utf8")
+	} catch (err) {
+		if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+			return { profiles: {}, active: null, meta: {} }
+		}
+		throw err
+	}
+	let parsed: unknown
+	try {
+		parsed = JSON.parse(raw)
+	} catch (err) {
+		throw new Error(
+			`The casen profile store ${path} is not valid JSON (${(err as Error).message}). Fix the file or move it aside; it was not changed.`,
+		)
+	}
+	if (!isRecord(parsed)) {
+		throw new Error(
+			`The casen profile store ${path} does not contain a JSON object. Fix the file or move it aside; it was not changed.`,
+		)
+	}
+	const store = parsed as Partial<ConfigStore>
+	return {
+		...store,
+		profiles: isRecord(store.profiles) ? (store.profiles as ConfigStore["profiles"]) : {},
+		active: typeof store.active === "string" ? store.active : null,
+		meta: isRecord(store.meta) ? (store.meta as ConfigStore["meta"]) : {},
 	}
 }
 
