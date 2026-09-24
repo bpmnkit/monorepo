@@ -40,16 +40,15 @@ casen migrate c7 models/*.bpmn --check    # report only, exit 1 on manual work
 ```typescript
 import { Bpmn, convertCamunda7 } from "@bpmnkit/core"
 
-const { definitions, report } = convertCamunda7(Bpmn.parse(xml), { sourceXml: xml })
+const { definitions, report } = convertCamunda7(Bpmn.parse(xml))
 for (const f of report.findings) console.log(f.severity, f.elementId, f.construct, f.message)
 const c8Xml = Bpmn.export(definitions)
 ```
 
-`analyzeCamunda7(definitions)` returns the same report and does not change the model. Pass
-`sourceXml` in both cases. The BPMN Kit parser does not keep foreign attributes on
-multi-instance loops and on event definitions, and Camunda 7 stores `camunda:collection` and
-the implementation of message throw events there. With the source, these are read from the
-XML. Without the source, they are reported as `manual`.
+`analyzeCamunda7(definitions)` returns the same report and does not change the model. The
+`sourceXml` option of earlier versions is still accepted, but it has no effect. The parser now
+keeps `camunda:` attributes on multi-instance loops and on event definitions, where Camunda 7
+stores `camunda:collection` and the implementation of message throw events.
 
 ## What is converted
 

@@ -134,7 +134,7 @@ const c7Cmd: Command = {
 			const output = migratedPath(file, outDir)
 			try {
 				const xml = await readFile(file, "utf-8")
-				const { definitions, report } = convertCamunda7(Bpmn.parse(xml), { sourceXml: xml })
+				const { definitions, report } = convertCamunda7(Bpmn.parse(xml))
 				const result: FileResult = {
 					file,
 					output: null,

@@ -1,7 +1,6 @@
 import { parseExpression } from "@bpmnkit/feel"
 import { ValidationError } from "../../errors.js"
 import type { XmlElement } from "../../types/xml-element.js"
-import { parseXml } from "../../xml/xml-parser.js"
 import type {
 	BpmnDefinitions,
 	BpmnEventDefinition,
@@ -57,11 +56,9 @@ export interface Camunda7ConvertOptions {
 	/** Written as `modeler:executionPlatformVersion`. Default `"8.8.0"`. */
 	executionPlatformVersion?: string
 	/**
-	 * The XML the definitions were parsed from. The parser does not keep foreign
-	 * attributes on `multiInstanceLoopCharacteristics` or on event definitions,
-	 * which is where Camunda 7 puts `camunda:collection` / `camunda:elementVariable`
-	 * and the implementation of message throw events. With the source they are
-	 * read from it; without it those places are reported as `manual`.
+	 * Ignored. Kept for compatibility: earlier versions read `camunda:` attributes
+	 * on multi-instance loops and event definitions from the source XML, because
+	 * the parser dropped them. The parser now keeps them in `unknownAttributes`.
 	 */
 	sourceXml?: string
 }
@@ -85,12 +82,21 @@ interface Owner {
 	unknownChildren?: XmlElement[]
 }
 
-/** Attributes the parser dropped, recovered from the source XML. */
-interface Recovered {
-	/** Activity id → Camunda 7 attributes (local names) on its multi-instance loop. */
-	loops: Map<string, Record<string, string>>
-	/** Event id → Camunda 7 attributes (local names) on its event definitions. */
-	eventDefinitions: Map<string, Record<string, string>>
+/** Anything the parser keeps foreign attributes on: an element, an event definition, a loop. */
+interface AttributeHolder {
+	unknownAttributes?: Record<string, string>
+}
+
+/** The event definitions and loop of a flow element, which carry attributes of their own. */
+function nestedHolders(owner: object): AttributeHolder[] {
+	const holders: AttributeHolder[] = []
+	if ("eventDefinitions" in owner && Array.isArray(owner.eventDefinitions)) {
+		holders.push(...(owner.eventDefinitions as AttributeHolder[]))
+	}
+	if ("loopCharacteristics" in owner && owner.loopCharacteristics !== undefined) {
+		holders.push(owner.loopCharacteristics as AttributeHolder)
+	}
+	return holders
 }
 
 function localName(name: string): string {
@@ -107,7 +113,7 @@ function localName(name: string): string {
  *
  * @example
  * ```typescript
- * const { definitions, report } = convertCamunda7(Bpmn.parse(xml), { sourceXml: xml })
+ * const { definitions, report } = convertCamunda7(Bpmn.parse(xml))
  * for (const f of report.findings) console.log(f.severity, f.elementId, f.message)
  * const c8Xml = Bpmn.export(definitions)
  * ```
@@ -139,45 +145,6 @@ export function analyzeCamunda7(
 	return convertCamunda7(definitions, options).report
 }
 
-function recoverDroppedAttributes(xml: string): Recovered {
-	const recovered: Recovered = { loops: new Map(), eventDefinitions: new Map() }
-	const root = parseXml(xml)
-	let prefix: string | undefined
-	for (const [key, value] of Object.entries(root.attributes)) {
-		if (key.startsWith("xmlns:") && value === CAMUNDA7_NS) prefix = key.slice("xmlns:".length)
-	}
-	if (prefix === undefined) return recovered
-	const camundaAttributes = (element: XmlElement): Record<string, string> => {
-		const found: Record<string, string> = {}
-		for (const [key, value] of Object.entries(element.attributes)) {
-			if (key.startsWith(`${prefix}:`)) found[localName(key)] = value
-		}
-		return found
-	}
-	const visit = (element: XmlElement): void => {
-		const id = element.attributes.id
-		for (const child of element.children) {
-			const local = localName(child.name)
-			if (
-				id !== undefined &&
-				(local === "multiInstanceLoopCharacteristics" || local.endsWith("EventDefinition"))
-			) {
-				const attributes = camundaAttributes(child)
-				if (Object.keys(attributes).length > 0) {
-					const target =
-						local === "multiInstanceLoopCharacteristics"
-							? recovered.loops
-							: recovered.eventDefinitions
-					target.set(id, { ...target.get(id), ...attributes })
-				}
-			}
-			visit(child)
-		}
-	}
-	visit(root)
-	return recovered
-}
-
 /** `com.acme.ShipOrderDelegate` → `shipOrderDelegate`, the Spring bean name the class gets by default. */
 function beanName(className: string): string {
 	const simple = className.slice(className.lastIndexOf(".") + 1).replace(/\$/g, "")
@@ -192,7 +159,6 @@ type Translated = { ok: true; value: string } | { ok: false; reason: string }
 class Converter {
 	private readonly findings: Camunda7Finding[] = []
 	private readonly prefix: string | undefined
-	private readonly recovered: Recovered
 	private processId = ""
 	/** Per owner: the attribute keys and extension elements a rule has accounted for. */
 	private handledAttributes = new Set<string>()
@@ -203,10 +169,6 @@ class Converter {
 		private readonly options: Camunda7ConvertOptions,
 	) {
 		this.prefix = Object.entries(definitions.namespaces).find(([, uri]) => uri === CAMUNDA7_NS)?.[0]
-		this.recovered =
-			options.sourceXml === undefined
-				? { loops: new Map(), eventDefinitions: new Map() }
-				: recoverDroppedAttributes(options.sourceXml)
 	}
 
 	run(): void {
@@ -266,18 +228,18 @@ class Converter {
 		return `${this.prefix ?? "camunda"}:${local}`
 	}
 
-	private attr(owner: Owner, local: string): string | undefined {
-		return this.prefix === undefined ? undefined : owner.unknownAttributes[this.key(local)]
+	private attr(holder: AttributeHolder, local: string): string | undefined {
+		return this.prefix === undefined ? undefined : holder.unknownAttributes?.[this.key(local)]
 	}
 
 	/** Marks an attribute as accounted for and removes it — its Camunda 8 form was written. */
-	private dropAttr(owner: Owner, local: string): void {
+	private dropAttr(holder: AttributeHolder, local: string): void {
 		this.handledAttributes.add(this.key(local))
-		delete owner.unknownAttributes[this.key(local)]
+		if (holder.unknownAttributes !== undefined) delete holder.unknownAttributes[this.key(local)]
 	}
 
 	/** Marks an attribute as accounted for and leaves it in place. */
-	private keepAttr(owner: Owner, local: string): void {
+	private keepAttr(_holder: AttributeHolder, local: string): void {
 		this.handledAttributes.add(this.key(local))
 	}
 
@@ -338,20 +300,22 @@ class Converter {
 	private withOwner(owner: Owner, rules: (owner: Owner) => void): void {
 		this.handledAttributes = new Set()
 		this.handledElements = new Set()
-		const attributes = Object.keys(owner.unknownAttributes).filter(
-			(key) => this.prefix !== undefined && key.startsWith(`${this.prefix}:`),
+		const attributes = [owner, ...nestedHolders(owner)].flatMap((holder) =>
+			Object.entries(holder.unknownAttributes ?? {}).filter(
+				([key]) => this.prefix !== undefined && key.startsWith(`${this.prefix}:`),
+			),
 		)
 		const elements = owner.extensionElements.filter(
 			(element) => this.prefix !== undefined && element.name.startsWith(`${this.prefix}:`),
 		)
 		rules(owner)
-		for (const key of attributes) {
+		for (const [key, value] of attributes) {
 			if (this.handledAttributes.has(key)) continue
 			this.add(
 				owner,
 				`camunda:${localName(key)}`,
 				"manual",
-				`Camunda 7 attribute ${key}="${owner.unknownAttributes[key] ?? ""}" has no automatic conversion.`,
+				`Camunda 7 attribute ${key}="${value}" has no automatic conversion.`,
 				"Review it against the Camunda 8 documentation; it is kept in the file, where Camunda 8 ignores it.",
 				false,
 			)
@@ -812,11 +776,10 @@ class Converter {
 	// Implementations: service, send, business rule, message throw
 	// -----------------------------------------------------------------------
 
-	private convertImplementation(owner: Owner, recovered: Record<string, string> = {}): void {
-		const read = (local: string): string | undefined => this.attr(owner, local) ?? recovered[local]
-		const drop = (local: string): void => {
-			if (this.attr(owner, local) !== undefined) this.dropAttr(owner, local)
-		}
+	/** `source` holds the implementation attributes: the element, or a message throw's event definition. */
+	private convertImplementation(owner: Owner, source: AttributeHolder = owner): void {
+		const read = (local: string): string | undefined => this.attr(source, local)
+		const drop = (local: string): void => this.dropAttr(source, local)
 		const type = read("type")
 		const topic = read("topic")
 		const className = read("class")
@@ -969,24 +932,18 @@ class Converter {
 	}
 
 	private convertMessageThrow(owner: BpmnFlowElement): void {
-		const recovered = this.recovered.eventDefinitions.get(owner.id) ?? {}
-		const hasImplementation = ["class", "delegateExpression", "expression", "type"].some(
-			(local) => this.attr(owner, local) !== undefined || recovered[local] !== undefined,
-		)
-		if (hasImplementation) {
-			this.convertImplementation(owner, recovered)
-			return
-		}
-		if (this.options.sourceXml === undefined && !this.hasZeebe(owner, "taskDefinition")) {
-			this.add(
-				owner,
-				"bpmn:messageEventDefinition",
-				"manual",
-				"A Camunda 7 message throw event is implemented by attributes on its event definition, which this parse does not keep.",
-				"Convert with the source XML (sourceXml option or `casen migrate c7`), or set zeebe:taskDefinition type by hand.",
-				false,
+		// Camunda 7 puts the implementation on the message event definition; Modeler never
+		// writes it on the event itself, but a hand-written file might.
+		const implemented = (holder: AttributeHolder): boolean =>
+			["class", "delegateExpression", "expression", "type"].some(
+				(local) => this.attr(holder, local) !== undefined,
 			)
-		}
+		const definitions = "eventDefinitions" in owner ? owner.eventDefinitions : []
+		const source = [
+			...definitions.filter((definition) => definition.type === "message"),
+			owner,
+		].find(implemented)
+		if (source !== undefined) this.convertImplementation(owner, source)
 	}
 
 	private convertDecision(owner: Owner): void {
@@ -1615,7 +1572,6 @@ class Converter {
 	}
 
 	private convertEventDefinitions(owner: Owner, definitions: BpmnEventDefinition[]): void {
-		const recovered = this.recovered.eventDefinitions.get(owner.id) ?? {}
 		for (const definition of definitions) {
 			if (definition.type === "timer") {
 				for (const part of ["timeDuration", "timeDate", "timeCycle"] as const) {
@@ -1680,27 +1636,33 @@ class Converter {
 				}
 			}
 		}
-		for (const local of ["variableName", "variableEvents"]) {
-			if (recovered[local] === undefined) continue
-			this.add(
-				owner,
-				`camunda:${local}`,
-				"manual",
-				`Conditional event filter ${local}="${recovered[local]}" is not converted.`,
-				"Use zeebe:conditionalFilter (variableNames, variableEvents).",
-				false,
-			)
-		}
-		for (const local of ["errorCodeVariable", "errorMessageVariable", "escalationCodeVariable"]) {
-			if (recovered[local] === undefined) continue
-			this.add(
-				owner,
-				`camunda:${local}`,
-				"manual",
-				`Camunda 8 does not write the caught code or message into "${recovered[local]}".`,
-				"Have the thrower pass the values as variables and map them with an output mapping on the catch event.",
-				false,
-			)
+		for (const definition of definitions) {
+			for (const local of ["variableName", "variableEvents"]) {
+				const value = this.attr(definition, local)
+				if (value === undefined) continue
+				this.keepAttr(definition, local)
+				this.add(
+					owner,
+					`camunda:${local}`,
+					"manual",
+					`Conditional event filter ${local}="${value}" is not converted.`,
+					"Use zeebe:conditionalFilter (variableNames, variableEvents).",
+					false,
+				)
+			}
+			for (const local of ["errorCodeVariable", "errorMessageVariable", "escalationCodeVariable"]) {
+				const value = this.attr(definition, local)
+				if (value === undefined) continue
+				this.keepAttr(definition, local)
+				this.add(
+					owner,
+					`camunda:${local}`,
+					"manual",
+					`Camunda 8 does not write the caught code or message into "${value}".`,
+					"Have the thrower pass the values as variables and map them with an output mapping on the catch event.",
+					false,
+				)
+			}
 		}
 	}
 
@@ -1747,9 +1709,9 @@ class Converter {
 	}
 
 	private convertLoop(owner: Owner, loop: BpmnMultiInstanceLoopCharacteristics): void {
-		const recovered = this.recovered.loops.get(owner.id) ?? {}
 		if (!loop.extensionElements.some((element) => element.name === "zeebe:loopCharacteristics")) {
-			const collection = recovered.collection
+			const collection = this.attr(loop, "collection")
+			const elementVariable = this.attr(loop, "elementVariable")
 			if (collection !== undefined) {
 				const source = containsJuel(collection)
 					? this.staticOrExpression(collection)
@@ -1758,8 +1720,9 @@ class Converter {
 						: ({ ok: false, reason: `"${collection}" is not a valid FEEL name` } as const)
 				if (source.ok) {
 					const attributes: Record<string, string> = { inputCollection: source.value }
-					if (recovered.elementVariable !== undefined)
-						attributes.inputElement = recovered.elementVariable
+					if (elementVariable !== undefined) attributes.inputElement = elementVariable
+					this.dropAttr(loop, "collection")
+					this.dropAttr(loop, "elementVariable")
 					loop.extensionElements.push({
 						name: "zeebe:loopCharacteristics",
 						attributes,
@@ -1774,6 +1737,8 @@ class Converter {
 						true,
 					)
 				} else {
+					this.keepAttr(loop, "collection")
+					this.keepAttr(loop, "elementVariable")
 					this.add(
 						owner,
 						"camunda:collection",
@@ -1797,10 +1762,8 @@ class Converter {
 					owner,
 					"multiInstanceLoopCharacteristics",
 					"manual",
-					this.options.sourceXml === undefined
-						? "Camunda 7 keeps the multi-instance collection in attributes this parse does not keep."
-						: "The multi-instance activity names no collection.",
-					"Set zeebe:loopCharacteristics inputCollection (and inputElement), or convert with the source XML.",
+					"The multi-instance activity names no collection.",
+					"Set zeebe:loopCharacteristics inputCollection (and inputElement).",
 					false,
 				)
 			}
