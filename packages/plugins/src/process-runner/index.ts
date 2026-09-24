@@ -31,6 +31,9 @@ interface TokenHighlightLike {
 		}): () => void
 		clear(): void
 		setError(elementId: string): void
+		/** Present on the real plugin; used to show where tokens were at a scrubbed point. */
+		setActive?(elementIds: string[]): void
+		addVisited?(elementIds: string[]): void
 	}
 }
 
@@ -438,7 +441,9 @@ export function createProcessRunnerPlugin(
 
 	const scrubberReplayBtn = document.createElement("button")
 	scrubberReplayBtn.className = "bpmnkit-runner-scrubber-replay"
-	scrubberReplayBtn.textContent = "Replay from here"
+	scrubberReplayBtn.textContent = "Re-run with these variables"
+	scrubberReplayBtn.title =
+		"Start a new run from the start event, with the variables as they were at this point"
 	scrubberReplayBtn.style.display = "none"
 
 	const scrubberIndexEl = document.createElement("span")
@@ -491,17 +496,30 @@ export function createProcessRunnerPlugin(
 		variables: Map<string, unknown>
 		feelEvals: Array<{ elementId: string; property: string; expression: string; result: unknown }>
 		errors: Array<{ elementId?: string; message: string }>
+		/** Elements holding a token at this point (entered and not yet left). */
+		active: string[]
+		/** Elements a token had passed through by this point. */
+		visited: string[]
 	}
 
 	function computeStateAt(idx: number): ProjectedState {
 		const vars = new Map<string, unknown>()
 		const feels: ProjectedState["feelEvals"] = []
 		const errs: ProjectedState["errors"] = []
+		const holding = new Map<string, number>()
+		const visited = new Set<string>()
 		const capped = Math.min(idx, eventLog.length - 1)
 		for (let i = 0; i <= capped; i++) {
 			const evt = eventLog[i]
 			if (evt === undefined) continue
-			if (evt.type === "variable:set" && typeof evt.name === "string") {
+			if (evt.type === "element:entered" && typeof evt.elementId === "string") {
+				holding.set(evt.elementId, (holding.get(evt.elementId) ?? 0) + 1)
+				visited.add(evt.elementId)
+			} else if (evt.type === "element:left" && typeof evt.elementId === "string") {
+				const count = (holding.get(evt.elementId) ?? 0) - 1
+				if (count > 0) holding.set(evt.elementId, count)
+				else holding.delete(evt.elementId)
+			} else if (evt.type === "variable:set" && typeof evt.name === "string") {
 				vars.set(evt.name, evt.value)
 			} else if (
 				evt.type === "feel:evaluated" &&
@@ -523,7 +541,26 @@ export function createProcessRunnerPlugin(
 				errs.push({ message: evt.error })
 			}
 		}
-		return { variables: vars, feelEvals: feels, errors: errs }
+		const active = [...holding.keys()]
+		return {
+			variables: vars,
+			feelEvals: feels,
+			errors: errs,
+			active,
+			visited: [...visited].filter((id) => !holding.has(id)),
+		}
+	}
+
+	/** Redraws the canvas tokens as they stood at a point in the log. */
+	function showTokensAt(state: ProjectedState): void {
+		const highlight = options.tokenHighlight?.api
+		if (highlight?.setActive === undefined || highlight.addVisited === undefined) return
+		highlight.clear()
+		highlight.addVisited(state.visited)
+		highlight.setActive(state.active)
+		for (const error of state.errors) {
+			if (error.elementId !== undefined) highlight.setError(error.elementId)
+		}
 	}
 
 	function updateScrubber(): void {
@@ -549,11 +586,14 @@ export function createProcessRunnerPlugin(
 			renderVariables()
 			renderFeelEvals()
 			renderErrors()
+			// Back to live: the tokens as the latest event left them.
+			if (eventLog.length > 0) showTokensAt(computeStateAt(eventLog.length - 1))
 		} else {
 			const state = computeStateAt(scrubIndex)
 			renderVariables(state.variables)
 			renderFeelEvals(state.feelEvals)
 			renderErrors(state.errors)
+			showTokensAt(state)
 		}
 		updateScrubber()
 	}
