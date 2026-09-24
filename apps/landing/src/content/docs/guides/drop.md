@@ -1,6 +1,6 @@
 ---
 title: Drop — Share & Co-edit
-description: Turn a BPMN, DMN or Camunda Form file — or a FEEL expression and the variables it reads — into a link anyone can open, watch live, and edit one writer at a time. No account, no modeler install, no Camunda cluster.
+description: Turn a BPMN, DMN or Camunda Form file — or a FEEL expression and the variables it reads — into a link anyone can open, watch live, comment on, and edit one writer at a time. No account, no modeler install, no Camunda cluster.
 sidebar:
   order: 12
 ---
@@ -10,9 +10,10 @@ person who needs to look at it. Drag a file onto the page, get a short link back
 Whoever opens the link sees the diagram rendered in their browser — no account, no modeler
 install, and no Camunda cluster anywhere in the story.
 
-It is also where a review happens. A drop is not frozen: anyone with the link can take the
-edit baton, change the diagram, and everyone else watching sees the change arrive — and a
-shared FEEL statement can be opened, run against different values, and saved back.
+It is also where a review happens. A drop is not frozen: anyone with the link can comment
+on an element and @mention the people reviewing with them, take the edit baton and change
+the diagram while everyone else watching sees the change arrive, and a shared FEEL
+statement can be opened, run against different values, and saved back.
 
 ## Sharing a file
 
@@ -164,6 +165,45 @@ removed, changed and *moved* elements marked on synchronised canvases, with pan 
 locked together. The same diff is available offline as
 [`casen diff bpmn`](/docs/cli/diff) and as a plugin in `@bpmnkit/plugins`.
 
+**Comments.** Press **Comments** to open the review panel. With it open, click an element
+on the diagram to comment on that element, or just write to comment on the file as a
+whole. DMN, form and FEEL files take whole-file comments only. Each element with open
+threads gets a small numbered marker on the canvas; click it to jump to its threads.
+Threads take replies, and anyone who has commented on the drop can **Resolve** a thread or
+**Reopen** it. New comments, edits and resolutions reach everyone who has the drop open
+as they happen.
+
+A comment is anchored by the element's id, not by its position. It stays with the element
+when the element moves, and survives any number of edits. If a later edit deletes the
+element, the comment is still listed, marked **on a removed element** with the name the
+element had when the comment was written. While you preview an older version from
+**History**, the same label reads **not in this version**.
+
+**@mentions.** Type `@` in a comment to pick from the names this drop has seen: the people
+who have it open now and everyone who has commented on it. A mentioned name is highlighted
+in the comment. If the mentioned person has the drop open, a notice appears at the top of
+their page with a button that opens the thread. Drop has no accounts and stores no email
+addresses, so **a mention sends no email and no push notification**. Someone who does not
+have the drop open sees the mention the next time they open it. If it matters, send them
+the link yourself.
+
+**Who you are, without an account.** Your display name is whatever you type into the
+comment box. The browser remembers it and shows it to the other people viewing the drop.
+Nothing checks it, so two people can both call themselves Anna. Your first comment on a
+drop gives your browser a private key for that drop, and the server stores only a hash
+of it. That key is what lets you edit or delete **your own** comments, and nobody else's.
+It lives in this browser only: clear the site data, or change browsers, and your earlier
+comments can no longer be edited or deleted from there. A deleted comment that has replies
+leaves a "Comment deleted" placeholder, so the replies still make sense.
+
+Comments follow the same abuse rules as edits. Where the deployment configures Turnstile,
+your first comment on a drop needs one challenge, and your later comments on it do not.
+Each address can make 60 comment writes an hour. A drop holds at most 500 comments, and a
+comment is at most 2,000 characters. A drop whose content is on the ban list takes no new
+comments. The demo drop and drops an operator has pinned are read-only for comments as
+well as for edits. Comments are deleted with their drop: when it expires, or when an
+operator removes it.
+
 Diagram editing is limited to BPMN files with a single process — the editor handles one
 process at a time — and the built-in demo drop is read-only, though **Edit a copy** will
 upload it as a drop of your own. A FEEL statement is edited differently and on its own
@@ -199,8 +239,10 @@ skips whatever is already in place. See `apps/drop/DEPLOY.md` for the full runbo
 
 ## What Drop is not
 
-- **Not a permission system.** Link-holders are editors. If a diagram should not be
-  editable by whoever it reaches, do not put it in a drop.
+- **Not a permission system.** Link-holders are editors and commenters. If a diagram
+  should not be editable by whoever it reaches, do not put it in a drop.
+- **Not a notification service.** A mention reaches someone only if they have the drop
+  open. There is no email, no inbox, and no account to send one to.
 - **Not storage.** A drop expires 90 days after it was last touched, and the version log
   holds eleven states, not every state.
 - **Not a modeler.** It renders and edits one process at a time. For authoring, use the

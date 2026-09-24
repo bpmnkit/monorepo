@@ -12,5 +12,10 @@
 		"rootDir": ".",
 		"verbatimModuleSyntax": false
 	},
-	"include": ["src/client", "src/shared", "tests/feel-edit.test.ts"]
+	"include": [
+		"src/client",
+		"src/shared",
+		"tests/feel-edit.test.ts",
+		"tests/comments-client.test.ts"
+	]
 }

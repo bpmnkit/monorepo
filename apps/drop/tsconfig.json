@@ -14,5 +14,10 @@
 		"verbatimModuleSyntax": false
 	},
 	"include": ["src", "tests"],
-	"exclude": ["src/client", "tests/round-trip.test.ts", "tests/feel-edit.test.ts"]
+	"exclude": [
+		"src/client",
+		"tests/round-trip.test.ts",
+		"tests/feel-edit.test.ts",
+		"tests/comments-client.test.ts"
+	]
 }

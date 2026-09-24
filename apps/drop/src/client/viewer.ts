@@ -1,5 +1,5 @@
 import { BpmnCanvas } from "@bpmnkit/canvas"
-import { Bpmn, compactify, sha256Hex } from "@bpmnkit/core"
+import { Bpmn, type BpmnDefinitions, compactify, sha256Hex } from "@bpmnkit/core"
 import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
 import { injectUiStyles } from "@bpmnkit/ui"
@@ -13,6 +13,7 @@ import {
 	PONG,
 	type ServerMessage,
 } from "../shared/room-protocol.js"
+import { CommentsPanel } from "./comments.js"
 import { type FeelEditor, mountFeelEditor } from "./feel-edit.js"
 import { renderFeelDocument } from "./feel-view.js"
 import { type Change, DocWatcher, type WatcherDoc } from "./watcher.js"
@@ -128,13 +129,33 @@ function showLiveUpdate(doc: WatcherDoc, change: Change | null): void {
 	}
 }
 
-async function renderBpmn(xml: string): Promise<void> {
+/** An element's name for a comment anchor, falling back to its id. */
+function elementLabel(canvas: BpmnCanvas, id: string): string {
+	const el = canvas.getElement(id)
+	const name = el && "shape" in el ? (el.flowElement?.name ?? el.annotation?.text) : undefined
+	return name?.trim() || id
+}
+
+/** `preview` marks an older version on the canvas, for how comments describe their anchors. */
+async function renderBpmn(xml: string, preview = false): Promise<void> {
 	viewer.innerHTML = ""
 	// Frame the whole diagram (fit-to-viewport), but never enlarge a small
 	// diagram past 100% — the first auto-fit reports its scale and we cap it.
 	let capped = false
-	const canvas = new BpmnCanvas({ container: viewer, xml, theme, grid: true, fit: "contain" })
+	const canvas = new BpmnCanvas({ container: viewer, theme, grid: true, fit: "contain" })
 	current = canvas
+	// Every load and every plane change clears the canvas's overlays, so the
+	// comment markers are put back on each — including a watcher's live update.
+	let shown: BpmnDefinitions | null = null
+	canvas.on("diagram:load", (defs) => {
+		shown = defs
+		comments.showOn(canvas, defs, preview)
+	})
+	canvas.on("plane:change", () => comments.showOn(canvas, shown, preview))
+	canvas.on("element:click", (id: string) => {
+		if (comments.isOpen()) comments.pick(id, elementLabel(canvas, id))
+	})
+	canvas.load(xml)
 	canvas.on("viewport:change", (state) => {
 		scale = state.scale
 		zoomLevel.textContent = `${Math.round(scale * 100)}%`
@@ -186,6 +207,9 @@ function wireCrossFileLinks(xml: string, canvas: BpmnCanvas): void {
 		return
 	}
 	canvas.on("element:click", (id: string) => {
+		// With the comments panel open a click picks what to comment on; jumping
+		// to another tab under the reader would lose the comment they were starting.
+		if (comments.isOpen()) return
 		const ref = refs.get(id)
 		if (!ref) return
 		if (ref.formId) {
@@ -244,6 +268,7 @@ async function select(index: number, xml?: string): Promise<void> {
 
 	// AI review applies to BPMN only; reset per-file review state on switch.
 	setActiveReviewFile(file.kind === "bpmn" ? file : null)
+	comments.setFile(file)
 	// Only BPMN has an op vocabulary, so a DMN or form tab watches nothing.
 	watcher.watch(file.kind === "bpmn" ? file.filename : null)
 	feelEditor?.destroy()
@@ -494,7 +519,7 @@ async function previewVersion(entry: VersionEntry): Promise<void> {
 	message("Loading…")
 	try {
 		const xml = await (await fetch(contentUrl(file, undefined, entry.seq))).text()
-		await renderBpmn(xml)
+		await renderBpmn(xml, true)
 		previewing = entry.seq
 		if (historyBanner && historyBannerText) {
 			historyBannerText.textContent =
@@ -604,6 +629,40 @@ document.getElementById("historyExit")?.addEventListener("click", () => {
 	}
 })
 
+// ── Comments ────────────────────────────────────────────────────────────────
+
+const commentsPanel = document.getElementById("commentsPanel") as HTMLElement
+const mentionNotice = document.getElementById("mentionNotice") as HTMLElement
+
+const comments = new CommentsPanel({
+	shareId: data.shareId,
+	// The same two carve-outs the room makes for edits, for the same reasons.
+	readOnly: isDemo
+		? "the demo cannot be annotated — take a copy to comment on one you own"
+		: data.pinned
+			? "this drop is pinned by an operator"
+			: null,
+	toggle: document.getElementById("commentsBtn") as HTMLButtonElement,
+	panel: commentsPanel,
+	list: document.getElementById("commentsBody") as HTMLElement,
+	compose: document.getElementById("commentsCompose") as HTMLElement,
+	notice: {
+		box: mentionNotice,
+		text: document.getElementById("mentionText") as HTMLElement,
+		open: document.getElementById("mentionOpen") as HTMLButtonElement,
+	},
+	challenge: (title) => challenge(title),
+	announceName: (name) => watcherSend({ type: "name", name }),
+	onOpen: () => {
+		for (const panel of [aiPanel, historyPanel, localHistoryPanel]) if (panel) panel.hidden = true
+	},
+})
+document.getElementById("commentsClose")?.addEventListener("click", () => comments.close())
+document.getElementById("mentionDismiss")?.addEventListener("click", () => {
+	mentionNotice.hidden = true
+})
+void comments.load()
+
 // ── Presence & actions ──────────────────────────────────────────────────────
 
 const presenceEl = document.getElementById("presence") as HTMLElement
@@ -662,7 +721,14 @@ try {
 			const editing = message.holder === null ? "" : " · 1 EDITING"
 			presenceEl.textContent = `${message.viewers} VIEWING${editing}`
 			presenceEl.hidden = message.viewers < 1
+			presenceEl.title = message.names.join(", ")
+			comments.setPresentNames(message.names)
+			// Said once per connection, so a reconnect is named again too.
+			if (message.type === "hello" && comments.displayName) {
+				watcherSend({ type: "name", name: comments.displayName })
+			}
 		}
+		if (message.type === "comment") comments.receive(message.comment)
 		handleEditMessage(message)
 		watcher.handle(message)
 	})
@@ -681,6 +747,7 @@ const editNotice = document.getElementById("editNotice") as HTMLElement | null
 const editNoticeText = document.getElementById("editNoticeText") as HTMLElement | null
 const turnstileDialog = document.getElementById("turnstileDialog") as HTMLDialogElement | null
 const turnstileWidget = document.getElementById("turnstileWidget") as HTMLElement | null
+const turnstileTitle = document.getElementById("turnstileTitle") as HTMLElement | null
 const turnstileError = document.getElementById("turnstileError") as HTMLElement | null
 document
 	.getElementById("turnstileCancel")
@@ -898,6 +965,7 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	const viewport = current?.getViewport() ?? { tx: 0, ty: 0, scale: 1 }
 	// The watcher and the editor must not both be driving the canvas.
 	watcher.watch(null)
+	comments.showOn(null, null)
 	current?.destroy()
 	current = null
 	viewer.innerHTML = ""
@@ -1023,7 +1091,7 @@ type ChallengeResult =
  * benefit. With no key configured it resolves immediately with no token, so the
  * whole thing disappears from a deployment that does not use it.
  */
-function challenge(): Promise<ChallengeResult> {
+function challenge(title = "One check before you edit"): Promise<ChallengeResult> {
 	const sitekey = data.turnstileKey
 	if (!sitekey) return Promise.resolve({ ok: true, token: null })
 
@@ -1044,6 +1112,7 @@ function challenge(): Promise<ChallengeResult> {
 		}
 
 		if (turnstileError) turnstileError.hidden = true
+		if (turnstileTitle) turnstileTitle.textContent = title
 		turnstileWidget.replaceChildren()
 		turnstileDialog.showModal()
 		// Cancelling is the escape hatch for a challenge that will not resolve —

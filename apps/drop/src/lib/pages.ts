@@ -269,6 +269,44 @@ select.ed-select{height:28px;border:1px solid var(--bpmnkit-ds-line);background:
 .ts-cancel{margin-top:var(--bpmnkit-ds-sp-3);border:1px solid var(--bpmnkit-ds-line);background:transparent;color:var(--bpmnkit-ds-ink-2);cursor:pointer;font-family:var(--bpmnkit-ds-font-mono);font-size:12px;height:28px;padding:0 11px}
 .hv-banner .hv-btn{border-color:var(--bpmnkit-ds-line-dark);background:none;color:var(--bpmnkit-ds-ink-on-dark-2)}
 .hv-banner .hv-btn:hover{background:rgba(255,255,255,.08);color:var(--bpmnkit-ds-ink-on-dark)}
+.hv-banner .grow{flex:1;min-width:0}
+
+/* ── Comments: markers on the canvas, threads in the panel ──────────────── */
+.cm-marker{min-width:22px;height:22px;padding:0 5px;border:1px solid var(--bpmnkit-ds-accent);background:var(--bpmnkit-ds-accent);color:var(--bpmnkit-ds-surface);font-family:var(--bpmnkit-ds-font-mono);font-size:11px;line-height:20px;text-align:center;cursor:pointer}
+.cm-marker:hover{background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-accent)}
+.cm-thread{border-bottom:1px solid var(--bpmnkit-ds-line);padding:12px 0}
+.cm-thread.focus{border-left:2px solid var(--bpmnkit-ds-accent);padding-left:10px}
+.cm-thread.resolved .cm-comment{opacity:.6}
+.cm-anchor{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.1em;text-transform:uppercase;color:var(--bpmnkit-ds-accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-anchor.removed{color:var(--bpmnkit-ds-ink-4);text-decoration:line-through}
+.cm-resolved{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.1em;text-transform:uppercase;color:var(--bpmnkit-ds-ink-4);margin-top:4px}
+.cm-comment{padding-top:8px}
+.cm-comment.reply{margin-left:12px;padding-left:10px;border-left:1px solid var(--bpmnkit-ds-line-soft)}
+.cm-meta{display:flex;gap:10px;align-items:baseline;font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro)}
+.cm-author{color:var(--bpmnkit-ds-ink)}
+.cm-when{color:var(--bpmnkit-ds-ink-4)}
+.cm-body{font-size:var(--bpmnkit-ds-t-body-sm);line-height:1.55;color:var(--bpmnkit-ds-ink-2);margin-top:3px;white-space:pre-wrap;word-break:break-word}
+.cm-body.deleted{font-style:italic;color:var(--bpmnkit-ds-ink-4)}
+.cm-mention{color:var(--bpmnkit-ds-accent);font-weight:500}
+.cm-own{display:flex;gap:10px;margin-top:2px}
+.cm-link{border:none;background:none;padding:0;cursor:pointer;font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.06em;text-transform:uppercase;color:var(--bpmnkit-ds-ink-4)}
+.cm-link:hover{color:var(--bpmnkit-ds-accent)}
+.cm-compose{padding:12px var(--bpmnkit-ds-sp-4);border-top:1px solid var(--bpmnkit-ds-line)}
+.cm-target{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-micro);letter-spacing:.1em;text-transform:uppercase;color:var(--bpmnkit-ds-ink-3);margin-bottom:8px;min-height:18px}
+.cm-name,.cm-text{display:block;width:100%;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;padding:7px 9px}
+.cm-name{margin-bottom:6px}
+.cm-text{resize:vertical;font-family:var(--bpmnkit-ds-font-sans);font-size:var(--bpmnkit-ds-t-body-sm)}
+.cm-box{position:relative;margin-top:8px}
+.cm-compose .cm-box{margin-top:0}
+.cm-suggest{border:1px solid var(--bpmnkit-ds-line);border-top:none;background:var(--bpmnkit-ds-surface)}
+.cm-suggest[hidden]{display:none}
+.cm-suggest button{display:block;width:100%;text-align:left;border:none;border-bottom:1px solid var(--bpmnkit-ds-line-soft);background:transparent;color:var(--bpmnkit-ds-ink-2);font-family:var(--bpmnkit-ds-font-mono);font-size:12px;padding:6px 9px;cursor:pointer}
+.cm-suggest button:last-child{border-bottom:none}
+.cm-suggest button.active,.cm-suggest button:hover{background:var(--bpmnkit-ds-bg);color:var(--bpmnkit-ds-accent)}
+.cm-actions{display:flex;justify-content:flex-end;margin-top:6px}
+.cm-status{font-family:var(--bpmnkit-ds-font-mono);font-size:11.5px;color:var(--bpmnkit-danger);margin-top:6px}
+.cm-status:empty{display:none}
+.cm-note{font-family:var(--bpmnkit-ds-font-mono);font-size:var(--bpmnkit-ds-t-mono-label);color:var(--bpmnkit-ds-ink-3)}
 .ai-passcode input{width:100%;padding:8px 10px;border:1px solid var(--bpmnkit-ds-line);background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink);font-family:var(--bpmnkit-ds-font-mono);font-size:12.5px;margin:12px 0}
 .ai-passcode.err input{border-color:var(--bpmnkit-danger)}
 
@@ -349,6 +387,12 @@ dialog strong{display:block;font-size:17px;margin-bottom:6px}
 @media (max-width:720px){
 	.nav-tagline{display:none}
 	.ai-panel{width:100%}
+	/* The tabs and the tools do not fit on one row of a phone: the tools get a
+	   row of their own that scrolls sideways, so every action stays reachable. */
+	.ed-topbar{flex-wrap:wrap;height:auto}
+	.ed-tabs{flex:1 1 100%;height:var(--bpmnkit-ds-topbar-height)}
+	.ed-tools{flex:1 1 100%;margin-left:0;border-left:none;border-top:1px solid var(--bpmnkit-ds-line);height:var(--bpmnkit-ds-topbar-height);overflow-x:auto;scrollbar-width:none}
+	.ed-tools>*{flex:none}
 	.feel-split,.fc{grid-template-columns:1fr}
 	.fc-side{border-left:none;border-top:1px solid var(--bpmnkit-ds-line-soft)}
 }
@@ -598,6 +642,7 @@ export function sharePage(
 			<button id="doneBtn" type="button" hidden>Done</button>
 			<button id="localHistoryBtn" type="button" hidden>On this device</button>
 			<button id="historyBtn" type="button" hidden>History</button>
+			<button id="commentsBtn" type="button">Comments</button>
 			<a id="dlOriginal" href="#" download>Original</a>
 			<a id="dlJson" href="#" download>JSON</a>
 			<button id="copyLink" type="button">Copy link</button>
@@ -616,8 +661,9 @@ export function sharePage(
 	</div>
 	<div id="historyBanner" class="hv-banner" hidden><span id="historyBannerText"></span><button id="historyExit" class="hv-btn" type="button">Back to current</button></div>
 	<div id="editNotice" class="hv-banner" hidden><span id="editNoticeText"></span></div>
+	<div id="mentionNotice" class="hv-banner" role="status" hidden><span id="mentionText" class="grow"></span><button id="mentionOpen" class="hv-btn" type="button">Open</button><button id="mentionDismiss" class="hv-btn" type="button">Dismiss</button></div>
 	<dialog id="turnstileDialog" class="ts-dialog">
-		<div class="ts-title">One check before you edit</div>
+		<div id="turnstileTitle" class="ts-title">One check before you edit</div>
 		<div id="turnstileWidget"></div>
 		<div id="turnstileError" class="ts-error" hidden>That did not go through — close this and try again.</div>
 		<button id="turnstileCancel" class="ts-cancel" type="button">Cancel</button>
@@ -626,6 +672,11 @@ export function sharePage(
 		<header class="ai-head"><span>On this device</span><button id="localHistoryClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
 		<div id="localHistoryBody" class="ai-body"></div>
 		<footer class="ai-foot">Checkpoints in this browser only — nobody else can see them, and clearing site data removes them.</footer>
+	</aside>
+	<aside id="commentsPanel" class="ai-panel" hidden>
+		<header class="ai-head"><span>Comments</span><button id="commentsClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
+		<div id="commentsBody" class="ai-body"></div>
+		<footer id="commentsCompose" class="cm-compose"></footer>
 	</aside>
 	<aside id="historyPanel" class="ai-panel" hidden>
 		<header class="ai-head"><span>Saved milestones</span><button id="historyClose" class="ai-x" type="button" aria-label="Close">&times;</button></header>
@@ -816,10 +867,11 @@ const PRIVACY_HTML = `<div class="prose">
 <p>This policy explains what BPMN Kit Drop stores and why.</p>
 <h2>What we store</h2>
 <p>For each drop we store the files you upload, a converted JSON representation of each file, and derived metadata (file names, element counts, timestamps, a content hash). Data is stored in Cloudflare D1.</p>
+<p>If you comment on a drop we store the comment, the display name you typed, when you wrote it, and a one-way hash of a random key your browser keeps so that you can edit or delete your own comments. Anyone with the drop's link can read its comments and the names on them. Your browser also remembers your display name and that key in its local storage.</p>
 <h2>What we don't store</h2>
-<p>There are no accounts, logins, or tracking cookies. We do not store your IP address with your drop. When you submit an abuse report we store a salted, one-way hash of your IP address solely to rate-limit reports and collapse duplicates.</p>
+<p>There are no accounts, logins, or tracking cookies. We do not store your IP address with your drop or your comments. When you submit an abuse report we store a salted, one-way hash of your IP address solely to rate-limit reports and collapse duplicates. When you write a comment we count it against a salted, one-way hash of your IP address to rate-limit comments; those counters are deleted within a day.</p>
 <h2>Retention</h2>
-<p>Drops are deleted automatically 90 days after they were last viewed, and immediately if removed by the operator.</p>
+<p>Drops, and the comments on them, are deleted automatically 90 days after they were last viewed, and immediately if removed by the operator.</p>
 <h2>Sharing</h2>
 <p>Anyone with a drop's link can view and download its files. We do not sell or share data with third parties.</p>
 </div>`
