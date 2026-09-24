@@ -15,8 +15,9 @@
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts", "src/tokens.css"],
 	"scripts": {
 		"build": "tsc",
-		"typecheck": "tsc --noEmit",
-		"check": "biome check ."
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+		"check": "biome check .",
+		"test": "vitest run"
 	},
 	"keywords": ["bpmn", "ui", "design-tokens", "theme", "components", "css-variables", "typescript"],
 	"license": "MIT",

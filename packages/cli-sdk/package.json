@@ -14,9 +14,9 @@
 	"files": ["LICENSE", "README.md", "dist/**/*.js", "dist/**/*.d.ts"],
 	"scripts": {
 		"build": "tsc",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
 		"check": "biome check .",
-		"test": "echo \"no tests\""
+		"test": "vitest run"
 	},
 	"description": "Plugin authoring SDK for the casen CLI",
 	"keywords": ["camunda", "casen", "cli", "plugin", "sdk", "bpmnkit"],

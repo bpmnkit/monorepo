@@ -256,7 +256,7 @@ function workerDelay(ms: number): Promise<void> {
  *       jobType: "my-job",
  *       defaultVariables: { result: "ok" },
  *       async processJob(job) {
- *         return { result: "processed", input: job.variables }
+ *         return { outcome: "complete", variables: { result: "processed", input: job.variables } }
  *       },
  *     })],
  *   }],

@@ -72,7 +72,7 @@ const plugin: CasenPlugin = {
     commands: [createWorkerCommand({
       jobType: "my-job",
       async processJob(job) {
-        return { result: "processed", input: job.variables }
+        return { outcome: "complete", variables: { result: "processed", input: job.variables } }
       },
     })],
   }],
