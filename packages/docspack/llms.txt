@@ -76,12 +76,12 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Conformance](.llms/chunks/getting-started.conformance.md) — 523 tokens
 - [Conformance — BPMN 2.0 — model and round trip](.llms/chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md) — 241 tokens
 - [Conformance — BPMN Model Interchange (MIWG)](.llms/chunks/getting-started.conformance.bpmn-model-interchange-miwg.md) — 508 tokens
-- [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 1204 tokens
+- [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 1390 tokens
 - [Conformance — BPMN elements by component (2)](.llms/chunks/getting-started.conformance.bpmn-elements-by-component-2.md) — 96 tokens
 - [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 226 tokens
 - [Conformance — Linting — bpmnlint compatibility](.llms/chunks/getting-started.conformance.linting-bpmnlint-compatibility.md) — 149 tokens
 - [Conformance — DMN 1.3](.llms/chunks/getting-started.conformance.dmn-1.3.md) — 135 tokens
-- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 266 tokens
+- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 254 tokens
 - [Installation](.llms/chunks/getting-started.installation.md) — 140 tokens
 - [Installation — SVG Canvas Viewer](.llms/chunks/getting-started.installation.svg-canvas-viewer.md) — 189 tokens
 - [Installation — Worker client](.llms/chunks/getting-started.installation.worker-client.md) — 145 tokens

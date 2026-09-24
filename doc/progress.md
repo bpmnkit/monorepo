@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-09-24 — Reebe: link events, compensation, ad-hoc sub-process inner elements, Zeebe gateway rules
+
+- Link events: a link throw event continues at the link catch event of its name in the same scope; deployment rejects unpaired, duplicate and empty link names; inclusive-join reachability follows links.
+- Compensation: handlers linked by an association deploy; completed compensable activities are recorded (new `compensation_subscriptions` table, Postgres and SQLite migration 021); a compensation throw or end event starts the handlers of its scope and of completed sub-processes in it at once, most recent first, and waits for them; `activityRef`; throws inside event sub-processes compensate the outer scope; multi-instance compensated once; compensation start events in event sub-processes rejected, as Zeebe has none.
+- Ad-hoc sub-processes: each activation runs in an `AD_HOC_SUB_PROCESS_INNER_INSTANCE`; `activeElementsCollection`, `completionCondition`, `cancelRemainingInstances`, `outputCollection`/`outputElement`; job results (`activateElements`, `isCompletionConditionFulfilled`, `isCancelRemainingInstances`) with the job re-created after each activation; REST job completion passes `result`; completion without a result still completes the sub-process.
+- Exclusive gateways raise `CONDITION_ERROR` without a match or default flow; exclusive and inclusive gateways choose flows while activating, so resolving the incident retries them; parallel gateways ignore conditions; default flows are marked at every depth.
+- Resolving an incident raised during activation retries the same element instance (I/O mappings, gateways, multi-instance input collections, ad-hoc active elements) instead of creating a new one.
+- Error variables thrown by a job reach the catching boundary event or event sub-process; event sub-processes report `EVENT_SUB_PROCESS`; complex gateways fail deployment as in Zeebe.
+- Tests: 29 new in-memory engine tests, 5 parser tests and a Postgres compatibility test for links and compensation; all 59 template scenarios pass on both runners.
+- Still open: a gateway condition that fails to evaluate counts as false (Zeebe raises an incident); `adHocSubProcessElements` is not provided to the job; gRPC job completion has no `result`; the link deployment messages and compensation handler variable/scope details follow recalled Zeebe behaviour that the docs do not state.
+
 ## 2026-09-24 — Reebe: event sub-processes, inclusive joins, waiting join tokens
 
 - Reebe arms the timer, message and signal start events of event sub-processes when their flow scope (process or embedded sub-process) activates: timers and correlation keys are evaluated with FEEL against the scope, and everything is disarmed when the scope completes or is terminated. An interrupting event sub-process terminates the rest of its scope (jobs, user tasks, called processes, other event sub-processes, waiting join tokens), triggers once and disarms the others; a non-interrupting one runs alongside each time its event occurs, and a timer cycle repeats. Message and signal variables propagate from the start event as a catch event's do. It all runs through `catch_event.rs`'s wait/trigger path.

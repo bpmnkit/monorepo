@@ -1,5 +1,11 @@
 # Features
 
+## Reebe: link events, compensation, ad-hoc inner elements (2026-09-24)
+
+- Link events, compensation handlers, ad-hoc sub-processes that activate their inner elements
+  (by `activeElementsCollection` or an AI agent's job result), and Zeebe's gateway incident and
+  retry rules.
+
 ## Reebe: event sub-processes and inclusive joins (2026-09-24)
 
 - Timer, message and signal event sub-processes (interrupting and not), inclusive gateway

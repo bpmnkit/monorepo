@@ -14,10 +14,10 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
-- Reebe: complex gateway, link events, compensation, ad-hoc sub-processes other than a job
-  worker implementation and the inner elements of those; an exclusive gateway with no
-  matching condition and no default flow stops without raising an incident; single-node only,
-  no published comparison with Zeebe, and no published performance figures
+- Reebe: a gateway condition that fails to evaluate counts as false instead of raising an
+  incident; no `adHocSubProcessElements` variable and no endpoint to activate ad-hoc
+  sub-process activities; single-node only, no published comparison with Zeebe, and no
+  published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).
 

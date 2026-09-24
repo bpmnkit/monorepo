@@ -907,7 +907,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 1204,
+			"tokens": 1390,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -918,9 +918,11 @@
 			"entities": [
 				"packages/engine/tests/semantics.test.ts",
 				"@bpmnkit/engine/wasm-runner",
+				"activityRef",
 				"inputElement",
 				"loopCounter",
-				"completionCondition"
+				"completionCondition",
+				"activeElementsCollection"
 			]
 		},
 		{
@@ -982,7 +984,7 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 266,
+			"tokens": 254,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -990,7 +992,8 @@
 				"forms"
 			],
 			"entities": [
-				"activeElementsCollection"
+				"activeElementsCollection",
+				"adHocSubProcessElements"
 			]
 		},
 		{
