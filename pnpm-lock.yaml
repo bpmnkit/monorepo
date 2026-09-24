@@ -181,6 +181,9 @@ importers:
       '@biomejs/biome':
         specifier: ^1.9.4
         version: 1.9.4
+      '@bpmnkit/engine':
+        specifier: workspace:*
+        version: link:packages/engine
       '@changesets/cli':
         specifier: ^2.29.8
         version: 2.29.8(@types/node@22.19.11)
@@ -404,6 +407,9 @@ importers:
       '@bpmnkit/operate':
         specifier: workspace:*
         version: link:../../packages/operate
+      '@bpmnkit/patterns':
+        specifier: workspace:*
+        version: link:../../packages/patterns
       '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins
@@ -678,7 +684,11 @@ importers:
         specifier: workspace:^
         version: link:../ui
 
-  packages/patterns: {}
+  packages/patterns:
+    dependencies:
+      '@bpmnkit/core':
+        specifier: workspace:^
+        version: link:../core
 
   packages/plugins:
     dependencies:

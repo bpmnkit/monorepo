@@ -33,6 +33,7 @@
 		"@astrojs/check": "^0.9",
 		"@astrojs/rss": "^4.0.12",
 		"@astrojs/sitemap": "^3.7.1",
+		"@bpmnkit/engine": "workspace:*",
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/cli": "^2.29.8",
 		"@cloudflare/workers-types": "^5.20260708.1",

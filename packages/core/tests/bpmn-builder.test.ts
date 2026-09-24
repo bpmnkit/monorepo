@@ -295,6 +295,29 @@ describe("BpmnProcessBuilder", () => {
 			expect(el.messageRef).toBe(rootMsg?.id)
 		})
 
+		it("receiveTask with correlationKey emits zeebe:subscription and deploys clean", () => {
+			const defs = Bpmn.createProcess("proc")
+				.startEvent("s")
+				.receiveTask("rt", { name: "Await ping", messageName: "PingMsg", correlationKey: "=id" })
+				.subProcess("sub", (b) =>
+					b
+						.startEvent("ss")
+						.receiveTask("rt2", {
+							name: "Await pong",
+							messageName: "PongMsg",
+							correlationKey: "=id",
+						})
+						.endEvent("se"),
+				)
+				.endEvent("e")
+				.build()
+
+			const xml = Bpmn.export(defs)
+			expect(xml.match(/<zeebe:subscription correlationKey="=id"/g)).toHaveLength(2)
+			const findings = optimize(defs, { categories: ["deploy"] }).findings
+			expect(findings.filter((f) => f.id === "deploy/message-catch-no-correlation")).toEqual([])
+		})
+
 		it("sendTask with messageName emits root bpmn:message and sets messageRef on task", () => {
 			const defs = Bpmn.createProcess("proc")
 				.startEvent("s")

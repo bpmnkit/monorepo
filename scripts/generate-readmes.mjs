@@ -1947,6 +1947,13 @@ casen instances list --state active
 | \`casen instances list\` | List process instances (--state filter) |
 | \`casen instances cancel <key>\` | Cancel a running instance |
 
+### Templates
+
+| Command | Description |
+|---------|-------------|
+| \`casen template list [--category <c>]\` | List the runnable process templates from the [gallery](https://bpmnkit.com/templates) |
+| \`casen template use <id> [dir]\` | Write a template's \`.bpmn\`, \`.bpmn.tests.json\` scenarios and any \`.dmn\`/\`.form\` files (\`--force\` overwrites) |
+
 ### Incidents & jobs
 
 | Command | Description |
@@ -2584,6 +2591,7 @@ Patterns are hints, not rigid templates. Claude adapts them to the user's specif
 - **Worker specs** — typical service tasks with job types, typed inputs/outputs, and real integration options
 - **Compact BPMN templates** — token-efficient starting-point structure for LLM-based generation
 - **Keyword matching** — \`findPattern(query)\` scores keyword hits to find the best-fit pattern from a free-text description
+- **25 runnable templates** — \`@bpmnkit/patterns/templates\`: complete Camunda 8 processes (order to cash, approvals, onboarding, incidents, documents, SLAs, sagas, human-in-the-loop and seven AI agent patterns) with DMN, forms and test scenarios that pass on \`@bpmnkit/engine\`
 
 ## Installation
 
@@ -2622,6 +2630,20 @@ console.log(invoice?.readme)    // domain context for the LLM
 | \`content-moderation\` | Trust & safety | ai-scan, apply-action, report-csam, notify-user |
 | \`order-fulfillment\` | E-commerce | validate-inventory, process-payment, create-warehouse-order, create-shipment |
 
+## Runnable Templates
+
+\`@bpmnkit/patterns/templates\` is the source of the [template gallery](https://bpmnkit.com/templates) and of \`casen template use\`. Each template builds a laid-out process with the \`@bpmnkit/core\` builder and carries a \`.bpmn.tests.json\` scenario set — a happy path and at least one alternative.
+
+\`\`\`typescript
+import { getTemplate, listJobTypes, templateFiles } from "@bpmnkit/patterns/templates"
+
+const template = getTemplate("ai-agent-tool-loop")
+const defs = template?.build()               // BpmnDefinitions with DI
+const files = template ? templateFiles(template) : []
+// [{ path: "ai-agent-tool-loop.bpmn", content }, { path: "ai-agent-tool-loop.bpmn.tests.json", content }]
+const jobTypes = defs ? listJobTypes(defs) : []
+\`\`\`
+
 ## API Reference
 
 \`\`\`typescript
@@ -2651,6 +2673,14 @@ export interface WorkerSpec {
   outputs: Record<string, string>
   integrationOptions?: string[]  // e.g. ["Stripe", "Adyen", "Braintree"]
 }
+
+// @bpmnkit/patterns/templates
+export const ALL_TEMPLATES: readonly ProcessTemplate[]
+export const TEMPLATE_CATEGORIES: readonly TemplateCategoryInfo[]
+export function getTemplate(id: string): ProcessTemplate | undefined
+export function templatesInCategory(category: TemplateCategory): ProcessTemplate[]
+export function templateFiles(template: ProcessTemplate): TemplateFile[]
+export function listJobTypes(defs: BpmnDefinitions): TemplateJobType[]
 \`\`\`
 
 ## Used by AIKit
