@@ -136,10 +136,19 @@ in reverse order, as BPMN specifies, where Zeebe starts them all at once. For Ze
 `@bpmnkit/engine/wasm-runner` runs the same scenarios on **Reebe** compiled to WebAssembly.
 Reebe's model covers the task types, call activities, embedded and event sub-processes,
 exclusive, parallel, inclusive and event-based gateways, catch, throw and boundary events
-(timer, message, signal, error, escalation, terminate) and multi-instance. It does not yet
-run link events (a process with a link catch event fails to deploy) or compensation. Errors and escalations, from end events, throw events and job workers,
+(timer, message, signal, error, escalation, terminate, link, compensation) and
+multi-instance. Errors and escalations, from end events, throw events and job workers,
 propagate out through sub-processes and call activities to a boundary event or an event
-sub-process. An uncaught error raises an incident. Timer, message and signal boundary events
+sub-process, which receives the variables a job worker threw the error with. An uncaught
+error raises an incident. An exclusive gateway with no matching condition and no default
+flow raises an incident, as does an inclusive split, and resolving it evaluates the gateway
+again; resolving any incident raised while an element was activating retries that element
+instance. Parallel gateways ignore conditions on their outgoing flows. A link throw event
+continues at the link catch event of its name in the same scope, and deployment rejects
+links that do not pair up. A compensation throw or end event starts, all at once, the
+handlers of the activities that completed in its scope and in the completed sub-processes
+inside it (or only `activityRef`), and waits for them; a throw event in an event
+sub-process compensates the scope around it. Timer, message and signal boundary events
 are armed when their activity starts and cancelled when it ends. An interrupting one
 terminates the activity; a non-interrupting one leaves it running, and a timer cycle repeats.
 An event-based gateway waits for the first of its events and cancels the others.
@@ -158,10 +167,12 @@ completes only when nothing inside it is active any more, and a terminate end ev
 rest of its own scope and completes that scope.
 Multi-instance runs, in parallel or in sequence, on every task type, sub-process and call
 activity. Each instance has its own `inputElement` and `loopCounter`, the output is collected
-in input order, and a `completionCondition` ends the loop early. It has no complex gateway. It runs an
-ad-hoc sub-process only through its job worker implementation, such as the AI Agent
-Sub-process: completing the job completes the sub-process, and the inner elements are not
-activated. Every scenario of the [template gallery](/docs/guides/templates) passes on it.
+in input order, and a `completionCondition` ends the loop early. A complex gateway fails
+deployment, as in Zeebe, which does not execute it. An ad-hoc sub-process activates its
+inner elements, each in its own activation, from `activeElementsCollection` or from the job
+result of its job worker implementation (such as the AI Agent Sub-process), completes by
+its `completionCondition` or the job result, and creates the job again after each
+activation. Every scenario of the [template gallery](/docs/guides/templates) passes on it.
 
 Reebe is a dev/test engine in the
 [Experimental tier](/docs/getting-started/stability#product-tiers), not for production. It is
@@ -225,9 +236,9 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
-- Reebe: complex gateway, link events, compensation, ad-hoc sub-processes other than a job
-  worker implementation and the inner elements of those; an exclusive gateway with no
-  matching condition and no default flow stops without raising an incident; single-node only,
-  no published comparison with Zeebe, and no published performance figures
+- Reebe: a gateway condition that fails to evaluate counts as false instead of raising an
+  incident; no `adHocSubProcessElements` variable and no endpoint to activate ad-hoc
+  sub-process activities; single-node only, no published comparison with Zeebe, and no
+  published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).
