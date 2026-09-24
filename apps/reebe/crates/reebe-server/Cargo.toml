@@ -32,3 +32,6 @@ directories = { workspace = true }
 default = ["postgres"]
 postgres = ["reebe-db/postgres", "reebe-engine/postgres", "reebe-api/postgres", "reebe-grpc/postgres"]
 embedded = ["reebe-db/sqlite", "reebe-engine/sqlite", "reebe-api/sqlite", "reebe-grpc/sqlite"]
+
+[dev-dependencies]
+base64 = { workspace = true }
