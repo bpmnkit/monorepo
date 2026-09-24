@@ -52,6 +52,25 @@ export class VariableStore {
 		this.write(scopeId, name, value)
 	}
 
+	/**
+	 * Merge a variable the way Zeebe merges a job result or a message payload:
+	 * update it in the nearest scope, from `scopeId` upwards, that defines it —
+	 * or, when none does, create it in the root scope.
+	 */
+	propagate(scopeId: string, name: string, value: unknown): void {
+		let current: string | undefined = scopeId
+		let root = scopeId
+		while (current !== undefined) {
+			if (this.hasOwn(current, name)) {
+				this.write(current, name, value)
+				return
+			}
+			root = current
+			current = this.parents.get(current)
+		}
+		this.write(root, name, value)
+	}
+
 	/** Set a variable in this scope only, regardless of parent state. */
 	setLocal(scopeId: string, name: string, value: unknown): void {
 		this.write(scopeId, name, value)

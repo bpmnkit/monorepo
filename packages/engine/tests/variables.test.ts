@@ -9,6 +9,18 @@ describe("VariableStore", () => {
 		expect(s.get("root", "x")).toBe(42)
 	})
 
+	it("propagate updates the nearest scope that defines the variable, else the root", () => {
+		const s = new VariableStore()
+		s.createScope("root")
+		s.createScope("sub", "root")
+		s.createScope("task", "sub")
+		s.setLocal("sub", "b", 1)
+		s.propagate("task", "b", 2)
+		s.propagate("task", "d", 3)
+		expect(s.getAll("sub")).toEqual({ b: 2, d: 3 })
+		expect(s.getAll("root")).toEqual({ d: 3 })
+	})
+
 	it("returns undefined for missing variable", () => {
 		const s = new VariableStore()
 		s.createScope("root")

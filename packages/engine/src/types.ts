@@ -16,6 +16,10 @@ export type ProcessEvent =
 			variables: Record<string, unknown>
 	  }
 	| { type: "element:failed"; elementId: string; error: string }
+	/** An active element was cancelled by an interrupting event, a terminate end event or a completion condition. */
+	| { type: "element:terminated"; elementId: string; elementName?: string; elementType: string }
+	/** Something the simulator could not execute as modelled; the run continues. */
+	| { type: "element:warning"; elementId: string; message: string }
 	| { type: "process:completed"; variables: Record<string, unknown> }
 	| { type: "process:failed"; error: string }
 

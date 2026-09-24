@@ -213,6 +213,9 @@ export function createTokenHighlightPlugin(): CanvasPlugin & { api: TokenHighlig
 					activeIds.delete(elementId)
 					visitedIds.add(elementId)
 					applyHighlights()
+				} else if (type === "element:terminated" && typeof elementId === "string") {
+					activeIds.delete(elementId)
+					applyHighlights()
 				} else if (type === "process:completed" || type === "process:failed") {
 					activeIds.clear()
 					applyHighlights()

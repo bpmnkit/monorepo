@@ -13,6 +13,28 @@ export interface ParsedZeebeExt {
 	scriptTask?: { expression: string; resultVariable: string }
 	/** JSON string from `camundaModeler:exampleOutputJson` zeebe:property — used in play mode. */
 	exampleOutputJson?: string
+	/** `zeebe:calledElement` on a call activity. Both propagation flags default to `true`. */
+	calledElement?: {
+		processId: string
+		propagateAllChildVariables: boolean
+		propagateAllParentVariables: boolean
+	}
+}
+
+/** `zeebe:loopCharacteristics` of a multi-instance activity. */
+export interface ParsedZeebeLoop {
+	inputCollection?: string
+	inputElement?: string
+	outputCollection?: string
+	outputElement?: string
+}
+
+/** Read `zeebe:loopCharacteristics` from a multi-instance element's extension elements. */
+export function parseZeebeLoop(extensionElements: XmlElement[]): ParsedZeebeLoop {
+	const el = extensionElements.find((e) => e.name === "zeebe:loopCharacteristics")
+	if (el === undefined) return {}
+	const { inputCollection, inputElement, outputCollection, outputElement } = el.attributes
+	return { inputCollection, inputElement, outputCollection, outputElement }
 }
 
 /** Parse extensionElements XmlElement array into a typed Zeebe extension object. */
@@ -73,6 +95,14 @@ export function parseZeebeExt(extensionElements: XmlElement[]): ParsedZeebeExt {
 				const expression = el.attributes.expression ?? ""
 				const resultVariable = el.attributes.resultVariable ?? ""
 				result.scriptTask = { expression, resultVariable }
+				break
+			}
+			case "zeebe:calledElement": {
+				result.calledElement = {
+					processId: el.attributes.processId ?? "",
+					propagateAllChildVariables: el.attributes.propagateAllChildVariables !== "false",
+					propagateAllParentVariables: el.attributes.propagateAllParentVariables !== "false",
+				}
 				break
 			}
 			case "zeebe:properties": {
