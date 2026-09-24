@@ -17,10 +17,13 @@
 //! As in Zeebe, every handler runs in the throw event's flow scope (Zeebe activates the
 //! handler with the throw event's record), and it starts without local variables of its
 //! own beyond its input mappings: it sees the variables of that scope. The throw event
-//! stays active until every handler it invoked has ended, then continues. A handler
+//! stays active until every handler it invoked has completed, then continues. A handler
 //! that is terminated on its own (say, by a boundary event on it, which Zeebe's
-//! validator rejects for tasks) counts as ended: the Camunda docs do not say otherwise,
-//! and leaving the throw event waiting would block its scope for good.
+//! validator rejects for tasks) does not release it: Zeebe's
+//! `BpmnCompensationSubscriptionBehaviour` completes a handler's subscription, and then
+//! the throw event, only from `completeCompensationHandler`, which the element
+//! processors call when an element completes, never when it is terminated. The throw
+//! event waits until its scope is terminated.
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
@@ -148,9 +151,9 @@ pub(crate) async fn handler_activating(
     Ok(())
 }
 
-/// An element instance completed or was terminated: if it is a compensation handler,
+/// An element instance completed: if it is a compensation handler,
 /// and the last one its throw event waits for, the throw event completes.
-pub(crate) async fn handler_ended(
+pub(crate) async fn handler_completed(
     state: &EngineState,
     writers: &mut Writers,
     handler: &ElementInstance,

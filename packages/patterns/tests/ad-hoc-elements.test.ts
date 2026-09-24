@@ -36,29 +36,28 @@ describe("adHocSubProcessElements", () => {
 		const onReebe = (await runScenarioWasm(bpmnXml, scenario)).finalVariables
 			.adHocSubProcessElements
 
-		expect(onTypeScript).toEqual([
+		// Zeebe's shape: parameters named by their whole reference, and no `properties`
+		// key for an element without any.
+		expect(onTypeScript).toStrictEqual([
 			{
 				elementId: "search-kb",
 				elementName: "Search knowledge base",
 				documentation: "Search the help centre for articles that answer a question.",
-				properties: {},
-				parameters: [{ name: "query", description: "Search terms" }],
+				parameters: [{ name: "toolCall.query", description: "Search terms" }],
 			},
 			{
 				elementId: "lookup-order",
 				elementName: "Look up order",
 				documentation: "Get the status, items and tracking link of an order.",
-				properties: {},
-				parameters: [{ name: "orderId", description: "The order number" }],
+				parameters: [{ name: "toolCall.orderId", description: "The order number" }],
 			},
 			{
 				elementId: "create-ticket",
 				elementName: "Create ticket",
 				documentation: "Open a ticket for the warehouse team when an order needs manual action.",
-				properties: {},
-				parameters: [{ name: "summary", description: "One-line summary of the problem" }],
+				parameters: [{ name: "toolCall.summary", description: "One-line summary of the problem" }],
 			},
 		])
-		expect(onReebe).toEqual(onTypeScript)
+		expect(onReebe).toStrictEqual(onTypeScript)
 	})
 })

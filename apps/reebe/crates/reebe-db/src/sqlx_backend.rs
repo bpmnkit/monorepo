@@ -593,7 +593,7 @@ impl StateBackend for SqlxBackend {
         UserRepository::new(&self.pool).delete(username).await
     }
 
-    async fn insert_decision_xml(&self, decision_id: &str, dmn_xml: &str) -> Result<()> {
+    async fn insert_decision_xml(&self, key: i64, deployment_key: i64, resource_name: &str, decision_id: &str, dmn_xml: &str) -> Result<()> {
         use sqlx::Row;
         let existing: Option<i64> = sqlx::query(
             "SELECT key FROM decision_definitions WHERE decision_id = $1 ORDER BY version DESC LIMIT 1",
@@ -605,10 +605,14 @@ impl StateBackend for SqlxBackend {
 
         if existing.is_none() {
             sqlx::query(
-                "INSERT INTO decision_definitions (decision_id, dmn_xml, version) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING",
+                "INSERT INTO decision_definitions (key, decision_id, dmn_xml, version, deployment_key, resource_name) \
+                 VALUES ($1, $2, $3, 1, $4, $5) ON CONFLICT DO NOTHING",
             )
+            .bind(key)
             .bind(decision_id)
             .bind(dmn_xml)
+            .bind(deployment_key)
+            .bind(resource_name)
             .execute(&*self.pool)
             .await?;
         }

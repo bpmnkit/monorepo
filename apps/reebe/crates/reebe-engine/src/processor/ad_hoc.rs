@@ -69,7 +69,9 @@ pub(crate) fn activatable(sp: &SubProcess) -> Vec<&str> {
 
 /// The `adHocSubProcessElements` variable: each element the ad-hoc sub-process can
 /// activate, in document order, with its name, documentation, `zeebe:properties` and
-/// the `fromAi()` parameters of its input mappings.
+/// the `fromAi()` parameters of its input mappings. As in Zeebe, whose
+/// `AdHocActivityMetadata` is `@JsonInclude(NON_EMPTY)`, a field that is null or empty
+/// is left out, and a property with an empty value is `null`.
 pub(crate) fn elements_variable(sp: &SubProcess) -> serde_json::Value {
     let allowed = activatable(sp);
     let mut ids: Vec<&str> = sp.element_order.iter().map(String::as_str).filter(|id| allowed.contains(id)).collect();
@@ -78,19 +80,31 @@ pub(crate) fn elements_variable(sp: &SubProcess) -> serde_json::Value {
     }
     let elements = ids.into_iter().filter_map(|id| sp.elements.get(id)).map(|el| {
         let details = sp.element_details.get(el.id()).cloned().unwrap_or_default();
-        let properties: serde_json::Map<String, serde_json::Value> =
-            details.properties.into_iter().map(|(name, value)| (name, value.into())).collect();
+        let properties: serde_json::Map<String, serde_json::Value> = details
+            .properties
+            .into_iter()
+            .filter(|(name, _)| !name.is_empty())
+            .map(|(name, value)| (name, if value.is_empty() { serde_json::Value::Null } else { value.into() }))
+            .collect();
         let parameters: Vec<serde_json::Value> = super::bpmn_element::get_input_mappings(el)
             .iter()
             .flat_map(|mapping| reebe_feel::from_ai_parameters(&mapping.source))
             .collect();
-        serde_json::json!({
-            "elementId": el.id(),
-            "elementName": el.name(),
-            "documentation": details.documentation,
-            "properties": properties,
-            "parameters": parameters,
-        })
+        let mut element = serde_json::Map::new();
+        element.insert("elementId".into(), el.id().into());
+        if let Some(name) = el.name().filter(|name| !name.is_empty()) {
+            element.insert("elementName".into(), name.into());
+        }
+        if let Some(documentation) = details.documentation.filter(|text| !text.is_empty()) {
+            element.insert("documentation".into(), documentation.into());
+        }
+        if !properties.is_empty() {
+            element.insert("properties".into(), properties.into());
+        }
+        if !parameters.is_empty() {
+            element.insert("parameters".into(), parameters.into());
+        }
+        serde_json::Value::Object(element)
     });
     serde_json::Value::Array(elements.collect())
 }
@@ -337,51 +351,94 @@ async fn completion_pending(state: &EngineState, ad_hoc: &ElementInstance) -> En
 }
 
 /// Everything inside the inner instance `inner` has ended: it completes, its output is
-/// collected, and the ad-hoc sub-process decides what happens next.
+/// collected, and the ad-hoc sub-process decides what happens next. As in Zeebe's
+/// `beforeExecutionPathCompleted`, the completion condition is evaluated while the inner
+/// instance is completing: a result that is not a boolean raises an
+/// `EXTRACT_VALUE_ERROR` incident on it, and resolving the incident calls this again.
 pub(crate) async fn inner_completed(
     state: &EngineState,
     writers: &mut Writers,
     process: &BpmnProcess,
     inner: &ElementInstance,
 ) -> EngineResult<()> {
-    if inner.state != "ACTIVATED" {
+    let retry = inner.state == "COMPLETING";
+    if inner.state != "ACTIVATED" && !retry {
         return Ok(());
-    }
-    state.backend.update_element_instance_state(inner.key, "COMPLETED").await?;
-    for intent in ["ELEMENT_COMPLETING", "ELEMENT_COMPLETED"] {
-        writers.events.push(element_event(inner, intent));
     }
     let Some(ad_hoc_key) = inner.flow_scope_key else { return Ok(()) };
     let ad_hoc = state.backend.get_element_instance_by_key(ad_hoc_key).await?;
     let Some(FlowElement::SubProcess(sp)) = process.get_element_recursive(&ad_hoc.element_id) else { return Ok(()) };
 
-    if let (Some(collection), Some(output)) = (&sp.output_collection, &sp.output_element) {
-        let ctx = scope::feel_context(state, inner.process_instance_key, inner.key).await;
-        let value = reebe_feel::parse_and_evaluate(output, &ctx)
-            .map(serde_json::Value::from)
-            .unwrap_or(serde_json::Value::Null);
-        let mut items = state.backend
-            .get_variables_by_scope(ad_hoc.key)
-            .await?
-            .into_iter()
-            .find(|v| &v.name == collection)
-            .and_then(|v| v.value.as_array().cloned())
-            .unwrap_or_default();
-        items.push(value);
-        scope::set_local(state, ad_hoc.process_instance_key, ad_hoc.key, collection, serde_json::Value::Array(items), &ad_hoc.tenant_id).await?;
+    if !retry {
+        state.backend.update_element_instance_state(inner.key, "COMPLETING").await?;
+        writers.events.push(element_event(inner, "ELEMENT_COMPLETING"));
+        if let (Some(collection), Some(output)) = (&sp.output_collection, &sp.output_element) {
+            let ctx = scope::feel_context(state, inner.process_instance_key, inner.key).await;
+            let value = reebe_feel::parse_and_evaluate(output, &ctx)
+                .map(serde_json::Value::from)
+                .unwrap_or(serde_json::Value::Null);
+            let mut items = state.backend
+                .get_variables_by_scope(ad_hoc.key)
+                .await?
+                .into_iter()
+                .find(|v| &v.name == collection)
+                .and_then(|v| v.value.as_array().cloned())
+                .unwrap_or_default();
+            items.push(value);
+            scope::set_local(state, ad_hoc.process_instance_key, ad_hoc.key, collection, serde_json::Value::Array(items), &ad_hoc.tenant_id).await?;
+        }
     }
-    flow_ended(state, writers, sp, &ad_hoc, Some(inner.key)).await
+
+    let fulfilled = match completion_condition(state, sp, &ad_hoc, inner.key).await? {
+        Ok(fulfilled) => fulfilled,
+        Err(message) => {
+            writers.commands.push(CommandToWrite {
+                value_type: "INCIDENT".to_string(),
+                intent: "CREATE".to_string(),
+                key: 0,
+                payload: serde_json::json!({
+                    "errorType": "EXTRACT_VALUE_ERROR",
+                    "errorMessage": format!("Failed to evaluate completion condition. {message}"),
+                    "processInstanceKey": inner.process_instance_key.to_string(),
+                    "elementInstanceKey": inner.key.to_string(),
+                    "bpmnProcessId": inner.bpmn_process_id,
+                    "tenantId": inner.tenant_id,
+                }),
+            });
+            return Ok(());
+        }
+    };
+    state.backend.update_element_instance_state(inner.key, "COMPLETED").await?;
+    writers.events.push(element_event(inner, "ELEMENT_COMPLETED"));
+    flow_ended(state, writers, sp, &ad_hoc, fulfilled).await
 }
 
-/// A flow inside the ad-hoc sub-process ended — an inner instance, or an event
-/// sub-process in it. `inner_key` is the inner instance, whose variables the
-/// completion condition sees.
+/// The `completionCondition` of an ad-hoc sub-process run by Zeebe (not by a job
+/// worker), evaluated in the inner instance `inner_key`: `Ok(None)` when it has none, or
+/// when it does not decide anything (the sub-process is not active, or already
+/// completing); `Err` with the incident message when it is not a boolean.
+async fn completion_condition(
+    state: &EngineState,
+    sp: &SubProcess,
+    ad_hoc: &ElementInstance,
+    inner_key: i64,
+) -> EngineResult<Result<Option<bool>, String>> {
+    let Some(condition) = &sp.completion_condition else { return Ok(Ok(None)) };
+    if sp.task_definition.is_some() || ad_hoc.state != "ACTIVATED" || completion_pending(state, ad_hoc).await? {
+        return Ok(Ok(None));
+    }
+    let ctx = scope::feel_context(state, ad_hoc.process_instance_key, inner_key).await;
+    Ok(super::bpmn_element::eval_boolean(condition, &ctx).map(Some))
+}
+
+/// A flow inside the ad-hoc sub-process ended: an inner instance, whose completion
+/// condition result is `fulfilled`, or an event sub-process in it (`None`).
 pub(crate) async fn flow_ended(
     state: &EngineState,
     writers: &mut Writers,
     sp: &SubProcess,
     ad_hoc: &ElementInstance,
-    inner_key: Option<i64>,
+    fulfilled: Option<bool>,
 ) -> EngineResult<()> {
     if ad_hoc.state != "ACTIVATED" {
         return Ok(());
@@ -400,19 +457,25 @@ pub(crate) async fn flow_ended(
         create_job(writers, sp, ad_hoc);
         return Ok(());
     }
-    match &sp.completion_condition {
-        Some(condition) => {
-            let ctx = scope::feel_context(state, ad_hoc.process_instance_key, inner_key.unwrap_or(ad_hoc.key)).await;
-            let expr = condition.trim();
-            let expr = if reebe_feel::is_feel_expression(expr) { expr.to_string() } else { format!("={expr}") };
-            if matches!(reebe_feel::parse_and_evaluate(&expr, &ctx), Ok(reebe_feel::FeelValue::Bool(true))) {
-                fulfil(state, writers, ad_hoc, sp.cancel_remaining_instances).await?;
-            }
-        }
-        None if active.is_empty() => complete(writers, ad_hoc),
-        None => {}
+    match (&sp.completion_condition, fulfilled) {
+        (Some(_), Some(true)) => fulfil(state, writers, ad_hoc, sp.cancel_remaining_instances).await?,
+        (Some(_), _) => {}
+        (None, _) if active.is_empty() => complete(writers, ad_hoc),
+        (None, _) => {}
     }
     Ok(())
+}
+
+/// An event sub-process inside the ad-hoc sub-process ended: whether the completion
+/// condition holds. Unlike after an inner instance, a result that is not a boolean
+/// counts as `false` here: the event sub-process has already completed, so there is
+/// nothing left to hold an incident that could retry it.
+pub(crate) async fn condition_after_event_sub_process(
+    state: &EngineState,
+    sp: &SubProcess,
+    ad_hoc: &ElementInstance,
+) -> EngineResult<Option<bool>> {
+    Ok(completion_condition(state, sp, ad_hoc, ad_hoc.key).await?.unwrap_or(Some(false)))
 }
 
 /// The ad-hoc sub-process is completing: hand its output collection to the enclosing scope.

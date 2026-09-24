@@ -26,10 +26,35 @@ impl RecordProcessor for VariableDocumentProcessor {
         let payload = &record.payload;
         let tenant_id = record.tenant_id.clone();
 
-        let process_instance_key: i64 = payload["processInstanceKey"]
-            .as_str()
-            .and_then(|s| s.parse().ok())
-            .or_else(|| payload["processInstanceKey"].as_i64())
+        // The gRPC `SetVariables` call names the scope by `elementInstanceKey`: a process
+        // instance or an element instance. `local: false` propagates from it, as Zeebe
+        // does: each variable goes to the nearest scope that has it, else the process.
+        let key = |name: &str| payload[name].as_str().and_then(|s| s.parse().ok()).or_else(|| payload[name].as_i64());
+        if let Some(scope_key) = key("elementInstanceKey") {
+            let process_instance_key = match state.backend.get_element_instance_by_key(scope_key).await {
+                Ok(scope) => scope.process_instance_key,
+                Err(_) => state.backend.get_process_instance_by_key(scope_key).await.map(|pi| pi.key).map_err(|_| {
+                    EngineError::NotFound(format!(
+                        "Expected to update variables for element with key '{scope_key}', but no such element was found"
+                    ))
+                })?,
+            };
+            let variables = payload["variables"].as_object().cloned().unwrap_or_default();
+            if payload["local"].as_bool() == Some(true) {
+                for (name, value) in variables {
+                    super::scope::set_local(state, process_instance_key, scope_key, &name, value, &tenant_id).await?;
+                }
+            } else {
+                super::scope::propagate(state, process_instance_key, scope_key, &variables, &tenant_id).await?;
+            }
+            writers.response = Some(serde_json::json!({
+                "processInstanceKey": process_instance_key.to_string(),
+                "tenantId": tenant_id,
+            }));
+            return Ok(());
+        }
+
+        let process_instance_key: i64 = key("processInstanceKey")
             .ok_or_else(|| EngineError::InvalidState("Missing processInstanceKey".to_string()))?;
 
         // Scope key: LOCAL uses element scope, PROPAGATE/default uses process instance scope

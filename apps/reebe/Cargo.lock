@@ -2559,12 +2559,15 @@ dependencies = [
 name = "reebe-grpc"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "prost",
  "protoc-bin-vendored",
  "reebe-db",
+ "reebe-dmn",
  "reebe-engine",
  "serde_json",
+ "sqlx",
  "tokio",
  "tokio-stream",
  "tonic",

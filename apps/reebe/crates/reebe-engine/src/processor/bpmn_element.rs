@@ -96,6 +96,7 @@ pub(crate) fn get_input_mappings(element: &reebe_bpmn::FlowElement) -> &[reebe_b
         reebe_bpmn::FlowElement::ScriptTask(e) => &e.input_mappings,
         reebe_bpmn::FlowElement::SendTask(e) => &e.input_mappings,
         reebe_bpmn::FlowElement::BusinessRuleTask(e) => &e.input_mappings,
+        reebe_bpmn::FlowElement::Task(e) => &e.input_mappings,
         reebe_bpmn::FlowElement::CallActivity(e) => &e.input_mappings,
         reebe_bpmn::FlowElement::SubProcess(e) => &e.input_mappings,
         reebe_bpmn::FlowElement::IntermediateCatchEvent(e) => &e.input_mappings,
@@ -113,6 +114,7 @@ fn get_output_mappings(element: &reebe_bpmn::FlowElement) -> &[reebe_bpmn::Zeebe
         reebe_bpmn::FlowElement::ScriptTask(e) => &e.output_mappings,
         reebe_bpmn::FlowElement::SendTask(e) => &e.output_mappings,
         reebe_bpmn::FlowElement::BusinessRuleTask(e) => &e.output_mappings,
+        reebe_bpmn::FlowElement::Task(e) => &e.output_mappings,
         reebe_bpmn::FlowElement::CallActivity(e) => &e.output_mappings,
         reebe_bpmn::FlowElement::SubProcess(e) => &e.output_mappings,
         reebe_bpmn::FlowElement::IntermediateCatchEvent(e) => &e.output_mappings,
@@ -572,17 +574,11 @@ impl BpmnElementProcessor {
                     let ctx = scope::feel_context(state, process_instance_key, ei_key).await;
                     let chosen = match gateway_flows(element, &outgoing, &ctx) {
                         Ok(Some(flows)) => Ok(flows),
-                        Ok(None) => {
-                            let kind = if matches!(element, reebe_bpmn::FlowElement::InclusiveGateway(_)) {
-                                "inclusive"
-                            } else {
-                                "exclusive"
-                            };
-                            Err(("CONDITION_ERROR", format!(
-                                "Expected at least one condition to evaluate to true, or to have a default flow \
-                                 at {kind} gateway '{element_id}'"
-                            )))
-                        }
+                        // Zeebe's NO_OUTGOING_FLOW_CHOSEN_ERROR, the same for both gateways.
+                        Ok(None) => Err((
+                            "CONDITION_ERROR",
+                            "Expected at least one condition to evaluate to true, or to have a default flow".to_string(),
+                        )),
                         Err(message) => Err(("EXTRACT_VALUE_ERROR", message)),
                     };
                     match chosen {
@@ -1218,6 +1214,32 @@ impl BpmnElementProcessor {
             }
         }
 
+        // An inner multi-instance instance: collect its output and check the completion
+        // condition before it completes, so that a condition that is not a boolean
+        // leaves it completing with an incident, as in Zeebe.
+        let mut completion_condition_met = false;
+        if let (Some(mi), Some(body), Some(inner)) = (&multi_instance_of, &mi_body, &current) {
+            match multi_instance::inner_completing(state, mi, inner, body).await? {
+                Ok(met) => completion_condition_met = met,
+                Err(message) => {
+                    writers.commands.push(CommandToWrite {
+                        value_type: "INCIDENT".to_string(),
+                        intent: "CREATE".to_string(),
+                        key: 0,
+                        payload: serde_json::json!({
+                            "errorType": "EXTRACT_VALUE_ERROR",
+                            "errorMessage": message,
+                            "processInstanceKey": process_instance_key.to_string(),
+                            "elementInstanceKey": ei_key.to_string(),
+                            "bpmnProcessId": bpmn_process_id,
+                            "tenantId": tenant_id,
+                        }),
+                    });
+                    return Ok(());
+                }
+            }
+        }
+
         state.backend.update_element_instance_state(ei_key, "COMPLETED").await?;
         writers.events.push(EventToWrite {
             value_type: "PROCESS_INSTANCE".to_string(),
@@ -1239,7 +1261,7 @@ impl BpmnElementProcessor {
             if let (Some(body), Some(inner)) = (&mi_body, &current) {
                 // An inner instance: the body decides what happens next.
                 let inner = ElementInstance { state: "COMPLETED".to_string(), ..inner.clone() };
-                return multi_instance::inner_completed(state, writers, mi, &inner, body).await;
+                return multi_instance::inner_completed(state, writers, mi, &inner, body, completion_condition_met).await;
             }
             if let (true, Some(body)) = (is_mi_body, &current) {
                 multi_instance::body_completed(state, mi, body).await?;
@@ -1251,7 +1273,7 @@ impl BpmnElementProcessor {
         if let (Some(process), Some(completed)) = (definition.as_ref(), &current) {
             let completed = ElementInstance { state: "COMPLETED".to_string(), ..completed.clone() };
             compensation::activity_completed(state, process, &completed).await?;
-            compensation::handler_ended(state, writers, &completed).await?;
+            compensation::handler_completed(state, writers, &completed).await?;
         }
 
         // An element without an outgoing sequence flow ends its path: an end event, an
@@ -1400,9 +1422,6 @@ impl BpmnElementProcessor {
 
         state.backend.update_element_instance_state(ei_key, "TERMINATED").await?;
         close_waits(state, ei_key).await?;
-        if let Ok(terminated) = state.backend.get_element_instance_by_key(ei_key).await {
-            compensation::handler_ended(state, writers, &terminated).await?;
-        }
 
         writers.events.push(EventToWrite {
             value_type: "PROCESS_INSTANCE".to_string(),
@@ -1497,7 +1516,8 @@ async fn complete_flow_scope(
                 return ad_hoc::inner_completed(state, writers, &process, &sp_ei).await;
             }
             if let Some(reebe_bpmn::FlowElement::SubProcess(sp)) = process.get_element_recursive(&sp_ei.element_id) {
-                return ad_hoc::flow_ended(state, writers, sp, &sp_ei, None).await;
+                let fulfilled = ad_hoc::condition_after_event_sub_process(state, sp, &sp_ei).await?;
+                return ad_hoc::flow_ended(state, writers, sp, &sp_ei, fulfilled).await;
             }
             return Ok(());
         }
@@ -1663,7 +1683,14 @@ fn gateway_flows<'a>(
 /// an evaluation error is `Err` with the incident message.
 fn eval_flow_condition(condition: &Option<String>, ctx: &reebe_feel::FeelContext) -> Result<bool, String> {
     let Some(cond) = condition.as_deref().map(str::trim).filter(|c| !c.is_empty()) else { return Ok(true) };
-    // The leading `=` is optional here: some editors omit it.
+    eval_boolean(cond, ctx)
+}
+
+/// Evaluate a condition that must be a boolean, as Zeebe's `evaluateBooleanExpression`
+/// does: any other result (`null` for a missing variable, too) or an evaluation error is
+/// `Err` with the `EXTRACT_VALUE_ERROR` incident message. The leading `=` is optional.
+pub(crate) fn eval_boolean(condition: &str, ctx: &reebe_feel::FeelContext) -> Result<bool, String> {
+    let cond = condition.trim();
     let expr = cond.strip_prefix('=').unwrap_or(cond).trim();
     match reebe_feel::evaluate(expr, ctx) {
         Ok(reebe_feel::FeelValue::Bool(holds)) => Ok(holds),
@@ -1701,6 +1728,7 @@ fn element_type_string(element: &reebe_bpmn::FlowElement) -> String {
         reebe_bpmn::FlowElement::ScriptTask(_) => "SCRIPT_TASK".to_string(),
         reebe_bpmn::FlowElement::SendTask(_) => "SEND_TASK".to_string(),
         reebe_bpmn::FlowElement::BusinessRuleTask(_) => "BUSINESS_RULE_TASK".to_string(),
+        reebe_bpmn::FlowElement::Task(_) => element.bpmn_element_type().to_string(),
         reebe_bpmn::FlowElement::CallActivity(_) => "CALL_ACTIVITY".to_string(),
         reebe_bpmn::FlowElement::SubProcess(sp) if sp.ad_hoc => "AD_HOC_SUB_PROCESS".to_string(),
         reebe_bpmn::FlowElement::SubProcess(sp) if sp.triggered_by_event => "EVENT_SUB_PROCESS".to_string(),

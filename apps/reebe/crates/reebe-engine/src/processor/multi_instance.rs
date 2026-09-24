@@ -204,26 +204,19 @@ fn plain_variable(expression: &str) -> Option<&str> {
         .then_some(name)
 }
 
-/// An inner instance completed: collect its output, then start the next instance,
-/// or complete the body when all are done or the completion condition holds.
-pub(crate) async fn inner_completed(
+/// An inner instance is completing: collect its output, then evaluate the completion
+/// condition as if the inner instance had completed. As in Zeebe, where this is the
+/// multi-instance body's `beforeExecutionPathCompleted`, a condition that does not
+/// evaluate to a boolean is `Err` with the `EXTRACT_VALUE_ERROR` incident message, and
+/// the inner instance stays completing until the incident is resolved.
+pub(crate) async fn inner_completing(
     state: &EngineState,
-    writers: &mut Writers,
     mi: &MultiInstanceLoopCharacteristics,
     inner: &ElementInstance,
     body: &ElementInstance,
-) -> EngineResult<()> {
+) -> EngineResult<Result<bool, String>> {
     let pi = inner.process_instance_key;
-    let local = |name: &'static str| async move {
-        state.backend
-            .get_variables_by_scope(inner.key)
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .find(|v| v.name == name)
-            .map(|v| v.value)
-    };
-    let loop_counter = local("loopCounter").await.and_then(|v| v.as_i64()).unwrap_or(1);
+    let loop_counter = loop_counter(state, inner).await;
 
     if let Some(collection) = &mi.output_collection {
         let ctx = scope::feel_context(state, pi, inner.key).await;
@@ -247,41 +240,44 @@ pub(crate) async fn inner_completed(
         scope::set_local(state, pi, body.key, collection, serde_json::Value::Array(outputs), &body.tenant_id).await?;
     }
 
-    let items = state.backend
-        .get_variables_by_scope(body.key)
-        .await?
-        .into_iter()
-        .find(|v| v.name == ITEMS)
-        .and_then(|v| v.value.as_array().map(|a| a.len()))
-        .unwrap_or(0) as i64;
-    let siblings: Vec<ElementInstance> = state.backend
-        .get_element_instances_by_process_instance(pi)
-        .await?
-        .into_iter()
-        .filter(|e| e.flow_scope_key == Some(body.key) && e.element_id == body.element_id)
-        .collect();
-    let completed = siblings.iter().filter(|e| e.state == "COMPLETED").count() as i64;
-    let terminated = siblings.iter().filter(|e| e.state == "TERMINATED").count() as i64;
+    let Some(expr) = mi.completion_condition.as_deref().filter(|e| !e.trim().is_empty()) else {
+        return Ok(Ok(false));
+    };
+    let items = item_count(state, body).await?;
+    let siblings = siblings(state, body).await?;
+    let completed = siblings.iter().filter(|e| e.state == "COMPLETED" || e.key == inner.key).count();
+    let terminated = siblings.iter().filter(|e| e.state == "TERMINATED").count();
+    let active = siblings
+        .iter()
+        .filter(|e| e.key != inner.key && !matches!(e.state.as_str(), "COMPLETED" | "TERMINATED"))
+        .count();
+    let mut vars = scope::visible_variables(state, pi, inner.key).await;
+    let created = if mi.is_sequential { loop_counter } else { items };
+    vars.insert("numberOfInstances".into(), serde_json::json!(created));
+    vars.insert("numberOfActiveInstances".into(), serde_json::json!(active));
+    vars.insert("numberOfCompletedInstances".into(), serde_json::json!(completed));
+    vars.insert("numberOfTerminatedInstances".into(), serde_json::json!(terminated));
+    let ctx = reebe_feel::FeelContext::from_json(serde_json::Value::Object(vars));
+    Ok(super::bpmn_element::eval_boolean(expr, &ctx))
+}
+
+/// An inner instance completed: start the next instance, or complete the body when all
+/// are done or the completion condition held (`condition_met`, from [`inner_completing`]).
+pub(crate) async fn inner_completed(
+    state: &EngineState,
+    writers: &mut Writers,
+    mi: &MultiInstanceLoopCharacteristics,
+    inner: &ElementInstance,
+    body: &ElementInstance,
+    condition_met: bool,
+) -> EngineResult<()> {
+    let loop_counter = loop_counter(state, inner).await;
+    let items = item_count(state, body).await?;
+    let siblings = siblings(state, body).await?;
     let active: Vec<&ElementInstance> = siblings
         .iter()
         .filter(|e| !matches!(e.state.as_str(), "COMPLETED" | "TERMINATED"))
         .collect();
-
-    let condition_met = match &mi.completion_condition {
-        Some(expr) if !expr.trim().is_empty() => {
-            let mut vars = scope::visible_variables(state, pi, inner.key).await;
-            let created = if mi.is_sequential { loop_counter } else { items };
-            vars.insert("numberOfInstances".into(), serde_json::json!(created));
-            vars.insert("numberOfActiveInstances".into(), serde_json::json!(active.len()));
-            vars.insert("numberOfCompletedInstances".into(), serde_json::json!(completed));
-            vars.insert("numberOfTerminatedInstances".into(), serde_json::json!(terminated));
-            let ctx = reebe_feel::FeelContext::from_json(serde_json::Value::Object(vars));
-            let expr = expr.trim();
-            let expr = if reebe_feel::is_feel_expression(expr) { expr.to_string() } else { format!("={expr}") };
-            matches!(reebe_feel::parse_and_evaluate(&expr, &ctx), Ok(reebe_feel::FeelValue::Bool(true)))
-        }
-        _ => false,
-    };
 
     if condition_met {
         for sibling in active {
@@ -294,6 +290,37 @@ pub(crate) async fn inner_completed(
         complete_body(writers, body);
     }
     Ok(())
+}
+
+async fn loop_counter(state: &EngineState, inner: &ElementInstance) -> i64 {
+    state.backend
+        .get_variables_by_scope(inner.key)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .find(|v| v.name == "loopCounter")
+        .and_then(|v| v.value.as_i64())
+        .unwrap_or(1)
+}
+
+async fn item_count(state: &EngineState, body: &ElementInstance) -> EngineResult<i64> {
+    Ok(state.backend
+        .get_variables_by_scope(body.key)
+        .await?
+        .into_iter()
+        .find(|v| v.name == ITEMS)
+        .and_then(|v| v.value.as_array().map(|a| a.len()))
+        .unwrap_or(0) as i64)
+}
+
+/// The inner instances of the body.
+async fn siblings(state: &EngineState, body: &ElementInstance) -> EngineResult<Vec<ElementInstance>> {
+    Ok(state.backend
+        .get_element_instances_by_process_instance(body.process_instance_key)
+        .await?
+        .into_iter()
+        .filter(|e| e.flow_scope_key == Some(body.key) && e.element_id == body.element_id)
+        .collect())
 }
 
 /// The body completed: hand its output collection to the enclosing scope.

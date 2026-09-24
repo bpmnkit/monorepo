@@ -73,7 +73,9 @@ pub trait StateBackend: Send + Sync {
     async fn get_variables_by_scope(&self, scope_key: i64) -> Result<Vec<Variable>>;
 
     // ---- Decision definitions (DMN) ----
-    async fn insert_decision_xml(&self, decision_id: &str, dmn_xml: &str) -> Result<()>;
+    /// Store the DMN a decision was deployed in, as decision definition `key` of
+    /// deployment `deployment_key`.
+    async fn insert_decision_xml(&self, key: i64, deployment_key: i64, resource_name: &str, decision_id: &str, dmn_xml: &str) -> Result<()>;
     async fn get_dmn_xml_by_decision_id(&self, decision_id: &str) -> Result<Option<String>>;
 
     // ---- Jobs ----

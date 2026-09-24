@@ -130,23 +130,23 @@ describe("engine — ad-hoc sub-process run by a job worker", () => {
 
 		expect(lookups[0]?.variables.orderId).toBe("7")
 		expect(agentJobs[0]?.toolCallResults).toEqual([])
-		expect(agentJobs[0]?.adHocSubProcessElements).toEqual([
+		// Zeebe's shape: a parameter is named by its whole reference, and empty fields
+		// (here `properties`) are left out.
+		expect(agentJobs[0]?.adHocSubProcessElements).toStrictEqual([
 			{
 				elementId: "search-kb",
 				elementName: "Search",
 				documentation: "Search the help centre.",
-				properties: {},
-				parameters: [{ name: "query", description: "Search terms" }],
+				parameters: [{ name: "toolCall.query", description: "Search terms" }],
 			},
 			{
 				elementId: "lookup-order",
 				elementName: "Look up order",
 				documentation: "Get an order.",
-				properties: {},
 				parameters: [
-					{ name: "orderId", description: "The order number" },
+					{ name: "toolCall.orderId", description: "The order number" },
 					{
-						name: "includeItems",
+						name: "toolCall.includeItems",
 						description: "Also list the items",
 						type: "boolean",
 						options: { required: false },
@@ -198,6 +198,122 @@ describe("engine — ad-hoc sub-process run by a job worker", () => {
 			instance.onChange((e) => e.type === "process:failed" && resolve(e.error)),
 		)
 		expect(error).toMatch(/both activates elements and fulfils the completion condition/)
+	})
+
+	// The fixtures of Zeebe's AdHocSubProcessElementsVariableTest.
+	it("gives adHocSubProcessElements Zeebe's shape", async () => {
+		const input = (source: string, target: string) =>
+			`<zeebe:input source="${source.replaceAll('"', "&quot;")}" target="${target}"/>`
+		const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="d" targetNamespace="t">
+  <bpmn:process id="process" isExecutable="true">
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:adHocSubProcess id="ad-hoc">
+      <bpmn:extensionElements><zeebe:taskDefinition type="agent-worker"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:task id="Simple_Task" name="Simple Task">
+        <bpmn:documentation>The Simple Task documentation</bpmn:documentation>
+        <bpmn:extensionElements><zeebe:properties><zeebe:property name="someProperty" value="someValue"/></zeebe:properties></bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="Task_With_Properties" name="Task With Properties">
+        <bpmn:extensionElements><zeebe:properties>
+          <zeebe:property name="io.camunda.test.property1" value="value1"/>
+          <zeebe:property name="io.camunda.test.property3" value=""/>
+          <zeebe:property name="io.camunda.test.property4" value="   "/>
+          <zeebe:property name="io.camunda.test.property5"/>
+        </zeebe:properties></bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:serviceTask id="Service_Task" name="Service Task">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="serviceTaskJobType"/>
+          <zeebe:ioMapping>
+            ${input('=fromAi(toolCall.a, "Input A", "number")', "inputA")}
+            ${input('=fromAi(b, "Input B", "number")', "inputB")}
+            ${input('=string(fromAi(toolCall.c, "Input C", "number"))', "inputC")}
+            ${input("=123456", "inputD")}
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:task id="A_Task_With_Follow_Up"><bpmn:outgoing>f3</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Follow_Up_Task"><bpmn:incoming>f3</bpmn:incoming></bpmn:task>
+      <bpmn:sequenceFlow id="f3" sourceRef="A_Task_With_Follow_Up" targetRef="Follow_Up_Task"/>
+      <bpmn:scriptTask id="A_Complex_Tool" name="A complex tool">
+        <bpmn:extensionElements>
+          <zeebe:script expression="=anArrayVariable" resultVariable="complexToolResult"/>
+          <zeebe:ioMapping>
+            ${input('=fromAi(toolCall.anEnumValue, "An enum value", "string", { enum: ["A", "B", "C"] })', "anEnumValue")}
+            ${input('={ foo: [fromAi(firstValue), string(fromAi(toolCall.secondValue, "The second value", "integer"))], bar: { baz: fromAi(description: "The third value to add", value: toolCall.thirdValue) } }', "multiple")}
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:scriptTask>
+    </bpmn:adHocSubProcess>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="ad-hoc"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="ad-hoc" targetRef="end"/>
+  </bpmn:process>
+</bpmn:definitions>`
+		const engine = new Engine()
+		engine.deploy({ bpmn: Bpmn.parse(xml) })
+		let elements: unknown
+		engine.registerJobWorker("agent-worker", (job) => {
+			elements = job.variables.adHocSubProcessElements
+			job.complete({}, { type: "adHocSubProcess", isCompletionConditionFulfilled: true })
+		})
+		const instance = engine.start("process", {})
+		await new Promise<void>((resolve) =>
+			instance.onChange((e) => e.type === "process:completed" && resolve()),
+		)
+		// Compared as JSON, so a key that should be left out cannot hide as `undefined`.
+		expect(JSON.stringify(elements, null, 1)).toBe(
+			JSON.stringify(
+				[
+					{
+						elementId: "Simple_Task",
+						elementName: "Simple Task",
+						documentation: "The Simple Task documentation",
+						properties: { someProperty: "someValue" },
+					},
+					{
+						elementId: "Task_With_Properties",
+						elementName: "Task With Properties",
+						properties: {
+							"io.camunda.test.property1": "value1",
+							"io.camunda.test.property3": null,
+							"io.camunda.test.property4": "   ",
+							"io.camunda.test.property5": null,
+						},
+					},
+					{
+						elementId: "Service_Task",
+						elementName: "Service Task",
+						parameters: [
+							{ name: "toolCall.a", description: "Input A", type: "number" },
+							{ name: "b", description: "Input B", type: "number" },
+							{ name: "toolCall.c", description: "Input C", type: "number" },
+						],
+					},
+					{ elementId: "A_Task_With_Follow_Up" },
+					{
+						elementId: "A_Complex_Tool",
+						elementName: "A complex tool",
+						parameters: [
+							{
+								name: "toolCall.anEnumValue",
+								description: "An enum value",
+								type: "string",
+								schema: { enum: ["A", "B", "C"] },
+							},
+							{ name: "firstValue" },
+							{ name: "toolCall.secondValue", description: "The second value", type: "integer" },
+							{ name: "toolCall.thirdValue", description: "The third value to add" },
+						],
+					},
+				],
+				null,
+				1,
+			),
+		)
 	})
 })
 
@@ -267,6 +383,28 @@ describe("mockAiAgent — scripted turns", () => {
 		const missing = await t.start("support", {})
 		expect(missing).toHaveFailed(
 			'tool "lookup-order" needs "orderId", which the call does not give',
+		)
+	})
+
+	it("offers the model a toolCall.<name> parameter as <name>, and fails for one it cannot offer", async () => {
+		// `arguments` use the connector's names: `orderId` for `toolCall.orderId`.
+		const lookups = t.mockJob("order-lookup", { result: {} })
+		t.mockAiAgent("agent", WHERE_IS_MY_ORDER)
+		expect(await t.start("support", {})).toHaveCompleted()
+		expect(lookups.calls[0]?.variables.orderId).toBe("1042")
+		expect(lookups.calls[0]?.variables.toolCall).toEqual({
+			orderId: "1042",
+			_meta: { id: "call_1_1", name: "lookup-order" },
+		})
+
+		const xml = Bpmn.export(supportProcess())
+		expect(xml).toContain("fromAi(toolCall.summary")
+		const other = await createProcessTest({
+			bpmn: xml.replace("fromAi(toolCall.summary", "fromAi(summary"),
+		})
+		other.mockAiAgent("agent", [{ toolCalls: [{ name: "create-ticket", arguments: {} }] }])
+		expect(await other.start("support", {})).toHaveFailed(
+			`AI agent "agent": failed to generate ad-hoc tool schema for element 'create-ticket'. Parameter name 'summary' is not part of expected namespace 'toolCall.'.`,
 		)
 	})
 

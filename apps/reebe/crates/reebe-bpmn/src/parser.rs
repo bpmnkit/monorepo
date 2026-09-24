@@ -1,6 +1,7 @@
 use crate::model::*;
 use quick_xml::events::Event;
-use quick_xml::reader::Reader;
+use quick_xml::name::{Namespace, ResolveResult};
+use quick_xml::reader::{NsReader, Reader};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -112,7 +113,9 @@ fn prescan_refs(xml: &str) -> PrescanRefs {
 
 /// Parse a BPMN 2.0 XML string and return all process definitions.
 pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
-    let mut reader = Reader::from_str(xml);
+    // Namespaces are resolved only to tell an empty BPMN element from an extension
+    // element of the same local name, such as `<zeebe:userTask/>`.
+    let mut reader = NsReader::from_str(xml);
     reader.config_mut().trim_text(true);
 
     let mut processes: Vec<BpmnProcess> = Vec::new();
@@ -140,7 +143,18 @@ pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
             Ok(Event::Empty(ref e)) => {
                 let name_bytes = e.name().as_ref().to_vec();
                 let name = local_name_owned(&name_bytes);
-                parser_state.handle_empty(&name, e, &reader)?;
+                if has_context(&name) && !is_extension(&reader, e) {
+                    // An empty flow element is a start tag followed by its end tag.
+                    parser_state.handle_start(&name, e, &reader)?;
+                    parser_state.xml_stack.push(name.clone());
+                    let ended = parser_state.handle_end(&name)?;
+                    parser_state.xml_stack.pop();
+                    if let Some(process) = ended {
+                        processes.push(process);
+                    }
+                } else {
+                    parser_state.handle_empty(&name, e, &reader)?;
+                }
             }
             Ok(Event::End(ref e)) => {
                 let name_bytes = e.name().as_ref().to_vec();
@@ -251,12 +265,27 @@ fn mark_default_flows(elements: &mut HashMap<String, FlowElement>, flows: &mut [
 }
 
 /// The flow elements the parser keeps a context for while they are open.
-const FLOW_NODE_TAGS: [&str; 18] = [
+const FLOW_NODE_TAGS: [&str; 20] = [
     "serviceTask", "userTask", "receiveTask", "scriptTask", "sendTask", "businessRuleTask",
-    "callActivity", "subProcess", "adHocSubProcess", "exclusiveGateway", "parallelGateway",
-    "inclusiveGateway", "eventBasedGateway", "startEvent", "endEvent", "intermediateCatchEvent",
-    "intermediateThrowEvent", "boundaryEvent",
+    "task", "manualTask", "callActivity", "subProcess", "adHocSubProcess", "exclusiveGateway",
+    "parallelGateway", "inclusiveGateway", "eventBasedGateway", "startEvent", "endEvent",
+    "intermediateCatchEvent", "intermediateThrowEvent", "boundaryEvent",
 ];
+
+/// Whether an element belongs to a namespace other than BPMN's, as extension elements do.
+fn is_extension(reader: &NsReader<&[u8]>, e: &quick_xml::events::BytesStart) -> bool {
+    match reader.resolve_element(e.name()).0 {
+        ResolveResult::Bound(Namespace(ns)) => ns != BPMN_NS.as_bytes(),
+        ResolveResult::Unbound | ResolveResult::Unknown(_) => false,
+    }
+}
+
+/// Whether an element is parsed as a start tag and an end tag, even when it is written
+/// as an empty tag (`<bpmn:userTask id="x"/>`): the flow elements, and the elements
+/// Zeebe rejects at deployment.
+fn has_context(name: &str) -> bool {
+    FLOW_NODE_TAGS.contains(&name) || name == "complexGateway"
+}
 
 #[derive(Debug)]
 enum ParseContext {
@@ -268,6 +297,7 @@ enum ParseContext {
     ScriptTask(ScriptTask),
     SendTask(SendTask),
     BusinessRuleTask(BusinessRuleTask),
+    Task(Task),
     CallActivity(CallActivity),
     SubProcess(SubProcess),
     // For gateways, we store the type alongside the gateway
@@ -345,6 +375,7 @@ impl ParserState {
             ParseContext::ScriptTask(e) => &e.id,
             ParseContext::SendTask(e) => &e.id,
             ParseContext::BusinessRuleTask(e) => &e.id,
+            ParseContext::Task(e) => &e.id,
             ParseContext::CallActivity(e) => &e.id,
             ParseContext::SubProcess(e) => &e.id,
             ParseContext::ExclusiveGateway(e)
@@ -524,6 +555,13 @@ impl ParserState {
                 task.name = get_attr(e, "name");
                 task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::BusinessRuleTask(task));
+            }
+            "task" | "manualTask" => {
+                let id = get_required_attr(e, name, "id")?;
+                let mut task = Task::new(id, name == "manualTask");
+                task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
+                self.stack.push(ParseContext::Task(task));
             }
             "callActivity" => {
                 let id = get_required_attr(e, "callActivity", "id")?;
@@ -886,10 +924,6 @@ impl ParserState {
                 self.finalize_event_definition();
             }
             "association" => self.add_association(e)?,
-            "complexGateway" => {
-                let id = get_required_attr(e, name, "id")?;
-                self.add_unsupported(UnsupportedElement { id, element_type: name.to_string() });
-            }
             "property" => self.add_property(e),
             "adHoc" => {
                 let active_elements = get_attr(e, "activeElementsCollection");
@@ -1038,6 +1072,12 @@ impl ParserState {
                 if let Some(ParseContext::BusinessRuleTask(task)) = self.stack.pop() {
                     let id = task.id.clone();
                     self.add_element_to_scope(id, FlowElement::BusinessRuleTask(task));
+                }
+            }
+            "task" | "manualTask" => {
+                if let Some(ParseContext::Task(task)) = self.stack.pop() {
+                    let id = task.id.clone();
+                    self.add_element_to_scope(id, FlowElement::Task(task));
                 }
             }
             "callActivity" => {
@@ -1225,6 +1265,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.incoming.push(id); return; }
                 ParseContext::ScriptTask(t) => { t.incoming.push(id); return; }
                 ParseContext::SendTask(t) => { t.incoming.push(id); return; }
+                ParseContext::Task(t) => { t.incoming.push(id); return; }
                 ParseContext::CallActivity(t) => { t.incoming.push(id); return; }
                 ParseContext::SubProcess(t) => { t.incoming.push(id); return; }
                 ParseContext::ExclusiveGateway(g) => { g.incoming.push(id); return; }
@@ -1249,6 +1290,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.outgoing.push(id); return; }
                 ParseContext::ScriptTask(t) => { t.outgoing.push(id); return; }
                 ParseContext::SendTask(t) => { t.outgoing.push(id); return; }
+                ParseContext::Task(t) => { t.outgoing.push(id); return; }
                 ParseContext::CallActivity(t) => { t.outgoing.push(id); return; }
                 ParseContext::SubProcess(t) => { t.outgoing.push(id); return; }
                 ParseContext::ExclusiveGateway(g) => { g.outgoing.push(id); return; }
@@ -1283,6 +1325,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::ScriptTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::SendTask(t) => { t.input_mappings.push(mapping); return; }
+                ParseContext::Task(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::CallActivity(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::SubProcess(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::StartEvent(e) => { e.input_mappings.push(mapping); return; }
@@ -1300,6 +1343,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::ScriptTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::SendTask(t) => { t.output_mappings.push(mapping); return; }
+                ParseContext::Task(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::CallActivity(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::SubProcess(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::StartEvent(e) => { e.output_mappings.push(mapping); return; }
@@ -1439,6 +1483,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => return Some(&mut t.multi_instance),
                 ParseContext::ScriptTask(t) => return Some(&mut t.multi_instance),
                 ParseContext::SendTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::Task(t) => return Some(&mut t.multi_instance),
                 ParseContext::BusinessRuleTask(t) => return Some(&mut t.multi_instance),
                 ParseContext::CallActivity(t) => return Some(&mut t.multi_instance),
                 ParseContext::SubProcess(t) => return Some(&mut t.multi_instance),
@@ -1457,6 +1502,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::ScriptTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::SendTask(t) => { t.multi_instance = Some(mi); return; }
+                ParseContext::Task(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::CallActivity(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::SubProcess(t) => { t.multi_instance = Some(mi); return; }
                 _ => {}

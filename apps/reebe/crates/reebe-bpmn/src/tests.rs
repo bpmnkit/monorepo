@@ -1018,11 +1018,153 @@ mod tests {
     </bpmn:adHocSubProcess>"#);
         let p = &parse_bpmn(&xml).unwrap()[0];
         let Some(FlowElement::SubProcess(sp)) = p.elements.get("tools") else { panic!("tools") };
-        assert_eq!(sp.element_order, vec!["search", "after", "ask"]);
+        assert_eq!(sp.element_order, vec!["search", "plain", "after", "ask"]);
         let search = &sp.element_details["search"];
         assert_eq!(search.documentation.as_deref(), Some("Search the help centre."));
         assert_eq!(search.properties, vec![("kind".to_string(), "lookup".to_string()), ("empty".to_string(), String::new())]);
         assert!(!sp.element_details.contains_key("after"), "a flow's documentation is not its target's");
         assert!(!sp.element_details.contains_key("tools"));
+    }
+
+    /// Every flow element, with the attributes it can carry on its own tag.
+    const EMPTY_TAGS: [(&str, &str, &str); 21] = [
+        ("task", r#"id="x" name="X""#, "TASK"),
+        ("manualTask", r#"id="x" name="X""#, "MANUAL_TASK"),
+        ("serviceTask", r#"id="x" name="X""#, "SERVICE_TASK"),
+        ("userTask", r#"id="x" name="X""#, "USER_TASK"),
+        ("receiveTask", r#"id="x" name="X" messageRef="m""#, "RECEIVE_TASK"),
+        ("scriptTask", r#"id="x" name="X""#, "SCRIPT_TASK"),
+        ("sendTask", r#"id="x" name="X""#, "SEND_TASK"),
+        ("businessRuleTask", r#"id="x" name="X""#, "BUSINESS_RULE_TASK"),
+        ("callActivity", r#"id="x" name="X""#, "CALL_ACTIVITY"),
+        ("subProcess", r#"id="x" name="X""#, "SUB_PROCESS"),
+        ("subProcess", r#"id="x" triggeredByEvent="true""#, "EVENT_SUB_PROCESS"),
+        ("adHocSubProcess", r#"id="x" cancelRemainingInstances="false""#, "AD_HOC_SUB_PROCESS"),
+        ("exclusiveGateway", r#"id="x" name="X" default="f""#, "EXCLUSIVE_GATEWAY"),
+        ("parallelGateway", r#"id="x" name="X""#, "PARALLEL_GATEWAY"),
+        ("inclusiveGateway", r#"id="x" name="X" default="f""#, "INCLUSIVE_GATEWAY"),
+        ("eventBasedGateway", r#"id="x" name="X""#, "EVENT_BASED_GATEWAY"),
+        ("startEvent", r#"id="x" name="X""#, "START_EVENT"),
+        ("endEvent", r#"id="x" name="X""#, "END_EVENT"),
+        ("intermediateCatchEvent", r#"id="x" name="X""#, "INTERMEDIATE_CATCH_EVENT"),
+        ("intermediateThrowEvent", r#"id="x" name="X""#, "INTERMEDIATE_THROW_EVENT"),
+        ("boundaryEvent", r#"id="x" attachedToRef="t" cancelActivity="false""#, "BOUNDARY_EVENT"),
+    ];
+
+    /// `tag` with `attrs`, written as an empty tag or as a start and an end tag, in a
+    /// process and in an ad-hoc sub-process, next to a service task `t`.
+    fn with_element(tag: &str, attrs: &str, empty: bool) -> String {
+        let element = if empty {
+            format!("<bpmn:{tag} {attrs}/>")
+        } else {
+            format!("<bpmn:{tag} {attrs}></bpmn:{tag}>")
+        };
+        let inner = element.replace(r#"id="x""#, r#"id="inner-x""#).replace(r#"attachedToRef="t""#, r#"attachedToRef="inner-t""#);
+        format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="t">
+  <bpmn:message id="m" name="order"/>
+  <bpmn:process id="p" isExecutable="true">
+    <bpmn:serviceTask id="t"/>
+    {element}
+    <bpmn:adHocSubProcess id="tools">
+      <bpmn:serviceTask id="inner-t"/>
+      {inner}
+    </bpmn:adHocSubProcess>
+  </bpmn:process>
+</bpmn:definitions>"#)
+    }
+
+    #[test]
+    fn test_empty_flow_elements_parse_as_start_and_end_tags() {
+        for (tag, attrs, element_type) in EMPTY_TAGS {
+            let empty = &parse_bpmn(&with_element(tag, attrs, true)).unwrap()[0];
+            let full = &parse_bpmn(&with_element(tag, attrs, false)).unwrap()[0];
+            assert_eq!(
+                serde_json::to_value(empty).unwrap(),
+                serde_json::to_value(full).unwrap(),
+                "<bpmn:{tag} {attrs}/>",
+            );
+            let x = empty.elements.get("x").unwrap_or_else(|| panic!("<bpmn:{tag}/> is parsed"));
+            assert_eq!(x.bpmn_element_type(), element_type, "{tag}");
+            assert_eq!(x.name(), attrs.contains("name=").then_some("X"), "{tag}");
+            let Some(FlowElement::SubProcess(tools)) = empty.elements.get("tools") else { panic!("tools") };
+            assert!(tools.elements.contains_key("inner-x"), "<bpmn:{tag}/> inside a sub-process");
+            assert_eq!(tools.element_order, vec!["inner-t", "inner-x"], "{tag}");
+        }
+    }
+
+    #[test]
+    fn test_empty_flow_elements_keep_the_attributes_of_their_tag() {
+        let p = &parse_bpmn(&with_element("receiveTask", r#"id="x" messageRef="m""#, true)).unwrap()[0];
+        let Some(FlowElement::ReceiveTask(task)) = p.elements.get("x") else { panic!("x") };
+        assert_eq!(task.message_name.as_deref(), Some("order"));
+
+        let p = &parse_bpmn(&with_element("exclusiveGateway", r#"id="x" default="f""#, true)).unwrap()[0];
+        let Some(FlowElement::ExclusiveGateway(gw)) = p.elements.get("x") else { panic!("x") };
+        assert_eq!(gw.default_flow.as_deref(), Some("f"));
+
+        let p = &parse_bpmn(&with_element("boundaryEvent", r#"id="x" attachedToRef="t" cancelActivity="false""#, true)).unwrap()[0];
+        let Some(FlowElement::BoundaryEvent(ev)) = p.elements.get("x") else { panic!("x") };
+        assert_eq!((ev.attached_to_ref.as_str(), ev.cancel_activity), ("t", false));
+
+        let p = &parse_bpmn(&with_element("adHocSubProcess", r#"id="x" cancelRemainingInstances="false""#, true)).unwrap()[0];
+        let Some(FlowElement::SubProcess(sp)) = p.elements.get("x") else { panic!("x") };
+        assert!(sp.ad_hoc && !sp.cancel_remaining_instances);
+
+        let p = &parse_bpmn(&with_element("manualTask", r#"id="x" isForCompensation="true""#, true)).unwrap()[0];
+        assert!(p.elements["x"].is_for_compensation());
+
+        let p = &parse_bpmn(&with_element("startEvent", r#"id="x""#, true)).unwrap()[0];
+        assert!(p.start_events.contains(&"x".to_string()));
+        let p = &parse_bpmn(&with_element("endEvent", r#"id="x""#, true)).unwrap()[0];
+        assert!(p.end_events.contains(&"x".to_string()));
+    }
+
+    #[test]
+    fn test_an_empty_complex_gateway_is_recorded_as_unsupported() {
+        let p = &parse_bpmn(&with_element("complexGateway", r#"id="x""#, true)).unwrap()[0];
+        assert!(!p.elements.contains_key("x"));
+        let unsupported: Vec<&str> = p.unsupported_elements.iter().map(|e| e.id.as_str()).collect();
+        assert_eq!(unsupported, vec!["x", "inner-x"]);
+    }
+
+    #[test]
+    fn test_an_empty_extension_element_is_not_a_flow_element() {
+        // `<zeebe:userTask/>` shares its local name with `<bpmn:userTask>`.
+        let xml = definitions(r#"
+    <bpmn:userTask id="u"><bpmn:extensionElements><zeebe:userTask/></bpmn:extensionElements></bpmn:userTask>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        assert_eq!(p.elements.keys().collect::<Vec<_>>(), vec!["u"]);
+
+        // BPMN as the default namespace.
+        let xml = r#"<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0">
+  <process id="p"><userTask id="u"/><task id="t"><extensionElements><zeebe:userTask/></extensionElements></task></process>
+</definitions>"#;
+        let p = &parse_bpmn(xml).unwrap()[0];
+        let mut ids: Vec<&String> = p.elements.keys().collect();
+        ids.sort();
+        assert_eq!(ids, vec!["t", "u"]);
+    }
+
+    #[test]
+    fn test_tasks_and_manual_tasks_carry_mappings_and_multi_instance() {
+        let xml = definitions(r#"
+    <bpmn:manualTask id="m">
+      <bpmn:extensionElements>
+        <zeebe:ioMapping><zeebe:input source="=1" target="one"/><zeebe:output source="=one" target="out"/></zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true">
+        <bpmn:extensionElements><zeebe:loopCharacteristics inputCollection="=items"/></bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:manualTask>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        let Some(FlowElement::Task(task)) = p.elements.get("m") else { panic!("m") };
+        assert!(task.manual);
+        assert_eq!((task.incoming.as_slice(), task.outgoing.as_slice()), (&["f1".to_string()][..], &["f2".to_string()][..]));
+        assert_eq!(task.input_mappings.len(), 1);
+        assert_eq!(task.output_mappings.len(), 1);
+        assert!(task.multi_instance.as_ref().is_some_and(|mi| mi.is_sequential && mi.input_collection == "=items"));
     }
 }

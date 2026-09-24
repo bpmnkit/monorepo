@@ -313,7 +313,8 @@ was being processed when the server stopped abruptly is processed again.
 cargo test --workspace
 ```
 
-The Postgres suites (`crates/reebe-engine/tests/integration.rs` and `compatibility.rs`) skip
+The Postgres suites (`crates/reebe-engine/tests/integration.rs` and `compatibility.rs`, and
+`crates/reebe-grpc/tests/variables.rs`, which calls the gRPC service) skip
 themselves unless `REEBE_DATABASE__URL` is set. To run them, start a throwaway PostgreSQL and
 point the tests at it:
 
@@ -450,8 +451,9 @@ Reports PI/s (process instances per second), average latency, and error count.
   event or error event sub-process that catches it, and propagate as a catch event's do
   (an output mapping on a boundary event picks what leaves)
 - Exclusive gateways take the first flow whose condition holds, else the default flow. With
-  no match and no default flow they raise a `CONDITION_ERROR` incident and stay activating;
-  resolving the incident evaluates the gateway again. Default flows are recognised in
+  no match and no default flow they raise a `CONDITION_ERROR` incident with Zeebe's message,
+  `Expected at least one condition to evaluate to true, or to have a default flow`, and stay
+  activating; resolving the incident evaluates the gateway again. Default flows are recognised in
   sub-processes and event sub-processes at every depth. Parallel gateways take every
   outgoing flow and ignore conditions on them, as Zeebe does
 - A sequence-flow condition of an exclusive or inclusive gateway must evaluate to a boolean,
@@ -486,8 +488,9 @@ Reports PI/s (process instances per second), average latency, and error count.
   sub-process) compensates the event sub-process and the scope around it. Every handler
   runs in the throw event's flow scope, as Zeebe activates it, and starts with no local
   variables but those of its input mappings: it sees the variables of that scope, and its
-  result propagates like any task's. A handler that is terminated on its own (for example
-  by a boundary event on it) counts as ended, so the throw event does not wait for it.
+  result propagates like any task's. Only a handler that completes releases the throw
+  event, as in Zeebe: one that is terminated on its own (for example by a boundary event on
+  it) leaves the throw event waiting until its scope is terminated.
   Deployment fails for an `activityRef` that is not
   an activity with a compensation boundary event in the throw event's scope, and for a
   compensation start event in an event sub-process, which Zeebe does not support
@@ -496,7 +499,10 @@ Reports PI/s (process instances per second), average latency, and error count.
   outgoing sequence flows are followed inside it. Run by Zeebe, `activeElementsCollection`
   lists the elements to activate (an empty list, or none, activates nothing and the
   sub-process waits; an id that is not an element without incoming flows raises an
-  incident), `completionCondition` is checked each time an activation completes, and
+  incident), `completionCondition` is checked each time an activation completes (a result
+  that is not a boolean raises an `EXTRACT_VALUE_ERROR` incident, `Failed to evaluate
+  completion condition. Expected result of the expression … to be 'BOOLEAN', but was …`, on
+  the activation, which stays completing; resolving it evaluates the condition again), and
   `cancelRemainingInstances` (default `true`) terminates the rest when it holds; without a
   condition, the sub-process completes when every activated element has. With a job worker
   implementation (the AI Agent Sub-process), the job's `adHocSubProcess` result activates
@@ -508,12 +514,19 @@ Reports PI/s (process instances per second), average latency, and error count.
   fulfilling at once, or an element that cannot be activated) rejects the completion.
   `outputElement` is collected into `outputCollection`, which is propagated when the
   sub-process completes. Every ad-hoc sub-process creates the local variable
-  `adHocSubProcessElements` when it activates: for each element it can activate, in
-  document order, `elementId`, `elementName`, `documentation`, `properties` (its
-  `zeebe:properties`) and `parameters`, one per `fromAi(toolCall.<name>, description, type,
-  schema, options)` call in its input mappings, positional or named, with the arguments
-  that are constants. The shape is the one `@bpmnkit/engine` gives the same model; a test
-  checks the two agree on the `ai-agent-tool-loop` template. `fromAi()` itself returns its
+  `adHocSubProcessElements` when it activates, in the shape of Zeebe's
+  `AdHocActivityMetadata`: for each element it can activate, in document order,
+  `elementId`, `elementName`, `documentation`, `properties` (its `zeebe:properties`, with
+  `null` for an empty value) and `parameters`, one per `fromAi(value, description, type,
+  schema, options)` call in its input mappings, positional or named. A parameter is named by
+  its whole reference (`toolCall.orderId`, or `b` for `fromAi(b)`), the description and type
+  are its string literals, the schema and options its contexts of literals, and the
+  arguments of a `fromAi()` call are not searched for more calls. A field that is null or
+  empty is left out, as Zeebe's `@JsonInclude(NON_EMPTY)` does; the fields come out in
+  alphabetical order, where Zeebe's are in declaration order. The cases of Zeebe's
+  `AdHocSubProcessElementsVariableTest` and `TaggedParameterExtractorTest` are tests here,
+  and a test checks that `@bpmnkit/engine` gives the same variable for the
+  `ai-agent-tool-loop` template. `fromAi()` itself returns its
   value. `POST /v2/element-instances/ad-hoc-activities/{key}/activation` activates elements
   (each with its variables) in an active ad-hoc sub-process, first terminating what still
   runs with `cancelRemainingInstances`; it answers 204, 404 for a key that is not an
@@ -522,6 +535,23 @@ Reports PI/s (process instances per second), average latency, and error count.
   or an `elementId`. The gRPC `CompleteJob` call takes Zeebe's `JobResult` (`result = 3`,
   with the ad-hoc and user task fields under Zeebe's field numbers) and passes it on as
   the REST job completion does
+- The `variables` document of a gRPC call becomes variables, for `CreateProcessInstance`
+  (with or without result), `PublishMessage`, `BroadcastSignal`, `SetVariables` (local to
+  the element instance, or propagated from it to the scope that has each variable, else the
+  process), `CompleteJob`, `FailJob` (local to the job's task, as the REST call now does
+  too), `ThrowError` (to the catch event) and `EvaluateDecision`. As in Zeebe's gateway, an
+  empty document or `null` is no variables, and a document that is not JSON
+  (`Invalid JSON value: …`) or not an object (`Property 'variables' is invalid: Expected
+  document to be a root level object, but was 'ARRAY'`) is rejected with
+  `INVALID_ARGUMENT`; `ModifyProcessInstance` checks the documents of its variable
+  instructions the same way. `CreateProcessInstance` now reaches the engine's instance
+  creation and answers with the instance key, and `EvaluateDecision` evaluates the
+  deployed decision of its `decisionId`. Deploying a DMN on PostgreSQL stores its decisions
+- Undefined tasks (`bpmn:task`) and manual tasks pass through, with their I/O mappings and
+  multi-instance, as element types `TASK` and `MANUAL_TASK`
+- A flow element written as an empty tag (`<bpmn:userTask id="x"/>`, `<bpmn:task/>`,
+  gateways, events, sub-processes) is read as one with a start and an end tag; an empty
+  extension element with the same local name (`<zeebe:userTask/>`) is not
 - Resolving an incident raised while an element was activating (an I/O mapping, a gateway
   condition, a multi-instance input collection, an ad-hoc `activeElementsCollection`) retries
   that same element instance
@@ -529,7 +559,11 @@ Reports PI/s (process instances per second), average latency, and error count.
   incoming flow, and a token waiting at a join keeps its flow scope active, as in Zeebe, even
   if the join can never activate
 - Multi-instance (parallel and sequential) on every task type, sub-process and call
-  activity, with `inputElement`, `outputCollection`/`outputElement` and `completionCondition`
+  activity, with `inputElement`, `outputCollection`/`outputElement` and `completionCondition`.
+  A `completionCondition` that does not evaluate to a boolean raises an
+  `EXTRACT_VALUE_ERROR` incident (`Expected result of the expression … to be 'BOOLEAN', but
+  was …`) on the inner instance, which stays completing; resolving it evaluates the
+  condition again
 - Variables (get, update, search)
 - Incidents (search, resolve)
 - User tasks
@@ -549,17 +583,16 @@ whose condition can never hold still counts as reachable).
 
 ### Known gaps
 
-- `adHocSubProcessElements` has the shape `@bpmnkit/engine` produces, which differs from
-  Zeebe's in details its own tests show: Zeebe names a parameter by its whole reference
-  (`toolCall.orderId`, not `orderId`), also lists `fromAi()` calls on other references,
-  and gives `null` for an element without properties or parameters and for an empty
-  property value, where Reebe gives `{}`, `[]` and `""`. An element written as an empty XML tag
-  (`<bpmn:userTask id="x"/>`) is not parsed at all, so it is not listed
-- Ad-hoc sub-process `completionCondition` and multi-instance `completionCondition` still
-  count a result that is not a boolean as false; only sequence-flow conditions raise an
-  incident
-- The gRPC calls other than `CompleteJob` still pass their `variables` JSON documents on as
-  strings, which the engine does not read as variables
+- A `fromAi()` call that Zeebe rejects at deployment (a value that is not a reference, a
+  description or type that is not a string literal, a schema or options that is not a
+  context of literals) is left out of `adHocSubProcessElements`, or the argument is, and
+  the deployment succeeds
+- An ad-hoc sub-process's `completionCondition` checked when an event sub-process inside it
+  ends still counts a result that is not a boolean as false: the event sub-process has
+  already completed, so nothing is left to hold the incident
+- The gRPC `ModifyProcessInstance` call is passed to the engine, which has no process
+  instance modification (the REST endpoint answers 501); `EvaluateDecision` by
+  `decisionKey` answers `UNIMPLEMENTED`
 
 ### What is not supported
 

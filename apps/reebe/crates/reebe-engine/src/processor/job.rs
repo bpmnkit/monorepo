@@ -226,6 +226,12 @@ impl JobProcessor {
         state.backend
             .fail_job(job_key, retries, error_message.as_deref(), None, retry_back_off_ms)
             .await?;
+        // The variables a job is failed with become local variables of its task, as in Zeebe.
+        if let Some(variables) = payload["variables"].as_object() {
+            for (name, value) in variables {
+                super::scope::set_local(state, job.process_instance_key, job.element_instance_key, name, value.clone(), &tenant_id).await?;
+            }
+        }
 
         writers.events.push(EventToWrite {
             value_type: "JOB".to_string(),

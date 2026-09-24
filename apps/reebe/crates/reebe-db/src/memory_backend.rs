@@ -904,7 +904,7 @@ impl StateBackend for InMemoryBackend {
         Ok(())
     }
 
-    async fn insert_decision_xml(&self, decision_id: &str, dmn_xml: &str) -> Result<()> {
+    async fn insert_decision_xml(&self, _key: i64, _deployment_key: i64, _resource_name: &str, decision_id: &str, dmn_xml: &str) -> Result<()> {
         self.store.lock().unwrap().decision_xml_by_id.insert(decision_id.to_string(), dmn_xml.to_string());
         Ok(())
     }

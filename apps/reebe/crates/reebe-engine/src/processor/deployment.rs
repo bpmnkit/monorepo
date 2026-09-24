@@ -64,7 +64,8 @@ impl RecordProcessor for DeploymentProcessor {
             if let Ok(drg) = reebe_dmn::parse_dmn(&xml) {
                 if !drg.decisions.is_empty() {
                     for decision in &drg.decisions {
-                        state.backend.insert_decision_xml(&decision.id, &xml).await
+                        let key = key_gen.next_key().await?;
+                        state.backend.insert_decision_xml(key, deployment_key, &resource_name, &decision.id, &xml).await
                             .unwrap_or_else(|e| tracing::warn!("Failed to store DMN decision {}: {e}", decision.id));
                     }
                     continue;

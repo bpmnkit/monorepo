@@ -19,6 +19,12 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 reebe-engine = { workspace = true, default-features = false }
 reebe-db = { workspace = true, default-features = false }
+reebe-dmn = { workspace = true }
+
+[dev-dependencies]
+base64 = { workspace = true }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
+reebe-db = { workspace = true, features = ["postgres"] }
 
 [features]
 default = ["postgres"]

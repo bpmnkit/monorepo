@@ -3042,6 +3042,39 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_multi_instance_completion_condition_that_is_not_a_boolean_raises_an_incident() {
+        // Zeebe's MultiInstanceBodyProcessor evaluates the condition with
+        // evaluateBooleanExpression before the inner instance completes: the inner
+        // instance stays completing with an EXTRACT_VALUE_ERROR incident.
+        let h = Harness::new();
+        h.deploy(&mi_service_task(true, "=done")).await;
+        h.start("proc", serde_json::json!({ "items": ["a", "b", "c"] })).await;
+        let jobs = jobs_with_local(&h, "work", "item");
+        complete_job_key(&h, jobs[0].0.key, serde_json::json!({ "result": "A" })).await;
+
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1);
+        assert_eq!(incidents[0].error_type, "EXTRACT_VALUE_ERROR");
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Expected result of the expression 'done' to be 'BOOLEAN', but was 'NULL'."),
+        );
+        let inner = h.backend.list_element_instances().into_iter()
+            .find(|e| e.key == incidents[0].element_instance_key).unwrap();
+        assert_eq!((inner.element_id.as_str(), inner.element_type.as_str()), ("task", "SERVICE_TASK"));
+        assert_eq!(inner.state, "COMPLETING");
+        assert!(jobs_with_local(&h, "work", "item").is_empty(), "the next instance waits");
+
+        // Resolving it completes the same inner instance again, and evaluates the condition.
+        set_variables(&h, serde_json::json!({ "done": true })).await;
+        resolve_incident(&h, incidents[0].key).await;
+        assert_eq!(element_states(&h, "task").iter().filter(|s| *s == "COMPLETED").count(), 2, "{:?}", element_states(&h, "task"));
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["A", null, null])));
+        assert_eq!(h.backend.list_jobs().len(), 1, "the second instance never starts");
+    }
+
+    #[tokio::test]
     async fn test_multi_instance_with_an_empty_collection_is_skipped() {
         let h = Harness::new();
         h.deploy(&mi_service_task(false, "")).await;
@@ -4038,6 +4071,11 @@ mod tests {
         let incidents = h.incidents();
         assert_eq!(incidents.len(), 1);
         assert_eq!(incidents[0].error_type, "CONDITION_ERROR");
+        // Zeebe's InclusiveGatewayProcessor.NO_OUTGOING_FLOW_CHOSEN_ERROR, word for word.
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Expected at least one condition to evaluate to true, or to have a default flow"),
+        );
         assert_eq!(incidents[0].element_id, "split");
         assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
     }
@@ -4759,7 +4797,11 @@ mod tests {
         assert_eq!(incidents.len(), 1);
         assert_eq!(incidents[0].error_type, "CONDITION_ERROR");
         assert_eq!(incidents[0].element_id, "gw");
-        assert!(incidents[0].error_message.as_deref().unwrap_or("").contains("at exclusive gateway 'gw'"));
+        // Zeebe's ExclusiveGatewayProcessor.NO_OUTGOING_FLOW_CHOSEN_ERROR, word for word.
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Expected at least one condition to evaluate to true, or to have a default flow"),
+        );
         assert_eq!(element_states(&h, "gw"), vec!["ACTIVATING"]);
         assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
 
@@ -5103,6 +5145,41 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_ad_hoc_completion_condition_that_is_not_a_boolean_raises_an_incident() {
+        // Zeebe's AdHocSubProcessProcessor evaluates the condition with
+        // evaluateBooleanExpression before the inner instance completes, prefixing the
+        // failure with "Failed to evaluate completion condition."
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=finished</bpmn:completionCondition>"#;
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", condition)).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t3"] })).await;
+        h.complete_job("t1", serde_json::json!({ "result": "one" })).await;
+
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1);
+        assert_eq!(incidents[0].error_type, "EXTRACT_VALUE_ERROR");
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Failed to evaluate completion condition. Expected result of the expression 'finished' to be 'BOOLEAN', but was 'NULL'."),
+        );
+        let inner = h.backend.list_element_instances().into_iter()
+            .find(|e| e.key == incidents[0].element_instance_key).unwrap();
+        assert_eq!(inner.element_type, "AD_HOC_SUB_PROCESS_INNER_INSTANCE");
+        assert_eq!(inner.state, "COMPLETING");
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(h.activatable_job("t3").is_some());
+
+        // Resolving it evaluates the condition again; the output is collected once.
+        set_variables(&h, serde_json::json!({ "finished": true })).await;
+        resolve_incident(&h, incidents[0].key).await;
+        let inner = h.backend.list_element_instances().into_iter().find(|e| e.key == inner.key).unwrap();
+        assert_eq!(inner.state, "COMPLETED");
+        assert_eq!(element_states(&h, "t3"), vec!["TERMINATED"], "cancelRemainingInstances");
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["one"])));
+    }
+
+    #[tokio::test]
     async fn test_ad_hoc_active_elements_that_cannot_be_activated_raise_an_incident() {
         let h = Harness::new();
         h.deploy(&ad_hoc_tools("", "")).await;
@@ -5304,6 +5381,35 @@ mod tests {
     // ─────────────────────────────────────────────────────────────────
 
     #[tokio::test]
+    async fn test_tasks_and_manual_tasks_pass_through_even_as_empty_tags() {
+        // Zeebe completes an undefined task and a manual task as soon as they activate.
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"/>
+    <bpmn:task id="a"/>
+    <bpmn:manualTask id="b">
+      <bpmn:extensionElements>
+        <zeebe:ioMapping><zeebe:output source="=&quot;done&quot;" target="state"/></zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:manualTask>
+    <bpmn:endEvent id="end"/>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="a"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="a" targetRef="b"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="b" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"), "{:?}", h.incidents());
+        let types: Vec<(String, String)> = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_id == "a" || e.element_id == "b")
+            .map(|e| (e.element_type, e.state))
+            .collect();
+        assert!(types.contains(&("TASK".to_string(), "COMPLETED".to_string())), "{types:?}");
+        assert!(types.contains(&("MANUAL_TASK".to_string(), "COMPLETED".to_string())), "{types:?}");
+        assert_eq!(root_var(&h, "state"), Some(serde_json::json!("done")));
+    }
+
+    #[tokio::test]
     async fn test_ad_hoc_sub_process_describes_its_activatable_elements() {
         let bpmn = wrap_process("proc", r#"
     <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
@@ -5314,11 +5420,16 @@ mod tests {
         <bpmn:documentation>Get an order.</bpmn:documentation>
         <bpmn:extensionElements>
           <zeebe:taskDefinition type="order-lookup"/>
-          <zeebe:properties><zeebe:property name="kind" value="read"/></zeebe:properties>
+          <zeebe:properties>
+            <zeebe:property name="kind" value="read"/>
+            <zeebe:property name="empty" value=""/>
+            <zeebe:property name="blank" value="   "/>
+          </zeebe:properties>
           <zeebe:ioMapping>
             <zeebe:input source="=fromAi(toolCall.orderId, &quot;The order number&quot;)" target="orderId"/>
-            <zeebe:input source="=fromAi(toolCall.includeItems, &quot;Also list the items&quot;, &quot;boolean&quot;, null, { required: false })" target="includeItems"/>
+            <zeebe:input source="=fromAi(value: toolCall.includeItems, description: &quot;Also list the items&quot;, type: &quot;boolean&quot;, options: { required: false })" target="includeItems"/>
             <zeebe:input source="=&quot;static&quot;" target="source"/>
+            <zeebe:input source="=fromAi(customerId)" target="customer"/>
           </zeebe:ioMapping>
         </bpmn:extensionElements>
         <bpmn:outgoing>then</bpmn:outgoing>
@@ -5326,6 +5437,7 @@ mod tests {
       <bpmn:serviceTask id="follow-up"><bpmn:extensionElements><zeebe:taskDefinition type="follow-up"/></bpmn:extensionElements>
         <bpmn:incoming>then</bpmn:incoming></bpmn:serviceTask>
       <bpmn:userTask id="ask" name="Ask a person"><bpmn:extensionElements><zeebe:userTask/></bpmn:extensionElements></bpmn:userTask>
+      <bpmn:manualTask id="note" name=""><bpmn:documentation></bpmn:documentation></bpmn:manualTask>
       <bpmn:sequenceFlow id="then" sourceRef="lookup-order" targetRef="follow-up"/>
     </bpmn:adHocSubProcess>
     <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="agent"/>
@@ -5338,13 +5450,16 @@ mod tests {
                 "elementId": "lookup-order",
                 "elementName": "Look up order",
                 "documentation": "Get an order.",
-                "properties": { "kind": "read" },
+                "properties": { "kind": "read", "empty": null, "blank": "   " },
                 "parameters": [
-                    { "name": "orderId", "description": "The order number" },
-                    { "name": "includeItems", "description": "Also list the items", "type": "boolean", "options": { "required": false } },
+                    { "name": "toolCall.orderId", "description": "The order number" },
+                    { "name": "toolCall.includeItems", "description": "Also list the items", "type": "boolean", "options": { "required": false } },
+                    { "name": "customerId" },
                 ],
             },
-            { "elementId": "ask", "elementName": "Ask a person", "documentation": null, "properties": {}, "parameters": [] },
+            // Null and empty fields are left out, as Zeebe's `@JsonInclude(NON_EMPTY)` does.
+            { "elementId": "ask", "elementName": "Ask a person" },
+            { "elementId": "note" },
         ]);
         let agent = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "agent").unwrap();
         let variable = h.backend.list_variables().into_iter()
@@ -5520,9 +5635,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_a_terminated_compensation_handler_lets_its_throw_event_continue() {
+    async fn test_a_terminated_compensation_handler_keeps_its_throw_event_waiting() {
         // undo-a has an interrupting error boundary event: when it catches, the handler
-        // is terminated, and the throw event no longer waits for it.
+        // is terminated. As in Zeebe, whose BpmnCompensationSubscriptionBehaviour releases
+        // a throw event only from `completeCompensationHandler` (called when a handler
+        // completes), the throw event keeps waiting.
         let handler_boundary = r#"
     <bpmn:boundaryEvent id="undo-failed" attachedToRef="undo-a"><bpmn:outgoing>fu</bpmn:outgoing>
       <bpmn:errorEventDefinition errorRef="Err_stock"/></bpmn:boundaryEvent>
@@ -5549,10 +5666,12 @@ mod tests {
         h.run("JOB", "THROW_ERROR", serde_json::json!({ "jobKey": job.key.to_string(), "errorCode": "OUT_OF_STOCK" })).await;
 
         assert_eq!(element_states(&h, "undo-a"), vec!["TERMINATED"]);
-        assert_eq!(element_state(&h, "compensate").as_deref(), Some("COMPLETED"), "the throw event continues");
-        h.complete_job("after", serde_json::json!({})).await;
-        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(element_state(&h, "undo-gave-up").as_deref(), Some("COMPLETED"));
+        assert_eq!(element_state(&h, "compensate").as_deref(), Some("ACTIVATED"), "the throw event waits");
+        assert!(h.activatable_job("after").is_none());
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
         let pi = h.process_instances()[0].key;
-        assert!(h.backend.get_compensation_subscriptions(pi).await.unwrap().is_empty());
+        let subscriptions = h.backend.get_compensation_subscriptions(pi).await.unwrap();
+        assert_eq!(subscriptions.len(), 1, "the handler's subscription is not completed");
     }
 }

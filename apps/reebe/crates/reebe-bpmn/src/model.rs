@@ -192,6 +192,8 @@ pub enum FlowElement {
     ScriptTask(ScriptTask),
     SendTask(SendTask),
     BusinessRuleTask(BusinessRuleTask),
+    /// `bpmn:task` or `bpmn:manualTask`
+    Task(Task),
     CallActivity(CallActivity),
     SubProcess(SubProcess),
     ParallelGateway(Gateway),
@@ -214,6 +216,7 @@ impl FlowElement {
             FlowElement::ScriptTask(e) => &e.id,
             FlowElement::SendTask(e) => &e.id,
             FlowElement::BusinessRuleTask(e) => &e.id,
+            FlowElement::Task(e) => &e.id,
             FlowElement::CallActivity(e) => &e.id,
             FlowElement::SubProcess(e) => &e.id,
             FlowElement::ParallelGateway(e) => &e.id,
@@ -236,6 +239,7 @@ impl FlowElement {
             FlowElement::ScriptTask(e) => e.name.as_deref(),
             FlowElement::SendTask(e) => e.name.as_deref(),
             FlowElement::BusinessRuleTask(e) => e.name.as_deref(),
+            FlowElement::Task(e) => e.name.as_deref(),
             FlowElement::CallActivity(e) => e.name.as_deref(),
             FlowElement::SubProcess(e) => e.name.as_deref(),
             FlowElement::ParallelGateway(e) => e.name.as_deref(),
@@ -258,6 +262,7 @@ impl FlowElement {
             FlowElement::ScriptTask(e) => &e.outgoing,
             FlowElement::SendTask(e) => &e.outgoing,
             FlowElement::BusinessRuleTask(e) => &e.outgoing,
+            FlowElement::Task(e) => &e.outgoing,
             FlowElement::CallActivity(e) => &e.outgoing,
             FlowElement::SubProcess(e) => &e.outgoing,
             FlowElement::ParallelGateway(e) => &e.outgoing,
@@ -279,6 +284,7 @@ impl FlowElement {
             FlowElement::ScriptTask(e) => e.multi_instance.as_ref(),
             FlowElement::SendTask(e) => e.multi_instance.as_ref(),
             FlowElement::BusinessRuleTask(e) => e.multi_instance.as_ref(),
+            FlowElement::Task(e) => e.multi_instance.as_ref(),
             FlowElement::CallActivity(e) => e.multi_instance.as_ref(),
             FlowElement::SubProcess(e) => e.multi_instance.as_ref(),
             _ => None,
@@ -294,6 +300,7 @@ impl FlowElement {
             FlowElement::ScriptTask(e) => e.is_for_compensation,
             FlowElement::SendTask(e) => e.is_for_compensation,
             FlowElement::BusinessRuleTask(e) => e.is_for_compensation,
+            FlowElement::Task(e) => e.is_for_compensation,
             FlowElement::CallActivity(e) => e.is_for_compensation,
             FlowElement::SubProcess(e) => e.is_for_compensation,
             _ => false,
@@ -311,6 +318,7 @@ impl FlowElement {
                 | FlowElement::ScriptTask(_)
                 | FlowElement::SendTask(_)
                 | FlowElement::BusinessRuleTask(_)
+                | FlowElement::Task(_)
                 | FlowElement::CallActivity(_)
                 | FlowElement::SubProcess(_)
         )
@@ -326,6 +334,8 @@ impl FlowElement {
             FlowElement::ScriptTask(_) => "SCRIPT_TASK",
             FlowElement::SendTask(_) => "SEND_TASK",
             FlowElement::BusinessRuleTask(_) => "BUSINESS_RULE_TASK",
+            FlowElement::Task(e) if e.manual => "MANUAL_TASK",
+            FlowElement::Task(_) => "TASK",
             FlowElement::CallActivity(_) => "CALL_ACTIVITY",
             FlowElement::SubProcess(sp) if sp.triggered_by_event => "EVENT_SUB_PROCESS",
             FlowElement::SubProcess(sp) if sp.ad_hoc => "AD_HOC_SUB_PROCESS",
@@ -514,6 +524,40 @@ impl ReceiveTask {
             message_ref: None,
             message_name: None,
             correlation_key: None,
+            input_mappings: Vec::new(),
+            output_mappings: Vec::new(),
+            multi_instance: None,
+            is_for_compensation: false,
+        }
+    }
+}
+
+/// A task Zeebe completes as soon as it is activated: an undefined task (`bpmn:task`)
+/// or a manual task (`bpmn:manualTask`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Task {
+    pub id: String,
+    pub name: Option<String>,
+    /// `bpmn:manualTask` rather than `bpmn:task`.
+    pub manual: bool,
+    pub incoming: Vec<String>,
+    pub outgoing: Vec<String>,
+    pub input_mappings: Vec<ZeebeIoMapping>,
+    pub output_mappings: Vec<ZeebeIoMapping>,
+    pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
+}
+
+impl Task {
+    pub fn new(id: impl Into<String>, manual: bool) -> Self {
+        Self {
+            id: id.into(),
+            name: None,
+            manual,
+            incoming: Vec::new(),
+            outgoing: Vec::new(),
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,

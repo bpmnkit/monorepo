@@ -70,6 +70,17 @@ impl RecordProcessor for IncidentProcessor {
         } else {
             // Non-job incident (e.g. IO_MAPPING_ERROR): re-trigger element processing.
             if let Ok(ei) = state.backend.get_element_instance_by_key(incident.element_instance_key).await {
+                // An ad-hoc inner instance completes without a command of its own: its
+                // completion condition is evaluated again.
+                if ei.element_type == super::ad_hoc::INNER && ei.state == "COMPLETING" {
+                    let process = super::throw_event::load_process(state, ei.process_definition_key, &ei.bpmn_process_id).await?;
+                    super::ad_hoc::inner_completed(state, writers, &process, &ei).await?;
+                    writers.response = Some(serde_json::json!({
+                        "incidentKey": incident_key.to_string(),
+                        "tenantId": tenant_id,
+                    }));
+                    return Ok(());
+                }
                 let intent = match ei.state.as_str() {
                     "ACTIVATING" => Some("ACTIVATE_ELEMENT"),
                     "COMPLETING" => Some("COMPLETE_ELEMENT"),

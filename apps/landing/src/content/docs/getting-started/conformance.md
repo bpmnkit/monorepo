@@ -152,8 +152,8 @@ links that do not pair up. A compensation throw or end event starts, all at once
 handlers of the activities that completed in its scope and in the completed sub-processes
 inside it (or only `activityRef`), and waits for them; a throw event in an event
 sub-process compensates the event sub-process and the scope around it. Every handler runs in
-the throw event's scope, as in Zeebe, and a handler terminated on its own no longer holds up
-the throw event. Timer, message and signal boundary events are armed when their activity starts and cancelled when it ends. An interrupting one
+the throw event's scope, as in Zeebe, and, as in Zeebe, only a handler that completes releases
+the throw event: one terminated on its own leaves it waiting. Timer, message and signal boundary events are armed when their activity starts and cancelled when it ends. An interrupting one
 terminates the activity; a non-interrupting one leaves it running, and a timer cycle repeats.
 An event-based gateway waits for the first of its events and cancels the others.
 The timer, message and signal start events of event sub-processes are armed when their
@@ -171,13 +171,21 @@ completes only when nothing inside it is active any more, and a terminate end ev
 rest of its own scope and completes that scope.
 Multi-instance runs, in parallel or in sequence, on every task type, sub-process and call
 activity. Each instance has its own `inputElement` and `loopCounter`, the output is collected
-in input order, and a `completionCondition` ends the loop early. A complex gateway fails
+in input order, and a `completionCondition` ends the loop early. A multi-instance or ad-hoc
+`completionCondition` that does not evaluate to a boolean raises an `EXTRACT_VALUE_ERROR`
+incident, with Zeebe's message, on the instance that was completing; resolving it evaluates the
+condition again. Undefined and manual tasks pass through, and a flow element written as an
+empty tag (`<bpmn:userTask id="x"/>`) is read like one with children. A complex gateway fails
 deployment, as in Zeebe, which does not execute it. An ad-hoc sub-process activates its
 inner elements, each in its own activation, from `activeElementsCollection` or from the job
 result of its job worker implementation (such as the AI Agent Sub-process), completes by
 its `completionCondition` or the job result, and creates the job again after each
 activation. It creates the `adHocSubProcessElements` variable with the elements it can
-activate and their `fromAi()` parameters, in the shape the TypeScript engine gives, and
+activate and their `fromAi()` parameters in Zeebe's shape: a parameter is named by its whole
+reference (`toolCall.orderId`), a `fromAi()` call on any reference is listed, and a field that
+is null or empty is left out. The TypeScript engine gives the same shape, and a test checks
+that the two agree. The gRPC calls pass their `variables` documents on as variables and
+reject a document that is not a JSON object, as Zeebe's gateway does, and
 Reebe's REST API can activate elements of an active one
 (`POST /v2/element-instances/ad-hoc-activities/{key}/activation`). Every scenario of the
 [template gallery](/docs/guides/templates) passes on it.
@@ -244,9 +252,12 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
-- Reebe: `adHocSubProcessElements` follows the TypeScript engine's shape, which names a
-  `fromAi()` parameter `orderId` where Zeebe names it `toolCall.orderId`; completion
-  conditions still count a non-boolean result as false; single-node only, no published
-  comparison with Zeebe, and no published performance figures
+- Reebe: a `fromAi()` call that Zeebe rejects at deployment (a value that is not a
+  reference, a description that is not a string literal) is left out of
+  `adHocSubProcessElements` instead; an ad-hoc `completionCondition` checked when an event
+  sub-process inside the ad-hoc sub-process ends still counts a non-boolean result as false;
+  the gRPC `ModifyProcessInstance` call is not carried out (the engine has no process
+  instance modification) and `EvaluateDecision` finds a decision by its id, not its key;
+  single-node only, no published comparison with Zeebe, and no published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).

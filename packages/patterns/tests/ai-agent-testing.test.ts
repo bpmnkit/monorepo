@@ -68,6 +68,11 @@ describe("ai-agent-tool-loop under deterministic tests", () => {
 			{ name: "search-kb", arguments: { query: expect.stringContaining("damaged") } },
 			{ name: "create-ticket", arguments: { summary: "Order 1042 arrived damaged" } },
 		])
+		// Zeebe names the parameter by its reference; the model's argument is named as
+		// the connector offers it, without `toolCall.`.
+		expect(
+			agent.requests[0]?.tools.find((tool) => tool.elementId === "lookup-order")?.parameters,
+		).toEqual([{ name: "toolCall.orderId", description: "The order number" }])
 		// fromAi() hands the model's arguments to the tool's job …
 		expect(orders.calls[0]?.variables.orderId).toBe("1042")
 		expect(tickets.calls[0]?.variables.summary).toBe("Order 1042 arrived damaged")

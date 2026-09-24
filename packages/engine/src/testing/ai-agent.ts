@@ -10,7 +10,12 @@ export interface AgentToolCall {
 	readonly id?: string
 	/** The tool's element id — `toolCall._meta.name`. */
 	readonly name: string
-	/** The values the tool's `fromAi(toolCall.<name>)` mappings read. */
+	/**
+	 * The model's arguments, keyed as the AI Agent connector offers the parameters to the
+	 * model: `orderId` for a `fromAi(toolCall.orderId)` mapping, whose parameter is named
+	 * `toolCall.orderId` in `adHocSubProcessElements`. The tool is activated with them in its
+	 * `toolCall` variable.
+	 */
 	readonly arguments?: Readonly<Record<string, unknown>>
 }
 
@@ -416,15 +421,19 @@ export class AiAgentMockState implements AiAgentMockHandle {
 				`${where}: unknown tool "${call.name}". Tools of "${this.elementId}": ${tools.map((t) => t.elementId).join(", ") || "(none)"}`,
 			)
 		}
-		const names = tool.parameters.map((p) => p.name)
+		const parameters = (tool.parameters ?? []).map((p) => ({
+			name: toolParameterName(this.elementId, tool.elementId, p.name),
+			required: p.options?.required !== false,
+		}))
+		const names = parameters.map((p) => p.name)
 		const unknown = Object.keys(call.arguments).filter((a) => !names.includes(a))
 		if (unknown.length > 0) {
 			throw new Error(
 				`${where}: tool "${call.name}" has no parameter ${unknown.map((a) => `"${a}"`).join(", ")}. Its fromAi() parameters: ${names.join(", ") || "(none)"}`,
 			)
 		}
-		const missing = tool.parameters
-			.filter((p) => p.options?.required !== false && !(p.name in call.arguments))
+		const missing = parameters
+			.filter((p) => p.required && !(p.name in call.arguments))
 			.map((p) => p.name)
 		if (missing.length > 0) {
 			throw new Error(
@@ -432,6 +441,37 @@ export class AiAgentMockState implements AiAgentMockHandle {
 			)
 		}
 	}
+}
+
+const TOOL_CALL_NAMESPACE = "toolCall."
+
+/**
+ * The name the AI Agent connector gives the model for a `fromAi()` parameter:
+ * `orderId` for `toolCall.orderId`. The connector sets the `toolCall` variable to the
+ * model's arguments, so `fromAi(toolCall.orderId)` reads the `orderId` argument. Like
+ * the connector, fail for a parameter it cannot offer the model.
+ */
+function toolParameterName(agent: string, tool: string, parameter: string): string {
+	const name = parameter.startsWith(TOOL_CALL_NAMESPACE)
+		? parameter.slice(TOOL_CALL_NAMESPACE.length)
+		: undefined
+	const failed = `AI agent "${agent}": failed to generate ad-hoc tool schema for element '${tool}'.`
+	if (name === undefined) {
+		throw new Error(
+			`${failed} Parameter name '${parameter}' is not part of expected namespace '${TOOL_CALL_NAMESPACE}'.`,
+		)
+	}
+	if (name.trim() === "") {
+		throw new Error(
+			`${failed} Parameter name '${parameter}' is empty after removing the expected namespace '${TOOL_CALL_NAMESPACE}'.`,
+		)
+	}
+	if (name.includes(".")) {
+		throw new Error(
+			`${failed} Parameter name '${name}' with removed namespace '${TOOL_CALL_NAMESPACE}' is not a leaf reference (must not contain dots).`,
+		)
+	}
+	return name
 }
 
 /** Put results in the order of the calls they answer when each carries its call's `id`. */
