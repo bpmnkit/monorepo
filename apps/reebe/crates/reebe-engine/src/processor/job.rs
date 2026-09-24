@@ -95,7 +95,13 @@ impl JobProcessor {
             error_code: None,
             error_message: None,
             custom_headers,
-            variables: serde_json::Value::Object(Default::default()),
+            // What a worker sees on activation: every variable visible from the
+            // element (its input mappings included), inner scopes winning.
+            variables: serde_json::Value::Object(
+                crate::processor::scope::visible_variables(
+                    state, process_instance_key, element_instance_key,
+                ).await,
+            ),
             created_at: state.clock.now(),
             tenant_id: tenant_id.clone(),
         };

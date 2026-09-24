@@ -32,16 +32,16 @@ exclusive, parallel, inclusive and event-based gateways, catch, throw and bounda
 (timer, message, signal, error, escalation, compensation, link, terminate) and
 multi-instance. Errors and escalations, from end events, throw events and job workers,
 propagate out through sub-processes and call activities to a boundary event or an event
-sub-process. An uncaught error raises an incident. It has no complex gateway. It runs an
+sub-process. An uncaught error raises an incident. Timer, message and signal boundary events
+are armed when their activity starts and cancelled when it ends. An interrupting one
+terminates the activity; a non-interrupting one leaves it running, and a timer cycle repeats.
+An event-based gateway waits for the first of its events and cancels the others.
+Multi-instance runs, in parallel or in sequence, on every task type, sub-process and call
+activity. Each instance has its own `inputElement` and `loopCounter`, the output is collected
+in input order, and a `completionCondition` ends the loop early. It has no complex gateway. It runs an
 ad-hoc sub-process only through its job worker implementation, such as the AI Agent
 Sub-process: completing the job completes the sub-process, and the inner elements are not
 activated. Every scenario of the [template gallery](/docs/guides/templates) passes on it.
-
-Reebe is a dev/test engine in the
-[Experimental tier](/docs/getting-started/stability#product-tiers), not for production. It is
-a clean-room implementation of the Zeebe API written from Camunda's public documentation, it
-is not affiliated with Camunda, and its behaviour is checked by its own tests rather than
-against Zeebe. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
 
 ---
 Source: https://bpmnkit.com/docs/getting-started/conformance

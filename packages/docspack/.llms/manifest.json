@@ -907,7 +907,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 892,
+			"tokens": 932,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -917,8 +917,24 @@
 			],
 			"entities": [
 				"packages/engine/tests/semantics.test.ts",
-				"@bpmnkit/engine/wasm-runner"
+				"@bpmnkit/engine/wasm-runner",
+				"inputElement",
+				"loopCounter",
+				"completionCondition"
 			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-elements-by-component-2",
+			"file": "chunks/getting-started.conformance.bpmn-elements-by-component-2.md",
+			"tokens": 96,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"elements",
+				"component"
+			],
+			"entities": []
 		},
 		{
 			"id": "getting-started.conformance.zeebe-extensions",

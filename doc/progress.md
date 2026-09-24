@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-09-24 — Reebe: timer boundary events, event-based gateway, multi-instance on every activity
+
+- Boundary events: timer, message and signal boundaries are armed when their activity activates (FEEL-evaluated duration, date or `R…` cycle) and cancelled when it completes or is terminated. Interrupting ones terminate the activity with its jobs, user tasks, inner elements and called process; non-interrupting ones keep it, and a cycle repeats. One wait/trigger path (`processor/catch_event.rs`) now serves timers, messages and signals for catch events, receive tasks, boundaries and gateways.
+- Event-based gateway: arms the following catch events and receive tasks; the first trigger wins and the others are cancelled; a buffered message correlates at once. Messages correlate only to open subscriptions (both backends used to match used-up ones and complete their elements again).
+- Multi-instance (`processor/multi_instance.rs`): a body with parallel or sequential inner instances on every task type, sub-process and call activity (replacing the sub-process-only loop); local `inputElement`/`loopCounter`, ordered `outputCollection` handed to the parent scope, `completionCondition` with the `numberOf*` properties; `isSequential` and `<bpmn:completionCondition>` parsed from the BPMN elements. No `loopCardinality`, as in Zeebe.
+- Variable scopes (`processor/scope.rs`): expressions see the element's scope chain; job, message and script results go to the nearest scope that has them, else the process.
+- Tests: the three `#[ignore]`d Postgres tests (timer boundary, event-based gateway, parallel multi-instance) now pass; 15 new in-memory tests; full `cargo test --workspace` with Postgres: 321 passed. All 59 template scenarios still pass on both runners.
+- Docs: conformance Reebe paragraph and `apps/reebe/README.md` updated (the README no longer claims timer start events).
+- Also fixed: every job was created with `variables: {}`, so a worker running against Reebe received no process variables. A job now carries the variables visible from its element (process, enclosing scopes, its input mappings; inner scopes win), including each multi-instance item. 2 new tests.
+
 ## 2026-09-24 — Editor UI in ten languages
 
 - `@bpmnkit/editor` ships German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) as tree-shakable entry points (`@bpmnkit/editor/locales/<code>`); English stays built in. `createTranslate(locale)` builds the existing `Translate` hook, with `Intl.PluralRules` plurals (Polish has `one`/`few`/`many`/`other`); `AVAILABLE_LOCALES` and `matchLocale()` support a language picker. Translations are machine-assisted, use Camunda Modeler's BPMN terms, and ask for review (CONTRIBUTING.md, "Improving a translation").

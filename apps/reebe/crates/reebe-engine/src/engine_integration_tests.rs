@@ -3126,4 +3126,46 @@ mod tests {
         assert!(h.backend.list_jobs().iter().all(|j| j.state == "CANCELED"));
         assert_eq!(root_var(&h, "results"), None, "no partial output");
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // A job carries the variables visible from its element
+    // ─────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_job_carries_visible_variables() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="work"/>
+        <zeebe:ioMapping><zeebe:input source="=orderId + &quot;-x&quot;" target="ref"/></zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1", "amount": 5 })).await;
+        let job = h.activatable_job("work").expect("job");
+        assert_eq!(job.variables, serde_json::json!({ "orderId": "o-1", "amount": 5, "ref": "o-1-x" }));
+    }
+
+    #[tokio::test]
+    async fn test_multi_instance_jobs_see_their_own_item() {
+        let h = Harness::new();
+        h.deploy(&mi_service_task(false, "")).await;
+        h.start("proc", serde_json::json!({ "items": ["a", "b"] })).await;
+        let mut seen: Vec<(Value, Value)> = h.backend.list_jobs().into_iter()
+            .filter(|j| j.job_type == "work")
+            .map(|j| (j.variables["item"].clone(), j.variables["loopCounter"].clone()))
+            .collect();
+        seen.sort_by_key(|(_, c)| c.as_i64());
+        assert_eq!(seen, vec![
+            (serde_json::json!("a"), serde_json::json!(1)),
+            (serde_json::json!("b"), serde_json::json!(2)),
+        ]);
+    }
 }

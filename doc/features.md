@@ -1,5 +1,11 @@
 # Features
 
+## Reebe: boundary events, event-based gateway, multi-instance everywhere (2026-09-24)
+
+- Timer, message and signal boundary events (interrupting and not, cycles), the event-based
+  gateway's first-wins race, and parallel/sequential multi-instance on every activity type.
+  Workers now receive the process variables their job can see.
+
 ## Editor in ten languages (2026-09-24)
 
 - German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese
