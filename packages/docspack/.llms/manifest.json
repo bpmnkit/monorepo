@@ -907,7 +907,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 1542,
+			"tokens": 1717,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -924,7 +924,8 @@
 				"completionCondition",
 				"activeElementsCollection",
 				"adHocSubProcessElements",
-				"fromAi()"
+				"fromAi()",
+				"toolCall.orderId"
 			]
 		},
 		{
@@ -986,7 +987,7 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 257,
+			"tokens": 324,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -995,10 +996,11 @@
 			],
 			"entities": [
 				"activeElementsCollection",
-				"adHocSubProcessElements",
 				"fromAi()",
-				"orderId",
-				"toolCall.orderId"
+				"adHocSubProcessElements",
+				"completionCondition",
+				"ModifyProcessInstance",
+				"EvaluateDecision"
 			]
 		},
 		{
@@ -2558,7 +2560,7 @@
 		{
 			"id": "guides.testing-ai-agents.how-the-mock-plays-the-connector",
 			"file": "chunks/guides.testing-ai-agents.how-the-mock-plays-the-connector.md",
-			"tokens": 255,
+			"tokens": 451,
 			"tags": [
 				"guides",
 				"testing-ai-agents",
@@ -2573,6 +2575,7 @@
 				"toolCalls",
 				"adHocSubProcess",
 				"toolCall",
+				"toolCall.",
 				"run.completeJob",
 				"outputElement",
 				"toolCallResults",
@@ -2602,7 +2605,7 @@
 		{
 			"id": "guides.testing-ai-agents.when-the-test-must-fail",
 			"file": "chunks/guides.testing-ai-agents.when-the-test-must-fail.md",
-			"tokens": 238,
+			"tokens": 303,
 			"tags": [
 				"guides",
 				"testing-ai-agents",
@@ -2615,6 +2618,7 @@
 				"toHaveCompleted()",
 				"fromAi()",
 				"fromAi",
+				"toolCall.",
 				"data.limits.maxModelCalls"
 			]
 		},

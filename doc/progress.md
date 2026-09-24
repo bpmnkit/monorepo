@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-09-24 — Reebe: Zeebe's adHocSubProcessElements, completion-condition incidents, empty-tag elements, gRPC variables
+
+- `adHocSubProcessElements` has Zeebe's `AdHocActivityMetadata` shape in Reebe and `@bpmnkit/engine`: `fromAi()` parameters named by their whole reference (`toolCall.orderId`), calls on any reference listed, literal-only description/type/schema/options, no search inside `fromAi()` arguments, null/empty fields left out, empty property values `null`. Tests port Zeebe's `AdHocSubProcessElementsVariableTest` and `TaggedParameterExtractorTest` cases. `mockAiAgent` keeps the connector's argument names (`orderId`) and fails, with the connector's message, for a parameter outside `toolCall.`. Engine changeset is a patch: the types are unreleased since 1.0.0.
+- A terminated compensation handler keeps its throw event waiting, as Zeebe's `completeCompensationHandler` only runs on completion.
+- Multi-instance and ad-hoc `completionCondition`s that are not booleans raise `EXTRACT_VALUE_ERROR` incidents with Zeebe's messages on the completing instance; resolving evaluates the condition again.
+- Empty-tag flow elements parse like full ones (namespace-aware, so `<zeebe:userTask/>` is not a task); `bpmn:task` and `bpmn:manualTask` pass through as `TASK` / `MANUAL_TASK`.
+- gRPC calls pass their `variables` documents on through one helper and reject non-objects with `INVALID_ARGUMENT` as Zeebe's gateway does; CreateProcessInstance reaches instance creation (it used to return key 0), SetVariables takes an element instance scope, FailJob variables are task-local (REST too), EvaluateDecision evaluates, and DMN decisions are stored on PostgreSQL. New Postgres suite `reebe-grpc/tests/variables.rs`.
+- `CONDITION_ERROR` uses Zeebe's exact `Expected at least one condition to evaluate to true, or to have a default flow` for both gateways.
+
 ## 2026-09-24 — Reebe: condition incidents, adHocSubProcessElements, ad-hoc activation API, gRPC job results
 
 - Gateway conditions that do not evaluate to a boolean (null for a missing variable included) raise `EXTRACT_VALUE_ERROR` instead of counting as false; resolving the incident retries the gateway. Conditions on other elements' outgoing flows are ignored, as Zeebe does.

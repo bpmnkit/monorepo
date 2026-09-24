@@ -14,10 +14,13 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
-- Reebe: `adHocSubProcessElements` follows the TypeScript engine's shape, which names a
-  `fromAi()` parameter `orderId` where Zeebe names it `toolCall.orderId`; completion
-  conditions still count a non-boolean result as false; single-node only, no published
-  comparison with Zeebe, and no published performance figures
+- Reebe: a `fromAi()` call that Zeebe rejects at deployment (a value that is not a
+  reference, a description that is not a string literal) is left out of
+  `adHocSubProcessElements` instead; an ad-hoc `completionCondition` checked when an event
+  sub-process inside the ad-hoc sub-process ends still counts a non-boolean result as false;
+  the gRPC `ModifyProcessInstance` call is not carried out (the engine has no process
+  instance modification) and `EvaluateDecision` finds a decision by its id, not its key;
+  single-node only, no published comparison with Zeebe, and no published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).
 
