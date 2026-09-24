@@ -63,6 +63,8 @@ describe("tokens.css and UI_TOKENS_CSS", () => {
 			'[data-theme="dark"]',
 			'[data-theme="neon"]',
 			":root",
+			":lang(ja)",
+			":lang(zh)",
 		])
 		expect(rules.reduce((n, r) => n + r.declarations.length, 0)).toBeGreaterThan(100)
 	})
