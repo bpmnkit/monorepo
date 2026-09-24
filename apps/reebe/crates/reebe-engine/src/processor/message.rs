@@ -167,6 +167,8 @@ impl MessageProcessor {
                 "bpmnProcessId": ei.bpmn_process_id,
                 "flowScopeKey": flow_scope_key.to_string(),
                 "tenantId": tenant_id,
+                // Merged into the process like a job's variables.
+                "variables": payload.get("variables").cloned().unwrap_or(serde_json::Value::Null),
             }),
         });
 

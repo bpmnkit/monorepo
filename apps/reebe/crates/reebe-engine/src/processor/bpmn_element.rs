@@ -713,7 +713,9 @@ impl BpmnElementProcessor {
                     Some(reebe_bpmn::EventDefinition::Message(msg_def)) => {
                         // Register a message subscription and check for existing messages
                         let sub_key = key_gen.next_key().await?;
-                        let correlation_key = msg_def.correlation_key.clone().unwrap_or_default();
+                        let correlation_key = eval_correlation_key(
+                            msg_def.correlation_key.as_deref(), state, process_instance_key,
+                        ).await;
                         let sub = MessageSubscription {
                             key: sub_key,
                             message_name: msg_def.message_name.clone(),
@@ -879,12 +881,18 @@ impl BpmnElementProcessor {
                     }),
                 });
 
-                let message_name = rt.message_ref.clone().unwrap_or_default();
+                // Older callers stored the message name in `messageRef`; keep them working.
+                let message_name = rt.message_name.clone()
+                    .or_else(|| rt.message_ref.clone())
+                    .unwrap_or_default();
+                let correlation_key = eval_correlation_key(
+                    rt.correlation_key.as_deref(), state, process_instance_key,
+                ).await;
                 let sub_key = key_gen.next_key().await?;
                 let sub = reebe_db::state::messages::MessageSubscription {
                     key: sub_key,
                     message_name: message_name.clone(),
-                    correlation_key: String::new(),
+                    correlation_key: correlation_key.clone(),
                     process_instance_key,
                     element_instance_key: ei_key,
                     state: "OPENED".to_string(),
@@ -894,7 +902,7 @@ impl BpmnElementProcessor {
 
                 // Check for an already-published matching message
                 let existing = state.backend
-                    .get_messages_by_correlation(&message_name, "", &tenant_id)
+                    .get_messages_by_correlation(&message_name, &correlation_key, &tenant_id)
                     .await
                     .unwrap_or_default();
                 if existing.into_iter().next().is_some() {
@@ -1255,6 +1263,25 @@ impl BpmnElementProcessor {
                                             }).await?;
                                         }
                                     }
+                                }
+                            } else if let Some(job_vars) =
+                                payload.get("variables").and_then(|v| v.as_object())
+                            {
+                                // No output mappings: Zeebe merges every variable the job
+                                // completed with into the process. Without this, a worker's
+                                // result was only ever visible to output mappings.
+                                for (name, value) in job_vars {
+                                    let var_key = key_gen.next_key().await?;
+                                    state.backend.upsert_variable(&Variable {
+                                        key: var_key,
+                                        partition_id: state.partition_id,
+                                        name: name.clone(),
+                                        value: value.clone(),
+                                        scope_key: process_instance_key,
+                                        process_instance_key,
+                                        tenant_id: tenant_id.clone(),
+                                        is_preview: false,
+                                    }).await?;
                                 }
                             }
                         }
@@ -1711,6 +1738,31 @@ fn eval_timer_due_date(expression: &str, ctx: &reebe_feel::FeelContext, now: chr
     // Fallback: treat as 0-delay (fire immediately)
     tracing::warn!(expression = %expression, "Could not parse timer expression; firing immediately");
     now
+}
+
+/// Resolve a subscription's correlation key against the instance's variables.
+/// A `=` expression is evaluated with FEEL; Zeebe accepts a string or a number.
+async fn eval_correlation_key(
+    expression: Option<&str>,
+    state: &EngineState,
+    process_instance_key: i64,
+) -> String {
+    let Some(expression) = expression else { return String::new() };
+    if !reebe_feel::is_feel_expression(expression) {
+        return expression.to_string();
+    }
+    let vars = state.backend.get_variables_by_scope(process_instance_key).await.unwrap_or_default();
+    let mut m = serde_json::Map::new();
+    for v in vars { m.insert(v.name, v.value); }
+    let ctx = reebe_feel::FeelContext::from_json(serde_json::Value::Object(m));
+    match reebe_feel::parse_and_evaluate(expression, &ctx).map(serde_json::Value::from) {
+        Ok(serde_json::Value::String(s)) => s,
+        Ok(serde_json::Value::Null) | Err(_) => {
+            tracing::warn!(expression = %expression, "Correlation key did not evaluate to a value");
+            String::new()
+        }
+        Ok(other) => other.to_string(),
+    }
 }
 
 /// Evaluate a sequence flow condition expression.

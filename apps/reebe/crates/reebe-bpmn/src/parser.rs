@@ -33,20 +33,40 @@ impl From<quick_xml::events::attributes::AttrError> for BpmnParseError {
 
 /// Pre-scan XML for `<bpmn:message>` and `<bpmn:signal>` declarations so that
 /// forward references (event definitions appearing before the declaration) are resolved.
-fn prescan_refs(xml: &str) -> (HashMap<String, String>, HashMap<String, String>) {
+///
+/// Also collects the `zeebe:subscription` correlation key a root `<bpmn:message>`
+/// carries — where Camunda Modeler and Web Modeler put it — keyed by message id.
+fn prescan_refs(
+    xml: &str,
+) -> (HashMap<String, String>, HashMap<String, String>, HashMap<String, String>) {
     let mut messages: HashMap<String, String> = HashMap::new();
     let mut signals: HashMap<String, String> = HashMap::new();
+    let mut message_keys: HashMap<String, String> = HashMap::new();
+    let mut current_message: Option<String> = None;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+            Ok(ref event @ (Event::Start(ref e) | Event::Empty(ref e))) => {
                 let name = local_name_owned(e.name().as_ref());
                 match name.as_str() {
                     "message" => {
-                        if let (Some(id), Some(n)) = (get_attr(e, "id"), get_attr(e, "name")) {
+                        let id = get_attr(e, "id");
+                        if let (Some(id), Some(n)) = (id.clone(), get_attr(e, "name")) {
                             messages.insert(id, n);
+                        }
+                        // Only a `<message>` with children can hold a subscription; a
+                        // self-closing one has no end event to clear the marker with.
+                        if matches!(event, Event::Start(_)) {
+                            current_message = id;
+                        }
+                    }
+                    "subscription" => {
+                        if let (Some(id), Some(key)) =
+                            (current_message.as_ref(), get_attr(e, "correlationKey"))
+                        {
+                            message_keys.insert(id.clone(), key);
                         }
                     }
                     "signal" => {
@@ -57,12 +77,17 @@ fn prescan_refs(xml: &str) -> (HashMap<String, String>, HashMap<String, String>)
                     _ => {}
                 }
             }
+            Ok(Event::End(ref e)) => {
+                if local_name_owned(e.name().as_ref()) == "message" {
+                    current_message = None;
+                }
+            }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
         }
         buf.clear();
     }
-    (messages, signals)
+    (messages, signals, message_keys)
 }
 
 /// Parse a BPMN 2.0 XML string and return all process definitions.
@@ -73,12 +98,13 @@ pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
     let mut processes: Vec<BpmnProcess> = Vec::new();
 
     // Pre-scan to resolve forward references for messages and signals
-    let (pre_messages, pre_signals) = prescan_refs(xml);
+    let (pre_messages, pre_signals, pre_message_keys) = prescan_refs(xml);
 
     // We use a stateful parser with a stack
     let mut parser_state = ParserState::new();
     parser_state.messages = pre_messages;
     parser_state.signals = pre_signals;
+    parser_state.message_keys = pre_message_keys;
     let mut buf = Vec::new();
 
     loop {
@@ -199,6 +225,10 @@ struct ParserState {
     messages: HashMap<String, String>, // id -> name
     // Signals referenced in the process
     signals: HashMap<String, String>, // id -> name
+    // Correlation keys declared on root messages
+    message_keys: HashMap<String, String>, // message id -> correlation key
+    // Event subscription key seen before the event's message definition
+    pending_correlation_key: Option<String>,
     // Current text content (for CDATA elements)
     current_text: String,
     // Pending event definition being built
@@ -211,6 +241,8 @@ impl ParserState {
             stack: vec![ParseContext::Root],
             messages: HashMap::new(),
             signals: HashMap::new(),
+            message_keys: HashMap::new(),
+            pending_correlation_key: None,
             current_text: String::new(),
             pending_event_def: None,
         }
@@ -333,6 +365,10 @@ impl ParserState {
                 let mut task = ReceiveTask::new(id);
                 task.name = get_attr(e, "name");
                 task.message_ref = get_attr(e, "messageRef");
+                if let Some(r) = task.message_ref.as_ref() {
+                    task.message_name = self.messages.get(r).cloned();
+                    task.correlation_key = self.message_keys.get(r).cloned();
+                }
                 self.stack.push(ParseContext::ReceiveTask(task));
             }
             "scriptTask" => {
@@ -432,9 +468,12 @@ impl ParserState {
                     .and_then(|r| self.messages.get(r))
                     .cloned()
                     .unwrap_or_default();
+                // A subscription on the event itself wins over the message's own.
+                let correlation_key = self.pending_correlation_key.take()
+                    .or_else(|| msg_ref.as_ref().and_then(|r| self.message_keys.get(r)).cloned());
                 self.pending_event_def = Some(EventDefinition::Message(MessageEventDefinition {
                     message_name: msg_name,
-                    correlation_key: None,
+                    correlation_key,
                 }));
             }
             "signalEventDefinition" => {
@@ -637,9 +676,12 @@ impl ParserState {
                     .and_then(|r| self.messages.get(r))
                     .cloned()
                     .unwrap_or_default();
+                // A subscription on the event itself wins over the message's own.
+                let correlation_key = self.pending_correlation_key.take()
+                    .or_else(|| msg_ref.as_ref().and_then(|r| self.message_keys.get(r)).cloned());
                 self.pending_event_def = Some(EventDefinition::Message(MessageEventDefinition {
                     message_name: msg_name,
-                    correlation_key: None,
+                    correlation_key,
                 }));
                 self.finalize_event_definition();
             }
@@ -735,6 +777,7 @@ impl ParserState {
                 }
             }
             "startEvent" => {
+                self.pending_correlation_key = None;
                 if let Some(ParseContext::StartEvent(ev)) = self.stack.pop() {
                     let id = ev.id.clone();
                     self.add_start_event_to_scope(id, FlowElement::StartEvent(ev));
@@ -819,6 +862,7 @@ impl ParserState {
                 }
             }
             "intermediateCatchEvent" => {
+                self.pending_correlation_key = None;
                 if let Some(ParseContext::IntermediateCatchEvent(ev)) = self.stack.pop() {
                     let id = ev.id.clone();
                     self.add_element_to_scope(id, FlowElement::IntermediateCatchEvent(ev));
@@ -831,6 +875,7 @@ impl ParserState {
                 }
             }
             "boundaryEvent" => {
+                self.pending_correlation_key = None;
                 if let Some(ParseContext::BoundaryEvent(ev)) = self.stack.pop() {
                     let id = ev.id.clone();
                     self.add_element_to_scope(id, FlowElement::BoundaryEvent(ev));
@@ -1059,18 +1104,27 @@ impl ParserState {
                 ParseContext::StartEvent(e) => {
                     if let Some(EventDefinition::Message(ref mut msg)) = e.event_definition {
                         msg.correlation_key = Some(key);
+                    } else {
+                        // `extensionElements` usually precede the event definition.
+                        self.pending_correlation_key = Some(key);
                     }
                     return;
                 }
                 ParseContext::IntermediateCatchEvent(e) => {
                     if let Some(EventDefinition::Message(ref mut msg)) = e.event_definition {
                         msg.correlation_key = Some(key);
+                    } else {
+                        // `extensionElements` usually precede the event definition.
+                        self.pending_correlation_key = Some(key);
                     }
                     return;
                 }
                 ParseContext::BoundaryEvent(e) => {
                     if let Some(EventDefinition::Message(ref mut msg)) = e.event_definition {
                         msg.correlation_key = Some(key);
+                    } else {
+                        // `extensionElements` usually precede the event definition.
+                        self.pending_correlation_key = Some(key);
                     }
                     return;
                 }
@@ -1277,6 +1331,43 @@ mod tests {
             }
         } else {
             panic!("Expected StartEvent");
+        }
+    }
+
+    #[test]
+    fn test_message_correlation_keys() {
+        // Event-level subscription before the definition; root-message subscription for the
+        // receive task and the second catch event.
+        let xml = r#"<?xml version="1.0"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0">
+  <bpmn:message id="M1" name="go"/>
+  <bpmn:message id="M2" name="paid">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:process id="p" isExecutable="true">
+    <bpmn:intermediateCatchEvent id="A">
+      <bpmn:extensionElements><zeebe:subscription correlationKey="=key"/></bpmn:extensionElements>
+      <bpmn:messageEventDefinition messageRef="M1"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="B"><bpmn:messageEventDefinition messageRef="M2"/></bpmn:intermediateCatchEvent>
+    <bpmn:receiveTask id="R" messageRef="M2"><bpmn:incoming>F</bpmn:incoming></bpmn:receiveTask>
+  </bpmn:process>
+</bpmn:definitions>"#;
+        let processes = parse_bpmn(xml).unwrap();
+        let key_of = |id: &str| match processes[0].elements.get(id).unwrap() {
+            FlowElement::IntermediateCatchEvent(e) => match &e.event_definition {
+                Some(EventDefinition::Message(m)) => (m.message_name.clone(), m.correlation_key.clone()),
+                _ => panic!("expected a message definition on {id}"),
+            },
+            _ => panic!("expected a catch event {id}"),
+        };
+        assert_eq!(key_of("A"), ("go".to_string(), Some("=key".to_string())));
+        assert_eq!(key_of("B"), ("paid".to_string(), Some("=orderId".to_string())));
+        if let FlowElement::ReceiveTask(r) = processes[0].elements.get("R").unwrap() {
+            assert_eq!(r.message_name.as_deref(), Some("paid"));
+            assert_eq!(r.correlation_key.as_deref(), Some("=orderId"));
+        } else {
+            panic!("expected a receive task");
         }
     }
 }

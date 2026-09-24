@@ -333,6 +333,10 @@ pub struct ReceiveTask {
     pub incoming: Vec<String>,
     pub outgoing: Vec<String>,
     pub message_ref: Option<String>,
+    /// Name of the referenced message, resolved from `message_ref`.
+    pub message_name: Option<String>,
+    /// Correlation key from the referenced message's `zeebe:subscription`.
+    pub correlation_key: Option<String>,
     pub input_mappings: Vec<ZeebeIoMapping>,
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
@@ -346,6 +350,8 @@ impl ReceiveTask {
             incoming: Vec::new(),
             outgoing: Vec::new(),
             message_ref: None,
+            message_name: None,
+            correlation_key: None,
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,

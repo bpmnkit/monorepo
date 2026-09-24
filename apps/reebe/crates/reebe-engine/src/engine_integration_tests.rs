@@ -2184,4 +2184,80 @@ mod tests {
         assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
         assert!(h.visited("start-v2"), "latest version (v2) should be used for new instances");
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Job variables without output mappings reach the process
+    // ─────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_job_variables_merge_without_output_mappings() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="task">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="task"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="task" targetRef="end"/>
+"#);
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("work", serde_json::json!({ "out": 42 })).await;
+
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(h.get_var("out"), Some(serde_json::json!(42)));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Message correlation keys are FEEL-evaluated; message variables merge
+    // ─────────────────────────────────────────────────────────────────
+
+    const MESSAGE_BPMN: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="M_go" name="go"/>
+  <bpmn:message id="M_paid" name="paid">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="wait">
+      <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="M_go"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:receiveTask id="receive" messageRef="M_paid">
+      <bpmn:incoming>f2</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="wait"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="wait" targetRef="receive"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="receive" targetRef="end"/>
+  </bpmn:process>
+</bpmn:definitions>"#;
+
+    #[tokio::test]
+    async fn test_message_correlates_on_evaluated_key_and_merges_variables() {
+        let h = Harness::new();
+        h.deploy(MESSAGE_BPMN).await;
+        h.start("proc", serde_json::json!({ "orderId": "o-1" })).await;
+
+        // A message for another order must not correlate.
+        h.publish_message("go", "o-2", serde_json::json!({})).await;
+        assert!(!h.visited("receive"), "message for another key must not correlate");
+
+        h.publish_message("go", "o-1", serde_json::json!({ "shipped": true })).await;
+        assert!(h.visited("receive"), "catch event should correlate on the evaluated key");
+        assert_eq!(h.get_var("shipped"), Some(serde_json::json!(true)));
+
+        // The receive task takes its key from the root message's subscription.
+        h.publish_message("paid", "o-1", serde_json::json!({ "amount": 10 })).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"),
+            "instances: {:?}", h.process_instances());
+        assert_eq!(h.get_var("amount"), Some(serde_json::json!(10)));
+    }
 }
+

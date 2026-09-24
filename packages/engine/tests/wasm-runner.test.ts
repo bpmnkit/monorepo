@@ -102,3 +102,34 @@ describe("runScenarioWasm — DMN + gateway", () => {
 		expect(result.feelEvals.length).toBeGreaterThan(0)
 	})
 })
+
+const SERVICE_TASK_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  id="Definitions_2" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="job-process" isExecutable="true">
+    <bpmn:startEvent id="s"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="t">
+      <bpmn:extensionElements><zeebe:taskDefinition type="work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="e"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="s" targetRef="t"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="t" targetRef="e"/>
+  </bpmn:process>
+</bpmn:definitions>`
+
+describe("runScenarioWasm — job outputs", () => {
+	it("merges a mocked job's outputs into the process without output mappings", async () => {
+		const result = await runScenarioWasm(SERVICE_TASK_XML, {
+			id: "s2",
+			name: "Job outputs",
+			inputs: { a: 1 },
+			mocks: { work: { outputs: { out: 42 } } },
+			expect: { variables: { out: 42 } },
+		})
+		expect(result.errors).toEqual([])
+		expect(result.finalVariables).toMatchObject({ a: 1, out: 42 })
+		expect(result.passed).toBe(true)
+	})
+})

@@ -194,7 +194,7 @@ impl WasmEngine {
         let result = self.submit_and_drain(
             "MESSAGE", "PUBLISH",
             serde_json::json!({
-                "name": name,
+                "messageName": name,
                 "correlationKey": correlation_key,
                 "variables": vars,
                 "timeToLive": 3600000,
