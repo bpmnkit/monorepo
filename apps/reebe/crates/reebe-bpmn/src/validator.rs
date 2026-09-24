@@ -54,11 +54,22 @@ fn validate_process(process: &BpmnProcess, errors: &mut Vec<ValidationError>) {
         errors.push(ValidationError::ElementError {
             process_id: pid.clone(),
             element_id: el.id.clone(),
-            message: format!("Elements of type '{}' are currently not supported", el.element_type),
+            message: format!(
+                "Elements of type '{}' are currently not supported. Please refer to the documentation for a list \
+                 of supported elements: https://docs.camunda.io/docs/components/modeler/bpmn/bpmn-coverage/",
+                model_type_name(&el.element_type),
+            ),
         });
     }
 
     validate_scope(pid, &process.elements, errors);
+}
+
+/// The name Zeebe's validator gives an element type: its model interface's simple
+/// name, the XML name with a capital (`complexGateway` → `ComplexGateway`).
+fn model_type_name(xml_name: &str) -> String {
+    let mut chars = xml_name.chars();
+    chars.next().map(|first| first.to_uppercase().chain(chars).collect()).unwrap_or_default()
 }
 
 /// Checks that apply to each scope — the process and every sub-process in it.

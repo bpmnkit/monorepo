@@ -67,6 +67,79 @@ fn job_to_proto(job: reebe_db::state::jobs::Job) -> ActivatedJob {
     }
 }
 
+/// A JSON document of variables, as the gateway protocol carries them: an object, or
+/// empty for none.
+fn variables_object(json: &str, field: &str) -> Result<serde_json::Value, Status> {
+    if json.trim().is_empty() {
+        return Ok(serde_json::json!({}));
+    }
+    match serde_json::from_str::<serde_json::Value>(json) {
+        Ok(value @ serde_json::Value::Object(_)) => Ok(value),
+        _ => Err(Status::invalid_argument(format!(
+            "Expected {field} to be a JSON object, but got '{json}'"
+        ))),
+    }
+}
+
+/// The engine's `JOB` `COMPLETE` command for a `CompleteJob` call: the same payload
+/// the REST job completion sends, with the job result in the REST `JobResult` shape.
+fn complete_job_payload(req: CompleteJobRequest) -> Result<serde_json::Value, Status> {
+    let mut payload = serde_json::json!({
+        "jobKey": req.job_key.to_string(),
+        "variables": variables_object(&req.variables, "variables")?,
+        "result": null,
+    });
+    if let Some(result) = req.result {
+        let mut json = serde_json::Map::new();
+        if let Some(kind) = result.r#type {
+            json.insert("type".into(), kind.into());
+        }
+        if let Some(denied) = result.denied {
+            json.insert("denied".into(), denied.into());
+        }
+        if let Some(reason) = result.denied_reason {
+            json.insert("deniedReason".into(), reason.into());
+        }
+        if let Some(c) = result.corrections {
+            let mut corrections = serde_json::Map::new();
+            let strings = [("assignee", c.assignee), ("dueDate", c.due_date), ("followUpDate", c.follow_up_date)];
+            for (name, value) in strings {
+                if let Some(value) = value {
+                    corrections.insert(name.into(), value.into());
+                }
+            }
+            for (name, list) in [("candidateUsers", c.candidate_users), ("candidateGroups", c.candidate_groups)] {
+                if let Some(list) = list {
+                    corrections.insert(name.into(), list.values.into());
+                }
+            }
+            if let Some(priority) = c.priority {
+                corrections.insert("priority".into(), priority.into());
+            }
+            json.insert("corrections".into(), corrections.into());
+        }
+        if !result.activate_elements.is_empty() {
+            let elements = result
+                .activate_elements
+                .into_iter()
+                .map(|e| {
+                    let variables = variables_object(&e.variables, "activateElements.variables")?;
+                    Ok(serde_json::json!({ "elementId": e.element_id, "variables": variables }))
+                })
+                .collect::<Result<Vec<_>, Status>>()?;
+            json.insert("activateElements".into(), elements.into());
+        }
+        if let Some(fulfilled) = result.is_completion_condition_fulfilled {
+            json.insert("isCompletionConditionFulfilled".into(), fulfilled.into());
+        }
+        if let Some(cancel) = result.is_cancel_remaining_instances {
+            json.insert("isCancelRemainingInstances".into(), cancel.into());
+        }
+        payload["result"] = json.into();
+    }
+    Ok(payload)
+}
+
 #[tonic::async_trait]
 impl Gateway for GatewayService {
     // ── Topology ─────────────────────────────────────────────────────────────
@@ -436,11 +509,7 @@ impl Gateway for GatewayService {
         &self,
         request: Request<CompleteJobRequest>,
     ) -> Result<Response<CompleteJobResponse>, Status> {
-        let req = request.into_inner();
-        let payload = serde_json::json!({
-            "jobKey": req.job_key.to_string(),
-            "variables": req.variables,
-        });
+        let payload = complete_job_payload(request.into_inner())?;
         self.state.engine
             .send_command("JOB".to_string(), "COMPLETE".to_string(), payload, "<default>".to_string())
             .await
@@ -666,5 +735,70 @@ async fn wait_for_instance_completion(pool: &DbPool, instance_key: i64) -> Resul
             Ok(_) => {} // still running, keep polling
             Err(e) => return Err(e.to_string()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prost::Message;
+
+    /// A length-delimited field: tag, length, bytes.
+    fn field(number: u8, bytes: &[u8]) -> Vec<u8> {
+        let mut out = vec![(number << 3) | 2, bytes.len() as u8];
+        out.extend_from_slice(bytes);
+        out
+    }
+
+    #[test]
+    fn complete_job_result_decodes_from_zeebe_s_field_numbers_and_maps_to_the_rest_payload() {
+        // CompleteJobRequest { jobKey = 1: 42, variables = 2: {"agent":1},
+        //   result = 3: JobResult { type = 4, activateElements = 5 { elementId = 1, variables = 2 },
+        //   isCompletionConditionFulfilled = 6: false, isCancelRemainingInstances = 7: true } }
+        let element = [field(1, b"tool"), field(2, br#"{"toolCall":{"q":"x"}}"#)].concat();
+        let result = [field(4, b"adHocSubProcess"), field(5, &element), vec![6 << 3, 0], vec![7 << 3, 1]].concat();
+        let bytes = [vec![1 << 3, 42], field(2, br#"{"agent":1}"#), field(3, &result)].concat();
+        let req = CompleteJobRequest::decode(bytes.as_slice()).unwrap();
+
+        assert_eq!(complete_job_payload(req).unwrap(), serde_json::json!({
+            "jobKey": "42",
+            "variables": { "agent": 1 },
+            "result": {
+                "type": "adHocSubProcess",
+                "activateElements": [{ "elementId": "tool", "variables": { "toolCall": { "q": "x" } } }],
+                "isCompletionConditionFulfilled": false,
+                "isCancelRemainingInstances": true,
+            },
+        }));
+    }
+
+    #[test]
+    fn complete_job_maps_user_task_corrections_and_no_result() {
+        let req = CompleteJobRequest {
+            job_key: 7,
+            variables: String::new(),
+            result: Some(JobResult {
+                denied: Some(true),
+                denied_reason: Some("no".into()),
+                corrections: Some(JobResultCorrections {
+                    assignee: Some("ann".into()),
+                    candidate_groups: Some(StringList { values: vec!["ops".into()] }),
+                    priority: Some(80),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+        };
+        assert_eq!(complete_job_payload(req).unwrap()["result"], serde_json::json!({
+            "denied": true,
+            "deniedReason": "no",
+            "corrections": { "assignee": "ann", "candidateGroups": ["ops"], "priority": 80 },
+        }));
+
+        let req = CompleteJobRequest { job_key: 7, variables: "{}".into(), result: None };
+        assert_eq!(complete_job_payload(req).unwrap(), serde_json::json!({ "jobKey": "7", "variables": {}, "result": null }));
+
+        let req = CompleteJobRequest { job_key: 7, variables: "[1]".into(), result: None };
+        assert_eq!(complete_job_payload(req).unwrap_err().code(), tonic::Code::InvalidArgument);
     }
 }

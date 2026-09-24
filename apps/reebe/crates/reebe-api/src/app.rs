@@ -146,6 +146,10 @@ pub async fn create_app(
         // Element instances
         .route("/v2/element-instances/search", post(handlers::element_instances::search))
         .route("/v2/element-instances/:key", get(handlers::element_instances::get))
+        .route(
+            "/v2/element-instances/ad-hoc-activities/:key/activation",
+            post(handlers::element_instances::activate_ad_hoc_activities),
+        )
 
         // Signals
         .route("/v2/signals/broadcast", post(handlers::signals::broadcast))

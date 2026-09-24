@@ -11,12 +11,16 @@
 //! sub-processes inside it, most recently completed first; active or terminated
 //! sub-processes are not compensated. With `activityRef`, only that activity of the
 //! scope is compensated. A throw event inside an event sub-process compensates the
-//! scope around the event sub-process. Each recorded completion is compensated once.
+//! event sub-process and the scope around it. Each recorded completion is compensated
+//! once.
 //!
-//! A handler runs in the flow scope of its activity while that scope is active, or else
-//! in the throw event's scope. It starts with a copy of the activity's local variables
-//! and sees the variables of its scope. The throw event stays active until every
-//! handler it invoked has completed, then continues.
+//! As in Zeebe, every handler runs in the throw event's flow scope (Zeebe activates the
+//! handler with the throw event's record), and it starts without local variables of its
+//! own beyond its input mappings: it sees the variables of that scope. The throw event
+//! stays active until every handler it invoked has ended, then continues. A handler
+//! that is terminated on its own (say, by a boundary event on it, which Zeebe's
+//! validator rejects for tasks) counts as ended: the Camunda docs do not say otherwise,
+//! and leaving the throw event waiting would block its scope for good.
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
@@ -27,7 +31,7 @@ use reebe_db::state::element_instances::ElementInstance;
 use crate::engine::EngineState;
 use crate::error::EngineResult;
 use crate::key_gen::KeyGenerator;
-use super::{scope, CommandToWrite, Writers};
+use super::{CommandToWrite, Writers};
 
 /// An activity completed: record it if it has a compensation handler.
 pub(crate) async fn activity_completed(
@@ -66,14 +70,15 @@ pub(crate) async fn throw(
         .into_iter()
         .map(|ei| (ei.key, ei))
         .collect();
-    let mut scope_key = thrower.flow_scope_key.unwrap_or(pi);
+    let scope_key = thrower.flow_scope_key.unwrap_or(pi);
+    let mut scope_keys = vec![scope_key];
     if let Some(esp) = instances.get(&scope_key).filter(|ei| ei.element_type == "EVENT_SUB_PROCESS") {
-        scope_key = esp.flow_scope_key.unwrap_or(pi);
+        scope_keys.push(esp.flow_scope_key.unwrap_or(pi));
     }
-    // The subscription's scope is the compensated scope, or a completed sub-process
-    // inside it.
+    // The subscription's scope is a compensated scope, or a completed sub-process
+    // inside one.
     let within = |mut key: i64| loop {
-        if key == scope_key {
+        if scope_keys.contains(&key) {
             return true;
         }
         match instances.get(&key) {
@@ -89,16 +94,13 @@ pub(crate) async fn throw(
         .into_iter()
         .filter(|s| s.throw_event_instance_key.is_none())
         .filter(|s| match activity_ref {
-            Some(activity) => s.compensable_activity_id == activity && s.compensable_activity_scope_key == scope_key,
+            Some(activity) => s.compensable_activity_id == activity && scope_keys.contains(&s.compensable_activity_scope_key),
             None => within(s.compensable_activity_scope_key),
         })
         .collect();
     invoked.sort_by_key(|s| Reverse(s.key));
 
     for sub in &invoked {
-        let scope_active = sub.compensable_activity_scope_key == pi
-            || instances.get(&sub.compensable_activity_scope_key).is_some_and(|ei| ei.state == "ACTIVATED");
-        let handler_scope = if scope_active { sub.compensable_activity_scope_key } else { scope_key };
         state.backend.upsert_compensation_subscription(&CompensationSubscription {
             throw_event_instance_key: Some(thrower.key),
             ..sub.clone()
@@ -112,7 +114,7 @@ pub(crate) async fn throw(
                 "processDefinitionKey": thrower.process_definition_key.to_string(),
                 "bpmnProcessId": thrower.bpmn_process_id,
                 "elementId": sub.compensation_handler_id,
-                "flowScopeKey": handler_scope.to_string(),
+                "flowScopeKey": scope_key.to_string(),
                 "compensationSubscriptionKey": sub.key.to_string(),
                 "tenantId": thrower.tenant_id,
             }),
@@ -121,8 +123,7 @@ pub(crate) async fn throw(
     Ok(!invoked.is_empty())
 }
 
-/// A compensation handler is activating as `handler_key`: link it to its subscription
-/// and give it the local variables of the activity it compensates.
+/// A compensation handler is activating as `handler_key`: link it to its subscription.
 pub(crate) async fn handler_activating(
     state: &EngineState,
     payload: &serde_json::Value,
@@ -142,20 +143,14 @@ pub(crate) async fn handler_activating(
     };
     state.backend.upsert_compensation_subscription(&CompensationSubscription {
         compensation_handler_instance_key: Some(handler_key),
-        ..sub.clone()
+        ..sub
     }).await?;
-    for var in state.backend.get_variables_by_scope(sub.compensable_activity_instance_key).await? {
-        // Engine bookkeeping (a multi-instance body's items) is not the activity's data.
-        if !var.name.starts_with("__") {
-            scope::set_local(state, process_instance_key, handler_key, &var.name, var.value, &sub.tenant_id).await?;
-        }
-    }
     Ok(())
 }
 
-/// An element instance completed: if it is a compensation handler, and the last one its
-/// throw event waits for, the throw event completes.
-pub(crate) async fn handler_completed(
+/// An element instance completed or was terminated: if it is a compensation handler,
+/// and the last one its throw event waits for, the throw event completes.
+pub(crate) async fn handler_ended(
     state: &EngineState,
     writers: &mut Writers,
     handler: &ElementInstance,

@@ -186,6 +186,17 @@ pub fn eval(expr: &Expr, ctx: &FeelContext) -> Result<FeelValue, FeelError> {
             builtins::call_builtin(name, eval_args)
         }
 
+        // Only `fromAi` takes named arguments; it returns its `value`.
+        Expr::NamedFunctionCall(name, args) if name.eq_ignore_ascii_case("fromAi") => {
+            match args.iter().find(|(arg, _)| arg == "value") {
+                Some((_, value)) => eval(value, ctx),
+                None => Ok(FeelValue::Null),
+            }
+        }
+        Expr::NamedFunctionCall(name, _) => Err(FeelError::EvaluationError(format!(
+            "named arguments are not supported for {name}()"
+        ))),
+
         Expr::If(cond, then_expr, else_expr) => {
             let cond_val = eval(cond, ctx)?;
             if cond_val.is_truthy() {

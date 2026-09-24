@@ -392,6 +392,11 @@ impl Parser {
                 // Check if it's a function call
                 if matches!(self.peek(), Token::LParen) {
                     self.advance(); // consume '('
+                    if matches!(self.peek(), Token::Ident(_))
+                        && matches!(self.tokens.get(self.pos + 1), Some(Token::Colon))
+                    {
+                        return self.parse_named_args(name);
+                    }
                     let mut args = Vec::new();
                     if !matches!(self.peek(), Token::RParen) {
                         args.push(self.parse_expr()?);
@@ -411,6 +416,24 @@ impl Parser {
             }
             tok => Err(FeelError::ParseError(format!("Unexpected token: {:?}", tok))),
         }
+    }
+
+    /// The named arguments of a call, `name(a: expr, b: expr)`; `(` is consumed.
+    fn parse_named_args(&mut self, name: String) -> Result<Expr, FeelError> {
+        let mut args = Vec::new();
+        while !matches!(self.peek(), Token::RParen | Token::Eof) {
+            let arg = match self.advance().clone() {
+                Token::Ident(arg) => arg,
+                tok => return Err(FeelError::ParseError(format!("Expected a parameter name, got {:?}", tok))),
+            };
+            self.expect(&Token::Colon)?;
+            args.push((arg, self.parse_expr()?));
+            if matches!(self.peek(), Token::Comma) {
+                self.advance();
+            }
+        }
+        self.expect(&Token::RParen)?;
+        Ok(Expr::NamedFunctionCall(name, args))
     }
 
     fn parse_context_literal(&mut self) -> Result<Expr, FeelError> {

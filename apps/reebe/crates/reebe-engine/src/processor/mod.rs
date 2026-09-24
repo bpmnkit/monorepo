@@ -30,6 +30,7 @@ pub use user_task::UserTaskProcessor;
 pub use signal::SignalProcessor;
 pub use identity::IdentityProcessor;
 pub use variable::VariableDocumentProcessor;
+pub use ad_hoc::AdHocSubProcessInstructionProcessor;
 
 use async_trait::async_trait;
 use reebe_db::records::DbRecord;

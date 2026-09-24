@@ -43,6 +43,9 @@ use super::{CommandToWrite, EventToWrite, Writers};
 pub(crate) const AD_HOC: &str = "AD_HOC_SUB_PROCESS";
 pub(crate) const INNER: &str = "AD_HOC_SUB_PROCESS_INNER_INSTANCE";
 
+/// Local variable of every ad-hoc sub-process describing the elements it can activate.
+pub(crate) const ELEMENTS_VARIABLE: &str = "adHocSubProcessElements";
+
 /// Local variable of the ad-hoc sub-process: the completion condition was fulfilled
 /// without cancelling, and it completes once its inner instances have.
 const COMPLETION_PENDING: &str = "__adHocCompletionPending";
@@ -62,6 +65,34 @@ pub(crate) fn activatable(sp: &SubProcess) -> Vec<&str> {
         .collect();
     ids.sort();
     ids
+}
+
+/// The `adHocSubProcessElements` variable: each element the ad-hoc sub-process can
+/// activate, in document order, with its name, documentation, `zeebe:properties` and
+/// the `fromAi()` parameters of its input mappings.
+pub(crate) fn elements_variable(sp: &SubProcess) -> serde_json::Value {
+    let allowed = activatable(sp);
+    let mut ids: Vec<&str> = sp.element_order.iter().map(String::as_str).filter(|id| allowed.contains(id)).collect();
+    if ids.len() != allowed.len() {
+        ids = allowed;
+    }
+    let elements = ids.into_iter().filter_map(|id| sp.elements.get(id)).map(|el| {
+        let details = sp.element_details.get(el.id()).cloned().unwrap_or_default();
+        let properties: serde_json::Map<String, serde_json::Value> =
+            details.properties.into_iter().map(|(name, value)| (name, value.into())).collect();
+        let parameters: Vec<serde_json::Value> = super::bpmn_element::get_input_mappings(el)
+            .iter()
+            .flat_map(|mapping| reebe_feel::from_ai_parameters(&mapping.source))
+            .collect();
+        serde_json::json!({
+            "elementId": el.id(),
+            "elementName": el.name(),
+            "documentation": details.documentation,
+            "properties": properties,
+            "parameters": parameters,
+        })
+    });
+    serde_json::Value::Array(elements.collect())
 }
 
 /// The element ids `activeElementsCollection` lists, evaluated in the ad-hoc
@@ -155,6 +186,7 @@ pub(crate) async fn activated(
     ad_hoc: &ElementInstance,
     elements: &[String],
 ) -> EngineResult<()> {
+    scope::set_local(state, ad_hoc.process_instance_key, ad_hoc.key, ELEMENTS_VARIABLE, elements_variable(sp), &ad_hoc.tenant_id).await?;
     if let Some(collection) = &sp.output_collection {
         scope::set_local(state, ad_hoc.process_instance_key, ad_hoc.key, collection, serde_json::json!([]), &ad_hoc.tenant_id).await?;
     }
@@ -433,5 +465,80 @@ fn element_event(ei: &ElementInstance, intent: &str) -> EventToWrite {
             "bpmnProcessId": ei.bpmn_process_id,
             "tenantId": ei.tenant_id,
         }),
+    }
+}
+
+/// `AD_HOC_SUB_PROCESS_INSTRUCTION` `ACTIVATE`: activate elements of an active ad-hoc
+/// sub-process from outside (the REST endpoint
+/// `POST /element-instances/ad-hoc-activities/{key}/activation`), with Zeebe's
+/// rejections. With `cancelRemainingInstances`, what still runs inside is terminated
+/// first.
+pub struct AdHocSubProcessInstructionProcessor;
+
+#[async_trait::async_trait]
+impl super::RecordProcessor for AdHocSubProcessInstructionProcessor {
+    fn accepts(&self, value_type: &str, intent: &str) -> bool {
+        value_type == "AD_HOC_SUB_PROCESS_INSTRUCTION" && intent == "ACTIVATE"
+    }
+
+    async fn process(
+        &self,
+        record: &reebe_db::records::DbRecord,
+        state: &EngineState,
+        writers: &mut Writers,
+    ) -> EngineResult<()> {
+        let payload = &record.payload;
+        let key_text = match &payload["adHocSubProcessInstanceKey"] {
+            serde_json::Value::String(key) => key.clone(),
+            other => other.to_string(),
+        };
+        let not_found = || EngineError::NotFound(format!(
+            "Expected to activate activities for ad-hoc sub-process but no ad-hoc sub-process instance found with key '{key_text}'."
+        ));
+        let key: i64 = key_text.parse().map_err(|_| not_found())?;
+        let ad_hoc = state.backend.get_element_instance_by_key(key).await.map_err(|_| not_found())?;
+        if ad_hoc.element_type != AD_HOC {
+            return Err(not_found());
+        }
+        if ad_hoc.state != "ACTIVATED" {
+            return Err(EngineError::InvalidState(format!(
+                "Expected to activate activities for ad-hoc sub-process with key '{key}', but it is not active."
+            )));
+        }
+        let process = super::throw_event::load_process(state, ad_hoc.process_definition_key, &ad_hoc.bpmn_process_id).await?;
+        let Some(FlowElement::SubProcess(sp)) = process.get_element_recursive(&ad_hoc.element_id) else {
+            return Err(not_found());
+        };
+        let elements: Vec<(String, Option<serde_json::Map<String, serde_json::Value>>)> = payload["elements"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|e| (e["elementId"].as_str().unwrap_or_default().to_string(), e["variables"].as_object().cloned()))
+            .collect();
+        let allowed = activatable(sp);
+        let unknown: Vec<&str> = elements.iter().map(|(id, _)| id.as_str()).filter(|id| !allowed.contains(id)).collect();
+        if !unknown.is_empty() {
+            return Err(EngineError::NotFound(format!(
+                "Expected to activate activities for ad-hoc sub-process with key '{key}', but the given elements [{}] do not exist.",
+                unknown.join(", "),
+            )));
+        }
+
+        if payload["cancelRemainingInstances"].as_bool() == Some(true) {
+            for child in active_children(state, &ad_hoc).await? {
+                terminate_subtree(state, writers, &child).await?;
+            }
+        }
+        for (id, variables) in &elements {
+            activate_inner(state, writers, &ad_hoc, id, variables.as_ref()).await?;
+        }
+        writers.events.push(EventToWrite {
+            value_type: "AD_HOC_SUB_PROCESS_INSTRUCTION".to_string(),
+            intent: "ACTIVATED".to_string(),
+            key: ad_hoc.key,
+            payload: payload.clone(),
+        });
+        writers.response = Some(serde_json::json!({ "adHocSubProcessInstanceKey": key.to_string() }));
+        Ok(())
     }
 }

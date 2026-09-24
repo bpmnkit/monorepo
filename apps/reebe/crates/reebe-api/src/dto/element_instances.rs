@@ -43,3 +43,21 @@ impl From<reebe_db::state::element_instances::ElementInstance> for ElementInstan
         }
     }
 }
+
+/// `POST /v2/element-instances/ad-hoc-activities/{key}/activation` body
+/// (`AdHocSubProcessActivateActivitiesInstruction`).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivateAdHocActivitiesRequest {
+    pub elements: Option<Vec<AdHocActivityReference>>,
+    #[serde(default)]
+    pub cancel_remaining_instances: bool,
+}
+
+/// `AdHocSubProcessActivateActivityReference`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdHocActivityReference {
+    pub element_id: Option<String>,
+    pub variables: Option<serde_json::Map<String, serde_json::Value>>,
+}

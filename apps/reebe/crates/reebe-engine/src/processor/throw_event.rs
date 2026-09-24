@@ -316,6 +316,8 @@ async fn terminate_one(
 ) -> EngineResult<()> {
     state.backend.update_element_instance_state(ei.key, "TERMINATED").await?;
     super::catch_event::close_waits(state, ei.key).await?;
+    // A terminated compensation handler no longer holds up its throw event.
+    super::compensation::handler_ended(state, writers, ei).await?;
     state.backend.delete_join_tokens(ei.key).await?;
     // A terminated call activity takes the process instance it called with it.
     if ei.element_type == "CALL_ACTIVITY" {

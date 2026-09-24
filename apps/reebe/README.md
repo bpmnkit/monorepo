@@ -259,6 +259,14 @@ curl -X POST http://localhost:8080/v2/process-instances/search \
   }'
 ```
 
+#### Activate elements of an ad-hoc sub-process
+
+```bash
+curl -X POST http://localhost:8080/v2/element-instances/ad-hoc-activities/{key}/activation \
+  -H "Content-Type: application/json" \
+  -d '{"elements": [{"elementId": "search-kb", "variables": {"query": "delivery"}}]}'
+```
+
 #### Get topology
 
 ```bash
@@ -446,12 +454,21 @@ Reports PI/s (process instances per second), average latency, and error count.
   resolving the incident evaluates the gateway again. Default flows are recognised in
   sub-processes and event sub-processes at every depth. Parallel gateways take every
   outgoing flow and ignore conditions on them, as Zeebe does
+- A sequence-flow condition of an exclusive or inclusive gateway must evaluate to a boolean,
+  as in Zeebe: a missing variable is `null`, so `=x > 5` without `x` is `null`. Any other
+  result, or an expression that fails to evaluate, raises an `EXTRACT_VALUE_ERROR` incident
+  (`Expected result of the expression 'x > 5' to be 'BOOLEAN', but was 'NULL'.`) instead of
+  counting as false; resolving it, after the variable is fixed, evaluates the gateway again.
+  Conditions on the outgoing flows of any other element (an activity, an event) are ignored
+  and every flow is taken, as Zeebe does
 - Inclusive gateways: the split takes every flow whose condition holds, else the default
   flow, else raises a `CONDITION_ERROR` incident that, like the exclusive gateway's, retries
   the split when resolved; the join activates once every incoming flow has a token or can
   no longer be reached in its flow scope (see below)
-- Complex gateways fail deployment with `Elements of type 'complexGateway' are currently not
-  supported`, as in Zeebe, which does not execute them
+- Complex gateways fail deployment with Zeebe's message, `Elements of type 'ComplexGateway'
+  are currently not supported. Please refer to the documentation for a list of supported
+  elements: https://docs.camunda.io/docs/components/modeler/bpmn/bpmn-coverage/`, as
+  Zeebe does not execute them
 - Link events: a link throw event continues at the link catch event of the same name in its
   scope (the process or a sub-process). Deployment fails for a throw event without a catch
   event of its name, for two catch events with the same name in one scope, and for an empty
@@ -466,9 +483,12 @@ Reports PI/s (process instances per second), average latency, and error count.
   activities and sub-processes are not compensated, and each completion is compensated
   once. `activityRef` limits it to that activity of the throw event's scope. A throw event in
   an event sub-process (for example the compensation end event of an error event
-  sub-process) compensates the scope around the event sub-process. A handler starts with a
-  copy of the compensated activity's local variables and sees the variables of its scope;
-  its result propagates like any task's. Deployment fails for an `activityRef` that is not
+  sub-process) compensates the event sub-process and the scope around it. Every handler
+  runs in the throw event's flow scope, as Zeebe activates it, and starts with no local
+  variables but those of its input mappings: it sees the variables of that scope, and its
+  result propagates like any task's. A handler that is terminated on its own (for example
+  by a boundary event on it) counts as ended, so the throw event does not wait for it.
+  Deployment fails for an `activityRef` that is not
   an activity with a compensation boundary event in the throw event's scope, and for a
   compensation start event in an event sub-process, which Zeebe does not support
 - Ad-hoc sub-processes. Each activation of an inner element runs in its own
@@ -487,7 +507,21 @@ Reports PI/s (process instances per second), average latency, and error count.
   fulfilling the condition completes the sub-process. An invalid result (activating and
   fulfilling at once, or an element that cannot be activated) rejects the completion.
   `outputElement` is collected into `outputCollection`, which is propagated when the
-  sub-process completes
+  sub-process completes. Every ad-hoc sub-process creates the local variable
+  `adHocSubProcessElements` when it activates: for each element it can activate, in
+  document order, `elementId`, `elementName`, `documentation`, `properties` (its
+  `zeebe:properties`) and `parameters`, one per `fromAi(toolCall.<name>, description, type,
+  schema, options)` call in its input mappings, positional or named, with the arguments
+  that are constants. The shape is the one `@bpmnkit/engine` gives the same model; a test
+  checks the two agree on the `ai-agent-tool-loop` template. `fromAi()` itself returns its
+  value. `POST /v2/element-instances/ad-hoc-activities/{key}/activation` activates elements
+  (each with its variables) in an active ad-hoc sub-process, first terminating what still
+  runs with `cancelRemainingInstances`; it answers 204, 404 for a key that is not an
+  ad-hoc sub-process instance or for elements it cannot activate (with Zeebe's rejection
+  messages), and 400 when the sub-process is no longer active or the body lacks `elements`
+  or an `elementId`. The gRPC `CompleteJob` call takes Zeebe's `JobResult` (`result = 3`,
+  with the ad-hoc and user task fields under Zeebe's field numbers) and passes it on as
+  the REST job completion does
 - Resolving an incident raised while an element was activating (an I/O mapping, a gateway
   condition, a multi-instance input collection, an ad-hoc `activeElementsCollection`) retries
   that same element instance
@@ -515,15 +549,17 @@ whose condition can never hold still counts as reachable).
 
 ### Known gaps
 
-- A condition that fails to evaluate (an error, or a value that is not a boolean) counts as
-  false; Zeebe raises an incident
-- Ad-hoc sub-processes: the `adHocSubProcessElements` variable is not created, the REST
-  endpoint that activates ad-hoc sub-process activities is not implemented, and the gRPC
-  `CompleteJob` call has no job result (the REST job completion passes `result` on)
-- Compensation: a handler whose activity's sub-process has completed runs in the throw event's
-  scope; where Zeebe places it has not been checked against Zeebe. A handler's completion is
-  what the throw event waits for, so a handler that is terminated leaves it waiting until
-  its scope ends
+- `adHocSubProcessElements` has the shape `@bpmnkit/engine` produces, which differs from
+  Zeebe's in details its own tests show: Zeebe names a parameter by its whole reference
+  (`toolCall.orderId`, not `orderId`), also lists `fromAi()` calls on other references,
+  and gives `null` for an element without properties or parameters and for an empty
+  property value, where Reebe gives `{}`, `[]` and `""`. An element written as an empty XML tag
+  (`<bpmn:userTask id="x"/>`) is not parsed at all, so it is not listed
+- Ad-hoc sub-process `completionCondition` and multi-instance `completionCondition` still
+  count a result that is not a boolean as false; only sequence-flow conditions raise an
+  incident
+- The gRPC calls other than `CompleteJob` still pass their `variables` JSON documents on as
+  strings, which the engine does not read as variables
 
 ### What is not supported
 

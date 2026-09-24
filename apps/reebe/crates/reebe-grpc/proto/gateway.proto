@@ -274,6 +274,39 @@ message ActivatedJob {
 message CompleteJobRequest {
   int64 jobKey = 1;
   string variables = 2;
+  // The result of the completed job as determined by the worker.
+  optional JobResult result = 3;
+}
+
+// Field names and numbers as in Zeebe's gateway.proto.
+message JobResult {
+  optional bool denied = 1;
+  optional JobResultCorrections corrections = 2;
+  optional string deniedReason = 3;
+  // "userTask" or "adHocSubProcess"; Zeebe defaults to "userTask".
+  optional string type = 4;
+  repeated JobResultActivateElement activateElements = 5;
+  optional bool isCompletionConditionFulfilled = 6;
+  optional bool isCancelRemainingInstances = 7;
+}
+
+message JobResultCorrections {
+  optional string assignee = 1;
+  optional string dueDate = 2;
+  optional string followUpDate = 3;
+  optional StringList candidateUsers = 4;
+  optional StringList candidateGroups = 5;
+  optional int32 priority = 6;
+}
+
+message JobResultActivateElement {
+  string elementId = 1;
+  // JSON document of variables created on the scope of the activated element.
+  string variables = 2;
+}
+
+message StringList {
+  repeated string values = 1;
 }
 
 message CompleteJobResponse {}

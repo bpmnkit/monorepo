@@ -694,6 +694,21 @@ pub struct SubProcess {
     /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
     #[serde(default)]
     pub is_for_compensation: bool,
+    /// The ids of the elements directly inside, in document order.
+    #[serde(default)]
+    pub element_order: Vec<String>,
+    /// Ad-hoc sub-process: the documentation and `zeebe:properties` of the elements
+    /// directly inside, by element id (what `adHocSubProcessElements` describes).
+    #[serde(default)]
+    pub element_details: HashMap<String, ElementDetails>,
+}
+
+/// The `<bpmn:documentation>` and `zeebe:property` entries of an element.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ElementDetails {
+    pub documentation: Option<String>,
+    /// `(name, value)`, in document order.
+    pub properties: Vec<(String, String)>,
 }
 
 impl SubProcess {
@@ -719,6 +734,8 @@ impl SubProcess {
             output_collection: None,
             output_element: None,
             is_for_compensation: false,
+            element_order: Vec::new(),
+            element_details: HashMap::new(),
         }
     }
 

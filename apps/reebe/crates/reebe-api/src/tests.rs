@@ -313,4 +313,41 @@ mod tests {
         assert!(json.get("type").is_some(), "RFC 7807 requires 'type' field");
         assert!(json.get("problem_type").is_none(), "Should not have snake_case field");
     }
+
+    #[test]
+    fn test_ad_hoc_activation_request_maps_to_the_engine_command() {
+        use crate::dto::element_instances::ActivateAdHocActivitiesRequest;
+        use crate::handlers::element_instances::ad_hoc_activation_payload;
+        let req: ActivateAdHocActivitiesRequest = serde_json::from_str(
+            r#"{"elements":[{"elementId":"search","variables":{"q":"x"}},{"elementId":"ask"}],"cancelRemainingInstances":true}"#,
+        ).unwrap();
+        let payload = ad_hoc_activation_payload("42", req).unwrap();
+        assert_eq!(payload, serde_json::json!({
+            "adHocSubProcessInstanceKey": "42",
+            "elements": [
+                { "elementId": "search", "variables": { "q": "x" } },
+                { "elementId": "ask", "variables": {} },
+            ],
+            "cancelRemainingInstances": true,
+        }));
+
+        // cancelRemainingInstances defaults to false; elements and elementId are required.
+        let req: ActivateAdHocActivitiesRequest = serde_json::from_str(r#"{"elements":[]}"#).unwrap();
+        assert_eq!(ad_hoc_activation_payload("1", req).unwrap()["cancelRemainingInstances"], false);
+        for body in [r#"{}"#, r#"{"elements":[{"variables":{}}]}"#] {
+            let req: ActivateAdHocActivitiesRequest = serde_json::from_str(body).unwrap();
+            let status = ad_hoc_activation_payload("1", req).unwrap_err().into_response().status();
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        }
+    }
+
+    #[test]
+    fn test_ad_hoc_activation_rejections_map_to_the_specified_statuses() {
+        use reebe_engine::EngineError;
+        // Not found, not an ad-hoc sub-process, or an element it cannot activate: 404.
+        let not_found = ApiError::EngineError(EngineError::NotFound("no ad-hoc sub-process".into()));
+        assert_eq!(not_found.into_response().status(), StatusCode::NOT_FOUND);
+        let not_active = ApiError::EngineError(EngineError::InvalidState("not active".into()));
+        assert_eq!(not_active.into_response().status(), StatusCode::BAD_REQUEST);
+    }
 }

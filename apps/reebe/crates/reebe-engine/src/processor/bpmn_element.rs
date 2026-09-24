@@ -87,7 +87,7 @@ fn apply_io_mappings(
 }
 
 /// Extract input_mappings from a FlowElement if it supports them.
-fn get_input_mappings(element: &reebe_bpmn::FlowElement) -> &[reebe_bpmn::ZeebeIoMapping] {
+pub(crate) fn get_input_mappings(element: &reebe_bpmn::FlowElement) -> &[reebe_bpmn::ZeebeIoMapping] {
     match element {
         reebe_bpmn::FlowElement::StartEvent(e) => &e.input_mappings,
         reebe_bpmn::FlowElement::ServiceTask(e) => &e.input_mappings,
@@ -562,31 +562,39 @@ impl BpmnElementProcessor {
             | reebe_bpmn::FlowElement::ParallelGateway(_)
             | reebe_bpmn::FlowElement::InclusiveGateway(_) => {
                 // An exclusive or inclusive gateway chooses its flows while it activates.
-                // When no condition holds and there is no default flow, it raises an
-                // incident and stays activating; resolving the incident evaluates again.
+                // When no condition holds and there is no default flow, or a condition
+                // does not evaluate to a boolean, it raises an incident and stays
+                // activating; resolving the incident evaluates again.
                 let outgoing = process.outgoing_flows_recursive(&element_id);
                 let taken: Vec<&str> = if matches!(element, reebe_bpmn::FlowElement::ParallelGateway(_)) {
                     outgoing.iter().map(|f| f.id.as_str()).collect()
                 } else {
                     let ctx = scope::feel_context(state, process_instance_key, ei_key).await;
-                    match gateway_flows(element, &outgoing, &ctx) {
-                        Some(flows) => flows.into_iter().map(|f| f.id.as_str()).collect(),
-                        None => {
+                    let chosen = match gateway_flows(element, &outgoing, &ctx) {
+                        Ok(Some(flows)) => Ok(flows),
+                        Ok(None) => {
                             let kind = if matches!(element, reebe_bpmn::FlowElement::InclusiveGateway(_)) {
                                 "inclusive"
                             } else {
                                 "exclusive"
                             };
+                            Err(("CONDITION_ERROR", format!(
+                                "Expected at least one condition to evaluate to true, or to have a default flow \
+                                 at {kind} gateway '{element_id}'"
+                            )))
+                        }
+                        Err(message) => Err(("EXTRACT_VALUE_ERROR", message)),
+                    };
+                    match chosen {
+                        Ok(flows) => flows.into_iter().map(|f| f.id.as_str()).collect(),
+                        Err((error_type, error_message)) => {
                             writers.commands.push(CommandToWrite {
                                 value_type: "INCIDENT".to_string(),
                                 intent: "CREATE".to_string(),
                                 key: 0,
                                 payload: serde_json::json!({
-                                    "errorType": "CONDITION_ERROR",
-                                    "errorMessage": format!(
-                                        "Expected at least one condition to evaluate to true, or to have a default flow \
-                                         at {kind} gateway '{element_id}'"
-                                    ),
+                                    "errorType": error_type,
+                                    "errorMessage": error_message,
                                     "processInstanceKey": process_instance_key.to_string(),
                                     "elementInstanceKey": ei_key.to_string(),
                                     "bpmnProcessId": bpmn_process_id,
@@ -1243,7 +1251,7 @@ impl BpmnElementProcessor {
         if let (Some(process), Some(completed)) = (definition.as_ref(), &current) {
             let completed = ElementInstance { state: "COMPLETED".to_string(), ..completed.clone() };
             compensation::activity_completed(state, process, &completed).await?;
-            compensation::handler_completed(state, writers, &completed).await?;
+            compensation::handler_ended(state, writers, &completed).await?;
         }
 
         // An element without an outgoing sequence flow ends its path: an end event, an
@@ -1289,25 +1297,20 @@ impl BpmnElementProcessor {
 
         let outgoing = process.outgoing_flows_recursive(&element_id);
 
-        // Load variables once for condition evaluation
-        let feel_ctx = scope::feel_context(state, process_instance_key, flow_scope_key).await;
-
         let element = process.get_element_recursive(&element_id);
         let taken: Vec<&reebe_bpmn::SequenceFlow> = if let Some(ids) = payload["takenFlows"].as_array() {
             // A gateway chose its flows when it activated.
             outgoing.iter().copied().filter(|f| ids.iter().any(|id| id.as_str() == Some(f.id.as_str()))).collect()
         } else {
             match element {
-                // A parallel gateway takes every outgoing flow; Zeebe ignores conditions on them.
-                Some(reebe_bpmn::FlowElement::ParallelGateway(_)) => outgoing.clone(),
                 Some(gw @ (reebe_bpmn::FlowElement::ExclusiveGateway(_) | reebe_bpmn::FlowElement::InclusiveGateway(_))) => {
-                    gateway_flows(gw, &outgoing, &feel_ctx).unwrap_or_default()
+                    let feel_ctx = scope::feel_context(state, process_instance_key, flow_scope_key).await;
+                    gateway_flows(gw, &outgoing, &feel_ctx).ok().flatten().unwrap_or_default()
                 }
-                // All other elements: take every flow whose condition is true.
-                _ => outgoing.iter()
-                    .copied()
-                    .filter(|f| eval_flow_condition(&f.condition_expression, &feel_ctx))
-                    .collect(),
+                // Every other element takes all its outgoing flows: Zeebe evaluates
+                // conditions only at exclusive and inclusive gateways, and ignores them
+                // elsewhere (a parallel gateway's, an activity's).
+                _ => outgoing.clone(),
             }
         };
 
@@ -1397,6 +1400,9 @@ impl BpmnElementProcessor {
 
         state.backend.update_element_instance_state(ei_key, "TERMINATED").await?;
         close_waits(state, ei_key).await?;
+        if let Ok(terminated) = state.backend.get_element_instance_by_key(ei_key).await {
+            compensation::handler_ended(state, writers, &terminated).await?;
+        }
 
         writers.events.push(EventToWrite {
             value_type: "PROCESS_INSTANCE".to_string(),
@@ -1612,8 +1618,10 @@ fn join_context(process_instance_key: i64, process_definition_key: i64, bpmn_pro
     })
 }
 
-/// The flows an exclusive or inclusive gateway takes, or `None` when no condition
-/// holds and there is no default flow — Zeebe's `CONDITION_ERROR`.
+/// The flows an exclusive or inclusive gateway takes: `Ok(None)` when no condition
+/// holds and there is no default flow (Zeebe's `CONDITION_ERROR`), `Err` with the
+/// incident message when a condition does not evaluate to a boolean (Zeebe's
+/// `EXTRACT_VALUE_ERROR`; the conditions after it are not evaluated).
 ///
 /// An exclusive gateway takes the first flow whose condition holds, else its default
 /// flow; a flow without a condition that is not the default is taken last. An
@@ -1623,48 +1631,63 @@ fn gateway_flows<'a>(
     element: &reebe_bpmn::FlowElement,
     outgoing: &[&'a reebe_bpmn::SequenceFlow],
     ctx: &reebe_feel::FeelContext,
-) -> Option<Vec<&'a reebe_bpmn::SequenceFlow>> {
+) -> Result<Option<Vec<&'a reebe_bpmn::SequenceFlow>>, String> {
     let (gw, inclusive) = match element {
         reebe_bpmn::FlowElement::ExclusiveGateway(gw) => (gw, false),
         reebe_bpmn::FlowElement::InclusiveGateway(gw) => (gw, true),
-        _ => return Some(outgoing.to_vec()),
+        _ => return Ok(Some(outgoing.to_vec())),
     };
     if outgoing.is_empty() {
-        return Some(Vec::new());
+        return Ok(Some(Vec::new()));
     }
     let is_default = |f: &reebe_bpmn::SequenceFlow| f.is_default || gw.default_flow.as_deref() == Some(f.id.as_str());
     let has_condition = |f: &reebe_bpmn::SequenceFlow| f.condition_expression.as_ref().is_some_and(|c| !c.trim().is_empty());
     let default = outgoing.iter().copied().find(|f| is_default(f));
-    if inclusive {
-        let taken: Vec<_> = outgoing.iter()
-            .copied()
-            .filter(|f| !is_default(f) && eval_flow_condition(&f.condition_expression, ctx))
-            .collect();
-        return if taken.is_empty() { default.map(|f| vec![f]) } else { Some(taken) };
-    }
-    outgoing.iter()
-        .copied()
-        .find(|f| !is_default(f) && has_condition(f) && eval_flow_condition(&f.condition_expression, ctx))
-        .or(default)
-        .or_else(|| outgoing.iter().copied().find(|f| !is_default(f) && !has_condition(f)))
-        .map(|f| vec![f])
-}
-
-/// Evaluate a sequence flow condition expression.
-/// Returns true if there is no condition, the condition is empty, or it evaluates to true.
-fn eval_flow_condition(condition: &Option<String>, ctx: &reebe_feel::FeelContext) -> bool {
-    match condition {
-        None => true,
-        Some(cond) if cond.trim().is_empty() => true,
-        Some(cond) => {
-            // Strip optional leading `=` (BPMN FEEL convention) before evaluating.
-            // Some editors omit it; always evaluate as FEEL regardless.
-            let expr = cond.trim().strip_prefix('=').unwrap_or(cond.trim()).trim();
-            match reebe_feel::evaluate(expr, ctx) {
-                Ok(val) => matches!(val, reebe_feel::FeelValue::Bool(true)),
-                Err(_) => false,
+    let mut taken = Vec::new();
+    for flow in outgoing.iter().copied().filter(|f| !is_default(f) && (inclusive || has_condition(f))) {
+        if eval_flow_condition(&flow.condition_expression, ctx)? {
+            taken.push(flow);
+            if !inclusive {
+                break;
             }
         }
+    }
+    if taken.is_empty() && !inclusive {
+        taken.extend(outgoing.iter().copied().find(|f| !is_default(f) && !has_condition(f)).filter(|_| default.is_none()));
+    }
+    Ok(if taken.is_empty() { default.map(|f| vec![f]) } else { Some(taken) })
+}
+
+/// Evaluate a sequence flow condition: `true` without one. A condition must evaluate
+/// to a boolean, as in Zeebe; anything else (`null` for a missing variable, too) or
+/// an evaluation error is `Err` with the incident message.
+fn eval_flow_condition(condition: &Option<String>, ctx: &reebe_feel::FeelContext) -> Result<bool, String> {
+    let Some(cond) = condition.as_deref().map(str::trim).filter(|c| !c.is_empty()) else { return Ok(true) };
+    // The leading `=` is optional here: some editors omit it.
+    let expr = cond.strip_prefix('=').unwrap_or(cond).trim();
+    match reebe_feel::evaluate(expr, ctx) {
+        Ok(reebe_feel::FeelValue::Bool(holds)) => Ok(holds),
+        Ok(other) => Err(format!(
+            "Expected result of the expression '{expr}' to be 'BOOLEAN', but was '{}'.",
+            zeebe_result_type(&other),
+        )),
+        Err(e) => Err(format!("Expected result of the expression '{expr}' to be 'BOOLEAN', but it failed to evaluate: {e}")),
+    }
+}
+
+/// The name Zeebe's expression language gives the type of a result.
+fn zeebe_result_type(value: &reebe_feel::FeelValue) -> &'static str {
+    use reebe_feel::FeelValue;
+    match value {
+        FeelValue::Null => "NULL",
+        FeelValue::Bool(_) => "BOOLEAN",
+        FeelValue::Integer(_) | FeelValue::Float(_) => "NUMBER",
+        FeelValue::String(_) => "STRING",
+        FeelValue::List(_) => "ARRAY",
+        FeelValue::Context(_) => "OBJECT",
+        FeelValue::DateTime(_) => "DATE_TIME",
+        FeelValue::Duration(_) => "DURATION",
+        FeelValue::Date(_) | FeelValue::Time(_) | FeelValue::Range { .. } => "UNKNOWN",
     }
 }
 

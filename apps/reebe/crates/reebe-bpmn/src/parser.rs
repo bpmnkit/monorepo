@@ -135,6 +135,7 @@ pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
                 let name_bytes = e.name().as_ref().to_vec();
                 let name = local_name_owned(&name_bytes);
                 parser_state.handle_start(&name, e, &reader)?;
+                parser_state.xml_stack.push(name);
             }
             Ok(Event::Empty(ref e)) => {
                 let name_bytes = e.name().as_ref().to_vec();
@@ -144,7 +145,9 @@ pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
             Ok(Event::End(ref e)) => {
                 let name_bytes = e.name().as_ref().to_vec();
                 let name = local_name_owned(&name_bytes);
-                if let Some(process) = parser_state.handle_end(&name)? {
+                let ended = parser_state.handle_end(&name)?;
+                parser_state.xml_stack.pop();
+                if let Some(process) = ended {
                     processes.push(process);
                 }
             }
@@ -247,6 +250,14 @@ fn mark_default_flows(elements: &mut HashMap<String, FlowElement>, flows: &mut [
     }
 }
 
+/// The flow elements the parser keeps a context for while they are open.
+const FLOW_NODE_TAGS: [&str; 18] = [
+    "serviceTask", "userTask", "receiveTask", "scriptTask", "sendTask", "businessRuleTask",
+    "callActivity", "subProcess", "adHocSubProcess", "exclusiveGateway", "parallelGateway",
+    "inclusiveGateway", "eventBasedGateway", "startEvent", "endEvent", "intermediateCatchEvent",
+    "intermediateThrowEvent", "boundaryEvent",
+];
+
 #[derive(Debug)]
 enum ParseContext {
     Root,
@@ -294,6 +305,10 @@ struct ParserState {
     pending_event_def: Option<EventDefinition>,
     // `isSequential` of the `<bpmn:multiInstanceLoopCharacteristics>` being parsed
     pending_mi_sequential: Option<bool>,
+    // Names of the open XML elements, outermost first
+    xml_stack: Vec<String>,
+    // Documentation and properties of the flow elements parsed so far, by id
+    details: HashMap<String, ElementDetails>,
 }
 
 impl ParserState {
@@ -309,7 +324,41 @@ impl ParserState {
             current_text: String::new(),
             pending_event_def: None,
             pending_mi_sequential: None,
+            xml_stack: Vec::new(),
+            details: HashMap::new(),
         }
+    }
+
+    /// The id of the flow element whose child is the XML element `depth` levels below
+    /// the innermost open one (0: the innermost's parent), if it is one the parser
+    /// keeps a context for.
+    fn detail_owner(&self, depth: usize) -> Option<String> {
+        let owner_tag = self.xml_stack.iter().rev().nth(depth + 1)?;
+        if !FLOW_NODE_TAGS.contains(&owner_tag.as_str()) {
+            return None;
+        }
+        let context = self.stack.iter().rev().find(|c| !matches!(c, ParseContext::ExtensionElements))?;
+        let id = match context {
+            ParseContext::ServiceTask(e) => &e.id,
+            ParseContext::UserTask(e) => &e.id,
+            ParseContext::ReceiveTask(e) => &e.id,
+            ParseContext::ScriptTask(e) => &e.id,
+            ParseContext::SendTask(e) => &e.id,
+            ParseContext::BusinessRuleTask(e) => &e.id,
+            ParseContext::CallActivity(e) => &e.id,
+            ParseContext::SubProcess(e) => &e.id,
+            ParseContext::ExclusiveGateway(e)
+            | ParseContext::ParallelGateway(e)
+            | ParseContext::InclusiveGateway(e)
+            | ParseContext::EventBasedGateway(e) => &e.id,
+            ParseContext::StartEvent(e) => &e.id,
+            ParseContext::EndEvent(e) => &e.id,
+            ParseContext::IntermediateCatchEvent(e) => &e.id,
+            ParseContext::IntermediateThrowEvent(e) => &e.id,
+            ParseContext::BoundaryEvent(e) => &e.id,
+            _ => return None,
+        };
+        Some(id.clone())
     }
 
     /// The `errorCode` of the `<bpmn:error>` an `errorRef` names; the ref itself
@@ -337,7 +386,11 @@ impl ParserState {
     fn add_element_to_scope(&mut self, id: String, element: FlowElement) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
-                ParseContext::SubProcess(sp) => { sp.elements.insert(id, element); return; }
+                ParseContext::SubProcess(sp) => {
+                    sp.element_order.push(id.clone());
+                    sp.elements.insert(id, element);
+                    return;
+                }
                 ParseContext::Process(p) => { p.elements.insert(id, element); return; }
                 _ => {}
             }
@@ -351,6 +404,7 @@ impl ParserState {
             match ctx {
                 ParseContext::SubProcess(sp) => {
                     sp.start_events.push(id.clone());
+                    sp.element_order.push(id.clone());
                     sp.elements.insert(id, element);
                     return;
                 }
@@ -369,6 +423,7 @@ impl ParserState {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
                 ParseContext::SubProcess(sp) => {
+                    sp.element_order.push(id.clone());
                     sp.elements.insert(id, element);
                     return;
                 }
@@ -542,6 +597,8 @@ impl ParserState {
             "extensionElements" => {
                 self.stack.push(ParseContext::ExtensionElements);
             }
+            "documentation" => self.current_text.clear(),
+            "property" => self.add_property(e),
             "multiInstanceLoopCharacteristics" => {
                 self.pending_mi_sequential =
                     Some(get_attr(e, "isSequential").is_some_and(|v| v == "true"));
@@ -833,6 +890,7 @@ impl ParserState {
                 let id = get_required_attr(e, name, "id")?;
                 self.add_unsupported(UnsupportedElement { id, element_type: name.to_string() });
             }
+            "property" => self.add_property(e),
             "adHoc" => {
                 let active_elements = get_attr(e, "activeElementsCollection");
                 let output_collection = get_attr(e, "outputCollection");
@@ -872,6 +930,13 @@ impl ParserState {
                     };
                 }
                 self.current_text.clear();
+            }
+            "documentation" => {
+                let text = std::mem::take(&mut self.current_text);
+                if let Some(id) = self.detail_owner(0) {
+                    // The first documentation counts, as in bpmn-js.
+                    self.details.entry(id).or_default().documentation.get_or_insert(text);
+                }
             }
             "conditionExpression" => {
                 let expr = self.current_text.clone();
@@ -982,7 +1047,14 @@ impl ParserState {
                 }
             }
             "subProcess" | "adHocSubProcess" => {
-                if let Some(ParseContext::SubProcess(sp)) = self.stack.pop() {
+                if let Some(ParseContext::SubProcess(mut sp)) = self.stack.pop() {
+                    if sp.ad_hoc {
+                        for child in &sp.element_order {
+                            if let Some(details) = self.details.remove(child) {
+                                sp.element_details.insert(child.clone(), details);
+                            }
+                        }
+                    }
                     let id = sp.id.clone();
                     self.add_element_to_scope(id, FlowElement::SubProcess(sp));
                 }
@@ -1040,6 +1112,14 @@ impl ParserState {
             _ => {}
         }
         Ok(None)
+    }
+
+    /// A `zeebe:property` inside `zeebe:properties` of a flow element.
+    fn add_property(&mut self, e: &quick_xml::events::BytesStart) {
+        let in_properties = self.xml_stack.iter().rev().take(2).map(String::as_str).eq(["properties", "extensionElements"]);
+        let (Some(owner), Some(name), true) = (self.detail_owner(1), get_attr(e, "name"), in_properties) else { return };
+        let value = get_attr(e, "value").unwrap_or_default();
+        self.details.entry(owner).or_default().properties.push((name, value));
     }
 
     fn finalize_event_definition(&mut self) {

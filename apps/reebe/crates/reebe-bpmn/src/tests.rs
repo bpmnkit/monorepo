@@ -990,7 +990,39 @@ mod tests {
         assert_eq!(p.unsupported_elements[0].element_type, "complexGateway");
         let errors: Vec<String> = validate_bpmn(p).iter().map(|e| e.to_string()).collect();
         assert_eq!(errors, vec![
-            "Element 'cg' in process 'p': Elements of type 'complexGateway' are currently not supported".to_string(),
+            "Element 'cg' in process 'p': Elements of type 'ComplexGateway' are currently not supported. Please refer \
+             to the documentation for a list of supported elements: \
+             https://docs.camunda.io/docs/components/modeler/bpmn/bpmn-coverage/".to_string(),
         ]);
+    }
+
+    #[test]
+    fn test_ad_hoc_sub_process_keeps_the_documentation_and_properties_of_its_elements() {
+        let xml = definitions(r#"
+    <bpmn:adHocSubProcess id="tools">
+      <bpmn:documentation>The tool box</bpmn:documentation>
+      <bpmn:serviceTask id="search" name="Search">
+        <bpmn:documentation>Search the help centre.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <zeebe:properties>
+            <zeebe:property name="kind" value="lookup"/>
+            <zeebe:property name="empty"/>
+          </zeebe:properties>
+        </bpmn:extensionElements>
+        <bpmn:outgoing>f1</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="f1" sourceRef="search" targetRef="after"><bpmn:documentation>not a task</bpmn:documentation></bpmn:sequenceFlow>
+      <bpmn:task id="plain"/>
+      <bpmn:scriptTask id="after"><bpmn:incoming>f1</bpmn:incoming></bpmn:scriptTask>
+      <bpmn:userTask id="ask"></bpmn:userTask>
+    </bpmn:adHocSubProcess>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        let Some(FlowElement::SubProcess(sp)) = p.elements.get("tools") else { panic!("tools") };
+        assert_eq!(sp.element_order, vec!["search", "after", "ask"]);
+        let search = &sp.element_details["search"];
+        assert_eq!(search.documentation.as_deref(), Some("Search the help centre."));
+        assert_eq!(search.properties, vec![("kind".to_string(), "lookup".to_string()), ("empty".to_string(), String::new())]);
+        assert!(!sp.element_details.contains_key("after"), "a flow's documentation is not its target's");
+        assert!(!sp.element_details.contains_key("tools"));
     }
 }
