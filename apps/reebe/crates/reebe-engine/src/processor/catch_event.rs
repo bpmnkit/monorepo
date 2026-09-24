@@ -6,15 +6,19 @@
 //! - an intermediate catch event or receive task owns its own wait;
 //! - an activity owns the waits of its boundary events, armed when it activates;
 //! - an event-based gateway owns the waits of the catch events and receive tasks
-//!   after it, armed when it activates.
+//!   after it, armed when it activates;
+//! - a flow scope (the process, or an embedded or event sub-process) owns the waits
+//!   of the timer, message and signal start events of its event sub-processes,
+//!   armed when it activates.
 //!
 //! Timers carry the catch element id; a message subscription's catch element is
 //! found from the message name, which Zeebe requires to be unique among the
-//! events of one boundary set or gateway. When the owner completes or is
-//! terminated, its waits are cancelled.
+//! events of one boundary set, gateway or flow scope. When the owner completes or
+//! is terminated, its waits are cancelled.
 
 use std::sync::Arc;
-use reebe_bpmn::{BpmnProcess, EventDefinition, FlowElement, TimerEventDefinition, TimerType};
+use std::collections::HashMap;
+use reebe_bpmn::{BpmnProcess, EventDefinition, FlowElement, StartEvent, SubProcess, TimerEventDefinition, TimerType};
 use reebe_db::state::element_instances::ElementInstance;
 use reebe_db::state::messages::MessageSubscription;
 use reebe_db::state::signal_subscriptions::SignalSubscription;
@@ -24,7 +28,7 @@ use crate::error::{EngineError, EngineResult};
 use crate::key_gen::KeyGenerator;
 use super::cron::Cron;
 use super::scope;
-use super::throw_event::terminate_subtree;
+use super::throw_event::{terminate_children, terminate_subtree};
 use super::{CommandToWrite, EventToWrite, Writers};
 
 /// What an element waits for.
@@ -34,10 +38,12 @@ pub(crate) enum Wait<'a> {
     Signal(&'a str),
 }
 
-/// The wait of a catch event, receive task or boundary event, if it has one.
+/// The wait of a catch event, receive task, boundary event or event sub-process
+/// start event, if it has one.
 pub(crate) fn wait_of(element: &FlowElement) -> Option<Wait<'_>> {
     let def = match element {
         FlowElement::IntermediateCatchEvent(e) => e.event_definition.as_ref(),
+        FlowElement::StartEvent(e) => e.event_definition.as_ref(),
         FlowElement::BoundaryEvent(e) => e.event_definition.as_ref(),
         FlowElement::ReceiveTask(rt) => {
             let name = rt.message_name.as_deref().or(rt.message_ref.as_deref()).unwrap_or("");
@@ -318,6 +324,99 @@ pub(crate) async fn arm_event_based_gateway(
     Ok(())
 }
 
+/// The elements directly inside a flow scope: the process, or an embedded or event sub-process.
+pub(crate) fn scope_elements<'a>(
+    process: &'a BpmnProcess,
+    scope: &ElementInstance,
+) -> Option<&'a HashMap<String, FlowElement>> {
+    if scope.element_type == "PROCESS" {
+        return Some(&process.elements);
+    }
+    match process.get_element_recursive(&scope.element_id) {
+        Some(FlowElement::SubProcess(sp)) => Some(&sp.elements),
+        _ => None,
+    }
+}
+
+/// The event sub-processes directly inside a flow scope, with their start event.
+fn event_subprocesses<'a>(
+    process: &'a BpmnProcess,
+    scope: &ElementInstance,
+) -> Vec<(&'a SubProcess, &'a StartEvent)> {
+    let Some(elements) = scope_elements(process, scope) else { return Vec::new() };
+    elements
+        .values()
+        .filter_map(|el| match el {
+            FlowElement::SubProcess(sp) if sp.triggered_by_event => sp.start_events.iter().find_map(|id| {
+                match sp.elements.get(id) {
+                    Some(FlowElement::StartEvent(se)) => Some((sp, se)),
+                    _ => None,
+                }
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Arm the timer, message and signal start events of the event sub-processes of a
+/// flow scope that just activated. Error and escalation start events are not armed:
+/// a throw looks for them.
+pub(crate) async fn arm_event_subprocesses(
+    state: &EngineState,
+    writers: &mut Writers,
+    process: &BpmnProcess,
+    scope: &ElementInstance,
+) -> EngineResult<()> {
+    for (_, start) in event_subprocesses(process, scope) {
+        if let Some(wait) = wait_of(&FlowElement::StartEvent(start.clone())) {
+            open_wait(state, writers, scope, &start.id, wait).await?;
+        }
+    }
+    Ok(())
+}
+
+/// Whether an interrupting event sub-process of the flow scope `scope` has been
+/// triggered: it is active or done, or on its way (activated by this step or by a
+/// command after `position`). Such a scope takes no other event sub-process, and a
+/// token still on its way to an element of the scope goes nowhere.
+pub(crate) async fn scope_interrupted(
+    state: &EngineState,
+    writers: &Writers,
+    process: &BpmnProcess,
+    scope: &ElementInstance,
+    position: i64,
+) -> EngineResult<bool> {
+    let interrupting: Vec<&str> = event_subprocesses(process, scope)
+        .into_iter()
+        .filter(|(_, start)| start.interrupting)
+        .map(|(sp, _)| sp.id.as_str())
+        .collect();
+    if interrupting.is_empty() {
+        return Ok(false);
+    }
+    let started = state.backend
+        .get_element_instances_by_process_instance(scope.process_instance_key)
+        .await?
+        .iter()
+        .any(|ei| ei.flow_scope_key == Some(scope.key) && interrupting.contains(&ei.element_id.as_str()));
+    if started {
+        return Ok(true);
+    }
+    let scope_text = scope.key.to_string();
+    let is_interrupting = |payload: &serde_json::Value| {
+        payload["flowScopeKey"].as_str() == Some(scope_text.as_str())
+            && payload["elementId"].as_str().is_some_and(|id| interrupting.contains(&id))
+    };
+    if writers.commands.iter().any(|c| c.intent == "ACTIVATE_ELEMENT" && is_interrupting(&c.payload)) {
+        return Ok(true);
+    }
+    Ok(state.backend
+        .get_pending_activations(state.partition_id, position, &scope_text)
+        .await?
+        .iter()
+        .any(is_interrupting))
+}
+
 /// Cancel the jobs, timers, user tasks and subscriptions of an element instance.
 pub(crate) async fn close_waits(state: &EngineState, element_instance_key: i64) -> EngineResult<()> {
     state.backend.cancel_jobs_by_element_instance(element_instance_key).await?;
@@ -344,13 +443,15 @@ pub(crate) enum Triggered {
     KeepWaiting,
 }
 
-/// A timer fired, a message correlated or a signal arrived for `owner_key`.
+/// A timer fired, a message correlated or a signal arrived for `owner_key`, in the
+/// command at `position`.
 pub(crate) async fn trigger(
     state: &EngineState,
     writers: &mut Writers,
     owner_key: i64,
     catch: CatchRef<'_>,
     variables: serde_json::Value,
+    position: i64,
 ) -> EngineResult<Triggered> {
     let Ok(owner) = state.backend.get_element_instance_by_key(owner_key).await else {
         return Ok(Triggered::Ignored);
@@ -430,6 +531,14 @@ pub(crate) async fn trigger(
         return Ok(Triggered::Done);
     }
 
+    // The start event of an event sub-process of the owner flow scope.
+    if let Some((esp, start)) = event_subprocesses(&process, &owner)
+        .into_iter()
+        .find(|(_, start)| start.id == catch_id)
+    {
+        return trigger_event_subprocess(state, writers, &process, &owner, (esp, start), variables, position).await;
+    }
+
     // A boundary event of the owner activity.
     let mut boundaries = Vec::new();
     boundary_events(&process.elements, &owner.element_id, &mut boundaries);
@@ -443,6 +552,52 @@ pub(crate) async fn trigger(
     }
     activate_triggered(writers, &owner, &catch_id, flow_scope_key, variables);
     Ok(if interrupting { Triggered::Done } else { Triggered::KeepWaiting })
+}
+
+/// Run the event sub-process `esp` of the flow scope `scope`, whose start event
+/// `start` was triggered. An interrupting one terminates everything else in the
+/// scope and disarms the scope's other event sub-processes; it triggers once. A
+/// non-interrupting one runs alongside and stays armed.
+async fn trigger_event_subprocess(
+    state: &EngineState,
+    writers: &mut Writers,
+    process: &BpmnProcess,
+    scope: &ElementInstance,
+    (esp, start): (&SubProcess, &StartEvent),
+    variables: serde_json::Value,
+    position: i64,
+) -> EngineResult<Triggered> {
+    if scope_interrupted(state, writers, process, scope, position).await? {
+        return Ok(Triggered::Ignored);
+    }
+    if start.interrupting {
+        let (mut element_ids, mut message_names) = (Vec::new(), Vec::new());
+        for (_, other) in event_subprocesses(process, scope) {
+            element_ids.push(other.id.clone());
+            if let Some(Wait::Message { name, .. }) = wait_of(&FlowElement::StartEvent(other.clone())) {
+                message_names.push(name.to_string());
+            }
+        }
+        state.backend.cancel_catch_waits(scope.key, &element_ids, &message_names).await?;
+        terminate_children(state, writers, scope).await?;
+    }
+    // The start event completes with the event's variables, which propagate as
+    // those of any other catch event do.
+    writers.commands.push(CommandToWrite {
+        value_type: "PROCESS_INSTANCE".to_string(),
+        intent: "ACTIVATE_ELEMENT".to_string(),
+        key: scope.process_instance_key,
+        payload: serde_json::json!({
+            "processInstanceKey": scope.process_instance_key.to_string(),
+            "processDefinitionKey": scope.process_definition_key.to_string(),
+            "bpmnProcessId": scope.bpmn_process_id,
+            "elementId": esp.id,
+            "flowScopeKey": scope.key.to_string(),
+            "startEventVariables": variables,
+            "tenantId": scope.tenant_id,
+        }),
+    });
+    Ok(if start.interrupting { Triggered::Done } else { Triggered::KeepWaiting })
 }
 
 /// The catch element a message for `owner` is meant for.
@@ -461,6 +616,13 @@ fn message_catch_element(process: &BpmnProcess, owner: &ElementInstance, name: &
         .into_iter()
         .find(|be| matches(&FlowElement::BoundaryEvent((*be).clone())))
         .map(|be| be.id.clone())
+        .or_else(|| {
+            // The start event of an event sub-process of a flow scope.
+            event_subprocesses(process, owner)
+                .into_iter()
+                .find(|(_, start)| matches(&FlowElement::StartEvent((*start).clone())))
+                .map(|(_, start)| start.id.clone())
+        })
         .or_else(|| {
             // A catch event or receive task waiting for the message itself.
             process
@@ -511,7 +673,8 @@ fn element_event(ei: &ElementInstance, intent: &str) -> EventToWrite {
     }
 }
 
-/// After a non-interrupting cycle timer on a boundary event fires, schedule its next firing.
+/// After a non-interrupting cycle timer on a boundary event or event sub-process
+/// start event fires, schedule its next firing.
 pub(crate) async fn reschedule_cycle(
     state: &EngineState,
     timer: &Timer,
@@ -531,10 +694,12 @@ pub(crate) async fn reschedule_cycle(
     else {
         return Ok(());
     };
-    let Some(FlowElement::BoundaryEvent(be)) = process.get_element_recursive(&timer.element_id) else {
-        return Ok(());
+    let definition = match process.get_element_recursive(&timer.element_id) {
+        Some(FlowElement::BoundaryEvent(be)) => be.event_definition.as_ref(),
+        Some(FlowElement::StartEvent(se)) => se.event_definition.as_ref(),
+        _ => None,
     };
-    let Some(EventDefinition::Timer(def)) = &be.event_definition else { return Ok(()) };
+    let Some(EventDefinition::Timer(def)) = definition else { return Ok(()) };
     let ctx = scope::feel_context(state, owner.process_instance_key, owner.key).await;
     let Some(cycle) = timer_schedule(def, &ctx, state.clock.now()).cycle else { return Ok(()) };
     let Some(next) = cycle.next_after(timer.due_date) else { return Ok(()) };

@@ -429,6 +429,20 @@ Reports PI/s (process instances per second), average latency, and error count.
 - Timer, message and signal boundary events, interrupting and non-interrupting: armed when
   the activity starts and cancelled when it ends; a timer cycle repeats
 - Event-based gateways: the first event wins and the others are cancelled
+- Event sub-processes of every start event type. Timer (duration, date or cycle, evaluated
+  with FEEL against the scope), message (correlation key evaluated against the scope) and
+  signal start events are armed when their flow scope (the process or an embedded
+  sub-process) activates and disarmed when it completes or is terminated. An interrupting
+  one terminates everything else in the scope, triggers once and disarms the others; a
+  non-interrupting one runs alongside as often as it triggers (a timer cycle repeats). The
+  message or signal variables propagate as a catch event's do, so the event sub-process sees
+  them. Error and escalation event sub-processes catch throws
+- Inclusive gateways: the split takes every flow whose condition holds, else the default
+  flow, else raises an incident; the join activates once every incoming flow has a token or
+  can no longer be reached in its flow scope (see below)
+- Joins wait per flow scope and incoming sequence flow: a parallel join needs a token on each
+  incoming flow, and a token waiting at a join keeps its flow scope active, as in Zeebe, even
+  if the join can never activate
 - Multi-instance (parallel and sequential) on every task type, sub-process and call
   activity, with `inputElement`, `outputCollection`/`outputElement` and `completionCondition`
 - Variables (get, update, search)
@@ -437,15 +451,22 @@ Reports PI/s (process instances per second), average latency, and error count.
 - Topology endpoint
 - Multi-tenancy (basic)
 
+#### When an inclusive join activates
+
+A flow of the join can still be reached if a path of sequence flows leads to it from an
+element instance active in the join's flow scope, from an element a token is on its way to,
+or from another join of the scope with a waiting token. Boundary events of the elements on a
+path count as paths; a path does not lead through the join itself, so a flow that has a token
+is not waited for again. The join is evaluated when a token reaches it and whenever an element
+of its flow scope completes. The analysis is static and per flow scope: it does not evaluate
+conditions (a flow whose condition can never hold still counts as reachable), and it does not
+follow link events.
+
 ### Known gaps
 
-- Timer, message and signal event sub-processes are not armed; error and escalation event
-  sub-processes run
-- Complex gateways, and inclusive gateway joins (they do not wait for other branches)
+- Complex gateways
 - Ad-hoc sub-processes run only through a job worker implementation; their inner elements are
   not activated
-- A token waiting at a parallel join does not keep its flow scope open: if the join can never
-  fire, the scope still completes once everything else in it has ended (Zeebe keeps it active)
 
 ### What is not supported
 

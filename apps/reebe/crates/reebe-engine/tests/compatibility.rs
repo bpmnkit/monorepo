@@ -771,3 +771,146 @@ async fn test_process_instance_cancellation() {
         "Process instance should be CANCELED after cancellation command"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Test 8 — Event sub-process and inclusive join
+// ---------------------------------------------------------------------------
+
+/// An inclusive split and join, and an interrupting message event sub-process.
+const ESP_AND_INCLUSIVE_BPMN: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="msg-compat-cancel" name="compat-cancel">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId"/></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:process id="compat-esp-or" isExecutable="true">
+    <bpmn:startEvent id="start"><bpmn:outgoing>f0</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:inclusiveGateway id="split">
+      <bpmn:incoming>f0</bpmn:incoming><bpmn:outgoing>to-a</bpmn:outgoing><bpmn:outgoing>to-b</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:serviceTask id="a">
+      <bpmn:extensionElements><zeebe:taskDefinition type="compat-or-a"/></bpmn:extensionElements>
+      <bpmn:incoming>to-a</bpmn:incoming><bpmn:outgoing>a-join</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="b">
+      <bpmn:extensionElements><zeebe:taskDefinition type="compat-or-b"/></bpmn:extensionElements>
+      <bpmn:incoming>to-b</bpmn:incoming><bpmn:outgoing>b-join</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:inclusiveGateway id="join">
+      <bpmn:incoming>a-join</bpmn:incoming><bpmn:incoming>b-join</bpmn:incoming><bpmn:outgoing>f-after</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:serviceTask id="after">
+      <bpmn:extensionElements><zeebe:taskDefinition type="compat-or-after"/></bpmn:extensionElements>
+      <bpmn:incoming>f-after</bpmn:incoming><bpmn:outgoing>f-end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f-end</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f0" sourceRef="start" targetRef="split"/>
+    <bpmn:sequenceFlow id="to-a" sourceRef="split" targetRef="a">
+      <bpmn:conditionExpression>=list contains(branches, "a")</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="to-b" sourceRef="split" targetRef="b">
+      <bpmn:conditionExpression>=list contains(branches, "b")</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="a-join" sourceRef="a" targetRef="join"/>
+    <bpmn:sequenceFlow id="b-join" sourceRef="b" targetRef="join"/>
+    <bpmn:sequenceFlow id="f-after" sourceRef="join" targetRef="after"/>
+    <bpmn:sequenceFlow id="f-end" sourceRef="after" targetRef="end"/>
+    <bpmn:subProcess id="on-cancel" triggeredByEvent="true">
+      <bpmn:startEvent id="cancel-start">
+        <bpmn:outgoing>c1</bpmn:outgoing>
+        <bpmn:messageEventDefinition messageRef="msg-compat-cancel"/>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="handle">
+        <bpmn:extensionElements><zeebe:taskDefinition type="compat-esp-handle"/></bpmn:extensionElements>
+        <bpmn:incoming>c1</bpmn:incoming><bpmn:outgoing>c2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="cancel-end"><bpmn:incoming>c2</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="c1" sourceRef="cancel-start" targetRef="handle"/>
+      <bpmn:sequenceFlow id="c2" sourceRef="handle" targetRef="cancel-end"/>
+    </bpmn:subProcess>
+  </bpmn:process>
+</bpmn:definitions>"#;
+
+async fn complete_job(handle: &EngineHandle, key: i64) {
+    handle
+        .send_command(
+            "JOB".to_string(),
+            "COMPLETE".to_string(),
+            serde_json::json!({ "jobKey": key.to_string(), "variables": {} }),
+            "<default>".to_string(),
+        )
+        .await
+        .expect("JOB.COMPLETE should succeed");
+}
+
+/// The one activatable job of `job_type` in `instance_key`.
+async fn job_of(pool: &DbPool, job_type: &str, instance_key: i64) -> reebe_db::state::jobs::Job {
+    for _ in 0..100 {
+        if let Some(job) = wait_for_jobs(pool, job_type, 1).await.into_iter().find(|j| j.process_instance_key == instance_key) {
+            return job;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    panic!("no {job_type} job in instance {instance_key}");
+}
+
+/// An inclusive join waits for both taken branches; an interrupting message event
+/// sub-process ends the scope's work and is disarmed with it, on Postgres.
+#[tokio::test]
+async fn test_event_subprocess_and_inclusive_join() {
+    let Some((pool, handle)) = setup().await else {
+        eprintln!("REEBE_DATABASE__URL not set — skipping test_event_subprocess_and_inclusive_join");
+        return;
+    };
+    deploy(&handle, ESP_AND_INCLUSIVE_BPMN, "compat-esp-or.bpmn").await;
+
+    // Both branches taken: the join waits for the second one.
+    let joined = create_instance(&handle, "compat-esp-or", serde_json::json!({ "branches": ["a", "b"], "orderId": "o-1" })).await;
+    let a = job_of(&pool, "compat-or-a", joined).await;
+    let b = job_of(&pool, "compat-or-b", joined).await;
+    complete_job(&handle, a.key).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(
+        wait_for_jobs(&pool, "compat-or-after", 1).await.iter().all(|j| j.process_instance_key != joined),
+        "the inclusive join waits for the other taken branch"
+    );
+    complete_job(&handle, b.key).await;
+    let after = job_of(&pool, "compat-or-after", joined).await;
+    complete_job(&handle, after.key).await;
+    assert_eq!(wait_for_process_state(&pool, joined, "COMPLETED", 120).await, "COMPLETED");
+    let open: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM message_subscriptions WHERE process_instance_key = $1 AND state = 'OPENED'",
+    )
+    .bind(joined)
+    .fetch_one(&pool)
+    .await
+    .expect("count subscriptions");
+    assert_eq!(open, 0, "the event sub-process is disarmed when the process completes");
+
+    // The message event sub-process interrupts the running branch.
+    let cancelled = create_instance(&handle, "compat-esp-or", serde_json::json!({ "branches": ["a"], "orderId": "o-2" })).await;
+    let a = job_of(&pool, "compat-or-a", cancelled).await;
+    handle
+        .send_command(
+            "MESSAGE".to_string(),
+            "PUBLISH".to_string(),
+            serde_json::json!({
+                "messageName": "compat-cancel", "correlationKey": "o-2", "timeToLive": 0,
+                "variables": { "reason": "customer" },
+            }),
+            "<default>".to_string(),
+        )
+        .await
+        .expect("publish");
+    let handler = job_of(&pool, "compat-esp-handle", cancelled).await;
+    assert_eq!(handler.variables["reason"], "customer", "the message variables are visible in the event sub-process");
+    let a_state: String = sqlx::query_scalar("SELECT state FROM jobs WHERE key = $1")
+        .bind(a.key)
+        .fetch_one(&pool)
+        .await
+        .expect("job state");
+    assert_eq!(a_state, "CANCELED", "the interrupted branch's job is cancelled");
+    complete_job(&handle, handler.key).await;
+    assert_eq!(wait_for_process_state(&pool, cancelled, "COMPLETED", 120).await, "COMPLETED");
+}

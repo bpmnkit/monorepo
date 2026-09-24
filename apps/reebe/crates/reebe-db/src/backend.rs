@@ -11,6 +11,7 @@ use crate::state::incidents::Incident;
 use crate::state::timers::Timer;
 use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
+use crate::state::gateway_tokens::JoinToken;
 use crate::state::deployments::{Deployment, ProcessDefinition};
 use crate::state::user_tasks::UserTask;
 use crate::state::identity::{Tenant, User};
@@ -42,6 +43,10 @@ pub trait StateBackend: Send + Sync {
     /// Whether a `PROCESS_INSTANCE` `ACTIVATE_ELEMENT` command after `after_position` is
     /// still waiting to be processed with `payload[field] == value`.
     async fn has_pending_activation(&self, partition_id: i16, after_position: i64, field: &str, value: &str) -> Result<bool>;
+    /// The payloads of the `PROCESS_INSTANCE` `ACTIVATE_ELEMENT` commands after
+    /// `after_position` that are still waiting to be processed in the flow scope
+    /// `flow_scope_key` (the payload's `flowScopeKey`).
+    async fn get_pending_activations(&self, partition_id: i16, after_position: i64, flow_scope_key: &str) -> Result<Vec<Value>>;
 
     // ---- Processed position ----
     /// The position of the last command processed on the partition; 0 if none.
@@ -83,6 +88,10 @@ pub trait StateBackend: Send + Sync {
     /// timers and open user tasks, close its message subscriptions and delete its signal
     /// subscriptions. Called when the element instance completes or is terminated.
     async fn cancel_element_instance_waits(&self, element_instance_key: i64) -> Result<()>;
+    /// Cancel some of an element instance's waits: its timers and signal subscriptions
+    /// for the catch elements `element_ids`, and its message subscriptions for
+    /// `message_names`.
+    async fn cancel_catch_waits(&self, element_instance_key: i64, element_ids: &[String], message_names: &[String]) -> Result<()>;
     /// Keys of the active process instances a call activity instance started.
     async fn get_child_process_instance_keys(&self, parent_element_instance_key: i64) -> Result<Vec<i64>>;
     async fn mark_timed_out_jobs(&self) -> Result<u64>;
@@ -126,9 +135,13 @@ pub trait StateBackend: Send + Sync {
     async fn get_signal_subscriptions_by_name(&self, signal_name: &str, tenant_id: &str) -> Result<Vec<SignalSubscription>>;
     async fn delete_signal_subscription(&self, key: i64) -> Result<()>;
 
-    // ---- Gateway tokens ----
-    async fn increment_and_get_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<i32>;
-    async fn delete_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<()>;
+    // ---- Tokens waiting at joining gateways ----
+    async fn add_join_token(&self, process_instance_key: i64, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()>;
+    /// Consume one token that waits on `sequence_flow_id`.
+    async fn take_join_token(&self, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()>;
+    async fn get_join_tokens(&self, process_instance_key: i64) -> Result<Vec<JoinToken>>;
+    /// Drop the tokens waiting in a flow scope that ended.
+    async fn delete_join_tokens(&self, flow_scope_key: i64) -> Result<()>;
 
     // ---- Deployments ----
     async fn insert_deployment(&self, deployment: &Deployment) -> Result<()>;

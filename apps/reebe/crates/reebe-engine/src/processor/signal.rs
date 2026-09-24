@@ -57,6 +57,7 @@ impl RecordProcessor for SignalProcessor {
                 sub.element_instance_key,
                 CatchRef::Element(&sub.element_id),
                 variables.clone(),
+                record.position,
             )
             .await?;
             // A non-interrupting boundary event keeps waiting; otherwise the

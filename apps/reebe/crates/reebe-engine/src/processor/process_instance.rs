@@ -156,6 +156,11 @@ impl RecordProcessor for ProcessInstanceCreationProcessor {
             }),
         });
 
+        // The process is a flow scope: it arms the timer, message and signal start
+        // events of its event sub-processes.
+        let activated_process_ei = ElementInstance { state: "ACTIVATED".to_string(), ..process_ei };
+        super::catch_event::arm_event_subprocesses(state, writers, &process, &activated_process_ei).await?;
+
         // Write PROCESS_INSTANCE_CREATION.CREATED event
         writers.events.push(EventToWrite {
             value_type: "PROCESS_INSTANCE_CREATION".to_string(),

@@ -14,6 +14,7 @@ use crate::state::incidents::Incident;
 use crate::state::timers::Timer;
 use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
+use crate::state::gateway_tokens::JoinToken;
 use crate::state::deployments::{Deployment, ProcessDefinition};
 use crate::state::user_tasks::UserTask;
 use crate::state::identity::{Tenant, User};
@@ -42,7 +43,7 @@ pub struct InMemoryStore {
     messages: BTreeMap<i64, Message>,
     message_subscriptions: BTreeMap<i64, MessageSubscription>,
     signal_subscriptions: BTreeMap<i64, SignalSubscription>,
-    gateway_tokens: std::collections::HashMap<(i64, String), i32>,
+    join_tokens: Vec<JoinToken>,
     deployments: BTreeMap<i64, Deployment>,
     process_definitions: BTreeMap<i64, ProcessDefinition>,
     decision_xml_by_id: std::collections::HashMap<String, String>,
@@ -68,7 +69,7 @@ impl InMemoryStore {
             messages: BTreeMap::new(),
             message_subscriptions: BTreeMap::new(),
             signal_subscriptions: BTreeMap::new(),
-            gateway_tokens: std::collections::HashMap::new(),
+            join_tokens: Vec::new(),
             deployments: BTreeMap::new(),
             process_definitions: BTreeMap::new(),
             decision_xml_by_id: std::collections::HashMap::new(),
@@ -174,6 +175,11 @@ impl InMemoryBackend {
     pub fn list_user_tasks(&self) -> Vec<UserTask> {
         self.store.lock().unwrap().user_tasks.values().cloned().collect()
     }
+
+    /// List all signal subscriptions.
+    pub fn list_signal_subscriptions(&self) -> Vec<SignalSubscription> {
+        self.store.lock().unwrap().signal_subscriptions.values().cloned().collect()
+    }
 }
 
 impl Default for InMemoryBackend {
@@ -253,6 +259,21 @@ impl StateBackend for InMemoryBackend {
                 && r.intent == "ACTIVATE_ELEMENT"
                 && r.payload[field].as_str() == Some(value)
         }))
+    }
+
+    async fn get_pending_activations(&self, partition_id: i16, after_position: i64, flow_scope_key: &str) -> Result<Vec<Value>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.records.iter()
+            .filter(|r| {
+                r.partition_id == partition_id
+                    && r.position > after_position
+                    && r.record_type == "COMMAND"
+                    && r.value_type == "PROCESS_INSTANCE"
+                    && r.intent == "ACTIVATE_ELEMENT"
+                    && r.payload["flowScopeKey"].as_str() == Some(flow_scope_key)
+            })
+            .map(|r| r.payload.clone())
+            .collect())
     }
 
     async fn get_processed_position(&self, partition_id: i16) -> Result<i64> {
@@ -477,6 +498,30 @@ impl StateBackend for InMemoryBackend {
             }
         }
         store.signal_subscriptions.retain(|_, s| s.element_instance_key != element_instance_key);
+        Ok(())
+    }
+
+    async fn cancel_catch_waits(&self, element_instance_key: i64, element_ids: &[String], message_names: &[String]) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for timer in store.timers.values_mut() {
+            if timer.element_instance_key == Some(element_instance_key)
+                && timer.state == "ACTIVE"
+                && element_ids.contains(&timer.element_id)
+            {
+                timer.state = "CANCELED".to_string();
+            }
+        }
+        for sub in store.message_subscriptions.values_mut() {
+            if sub.element_instance_key == element_instance_key
+                && matches!(sub.state.as_str(), "OPENING" | "OPENED")
+                && message_names.contains(&sub.message_name)
+            {
+                sub.state = "CLOSED".to_string();
+            }
+        }
+        store.signal_subscriptions.retain(|_, s| {
+            s.element_instance_key != element_instance_key || !element_ids.contains(&s.element_id)
+        });
         Ok(())
     }
 
@@ -715,15 +760,41 @@ impl StateBackend for InMemoryBackend {
         Ok(())
     }
 
-    async fn increment_and_get_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<i32> {
+    async fn add_join_token(&self, process_instance_key: i64, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()> {
         let mut store = self.store.lock().unwrap();
-        let count = store.gateway_tokens.entry((process_instance_key, element_id.to_string())).or_insert(0);
-        *count += 1;
-        Ok(*count)
+        match store.join_tokens.iter_mut().find(|t| {
+            t.flow_scope_key == flow_scope_key && t.gateway_id == gateway_id && t.sequence_flow_id == sequence_flow_id
+        }) {
+            Some(token) => token.count += 1,
+            None => store.join_tokens.push(JoinToken {
+                process_instance_key,
+                flow_scope_key,
+                gateway_id: gateway_id.to_string(),
+                sequence_flow_id: sequence_flow_id.to_string(),
+                count: 1,
+            }),
+        }
+        Ok(())
     }
 
-    async fn delete_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<()> {
-        self.store.lock().unwrap().gateway_tokens.remove(&(process_instance_key, element_id.to_string()));
+    async fn take_join_token(&self, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for token in store.join_tokens.iter_mut().filter(|t| {
+            t.flow_scope_key == flow_scope_key && t.gateway_id == gateway_id && t.sequence_flow_id == sequence_flow_id
+        }) {
+            token.count -= 1;
+        }
+        store.join_tokens.retain(|t| t.count > 0);
+        Ok(())
+    }
+
+    async fn get_join_tokens(&self, process_instance_key: i64) -> Result<Vec<JoinToken>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.join_tokens.iter().filter(|t| t.process_instance_key == process_instance_key).cloned().collect())
+    }
+
+    async fn delete_join_tokens(&self, flow_scope_key: i64) -> Result<()> {
+        self.store.lock().unwrap().join_tokens.retain(|t| t.flow_scope_key != flow_scope_key);
         Ok(())
     }
 

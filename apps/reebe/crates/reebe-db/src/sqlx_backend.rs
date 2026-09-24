@@ -15,7 +15,7 @@ use crate::state::messages::{
     MessageRepository, MessageSubscriptionRepository,
 };
 use crate::state::signal_subscriptions::{SignalSubscription, SignalSubscriptionRepository};
-use crate::state::gateway_tokens::GatewayTokenRepository;
+use crate::state::gateway_tokens::{JoinToken, JoinTokenRepository};
 use crate::state::deployments::{Deployment, ProcessDefinition, DeploymentRepository};
 use crate::state::user_tasks::{UserTask, UserTaskRepository};
 use crate::state::identity::{Tenant, User, TenantRepository, UserRepository};
@@ -152,6 +152,28 @@ impl StateBackend for SqlxBackend {
         Ok(count > 0)
     }
 
+    async fn get_pending_activations(&self, partition_id: i16, after_position: i64, flow_scope_key: &str) -> Result<Vec<Value>> {
+        #[cfg(feature = "postgres")]
+        const FIELD: &str = "payload ->> 'flowScopeKey'";
+        #[cfg(not(feature = "postgres"))]
+        const FIELD: &str = "json_extract(payload, '$.flowScopeKey')";
+        let sql = format!(
+            "SELECT payload FROM partition_records
+             WHERE partition_id = $1 AND position > $2 AND record_type = 'COMMAND'
+               AND value_type = 'PROCESS_INSTANCE' AND intent = 'ACTIVATE_ELEMENT'
+               AND {FIELD} = $3
+             ORDER BY position"
+        );
+        use sqlx::Row;
+        let rows = sqlx::query(&sql)
+            .bind(partition_id)
+            .bind(after_position)
+            .bind(flow_scope_key)
+            .fetch_all(&*self.pool)
+            .await?;
+        Ok(rows.into_iter().map(|r| r.get("payload")).collect())
+    }
+
     async fn get_processed_position(&self, partition_id: i16) -> Result<i64> {
         let position: Option<i64> = sqlx::query_scalar(
             "SELECT position FROM processed_positions WHERE partition_id = $1",
@@ -274,6 +296,35 @@ impl StateBackend for SqlxBackend {
             .bind(element_instance_key)
             .execute(pool)
             .await?;
+        Ok(())
+    }
+
+    async fn cancel_catch_waits(&self, element_instance_key: i64, element_ids: &[String], message_names: &[String]) -> Result<()> {
+        let pool: &DbPool = &self.pool;
+        for element_id in element_ids {
+            sqlx::query(
+                "UPDATE timers SET state = 'CANCELED' WHERE element_instance_key = $1 AND element_id = $2 AND state = 'ACTIVE'",
+            )
+            .bind(element_instance_key)
+            .bind(element_id)
+            .execute(pool)
+            .await?;
+            sqlx::query("DELETE FROM signal_subscriptions WHERE element_instance_key = $1 AND element_id = $2")
+                .bind(element_instance_key)
+                .bind(element_id)
+                .execute(pool)
+                .await?;
+        }
+        for message_name in message_names {
+            sqlx::query(
+                "UPDATE message_subscriptions SET state = 'CLOSED'
+                 WHERE element_instance_key = $1 AND message_name = $2 AND state IN ('OPENING', 'OPENED')",
+            )
+            .bind(element_instance_key)
+            .bind(message_name)
+            .execute(pool)
+            .await?;
+        }
         Ok(())
     }
 
@@ -465,12 +516,20 @@ impl StateBackend for SqlxBackend {
         SignalSubscriptionRepository::new(&self.pool).delete(key).await
     }
 
-    async fn increment_and_get_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<i32> {
-        GatewayTokenRepository::new(&self.pool).increment_and_get(process_instance_key, element_id).await
+    async fn add_join_token(&self, process_instance_key: i64, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()> {
+        JoinTokenRepository::new(&self.pool).add(process_instance_key, flow_scope_key, gateway_id, sequence_flow_id).await
     }
 
-    async fn delete_gateway_token(&self, process_instance_key: i64, element_id: &str) -> Result<()> {
-        GatewayTokenRepository::new(&self.pool).delete(process_instance_key, element_id).await
+    async fn take_join_token(&self, flow_scope_key: i64, gateway_id: &str, sequence_flow_id: &str) -> Result<()> {
+        JoinTokenRepository::new(&self.pool).take(flow_scope_key, gateway_id, sequence_flow_id).await
+    }
+
+    async fn get_join_tokens(&self, process_instance_key: i64) -> Result<Vec<JoinToken>> {
+        JoinTokenRepository::new(&self.pool).get_by_process_instance(process_instance_key).await
+    }
+
+    async fn delete_join_tokens(&self, flow_scope_key: i64) -> Result<()> {
+        JoinTokenRepository::new(&self.pool).delete_by_flow_scope(flow_scope_key).await
     }
 
     async fn insert_deployment(&self, deployment: &Deployment) -> Result<()> {

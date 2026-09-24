@@ -150,6 +150,7 @@ impl MessageProcessor {
             element_instance_key,
             CatchRef::Message(message_name),
             variables,
+            record.position,
         )
         .await?;
         if outcome == Triggered::Ignored {

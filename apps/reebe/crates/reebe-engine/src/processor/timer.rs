@@ -51,6 +51,7 @@ impl RecordProcessor for TimerProcessor {
                 owner_key,
                 CatchRef::Element(&timer.element_id),
                 serde_json::json!({}),
+                record.position,
             )
             .await?;
             if outcome == Triggered::KeepWaiting {

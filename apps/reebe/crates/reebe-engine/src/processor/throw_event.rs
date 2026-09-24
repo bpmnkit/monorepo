@@ -289,6 +289,8 @@ pub(crate) async fn terminate_children(
     for child in doomed.into_iter().rev() {
         terminate_one(state, writers, child).await?;
     }
+    // Tokens waiting at a join in the scope go with the rest.
+    state.backend.delete_join_tokens(scope.key).await?;
     Ok(())
 }
 
@@ -299,6 +301,7 @@ async fn terminate_one(
 ) -> EngineResult<()> {
     state.backend.update_element_instance_state(ei.key, "TERMINATED").await?;
     super::catch_event::close_waits(state, ei.key).await?;
+    state.backend.delete_join_tokens(ei.key).await?;
     // A terminated call activity takes the process instance it called with it.
     if ei.element_type == "CALL_ACTIVITY" {
         for child in state.backend.get_child_process_instance_keys(ei.key).await? {

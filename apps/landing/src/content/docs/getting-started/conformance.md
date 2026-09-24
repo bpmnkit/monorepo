@@ -143,6 +143,13 @@ sub-process. An uncaught error raises an incident. Timer, message and signal bou
 are armed when their activity starts and cancelled when it ends. An interrupting one
 terminates the activity; a non-interrupting one leaves it running, and a timer cycle repeats.
 An event-based gateway waits for the first of its events and cancels the others.
+The timer, message and signal start events of event sub-processes are armed when their
+process or sub-process starts and disarmed when it ends. An interrupting event sub-process
+terminates the rest of its scope and triggers once; a non-interrupting one runs alongside,
+as often as its event occurs. An inclusive gateway takes every flow whose condition holds,
+or its default flow, and its join waits until no token in the scope can still reach an
+incoming flow that has none. A token waiting at a parallel or inclusive join keeps its
+scope active, as in Zeebe, even if the join can never fire.
 Deploying a process schedules its timer start events (a date, a repeating interval or a cron
 expression) and subscribes its message start events; a timer firing or a matching message
 creates an instance, at most one active instance per message correlation key, and a new version
@@ -218,9 +225,8 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
-- Reebe: complex gateway, inclusive joins (they do not wait), timer, message and signal event
-  sub-processes (error and escalation ones run), ad-hoc sub-processes other than a job worker
-  implementation and the inner elements of those, single-node only, no published comparison
-  with Zeebe, and no published performance figures
+- Reebe: complex gateway, ad-hoc sub-processes other than a job worker implementation and
+  the inner elements of those, single-node only, no published comparison with Zeebe, and no
+  published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).

@@ -15,6 +15,7 @@ pub(crate) mod scope;
 pub(crate) mod multi_instance;
 pub(crate) mod start_event;
 pub(crate) mod cron;
+pub(crate) mod join;
 
 pub use deployment::DeploymentProcessor;
 pub use process_instance::{ProcessInstanceCreationProcessor, ProcessInstanceCancelProcessor};
