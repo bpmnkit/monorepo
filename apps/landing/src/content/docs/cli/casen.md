@@ -311,8 +311,12 @@ casen worker start send-invoice
 
 ## Local engine (Reebe)
 
-Reebe is a Zeebe-compatible workflow engine (~50 MB) that runs locally, so you can deploy
-and run processes without a Camunda 8 cluster.
+Reebe is a **dev/test** workflow engine (~50 MB) that serves the Zeebe API locally, so you
+can deploy and run processes on your machine or in CI without a Camunda 8 cluster. It is
+[Experimental](/docs/getting-started/stability#product-tiers) and single-node: do not run it
+in production. Reebe is a clean-room implementation written from Camunda's public
+documentation, and is not affiliated with or endorsed by Camunda. "Zeebe" and "Camunda" are
+trademarks of Camunda Services GmbH.
 
 ```sh
 # Embedded SQLite, no external database

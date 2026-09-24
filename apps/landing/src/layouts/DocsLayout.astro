@@ -6,6 +6,7 @@ import { breadcrumbJsonLd } from "@bpmnkit/astro-shared/seo.js"
 import type { MarkdownHeading } from "astro"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
+import { TIERS, productForDoc } from "../data/content"
 import { type DocLink, flattenDocs, getDocsNav, sectionLabel, sectionOf } from "../data/docs-nav"
 
 interface Props {
@@ -25,6 +26,7 @@ const previous: DocLink | undefined = index > 0 ? pages[index - 1] : undefined
 const next: DocLink | undefined = index >= 0 ? pages[index + 1] : undefined
 
 const section = slug === undefined ? "" : sectionOf(slug)
+const product = slug === undefined ? undefined : productForDoc(slug)
 const toc = headings.filter((heading) => heading.depth === 2 || heading.depth === 3)
 
 const editUrl = slug
@@ -119,6 +121,15 @@ const jsonLd = breadcrumbJsonLd([
         <div class="docs-header">
           <h1>{title}</h1>
           <p>{description}</p>
+          {product && (
+            <p class="docs-tier">
+              <a
+                href="/docs/getting-started/stability#product-tiers"
+                class:list={["docs-tier-label", `docs-tier-label--${product.tier}`]}
+              >{TIERS[product.tier].label}</a>
+              <span>{TIERS[product.tier].promise}</span>
+            </p>
+          )}
         </div>
 
         <slot />

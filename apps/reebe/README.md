@@ -1,13 +1,18 @@
 # Reebe
 
-A BPMN workflow engine in Rust that implements the [Camunda 8](https://camunda.com/) Orchestration
-Cluster REST API (`/v2/*`) and the Zeebe gateway gRPC service — for local development, tests and
-CI, without a JVM or Elasticsearch.
+A **dev/test** BPMN workflow engine in Rust that implements the [Camunda 8](https://camunda.com/)
+Orchestration Cluster REST API (`/v2/*`) and the Zeebe gateway gRPC service — for local
+development, tests and CI, without a JVM or Elasticsearch. **Do not run it in production.**
 
-> **Status: experimental, single-node, for development and testing.** Reebe is a clean-room
-> implementation and is not affiliated with Camunda. It is not a production replacement for a
+> **Tier: Experimental — single-node, for development and testing only.** It may change or be
+> discontinued; see [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
+> Reebe is a clean-room implementation of the Zeebe API, written from Camunda's public
+> documentation. It is not affiliated with or endorsed by Camunda. It is not a replacement for a
 > Camunda 8 cluster: there is no replication, no clustering and no exporter framework, and its
 > compatibility is checked by its own test suite rather than against Zeebe.
+>
+> "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH, used here only to name the API
+> that Reebe implements.
 
 ## What is Reebe?
 
@@ -29,7 +34,7 @@ model Zeebe uses is kept, implemented in SQL.
 | Licence | Camunda License 1.0 (production needs an Enterprise licence) | Apache-2.0 |
 
 Reebe fits development machines, CI pipelines and demos — anywhere a full Camunda 8 stack is
-more than the job needs. `reebe-bench` measures throughput and latency on your own hardware;
+more than the job needs. For anything in production, use Camunda 8. `reebe-bench` measures throughput and latency on your own hardware;
 no benchmark figures are published yet.
 
 The same engine compiles to WebAssembly as

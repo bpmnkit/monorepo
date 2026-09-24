@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { ECOSYSTEM } from "../src/data/content.js"
-import { PACKAGE_FACTS } from "../src/generated/ecosystem.js"
+import { ECOSYSTEM, productForDoc } from "../src/data/content.js"
+import { APP_FACTS, PACKAGE_FACTS, TIERS } from "../src/generated/ecosystem.js"
 
 /**
  * `src/generated/ecosystem.ts` is generated on every `dev` and `build`, so a stale
@@ -73,5 +73,46 @@ describe("the homepage package list", () => {
 			expect(pkg.version, pkg.name).not.toBe("")
 			expect(pkg.role.length, pkg.name).toBeGreaterThan(0)
 		}
+	})
+})
+
+describe("product tiers", () => {
+	const stability = readFileSync(
+		join(ROOT, "apps/landing/src/content/docs/getting-started/stability.md"),
+		"utf8",
+	)
+	const products = [...PACKAGE_FACTS, ...APP_FACTS]
+
+	/** The bullet in "Product tiers" that lists one tier's members. */
+	function listed(label: string): string {
+		const start = stability.indexOf(`- **${label}:**`)
+		expect(start, `no "- **${label}:**" bullet on the stability page`).toBeGreaterThan(-1)
+		const next = stability.indexOf("\n- ", start + 1)
+		const endOfList = stability.indexOf("\n\n", start)
+		return stability.slice(start, next === -1 || next > endOfList ? endOfList : next)
+	}
+
+	it("gives every product a tier the site can print", () => {
+		for (const product of products) expect(TIERS[product.tier], product.name).toBeDefined()
+	})
+
+	it("lists each product under its own tier on the stability page, and nowhere else", () => {
+		for (const product of products) {
+			for (const [tier, { label }] of Object.entries(TIERS)) {
+				const line = listed(label)
+				const named = product.name.startsWith("@")
+					? line.includes(`\`${product.name}\``)
+					: line.includes(product.name)
+				expect(named, `${product.name} under ${label}`).toBe(tier === product.tier)
+			}
+		}
+	})
+
+	it("labels the docs page of each product that has one", () => {
+		expect(productForDoc("packages/operate")?.tier).toBe("experimental")
+		expect(productForDoc("packages/core")?.tier).toBe("core")
+		expect(productForDoc("cli/casen")?.name).toBe("@bpmnkit/cli")
+		expect(productForDoc("guides/drop")?.tier).toBe("tools")
+		expect(productForDoc("guides/gateways")).toBeUndefined()
 	})
 })

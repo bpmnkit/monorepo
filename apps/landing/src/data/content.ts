@@ -1,6 +1,6 @@
 import { SITE } from "@bpmnkit/astro-shared"
-import { PACKAGE_FACTS } from "../generated/ecosystem"
-import type { PackageFact } from "../generated/ecosystem"
+import { APP_FACTS, PACKAGE_FACTS, TIERS } from "../generated/ecosystem"
+import type { PackageFact, Tier } from "../generated/ecosystem"
 import { tokenize } from "../lib/highlight"
 
 // ── Site metadata ──────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ const FEATURED: ReadonlyArray<{ name: string; role: string; note?: string }> = [
 	{
 		name: "@bpmnkit/engine",
 		role: "Simulate a process in-process",
-		note: "experimental, not a production runtime",
+		note: "a simulator, not a production runtime",
 	},
 	{ name: "@bpmnkit/api", role: "Deploy & operate on Camunda 8" },
 	{ name: "@bpmnkit/canvas", role: "View a diagram (SVG, pan/zoom)" },
@@ -93,7 +93,7 @@ const ROLES: Readonly<Record<string, string>> = {
 	"@bpmnkit/patterns": "Domain process patterns for the AI pipeline",
 	"@bpmnkit/worker-client": "Thin Zeebe client for standalone workers",
 	"@bpmnkit/proxy": "Local AI bridge and Camunda API proxy",
-	"@bpmnkit/reebe-wasm": "The Reebe engine, compiled to WebAssembly",
+	"@bpmnkit/reebe-wasm": "The Reebe dev/test engine, compiled to WebAssembly",
 	"@bpmnkit/casen-report": "casen plugin — HTML incident and SLA reports",
 	"@bpmnkit/casen-worker-http": "casen plugin — an HTTP connector job worker",
 	"@bpmnkit/casen-worker-ai": "casen plugin — classify, summarize and extract",
@@ -104,6 +104,7 @@ export interface EcosystemEntry {
 	readonly version: string
 	readonly role: string
 	readonly note: string | null
+	readonly tier: Tier
 	readonly url: string
 	readonly npm: string
 	/** Leads the homepage list; the rest sit behind "show all". */
@@ -123,6 +124,7 @@ function entry(
 		// own manifest carries — so adding to PUBLISHED cannot leave a blank row.
 		role: role ?? fact.description,
 		note: note ?? null,
+		tier: fact.tier,
 		url: fact.github,
 		npm: fact.npm,
 		featured,
@@ -143,6 +145,18 @@ export const ECOSYSTEM: readonly EcosystemEntry[] = [
 ]
 
 export const CORE_VERSION = byName.get("@bpmnkit/core")?.version ?? ""
+
+// ── Product tiers ─────────────────────────────────────────────────────────────
+// Which tier each product is in comes from `scripts/published-packages.mjs`, through the
+// generated facts; nothing here decides it.
+
+export { TIERS }
+export type { Tier }
+
+/** The product a docs page describes, and its tier, or undefined for any other page. */
+export function productForDoc(slug: string): { name: string; tier: Tier } | undefined {
+	return [...PACKAGE_FACTS, ...APP_FACTS].find((fact) => fact.docs === slug)
+}
 
 // ── Feature bullets (for llms.txt) ────────────────────────────────────────────
 

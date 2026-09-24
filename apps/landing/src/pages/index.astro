@@ -9,7 +9,7 @@ import FeelPlayground from "../components/FeelPlayground.astro"
 import Footer from "../components/Footer.astro"
 import Nav from "../components/Nav.astro"
 import { HEADLINE, META, RELIABILITY, REPLAY, ROWS, STRATEGIES } from "../data/ai-benchmark"
-import { CODE_HTML, CORE_VERSION, ECOSYSTEM } from "../data/content"
+import { CODE_HTML, CORE_VERSION, ECOSYSTEM, TIERS } from "../data/content"
 
 const jsonLd = [
 	organizationJsonLd(),
@@ -313,11 +313,19 @@ const CAPABILITIES = [
         <h2 class="section-h2">{ECOSYSTEM.length} packages, pick what you need</h2>
       </div>
       <p class="section-sub">
-        Twelve core packages are at 1.0 and covered by the
-        <a href="/docs/getting-started/stability">stability policy</a>; the rest stay on 0.x and
-        say so. All MIT, developed in the open. Every version below is the one on npm — each row
+        Every package carries one of three
+        <a href="/docs/getting-started/stability#product-tiers">tiers</a>, and each row says
+        which. All MIT, developed in the open. Every version below is the one on npm — each row
         links to it.
       </p>
+      <dl class="pkg-tiers">
+        {(Object.keys(TIERS) as (keyof typeof TIERS)[]).map((tier) => (
+          <div class="pkg-tiers-item">
+            <dt class:list={["pkg-tier", `pkg-tier--${tier}`]}>{TIERS[tier].label}</dt>
+            <dd>{TIERS[tier].promise}</dd>
+          </div>
+        ))}
+      </dl>
       <div class="pkg-grid">
         {featuredPackages.map((pkg) => (
           <a class="pkg-row" href={pkg.npm} target="_blank" rel="noopener">
@@ -328,7 +336,10 @@ const CAPABILITIES = [
                 {pkg.note && <span class="pkg-caveat"> — {pkg.note}</span>}
               </div>
             </div>
-            <div class="pkg-version">v{pkg.version}</div>
+            <div class="pkg-meta">
+              <div class="pkg-version">v{pkg.version}</div>
+              <div class:list={["pkg-tier", `pkg-tier--${pkg.tier}`]}>{TIERS[pkg.tier].label}</div>
+            </div>
           </a>
         ))}
         {restPackages.map((pkg) => (
@@ -337,7 +348,10 @@ const CAPABILITIES = [
               <div class="pkg-name">{pkg.name}</div>
               <div class="pkg-role">{pkg.role}</div>
             </div>
-            <div class="pkg-version">v{pkg.version}</div>
+            <div class="pkg-meta">
+              <div class="pkg-version">v{pkg.version}</div>
+              <div class:list={["pkg-tier", `pkg-tier--${pkg.tier}`]}>{TIERS[pkg.tier].label}</div>
+            </div>
           </a>
         ))}
         {/* An odd count leaves the last cell of the two-column grid empty, and an

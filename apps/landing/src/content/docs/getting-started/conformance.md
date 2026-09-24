@@ -142,8 +142,13 @@ propagate out through sub-processes and call activities to a boundary event or a
 sub-process. An uncaught error raises an incident. It has no complex gateway. It runs an
 ad-hoc sub-process only through its job worker implementation, such as the AI Agent
 Sub-process: completing the job completes the sub-process, and the inner elements are not
-activated. Reebe is experimental, and its behaviour is checked by its own tests rather than
-against Zeebe. Every scenario of the [template gallery](/docs/guides/templates) passes on it.
+activated. Every scenario of the [template gallery](/docs/guides/templates) passes on it.
+
+Reebe is a dev/test engine in the
+[Experimental tier](/docs/getting-started/stability#product-tiers), not for production. It is
+a clean-room implementation of the Zeebe API written from Camunda's public documentation, it
+is not affiliated with Camunda, and its behaviour is checked by its own tests rather than
+against Zeebe. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
 
 ## Zeebe extensions
 
@@ -202,6 +207,7 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
 - Reebe: complex gateway, ad-hoc sub-processes other than a job worker implementation and
-  the inner elements of those, single-node only, no published comparison with Zeebe
+  the inner elements of those, single-node only, no published comparison with Zeebe, and no
+  published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).

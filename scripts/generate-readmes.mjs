@@ -4,7 +4,7 @@
 
 import { writeFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { STABLE } from "./published-packages.mjs"
+import { APPS, PUBLISHED, STABLE, TIER, TIERS } from "./published-packages.mjs"
 
 const ROOT = new URL("..", import.meta.url).pathname
 const LOGO_URL = "https://bpmnkit.com/favicon.svg"
@@ -14,16 +14,25 @@ const DOCS = "https://bpmnkit.com/docs"
 // ── Shared header / footer ────────────────────────────────────────────────────
 
 /**
- * The status badge tells the truth per package rather than per repo.
+ * The tier badge tells the truth per package rather than per repo.
  *
- * It read `experimental` on all twenty-six for as long as it existed, which stopped
- * being true the moment twelve of them reached 1.0. `STABLE` is the same list the
- * release checks read, so the badge cannot disagree with the promise.
+ * It used to read `experimental` on every package, which stopped being true the moment
+ * twelve of them reached 1.0. `TIER` is the same data the release checks and the site
+ * read, so the badge cannot disagree with either.
  */
-function statusBadge(pkgPath) {
-	return STABLE.includes(pkgPath)
-		? `[![stable](https://img.shields.io/badge/status-stable-16a34a?style=flat-square)](${DOCS}/getting-started/stability)`
-		: `[![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](${DOCS}/getting-started/stability)`
+const TIER_COLOURS = { core: "16a34a", tools: "2563eb", experimental: "d97706" }
+const TIERS_URL = `${DOCS}/getting-started/stability#product-tiers`
+
+function tierBadge(pkgPath) {
+	const tier = TIER[pkgPath]
+	if (!tier) throw new Error(`${pkgPath} has no tier — add it to TIER in published-packages.mjs`)
+	return `[![tier: ${tier}](https://img.shields.io/badge/tier-${tier}-${TIER_COLOURS[tier]}?style=flat-square)](${TIERS_URL})`
+}
+
+/** The one line under the header that says what the tier means for this package. */
+function tierLine(pkgPath) {
+	const { label, promise } = TIERS[TIER[pkgPath]]
+	return `> **${label} tier.** ${promise} See [product tiers](${TIERS_URL}).\n`
 }
 
 function header({ name, description, extra = "", dir = "packages", pkgPath = "" }) {
@@ -38,11 +47,12 @@ function header({ name, description, extra = "", dir = "packages", pkgPath = "" 
   [![license](https://img.shields.io/npm/l/${name}?style=flat-square)](${GITHUB}/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](${GITHUB})
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](${GITHUB})
-  ${statusBadge(pkgPath)}
+  ${tierBadge(pkgPath)}
 
   [Website](https://bpmnkit.com) · [Documentation](${DOCS}) · [GitHub](${GITHUB}) · [Changelog](${GITHUB}/blob/main/${changelogPath})
 </div>
 
+${tierLine(pkgPath)}
 ---
 ${extra}`
 }
@@ -3169,20 +3179,23 @@ interface UserTask {
 	"apps/reebe-wasm": {
 		name: "@bpmnkit/reebe-wasm",
 		dir: "apps",
-		description: "WebAssembly BPMN workflow engine — runs the Reebe engine in the browser",
+		description:
+			"The Reebe dev/test BPMN engine, compiled to WebAssembly for the browser and Node.js",
 		content: `## Overview
 
-\`@bpmnkit/reebe-wasm\` is the WebAssembly build of the [Reebe](https://github.com/bpmnkit/monorepo) BPMN workflow engine, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It enables full BPMN 2.0 process execution directly in the browser — no server required.
+\`@bpmnkit/reebe-wasm\` is the WebAssembly build of [Reebe](${GITHUB}/tree/main/apps/reebe), BPMN Kit's BPMN engine for development and tests, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It runs BPMN 2.0 processes in the browser or in Node.js, with no server.
 
-Used internally by \`@bpmnkit/engine\` for the \`./wasm-runner\` entry point, which powers the BPMNKit Studio simulator and the \`casen test\` CLI command.
+> **Dev/test only — not for production.** Reebe is a clean-room implementation of the Zeebe API, written from Camunda's public documentation. It is not affiliated with or endorsed by Camunda, and its behaviour is checked by its own tests, not against Zeebe. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
+
+Used internally by \`@bpmnkit/engine\` for the \`./wasm-runner\` entry point, which powers the BPMN Kit Studio simulator and the \`casen test\` CLI command.
 
 ## Features
 
-- **Full BPMN execution** — gateways, events, subprocesses, boundary events
+- **BPMN execution** — gateways, events, sub-processes, boundary events
 - **Zero network calls** — runs entirely in the browser sandbox
 - **DMN decisions** — inline decision table evaluation
 - **FEEL expressions** — condition and mapping evaluation
-- **WebAssembly** — near-native performance, minimal footprint
+- **WebAssembly** — one binary for the browser and Node.js; no benchmark figures are published
 
 ## Installation
 
@@ -3243,6 +3256,23 @@ Requires [Rust](https://rustup.rs/) and [wasm-pack](https://rustwasm.github.io/w
 
 // ── Root monorepo README ─────────────────────────────────────────────────────
 
+/** Every product in one tier: the npm packages by name, then the apps. */
+function tierMembers(tier) {
+	const npm = PUBLISHED.filter((dir) => TIER[dir] === tier).map((dir) => {
+		const pkg = packages[dir]
+		if (!pkg) throw new Error(`${dir} is published but has no README entry`)
+		return `[\`${pkg.name}\`](${dir})`
+	})
+	const apps = APPS.filter((app) => app.tier === tier).map(
+		(app) => `${app.name} ([\`${app.dir}\`](${app.dir}))`,
+	)
+	return [...npm, ...apps].join(", ")
+}
+
+const tierTable = Object.entries(TIERS)
+	.map(([tier, { label, promise }]) => `| **${label}** | ${promise} | ${tierMembers(tier)} |`)
+	.join("\n")
+
 const rootReadme = `<div align="center">
   <a href="https://bpmnkit.com"><img src="${LOGO_URL}" width="80" height="80" alt="BPMN Kit logo"></a>
   <h1>BPMN Kit</h1>
@@ -3287,10 +3317,23 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 - **100+ OpenAPI connectors** — generate Camunda REST connector templates from 100 built-in API specs (18,000+ endpoints: GitHub, Stripe, Slack, Jira, and more)
 - **\`casen\` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
 - **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
-- **Native desktop app** — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](${GITHUB}/releases?q=desktop)
+- **Native desktop app** *(experimental)* — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](${GITHUB}/releases?q=desktop)
 - **Share a diagram as a link** — [Drop](https://bpmnkit.com/drop) renders a BPMN/DMN/Form file for anyone with the link, live, and lets one of them edit it at a time
 - **VS Code extension** — preview, edit, lint, simulate and visually diff \`.bpmn\`, \`.dmn\` and \`.form\` beside the code, with no bpmn.io and no reformatting on save
 - **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
+
+## Product tiers
+
+Every product is in one of three tiers. [Stability and Versioning](${DOCS}/getting-started/stability#product-tiers)
+says what each one promises; every package README shows its tier at the top.
+
+| Tier | Promise | Products |
+|------|---------|----------|
+${tierTable}
+
+Reebe is a dev/test engine, not for production. It is a clean-room implementation of the Zeebe
+API written from Camunda's public documentation, and is not affiliated with or endorsed by
+Camunda. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
 
 ## Packages
 
@@ -3423,7 +3466,7 @@ casen proxy start
 
 See the full [\`@bpmnkit/cli\` README](apps/cli/README.md) for all commands.
 
-### Monitoring — embed the operations frontend
+### Monitoring — embed the operations frontend (experimental)
 
 \`\`\`typescript
 import { createOperate } from "@bpmnkit/operate"
@@ -3536,7 +3579,9 @@ BPMN counts as one), which runtimes are supported, and how deprecations run:
 ${STABLE.map((p) => `\`@bpmnkit/${p.split("/")[1]}\``).join(", ")}.
 
 The other published packages are on **0.x**, which under semver promises nothing about
-compatibility — pin an exact version of those if that matters to you today.
+compatibility — pin an exact version of those if that matters to you today. Their
+[tier](#product-tiers) says what they do promise: Tools are maintained, Experimental may
+change or be discontinued.
 
 ## Contributing
 

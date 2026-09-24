@@ -42,10 +42,25 @@ It follows the [docspack](https://docspack.dev) package format, so the upstream 
 - **100+ OpenAPI connectors** — generate Camunda REST connector templates from 100 built-in API specs (18,000+ endpoints: GitHub, Stripe, Slack, Jira, and more)
 - **`casen` CLI** — deploy, monitor, and manage Camunda 8 processes from the terminal; extend via a typed plugin SDK
 - **AI-assisted design** — local proxy connects Claude, Copilot, and Gemini to edit diagrams via natural language or MCP tool calls
-- **Native desktop app** — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](https://github.com/bpmnkit/monorepo/releases?q=desktop)
+- **Native desktop app** *(experimental)* — Tauri build of the editor for Windows, macOS and Linux, attached to [GitHub Releases](https://github.com/bpmnkit/monorepo/releases?q=desktop)
 - **Share a diagram as a link** — [Drop](https://bpmnkit.com/drop) renders a BPMN/DMN/Form file for anyone with the link, live, and lets one of them edit it at a time
 - **VS Code extension** — preview, edit, lint, simulate and visually diff `.bpmn`, `.dmn` and `.form` beside the code, with no bpmn.io and no reformatting on save
 - **Zero-dependency execution** — lightweight BPMN simulation engine for offline testing and step-through debugging
+
+## Product tiers
+
+Every product is in one of three tiers. [Stability and Versioning](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
+says what each one promises; every package README shows its tier at the top.
+
+| Tier | Promise | Products |
+|------|---------|----------|
+| **Core** | Semver at 1.0: nothing breaks without a major release. | [`@bpmnkit/core`](packages/core), [`@bpmnkit/canvas`](packages/canvas), [`@bpmnkit/editor`](packages/editor), [`@bpmnkit/plugins`](packages/plugins), [`@bpmnkit/engine`](packages/engine), [`@bpmnkit/feel`](packages/feel), [`@bpmnkit/api`](packages/api), [`@bpmnkit/ascii`](packages/ascii), [`@bpmnkit/docspack`](packages/docspack), [`@bpmnkit/connector-gen`](packages/connector-gen), [`@bpmnkit/connectors`](packages/connectors), [`@bpmnkit/cli`](apps/cli) |
+| **Tools** | Maintained, on 0.x: a minor release can break, so pin a version. | [`@bpmnkit/ui`](packages/ui), [`@bpmnkit/markdown`](packages/markdown), [`@bpmnkit/camunda-docspack`](packages/camunda-docspack), [`@bpmnkit/profiles`](packages/profiles), [`@bpmnkit/astro-shared`](packages/astro-shared), [`@bpmnkit/patterns`](packages/patterns), [`@bpmnkit/worker-client`](packages/worker-client), [`@bpmnkit/cli-sdk`](packages/cli-sdk), [`@bpmnkit/create-casen-plugin`](packages/create-casen-plugin), [`@bpmnkit/proxy`](apps/proxy), [`@bpmnkit/casen-report`](plugins-cli/casen-report), [`@bpmnkit/casen-worker-http`](plugins-cli/casen-worker-http), [`@bpmnkit/casen-worker-ai`](plugins-cli/casen-worker-ai), BPMN Kit for VS Code ([`apps/vscode`](apps/vscode)), Drop ([`apps/drop`](apps/drop)) |
+| **Experimental** | May change or be discontinued. Not for production. | [`@bpmnkit/operate`](packages/operate), [`@bpmnkit/user-tasks`](packages/user-tasks), [`@bpmnkit/reebe-wasm`](apps/reebe-wasm), Reebe ([`apps/reebe`](apps/reebe)), Studio ([`apps/studio`](apps/studio)), Desktop app ([`apps/desktop`](apps/desktop)), proxy-rs ([`apps/proxy-rs`](apps/proxy-rs)) |
+
+Reebe is a dev/test engine, not for production. It is a clean-room implementation of the Zeebe
+API written from Camunda's public documentation, and is not affiliated with or endorsed by
+Camunda. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
 
 ## Packages
 
@@ -178,7 +193,7 @@ casen proxy start
 
 See the full [`@bpmnkit/cli` README](apps/cli/README.md) for all commands.
 
-### Monitoring — embed the operations frontend
+### Monitoring — embed the operations frontend (experimental)
 
 ```typescript
 import { createOperate } from "@bpmnkit/operate"
@@ -291,7 +306,9 @@ BPMN counts as one), which runtimes are supported, and how deprecations run:
 `@bpmnkit/core`, `@bpmnkit/canvas`, `@bpmnkit/editor`, `@bpmnkit/plugins`, `@bpmnkit/engine`, `@bpmnkit/feel`, `@bpmnkit/api`, `@bpmnkit/ascii`, `@bpmnkit/docspack`, `@bpmnkit/connector-gen`, `@bpmnkit/connectors`, `@bpmnkit/cli`.
 
 The other published packages are on **0.x**, which under semver promises nothing about
-compatibility — pin an exact version of those if that matters to you today.
+compatibility — pin an exact version of those if that matters to you today. Their
+[tier](#product-tiers) says what they do promise: Tools are maintained, Experimental may
+change or be discontinued.
 
 ## Contributing
 
