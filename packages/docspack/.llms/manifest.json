@@ -21,7 +21,7 @@
 		{
 			"id": "cli.casen",
 			"file": "chunks/cli.casen.md",
-			"tokens": 698,
+			"tokens": 732,
 			"tags": [
 				"cli",
 				"casen"
@@ -473,6 +473,46 @@
 			"entities": []
 		},
 		{
+			"id": "cli.migrate",
+			"file": "chunks/cli.migrate.md",
+			"tokens": 231,
+			"tags": [
+				"cli",
+				"migrate"
+			],
+			"entities": []
+		},
+		{
+			"id": "cli.migrate.where-the-output-goes",
+			"file": "chunks/cli.migrate.where-the-output-goes.md",
+			"tokens": 139,
+			"tags": [
+				"cli",
+				"migrate",
+				"output",
+				"goes"
+			],
+			"entities": [
+				"name.bpmn",
+				"name.c8.bpmn"
+			]
+		},
+		{
+			"id": "cli.migrate.flags",
+			"file": "chunks/cli.migrate.flags.md",
+			"tokens": 267,
+			"tags": [
+				"cli",
+				"migrate",
+				"flags"
+			],
+			"entities": [
+				"elementId",
+				"elementType",
+				"processId"
+			]
+		},
+		{
 			"id": "cli.plugin-authoring",
 			"file": "chunks/cli.plugin-authoring.md",
 			"tokens": 326,
@@ -753,7 +793,7 @@
 		{
 			"id": "getting-started.concepts.parsing-and-serializing-round-trip-fidelity",
 			"file": "chunks/getting-started.concepts.parsing-and-serializing-round-trip-fidelity.md",
-			"tokens": 813,
+			"tokens": 801,
 			"tags": [
 				"getting-started",
 				"concepts",
@@ -848,7 +888,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-model-interchange-miwg",
 			"file": "chunks/getting-started.conformance.bpmn-model-interchange-miwg.md",
-			"tokens": 527,
+			"tokens": 508,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -860,8 +900,8 @@
 			"entities": [
 				"exportPreserving",
 				"packages/core/tests/roundtrip-corpus.test.ts",
-				"textFormat",
-				"bpmnElement"
+				"bpmnElement",
+				"textFormat"
 			]
 		},
 		{
@@ -883,7 +923,7 @@
 		{
 			"id": "getting-started.conformance.zeebe-extensions",
 			"file": "chunks/getting-started.conformance.zeebe-extensions.md",
-			"tokens": 183,
+			"tokens": 226,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -892,7 +932,8 @@
 			],
 			"entities": [
 				"packages/core/src/bpmn/zeebe-placement.ts",
-				"applyTemplateToElement"
+				"applyTemplateToElement",
+				"convertCamunda7()"
 			]
 		},
 		{
@@ -925,16 +966,14 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 211,
+			"tokens": 207,
 			"tags": [
 				"getting-started",
 				"conformance",
 				"camunda",
 				"forms"
 			],
-			"entities": [
-				"textFormat"
-			]
+			"entities": []
 		},
 		{
 			"id": "getting-started.installation",
@@ -2014,6 +2053,130 @@
 				"branching"
 			],
 			"entities": []
+		},
+		{
+			"id": "guides.migrate-from-camunda-7",
+			"file": "chunks/guides.migrate-from-camunda-7.md",
+			"tokens": 224,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.who-this-is-for",
+			"file": "chunks/guides.migrate-from-camunda-7.who-this-is-for.md",
+			"tokens": 290,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7"
+			],
+			"entities": [
+				"sourceXml"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.what-is-converted",
+			"file": "chunks/guides.migrate-from-camunda-7.what-is-converted.md",
+			"tokens": 758,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"converted"
+			],
+			"entities": [
+				"com.acme.ShipOrderDelegate",
+				"shipOrderDelegate",
+				"delegateExpression",
+				"resultVariable",
+				"conditionExpression",
+				"asyncAfter",
+				"jobPriority",
+				"R5/PT5M",
+				"candidateUsers",
+				"candidateGroups",
+				"followUpDate",
+				"formRefBinding"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.what-is-not-converted-and-why",
+			"file": "chunks/guides.migrate-from-camunda-7.what-is-not-converted-and-why.md",
+			"tokens": 491,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"not",
+				"converted"
+			],
+			"entities": [
+				"correlationKey",
+				"singleEntry",
+				"candidateStarterGroups",
+				"candidateStarterUsers"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.juel-to-feel",
+			"file": "chunks/guides.migrate-from-camunda-7.juel-to-feel.md",
+			"tokens": 397,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"juel",
+				"feel"
+			],
+			"entities": [
+				"order.customer.vip",
+				"authenticatedUserId"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.before-and-after",
+			"file": "chunks/guides.migrate-from-camunda-7.before-and-after.md",
+			"tokens": 249,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"before",
+				"after"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.camunda-s-own-tools",
+			"file": "chunks/guides.migrate-from-camunda-7.camunda-s-own-tools.md",
+			"tokens": 233,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"camunda",
+				"own",
+				"tools"
+			],
+			"entities": [
+				"delegateExpression"
+			]
+		},
+		{
+			"id": "guides.migrate-from-camunda-7.sources",
+			"file": "chunks/guides.migrate-from-camunda-7.sources.md",
+			"tokens": 274,
+			"tags": [
+				"guides",
+				"migrate-from-camunda-7",
+				"sources"
+			],
+			"entities": [
+				"@bpmnkit/camunda-docspack",
+				"formId",
+				"bindingType",
+				"externalReference",
+				"businessId",
+				"propagateAllChildVariables",
+				"resultVariable"
+			]
 		},
 		{
 			"id": "guides.patterns",

@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 300 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 311 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -11,7 +11,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 
 ## cli
 
-- [casen CLI](.llms/chunks/cli.casen.md) — 698 tokens
+- [casen CLI](.llms/chunks/cli.casen.md) — 732 tokens
 - [casen CLI — Generate BPMN files](.llms/chunks/cli.casen.generate-bpmn-files.md) — 195 tokens
 - [casen CLI — Start from a gallery template](.llms/chunks/cli.casen.start-from-a-gallery-template.md) — 151 tokens
 - [casen CLI — View BPMN, DMN, and Form files](.llms/chunks/cli.casen.view-bpmn-dmn-and-form-files.md) — 186 tokens
@@ -43,6 +43,9 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [casen generate — Typical AI workflow — Keep the file current in CI](.llms/chunks/cli.generate.typical-ai-workflow-keep-the-file-current-in-ci.md) — 77 tokens
 - [casen generate — Typical AI workflow — Check workers against the BPMN](.llms/chunks/cli.generate.typical-ai-workflow-check-workers-against-the-bpmn.md) — 275 tokens
 - [casen generate — Typical AI workflow — Flags](.llms/chunks/cli.generate.typical-ai-workflow-flags.md) — 152 tokens
+- [casen migrate](.llms/chunks/cli.migrate.md) — 231 tokens
+- [casen migrate — Where the output goes](.llms/chunks/cli.migrate.where-the-output-goes.md) — 139 tokens
+- [casen migrate — Flags](.llms/chunks/cli.migrate.flags.md) — 267 tokens
 - [casen Plugin Authoring](.llms/chunks/cli.plugin-authoring.md) — 326 tokens
 - [casen Plugin Authoring — What gets generated](.llms/chunks/cli.plugin-authoring.what-gets-generated.md) — 309 tokens
 - [casen Plugin Authoring — The `@bpmnkit/cli-sdk` SDK](.llms/chunks/cli.plugin-authoring.the-bpmnkit-cli-sdk-sdk.md) — 423 tokens
@@ -67,17 +70,17 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Core Concepts — The Fluent Builder](.llms/chunks/getting-started.concepts.the-fluent-builder.md) — 251 tokens
 - [Core Concepts — Auto-Layout](.llms/chunks/getting-started.concepts.auto-layout.md) — 150 tokens
 - [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 116 tokens
-- [Core Concepts — Parsing and Serializing — Round-trip fidelity](.llms/chunks/getting-started.concepts.parsing-and-serializing-round-trip-fidelity.md) — 813 tokens
+- [Core Concepts — Parsing and Serializing — Round-trip fidelity](.llms/chunks/getting-started.concepts.parsing-and-serializing-round-trip-fidelity.md) — 801 tokens
 - [Core Concepts — AI-Compact Format](.llms/chunks/getting-started.concepts.ai-compact-format.md) — 359 tokens
 - [Core Concepts — Zeebe Extensions](.llms/chunks/getting-started.concepts.zeebe-extensions.md) — 134 tokens
 - [Conformance](.llms/chunks/getting-started.conformance.md) — 523 tokens
 - [Conformance — BPMN 2.0 — model and round trip](.llms/chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md) — 241 tokens
-- [Conformance — BPMN Model Interchange (MIWG)](.llms/chunks/getting-started.conformance.bpmn-model-interchange-miwg.md) — 527 tokens
+- [Conformance — BPMN Model Interchange (MIWG)](.llms/chunks/getting-started.conformance.bpmn-model-interchange-miwg.md) — 508 tokens
 - [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 727 tokens
-- [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 183 tokens
+- [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 226 tokens
 - [Conformance — Linting — bpmnlint compatibility](.llms/chunks/getting-started.conformance.linting-bpmnlint-compatibility.md) — 149 tokens
 - [Conformance — DMN 1.3](.llms/chunks/getting-started.conformance.dmn-1.3.md) — 135 tokens
-- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 211 tokens
+- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 207 tokens
 - [Installation](.llms/chunks/getting-started.installation.md) — 140 tokens
 - [Installation — SVG Canvas Viewer](.llms/chunks/getting-started.installation.svg-canvas-viewer.md) — 189 tokens
 - [Installation — Worker client](.llms/chunks/getting-started.installation.worker-client.md) — 145 tokens
@@ -158,6 +161,14 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Gateways & Branching — Inclusive Gateway (OR)](.llms/chunks/guides.gateways.inclusive-gateway-or.md) — 208 tokens
 - [Gateways & Branching — Branching Inside Sub-Processes](.llms/chunks/guides.gateways.branching-inside-sub-processes.md) — 142 tokens
 - [Gateways & Branching — Nested Branching](.llms/chunks/guides.gateways.nested-branching.md) — 122 tokens
+- [Migrate from Camunda 7](.llms/chunks/guides.migrate-from-camunda-7.md) — 224 tokens
+- [Migrate from Camunda 7 — Who this is for](.llms/chunks/guides.migrate-from-camunda-7.who-this-is-for.md) — 290 tokens
+- [Migrate from Camunda 7 — What is converted](.llms/chunks/guides.migrate-from-camunda-7.what-is-converted.md) — 758 tokens
+- [Migrate from Camunda 7 — What is not converted, and why](.llms/chunks/guides.migrate-from-camunda-7.what-is-not-converted-and-why.md) — 491 tokens
+- [Migrate from Camunda 7 — JUEL to FEEL](.llms/chunks/guides.migrate-from-camunda-7.juel-to-feel.md) — 397 tokens
+- [Migrate from Camunda 7 — Before and after](.llms/chunks/guides.migrate-from-camunda-7.before-and-after.md) — 249 tokens
+- [Migrate from Camunda 7 — Camunda's own tools](.llms/chunks/guides.migrate-from-camunda-7.camunda-s-own-tools.md) — 233 tokens
+- [Migrate from Camunda 7 — Sources](.llms/chunks/guides.migrate-from-camunda-7.sources.md) — 274 tokens
 - [Pattern Library](.llms/chunks/guides.patterns.md) — 304 tokens
 - [Pattern Library — How matching works](.llms/chunks/guides.patterns.how-matching-works.md) — 138 tokens
 - [Pattern Library — What a pattern contains](.llms/chunks/guides.patterns.what-a-pattern-contains.md) — 154 tokens

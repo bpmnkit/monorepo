@@ -1,5 +1,33 @@
 # Progress
 
+## 2026-09-24 — Round-trip and editor follow-ups
+
+- **`<documentation>` attributes are kept.** `id` and `textFormat` now travel in an optional `documentationAttributes` next to `documentation` on every element, flow, process and the definitions. This was the last content loss on the 22 OMG MIWG reference models; their `ALLOWED` entries are gone and the Conformance page says 22 / 22 with no exceptions. The two affected golden hashes moved, because that data used to be dropped.
+- **Foreign attributes on event definitions and multi-instance loops are kept** (`camunda:collection`, `camunda:errorCodeVariable`, `camunda:type`, …), in an optional `unknownAttributes`. The Camunda 7 converter now reads them from the model instead of re-parsing the source XML.
+- **Editor:** deleting a gateway's or an activity's default flow clears its `default`, so the export no longer references a missing flow.
+- **CLI:** `casen dev --help` no longer prints "casen dev dev".
+
+## 2026-09-24 — Camunda 7 → 8 migration assistant
+
+- `@bpmnkit/core`: `convertCamunda7(definitions, { sourceXml?, executionPlatformVersion? })`, `analyzeCamunda7` and `translateJuelToFeel`, pure and dependency-free. Each Camunda 7 construct is reported as `convertible`, `manual` or `unsupported`, with a Camunda 8 suggestion and an `applied` flag. Mechanical conversions: external tasks → `zeebe:taskDefinition`; `camunda:inputOutput` (including list/map) → `zeebe:ioMapping`; JUEL conditions, timers and completion conditions → FEEL; user-task assignment, schedule, priority and forms; `decisionRef` → `zeebe:calledDecision`; call-activity `calledElement` and `camunda:in/out` → `zeebe:calledElement` with pinned propagation flags; multi-instance collections; FEEL/JUEL script tasks; version tag and properties; retry counts. Java delegates get a job type by a documented naming rule, with the original kept as a task header. Async continuations are dropped with an explanation. Listeners, Groovy/JS scripts, correlation keys and retry back-offs are reported as manual; history TTL, starter groups, initiator, take/timeout listeners and standard loops as unsupported. Converted output is marked `Camunda Cloud 8.8.0`, deploy-lints clean for its convertible parts, and round-trips.
+- JUEL → FEEL only where provable (paths, literals, comparisons, and/or/not, `+ - * /`). Method calls, `empty`, ternary, indexing, `%`, engine objects and templated text are refused with a reason.
+- The parser used to drop foreign attributes on multi-instance loops and event definitions; that is now fixed in core (see below).
+- `casen migrate c7 <files...> [--out dir] [--check] [--format text|json] [--force]`: writes `<name>.c8.bpmn` (formatting preserved) or into `--out`, never overwrites without `--force`, prints the report grouped by severity, and `--check` exits 1 while manual or unsupported work remains.
+- Docs: new guide "Migrate from Camunda 7", `cli/migrate.md`, Conformance Camunda 7 paragraph, CLI README section. Three written-for-repo Camunda 7 fixtures with provenance; 138 new tests.
+- Follow-up after the parser started keeping `unknownAttributes` on loops and event definitions: `convertCamunda7` reads `camunda:collection` / `camunda:elementVariable`, the message-throw implementation and error/conditional variables from the model, removes each converted attribute and keeps the unconverted ones. The source-XML recovery is removed; `sourceXml` is still accepted and ignored. Regression test: same result with and without `sourceXml`, and no converted `camunda:` attribute left in the export.
+
+## 2026-09-24 — Auto-layout routing at parity with bpmn-auto-layout 2.0
+
+Closed the routing gap in [the bpmn-auto-layout evaluation](bpmn-auto-layout-evaluation.md#routing-parity-pass-2026-09-24). On upstream's 160 fixtures: **connections through other shapes 41 → 0** (upstream 10), **connections cutting across their own endpoint 83 → 0** (a new metric; upstream 0), **crossings 234 → 184** (upstream 200). Diagram area is 140.3 Mpx and edge length 420k, against upstream's 140.8 Mpx and 428k. Median runtime is 0.35 ms, against upstream's 4.4 ms, measured back to back.
+
+- **Pool ordering weighs where each message leaves its pool** (`layout/collaboration/ordering.ts`). A partner pool goes on the side its messages already leave from, so the stems stop crossing the whole process. Message × sequence crossings 107 → 65.
+- **Obstacle-aware routing** (`layout/orthogonal.ts`): an A* search over an orthogonal visibility grid, with bends and crossings charged as extra length. It is the sequence router's last resort and drives a final per-plane repair pass (`layout/repair.ts`) that re-routes any sequence flow, message flow or association that passes through, or runs along, an unrelated shape or cuts across its own endpoint.
+- **Detours dock on the side that faces their corridor** (`semantic/route.ts`). A detour used to dock on the far side of one end and cut across that shape — 83 times in the fixtures and 22 times in the round-trip corpus.
+- **Pools with lanes are framed by the extent of their lanes** (`bpmn/auto-layout.ts`). The frame took the first lane's y and the sum of all lane heights, counting nested lanes twice, so some pools (`healthcare-priorauth`) were drawn beside their own content.
+- **Annotations are packed clear of routed connections.**
+
+The metric code is committed as `packages/core/scripts/layout-quality.mjs` and reproduces the previously published figures exactly. The `/auto-layout` page has a comparison table that says where we are still behind: bends (815 vs 703), message × sequence crossings (63 vs 54), and distance from the hand-made layouts (264 vs 234 px). New tests in `layout-routing.test.ts` and `grid-layout.test.ts`.
+
 ## 2026-09-24 — Drop: review comments with @mentions; co-editing decision
 
 - **Comments** on a whole file or a BPMN element (anchored by element id), with replies, resolve/reopen, and edit/delete of your own comments. There are no accounts: a per-drop author token (the server stores only its hash) is issued on the first comment, after one Turnstile challenge where configured.

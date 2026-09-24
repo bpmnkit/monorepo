@@ -11,8 +11,11 @@ for outbound and inbound connectors. `applyTemplateToElement` writes the inbound
 the element's message and its `zeebe:subscription` correlation key, where Camunda reads them,
 and applies `zeebe:linkedResource` bindings.
 
-Camunda 7 (`camunda:` extensions) is not supported: those attributes and elements are kept on
-round trip but not modelled.
+Camunda 7 (`camunda:` extensions) is not modelled: those attributes and elements are kept on
+round trip, including those on multi-instance loops and event definitions.
+`convertCamunda7()` / `casen migrate c7` convert
+Camunda 7 models to Camunda 8 and report what needs manual work. See
+[Migrate from Camunda 7](/docs/guides/migrate-from-camunda-7).
 
 ---
 Source: https://bpmnkit.com/docs/getting-started/conformance

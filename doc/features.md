@@ -1,5 +1,17 @@
 # Features
 
+## Camunda 7 → 8 migration (2026-09-24)
+
+- `convertCamunda7` / `analyzeCamunda7` / `translateJuelToFeel` in `@bpmnkit/core` and
+  `casen migrate c7`: converts `camunda:` extensions to `zeebe:` ones, translates provable JUEL
+  to FEEL, and reports every construct as convertible, manual or unsupported.
+
+## Auto-layout routing parity (2026-09-24)
+
+- No connection routed through a shape on bpmn-auto-layout 2.0's 160 fixtures (upstream: 10),
+  fewer crossings than upstream, at about 15× its speed; `packages/core/scripts/layout-quality.mjs`
+  reproduces the comparison.
+
 ## BPMN in Markdown — `@bpmnkit/markdown` (2026-09-24)
 
 - ```` ```bpmn ```` and ```` ```bpmn-compact ```` fences rendered to accessible, themeable inline

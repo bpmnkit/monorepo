@@ -52,8 +52,8 @@ are intentional:
 only. On other elements — lanes, artifacts, root-level messages and errors —
 `documentation` and `extensionElements` round-trip, but any other unrecognised child does
 not. A second `<documentation>` on the same element is also dropped;
-only the first is kept, and attributes on `<documentation>` itself (`id`, `textFormat`) are
-not kept. If you need one of these, open an issue rather than working around it.
+only the first is kept, with its attributes. If you need one of these, open an issue rather
+than working around it.
 
 `exportPreserving` goes further than `Bpmn.export`: it writes the model into the original
 file's own bytes, so an unchanged model comes back byte for byte — including a coordinate
