@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-09-24 — Product tiers and Reebe positioning (roadmap P4 #28, #29)
+
+- Every product is now tiered publicly: **Core** (the 12 packages at 1.0), **Tools** (maintained, 0.x: proxy/MCP server, markdown, camunda-docspack, patterns, worker-client, cli-sdk, create-casen-plugin, casen plugins, ui, profiles, astro-shared, VS Code extension, Drop) and **Experimental** (operate, user-tasks, reebe-wasm, Reebe, Studio, desktop, proxy-rs).
+- One source of truth: `TIERS`, `TIER` and `APPS` in `scripts/published-packages.mjs`. `check-packages.mjs` fails if a published package has no tier, if Core differs from `STABLE`, or if an Experimental product reaches 1.0.
+- `generate-ecosystem.mjs` writes each product's tier and docs page; the homepage package list and every product doc page show a mono tier label with its one-line promise.
+- READMEs carry a tier badge and line; the root README gets a generated tier table. `stability.md` gains a "Product tiers" section, checked against the data by a landing test.
+- Reebe is described everywhere as a dev/test engine, not for production: a clean-room implementation of the Zeebe API from public documentation, not affiliated with Camunda, with a trademark notice. Dropped the unbacked "near-native performance" claim from reebe-wasm.
+- Studio is labelled Experimental and left in place; Operate stays Experimental after its quality pass.
+- Trademark review: no renames. Flagged `@bpmnkit/camunda-docspack`, the `Operate` name and "Reebe" for the maintainer to decide.
+
 ## 2026-09-24 — Contributor onboarding
 
 - CONTRIBUTING: a "Where to start" table of seven real, scoped starter tasks (label-style fonts in the renderer, sub-process scope in the approximate bpmnlint rules, self-closing elements in the Reebe parser, terminate inside a sub-process in the simulator, duplicate SVG ids in `@bpmnkit/markdown`, URL encoding in Operate, type errors in `apps/examples`), and a "Who maintains what" section naming the maintainer of record and how to become a co-maintainer.

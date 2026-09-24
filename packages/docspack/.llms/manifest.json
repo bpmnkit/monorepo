@@ -122,7 +122,7 @@
 		{
 			"id": "cli.casen.worker-commands",
 			"file": "chunks/cli.casen.worker-commands.md",
-			"tokens": 272,
+			"tokens": 342,
 			"tags": [
 				"cli",
 				"casen",
@@ -907,7 +907,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 836,
+			"tokens": 892,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -966,7 +966,7 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 234,
+			"tokens": 241,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -1091,6 +1091,31 @@
 			]
 		},
 		{
+			"id": "getting-started.stability.product-tiers",
+			"file": "chunks/getting-started.stability.product-tiers.md",
+			"tokens": 419,
+			"tags": [
+				"getting-started",
+				"stability",
+				"product",
+				"tiers"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"@bpmnkit/canvas",
+				"@bpmnkit/editor",
+				"@bpmnkit/plugins",
+				"@bpmnkit/engine",
+				"@bpmnkit/feel",
+				"@bpmnkit/api",
+				"@bpmnkit/ascii",
+				"@bpmnkit/docspack",
+				"@bpmnkit/connector-gen",
+				"@bpmnkit/connectors",
+				"@bpmnkit/cli"
+			]
+		},
+		{
 			"id": "getting-started.stability.versions-are-per-package-not-per-repo",
 			"file": "chunks/getting-started.stability.versions-are-per-package-not-per-repo.md",
 			"tokens": 179,
@@ -1179,7 +1204,7 @@
 		{
 			"id": "getting-started.stability.support-window",
 			"file": "chunks/getting-started.stability.support-window.md",
-			"tokens": 497,
+			"tokens": 510,
 			"tags": [
 				"getting-started",
 				"stability",

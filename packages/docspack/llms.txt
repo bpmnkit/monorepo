@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 324 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 325 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -19,7 +19,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [casen CLI — Plugins](.llms/chunks/cli.casen.plugins.md) — 270 tokens
 - [casen CLI — BPMN generation pipeline](.llms/chunks/cli.casen.bpmn-generation-pipeline.md) — 341 tokens
 - [casen CLI — AIKit Skills](.llms/chunks/cli.casen.aikit-skills.md) — 196 tokens
-- [casen CLI — Worker commands](.llms/chunks/cli.casen.worker-commands.md) — 272 tokens
+- [casen CLI — Worker commands](.llms/chunks/cli.casen.worker-commands.md) — 342 tokens
 - [casen CLI — MCP Server Mode](.llms/chunks/cli.casen.mcp-server-mode.md) — 204 tokens
 - [casen connector](.llms/chunks/cli.connector.md) — 166 tokens
 - [casen connector — Browse the bundled OOTB catalog](.llms/chunks/cli.connector.browse-the-bundled-ootb-catalog.md) — 213 tokens
@@ -76,11 +76,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Conformance](.llms/chunks/getting-started.conformance.md) — 523 tokens
 - [Conformance — BPMN 2.0 — model and round trip](.llms/chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md) — 241 tokens
 - [Conformance — BPMN Model Interchange (MIWG)](.llms/chunks/getting-started.conformance.bpmn-model-interchange-miwg.md) — 508 tokens
-- [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 836 tokens
+- [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 892 tokens
 - [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 226 tokens
 - [Conformance — Linting — bpmnlint compatibility](.llms/chunks/getting-started.conformance.linting-bpmnlint-compatibility.md) — 149 tokens
 - [Conformance — DMN 1.3](.llms/chunks/getting-started.conformance.dmn-1.3.md) — 135 tokens
-- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 234 tokens
+- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 241 tokens
 - [Installation](.llms/chunks/getting-started.installation.md) — 140 tokens
 - [Installation — SVG Canvas Viewer](.llms/chunks/getting-started.installation.svg-canvas-viewer.md) — 189 tokens
 - [Installation — Worker client](.llms/chunks/getting-started.installation.worker-client.md) — 145 tokens
@@ -90,12 +90,13 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Quick Start — Step 3: Deploy to Camunda 8](.llms/chunks/getting-started.quick-start.step-3-deploy-to-camunda-8.md) — 151 tokens
 - [Quick Start — What's next?](.llms/chunks/getting-started.quick-start.what-s-next.md) — 140 tokens
 - [Stability and Versioning — What this page is for](.llms/chunks/getting-started.stability.what-this-page-is-for.md) — 241 tokens
+- [Stability and Versioning — Product tiers](.llms/chunks/getting-started.stability.product-tiers.md) — 419 tokens
 - [Stability and Versioning — Versions are per package, not per repo](.llms/chunks/getting-started.stability.versions-are-per-package-not-per-repo.md) — 179 tokens
 - [Stability and Versioning — What counts as public API](.llms/chunks/getting-started.stability.what-counts-as-public-api.md) — 416 tokens
 - [Stability and Versioning — What is a breaking change](.llms/chunks/getting-started.stability.what-is-a-breaking-change.md) — 776 tokens
 - [Stability and Versioning — What is not a breaking change](.llms/chunks/getting-started.stability.what-is-not-a-breaking-change.md) — 262 tokens
 - [Stability and Versioning — Deprecation](.llms/chunks/getting-started.stability.deprecation.md) — 142 tokens
-- [Stability and Versioning — Support window](.llms/chunks/getting-started.stability.support-window.md) — 497 tokens
+- [Stability and Versioning — Support window](.llms/chunks/getting-started.stability.support-window.md) — 510 tokens
 
 ## guides
 

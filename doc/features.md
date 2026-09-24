@@ -1,5 +1,11 @@
 # Features
 
+## Product tiers (2026-09-24)
+
+- Core / Tools / Experimental, defined once in `scripts/published-packages.mjs`, enforced by
+  `check-packages.mjs`, and shown on the homepage, every product doc page, the stability page
+  and every README.
+
 ## `casen test` on Reebe: error propagation, user tasks, ad-hoc jobs (2026-09-24)
 
 - Reebe throws and catches errors and escalations across sub-processes, event sub-processes
