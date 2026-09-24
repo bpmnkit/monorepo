@@ -623,7 +623,9 @@ export async function runScenarioWasm(
 			getDecisionDmn,
 		)
 		for (const [k, v] of Object.entries(brtResultVars)) {
-			if (!(k in finalVariables)) finalVariables[k] = v
+			// Also when it is null: the output mapping ensureBrtResultVariableOutputs adds
+			// gives the variable null when Reebe's DMN evaluation had no result.
+			if (finalVariables[k] === undefined || finalVariables[k] === null) finalVariables[k] = v
 		}
 
 		// Reconstruct FEEL evaluations from SEQUENCE_FLOW_TAKEN events.
