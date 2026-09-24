@@ -1,4 +1,17 @@
-# Testing Processes — The virtual clock
+# Testing Processes — Messages
+
+```typescript
+const run = await t.start("order-process")
+await run.publishMessage("payment-confirmed") // the bpmn:message name, or its id
+```
+
+A message goes to the run you publish it on. If nothing in that run waits for the message,
+`publishMessage` throws. **Gaps:** a message cannot carry variables, and correlation keys
+are not evaluated. To set the variables a message would carry, complete an earlier job
+with them.
+
+
+## The virtual clock
 
 A `ProcessTest` puts engine timers on a virtual clock. A timer fires only when you advance
 the clock:

@@ -16,6 +16,8 @@ It gives you:
 - **Matchers** such as `toHaveCompleted()`, `toHavePassed([...])` and
   `toHaveVariables({...})`.
 - **Path coverage** of the flow nodes and sequence flows your runs reached.
+- **AI agent mocks** that script or replay which tools an agent calls. See
+  [Testing AI Agents](/docs/guides/testing-ai-agents).
 
 The simulator is not Zeebe. Before you rely on a test, read
 [what the simulator does not execute](#what-the-simulator-does-not-execute).

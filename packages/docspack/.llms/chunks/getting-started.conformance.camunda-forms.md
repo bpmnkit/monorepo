@@ -13,6 +13,7 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
 - TS simulator: conditional events, message start events of a top-level process, transaction
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
+  without a job worker (`activeElementsCollection` is not evaluated)
 - Reebe: complex gateway, ad-hoc sub-process, single-node only, no published comparison with
   Zeebe
 

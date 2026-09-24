@@ -1,5 +1,11 @@
 # Features
 
+## Agentic BPMN testing (2026-09-24)
+
+- `mockAiAgent` in `@bpmnkit/engine/testing` scripts an AI Agent's tool calls turn by turn
+  inside its ad-hoc sub-process, with record/replay cassettes, a `toHaveCalledTools` matcher
+  and tool coverage. The simulator runs ad-hoc sub-processes driven by a job worker.
+
 ## Camunda 7 → 8 migration (2026-09-24)
 
 - `convertCamunda7` / `analyzeCamunda7` / `translateJuelToFeel` in `@bpmnkit/core` and

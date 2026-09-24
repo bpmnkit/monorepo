@@ -36,6 +36,13 @@ step-through debugging, not for running production processes.
   and `completionCondition` with `numberOfInstances`, `numberOfActiveInstances`,
   `numberOfCompletedInstances` and `numberOfTerminatedInstances`. Each iteration has its own
   scope with `loopCounter`
+- Ad-hoc sub-processes with a `zeebe:taskDefinition` (the AI Agent Sub-process connector),
+  when a worker is registered for the job type. The job carries `adHocSubProcessElements`,
+  and the worker completes it with a job result:
+  `job.complete(vars, { type: "adHocSubProcess", activateElements, isCompletionConditionFulfilled, isCancelRemainingInstances })`.
+  Each activated element runs in its own scope with the variables it was given. When it ends,
+  `outputElement` is appended to `outputCollection` and a new job asks the worker again. A
+  completion without a job result completes the sub-process
 - Compensation: a compensation throw or end event runs the handlers (`isForCompensation`
   activities associated with a compensation boundary event) of the activities completed in
   its scope, including inside completed sub-processes, one after another in reverse

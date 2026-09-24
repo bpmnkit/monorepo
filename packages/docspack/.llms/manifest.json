@@ -907,7 +907,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 727,
+			"tokens": 743,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -966,14 +966,16 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 207,
+			"tokens": 218,
 			"tags": [
 				"getting-started",
 				"conformance",
 				"camunda",
 				"forms"
 			],
-			"entities": []
+			"entities": [
+				"activeElementsCollection"
+			]
 		},
 		{
 			"id": "getting-started.installation",
@@ -2441,9 +2443,133 @@
 			]
 		},
 		{
+			"id": "guides.testing-ai-agents",
+			"file": "chunks/guides.testing-ai-agents.md",
+			"tokens": 145,
+			"tags": [
+				"guides",
+				"testing-ai-agents"
+			],
+			"entities": [
+				"@bpmnkit/engine/testing",
+				"fromAi()",
+				"createProcessTest"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.how-the-mock-plays-the-connector",
+			"file": "chunks/guides.testing-ai-agents.how-the-mock-plays-the-connector.md",
+			"tokens": 255,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"mock",
+				"plays",
+				"connector"
+			],
+			"entities": [
+				"adHocSubProcessElements",
+				"fromAi()",
+				"mockAiAgent",
+				"toolCalls",
+				"adHocSubProcess",
+				"toolCall",
+				"run.completeJob",
+				"outputElement",
+				"toolCallResults",
+				"responseText",
+				"responseJson"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.a-worked-example",
+			"file": "chunks/guides.testing-ai-agents.a-worked-example.md",
+			"tokens": 695,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"worked",
+				"example"
+			],
+			"entities": [
+				"agent.responseJson.resolved",
+				"toHaveCalledTools",
+				"toolCalls",
+				"remainingTurns",
+				"cassette()",
+				"restore()"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.when-the-test-must-fail",
+			"file": "chunks/guides.testing-ai-agents.when-the-test-must-fail.md",
+			"tokens": 238,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"test",
+				"must",
+				"fail"
+			],
+			"entities": [
+				"run.error",
+				"toHaveCompleted()",
+				"fromAi()",
+				"fromAi",
+				"data.limits.maxModelCalls"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.record-and-replay",
+			"file": "chunks/guides.testing-ai-agents.record-and-replay.md",
+			"tokens": 440,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"record",
+				"replay"
+			],
+			"entities": [
+				"AgentCassette",
+				"mockAiAgent",
+				"request.tools",
+				"request.toolCallResults"
+			]
+		},
+		{
+			"id": "guides.testing-ai-agents.tool-coverage",
+			"file": "chunks/guides.testing-ai-agents.tool-coverage.md",
+			"tokens": 154,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"tool",
+				"coverage"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.testing-ai-agents.limits",
+			"file": "chunks/guides.testing-ai-agents.limits.md",
+			"tokens": 152,
+			"tags": [
+				"guides",
+				"testing-ai-agents",
+				"limits"
+			],
+			"entities": [
+				"buildAiAgentSubProcess",
+				"activeElementsCollection",
+				"mockJob",
+				"errorExpression",
+				"agent.context",
+				"metrics.modelCalls"
+			]
+		},
+		{
 			"id": "guides.testing-processes",
 			"file": "chunks/guides.testing-processes.md",
-			"tokens": 255,
+			"tokens": 282,
 			"tags": [
 				"guides",
 				"testing-processes"
@@ -2507,27 +2633,28 @@
 		{
 			"id": "guides.testing-processes.ai-agents",
 			"file": "chunks/guides.testing-processes.ai-agents.md",
-			"tokens": 224,
+			"tokens": 235,
 			"tags": [
 				"guides",
 				"testing-processes",
 				"agents"
 			],
 			"entities": [
-				"publishMessage"
+				"mockAiAgent",
+				"mockJob"
 			]
 		},
 		{
-			"id": "guides.testing-processes.the-virtual-clock",
-			"file": "chunks/guides.testing-processes.the-virtual-clock.md",
-			"tokens": 261,
+			"id": "guides.testing-processes.messages",
+			"file": "chunks/guides.testing-processes.messages.md",
+			"tokens": 357,
 			"tags": [
 				"guides",
 				"testing-processes",
-				"virtual",
-				"clock"
+				"messages"
 			],
 			"entities": [
+				"publishMessage",
 				"ProcessTest",
 				"advanceTime",
 				"startTime",
@@ -2540,7 +2667,7 @@
 		{
 			"id": "guides.testing-processes.coverage",
 			"file": "chunks/guides.testing-processes.coverage.md",
-			"tokens": 207,
+			"tokens": 221,
 			"tags": [
 				"guides",
 				"testing-processes",
@@ -2553,7 +2680,7 @@
 		{
 			"id": "guides.testing-processes.matchers",
 			"file": "chunks/guides.testing-processes.matchers.md",
-			"tokens": 197,
+			"tokens": 231,
 			"tags": [
 				"guides",
 				"testing-processes",
@@ -2561,13 +2688,14 @@
 			],
 			"entities": [
 				"toHaveCompleted()",
-				"RegExp"
+				"RegExp",
+				"mockAiAgent"
 			]
 		},
 		{
 			"id": "guides.testing-processes.what-the-simulator-does-not-execute",
 			"file": "chunks/guides.testing-processes.what-the-simulator-does-not-execute.md",
-			"tokens": 348,
+			"tokens": 363,
 			"tags": [
 				"guides",
 				"testing-processes",
@@ -4263,7 +4391,7 @@
 		{
 			"id": "packages.engine.overview",
 			"file": "chunks/packages.engine.overview.md",
-			"tokens": 840,
+			"tokens": 955,
 			"tags": [
 				"packages",
 				"engine",

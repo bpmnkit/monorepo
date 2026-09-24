@@ -7,6 +7,7 @@ they took:
 const report = t.coverage()
 report.elements        // { total: 14, covered: 12, percent: 85.7, uncovered: ["end_cancel", ...] }
 report.flows           // the same, for sequence flows
+report.tools           // the same, for the tools of AI agents
 report.processes       // one entry per deployed process
 
 console.log(formatCoverage(report))

@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-09-24 — Agentic BPMN testing: deterministic AI agent mocks, cassettes and tool coverage
+
+- `@bpmnkit/engine` runs an ad-hoc sub-process that has a job worker (the AI Agent Sub-process connector) with Zeebe semantics: the job carries `adHocSubProcessElements` with `fromAi()` parameters, the worker completes it with an `adHocSubProcess` job result (`activateElements`, `isCompletionConditionFulfilled`, `isCancelRemainingInstances`), each tool runs in an isolated scope, and `outputElement` results collect into `outputCollection` (`toolCallResults`) before the worker is asked again. A completion without a job result still completes the sub-process, so existing mocks are unchanged. New types `JobResult`, `AdHocSubProcessJobResult`, `AdHocActivateElement`, `AdHocSubProcessElement`, `AdHocToolParameter`; `job:created` carries `elementId`.
+- `@bpmnkit/engine/testing`: `mockAiAgent(elementId, turns | cassette | handler)` plays the connector turn by turn (`{ toolCalls }` or `{ responseText, responseJson }`), with a `toolCall` variable for `fromAi()` mappings and an `agent` response at the end. Unknown tools, arguments that do not match `fromAi()` parameters, an exhausted script and `maxModelCalls` fail the run with a clear message. New matcher `toHaveCalledTools`.
+- Record and replay: `AgentCassette` (versioned JSON) with `parseAgentCassette` / `readAgentCassette` / `writeAgentCassette`; `handle.cassette()` records what a user-supplied handler decided. No model or network calls.
+- `coverage().tools` and `formatCoverage` report which AI agent tools the tests called.
+- Tests: `packages/engine/tests/ai-agent.test.ts` (23) and end-to-end tests over the `ai-agent-tool-loop` and `ai-orchestrator-workers` templates in `packages/patterns/tests/ai-agent-testing.test.ts`.
+- Docs: new guide `guides/testing-ai-agents.md`; updated testing-processes, engine package page, conformance and the engine README.
+- Not covered yet: the AI Agent *Task* variant with a separate native ad-hoc sub-process (`activeElementsCollection`), and the connector's `errorExpression`. The `agent.context` shape is a best guess and needs checking against a real Camunda run.
+
 ## 2026-09-24 — @bpmnkit/operate: quality pass towards 1.0
 
 - Fixed "Retry Job": it called a non-existent `PATCH /jobs/{key}/retries`; it now sends `PATCH /jobs/{key}` with `{ changeset: { retries: 3 } }`.

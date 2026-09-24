@@ -12,7 +12,8 @@ most likely to affect a test are:
   sub-process and is lost when it completes. Zeebe propagates it to the process. To keep
   such a variable, pass it as a start variable.
 - Message variables and correlation keys (see [Messages](#messages)).
-- Tools inside an ad-hoc sub-process (see [AI agents](#ai-agents)).
+- Inner activities of an ad-hoc sub-process without a task definition. An AI agent's tools
+  do run (see [AI agents](#ai-agents)).
 
 Engine timers are module-level, so the `ProcessTest` created last drives them until it is
 disposed. Use one `ProcessTest` for each test file. This is the `beforeAll` pattern above.
