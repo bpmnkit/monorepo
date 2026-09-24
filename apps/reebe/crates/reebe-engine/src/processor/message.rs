@@ -5,6 +5,7 @@ use reebe_db::state::messages::Message;
 use crate::engine::EngineState;
 use crate::error::{EngineError, EngineResult};
 use crate::key_gen::KeyGenerator;
+use super::catch_event::{trigger, CatchRef, Triggered};
 use super::{CommandToWrite, EventToWrite, RecordProcessor, Writers};
 
 pub struct MessageProcessor;
@@ -90,7 +91,7 @@ impl MessageProcessor {
             .await
             .unwrap_or_default();
 
-        for sub in subs {
+        for sub in subs.into_iter().filter(|s| s.state == "OPENED") {
             writers.commands.push(CommandToWrite {
                 value_type: "MESSAGE_SUBSCRIPTION".to_string(),
                 intent: "CORRELATE".to_string(),
@@ -137,7 +138,25 @@ impl MessageProcessor {
             .or_else(|| payload["elementInstanceKey"].as_i64())
             .ok_or_else(|| EngineError::InvalidState("Missing elementInstanceKey".to_string()))?;
 
-        state.backend.update_message_subscription_state(sub_key, "CORRELATED").await?;
+        let message_name = payload["messageName"].as_str().unwrap_or("");
+        let variables = payload.get("variables").cloned().unwrap_or(serde_json::Value::Null);
+        // The subscription's owner is the waiting catch event or receive task, an
+        // activity with a message boundary event, or an event-based gateway.
+        let outcome = trigger(
+            state,
+            writers,
+            element_instance_key,
+            CatchRef::Message(message_name),
+            variables,
+        )
+        .await?;
+        if outcome == Triggered::Ignored {
+            return Ok(());
+        }
+        // A non-interrupting boundary event keeps its subscription open.
+        if outcome == Triggered::Done {
+            state.backend.update_message_subscription_state(sub_key, "CORRELATED").await?;
+        }
 
         writers.events.push(EventToWrite {
             value_type: "MESSAGE_SUBSCRIPTION".to_string(),
@@ -147,28 +166,6 @@ impl MessageProcessor {
                 "subscriptionKey": sub_key.to_string(),
                 "elementInstanceKey": element_instance_key.to_string(),
                 "tenantId": tenant_id,
-            }),
-        });
-
-        // Look up the element instance to get full context for COMPLETE_ELEMENT
-        let ei = state.backend.get_element_instance_by_key(element_instance_key).await?;
-        let flow_scope_key = ei.flow_scope_key.unwrap_or(ei.process_instance_key);
-
-        writers.commands.push(CommandToWrite {
-            value_type: "PROCESS_INSTANCE".to_string(),
-            intent: "COMPLETE_ELEMENT".to_string(),
-            key: element_instance_key,
-            payload: serde_json::json!({
-                "elementInstanceKey": element_instance_key.to_string(),
-                "processInstanceKey": ei.process_instance_key.to_string(),
-                "processDefinitionKey": ei.process_definition_key.to_string(),
-                "elementId": ei.element_id,
-                "elementType": ei.element_type,
-                "bpmnProcessId": ei.bpmn_process_id,
-                "flowScopeKey": flow_scope_key.to_string(),
-                "tenantId": tenant_id,
-                // Merged into the process like a job's variables.
-                "variables": payload.get("variables").cloned().unwrap_or(serde_json::Value::Null),
             }),
         });
 

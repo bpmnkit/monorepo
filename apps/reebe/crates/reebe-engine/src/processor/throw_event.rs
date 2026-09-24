@@ -257,7 +257,7 @@ fn is_active(ei: &ElementInstance) -> bool {
 }
 
 /// Terminate `ei` and everything running inside it.
-async fn terminate_subtree(
+pub(crate) async fn terminate_subtree(
     state: &EngineState,
     writers: &mut Writers,
     ei: &ElementInstance,
@@ -298,7 +298,13 @@ async fn terminate_one(
     ei: &ElementInstance,
 ) -> EngineResult<()> {
     state.backend.update_element_instance_state(ei.key, "TERMINATED").await?;
-    state.backend.cancel_jobs_by_element_instance(ei.key).await?;
+    super::catch_event::close_waits(state, ei.key).await?;
+    // A terminated call activity takes the process instance it called with it.
+    if ei.element_type == "CALL_ACTIVITY" {
+        for child in state.backend.get_child_process_instance_keys(ei.key).await? {
+            Box::pin(terminate_process_instance(state, writers, child)).await?;
+        }
+    }
     writers.events.push(EventToWrite {
         value_type: "PROCESS_INSTANCE".to_string(),
         intent: "ELEMENT_TERMINATED".to_string(),

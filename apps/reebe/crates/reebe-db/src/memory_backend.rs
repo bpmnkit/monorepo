@@ -415,6 +415,37 @@ impl StateBackend for InMemoryBackend {
         Ok(count)
     }
 
+    async fn cancel_element_instance_waits(&self, element_instance_key: i64) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for timer in store.timers.values_mut() {
+            if timer.element_instance_key == Some(element_instance_key) && timer.state == "ACTIVE" {
+                timer.state = "CANCELED".to_string();
+            }
+        }
+        for task in store.user_tasks.values_mut() {
+            if task.element_instance_key == element_instance_key && task.state == "CREATED" {
+                task.state = "CANCELED".to_string();
+            }
+        }
+        for sub in store.message_subscriptions.values_mut() {
+            if sub.element_instance_key == element_instance_key
+                && matches!(sub.state.as_str(), "OPENING" | "OPENED")
+            {
+                sub.state = "CLOSED".to_string();
+            }
+        }
+        store.signal_subscriptions.retain(|_, s| s.element_instance_key != element_instance_key);
+        Ok(())
+    }
+
+    async fn get_child_process_instance_keys(&self, parent_element_instance_key: i64) -> Result<Vec<i64>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.process_instances.values()
+            .filter(|p| p.parent_element_instance_key == Some(parent_element_instance_key) && p.state == "ACTIVE")
+            .map(|p| p.key)
+            .collect())
+    }
+
     async fn mark_timed_out_jobs(&self) -> Result<u64> {
         let now = Utc::now();
         let mut store = self.store.lock().unwrap();

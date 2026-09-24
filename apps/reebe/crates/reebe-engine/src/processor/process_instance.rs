@@ -227,6 +227,7 @@ impl RecordProcessor for ProcessInstanceCancelProcessor {
         for ei in &instances {
             if matches!(ei.state.as_str(), "ACTIVATING" | "ACTIVATED" | "COMPLETING") {
                 state.backend.update_element_instance_state(ei.key, "TERMINATED").await?;
+                super::catch_event::close_waits(state, ei.key).await?;
                 writers.events.push(EventToWrite {
                     value_type: "PROCESS_INSTANCE".to_string(),
                     intent: "ELEMENT_TERMINATED".to_string(),

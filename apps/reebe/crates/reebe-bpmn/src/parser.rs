@@ -258,6 +258,8 @@ struct ParserState {
     current_text: String,
     // Pending event definition being built
     pending_event_def: Option<EventDefinition>,
+    // `isSequential` of the `<bpmn:multiInstanceLoopCharacteristics>` being parsed
+    pending_mi_sequential: Option<bool>,
 }
 
 impl ParserState {
@@ -272,6 +274,7 @@ impl ParserState {
             pending_correlation_key: None,
             current_text: String::new(),
             pending_event_def: None,
+            pending_mi_sequential: None,
         }
     }
 
@@ -494,6 +497,10 @@ impl ParserState {
             "extensionElements" => {
                 self.stack.push(ParseContext::ExtensionElements);
             }
+            "multiInstanceLoopCharacteristics" => {
+                self.pending_mi_sequential =
+                    Some(get_attr(e, "isSequential").is_some_and(|v| v == "true"));
+            }
             "timerEventDefinition" => {
                 self.pending_event_def = Some(EventDefinition::Timer(TimerEventDefinition {
                     timer_type: TimerType::Duration,
@@ -683,9 +690,11 @@ impl ParserState {
                 self.apply_task_listener(listener);
             }
             "loopCharacteristics" => {
-                let is_sequential = get_attr(e, "isSequential")
-                    .map(|v| v == "true")
-                    .unwrap_or(false);
+                // `isSequential` belongs on `<bpmn:multiInstanceLoopCharacteristics>`; the
+                // attribute on `zeebe:loopCharacteristics` is kept for older documents.
+                let is_sequential = self.pending_mi_sequential.unwrap_or_else(|| {
+                    get_attr(e, "isSequential").is_some_and(|v| v == "true")
+                });
                 let input_collection = get_attr(e, "inputCollection").unwrap_or_default();
                 let input_element = get_attr(e, "inputElement");
                 let output_collection = get_attr(e, "outputCollection");
@@ -789,6 +798,16 @@ impl ParserState {
                 self.current_text.clear();
                 // Apply to the most recently added sequence flow
                 self.apply_last_flow_condition(expr);
+            }
+            "completionCondition" => {
+                let expr = self.current_text.trim().to_string();
+                self.current_text.clear();
+                if let Some(Some(mi)) = self.current_multi_instance_mut() {
+                    mi.completion_condition = Some(expr);
+                }
+            }
+            "multiInstanceLoopCharacteristics" => {
+                self.pending_mi_sequential = None;
             }
             "incoming" => {
                 let id = self.current_text.clone().trim().to_string();
@@ -1224,9 +1243,28 @@ impl ParserState {
         }
     }
 
+    /// The multi-instance slot of the innermost activity being parsed.
+    fn current_multi_instance_mut(&mut self) -> Option<&mut Option<MultiInstanceLoopCharacteristics>> {
+        for ctx in self.stack.iter_mut().rev() {
+            match ctx {
+                ParseContext::ServiceTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::UserTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::ReceiveTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::ScriptTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::SendTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::BusinessRuleTask(t) => return Some(&mut t.multi_instance),
+                ParseContext::CallActivity(t) => return Some(&mut t.multi_instance),
+                ParseContext::SubProcess(t) => return Some(&mut t.multi_instance),
+                _ => {}
+            }
+        }
+        None
+    }
+
     fn apply_multi_instance(&mut self, mi: MultiInstanceLoopCharacteristics) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
+                ParseContext::BusinessRuleTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::ServiceTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::UserTask(t) => { t.multi_instance = Some(mi); return; }
                 ParseContext::ReceiveTask(t) => { t.multi_instance = Some(mi); return; }

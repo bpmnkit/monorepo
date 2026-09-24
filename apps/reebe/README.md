@@ -317,9 +317,8 @@ REEBE_DATABASE__URL=postgres://reebe:reebe@localhost:5432/reebe REEBE_REQUIRE_DB
   a server you care about.
 - `REEBE_REQUIRE_DB=1` makes the tests fail, not skip, when the URL is missing or the database
   cannot be reached. CI (`.github/workflows/reebe.yml`) sets it.
-- Some tests are `#[ignore]`d with the reason in the attribute: engine gaps (timer boundary
-  events, event-based gateway exclusivity, multi-instance on tasks) and a throughput
-  benchmark. Run them with `cargo test --workspace -- --ignored`.
+- The throughput benchmark is `#[ignore]`d, with the reason in the attribute. Run it with
+  `cargo test --workspace -- --ignored`.
 - There is no SQLite test suite. CI only checks that the embedded build compiles
   (`cargo check -p reebe-server --no-default-features --features embedded`).
 
@@ -408,7 +407,12 @@ Reports PI/s (process instances per second), average latency, and error count.
 - Job activation (including long polling), completion, failure, and error
 - Message publication and correlation
 - Signal broadcasting
-- Timer events (boundary, intermediate, start)
+- Timer events (intermediate catch and boundary; timer start events are not scheduled yet)
+- Timer, message and signal boundary events, interrupting and non-interrupting: armed when
+  the activity starts and cancelled when it ends; a timer cycle repeats
+- Event-based gateways: the first event wins and the others are cancelled
+- Multi-instance (parallel and sequential) on every task type, sub-process and call
+  activity, with `inputElement`, `outputCollection`/`outputElement` and `completionCondition`
 - Variables (get, update, search)
 - Incidents (search, resolve)
 - User tasks

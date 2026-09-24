@@ -10,6 +10,9 @@ pub mod signal;
 pub mod identity;
 pub mod variable;
 pub(crate) mod throw_event;
+pub(crate) mod catch_event;
+pub(crate) mod scope;
+pub(crate) mod multi_instance;
 
 pub use deployment::DeploymentProcessor;
 pub use process_instance::{ProcessInstanceCreationProcessor, ProcessInstanceCancelProcessor};

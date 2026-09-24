@@ -470,7 +470,6 @@ async fn test_timer_accuracy() {
 /// separate jobs are created (one per item), and that completing all 3 causes
 /// the process to reach COMPLETED.
 #[tokio::test]
-#[ignore = "engine gap: multi-instance is implemented for sub-processes only, so a multi-instance service task creates one job"]
 async fn test_multi_instance_parallel() {
     let Some((pool, handle)) = setup().await else {
         eprintln!("REEBE_DATABASE__URL not set — skipping test_multi_instance_parallel");
