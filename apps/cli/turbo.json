@@ -1,0 +1,25 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"dependsOn": [
+				"^build",
+				"^build:wasm",
+				"@bpmnkit/canvas#build",
+				"@bpmnkit/editor#build",
+				"@bpmnkit/plugins#build",
+				"@bpmnkit/ui#build"
+			],
+			"outputs": ["dist/**"]
+		},
+		"typecheck": {
+			"dependsOn": [
+				"^build",
+				"@bpmnkit/canvas#build",
+				"@bpmnkit/editor#build",
+				"@bpmnkit/plugins#build",
+				"@bpmnkit/ui#build"
+			]
+		}
+	}
+}

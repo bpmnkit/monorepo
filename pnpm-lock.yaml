@@ -181,6 +181,18 @@ importers:
       '@biomejs/biome':
         specifier: ^1.9.4
         version: 1.9.4
+      '@bpmnkit/canvas':
+        specifier: workspace:*
+        version: link:packages/canvas
+      '@bpmnkit/editor':
+        specifier: workspace:*
+        version: link:packages/editor
+      '@bpmnkit/plugins':
+        specifier: workspace:*
+        version: link:packages/plugins
+      '@bpmnkit/ui':
+        specifier: workspace:*
+        version: link:packages/ui
       '@changesets/cli':
         specifier: ^2.29.8
         version: 2.29.8(@types/node@22.19.11)
