@@ -97,6 +97,14 @@ function el(
 // Event definitions
 // ---------------------------------------------------------------------------
 
+/** Modelled attributes followed by the ones the parser kept verbatim. */
+function withUnknown(
+	attrs: Record<string, string>,
+	owner: { unknownAttributes?: Record<string, string> },
+): Record<string, string> {
+	return owner.unknownAttributes ? { ...attrs, ...owner.unknownAttributes } : attrs
+}
+
 function serializeEventDefinitions(defs: BpmnEventDefinition[], bp: string): XmlElement[] {
 	return defs.map((d): XmlElement => {
 		switch (d.type) {
@@ -111,31 +119,31 @@ function serializeEventDefinitions(defs: BpmnEventDefinition[], bp: string): Xml
 				if (d.timeCycle !== undefined) {
 					children.push(el(`${bp}timeCycle`, d.timeCycleAttributes ?? {}, [], d.timeCycle))
 				}
-				return el(`${bp}timerEventDefinition`, d.id ? { id: d.id } : {}, children)
+				return el(`${bp}timerEventDefinition`, withUnknown(d.id ? { id: d.id } : {}, d), children)
 			}
 			case "error": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.errorRef) attrs.errorRef = d.errorRef
-				return el(`${bp}errorEventDefinition`, attrs, [])
+				return el(`${bp}errorEventDefinition`, withUnknown(attrs, d), [])
 			}
 			case "escalation": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.escalationRef) attrs.escalationRef = d.escalationRef
-				return el(`${bp}escalationEventDefinition`, attrs, [])
+				return el(`${bp}escalationEventDefinition`, withUnknown(attrs, d), [])
 			}
 			case "message": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.messageRef) attrs.messageRef = d.messageRef
-				return el(`${bp}messageEventDefinition`, attrs, [])
+				return el(`${bp}messageEventDefinition`, withUnknown(attrs, d), [])
 			}
 			case "signal": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.signalRef) attrs.signalRef = d.signalRef
-				return el(`${bp}signalEventDefinition`, attrs, [])
+				return el(`${bp}signalEventDefinition`, withUnknown(attrs, d), [])
 			}
 			case "conditional": {
 				const attrs: Record<string, string> = {}
@@ -144,29 +152,29 @@ function serializeEventDefinitions(defs: BpmnEventDefinition[], bp: string): Xml
 				if (d.condition !== undefined) {
 					condChildren.push(el(`${bp}condition`, d.conditionAttributes ?? {}, [], d.condition))
 				}
-				return el(`${bp}conditionalEventDefinition`, attrs, condChildren)
+				return el(`${bp}conditionalEventDefinition`, withUnknown(attrs, d), condChildren)
 			}
 			case "link": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.name) attrs.name = d.name
-				return el(`${bp}linkEventDefinition`, attrs, [])
+				return el(`${bp}linkEventDefinition`, withUnknown(attrs, d), [])
 			}
 			case "cancel": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
-				return el(`${bp}cancelEventDefinition`, attrs, [])
+				return el(`${bp}cancelEventDefinition`, withUnknown(attrs, d), [])
 			}
 			case "terminate": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
-				return el(`${bp}terminateEventDefinition`, attrs, [])
+				return el(`${bp}terminateEventDefinition`, withUnknown(attrs, d), [])
 			}
 			case "compensate": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.activityRef) attrs.activityRef = d.activityRef
-				return el(`${bp}compensateEventDefinition`, attrs, [])
+				return el(`${bp}compensateEventDefinition`, withUnknown(attrs, d), [])
 			}
 			default: {
 				const _exhaustive: never = d
@@ -262,7 +270,7 @@ function serializeLoopCharacteristics(
 		)
 	}
 	children.push(...(lc.unknownChildren ?? []))
-	return [el(`${bp}multiInstanceLoopCharacteristics`, attrs, children)]
+	return [el(`${bp}multiInstanceLoopCharacteristics`, withUnknown(attrs, lc), children)]
 }
 
 // ---------------------------------------------------------------------------

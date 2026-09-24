@@ -72,6 +72,8 @@ export interface BpmnTimerEventDefinition {
 	timeDateAttributes?: Record<string, string>
 	timeCycle?: string
 	timeCycleAttributes?: Record<string, string>
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for error boundary / end events. */
@@ -79,6 +81,8 @@ export interface BpmnErrorEventDefinition {
 	type: "error"
 	id?: string
 	errorRef?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for escalation events. */
@@ -86,6 +90,8 @@ export interface BpmnEscalationEventDefinition {
 	type: "escalation"
 	id?: string
 	escalationRef?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for message events (receive / send). */
@@ -93,6 +99,8 @@ export interface BpmnMessageEventDefinition {
 	type: "message"
 	id?: string
 	messageRef?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for signal catch / throw events. */
@@ -100,6 +108,8 @@ export interface BpmnSignalEventDefinition {
 	type: "signal"
 	id?: string
 	signalRef?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for conditional catch events. */
@@ -109,6 +119,8 @@ export interface BpmnConditionalEventDefinition {
 	condition?: string
 	/** Attributes of the `<condition>` element, e.g. `xsi:type` and `language`. */
 	conditionAttributes?: Record<string, string>
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for link catch / throw events. */
@@ -116,18 +128,24 @@ export interface BpmnLinkEventDefinition {
 	type: "link"
 	id?: string
 	name?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for cancel boundary events (transaction scope). */
 export interface BpmnCancelEventDefinition {
 	type: "cancel"
 	id?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for terminate end events. */
 export interface BpmnTerminateEventDefinition {
 	type: "terminate"
 	id?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** Event definition for compensation boundary / throw events. */
@@ -135,6 +153,8 @@ export interface BpmnCompensateEventDefinition {
 	type: "compensate"
 	id?: string
 	activityRef?: string
+	/** Attributes the SDK does not model (e.g. `camunda:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /**
@@ -172,6 +192,8 @@ export interface BpmnMultiInstanceLoopCharacteristics {
 	 * modelled ones so a round trip cannot silently discard them.
 	 */
 	unknownChildren?: XmlElement[]
+	/** Attributes the SDK does not model (e.g. `camunda:collection`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------

@@ -911,6 +911,23 @@ class FlowNodeFrame extends Frame implements TextOwner {
 // Event definitions
 // ---------------------------------------------------------------------------
 
+/** An event definition's unmodelled attributes, spread into the definition when present. */
+function definitionExtras(
+	attrs: Attrs,
+	modelled: ReadonlySet<string>,
+): { unknownAttributes?: Attrs } {
+	const unknownAttributes = otherAttrs(attrs, modelled)
+	return unknownAttributes ? { unknownAttributes } : {}
+}
+
+const ERROR_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "errorRef"])
+const ESCALATION_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "escalationRef"])
+const MESSAGE_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "messageRef"])
+const SIGNAL_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "signalRef"])
+const LINK_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "name"])
+const COMPENSATE_DEF_ATTRS: ReadonlySet<string> = new Set(["id", "activityRef"])
+const LOOP_ATTRS: ReadonlySet<string> = new Set(["id", "isSequential"])
+
 function eventDefinitionFrame(
 	local: string,
 	attrs: Attrs,
@@ -922,35 +939,61 @@ function eventDefinitionFrame(
 		case "conditionalEventDefinition":
 			return new ConditionalDefinitionFrame(attrs, target)
 		case "errorEventDefinition":
-			target.push({ type: "error", id: attr(attrs, "id"), errorRef: attr(attrs, "errorRef") })
+			target.push({
+				type: "error",
+				id: attr(attrs, "id"),
+				errorRef: attr(attrs, "errorRef"),
+				...definitionExtras(attrs, ERROR_DEF_ATTRS),
+			})
 			return null
 		case "escalationEventDefinition":
 			target.push({
 				type: "escalation",
 				id: attr(attrs, "id"),
 				escalationRef: attr(attrs, "escalationRef"),
+				...definitionExtras(attrs, ESCALATION_DEF_ATTRS),
 			})
 			return null
 		case "messageEventDefinition":
-			target.push({ type: "message", id: attr(attrs, "id"), messageRef: attr(attrs, "messageRef") })
+			target.push({
+				type: "message",
+				id: attr(attrs, "id"),
+				messageRef: attr(attrs, "messageRef"),
+				...definitionExtras(attrs, MESSAGE_DEF_ATTRS),
+			})
 			return null
 		case "signalEventDefinition":
-			target.push({ type: "signal", id: attr(attrs, "id"), signalRef: attr(attrs, "signalRef") })
+			target.push({
+				type: "signal",
+				id: attr(attrs, "id"),
+				signalRef: attr(attrs, "signalRef"),
+				...definitionExtras(attrs, SIGNAL_DEF_ATTRS),
+			})
 			return null
 		case "linkEventDefinition":
-			target.push({ type: "link", id: attr(attrs, "id"), name: attr(attrs, "name") })
+			target.push({
+				type: "link",
+				id: attr(attrs, "id"),
+				name: attr(attrs, "name"),
+				...definitionExtras(attrs, LINK_DEF_ATTRS),
+			})
 			return null
 		case "cancelEventDefinition":
-			target.push({ type: "cancel", id: attr(attrs, "id") })
+			target.push({ type: "cancel", id: attr(attrs, "id"), ...definitionExtras(attrs, ID_ATTRS) })
 			return null
 		case "terminateEventDefinition":
-			target.push({ type: "terminate", id: attr(attrs, "id") })
+			target.push({
+				type: "terminate",
+				id: attr(attrs, "id"),
+				...definitionExtras(attrs, ID_ATTRS),
+			})
 			return null
 		case "compensateEventDefinition":
 			target.push({
 				type: "compensate",
 				id: attr(attrs, "id"),
 				activityRef: attr(attrs, "activityRef"),
+				...definitionExtras(attrs, COMPENSATE_DEF_ATTRS),
 			})
 			return null
 		default:
@@ -1010,6 +1053,7 @@ class TimerDefinitionFrame extends Frame implements TextOwner {
 			timeDateAttributes: partAttributes(this.date),
 			timeCycle: partText(this.cycle),
 			timeCycleAttributes: partAttributes(this.cycle),
+			...definitionExtras(this.attrs, ID_ATTRS),
 		})
 	}
 }
@@ -1059,6 +1103,7 @@ class ConditionalDefinitionFrame extends Frame implements TextOwner {
 			// Present but empty stays "", like a timer part: the element is still there.
 			condition: this.conditionSeen ? (this.condition?.trim() ?? "") : undefined,
 			...(this.conditionAttributes ? { conditionAttributes: this.conditionAttributes } : {}),
+			...definitionExtras(this.attrs, ID_ATTRS),
 		})
 	}
 }
@@ -1115,6 +1160,7 @@ class LoopFrame extends Frame implements TextOwner {
 			completionCondition: this.completionCondition,
 			extensionElements: this.extensionElements ?? [],
 			...(this.unknownChildren.length > 0 ? { unknownChildren: this.unknownChildren } : {}),
+			...definitionExtras(this.attrs, LOOP_ATTRS),
 		})
 	}
 }
