@@ -16,7 +16,11 @@ export function createFilterTable<T>(options: {
 	pageSize?: number
 }): {
 	el: HTMLElement
-	setRows(rows: T[]): void
+	/**
+	 * Replace the rows. Resets to the first page unless `keepPage` is set —
+	 * polling views pass it so a refresh does not throw the user back to page 1.
+	 */
+	setRows(rows: T[], keepPage?: boolean): void
 } {
 	let allRows: T[] = []
 	let searchQuery = ""
@@ -234,9 +238,10 @@ export function createFilterTable<T>(options: {
 
 	return {
 		el,
-		setRows(rows: T[]): void {
+		setRows(rows: T[], keepPage = false): void {
 			allRows = rows
-			currentPage = 0
+			// renderRows() clamps a kept page if the new data has fewer pages.
+			if (!keepPage) currentPage = 0
 			renderRows()
 		},
 	}

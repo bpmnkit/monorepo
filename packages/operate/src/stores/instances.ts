@@ -14,6 +14,10 @@ export interface InstancesFilter {
 	page?: number
 }
 
+/**
+ * @internal Exported for BPMN Kit Studio, which embeds the detail views. Not a
+ * stable API: it may change in any release. Use `createOperate()` instead.
+ */
 export class InstancesStore extends Store<InstancesPayload> {
 	connect(
 		proxyUrl: string,
@@ -35,7 +39,7 @@ export class InstancesStore extends Store<InstancesPayload> {
 			this.setUnsub(
 				createMockStream(
 					getFiltered,
-					(payload) => this.set({ data: payload, loading: false }),
+					(payload) => this.set({ data: payload, loading: false, error: null }),
 					interval,
 				),
 			)
@@ -44,14 +48,14 @@ export class InstancesStore extends Store<InstancesPayload> {
 
 		const params = new URLSearchParams({ topic: "instances" })
 		if (profile) params.set("profile", profile)
-		if (interval > 0) params.set("interval", String(interval))
+		params.set("interval", String(interval))
 		if (filter.state) params.set("state", filter.state)
 		if (filter.processDefinitionKey) params.set("processDefinitionKey", filter.processDefinitionKey)
 		if (filter.page) params.set("page", String(filter.page))
 		this.setUnsub(
 			createStream<InstancesPayload>(
 				`${proxyUrl}/operate/stream?${params}`,
-				(payload) => this.set({ data: payload, loading: false }),
+				(payload) => this.set({ data: payload, loading: false, error: null }),
 				(msg) => this.set({ error: msg, loading: false }),
 			),
 		)

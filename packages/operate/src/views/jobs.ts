@@ -60,7 +60,7 @@ export function createJobsView(store: JobsStore): {
 	el.appendChild(tableEl)
 
 	function render(): void {
-		setRows(store.state.data?.items ?? [])
+		setRows(store.state.data?.items ?? [], true)
 	}
 
 	const unsub = store.subscribe(render)
