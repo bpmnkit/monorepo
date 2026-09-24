@@ -12,6 +12,8 @@ import { Engine } from "../engine.js"
 import type { ProcessInstance } from "../instance.js"
 import type { Job, ProcessEvent } from "../types.js"
 import { parseZeebeExt } from "../zeebe.js"
+import { AiAgentMockState } from "./ai-agent.js"
+import type { AiAgentMock, AiAgentMockHandle } from "./ai-agent.js"
 import { VirtualClock, installClock, toMilliseconds, uninstallClock } from "./clock.js"
 import { CoverageIndex } from "./coverage.js"
 import type { CoverageReport } from "./coverage.js"
@@ -250,6 +252,33 @@ interface MockEntry {
 	readonly calls: TestJob[]
 }
 
+/** An ad-hoc sub-process run by a job worker — an AI agent {@link ProcessTest.mockAiAgent} can play. */
+interface AgentElement {
+	readonly jobType: string
+	readonly outputCollection: string | undefined
+}
+
+/** Every ad-hoc sub-process with a `zeebe:taskDefinition`, by element id. */
+function agentElements(processes: readonly BpmnProcess[]): Map<string, AgentElement> {
+	const agents = new Map<string, AgentElement>()
+	const walk = (elements: readonly BpmnFlowElement[]) => {
+		for (const el of elements) {
+			if (el.type === "adHocSubProcess") {
+				const ext = parseZeebeExt(el.extensionElements)
+				if (ext.taskDefinition !== undefined) {
+					agents.set(el.id, {
+						jobType: ext.taskDefinition.type,
+						outputCollection: ext.adHoc?.outputCollection || undefined,
+					})
+				}
+			}
+			if ("flowElements" in el) walk(el.flowElements)
+		}
+	}
+	for (const p of processes) walk(p.flowElements)
+	return agents
+}
+
 /** What a run needs from its test, kept off the public {@link ProcessTest} surface. */
 interface RunHost {
 	/** Total engine events seen — how `settle` knows the engine is idle. */
@@ -274,12 +303,15 @@ export class ProcessTest {
 	private readonly coverageIndex: CoverageIndex
 	private readonly messageIds = new Map<string, string>()
 	private readonly mocks = new Map<string, MockEntry>()
+	/** Job type → the AI agents {@link mockAiAgent} plays for it, by element id. */
+	private readonly agentMocks = new Map<string, Map<string, AiAgentMockState>>()
 	private readonly workerTypes = new Set<string>()
 	private readonly unregister: Array<() => void> = []
 	private readonly runs: SimulatorRun[] = []
 	/** job id → the run and element that created it, recorded from `job:created`. */
 	private readonly jobOrigins = new Map<string, { run: SimulatorRun; elementId: string }>()
 	private readonly processIds: string[]
+	private readonly agentElements: Map<string, AgentElement>
 	private readonly host: RunHost
 	private disposed = false
 
@@ -292,6 +324,7 @@ export class ProcessTest {
 		this.engine.deploy({ bpmn: [...bpmn], decisions: [...dmn], forms: [...forms] })
 		const processes = bpmn.flatMap((d) => d.processes)
 		this.processIds = processes.map((p) => p.id)
+		this.agentElements = agentElements(processes)
 		this.coverageIndex = new CoverageIndex(processes)
 		for (const defs of bpmn) {
 			for (const message of defs.messages) {
@@ -312,7 +345,7 @@ export class ProcessTest {
 				this.jobOrigins.set(jobId, { run, elementId })
 			},
 			flowsInto: (elementId, lastLeft) => this.coverageIndex.flowsInto(elementId, lastLeft),
-			isMocked: (type) => this.mocks.has(type),
+			isMocked: (type) => this.mocks.has(type) || this.agentMocks.has(type),
 		}
 	}
 
@@ -334,6 +367,7 @@ export class ProcessTest {
 		this.assertLive()
 		const entry: MockEntry = { mock, calls: [] }
 		this.mocks.set(type, entry)
+		this.agentMocks.delete(type)
 		this.ensureWorker(type)
 		return {
 			calls: entry.calls,
@@ -350,6 +384,47 @@ export class ProcessTest {
 	 */
 	mockConnector(type: string, mock: ConnectorMock): JobMockHandle {
 		return this.mockJob(type, connectorToJobMock(mock))
+	}
+
+	/**
+	 * Play the AI Agent connector for the ad-hoc sub-process `elementId`
+	 * deterministically. Each model call takes the next turn of the script or
+	 * cassette (or asks the handler): a turn with `toolCalls` activates those
+	 * tool elements, each with a `toolCall` variable their `fromAi()` mappings
+	 * read, and the agent asks again once their results are in `toolCallResults`;
+	 * a turn with `responseText` / `responseJson` ends the agent with its
+	 * `agent` response. Turns are consumed in order across every run of the
+	 * element. Unknown tools, wrong `fromAi()` arguments and a script that runs
+	 * out fail the run with a message saying so. Replaces a `mockJob` of the
+	 * agent's job type.
+	 */
+	mockAiAgent(elementId: string, mock: AiAgentMock): AiAgentMockHandle {
+		this.assertLive()
+		const target = this.agentElements.get(elementId)
+		if (target === undefined) {
+			const known = [...this.agentElements.keys()]
+			throw new Error(
+				`mockAiAgent: "${elementId}" is not an AI agent — an ad-hoc sub-process with a zeebe:taskDefinition — in the deployed BPMN. AI agents: ${known.join(", ") || "(none)"}`,
+			)
+		}
+		if (target.outputCollection === undefined) {
+			throw new Error(
+				`mockAiAgent: AI agent "${elementId}" has no zeebe:adHoc outputCollection, so tool results never reach it. Set outputCollection="toolCallResults".`,
+			)
+		}
+		let agents = this.agentMocks.get(target.jobType)
+		if (agents === undefined) {
+			agents = new Map()
+			this.agentMocks.set(target.jobType, agents)
+			this.mocks.delete(target.jobType)
+			this.ensureWorker(target.jobType)
+		}
+		const owner = agents
+		const agent = new AiAgentMockState(elementId, target.outputCollection, mock, () => {
+			if (owner.get(elementId) === agent) owner.delete(elementId)
+		})
+		agents.set(elementId, agent)
+		return agent
 	}
 
 	/** Start an instance of `processId` and run it until it waits or ends. */
@@ -442,6 +517,18 @@ export class ProcessTest {
 			processId: origin.run.processId,
 			variables: { ...job.variables },
 			headers: { ...job.headers },
+		}
+		const agents = this.agentMocks.get(job.type)
+		if (agents !== undefined) {
+			const agent = agents.get(testJob.elementId)
+			if (agent === undefined) {
+				throw new Error(
+					`No AI agent mock for "${testJob.elementId}" — call mockAiAgent("${testJob.elementId}", …). Mocked agents: ${[...agents.keys()].join(", ") || "(none)"}`,
+				)
+			}
+			// Runs of one ProcessTest are driven one at a time, so the run tells agent runs apart.
+			await agent.handle(job, testJob, `${origin.run.id}/${testJob.elementId}`)
+			return
 		}
 		const entry = this.mocks.get(job.type)
 		if (entry === undefined) {
@@ -599,8 +686,7 @@ class SimulatorRun implements ProcessRun {
 				this.lastLeft.set(event.elementId, ++this.leftCount)
 				break
 			case "job:created":
-				// Emitted synchronously right after the job's element is entered.
-				this.host.recordJob(event.job.id, this, this.lastEntered)
+				this.host.recordJob(event.job.id, this, event.elementId)
 				break
 		}
 	}

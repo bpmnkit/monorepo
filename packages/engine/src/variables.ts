@@ -6,22 +6,31 @@
 export class VariableStore {
 	private readonly scopes = new Map<string, Map<string, unknown>>()
 	private readonly parents = new Map<string, string>()
+	/** Scopes that keep new variables propagated from below instead of passing them to the root. */
+	private readonly isolated = new Set<string>()
 	/**
 	 * Merged root → scope views, built lazily and then kept current by every
 	 * write, so expression evaluation never re-merges the scope chain.
 	 */
 	private readonly snapshots = new Map<string, Record<string, unknown>>()
 
-	createScope(id: string, parentId?: string): void {
+	/**
+	 * Create a scope. An `isolated` scope — one activation inside an ad-hoc
+	 * sub-process — keeps a variable {@link propagate}d from below that no
+	 * scope defines yet, where the root would otherwise receive it.
+	 */
+	createScope(id: string, parentId?: string, isolated = false): void {
 		this.scopes.set(id, new Map())
 		if (parentId !== undefined) {
 			this.parents.set(id, parentId)
 		}
+		if (isolated) this.isolated.add(id)
 	}
 
 	removeScope(id: string): void {
 		this.scopes.delete(id)
 		this.parents.delete(id)
+		this.isolated.delete(id)
 		this.snapshots.delete(id)
 	}
 
@@ -55,20 +64,22 @@ export class VariableStore {
 	/**
 	 * Merge a variable the way Zeebe merges a job result or a message payload:
 	 * update it in the nearest scope, from `scopeId` upwards, that defines it —
-	 * or, when none does, create it in the root scope.
+	 * or, when none does, create it in the nearest isolated scope or else the root.
 	 */
 	propagate(scopeId: string, name: string, value: unknown): void {
 		let current: string | undefined = scopeId
 		let root = scopeId
+		let isolated: string | undefined
 		while (current !== undefined) {
 			if (this.hasOwn(current, name)) {
 				this.write(current, name, value)
 				return
 			}
+			if (isolated === undefined && this.isolated.has(current)) isolated = current
 			root = current
 			current = this.parents.get(current)
 		}
-		this.write(root, name, value)
+		this.write(isolated ?? root, name, value)
 	}
 
 	/** Set a variable in this scope only, regardless of parent state. */

@@ -1,3 +1,5 @@
+import type { AgentToolCallRecord, AiAgentMockHandle } from "./ai-agent.js"
+
 /** Lifecycle state of a process instance under test. */
 export type RunState = "active" | "completed" | "failed" | "terminated"
 
@@ -48,6 +50,12 @@ export interface BpmnMatchers<R = unknown> {
 	toHaveNotPassed(elementIds: readonly string[]): R
 	/** Each listed process variable equals the expected value (asymmetric matchers work). */
 	toHaveVariables(expected: Record<string, unknown>): R
+	/**
+	 * On the handle of {@link ProcessTest.mockAiAgent}: the agent called exactly
+	 * these tools, in this order. Arguments, where given, must be equal
+	 * (asymmetric matchers work).
+	 */
+	toHaveCalledTools(expected: readonly ExpectedToolCall[]): R
 }
 
 function asRun(received: unknown): RunSnapshot {
@@ -222,4 +230,51 @@ export const bpmnMatchers = {
 					: `expected process "${run.processId}" variables ${show(mismatched, expected)}, got ${show(mismatched, vars)}`,
 		}
 	},
+
+	toHaveCalledTools(
+		this: BpmnMatcherContext,
+		received: unknown,
+		expected: readonly ExpectedToolCall[],
+	): BpmnMatcherResult {
+		const agent = received as Partial<AiAgentMockHandle> | null
+		if (agent === null || typeof agent !== "object" || !Array.isArray(agent.toolCalls)) {
+			throw new TypeError(
+				`toHaveCalledTools expects the handle returned by ProcessTest.mockAiAgent() — got ${describe(received)}`,
+			)
+		}
+		const calls = agent.toolCalls
+		const matches = (want: ExpectedToolCall, got: AgentToolCallRecord | undefined): boolean => {
+			if (got === undefined) return false
+			if (typeof want === "string") return got.name === want
+			return (
+				got.name === want.name &&
+				(want.arguments === undefined || this.equals(got.arguments, want.arguments))
+			)
+		}
+		const pass = calls.length === expected.length && expected.every((w, i) => matches(w, calls[i]))
+		const show = (list: readonly (ExpectedToolCall | AgentToolCallRecord)[]) =>
+			list.length === 0
+				? "(none)"
+				: list
+						.map((c) =>
+							typeof c === "string"
+								? c
+								: c.arguments === undefined
+									? c.name
+									: `${c.name}(${JSON.stringify(c.arguments)})`,
+						)
+						.join(", ")
+		return {
+			pass,
+			message: () =>
+				pass
+					? `expected AI agent "${agent.elementId}" not to have called ${show(expected)}`
+					: `expected AI agent "${agent.elementId}" to have called ${show(expected)}, in that order — it called ${show(calls)}`,
+		}
+	},
 } as const
+
+/** A tool call {@link BpmnMatchers.toHaveCalledTools} expects: a tool id, or a tool id with its arguments. */
+export type ExpectedToolCall =
+	| string
+	| { readonly name: string; readonly arguments?: Readonly<Record<string, unknown>> }

@@ -665,6 +665,7 @@ Perfect for: workflow testing, visual debugging, interactive demos, offline simu
 - **Sub-processes** — embedded sub-processes, transactions, and event sub-processes (message, timer, signal, error, escalation start)
 - **Call activities** — run a process deployed in the same engine as a child instance, with Zeebe variable propagation
 - **Multi-instance** — parallel and sequential, \`inputCollection\` / \`outputCollection\`, \`loopCardinality\`, \`completionCondition\`
+- **AI agents** — an ad-hoc sub-process with a job worker (the AI Agent Sub-process connector) runs its tools: the worker completes its job with an \`adHocSubProcess\` job result (\`activateElements\`, \`isCompletionConditionFulfilled\`), and each tool's result is collected into \`outputCollection\`
 - **DMN decisions** — inline decision table evaluation via \`@bpmnkit/feel\`
 - **Job workers** — register handlers for service and user tasks by job type
 - **Step-by-step** — \`beforeComplete\` hook pauses between elements for debugging UIs
@@ -672,7 +673,7 @@ Perfect for: workflow testing, visual debugging, interactive demos, offline simu
 
 ### Not executed
 
-- Ad-hoc sub-processes without a task definition, and a call activity whose process is not
+- Ad-hoc sub-processes without a job worker, and a call activity whose process is not
   deployed in the same engine, complete without running anything (the latter emits an
   \`element:warning\` event).
 - Conditional events are not evaluated, a message start event of a top-level process does not
@@ -763,6 +764,29 @@ t.dispose()
 
 \`vitest\` is an optional peer dependency, needed only for the \`/testing/vitest\` entry. See
 [Testing processes](${DOCS}/guides/testing-processes).
+
+### AI agents under deterministic tests
+
+\`mockAiAgent\` plays the AI Agent connector from a script of turns: which tools the model
+calls, with which \`fromAi()\` arguments, then its answer. The tools run for real; unknown tools,
+wrong arguments and a script that runs out fail the run. Record a transcript to a JSON
+cassette once and replay it — no model, no network.
+
+\`\`\`typescript
+import { readAgentCassette } from "@bpmnkit/engine/testing"
+
+const agent = t.mockAiAgent("support-agent", [
+  { toolCalls: [{ name: "lookup-order", arguments: { orderId: "1042" } }] },
+  { responseJson: { answer: "It ships tomorrow.", resolved: true } },
+])
+// or: t.mockAiAgent("support-agent", await readAgentCassette(new URL("./order.cassette.json", import.meta.url)))
+
+const run = await t.start("support", { customerMessage: "Where is order 1042?" })
+expect(agent).toHaveCalledTools([{ name: "lookup-order", arguments: { orderId: "1042" } }])
+t.coverage().tools // which of the agent's tools the tests called
+\`\`\`
+
+See [Testing AI agents](${DOCS}/guides/testing-ai-agents).
 
 ## API Reference
 

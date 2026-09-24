@@ -19,6 +19,8 @@ export interface ParsedZeebeExt {
 		propagateAllChildVariables: boolean
 		propagateAllParentVariables: boolean
 	}
+	/** `zeebe:adHoc` on an ad-hoc sub-process. */
+	adHoc?: { outputCollection?: string; outputElement?: string; activeElementsCollection?: string }
 }
 
 /** `zeebe:loopCharacteristics` of a multi-instance activity. */
@@ -103,6 +105,11 @@ export function parseZeebeExt(extensionElements: XmlElement[]): ParsedZeebeExt {
 					propagateAllChildVariables: el.attributes.propagateAllChildVariables !== "false",
 					propagateAllParentVariables: el.attributes.propagateAllParentVariables !== "false",
 				}
+				break
+			}
+			case "zeebe:adHoc": {
+				const { outputCollection, outputElement, activeElementsCollection } = el.attributes
+				result.adHoc = { outputCollection, outputElement, activeElementsCollection }
 				break
 			}
 			case "zeebe:properties": {

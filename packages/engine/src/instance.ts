@@ -15,11 +15,12 @@ import type {
 import { generateId } from "@bpmnkit/core"
 import { evaluate, parseExpression } from "@bpmnkit/feel"
 import type { FeelValue } from "@bpmnkit/feel"
+import { adHocActivatableElements, describeAdHocElement } from "./ad-hoc.js"
 import { evaluateDecision } from "./dmn.js"
 import { resolveSecretString } from "./secrets.js"
 import type { SecretResolver } from "./secrets.js"
 import { scheduleTimer } from "./timers.js"
-import type { JobHandler, ProcessEvent } from "./types.js"
+import type { Job, JobHandler, JobResult, ProcessEvent } from "./types.js"
 import { VariableStore } from "./variables.js"
 import { parseZeebeExt, parseZeebeLoop } from "./zeebe.js"
 import type { ParsedZeebeExt } from "./zeebe.js"
@@ -75,6 +76,12 @@ interface Token {
 type InstanceState = "active" | "completed" | "terminated" | "failed"
 
 type Vars = Record<string, unknown>
+
+/** How a worker finished a job. */
+type JobOutcome =
+	| { readonly kind: "completed"; readonly result: JobResult | undefined }
+	| { readonly kind: "failed"; readonly error: string }
+	| { readonly kind: "thrown"; readonly code: string; readonly message: string }
 
 /** How an element was entered when it was not simply reached over a sequence flow. */
 type Entry =
@@ -722,11 +729,14 @@ export class ProcessInstance {
 
 			case "adHocSubProcess":
 				if (ext.taskDefinition) {
-					// Job-worker implementation (e.g. the AI Agent Sub-process connector) —
-					// dispatch as a job so scenarios can mock it like any other task.
-					// The tools nested inside are not individually executed; see the
-					// scenario runner docs for scope.
-					await this.handleJobTask(token, el, ext, ctx)
+					// Job-worker implementation (e.g. the AI Agent Sub-process connector).
+					// Without a worker, handleJobTask applies the example output and moves on.
+					const handler = this.jobWorkers.get(ext.taskDefinition.type)
+					if (handler !== undefined) {
+						await this.handleAdHocJobWorker(token, el, ext, ctx, ext.taskDefinition.type, handler)
+					} else {
+						await this.handleJobTask(token, el, ext, ctx)
+					}
 				} else {
 					// BPMN-native ad-hoc sub-process — auto-complete (tools not executed).
 					await this.complete(token, ctx)
@@ -860,7 +870,29 @@ export class ProcessInstance {
 			return
 		}
 
-		const jobId = generateId("job")
+		const outcome = await this.runJob(el, jobType, handler, ext, token.varScopeId, (outVars) => {
+			if (this.alive(token)) this.mergeResult(token, ext, outVars)
+		})
+
+		// An interrupting event ended the task while the worker ran — its result is void.
+		if (!this.alive(token)) return
+		if (this.jobFailed(outcome, ctx, token)) return
+
+		await this.complete(token, ctx)
+	}
+
+	/**
+	 * Create a job for `el`, hand it to `handler` and wait until the worker
+	 * completes, fails or throws. `onComplete` runs synchronously on completion.
+	 */
+	private async runJob(
+		el: BpmnFlowElement,
+		jobType: string,
+		handler: JobHandler,
+		ext: ParsedZeebeExt,
+		varScopeId: string,
+		onComplete: (variables: Vars | undefined, result: JobResult | undefined) => void,
+	): Promise<JobOutcome> {
 		const rawHeaders = ext.taskHeaders ?? {}
 		let headers: Record<string, string>
 		if (this.secretResolver !== undefined) {
@@ -871,54 +903,189 @@ export class ProcessInstance {
 		} else {
 			headers = rawHeaders
 		}
-		const vars = this.variables.getAll(token.varScopeId)
 
-		let jobError: string | undefined
-		let thrown: { code: string; message: string } | undefined
-
-		await new Promise<void>((resolve) => {
-			const job = {
-				id: jobId,
+		return new Promise<JobOutcome>((resolve) => {
+			const job: Job = {
+				id: generateId("job"),
 				type: jobType,
 				headers,
-				variables: vars,
-				complete: (outVars?: Record<string, unknown>) => {
-					if (this.alive(token)) this.mergeResult(token, ext, outVars)
-					resolve()
+				variables: this.variables.getAll(varScopeId),
+				complete: (outVars, result) => {
+					onComplete(outVars, result)
+					resolve({ kind: "completed", result })
 				},
-				fail: (error: string) => {
-					jobError = error
-					resolve()
-				},
-				throwError: (code: string, message: string) => {
-					thrown = { code, message }
-					resolve()
-				},
+				fail: (error) => resolve({ kind: "failed", error }),
+				throwError: (code, message) => resolve({ kind: "thrown", code, message }),
 			}
 
-			this.emit({ type: "job:created", job })
+			this.emit({ type: "job:created", job, elementId: el.id })
 			void Promise.resolve(handler(job)).catch((err: unknown) => {
-				jobError = err instanceof Error ? err.message : String(err)
-				resolve()
+				resolve({ kind: "failed", error: err instanceof Error ? err.message : String(err) })
 			})
 		})
+	}
 
-		// An interrupting event ended the task while the worker ran — its result is void.
-		if (!this.alive(token)) return
-
-		if (thrown !== undefined) {
-			this.throwError(thrown.code, thrown.message, ctx, token)
-			return
+	/** Act on a failed or thrown job; returns false when the job completed. */
+	private jobFailed(outcome: JobOutcome, ctx: ScopeCtx, token: Token): boolean {
+		if (outcome.kind === "thrown") {
+			this.throwError(outcome.code, outcome.message, ctx, token)
+			return true
 		}
-
-		if (jobError !== undefined) {
+		if (outcome.kind === "failed") {
 			this._state = "failed"
-			this._error = jobError
-			this.emit({ type: "process:failed", error: jobError })
-			return
+			this._error = outcome.error
+			this.emit({ type: "process:failed", error: outcome.error })
+			return true
+		}
+		return false
+	}
+
+	/**
+	 * An ad-hoc sub-process implemented by a job worker, such as the AI Agent
+	 * Sub-process connector. The worker's job sees `adHocSubProcessElements`
+	 * and completes with a job result naming the inner elements to activate.
+	 * Each activation runs in a scope of its own holding the variables it was
+	 * given; when it ends, `outputElement` is appended to `outputCollection`
+	 * and a new job asks the worker what next — one job at a time. A job result
+	 * that fulfils the completion condition (or no job result at all) completes
+	 * the sub-process.
+	 */
+	private async handleAdHocJobWorker(
+		token: Token,
+		el: Extract<BpmnFlowElement, { type: "adHocSubProcess" }>,
+		ext: ParsedZeebeExt,
+		ctx: ScopeCtx,
+		jobType: string,
+		handler: JobHandler,
+	): Promise<void> {
+		const scopeId = `scope_adhoc_${token.id}`
+		this.variables.createScope(scopeId, token.varScopeId)
+		const activatable = adHocActivatableElements(el)
+		const activatableIds = new Set(activatable.map((e) => e.id))
+		this.setLocal(scopeId, "adHocSubProcessElements", activatable.map(describeAdHocElement))
+		const collection = ext.adHoc?.outputCollection || undefined
+		const outputElement = ext.adHoc?.outputElement || undefined
+		const results: unknown[] = []
+		if (collection !== undefined) this.setLocal(scopeId, collection, [])
+
+		const running = new Set<ScopeCtx>()
+		let activations = 0
+		let changed = false
+		let wake: (() => void) | undefined
+		const notify = (): void => {
+			changed = true
+			const resume = wake
+			wake = undefined
+			resume?.()
+		}
+		const nextChange = (): Promise<void> =>
+			changed
+				? Promise.resolve()
+				: new Promise((resolve) => {
+						wake = resolve
+					})
+		this.onTokenEnd(token, () => {
+			for (const inner of running) this.endScope(inner)
+			running.clear()
+			this.variables.removeScope(scopeId)
+			notify()
+		})
+
+		const activateInner = (elementId: string, variables: Vars | undefined): void => {
+			const innerId = `${scopeId}_${++activations}`
+			this.variables.createScope(innerId, scopeId, true)
+			for (const [name, value] of Object.entries(variables ?? {}))
+				this.setLocal(innerId, name, value)
+			const inner = this.buildScopeCtx(
+				innerId,
+				ctx.scopeId,
+				() => {
+					running.delete(inner)
+					if (collection !== undefined && outputElement !== undefined) {
+						results.push(
+							this.evalFeel(outputElement, innerId, {
+								elementId: el.id,
+								property: "outputElement",
+							}) ?? null,
+						)
+						this.setLocal(scopeId, collection, [...results])
+					}
+					this.scopes.delete(innerId)
+					this.variables.removeScope(innerId)
+					notify()
+				},
+				el.flowElements,
+				el.sequenceFlows,
+				el.associations,
+				token,
+			)
+			this.scopes.set(innerId, inner)
+			running.add(inner)
+			void this.activate(elementId, innerId, undefined)
 		}
 
-		await this.complete(token, ctx)
+		let cancelRemaining = true
+		for (;;) {
+			changed = false
+			const outcome = await this.runJob(el, jobType, handler, ext, scopeId, (outVars) => {
+				if (!this.alive(token)) return
+				// With output mappings the job's variables stay in the sub-process; the mappings pick what leaves.
+				if ((ext.ioMapping?.outputs.length ?? 0) > 0) {
+					for (const [name, value] of Object.entries(outVars ?? {})) {
+						this.setLocal(scopeId, name, value)
+					}
+				} else {
+					this.setVariables(outVars, scopeId)
+				}
+			})
+			if (!this.alive(token)) return
+			if (this.jobFailed(outcome, ctx, token)) return
+			const result = outcome.kind === "completed" ? outcome.result : undefined
+			if (result === undefined) break
+
+			const activate = result.activateElements ?? []
+			const problem =
+				result.type !== "adHocSubProcess"
+					? `a job result of type "${String(result.type)}" does not apply to it`
+					: result.isCompletionConditionFulfilled === true && activate.length > 0
+						? "the job result both activates elements and fulfils the completion condition"
+						: activate
+								.filter((a) => !activatableIds.has(a.elementId))
+								.map(
+									(a) =>
+										`"${a.elementId}" is not an element it can activate (activatable: ${[...activatableIds].join(", ") || "none"})`,
+								)[0]
+			if (problem !== undefined) {
+				this.failElement(el.id, `Ad-hoc sub-process "${el.id}": ${problem}`)
+				return
+			}
+			for (const a of activate) activateInner(a.elementId, a.variables)
+			if (result.isCompletionConditionFulfilled === true) {
+				cancelRemaining = result.isCancelRemainingInstances === true
+				break
+			}
+			await nextChange()
+			if (!this.alive(token)) return
+		}
+
+		if (cancelRemaining) {
+			for (const inner of running) this.endScope(inner)
+			running.clear()
+		}
+		while (running.size > 0) {
+			changed = false
+			await nextChange()
+			if (!this.alive(token)) return
+		}
+		if (collection !== undefined) this.setVariables({ [collection]: [...results] }, ctx.scopeId)
+		this.applyOutputs(el, ext, scopeId, ctx.scopeId)
+		this.variables.removeScope(scopeId)
+		await this.complete(token, ctx, undefined, { skipOutputs: true })
+	}
+
+	private setLocal(scopeId: string, name: string, value: unknown): void {
+		this.variables.setLocal(scopeId, name, value)
+		this.emit({ type: "variable:set", name, value, scopeId })
 	}
 
 	private handleScriptTask(
