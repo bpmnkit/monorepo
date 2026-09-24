@@ -415,7 +415,7 @@ pub(crate) async fn inner_completed(
         }
     }
 
-    let fulfilled = match completion_condition(state, sp, &ad_hoc, inner.key).await? {
+    let fulfilled = match completion_condition(state, sp, &ad_hoc).await? {
         Ok(fulfilled) => fulfilled,
         Err(message) => {
             writers.commands.push(CommandToWrite {
@@ -424,7 +424,7 @@ pub(crate) async fn inner_completed(
                 key: 0,
                 payload: serde_json::json!({
                     "errorType": "EXTRACT_VALUE_ERROR",
-                    "errorMessage": format!("Failed to evaluate completion condition. {message}"),
+                    "errorMessage": message,
                     "processInstanceKey": inner.process_instance_key.to_string(),
                     "elementInstanceKey": inner.key.to_string(),
                     "bpmnProcessId": inner.bpmn_process_id,
@@ -440,21 +440,23 @@ pub(crate) async fn inner_completed(
 }
 
 /// The `completionCondition` of an ad-hoc sub-process run by Zeebe (not by a job
-/// worker), evaluated in the inner instance `inner_key`: `Ok(None)` when it has none, or
-/// when it does not decide anything (the sub-process is not active, or already
-/// completing); `Err` with the incident message when it is not a boolean.
-async fn completion_condition(
+/// worker), evaluated, as in Zeebe's `AdHocSubProcessProcessor`, in the ad-hoc
+/// sub-process's own scope: `Ok(None)` when it has none, or when it does not decide
+/// anything (the sub-process is not active, or already completing); `Err` with the
+/// incident message when it is not a boolean.
+pub(crate) async fn completion_condition(
     state: &EngineState,
     sp: &SubProcess,
     ad_hoc: &ElementInstance,
-    inner_key: i64,
 ) -> EngineResult<Result<Option<bool>, String>> {
     let Some(condition) = &sp.completion_condition else { return Ok(Ok(None)) };
     if sp.task_definition.is_some() || ad_hoc.state != "ACTIVATED" || completion_pending(state, ad_hoc).await? {
         return Ok(Ok(None));
     }
-    let ctx = scope::feel_context(state, ad_hoc.process_instance_key, inner_key).await;
-    Ok(super::bpmn_element::eval_boolean(condition, &ctx).map(Some))
+    let ctx = scope::feel_context(state, ad_hoc.process_instance_key, ad_hoc.key).await;
+    Ok(super::bpmn_element::eval_boolean(condition, &ctx)
+        .map(Some)
+        .map_err(|message| format!("Failed to evaluate completion condition. {message}")))
 }
 
 /// A flow inside the ad-hoc sub-process ended: an inner instance, whose completion
@@ -490,18 +492,6 @@ pub(crate) async fn flow_ended(
         (None, _) => {}
     }
     Ok(())
-}
-
-/// An event sub-process inside the ad-hoc sub-process ended: whether the completion
-/// condition holds. Unlike after an inner instance, a result that is not a boolean
-/// counts as `false` here: the event sub-process has already completed, so there is
-/// nothing left to hold an incident that could retry it.
-pub(crate) async fn condition_after_event_sub_process(
-    state: &EngineState,
-    sp: &SubProcess,
-    ad_hoc: &ElementInstance,
-) -> EngineResult<Option<bool>> {
-    Ok(completion_condition(state, sp, ad_hoc, ad_hoc.key).await?.unwrap_or(Some(false)))
 }
 
 /// The ad-hoc sub-process is completing: hand its output collection to the enclosing scope.

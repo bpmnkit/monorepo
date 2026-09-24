@@ -5108,7 +5108,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_ad_hoc_completion_condition_cancels_the_remaining_instances() {
-        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=result = "done"</bpmn:completionCondition>"#;
+        // Evaluated in the ad-hoc sub-process's scope, which has the output collection.
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=list contains(results, "done")</bpmn:completionCondition>"#;
         let h = Harness::new();
         h.deploy(&ad_hoc_tools("", condition)).await;
         h.start("proc", serde_json::json!({ "toRun": ["t1", "t2"] })).await;
@@ -5132,7 +5133,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_ad_hoc_completion_condition_waits_without_cancelling() {
-        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=result = "done"</bpmn:completionCondition>"#;
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=list contains(results, "done")</bpmn:completionCondition>"#;
         let h = Harness::new();
         h.deploy(&ad_hoc_tools(r#" cancelRemainingInstances="false""#, condition)).await;
         h.start("proc", serde_json::json!({ "toRun": ["t1", "t3"] })).await;
@@ -5177,6 +5178,88 @@ mod tests {
         assert_eq!(element_states(&h, "t3"), vec!["TERMINATED"], "cancelRemainingInstances");
         assert!(h.activatable_job("after").is_some());
         assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["one"])));
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_is_evaluated_in_the_ad_hoc_sub_process_scope() {
+        // Zeebe's AdHocSubProcessProcessor evaluates the condition with the ad-hoc
+        // sub-process's element instance key: what an activation writes stays in its
+        // inner instance and is not seen.
+        let condition = r#"<bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=result = "done"</bpmn:completionCondition>"#;
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", condition)).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1", "t3"] })).await;
+        h.complete_job("t1", serde_json::json!({ "result": "done" })).await;
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(h.activatable_job("t3").is_some(), "the condition did not hold");
+        assert!(h.incidents().is_empty());
+
+        // A variable of the ad-hoc sub-process's scope (here the process's) is seen.
+        set_variables(&h, serde_json::json!({ "result": "done" })).await;
+        h.complete_job("t3", serde_json::json!({ "result": "other" })).await;
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(root_var(&h, "results"), Some(serde_json::json!(["done", "other"])));
+    }
+
+    /// `ad_hoc_tools` with a non-interrupting event sub-process `esp` started by the
+    /// signal `nudge`, and `completionCondition` `condition`.
+    fn ad_hoc_tools_with_event_sub_process(condition: &str) -> String {
+        ad_hoc_tools("", &format!(r#"
+      <bpmn:completionCondition xsi:type="bpmn:tFormalExpression">{condition}</bpmn:completionCondition>
+      <bpmn:subProcess id="esp" triggeredByEvent="true">
+        <bpmn:startEvent id="esp-start" isInterrupting="false"><bpmn:outgoing>e1</bpmn:outgoing>
+          <bpmn:signalEventDefinition signalRef="S_nudge"/></bpmn:startEvent>
+        <bpmn:endEvent id="esp-end"><bpmn:incoming>e1</bpmn:incoming></bpmn:endEvent>
+        <bpmn:sequenceFlow id="e1" sourceRef="esp-start" targetRef="esp-end"/>
+      </bpmn:subProcess>
+      <bpmn:signal id="S_nudge" name="nudge"/>"#))
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_after_an_event_sub_process_raises_an_incident_on_it() {
+        // In Zeebe, an event sub-process completing in an ad-hoc sub-process ends a path
+        // in it: BpmnStateTransitionBehavior.transitionToCompleted calls the ad-hoc
+        // sub-process's beforeExecutionPathCompleted, whose failure BpmnStreamProcessor
+        // turns into an incident on the completing event sub-process.
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools_with_event_sub_process("=finished")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1"] })).await;
+        h.broadcast_signal("nudge").await;
+
+        let incidents = h.incidents();
+        assert_eq!(incidents.len(), 1, "{incidents:?}");
+        assert_eq!(incidents[0].error_type, "EXTRACT_VALUE_ERROR");
+        assert_eq!(
+            incidents[0].error_message.as_deref(),
+            Some("Failed to evaluate completion condition. Expected result of the expression 'finished' to be 'BOOLEAN', but was 'NULL'."),
+        );
+        assert_eq!(incidents[0].element_id, "esp");
+        assert_eq!(element_states(&h, "esp"), vec!["COMPLETING"]);
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        assert!(h.activatable_job("t1").is_some());
+
+        // Resolving it completes the event sub-process again; the condition now holds.
+        set_variables(&h, serde_json::json!({ "finished": true })).await;
+        resolve_incident(&h, incidents[0].key).await;
+        assert_eq!(element_states(&h, "esp"), vec!["COMPLETED"]);
+        assert_eq!(element_states(&h, "t1"), vec!["TERMINATED"], "cancelRemainingInstances");
+        assert!(h.activatable_job("after").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_ad_hoc_completion_condition_holding_after_an_event_sub_process_completes_it() {
+        // Zeebe evaluates the condition each time a path in the ad-hoc sub-process
+        // ends, even while activations still run.
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools_with_event_sub_process("=finished")).await;
+        h.start("proc", serde_json::json!({ "toRun": ["t1"], "finished": false })).await;
+        h.broadcast_signal("nudge").await;
+        assert!(h.incidents().is_empty());
+        assert_eq!(element_state(&h, "tools").as_deref(), Some("ACTIVATED"));
+        set_variables(&h, serde_json::json!({ "finished": true })).await;
+        h.broadcast_signal("nudge").await;
+        assert_eq!(element_states(&h, "t1"), vec!["TERMINATED"]);
+        assert!(h.activatable_job("after").is_some());
     }
 
     #[tokio::test]

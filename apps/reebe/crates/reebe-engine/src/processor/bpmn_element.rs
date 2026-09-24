@@ -1240,6 +1240,41 @@ impl BpmnElementProcessor {
             }
         }
 
+        // An event sub-process of an ad-hoc sub-process ends a path in it: as in Zeebe's
+        // `beforeExecutionPathCompleted`, the ad-hoc sub-process's completion condition is
+        // evaluated before the event sub-process completes. A result that is not a
+        // boolean raises an incident on the event sub-process, which stays completing;
+        // resolving it completes the event sub-process again.
+        let mut ad_hoc_fulfilled = None;
+        if element_type == "EVENT_SUB_PROCESS" {
+            if let Ok(ad_hoc_ei) = state.backend.get_element_instance_by_key(flow_scope_key).await {
+                if let (ad_hoc::AD_HOC, Some(reebe_bpmn::FlowElement::SubProcess(sp))) = (
+                    ad_hoc_ei.element_type.as_str(),
+                    definition.as_ref().and_then(|p| p.get_element_recursive(&ad_hoc_ei.element_id)),
+                ) {
+                    match ad_hoc::completion_condition(state, sp, &ad_hoc_ei).await? {
+                        Ok(fulfilled) => ad_hoc_fulfilled = fulfilled,
+                        Err(message) => {
+                            writers.commands.push(CommandToWrite {
+                                value_type: "INCIDENT".to_string(),
+                                intent: "CREATE".to_string(),
+                                key: 0,
+                                payload: serde_json::json!({
+                                    "errorType": "EXTRACT_VALUE_ERROR",
+                                    "errorMessage": message,
+                                    "processInstanceKey": process_instance_key.to_string(),
+                                    "elementInstanceKey": ei_key.to_string(),
+                                    "bpmnProcessId": bpmn_process_id,
+                                    "tenantId": tenant_id,
+                                }),
+                            });
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+        }
+
         state.backend.update_element_instance_state(ei_key, "COMPLETED").await?;
         writers.events.push(EventToWrite {
             value_type: "PROCESS_INSTANCE".to_string(),
@@ -1305,7 +1340,7 @@ impl BpmnElementProcessor {
                 process_definition_key,
                 bpmn_process_id: &bpmn_process_id,
                 tenant_id: &tenant_id,
-            }, terminates).await;
+            }, terminates, ad_hoc_fulfilled).await;
         }
 
         // Get outgoing sequence flows and activate targets
@@ -1462,19 +1497,22 @@ struct FlowScope<'a> {
 /// Complete a flow scope in which a path ended, as Zeebe does: only once no element
 /// instance is active inside it and no token is on its way to one. After a terminate
 /// end event (`terminated_rest`), the rest of the scope has been terminated and it
-/// completes at once.
+/// completes at once. An ad-hoc sub-process decides itself, each time a path in it
+/// ends, with `ad_hoc_fulfilled`, its completion condition's result.
 async fn complete_flow_scope(
     state: &EngineState,
     writers: &mut Writers,
     position: i64,
     scope: FlowScope<'_>,
     terminated_rest: bool,
+    ad_hoc_fulfilled: Option<bool>,
 ) -> EngineResult<()> {
     let FlowScope { key, process_instance_key, process_definition_key, bpmn_process_id, tenant_id } = scope;
     let scope_ei = state.backend.get_element_instance_by_key(key).await.ok();
     let sub_process = scope_ei.filter(|ei| ei.element_type != "PROCESS");
+    let is_ad_hoc = sub_process.as_ref().is_some_and(|sp| sp.element_type == ad_hoc::AD_HOC);
 
-    if !terminated_rest {
+    if !terminated_rest && !is_ad_hoc {
         let still_active = match &sub_process {
             Some(sp) => state.backend
                 .get_element_instances_by_process_instance(process_instance_key)
@@ -1516,8 +1554,7 @@ async fn complete_flow_scope(
                 return ad_hoc::inner_completed(state, writers, &process, &sp_ei).await;
             }
             if let Some(reebe_bpmn::FlowElement::SubProcess(sp)) = process.get_element_recursive(&sp_ei.element_id) {
-                let fulfilled = ad_hoc::condition_after_event_sub_process(state, sp, &sp_ei).await?;
-                return ad_hoc::flow_ended(state, writers, sp, &sp_ei, fulfilled).await;
+                return ad_hoc::flow_ended(state, writers, sp, &sp_ei, ad_hoc_fulfilled).await;
             }
             return Ok(());
         }
