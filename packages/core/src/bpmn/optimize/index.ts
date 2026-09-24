@@ -71,7 +71,11 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 			findings.push(...analyzeVariableFlow(process))
 		}
 		if (resolved.categories.includes("deploy") || resolved.categories.includes("connector")) {
-			const deployFindings = analyzeDeploy(process, resolved.resolveConnectorRequirements)
+			const deployFindings = analyzeDeploy(
+				process,
+				resolved.resolveConnectorRequirements,
+				defs.messages,
+			)
 			findings.push(
 				...deployFindings.filter(
 					(f) =>

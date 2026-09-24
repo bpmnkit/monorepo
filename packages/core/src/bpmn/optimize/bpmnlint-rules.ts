@@ -154,9 +154,14 @@ function eventDefinitionsOf(el: BpmnFlowElement): BpmnEventDefinition[] {
 	return "eventDefinitions" in el ? el.eventDefinitions : []
 }
 
-/** The default flow id, where the model keeps one (gateways only — see the docs table). */
+/**
+ * The default flow id. Gateways model it; an activity keeps its `default` in
+ * `unknownAttributes`, which the parser preserves.
+ */
 function defaultFlowOf(el: BpmnFlowElement | undefined): string | undefined {
-	return el !== undefined && "default" in el ? el.default : undefined
+	if (el === undefined) return undefined
+	if ("default" in el && el.default !== undefined) return el.default
+	return el.unknownAttributes.default
 }
 
 function hasCondition(flow: BpmnSequenceFlow): boolean {

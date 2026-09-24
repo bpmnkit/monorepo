@@ -51,6 +51,28 @@ describe("optimize() — deploy profile", () => {
 		expect(report.findings.some((f) => f.id === "deploy/message-catch-no-correlation")).toBe(false)
 	})
 
+	it("accepts a correlation key on the referenced message, where Camunda Modeler puts it", () => {
+		const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="d" targetNamespace="urn:t">
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:intermediateCatchEvent id="wait">
+      <bpmn:messageEventDefinition messageRef="m1" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:receiveTask id="receive" messageRef="m2" />
+  </bpmn:process>
+  <bpmn:message id="m1" name="payment-confirmed">
+    <bpmn:extensionElements><zeebe:subscription correlationKey="=orderId" /></bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:message id="m2" name="no-key" />
+</bpmn:definitions>`
+		const report = optimize(Bpmn.parse(xml), { categories: ["deploy"] })
+		const flagged = report.findings
+			.filter((f) => f.id === "deploy/message-catch-no-correlation")
+			.flatMap((f) => f.elementIds)
+		expect(flagged).toEqual(["receive"])
+	})
+
 	it("flags a call activity with no called process id", () => {
 		const defs = Bpmn.createProcess("proc").startEvent("s").endEvent("e").build()
 		const proc = defs.processes[0]

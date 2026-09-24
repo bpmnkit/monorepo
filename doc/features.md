@@ -24,23 +24,6 @@
 - **DMN TCK** — 1,941 of 2,053 FEEL cases (from 1,939), after `overlaps before` /
   `overlaps after` were brought in line with DMN at open range ends.
 
-## Conformance page, release pipelines for VS Code and desktop, MCP Registry listing (2026-09-23)
-
-- **Conformance** (`/docs/getting-started/conformance`) — FEEL against the DMN TCK
-  (1,939 / 2,053), BPMN descriptor coverage (109 modelled, 34 preserved, 6 dropped), an
-  element-by-component support matrix, and every known gap in one list.
-- **VS Code releases** (`.github/workflows/release-vscode.yml`) — a `.vsix` on a
-  `vscode-v<version>` GitHub Release whenever the extension's version moves; Marketplace and
-  Open VSX publishing when their tokens are set.
-- **Desktop installers** (`.github/workflows/release-desktop.yml`) — Linux, Windows, macOS
-  (Apple silicon and Intel) builds into a `desktop-v<version>` release, unsigned for now.
-- **MCP Registry** (`.github/workflows/publish-mcp.yml`, `apps/cli/server.json`) —
-  `casen proxy mcp` listed as `io.github.bpmnkit/bpmnkit` after each release.
-- **Opt-in analytics** — Cloudflare Web Analytics on bpmnkit.com when the build sets
-  `PUBLIC_CF_WEB_ANALYTICS_TOKEN`.
-- **`/compare/bpmn-js`** — the licence difference, quoted from the bpmn-js LICENSE.
-- **Launch post** — "BPMN Kit 1.0: twelve packages take the stability promise".
-
 ## Inbound connector and linked-resource templates (2026-09-24)
 
 - **`applyTemplateToElement(definitions, elementId, template, values)`**
@@ -76,6 +59,23 @@
   `applyBpmnlintConfig`, `BPMNLINT_RULE_MAP` and `lintDiagram({ bpmnlint })`, all with no
   dependencies and usable in a browser. `@bpmnkit/core/node` provides `findBpmnlintrc`,
   `prepareBpmnlint` and `runBpmnlint`.
+
+## Conformance page, release pipelines for VS Code and desktop, MCP Registry listing (2026-09-23)
+
+- **Conformance** (`/docs/getting-started/conformance`) — FEEL against the DMN TCK
+  (1,939 / 2,053), BPMN descriptor coverage (109 modelled, 34 preserved, 6 dropped), an
+  element-by-component support matrix, and every known gap in one list.
+- **VS Code releases** (`.github/workflows/release-vscode.yml`) — a `.vsix` on a
+  `vscode-v<version>` GitHub Release whenever the extension's version moves; Marketplace and
+  Open VSX publishing when their tokens are set.
+- **Desktop installers** (`.github/workflows/release-desktop.yml`) — Linux, Windows, macOS
+  (Apple silicon and Intel) builds into a `desktop-v<version>` release, unsigned for now.
+- **MCP Registry** (`.github/workflows/publish-mcp.yml`, `apps/cli/server.json`) —
+  `casen proxy mcp` listed as `io.github.bpmnkit/bpmnkit` after each release.
+- **Opt-in analytics** — Cloudflare Web Analytics on bpmnkit.com when the build sets
+  `PUBLIC_CF_WEB_ANALYTICS_TOKEN`.
+- **`/compare/bpmn-js`** — the licence difference, quoted from the bpmn-js LICENSE.
+- **Launch post** — "BPMN Kit 1.0: twelve packages take the stability promise".
 
 ## Edit a shared FEEL statement from its link (2026-09-21)
 

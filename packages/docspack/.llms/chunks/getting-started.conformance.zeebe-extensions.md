@@ -7,7 +7,9 @@ task headers, called decisions and elements, forms, user tasks, scripts, linked 
 ad-hoc sub-process and AI agent settings, version tags, and execution and task listeners.
 
 [Element templates](/docs/packages/connectors) (Camunda's connector template JSON) are applied
-for outbound connectors. Inbound connector and linked-resource bindings are not applied yet.
+for outbound and inbound connectors. `applyTemplateToElement` writes the inbound bindings to
+the element's message and its `zeebe:subscription` correlation key, where Camunda reads them,
+and applies `zeebe:linkedResource` bindings.
 
 Camunda 7 (`camunda:` extensions) is not supported: those attributes and elements are kept on
 round trip but not modelled.

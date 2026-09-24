@@ -746,8 +746,10 @@ for the rule-by-rule table.
 - [ ] `flow/unreachable` and `flow/dead-end` report data objects and data stores, which carry
       no sequence flows. That is a false positive in the default report too, not only against
       bpmnlint
-- [ ] The parser drops an activity's `default` attribute (only gateways keep it), so
-      `no-implicit-split` and `superfluous-label` cannot recognise an activity's default flow
+- [x] The parser drops an activity's `default` attribute (only gateways keep it), so
+      `no-implicit-split` and `superfluous-label` cannot recognise an activity's default flow.
+      Done 2026-09-24: an activity's `default` is kept in `unknownAttributes`, and both rules read
+      it — they now match bpmnlint exactly.
 - [ ] Browser hosts (the canvas lint plugin, the studio) can apply a config through
       `lintDiagram({ bpmnlint })` but have no file to find one in yet
 

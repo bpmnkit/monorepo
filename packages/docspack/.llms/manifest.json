@@ -604,12 +604,26 @@
 		{
 			"id": "getting-started.concepts.parsing-and-serializing",
 			"file": "chunks/getting-started.concepts.parsing-and-serializing.md",
-			"tokens": 687,
+			"tokens": 116,
 			"tags": [
 				"getting-started",
 				"concepts",
 				"parsing",
 				"serializing"
+			],
+			"entities": []
+		},
+		{
+			"id": "getting-started.concepts.parsing-and-serializing-round-trip-fidelity",
+			"file": "chunks/getting-started.concepts.parsing-and-serializing-round-trip-fidelity.md",
+			"tokens": 813,
+			"tags": [
+				"getting-started",
+				"concepts",
+				"parsing",
+				"serializing",
+				"round-trip",
+				"fidelity"
 			],
 			"entities": [
 				"Bpmn.parse()",
@@ -619,8 +633,11 @@
 				"unknownChildren",
 				"extensionElements",
 				"XmlElement",
+				"BPMNLabelStyle",
+				"bpmnElement",
 				"packages/core/tests/roundtrip-corpus.test.ts",
-				"packages/core/tests/descriptor-coverage.test.ts"
+				"packages/core/tests/descriptor-coverage.test.ts",
+				"isExecutable"
 			]
 		},
 		{
@@ -671,7 +688,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-2.0-model-and-round-trip",
 			"file": "chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md",
-			"tokens": 301,
+			"tokens": 241,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -688,8 +705,26 @@
 				"DataState",
 				"ItemAwareElement",
 				"ImplicitThrowEvent",
-				"packages/core/tests/descriptor-coverage.test.ts",
-				"packages/core/tests"
+				"packages/core/tests/descriptor-coverage.test.ts"
+			]
+		},
+		{
+			"id": "getting-started.conformance.bpmn-model-interchange-miwg",
+			"file": "chunks/getting-started.conformance.bpmn-model-interchange-miwg.md",
+			"tokens": 527,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"bpmn",
+				"model",
+				"interchange",
+				"miwg"
+			],
+			"entities": [
+				"exportPreserving",
+				"packages/core/tests/roundtrip-corpus.test.ts",
+				"textFormat",
+				"bpmnElement"
 			]
 		},
 		{
@@ -710,7 +745,7 @@
 		{
 			"id": "getting-started.conformance.zeebe-extensions",
 			"file": "chunks/getting-started.conformance.zeebe-extensions.md",
-			"tokens": 160,
+			"tokens": 183,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -718,8 +753,22 @@
 				"extensions"
 			],
 			"entities": [
-				"packages/core/src/bpmn/zeebe-placement.ts"
+				"packages/core/src/bpmn/zeebe-placement.ts",
+				"applyTemplateToElement"
 			]
+		},
+		{
+			"id": "getting-started.conformance.linting-bpmnlint-compatibility",
+			"file": "chunks/getting-started.conformance.linting-bpmnlint-compatibility.md",
+			"tokens": 149,
+			"tags": [
+				"getting-started",
+				"conformance",
+				"linting",
+				"bpmnlint",
+				"compatibility"
+			],
+			"entities": []
 		},
 		{
 			"id": "getting-started.conformance.dmn-1.3",
@@ -738,14 +787,16 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 197,
+			"tokens": 199,
 			"tags": [
 				"getting-started",
 				"conformance",
 				"camunda",
 				"forms"
 			],
-			"entities": []
+			"entities": [
+				"textFormat"
+			]
 		},
 		{
 			"id": "getting-started.installation",
@@ -1261,7 +1312,7 @@
 		{
 			"id": "guides.bpmnlint.rule-mapping",
 			"file": "chunks/guides.bpmnlint.rule-mapping.md",
-			"tokens": 1025,
+			"tokens": 987,
 			"tags": [
 				"guides",
 				"bpmnlint",

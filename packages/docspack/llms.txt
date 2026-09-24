@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 246 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 256 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -15,7 +15,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [casen CLI — Generate BPMN files](.llms/chunks/cli.casen.generate-bpmn-files.md) — 205 tokens
 - [casen CLI — Connection Profiles](.llms/chunks/cli.casen.connection-profiles.md) — 279 tokens
 - [casen CLI — Plugins](.llms/chunks/cli.casen.plugins.md) — 270 tokens
-- [casen CLI — BPMN generation pipeline](.llms/chunks/cli.casen.bpmn-generation-pipeline.md) — 280 tokens
+- [casen CLI — BPMN generation pipeline](.llms/chunks/cli.casen.bpmn-generation-pipeline.md) — 341 tokens
 - [casen CLI — AIKit Skills](.llms/chunks/cli.casen.aikit-skills.md) — 196 tokens
 - [casen CLI — Worker commands](.llms/chunks/cli.casen.worker-commands.md) — 272 tokens
 - [casen CLI — MCP Server Mode](.llms/chunks/cli.casen.mcp-server-mode.md) — 204 tokens
@@ -57,15 +57,18 @@ npx bpmnkit-docs ask "how do I deploy a process"
 
 - [Core Concepts — The Fluent Builder](.llms/chunks/getting-started.concepts.the-fluent-builder.md) — 251 tokens
 - [Core Concepts — Auto-Layout](.llms/chunks/getting-started.concepts.auto-layout.md) — 150 tokens
-- [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 687 tokens
+- [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 116 tokens
+- [Core Concepts — Parsing and Serializing — Round-trip fidelity](.llms/chunks/getting-started.concepts.parsing-and-serializing-round-trip-fidelity.md) — 813 tokens
 - [Core Concepts — AI-Compact Format](.llms/chunks/getting-started.concepts.ai-compact-format.md) — 359 tokens
 - [Core Concepts — Zeebe Extensions](.llms/chunks/getting-started.concepts.zeebe-extensions.md) — 134 tokens
 - [Conformance](.llms/chunks/getting-started.conformance.md) — 523 tokens
-- [Conformance — BPMN 2.0 — model and round trip](.llms/chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md) — 301 tokens
+- [Conformance — BPMN 2.0 — model and round trip](.llms/chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md) — 241 tokens
+- [Conformance — BPMN Model Interchange (MIWG)](.llms/chunks/getting-started.conformance.bpmn-model-interchange-miwg.md) — 527 tokens
 - [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 542 tokens
-- [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 160 tokens
+- [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 183 tokens
+- [Conformance — Linting — bpmnlint compatibility](.llms/chunks/getting-started.conformance.linting-bpmnlint-compatibility.md) — 149 tokens
 - [Conformance — DMN 1.3](.llms/chunks/getting-started.conformance.dmn-1.3.md) — 135 tokens
-- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 197 tokens
+- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 199 tokens
 - [Installation](.llms/chunks/getting-started.installation.md) — 140 tokens
 - [Installation — SVG Canvas Viewer](.llms/chunks/getting-started.installation.svg-canvas-viewer.md) — 189 tokens
 - [Installation — Worker client](.llms/chunks/getting-started.installation.worker-client.md) — 145 tokens
@@ -101,6 +104,12 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [AI Integration — OpenAI Function Calling](.llms/chunks/guides.ai.openai-function-calling.md) — 192 tokens
 - [AI Integration — Previewing While the Model Writes](.llms/chunks/guides.ai.previewing-while-the-model-writes.md) — 687 tokens
 - [AI Integration — MCP Server](.llms/chunks/guides.ai.mcp-server.md) — 322 tokens
+- [bpmnlint Compatibility](.llms/chunks/guides.bpmnlint.md) — 488 tokens
+- [bpmnlint Compatibility — `casen lint`](.llms/chunks/guides.bpmnlint.casen-lint.md) — 434 tokens
+- [bpmnlint Compatibility — VS Code](.llms/chunks/guides.bpmnlint.vs-code.md) — 162 tokens
+- [bpmnlint Compatibility — Rule mapping](.llms/chunks/guides.bpmnlint.rule-mapping.md) — 987 tokens
+- [bpmnlint Compatibility — Rule mapping (2)](.llms/chunks/guides.bpmnlint.rule-mapping-2.md) — 192 tokens
+- [bpmnlint Compatibility — From your own code](.llms/chunks/guides.bpmnlint.from-your-own-code.md) — 233 tokens
 - [Building Processes — Service Tasks](.llms/chunks/guides.building-processes.service-tasks.md) — 202 tokens
 - [Building Processes — Events](.llms/chunks/guides.building-processes.events.md) — 244 tokens
 - [Building Processes — Sub-Processes](.llms/chunks/guides.building-processes.sub-processes.md) — 181 tokens
@@ -153,14 +162,14 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [VS Code Extension — Installing](.llms/chunks/guides.vscode.installing.md) — 185 tokens
 - [VS Code Extension — What it does — Preview beside the source](.llms/chunks/guides.vscode.what-it-does-preview-beside-the-source.md) — 131 tokens
 - [VS Code Extension — What it does — Editing that leaves a readable diff](.llms/chunks/guides.vscode.what-it-does-editing-that-leaves-a-readable-diff.md) — 302 tokens
-- [VS Code Extension — What it does — Findings in the Problems panel](.llms/chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md) — 150 tokens
+- [VS Code Extension — What it does — Findings in the Problems panel](.llms/chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md) — 203 tokens
 - [VS Code Extension — What it does — A visual diff in Source Control](.llms/chunks/guides.vscode.what-it-does-a-visual-diff-in-source-control.md) — 146 tokens
 - [VS Code Extension — What it does — Run the diagram in the editor](.llms/chunks/guides.vscode.what-it-does-run-the-diagram-in-the-editor.md) — 105 tokens
 - [VS Code Extension — What it does — A FEEL playground on your selection](.llms/chunks/guides.vscode.what-it-does-a-feel-playground-on-your-selection.md) — 75 tokens
 - [VS Code Extension — What it does — Deploy against your own clusters](.llms/chunks/guides.vscode.what-it-does-deploy-against-your-own-clusters.md) — 208 tokens
 - [VS Code Extension — What it does — Copy the diagram as text](.llms/chunks/guides.vscode.what-it-does-copy-the-diagram-as-text.md) — 84 tokens
 - [VS Code Extension — Commands](.llms/chunks/guides.vscode.commands.md) — 181 tokens
-- [VS Code Extension — Settings](.llms/chunks/guides.vscode.settings.md) — 241 tokens
+- [VS Code Extension — Settings](.llms/chunks/guides.vscode.settings.md) — 268 tokens
 - [VS Code Extension — Support](.llms/chunks/guides.vscode.support.md) — 99 tokens
 - [Standalone Workers](.llms/chunks/guides.workers-standalone.md) — 184 tokens
 - [Standalone Workers — Anatomy of a worker](.llms/chunks/guides.workers-standalone.anatomy-of-a-worker.md) — 212 tokens
@@ -199,10 +208,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/connector-gen — `CatalogEntry` type](.llms/chunks/packages.connector-gen.catalogentry-type.md) — 86 tokens
 - [@bpmnkit/connectors — Overview](.llms/chunks/packages.connectors.overview.md) — 146 tokens
 - [@bpmnkit/connectors — Installation](.llms/chunks/packages.connectors.installation.md) — 240 tokens
-- [@bpmnkit/connectors — Applying a template](.llms/chunks/packages.connectors.applying-a-template.md) — 432 tokens
+- [@bpmnkit/connectors — Applying a template](.llms/chunks/packages.connectors.applying-a-template.md) — 503 tokens
+- [@bpmnkit/connectors — Applying to an element — inbound connectors and linked resources](.llms/chunks/packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources.md) — 667 tokens
 - [@bpmnkit/connectors — Workspace templates](.llms/chunks/packages.connectors.workspace-templates.md) — 189 tokens
 - [@bpmnkit/connectors — Validating a template](.llms/chunks/packages.connectors.validating-a-template.md) — 213 tokens
-- [@bpmnkit/connectors — API Reference](.llms/chunks/packages.connectors.api-reference.md) — 230 tokens
+- [@bpmnkit/connectors — API Reference](.llms/chunks/packages.connectors.api-reference.md) — 262 tokens
 - [@bpmnkit/connectors — Stability](.llms/chunks/packages.connectors.stability.md) — 137 tokens
 - [@bpmnkit/core — Overview](.llms/chunks/packages.core.overview.md) — 136 tokens
 - [@bpmnkit/core — Installation](.llms/chunks/packages.core.installation.md) — 27 tokens

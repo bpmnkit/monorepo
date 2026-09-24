@@ -143,10 +143,23 @@ task headers, called decisions and elements, forms, user tasks, scripts, linked 
 ad-hoc sub-process and AI agent settings, version tags, and execution and task listeners.
 
 [Element templates](/docs/packages/connectors) (Camunda's connector template JSON) are applied
-for outbound connectors. Inbound connector and linked-resource bindings are not applied yet.
+for outbound and inbound connectors. `applyTemplateToElement` writes the inbound bindings to
+the element's message and its `zeebe:subscription` correlation key, where Camunda reads them,
+and applies `zeebe:linkedResource` bindings.
 
 Camunda 7 (`camunda:` extensions) is not supported: those attributes and elements are kept on
 round trip but not modelled.
+
+## Linting — bpmnlint compatibility
+
+`casen lint` and the VS Code extension read a project's `.bpmnlintrc`. All 28 of bpmnlint's
+built-in rules map onto BPMN Kit findings: 21 exactly and 7 approximately. Six of the seven
+differ mainly because BPMN Kit's flow and naming checks look only at the top level, not
+inside sub-processes. When the project has bpmnlint installed, that bpmnlint runs the
+configuration itself, so `bpmnlint-plugin-*` rules work too.
+[bpmnlint Compatibility](/docs/guides/bpmnlint) has the rule-by-rule table. On the 16 `.bpmn`
+files in this repository under `bpmnlint:all`, every rule marked exact reports the same
+elements as bpmnlint.
 
 ## DMN 1.3
 
@@ -170,7 +183,6 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
 - Attributes on `<documentation>` (`id`, `textFormat`) are not preserved
 - Choreography and conversation diagrams
 - Camunda 7 extensions (preserved, not modelled)
-- Inbound connector templates
 - DMN boxed expressions and literal-expression decisions
 - TS simulator: call activities, event sub-processes, event-based and complex gateways,
   signal / escalation / compensation / conditional / link events, multi-instance,

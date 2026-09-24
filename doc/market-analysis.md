@@ -668,6 +668,20 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 
 ### P1 — Interop (the adoption unlock, 1–3 months)
 
+> **Status (2026-09-24): done.** See `doc/progress.md`.
+> - **Item 9:** `.bpmnlintrc` is honoured. All 28 built-in rules are mapped, 21 of them
+>   exactly, and the project's own bpmnlint runs its plugins.
+> - **Items 10 and 11:** all 22 MIWG reference models are in the round-trip corpus and pass.
+> - **Item 12:** inbound and linked-resource templates apply.
+> - **Item 13:** vendor DI, label styles and default-namespace files are preserved.
+> - **Item 14:** FEEL matches 375 of the 378 examples in Camunda's documentation.
+>
+> The MCP server now writes through `writeBpmn`. What's left:
+> - labels are rendered without their label style's font;
+> - `<documentation>` attributes are not kept;
+> - the editor does not clear a deleted flow's `default` reference;
+> - sub-process scope is missing in 6 approximate lint rules.
+
 9. **bpmnlint compatibility**: read `.bpmnlintrc`, run `bpmnlint-plugin-*` rules through an
    adapter, map BPMN Kit's ~40 rules to bpmnlint rule names; import `@camunda/linting`
    Camunda-version rules.

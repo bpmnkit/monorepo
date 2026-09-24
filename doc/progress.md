@@ -1,5 +1,27 @@
 # Progress
 
+## 2026-09-24 — P1 integrated: the four streams checked against each other
+
+The FEEL, inbound-template and bpmnlint branches were merged onto the MIWG work, and the
+whole workspace was rebuilt: every typecheck and every test suite passes together. The API
+snapshot grows from 1,491 to 1,517 exports. Each branch surfaced something for another one,
+and those items are now fixed:
+
+- **A correlation key on the message now counts.** `deploy/message-catch-no-correlation`
+  flagged every catch whose `zeebe:subscription` sits on the referenced `bpmn:message`.
+  That is where Camunda reads it, and where Camunda Modeler and the new
+  `applyTemplateToElement` write it. `analyzeDeploy` now takes the document's messages
+  (an optional third parameter) and accepts either placement.
+- **Variable-flow analysis uses FEEL's own list of built-ins.** It kept a list of its own and
+  would have reported `is empty(...)` or `fromAi(...)` as an undefined variable. It now takes
+  the names from `builtinNames()` in `@bpmnkit/feel`.
+- **Two more bpmnlint rules are exact.** Now that the parser keeps an activity's `default`,
+  `no-implicit-split` and `superfluous-label` read it, which makes them exact. A
+  side-by-side run against bpmnlint 11.14 on a model with an activity default flow reports
+  the same elements. That makes 21 exact and 7 approximate.
+- **The Conformance page covers everything added today.** Inbound templates are now applied
+  and a linting section is new. It links the bpmnlint guide.
+
 ## 2026-09-24 — The OMG MIWG reference models open, keep their diagrams and round-trip
 
 **All 22 reference models of the BPMN Model Interchange test suite are in the round-trip
@@ -88,79 +110,6 @@ operator page carries worked examples, `expression` then `// result`.
 The FEEL docs page gains a Camunda parity section. The Conformance page's FEEL section and the
 package README carry both numbers, and the playground's function reference lists the new
 built-ins.
-
-## 2026-09-23 — P0 from the market analysis: claims that match the code, and ways to install
-
-**Every stale or overreaching claim that `doc/market-analysis.md` §13.1 listed is corrected at
-its source.**
-- README and homepage no longer say every package is 0.x or pre-1.0. They name the twelve 1.0
-  packages, generated from `STABLE`.
-- The plugin count is 34 everywhere; the plugins README documents the seven it left out.
-- FEEL is "94% DMN TCK", not "complete". The TCK was re-run locally: 1,939 of 2,053.
-- The round-trip card links to what is and is not preserved instead of promising no data loss.
-- The engine README and docs list what the simulator executes and what it completes
-  without semantics.
-- The Reebe README drops the pre-monorepo clone URL and the "no gRPC" row: the gateway
-  serves 22 RPCs on 26500. It gains an experimental, development-only status and a
-  LICENSE file.
-- The MCP docs name the real command, `casen proxy mcp`, and its real tool list.
-- The analyses that described work as unbuilt get status banners.
-
-`CLAUDE.md`'s React + Carbon stack section still does not match Studio (Preact, Radix,
-Tailwind). That section is the owner's policy, so it is left for them.
-
-**New pages.**
-- `docs/getting-started/conformance`: TCK figures, descriptor coverage (109 modelled,
-  34 preserved, 6 dropped), an element-by-component matrix and a single list of known
-  gaps.
-- A 1.0 launch post.
-- `/compare/bpmn-js`:
-  - opens with the licence row and quotes the bpmn.io watermark clause verbatim from the
-    bpmn-js LICENSE;
-  - stops claiming bpmn-js has no auto-layout or simulation — both exist as add-ons.
-- The homepage:
-  - adds "MIT, no watermark" to the proof points;
-  - adds a third start-here card for the MCP server.
-
-**Distribution.**
-- `release-vscode.yml` packages the extension whenever its version moves. It publishes to
-  the Marketplace and Open VSX when `VSCE_PAT` / `OVSX_PAT` are set, then tags a GitHub
-  Release with the `.vsix`.
-- `release-desktop.yml` builds Linux, Windows and both macOS installers into a draft
-  release, then publishes it. The builds are not code-signed.
-- The desktop build had been broken since the rename: `apps/proxy-rs/build.rs` filtered on
-  `@bpmn-sdk/proxy`, matched nothing, and failed to copy the bridge bundle.
-- The desktop app itself:
-  - is renamed BPMN Kit;
-  - has a full icon set generated from the favicon;
-  - resolves `ai-server.exe` on Windows (`tauri.windows.conf.json` plus `EXE_SUFFIX`).
-- Verified locally: the `.deb` builds (4.5 MB, both sidecars bundled) and the `.vsix` packages.
-- `publish-mcp.yml` lists `@bpmnkit/cli`'s MCP server in the MCP Registry as
-  `io.github.bpmnkit/bpmnkit`, using GitHub OIDC and `mcpName`.
-
-**Analytics.** `Seo.astro` loads the Cloudflare Web Analytics beacon (cookieless) only when
-`PUBLIC_CF_WEB_ANALYTICS_TOKEN` is set at build. `deploy-pages.yml` passes the
-`CF_WEB_ANALYTICS_TOKEN` repository variable. `apps/landing/turbo.json` declares the
-variable, so Turbo's strict env mode lets it through.
-
-**Needs the owner.**
-- Create the `bpmnkit` Marketplace publisher and Open VSX namespace, and add
-  `VSCE_PAT` / `OVSX_PAT`.
-- Add the `CF_WEB_ANALYTICS_TOKEN` variable.
-- Enable GitHub Discussions.
-- The VS Code guide calls the Marketplace and Open VSX listings "being set up" until the
-  tokens exist. Link them there once the first publish succeeds.
-
-## 2026-09-23 — Market & competitive analysis
-
-**`doc/market-analysis.md` maps BPMN Kit against the market.** It covers BPMN/DMN modelers and
-SDKs (the bpmn.io family, Camunda Desktop/Web Modeler/Hub, Miragon, Flowable Design, Signavio,
-Trisotech, Apache KIE, canvas SDKs), BPMN engines (Camunda 8.8–8.10, the Camunda 7 forks,
-Flowable, the JS engines), code-first durable execution (Temporal, Vercel Workflow, Inngest,
-Trigger.dev, Kestra), low-code/iPaaS (n8n and others), and AI agents/MCP, including the
-research on LLM-generated BPMN. It closes with a feature matrix, a SWOT, a presentation audit
-against leading developer-tool sites, a prioritised improvement list (P0–P4) and a
-positioning recommendation. It is a research document only; no code changed.
 
 ## 2026-09-24 — Inbound connector templates apply to something
 
@@ -253,6 +202,79 @@ bpmnlint. Each approximate rule differs only in the ways the table describes.
 - `LintDiagnostic` and `OptimizationFinding` gain an optional `bpmnlintRule` field, and
   `LintReport` gains an optional `bpmnlintUnsupported` field. `lintDiagram` accepts
   `bpmnlint` and `bpmnlintDelegated`.
+
+## 2026-09-23 — P0 from the market analysis: claims that match the code, and ways to install
+
+**Every stale or overreaching claim that `doc/market-analysis.md` §13.1 listed is corrected at
+its source.**
+- README and homepage no longer say every package is 0.x or pre-1.0. They name the twelve 1.0
+  packages, generated from `STABLE`.
+- The plugin count is 34 everywhere; the plugins README documents the seven it left out.
+- FEEL is "94% DMN TCK", not "complete". The TCK was re-run locally: 1,939 of 2,053.
+- The round-trip card links to what is and is not preserved instead of promising no data loss.
+- The engine README and docs list what the simulator executes and what it completes
+  without semantics.
+- The Reebe README drops the pre-monorepo clone URL and the "no gRPC" row: the gateway
+  serves 22 RPCs on 26500. It gains an experimental, development-only status and a
+  LICENSE file.
+- The MCP docs name the real command, `casen proxy mcp`, and its real tool list.
+- The analyses that described work as unbuilt get status banners.
+
+`CLAUDE.md`'s React + Carbon stack section still does not match Studio (Preact, Radix,
+Tailwind). That section is the owner's policy, so it is left for them.
+
+**New pages.**
+- `docs/getting-started/conformance`: TCK figures, descriptor coverage (109 modelled,
+  34 preserved, 6 dropped), an element-by-component matrix and a single list of known
+  gaps.
+- A 1.0 launch post.
+- `/compare/bpmn-js`:
+  - opens with the licence row and quotes the bpmn.io watermark clause verbatim from the
+    bpmn-js LICENSE;
+  - stops claiming bpmn-js has no auto-layout or simulation — both exist as add-ons.
+- The homepage:
+  - adds "MIT, no watermark" to the proof points;
+  - adds a third start-here card for the MCP server.
+
+**Distribution.**
+- `release-vscode.yml` packages the extension whenever its version moves. It publishes to
+  the Marketplace and Open VSX when `VSCE_PAT` / `OVSX_PAT` are set, then tags a GitHub
+  Release with the `.vsix`.
+- `release-desktop.yml` builds Linux, Windows and both macOS installers into a draft
+  release, then publishes it. The builds are not code-signed.
+- The desktop build had been broken since the rename: `apps/proxy-rs/build.rs` filtered on
+  `@bpmn-sdk/proxy`, matched nothing, and failed to copy the bridge bundle.
+- The desktop app itself:
+  - is renamed BPMN Kit;
+  - has a full icon set generated from the favicon;
+  - resolves `ai-server.exe` on Windows (`tauri.windows.conf.json` plus `EXE_SUFFIX`).
+- Verified locally: the `.deb` builds (4.5 MB, both sidecars bundled) and the `.vsix` packages.
+- `publish-mcp.yml` lists `@bpmnkit/cli`'s MCP server in the MCP Registry as
+  `io.github.bpmnkit/bpmnkit`, using GitHub OIDC and `mcpName`.
+
+**Analytics.** `Seo.astro` loads the Cloudflare Web Analytics beacon (cookieless) only when
+`PUBLIC_CF_WEB_ANALYTICS_TOKEN` is set at build. `deploy-pages.yml` passes the
+`CF_WEB_ANALYTICS_TOKEN` repository variable. `apps/landing/turbo.json` declares the
+variable, so Turbo's strict env mode lets it through.
+
+**Needs the owner.**
+- Create the `bpmnkit` Marketplace publisher and Open VSX namespace, and add
+  `VSCE_PAT` / `OVSX_PAT`.
+- Add the `CF_WEB_ANALYTICS_TOKEN` variable.
+- Enable GitHub Discussions.
+- The VS Code guide calls the Marketplace and Open VSX listings "being set up" until the
+  tokens exist. Link them there once the first publish succeeds.
+
+## 2026-09-23 — Market & competitive analysis
+
+**`doc/market-analysis.md` maps BPMN Kit against the market.** It covers BPMN/DMN modelers and
+SDKs (the bpmn.io family, Camunda Desktop/Web Modeler/Hub, Miragon, Flowable Design, Signavio,
+Trisotech, Apache KIE, canvas SDKs), BPMN engines (Camunda 8.8–8.10, the Camunda 7 forks,
+Flowable, the JS engines), code-first durable execution (Temporal, Vercel Workflow, Inngest,
+Trigger.dev, Kestra), low-code/iPaaS (n8n and others), and AI agents/MCP, including the
+research on LLM-generated BPMN. It closes with a feature matrix, a SWOT, a presentation audit
+against leading developer-tool sites, a prioritised improvement list (P0–P4) and a
+positioning recommendation. It is a research document only; no code changed.
 
 ## 2026-09-23 — The FEEL share link gets the same bar as the upload link
 

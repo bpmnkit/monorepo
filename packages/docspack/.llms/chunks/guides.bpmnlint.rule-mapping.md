@@ -27,7 +27,7 @@ rule.
 | `no-duplicate-sequence-flows` | error | `flow/duplicate-sequence-flow` (native) | Exact | One finding for each duplicate flow, which names the flow, its source and its target. bpmnlint reports these three separately. |
 | `no-gateway-join-fork` | error | `flow/mixed-gateway` | Approximate | Top-level process scope only. |
 | `no-implicit-end` | error | `flow/dead-end` | Approximate | Top-level scope only. Does not exempt link throw events, compensation handlers or event sub-processes. Also reports data objects and data stores. |
-| `no-implicit-split` | error | `flow/implicit-split` (native) | Approximate | Recognises default flows on gateways only, because the BPMN Kit model does not keep an activity's `default` attribute. |
+| `no-implicit-split` | error | `flow/implicit-split` (native) | Exact | |
 | `no-implicit-start` | error | `flow/unreachable` | Approximate | Reports every element that cannot be reached from a start event: the element without incoming flows and everything after it. Top-level scope only. Also reports event sub-processes, data objects and data stores. |
 | `no-inclusive-gateway` | warn | `pattern/inclusive-gateway` (native) | Exact | |
 | `no-overlapping-elements` | warn | `pattern/overlapping-elements` (native) | Exact | |
@@ -37,7 +37,7 @@ rule.
 | `start-event-required` | error | `flow/no-start-event`, `flow/sub-process-no-start-event` (native) | Exact | |
 | `sub-process-blank-start-event` | error | `flow/sub-process-typed-start` (native) | Exact | |
 | `superfluous-gateway` | warn | `flow/redundant-gateway` | Approximate | Top-level process scope only. |
-| `superfluous-label` | warn | `naming/superfluous-flow-label` (native) | Approximate | Recognises default flows on gateways only, as for `no-implicit-split`. |
+| `superfluous-label` | warn | `naming/superfluous-flow-label` (native) | Exact | |
 | `superfluous-termination` | warn | `flow/superfluous-termination` (native) | Exact | |
 
 ---

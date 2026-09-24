@@ -1,5 +1,5 @@
 import type { FeelNode } from "@bpmnkit/feel"
-import { parseExpression } from "@bpmnkit/feel"
+import { builtinNames, parseExpression } from "@bpmnkit/feel"
 import type { BpmnProcess, BpmnSequenceFlow, BpmnSubProcess } from "../bpmn-model.js"
 import type { OptimizationFinding } from "./types.js"
 import { buildFlowIndex, readZeebeIoMapping, readZeebeTaskType } from "./utils.js"
@@ -8,7 +8,10 @@ import { buildFlowIndex, readZeebeIoMapping, readZeebeTaskType } from "./utils.j
 // FEEL built-in names (excluded from variable references)
 // ---------------------------------------------------------------------------
 
+// The engine's own registry, so a built-in added there is never mistaken for a
+// variable here. The names listed below were here first and stay as a floor.
 const FEEL_BUILTINS = new Set([
+	...builtinNames(),
 	"string",
 	"string length",
 	"substring",

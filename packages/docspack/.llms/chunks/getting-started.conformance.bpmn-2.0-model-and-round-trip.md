@@ -19,10 +19,5 @@ dropped silently; `pnpm --filter @bpmnkit/core check:descriptors` prints the ful
 [Round-trip fidelity](/docs/getting-started/concepts#round-trip-fidelity) lists the
 deliberate normalisations and the children that are still not preserved.
 
-**Not yet measured:** BPMN Kit has not run the
-[OMG BPMN Model Interchange (MIWG) test suite](https://github.com/bpmn-miwg/bpmn-miwg-test-suite).
-The round-trip corpus in `packages/core/tests` is hand-written fixtures and the descriptor
-gate above. Running and publishing the MIWG results is on the roadmap.
-
 ---
 Source: https://bpmnkit.com/docs/getting-started/conformance

@@ -353,11 +353,7 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 		match: "approximate",
 		note: "Top-level process scope only. It does not exempt link throw events, compensation handlers or event sub-processes the way bpmnlint does, and it also reports data objects and data stores.",
 	},
-	"no-implicit-split": {
-		findings: ["flow/implicit-split"],
-		match: "approximate",
-		note: "Default flows are only recognised on gateways — the BPMN Kit model does not keep an activity's `default` attribute.",
-	},
+	"no-implicit-split": { findings: ["flow/implicit-split"], match: "exact" },
 	"no-implicit-start": {
 		findings: ["flow/unreachable"],
 		match: "approximate",
@@ -378,11 +374,7 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 		match: "approximate",
 		note: "Top-level process scope only.",
 	},
-	"superfluous-label": {
-		findings: ["naming/superfluous-flow-label"],
-		match: "approximate",
-		note: "Default flows are only recognised on gateways, as for no-implicit-split.",
-	},
+	"superfluous-label": { findings: ["naming/superfluous-flow-label"], match: "exact" },
 	"superfluous-termination": { findings: ["flow/superfluous-termination"], match: "exact" },
 }
 

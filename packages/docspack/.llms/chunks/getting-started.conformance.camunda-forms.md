@@ -7,10 +7,9 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
 
 ## Known gaps, in one list
 
-- MIWG interchange suite not run
+- Attributes on `<documentation>` (`id`, `textFormat`) are not preserved
 - Choreography and conversation diagrams
 - Camunda 7 extensions (preserved, not modelled)
-- Inbound connector templates
 - DMN boxed expressions and literal-expression decisions
 - TS simulator: call activities, event sub-processes, event-based and complex gateways,
   signal / escalation / compensation / conditional / link events, multi-instance,
