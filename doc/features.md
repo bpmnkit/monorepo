@@ -1,5 +1,11 @@
 # Features
 
+## Process documentation export (2026-09-24)
+
+- A print-ready HTML (→ PDF), Markdown or Word document of a process — diagram, lanes, every
+  step with its settings in flow order, linked DMN tables and forms — from the editor's More
+  menu, Drop's Docs button, `casen doc export`, or `renderDocumentationHtml` in core.
+
 ## Product tiers (2026-09-24)
 
 - Core / Tools / Experimental, defined once in `scripts/published-packages.mjs`, enforced by

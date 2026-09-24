@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 326 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 330 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -176,6 +176,10 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Pattern Library — Using patterns from the CLI](.llms/chunks/guides.patterns.using-patterns-from-the-cli.md) — 225 tokens
 - [Pattern Library — Pattern schema](.llms/chunks/guides.patterns.pattern-schema.md) — 212 tokens
 - [Pattern Library — See also](.llms/chunks/guides.patterns.see-also.md) — 45 tokens
+- [Process documentation](.llms/chunks/guides.process-documentation.md) — 488 tokens
+- [Process documentation — From the editor](.llms/chunks/guides.process-documentation.from-the-editor.md) — 246 tokens
+- [Process documentation — From Drop](.llms/chunks/guides.process-documentation.from-drop.md) — 273 tokens
+- [Process documentation — From code](.llms/chunks/guides.process-documentation.from-code.md) — 344 tokens
 - [Simulation](.llms/chunks/guides.simulation.md) — 261 tokens
 - [Simulation — Instance State](.llms/chunks/guides.simulation.instance-state.md) — 136 tokens
 - [Simulation — Message Correlation](.llms/chunks/guides.simulation.message-correlation.md) — 144 tokens
@@ -341,8 +345,8 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/plugins — Styles](.llms/chunks/packages.plugins.styles.md) — 247 tokens
 - [@bpmnkit/worker-client](.llms/chunks/packages.worker-client.md) — 141 tokens
 - [@bpmnkit/worker-client — `createWorkerClient(options?)`](.llms/chunks/packages.worker-client.createworkerclient-options.md) — 267 tokens
-- [@bpmnkit/worker-client — `client.poll(jobType, options?)`](.llms/chunks/packages.worker-client.client.poll-jobtype-options.md) — 265 tokens
-- [@bpmnkit/worker-client — `job.complete(variables?)`](.llms/chunks/packages.worker-client.job.complete-variables.md) — 171 tokens
-- [@bpmnkit/worker-client — When the engine refuses a call](.llms/chunks/packages.worker-client.when-the-engine-refuses-a-call.md) — 159 tokens
+- [@bpmnkit/worker-client — `client.poll(jobType, options?)`](.llms/chunks/packages.worker-client.client.poll-jobtype-options.md) — 462 tokens
+- [@bpmnkit/worker-client — `job.complete(variables?)`](.llms/chunks/packages.worker-client.job.complete-variables.md) — 159 tokens
+- [@bpmnkit/worker-client — `job.throwError(errorCode, message, variables?)`](.llms/chunks/packages.worker-client.job.throwerror-errorcode-message-variables.md) — 213 tokens
 - [@bpmnkit/worker-client — OAuth2 (Camunda SaaS)](.llms/chunks/packages.worker-client.oauth2-camunda-saas.md) — 150 tokens
 - [@bpmnkit/worker-client — See also](.llms/chunks/packages.worker-client.see-also.md) — 47 tokens

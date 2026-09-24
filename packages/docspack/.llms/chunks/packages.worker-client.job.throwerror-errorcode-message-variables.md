@@ -1,4 +1,13 @@
-# @bpmnkit/worker-client — When the engine refuses a call
+# @bpmnkit/worker-client — `job.throwError(errorCode, message, variables?)`
+
+Throws a BPMN error that can be caught by an error boundary event on the task in the diagram.
+
+```typescript
+await job.throwError("PAYMENT_DECLINED", "Card declined by issuer", { code: "05" })
+```
+
+
+## When the engine refuses a call
 
 `complete`, `fail` and `throwError` reject when the engine answers with an error status — for
 example because the job has timed out and been handed to another worker, or was cancelled. The

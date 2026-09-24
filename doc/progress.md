@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-09-24 — Process documentation export (HTML/PDF, Markdown, Word)
+
+- `@bpmnkit/core`: `renderDocumentationHtml`, `renderDocumentationMarkdown`, `renderDocumentationDocx`, plus `buildProcessDocumentation` and `documentationTo{Html,Markdown,Docx}`. They are pure, dependency-free and deterministic, and escape all model text. The document has the diagram, then per pool or process its lanes, a steps table and a detail block for every element in flow order (type, documentation, lane, job type, headers, mappings, called decision, process and form, assignment, timers, messages, errors, and conditions on outgoing flows). Linked DMN decision tables and form fields follow.
+- The HTML is self-contained and print-ready: inline SVG, a table of contents, and print CSS with page breaks and a landscape diagram page. Print → Save as PDF gives a clean A4 or Letter PDF. No PDF library.
+- Word export is a hand-written OOXML package (built-in heading styles, A4 or Letter, diagram as SVG on a landscape page) with a small in-module zip writer. It was checked in LibreOffice only, not in Microsoft Word, and has no PNG fallback.
+- Editor: More → "Export documentation…" offers a print view, HTML, Markdown and Word. The new `HudOptions.getDocumentationContext` supplies the linked DMN and forms; the hosted editor passes its open DMN and form tabs.
+- Drop: a "Docs" button and dialog on the share page, available to read-only readers. It documents the BPMN file with every DMN and form file in the drop.
+- CLI: `casen doc export <file.bpmn> [.dmn/.form…] --format html|md|docx [--out] [--title] [--paper]`.
+- New guide at `guides/process-documentation`, README entries for core and editor. Visual check: Chromium-printed PDFs of the order-to-cash, four-eyes-review and invoice-capture templates, and the docx rendered through LibreOffice.
+
+## 2026-09-24 — Reebe: Postgres test suites run in CI
+
+- New `.github/workflows/reebe.yml`: `cargo test --workspace` for Reebe against a `postgres:16-alpine` service, path-filtered to `apps/reebe/**` plus a weekly run, and a compile check of the embedded (SQLite) build. `ci.yml` already ran the workspace tests through `apps/reebe`'s `test` script, but with no database, so the Postgres suites always skipped.
+- `REEBE_REQUIRE_DB=1` (set in CI) makes the Postgres tests fail, not skip, when `REEBE_DATABASE__URL` is missing; a set URL that cannot connect or migrate now fails instead of skipping silently.
+- Fixed rotted suites: each test gets its own database (the engine replays every partition command at startup, so shared databases re-executed earlier runs), the test engine now starts the `Scheduler` so timers fire, message tests use `messageName`, and `benches/throughput.rs` compiles against the three-argument `Engine::new`.
+- Result: 12 Postgres tests pass; 4 are `#[ignore]`d with the reason: timer boundary events never arm, the event-based gateway does not cancel the losing branch, multi-instance works on sub-processes only, and a wall-clock throughput benchmark.
+- `cargo fmt --check` (about 60 files) and `cargo clippy -D warnings` (about 46 warnings) are not yet clean, so CI does not run them.
+- README and CONTRIBUTING document running the database tests locally.
+
 ## 2026-09-24 — worker-client, profiles and api: follow-ups from the test pass
 
 - **worker-client:** `job.fail(message)` defaults `retries` to `job.retries - 1` (never below 0) instead of `0`, so one failure no longer raises an incident. `poll()` ends by throwing on errors retrying cannot fix (rejected credentials, 4xx from the engine) instead of retrying silently forever; transient errors (network, 408, 429, 5xx, a failing token endpoint) go to a new `onError` option (default: a warning on stderr) and are retried. Activation long-polls with `requestTimeout` (default 20 s); idle polls still start at least 5 s apart. Docs and README updated; 6 new tests.

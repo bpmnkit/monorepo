@@ -1,7 +1,13 @@
 # @bpmnkit/worker-client — `client.poll(jobType, options?)`
 
-Async generator. Continuously polls Zeebe for jobs of the given type. Pauses 5 seconds
-between polls when no jobs are available.
+Async generator. Continuously polls Zeebe for jobs of the given type. Each activation request
+long-polls: the engine holds it open for up to `requestTimeout` until a job is available. When
+a poll comes back empty, the next one starts at least 5 seconds after it began.
+
+Transient failures — a network error, `408`, `429`, a `5xx`, or a token endpoint that is down —
+are passed to `onError` and retried. Anything retrying cannot fix, such as credentials the
+token endpoint rejects or a `401`/`403`/`400` from the engine, ends the loop: the generator
+throws, so a worker with a wrong secret stops with a message instead of idling forever.
 
 ```typescript
 for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_000 })) {
@@ -15,6 +21,8 @@ for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_00
 |---|---|---|---|
 | `maxJobs` | `number` | `5` | Maximum jobs to activate per poll request |
 | `timeout` | `number` | `300_000` | Activation lock timeout in milliseconds |
+| `requestTimeout` | `number` | `20_000` | How long the engine may hold an activation request open (long polling), in ms; `0` uses the engine default |
+| `onError` | `(error: Error) => void` | warning on stderr | Called with each transient error before the poll is retried |
 
 ### Yields `ActivatedJob`
 

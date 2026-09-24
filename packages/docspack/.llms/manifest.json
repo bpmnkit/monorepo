@@ -2288,6 +2288,56 @@
 			]
 		},
 		{
+			"id": "guides.process-documentation",
+			"file": "chunks/guides.process-documentation.md",
+			"tokens": 488,
+			"tags": [
+				"guides",
+				"process-documentation"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.process-documentation.from-the-editor",
+			"file": "chunks/guides.process-documentation.from-the-editor.md",
+			"tokens": 246,
+			"tags": [
+				"guides",
+				"process-documentation",
+				"editor"
+			],
+			"entities": [
+				"initEditorHud"
+			]
+		},
+		{
+			"id": "guides.process-documentation.from-drop",
+			"file": "chunks/guides.process-documentation.from-drop.md",
+			"tokens": 273,
+			"tags": [
+				"guides",
+				"process-documentation",
+				"drop"
+			],
+			"entities": []
+		},
+		{
+			"id": "guides.process-documentation.from-code",
+			"file": "chunks/guides.process-documentation.from-code.md",
+			"tokens": 344,
+			"tags": [
+				"guides",
+				"process-documentation",
+				"code"
+			],
+			"entities": [
+				"documentationToHtml",
+				"documentationToMarkdown",
+				"documentationToDocx",
+				"exportSvg"
+			]
+		},
+		{
 			"id": "guides.simulation",
 			"file": "chunks/guides.simulation.md",
 			"tokens": 261,
@@ -4818,7 +4868,7 @@
 		{
 			"id": "packages.worker-client.client.poll-jobtype-options",
 			"file": "chunks/packages.worker-client.client.poll-jobtype-options.md",
-			"tokens": 265,
+			"tokens": 462,
 			"tags": [
 				"packages",
 				"worker-client",
@@ -4827,6 +4877,8 @@
 				"options"
 			],
 			"entities": [
+				"requestTimeout",
+				"onError",
 				"maxJobs",
 				"ActivatedJob"
 			]
@@ -4834,7 +4886,7 @@
 		{
 			"id": "packages.worker-client.job.complete-variables",
 			"file": "chunks/packages.worker-client.job.complete-variables.md",
-			"tokens": 171,
+			"tokens": 159,
 			"tags": [
 				"packages",
 				"worker-client",
@@ -4844,15 +4896,16 @@
 			"entities": []
 		},
 		{
-			"id": "packages.worker-client.when-the-engine-refuses-a-call",
-			"file": "chunks/packages.worker-client.when-the-engine-refuses-a-call.md",
-			"tokens": 159,
+			"id": "packages.worker-client.job.throwerror-errorcode-message-variables",
+			"file": "chunks/packages.worker-client.job.throwerror-errorcode-message-variables.md",
+			"tokens": 213,
 			"tags": [
 				"packages",
 				"worker-client",
-				"engine",
-				"refuses",
-				"call"
+				"job.throwerror",
+				"errorcode",
+				"message",
+				"variables"
 			],
 			"entities": [
 				"throwError"
