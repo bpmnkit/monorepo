@@ -467,6 +467,17 @@ follow link events.
 - Complex gateways
 - Ad-hoc sub-processes run only through a job worker implementation; their inner elements are
   not activated
+- Link events: `linkEventDefinition` is not parsed, so a process with a link catch event fails
+  to deploy
+- Compensation: handlers connected by an association fail deployment as isolated elements, and
+  compensation throw events do not run them
+- An exclusive gateway with no matching condition and no default flow stops without an
+  incident (Zeebe raises one); an inclusive split's incident is raised after the gateway has
+  completed, so resolving it does not retry the split
+- Default flows are only marked on top-level gateways
+- Error event sub-processes do not receive the error's variables
+- Event sub-process instances report the element type `SUB_PROCESS`, not `EVENT_SUB_PROCESS`
+- Parallel gateways evaluate conditions on their outgoing flows; Zeebe ignores them
 
 ### What is not supported
 

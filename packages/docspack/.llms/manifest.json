@@ -907,7 +907,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 1044,
+			"tokens": 1204,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -982,7 +982,7 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 265,
+			"tokens": 266,
 			"tags": [
 				"getting-started",
 				"conformance",

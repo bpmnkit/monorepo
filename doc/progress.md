@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-09-24 — Reebe: event sub-processes, inclusive joins, waiting join tokens
+
+- Reebe arms the timer, message and signal start events of event sub-processes when their flow scope (process or embedded sub-process) activates: timers and correlation keys are evaluated with FEEL against the scope, and everything is disarmed when the scope completes or is terminated. An interrupting event sub-process terminates the rest of its scope (jobs, user tasks, called processes, other event sub-processes, waiting join tokens), triggers once and disarms the others; a non-interrupting one runs alongside each time its event occurs, and a timer cycle repeats. Message and signal variables propagate from the start event as a catch event's do. It all runs through `catch_event.rs`'s wait/trigger path.
+- Joins count tokens per flow scope, gateway and incoming sequence flow (new `join_tokens` table, migration 020, replacing `gateway_tokens`; tokens waiting at a join when an existing database is upgraded are lost). A parallel join needs a token on every incoming flow. An inclusive join (new `processor/join.rs`) activates once every incoming flow has a token or can no longer be reached from an active element, a pending activation or another waiting join of its scope — a static walk over sequence flows and boundary events that does not evaluate conditions or follow link events. The inclusive split takes its default flow only when no condition holds, and raises a CONDITION_ERROR incident when there is none.
+- A token waiting at a parallel or inclusive join keeps its flow scope, and the process instance, active, as in Zeebe, even if the join can never fire.
+- 19 new in-memory engine tests and a Postgres compatibility test; the Reebe README and the conformance page are updated.
+- Conformance page corrected: it claimed Reebe executes link events and compensation. It does not (a link catch event fails deployment; compensation handlers are not parsed or run). Both are now listed as gaps, with the other differences from Zeebe the work turned up, in the page and the Reebe README.
+
 ## 2026-09-24 — Reebe: start events, Zeebe scope completion, no replay on restart
 
 - Timer start events are scheduled on deployment: `timeDate` fires once, `timeCycle` repeats (`R/…`, `Rn/…`, Spring cron such as `0 0 9-17 * * MON-FRI`), each firing creates an instance, and a new version cancels the previous version's timers.

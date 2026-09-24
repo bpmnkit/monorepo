@@ -136,8 +136,8 @@ in reverse order, as BPMN specifies, where Zeebe starts them all at once. For Ze
 `@bpmnkit/engine/wasm-runner` runs the same scenarios on **Reebe** compiled to WebAssembly.
 Reebe's model covers the task types, call activities, embedded and event sub-processes,
 exclusive, parallel, inclusive and event-based gateways, catch, throw and boundary events
-(timer, message, signal, error, escalation, compensation, link, terminate) and
-multi-instance. Errors and escalations, from end events, throw events and job workers,
+(timer, message, signal, error, escalation, terminate) and multi-instance. It does not yet
+run link events (a process with a link catch event fails to deploy) or compensation. Errors and escalations, from end events, throw events and job workers,
 propagate out through sub-processes and call activities to a boundary event or an event
 sub-process. An uncaught error raises an incident. Timer, message and signal boundary events
 are armed when their activity starts and cancelled when it ends. An interrupting one
@@ -225,8 +225,9 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
-- Reebe: complex gateway, ad-hoc sub-processes other than a job worker implementation and
-  the inner elements of those, single-node only, no published comparison with Zeebe, and no
-  published performance figures
+- Reebe: complex gateway, link events, compensation, ad-hoc sub-processes other than a job
+  worker implementation and the inner elements of those; an exclusive gateway with no
+  matching condition and no default flow stops without raising an incident; single-node only,
+  no published comparison with Zeebe, and no published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).

@@ -1,5 +1,10 @@
 # Features
 
+## Reebe: event sub-processes and inclusive joins (2026-09-24)
+
+- Timer, message and signal event sub-processes (interrupting and not), inclusive gateway
+  joins that wait for reachable branches, and join tokens that keep their scope open.
+
 ## Reebe: start events and restart safety (2026-09-24)
 
 - Timer start events (dates, `R…` cycles, cron) and message start events create instances;

@@ -29,13 +29,20 @@ in reverse order, as BPMN specifies, where Zeebe starts them all at once. For Ze
 `@bpmnkit/engine/wasm-runner` runs the same scenarios on **Reebe** compiled to WebAssembly.
 Reebe's model covers the task types, call activities, embedded and event sub-processes,
 exclusive, parallel, inclusive and event-based gateways, catch, throw and boundary events
-(timer, message, signal, error, escalation, compensation, link, terminate) and
-multi-instance. Errors and escalations, from end events, throw events and job workers,
+(timer, message, signal, error, escalation, terminate) and multi-instance. It does not yet
+run link events (a process with a link catch event fails to deploy) or compensation. Errors and escalations, from end events, throw events and job workers,
 propagate out through sub-processes and call activities to a boundary event or an event
 sub-process. An uncaught error raises an incident. Timer, message and signal boundary events
 are armed when their activity starts and cancelled when it ends. An interrupting one
 terminates the activity; a non-interrupting one leaves it running, and a timer cycle repeats.
 An event-based gateway waits for the first of its events and cancels the others.
+The timer, message and signal start events of event sub-processes are armed when their
+process or sub-process starts and disarmed when it ends. An interrupting event sub-process
+terminates the rest of its scope and triggers once; a non-interrupting one runs alongside,
+as often as its event occurs. An inclusive gateway takes every flow whose condition holds,
+or its default flow, and its join waits until no token in the scope can still reach an
+incoming flow that has none. A token waiting at a parallel or inclusive join keeps its
+scope active, as in Zeebe, even if the join can never fire.
 Deploying a process schedules its timer start events (a date, a repeating interval or a cron
 expression) and subscribes its message start events; a timer firing or a matching message
 creates an instance, at most one active instance per message correlation key, and a new version
