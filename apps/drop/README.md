@@ -25,16 +25,17 @@ src/
                    batched view/retention write it flushes to D1 on an alarm
   env.ts           Binding types
   routes/          upload, share pages, raw/json download, reports, admin, ai-review,
-                   versions (history + restore), feel (saving an edited statement)
+                   versions (history + restore), feel (saving an edited statement),
+                   comments (review threads, @mentions, author tokens)
   lib/             ids, validate, meta, db (D1), versions (the milestone ring), http,
                    pages (HTML), demo (in-memory demo drop), review (deterministic
                    optimizer pass), ai (Workers AI + cache)
   client/          browser bundles: drop, viewer, admin, landing (built to public/drop/assets),
-                   plus the FEEL view, editor and composer
+                   plus the FEEL view, editor and composer, and the comments panel
   shared/          constants, and the FEEL document (shape, parse, evaluate) — used by
                    both Worker and client
 migrations/        D1 schema (0001 core, 0002 AI review, 0003 version log,
-                   0004 report state, 0005 the FEEL kind)
+                   0004 report state, 0005 the FEEL kind, 0006 comments)
 ```
 
 ## Develop

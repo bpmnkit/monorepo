@@ -576,3 +576,80 @@ DMN and Form co-editing is a separate project and should be scoped separately (�
 - [Moment devlog — Lies I was Told About Collaborative Editing, Pt. 2: Why we don't use Yjs](https://www.moment.dev/blog/lies-i-was-told-pt-2)
 - [Camunda 8 — Web Modeler collaboration (undo/redo reset behaviour)](https://docs.camunda.io/docs/components/modeler/web-modeler/collaboration/)
 - [Borth, *Directed Acyclic Graph CRDTs*, PaPoC '25](https://dl.acm.org/doi/10.1145/3721473.3722141)
+
+---
+
+## Decision (2026-09-24)
+
+**Status: decided. Drop stays single-writer per document for now. Drop will not adopt a CRDT.
+The first safe step toward concurrency is one baton per file, not per drop.**
+
+### What changed since this analysis
+
+The analysis above was written before any editing existed. Since then, phases 0–2 of §6.5
+have shipped, and a large part of Option B's authority has shipped with them:
+
+- `DocRoom` (`apps/drop/src/room.ts`) holds the edit baton. It also **replays every op
+  server-side** with the same `applyOp` the browser runs, and it refuses any result that
+  fails the integrity gate (`lib/integrity.ts`) or the row-size cap. It re-hashes content
+  against the ban list at every save.
+- Ops travel as a typed vocabulary (`EditorOp`, `@bpmnkit/editor/headless`). Creating
+  ops carry a `seed`, so ids are deterministic on every replay. Items 1 and 3 of §6.4
+  (injectable ids and ops that describe intent) are done in effect.
+- Watchers replay the writer's ops and compare a document hash after each op. On a
+  mismatch they resync. That is the divergence handling §5.2 step 4 describes.
+- A version log (the pinned original plus ten milestones, and restore by appending) makes
+  "a stranger overwrote my work" recoverable. §8's moderation and caching problems are
+  handled: bans are re-checked on save, reports record the content hashes, and ETags
+  identify the version.
+- Review comments are now separate from the document. They are anchored to element ids,
+  stored in D1, and fanned out live through the same room (`routes/comments.ts`). People
+  can now talk about a diagram while someone else holds the baton. That was the main
+  reason a review needed a second writer.
+
+### The decision
+
+1. **No CRDT (Option C).** None of the four reasons in §5.3 has changed, and the second
+   reason is now stronger. The room already replays pure ops and validates the result.
+   A Y.Doc would duplicate that authority and weaken its guarantees. Only genuine offline
+   editing would reopen this, as the analysis says (§10, question 5), and nobody has asked
+   for it.
+2. **If Drop moves to several writers on one diagram, it will extend the existing room
+   into Option B** (a server-authoritative op log). It will not replace the room. The op
+   vocabulary, server-side replay, integrity gate, hash check and resync all stay. The
+   new parts are a `baseVersion` on each op and a rule for stale ops. The rule is
+   **reject and resync, never rebase**: the §3.2 routing problem makes an automatic
+   rebase of a move unsafe to trust.
+3. **Not now.** Nothing shows that one writer per document is too few for a review link
+   (§10, question 3). Comments remove the most common reason to want a second writer. The
+   costs in §3.2–§3.4 are all still there: non-local moves, merges that produce invalid
+   diagrams, and undo that affects other people.
+
+### The first safe step: one baton per file
+
+Today one baton covers the **whole drop**: `holder`, `holderFile`, `dirtyFile` and the
+autosave deadline in `DocRoom` are single keys. In a drop with a main process and the
+processes it calls, each in its own `.bpmn` file, a second person cannot edit a called
+process while someone else edits the main one. Allowing that is real concurrent editing
+with no merge semantics at all, because the files are independent documents. (DMN and
+form files are not edited through the baton yet, so this step is about BPMN files.) To
+do it:
+
+- Key the baton state and the autosave state by filename: `holder:<file>`,
+  `dirty:<file>`, `docFlushAt:<file>`. The single alarm then serves the earliest deadline
+  across all files.
+- Have `claim` / `release` / `revoked` name the file. Have `presence` carry a map from
+  file to holder name instead of one holder. The `names` field that comments added already
+  gives the holder a name to display.
+- Keep Turnstile at one challenge per claim, and keep the demo, pinned and multi-process
+  refusals exactly as they are.
+- **Verify:** two sockets claim two different files of the same drop, and both edits
+  persist. A claim on a file that someone already holds is still `denied`. Idle revoke,
+  disconnect revoke and ban-halt each affect only their own file. Autosave writes stay
+  within the §7 budget: no more than one save per file per 30 seconds.
+
+At the same time, **measure demand before building more**. Count `denied` claims per
+file (a counter in room storage, flushed on the view alarm) and send the count to logs.
+If people often want to edit the *same* file at once, that is the evidence for step 2
+above. If they rarely do, the baton per file is the whole feature, and §6.5 says
+stopping there "is a legitimate outcome rather than a failure".

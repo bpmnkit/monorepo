@@ -1,4 +1,5 @@
 import type { EditorOp } from "@bpmnkit/editor/headless"
+import type { CommentView } from "./comments.js"
 
 /**
  * The messages a drop's room and its viewers exchange.
@@ -33,17 +34,42 @@ export type ClientMessage =
 	| { type: "op"; seq: number; op: EditorOp }
 	/** "I have lost track of the document" — ask for the current state outright. */
 	| { type: "resync"; filename: string }
+	/**
+	 * "Call me this." The display name others see in presence and can @mention.
+	 * Self-asserted and unverified: it is a label, not an identity.
+	 */
+	| { type: "name"; name: string }
 
 /** Sent by the room. */
 export type ServerMessage =
 	/** First message on every connection: who you are, and what the room looks like. */
-	| { type: "hello"; actor: string; viewers: number; holder: string | null; file: string | null }
+	| {
+			type: "hello"
+			actor: string
+			viewers: number
+			holder: string | null
+			file: string | null
+			names: string[]
+	  }
 	/**
-	 * Someone joined or left, or the baton moved. `file` is what the holder
-	 * claimed — a drop has many files and the baton covers one at a time, so a
-	 * viewer on a different tab knows there is nothing here for it to watch.
+	 * Someone joined or left, named themselves, or the baton moved. `file` is
+	 * what the holder claimed — a drop has many files and the baton covers one at
+	 * a time, so a viewer on a different tab knows there is nothing here for it
+	 * to watch. `names` are the display names of the viewers who have given one,
+	 * which is who the comment composer can offer to @mention.
 	 */
-	| { type: "presence"; viewers: number; holder: string | null; file: string | null }
+	| {
+			type: "presence"
+			viewers: number
+			holder: string | null
+			file: string | null
+			names: string[]
+	  }
+	/**
+	 * A comment was made, edited, resolved, reopened or deleted. The whole comment
+	 * as it now stands, so a page only ever replaces what it has by id.
+	 */
+	| { type: "comment"; comment: CommentView }
 	/**
 	 * You hold the baton, and here is what you are editing.
 	 *
