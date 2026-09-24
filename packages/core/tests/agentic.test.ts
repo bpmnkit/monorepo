@@ -143,7 +143,7 @@ describe("buildAiAgentSubProcess", () => {
 			'=fromAi(toolCall.message, "The message text.", "string")',
 		)
 		expect(slackInputs["data.urgent"]).toBe(
-			'=fromAi(toolCall.urgent, "Whether to flag as urgent.", "boolean", null, { required: false })',
+			'=fromAi(toolCall.urgent, "Whether to flag as urgent.", "boolean", {}, { required: false })',
 		)
 		const slackOutputs = (slackToolIo?.children ?? []).filter((c) => c.name === "zeebe:output")
 		expect(slackOutputs).toEqual([

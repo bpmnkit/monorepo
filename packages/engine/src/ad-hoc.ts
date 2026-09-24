@@ -100,11 +100,36 @@ export function describeAdHocElement(el: BpmnFlowElement): AdHocSubProcessElemen
 const FROM_AI_NAMED = ["value", "description", "type", "schema", "options"] as const
 
 /**
+ * Throw Zeebe's deployment rejection for the first `fromAi()` call it cannot read in
+ * the input mappings of an element an ad-hoc sub-process (in `elements`, at any
+ * depth) can activate, as Zeebe's `AdHocSubProcessTransformer` does.
+ */
+export function checkAdHocFromAiCalls(elements: readonly BpmnFlowElement[]): void {
+	for (const el of elements) {
+		if (el.type === "adHocSubProcess") {
+			for (const tool of adHocActivatableElements(el)) {
+				for (const input of parseZeebeExt(tool.extensionElements).ioMapping?.inputs ?? []) {
+					try {
+						fromAiParameters(input.source)
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error)
+						throw new Error(
+							`Failed to extract ad-hoc activity parameters for element '${tool.id}'. ${message}`,
+						)
+					}
+				}
+			}
+		}
+		if ("flowElements" in el) checkAdHocFromAiCalls(el.flowElements)
+	}
+}
+
+/**
  * The `fromAi()` calls in a FEEL input mapping, as parameters. As in Zeebe's
  * `FromAiTaggedParameterExtractor`, a description or type must be a string literal
  * and a schema or options a context of literals, and the arguments of a call are not
- * searched for more calls. Zeebe rejects the deployment of a call that breaks those
- * rules; here the call (a value that is not a reference) or the argument is left out.
+ * searched for more calls. A call that breaks those rules throws the extractor's
+ * message, with which Zeebe rejects the deployment.
  */
 export function fromAiParameters(source: string): AdHocToolParameter[] {
 	const expression = source.trim()
@@ -120,27 +145,51 @@ export function fromAiParameters(source: string): AdHocToolParameter[] {
 					? Object.fromEntries(node.args.map((arg) => [arg.name, arg.value]))
 					: undefined
 		if (args === undefined) return false
-		const name = args.value === undefined ? undefined : reference(args.value)
-		if (name === undefined) return true
 		const param: {
 			name: string
 			description?: string
 			type?: string
 			schema?: Record<string, unknown>
 			options?: Record<string, unknown>
-		} = { name }
-		if (args.description?.kind === "string" && args.description.value !== "") {
-			param.description = args.description.value
+		} = { name: parameterName(args.value) }
+		for (const field of ["description", "type"] as const) {
+			const arg = args[field]
+			if (arg === undefined) continue
+			if (arg.kind !== "string") {
+				throw new Error(
+					`Expected fromAi() parameter '${field}' to be a string, but received '${mismatchValue(arg)}'.`,
+				)
+			}
+			if (arg.value !== "") param[field] = arg.value
 		}
-		if (args.type?.kind === "string" && args.type.value !== "") param.type = args.type.value
-		const schema = contextLiteral(args.schema)
-		if (schema !== undefined) param.schema = schema
-		const options = contextLiteral(args.options)
-		if (options !== undefined) param.options = options
+		for (const field of ["schema", "options"] as const) {
+			const arg = args[field]
+			if (arg === undefined) continue
+			if (arg.kind !== "context") {
+				throw new Error(
+					`Expected fromAi() parameter '${field}' to be a context (map), but received '${mismatchValue(arg)}'.`,
+				)
+			}
+			const value = literal(arg) as Record<string, unknown>
+			if (arg.entries.length > 0) param[field] = value
+		}
 		found.push(param)
 		return true
 	})
 	return found
+}
+
+/** The name of the parameter a `fromAi()` value tags: the whole reference it is. */
+function parameterName(value: FeelNode | undefined): string {
+	// Zeebe's extractor switches on the missing value, which throws a
+	// NullPointerException without a message.
+	if (value === undefined) throw new Error("null")
+	const name = reference(value)
+	if (name !== undefined) return name
+	const received = value.kind === "string" ? `string '${value.value}'` : mismatchValue(value)
+	throw new Error(
+		`Expected fromAi() parameter 'value' to be a reference (e.g. 'toolCall.customParameter'), but received ${received}.`,
+	)
 }
 
 /** `a.b.c` for a reference to a variable or a path into one, as FEEL's `Ref` names it. */
@@ -153,16 +202,26 @@ function reference(node: FeelNode): string | undefined {
 	return undefined
 }
 
-const NOT_LITERAL = Symbol("not a literal")
-
-/** A non-empty context of literals, as a record. */
-function contextLiteral(node: FeelNode | undefined): Record<string, unknown> | undefined {
-	if (node?.kind !== "context" || node.entries.length === 0) return undefined
-	const value = literal(node)
-	return value === NOT_LITERAL ? undefined : (value as Record<string, unknown>)
+/**
+ * How Zeebe's extractor shows a value of the wrong kind: a literal by its value,
+ * anything else as the FEEL engine's expression tree.
+ */
+function mismatchValue(node: FeelNode): string {
+	switch (node.kind) {
+		case "string":
+			return node.value
+		case "number":
+		case "boolean":
+			return String(node.value)
+		default:
+			return scalaTree(node)
+	}
 }
 
-/** The value of a string, number or boolean literal, or of a list or context of them. */
+/**
+ * The value of a literal: a string, number or boolean, or a list or context of them.
+ * Throws Zeebe's message for anything else.
+ */
 function literal(node: FeelNode): unknown {
 	switch (node.kind) {
 		case "string":
@@ -170,22 +229,96 @@ function literal(node: FeelNode): unknown {
 		case "boolean":
 			return node.value
 		case "unary-minus":
-			return node.operand.kind === "number" ? -node.operand.value : NOT_LITERAL
-		case "list": {
-			const items = node.items.map(literal)
-			return items.includes(NOT_LITERAL) ? NOT_LITERAL : items
-		}
+			// FEEL reads a negative number literal as one number.
+			if (node.operand.kind === "number") return -node.operand.value
+			break
+		case "list":
+			return node.items.map(literal)
 		case "context": {
 			const record: Record<string, unknown> = {}
-			for (const entry of node.entries) {
-				const value = literal(entry.value)
-				if (value === NOT_LITERAL) return NOT_LITERAL
-				record[entry.key] = value
-			}
+			for (const entry of node.entries) record[entry.key] = literal(entry.value)
 			return record
 		}
+	}
+	const tree = scalaTree(node)
+	const end = tree.indexOf("(")
+	// A case object, such as `ConstNull`, is the instance of the class `ConstNull$`.
+	const className = end === -1 ? `${tree}$` : tree.slice(0, end)
+	throw new Error(`Unsupported expression value in fromAi() function invocation: ${className}`)
+}
+
+const SCALA_BINARY: Record<string, string> = {
+	"+": "Addition",
+	"-": "Subtraction",
+	"*": "Multiplication",
+	"/": "Division",
+	"**": "Exponentiation",
+	"=": "Equal",
+	"<": "LessThan",
+	"<=": "LessOrEqual",
+	">": "GreaterThan",
+	">=": "GreaterOrEqual",
+	and: "Conjunction",
+	or: "Disjunction",
+}
+
+/**
+ * `node` as the FEEL engine's (feel-scala's) expression tree prints itself (a Scala
+ * case class's `toString`), which Zeebe's messages show for a value of the wrong kind.
+ */
+function scalaTree(node: FeelNode): string {
+	const list = (items: string[]) => `List(${items.join(", ")})`
+	const bound = (bindings: Array<{ name: string; domain: FeelNode }>) =>
+		list(bindings.map((b) => `(${b.name},${scalaTree(b.domain)})`))
+	switch (node.kind) {
+		case "null":
+			return "ConstNull"
+		case "boolean":
+			return `ConstBool(${node.value})`
+		case "number":
+			return `ConstNumber(${node.value})`
+		case "string":
+			return `ConstString(${node.value})`
+		case "name":
+		case "path": {
+			const name = reference(node)
+			if (name !== undefined) return `Ref(${list(name.split("."))})`
+			return node.kind === "path" ? `PathExpression(${scalaTree(node.base)},${node.key})` : ""
+		}
+		case "unary-minus":
+			return `ArithmeticNegation(${scalaTree(node.operand)})`
+		case "binary": {
+			const pair = `(${scalaTree(node.left)},${scalaTree(node.right)})`
+			return node.op === "!=" ? `Not(Equal${pair})` : `${SCALA_BINARY[node.op]}${pair}`
+		}
+		case "call":
+			return `FunctionInvocation(${node.callee},PositionalFunctionParameters(${list(node.args.map(scalaTree))}))`
+		case "call-named":
+			return `FunctionInvocation(${node.callee},NamedFunctionParameters(Map(${node.args
+				.map((arg) => `${arg.name} -> ${scalaTree(arg.value)}`)
+				.join(", ")})))`
+		case "if":
+			return `If(${scalaTree(node.condition)},${scalaTree(node.then)},${scalaTree(node.else)})`
+		case "list":
+			return `ConstList(${list(node.items.map(scalaTree))})`
+		case "context":
+			return `ConstContext(${list(node.entries.map((e) => `(${e.key},${scalaTree(e.value)})`))})`
+		case "range":
+			return `ConstRange(${scalaTree(node.low)},${scalaTree(node.high)})`
+		case "for":
+			return `For(${bound(node.bindings)},${scalaTree(node.body)})`
+		case "some":
+			return `SomeItem(${bound(node.bindings)},${scalaTree(node.satisfies)})`
+		case "every":
+			return `EveryItem(${bound(node.bindings)},${scalaTree(node.satisfies)})`
+		case "filter":
+			return `Filter(${scalaTree(node.base)},${scalaTree(node.condition)})`
+		case "in-test":
+			return `In(${scalaTree(node.value)},${scalaTree(node.test)})`
+		case "instance-of":
+			return `InstanceOf(${scalaTree(node.value)},${node.typeName})`
 		default:
-			return NOT_LITERAL
+			return node.kind
 	}
 }
 

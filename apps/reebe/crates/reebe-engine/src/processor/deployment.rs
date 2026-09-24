@@ -83,6 +83,8 @@ impl RecordProcessor for DeploymentProcessor {
                     let msg = errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
                     return Err(EngineError::BpmnParse(msg));
                 }
+                super::ad_hoc::check_from_ai_calls(&process.elements)
+                    .map_err(|message| EngineError::BpmnParse(format!("'{resource_name}': {message}")))?;
             }
 
             for process in &deployment_obj.processes {

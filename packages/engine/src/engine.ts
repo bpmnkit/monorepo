@@ -5,6 +5,7 @@ import type {
 	DmnDefinitions,
 	FormDefinition,
 } from "@bpmnkit/core"
+import { checkAdHocFromAiCalls } from "./ad-hoc.js"
 import { ProcessInstance } from "./instance.js"
 import type { EventRefs, InstanceHost, ParentLink } from "./instance.js"
 import type { SecretResolver } from "./secrets.js"
@@ -56,7 +57,8 @@ export class Engine {
 
 	/**
 	 * Deploy BPMN processes, DMN decisions, and form definitions.
-	 * Calling deploy multiple times merges into the registry.
+	 * Calling deploy multiple times merges into the registry. Throws, deploying
+	 * nothing, for a `fromAi()` call Zeebe would reject the deployment for.
 	 */
 	deploy(d: {
 		bpmn?: BpmnDefinitions | BpmnDefinitions[]
@@ -65,6 +67,9 @@ export class Engine {
 	}): void {
 		if (d.bpmn !== undefined) {
 			const defs = Array.isArray(d.bpmn) ? d.bpmn : [d.bpmn]
+			for (const def of defs) {
+				for (const process of def.processes) checkAdHocFromAiCalls(process.flowElements)
+			}
 			for (const def of defs) {
 				for (const process of def.processes) {
 					this.processes.set(process.id, process)

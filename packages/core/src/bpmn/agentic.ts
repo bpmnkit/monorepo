@@ -130,7 +130,9 @@ function fromAiExpression(param: AiAgentToolParam): string {
 	if (needsType) args.push(JSON.stringify(param.type ?? "string"))
 	if (param.schema !== undefined) args.push(JSON.stringify(param.schema))
 	if (param.required === false) {
-		if (param.schema === undefined) args.push("null")
+		// Zeebe rejects the deployment of a `null` schema (its tagged-parameter extractor
+		// accepts only a context), and leaves an empty one out of the tool's parameters.
+		if (param.schema === undefined) args.push("{}")
 		args.push("{ required: false }")
 	}
 	return `=fromAi(${args.join(", ")})`

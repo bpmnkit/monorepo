@@ -88,7 +88,8 @@ pub(crate) fn elements_variable(sp: &SubProcess) -> serde_json::Value {
             .collect();
         let parameters: Vec<serde_json::Value> = super::bpmn_element::get_input_mappings(el)
             .iter()
-            .flat_map(|mapping| reebe_feel::from_ai_parameters(&mapping.source))
+            // Deployment rejected any call that is not valid.
+            .flat_map(|mapping| reebe_feel::from_ai_parameters(&mapping.source).unwrap_or_default())
             .collect();
         let mut element = serde_json::Map::new();
         element.insert("elementId".into(), el.id().into());
@@ -107,6 +108,31 @@ pub(crate) fn elements_variable(sp: &SubProcess) -> serde_json::Value {
         serde_json::Value::Object(element)
     });
     serde_json::Value::Array(elements.collect())
+}
+
+/// Check the `fromAi()` calls of the elements every ad-hoc sub-process in `elements`
+/// (at any depth) can activate, as Zeebe's `AdHocSubProcessTransformer` does when it
+/// builds their metadata: `Err` with its message for the first call it cannot read,
+/// which rejects the deployment.
+pub(crate) fn check_from_ai_calls(elements: &std::collections::HashMap<String, FlowElement>) -> Result<(), String> {
+    for el in elements.values() {
+        let FlowElement::SubProcess(sp) = el else { continue };
+        if sp.ad_hoc {
+            let mut ids = activatable(sp);
+            // Report the first failing element in document order, as Zeebe does.
+            ids.sort_by_key(|id| sp.element_order.iter().position(|o| o == id));
+            for id in ids {
+                let Some(el) = sp.elements.get(id) else { continue };
+                for mapping in super::bpmn_element::get_input_mappings(el) {
+                    reebe_feel::from_ai_parameters(&mapping.source).map_err(|message| {
+                        format!("Failed to extract ad-hoc activity parameters for element '{id}'. {message}")
+                    })?;
+                }
+            }
+        }
+        check_from_ai_calls(&sp.elements)?;
+    }
+    Ok(())
 }
 
 /// The element ids `activeElementsCollection` lists, evaluated in the ad-hoc

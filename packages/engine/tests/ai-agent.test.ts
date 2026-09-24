@@ -317,6 +317,79 @@ describe("engine — ad-hoc sub-process run by a job worker", () => {
 	})
 })
 
+describe("fromAi() calls Zeebe rejects at deployment", () => {
+	const tools = (source: string) => `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="d" targetNamespace="t">
+  <bpmn:process id="process" isExecutable="true">
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="outer"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:startEvent id="inner-start"><bpmn:outgoing>f2</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:adHocSubProcess id="agent"><bpmn:incoming>f2</bpmn:incoming>
+        <bpmn:serviceTask id="tool">
+          <bpmn:extensionElements>
+            <zeebe:taskDefinition type="tool"/>
+            <zeebe:ioMapping><zeebe:input source="${source.replaceAll('"', "&quot;")}" target="x"/></zeebe:ioMapping>
+          </bpmn:extensionElements>
+        </bpmn:serviceTask>
+      </bpmn:adHocSubProcess>
+      <bpmn:sequenceFlow id="f2" sourceRef="inner-start" targetRef="agent"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="outer"/>
+  </bpmn:process>
+</bpmn:definitions>`
+	const deployError = (source: string) => {
+		const engine = new Engine()
+		expect(() => engine.deploy({ bpmn: Bpmn.parse(tools(source)) })).toThrow()
+		try {
+			engine.deploy({ bpmn: Bpmn.parse(tools(source)) })
+		} catch (error) {
+			expect(engine.getDeployedProcesses()).toEqual([])
+			return (error as Error).message
+		}
+		return ""
+	}
+	const prefix = "Failed to extract ad-hoc activity parameters for element 'tool'. "
+
+	// The cases of Zeebe's TaggedParameterExtractorTest, which Reebe checks too.
+	it("rejects a value that is not a reference", () => {
+		const expected = `${prefix}Expected fromAi() parameter 'value' to be a reference (e.g. 'toolCall.customParameter'), but received`
+		expect(deployError('=fromAi("toolCall.myVariable")')).toBe(
+			`${expected} string 'toolCall.myVariable'.`,
+		)
+		expect(deployError("=fromAi(10)")).toBe(`${expected} 10.`)
+		expect(deployError("=fromAi([])")).toBe(`${expected} ConstList(List()).`)
+		expect(deployError("=fromAi(fromAi(toolCall.myVariable))")).toMatch(
+			/but received FunctionInvocation\(fromAi/,
+		)
+	})
+
+	it("rejects a description or type that is not a string, or a schema or options that is not a context", () => {
+		expect(deployError("=fromAi(value: toolCall.myVariable, description: 10)")).toBe(
+			`${prefix}Expected fromAi() parameter 'description' to be a string, but received '10'.`,
+		)
+		expect(deployError('=fromAi(value: toolCall.myVariable, type: "str" + "ing")')).toMatch(
+			/parameter 'type' to be a string, but received 'Addition\(ConstString\(str\),ConstString\(ing\)\)'\.$/,
+		)
+		expect(deployError('=fromAi(value: toolCall.myVariable, schema: "dummy")')).toBe(
+			`${prefix}Expected fromAi() parameter 'schema' to be a context (map), but received 'dummy'.`,
+		)
+		expect(deployError("=fromAi(toolCall.id, null)")).toBe(
+			`${prefix}Expected fromAi() parameter 'description' to be a string, but received 'ConstNull'.`,
+		)
+		expect(deployError('=fromAi(toolCall.x, "X", "string", { enum: other })')).toBe(
+			`${prefix}Unsupported expression value in fromAi() function invocation: Ref`,
+		)
+	})
+
+	it("deploys valid calls", () => {
+		const engine = new Engine()
+		engine.deploy({
+			bpmn: Bpmn.parse(tools('=fromAi(toolCall.x, "X", "string", { minimum: -1 })')),
+		})
+		expect(engine.getDeployedProcesses()).toEqual(["process"])
+	})
+})
+
 describe("mockAiAgent — scripted turns", () => {
 	let t: ProcessTest
 

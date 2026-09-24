@@ -5483,6 +5483,44 @@ mod tests {
         assert_eq!(lookup.variables["includeItems"], Value::Null);
     }
 
+    #[tokio::test]
+    async fn test_a_from_ai_call_zeebe_cannot_read_fails_deployment() {
+        // Zeebe's AdHocSubProcessTransformer wraps what FromAiTaggedParameterExtractor
+        // throws; the deployment names the resource.
+        let tools = |source: &str| wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="outer"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:startEvent id="inner-start"><bpmn:outgoing>f2</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:adHocSubProcess id="agent"><bpmn:incoming>f2</bpmn:incoming>
+        <bpmn:serviceTask id="tool">
+          <bpmn:extensionElements>
+            <zeebe:taskDefinition type="tool"/>
+            <zeebe:ioMapping><zeebe:input source="{source}" target="x"/></zeebe:ioMapping>
+          </bpmn:extensionElements>
+        </bpmn:serviceTask>
+      </bpmn:adHocSubProcess>
+      <bpmn:sequenceFlow id="f2" sourceRef="inner-start" targetRef="agent"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="outer"/>
+"#));
+        let h = Harness::new();
+        let error = deploy_error(&h, &tools("=fromAi(toolCall.x, 10)")).await;
+        assert!(error.ends_with(
+            "'resource.bpmn': Failed to extract ad-hoc activity parameters for element 'tool'. \
+             Expected fromAi() parameter 'description' to be a string, but received '10'."
+        ), "{error}");
+        let error = deploy_error(&h, &tools("=fromAi(&quot;toolCall.x&quot;)")).await;
+        assert!(error.ends_with("but received string 'toolCall.x'."), "{error}");
+        let error = deploy_error(&h, &tools("=fromAi(toolCall.x, null)")).await;
+        assert!(error.ends_with("but received 'ConstNull'."), "{error}");
+        let error = deploy_error(&h, &tools("=fromAi(toolCall.x, &quot;X&quot;, &quot;string&quot;, &quot;dummy&quot;)")).await;
+        assert!(error.ends_with("Expected fromAi() parameter 'schema' to be a context (map), but received 'dummy'."), "{error}");
+        assert!(h.backend.list_process_instances().is_empty());
+
+        // A valid call deploys.
+        h.deploy(&tools("=fromAi(toolCall.x, &quot;X&quot;)")).await;
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // Activating ad-hoc sub-process activities from outside
     // ─────────────────────────────────────────────────────────────────
