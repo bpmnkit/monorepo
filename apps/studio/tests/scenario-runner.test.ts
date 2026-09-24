@@ -366,9 +366,15 @@ describe("scenario runner — webhook-call process + input validation DMN", () =
 			getRealDmn,
 		)
 
-		expect(result.errors).toHaveLength(0)
+		// Zeebe raises an incident for an error end event nothing catches, and so does Reebe.
+		expect(result.errors).toEqual([
+			{
+				elementId: "Event_eReDBgY3",
+				message: expect.stringContaining("'VALIDATION_FAILED', but it was not caught"),
+			},
+		])
 		expect(result.failures).toHaveLength(0)
-		expect(result.passed).toBe(true)
+		expect(result.passed).toBe(false)
 		expect(result.finalVariables.validationErrors).toEqual(["asd is required"])
 		expect(result.visitedElements).toContain("Event_eReDBgY3")
 		expect(result.visitedElements).not.toContain("serviceTask_zu501th")
@@ -386,7 +392,13 @@ describe("scenario runner — webhook-call process + input validation DMN", () =
 			getRealDmn,
 		)
 
-		expect(result.errors).toHaveLength(0)
+		// Zeebe raises an incident for an error end event nothing catches, and so does Reebe.
+		expect(result.errors).toEqual([
+			{
+				elementId: "Event_eReDBgY3",
+				message: expect.stringContaining("'VALIDATION_FAILED', but it was not caught"),
+			},
+		])
 		expect(result.failures).toHaveLength(0)
 		expect(result.finalVariables.validationErrors).toEqual(["sss must be >= 1"])
 		expect(result.visitedElements).toContain("Event_eReDBgY3")
@@ -404,7 +416,13 @@ describe("scenario runner — webhook-call process + input validation DMN", () =
 			getRealDmn,
 		)
 
-		expect(result.errors).toHaveLength(0)
+		// Zeebe raises an incident for an error end event nothing catches, and so does Reebe.
+		expect(result.errors).toEqual([
+			{
+				elementId: "Event_eReDBgY3",
+				message: expect.stringContaining("'VALIDATION_FAILED', but it was not caught"),
+			},
+		])
 		expect(result.failures).toHaveLength(0)
 		expect(result.finalVariables.validationErrors).toEqual(["sss must be <= 12"])
 		expect(result.visitedElements).toContain("Event_eReDBgY3")
@@ -421,7 +439,13 @@ describe("scenario runner — webhook-call process + input validation DMN", () =
 			getRealDmn,
 		)
 
-		expect(result.errors).toHaveLength(0)
+		// Zeebe raises an incident for an error end event nothing catches, and so does Reebe.
+		expect(result.errors).toEqual([
+			{
+				elementId: "Event_eReDBgY3",
+				message: expect.stringContaining("'VALIDATION_FAILED', but it was not caught"),
+			},
+		])
 		expect(result.finalVariables.validationErrors).toEqual([
 			"asd is required",
 			"asd must be a string",
@@ -439,7 +463,13 @@ describe("scenario runner — webhook-call process + input validation DMN", () =
 			getRealDmn,
 		)
 
-		expect(result.errors).toHaveLength(0)
+		// Zeebe raises an incident for an error end event nothing catches, and so does Reebe.
+		expect(result.errors).toEqual([
+			{
+				elementId: "Event_eReDBgY3",
+				message: expect.stringContaining("'VALIDATION_FAILED', but it was not caught"),
+			},
+		])
 		expect(result.finalVariables.validationErrors).toEqual([
 			"sss is required",
 			"sss must be a number",
@@ -473,7 +503,13 @@ describe("scenario runner — webhook-call process + input validation DMN", () =
 			getRealDmn,
 		)
 
-		expect(result.errors).toHaveLength(0)
+		// Zeebe raises an incident for an error end event nothing catches, and so does Reebe.
+		expect(result.errors).toEqual([
+			{
+				elementId: "Event_eReDBgY3",
+				message: expect.stringContaining("'VALIDATION_FAILED', but it was not caught"),
+			},
+		])
 		expect(result.finalVariables.validationErrors).toEqual(["sss must be a number"])
 		expect(result.visitedElements).toContain("Event_eReDBgY3")
 	})
