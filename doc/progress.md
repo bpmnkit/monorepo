@@ -1,5 +1,20 @@
 # Progress
 
+## 2026-09-24 — Test suites for profiles, worker-client, user-tasks, cli-sdk, ui and create-casen-plugin
+
+- Roadmap P4 item 30: the six published packages that had no tests (or one) now have Vitest suites — 168 tests — wired into each package's `test` script so `pnpm test` and CI run them, with a `tsconfig.test.json` that `typecheck` checks.
+- `@bpmnkit/profiles` (47): per-platform storage paths (the stability contract), the on-disk format and reading older stores, profile CRUD, settings, audit log, Camunda Modeler import, `getAuthHeader` and the client factories — all against a temp home.
+- `@bpmnkit/worker-client` (21): activation, job mapping, idle and error retries, complete/fail/throwError bodies, OAuth2, and the typed `JobTypes` generics, with fetch mocked.
+- `@bpmnkit/user-tasks` (28): header, Camunda form JSON as a schema object, JSON string or bare definition, claim/unclaim/complete/reject, errors and lifecycle.
+- `@bpmnkit/cli-sdk` (17): the `CasenPlugin` contract and the `createWorkerCommand` loop.
+- `@bpmnkit/ui` (40): a test proving `tokens.css` and `UI_TOKENS_CSS` declare identical rules, the documented palette, `injectUiStyles()`, themes and components.
+- `@bpmnkit/create-casen-plugin` (15): scaffolds into temp dirs, checks the generated files, type-checks and builds the project against the SDK, and loads its default export the way casen does.
+- Fixed: the profile store (which holds client secrets) is now written 0600; deleting a profile drops its metadata; OAuth2 tokens are cached per token URL, client, audience and scope.
+- Fixed: worker-client `complete`/`fail`/`throwError` reject when the engine refuses the call instead of resolving.
+- Fixed: user-tasks re-enables Claim/Unclaim after a failure and draws the form in the resolved `auto` theme; the ui theme switcher closes on a second button click and no longer leaks its outside-click handler.
+- Fixed: create-casen-plugin validates `--name`, refuses a non-empty target directory, escapes quotes in generated source and lower-cases the author before deriving the id; the cli-sdk worker example now type-checks.
+- Docs: the worker-client page explains the new rejections.
+
 ## 2026-09-24 — Product tiers and Reebe positioning (roadmap P4 #28, #29)
 
 - Every product is now tiered publicly: **Core** (the 12 packages at 1.0), **Tools** (maintained, 0.x: proxy/MCP server, markdown, camunda-docspack, patterns, worker-client, cli-sdk, create-casen-plugin, casen plugins, ui, profiles, astro-shared, VS Code extension, Drop) and **Experimental** (operate, user-tasks, reebe-wasm, Reebe, Studio, desktop, proxy-rs).
@@ -23,6 +38,7 @@
 - Reebe: a single-output decision table returns the value, a missing FEEL variable is `null`, and `INCIDENT.CREATE` is recorded, so failed I/O mappings no longer hang silently.
 - reebe-wasm: `complete_user_task`; `snapshot()` also returns `userTasks` and `messageSubscriptions`.
 - `runScenarioWasm`: completes native user tasks with the `userTask` mock, delivers the message a waiting receive task expects (as the simulator passes receive tasks), and compares expected variables structurally. Scenario format unchanged.
+- Behaviour change: a `casen test` scenario ending in an error end event nothing catches now fails with the `UNHANDLED_ERROR_EVENT` incident, as on Camunda 8; Studio's scenario tests were updated to expect it.
 - Template gallery: 59/59 scenarios pass on Reebe (19/59 before). `templates.test.ts` runs every scenario on both `runScenario` and `runScenarioWasm`. Templates guide and conformance page updated.
 
 ## 2026-09-24 — Agentic BPMN testing: deterministic AI agent mocks, cassettes and tool coverage

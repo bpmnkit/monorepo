@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 325 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 326 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -343,5 +343,6 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/worker-client — `createWorkerClient(options?)`](.llms/chunks/packages.worker-client.createworkerclient-options.md) — 267 tokens
 - [@bpmnkit/worker-client — `client.poll(jobType, options?)`](.llms/chunks/packages.worker-client.client.poll-jobtype-options.md) — 265 tokens
 - [@bpmnkit/worker-client — `job.complete(variables?)`](.llms/chunks/packages.worker-client.job.complete-variables.md) — 171 tokens
+- [@bpmnkit/worker-client — When the engine refuses a call](.llms/chunks/packages.worker-client.when-the-engine-refuses-a-call.md) — 159 tokens
 - [@bpmnkit/worker-client — OAuth2 (Camunda SaaS)](.llms/chunks/packages.worker-client.oauth2-camunda-saas.md) — 150 tokens
 - [@bpmnkit/worker-client — See also](.llms/chunks/packages.worker-client.see-also.md) — 47 tokens

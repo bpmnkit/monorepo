@@ -4844,6 +4844,21 @@
 			"entities": []
 		},
 		{
+			"id": "packages.worker-client.when-the-engine-refuses-a-call",
+			"file": "chunks/packages.worker-client.when-the-engine-refuses-a-call.md",
+			"tokens": 159,
+			"tags": [
+				"packages",
+				"worker-client",
+				"engine",
+				"refuses",
+				"call"
+			],
+			"entities": [
+				"throwError"
+			]
+		},
+		{
 			"id": "packages.worker-client.oauth2-camunda-saas",
 			"file": "chunks/packages.worker-client.oauth2-camunda-saas.md",
 			"tokens": 150,
