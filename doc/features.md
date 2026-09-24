@@ -1,5 +1,11 @@
 # Features
 
+## Reebe: start events and restart safety (2026-09-24)
+
+- Timer start events (dates, `R…` cycles, cron) and message start events create instances;
+  sub-processes complete by Zeebe's rule; a restarted server resumes where it stopped instead
+  of replaying its log.
+
 ## Reebe: boundary events, event-based gateway, multi-instance everywhere (2026-09-24)
 
 - Timer, message and signal boundary events (interrupting and not, cycles), the event-based

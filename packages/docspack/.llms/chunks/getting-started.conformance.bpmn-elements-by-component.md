@@ -36,6 +36,12 @@ sub-process. An uncaught error raises an incident. Timer, message and signal bou
 are armed when their activity starts and cancelled when it ends. An interrupting one
 terminates the activity; a non-interrupting one leaves it running, and a timer cycle repeats.
 An event-based gateway waits for the first of its events and cancels the others.
+Deploying a process schedules its timer start events (a date, a repeating interval or a cron
+expression) and subscribes its message start events; a timer firing or a matching message
+creates an instance, at most one active instance per message correlation key, and a new version
+replaces the previous version's timers and subscriptions. A sub-process or process instance
+completes only when nothing inside it is active any more, and a terminate end event ends the
+rest of its own scope and completes that scope.
 Multi-instance runs, in parallel or in sequence, on every task type, sub-process and call
 activity. Each instance has its own `inputElement` and `loopCounter`, the output is collected
 in input order, and a `completionCondition` ends the loop early. It has no complex gateway. It runs an

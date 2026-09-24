@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-09-24 — Reebe: start events, Zeebe scope completion, no replay on restart
+
+- Timer start events are scheduled on deployment: `timeDate` fires once, `timeCycle` repeats (`R/…`, `Rn/…`, Spring cron such as `0 0 9-17 * * MON-FRI`), each firing creates an instance, and a new version cancels the previous version's timers.
+- Message start events create an instance per published message with its variables; with a correlation key only one instance started by that key is active at a time, and a buffered message starts the next one when it ends. A new version closes the old subscriptions; messages published before deployment are ignored.
+- Creating an instance starts it at the none start event only.
+- Sub-processes and process instances complete only when nothing inside them is active and no token is on its way (Zeebe's rule); a terminate end event terminates the rest of its own scope and completes it. Flows in sub-processes nested two levels deep are found.
+- The server stores the processed position per partition (migration 019, Postgres and SQLite) and resumes after it on restart instead of replaying the log. API commands are appended atomically, so the processing loop can no longer skip one or answer it before its caller listens.
+- `test_timer_accuracy` runs engine and scheduler on a shared virtual clock: never early, and fires within poll interval plus slack once due.
+- Known gaps: timer, message and signal event sub-processes; inclusive joins; a parallel join that can never fire does not keep its scope open.
+
 ## 2026-09-24 — Reebe: timer boundary events, event-based gateway, multi-instance on every activity
 
 - Boundary events: timer, message and signal boundaries are armed when their activity activates (FEEL-evaluated duration, date or `R…` cycle) and cancelled when it completes or is terminated. Interrupting ones terminate the activity with its jobs, user tasks, inner elements and called process; non-interrupting ones keep it, and a cycle repeats. One wait/trigger path (`processor/catch_event.rs`) now serves timers, messages and signals for catch events, receive tasks, boundaries and gateways.
