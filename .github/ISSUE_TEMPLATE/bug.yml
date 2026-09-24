@@ -1,0 +1,30 @@
+name: Bug report
+description: Something in a BPMN Kit package, the CLI or the site does not work as documented.
+labels: ["bug"]
+body:
+  - type: input
+    id: package
+    attributes:
+      label: Package and version
+      description: For example `@bpmnkit/core 1.2.0`, or `casen 1.4.1` (`casen --version`).
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead. Paste error messages as text.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest code, command or `.bpmn` file that shows the problem. A file that round-trips wrongly is the most useful attachment there is.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Node.js version, OS, browser if it is a UI problem.

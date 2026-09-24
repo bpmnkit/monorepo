@@ -6,6 +6,33 @@ page is the practical detail; the short version lives in the [README](README.md)
 Security problems are the exception — do not open an issue or a pull request for one. See
 [SECURITY.md](SECURITY.md).
 
+## Where to start
+
+Issues labelled [`good first issue`](https://github.com/bpmnkit/monorepo/labels/good%20first%20issue)
+are scoped to one package, have a known cause, and say how to verify the fix. If none are open,
+these are real, small gaps, each with a pointer to where the change goes:
+
+| Area | Task | Where |
+|---|---|---|
+| Renderer | Label styles (`BPMNLabelStyle` fonts) are parsed and kept, but labels render in the default font | `packages/canvas` |
+| Linting | Six bpmnlint rules marked *approximate* check only the top level, not inside sub-processes | `packages/core/src/bpmn/bpmnlint.ts`, [compatibility table](https://bpmnkit.com/docs/guides/bpmnlint) |
+| Reebe | A self-closing flow element (`<bpmn:receiveTask id="r"/>`, `<bpmn:task/>`) is skipped by the parser; only elements with children are read | `apps/reebe/crates/reebe-bpmn/src/parser.rs` (`handle_empty`) |
+| Simulator | A terminate end event inside a sub-process ends the whole instance; BPMN says it ends only that sub-process | `packages/engine/src/instance.ts` |
+| Markdown | The same diagram twice on one page produces duplicate SVG ids | `packages/markdown` |
+| Operate | Route keys are put into `/api/...` URLs without `encodeURIComponent` | `packages/operate/src` |
+| Examples | `apps/examples` has five type errors against the current APIs | `apps/examples/src` |
+
+Comment on the issue (or open one) before starting something larger than these, so two people
+do not build the same thing. A pull request that fixes one row, with a regression test, is a
+complete contribution.
+
+## Who maintains what
+
+BPMN Kit has one maintainer of record today, [@urbanisierung](https://github.com/urbanisierung),
+for every area. That is a known risk. If you want to co-maintain an area — a package, the
+Reebe engine, the docs — say so in an issue; a few merged pull requests in that area is the
+usual way in.
+
 ## Getting set up
 
 You need **Node.js 20 LTS or newer** and **pnpm 12.4.1**. The `packageManager` pin cannot
