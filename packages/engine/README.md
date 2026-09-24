@@ -90,6 +90,36 @@ const instance = engine.start("my-process", {}, {
 })
 ```
 
+## Testing processes in Vitest or Jest
+
+`@bpmnkit/engine/testing` wraps the simulator in a test fixture — no Docker, no cluster:
+job and connector mocks, manual job completion, a virtual clock for timers, BPMN matchers
+and path coverage.
+
+```typescript
+import "@bpmnkit/engine/testing/vitest" // registers the matchers (Jest: expect.extend(bpmnMatchers))
+import { createProcessTest, formatCoverage } from "@bpmnkit/engine/testing"
+
+const t = await createProcessTest({ bpmn: new URL("./order.bpmn", import.meta.url) })
+t.mockJob("payment", { result: { paid: true } })
+t.mockConnector("io.camunda:http-json:1", { response: { status: 200, body: {} } })
+
+const run = await t.start("order-process", { amount: 10 })
+await run.completeJob("ship", { shipped: true }) // unmocked jobs wait for you
+await run.publishMessage("payment-confirmed")
+await run.advanceTime("PT1H")                    // fires timers instantly
+
+expect(run).toHaveCompleted()
+expect(run).toHavePassed(["payment", "ship"])
+expect(run).toHaveVariables({ paid: true })
+
+console.log(formatCoverage(t.coverage()))        // flow nodes and sequence flows reached
+t.dispose()
+```
+
+`vitest` is an optional peer dependency, needed only for the `/testing/vitest` entry. See
+[Testing processes](https://bpmnkit.com/docs/guides/testing-processes).
+
 ## API Reference
 
 ### `Engine`
