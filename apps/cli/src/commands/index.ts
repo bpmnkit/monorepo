@@ -35,6 +35,7 @@ import { settingsGroup } from "./settings.js"
 import { skillsGroup } from "./skills.js"
 import { storyGroup } from "./story.js"
 import { synthGroup } from "./synth.js"
+import { templateGroup } from "./template.js"
 import { testGroup } from "./test.js"
 import { viewGroup } from "./view.js"
 import { workerStartCmd } from "./worker-start.js"
@@ -96,6 +97,7 @@ export const pinnedGroups: CommandGroup[] = [
 	storyGroup,
 	settingsGroup,
 	synthGroup,
+	templateGroup,
 	testGroup,
 	viewGroup,
 	workerGroup,

@@ -78,6 +78,13 @@ casen instances list --state active
 | `casen instances list` | List process instances (--state filter) |
 | `casen instances cancel <key>` | Cancel a running instance |
 
+### Templates
+
+| Command | Description |
+|---------|-------------|
+| `casen template list [--category <c>]` | List the runnable process templates from the [gallery](https://bpmnkit.com/templates) |
+| `casen template use <id> [dir]` | Write a template's `.bpmn`, `.bpmn.tests.json` scenarios and any `.dmn`/`.form` files (`--force` overwrites) |
+
 ### Incidents & jobs
 
 | Command | Description |

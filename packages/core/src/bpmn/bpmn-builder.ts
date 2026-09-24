@@ -1213,7 +1213,10 @@ export class BranchBuilder {
 	}
 
 	receiveTask(id: string, options?: MessageTaskOptions): this {
-		const el = makeFlowElement(id, "receiveTask", options) as BpmnReceiveTask
+		const el = makeFlowElement(id, "receiveTask", {
+			...options,
+			extensionElements: buildMessageSubscriptionExt(options?.correlationKey),
+		}) as BpmnReceiveTask
 		if (options?.isForCompensation) el.isForCompensation = true
 		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
@@ -1732,7 +1735,10 @@ export class SubProcessContentBuilder {
 	}
 
 	receiveTask(id: string, options?: MessageTaskOptions): this {
-		const el = makeFlowElement(id, "receiveTask", options) as BpmnReceiveTask
+		const el = makeFlowElement(id, "receiveTask", {
+			...options,
+			extensionElements: buildMessageSubscriptionExt(options?.correlationKey),
+		}) as BpmnReceiveTask
 		if (options?.isForCompensation) el.isForCompensation = true
 		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		return this.addElement(el)
@@ -2619,7 +2625,10 @@ export class ProcessBuilder {
 
 	/** Add a receive task (aspirational). */
 	receiveTask(id: string, options?: MessageTaskOptions): this {
-		const el = makeFlowElement(id, "receiveTask", options) as BpmnReceiveTask
+		const el = makeFlowElement(id, "receiveTask", {
+			...options,
+			extensionElements: buildMessageSubscriptionExt(options?.correlationKey),
+		}) as BpmnReceiveTask
 		if (options?.isForCompensation) el.isForCompensation = true
 		if (options?.messageName) el.messageRef = resolveMessage(options.messageName, this.rootMessages)
 		this.addFlowElement(el)

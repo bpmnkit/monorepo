@@ -187,6 +187,9 @@ importers:
       '@bpmnkit/editor':
         specifier: workspace:*
         version: link:packages/editor
+      '@bpmnkit/engine':
+        specifier: workspace:*
+        version: link:packages/engine
       '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:packages/plugins
@@ -449,6 +452,9 @@ importers:
       '@bpmnkit/operate':
         specifier: workspace:*
         version: link:../../packages/operate
+      '@bpmnkit/patterns':
+        specifier: workspace:*
+        version: link:../../packages/patterns
       '@bpmnkit/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins
@@ -732,7 +738,11 @@ importers:
         specifier: workspace:^
         version: link:../ui
 
-  packages/patterns: {}
+  packages/patterns:
+    dependencies:
+      '@bpmnkit/core':
+        specifier: workspace:^
+        version: link:../core
 
   packages/plugins:
     dependencies:

@@ -35,6 +35,7 @@
 		"@astrojs/sitemap": "^3.7.1",
 		"@bpmnkit/canvas": "workspace:*",
 		"@bpmnkit/editor": "workspace:*",
+		"@bpmnkit/engine": "workspace:*",
 		"@bpmnkit/plugins": "workspace:*",
 		"@bpmnkit/ui": "workspace:*",
 		"@biomejs/biome": "^1.9.4",
