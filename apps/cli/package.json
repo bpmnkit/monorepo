@@ -12,8 +12,8 @@
 		"node": ">=20"
 	},
 	"scripts": {
-		"build": "tsc",
-		"typecheck": "tsc --noEmit",
+		"build": "tsc && node scripts/build-dev-ui.mjs",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.dev-ui.json",
 		"check": "biome check .",
 		"test": "vitest run"
 	},

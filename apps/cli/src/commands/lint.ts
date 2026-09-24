@@ -9,7 +9,9 @@ import {
 	optimize,
 } from "@bpmnkit/core"
 import type {
+	BpmnDefinitions,
 	BpmnOperation,
+	DetectedPlatform,
 	OptimizationCategory,
 	OptimizationFinding,
 	OptimizationSeverity,
@@ -42,7 +44,7 @@ const DEFAULT_SERVER = "http://localhost:3033"
 const BPMNLINT_CATEGORY = "bpmnlint"
 
 /** One line of `casen lint` output — a BPMN Kit finding or a report from real bpmnlint. */
-interface LintRow {
+export interface LintRow {
 	id: string
 	category: string
 	severity: OptimizationSeverity
@@ -75,6 +77,101 @@ function describeUnsupported(rule: UnsupportedBpmnlintRule): string {
 		case "unknown-rule":
 			return `${rule.name} (not a bpmnlint built-in rule)`
 	}
+}
+
+/** What `casen lint` needs to decide on a file, before any of it is printed. */
+export interface LintOutcome {
+	defs: BpmnDefinitions
+	findings: (OptimizationFinding | LintRow)[]
+	/** What the project's `.bpmnlintrc` did, or could not do — one sentence each. */
+	notices: string[]
+	platform: DetectedPlatform
+}
+
+export interface LintBpmnOptions {
+	/** Categories to run; `undefined` runs all of them. */
+	categories?: string[]
+	/** The deploy-readiness gate: every category, error-severity findings only. */
+	deployProfile?: boolean
+	/** Honour the nearest `.bpmnlintrc`. Default `true`. */
+	bpmnlintrc?: boolean
+}
+
+/**
+ * Lints one BPMN document the way `casen lint` does — shared with `casen dev`,
+ * which re-lints on every save and must not disagree with the command.
+ *
+ * @param filePath - Where the document lives; the `.bpmnlintrc` search starts here.
+ * @param xml - The document's text.
+ */
+export async function lintBpmn(
+	filePath: string,
+	xml: string,
+	options: LintBpmnOptions = {},
+): Promise<LintOutcome> {
+	const defs = Bpmn.parse(xml)
+	const categories = options.categories as OptimizationCategory[] | undefined
+	const deployProfile = options.deployProfile === true
+
+	// A model that names no execution platform is not judged against Camunda 8
+	// deployability — otherwise a diagram authored in a neutral tool opens
+	// covered in errors about extensions it was never going to have. Asking for
+	// the deploy gate is asking for those rules anyway, so the profile forces
+	// them back on. The canvas plugin asks `lintCategories` the same question.
+	const platform = detectExecutionPlatform(defs)
+	const resolvedCategories = lintCategories(defs, {
+		...(categories !== undefined ? { categories } : {}),
+		forceEngineRules: deployProfile,
+	})
+
+	const report = optimize(defs, {
+		categories: resolvedCategories,
+		resolveConnectorRequirements,
+	})
+
+	// A .bpmnlintrc governs the findings that stand in for bpmnlint rules. When
+	// the project has bpmnlint installed, it runs the configured rules itself
+	// (plugins included) and BPMN Kit's equivalents step aside. Its findings
+	// sit in their own category, so narrowing --categories away from it also
+	// keeps it from taking BPMN Kit's equivalents with it.
+	const setup =
+		options.bpmnlintrc === false
+			? undefined
+			: await prepareBpmnlint(filePath, xml, {
+					runBpmnlint:
+						categories === undefined || (categories as string[]).includes(BPMNLINT_CATEGORY),
+				})
+	const applied =
+		setup === undefined
+			? undefined
+			: applyBpmnlintConfig(defs, report.findings, setup.config, {
+					delegated: setup.delegated,
+					categories: resolvedCategories,
+				})
+	const governed: (OptimizationFinding | LintRow)[] = [
+		...(applied?.findings ?? report.findings),
+		...(setup?.reports.map(reportRow) ?? []),
+	]
+	const findings = deployProfile ? governed.filter((f) => f.severity === "error") : governed
+
+	const notices: string[] = []
+	if (setup !== undefined) {
+		const how = setup.delegated
+			? `bpmnlint ${setup.version ?? ""}`.trimEnd()
+			: "BPMN Kit's equivalents of its rules"
+		notices.push(`Using ${setup.path} (${how}).`)
+		if (setup.failure !== undefined) {
+			notices.push(
+				`The project's bpmnlint could not run (${setup.failure}); BPMN Kit's equivalents were used instead.`,
+			)
+		}
+		if (applied !== undefined && applied.unsupported.length > 0) {
+			notices.push(
+				`Not applied — no BPMN Kit equivalent: ${applied.unsupported.map(describeUnsupported).join(", ")}.`,
+			)
+		}
+	}
+	return { defs, findings, notices, platform }
 }
 
 const lintCmd: Command = {
@@ -127,73 +224,17 @@ const lintCmd: Command = {
 		if (!filePath) throw new Error("Missing required argument: <file>")
 
 		const xml = await readFile(filePath, "utf-8")
-		const defs = Bpmn.parse(xml)
-
 		const categoriesFlag = ctx.flags.categories
 		const categories =
 			typeof categoriesFlag === "string" && categoriesFlag.length > 0
-				? (categoriesFlag.split(",").map((s) => s.trim()) as OptimizationCategory[])
+				? categoriesFlag.split(",").map((s) => s.trim())
 				: undefined
 		const deployProfile = ctx.flags.profile === "deploy"
-
-		// A model that names no execution platform is not judged against Camunda 8
-		// deployability — otherwise a diagram authored in a neutral tool opens
-		// covered in errors about extensions it was never going to have. Asking for
-		// the deploy gate is asking for those rules anyway, so the profile forces
-		// them back on. The canvas plugin asks `lintCategories` the same question.
-		const platform = detectExecutionPlatform(defs)
-		const resolvedCategories = lintCategories(defs, {
+		const { defs, findings, notices, platform } = await lintBpmn(filePath, xml, {
 			...(categories !== undefined ? { categories } : {}),
-			forceEngineRules: deployProfile,
+			deployProfile,
+			bpmnlintrc: ctx.flags.bpmnlintrc !== false,
 		})
-
-		const report = optimize(defs, {
-			categories: resolvedCategories,
-			resolveConnectorRequirements,
-		})
-
-		// A .bpmnlintrc governs the findings that stand in for bpmnlint rules. When
-		// the project has bpmnlint installed, it runs the configured rules itself
-		// (plugins included) and BPMN Kit's equivalents step aside. Its findings
-		// sit in their own category, so narrowing --categories away from it also
-		// keeps it from taking BPMN Kit's equivalents with it.
-		const setup =
-			ctx.flags.bpmnlintrc === false
-				? undefined
-				: await prepareBpmnlint(filePath, xml, {
-						runBpmnlint:
-							categories === undefined || (categories as string[]).includes(BPMNLINT_CATEGORY),
-					})
-		const applied =
-			setup === undefined
-				? undefined
-				: applyBpmnlintConfig(defs, report.findings, setup.config, {
-						delegated: setup.delegated,
-						categories: resolvedCategories,
-					})
-		const governed: (OptimizationFinding | LintRow)[] = [
-			...(applied?.findings ?? report.findings),
-			...(setup?.reports.map(reportRow) ?? []),
-		]
-		const findings = deployProfile ? governed.filter((f) => f.severity === "error") : governed
-
-		const notices: string[] = []
-		if (setup !== undefined) {
-			const how = setup.delegated
-				? `bpmnlint ${setup.version ?? ""}`.trimEnd()
-				: "BPMN Kit's equivalents of its rules"
-			notices.push(`Using ${setup.path} (${how}).`)
-			if (setup.failure !== undefined) {
-				notices.push(
-					`The project's bpmnlint could not run (${setup.failure}); BPMN Kit's equivalents were used instead.`,
-				)
-			}
-			if (applied !== undefined && applied.unsupported.length > 0) {
-				notices.push(
-					`Not applied — no BPMN Kit equivalent: ${applied.unsupported.map(describeUnsupported).join(", ")}.`,
-				)
-			}
-		}
 
 		// --fix: apply all auto-fixable findings and write back
 		if (ctx.flags.fix) {

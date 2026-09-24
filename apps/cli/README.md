@@ -28,6 +28,17 @@ pnpm add -g @bpmnkit/cli
 
 ## Quick Start
 
+### Develop locally — no cluster needed
+
+```sh
+casen dev
+```
+
+Opens every `.bpmn`, `.dmn` and `.form` file in the folder in the BPMN Kit editor in your
+browser, with simulation. Saves go back to disk with the file's formatting kept, changes made
+elsewhere reload live, and each change re-runs lint and the file's `.bpmn.tests.json`
+scenarios. See [casen dev](https://bpmnkit.com/docs/cli/dev).
+
 ### Configure a profile
 
 ```sh

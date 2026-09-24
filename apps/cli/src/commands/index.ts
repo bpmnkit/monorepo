@@ -20,6 +20,7 @@ import {
 import { completionGroup } from "./completion.js"
 import { connectorGroup } from "./connector.js"
 import { deployGroup } from "./deploy.js"
+import { devGroup } from "./dev.js"
 import { diffGroup } from "./diff.js"
 import { generateGroup } from "./generate.js"
 import { lintGroup } from "./lint.js"
@@ -83,6 +84,7 @@ const workerGroup: CommandGroup = {
 export const pinnedGroups: CommandGroup[] = [
 	askGroup,
 	deployGroup,
+	devGroup,
 	diffGroup,
 	generateGroup,
 	lintGroup,
