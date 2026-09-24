@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-09-24 — Reebe: process instance modification, DMN versions, fromAi() rejection
+
+- Reebe rejects a `fromAi()` call Zeebe rejects at deployment, with Zeebe's `FromAiTaggedParameterExtractor` message wrapped as `AdHocSubProcessTransformer` wraps it; `@bpmnkit/engine`'s `Engine.deploy` throws the same message. `buildAiAgentSubProcess` writes `{}` instead of the `null` schema Zeebe rejects (the Camunda docs allow `null`; Zeebe's source does not — we follow the source).
+- An ad-hoc `completionCondition` is evaluated in the ad-hoc sub-process's scope; after an event sub-process inside it, a non-boolean result raises an `EXTRACT_VALUE_ERROR` incident on the event sub-process (resolving retries), as in Zeebe.
+- Process instance modification (activate, terminate and 8.9 move instructions, ancestor selection, variable instructions, Zeebe's rejections) over REST `POST /v2/process-instances/{key}/modification` and gRPC `ModifyProcessInstance`; gRPC maps rejections to NOT_FOUND / INVALID_ARGUMENT / FAILED_PRECONDITION.
+- DMN is versioned as Zeebe's `DmnResourceTransformer` does (duplicates keep their version, changed content is a new version); decisions evaluate by id (latest) or key through a `DECISION_EVALUATION` engine command, over gRPC `EvaluateDecision` and REST `POST /v2/decision-definitions/evaluation`.
+- gRPC `DeployProcess`/`DeployResource` now reach the engine (they sent no resources) and answer process, decision and DRG metadata; `EvaluateDecisionResponse` field numbers match Zeebe's proto.
+- The BPMN parser keeps a business rule task's flows and I/O mappings (they went to the enclosing sub-process); the wasm runner fills in a `null` business rule task result.
+- The embedded SQLite backend gets the DMN, element instance and variable tables it lacked — no process instance could run on it before; a new `--features embedded` test runs DMN on SQLite. New Postgres suites: `reebe-api/tests/rest.rs`, `reebe-grpc/tests/calls.rs`.
+- Known gaps: decision evaluation returns an empty `evaluatedDecisions`; redeployed BPMN always gets a new version; modification runs no execution listeners and ignores `operationReference`.
+
 ## 2026-09-24 — Reebe: Zeebe's adHocSubProcessElements, completion-condition incidents, empty-tag elements, gRPC variables
 
 - `adHocSubProcessElements` has Zeebe's `AdHocActivityMetadata` shape in Reebe and `@bpmnkit/engine`: `fromAi()` parameters named by their whole reference (`toolCall.orderId`), calls on any reference listed, literal-only description/type/schema/options, no search inside `fromAi()` arguments, null/empty fields left out, empty property values `null`. Tests port Zeebe's `AdHocSubProcessElementsVariableTest` and `TaggedParameterExtractorTest` cases. `mockAiAgent` keeps the connector's argument names (`orderId`) and fails, with the connector's message, for a parameter outside `toolCall.`. Engine changeset is a patch: the types are unreleased since 1.0.0.

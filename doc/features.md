@@ -1,5 +1,11 @@
 # Features
 
+## Reebe: process instance modification and DMN versions (2026-09-24)
+
+- Activate, terminate and move instructions over REST and gRPC; DMN decisions versioned and
+  evaluable by id or key; gRPC deploys work end to end; the embedded SQLite backend runs
+  processes and decisions.
+
 ## Reebe: link events, compensation, ad-hoc inner elements (2026-09-24)
 
 - Link events, compensation handlers, ad-hoc sub-processes that activate their inner elements
