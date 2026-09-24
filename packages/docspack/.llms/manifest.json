@@ -654,7 +654,7 @@
 		{
 			"id": "getting-started.conformance",
 			"file": "chunks/getting-started.conformance.md",
-			"tokens": 270,
+			"tokens": 523,
 			"tags": [
 				"getting-started",
 				"conformance"
@@ -662,7 +662,10 @@
 			"entities": [
 				"@bpmnkit/feel",
 				"packages/feel/tasks/extract-tck-tests.mjs",
-				"packages/feel/tests/tck.test.ts"
+				"packages/feel/tests/tck.test.ts",
+				"fromAi",
+				"packages/feel/tests/camunda-parity.test.ts",
+				"@bpmnkit/camunda-docspack"
 			]
 		},
 		{
@@ -3354,7 +3357,7 @@
 		{
 			"id": "packages.feel.overview",
 			"file": "chunks/packages.feel.overview.md",
-			"tokens": 202,
+			"tokens": 230,
 			"tags": [
 				"packages",
 				"feel",
@@ -3363,6 +3366,7 @@
 			"entities": [
 				"@bpmnkit/feel",
 				"packages/feel/tests/tck.test.ts",
+				"packages/feel/tests/camunda-parity.test.ts",
 				"@bpmnkit/core",
 				"@bpmnkit/engine"
 			]
@@ -3383,7 +3387,7 @@
 		{
 			"id": "packages.feel.unary-tests",
 			"file": "chunks/packages.feel.unary-tests.md",
-			"tokens": 425,
+			"tokens": 434,
 			"tags": [
 				"packages",
 				"feel",
@@ -3391,6 +3395,23 @@
 				"tests"
 			],
 			"entities": []
+		},
+		{
+			"id": "packages.feel.camunda-parity",
+			"file": "chunks/packages.feel.camunda-parity.md",
+			"tokens": 583,
+			"tags": [
+				"packages",
+				"feel",
+				"camunda",
+				"parity"
+			],
+			"entities": [
+				"fromAi",
+				"packages/feel/tests/camunda-parity.test.ts",
+				"@bpmnkit/camunda-docspack",
+				"now()"
+			]
 		},
 		{
 			"id": "packages.feel.formatting-and-highlighting",

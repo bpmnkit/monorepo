@@ -106,6 +106,7 @@ function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 	if (isFeelDateTime(date) && isFeelYearsMonthsDuration(dur)) {
 		return { type: "date-time", date: shiftMonths(date.date, dur.months), time: date.time }
 	}
+	if (isFeelTime(date) && isFeelDayTimeDuration(dur)) return shiftTime(date, dur.seconds)
 	if (isFeelDayTimeDuration(date) && isFeelDayTimeDuration(dur)) {
 		return { type: "days-time-duration", seconds: date.seconds + dur.seconds }
 	}
@@ -115,8 +116,28 @@ function addDuration(date: FeelValue, dur: FeelValue): FeelValue {
 	return null
 }
 
+/** A time moved by some seconds, around the clock: 23:00 plus two hours is 01:00. */
+function shiftTime(
+	t: import("./types.js").FeelTime,
+	seconds: number,
+): import("./types.js").FeelTime {
+	const total = (((t.hour * 3600 + t.minute * 60 + t.second + seconds) % 86400) + 86400) % 86400
+	return {
+		...t,
+		hour: Math.floor(total / 3600),
+		minute: Math.floor((total % 3600) / 60),
+		second: total % 60,
+	}
+}
+
 function subtractValues(a: FeelValue, b: FeelValue): FeelValue {
 	if (typeof a === "number" && typeof b === "number") return a - b
+	if (isFeelTime(a) && isFeelTime(b)) {
+		// Null when one is local and the other is not: they have no common clock.
+		const diff = compareValues(a, b)
+		return diff === null ? null : { type: "days-time-duration", seconds: diff }
+	}
+	if (isFeelTime(a) && isFeelDayTimeDuration(b)) return shiftTime(a, -b.seconds)
 	if (isFeelDate(a) && isFeelDate(b)) {
 		const diff = dateToEpochDays(a) - dateToEpochDays(b)
 		return { type: "days-time-duration", seconds: diff * 86400 }
@@ -463,6 +484,11 @@ function evalBinary(
 			return { type: "days-time-duration", seconds: left.seconds / right }
 		if (isFeelYearsMonthsDuration(left) && typeof right === "number")
 			return { type: "years-months-duration", months: left.months / right }
+		// How many times one duration fits in another: P1Y / P1M is 12.
+		if (isFeelDayTimeDuration(left) && isFeelDayTimeDuration(right))
+			return right.seconds === 0 ? null : left.seconds / right.seconds
+		if (isFeelYearsMonthsDuration(left) && isFeelYearsMonthsDuration(right))
+			return right.months === 0 ? null : left.months / right.months
 		return null
 	}
 	if (op === "**") {

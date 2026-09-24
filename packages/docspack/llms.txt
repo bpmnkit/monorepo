@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 245 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 246 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -60,7 +60,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Core Concepts — Parsing and Serializing](.llms/chunks/getting-started.concepts.parsing-and-serializing.md) — 687 tokens
 - [Core Concepts — AI-Compact Format](.llms/chunks/getting-started.concepts.ai-compact-format.md) — 359 tokens
 - [Core Concepts — Zeebe Extensions](.llms/chunks/getting-started.concepts.zeebe-extensions.md) — 134 tokens
-- [Conformance](.llms/chunks/getting-started.conformance.md) — 270 tokens
+- [Conformance](.llms/chunks/getting-started.conformance.md) — 523 tokens
 - [Conformance — BPMN 2.0 — model and round trip](.llms/chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md) — 301 tokens
 - [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 542 tokens
 - [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 160 tokens
@@ -249,9 +249,10 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/engine — Installation](.llms/chunks/packages.engine.installation.md) — 346 tokens
 - [@bpmnkit/engine — ProcessInstance](.llms/chunks/packages.engine.processinstance.md) — 161 tokens
 - [@bpmnkit/engine — Variable Scoping](.llms/chunks/packages.engine.variable-scoping.md) — 146 tokens
-- [@bpmnkit/feel — Overview](.llms/chunks/packages.feel.overview.md) — 202 tokens
+- [@bpmnkit/feel — Overview](.llms/chunks/packages.feel.overview.md) — 230 tokens
 - [@bpmnkit/feel — Installation](.llms/chunks/packages.feel.installation.md) — 264 tokens
-- [@bpmnkit/feel — Unary tests](.llms/chunks/packages.feel.unary-tests.md) — 425 tokens
+- [@bpmnkit/feel — Unary tests](.llms/chunks/packages.feel.unary-tests.md) — 434 tokens
+- [@bpmnkit/feel — Camunda parity](.llms/chunks/packages.feel.camunda-parity.md) — 583 tokens
 - [@bpmnkit/feel — Formatting and highlighting](.llms/chunks/packages.feel.formatting-and-highlighting.md) — 151 tokens
 - [@bpmnkit/feel — API Reference](.llms/chunks/packages.feel.api-reference.md) — 356 tokens
 - [@bpmnkit/feel — Stability](.llms/chunks/packages.feel.stability.md) — 39 tokens

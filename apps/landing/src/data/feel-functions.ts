@@ -47,6 +47,15 @@ export const FEEL_CATEGORIES: FeelFunctionCategory[] = [
 				description: "Computes the years/months duration between two dates.",
 			},
 			{ name: "context", description: "Builds a context from a list of `{key, value}` entries." },
+			{
+				name: "to json",
+				description: "Converts a value to JSON text (Camunda extension).",
+				example: "to json({a: 1, b: [true, null]})",
+			},
+			{
+				name: "from json",
+				description: "Parses JSON text into a FEEL value (Camunda extension).",
+			},
 		],
 	},
 	{
@@ -58,6 +67,16 @@ export const FEEL_CATEGORIES: FeelFunctionCategory[] = [
 				name: "is defined",
 				description:
 					"True if the given value is not null/undefined — the standard way to guard optional variables.",
+			},
+			{
+				name: "assert",
+				description:
+					"Returns the value if a condition holds, and is an error otherwise (Camunda extension).",
+				example: "assert(5, 5 > 0)",
+			},
+			{
+				name: "fromAi",
+				description: "Tags a value as filled by an AI agent tool call; returns it unchanged.",
 			},
 		],
 	},
@@ -95,6 +114,16 @@ export const FEEL_CATEGORIES: FeelFunctionCategory[] = [
 				description: "Splits a string on a regular-expression delimiter into a list of strings.",
 			},
 			{ name: "string join", description: "Joins a list of strings with an optional delimiter." },
+			{ name: "is blank", description: "True if a string is empty or only whitespace." },
+			{ name: "trim", description: "Removes leading and trailing whitespace." },
+			{
+				name: "extract",
+				description: "Returns every match of a regular expression in a string.",
+				example: `extract("ids 1234, 1256", "12[0-9]*")`,
+			},
+			{ name: "uuid", description: "A random version 4 UUID." },
+			{ name: "to base64", description: "Encodes a string as Base64 (UTF-8)." },
+			{ name: "from base64", description: "Decodes Base64 back into a string." },
 		],
 	},
 	{
@@ -136,6 +165,16 @@ export const FEEL_CATEGORIES: FeelFunctionCategory[] = [
 			},
 			{ name: "flatten", description: "Flattens nested lists into a single flat list." },
 			{ name: "sort", description: "Sorts a list, optionally with a custom comparator function." },
+			{
+				name: "duplicate values",
+				description: "The values that occur more than once, in order of first occurrence.",
+			},
+			{ name: "is empty", description: "True if a list has no elements." },
+			{
+				name: "partition",
+				description: "Splits a list into consecutive sublists of a given size.",
+				example: "partition([1,2,3,4,5], 2)",
+			},
 		],
 	},
 	{
