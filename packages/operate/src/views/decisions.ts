@@ -86,7 +86,7 @@ export function createDecisionsView(
 	}
 
 	function render(): void {
-		setRows(buildRows(store.state.data?.items ?? []))
+		setRows(buildRows(store.state.data?.items ?? []), true)
 	}
 
 	const unsub = store.subscribe(render)

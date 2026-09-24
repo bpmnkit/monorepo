@@ -16,7 +16,7 @@ export class TasksStore extends Store<TasksPayload> {
 			this.setUnsub(
 				createMockStream(
 					() => ({ items: MOCK_TASKS, total: MOCK_TASKS.length }),
-					(payload) => this.set({ data: payload, loading: false }),
+					(payload) => this.set({ data: payload, loading: false, error: null }),
 					interval,
 				),
 			)
@@ -25,11 +25,11 @@ export class TasksStore extends Store<TasksPayload> {
 
 		const params = new URLSearchParams({ topic: "tasks" })
 		if (profile) params.set("profile", profile)
-		if (interval > 0) params.set("interval", String(interval))
+		params.set("interval", String(interval))
 		this.setUnsub(
 			createStream<TasksPayload>(
 				`${proxyUrl}/operate/stream?${params}`,
-				(payload) => this.set({ data: payload, loading: false }),
+				(payload) => this.set({ data: payload, loading: false, error: null }),
 				(msg) => this.set({ error: msg, loading: false }),
 			),
 		)

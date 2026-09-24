@@ -31,6 +31,10 @@ function parseVariables(raw: string): Record<string, unknown> | null {
 	}
 }
 
+/**
+ * @internal Exported for BPMN Kit Studio, which embeds the detail views. Not a
+ * stable API: it may change in any release. Use `createOperate()` instead.
+ */
 export function createDefinitionDetailView(
 	definitionKey: string,
 	store: DefinitionsStore,
@@ -387,7 +391,11 @@ export function createDefinitionDetailView(
 				...(cfg.profile ? { "x-profile": cfg.profile } : {}),
 			},
 		})
-			.then((r) => r.text())
+			.then((r) => {
+				// An error body is not BPMN; show "Failed to load diagram" instead.
+				if (!r.ok) throw new Error(`HTTP ${r.status}`)
+				return r.text()
+			})
 			.then((xml) => loadCanvas(xml, defName, defProcessId))
 			.catch(() => {
 				canvasWrap.innerHTML = `<div style="padding:24px;color:var(--bpmnkit-ds-ink-3)">Failed to load diagram</div>`

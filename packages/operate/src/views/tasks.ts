@@ -72,7 +72,7 @@ export function createTasksView(
 	el.appendChild(tableEl)
 
 	function render(): void {
-		setRows(store.state.data?.items ?? [])
+		setRows(store.state.data?.items ?? [], true)
 	}
 
 	const unsub = store.subscribe(render)

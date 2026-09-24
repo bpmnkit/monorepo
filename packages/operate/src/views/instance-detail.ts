@@ -139,6 +139,10 @@ function highlightTextNodes(container: HTMLElement, query: string): void {
 	}
 }
 
+/**
+ * @internal Exported for BPMN Kit Studio, which embeds the detail views. Not a
+ * stable API: it may change in any release. Use `createOperate()` instead.
+ */
 export function createInstanceDetailView(
 	instanceKey: string,
 	instancesStore: InstancesStore,
@@ -720,7 +724,10 @@ export function createInstanceDetailView(
 			endDate: null,
 		} as ProcessInstanceResult
 		renderMeta(mockInst)
-		instUnsub = instancesStore.subscribe(() => renderMeta(getInstance()))
+		instUnsub = instancesStore.subscribe(() => {
+			const inst = getInstance()
+			if (inst) renderMeta(inst)
+		})
 	} else {
 		let xmlStarted = false
 
@@ -737,7 +744,11 @@ export function createInstanceDetailView(
 					...(cfg.profile ? { "x-profile": cfg.profile } : {}),
 				},
 			})
-				.then((r) => r.text())
+				.then((r) => {
+					// An error body is not BPMN; don't hand it to the canvas.
+					if (!r.ok) throw new Error(`HTTP ${r.status}`)
+					return r.text()
+				})
 				.then((xml) => {
 					loadCanvas(xml, instName)
 					return fetch(`${cfg.proxyUrl}/api/element-instances/search`, {
@@ -790,9 +801,13 @@ export function createInstanceDetailView(
 				.catch(() => {})
 		}
 
+		// The list store holds at most one page of instances, so a deep-linked or
+		// older instance may be missing from it; keep the header rendered from
+		// the direct fetch instead of wiping it on every poll.
 		instUnsub = instancesStore.subscribe(() => {
 			const inst = getInstance()
-			if (inst) startXmlFetch(inst)
+			if (!inst) return
+			startXmlFetch(inst)
 			renderMeta(inst)
 		})
 	}

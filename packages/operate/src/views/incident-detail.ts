@@ -468,10 +468,11 @@ export function createIncidentDetailView(
 					const jobKey = inc.jobKey ?? ""
 					const h: Record<string, string> = { "Content-Type": "application/json" }
 					if (cfg.profile) h["x-profile"] = cfg.profile
-					fetch(`${cfg.proxyUrl}/api/jobs/${jobKey}/retries`, {
+					// Orchestration Cluster API: PATCH /jobs/{jobKey} with a changeset.
+					fetch(`${cfg.proxyUrl}/api/jobs/${jobKey}`, {
 						method: "PATCH",
 						headers: h,
-						body: JSON.stringify({ retries: 3 }),
+						body: JSON.stringify({ changeset: { retries: 3 } }),
 					})
 						.then((r) => {
 							if (r.ok) showFeedback("Job retries updated.", true)
@@ -564,7 +565,11 @@ export function createIncidentDetailView(
 						...(cfg.profile ? { "x-profile": cfg.profile } : {}),
 					},
 				})
-					.then((r) => r.text())
+					.then((r) => {
+						// An error body is not BPMN; don't hand it to the canvas.
+						if (!r.ok) throw new Error(`HTTP ${r.status}`)
+						return r.text()
+					})
 					.then((xml) => {
 						loadCanvas(xml, incName)
 						if (inc.elementId) {
@@ -585,7 +590,10 @@ export function createIncidentDetailView(
 			const headers: Record<string, string> = { accept: "application/json" }
 			if (cfg.profile) headers["x-profile"] = cfg.profile
 			fetch(`${cfg.proxyUrl}/api/incidents/${incidentKey}`, { headers })
-				.then((r) => r.json())
+				.then((r) => {
+					if (!r.ok) throw new Error(`HTTP ${r.status}`)
+					return r.json()
+				})
 				.then((inc: IncidentResult) => startFetch(inc))
 				.catch(() => {
 					meta.textContent = `Incident ${incidentKey}`

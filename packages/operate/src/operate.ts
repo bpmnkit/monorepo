@@ -1,6 +1,7 @@
 import { type Theme, applyTheme, injectUiStyles, loadPersistedTheme } from "@bpmnkit/ui"
 import { injectOperateStyles } from "./css.js"
 import { createRouter } from "./router.js"
+import type { Store } from "./stores/base.js"
 import { DashboardStore } from "./stores/dashboard.js"
 import { DecisionsStore } from "./stores/decisions.js"
 import { DefinitionsStore } from "./stores/definitions.js"
@@ -73,7 +74,9 @@ export function createOperate(options: OperateOptions): OperateApi {
 	let reconnectCurrent: (() => void) | null = null
 
 	function connectAll(): void {
-		reconnectCurrent?.()
+		// Rebuild the whole route, not just its store: detail views and list
+		// filters capture the profile when they are created.
+		router.refresh()
 	}
 
 	// ── Profiles ──────────────────────────────────────────────────────────────
@@ -127,6 +130,14 @@ export function createOperate(options: OperateOptions): OperateApi {
 	header.setProfiles(profiles, profile)
 	main.appendChild(header.el)
 
+	// Poll failures (proxy down, no profile, 401 from the cluster) would
+	// otherwise look like an empty table.
+	const errorBanner = document.createElement("div")
+	errorBanner.className = "op-action-feedback op-action-feedback--err"
+	errorBanner.setAttribute("role", "alert")
+	errorBanner.hidden = true
+	main.appendChild(errorBanner)
+
 	const content = document.createElement("div")
 	content.className = "op-content"
 	main.appendChild(content)
@@ -137,6 +148,17 @@ export function createOperate(options: OperateOptions): OperateApi {
 	let currentTheme: Theme = initialTheme
 	let currentViewSetTheme: ((t: "light" | "dark" | "neon") => void) | null = null
 
+	let unwatchErrors: (() => void) | null = null
+
+	function watchErrors<T>(store: Store<T>): void {
+		const show = (): void => {
+			errorBanner.textContent = store.state.error ?? ""
+			errorBanner.hidden = !store.state.error
+		}
+		unwatchErrors = store.subscribe(show)
+		show()
+	}
+
 	function showView(
 		viewEl: HTMLElement,
 		destroy: () => void,
@@ -145,6 +167,9 @@ export function createOperate(options: OperateOptions): OperateApi {
 		destroyView?.()
 		destroyView = destroy
 		currentViewSetTheme = setTheme ?? null
+		unwatchErrors?.()
+		unwatchErrors = null
+		errorBanner.hidden = true
 		content.innerHTML = ""
 		content.appendChild(viewEl)
 	}
@@ -165,6 +190,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 		nav.setActive("/")
 		const { el: vEl, destroy } = createDashboardView(dashStore, (path) => router.navigate(path))
 		showView(vEl, destroy)
+		watchErrors(dashStore)
 	})
 
 	router.on("/definitions", () => {
@@ -179,13 +205,17 @@ export function createOperate(options: OperateOptions): OperateApi {
 			router.navigate(`/definitions/${def.processDefinitionKey ?? ""}`)
 		})
 		showView(vEl, destroy)
+		watchErrors(defStore)
 	})
 
 	router.on("/definitions/:key", (params) => {
-		disconnectAll()
+		// The view reads the definition's name and versions from the store, so a
+		// deep link needs it connected just as the decision detail route does.
 		reconnectCurrent = () => {
 			disconnectAll()
+			defStore.connect(proxyUrl, profile, pollInterval, mock)
 		}
+		reconnectCurrent()
 		header.setTitle("Process Definition")
 		nav.setActive("/definitions")
 		const {
@@ -220,6 +250,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 			router.navigate(`/decisions/${def.decisionDefinitionKey}`)
 		})
 		showView(vEl, destroy)
+		watchErrors(decStore)
 	})
 
 	router.on("/decisions/:key", (params) => {
@@ -260,6 +291,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 			},
 		)
 		showView(vEl, destroy)
+		watchErrors(instStore)
 	})
 
 	router.on("/instances/:key", (params) => {
@@ -304,6 +336,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 			router.navigate(`/incidents/${inc.incidentKey ?? ""}`)
 		})
 		showView(vEl, destroy)
+		watchErrors(incStore)
 	})
 
 	router.on("/incidents/:key", (params) => {
@@ -341,6 +374,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 		nav.setActive("/jobs")
 		const { el: vEl, destroy } = createJobsView(jobStore)
 		showView(vEl, destroy)
+		watchErrors(jobStore)
 	})
 
 	router.on("/tasks", () => {
@@ -355,6 +389,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 			router.navigate(`/tasks/${task.userTaskKey}`)
 		})
 		showView(vEl, destroy)
+		watchErrors(taskStore)
 	})
 
 	router.on("/tasks/:key", (params) => {
@@ -416,6 +451,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 			currentTheme = t
 			applyTheme(el, t)
 			header.setTheme(t)
+			currentViewSetTheme?.(getTheme())
 		},
 
 		navigate(path: string): void {
@@ -424,6 +460,7 @@ export function createOperate(options: OperateOptions): OperateApi {
 
 		destroy(): void {
 			stopRouter()
+			unwatchErrors?.()
 			destroyView?.()
 			dashStore.destroy()
 			defStore.destroy()
