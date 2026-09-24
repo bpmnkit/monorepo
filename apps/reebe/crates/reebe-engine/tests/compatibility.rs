@@ -914,3 +914,129 @@ async fn test_event_subprocess_and_inclusive_join() {
     complete_job(&handle, handler.key).await;
     assert_eq!(wait_for_process_state(&pool, cancelled, "COMPLETED", 120).await, "COMPLETED");
 }
+
+/// A retry loop drawn with link events: work → [throw "retry"] ⇢ [catch "retry"] → check
+/// → (=retry: work again | done), and compensation: `charge` has a compensation handler
+/// `refund`, which the compensation end event of an error event sub-process runs.
+const LINK_AND_COMPENSATION_BPMN: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:error id="Err_ship" errorCode="SHIPPING_FAILED"/>
+  <bpmn:process id="compat-link-comp" isExecutable="true">
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="charge">
+      <bpmn:extensionElements><zeebe:taskDefinition type="compat-charge"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:incoming>f-again</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="charge-comp" attachedToRef="charge"><bpmn:compensateEventDefinition/></bpmn:boundaryEvent>
+    <bpmn:serviceTask id="refund" isForCompensation="true">
+      <bpmn:extensionElements><zeebe:taskDefinition type="compat-refund"/></bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:association id="assoc" associationDirection="One" sourceRef="charge-comp" targetRef="refund"/>
+    <bpmn:intermediateThrowEvent id="to-check"><bpmn:incoming>f2</bpmn:incoming>
+      <bpmn:linkEventDefinition name="check"/></bpmn:intermediateThrowEvent>
+    <bpmn:intermediateCatchEvent id="at-check"><bpmn:outgoing>f3</bpmn:outgoing>
+      <bpmn:linkEventDefinition name="check"/></bpmn:intermediateCatchEvent>
+    <bpmn:exclusiveGateway id="retry" default="f-ship">
+      <bpmn:incoming>f3</bpmn:incoming><bpmn:outgoing>f-again</bpmn:outgoing><bpmn:outgoing>f-ship</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="ship">
+      <bpmn:extensionElements><zeebe:taskDefinition type="compat-ship"/></bpmn:extensionElements>
+      <bpmn:incoming>f-ship</bpmn:incoming><bpmn:outgoing>f-end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f-end</bpmn:incoming></bpmn:endEvent>
+    <bpmn:subProcess id="on-failure" triggeredByEvent="true">
+      <bpmn:startEvent id="failure-start"><bpmn:outgoing>e1</bpmn:outgoing>
+        <bpmn:errorEventDefinition errorRef="Err_ship"/></bpmn:startEvent>
+      <bpmn:endEvent id="undo"><bpmn:incoming>e1</bpmn:incoming><bpmn:compensateEventDefinition/></bpmn:endEvent>
+      <bpmn:sequenceFlow id="e1" sourceRef="failure-start" targetRef="undo"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="charge"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="charge" targetRef="to-check"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="at-check" targetRef="retry"/>
+    <bpmn:sequenceFlow id="f-again" sourceRef="retry" targetRef="charge">
+      <bpmn:conditionExpression>=again</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f-ship" sourceRef="retry" targetRef="ship"/>
+    <bpmn:sequenceFlow id="f-end" sourceRef="ship" targetRef="end"/>
+  </bpmn:process>
+</bpmn:definitions>"#;
+
+async fn complete_job_with(handle: &EngineHandle, key: i64, variables: serde_json::Value) {
+    handle
+        .send_command(
+            "JOB".to_string(),
+            "COMPLETE".to_string(),
+            serde_json::json!({ "jobKey": key.to_string(), "variables": variables }),
+            "<default>".to_string(),
+        )
+        .await
+        .expect("JOB.COMPLETE should succeed");
+}
+
+/// A link throw event continues at its catch event, and a compensation end event runs
+/// the handler of every completion of the compensated activity before its scope ends,
+/// on Postgres.
+#[tokio::test]
+async fn test_link_events_and_compensation() {
+    let Some((pool, handle)) = setup().await else {
+        eprintln!("REEBE_DATABASE__URL not set — skipping test_link_events_and_compensation");
+        return;
+    };
+    deploy(&handle, LINK_AND_COMPENSATION_BPMN, "compat-link-comp.bpmn").await;
+    let instance = create_instance(&handle, "compat-link-comp", serde_json::json!({})).await;
+
+    // Charged twice: the link leads back to the gateway, which loops once.
+    let first = job_of(&pool, "compat-charge", instance).await;
+    complete_job_with(&handle, first.key, serde_json::json!({ "again": true })).await;
+    let second = job_of(&pool, "compat-charge", instance).await;
+    assert_ne!(second.key, first.key, "the link loop charges again");
+    complete_job_with(&handle, second.key, serde_json::json!({ "again": false })).await;
+
+    // Shipping fails: the error event sub-process compensates both charges.
+    let ship = job_of(&pool, "compat-ship", instance).await;
+    handle
+        .send_command(
+            "JOB".to_string(),
+            "THROW_ERROR".to_string(),
+            serde_json::json!({ "jobKey": ship.key.to_string(), "errorCode": "SHIPPING_FAILED" }),
+            "<default>".to_string(),
+        )
+        .await
+        .expect("throw error");
+    let mut refunds = Vec::new();
+    for _ in 0..100 {
+        refunds = wait_for_jobs(&pool, "compat-refund", 1).await
+            .into_iter()
+            .filter(|j| j.process_instance_key == instance)
+            .collect();
+        if refunds.len() == 2 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(refunds.len(), 2, "one refund per completed charge");
+    let undo_state: String = sqlx::query_scalar(
+        "SELECT state FROM element_instances WHERE process_instance_key = $1 AND element_id = 'undo'",
+    )
+    .bind(instance)
+    .fetch_one(&pool)
+    .await
+    .expect("undo state");
+    assert_eq!(undo_state, "ACTIVATED", "the compensation end event waits for the refunds");
+
+    complete_job(&handle, refunds[0].key).await;
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(wait_for_process_state(&pool, instance, "ACTIVE", 1).await, "ACTIVE");
+    complete_job(&handle, refunds[1].key).await;
+    assert_eq!(wait_for_process_state(&pool, instance, "COMPLETED", 120).await, "COMPLETED");
+    let link_catches: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM element_instances WHERE process_instance_key = $1 AND element_id = 'at-check' AND state = 'COMPLETED'",
+    )
+    .bind(instance)
+    .fetch_one(&pool)
+    .await
+    .expect("count link catches");
+    assert_eq!(link_catches, 2);
+}

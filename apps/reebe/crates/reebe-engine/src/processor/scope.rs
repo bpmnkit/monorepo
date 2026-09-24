@@ -94,7 +94,20 @@ pub(crate) async fn propagate(
     if variables.is_empty() {
         return Ok(());
     }
-    let chain = scope_chain(state, process_instance_key, scope_key).await;
+    let mut chain = scope_chain(state, process_instance_key, scope_key).await;
+    // What the elements of an ad-hoc sub-process write stays in their activation.
+    let mut fallback = process_instance_key;
+    for (i, key) in chain.iter().enumerate() {
+        let is_activation = state.backend
+            .get_element_instance_by_key(*key)
+            .await
+            .is_ok_and(|ei| ei.element_type == super::ad_hoc::INNER);
+        if is_activation {
+            fallback = *key;
+            chain.truncate(i + 1);
+            break;
+        }
+    }
     let mut names_by_scope = Vec::with_capacity(chain.len());
     for key in &chain {
         let names: std::collections::HashSet<String> = state.backend
@@ -111,7 +124,7 @@ pub(crate) async fn propagate(
             .iter()
             .find(|(_, names)| names.contains(name))
             .map(|(key, _)| *key)
-            .unwrap_or(process_instance_key);
+            .unwrap_or(fallback);
         set_local(state, process_instance_key, target, name, value.clone(), tenant_id).await?;
     }
     Ok(())

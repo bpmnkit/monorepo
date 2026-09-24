@@ -16,7 +16,7 @@
 //! One activation consumes one token of each incoming flow that has one. An
 //! inclusive join is evaluated when a token reaches it, and again whenever an
 //! element of its flow scope completes, since that may leave the untaken flows
-//! out of reach.
+//! out of reach. A path follows a link throw event to its link catch event.
 
 use std::collections::HashSet;
 use reebe_bpmn::{BpmnProcess, FlowElement, Gateway};
@@ -186,6 +186,10 @@ async fn can_still_be_reached(
             } else {
                 sources.push(flow.target_ref.clone());
             }
+        }
+        // A link throw event continues at its link catch event.
+        if let Some(catch) = at.process.link_catch_event(&id) {
+            sources.push(catch.to_string());
         }
         let mut boundaries = Vec::new();
         boundary_events(&at.process.elements, &id, &mut boundaries);

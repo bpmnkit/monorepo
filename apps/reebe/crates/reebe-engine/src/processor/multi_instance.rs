@@ -42,31 +42,40 @@ pub(crate) struct Activation<'a> {
 }
 
 /// Activate the body of a multi-instance activity and start its first inner instance(s).
+/// `retried` is the body that is still activating after an incident, which activates
+/// again. Returns the body's key.
 pub(crate) async fn activate_body(
     state: &EngineState,
     writers: &mut Writers,
     process: &BpmnProcess,
     mi: &MultiInstanceLoopCharacteristics,
     at: Activation<'_>,
-) -> EngineResult<()> {
-    let key_gen = KeyGenerator::new(Arc::clone(&state.backend), state.partition_id);
-    let body = ElementInstance {
-        key: key_gen.next_key().await?,
-        partition_id: state.partition_id,
-        process_instance_key: at.process_instance_key,
-        process_definition_key: at.process_definition_key,
-        bpmn_process_id: at.bpmn_process_id.to_string(),
-        element_id: at.element_id.to_string(),
-        element_type: BODY.to_string(),
-        state: "ACTIVATING".to_string(),
-        flow_scope_key: Some(at.flow_scope_key),
-        scope_key: None,
-        incident_key: None,
-        tenant_id: at.tenant_id.to_string(),
+    retried: Option<ElementInstance>,
+) -> EngineResult<i64> {
+    let body = match retried {
+        Some(body) => body,
+        None => {
+            let key_gen = KeyGenerator::new(Arc::clone(&state.backend), state.partition_id);
+            let body = ElementInstance {
+                key: key_gen.next_key().await?,
+                partition_id: state.partition_id,
+                process_instance_key: at.process_instance_key,
+                process_definition_key: at.process_definition_key,
+                bpmn_process_id: at.bpmn_process_id.to_string(),
+                element_id: at.element_id.to_string(),
+                element_type: BODY.to_string(),
+                state: "ACTIVATING".to_string(),
+                flow_scope_key: Some(at.flow_scope_key),
+                scope_key: None,
+                incident_key: None,
+                tenant_id: at.tenant_id.to_string(),
+            };
+            let body = ElementInstance { scope_key: Some(body.key), ..body };
+            state.backend.insert_element_instance(&body).await?;
+            writers.events.push(element_event(&body, "ELEMENT_ACTIVATING"));
+            body
+        }
     };
-    let body = ElementInstance { scope_key: Some(body.key), ..body };
-    state.backend.insert_element_instance(&body).await?;
-    writers.events.push(element_event(&body, "ELEMENT_ACTIVATING"));
 
     let ctx = scope::feel_context(state, at.process_instance_key, body.key).await;
     let items = match reebe_feel::parse_and_evaluate(&mi.input_collection, &ctx).map(serde_json::Value::from) {
@@ -92,7 +101,7 @@ pub(crate) async fn activate_body(
                     "tenantId": at.tenant_id,
                 }),
             });
-            return Ok(());
+            return Ok(body.key);
         }
     };
 
@@ -117,7 +126,7 @@ pub(crate) async fn activate_body(
             activate_inner(writers, &body, loop_counter as i64);
         }
     }
-    Ok(())
+    Ok(body.key)
 }
 
 fn activate_inner(writers: &mut Writers, body: &ElementInstance, loop_counter: i64) {

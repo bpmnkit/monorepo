@@ -16,6 +16,7 @@ use crate::state::messages::{
 };
 use crate::state::signal_subscriptions::{SignalSubscription, SignalSubscriptionRepository};
 use crate::state::gateway_tokens::{JoinToken, JoinTokenRepository};
+use crate::state::compensation::{CompensationSubscription, CompensationSubscriptionRepository};
 use crate::state::deployments::{Deployment, ProcessDefinition, DeploymentRepository};
 use crate::state::user_tasks::{UserTask, UserTaskRepository};
 use crate::state::identity::{Tenant, User, TenantRepository, UserRepository};
@@ -530,6 +531,18 @@ impl StateBackend for SqlxBackend {
 
     async fn delete_join_tokens(&self, flow_scope_key: i64) -> Result<()> {
         JoinTokenRepository::new(&self.pool).delete_by_flow_scope(flow_scope_key).await
+    }
+
+    async fn upsert_compensation_subscription(&self, sub: &CompensationSubscription) -> Result<()> {
+        CompensationSubscriptionRepository::new(&self.pool).upsert(sub).await
+    }
+
+    async fn get_compensation_subscriptions(&self, process_instance_key: i64) -> Result<Vec<CompensationSubscription>> {
+        CompensationSubscriptionRepository::new(&self.pool).get_by_process_instance(process_instance_key).await
+    }
+
+    async fn delete_compensation_subscription(&self, key: i64) -> Result<()> {
+        CompensationSubscriptionRepository::new(&self.pool).delete(key).await
     }
 
     async fn insert_deployment(&self, deployment: &Deployment) -> Result<()> {

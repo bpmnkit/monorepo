@@ -436,10 +436,61 @@ Reports PI/s (process instances per second), average latency, and error count.
   one terminates everything else in the scope, triggers once and disarms the others; a
   non-interrupting one runs alongside as often as it triggers (a timer cycle repeats). The
   message or signal variables propagate as a catch event's do, so the event sub-process sees
-  them. Error and escalation event sub-processes catch throws
+  them. Error and escalation event sub-processes catch throws. An event sub-process instance
+  has the element type `EVENT_SUB_PROCESS`
+- Error variables: the variables a job worker throws an error with go to the error boundary
+  event or error event sub-process that catches it, and propagate as a catch event's do
+  (an output mapping on a boundary event picks what leaves)
+- Exclusive gateways take the first flow whose condition holds, else the default flow. With
+  no match and no default flow they raise a `CONDITION_ERROR` incident and stay activating;
+  resolving the incident evaluates the gateway again. Default flows are recognised in
+  sub-processes and event sub-processes at every depth. Parallel gateways take every
+  outgoing flow and ignore conditions on them, as Zeebe does
 - Inclusive gateways: the split takes every flow whose condition holds, else the default
-  flow, else raises an incident; the join activates once every incoming flow has a token or
-  can no longer be reached in its flow scope (see below)
+  flow, else raises a `CONDITION_ERROR` incident that, like the exclusive gateway's, retries
+  the split when resolved; the join activates once every incoming flow has a token or can
+  no longer be reached in its flow scope (see below)
+- Complex gateways fail deployment with `Elements of type 'complexGateway' are currently not
+  supported`, as in Zeebe, which does not execute them
+- Link events: a link throw event continues at the link catch event of the same name in its
+  scope (the process or a sub-process). Deployment fails for a throw event without a catch
+  event of its name, for two catch events with the same name in one scope, and for an empty
+  link name
+- Compensation: when an activity with a compensation boundary event completes, it is
+  recorded with its handler (the `isForCompensation` activity an association links to the
+  boundary event); a multi-instance activity is recorded once, when all its instances have
+  completed, and an activity that completes twice is recorded twice. A compensation
+  intermediate throw or end event starts, all at once, the handlers of the activities that
+  completed in its scope and in the completed sub-processes inside it, most recently
+  completed first, and waits until they have all completed. Active and terminated
+  activities and sub-processes are not compensated, and each completion is compensated
+  once. `activityRef` limits it to that activity of the throw event's scope. A throw event in
+  an event sub-process (for example the compensation end event of an error event
+  sub-process) compensates the scope around the event sub-process. A handler starts with a
+  copy of the compensated activity's local variables and sees the variables of its scope;
+  its result propagates like any task's. Deployment fails for an `activityRef` that is not
+  an activity with a compensation boundary event in the throw event's scope, and for a
+  compensation start event in an event sub-process, which Zeebe does not support
+- Ad-hoc sub-processes. Each activation of an inner element runs in its own
+  `AD_HOC_SUB_PROCESS_INNER_INSTANCE`, which keeps what its elements write; the element's
+  outgoing sequence flows are followed inside it. Run by Zeebe, `activeElementsCollection`
+  lists the elements to activate (an empty list, or none, activates nothing and the
+  sub-process waits; an id that is not an element without incoming flows raises an
+  incident), `completionCondition` is checked each time an activation completes, and
+  `cancelRemainingInstances` (default `true`) terminates the rest when it holds; without a
+  condition, the sub-process completes when every activated element has. With a job worker
+  implementation (the AI Agent Sub-process), the job's `adHocSubProcess` result activates
+  elements (`activateElements`, each with variables for its activation), fulfils the
+  completion condition (`isCompletionConditionFulfilled`) and cancels or waits for the
+  remaining activations (`isCancelRemainingInstances`); the job is created again whenever an
+  activation completes, one job at a time. A job completed without activating elements or
+  fulfilling the condition completes the sub-process. An invalid result (activating and
+  fulfilling at once, or an element that cannot be activated) rejects the completion.
+  `outputElement` is collected into `outputCollection`, which is propagated when the
+  sub-process completes
+- Resolving an incident raised while an element was activating (an I/O mapping, a gateway
+  condition, a multi-instance input collection, an ad-hoc `activeElementsCollection`) retries
+  that same element instance
 - Joins wait per flow scope and incoming sequence flow: a parallel join needs a token on each
   incoming flow, and a token waiting at a join keeps its flow scope active, as in Zeebe, even
   if the join can never activate
@@ -456,28 +507,23 @@ Reports PI/s (process instances per second), average latency, and error count.
 A flow of the join can still be reached if a path of sequence flows leads to it from an
 element instance active in the join's flow scope, from an element a token is on its way to,
 or from another join of the scope with a waiting token. Boundary events of the elements on a
-path count as paths; a path does not lead through the join itself, so a flow that has a token
-is not waited for again. The join is evaluated when a token reaches it and whenever an element
-of its flow scope completes. The analysis is static and per flow scope: it does not evaluate
-conditions (a flow whose condition can never hold still counts as reachable), and it does not
-follow link events.
+path count as paths, and a path follows a link throw event to its link catch event; a path
+does not lead through the join itself, so a flow that has a token is not waited for again.
+The join is evaluated when a token reaches it and whenever an element of its flow scope
+completes. The analysis is static and per flow scope: it does not evaluate conditions (a flow
+whose condition can never hold still counts as reachable).
 
 ### Known gaps
 
-- Complex gateways
-- Ad-hoc sub-processes run only through a job worker implementation; their inner elements are
-  not activated
-- Link events: `linkEventDefinition` is not parsed, so a process with a link catch event fails
-  to deploy
-- Compensation: handlers connected by an association fail deployment as isolated elements, and
-  compensation throw events do not run them
-- An exclusive gateway with no matching condition and no default flow stops without an
-  incident (Zeebe raises one); an inclusive split's incident is raised after the gateway has
-  completed, so resolving it does not retry the split
-- Default flows are only marked on top-level gateways
-- Error event sub-processes do not receive the error's variables
-- Event sub-process instances report the element type `SUB_PROCESS`, not `EVENT_SUB_PROCESS`
-- Parallel gateways evaluate conditions on their outgoing flows; Zeebe ignores them
+- A condition that fails to evaluate (an error, or a value that is not a boolean) counts as
+  false; Zeebe raises an incident
+- Ad-hoc sub-processes: the `adHocSubProcessElements` variable is not created, the REST
+  endpoint that activates ad-hoc sub-process activities is not implemented, and the gRPC
+  `CompleteJob` call has no job result (the REST job completion passes `result` on)
+- Compensation: a handler whose activity's sub-process has completed runs in the throw event's
+  scope; where Zeebe places it has not been checked against Zeebe. A handler's completion is
+  what the throw event waits for, so a handler that is terminated leaves it waiting until
+  its scope ends
 
 ### What is not supported
 

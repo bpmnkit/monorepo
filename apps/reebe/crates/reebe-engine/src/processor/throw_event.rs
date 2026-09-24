@@ -22,7 +22,8 @@ use super::{CommandToWrite, EventToWrite, Writers};
 
 /// What was thrown.
 pub(crate) enum Thrown {
-    Error { code: String, message: Option<String> },
+    /// `variables` are those a job worker threw the error with; they go to the catch event.
+    Error { code: String, message: Option<String>, variables: Option<serde_json::Value> },
     Escalation { code: String },
 }
 
@@ -33,6 +34,7 @@ impl Thrown {
             Some(EventDefinition::Error(d)) => Some(Thrown::Error {
                 code: d.error_code.clone().unwrap_or_default(),
                 message: None,
+                variables: None,
             }),
             Some(EventDefinition::Escalation(d)) => Some(Thrown::Escalation {
                 code: d.escalation_code.clone().unwrap_or_default(),
@@ -60,12 +62,12 @@ impl Thrown {
         catch_code.map_or(true, |c| c.is_empty() || c == self.code())
     }
 
-    fn variables(&self) -> serde_json::Value {
+    /// The variables the catch event receives: those the error was thrown with, as in
+    /// Zeebe. Nothing else is passed on.
+    fn variables(&self) -> Option<&serde_json::Map<String, serde_json::Value>> {
         match self {
-            Thrown::Error { code, message } => {
-                serde_json::json!({ "errorCode": code, "errorMessage": message })
-            }
-            Thrown::Escalation { code } => serde_json::json!({ "escalationCode": code }),
+            Thrown::Error { variables, .. } => variables.as_ref().and_then(|v| v.as_object()),
+            Thrown::Escalation { .. } => None,
         }
     }
 }
@@ -108,7 +110,7 @@ pub(crate) async fn throw_event(
                     terminate_subtree(state, writers, &current).await?;
                 }
                 let scope_key = current.flow_scope_key.unwrap_or(current.process_instance_key);
-                activate(writers, &current, &be.0, scope_key, thrown);
+                activate(writers, &current, &be.0, scope_key, thrown, false);
                 return Ok(ThrowOutcome::Caught { interrupted: interrupting });
             }
 
@@ -132,7 +134,7 @@ pub(crate) async fn throw_event(
                     }
                     terminate_children(state, writers, &scope).await?;
                 }
-                activate(writers, &scope, &esp_id, scope.key, thrown);
+                activate(writers, &scope, &esp_id, scope.key, thrown, true);
                 return Ok(ThrowOutcome::Caught { interrupted: interrupting });
             }
             current = scope;
@@ -150,14 +152,14 @@ pub(crate) async fn throw_event(
         }
     }
 
-    if let Thrown::Error { code, message } = thrown {
+    if let Thrown::Error { code, message, .. } = thrown {
         raise_unhandled_error_incident(state, writers, thrower, code, message.as_deref(), job_key)
             .await?;
     }
     Ok(ThrowOutcome::Uncaught)
 }
 
-async fn load_process(
+pub(crate) async fn load_process(
     state: &EngineState,
     process_definition_key: i64,
     bpmn_process_id: &str,
@@ -214,26 +216,39 @@ fn find_event_subprocess(
     })
 }
 
+/// Activate the catch event (a boundary event) or the event sub-process that caught
+/// `thrown`. The catch event completes at once with the variables the error was
+/// thrown with, which propagate as those of any other catch event do.
 fn activate(
     writers: &mut Writers,
     context: &ElementInstance,
     element_id: &str,
     flow_scope_key: i64,
     thrown: &Thrown,
+    event_subprocess: bool,
 ) {
+    let mut payload = serde_json::json!({
+        "processInstanceKey": context.process_instance_key.to_string(),
+        "processDefinitionKey": context.process_definition_key.to_string(),
+        "bpmnProcessId": context.bpmn_process_id,
+        "elementId": element_id,
+        "flowScopeKey": flow_scope_key.to_string(),
+        "tenantId": context.tenant_id,
+    });
+    if let Some(variables) = thrown.variables() {
+        let variables = serde_json::Value::Object(variables.clone());
+        if event_subprocess {
+            payload["startEventVariables"] = variables;
+        } else {
+            payload["eventTriggered"] = serde_json::json!(true);
+            payload["eventVariables"] = variables;
+        }
+    }
     writers.commands.push(CommandToWrite {
         value_type: "PROCESS_INSTANCE".to_string(),
         intent: "ACTIVATE_ELEMENT".to_string(),
         key: context.process_instance_key,
-        payload: serde_json::json!({
-            "processInstanceKey": context.process_instance_key.to_string(),
-            "processDefinitionKey": context.process_definition_key.to_string(),
-            "bpmnProcessId": context.bpmn_process_id,
-            "elementId": element_id,
-            "flowScopeKey": flow_scope_key.to_string(),
-            "variables": thrown.variables(),
-            "tenantId": context.tenant_id,
-        }),
+        payload,
     });
 }
 

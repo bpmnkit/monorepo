@@ -1,4 +1,5 @@
 use crate::model::*;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone)]
@@ -40,9 +41,133 @@ fn validate_process(process: &BpmnProcess, errors: &mut Vec<ValidationError>) {
         validate_element(pid, element_id, element, process, errors);
     }
 
-    // Validate sequence flows
+    // Validate sequence flows; those of an unsupported element are reported with it.
     for flow in &process.sequence_flows {
-        validate_sequence_flow(pid, flow, process, errors);
+        let unsupported = process.unsupported_elements.iter().any(|el| el.id == flow.source_ref || el.id == flow.target_ref);
+        if !unsupported {
+            validate_sequence_flow(pid, flow, process, errors);
+        }
+    }
+
+    // Zeebe rejects the elements it does not execute.
+    for el in &process.unsupported_elements {
+        errors.push(ValidationError::ElementError {
+            process_id: pid.clone(),
+            element_id: el.id.clone(),
+            message: format!("Elements of type '{}' are currently not supported", el.element_type),
+        });
+    }
+
+    validate_scope(pid, &process.elements, errors);
+}
+
+/// Checks that apply to each scope — the process and every sub-process in it.
+fn validate_scope(process_id: &str, elements: &HashMap<String, FlowElement>, errors: &mut Vec<ValidationError>) {
+    validate_links(process_id, elements, errors);
+    validate_compensation(process_id, elements, errors);
+    for el in elements.values() {
+        if let FlowElement::SubProcess(sp) = el {
+            validate_scope(process_id, &sp.elements, errors);
+        }
+    }
+}
+
+/// Link events pair up by name within one scope: every link throw event needs a link
+/// catch event of its name, and a name belongs to one catch event only.
+fn validate_links(process_id: &str, elements: &HashMap<String, FlowElement>, errors: &mut Vec<ValidationError>) {
+    let mut catches: HashMap<&str, Vec<&str>> = HashMap::new();
+    for el in elements.values() {
+        if let FlowElement::IntermediateCatchEvent(e) = el {
+            if let Some(EventDefinition::Link(name)) = &e.event_definition {
+                catches.entry(name.as_str()).or_default().push(e.id.as_str());
+            }
+        }
+    }
+    let mut duplicated: Vec<(&str, Vec<&str>)> = catches
+        .iter()
+        .filter(|(_, ids)| ids.len() > 1)
+        .map(|(name, ids)| (*name, ids.clone()))
+        .collect();
+    duplicated.sort();
+    for (name, mut ids) in duplicated {
+        ids.sort();
+        errors.push(ValidationError::ElementError {
+            process_id: process_id.to_string(),
+            element_id: ids[1].to_string(),
+            message: format!(
+                "Multiple intermediate catch link event definitions with the same name '{name}' are not allowed."
+            ),
+        });
+    }
+    for el in elements.values() {
+        let (id, def) = match el {
+            FlowElement::IntermediateThrowEvent(e) => (&e.id, &e.event_definition),
+            FlowElement::IntermediateCatchEvent(e) => (&e.id, &e.event_definition),
+            _ => continue,
+        };
+        let Some(EventDefinition::Link(name)) = def else { continue };
+        if name.trim().is_empty() {
+            errors.push(ValidationError::ElementError {
+                process_id: process_id.to_string(),
+                element_id: id.clone(),
+                message: "Link name must be present and not empty.".to_string(),
+            });
+        } else if matches!(el, FlowElement::IntermediateThrowEvent(_)) && !catches.contains_key(name.as_str()) {
+            errors.push(ValidationError::ElementError {
+                process_id: process_id.to_string(),
+                element_id: id.clone(),
+                message: format!("Can't find an catch link event for the throw link event with the name '{name}'."),
+            });
+        }
+    }
+}
+
+/// A compensation throw event's `activityRef` names an activity of its own scope that
+/// has a compensation boundary event. An event sub-process cannot start with a
+/// compensation event: Zeebe does not support compensation start events.
+fn validate_compensation(process_id: &str, elements: &HashMap<String, FlowElement>, errors: &mut Vec<ValidationError>) {
+    let has_compensation_boundary = |activity: &str| {
+        elements.values().any(|e| matches!(
+            e,
+            FlowElement::BoundaryEvent(be)
+                if be.attached_to_ref == activity && matches!(be.event_definition, Some(EventDefinition::Compensation(_)))
+        ))
+    };
+    for el in elements.values() {
+        let (id, def) = match el {
+            FlowElement::IntermediateThrowEvent(e) => (&e.id, &e.event_definition),
+            FlowElement::EndEvent(e) => (&e.id, &e.event_definition),
+            FlowElement::SubProcess(sp) if sp.triggered_by_event => {
+                for start in &sp.start_events {
+                    if let Some(FlowElement::StartEvent(se)) = sp.elements.get(start) {
+                        if matches!(se.event_definition, Some(EventDefinition::Compensation(_))) {
+                            errors.push(ValidationError::ElementError {
+                                process_id: process_id.to_string(),
+                                element_id: se.id.clone(),
+                                message: "The start event of an event sub-process must be a timer, message, \
+                                          error, signal or escalation event; compensation start events are not supported"
+                                    .to_string(),
+                            });
+                        }
+                    }
+                }
+                continue;
+            }
+            _ => continue,
+        };
+        let Some(EventDefinition::Compensation(CompensationEventDefinition { activity_ref: Some(activity) })) = def else {
+            continue;
+        };
+        if !elements.get(activity).is_some_and(FlowElement::is_activity) || !has_compensation_boundary(activity) {
+            errors.push(ValidationError::ElementError {
+                process_id: process_id.to_string(),
+                element_id: id.clone(),
+                message: format!(
+                    "The compensation activityRef '{activity}' must reference an activity with a compensation \
+                     boundary event in the same scope as the compensation throw event"
+                ),
+            });
+        }
     }
 }
 
@@ -90,8 +215,10 @@ fn validate_element(
     let is_boundary = matches!(element, FlowElement::BoundaryEvent(_));
     // An event sub-process is started by its event, not by a sequence flow.
     let is_event_subprocess = matches!(element, FlowElement::SubProcess(sp) if sp.triggered_by_event);
+    // A compensation handler is linked to its boundary event by an association.
+    let is_handler = element.is_for_compensation();
 
-    if !is_start && !is_end && !is_boundary && !is_event_subprocess {
+    if !is_start && !is_end && !is_boundary && !is_event_subprocess && !is_handler {
         let has_incoming = process.sequence_flows.iter().any(|f| f.target_ref == *element_id);
         let has_outgoing = process.sequence_flows.iter().any(|f| f.source_ref == *element_id);
 

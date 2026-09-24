@@ -215,6 +215,38 @@ fn get_required_attr(
     })
 }
 
+fn is_for_compensation(e: &quick_xml::events::BytesStart) -> bool {
+    get_attr(e, "isForCompensation").is_some_and(|v| v == "true")
+}
+
+fn compensate_definition(e: &quick_xml::events::BytesStart) -> EventDefinition {
+    EventDefinition::Compensation(CompensationEventDefinition {
+        activity_ref: get_attr(e, "activityRef").filter(|r| !r.is_empty()),
+    })
+}
+
+/// Mark the default flow of every exclusive and inclusive gateway, in the scope and
+/// in its sub-processes at every depth.
+fn mark_default_flows(elements: &mut HashMap<String, FlowElement>, flows: &mut [SequenceFlow]) {
+    let defaults: Vec<String> = elements
+        .values()
+        .filter_map(|el| match el {
+            FlowElement::ExclusiveGateway(gw) | FlowElement::InclusiveGateway(gw) => gw.default_flow.clone(),
+            _ => None,
+        })
+        .collect();
+    for flow in flows.iter_mut() {
+        if defaults.contains(&flow.id) {
+            flow.is_default = true;
+        }
+    }
+    for el in elements.values_mut() {
+        if let FlowElement::SubProcess(sp) = el {
+            mark_default_flows(&mut sp.elements, &mut sp.sequence_flows);
+        }
+    }
+}
+
 #[derive(Debug)]
 enum ParseContext {
     Root,
@@ -237,6 +269,8 @@ enum ParseContext {
     IntermediateCatchEvent(IntermediateCatchEvent),
     IntermediateThrowEvent(IntermediateThrowEvent),
     BoundaryEvent(BoundaryEvent),
+    // An element Zeebe does not execute; recorded so that deployment rejects it
+    Unsupported(UnsupportedElement),
     // Extension elements context
     ExtensionElements,
 }
@@ -393,18 +427,21 @@ impl ParserState {
                 let id = get_required_attr(e, "serviceTask", "id")?;
                 let mut task = ServiceTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::ServiceTask(task));
             }
             "userTask" => {
                 let id = get_required_attr(e, "userTask", "id")?;
                 let mut task = UserTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::UserTask(task));
             }
             "receiveTask" => {
                 let id = get_required_attr(e, "receiveTask", "id")?;
                 let mut task = ReceiveTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 task.message_ref = get_attr(e, "messageRef");
                 if let Some(r) = task.message_ref.as_ref() {
                     task.message_name = self.messages.get(r).cloned();
@@ -416,24 +453,28 @@ impl ParserState {
                 let id = get_required_attr(e, "scriptTask", "id")?;
                 let mut task = ScriptTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::ScriptTask(task));
             }
             "sendTask" => {
                 let id = get_required_attr(e, "sendTask", "id")?;
                 let mut task = SendTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::SendTask(task));
             }
             "businessRuleTask" => {
                 let id = get_required_attr(e, "businessRuleTask", "id")?;
                 let mut task = BusinessRuleTask::new(id);
                 task.name = get_attr(e, "name");
+                task.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::BusinessRuleTask(task));
             }
             "callActivity" => {
                 let id = get_required_attr(e, "callActivity", "id")?;
                 let mut ca = CallActivity::new(id);
                 ca.name = get_attr(e, "name");
+                ca.is_for_compensation = is_for_compensation(e);
                 self.stack.push(ParseContext::CallActivity(ca));
             }
             "subProcess" | "adHocSubProcess" => {
@@ -441,6 +482,10 @@ impl ParserState {
                 let mut sp = SubProcess::new(id);
                 sp.name = get_attr(e, "name");
                 sp.ad_hoc = name == "adHocSubProcess";
+                sp.is_for_compensation = is_for_compensation(e);
+                sp.cancel_remaining_instances = get_attr(e, "cancelRemainingInstances")
+                    .map(|v| v != "false")
+                    .unwrap_or(true);
                 sp.triggered_by_event = get_attr(e, "triggeredByEvent")
                     .map(|v| v == "true")
                     .unwrap_or(false);
@@ -552,7 +597,18 @@ impl ParserState {
                 self.pending_event_def = Some(EventDefinition::Terminate);
             }
             "compensateEventDefinition" => {
-                self.pending_event_def = Some(EventDefinition::Compensation);
+                self.pending_event_def = Some(compensate_definition(e));
+            }
+            "linkEventDefinition" => {
+                self.pending_event_def = Some(EventDefinition::Link(get_attr(e, "name").unwrap_or_default()));
+            }
+            "association" => self.add_association(e)?,
+            "complexGateway" => {
+                let id = get_required_attr(e, name, "id")?;
+                self.stack.push(ParseContext::Unsupported(UnsupportedElement {
+                    id,
+                    element_type: name.to_string(),
+                }));
             }
             // A sequenceFlow with child elements (e.g. conditionExpression) arrives as
             // a Start event rather than Empty. Handle it identically to the Empty case so
@@ -765,8 +821,32 @@ impl ParserState {
                 self.finalize_event_definition();
             }
             "compensateEventDefinition" => {
-                self.pending_event_def = Some(EventDefinition::Compensation);
+                self.pending_event_def = Some(compensate_definition(e));
                 self.finalize_event_definition();
+            }
+            "linkEventDefinition" => {
+                self.pending_event_def = Some(EventDefinition::Link(get_attr(e, "name").unwrap_or_default()));
+                self.finalize_event_definition();
+            }
+            "association" => self.add_association(e)?,
+            "complexGateway" => {
+                let id = get_required_attr(e, name, "id")?;
+                self.add_unsupported(UnsupportedElement { id, element_type: name.to_string() });
+            }
+            "adHoc" => {
+                let active_elements = get_attr(e, "activeElementsCollection");
+                let output_collection = get_attr(e, "outputCollection");
+                let output_element = get_attr(e, "outputElement");
+                for ctx in self.stack.iter_mut().rev() {
+                    if let ParseContext::SubProcess(sp) = ctx {
+                        if sp.ad_hoc {
+                            sp.active_elements_collection = active_elements.filter(|v| !v.trim().is_empty());
+                            sp.output_collection = output_collection.filter(|v| !v.trim().is_empty());
+                            sp.output_element = output_element.filter(|v| !v.trim().is_empty());
+                        }
+                        break;
+                    }
+                }
             }
             _ => {}
         }
@@ -802,7 +882,14 @@ impl ParserState {
             "completionCondition" => {
                 let expr = self.current_text.trim().to_string();
                 self.current_text.clear();
-                if let Some(Some(mi)) = self.current_multi_instance_mut() {
+                // Outside `multiInstanceLoopCharacteristics`, it is an ad-hoc sub-process's own.
+                let ad_hoc = match (self.pending_mi_sequential, self.stack.last_mut()) {
+                    (None, Some(ParseContext::SubProcess(sp))) if sp.ad_hoc => Some(sp),
+                    _ => None,
+                };
+                if let Some(sp) = ad_hoc {
+                    sp.completion_condition = Some(expr).filter(|e| !e.is_empty());
+                } else if let Some(Some(mi)) = self.current_multi_instance_mut() {
                     mi.completion_condition = Some(expr);
                 }
             }
@@ -825,8 +912,13 @@ impl ParserState {
             }
             "timerEventDefinition" | "messageEventDefinition" | "signalEventDefinition"
             | "errorEventDefinition" | "escalationEventDefinition"
-            | "terminateEventDefinition" | "compensateEventDefinition" => {
+            | "terminateEventDefinition" | "compensateEventDefinition" | "linkEventDefinition" => {
                 self.finalize_event_definition();
+            }
+            "complexGateway" => {
+                if let Some(ParseContext::Unsupported(el)) = self.stack.pop() {
+                    self.add_unsupported(el);
+                }
             }
             "extensionElements" => {
                 // Pop the ExtensionElements context
@@ -941,22 +1033,7 @@ impl ParserState {
             }
             "process" => {
                 if let Some(ParseContext::Process(mut process)) = self.stack.pop() {
-                    // Resolve default flows: find every gateway that has a default_flow
-                    // and mark the corresponding sequence flow's is_default flag.
-                    let default_flow_ids: Vec<String> = process
-                        .elements
-                        .values()
-                        .filter_map(|el| match el {
-                            FlowElement::ExclusiveGateway(gw)
-                            | FlowElement::InclusiveGateway(gw) => gw.default_flow.clone(),
-                            _ => None,
-                        })
-                        .collect();
-                    for flow in process.sequence_flows.iter_mut() {
-                        if default_flow_ids.contains(&flow.id) {
-                            flow.is_default = true;
-                        }
-                    }
+                    mark_default_flows(&mut process.elements, &mut process.sequence_flows);
                     return Ok(Some(process));
                 }
             }
@@ -993,6 +1070,34 @@ impl ParserState {
                     _ => {}
                 }
             }
+        }
+    }
+
+    fn add_association(&mut self, e: &quick_xml::events::BytesStart) -> Result<(), BpmnParseError> {
+        let association = Association {
+            id: get_attr(e, "id").unwrap_or_default(),
+            source_ref: get_required_attr(e, "association", "sourceRef")?,
+            target_ref: get_required_attr(e, "association", "targetRef")?,
+        };
+        for ctx in self.stack.iter_mut().rev() {
+            match ctx {
+                ParseContext::Process(p) => {
+                    p.associations.push(association);
+                    break;
+                }
+                ParseContext::SubProcess(sp) => {
+                    sp.associations.push(association);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn add_unsupported(&mut self, element: UnsupportedElement) {
+        if let Some(p) = self.current_process() {
+            p.unsupported_elements.push(element);
         }
     }
 
@@ -1049,6 +1154,7 @@ impl ParserState {
                 ParseContext::EndEvent(e) => { e.incoming.push(id); return; }
                 ParseContext::IntermediateCatchEvent(e) => { e.incoming.push(id); return; }
                 ParseContext::IntermediateThrowEvent(e) => { e.incoming.push(id); return; }
+                ParseContext::Unsupported(_) => return,
                 _ => {}
             }
         }
@@ -1072,6 +1178,7 @@ impl ParserState {
                 ParseContext::IntermediateCatchEvent(e) => { e.outgoing.push(id); return; }
                 ParseContext::IntermediateThrowEvent(e) => { e.outgoing.push(id); return; }
                 ParseContext::BoundaryEvent(e) => { e.outgoing.push(id); return; }
+                ParseContext::Unsupported(_) => return,
                 _ => {}
             }
         }

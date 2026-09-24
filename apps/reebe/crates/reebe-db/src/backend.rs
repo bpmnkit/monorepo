@@ -12,6 +12,7 @@ use crate::state::timers::Timer;
 use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
 use crate::state::gateway_tokens::JoinToken;
+use crate::state::compensation::CompensationSubscription;
 use crate::state::deployments::{Deployment, ProcessDefinition};
 use crate::state::user_tasks::UserTask;
 use crate::state::identity::{Tenant, User};
@@ -142,6 +143,13 @@ pub trait StateBackend: Send + Sync {
     async fn get_join_tokens(&self, process_instance_key: i64) -> Result<Vec<JoinToken>>;
     /// Drop the tokens waiting in a flow scope that ended.
     async fn delete_join_tokens(&self, flow_scope_key: i64) -> Result<()>;
+
+    // ---- Compensation subscriptions ----
+    /// Insert a compensation subscription, or update its throw event and handler instance.
+    async fn upsert_compensation_subscription(&self, sub: &CompensationSubscription) -> Result<()>;
+    /// The compensation subscriptions of a process instance, oldest first.
+    async fn get_compensation_subscriptions(&self, process_instance_key: i64) -> Result<Vec<CompensationSubscription>>;
+    async fn delete_compensation_subscription(&self, key: i64) -> Result<()>;
 
     // ---- Deployments ----
     async fn insert_deployment(&self, deployment: &Deployment) -> Result<()>;

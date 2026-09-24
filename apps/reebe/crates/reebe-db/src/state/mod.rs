@@ -11,3 +11,4 @@ pub mod identity;
 pub mod batch_operations;
 pub mod signal_subscriptions;
 pub mod gateway_tokens;
+pub mod compensation;

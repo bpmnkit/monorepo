@@ -15,6 +15,7 @@ use crate::state::timers::Timer;
 use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
 use crate::state::gateway_tokens::JoinToken;
+use crate::state::compensation::CompensationSubscription;
 use crate::state::deployments::{Deployment, ProcessDefinition};
 use crate::state::user_tasks::UserTask;
 use crate::state::identity::{Tenant, User};
@@ -44,6 +45,7 @@ pub struct InMemoryStore {
     message_subscriptions: BTreeMap<i64, MessageSubscription>,
     signal_subscriptions: BTreeMap<i64, SignalSubscription>,
     join_tokens: Vec<JoinToken>,
+    compensation_subscriptions: BTreeMap<i64, CompensationSubscription>,
     deployments: BTreeMap<i64, Deployment>,
     process_definitions: BTreeMap<i64, ProcessDefinition>,
     decision_xml_by_id: std::collections::HashMap<String, String>,
@@ -70,6 +72,7 @@ impl InMemoryStore {
             message_subscriptions: BTreeMap::new(),
             signal_subscriptions: BTreeMap::new(),
             join_tokens: Vec::new(),
+            compensation_subscriptions: BTreeMap::new(),
             deployments: BTreeMap::new(),
             process_definitions: BTreeMap::new(),
             decision_xml_by_id: std::collections::HashMap::new(),
@@ -795,6 +798,26 @@ impl StateBackend for InMemoryBackend {
 
     async fn delete_join_tokens(&self, flow_scope_key: i64) -> Result<()> {
         self.store.lock().unwrap().join_tokens.retain(|t| t.flow_scope_key != flow_scope_key);
+        Ok(())
+    }
+
+    async fn upsert_compensation_subscription(&self, sub: &CompensationSubscription) -> Result<()> {
+        self.store.lock().unwrap().compensation_subscriptions.insert(sub.key, sub.clone());
+        Ok(())
+    }
+
+    async fn get_compensation_subscriptions(&self, process_instance_key: i64) -> Result<Vec<CompensationSubscription>> {
+        let store = self.store.lock().unwrap();
+        Ok(store
+            .compensation_subscriptions
+            .values()
+            .filter(|s| s.process_instance_key == process_instance_key)
+            .cloned()
+            .collect())
+    }
+
+    async fn delete_compensation_subscription(&self, key: i64) -> Result<()> {
+        self.store.lock().unwrap().compensation_subscriptions.remove(&key);
         Ok(())
     }
 

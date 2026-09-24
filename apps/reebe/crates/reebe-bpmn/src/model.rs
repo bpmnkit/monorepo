@@ -13,6 +13,13 @@ pub struct BpmnProcess {
     pub start_events: Vec<String>,
     /// IDs of end events
     pub end_events: Vec<String>,
+    /// Associations directly in the process, such as the one linking a compensation
+    /// boundary event to its handler.
+    #[serde(default)]
+    pub associations: Vec<Association>,
+    /// Elements Zeebe does not execute (e.g. a complex gateway), which fail deployment.
+    #[serde(default)]
+    pub unsupported_elements: Vec<UnsupportedElement>,
 }
 
 impl BpmnProcess {
@@ -25,6 +32,8 @@ impl BpmnProcess {
             sequence_flows: Vec::new(),
             start_events: Vec::new(),
             end_events: Vec::new(),
+            associations: Vec::new(),
+            unsupported_elements: Vec::new(),
         }
     }
 
@@ -78,6 +87,97 @@ impl BpmnProcess {
     pub fn incoming_flows(&self, element_id: &str) -> Vec<&SequenceFlow> {
         self.sequence_flows.iter().filter(|f| f.target_ref == element_id).collect()
     }
+
+    /// The elements and associations of the scope (the process, or a sub-process at
+    /// any depth) that directly contains `element_id`.
+    pub fn scope_of(&self, element_id: &str) -> Option<(&HashMap<String, FlowElement>, &[Association])> {
+        fn search<'a>(
+            elements: &'a HashMap<String, FlowElement>,
+            associations: &'a [Association],
+            id: &str,
+        ) -> Option<(&'a HashMap<String, FlowElement>, &'a [Association])> {
+            if elements.contains_key(id) {
+                return Some((elements, associations));
+            }
+            elements.values().find_map(|e| match e {
+                FlowElement::SubProcess(sp) => search(&sp.elements, &sp.associations, id),
+                _ => None,
+            })
+        }
+        search(&self.elements, &self.associations, element_id)
+    }
+
+    /// The link catch event a link throw event continues at: the catch event with
+    /// the same link name in the throw event's scope.
+    pub fn link_catch_event(&self, throw_id: &str) -> Option<&str> {
+        let (elements, _) = self.scope_of(throw_id)?;
+        let name = match elements.get(throw_id)? {
+            FlowElement::IntermediateThrowEvent(e) => match &e.event_definition {
+                Some(EventDefinition::Link(name)) => name,
+                _ => return None,
+            },
+            _ => return None,
+        };
+        elements.values().find_map(|e| match e {
+            FlowElement::IntermediateCatchEvent(c)
+                if matches!(&c.event_definition, Some(EventDefinition::Link(n)) if n == name) =>
+            {
+                Some(c.id.as_str())
+            }
+            _ => None,
+        })
+    }
+
+    /// The compensation handler of `activity_id`: the activity that an association
+    /// links to the compensation boundary event attached to it.
+    pub fn compensation_handler(&self, activity_id: &str) -> Option<&str> {
+        let (elements, _) = self.scope_of(activity_id)?;
+        let boundary = elements.values().find_map(|e| match e {
+            FlowElement::BoundaryEvent(be)
+                if be.attached_to_ref == activity_id
+                    && matches!(be.event_definition, Some(EventDefinition::Compensation(_))) =>
+            {
+                Some(be.id.as_str())
+            }
+            _ => None,
+        })?;
+        // Modelers put an association in the scope of either end, so look everywhere.
+        fn all<'a>(elements: &'a HashMap<String, FlowElement>, out: &mut Vec<&'a Association>) {
+            for e in elements.values() {
+                if let FlowElement::SubProcess(sp) = e {
+                    out.extend(sp.associations.iter());
+                    all(&sp.elements, out);
+                }
+            }
+        }
+        let mut associations: Vec<&Association> = self.associations.iter().collect();
+        all(&self.elements, &mut associations);
+        associations.into_iter().find_map(|a| {
+            if a.source_ref == boundary {
+                Some(a.target_ref.as_str())
+            } else if a.target_ref == boundary {
+                Some(a.source_ref.as_str())
+            } else {
+                None
+            }
+        })
+    }
+}
+
+/// A BPMN association between two elements.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Association {
+    pub id: String,
+    pub source_ref: String,
+    pub target_ref: String,
+}
+
+/// An element that Zeebe does not execute and rejects at deployment.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnsupportedElement {
+    pub id: String,
+    /// The BPMN element name, e.g. `complexGateway`.
+    pub element_type: String,
 }
 
 /// All BPMN flow element types.
@@ -185,6 +285,21 @@ impl FlowElement {
         }
     }
 
+    /// Whether this activity is a compensation handler (`isForCompensation`).
+    pub fn is_for_compensation(&self) -> bool {
+        match self {
+            FlowElement::ServiceTask(e) => e.is_for_compensation,
+            FlowElement::UserTask(e) => e.is_for_compensation,
+            FlowElement::ReceiveTask(e) => e.is_for_compensation,
+            FlowElement::ScriptTask(e) => e.is_for_compensation,
+            FlowElement::SendTask(e) => e.is_for_compensation,
+            FlowElement::BusinessRuleTask(e) => e.is_for_compensation,
+            FlowElement::CallActivity(e) => e.is_for_compensation,
+            FlowElement::SubProcess(e) => e.is_for_compensation,
+            _ => false,
+        }
+    }
+
     /// Whether this is an activity (a task, sub-process or call activity), the
     /// elements boundary events attach to.
     pub fn is_activity(&self) -> bool {
@@ -212,6 +327,8 @@ impl FlowElement {
             FlowElement::SendTask(_) => "SEND_TASK",
             FlowElement::BusinessRuleTask(_) => "BUSINESS_RULE_TASK",
             FlowElement::CallActivity(_) => "CALL_ACTIVITY",
+            FlowElement::SubProcess(sp) if sp.triggered_by_event => "EVENT_SUB_PROCESS",
+            FlowElement::SubProcess(sp) if sp.ad_hoc => "AD_HOC_SUB_PROCESS",
             FlowElement::SubProcess(_) => "SUB_PROCESS",
             FlowElement::ParallelGateway(_) => "PARALLEL_GATEWAY",
             FlowElement::ExclusiveGateway(_) => "EXCLUSIVE_GATEWAY",
@@ -297,6 +414,9 @@ pub struct ServiceTask {
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub execution_listeners: Vec<ZeebeExecutionListener>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl ServiceTask {
@@ -311,6 +431,7 @@ impl ServiceTask {
             output_mappings: Vec::new(),
             execution_listeners: Vec::new(),
             multi_instance: None,
+            is_for_compensation: false,
         }
     }
 }
@@ -334,6 +455,9 @@ pub struct UserTask {
     pub task_listeners: Vec<ZeebeTaskListener>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
     pub priority: Option<String>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl UserTask {
@@ -356,6 +480,7 @@ impl UserTask {
             task_listeners: Vec::new(),
             multi_instance: None,
             priority: None,
+            is_for_compensation: false,
         }
     }
 }
@@ -374,6 +499,9 @@ pub struct ReceiveTask {
     pub input_mappings: Vec<ZeebeIoMapping>,
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl ReceiveTask {
@@ -389,6 +517,7 @@ impl ReceiveTask {
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,
+            is_for_compensation: false,
         }
     }
 }
@@ -404,6 +533,9 @@ pub struct ScriptTask {
     pub input_mappings: Vec<ZeebeIoMapping>,
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl ScriptTask {
@@ -418,6 +550,7 @@ impl ScriptTask {
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,
+            is_for_compensation: false,
         }
     }
 }
@@ -432,6 +565,9 @@ pub struct SendTask {
     pub input_mappings: Vec<ZeebeIoMapping>,
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl SendTask {
@@ -445,6 +581,7 @@ impl SendTask {
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,
+            is_for_compensation: false,
         }
     }
 }
@@ -463,6 +600,9 @@ pub struct BusinessRuleTask {
     pub input_mappings: Vec<ZeebeIoMapping>,
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl BusinessRuleTask {
@@ -477,6 +617,7 @@ impl BusinessRuleTask {
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,
+            is_for_compensation: false,
         }
     }
 }
@@ -491,6 +632,9 @@ pub struct CallActivity {
     pub input_mappings: Vec<ZeebeIoMapping>,
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl CallActivity {
@@ -504,6 +648,7 @@ impl CallActivity {
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,
+            is_for_compensation: false,
         }
     }
 }
@@ -527,6 +672,28 @@ pub struct SubProcess {
     /// Job worker implementation of an ad-hoc sub-process (e.g. the AI Agent connector).
     #[serde(default)]
     pub task_definition: Option<ZeebeTaskDefinition>,
+    /// Associations directly inside the sub-process.
+    #[serde(default)]
+    pub associations: Vec<Association>,
+    /// Ad-hoc sub-process: `zeebe:adHoc activeElementsCollection`, the FEEL expression
+    /// listing the inner elements to activate.
+    #[serde(default)]
+    pub active_elements_collection: Option<String>,
+    /// Ad-hoc sub-process: `completionCondition`.
+    #[serde(default)]
+    pub completion_condition: Option<String>,
+    /// Ad-hoc sub-process: `cancelRemainingInstances` (default `true`).
+    #[serde(default = "default_true")]
+    pub cancel_remaining_instances: bool,
+    /// Ad-hoc sub-process: `zeebe:adHoc outputCollection`.
+    #[serde(default)]
+    pub output_collection: Option<String>,
+    /// Ad-hoc sub-process: `zeebe:adHoc outputElement`.
+    #[serde(default)]
+    pub output_element: Option<String>,
+    /// `isForCompensation`: a compensation handler, run only by a compensation throw event.
+    #[serde(default)]
+    pub is_for_compensation: bool,
 }
 
 impl SubProcess {
@@ -545,6 +712,13 @@ impl SubProcess {
             multi_instance: None,
             ad_hoc: false,
             task_definition: None,
+            associations: Vec::new(),
+            active_elements_collection: None,
+            completion_condition: None,
+            cancel_remaining_instances: true,
+            output_collection: None,
+            output_element: None,
+            is_for_compensation: false,
         }
     }
 
@@ -666,7 +840,8 @@ pub enum EventDefinition {
     Signal(SignalEventDefinition),
     Error(ErrorEventDefinition),
     Escalation(EscalationEventDefinition),
-    Compensation,
+    Compensation(CompensationEventDefinition),
+    /// A link event, by link name.
     Link(String),
     Terminate,
 }
@@ -703,6 +878,17 @@ pub struct ErrorEventDefinition {
     pub error_code: Option<String>,
     pub error_message_variable: Option<String>,
     pub error_code_variable: Option<String>,
+}
+
+/// A compensation event. On a throw event, `activity_ref` limits compensation to one
+/// activity of the throw event's scope.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CompensationEventDefinition {
+    pub activity_ref: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -847,4 +847,150 @@ mod tests {
         // Should not panic; result can be Ok (with empty-id process) or Err
         let _ = parse_bpmn(xml);
     }
+
+    fn definitions(body: &str) -> String {
+        format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="p" isExecutable="true">
+{body}
+  </bpmn:process>
+</bpmn:definitions>"#)
+    }
+
+    #[test]
+    fn test_parse_link_events() {
+        let xml = definitions(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:intermediateThrowEvent id="throw"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:linkEventDefinition id="ld1" name="Jump"/></bpmn:intermediateThrowEvent>
+    <bpmn:intermediateCatchEvent id="catch" name="Landing"><bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:linkEventDefinition id="ld2" name="Jump"></bpmn:linkEventDefinition></bpmn:intermediateCatchEvent>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="throw"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="catch" targetRef="end"/>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        match p.elements.get("throw") {
+            Some(FlowElement::IntermediateThrowEvent(e)) => {
+                assert!(matches!(&e.event_definition, Some(EventDefinition::Link(n)) if n == "Jump"));
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        match p.elements.get("catch") {
+            Some(FlowElement::IntermediateCatchEvent(e)) => {
+                assert!(matches!(&e.event_definition, Some(EventDefinition::Link(n)) if n == "Jump"));
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        assert_eq!(p.link_catch_event("throw"), Some("catch"));
+        assert!(validate_bpmn(p).is_empty(), "{:?}", validate_bpmn(p));
+    }
+
+    #[test]
+    fn test_parse_compensation_handler_and_association() {
+        let xml = definitions(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="charge">
+      <bpmn:extensionElements><zeebe:taskDefinition type="charge"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="comp" attachedToRef="charge"><bpmn:compensateEventDefinition id="cd"/></bpmn:boundaryEvent>
+    <bpmn:serviceTask id="refund" isForCompensation="true">
+      <bpmn:extensionElements><zeebe:taskDefinition type="refund"/></bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:intermediateThrowEvent id="undo"><bpmn:incoming>f2</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing>
+      <bpmn:compensateEventDefinition activityRef="charge"/></bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="charge"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="charge" targetRef="undo"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="undo" targetRef="end"/>
+    <bpmn:association id="a1" associationDirection="One" sourceRef="comp" targetRef="refund"/>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        assert!(p.elements["refund"].is_for_compensation());
+        assert!(!p.elements["charge"].is_for_compensation());
+        assert_eq!(p.associations.len(), 1);
+        assert_eq!(p.compensation_handler("charge"), Some("refund"));
+        match p.elements.get("undo") {
+            Some(FlowElement::IntermediateThrowEvent(e)) => assert!(matches!(
+                &e.event_definition,
+                Some(EventDefinition::Compensation(d)) if d.activity_ref.as_deref() == Some("charge")
+            )),
+            other => panic!("unexpected {other:?}"),
+        }
+        // The handler has no sequence flows, yet it is not isolated.
+        assert!(validate_bpmn(p).is_empty(), "{:?}", validate_bpmn(p));
+    }
+
+    #[test]
+    fn test_default_flows_are_marked_in_nested_sub_processes() {
+        let xml = definitions(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="outer"><bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:startEvent id="o-start"><bpmn:outgoing>o1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:subProcess id="esp" triggeredByEvent="true">
+        <bpmn:startEvent id="e-start"><bpmn:outgoing>e1</bpmn:outgoing><bpmn:signalEventDefinition signalRef="s"/></bpmn:startEvent>
+        <bpmn:exclusiveGateway id="gw" default="e-default"><bpmn:incoming>e1</bpmn:incoming></bpmn:exclusiveGateway>
+        <bpmn:sequenceFlow id="e1" sourceRef="e-start" targetRef="gw"/>
+        <bpmn:sequenceFlow id="e-default" sourceRef="gw" targetRef="e-end"/>
+        <bpmn:sequenceFlow id="e-other" sourceRef="gw" targetRef="e-end"/>
+        <bpmn:endEvent id="e-end"/>
+      </bpmn:subProcess>
+      <bpmn:inclusiveGateway id="igw" default="o-default"><bpmn:incoming>o1</bpmn:incoming></bpmn:inclusiveGateway>
+      <bpmn:sequenceFlow id="o1" sourceRef="o-start" targetRef="igw"/>
+      <bpmn:sequenceFlow id="o-default" sourceRef="igw" targetRef="o-end"/>
+      <bpmn:endEvent id="o-end"/>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="outer"/>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        let Some(FlowElement::SubProcess(outer)) = p.elements.get("outer") else { panic!("outer") };
+        let flow = |flows: &[SequenceFlow], id: &str| flows.iter().find(|f| f.id == id).unwrap().is_default;
+        assert!(flow(&outer.sequence_flows, "o-default"));
+        let Some(FlowElement::SubProcess(esp)) = outer.elements.get("esp") else { panic!("esp") };
+        assert!(flow(&esp.sequence_flows, "e-default"));
+        assert!(!flow(&esp.sequence_flows, "e-other"));
+        assert_eq!(p.elements["outer"].bpmn_element_type(), "SUB_PROCESS");
+        assert_eq!(outer.elements["esp"].bpmn_element_type(), "EVENT_SUB_PROCESS");
+    }
+
+    #[test]
+    fn test_parse_ad_hoc_sub_process_settings() {
+        let xml = definitions(r#"
+    <bpmn:adHocSubProcess id="tools" cancelRemainingInstances="false">
+      <bpmn:extensionElements>
+        <zeebe:adHoc activeElementsCollection="=toRun" outputCollection="results" outputElement="=result"/>
+      </bpmn:extensionElements>
+      <bpmn:serviceTask id="t1"><bpmn:extensionElements><zeebe:taskDefinition type="t1"/></bpmn:extensionElements></bpmn:serviceTask>
+      <bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=done</bpmn:completionCondition>
+    </bpmn:adHocSubProcess>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        let Some(FlowElement::SubProcess(sp)) = p.elements.get("tools") else { panic!("tools") };
+        assert!(sp.ad_hoc);
+        assert_eq!(sp.active_elements_collection.as_deref(), Some("=toRun"));
+        assert_eq!(sp.completion_condition.as_deref(), Some("=done"));
+        assert!(!sp.cancel_remaining_instances);
+        assert_eq!(sp.output_collection.as_deref(), Some("results"));
+        assert_eq!(sp.output_element.as_deref(), Some("=result"));
+        assert!(sp.multi_instance.is_none());
+        assert_eq!(p.elements["tools"].bpmn_element_type(), "AD_HOC_SUB_PROCESS");
+    }
+
+    #[test]
+    fn test_complex_gateway_is_recorded_as_unsupported() {
+        let xml = definitions(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:complexGateway id="cg"><bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing></bpmn:complexGateway>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="cg"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="cg" targetRef="end"/>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        assert!(!p.elements.contains_key("cg"));
+        assert_eq!(p.unsupported_elements.len(), 1);
+        assert_eq!(p.unsupported_elements[0].element_type, "complexGateway");
+        let errors: Vec<String> = validate_bpmn(p).iter().map(|e| e.to_string()).collect();
+        assert_eq!(errors, vec![
+            "Element 'cg' in process 'p': Elements of type 'complexGateway' are currently not supported".to_string(),
+        ]);
+    }
 }

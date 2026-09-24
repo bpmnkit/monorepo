@@ -17,6 +17,7 @@ use super::catch_event::{
 use super::join::{self, JoinScope};
 use super::multi_instance;
 use super::scope;
+use super::{ad_hoc, compensation};
 
 pub struct BpmnElementProcessor;
 
@@ -197,79 +198,109 @@ impl BpmnElementProcessor {
             .get_element_recursive(&element_id)
             .ok_or_else(|| EngineError::NotFound(format!("Element {element_id}")))?;
 
+        // Resolving an incident raised while the element was activating retries that
+        // same element instance, as Zeebe does, rather than creating another one.
+        let retried = match payload["elementInstanceKey"].as_str().and_then(|k| k.parse::<i64>().ok()) {
+            Some(key) => state.backend
+                .get_element_instance_by_key(key)
+                .await
+                .ok()
+                .filter(|ei| ei.state == "ACTIVATING"),
+            None => None,
+        };
+
         // A multi-instance activity activates its body first; the body activates the
         // inner instances, which carry their `loopCounter`.
-        let loop_counter = payload["loopCounter"].as_i64();
+        let loop_counter = match &retried {
+            Some(ei) if element.multi_instance().is_some() && ei.element_type != multi_instance::BODY => state.backend
+                .get_variables_by_scope(ei.key)
+                .await?
+                .into_iter()
+                .find(|v| v.name == "loopCounter")
+                .and_then(|v| v.value.as_i64()),
+            _ => payload["loopCounter"].as_i64(),
+        };
         if let (Some(mi), None) = (element.multi_instance(), loop_counter) {
-            return multi_instance::activate_body(state, writers, process, mi, multi_instance::Activation {
+            let body_key = multi_instance::activate_body(state, writers, process, mi, multi_instance::Activation {
                 process_instance_key,
                 process_definition_key,
                 bpmn_process_id: &bpmn_process_id,
                 element_id: &element_id,
                 flow_scope_key,
                 tenant_id: &tenant_id,
-            }).await;
+            }, retried).await?;
+            return compensation::handler_activating(state, payload, process_instance_key, body_key).await;
         }
 
-        // A token still on its way when an interrupting event sub-process took over
-        // its flow scope goes nowhere.
-        if let (true, Some(scope)) = (payload["sequenceFlowId"].is_string(), &scope_ei) {
-            if scope_interrupted(state, writers, process, scope, record.position).await? {
-                return Ok(());
+        if retried.is_none() {
+            // A token still on its way when an interrupting event sub-process took over
+            // its flow scope goes nowhere.
+            if let (true, Some(scope)) = (payload["sequenceFlowId"].is_string(), &scope_ei) {
+                if scope_interrupted(state, writers, process, scope, record.position).await? {
+                    return Ok(());
+                }
             }
-        }
 
-        // A joining gateway waits for its tokens before it activates.
-        if let Some((gw, inclusive)) = join::joining_gateway(element) {
-            let at = JoinScope { process, process_instance_key, flow_scope_key, position: record.position };
-            let arrived_on = join::arrived_on(state, &at, gw, payload).await?;
-            if !join::arrive(state, writers, &at, gw, inclusive, arrived_on.as_deref()).await? {
-                return Ok(());
+            // A joining gateway waits for its tokens before it activates.
+            if let Some((gw, inclusive)) = join::joining_gateway(element) {
+                let at = JoinScope { process, process_instance_key, flow_scope_key, position: record.position };
+                let arrived_on = join::arrived_on(state, &at, gw, payload).await?;
+                if !join::arrive(state, writers, &at, gw, inclusive, arrived_on.as_deref()).await? {
+                    return Ok(());
+                }
             }
         }
 
         // Determine element type string
         let element_type = element_type_string(element);
 
-        // Generate element instance key
-        let ei_key = key_gen.next_key().await?;
+        let ei = match retried {
+            Some(ei) => ei,
+            None => {
+                let ei_key = key_gen.next_key().await?;
 
-        // Create element instance in ACTIVATING state
-        let ei = ElementInstance {
-            key: ei_key,
-            partition_id: state.partition_id,
-            process_instance_key,
-            process_definition_key,
-            bpmn_process_id: bpmn_process_id.clone(),
-            element_id: element_id.clone(),
-            element_type: element_type.clone(),
-            state: "ACTIVATING".to_string(),
-            flow_scope_key: Some(flow_scope_key),
-            scope_key: Some(ei_key),
-            incident_key: None,
-            tenant_id: tenant_id.clone(),
+                // Create element instance in ACTIVATING state
+                let ei = ElementInstance {
+                    key: ei_key,
+                    partition_id: state.partition_id,
+                    process_instance_key,
+                    process_definition_key,
+                    bpmn_process_id: bpmn_process_id.clone(),
+                    element_id: element_id.clone(),
+                    element_type: element_type.clone(),
+                    state: "ACTIVATING".to_string(),
+                    flow_scope_key: Some(flow_scope_key),
+                    scope_key: Some(ei_key),
+                    incident_key: None,
+                    tenant_id: tenant_id.clone(),
+                };
+                state.backend.insert_element_instance(&ei).await?;
+
+                // Write ELEMENT_ACTIVATING event
+                writers.events.push(EventToWrite {
+                    value_type: "PROCESS_INSTANCE".to_string(),
+                    intent: "ELEMENT_ACTIVATING".to_string(),
+                    key: ei_key,
+                    payload: serde_json::json!({
+                        "elementInstanceKey": ei_key.to_string(),
+                        "processInstanceKey": process_instance_key.to_string(),
+                        "processDefinitionKey": process_definition_key.to_string(),
+                        "elementId": element_id,
+                        "elementType": element_type,
+                        "bpmnProcessId": bpmn_process_id,
+                        "tenantId": tenant_id,
+                    }),
+                });
+
+                if let (Some(mi), Some(loop_counter)) = (element.multi_instance(), loop_counter) {
+                    multi_instance::init_inner(state, mi, &ei, flow_scope_key, loop_counter).await?;
+                }
+                ei
+            }
         };
-        state.backend.insert_element_instance(&ei).await?;
-
-        // Write ELEMENT_ACTIVATING event
-        writers.events.push(EventToWrite {
-            value_type: "PROCESS_INSTANCE".to_string(),
-            intent: "ELEMENT_ACTIVATING".to_string(),
-            key: ei_key,
-            payload: serde_json::json!({
-                "elementInstanceKey": ei_key.to_string(),
-                "processInstanceKey": process_instance_key.to_string(),
-                "processDefinitionKey": process_definition_key.to_string(),
-                "elementId": element_id,
-                "elementType": element_type,
-                "bpmnProcessId": bpmn_process_id,
-                "tenantId": tenant_id,
-            }),
-        });
-
-        if let (Some(mi), Some(loop_counter)) = (element.multi_instance(), loop_counter) {
-            multi_instance::init_inner(state, mi, &ei, flow_scope_key, loop_counter).await?;
-        }
+        let ei_key = ei.key;
+        // A compensation handler starts with the local variables of the activity it compensates.
+        compensation::handler_activating(state, payload, process_instance_key, ei_key).await?;
 
         // Evaluate input mappings (if any), store results, create incident on failure
         {
@@ -355,13 +386,6 @@ impl BpmnElementProcessor {
         match element {
             reebe_bpmn::FlowElement::StartEvent(_)
             | reebe_bpmn::FlowElement::EndEvent(_) => {
-                // Check for compensation end event
-                let is_compensation_end = matches!(
-                    element,
-                    reebe_bpmn::FlowElement::EndEvent(e)
-                        if matches!(&e.event_definition, Some(reebe_bpmn::EventDefinition::Compensation))
-                );
-
                 // Immediately activate, then complete
                 state.backend.update_element_instance_state(ei_key, "ACTIVATED").await?;
                 writers.events.push(EventToWrite {
@@ -395,158 +419,58 @@ impl BpmnElementProcessor {
                     }
                 }
 
-                if is_compensation_end {
-                    // Find all completed elements in this scope that have a compensation boundary event
-                    let all_instances = state.backend.get_element_instances_by_process_instance(process_instance_key).await.unwrap_or_default();
-
-                    // Collect completed element IDs (in order, for LIFO we reverse later)
-                    let completed_element_ids: Vec<String> = all_instances
-                        .iter()
-                        .filter(|ei| ei.state == "COMPLETED" && ei.key != ei_key)
-                        .map(|ei| ei.element_id.clone())
-                        .collect();
-
-                    // Find boundary events of type COMPENSATION attached to completed elements
-                    let mut compensation_handlers: Vec<String> = Vec::new();
-                    for (id, elem) in &process.elements {
-                        if let reebe_bpmn::FlowElement::BoundaryEvent(be) = elem {
-                            if matches!(&be.event_definition, Some(reebe_bpmn::EventDefinition::Compensation)) {
-                                if completed_element_ids.contains(&be.attached_to_ref) {
-                                    compensation_handlers.push(id.clone());
-                                }
-                            }
-                        }
+                // A compensation end event waits for the handlers it invoked.
+                if let reebe_bpmn::FlowElement::EndEvent(reebe_bpmn::EndEvent {
+                    event_definition: Some(reebe_bpmn::EventDefinition::Compensation(def)), ..
+                }) = element
+                {
+                    if compensation::throw(state, writers, &activated_ei, def.activity_ref.as_deref()).await? {
+                        return Ok(());
                     }
-
-                    // Activate in reverse order (LIFO compensation semantics)
-                    compensation_handlers.reverse();
-                    for handler_id in compensation_handlers {
-                        writers.commands.push(CommandToWrite {
-                            value_type: "PROCESS_INSTANCE".to_string(),
-                            intent: "ACTIVATE_ELEMENT".to_string(),
-                            key: process_instance_key,
-                            payload: serde_json::json!({
-                                "processInstanceKey": process_instance_key.to_string(),
-                                "processDefinitionKey": process_definition_key.to_string(),
-                                "bpmnProcessId": bpmn_process_id,
-                                "elementId": handler_id,
-                                "flowScopeKey": flow_scope_key.to_string(),
-                                "tenantId": tenant_id,
-                            }),
-                        });
-                    }
-
-                    // Still schedule completion of the compensation end event itself
-                    writers.commands.push(CommandToWrite {
-                        value_type: "PROCESS_INSTANCE".to_string(),
-                        intent: "COMPLETE_ELEMENT".to_string(),
-                        key: ei_key,
-                        payload: serde_json::json!({
-                            "elementInstanceKey": ei_key.to_string(),
-                            "processInstanceKey": process_instance_key.to_string(),
-                            "processDefinitionKey": process_definition_key.to_string(),
-                            "elementId": element_id,
-                            "elementType": element_type,
-                            "bpmnProcessId": bpmn_process_id,
-                            "flowScopeKey": flow_scope_key.to_string(),
-                            "tenantId": tenant_id,
-                        }),
-                    });
-                } else {
-                    // Schedule completion
-                    writers.commands.push(CommandToWrite {
-                        value_type: "PROCESS_INSTANCE".to_string(),
-                        intent: "COMPLETE_ELEMENT".to_string(),
-                        key: ei_key,
-                        payload: serde_json::json!({
-                            "elementInstanceKey": ei_key.to_string(),
-                            "processInstanceKey": process_instance_key.to_string(),
-                            "processDefinitionKey": process_definition_key.to_string(),
-                            "elementId": element_id,
-                            "elementType": element_type,
-                            "bpmnProcessId": bpmn_process_id,
-                            "flowScopeKey": flow_scope_key.to_string(),
-                            "tenantId": tenant_id,
-                        }),
-                    });
                 }
-            }
-            reebe_bpmn::FlowElement::BoundaryEvent(be) => {
-                // Handle compensation boundary event activation
-                let is_compensation = matches!(
-                    &be.event_definition,
-                    Some(reebe_bpmn::EventDefinition::Compensation)
-                );
 
+                writers.commands.push(CommandToWrite {
+                    value_type: "PROCESS_INSTANCE".to_string(),
+                    intent: "COMPLETE_ELEMENT".to_string(),
+                    key: ei_key,
+                    payload: serde_json::json!({
+                        "elementInstanceKey": ei_key.to_string(),
+                        "processInstanceKey": process_instance_key.to_string(),
+                        "processDefinitionKey": process_definition_key.to_string(),
+                        "elementId": element_id,
+                        "elementType": element_type,
+                        "bpmnProcessId": bpmn_process_id,
+                        "flowScopeKey": flow_scope_key.to_string(),
+                        "tenantId": tenant_id,
+                    }),
+                });
+            }
+            reebe_bpmn::FlowElement::BoundaryEvent(_) => {
+                // A boundary event that caught its event completes at once. (Compensation
+                // boundary events are never activated: they only link an activity to its
+                // compensation handler.)
                 state.backend.update_element_instance_state(ei_key, "ACTIVATED").await?;
                 writers.events.push(EventToWrite {
                     value_type: "PROCESS_INSTANCE".to_string(),
                     intent: "ELEMENT_ACTIVATED".to_string(),
                     key: ei_key,
+                    payload: activated_event.clone(),
+                });
+                writers.commands.push(CommandToWrite {
+                    value_type: "PROCESS_INSTANCE".to_string(),
+                    intent: "COMPLETE_ELEMENT".to_string(),
+                    key: ei_key,
                     payload: serde_json::json!({
                         "elementInstanceKey": ei_key.to_string(),
                         "processInstanceKey": process_instance_key.to_string(),
+                        "processDefinitionKey": process_definition_key.to_string(),
                         "elementId": element_id,
                         "elementType": element_type,
                         "bpmnProcessId": bpmn_process_id,
+                        "flowScopeKey": flow_scope_key.to_string(),
                         "tenantId": tenant_id,
                     }),
                 });
-
-                if is_compensation {
-                    // Find the outgoing elements of this compensation handler boundary event
-                    // and activate them (the compensation task)
-                    let outgoing = process.outgoing_flows_recursive(&element_id);
-                    for flow in outgoing {
-                        writers.commands.push(CommandToWrite {
-                            value_type: "PROCESS_INSTANCE".to_string(),
-                            intent: "ACTIVATE_ELEMENT".to_string(),
-                            key: process_instance_key,
-                            payload: serde_json::json!({
-                                "processInstanceKey": process_instance_key.to_string(),
-                                "processDefinitionKey": process_definition_key.to_string(),
-                                "bpmnProcessId": bpmn_process_id,
-                                "elementId": flow.target_ref,
-                                "flowScopeKey": flow_scope_key.to_string(),
-                                "tenantId": tenant_id,
-                            }),
-                        });
-                    }
-
-                    // Also complete this boundary event element
-                    writers.commands.push(CommandToWrite {
-                        value_type: "PROCESS_INSTANCE".to_string(),
-                        intent: "COMPLETE_ELEMENT".to_string(),
-                        key: ei_key,
-                        payload: serde_json::json!({
-                            "elementInstanceKey": ei_key.to_string(),
-                            "processInstanceKey": process_instance_key.to_string(),
-                            "processDefinitionKey": process_definition_key.to_string(),
-                            "elementId": element_id,
-                            "elementType": element_type,
-                            "bpmnProcessId": bpmn_process_id,
-                            "flowScopeKey": flow_scope_key.to_string(),
-                            "tenantId": tenant_id,
-                        }),
-                    });
-                } else {
-                    // Non-compensation boundary events just complete normally
-                    writers.commands.push(CommandToWrite {
-                        value_type: "PROCESS_INSTANCE".to_string(),
-                        intent: "COMPLETE_ELEMENT".to_string(),
-                        key: ei_key,
-                        payload: serde_json::json!({
-                            "elementInstanceKey": ei_key.to_string(),
-                            "processInstanceKey": process_instance_key.to_string(),
-                            "processDefinitionKey": process_definition_key.to_string(),
-                            "elementId": element_id,
-                            "elementType": element_type,
-                            "bpmnProcessId": bpmn_process_id,
-                            "flowScopeKey": flow_scope_key.to_string(),
-                            "tenantId": tenant_id,
-                        }),
-                    });
-                }
             }
             reebe_bpmn::FlowElement::ServiceTask(st) => {
                 // Create a job for the service task
@@ -637,7 +561,42 @@ impl BpmnElementProcessor {
             reebe_bpmn::FlowElement::ExclusiveGateway(_)
             | reebe_bpmn::FlowElement::ParallelGateway(_)
             | reebe_bpmn::FlowElement::InclusiveGateway(_) => {
-                // Evaluate gateway and take appropriate outgoing flows
+                // An exclusive or inclusive gateway chooses its flows while it activates.
+                // When no condition holds and there is no default flow, it raises an
+                // incident and stays activating; resolving the incident evaluates again.
+                let outgoing = process.outgoing_flows_recursive(&element_id);
+                let taken: Vec<&str> = if matches!(element, reebe_bpmn::FlowElement::ParallelGateway(_)) {
+                    outgoing.iter().map(|f| f.id.as_str()).collect()
+                } else {
+                    let ctx = scope::feel_context(state, process_instance_key, ei_key).await;
+                    match gateway_flows(element, &outgoing, &ctx) {
+                        Some(flows) => flows.into_iter().map(|f| f.id.as_str()).collect(),
+                        None => {
+                            let kind = if matches!(element, reebe_bpmn::FlowElement::InclusiveGateway(_)) {
+                                "inclusive"
+                            } else {
+                                "exclusive"
+                            };
+                            writers.commands.push(CommandToWrite {
+                                value_type: "INCIDENT".to_string(),
+                                intent: "CREATE".to_string(),
+                                key: 0,
+                                payload: serde_json::json!({
+                                    "errorType": "CONDITION_ERROR",
+                                    "errorMessage": format!(
+                                        "Expected at least one condition to evaluate to true, or to have a default flow \
+                                         at {kind} gateway '{element_id}'"
+                                    ),
+                                    "processInstanceKey": process_instance_key.to_string(),
+                                    "elementInstanceKey": ei_key.to_string(),
+                                    "bpmnProcessId": bpmn_process_id,
+                                    "tenantId": tenant_id,
+                                }),
+                            });
+                            return Ok(());
+                        }
+                    }
+                };
                 state.backend.update_element_instance_state(ei_key, "ACTIVATED").await?;
                 writers.events.push(EventToWrite {
                     value_type: "PROCESS_INSTANCE".to_string(),
@@ -653,7 +612,7 @@ impl BpmnElementProcessor {
                     }),
                 });
 
-                // For gateways, schedule completion to evaluate outgoing flows
+                // Completing takes the chosen flows.
                 writers.commands.push(CommandToWrite {
                     value_type: "PROCESS_INSTANCE".to_string(),
                     intent: "COMPLETE_ELEMENT".to_string(),
@@ -666,6 +625,7 @@ impl BpmnElementProcessor {
                         "elementType": element_type,
                         "bpmnProcessId": bpmn_process_id,
                         "flowScopeKey": flow_scope_key.to_string(),
+                        "takenFlows": taken,
                         "tenantId": tenant_id,
                     }),
                 });
@@ -912,6 +872,13 @@ impl BpmnElementProcessor {
                     }
                 }
 
+                // A compensation throw event waits for the handlers it invoked.
+                if let Some(reebe_bpmn::EventDefinition::Compensation(def)) = &ite.event_definition {
+                    if compensation::throw(state, writers, &activated_ei, def.activity_ref.as_deref()).await? {
+                        return Ok(());
+                    }
+                }
+
                 // Signal throw: broadcast to all waiting catch events
                 if let Some(reebe_bpmn::EventDefinition::Signal(sig)) = &ite.event_definition {
                     writers.commands.push(CommandToWrite {
@@ -944,6 +911,32 @@ impl BpmnElementProcessor {
                 });
             }
             reebe_bpmn::FlowElement::SubProcess(sp) => {
+                // An ad-hoc sub-process run by Zeebe evaluates the elements to activate
+                // first; if that fails, it raises an incident and stays activating.
+                let ad_hoc_elements = if sp.ad_hoc && sp.task_definition.is_none() {
+                    match ad_hoc::active_elements(state, sp, process_instance_key, ei_key).await {
+                        Ok(ids) => ids,
+                        Err(message) => {
+                            writers.commands.push(CommandToWrite {
+                                value_type: "INCIDENT".to_string(),
+                                intent: "CREATE".to_string(),
+                                key: 0,
+                                payload: serde_json::json!({
+                                    "errorType": "EXTRACT_VALUE_ERROR",
+                                    "errorMessage": message,
+                                    "processInstanceKey": process_instance_key.to_string(),
+                                    "elementInstanceKey": ei_key.to_string(),
+                                    "bpmnProcessId": bpmn_process_id,
+                                    "tenantId": tenant_id,
+                                }),
+                            });
+                            return Ok(());
+                        }
+                    }
+                } else {
+                    Vec::new()
+                };
+
                 // Activate the subprocess element and launch its start events.
                 state.backend.update_element_instance_state(ei_key, "ACTIVATED").await?;
                 writers.events.push(EventToWrite {
@@ -960,49 +953,13 @@ impl BpmnElementProcessor {
                     }),
                 });
 
-                // An ad-hoc sub-process with a job worker implementation (the AI Agent
-                // Sub-process connector) is driven by that job: the worker decides which
-                // inner elements to run. Completing the job completes the sub-process;
-                // activating inner elements from the job result is not supported.
-                if sp.ad_hoc {
-                    match &sp.task_definition {
-                        Some(td) => writers.commands.push(CommandToWrite {
-                            value_type: "JOB".to_string(),
-                            intent: "CREATE".to_string(),
-                            key: 0,
-                            payload: serde_json::json!({
-                                "jobType": td.job_type,
-                                "processInstanceKey": process_instance_key.to_string(),
-                                "elementInstanceKey": ei_key.to_string(),
-                                "processDefinitionKey": process_definition_key.to_string(),
-                                "bpmnProcessId": bpmn_process_id,
-                                "elementId": element_id,
-                                "retries": 3,
-                                "customHeaders": {},
-                                "tenantId": tenant_id,
-                            }),
-                        }),
-                        None => writers.commands.push(CommandToWrite {
-                            value_type: "INCIDENT".to_string(),
-                            intent: "CREATE".to_string(),
-                            key: 0,
-                            payload: serde_json::json!({
-                                "errorType": "UNKNOWN",
-                                "errorMessage": format!(
-                                    "Ad-hoc sub-process '{element_id}' has no job worker implementation \
-                                     (zeebe:taskDefinition); Reebe runs ad-hoc sub-processes only through their job"
-                                ),
-                                "processInstanceKey": process_instance_key.to_string(),
-                                "elementInstanceKey": ei_key.to_string(),
-                                "bpmnProcessId": bpmn_process_id,
-                                "tenantId": tenant_id,
-                            }),
-                        }),
-                    }
-                    return Ok(());
-                }
-
                 arm_event_subprocesses(state, writers, process, &activated_ei).await?;
+
+                // An ad-hoc sub-process runs its inner elements as they are activated —
+                // by `activeElementsCollection`, or by its job's results.
+                if sp.ad_hoc {
+                    return ad_hoc::activated(state, writers, sp, &activated_ei, &ad_hoc_elements).await;
+                }
 
                 // Fire ACTIVATE_ELEMENT for each start event inside the subprocess.
                 // Use ei_key as the flowScopeKey so end-event handling can detect the scope.
@@ -1201,6 +1158,17 @@ impl BpmnElementProcessor {
             }),
         });
 
+        // An ad-hoc sub-process ends what still runs inside it and hands on its output collection.
+        if let (Some(reebe_bpmn::FlowElement::SubProcess(sp)), Some(ad_hoc_ei)) = (
+            definition.as_ref().and_then(|p| p.get_element_recursive(&element_id)).filter(|_| !is_mi_body),
+            &current,
+        ) {
+            if sp.ad_hoc {
+                terminate_children(state, writers, ad_hoc_ei).await?;
+                ad_hoc::completing(state, sp, ad_hoc_ei).await?;
+            }
+        }
+
         // Evaluate output mappings (if any), store results, create incident on failure.
         // A multi-instance body has none of its own: they apply to each inner instance.
         if let Some(element) = definition.as_ref().and_then(|p| p.get_element_recursive(&element_id)).filter(|_| !is_mi_body) {
@@ -1270,13 +1238,23 @@ impl BpmnElementProcessor {
             }
         }
 
+        // A completed activity with a compensation handler can be compensated later; a
+        // completed compensation handler may let its throw event continue.
+        if let (Some(process), Some(completed)) = (definition.as_ref(), &current) {
+            let completed = ElementInstance { state: "COMPLETED".to_string(), ..completed.clone() };
+            compensation::activity_completed(state, process, &completed).await?;
+            compensation::handler_completed(state, writers, &completed).await?;
+        }
+
         // An element without an outgoing sequence flow ends its path: an end event, an
         // event sub-process, or an activity without one. Its flow scope completes once
         // nothing inside it is active any more. A terminate end event first terminates
         // everything else in its flow scope.
         let element = definition.as_ref().and_then(|p| p.get_element_recursive(&element_id));
-        let ends_path = element_type == "END_EVENT"
-            || definition.as_ref().is_some_and(|p| element.is_some() && p.outgoing_flows_recursive(&element_id).is_empty());
+        // A link throw event continues at the link catch event of its name.
+        let link_catch = definition.as_ref().and_then(|p| p.link_catch_event(&element_id)).map(str::to_string);
+        let ends_path = link_catch.is_none() && (element_type == "END_EVENT"
+            || definition.as_ref().is_some_and(|p| element.is_some() && p.outgoing_flows_recursive(&element_id).is_empty()));
         if ends_path {
             let terminates = matches!(
                 element,
@@ -1314,67 +1292,23 @@ impl BpmnElementProcessor {
         // Load variables once for condition evaluation
         let feel_ctx = scope::feel_context(state, process_instance_key, flow_scope_key).await;
 
-        let taken: Vec<&reebe_bpmn::SequenceFlow> = if element_type == "EXCLUSIVE_GATEWAY" {
-            // Evaluate conditioned flows first; unconditioned and default flows are fallbacks.
-            // This ensures that a flow with a condition always wins over a flow with no
-            // condition, regardless of document order.
-            let mut chosen = None;
-            let mut default_entry = None;
-
-            for flow in &outgoing {
-                let has_condition = flow.condition_expression.as_ref()
-                    .map(|c| !c.trim().is_empty())
-                    .unwrap_or(false);
-                // Unconditioned flows and explicit defaults are both fallbacks.
-                if flow.is_default || !has_condition {
-                    if default_entry.is_none() {
-                        default_entry = Some(*flow);
-                    }
-                    continue;
-                }
-                if chosen.is_some() {
-                    continue;
-                }
-                if eval_flow_condition(&flow.condition_expression, &feel_ctx) {
-                    chosen = Some(*flow);
-                }
-            }
-            chosen.or(default_entry).into_iter().collect()
-        } else if let Some(reebe_bpmn::FlowElement::InclusiveGateway(gw)) = process.get_element_recursive(&element_id) {
-            // Every flow whose condition holds; the default flow only if none does.
-            let is_default = |f: &reebe_bpmn::SequenceFlow| gw.default_flow.as_deref() == Some(f.id.as_str());
-            let mut taken: Vec<_> = outgoing.iter()
-                .copied()
-                .filter(|f| !is_default(f) && eval_flow_condition(&f.condition_expression, &feel_ctx))
-                .collect();
-            if taken.is_empty() {
-                taken = outgoing.iter().copied().filter(|f| is_default(f)).collect();
-            }
-            if taken.is_empty() && !outgoing.is_empty() {
-                writers.commands.push(CommandToWrite {
-                    value_type: "INCIDENT".to_string(),
-                    intent: "CREATE".to_string(),
-                    key: 0,
-                    payload: serde_json::json!({
-                        "errorType": "CONDITION_ERROR",
-                        "errorMessage": format!(
-                            "Expected at least one condition to evaluate to true, or to have a default flow \
-                             at inclusive gateway '{element_id}'"
-                        ),
-                        "processInstanceKey": process_instance_key.to_string(),
-                        "elementInstanceKey": ei_key.to_string(),
-                        "bpmnProcessId": bpmn_process_id,
-                        "tenantId": tenant_id,
-                    }),
-                });
-            }
-            taken
+        let element = process.get_element_recursive(&element_id);
+        let taken: Vec<&reebe_bpmn::SequenceFlow> = if let Some(ids) = payload["takenFlows"].as_array() {
+            // A gateway chose its flows when it activated.
+            outgoing.iter().copied().filter(|f| ids.iter().any(|id| id.as_str() == Some(f.id.as_str()))).collect()
         } else {
-            // All other gateways and elements: take every flow whose condition is true.
-            outgoing.iter()
-                .copied()
-                .filter(|f| eval_flow_condition(&f.condition_expression, &feel_ctx))
-                .collect()
+            match element {
+                // A parallel gateway takes every outgoing flow; Zeebe ignores conditions on them.
+                Some(reebe_bpmn::FlowElement::ParallelGateway(_)) => outgoing.clone(),
+                Some(gw @ (reebe_bpmn::FlowElement::ExclusiveGateway(_) | reebe_bpmn::FlowElement::InclusiveGateway(_))) => {
+                    gateway_flows(gw, &outgoing, &feel_ctx).unwrap_or_default()
+                }
+                // All other elements: take every flow whose condition is true.
+                _ => outgoing.iter()
+                    .copied()
+                    .filter(|f| eval_flow_condition(&f.condition_expression, &feel_ctx))
+                    .collect(),
+            }
         };
 
         for flow in taken {
@@ -1405,6 +1339,22 @@ impl BpmnElementProcessor {
                     "elementId": flow.target_ref,
                     "flowScopeKey": flow_scope_key.to_string(),
                     "sequenceFlowId": flow.id,
+                    "tenantId": tenant_id,
+                }),
+            });
+        }
+
+        if let Some(catch_id) = &link_catch {
+            writers.commands.push(CommandToWrite {
+                value_type: "PROCESS_INSTANCE".to_string(),
+                intent: "ACTIVATE_ELEMENT".to_string(),
+                key: process_instance_key,
+                payload: serde_json::json!({
+                    "processInstanceKey": process_instance_key.to_string(),
+                    "processDefinitionKey": process_definition_key.to_string(),
+                    "bpmnProcessId": bpmn_process_id,
+                    "elementId": catch_id,
+                    "flowScopeKey": flow_scope_key.to_string(),
                     "tenantId": tenant_id,
                 }),
             });
@@ -1534,6 +1484,17 @@ async fn complete_flow_scope(
         if sp_ei.state != "ACTIVATED" {
             return Ok(());
         }
+        // A flow inside an ad-hoc sub-process ended: the ad-hoc sub-process decides.
+        if matches!(sp_ei.element_type.as_str(), ad_hoc::INNER | ad_hoc::AD_HOC) {
+            let process = super::throw_event::load_process(state, process_definition_key, bpmn_process_id).await?;
+            if sp_ei.element_type == ad_hoc::INNER {
+                return ad_hoc::inner_completed(state, writers, &process, &sp_ei).await;
+            }
+            if let Some(reebe_bpmn::FlowElement::SubProcess(sp)) = process.get_element_recursive(&sp_ei.element_id) {
+                return ad_hoc::flow_ended(state, writers, sp, &sp_ei, None).await;
+            }
+            return Ok(());
+        }
         // Complete the subprocess.
         state.backend.update_element_instance_state(sp_ei.key, "COMPLETED").await?;
         writers.events.push(EventToWrite {
@@ -1544,7 +1505,7 @@ async fn complete_flow_scope(
                 "elementInstanceKey": sp_ei.key.to_string(),
                 "processInstanceKey": process_instance_key.to_string(),
                 "elementId": sp_ei.element_id,
-                "elementType": "SUB_PROCESS",
+                "elementType": sp_ei.element_type,
                 "bpmnProcessId": bpmn_process_id,
                 "tenantId": tenant_id,
             }),
@@ -1559,7 +1520,7 @@ async fn complete_flow_scope(
                 "processInstanceKey": process_instance_key.to_string(),
                 "processDefinitionKey": process_definition_key.to_string(),
                 "elementId": sp_ei.element_id,
-                "elementType": "SUB_PROCESS",
+                "elementType": sp_ei.element_type,
                 "bpmnProcessId": bpmn_process_id,
                 "flowScopeKey": sp_ei.flow_scope_key.unwrap_or(process_instance_key).to_string(),
                 "tenantId": tenant_id,
@@ -1651,6 +1612,44 @@ fn join_context(process_instance_key: i64, process_definition_key: i64, bpmn_pro
     })
 }
 
+/// The flows an exclusive or inclusive gateway takes, or `None` when no condition
+/// holds and there is no default flow — Zeebe's `CONDITION_ERROR`.
+///
+/// An exclusive gateway takes the first flow whose condition holds, else its default
+/// flow; a flow without a condition that is not the default is taken last. An
+/// inclusive gateway takes every non-default flow whose condition holds (a flow
+/// without a condition always does), else its default flow.
+fn gateway_flows<'a>(
+    element: &reebe_bpmn::FlowElement,
+    outgoing: &[&'a reebe_bpmn::SequenceFlow],
+    ctx: &reebe_feel::FeelContext,
+) -> Option<Vec<&'a reebe_bpmn::SequenceFlow>> {
+    let (gw, inclusive) = match element {
+        reebe_bpmn::FlowElement::ExclusiveGateway(gw) => (gw, false),
+        reebe_bpmn::FlowElement::InclusiveGateway(gw) => (gw, true),
+        _ => return Some(outgoing.to_vec()),
+    };
+    if outgoing.is_empty() {
+        return Some(Vec::new());
+    }
+    let is_default = |f: &reebe_bpmn::SequenceFlow| f.is_default || gw.default_flow.as_deref() == Some(f.id.as_str());
+    let has_condition = |f: &reebe_bpmn::SequenceFlow| f.condition_expression.as_ref().is_some_and(|c| !c.trim().is_empty());
+    let default = outgoing.iter().copied().find(|f| is_default(f));
+    if inclusive {
+        let taken: Vec<_> = outgoing.iter()
+            .copied()
+            .filter(|f| !is_default(f) && eval_flow_condition(&f.condition_expression, ctx))
+            .collect();
+        return if taken.is_empty() { default.map(|f| vec![f]) } else { Some(taken) };
+    }
+    outgoing.iter()
+        .copied()
+        .find(|f| !is_default(f) && has_condition(f) && eval_flow_condition(&f.condition_expression, ctx))
+        .or(default)
+        .or_else(|| outgoing.iter().copied().find(|f| !is_default(f) && !has_condition(f)))
+        .map(|f| vec![f])
+}
+
 /// Evaluate a sequence flow condition expression.
 /// Returns true if there is no condition, the condition is empty, or it evaluates to true.
 fn eval_flow_condition(condition: &Option<String>, ctx: &reebe_feel::FeelContext) -> bool {
@@ -1681,6 +1680,7 @@ fn element_type_string(element: &reebe_bpmn::FlowElement) -> String {
         reebe_bpmn::FlowElement::BusinessRuleTask(_) => "BUSINESS_RULE_TASK".to_string(),
         reebe_bpmn::FlowElement::CallActivity(_) => "CALL_ACTIVITY".to_string(),
         reebe_bpmn::FlowElement::SubProcess(sp) if sp.ad_hoc => "AD_HOC_SUB_PROCESS".to_string(),
+        reebe_bpmn::FlowElement::SubProcess(sp) if sp.triggered_by_event => "EVENT_SUB_PROCESS".to_string(),
         reebe_bpmn::FlowElement::SubProcess(_) => "SUB_PROCESS".to_string(),
         reebe_bpmn::FlowElement::ParallelGateway(_) => "PARALLEL_GATEWAY".to_string(),
         reebe_bpmn::FlowElement::ExclusiveGateway(_) => "EXCLUSIVE_GATEWAY".to_string(),

@@ -145,11 +145,21 @@ impl JobProcessor {
         let variables = payload.get("variables").cloned();
 
         let job = state.backend.get_job_by_key(job_key).await?;
-        state.backend.complete_job(job_key, variables.clone()).await?;
-
         // Look up the element instance to recover the correct flowScopeKey (e.g. subprocess scope)
         let ei = state.backend.get_element_instance_by_key(job.element_instance_key).await?;
         let flow_scope_key = ei.flow_scope_key.unwrap_or(job.process_instance_key);
+
+        // The job of an ad-hoc sub-process may complete with a result that activates
+        // inner elements or fulfils the completion condition. An invalid result
+        // rejects the completion before anything changes.
+        let ad_hoc = if ei.element_type == super::ad_hoc::AD_HOC {
+            let process = super::throw_event::load_process(state, ei.process_definition_key, &ei.bpmn_process_id).await?;
+            super::ad_hoc::job_result(&process, &job, payload.get("result"))?.map(|result| (process, result))
+        } else {
+            None
+        };
+
+        state.backend.complete_job(job_key, variables.clone()).await?;
 
         writers.events.push(EventToWrite {
             value_type: "JOB".to_string(),
@@ -163,6 +173,13 @@ impl JobProcessor {
                 "tenantId": tenant_id,
             }),
         });
+
+        if let Some((process, result)) = ad_hoc {
+            if let Some(reebe_bpmn::FlowElement::SubProcess(sp)) = process.get_element_recursive(&ei.element_id) {
+                let vars = variables.as_ref().and_then(|v| v.as_object());
+                return super::ad_hoc::apply_job_result(state, writers, sp, &ei, vars, result).await;
+            }
+        }
 
         // Complete the element instance
         writers.commands.push(CommandToWrite {
@@ -277,6 +294,7 @@ impl JobProcessor {
 
         let error_code = payload["errorCode"].as_str().unwrap_or("").to_string();
         let error_message = payload["errorMessage"].as_str().map(|s| s.to_string());
+        let error_variables = payload.get("variables").filter(|v| v.as_object().is_some_and(|o| !o.is_empty())).cloned();
 
         let job = state.backend.get_job_by_key(job_key).await?;
         state.backend
@@ -301,7 +319,7 @@ impl JobProcessor {
             state,
             writers,
             &thrower,
-            &Thrown::Error { code: error_code, message: error_message },
+            &Thrown::Error { code: error_code, message: error_message, variables: error_variables },
             Some(job_key),
         )
         .await?;
