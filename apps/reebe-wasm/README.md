@@ -1,32 +1,36 @@
 <div align="center">
   <a href="https://bpmnkit.com"><img src="https://bpmnkit.com/favicon.svg" width="72" height="72" alt="BPMN Kit logo"></a>
   <h1>@bpmnkit/reebe-wasm</h1>
-  <p>WebAssembly BPMN workflow engine — runs the Reebe engine in the browser</p>
+  <p>The Reebe dev/test BPMN engine, compiled to WebAssembly for the browser and Node.js</p>
 
   [![npm](https://img.shields.io/npm/v/@bpmnkit/reebe-wasm?style=flat-square&color=6244d7)](https://www.npmjs.com/package/@bpmnkit/reebe-wasm)
   [![license](https://img.shields.io/npm/l/@bpmnkit/reebe-wasm?style=flat-square)](https://github.com/bpmnkit/monorepo/blob/main/LICENSE)
   [![typescript](https://img.shields.io/badge/TypeScript-strict-6244d7?style=flat-square&logo=typescript&logoColor=white)](https://github.com/bpmnkit/monorepo)
   [![ai-assisted](https://img.shields.io/badge/AI--assisted-claude-8b5cf6?style=flat-square)](https://github.com/bpmnkit/monorepo)
-  [![experimental](https://img.shields.io/badge/status-experimental-f59e0b?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability)
+  [![tier: experimental](https://img.shields.io/badge/tier-experimental-d97706?style=flat-square)](https://bpmnkit.com/docs/getting-started/stability#product-tiers)
 
   [Website](https://bpmnkit.com) · [Documentation](https://bpmnkit.com/docs) · [GitHub](https://github.com/bpmnkit/monorepo) · [Changelog](https://github.com/bpmnkit/monorepo/blob/main/apps/reebe-wasm/CHANGELOG.md)
 </div>
+
+> **Experimental tier.** May change or be discontinued. Not for production. See [product tiers](https://bpmnkit.com/docs/getting-started/stability#product-tiers).
 
 ---
 
 ## Overview
 
-`@bpmnkit/reebe-wasm` is the WebAssembly build of the [Reebe](https://github.com/bpmnkit/monorepo) BPMN workflow engine, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It enables full BPMN 2.0 process execution directly in the browser — no server required.
+`@bpmnkit/reebe-wasm` is the WebAssembly build of [Reebe](https://github.com/bpmnkit/monorepo/tree/main/apps/reebe), BPMN Kit's BPMN engine for development and tests, compiled from Rust via [wasm-pack](https://rustwasm.github.io/wasm-pack/). It runs BPMN 2.0 processes in the browser or in Node.js, with no server.
 
-Used internally by `@bpmnkit/engine` for the `./wasm-runner` entry point, which powers the BPMNKit Studio simulator and the `casen test` CLI command.
+> **Dev/test only — not for production.** Reebe is a clean-room implementation of the Zeebe API, written from Camunda's public documentation. It is not affiliated with or endorsed by Camunda, and its behaviour is checked by its own tests, not against Zeebe. "Zeebe" and "Camunda" are trademarks of Camunda Services GmbH.
+
+Used internally by `@bpmnkit/engine` for the `./wasm-runner` entry point, which powers the BPMN Kit Studio simulator and the `casen test` CLI command.
 
 ## Features
 
-- **Full BPMN execution** — gateways, events, subprocesses, boundary events
+- **BPMN execution** — gateways, events, sub-processes, boundary events
 - **Zero network calls** — runs entirely in the browser sandbox
 - **DMN decisions** — inline decision table evaluation
 - **FEEL expressions** — condition and mapping evaluation
-- **WebAssembly** — near-native performance, minimal footprint
+- **WebAssembly** — one binary for the browser and Node.js; no benchmark figures are published
 
 ## Installation
 

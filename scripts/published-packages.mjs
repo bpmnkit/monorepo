@@ -88,3 +88,129 @@ export const STABLE = [
 	"packages/connectors",
 	"apps/cli",
 ]
+
+/**
+ * What each product tier promises, in one line. The labels and lines here are the ones
+ * the READMEs and the site print.
+ *
+ * https://bpmnkit.com/docs/getting-started/stability#product-tiers is the long form.
+ */
+export const TIERS = {
+	core: {
+		label: "Core",
+		promise: "Semver at 1.0: nothing breaks without a major release.",
+	},
+	tools: {
+		label: "Tools",
+		promise: "Maintained, on 0.x: a minor release can break, so pin a version.",
+	},
+	experimental: {
+		label: "Experimental",
+		promise: "May change or be discontinued. Not for production.",
+	},
+}
+
+/**
+ * The tier of every package in `PUBLISHED`, keyed by the same directory.
+ *
+ * `check-packages.mjs` holds this to three rules: every published package has a tier,
+ * `core` is exactly `STABLE`, and nothing `experimental` is at 1.0 or above.
+ */
+export const TIER = {
+	"packages/core": "core",
+	"packages/canvas": "core",
+	"packages/editor": "core",
+	"packages/plugins": "core",
+	"packages/engine": "core",
+	"packages/feel": "core",
+	"packages/api": "core",
+	"packages/ascii": "core",
+	"packages/docspack": "core",
+	"packages/connector-gen": "core",
+	"packages/connectors": "core",
+	"apps/cli": "core",
+
+	// The MCP server ships in the proxy and runs as `casen proxy mcp`.
+	"apps/proxy": "tools",
+	"packages/markdown": "tools",
+	"packages/camunda-docspack": "tools",
+	"packages/patterns": "tools",
+	"packages/worker-client": "tools",
+	"packages/cli-sdk": "tools",
+	"packages/create-casen-plugin": "tools",
+	"plugins-cli/casen-report": "tools",
+	"plugins-cli/casen-worker-http": "tools",
+	"plugins-cli/casen-worker-ai": "tools",
+	// Plumbing that Core packages and the site depend on, so it is maintained with them.
+	"packages/ui": "tools",
+	"packages/profiles": "tools",
+	"packages/astro-shared": "tools",
+
+	"packages/operate": "experimental",
+	"packages/user-tasks": "experimental",
+	"apps/reebe-wasm": "experimental",
+}
+
+/**
+ * Products that are not npm packages, each with the manifest its version is read from and
+ * the documentation page that describes it, if there is one.
+ */
+export const APPS = [
+	{
+		dir: "apps/vscode",
+		name: "BPMN Kit for VS Code",
+		tier: "tools",
+		manifest: "apps/vscode/package.json",
+		description: "View, edit, lint, diff and simulate BPMN, DMN and Forms in VS Code",
+		docs: "guides/vscode",
+	},
+	{
+		dir: "apps/drop",
+		name: "Drop",
+		tier: "tools",
+		manifest: "apps/drop/package.json",
+		description: "Share a BPMN, DMN or Form file as a link at bpmnkit.com/drop",
+		docs: "guides/drop",
+	},
+	{
+		dir: "apps/reebe",
+		name: "Reebe",
+		tier: "experimental",
+		manifest: "apps/reebe/package.json",
+		description: "Single-node dev/test engine for the Zeebe API, in Rust. Not for production",
+		docs: null,
+	},
+	{
+		dir: "apps/studio",
+		name: "Studio",
+		tier: "experimental",
+		manifest: "apps/studio/package.json",
+		description: "Browser workspace for models, a local WASM engine and cluster monitoring",
+		docs: null,
+	},
+	{
+		dir: "apps/desktop",
+		name: "Desktop app",
+		tier: "experimental",
+		manifest: "apps/desktop/package.json",
+		description: "Tauri build of the editor for Windows, macOS and Linux",
+		docs: null,
+	},
+	{
+		dir: "apps/proxy-rs",
+		name: "proxy-rs",
+		tier: "experimental",
+		manifest: "apps/proxy-rs/Cargo.toml",
+		description: "Rust port of the AI bridge and MCP server, bundled with the desktop app",
+		docs: null,
+	},
+]
+
+/** The version a `package.json` or `Cargo.toml` manifest declares. */
+export function manifestVersion(text, path) {
+	const version = path.endsWith(".toml")
+		? /^version\s*=\s*"([^"]+)"/m.exec(text)?.[1]
+		: JSON.parse(text).version
+	if (typeof version !== "string") throw new Error(`${path} declares no version`)
+	return version
+}

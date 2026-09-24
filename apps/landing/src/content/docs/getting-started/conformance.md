@@ -137,8 +137,12 @@ in reverse order, as BPMN specifies, where Zeebe starts them all at once. For Ze
 Reebe's model covers the task types, call activities, embedded and event sub-processes,
 exclusive, parallel, inclusive and event-based gateways, catch, throw and boundary events
 (timer, message, signal, error, escalation, compensation, link, terminate) and
-multi-instance. It has no complex gateway and no ad-hoc sub-process. Reebe is experimental,
-and its behaviour is checked by its own tests rather than against Zeebe.
+multi-instance. It has no complex gateway and no ad-hoc sub-process. Reebe is a dev/test
+engine in the [Experimental tier](/docs/getting-started/stability#product-tiers), not for
+production. It is a clean-room implementation of the Zeebe API written from Camunda's public
+documentation, it is not affiliated with Camunda, and its behaviour is checked by its own
+tests rather than against Zeebe. "Zeebe" and "Camunda" are trademarks of Camunda Services
+GmbH.
 
 ## Zeebe extensions
 
@@ -197,6 +201,6 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
 - Reebe: complex gateway, ad-hoc sub-process, single-node only, no published comparison with
-  Zeebe
+  Zeebe, and no published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).
