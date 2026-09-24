@@ -1,5 +1,11 @@
 # Features
 
+## Editor in ten languages (2026-09-24)
+
+- German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese
+  (Simplified) as `@bpmnkit/editor/locales/<code>`, with `createTranslate`; language pickers in
+  the bpmnkit.com editor and Drop.
+
 ## Process documentation export (2026-09-24)
 
 - A print-ready HTML (→ PDF), Markdown or Word document of a process — diagram, lanes, every

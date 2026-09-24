@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-09-24 — Editor UI in ten languages
+
+- `@bpmnkit/editor` ships German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) as tree-shakable entry points (`@bpmnkit/editor/locales/<code>`); English stays built in. `createTranslate(locale)` builds the existing `Translate` hook, with `Intl.PluralRules` plurals (Polish has `one`/`few`/`many`/`other`); `AVAILABLE_LOCALES` and `matchLocale()` support a language picker. Translations are machine-assisted, use Camunda Modeler's BPMN terms, and ask for review (CONTRIBUTING.md, "Improving a translation").
+- Coverage audit: every user-visible string in the editor (HUD, context pad, menus, dialogs, dock, announcements) and in the plugins shown in the editor (properties panel incl. schema labels/hints/placeholders/options, palette, main menu, play mode, start page, history, file switcher) now goes through `translate` — 443 keys, up from 58. Left English on purpose: connector template names, FEEL/JSON placeholders, other plugins (AI, deploy, docs, DMN/form editors) and app-owned strings.
+- Guards: a plugins harvest catalogue beside the editor's; key/placeholder/plural coverage per locale; per-locale render tests; a pseudo-locale leak test; and a source scan that fails on hard-coded English in covered modules.
+- Layout: a wheel scrolls the dock tab strip when German or Polish overflow it; the element-group picker measures its real width; `@bpmnkit/ui` adds `:lang(ja)`/`:lang(zh)` CJK font fallbacks. Checked in Chromium at 1280px in German, Polish and Japanese.
+- Language picker in the landing editor (main-menu Language section) and in Drop's edit mode: browser language by default, choice saved in localStorage.
+- Integration: the ten "Export documentation" strings from the doc-export work are translated in all nine locales.
+
 ## 2026-09-24 — Process documentation export (HTML/PDF, Markdown, Word)
 
 - `@bpmnkit/core`: `renderDocumentationHtml`, `renderDocumentationMarkdown`, `renderDocumentationDocx`, plus `buildProcessDocumentation` and `documentationTo{Html,Markdown,Docx}`. They are pure, dependency-free and deterministic, and escape all model text. The document has the diagram, then per pool or process its lanes, a steps table and a detail block for every element in flow order (type, documentation, lane, job type, headers, mappings, called decision, process and form, assignment, timers, messages, errors, and conditions on outgoing flows). Linked DMN decision tables and form fields follow.

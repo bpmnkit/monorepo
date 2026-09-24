@@ -4464,6 +4464,30 @@
 			]
 		},
 		{
+			"id": "packages.editor.internationalisation",
+			"file": "chunks/packages.editor.internationalisation.md",
+			"tokens": 837,
+			"tags": [
+				"packages",
+				"editor",
+				"internationalisation"
+			],
+			"entities": [
+				"@bpmnkit/editor/locales/de",
+				"@bpmnkit/editor/locales/es",
+				"@bpmnkit/editor/locales/fr",
+				"@bpmnkit/editor/locales/it",
+				"@bpmnkit/editor/locales/nl",
+				"@bpmnkit/editor/locales/pl",
+				"@bpmnkit/editor/locales/pt-BR",
+				"@bpmnkit/editor/locales/ja",
+				"@bpmnkit/editor/locales/zh-CN",
+				"import()",
+				"@bpmnkit/ui",
+				"createTranslate"
+			]
+		},
+		{
 			"id": "packages.engine.overview",
 			"file": "chunks/packages.engine.overview.md",
 			"tokens": 955,

@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 330 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 331 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -320,6 +320,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/editor — Basic Setup](.llms/chunks/packages.editor.basic-setup.md) — 166 tokens
 - [@bpmnkit/editor — HUD Options](.llms/chunks/packages.editor.hud-options.md) — 164 tokens
 - [@bpmnkit/editor — Full Editor with All Plugins](.llms/chunks/packages.editor.full-editor-with-all-plugins.md) — 157 tokens
+- [@bpmnkit/editor — Internationalisation](.llms/chunks/packages.editor.internationalisation.md) — 837 tokens
 - [@bpmnkit/engine — Overview](.llms/chunks/packages.engine.overview.md) — 955 tokens
 - [@bpmnkit/engine — Overview (2)](.llms/chunks/packages.engine.overview-2.md) — 22 tokens
 - [@bpmnkit/engine — Installation](.llms/chunks/packages.engine.installation.md) — 446 tokens
