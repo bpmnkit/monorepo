@@ -72,6 +72,7 @@ Trigger.dev, Kestra), low-code/iPaaS (n8n and others), and AI agents/MCP, includ
 research on LLM-generated BPMN. It closes with a feature matrix, a SWOT, a presentation audit
 against leading developer-tool sites, a prioritised improvement list (P0–P4) and a
 positioning recommendation. It is a research document only; no code changed.
+
 ## 2026-09-23 — The FEEL share link gets the same bar as the upload link
 
 The link row under **Get a share link** rendered as browser defaults — a sunken input and
