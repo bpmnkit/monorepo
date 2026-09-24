@@ -22,11 +22,13 @@ Perfect for: workflow testing, visual debugging, interactive demos, offline simu
 
 ## Features
 
-- **Gateways** — exclusive (with default flow), parallel, inclusive
-- **Variable scopes** — hierarchical scope chain; FEEL expression evaluation for conditions/mappings
-- **Events** — none start; none, terminate and error end; timer (ISO 8601 duration/date/cycle) and message catch
-- **Boundary events** — interrupting timer, and error
-- **Sub-processes** — embedded sub-processes and transactions
+- **Gateways** — exclusive (with default flow), parallel, inclusive, event-based; complex splits like inclusive
+- **Variables** — Zeebe-style scopes: input mappings are local to the element, results propagate to the nearest scope that defines them (else the process), output mappings pick what leaves an element
+- **Events** — timer (ISO 8601 duration/date/cycle), message (by name, optional correlation key), signal, error, escalation, link, compensation and terminate
+- **Boundary events** — timer, message, signal and escalation, interrupting or not; error; a job's `throwError` is caught like an error end event
+- **Sub-processes** — embedded sub-processes, transactions, and event sub-processes (message, timer, signal, error, escalation start)
+- **Call activities** — run a process deployed in the same engine as a child instance, with Zeebe variable propagation
+- **Multi-instance** — parallel and sequential, `inputCollection` / `outputCollection`, `loopCardinality`, `completionCondition`
 - **DMN decisions** — inline decision table evaluation via `@bpmnkit/feel`
 - **Job workers** — register handlers for service and user tasks by job type
 - **Step-by-step** — `beforeComplete` hook pauses between elements for debugging UIs
@@ -34,12 +36,18 @@ Perfect for: workflow testing, visual debugging, interactive demos, offline simu
 
 ### Not executed
 
-Call activities, event sub-processes, event-based and complex gateways, and ad-hoc
-sub-processes without a task definition are completed *without their semantics* — the token
-moves on. Signal, escalation, compensation, conditional and link events, multi-instance,
-message boundary events and non-interrupting boundary events are not modelled. For Zeebe
-semantics, `@bpmnkit/engine/wasm-runner` runs the same scenarios on the Reebe engine compiled
-to WebAssembly (experimental). See [Conformance](https://bpmnkit.com/docs/getting-started/conformance).
+- Ad-hoc sub-processes without a task definition, and a call activity whose process is not
+  deployed in the same engine, complete without running anything (the latter emits an
+  `element:warning` event).
+- Conditional events are not evaluated, a message start event of a top-level process does not
+  start an instance, and transaction cancel events are not modelled.
+- Inclusive and complex *joins* do not wait for the other branches, and a complex gateway's
+  activation condition is ignored.
+- Compensation handlers run one after another in reverse completion order, as BPMN specifies;
+  Zeebe invokes them all at once. Compensation event sub-processes are not modelled.
+
+For Zeebe semantics, `@bpmnkit/engine/wasm-runner` runs the same scenarios on the Reebe engine
+compiled to WebAssembly (experimental). See [Conformance](https://bpmnkit.com/docs/getting-started/conformance).
 
 ## Installation
 
@@ -129,6 +137,7 @@ t.dispose()
 | `deploy({ bpmn, forms?, decisions? })` | Register BPMN (+ optional DMN/form assets) |
 | `start(processId, variables?, options?)` | Start a new instance; returns `ProcessInstance` |
 | `registerJobWorker(type, handler)` | Handle service tasks with a given job type |
+| `broadcastSignal(name, variables?)` | Deliver a signal to every running instance; returns instances its signal start events started |
 | `getDeployedProcesses()` | List all deployed process IDs |
 
 ### `ProcessInstance`
@@ -140,8 +149,13 @@ t.dispose()
 | `variables_snapshot` | Flat snapshot of current variable scope |
 | `onChange(cb)` | Subscribe to state changes |
 | `cancel()` | Terminate the instance |
-| `deliverMessage(name, variables?)` | Correlate a message catch event |
+| `deliverMessage(name, variables?, correlationKey?)` | Correlate a message to the oldest waiting subscription; returns whether one received it |
+| `deliverSignal(name, variables?)` | Deliver a signal to this instance only |
 | `beforeComplete?` | Optional step hook (set after `start()`) |
+
+Besides the element and variable events, `onChange` reports `element:terminated` when an
+interrupting event, a terminate end event or a completion condition cancels an element, and
+`element:warning` when the simulator skips something it cannot run.
 
 ---
 

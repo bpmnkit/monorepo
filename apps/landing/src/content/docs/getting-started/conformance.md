@@ -111,22 +111,28 @@ publishes vendor-submitted results separately.
 |---|---|---|---|---|
 | Service, user, script, business rule tasks | ✓ | ✓ | ✓ | Executed |
 | Send, receive, manual and plain tasks | ✓ | ✓ | ✓ | Pass through |
-| Exclusive, parallel, inclusive gateways | ✓ | ✓ | ✓ | Executed |
-| Event-based, complex gateways | ✓ | ✓ | ✓ | Completed without semantics |
-| Embedded sub-process, transaction | ✓ | ✓ | ✓ | Executed (child scope) |
-| Event sub-process, ad-hoc sub-process, call activity | ✓ | ✓ | ✓ | Completed without semantics |
+| Exclusive, parallel, inclusive gateways | ✓ | ✓ | ✓ | Executed; inclusive joins do not wait |
+| Event-based, complex gateways | ✓ | ✓ | ✓ | Event-based executed; complex splits like inclusive, without its activation condition |
+| Embedded sub-process, transaction | ✓ | ✓ | ✓ | Executed (child scope); no transaction cancel events |
+| Event sub-process, ad-hoc sub-process, call activity | ✓ | ✓ | ✓ | Event sub-process executed; call activity executed when the called process is deployed in the same engine; ad-hoc sub-process only as one job |
 | Start / end: none, terminate, error | ✓ | ✓ | ✓ | Executed |
 | Timer and message catch events | ✓ | ✓ | ✓ | Executed |
-| Timer (interrupting) and error boundary events | ✓ | ✓ | ✓ | Executed |
-| Signal, escalation, compensation, conditional, link events | ✓ | ✓ | ✓ | Not modelled |
-| Message and non-interrupting boundary events | ✓ | ✓ | ✓ | Not modelled |
-| Multi-instance and loop markers | ✓ | ✓ | Properties panel | Not modelled |
+| Timer (interrupting) and error boundary events | ✓ | ✓ | ✓ | Executed, including errors thrown by job workers |
+| Signal, escalation, compensation, conditional, link events | ✓ | ✓ | ✓ | Executed, except conditional events (not evaluated) |
+| Message and non-interrupting boundary events | ✓ | ✓ | ✓ | Executed (timer, message, signal, escalation) |
+| Multi-instance and loop markers | ✓ | ✓ | Properties panel | Multi-instance executed |
 | Data objects, data stores, associations | ✓ | ✓ | — | — |
 | Groups, text annotations | ✓ | ✓ | ✓ | — |
 | Pools, lanes, message flows | ✓ | ✓ | ✓ | — |
 | Choreography and conversation diagrams | — | — | — | — |
 
-The TypeScript simulator is for tests, demos and step-through debugging. For Zeebe semantics,
+The TypeScript simulator is for tests, demos and step-through debugging. It follows Zeebe's
+rules where it implements an element — error and escalation propagation through scopes and
+call activities, variable propagation and mappings, multi-instance variables and completion
+conditions — and `packages/engine/tests/semantics.test.ts` checks each one. It is not checked
+against Zeebe itself, and it differs in the places the table notes: a call activity can only
+call a process deployed in the same `Engine`, and it runs compensation handlers one at a time
+in reverse order, as BPMN specifies, where Zeebe starts them all at once. For Zeebe semantics,
 `@bpmnkit/engine/wasm-runner` runs the same scenarios on **Reebe** compiled to WebAssembly.
 Reebe's model covers the task types, call activities, embedded and event sub-processes,
 exclusive, parallel, inclusive and event-based gateways, catch, throw and boundary events
@@ -184,9 +190,9 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
 - Choreography and conversation diagrams
 - Camunda 7 extensions (preserved, not modelled)
 - DMN boxed expressions and literal-expression decisions
-- TS simulator: call activities, event sub-processes, event-based and complex gateways,
-  signal / escalation / compensation / conditional / link events, multi-instance,
-  message and non-interrupting boundary events
+- TS simulator: conditional events, message start events of a top-level process, transaction
+  cancel events, compensation event sub-processes, inclusive and complex joins (they do not
+  wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
 - Reebe: complex gateway, ad-hoc sub-process, single-node only, no published comparison with
   Zeebe
 
