@@ -267,6 +267,28 @@ curl -X POST http://localhost:8080/v2/element-instances/ad-hoc-activities/{key}/
   -d '{"elements": [{"elementId": "search-kb", "variables": {"query": "delivery"}}]}'
 ```
 
+#### Modify a process instance
+
+```bash
+curl -X POST http://localhost:8080/v2/process-instances/{key}/modification \
+  -H "Content-Type: application/json" \
+  -d '{
+    "activateInstructions": [{
+      "elementId": "review",
+      "variableInstructions": [{ "scopeId": "review", "variables": { "retry": true } }]
+    }],
+    "terminateInstructions": [{ "elementInstanceKey": "2251799813685260" }]
+  }'
+```
+
+#### Evaluate a decision
+
+```bash
+curl -X POST http://localhost:8080/v2/decision-definitions/evaluation \
+  -H "Content-Type: application/json" \
+  -d '{"decisionDefinitionId": "discount", "variables": {"total": 120}}'
+```
+
 #### Get topology
 
 ```bash
@@ -313,8 +335,9 @@ was being processed when the server stopped abruptly is processed again.
 cargo test --workspace
 ```
 
-The Postgres suites (`crates/reebe-engine/tests/integration.rs` and `compatibility.rs`, and
-`crates/reebe-grpc/tests/variables.rs`, which calls the gRPC service) skip
+The Postgres suites (`crates/reebe-engine/tests/integration.rs` and `compatibility.rs`,
+`crates/reebe-grpc/tests/variables.rs` and `calls.rs`, which call the gRPC service, and
+`crates/reebe-api/tests/rest.rs`, which calls the REST API over HTTP) skip
 themselves unless `REEBE_DATABASE__URL` is set. To run them, start a throwaway PostgreSQL and
 point the tests at it:
 
@@ -334,7 +357,11 @@ REEBE_DATABASE__URL=postgres://reebe:reebe@localhost:5432/reebe REEBE_REQUIRE_DB
   cannot be reached. CI (`.github/workflows/reebe.yml`) sets it.
 - The throughput benchmark is `#[ignore]`d, with the reason in the attribute. Run it with
   `cargo test --workspace -- --ignored`.
-- There is no SQLite test suite. CI only checks that the embedded build compiles
+- The embedded SQLite backend has one test, `crates/reebe-server/tests/embedded.rs`, which
+  deploys, versions and evaluates a DMN and runs a business rule task. It is compiled only
+  with the `embedded` feature:
+  `cargo test -p reebe-server --no-default-features --features embedded --test embedded`.
+  CI only checks that the embedded build compiles
   (`cargo check -p reebe-server --no-default-features --features embedded`).
 - `test_timer_accuracy` runs the engine and scheduler on a virtual clock: it asserts that a
   timer does not fire 1 ms before its due date and fires within 2 s (one 100 ms scheduler poll
@@ -499,10 +526,12 @@ Reports PI/s (process instances per second), average latency, and error count.
   outgoing sequence flows are followed inside it. Run by Zeebe, `activeElementsCollection`
   lists the elements to activate (an empty list, or none, activates nothing and the
   sub-process waits; an id that is not an element without incoming flows raises an
-  incident), `completionCondition` is checked each time an activation completes (a result
-  that is not a boolean raises an `EXTRACT_VALUE_ERROR` incident, `Failed to evaluate
-  completion condition. Expected result of the expression … to be 'BOOLEAN', but was …`, on
-  the activation, which stays completing; resolving it evaluates the condition again), and
+  incident), `completionCondition` is evaluated in the ad-hoc sub-process's own scope, as
+  Zeebe's `AdHocSubProcessProcessor` does, each time a path in it ends: an activation, or an
+  event sub-process inside it (a result that is not a boolean raises an
+  `EXTRACT_VALUE_ERROR` incident, `Failed to evaluate completion condition. Expected result
+  of the expression … to be 'BOOLEAN', but was …`, on the activation or event sub-process,
+  which stays completing; resolving it evaluates the condition again), and
   `cancelRemainingInstances` (default `true`) terminates the rest when it holds; without a
   condition, the sub-process completes when every activated element has. With a job worker
   implementation (the AI Agent Sub-process), the job's `adHocSubProcess` result activates
@@ -521,7 +550,15 @@ Reports PI/s (process instances per second), average latency, and error count.
   schema, options)` call in its input mappings, positional or named. A parameter is named by
   its whole reference (`toolCall.orderId`, or `b` for `fromAi(b)`), the description and type
   are its string literals, the schema and options its contexts of literals, and the
-  arguments of a `fromAi()` call are not searched for more calls. A field that is null or
+  arguments of a `fromAi()` call are not searched for more calls. A call that breaks those
+  rules fails the deployment with the message of Zeebe's `FromAiTaggedParameterExtractor`,
+  wrapped as `AdHocSubProcessTransformer` wraps it: `'<resource>': Failed to extract ad-hoc
+  activity parameters for element '<id>'. Expected fromAi() parameter 'description' to be a
+  string, but received '10'.` (a value that is not a reference, a description or type that
+  is not a string literal, `null` included, a schema or options that is not a context, or
+  one with an entry that is not a literal); the cases of Zeebe's
+  `TaggedParameterExtractorTest` are tests here, and `@bpmnkit/engine` rejects the same
+  calls. A field that is null or
   empty is left out, as Zeebe's `@JsonInclude(NON_EMPTY)` does; the fields come out in
   alphabetical order, where Zeebe's are in declaration order. The cases of Zeebe's
   `AdHocSubProcessElementsVariableTest` and `TaggedParameterExtractorTest` are tests here,
@@ -545,8 +582,46 @@ Reports PI/s (process instances per second), average latency, and error count.
   document to be a root level object, but was 'ARRAY'`) is rejected with
   `INVALID_ARGUMENT`; `ModifyProcessInstance` checks the documents of its variable
   instructions the same way. `CreateProcessInstance` now reaches the engine's instance
-  creation and answers with the instance key, and `EvaluateDecision` evaluates the
-  deployed decision of its `decisionId`. Deploying a DMN on PostgreSQL stores its decisions
+  creation and answers with the instance key. `DeployProcess` and `DeployResource` deploy
+  BPMN and DMN as the REST API does and answer process, decision and decision requirements
+  metadata; a gRPC test deploys both and then runs the process and evaluates the decision.
+  Engine rejections are `NOT_FOUND`, `INVALID_ARGUMENT` (also a deployment that fails) or
+  `FAILED_PRECONDITION`, as Zeebe's gateway maps them
+- Process instance modification, as Zeebe's `ProcessInstanceModificationModifyProcessor`
+  does it, through `POST /v2/process-instances/{key}/modification` (204) and gRPC
+  `ModifyProcessInstance`. Activate instructions activate an element in an instance of each
+  of its flow scopes: an active one is reused, and one is created when there is none,
+  activated without starting it (its boundary events and event sub-processes are armed);
+  when a flow scope has several active instances, `ancestorElementInstanceKey` chooses (the
+  instance itself or one around it is reused, below it a new one is created). Variable
+  instructions set variables local to the element or to the flow scope they name (the
+  process for an empty `scopeId`). Terminate instructions, by element instance key or by
+  element id, terminate the element instances with what runs inside them, resolve their
+  incidents, and terminate the flow scopes left with nothing to do, up to the process
+  instance. The move instructions of Camunda 8.9 (by source element id or key, with a
+  direct, inferred or source-parent ancestor) are an activation plus a termination.
+  Rejections carry Zeebe's messages: unknown elements, start events, sequence flows,
+  boundary events and events after an event-based gateway, an activation that would create
+  a multi-instance body or inner instance, several flow scope instances without an
+  ancestor, ancestors that are not active, of another process instance or not around the
+  element, variable scopes that do not exist or are not flow scopes, activations in a flow
+  scope being terminated, and terminating a process instance a call activity started.
+  Everything is checked before anything changes. The REST body is checked as Zeebe's
+  gateway checks it (`No elementId provided`, a key that is not numeric)
+- DMN: a deployed DMN is stored as a decision requirements graph and its decisions, with
+  versions as Zeebe's `DmnResourceTransformer` gives them: the same resource again (same
+  name, same content, its decisions still the latest in it) keeps its keys and versions;
+  changed content, or a duplicate deployed together with a new resource, is a new version.
+  A decision evaluates by its id (the latest version) or by its key
+  (`POST /v2/decision-definitions/evaluation`, gRPC `EvaluateDecision`), with Zeebe's
+  rejections (`Expected to evaluate decision '…', but no decision found for key '…'`); an
+  evaluation that fails answers with `failedDecisionId` and `failureMessage`. A business
+  rule task evaluates the latest version. DMN deploys and evaluates on PostgreSQL and on
+  the embedded SQLite backend
+- A business rule task keeps its incoming and outgoing sequence flows and its input and
+  output mappings; before, the parser gave them to the sub-process around it. An element
+  never passes to the sub-process around it what it cannot have itself (an end event's
+  outgoing flow or I/O mappings, a gateway's I/O mappings)
 - Undefined tasks (`bpmn:task`) and manual tasks pass through, with their I/O mappings and
   multi-instance, as element types `TASK` and `MANUAL_TASK`
 - A flow element written as an empty tag (`<bpmn:userTask id="x"/>`, `<bpmn:task/>`,
@@ -583,22 +658,18 @@ whose condition can never hold still counts as reachable).
 
 ### Known gaps
 
-- A `fromAi()` call that Zeebe rejects at deployment (a value that is not a reference, a
-  description or type that is not a string literal, a schema or options that is not a
-  context of literals) is left out of `adHocSubProcessElements`, or the argument is, and
-  the deployment succeeds
-- An ad-hoc sub-process's `completionCondition` checked when an event sub-process inside it
-  ends still counts a result that is not a boolean as false: the event sub-process has
-  already completed, so nothing is left to hold the incident
-- The gRPC `ModifyProcessInstance` call is passed to the engine, which has no process
-  instance modification (the REST endpoint answers 501); `EvaluateDecision` by
-  `decisionKey` answers `UNIMPLEMENTED`
+- A decision evaluation reports no `evaluatedDecisions` (the matched rules and evaluated
+  inputs of each decision)
+- A redeployed BPMN process always gets a new version, even when it has not changed; only
+  DMN resources are recognised as duplicates
+- A process instance modification does not run execution listeners and has no
+  `operationReference`
 
 ### What is not supported
 
 - **gRPC API** — the gateway on port 26500 implements the Zeebe `Gateway` service's
-  job, instance, message, signal, variable, incident, decision and deployment calls; the
-  REST API is the better-tested surface
+  job, instance (including modification), message, signal, variable, incident, decision
+  and deployment calls; the REST API is the better-tested surface
 - **Elasticsearch / OpenSearch exporters** — no exporter framework yet
 - **Camunda web apps** (Operate, Tasklist, Optimize) — not included
 - **Multi-node clustering (Raft)** — single-node only in current version

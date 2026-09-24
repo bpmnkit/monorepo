@@ -173,8 +173,10 @@ Multi-instance runs, in parallel or in sequence, on every task type, sub-process
 activity. Each instance has its own `inputElement` and `loopCounter`, the output is collected
 in input order, and a `completionCondition` ends the loop early. A multi-instance or ad-hoc
 `completionCondition` that does not evaluate to a boolean raises an `EXTRACT_VALUE_ERROR`
-incident, with Zeebe's message, on the instance that was completing; resolving it evaluates the
-condition again. Undefined and manual tasks pass through, and a flow element written as an
+incident, with Zeebe's message, on the instance that was completing (for an ad-hoc
+sub-process, the activation or the event sub-process inside it that was completing);
+resolving it evaluates the condition again. An ad-hoc `completionCondition` is evaluated in
+the ad-hoc sub-process's own scope, as in Zeebe. Undefined and manual tasks pass through, and a flow element written as an
 empty tag (`<bpmn:userTask id="x"/>`) is read like one with children. A complex gateway fails
 deployment, as in Zeebe, which does not execute it. An ad-hoc sub-process activates its
 inner elements, each in its own activation, from `activeElementsCollection` or from the job
@@ -184,11 +186,19 @@ activation. It creates the `adHocSubProcessElements` variable with the elements 
 activate and their `fromAi()` parameters in Zeebe's shape: a parameter is named by its whole
 reference (`toolCall.orderId`), a `fromAi()` call on any reference is listed, and a field that
 is null or empty is left out. The TypeScript engine gives the same shape, and a test checks
-that the two agree. The gRPC calls pass their `variables` documents on as variables and
-reject a document that is not a JSON object, as Zeebe's gateway does, and
+that the two agree. A `fromAi()` call that Zeebe rejects at deployment (a value that is not a
+reference, a description or type that is not a string literal, a schema or options that is
+not a context of literals, `null` included) fails the deployment with Zeebe's message, on
+Reebe and in the TypeScript engine. The gRPC calls pass their `variables` documents on as
+variables and reject a document that is not a JSON object, as Zeebe's gateway does, and
 Reebe's REST API can activate elements of an active one
-(`POST /v2/element-instances/ad-hoc-activities/{key}/activation`). Every scenario of the
-[template gallery](/docs/guides/templates) passes on it.
+(`POST /v2/element-instances/ad-hoc-activities/{key}/activation`). Process instance
+modification (REST `POST /v2/process-instances/{key}/modification` and gRPC
+`ModifyProcessInstance`) activates elements, with ancestor selection and variables,
+terminates element instances and moves them, with Zeebe's rules and rejection messages.
+A redeployed DMN gets a new version when its content changes and keeps its version when it
+does not, and a decision evaluates by its id (the latest version) or by its key. Every
+scenario of the [template gallery](/docs/guides/templates) passes on it.
 
 Reebe is a dev/test engine in the
 [Experimental tier](/docs/getting-started/stability#product-tiers), not for production. It is
@@ -252,12 +262,8 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not
   wait), complex gateway activation conditions, and inner activities of ad-hoc sub-processes
   without a job worker (`activeElementsCollection` is not evaluated)
-- Reebe: a `fromAi()` call that Zeebe rejects at deployment (a value that is not a
-  reference, a description that is not a string literal) is left out of
-  `adHocSubProcessElements` instead; an ad-hoc `completionCondition` checked when an event
-  sub-process inside the ad-hoc sub-process ends still counts a non-boolean result as false;
-  the gRPC `ModifyProcessInstance` call is not carried out (the engine has no process
-  instance modification) and `EvaluateDecision` finds a decision by its id, not its key;
+- Reebe: a decision evaluation reports no `evaluatedDecisions` (matched rules and inputs);
+  a redeployed BPMN process always gets a new version, even when it has not changed;
   single-node only, no published comparison with Zeebe, and no published performance figures
 
 Found something this page gets wrong? [Open an issue](https://github.com/bpmnkit/monorepo/issues).
