@@ -7,6 +7,7 @@ import {
 	Form,
 	type FormDefinition,
 } from "@bpmnkit/core"
+import { type Translate, defaultTranslate } from "@bpmnkit/editor"
 import { DmnEditor } from "../dmn-editor/index.js"
 import { buildFeelPlaygroundPanel, injectPlaygroundStyles } from "../feel-playground/index.js"
 import { FormEditor } from "../form-editor/index.js"
@@ -128,6 +129,8 @@ export interface TabsPluginOptions {
 	 * interfere with tab scrolling. Typical use: process runner toolbar.
 	 */
 	centerSlot?: HTMLElement
+	/** Translation hook for the welcome screen, tab bar and close dialog — pass the editor's. */
+	translate?: Translate
 }
 
 /** A single example entry shown on the welcome screen. */
@@ -265,6 +268,7 @@ const GROUP_TYPES: Array<TabConfig["type"]> = ["bpmn", "dmn", "form", "feel"]
  * ```
  */
 export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin & { api: TabsApi } {
+	const t = options.translate ?? defaultTranslate
 	const resolver = options.resolver ?? null
 	const tabs: TabState[] = []
 	let activeId: string | null = null
@@ -357,12 +361,13 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 
 		const titleEl = document.createElement("div")
 		titleEl.className = "bpmnkit-close-dialog-title"
-		titleEl.textContent = `Close "${tabName}"?`
+		titleEl.textContent = t('Close "{name}"?', { name: tabName })
 
 		const bodyEl = document.createElement("div")
 		bodyEl.className = "bpmnkit-close-dialog-body"
-		bodyEl.textContent =
-			"This file only exists in memory and will be lost. Download a copy before closing?"
+		bodyEl.textContent = t(
+			"This file only exists in memory and will be lost. Download a copy before closing?",
+		)
 
 		const actionsEl = document.createElement("div")
 		actionsEl.className = "bpmnkit-close-dialog-actions"
@@ -375,13 +380,13 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		const cancelBtn = document.createElement("button")
 		cancelBtn.type = "button"
 		cancelBtn.className = "bpmnkit-close-dialog-btn ghost"
-		cancelBtn.textContent = "Cancel"
+		cancelBtn.textContent = t("Cancel")
 		cancelBtn.addEventListener("click", dismiss)
 
 		const discardBtn = document.createElement("button")
 		discardBtn.type = "button"
 		discardBtn.className = "bpmnkit-close-dialog-btn secondary"
-		discardBtn.textContent = "Close without saving"
+		discardBtn.textContent = t("Close without saving")
 		discardBtn.addEventListener("click", () => {
 			dismiss()
 			onClose()
@@ -394,7 +399,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			const downloadBtn = document.createElement("button")
 			downloadBtn.type = "button"
 			downloadBtn.className = "bpmnkit-close-dialog-btn primary"
-			downloadBtn.textContent = "Download & Close"
+			downloadBtn.textContent = t("Download & Close")
 			downloadBtn.addEventListener("click", () => {
 				dismiss()
 				onDownload()
@@ -433,17 +438,18 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		// lockup carried a second brand colour that the system has no room for.
 		const iconEl = document.createElement("div")
 		iconEl.className = "bpmnkit-welcome-icon"
+		// i18n-ignore: the product's wordmark
 		iconEl.innerHTML = "bpmn<b>kit</b>"
 		inner.appendChild(iconEl)
 
 		const title = document.createElement("h2")
 		title.className = "bpmnkit-welcome-title"
-		title.textContent = "BPMN Editor"
+		title.textContent = t("BPMN Editor")
 		inner.appendChild(title)
 
 		const sub = document.createElement("p")
 		sub.className = "bpmnkit-welcome-sub"
-		sub.textContent = "Open a diagram or start fresh to get going."
+		sub.textContent = t("Open a diagram or start fresh to get going.")
 		inner.appendChild(sub)
 
 		const actions = document.createElement("div")
@@ -452,13 +458,13 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		const newBtn = document.createElement("button")
 		newBtn.type = "button"
 		newBtn.className = "bpmnkit-welcome-btn primary"
-		newBtn.textContent = "New diagram"
+		newBtn.textContent = t("New diagram")
 		newBtn.addEventListener("click", () => options.onNewDiagram?.())
 
 		const importBtn = document.createElement("button")
 		importBtn.type = "button"
 		importBtn.className = "bpmnkit-welcome-btn secondary"
-		importBtn.textContent = "Import files\u2026"
+		importBtn.textContent = t("Import files…")
 		importBtn.addEventListener("click", () => {
 			if (options.onImportFiles) {
 				options.onImportFiles()
@@ -501,7 +507,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 
 			const examplesLabel = document.createElement("div")
 			examplesLabel.className = "bpmnkit-welcome-examples-label"
-			examplesLabel.textContent = "Examples"
+			examplesLabel.textContent = t("Examples")
 			inner.appendChild(examplesLabel)
 
 			const list = document.createElement("div")
@@ -626,13 +632,12 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 		const items = options.getRecentProjects()
 		if (!items || items.length === 0) {
 			recentBtnEl.disabled = true
-			recentBtnEl.textContent = "Open recent\u2026"
+			recentBtnEl.textContent = t("Open recent…")
 			recentListEl.style.display = "none"
 			return
 		}
 		recentBtnEl.disabled = false
-		recentBtnEl.innerHTML =
-			'Open recent\u2026 <svg style="width:8px;height:5px;vertical-align:middle;margin-left:2px" viewBox="0 0 10 6" fill="currentColor"><path d="M0 0l5 6 5-6z"/></svg>'
+		recentBtnEl.innerHTML = `${t("Open recent…")} <svg style="width:8px;height:5px;vertical-align:middle;margin-left:2px" viewBox="0 0 10 6" fill="currentColor"><path d="M0 0l5 6 5-6z"/></svg>`
 		// Collapse the list on re-render
 		recentListEl.style.display = "none"
 		recentListEl.textContent = ""
@@ -916,7 +921,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			const warnEl = document.createElement("span")
 			warnEl.className = "bpmnkit-tab-warn"
 			warnEl.textContent = "⚠"
-			warnEl.title = "Referenced file not found in registry"
+			warnEl.title = t("Referenced file not found in registry")
 			el.appendChild(warnEl)
 		}
 
@@ -1400,13 +1405,13 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			const rawCopyBtn = document.createElement("button")
 			rawCopyBtn.type = "button"
 			rawCopyBtn.className = "bpmnkit-raw-copy-btn"
-			rawCopyBtn.textContent = "Copy"
+			rawCopyBtn.textContent = t("Copy")
 			rawCopyBtn.addEventListener("click", () => {
 				const text = rawPreEl?.textContent ?? ""
 				void navigator.clipboard.writeText(text).then(() => {
-					rawCopyBtn.textContent = "Copied!"
+					rawCopyBtn.textContent = t("Copied!")
 					setTimeout(() => {
-						rawCopyBtn.textContent = "Copy"
+						rawCopyBtn.textContent = t("Copy")
 					}, 1500)
 				})
 			})
@@ -1419,7 +1424,7 @@ export function createTabsPlugin(options: TabsPluginOptions = {}): CanvasPlugin 
 			// Raw mode toggle button — exposed via api.rawModeButton; caller places it in the HUD
 			rawModeBtn = document.createElement("button")
 			rawModeBtn.type = "button"
-			rawModeBtn.title = "Toggle raw source"
+			rawModeBtn.title = t("Toggle raw source")
 			rawModeBtn.disabled = true
 			rawModeBtn.innerHTML = RAW_MODE_ICON
 			rawModeBtn.addEventListener("click", () => {

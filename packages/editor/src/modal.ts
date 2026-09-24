@@ -1,4 +1,5 @@
 import { injectChromeStyles } from "./chrome.js"
+import type { Translate } from "./i18n.js"
 const MODAL_STYLE_ID = "bpmnkit-hud-modal-styles"
 
 function injectModalStyles(): void {
@@ -66,6 +67,7 @@ function injectModalStyles(): void {
  * Calls `onConfirm` with the trimmed input value when confirmed (empty values are ignored).
  */
 export function showHudInputModal(
+	t: Translate,
 	title: string,
 	defaultValue: string,
 	onConfirm: (value: string) => void,
@@ -92,11 +94,11 @@ export function showHudInputModal(
 
 	const cancelBtn = document.createElement("button")
 	cancelBtn.className = "bpmnkit-hud-modal-btn"
-	cancelBtn.textContent = "Cancel"
+	cancelBtn.textContent = t("Cancel")
 
 	const confirmBtn = document.createElement("button")
 	confirmBtn.className = "bpmnkit-hud-modal-btn bpmnkit-hud-modal-btn--primary"
-	confirmBtn.textContent = "Confirm"
+	confirmBtn.textContent = t("Confirm")
 
 	function close(): void {
 		overlay.remove()

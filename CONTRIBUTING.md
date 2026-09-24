@@ -97,6 +97,32 @@ positions it.
 Write examples you have run. Several pages in this repo have documented an API that could not
 work, for years, because the snippet was written from memory rather than from a terminal.
 
+## Improving a translation
+
+The editor's languages live in `packages/editor/src/locales/<code>.ts`, one file each. They
+were drafted with machine help, so a native speaker's correction is one of the most useful
+pull requests you can open.
+
+- **Change the value, never the key.** A key is the English text the UI asks for. Changing
+  one silently orphans the string, and the tests will fail.
+- **Keep every `{placeholder}` exactly as it is.** You can move it within the sentence.
+- **Use the BPMN terms your language already uses** — the names in Camunda Modeler and in the
+  OMG specification's translations ("Gateway", "Ereignis", "Aufgabe" and "Teilprozess" in
+  German). A literal translation that nobody uses is worse than a borrowed English word
+  that everyone does.
+- **Plurals** are objects with one entry for each form your language has, selected by
+  `Intl.PluralRules` (Polish has `one`, `few`, `many` and `other`, for example).
+- **Check the length in context.** German and Polish often run long. Run the editor
+  (`pnpm --filter @bpmnkit/landing dev`, then open `/editor`), choose your language in the
+  main menu, and look at the properties panel, the palette and the menus.
+
+`pnpm --filter @bpmnkit/editor test` checks that every locale has every key, the same
+placeholders, and every plural form. When the UI gains a string, the harvest tests list
+it in `packages/editor/i18n/en.json` or `packages/plugins/i18n/en.json`
+(`UPDATE_I18N=1 pnpm --filter @bpmnkit/editor test`, and the same for plugins). The
+locales then fail until the string is translated in each of them. For a language you do not
+speak, add the English text and mention it in the pull request.
+
 ## Pull requests
 
 Keep the diff to what the change needs. Adjacent cleanups, reformatting and drive-by

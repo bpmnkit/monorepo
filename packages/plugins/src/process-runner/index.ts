@@ -1,5 +1,6 @@
 import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
 import { findValidationStructure, getValidationInputNames } from "@bpmnkit/core"
+import { type Translate, defaultTranslate } from "@bpmnkit/editor"
 import { injectProcessRunnerStyles } from "./css.js"
 
 // ── Structural types — no hard deps on engine packages ─────────────────────
@@ -143,6 +144,8 @@ export interface ProcessRunnerOptions {
 	 * When provided, called instead of the internal IndexedDB to load input variables.
 	 */
 	onLoadInputVars?: () => Promise<Array<{ name: string; value: string }>>
+	/** Translation hook for the play toolbar and panel — pass the editor's. */
+	translate?: Translate
 }
 
 // ── IndexedDB persistence for input variables ───────────────────────────────
@@ -288,6 +291,7 @@ export function createProcessRunnerPlugin(
 	options: ProcessRunnerOptions,
 ): CanvasPlugin & { toolbar: HTMLDivElement; playButton: HTMLButtonElement; exitPlayMode(): void } {
 	const { engine } = options
+	const t = options.translate ?? defaultTranslate
 
 	let canvasApi: CanvasApi | null = null
 	let currentInstance: InstanceLike | null = null
@@ -367,7 +371,7 @@ export function createProcessRunnerPlugin(
 
 	/** Entry button placed in the HUD action bar (styled by initEditorHud). */
 	const playButtonEl = document.createElement("button")
-	playButtonEl.title = "Play mode"
+	playButtonEl.title = t("Play mode")
 	playButtonEl.innerHTML = PLAY_ICON
 
 	const unsubs: Array<() => void> = []
@@ -385,7 +389,7 @@ export function createProcessRunnerPlugin(
 		b.className = active
 			? "bpmnkit-runner-play-tab bpmnkit-runner-play-tab--active"
 			: "bpmnkit-runner-play-tab"
-		b.textContent = label
+		b.textContent = t(label)
 		return b
 	}
 
@@ -437,13 +441,14 @@ export function createProcessRunnerPlugin(
 
 	const scrubberLiveBtn = document.createElement("button")
 	scrubberLiveBtn.className = "bpmnkit-runner-scrubber-live"
-	scrubberLiveBtn.textContent = "Live"
+	scrubberLiveBtn.textContent = t("Live")
 
 	const scrubberReplayBtn = document.createElement("button")
 	scrubberReplayBtn.className = "bpmnkit-runner-scrubber-replay"
-	scrubberReplayBtn.textContent = "Re-run with these variables"
-	scrubberReplayBtn.title =
-		"Start a new run from the start event, with the variables as they were at this point"
+	scrubberReplayBtn.textContent = t("Re-run with these variables")
+	scrubberReplayBtn.title = t(
+		"Start a new run from the start event, with the variables as they were at this point",
+	)
 	scrubberReplayBtn.style.display = "none"
 
 	const scrubberIndexEl = document.createElement("span")
@@ -575,8 +580,8 @@ export function createProcessRunnerPlugin(
 		const isLive = scrubIndex === null
 		scrubberEl.value = isLive ? String(len - 1) : String(scrubIndex)
 		scrubberIndexEl.textContent = isLive
-			? `${len} events (live)`
-			: `Event ${(scrubIndex ?? 0) + 1} / ${len}`
+			? t("{count} events (live)", { count: len })
+			: t("Event {index} / {count}", { index: (scrubIndex ?? 0) + 1, count: len })
 		scrubberLiveBtn.style.display = isLive ? "none" : ""
 		scrubberReplayBtn.style.display = isLive ? "none" : ""
 	}
@@ -624,7 +629,7 @@ export function createProcessRunnerPlugin(
 	function emptyEl(text: string): HTMLDivElement {
 		const d = document.createElement("div")
 		d.className = "bpmnkit-runner-play-empty"
-		d.textContent = text
+		d.textContent = t(text)
 		return d
 	}
 
@@ -726,7 +731,10 @@ export function createProcessRunnerPlugin(
 			banner.className = "bpmnkit-runner-chaos-summary"
 			const stuck = lastChaosRunCompleted ? 0 : 1
 			const errCount = errors.filter((e) => e.elementId !== undefined).length
-			banner.textContent = `Chaos run: ${stuck > 0 ? "1 stuck instance" : "completed"}, ${errCount} unhandled error${errCount !== 1 ? "s" : ""} found`
+			banner.textContent =
+				stuck > 0
+					? t("Chaos run: 1 stuck instance, unhandled errors: {count}", { count: errCount })
+					: t("Chaos run: completed, unhandled errors: {count}", { count: errCount })
 			errorsPaneEl.appendChild(banner)
 		}
 		const src = snapshot ?? errors
@@ -784,7 +792,10 @@ export function createProcessRunnerPlugin(
 					if (names.length > 0) {
 						const hintsEl = document.createElement("div")
 						hintsEl.className = "bpmnkit-runner-play-ivar-hints"
-						hintsEl.innerHTML = `<span class="bpmnkit-runner-play-ivar-hints-label">Expected:</span> ${names.map((n) => `<span class="bpmnkit-runner-play-ivar-hint-chip">${n}</span>`).join("")}`
+						const chips = names
+							.map((n) => `<span class="bpmnkit-runner-play-ivar-hint-chip">${n}</span>`)
+							.join("")
+						hintsEl.innerHTML = `<span class="bpmnkit-runner-play-ivar-hints-label">${t("Expected:")}</span> ${chips}`
 						ivarsPaneEl.appendChild(hintsEl)
 					}
 				}
@@ -800,7 +811,7 @@ export function createProcessRunnerPlugin(
 
 			const nameInput = document.createElement("input")
 			nameInput.className = "bpmnkit-runner-play-ivar-name"
-			nameInput.placeholder = "name"
+			nameInput.placeholder = t("name")
 			nameInput.value = entry.name
 			nameInput.addEventListener("input", () => {
 				const v = inputVars[i]
@@ -816,7 +827,7 @@ export function createProcessRunnerPlugin(
 
 			const valueInput = document.createElement("input")
 			valueInput.className = "bpmnkit-runner-play-ivar-value"
-			valueInput.placeholder = "value (JSON or string)"
+			valueInput.placeholder = t("value (JSON or string)")
 			valueInput.value = entry.value
 			valueInput.addEventListener("input", () => {
 				const v = inputVars[i]
@@ -844,7 +855,7 @@ export function createProcessRunnerPlugin(
 
 		const addBtn = document.createElement("button")
 		addBtn.className = "bpmnkit-runner-play-ivar-add"
-		addBtn.textContent = "+ Add variable"
+		addBtn.textContent = `+ ${t("Add variable")}`
 		addBtn.addEventListener("click", () => {
 			inputVars.push({ name: "", value: "" })
 			renderInputVars()
@@ -875,7 +886,7 @@ export function createProcessRunnerPlugin(
 	function makeSectionTitle(text: string): HTMLDivElement {
 		const el = document.createElement("div")
 		el.className = "bpmnkit-runner-tests-section-title"
-		el.textContent = text
+		el.textContent = t(text)
 		return el
 	}
 
@@ -910,7 +921,7 @@ export function createProcessRunnerPlugin(
 
 				const nameInput = document.createElement("input")
 				nameInput.className = "bpmnkit-runner-play-ivar-name"
-				nameInput.placeholder = "name"
+				nameInput.placeholder = t("name")
 				nameInput.value = entry.key
 				nameInput.addEventListener("input", () => {
 					if (entries[i] !== undefined) {
@@ -925,7 +936,7 @@ export function createProcessRunnerPlugin(
 
 				const valInput = document.createElement("input")
 				valInput.className = "bpmnkit-runner-play-ivar-value"
-				valInput.placeholder = "value"
+				valInput.placeholder = t("value")
 				valInput.value = entry.val
 				valInput.addEventListener("input", () => {
 					if (entries[i] !== undefined) {
@@ -952,7 +963,7 @@ export function createProcessRunnerPlugin(
 
 			const addBtn = document.createElement("button")
 			addBtn.className = "bpmnkit-runner-play-ivar-add"
-			addBtn.textContent = addLabel
+			addBtn.textContent = `+ ${t(addLabel)}`
 			addBtn.addEventListener("click", () => {
 				entries.push({ key: "", val: "" })
 				renderList()
@@ -993,7 +1004,7 @@ export function createProcessRunnerPlugin(
 
 		const runAllBtn = document.createElement("button")
 		runAllBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-run-all"
-		runAllBtn.textContent = `\u25B6 Run all (${scenarios.length})`
+		runAllBtn.textContent = `\u25B6 ${t("Run all ({count})", { count: scenarios.length })}`
 		runAllBtn.disabled = scenarios.length === 0
 		runAllBtn.addEventListener("click", () => {
 			runAllBtn.disabled = true
@@ -1009,12 +1020,12 @@ export function createProcessRunnerPlugin(
 
 		const addBtn = document.createElement("button")
 		addBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-add"
-		addBtn.textContent = "+ New"
+		addBtn.textContent = `+ ${t("New")}`
 		addBtn.addEventListener("click", () => {
 			const id = `scenario-${Date.now()}`
 			scenarios.push({
 				id,
-				name: `Scenario ${scenarios.length + 1}`,
+				name: t("Scenario {number}", { number: scenarios.length + 1 }),
 				inputs: {},
 				mocks: {},
 				expect: {},
@@ -1029,11 +1040,11 @@ export function createProcessRunnerPlugin(
 		if (options.generateScenarios !== undefined) {
 			const genBtn = document.createElement("button")
 			genBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-gen"
-			genBtn.textContent = "\u2728 Generate"
-			genBtn.title = "Generate test scenarios with AI"
+			genBtn.textContent = `\u2728 ${t("Generate")}`
+			genBtn.title = t("Generate test scenarios with AI")
 			genBtn.addEventListener("click", () => {
 				genBtn.disabled = true
-				genBtn.textContent = "Generating\u2026"
+				genBtn.textContent = t("Generating…")
 				void (options.generateScenarios as NonNullable<typeof options.generateScenarios>)()
 					.then((newScenarios) => {
 						scenarios.push(...newScenarios)
@@ -1048,8 +1059,8 @@ export function createProcessRunnerPlugin(
 		if (lastChaosInjections.length > 0 && options.getJobType !== undefined) {
 			const importChaosBtn = document.createElement("button")
 			importChaosBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-chaos-import"
-			importChaosBtn.textContent = `\u2193 Chaos (${lastChaosInjections.length})`
-			importChaosBtn.title = "Import chaos findings as draft test scenarios"
+			importChaosBtn.textContent = `\u2193 ${t("Chaos")} (${lastChaosInjections.length})`
+			importChaosBtn.title = t("Import chaos findings as draft test scenarios")
 			importChaosBtn.addEventListener("click", () => {
 				const newScenarios: ScenarioLike[] = []
 				for (let idx = 0; idx < lastChaosInjections.length; idx++) {
@@ -1104,7 +1115,7 @@ export function createProcessRunnerPlugin(
 			const editBtn = document.createElement("button")
 			editBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-edit"
 			editBtn.textContent = "\u270E"
-			editBtn.title = "Edit scenario"
+			editBtn.title = t("Edit scenario")
 			editBtn.addEventListener("click", () => {
 				editingScenarioId = scenario.id
 				focusedElementId = null
@@ -1114,7 +1125,7 @@ export function createProcessRunnerPlugin(
 			const runOneBtn = document.createElement("button")
 			runOneBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-run-one"
 			runOneBtn.textContent = "\u25B6"
-			runOneBtn.title = "Run this scenario"
+			runOneBtn.title = t("Run this scenario")
 			runOneBtn.addEventListener("click", () => {
 				void (options.runScenario as NonNullable<typeof options.runScenario>)(scenario).then(
 					(r) => {
@@ -1127,7 +1138,7 @@ export function createProcessRunnerPlugin(
 			const delBtn = document.createElement("button")
 			delBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-del"
 			delBtn.textContent = "\u00D7"
-			delBtn.title = "Delete"
+			delBtn.title = t("Delete")
 			delBtn.addEventListener("click", () => {
 				scenarios.splice(i, 1)
 				scenarioResults.delete(scenario.id)
@@ -1149,13 +1160,20 @@ export function createProcessRunnerPlugin(
 				for (const f of result.failures) {
 					const failRow = document.createElement("div")
 					failRow.className = "bpmnkit-runner-tests-diff-row"
-					failRow.textContent = `${f.field}: expected ${JSON.stringify(f.expected)}, got ${JSON.stringify(f.actual)}`
+					failRow.textContent = t("{field}: expected {expected}, got {actual}", {
+						field: f.field,
+						expected: JSON.stringify(f.expected),
+						actual: JSON.stringify(f.actual),
+					})
 					diffEl.appendChild(failRow)
 				}
 				for (const e of result.errors) {
 					const errRow = document.createElement("div")
 					errRow.className = "bpmnkit-runner-tests-diff-row bpmnkit-runner-tests-diff-error"
-					errRow.textContent = `Error${e.elementId !== undefined ? ` (${e.elementId})` : ""}: ${e.message}`
+					errRow.textContent =
+						e.elementId !== undefined
+							? t("Error ({id}): {message}", { id: e.elementId, message: e.message })
+							: t("Error: {message}", { message: e.message })
 					diffEl.appendChild(errRow)
 				}
 				testsPaneEl.appendChild(diffEl)
@@ -1181,7 +1199,7 @@ export function createProcessRunnerPlugin(
 
 		const backBtn = document.createElement("button")
 		backBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-back"
-		backBtn.textContent = "\u2190 Back"
+		backBtn.textContent = `\u2190 ${t("Back")}`
 		backBtn.addEventListener("click", () => {
 			editingScenarioId = null
 			focusedElementId = null
@@ -1192,7 +1210,7 @@ export function createProcessRunnerPlugin(
 		const nameInput = document.createElement("input")
 		nameInput.className = "bpmnkit-runner-tests-editor-name"
 		nameInput.value = scenario.name
-		nameInput.placeholder = "Scenario name"
+		nameInput.placeholder = t("Scenario name")
 		nameInput.addEventListener("input", () => {
 			scenario.name = nameInput.value
 			void persistScenarios(scenarios)
@@ -1201,8 +1219,8 @@ export function createProcessRunnerPlugin(
 
 		const runBtn = document.createElement("button")
 		runBtn.className = "bpmnkit-runner-btn bpmnkit-runner-tests-run-one"
-		runBtn.textContent = "\u25B6 Run"
-		runBtn.title = "Run this scenario"
+		runBtn.textContent = `\u25B6 ${t("Run")}`
+		runBtn.title = t("Run this scenario")
 		if (options.runScenario !== undefined) {
 			runBtn.addEventListener("click", () => {
 				runBtn.disabled = true
@@ -1221,7 +1239,7 @@ export function createProcessRunnerPlugin(
 		if (result !== undefined) {
 			const badge = document.createElement("span")
 			badge.className = `bpmnkit-runner-tests-editor-badge ${result.passed ? "bpmnkit-runner-tests-editor-badge--pass" : "bpmnkit-runner-tests-editor-badge--fail"}`
-			badge.textContent = result.passed ? "\u2713 passed" : "\u2717 failed"
+			badge.textContent = result.passed ? `\u2713 ${t("passed")}` : `\u2717 ${t("failed")}`
 			headerEl.appendChild(badge)
 		}
 
@@ -1230,7 +1248,7 @@ export function createProcessRunnerPlugin(
 		// ── Start Variables ──────────────────────────────────────────────────────
 		testsPaneEl.appendChild(makeSectionTitle("Start Variables"))
 		testsPaneEl.appendChild(
-			makeVarList(scenario.inputs ?? {}, "+ Add variable", (updated) => {
+			makeVarList(scenario.inputs ?? {}, "Add variable", (updated) => {
 				scenario.inputs = updated
 				void persistScenarios(scenarios)
 			}),
@@ -1263,7 +1281,7 @@ export function createProcessRunnerPlugin(
 
 			const hintEl = document.createElement("div")
 			hintEl.className = "bpmnkit-runner-tests-hint"
-			hintEl.textContent = "Click a task in the diagram to configure its mock output."
+			hintEl.textContent = t("Click a task in the diagram to configure its mock output.")
 			testsPaneEl.appendChild(hintEl)
 
 			for (const task of mockableTasks) {
@@ -1302,7 +1320,7 @@ export function createProcessRunnerPlugin(
 
 					// Output variables
 					bodyEl.appendChild(
-						makeVarList(mock.outputs ?? {}, "+ Add output", (updated) => {
+						makeVarList(mock.outputs ?? {}, "Add output", (updated) => {
 							if (scenario.mocks === undefined) scenario.mocks = {}
 							scenario.mocks[jobType] = { ...mock, outputs: updated }
 							void persistScenarios(scenarios)
@@ -1315,11 +1333,11 @@ export function createProcessRunnerPlugin(
 
 					const errorLabel = document.createElement("label")
 					errorLabel.className = "bpmnkit-runner-tests-error-label"
-					errorLabel.textContent = "Fail with error:"
+					errorLabel.textContent = t("Fail with error:")
 
 					const errorInput = document.createElement("input")
 					errorInput.className = "bpmnkit-runner-tests-error-input"
-					errorInput.placeholder = "error message (leave blank to complete)"
+					errorInput.placeholder = t("error message (leave blank to complete)")
 					errorInput.value = mock.error ?? ""
 					errorInput.addEventListener("input", () => {
 						if (scenario.mocks === undefined) scenario.mocks = {}
@@ -1343,14 +1361,19 @@ export function createProcessRunnerPlugin(
 		if (missingDmns.length > 0) {
 			const warnEl = document.createElement("div")
 			warnEl.className = "bpmnkit-runner-tests-missing-dmn"
-			warnEl.textContent = `⚠ Decision model${missingDmns.length > 1 ? "s" : ""} not found: ${missingDmns.join(", ")}. Import the DMN in the Models view.`
+			warnEl.textContent = `⚠ ${t(
+				missingDmns.length > 1
+					? "Decision models not found: {ids}. Import the DMN in the Models view."
+					: "Decision model not found: {ids}. Import the DMN in the Models view.",
+				{ ids: missingDmns.join(", ") },
+			)}`
 			testsPaneEl.appendChild(warnEl)
 		}
 
 		// ── Expected Variables ──────────────────────────────────────────────────
 		testsPaneEl.appendChild(makeSectionTitle("Expected Variables"))
 		testsPaneEl.appendChild(
-			makeVarList(scenario.expect?.variables ?? {}, "+ Add assertion", (updated) => {
+			makeVarList(scenario.expect?.variables ?? {}, "Add assertion", (updated) => {
 				if (scenario.expect === undefined) scenario.expect = {}
 				scenario.expect.variables = updated
 				void persistScenarios(scenarios)
@@ -1365,13 +1388,20 @@ export function createProcessRunnerPlugin(
 			for (const f of result.failures) {
 				const row = document.createElement("div")
 				row.className = "bpmnkit-runner-tests-diff-row"
-				row.textContent = `${f.field}: expected ${JSON.stringify(f.expected)}, got ${JSON.stringify(f.actual)}`
+				row.textContent = t("{field}: expected {expected}, got {actual}", {
+					field: f.field,
+					expected: JSON.stringify(f.expected),
+					actual: JSON.stringify(f.actual),
+				})
 				diffEl.appendChild(row)
 			}
 			for (const e of result.errors) {
 				const row = document.createElement("div")
 				row.className = "bpmnkit-runner-tests-diff-row bpmnkit-runner-tests-diff-error"
-				row.textContent = `Error${e.elementId !== undefined ? ` (${e.elementId})` : ""}: ${e.message}`
+				row.textContent =
+					e.elementId !== undefined
+						? t("Error ({id}): {message}", { id: e.elementId, message: e.message })
+						: t("Error: {message}", { message: e.message })
 				diffEl.appendChild(row)
 			}
 			testsPaneEl.appendChild(diffEl)
@@ -1762,12 +1792,12 @@ export function createProcessRunnerPlugin(
 				chaosEnabled = chaosCheckbox.checked
 			})
 			chaosLabel.appendChild(chaosCheckbox)
-			chaosLabel.appendChild(document.createTextNode(" Chaos"))
+			chaosLabel.appendChild(document.createTextNode(` ${t("Chaos")}`))
 			toolbarEl.appendChild(chaosLabel)
 		}
 
 		// Run button
-		const runBtn = btn("\u25B6 Run")
+		const runBtn = btn(`\u25B6 ${t("Run")}`)
 		runBtn.disabled = isRunning
 		runBtn.addEventListener("click", () => {
 			if (mode === "idle") startInstance(buildInputVars())
@@ -1775,7 +1805,7 @@ export function createProcessRunnerPlugin(
 		toolbarEl.appendChild(runBtn)
 
 		// One Step button — enabled in idle (start step run) or when paused (advance)
-		const oneStepBtn = btn("\u21A6 One Step", "bpmnkit-runner-btn--step")
+		const oneStepBtn = btn(`\u21A6 ${t("One Step")}`, "bpmnkit-runner-btn--step")
 		oneStepBtn.disabled = isRunning && !hasPendingStep
 		oneStepBtn.addEventListener("click", () => {
 			if (mode === "running-step" && stepQueue.length > 0) {
@@ -1791,7 +1821,7 @@ export function createProcessRunnerPlugin(
 		toolbarEl.appendChild(oneStepBtn)
 
 		// Cancel button
-		const cancelBtn = btn("\u25A0 Cancel", "bpmnkit-runner-btn--stop")
+		const cancelBtn = btn(`\u25A0 ${t("Cancel")}`, "bpmnkit-runner-btn--stop")
 		cancelBtn.disabled = !isRunning
 		cancelBtn.addEventListener("click", () => {
 			if (mode !== "idle") cleanup()
@@ -1799,7 +1829,7 @@ export function createProcessRunnerPlugin(
 		toolbarEl.appendChild(cancelBtn)
 
 		// Exit button
-		const exitBtn = btn("Exit", "bpmnkit-runner-btn--exit")
+		const exitBtn = btn(t("Exit"), "bpmnkit-runner-btn--exit")
 		exitBtn.addEventListener("click", () => exitPlayMode())
 		toolbarEl.appendChild(exitBtn)
 	}

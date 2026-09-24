@@ -1,6 +1,6 @@
 import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
-import { BpmnEditor, createSideDock, initEditorHud } from "@bpmnkit/editor"
+import { AVAILABLE_LOCALES, BpmnEditor, createSideDock, initEditorHud } from "@bpmnkit/editor"
 import type { Tool } from "@bpmnkit/editor"
 import { Engine } from "@bpmnkit/engine"
 import { createAiBridgePlugin } from "@bpmnkit/plugins/ai-bridge"
@@ -28,6 +28,7 @@ import {
 	readDraft,
 	saveDraft,
 } from "./draft.js"
+import { loadEditorLocale, storeEditorLocale } from "./editor-locale.js"
 import { makeExamples } from "./examples.js"
 import { savePng, saveSvg } from "./export.js"
 import { openShareDropDialog } from "./share-drop-dialog.js"
@@ -54,6 +55,12 @@ const exportCapturePlugin: CanvasPlugin = {
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────────
+
+// The UI strings are fixed when the editor and its panels are built, so the
+// language is settled before anything is — and a change of language reloads.
+const { code: localeCode, translate } = await loadEditorLocale()
+// `lang` also picks Japanese rather than Chinese glyph forms for shared Han characters.
+document.documentElement.lang = localeCode
 
 const editorContainer = document.getElementById("editor-container")
 if (!editorContainer) throw new Error("missing #editor-container")
@@ -104,13 +111,24 @@ function setHudVisible(visible: boolean): void {
 
 // ── Side dock ─────────────────────────────────────────────────────────────────
 
-const dock = createSideDock()
+const dock = createSideDock({ translate })
 document.body.appendChild(dock.el)
 
 // ── Main menu ─────────────────────────────────────────────────────────────────
 
 const mainMenuPlugin = createMainMenuPlugin({
 	title: "BPMN Kit",
+	translate,
+	language: {
+		current: localeCode,
+		options: AVAILABLE_LOCALES,
+		onSelect(code) {
+			if (code === localeCode) return
+			storeEditorLocale(code)
+			// `pagehide` drafts unsaved work first, and the reload offers it back.
+			location.reload()
+		},
+	},
 	menuItems: [
 		{
 			type: "drill",
@@ -228,9 +246,10 @@ const palette = createCommandPalettePlugin({
 		editorRef?.setReadOnly(active)
 	},
 	onAskAI: (query) => _aiPlugin?.ask(query),
+	translate,
 })
 
-const paletteEditor = createCommandPaletteEditorPlugin(palette, () => editorRef)
+const paletteEditor = createCommandPaletteEditorPlugin(palette, () => editorRef, { translate })
 
 const configPanel = createConfigPanelPlugin({
 	getDefinitions: () => editorRef?.getDefinitions() ?? null,
@@ -248,6 +267,7 @@ const configPanel = createConfigPanelPlugin({
 	openInPlayground: (expression) => {
 		bridge.tabsPlugin.api.openTab({ type: "feel", name: "FEEL Playground", expression })
 	},
+	translate,
 })
 
 // ── Process runner ────────────────────────────────────────────────────────────
@@ -257,6 +277,7 @@ const processRunnerPlugin = createProcessRunnerPlugin({
 	engine: new Engine(),
 	tokenHighlight: tokenHighlightPlugin,
 	playContainer: dock.playPane,
+	translate,
 	onShowPlayTab() {
 		dock.setPlayTabVisible(true)
 		if (dock.collapsed) dock.expand()
@@ -293,6 +314,7 @@ document.body.appendChild(processRunnerPlugin.toolbar)
 
 const bridge = createStorageTabsBridge({
 	mainMenu: mainMenuPlugin,
+	translate,
 	resolver,
 	getExamples: (api) => makeExamples(api, resolver),
 	initialTitle: "BPMN Kit",
@@ -387,6 +409,7 @@ const bridge = createStorageTabsBridge({
 })
 
 const configPanelBpmn = createConfigPanelBpmnPlugin(configPanel, {
+	translate,
 	openFeelPlayground: (expression) => {
 		bridge.tabsPlugin.api.openTab({ type: "feel", name: "FEEL Playground", expression })
 	},
@@ -485,6 +508,7 @@ const historyPanel = createHistoryPanel({
 	loadXml: (xml) => {
 		editorRef?.load(xml)
 	},
+	translate,
 })
 dock.historyPane.appendChild(historyPanel.el)
 dock.setHistoryTabClickHandler(() => {
@@ -505,6 +529,7 @@ const editor = new BpmnEditor({
 	container: editorContainer,
 	xml: Bpmn.SAMPLE_XML,
 	persistTheme: true,
+	translate,
 	grid: true,
 	fit: "center",
 	plugins: [

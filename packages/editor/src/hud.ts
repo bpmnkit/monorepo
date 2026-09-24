@@ -187,7 +187,7 @@ export function initEditorHud(
 		const b = document.createElement("button")
 		b.id = id
 		b.className = "hud-btn"
-		b.title = title
+		b.title = t(title)
 		return b
 	}
 
@@ -371,7 +371,7 @@ export function initEditorHud(
 		descEl.textContent = t(desc)
 		const keyEl = document.createElement("kbd")
 		keyEl.className = "bpmnkit-sc-key"
-		keyEl.textContent = key
+		keyEl.textContent = t(key)
 		row.append(descEl, keyEl)
 		shortcutsInner.appendChild(row)
 	}
@@ -514,7 +514,8 @@ export function initEditorHud(
 
 		const containerRect = editor.container.getBoundingClientRect()
 		const rect = anchor.getBoundingClientRect()
-		const pickerW = group.items.length * 36 + 80
+		// Measured: a translated group label can be far wider than the English one.
+		const pickerW = picker.offsetWidth || group.items.length * 36 + 80
 		const containerWidth = editor.container.offsetWidth
 		const left = Math.max(
 			4,
@@ -572,7 +573,8 @@ export function initEditorHud(
 
 		const containerRect = editor.container.getBoundingClientRect()
 		const rect = anchor.getBoundingClientRect()
-		const pickerW = group.items.length * 36 + 80
+		// Measured: a translated group label can be far wider than the English one.
+		const pickerW = picker.offsetWidth || group.items.length * 36 + 80
 		const containerWidth = editor.container.offsetWidth
 		const left = Math.max(
 			4,
@@ -612,7 +614,7 @@ export function initEditorHud(
 		clearSwatch.className = isDefault
 			? "bpmnkit-color-swatch bpmnkit-color-swatch--default active"
 			: "bpmnkit-color-swatch bpmnkit-color-swatch--default"
-		clearSwatch.title = "Default color"
+		clearSwatch.title = t("Default color")
 		clearSwatch.addEventListener("click", (e) => {
 			e.stopPropagation()
 			editor.updateColor(sourceId, {})
@@ -626,7 +628,7 @@ export function initEditorHud(
 			swatch.className = isActive ? "bpmnkit-color-swatch active" : "bpmnkit-color-swatch"
 			swatch.style.background = fill
 			swatch.style.outlineColor = stroke
-			swatch.title = "Apply color"
+			swatch.title = t("Apply color")
 			swatch.addEventListener("click", (e) => {
 				e.stopPropagation()
 				editor.updateColor(sourceId, { fill, stroke })
@@ -855,7 +857,7 @@ export function initEditorHud(
 		for (const [label, action] of items) {
 			const btn = document.createElement("button")
 			btn.className = "drop-item"
-			btn.textContent = label
+			btn.textContent = t(label)
 			btn.addEventListener("click", action)
 			zoomMenuEl.appendChild(btn)
 		}
@@ -969,7 +971,7 @@ export function initEditorHud(
 		for (const [label, icon, action] of items) {
 			const btn = document.createElement("button")
 			btn.className = "drop-item"
-			btn.innerHTML = `<span class="di-check"></span><span class="di-icon">${icon}</span><span>${label}</span>`
+			btn.innerHTML = `<span class="di-check"></span><span class="di-icon">${icon}</span><span>${t(label)}</span>`
 			btn.addEventListener("click", action)
 			moreMenuEl.appendChild(btn)
 		}
@@ -996,8 +998,12 @@ export function initEditorHud(
 		btnDuplicate.disabled = selectedIds.length === 0
 		const undoLabel = editor.getUndoLabel()
 		const redoLabel = editor.getRedoLabel()
-		btnUndo.title = undoLabel ? `Undo ${undoLabel} (Ctrl+Z)` : "Undo (Ctrl+Z)"
-		btnRedo.title = redoLabel ? `Redo ${redoLabel} (Ctrl+Y)` : "Redo (Ctrl+Y)"
+		btnUndo.title = undoLabel
+			? t("Undo {action} (Ctrl+Z)", { action: t(undoLabel) })
+			: t("Undo (Ctrl+Z)")
+		btnRedo.title = redoLabel
+			? t("Redo {action} (Ctrl+Y)", { action: t(redoLabel) })
+			: t("Redo (Ctrl+Y)")
 	}
 
 	updateActionBar()
@@ -1031,7 +1037,7 @@ export function initEditorHud(
 		for (const pos of getValidLabelPositions(sourceType as CreateShapeType)) {
 			const btn = document.createElement("button")
 			btn.className = "drop-item"
-			btn.textContent = POSITION_LABELS[pos]
+			btn.textContent = t(POSITION_LABELS[pos])
 			btn.addEventListener("click", () => {
 				editor.setLabelPosition(sourceId, pos)
 				closeAllDropdowns()
@@ -1051,7 +1057,7 @@ export function initEditorHud(
 		const dupBtn = document.createElement("button")
 		dupBtn.className = "hud-btn"
 		dupBtn.innerHTML = IC.duplicate
-		dupBtn.title = "Duplicate (Ctrl+D)"
+		dupBtn.title = t("Duplicate (Ctrl+D)")
 		dupBtn.addEventListener("click", () => {
 			editor.duplicate()
 			hideCtxToolbar()
@@ -1061,7 +1067,7 @@ export function initEditorHud(
 		const delBtn = document.createElement("button")
 		delBtn.className = "hud-btn"
 		delBtn.innerHTML = IC.trash
-		delBtn.title = "Delete (Del)"
+		delBtn.title = t("Delete (Del)")
 		delBtn.addEventListener("click", () => {
 			editor.deleteSelected()
 			hideCtxToolbar()
@@ -1078,7 +1084,7 @@ export function initEditorHud(
 			const arrowBtn = document.createElement("button")
 			arrowBtn.className = "hud-btn"
 			arrowBtn.innerHTML = IC.arrow
-			arrowBtn.title = "Connect to element (click target)"
+			arrowBtn.title = t("Connect to element (click target)")
 			arrowBtn.addEventListener("click", () => {
 				editor.startConnectionFrom(sourceId)
 				hideCtxToolbar()
@@ -1134,7 +1140,7 @@ export function initEditorHud(
 				const palette = COLOR_PALETTE.find((p) => p.fill === currentFill)
 				if (palette) singleSwatch.style.outlineColor = palette.stroke
 			}
-			singleSwatch.title = "Color (click for options)"
+			singleSwatch.title = t("Color (click for options)")
 			singleSwatch.addEventListener("click", () =>
 				showColorPicker(singleSwatch, sourceId, currentFill),
 			)
@@ -1144,7 +1150,7 @@ export function initEditorHud(
 			const annotBtn = document.createElement("button")
 			annotBtn.className = "hud-btn"
 			annotBtn.innerHTML = IC.textAnnotation
-			annotBtn.title = "Add text annotation"
+			annotBtn.title = t("Add text annotation")
 			annotBtn.addEventListener("click", () => {
 				editor.createAnnotationFor(sourceId)
 				hideCtxToolbar()
@@ -1159,7 +1165,7 @@ export function initEditorHud(
 				const aiBtn = document.createElement("button")
 				aiBtn.className = "hud-btn ctx-ask-ai-btn"
 				aiBtn.innerHTML = IC.sparkle
-				aiBtn.title = "Ask AI to continue from this element"
+				aiBtn.title = t("Ask AI to continue from this element")
 				aiBtn.addEventListener("click", () => options.onAskAi?.())
 				ctxToolbar.appendChild(aiBtn)
 			}
@@ -1193,7 +1199,7 @@ export function initEditorHud(
 			const labelBtn = document.createElement("button")
 			labelBtn.className = "hud-btn"
 			labelBtn.innerHTML = IC.labelPos
-			labelBtn.title = "Label position"
+			labelBtn.title = t("Label position")
 			labelBtn.addEventListener("pointerdown", (e) => {
 				e.stopPropagation()
 			})
@@ -1217,12 +1223,12 @@ export function initEditorHud(
 				const navBtn = document.createElement("button")
 				navBtn.className = "ref-link-btn"
 				navBtn.textContent = `${name} \u2197`
-				navBtn.title = `Open process: ${processId}`
+				navBtn.title = t("Open process: {id}", { id: processId })
 				navBtn.addEventListener("click", () => options.openProcess?.(processId))
 				cfgToolbar.appendChild(navBtn)
 				const unlinkBtn = document.createElement("button")
 				unlinkBtn.className = "hud-btn"
-				unlinkBtn.title = "Unlink process"
+				unlinkBtn.title = t("Unlink process")
 				unlinkBtn.textContent = "\u00d7"
 				unlinkBtn.addEventListener("click", () => clearCallActivityProcess(sourceId))
 				cfgToolbar.appendChild(unlinkBtn)
@@ -1230,7 +1236,7 @@ export function initEditorHud(
 				if (cfgToolbar.children.length > 0) cfgToolbar.append(hudSep())
 				const linkBtn = document.createElement("button")
 				linkBtn.className = "ref-link-btn"
-				linkBtn.textContent = "Link process \u25be"
+				linkBtn.textContent = `${t("Link process")} \u25be`
 				linkBtn.addEventListener("pointerdown", (e) => e.stopPropagation())
 				linkBtn.addEventListener("click", () => {
 					if (openDropdown === refMenuEl) {
@@ -1261,10 +1267,10 @@ export function initEditorHud(
 						}
 						const newBtn = document.createElement("button")
 						newBtn.className = "drop-item"
-						newBtn.textContent = "New process\u2026"
+						newBtn.textContent = t("New process…")
 						newBtn.addEventListener("click", () => {
 							closeAllDropdowns()
-							showHudInputModal("New process name", "New Process", (newName) => {
+							showHudInputModal(t, t("New process name"), t("New Process"), (newName) => {
 								options.createProcess?.(newName, (pid) => setCallActivityProcess(sourceId, pid))
 							})
 						})
@@ -1273,7 +1279,7 @@ export function initEditorHud(
 					if (procs.length === 0 && !options.createProcess) {
 						const empty = document.createElement("div")
 						empty.className = "drop-label"
-						empty.textContent = "No processes open"
+						empty.textContent = t("No processes open")
 						refMenuEl.appendChild(empty)
 					}
 					showDropdown(refMenuEl, linkBtn, "above")
@@ -1291,12 +1297,12 @@ export function initEditorHud(
 				const navBtn = document.createElement("button")
 				navBtn.className = "ref-link-btn"
 				navBtn.textContent = `${name} \u2197`
-				navBtn.title = `Open form: ${formId}`
+				navBtn.title = t("Open form: {id}", { id: formId })
 				navBtn.addEventListener("click", () => options.openForm?.(formId))
 				cfgToolbar.appendChild(navBtn)
 				const unlinkBtn = document.createElement("button")
 				unlinkBtn.className = "hud-btn"
-				unlinkBtn.title = "Unlink form"
+				unlinkBtn.title = t("Unlink form")
 				unlinkBtn.textContent = "\u00d7"
 				unlinkBtn.addEventListener("click", () => clearUserTaskForm(sourceId))
 				cfgToolbar.appendChild(unlinkBtn)
@@ -1304,7 +1310,7 @@ export function initEditorHud(
 				if (cfgToolbar.children.length > 0) cfgToolbar.append(hudSep())
 				const linkBtn = document.createElement("button")
 				linkBtn.className = "ref-link-btn"
-				linkBtn.textContent = "Link form \u25be"
+				linkBtn.textContent = `${t("Link form")} \u25be`
 				linkBtn.addEventListener("pointerdown", (e) => e.stopPropagation())
 				linkBtn.addEventListener("click", () => {
 					if (openDropdown === refMenuEl) {
@@ -1327,7 +1333,7 @@ export function initEditorHud(
 					if (forms.length === 0) {
 						const empty = document.createElement("div")
 						empty.className = "drop-label"
-						empty.textContent = "No forms open"
+						empty.textContent = t("No forms open")
 						refMenuEl.appendChild(empty)
 					}
 					showDropdown(refMenuEl, linkBtn, "above")
@@ -1345,12 +1351,12 @@ export function initEditorHud(
 				const navBtn = document.createElement("button")
 				navBtn.className = "ref-link-btn"
 				navBtn.textContent = `${name} \u2197`
-				navBtn.title = `Open decision: ${decisionId}`
+				navBtn.title = t("Open decision: {id}", { id: decisionId })
 				navBtn.addEventListener("click", () => options.openDecision?.(decisionId))
 				cfgToolbar.appendChild(navBtn)
 				const unlinkBtn = document.createElement("button")
 				unlinkBtn.className = "hud-btn"
-				unlinkBtn.title = "Unlink decision"
+				unlinkBtn.title = t("Unlink decision")
 				unlinkBtn.textContent = "\u00d7"
 				unlinkBtn.addEventListener("click", () => clearBizRuleDecision(sourceId))
 				cfgToolbar.appendChild(unlinkBtn)
@@ -1358,7 +1364,7 @@ export function initEditorHud(
 				if (cfgToolbar.children.length > 0) cfgToolbar.append(hudSep())
 				const linkBtn = document.createElement("button")
 				linkBtn.className = "ref-link-btn"
-				linkBtn.textContent = "Link decision \u25be"
+				linkBtn.textContent = `${t("Link decision")} \u25be`
 				linkBtn.addEventListener("pointerdown", (e) => e.stopPropagation())
 				linkBtn.addEventListener("click", () => {
 					if (openDropdown === refMenuEl) {
@@ -1381,7 +1387,7 @@ export function initEditorHud(
 					if (decisions.length === 0) {
 						const empty = document.createElement("div")
 						empty.className = "drop-label"
-						empty.textContent = "No decisions open"
+						empty.textContent = t("No decisions open")
 						refMenuEl.appendChild(empty)
 					}
 					showDropdown(refMenuEl, linkBtn, "above")
@@ -1641,11 +1647,11 @@ export function initEditorHud(
 
 		const titleEl = document.createElement("p")
 		titleEl.className = "bpmnkit-onboard-btn-title"
-		titleEl.textContent = title
+		titleEl.textContent = t(title)
 
 		const descEl = document.createElement("p")
 		descEl.className = "bpmnkit-onboard-btn-desc"
-		descEl.textContent = desc
+		descEl.textContent = t(desc)
 
 		labelEl.append(titleEl, descEl)
 		btn.append(iconEl, labelEl)
@@ -1662,7 +1668,13 @@ export function initEditorHud(
 
 	const onboardHeader = document.createElement("div")
 	onboardHeader.className = "bpmnkit-onboard-header"
-	onboardHeader.innerHTML = `<p class="bpmnkit-onboard-title">How do you want to start?</p><p class="bpmnkit-onboard-sub">Choose an option to begin designing your process</p>`
+	const onboardTitle = document.createElement("p")
+	onboardTitle.className = "bpmnkit-onboard-title"
+	onboardTitle.textContent = t("How do you want to start?")
+	const onboardSub = document.createElement("p")
+	onboardSub.className = "bpmnkit-onboard-sub"
+	onboardSub.textContent = t("Choose an option to begin designing your process")
+	onboardHeader.append(onboardTitle, onboardSub)
 
 	const onboardActions = document.createElement("div")
 	onboardActions.className = "bpmnkit-onboard-actions"
@@ -1968,9 +1980,12 @@ export function initEditorHud(
 
 	function updateSearchCount(): void {
 		if (searchMatches.length === 0) {
-			searchCount.textContent = searchInput.value.trim() ? "No matches" : ""
+			searchCount.textContent = searchInput.value.trim() ? t("No matches") : ""
 		} else {
-			searchCount.textContent = `${searchMatchIdx + 1} of ${searchMatches.length}`
+			searchCount.textContent = t("{index} of {count}", {
+				index: searchMatchIdx + 1,
+				count: searchMatches.length,
+			})
 		}
 	}
 

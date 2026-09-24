@@ -23,8 +23,8 @@
  */
 
 import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
-import { ELEMENT_GROUPS, ELEMENT_TYPE_LABELS } from "@bpmnkit/editor"
-import type { CreateShapeType } from "@bpmnkit/editor"
+import { ELEMENT_GROUPS, ELEMENT_TYPE_LABELS, defaultTranslate } from "@bpmnkit/editor"
+import type { CreateShapeType, Translate } from "@bpmnkit/editor"
 import type { CommandPalettePlugin } from "../command-palette/index.js"
 
 // ── Minimal editor interface ──────────────────────────────────────────────────
@@ -88,22 +88,32 @@ function getCandidates(api: CanvasApi) {
 		})
 }
 
-function candidateLabel(s: ReturnType<CanvasApi["getShapes"]>[number]): string {
+function candidateLabel(s: ReturnType<CanvasApi["getShapes"]>[number], t: Translate): string {
 	const el = s.flowElement
 	if (!el) return s.id
-	const typeLabel = ELEMENT_TYPE_LABELS[el.type as CreateShapeType] ?? el.type
+	const typeLabel = t(ELEMENT_TYPE_LABELS[el.type as CreateShapeType] ?? el.type)
 	return el.name ? el.name : typeLabel
 }
 
-function candidateDescription(s: ReturnType<CanvasApi["getShapes"]>[number]): string | undefined {
+function candidateDescription(
+	s: ReturnType<CanvasApi["getShapes"]>[number],
+	t: Translate,
+): string | undefined {
 	const el = s.flowElement
 	if (!el) return undefined
-	const typeLabel = ELEMENT_TYPE_LABELS[el.type as CreateShapeType] ?? el.type
+	const typeLabel = t(ELEMENT_TYPE_LABELS[el.type as CreateShapeType] ?? el.type)
 	const out = el.outgoing.length
+	const outgoing = t("{count} outgoing", { count: out })
 	if (el.name) {
-		return out > 0 ? `${typeLabel} · ${out} outgoing` : typeLabel
+		return out > 0 ? `${typeLabel} · ${outgoing}` : typeLabel
 	}
-	return out > 0 ? `${out} outgoing` : undefined
+	return out > 0 ? outgoing : undefined
+}
+
+/** Options for {@link createCommandPaletteEditorPlugin}. */
+export interface CommandPaletteEditorOptions {
+	/** Translation hook for the element commands — pass the editor's. */
+	translate?: Translate
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────────
@@ -118,7 +128,9 @@ function candidateDescription(s: ReturnType<CanvasApi["getShapes"]>[number]): st
 export function createCommandPaletteEditorPlugin(
 	palette: CommandPalettePlugin,
 	getEditor: () => EditorLike | null,
+	options: CommandPaletteEditorOptions = {},
 ): CanvasPlugin {
+	const t = options.translate ?? defaultTranslate
 	let _api: CanvasApi | null = null
 	let _deregister: (() => void) | null = null
 
@@ -130,8 +142,8 @@ export function createCommandPaletteEditorPlugin(
 			_deregister = palette.addCommands(
 				ELEMENT_COMMANDS.map((cmd) => ({
 					id: `create:${cmd.type}`,
-					title: cmd.title,
-					description: cmd.description,
+					title: t(cmd.title),
+					description: t(cmd.description),
 					action() {
 						const candidates = _api ? getCandidates(_api) : []
 
@@ -146,20 +158,20 @@ export function createCommandPaletteEditorPlugin(
 						palette.pushView(
 							candidates.map((s) => ({
 								id: `connect:${s.id}:${cmd.type}`,
-								title: candidateLabel(s),
-								description: candidateDescription(s),
+								title: candidateLabel(s, t),
+								description: candidateDescription(s, t),
 								action() {
 									// Step 3: enter a label, then insert.
-									const typeLabel = ELEMENT_TYPE_LABELS[cmd.type] ?? cmd.type
+									const typeLabel = t(ELEMENT_TYPE_LABELS[cmd.type] ?? cmd.type)
 									palette.pushView([], {
-										placeholder: `Label for new ${typeLabel} (optional)\u2026`,
+										placeholder: t("Label for new {type} (optional)…", { type: typeLabel }),
 										onConfirm(label: string) {
 											getEditor()?.addConnectedElement(s.id, cmd.type, label.trim() || undefined)
 										},
 									})
 								},
 							})),
-							{ placeholder: "Connect after which element?" },
+							{ placeholder: t("Connect after which element?") },
 						)
 					},
 				})),

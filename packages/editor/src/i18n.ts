@@ -79,3 +79,92 @@ export interface TranslationRecorder {
 	/** Forgets everything observed so far. */
 	reset(): void
 }
+
+/**
+ * A message whose wording depends on a number. Selected with `Intl.PluralRules`
+ * from the `count` variable, so each language supplies only the categories its
+ * grammar has — Polish needs `one`, `few` and `many`; Japanese only `other`.
+ */
+export type PluralMessage = Partial<Record<Exclude<Intl.LDMLPluralRule, "other">, string>> & {
+	other: string
+}
+
+/** One translated message: plain text, or plural forms keyed by CLDR category. */
+export type LocaleMessage = string | PluralMessage
+
+/**
+ * A shipped translation of the editor and its first-party plugins.
+ *
+ * Keys are the English templates the UI asks for (see {@link Translate}), so a
+ * locale is plain data: it can be imported per language and tree-shaken, and a
+ * key it lacks falls back to English rather than to a blank.
+ */
+export interface Locale {
+	/** BCP 47 tag, e.g. `"de"` or `"pt-BR"`. Also selects the plural rules. */
+	code: string
+	/** The language's own name for itself, for a language picker. */
+	name: string
+	messages: Readonly<Record<string, LocaleMessage>>
+}
+
+/**
+ * Builds a {@link Translate} from a {@link Locale}.
+ *
+ * Missing keys fall back to the English template, and `{name}` placeholders are
+ * interpolated either way. A {@link PluralMessage} picks its form from
+ * `vars.count`.
+ *
+ * @example
+ * ```typescript
+ * import { BpmnEditor, createTranslate } from "@bpmnkit/editor";
+ * import { de } from "@bpmnkit/editor/locales/de";
+ *
+ * const editor = new BpmnEditor({ container, translate: createTranslate(de) });
+ * ```
+ */
+export function createTranslate(locale: Locale): Translate {
+	const rules = new Intl.PluralRules(locale.code)
+	return (template, vars) => {
+		const message = locale.messages[template]
+		if (message === undefined) return interpolate(template, vars)
+		if (typeof message === "string") return interpolate(message, vars)
+		const count = Number(vars?.count)
+		const form = Number.isFinite(count) ? message[rules.select(count)] : undefined
+		return interpolate(form ?? message.other, vars)
+	}
+}
+
+/** The languages `@bpmnkit/editor/locales/*` ships, by code, with their own names. */
+export const AVAILABLE_LOCALES: ReadonlyArray<{ code: string; name: string }> = [
+	{ code: "en", name: "English" },
+	{ code: "de", name: "Deutsch" },
+	{ code: "es", name: "Español" },
+	{ code: "fr", name: "Français" },
+	{ code: "it", name: "Italiano" },
+	{ code: "nl", name: "Nederlands" },
+	{ code: "pl", name: "Polski" },
+	{ code: "pt-BR", name: "Português (Brasil)" },
+	{ code: "ja", name: "日本語" },
+	{ code: "zh-CN", name: "简体中文" },
+]
+
+/**
+ * Picks the best of `available` for a list of preferred tags — typically
+ * `navigator.languages`. An exact match wins, then a match on the language
+ * alone (`"pt-PT"` finds `"pt-BR"`, `"zh"` finds `"zh-CN"`). Returns
+ * `undefined` when nothing matches, so the caller decides the fallback.
+ */
+export function matchLocale(
+	preferred: ReadonlyArray<string>,
+	available: ReadonlyArray<string>,
+): string | undefined {
+	const lower = available.map((code) => code.toLowerCase())
+	for (const tag of preferred) {
+		const exact = lower.indexOf(tag.toLowerCase())
+		if (exact !== -1) return available[exact]
+		const language = tag.toLowerCase().split("-")[0]
+		const partial = lower.findIndex((code) => code.split("-")[0] === language)
+		if (partial !== -1) return available[partial]
+	}
+	return undefined
+}
