@@ -16,6 +16,7 @@
 		"src/client",
 		"src/shared",
 		"tests/feel-edit.test.ts",
-		"tests/comments-client.test.ts"
+		"tests/comments-client.test.ts",
+		"tests/doc-export.test.ts"
 	]
 }

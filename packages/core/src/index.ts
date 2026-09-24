@@ -419,6 +419,29 @@ export { translateJuelToFeel } from "./bpmn/camunda7/juel.js"
 export type { JuelToFeelOptions, JuelToFeelResult } from "./bpmn/camunda7/juel.js"
 export { exportSvg } from "./bpmn/svg.js"
 export type { SvgExportOptions } from "./bpmn/svg.js"
+export {
+	buildProcessDocumentation,
+	documentationToDocx,
+	documentationToHtml,
+	documentationToMarkdown,
+	renderDocumentationDocx,
+	renderDocumentationHtml,
+	renderDocumentationMarkdown,
+} from "./doc/index.js"
+export type {
+	DocumentationLink,
+	DocumentationOptions,
+	DocumentedDecision,
+	DocumentedElement,
+	DocumentedForm,
+	DocumentedFormField,
+	DocumentedLane,
+	DocumentedMessageFlow,
+	DocumentedProcess,
+	DocumentedProperty,
+	DocxDocumentationOptions,
+	ProcessDocumentation,
+} from "./doc/index.js"
 export type {
 	CompactDiagram,
 	CompactElement,

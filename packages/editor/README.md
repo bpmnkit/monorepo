@@ -81,8 +81,12 @@ interface HudOptions {
   container: HTMLElement
   optimizeButton?: HTMLElement  // inject into action bar
   aiButton?: HTMLElement        // inject into action bar
+  // Decisions and forms (and a title) for More → Export documentation…
+  getDocumentationContext?: () => DocumentationOptions
 }
 ```
+
+The HUD's **More** menu has **Export documentation…**: a print-ready HTML view (Print → Save as PDF), or an HTML, Markdown or Word download, built with `@bpmnkit/core`'s process documentation renderers.
 
 ### `createSideDock(container)` → `SideDock`
 

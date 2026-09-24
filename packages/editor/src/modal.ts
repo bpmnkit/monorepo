@@ -52,6 +52,27 @@ function injectModalStyles(): void {
   border-color: var(--bpmnkit-ds-accent, #a8503a);
   color: #fff;
 }
+.bpmnkit-hud-modal-choices {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
+}
+.bpmnkit-hud-modal-choice {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 12px; cursor: pointer; text-align: left;
+  border: 0; border-bottom: 1px solid var(--bpmnkit-chrome-line, rgba(255, 255, 255, 0.14));
+  background: transparent;
+  color: var(--bpmnkit-chrome-ink, #f4f5f7);
+  font-family: var(--bpmnkit-ds-font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 13px;
+}
+.bpmnkit-hud-modal-choice:last-child { border-bottom: 0; }
+.bpmnkit-hud-modal-choice:hover, .bpmnkit-hud-modal-choice:focus-visible {
+  background: var(--bpmnkit-chrome-hover, rgba(255,255,255,0.07)); outline: none;
+}
+.bpmnkit-hud-modal-choice-hint {
+  font-family: var(--bpmnkit-ds-font-mono, ui-monospace, monospace);
+  font-size: 11px; color: var(--bpmnkit-chrome-ink-4, #9aa1aa);
+}
 .bpmnkit-hud-modal-btn--primary:hover {
   background: var(--bpmnkit-ds-accent-hover, #8f412e);
   border-color: var(--bpmnkit-ds-accent-hover, #8f412e);
@@ -132,4 +153,80 @@ export function showHudInputModal(
 		input.select()
 		input.focus()
 	})
+}
+
+/** One row in {@link showHudChoiceModal}. */
+export interface HudChoice {
+	label: string
+	/** Secondary text under the label. */
+	hint?: string
+	onChoose: () => void
+}
+
+/**
+ * Shows a modal offering a list of choices, one per row, plus a cancel button.
+ * Picking a choice closes the modal and calls its `onChoose`.
+ */
+export function showHudChoiceModal(title: string, choices: HudChoice[], cancelLabel: string): void {
+	injectModalStyles()
+
+	const overlay = document.createElement("div")
+	overlay.className = "bpmnkit-hud-modal-overlay"
+
+	const dialog = document.createElement("div")
+	dialog.className = "bpmnkit-hud-modal"
+	dialog.setAttribute("role", "dialog")
+	dialog.setAttribute("aria-label", title)
+
+	const titleEl = document.createElement("div")
+	titleEl.className = "bpmnkit-hud-modal-title"
+	titleEl.textContent = title
+
+	const list = document.createElement("div")
+	list.className = "bpmnkit-hud-modal-choices"
+
+	function close(): void {
+		overlay.remove()
+		document.removeEventListener("keydown", handleKey)
+	}
+
+	for (const choice of choices) {
+		const btn = document.createElement("button")
+		btn.className = "bpmnkit-hud-modal-choice"
+		const label = document.createElement("span")
+		label.textContent = choice.label
+		btn.append(label)
+		if (choice.hint) {
+			const hint = document.createElement("span")
+			hint.className = "bpmnkit-hud-modal-choice-hint"
+			hint.textContent = choice.hint
+			btn.append(hint)
+		}
+		btn.addEventListener("click", () => {
+			close()
+			choice.onChoose()
+		})
+		list.append(btn)
+	}
+
+	const actions = document.createElement("div")
+	actions.className = "bpmnkit-hud-modal-actions"
+	const cancelBtn = document.createElement("button")
+	cancelBtn.className = "bpmnkit-hud-modal-btn"
+	cancelBtn.textContent = cancelLabel
+	cancelBtn.addEventListener("click", close)
+	actions.append(cancelBtn)
+
+	function handleKey(e: KeyboardEvent): void {
+		if (e.key === "Escape") close()
+	}
+	document.addEventListener("keydown", handleKey)
+	overlay.addEventListener("click", (e) => {
+		if (e.target === overlay) close()
+	})
+
+	dialog.append(titleEl, list, actions)
+	overlay.append(dialog)
+	document.body.append(overlay)
+	requestAnimationFrame(() => (list.firstElementChild as HTMLElement | null)?.focus())
 }
