@@ -1167,4 +1167,51 @@ mod tests {
         assert_eq!(task.output_mappings.len(), 1);
         assert!(task.multi_instance.as_ref().is_some_and(|mi| mi.is_sequential && mi.input_collection == "=items"));
     }
+
+    #[test]
+    fn test_a_business_rule_task_keeps_its_flows_and_mappings() {
+        // A business rule task inside a sub-process: before, its <bpmn:incoming>,
+        // <bpmn:outgoing> and zeebe:ioMapping went to the sub-process.
+        let xml = definitions(r#"
+    <bpmn:subProcess id="sp">
+      <bpmn:incoming>f0</bpmn:incoming>
+      <bpmn:businessRuleTask id="decide">
+        <bpmn:extensionElements>
+          <zeebe:calledDecision decisionId="d" resultVariable="r"/>
+          <zeebe:ioMapping><zeebe:input source="=1" target="one"/><zeebe:output source="=r" target="out"/></zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:incoming>s1</bpmn:incoming>
+        <bpmn:outgoing>s2</bpmn:outgoing>
+      </bpmn:businessRuleTask>
+    </bpmn:subProcess>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        let Some(FlowElement::SubProcess(sp)) = p.elements.get("sp") else { panic!("sp") };
+        assert_eq!(sp.incoming, vec!["f0".to_string()]);
+        assert!(sp.outgoing.is_empty(), "{:?}", sp.outgoing);
+        assert!(sp.input_mappings.is_empty() && sp.output_mappings.is_empty());
+        let Some(FlowElement::BusinessRuleTask(task)) = sp.elements.get("decide") else { panic!("decide") };
+        assert_eq!((task.incoming.as_slice(), task.outgoing.as_slice()), (&["s1".to_string()][..], &["s2".to_string()][..]));
+        assert_eq!(task.input_mappings.len(), 1);
+        assert_eq!(task.output_mappings.len(), 1);
+    }
+
+    #[test]
+    fn test_what_an_element_cannot_have_does_not_reach_the_scope_around_it() {
+        // A start event has no incoming flows, an end event no outgoing flows, and
+        // neither an end event nor a gateway has I/O mappings here.
+        let xml = definitions(r#"
+    <bpmn:subProcess id="sp">
+      <bpmn:startEvent id="s"><bpmn:incoming>bad-in</bpmn:incoming><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:endEvent id="e"><bpmn:incoming>s1</bpmn:incoming><bpmn:outgoing>bad-out</bpmn:outgoing>
+        <bpmn:extensionElements><zeebe:ioMapping><zeebe:input source="=1" target="x"/></zeebe:ioMapping></bpmn:extensionElements>
+      </bpmn:endEvent>
+      <bpmn:exclusiveGateway id="g">
+        <bpmn:extensionElements><zeebe:ioMapping><zeebe:output source="=1" target="y"/></zeebe:ioMapping></bpmn:extensionElements>
+      </bpmn:exclusiveGateway>
+    </bpmn:subProcess>"#);
+        let p = &parse_bpmn(&xml).unwrap()[0];
+        let Some(FlowElement::SubProcess(sp)) = p.elements.get("sp") else { panic!("sp") };
+        assert!(sp.incoming.is_empty() && sp.outgoing.is_empty(), "{:?} {:?}", sp.incoming, sp.outgoing);
+        assert!(sp.input_mappings.is_empty() && sp.output_mappings.is_empty());
+    }
 }

@@ -1257,6 +1257,9 @@ impl ParserState {
         }
     }
 
+    /// Record a `<bpmn:incoming>` on the flow element it is in. A flow element without
+    /// incoming flows (a start or boundary event) ignores it; it never reaches an
+    /// enclosing element.
     fn apply_incoming(&mut self, id: String) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
@@ -1265,6 +1268,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.incoming.push(id); return; }
                 ParseContext::ScriptTask(t) => { t.incoming.push(id); return; }
                 ParseContext::SendTask(t) => { t.incoming.push(id); return; }
+                ParseContext::BusinessRuleTask(t) => { t.incoming.push(id); return; }
                 ParseContext::Task(t) => { t.incoming.push(id); return; }
                 ParseContext::CallActivity(t) => { t.incoming.push(id); return; }
                 ParseContext::SubProcess(t) => { t.incoming.push(id); return; }
@@ -1275,12 +1279,14 @@ impl ParserState {
                 ParseContext::EndEvent(e) => { e.incoming.push(id); return; }
                 ParseContext::IntermediateCatchEvent(e) => { e.incoming.push(id); return; }
                 ParseContext::IntermediateThrowEvent(e) => { e.incoming.push(id); return; }
-                ParseContext::Unsupported(_) => return,
+                ParseContext::StartEvent(_) | ParseContext::BoundaryEvent(_) | ParseContext::Unsupported(_) => return,
                 _ => {}
             }
         }
     }
 
+    /// Record a `<bpmn:outgoing>` on the flow element it is in. An end event, which has
+    /// no outgoing flows, ignores it; it never reaches an enclosing element.
     fn apply_outgoing(&mut self, id: String) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
@@ -1290,6 +1296,7 @@ impl ParserState {
                 ParseContext::ReceiveTask(t) => { t.outgoing.push(id); return; }
                 ParseContext::ScriptTask(t) => { t.outgoing.push(id); return; }
                 ParseContext::SendTask(t) => { t.outgoing.push(id); return; }
+                ParseContext::BusinessRuleTask(t) => { t.outgoing.push(id); return; }
                 ParseContext::Task(t) => { t.outgoing.push(id); return; }
                 ParseContext::CallActivity(t) => { t.outgoing.push(id); return; }
                 ParseContext::SubProcess(t) => { t.outgoing.push(id); return; }
@@ -1300,7 +1307,7 @@ impl ParserState {
                 ParseContext::IntermediateCatchEvent(e) => { e.outgoing.push(id); return; }
                 ParseContext::IntermediateThrowEvent(e) => { e.outgoing.push(id); return; }
                 ParseContext::BoundaryEvent(e) => { e.outgoing.push(id); return; }
-                ParseContext::Unsupported(_) => return,
+                ParseContext::EndEvent(_) | ParseContext::Unsupported(_) => return,
                 _ => {}
             }
         }
@@ -1317,9 +1324,12 @@ impl ParserState {
         }
     }
 
+    /// Record a `zeebe:input` on the flow element it is in; one of an element without
+    /// input mappings is ignored, never given to an enclosing element.
     fn apply_input_mapping(&mut self, mapping: ZeebeIoMapping) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
+                ParseContext::BusinessRuleTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::ServiceTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::UserTask(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::ReceiveTask(t) => { t.input_mappings.push(mapping); return; }
@@ -1330,14 +1340,18 @@ impl ParserState {
                 ParseContext::SubProcess(t) => { t.input_mappings.push(mapping); return; }
                 ParseContext::StartEvent(e) => { e.input_mappings.push(mapping); return; }
                 ParseContext::IntermediateCatchEvent(e) => { e.input_mappings.push(mapping); return; }
-                _ => {}
+                ParseContext::Root | ParseContext::Process(_) | ParseContext::ExtensionElements => {}
+                _ => return,
             }
         }
     }
 
+    /// Record a `zeebe:output` on the flow element it is in; one of an element without
+    /// output mappings is ignored, never given to an enclosing element.
     fn apply_output_mapping(&mut self, mapping: ZeebeIoMapping) {
         for ctx in self.stack.iter_mut().rev() {
             match ctx {
+                ParseContext::BusinessRuleTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::ServiceTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::UserTask(t) => { t.output_mappings.push(mapping); return; }
                 ParseContext::ReceiveTask(t) => { t.output_mappings.push(mapping); return; }
@@ -1349,7 +1363,8 @@ impl ParserState {
                 ParseContext::StartEvent(e) => { e.output_mappings.push(mapping); return; }
                 ParseContext::IntermediateCatchEvent(e) => { e.output_mappings.push(mapping); return; }
                 ParseContext::BoundaryEvent(e) => { e.output_mappings.push(mapping); return; }
-                _ => {}
+                ParseContext::Root | ParseContext::Process(_) | ParseContext::ExtensionElements => {}
+                _ => return,
             }
         }
     }
