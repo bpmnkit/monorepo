@@ -717,6 +717,26 @@ describe("Annotation packing", () => {
 		expect(bounds.height).toBeGreaterThan(30)
 	})
 
+	it("keeps an annotation off a routed connection passing where it would sit", () => {
+		const task = layoutNode("t1", { x: 200, y: 200, width: 100, height: 80 })
+		const process = makeProcess([textAnnotation("ann1", "note")], [association("a1", "t1", "ann1")])
+		// A detour running above the task, right through the annotation's natural spot.
+		const route = {
+			id: "f1",
+			sourceRef: "x",
+			targetRef: "y",
+			waypoints: [
+				{ x: 0, y: 135 },
+				{ x: 600, y: 135 },
+			],
+		}
+		const unrouted = packAnnotations(process, [task]).get("ann1")
+		const bounds = packAnnotations(process, [task], [route]).get("ann1")
+		if (!unrouted || !bounds) throw new Error("missing ann1 bounds")
+		expect(unrouted.y < 135 && 135 < unrouted.y + unrouted.height).toBe(true)
+		expect(bounds.y < 135 && 135 < bounds.y + bounds.height).toBe(false)
+	})
+
 	it("two annotations linked to the same task don't overlap each other or the task", () => {
 		const task = layoutNode("t1", { x: 200, y: 200, width: 100, height: 80 })
 		const process = makeProcess(

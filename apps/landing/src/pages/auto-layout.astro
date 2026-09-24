@@ -95,6 +95,14 @@ const jsonLd = breadcrumbJsonLd([
     .al-method dl { max-width: 760px; margin-bottom: 24px; }
     .al-method dt { font-weight: 600; font-size: 0.9rem; margin-top: 14px; }
     .al-method dd { color: var(--text-muted); font-size: 0.9rem; line-height: 1.65; }
+    .al-versus { margin-bottom: 56px; }
+    .al-table-wrap { overflow-x: auto; margin-bottom: 20px; max-width: 860px; }
+    .al-table { width: 100%; border-collapse: collapse; border: 1px solid var(--border); font-size: 0.88rem; }
+    .al-table th, .al-table td { border-bottom: 1px solid var(--border); padding: 9px 12px; text-align: right; white-space: nowrap; }
+    .al-table thead th { font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 400; }
+    .al-table th[scope="row"], .al-table thead th:first-child { text-align: left; font-weight: 400; white-space: normal; min-width: 11rem; }
+    .al-table td { font-family: var(--font-mono); color: var(--text-muted); }
+    .al-table td.al-win { color: var(--text); font-weight: 700; }
     code.inline { font-family: var(--font-mono); color: var(--accent); background: var(--inline-code-bg); padding: 2px 5px; font-size: 0.85em; }
 
     @media (max-width: 720px) {
@@ -161,6 +169,52 @@ const jsonLd = breadcrumbJsonLd([
           </div>
         </section>
       ))}
+
+      <section class="al-method al-versus" aria-labelledby="al-versus-title">
+        <h2 id="al-versus-title">Against bpmn-auto-layout 2.0</h2>
+        <p>
+          bpmn.io's <code class="inline">bpmn-auto-layout</code> 2.0.0-alpha.2 is the layout we
+          measure ourselves against. Both engines laid out the same 160 diagrams, upstream's own
+          test fixtures, with their diagram interchange discarded, and one script measured both
+          outputs. Timings are XML in to XML out on one machine, in the same run.
+        </p>
+        <div class="al-table-wrap">
+          <table class="al-table">
+            <thead>
+              <tr>
+                <th scope="col">160 fixtures</th>
+                <th scope="col">BPMN Kit, before</th>
+                <th scope="col">BPMN Kit, now</th>
+                <th scope="col">bpmn-auto-layout</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Edges through other shapes</th><td>41</td><td class="al-win">0</td><td>10</td></tr>
+              <tr><th scope="row">Edges cutting across their own endpoint</th><td>83</td><td class="al-win">0</td><td class="al-win">0</td></tr>
+              <tr><th scope="row">Edge crossings</th><td>234</td><td class="al-win">184</td><td>200</td></tr>
+              <tr><th scope="row">Diagram area</th><td>142.5 Mpx</td><td class="al-win">140.3 Mpx</td><td>140.8 Mpx</td></tr>
+              <tr><th scope="row">Total edge length</th><td>433k</td><td class="al-win">420k</td><td>428k</td></tr>
+              <tr><th scope="row">Bends</th><td>768</td><td>815</td><td class="al-win">703</td></tr>
+              <tr><th scope="row">Distance from the hand-made layout</th><td>268 px</td><td>264 px</td><td class="al-win">234 px</td></tr>
+              <tr><th scope="row">Runtime, median / p90 / max</th><td class="al-win">0.3 / 1.4 / 8 ms</td><td>0.35 / 2.2 / 12 ms</td><td>4.4 / 46 / 1267 ms</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Where we are still behind: our routes bend more, message flows still cross sequence
+          flows more often inside a pool (63 against 54), and upstream's layouts sit closer to
+          the diagrams people drew by hand. Part of that last gap is only where the drawing
+          starts on the page — with the two origins aligned it narrows to 255 px against 244 px.
+          The corpus is upstream's, chosen to cover what upstream handles, so it is not neutral
+          ground.
+        </p>
+        <p>
+          The method, the metric definitions and the history of every pass are in the
+          <a href="https://github.com/bpmnkit/monorepo/blob/main/doc/bpmn-auto-layout-evaluation.md">bpmn-auto-layout evaluation</a>;
+          the script that produced this table is
+          <a href="https://github.com/bpmnkit/monorepo/blob/main/packages/core/scripts/layout-quality.mjs"><code class="inline">packages/core/scripts/layout-quality.mjs</code></a>.
+        </p>
+      </section>
 
       <div class="al-method">
         <h2>How these numbers are measured</h2>

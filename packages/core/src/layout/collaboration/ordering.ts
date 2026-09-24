@@ -16,26 +16,83 @@ export interface PoolLink {
 	from: number
 	to: number
 	weight: number
+	/**
+	 * Where the message leaves inside its pool, 0 at the top to 1 at the bottom.
+	 * A message whose element sits on the far side of its pool has to cross the
+	 * whole process to get out, so the order that lets it leave from the near
+	 * side wins. Absent for pools with no content to cross.
+	 */
+	fromDepth?: number
+	toDepth?: number
+}
+
+/** A full pool of process to cross costs this fraction of one pool step. */
+const DEPTH_WEIGHT = 0.5
+
+/**
+ * All the links between one pair of pools, pre-summed: `aAbove` is the depth
+ * cost when pool `a` sits above pool `b`, `aBelow` when it sits below.
+ */
+interface PairCost {
+	a: number
+	b: number
+	weight: number
+	aAbove: number
+	aBelow: number
+}
+
+function pairCosts(links: readonly PoolLink[]): PairCost[] {
+	const pairs = new Map<string, PairCost>()
+	for (const link of links) {
+		if (link.from === link.to) continue
+		const a = Math.min(link.from, link.to)
+		const b = Math.max(link.from, link.to)
+		const key = `${a}:${b}`
+		let pair = pairs.get(key)
+		if (!pair) {
+			pair = { a, b, weight: 0, aAbove: 0, aBelow: 0 }
+			pairs.set(key, pair)
+		}
+		pair.weight += link.weight
+		// Leaving downward crosses what lies below the element, upward what lies above.
+		for (const [pool, depth] of [
+			[link.from, link.fromDepth],
+			[link.to, link.toDepth],
+		] as const) {
+			if (depth === undefined) continue
+			const down = link.weight * DEPTH_WEIGHT * (1 - depth)
+			const up = link.weight * DEPTH_WEIGHT * depth
+			if (pool === a) {
+				pair.aAbove += down
+				pair.aBelow += up
+			} else {
+				pair.aAbove += up
+				pair.aBelow += down
+			}
+		}
+	}
+	return [...pairs.values()]
 }
 
 /**
- * How far the messages travel in this order, weighted by how many there are.
- * The declaration-order term is a tie-break: with nothing to gain from moving,
- * the pools stay where the author put them.
+ * How far the messages travel in this order, weighted by how many there are,
+ * plus how much of their own pools they cross to get out. The declaration-order
+ * term is a tie-break: with nothing to gain from moving, the pools stay where
+ * the author put them.
  */
-function cost(order: readonly number[], links: readonly PoolLink[]): number {
-	const position = new Map<number, number>()
+function cost(order: readonly number[], pairs: readonly PairCost[]): number {
+	const position: number[] = []
 	for (let i = 0; i < order.length; i++) {
 		const id = order[i]
-		if (id !== undefined) position.set(id, i)
+		if (id !== undefined) position[id] = i
 	}
 
 	let total = 0
-	for (const link of links) {
-		const from = position.get(link.from)
-		const to = position.get(link.to)
-		if (from === undefined || to === undefined) continue
-		total += link.weight * Math.abs(from - to)
+	for (const pair of pairs) {
+		const a = position[pair.a]
+		const b = position[pair.b]
+		if (a === undefined || b === undefined) continue
+		total += pair.weight * Math.abs(a - b) + (a < b ? pair.aAbove : pair.aBelow)
 	}
 
 	let drift = 0
@@ -51,17 +108,18 @@ export function orderPools(count: number, links: readonly PoolLink[]): number[] 
 	const identity = Array.from({ length: count }, (_, i) => i)
 	if (count < 3 || links.length === 0) return identity
 
-	return count <= EXHAUSTIVE_LIMIT ? exhaustive(identity, links) : refine(identity, links)
+	const pairs = pairCosts(links)
+	return count <= EXHAUSTIVE_LIMIT ? exhaustive(identity, pairs) : refine(identity, pairs)
 }
 
 /** Every order, best first-found wins — so declaration order survives a tie. */
-function exhaustive(identity: number[], links: readonly PoolLink[]): number[] {
+function exhaustive(identity: number[], pairs: readonly PairCost[]): number[] {
 	let best = identity
-	let bestCost = cost(identity, links)
+	let bestCost = cost(identity, pairs)
 
 	const permute = (prefix: number[], rest: number[]): void => {
 		if (rest.length === 0) {
-			const candidate = cost(prefix, links)
+			const candidate = cost(prefix, pairs)
 			if (candidate < bestCost) {
 				best = [...prefix]
 				bestCost = candidate
@@ -83,9 +141,9 @@ function exhaustive(identity: number[], links: readonly PoolLink[]): number[] {
  * Take each pool out and put it back wherever it fits best, repeating until a
  * full sweep changes nothing.
  */
-function refine(identity: number[], links: readonly PoolLink[]): number[] {
+function refine(identity: number[], pairs: readonly PairCost[]): number[] {
 	let order = [...identity]
-	let current = cost(order, links)
+	let current = cost(order, pairs)
 
 	for (let sweep = 0; sweep < order.length; sweep++) {
 		let improved = false
@@ -97,7 +155,7 @@ function refine(identity: number[], links: readonly PoolLink[]): number[] {
 			for (let to = 0; to <= without.length; to++) {
 				if (to === from) continue
 				const candidate = [...without.slice(0, to), pool, ...without.slice(to)]
-				const candidateCost = cost(candidate, links)
+				const candidateCost = cost(candidate, pairs)
 				if (candidateCost < current) {
 					order = candidate
 					current = candidateCost

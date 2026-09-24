@@ -6,7 +6,7 @@
  * shapes. Constants, formulas and control flow match the reference exactly.
  */
 import type { BpmnProcess } from "../bpmn/bpmn-model.js"
-import type { Bounds, LayoutNode, Waypoint } from "./types.js"
+import type { Bounds, LayoutEdge, LayoutNode, Waypoint } from "./types.js"
 
 const ANN_WIDTH = 200 // fixed annotation width
 const FONT_CHAR_WIDTH = 6.4 // approximate avg char width @ 12px Arial
@@ -20,6 +20,8 @@ const MIN_HEIGHT = 30
 const HORIZONTAL_SHIFTS = [0, 60, -60, 120, -120, 180, -180, 240, -240]
 /** Cost added to a candidate whose association line would cross a shape. */
 const BLOCKED_LINE_COST = 10_000
+/** Cost added per routed connection the association line would cut across. */
+const CROSSED_ROUTE_COST = 200
 
 function computeHeight(text: string, width: number): number {
 	if (!text || !text.trim()) return MIN_HEIGHT
@@ -131,6 +133,8 @@ function overlapsPadded(a: Bounds, others: Bounds[], padding: number): boolean {
 export function packAnnotations(
 	process: BpmnProcess,
 	layoutNodes: LayoutNode[],
+	/** Routed connections: an annotation box must not sit on top of one. */
+	layoutEdges: LayoutEdge[] = [],
 ): Map<string, Bounds> {
 	const result = new Map<string, Bounds>()
 	if (process.textAnnotations.length === 0) return result
@@ -173,6 +177,22 @@ export function packAnnotations(
 		obstacles.push(n.bounds)
 		if (n.labelBounds) obstacles.push(n.labelBounds)
 	}
+	// Each segment of a route as a hairline box; the box packer then keeps
+	// annotations off routes the same way it keeps them off shapes.
+	const routeObstacles: Bounds[] = []
+	for (const edge of layoutEdges) {
+		for (let i = 0; i + 1 < edge.waypoints.length; i++) {
+			const a = edge.waypoints[i]
+			const b = edge.waypoints[i + 1]
+			if (!a || !b) continue
+			routeObstacles.push({
+				x: Math.min(a.x, b.x),
+				y: Math.min(a.y, b.y),
+				width: Math.abs(a.x - b.x),
+				height: Math.abs(a.y - b.y),
+			})
+		}
+	}
 
 	function packSide(side: "above" | "below") {
 		const list = items
@@ -211,6 +231,10 @@ export function packAnnotations(
 					if (ax2 + ELEMENT_GAP <= sx1 || sx2 + ELEMENT_GAP <= ax1) continue
 					intervals.push({ top: sh.y - ELEMENT_GAP, bottom: sh.y + sh.height + ELEMENT_GAP })
 				}
+				for (const r of routeObstacles) {
+					if (ax2 + ANN_GAP <= r.x || r.x + r.width + ANN_GAP <= ax1) continue
+					intervals.push({ top: r.y - ANN_GAP, bottom: r.y + r.height + ANN_GAP })
+				}
 
 				let y = naturalY
 				let changed = true
@@ -236,8 +260,11 @@ export function packAnnotations(
 				const crosses = obstacles.some(
 					(sh) => sh !== linked.bounds && segmentHitsBox(pElem, pAnn, sh),
 				)
+				const cuts = routeObstacles.filter((r) => segmentHitsBox(pElem, pAnn, r)).length
 				const cost =
-					Math.hypot(candidateX - naturalX, y - naturalY) + (crosses ? BLOCKED_LINE_COST : 0)
+					Math.hypot(candidateX - naturalX, y - naturalY) +
+					(crosses ? BLOCKED_LINE_COST : 0) +
+					cuts * CROSSED_ROUTE_COST
 				if (cost < best.cost) best = { x: candidateX, y, cost }
 			}
 
