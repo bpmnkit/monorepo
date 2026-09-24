@@ -3,6 +3,7 @@ import { resolve } from "node:path"
 import { Bpmn, applyAutoLayout, applyBpmnOperations, compactify, expand } from "@bpmnkit/core"
 import type { BpmnOperation, CompactDiagram, CompactElement, CompactFlow } from "@bpmnkit/core"
 import type { Command, CommandGroup } from "../types.js"
+import { generateTypesCmd } from "./generate-types.js"
 
 // ── JSON schema reference ─────────────────────────────────────────────────────
 
@@ -817,6 +818,6 @@ const generateBpmnCmd: Command = {
 export const generateGroup: CommandGroup = {
 	name: "generate",
 	aliases: ["gen"],
-	description: "Generate BPMN, DMN, and form files from parameters",
-	commands: [generateBpmnCmd],
+	description: "Generate BPMN, DMN, and form files from parameters, and TypeScript types from BPMN",
+	commands: [generateBpmnCmd, generateTypesCmd],
 }

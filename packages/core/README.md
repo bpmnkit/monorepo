@@ -278,6 +278,13 @@ Event definitions are options on the element: `timerDuration`, `timerDate`,
 | `projectSemantics(defs)` | The canonical, presentation-free projection the hash covers |
 | `diffSemantics(a, b)` | What changed between two models, keyed by element id |
 
+### Typed code generation
+
+| Export | Description |
+|--------|-------------|
+| `generateProcessTypes(defs \| defs[], options?)` | TypeScript source typing job types (variables, output, headers, errors), process ids, messages, signals, error and escalation codes. Deterministic |
+| `extractProcessContract(defs \| defs[])` | The same contract as data — what `casen gen types` renders and `--check-workers` compares |
+
 ### Editing
 
 | Export | Description |

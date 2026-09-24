@@ -26,8 +26,9 @@ The main menu appears. Use ↑ ↓ to navigate, Enter to select, Escape to go ba
 
 ```
 casen
-├── generate        — generate or modify BPMN files without the TUI
-│   └── bpmn        — templates, CompactDiagram JSON, or patch existing files
+├── generate        — generate or modify BPMN files without the TUI (alias: gen)
+│   ├── bpmn        — templates, CompactDiagram JSON, or patch existing files
+│   └── types       — TypeScript types for job workers, generated from BPMN
 ├── view            — view BPMN, DMN, and form files in the browser
 │   ├── open        — any mix of .bpmn/.dmn/.form files or folders (auto-detect)
 │   ├── bpmn        — BPMN diagrams rendered as SVG
@@ -87,6 +88,15 @@ Choose a built-in template, supply a full CompactDiagram JSON definition, or pat
 casen generate bpmn --template approval --process-id leave-request
 casen generate bpmn --input order.bpmn --dump-compact   # inspect as JSON for AI
 casen generate bpmn --input order.bpmn --patch '{"elements":[...],"flows":[...]}'
+```
+
+`casen gen types` turns BPMN files into TypeScript types for job workers — job types, their
+variables, output and headers, message names and error codes — and can check that every job type has
+a worker:
+
+```sh
+casen gen types processes/ --out src/generated/bpmn-types.ts
+casen gen types processes/ --check-workers "src/**/*.ts" --strict
 ```
 
 See [casen generate](/docs/cli/generate) for full documentation.
