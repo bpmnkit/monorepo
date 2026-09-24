@@ -217,6 +217,12 @@ importers:
       astro:
         specifier: ^6
         version: 6.0.3(@azure/identity@4.13.2(supports-color@10.2.2))(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.57.1)(supports-color@10.2.2)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      bpmn-moddle:
+        specifier: ^10.3.1
+        version: 10.3.1
+      bpmnlint:
+        specifier: ^11.14.0
+        version: 11.14.0
       concurrently:
         specifier: ^9.0.0
         version: 9.2.3
@@ -1006,6 +1012,9 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@bpmn-io/moddle-utils@0.3.0':
+    resolution: {integrity: sha512-0kz2PKfjIH3XFtO9Koxh7jV8e1DWWs4rgp0IczhJgluoRHf9Jhq8zX1H3wGJu6+lpg1Rkzc6YW1ezKz+2K8wTg==}
 
   '@capsizecss/unpack@4.0.0':
     resolution: {integrity: sha512-VERIM64vtTP1C4mxQ5thVT9fK0apjPFobqybMtA1UdUujWka24ERHbRHFGmpbbhp73MhV+KSsHQH9C6uOTdEQA==}
@@ -3067,6 +3076,17 @@ packages:
   boundary@2.0.0:
     resolution: {integrity: sha512-rJKn5ooC9u8q13IMCrW0RSp31pxBCHE3y9V/tp3TdWSLf8Em3p6Di4NBpfzbJge9YjjFEsD0RtFEjtvHL5VyEA==}
 
+  bpmn-moddle@10.3.1:
+    resolution: {integrity: sha512-xjJ8GzseRkjjM0MX/rODVB6iv+rhGLt8FCHJIovLAjJsDEAUjITfyiJZYczJ4pp3wmesbY3sQR7eRT+q5uroVA==}
+
+  bpmnlint-utils@1.1.1:
+    resolution: {integrity: sha512-Afdb77FmwNB3INyUfbzXW40yY+mc0qYU3SgDFeI4zTtduiVomOlfqoXiEaUIGI8Hyh7aVYpmf3O97P2w7x0DYQ==}
+
+  bpmnlint@11.14.0:
+    resolution: {integrity: sha512-SWZBV0B5vrjCbxKCuNrlZQSQ0gd6WwE79QaqYUI8nPAemteJuiz7vAHri22vvbem9EXCscuuQCwDaEsdMxS1tA==}
+    engines: {node: '>= 20'}
+    hasBin: true
+
   brace-expansion@5.0.9:
     resolution: {integrity: sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==}
     engines: {node: 20 || >=22}
@@ -3169,6 +3189,10 @@ packages:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
 
+  cli-table@0.3.11:
+    resolution: {integrity: sha512-IqLQi4lO0nIB4tcdTpN4LCB9FI3uqrJZK7RC515EnhZ6qBaglkIgICb1wjeAqpdoOabm1+SuQtkXIPdYC93jhQ==}
+    engines: {node: '>= 0.2.0'}
+
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
     engines: {node: '>=12'}
@@ -3187,6 +3211,14 @@ packages:
 
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
+
+  color-support@1.1.3:
+    resolution: {integrity: sha512-qiBjkpbMLO/HL68y+lh4q0/O1MZFj2RX6X/KmMa3+gJD3z+WwI1ZzDHysvqHGS3mP6mznPckpXmw1nI9cJjyRg==}
+    hasBin: true
+
+  colors@1.0.3:
+    resolution: {integrity: sha512-pFGrxThWcWQ2MsAz6RtgeWe4NK2kUE1WfsrvvlctdII745EW9I0yflqhe7++M5LEc7bV2c/9/5zc8sFcpL0Drw==}
+    engines: {node: '>=0.1.90'}
 
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
@@ -3671,6 +3703,9 @@ packages:
     resolution: {integrity: sha512-Wjlyrolmm8uDpm/ogGyXZXb1Z+Ca2B8NbJwqBVg0axK9GbBeoS7yGV6vjXnYdGm6X53iehEuxxbyiKp8QmN4Vw==}
     engines: {node: 18 || 20 || >=22}
 
+  globalyzer@0.1.0:
+    resolution: {integrity: sha512-40oNTM9UfG6aBmuKxk/giHn5nQ8RVz/SS4Ir6zgzOv9/qC3kKZ9v4etGTcJbEl/NyVQH7FGU7d+X1egr57Md2Q==}
+
   globby@11.1.0:
     resolution: {integrity: sha512-jhIXaOzy1sb8IyocaruWSn1TjmnBVs8Ayhcy83rmxNJ8q2uWKCAj3CnJY+KpGSXCueAPc0i05kVvVKtP1t9S3g==}
     engines: {node: '>=10'}
@@ -3678,6 +3713,9 @@ packages:
   globby@14.1.0:
     resolution: {integrity: sha512-0Ia46fDOaT7k4og1PDW4YbodWWr3scS2vAr2lTbsplOt2WkKp0vQbkI9wKis/T5LV/dqPjO3bpS/z6GTJB82LA==}
     engines: {node: '>=18'}
+
+  globrex@0.1.2:
+    resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
 
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
@@ -4303,6 +4341,9 @@ packages:
     resolution: {integrity: sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==}
     engines: {node: '>=10'}
 
+  min-dash@5.1.0:
+    resolution: {integrity: sha512-HAvN6XzmCQj+js43G9sJRRw8kj/7DvoxN7qhoIN9Xo5ZN1NMljtpyKs/NunXmw0QSWwlgZzNv6tLeEa4xaZ0tg==}
+
   miniflare@4.20260708.1:
     resolution: {integrity: sha512-c94O9zRDISdqO18EHt6l0iF/fWgWt8p18PJvRsA/L/NJZ9Cfke3s/F5Blg1XXF7WDutVRzWVWy8Vy4LaT5ifsA==}
     engines: {node: '>=22.0.0'}
@@ -4324,6 +4365,15 @@ packages:
 
   mkdirp-classic@0.5.3:
     resolution: {integrity: sha512-gKLcREMhtuZRwRAfqP3RFW+TK4JqApVBtOIftVgjuABpAtpxhPGaDcfvbhNvD0B8iD1oUr/txX35NjcaY6Ns/A==}
+
+  moddle-xml@12.3.1:
+    resolution: {integrity: sha512-XbAQDWCG2ZRch3odmQigJ4GwTqrOVBx0+JHEAgdw0U3MkBsWa9LAbO//S5RPdYMcRO87E63r/R/I3CoMef6ncA==}
+    engines: {node: '>= 18'}
+    peerDependencies:
+      moddle: '>= 6.2.0'
+
+  moddle@8.2.1:
+    resolution: {integrity: sha512-20qzO/ZpMGO9j9gdQgXk9bfGxb9wA3JKnGth/21YZKODLrZE4RW/uVMIL5pTskYm34Z61DucBEPkq93qByNsBQ==}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -4875,6 +4925,10 @@ packages:
     resolution: {integrity: sha512-21IYA3Q5cQf089Z6tgaUTr7lDAyzoTPx5HRtbhsME8Udispad8dC/+sziTNugOEx54ilvatQ9YCzl4KQLPcRHA==}
     engines: {node: '>=11.0.0'}
 
+  saxen@11.2.0:
+    resolution: {integrity: sha512-2bG564AAJcm/3vyZC0Uhs/mACrH+4AHMaKHKAB2M5xMqomUZa27FQ7MYaQGFKVcJk/MVzSEQ34A8QZWW+eiWEw==}
+    engines: {node: '>= 20.12'}
+
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
 
@@ -5139,6 +5193,9 @@ packages:
   thread-stream@4.0.0:
     resolution: {integrity: sha512-4iMVL6HAINXWf1ZKZjIPcz5wYaOdPhtO8ATvZ+Xqp3BTdaqtAwQkNmKORqcIo5YkQqGXq5cwfswDwMqqQNrpJA==}
     engines: {node: '>=20'}
+
+  tiny-glob@0.2.9:
+    resolution: {integrity: sha512-g/55ssRPUjShh+xkfx9UPDXqhckHEsHr4Vd9zX55oSdGZc/MD0m3sferOkwWtp98bv+kcVfEHtRJgBVJzelrzg==}
 
   tiny-inflate@1.0.3:
     resolution: {integrity: sha512-pkY1fj1cKHb2seWDy0B16HeWyczlJA9/WW3u3c4z/NiWDsO3DOU5D7nhTLE9CF0yXv/QZFY7sEJmj24dK+Rrqw==}
@@ -6254,6 +6311,10 @@ snapshots:
 
   '@biomejs/cli-win32-x64@1.9.4':
     optional: true
+
+  '@bpmn-io/moddle-utils@0.3.0':
+    dependencies:
+      min-dash: 5.1.0
 
   '@capsizecss/unpack@4.0.0':
     dependencies:
@@ -8173,6 +8234,27 @@ snapshots:
 
   boundary@2.0.0: {}
 
+  bpmn-moddle@10.3.1:
+    dependencies:
+      min-dash: 5.1.0
+      moddle: 8.2.1
+      moddle-xml: 12.3.1(moddle@8.2.1)
+
+  bpmnlint-utils@1.1.1: {}
+
+  bpmnlint@11.14.0:
+    dependencies:
+      '@bpmn-io/moddle-utils': 0.3.0
+      ansi-colors: 4.1.3
+      bpmn-moddle: 10.3.1
+      bpmnlint-utils: 1.1.1
+      cli-table: 0.3.11
+      color-support: 1.1.3
+      min-dash: 5.1.0
+      mri: 1.2.0
+      pluralize: 8.0.0
+      tiny-glob: 0.2.9
+
   brace-expansion@5.0.9:
     dependencies:
       balanced-match: 4.0.4
@@ -8282,6 +8364,10 @@ snapshots:
 
   ci-info@4.4.0: {}
 
+  cli-table@0.3.11:
+    dependencies:
+      colors: 1.0.3
+
   cliui@8.0.1:
     dependencies:
       string-width: 4.2.3
@@ -8297,6 +8383,10 @@ snapshots:
       color-name: 1.1.4
 
   color-name@1.1.4: {}
+
+  color-support@1.1.3: {}
+
+  colors@1.0.3: {}
 
   combined-stream@1.0.8:
     dependencies:
@@ -8825,6 +8915,8 @@ snapshots:
       minipass: 7.1.3
       path-scurry: 2.0.2
 
+  globalyzer@0.1.0: {}
+
   globby@11.1.0:
     dependencies:
       array-union: 2.1.0
@@ -8842,6 +8934,8 @@ snapshots:
       path-type: 6.0.0
       slash: 5.1.0
       unicorn-magic: 0.3.0
+
+  globrex@0.1.2: {}
 
   gopd@1.2.0: {}
 
@@ -9663,6 +9757,8 @@ snapshots:
 
   mimic-response@3.1.0: {}
 
+  min-dash@5.1.0: {}
+
   miniflare@4.20260708.1:
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
@@ -9686,6 +9782,16 @@ snapshots:
   mitt@3.0.1: {}
 
   mkdirp-classic@0.5.3: {}
+
+  moddle-xml@12.3.1(moddle@8.2.1):
+    dependencies:
+      min-dash: 5.1.0
+      moddle: 8.2.1
+      saxen: 11.2.0
+
+  moddle@8.2.1:
+    dependencies:
+      min-dash: 5.1.0
 
   mri@1.2.0: {}
 
@@ -10278,6 +10384,8 @@ snapshots:
 
   sax@1.5.0: {}
 
+  saxen@11.2.0: {}
+
   scheduler@0.27.0: {}
 
   secretlint@10.2.2(supports-color@10.2.2):
@@ -10599,6 +10707,11 @@ snapshots:
   thread-stream@4.0.0:
     dependencies:
       real-require: 0.2.0
+
+  tiny-glob@0.2.9:
+    dependencies:
+      globalyzer: 0.1.0
+      globrex: 0.1.2
 
   tiny-inflate@1.0.3: {}
 

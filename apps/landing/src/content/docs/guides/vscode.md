@@ -83,6 +83,10 @@ judged against Camunda 8 deployability, because "this service task has no
 `zeebe:taskDefinition`" is not a defect in a diagram that was never going to be deployed to
 Zeebe. Turn on `bpmnkit.lint.forceEngineRules` to apply those rules anyway.
 
+A `.bpmnlintrc` in the diagram's folder or above is honoured the way `casen lint` honours it.
+When the workspace has `bpmnlint` installed, bpmnlint's own findings, plugin rules included,
+appear with source `bpmnlint`. See [bpmnlint Compatibility](/docs/guides/bpmnlint).
+
 ### A visual diff in Source Control
 
 Right-click a `.bpmn` file in Source Control to see it against `HEAD`, or select exactly two
@@ -149,6 +153,7 @@ dedented so the diagram is not mostly margin.
 | `bpmnkit.lint.enabled` | `true` | Report findings in the Problems panel |
 | `bpmnkit.lint.run` | `onType` | `onType` or `onSave` |
 | `bpmnkit.lint.forceEngineRules` | `false` | Apply Camunda 8 rules to an engine-neutral diagram |
+| `bpmnkit.lint.bpmnlintrc` | `true` | Honour the nearest `.bpmnlintrc`, and run the workspace's bpmnlint if installed |
 | `bpmnkit.viewer.grid` | `true` | Dot grid behind the diagram |
 | `bpmnkit.viewer.minimap` | `true` | Minimap in the BPMN viewer |
 | `bpmnkit.simulation.enabled` | `true` | Offer step-through simulation in the preview |

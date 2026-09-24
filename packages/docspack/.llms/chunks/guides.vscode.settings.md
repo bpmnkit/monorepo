@@ -5,6 +5,7 @@
 | `bpmnkit.lint.enabled` | `true` | Report findings in the Problems panel |
 | `bpmnkit.lint.run` | `onType` | `onType` or `onSave` |
 | `bpmnkit.lint.forceEngineRules` | `false` | Apply Camunda 8 rules to an engine-neutral diagram |
+| `bpmnkit.lint.bpmnlintrc` | `true` | Honour the nearest `.bpmnlintrc`, and run the workspace's bpmnlint if installed |
 | `bpmnkit.viewer.grid` | `true` | Dot grid behind the diagram |
 | `bpmnkit.viewer.minimap` | `true` | Minimap in the BPMN viewer |
 | `bpmnkit.simulation.enabled` | `true` | Offer step-through simulation in the preview |

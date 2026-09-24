@@ -58,6 +58,26 @@ export type {
 	LintOptions,
 	LintReport,
 } from "./bpmn/lint.js"
+export {
+	BPMNLINT_RULE_MAP,
+	applyBpmnlintConfig,
+	bpmnlintRuleForFinding,
+	normalizeBpmnlintRuleName,
+	parseBpmnlintConfig,
+	resolveBpmnlintConfig,
+} from "./bpmn/bpmnlint.js"
+export type {
+	ApplyBpmnlintOptions,
+	BpmnlintApplication,
+	BpmnlintConfig,
+	BpmnlintMatch,
+	BpmnlintRuleMapping,
+	BpmnlintRuleSetting,
+	BpmnlintRuleValue,
+	BpmnlintSeverity,
+	ResolvedBpmnlintConfig,
+	UnsupportedBpmnlintRule,
+} from "./bpmn/bpmnlint.js"
 export { diffDiagram } from "./bpmn/diagram-diff.js"
 export {
 	exportPreserving,

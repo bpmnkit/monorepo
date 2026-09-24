@@ -1,7 +1,21 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { applyConnectorTemplate } from "@bpmnkit/connectors"
-import { Bpmn, compactify, detectExecutionPlatform, lintCategories, optimize } from "@bpmnkit/core"
-import type { BpmnOperation, OptimizationCategory } from "@bpmnkit/core"
+import {
+	Bpmn,
+	applyBpmnlintConfig,
+	compactify,
+	detectExecutionPlatform,
+	lintCategories,
+	optimize,
+} from "@bpmnkit/core"
+import type {
+	BpmnOperation,
+	OptimizationCategory,
+	OptimizationFinding,
+	OptimizationSeverity,
+	UnsupportedBpmnlintRule,
+} from "@bpmnkit/core"
+import { type BpmnlintReport, prepareBpmnlint } from "@bpmnkit/core/node"
 import type { Command, CommandGroup } from "../types.js"
 
 /** Resolves a connector template's missing required keys via @bpmnkit/connectors, for the `connector/*` lint rule. */
@@ -23,6 +37,45 @@ const SEVERITY_SYMBOL: Record<string, string> = {
 }
 
 const DEFAULT_SERVER = "http://localhost:3033"
+
+/** Real bpmnlint's findings are listed under this category, and selected by it in `--categories`. */
+const BPMNLINT_CATEGORY = "bpmnlint"
+
+/** One line of `casen lint` output — a BPMN Kit finding or a report from real bpmnlint. */
+interface LintRow {
+	id: string
+	category: string
+	severity: OptimizationSeverity
+	message: string
+	suggestion: string
+	processId: string
+	elementIds: string[]
+	bpmnlintRule?: string
+}
+
+function reportRow(report: BpmnlintReport): LintRow {
+	return {
+		id: `${BPMNLINT_CATEGORY}/${report.rule}`,
+		category: BPMNLINT_CATEGORY,
+		severity: report.severity,
+		message: report.message,
+		suggestion: report.documentationUrl ?? "",
+		processId: "",
+		elementIds: report.elementId !== undefined ? [report.elementId] : [],
+		bpmnlintRule: report.rule,
+	}
+}
+
+function describeUnsupported(rule: UnsupportedBpmnlintRule): string {
+	switch (rule.reason) {
+		case "unresolved-extends":
+			return `${rule.name} (a plugin config — install bpmnlint in the project to use it)`
+		case "plugin-rule":
+			return `${rule.name} (a plugin rule — install bpmnlint in the project to run it)`
+		case "unknown-rule":
+			return `${rule.name} (not a bpmnlint built-in rule)`
+	}
+}
 
 const lintCmd: Command = {
 	name: "lint",
@@ -50,12 +103,23 @@ const lintCmd: Command = {
 			description: "Auto-apply all fixable findings and write the result back to the file",
 			type: "boolean",
 		},
+		{
+			name: "bpmnlintrc",
+			description:
+				"Honour the nearest .bpmnlintrc (file's directory and up), running the project's own bpmnlint when installed. --no-bpmnlintrc ignores it.",
+			type: "boolean",
+			default: true,
+		},
 	],
 	examples: [
 		{ description: "Lint a file", command: "casen lint lint order-process.bpmn" },
 		{
 			description: "Deploy-readiness gate (errors only)",
 			command: "casen lint lint order-process.bpmn --profile deploy",
+		},
+		{
+			description: "Ignore the project's .bpmnlintrc",
+			command: "casen lint lint order-process.bpmn --no-bpmnlintrc",
 		},
 	],
 	async run(ctx) {
@@ -87,13 +151,55 @@ const lintCmd: Command = {
 			categories: resolvedCategories,
 			resolveConnectorRequirements,
 		})
-		const findings = deployProfile
-			? report.findings.filter((f) => f.severity === "error")
-			: report.findings
+
+		// A .bpmnlintrc governs the findings that stand in for bpmnlint rules. When
+		// the project has bpmnlint installed, it runs the configured rules itself
+		// (plugins included) and BPMN Kit's equivalents step aside. Its findings
+		// sit in their own category, so narrowing --categories away from it also
+		// keeps it from taking BPMN Kit's equivalents with it.
+		const setup =
+			ctx.flags.bpmnlintrc === false
+				? undefined
+				: await prepareBpmnlint(filePath, xml, {
+						runBpmnlint:
+							categories === undefined || (categories as string[]).includes(BPMNLINT_CATEGORY),
+					})
+		const applied =
+			setup === undefined
+				? undefined
+				: applyBpmnlintConfig(defs, report.findings, setup.config, {
+						delegated: setup.delegated,
+						categories: resolvedCategories,
+					})
+		const governed: (OptimizationFinding | LintRow)[] = [
+			...(applied?.findings ?? report.findings),
+			...(setup?.reports.map(reportRow) ?? []),
+		]
+		const findings = deployProfile ? governed.filter((f) => f.severity === "error") : governed
+
+		const notices: string[] = []
+		if (setup !== undefined) {
+			const how = setup.delegated
+				? `bpmnlint ${setup.version ?? ""}`.trimEnd()
+				: "BPMN Kit's equivalents of its rules"
+			notices.push(`Using ${setup.path} (${how}).`)
+			if (setup.failure !== undefined) {
+				notices.push(
+					`The project's bpmnlint could not run (${setup.failure}); BPMN Kit's equivalents were used instead.`,
+				)
+			}
+			if (applied !== undefined && applied.unsupported.length > 0) {
+				notices.push(
+					`Not applied — no BPMN Kit equivalent: ${applied.unsupported.map(describeUnsupported).join(", ")}.`,
+				)
+			}
+		}
 
 		// --fix: apply all auto-fixable findings and write back
 		if (ctx.flags.fix) {
-			const fixable = findings.filter((f) => f.applyFix)
+			const fixable = findings.filter(
+				(f): f is OptimizationFinding => "applyFix" in f && f.applyFix !== undefined,
+			)
 			for (const f of fixable) f.applyFix?.(defs)
 			if (fixable.length === 0) {
 				ctx.output.ok("No auto-fixable issues found.")
@@ -108,9 +214,13 @@ const lintCmd: Command = {
 
 		const formatFlag = ctx.flags.format
 		if (formatFlag === "json") {
+			// stdout stays a JSON array; what the config did (or could not do) goes to stderr.
+			for (const notice of notices) process.stderr.write(`${notice}\n`)
 			ctx.output.print(findings)
 			return
 		}
+
+		for (const notice of notices) ctx.output.info(notice)
 
 		if (findings.length === 0) {
 			ctx.output.ok("No issues found.")
@@ -125,7 +235,8 @@ const lintCmd: Command = {
 		for (const f of findings) {
 			const symbol = SEVERITY_SYMBOL[f.severity] ?? "·"
 			const elIds = f.elementIds.length > 0 ? ` [${f.elementIds.join(", ")}]` : ""
-			ctx.output.info(`${symbol} [${f.category}]${elIds} ${f.message}`)
+			const rule = f.bpmnlintRule !== undefined ? ` (${f.bpmnlintRule})` : ""
+			ctx.output.info(`${symbol} [${f.category}]${elIds} ${f.message}${rule}`)
 		}
 
 		const total = findings.length

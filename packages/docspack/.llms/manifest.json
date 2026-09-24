@@ -67,7 +67,7 @@
 		{
 			"id": "cli.casen.bpmn-generation-pipeline",
 			"file": "chunks/cli.casen.bpmn-generation-pipeline.md",
-			"tokens": 280,
+			"tokens": 341,
 			"tags": [
 				"cli",
 				"casen",
@@ -1218,6 +1218,102 @@
 			]
 		},
 		{
+			"id": "guides.bpmnlint",
+			"file": "chunks/guides.bpmnlint.md",
+			"tokens": 488,
+			"tags": [
+				"guides",
+				"bpmnlint"
+			],
+			"entities": [
+				"camunda-compat/timer",
+				"import()"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.casen-lint",
+			"file": "chunks/guides.bpmnlint.casen-lint.md",
+			"tokens": 434,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"casen",
+				"lint"
+			],
+			"entities": [
+				"bpmnlintRule",
+				"moddleExtensions"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.vs-code",
+			"file": "chunks/guides.bpmnlint.vs-code.md",
+			"tokens": 162,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"code"
+			],
+			"entities": [
+				"bpmnkit.lint.bpmnlintrc"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.rule-mapping",
+			"file": "chunks/guides.bpmnlint.rule-mapping.md",
+			"tokens": 1025,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"rule",
+				"mapping"
+			],
+			"entities": [
+				"flow/ad-hoc-start-end-event",
+				"flow/conditional-event-no-condition",
+				"feel/empty-condition",
+				"flow/no-end-event",
+				"flow/sub-process-no-end-event",
+				"flow/event-gateway-invalid",
+				"flow/event-sub-process-untyped-start",
+				"flow/multi-incoming-task",
+				"pattern/global-element",
+				"naming/unlabeled-task",
+				"naming/unlabeled-start-event",
+				"naming/unlabeled-end-event"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.rule-mapping-2",
+			"file": "chunks/guides.bpmnlint.rule-mapping-2.md",
+			"tokens": 192,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"rule",
+				"mapping"
+			],
+			"entities": [
+				"bpmnlint/label-required"
+			]
+		},
+		{
+			"id": "guides.bpmnlint.from-your-own-code",
+			"file": "chunks/guides.bpmnlint.from-your-own-code.md",
+			"tokens": 233,
+			"tags": [
+				"guides",
+				"bpmnlint",
+				"own",
+				"code"
+			],
+			"entities": [
+				"@bpmnkit/core",
+				"bpmnlintRule",
+				"@bpmnkit/core/node"
+			]
+		},
+		{
 			"id": "guides.building-processes.service-tasks",
 			"file": "chunks/guides.building-processes.service-tasks.md",
 			"tokens": 202,
@@ -1939,7 +2035,7 @@
 		{
 			"id": "guides.vscode.what-it-does-findings-in-the-problems-panel",
 			"file": "chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md",
-			"tokens": 150,
+			"tokens": 203,
 			"tags": [
 				"guides",
 				"vscode",
@@ -2034,7 +2130,7 @@
 		{
 			"id": "guides.vscode.settings",
 			"file": "chunks/guides.vscode.settings.md",
-			"tokens": 241,
+			"tokens": 268,
 			"tags": [
 				"guides",
 				"vscode",
@@ -2046,6 +2142,7 @@
 				"onType",
 				"onSave",
 				"bpmnkit.lint.forceEngineRules",
+				"bpmnkit.lint.bpmnlintrc",
 				"bpmnkit.viewer.grid",
 				"bpmnkit.viewer.minimap",
 				"bpmnkit.simulation.enabled",

@@ -9,11 +9,22 @@
  *
  * Only `.bpmn` is linted. The optimizer analyses BPMN; a DMN or form file has
  * nothing for it to say.
+ *
+ * A `.bpmnlintrc` in the file's folder or above is honoured the way `casen
+ * lint` honours it: its levels govern BPMN Kit's equivalent findings, and when
+ * the workspace has bpmnlint installed, that bpmnlint runs the configured rules
+ * — plugins included — in place of the equivalents.
  */
 
-import { Bpmn, lintDiagram } from "@bpmnkit/core"
+import { Bpmn, type BpmnDefinitions, lintDiagram } from "@bpmnkit/core"
+import { type BpmnlintSetup, prepareBpmnlint } from "@bpmnkit/core/node"
 import * as vscode from "vscode"
-import { placeDiagnostics } from "./diagnostics.js"
+import {
+	type PlacedDiagnostic,
+	bpmnlintNotice,
+	placeBpmnlintReports,
+	placeDiagnostics,
+} from "./diagnostics.js"
 import { kindForPath } from "./documents.js"
 
 const SEVERITY: Record<"error" | "warning" | "info", vscode.DiagnosticSeverity> = {
@@ -41,6 +52,7 @@ export class LintProvider {
 			vscode.workspace.onDidChangeConfiguration((event) => {
 				if (event.affectsConfiguration("bpmnkit.lint")) provider.refreshAll()
 			}),
+			...provider.watchBpmnlintrc(),
 			new vscode.Disposable(() => provider.dispose()),
 		]
 
@@ -72,27 +84,65 @@ export class LintProvider {
 
 		if (immediate) {
 			this.timers.delete(key)
-			this.run(document)
+			void this.run(document)
 			return
 		}
 		this.timers.set(
 			key,
 			setTimeout(() => {
 				this.timers.delete(key)
-				this.run(document)
+				void this.run(document)
 			}, DEBOUNCE_MS),
 		)
 	}
 
-	private run(document: vscode.TextDocument): void {
-		const text = document.getText()
-		let report: ReturnType<typeof lintDiagram>
+	/** A `.bpmnlintrc` appearing, changing or going away changes every file under it. */
+	private watchBpmnlintrc(): vscode.Disposable[] {
+		const watcher = vscode.workspace.createFileSystemWatcher("**/.bpmnlintrc")
+		return [
+			watcher,
+			watcher.onDidCreate(() => this.refreshAll()),
+			watcher.onDidChange(() => this.refreshAll()),
+			watcher.onDidDelete(() => this.refreshAll()),
+		]
+	}
+
+	/**
+	 * The `.bpmnlintrc` setup for a document, or a problem to show instead.
+	 * Only files on disk have a folder to find one in.
+	 */
+	private async bpmnlint(
+		document: vscode.TextDocument,
+		text: string,
+	): Promise<{ setup?: BpmnlintSetup; problem?: PlacedDiagnostic }> {
+		const settings = vscode.workspace.getConfiguration("bpmnkit", document.uri)
+		if (document.uri.scheme !== "file" || !settings.get<boolean>("lint.bpmnlintrc", true)) {
+			return {}
+		}
 		try {
-			report = lintDiagram(Bpmn.parse(text), {
-				forceEngineRules: vscode.workspace
-					.getConfiguration("bpmnkit", document.uri)
-					.get<boolean>("lint.forceEngineRules", false),
-			})
+			const setup = await prepareBpmnlint(document.uri.fsPath, text)
+			return setup === undefined ? {} : { setup }
+		} catch (err) {
+			// A broken .bpmnlintrc is the user's to fix; say so where they are looking.
+			return {
+				problem: {
+					span: { offset: 0, length: 0 },
+					severity: "error",
+					message: (err as Error).message,
+					suggestion: "Fix the .bpmnlintrc, or turn off bpmnkit.lint.bpmnlintrc.",
+					code: "bpmnlintrc",
+					source: "bpmnkit",
+				},
+			}
+		}
+	}
+
+	private async run(document: vscode.TextDocument): Promise<void> {
+		const text = document.getText()
+		const version = document.version
+		let definitions: BpmnDefinitions
+		try {
+			definitions = Bpmn.parse(text)
 		} catch {
 			// A file mid-edit is routinely not parseable. The XML language service
 			// already says so; repeating it here in a different voice, and then
@@ -100,15 +150,38 @@ export class LintProvider {
 			return
 		}
 
+		const { setup, problem } = await this.bpmnlint(document, text)
+		// Typing continued while bpmnlint ran; the run scheduled for that edit wins.
+		if (document.version !== version || document.isClosed) return
+
+		const report = lintDiagram(definitions, {
+			forceEngineRules: vscode.workspace
+				.getConfiguration("bpmnkit", document.uri)
+				.get<boolean>("lint.forceEngineRules", false),
+			...(setup !== undefined
+				? { bpmnlint: setup.config, bpmnlintDelegated: setup.delegated }
+				: {}),
+		})
+		const notice =
+			setup === undefined
+				? undefined
+				: bpmnlintNotice(setup.path, report.bpmnlintUnsupported ?? [], setup.failure)
+		const placedAll = [
+			...placeDiagnostics(text, report),
+			...placeBpmnlintReports(text, setup?.reports ?? []),
+			...(notice !== undefined ? [notice] : []),
+			...(problem !== undefined ? [problem] : []),
+		]
+
 		this.collection.set(
 			document.uri,
-			placeDiagnostics(text, report).map((placed) => {
+			placedAll.map((placed) => {
 				const range = new vscode.Range(
 					document.positionAt(placed.span.offset),
 					document.positionAt(placed.span.offset + placed.span.length),
 				)
 				const diagnostic = new vscode.Diagnostic(range, placed.message, SEVERITY[placed.severity])
-				diagnostic.source = "bpmnkit"
+				diagnostic.source = placed.source
 				diagnostic.code = placed.code
 				// The panel shows one line per problem, so the suggestion becomes a
 				// child row instead of being folded into the message.

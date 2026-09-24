@@ -185,6 +185,11 @@
 					"default": true,
 					"description": "Report BPMN static-analysis findings in the Problems panel."
 				},
+				"bpmnkit.lint.bpmnlintrc": {
+					"type": "boolean",
+					"default": true,
+					"description": "Honour the nearest .bpmnlintrc (the file's folder and up): its rule levels govern the equivalent findings, and when the workspace has bpmnlint and bpmn-moddle installed, bpmnlint itself runs the configured rules, plugins included."
+				},
 				"bpmnkit.lint.forceEngineRules": {
 					"type": "boolean",
 					"default": false,

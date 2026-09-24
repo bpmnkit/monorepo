@@ -9,5 +9,9 @@ judged against Camunda 8 deployability, because "this service task has no
 `zeebe:taskDefinition`" is not a defect in a diagram that was never going to be deployed to
 Zeebe. Turn on `bpmnkit.lint.forceEngineRules` to apply those rules anyway.
 
+A `.bpmnlintrc` in the diagram's folder or above is honoured the way `casen lint` honours it.
+When the workspace has `bpmnlint` installed, bpmnlint's own findings, plugin rules included,
+appear with source `bpmnlint`. See [bpmnlint Compatibility](/docs/guides/bpmnlint).
+
 ---
 Source: https://bpmnkit.com/docs/guides/vscode
