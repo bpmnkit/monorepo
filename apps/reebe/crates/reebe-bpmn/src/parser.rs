@@ -31,17 +31,25 @@ impl From<quick_xml::events::attributes::AttrError> for BpmnParseError {
     }
 }
 
-/// Pre-scan XML for `<bpmn:message>` and `<bpmn:signal>` declarations so that
-/// forward references (event definitions appearing before the declaration) are resolved.
+/// Root declarations that event definitions refer to by id.
+#[derive(Default)]
+struct PrescanRefs {
+    messages: HashMap<String, String>,         // message id -> name
+    signals: HashMap<String, String>,          // signal id -> name
+    message_keys: HashMap<String, String>,     // message id -> correlation key
+    error_codes: HashMap<String, String>,      // error id -> errorCode
+    escalation_codes: HashMap<String, String>, // escalation id -> escalationCode
+}
+
+/// Pre-scan XML for `<bpmn:message>`, `<bpmn:signal>`, `<bpmn:error>` and
+/// `<bpmn:escalation>` declarations so that forward references (event definitions
+/// appearing before the declaration) are resolved.
 ///
 /// Also collects the `zeebe:subscription` correlation key a root `<bpmn:message>`
 /// carries — where Camunda Modeler and Web Modeler put it — keyed by message id.
-fn prescan_refs(
-    xml: &str,
-) -> (HashMap<String, String>, HashMap<String, String>, HashMap<String, String>) {
-    let mut messages: HashMap<String, String> = HashMap::new();
-    let mut signals: HashMap<String, String> = HashMap::new();
-    let mut message_keys: HashMap<String, String> = HashMap::new();
+fn prescan_refs(xml: &str) -> PrescanRefs {
+    let mut refs = PrescanRefs::default();
+    let PrescanRefs { messages, signals, message_keys, error_codes, escalation_codes } = &mut refs;
     let mut current_message: Option<String> = None;
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
@@ -74,6 +82,18 @@ fn prescan_refs(
                             signals.insert(id, n);
                         }
                     }
+                    "error" => {
+                        if let (Some(id), Some(code)) = (get_attr(e, "id"), get_attr(e, "errorCode")) {
+                            error_codes.insert(id, code);
+                        }
+                    }
+                    "escalation" => {
+                        if let (Some(id), Some(code)) =
+                            (get_attr(e, "id"), get_attr(e, "escalationCode"))
+                        {
+                            escalation_codes.insert(id, code);
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -87,7 +107,7 @@ fn prescan_refs(
         }
         buf.clear();
     }
-    (messages, signals, message_keys)
+    refs
 }
 
 /// Parse a BPMN 2.0 XML string and return all process definitions.
@@ -98,13 +118,15 @@ pub fn parse_bpmn(xml: &str) -> Result<Vec<BpmnProcess>, BpmnParseError> {
     let mut processes: Vec<BpmnProcess> = Vec::new();
 
     // Pre-scan to resolve forward references for messages and signals
-    let (pre_messages, pre_signals, pre_message_keys) = prescan_refs(xml);
+    let refs = prescan_refs(xml);
 
     // We use a stateful parser with a stack
     let mut parser_state = ParserState::new();
-    parser_state.messages = pre_messages;
-    parser_state.signals = pre_signals;
-    parser_state.message_keys = pre_message_keys;
+    parser_state.messages = refs.messages;
+    parser_state.signals = refs.signals;
+    parser_state.message_keys = refs.message_keys;
+    parser_state.error_codes = refs.error_codes;
+    parser_state.escalation_codes = refs.escalation_codes;
     let mut buf = Vec::new();
 
     loop {
@@ -227,6 +249,9 @@ struct ParserState {
     signals: HashMap<String, String>, // id -> name
     // Correlation keys declared on root messages
     message_keys: HashMap<String, String>, // message id -> correlation key
+    // Codes of root errors and escalations, so a definition's ref resolves to its code
+    error_codes: HashMap<String, String>,
+    escalation_codes: HashMap<String, String>,
     // Event subscription key seen before the event's message definition
     pending_correlation_key: Option<String>,
     // Current text content (for CDATA elements)
@@ -242,10 +267,23 @@ impl ParserState {
             messages: HashMap::new(),
             signals: HashMap::new(),
             message_keys: HashMap::new(),
+            error_codes: HashMap::new(),
+            escalation_codes: HashMap::new(),
             pending_correlation_key: None,
             current_text: String::new(),
             pending_event_def: None,
         }
+    }
+
+    /// The `errorCode` of the `<bpmn:error>` an `errorRef` names; the ref itself
+    /// when the error declares no code.
+    fn error_code(&self, error_ref: Option<String>) -> Option<String> {
+        error_ref.map(|r| self.error_codes.get(&r).cloned().unwrap_or(r))
+    }
+
+    /// The `escalationCode` of the `<bpmn:escalation>` an `escalationRef` names.
+    fn escalation_code(&self, escalation_ref: Option<String>) -> Option<String> {
+        escalation_ref.map(|r| self.escalation_codes.get(&r).cloned().unwrap_or(r))
     }
 
     fn current_process(&mut self) -> Option<&mut BpmnProcess> {
@@ -395,10 +433,11 @@ impl ParserState {
                 ca.name = get_attr(e, "name");
                 self.stack.push(ParseContext::CallActivity(ca));
             }
-            "subProcess" => {
-                let id = get_required_attr(e, "subProcess", "id")?;
+            "subProcess" | "adHocSubProcess" => {
+                let id = get_required_attr(e, name, "id")?;
                 let mut sp = SubProcess::new(id);
                 sp.name = get_attr(e, "name");
+                sp.ad_hoc = name == "adHocSubProcess";
                 sp.triggered_by_event = get_attr(e, "triggeredByEvent")
                     .map(|v| v == "true")
                     .unwrap_or(false);
@@ -491,7 +530,7 @@ impl ParserState {
             "errorEventDefinition" => {
                 let error_ref = get_attr(e, "errorRef");
                 self.pending_event_def = Some(EventDefinition::Error(ErrorEventDefinition {
-                    error_code: error_ref,
+                    error_code: self.error_code(error_ref),
                     error_message_variable: None,
                     error_code_variable: None,
                 }));
@@ -499,7 +538,7 @@ impl ParserState {
             "escalationEventDefinition" => {
                 let escalation_ref = get_attr(e, "escalationRef");
                 self.pending_event_def = Some(EventDefinition::Escalation(EscalationEventDefinition {
-                    escalation_code: escalation_ref,
+                    escalation_code: self.escalation_code(escalation_ref),
                 }));
             }
             "terminateEventDefinition" => {
@@ -700,7 +739,7 @@ impl ParserState {
             }
             "errorEventDefinition" => {
                 self.pending_event_def = Some(EventDefinition::Error(ErrorEventDefinition {
-                    error_code: get_attr(e, "errorRef"),
+                    error_code: self.error_code(get_attr(e, "errorRef")),
                     error_message_variable: None,
                     error_code_variable: None,
                 }));
@@ -708,7 +747,7 @@ impl ParserState {
             }
             "escalationEventDefinition" => {
                 self.pending_event_def = Some(EventDefinition::Escalation(EscalationEventDefinition {
-                    escalation_code: get_attr(e, "escalationRef"),
+                    escalation_code: self.escalation_code(get_attr(e, "escalationRef")),
                 }));
                 self.finalize_event_definition();
             }
@@ -831,7 +870,7 @@ impl ParserState {
                     self.add_element_to_scope(id, FlowElement::CallActivity(ca));
                 }
             }
-            "subProcess" => {
+            "subProcess" | "adHocSubProcess" => {
                 if let Some(ParseContext::SubProcess(sp)) = self.stack.pop() {
                     let id = sp.id.clone();
                     self.add_element_to_scope(id, FlowElement::SubProcess(sp));
@@ -1024,6 +1063,7 @@ impl ParserState {
             match ctx {
                 ParseContext::ServiceTask(t) => { t.task_definition = Some(def); return; }
                 ParseContext::SendTask(t) => { t.task_definition = Some(def); return; }
+                ParseContext::SubProcess(sp) if sp.ad_hoc => { sp.task_definition = Some(def); return; }
                 _ => {}
             }
         }

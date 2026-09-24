@@ -159,6 +159,11 @@ impl InMemoryBackend {
         self.store.lock().unwrap().process_definitions.values().cloned().collect()
     }
 
+    /// List all message subscriptions (for snapshot API).
+    pub fn list_message_subscriptions(&self) -> Vec<MessageSubscription> {
+        self.store.lock().unwrap().message_subscriptions.values().cloned().collect()
+    }
+
     /// List all user tasks (for snapshot API).
     pub fn list_user_tasks(&self) -> Vec<UserTask> {
         self.store.lock().unwrap().user_tasks.values().cloned().collect()
@@ -383,6 +388,22 @@ impl StateBackend for InMemoryBackend {
         let mut count = 0u64;
         for job in store.jobs.values_mut() {
             if job.process_instance_key == process_instance_key
+                && matches!(job.state.as_str(), "ACTIVATABLE" | "ACTIVATED")
+            {
+                job.state = "CANCELED".to_string();
+                job.worker = None;
+                job.deadline = None;
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
+    async fn cancel_jobs_by_element_instance(&self, element_instance_key: i64) -> Result<u64> {
+        let mut store = self.store.lock().unwrap();
+        let mut count = 0u64;
+        for job in store.jobs.values_mut() {
+            if job.element_instance_key == element_instance_key
                 && matches!(job.state.as_str(), "ACTIVATABLE" | "ACTIVATED")
             {
                 job.state = "CANCELED".to_string();

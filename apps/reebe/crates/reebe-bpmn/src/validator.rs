@@ -88,8 +88,10 @@ fn validate_element(
     let is_start = matches!(element, FlowElement::StartEvent(_));
     let is_end = matches!(element, FlowElement::EndEvent(_));
     let is_boundary = matches!(element, FlowElement::BoundaryEvent(_));
+    // An event sub-process is started by its event, not by a sequence flow.
+    let is_event_subprocess = matches!(element, FlowElement::SubProcess(sp) if sp.triggered_by_event);
 
-    if !is_start && !is_end && !is_boundary {
+    if !is_start && !is_end && !is_boundary && !is_event_subprocess {
         let has_incoming = process.sequence_flows.iter().any(|f| f.target_ref == *element_id);
         let has_outgoing = process.sequence_flows.iter().any(|f| f.source_ref == *element_id);
 
@@ -316,7 +318,8 @@ fn validate_subprocess(
     sp: &SubProcess,
     errors: &mut Vec<ValidationError>,
 ) {
-    if sp.start_events.is_empty() {
+    // An ad-hoc sub-process activates its elements directly; it has no start event.
+    if sp.start_events.is_empty() && !sp.ad_hoc {
         errors.push(ValidationError::ElementError {
             process_id: process_id.to_string(),
             element_id: element_id.to_string(),

@@ -8,7 +8,8 @@
  *
  * Creates a fresh WasmEngine per scenario for clean isolation, deploys the
  * current BPMN XML (and all referenced DMN/BPMN resources recursively), drives
- * jobs to completion using mock outputs from the scenario definition, then
+ * jobs and native user tasks to completion using mock outputs from the scenario
+ * definition, delivers the message each waiting receive task expects, then
  * asserts expectations.
  */
 
@@ -32,6 +33,22 @@ interface WasmElementInstance {
 	key: number
 	process_instance_key: number
 	element_id: string
+	element_type: string
+	state: string
+}
+
+interface WasmUserTask {
+	key: number
+	process_instance_key: number
+	element_id: string
+	state: string
+}
+
+interface WasmMessageSubscription {
+	key: number
+	message_name: string
+	correlation_key: string
+	element_instance_key: number
 	state: string
 }
 
@@ -62,6 +79,8 @@ interface WasmSnapshot {
 	variables: WasmVariable[]
 	incidents: WasmIncident[]
 	eventLog: EventLogRecord[]
+	userTasks: WasmUserTask[]
+	messageSubscriptions: WasmMessageSubscription[]
 }
 
 interface DeployResponse {
@@ -73,7 +92,9 @@ interface WasmEngineInstance {
 	create_process_instance(processId: string, variables: string): void
 	activate_job(key: number, worker: string, timeout: number): void
 	complete_job(key: number, variables: string): void
+	complete_user_task(key: number, variables: string): void
 	fail_job(key: number, retries: number, message: string): void
+	publish_message(name: string, correlationKey: string, variables: string): void
 	snapshot(): unknown
 	free(): void
 }
@@ -494,7 +515,10 @@ export async function runScenarioWasm(
 		// Start instance
 		engine.create_process_instance(processId, JSON.stringify(scenario.inputs ?? {}))
 
-		// Drive jobs to completion
+		// Drive the instance: complete jobs and native user tasks with their mocks,
+		// and deliver the message each waiting receive task expects.
+		const errors: ScenarioResultLike["errors"] = []
+		const failedUserTasks = new Set<number>()
 		for (let round = 0; round < MAX_ROUNDS; round++) {
 			if (Date.now() - startMs > TIMEOUT_MS) break
 
@@ -506,7 +530,14 @@ export async function runScenarioWasm(
 			const activatable = snap.jobs.filter(
 				(j) => j.state === "ACTIVATABLE" && j.process_instance_key === pi.key,
 			)
-			if (activatable.length === 0) break
+			// A native user task is not a job; scenarios mock it under the job type
+			// `userTask`, as the TypeScript engine runs it.
+			const userTasks = snap.userTasks.filter(
+				(t) =>
+					t.state === "CREATED" && t.process_instance_key === pi.key && !failedUserTasks.has(t.key),
+			)
+			const receiveTasks = waitingReceiveTasks(snap, pi.key)
+			if (activatable.length === 0 && userTasks.length === 0 && receiveTasks.length === 0) break
 
 			for (const job of activatable) {
 				try {
@@ -519,6 +550,32 @@ export async function runScenarioWasm(
 					}
 				} catch {
 					// Job may have already been handled — skip
+				}
+			}
+
+			const userTaskMock = scenario.mocks?.userTask
+			for (const task of userTasks) {
+				if (userTaskMock?.error !== undefined) {
+					// A user task cannot fail on Zeebe; report the mocked failure and leave it open.
+					failedUserTasks.add(task.key)
+					errors.push({ elementId: task.element_id, message: userTaskMock.error })
+					continue
+				}
+				try {
+					engine.complete_user_task(task.key, JSON.stringify(userTaskMock?.outputs ?? {}))
+				} catch {
+					// Task may have been terminated by an earlier completion this round — skip
+				}
+			}
+
+			// The TypeScript engine passes a receive task without waiting, and scenarios
+			// give the message's variables as start inputs. Publishing the awaited message
+			// (with the subscription's own correlation key) keeps the two runners alike.
+			for (const sub of receiveTasks) {
+				try {
+					engine.publish_message(sub.message_name, sub.correlation_key, "{}")
+				} catch {
+					// Already correlated this round — skip
 				}
 			}
 		}
@@ -596,9 +653,9 @@ export async function runScenarioWasm(
 			}
 		}
 
-		const errors: ScenarioResultLike["errors"] = snap.incidents
-			.filter((i) => i.process_instance_key === pi.key)
-			.map((i) => ({ elementId: i.element_id, message: i.error_message ?? i.error_type }))
+		for (const i of snap.incidents.filter((i) => i.process_instance_key === pi.key)) {
+			errors.push({ elementId: i.element_id, message: i.error_message ?? i.error_type })
+		}
 
 		for (const id of missingDecisions) {
 			errors.push({ message: `DMN decision '${id}' not found. Create the DMN in the Models view.` })
@@ -630,7 +687,7 @@ export async function runScenarioWasm(
 		if (scenario.expect?.variables !== undefined) {
 			for (const [key, expectedValue] of Object.entries(scenario.expect.variables)) {
 				const actualValue = finalVariables[key]
-				if (JSON.stringify(actualValue) !== JSON.stringify(expectedValue)) {
+				if (!deepEqual(actualValue, expectedValue)) {
 					failures.push({ field: `variables.${key}`, expected: expectedValue, actual: actualValue })
 				}
 			}
@@ -650,6 +707,43 @@ export async function runScenarioWasm(
 	} finally {
 		engine.free()
 	}
+}
+
+/** Message subscriptions of receive tasks that are waiting in this instance. */
+function waitingReceiveTasks(
+	snap: WasmSnapshot,
+	processInstanceKey: number,
+): WasmMessageSubscription[] {
+	const waiting = new Set(
+		snap.elementInstances
+			.filter(
+				(e) =>
+					e.process_instance_key === processInstanceKey &&
+					e.element_type === "RECEIVE_TASK" &&
+					e.state === "ACTIVATED",
+			)
+			.map((e) => e.key),
+	)
+	return snap.messageSubscriptions.filter(
+		(s) => s.state === "OPENED" && waiting.has(s.element_instance_key),
+	)
+}
+
+/** Structural equality of JSON values; object key order does not matter. */
+function deepEqual(a: unknown, b: unknown): boolean {
+	if (a === b) return true
+	if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false
+	if (Array.isArray(a) !== Array.isArray(b)) return false
+	if (Array.isArray(a) && Array.isArray(b)) {
+		return a.length === b.length && a.every((item, i) => deepEqual(item, b[i]))
+	}
+	const aRecord = a as Record<string, unknown>
+	const bRecord = b as Record<string, unknown>
+	const aKeys = Object.keys(aRecord)
+	return (
+		aKeys.length === Object.keys(bRecord).length &&
+		aKeys.every((k) => Object.hasOwn(bRecord, k) && deepEqual(aRecord[k], bRecord[k]))
+	)
 }
 
 function fail(scenario: ScenarioLike, startMs: number, message: string): ScenarioResultLike {

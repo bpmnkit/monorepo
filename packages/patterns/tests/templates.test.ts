@@ -1,6 +1,7 @@
 import { Bpmn, Dmn, Form, optimize, semanticHash } from "@bpmnkit/core"
 import type { BpmnDefinitions, BpmnFlowElement } from "@bpmnkit/core"
 import { Engine, runScenario } from "@bpmnkit/engine"
+import { runScenarioWasm } from "@bpmnkit/engine/wasm-runner"
 import { describe, expect, it } from "vitest"
 import {
 	ALL_TEMPLATES,
@@ -30,10 +31,18 @@ function loadWritten(template: ProcessTemplate) {
 		files.filter((f) => f.path.endsWith(suffix)).map((f) => f.content)
 	const [bpmnXml] = content(".bpmn")
 	if (bpmnXml === undefined) throw new Error(`${template.id}: no .bpmn file`)
+	const decisionXml = new Map<string, string>()
+	for (const xml of content(".dmn")) {
+		for (const [, id] of xml.matchAll(/<decision[^>]+\bid="([^"]+)"/g)) {
+			if (id !== undefined) decisionXml.set(id, xml)
+		}
+	}
 	return {
 		bpmnXml,
 		scenarios: content(".bpmn.tests.json").map((json) => JSON.parse(json) as unknown),
 		decisions: content(".dmn").map((xml) => Dmn.parse(xml)),
+		/** DMN XML by decision id, the way `casen test` finds it next to the BPMN file. */
+		decisionXml,
 		forms: content(".form").map((json) => Form.parse(json)),
 	}
 }
@@ -128,6 +137,21 @@ describe.each(ALL_TEMPLATES.map((t) => [t.id, t] as const))("%s", (_id, template
 			const engine = new Engine()
 			engine.deploy({ decisions, forms })
 			const result = await runScenario(engine, Bpmn.parse(bpmnXml), scenario)
+			expect({ failures: result.failures, errors: result.errors }).toEqual({
+				failures: [],
+				errors: [],
+			})
+			expect(result.passed).toBe(true)
+		},
+	)
+
+	// `casen test` runs the same sidecar on Reebe (WebAssembly), which has Zeebe's
+	// semantics; the gallery promises the scenarios pass there too.
+	it.each(template.scenarios.map((s) => [s.name, s] as const))(
+		"scenario passes on Reebe: %s",
+		async (_name, scenario) => {
+			const { bpmnXml, decisionXml } = loadWritten(template)
+			const result = await runScenarioWasm(bpmnXml, scenario, (id) => decisionXml.get(id) ?? null)
 			expect({ failures: result.failures, errors: result.errors }).toEqual({
 				failures: [],
 				errors: [],

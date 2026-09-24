@@ -487,6 +487,12 @@ pub struct SubProcess {
     pub input_mappings: Vec<ZeebeIoMapping>,
     pub output_mappings: Vec<ZeebeIoMapping>,
     pub multi_instance: Option<MultiInstanceLoopCharacteristics>,
+    /// `bpmn:adHocSubProcess`.
+    #[serde(default)]
+    pub ad_hoc: bool,
+    /// Job worker implementation of an ad-hoc sub-process (e.g. the AI Agent connector).
+    #[serde(default)]
+    pub task_definition: Option<ZeebeTaskDefinition>,
 }
 
 impl SubProcess {
@@ -503,6 +509,8 @@ impl SubProcess {
             input_mappings: Vec::new(),
             output_mappings: Vec::new(),
             multi_instance: None,
+            ad_hoc: false,
+            task_definition: None,
         }
     }
 

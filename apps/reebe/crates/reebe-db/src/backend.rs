@@ -64,6 +64,7 @@ pub trait StateBackend: Send + Sync {
     async fn update_job_retries(&self, key: i64, retries: i32) -> Result<()>;
     async fn update_job_deadline(&self, key: i64, deadline: DateTime<Utc>) -> Result<()>;
     async fn cancel_jobs_by_process_instance(&self, process_instance_key: i64) -> Result<u64>;
+    async fn cancel_jobs_by_element_instance(&self, element_instance_key: i64) -> Result<u64>;
     async fn mark_timed_out_jobs(&self) -> Result<u64>;
     async fn count_active_jobs_by_type(&self) -> Result<Vec<(String, i64)>>;
 

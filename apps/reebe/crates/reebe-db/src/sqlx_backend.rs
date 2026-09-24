@@ -163,6 +163,10 @@ impl StateBackend for SqlxBackend {
         crate::state::jobs::cancel_jobs_by_process_instance(&self.pool, process_instance_key).await
     }
 
+    async fn cancel_jobs_by_element_instance(&self, element_instance_key: i64) -> Result<u64> {
+        crate::state::jobs::cancel_jobs_by_element_instance(&self.pool, element_instance_key).await
+    }
+
     async fn mark_timed_out_jobs(&self) -> Result<u64> {
         JobRepository::new(&self.pool).mark_timed_out().await
     }

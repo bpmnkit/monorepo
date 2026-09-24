@@ -45,6 +45,10 @@ pub struct EngineSnapshot {
     #[serde(rename = "eventLog")]
     pub event_log: Vec<DbRecord>,
     pub timers: Vec<reebe_db::state::timers::Timer>,
+    #[serde(rename = "userTasks")]
+    pub user_tasks: Vec<reebe_db::state::user_tasks::UserTask>,
+    #[serde(rename = "messageSubscriptions")]
+    pub message_subscriptions: Vec<reebe_db::state::messages::MessageSubscription>,
 }
 
 #[wasm_bindgen]
@@ -157,6 +161,22 @@ impl WasmEngine {
         to_js_result(&result)
     }
 
+    /// Complete a native (`zeebe:userTask`) user task. `variables` is a JSON string.
+    pub fn complete_user_task(&mut self, key: f64, variables: &str) -> Result<JsValue, JsValue> {
+        let task_key = key as i64;
+        let vars: serde_json::Value = serde_json::from_str(variables)
+            .unwrap_or(serde_json::Value::Object(Default::default()));
+        let result = self.submit_and_drain(
+            "USER_TASK", "COMPLETE",
+            serde_json::json!({
+                "userTaskKey": task_key.to_string(),
+                "variables": vars,
+            }),
+            "<default>",
+        ).map_err(|e| JsValue::from_str(&e))?;
+        to_js_result(&result)
+    }
+
     /// Fail a job.
     pub fn fail_job(&mut self, key: f64, retries: i32, error_message: &str) -> Result<JsValue, JsValue> {
         let job_key = key as i64;
@@ -258,6 +278,8 @@ impl WasmEngine {
             incidents: self.backend.list_incidents(),
             event_log: self.backend.list_records(),
             timers: self.backend.list_timers(),
+            user_tasks: self.backend.list_user_tasks(),
+            message_subscriptions: self.backend.list_message_subscriptions(),
         };
         to_js(&snap)
     }

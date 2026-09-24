@@ -456,26 +456,22 @@ fn eval_decision_table(
         }
     }
 
+    // Zeebe (and the DMN spec): a table with a single output column yields that
+    // column's value, not a one-entry context.
+    if table.outputs.len() == 1 {
+        let col_name = &table.outputs[0].name;
+        matched = matched
+            .into_iter()
+            .map(|obj| obj.get(col_name).cloned().unwrap_or(serde_json::Value::Null))
+            .collect();
+    }
+
     match table.hit_policy {
         HitPolicy::Unique | HitPolicy::First => Ok(matched
             .into_iter()
             .next()
             .unwrap_or(serde_json::Value::Null)),
-        HitPolicy::Collect => {
-            // Zeebe compatibility: single-output-column COLLECT returns a flat
-            // array of values, not an array of objects.
-            if table.outputs.len() == 1 {
-                let col_name = &table.outputs[0].name;
-                let flat = matched
-                    .into_iter()
-                    .map(|obj| obj.get(col_name).cloned().unwrap_or(serde_json::Value::Null))
-                    .collect();
-                Ok(serde_json::Value::Array(flat))
-            } else {
-                Ok(serde_json::Value::Array(matched))
-            }
-        }
-        HitPolicy::Any | HitPolicy::RuleOrder | HitPolicy::OutputOrder => {
+        HitPolicy::Collect | HitPolicy::Any | HitPolicy::RuleOrder | HitPolicy::OutputOrder => {
             Ok(serde_json::Value::Array(matched))
         }
     }
@@ -884,7 +880,7 @@ mod tests {
         let result =
             evaluate_decision(&drg, "invoice-classification", &json!({"amount": 100}))
                 .expect("should evaluate");
-        assert_eq!(result, json!({"classification": "low"}));
+        assert_eq!(result, json!("low"));
     }
 
     #[test]
@@ -893,7 +889,7 @@ mod tests {
         let result =
             evaluate_decision(&drg, "invoice-classification", &json!({"amount": 500}))
                 .expect("should evaluate");
-        assert_eq!(result, json!({"classification": "medium"}));
+        assert_eq!(result, json!("medium"));
     }
 
     #[test]
@@ -902,7 +898,7 @@ mod tests {
         let result =
             evaluate_decision(&drg, "invoice-classification", &json!({"amount": 2000}))
                 .expect("should evaluate");
-        assert_eq!(result, json!({"classification": "high"}));
+        assert_eq!(result, json!("high"));
     }
 
     #[test]
