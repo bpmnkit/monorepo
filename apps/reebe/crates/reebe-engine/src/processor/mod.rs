@@ -18,6 +18,7 @@ pub(crate) mod cron;
 pub(crate) mod join;
 pub(crate) mod compensation;
 pub(crate) mod ad_hoc;
+pub mod modification;
 
 pub use deployment::DeploymentProcessor;
 pub use process_instance::{ProcessInstanceCreationProcessor, ProcessInstanceCancelProcessor};
@@ -31,6 +32,7 @@ pub use signal::SignalProcessor;
 pub use identity::IdentityProcessor;
 pub use variable::VariableDocumentProcessor;
 pub use ad_hoc::AdHocSubProcessInstructionProcessor;
+pub use modification::ProcessInstanceModificationProcessor;
 
 use async_trait::async_trait;
 use reebe_db::records::DbRecord;

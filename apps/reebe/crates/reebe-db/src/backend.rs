@@ -104,6 +104,8 @@ pub trait StateBackend: Send + Sync {
     async fn insert_incident(&self, incident: &Incident) -> Result<()>;
     async fn get_incident_by_key(&self, key: i64) -> Result<Incident>;
     async fn resolve_incident(&self, key: i64) -> Result<()>;
+    /// The incidents of a process instance, active and resolved.
+    async fn get_incidents_by_process_instance(&self, process_instance_key: i64) -> Result<Vec<Incident>>;
     async fn count_active_incidents(&self) -> Result<i64>;
 
     // ---- Timers ----

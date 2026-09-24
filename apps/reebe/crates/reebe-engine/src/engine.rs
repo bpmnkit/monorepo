@@ -30,7 +30,7 @@ use crate::processor::{
     DeploymentProcessor, ProcessInstanceCreationProcessor, ProcessInstanceCancelProcessor,
     BpmnElementProcessor, JobProcessor, MessageProcessor, TimerProcessor, IncidentProcessor,
     UserTaskProcessor, SignalProcessor, IdentityProcessor, VariableDocumentProcessor,
-        AdHocSubProcessInstructionProcessor,
+        AdHocSubProcessInstructionProcessor, ProcessInstanceModificationProcessor,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -159,6 +159,7 @@ impl Engine {
             Arc::new(IdentityProcessor),
             Arc::new(VariableDocumentProcessor),
             Arc::new(AdHocSubProcessInstructionProcessor),
+            Arc::new(ProcessInstanceModificationProcessor),
         ];
 
         let engine = Self {

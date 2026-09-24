@@ -33,7 +33,7 @@ mod tests {
         RecordProcessor, Writers,
         DeploymentProcessor, ProcessInstanceCreationProcessor,
         BpmnElementProcessor, JobProcessor, VariableDocumentProcessor,
-        UserTaskProcessor, IncidentProcessor, AdHocSubProcessInstructionProcessor,
+        UserTaskProcessor, IncidentProcessor, AdHocSubProcessInstructionProcessor, ProcessInstanceModificationProcessor,
     };
     use crate::processor::signal::SignalProcessor;
     use crate::processor::timer::TimerProcessor;
@@ -72,6 +72,7 @@ mod tests {
                 Arc::new(MessageProcessor),
                 Arc::new(IncidentProcessor),
                 Arc::new(AdHocSubProcessInstructionProcessor),
+                Arc::new(ProcessInstanceModificationProcessor),
             ];
             Self { backend, state, processors }
         }
@@ -124,46 +125,51 @@ mod tests {
                             if rec.position == position {
                                 response = writers.response.clone();
                             }
-                            let total = writers.events.len() + writers.commands.len();
-                            if total > 0 {
-                                let first = self.backend.next_position_batch(0, total).await.unwrap();
-                                let mut recs = Vec::with_capacity(total);
-                                for (i, ev) in writers.events.iter().enumerate() {
-                                    recs.push(DbRecord {
-                                        partition_id: 0,
-                                        position: first + i as i64,
-                                        record_type: "EVENT".to_string(),
-                                        value_type: ev.value_type.clone(),
-                                        intent: ev.intent.clone(),
-                                        record_key: ev.key,
-                                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
-                                        payload: ev.payload.clone(),
-                                        source_position: Some(rec.position),
-                                        tenant_id: rec.tenant_id.clone(),
-                                    });
-                                }
-                                for (i, cmd) in writers.commands.iter().enumerate() {
-                                    recs.push(DbRecord {
-                                        partition_id: 0,
-                                        position: first + writers.events.len() as i64 + i as i64,
-                                        record_type: "COMMAND".to_string(),
-                                        value_type: cmd.value_type.clone(),
-                                        intent: cmd.intent.clone(),
-                                        record_key: cmd.key,
-                                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
-                                        payload: cmd.payload.clone(),
-                                        source_position: Some(rec.position),
-                                        tenant_id: rec.tenant_id.clone(),
-                                    });
-                                }
-                                self.backend.insert_records_batch(&recs).await.unwrap();
-                            }
+                            self.append_follow_ups(rec, &writers).await;
                             break;
                         }
                     }
                 }
             }
             response
+        }
+
+        /// Write the events and commands a processor produced for `rec` to the log.
+        async fn append_follow_ups(&self, rec: &DbRecord, writers: &Writers) {
+            let total = writers.events.len() + writers.commands.len();
+            if total > 0 {
+                let first = self.backend.next_position_batch(0, total).await.unwrap();
+                let mut recs = Vec::with_capacity(total);
+                for (i, ev) in writers.events.iter().enumerate() {
+                    recs.push(DbRecord {
+                        partition_id: 0,
+                        position: first + i as i64,
+                        record_type: "EVENT".to_string(),
+                        value_type: ev.value_type.clone(),
+                        intent: ev.intent.clone(),
+                        record_key: ev.key,
+                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
+                        payload: ev.payload.clone(),
+                        source_position: Some(rec.position),
+                        tenant_id: rec.tenant_id.clone(),
+                    });
+                }
+                for (i, cmd) in writers.commands.iter().enumerate() {
+                    recs.push(DbRecord {
+                        partition_id: 0,
+                        position: first + writers.events.len() as i64 + i as i64,
+                        record_type: "COMMAND".to_string(),
+                        value_type: cmd.value_type.clone(),
+                        intent: cmd.intent.clone(),
+                        record_key: cmd.key,
+                        timestamp_ms: chrono::Utc::now().timestamp_millis(),
+                        payload: cmd.payload.clone(),
+                        source_position: Some(rec.position),
+                        tenant_id: rec.tenant_id.clone(),
+                    });
+                }
+                self.backend.insert_records_batch(&recs).await.unwrap();
+            }
         }
 
         /// Deploy an XML resource (BPMN or DMN — detected automatically).
@@ -5794,5 +5800,362 @@ mod tests {
         let pi = h.process_instances()[0].key;
         let subscriptions = h.backend.get_compensation_subscriptions(pi).await.unwrap();
         assert_eq!(subscriptions.len(), 1, "the handler's subscription is not completed");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Process instance modification (cases of Zeebe's ModifyProcessInstance*Test)
+    // ─────────────────────────────────────────────────────────────────
+
+    /// start → a → sp[ sp-start → b → c ] (timer boundary `sp-timeout`) → after → end.
+    fn modification_process() -> String {
+        wrap_process("proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}
+    <bpmn:subProcess id="sp"><bpmn:incoming>f2</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing>
+      <bpmn:startEvent id="sp-start"><bpmn:outgoing>s1</bpmn:outgoing></bpmn:startEvent>
+      {b}{c}
+      <bpmn:sequenceFlow id="s1" sourceRef="sp-start" targetRef="b"/>
+      <bpmn:sequenceFlow id="s2" sourceRef="b" targetRef="c"/>
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="sp-timeout" attachedToRef="sp"><bpmn:outgoing>f5</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeDuration>PT1H</bpmn:timeDuration></bpmn:timerEventDefinition></bpmn:boundaryEvent>
+    <bpmn:endEvent id="timed-out"><bpmn:incoming>f5</bpmn:incoming></bpmn:endEvent>
+    {after}
+    <bpmn:endEvent id="end"><bpmn:incoming>f4</bpmn:incoming></bpmn:endEvent>
+    {f1}{f2}{f3}{f4}{f5}
+"#,
+            a = task("a", "a", "f1", "f2"), b = task("b", "b", "s1", "s2"), c = task("c", "c", "s2", ""),
+            after = task("after", "after", "f3", "f4"),
+            f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "sp"), f3 = flow("f3", "sp", "after"),
+            f4 = flow("f4", "after", "end"), f5 = flow("f5", "sp-timeout", "timed-out")))
+    }
+
+    /// Process a `PROCESS_INSTANCE_MODIFICATION` `MODIFY` command (for the first process
+    /// instance unless it names one) and its follow-ups; `Err` is the rejection.
+    async fn modify(h: &Harness, instructions: Value) -> Result<(), String> {
+        let mut payload = instructions;
+        if payload.get("processInstanceKey").is_none() {
+            payload["processInstanceKey"] = serde_json::json!(h.process_instances()[0].key.to_string());
+        }
+        let position = h.submit("PROCESS_INSTANCE_MODIFICATION", "MODIFY", payload).await;
+        let record = h.backend.fetch_commands_from(0, position, 1).await.unwrap().remove(0);
+        let mut writers = Writers::new();
+        if let Err(e) = ProcessInstanceModificationProcessor.process(&record, &h.state, &mut writers).await {
+            return Err(e.to_string());
+        }
+        h.append_follow_ups(&record, &writers).await;
+        h.drain(position + 1).await;
+        Ok(())
+    }
+
+    fn keys_of(h: &Harness, element_id: &str) -> Vec<i64> {
+        h.backend.list_element_instances().into_iter().filter(|e| e.element_id == element_id).map(|e| e.key).collect()
+    }
+
+    fn local_var(h: &Harness, scope_key: i64, name: &str) -> Option<Value> {
+        h.backend.list_variables().into_iter().find(|v| v.scope_key == scope_key && v.name == name).map(|v| v.value)
+    }
+
+    #[tokio::test]
+    async fn test_modification_activates_an_element_and_terminates_another() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let a = keys_of(&h, "a")[0];
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "after" }],
+            "terminateInstructions": [{ "elementInstanceKey": a.to_string() }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "a"), vec!["TERMINATED"]);
+        assert_eq!(job_state(&h, "a").as_deref(), Some("CANCELED"));
+        assert!(h.activatable_job("after").is_some());
+        assert!(h.backend.list_records().iter().any(|r| r.value_type == "PROCESS_INSTANCE_MODIFICATION" && r.intent == "MODIFIED"));
+        h.complete_job("after", serde_json::json!({})).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+    }
+
+    #[tokio::test]
+    async fn test_modification_creates_the_flow_scope_without_starting_it_and_sets_variables() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let pi = h.process_instances()[0].key;
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{
+                "elementId": "c",
+                "variableInstructions": [
+                    { "variables": { "global": 1 } },
+                    { "elementId": "sp", "variables": { "inSp": 2 } },
+                    { "elementId": "c", "variables": { "inC": 3 } },
+                ],
+            }],
+        })).await.unwrap();
+        // The sub-process is activated (with its boundary timer armed), not started.
+        let sp = keys_of(&h, "sp");
+        assert_eq!(sp.len(), 1);
+        assert_eq!(element_states(&h, "sp"), vec!["ACTIVATED"]);
+        assert!(!h.visited("sp-start") && !h.visited("b"), "its start event does not run");
+        assert!(h.backend.list_timers().iter().any(|t| t.element_instance_key == Some(sp[0]) && t.state == "ACTIVE"));
+        let c = keys_of(&h, "c")[0];
+        let c_ei = h.backend.list_element_instances().into_iter().find(|e| e.key == c).unwrap();
+        assert_eq!(c_ei.flow_scope_key, Some(sp[0]));
+        assert_eq!(local_var(&h, pi, "global"), Some(serde_json::json!(1)));
+        assert_eq!(local_var(&h, sp[0], "inSp"), Some(serde_json::json!(2)));
+        assert_eq!(local_var(&h, c, "inC"), Some(serde_json::json!(3)));
+        assert!(h.activatable_job("a").is_some(), "a still runs");
+
+        // c completing completes the sub-process, whose outgoing flow is taken.
+        h.complete_job("c", serde_json::json!({})).await;
+        assert_eq!(element_states(&h, "sp"), vec!["COMPLETED"]);
+        assert!(h.activatable_job("after").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_modification_terminates_flow_scopes_left_with_nothing_to_do() {
+        // Zeebe's terminateFlowScopes: the sub-process and then the process instance.
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        let b = keys_of(&h, "b")[0];
+        modify(&h, serde_json::json!({ "terminateInstructions": [{ "elementInstanceKey": b.to_string() }] })).await.unwrap();
+        assert_eq!(element_states(&h, "b"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["TERMINATED"]);
+        assert_eq!(h.process_state("proc").as_deref(), Some("TERMINATED"));
+        assert!(h.backend.list_timers().iter().all(|t| t.state != "ACTIVE"), "the boundary timer is cancelled");
+
+        // Terminating by element id, while an activation needs the flow scope, keeps it.
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "c" }],
+            "terminateInstructions": [{ "elementId": "b" }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "b"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["ACTIVATED"]);
+        assert!(h.activatable_job("c").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_modification_resolves_the_incidents_of_what_it_terminates() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.fail_job("a", 0, "boom").await;
+        assert_eq!(h.incidents()[0].state, "ACTIVE");
+        modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "after" }],
+            "terminateInstructions": [{ "elementId": "a" }],
+        })).await.unwrap();
+        assert_eq!(h.incidents()[0].state, "RESOLVED");
+        assert!(h.activatable_job("after").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_modification_selects_the_flow_scope_instance_by_ancestor() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        // A second instance of the sub-process.
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "sp" }] })).await.unwrap();
+        let sp = keys_of(&h, "sp");
+        assert_eq!(sp.len(), 2);
+
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "c" }] })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'proc' but it contains one or more activate instructions \
+             for an element that has a flow scope with more than one active instance: 'sp'. Can't decide \
+             in which instance of the flow scope the element should be activated. Please specify an \
+             ancestor element instance key for this activate instruction."
+        ), "{error}");
+
+        // The selected instance is reused ...
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "c", "ancestorScopeKey": sp[1].to_string() }] })).await.unwrap();
+        let c = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "c").unwrap();
+        assert_eq!(c.flow_scope_key, Some(sp[1]));
+        // ... and selecting the process instance, an ancestor of both, creates another.
+        let pi = h.process_instances()[0].key;
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "c", "ancestorScopeKey": pi.to_string() }] })).await.unwrap();
+        assert_eq!(keys_of(&h, "sp").len(), 3);
+        assert_eq!(element_states(&h, "c"), vec!["ACTIVATED", "ACTIVATED"]);
+    }
+
+    #[tokio::test]
+    async fn test_modification_moves_element_instances() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        h.complete_job("a", serde_json::json!({})).await;
+        // By id, into the source's own flow scope.
+        modify(&h, serde_json::json!({
+            "moveInstructions": [{
+                "sourceElementId": "b", "targetElementId": "c", "useSourceParentKeyAsAncestorScopeKey": true,
+                "variableInstructions": [{ "elementId": "c", "variables": { "moved": true } }],
+            }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "b"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["ACTIVATED"]);
+        let c = keys_of(&h, "c")[0];
+        assert_eq!(local_var(&h, c, "moved"), Some(serde_json::json!(true)));
+        // By key, out of the sub-process, which is then left with nothing to do.
+        modify(&h, serde_json::json!({
+            "moveInstructions": [{ "sourceElementInstanceKey": c.to_string(), "targetElementId": "after", "inferAncestorScopeFromSourceHierarchy": true }],
+        })).await.unwrap();
+        assert_eq!(element_states(&h, "c"), vec!["TERMINATED"]);
+        assert_eq!(element_states(&h, "sp"), vec!["TERMINATED"]);
+        assert!(h.activatable_job("after").is_some());
+        assert_eq!(h.process_state("proc").as_deref(), Some("ACTIVE"));
+    }
+
+    #[tokio::test]
+    async fn test_modification_rejects_what_zeebe_rejects() {
+        let h = Harness::new();
+        h.deploy(&modification_process()).await;
+        h.start("proc", serde_json::json!({})).await;
+        let pi = h.process_instances()[0].key;
+        let a = keys_of(&h, "a")[0];
+        let before = h.backend.list_element_instances().len();
+        let prefix = "Expected to modify instance of process 'proc' but it contains one or more";
+
+        let error = modify(&h, serde_json::json!({ "processInstanceKey": "123", "activateInstructions": [] })).await.unwrap_err();
+        assert!(error.ends_with("Expected to modify process instance but no process instance found with key '123'"), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "nope" }, { "elementId": "nada" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} activate instructions with an element that could not be found: 'nope', 'nada'")), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "sp-start" }, { "elementId": "f1" }, { "elementId": "sp-timeout" }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} activate instructions for elements that are unsupported: 'sp-start', 'f1', 'sp-timeout'. \
+             The activation of elements with type 'START_EVENT', 'SEQUENCE_FLOW', 'BOUNDARY_EVENT' is not supported. \
+             Supported element types are: [PROCESS, SUB_PROCESS, EVENT_SUB_PROCESS, AD_HOC_SUB_PROCESS, \
+             AD_HOC_SUB_PROCESS_INNER_INSTANCE, INTERMEDIATE_CATCH_EVENT, INTERMEDIATE_THROW_EVENT, END_EVENT, \
+             SERVICE_TASK, RECEIVE_TASK, USER_TASK, MANUAL_TASK, TASK, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY, \
+             EVENT_BASED_GATEWAY, INCLUSIVE_GATEWAY, MULTI_INSTANCE_BODY, CALL_ACTIVITY, BUSINESS_RULE_TASK, \
+             SCRIPT_TASK, SEND_TASK]."
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({ "terminateInstructions": [{ "elementInstanceKey": "42" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} terminate instructions with an element instance that could not be found: '42'")), "{error}");
+        let error = modify(&h, serde_json::json!({ "terminateInstructions": [{}] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} terminate instructions with neither an element instance key nor element id: '(-1, )'")), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "b", "variableInstructions": [{ "elementId": "ghost", "variables": { "x": 1 } }] }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} variable instructions with a scope element id that could not be found: 'ghost'")), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "b", "variableInstructions": [{ "elementId": "after", "variables": { "x": 1 } }] }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} variable instructions with a scope element that doesn't belong to the activating element's flow scope. \
+             These variables should be set before or after the modification."
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "b", "ancestorScopeKey": "99" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} activate instructions with an ancestor scope key that does not exist, or is not in an active state: '99'")), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "b", "ancestorScopeKey": a.to_string() }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} activate instructions with an ancestor scope key that is not an ancestor of the element to activate:\n\
+             - instance '{a}' of element 'a' is not an ancestor of element 'b'"
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "activateInstructions": [{ "elementId": "after" }],
+            "terminateInstructions": [{ "elementInstanceKey": pi.to_string() }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(&format!(
+            "{prefix} activate instructions for elements whose required flow scope instance is also being terminated: \
+             element 'after' requires flow scope instance '{pi}' which is being terminated. \
+             Please provide a valid ancestor scope key for the activation or avoid terminating the required flow scope."
+        )), "{error}");
+        let error = modify(&h, serde_json::json!({
+            "moveInstructions": [{ "sourceElementId": "a", "targetElementId": "b" }, { "sourceElementId": "a", "targetElementId": "c" }],
+        })).await.unwrap_err();
+        assert!(error.ends_with("Expected to modify instance of process 'proc' but it contains multiple move instructions with identical source element ids: 'a'"), "{error}");
+        let error = modify(&h, serde_json::json!({ "moveInstructions": [{ "sourceElementInstanceKey": "77", "targetElementId": "b" }] })).await.unwrap_err();
+        assert!(error.ends_with(&format!("{prefix} move instructions with a source element instance that could not be found: '77'")), "{error}");
+        // Nothing changed.
+        assert!(h.activatable_job("a").is_some());
+        assert_eq!(h.backend.list_element_instances().len(), before);
+    }
+
+    #[tokio::test]
+    async fn test_modification_rejects_activating_inside_a_multi_instance_or_after_an_event_based_gateway() {
+        let roots = r#"  <bpmn:message id="M" name="m"><bpmn:extensionElements><zeebe:subscription correlationKey="=&quot;k&quot;"/></bpmn:extensionElements></bpmn:message>"#;
+        let bpmn = wrap_definitions(roots, "proc", &format!(r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    {a}
+    <bpmn:subProcess id="each"><bpmn:incoming>f2</bpmn:incoming>
+      <bpmn:multiInstanceLoopCharacteristics><bpmn:extensionElements>
+        <zeebe:loopCharacteristics inputCollection="=[1]"/></bpmn:extensionElements></bpmn:multiInstanceLoopCharacteristics>
+      <bpmn:startEvent id="each-start"><bpmn:outgoing>e1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:manualTask id="inside"><bpmn:incoming>e1</bpmn:incoming></bpmn:manualTask>
+      <bpmn:sequenceFlow id="e1" sourceRef="each-start" targetRef="inside"/>
+    </bpmn:subProcess>
+    <bpmn:eventBasedGateway id="gw"><bpmn:incoming>g0</bpmn:incoming><bpmn:outgoing>g1</bpmn:outgoing></bpmn:eventBasedGateway>
+    <bpmn:intermediateCatchEvent id="wait-m"><bpmn:incoming>g1</bpmn:incoming><bpmn:messageEventDefinition messageRef="M"/></bpmn:intermediateCatchEvent>
+    <bpmn:startEvent id="other-start"><bpmn:outgoing>g0</bpmn:outgoing></bpmn:startEvent>
+    {f1}{f2}{g0}{g1}
+"#, a = task("a", "a", "f1", "f2"), f1 = flow("f1", "start", "a"), f2 = flow("f2", "a", "each"),
+            g0 = flow("g0", "other-start", "gw"), g1 = flow("g1", "gw", "wait-m")));
+        let h = Harness::new();
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({})).await;
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "inside" }] })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'proc' but it contains one or more activate \
+             instructions that would result in the activation of multi-instance element \
+             'each', which is currently unsupported."
+        ), "{error}");
+        let error = modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "wait-m" }] })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'proc' but it contains one or more activate instructions \
+             for elements that are unsupported: 'wait-m'. The activation of events belonging to an event-based gateway is not supported."
+        ), "{error}");
+        // The multi-instance activity itself can be activated.
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "each" }] })).await.unwrap();
+        assert!(h.visited("inside"));
+    }
+
+    #[tokio::test]
+    async fn test_modification_does_not_terminate_a_called_process_instance() {
+        let child = wrap_process("child", &format!(r#"
+    <bpmn:startEvent id="c-start"><bpmn:outgoing>c1</bpmn:outgoing></bpmn:startEvent>
+    {work}{c1}"#, work = task("work", "work", "c1", ""), c1 = flow("c1", "c-start", "work")));
+        let parent = wrap_process("parent", r#"
+    <bpmn:startEvent id="p-start"><bpmn:outgoing>p1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:callActivity id="call"><bpmn:extensionElements><zeebe:calledElement processId="child"/></bpmn:extensionElements>
+      <bpmn:incoming>p1</bpmn:incoming></bpmn:callActivity>
+    <bpmn:sequenceFlow id="p1" sourceRef="p-start" targetRef="call"/>"#);
+        let h = Harness::new();
+        h.deploy(&child).await;
+        h.deploy(&parent).await;
+        h.start("parent", serde_json::json!({})).await;
+        let child_pi = h.process_instances().into_iter().find(|p| p.bpmn_process_id == "child").unwrap().key;
+        let work = keys_of(&h, "work")[0];
+        let error = modify(&h, serde_json::json!({
+            "processInstanceKey": child_pi.to_string(),
+            "terminateInstructions": [{ "elementInstanceKey": work.to_string() }],
+        })).await.unwrap_err();
+        assert!(error.ends_with(
+            "Expected to modify instance of process 'child' but the given instructions would terminate \
+             the instance. The instance was created by a call activity in the parent process. \
+             To terminate this instance please modify the parent process instead."
+        ), "{error}");
+        assert_eq!(element_states(&h, "work"), vec!["ACTIVATED"]);
+    }
+
+    #[tokio::test]
+    async fn test_modification_activates_elements_inside_an_ad_hoc_sub_process() {
+        // Zeebe's ModifyProcessInstanceWithAdHocSubProcessTest: both land in one inner instance.
+        let h = Harness::new();
+        h.deploy(&ad_hoc_tools("", "")).await;
+        h.start("proc", serde_json::json!({ "toRun": [] })).await;
+        modify(&h, serde_json::json!({ "activateInstructions": [{ "elementId": "t1" }, { "elementId": "t3" }] })).await.unwrap();
+        assert!(h.activatable_job("t1").is_some() && h.activatable_job("t3").is_some());
+        let inner: Vec<_> = h.backend.list_element_instances().into_iter()
+            .filter(|e| e.element_type == "AD_HOC_SUB_PROCESS_INNER_INSTANCE").collect();
+        assert_eq!(inner.len(), 1);
+        let t1 = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "t1").unwrap();
+        assert_eq!(t1.flow_scope_key, Some(inner[0].key));
     }
 }

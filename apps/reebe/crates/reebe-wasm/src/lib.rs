@@ -11,7 +11,7 @@ use reebe_engine::{
         DeploymentProcessor, ProcessInstanceCreationProcessor, ProcessInstanceCancelProcessor,
         BpmnElementProcessor, JobProcessor, MessageProcessor, TimerProcessor, IncidentProcessor,
         UserTaskProcessor, SignalProcessor, IdentityProcessor, VariableDocumentProcessor,
-        AdHocSubProcessInstructionProcessor,
+        AdHocSubProcessInstructionProcessor, ProcessInstanceModificationProcessor,
     },
 };
 
@@ -88,6 +88,7 @@ impl WasmEngine {
             Arc::new(IdentityProcessor),
             Arc::new(VariableDocumentProcessor),
             Arc::new(AdHocSubProcessInstructionProcessor),
+            Arc::new(ProcessInstanceModificationProcessor),
         ];
         Self { backend, clock, state, processors, partition_id: 0 }
     }

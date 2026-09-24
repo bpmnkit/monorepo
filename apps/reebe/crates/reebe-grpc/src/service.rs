@@ -38,9 +38,17 @@ impl GatewayService {
     }
 }
 
-// Helper: map engine error to gRPC Status
+/// An engine rejection as the gRPC status Zeebe's gateway gives it: `NOT_FOUND`,
+/// `INVALID_ARGUMENT` (also for a deployment that fails), `FAILED_PRECONDITION` for
+/// an invalid state, else `INTERNAL`.
 fn engine_err(e: reebe_engine::error::EngineError) -> Status {
-    Status::internal(e.to_string())
+    use reebe_engine::error::EngineError;
+    match e {
+        EngineError::NotFound(message) => Status::not_found(message),
+        EngineError::InvalidArgument(message) | EngineError::BpmnParse(message) => Status::invalid_argument(message),
+        EngineError::InvalidState(message) => Status::failed_precondition(message),
+        other => Status::internal(other.to_string()),
+    }
 }
 
 // Helper: convert a DB Job to proto ActivatedJob
@@ -118,6 +126,39 @@ fn create_process_instance_payload(req: &CreateProcessInstanceRequest, tenant_id
 
 /// The engine's `JOB` `COMPLETE` command for a `CompleteJob` call: the same payload
 /// the REST job completion sends, with the job result in the REST `JobResult` shape.
+/// The engine command for `ModifyProcessInstance`, as Zeebe's gateway maps it
+/// (`BrokerModifyProcessInstanceRequest`): the instructions' fields as they are, and
+/// each variable instruction's document checked as every `variables` document is.
+fn modify_process_instance_payload(req: &ModifyProcessInstanceRequest) -> Result<serde_json::Value, Status> {
+    let variable_instructions = |instructions: &[VariableInstruction]| {
+        instructions
+            .iter()
+            .map(|v| Ok(serde_json::json!({ "variables": variables_document(&v.variables)?, "elementId": v.scope_id })))
+            .collect::<Result<Vec<_>, Status>>()
+    };
+    Ok(serde_json::json!({
+        "processInstanceKey": req.process_instance_key.to_string(),
+        "activateInstructions": req.activate_instructions.iter().map(|i| Ok(serde_json::json!({
+            "elementId": i.element_id,
+            "ancestorScopeKey": i.ancestor_element_instance_key,
+            "variableInstructions": variable_instructions(&i.variable_instructions)?,
+        }))).collect::<Result<Vec<_>, Status>>()?,
+        "terminateInstructions": req.terminate_instructions.iter().map(|i| serde_json::json!({
+            "elementInstanceKey": i.element_instance_key,
+            "elementId": i.element_id,
+        })).collect::<Vec<_>>(),
+        "moveInstructions": req.move_instructions.iter().map(|m| Ok(serde_json::json!({
+            "sourceElementInstanceKey": m.source_element_instance_key,
+            "sourceElementId": m.source_element_id,
+            "targetElementId": m.target_element_id,
+            "ancestorScopeKey": m.ancestor_element_instance_key,
+            "inferAncestorScopeFromSourceHierarchy": m.infer_ancestor_scope_from_source_hierarchy,
+            "useSourceParentKeyAsAncestorScopeKey": m.use_source_parent_key_as_ancestor_scope_key,
+            "variableInstructions": variable_instructions(&m.variable_instructions)?,
+        }))).collect::<Result<Vec<_>, Status>>()?,
+    }))
+}
+
 fn complete_job_payload(req: CompleteJobRequest) -> Result<serde_json::Value, Status> {
     let mut payload = serde_json::json!({
         "jobKey": req.job_key.to_string(),
@@ -388,22 +429,7 @@ impl Gateway for GatewayService {
         request: Request<ModifyProcessInstanceRequest>,
     ) -> Result<Response<ModifyProcessInstanceResponse>, Status> {
         let req = request.into_inner();
-        let payload = serde_json::json!({
-            "processInstanceKey": req.process_instance_key.to_string(),
-            "activateInstructions": req.activate_instructions.iter().map(|i| {
-                let variable_instructions = i.variable_instructions.iter().map(|v| {
-                    Ok(serde_json::json!({ "variables": variables_document(&v.variables)?, "scopeId": v.scope_id }))
-                }).collect::<Result<Vec<_>, Status>>()?;
-                Ok(serde_json::json!({
-                    "elementId": i.element_id,
-                    "ancestorElementInstanceKey": i.ancestor_element_instance_key,
-                    "variableInstructions": variable_instructions,
-                }))
-            }).collect::<Result<Vec<_>, Status>>()?,
-            "terminateInstructions": req.terminate_instructions.iter().map(|i| serde_json::json!({
-                "elementInstanceKey": i.element_instance_key,
-            })).collect::<Vec<_>>(),
-        });
+        let payload = modify_process_instance_payload(&req)?;
         self.state.engine
             .send_command("PROCESS_INSTANCE_MODIFICATION".to_string(), "MODIFY".to_string(), payload, "<default>".to_string())
             .await

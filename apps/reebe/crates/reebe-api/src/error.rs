@@ -63,7 +63,7 @@ impl From<EngineError> for ApiError {
                 resource: "resource".to_string(),
                 key: msg.clone(),
             },
-            EngineError::InvalidState(msg) => ApiError::InvalidRequest(msg.clone()),
+            EngineError::InvalidState(msg) | EngineError::InvalidArgument(msg) => ApiError::InvalidRequest(msg.clone()),
             _ => ApiError::EngineError(e),
         }
     }
@@ -108,7 +108,7 @@ impl IntoResponse for ApiError {
                     StatusCode::NOT_FOUND,
                     ProblemDetail::not_found(msg.clone(), "API/not-found"),
                 ),
-                EngineError::InvalidState(msg) | EngineError::BpmnParse(msg) => (
+                EngineError::InvalidState(msg) | EngineError::InvalidArgument(msg) | EngineError::BpmnParse(msg) => (
                     StatusCode::BAD_REQUEST,
                     ProblemDetail::invalid_argument(msg.clone(), "API/invalid-request"),
                 ),

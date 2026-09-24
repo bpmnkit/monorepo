@@ -194,6 +194,18 @@ message ModifyProcessInstanceRequest {
   int64 processInstanceKey = 1;
   repeated ActivateInstruction activateInstructions = 2;
   repeated TerminateInstruction terminateInstructions = 3;
+  optional uint64 operationReference = 4;
+  repeated MoveInstruction moveInstructions = 5;
+}
+
+message MoveInstruction {
+  int64 sourceElementInstanceKey = 1;
+  string sourceElementId = 2;
+  string targetElementId = 3;
+  repeated VariableInstruction variableInstructions = 4;
+  int64 ancestorElementInstanceKey = 5;
+  bool inferAncestorScopeFromSourceHierarchy = 6;
+  bool useSourceParentKeyAsAncestorScopeKey = 7;
 }
 
 message ActivateInstruction {
@@ -204,6 +216,7 @@ message ActivateInstruction {
 
 message TerminateInstruction {
   int64 elementInstanceKey = 1;
+  string elementId = 2;
 }
 
 message VariableInstruction {

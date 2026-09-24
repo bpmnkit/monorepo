@@ -359,6 +359,10 @@ impl StateBackend for SqlxBackend {
         IncidentRepository::new(&self.pool).resolve(key).await
     }
 
+    async fn get_incidents_by_process_instance(&self, process_instance_key: i64) -> Result<Vec<Incident>> {
+        IncidentRepository::new(&self.pool).get_by_process_instance(process_instance_key).await
+    }
+
     async fn count_active_incidents(&self) -> Result<i64> {
         IncidentRepository::new(&self.pool).count_active().await
     }

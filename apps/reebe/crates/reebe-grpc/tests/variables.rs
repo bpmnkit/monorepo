@@ -359,7 +359,7 @@ async fn modify_process_instance_checks_the_variables_of_its_instructions() {
             ancestor_element_instance_key: -1,
             variable_instructions: vec![VariableInstruction { variables: variables.into(), scope_id: String::new() }],
         }],
-        terminate_instructions: vec![],
+        ..Default::default()
     };
     assert_invalid(s.service.modify_process_instance(Request::new(request(NOT_JSON))).await.unwrap_err(), "Invalid JSON value: {not json");
     assert_invalid(s.service.modify_process_instance(Request::new(request("[1]"))).await.unwrap_err(), NOT_AN_OBJECT);

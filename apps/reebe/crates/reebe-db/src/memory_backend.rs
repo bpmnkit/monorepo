@@ -577,6 +577,11 @@ impl StateBackend for InMemoryBackend {
             .ok_or_else(|| DbError::NotFound(format!("Incident {key}")))
     }
 
+    async fn get_incidents_by_process_instance(&self, process_instance_key: i64) -> Result<Vec<Incident>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.incidents.values().filter(|i| i.process_instance_key == process_instance_key).cloned().collect())
+    }
+
     async fn resolve_incident(&self, key: i64) -> Result<()> {
         let mut store = self.store.lock().unwrap();
         if let Some(incident) = store.incidents.get_mut(&key) {

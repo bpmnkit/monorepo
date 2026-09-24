@@ -10,6 +10,9 @@ pub enum EngineError {
     Expression(String),
     #[error("Not found: {0}")]
     NotFound(String),
+    /// A command Zeebe rejects as `INVALID_ARGUMENT`.
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
     #[error("Invalid state: {0}")]
     InvalidState(String),
     #[error("Internal error: {0}")]

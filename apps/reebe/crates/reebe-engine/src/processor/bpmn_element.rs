@@ -231,6 +231,7 @@ impl BpmnElementProcessor {
                 flow_scope_key,
                 tenant_id: &tenant_id,
             }, retried).await?;
+            set_modification_variables(state, payload, process_instance_key, body_key, &tenant_id).await?;
             return compensation::handler_activating(state, payload, process_instance_key, body_key).await;
         }
 
@@ -297,6 +298,7 @@ impl BpmnElementProcessor {
                 if let (Some(mi), Some(loop_counter)) = (element.multi_instance(), loop_counter) {
                     multi_instance::init_inner(state, mi, &ei, flow_scope_key, loop_counter).await?;
                 }
+                set_modification_variables(state, payload, process_instance_key, ei_key, &tenant_id).await?;
                 ei
             }
         };
@@ -1483,6 +1485,21 @@ impl BpmnElementProcessor {
 
         Ok(())
     }
+}
+
+/// The variables a process instance modification gives the element it activates,
+/// local to its new element instance before its input mappings apply.
+async fn set_modification_variables(
+    state: &EngineState,
+    payload: &serde_json::Value,
+    process_instance_key: i64,
+    element_instance_key: i64,
+    tenant_id: &str,
+) -> EngineResult<()> {
+    for (name, value) in payload["localVariables"].as_object().into_iter().flatten() {
+        scope::set_local(state, process_instance_key, element_instance_key, name, value.clone(), tenant_id).await?;
+    }
+    Ok(())
 }
 
 /// The flow scope a path ended in: an embedded or event sub-process, or the process.
