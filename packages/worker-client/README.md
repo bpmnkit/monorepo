@@ -24,6 +24,7 @@ The key principle: workers built with this package have **zero BPMNKit runtime d
 
 - **Async generator polling** — `client.poll(jobType)` yields one `ActivatedJob` at a time; idles cleanly between polls
 - **Job lifecycle** — `complete(variables)`, `fail(message, retries)`, `throwError(code, message, variables)`
+- **Typed jobs** — `createWorkerClient<JobTypes>()` with the map `casen gen types` generates types each job's variables, output, headers and error codes by job type
 - **OAuth2 for Camunda SaaS** — token fetching and caching built in; no manual auth management
 - **Env-var driven** — reads `ZEEBE_ADDRESS`, `ZEEBE_CLIENT_ID`, `ZEEBE_CLIENT_SECRET` automatically
 - **Zero dependencies** — pure Node.js `fetch`, no external packages
@@ -77,6 +78,24 @@ for await (const job of client.poll("my-job-type", { maxJobs: 10, timeout: 60_00
   await job.complete({ result: "ok" })
 }
 ```
+
+### Typed jobs from BPMN
+
+Generate a `JobTypes` map from your BPMN with `casen gen types processes/ --out src/generated/bpmn-types.ts`,
+then pass it as the type argument. Job types, variable names, output keys and error codes are checked at compile time:
+
+```typescript
+import type { JobTypes } from "./generated/bpmn-types.js"
+
+const client = createWorkerClient<JobTypes>()
+for await (const job of client.poll("charge-card")) {
+  job.variables.amount             // typed; a misspelt key is a compile error
+  job.customHeaders.provider       // literal header value from the BPMN
+  await job.complete({ transactionId: "t-1" })
+}
+```
+
+Without a type argument the client is untyped. See the [Typed Workers guide](https://bpmnkit.com/docs/guides/typed-workers).
 
 ### Job methods
 

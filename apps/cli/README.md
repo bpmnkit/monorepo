@@ -81,6 +81,14 @@ casen instances list --state active
 |---------|-------------|
 | `casen connector generate <spec>` | Generate element templates from OpenAPI/Swagger |
 
+### Typed code generation
+
+| Command | Description |
+|---------|-------------|
+| `casen gen types <files...> --out <file>` | TypeScript types for job workers (job types, variables, headers, messages, error codes) |
+| `casen gen types <files...> --out <file> --check` | Exit 1 when the generated file is out of date (CI) |
+| `casen gen types <files...> --check-workers <glob> --strict` | Report job types without a worker and workers without a job type |
+
 ## Global options
 
 | Flag | Description |

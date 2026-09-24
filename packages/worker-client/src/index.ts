@@ -24,7 +24,31 @@ export interface WorkerClientOptions {
 	workerName?: string
 }
 
-export interface ActivatedJob {
+/**
+ * What a worker for one job type can rely on — the shape `casen gen types`
+ * emits for each entry of its `JobTypes` map.
+ */
+export interface JobContract {
+	variables: object
+	output: object
+	headers: object
+	errors: string
+}
+
+/** The contract of a job type when no `JobTypes` map is given. */
+export interface UntypedJobContract {
+	variables: Record<string, unknown>
+	output: Record<string, unknown>
+	headers: Record<string, string>
+	errors: string
+}
+
+/** A map from job type to its contract, e.g. the `JobTypes` that `casen gen types` generates. */
+export type JobContractMap<J> = { [K in keyof J]: JobContract }
+
+type UntypedJobs = Record<string, UntypedJobContract>
+
+export interface ActivatedJob<C extends JobContract = UntypedJobContract> {
 	/** Unique job key. */
 	key: string
 	/** Job type as defined in the BPMN task definition. */
@@ -35,13 +59,19 @@ export interface ActivatedJob {
 	/** Remaining retries. Decrement when calling fail(). */
 	retries: number
 	/** Process variables passed to this job. */
-	variables: Record<string, unknown>
+	variables: C["variables"]
+	/** Task headers (`zeebe:taskHeaders`) of the element the job was created for. */
+	customHeaders: C["headers"]
 	/** Complete the job, optionally returning output variables. */
-	complete(variables?: Record<string, unknown>): Promise<void>
+	complete(variables?: C["output"]): Promise<void>
 	/** Fail the job with an error message. Retries defaults to job.retries - 1. */
 	fail(message: string, retries?: number): Promise<void>
 	/** Throw a BPMN error, which can be caught by an error boundary event. */
-	throwError(errorCode: string, message: string, variables?: Record<string, unknown>): Promise<void>
+	throwError(
+		errorCode: C["errors"],
+		message: string,
+		variables?: Record<string, unknown>,
+	): Promise<void>
 }
 
 export interface PollOptions {
@@ -51,7 +81,18 @@ export interface PollOptions {
 	timeout?: number
 }
 
-export interface WorkerClient {
+/**
+ * Pass a generated `JobTypes` map as `J` to type each job's variables, output,
+ * headers and error codes by its job type:
+ *
+ * @example
+ * import type { JobTypes } from "./generated/bpmn-types.js"
+ * const client = createWorkerClient<JobTypes>()
+ * for await (const job of client.poll("ship-order")) {
+ *   job.variables.orderId // typed; a misspelt key is a compile error
+ * }
+ */
+export interface WorkerClient<J extends JobContractMap<J> = UntypedJobs> {
 	/**
 	 * Async generator that continuously polls for jobs of the given type.
 	 * Yields one ActivatedJob at a time. Pauses 5 seconds between polls when idle.
@@ -62,10 +103,15 @@ export interface WorkerClient {
 	 *   await job.complete(result)
 	 * }
 	 */
-	poll(jobType: string, options?: PollOptions): AsyncGenerator<ActivatedJob>
+	poll<T extends keyof J & string>(
+		jobType: T,
+		options?: PollOptions,
+	): AsyncGenerator<ActivatedJob<J[T]>>
 }
 
-export function createWorkerClient(options?: WorkerClientOptions): WorkerClient {
+export function createWorkerClient<J extends JobContractMap<J> = UntypedJobs>(
+	options?: WorkerClientOptions,
+): WorkerClient<J> {
 	const address = (
 		options?.address ??
 		process.env.ZEEBE_ADDRESS ??
@@ -112,7 +158,10 @@ export function createWorkerClient(options?: WorkerClientOptions): WorkerClient 
 		})
 	}
 
-	async function* poll(jobType: string, pollOptions?: PollOptions): AsyncGenerator<ActivatedJob> {
+	async function* poll<T extends keyof J & string>(
+		jobType: T,
+		pollOptions?: PollOptions,
+	): AsyncGenerator<ActivatedJob<J[T]>> {
 		const maxJobs = pollOptions?.maxJobs ?? 5
 		const timeout = pollOptions?.timeout ?? 300_000
 
@@ -135,7 +184,7 @@ export function createWorkerClient(options?: WorkerClientOptions): WorkerClient 
 
 			for (const raw of rawJobs) {
 				const key = String(raw.key ?? raw.jobKey ?? "")
-				yield {
+				const job: ActivatedJob = {
 					key,
 					jobType: String(raw.type ?? jobType),
 					processInstanceKey: String(raw.processInstanceKey ?? ""),
@@ -143,6 +192,7 @@ export function createWorkerClient(options?: WorkerClientOptions): WorkerClient 
 					elementId: String(raw.elementId ?? ""),
 					retries: Number(raw.retries ?? 0),
 					variables: (raw.variables as Record<string, unknown>) ?? {},
+					customHeaders: (raw.customHeaders as Record<string, string>) ?? {},
 					async complete(variables = {}) {
 						await zeebePost(`/v2/jobs/${key}/completion`, { variables })
 					},
@@ -157,6 +207,8 @@ export function createWorkerClient(options?: WorkerClientOptions): WorkerClient 
 						})
 					},
 				}
+				// The contract is a compile-time promise the BPMN makes; the wire data is untyped.
+				yield job as unknown as ActivatedJob<J[T]>
 			}
 
 			if (rawJobs.length === 0) {

@@ -50,6 +50,17 @@ export { Bpmn, SAMPLE_BPMN_XML } from "./bpmn/index.js"
 export { applyAutoLayout } from "./bpmn/auto-layout.js"
 export { diffSemantics, projectSemantics, semanticHash } from "./bpmn/semantic-hash.js"
 export type { JsonValue, SemanticDiff, SemanticProjection } from "./bpmn/semantic-hash.js"
+export { extractProcessContract, generateProcessTypes } from "./bpmn/process-types.js"
+export type {
+	CodeContract,
+	ContractElementRef,
+	ContractHeader,
+	ContractVariable,
+	JobContract,
+	MessageContract,
+	ProcessContract,
+	ProcessTypesOptions,
+} from "./bpmn/process-types.js"
 export { detectExecutionPlatform, lintCategories, lintDiagram } from "./bpmn/lint.js"
 export type {
 	DetectedPlatform,
