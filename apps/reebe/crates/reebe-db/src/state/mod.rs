@@ -7,6 +7,7 @@ pub mod timers;
 pub mod incidents;
 pub mod user_tasks;
 pub mod deployments;
+pub mod decisions;
 pub mod identity;
 pub mod batch_operations;
 pub mod signal_subscriptions;

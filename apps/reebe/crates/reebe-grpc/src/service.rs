@@ -36,6 +36,65 @@ impl GatewayService {
     pub fn new(state: GatewayState) -> Self {
         Self { state }
     }
+
+    /// Deploy resources as one deployment, as the REST API does (the engine's
+    /// `DEPLOYMENT` `CREATE` takes each resource's name and base64 content), and
+    /// describe what was deployed: its processes, decisions and decision requirements.
+    async fn deploy(&self, resources: Vec<(String, Vec<u8>)>, tenant_id: &str) -> Result<(i64, Vec<Deployment>), Status> {
+        use base64::Engine as _;
+        let payload = serde_json::json!({
+            "resources": resources.iter().map(|(name, content)| serde_json::json!({
+                "name": name,
+                "content": base64::engine::general_purpose::STANDARD.encode(content),
+            })).collect::<Vec<_>>(),
+        });
+        let result = self.state.engine
+            .send_command("DEPLOYMENT".to_string(), "CREATE".to_string(), payload, tenant_id.to_string())
+            .await
+            .map_err(engine_err)?;
+        let text = |value: &serde_json::Value, name: &str| value[name].as_str().unwrap_or_default().to_string();
+        let version = |value: &serde_json::Value| value["version"].as_i64().unwrap_or(0) as i32;
+        let key = |value: &serde_json::Value, name: &str| key_of(&value[name]).unwrap_or(0);
+        let list = |name: &str| result[name].as_array().cloned().unwrap_or_default();
+        let mut deployments = Vec::new();
+        for p in list("deployments") {
+            deployments.push(Deployment {
+                metadata: Some(deployment::Metadata::Process(ProcessMetadata {
+                    bpmn_process_id: text(&p, "bpmnProcessId"),
+                    version: version(&p),
+                    process_definition_key: key(&p, "processDefinitionKey"),
+                    resource_name: text(&p, "resourceName"),
+                    tenant_id: text(&p, "tenantId"),
+                })),
+            });
+        }
+        for d in list("decisions") {
+            deployments.push(Deployment {
+                metadata: Some(deployment::Metadata::Decision(DecisionMetadata {
+                    dmn_decision_id: text(&d, "decisionId"),
+                    dmn_decision_name: text(&d, "decisionName"),
+                    version: version(&d),
+                    decision_key: key(&d, "decisionKey"),
+                    dmn_decision_requirements_id: text(&d, "decisionRequirementsId"),
+                    decision_requirements_key: key(&d, "decisionRequirementsKey"),
+                    tenant_id: text(&d, "tenantId"),
+                })),
+            });
+        }
+        for r in list("decisionRequirements") {
+            deployments.push(Deployment {
+                metadata: Some(deployment::Metadata::DecisionRequirements(DecisionRequirementsMetadata {
+                    dmn_decision_requirements_id: text(&r, "decisionRequirementsId"),
+                    dmn_decision_requirements_name: text(&r, "decisionRequirementsName"),
+                    version: version(&r),
+                    decision_requirements_key: key(&r, "decisionRequirementsKey"),
+                    resource_name: text(&r, "resourceName"),
+                    tenant_id: text(&r, "tenantId"),
+                })),
+            });
+        }
+        Ok((key(&result, "deploymentKey"), deployments))
+    }
 }
 
 /// An engine rejection as the gRPC status Zeebe's gateway gives it: `NOT_FOUND`,
@@ -265,40 +324,16 @@ impl Gateway for GatewayService {
         request: Request<DeployProcessRequest>,
     ) -> Result<Response<DeployProcessResponse>, Status> {
         let req = request.into_inner();
-        let mut process_metas = Vec::new();
-        let mut deploy_key = 0i64;
-
-        for proc in req.processes {
-            let bpmn_xml = String::from_utf8(proc.definition)
-                .map_err(|_| Status::invalid_argument("BPMN definition is not valid UTF-8"))?;
-            let payload = serde_json::json!({
-                "resourceName": proc.name,
-                "bpmnXml": bpmn_xml,
-                "tenantId": "<default>",
-            });
-            let result = self.state.engine
-                .send_command("DEPLOYMENT".to_string(), "CREATE".to_string(), payload, "<default>".to_string())
-                .await
-                .map_err(engine_err)?;
-
-            deploy_key = result["deploymentKey"].as_i64().unwrap_or(0);
-            let bpmn_process_id = result["bpmnProcessId"].as_str().unwrap_or("").to_string();
-            let version = result["version"].as_i64().unwrap_or(1) as i32;
-            let pd_key = result["processDefinitionKey"].as_i64().unwrap_or(0);
-
-            process_metas.push(ProcessMetadata {
-                bpmn_process_id,
-                version,
-                process_definition_key: pd_key,
-                resource_name: proc.name,
-                tenant_id: "<default>".to_string(),
-            });
-        }
-
-        Ok(Response::new(DeployProcessResponse {
-            key: deploy_key,
-            processes: process_metas,
-        }))
+        let resources = req.processes.into_iter().map(|p| (p.name, p.definition)).collect();
+        let (key, deployments) = self.deploy(resources, "<default>").await?;
+        let processes = deployments
+            .into_iter()
+            .filter_map(|d| match d.metadata {
+                Some(deployment::Metadata::Process(process)) => Some(process),
+                _ => None,
+            })
+            .collect();
+        Ok(Response::new(DeployProcessResponse { key, processes }))
     }
 
     async fn deploy_resource(
@@ -307,43 +342,9 @@ impl Gateway for GatewayService {
     ) -> Result<Response<DeployResourceResponse>, Status> {
         let req = request.into_inner();
         let tenant_id = if req.tenant_id.is_empty() { "<default>".to_string() } else { req.tenant_id.clone() };
-        let mut deployments = Vec::new();
-        let mut deploy_key = 0i64;
-
-        for resource in req.resources {
-            let bpmn_xml = String::from_utf8(resource.content)
-                .map_err(|_| Status::invalid_argument("Resource content is not valid UTF-8"))?;
-            let payload = serde_json::json!({
-                "resourceName": resource.name,
-                "bpmnXml": bpmn_xml,
-                "tenantId": tenant_id,
-            });
-            let result = self.state.engine
-                .send_command("DEPLOYMENT".to_string(), "CREATE".to_string(), payload, tenant_id.clone())
-                .await
-                .map_err(engine_err)?;
-
-            deploy_key = result["deploymentKey"].as_i64().unwrap_or(0);
-            let bpmn_process_id = result["bpmnProcessId"].as_str().unwrap_or("").to_string();
-            let version = result["version"].as_i64().unwrap_or(1) as i32;
-            let pd_key = result["processDefinitionKey"].as_i64().unwrap_or(0);
-
-            deployments.push(Deployment {
-                metadata: Some(deployment::Metadata::Process(ProcessMetadata {
-                    bpmn_process_id,
-                    version,
-                    process_definition_key: pd_key,
-                    resource_name: resource.name,
-                    tenant_id: tenant_id.clone(),
-                })),
-            });
-        }
-
-        Ok(Response::new(DeployResourceResponse {
-            key: deploy_key,
-            deployments,
-            tenant_id,
-        }))
+        let resources = req.resources.into_iter().map(|r| (r.name, r.content)).collect();
+        let (key, deployments) = self.deploy(resources, &tenant_id).await?;
+        Ok(Response::new(DeployResourceResponse { key, deployments, tenant_id }))
     }
 
     // ── Process Instances ─────────────────────────────────────────────────────
@@ -731,45 +732,36 @@ impl Gateway for GatewayService {
         &self,
         request: Request<EvaluateDecisionRequest>,
     ) -> Result<Response<EvaluateDecisionResponse>, Status> {
-        use reebe_db::StateBackend;
         let req = request.into_inner();
         let tenant_id = if req.tenant_id.is_empty() { "<default>".to_string() } else { req.tenant_id.clone() };
         let variables = variables_document(&req.variables)?;
-        // As the REST API's decision evaluation does: the latest decision with the id.
-        if req.decision_id.is_empty() {
-            return Err(Status::unimplemented("Evaluating a decision by decisionKey is not supported; give its decisionId"));
-        }
-        let backend = reebe_db::SqlxBackend::new(self.state.pool.clone());
-        let dmn_xml = backend
-            .get_dmn_xml_by_decision_id(&req.decision_id)
+        // As Zeebe's gateway sends it: an id, else the key (0 when not given).
+        let payload = serde_json::json!({
+            "decisionId": req.decision_id,
+            "decisionKey": req.decision_key,
+            "variables": variables,
+            "tenantId": tenant_id,
+        });
+        let result = self.state.engine
+            .send_command("DECISION_EVALUATION".to_string(), "EVALUATE".to_string(), payload, tenant_id)
             .await
-            .map_err(|e| Status::internal(e.to_string()))?
-            .ok_or_else(|| Status::not_found(format!("Expected to evaluate decision '{}', but no such decision found", req.decision_id)))?;
-        let drg = reebe_dmn::parse_dmn(&dmn_xml).map_err(|e| Status::internal(format!("DMN parse error: {e}")))?;
-        let decision_name = drg
-            .decisions
-            .iter()
-            .find(|d| d.id == req.decision_id)
-            .map(|d| d.name.clone())
-            .unwrap_or_default();
-        let (decision_output, failure_message, failed_decision_id) =
-            match reebe_dmn::evaluate_decision(&drg, &req.decision_id, &variables) {
-                Ok(output) => (output.to_string(), String::new(), String::new()),
-                Err(e) => ("null".to_string(), e.to_string(), req.decision_id.clone()),
-            };
+            .map_err(engine_err)?;
+        let text = |name: &str| result[name].as_str().unwrap_or_default().to_string();
+        let evaluation_key = key_of(&result["decisionEvaluationKey"]).unwrap_or(0);
         Ok(Response::new(EvaluateDecisionResponse {
-            decision_key: req.decision_key,
-            decision_id: req.decision_id,
-            decision_name,
-            decision_version: 0,
-            decision_requirements_key: 0,
-            decision_requirements_id: String::new(),
-            decision_output,
+            decision_key: key_of(&result["decisionKey"]).unwrap_or(0),
+            decision_id: text("decisionId"),
+            decision_name: text("decisionName"),
+            decision_version: result["decisionVersion"].as_i64().unwrap_or(0) as i32,
+            decision_requirements_id: text("decisionRequirementsId"),
+            decision_requirements_key: key_of(&result["decisionRequirementsKey"]).unwrap_or(0),
+            decision_output: text("decisionOutput"),
             evaluated_decisions: vec![],
-            failed_decision_id,
-            failure_message,
-            tenant_id,
-            process_instance_key: 0,
+            failed_decision_id: text("failedDecisionId"),
+            failure_message: text("failureMessage"),
+            tenant_id: text("tenantId"),
+            decision_instance_key: evaluation_key,
+            decision_evaluation_key: evaluation_key,
         }))
     }
 

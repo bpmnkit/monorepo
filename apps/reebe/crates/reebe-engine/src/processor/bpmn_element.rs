@@ -660,8 +660,9 @@ impl BpmnElementProcessor {
                         scope::visible_variables(state, process_instance_key, ei_key).await,
                     );
 
-                    match state.backend.get_dmn_xml_by_decision_id(decision_id).await {
-                        Ok(Some(dmn_xml)) => {
+                    match state.backend.get_latest_decision_definition(decision_id, &tenant_id).await {
+                        Ok(Some(decision)) => {
+                            let dmn_xml = decision.dmn_xml;
                             match reebe_dmn::parse_dmn(&dmn_xml) {
                                 Ok(drg) => {
                                     match reebe_dmn::evaluate_decision(&drg, decision_id, &input_ctx) {

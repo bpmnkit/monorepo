@@ -420,14 +420,15 @@ message EvaluateDecisionResponse {
   string decisionId = 2;
   string decisionName = 3;
   int32 decisionVersion = 4;
-  int64 decisionRequirementsKey = 5;
-  string decisionRequirementsId = 6;
+  string decisionRequirementsId = 5;
+  int64 decisionRequirementsKey = 6;
   string decisionOutput = 7;
   repeated EvaluatedDecision evaluatedDecisions = 8;
   string failedDecisionId = 9;
   string failureMessage = 10;
   string tenantId = 11;
-  int64 processInstanceKey = 12;
+  int64 decisionInstanceKey = 12;
+  int64 decisionEvaluationKey = 13;
 }
 
 message EvaluatedDecision {
@@ -439,6 +440,8 @@ message EvaluatedDecision {
   string decisionOutput = 6;
   repeated MatchedDecisionRule matchedRules = 7;
   repeated EvaluatedDecisionInput evaluatedInputs = 8;
+  string tenantId = 9;
+  string decisionEvaluationInstanceKey = 10;
 }
 
 message MatchedDecisionRule {

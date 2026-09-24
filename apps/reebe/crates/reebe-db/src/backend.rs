@@ -8,6 +8,7 @@ use crate::state::element_instances::ElementInstance;
 use crate::state::variables::Variable;
 use crate::state::jobs::Job;
 use crate::state::incidents::Incident;
+use crate::state::decisions::{DecisionDefinition, DecisionRequirements};
 use crate::state::timers::Timer;
 use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
@@ -72,11 +73,14 @@ pub trait StateBackend: Send + Sync {
     async fn upsert_variable(&self, variable: &Variable) -> Result<()>;
     async fn get_variables_by_scope(&self, scope_key: i64) -> Result<Vec<Variable>>;
 
-    // ---- Decision definitions (DMN) ----
-    /// Store the DMN a decision was deployed in, as decision definition `key` of
-    /// deployment `deployment_key`.
-    async fn insert_decision_xml(&self, key: i64, deployment_key: i64, resource_name: &str, decision_id: &str, dmn_xml: &str) -> Result<()>;
-    async fn get_dmn_xml_by_decision_id(&self, decision_id: &str) -> Result<Option<String>>;
+    // ---- Decision requirements and decision definitions (DMN) ----
+    async fn insert_decision_requirements(&self, drg: &DecisionRequirements) -> Result<()>;
+    /// The latest version of the decision requirements graph `drg_id` of the tenant.
+    async fn get_latest_decision_requirements(&self, drg_id: &str, tenant_id: &str) -> Result<Option<DecisionRequirements>>;
+    async fn insert_decision_definition(&self, decision: &DecisionDefinition) -> Result<()>;
+    /// The latest version of the decision `decision_id` of the tenant.
+    async fn get_latest_decision_definition(&self, decision_id: &str, tenant_id: &str) -> Result<Option<DecisionDefinition>>;
+    async fn get_decision_definition_by_key(&self, key: i64) -> Result<Option<DecisionDefinition>>;
 
     // ---- Jobs ----
     async fn insert_job(&self, job: &Job) -> Result<()>;

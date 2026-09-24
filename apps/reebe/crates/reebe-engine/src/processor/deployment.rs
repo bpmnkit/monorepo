@@ -43,7 +43,10 @@ impl RecordProcessor for DeploymentProcessor {
         state.backend.insert_deployment(&deployment).await?;
 
         let mut deployed_processes = Vec::new();
+        let mut deployed_decisions = Vec::new();
+        let mut deployed_drgs = Vec::new();
 
+        let mut decoded = Vec::new();
         for resource in &resources {
             let resource_name = resource["name"]
                 .as_str()
@@ -58,18 +61,32 @@ impl RecordProcessor for DeploymentProcessor {
             let xml = String::from_utf8(xml_bytes)
                 .map_err(|e| EngineError::BpmnParse(format!("UTF-8 decode error: {e}")))?;
 
-            // If the resource is a DMN file (has at least one decision), store each
-            // decision and skip BPMN parsing. BPMN also parses without error (same root
-            // element name) but yields zero decisions, so we must guard on non-empty.
-            if let Ok(drg) = reebe_dmn::parse_dmn(&xml) {
-                if !drg.decisions.is_empty() {
-                    for decision in &drg.decisions {
-                        let key = key_gen.next_key().await?;
-                        state.backend.insert_decision_xml(key, deployment_key, &resource_name, &decision.id, &xml).await
-                            .unwrap_or_else(|e| tracing::warn!("Failed to store DMN decision {}: {e}", decision.id));
-                    }
-                    continue;
-                }
+            // A DMN resource has at least one decision. BPMN also parses without error
+            // (same root element name) but yields zero decisions.
+            let drg = reebe_dmn::parse_dmn(&xml).ok().filter(|drg| !drg.decisions.is_empty());
+            let duplicate = match &drg {
+                Some(drg) => dmn::is_duplicate(state, drg, &resource_name, &xml, &tenant_id).await?,
+                None => false,
+            };
+            decoded.push((resource_name, xml, drg, duplicate));
+        }
+        // As in Zeebe, a deployment of nothing but resources deployed before creates no
+        // new versions; otherwise every resource of it gets a new version.
+        let duplicates_only = decoded.iter().all(|(_, _, _, duplicate)| *duplicate);
+
+        for (resource_name, xml, drg, duplicate) in decoded {
+            if let Some(drg) = drg {
+                let deployed = dmn::deploy(state, &key_gen, dmn::Resource {
+                    drg: &drg,
+                    resource_name: &resource_name,
+                    xml: &xml,
+                    tenant_id: &tenant_id,
+                    deployment_key,
+                    keep_latest: duplicate && duplicates_only,
+                }).await?;
+                deployed_drgs.push(deployed.drg);
+                deployed_decisions.extend(deployed.decisions);
+                continue;
             }
 
             // Parse BPMN
@@ -147,9 +164,136 @@ impl RecordProcessor for DeploymentProcessor {
         writers.response = Some(serde_json::json!({
             "deploymentKey": deployment_key.to_string(),
             "deployments": deployed_processes,
+            "decisions": deployed_decisions,
+            "decisionRequirements": deployed_drgs,
             "tenantId": tenant_id,
         }));
 
         Ok(())
+    }
+}
+
+/// DMN resources, versioned as Zeebe's `DmnResourceTransformer` versions them.
+mod dmn {
+    use reebe_db::state::decisions::{DecisionDefinition, DecisionRequirements};
+    use reebe_dmn::DmnDecisionRequirementsGraph;
+    use crate::engine::EngineState;
+    use crate::error::EngineResult;
+    use crate::key_gen::KeyGenerator;
+
+    /// Whether the resource is the latest version of its decision requirements graph
+    /// again: the same resource name and content, and every decision in it still has
+    /// its latest version in that graph.
+    pub(super) async fn is_duplicate(
+        state: &EngineState,
+        drg: &DmnDecisionRequirementsGraph,
+        resource_name: &str,
+        xml: &str,
+        tenant_id: &str,
+    ) -> EngineResult<bool> {
+        let Some(latest) = state.backend.get_latest_decision_requirements(&drg.id, tenant_id).await? else {
+            return Ok(false);
+        };
+        if latest.resource_name != resource_name || latest.dmn_xml != xml {
+            return Ok(false);
+        }
+        for decision in &drg.decisions {
+            let in_latest = state.backend
+                .get_latest_decision_definition(&decision.id, tenant_id)
+                .await?
+                .is_some_and(|d| d.decision_requirements_key == latest.key);
+            if !in_latest {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    pub(super) struct Resource<'a> {
+        pub drg: &'a DmnDecisionRequirementsGraph,
+        pub resource_name: &'a str,
+        pub xml: &'a str,
+        pub tenant_id: &'a str,
+        pub deployment_key: i64,
+        /// A duplicate in a deployment of duplicates only: the latest versions stay.
+        pub keep_latest: bool,
+    }
+
+    pub(super) struct Deployed {
+        pub drg: serde_json::Value,
+        pub decisions: Vec<serde_json::Value>,
+    }
+
+    fn non_empty(name: &str) -> Option<String> {
+        Some(name.to_string()).filter(|n| !n.is_empty())
+    }
+
+    /// Store a new version of the graph and of each decision in it (the latest
+    /// version plus one), or keep the latest versions of a duplicate.
+    pub(super) async fn deploy(state: &EngineState, key_gen: &KeyGenerator, r: Resource<'_>) -> EngineResult<Deployed> {
+        let latest_drg = state.backend.get_latest_decision_requirements(&r.drg.id, r.tenant_id).await?;
+        let drg = match latest_drg {
+            Some(latest) if r.keep_latest => latest,
+            latest => {
+                let drg = DecisionRequirements {
+                    key: key_gen.next_key().await?,
+                    drg_id: r.drg.id.clone(),
+                    name: non_empty(&r.drg.name),
+                    version: latest.map_or(1, |l| l.version + 1),
+                    tenant_id: r.tenant_id.to_string(),
+                    deployment_key: r.deployment_key,
+                    resource_name: r.resource_name.to_string(),
+                    dmn_xml: r.xml.to_string(),
+                };
+                state.backend.insert_decision_requirements(&drg).await?;
+                drg
+            }
+        };
+        let mut decisions = Vec::new();
+        for decision in &r.drg.decisions {
+            let latest = state.backend.get_latest_decision_definition(&decision.id, r.tenant_id).await?;
+            let deployed = match latest {
+                Some(latest) if r.keep_latest => latest,
+                latest => {
+                    let deployed = DecisionDefinition {
+                        key: key_gen.next_key().await?,
+                        decision_id: decision.id.clone(),
+                        name: non_empty(&decision.name),
+                        version: latest.map_or(1, |l| l.version + 1),
+                        decision_requirements_key: drg.key,
+                        decision_requirements_id: drg.drg_id.clone(),
+                        tenant_id: r.tenant_id.to_string(),
+                        deployment_key: r.deployment_key,
+                        resource_name: r.resource_name.to_string(),
+                        dmn_xml: r.xml.to_string(),
+                    };
+                    state.backend.insert_decision_definition(&deployed).await?;
+                    deployed
+                }
+            };
+            decisions.push(serde_json::json!({
+                "decisionKey": deployed.key.to_string(),
+                "decisionId": deployed.decision_id,
+                "decisionName": deployed.name.clone().unwrap_or_default(),
+                "version": deployed.version,
+                "decisionRequirementsKey": drg.key.to_string(),
+                "decisionRequirementsId": drg.drg_id,
+                "resourceName": r.resource_name,
+                "tenantId": r.tenant_id,
+                "duplicate": r.keep_latest,
+            }));
+        }
+        Ok(Deployed {
+            drg: serde_json::json!({
+                "decisionRequirementsKey": drg.key.to_string(),
+                "decisionRequirementsId": drg.drg_id,
+                "decisionRequirementsName": drg.name.clone().unwrap_or_default(),
+                "version": drg.version,
+                "resourceName": r.resource_name,
+                "tenantId": r.tenant_id,
+                "duplicate": r.keep_latest,
+            }),
+            decisions,
+        })
     }
 }

@@ -19,6 +19,7 @@ pub(crate) mod join;
 pub(crate) mod compensation;
 pub(crate) mod ad_hoc;
 pub mod modification;
+pub mod decision;
 
 pub use deployment::DeploymentProcessor;
 pub use process_instance::{ProcessInstanceCreationProcessor, ProcessInstanceCancelProcessor};
@@ -33,6 +34,7 @@ pub use identity::IdentityProcessor;
 pub use variable::VariableDocumentProcessor;
 pub use ad_hoc::AdHocSubProcessInstructionProcessor;
 pub use modification::ProcessInstanceModificationProcessor;
+pub use decision::DecisionEvaluationProcessor;
 
 use async_trait::async_trait;
 use reebe_db::records::DbRecord;

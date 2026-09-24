@@ -11,6 +11,7 @@ use crate::state::element_instances::ElementInstance;
 use crate::state::variables::Variable;
 use crate::state::jobs::Job;
 use crate::state::incidents::Incident;
+use crate::state::decisions::{DecisionDefinition, DecisionRequirements};
 use crate::state::timers::Timer;
 use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
@@ -48,7 +49,8 @@ pub struct InMemoryStore {
     compensation_subscriptions: BTreeMap<i64, CompensationSubscription>,
     deployments: BTreeMap<i64, Deployment>,
     process_definitions: BTreeMap<i64, ProcessDefinition>,
-    decision_xml_by_id: std::collections::HashMap<String, String>,
+    decision_requirements: BTreeMap<i64, DecisionRequirements>,
+    decision_definitions: BTreeMap<i64, DecisionDefinition>,
     user_tasks: BTreeMap<i64, UserTask>,
     tenants: BTreeMap<i64, Tenant>,
     users: BTreeMap<String, User>,
@@ -75,7 +77,8 @@ impl InMemoryStore {
             compensation_subscriptions: BTreeMap::new(),
             deployments: BTreeMap::new(),
             process_definitions: BTreeMap::new(),
-            decision_xml_by_id: std::collections::HashMap::new(),
+            decision_requirements: BTreeMap::new(),
+            decision_definitions: BTreeMap::new(),
             user_tasks: BTreeMap::new(),
             tenants: BTreeMap::new(),
             users: BTreeMap::new(),
@@ -909,12 +912,33 @@ impl StateBackend for InMemoryBackend {
         Ok(())
     }
 
-    async fn insert_decision_xml(&self, _key: i64, _deployment_key: i64, _resource_name: &str, decision_id: &str, dmn_xml: &str) -> Result<()> {
-        self.store.lock().unwrap().decision_xml_by_id.insert(decision_id.to_string(), dmn_xml.to_string());
+    async fn insert_decision_requirements(&self, drg: &DecisionRequirements) -> Result<()> {
+        self.store.lock().unwrap().decision_requirements.insert(drg.key, drg.clone());
         Ok(())
     }
 
-    async fn get_dmn_xml_by_decision_id(&self, decision_id: &str) -> Result<Option<String>> {
-        Ok(self.store.lock().unwrap().decision_xml_by_id.get(decision_id).cloned())
+    async fn get_latest_decision_requirements(&self, drg_id: &str, tenant_id: &str) -> Result<Option<DecisionRequirements>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.decision_requirements.values()
+            .filter(|d| d.drg_id == drg_id && d.tenant_id == tenant_id)
+            .max_by_key(|d| d.version)
+            .cloned())
+    }
+
+    async fn insert_decision_definition(&self, decision: &DecisionDefinition) -> Result<()> {
+        self.store.lock().unwrap().decision_definitions.insert(decision.key, decision.clone());
+        Ok(())
+    }
+
+    async fn get_latest_decision_definition(&self, decision_id: &str, tenant_id: &str) -> Result<Option<DecisionDefinition>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.decision_definitions.values()
+            .filter(|d| d.decision_id == decision_id && d.tenant_id == tenant_id)
+            .max_by_key(|d| d.version)
+            .cloned())
+    }
+
+    async fn get_decision_definition_by_key(&self, key: i64) -> Result<Option<DecisionDefinition>> {
+        Ok(self.store.lock().unwrap().decision_definitions.get(&key).cloned())
     }
 }

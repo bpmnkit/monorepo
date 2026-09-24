@@ -34,6 +34,7 @@ mod tests {
         DeploymentProcessor, ProcessInstanceCreationProcessor,
         BpmnElementProcessor, JobProcessor, VariableDocumentProcessor,
         UserTaskProcessor, IncidentProcessor, AdHocSubProcessInstructionProcessor, ProcessInstanceModificationProcessor,
+        DecisionEvaluationProcessor,
     };
     use crate::processor::signal::SignalProcessor;
     use crate::processor::timer::TimerProcessor;
@@ -73,6 +74,7 @@ mod tests {
                 Arc::new(IncidentProcessor),
                 Arc::new(AdHocSubProcessInstructionProcessor),
                 Arc::new(ProcessInstanceModificationProcessor),
+                Arc::new(DecisionEvaluationProcessor),
             ];
             Self { backend, state, processors }
         }
@@ -6157,5 +6159,135 @@ mod tests {
         assert_eq!(inner.len(), 1);
         let t1 = h.backend.list_element_instances().into_iter().find(|e| e.element_id == "t1").unwrap();
         assert_eq!(t1.flow_scope_key, Some(inner[0].key));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // DMN versions and decision evaluation (Zeebe's DmnResourceTransformer and
+    // DecisionEvaluationEvaluateProcessor)
+    // ─────────────────────────────────────────────────────────────────
+
+    /// A DRG `greetings` with the literal decision `greet`, which says `{greeting} {name}`.
+    fn greeting_dmn(greeting: &str) -> String {
+        format!(r#"<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="greetings" name="Greetings" namespace="t">
+  <decision id="greet" name="Greet">
+    <literalExpression><text>"{greeting} " + name</text></literalExpression>
+  </decision>
+</definitions>"#)
+    }
+
+    /// Deploy resources `(name, xml)` as one deployment; the response.
+    async fn deploy_resources(h: &Harness, resources: &[(&str, &str)]) -> Value {
+        let resources: Vec<Value> = resources.iter().map(|(name, xml)| serde_json::json!({
+            "name": name, "content": base64::engine::general_purpose::STANDARD.encode(xml.as_bytes()),
+        })).collect();
+        h.run("DEPLOYMENT", "CREATE", serde_json::json!({ "resources": resources })).await.expect("a response")
+    }
+
+    /// Evaluate a decision; `Err` is the rejection.
+    async fn evaluate(h: &Harness, command: Value) -> Result<Value, String> {
+        let position = h.submit("DECISION_EVALUATION", "EVALUATE", command).await;
+        let record = h.backend.fetch_commands_from(0, position, 1).await.unwrap().remove(0);
+        let mut writers = Writers::new();
+        DecisionEvaluationProcessor.process(&record, &h.state, &mut writers).await.map_err(|e| e.to_string())?;
+        h.append_follow_ups(&record, &writers).await;
+        Ok(writers.response.unwrap())
+    }
+
+    #[tokio::test]
+    async fn test_redeploying_a_dmn_versions_it_as_zeebe_does() {
+        let h = Harness::new();
+        let first = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(first["decisions"][0]["version"], 1);
+        assert_eq!(first["decisionRequirements"][0]["version"], 1);
+        assert_eq!(first["decisionRequirements"][0]["decisionRequirementsId"], "greetings");
+        let v1_key = first["decisions"][0]["decisionKey"].clone();
+
+        // The same resource again: a duplicate, with the same keys and versions.
+        let again = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(again["decisions"][0]["version"], 1);
+        assert_eq!(again["decisions"][0]["decisionKey"], v1_key);
+        assert_eq!(again["decisions"][0]["duplicate"], true);
+        assert_eq!(again["decisionRequirements"][0]["decisionRequirementsKey"], first["decisionRequirements"][0]["decisionRequirementsKey"]);
+
+        // Changed content: version 2 of the DRG and of the decision.
+        let changed = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hi"))]).await;
+        assert_eq!(changed["decisions"][0]["version"], 2);
+        assert_eq!(changed["decisionRequirements"][0]["version"], 2);
+        assert_ne!(changed["decisions"][0]["decisionKey"], v1_key);
+        let v2_key = changed["decisions"][0]["decisionKey"].clone();
+
+        // Evaluation by id picks the latest version; by key, the version with the key.
+        let by_id = evaluate(&h, serde_json::json!({ "decisionId": "greet", "variables": { "name": "Ada" } })).await.unwrap();
+        assert_eq!(by_id["decisionOutput"], r#""Hi Ada""#);
+        assert_eq!(by_id["decisionVersion"], 2);
+        assert_eq!(by_id["decisionKey"], v2_key);
+        assert_eq!(by_id["decisionRequirementsId"], "greetings");
+        let by_key = evaluate(&h, serde_json::json!({ "decisionKey": v1_key, "variables": { "name": "Ada" } })).await.unwrap();
+        assert_eq!(by_key["decisionOutput"], r#""Hello Ada""#);
+        assert_eq!(by_key["decisionVersion"], 1);
+        assert_eq!(by_key["decisionName"], "Greet");
+
+        // The first content again is not a duplicate of the latest version: version 3.
+        let back = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(back["decisions"][0]["version"], 3);
+        // Under another resource name, the same content is a new version too.
+        let renamed = deploy_resources(&h, &[("other.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(renamed["decisions"][0]["version"], 4);
+    }
+
+    #[tokio::test]
+    async fn test_a_duplicate_dmn_deployed_with_a_new_resource_gets_a_new_version() {
+        // Zeebe's DmnResourceTransformer.writeRecords: all resources of a deployment
+        // that is not all duplicates are versioned together.
+        let h = Harness::new();
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        let bpmn = wrap_process("proc", r#"<bpmn:startEvent id="start"/>"#);
+        let both = deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello")), ("proc.bpmn", &bpmn)]).await;
+        assert_eq!(both["decisions"][0]["version"], 2);
+        assert_eq!(both["decisions"][0]["duplicate"], false);
+        assert_eq!(both["deployments"][0]["bpmnProcessId"], "proc");
+    }
+
+    #[tokio::test]
+    async fn test_a_business_rule_task_evaluates_the_latest_decision_version() {
+        let bpmn = wrap_process("proc", r#"
+    <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:businessRuleTask id="decide">
+      <bpmn:extensionElements><zeebe:calledDecision decisionId="greet" resultVariable="greeting"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="decide"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="decide" targetRef="end"/>"#);
+        let h = Harness::new();
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hi"))]).await;
+        h.deploy(&bpmn).await;
+        h.start("proc", serde_json::json!({ "name": "Ada" })).await;
+        assert_eq!(h.process_state("proc").as_deref(), Some("COMPLETED"));
+        assert_eq!(h.get_var("greeting"), Some(serde_json::json!("Hi Ada")));
+    }
+
+    #[tokio::test]
+    async fn test_decision_evaluation_rejects_as_zeebe_does() {
+        let h = Harness::new();
+        deploy_resources(&h, &[("greet.dmn", &greeting_dmn("Hello"))]).await;
+        assert_eq!(
+            evaluate(&h, serde_json::json!({ "decisionId": "nope" })).await.unwrap_err(),
+            "Not found: Expected to evaluate decision 'nope', but no decision found for id 'nope'",
+        );
+        assert_eq!(
+            evaluate(&h, serde_json::json!({ "decisionKey": "77" })).await.unwrap_err(),
+            "Not found: Expected to evaluate decision '77', but no decision found for key '77'",
+        );
+        assert_eq!(
+            evaluate(&h, serde_json::json!({})).await.unwrap_err(),
+            "Invalid argument: Expected either a decision id or a valid decision key, but none provided",
+        );
+        // A decision that fails to evaluate is a result with the failure, not a rejection.
+        let failed = evaluate(&h, serde_json::json!({ "decisionId": "greet", "variables": { "name": 1 } })).await.unwrap();
+        assert_eq!(failed["failedDecisionId"], "greet");
+        assert_ne!(failed["failureMessage"], "");
+        assert!(h.backend.list_records().iter().any(|r| r.value_type == "DECISION_EVALUATION" && r.intent == "FAILED"));
     }
 }

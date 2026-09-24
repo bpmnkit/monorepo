@@ -1,5 +1,5 @@
 //! REST endpoints against a running engine on PostgreSQL: process instance
-//! modification.
+//! modification, and decision evaluation by id and by key.
 //!
 //! These tests need PostgreSQL, like the engine's `integration` and `compatibility`
 //! suites: they skip themselves unless `REEBE_DATABASE__URL` is set (see
@@ -168,4 +168,51 @@ async fn modification_rejections_over_rest() {
          Expected a numeric value. Did you pass an entity id instead of an entity key?.",
     );
     s.element(pi, "a", "ACTIVATED").await;
+}
+
+/// A DRG `greetings` with the literal decision `greet`, which says `{greeting} {name}`.
+fn greeting_dmn(greeting: &str) -> String {
+    format!(r#"<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="greetings" name="Greetings" namespace="t">
+  <decision id="greet" name="Greet">
+    <literalExpression><text>"{greeting} " + name</text></literalExpression>
+  </decision>
+</definitions>"#)
+}
+
+#[tokio::test]
+async fn decision_evaluation_by_id_and_key_over_rest() {
+    let Some(s) = setup().await else { return };
+    let v1 = s.deploy("greet.dmn", &greeting_dmn("Hello")).await;
+    let duplicate = s.deploy("greet.dmn", &greeting_dmn("Hello")).await;
+    let v2 = s.deploy("greet.dmn", &greeting_dmn("Hi")).await;
+    let v1_key = v1["decisions"][0]["decisionKey"].as_str().unwrap().to_string();
+    assert_eq!(duplicate["decisions"][0]["decisionKey"], v1["decisions"][0]["decisionKey"], "a duplicate keeps version 1");
+    assert_eq!(v2["decisions"][0]["version"], 2);
+
+    // By id: the latest version.
+    let (status, body) = s.post("/v2/decision-definitions/evaluation", json!({
+        "decisionDefinitionId": "greet", "variables": { "name": "Ada" },
+    })).await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["output"], r#""Hi Ada""#);
+    assert_eq!(body["decisionDefinitionVersion"], 2);
+    assert_eq!(body["decisionDefinitionKey"], v2["decisions"][0]["decisionKey"]);
+    assert_eq!(body["decisionDefinitionName"], "Greet");
+    assert_eq!(body["decisionRequirementsId"], "greetings");
+    assert_eq!(body["failureMessage"], Value::Null);
+
+    // By key: that version.
+    let (status, body) = s.post("/v2/decision-definitions/evaluation", json!({
+        "decisionDefinitionKey": v1_key, "variables": { "name": "Ada" },
+    })).await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["output"], r#""Hello Ada""#);
+    assert_eq!(body["decisionDefinitionVersion"], 1);
+
+    let (status, body) = s.post("/v2/decision-definitions/evaluation", json!({ "decisionDefinitionKey": "424242" })).await;
+    assert_eq!(status, 404, "{body}");
+    assert_eq!(body["detail"], "Expected to evaluate decision '424242', but no decision found for key '424242'");
+    let (status, body) = s.post("/v2/decision-definitions/evaluation", json!({ "variables": {} })).await;
+    assert_eq!(status, 400, "{body}");
+    assert_eq!(body["detail"], "At least one of [decisionDefinitionId, decisionDefinitionKey] is required.");
 }

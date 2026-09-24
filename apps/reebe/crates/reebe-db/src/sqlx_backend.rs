@@ -18,6 +18,7 @@ use crate::state::signal_subscriptions::{SignalSubscription, SignalSubscriptionR
 use crate::state::gateway_tokens::{JoinToken, JoinTokenRepository};
 use crate::state::compensation::{CompensationSubscription, CompensationSubscriptionRepository};
 use crate::state::deployments::{Deployment, ProcessDefinition, DeploymentRepository};
+use crate::state::decisions::{DecisionDefinition, DecisionRepository, DecisionRequirements};
 use crate::state::user_tasks::{UserTask, UserTaskRepository};
 use crate::state::identity::{Tenant, User, TenantRepository, UserRepository};
 use crate::backend::StateBackend;
@@ -597,41 +598,24 @@ impl StateBackend for SqlxBackend {
         UserRepository::new(&self.pool).delete(username).await
     }
 
-    async fn insert_decision_xml(&self, key: i64, deployment_key: i64, resource_name: &str, decision_id: &str, dmn_xml: &str) -> Result<()> {
-        use sqlx::Row;
-        let existing: Option<i64> = sqlx::query(
-            "SELECT key FROM decision_definitions WHERE decision_id = $1 ORDER BY version DESC LIMIT 1",
-        )
-        .bind(decision_id)
-        .fetch_optional(&*self.pool)
-        .await?
-        .map(|r| r.get("key"));
-
-        if existing.is_none() {
-            sqlx::query(
-                "INSERT INTO decision_definitions (key, decision_id, dmn_xml, version, deployment_key, resource_name) \
-                 VALUES ($1, $2, $3, 1, $4, $5) ON CONFLICT DO NOTHING",
-            )
-            .bind(key)
-            .bind(decision_id)
-            .bind(dmn_xml)
-            .bind(deployment_key)
-            .bind(resource_name)
-            .execute(&*self.pool)
-            .await?;
-        }
-        Ok(())
+    async fn insert_decision_requirements(&self, drg: &DecisionRequirements) -> Result<()> {
+        DecisionRepository::new(&self.pool).insert_requirements(drg).await
     }
 
-    async fn get_dmn_xml_by_decision_id(&self, decision_id: &str) -> Result<Option<String>> {
-        use sqlx::Row;
-        let row = sqlx::query(
-            "SELECT dmn_xml FROM decision_definitions WHERE decision_id = $1 ORDER BY version DESC LIMIT 1",
-        )
-        .bind(decision_id)
-        .fetch_optional(&*self.pool)
-        .await?;
-        Ok(row.map(|r| r.get("dmn_xml")))
+    async fn get_latest_decision_requirements(&self, drg_id: &str, tenant_id: &str) -> Result<Option<DecisionRequirements>> {
+        DecisionRepository::new(&self.pool).latest_requirements(drg_id, tenant_id).await
+    }
+
+    async fn insert_decision_definition(&self, decision: &DecisionDefinition) -> Result<()> {
+        DecisionRepository::new(&self.pool).insert_decision(decision).await
+    }
+
+    async fn get_latest_decision_definition(&self, decision_id: &str, tenant_id: &str) -> Result<Option<DecisionDefinition>> {
+        DecisionRepository::new(&self.pool).latest_decision(decision_id, tenant_id).await
+    }
+
+    async fn get_decision_definition_by_key(&self, key: i64) -> Result<Option<DecisionDefinition>> {
+        DecisionRepository::new(&self.pool).decision_by_key(key).await
     }
 }
 

@@ -204,6 +204,7 @@ pub async fn create_app(
         .route("/v2/decision-requirements/search", post(handlers::decisions::search_decision_requirements))
 
         // Decision evaluation
+        .route("/v2/decision-definitions/evaluation", post(handlers::decisions::evaluate_decision))
         .route("/v2/decisions/evaluation", post(handlers::decisions::evaluate_decision))
 
         // Resources

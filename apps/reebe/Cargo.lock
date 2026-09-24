@@ -2455,7 +2455,6 @@ dependencies = [
  "metrics 0.24.3",
  "metrics-exporter-prometheus",
  "reebe-db",
- "reebe-dmn",
  "reebe-engine",
  "reebe-feel",
  "reebe-protocol",
@@ -2564,7 +2563,6 @@ dependencies = [
  "prost",
  "protoc-bin-vendored",
  "reebe-db",
- "reebe-dmn",
  "reebe-engine",
  "serde_json",
  "sqlx",
@@ -2591,6 +2589,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "base64 0.22.1",
  "clap",
  "config",
  "directories",
