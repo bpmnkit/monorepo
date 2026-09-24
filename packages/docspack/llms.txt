@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 239 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 240 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -193,10 +193,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/connector-gen — `CatalogEntry` type](.llms/chunks/packages.connector-gen.catalogentry-type.md) — 86 tokens
 - [@bpmnkit/connectors — Overview](.llms/chunks/packages.connectors.overview.md) — 146 tokens
 - [@bpmnkit/connectors — Installation](.llms/chunks/packages.connectors.installation.md) — 240 tokens
-- [@bpmnkit/connectors — Applying a template](.llms/chunks/packages.connectors.applying-a-template.md) — 432 tokens
+- [@bpmnkit/connectors — Applying a template](.llms/chunks/packages.connectors.applying-a-template.md) — 503 tokens
+- [@bpmnkit/connectors — Applying to an element — inbound connectors and linked resources](.llms/chunks/packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources.md) — 667 tokens
 - [@bpmnkit/connectors — Workspace templates](.llms/chunks/packages.connectors.workspace-templates.md) — 189 tokens
 - [@bpmnkit/connectors — Validating a template](.llms/chunks/packages.connectors.validating-a-template.md) — 213 tokens
-- [@bpmnkit/connectors — API Reference](.llms/chunks/packages.connectors.api-reference.md) — 230 tokens
+- [@bpmnkit/connectors — API Reference](.llms/chunks/packages.connectors.api-reference.md) — 262 tokens
 - [@bpmnkit/connectors — Stability](.llms/chunks/packages.connectors.stability.md) — 137 tokens
 - [@bpmnkit/core — Overview](.llms/chunks/packages.core.overview.md) — 136 tokens
 - [@bpmnkit/core — Installation](.llms/chunks/packages.core.installation.md) — 27 tokens

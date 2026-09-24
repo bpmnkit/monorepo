@@ -46,7 +46,8 @@ export interface ApplyResult {
 	problems: ApplyProblem[]
 }
 
-interface Accumulator {
+/** Everything a template's active properties resolve to, before it is written anywhere. */
+export interface Accumulator {
 	inputs: Array<{ source: string; target: string }>
 	outputs: Array<{ source: string; target: string }>
 	taskHeaders: Record<string, string>
@@ -54,13 +55,21 @@ interface Accumulator {
 	taskType?: string
 	retries?: string
 	adHoc: { outputCollection?: string; outputElement?: string; activeElementsCollection?: string }
+	/** `bpmn:Message#property` bindings — attribute name to value, e.g. `name`. */
+	message: Record<string, string>
+	/** `bpmn:Message#zeebe:subscription#property` bindings, e.g. `correlationKey`. */
+	subscription: Record<string, string>
+	/** `zeebe:linkedResource` bindings, by `linkName` in template order. */
+	linkedResources: Map<string, Record<string, string>>
 }
 
 function evalCondition(cond: TemplateCondition, values: Record<string, string>): boolean {
 	if ("allMatch" in cond) {
 		return cond.allMatch.every((c) => evalCondition(c as TemplateCondition, values))
 	}
-	if ("equals" in cond) return values[cond.property] === cond.equals
+	// `String()` because a Boolean property's condition compares against `true`/`false`,
+	// while every resolved value is the string the XML will carry.
+	if ("equals" in cond) return values[cond.property] === String(cond.equals)
 	if ("oneOf" in cond) return cond.oneOf.includes(values[cond.property] ?? "")
 	if ("isActive" in cond) return Boolean(values[cond.property]) === cond.isActive
 	return true
@@ -103,6 +112,9 @@ export const APPLIED_BINDING_TYPES: ReadonlySet<string> = new Set([
 	"zeebe:property",
 	"zeebe:adHoc",
 	"property",
+	"bpmn:Message#property",
+	"bpmn:Message#zeebe:subscription#property",
+	"zeebe:linkedResource",
 ])
 
 function applyBinding(binding: TemplateBinding, value: string, accum: Accumulator): void {
@@ -134,8 +146,27 @@ function applyBinding(binding: TemplateBinding, value: string, accum: Accumulato
 		case "property":
 			// "name" binds to the element's display name — handled by the caller, not here.
 			return
+		case "bpmn:Message#property":
+			accum.message[binding.name] = value
+			return
+		case "bpmn:Message#zeebe:subscription#property":
+			accum.subscription[binding.name] = value
+			return
+		case "zeebe:linkedResource": {
+			const link = accum.linkedResources.get(binding.linkName) ?? {}
+			link[binding.property] = value
+			accum.linkedResources.set(binding.linkName, link)
+			return
+		}
 		default:
 			return
+	}
+}
+
+/** A binding the template resolved but the builder options have no field for. */
+function notExpressible(what: string): ApplyProblem {
+	return {
+		message: `${what} cannot be carried by builder options — use applyTemplateToElement() to write the template onto a model instead.`,
 	}
 }
 
@@ -144,26 +175,20 @@ function directionOf(template: ElementTemplate): string {
 }
 
 /**
- * Applies a Camunda 8 out-of-the-box connector element template deterministically.
+ * Resolves a template and a set of values into the bindings its active
+ * properties write — the half of applying a template that does not depend on
+ * where the result goes, shared by {@link applyElementTemplate} and
+ * `applyTemplateToElement`.
  *
- * Unlike a naive apply that only handles `zeebe:input`, this resolves every
- * binding kind (`zeebe:input`, `zeebe:output`, `zeebe:taskHeader`,
- * `zeebe:taskDefinition(:type)`, `zeebe:property`, `zeebe:adHoc`), respects
- * dropdown-gated `condition`s, validates required fields, and parse-validates
- * any value that looks like a FEEL expression (leading "=").
- *
- * `values` keys match `ConnectorSummary.requiredInputs[].key` /
- * `optionalInputs[].key` from `listConnectors()`/`searchConnectors()`.
- *
- * Operates on any {@link ElementTemplate} object — not just the bundled OOTB
- * catalog — so custom/generated templates (e.g. from `@bpmnkit/connector-gen`)
- * work the same way. Use {@link applyConnectorTemplate} to apply by bundled
- * template id instead.
+ * @param generate - Supplies a value for an active property that declares a
+ *   `generatedValue` and was given none. Returning `undefined` leaves the
+ *   binding unwritten; the callback reports that however suits its caller.
  */
-export function applyElementTemplate(
+export function resolveBindings(
 	template: ElementTemplate,
-	values: Record<string, string> = {},
-): ApplyResult {
+	values: Record<string, string>,
+	generate: (key: string, prop: TemplateProperty) => string | undefined,
+): { accum: Accumulator; problems: ApplyProblem[] } {
 	const resolved = resolveValues(template, values)
 	const problems: ApplyProblem[] = []
 
@@ -184,13 +209,19 @@ export function applyElementTemplate(
 		taskHeaders: {},
 		zeebeProperties: [],
 		adHoc: {},
+		message: {},
+		subscription: {},
+		linkedResources: new Map(),
 	}
 
 	for (const prop of template.properties) {
 		const key = propertyKey(prop)
 		if (prop.condition && !evalCondition(prop.condition, resolved)) continue
 
-		const value = resolved[key]
+		let value = resolved[key]
+		if ((value === undefined || value === "") && prop.generatedValue) {
+			value = generate(key, prop)
+		}
 		if (value === undefined || value === "") {
 			if (prop.type !== "Hidden" && prop.constraints?.notEmpty) {
 				problems.push({
@@ -214,6 +245,56 @@ export function applyElementTemplate(
 		}
 
 		applyBinding(prop.binding, value, accum)
+	}
+
+	return { accum, problems }
+}
+
+/**
+ * Applies a Camunda 8 out-of-the-box connector element template deterministically.
+ *
+ * Unlike a naive apply that only handles `zeebe:input`, this resolves every
+ * binding kind (`zeebe:input`, `zeebe:output`, `zeebe:taskHeader`,
+ * `zeebe:taskDefinition(:type)`, `zeebe:property`, `zeebe:adHoc`), respects
+ * dropdown-gated `condition`s, validates required fields, and parse-validates
+ * any value that looks like a FEEL expression (leading "=").
+ *
+ * The result is builder options, which have no field for some bindings: a
+ * message start event's correlation key and `zeebe:linkedResource` come back
+ * as problems rather than being dropped, and a message name the template
+ * generates per element (`generatedValue`) must be passed in `values`. Inbound
+ * intermediate and boundary templates' `zeebe:property` bindings are returned
+ * but not written by `@bpmnkit/core`'s builder. {@link applyTemplateToElement}
+ * writes every binding onto an existing element of a parsed model instead.
+ *
+ * `values` keys match `ConnectorSummary.requiredInputs[].key` /
+ * `optionalInputs[].key` from `listConnectors()`/`searchConnectors()`.
+ *
+ * Operates on any {@link ElementTemplate} object — not just the bundled OOTB
+ * catalog — so custom/generated templates (e.g. from `@bpmnkit/connector-gen`)
+ * work the same way. Use {@link applyConnectorTemplate} to apply by bundled
+ * template id instead.
+ */
+export function applyElementTemplate(
+	template: ElementTemplate,
+	values: Record<string, string> = {},
+): ApplyResult {
+	const ungenerated: string[] = []
+	const { accum, problems } = resolveBindings(template, values, (key) => {
+		ungenerated.push(key)
+		return undefined
+	})
+	// Builder options name no element, so there is nothing to derive a per-element value from.
+	for (const key of ungenerated) {
+		problems.push({
+			key,
+			message:
+				`"${key}" is generated per element (generatedValue) and no value was given. ` +
+				`Pass values["${key}"], or apply with applyTemplateToElement(), which derives one from the element id.`,
+		})
+	}
+	if (accum.linkedResources.size > 0) {
+		problems.push(notExpressible("zeebe:linkedResource bindings"))
 	}
 
 	const modelerTemplate = template.id
@@ -272,10 +353,19 @@ export function applyElementTemplate(
 			modelerTemplate,
 			modelerTemplateVersion,
 			modelerTemplateIcon,
+			messageName: accum.message.name,
 		}
-		if (direction === "bpmn:StartEvent") return { startEvent: partial, problems }
-		if (direction === "bpmn:BoundaryEvent") return { boundaryEvent: partial, problems }
-		return { intermediateEvent: partial, problems }
+		const correlationKey = accum.subscription.correlationKey
+		if (direction === "bpmn:StartEvent") {
+			if (correlationKey !== undefined) {
+				problems.push(notExpressible("A message start event's correlation key"))
+			}
+			return { startEvent: partial, problems }
+		}
+		if (direction === "bpmn:BoundaryEvent") {
+			return { boundaryEvent: { ...partial, correlationKey }, problems }
+		}
+		return { intermediateEvent: { ...partial, correlationKey }, problems }
 	}
 
 	// Default: outbound service task (bpmn:ServiceTask, bpmn:SendTask, bpmn:EndEvent, bpmn:Task, ...)

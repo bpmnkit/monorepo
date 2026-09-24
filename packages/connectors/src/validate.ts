@@ -12,6 +12,7 @@
  * the caller is really asking.
  */
 
+import { APPLIED_EVENT_DEFINITION } from "./apply-element.js"
 import { APPLIED_BINDING_TYPES } from "./apply.js"
 import type { ElementTemplate } from "./template-types.js"
 
@@ -27,8 +28,9 @@ export interface TemplateValidation {
 	/** Reasons the template is not usable. A template with any of these is invalid. */
 	problems: TemplateProblem[]
 	/**
-	 * Things that are valid but will not do what the author expects here — today,
-	 * a binding the schema defines that `applyElementTemplate` does not write.
+	 * Things that are valid but will not do what the author expects here — a
+	 * binding or event definition the schema defines that this toolkit does not
+	 * write.
 	 * Warnings never make a template invalid.
 	 */
 	warnings: TemplateProblem[]
@@ -225,6 +227,14 @@ export function validateElementTemplate(value: unknown): TemplateValidation {
 	if (value.elementType !== undefined) {
 		if (!isRecord(value.elementType) || !isNonEmptyString(value.elementType.value)) {
 			problems.push({ path: "elementType.value", message: "elementType needs a value" })
+		} else if (
+			value.elementType.eventDefinition !== undefined &&
+			value.elementType.eventDefinition !== APPLIED_EVENT_DEFINITION
+		) {
+			warnings.push({
+				path: "elementType.eventDefinition",
+				message: `event definition ${JSON.stringify(value.elementType.eventDefinition)} is not applied by this toolkit yet — only "${APPLIED_EVENT_DEFINITION}" is`,
+			})
 		}
 	}
 

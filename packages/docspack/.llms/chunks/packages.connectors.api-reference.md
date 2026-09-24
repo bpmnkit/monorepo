@@ -9,6 +9,7 @@
 | `propertyKey(property)` | The variable name a template property binds to |
 | `applyConnectorTemplate(id, values)` | Catalog template → builder options + problems |
 | `applyElementTemplate(template, values)` | Template object → builder options + problems |
+| `applyTemplateToElement(definitions, elementId, template, values)` | Template written onto an element of a parsed model → `{ definitions, problems }` |
 | `validateElementTemplate(template)` | `{ valid, problems, warnings }` |
 | `readTemplateDocument(text)` | Parse a file holding one template or many |
 | `registerElementTemplates(templates)` | Merge templates into the catalog |

@@ -2455,7 +2455,7 @@
 		{
 			"id": "packages.connectors.applying-a-template",
 			"file": "chunks/packages.connectors.applying-a-template.md",
-			"tokens": 432,
+			"tokens": 503,
 			"tags": [
 				"packages",
 				"connectors",
@@ -2463,7 +2463,36 @@
 				"template"
 			],
 			"entities": [
-				"@bpmnkit/core"
+				"@bpmnkit/core",
+				"message.name"
+			]
+		},
+		{
+			"id": "packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources",
+			"file": "chunks/packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources.md",
+			"tokens": 667,
+			"tags": [
+				"packages",
+				"connectors",
+				"applying",
+				"element",
+				"inbound",
+				"linked",
+				"resources"
+			],
+			"entities": [
+				"applyTemplateToElement",
+				"correlationKey",
+				"inbound.type",
+				"linkName",
+				"applyElementTemplate",
+				"elementType",
+				"elementType.eventDefinition",
+				"appliesTo",
+				"message.name",
+				"message.correlationKey",
+				"linkedResource.RPAScript.resourceId",
+				"listConnectors"
 			]
 		},
 		{
@@ -2504,7 +2533,7 @@
 		{
 			"id": "packages.connectors.api-reference",
 			"file": "chunks/packages.connectors.api-reference.md",
-			"tokens": 230,
+			"tokens": 262,
 			"tags": [
 				"packages",
 				"connectors",

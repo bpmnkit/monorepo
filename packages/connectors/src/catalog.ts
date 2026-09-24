@@ -58,6 +58,9 @@ export function propertyKey(prop: TemplateProperty): string {
 	if (b.type === "property") return b.name
 	if (b.type === "zeebe:property") return b.name
 	if (b.type === "zeebe:adHoc") return `adHoc.${b.property}`
+	if (b.type === "bpmn:Message#property") return `message.${b.name}`
+	if (b.type === "bpmn:Message#zeebe:subscription#property") return `message.${b.name}`
+	if (b.type === "zeebe:linkedResource") return `linkedResource.${b.linkName}.${b.property}`
 	return ""
 }
 
