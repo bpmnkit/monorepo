@@ -23,6 +23,7 @@ import { deployGroup } from "./deploy.js"
 import { diffGroup } from "./diff.js"
 import { generateGroup } from "./generate.js"
 import { lintGroup } from "./lint.js"
+import { migrateGroup } from "./migrate.js"
 import { patternGroup } from "./pattern.js"
 import { planGroup } from "./plan.js"
 import { pluginGroup } from "./plugin.js"
@@ -86,6 +87,7 @@ export const pinnedGroups: CommandGroup[] = [
 	diffGroup,
 	generateGroup,
 	lintGroup,
+	migrateGroup,
 	patternGroup,
 	planGroup,
 	proxyGroup,

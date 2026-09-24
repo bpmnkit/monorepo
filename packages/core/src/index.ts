@@ -396,6 +396,16 @@ export type {
 	ValidationStructure,
 	ValidationVariableType,
 } from "./bpmn/input-validation.js"
+export { analyzeCamunda7, convertCamunda7 } from "./bpmn/camunda7/migrate.js"
+export type {
+	Camunda7Conversion,
+	Camunda7ConvertOptions,
+	Camunda7Finding,
+	Camunda7Report,
+	Camunda7Severity,
+} from "./bpmn/camunda7/migrate.js"
+export { translateJuelToFeel } from "./bpmn/camunda7/juel.js"
+export type { JuelToFeelOptions, JuelToFeelResult } from "./bpmn/camunda7/juel.js"
 export { exportSvg } from "./bpmn/svg.js"
 export type { SvgExportOptions } from "./bpmn/svg.js"
 export type {
