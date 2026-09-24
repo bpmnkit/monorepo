@@ -522,6 +522,7 @@
 	},
 	"@bpmnkit/editor": {
 		".": {
+			"AVAILABLE_LOCALES": "value",
 			"BpmnEditor": "value",
 			"CHROME_CSS": "value",
 			"CHROME_STYLE_ID": "value",
@@ -538,10 +539,14 @@
 			"HudOptions": "type",
 			"IdFactory": "type",
 			"LabelPosition": "type",
+			"Locale": "type",
+			"LocaleMessage": "type",
 			"OpResult": "type",
+			"PluralMessage": "type",
 			"PortDir": "type",
 			"ShapeMove": "type",
 			"SideDock": "type",
+			"SideDockOptions": "type",
 			"Tool": "type",
 			"Translate": "type",
 			"TranslateVars": "type",
@@ -550,6 +555,7 @@
 			"createEmptyDefinitions": "value",
 			"createIdFactory": "value",
 			"createSideDock": "value",
+			"createTranslate": "value",
 			"createTranslationRecorder": "value",
 			"defaultTranslate": "value",
 			"genId": "value",
@@ -559,6 +565,7 @@
 			"injectChromeStyles": "value",
 			"injectStyle": "value",
 			"interpolate": "value",
+			"matchLocale": "value",
 			"newIdSeed": "value"
 		},
 		"./headless": {
@@ -574,6 +581,42 @@
 			"createIdFactory": "value",
 			"genId": "value",
 			"newIdSeed": "value"
+		},
+		"./locales/de": {
+			"de": "value",
+			"default": "value"
+		},
+		"./locales/es": {
+			"default": "value",
+			"es": "value"
+		},
+		"./locales/fr": {
+			"default": "value",
+			"fr": "value"
+		},
+		"./locales/it": {
+			"default": "value",
+			"it": "value"
+		},
+		"./locales/ja": {
+			"default": "value",
+			"ja": "value"
+		},
+		"./locales/nl": {
+			"default": "value",
+			"nl": "value"
+		},
+		"./locales/pl": {
+			"default": "value",
+			"pl": "value"
+		},
+		"./locales/pt-BR": {
+			"default": "value",
+			"ptBR": "value"
+		},
+		"./locales/zh-CN": {
+			"default": "value",
+			"zhCN": "value"
 		}
 	},
 	"@bpmnkit/plugins": {
@@ -602,6 +645,7 @@
 			"injectCommandPaletteStyles": "value"
 		},
 		"./command-palette-editor": {
+			"CommandPaletteEditorOptions": "type",
 			"EditorLike": "type",
 			"createCommandPaletteEditorPlugin": "value"
 		},
@@ -729,6 +773,7 @@
 			"MAIN_MENU_CSS": "value",
 			"MAIN_MENU_STYLE_ID": "value",
 			"MainMenuApi": "type",
+			"MainMenuLanguage": "type",
 			"MainMenuOptions": "type",
 			"MenuAction": "type",
 			"MenuDrill": "type",

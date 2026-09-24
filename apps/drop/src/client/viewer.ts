@@ -1,4 +1,4 @@
-import { BpmnCanvas } from "@bpmnkit/canvas"
+import { BpmnCanvas, type ViewportState } from "@bpmnkit/canvas"
 import { Bpmn, type BpmnDefinitions, compactify, sha256Hex } from "@bpmnkit/core"
 import { DmnViewer } from "@bpmnkit/plugins/dmn-viewer"
 import { FormViewer } from "@bpmnkit/plugins/form-viewer"
@@ -742,6 +742,7 @@ try {
 const editBtn = document.getElementById("editBtn") as HTMLButtonElement | null
 const doneBtn = document.getElementById("doneBtn") as HTMLButtonElement | null
 const localHistoryBtn = document.getElementById("localHistoryBtn") as HTMLButtonElement | null
+const editorLangSelect = document.getElementById("editorLang") as HTMLSelectElement | null
 const localHistoryPanel = document.getElementById("localHistoryPanel") as HTMLElement | null
 const localHistoryBody = document.getElementById("localHistoryBody") as HTMLElement | null
 const editNotice = document.getElementById("editNotice") as HTMLElement | null
@@ -759,6 +760,12 @@ let widgetId: string | null = null
 
 /** The editor, once someone has claimed the baton. Null while reading. */
 let session: import("./edit-session.js").EditSession | null = null
+/** The editor chunk, once fetched — it also carries the language list and loaders. */
+let editModule: typeof import("./edit-session.js") | null = null
+/** The language the editor is built in. The page around it stays English. */
+let editorLang: Awaited<ReturnType<typeof import("./edit-session.js").loadEditorLocale>> = {
+	code: "en",
+}
 /** The statement editor, when a FEEL tab is open for editing. */
 let feelEditor: FeelEditor | null = null
 /** The file the editor is open on, for going back to it afterwards. */
@@ -822,6 +829,7 @@ function updateEditAffordance(): void {
 	}
 	if (doneBtn) doneBtn.hidden = !editing
 	if (localHistoryBtn) localHistoryBtn.hidden = session === null
+	if (editorLangSelect) editorLangSelect.hidden = session === null
 }
 
 /**
@@ -950,9 +958,9 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	// deploy between this page loading and this click leaves the cached bundle
 	// asking for a chunk hash that no longer exists. Loading first means a
 	// failure costs nothing — the reader keeps the canvas they had.
-	let startEditSession: typeof import("./edit-session.js").startEditSession
 	try {
-		;({ startEditSession } = await import("./edit-session.js"))
+		editModule = await import("./edit-session.js")
+		editorLang = await editModule.loadEditorLocale()
 	} catch {
 		// Hand the baton straight back, or the drop stays locked by a tab that
 		// never got an editor. The release earns a `revoked` whose own message
@@ -972,13 +980,30 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	viewer.innerHTML = ""
 
 	editingFile = granted.filename
-	session = startEditSession({
+	openSession(editModule, granted.filename, granted.xml, viewport)
+	fillLanguagePicker(editModule)
+	zoombar.hidden = true
+	updateEditAffordance()
+}
+
+/** Builds the editor on `viewer` in the current language. */
+function openSession(
+	mod: typeof import("./edit-session.js"),
+	filename: string,
+	xml: string,
+	viewport: ViewportState,
+): void {
+	// `lang` on the editor alone: it is what speaks the language, not the page.
+	// It also makes Japanese and Chinese pick their own forms of shared glyphs.
+	viewer.lang = editorLang.code
+	session = mod.startEditSession({
 		container: viewer,
-		xml: granted.xml,
+		xml,
 		viewport,
 		theme,
 		shareId: data.shareId,
-		filename: granted.filename,
+		filename,
+		translate: editorLang.translate,
 		sendOp: (op) => {
 			opSeq += 1
 			watcherSend({ type: "op", seq: opSeq, op })
@@ -986,9 +1011,39 @@ async function enterEditMode(granted: { filename: string; xml: string }): Promis
 	})
 	localHistoryBody?.replaceChildren(session.historyPanel)
 	void session.refreshHistory()
-	zoombar.hidden = true
-	updateEditAffordance()
 }
+
+/** Lists the editor's languages, once, each in its own name. */
+function fillLanguagePicker(mod: typeof import("./edit-session.js")): void {
+	if (!editorLangSelect) return
+	if (editorLangSelect.options.length === 0) {
+		for (const { code, name } of mod.EDITOR_LANGUAGES) {
+			editorLangSelect.append(new Option(name, code))
+		}
+	}
+	editorLangSelect.value = editorLang.code
+}
+
+/**
+ * A new language rebuilds the editor in place — same document, same view, same
+ * baton. Its strings are fixed when it is built, and a rebuild sends nothing to
+ * the room: loading is not an edit.
+ */
+editorLangSelect?.addEventListener("change", () => {
+	const mod = editModule
+	const code = editorLangSelect.value
+	if (!mod) return
+	mod.storeEditorLocale(code)
+	void mod.loadEditorLocale(code).then((lang) => {
+		editorLang = lang
+		if (!session || editingFile === null) return
+		const xml = session.currentXml()
+		const viewport = session.viewport()
+		session.destroy()
+		viewer.innerHTML = ""
+		openSession(mod, editingFile, xml, viewport)
+	})
+})
 
 /** Puts the baton down and goes back to reading. */
 function leaveEditMode(): void {
@@ -996,6 +1051,7 @@ function leaveEditMode(): void {
 	const edited = session.currentXml()
 	session.destroy()
 	session = null
+	viewer.removeAttribute("lang")
 	localHistoryBody?.replaceChildren()
 	if (localHistoryPanel) localHistoryPanel.hidden = true
 

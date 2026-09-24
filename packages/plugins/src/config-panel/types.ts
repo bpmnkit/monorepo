@@ -1,5 +1,6 @@
 import type { CanvasPlugin } from "@bpmnkit/canvas"
 import type { BpmnDefinitions } from "@bpmnkit/core"
+import type { Translate } from "@bpmnkit/editor"
 
 /** Input field types supported by the config panel renderer. */
 export type FieldType = "text" | "select" | "textarea" | "feel-expression" | "toggle" | "action"
@@ -130,4 +131,11 @@ export interface ConfigPanelOptions {
 	 * Use this when the panel is shown purely for inspection (e.g. operate views).
 	 */
 	readonly?: boolean
+	/**
+	 * Translation hook — pass the editor's (`createTranslate(locale)`). Applied
+	 * to the panel's own chrome and to every schema string at render time:
+	 * labels, placeholders, hints, tooltips, option labels and group names.
+	 * Strings a locale does not know (a connector template's, say) pass through.
+	 */
+	translate?: Translate
 }

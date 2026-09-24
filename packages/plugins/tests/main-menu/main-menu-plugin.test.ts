@@ -159,4 +159,37 @@ describe("createMainMenuPlugin", () => {
 		expect(c1.querySelector(".bpmnkit-main-menu-title")?.textContent).toBe("A")
 		expect(c2.querySelector(".bpmnkit-main-menu-title")?.textContent).toBe("B")
 	})
+
+	it("offers a Language section that checks the current one and reports a pick", () => {
+		const picked: string[] = []
+		const container = makeContainer()
+		new BpmnCanvas({
+			container,
+			plugins: [
+				createMainMenuPlugin({
+					translate: (key) => (key === "Language" ? "Sprache" : key),
+					language: {
+						current: "de",
+						options: [
+							{ code: "en", name: "English" },
+							{ code: "de", name: "Deutsch" },
+						],
+						onSelect: (code) => picked.push(code),
+					},
+				}),
+			],
+		})
+		container.querySelector<HTMLButtonElement>(".bpmnkit-menu-btn")?.click()
+		const item = (label: string) =>
+			[...document.querySelectorAll<HTMLButtonElement>(".bpmnkit-menu-item")].find(
+				(el) => el.querySelector(".bpmnkit-menu-item-label")?.textContent === label,
+			)
+		item("Sprache")?.click()
+		const checked = (label: string) =>
+			item(label)?.querySelector(".bpmnkit-menu-item-check")?.innerHTML !== ""
+		expect(checked("Deutsch")).toBe(true)
+		expect(checked("English")).toBe(false)
+		item("English")?.click()
+		expect(picked).toEqual(["en"])
+	})
 })

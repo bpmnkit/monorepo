@@ -13,6 +13,7 @@
 
 import type { CanvasApi, CanvasPlugin } from "@bpmnkit/canvas"
 import { Bpmn, Dmn, Form } from "@bpmnkit/core"
+import { type Translate, defaultTranslate } from "@bpmnkit/editor"
 import type { CommandPalettePlugin } from "../command-palette/index.js"
 import type { MainMenuApi, MenuItem } from "../main-menu/index.js"
 import { showInputDialog } from "../storage/index.js"
@@ -90,6 +91,8 @@ export interface StorageTabsBridgeOptions {
 	 * Composed with storage items so they survive storage change events.
 	 */
 	prependItems?: () => MenuItem[]
+	/** Translation hook for the tabs plugin and the file switcher — pass the editor's. */
+	translate?: Translate
 }
 
 // ── Result ────────────────────────────────────────────────────────────────────
@@ -111,6 +114,7 @@ const FILE_ICON =
 export function createStorageTabsBridge(
 	options: StorageTabsBridgeOptions,
 ): StorageTabsBridgeResult {
+	const t = options.translate ?? defaultTranslate
 	// ── Bridge state ────────────────────────────────────────────────────────────
 
 	/** Maps tab ID → storage file ID for project-mode tabs. */
@@ -165,6 +169,7 @@ export function createStorageTabsBridge(
 
 	const tabsPlugin = createTabsPlugin({
 		resolver: options.resolver,
+		translate: options.translate,
 		get examples() {
 			return options.getExamples ? options.getExamples(tabsPlugin.api) : undefined
 		},
@@ -364,7 +369,7 @@ export function createStorageTabsBridge(
 		overlay.className = `bpmnkit-palette-overlay${isLight ? " bpmnkit-palette--light" : ""}`
 		overlay.setAttribute("role", "dialog")
 		overlay.setAttribute("aria-modal", "true")
-		overlay.setAttribute("aria-label", "Switch to file")
+		overlay.setAttribute("aria-label", t("Switch to file"))
 
 		const panel = document.createElement("div")
 		panel.className = "bpmnkit-palette-panel"
@@ -380,14 +385,16 @@ export function createStorageTabsBridge(
 		const input = document.createElement("input")
 		input.type = "text"
 		input.className = "bpmnkit-palette-input"
-		input.placeholder = "Switch to file\u2026"
+		input.placeholder = t("Switch to file…")
 		input.setAttribute("autocomplete", "off")
 		input.setAttribute("spellcheck", "false")
 		searchRow.appendChild(input)
 
 		const kbdHint = document.createElement("span")
 		kbdHint.className = "bpmnkit-palette-kbd"
-		kbdHint.innerHTML = "<kbd>E</kbd> cycle &nbsp;<kbd>Tab</kbd> search &nbsp;<kbd>Esc</kbd> close"
+		kbdHint.innerHTML = t(
+			"<kbd>E</kbd> cycle &nbsp;<kbd>Tab</kbd> search &nbsp;<kbd>Esc</kbd> close",
+		)
 		searchRow.appendChild(kbdHint)
 
 		const list = document.createElement("div")
@@ -429,7 +436,7 @@ export function createStorageTabsBridge(
 			if (entries.length === 0) {
 				const empty = document.createElement("div")
 				empty.className = "bpmnkit-palette-empty"
-				empty.textContent = "No files found"
+				empty.textContent = t("No files found")
 				list.appendChild(empty)
 				return
 			}

@@ -32,6 +32,7 @@
 - **HUD toolbar** — customisable palette with shape categories
 - **Side dock** — resizable right sidebar with Properties, AI chat, and Docs tabs
 - **Theme persistence** — auto read/write `localStorage` with `persistTheme`
+- **Ten languages** — English built in; German, Spanish, French, Italian, Dutch, Polish, Portuguese (Brazil), Japanese and Chinese (Simplified) as tree-shakable locales
 
 ## Installation
 
@@ -107,6 +108,28 @@ interface SideDock {
   setDiagramInfo(processName: string, fileName: string): void
 }
 ```
+
+## Internationalisation
+
+Each shipped language is its own entry point, so a bundle carries only what it imports.
+`createTranslate(locale)` turns one into the `translate` hook; pass the same hook to the
+editor, `createSideDock` and each `@bpmnkit/plugins` panel:
+
+```typescript
+import { BpmnEditor, createSideDock, createTranslate, initEditorHud } from "@bpmnkit/editor"
+import { de } from "@bpmnkit/editor/locales/de"
+
+const translate = createTranslate(de)
+const editor = new BpmnEditor({ container, translate })
+const dock = createSideDock({ translate })
+initEditorHud(editor) // reads the editor's hook
+```
+
+Locales: `de`, `es`, `fr`, `it`, `nl`, `pl`, `pt-BR`, `ja`, `zh-CN`. `AVAILABLE_LOCALES`
+lists them with their own names, and `matchLocale(navigator.languages, codes)` picks the
+browser's. A message can be a plural object (`{ one, few, many, other }`), chosen with
+`Intl.PluralRules` from `count`. Missing keys fall back to English. The translations are
+machine-assisted — corrections welcome, see `CONTRIBUTING.md`.
 
 ---
 

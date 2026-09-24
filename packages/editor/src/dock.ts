@@ -1,4 +1,5 @@
 import { injectChromeStyles } from "./chrome.js"
+import { type Translate, defaultTranslate } from "./i18n.js"
 const DOCK_STYLE_ID = "bpmnkit-side-dock-styles-v1"
 const STORAGE_KEY_WIDTH = "bpmnkit-side-dock-width"
 const STORAGE_KEY_COLLAPSED = "bpmnkit-side-dock-collapsed"
@@ -157,8 +158,14 @@ export interface SideDock {
 	setTestsTabClickHandler(fn: () => void): void
 }
 
-export function createSideDock(): SideDock {
+export interface SideDockOptions {
+	/** Translation hook for the dock's tab names and hints — pass the editor's. */
+	translate?: Translate
+}
+
+export function createSideDock(options: SideDockOptions = {}): SideDock {
 	injectDockStyles()
+	const t = options.translate ?? defaultTranslate
 
 	const el = document.createElement("div")
 	el.className = "bpmnkit-side-dock"
@@ -167,7 +174,7 @@ export function createSideDock(): SideDock {
 	const collapseHandle = document.createElement("div")
 	collapseHandle.className = "bpmnkit-side-dock__collapse-handle"
 	collapseHandle.setAttribute("role", "button")
-	collapseHandle.setAttribute("title", "Collapse panel")
+	collapseHandle.setAttribute("title", t("Collapse panel"))
 	collapseHandle.textContent = "›"
 
 	// Resize handle — 5px drag zone on the left edge
@@ -180,33 +187,33 @@ export function createSideDock(): SideDock {
 
 	const propertiesTab = document.createElement("button")
 	propertiesTab.className = "bpmnkit-side-dock__tab active"
-	propertiesTab.textContent = "Properties"
+	propertiesTab.textContent = t("Properties")
 
 	const historyTab = document.createElement("button")
 	historyTab.className = "bpmnkit-side-dock__tab"
-	historyTab.textContent = "History"
+	historyTab.textContent = t("History")
 	historyTab.disabled = true
 
 	const aiTab = document.createElement("button")
 	aiTab.className = "bpmnkit-side-dock__tab"
-	aiTab.textContent = "AI"
+	aiTab.textContent = t("AI")
 
 	const playTab = document.createElement("button")
 	playTab.className = "bpmnkit-side-dock__tab"
-	playTab.textContent = "Play"
+	playTab.textContent = t("Play")
 	playTab.style.display = "none"
 
 	const docsTab = document.createElement("button")
 	docsTab.className = "bpmnkit-side-dock__tab"
-	docsTab.textContent = "Docs"
+	docsTab.textContent = t("Docs")
 
 	const deployTab = document.createElement("button")
 	deployTab.className = "bpmnkit-side-dock__tab"
-	deployTab.textContent = "Deploy"
+	deployTab.textContent = t("Deploy")
 
 	const testsTab = document.createElement("button")
 	testsTab.className = "bpmnkit-side-dock__tab"
-	testsTab.textContent = "Tests"
+	testsTab.textContent = t("Tests")
 	testsTab.style.display = "none"
 
 	tabStrip.appendChild(propertiesTab)
@@ -216,6 +223,19 @@ export function createSideDock(): SideDock {
 	tabStrip.appendChild(docsTab)
 	tabStrip.appendChild(deployTab)
 	tabStrip.appendChild(testsTab)
+
+	// Longer languages overflow the strip (German and Polish at the default
+	// width). It scrolls, but a mouse wheel only scrolls vertically — so turn
+	// the wheel into horizontal travel while there is somewhere to go.
+	tabStrip.addEventListener(
+		"wheel",
+		(e) => {
+			if (e.deltaX !== 0 || tabStrip.scrollWidth <= tabStrip.clientWidth) return
+			tabStrip.scrollLeft += e.deltaY
+			e.preventDefault()
+		},
+		{ passive: false },
+	)
 
 	// Properties pane — contains the info empty state
 	const propertiesPane = document.createElement("div")
@@ -229,7 +249,7 @@ export function createSideDock(): SideDock {
 	fileRow.className = "bpmnkit-side-dock__info-row"
 	const fileLabel = document.createElement("span")
 	fileLabel.className = "bpmnkit-side-dock__info-label"
-	fileLabel.textContent = "File"
+	fileLabel.textContent = t("File")
 	const fileValue = document.createElement("span")
 	fileValue.className = "bpmnkit-side-dock__info-value"
 	fileValue.textContent = "\u2014"
@@ -240,7 +260,7 @@ export function createSideDock(): SideDock {
 	processRow.className = "bpmnkit-side-dock__info-row"
 	const processLabel = document.createElement("span")
 	processLabel.className = "bpmnkit-side-dock__info-label"
-	processLabel.textContent = "Process"
+	processLabel.textContent = t("Process")
 	const processValue = document.createElement("span")
 	processValue.className = "bpmnkit-side-dock__info-value"
 	processValue.textContent = "\u2014"
@@ -249,7 +269,7 @@ export function createSideDock(): SideDock {
 
 	const hint = document.createElement("div")
 	hint.className = "bpmnkit-side-dock__empty-hint"
-	hint.textContent = "Select an element to edit its properties"
+	hint.textContent = t("Select an element to edit its properties")
 
 	emptyEl.appendChild(fileRow)
 	emptyEl.appendChild(processRow)
@@ -328,7 +348,7 @@ export function createSideDock(): SideDock {
 		el.classList.add("bpmnkit-side-dock--collapsed")
 		setDocWidth(0)
 		collapseHandle.textContent = "‹"
-		collapseHandle.setAttribute("title", "Expand panel")
+		collapseHandle.setAttribute("title", t("Expand panel"))
 	} else {
 		setDocWidth(_width)
 	}
@@ -356,6 +376,10 @@ export function createSideDock(): SideDock {
 		docsPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "docs")
 		deployPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "deploy")
 		testsPane.classList.toggle("bpmnkit-side-dock__pane--hidden", tab !== "tests")
+		// A tab past the strip's edge (a long language, a narrow dock) is brought into view.
+		tabStrip
+			.querySelector<HTMLElement>(".bpmnkit-side-dock__tab.active")
+			?.scrollIntoView?.({ block: "nearest", inline: "nearest" })
 	}
 
 	// ── Expand / collapse ──
@@ -364,7 +388,7 @@ export function createSideDock(): SideDock {
 		el.classList.remove("bpmnkit-side-dock--collapsed")
 		setDocWidth(_width)
 		collapseHandle.textContent = "›"
-		collapseHandle.setAttribute("title", "Collapse panel")
+		collapseHandle.setAttribute("title", t("Collapse panel"))
 		try {
 			localStorage.setItem(STORAGE_KEY_COLLAPSED, "false")
 		} catch {
@@ -377,7 +401,7 @@ export function createSideDock(): SideDock {
 		el.classList.add("bpmnkit-side-dock--collapsed")
 		setDocWidth(0)
 		collapseHandle.textContent = "‹"
-		collapseHandle.setAttribute("title", "Expand panel")
+		collapseHandle.setAttribute("title", t("Expand panel"))
 		try {
 			localStorage.setItem(STORAGE_KEY_COLLAPSED, "true")
 		} catch {
