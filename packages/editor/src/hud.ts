@@ -1,6 +1,7 @@
 import type { ViewportState } from "@bpmnkit/canvas"
-import { readDiColor } from "@bpmnkit/core"
+import { type DocumentationOptions, readDiColor } from "@bpmnkit/core"
 import { injectHudStyles } from "./css.js"
+import { type DocumentationFormat, exportDocumentation } from "./doc-export.js"
 import type { BpmnEditor } from "./editor.js"
 import {
 	CONTEXTUAL_ADD_TYPES,
@@ -11,7 +12,7 @@ import {
 	getValidLabelPositions,
 } from "./element-groups.js"
 import { IC } from "./icons.js"
-import { showHudInputModal } from "./modal.js"
+import { showHudChoiceModal, showHudInputModal } from "./modal.js"
 import type { CreateShapeType, LabelPosition, Tool } from "./types.js"
 
 interface GroupDef {
@@ -139,6 +140,12 @@ export interface HudOptions {
 	 * Typically toggles the side dock open/closed.
 	 */
 	onToggleSidebar?: () => void
+	/**
+	 * Supplies what "Export documentation…" adds to the diagram: the DMN
+	 * decisions and forms it links to, and optionally a title. Called on each
+	 * export. Without it the document covers the diagram alone.
+	 */
+	getDocumentationContext?: () => DocumentationOptions
 }
 
 const GATEWAY_TYPES = new Set([
@@ -959,6 +966,14 @@ export function initEditorHud(
 			])
 		}
 		items.push([
+			t("Export documentation…"),
+			IC.dots,
+			() => {
+				closeAllDropdowns()
+				openDocumentationExport()
+			},
+		])
+		items.push([
 			"Keyboard shortcuts…",
 			IC.keyboard,
 			() => {
@@ -973,6 +988,31 @@ export function initEditorHud(
 			btn.addEventListener("click", action)
 			moreMenuEl.appendChild(btn)
 		}
+	}
+
+	function openDocumentationExport(): void {
+		const run = (format: DocumentationFormat) => () => {
+			const defs = editor.getDefinitions()
+			if (defs) exportDocumentation(defs, format, options.getDocumentationContext?.())
+		}
+		showHudChoiceModal(
+			t("Export documentation"),
+			[
+				{
+					label: t("Open print view"),
+					hint: t("HTML in a new tab — print it or save it as a PDF"),
+					onChoose: run("print"),
+				},
+				{ label: t("Download HTML"), hint: t("One self-contained file"), onChoose: run("html") },
+				{ label: t("Download Markdown"), hint: t("For wikis and Confluence"), onChoose: run("md") },
+				{
+					label: t("Download Word"),
+					hint: t(".docx for Word and LibreOffice"),
+					onChoose: run("docx"),
+				},
+			],
+			t("Cancel"),
+		)
 	}
 
 	btnTopMore.addEventListener("pointerdown", (e) => {

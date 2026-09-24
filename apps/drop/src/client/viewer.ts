@@ -14,6 +14,7 @@ import {
 	type ServerMessage,
 } from "../shared/room-protocol.js"
 import { CommentsPanel } from "./comments.js"
+import { type DocFormat, buildDropDocument, deliverDocument, isDocFormat } from "./doc-export.js"
 import { type FeelEditor, mountFeelEditor } from "./feel-edit.js"
 import { renderFeelDocument } from "./feel-view.js"
 import { type Change, DocWatcher, type WatcherDoc } from "./watcher.js"
@@ -1199,6 +1200,52 @@ document.getElementById("reportSubmit")?.addEventListener("click", (e) => {
 	dialog.close()
 	alert("Thanks — your report has been submitted.")
 })
+
+// ── Process documentation ───────────────────────────────────────────────────
+// Read-only readers are the audience: nothing here needs the edit baton.
+
+const docBtn = document.getElementById("docBtn") as HTMLButtonElement | null
+const docDialog = document.getElementById("docDialog") as HTMLDialogElement | null
+const bpmnFiles = data.files.filter((f) => f.kind === "bpmn")
+if (docBtn) docBtn.hidden = bpmnFiles.length === 0
+docBtn?.addEventListener("click", () => docDialog?.showModal())
+docDialog?.addEventListener("close", () => {
+	const format = docDialog.returnValue
+	docDialog.returnValue = ""
+	if (isDocFormat(format)) void exportDocumentation(format)
+})
+
+async function exportDocumentation(format: DocFormat): Promise<void> {
+	const active = data.files[activeIndex]
+	const file = active?.kind === "bpmn" ? active : bpmnFiles[0]
+	if (!file) return
+	const read = async (f: DropFile, as?: "json"): Promise<string> => {
+		const res = await fetch(contentUrl(f, as))
+		if (!res.ok) throw new Error(`${f.filename}: HTTP ${res.status}`)
+		return res.text()
+	}
+	try {
+		const [xml, decisions, forms] = await Promise.all([
+			read(file),
+			Promise.all(
+				data.files
+					.filter((f) => f.kind === "dmn")
+					.map(async (f) => JSON.parse(await read(f, "json"))),
+			),
+			Promise.all(
+				data.files
+					.filter((f) => f.kind === "form")
+					.map(async (f) => JSON.parse(await read(f, "json"))),
+			),
+		])
+		deliverDocument(
+			buildDropDocument({ filename: file.filename, xml, decisions, forms }, format),
+			format,
+		)
+	} catch (err) {
+		alert(`Could not build the documentation — ${err instanceof Error ? err.message : String(err)}`)
+	}
+}
 
 // ── Start ───────────────────────────────────────────────────────────────────
 // Last, deliberately: `select` touches the panels declared above it in this

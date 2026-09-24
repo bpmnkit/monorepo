@@ -336,6 +336,17 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | `createCompactStream(opts?)` | Read a diagram out of a model's token stream, frame by frame |
 | `generateId(prefix)` | Generate a unique short ID |
 
+### Process documentation
+
+| Export | Description |
+|--------|-------------|
+| `renderDocumentationHtml(defs, options?)` | Self-contained, print-ready HTML: diagram, contents, every element in flow order, linked DMN tables and forms. Print → Save as PDF |
+| `renderDocumentationMarkdown(defs, options?)` | The same content as Markdown, for wikis and Confluence |
+| `renderDocumentationDocx(defs, options?)` | The same content as a Word `.docx` (bytes), diagram as SVG |
+| `buildProcessDocumentation(defs, options?)` | The structured content, for a renderer of your own |
+
+`options` takes `decisions` (`DmnDefinitions[]`), `forms` (`FormDefinition[]`), `title`, `subtitle` and `diagram`. Output is deterministic and all model text is escaped.
+
 ---
 
 ## Related Packages

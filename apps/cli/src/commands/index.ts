@@ -22,6 +22,7 @@ import { connectorGroup } from "./connector.js"
 import { deployGroup } from "./deploy.js"
 import { devGroup } from "./dev.js"
 import { diffGroup } from "./diff.js"
+import { docGroup } from "./doc.js"
 import { generateGroup } from "./generate.js"
 import { lintGroup } from "./lint.js"
 import { migrateGroup } from "./migrate.js"
@@ -88,6 +89,7 @@ export const pinnedGroups: CommandGroup[] = [
 	deployGroup,
 	devGroup,
 	diffGroup,
+	docGroup,
 	generateGroup,
 	lintGroup,
 	migrateGroup,

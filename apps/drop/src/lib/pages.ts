@@ -369,6 +369,11 @@ select.ed-select{height:28px;border:1px solid var(--bpmnkit-ds-line);background:
 dialog{border:1px solid var(--bpmnkit-ds-line-strong);padding:24px;max-width:420px;width:92%;background:var(--bpmnkit-ds-surface);color:var(--bpmnkit-ds-ink)}
 dialog::backdrop{background:var(--bpmnkit-ds-dark);opacity:.5}
 dialog strong{display:block;font-size:17px;margin-bottom:6px}
+.doc-choices{display:flex;flex-direction:column;border:1px solid var(--bpmnkit-ds-line);margin-top:14px}
+.doc-choices button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border:0;border-bottom:1px solid var(--bpmnkit-ds-line-soft);background:transparent;color:var(--bpmnkit-ds-ink);font-family:inherit;font-size:14px;text-align:left;cursor:pointer}
+.doc-choices button:last-child{border-bottom:0}
+.doc-choices button:hover,.doc-choices button:focus-visible{background:var(--bpmnkit-ds-bg);outline:none}
+.doc-hint{font-family:var(--bpmnkit-ds-font-mono);font-size:11px;color:var(--bpmnkit-ds-ink-4)}
 .notice{font-family:var(--bpmnkit-ds-font-mono);font-size:11px;line-height:1.6;color:var(--bpmnkit-ds-ink-3);margin-top:14px}
 .admin-table{width:100%;border-collapse:collapse;margin-top:20px;font-size:var(--bpmnkit-ds-t-body-sm)}
 .admin-table th,.admin-table td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--bpmnkit-ds-line);vertical-align:top}
@@ -645,6 +650,7 @@ export function sharePage(
 			<button id="commentsBtn" type="button">Comments</button>
 			<a id="dlOriginal" href="#" download>Original</a>
 			<a id="dlJson" href="#" download>JSON</a>
+			<button id="docBtn" type="button" title="Export process documentation" hidden>Docs</button>
 			<button id="copyLink" type="button">Copy link</button>
 			<button id="reportBtn" type="button">Report</button>
 		</div>
@@ -695,6 +701,7 @@ export function sharePage(
 	}
 </div>
 ${reportDialog()}
+${docDialog()}
 ${
 	// Loaded on the share page only, and only when a key is configured — which is
 	// also the only page whose content policy has been widened to allow it.
@@ -793,6 +800,25 @@ function reportDialog(): string {
 		<button value="cancel" class="btn-ghost" type="submit">Cancel</button>
 		<button id="reportSubmit" value="submit" class="btn-primary" type="submit">Submit report</button>
 	</div>
+</form>
+</dialog>`
+}
+
+/** The process-documentation export: the close value of the button pressed is the format. */
+function docDialog(): string {
+	const choice = (value: string, label: string, hint: string) =>
+		`<button value="${value}" type="submit"><span>${label}</span><span class="doc-hint">${hint}</span></button>`
+	return `<dialog id="docDialog">
+<form method="dialog">
+	<strong>Export documentation</strong>
+	<p class="notice">Every step of the diagram — types, lanes, job types, forms, timers, conditions — plus the decision tables and forms in this drop.</p>
+	<div class="doc-choices">
+		${choice("print", "Open print view", "HTML in a new tab — print it or save it as a PDF")}
+		${choice("html", "Download HTML", "One self-contained file")}
+		${choice("md", "Download Markdown", "For wikis and Confluence")}
+		${choice("docx", "Download Word", ".docx for Word and LibreOffice")}
+	</div>
+	<div class="row"><button value="cancel" class="btn-ghost" type="submit">Cancel</button></div>
 </form>
 </dialog>`
 }

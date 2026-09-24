@@ -457,6 +457,17 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 | \`expand(compact)\` | Restore full \`BpmnDefinitions\` |
 | \`createCompactStream(opts?)\` | Read a diagram out of a model's token stream, frame by frame |
 | \`generateId(prefix)\` | Generate a unique short ID |
+
+### Process documentation
+
+| Export | Description |
+|--------|-------------|
+| \`renderDocumentationHtml(defs, options?)\` | Self-contained, print-ready HTML: diagram, contents, every element in flow order, linked DMN tables and forms. Print → Save as PDF |
+| \`renderDocumentationMarkdown(defs, options?)\` | The same content as Markdown, for wikis and Confluence |
+| \`renderDocumentationDocx(defs, options?)\` | The same content as a Word \`.docx\` (bytes), diagram as SVG |
+| \`buildProcessDocumentation(defs, options?)\` | The structured content, for a renderer of your own |
+
+\`options\` takes \`decisions\` (\`DmnDefinitions[]\`), \`forms\` (\`FormDefinition[]\`), \`title\`, \`subtitle\` and \`diagram\`. Output is deterministic and all model text is escaped.
 `,
 	},
 
@@ -632,8 +643,12 @@ interface HudOptions {
   container: HTMLElement
   optimizeButton?: HTMLElement  // inject into action bar
   aiButton?: HTMLElement        // inject into action bar
+  // Decisions and forms (and a title) for More → Export documentation…
+  getDocumentationContext?: () => DocumentationOptions
 }
 \`\`\`
+
+The HUD's **More** menu has **Export documentation…**: a print-ready HTML view (Print → Save as PDF), or an HTML, Markdown or Word download, built with \`@bpmnkit/core\`'s process documentation renderers.
 
 ### \`createSideDock(container)\` → \`SideDock\`
 

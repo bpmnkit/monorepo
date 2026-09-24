@@ -593,6 +593,14 @@ hudRef = initEditorHud(editor, {
 	getAvailableDecisions: () => bridge.tabsPlugin.api.getAvailableDecisions(),
 	openForm: (formId) => bridge.tabsPlugin.api.openForm(formId),
 	getAvailableForms: () => bridge.tabsPlugin.api.getAvailableForms(),
+	// The documentation covers the decisions and forms open next to the diagram.
+	getDocumentationContext: () => {
+		const tabs = bridge.tabsPlugin.api.getAllTabContent()
+		return {
+			decisions: tabs.filter((tab) => tab.type === "dmn").map((tab) => Dmn.parse(tab.content)),
+			forms: tabs.filter((tab) => tab.type === "form").map((tab) => Form.parse(tab.content)),
+		}
+	},
 	rawModeButton: bridge.tabsPlugin.api.rawModeButton,
 	optimizeButton: optimizePlugin.button,
 	playButton: processRunnerPlugin.playButton,
