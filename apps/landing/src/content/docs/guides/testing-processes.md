@@ -21,6 +21,8 @@ It gives you:
 - **Matchers** such as `toHaveCompleted()`, `toHavePassed([...])` and
   `toHaveVariables({...})`.
 - **Path coverage** of the flow nodes and sequence flows your runs reached.
+- **AI agent mocks** that script or replay which tools an agent calls. See
+  [Testing AI Agents](/docs/guides/testing-ai-agents).
 
 The simulator is not Zeebe. Before you rely on a test, read
 [what the simulator does not execute](#what-the-simulator-does-not-execute).
@@ -184,18 +186,22 @@ expression must produce a context. A `null` result maps nothing. A handler
 ## AI agents
 
 An [AI Agent sub-process](/docs/guides/ai-agents) runs as a job of type
-`io.camunda.agenticai:aiagent-job-worker:1`. Mock it as a black box with the output you
-want the agent to produce:
+`io.camunda.agenticai:aiagent-job-worker:1`. `mockAiAgent` scripts the model's turns: which
+tools it calls, with which arguments, and its final answer. The tools inside the ad-hoc
+sub-process then run like any other task:
 
 ```typescript
-t.mockJob("io.camunda.agenticai:aiagent-job-worker:1", {
-  result: { agent: { responseText: "Refund approved" } },
-})
+const agent = t.mockAiAgent("support-agent", [
+  { toolCalls: [{ name: "lookup-order", arguments: { orderId: "1042" } }] },
+  { responseJson: { answer: "It ships tomorrow.", resolved: true } },
+])
+const run = await t.start("support", { customerMessage: "Where is order 1042?" })
+expect(agent).toHaveCalledTools([{ name: "lookup-order", arguments: { orderId: "1042" } }])
 ```
 
-**Gap:** the simulator does not run the tool elements inside an ad-hoc sub-process. For
-that reason, you cannot mock which tools the agent selects, and coverage reports the tools
-as not reached.
+A script can also be a recorded cassette file, and coverage counts the tools that ran. See
+[Testing AI Agents](/docs/guides/testing-ai-agents). To mock the agent as a black box, use
+`mockJob` with the output you want: `{ result: { agent: { responseText: "Refund approved" } } }`.
 
 ## Messages
 
@@ -246,6 +252,7 @@ they took:
 const report = t.coverage()
 report.elements        // { total: 14, covered: 12, percent: 85.7, uncovered: ["end_cancel", ...] }
 report.flows           // the same, for sequence flows
+report.tools           // the same, for the tools of AI agents
 report.processes       // one entry per deployed process
 
 console.log(formatCoverage(report))
@@ -271,6 +278,7 @@ is exact. Elements inside sub-processes are counted, and data objects are not.
 | `toHavePassedInOrder(ids)` | The elements completed in this order. Other elements can come between them |
 | `toHaveNotPassed(ids)` | None of the listed elements completed |
 | `toHaveVariables(vars)` | Each listed variable is equal. Asymmetric matchers such as `expect.any(Number)` work |
+| `toHaveCalledTools(calls)` | On a `mockAiAgent` handle: the agent called exactly these tools, in this order. See [Testing AI Agents](/docs/guides/testing-ai-agents) |
 
 Every matcher works with `.not`. When a matcher fails, the message gives the run's state,
 its error, the elements that wait and the elements that completed.
@@ -289,7 +297,8 @@ most likely to affect a test are:
   sub-process and is lost when it completes. Zeebe propagates it to the process. To keep
   such a variable, pass it as a start variable.
 - Message variables and correlation keys (see [Messages](#messages)).
-- Tools inside an ad-hoc sub-process (see [AI agents](#ai-agents)).
+- Inner activities of an ad-hoc sub-process without a task definition. An AI agent's tools
+  do run (see [AI agents](#ai-agents)).
 
 Engine timers are module-level, so the `ProcessTest` created last drives them until it is
 disposed. Use one `ProcessTest` for each test file. This is the `beforeAll` pattern above.

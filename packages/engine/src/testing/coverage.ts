@@ -1,4 +1,6 @@
 import type { BpmnFlowElement, BpmnProcess, BpmnSequenceFlow } from "@bpmnkit/core"
+import { adHocActivatableElements } from "../ad-hoc.js"
+import { parseZeebeExt } from "../zeebe.js"
 
 /** How much of one kind of model element the runs reached. */
 export interface CoverageCount {
@@ -17,6 +19,11 @@ export interface ProcessCoverage {
 	readonly elements: CoverageCount
 	/** Sequence flows taken. */
 	readonly flows: CoverageCount
+	/**
+	 * Tools of AI agents — the elements a job-worker ad-hoc sub-process can
+	 * activate — that ran at least once. Also counted in `elements`.
+	 */
+	readonly tools: CoverageCount
 }
 
 /** Coverage across every run of a {@link ProcessTest}. */
@@ -24,6 +31,7 @@ export interface CoverageReport {
 	readonly processes: readonly ProcessCoverage[]
 	readonly elements: CoverageCount
 	readonly flows: CoverageCount
+	readonly tools: CoverageCount
 }
 
 /** Data elements sit in the process but never hold a token. */
@@ -37,6 +45,7 @@ interface ProcessIndex {
 	readonly processId: string
 	readonly elementIds: string[]
 	readonly flowIds: string[]
+	readonly toolIds: string[]
 }
 
 /** The graph facts coverage needs, read once from the deployed processes. */
@@ -49,7 +58,12 @@ export class CoverageIndex {
 
 	constructor(processes: readonly BpmnProcess[]) {
 		for (const process of processes) {
-			const index: ProcessIndex = { processId: process.id, elementIds: [], flowIds: [] }
+			const index: ProcessIndex = {
+				processId: process.id,
+				elementIds: [],
+				flowIds: [],
+				toolIds: [],
+			}
 			this.collect(process.flowElements, process.sequenceFlows, index)
 			this.processes.push(index)
 		}
@@ -64,6 +78,12 @@ export class CoverageIndex {
 			if (NOT_FLOW_NODES.has(el.type)) continue
 			into.elementIds.push(el.id)
 			if (el.type === "parallelGateway" && el.incoming.length > 1) this.joins.add(el.id)
+			if (
+				el.type === "adHocSubProcess" &&
+				parseZeebeExt(el.extensionElements).taskDefinition !== undefined
+			) {
+				into.toolIds.push(...adHocActivatableElements(el).map((tool) => tool.id))
+			}
 			if ("flowElements" in el && "sequenceFlows" in el) {
 				this.collect(el.flowElements, el.sequenceFlows, into)
 			}
@@ -102,6 +122,7 @@ export class CoverageIndex {
 			processId: p.processId,
 			elements: count(p.elementIds, elements),
 			flows: count(p.flowIds, flows),
+			tools: count(p.toolIds, elements),
 		}))
 		return {
 			processes,
@@ -112,6 +133,10 @@ export class CoverageIndex {
 			flows: count(
 				this.processes.flatMap((p) => p.flowIds),
 				flows,
+			),
+			tools: count(
+				this.processes.flatMap((p) => p.toolIds),
+				elements,
 			),
 		}
 	}
@@ -136,17 +161,25 @@ export function formatCoverage(report: CoverageReport): string {
 	const line = (label: string, c: CoverageCount) =>
 		`${label} ${c.covered}/${c.total} (${c.percent.toFixed(1)}%)`
 	const out = ["BPMN coverage"]
+	const tools = (c: CoverageCount) => (c.total > 0 ? `  ${line("tools", c)}` : "")
 	for (const p of report.processes) {
-		out.push(`  ${p.processId}  ${line("elements", p.elements)}  ${line("flows", p.flows)}`)
+		out.push(
+			`  ${p.processId}  ${line("elements", p.elements)}  ${line("flows", p.flows)}${tools(p.tools)}`,
+		)
 		if (p.elements.uncovered.length > 0) {
 			out.push(`    elements not reached: ${p.elements.uncovered.join(", ")}`)
 		}
 		if (p.flows.uncovered.length > 0) {
 			out.push(`    flows not taken: ${p.flows.uncovered.join(", ")}`)
 		}
+		if (p.tools.uncovered.length > 0) {
+			out.push(`    tools never called: ${p.tools.uncovered.join(", ")}`)
+		}
 	}
 	if (report.processes.length > 1) {
-		out.push(`  total  ${line("elements", report.elements)}  ${line("flows", report.flows)}`)
+		out.push(
+			`  total  ${line("elements", report.elements)}  ${line("flows", report.flows)}${tools(report.tools)}`,
+		)
 	}
 	return out.join("\n")
 }
