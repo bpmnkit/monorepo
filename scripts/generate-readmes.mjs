@@ -1779,6 +1779,7 @@ interface GenerateOptions {
 - **Complete binding resolution** — including \`zeebe:property\` and \`zeebe:output\`, which naive appliers drop
 - **Required-field and FEEL validation** — problems are reported, never silently swallowed
 - **Works with any template** — bundled catalog or a custom/generated \`ElementTemplate\`
+- **Inbound connectors and linked resources** — \`applyTemplateToElement\` writes a template onto an element of a parsed model: the root \`bpmn:message\` and its \`zeebe:subscription\` correlation key, \`zeebe:properties\`, \`zeebe:linkedResources\` and the \`zeebe:modelerTemplate\` stamps
 
 ## Installation
 
@@ -1807,6 +1808,24 @@ const defs = Bpmn.createProcess("proc")
   .serviceTask("notify", result.serviceTask!)
   .endEvent("e")
   .build()
+\`\`\`
+
+## Inbound connectors
+
+An inbound connector's message and correlation key live on a root \`bpmn:message\`, which builder
+options cannot reach. Apply the template to an element of a parsed model instead:
+
+\`\`\`typescript
+import { Bpmn } from "@bpmnkit/core"
+import { applyTemplateToElement, getTemplate } from "@bpmnkit/connectors"
+
+const webhook = getTemplate("io.camunda.connectors.webhook.WebhookConnectorIntermediate.v1")!
+const { definitions, problems } = applyTemplateToElement(Bpmn.parse(xml), "payment-received", webhook, {
+  "inbound.context": "payments",
+  "message.correlationKey": "=orderId",
+  correlationKeyExpression: "=request.body.orderId",
+})
+const updated = Bpmn.export(definitions)
 \`\`\`
 
 ## Your project's own templates
@@ -1846,6 +1865,12 @@ function readTemplateDocument(value: unknown): TemplateDocumentResult
 
 function applyConnectorTemplate(templateId: string, values?: Record<string, string>): ApplyResult
 function applyElementTemplate(template: ElementTemplate, values?: Record<string, string>): ApplyResult
+function applyTemplateToElement(
+  definitions: BpmnDefinitions,
+  elementId: string,
+  template: ElementTemplate,
+  values?: Record<string, string>,
+): ApplyToElementResult // { definitions, problems } — the input is never mutated
 
 // @bpmnkit/connectors/node
 function discoverElementTemplates(options: DiscoverOptions): Promise<DiscoveryResult>

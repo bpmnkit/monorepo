@@ -14,8 +14,11 @@ export interface ElementTemplate {
 	version?: number
 	/** BPMN element types this template applies to (e.g. "bpmn:ServiceTask", "bpmn:Task"). */
 	appliesTo: string[]
-	/** Forces the element to be converted to this type on apply. */
-	elementType?: { value: string }
+	/**
+	 * Forces the element to be converted to this type on apply. `eventDefinition`
+	 * (e.g. `"bpmn:MessageEventDefinition"`) makes an event the matching kind.
+	 */
+	elementType?: { value: string; eventDefinition?: string }
 	/** UI section definitions (collapsible groups). */
 	groups?: TemplateGroup[]
 	/** All property definitions. */
@@ -44,6 +47,12 @@ export interface TemplateProperty {
 	type: "String" | "Text" | "Hidden" | "Dropdown" | "Boolean" | "Number"
 	/** Default value applied when the template is first used. */
 	value?: string | number | boolean
+	/**
+	 * A value generated once per element when none is given — inbound templates
+	 * use it for a unique message name. `applyTemplateToElement` derives it from
+	 * the template and element ids, so re-applying produces the same value.
+	 */
+	generatedValue?: { type: "uuid" }
 	/** Placeholder text. */
 	placeholder?: string
 	/** If true, empty values are not written to the BPMN XML. */
@@ -94,10 +103,9 @@ export type TemplateBinding =
 			property: "outputCollection" | "outputElement" | "activeElementsCollection"
 	  }
 	/**
-	 * Inbound-connector bindings, and the linked-resource binding used by RPA
-	 * templates. The bundled catalogue uses all three, so they belong in the
-	 * union — but `applyElementTemplate` does not write them yet, and
-	 * `validateElementTemplate` warns when a template depends on one.
+	 * Inbound-connector bindings — the root `bpmn:Message` an event or receive
+	 * task references, and that message's `zeebe:subscription` — and the
+	 * `zeebe:linkedResources` binding used by RPA templates.
 	 */
 	| { type: "bpmn:Message#property"; name: string }
 	| { type: "bpmn:Message#zeebe:subscription#property"; name: string }

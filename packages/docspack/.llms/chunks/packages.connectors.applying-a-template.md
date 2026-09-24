@@ -60,5 +60,10 @@ Application is deterministic: property order and the emitted bindings depend onl
 template and the values, never on iteration order or the clock. That is what lets a diagram be
 rebuilt in CI and diffed.
 
+Builder options have no field for some bindings. A message start event's correlation key and
+`zeebe:linkedResource` come back as `problems` rather than being dropped, and an inbound
+template's message name — which Camunda generates per element — must be passed as
+`message.name`. To write every binding, apply to an element instead.
+
 ---
 Source: https://bpmnkit.com/docs/packages/connectors

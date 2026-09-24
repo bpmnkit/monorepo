@@ -476,9 +476,12 @@ reach the editor at all.
 
 **Left open, deliberately:**
 
-- [ ] Apply the inbound-message and linked-resource bindings. They validate and warn today; a
+- [x] Apply the inbound-message and linked-resource bindings. They validate and warn today; a
       template that depends on one still applies to nothing. This is inbound-connector support,
-      a feature of its own rather than part of this phase
+      a feature of its own rather than part of this phase — done as
+      `applyTemplateToElement(definitions, elementId, template, values)`, which writes onto a
+      parsed model because the message and its `zeebe:subscription` are root elements no
+      builder option reaches; `applyElementTemplate` reports what it cannot carry
 - [ ] Per-file template resolution in a browser host. A host registers one merged set for the
       whole project (deeper directories win, by the breadth-first order); the CLI resolves per
       file correctly, the editor does not. Needs the config panel to re-resolve as the open file

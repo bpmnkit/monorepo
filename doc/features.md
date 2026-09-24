@@ -41,6 +41,22 @@
 - **`/compare/bpmn-js`** — the licence difference, quoted from the bpmn-js LICENSE.
 - **Launch post** — "BPMN Kit 1.0: twelve packages take the stability promise".
 
+## Inbound connector and linked-resource templates (2026-09-24)
+
+- **`applyTemplateToElement(definitions, elementId, template, values)`**
+  (`@bpmnkit/connectors`) — writes an element template onto an element of a parsed model,
+  every binding kind included: the root `bpmn:message` an event or receive task references,
+  its `zeebe:subscription` correlation key, `zeebe:properties` (`inbound.type` …),
+  `zeebe:linkedResources`, the `elementType` conversion and message event definition, and the
+  `zeebe:modelerTemplate` stamps.
+- **Messages reused, not multiplied** — referenced by name when one exists, the element's own
+  renamed when nothing else uses it, created otherwise.
+- **Deterministic generated names** — an inbound message name Camunda would generate as a random
+  UUID is derived from the template and element ids; applying twice changes nothing.
+- **Builder path reports what it cannot carry** — `applyElementTemplate` returns `messageName` /
+  `correlationKey` for inbound events and names linked resources and a start event's
+  correlation key as problems.
+
 ## Edit a shared FEEL statement from its link (2026-09-21)
 
 - **Edit on a FEEL tab** (`apps/drop`) — the composer's two boxes, opened on what the drop

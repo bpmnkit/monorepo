@@ -162,6 +162,52 @@ research on LLM-generated BPMN. It closes with a feature matrix, a SWOT, a prese
 against leading developer-tool sites, a prioritised improvement list (P0–P4) and a
 positioning recommendation. It is a research document only; no code changed.
 
+## 2026-09-24 — Inbound connector templates apply to something
+
+**An inbound template used to validate, warn, and write nothing that mattered.** The bundled
+catalogue's inbound connectors bind to `bpmn:Message#property`, `bpmn:Message#zeebe:subscription#property`
+and — for RPA — `zeebe:linkedResource`: 98 properties the applier skipped. A Webhook
+intermediate event came out with its `zeebe:properties` and no message, which is an event
+Camunda correlates nothing to.
+
+**`applyTemplateToElement` writes onto a parsed model rather than into builder options,**
+because that is where these bindings live. The message name and correlation key belong to a
+root `bpmn:message` — Camunda reads `zeebe:subscription` from the message, not the event — and
+no builder option reaches it. So `@bpmnkit/connectors` gains
+`applyTemplateToElement(definitions, elementId, template, values)`: it converts the element to
+the template's `elementType`, makes it a message event when `eventDefinition` says so, resolves
+the message (reuse by name, rename the element's own when unshared, else create), writes the
+subscription onto it, replaces each extension kind the template declares, and stamps
+`zeebe:modelerTemplate*`. Covered for Webhook start / message start / intermediate / boundary,
+RabbitMQ receive task, Kafka intermediate and RPA, each through a serialize → parse →
+serialize round trip.
+
+**A generated value is derived, not generated.** Camunda gives an inbound message a random UUID
+name. That would break the package's promise that the same inputs give the same XML, so the
+name keeps the one the element's message already has, or is a UUID-shaped SHA-256 of the
+template and element ids. Applying twice is tested to give the model applying once does, and
+switching a dropdown off removes what it wrote, because ownership follows the bindings a
+template *declares* rather than the ones active this time.
+
+**The builder path stays, and says what it cannot do.** `applyElementTemplate` now returns
+`messageName` and `correlationKey` on inbound intermediate and boundary results, and reports a
+start event's correlation key, linked resources and an ungenerated message name as problems
+instead of dropping them. None of those are `missing-required`, so the deploy lint's connector
+rule does not start flagging them.
+
+**Also:** these properties get input keys (`message.name`, `message.correlationKey`,
+`linkedResource.<linkName>.<property>`) — before, they keyed to `""`; and a condition comparing a
+Boolean property to `true` never matched, so the RPA template's pre- and post-run scripts could
+not be switched on.
+
+**Found, not fixed.** `@bpmnkit/core`'s builder writes `zeebe:subscription` onto the catch event
+and the `deploy/message-catch-no-correlation` lint only looks there, so a model whose key sits on
+the message — Camunda's placement, and this applier's — is flagged. The builder's intermediate,
+boundary and receive-task options also have no `zeebeProperties` or `modelerTemplate`. And the
+`connector/missing-required` rule rebuilds values from an element's own inputs, headers and
+properties only, so an inbound element's correlation key or an RPA script id reads as missing —
+it did before too, under the key `""`; now it is at least named.
+
 ## 2026-09-23 — The FEEL share link gets the same bar as the upload link
 
 The link row under **Get a share link** rendered as browser defaults — a sunken input and

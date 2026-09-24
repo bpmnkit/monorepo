@@ -202,7 +202,7 @@ describe("casen connector validate", () => {
 			".",
 			"inbound.json",
 			template("com.example.Inbound", {
-				properties: [{ binding: { type: "bpmn:Message#property", name: "name" } }],
+				elementType: { value: "bpmn:StartEvent", eventDefinition: "bpmn:SignalEventDefinition" },
 			}),
 		)
 		const captured = await run([root])
