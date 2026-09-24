@@ -153,8 +153,11 @@ for outbound and inbound connectors. `applyTemplateToElement` writes the inbound
 the element's message and its `zeebe:subscription` correlation key, where Camunda reads them,
 and applies `zeebe:linkedResource` bindings.
 
-Camunda 7 (`camunda:` extensions) is not supported: those attributes and elements are kept on
-round trip but not modelled.
+Camunda 7 (`camunda:` extensions) is not modelled: those attributes and elements are kept on
+round trip. Foreign attributes on multi-instance loops and on event definitions are the
+exception, because they are not kept. `convertCamunda7()` / `casen migrate c7` convert
+Camunda 7 models to Camunda 8 and report what needs manual work. See
+[Migrate from Camunda 7](/docs/guides/migrate-from-camunda-7).
 
 ## Linting — bpmnlint compatibility
 
@@ -188,7 +191,8 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
 
 - Attributes on `<documentation>` (`id`, `textFormat`) are not preserved
 - Choreography and conversation diagrams
-- Camunda 7 extensions (preserved, not modelled)
+- Camunda 7 extensions (preserved, not modelled — except on multi-instance loops and event
+  definitions, where they are dropped; `casen migrate c7` converts them to Camunda 8)
 - DMN boxed expressions and literal-expression decisions
 - TS simulator: conditional events, message start events of a top-level process, transaction
   cancel events, compensation event sub-processes, inclusive and complex joins (they do not

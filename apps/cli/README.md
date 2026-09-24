@@ -107,6 +107,15 @@ casen instances list --state active
 | `casen gen types <files...> --out <file> --check` | Exit 1 when the generated file is out of date (CI) |
 | `casen gen types <files...> --check-workers <glob> --strict` | Report job types without a worker and workers without a job type |
 
+### Camunda 7 migration
+
+| Command | Description |
+|---------|-------------|
+| `casen migrate c7 <files...>` | Convert Camunda 7 models to Camunda 8 (`<name>.c8.bpmn`, or `--out <dir>`) and report each construct as convertible, manual or unsupported |
+| `casen migrate c7 <files...> --check` | Report only; exit 1 while manual or unsupported findings remain (`--format json` for CI) |
+
+See [Migrate from Camunda 7](https://bpmnkit.com/docs/guides/migrate-from-camunda-7) for what is converted and why.
+
 ## Global options
 
 | Flag | Description |

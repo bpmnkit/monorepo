@@ -38,6 +38,8 @@ casen
 │   ├── lint        — run all checks, report findings
 │   └── improve     — AI-assisted improvement suggestions
 ├── story           — render a BPMN process as a narrative HTML page
+├── migrate         — migrate models from other engines to Camunda 8
+│   └── c7          — convert Camunda 7 models and report the manual work
 ├── ask             — ask an AI assistant about your process or cluster
 ├── connector       — generate element templates from OpenAPI specs
 │   ├── generate    — generate templates from a spec file or catalog entry
