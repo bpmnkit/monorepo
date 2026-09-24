@@ -80,17 +80,16 @@ All 22 reference models are part of the round-trip corpus (suite commit `2ff82d4
 | Import (parse) | 22 / 22 |
 | Export re-imports to the same model | 22 / 22 |
 | Export is a fixed point (a second round trip changes nothing) | 22 / 22 |
-| Semantic content preserved | 22 / 22, apart from attributes on `<documentation>` (2 models) |
+| Semantic content preserved | 22 / 22 |
 | Diagram interchange preserved (bounds, waypoints, label styles, vendor DI attributes) | 22 / 22 |
 | `exportPreserving` of an unchanged model is byte-identical | 22 / 22 |
 
 What a plain export changes is listed per model in `ALLOWED` in
 `packages/core/tests/roundtrip-corpus.test.ts`:
 - `false` defaults such as `isForCompensation="false"` are not written back;
-- an empty `<extensionElements/>` is not written back;
-- the `id` and `textFormat` attributes of `<documentation>` are lost.
+- an empty `<extensionElements/>` is not written back.
 
-That last one is the only loss of content. The comparison is keyed by namespace, so
+Neither loses content. The comparison is keyed by namespace, so
 `<process>`, `<semantic:process>` and `<bpmn:process>` count as the same element.
 
 Running the suite found seven models BPMN Kit could not open and several losses, all fixed
@@ -100,7 +99,8 @@ before these results were recorded:
 - a default flow on an activity was dropped;
 - so were documentation on sequence flows, the name of `<definitions>` and of a
   collaboration, and empty timer and condition expressions;
-- extensions on data associations and label styles were lost.
+- extensions on data associations and label styles were lost;
+- so were the `id` and `textFormat` attributes of `<documentation>`.
 
 The results are BPMN Kit's own run of the suite's models, not a submission to the MIWG, which
 publishes vendor-submitted results separately.
@@ -189,7 +189,6 @@ image, document preview, iframe, HTML, expression, file picker, button, separato
 
 ## Known gaps, in one list
 
-- Attributes on `<documentation>` (`id`, `textFormat`) are not preserved
 - Choreography and conversation diagrams
 - Camunda 7 extensions (preserved, not modelled — except on multi-instance loops and event
   definitions, where they are dropped; `casen migrate c7` converts them to Camunda 8)

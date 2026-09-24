@@ -216,6 +216,8 @@ interface BpmnFlowNodeBase {
 	incoming: string[]
 	outgoing: string[]
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements: XmlElement[]
 	unknownAttributes: Record<string, string>
 	isForCompensation?: boolean
@@ -482,6 +484,8 @@ export interface BpmnSequenceFlow {
 	sourceRef: string
 	targetRef: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	conditionExpression?: BpmnConditionExpression
 	extensionElements: XmlElement[]
 	unknownAttributes: Record<string, string>
@@ -511,6 +515,8 @@ export interface BpmnProperty {
 export interface BpmnDataAssociation {
 	id?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	/** Vendor extensions carried on the association, kept verbatim. */
 	extensionElements?: XmlElement[]
 	/** Ids named by `<bpmn:sourceRef>` child elements. */
@@ -534,6 +540,8 @@ export interface BpmnTextAnnotation {
 	id: string
 	text?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
@@ -545,6 +553,8 @@ export interface BpmnAssociation {
 	targetRef: string
 	associationDirection?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
@@ -555,6 +565,8 @@ export interface BpmnGroup {
 	/** Id of the `categoryValue` supplying the group's label, if any. */
 	categoryValueRef?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
@@ -589,6 +601,8 @@ export interface BpmnLane {
 	flowNodeRefs: string[]
 	childLaneSet?: BpmnLaneSet
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
@@ -618,6 +632,8 @@ export interface BpmnProcess {
 	name?: string
 	isExecutable?: boolean
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements: XmlElement[]
 	flowElements: BpmnFlowElement[]
 	sequenceFlows: BpmnSequenceFlow[]
@@ -643,6 +659,8 @@ export interface BpmnParticipant {
 	name?: string
 	processRef?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
@@ -656,6 +674,8 @@ export interface BpmnMessageFlow {
 	/** Id of the {@link BpmnMessage} carried by this flow. */
 	messageRef?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes: Record<string, string>
 }
@@ -688,6 +708,8 @@ export interface BpmnError {
 	name?: string
 	errorCode?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes?: Record<string, string>
 }
@@ -698,6 +720,8 @@ export interface BpmnEscalation {
 	name?: string
 	escalationCode?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes?: Record<string, string>
 }
@@ -707,6 +731,8 @@ export interface BpmnMessage {
 	id: string
 	name?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	/**
 	 * Carries `zeebe:subscription`, whose `correlationKey` is what Camunda 8
 	 * correlates published messages on.
@@ -720,6 +746,8 @@ export interface BpmnSignal {
 	id: string
 	name?: string
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	extensionElements?: XmlElement[]
 	unknownAttributes?: Record<string, string>
 }
@@ -810,6 +838,8 @@ export interface BpmnDefinitions {
 	/** Namespace-qualified attributes not directly modeled */
 	unknownAttributes: Record<string, string>
 	documentation?: string
+	/** Attributes of the `<documentation>` element (`id`, `textFormat`), kept for round-trip. */
+	documentationAttributes?: Record<string, string>
 	/** Root-level category containers supplying {@link BpmnGroup} labels. */
 	categories?: BpmnCategory[]
 	errors: BpmnError[]

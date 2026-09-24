@@ -200,12 +200,18 @@ function serializeExtensionElements(extensions: XmlElement[], bp: string): XmlEl
  * base element, in the order the schema declares them.
  */
 function serializeBaseChildren(
-	owner: { documentation?: string; extensionElements?: XmlElement[] },
+	owner: {
+		documentation?: string
+		documentationAttributes?: Record<string, string>
+		extensionElements?: XmlElement[]
+	},
 	bp: string,
 ): XmlElement[] {
 	const children: XmlElement[] = []
 	if (owner.documentation !== undefined) {
-		children.push(el(`${bp}documentation`, {}, [], owner.documentation))
+		children.push(
+			el(`${bp}documentation`, owner.documentationAttributes ?? {}, [], owner.documentation),
+		)
 	}
 	children.push(...serializeExtensionElements(owner.extensionElements ?? [], bp))
 	return children
@@ -291,7 +297,7 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 
 	// Documentation
 	if (fe.documentation !== undefined) {
-		children.push(el(`${bp}documentation`, {}, [], fe.documentation))
+		children.push(el(`${bp}documentation`, fe.documentationAttributes ?? {}, [], fe.documentation))
 	}
 
 	// Extension elements
@@ -559,7 +565,11 @@ function serializeProcess(process: BpmnProcess, ns: Record<string, string>): Xml
 	if (process.isExecutable) attrs.isExecutable = "true"
 
 	const children: XmlElement[] = serializeBaseChildren(
-		{ documentation: process.documentation, extensionElements: process.extensionElements },
+		{
+			documentation: process.documentation,
+			documentationAttributes: process.documentationAttributes,
+			extensionElements: process.extensionElements,
+		},
 		bp,
 	)
 	if (process.laneSet) {
@@ -799,7 +809,14 @@ export function serializeBpmn(definitions: BpmnDefinitions): string {
 	const children: XmlElement[] = []
 
 	if (definitions.documentation !== undefined) {
-		children.push(el(`${bp}documentation`, {}, [], definitions.documentation))
+		children.push(
+			el(
+				`${bp}documentation`,
+				definitions.documentationAttributes ?? {},
+				[],
+				definitions.documentation,
+			),
+		)
 	}
 
 	// Categories supply the labels groups reference

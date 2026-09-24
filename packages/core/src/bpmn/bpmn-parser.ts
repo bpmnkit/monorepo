@@ -317,9 +317,15 @@ function dropLayoutWhitespace(element: XmlElement | undefined): void {
 	}
 }
 
+/** A `<documentation>`'s attributes (`id`, `textFormat`), or `undefined` when it has none. */
+function documentationAttrs(attrs: Attrs): Attrs | undefined {
+	return otherAttrs(attrs, NO_ATTRS)
+}
+
 /** The `documentation` and `extensionElements` every `tBaseElement` may carry. */
 interface BaseFields {
 	documentation?: string
+	documentationAttributes?: Attrs
 	extensionElements?: XmlElement[]
 }
 
@@ -332,6 +338,7 @@ interface BaseFields {
  */
 abstract class BaseElementFrame extends Frame implements TextOwner {
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private extensions: XmlElement[] | null = null
 
@@ -355,6 +362,7 @@ abstract class BaseElementFrame extends Frame implements TextOwner {
 	protected baseFields(): BaseFields {
 		const fields: BaseFields = {}
 		if (this.documentation !== undefined) fields.documentation = this.documentation
+		if (this.documentationAttributes) fields.documentationAttributes = this.documentationAttributes
 		if (this.extensions !== null && this.extensions.length > 0) {
 			fields.extensionElements = this.extensions
 		}
@@ -364,6 +372,7 @@ abstract class BaseElementFrame extends Frame implements TextOwner {
 	setText(slot: number, text: string | undefined, attrs: Attrs): void {
 		if (slot === SLOT_DOCUMENTATION) {
 			this.documentation = text
+			this.documentationAttributes = documentationAttrs(attrs)
 			return
 		}
 		this.baseText(slot, text, attrs)
@@ -635,6 +644,7 @@ class FlowNodeFrame extends Frame implements TextOwner {
 	private readonly incoming: string[] = []
 	private readonly outgoing: string[] = []
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private extensionElements: XmlElement[] | null = null
 	private readonly eventDefinitions: BpmnEventDefinition[] | null
@@ -721,6 +731,7 @@ class FlowNodeFrame extends Frame implements TextOwner {
 			}
 			case SLOT_DOCUMENTATION:
 				this.documentation = text
+				this.documentationAttributes = documentationAttrs(attrs)
 				break
 			case SLOT_COMPLETION_CONDITION:
 				this.completionCondition = { text: text ?? "", attributes: { ...attrs } }
@@ -750,6 +761,9 @@ class FlowNodeFrame extends Frame implements TextOwner {
 			incoming: this.incoming,
 			outgoing: this.outgoing,
 			documentation: this.documentation,
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(attrs),
 		}
@@ -1176,6 +1190,7 @@ class SequenceFlowFrame extends Frame implements TextOwner {
 	private conditionExpression: BpmnConditionExpression | undefined
 	private conditionSeen = false
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private extensionElements: XmlElement[] | null = null
 	private readonly unknownChildren: XmlElement[] = []
@@ -1213,6 +1228,7 @@ class SequenceFlowFrame extends Frame implements TextOwner {
 	setText(slot: number, text: string | undefined, attrs: Attrs): void {
 		if (slot === SLOT_DOCUMENTATION) {
 			this.documentation = text
+			this.documentationAttributes = documentationAttrs(attrs)
 			return
 		}
 		this.conditionExpression = { text: text ?? "", attributes: { ...attrs } }
@@ -1225,6 +1241,9 @@ class SequenceFlowFrame extends Frame implements TextOwner {
 			sourceRef: this.sourceRef,
 			targetRef: this.targetRef,
 			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			conditionExpression: this.conditionExpression,
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(this.attrs),
@@ -1444,6 +1463,7 @@ class ProcessFrame extends Frame implements LaneSetOwner, TextOwner {
 	private readonly id: string
 	private readonly unknownChildren: XmlElement[] = []
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private extensionElements: XmlElement[] | null = null
 	private laneSet: BpmnLaneSet | undefined
@@ -1480,8 +1500,10 @@ class ProcessFrame extends Frame implements LaneSetOwner, TextOwner {
 		}
 	}
 
-	setText(slot: number, text: string | undefined): void {
-		if (slot === SLOT_DOCUMENTATION) this.documentation = text
+	setText(slot: number, text: string | undefined, attrs: Attrs): void {
+		if (slot !== SLOT_DOCUMENTATION) return
+		this.documentation = text
+		this.documentationAttributes = documentationAttrs(attrs)
 	}
 
 	setLaneSet(laneSet: BpmnLaneSet): void {
@@ -1495,6 +1517,9 @@ class ProcessFrame extends Frame implements LaneSetOwner, TextOwner {
 			name: attr(attrs, "name"),
 			isExecutable: attr(attrs, "isExecutable") === "true" ? true : undefined,
 			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			extensionElements: this.extensionElements ?? [],
 			unknownAttributes: unknownAttrs(attrs),
 			laneSet: this.laneSet,
@@ -1792,6 +1817,7 @@ class DiagramFrame extends Frame {
 class DefinitionsFrame extends Frame implements TextOwner {
 	private readonly categories: BpmnCategory[] = []
 	private documentation: string | undefined
+	private documentationAttributes: Attrs | undefined
 	private documentationSeen = false
 	private readonly errors: BpmnError[] = []
 	private readonly escalations: BpmnEscalation[] = []
@@ -1841,8 +1867,10 @@ class DefinitionsFrame extends Frame implements TextOwner {
 		}
 	}
 
-	setText(slot: number, text: string | undefined): void {
-		if (slot === SLOT_DOCUMENTATION) this.documentation = text
+	setText(slot: number, text: string | undefined, attrs: Attrs): void {
+		if (slot !== SLOT_DOCUMENTATION) return
+		this.documentation = text
+		this.documentationAttributes = documentationAttrs(attrs)
 	}
 
 	finish(): void {
@@ -1870,6 +1898,9 @@ class DefinitionsFrame extends Frame implements TextOwner {
 			namespaces,
 			unknownAttributes,
 			...(this.documentation !== undefined ? { documentation: this.documentation } : {}),
+			...(this.documentationAttributes
+				? { documentationAttributes: this.documentationAttributes }
+				: {}),
 			...(this.categories.length > 0 ? { categories: this.categories } : {}),
 			errors: this.errors,
 			escalations: this.escalations,

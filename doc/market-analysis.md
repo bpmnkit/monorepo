@@ -678,8 +678,6 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 >
 > The MCP server now writes through `writeBpmn`. What's left:
 > - labels are rendered without their label style's font;
-> - `<documentation>` attributes are not kept;
-> - the editor does not clear a deleted flow's `default` reference;
 > - sub-process scope is missing in 6 approximate lint rules.
 
 9. **bpmnlint compatibility**: read `.bpmnlintrc`, run `bpmnlint-plugin-*` rules through an

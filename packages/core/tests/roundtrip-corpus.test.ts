@@ -39,9 +39,6 @@ const OPTIONAL_FALSE =
 const EMPTY_EXTENSIONS =
 	"An empty <extensionElements/> carries nothing and is not written back (documented in Round-trip fidelity)"
 
-const DOCUMENTATION_ATTRIBUTES =
-	"Attributes on <documentation> (id, textFormat) are not modelled: documentation is a plain string on every element"
-
 const ALLOWED: Record<string, AllowedChange[]> = {
 	"01-root-elements.bpmn": [],
 	"02-collaboration.bpmn": [
@@ -190,12 +187,6 @@ const ALLOWED: Record<string, AllowedChange[]> = {
 		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
 	],
 	"miwg-C.3.0.bpmn": [
-		{ feature: "attr:bpmn:documentation@id", kind: "gap", reason: DOCUMENTATION_ATTRIBUTES },
-		{
-			feature: "attr:bpmn:documentation@textFormat",
-			kind: "gap",
-			reason: DOCUMENTATION_ATTRIBUTES,
-		},
 		{
 			feature: "attr:bpmn:subProcess@isForCompensation",
 			kind: "normalised",
@@ -210,11 +201,6 @@ const ALLOWED: Record<string, AllowedChange[]> = {
 	"miwg-C.6.0.bpmn": [],
 	"miwg-C.7.0.bpmn": [
 		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
-		{
-			feature: "attr:bpmn:documentation@textFormat",
-			kind: "gap",
-			reason: DOCUMENTATION_ATTRIBUTES,
-		},
 		{
 			feature: "attr:bpmn:multiInstanceLoopCharacteristics@isSequential",
 			kind: "normalised",

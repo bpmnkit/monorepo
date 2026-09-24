@@ -58,3 +58,22 @@ describe("foreign attributes on event definitions and loops", () => {
 		expect(Bpmn.export(Bpmn.parse(out))).toBe(out)
 	})
 })
+
+describe("attributes on <documentation>", () => {
+	it("are kept on elements, flows, processes and definitions", () => {
+		const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="d" targetNamespace="x">
+  <bpmn:documentation id="doc0" textFormat="text/plain">defs</bpmn:documentation>
+  <bpmn:process id="p">
+    <bpmn:documentation id="doc1" textFormat="text/html">process</bpmn:documentation>
+    <bpmn:task id="t"><bpmn:documentation id="doc2" textFormat="text/plain">task</bpmn:documentation></bpmn:task>
+    <bpmn:task id="u"/>
+    <bpmn:sequenceFlow id="f" sourceRef="t" targetRef="u"><bpmn:documentation id="doc3">flow</bpmn:documentation></bpmn:sequenceFlow>
+  </bpmn:process>
+</bpmn:definitions>`
+		const out = Bpmn.export(Bpmn.parse(xml))
+		for (const id of ["doc0", "doc1", "doc2", "doc3"]) expect(out).toContain(`id="${id}"`)
+		expect(out).toContain('textFormat="text/html"')
+		expect(Bpmn.export(Bpmn.parse(out))).toBe(out)
+	})
+})
