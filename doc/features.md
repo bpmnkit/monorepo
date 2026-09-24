@@ -1,5 +1,11 @@
 # Features
 
+## `casen test` on Reebe: error propagation, user tasks, ad-hoc jobs (2026-09-24)
+
+- Reebe throws and catches errors and escalations across sub-processes, event sub-processes
+  and call activities; `runScenarioWasm` completes native user tasks and delivers the message
+  a receive task waits for. All 59 template scenarios pass on both engines.
+
 ## Agentic BPMN testing (2026-09-24)
 
 - `mockAiAgent` in `@bpmnkit/engine/testing` scripts an AI Agent's tool calls turn by turn

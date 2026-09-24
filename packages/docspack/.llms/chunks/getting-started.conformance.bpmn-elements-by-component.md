@@ -30,8 +30,13 @@ in reverse order, as BPMN specifies, where Zeebe starts them all at once. For Ze
 Reebe's model covers the task types, call activities, embedded and event sub-processes,
 exclusive, parallel, inclusive and event-based gateways, catch, throw and boundary events
 (timer, message, signal, error, escalation, compensation, link, terminate) and
-multi-instance. It has no complex gateway and no ad-hoc sub-process. Reebe is experimental,
-and its behaviour is checked by its own tests rather than against Zeebe.
+multi-instance. Errors and escalations, from end events, throw events and job workers,
+propagate out through sub-processes and call activities to a boundary event or an event
+sub-process. An uncaught error raises an incident. It has no complex gateway. It runs an
+ad-hoc sub-process only through its job worker implementation, such as the AI Agent
+Sub-process: completing the job completes the sub-process, and the inner elements are not
+activated. Reebe is experimental, and its behaviour is checked by its own tests rather than
+against Zeebe. Every scenario of the [template gallery](/docs/guides/templates) passes on it.
 
 ---
 Source: https://bpmnkit.com/docs/getting-started/conformance

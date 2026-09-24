@@ -76,11 +76,11 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Conformance](.llms/chunks/getting-started.conformance.md) — 523 tokens
 - [Conformance — BPMN 2.0 — model and round trip](.llms/chunks/getting-started.conformance.bpmn-2.0-model-and-round-trip.md) — 241 tokens
 - [Conformance — BPMN Model Interchange (MIWG)](.llms/chunks/getting-started.conformance.bpmn-model-interchange-miwg.md) — 508 tokens
-- [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 743 tokens
+- [Conformance — BPMN elements by component](.llms/chunks/getting-started.conformance.bpmn-elements-by-component.md) — 836 tokens
 - [Conformance — Zeebe extensions](.llms/chunks/getting-started.conformance.zeebe-extensions.md) — 226 tokens
 - [Conformance — Linting — bpmnlint compatibility](.llms/chunks/getting-started.conformance.linting-bpmnlint-compatibility.md) — 149 tokens
 - [Conformance — DMN 1.3](.llms/chunks/getting-started.conformance.dmn-1.3.md) — 135 tokens
-- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 218 tokens
+- [Conformance — Camunda Forms](.llms/chunks/getting-started.conformance.camunda-forms.md) — 234 tokens
 - [Installation](.llms/chunks/getting-started.installation.md) — 140 tokens
 - [Installation — SVG Canvas Viewer](.llms/chunks/getting-started.installation.svg-canvas-viewer.md) — 189 tokens
 - [Installation — Worker client](.llms/chunks/getting-started.installation.worker-client.md) — 145 tokens
@@ -184,7 +184,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Process Templates](.llms/chunks/guides.templates.md) — 136 tokens
 - [Process Templates — What is in the gallery](.llms/chunks/guides.templates.what-is-in-the-gallery.md) — 261 tokens
 - [Process Templates — Use a template](.llms/chunks/guides.templates.use-a-template.md) — 213 tokens
-- [Process Templates — Run the scenarios](.llms/chunks/guides.templates.run-the-scenarios.md) — 525 tokens
+- [Process Templates — Run the scenarios](.llms/chunks/guides.templates.run-the-scenarios.md) — 619 tokens
 - [Process Templates — AI templates: model and secrets](.llms/chunks/guides.templates.ai-templates-model-and-secrets.md) — 143 tokens
 - [Process Templates — From code](.llms/chunks/guides.templates.from-code.md) — 137 tokens
 - [Process Templates — Add a template](.llms/chunks/guides.templates.add-a-template.md) — 103 tokens
@@ -203,7 +203,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [Testing Processes — Messages](.llms/chunks/guides.testing-processes.messages.md) — 357 tokens
 - [Testing Processes — Coverage](.llms/chunks/guides.testing-processes.coverage.md) — 221 tokens
 - [Testing Processes — Matchers](.llms/chunks/guides.testing-processes.matchers.md) — 231 tokens
-- [Testing Processes — What the simulator does not execute](.llms/chunks/guides.testing-processes.what-the-simulator-does-not-execute.md) — 363 tokens
+- [Testing Processes — What the simulator does not execute](.llms/chunks/guides.testing-processes.what-the-simulator-does-not-execute.md) — 353 tokens
 - [Testing Processes — See also](.llms/chunks/guides.testing-processes.see-also.md) — 55 tokens
 - [Typed Workers](.llms/chunks/guides.typed-workers.md) — 413 tokens
 - [Typed Workers — Use the types with `@bpmnkit/worker-client`](.llms/chunks/guides.typed-workers.use-the-types-with-bpmnkit-worker-client.md) — 196 tokens

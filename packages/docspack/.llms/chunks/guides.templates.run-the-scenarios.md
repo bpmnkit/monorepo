@@ -40,10 +40,17 @@ What the scenarios can and cannot exercise follows from what the TypeScript engi
 - **The inclusive split** in `employee-onboarding` ends each branch at its own end event.
   The simulator does not synchronise an inclusive join.
 
-`casen test` runs scenarios on the Reebe WebAssembly engine instead. Reebe does not yet run
-some of the steps these scenarios rely on. It does not mock native user tasks as jobs, it
-cannot receive a message that a scenario does not publish, and it does not run ad-hoc
-sub-processes. The gallery scenarios are verified with `runScenario`.
+`casen test` runs the same scenarios on the Reebe WebAssembly engine, which has Zeebe's
+semantics. Every gallery scenario passes on both engines, and the package tests check both.
+Reebe runs the scenario in the same way as the simulator:
+
+- A native user task is completed with the outputs of the `userTask` mock.
+- A receive task gets its message at once, with the correlation key from the model and no
+  variables. The scenario gives the message's variables as start inputs.
+- An AI Agent Sub-process runs as one job. Completing the job completes the sub-process.
+  The tools inside it are not run.
+- An error end event throws its error code. The error boundary on the enclosing
+  sub-process catches it, or an incident is raised.
 
 ---
 Source: https://bpmnkit.com/docs/guides/templates

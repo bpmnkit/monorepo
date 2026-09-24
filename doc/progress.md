@@ -1,5 +1,20 @@
 # Progress
 
+## 2026-09-24 — Contributor onboarding
+
+- CONTRIBUTING: a "Where to start" table of seven real, scoped starter tasks (label-style fonts in the renderer, sub-process scope in the approximate bpmnlint rules, self-closing elements in the Reebe parser, terminate inside a sub-process in the simulator, duplicate SVG ids in `@bpmnkit/markdown`, URL encoding in Operate, type errors in `apps/examples`), and a "Who maintains what" section naming the maintainer of record and how to become a co-maintainer.
+- GitHub issue forms: bug report (package and version, reproduction), feature request (problem first), and contact links to SECURITY.md and the docs.
+
+## 2026-09-24 — Template scenarios pass on Reebe (`casen test`)
+
+- Reebe: an error end event throws its error code. Errors and escalations (end events, intermediate throw events, job workers) share one propagation path in `processor/throw_event.rs`: a boundary on the element, then an event sub-process of its scope, then a boundary on the scope, and on through call activities into the calling process. An interrupting catch terminates the scope and cancels its jobs. An uncaught error raises `UNHANDLED_ERROR_EVENT`. An uncaught escalation is not an incident.
+- Reebe: `errorRef`/`escalationRef` resolve to the root `errorCode`/`escalationCode`. A completed event sub-process ends its scope. A terminated element ignores late jobs, messages and task creation (new `cancel_jobs_by_element_instance`).
+- Reebe: an ad-hoc sub-process with a job worker implementation (AI Agent Sub-process) runs as its job. Without one, it raises an incident. Inner elements are not activated.
+- Reebe: a single-output decision table returns the value, a missing FEEL variable is `null`, and `INCIDENT.CREATE` is recorded, so failed I/O mappings no longer hang silently.
+- reebe-wasm: `complete_user_task`; `snapshot()` also returns `userTasks` and `messageSubscriptions`.
+- `runScenarioWasm`: completes native user tasks with the `userTask` mock, delivers the message a waiting receive task expects (as the simulator passes receive tasks), and compares expected variables structurally. Scenario format unchanged.
+- Template gallery: 59/59 scenarios pass on Reebe (19/59 before). `templates.test.ts` runs every scenario on both `runScenario` and `runScenarioWasm`. Templates guide and conformance page updated.
+
 ## 2026-09-24 — Agentic BPMN testing: deterministic AI agent mocks, cassettes and tool coverage
 
 - `@bpmnkit/engine` runs an ad-hoc sub-process that has a job worker (the AI Agent Sub-process connector) with Zeebe semantics: the job carries `adHocSubProcessElements` with `fromAi()` parameters, the worker completes it with an `adHocSubProcess` job result (`activateElements`, `isCompletionConditionFulfilled`, `isCancelRemainingInstances`), each tool runs in an isolated scope, and `outputElement` results collect into `outputCollection` (`toolCallResults`) before the worker is asked again. A completion without a job result still completes the sub-process, so existing mocks are unchanged. New types `JobResult`, `AdHocSubProcessJobResult`, `AdHocActivateElement`, `AdHocSubProcessElement`, `AdHocToolParameter`; `job:created` carries `elementId`.

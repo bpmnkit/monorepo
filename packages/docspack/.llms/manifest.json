@@ -907,7 +907,7 @@
 		{
 			"id": "getting-started.conformance.bpmn-elements-by-component",
 			"file": "chunks/getting-started.conformance.bpmn-elements-by-component.md",
-			"tokens": 743,
+			"tokens": 836,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -966,7 +966,7 @@
 		{
 			"id": "getting-started.conformance.camunda-forms",
 			"file": "chunks/getting-started.conformance.camunda-forms.md",
-			"tokens": 218,
+			"tokens": 234,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -2382,7 +2382,7 @@
 		{
 			"id": "guides.templates.run-the-scenarios",
 			"file": "chunks/guides.templates.run-the-scenarios.md",
-			"tokens": 525,
+			"tokens": 619,
 			"tags": [
 				"guides",
 				"templates",
@@ -2695,7 +2695,7 @@
 		{
 			"id": "guides.testing-processes.what-the-simulator-does-not-execute",
 			"file": "chunks/guides.testing-processes.what-the-simulator-does-not-execute.md",
-			"tokens": 363,
+			"tokens": 353,
 			"tags": [
 				"guides",
 				"testing-processes",
