@@ -1,5 +1,51 @@
 # Progress
 
+## 2026-09-24 — `casen lint` and VS Code honour a `.bpmnlintrc`
+
+**A team's bpmnlint configuration now governs BPMN Kit's findings.** `casen lint` and the
+VS Code Problems panel look for `.bpmnlintrc` in the diagram's folder and each folder above
+it. The file is parsed in `@bpmnkit/core` (`parseBpmnlintConfig`, `resolveBpmnlintConfig`).
+This code is pure, so a browser host can use it too. It accepts both `extends` forms, the
+three built-in presets, levels written as names or as `0`–`3`, and `[level, options]`.
+
+**Every bpmnlint built-in rule has a BPMN Kit equivalent.** `BPMNLINT_RULE_MAP` maps each of
+the 28 rules to the findings that report the same problem. `applyBpmnlintConfig` gives those
+findings the level the config sets, or drops them when the rule is `off`. For 19 rules BPMN
+Kit had no finding, so they are now implemented natively in
+`optimize/bpmnlint-rules.ts`. These rules run only when a config enables them, so the default
+report stays the same. A rule the config does not mention keeps BPMN Kit's default. Plugin
+rules, unknown rules and `plugin:` configs are reported as not applied. They are never
+dropped silently. The guide's table marks each rule as exact or approximate. For the
+approximate rules the difference is mostly that BPMN Kit's existing flow and naming rules
+look only at the top-level scope.
+
+**With bpmnlint installed, bpmnlint runs.** `prepareBpmnlint` in `@bpmnkit/core/node`
+resolves `bpmnlint` and `bpmn-moddle` from the `.bpmnlintrc`'s folder and loads them with
+a dynamic `import()`. It runs the configuration through bpmnlint's `Linter` and
+`NodeResolver`. As a result, `bpmnlint-plugin-*` rules and `plugin:` configs work, and so do
+`moddleExtensions`. BPMN Kit then drops its own findings for every rule bpmnlint ran, so no
+problem is reported twice. bpmnlint is not a dependency of any published package. It is a
+root devDependency for the tests only. The three imports run one after another, not
+concurrently. bpmnlint is CommonJS that `require()`s ESM it shares with bpmn-moddle, and
+Node rejects that `require()` while a concurrent `import()` of the same module is still
+loading. The CLI test found this problem. The in-process test did not.
+
+**Parity was measured.** We ran both linters under `bpmnlint:all` against every `.bpmn`
+file in the repository (16 files). Each rule marked exact reports the same elements as
+bpmnlint. Each approximate rule differs only in the ways the table describes.
+
+- `casen lint`: `--no-bpmnlintrc` ignores the file. Each governed finding prints its rule
+  name, and real bpmnlint's findings appear as `[bpmnlint]`. `--format json` still prints a
+  JSON array, and each governed finding has a `bpmnlintRule` field. Exit codes follow the
+  levels in the config.
+- VS Code: `bpmnkit.lint.bpmnlintrc` (on by default). bpmnlint's findings show source
+  `bpmnlint` with the rule as the code. A broken config, or rules that could not be applied,
+  show as a problem at the top of the file. Editing a `.bpmnlintrc` re-lints the open
+  diagrams.
+- `LintDiagnostic` and `OptimizationFinding` gain an optional `bpmnlintRule` field, and
+  `LintReport` gains an optional `bpmnlintUnsupported` field. `lintDiagram` accepts
+  `bpmnlint` and `bpmnlintDelegated`.
+
 ## 2026-09-23 — The FEEL share link gets the same bar as the upload link
 
 The link row under **Get a share link** rendered as browser defaults — a sunken input and

@@ -46,6 +46,8 @@
 		"@types/vscode": "^1.90.0",
 		"@vscode/vsce": "^3.9.2",
 		"astro": "^6",
+		"bpmn-moddle": "^10.3.1",
+		"bpmnlint": "^11.14.0",
 		"concurrently": "^9.0.0",
 		"docspack": "^1.2.0",
 		"esbuild": "^0.27.0",

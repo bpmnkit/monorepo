@@ -1,5 +1,25 @@
 # Features
 
+## bpmnlint compatibility — your `.bpmnlintrc` is honoured (2026-09-24)
+
+- **`.bpmnlintrc` discovery.** `casen lint` and the VS Code Problems panel use the nearest
+  `.bpmnlintrc`, starting in the diagram's folder. `--no-bpmnlintrc` and
+  `bpmnkit.lint.bpmnlintrc` turn this off.
+- **All 28 bpmnlint built-in rules are mapped.** The config's levels and `off` apply to BPMN
+  Kit's equivalent findings. Rules BPMN Kit lacked are implemented natively and run only when
+  the config enables them. The mapping table in `guides/bpmnlint` marks each rule as exact
+  or approximate.
+- **Your own bpmnlint and its plugins.** When the project has `bpmnlint` and `bpmn-moddle`
+  installed, BPMN Kit loads them from the project and runs the config with them, so
+  `bpmnlint-plugin-*` rules work. Its findings replace BPMN Kit's equivalents and are not
+  shown a second time.
+- **Nothing is ignored silently.** A plugin rule, an unknown rule or a `plugin:` config that
+  cannot be applied is reported.
+- **For hosts.** `@bpmnkit/core` provides `parseBpmnlintConfig`, `resolveBpmnlintConfig`,
+  `applyBpmnlintConfig`, `BPMNLINT_RULE_MAP` and `lintDiagram({ bpmnlint })`, all with no
+  dependencies and usable in a browser. `@bpmnkit/core/node` provides `findBpmnlintrc`,
+  `prepareBpmnlint` and `runBpmnlint`.
+
 ## Edit a shared FEEL statement from its link (2026-09-21)
 
 - **Edit on a FEEL tab** (`apps/drop`) — the composer's two boxes, opened on what the drop

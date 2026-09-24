@@ -34,6 +34,11 @@ export interface OptimizationFinding {
 	produces?: string[]
 	/** Data-flow: variable names consumed (read) by the associated element. */
 	consumes?: string[]
+	/**
+	 * The bpmnlint rule this finding was reported under, when a `.bpmnlintrc`
+	 * governs it (see `applyBpmnlintConfig`).
+	 */
+	bpmnlintRule?: string
 }
 
 export interface OptimizationReport {
