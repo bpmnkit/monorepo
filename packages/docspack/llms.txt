@@ -2,7 +2,7 @@
 
 > BPMN Kit documentation as an offline, version-locked docspack package with a built-in search CLI for AI agents
 
-Version 1.0.0. 311 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
+Version 1.0.0. 317 chunks documenting @bpmnkit/core, @bpmnkit/canvas, @bpmnkit/editor, @bpmnkit/engine, @bpmnkit/feel, @bpmnkit/plugins, @bpmnkit/api, @bpmnkit/ascii, @bpmnkit/connector-gen, @bpmnkit/connectors, @bpmnkit/patterns, @bpmnkit/worker-client, @bpmnkit/cli.
 
 ```sh
 npm i -D @bpmnkit/docspack
@@ -321,6 +321,12 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/feel — Formatting and highlighting](.llms/chunks/packages.feel.formatting-and-highlighting.md) — 151 tokens
 - [@bpmnkit/feel — API Reference](.llms/chunks/packages.feel.api-reference.md) — 356 tokens
 - [@bpmnkit/feel — Stability](.llms/chunks/packages.feel.stability.md) — 39 tokens
+- [@bpmnkit/operate](.llms/chunks/packages.operate.md) — 186 tokens
+- [@bpmnkit/operate — What it does, and what it does not do](.llms/chunks/packages.operate.what-it-does-and-what-it-does-not-do.md) — 484 tokens
+- [@bpmnkit/operate — Installation](.llms/chunks/packages.operate.installation.md) — 488 tokens
+- [@bpmnkit/operate — Connection, CORS and security notes](.llms/chunks/packages.operate.connection-cors-and-security-notes.md) — 293 tokens
+- [@bpmnkit/operate — API reference](.llms/chunks/packages.operate.api-reference.md) — 494 tokens
+- [@bpmnkit/operate — Limits](.llms/chunks/packages.operate.limits.md) — 126 tokens
 - [@bpmnkit/plugins — Overview](.llms/chunks/packages.plugins.overview.md) — 162 tokens
 - [@bpmnkit/plugins — Installation](.llms/chunks/packages.plugins.installation.md) — 134 tokens
 - [@bpmnkit/plugins — What is available](.llms/chunks/packages.plugins.what-is-available.md) — 738 tokens

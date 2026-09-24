@@ -4472,6 +4472,99 @@
 			]
 		},
 		{
+			"id": "packages.operate",
+			"file": "chunks/packages.operate.md",
+			"tokens": 186,
+			"tags": [
+				"packages",
+				"operate"
+			],
+			"entities": [
+				"@bpmnkit/operate",
+				"@bpmnkit/proxy"
+			]
+		},
+		{
+			"id": "packages.operate.what-it-does-and-what-it-does-not-do",
+			"file": "chunks/packages.operate.what-it-does-and-what-it-does-not-do.md",
+			"tokens": 484,
+			"tags": [
+				"packages",
+				"operate",
+				"not"
+			],
+			"entities": [
+				"@bpmnkit/operate"
+			]
+		},
+		{
+			"id": "packages.operate.installation",
+			"file": "chunks/packages.operate.installation.md",
+			"tokens": 488,
+			"tags": [
+				"packages",
+				"operate",
+				"installation"
+			],
+			"entities": [
+				"application.yaml"
+			]
+		},
+		{
+			"id": "packages.operate.connection-cors-and-security-notes",
+			"file": "chunks/packages.operate.connection-cors-and-security-notes.md",
+			"tokens": 293,
+			"tags": [
+				"packages",
+				"operate",
+				"connection",
+				"cors",
+				"security",
+				"notes"
+			],
+			"entities": [
+				"proxyUrl"
+			]
+		},
+		{
+			"id": "packages.operate.api-reference",
+			"file": "chunks/packages.operate.api-reference.md",
+			"tokens": 494,
+			"tags": [
+				"packages",
+				"operate",
+				"api",
+				"reference"
+			],
+			"entities": [
+				"localStorage",
+				"options.theme",
+				"ProcessInstanceResult",
+				"IncidentResult",
+				"JobSearchResult",
+				"UserTaskResult",
+				"VariableResult",
+				"ProcessDefinitionResult",
+				"ProfileInfo",
+				"DashboardData",
+				"createInstanceDetailView",
+				"createDefinitionDetailView"
+			]
+		},
+		{
+			"id": "packages.operate.limits",
+			"file": "chunks/packages.operate.limits.md",
+			"tokens": 126,
+			"tags": [
+				"packages",
+				"operate",
+				"limits"
+			],
+			"entities": [
+				"pollInterval"
+			]
+		},
+		{
 			"id": "packages.plugins.overview",
 			"file": "chunks/packages.plugins.overview.md",
 			"tokens": 162,

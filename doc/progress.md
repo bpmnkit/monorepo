@@ -1,17 +1,30 @@
 # Progress
 
+## 2026-09-24 — @bpmnkit/operate: quality pass towards 1.0
+
+- Fixed "Retry Job": it called a non-existent `PATCH /jobs/{key}/retries`; it now sends `PATCH /jobs/{key}` with `{ changeset: { retries: 3 } }`.
+- Poll failures now show their reason (e.g. `HTTP 401: No active profile`) in an alert above the view and clear on the next good poll; before, they looked like an empty table.
+- `pollInterval: 0` now loads once (it still polled every 30 s); `proxyUrl` may be relative; polls no longer overlap on a slow cluster.
+- Tables keep their page across polls; switching profile rebuilds the current view (detail pages, state filter); `setTheme()` re-themes an open diagram.
+- Deep links: `/definitions/:key` now connects its store; a deep-linked instance keeps its header; failed diagram/incident requests are no longer rendered as data.
+- Detail views and stores exported for Studio are marked `@internal`.
+- Added a Vitest + happy-dom suite (78 tests: stream, stores, router, filter table, views, createOperate, detail views).
+- New docs page `docs/packages/operate` (C8 Run and SaaS quick start, CORS/proxy notes, comparison with Camunda Operate); README entry rewritten to remove wrong claims (SSE, zero dependencies).
+- Not yet 1.0: detail pages do not refresh after actions, variables and element instances load only their first page, route keys are not URL-encoded, and nothing has been smoke-tested against a real Camunda 8 Run.
+
 ## 2026-09-24 — Round-trip and editor follow-ups
 
 - **`<documentation>` attributes are kept.** `id` and `textFormat` now travel in an optional `documentationAttributes` next to `documentation` on every element, flow, process and the definitions. This was the last content loss on the 22 OMG MIWG reference models; their `ALLOWED` entries are gone and the Conformance page says 22 / 22 with no exceptions. The two affected golden hashes moved, because that data used to be dropped.
 - **Foreign attributes on event definitions and multi-instance loops are kept** (`camunda:collection`, `camunda:errorCodeVariable`, `camunda:type`, …), in an optional `unknownAttributes`. The Camunda 7 converter now reads them from the model instead of re-parsing the source XML.
 - **Editor:** deleting a gateway's or an activity's default flow clears its `default`, so the export no longer references a missing flow.
 - **CLI:** `casen dev --help` no longer prints "casen dev dev".
+- **FEEL:** a boolean literal in a unary test compares with a boolean input, as Camunda documents: the input entry `true` no longer matches `false`, and `false` now matches `false`. A variable named like a built-in (`count`, `sum`) resolves to the variable; `count(xs)` still reaches the built-in. Both were found while building the template gallery and the engine semantics.
 
 ## 2026-09-24 — Camunda 7 → 8 migration assistant
 
 - `@bpmnkit/core`: `convertCamunda7(definitions, { sourceXml?, executionPlatformVersion? })`, `analyzeCamunda7` and `translateJuelToFeel`, pure and dependency-free. Each Camunda 7 construct is reported as `convertible`, `manual` or `unsupported`, with a Camunda 8 suggestion and an `applied` flag. Mechanical conversions: external tasks → `zeebe:taskDefinition`; `camunda:inputOutput` (including list/map) → `zeebe:ioMapping`; JUEL conditions, timers and completion conditions → FEEL; user-task assignment, schedule, priority and forms; `decisionRef` → `zeebe:calledDecision`; call-activity `calledElement` and `camunda:in/out` → `zeebe:calledElement` with pinned propagation flags; multi-instance collections; FEEL/JUEL script tasks; version tag and properties; retry counts. Java delegates get a job type by a documented naming rule, with the original kept as a task header. Async continuations are dropped with an explanation. Listeners, Groovy/JS scripts, correlation keys and retry back-offs are reported as manual; history TTL, starter groups, initiator, take/timeout listeners and standard loops as unsupported. Converted output is marked `Camunda Cloud 8.8.0`, deploy-lints clean for its convertible parts, and round-trips.
 - JUEL → FEEL only where provable (paths, literals, comparisons, and/or/not, `+ - * /`). Method calls, `empty`, ternary, indexing, `%`, engine objects and templated text are refused with a reason.
-- The parser used to drop foreign attributes on multi-instance loops and event definitions; that is now fixed in core (see below).
+- The parser used to drop foreign attributes on multi-instance loops and event definitions; that is now fixed in core (see the follow-ups entry above).
 - `casen migrate c7 <files...> [--out dir] [--check] [--format text|json] [--force]`: writes `<name>.c8.bpmn` (formatting preserved) or into `--out`, never overwrites without `--force`, prints the report grouped by severity, and `--check` exits 1 while manual or unsupported work remains.
 - Docs: new guide "Migrate from Camunda 7", `cli/migrate.md`, Conformance Camunda 7 paragraph, CLI README section. Three written-for-repo Camunda 7 fixtures with provenance; 138 new tests.
 - Follow-up after the parser started keeping `unknownAttributes` on loops and event definitions: `convertCamunda7` reads `camunda:collection` / `camunda:elementVariable`, the message-throw implementation and error/conditional variables from the model, removes each converted attribute and keeps the unconverted ones. The source-XML recovery is removed; `sourceXml` is still accepted and ignored. Regression test: same result with and without `sourceXml`, and no converted `camunda:` attribute left in the export.

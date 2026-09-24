@@ -179,7 +179,7 @@ export const PACKAGE_FACTS: readonly PackageFact[] = [
 		dir: "packages/operate",
 		name: "@bpmnkit/operate",
 		version: "0.1.5",
-		description: "Monitoring and operations frontend for Camunda 8 clusters — real-time SSE, zero dependencies",
+		description: "Lightweight monitoring and operations UI for Camunda 8 dev clusters, C8 Run and SaaS trials",
 		npm: "https://www.npmjs.com/package/@bpmnkit/operate",
 		github: "https://github.com/bpmnkit/monorepo/tree/main/packages/operate",
 	},
