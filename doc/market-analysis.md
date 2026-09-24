@@ -697,6 +697,19 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 
 ### P2 — The developer loop (the wedge, 1–3 months)
 
+> **Status (2026-09-24): done.** See `doc/progress.md`.
+> - **Item 15:** `casen dev` runs editor, simulation, lint and scenario checks on save,
+>   on the TS engine or Reebe WASM.
+> - **Item 16:** `@bpmnkit/engine/testing` (+ `/testing/vitest`) with job, connector and
+>   timer control and path assertions.
+> - **Item 17:** the TS simulator now executes call activities, event sub-processes,
+>   event-based gateways, signals, escalations, multi-instance, link events and
+>   compensation, with Zeebe variable propagation. Reebe WASM correlates messages and keeps
+>   job results.
+> - **Item 18:** `casen generate types` with worker contract checks.
+> - **Item 19:** the runner's scrubber redraws the tokens at each event.
+> - **Item 20:** 25 runnable templates (7 AI-agent patterns), `casen template`, `/templates`.
+
 15. **`npx bpmnkit dev`** (or `casen dev`): local engine (WASM) + editor + Operate-like view
     in one command, no Docker, no licence key — the Camunda equivalent of
     `temporal server start-dev`.
