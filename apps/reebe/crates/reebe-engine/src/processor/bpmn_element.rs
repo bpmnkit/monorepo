@@ -9,7 +9,7 @@ use crate::engine::EngineState;
 use crate::error::{EngineError, EngineResult};
 use crate::key_gen::KeyGenerator;
 use super::{CommandToWrite, EventToWrite, RecordProcessor, Writers};
-use super::throw_event::{throw_event, ThrowOutcome, Thrown};
+use super::throw_event::{terminate_children, throw_event, ThrowOutcome, Thrown};
 use super::catch_event::{arm_boundary_events, arm_event_based_gateway, close_waits, open_wait, wait_of};
 use super::multi_instance;
 use super::scope;
@@ -155,6 +155,14 @@ impl BpmnElementProcessor {
             .to_string();
 
         let tenant_id = record.tenant_id.clone();
+
+        // A token that arrives after its flow scope ended (terminated, or completed by
+        // a terminate end event) goes nowhere.
+        if let Ok(scope) = state.backend.get_element_instance_by_key(flow_scope_key).await {
+            if matches!(scope.state.as_str(), "COMPLETED" | "TERMINATED") {
+                return Ok(());
+            }
+        }
 
         // Get process definition to find element — try in-memory cache first.
         enum ProcessesSource {
@@ -1251,127 +1259,30 @@ impl BpmnElementProcessor {
             }
         }
 
-        // An event sub-process that completes ends its flow scope like an end event.
-        let is_event_subprocess = element_type == "SUB_PROCESS" && {
-            let pd = state.backend.get_process_definition_by_key(process_definition_key).await?;
-            reebe_bpmn::parse_bpmn(&pd.bpmn_xml)
-                .ok()
-                .and_then(|ps| ps.into_iter().find(|p| p.id == bpmn_process_id || p.id == pd.bpmn_process_id))
-                .and_then(|p| match p.get_element_recursive(&element_id) {
-                    Some(reebe_bpmn::FlowElement::SubProcess(sp)) => Some(sp.triggered_by_event),
-                    _ => None,
-                })
-                .unwrap_or(false)
-        };
-
-        // If this is an EndEvent, check if the process (or subprocess) is complete
-        if element_type == "END_EVENT" || is_event_subprocess {
-            // Detect whether this end event is inside an embedded subprocess by checking
-            // if the flow scope element is a SUB_PROCESS rather than the root PROCESS.
-            let scope_ei = state.backend.get_element_instance_by_key(flow_scope_key).await.ok();
-            let is_subprocess_end = scope_ei.as_ref()
-                .map(|ei| ei.element_type == "SUB_PROCESS")
-                .unwrap_or(false);
-
-            if is_subprocess_end {
-                let sp_ei = scope_ei.unwrap();
-
-                // Complete the subprocess.
-                state.backend.update_element_instance_state(sp_ei.key, "COMPLETED").await?;
-                writers.events.push(EventToWrite {
-                    value_type: "PROCESS_INSTANCE".to_string(),
-                    intent: "ELEMENT_COMPLETED".to_string(),
-                    key: sp_ei.key,
-                    payload: serde_json::json!({
-                        "elementInstanceKey": sp_ei.key.to_string(),
-                        "processInstanceKey": process_instance_key.to_string(),
-                        "elementId": sp_ei.element_id,
-                        "elementType": "SUB_PROCESS",
-                        "bpmnProcessId": bpmn_process_id,
-                        "tenantId": tenant_id,
-                    }),
-                });
-                // Fire COMPLETE_ELEMENT for the subprocess so the outer flow is activated.
-                writers.commands.push(CommandToWrite {
-                    value_type: "PROCESS_INSTANCE".to_string(),
-                    intent: "COMPLETE_ELEMENT".to_string(),
-                    key: sp_ei.key,
-                    payload: serde_json::json!({
-                        "elementInstanceKey": sp_ei.key.to_string(),
-                        "processInstanceKey": process_instance_key.to_string(),
-                        "processDefinitionKey": process_definition_key.to_string(),
-                        "elementId": sp_ei.element_id,
-                        "elementType": "SUB_PROCESS",
-                        "bpmnProcessId": bpmn_process_id,
-                        "flowScopeKey": sp_ei.flow_scope_key.unwrap_or(process_instance_key).to_string(),
-                        "tenantId": tenant_id,
-                    }),
-                });
-                return Ok(());
-            }
-
-            // Root process end event — check remaining active elements
-            let active_count = state.backend.get_active_element_instance_count(process_instance_key).await?;
-            if active_count <= 0 {
-                // Mark the PROCESS-level element instance as COMPLETED
-                state.backend.complete_process_element(process_instance_key).await?;
-
-                // Complete the process instance itself
-                state.backend
-                    .update_process_instance_state(process_instance_key, "COMPLETED", Some(state.clock.now()))
-                    .await?;
-                writers.events.push(EventToWrite {
-                    value_type: "PROCESS_INSTANCE".to_string(),
-                    intent: "ELEMENT_COMPLETED".to_string(),
-                    key: process_instance_key,
-                    payload: serde_json::json!({
-                        "elementInstanceKey": process_instance_key.to_string(),
-                        "processInstanceKey": process_instance_key.to_string(),
-                        "elementId": bpmn_process_id,
-                        "elementType": "PROCESS",
-                        "bpmnProcessId": bpmn_process_id,
-                        "tenantId": tenant_id,
-                    }),
-                });
-
-                // If this is a child process (called via call activity), resume the parent.
-                let pi = state.backend.get_process_instance_by_key(process_instance_key).await?;
-                if let (Some(parent_pi_key), Some(call_ei_key)) =
-                    (pi.parent_process_instance_key, pi.parent_element_instance_key)
-                {
-                    // Retrieve the call activity element instance to get parent process def key
-                    // and element ID — needed for output mapping evaluation.
-                    let call_ei = state.backend.get_element_instance_by_key(call_ei_key).await?;
-
-                    // Propagate child output variables to parent scope via output mappings.
-                    // If the call activity has output mappings they will be evaluated by
-                    // complete_element; we pass the child's variables in the payload.
-                    let child_vars = {
-                        let vs = state.backend.get_variables_by_scope(process_instance_key).await.unwrap_or_default();
-                        let mut m = serde_json::Map::new();
-                        for v in vs { m.insert(v.name, v.value); }
-                        serde_json::Value::Object(m)
-                    };
-
-                    writers.commands.push(CommandToWrite {
-                        value_type: "PROCESS_INSTANCE".to_string(),
-                        intent: "COMPLETE_ELEMENT".to_string(),
-                        key: call_ei_key,
-                        payload: serde_json::json!({
-                            "elementInstanceKey": call_ei_key.to_string(),
-                            "processInstanceKey": parent_pi_key.to_string(),
-                            "processDefinitionKey": call_ei.process_definition_key.to_string(),
-                            "elementId": call_ei.element_id,
-                            "elementType": "CALL_ACTIVITY",
-                            "bpmnProcessId": call_ei.bpmn_process_id,
-                            "flowScopeKey": parent_pi_key.to_string(),
-                            "variables": child_vars,
-                            "tenantId": tenant_id,
-                        }),
-                    });
+        // An element without an outgoing sequence flow ends its path: an end event, an
+        // event sub-process, or an activity without one. Its flow scope completes once
+        // nothing inside it is active any more. A terminate end event first terminates
+        // everything else in its flow scope.
+        let element = definition.as_ref().and_then(|p| p.get_element_recursive(&element_id));
+        let ends_path = element_type == "END_EVENT"
+            || definition.as_ref().is_some_and(|p| element.is_some() && p.outgoing_flows_recursive(&element_id).is_empty());
+        if ends_path {
+            let terminates = matches!(
+                element,
+                Some(reebe_bpmn::FlowElement::EndEvent(e)) if matches!(e.event_definition, Some(reebe_bpmn::EventDefinition::Terminate))
+            );
+            if terminates {
+                if let Ok(scope) = state.backend.get_element_instance_by_key(flow_scope_key).await {
+                    terminate_children(state, writers, &scope).await?;
                 }
             }
-            return Ok(());
+            return complete_flow_scope(state, writers, record.position, FlowScope {
+                key: flow_scope_key,
+                process_instance_key,
+                process_definition_key,
+                bpmn_process_id: &bpmn_process_id,
+                tenant_id: &tenant_id,
+            }, terminates).await;
         }
 
         // Get outgoing sequence flows and activate targets
@@ -1533,10 +1444,161 @@ impl BpmnElementProcessor {
             state.backend
                 .update_process_instance_state(process_instance_key, "CANCELED", Some(state.clock.now()))
                 .await?;
+            super::start_event::instance_ended(state, writers, process_instance_key).await?;
         }
 
         Ok(())
     }
+}
+
+/// The flow scope a path ended in: an embedded or event sub-process, or the process.
+struct FlowScope<'a> {
+    key: i64,
+    process_instance_key: i64,
+    process_definition_key: i64,
+    bpmn_process_id: &'a str,
+    tenant_id: &'a str,
+}
+
+/// Complete a flow scope in which a path ended, as Zeebe does: only once no element
+/// instance is active inside it and no token is on its way to one. After a terminate
+/// end event (`terminated_rest`), the rest of the scope has been terminated and it
+/// completes at once.
+async fn complete_flow_scope(
+    state: &EngineState,
+    writers: &mut Writers,
+    position: i64,
+    scope: FlowScope<'_>,
+    terminated_rest: bool,
+) -> EngineResult<()> {
+    let FlowScope { key, process_instance_key, process_definition_key, bpmn_process_id, tenant_id } = scope;
+    let scope_ei = state.backend.get_element_instance_by_key(key).await.ok();
+    let sub_process = scope_ei.filter(|ei| ei.element_type != "PROCESS");
+
+    if !terminated_rest {
+        let still_active = match &sub_process {
+            Some(sp) => state.backend
+                .get_element_instances_by_process_instance(process_instance_key)
+                .await?
+                .iter()
+                .any(|ei| ei.flow_scope_key == Some(sp.key) && !matches!(ei.state.as_str(), "COMPLETED" | "TERMINATED")),
+            None => state.backend.get_active_element_instance_count(process_instance_key).await? > 0,
+        };
+        if still_active {
+            return Ok(());
+        }
+        // A sequence flow taken to an element of the scope that has not activated yet.
+        let key_text = key.to_string();
+        let activating = writers.commands.iter().any(|c| {
+            c.intent == "ACTIVATE_ELEMENT" && c.payload["flowScopeKey"].as_str() == Some(key_text.as_str())
+        });
+        if activating
+            || state.backend.has_pending_activation(state.partition_id, position, "flowScopeKey", &key_text).await?
+        {
+            return Ok(());
+        }
+    }
+
+    if let Some(sp_ei) = sub_process {
+        if sp_ei.state != "ACTIVATED" {
+            return Ok(());
+        }
+        // Complete the subprocess.
+        state.backend.update_element_instance_state(sp_ei.key, "COMPLETED").await?;
+        writers.events.push(EventToWrite {
+            value_type: "PROCESS_INSTANCE".to_string(),
+            intent: "ELEMENT_COMPLETED".to_string(),
+            key: sp_ei.key,
+            payload: serde_json::json!({
+                "elementInstanceKey": sp_ei.key.to_string(),
+                "processInstanceKey": process_instance_key.to_string(),
+                "elementId": sp_ei.element_id,
+                "elementType": "SUB_PROCESS",
+                "bpmnProcessId": bpmn_process_id,
+                "tenantId": tenant_id,
+            }),
+        });
+        // Fire COMPLETE_ELEMENT for the subprocess so the outer flow is activated.
+        writers.commands.push(CommandToWrite {
+            value_type: "PROCESS_INSTANCE".to_string(),
+            intent: "COMPLETE_ELEMENT".to_string(),
+            key: sp_ei.key,
+            payload: serde_json::json!({
+                "elementInstanceKey": sp_ei.key.to_string(),
+                "processInstanceKey": process_instance_key.to_string(),
+                "processDefinitionKey": process_definition_key.to_string(),
+                "elementId": sp_ei.element_id,
+                "elementType": "SUB_PROCESS",
+                "bpmnProcessId": bpmn_process_id,
+                "flowScopeKey": sp_ei.flow_scope_key.unwrap_or(process_instance_key).to_string(),
+                "tenantId": tenant_id,
+            }),
+        });
+        return Ok(());
+    }
+
+    let pi = state.backend.get_process_instance_by_key(process_instance_key).await?;
+    if pi.state != "ACTIVE" {
+        return Ok(());
+    }
+    // Mark the PROCESS-level element instance as COMPLETED
+    state.backend.complete_process_element(process_instance_key).await?;
+
+    // Complete the process instance itself
+    state.backend
+        .update_process_instance_state(process_instance_key, "COMPLETED", Some(state.clock.now()))
+        .await?;
+    writers.events.push(EventToWrite {
+        value_type: "PROCESS_INSTANCE".to_string(),
+        intent: "ELEMENT_COMPLETED".to_string(),
+        key: process_instance_key,
+        payload: serde_json::json!({
+            "elementInstanceKey": process_instance_key.to_string(),
+            "processInstanceKey": process_instance_key.to_string(),
+            "elementId": bpmn_process_id,
+            "elementType": "PROCESS",
+            "bpmnProcessId": bpmn_process_id,
+            "tenantId": tenant_id,
+        }),
+    });
+    super::start_event::instance_ended(state, writers, process_instance_key).await?;
+
+    // If this is a child process (called via call activity), resume the parent.
+    if let (Some(parent_pi_key), Some(call_ei_key)) =
+        (pi.parent_process_instance_key, pi.parent_element_instance_key)
+    {
+        // Retrieve the call activity element instance to get parent process def key
+        // and element ID — needed for output mapping evaluation.
+        let call_ei = state.backend.get_element_instance_by_key(call_ei_key).await?;
+
+        // Propagate child output variables to parent scope via output mappings.
+        // If the call activity has output mappings they will be evaluated by
+        // complete_element; we pass the child's variables in the payload.
+        let child_vars = {
+            let vs = state.backend.get_variables_by_scope(process_instance_key).await.unwrap_or_default();
+            let mut m = serde_json::Map::new();
+            for v in vs { m.insert(v.name, v.value); }
+            serde_json::Value::Object(m)
+        };
+
+        writers.commands.push(CommandToWrite {
+            value_type: "PROCESS_INSTANCE".to_string(),
+            intent: "COMPLETE_ELEMENT".to_string(),
+            key: call_ei_key,
+            payload: serde_json::json!({
+                "elementInstanceKey": call_ei_key.to_string(),
+                "processInstanceKey": parent_pi_key.to_string(),
+                "processDefinitionKey": call_ei.process_definition_key.to_string(),
+                "elementId": call_ei.element_id,
+                "elementType": "CALL_ACTIVITY",
+                "bpmnProcessId": call_ei.bpmn_process_id,
+                "flowScopeKey": parent_pi_key.to_string(),
+                "variables": child_vars,
+                "tenantId": tenant_id,
+            }),
+        });
+    }
+    Ok(())
 }
 
 /// Evaluate a sequence flow condition expression.

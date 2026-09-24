@@ -125,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
         let scheduler = reebe_engine::scheduler::Scheduler::new(
             backend.clone(),
             (**handle).clone(),
+            Arc::new(reebe_engine::RealClock),
         );
         tokio::spawn(async move {
             scheduler.run().await;

@@ -214,22 +214,13 @@ impl Engine {
         tokio::spawn(async move {
             let mut rx = engine_clone.command_rx.lock().await;
             while let Some(cmd) = rx.recv().await {
-                let result = engine_clone.write_command_to_db(&cmd).await;
-                match result {
-                    Ok(position) => {
-                        engine_clone
-                            .response_channels
-                            .insert(position, cmd.response_tx);
-                    }
-                    Err(e) => {
-                        let _ = cmd.response_tx.send(Err(e));
-                    }
-                }
+                engine_clone.write_command_to_db(cmd).await;
             }
         });
 
-        // Stream processor loop.
-        let mut last_position: i64 = 0;
+        // Stream processor loop. It resumes after the last command processed before a
+        // restart; replaying from the start would re-create jobs, timers and instances.
+        let mut last_position = self.processed_position().await;
         let mut consecutive_errors: u32 = 0;
 
         loop {
@@ -239,6 +230,17 @@ impl Engine {
                     for record in &records {
                         last_position = record.position;
                         self.process_one(record).await;
+                        if let Err(e) = self.state.backend
+                            .set_processed_position(self.state.partition_id, record.position)
+                            .await
+                        {
+                            tracing::error!(
+                                "Could not store processed position {} of partition {}: {}",
+                                record.position,
+                                self.state.partition_id,
+                                e
+                            );
+                        }
                     }
                     continue;
                 }
@@ -261,30 +263,60 @@ impl Engine {
         }
     }
 
-    async fn write_command_to_db(&self, cmd: &PendingCommand) -> EngineResult<i64> {
-        let (position, key) = if cmd.key != 0 {
-            let pos = self.state.backend.next_position(self.state.partition_id).await?;
-            (pos, cmd.key)
-        } else {
-            self.state.backend.next_position_and_key(self.state.partition_id).await?
-        };
+    /// The position of the last command processed on this partition, retried until the
+    /// database answers: starting from 0 instead would replay the whole log.
+    async fn processed_position(&self) -> i64 {
+        let mut attempt: u32 = 0;
+        loop {
+            match self.state.backend.get_processed_position(self.state.partition_id).await {
+                Ok(position) => {
+                    tracing::info!(
+                        "Partition {} resumes after position {}",
+                        self.state.partition_id,
+                        position
+                    );
+                    return position;
+                }
+                Err(e) => {
+                    attempt += 1;
+                    let backoff_ms = std::cmp::min(100 * 2_u64.pow(attempt.min(6)), 30_000);
+                    tracing::error!(backoff_ms, "Could not read the processed position: {}", e);
+                    tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                }
+            }
+        }
+    }
 
+    /// Append an API command to the log. Its response channel is registered before the
+    /// command becomes visible, so the processor cannot answer it before anyone listens.
+    async fn write_command_to_db(&self, cmd: PendingCommand) {
         let record = DbRecord {
             partition_id: self.state.partition_id,
-            position,
+            position: 0,
             record_type: "COMMAND".to_string(),
-            value_type: cmd.value_type.clone(),
-            intent: cmd.intent.clone(),
-            record_key: key,
+            value_type: cmd.value_type,
+            intent: cmd.intent,
+            record_key: cmd.key,
             timestamp_ms: self.state.clock.now().timestamp_millis(),
-            payload: cmd.payload.clone(),
+            payload: cmd.payload,
             source_position: None,
-            tenant_id: cmd.tenant_id.clone(),
+            tenant_id: cmd.tenant_id,
         };
-
-        self.state.backend.insert_record(&record).await?;
-
-        Ok(position)
+        let channels = self.response_channels.clone();
+        let response_tx = cmd.response_tx;
+        let reserved = Arc::new(std::sync::atomic::AtomicI64::new(0));
+        let reserved_in = reserved.clone();
+        let on_position = Box::new(move |position: i64| {
+            reserved_in.store(position, std::sync::atomic::Ordering::SeqCst);
+            channels.insert(position, response_tx);
+        });
+        if let Err(e) = self.state.backend.append_command(record, on_position).await {
+            // If the channel was never registered, dropping it tells the caller.
+            let position = reserved.load(std::sync::atomic::Ordering::SeqCst);
+            if let Some((_, tx)) = self.response_channels.remove(&position) {
+                let _ = tx.send(Err(e.into()));
+            }
+        }
     }
 
     pub async fn process_one(&self, record: &DbRecord) {

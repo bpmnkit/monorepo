@@ -286,9 +286,14 @@ Reebe is a Cargo workspace with the following crates:
 
 Each command (e.g. `CREATE_PROCESS_INSTANCE`) is written to an append-only `partition_records`
 table in PostgreSQL. A single-threaded processing loop reads commands in order, runs the
-appropriate processor, and writes resulting events plus updated state projections — all in one
-database transaction. This is the same event-sourcing model used by Zeebe, re-implemented in
-Rust on top of PostgreSQL.
+appropriate processor, and writes resulting events plus updated state projections. This is the
+same event-sourcing model used by Zeebe, re-implemented in Rust on top of PostgreSQL.
+
+After each command, the engine stores its position in `processed_positions`. When the server
+restarts against an existing database, each partition resumes after the last processed command:
+commands appended but not processed yet run once, and nothing is replayed. (Before, every
+restart re-processed the whole log and duplicated jobs, timers and instances.) A command that
+was being processed when the server stopped abruptly is processed again.
 
 ---
 
@@ -311,16 +316,20 @@ REEBE_DATABASE__URL=postgres://reebe:reebe@localhost:5432/reebe REEBE_REQUIRE_DB
   cargo test --workspace
 ```
 
-- Each test creates its own database (`reebe_test_*`) on that server, because the engine
-  replays every command on its partition when it starts. The user in the URL needs the
-  `CREATEDB` privilege. The databases are not dropped afterwards, so do not point the tests at
-  a server you care about.
+- Each test creates its own database (`reebe_test_*`) on that server: tests run in parallel,
+  and an engine processes every unprocessed command on its partition, so tests sharing a
+  database would process each other's commands. The user in the URL needs the `CREATEDB`
+  privilege. The databases are not dropped afterwards, so do not point the tests at a server
+  you care about.
 - `REEBE_REQUIRE_DB=1` makes the tests fail, not skip, when the URL is missing or the database
   cannot be reached. CI (`.github/workflows/reebe.yml`) sets it.
 - The throughput benchmark is `#[ignore]`d, with the reason in the attribute. Run it with
   `cargo test --workspace -- --ignored`.
 - There is no SQLite test suite. CI only checks that the embedded build compiles
   (`cargo check -p reebe-server --no-default-features --features embedded`).
+- `test_timer_accuracy` runs the engine and scheduler on a virtual clock: it asserts that a
+  timer does not fire 1 ms before its due date and fires within 2 s (one 100 ms scheduler poll
+  plus slack for slow runners) once it is due.
 
 ### Running with Docker Compose
 
@@ -407,7 +416,16 @@ Reports PI/s (process instances per second), average latency, and error count.
 - Job activation (including long polling), completion, failure, and error
 - Message publication and correlation
 - Signal broadcasting
-- Timer events (intermediate catch and boundary; timer start events are not scheduled yet)
+- Timer events: intermediate catch, boundary and start events. Deploying a process schedules
+  its timer start events (`timeDate` once; `timeCycle` as `R/…`, `Rn/…` or a Spring-style cron
+  expression such as `0 0 9-17 * * MON-FRI`), each firing creates an instance, and a new
+  version cancels the previous version's timers
+- Message start events: a published message whose name matches creates an instance with the
+  message variables; with a correlation key, at most one instance started by that key is
+  active at a time, and a new version closes the previous version's subscriptions
+- Scope completion as in Zeebe: an embedded sub-process or a process instance completes only
+  when nothing inside it is active any more; a terminate end event terminates the rest of its
+  own flow scope and completes that scope
 - Timer, message and signal boundary events, interrupting and non-interrupting: armed when
   the activity starts and cancelled when it ends; a timer cycle repeats
 - Event-based gateways: the first event wins and the others are cancelled
@@ -418,6 +436,16 @@ Reports PI/s (process instances per second), average latency, and error count.
 - User tasks
 - Topology endpoint
 - Multi-tenancy (basic)
+
+### Known gaps
+
+- Timer, message and signal event sub-processes are not armed; error and escalation event
+  sub-processes run
+- Complex gateways, and inclusive gateway joins (they do not wait for other branches)
+- Ad-hoc sub-processes run only through a job worker implementation; their inner elements are
+  not activated
+- A token waiting at a parallel join does not keep its flow scope open: if the join can never
+  fire, the scope still completes once everything else in it has ended (Zeebe keeps it active)
 
 ### What is not supported
 

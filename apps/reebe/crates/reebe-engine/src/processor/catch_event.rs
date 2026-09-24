@@ -22,6 +22,7 @@ use reebe_db::state::timers::Timer;
 use crate::engine::EngineState;
 use crate::error::{EngineError, EngineResult};
 use crate::key_gen::KeyGenerator;
+use super::cron::Cron;
 use super::scope;
 use super::throw_event::terminate_subtree;
 use super::{CommandToWrite, EventToWrite, Writers};
@@ -60,19 +61,36 @@ pub(crate) struct Schedule {
     pub due: chrono::DateTime<chrono::Utc>,
     /// Remaining firings including this one; -1 repeats without end.
     pub repetitions: i32,
-    /// The time between firings of a cycle.
-    pub interval: Option<chrono::Duration>,
+    /// How a cycle repeats.
+    pub cycle: Option<Cycle>,
+}
+
+/// How a timer cycle repeats.
+pub(crate) enum Cycle {
+    Interval(chrono::Duration),
+    Cron(Cron),
+}
+
+impl Cycle {
+    /// The firing after one at `from`.
+    pub(crate) fn next_after(&self, from: chrono::DateTime<chrono::Utc>) -> Option<chrono::DateTime<chrono::Utc>> {
+        match self {
+            Cycle::Interval(interval) => Some(from + *interval),
+            Cycle::Cron(cron) => cron.next_after(from),
+        }
+    }
 }
 
 /// Evaluate a timer definition. A `=` expression is evaluated with FEEL; the
 /// result, or a plain value, is read as an ISO 8601 duration, date-time or
-/// repeating interval (`R3/PT10M`, `R/PT1H`, `R2/2026-01-01T00:00:00Z/P1D`).
+/// repeating interval (`R3/PT10M`, `R/PT1H`, `R2/2026-01-01T00:00:00Z/P1D`),
+/// or, for a cycle, a cron expression (`0 0 9-17 * * MON-FRI`).
 pub(crate) fn timer_schedule(
     def: &TimerEventDefinition,
     ctx: &reebe_feel::FeelContext,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Schedule {
-    let once = |due| Schedule { due, repetitions: 1, interval: None };
+    let once = |due| Schedule { due, repetitions: 1, cycle: None };
     let text = match reebe_feel::parse_and_evaluate(def.expression.trim(), ctx) {
         Ok(reebe_feel::FeelValue::Duration(ms)) => return once(now + chrono::Duration::milliseconds(ms)),
         Ok(reebe_feel::FeelValue::DateTime(dt)) => return once(dt),
@@ -83,6 +101,18 @@ pub(crate) fn timer_schedule(
         }
     };
     let text = text.trim().trim_matches('"');
+
+    if def.timer_type == TimerType::Cycle && !text.starts_with('R') {
+        if let Some(cron) = Cron::parse(text) {
+            return match cron.next_after(now) {
+                Some(due) => Schedule { due, repetitions: -1, cycle: Some(Cycle::Cron(cron)) },
+                None => {
+                    tracing::warn!(expression = %text, "Cron expression never matches; firing now");
+                    once(now)
+                }
+            };
+        }
+    }
 
     if def.timer_type == TimerType::Cycle || text.starts_with('R') {
         let mut parts = text.split('/');
@@ -98,7 +128,7 @@ pub(crate) fn timer_schedule(
             Some(interval) => Schedule {
                 due: start.unwrap_or(now + interval),
                 repetitions,
-                interval: Some(interval),
+                cycle: Some(Cycle::Interval(interval)),
             },
             None => {
                 tracing::warn!(expression = %text, "Could not parse timer cycle; firing now");
@@ -506,7 +536,8 @@ pub(crate) async fn reschedule_cycle(
     };
     let Some(EventDefinition::Timer(def)) = &be.event_definition else { return Ok(()) };
     let ctx = scope::feel_context(state, owner.process_instance_key, owner.key).await;
-    let Some(interval) = timer_schedule(def, &ctx, state.clock.now()).interval else { return Ok(()) };
+    let Some(cycle) = timer_schedule(def, &ctx, state.clock.now()).cycle else { return Ok(()) };
+    let Some(next) = cycle.next_after(timer.due_date) else { return Ok(()) };
     let remaining = if timer.repetitions < 0 { -1 } else { timer.repetitions - 1 };
-    insert_timer(state, &owner, &timer.element_id, timer.due_date + interval, remaining).await
+    insert_timer(state, &owner, &timer.element_id, next, remaining).await
 }

@@ -56,6 +56,9 @@ impl RecordProcessor for TimerProcessor {
             if outcome == Triggered::KeepWaiting {
                 reschedule_cycle(state, &timer).await?;
             }
+        } else {
+            // A timer start event: it belongs to the process definition.
+            super::start_event::start_timer_fired(state, writers, &timer).await?;
         }
 
         Ok(())

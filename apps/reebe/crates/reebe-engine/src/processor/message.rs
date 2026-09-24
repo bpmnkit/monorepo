@@ -109,6 +109,8 @@ impl MessageProcessor {
             });
         }
 
+        super::start_event::message_published(state, writers, &msg).await?;
+
         writers.response = Some(serde_json::json!({
             "messageKey": msg_key.to_string(),
             "tenantId": tenant_id,

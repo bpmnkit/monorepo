@@ -48,8 +48,11 @@ impl RecordProcessor for ProcessInstanceCreationProcessor {
             ));
         };
 
-        // Generate instance key
-        let instance_key = key_gen.next_key().await?;
+        // A message start event reserves the key of the instance it creates.
+        let instance_key = match payload["processInstanceKey"].as_str().and_then(|s| s.parse().ok()) {
+            Some(key) => key,
+            None => key_gen.next_key().await?,
+        };
 
         // Accept optional parent linkage (set by call activity spawning)
         let parent_process_instance_key: Option<i64> = payload["parentProcessInstanceKey"]
@@ -167,8 +170,30 @@ impl RecordProcessor for ProcessInstanceCreationProcessor {
             }),
         });
 
+        // A timer or message start event names the start event it triggered. Otherwise
+        // the instance starts at the none start event, as in Zeebe; a process without
+        // one starts at all of its start events.
+        let start_events: Vec<&String> = match payload["startEventId"].as_str() {
+            Some(id) => vec![process.start_events.iter().find(|s| *s == id).ok_or_else(|| {
+                EngineError::NotFound(format!("Start event {id} of process {}", process.id))
+            })?],
+            None => {
+                let none_start_events: Vec<&String> = process.start_events.iter()
+                    .filter(|id| matches!(
+                        process.elements.get(*id),
+                        Some(reebe_bpmn::FlowElement::StartEvent(se)) if se.event_definition.is_none()
+                    ))
+                    .collect();
+                if none_start_events.is_empty() {
+                    process.start_events.iter().collect()
+                } else {
+                    none_start_events
+                }
+            }
+        };
+
         // Schedule start events for activation
-        for start_event_id in &process.start_events {
+        for start_event_id in start_events {
             writers.commands.push(CommandToWrite {
                 value_type: "PROCESS_INSTANCE".to_string(),
                 intent: "ACTIVATE_ELEMENT".to_string(),
@@ -251,6 +276,7 @@ impl RecordProcessor for ProcessInstanceCancelProcessor {
         state.backend
             .update_process_instance_state(process_instance_key, "CANCELED", Some(state.clock.now()))
             .await?;
+        super::start_event::instance_ended(state, writers, process_instance_key).await?;
 
         writers.events.push(EventToWrite {
             value_type: "PROCESS_INSTANCE".to_string(),

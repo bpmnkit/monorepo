@@ -267,7 +267,7 @@ pub(crate) async fn terminate_subtree(
 }
 
 /// Terminate everything running inside `scope`, but not `scope` itself.
-async fn terminate_children(
+pub(crate) async fn terminate_children(
     state: &EngineState,
     writers: &mut Writers,
     scope: &ElementInstance,
@@ -337,7 +337,7 @@ async fn terminate_process_instance(
     state.backend
         .update_process_instance_state(process_instance_key, "TERMINATED", Some(state.clock.now()))
         .await?;
-    Ok(())
+    super::start_event::instance_ended(state, writers, process_instance_key).await
 }
 
 async fn raise_unhandled_error_incident(

@@ -12,7 +12,7 @@ use crate::state::variables::Variable;
 use crate::state::jobs::Job;
 use crate::state::incidents::Incident;
 use crate::state::timers::Timer;
-use crate::state::messages::{Message, MessageSubscription};
+use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
 use crate::state::deployments::{Deployment, ProcessDefinition};
 use crate::state::user_tasks::UserTask;
@@ -49,6 +49,9 @@ pub struct InMemoryStore {
     user_tasks: BTreeMap<i64, UserTask>,
     tenants: BTreeMap<i64, Tenant>,
     users: BTreeMap<String, User>,
+    processed_positions: std::collections::HashMap<i16, i64>,
+    message_start_subscriptions: Vec<MessageStartEventSubscription>,
+    message_start_correlations: Vec<MessageStartCorrelation>,
 }
 
 impl InMemoryStore {
@@ -72,6 +75,9 @@ impl InMemoryStore {
             user_tasks: BTreeMap::new(),
             tenants: BTreeMap::new(),
             users: BTreeMap::new(),
+            processed_positions: std::collections::HashMap::new(),
+            message_start_subscriptions: Vec::new(),
+            message_start_correlations: Vec::new(),
         }
     }
 
@@ -204,6 +210,21 @@ impl StateBackend for InMemoryBackend {
         Ok(pos)
     }
 
+    async fn append_command(&self, mut record: DbRecord, on_position: Box<dyn FnOnce(i64) + Send>) -> Result<i64> {
+        let mut store = self.store.lock().unwrap();
+        if record.record_key == 0 {
+            let (position, key) = store.next_pos_and_key(record.partition_id);
+            record.position = position;
+            record.record_key = key;
+        } else {
+            record.position = store.next_pos(record.partition_id);
+        }
+        on_position(record.position);
+        let position = record.position;
+        store.records.push(record);
+        Ok(position)
+    }
+
     async fn insert_records_batch(&self, records: &[DbRecord]) -> Result<()> {
         let mut store = self.store.lock().unwrap();
         for r in records {
@@ -220,6 +241,27 @@ impl StateBackend for InMemoryBackend {
             .cloned()
             .collect();
         Ok(results)
+    }
+
+    async fn has_pending_activation(&self, partition_id: i16, after_position: i64, field: &str, value: &str) -> Result<bool> {
+        let store = self.store.lock().unwrap();
+        Ok(store.records.iter().any(|r| {
+            r.partition_id == partition_id
+                && r.position > after_position
+                && r.record_type == "COMMAND"
+                && r.value_type == "PROCESS_INSTANCE"
+                && r.intent == "ACTIVATE_ELEMENT"
+                && r.payload[field].as_str() == Some(value)
+        }))
+    }
+
+    async fn get_processed_position(&self, partition_id: i16) -> Result<i64> {
+        Ok(self.store.lock().unwrap().processed_positions.get(&partition_id).copied().unwrap_or(0))
+    }
+
+    async fn set_processed_position(&self, partition_id: i16, position: i64) -> Result<()> {
+        self.store.lock().unwrap().processed_positions.insert(partition_id, position);
+        Ok(())
     }
 
     async fn insert_process_instance(&self, pi: &ProcessInstance) -> Result<()> {
@@ -536,6 +578,19 @@ impl StateBackend for InMemoryBackend {
         Ok(results)
     }
 
+    async fn cancel_start_timers(&self, process_definition_key: i64) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        for timer in store.timers.values_mut() {
+            if timer.process_definition_key == Some(process_definition_key)
+                && timer.element_instance_key.is_none()
+                && timer.state == "ACTIVE"
+            {
+                timer.state = "CANCELED".to_string();
+            }
+        }
+        Ok(())
+    }
+
     async fn insert_message(&self, msg: &Message) -> Result<()> {
         self.store.lock().unwrap().messages.insert(msg.key, msg.clone());
         Ok(())
@@ -596,6 +651,49 @@ impl StateBackend for InMemoryBackend {
         } else {
             Err(DbError::NotFound(format!("Message subscription {key}")))
         }
+    }
+
+    async fn replace_message_start_subscriptions(&self, bpmn_process_id: &str, tenant_id: &str, subs: &[MessageStartEventSubscription]) -> Result<()> {
+        let mut store = self.store.lock().unwrap();
+        store.message_start_subscriptions.retain(|s| s.bpmn_process_id != bpmn_process_id || s.tenant_id != tenant_id);
+        store.message_start_subscriptions.extend(subs.iter().cloned());
+        Ok(())
+    }
+
+    async fn get_message_start_subscriptions_by_name(&self, message_name: &str, tenant_id: &str) -> Result<Vec<MessageStartEventSubscription>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_subscriptions.iter()
+            .filter(|s| s.message_name == message_name && s.tenant_id == tenant_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn get_message_start_subscriptions_by_process(&self, bpmn_process_id: &str, tenant_id: &str) -> Result<Vec<MessageStartEventSubscription>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_subscriptions.iter()
+            .filter(|s| s.bpmn_process_id == bpmn_process_id && s.tenant_id == tenant_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn insert_message_start_correlation(&self, correlation: &MessageStartCorrelation) -> Result<()> {
+        self.store.lock().unwrap().message_start_correlations.push(correlation.clone());
+        Ok(())
+    }
+
+    async fn get_message_start_correlations(&self, bpmn_process_id: &str, correlation_key: &str, tenant_id: &str) -> Result<Vec<MessageStartCorrelation>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_correlations.iter()
+            .filter(|c| c.bpmn_process_id == bpmn_process_id && c.correlation_key == correlation_key && c.tenant_id == tenant_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn get_message_start_correlation_by_instance(&self, process_instance_key: i64) -> Result<Option<MessageStartCorrelation>> {
+        let store = self.store.lock().unwrap();
+        Ok(store.message_start_correlations.iter()
+            .find(|c| c.process_instance_key == process_instance_key)
+            .cloned())
     }
 
     async fn insert_signal_subscription(&self, sub: &SignalSubscription) -> Result<()> {

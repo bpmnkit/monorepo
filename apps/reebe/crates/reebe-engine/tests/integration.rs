@@ -926,6 +926,95 @@ async fn test_timer_boundary_event() {
 }
 
 // ---------------------------------------------------------------------------
+// Restart: the engine resumes after the last processed command
+// ---------------------------------------------------------------------------
+
+async fn count(pool: &DbPool, sql: &str) -> i64 {
+    sqlx::query_scalar(sql).fetch_one(pool).await.expect(sql)
+}
+
+async fn complete_job(handle: &EngineHandle, job_key: i64) {
+    handle
+        .send_command(
+            "JOB".to_string(),
+            "COMPLETE".to_string(),
+            serde_json::json!({ "jobKey": job_key.to_string(), "variables": {} }),
+            "<default>".to_string(),
+        )
+        .await
+        .expect("JOB.COMPLETE should succeed");
+}
+
+#[tokio::test]
+async fn test_restart_does_not_replay_processed_commands() {
+    use reebe_db::StateBackend;
+
+    let Some(pool) = setup_db().await else {
+        eprintln!("REEBE_DATABASE__URL not set — skipping integration test");
+        return;
+    };
+
+    // First run: deploy and start an instance that waits at its service task.
+    let first = common::start_engine_with_clock(pool.clone(), std::sync::Arc::new(reebe_engine::RealClock));
+    deploy(&first.handle, SIMPLE_SERVICE_TASK_BPMN, "simple-service.bpmn").await;
+    let first_instance = create_instance(&first.handle, "simple-service", serde_json::json!({})).await;
+    assert_eq!(wait_for_jobs(&pool, "do-work", 60).await.len(), 1);
+    first.stop();
+
+    // A command appended while no engine runs, as if the server stopped right after
+    // writing it: the next engine must process it exactly once.
+    let restarted_pool = common::reopen(&pool).await;
+    let backend = reebe_db::SqlxBackend::new(restarted_pool.clone());
+    let (position, key) = backend.next_position_and_key(1).await.expect("position");
+    backend
+        .insert_record(&reebe_db::records::DbRecord {
+            partition_id: 1,
+            position,
+            record_type: "COMMAND".to_string(),
+            value_type: "PROCESS_INSTANCE_CREATION".to_string(),
+            intent: "CREATE".to_string(),
+            record_key: key,
+            timestamp_ms: chrono::Utc::now().timestamp_millis(),
+            payload: serde_json::json!({ "bpmnProcessId": "simple-service", "version": -1, "variables": {} }),
+            source_position: None,
+            tenant_id: "<default>".to_string(),
+        })
+        .await
+        .expect("append command");
+
+    // Second run on the same database.
+    let second = common::start_engine_with_clock(restarted_pool.clone(), std::sync::Arc::new(reebe_engine::RealClock));
+    let mut jobs = Vec::new();
+    for _ in 0..100 {
+        jobs = wait_for_jobs(&restarted_pool, "do-work", 1).await;
+        if jobs.len() >= 2 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    // Give a replay, if there were one, time to show.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    assert_eq!(count(&restarted_pool, "SELECT COUNT(*) FROM process_definitions").await, 1,
+        "the deployment is not processed again");
+    assert_eq!(count(&restarted_pool, "SELECT COUNT(*) FROM process_instances").await, 2,
+        "the first instance is not created again; the appended command creates one");
+    assert_eq!(count(&restarted_pool, "SELECT COUNT(*) FROM jobs").await, 2, "one job per instance");
+    assert_eq!(jobs.len(), 2);
+
+    // Both instances still run to completion on the restarted engine.
+    for job in &jobs {
+        complete_job(&second.handle, job.key).await;
+    }
+    for instance in jobs.iter().map(|j| j.process_instance_key) {
+        assert_eq!(wait_for_process_state(&restarted_pool, instance, "COMPLETED", 100).await, "COMPLETED");
+    }
+    assert!(jobs.iter().any(|j| j.process_instance_key == first_instance));
+    assert_eq!(count(&restarted_pool, "SELECT COUNT(*) FROM process_instances").await, 2);
+    second.stop();
+}
+
+// ---------------------------------------------------------------------------
 // Performance: ≥ 1,000 process instances/second (single node)
 //
 // Uses a minimal start→end BPMN (no service tasks) to isolate engine

@@ -86,13 +86,11 @@ impl RecordProcessor for DeploymentProcessor {
 
             for process in &deployment_obj.processes {
                 // Get next version
-                let existing = state.backend
+                let previous = state.backend
                     .get_latest_process_definition(&process.id, &tenant_id)
-                    .await;
-                let version = match existing {
-                    Ok(existing) => existing.version + 1,
-                    Err(_) => 1,
-                };
+                    .await
+                    .ok();
+                let version = previous.as_ref().map_or(1, |p| p.version + 1);
 
                 let pd_key = key_gen.next_key().await?;
 
@@ -108,6 +106,7 @@ impl RecordProcessor for DeploymentProcessor {
                 };
 
                 state.backend.insert_process_definition(&pd).await?;
+                super::start_event::register(state, process, &pd, previous.as_ref()).await?;
 
                 // Populate the in-memory cache with the parsed BPMN processes.
                 let cached_processes = deployment_obj.processes.clone();

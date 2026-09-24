@@ -10,11 +10,12 @@
 
 mod common;
 
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use base64::Engine as Base64Engine;
 use reebe_db::DbPool;
-use reebe_engine::EngineHandle;
+use reebe_engine::{EngineHandle, VirtualClock};
 
 // ---------------------------------------------------------------------------
 // BPMN fixtures
@@ -437,29 +438,153 @@ async fn test_message_correlation_edge_cases() {
 // Test 4 — Timer accuracy
 // ---------------------------------------------------------------------------
 
-/// Verify that a PT0.2S timer fires within 500 ms.
+/// A PT0.2S timer does not fire early, and fires promptly once due.
 #[tokio::test]
 async fn test_timer_accuracy() {
-    let Some((pool, handle)) = setup().await else {
+    // The engine and its scheduler run on a virtual clock, so the test decides when
+    // the PT0.2S timer is due instead of racing the wall clock. It checks the firing
+    // condition exactly (Zeebe: a timer never fires before its due date) and bounds
+    // only the latency once the timer is due. That bound allows for the scheduler's
+    // 100 ms poll plus generous scheduling slack on a slow CI runner: it still fails
+    // if timers are not polled at all, or only on a much coarser interval.
+    let Some(pool) = common::setup_db(5).await else {
         eprintln!("REEBE_DATABASE__URL not set — skipping test_timer_accuracy");
         return;
     };
+    let clock = Arc::new(VirtualClock::new(chrono::Utc::now()));
+    let engine = common::start_engine_with_clock(pool.clone(), clock.clone());
+    let handle = &engine.handle;
 
-    deploy(&handle, TIMER_PROCESS_BPMN, "compat-timer.bpmn").await;
-    create_instance(&handle, "compat-timer", serde_json::json!({})).await;
+    deploy(handle, TIMER_PROCESS_BPMN, "compat-timer.bpmn").await;
+    let instance_key = create_instance(handle, "compat-timer", serde_json::json!({})).await;
+    wait_for_active_timer(&pool, instance_key).await;
 
+    clock.advance(chrono::Duration::milliseconds(199));
+    tokio::time::sleep(Duration::from_millis(500)).await; // five scheduler polls
+    assert!(
+        wait_for_jobs(&pool, "compat-after-timer", 1).await.is_empty(),
+        "the timer must not fire 1 ms before it is due"
+    );
+
+    clock.advance(chrono::Duration::milliseconds(1));
     let start = Instant::now();
     let jobs = wait_for_jobs(&pool, "compat-after-timer", 100).await; // 100 × 50 ms = 5 s max
     let elapsed = start.elapsed();
 
+    assert!(!jobs.is_empty(), "the timer fires once it is due; waited {elapsed:?}");
     assert!(
-        !jobs.is_empty(),
-        "Timer (PT0.2S) should have fired and created a job; elapsed: {elapsed:?}"
+        elapsed <= Duration::from_secs(2),
+        "the timer should fire within one scheduler poll (100 ms) plus slack; took {elapsed:?}"
     );
-    assert!(
-        elapsed <= Duration::from_millis(500),
-        "Timer should fire within 500 ms; actual elapsed: {elapsed:?}"
-    );
+    engine.stop();
+}
+
+/// Wait until the process instance has an active timer (its catch event activated).
+async fn wait_for_active_timer(pool: &DbPool, instance_key: i64) {
+    use reebe_db::state::timers::TimerRepository;
+    for _ in 0..100 {
+        let timers = TimerRepository::new(pool).get_by_process_instance(instance_key).await.unwrap_or_default();
+        if timers.iter().any(|t| t.state == "ACTIVE") {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    panic!("no active timer for instance {instance_key}");
+}
+
+/// Process with a timer start event (`R2/PT1M`) and a message start event.
+const START_EVENTS_BPMN: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="M_start" name="compat-start"/>
+  <bpmn:process id="compat-start-events" isExecutable="true">
+    <bpmn:startEvent id="tick">
+      <bpmn:outgoing>f1</bpmn:outgoing>
+      <bpmn:timerEventDefinition><bpmn:timeCycle>R2/PT1M</bpmn:timeCycle></bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+    <bpmn:startEvent id="on-message">
+      <bpmn:outgoing>f2</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="M_start"/>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="work">
+      <bpmn:extensionElements><zeebe:taskDefinition type="compat-start-work"/></bpmn:extensionElements>
+      <bpmn:incoming>f1</bpmn:incoming>
+      <bpmn:incoming>f2</bpmn:incoming>
+      <bpmn:outgoing>f3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="f1" sourceRef="tick" targetRef="work"/>
+    <bpmn:sequenceFlow id="f2" sourceRef="on-message" targetRef="work"/>
+    <bpmn:sequenceFlow id="f3" sourceRef="work" targetRef="end"/>
+  </bpmn:process>
+</bpmn:definitions>"#;
+
+async fn count_instances(pool: &DbPool) -> i64 {
+    sqlx::query_scalar("SELECT COUNT(*) FROM process_instances").fetch_one(pool).await.expect("count")
+}
+
+async fn wait_for_instances(pool: &DbPool, expected: i64) -> i64 {
+    for _ in 0..100 {
+        if count_instances(pool).await >= expected {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    count_instances(pool).await
+}
+
+async fn publish(handle: &EngineHandle, name: &str, correlation_key: &str) {
+    handle
+        .send_command(
+            "MESSAGE".to_string(),
+            "PUBLISH".to_string(),
+            serde_json::json!({ "messageName": name, "correlationKey": correlation_key, "timeToLive": 60000, "variables": {} }),
+            "<default>".to_string(),
+        )
+        .await
+        .expect("publish");
+}
+
+/// Timer and message start events, end to end on Postgres with the scheduler.
+#[tokio::test]
+async fn test_timer_and_message_start_events() {
+    let Some(pool) = common::setup_db(5).await else {
+        eprintln!("REEBE_DATABASE__URL not set — skipping test_timer_and_message_start_events");
+        return;
+    };
+    let clock = Arc::new(VirtualClock::new(chrono::Utc::now()));
+    let engine = common::start_engine_with_clock(pool.clone(), clock.clone());
+    let handle = &engine.handle;
+
+    deploy(handle, START_EVENTS_BPMN, "compat-start-events.bpmn").await;
+    assert_eq!(count_instances(&pool).await, 0, "deploying creates no instance");
+
+    // The cycle fires every minute, twice.
+    clock.advance(chrono::Duration::minutes(1));
+    assert_eq!(wait_for_instances(&pool, 1).await, 1);
+    clock.advance(chrono::Duration::minutes(1));
+    assert_eq!(wait_for_instances(&pool, 2).await, 2);
+    clock.advance(chrono::Duration::minutes(1));
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(count_instances(&pool).await, 2, "R2 fires twice");
+
+    // Messages with the same correlation key: one active instance at a time.
+    publish(handle, "compat-start", "order-1").await;
+    publish(handle, "compat-start", "order-1").await;
+    publish(handle, "compat-start", "").await;
+    assert_eq!(wait_for_instances(&pool, 4).await, 4);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(count_instances(&pool).await, 4, "the second order-1 message waits");
+
+    // A new version replaces the timer of the previous one.
+    deploy(handle, &START_EVENTS_BPMN.replace("R2/PT1M", "R/PT1M"), "compat-start-events.bpmn").await;
+    let active_timers: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM timers WHERE state = 'ACTIVE'")
+        .fetch_one(&pool)
+        .await
+        .expect("count timers");
+    assert_eq!(active_timers, 1, "only the new version's timer is active");
+    engine.stop();
 }
 
 // ---------------------------------------------------------------------------

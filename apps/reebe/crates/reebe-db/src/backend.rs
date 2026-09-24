@@ -9,7 +9,7 @@ use crate::state::variables::Variable;
 use crate::state::jobs::Job;
 use crate::state::incidents::Incident;
 use crate::state::timers::Timer;
-use crate::state::messages::{Message, MessageSubscription};
+use crate::state::messages::{Message, MessageStartCorrelation, MessageStartEventSubscription, MessageSubscription};
 use crate::state::signal_subscriptions::SignalSubscription;
 use crate::state::deployments::{Deployment, ProcessDefinition};
 use crate::state::user_tasks::UserTask;
@@ -31,8 +31,22 @@ pub trait StateBackend: Send + Sync {
 
     // ---- Records (event log) ----
     async fn insert_record(&self, record: &DbRecord) -> Result<i64>;
+    /// Append a command at the next position of its partition, with a new key unless
+    /// `record.record_key` is set, and return the position. Reserving the position and
+    /// writing the record is atomic, so no later record becomes visible before it: a
+    /// processor that has read past a position never finds a command appear behind it.
+    /// `on_position` runs with the position before the command becomes visible.
+    async fn append_command(&self, record: DbRecord, on_position: Box<dyn FnOnce(i64) + Send>) -> Result<i64>;
     async fn insert_records_batch(&self, records: &[DbRecord]) -> Result<()>;
     async fn fetch_commands_from(&self, partition_id: i16, from_position: i64, limit: i32) -> Result<Vec<DbRecord>>;
+    /// Whether a `PROCESS_INSTANCE` `ACTIVATE_ELEMENT` command after `after_position` is
+    /// still waiting to be processed with `payload[field] == value`.
+    async fn has_pending_activation(&self, partition_id: i16, after_position: i64, field: &str, value: &str) -> Result<bool>;
+
+    // ---- Processed position ----
+    /// The position of the last command processed on the partition; 0 if none.
+    async fn get_processed_position(&self, partition_id: i16) -> Result<i64>;
+    async fn set_processed_position(&self, partition_id: i16, position: i64) -> Result<()>;
 
     // ---- Process instances ----
     async fn insert_process_instance(&self, pi: &ProcessInstance) -> Result<()>;
@@ -85,6 +99,8 @@ pub trait StateBackend: Send + Sync {
     async fn get_timer_by_key(&self, key: i64) -> Result<Timer>;
     async fn update_timer_state(&self, key: i64, state: &str) -> Result<()>;
     async fn get_due_timers(&self, now: DateTime<Utc>, limit: i64) -> Result<Vec<Timer>>;
+    /// Cancel the active timer start event timers of a process definition.
+    async fn cancel_start_timers(&self, process_definition_key: i64) -> Result<()>;
 
     // ---- Messages ----
     async fn insert_message(&self, msg: &Message) -> Result<()>;
@@ -95,6 +111,15 @@ pub trait StateBackend: Send + Sync {
     async fn insert_message_subscription(&self, sub: &MessageSubscription) -> Result<()>;
     async fn get_message_subscriptions_by_correlation(&self, message_name: &str, correlation_key: &str, tenant_id: &str) -> Result<Vec<MessageSubscription>>;
     async fn update_message_subscription_state(&self, key: i64, state: &str) -> Result<()>;
+
+    // ---- Message start events ----
+    /// Replace the message start event subscriptions of a process with those of its new version.
+    async fn replace_message_start_subscriptions(&self, bpmn_process_id: &str, tenant_id: &str, subs: &[MessageStartEventSubscription]) -> Result<()>;
+    async fn get_message_start_subscriptions_by_name(&self, message_name: &str, tenant_id: &str) -> Result<Vec<MessageStartEventSubscription>>;
+    async fn get_message_start_subscriptions_by_process(&self, bpmn_process_id: &str, tenant_id: &str) -> Result<Vec<MessageStartEventSubscription>>;
+    async fn insert_message_start_correlation(&self, correlation: &MessageStartCorrelation) -> Result<()>;
+    async fn get_message_start_correlations(&self, bpmn_process_id: &str, correlation_key: &str, tenant_id: &str) -> Result<Vec<MessageStartCorrelation>>;
+    async fn get_message_start_correlation_by_instance(&self, process_instance_key: i64) -> Result<Option<MessageStartCorrelation>>;
 
     // ---- Signal subscriptions ----
     async fn insert_signal_subscription(&self, sub: &SignalSubscription) -> Result<()>;

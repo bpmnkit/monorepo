@@ -53,23 +53,26 @@ impl BpmnProcess {
 
     /// Like `outgoing_flows`, but also searches inside embedded subprocesses.
     pub fn outgoing_flows_recursive(&self, element_id: &str) -> Vec<&SequenceFlow> {
-        let top: Vec<&SequenceFlow> = self.sequence_flows.iter()
-            .filter(|f| f.source_ref == element_id)
-            .collect();
-        if !top.is_empty() {
-            return top;
-        }
-        for e in self.elements.values() {
-            if let FlowElement::SubProcess(sp) = e {
-                let inner: Vec<&SequenceFlow> = sp.sequence_flows.iter()
-                    .filter(|f| f.source_ref == element_id)
-                    .collect();
-                if !inner.is_empty() {
-                    return inner;
+        fn search<'a>(
+            flows: &'a [SequenceFlow],
+            elements: &'a HashMap<String, FlowElement>,
+            element_id: &str,
+        ) -> Vec<&'a SequenceFlow> {
+            let here: Vec<&SequenceFlow> = flows.iter().filter(|f| f.source_ref == element_id).collect();
+            if !here.is_empty() {
+                return here;
+            }
+            for e in elements.values() {
+                if let FlowElement::SubProcess(sp) = e {
+                    let inner = search(&sp.sequence_flows, &sp.elements, element_id);
+                    if !inner.is_empty() {
+                        return inner;
+                    }
                 }
             }
+            vec![]
         }
-        vec![]
+        search(&self.sequence_flows, &self.elements, element_id)
     }
 
     pub fn incoming_flows(&self, element_id: &str) -> Vec<&SequenceFlow> {
