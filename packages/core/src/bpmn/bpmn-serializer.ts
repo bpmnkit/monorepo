@@ -33,27 +33,51 @@ import type {
 // Namespace prefix resolution
 // ---------------------------------------------------------------------------
 
+/**
+ * The prefix a document binds `uri` to: `""` when it is the document's default
+ * namespace, otherwise the first named prefix, otherwise `undefined`.
+ *
+ * The default wins when a document binds both. Models from other tools often put
+ * BPMN in the default namespace and add a named binding they never use, and
+ * writing their elements the way they spelled them keeps the file recognisable.
+ */
 function nsPrefix(namespaces: Record<string, string>, uri: string): string | undefined {
+	if (namespaces[""] === uri) return ""
 	for (const [prefix, u] of Object.entries(namespaces)) {
 		if (u === uri) return prefix
 	}
 	return undefined
 }
 
+const BPMN_NS = "http://www.omg.org/spec/BPMN/20100524/MODEL"
+const BPMNDI_NS = "http://www.omg.org/spec/BPMN/20100524/DI"
+const DC_NS = "http://www.omg.org/spec/DD/20100524/DC"
+const DI_NS = "http://www.omg.org/spec/DD/20100524/DI"
+
+/**
+ * What goes in front of a local name: `"bpmn:"`, or `""` when the namespace is the
+ * document's default — models from other tools often put BPMN there, and writing
+ * `<process>` back keeps their spelling (and keeps the XML valid).
+ */
+function qualifier(ns: Record<string, string>, uri: string, fallback: string): string {
+	const prefix = nsPrefix(ns, uri) ?? fallback
+	return prefix === "" ? "" : `${prefix}:`
+}
+
 function bpmnPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/BPMN/20100524/MODEL") ?? "bpmn"
+	return qualifier(ns, BPMN_NS, "bpmn")
 }
 
 function bpmndiPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/BPMN/20100524/DI") ?? "bpmndi"
+	return qualifier(ns, BPMNDI_NS, "bpmndi")
 }
 
 function dcPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/DD/20100524/DC") ?? "dc"
+	return qualifier(ns, DC_NS, "dc")
 }
 
 function diPrefix(ns: Record<string, string>): string {
-	return nsPrefix(ns, "http://www.omg.org/spec/DD/20100524/DI") ?? "di"
+	return qualifier(ns, DI_NS, "di")
 }
 
 // ---------------------------------------------------------------------------
@@ -79,72 +103,70 @@ function serializeEventDefinitions(defs: BpmnEventDefinition[], bp: string): Xml
 			case "timer": {
 				const children: XmlElement[] = []
 				if (d.timeDuration !== undefined) {
-					children.push(
-						el(`${bp}:timeDuration`, d.timeDurationAttributes ?? {}, [], d.timeDuration),
-					)
+					children.push(el(`${bp}timeDuration`, d.timeDurationAttributes ?? {}, [], d.timeDuration))
 				}
 				if (d.timeDate !== undefined) {
-					children.push(el(`${bp}:timeDate`, d.timeDateAttributes ?? {}, [], d.timeDate))
+					children.push(el(`${bp}timeDate`, d.timeDateAttributes ?? {}, [], d.timeDate))
 				}
 				if (d.timeCycle !== undefined) {
-					children.push(el(`${bp}:timeCycle`, d.timeCycleAttributes ?? {}, [], d.timeCycle))
+					children.push(el(`${bp}timeCycle`, d.timeCycleAttributes ?? {}, [], d.timeCycle))
 				}
-				return el(`${bp}:timerEventDefinition`, d.id ? { id: d.id } : {}, children)
+				return el(`${bp}timerEventDefinition`, d.id ? { id: d.id } : {}, children)
 			}
 			case "error": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.errorRef) attrs.errorRef = d.errorRef
-				return el(`${bp}:errorEventDefinition`, attrs, [])
+				return el(`${bp}errorEventDefinition`, attrs, [])
 			}
 			case "escalation": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.escalationRef) attrs.escalationRef = d.escalationRef
-				return el(`${bp}:escalationEventDefinition`, attrs, [])
+				return el(`${bp}escalationEventDefinition`, attrs, [])
 			}
 			case "message": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.messageRef) attrs.messageRef = d.messageRef
-				return el(`${bp}:messageEventDefinition`, attrs, [])
+				return el(`${bp}messageEventDefinition`, attrs, [])
 			}
 			case "signal": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.signalRef) attrs.signalRef = d.signalRef
-				return el(`${bp}:signalEventDefinition`, attrs, [])
+				return el(`${bp}signalEventDefinition`, attrs, [])
 			}
 			case "conditional": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				const condChildren: XmlElement[] = []
 				if (d.condition !== undefined) {
-					condChildren.push(el(`${bp}:condition`, {}, [], d.condition))
+					condChildren.push(el(`${bp}condition`, d.conditionAttributes ?? {}, [], d.condition))
 				}
-				return el(`${bp}:conditionalEventDefinition`, attrs, condChildren)
+				return el(`${bp}conditionalEventDefinition`, attrs, condChildren)
 			}
 			case "link": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.name) attrs.name = d.name
-				return el(`${bp}:linkEventDefinition`, attrs, [])
+				return el(`${bp}linkEventDefinition`, attrs, [])
 			}
 			case "cancel": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
-				return el(`${bp}:cancelEventDefinition`, attrs, [])
+				return el(`${bp}cancelEventDefinition`, attrs, [])
 			}
 			case "terminate": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
-				return el(`${bp}:terminateEventDefinition`, attrs, [])
+				return el(`${bp}terminateEventDefinition`, attrs, [])
 			}
 			case "compensate": {
 				const attrs: Record<string, string> = {}
 				if (d.id) attrs.id = d.id
 				if (d.activityRef) attrs.activityRef = d.activityRef
-				return el(`${bp}:compensateEventDefinition`, attrs, [])
+				return el(`${bp}compensateEventDefinition`, attrs, [])
 			}
 			default: {
 				const _exhaustive: never = d
@@ -162,7 +184,7 @@ function serializeEventDefinitions(defs: BpmnEventDefinition[], bp: string): Xml
 
 function serializeExtensionElements(extensions: XmlElement[], bp: string): XmlElement[] {
 	if (extensions.length === 0) return []
-	return [el(`${bp}:extensionElements`, {}, extensions)]
+	return [el(`${bp}extensionElements`, {}, extensions)]
 }
 
 /**
@@ -175,7 +197,7 @@ function serializeBaseChildren(
 ): XmlElement[] {
 	const children: XmlElement[] = []
 	if (owner.documentation !== undefined) {
-		children.push(el(`${bp}:documentation`, {}, [], owner.documentation))
+		children.push(el(`${bp}documentation`, {}, [], owner.documentation))
 	}
 	children.push(...serializeExtensionElements(owner.extensionElements ?? [], bp))
 	return children
@@ -190,7 +212,7 @@ function serializeProperty(property: BpmnProperty, bp: string): XmlElement {
 	if (property.id !== undefined) attrs.id = property.id
 	if (property.name !== undefined) attrs.name = property.name
 	if (property.itemSubjectRef !== undefined) attrs.itemSubjectRef = property.itemSubjectRef
-	return el(`${bp}:property`, attrs, [])
+	return el(`${bp}property`, attrs, [])
 }
 
 function serializeDataAssociation(
@@ -200,14 +222,15 @@ function serializeDataAssociation(
 ): XmlElement {
 	const attrs: Record<string, string> = { ...association.unknownAttributes }
 	if (association.id !== undefined) attrs.id = association.id
-	const children: XmlElement[] = association.sourceRefs.map((ref) =>
-		el(`${bp}:sourceRef`, {}, [], ref),
-	)
+	const children: XmlElement[] = [
+		...serializeBaseChildren(association, bp),
+		...association.sourceRefs.map((ref) => el(`${bp}sourceRef`, {}, [], ref)),
+	]
 	if (association.targetRef !== undefined) {
-		children.push(el(`${bp}:targetRef`, {}, [], association.targetRef))
+		children.push(el(`${bp}targetRef`, {}, [], association.targetRef))
 	}
 	children.push(...(association.unknownChildren ?? []))
-	return el(`${bp}:${tag}`, attrs, children)
+	return el(`${bp}${tag}`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -220,17 +243,18 @@ function serializeLoopCharacteristics(
 ): XmlElement[] {
 	if (!lc) return []
 	const attrs: Record<string, string> = {}
+	if (lc.id !== undefined) attrs.id = lc.id
 	if (lc.isSequential) attrs.isSequential = "true"
 	const children: XmlElement[] = [...serializeExtensionElements(lc.extensionElements, bp)]
 	if (lc.loopCardinality) {
 		children.push(
-			el(`${bp}:loopCardinality`, lc.loopCardinality.attributes, [], lc.loopCardinality.text),
+			el(`${bp}loopCardinality`, lc.loopCardinality.attributes, [], lc.loopCardinality.text),
 		)
 	}
 	if (lc.completionCondition) {
 		children.push(
 			el(
-				`${bp}:completionCondition`,
+				`${bp}completionCondition`,
 				lc.completionCondition.attributes,
 				[],
 				lc.completionCondition.text,
@@ -238,7 +262,7 @@ function serializeLoopCharacteristics(
 		)
 	}
 	children.push(...(lc.unknownChildren ?? []))
-	return [el(`${bp}:multiInstanceLoopCharacteristics`, attrs, children)]
+	return [el(`${bp}multiInstanceLoopCharacteristics`, attrs, children)]
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +270,7 @@ function serializeLoopCharacteristics(
 // ---------------------------------------------------------------------------
 
 function flowRefs(refs: string[], tag: string, bp: string): XmlElement[] {
-	return refs.map((r) => el(`${bp}:${tag}`, {}, [], r))
+	return refs.map((r) => el(`${bp}${tag}`, {}, [], r))
 }
 
 function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): XmlElement {
@@ -259,7 +283,7 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 
 	// Documentation
 	if (fe.documentation !== undefined) {
-		children.push(el(`${bp}:documentation`, {}, [], fe.documentation))
+		children.push(el(`${bp}documentation`, {}, [], fe.documentation))
 	}
 
 	// Extension elements
@@ -325,7 +349,7 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 			if (fe.completionCondition) {
 				children.push(
 					el(
-						`${bp}:completionCondition`,
+						`${bp}completionCondition`,
 						fe.completionCondition.attributes,
 						[],
 						fe.completionCondition.text,
@@ -379,7 +403,7 @@ function serializeFlowElement(fe: BpmnFlowElement, ns: Record<string, string>): 
 			break
 	}
 
-	return el(`${bp}:${fe.type}`, attrs, children)
+	return el(`${bp}${fe.type}`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -395,21 +419,21 @@ function serializeSequenceFlow(sf: BpmnSequenceFlow, bp: string): XmlElement {
 	}
 	if (sf.name !== undefined) attrs.name = sf.name
 
-	const children: XmlElement[] = []
-	children.push(...serializeExtensionElements(sf.extensionElements, bp))
+	const children: XmlElement[] = serializeBaseChildren(sf, bp)
 
 	if (sf.conditionExpression) {
 		children.push(
 			el(
-				`${bp}:conditionExpression`,
+				`${bp}conditionExpression`,
 				sf.conditionExpression.attributes,
 				[],
 				sf.conditionExpression.text,
 			),
 		)
 	}
+	children.push(...(sf.unknownChildren ?? []))
 
-	return el(`${bp}:sequenceFlow`, attrs, children)
+	return el(`${bp}sequenceFlow`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -423,17 +447,17 @@ function serializeCategory(category: BpmnCategory, bp: string): XmlElement {
 	const children = category.categoryValues.map((value) => {
 		const valueAttrs: Record<string, string> = { id: value.id, ...value.unknownAttributes }
 		if (value.value !== undefined) valueAttrs.value = value.value
-		return el(`${bp}:categoryValue`, valueAttrs, [])
+		return el(`${bp}categoryValue`, valueAttrs, [])
 	})
-	return el(`${bp}:category`, attrs, children)
+	return el(`${bp}category`, attrs, children)
 }
 
 function serializeTextAnnotation(ta: BpmnTextAnnotation, bp: string): XmlElement {
 	const children: XmlElement[] = serializeBaseChildren(ta, bp)
 	if (ta.text !== undefined) {
-		children.push(el(`${bp}:text`, {}, [], ta.text))
+		children.push(el(`${bp}text`, {}, [], ta.text))
 	}
-	return el(`${bp}:textAnnotation`, { id: ta.id, ...ta.unknownAttributes }, children)
+	return el(`${bp}textAnnotation`, { id: ta.id, ...ta.unknownAttributes }, children)
 }
 
 function serializeAssociation(a: BpmnAssociation, bp: string): XmlElement {
@@ -444,13 +468,13 @@ function serializeAssociation(a: BpmnAssociation, bp: string): XmlElement {
 		...a.unknownAttributes,
 	}
 	if (a.associationDirection !== undefined) attrs.associationDirection = a.associationDirection
-	return el(`${bp}:association`, attrs, serializeBaseChildren(a, bp))
+	return el(`${bp}association`, attrs, serializeBaseChildren(a, bp))
 }
 
 function serializeGroup(g: BpmnGroup, bp: string): XmlElement {
 	const attrs: Record<string, string> = { id: g.id, ...g.unknownAttributes }
 	if (g.categoryValueRef !== undefined) attrs.categoryValueRef = g.categoryValueRef
-	return el(`${bp}:group`, attrs, serializeBaseChildren(g, bp))
+	return el(`${bp}group`, attrs, serializeBaseChildren(g, bp))
 }
 
 // ---------------------------------------------------------------------------
@@ -498,11 +522,11 @@ function serializeLane(lane: BpmnLane, bp: string): XmlElement {
 	const attrs: Record<string, string> = { id: lane.id, ...lane.unknownAttributes }
 	if (lane.name !== undefined) attrs.name = lane.name
 	const children: XmlElement[] = serializeBaseChildren(lane, bp)
-	children.push(...lane.flowNodeRefs.map((ref) => el(`${bp}:flowNodeRef`, {}, [], ref)))
+	children.push(...lane.flowNodeRefs.map((ref) => el(`${bp}flowNodeRef`, {}, [], ref)))
 	if (lane.childLaneSet) {
 		children.push(serializeLaneSet(lane.childLaneSet, bp))
 	}
-	return el(`${bp}:lane`, attrs, children)
+	return el(`${bp}lane`, attrs, children)
 }
 
 function serializeLaneSet(laneSet: BpmnLaneSet, bp: string): XmlElement {
@@ -510,7 +534,7 @@ function serializeLaneSet(laneSet: BpmnLaneSet, bp: string): XmlElement {
 	if (laneSet.id) attrs.id = laneSet.id
 	if (laneSet.name !== undefined) attrs.name = laneSet.name
 	return el(
-		`${bp}:laneSet`,
+		`${bp}laneSet`,
 		attrs,
 		laneSet.lanes.map((l) => serializeLane(l, bp)),
 	)
@@ -536,7 +560,7 @@ function serializeProcess(process: BpmnProcess, ns: Record<string, string>): Xml
 	children.push(...serializeProcessContents(process, ns))
 	children.push(...(process.unknownChildren ?? []))
 
-	return el(`${bp}:process`, attrs, children)
+	return el(`${bp}process`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -547,7 +571,7 @@ function serializeParticipant(p: BpmnParticipant, bp: string): XmlElement {
 	const attrs: Record<string, string> = { id: p.id, ...p.unknownAttributes }
 	if (p.name !== undefined) attrs.name = p.name
 	if (p.processRef !== undefined) attrs.processRef = p.processRef
-	return el(`${bp}:participant`, attrs, serializeBaseChildren(p, bp))
+	return el(`${bp}participant`, attrs, serializeBaseChildren(p, bp))
 }
 
 function serializeMessageFlow(mf: BpmnMessageFlow, bp: string): XmlElement {
@@ -559,7 +583,7 @@ function serializeMessageFlow(mf: BpmnMessageFlow, bp: string): XmlElement {
 	}
 	if (mf.name !== undefined) attrs.name = mf.name
 	if (mf.messageRef !== undefined) attrs.messageRef = mf.messageRef
-	return el(`${bp}:messageFlow`, attrs, serializeBaseChildren(mf, bp))
+	return el(`${bp}messageFlow`, attrs, serializeBaseChildren(mf, bp))
 }
 
 function serializeCollaboration(c: BpmnCollaboration, ns: Record<string, string>): XmlElement {
@@ -583,7 +607,9 @@ function serializeCollaboration(c: BpmnCollaboration, ns: Record<string, string>
 	}
 	children.push(...(c.unknownChildren ?? []))
 
-	return el(`${bp}:collaboration`, { id: c.id, ...c.unknownAttributes }, children)
+	const attrs: Record<string, string> = { id: c.id, ...c.unknownAttributes }
+	if (c.name !== undefined) attrs.name = c.name
+	return el(`${bp}collaboration`, attrs, children)
 }
 
 // ---------------------------------------------------------------------------
@@ -594,26 +620,26 @@ function serializeError(e: BpmnError, bp: string): XmlElement {
 	const attrs: Record<string, string> = { id: e.id }
 	if (e.name !== undefined) attrs.name = e.name
 	if (e.errorCode !== undefined) attrs.errorCode = e.errorCode
-	return el(`${bp}:error`, { ...e.unknownAttributes, ...attrs }, serializeBaseChildren(e, bp))
+	return el(`${bp}error`, { ...e.unknownAttributes, ...attrs }, serializeBaseChildren(e, bp))
 }
 
 function serializeEscalation(e: BpmnEscalation, bp: string): XmlElement {
 	const attrs: Record<string, string> = { id: e.id }
 	if (e.name !== undefined) attrs.name = e.name
 	if (e.escalationCode !== undefined) attrs.escalationCode = e.escalationCode
-	return el(`${bp}:escalation`, { ...e.unknownAttributes, ...attrs }, serializeBaseChildren(e, bp))
+	return el(`${bp}escalation`, { ...e.unknownAttributes, ...attrs }, serializeBaseChildren(e, bp))
 }
 
 function serializeMessage(m: BpmnMessage, bp: string): XmlElement {
 	const attrs: Record<string, string> = { id: m.id, ...m.unknownAttributes }
 	if (m.name !== undefined) attrs.name = m.name
-	return el(`${bp}:message`, attrs, serializeBaseChildren(m, bp))
+	return el(`${bp}message`, attrs, serializeBaseChildren(m, bp))
 }
 
 function serializeSignal(s: BpmnSignal, bp: string): XmlElement {
 	const attrs: Record<string, string> = { id: s.id }
 	if (s.name !== undefined) attrs.name = s.name
-	return el(`${bp}:signal`, { ...s.unknownAttributes, ...attrs }, serializeBaseChildren(s, bp))
+	return el(`${bp}signal`, { ...s.unknownAttributes, ...attrs }, serializeBaseChildren(s, bp))
 }
 
 // ---------------------------------------------------------------------------
@@ -622,8 +648,7 @@ function serializeSignal(s: BpmnSignal, bp: string): XmlElement {
 
 function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlElement {
 	const attrs: Record<string, string> = {
-		id: shape.id,
-		bpmnElement: shape.bpmnElement,
+		...diRefs(shape.id, shape.bpmnElement),
 		...shape.unknownAttributes,
 	}
 	if (shape.isMarkerVisible !== undefined) attrs.isMarkerVisible = String(shape.isMarkerVisible)
@@ -632,7 +657,7 @@ function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlEleme
 
 	const children: XmlElement[] = [
 		el(
-			`${dc}:Bounds`,
+			`${dc}Bounds`,
 			{
 				x: String(shape.bounds.x),
 				y: String(shape.bounds.y),
@@ -648,7 +673,7 @@ function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlEleme
 		if (shape.label.bounds) {
 			labelChildren.push(
 				el(
-					`${dc}:Bounds`,
+					`${dc}Bounds`,
 					{
 						x: String(shape.label.bounds.x),
 						y: String(shape.label.bounds.y),
@@ -659,21 +684,20 @@ function serializeDiShape(shape: BpmnDiShape, bdi: string, dc: string): XmlEleme
 				),
 			)
 		}
-		children.push(el(`${bdi}:BPMNLabel`, {}, labelChildren))
+		children.push(el(`${bdi}BPMNLabel`, shape.label.unknownAttributes ?? {}, labelChildren))
 	}
 
-	return el(`${bdi}:BPMNShape`, attrs, children)
+	return el(`${bdi}BPMNShape`, attrs, children)
 }
 
 function serializeDiEdge(edge: BpmnDiEdge, bdi: string, dc: string, dip: string): XmlElement {
 	const attrs: Record<string, string> = {
-		id: edge.id,
-		bpmnElement: edge.bpmnElement,
+		...diRefs(edge.id, edge.bpmnElement),
 		...edge.unknownAttributes,
 	}
 
 	const children: XmlElement[] = edge.waypoints.map((w) =>
-		el(`${dip}:waypoint`, { x: String(w.x), y: String(w.y) }, []),
+		el(`${dip}waypoint`, { ...w.unknownAttributes, x: String(w.x), y: String(w.y) }, []),
 	)
 
 	if (edge.label) {
@@ -681,7 +705,7 @@ function serializeDiEdge(edge: BpmnDiEdge, bdi: string, dc: string, dip: string)
 		if (edge.label.bounds) {
 			labelChildren.push(
 				el(
-					`${dc}:Bounds`,
+					`${dc}Bounds`,
 					{
 						x: String(edge.label.bounds.x),
 						y: String(edge.label.bounds.y),
@@ -692,10 +716,21 @@ function serializeDiEdge(edge: BpmnDiEdge, bdi: string, dc: string, dip: string)
 				),
 			)
 		}
-		children.push(el(`${bdi}:BPMNLabel`, {}, labelChildren))
+		children.push(el(`${bdi}BPMNLabel`, edge.label.unknownAttributes ?? {}, labelChildren))
 	}
 
-	return el(`${bdi}:BPMNEdge`, attrs, children)
+	return el(`${bdi}BPMNEdge`, attrs, children)
+}
+
+/**
+ * The `id` / `bpmnElement` pair of a DI element, leaving out the ones the model holds
+ * as `""` — BPMN DI makes both optional, and the parser reads an absent one as empty.
+ */
+function diRefs(id: string, bpmnElement: string): Record<string, string> {
+	const refs: Record<string, string> = {}
+	if (id !== "") refs.id = id
+	if (bpmnElement !== "") refs.bpmnElement = bpmnElement
+	return refs
 }
 
 function serializeDiagram(diagram: BpmnDiagram, ns: Record<string, string>): XmlElement {
@@ -712,15 +747,15 @@ function serializeDiagram(diagram: BpmnDiagram, ns: Record<string, string>): Xml
 	}
 
 	const plane = el(
-		`${bdi}:BPMNPlane`,
-		{
-			id: diagram.plane.id,
-			bpmnElement: diagram.plane.bpmnElement,
-		},
+		`${bdi}BPMNPlane`,
+		{ ...diRefs(diagram.plane.id, diagram.plane.bpmnElement), ...diagram.plane.unknownAttributes },
 		planeChildren,
 	)
 
-	return el(`${bdi}:BPMNDiagram`, { id: diagram.id }, [plane])
+	return el(`${bdi}BPMNDiagram`, { ...diRefs(diagram.id, ""), ...diagram.unknownAttributes }, [
+		plane,
+		...(diagram.unknownChildren ?? []),
+	])
 }
 
 // ---------------------------------------------------------------------------
@@ -756,7 +791,7 @@ export function serializeBpmn(definitions: BpmnDefinitions): string {
 	const children: XmlElement[] = []
 
 	if (definitions.documentation !== undefined) {
-		children.push(el(`${bp}:documentation`, {}, [], definitions.documentation))
+		children.push(el(`${bp}documentation`, {}, [], definitions.documentation))
 	}
 
 	// Categories supply the labels groups reference
@@ -798,7 +833,7 @@ export function serializeBpmn(definitions: BpmnDefinitions): string {
 		children.push(serializeDiagram(d, ns))
 	}
 
-	const root = el(`${bp}:definitions`, attrs, children)
+	const root = el(`${bp}definitions`, attrs, children)
 	declareUsedNamespaces(root, attrs)
 	return serializeXml(root)
 }

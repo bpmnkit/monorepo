@@ -18,6 +18,8 @@ question nobody can answer later.
 | `05-zeebe-extensions.bpmn` | Written for this repository | MIT, with the repository | 2026-09-07 |
 | `06-events-and-containers.bpmn` | Written for this repository | MIT, with the repository | 2026-09-07 |
 
+| `miwg-*.bpmn` (22 files) | The `Reference/` models of the [OMG BPMN Model Interchange Working Group test suite](https://github.com/bpmn-miwg/bpmn-miwg-test-suite), commit `2ff82d4` (2026-09-21), copied unmodified with a `miwg-` prefix | [CC BY 3.0](http://creativecommons.org/licenses/by/3.0/) — © the BPMN MIWG contributors; see the suite's `LICENSE.txt`. Test data only: not part of any published package | 2026-09-24 |
+
 These were authored from the BPMN 2.0 specification and the `zeebe-bpmn-moddle` descriptor
 (MIT), targeting the constructs `doc/bpmn-sdk-comparison.md` §4 measured as lost plus the
 full surface `bpmn-parser.ts` claims to handle. They are **not** derived from any other
@@ -33,6 +35,17 @@ Each file isolates a group of constructs, so a failure names its own cause:
 | `04-artifacts.bpmn` | text annotations, associations, groups, `category` / `categoryValue`, task documentation |
 | `05-zeebe-extensions.bpmn` | the Zeebe task surface — task definition, IO mapping, headers, properties, form, called decision, called element, script, user task, assignment, schedule, priority |
 | `06-events-and-containers.bpmn` | every event definition kind, interrupting and non-interrupting boundaries, event sub-process, multi-instance loop with cardinality and completion condition, an exclusive gateway with a default flow, and diagram interchange |
+
+### The MIWG reference models
+
+The MIWG suite is the standard way BPMN tools prove interchange. Its reference models
+(`A.*` layout, `B.*` conformance-class coverage, `C.*` complex scenarios) were exported by
+Trisotech, Signavio, W4, BOC and other modelers, so they carry the vendor namespaces,
+label styles and optional-attribute spellings a real file does. The suite checks that a
+tool can import a model and export it again without losing content; here the same check
+is the round-trip gate above, keyed by namespace so prefix choices do not count as a
+change. Remaining differences are listed per file in `ALLOWED`. Refresh them from a new
+suite commit by copying `Reference/*.bpmn` again and updating the commit above.
 
 ## Adding real-world models
 

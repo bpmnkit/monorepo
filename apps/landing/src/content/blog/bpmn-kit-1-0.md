@@ -65,6 +65,8 @@ We would rather show a number than an adjective, so the new
 - **BPMN model coverage** against the vendored BPMN, DI and Zeebe descriptors: 109 types
   modelled, 34 preserved verbatim, 6 dropped (all data-association internals). A build gate
   fails if a new type would be dropped silently.
+- **Interchange**: all 22 OMG BPMN MIWG reference models import, keep their diagrams and
+  round-trip to the same model, checked on every build.
 - **Element support** for each component — model, renderer, editor and simulator — in one
   table, including what the simulator does *not* execute.
 
@@ -72,8 +74,9 @@ We would rather show a number than an adjective, so the new
 
 1.0 covers the APIs above. It does not mean the toolkit is finished. The gaps we know about:
 
-- We have not yet run the OMG **BPMN MIWG** interchange suite. The round-trip corpus is
-  hand-written fixtures plus the descriptor gate.
+- **Interchange** is measured against the 22 OMG MIWG reference models, which all open, keep
+  their diagrams and round-trip to the same model. The one content loss left is the `id` and
+  `textFormat` attributes on `<documentation>`.
 - There is **no Camunda 7** support, and no choreography or conversation diagrams.
 - The **simulator** does not execute call activities, event sub-processes, event-based
   gateways, multi-instance or signal, escalation and compensation events. The
@@ -89,8 +92,8 @@ We would rather show a number than an adjective, so the new
   follow. The desktop app gets Windows, macOS and Linux installers the same way.
 - **Your coding agent.** Each CLI release submits the MCP server (`casen proxy mcp`) to the
   official MCP Registry, so Claude Code, Cursor and VS Code can find it.
-- **Interoperability.** MIWG results, `bpmnlint` compatibility and a larger round-trip corpus
-  built from real models.
+- **Interoperability.** `bpmnlint` compatibility, and more real-world models in the round-trip
+  corpus.
 
 Everything is MIT-licensed, developed in the open on
 [GitHub](https://github.com/bpmnkit/monorepo), and every package's `CHANGELOG.md` says what

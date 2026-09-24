@@ -588,9 +588,12 @@ function operationsForCompact(
 				continue
 			}
 
-			const sameLabel = (want.name ?? undefined) === (flow.name ?? undefined)
+			// An empty label or condition is the same as none: the compact view omits
+			// both, and treating "" as a change would delete and re-add the flow,
+			// taking its extensions and condition attributes with it.
+			const sameLabel = (want.name || undefined) === (flow.name || undefined)
 			const sameCondition =
-				(want.condition ?? undefined) === (flow.conditionExpression?.text ?? undefined)
+				(want.condition || undefined) === (flow.conditionExpression?.text || undefined)
 
 			if (!sameLabel || !sameCondition) {
 				operations.push({ op: "delete_flow", id: flow.id })

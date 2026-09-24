@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { Bpmn } from "../src/index.js"
+import { Bpmn, semanticHash } from "../src/index.js"
 import { diffSignatures, formatChange, xmlSignature } from "./support/xml-signature.js"
 
 /**
@@ -36,6 +36,12 @@ interface AllowedChange {
 const OPTIONAL_FALSE =
 	"Serialised only when true; BPMN treats the absent attribute as false, so the round trip is stable and semantics are unchanged"
 
+const EMPTY_EXTENSIONS =
+	"An empty <extensionElements/> carries nothing and is not written back (documented in Round-trip fidelity)"
+
+const DOCUMENTATION_ATTRIBUTES =
+	"Attributes on <documentation> (id, textFormat) are not modelled: documentation is a plain string on every element"
+
 const ALLOWED: Record<string, AllowedChange[]> = {
 	"01-root-elements.bpmn": [],
 	"02-collaboration.bpmn": [
@@ -52,6 +58,184 @@ const ALLOWED: Record<string, AllowedChange[]> = {
 			reason: OPTIONAL_FALSE,
 		},
 	],
+	// The OMG BPMN Model Interchange Working Group reference models — see PROVENANCE.md.
+	"miwg-A.1.0.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-A.2.0.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-A.2.1.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-A.3.0.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:subProcess@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-A.4.0.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:subProcess@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-A.4.1.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:subProcess@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "child:bpmn:process > bpmn:extensionElements",
+			kind: "normalised",
+			reason: EMPTY_EXTENSIONS,
+		},
+		{ feature: "element:bpmn:extensionElements", kind: "normalised", reason: EMPTY_EXTENSIONS },
+	],
+	"miwg-B.1.0.bpmn": [
+		{
+			feature: "attr:bpmn:callActivity@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:serviceTask@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{
+			feature: "attr:bpmn:subProcess@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:userTask@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-B.2.0.bpmn": [
+		{
+			feature: "attr:bpmn:callActivity@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:multiInstanceLoopCharacteristics@isSequential",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:receiveTask@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:sendTask@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:serviceTask@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{
+			feature: "attr:bpmn:subProcess@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:userTask@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.1.0.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:serviceTask@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:userTask@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.1.1.bpmn": [
+		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:serviceTask@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:userTask@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.10.0.bpmn": [
+		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.2.0.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:subProcess@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:task@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.3.0.bpmn": [
+		{ feature: "attr:bpmn:documentation@id", kind: "gap", reason: DOCUMENTATION_ATTRIBUTES },
+		{
+			feature: "attr:bpmn:documentation@textFormat",
+			kind: "gap",
+			reason: DOCUMENTATION_ATTRIBUTES,
+		},
+		{
+			feature: "attr:bpmn:subProcess@isForCompensation",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+		{ feature: "attr:bpmn:userTask@isForCompensation", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.4.0.bpmn": [],
+	"miwg-C.5.0.bpmn": [
+		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.6.0.bpmn": [],
+	"miwg-C.7.0.bpmn": [
+		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "attr:bpmn:documentation@textFormat",
+			kind: "gap",
+			reason: DOCUMENTATION_ATTRIBUTES,
+		},
+		{
+			feature: "attr:bpmn:multiInstanceLoopCharacteristics@isSequential",
+			kind: "normalised",
+			reason: OPTIONAL_FALSE,
+		},
+	],
+	"miwg-C.8.0.bpmn": [
+		{ feature: "attr:bpmn:process@isExecutable", kind: "normalised", reason: OPTIONAL_FALSE },
+	],
+	"miwg-C.8.1.bpmn": [
+		{ feature: "attr:bpmn:dataObject@isCollection", kind: "normalised", reason: OPTIONAL_FALSE },
+		{
+			feature: "child:bpmn:message > bpmn:extensionElements",
+			kind: "normalised",
+			reason: EMPTY_EXTENSIONS,
+		},
+		{ feature: "element:bpmn:extensionElements", kind: "normalised", reason: EMPTY_EXTENSIONS },
+	],
+	"miwg-C.9.0.bpmn": [],
+	"miwg-C.9.1.bpmn": [],
+	"miwg-C.9.2.bpmn": [],
 }
 
 const fixtureDirectory = join(import.meta.dirname, "fixtures", "roundtrip")
@@ -109,6 +293,11 @@ describe("BPMN round-trip fidelity", () => {
 						"records progress.",
 					].join(" "),
 				).toEqual([])
+			})
+
+			it("re-imports to the same model", () => {
+				// The signature compares text; this compares what a reader of the model sees.
+				expect(semanticHash(Bpmn.parse(exported))).toBe(semanticHash(Bpmn.parse(source)))
 			})
 
 			it("re-exports identically the second time", () => {

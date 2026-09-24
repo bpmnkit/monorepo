@@ -25,7 +25,25 @@ describe("xmlSignature", () => {
 	it("ignores xmlns declarations but keeps prefixed attributes", () => {
 		const signature = xmlSignature('<a xmlns:z="urn:z" xmlns="urn:d" z:k="v"/>')
 		expect([...signature.keys()].filter((key) => key.includes("xmlns"))).toEqual([])
-		expect(signature.get("attr:a@z:k")).toBe(1)
+		expect(signature.get("attr:{urn:d}a@{urn:z}k")).toBe(1)
+	})
+
+	it("keys names by namespace, so a prefix rename is not a change", () => {
+		const bpmn = "http://www.omg.org/spec/BPMN/20100524/MODEL"
+		const defaultNs = xmlSignature(`<definitions xmlns="${bpmn}"><process id="p"/></definitions>`)
+		const semantic = xmlSignature(
+			`<semantic:definitions xmlns:semantic="${bpmn}"><semantic:process id="p"/></semantic:definitions>`,
+		)
+		const bpmnPrefix = xmlSignature(
+			`<bpmn:definitions xmlns:bpmn="${bpmn}"><bpmn:process id="p"/></bpmn:definitions>`,
+		)
+		expect(diffSignatures(defaultNs, bpmnPrefix)).toEqual([])
+		expect(diffSignatures(semantic, bpmnPrefix)).toEqual([])
+		expect(bpmnPrefix.get("child:bpmn:definitions > bpmn:process")).toBe(1)
+	})
+
+	it("keeps an undeclared prefix as written", () => {
+		expect(xmlSignature("<x:a/>").get("element:x:a")).toBe(1)
 	})
 
 	it("does not mistake markup inside attribute values for tags", () => {

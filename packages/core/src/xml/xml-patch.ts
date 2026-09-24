@@ -52,12 +52,42 @@ export interface PreserveOptions {
 	 *   `exportPreserving` in the BPMN module.
 	 */
 	readonly droppedAttributes?: "remove" | "keep"
+	/**
+	 * What to do about an attribute whose value the update spells as a different
+	 * number — `x="30.0"` against `x="30"`.
+	 *
+	 * - `"rewrite"` (default) — write the update's spelling.
+	 * - `"keep"` — keep the original's. A model that stores coordinates as numbers
+	 *   writes them back in its own spelling, and files from other tools use
+	 *   another; keeping theirs is only safe when re-reading gives the same model,
+	 *   which `preserveFormattingVerified` checks.
+	 */
+	readonly equalNumbers?: "rewrite" | "keep"
+	/**
+	 * What to do about an element the update drops that has no attributes, no
+	 * children and no text — `<extensionElements/>`.
+	 *
+	 * - `"remove"` (default) — take it out, because the update says so.
+	 * - `"keep"` — leave it. A serializer omits an empty container it has nothing
+	 *   to put in. Keeping it is only safe when re-reading gives the same model,
+	 *   which `preserveFormattingVerified` checks.
+	 */
+	readonly droppedEmptyElements?: "remove" | "keep"
 }
 
 /** The choices a walk was started with, carried down the tree. */
 interface Settings {
 	readonly siblingOrder: SiblingOrder
 	readonly droppedAttributes: "remove" | "keep"
+	readonly equalNumbers: "rewrite" | "keep"
+	readonly droppedEmptyElements: "remove" | "keep"
+}
+
+/** Whether two attribute values are the same finite number spelled differently. */
+function sameNumber(a: string, b: string): boolean {
+	if (a.trim() === "" || b.trim() === "") return false
+	const x = Number(a)
+	return Number.isFinite(x) && x === Number(b)
 }
 
 /** A replacement of one region of the original document. */
@@ -284,6 +314,7 @@ function diffAttributes(
 		// Compare decoded values. `&#10;` and `&#xA;` are the same newline, and
 		// rewriting one into the other is a diff that says nothing.
 		if (present.value === wanted.value) continue
+		if (settings.equalNumbers === "keep" && sameNumber(present.value, wanted.value)) continue
 		edits.push({ start: present.start, end: present.end, text: escapeAttr(wanted.value) })
 	}
 
@@ -331,6 +362,11 @@ function attributesOf(a: SpannedElement, b: SpannedElement): string {
 	return parts.join("")
 }
 
+/** An element that says nothing: no attributes, no children, no text. */
+function isEmpty(element: SpannedElement): boolean {
+	return element.attributes.size === 0 && element.children.length === 0 && isBlank(element.text)
+}
+
 function diffChildren(
 	original: string,
 	updated: string,
@@ -356,6 +392,7 @@ function diffChildren(
 	for (const [index, child] of a.children.entries()) {
 		const match = pairing[index] ?? -1
 		if (match < 0) {
+			if (settings.droppedEmptyElements === "keep" && isEmpty(child)) continue
 			// Take the whitespace that put the child on its own line with it;
 			// anything else between siblings — a comment — stays where it is.
 			edits.push({ start: whitespaceStart(original, child.start), end: child.end, text: "" })
@@ -502,6 +539,8 @@ export function preserveFormatting(
 		diffElement(original, updated, before, after, edits, {
 			siblingOrder: options.siblingOrder ?? "follow",
 			droppedAttributes: options.droppedAttributes ?? "remove",
+			equalNumbers: options.equalNumbers ?? "rewrite",
+			droppedEmptyElements: options.droppedEmptyElements ?? "remove",
 		})
 		if (edits.length === 0) return original
 		return applyEdits(original, edits)
@@ -556,7 +595,16 @@ export function preserveFormattingVerified(
 
 	// Most to least faithful to the file.
 	const attempts = [
-		["preserved", { siblingOrder: "keep", droppedAttributes: "keep" }],
+		[
+			"preserved",
+			{
+				siblingOrder: "keep",
+				droppedAttributes: "keep",
+				equalNumbers: "keep",
+				droppedEmptyElements: "keep",
+			},
+		],
+		["preserved", { siblingOrder: "keep", equalNumbers: "keep" }],
 		["preserved", { siblingOrder: "keep" }],
 		["reordered", { siblingOrder: "follow" }],
 	] as const

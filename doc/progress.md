@@ -1,5 +1,52 @@
 # Progress
 
+## 2026-09-24 — The OMG MIWG reference models open, keep their diagrams and round-trip
+
+**All 22 reference models of the BPMN Model Interchange test suite are in the round-trip
+corpus.** They are copied unmodified with a `miwg-` prefix, CC BY 3.0, with provenance
+recorded. They come from Trisotech, Signavio, W4, BOC and others, so they carry what real
+files carry.
+
+**Running them found real defects, all fixed:**
+- **Seven models would not open.** BPMN DI makes `id` and `bpmnElement` optional on
+  diagrams, planes, shapes and edges, and the parser required them. An absent one now reads
+  as `""` and is written back absent.
+- **Invalid XML output.** A document with BPMN as its default namespace was exported as
+  `<:process>`. The prefix lookup now returns the default namespace, and the writer emits
+  unprefixed names for it.
+- **Content that was dropped:**
+  - `default` on an activity: it sat in the flow-node `KNOWN_ATTRS` list, but only gateways
+    model it;
+  - the `name` of `<definitions>` and of a collaboration;
+  - documentation and unknown children on sequence flows;
+  - documentation and extensions on data associations;
+  - the `id` of a multi-instance loop;
+  - empty timer parts and conditions, plus a condition's own attributes;
+  - label styles and vendor attributes on DI diagrams, planes, labels and waypoints.
+- **`reconcileCompact` was not a no-op** on these files. It compared an empty flow label or
+  condition with an absent one, then deleted and re-added the flow along with its
+  extensions.
+- **`exportPreserving` fell back to a full rewrite** on most of them. It now keeps a number's
+  spelling (`30.0`) and empty `<extensionElements/>` when re-reading proves the model
+  unchanged, through the new `equalNumbers` / `droppedEmptyElements` options of
+  `preserveFormatting`.
+
+**Checking method.** The corpus gate's signature is now keyed by namespace URI, so a prefix
+choice is not a change. A new per-fixture assertion checks that the export re-imports to the
+same `semanticHash`. `interchange-fidelity.test.ts` pins each fix at model level. What a plain
+export still changes is listed per file in `ALLOWED`: false defaults and empty extensions are
+normalised, and attributes on `<documentation>` are the one remaining loss.
+
+**Published results.** The Conformance page gains a MIWG section. The Concepts round-trip
+section and the 1.0 post are updated.
+
+**Not done.**
+- The renderer ignores `BPMNLabelStyle` fonts, so labels from tools with a 9 pt font wrap
+  inside their DI bounds and can overlap a small event.
+- Message flows have no start circle.
+- Deleting a flow in the editor still leaves a gateway's (or now an activity's) `default`
+  pointing at it.
+
 ## 2026-09-23 — P0 from the market analysis: claims that match the code, and ways to install
 
 **Every stale or overreaching claim that `doc/market-analysis.md` §13.1 listed is corrected at

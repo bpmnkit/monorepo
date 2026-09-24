@@ -125,6 +125,29 @@ describe("semanticHash", () => {
 			"89c79344d77e365cabe3d0e257ae8074880e3cf292d3a790dc5a0389ab74177f",
 		"07-unmodelled-content.bpmn":
 			"950b8ea3610bcce9f8d25162eddc0f5ad2648a884d1a28c3cb2d51bf0af2797e",
+		// The MIWG reference models, added 2026-09-24.
+		"miwg-A.1.0.bpmn": "7bc850291c0de2be333df1c998390fd9775cbb0c87d81745c6e14b4055602e43",
+		"miwg-A.2.0.bpmn": "c3cacd6461a92ec4fe3bd02f97bb1857ebecf05cb9cba56e2d61c62a32b17c5f",
+		"miwg-A.2.1.bpmn": "8e05fa1392431e07edbfaf3a46868701e6657952583d4d5a66d93e223cdfa683",
+		"miwg-A.3.0.bpmn": "bab63b30cddf2b073ad9e0dc094bda4cdb2b6b18cf0588dd630dac1fffcddb04",
+		"miwg-A.4.0.bpmn": "c5f724742ac91350293cdb7355ff8c4bbc6e170917a2f341470ec8460b1c9ae5",
+		"miwg-A.4.1.bpmn": "6ca0f0d8c13b3836d7d577718aed27e9742e2733eb3b833fe3cd57c35656c314",
+		"miwg-B.1.0.bpmn": "b378b34cb33e2a68e3a625c18a6a549cfdd89196e7236d7b485bcf93abd58744",
+		"miwg-B.2.0.bpmn": "c1418a51710aaf02f083ed4ead30070d77a096df33969cfcc57ddb1496e41c2c",
+		"miwg-C.1.0.bpmn": "a52f7f51a9e3893f8435e540142bf4a3b7a48ba4e6c568cc66f7cfc900e240e8",
+		"miwg-C.1.1.bpmn": "467e93ab9d4d82139e6dbb10b3721cd159d11980164e18cb091efb4580a05172",
+		"miwg-C.10.0.bpmn": "5d2a74fdff19365fab27d9b7bc77353a4e97e186c47dfb2be8bfb63076cef6b8",
+		"miwg-C.2.0.bpmn": "da6a098a2735faa49afa1f6a853ae322fc519c2017a4365d63ae304e1ad0716e",
+		"miwg-C.3.0.bpmn": "f25abd3f86de7dbe52da6987a824403e2ac50fdc20adb1a21cbc9bf1753659af",
+		"miwg-C.4.0.bpmn": "3496338d073c9b418c230272f6b333dc37b603443ecef2463eba8561723fdae2",
+		"miwg-C.5.0.bpmn": "b7f1b6638ba56a0821d1230e5f2f5f995f589358851e0a94dd029198c003550f",
+		"miwg-C.6.0.bpmn": "48db82c84648615e9b23061829c6ecb4bb5c9c17dd8ac3d1704f319b72dfa192",
+		"miwg-C.7.0.bpmn": "2cfe7a07d6b4582e02cdb61c3fa22159cfdd736282b20afac7dade0c234538e1",
+		"miwg-C.8.0.bpmn": "a48670976df5eb29344b305249b3615a55c7d02643e97480c0ad0ec8fcbb1ff5",
+		"miwg-C.8.1.bpmn": "61c4c6f4ae291db36832fa5144457889c51a8f61ff350dd95851a46156b43856",
+		"miwg-C.9.0.bpmn": "56a06e19b6e06095ca7e91368a02d1ef657f94184fb3df85a78dd7e88f9709c2",
+		"miwg-C.9.1.bpmn": "ab5ccf901fbadf9c35c39be95460c81875663e338e08b35ebfc023c81e2731e2",
+		"miwg-C.9.2.bpmn": "dc4f04f6ebe339bc4994e33120a025e8978a314a5371b13a323c0364f330c535",
 	}
 
 	it("has a golden hash for every fixture", () => {

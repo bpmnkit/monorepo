@@ -1,5 +1,13 @@
 # Features
 
+## BPMN Model Interchange (MIWG) round trip (2026-09-24)
+
+- **All 22 OMG MIWG reference models** open, keep their diagram interchange and round-trip to
+  the same model, checked on every build (`packages/core/tests/roundtrip-corpus.test.ts`).
+- **Default-namespace BPMN** is written back unprefixed, as the file had it.
+- **`exportPreserving`** returns an unchanged foreign file byte for byte, including `30.0`
+  coordinates and empty `<extensionElements/>`.
+
 ## Conformance page, release pipelines for VS Code and desktop, MCP Registry listing (2026-09-23)
 
 - **Conformance** (`/docs/getting-started/conformance`) — FEEL against the DMN TCK

@@ -54,6 +54,8 @@ export interface BpmnBounds {
 export interface BpmnWaypoint {
 	x: number
 	y: number
+	/** Attributes other than `x` / `y` (e.g. `xsi:type`), kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +107,8 @@ export interface BpmnConditionalEventDefinition {
 	type: "conditional"
 	id?: string
 	condition?: string
+	/** Attributes of the `<condition>` element, e.g. `xsi:type` and `language`. */
+	conditionAttributes?: Record<string, string>
 }
 
 /** Event definition for link catch / throw events. */
@@ -155,6 +159,7 @@ export type BpmnEventDefinition =
 
 /** Multi-instance loop configuration attached to a task or sub-process. */
 export interface BpmnMultiInstanceLoopCharacteristics {
+	id?: string
 	/** When true, iterations run one at a time (sequential). When false or absent, runs in parallel. */
 	isSequential?: boolean
 	/** How many instances to create. Losing this turns a bounded loop into an unbounded one. */
@@ -454,9 +459,12 @@ export interface BpmnSequenceFlow {
 	name?: string
 	sourceRef: string
 	targetRef: string
+	documentation?: string
 	conditionExpression?: BpmnConditionExpression
 	extensionElements: XmlElement[]
 	unknownAttributes: Record<string, string>
+	/** Children the SDK does not model, kept verbatim so a round trip keeps them. */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
@@ -480,6 +488,9 @@ export interface BpmnProperty {
  */
 export interface BpmnDataAssociation {
 	id?: string
+	documentation?: string
+	/** Vendor extensions carried on the association, kept verbatim. */
+	extensionElements?: XmlElement[]
 	/** Ids named by `<bpmn:sourceRef>` child elements. */
 	sourceRefs: string[]
 	/** Id named by the `<bpmn:targetRef>` child element. */
@@ -630,6 +641,7 @@ export interface BpmnMessageFlow {
 /** A BPMN collaboration element grouping multiple participants and their message flows. */
 export interface BpmnCollaboration {
 	id: string
+	name?: string
 	participants: BpmnParticipant[]
 	messageFlows: BpmnMessageFlow[]
 	textAnnotations: BpmnTextAnnotation[]
@@ -697,6 +709,11 @@ export interface BpmnSignal {
 /** Optional label positioning information for a BPMNDi shape or edge. */
 export interface BpmnDiLabel {
 	bounds?: BpmnBounds
+	/**
+	 * The `BPMNLabel` element's own attributes — `labelStyle`, `id`, vendor colour
+	 * and position hints — kept for round-trip.
+	 */
+	unknownAttributes?: Record<string, string>
 }
 
 /** BPMNDi layout shape — binds a flow element to its visual bounds on the canvas. */
@@ -722,16 +739,25 @@ export interface BpmnDiEdge {
 
 /** The drawing plane for a BPMNDiagram — holds all shapes and edges. */
 export interface BpmnDiPlane {
+	/** Empty when the source omitted it — BPMN DI makes it optional. */
 	id: string
+	/** Empty when the source omitted it — BPMN DI makes it optional. */
 	bpmnElement: string
 	shapes: BpmnDiShape[]
 	edges: BpmnDiEdge[]
+	/** Attributes other than `id` / `bpmnElement`, kept for round-trip. */
+	unknownAttributes?: Record<string, string>
 }
 
 /** A BPMNDiagram element grouping the visual layout for one process. */
 export interface BpmnDiagram {
+	/** Empty when the source omitted it — BPMN DI makes it optional. */
 	id: string
 	plane: BpmnDiPlane
+	/** Attributes other than `id` — `name`, `documentation`, `resolution` — kept for round-trip. */
+	unknownAttributes?: Record<string, string>
+	/** Children other than the plane — `BPMNLabelStyle` definitions — kept verbatim. */
+	unknownChildren?: XmlElement[]
 }
 
 // ---------------------------------------------------------------------------
