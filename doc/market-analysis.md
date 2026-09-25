@@ -676,9 +676,8 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 > - **Item 13:** vendor DI, label styles and default-namespace files are preserved.
 > - **Item 14:** FEEL matches 375 of the 378 examples in Camunda's documentation.
 >
-> The MCP server now writes through `writeBpmn`. What's left:
-> - labels are rendered without their label style's font;
-> - sub-process scope is missing in 6 approximate lint rules.
+> The MCP server now writes through `writeBpmn`, and labels render in their label style's
+> font (2026-09-25). What's left: sub-process scope is missing in 6 approximate lint rules.
 
 9. **bpmnlint compatibility**: read `.bpmnlintrc`, run `bpmnlint-plugin-*` rules through an
    adapter, map BPMN Kit's ~40 rules to bpmnlint rule names; import `@camunda/linting`

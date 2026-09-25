@@ -1124,7 +1124,7 @@ export function updateLabelPosition(
 	if (!diagram) return defs
 
 	const newShapes = diagram.plane.shapes.map((s) =>
-		s.bpmnElement === shapeId ? { ...s, label: { bounds: labelBounds } } : s,
+		s.bpmnElement === shapeId ? { ...s, label: { ...s.label, bounds: labelBounds } } : s,
 	)
 
 	return {

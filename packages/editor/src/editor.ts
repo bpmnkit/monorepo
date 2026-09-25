@@ -19,7 +19,7 @@ import type {
 	Theme,
 	ViewportState,
 } from "@bpmnkit/canvas"
-import { Bpmn } from "@bpmnkit/core"
+import { Bpmn, collectLabelStyles, labelFontCss, resolveLabelFont } from "@bpmnkit/core"
 import type {
 	BpmnBounds,
 	BpmnDefinitions,
@@ -42,7 +42,7 @@ import {
 import { defaultTranslate } from "./i18n.js"
 import type { Translate } from "./i18n.js"
 import { newIdSeed } from "./id.js"
-import { LabelEditor } from "./label-editor.js"
+import { LABEL_FONT_FAMILY, LABEL_FONT_SIZE, LabelEditor } from "./label-editor.js"
 import {
 	copyElements,
 	createEmptyDefinitions,
@@ -1517,12 +1517,15 @@ export class BpmnEditor {
 			process?.sequenceFlows.find((sf) => sf.id === id)?.name ??
 			process?.textAnnotations.find((ta) => ta.id === id)?.text ??
 			""
+		// Edit in the font the canvas draws the label in (its DI label style).
+		const font = resolveLabelFont(shape.shape.label, collectLabelStyles(defs))
 		this._labelEditor.start(
 			id,
 			currentText,
 			shape.shape.bounds,
 			this._viewport.state,
 			this._svg.getBoundingClientRect(),
+			font ? labelFontCss(font, LABEL_FONT_FAMILY, LABEL_FONT_SIZE) : undefined,
 		)
 	}
 

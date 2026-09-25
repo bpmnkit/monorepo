@@ -14,7 +14,6 @@ these are real, small gaps, each with a pointer to where the change goes:
 
 | Area | Task | Where |
 |---|---|---|
-| Renderer | Label styles (`BPMNLabelStyle` fonts) are parsed and kept, but labels render in the default font | `packages/canvas` |
 | Linting | Six bpmnlint rules marked *approximate* check only the top level, not inside sub-processes | `packages/core/src/bpmn/bpmnlint.ts`, [compatibility table](https://bpmnkit.com/docs/guides/bpmnlint) |
 | Simulator | A terminate end event inside a sub-process ends the whole instance; BPMN says it ends only that sub-process | `packages/engine/src/instance.ts` |
 | Markdown | The same diagram twice on one page produces duplicate SVG ids | `packages/markdown` |

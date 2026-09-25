@@ -345,6 +345,8 @@ export { exportFormPreserving, preserveFormFormatting } from "./form/preserving-
 export type { JsonKind, JsonMember, JsonNode, PreservedJson } from "./json/index.js"
 export { readDiColor, writeDiColor, BIOC_NS, COLOR_NS } from "./bpmn/di-color.js"
 export type { DiColor } from "./bpmn/di-color.js"
+export { collectLabelStyles, labelFontCss, resolveLabelFont } from "./bpmn/label-style.js"
+export type { BpmnLabelFont, LabelFontCss } from "./bpmn/label-style.js"
 export { optimize } from "./bpmn/optimize/index.js"
 export { renderStoryHtml } from "./bpmn/story.js"
 export type { StoryRenderOptions } from "./bpmn/story.js"
