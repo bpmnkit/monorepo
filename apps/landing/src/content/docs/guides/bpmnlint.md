@@ -168,7 +168,7 @@ platform and version. A model without them gets no `compat` findings.
 ```
 
 Each finding is `compat/<rule>`, named after the plugin rule it reproduces, and has the
-plugin's severity. Two kinds of problem are reported:
+plugin's severity. Three kinds of problem are reported:
 
 - **Something the target version cannot run.** An element or event definition that is newer
   than the target (inclusive gateways 8.1, `bpmn:task` 8.2, escalation and link events 8.2,
@@ -183,6 +183,18 @@ plugin's severity. Two kinds of problem are reported:
   process id, a message name and correlation key, a timer value that parses as ISO 8601 or
   cron, an error code, an escalation code, a signal name, a multi-instance input collection,
   a condition on each non-default flow out of a gateway, and listener types.
+- **Something wrong inside a value.** A FEEL built-in newer than the target (`uuid()` and
+  `trim()` need 8.6, `from json()` 8.9, from `@camunda/feel-builtins`); a mapping target or
+  result variable that is not a variable name; a secret written as `secrets.X`, or as
+  `{{secrets.X}}` once 8.10 has `camunda.secrets.X`; a `camunda.secrets.X` reference in a
+  string, a list or an `if` branch's context, where 8.10 cannot resolve it; inbound connector
+  properties (`messageTtl`, `consumeUnmatchedEvents`, `deduplicationModeManualFlag`) before 8.6;
+  a link event with no name, or two link catch events with the same name; duplicate header
+  keys on one execution listener (8.10); and a loop of plain tasks, manual tasks and call
+  activities with nothing that waits. Agent tools (8.8) are checked too: `fromAi()` only in an
+  input mapping of a tool's first element, with a `toolCall.<name>` key and a quoted
+  description, and each tool's result mapped to `toolCallResult`. These rules keep the plugin's
+  own messages, such as `FEEL function <uuid> requires Camunda >=8.6`.
 
 From 8.2 on, processes that are not marked executable are skipped, as Modeler skips them. A
 version newer than the table is checked as the newest version the table has (8.10). Later
@@ -192,7 +204,8 @@ The version table is data (`CAMUNDA_COMPAT_RULES` in `@bpmnkit/core`), taken fro
 `bpmnlint-plugin-camunda-compat` 2.61.0 (`@camunda/linting` 3.57.0). BPMN Kit does not
 report a problem twice. When a `deploy/*` check already reports it on the same element, only
 that finding stays. For example, `deploy/service-task-no-type` stands in for
-`compat/implementation`.
+`compat/implementation`, and when a `.bpmnlintrc` runs bpmnlint's `link-event`,
+`flow/link-event-mismatch` stands in for `compat/link-event`.
 
 ### With a `.bpmnlintrc`
 
@@ -213,14 +226,17 @@ BPMN Kit's `compat` findings step aside. `camunda-platform-7-*` configs are not 
 | `no-binding-type`, `no-execution-listeners`, `execution-listener`, `duplicate-execution-listeners`, `no-priority-definition`, `priority-definition`, `no-version-tag`, `version-tag`, `ad-hoc-sub-process`, `no-interrupting-event-subprocess`, `no-task-listeners`, `task-listener` | Covered |
 | `no-business-id`, `no-execution-listener-headers`, `no-before-all-execution-listener`, `before-all-execution-listener`, `no-cancel-execution-listener`, `cancel-execution-listener`, `no-job-priority-definition` | Covered |
 | `subscription` | Covered. A `zeebe:subscription` on the catch element instead of on its `bpmn:message` is an error, as in the plugin. BPMN Kit's builders put it on the message. |
+| `feel-compatibility`, `variable-name`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers`, `no-loop` | Covered, with the plugin's messages. FEEL is read by BPMN Kit's own parser, so an expression only one of the two parsers accepts can be judged differently. |
+| `agent-fromai-contract`, `agent-tool-output-key` | Covered, with the plugin's messages |
+| `link-event` | Covered, with the plugin's messages. Where bpmnlint's `link-event` also runs, its `flow/link-event-mismatch` finding stays instead. |
 | `executable-process`, `feel`, `agent-tool-documentation` | Reported by an existing finding: `deploy/process-not-executable` (which reports every non-executable process), `feel-syntax/parse-error`, `agentic/tool-no-description` |
-| `feel-compatibility`, `agent-fromai-contract`, `agent-tool-output-key`, `variable-name` | Not covered. They need a FEEL analyzer and Camunda's per-version FEEL function table. |
-| `no-loop`, `link-event`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers` | Not covered. Configured, they are listed as not applied. |
 
-Checked against the plugin: the test suite has two fixture diagrams that trigger all 52 covered
-rules. It compares BPMN Kit's findings with what the real plugin reported for them under every
-`camunda-cloud-*` config. The findings match element for element. The 25 process templates
-in `@bpmnkit/patterns` give the same result as the plugin too.
+All 65 rules of the plugin's `camunda-cloud-*` configs are covered: 62 are reproduced, and
+3 are reported by existing findings. Checked against the plugin: the test suite has four
+fixture diagrams that trigger all 62 reproduced rules. It compares BPMN Kit's findings with
+what the real plugin reported for them under every `camunda-cloud-*` config. The findings
+match element for element, and message for message where the table says so. The 25 process templates in `@bpmnkit/patterns` give the same result as the plugin
+too.
 
 ## From your own code
 

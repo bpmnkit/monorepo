@@ -12,7 +12,12 @@
  * - `rules/camunda-cloud/implementation/config.js` — which task implementation
  *   each element takes, from which version;
  * - `rules/camunda-cloud/timer/config.js` — timer properties per event type;
+ * - `rules/camunda-cloud/connector-properties/config.js` — inbound connector
+ *   properties per version;
  * - the version constants inside the individual rules.
+ *
+ * The FEEL built-in table is from `@camunda/feel-builtins` 1.4.1, which the
+ * plugin's `feel-compatibility` rule reads.
  *
  * When the plugin moves, update the tables here and `CAMUNDA_COMPAT_PLUGIN_VERSION`
  * together; nothing else in BPMN Kit hard-codes a Camunda version for these checks.
@@ -239,7 +244,82 @@ export const FEATURE_SINCE = {
 	jobPriorityDefinition: "8.10",
 	/** A FEEL expression as the version tag of a called decision (`version-tag`). */
 	decisionVersionTagExpression: "8.10",
+	/** `camunda.secrets.NAME`, superseding `{{secrets.NAME}}` (`secrets`). */
+	camundaSecrets: "8.10",
+	/** `zeebe:agentDefinition` marks an agentic ad-hoc sub-process (the agent rules). */
+	agentDefinition: "8.10",
 } as const satisfies Record<string, CamundaCompatVersion>
+
+/**
+ * First version each Camunda FEEL built-in function is available in, for
+ * `feel-compatibility`. Functions every version has are absent.
+ *
+ * Taken from the `engines.camunda` ranges of `@camunda/feel-builtins` 1.4.1
+ * (MIT, © Camunda Services GmbH) — `camundaBuiltins` and
+ * `camundaReservedNameBuiltins` — the table the plugin 2.61.0 checks against.
+ * Every range there is `>=X.Y`.
+ */
+export const FEEL_BUILTIN_SINCE: Readonly<Record<string, CamundaCompatVersion>> = {
+	"context merge": "8.2",
+	"last day of month": "8.2",
+	"random number": "8.2",
+	assert: "8.3",
+	"duplicate values": "8.3",
+	"get or else": "8.3",
+	"is empty": "8.6",
+	"to base64": "8.6",
+	trim: "8.6",
+	uuid: "8.6",
+	partition: "8.7",
+	fromAi: "8.8",
+	"is blank": "8.8",
+	"from base64": "8.9",
+	"from json": "8.9",
+	"to json": "8.9",
+}
+
+/**
+ * Inbound connector properties (`zeebe:property` names) that need a newer
+ * Camunda version, and the `inbound.type` values of the connectors that take
+ * them — `rules/camunda-cloud/connector-properties/config.js` of the plugin.
+ */
+export const INBOUND_CONNECTOR_PROPERTY_SINCE: Readonly<
+	Record<string, { since: CamundaCompatVersion; connectors: readonly string[] }>
+> = {
+	messageTtl: {
+		since: "8.6",
+		connectors: [
+			"io.camunda:webhook:1",
+			"io.camunda:connector-rabbitmq-inbound:1",
+			"io.camunda:http-polling:1",
+			"io.camunda:connector-kafka-inbound:1",
+			"io.camunda:slack-webhook:1",
+			"io.camunda:aws-sqs-inbound:1",
+			"io.camunda:aws-sns-webhook:1",
+		],
+	},
+	consumeUnmatchedEvents: {
+		since: "8.6",
+		connectors: [
+			"io.camunda:webhook:1",
+			"io.camunda:connector-rabbitmq-inbound:1",
+			"io.camunda:http-polling:1",
+			"io.camunda:connector-kafka-inbound:1",
+			"io.camunda:slack-webhook:1",
+			"io.camunda:aws-sqs-inbound:1",
+			"io.camunda:aws-sns-webhook:1",
+		],
+	},
+	deduplicationModeManualFlag: {
+		since: "8.6",
+		connectors: [
+			"io.camunda:connector-rabbitmq-inbound:1",
+			"io.camunda:http-polling:1",
+			"io.camunda:connector-kafka-inbound:1",
+			"io.camunda:aws-sqs-inbound:1",
+		],
+	},
+}
 
 /** Whether BPMN Kit runs a plugin rule, and how closely. */
 export type CamundaCompatCoverage = "implemented" | "partial" | "existing" | "not-implemented"
@@ -270,12 +350,7 @@ export interface CamundaCompatRule {
  */
 export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> = {
 	"ad-hoc-sub-process": { severity: "error", since: "8.7", coverage: "implemented" },
-	"agent-fromai-contract": {
-		severity: "error",
-		since: "8.8",
-		coverage: "not-implemented",
-		note: "Needs a FEEL analyzer; BPMN Kit's `agentic/*` findings cover part of it.",
-	},
+	"agent-fromai-contract": { severity: "error", since: "8.8", coverage: "implemented" },
 	"agent-tool-documentation": {
 		severity: "warn",
 		since: "8.8",
@@ -283,12 +358,7 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 		equivalents: ["agentic/tool-no-description"],
 		note: "BPMN Kit's `agentic/tool-no-description` reports the same gap.",
 	},
-	"agent-tool-output-key": {
-		severity: "warn",
-		since: "8.8",
-		coverage: "not-implemented",
-		note: "Needs a FEEL analyzer.",
-	},
+	"agent-tool-output-key": { severity: "warn", since: "8.8", coverage: "implemented" },
 	"before-all-execution-listener": { severity: "error", since: "8.10", coverage: "implemented" },
 	"called-element": {
 		severity: "error",
@@ -297,17 +367,11 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 	},
 	"cancel-execution-listener": { severity: "error", since: "8.10", coverage: "implemented" },
 	"collapsed-subprocess": { severity: "error", until: "8.4", coverage: "implemented" },
-	"connector-properties": {
-		severity: "warn",
-		since: "8.0",
-		coverage: "not-implemented",
-		note: "Checks properties of specific Camunda connectors; BPMN Kit's `connector/*` findings validate connector templates instead.",
-	},
+	"connector-properties": { severity: "warn", since: "8.0", coverage: "implemented" },
 	"duplicate-execution-listener-headers": {
 		severity: "error",
 		since: "8.10",
-		coverage: "not-implemented",
-		note: "Execution listener headers are new in 8.10; not covered yet.",
+		coverage: "implemented",
 	},
 	"duplicate-execution-listeners": { severity: "error", since: "8.6", coverage: "implemented" },
 	"duplicate-task-headers": { severity: "error", coverage: "implemented" },
@@ -335,8 +399,8 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 	},
 	"feel-compatibility": {
 		severity: "error",
-		coverage: "not-implemented",
-		note: "Needs the per-version FEEL built-in function table from `@camunda/feel-builtins`.",
+		coverage: "implemented",
+		note: "Parses with `@bpmnkit/feel` rather than the plugin's lezer-feel grammar, so an expression only one of the two parsers accepts is judged differently.",
 	},
 	implementation: {
 		severity: "error",
@@ -348,8 +412,9 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 	"link-event": {
 		severity: "error",
 		since: "8.2",
-		coverage: "not-implemented",
-		note: "BPMN Kit's `flow/link-event-mismatch` covers bpmnlint's `link-event` rule, which overlaps; the plugin's own duplicate-name checks are not reproduced.",
+		coverage: "implemented",
+		equivalents: ["flow/link-event-mismatch"],
+		note: "Where bpmnlint's `link-event` runs (`flow/link-event-mismatch`), it reports the same unnamed or duplicate link event, and that finding stays.",
 	},
 	"loop-characteristics": { severity: "error", coverage: "implemented" },
 	"message-reference": {
@@ -372,11 +437,7 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 	"no-expression": { severity: "error", coverage: "implemented" },
 	"no-interrupting-event-subprocess": { severity: "error", since: "8.7", coverage: "implemented" },
 	"no-job-priority-definition": { severity: "error", until: "8.10", coverage: "implemented" },
-	"no-loop": {
-		severity: "error",
-		coverage: "not-implemented",
-		note: "Straight-through loops without a wait state; needs a cycle search not built yet.",
-	},
+	"no-loop": { severity: "error", coverage: "implemented" },
 	"no-multiple-none-start-events": { severity: "error", coverage: "implemented" },
 	"no-priority-definition": { severity: "error", until: "8.6", coverage: "implemented" },
 	"no-propagate-all-parent-variables": { severity: "error", until: "8.2", coverage: "implemented" },
@@ -393,12 +454,7 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 	"no-zeebe-properties": { severity: "error", until: "8.1", coverage: "implemented" },
 	"no-zeebe-user-task": { severity: "error", until: "8.5", coverage: "implemented" },
 	"priority-definition": { severity: "error", since: "8.6", coverage: "implemented" },
-	secrets: {
-		severity: "warn",
-		since: "8.3",
-		coverage: "not-implemented",
-		note: "Legacy `secrets.X` connector syntax; not covered yet.",
-	},
+	secrets: { severity: "warn", since: "8.3", coverage: "implemented" },
 	"sequence-flow-condition": {
 		severity: "error",
 		coverage: "implemented",
@@ -416,19 +472,10 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 	"task-listener": { severity: "error", since: "8.8", coverage: "implemented" },
 	"task-schedule": { severity: "error", since: "8.2", coverage: "implemented" },
 	timer: { severity: "error", coverage: "implemented" },
-	"unresolvable-secret-reference": {
-		severity: "error",
-		since: "8.10",
-		coverage: "not-implemented",
-		note: "Needs the connector secret catalogue.",
-	},
+	"unresolvable-secret-reference": { severity: "error", since: "8.10", coverage: "implemented" },
 	"user-task-definition": { severity: "warn", coverage: "implemented" },
 	"user-task-form": { severity: "error", coverage: "implemented" },
-	"variable-name": {
-		severity: "error",
-		coverage: "not-implemented",
-		note: "Needs FEEL name rules; not covered yet.",
-	},
+	"variable-name": { severity: "error", coverage: "implemented" },
 	"version-tag": { severity: "error", since: "8.6", coverage: "implemented" },
 	"wait-for-completion": { severity: "error", since: "8.5", coverage: "implemented" },
 	"zeebe-user-task": { severity: "warn", since: "8.6", coverage: "implemented" },

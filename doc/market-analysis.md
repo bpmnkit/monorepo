@@ -672,11 +672,12 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 > - **Item 9:** `.bpmnlintrc` is honoured. All 28 built-in rules are mapped exactly, in
 >   every sub-process scope (compared with bpmnlint on 43 files, 2026-09-25), and the
 >   project's own bpmnlint runs its plugins. The `@camunda/linting` Camunda-version rules
->   (2026-09-25): 52 of the 65 `bpmnlint-plugin-camunda-compat` 2.61 rules are reproduced and
->   3 more are covered by existing findings; they match the plugin on test fixtures under every
->   `camunda-cloud-*` config, and `extends: "plugin:camunda-compat/camunda-cloud-X-Y"` maps onto
->   them. The FEEL-analysis rules (`feel-compatibility`, `variable-name`, the agent `fromAi`
->   rules) and `no-loop` are not covered.
+>   (2026-09-25): all 65 `bpmnlint-plugin-camunda-compat` 2.61 rules are covered — 62
+>   reproduced, including the FEEL-analysis rules (`feel-compatibility`, `variable-name`, the
+>   agent `fromAi` and tool-result rules), `no-loop`, the secret and connector rules, and 3
+>   by existing findings. They match the plugin on test fixtures under every
+>   `camunda-cloud-*` config, and `extends: "plugin:camunda-compat/camunda-cloud-X-Y"` maps
+>   onto them.
 > - **Items 10 and 11:** all 22 MIWG reference models are in the round-trip corpus and pass.
 > - **Item 12:** inbound and linked-resource templates apply. Per-file resolution
 >   (2026-09-25): Studio asks the proxy for one model's templates

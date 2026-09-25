@@ -323,7 +323,7 @@ describe("lintDiagram with a .bpmnlintrc", () => {
 	it("applies the config and reports what it could not honour", () => {
 		const report = lintDiagram(Bpmn.parse(FAKE_JOIN), {
 			bpmnlint: resolveBpmnlintConfig({
-				rules: { "fake-join": "warn", "camunda-compat/no-loop": "error" },
+				rules: { "fake-join": "warn", "camunda-compat/no-such-rule": "error" },
 			}),
 		})
 		const diagnostic = report.diagnostics.find((d) => d.id === "flow/multi-incoming-task")
@@ -332,9 +332,10 @@ describe("lintDiagram with a .bpmnlintrc", () => {
 			bpmnlintRule: "fake-join",
 			fixable: true,
 		})
-		// camunda-compat rules BPMN Kit checks itself are governed, not listed.
+		// camunda-compat rules BPMN Kit checks itself are governed, not listed; one
+		// it does not know is.
 		expect(report.bpmnlintUnsupported).toEqual([
-			{ name: "camunda-compat/no-loop", reason: "plugin-rule", severity: "error" },
+			{ name: "camunda-compat/no-such-rule", reason: "plugin-rule", severity: "error" },
 		])
 	})
 

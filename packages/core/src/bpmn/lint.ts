@@ -6,6 +6,7 @@ import {
 } from "./bpmnlint.js"
 import {
 	applyCamundaCompatConfig,
+	dedupeCamundaCompat,
 	isCamundaCompatFinding,
 	splitCamundaCompatConfig,
 } from "./camunda-compat.js"
@@ -192,7 +193,9 @@ export function lintDiagram(definitions: BpmnDefinitions, options: LintOptions =
 					delegated: bpmnlintDelegated === true,
 					...(requested !== undefined ? { categories: requested } : {}),
 				})
-	const findings = applied?.findings ?? engineFiltered
+	// bpmnlint's own rules run last, so a compatibility finding one of them now
+	// reports on the same element (`link-event`) is dropped here.
+	const findings = applied === undefined ? engineFiltered : dedupeCamundaCompat(applied.findings)
 
 	const planes = planeIndex(definitions)
 	const diagnostics: LintDiagnostic[] = findings.map((finding) => {

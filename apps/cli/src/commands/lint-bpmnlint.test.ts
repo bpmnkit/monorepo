@@ -132,8 +132,8 @@ describe("casen lint — .bpmnlintrc", () => {
 		)
 		expect(out).toMatch(/\[deploy\] \[join\] Task "Join" needs Camunda 8\.2 or newer/)
 		expect(out).not.toContain("plugin:camunda-compat/camunda-cloud-8-0")
-		// Plugin rules BPMN Kit does not reproduce are still named.
-		expect(out).toContain("camunda-compat/no-loop")
+		// BPMN Kit reproduces every rule the config enables, so none is listed as not run.
+		expect(out).not.toContain("a plugin rule")
 	})
 
 	it("--no-bpmnlintrc ignores it", async () => {

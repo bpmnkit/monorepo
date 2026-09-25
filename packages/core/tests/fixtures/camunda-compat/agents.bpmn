@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_agents" targetNamespace="http://bpmn.io/schema/bpmn" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+  <bpmn:process id="agents" isExecutable="true">
+    <bpmn:serviceTask id="outsideTool">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="t" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=fromAi(toolCall.x, &#34;x&#34;)" target="x" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:adHocSubProcess id="plainAdHoc" name="Plain">
+      <bpmn:serviceTask id="plainTool">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:input source="=fromAi(toolCall.x)" target="x" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+    </bpmn:adHocSubProcess>
+    <bpmn:adHocSubProcess id="tools" name="Tools">
+      <bpmn:extensionElements>
+        <zeebe:properties>
+          <zeebe:property name="io.camunda.agenticai.toolContainer" value="true" />
+        </zeebe:properties>
+      </bpmn:extensionElements>
+      <bpmn:serviceTask id="toolGood">
+        <bpmn:documentation>Looks up the weather.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:input source="=fromAi(toolCall.city, &#34;The city&#34;, &#34;string&#34;)" target="city" />
+            <zeebe:input source="=fromAi(value: toolCall.days, description: &#34;Days&#34;)" target="days" />
+            <zeebe:output source="=weather" target="toolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="toolNoResult">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="toolUnmapped">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:input source="=fromAi(&#34;city&#34;)" target="a" />
+            <zeebe:input source="=fromAi(city, 1)" target="b" />
+            <zeebe:input source="=fromAi()" target="c" />
+            <zeebe:output source="=r" target="result" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="toolCasing">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:input source="=FromAI(toolCall.x)" target="a" />
+            <zeebe:input source="=fromAi(toolCall.a.b) + fromAi(other.x)" target="b" />
+            <zeebe:input source="=fromAi(if x then toolCall.x else toolCall.y)" target="c" />
+            <zeebe:input source="=fromAi(toolCall[&#34;x&#34;], null)" target="d" />
+            <zeebe:input source="=fromAi(null) + fromAi(1 + 2) + fromAi(-1)" target="e" />
+            <zeebe:input source="=fromAi([1]) + fromAi((toolCall.p)) + fromAi(toolCall.q, (&#34;d&#34;))" target="f" />
+            <zeebe:output source="=r" target="ToolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="toolDuplicateKey">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:input source="=fromAi(toolCall.q)" target="a" />
+            <zeebe:input source="=fromAi(toolCall.q, &#34;again&#34;)" target="b" />
+            <zeebe:output source="=r" target="toolCallResult" />
+            <zeebe:output source="=r" target="toolcallresult.extra" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="toolOutputFromAi">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:output source="=fromAi(toolCall.o)" target="toolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="chainA" name="Fetch">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:output source="=r" target="toolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:outgoing>chainAtoB</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="chainB">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:input source="=fromAi(toolCall.y)" target="y" />
+            <zeebe:output source="=r" target="toolCallResult" />
+            <zeebe:output source="=context put(toolCallResult, &#34;b&#34;, 1)" target="toolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:incoming>chainAtoB</bpmn:incoming>
+        <bpmn:outgoing>chainBtoC</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:scriptTask id="chainC">
+        <bpmn:extensionElements>
+          <zeebe:script expression="=1" resultVariable="toolCallResult" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>chainBtoC</bpmn:incoming>
+      </bpmn:scriptTask>
+      <bpmn:sequenceFlow id="chainAtoB" sourceRef="chainA" targetRef="chainB" />
+      <bpmn:sequenceFlow id="chainBtoC" sourceRef="chainB" targetRef="chainC" />
+      <bpmn:serviceTask id="branch">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+        </bpmn:extensionElements>
+        <bpmn:outgoing>branchToA</bpmn:outgoing>
+        <bpmn:outgoing>branchToB</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="branchA">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:output source="=a" target="toolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:incoming>branchToA</bpmn:incoming>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="branchB">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:taskHeaders>
+            <zeebe:header key="resultExpression" value="={toolCallResult: b, other: toolcallresult}" />
+          </zeebe:taskHeaders>
+        </bpmn:extensionElements>
+        <bpmn:incoming>branchToB</bpmn:incoming>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="branchToA" sourceRef="branch" targetRef="branchA">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=fromAi(toolCall.z) = 1</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="branchToB" sourceRef="branch" targetRef="branchB" />
+      <bpmn:subProcess id="toolSub">
+        <bpmn:startEvent id="toolSubStart">
+          <bpmn:outgoing>toolSubToStep</bpmn:outgoing>
+        </bpmn:startEvent>
+        <bpmn:serviceTask id="toolSubStep">
+          <bpmn:extensionElements>
+            <zeebe:taskDefinition type="t" />
+            <zeebe:ioMapping>
+              <zeebe:input source="=fromAi(toolCall.k)" target="k" />
+            </zeebe:ioMapping>
+            <zeebe:taskHeaders>
+              <zeebe:header key="resultVariable" value="toolResult" />
+            </zeebe:taskHeaders>
+          </bpmn:extensionElements>
+          <bpmn:incoming>toolSubToStep</bpmn:incoming>
+        </bpmn:serviceTask>
+        <bpmn:sequenceFlow id="toolSubToStep" sourceRef="toolSubStart" targetRef="toolSubStep" />
+      </bpmn:subProcess>
+      <bpmn:serviceTask id="toolBoundary">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+          <zeebe:ioMapping>
+            <zeebe:output source="=a" target="toolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+      <bpmn:boundaryEvent id="toolBoundaryError" attachedToRef="toolBoundary">
+        <bpmn:extensionElements>
+          <zeebe:ioMapping>
+            <zeebe:output source="=e" target="toolCallResult" />
+          </zeebe:ioMapping>
+        </bpmn:extensionElements>
+        <bpmn:errorEventDefinition id="toolBoundaryErrorDef" />
+      </bpmn:boundaryEvent>
+    </bpmn:adHocSubProcess>
+    <bpmn:adHocSubProcess id="legacyAgent" zeebe:modelerTemplate="io.camunda.connectors.agenticai.aiagent.jobworker.v1">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="agent" />
+      </bpmn:extensionElements>
+      <bpmn:serviceTask id="legacyTool">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+    </bpmn:adHocSubProcess>
+    <bpmn:adHocSubProcess id="forkedAgent">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="io.camunda.agenticai:aiagent-job-worker:1" />
+      </bpmn:extensionElements>
+      <bpmn:serviceTask id="forkedTool">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+    </bpmn:adHocSubProcess>
+    <bpmn:adHocSubProcess id="definedAgent">
+      <bpmn:extensionElements>
+        <zeebe:agentDefinition />
+      </bpmn:extensionElements>
+      <bpmn:serviceTask id="definedTool">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="t" />
+        </bpmn:extensionElements>
+      </bpmn:serviceTask>
+    </bpmn:adHocSubProcess>
+  </bpmn:process>
+</bpmn:definitions>
