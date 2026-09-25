@@ -160,11 +160,17 @@ describe("BPMNLINT_RULE_MAP", () => {
 		for (const [rule, mapping] of Object.entries(BPMNLINT_RULE_MAP)) {
 			if (mapping.match === "approximate") expect(mapping.note, rule).toBeTruthy()
 		}
+		const replaced = Object.values(BPMNLINT_RULE_MAP).flatMap((m) => m.replaces ?? [])
+		expect(new Set(replaced).size).toBe(replaced.length)
+		for (const id of replaced) expect(ids, id).not.toContain(id)
 	})
 
 	it("maps back from a finding to its rule", () => {
 		expect(bpmnlintRuleForFinding("flow/mixed-gateway")).toBe("no-gateway-join-fork")
 		expect(bpmnlintRuleForFinding("pattern/user-task-no-timer")).toBeUndefined()
+		// Replaced findings no longer stand in for the rule; its native finding does.
+		expect(bpmnlintRuleForFinding("flow/implicit-end")).toBe("no-implicit-end")
+		expect(bpmnlintRuleForFinding("flow/dead-end")).toBeUndefined()
 	})
 
 	it("names only finding ids some rule actually emits", () => {
@@ -179,7 +185,9 @@ describe("BPMNLINT_RULE_MAP", () => {
 				.map((match) => match[1]),
 		)
 		for (const [rule, mapping] of Object.entries(BPMNLINT_RULE_MAP)) {
-			for (const id of mapping.findings) expect(emitted, `${rule} → ${id}`).toContain(id)
+			for (const id of [...mapping.findings, ...(mapping.replaces ?? [])]) {
+				expect(emitted, `${rule} → ${id}`).toContain(id)
+			}
 		}
 	})
 })
@@ -255,6 +263,43 @@ describe("applyBpmnlintConfig — severity", () => {
 		expect(fakeJoin(applied.findings)).toEqual([])
 		expect(applied.findings.some((f) => f.id === "flow/disconnected")).toBe(false)
 		expect(applied.unsupported).toEqual([])
+	})
+})
+
+describe("applyBpmnlintConfig — replaced findings", () => {
+	// `a` has no outgoing flow: BPMN Kit's `flow/dead-end`, bpmnlint's `no-implicit-end`.
+	const defs = Bpmn.parse(
+		doc(
+			`<bpmn:startEvent id="start" name="S" /><bpmn:task id="a" name="A" />${flow("f1", "start", "a")}`,
+		),
+	)
+	const findings = optimize(defs).findings
+	const deadEnds = (list: { id: string }[]) => list.filter((f) => f.id === "flow/dead-end")
+
+	it("keeps BPMN Kit's own finding when the config does not set the rule", () => {
+		expect(deadEnds(findings)).toHaveLength(1)
+		expect(deadEnds(applyBpmnlintConfig(defs, findings, config({})).findings)).toHaveLength(1)
+	})
+
+	it("reports the rule with its native finding instead, at the configured level", () => {
+		const applied = applyBpmnlintConfig(
+			defs,
+			findings,
+			config({ "no-implicit-end": { severity: "warn" } }),
+		).findings
+		expect(deadEnds(applied)).toEqual([])
+		expect(applied.filter((f) => f.bpmnlintRule === "no-implicit-end")).toMatchObject([
+			{ id: "flow/implicit-end", severity: "warning", elementIds: ["a"] },
+		])
+	})
+
+	it("drops it when the rule is off or real bpmnlint reported it", () => {
+		const off = config({ "no-implicit-end": { severity: "off" } })
+		expect(deadEnds(applyBpmnlintConfig(defs, findings, off).findings)).toEqual([])
+		const on = config({ "no-implicit-end": { severity: "error" } })
+		const delegated = applyBpmnlintConfig(defs, findings, on, { delegated: true }).findings
+		expect(deadEnds(delegated)).toEqual([])
+		expect(delegated.some((f) => f.id === "flow/implicit-end")).toBe(false)
 	})
 })
 
@@ -511,6 +556,91 @@ describe("native bpmnlint rules", () => {
 		])
 		const withPlainEnd = `${terminate}<bpmn:endEvent id="plain" />${flow("g", "start", "plain")}`
 		expect(withRule(doc(withPlainEnd), "superfluous-termination")).toEqual([])
+	})
+
+	describe("in every scope, with bpmnlint's exemptions", () => {
+		// Also compared with real bpmnlint in tests/node/bpmnlint-parity.test.ts.
+		const xml = readFileSync(
+			fileURLToPath(new URL("fixtures/bpmnlint/scopes-and-exemptions.bpmn", import.meta.url)),
+			"utf-8",
+		)
+		const elements = (rule: string) => withRule(xml, rule).flatMap((f) => f.elementIds)
+
+		it("conditional-flows: an unconditional non-default flow beside a condition or default", () => {
+			// gw_xor forks without conditions or a default flow, so its flows are fine.
+			expect(ids(withRule(xml, "conditional-flows"))).toEqual([
+				"feel/missing-condition@f_plain",
+				"feel/missing-condition@f_x1_other",
+				"feel/missing-condition@sf9",
+			])
+		})
+
+		it("fake-join: sub-processes and start events (the rest is flow/multi-incoming-task)", () => {
+			expect(ids(withRule(xml, "fake-join"))).toEqual([
+				"flow/multi-incoming-task@start_joined",
+				"flow/multi-incoming-task@sub_join_task",
+			])
+		})
+
+		it("label-required: pools, lanes, events, blank names and conditional flows", () => {
+			expect(elements("label-required")).toEqual([
+				"pool",
+				"blackbox",
+				"lane_unnamed",
+				"lane_child",
+				"task_blank",
+				"f_cond",
+				"sub_start",
+				"sub_catch",
+				"tx_start",
+				"tx_task",
+				"evt_start",
+				"adhoc_unnamed",
+			])
+		})
+
+		it("no-gateway-join-fork and superfluous-gateway: gateways inside sub-processes", () => {
+			expect(ids(withRule(xml, "no-gateway-join-fork"))).toEqual(["flow/mixed-gateway@sub_mixed"])
+			expect(ids(withRule(xml, "superfluous-gateway"))).toEqual([
+				"flow/redundant-gateway@sub_redundant",
+			])
+		})
+
+		it("no-implicit-end: exempts end, link throw, compensation and ad-hoc and event sub-process elements", () => {
+			// sub_comp is reported: bpmnlint looks for its association in the process, not in `sub`.
+			expect(elements("no-implicit-end")).toEqual([
+				"boundary_timer",
+				"tx",
+				"adhoc",
+				"sub_dead",
+				"sub_catch",
+				"sub_comp",
+				"tx_task",
+				"evt_task",
+			])
+		})
+
+		it("no-implicit-start: exempts start, boundary, link catch, compensation and ad-hoc and event sub-process elements", () => {
+			expect(elements("no-implicit-start")).toEqual([
+				"task_r1",
+				"task_r2",
+				"tx",
+				"adhoc",
+				"sub_orphan",
+				"sub_catch",
+			])
+		})
+
+		it("do not report data objects or data stores", () => {
+			const all = [
+				"conditional-flows",
+				"fake-join",
+				"label-required",
+				"no-implicit-end",
+				"no-implicit-start",
+			].flatMap(elements)
+			for (const id of ["data_obj", "data_ref", "store_ref"]) expect(all).not.toContain(id)
+		})
 	})
 
 	const shape = (id: string, x: number, y: number, w: number, h: number, extra = "") =>

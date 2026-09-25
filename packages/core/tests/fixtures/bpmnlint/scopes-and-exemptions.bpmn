@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  bpmnlint parity fixture: violations of conditional-flows, fake-join, label-required,
+  no-gateway-join-fork, no-implicit-end, no-implicit-start and superfluous-gateway inside
+  every kind of sub-process, next to each element bpmnlint exempts. Written for this
+  repository. tests/node/bpmnlint-parity.test.ts compares BPMN Kit with real bpmnlint on it;
+  tests/bpmnlint.test.ts pins the element ids.
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_parity" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:collaboration id="collab">
+    <bpmn:participant id="pool" processRef="proc" />
+    <bpmn:participant id="blackbox" name="  " />
+  </bpmn:collaboration>
+  <bpmn:process id="proc" isExecutable="true">
+    <bpmn:laneSet id="lanes">
+      <bpmn:lane id="lane_unnamed" />
+      <bpmn:lane id="lane_named" name="Clerks">
+        <bpmn:childLaneSet id="child_lanes">
+          <bpmn:lane id="lane_child" />
+        </bpmn:childLaneSet>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="start" name="Start">
+      <bpmn:outgoing>f_start</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="gw_split" name="Route?" default="f_default">
+      <bpmn:incoming>f_start</bpmn:incoming>
+      <bpmn:outgoing>f_cond</bpmn:outgoing>
+      <bpmn:outgoing>f_default</bpmn:outgoing>
+      <bpmn:outgoing>f_plain</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="task_blank" name="   ">
+      <bpmn:incoming>f_plain</bpmn:incoming>
+      <bpmn:outgoing>f_blank_out</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="gw_xor" name="Which?">
+      <bpmn:incoming>f_default</bpmn:incoming>
+      <bpmn:outgoing>f_x1</bpmn:outgoing>
+      <bpmn:outgoing>f_x2</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="task_x1" name="X1" default="f_x1_out">
+      <bpmn:incoming>f_x1</bpmn:incoming>
+      <bpmn:outgoing>f_x1_out</bpmn:outgoing>
+      <bpmn:outgoing>f_x1_other</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="task_x2" name="X2">
+      <bpmn:incoming>f_x2</bpmn:incoming>
+      <bpmn:outgoing>f_x2_out</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:boundaryEvent id="boundary_timer" name="Late" attachedToRef="task_x1">
+      <bpmn:timerEventDefinition id="timer_def" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="boundary_comp" name="Compensate X1" attachedToRef="task_x1">
+      <bpmn:compensateEventDefinition id="comp_def" />
+    </bpmn:boundaryEvent>
+    <bpmn:task id="handler_top" name="Undo X1" isForCompensation="true" />
+    <bpmn:intermediateThrowEvent id="link_throw" name="To B">
+      <bpmn:incoming>f_x2_out</bpmn:incoming>
+      <bpmn:linkEventDefinition id="link_throw_def" name="B" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:intermediateCatchEvent id="link_catch" name="From B">
+      <bpmn:outgoing>f_catch</bpmn:outgoing>
+      <bpmn:linkEventDefinition id="link_catch_def" name="B" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:task id="task_r1" name="R1">
+      <bpmn:outgoing>f_r1</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="task_r2" name="R2">
+      <bpmn:outgoing>f_r2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:startEvent id="start_joined" name="Restarted">
+      <bpmn:incoming>f_r1</bpmn:incoming>
+      <bpmn:incoming>f_r2</bpmn:incoming>
+      <bpmn:outgoing>f_restart</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="end" name="Done">
+      <bpmn:incoming>f_blank_out</bpmn:incoming>
+      <bpmn:incoming>f_x1_out</bpmn:incoming>
+      <bpmn:incoming>f_sub_out</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="end_other" name="Other">
+      <bpmn:incoming>f_x1_other</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="end_link" name="Linked">
+      <bpmn:incoming>f_catch</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="end_restart" name="Restart done">
+      <bpmn:incoming>f_restart</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:subProcess id="sub" name="Sub">
+      <bpmn:incoming>f_cond</bpmn:incoming>
+      <bpmn:outgoing>f_sub_out</bpmn:outgoing>
+      <bpmn:startEvent id="sub_start">
+        <bpmn:outgoing>sf1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:parallelGateway id="sub_fork">
+        <bpmn:incoming>sf1</bpmn:incoming>
+        <bpmn:outgoing>sf2</bpmn:outgoing>
+        <bpmn:outgoing>sf3</bpmn:outgoing>
+      </bpmn:parallelGateway>
+      <bpmn:task id="sub_t1" name="T1">
+        <bpmn:incoming>sf2</bpmn:incoming>
+        <bpmn:outgoing>sf4</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="sub_t2" name="T2">
+        <bpmn:incoming>sf3</bpmn:incoming>
+        <bpmn:outgoing>sf5</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="sub_join_task" name="Join">
+        <bpmn:incoming>sf4</bpmn:incoming>
+        <bpmn:incoming>sf5</bpmn:incoming>
+        <bpmn:outgoing>sf6</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="sub_orphan" name="Orphan">
+        <bpmn:outgoing>sf7</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:exclusiveGateway id="sub_mixed" name="Mixed?">
+        <bpmn:incoming>sf6</bpmn:incoming>
+        <bpmn:incoming>sf7</bpmn:incoming>
+        <bpmn:outgoing>sf8</bpmn:outgoing>
+        <bpmn:outgoing>sf9</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:exclusiveGateway id="sub_redundant">
+        <bpmn:incoming>sf8</bpmn:incoming>
+        <bpmn:outgoing>sf10</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:task id="sub_dead" name="Dead end">
+        <bpmn:incoming>sf9</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:endEvent id="sub_end" name="Sub done">
+        <bpmn:incoming>sf10</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:intermediateCatchEvent id="sub_catch">
+        <bpmn:timerEventDefinition id="sub_timer_def" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:boundaryEvent id="sub_comp" name="Compensate T1" attachedToRef="sub_t1">
+        <bpmn:compensateEventDefinition id="sub_comp_def" />
+      </bpmn:boundaryEvent>
+      <bpmn:task id="sub_handler" name="Undo T1" isForCompensation="true" />
+      <bpmn:sequenceFlow id="sf1" sourceRef="sub_start" targetRef="sub_fork" />
+      <bpmn:sequenceFlow id="sf2" sourceRef="sub_fork" targetRef="sub_t1" />
+      <bpmn:sequenceFlow id="sf3" sourceRef="sub_fork" targetRef="sub_t2" />
+      <bpmn:sequenceFlow id="sf4" sourceRef="sub_t1" targetRef="sub_join_task" />
+      <bpmn:sequenceFlow id="sf5" sourceRef="sub_t2" targetRef="sub_join_task" />
+      <bpmn:sequenceFlow id="sf6" sourceRef="sub_join_task" targetRef="sub_mixed" />
+      <bpmn:sequenceFlow id="sf7" sourceRef="sub_orphan" targetRef="sub_mixed" />
+      <bpmn:sequenceFlow id="sf8" name="ok" sourceRef="sub_mixed" targetRef="sub_redundant">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">= ok</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="sf9" sourceRef="sub_mixed" targetRef="sub_dead" />
+      <bpmn:sequenceFlow id="sf10" sourceRef="sub_redundant" targetRef="sub_end" />
+      <bpmn:association id="sub_assoc" sourceRef="sub_comp" targetRef="sub_handler" />
+    </bpmn:subProcess>
+
+    <bpmn:transaction id="tx" name="Tx">
+      <bpmn:startEvent id="tx_start">
+        <bpmn:outgoing>tf1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:task id="tx_task">
+        <bpmn:incoming>tf1</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:sequenceFlow id="tf1" sourceRef="tx_start" targetRef="tx_task" />
+    </bpmn:transaction>
+
+    <bpmn:subProcess id="evt_sub" name="On message" triggeredByEvent="true">
+      <bpmn:startEvent id="evt_start">
+        <bpmn:outgoing>ef1</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="evt_msg_def" />
+      </bpmn:startEvent>
+      <bpmn:task id="evt_task" name="Handle">
+        <bpmn:incoming>ef1</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:sequenceFlow id="ef1" sourceRef="evt_start" targetRef="evt_task" />
+    </bpmn:subProcess>
+
+    <bpmn:adHocSubProcess id="adhoc" name="Tools">
+      <bpmn:task id="adhoc_tool" name="Tool" />
+      <bpmn:task id="adhoc_unnamed" />
+    </bpmn:adHocSubProcess>
+
+    <bpmn:dataObject id="data_obj" />
+    <bpmn:dataObjectReference id="data_ref" dataObjectRef="data_obj" />
+    <bpmn:dataStoreReference id="store_ref" />
+
+    <bpmn:sequenceFlow id="f_start" sourceRef="start" targetRef="gw_split" />
+    <bpmn:sequenceFlow id="f_cond" sourceRef="gw_split" targetRef="sub">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">= a</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="f_default" name="Otherwise" sourceRef="gw_split" targetRef="gw_xor" />
+    <bpmn:sequenceFlow id="f_plain" sourceRef="gw_split" targetRef="task_blank" />
+    <bpmn:sequenceFlow id="f_blank_out" sourceRef="task_blank" targetRef="end" />
+    <bpmn:sequenceFlow id="f_x1" sourceRef="gw_xor" targetRef="task_x1" />
+    <bpmn:sequenceFlow id="f_x2" sourceRef="gw_xor" targetRef="task_x2" />
+    <bpmn:sequenceFlow id="f_x1_out" sourceRef="task_x1" targetRef="end" />
+    <bpmn:sequenceFlow id="f_x1_other" sourceRef="task_x1" targetRef="end_other" />
+    <bpmn:sequenceFlow id="f_x2_out" sourceRef="task_x2" targetRef="link_throw" />
+    <bpmn:sequenceFlow id="f_catch" sourceRef="link_catch" targetRef="end_link" />
+    <bpmn:sequenceFlow id="f_r1" sourceRef="task_r1" targetRef="start_joined" />
+    <bpmn:sequenceFlow id="f_r2" sourceRef="task_r2" targetRef="start_joined" />
+    <bpmn:sequenceFlow id="f_restart" sourceRef="start_joined" targetRef="end_restart" />
+    <bpmn:sequenceFlow id="f_sub_out" sourceRef="sub" targetRef="end" />
+    <bpmn:association id="assoc_top" sourceRef="boundary_comp" targetRef="handler_top" />
+  </bpmn:process>
+</bpmn:definitions>

@@ -1,5 +1,6 @@
 /**
- * Native equivalents of bpmnlint rules BPMN Kit had no finding for.
+ * Native equivalents of bpmnlint rules BPMN Kit had no finding for, or whose
+ * finding checks only the top-level process or a different set of elements.
  *
  * These are opt-in: nothing here runs unless a `.bpmnlintrc` enables the
  * bpmnlint rule it stands in for (see `../bpmnlint.ts`). The default
@@ -168,6 +169,30 @@ function hasCondition(flow: BpmnSequenceFlow): boolean {
 	return flow.conditionExpression !== undefined
 }
 
+/**
+ * The default flow as bpmn-moddle reads it: only activities and exclusive,
+ * inclusive and complex gateways have a `default` property. On any other
+ * element the attribute is foreign, and bpmnlint does not see it.
+ */
+function modelledDefaultOf(el: BpmnFlowElement): string | undefined {
+	const hasDefault =
+		isActivity(el) ||
+		el.type === "exclusiveGateway" ||
+		el.type === "inclusiveGateway" ||
+		el.type === "complexGateway"
+	return hasDefault ? defaultFlowOf(el) : undefined
+}
+
+/** Has event definitions, all of one type — bpmnlint's `isLinkEvent` and `isCompensationEvent`. */
+function onlyDefinitions(el: BpmnFlowElement, type: BpmnEventDefinition["type"]): boolean {
+	const defs = eventDefinitionsOf(el)
+	return defs.length > 0 && defs.every((d) => d.type === type)
+}
+
+function isBlank(name: string | undefined): boolean {
+	return (name ?? "").trim() === ""
+}
+
 // ---------------------------------------------------------------------------
 // Rule plumbing
 // ---------------------------------------------------------------------------
@@ -233,6 +258,31 @@ const RULES: Record<string, NativeRule> = {
 						scope.processId,
 						[el.id],
 					)
+				}
+			}
+		},
+	},
+
+	// Stands in for `feel/empty-condition` while configured (see `replaces` in
+	// `../bpmnlint.ts`), so it shares that finding's category.
+	"conditional-flows": {
+		category: "feel",
+		check({ scopes }, report) {
+			for (const scope of scopes) {
+				for (const el of scope.container.flowElements) {
+					const outgoing = scope.bySource.get(el.id) ?? []
+					const defaultFlow = modelledDefaultOf(el)
+					if (defaultFlow === undefined && !outgoing.some(hasCondition)) continue
+					for (const flow of outgoing) {
+						if (hasCondition(flow) || flow.id === defaultFlow) continue
+						report(
+							"feel/missing-condition",
+							`Sequence flow "${flow.id}" leaves "${el.id}", which routes by condition, but has no condition and is not the default flow.`,
+							"Add a condition expression, or make this flow the default.",
+							scope.processId,
+							[flow.id],
+						)
+					}
 				}
 			}
 		},
@@ -305,6 +355,28 @@ const RULES: Record<string, NativeRule> = {
 		},
 	},
 
+	"fake-join": {
+		category: "flow",
+		check({ scopes }, report) {
+			for (const scope of scopes) {
+				for (const el of scope.container.flowElements) {
+					if (!isActivity(el) && !isEvent(el)) continue
+					// `flow/multi-incoming-task` already covers the top level, except start events.
+					if (scope.kind === "process" && el.type !== "startEvent") continue
+					const incoming = (scope.byTarget.get(el.id) ?? []).length
+					if (incoming <= 1) continue
+					report(
+						"flow/multi-incoming-task",
+						`Element "${el.id}" (${el.type}) has ${incoming} incoming flows, which do not join.`,
+						"Join the flows with a gateway before this element.",
+						scope.processId,
+						[el.id],
+					)
+				}
+			}
+		},
+	},
+
 	global: {
 		category: "pattern",
 		check({ defs, scopes }, report) {
@@ -365,6 +437,46 @@ const RULES: Record<string, NativeRule> = {
 							defs.id,
 							[element.id],
 						)
+					}
+				}
+			}
+		},
+	},
+
+	"label-required": {
+		category: "naming",
+		check({ defs, scopes }, report) {
+			const missing = (id: string, what: string, processId: string) =>
+				report(
+					"naming/missing-label",
+					`${what} "${id}" has no label.`,
+					"Name it, so the diagram says what it does or means.",
+					processId,
+					[id],
+				)
+			for (const collaboration of defs.collaborations) {
+				for (const participant of collaboration.participants) {
+					if (isBlank(participant.name)) missing(participant.id, "Participant", defs.id)
+				}
+			}
+			const lanes = (list: BpmnLane[], processId: string) => {
+				for (const lane of list) {
+					if (isBlank(lane.name)) missing(lane.id, "Lane", processId)
+					if (lane.childLaneSet) lanes(lane.childLaneSet.lanes, processId)
+				}
+			}
+			for (const process of defs.processes) lanes(process.laneSet?.lanes ?? [], process.id)
+			for (const scope of scopes) {
+				for (const el of scope.container.flowElements) {
+					// Sub-processes, parallel and event-based gateways and joins need no label.
+					if (!isFlowNode(el) || isSubContainer(el)) continue
+					if (el.type === "parallelGateway" || el.type === "eventBasedGateway") continue
+					if (isGateway(el) && (scope.bySource.get(el.id) ?? []).length <= 1) continue
+					if (isBlank(el.name)) missing(el.id, `${el.type} element`, scope.processId)
+				}
+				for (const flow of scope.container.sequenceFlows) {
+					if (hasCondition(flow) && isBlank(flow.name)) {
+						missing(flow.id, "Conditional sequence flow", scope.processId)
 					}
 				}
 			}
@@ -543,6 +655,85 @@ const RULES: Record<string, NativeRule> = {
 		},
 	},
 
+	"no-gateway-join-fork": {
+		category: "flow",
+		check({ scopes }, report) {
+			// `flow/mixed-gateway` from `optimize()` covers the top level.
+			for (const scope of scopes) {
+				if (scope.kind === "process") continue
+				for (const el of scope.container.flowElements) {
+					if (!isGateway(el)) continue
+					const incoming = (scope.byTarget.get(el.id) ?? []).length
+					const outgoing = (scope.bySource.get(el.id) ?? []).length
+					if (incoming <= 1 || outgoing <= 1) continue
+					report(
+						"flow/mixed-gateway",
+						`Gateway "${el.id}" (${el.type}) has ${incoming} incoming and ${outgoing} outgoing flows — it both joins and forks.`,
+						"Split it into a joining gateway followed by a forking one.",
+						scope.processId,
+						[el.id],
+					)
+				}
+			}
+		},
+	},
+
+	"no-implicit-end": {
+		category: "flow",
+		check({ defs, scopes }, report) {
+			const processes = new Map(defs.processes.map((p) => [p.id, p]))
+			for (const scope of scopes) {
+				// Activities of an ad-hoc sub-process start and end on demand.
+				if (scope.kind === "adHocSubProcess") continue
+				// bpmnlint looks for a compensation handler's association in the
+				// enclosing process only, not in the sub-process that holds the event.
+				const associations = processes.get(scope.processId)?.associations ?? []
+				for (const el of scope.container.flowElements) {
+					if (!isFlowNode(el) || el.type === "endEvent" || isEventSubProcess(el)) continue
+					if (el.type === "intermediateThrowEvent" && onlyDefinitions(el, "link")) continue
+					if (isActivity(el) && el.isForCompensation === true) continue
+					if (
+						el.type === "boundaryEvent" &&
+						onlyDefinitions(el, "compensate") &&
+						associations.some((a) => a.sourceRef === el.id)
+					)
+						continue
+					if ((scope.bySource.get(el.id) ?? []).length > 0) continue
+					report(
+						"flow/implicit-end",
+						`Element "${el.id}" (${el.type}) has no outgoing sequence flow, so it ends the flow implicitly.`,
+						"Connect it to an end event.",
+						scope.processId,
+						[el.id],
+					)
+				}
+			}
+		},
+	},
+
+	"no-implicit-start": {
+		category: "flow",
+		check({ scopes }, report) {
+			for (const scope of scopes) {
+				if (scope.kind === "adHocSubProcess") continue
+				for (const el of scope.container.flowElements) {
+					if (!isFlowNode(el) || isEventSubProcess(el)) continue
+					if (el.type === "startEvent" || el.type === "boundaryEvent") continue
+					if (el.type === "intermediateCatchEvent" && onlyDefinitions(el, "link")) continue
+					if (isActivity(el) && el.isForCompensation === true) continue
+					if ((scope.byTarget.get(el.id) ?? []).length > 0) continue
+					report(
+						"flow/implicit-start",
+						`Element "${el.id}" (${el.type}) has no incoming sequence flow, so it starts the flow implicitly.`,
+						"Connect it from a start event or an upstream element.",
+						scope.processId,
+						[el.id],
+					)
+				}
+			}
+		},
+	},
+
 	"no-implicit-split": {
 		category: "flow",
 		check({ scopes }, report) {
@@ -661,6 +852,29 @@ const RULES: Record<string, NativeRule> = {
 						"flow/sub-process-typed-start",
 						`Start event "${el.id}" of sub-process "${scope.container.id}" has an event definition.`,
 						"A sub-process is entered through its sequence flow — make the start event blank.",
+						scope.processId,
+						[el.id],
+					)
+				}
+			}
+		},
+	},
+
+	"superfluous-gateway": {
+		category: "flow",
+		check({ scopes }, report) {
+			// `flow/redundant-gateway` from `optimize()` covers the top level.
+			for (const scope of scopes) {
+				if (scope.kind === "process") continue
+				for (const el of scope.container.flowElements) {
+					if (!isGateway(el)) continue
+					const incoming = (scope.byTarget.get(el.id) ?? []).length
+					const outgoing = (scope.bySource.get(el.id) ?? []).length
+					if (incoming !== 1 || outgoing !== 1) continue
+					report(
+						"flow/redundant-gateway",
+						`Gateway "${el.id}" (${el.type}) has only 1 incoming and 1 outgoing flow — it is redundant.`,
+						"Remove this gateway and connect its source directly to its target.",
 						scope.processId,
 						[el.id],
 					)
