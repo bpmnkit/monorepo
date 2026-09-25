@@ -6,7 +6,8 @@
  * This module reads that file's JSON, expands bpmnlint's built-in presets, and
  * maps each bpmnlint rule onto the BPMN Kit findings that report the same
  * problem, so the file's `off`/`warn`/`error`/`info` settings govern those
- * findings. Rules BPMN Kit had no finding for are implemented natively in
+ * findings. Rules BPMN Kit had no finding for, and the parts of rules its
+ * findings do not cover exactly, are implemented natively in
  * `optimize/bpmnlint-rules.ts` and only run when the config enables them.
  *
  * Pure and dependency-free: nothing here touches the filesystem or loads
@@ -288,6 +289,13 @@ export interface BpmnlintRuleMapping {
 	match: BpmnlintMatch
 	/** Where the two differ, for `approximate`. */
 	note?: string
+	/**
+	 * BPMN Kit's own findings for the same concern whose semantics differ from
+	 * the rule's. While a config sets the rule, at any level, they are dropped
+	 * and the native finding in `findings` reports the rule instead. Without a
+	 * config they are reported as usual.
+	 */
+	replaces?: readonly string[]
 }
 
 /**
@@ -300,9 +308,9 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 	"ad-hoc-sub-process": { findings: ["flow/ad-hoc-start-end-event"], match: "exact" },
 	"conditional-event": { findings: ["flow/conditional-event-no-condition"], match: "exact" },
 	"conditional-flows": {
-		findings: ["feel/empty-condition"],
-		match: "approximate",
-		note: "Only flows leaving an exclusive or inclusive split gateway are checked, and they are checked whether or not a sibling flow is conditional.",
+		findings: ["feel/missing-condition"],
+		replaces: ["feel/empty-condition"],
+		match: "exact",
 	},
 	"end-event-required": {
 		findings: ["flow/no-end-event", "flow/sub-process-no-end-event"],
@@ -313,26 +321,23 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 		findings: ["flow/event-sub-process-untyped-start"],
 		match: "exact",
 	},
-	"fake-join": {
-		findings: ["flow/multi-incoming-task"],
-		match: "approximate",
-		note: "Top-level process scope only; elements inside sub-processes are not checked.",
-	},
+	"fake-join": { findings: ["flow/multi-incoming-task"], match: "exact" },
 	global: {
 		findings: ["pattern/global-element"],
 		match: "exact",
 		note: "Also reports a global element with no name attribute at all; bpmnlint only reports an empty one.",
 	},
 	"label-required": {
-		findings: [
+		findings: ["naming/missing-label"],
+		replaces: [
 			"naming/unlabeled-task",
 			"naming/unlabeled-start-event",
 			"naming/unlabeled-end-event",
 			"naming/split-gateway-no-label",
 			"naming/missing-flow-condition",
 		],
-		match: "approximate",
-		note: "Covers tasks, call activities, start and end events, exclusive/inclusive split gateways and the flows leaving them, in the top-level process scope. Intermediate and boundary events, elements inside sub-processes, pools and lanes are not checked.",
+		match: "exact",
+		note: "Lanes are read from a process's first lane set, the one BPMN Kit models.",
 	},
 	"link-event": { findings: ["flow/link-event-mismatch"], match: "exact" },
 	"no-bpmndi": { findings: ["pattern/missing-di"], match: "exact" },
@@ -343,21 +348,17 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 		match: "exact",
 		note: "One finding per duplicate flow naming the flow, its source and its target, where bpmnlint reports the three separately.",
 	},
-	"no-gateway-join-fork": {
-		findings: ["flow/mixed-gateway"],
-		match: "approximate",
-		note: "Top-level process scope only.",
-	},
+	"no-gateway-join-fork": { findings: ["flow/mixed-gateway"], match: "exact" },
 	"no-implicit-end": {
-		findings: ["flow/dead-end"],
-		match: "approximate",
-		note: "Top-level process scope only. It does not exempt link throw events, compensation handlers or event sub-processes the way bpmnlint does, and it also reports data objects and data stores.",
+		findings: ["flow/implicit-end"],
+		replaces: ["flow/dead-end"],
+		match: "exact",
 	},
 	"no-implicit-split": { findings: ["flow/implicit-split"], match: "exact" },
 	"no-implicit-start": {
-		findings: ["flow/unreachable"],
-		match: "approximate",
-		note: "Reports every element not reachable from a start event: an element without incoming flows, and also everything downstream of it. Top-level process scope only; it also reports event sub-processes, data objects and data stores, which bpmnlint exempts.",
+		findings: ["flow/implicit-start"],
+		replaces: ["flow/unreachable"],
+		match: "exact",
 	},
 	"no-inclusive-gateway": { findings: ["pattern/inclusive-gateway"], match: "exact" },
 	"no-overlapping-elements": { findings: ["pattern/overlapping-elements"], match: "exact" },
@@ -369,11 +370,7 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 		match: "exact",
 	},
 	"sub-process-blank-start-event": { findings: ["flow/sub-process-typed-start"], match: "exact" },
-	"superfluous-gateway": {
-		findings: ["flow/redundant-gateway"],
-		match: "approximate",
-		note: "Top-level process scope only.",
-	},
+	"superfluous-gateway": { findings: ["flow/redundant-gateway"], match: "exact" },
 	"superfluous-label": { findings: ["naming/superfluous-flow-label"], match: "exact" },
 	"superfluous-termination": { findings: ["flow/superfluous-termination"], match: "exact" },
 }
@@ -381,6 +378,12 @@ export const BPMNLINT_RULE_MAP: Readonly<Record<string, BpmnlintRuleMapping>> = 
 const RULE_FOR_FINDING: ReadonlyMap<string, string> = new Map(
 	Object.entries(BPMNLINT_RULE_MAP).flatMap(([rule, mapping]) =>
 		mapping.findings.map((finding) => [finding, rule] as const),
+	),
+)
+
+const RULE_REPLACING_FINDING: ReadonlyMap<string, string> = new Map(
+	Object.entries(BPMNLINT_RULE_MAP).flatMap(([rule, mapping]) =>
+		(mapping.replaces ?? []).map((finding) => [finding, rule] as const),
 	),
 )
 
@@ -436,6 +439,8 @@ const SEVERITY: Record<Exclude<BpmnlintSeverity, "off">, OptimizationSeverity> =
  * - A finding that stands in for a configured rule takes that rule's
  *   severity, or is dropped when the rule is `off`, and carries the rule name
  *   in `bpmnlintRule`.
+ * - A finding a configured rule `replaces` is dropped: the rule's native
+ *   finding reports the concern with bpmnlint's semantics instead.
  * - Enabled rules BPMN Kit implements natively are run and their findings
  *   added.
  * - Findings with no bpmnlint counterpart, and findings whose rule the config
@@ -460,6 +465,8 @@ export function applyBpmnlintConfig(
 	const result: OptimizationFinding[] = []
 
 	for (const finding of findings) {
+		const replacedBy = RULE_REPLACING_FINDING.get(finding.id)
+		if (replacedBy !== undefined && config.rules[replacedBy] !== undefined) continue
 		const rule = bpmnlintRuleForFinding(finding.id)
 		const setting = rule === undefined ? undefined : config.rules[rule]
 		if (rule === undefined || setting === undefined) {
