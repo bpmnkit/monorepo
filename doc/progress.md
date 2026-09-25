@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-09-25 — Per-file element-template resolution
+
+- Proxy: `GET /element-templates?root=…&file=…` returns only the templates one diagram sees (`discoverElementTemplates`); `file` must lie inside `root`, `configFolder` must be a folder name; `?root=` alone is unchanged.
+- `@bpmnkit/plugins`: connector-catalog gains `diagramPath`, `setDiagramPath()` and `setWorkspaceTemplates()`; templates live in layers (resolved > host > base), so switching diagrams or uninstalling takes the previous set back. config-panel-bpmn gains `unregisterTemplate()`, which restores a shadowed bundled template.
+- Studio resolves templates for the open model's file through the proxy.
+- `casen lint` and the `casen dev` checks judge connector inputs against each diagram's own `.camunda/element-templates/` chain (root: cwd / served folder), scoped per call.
+- VS Code: the Problems panel does the same from the extension host, with the workspace folder as root and no proxy (connector-input findings are new there).
+- bpmnkit.com/editor and Drop stay on bundled templates (no filesystem); documented in the connectors page, the VS Code guide and the `casen dev` page.
+
 ## 2026-09-25 — Camunda version compatibility lint (`compat/…` findings)
 
 - New `compat/…` findings in `@bpmnkit/core` (in the existing `deploy` category, so the returned `OptimizationCategory` union is unchanged — adding to it would be a major change): check a diagram against the Camunda 8 version it targets (`modeler:executionPlatformVersion`), as Camunda Modeler does with `@camunda/linting`. Reports constructs the target cannot run ("Ad-hoc sub-process "Tools" needs Camunda 8.7 or newer; this model targets Camunda 8.6.") and properties it requires (timer values, error/escalation codes, signal and message names, implementations, input collections, listener types).

@@ -13,5 +13,12 @@ A `.bpmnlintrc` in the diagram's folder or above is honoured the way `casen lint
 When the workspace has `bpmnlint` installed, bpmnlint's own findings, plugin rules included,
 appear with source `bpmnlint`. See [bpmnlint Compatibility](/docs/guides/bpmnlint).
 
+A connector task's required inputs are checked against the element templates **this file**
+sees: `.camunda/element-templates/` in the diagram's folder and every folder above it up to the
+workspace folder, the nearest winning on an id, then the bundled Camunda templates. A diagram in
+`a/` is never checked against `b/`'s templates. The extension host reads them itself; no proxy
+is needed. An unsaved file has no folder, so only the bundled templates apply. See
+[workspace templates](/docs/packages/connectors#workspace-templates).
+
 ---
 Source: https://bpmnkit.com/docs/guides/vscode

@@ -271,7 +271,7 @@
 		{
 			"id": "cli.dev.what-you-get",
 			"file": "chunks/cli.dev.what-you-get.md",
-			"tokens": 460,
+			"tokens": 491,
 			"tags": [
 				"cli",
 				"dev",
@@ -3160,7 +3160,7 @@
 		{
 			"id": "guides.vscode.what-it-does-findings-in-the-problems-panel",
 			"file": "chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md",
-			"tokens": 203,
+			"tokens": 311,
 			"tags": [
 				"guides",
 				"vscode",
@@ -3169,7 +3169,9 @@
 				"panel"
 			],
 			"entities": [
-				"bpmnkit.lint.forceEngineRules"
+				"bpmnkit.lint.forceEngineRules",
+				"a/",
+				"b/"
 			]
 		},
 		{
@@ -3821,7 +3823,7 @@
 		{
 			"id": "packages.connectors.workspace-templates",
 			"file": "chunks/packages.connectors.workspace-templates.md",
-			"tokens": 189,
+			"tokens": 639,
 			"tags": [
 				"packages",
 				"connectors",
@@ -3835,7 +3837,12 @@
 				"listConnectors",
 				"searchConnectors",
 				"getTemplate",
-				"clearRegisteredTemplates"
+				"clearRegisteredTemplates",
+				"a/",
+				"a/.camunda/element-templates/",
+				"b/",
+				"diagramPath",
+				"workspaceRoot"
 			]
 		},
 		{

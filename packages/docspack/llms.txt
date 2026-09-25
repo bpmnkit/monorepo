@@ -30,7 +30,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [casen connector — Built-in catalog](.llms/chunks/cli.connector.built-in-catalog.md) — 426 tokens
 - [casen connector — Programmatic usage](.llms/chunks/cli.connector.programmatic-usage.md) — 45 tokens
 - [casen dev](.llms/chunks/cli.dev.md) — 185 tokens
-- [casen dev — What you get](.llms/chunks/cli.dev.what-you-get.md) — 460 tokens
+- [casen dev — What you get](.llms/chunks/cli.dev.what-you-get.md) — 491 tokens
 - [casen dev — Flags](.llms/chunks/cli.dev.flags.md) — 158 tokens
 - [casen dev — Deploying and AI](.llms/chunks/cli.dev.deploying-and-ai.md) — 205 tokens
 - [casen diff](.llms/chunks/cli.diff.md) — 412 tokens
@@ -231,7 +231,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [VS Code Extension — Installing](.llms/chunks/guides.vscode.installing.md) — 185 tokens
 - [VS Code Extension — What it does — Preview beside the source](.llms/chunks/guides.vscode.what-it-does-preview-beside-the-source.md) — 131 tokens
 - [VS Code Extension — What it does — Editing that leaves a readable diff](.llms/chunks/guides.vscode.what-it-does-editing-that-leaves-a-readable-diff.md) — 302 tokens
-- [VS Code Extension — What it does — Findings in the Problems panel](.llms/chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md) — 203 tokens
+- [VS Code Extension — What it does — Findings in the Problems panel](.llms/chunks/guides.vscode.what-it-does-findings-in-the-problems-panel.md) — 311 tokens
 - [VS Code Extension — What it does — A visual diff in Source Control](.llms/chunks/guides.vscode.what-it-does-a-visual-diff-in-source-control.md) — 146 tokens
 - [VS Code Extension — What it does — Run the diagram in the editor](.llms/chunks/guides.vscode.what-it-does-run-the-diagram-in-the-editor.md) — 105 tokens
 - [VS Code Extension — What it does — A FEEL playground on your selection](.llms/chunks/guides.vscode.what-it-does-a-feel-playground-on-your-selection.md) — 75 tokens
@@ -279,7 +279,7 @@ npx bpmnkit-docs ask "how do I deploy a process"
 - [@bpmnkit/connectors — Installation](.llms/chunks/packages.connectors.installation.md) — 240 tokens
 - [@bpmnkit/connectors — Applying a template](.llms/chunks/packages.connectors.applying-a-template.md) — 503 tokens
 - [@bpmnkit/connectors — Applying to an element — inbound connectors and linked resources](.llms/chunks/packages.connectors.applying-to-an-element-inbound-connectors-and-linked-resources.md) — 667 tokens
-- [@bpmnkit/connectors — Workspace templates](.llms/chunks/packages.connectors.workspace-templates.md) — 189 tokens
+- [@bpmnkit/connectors — Workspace templates](.llms/chunks/packages.connectors.workspace-templates.md) — 639 tokens
 - [@bpmnkit/connectors — Validating a template](.llms/chunks/packages.connectors.validating-a-template.md) — 213 tokens
 - [@bpmnkit/connectors — API Reference](.llms/chunks/packages.connectors.api-reference.md) — 262 tokens
 - [@bpmnkit/connectors — Stability](.llms/chunks/packages.connectors.stability.md) — 137 tokens
