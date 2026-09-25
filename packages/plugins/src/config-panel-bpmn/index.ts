@@ -124,6 +124,13 @@ for (const tpl of CAMUNDA_CONNECTOR_TEMPLATES) {
 }
 
 /**
+ * The bundled registrations, kept so `unregisterTemplate` can put one back
+ * after a workspace template that shadowed it goes away — the same object, so
+ * reference-equality in the renderer still holds.
+ */
+const BUNDLED_REGISTRY = new Map(TEMPLATE_REGISTRY)
+
+/**
  * Task definition type → template id mapping (first-wins; used for
  * backward-compat detection in `read` when `zeebe:modelerTemplate` is absent).
  */
@@ -134,6 +141,9 @@ for (const tpl of SERVICE_TASK_TEMPLATES) {
 		TASK_TYPE_TO_TEMPLATE_ID.set(taskType, tpl.id)
 	}
 }
+
+/** The bundled task-type mapping, restored by `unregisterTemplate`. */
+const BUNDLED_TASK_TYPES = new Map(TASK_TYPE_TO_TEMPLATE_ID)
 
 // ── General schema (all flow element types) ───────────────────────────────────
 
@@ -193,6 +203,9 @@ const CONNECTOR_OPTIONS: Array<{ value: string; label: string }> = [
 		extractTaskType(t) ? [{ value: t.id, label: t.name }] : [],
 	).sort((a, b) => a.label.localeCompare(b.label)),
 ]
+
+/** Bundled connector labels, restored when a workspace template shadowing one is dropped. */
+const BUNDLED_OPTION_LABELS = new Map(CONNECTOR_OPTIONS.map((o) => [o.value, o.label]))
 
 const GENERIC_SERVICE_TASK_SCHEMA: PanelSchema = {
 	compact: [{ key: "name", label: "Name", type: "text", placeholder: "Task name" }],
@@ -2016,6 +2029,13 @@ export function createConfigPanelBpmnPlugin(
 ): CanvasPlugin & {
 	/** Register an additional element template to make it available in the UI. */
 	registerTemplate(template: ElementTemplate): void
+	/**
+	 * Remove a template registered with `registerTemplate`. A bundled Camunda
+	 * template with the same id comes back; any other id disappears from the
+	 * connector picker. Lets a host that switches diagrams drop the previous
+	 * diagram's templates rather than accumulate them.
+	 */
+	unregisterTemplate(id: string): void
 } {
 	const userTaskSchema = makeUserTaskSchema()
 	const businessRuleTaskSchema = makeBusinessRuleTaskSchema(options.onEditValidationDmn)
@@ -2076,9 +2096,29 @@ export function createConfigPanelBpmnPlugin(
 			if (taskType && !TASK_TYPE_TO_TEMPLATE_ID.has(taskType)) {
 				TASK_TYPE_TO_TEMPLATE_ID.set(taskType, template.id)
 			}
-			if (!CONNECTOR_OPTIONS.some((o) => o.value === template.id)) {
-				CONNECTOR_OPTIONS.push({ value: template.id, label: template.name })
+			const option = CONNECTOR_OPTIONS.find((o) => o.value === template.id)
+			if (option) option.label = template.name
+			else CONNECTOR_OPTIONS.push({ value: template.id, label: template.name })
+		},
+
+		unregisterTemplate(id: string): void {
+			const bundled = BUNDLED_REGISTRY.get(id)
+			if (bundled) TEMPLATE_REGISTRY.set(id, bundled)
+			else TEMPLATE_REGISTRY.delete(id)
+
+			for (const [taskType, templateId] of TASK_TYPE_TO_TEMPLATE_ID) {
+				if (templateId !== id) continue
+				const original = BUNDLED_TASK_TYPES.get(taskType)
+				if (original) TASK_TYPE_TO_TEMPLATE_ID.set(taskType, original)
+				else TASK_TYPE_TO_TEMPLATE_ID.delete(taskType)
 			}
+
+			const index = CONNECTOR_OPTIONS.findIndex((o) => o.value === id)
+			if (index === -1) return
+			const bundledLabel = BUNDLED_OPTION_LABELS.get(id)
+			const option = CONNECTOR_OPTIONS[index]
+			if (bundledLabel !== undefined && option) option.label = bundledLabel
+			else CONNECTOR_OPTIONS.splice(index, 1)
 		},
 	}
 }

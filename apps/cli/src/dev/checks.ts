@@ -125,7 +125,11 @@ export async function checkFile(
 
 	let lint: LintSummary
 	try {
-		const { findings } = await lintBpmn(absolute, text)
+		// `absolute` is the project root joined to `path`, so what precedes `path`
+		// is the root — where this file's element-template search stops.
+		const { findings } = await lintBpmn(absolute, text, {
+			templateRoot: absolute.slice(0, absolute.length - path.length),
+		})
 		lint = {
 			errors: findings.filter((f) => f.severity === "error").length,
 			warnings: findings.filter((f) => f.severity === "warning").length,

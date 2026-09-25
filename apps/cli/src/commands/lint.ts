@@ -1,5 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises"
-import { applyConnectorTemplate } from "@bpmnkit/connectors"
+import {
+	type ElementTemplate,
+	applyConnectorTemplate,
+	applyElementTemplate,
+} from "@bpmnkit/connectors"
+import { discoverElementTemplates } from "@bpmnkit/connectors/node"
 import {
 	Bpmn,
 	applyBpmnlintConfig,
@@ -24,14 +29,34 @@ import type { Command, CommandGroup } from "../types.js"
 
 /** Resolves a connector template's missing required keys via @bpmnkit/connectors, for the `connector/*` lint rule. */
 export function resolveConnectorRequirements(templateId: string, boundKeys: string[]): string[] {
-	const values = Object.fromEntries(boundKeys.map((k) => [k, "x"]))
-	const result = applyConnectorTemplate(templateId, values)
-	// Only "missing-required" problems mean something is actually unset — an "unknown-key"
-	// problem here just means a bound key doesn't match propertyKey()'s lookup key (e.g. a
-	// property whose `id` differs from its zeebe:input binding name), not a missing value.
-	return result.problems
-		.filter((p) => p.kind === "missing-required" && p.key !== undefined)
-		.map((p) => p.key as string)
+	return connectorRequirementsResolver(new Map())(templateId, boundKeys)
+}
+
+/**
+ * {@link resolveConnectorRequirements} against one diagram's own templates
+ * first, then the bundled catalogue — so a project template, including one
+ * that shadows a bundled id, is checked as the project wrote it.
+ *
+ * Scoped to the call rather than registered globally: `casen dev` lints many
+ * diagrams in one process, and one folder's templates must not decide how
+ * another folder's diagram is judged.
+ */
+export function connectorRequirementsResolver(
+	workspace: ReadonlyMap<string, ElementTemplate>,
+): (templateId: string, boundKeys: string[]) => string[] {
+	return (templateId, boundKeys) => {
+		const values = Object.fromEntries(boundKeys.map((k) => [k, "x"]))
+		const own = workspace.get(templateId)
+		const result = own
+			? applyElementTemplate(own, values)
+			: applyConnectorTemplate(templateId, values)
+		// Only "missing-required" problems mean something is actually unset — an "unknown-key"
+		// problem here just means a bound key doesn't match propertyKey()'s lookup key (e.g. a
+		// property whose `id` differs from its zeebe:input binding name), not a missing value.
+		return result.problems
+			.filter((p) => p.kind === "missing-required" && p.key !== undefined)
+			.map((p) => p.key as string)
+	}
 }
 
 const SEVERITY_SYMBOL: Record<string, string> = {
@@ -97,6 +122,13 @@ export interface LintBpmnOptions {
 	deployProfile?: boolean
 	/** Honour the nearest `.bpmnlintrc`. Default `true`. */
 	bpmnlintrc?: boolean
+	/**
+	 * Where the element-template search stops walking up from the file — the
+	 * project root. Default: the current directory. Templates are resolved per
+	 * file, as Desktop Modeler does: `.camunda/element-templates/` from the
+	 * file's folder up to here, nearest winning.
+	 */
+	templateRoot?: string
 }
 
 /**
@@ -144,9 +176,17 @@ export async function lintBpmn(
 		...(camundaVersion !== undefined ? { camundaVersion } : {}),
 	})
 
+	// The templates this diagram sees. A broken template file is `casen connector
+	// validate`'s to report; here it simply is not one of the diagram's templates.
+	const discovered = await discoverElementTemplates({
+		from: filePath,
+		root: options.templateRoot ?? process.cwd(),
+	})
+	const workspace = new Map(discovered.templates.map((t) => [t.id, t]))
+
 	const report = optimize(defs, {
 		categories: resolvedCategories,
-		resolveConnectorRequirements,
+		resolveConnectorRequirements: connectorRequirementsResolver(workspace),
 		...(camundaVersion !== undefined ? { camundaVersion } : {}),
 	})
 

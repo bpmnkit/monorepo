@@ -678,7 +678,13 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 >   them. The FEEL-analysis rules (`feel-compatibility`, `variable-name`, the agent `fromAi`
 >   rules) and `no-loop` are not covered.
 > - **Items 10 and 11:** all 22 MIWG reference models are in the round-trip corpus and pass.
-> - **Item 12:** inbound and linked-resource templates apply.
+> - **Item 12:** inbound and linked-resource templates apply. Per-file resolution
+>   (2026-09-25): Studio asks the proxy for one model's templates
+>   (`GET /element-templates?root=…&file=…`) and swaps them when another model opens.
+>   `casen lint`, the `casen dev` checks and the VS Code Problems panel check connector inputs
+>   against each diagram's own `.camunda/element-templates/` chain. bpmnkit.com/editor and Drop
+>   have no filesystem and use the bundled templates. The VS Code and `casen dev` editors have
+>   no properties panel yet, so their templates are used only by lint.
 > - **Item 13:** vendor DI, label styles and default-namespace files are preserved.
 > - **Item 14:** FEEL matches 375 of the 378 examples in Camunda's documentation.
 >

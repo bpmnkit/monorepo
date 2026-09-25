@@ -609,6 +609,9 @@ importers:
       '@bpmnkit/canvas':
         specifier: workspace:*
         version: link:../../packages/canvas
+      '@bpmnkit/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@bpmnkit/core':
         specifier: workspace:*
         version: link:../../packages/core

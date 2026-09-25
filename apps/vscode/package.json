@@ -226,6 +226,7 @@
 	"dependencies": {
 		"@bpmnkit/ascii": "workspace:*",
 		"@bpmnkit/canvas": "workspace:*",
+		"@bpmnkit/connectors": "workspace:*",
 		"@bpmnkit/core": "workspace:*",
 		"@bpmnkit/editor": "workspace:*",
 		"@bpmnkit/engine": "workspace:*",
