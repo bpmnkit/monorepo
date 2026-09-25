@@ -1004,7 +1004,7 @@ npm install @bpmnkit/plugins
 | \`/history\` | \`createHistoryPlugin()\` | Visual undo/redo history panel |
 | \`/config-panel\` | \`createConfigPanelPlugin(options)\` | Properties panel for selected elements |
 | \`/config-panel-bpmn\` | \`createConfigPanelBpmnPlugin(options)\` | BPMN-specific properties panel |
-| \`/connector-catalog\` | \`createConnectorCatalogPlugin(options)\` | Import API connectors from OpenAPI specs via a catalog panel |
+| \`/connector-catalog\` | \`createConnectorCatalogPlugin(options)\` | Import API connectors from OpenAPI specs via a catalog panel; register a project's element templates, per diagram (\`diagramPath\`, \`setDiagramPath\`) or project-wide |
 | \`/pattern-advisor\` | \`createPatternAdvisorPlugin(options)\` | Side panel flagging production-failure patterns, with fixes |
 | \`/variable-flow\` | \`createVariableFlowPlugin(options)\` | Overlay showing which elements read and write each variable |
 

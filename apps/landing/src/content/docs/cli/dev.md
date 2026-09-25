@@ -49,7 +49,9 @@ casen dev ./processes  # another folder
   generator — and the open diagram reloads. If you have unsaved edits in the browser at the same
   time, nothing is thrown away: you choose between reloading and overwriting.
 - **Checks on every change.** Each changed BPMN file is linted exactly as
-  `casen lint` would lint it (including a project `.bpmnlintrc`), and the
+  `casen lint` would lint it (including a project `.bpmnlintrc`, and connector inputs checked
+  against the element templates from the file's folder up to the served folder — see
+  [workspace templates](/docs/packages/connectors#workspace-templates)), and the
   scenarios in its `<file>.bpmn.tests.json` sidecar are run as `casen test` runs them. Changing a
   `.dmn` file re-runs the scenarios of the processes beside it. Results appear in the browser's
   Checks panel and in the terminal.

@@ -1076,13 +1076,19 @@ export function ModelDetail() {
 		)
 		// In FS mode the project's own .camunda/element-templates/ are discovered by
 		// the proxy and handed over — the browser cannot walk a filesystem itself.
+		// Resolved for this model's file, the way Desktop Modeler does: only the
+		// folders from the file's own directory up to the project root apply. The
+		// editor is rebuilt per model, and the plugin's uninstall takes this file's
+		// templates back, so the next model starts from its own.
 		const projectStore = useProjectsStore.getState()
 		const workspaceRoot =
 			projectStore.projects.find((project) => project.id === projectStore.activeProjectId)?.path ??
 			""
+		const proxyUrl = useClusterStore.getState().proxyUrl
 		const connectorCatalog = createConnectorCatalogPlugin(configPanelBpmn, bridgePalette, {
-			proxyUrl: useClusterStore.getState().proxyUrl,
+			proxyUrl,
 			workspaceRoot,
+			...(proxyUrl !== "" && workspaceRoot !== "" && model.path ? { diagramPath: model.path } : {}),
 			onWorkspaceProblem: (problem) => {
 				console.warn(`[element-templates] ${problem.file} ${problem.path}: ${problem.message}`)
 			},

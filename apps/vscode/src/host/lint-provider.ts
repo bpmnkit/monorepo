@@ -26,6 +26,11 @@ import {
 	placeDiagnostics,
 } from "./diagnostics.js"
 import { kindForPath } from "./documents.js"
+import {
+	type ConnectorRequirementsResolver,
+	requirementsResolver,
+	resolverForFile,
+} from "./templates.js"
 
 const SEVERITY: Record<"error" | "warning" | "info", vscode.DiagnosticSeverity> = {
 	error: vscode.DiagnosticSeverity.Error,
@@ -137,6 +142,25 @@ export class LintProvider {
 		}
 	}
 
+	/**
+	 * Checks connector inputs against this file's own element templates —
+	 * `.camunda/element-templates/` from its folder up to the workspace folder —
+	 * then the bundled catalogue. An unsaved file has no folder, so only the
+	 * bundled catalogue applies.
+	 */
+	private async connectorResolver(
+		document: vscode.TextDocument,
+	): Promise<ConnectorRequirementsResolver> {
+		if (document.uri.scheme !== "file") return requirementsResolver([])
+		const folder = vscode.workspace.getWorkspaceFolder(document.uri)
+		try {
+			return await resolverForFile(document.uri.fsPath, folder?.uri.fsPath)
+		} catch {
+			// An unreadable template folder costs the project's templates, not the lint.
+			return requirementsResolver([])
+		}
+	}
+
 	private async run(document: vscode.TextDocument): Promise<void> {
 		const text = document.getText()
 		const version = document.version
@@ -150,11 +174,15 @@ export class LintProvider {
 			return
 		}
 
-		const { setup, problem } = await this.bpmnlint(document, text)
+		const [{ setup, problem }, resolveConnectorRequirements] = await Promise.all([
+			this.bpmnlint(document, text),
+			this.connectorResolver(document),
+		])
 		// Typing continued while bpmnlint ran; the run scheduled for that edit wins.
 		if (document.version !== version || document.isClosed) return
 
 		const report = lintDiagram(definitions, {
+			resolveConnectorRequirements,
 			forceEngineRules: vscode.workspace
 				.getConfiguration("bpmnkit", document.uri)
 				.get<boolean>("lint.forceEngineRules", false),
