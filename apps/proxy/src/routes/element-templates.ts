@@ -14,12 +14,17 @@
  * inside `root`, and the walk stops there. Without that bound the walk would
  * climb to the filesystem root and read template folders the caller never
  * named.
+ *
+ * Given the proxy's `WorkspaceRoots`, `root` must also be one the proxy accepts
+ * as a workspace (see workspace.ts), and `file` must resolve inside it with
+ * symlinks followed.
  */
 
 import { existsSync } from "node:fs"
 import { homedir } from "node:os"
 import { isAbsolute, resolve, sep } from "node:path"
 import { collectElementTemplates, discoverElementTemplates } from "@bpmnkit/connectors/node"
+import type { WorkspaceRoots } from "../workspace.js"
 
 export interface RouteResult {
 	status: number
@@ -52,11 +57,16 @@ function bad(message: string): RouteResult {
 	return { status: 400, body: { error: message } }
 }
 
-export async function handleElementTemplates(params: URLSearchParams): Promise<RouteResult> {
+export async function handleElementTemplates(
+	params: URLSearchParams,
+	workspace?: WorkspaceRoots,
+): Promise<RouteResult> {
 	const root = expandHome(params.get("root") ?? "")
 	if (root === "" || !existsSync(root)) {
 		return bad("root query parameter must name an existing directory")
 	}
+	const opened = workspace?.open(root)
+	if (opened && !opened.ok) return { status: opened.status, body: { error: opened.error } }
 	const configFolder = params.get("configFolder") ?? undefined
 	const file = params.get("file")
 
@@ -78,6 +88,9 @@ export async function handleElementTemplates(params: URLSearchParams): Promise<R
 		return bad("file must lie inside root")
 	}
 	if (!existsSync(absFile)) return { status: 404, body: { error: "file not found" } }
+	if (opened?.ok && !workspace?.contains(opened.root, absFile)) {
+		return { status: 403, body: { error: "file resolves outside root" } }
+	}
 
 	const { templates, problems, directories } = await discoverElementTemplates({
 		from: absFile,

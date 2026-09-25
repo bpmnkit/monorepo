@@ -52,6 +52,15 @@ export class ProxyFsAdapter implements FsCapableAdapter {
 		return `${this.projectPath}/${relPath}`
 	}
 
+	/**
+	 * `path=<abs>&root=<project>` — the proxy only touches files inside a
+	 * workspace root, and naming the root on every call keeps that working
+	 * after the proxy restarts, when it has forgotten which roots were opened.
+	 */
+	private pathQuery(relPath: string): string {
+		return `path=${encodeURIComponent(this.absPath(relPath))}&root=${encodeURIComponent(this.projectPath)}`
+	}
+
 	private async request<T>(method: string, endpoint: string, body?: unknown): Promise<T> {
 		const url = `${this.proxyUrl}${endpoint}`
 		const res = await fetch(url, {
@@ -99,9 +108,8 @@ export class ProxyFsAdapter implements FsCapableAdapter {
 	async getModel(id: string): Promise<ModelFile | null> {
 		const relPath = this.idToPath.get(id)
 		if (!relPath) return null
-		const abs = this.absPath(relPath)
 		const [content, meta] = await Promise.all([
-			this.request<{ content: string }>("GET", `/fs/read?path=${encodeURIComponent(abs)}`).then(
+			this.request<{ content: string }>("GET", `/fs/read?${this.pathQuery(relPath)}`).then(
 				(r) => r.content,
 			),
 			this.loadMeta(relPath),
@@ -131,7 +139,11 @@ export class ProxyFsAdapter implements FsCapableAdapter {
 			throw new Error("Cannot save model: no path set (new FS-mode models require a path)")
 
 		const abs = this.absPath(relPath)
-		await this.request("POST", "/fs/write", { path: abs, content: model.content })
+		await this.request("POST", "/fs/write", {
+			path: abs,
+			content: model.content,
+			root: this.projectPath,
+		})
 
 		const meta: FileMeta = {
 			id,
@@ -153,8 +165,7 @@ export class ProxyFsAdapter implements FsCapableAdapter {
 	async deleteModel(id: string): Promise<void> {
 		const relPath = this.idToPath.get(id)
 		if (!relPath) return
-		const abs = this.absPath(relPath)
-		await this.request("DELETE", `/fs/file?path=${encodeURIComponent(abs)}`)
+		await this.request("DELETE", `/fs/file?${this.pathQuery(relPath)}`)
 		this.idToPath.delete(id)
 	}
 
@@ -175,7 +186,7 @@ export class ProxyFsAdapter implements FsCapableAdapter {
 	async moveModel(fromRelPath: string, toRelPath: string): Promise<ModelFile> {
 		const fromAbs = this.absPath(fromRelPath)
 		const toAbs = this.absPath(toRelPath)
-		await this.request("POST", "/fs/move", { from: fromAbs, to: toAbs })
+		await this.request("POST", "/fs/move", { from: fromAbs, to: toAbs, root: this.projectPath })
 
 		// Update UUID cache
 		for (const [id, p] of this.idToPath) {
@@ -190,18 +201,17 @@ export class ProxyFsAdapter implements FsCapableAdapter {
 
 	async createFolder(relPath: string): Promise<void> {
 		const abs = this.absPath(relPath)
-		await this.request("POST", "/fs/mkdir", { path: abs })
+		await this.request("POST", "/fs/mkdir", { path: abs, root: this.projectPath })
 	}
 
 	async saveMeta(relPath: string, meta: FileMeta): Promise<void> {
 		const abs = this.absPath(relPath)
-		await this.request("POST", "/fs/meta", { path: abs, meta })
+		await this.request("POST", "/fs/meta", { path: abs, meta, root: this.projectPath })
 	}
 
 	async loadMeta(relPath: string): Promise<FileMeta | null> {
-		const abs = this.absPath(relPath)
 		try {
-			return await this.request<FileMeta>("GET", `/fs/meta?path=${encodeURIComponent(abs)}`)
+			return await this.request<FileMeta>("GET", `/fs/meta?${this.pathQuery(relPath)}`)
 		} catch {
 			return null
 		}

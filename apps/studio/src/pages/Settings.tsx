@@ -117,6 +117,10 @@ export function Settings() {
 					toast.error(
 						body?.error ?? "Folder not found. Check the path exists on the proxy machine.",
 					)
+				} else if (res.status === 403 || res.status === 400) {
+					// The proxy refuses folders such as ~ or ~/.ssh, and says why.
+					const body = (await res.json().catch(() => null)) as { error?: string } | null
+					toast.error(body?.error ?? `The proxy refused this folder (${res.status}).`)
 				} else {
 					toast.error(`Proxy returned an error (${res.status}). Check the proxy server logs.`)
 				}

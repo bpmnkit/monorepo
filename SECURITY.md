@@ -41,9 +41,15 @@ proxy. The things most worth reporting are therefore:
 - **Generated output.** A template, label or expression that escapes its context in generated
   XML, HTML or an ASCII rendering — or that injects an executable payload into a deployed
   process.
-- **`@bpmnkit/proxy`.** It binds to localhost and holds cluster credentials. Anything that lets
-  a web page or another local process read those credentials, reach a configured cluster, or
-  execute code through the sandbox is in scope.
+- **`@bpmnkit/proxy`** (and the desktop app's `proxy-rs`). It holds cluster credentials, reads
+  and writes project files, and starts AI CLIs. By default it listens on loopback only, answers
+  only requests whose `Host` is a loopback name, and serves only first-party and loopback
+  browser origins (others get `403`); its file routes are confined to workspace roots and model
+  files. Anything that gets a web page, or a machine on the network, past those checks — to
+  read the credentials, reach a configured cluster, touch a file outside a workspace root, or
+  execute code through the sandbox or an AI CLI — is in scope. Running it with `--host`,
+  `--allow-origin` or `--allow-host` widens that on purpose; findings that need one of those
+  flags are in scope only if the flag does more than its documentation says.
 - **Credential handling.** Profile storage, token caching, and anything that writes a secret to
   a log, an error message, or a generated file.
 

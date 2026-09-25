@@ -90,7 +90,7 @@ createOperate({
 })
 ```
 
-The proxy answers with `Access-Control-Allow-Origin: *` and acts with the stored credentials for any caller, so keep it on a trusted machine.
+The proxy acts with the stored credentials, so it only answers browser origins it trusts: bpmnkit.com, Studio, the desktop app and any `localhost` origin. To mount Operate on another origin, start the proxy with `casen proxy start --allow-origin https://your.app`.
 
 ## API Reference
 
