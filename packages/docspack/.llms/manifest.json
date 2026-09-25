@@ -961,7 +961,7 @@
 		{
 			"id": "getting-started.conformance.linting-bpmnlint-compatibility",
 			"file": "chunks/getting-started.conformance.linting-bpmnlint-compatibility.md",
-			"tokens": 149,
+			"tokens": 140,
 			"tags": [
 				"getting-started",
 				"conformance",
@@ -1664,7 +1664,7 @@
 		{
 			"id": "guides.bpmnlint.rule-mapping",
 			"file": "chunks/guides.bpmnlint.rule-mapping.md",
-			"tokens": 987,
+			"tokens": 1004,
 			"tags": [
 				"guides",
 				"bpmnlint",
@@ -1672,8 +1672,10 @@
 				"mapping"
 			],
 			"entities": [
+				"flow/unreachable",
 				"flow/ad-hoc-start-end-event",
 				"flow/conditional-event-no-condition",
+				"feel/missing-condition",
 				"feel/empty-condition",
 				"flow/no-end-event",
 				"flow/sub-process-no-end-event",
@@ -1681,9 +1683,7 @@
 				"flow/event-sub-process-untyped-start",
 				"flow/multi-incoming-task",
 				"pattern/global-element",
-				"naming/unlabeled-task",
-				"naming/unlabeled-start-event",
-				"naming/unlabeled-end-event"
+				"naming/missing-label"
 			]
 		},
 		{

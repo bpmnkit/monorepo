@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-09-25 — All 28 bpmnlint rules match bpmnlint exactly
+
+- The seven approximate rules (`conditional-flows`, `fake-join`, `label-required`, `no-gateway-join-fork`, `no-implicit-end`, `no-implicit-start`, `superfluous-gateway`) now check inside embedded, event and ad-hoc sub-processes and transactions, with bpmnlint's exemptions: link events, compensation handlers and boundary events, event sub-processes, the contents of ad-hoc sub-processes, data objects and data stores.
+- `fake-join`, `no-gateway-join-fork` and `superfluous-gateway` keep BPMN Kit's top-level finding; a native check reports the same id inside sub-processes (and for start events, for `fake-join`).
+- The other four get native findings with bpmnlint's semantics: `feel/missing-condition`, `naming/missing-label`, `flow/implicit-end` and `flow/implicit-start`. A new optional `replaces` field on `BpmnlintRuleMapping` drops BPMN Kit's own finding for the same concern while a `.bpmnlintrc` sets the rule. Without a config, `casen lint` reports the same as before.
+- Parity is now a test: `tests/node/bpmnlint-parity.test.ts` runs real bpmnlint beside BPMN Kit under `bpmnlint:all` on every `.bpmn` file in the repository (43, the MIWG models included, plus a new fixture with each rule's violations and exemptions in every kind of sub-process), and requires the same elements for every rule.
+- Docs: 28 exact, 0 approximate on the bpmnlint guide and the conformance page.
+
 ## 2026-09-25 — Labels render in their BPMNLabelStyle font
 
 - `@bpmnkit/canvas`, `exportSvg` and the editor's inline label editor draw a label in the `dc:Font` of the `BPMNLabelStyle` its `BPMNLabel labelStyle` references: family (default stack kept as fallback, names CSS-quoted), size in px, bold, italic, underline, strike-through.
