@@ -331,6 +331,7 @@ const { semanticHash, changes } = await writeBpmn(defs, { output: "flow.bpmn" })
 |--------|-------------|
 | `layoutProcess(process)` | Auto-layout all elements; returns `LayoutResult` |
 | `optimize(defs)` | Run all optimization rules; returns `OptimizeReport` |
+| `analyzeCamundaCompat(defs, version?)` | What the targeted Camunda 8 version cannot run or requires, as `compat/*` findings — Camunda Modeler's `@camunda/linting` rules |
 | `compactify(defs)` | Convert to compact `CompactDiagram` |
 | `expand(compact)` | Restore full `BpmnDefinitions` |
 | `createCompactStream(opts?)` | Read a diagram out of a model's token stream, frame by frame |

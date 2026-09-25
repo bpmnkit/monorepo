@@ -116,11 +116,24 @@ describe("casen lint — .bpmnlintrc", () => {
 	})
 
 	it("says which configured rules it could not apply", async () => {
-		rc({ extends: "plugin:camunda-compat/camunda-cloud-8-6", rules: { "acme/x": "error" } })
+		rc({ extends: "plugin:acme/recommended", rules: { "acme/x": "error" } })
 		const notice = text(await run())
 		expect(notice).toContain("Not applied — no BPMN Kit equivalent")
-		expect(notice).toContain("plugin:camunda-compat/camunda-cloud-8-6")
+		expect(notice).toContain("plugin:acme/recommended")
 		expect(notice).toContain("acme/x")
+	})
+
+	it("checks the Camunda version a camunda-compat config names, with BPMN Kit's own check", async () => {
+		rc({ extends: "plugin:camunda-compat/camunda-cloud-8-0" })
+		const out = text(await run())
+		// The model names no platform; the config's version applies anyway.
+		expect(out).toMatch(
+			/✖ \[compat\] \[or\] Inclusive gateway "or" needs Camunda 8\.1 or newer; this model targets Camunda 8\.0\. \(camunda-compat\/element-type\)/,
+		)
+		expect(out).toMatch(/\[compat\] \[join\] Task "Join" needs Camunda 8\.2 or newer/)
+		expect(out).not.toContain("plugin:camunda-compat/camunda-cloud-8-0")
+		// Plugin rules BPMN Kit does not reproduce are still named.
+		expect(out).toContain("camunda-compat/no-loop")
 	})
 
 	it("--no-bpmnlintrc ignores it", async () => {

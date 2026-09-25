@@ -1,4 +1,4 @@
-import { Bpmn, Dmn, Form, optimize, semanticHash } from "@bpmnkit/core"
+import { Bpmn, Dmn, Form, analyzeCamundaCompat, optimize, semanticHash } from "@bpmnkit/core"
 import type { BpmnDefinitions, BpmnFlowElement } from "@bpmnkit/core"
 import { Engine, runScenario } from "@bpmnkit/engine"
 import { runScenarioWasm } from "@bpmnkit/engine/wasm-runner"
@@ -96,6 +96,21 @@ describe.each(ALL_TEMPLATES.map((t) => [t.id, t] as const))("%s", (_id, template
 		// template should be something you can lint clean before changing it.
 		const errors = optimize(defs).findings.filter((f) => f.severity === "error")
 		expect(errors.map((f) => `${f.id}: ${f.message}`)).toEqual([])
+	})
+
+	it("runs on the Camunda version it targets", () => {
+		// What the Camunda version check leaves is what bpmnlint-plugin-camunda-compat
+		// 2.61 reports on these templates too: user tasks without a form (a warning
+		// in Modeler as well), and a correlation key carried on the catch element
+		// rather than on its message. Nothing the target version cannot run.
+		const found = analyzeCamundaCompat(template.build())
+		const unexpected = found.filter(
+			(f) =>
+				f.id !== "compat/user-task-definition" &&
+				!(f.id === "compat/subscription" && f.severity === "warning"),
+		)
+		expect(unexpected.map((f) => `${f.id}: ${f.message}`)).toEqual([])
+		expect(found.every((f) => f.severity === "warning")).toBe(true)
 	})
 
 	it("round-trips through XML unchanged", () => {

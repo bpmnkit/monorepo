@@ -1,4 +1,5 @@
 import type { BpmnDefinitions } from "../bpmn-model.js"
+import { analyzeCamundaCompat, dedupeCamundaCompat } from "../camunda-compat.js"
 import { analyzeAgentic } from "./agentic.js"
 import { analyzeDeploy } from "./deploy.js"
 import { analyzeFeelSyntax } from "./feel-syntax.js"
@@ -29,6 +30,7 @@ const ALL_CATEGORIES: OptimizationCategory[] = [
 	"deploy",
 	"agentic",
 	"connector",
+	"compat",
 ]
 
 function resolveOptions(opts?: OptimizeOptions): ResolvedOptions {
@@ -40,13 +42,14 @@ function resolveOptions(opts?: OptimizeOptions): ResolvedOptions {
 		reuseThreshold: opts?.reuseThreshold ?? 2,
 		categories: opts?.categories ?? [...ALL_CATEGORIES],
 		resolveConnectorRequirements: opts?.resolveConnectorRequirements,
+		camundaVersion: opts?.camundaVersion,
 	}
 }
 
 /** Run static analysis on a BPMN definitions object. */
 export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): OptimizationReport {
 	const resolved = resolveOptions(options)
-	const findings: OptimizationFinding[] = []
+	let findings: OptimizationFinding[] = []
 
 	for (const process of defs.processes) {
 		if (resolved.categories.includes("feel")) {
@@ -87,6 +90,11 @@ export function optimize(defs: BpmnDefinitions, options?: OptimizeOptions): Opti
 		if (resolved.categories.includes("agentic")) {
 			findings.push(...analyzeAgentic(process))
 		}
+	}
+
+	if (resolved.categories.includes("compat")) {
+		findings.push(...analyzeCamundaCompat(defs, resolved.camundaVersion))
+		findings = dedupeCamundaCompat(findings)
 	}
 
 	const byCategory = Object.fromEntries(

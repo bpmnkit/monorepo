@@ -670,7 +670,13 @@ testimonials; explicit open-source/no-lock-in; Discord/Slack; visible changelog.
 
 > **Status (2026-09-24): done.** See `doc/progress.md`.
 > - **Item 9:** `.bpmnlintrc` is honoured. All 28 built-in rules are mapped, 21 of them
->   exactly, and the project's own bpmnlint runs its plugins.
+>   exactly, and the project's own bpmnlint runs its plugins. The `@camunda/linting`
+>   Camunda-version rules are the `compat` lint category (2026-09-25): 52 of the 65
+>   `bpmnlint-plugin-camunda-compat` 2.61 rules are reproduced, and 3 more are covered by
+>   existing findings. They match the plugin on test fixtures under every
+>   `camunda-cloud-*` config. `extends: "plugin:camunda-compat/camunda-cloud-X-Y"` maps
+>   onto them. The FEEL-analysis rules (`feel-compatibility`, `variable-name`, the agent
+>   `fromAi` rules) and `no-loop` are not covered.
 > - **Items 10 and 11:** all 22 MIWG reference models are in the round-trip corpus and pass.
 > - **Item 12:** inbound and linked-resource templates apply.
 > - **Item 13:** vendor DI, label styles and default-namespace files are preserved.
