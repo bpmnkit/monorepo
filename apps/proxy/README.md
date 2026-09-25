@@ -92,6 +92,35 @@ Or use the `X-Profile` request header to target a specific profile on the `/api/
 curl -H "X-Profile: production" http://localhost:3033/api/v2/process-definitions
 ```
 
+## Security
+
+The proxy holds your Camunda credentials, reads and writes project files, and starts AI
+CLIs, so it is locked down by default:
+
+- **Loopback only.** It listens on `127.0.0.1` and `::1`. `--host` (or
+  `BPMNKIT_PROXY_HOST`) listens elsewhere and prints a warning.
+- **Allowed origins only.** Browser requests must come from `https://bpmnkit.com`,
+  `https://studio.bpmnkit.com`, `https://bpmnkit-studio.pages.dev`, the desktop app
+  (`tauri://localhost`, `http(s)://tauri.localhost`) or a `localhost` / `127.0.0.1` /
+  `[::1]` origin on any port. Any other origin gets `403` and no CORS headers; the allowed
+  origin is reflected, never `*`. Add origins with `--allow-origin` or
+  `BPMNKIT_PROXY_ALLOWED_ORIGINS` (comma-separated).
+- **Loopback Host only.** Requests must name the proxy as `localhost`, `127.0.0.1` or
+  `[::1]`, which stops DNS rebinding. Add names with `--allow-host` or
+  `BPMNKIT_PROXY_ALLOWED_HOSTS`.
+- **Workspace roots.** `/fs/*` and `/element-templates` work only inside folders passed
+  with `--root` / `BPMNKIT_PROXY_ROOTS` or opened by Studio. The proxy will not open the
+  filesystem root, your home directory or a hidden folder on a client's say-so, and only
+  touches `.bpmn`, `.dmn`, `.form` and `.md` files. `..` and symlinks out of a root
+  are refused.
+
+Programs that send no `Origin` header — the CLI, the MCP server, `curl` — are served as
+before.
+
+```sh
+casen proxy start --allow-origin https://modeler.example.com --root ~/work/processes
+```
+
 ---
 
 ## Related Packages

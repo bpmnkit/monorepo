@@ -7,13 +7,13 @@ import {
 	readdirSync,
 	renameSync,
 	rmSync,
-	statSync,
 	unlinkSync,
 	writeFileSync,
 } from "node:fs"
 import http from "node:http"
-import { homedir, tmpdir } from "node:os"
-import { basename, dirname, extname, join, relative, sep } from "node:path"
+import type { AddressInfo } from "node:net"
+import { tmpdir } from "node:os"
+import { basename, dirname, extname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
 	Bpmn,
@@ -32,6 +32,16 @@ import {
 	getProfile,
 	listProfiles,
 } from "@bpmnkit/profiles"
+import {
+	type AccessPolicy,
+	type ProxyServerOptions,
+	createAccessPolicy,
+	exposureWarning,
+	guardRequest,
+	listenHosts,
+	mergeOptions,
+	optionsFromEnv,
+} from "./access.js"
 import * as claude from "./adapters/claude.js"
 import * as copilot from "./adapters/copilot.js"
 import * as gemini from "./adapters/gemini.js"
@@ -63,6 +73,9 @@ import {
 import { handleWebhook, matchWebhookRoute, startTriggers } from "./triggers/index.js"
 import { WORKER_TEMPLATES } from "./worker-templates.js"
 import { startWorkerDaemon, workerState } from "./worker.js"
+import { WorkspaceRoots } from "./workspace.js"
+
+export type { ProxyServerOptions } from "./access.js"
 
 const PORT = process.env.AI_SERVER_PORT ? Number(process.env.AI_SERVER_PORT) : 3033
 
@@ -191,23 +204,6 @@ interface FsTreeNode {
 	children?: FsTreeNode[]
 }
 
-/** Expand a leading `~` to the user's home directory. */
-function expandHome(p: string): string {
-	if (p === "~" || p.startsWith("~/")) return homedir() + p.slice(1)
-	return p
-}
-
-/** Reject any path that escapes the root via `..` or is outside it. */
-function fsValidate(root: string, target: string): boolean {
-	const normRoot = root.endsWith(sep) ? root : root + sep
-	const normTarget =
-		target + (statSync(target, { throwIfNoEntry: false })?.isDirectory() ? sep : "")
-	return (
-		!target.includes("..") &&
-		(target === root || target.startsWith(normRoot) || normTarget.startsWith(normRoot))
-	)
-}
-
 function sidecarPath(filePath: string): string {
 	return join(dirname(filePath), ".bpmnkit", `${basename(filePath)}.meta.json`)
 }
@@ -292,16 +288,17 @@ function collectFiles(root: string, dir: string): FsFileInfo[] {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const server = http.createServer(async (req, res) => {
-	res.setHeader("Access-Control-Allow-Origin", "*")
-	res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-	res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Profile")
+// Set by `createProxyServer`; one configuration per process.
+let accessPolicy: AccessPolicy = createAccessPolicy({})
+let workspace = new WorkspaceRoots()
 
-	if (req.method === "OPTIONS") {
-		res.writeHead(204)
-		res.end()
-		return
-	}
+function sendJson(res: http.ServerResponse, status: number, body: unknown): void {
+	res.writeHead(status, { "Content-Type": "application/json" })
+	res.end(JSON.stringify(body))
+}
+
+const handleRequest: http.RequestListener = async (req, res) => {
+	if (guardRequest(accessPolicy, req, res)) return
 
 	const url = new URL(req.url ?? "/", `http://localhost:${PORT}`)
 
@@ -340,7 +337,7 @@ const server = http.createServer(async (req, res) => {
 	// happens here and the result is handed over. Same `?root=` convention the
 	// /fs/ routes use; `&file=` narrows it to the templates one diagram sees.
 	if (url.pathname === "/element-templates" && req.method === "GET") {
-		const { status, body } = await handleElementTemplates(url.searchParams)
+		const { status, body } = await handleElementTemplates(url.searchParams, workspace)
 		res.writeHead(status, { "Content-Type": "application/json" })
 		res.end(JSON.stringify(body))
 		return
@@ -1481,231 +1478,233 @@ const server = http.createServer(async (req, res) => {
 	}
 
 	// ── File System API (/fs/*) ───────────────────────────────────────────────
+	// Confined to workspace roots (see workspace.ts). `tree` and `list` open the
+	// root they are given; every other route takes an absolute path that must
+	// lie inside a root, named by an optional `root` (query or body) or else
+	// any root already open.
 	if (url.pathname.startsWith("/fs/")) {
 		const fsPath = url.pathname.slice("/fs".length) // e.g. "/tree", "/list", "/read"
 
 		// GET /fs/tree?root=<abs> — lightweight directory tree
 		if (fsPath === "/tree" && req.method === "GET") {
-			const rawRoot = url.searchParams.get("root") ?? ""
-			const root = expandHome(rawRoot)
-			const rootExists = root !== "" && existsSync(root)
-			console.log(`[fs/tree] raw param: ${JSON.stringify(rawRoot)}`)
-			console.log(`[fs/tree] expanded:  ${JSON.stringify(root)}`)
-			console.log(`[fs/tree] existsSync: ${rootExists}`)
-			if (!rootExists) {
-				console.log("[fs/tree] → 404 not found")
-				res.writeHead(404, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Project root not found" }))
+			const opened = workspace.open(url.searchParams.get("root"))
+			if (!opened.ok) {
+				console.log(`[fs/tree] → ${opened.status} ${opened.error}`)
+				sendJson(res, opened.status, { error: opened.error })
 				return
 			}
-			const tree = buildTree(root, root)
+			const tree = buildTree(opened.root, opened.root)
 			console.log(`[fs/tree] → 200 ok, ${tree.length} entries`)
-			res.writeHead(200, { "Content-Type": "application/json" })
-			res.end(JSON.stringify(tree))
+			sendJson(res, 200, tree)
 			return
 		}
 
 		// GET /fs/list?root=<abs> — all files with content + metadata
 		if (fsPath === "/list" && req.method === "GET") {
-			const root = expandHome(url.searchParams.get("root") ?? "")
-			if (!root || !existsSync(root)) {
-				res.writeHead(404, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Project root not found" }))
+			const opened = workspace.open(url.searchParams.get("root"))
+			if (!opened.ok) {
+				sendJson(res, opened.status, { error: opened.error })
 				return
 			}
-			const files = collectFiles(root, root)
-			res.writeHead(200, { "Content-Type": "application/json" })
-			res.end(JSON.stringify(files))
+			sendJson(res, 200, collectFiles(opened.root, opened.root))
 			return
 		}
 
-		// GET /fs/read?path=<abs> — read single file content
+		// GET /fs/read?path=<abs>[&root=<abs>] — read single file content
 		if (fsPath === "/read" && req.method === "GET") {
-			const filePath = expandHome(url.searchParams.get("path") ?? "")
-			if (!filePath || !existsSync(filePath)) {
-				res.writeHead(404, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "File not found" }))
+			const target = workspace.resolve(
+				url.searchParams.get("path"),
+				"model",
+				url.searchParams.get("root"),
+			)
+			if (!target.ok) {
+				sendJson(res, target.status, { error: target.error })
+				return
+			}
+			if (!existsSync(target.path)) {
+				sendJson(res, 404, { error: "File not found" })
 				return
 			}
 			let content: string
 			try {
-				content = readFileSync(filePath, "utf8")
+				content = readFileSync(target.path, "utf8")
 			} catch (err) {
-				res.writeHead(500, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: String(err) }))
+				sendJson(res, 500, { error: String(err) })
 				return
 			}
-			res.writeHead(200, { "Content-Type": "application/json" })
-			res.end(JSON.stringify({ content }))
+			sendJson(res, 200, { content })
 			return
 		}
 
-		// POST /fs/write — write file (creates parent directories)
+		// POST /fs/write { path, content, root? } — write file (creates parent directories)
 		if (fsPath === "/write" && req.method === "POST") {
 			const body = await readBody(req)
-			let filePath: string
-			let content: string
+			let parsed: { path?: string; content?: string; root?: string }
 			try {
-				const parsed = JSON.parse(body) as { path: string; content: string }
-				filePath = expandHome(parsed.path)
-				content = parsed.content
+				parsed = JSON.parse(body) as typeof parsed
 			} catch {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Invalid JSON body" }))
+				sendJson(res, 400, { error: "Invalid JSON body" })
 				return
 			}
-			if (!filePath) {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Missing path" }))
+			if (typeof parsed.content !== "string") {
+				sendJson(res, 400, { error: "content must be a string" })
+				return
+			}
+			const target = workspace.resolve(parsed.path, "model", parsed.root)
+			if (!target.ok) {
+				sendJson(res, target.status, { error: target.error })
 				return
 			}
 			try {
-				const dir = dirname(filePath)
+				const dir = dirname(target.path)
 				if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-				writeFileSync(filePath, content, "utf8")
-				res.writeHead(200, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ ok: true }))
+				writeFileSync(target.path, parsed.content, "utf8")
+				sendJson(res, 200, { ok: true })
 			} catch (err) {
-				res.writeHead(500, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: String(err) }))
+				sendJson(res, 500, { error: String(err) })
 			}
 			return
 		}
 
-		// DELETE /fs/file?path=<abs> — delete file and its sidecar
+		// DELETE /fs/file?path=<abs>[&root=<abs>] — delete file and its sidecar
 		if (fsPath === "/file" && req.method === "DELETE") {
-			const filePath = expandHome(url.searchParams.get("path") ?? "")
-			if (!filePath) {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Missing path" }))
+			const target = workspace.resolve(
+				url.searchParams.get("path"),
+				"model",
+				url.searchParams.get("root"),
+			)
+			if (!target.ok) {
+				sendJson(res, target.status, { error: target.error })
 				return
 			}
 			try {
-				if (existsSync(filePath)) unlinkSync(filePath)
-				const sp = sidecarPath(filePath)
-				if (existsSync(sp)) unlinkSync(sp)
-				res.writeHead(200, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ ok: true }))
+				if (existsSync(target.path)) unlinkSync(target.path)
+				const sp = sidecarPath(target.path)
+				if (existsSync(sp) && workspace.contains(target.root, sp)) unlinkSync(sp)
+				sendJson(res, 200, { ok: true })
 			} catch (err) {
-				res.writeHead(500, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: String(err) }))
+				sendJson(res, 500, { error: String(err) })
 			}
 			return
 		}
 
-		// POST /fs/move — rename/move file and its sidecar
+		// POST /fs/move { from, to, root? } — rename/move file and its sidecar
 		if (fsPath === "/move" && req.method === "POST") {
 			const body = await readBody(req)
-			let from: string
-			let to: string
+			let parsed: { from?: string; to?: string; root?: string }
 			try {
-				const parsed = JSON.parse(body) as { from: string; to: string }
-				from = expandHome(parsed.from)
-				to = expandHome(parsed.to)
+				parsed = JSON.parse(body) as typeof parsed
 			} catch {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Invalid JSON body" }))
+				sendJson(res, 400, { error: "Invalid JSON body" })
 				return
 			}
-			if (!from || !to) {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Missing from/to" }))
+			const from = workspace.resolve(parsed.from, "model", parsed.root)
+			if (!from.ok) {
+				sendJson(res, from.status, { error: from.error })
+				return
+			}
+			const to = workspace.resolve(parsed.to, "model", parsed.root)
+			if (!to.ok) {
+				sendJson(res, to.status, { error: to.error })
 				return
 			}
 			try {
-				const toDir = dirname(to)
+				const toDir = dirname(to.path)
 				if (!existsSync(toDir)) mkdirSync(toDir, { recursive: true })
-				renameSync(from, to)
+				renameSync(from.path, to.path)
 				// Move sidecar if it exists
-				const fromSidecar = sidecarPath(from)
-				const toSidecar = sidecarPath(to)
-				if (existsSync(fromSidecar)) {
+				const fromSidecar = sidecarPath(from.path)
+				const toSidecar = sidecarPath(to.path)
+				if (
+					existsSync(fromSidecar) &&
+					workspace.contains(from.root, fromSidecar) &&
+					workspace.contains(to.root, toSidecar)
+				) {
 					const toSidecarDir = dirname(toSidecar)
 					if (!existsSync(toSidecarDir)) mkdirSync(toSidecarDir, { recursive: true })
 					renameSync(fromSidecar, toSidecar)
 				}
-				res.writeHead(200, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ ok: true }))
+				sendJson(res, 200, { ok: true })
 			} catch (err) {
-				res.writeHead(500, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: String(err) }))
+				sendJson(res, 500, { error: String(err) })
 			}
 			return
 		}
 
-		// POST /fs/mkdir — create directory
+		// POST /fs/mkdir { path, root? } — create directory
 		if (fsPath === "/mkdir" && req.method === "POST") {
 			const body = await readBody(req)
-			let dirPath: string
+			let parsed: { path?: string; root?: string }
 			try {
-				const parsed = JSON.parse(body) as { path: string }
-				dirPath = expandHome(parsed.path)
+				parsed = JSON.parse(body) as typeof parsed
 			} catch {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Invalid JSON body" }))
+				sendJson(res, 400, { error: "Invalid JSON body" })
 				return
 			}
-			if (!dirPath) {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Missing path" }))
+			const target = workspace.resolve(parsed.path, "dir", parsed.root)
+			if (!target.ok) {
+				sendJson(res, target.status, { error: target.error })
 				return
 			}
 			try {
-				mkdirSync(dirPath, { recursive: true })
-				res.writeHead(200, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ ok: true }))
+				mkdirSync(target.path, { recursive: true })
+				sendJson(res, 200, { ok: true })
 			} catch (err) {
-				res.writeHead(500, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: String(err) }))
+				sendJson(res, 500, { error: String(err) })
 			}
 			return
 		}
 
-		// GET /fs/meta?path=<abs> — read sidecar metadata
+		// GET /fs/meta?path=<abs>[&root=<abs>] — read sidecar metadata
 		if (fsPath === "/meta" && req.method === "GET") {
-			const filePath = expandHome(url.searchParams.get("path") ?? "")
-			if (!filePath) {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Missing path" }))
+			const target = workspace.resolve(
+				url.searchParams.get("path"),
+				"model",
+				url.searchParams.get("root"),
+			)
+			if (!target.ok) {
+				sendJson(res, target.status, { error: target.error })
 				return
 			}
-			const meta = readMeta(filePath)
+			const meta = workspace.contains(target.root, sidecarPath(target.path))
+				? readMeta(target.path)
+				: null
 			if (!meta) {
-				res.writeHead(404, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "No metadata found" }))
+				sendJson(res, 404, { error: "No metadata found" })
 				return
 			}
-			res.writeHead(200, { "Content-Type": "application/json" })
-			res.end(JSON.stringify(meta))
+			sendJson(res, 200, meta)
 			return
 		}
 
-		// POST /fs/meta — write sidecar metadata
+		// POST /fs/meta { path, meta, root? } — write sidecar metadata
 		if (fsPath === "/meta" && req.method === "POST") {
 			const body = await readBody(req)
-			let filePath: string
-			let meta: FileMeta
+			let parsed: { path?: string; meta?: FileMeta; root?: string }
 			try {
-				const parsed = JSON.parse(body) as { path: string; meta: FileMeta }
-				filePath = expandHome(parsed.path)
-				meta = parsed.meta
+				parsed = JSON.parse(body) as typeof parsed
 			} catch {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Invalid JSON body" }))
+				sendJson(res, 400, { error: "Invalid JSON body" })
 				return
 			}
-			if (!filePath || !meta) {
-				res.writeHead(400, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: "Missing path or meta" }))
+			if (!parsed.meta) {
+				sendJson(res, 400, { error: "Missing path or meta" })
+				return
+			}
+			const target = workspace.resolve(parsed.path, "model", parsed.root)
+			if (!target.ok) {
+				sendJson(res, target.status, { error: target.error })
+				return
+			}
+			if (!workspace.contains(target.root, sidecarPath(target.path))) {
+				sendJson(res, 403, { error: "Metadata folder resolves outside the workspace root" })
 				return
 			}
 			try {
-				writeMeta(filePath, meta)
-				res.writeHead(200, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ ok: true }))
+				writeMeta(target.path, parsed.meta)
+				sendJson(res, 200, { ok: true })
 			} catch (err) {
-				res.writeHead(500, { "Content-Type": "application/json" })
-				res.end(JSON.stringify({ error: String(err) }))
+				sendJson(res, 500, { error: String(err) })
 			}
 			return
 		}
@@ -1879,7 +1878,6 @@ const server = http.createServer(async (req, res) => {
 			const contentType = upstream.headers.get("content-type") ?? "application/json"
 			res.writeHead(upstream.status, {
 				"Content-Type": contentType,
-				"Access-Control-Allow-Origin": "*",
 			})
 			res.end(responseText)
 		} catch (err) {
@@ -1891,15 +1889,72 @@ const server = http.createServer(async (req, res) => {
 
 	res.writeHead(404)
 	res.end("Not Found")
-})
+}
 
-export function startServer(port = PORT): void {
-	server.listen(port, () => {
-		console.log(`BPMN Kit AI Server running at http://localhost:${port}`)
-		console.log("Press Ctrl+C to stop")
-		startWorkerDaemon()
-		startTriggers()
-	})
+/**
+ * An HTTP server for the proxy's routes, not yet listening. `options` are
+ * merged with the `BPMNKIT_PROXY_*` environment variables; see `access.ts`.
+ */
+export function createProxyServer(options: ProxyServerOptions = {}): http.Server {
+	const merged = mergeOptions(optionsFromEnv(process.env), options)
+	accessPolicy = createAccessPolicy(merged)
+	workspace = new WorkspaceRoots(merged.roots)
+	return http.createServer(handleRequest)
+}
+
+/**
+ * Listen on loopback (127.0.0.1 and, where the machine has it, ::1), or on
+ * exactly `options.host` when one is given. Resolves once every address that
+ * could be bound is listening.
+ */
+export async function listenProxy(
+	port: number,
+	options: ProxyServerOptions = {},
+): Promise<http.Server[]> {
+	const hosts = listenHosts(mergeOptions(optionsFromEnv(process.env), options).host ?? "")
+	const servers: http.Server[] = []
+	for (const [i, host] of hosts.entries()) {
+		const server = i === 0 ? createProxyServer(options) : http.createServer(handleRequest)
+		// Port 0 picks a free port; the second address must then share the first's.
+		const first = servers[0]?.address() as AddressInfo | undefined
+		try {
+			await new Promise<void>((resolve, reject) => {
+				server.once("error", reject)
+				server.listen(first?.port ?? port, host, () => {
+					server.off("error", reject)
+					resolve()
+				})
+			})
+			servers.push(server)
+		} catch (err) {
+			// The IPv6 loopback is a convenience; a machine without it still has 127.0.0.1.
+			if (i === 0) throw err
+			console.warn(`[server] not listening on ${host}: ${String(err)}`)
+		}
+	}
+	return servers
+}
+
+export function startServer(port = PORT, options: ProxyServerOptions = {}): void {
+	listenProxy(port, options).then(
+		(servers) => {
+			const host = mergeOptions(optionsFromEnv(process.env), options).host ?? ""
+			const warning = exposureWarning(host, port)
+			if (warning) console.warn(warning)
+			const where = servers.map((s) => {
+				const a = s.address() as AddressInfo
+				return a.family === "IPv6" ? `[${a.address}]` : a.address
+			})
+			console.log(`BPMN Kit AI Server running at http://localhost:${port} (on ${where.join(", ")})`)
+			console.log("Press Ctrl+C to stop")
+			startWorkerDaemon()
+			startTriggers()
+		},
+		(err: unknown) => {
+			console.error(`[server] could not listen on port ${port}: ${String(err)}`)
+			process.exitCode = 1
+		},
+	)
 }
 
 // Auto-start when run directly as a binary (not imported as a library)

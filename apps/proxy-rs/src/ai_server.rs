@@ -16,8 +16,9 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt as _;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
+use crate::access::{self, AccessPolicy};
 use crate::adapters::{Message, ALL_ADAPTERS};
 use crate::bridge::CoreBridge;
 use crate::prompt::{self, FindingInfo};
@@ -33,16 +34,24 @@ pub struct AppState {
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
-pub fn router(state: AppState) -> Router {
+pub fn router(state: AppState, policy: AccessPolicy) -> Router {
+    let origins = policy.clone();
     let cors = CorsLayer::new()
-        .allow_origin(tower_http::cors::Any)
+        .allow_origin(AllowOrigin::predicate(move |origin, _| {
+            origin.to_str().is_ok_and(|o| origins.origin_allowed(o))
+        }))
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_headers(tower_http::cors::Any);
+        .allow_headers([axum::http::header::CONTENT_TYPE])
+        .allow_private_network(true);
 
+    // The guard is the outer layer, so a refused request never reaches CORS or a route.
     Router::new()
         .route("/status", get(handle_status))
         .route("/chat", post(handle_chat))
         .layer(cors)
+        .layer(axum::middleware::from_fn(move |req, next| {
+            access::guard(policy.clone(), req, next)
+        }))
         .with_state(state)
 }
 
