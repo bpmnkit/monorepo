@@ -32,8 +32,10 @@ rule bpmnlint just ran, so no problem is reported twice.
 - A rule your config does not mention keeps BPMN Kit's default. The `.bpmnlintrc` overrides
   BPMN Kit where the two overlap. It does not switch off BPMN Kit's other checks (FEEL syntax,
   data flow, Camunda 8 deployability and so on).
-- A plugin rule (`camunda-compat/timer`), an unknown rule, or a `plugin:` config in `extends`
-  cannot be applied without bpmnlint. BPMN Kit says so rather than ignoring it silently.
+- A plugin rule (`acme/no-foo`), an unknown rule, or a `plugin:` config in `extends`
+  cannot be applied without bpmnlint. BPMN Kit says so rather than ignoring it silently. The
+  exception is `bpmnlint-plugin-camunda-compat`: BPMN Kit has its own
+  [Camunda version check](#camunda-version-compatibility) and uses it in place of the plugin.
 
 bpmnlint is never a dependency of BPMN Kit. It is loaded with a dynamic `import()` from your
 project, only when your project has it, the same way editor integrations load a project's
@@ -47,7 +49,7 @@ casen lint lint diagrams/order.bpmn
 
 ```text
 → Using /work/project/.bpmnlintrc (BPMN Kit's equivalents of its rules).
-→ Not applied — no BPMN Kit equivalent: plugin:camunda-compat/camunda-cloud-8-6 (a plugin config — install bpmnlint in the project to use it).
+→ Not applied — no BPMN Kit equivalent: plugin:acme/recommended (a plugin config — install bpmnlint in the project to use it).
 → ⚠ [pattern] [Error_payment] Global error "Error_payment" is not referenced by any element. (global)
 → ✖ [pattern] [End_done] Element "End_done" has no diagram information (BPMNDI). (no-bpmndi)
 ```
@@ -139,8 +141,9 @@ presets. Rule names are normalised the way bpmnlint normalises them, so
 
 Rules that have no equivalent without bpmnlint installed:
 
-- **Plugin rules and configs.** Everything from `bpmnlint-plugin-*`, including
-  `bpmnlint-plugin-camunda-compat`. Install bpmnlint in the project and they run.
+- **Plugin rules and configs.** Everything from `bpmnlint-plugin-*`, except the
+  `bpmnlint-plugin-camunda-compat` rules listed as covered below. Install bpmnlint in the
+  project and they run.
 - **Unknown rule names.** These are reported as unknown, the same as bpmnlint would report
   them.
 
@@ -148,6 +151,77 @@ Where the native equivalents check connections, they read the sequence flows, no
 `<bpmn:incoming>`/`<bpmn:outgoing>` children. Real bpmnlint reads the children. For files a
 modeler wrote, the two are the same. For hand-written XML that leaves the children out,
 bpmnlint sees no connections at all, and BPMN Kit sees the flows.
+
+## Camunda version compatibility
+
+Camunda Modeler checks a diagram against the Camunda 8 version it targets. The version is in
+`modeler:executionPlatformVersion` on `<bpmn:definitions>`, and the rules come from
+`@camunda/linting`, which runs `bpmnlint-plugin-camunda-compat`. BPMN Kit does the same check
+itself, in the `compat` category. It runs in `casen lint`, in `optimize()`, in the editor's lint
+panel and in the VS Code extension, on every model that names a Camunda Cloud / Camunda 8
+platform and version. A model without them gets no `compat` findings.
+
+```text
+✖ [compat] [tools] Ad-hoc sub-process "Tools" needs Camunda 8.7 or newer; this model targets Camunda 8.6.
+✖ [compat] [notify] Signal end event "Notify" needs Camunda 8.3 or newer; this model targets Camunda 8.2.
+✖ [compat] [wait] Timer intermediate catch event "wait" has timeDuration "5 minutes", which is not an ISO 8601 duration (PT15M).
+```
+
+Each finding is `compat/<rule>`, named after the plugin rule it reproduces, and has the
+plugin's severity. Two kinds of problem are reported:
+
+- **Something the target version cannot run.** An element or event definition that is newer
+  than the target (inclusive gateways 8.1, `bpmn:task` 8.2, escalation and link events 8.2,
+  signal events 8.2/8.3, compensation 8.5, ad-hoc sub-processes 8.7, conditional events 8.9),
+  or one no version runs (complex gateway, transaction). Also Zeebe extensions and properties:
+  `zeebe:properties` (8.1), candidate users, task schedule and `propagateAllParentVariables="false"`
+  (8.2), start event forms (8.3), `formId` and collapsed sub-processes (8.4), `zeebe:userTask`
+  (8.5), execution listeners, `bindingType`, version tags and task priority (8.6), task listeners
+  (8.8), and business ids, job priority and `beforeAll`/`cancel` listeners (8.10). A cron timer
+  cycle needs 8.1, and a `timeDate` on a boundary or intermediate event needs 8.3.
+- **A property the target version requires.** A job type, called decision or script, a called
+  process id, a message name and correlation key, a timer value that parses as ISO 8601 or
+  cron, an error code, an escalation code, a signal name, a multi-instance input collection,
+  a condition on each non-default flow out of a gateway, and listener types.
+
+From 8.2 on, processes that are not marked executable are skipped, as Modeler skips them. A
+version newer than the table is checked as the newest version the table has (8.10). Later
+versions only remove restrictions.
+
+The version table is data (`CAMUNDA_COMPAT_RULES` in `@bpmnkit/core`), taken from
+`bpmnlint-plugin-camunda-compat` 2.61.0 (`@camunda/linting` 3.57.0). BPMN Kit does not
+report a problem twice. When a `deploy/*` check already reports it on the same element, only
+that finding stays. For example, `deploy/service-task-no-type` stands in for
+`compat/implementation`.
+
+### With a `.bpmnlintrc`
+
+`extends: "plugin:camunda-compat/camunda-cloud-8-6"` (or the `bpmnlint-plugin-camunda-compat`
+spelling, and any `camunda-cloud-1-0` to `camunda-cloud-8-10`) runs this check against 8.6,
+whatever version the model names. This also works on a model that names no platform. The
+config's rules take the plugin's levels. `camunda-compat/<rule>` entries under `rules` change
+the level or turn a rule `off`, and the finding shows the rule name. Like the plugin's configs,
+it also turns on `start-event-required`. When your project's own bpmnlint runs the plugin,
+BPMN Kit's `compat` findings step aside. `camunda-platform-7-*` configs are not mapped.
+
+### What is covered
+
+| Plugin rules | Coverage |
+|---|---|
+| `element-type`, `implementation`, `timer`, `called-element`, `message-reference`, `error-reference`, `escalation-reference`, `escalation-boundary-event-attached-to-ref`, `signal-reference`, `no-expression`, `event-based-gateway-target`, `inclusive-gateway`, `loop-characteristics`, `sequence-flow-condition`, `no-multiple-none-start-events`, `collapsed-subprocess`, `io-mapping`, `duplicate-task-headers`, `no-template` | Covered |
+| `no-zeebe-properties`, `no-candidate-users`, `no-propagate-all-parent-variables`, `no-task-schedule`, `task-schedule`, `no-signal-event-sub-process`, `start-event-form`, `start-event-form-embedded`, `user-task-form`, `user-task-definition`, `no-zeebe-user-task`, `zeebe-user-task`, `wait-for-completion` | Covered |
+| `no-binding-type`, `no-execution-listeners`, `execution-listener`, `duplicate-execution-listeners`, `no-priority-definition`, `priority-definition`, `no-version-tag`, `version-tag`, `ad-hoc-sub-process`, `no-interrupting-event-subprocess`, `no-task-listeners`, `task-listener` | Covered |
+| `no-business-id`, `no-execution-listener-headers`, `no-before-all-execution-listener`, `before-all-execution-listener`, `no-cancel-execution-listener`, `cancel-execution-listener`, `no-job-priority-definition` | Covered |
+| `subscription` | Covered, with one difference. A `zeebe:subscription` on the catch element instead of on its `bpmn:message` is a warning in BPMN Kit. The plugin reports it as an error on the message. BPMN Kit's builder writes the key on the element, and Reebe reads it there. |
+| `executable-process`, `feel`, `agent-tool-documentation` | Reported by an existing finding: `deploy/process-not-executable` (which reports every non-executable process), `feel-syntax/parse-error`, `agentic/tool-no-description` |
+| `feel-compatibility`, `agent-fromai-contract`, `agent-tool-output-key`, `variable-name` | Not covered. They need a FEEL analyzer and Camunda's per-version FEEL function table. |
+| `no-loop`, `link-event`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers` | Not covered. Configured, they are listed as not applied. |
+
+Checked against the plugin: the test suite has two fixture diagrams that trigger all 52 covered
+rules. It compares BPMN Kit's findings with what the real plugin reported for them under every
+`camunda-cloud-*` config. The findings match element for element. The 25 process templates
+in `@bpmnkit/patterns` give the same result as the plugin too, except for the `subscription`
+difference above.
 
 ## From your own code
 

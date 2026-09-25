@@ -3,10 +3,12 @@ import { applyConnectorTemplate } from "@bpmnkit/connectors"
 import {
 	Bpmn,
 	applyBpmnlintConfig,
+	applyCamundaCompatConfig,
 	compactify,
 	detectExecutionPlatform,
 	lintCategories,
 	optimize,
+	splitCamundaCompatConfig,
 } from "@bpmnkit/core"
 import type {
 	BpmnDefinitions,
@@ -113,22 +115,6 @@ export async function lintBpmn(
 	const categories = options.categories as OptimizationCategory[] | undefined
 	const deployProfile = options.deployProfile === true
 
-	// A model that names no execution platform is not judged against Camunda 8
-	// deployability — otherwise a diagram authored in a neutral tool opens
-	// covered in errors about extensions it was never going to have. Asking for
-	// the deploy gate is asking for those rules anyway, so the profile forces
-	// them back on. The canvas plugin asks `lintCategories` the same question.
-	const platform = detectExecutionPlatform(defs)
-	const resolvedCategories = lintCategories(defs, {
-		...(categories !== undefined ? { categories } : {}),
-		forceEngineRules: deployProfile,
-	})
-
-	const report = optimize(defs, {
-		categories: resolvedCategories,
-		resolveConnectorRequirements,
-	})
-
 	// A .bpmnlintrc governs the findings that stand in for bpmnlint rules. When
 	// the project has bpmnlint installed, it runs the configured rules itself
 	// (plugins included) and BPMN Kit's equivalents step aside. Its findings
@@ -141,13 +127,41 @@ export async function lintBpmn(
 					runBpmnlint:
 						categories === undefined || (categories as string[]).includes(BPMNLINT_CATEGORY),
 				})
-	const applied =
-		setup === undefined
+	// Extending `plugin:camunda-compat/camunda-cloud-X-Y` pins the Camunda version
+	// the `compat` category checks; BPMN Kit's own check stands in for the plugin.
+	const split = setup === undefined ? undefined : splitCamundaCompatConfig(setup.config)
+	const camundaVersion = split?.compat?.version
+
+	// A model that names no execution platform is not judged against Camunda 8
+	// deployability — otherwise a diagram authored in a neutral tool opens
+	// covered in errors about extensions it was never going to have. Asking for
+	// the deploy gate is asking for those rules anyway, so the profile forces
+	// them back on. The canvas plugin asks `lintCategories` the same question.
+	const platform = detectExecutionPlatform(defs)
+	const resolvedCategories = lintCategories(defs, {
+		...(categories !== undefined ? { categories } : {}),
+		forceEngineRules: deployProfile,
+		...(camundaVersion !== undefined ? { camundaVersion } : {}),
+	})
+
+	const report = optimize(defs, {
+		categories: resolvedCategories,
+		resolveConnectorRequirements,
+		...(camundaVersion !== undefined ? { camundaVersion } : {}),
+	})
+
+	const compat =
+		setup === undefined || split?.compat === undefined
 			? undefined
-			: applyBpmnlintConfig(defs, report.findings, setup.config, {
+			: applyCamundaCompatConfig(report.findings, split.compat, { delegated: setup.delegated })
+	const applied =
+		setup === undefined || split === undefined
+			? undefined
+			: applyBpmnlintConfig(defs, compat?.findings ?? report.findings, split.rest, {
 					delegated: setup.delegated,
 					categories: resolvedCategories,
 				})
+	const unsupported = [...(applied?.unsupported ?? []), ...(compat?.unsupported ?? [])]
 	const governed: (OptimizationFinding | LintRow)[] = [
 		...(applied?.findings ?? report.findings),
 		...(setup?.reports.map(reportRow) ?? []),
@@ -165,9 +179,9 @@ export async function lintBpmn(
 				`The project's bpmnlint could not run (${setup.failure}); BPMN Kit's equivalents were used instead.`,
 			)
 		}
-		if (applied !== undefined && applied.unsupported.length > 0) {
+		if (unsupported.length > 0) {
 			notices.push(
-				`Not applied — no BPMN Kit equivalent: ${applied.unsupported.map(describeUnsupported).join(", ")}.`,
+				`Not applied — no BPMN Kit equivalent: ${unsupported.map(describeUnsupported).join(", ")}.`,
 			)
 		}
 	}

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_events" targetNamespace="http://bpmn.io/schema/bpmn" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.6.0">
+  <bpmn:message id="Msg_ok" name="ok">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=orderId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmn:message id="Msg_nokey" name="nokey" />
+  <bpmn:message id="Msg_noname" />
+  <bpmn:error id="Err_nocode" name="no code" />
+  <bpmn:error id="Err_expr" name="expr" errorCode="=code" />
+  <bpmn:escalation id="Esc_nocode" name="no code" />
+  <bpmn:signal id="Sig_ok" name="go" />
+  <bpmn:signal id="Sig_noname" />
+  <bpmn:process id="events" isExecutable="true">
+    <bpmn:startEvent id="start" />
+    <bpmn:startEvent id="start2" />
+    <bpmn:startEvent id="startTimerDuration">
+      <bpmn:timerEventDefinition id="T1">
+        <bpmn:timeDuration>PT5M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+    <bpmn:startEvent id="startCron">
+      <bpmn:timerEventDefinition id="T2">
+        <bpmn:timeCycle>0 0 9 * * MON</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+    <bpmn:startEvent id="startSignal">
+      <bpmn:signalEventDefinition id="S1" signalRef="Sig_ok" />
+    </bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="catchNoTimer">
+      <bpmn:timerEventDefinition id="T3" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchBadDuration">
+      <bpmn:timerEventDefinition id="T4">
+        <bpmn:timeDuration>5 minutes</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchDate">
+      <bpmn:timerEventDefinition id="T5">
+        <bpmn:timeDate>2026-02-01T09:00:00Z</bpmn:timeDate>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchCycle">
+      <bpmn:timerEventDefinition id="T6">
+        <bpmn:timeCycle>R3/PT10M</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchMsgNoRef">
+      <bpmn:messageEventDefinition id="M1" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchMsgNoName">
+      <bpmn:messageEventDefinition id="M2" messageRef="Msg_noname" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchMsgNoKey">
+      <bpmn:messageEventDefinition id="M3" messageRef="Msg_nokey" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchMsgOk">
+      <bpmn:messageEventDefinition id="M4" messageRef="Msg_ok" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchLink">
+      <bpmn:linkEventDefinition id="L1" name="a" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchSignalNoName">
+      <bpmn:signalEventDefinition id="S2" signalRef="Sig_noname" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="catchConditional">
+      <bpmn:conditionalEventDefinition id="C1">
+        <bpmn:condition>=x &gt; 1</bpmn:condition>
+      </bpmn:conditionalEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="work" name="Work">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="work" />
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="boundaryCycle" attachedToRef="work">
+      <bpmn:timerEventDefinition id="T7">
+        <bpmn:timeCycle>R/PT1H</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="boundaryErrorNoRef" attachedToRef="work">
+      <bpmn:errorEventDefinition id="E1" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="boundaryErrorExpr" attachedToRef="work">
+      <bpmn:errorEventDefinition id="E2" errorRef="Err_expr" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="boundaryEscalation" cancelActivity="false" attachedToRef="work">
+      <bpmn:escalationEventDefinition id="X1" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="boundaryCompensation" attachedToRef="work">
+      <bpmn:compensateEventDefinition id="CP1" />
+    </bpmn:boundaryEvent>
+    <bpmn:intermediateThrowEvent id="throwNone" />
+    <bpmn:intermediateThrowEvent id="throwEscalationNoRef">
+      <bpmn:escalationEventDefinition id="X2" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:intermediateThrowEvent id="throwEscalationNoCode">
+      <bpmn:escalationEventDefinition id="X3" escalationRef="Esc_nocode" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:intermediateThrowEvent id="throwMessage">
+      <bpmn:messageEventDefinition id="M5" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:intermediateThrowEvent id="throwMessageTyped">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="send" />
+      </bpmn:extensionElements>
+      <bpmn:messageEventDefinition id="M6" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:intermediateThrowEvent id="throwCompensation">
+      <bpmn:compensateEventDefinition id="CP2" waitForCompletion="false" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="endErrorNoRef">
+      <bpmn:errorEventDefinition id="E3" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endErrorNoCode">
+      <bpmn:errorEventDefinition id="E4" errorRef="Err_nocode" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endErrorExpr">
+      <bpmn:errorEventDefinition id="E5" errorRef="Err_expr" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endTerminate">
+      <bpmn:terminateEventDefinition id="TE1" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="endSignalNoRef">
+      <bpmn:signalEventDefinition id="S3" />
+    </bpmn:endEvent>
+    <bpmn:subProcess id="eventSub" triggeredByEvent="true">
+      <bpmn:startEvent id="subTimerCycle">
+        <bpmn:timerEventDefinition id="T8">
+          <bpmn:timeCycle>R/PT1H</bpmn:timeCycle>
+        </bpmn:timerEventDefinition>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="subEnd" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="signalSub" triggeredByEvent="true">
+      <bpmn:startEvent id="subSignal" isInterrupting="false">
+        <bpmn:signalEventDefinition id="S4" signalRef="Sig_ok" />
+      </bpmn:startEvent>
+      <bpmn:endEvent id="subEnd2" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="messageSub" triggeredByEvent="true">
+      <bpmn:startEvent id="subMessage" isInterrupting="false">
+        <bpmn:messageEventDefinition id="M7" messageRef="Msg_nokey" />
+      </bpmn:startEvent>
+      <bpmn:endEvent id="subEnd3" />
+    </bpmn:subProcess>
+  </bpmn:process>
+</bpmn:definitions>

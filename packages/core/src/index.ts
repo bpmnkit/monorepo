@@ -89,6 +89,23 @@ export type {
 	ResolvedBpmnlintConfig,
 	UnsupportedBpmnlintRule,
 } from "./bpmn/bpmnlint.js"
+export {
+	analyzeCamundaCompat,
+	applyCamundaCompatConfig,
+	normalizeCamundaVersion,
+	splitCamundaCompatConfig,
+} from "./bpmn/camunda-compat.js"
+export type { CamundaCompatConfig } from "./bpmn/camunda-compat.js"
+export {
+	CAMUNDA_COMPAT_PLUGIN_VERSION,
+	CAMUNDA_COMPAT_RULES,
+	CAMUNDA_COMPAT_VERSIONS,
+} from "./bpmn/camunda-compat-data.js"
+export type {
+	CamundaCompatCoverage,
+	CamundaCompatRule,
+	CamundaCompatVersion,
+} from "./bpmn/camunda-compat-data.js"
 export { diffDiagram } from "./bpmn/diagram-diff.js"
 export {
 	exportPreserving,
