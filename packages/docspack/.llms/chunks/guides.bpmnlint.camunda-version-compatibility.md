@@ -14,7 +14,7 @@ platform and version. A model without them gets no `compat` findings.
 ```
 
 Each finding is `compat/<rule>`, named after the plugin rule it reproduces, and has the
-plugin's severity. Two kinds of problem are reported:
+plugin's severity. Three kinds of problem are reported:
 
 - **Something the target version cannot run.** An element or event definition that is newer
   than the target (inclusive gateways 8.1, `bpmn:task` 8.2, escalation and link events 8.2,
@@ -29,6 +29,18 @@ plugin's severity. Two kinds of problem are reported:
   process id, a message name and correlation key, a timer value that parses as ISO 8601 or
   cron, an error code, an escalation code, a signal name, a multi-instance input collection,
   a condition on each non-default flow out of a gateway, and listener types.
+- **Something wrong inside a value.** A FEEL built-in newer than the target (`uuid()` and
+  `trim()` need 8.6, `from json()` 8.9, from `@camunda/feel-builtins`); a mapping target or
+  result variable that is not a variable name; a secret written as `secrets.X`, or as
+  `{{secrets.X}}` once 8.10 has `camunda.secrets.X`; a `camunda.secrets.X` reference in a
+  string, a list or an `if` branch's context, where 8.10 cannot resolve it; inbound connector
+  properties (`messageTtl`, `consumeUnmatchedEvents`, `deduplicationModeManualFlag`) before 8.6;
+  a link event with no name, or two link catch events with the same name; duplicate header
+  keys on one execution listener (8.10); and a loop of plain tasks, manual tasks and call
+  activities with nothing that waits. Agent tools (8.8) are checked too: `fromAi()` only in an
+  input mapping of a tool's first element, with a `toolCall.<name>` key and a quoted
+  description, and each tool's result mapped to `toolCallResult`. These rules keep the plugin's
+  own messages, such as `FEEL function <uuid> requires Camunda >=8.6`.
 
 From 8.2 on, processes that are not marked executable are skipped, as Modeler skips them. A
 version newer than the table is checked as the newest version the table has (8.10). Later
@@ -38,7 +50,8 @@ The version table is data (`CAMUNDA_COMPAT_RULES` in `@bpmnkit/core`), taken fro
 `bpmnlint-plugin-camunda-compat` 2.61.0 (`@camunda/linting` 3.57.0). BPMN Kit does not
 report a problem twice. When a `deploy/*` check already reports it on the same element, only
 that finding stays. For example, `deploy/service-task-no-type` stands in for
-`compat/implementation`.
+`compat/implementation`, and when a `.bpmnlintrc` runs bpmnlint's `link-event`,
+`flow/link-event-mismatch` stands in for `compat/link-event`.
 
 ---
 Source: https://bpmnkit.com/docs/guides/bpmnlint

@@ -7,14 +7,17 @@
 | `no-binding-type`, `no-execution-listeners`, `execution-listener`, `duplicate-execution-listeners`, `no-priority-definition`, `priority-definition`, `no-version-tag`, `version-tag`, `ad-hoc-sub-process`, `no-interrupting-event-subprocess`, `no-task-listeners`, `task-listener` | Covered |
 | `no-business-id`, `no-execution-listener-headers`, `no-before-all-execution-listener`, `before-all-execution-listener`, `no-cancel-execution-listener`, `cancel-execution-listener`, `no-job-priority-definition` | Covered |
 | `subscription` | Covered. A `zeebe:subscription` on the catch element instead of on its `bpmn:message` is an error, as in the plugin. BPMN Kit's builders put it on the message. |
+| `feel-compatibility`, `variable-name`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers`, `no-loop` | Covered, with the plugin's messages. FEEL is read by BPMN Kit's own parser, so an expression only one of the two parsers accepts can be judged differently. |
+| `agent-fromai-contract`, `agent-tool-output-key` | Covered, with the plugin's messages |
+| `link-event` | Covered, with the plugin's messages. Where bpmnlint's `link-event` also runs, its `flow/link-event-mismatch` finding stays instead. |
 | `executable-process`, `feel`, `agent-tool-documentation` | Reported by an existing finding: `deploy/process-not-executable` (which reports every non-executable process), `feel-syntax/parse-error`, `agentic/tool-no-description` |
-| `feel-compatibility`, `agent-fromai-contract`, `agent-tool-output-key`, `variable-name` | Not covered. They need a FEEL analyzer and Camunda's per-version FEEL function table. |
-| `no-loop`, `link-event`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers` | Not covered. Configured, they are listed as not applied. |
 
-Checked against the plugin: the test suite has two fixture diagrams that trigger all 52 covered
-rules. It compares BPMN Kit's findings with what the real plugin reported for them under every
-`camunda-cloud-*` config. The findings match element for element. The 25 process templates
-in `@bpmnkit/patterns` give the same result as the plugin too.
+All 65 rules of the plugin's `camunda-cloud-*` configs are covered: 62 are reproduced, and
+3 are reported by existing findings. Checked against the plugin: the test suite has four
+fixture diagrams that trigger all 62 reproduced rules. It compares BPMN Kit's findings with
+what the real plugin reported for them under every `camunda-cloud-*` config. The findings
+match element for element, and message for message where the table says so. The 25 process templates in `@bpmnkit/patterns` give the same result as the plugin
+too.
 
 ---
 Source: https://bpmnkit.com/docs/guides/bpmnlint

@@ -1703,7 +1703,7 @@
 		{
 			"id": "guides.bpmnlint.camunda-version-compatibility",
 			"file": "chunks/guides.bpmnlint.camunda-version-compatibility.md",
-			"tokens": 628,
+			"tokens": 888,
 			"tags": [
 				"guides",
 				"bpmnlint",
@@ -1718,9 +1718,12 @@
 				"bindingType",
 				"beforeAll",
 				"timeDate",
-				"@bpmnkit/core",
-				"deploy/service-task-no-type",
-				"compat/implementation"
+				"uuid()",
+				"trim()",
+				"@camunda/feel-builtins",
+				"secrets.X",
+				"camunda.secrets.X",
+				"messageTtl"
 			]
 		},
 		{
@@ -1740,7 +1743,7 @@
 		{
 			"id": "guides.bpmnlint.camunda-version-compatibility-what-is-covered",
 			"file": "chunks/guides.bpmnlint.camunda-version-compatibility-what-is-covered.md",
-			"tokens": 422,
+			"tokens": 504,
 			"tags": [
 				"guides",
 				"bpmnlint",
@@ -1750,6 +1753,7 @@
 				"covered"
 			],
 			"entities": [
+				"flow/link-event-mismatch",
 				"deploy/process-not-executable",
 				"feel-syntax/parse-error",
 				"agentic/tool-no-description",

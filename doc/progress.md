@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-09-25 — Camunda version check covers every camunda-compat rule
+
+- `@bpmnkit/core` now reproduces 62 of the 65 `bpmnlint-plugin-camunda-compat` 2.61.0 rules (3 more are covered by existing findings). New: `compat/feel-compatibility`, `variable-name`, `secrets`, `unresolvable-secret-reference`, `connector-properties`, `duplicate-execution-listener-headers`, `link-event`, `no-loop`, `agent-fromai-contract` and `agent-tool-output-key`, with the plugin's semantics and messages.
+- The per-version FEEL built-in table is copied from `@camunda/feel-builtins` 1.4.1 (`FEEL_BUILTIN_SINCE`), and the inbound connector property table from the plugin's `connector-properties/config.js`. FEEL is analysed on `@bpmnkit/feel`'s AST (`camunda-compat-feel.ts`).
+- `compat/link-event` maps onto bpmnlint's `link-event`: `lintDiagram` removes duplicate findings again after bpmnlint's own rules run, so `flow/link-event-mismatch` stands in on the same element.
+- Two new fixtures (`contents.bpmn`, `agents.bpmn`); `expected.json` re-recorded with bpmnlint 11.14 and the real plugin under all 15 `camunda-cloud-*` configs, with messages for the new rules. Findings match element for element and messages word for word; the live comparison and the 25 templates also match the plugin.
+
 ## 2026-09-25 — Per-file element-template resolution
 
 - Proxy: `GET /element-templates?root=…&file=…` returns only the templates one diagram sees (`discoverElementTemplates`); `file` must lie inside `root`, `configFolder` must be a folder name; `?root=` alone is unchanged.

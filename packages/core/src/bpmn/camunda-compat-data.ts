@@ -467,7 +467,7 @@ export const CAMUNDA_COMPAT_RULES: Readonly<Record<string, CamundaCompatRule>> =
 		severity: "error",
 		coverage: "partial",
 		equivalents: ["deploy/message-catch-no-correlation"],
-		note: "A `zeebe:subscription` placed on the catch element instead of on its `bpmn:message` is a warning here, where the plugin reports the message as missing it — BPMN Kit's builder writes it on the element, and Reebe reads it there.",
+		note: "A `zeebe:subscription` placed on the catch element instead of on its `bpmn:message` is reported as the plugin reports it: the message is missing its subscription. BPMN Kit's builders write it on the message.",
 	},
 	"task-listener": { severity: "error", since: "8.8", coverage: "implemented" },
 	"task-schedule": { severity: "error", since: "8.2", coverage: "implemented" },
